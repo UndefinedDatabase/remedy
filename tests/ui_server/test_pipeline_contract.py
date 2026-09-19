@@ -72,11 +72,10 @@ class TestPipelineFixture:
             }},
         ]
         p = _build_dashboard_with_events(job, events, monkeypatch, tmp_path)
-        assert p["provider"] == "fixture"
-        assert p["provider_mode"] == "fixture"
-        assert p["source_context"]["injected"] is True
-        assert p["source_context"]["file_count"] == 3
-        assert p["source_context"]["selection_hash"] == "abc123def456"
+        # R-0927: the deleted goal-driven path's own events are ignored in an old log.
+        assert p["provider"] is None
+        assert p["provider_mode"] == "none"
+        assert p["source_context"] == {"injected": False}
         assert p["structured_patch_attempted"] is True
         assert p["parse_success"] is True
         assert p["approval_status"] == "approved"
@@ -100,7 +99,7 @@ class TestPipelineOllamaParseFail:
             }},
         ]
         p = _build_dashboard_with_events(job, events, monkeypatch, tmp_path)
-        assert p["provider"] == "ollama"
+        assert p["provider"] is None  # R-0927
         assert p["parse_success"] is False
         assert p["parse_error_kind"] == "prose_only"
         assert p["stop_reason"] == "provider_output_prose_only"
@@ -124,9 +123,10 @@ class TestPipelineApprovalRequired:
             }},
         ]
         p = _build_dashboard_with_events(job, events, monkeypatch, tmp_path)
-        assert p["intent_status"] == "created"
-        assert p["approval_required"] is True
-        assert p["approval_status"] == "pending"
+        # R-0927: only the deleted goal-driven path wrote the pending intent's event.
+        assert p["intent_status"] == "none"
+        assert p["approval_required"] is False
+        assert p["approval_status"] == "none"
 
 
 class TestPipelineRepairExhausted:
@@ -160,8 +160,9 @@ class TestPipelineProviderUnavailable:
             }},
         ]
         p = _build_dashboard_with_events(job, events, monkeypatch, tmp_path)
-        assert p["provider"] == "ollama"
-        assert p["stop_reason"] == "provider_unavailable"
+        # R-0927: only the deleted goal-driven path wrote the provider-error event.
+        assert p["provider"] is None
+        assert p["stop_reason"] == ""
 
 
 class TestPipelineNextCommand:
@@ -234,7 +235,9 @@ class TestTokenUsage:
         t = _build_token_usage(events)
         assert t["known"] is True
         assert t["total_tokens"] == 1000
-        assert t["by_role"]["context"] == 800
+        # R-0927: the source-context event's tokens are no longer a role of their own.
+        assert "context" not in t["by_role"]
+        assert t["by_role"]["other"] == 800
         assert t["by_role"]["memory"] == 200
 
     def test_no_raw_content_in_token_usage(self, tmp_path, monkeypatch):
@@ -251,6 +254,31 @@ class TestTokenUsage:
         t_str = json.dumps(t)
         assert "SECRET_KEY" not in t_str
         assert "abc123" not in t_str
+
+
+class TestProjectSummaryModelConfidence:
+    def test_linked_project_reads_low_confidence(self, tmp_path, monkeypatch):
+        """R-0927: the real-builder count that could raise the model-quality confidence
+        read an event only the deleted goal-driven path wrote, so a job with a linked
+        project reads low confidence and still needs a real-model check."""
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        from packages.orchestration.data_paths import mint_job_id
+        from packages.orchestration.pingpong_job import save_job_plan
+        from packages.orchestration.project_registry import RemyProject, save_project
+        from packages.orchestration.ui_server import _build_project_summary_section
+
+        project = RemyProject(name="pinned-project")
+        job = _make_job(job_id=mint_job_id(), metadata={"project_id": str(project.id)})
+        save_job_plan(job)
+        project.job_ids.append(str(job.job_id))
+        save_project(project)
+
+        section = _build_project_summary_section(job)
+        assert section is not None
+        assert section["project_id"] == str(project.id)
+        assert section["job_count"] == 1
+        assert section["model_quality_confidence"] == "low"
+        assert section["needs_real_model_check"] is True
 
 
 class TestPipelineMemory:

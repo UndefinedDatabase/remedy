@@ -103,6 +103,16 @@ class TestPytestKind:
             check("pytest", {"selector": "tests", "args": ["-x", "--no-header"]}))
         assert argv[argv.index("tests") + 1:] == ["-x", "--no-header", "-q"]
 
+    def test_a_check_writes_no_bytecode_and_no_cache_into_the_tree_it_judges(
+            self, worktree: Path, monkeypatch):
+        """F273: a gate's pytest wrote `tests/__pycache__/*.pyc` into a job's
+        worktree, which then ended `job_handoff_coverage_failed`."""
+        monkeypatch.delenv("PYTHONDONTWRITEBYTECODE", raising=False)
+        ev = run_check(check("pytest", {"selector": "tests/test_green.py"}), worktree)
+        assert ev.status == STATUS_PASSED
+        assert sorted(p.relative_to(worktree).as_posix() for p in worktree.rglob("*")) == [
+            "tests", "tests/test_green.py", "tests/test_red.py"]
+
 
 class TestLintKind:
     def test_green(self, worktree: Path):

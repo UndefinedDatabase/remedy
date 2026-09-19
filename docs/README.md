@@ -207,5 +207,6 @@ Design reference material for the Remedy UI.
 |------|-------------|
 | [REMEDY_UI_REBUILD_SPEC.md](ui/REMEDY_UI_REBUILD_SPEC.md) | Full UI rebuild specification (layout, components, interactions) |
 | [RICHTIG_PIXEL_LOCK_SPEC.md](ui/RICHTIG_PIXEL_LOCK_SPEC.md) | Pixel-lock specification for design fidelity verification |
+| [design_reference/assumption_log.md](ui/design_reference/assumption_log.md) | The `assumption_log`: every visual deviation from the design reference, with its technical reason |
 
 Visual mockups live in `docs/ui/design_reference/`.

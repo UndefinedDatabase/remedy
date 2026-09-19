@@ -16,7 +16,7 @@ def _stop(*, status="active", resolved_at=None):
         id="stop-1",
         job_id="job-1",
         source="test",
-        reason_code="dirty_repo",
+        reason_code="test_failed",
         severity="warning",
         status=status,
         created_at="2026-09-01T00:00:00+00:00",

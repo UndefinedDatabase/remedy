@@ -322,17 +322,6 @@ def get_proposed_task(job_id: str, task_id: str, root: Path | None = None) -> Pr
     return None
 
 
-def update_proposed_task(job_id: str, task: ProposedTask, root: Path | None = None) -> bool:
-    with _file_lock(job_id, root):
-        tasks = load_proposed_tasks(job_id, root)
-        for i, t in enumerate(tasks):
-            if t.id == task.id:
-                tasks[i] = task
-                save_proposed_tasks(job_id, tasks, root)
-                return True
-    return False
-
-
 def count_unresolved(job_id: str, root: Path | None = None) -> int:
     return sum(1 for t in load_proposed_tasks(job_id, root) if t.is_unresolved())
 
@@ -346,74 +335,6 @@ def count_unresolved_safe(job_id: str, root: Path | None = None) -> tuple[int, b
 
 def list_by_status(job_id: str, status: ProposedTaskStatus, root: Path | None = None) -> list[ProposedTask]:
     return [t for t in load_proposed_tasks(job_id, root) if t.status == status]
-
-
-# ---------------------------------------------------------------------------
-# Review finding → proposed task bridge
-# ---------------------------------------------------------------------------
-
-def propose_task_from_review_finding(
-    job_id: str,
-    *,
-    title: str,
-    reason: str = "",
-    description: str = "",
-    risk: str = "low",
-    priority: str = "medium",
-    task_type: str = "unknown",
-    origin_task_id: str = "",
-    origin_recommendation_id: str = "",
-    source: ProposedTaskSource = ProposedTaskSource.REVIEWER,
-    root: Path | None = None,
-) -> ProposedTask:
-    task = ProposedTask(
-        title=title[:80],
-        reason=reason[:200],
-        description=description[:500],
-        source=source,
-        risk=risk,
-        priority=priority,
-        task_type=task_type,
-        job_id=job_id,
-        origin_task_id=origin_task_id,
-        origin_recommendation_id=origin_recommendation_id,
-    )
-    add_proposed_task(job_id, task, root)
-    return task
-
-
-def propose_from_recommendation(
-    job_id: str,
-    rec: Any,
-    root: Path | None = None,
-) -> ProposedTask:
-    if hasattr(rec, "title"):
-        return propose_task_from_review_finding(
-            job_id,
-            title=rec.title,
-            reason=rec.reason,
-            description=getattr(rec, "description", ""),
-            risk=rec.risk,
-            priority=rec.priority,
-            task_type=rec.task_type,
-            origin_task_id=getattr(rec, "origin_task_id", ""),
-            origin_recommendation_id=rec.id,
-            source=ProposedTaskSource.REVIEWER,
-            root=root,
-        )
-    return propose_task_from_review_finding(
-        job_id,
-        title=str(rec.get("title", "")),
-        reason=str(rec.get("reason", "")),
-        description=str(rec.get("description", "")),
-        risk=str(rec.get("risk", "low")),
-        priority=str(rec.get("priority", "medium")),
-        task_type=str(rec.get("task_type", "unknown")),
-        origin_task_id=str(rec.get("origin_task_id", "")),
-        origin_recommendation_id=str(rec.get("id", "")),
-        source=ProposedTaskSource.REVIEWER,
-        root=root,
-    )
 
 
 # ---------------------------------------------------------------------------
@@ -451,85 +372,6 @@ def _evaluate_auto_approve_rule(task: ProposedTask) -> EvaluationResult | None:
     if task.risk == "low" and not task.approval_required:
         return EvaluationResult(ProposedTaskStatus.APPROVED_FOR_BUILD, "auto-approved: low risk, no approval required")
     return None
-
-
-def evaluate_proposed_task(
-    job_id: str,
-    task_id: str,
-    root: Path | None = None,
-) -> ProposedTask | None:
-    with _file_lock(job_id, root):
-        tasks = load_proposed_tasks(job_id, root)
-        task = None
-        for t in tasks:
-            if t.id == task_id:
-                task = t
-                break
-        if task is None:
-            return None
-
-        if task.status != ProposedTaskStatus.PROPOSED:
-            return task
-
-        result = _evaluate_duplicate_rule(task, tasks)
-        if result is None:
-            result = _evaluate_risk_rule(task)
-        if result is None:
-            result = _evaluate_auto_approve_rule(task)
-        if result is None:
-            result = EvaluationResult(ProposedTaskStatus.EVALUATED, "awaiting human decision")
-
-        transition_status(task, result.decision, by="deterministic")
-        task.evaluation_notes = result.notes
-        save_proposed_tasks(job_id, tasks, root)
-    return task
-
-
-def evaluate_all_proposed(job_id: str, root: Path | None = None) -> list[ProposedTask]:
-    with _file_lock(job_id, root):
-        tasks = load_proposed_tasks(job_id, root)
-        changed = False
-        for task in tasks:
-            if task.status != ProposedTaskStatus.PROPOSED:
-                continue
-            result = _evaluate_duplicate_rule(task, tasks)
-            if result is None:
-                result = _evaluate_risk_rule(task)
-            if result is None:
-                result = _evaluate_auto_approve_rule(task)
-            if result is None:
-                result = EvaluationResult(ProposedTaskStatus.EVALUATED, "awaiting human decision")
-            transition_status(task, result.decision, by="deterministic")
-            task.evaluation_notes = result.notes
-            changed = True
-        if changed:
-            save_proposed_tasks(job_id, tasks, root)
-    return tasks
-
-
-# ---------------------------------------------------------------------------
-# LLM evaluator interface (disabled by default)
-# ---------------------------------------------------------------------------
-
-def evaluate_with_llm(
-    job_id: str,
-    task_id: str,
-    *,
-    llm_fn: Any | None = None,
-    root: Path | None = None,
-) -> ProposedTask | None:
-    if llm_fn is None:
-        return evaluate_proposed_task(job_id, task_id, root)
-
-    task = get_proposed_task(job_id, task_id, root)
-    if task is None or task.status != ProposedTaskStatus.PROPOSED:
-        return task
-
-    result: EvaluationResult = llm_fn(task)
-    transition_status(task, result.decision, by="llm")
-    task.evaluation_notes = result.notes
-    update_proposed_task(job_id, task, root)
-    return task
 
 
 # ---------------------------------------------------------------------------
@@ -592,32 +434,6 @@ def defer_proposed_task(job_id: str, task_id: str, *, reason: str = "", root: Pa
 
 
 # ---------------------------------------------------------------------------
-# Rework proposals
-# ---------------------------------------------------------------------------
-
-def propose_rework(
-    job_id: str,
-    *,
-    failed_task_id: str,
-    title: str,
-    reason: str = "",
-    risk: str = "medium",
-    root: Path | None = None,
-) -> ProposedTask:
-    return propose_task_from_review_finding(
-        job_id,
-        title=title[:80],
-        reason=reason[:200] if reason else f"rework needed for failed task {failed_task_id}",
-        risk=risk,
-        priority="high",
-        task_type="rework",
-        origin_task_id=failed_task_id,
-        source=ProposedTaskSource.ORCHESTRATOR,
-        root=root,
-    )
-
-
-# ---------------------------------------------------------------------------
 # Materialization — approved proposed tasks → build tasks
 # ---------------------------------------------------------------------------
 
@@ -668,8 +484,7 @@ def do_materialize(job_id: str, task_id: str, root: Path | None = None) -> Propo
     4. Marks ProposedTask.materialized_task_id and saves proposal store.
 
     Order: Job saved first, then proposal. If proposal save fails after
-    Job save, the Task exists in Job — reconcile_materialized can detect
-    and repair the mismatch.
+    Job save, the Task exists in Job while the proposal stays unmarked.
 
     Raises:
         JobNotFoundError: if job_id does not correspond to a persisted Job.
@@ -718,60 +533,6 @@ def list_approved_not_materialized(
 # ---------------------------------------------------------------------------
 # Finalized gate helper
 # ---------------------------------------------------------------------------
-
-def reconcile_materialized(job_id: str, root: Path | None = None) -> dict[str, Any]:
-    """Check consistency between ProposedTask materialization and Job.tasks.
-
-    Returns a report dict (inspect-only by default).
-    """
-    from packages.orchestration.pingpong_job import load_job_plan_safe
-
-    job_uuid = normalize_job_id(job_id)
-    job, job_degraded = load_job_plan_safe(job_uuid, root)
-
-    try:
-        proposals = load_proposed_tasks(job_id, root)
-        proposals_degraded = False
-    except ProposedTaskStoreError:
-        proposals_degraded = True
-        proposals = []
-
-    if job_degraded or proposals_degraded:
-        return {
-            "consistent": False,
-            "job_degraded": job_degraded,
-            "proposals_degraded": proposals_degraded,
-            "missing_job_task": [],
-            "missing_proposal_marker": [],
-        }
-
-    job_task_ids = set()
-    proposed_task_id_map: dict[str, str] = {}
-    if job:
-        for t in job.tasks:
-            tid = str(t.task_id)
-            job_task_ids.add(tid)
-            pt_id = (t.inputs or {}).get("proposed_task_id", "")
-            if pt_id:
-                proposed_task_id_map[pt_id] = tid
-
-    missing_job_task = []
-    missing_proposal_marker = []
-
-    for p in proposals:
-        if p.materialized_task_id and p.materialized_task_id not in job_task_ids:
-            missing_job_task.append(p.id)
-        if not p.materialized_task_id and p.id in proposed_task_id_map:
-            missing_proposal_marker.append(p.id)
-
-    return {
-        "consistent": not missing_job_task and not missing_proposal_marker,
-        "job_degraded": False,
-        "proposals_degraded": False,
-        "missing_job_task": missing_job_task,
-        "missing_proposal_marker": missing_proposal_marker,
-    }
-
 
 def can_finalize(
     job_id: str,
@@ -840,139 +601,3 @@ def emit_proposed_task_event(
     if extra:
         metadata.update(extra)
     writer.log(event_name, task_id=task.origin_task_id or None, outcome=task.status.value, **metadata)
-
-
-# ---------------------------------------------------------------------------
-# Backend readiness
-# ---------------------------------------------------------------------------
-
-def _task_status_val(t: Any) -> str:
-    return t.status.value if hasattr(t.status, "value") else str(t.status)
-
-
-def backend_readiness(job_id: str, root: Path | None = None) -> dict[str, Any]:
-    """Structured readiness report: storage, build, finalize, execution, overnight sections."""
-    from packages.orchestration.pingpong_job import list_job_plans_safe, load_job_plan_safe
-
-    job, job_degraded = load_job_plan_safe(normalize_job_id(job_id), root)
-    proposals, proposals_degraded = load_proposed_tasks_safe(job_id, root)
-    recon = reconcile_materialized(job_id, root)
-    _, jobs_degraded, skipped_files = list_job_plans_safe(root)
-
-    # Storage health
-    job_missing = job is None and not job_degraded
-    storage_healthy = not job_degraded and not job_missing and not proposals_degraded and recon["consistent"] and not jobs_degraded
-    storage_blockers: list[str] = []
-    if job_degraded:
-        storage_blockers.append("job_store_degraded")
-    if job_missing:
-        storage_blockers.append("job_not_found")
-    if proposals_degraded:
-        storage_blockers.append("proposal_store_degraded")
-    if not recon["consistent"]:
-        storage_blockers.append("materialization_mismatch")
-    if jobs_degraded:
-        storage_blockers.append(f"job_store_has_{len(skipped_files)}_corrupt_files")
-
-    # Proposal health
-    unresolved = sum(1 for t in proposals if t.is_unresolved()) if not proposals_degraded else -1
-    not_mat = sum(
-        1 for t in proposals
-        if t.status == ProposedTaskStatus.APPROVED_FOR_BUILD and not t.is_materialized
-    ) if not proposals_degraded else -1
-
-    # Job task counts
-    pending_tasks = 0
-    blocked_tasks = 0
-    completed_tasks = 0
-    if job:
-        for t in job.tasks:
-            s = _task_status_val(t)
-            if s in ("pending", "planned"):
-                pending_tasks += 1
-            elif s in ("blocked", "failed"):
-                blocked_tasks += 1
-            elif s == "completed":
-                completed_tasks += 1
-
-    # Build readiness
-    build_blockers: list[str] = list(storage_blockers)
-    if unresolved > 0:
-        build_blockers.append(f"{unresolved}_unresolved_proposals")
-    if not_mat > 0:
-        build_blockers.append(f"{not_mat}_approved_not_materialized")
-    if pending_tasks == 0 and not storage_blockers:
-        build_blockers.append("no_pending_work")
-    build_ready = len(build_blockers) == 0
-
-    # Finalize readiness
-    finalize_ok, finalize_reason = can_finalize(
-        job_id,
-        pending_task_count=pending_tasks,
-        blocked_task_count=blocked_tasks,
-        root=root,
-    )
-
-    return {
-        "storage_health": {
-            "healthy": storage_healthy,
-            "blockers": storage_blockers,
-            "job_exists": job is not None and not job_degraded,
-            "proposal_store_healthy": not proposals_degraded,
-            "materialization_consistent": recon["consistent"],
-            "job_store_skipped_files": len(skipped_files),
-        },
-        "proposal_health": {
-            "unresolved": unresolved,
-            "approved_not_materialized": not_mat,
-            "degraded": proposals_degraded,
-        },
-        "execution_health": {
-            "pending_task_count": pending_tasks,
-            "completed_task_count": completed_tasks,
-            "blocked_task_count": blocked_tasks,
-            "total_tasks": pending_tasks + completed_tasks + blocked_tasks,
-        },
-        "build_readiness": {
-            "ready": build_ready,
-            "blockers": build_blockers,
-            "pending_tasks": pending_tasks,
-        },
-        "finalize_readiness": {
-            "ready": finalize_ok,
-            "reason": finalize_reason,
-            "pending_tasks": pending_tasks,
-            "blocked_tasks": blocked_tasks,
-            "completed_tasks": completed_tasks,
-        },
-        "overnight_readiness": {
-            "ready": False,
-            "blockers": ["no_overnight_mode_implemented"],
-        },
-    }
-
-
-def overnight_readiness(job_id: str, root: Path | None = None) -> dict[str, Any]:
-    """Overnight autonomy readiness gate. Does NOT execute anything."""
-    base = backend_readiness(job_id, root)
-    blockers: list[str] = []
-
-    for section in ("storage_health", "build_readiness"):
-        blockers.extend(base[section]["blockers"])
-
-    if base["finalize_readiness"]["pending_tasks"] > 0:
-        blockers.append(f"{base['finalize_readiness']['pending_tasks']}_pending_tasks")
-    if base["finalize_readiness"]["blocked_tasks"] > 0:
-        blockers.append(f"{base['finalize_readiness']['blocked_tasks']}_blocked_tasks")
-
-    blockers.append("no_overnight_mode_implemented")
-    blockers.append("no_rollback_snapshot_proof")
-    blockers.append("no_token_time_budget_set")
-
-    return {
-        "ready": False,
-        "blockers": blockers,
-        "max_safe_autonomy_level": 0,
-        "required_human_actions": ["review and approve proposed tasks", "set token budget", "configure rollback"],
-        "risk_summary": "Overnight autonomy not yet safe — missing rollback, budget, and execution proof.",
-    }

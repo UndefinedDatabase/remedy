@@ -14,7 +14,6 @@ from packages.orchestration.run_contract import (
     ensure_contract,
     evaluate_run_action,
     export_budget_status_json,
-    export_run_action_decision_json,
     export_run_contract_json,
     export_usage_json,
     load_contract,
@@ -23,7 +22,6 @@ from packages.orchestration.run_contract import (
     needs_contract_migration,
     save_contract,
     save_usage,
-    summarize_run_contract,
     validate_run_contract,
 )
 
@@ -78,14 +76,6 @@ class TestApprovalGateRegression:
 
         from packages.orchestration import do_run
         source = inspect.getsource(do_run)
-        assert "from packages.orchestration.source_apply import" not in source
-        assert "source_apply(" not in source
-
-    def test_repair_loop_does_not_import_source_apply(self):
-        import inspect
-
-        from packages.orchestration import repair_loop
-        source = inspect.getsource(repair_loop)
         assert "from packages.orchestration.source_apply import" not in source
         assert "source_apply(" not in source
 
@@ -240,9 +230,8 @@ class TestLoopTestBudget:
     def test_decision_json_has_status(self):
         c = _contract(max_loops=0)
         d = evaluate_run_action(c, "plan", loop_index=0)
-        j = export_run_action_decision_json(d)
-        assert j["status"] == "exhausted"
-        assert j["allowed"] is False
+        assert d.status == "exhausted"
+        assert d.allowed is False
 
 
 # ---------------------------------------------------------------------------
@@ -285,14 +274,6 @@ class TestExportSafety:
                      "denied_actions", "max_loops", "max_test_runs",
                      "stop_before_apply", "no_cloud", "denied_paths"):
             assert key in j
-
-    def test_summarize_includes_key_info(self):
-        c = _contract()
-        s = summarize_run_contract(c)
-        assert "Run Contract" in s
-        assert "Max loops" in s
-        assert "Stop before apply" in s
-
 
 # ---------------------------------------------------------------------------
 # Step 1066: Contract persistence tests

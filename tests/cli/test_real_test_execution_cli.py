@@ -75,6 +75,48 @@ def test_test_list_text_shows_per_row(capsys):
     assert "created=2026-09-04T00:00:00+00:00" in out
 
 
+_DATED_RUNS = [
+    {"test_run_id": "run-old", "status": "passed", "exit_code": 0,
+     "created_at": "2026-09-01T00:00:00+00:00"},
+    {"test_run_id": "run-new", "status": "failed", "exit_code": 1,
+     "created_at": "2026-09-03T00:00:00+00:00"},
+]
+
+
+def _test_list_json(capsys, **flags):
+    from argparse import Namespace
+    from unittest.mock import patch
+
+    from apps.cli.commands.real_test_execution_cmd import _cmd_test_list
+
+    args = Namespace(job_id=str(uuid4()), json=True, **flags)
+    with patch("packages.orchestration.real_test_execution.list_test_runs",
+               return_value=list(_DATED_RUNS)):
+        _cmd_test_list(args)
+    return json.loads(capsys.readouterr().out)
+
+
+def test_test_list_is_newest_first_and_limit_caps_it(capsys):
+    """R-0796: `test list` honours the shared list options."""
+    assert [r["test_run_id"] for r in _test_list_json(capsys)["runs"]] == ["run-new", "run-old"]
+    capped = _test_list_json(capsys, limit="1")
+    assert capped["run_count"] == 1
+    assert [r["test_run_id"] for r in capped["runs"]] == ["run-new"]
+
+
+def test_test_list_since_and_until_filter_by_created_at(capsys):
+    body = _test_list_json(capsys, since="2026-09-02T00:00:00+00:00",
+                           until="2026-09-04T00:00:00+00:00")
+    assert [r["test_run_id"] for r in body["runs"]] == ["run-new"]
+
+
+def test_test_list_unknown_sort_field_exits_nonzero(capsys):
+    with pytest.raises(SystemExit) as exc:
+        _test_list_json(capsys, sort="bogus")
+    assert exc.value.code == 1
+    assert "valid fields: created_at, status, test_run_id" in capsys.readouterr().err
+
+
 def test_test_integrity(env):
     jid = _job(env)
     run_grouped_cli(["snapshot", "create", jid, "--json"], env)

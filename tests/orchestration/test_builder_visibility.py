@@ -104,31 +104,3 @@ class TestLiveStateBridgeFields:
         state = _build_live_state_json(job)
         # Last event should be builder_patch_parsed → stage="parsing"
         assert state["stage"] == "parsing"
-
-
-class TestCLIBridgeOutput:
-    def test_do_cmd_json_includes_events(self):
-        from packages.orchestration.autorun import AutorunResult
-        result = AutorunResult(
-            job_id="abc-123",
-            cycles_run=2,
-            stage="proof_collected",
-            events=[
-                {"event": "structured_patch_created", "value": "True"},
-                {"event": "tests_passed", "value": "True"},
-            ],
-        )
-        out: dict = {
-            "version": 1,
-            "job_id": result.job_id,
-            "stage": result.stage,
-            "cycles_run": result.cycles_run,
-        }
-        for ev in result.events:
-            key = ev.get("event", "")
-            val = ev.get("value", "")
-            if key:
-                out[key] = val == "True"
-        assert out["structured_patch_created"] is True
-        assert out["tests_passed"] is True
-        assert out["cycles_run"] == 2

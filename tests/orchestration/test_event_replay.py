@@ -46,9 +46,10 @@ class TestReplayFixtureSuccess:
         r = replay_job(jid, str(tmp_path))
         assert r.degraded is False
         assert r.event_count == 8
-        assert r.provider == "fixture"
+        # R-0927: the deleted goal-driven path's own events are ignored in an old log.
+        assert r.provider == ""
         assert r.current_stage == "proof_collected"
-        assert r.source_context["injected"] is True
+        assert r.source_context == {}
         assert r.tests["passed"] is True
         assert r.approval["status"] == "approved"
         assert r.stop_reason == ""
@@ -66,8 +67,9 @@ class TestReplayApprovalRequired:
         ]
         _write_events(tmp_path, jid, events)
         r = replay_job(jid, str(tmp_path))
-        assert r.approval.get("status") == "pending"
-        assert r.current_stage == "structured_patch_created"
+        # R-0927: only the deleted goal-driven path wrote the pending intent's event.
+        assert r.approval == {}
+        assert r.current_stage == "structured_patch_attempted"
 
 
 class TestReplayParseFailed:
@@ -140,7 +142,7 @@ class TestCheckpoints:
         r = replay_job(jid, str(tmp_path))
         cps = find_checkpoints(r)
         kinds = [c.kind for c in cps]
-        assert "context_ready" in kinds
+        assert "context_ready" not in kinds  # R-0927 deleted the checkpoint
         assert "approval_recorded" in kinds
         assert "source_apply_proven" in kinds
         assert "tests_passed" in kinds
@@ -157,9 +159,8 @@ class TestCheckpoints:
         _write_events(tmp_path, jid, events)
         r = replay_job(jid, str(tmp_path))
         cps = find_checkpoints(r)
-        intent_cp = next(c for c in cps if c.kind == "patch_intent_created")
-        assert intent_cp.safe_to_resume is False
-        assert intent_cp.blocked_reason == "approval_pending"
+        # R-0927: only the deleted goal-driven path's events reached this checkpoint.
+        assert [c.kind for c in cps if c.kind == "patch_intent_created"] == []
 
     def test_tests_failed_checkpoint_blocked(self, tmp_path):
         from packages.orchestration.event_replay import find_checkpoints, replay_job
@@ -190,10 +191,8 @@ class TestCheckpoints:
         _write_events(tmp_path, jid, events)
         r = replay_job(jid, str(tmp_path))
         cps = find_checkpoints(r)
-        ctx_cp = next(c for c in cps if c.kind == "context_ready")
-        assert ctx_cp.safe_to_resume is False
-        assert ctx_cp.status == "inspectable"
-        assert ctx_cp.blocked_reason == "resume_mode_not_implemented"
+        # R-0927: only the deleted source-context injector's event reached this checkpoint.
+        assert cps == []
 
     def test_approval_recorded_blocked_missing_patch(self, tmp_path):
         from packages.orchestration.event_replay import find_checkpoints, replay_job

@@ -556,6 +556,49 @@ class TestSafeTaskIdHelper:
         assert "error" not in result
         assert (tmp_path / "evidence" / "task_runs" / minted / "provider_evidence.json").is_file()
 
+    def test_job_evidence_command_exports_a_job_whose_task_carries_the_minted_default(
+            self, isolate_data_root, demo_repo, tmp_path, capsys):
+        """R-0912: `remedy job evidence` exports a run job whose task id is the dataclass default."""
+        from apps.cli.grouped import main as cli_main
+        from packages.orchestration.pingpong_job import JobPlan, TaskEntry, _persist_job
+
+        job = JobPlan(repo_path=str(demo_repo), job_title="Minted ids",
+                      tasks=[TaskEntry(title="Write docs/a.md", body="Write docs/a.md")])
+        _persist_job(job)
+        [minted] = [t.task_id for t in job.tasks]
+        assert not minted.startswith("T")
+        run_job(job.job_id, builder_provider=_pass_provider(),
+                reviewer_provider=_pass_provider(), repair_rounds=0)
+        capsys.readouterr()
+        out = tmp_path / "evidence"
+
+        cli_main(["job", "evidence", job.job_id, "--out", str(out), "--json"])
+
+        captured = capsys.readouterr()
+        assert "error" not in json.loads(captured.out)
+        assert (out / "task_runs" / minted / "provider_evidence.json").is_file()
+
+    def test_job_evidence_command_refuses_an_unsafe_task_id_by_name(
+            self, isolate_data_root, demo_repo, tmp_path, capsys):
+        """R-0912: a persisted task id the guard refuses exits 1 with one line naming it."""
+        from apps.cli.grouped import main as cli_main
+        from packages.orchestration.pingpong_job import JobPlan, TaskEntry, _persist_job
+
+        job = JobPlan(repo_path=str(demo_repo), job_title="Unsafe id",
+                      tasks=[TaskEntry(task_id="../x", title="t", body="b")])
+        _persist_job(job)
+
+        with pytest.raises(SystemExit) as exc_info:
+            cli_main(["job", "evidence", job.job_id, "--out", str(tmp_path / "evidence")])
+
+        assert exc_info.value.code == 1
+        err = capsys.readouterr().err
+        assert err.strip().splitlines() == [
+            f"Error: job {job.job_id} cannot export its evidence: its task id '../x' "
+            "is not T<digits> or sixteen lowercase hex characters."
+        ]
+        assert "Traceback" not in err
+
     def test_symlinked_task_runs_blocked(self, tmp_path):
         """Step 4927: _task_evidence_dir blocks symlink escape via task_runs/."""
         from packages.orchestration.job_evidence import _task_evidence_dir
@@ -1128,6 +1171,55 @@ class TestDogfoodCommandShape:
         assert "tombstone_count" in data
         assert "base_commit" in data and "head_commit" in data
 
+    def test_a_deleted_source_file_is_a_tombstone_the_strict_decoder_accepts(
+        self, isolate_data_root, tmp_path,
+    ):
+        """The export's content proof wrote each tombstone as a ``{"status", "base_sha256",
+        "current_sha256"}`` object, and ``validate_content_proof_schema`` accepts only a lowercase
+        sha256 there — so any branch that deleted a source file exported a proof the packager
+        refuses. The tombstone is the removed blob: the subject's ``base_sha256`` for that path."""
+        import subprocess
+
+        from packages.orchestration.job_evidence import export_job_evidence
+        from packages.orchestration.review_subject import decode_content_proof_v1
+
+        repo = tmp_path / "delrepo"
+        repo.mkdir()
+
+        def git(*args: str) -> str:
+            return subprocess.run(["git", *args], cwd=repo, check=True, capture_output=True,
+                                  text=True).stdout.strip()
+
+        git("init", "-q")
+        git("config", "user.email", "t@t")
+        git("config", "user.name", "t")
+        (repo / "src").mkdir()
+        (repo / "src" / "keep.py").write_text("def keep():\n    return 1\n")
+        (repo / "src" / "gone.py").write_text("def gone():\n    return 2\n")
+        git("add", "-A")
+        git("commit", "-qm", "base")
+        base = git("rev-parse", "HEAD")
+        (repo / "src" / "keep.py").write_text("def keep():\n    return 10\n")
+        git("rm", "-q", "src/gone.py")
+        git("commit", "-qam", "modify keep, delete gone")
+
+        job = parse_job_file(_TWO_TASK_JOB, str(repo))
+        out = tmp_path / "evidence"
+        result = export_job_evidence(job.job_id, str(out), declared_base=base)
+
+        assert "error" not in result
+        assert not (out / "current_change_content_proof.error.txt").exists(), \
+            (out / "current_change_content_proof.error.txt").read_text()
+        proof_doc = json.loads((out / "current_change_content_proof.json").read_text())
+        subject = json.loads((out / "review_subject.json").read_text())
+        gone = [f for f in subject["files"] if f["path"] == "src/gone.py"]
+        assert len(gone) == 1 and gone[0]["status"] == "deleted", subject["files"]
+
+        proof = decode_content_proof_v1(proof_doc)  # strict: raises on a non-sha256 tombstone
+        assert proof.tombstones == {"src/gone.py": gone[0]["base_sha256"]}
+        assert "src/gone.py" in proof.authority_paths()
+        assert "src/keep.py" in proof.file_hashes
+
     def test_change_provenance_exists_after_export(self, isolate_data_root, demo_repo, tmp_path):
         """Change provenance gate must exist after export with stale_apply_proofs field."""
         job = _run_completed_job(demo_repo)
@@ -1590,105 +1682,19 @@ class TestEvidenceBundleConsistency:
         assert data["execution_mode"] == "fake_provider_test"
 
 
-class TestAttestationOverlayNoFakeStubs:
-    """Attestation overlay must not create fake-empty observability stubs."""
+class TestManualTaskEvidenceProducer:
+    """The surviving producer of an operator-attested task. F273 R-0914: an operator repair is
+    attested no longer and the export no longer overlays one; the closure evidence producer
+    writes its tasks through ``manual_attestation.write_manual_task_evidence``."""
 
-    def test_no_fake_agent_run_trace(self, isolate_data_root, demo_repo, tmp_path):
-        """Attestation must not fabricate agent_run_trace.jsonl."""
-        from packages.orchestration.job_evidence import export_job_evidence
-        from packages.orchestration.repair_attest import attest_operator_repair
-
-        job = _run_completed_job(demo_repo)
-        attest_operator_repair(job.job_id, "T001", "manual fix", str(demo_repo))
-        out = str(tmp_path / "ev_no_fake")
-        result = export_job_evidence(job.job_id, out)
-        files = result.get("files", {})
-        if "agent_run_trace.jsonl" in files:
-            content = Path(files["agent_run_trace.jsonl"]).read_text().strip()
-            assert content, "agent_run_trace.jsonl must not be empty fake stub"
-
-    def test_no_fake_prompt_trace(self, isolate_data_root, demo_repo, tmp_path):
-        """Attestation must not fabricate empty prompt_trace.jsonl."""
-        from packages.orchestration.job_evidence import export_job_evidence
-        from packages.orchestration.repair_attest import attest_operator_repair
-
-        job = _run_completed_job(demo_repo)
-        attest_operator_repair(job.job_id, "T001", "manual fix", str(demo_repo))
-        out = str(tmp_path / "ev_no_fake_pt")
-        result = export_job_evidence(job.job_id, out)
-        files = result.get("files", {})
-        for tid in ["T001", "T002"]:
-            rel = f"task_runs/{tid}/prompt_trace.jsonl"
-            if rel in files:
-                content = Path(files[rel]).read_text().strip()
-                if content:
-                    assert len(content) > 5, (
-                        "prompt_trace.jsonl must not be a trivial fake stub"
-                    )
-
-    def test_manual_not_applicable_status_accepted(
-        self, isolate_data_root, demo_repo, tmp_path
-    ):
+    def test_manual_not_applicable_status_accepted(self, tmp_path):
         """Provider evidence with not_applicable_manual_repair status is valid."""
-        from packages.orchestration.repair_attest import attest_operator_repair
+        from packages.orchestration.manual_attestation import write_manual_task_evidence
 
-        job = _run_completed_job(demo_repo)
-        result = attest_operator_repair(
-            job.job_id, "T001", "manual fix", str(demo_repo)
-        )
-        pe = json.loads(Path(result["files"]["provider_evidence.json"]).read_text())
+        write_manual_task_evidence(
+            str(tmp_path), job_id="0123456789abcdef", task_id="T001", changed_files=[],
+            safe_diff_text="", provenance_sha256="0" * 64, diff_sha256="0" * 64,
+            tracked_diff_sha256="0" * 64, safe_diff_sha256="0" * 64,
+            timestamp="2026-09-19T00:00:00+00:00", note="manual fix")
+        pe = json.loads((tmp_path / "task_runs" / "T001" / "provider_evidence.json").read_text())
         assert pe["prompt_trace_status"] == "not_applicable_manual_repair"
-
-
-class TestManualCompletionFinalizeActuallyRuns:
-    """Round 16 regression: `_finalize_manual_completion` swallows any exception into
-    `manual_completion_finalize.error.txt` and continues. That is deliberate — one broken
-    overlay must not abort the whole export — but it means a bug in that path (an F8 import that
-    was in scope for one function and not the other) went silent: `completion_mode` never got
-    written, the packager saw a non-manual job, and required provider-flow root artifacts were
-    reported MISSING. The attest tests all passed because none asserted the overlay SUCCEEDED.
-    """
-
-    def test_the_finalize_step_leaves_no_error_file(self, isolate_data_root, demo_repo,
-                                                    tmp_path):
-        from packages.orchestration.job_evidence import export_job_evidence
-        from packages.orchestration.repair_attest import attest_operator_repair
-
-        job = _run_completed_job(demo_repo)
-        attest_operator_repair(job.job_id, "T001", "manual fix", str(demo_repo))
-        out = Path(tmp_path / "ev_finalize")
-        export_job_evidence(job.job_id, str(out))
-        err = out / "manual_completion_finalize.error.txt"
-        assert not err.exists(), (
-            f"the manual-completion overlay failed silently: "
-            f"{err.read_text()[:200] if err.exists() else ''}")
-
-    def test_the_completion_mode_reaches_the_final_job_review(self, isolate_data_root,
-                                                              demo_repo, tmp_path):
-        """The fact the packager's manual-completion detector reads. Without it, an
-        operator-attested package is misclassified and blocked."""
-        from packages.orchestration.job_evidence import export_job_evidence
-        from packages.orchestration.repair_attest import attest_operator_repair
-
-        job = _run_completed_job(demo_repo)
-        attest_operator_repair(job.job_id, "T001", "manual fix", str(demo_repo))
-        out = Path(tmp_path / "ev_cm")
-        export_job_evidence(job.job_id, str(out))
-        fjr = json.loads((out / "final_job_review.json").read_text())
-        assert fjr.get("completion_mode") == "manual_operator_repair"
-
-    def test_the_packager_detects_manual_completion(self, isolate_data_root, demo_repo,
-                                                    tmp_path):
-        """End to end into the packager's own predicate — the one whose False reintroduced the
-        missing-root-artifact block."""
-        from packages.orchestration.job_evidence import export_job_evidence
-        from packages.orchestration.repair_attest import attest_operator_repair
-        from scripts.build_review_manifest import _is_manual_completion
-
-        job = _run_completed_job(demo_repo)
-        # ALL task runs must be manual for the packager to treat the job as manual completion.
-        for t in job.tasks:
-            attest_operator_repair(job.job_id, t.task_id, "manual fix", str(demo_repo))
-        out = Path(tmp_path / "ev_pkg")
-        export_job_evidence(job.job_id, str(out))
-        assert _is_manual_completion(str(out)) is True

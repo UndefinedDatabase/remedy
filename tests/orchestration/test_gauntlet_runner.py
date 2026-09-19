@@ -9,9 +9,9 @@ which dies takes only itself down.
 """
 from __future__ import annotations
 
+import dataclasses
 import json
 import os
-import dataclasses
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any

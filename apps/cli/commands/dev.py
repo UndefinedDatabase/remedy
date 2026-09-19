@@ -62,7 +62,6 @@ def _dev_status(*, json_output: bool = False) -> None:
         "autocoder_fake_e2e_ok": False,
         "repair_loop_ok": None,
         "reviewer_loop_ok": None,
-        "memory_candidates_ok": None,
         "live_ui_ok": None,
         "remaining_blockers": [],
         "advisories": [],
@@ -126,13 +125,6 @@ def _dev_status(*, json_output: bool = False) -> None:
     except (ImportError, Exception):
         status["reviewer_loop_ok"] = False
 
-    # Check memory candidates — module importable
-    try:
-        from packages.orchestration.memory_candidates import create_candidate
-        status["memory_candidates_ok"] = callable(create_candidate)
-    except (ImportError, Exception):
-        status["memory_candidates_ok"] = False
-
     # Check live UI — server importable and build function callable
     try:
         from packages.orchestration.ui_server import _build_live_state_json
@@ -157,7 +149,6 @@ def _dev_status(*, json_output: bool = False) -> None:
     for cap_key, cap_label in (
         ("repair_loop_ok", "repair loop"),
         ("reviewer_loop_ok", "reviewer loop"),
-        ("memory_candidates_ok", "memory candidates"),
         ("live_ui_ok", "live UI"),
     ):
         if status[cap_key] is False:
@@ -179,7 +170,7 @@ def _dev_status(*, json_output: bool = False) -> None:
         for key in ("cli_ok", "ui_contract_ok", "task_progress_ok",
                      "worker_cleanup_ok", "autocoder_fake_e2e_ok",
                      "repair_loop_ok",
-                     "reviewer_loop_ok", "memory_candidates_ok",
+                     "reviewer_loop_ok",
                      "live_ui_ok"):
             val = status[key]
             mark = "N/A" if val is None else "OK" if val else "FAIL"
@@ -199,7 +190,6 @@ def _dev_status(*, json_output: bool = False) -> None:
         print("  remedy ui <job_id>                          — open UI")
         print("  remedy worker unload --all                  — free VRAM")
         print('  remedy do "goal" --no-ui --json             — plan and run a job, stop before apply')
-        print("  remedy memory candidates <job_id> --json    — memory candidates")
         print("  remedy dev status --json                    — this status")
         print("  source scripts/remedy_smoke.sh && remedy_smoke     — smoke")
 

@@ -18,7 +18,7 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 
 _REQUIRED_SCRIPTS = ("make_review_zip.sh", "build_review_manifest.py", "build_review_zip.py",
                      "build_observability_index.py", "select_review_evidence.py",
-                     "stage_review_evidence.py")
+                     "stage_review_evidence.py", "rotate_live_review.py")
 _REQUIRED_MODULES = (
     "packages/orchestration/__init__.py", "packages/orchestration/data_paths.py",
     "packages/orchestration/evidence_index.py", "packages/orchestration/review_zip.py",
@@ -324,6 +324,13 @@ class TestAuthoritativeEndToEnd:
         assert chain["content_proof_sha256"] == proof_sha
         # F6/F7 — the manifest's own package status is READY.
         assert manifest["package_status"] == "READY_FOR_REVIEW"
+        # R-0667 — the coordinator's READY matrix sits beside the commit verdict it arbitrates.
+        arb = manifest["commit_execution_arbitration"]
+        assert arb["ready_gate_matrix_ok"] is manifest["ready_gate_matrix"]["ok"] is True
+        assert arb["commit_execution_gate_verdict"] == "NEEDS_HUMAN_APPROVAL"
+        # R-0666 — the alignment count is the length of the list naming what it counted.
+        align = manifest["review_subject_evidence_alignment"]
+        assert align["dirty_file_count_total"] == len(align["dirty_files"])
         # authority equality reflected in the plan
         auth_members = sorted(m["archive_path"] for m in plan["repository_members"]
                               if m["authoritative"])

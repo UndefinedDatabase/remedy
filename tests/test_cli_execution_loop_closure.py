@@ -6,9 +6,8 @@ from __future__ import annotations
 
 import json
 import sys
-import tempfile
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 
@@ -102,69 +101,6 @@ class TestDoProviderCliParsing:
 # Step 156 — Repair-loop Fake E2E Closure
 # =========================================================================
 
-class TestRepairLoopFullE2EClosure:
-    """Repair loop fixture proves 2-cycle controlled architecture."""
-
-    def test_repair_loop_full_json(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            from packages.orchestration.autorun import run_autorun
-            result = run_autorun(
-                "Fix calc", tmp,
-                autonomy_level=6, max_cycles=3,
-                fixture_builder="repair-loop", json_output=True,
-            )
-            events_dict = {e["event"]: e["value"] for e in result.events}
-            assert result.cycles_run == 2
-            assert result.stage == "completed"
-            assert events_dict.get("source_context_injected") == "True"
-            assert events_dict.get("structured_patch_created") == "True"
-            assert events_dict.get("source_patch_applied") == "True"
-            assert events_dict.get("repair_context_created") == "True"
-            assert events_dict.get("repair_loop_used") == "True"
-            assert events_dict.get("tests_passed") == "True"
-
-    def test_repair_loop_max_cycles_1_stops(self):
-        """max_cycles=1 stops after cycle 1 with tests_passed=false."""
-        with tempfile.TemporaryDirectory() as tmp:
-            from packages.orchestration.autorun import run_autorun
-            result = run_autorun(
-                "Fix calc", tmp,
-                autonomy_level=6, max_cycles=1,
-                fixture_builder="repair-loop", json_output=True,
-            )
-            events_dict = {e["event"]: e["value"] for e in result.events}
-            assert result.cycles_run == 1
-            assert events_dict.get("tests_passed") == "False"
-
-    def test_repair_loop_final_calc_correct(self):
-        """After repair loop, calc.py has correct implementation."""
-        with tempfile.TemporaryDirectory() as tmp:
-            repo = Path(tmp)
-            from packages.orchestration.autorun import run_autorun
-            run_autorun(
-                "Fix calc", tmp,
-                autonomy_level=6, max_cycles=3,
-                fixture_builder="repair-loop", json_output=True,
-            )
-            calc_py = repo / "calc.py"
-            assert calc_py.exists()
-            src = calc_py.read_text()
-            assert "a * b" in src
-            assert "a + b" in src
-
-    def test_no_raw_leaks_in_json(self):
-        """JSON output must not contain raw stdout/stderr/traceback."""
-        with tempfile.TemporaryDirectory() as tmp:
-            from packages.orchestration.autorun import run_autorun
-            result = run_autorun(
-                "Fix calc", tmp,
-                autonomy_level=6, max_cycles=3,
-                fixture_builder="repair-loop", json_output=True,
-            )
-            full = json.dumps({"events": result.events, "stage": result.stage})
-            for bad in ("stdout", "stderr", "Traceback", "raw_output", "command_output"):
-                assert bad not in full
-
 
 # =========================================================================
 # Step 157 — Reviewer CLI Closure
@@ -175,105 +111,11 @@ class TestReviewerPackageLoop:
 
     def test_reviewer_no_auto_append(self):
         """run_reviewer must NOT modify job.tasks."""
-        from packages.orchestration.reviewer import _fixture_reviewer, run_reviewer
+        from packages.orchestration.reviewer import run_reviewer
         job = _make_job()
         count = len(job.tasks)
-        run_reviewer(job, reviewer_fn=_fixture_reviewer)
+        run_reviewer(job, reviewer_fn=lambda ctx: [{"title": "Add edge case tests"}])
         assert len(job.tasks) == count
-
-
-# =========================================================================
-# Step 158 — Memory Candidate CLI Closure
-# =========================================================================
-
-class TestMemoryCandidateCliCommands:
-    """Memory candidate commands exist and produce correct JSON."""
-
-    def test_candidates_in_catalog(self):
-        from apps.cli.command_catalog import get_command
-        cmd = get_command("memory.candidates")
-        assert cmd.supports_json
-
-    def test_approve_candidate_in_catalog(self):
-        from apps.cli.command_catalog import get_command
-        cmd = get_command("memory.approve-candidate")
-        assert cmd.supports_json
-
-    def test_reject_candidate_in_catalog(self):
-        from apps.cli.command_catalog import get_command
-        cmd = get_command("memory.reject-candidate")
-        assert cmd.supports_json
-
-    def test_candidates_handler_json(self):
-        from packages.orchestration.memory_candidates import create_candidate
-        job = _make_job()
-        job.metadata = {}
-        create_candidate(job, "repair_pattern", "Fixed mul")
-
-        with patch("packages.orchestration.pingpong_job.load_job_plan", return_value=job), \
-             patch("apps.cli.commands.memory.lookup_job_id", side_effect=lambda raw: raw):
-            import contextlib
-            import io
-
-            from apps.cli.commands.memory import _cmd_memory_candidates
-            buf = io.StringIO()
-            with contextlib.redirect_stdout(buf):
-                _cmd_memory_candidates(str(job.job_id), json_output=True)
-        data = json.loads(buf.getvalue())
-        assert data["version"] == 1
-        assert len(data["candidates"]) >= 1
-        assert data["candidates"][0]["status"] == "pending"
-
-    def test_approve_candidate_handler_json(self):
-        from packages.orchestration.memory_candidates import create_candidate
-        job = _make_job()
-        job.metadata = {}
-        c = create_candidate(job, "test_command", "pytest works")
-
-        with patch("packages.orchestration.pingpong_job.load_job_plan", return_value=job), \
-             patch("apps.cli.commands.memory.lookup_job_id", side_effect=lambda raw: raw), \
-             patch("packages.orchestration.pingpong_job.save_job_plan"), \
-             patch.dict("sys.modules", {"packages.orchestration.memory": MagicMock()}):
-            import contextlib
-            import io
-
-            from apps.cli.commands.memory import _cmd_memory_approve_candidate
-            buf = io.StringIO()
-            with contextlib.redirect_stdout(buf):
-                _cmd_memory_approve_candidate(str(job.job_id), c["id"], json_output=True)
-        data = json.loads(buf.getvalue())
-        assert data["approved"] is True
-        assert data["memory_created"] is True
-
-    def test_reject_candidate_handler_json(self):
-        from packages.orchestration.memory_candidates import create_candidate
-        job = _make_job()
-        job.metadata = {}
-        c = create_candidate(job, "test_command", "pytest works")
-
-        with patch("packages.orchestration.pingpong_job.load_job_plan", return_value=job), \
-             patch("apps.cli.commands.memory.lookup_job_id", side_effect=lambda raw: raw), \
-             patch("packages.orchestration.pingpong_job.save_job_plan"):
-            import contextlib
-            import io
-
-            from apps.cli.commands.memory import _cmd_memory_reject_candidate
-            buf = io.StringIO()
-            with contextlib.redirect_stdout(buf):
-                _cmd_memory_reject_candidate(str(job.job_id), c["id"], json_output=True)
-        data = json.loads(buf.getvalue())
-        assert data["rejected"] is True
-        assert data["memory_created"] is False
-
-    def test_candidates_not_auto_approved(self):
-        """All candidates must be pending by default."""
-        from packages.orchestration.memory_candidates import create_candidate, list_candidates
-        job = _make_job()
-        job.metadata = {}
-        create_candidate(job, "repair_pattern", "A")
-        create_candidate(job, "test_command", "B")
-        for c in list_candidates(job):
-            assert c["status"] == "pending"
 
 
 # =========================================================================
@@ -294,9 +136,10 @@ class TestUiBooleanFlagParsing:
             "version", "job_id", "cursor", "stage", "running",
             "node_count", "edge_count", "active_task_id",
             "latest_completed_task_id", "repair_loop_used",
-            "reviewer_pending_count", "memory_candidate_count",
         }
         assert required.issubset(set(state.keys()))
+        # F273 R-0992: the memory-candidate store has no writer, so no count.
+        assert "memory_candidate_count" not in state
 
 
 # =========================================================================
@@ -317,11 +160,6 @@ class TestSmokeScriptNewCliSections:
         assert "--reviewer-provider fake" in do_line
         assert "--autonomy-level" not in script
         assert "DO_JOB_ID=" in section
-
-    def test_smoke_has_memory_candidates_section(self):
-        script = (_ROOT / "scripts" / "remedy_smoke.sh").read_text()
-        assert "memory candidates" in script
-        assert "12aq" in script
 
     def test_smoke_has_do_group_help(self):
         script = (_ROOT / "scripts" / "remedy_smoke.sh").read_text()
@@ -344,9 +182,9 @@ class TestDevStatusExpandedCapabilities:
         with contextlib.redirect_stdout(buf):
             _dev_status(json_output=True)
         data = json.loads(buf.getvalue())
-        for key in ("repair_loop_ok", "reviewer_loop_ok",
-                     "memory_candidates_ok", "live_ui_ok"):
+        for key in ("repair_loop_ok", "reviewer_loop_ok", "live_ui_ok"):
             assert key in data
+        assert "memory_candidates_ok" not in data    # F273 R-0992
 
     def test_capabilities_ok_when_importable(self):
         import contextlib
@@ -360,7 +198,6 @@ class TestDevStatusExpandedCapabilities:
         # All modules exist, so should be True
         assert data["repair_loop_ok"] is True
         assert data["reviewer_loop_ok"] is True
-        assert data["memory_candidates_ok"] is True
         assert data["live_ui_ok"] is True
 
     def test_missing_module_is_blocker(self):
@@ -387,13 +224,6 @@ class TestDevStatusExpandedCapabilities:
 class TestDocsHelpReviewMemoryCommands:
     """Help pages include new commands."""
 
-    def test_memory_candidate_commands_in_catalog(self):
-        from apps.cli.command_catalog import get_commands_for_group
-        cmds = {c.subcommand for c in get_commands_for_group("memory")}
-        assert "candidates" in cmds
-        assert "approve-candidate" in cmds
-        assert "reject-candidate" in cmds
-
     def test_quick_start_updated(self):
         from apps.cli.grouped import _QUICK_START
         assert 'remedy do "Write a CONTRIBUTING.md"' in _QUICK_START
@@ -404,9 +234,3 @@ class TestDocsHelpReviewMemoryCommands:
         from apps.cli.grouped import _QUICK_START
         assert "git commit" not in _QUICK_START.lower()
         assert "auto-approve" not in _QUICK_START.lower()
-
-    def test_no_auto_memory_approval_in_docs(self):
-        """Catalog descriptions say human approval required."""
-        from apps.cli.command_catalog import get_command
-        desc = get_command("memory.candidates").description
-        assert "human" in desc.lower() or "approval" in desc.lower()

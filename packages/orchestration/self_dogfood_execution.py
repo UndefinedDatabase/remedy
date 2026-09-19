@@ -125,7 +125,6 @@ class StopReason:
     NOT_SELF_DOGFOOD = "not_self_dogfood"
     NOT_APPROVED = "not_approved"
     DUPLICATE_ACTIVE_ATTEMPT = "duplicate_active_attempt"
-    REVIEW_FINDINGS_OPEN = "review_findings_open"
     CONTRACT_BLOCKED = "contract_blocked"
     MAIN_BRANCH_UNSAFE = "main_branch_unsafe"
     NO_TARGET_REPO = "no_target_repo"

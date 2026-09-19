@@ -250,6 +250,54 @@ class TestTaskRollup:
         assert record["evidence_refs"] == []
 
 
+class TestGuardTripReachesTheTaskRollup:
+    """R-0568, end to end: a REAL guarded test command trips the execution guard inside a
+    REAL job run, and the exported task post-mortem is ``resource_limit`` naming the limit.
+    No provider is called — both roles are the fake provider."""
+
+    _JOB = "# Job: trip\n\n## Task 1\nDo the thing.\n\nAcceptance:\n- done\n"
+
+    def _run_and_export(self, demo_repo, tmp_path, test_command, timeout_sec):
+        from packages.orchestration.job_evidence import export_job_evidence
+        from packages.orchestration.pingpong_job import parse_job_file, run_job
+        from packages.orchestration.pingpong_provider import FakeProvider
+
+        job = parse_job_file(self._JOB, str(demo_repo))
+        run = run_job(
+            job.job_id,
+            builder_provider=FakeProvider(pass_on_round=1, fail_on_round=99),
+            reviewer_provider=FakeProvider(pass_on_round=1, fail_on_round=99),
+            repair_rounds=0, test_command=test_command, timeout_sec=timeout_sec,
+        )
+        out = tmp_path / "evidence"
+        export_job_evidence(job.job_id, str(out))
+        record = json.loads((out / "task_runs" / run.tasks[0].task_id
+                             / "postmortem.json").read_text())
+        return run.tasks[0], record
+
+    @pytest.mark.subprocess
+    def test_a_wall_trip_on_the_test_command_is_resource_limit(self, demo_repo, tmp_path):
+        task, record = self._run_and_export(
+            demo_repo, tmp_path, 'python3 -c "import time; time.sleep(60)"', 1)
+
+        assert task.final_status == "test_failed"
+        assert task.tripped_limit == "wall_timeout"
+        assert record["scope"] == "task"
+        assert record["failure_class"] == "resource_limit"
+        assert record["signal_source"] == "guard_trip"
+        assert record["raw_reason"].startswith("tripped_limit=wall_timeout")
+
+    @pytest.mark.subprocess
+    def test_a_plainly_failing_test_command_stays_test_failed(self, demo_repo, tmp_path):
+        """The control: no trip, so the classification is exactly what it was."""
+        task, record = self._run_and_export(
+            demo_repo, tmp_path, 'python3 -c "import sys; sys.exit(1)"', 30)
+
+        assert task.tripped_limit == ""
+        assert record["failure_class"] == "test_failed"
+        assert record["signal_source"] == "terminal_status"
+
+
 class TestTypedWorktreeExceptions:
     """The real typed exceptions, classified as themselves."""
 

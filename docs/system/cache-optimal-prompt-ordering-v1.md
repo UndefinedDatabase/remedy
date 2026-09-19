@@ -6,7 +6,8 @@
 > T004 the stats view and this note). The target plan is
 > [T2_F105.md](../roadmap/features/T2_F105.md); this page describes what is
 > built. The provider-side cache-read share is **not** measured here and this
-> page says why.
+> page says why. F273 deleted the T002 loaders (finding R-0981): no prompt
+> builder registered the conventions segment, so no prompt carries it.
 
 ## What changed, and what did not
 

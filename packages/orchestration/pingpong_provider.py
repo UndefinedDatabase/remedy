@@ -38,6 +38,7 @@ from packages.orchestration.schemas import (
     validate_response as _validate_response,
 )
 from packages.orchestration.stream_evidence import StreamCapReached as _StreamCapReached
+from packages.orchestration.stream_evidence import redact_text as _redact_text
 from packages.orchestration.structured_outputs import (
     build_schema_prompt as _build_schema_prompt,
 )
@@ -45,10 +46,11 @@ from packages.orchestration.structured_outputs import (
     reviewer_structured_enabled as _reviewer_structured_enabled,
 )
 from packages.orchestration.token_actuals import (
-    parse_cli_envelope as _parse_cli_envelope,
+    _usage_from_payload,
+    parse_cli_result_detailed,
 )
 from packages.orchestration.token_actuals import (
-    parse_cli_result_detailed,
+    parse_cli_envelope as _parse_cli_envelope,
 )
 
 # ---------------------------------------------------------------------------
@@ -418,6 +420,83 @@ def extract_builder_files_from_text(text: str) -> list[str]:
     return files
 
 
+#: The direct-API usage fields, read off the SDK's ``response.usage`` by name.
+_API_USAGE_FIELDS = (
+    "input_tokens", "output_tokens",
+    "cache_read_input_tokens", "cache_creation_input_tokens",
+)
+
+#: The SDK's error classes, MOST SPECIFIC FIRST, each with the kind it reports.
+#: ``APITimeoutError`` subclasses ``APIConnectionError`` and every HTTP class
+#: subclasses ``APIStatusError``, so each row must precede the rows it inherits
+#: from; the first match wins. Looked up by name on the ``anthropic`` module the
+#: exception came from, so a missing SDK leaves the chain empty, never broken.
+_API_ERROR_CHAIN: tuple[tuple[str, str], ...] = (
+    ("APITimeoutError", "timeout"),
+    ("APIConnectionError", "connection_error"),
+    ("AuthenticationError", "authentication_failed"),
+    ("PermissionDeniedError", "permission_denied"),
+    ("NotFoundError", "not_found"),
+    ("RateLimitError", "rate_limited"),
+    ("BadRequestError", "bad_request"),
+    ("InternalServerError", "server_error"),
+    ("APIStatusError", "api_status_error"),
+    ("APIError", "api_error"),
+)
+
+#: Longest provider message kept in an error string, after redaction.
+_API_ERROR_MESSAGE_CAP = 300
+
+
+def _api_usage_actuals(usage: Any, *, duration_ms: int) -> tuple[dict[str, Any] | None, str]:
+    """Shape an SDK ``response.usage`` into the provider's ``usage_actuals`` dict.
+
+    Routed through ``token_actuals``' envelope reader and ``_usage_actuals_dict``,
+    the CLI path's own two steps, so both paths read a usage block ONE way: input
+    and output are required ("usage_missing" otherwise), an absent cache field
+    reads 0. Only ``parse_source`` differs — these numbers came from the SDK.
+    """
+    fields = {name: getattr(usage, name, None) for name in _API_USAGE_FIELDS}
+    actuals, reason = _usage_from_payload(
+        {"usage": fields, "num_turns": 1, "duration_ms": duration_ms})
+    if actuals is None:
+        return None, reason
+    shaped = _usage_actuals_dict(actuals, None)
+    shaped["parse_source"] = "anthropic_api"
+    return shaped, ""
+
+
+def _api_error_text(exc: BaseException) -> str:
+    """One ``provider_error:`` string per failure kind, keeping status and message.
+
+    The ``provider_error:`` prefix and the class name stay first: the retry seam
+    reads the prefix, and the timeout and rate-limit predicates read the class
+    name. The message is redacted and capped, and the live key is cut out by
+    value, so no secret reaches a report.
+    """
+    import sys
+
+    sdk = sys.modules.get("anthropic")
+    kind = ""
+    for class_name, label in _API_ERROR_CHAIN:
+        cls = getattr(sdk, class_name, None) if sdk is not None else None
+        if isinstance(cls, type) and isinstance(exc, cls):
+            kind = label
+            break
+    message = str(exc)
+    api_key = os.environ.get("ANTHROPIC_API_KEY", "")
+    if api_key:
+        message = message.replace(api_key, "[REDACTED]")
+    message = _redact_text(message)[:_API_ERROR_MESSAGE_CAP]
+    status = getattr(exc, "status_code", None)
+    head = f"provider_error: {type(exc).__name__}"
+    if kind:
+        head += f": {kind}"
+    if isinstance(status, int) and not isinstance(status, bool):
+        head += f" (HTTP {status})"
+    return f"{head}: {message}" if message else head
+
+
 class ClaudeProvider:
     """Real Claude API provider via anthropic SDK.
 
@@ -434,6 +513,25 @@ class ClaudeProvider:
         self._model = model
         self._max_tokens = max_tokens
         self._client: Any = None
+        self._stable_prefix = ""
+
+    def offer_stable_prefix(self, prefix: str) -> None:
+        """Remember the cache-stable prefix of the prompts that follow.
+
+        The loop offers ``ComposedPrompt.stable_prefix()`` before each call. A
+        prompt that starts with it is sent as a cached ``system`` block plus the
+        remainder; any other prompt is sent whole, so a stale offer cannot split
+        a prompt it does not prefix.
+        """
+        self._stable_prefix = prefix or ""
+
+    def _request_parts(self, prompt: str) -> tuple[list[dict[str, Any]], str]:
+        """``(system blocks, user text)``; the two concatenate to ``prompt`` exactly."""
+        prefix = self._stable_prefix
+        if prefix and len(prefix) < len(prompt) and prompt.startswith(prefix):
+            block = {"type": "text", "text": prefix, "cache_control": {"type": "ephemeral"}}
+            return [block], prompt[len(prefix):]
+        return [], prompt
 
     @property
     def name(self) -> str:
@@ -457,31 +555,42 @@ class ClaudeProvider:
         except ImportError:
             raise RuntimeError(
                 "anthropic package not installed. "
-                "Install with: pip install anthropic"
+                "Install with: pip install anthropic  or  pip install 'remedy[anthropic]'"
             )
         self._client = anthropic.Anthropic(api_key=api_key)
         return self._client
 
-    def _call(self, prompt: str, *, timeout_sec: int, max_output_chars: int) -> tuple[str, int, int]:
-        """Call Claude API. Returns (text, duration_ms, tokens_used)."""
+    def _call(
+        self, prompt: str, *, timeout_sec: int, max_output_chars: int,
+    ) -> tuple[str, int, int, dict[str, Any] | None, str]:
+        """Call Claude API. Returns (text, duration_ms, tokens_used, usage_actuals,
+        actual_missing_reason) — the CLI provider's ``_call`` shape, with
+        ``tokens_used`` = input + output when the SDK reported both, else 0."""
         client = self._get_client()
+        system, user_text = self._request_parts(prompt)
+        request: dict[str, Any] = {
+            "model": self._model,
+            "max_tokens": self._max_tokens,
+            "messages": [{"role": "user", "content": user_text}],
+            "timeout": float(timeout_sec),
+        }
+        if system:
+            request["system"] = system
         start = time.monotonic()
-        response = client.messages.create(
-            model=self._model,
-            max_tokens=self._max_tokens,
-            messages=[{"role": "user", "content": prompt}],
-            timeout=float(timeout_sec),
-        )
+        response = client.messages.create(**request)
         elapsed_ms = int((time.monotonic() - start) * 1000)
         text = ""
         for block in response.content:
             if hasattr(block, "text"):
                 text += block.text
-        tokens = getattr(response.usage, "output_tokens", 0)
+        usage_actuals, missing_reason = _api_usage_actuals(
+            getattr(response, "usage", None), duration_ms=elapsed_ms)
+        tokens = (usage_actuals["input_tokens"] + usage_actuals["output_tokens"]
+                  if usage_actuals is not None else 0)
         # Cap output
         if len(text) > max_output_chars:
             text = text[:max_output_chars] + "\n[OUTPUT TRUNCATED]"
-        return text, elapsed_ms, tokens
+        return text, elapsed_ms, tokens, usage_actuals, missing_reason
 
     def build(
         self,
@@ -496,7 +605,7 @@ class ClaudeProvider:
             prompt=prompt, model=self._model, mode="api-legacy",
             options={"max_tokens": self._max_tokens})
         try:
-            text, dur, tokens = self._call(
+            text, dur, tokens, usage, missing = self._call(
                 prompt, timeout_sec=timeout_sec, max_output_chars=max_output_chars,
             )
             files = extract_builder_files_from_text(text)
@@ -507,12 +616,13 @@ class ClaudeProvider:
                 provider="claude",
                 duration_ms=dur,
                 tokens_used=tokens,
-                actual_missing_reason="provider_actuals_unavailable",
+                usage_actuals=usage,
+                actual_missing_reason=missing,
                 prepared_input=_pi,
             )
         except Exception as exc:
             return BuilderOutput(
-                error=f"provider_error: {type(exc).__name__}",
+                error=_api_error_text(exc),
                 provider="claude",
                 actual_missing_reason="provider_error",
                 prepared_input=_pi,
@@ -538,19 +648,20 @@ class ClaudeProvider:
             mode="api-structured" if structured else "api-legacy",
             options={"max_tokens": self._max_tokens})
         try:
-            text, dur, tokens = self._call(
+            text, dur, tokens, usage, missing = self._call(
                 full_prompt, timeout_sec=timeout_sec, max_output_chars=max_output_chars,
             )
             out = (
                 _parse_reviewer_structured(text, dur, tokens)
                 if structured else _parse_reviewer_json(text, dur, tokens)
             )
-            out.actual_missing_reason = "provider_actuals_unavailable"
+            out.usage_actuals = usage
+            out.actual_missing_reason = missing
             out.prepared_input = _pi
             return out
         except Exception as exc:
             return ReviewerOutput(
-                error=f"provider_error: {type(exc).__name__}",
+                error=_api_error_text(exc),
                 provider="claude",
                 actual_missing_reason="provider_error",
                 prepared_input=_pi,

@@ -1,0 +1,4 @@
+From describe_self_use_run_defects():
+
+1. job 468c8e62a2cc4fac (blocked): task_T001_gate_failed: final_status=review_inconsistent; reviewer_verdict=fail
+2. T001 (blocked): completion_gate_failed: final_status=review_inconsistent; reviewer_verdict=fail

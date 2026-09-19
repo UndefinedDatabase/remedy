@@ -309,10 +309,10 @@ _cmd_create_job(
 import json, sys
 from pathlib import Path
 job = json.loads(Path(sys.argv[1]).read_text())
-state = job.get('state', '')
+state = job.get('status', '')
 tasks = job.get('tasks', [])
 if state != 'planned':
-    print('ERROR: job state must be planned after job create --task-type, got: ' + repr(state), file=sys.stderr)
+    print('ERROR: job state must be planned after _cmd_create_job with task_type=, got: ' + repr(state), file=sys.stderr)
     sys.exit(1)
 if len(tasks) != 1:
     print('ERROR: expected exactly 1 task, got ' + str(len(tasks)), file=sys.stderr)
@@ -1369,33 +1369,8 @@ chk('changes' in data, 'missing changes')
 print('    change list: OK (count=' + str(len(data['changes'])) + ')')
 " "${CHANGE_LIST_JSON}"
 
-    # -------------------------------------------------------------------------
-    # 12s. Token policy (Step 56)
-    # -------------------------------------------------------------------------
-    _SMOKE_SECTION="12s"
-    echo "--- 12s. Token policy applied"
-    # token_policy_applied run-log event
-    python3 -c "
-import json, sys
-from pathlib import Path
-runs = Path(sys.argv[1])
-job_dir = runs / sys.argv[2]
-events = []
-for f in sorted(job_dir.glob('*.jsonl')):
-    for line in f.read_text().splitlines():
-        if line.strip():
-            events.append(json.loads(line))
-tpa = [e for e in events if e.get('event') == 'token_policy_applied']
-if not tpa:
-    print('ERROR: no token_policy_applied event', file=sys.stderr)
-    sys.exit(1)
-meta = tpa[0].get('metadata', {})
-for key in ['mode', 'max_context_tokens', 'local_first']:
-    if key not in meta:
-        print('ERROR: token_policy_applied missing ' + key, file=sys.stderr)
-        sys.exit(1)
-print('    token_policy_applied: OK (mode=' + str(meta['mode']) + ')')
-" "${RUNS_ROOT}" "${JOB_ID}"
+    # Section 12s, which required the run log to hold a token-policy-applied
+    # event, was dropped by F273 (R-0980): no product path emits that event.
 
     # Brain has patch_revert, change_set nodes
     _SMOKE_SECTION="12t"
@@ -1521,7 +1496,7 @@ from packages.orchestration.decision_queue import (
 )
 
 chk(isinstance(DECISION_TYPES, frozenset), 'not frozenset')
-for dt in ('patch_approval', 'stop_reason', 'test_failure', 'repo_dirty', 'memory_review'):
+for dt in ('patch_approval', 'stop_reason', 'test_failure', 'memory_review'):
     chk(dt in DECISION_TYPES, 'missing type: ' + dt)
 
 d = HumanDecision(
@@ -1975,42 +1950,6 @@ print('    do sequence: OK (jobs=' + str(len(d['job_ids'])) + ', stopped before 
     rm -rf "${TMP_DO}"
 
     # -------------------------------------------------------------------------
-    # 12aq. Memory candidates (Step 158)
-    # -------------------------------------------------------------------------
-    _SMOKE_SECTION="12aq"
-    echo "--- 12aq. Memory candidates"
-    _MC_OUTPUT=$(remedy memory candidates "${DO_JOB_ID}" --json 2>&1) || {
-        echo "    memory candidates command failed (rc=$?)"
-        echo "    output: ${_MC_OUTPUT}"
-        remedy memory candidates --help 2>&1 || true
-        return 1
-    }
-    echo "${_MC_OUTPUT}" | python3 -c "
-import sys, json
-raw = sys.stdin.read()
-try:
-    d = json.loads(raw)
-except json.JSONDecodeError:
-    print('ERROR: memory candidates output not valid JSON', file=sys.stderr)
-    print('Raw: ' + raw[:200], file=sys.stderr)
-    sys.exit(1)
-if d.get('version') != 1:
-    print('ERROR: memory candidates version != 1', file=sys.stderr)
-    sys.exit(1)
-candidates = d.get('candidates', [])
-# The do sequence run may have created candidates; any it created must be pending
-if candidates:
-    # Verify all are pending (not auto-approved)
-    for c in candidates:
-        if c.get('status') != 'pending':
-            print('ERROR: candidate auto-approved: ' + c.get('id','?') + ' status=' + c.get('status','?'), file=sys.stderr)
-            sys.exit(1)
-    print('    memory candidates: OK (count=' + str(len(candidates)) + ', all pending)')
-else:
-    print('    memory candidates: OK (no candidates — acceptable)')
-"
-
-    # -------------------------------------------------------------------------
     # 12ar. Dev status expanded (Step 161)
     # -------------------------------------------------------------------------
     _SMOKE_SECTION="12ar"
@@ -2025,7 +1964,7 @@ except json.JSONDecodeError:
     print('ERROR: dev status output not valid JSON', file=sys.stderr)
     print('Raw: ' + raw[:200], file=sys.stderr)
     sys.exit(1)
-for key in ('repair_loop_ok', 'reviewer_loop_ok', 'memory_candidates_ok', 'live_ui_ok'):
+for key in ('repair_loop_ok', 'reviewer_loop_ok', 'live_ui_ok'):
     if key not in d:
         print('ERROR: dev status missing: ' + key, file=sys.stderr)
         sys.exit(1)

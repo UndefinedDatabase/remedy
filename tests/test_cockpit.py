@@ -631,3 +631,58 @@ class TestCmdCockpit:
         _cmd_cockpit(str(job.job_id))  # must not raise
         out = capsys.readouterr().out
         assert "Remedy Cockpit" in out
+
+
+class TestCockpitNamesNoPlaceholder:
+    """R-0989: every tip the cockpit renders names the real job and intent ids, or the value in words."""
+
+    @staticmethod
+    def _intent(job: JobPlan, state: str) -> str:
+        from packages.core.models import Artifact
+        from packages.orchestration.approval_queue import make_intent_id, set_approval_state
+
+        art = Artifact(name="builder_proposal", content="", metadata={
+            "patch_intent_explanations": [{"file": "a.md", "action": "modify", "risk": "medium"}]})
+        job.artifacts.append(art)
+        intent_id = make_intent_id(art.id, 0)
+        if state != "pending":
+            set_approval_state(job, intent_id, state)
+        return intent_id
+
+    @pytest.mark.parametrize("case", [
+        "idle", "pending", "workspace_denied", "interrupted", "pending_intent", "all_approved",
+        "rejected_repo_denied"])
+    def test_rendered_cockpit_has_no_angle_bracket_placeholder(self, case):
+        import re
+
+        job = _make_job()
+        jid = str(job.job_id)
+        patch_ev = _ev("patch_intent_created", jid, metadata={"intent_count": 1, "risk_levels": ["medium"]})
+        events: list[dict] = []
+        want = f"remedy job resume {jid}"
+        if case in ("idle", "all_approved", "rejected_repo_denied"):
+            job.tasks.append(_completed_task())
+            want = "remedy do, then the order in quotes"
+        else:
+            job.tasks.append(_make_pending_task())
+        if case == "workspace_denied":
+            set_permission(job, Capability.workspace_write, allow=False)
+            want = f"remedy job contract {jid}"
+        if case == "interrupted":
+            events = [_ev("task_run_started", jid, metadata={"task_type": "write_readme"})]
+            want = f"remedy brain timeline {jid}"
+        if case == "pending_intent":
+            want = f"remedy patch approve {jid} {self._intent(job, 'pending')}"
+            events = [patch_ev]
+        if case == "all_approved":
+            want = f"remedy patch show {jid} {self._intent(job, 'approved')}"
+        if case == "rejected_repo_denied":
+            self._intent(job, "rejected")
+            set_permission(job, Capability.repo_generated_write, allow=False)
+            events = [patch_ev]
+            want = f"remedy patch list {jid}"
+
+        out = summarize_cockpit(job, events)
+
+        assert re.findall(r"<[a-z_]+>", out) == []
+        assert want in out

@@ -11,8 +11,10 @@ from __future__ import annotations
 
 import json
 import os
+import socket
 import subprocess
 import sys
+import threading
 from pathlib import Path
 
 from apps.cli.command_catalog import get_command, get_commands_for_group
@@ -212,24 +214,50 @@ class TestStudyCommandReachability:
         data_root.mkdir()
         monkeypatch.setenv("REMEDY_DATA_DIR", str(data_root))
 
+        # R-0978: the subprocess is outside conftest's in-process Ollama refusal, so
+        # `study run`'s model host (REMEDY_OLLAMA_HOST, read by OllamaPlanner) is a
+        # loopback listener that hangs up on the first request: the probe fails, the
+        # study falls back to its heuristics, and no real model is reached.
+        listener = socket.create_server(("127.0.0.1", 0))
+        listener.settimeout(30)
+        asked: list[bool] = []
+
+        def _hang_up() -> None:
+            try:
+                conn, _addr = listener.accept()
+            except OSError:
+                return
+            asked.append(True)
+            conn.close()
+
+        thread = threading.Thread(target=_hang_up, daemon=True)
+        thread.start()
+        monkeypatch.setenv("REMEDY_OLLAMA_HOST", f"http://127.0.0.1:{listener.getsockname()[1]}")
+
         # Invoke study run through the real grouped CLI dispatch as a subprocess
         # Use --path option syntax (not positional argument)
-        result = subprocess.run(
-            [
-                sys.executable,
-                "-m",
-                "apps.cli.grouped",
-                "study",
-                "run",
-                "--path",
-                str(repo),
-                "--json",
-            ],
-            capture_output=True,
-            text=True,
-            timeout=90,
-        )
+        try:
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    "-m",
+                    "apps.cli.grouped",
+                    "study",
+                    "run",
+                    "--path",
+                    str(repo),
+                    "--json",
+                ],
+                capture_output=True,
+                text=True,
+                timeout=30,
+            )
+        finally:
+            listener.close()
+            thread.join(5)
 
+        # The model host the test gave was the one asked, so no other host was.
+        assert asked, "study run never asked the model host the test gave it"
         # The command must exit 0
         assert result.returncode == 0, f"study run failed: {result.stderr}"
         # The output must be valid JSON

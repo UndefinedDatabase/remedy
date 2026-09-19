@@ -56,6 +56,16 @@ def test_hosted_workflow_never_auto_retries():
         assert [line for line in lines if token in line] == [], token
 
 
+def test_hosted_workflow_runs_the_floor_and_a_current_interpreter():
+    """F273 T016 (a): `requires-python = ">=3.10"` is only true if 3.10 AND 3.12 run it,
+    and the setup step reads the matrix rather than pinning one version beside it."""
+    text = workflow_text()
+    assert text.count("python-version: ['3.10', '3.12']") == 1
+    assert text.count("python-version: ${{ matrix.python-version }}") == 1
+    assert text.count("python-version:") == 2
+    assert "fail-fast: false" in text
+
+
 def test_hosted_workflow_checks_out_the_full_history():
     """A shallow clone hides the deleted modules the event-name coupling ratchet reads (R-0889)."""
     text = workflow_text()

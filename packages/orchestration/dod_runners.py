@@ -176,8 +176,9 @@ class CheckEvidence:
 # ---------------------------------------------------------------------------
 
 def _pytest_argv(check: DoDCheck) -> list[str]:
+    """``-p no:cacheprovider``: the check writes no ``.pytest_cache`` into the tree it judges."""
     spec = check.spec
-    return [PYTEST_PYTHON, "-m", "pytest", str(spec["selector"]),
+    return [PYTEST_PYTHON, "-m", "pytest", "-p", "no:cacheprovider", str(spec["selector"]),
             *[str(a) for a in spec.get("args", [])], "-q"]
 
 

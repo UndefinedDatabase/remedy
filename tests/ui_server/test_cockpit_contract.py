@@ -49,8 +49,7 @@ class TestDashboardCockpitContract:
 
     def test_continuation_section_shape(self):
         dash = _build_dashboard(JobPlan(job_title="contract"))
-        for key in ("available", "last_result", "last_stop_reason"):
-            assert key in dash["continuation"]
+        assert set(dash["continuation"]) == {"available"}
 
     def test_redaction_no_raw_content(self):
         payload = json.dumps(_build_dashboard(JobPlan(job_title="contract")), default=str)

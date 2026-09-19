@@ -34,7 +34,6 @@ from packages.orchestration.pingpong_loop import (
     list_runs,
     load_run,
     run_pingpong,
-    summarize_pingpong,
 )
 from packages.orchestration.pingpong_provider import (
     _REVIEWER_RETRY_PROMPT,
@@ -518,12 +517,20 @@ class TestFakeProviderE2E:
         assert result.changed_target_files == []
         assert len(result.staged_files) > 0
 
-    def test_summary_references_run_show(self, demo_repo):
-        result = run_pingpong("Fix README", str(demo_repo), builder_name="fake", reviewer_name="fake")
-        summary = summarize_pingpong(result)
-        assert "remedy run show" in summary
-        assert result.run_id in summary
-        assert "remedy job report" not in summary
+    def test_a_repair_round_leaves_one_marker_per_task(self, demo_repo):
+        """R-0810: round 2 of the fake builder rewrites the task's marker, never appends."""
+        goal = "Fix README"
+        result = run_pingpong(goal, str(demo_repo), builder_name="fake", reviewer_name="fake",
+                              repair_rounds=2, keep_staging=True)
+        staging = Path(result.staging_path)
+        try:
+            assert len(result.rounds) == 2
+            [written] = result.staged_files
+            text = (staging / written).read_text()
+        finally:
+            import shutil
+            shutil.rmtree(staging, ignore_errors=True)
+        assert text.splitlines().count(f"<!-- Remedy: {goal} -->") == 1, text
 
 
 # ---------------------------------------------------------------------------
@@ -915,22 +922,6 @@ class TestSafeDiffInExport:
         assert "safe_diff_summary" in data
         assert isinstance(data["safe_diff_files"], list)
         assert isinstance(data["safe_diff_truncated"], bool)
-
-
-# ---------------------------------------------------------------------------
-# 39. Safe diff in summary text
-# ---------------------------------------------------------------------------
-
-class TestSafeDiffInSummary:
-    def test_summary_has_diff_section(self, demo_repo):
-        result = run_pingpong(
-            "Fix README", str(demo_repo),
-            builder_name="fake", reviewer_name="fake",
-        )
-        summary = summarize_pingpong(result)
-        # Fake provider produces staged_files from file_tree, so diff may or may not be empty
-        # At minimum, the summary should be parseable
-        assert "staged" in summary.lower()
 
 
 # ---------------------------------------------------------------------------
@@ -1331,24 +1322,6 @@ class TestNoiseExportedInJson:
         assert "target_noise_detected" in data
         assert isinstance(data["ignored_target_noise_files"], list)
         assert isinstance(data["target_noise_detected"], bool)
-
-
-# ---------------------------------------------------------------------------
-# 54. Ignored target noise in text report
-# ---------------------------------------------------------------------------
-
-class TestNoiseInTextReport:
-    def test_noise_in_summary(self, demo_repo):
-        (demo_repo / ".ruff_cache").mkdir(exist_ok=True)
-        (demo_repo / ".ruff_cache" / "v").write_text("cache")
-        result = run_pingpong(
-            "Fix README", str(demo_repo),
-            builder_name="fake", reviewer_name="fake",
-        )
-        summary = summarize_pingpong(result)
-        if result.target_noise_detected:
-            assert "no meaningful target changes" in summary
-            assert "Ignored target noise" in summary
 
 
 # ---------------------------------------------------------------------------
@@ -1869,39 +1842,6 @@ class TestParseMetadataInExport:
         assert data["reviewer_json_recovered"] is False
         assert "reviewer_parse_error" in data
         assert "reviewer_malformed_excerpt" in data
-
-
-# ---------------------------------------------------------------------------
-# 90. Parse metadata in summarize output
-# ---------------------------------------------------------------------------
-
-class TestParseMetadataInSummary:
-    def test_parse_info_in_summary(self, demo_repo):
-        provider = FakeProvider(malformed_review=True)
-        result = run_pingpong(
-            "Fix README", str(demo_repo),
-            builder_provider=provider,
-            reviewer_provider=provider,
-        )
-        summary = summarize_pingpong(result)
-        assert "retried" in summary.lower()
-        assert "NOT recovered" in summary
-
-
-# ---------------------------------------------------------------------------
-# 91. Recovered parse metadata in summarize
-# ---------------------------------------------------------------------------
-
-class TestRecoveredParseInSummary:
-    def test_recovered_in_summary(self, demo_repo):
-        provider = FakeProvider(malformed_review_recoverable=True)
-        result = run_pingpong(
-            "Fix README", str(demo_repo),
-            builder_provider=provider,
-            reviewer_provider=provider,
-        )
-        summary = summarize_pingpong(result)
-        assert "recovered" in summary.lower()
 
 
 # ---------------------------------------------------------------------------

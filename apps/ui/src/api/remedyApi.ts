@@ -189,7 +189,6 @@ export function normalizeDashboardPayload(
     pipeline: normalizePipeline(dashboard.pipeline),
     resume: dashboard.resume ?? null,
     projectSummary: dashboard.project_summary ?? null,
-    workerStatus: dashboard.worker ?? null,
     timelineEvents: normalizeTimelineEvents(dashboard.timeline_events),
     snapshot: normalizeSnapshotSummary(dashboard.snapshot),
     continuation: normalizeContinuationSummary(dashboard.continuation),
@@ -241,8 +240,6 @@ function normalizeContinuationSummary(raw: any): RemedyContinuationSummary | nul
   if (!raw || typeof raw !== "object") return null;
   return {
     available: typeof raw.available === "boolean" ? raw.available : "unknown",
-    lastResult: String(raw.last_result || "none"),
-    lastStopReason: String(raw.last_stop_reason || "none"),
   };
 }
 
@@ -354,7 +351,6 @@ export function normalizeApiFailure(jobId: string, failedEndpoints: string[]): R
     pipeline: null,
     resume: null,
     projectSummary: null,
-    workerStatus: null,
     snapshot: null,
     continuation: null,
     // No endpoint answered, so there are no open questions to show. The empty

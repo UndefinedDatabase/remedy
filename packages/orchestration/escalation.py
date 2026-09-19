@@ -287,9 +287,17 @@ def answer_task_decision(
     Returns None when no such decision exists.  Answering one that is already
     answered is refused the same way — answers are written once, so a late
     second answer cannot silently overwrite the one the run acted on.
+
+    A blank answer (empty or whitespace only) is refused the same way and the
+    decision stays OPEN (R-0685): written once, it would resolve the decision
+    with nothing and could never be corrected. This is the server's copy of the
+    browser's refusal in `apps/ui/src/api/decisionAnswer.ts`, so every client
+    that reaches this function is held to it, not only the browser.
     """
     record = find_task_decision(job, decision_id)
     if record is None or record.get("status") != ESCALATION_STATUS_OPEN:
+        return None
+    if not str(answer).strip():
         return None
     record["status"] = ESCALATION_STATUS_ANSWERED
     record["answer"] = str(answer)

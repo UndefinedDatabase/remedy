@@ -658,32 +658,6 @@ class TestGitStatusReader:
 
 
 
-class TestGitReadinessSignal:
-    def test_signal_present(self):
-        from packages.orchestration.autonomy_readiness import _collect_signals
-
-        job = JobPlan(
-            job_id=mint_job_id(), job_title="sig-test", user_prompt="test",
-            tasks=[TaskEntry(title="t", status=RunState.PENDING)],
-        )
-        signals = _collect_signals(job, [])
-        assert "git_status" in signals
-        assert signals["git_status"] is False
-
-    def test_signal_true_with_event(self):
-        from packages.orchestration.autonomy_readiness import _collect_signals
-
-        job = JobPlan(
-            job_id=mint_job_id(), job_title="sig-test", user_prompt="test",
-            tasks=[TaskEntry(title="t", status=RunState.PENDING)],
-        )
-        events = [{"event": "git_status_read", "metadata": {}}]
-        signals = _collect_signals(job, events)
-        assert signals["git_status"] is True
-
-
-
-
 class TestStopReasonsCRUD:
     def test_create_and_list(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
@@ -773,23 +747,6 @@ class TestStopReasonsDerive:
         reasons = derive_stop_reasons(job, events)
         codes = [r.reason_code for r in reasons]
         assert "test_failed" in codes
-
-    def test_derive_dirty_repo(self):
-        from packages.orchestration.stop_reasons import derive_stop_reasons
-
-        job = JobPlan(
-            job_id=mint_job_id(), job_title="d3", user_prompt="test",
-            metadata={"target_repo": "/tmp/repo"},
-        )
-        events = [
-            {"event": "git_status_read", "metadata": {"dirty": True}},
-        ]
-        reasons = derive_stop_reasons(job, events)
-        codes = [r.reason_code for r in reasons]
-        assert "dirty_repo_blocks_level" in codes
-
-
-
 
 class TestStopReasonExport:
     def test_export_json(self, tmp_path, monkeypatch):

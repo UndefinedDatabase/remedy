@@ -291,6 +291,7 @@ class TestZipManifestContentVerification:
 _REQUIRED_SCRIPTS = (
     "make_review_zip.sh",
     "build_review_manifest.py",
+    "rotate_live_review.py",               # T016 (b): the ledger reader the manifest loads by path
     "build_review_zip.py",                 # F8 (round 17): the NUL-safe archive builder
     "build_observability_index.py",
     "select_review_evidence.py",

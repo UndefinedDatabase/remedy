@@ -4,8 +4,6 @@ Tests for Step 36 — Token Economy v0.
 Coverage:
   - TokenPolicy dataclass is frozen and JSON-serializable
   - build_default_token_policy produces valid policy from a Job
-  - export_token_policy_json returns dict with all required keys
-  - summarize_token_policy returns non-empty string
   - Zero-token steps are deterministic operations
   - No network, no subprocess, no shell in module
 """
@@ -21,8 +19,6 @@ from packages.orchestration.token_policy import (
     TokenPolicy,
     build_default_token_policy,
     derive_token_mode,
-    export_token_policy_json,
-    summarize_token_policy,
 )
 
 # ---------------------------------------------------------------------------
@@ -128,54 +124,6 @@ class TestBuildDefaultTokenPolicy:
         zero_set = set(policy.zero_token_steps)
         expensive_set = set(policy.expensive_model_steps)
         assert zero_set.isdisjoint(expensive_set)
-
-
-class TestExportTokenPolicyJson:
-    def test_returns_dict(self) -> None:
-        policy = build_default_token_policy(_make_job())
-        result = export_token_policy_json(policy)
-        assert isinstance(result, dict)
-
-    def test_required_keys(self) -> None:
-        policy = build_default_token_policy(_make_job())
-        result = export_token_policy_json(policy)
-        required = {
-            "version", "job_id", "scope", "zero_token_steps",
-            "local_first_steps", "expensive_model_steps",
-            "forbidden_context", "compaction_rules", "budget",
-            "future_layers",
-        }
-        assert required.issubset(set(result.keys()))
-
-    def test_json_serializable(self) -> None:
-        import json
-        policy = build_default_token_policy(_make_job())
-        result = export_token_policy_json(policy)
-        serialized = json.dumps(result)
-        assert isinstance(serialized, str)
-
-    def test_lists_not_tuples(self) -> None:
-        policy = build_default_token_policy(_make_job())
-        result = export_token_policy_json(policy)
-        assert isinstance(result["zero_token_steps"], list)
-        assert isinstance(result["local_first_steps"], list)
-        assert isinstance(result["expensive_model_steps"], list)
-
-
-class TestSummarizeTokenPolicy:
-    def test_returns_string(self) -> None:
-        policy = build_default_token_policy(_make_job())
-        summary = summarize_token_policy(policy)
-        assert isinstance(summary, str)
-        assert len(summary) > 50
-
-    def test_contains_key_fields(self) -> None:
-        policy = build_default_token_policy(_make_job())
-        summary = summarize_token_policy(policy)
-        assert "Token Policy" in summary
-        assert "Zero-token" in summary
-        assert "Local-first" in summary
-        assert "Expensive" in summary
 
 
 class TestTokenPolicyNoSubprocess:

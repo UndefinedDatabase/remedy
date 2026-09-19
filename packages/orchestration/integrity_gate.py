@@ -215,6 +215,29 @@ def _check_relevant_untracked() -> IntegrityCheck:
         return IntegrityCheck("relevant_untracked", IntegrityStatus.SKIP, f"error: {exc}"[:200])
 
 
+def _load_ledger_reader():
+    """``scripts/rotate_live_review.py``, the ledger's one canonical reader, loaded by path.
+
+    R-0648: this check once parsed a ``### R-XXXX:`` / ``- **Severity**:`` shape the
+    ledger has not used since it took its present form, matched nothing, and answered
+    PASS over open Highs. It now reads the open set through the same module the
+    review-zip manifest does. Loaded by path — the same way
+    ``scripts/build_review_manifest.py`` loads it — because ``scripts`` is a namespace
+    package another checkout on ``sys.path`` could answer for; anchored on this file,
+    never on the working directory.
+    """
+    import importlib.util
+    import sys
+
+    path = Path(__file__).resolve().parents[2] / "scripts" / "rotate_live_review.py"
+    name = "_remedy_ledger_reader"
+    spec = importlib.util.spec_from_file_location(name, path)
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[name] = module  # its dataclasses resolve their module through sys.modules
+    spec.loader.exec_module(module)
+    return module
+
+
 def _check_high_blockers_open() -> IntegrityCheck:
     """Check for open blocker/high findings in live_review."""
     live_review = Path(".agent/live_review.md")
@@ -222,34 +245,17 @@ def _check_high_blockers_open() -> IntegrityCheck:
         return IntegrityCheck("high_blockers_open", IntegrityStatus.SKIP, "no live_review.md")
 
     text = live_review.read_text(encoding="utf-8", errors="replace")
-
-    finding_re = re.compile(r"^###\s+(R-\d+):", re.MULTILINE)
-    status_re = re.compile(r"^\s*-\s+\*\*Status\*\*:\s*(.+)$", re.MULTILINE)
-    severity_re = re.compile(r"^\s*-\s+\*\*Severity\*\*:\s*(.+)$", re.MULTILINE)
-
-    lines = text.splitlines()
-    open_high = []
-    i = 0
-    while i < len(lines):
-        fm = finding_re.match(lines[i])
-        if not fm:
-            i += 1
-            continue
-        finding_id = fm.group(1)
-        status = ""
-        severity = ""
-        j = i + 1
-        while j < len(lines) and not finding_re.match(lines[j]):
-            sm = status_re.match(lines[j])
-            if sm:
-                status = sm.group(1).strip().lower()
-            sev = severity_re.match(lines[j])
-            if sev:
-                severity = sev.group(1).strip().lower()
-            j += 1
-        if "open" in status and severity in ("blocker", "high"):
-            open_high.append(finding_id)
-        i = j
+    try:
+        severities = _load_ledger_reader().open_finding_severities(text)
+    except Exception as exc:
+        # An unreadable ledger reader is a FAIL, never a PASS: a check that cannot
+        # read the ledger has not established that nothing severe is open.
+        return IntegrityCheck("high_blockers_open", IntegrityStatus.FAIL,
+                              f"ledger reader failed: {type(exc).__name__}: {exc}"[:200])
+    open_high = sorted(
+        finding_id for finding_id, severity in severities.items()
+        if severity in ("blocker", "high")
+    )
 
     if open_high:
         return IntegrityCheck("high_blockers_open", IntegrityStatus.FAIL,

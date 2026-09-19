@@ -36,11 +36,6 @@ EVENT_METADATA_SCHEMAS: dict[str, frozenset[str]] = {
         "task_count", "pending_task_count", "pending_approval_count",
         "applied_count", "test_run_count",
     }),
-    "context_budget_optimized": frozenset({
-        "mode", "budget", "estimated_tokens", "token_savings",
-        "recommended_worker", "included_section_count",
-        "excluded_section_count",
-    }),
     # DECISION F274 D7: the three fields worker recommendation produced die with
     # it — the cluster-bound context pack and the adapter scoring both go.
     "token_policy_applied": frozenset({

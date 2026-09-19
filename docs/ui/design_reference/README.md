@@ -50,6 +50,7 @@ redesign is a review finding.
 | `feature_reference_block.md` | I — roadmap/feature-file integration |
 | `acceptance_criteria.md` | J — pixel-faithful acceptance criteria |
 | `assets_spec.md` | Asset authority: fonts, icons, graph glyphs, logo |
+| `assumption_log.md` | The assumption_log: visual deviations and their technical reasons |
 
 ## K. Assumptions and open questions
 

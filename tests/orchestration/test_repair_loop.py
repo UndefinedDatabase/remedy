@@ -19,7 +19,6 @@ from packages.orchestration.pingpong_loop import (
     resolve_repair_rounds,
     run_final_adjudication,
     run_pingpong,
-    summarize_pingpong,
     validate_reviewer_output,
 )
 from packages.orchestration.pingpong_provider import (
@@ -504,77 +503,6 @@ class TestRepairLoopJsonSchema:
         data = export_pingpong_json(result)
         rl = data["repair_loop"]
         assert rl["status"] == "not_needed"
-
-
-# ---------------------------------------------------------------------------
-# Step 4765: Concise text report
-# ---------------------------------------------------------------------------
-
-class TestRepairTextReport:
-    """Text report shows correct repair summaries."""
-
-    def test_passed_after_repair(self, demo_repo: Path):
-        result = run_pingpong(
-            "Fix README", str(demo_repo),
-            builder_name="fake", reviewer_name="fake",
-            max_rounds=3, repair_rounds=2,
-        )
-        text = summarize_pingpong(result)
-        assert "Repair loop: passed after" in text
-        assert "Resolved findings:" in text
-        assert "Open findings: none" in text
-
-    def test_not_needed(self, demo_repo: Path):
-        provider = FakeProvider(fail_on_round=99, pass_on_round=1)
-        result = run_pingpong(
-            "Fix README", str(demo_repo),
-            builder_provider=provider, reviewer_provider=provider,
-            max_rounds=3, repair_rounds=2,
-        )
-        text = summarize_pingpong(result)
-        assert "Repair loop: not needed" in text
-
-    def test_exhausted_with_adjudication(self, demo_repo: Path):
-        provider = FakeProvider(fail_on_round=1, pass_on_round=99)
-        result = run_pingpong(
-            "Fix README", str(demo_repo),
-            builder_provider=provider, reviewer_provider=provider,
-            max_rounds=5, repair_rounds=1,
-        )
-        text = summarize_pingpong(result)
-        assert "Repair loop: exhausted" in text
-        assert "Open findings:" in text
-        assert "Final adjudication:" in text
-        assert "Apply:" in text
-
-    def test_repair_round_label(self, demo_repo: Path):
-        result = run_pingpong(
-            "Fix README", str(demo_repo),
-            builder_name="fake", reviewer_name="fake",
-            max_rounds=3, repair_rounds=2,
-        )
-        text = summarize_pingpong(result)
-        assert "[repair]" in text
-
-    def test_inconsistent_review_text(self, demo_repo: Path):
-        builder = FakeProvider()
-        class IncoherentReviewer:
-            name = "incoherent_reviewer"
-            def review(self, prompt, *, timeout_sec=120, max_output_chars=50000, resume: str | None = None):
-                return ReviewerOutput(
-                    verdict="pass",
-                    findings=[ReviewFinding(id="R-0001", severity="high", summary="Bug")],
-                    summary="All good", provider="incoherent",
-                )
-
-        result = run_pingpong(
-            "Fix README", str(demo_repo),
-            builder_provider=builder,
-            reviewer_provider=IncoherentReviewer(),
-            max_rounds=3, repair_rounds=2,
-        )
-        text = summarize_pingpong(result)
-        assert "REVIEW INCONSISTENT" in text
 
 
 # ---------------------------------------------------------------------------
@@ -1471,44 +1399,6 @@ class TestTestFailureJsonReport:
         data = d.to_dict()
         assert data["repair_decision"] == "stop_test_failed_no_repair"
         assert data["tests_passed"] is False
-
-
-class TestTestFailureTextReport:
-    """Step 4795: Text report distinguishes test-driven repair."""
-
-    def test_text_mentions_failed_tests_trigger(self, demo_repo: Path, tmp_path: Path):
-        """Text report says 'triggered by failed tests' for test-driven repair."""
-        marker = tmp_path / "toggle_marker"
-        test_script = tmp_path / "toggle.sh"
-        test_script.write_text(
-            f"#!/bin/sh\n"
-            f"if [ -f \"{marker}\" ]; then exit 0; fi\n"
-            f"touch \"{marker}\"\n"
-            f"exit 1\n"
-        )
-        test_script.chmod(0o755)
-        provider = FakeProvider(fail_on_round=99, pass_on_round=1)
-        result = run_pingpong(
-            "Fix README", str(demo_repo),
-            builder_provider=provider, reviewer_provider=provider,
-            repair_rounds=2, max_rounds=3, test_command=str(test_script),
-        )
-        summary = summarize_pingpong(result)
-        assert "failed tests" in summary
-
-    def test_text_stopped_test_failure(self, demo_repo: Path, tmp_path: Path):
-        """Text report says 'stopped' when test fails with repair disabled."""
-        test_script = tmp_path / "fail.sh"
-        test_script.write_text("#!/bin/sh\nexit 1\n")
-        test_script.chmod(0o755)
-        provider = FakeProvider(fail_on_round=99, pass_on_round=1)
-        result = run_pingpong(
-            "Fix README", str(demo_repo),
-            builder_provider=provider, reviewer_provider=provider,
-            repair_rounds=0, test_command=str(test_script),
-        )
-        summary = summarize_pingpong(result)
-        assert "test_failed" in summary or "stopped" in summary
 
 
 class TestApplyBlockedAfterFailedTests:

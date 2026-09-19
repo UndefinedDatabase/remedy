@@ -828,8 +828,12 @@ class TestExistingFlowsPreserved:
         assert val == 0 and src == "cli"
 
     def test_evidence_import_still_works(self):
-        from packages.orchestration.pingpong_evidence import export_evidence
-        assert callable(export_evidence)
+        from packages.orchestration.pingpong_evidence import (
+            build_evidence_bundle,
+            write_evidence_bundle,
+        )
+        assert callable(build_evidence_bundle)
+        assert callable(write_evidence_bundle)
 
 
 # ---------------------------------------------------------------------------

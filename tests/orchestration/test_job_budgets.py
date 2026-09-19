@@ -1099,8 +1099,12 @@ def _cli_record_call(job_id, *, call_id, cost):
     ) is True
 
 
-def _save_budget_job(repo, *, budgets, provider_calls=2, prediction=None):
-    """Persist a two-task JobPlan with budgets and persisted actuals."""
+def _save_budget_job(repo, *, budgets, provider_calls=2, prediction=None, money=None):
+    """Persist a two-task JobPlan with budgets and persisted actuals.
+
+    *money* — ``(cost, priced, unpriced)`` — writes the version-2 record that
+    carries F104's money (R-0753); None writes the version-1 record.
+    """
     from packages.orchestration.pingpong_job import parse_job_file, save_job_plan
     job = parse_job_file(_BUDGET_CLI_JOB, str(repo))
     job.budgets = dict(budgets)
@@ -1116,6 +1120,11 @@ def _save_budget_job(repo, *, budgets, provider_calls=2, prediction=None):
         "actual_sources": ["pingpong_live"] if provider_calls else [],
         "started_at": job.first_running_at,
     }
+    if money is not None:
+        cost, priced, unpriced = money
+        job.budget_actuals.update({
+            "schema_version": "2.0.0", "measured_cost_usd": cost,
+            "priced_call_count": priced, "unpriced_call_count": unpriced})
     if prediction is not None:
         job.budget_prediction = dict(prediction)
     save_job_plan(job)
@@ -1281,6 +1290,29 @@ class TestJobBudgetCliRendersPredictions:
         assert _line_value(lines, "cost_read") is None
         data = self._json(job.job_id, capsys)
         assert data["cost_read_error"] is None
+
+    # -- R-0753: a version-2 record carries money, and the ledger still leads --
+    def test_the_ledger_read_supersedes_the_persisted_money(
+            self, budget_cli_repo, capsys, monkeypatch):
+        # The persisted figure is as old as its run's last safe point; the ledger
+        # is where the current cost lives, so it is still what `spent` shows.
+        _cli_arm_ledger(monkeypatch)
+        job = _save_budget_job(budget_cli_repo, budgets={"max_cost_usd": 2.0},
+                               money=(0.25, 1, 0))
+        _cli_record_call(job.job_id, call_id=f"{job.job_id}-a", cost=0.60)
+        lines = self._text(job.job_id, capsys).splitlines()
+        assert _line_value(lines, "spent") == "$0.6000"
+
+    def test_a_failed_ledger_read_keeps_the_persisted_money(
+            self, budget_cli_repo, capsys, monkeypatch):
+        _cli_arm_ledger(monkeypatch)
+        job = _save_budget_job(budget_cli_repo, budgets={"max_cost_usd": 2.0},
+                               money=(0.25, 1, 0))
+        self._break_the_ledger_read(monkeypatch)
+        lines = self._text(job.job_id, capsys).splitlines()
+        assert _line_value(lines, "spent") == "$0.2500"
+        assert _line_value(lines, "remaining") == "$1.7500"
+        assert _line_value(lines, "cost_read").startswith("unavailable (")
 
     def test_a_failed_ledger_read_is_logged_at_error(
             self, budget_cli_repo, capsys, monkeypatch, caplog):

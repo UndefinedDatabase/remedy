@@ -261,6 +261,18 @@ class TestAnswering:
         assert again is None
         assert find_task_decision(job, record["decision_id"])["answer"] == "postgres"
 
+    @pytest.mark.parametrize("blank", ["", "   ", " \t\n "])
+    def test_a_blank_answer_is_refused_and_the_decision_stays_open(self, blank):
+        # R-0685: the defence behind the door's 400, for every other caller. Written
+        # once, a blank answer would resolve the decision with nothing.
+        job = make_job()
+        record = escalate(job, 0)
+
+        assert answer_task_decision(job, record["decision_id"], answer=blank, now=T1) is None
+        assert find_task_decision(job, record["decision_id"])["status"] == "open"
+        assert answer_task_decision(
+            job, record["decision_id"], answer="postgres", now=T1) is not None
+
 
 class TestSafeDefaults:
     def test_a_safe_default_is_still_asked_and_stays_open(self):

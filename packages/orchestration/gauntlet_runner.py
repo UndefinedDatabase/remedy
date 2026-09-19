@@ -294,6 +294,9 @@ class RunnerDeps:
     #: (R-0187) and this run's checkout (R-0189). Returns the loop's execute
     #: seam; the production default is the existing multi-cycle executor.
     execute_fn: Callable[..., Callable[..., Any]] = None  # type: ignore[assignment]
+    #: Which template ``materialise`` copies for a run dir, so the evidence
+    #: digests the world the run was given (R-0411). ``None`` is the default one.
+    template_dir_fn: Callable[[Path], Path | None] = lambda run_dir: None
 
     def __post_init__(self) -> None:
         if self.create_mission is None:
@@ -381,8 +384,9 @@ def collect_era_defects(entries: list[Any]) -> list[dict[str, Any]]:
     return defects
 
 
-def _template_digest() -> str:
-    """The frozen template's digest, or "" if it cannot be read.
+def _template_digest(template_dir: Path | None = None) -> str:
+    """The run's template digest (the frozen default when ``None``), or "" if
+    it cannot be read.
 
     Never raises: a run that could not digest its own world still writes its
     evidence, and an empty string is visibly not a digest.
@@ -390,7 +394,7 @@ def _template_digest() -> str:
     from packages.orchestration.gauntlet_orders import template_tree_digest
 
     try:
-        return template_tree_digest()
+        return template_tree_digest(template_dir)
     except OSError:
         return ""
 
@@ -504,9 +508,11 @@ def run_order(order: GauntletOrder, *, campaign_root: Path, real_data_root: Path
     models: dict[str, str | None] = {
         "planner": None, "orchestrator": None, "builder": None,
     }
+    template_dir: Path | None = None  # bound before the try, as `body` is
 
     try:
         with isolated_environment(data_root, order):
+            template_dir = deps.template_dir_fn(run_dir)
             workspace = deps.materialise(run_dir)
             project_id = deps.make_project(f"gauntlet {order.id}", order.id,
                                            workspace)
@@ -551,7 +557,7 @@ def run_order(order: GauntletOrder, *, campaign_root: Path, real_data_root: Path
             mission = deps.load_mission(project_id, mission.id)
             body = _evidence_body(order, terminal, time.monotonic() - started,
                                   entries, mission, injectors, before,
-                                  data_root, models)
+                                  data_root, models, template_dir)
             gate = latest_gate_result(mission)
     except Exception as exc:  # a crashed run is a FAILED run, with evidence
         crashed = f"{type(exc).__name__}: {exc}"
@@ -565,7 +571,7 @@ def run_order(order: GauntletOrder, *, campaign_root: Path, real_data_root: Path
                 body = _evidence_body(order, terminal,
                                       time.monotonic() - started,
                                       entries, mission, injectors, before,
-                                      data_root, models)
+                                      data_root, models, template_dir)
         except Exception as collect_exc:  # R-0180: the fallback keeps the run
             body = _minimal_body(order, before)
             body["terminal_status"] = terminal
@@ -614,6 +620,7 @@ def _evidence_body(order: GauntletOrder, terminal: str, wall: float,
                    entries: list[Any], mission: Any, injectors: list[Any],
                    before: str, data_root: Path,
                    models: dict[str, str | None] | None = None,
+                   template_dir: Path | None = None,
                    ) -> dict[str, Any]:
     """The recorded-schema body — the same bytes the dry-run evaluator judges.
 
@@ -647,7 +654,7 @@ def _evidence_body(order: GauntletOrder, terminal: str, wall: float,
         "cycles_resolved": _resolved_cycles(entries),
         # R-0189: which world this run was given. A different template is a
         # different campaign, and the evidence says which one it was.
-        "template_digest": _template_digest(),
+        "template_digest": _template_digest(template_dir),
         # F082 T003b (DECISION F082 D7 and D8): which model served which role.
         # An unobserved role is None, never a default name. The dict is copied
         # so a later mutation of the caller's own map cannot rewrite evidence

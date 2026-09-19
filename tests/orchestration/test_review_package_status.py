@@ -63,6 +63,59 @@ class TestManifestBuilder:
         assert "dirty_source_test_files" in alignment
         assert "gate_verdicts" in alignment
 
+    def test_alignment_count_names_every_file_it_counted(self, tmp_path):
+        """R-0666: the count is the length of a list that names each counted file."""
+        from scripts.build_review_manifest import _build_alignment
+        alignment = _build_alignment(["?? .agent/notes.md", " M src/app.py"], str(tmp_path))
+        assert alignment["dirty_files"] == [".agent/notes.md", "src/app.py"]
+        assert alignment["dirty_file_count_total"] == len(alignment["dirty_files"]) == 2
+        assert alignment["dirty_source_test_files"] == ["src/app.py"]
+
+    @staticmethod
+    def _minimal_evidence(tmp_path):
+        ev = tmp_path / "evidence"
+        ev.mkdir(parents=True)
+        for name, doc in (
+            ("job_flow.json", {"job_id": "test-123"}),
+            ("change_provenance_gate.json", {"verdict": "PASS", "covered_files": []}),
+            ("final_verifier_report.json", {"verdict": "PASS",
+                                            "authoritative_changed_files": []}),
+            ("commit_execution_gate.json", {"verdict": "NEEDS_HUMAN_APPROVAL"}),
+            ("artifact_contract_gate.json", {"verdict": "PASS"}),
+        ):
+            (ev / name).write_text(json.dumps(doc))
+        return ev
+
+    def test_alignment_does_not_count_the_packagings_own_manifest(self, tmp_path, monkeypatch):
+        """R-0666: the coordinator rebuilds the manifest while its own untracked root manifest
+        exists; the review subject excluded it but the alignment counted it — 1 beside empty lists."""
+        import scripts.build_review_manifest as brm
+        monkeypatch.setattr(brm, "_git_status_snapshot", lambda: {
+            "status": "OK", "records": [("??", ".review_zip_manifest.json")], "diagnostic": ""})
+        manifest = brm.build_manifest(evidence_dir=str(self._minimal_evidence(tmp_path)),
+                                      generated_outputs={".review_zip_manifest.json"})
+        alignment = manifest["review_subject_evidence_alignment"]
+        assert alignment["dirty_file_count_total"] == 0, alignment
+        assert alignment["dirty_files"] == alignment["dirty_source_test_files"] == []
+        assert manifest["review_subject"]["dirty_file_count_total"] == 0
+
+    def test_manifest_states_the_commit_verdict_beside_the_ready_gate(self, tmp_path):
+        """R-0667: the commit-execution verdict and the rule arbitrating it sit beside the ready
+        gate at the manifest's top level."""
+        from scripts.build_review_manifest import build_manifest
+        manifest = build_manifest(evidence_dir=str(self._minimal_evidence(tmp_path)))
+        arb = manifest["commit_execution_arbitration"]
+        assert arb["commit_execution_gate_verdict"] == "NEEDS_HUMAN_APPROVAL"
+        assert arb["commit_execution_gate_verdict"] == \
+            manifest["ready_gate_matrix"]["gate_verdicts"]["commit_execution_gate.json"]
+        assert arb["ready_gate_matrix_ok"] is manifest["ready_gate_matrix"]["ok"]
+        assert arb["human_approval_required"] is True
+        assert arb["governs_package_status"] == "ready_gate_matrix"
+        assert "NEEDS_HUMAN_APPROVAL" in arb["rule"]
+        bare = build_manifest(evidence_dir=None)["commit_execution_arbitration"]
+        assert bare["commit_execution_gate_verdict"] == "NOT_EVALUATED"
+        assert bare["human_approval_required"] is False
+
 
 class TestManifestEvidenceValidity:
     """Tests for manifest evidence validation and manual repair provenance."""

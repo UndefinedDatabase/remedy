@@ -188,8 +188,6 @@ def _make_approved_job() -> tuple:
 # ---------------------------------------------------------------------------
 
 
-
-
 class TestPatchRevert:
     """Snapshot-backed revert for applied patch intents."""
 
@@ -256,8 +254,6 @@ class TestPatchRevert:
 # ===========================================================================
 # Step 55: Change Set
 # ===========================================================================
-
-
 
 
 class TestChangeSet:
@@ -327,67 +323,9 @@ class TestChangeSet:
 # ===========================================================================
 
 
-
-
-class TestSourceContext:
-    def test_select_relevant_files(self, tmp_path):
-        from packages.orchestration.source_context import select_relevant_files
-        (tmp_path / "README.md").write_text("# Test")
-        (tmp_path / "main.py").write_text("print('hi')")
-        (tmp_path / "test_main.py").write_text("def test(): pass")
-        (tmp_path / "package.json").write_text('{"name":"x"}')
-
-        files = select_relevant_files(tmp_path, budget=1000)
-        assert len(files) >= 3
-        categories = {f.category for f in files}
-        assert "manifest" in categories
-        assert "readme" in categories
-
-    def test_env_excluded(self, tmp_path):
-        from packages.orchestration.source_context import select_relevant_files
-        (tmp_path / ".env").write_text("SECRET=abc")
-        (tmp_path / "main.py").write_text("x = 1")
-
-        files = select_relevant_files(tmp_path, budget=1000)
-        paths = [f.path for f in files]
-        assert ".env" not in paths
-
-    def test_budget_respected(self, tmp_path):
-        from packages.orchestration.source_context import select_relevant_files
-        (tmp_path / "big.py").write_text("x = 1\n" * 10000)
-
-        files = select_relevant_files(tmp_path, budget=100)
-        total = sum(f.estimated_tokens for f in files)
-        assert total <= 100
-
-    def test_node_modules_excluded(self, tmp_path):
-        from packages.orchestration.source_context import select_relevant_files
-        nm = tmp_path / "node_modules" / "pkg"
-        nm.mkdir(parents=True)
-        (nm / "index.js").write_text("module.exports = {}")
-
-        files = select_relevant_files(tmp_path, budget=1000)
-        paths = [f.path for f in files]
-        assert not any("node_modules" in p for p in paths)
-
-    def test_event_schema(self, tmp_path):
-        from packages.orchestration.data_paths import resolve_data_root
-        from packages.orchestration.source_context import inject_source_context
-        (tmp_path / "main.py").write_text("x = 1")
-
-        job = _make_job_s91()
-        data_dir = resolve_data_root()
-        ctx = inject_source_context(job, tmp_path, data_dir=data_dir)
-        assert ctx.version == 1
-        assert ctx.file_count >= 1
-        assert ctx.selection_hash != ""
-
-
 # ---------------------------------------------------------------------------
 # Step 98 — Structured Code Patch Intent
 # ---------------------------------------------------------------------------
-
-
 
 
 class TestStructuredPatch:
@@ -458,8 +396,6 @@ class TestStructuredPatch:
 # ---------------------------------------------------------------------------
 # Step 99 — Source Patch Apply
 # ---------------------------------------------------------------------------
-
-
 
 
 class TestSourceApply:
@@ -659,24 +595,6 @@ class TestSourceApply:
 # ---------------------------------------------------------------------------
 # Step 100 — Frontend Build / Smoke
 # ---------------------------------------------------------------------------
-
-
-
-
-class TestSourceContextFinalization:
-    def test_text_binary_detection_exists(self):
-        src = (Path(__file__).parent.parent.parent / "packages" / "orchestration" / "source_context.py").read_text()
-        assert "_is_text_file" in src
-
-    def test_inject_source_context_budget(self):
-        import tempfile
-
-        from packages.orchestration.source_context import inject_source_context
-        with tempfile.TemporaryDirectory() as td:
-            p = Path(td)
-            (p / "main.py").write_text("x = 1\n")
-            ctx = inject_source_context(_make_job_s101(), p, budget=100)
-            assert ctx.estimated_tokens <= 200  # reasonable budget
 
 
 # ---------------------------------------------------------------------------

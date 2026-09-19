@@ -1,9 +1,10 @@
 # Real Test Execution + Snapshot/Rollback Proof v1 (Steps 1877-1916)
 
 > **Status (2026-09-15):** the `rollback` command group and the rollback proof writer, getter and
-> exporter were deleted by F261 round 14 (DECISION F261 D13); `list_rollback_proofs` and
-> `audit_rollback_safety` remain for the cockpit and `test integrity`, and the snapshot and revert
-> commands carry the restore check.
+> exporter were deleted by F261 round 14 (DECISION F261 D13), and F273 deleted the reader and the
+> audit of rollback proofs, which nothing writes (R-0903): the cockpit reports no restore available
+> and `test integrity` checks test runs and snapshots only. The snapshot and revert commands carry
+> the restore check.
 
 ## Why this exists
 

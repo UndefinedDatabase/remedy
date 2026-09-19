@@ -67,6 +67,15 @@ class TestInspection:
         insp = SD.build_self_dogfood_inspection(str(job.job_id), d)
         assert any("Unresolved failure has no repair attempt" == i.title for i in insp.items)
 
+    def test_unresolved_failure_item_cites_the_failure_artifact(self, env):
+        # R-0923: the item's source is the failure artifact, not a repair-attempt store.
+        d, _ = env
+        job = _job(d, failure=True)
+        insp = SD.build_self_dogfood_inspection(str(job.job_id), d)
+        gaps = [i for i in insp.items if i.title == "Unresolved failure has no repair attempt"]
+        assert len(gaps) == 1
+        assert gaps[0].source_type == "failure_artifact"
+
     def test_roadmap_items_cite_evidence(self, env):
         d, _ = env
         insp = SD.build_self_dogfood_inspection(data_dir=d)
@@ -193,9 +202,9 @@ class TestArchitectureGuards:
         assert "gh pr" not in self.SRC.lower()
 
     def test_next_action_catalog_backed(self, env):
-        from packages.orchestration.do_run import validate_next_safe_action_command
+        from tests.orchestration.catalog_commands import names_catalog_command
         d, _ = env
         job = _job(d)
         insp = SD.build_self_dogfood_inspection(str(job.job_id), d)
         assert insp.next_safe_action is not None
-        assert validate_next_safe_action_command(insp.next_safe_action.command)
+        assert names_catalog_command(insp.next_safe_action.command)

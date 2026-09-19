@@ -1,18 +1,16 @@
 """
 Reviewer Recommendation Loop v1 — post-task reviewer that suggests follow-up tasks.
 
-After a task verifies pass, a reviewer can propose follow-up tasks.
-Humans decide whether to accept or reject recommendations.
+After a task verifies pass, a reviewer can propose follow-up tasks. The reviewer provider
+is replaceable (same pattern as planner/builder); the default is inert and returns none.
 
-The reviewer provider is replaceable (same pattern as planner/builder).
-Default: inert fixture reviewer for testing.
+The store that kept recommendations on the job, and the accept and reject steps that turned
+one into a proposed task, had no caller once the `review` group was deleted, and went with
+the two cockpit readers of that store (R-0908). `dev status` still probes `run_reviewer`.
 
 Public API::
 
     run_reviewer(job, *, after_task_id, reviewer_fn) -> list[ReviewerRecommendation]
-    accept_recommendation(job, recommendation_id) -> bool
-    reject_recommendation(job, recommendation_id) -> bool
-    list_recommendations(job) -> list[dict]
 """
 
 from __future__ import annotations
@@ -43,28 +41,6 @@ class ReviewerRecommendation:
 def _default_reviewer(context: dict[str, Any]) -> list[dict[str, Any]]:
     """Inert fixture reviewer — returns no recommendations."""
     return []
-
-
-def _fixture_reviewer(context: dict[str, Any]) -> list[dict[str, Any]]:
-    """Deterministic fixture reviewer — returns 2 recommendations for testing."""
-    return [
-        {
-            "title": "Add edge case tests",
-            "description": "Add tests for zero and negative inputs to calc functions",
-            "task_type": "test_improvement",
-            "reason": "Current tests only cover positive integers",
-            "risk": "low",
-            "priority": "medium",
-        },
-        {
-            "title": "Add type hints to calc.py",
-            "description": "Ensure all function signatures have complete type annotations",
-            "task_type": "code_quality",
-            "reason": "Type hints improve maintainability",
-            "risk": "low",
-            "priority": "low",
-        },
-    ]
 
 
 def run_reviewer(
@@ -112,71 +88,3 @@ def run_reviewer(
         recs.append(rec)
 
     return recs
-
-
-def accept_recommendation(job: Any, recommendation_id: str) -> bool:
-    """Accept a recommendation — create a proposed task for evaluation.
-
-    Does NOT directly append a Task to job.tasks. The proposed task must
-    go through evaluation (evaluate → approve) before it becomes buildable.
-    """
-    from packages.orchestration.proposed_tasks import propose_from_recommendation
-
-    recs = _get_recommendations(job)
-    for rec in recs:
-        if rec.get("id") == recommendation_id and rec.get("status") == "pending":
-            rec["status"] = "accepted"
-            propose_from_recommendation(str(job.job_id), rec)
-            _save_recommendations(job, recs)
-            return True
-    return False
-
-
-def reject_recommendation(job: Any, recommendation_id: str) -> bool:
-    """Reject a recommendation — mark as rejected, do not append task."""
-    recs = _get_recommendations(job)
-    for rec in recs:
-        if rec.get("id") == recommendation_id and rec.get("status") == "pending":
-            rec["status"] = "rejected"
-            _save_recommendations(job, recs)
-            return True
-    return False
-
-
-def list_recommendations(job: Any) -> list[dict[str, Any]]:
-    """List all reviewer recommendations for a job."""
-    return _get_recommendations(job)
-
-
-def store_recommendations(job: Any, recs: list[ReviewerRecommendation]) -> None:
-    """Store reviewer recommendations in job metadata."""
-    existing = _get_recommendations(job)
-    for rec in recs:
-        existing.append({
-            "id": rec.id,
-            "title": rec.title,
-            "description": rec.description,
-            "task_type": rec.task_type,
-            "reason": rec.reason,
-            "risk": rec.risk,
-            "priority": rec.priority,
-            "source": rec.source,
-            "origin_task_id": rec.origin_task_id,
-            "status": rec.status,
-            "created_at": rec.created_at,
-        })
-    _save_recommendations(job, existing)
-
-
-def _get_recommendations(job: Any) -> list[dict[str, Any]]:
-    """Get recommendations from job metadata."""
-    if not hasattr(job, "metadata") or not job.metadata:
-        return []
-    return job.metadata.get("reviewer_recommendations", [])
-
-
-def _save_recommendations(job: Any, recs: list[dict[str, Any]]) -> None:
-    """Save recommendations to job metadata."""
-    if not hasattr(job, "metadata") or job.metadata is None:
-        job.metadata = {}
-    job.metadata["reviewer_recommendations"] = recs

@@ -134,6 +134,23 @@ class ComposedPrompt:
             for entry in self.manifest
         ]
 
+    def stable_prefix(self) -> str:
+        """The leading run of segments ranked before ``TASK``, as composed text.
+
+        The volatile input of a prompt is its ``TASK`` rank and later (the
+        measurement in docs/system/cache-optimal-prompt-ordering-v1.md compares
+        two renders differing only there), so everything in front of the first
+        such segment is the part a provider cache can hit. Read off the
+        manifest's ``chars`` and the delimiter, never re-rendered, so the answer
+        is always a prefix of ``text``; it excludes the delimiter that follows.
+        """
+        end = 0
+        for index, entry in enumerate(self.manifest):
+            if entry.rank >= SegmentStabilityRank.TASK:
+                break
+            end += entry.chars + (len(PROMPT_SEGMENT_DELIMITER) if index else 0)
+        return self.text[:end]
+
 
 class PromptSegmentRegistry:
     """Collects prompt segments in registration order, rejecting duplicates.

@@ -307,24 +307,28 @@ def summarize_trust_report(
             if _get_apply_record(job, i["intent_id"]) is not None
             and _get_apply_record(job, i["intent_id"]).get("state") == "applied"
         )
+        # R-0970: every tip names the real job id and intent id.
         if n_approved and not n_pending_i and n_applied == n_approved:
             parts.append(f"  {_OK} All approved intents applied ({n_applied}).")
         elif n_approved and not n_pending_i:
             unapplied = n_approved - n_applied
             parts.append(
                 f"  {_INFO} {unapplied} approved intent(s) not yet applied. "
-                f"Apply with: remedy patch apply <job_id> <intent_id>"
+                f"Apply with:"
             )
+            parts.extend(_patch_commands(job, intents, "apply"))
         elif n_approved:
             parts.append(
                 f"  {_INFO} Note: pending intents must be decided before apply. "
-                f"Apply with: remedy patch apply <job_id> <intent_id>"
+                f"Apply with:"
             )
+            parts.extend(_patch_commands(job, intents, "apply"))
         else:
             parts.append(
-                "  Note: intents must be approved before apply. "
-                "Use: remedy patch approve <job_id> <intent_id>"
+                "  Note: intents must be approved before apply."
+                + (" Use:" if n_pending_i else "")
             )
+            parts.extend(_patch_commands(job, intents, "approve"))
 
     # ── 8. Test runs ──────────────────────────────────────────────────────────
     parts.append(section("8. Test runs"))
@@ -489,11 +493,12 @@ def _derive_next_action(job: JobPlan, signals: dict[str, Any]) -> str:
             f"      remedy job resume {job.job_id}"
         )
 
-    if n_approved and not pending and not n_pending_intents:
-        return (
-            f"  {_NEXT} All patch intents approved. Apply with:\n"
-            f"      remedy patch apply {job.job_id} <intent_id>"
-        )
+    apply_commands = _patch_commands(job, intents, "apply")
+    if n_approved and not pending and not n_pending_intents and apply_commands:
+        return "\n".join([
+            f"  {_NEXT} All patch intents approved. Apply with:",
+            *apply_commands,
+        ])
 
     if pending:
         return (
@@ -503,8 +508,25 @@ def _derive_next_action(job: JobPlan, signals: dict[str, Any]) -> str:
 
     return (
         f"  {_NEXT} No pending tasks. Inspect generated files\n"
-        f"      or create a new job: remedy do run \"<goal>\""
+        f"      or give Remedy a new order: remedy do, then the order in quotes"
     )
+
+
+def _patch_commands(job: JobPlan, intents: list[dict[str, Any]],
+                    verb: str) -> list[str]:
+    """One real command per intent the verb applies to (R-0970: no placeholder).
+
+    ``apply`` names every approved intent not yet applied; ``approve`` every
+    pending one.
+    """
+    if verb == "apply":
+        return [f"      remedy patch apply {job.job_id} {i['intent_id']}"
+                for i in intents
+                if i["state"] == APPROVAL_APPROVED
+                and (_get_apply_record(job, i["intent_id"]) or {}).get("state")
+                != "applied"]
+    return [f"      remedy patch approve {job.job_id} {i['intent_id']}"
+            for i in intents if i["state"] == APPROVAL_PENDING]
 
 
 # ---------------------------------------------------------------------------

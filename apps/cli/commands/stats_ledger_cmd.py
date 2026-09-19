@@ -590,7 +590,8 @@ def _cmd_stats_backfill_ledger(*, evidence_dir: str = "",
 
     print(f"Backfill of {base} into {ledger}")
     print(f"  scanned:  {result.scanned} task run(s)")
-    print(f"  recorded: {result.recorded} row(s) durable (a re-run records the same rows)")
+    print(f"  recorded: {result.recorded} task run(s) with every row durable "
+          "(a re-run records the same rows)")
     print(f"  skipped:  {result.skipped} task run(s) with no provider evidence to mirror")
     print(f"  failed:   {result.failed} task run(s) unrecordable — no row was invented")
     print("Backfill is idempotent: the same evidence always yields the same rows.")

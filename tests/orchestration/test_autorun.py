@@ -6,7 +6,6 @@ Migrated from step-numbered test files.
 from __future__ import annotations
 
 import json
-import tempfile
 from pathlib import Path
 from unittest.mock import MagicMock
 from uuid import uuid4
@@ -152,88 +151,7 @@ def _make_approved_job() -> tuple:
 # ---------------------------------------------------------------------------
 
 
-
-
-class TestAutorunSmoke:
-    """Step 100 — basic autorun integration."""
-
-    def test_fixture_builder_path(self, tmp_path):
-        from packages.orchestration.autorun import run_autorun
-        # Create tiny fixture repo
-        (tmp_path / "main.py").write_text("def add(a, b): return a + b")
-        (tmp_path / "test_main.py").write_text("from main import add\ndef test_add(): assert add(1,2)==3")
-
-        result = run_autorun(
-            "Make the function pass the test",
-            str(tmp_path),
-            autonomy_level=2,
-            max_cycles=1,
-            fixture_builder=True,
-        )
-        assert result.job_id != ""
-        assert result.stage in ("builder_complete", "context_injected", "job_created")
-
-
-
-
 class TestFixtureBuilderStructuredPatch:
-
-    def test_fixture_builder_creates_patch(self):
-        """Fixture builder should use structured patch model."""
-        from packages.orchestration.autorun import _run_fixture_builder
-        from packages.orchestration.pingpong_job import JobPlan
-
-        with tempfile.TemporaryDirectory() as tmp:
-            job = JobPlan(job_title="test fixture")
-            from packages.orchestration.pingpong_job import save_job_plan
-            save_job_plan(job)
-            from packages.orchestration.data_paths import resolve_data_root
-            data_dir = resolve_data_root()
-
-            result = _run_fixture_builder(
-                job, "Make tests pass", Path(tmp), data_dir, autonomy_level=4,
-            )
-            assert result["source_context_injected"] is True
-            assert result["structured_patch_created"] is True
-            assert result["approval_required"] is True
-            assert result["source_patch_applied"] is True
-
-    def test_fixture_builder_creates_files(self):
-        """Fixture builder should create test and source files."""
-        from packages.orchestration.autorun import _run_fixture_builder
-        from packages.orchestration.pingpong_job import JobPlan
-
-        with tempfile.TemporaryDirectory() as tmp:
-            job = JobPlan(job_title="test fixture")
-            from packages.orchestration.pingpong_job import save_job_plan
-            save_job_plan(job)
-            from packages.orchestration.data_paths import resolve_data_root
-            data_dir = resolve_data_root()
-
-            _run_fixture_builder(
-                job, "Make tests pass", Path(tmp), data_dir, autonomy_level=4,
-            )
-            assert (Path(tmp) / "tests" / "test_calc.py").exists()
-            assert (Path(tmp) / "calc.py").exists()
-            assert (Path(tmp) / "Makefile").exists()
-
-    def test_fixture_test_passes(self):
-        """The fixture test should actually pass after apply."""
-        from packages.orchestration.autorun import _run_fixture_builder
-        from packages.orchestration.pingpong_job import JobPlan
-
-        with tempfile.TemporaryDirectory() as tmp:
-            job = JobPlan(job_title="test fixture")
-            from packages.orchestration.pingpong_job import save_job_plan
-            save_job_plan(job)
-            from packages.orchestration.data_paths import resolve_data_root
-            data_dir = resolve_data_root()
-
-            result = _run_fixture_builder(
-                job, "Make tests pass", Path(tmp), data_dir, autonomy_level=4,
-            )
-            assert result.get("tests_passed") is True
-
     def test_source_apply_path_safety(self):
         """source_apply must block .env, binary, symlink, path traversal."""
         from packages.orchestration.source_apply import _is_safe_path
@@ -277,82 +195,14 @@ class TestFixtureBuilderStructuredPatch:
         for bad in ("raw_output", "command_output", "diff_preview", "approval_reason"):
             assert bad not in full
 
-    def test_autorun_result_has_events(self):
-        """AutorunResult should have events list."""
-        from packages.orchestration.autorun import AutorunResult
-        r = AutorunResult(job_id="x", cycles_run=0, stage="init")
-        assert isinstance(r.events, list)
-
 
 # ═══════════════════════════════════════════════════════════════════════════
 # Cross-step smoke markers
 # ═══════════════════════════════════════════════════════════════════════════
 
 
-
-
 class TestCalcFixtureBuilderWithProof:
     """Fixture builder must use calc.py, Makefile, and --no-ui must work."""
-
-    def test_fixture_creates_calc_and_makefile(self):
-        """Fixture builder creates calc.py, tests/test_calc.py, Makefile."""
-        from packages.orchestration.autorun import _run_fixture_builder
-        from packages.orchestration.pingpong_job import JobPlan, save_job_plan
-
-        with tempfile.TemporaryDirectory() as tmp:
-            job = JobPlan(job_title="test fixture")
-            save_job_plan(job)
-            from packages.orchestration.data_paths import resolve_data_root
-            data_dir = resolve_data_root()
-
-            _run_fixture_builder(job, "Make calc work", Path(tmp), data_dir, autonomy_level=4)
-            assert (Path(tmp) / "tests" / "test_calc.py").exists()
-            assert (Path(tmp) / "calc.py").exists()
-            assert (Path(tmp) / "Makefile").exists()
-
-    def test_fixture_test_passes(self):
-        """calc fixture test should pass after apply."""
-        from packages.orchestration.autorun import _run_fixture_builder
-        from packages.orchestration.pingpong_job import JobPlan, save_job_plan
-
-        with tempfile.TemporaryDirectory() as tmp:
-            job = JobPlan(job_title="test fixture calc")
-            save_job_plan(job)
-            from packages.orchestration.data_paths import resolve_data_root
-            data_dir = resolve_data_root()
-
-            result = _run_fixture_builder(job, "Make calc work", Path(tmp), data_dir, autonomy_level=4)
-            assert result.get("tests_passed") is True
-
-    def test_fixture_proof_collected(self):
-        """Fixture builder at autonomy 4+ should collect proof."""
-        from packages.orchestration.autorun import _run_fixture_builder
-        from packages.orchestration.pingpong_job import JobPlan, save_job_plan
-
-        with tempfile.TemporaryDirectory() as tmp:
-            job = JobPlan(job_title="test proof")
-            save_job_plan(job)
-            from packages.orchestration.data_paths import resolve_data_root
-            data_dir = resolve_data_root()
-
-            result = _run_fixture_builder(job, "Prove calc", Path(tmp), data_dir, autonomy_level=4)
-            assert result.get("stage") == "proof_collected"
-
-    def test_makefile_has_test_target(self):
-        """Makefile must have a test target."""
-        from packages.orchestration.autorun import _run_fixture_builder
-        from packages.orchestration.pingpong_job import JobPlan, save_job_plan
-
-        with tempfile.TemporaryDirectory() as tmp:
-            job = JobPlan(job_title="test makefile")
-            save_job_plan(job)
-            from packages.orchestration.data_paths import resolve_data_root
-            data_dir = resolve_data_root()
-
-            _run_fixture_builder(job, "Check makefile", Path(tmp), data_dir, autonomy_level=2)
-            content = (Path(tmp) / "Makefile").read_text()
-            assert "test:" in content
-            assert "pytest" in content
 
     def test_no_ui_flag_in_catalog(self):
         """--no-ui must be in the do.run catalog entry."""
@@ -360,13 +210,6 @@ class TestCalcFixtureBuilderWithProof:
         do_run = next(c for c in CATALOG if c.command_id == "do.run")
         arg_names = [a.name for a in do_run.args]
         assert "--no-ui" in arg_names
-
-    def test_no_old_fixture_references(self):
-        """No references to fixture_module or greet() in autorun."""
-        content = Path("packages/orchestration/autorun.py").read_text()
-        assert "fixture_module" not in content
-        assert "greet(" not in content
-        assert "test_fixture.py" not in content
 
     def test_structured_patch_uses_calc(self):
         """Fixture builder structured patch targets calc.py."""
@@ -398,52 +241,8 @@ class TestCalcFixtureBuilderWithProof:
 # ═══════════════════════════════════════════════════════════════════════════
 
 
-
-
 class TestFixtureBuilderFakeE2ERepair:
     """Autocoder fixture builder proves real code change path."""
-
-    def test_fixture_file_fixed(self):
-        from packages.orchestration.autorun import _run_fixture_builder
-        from packages.orchestration.pingpong_job import JobPlan, save_job_plan
-
-        with tempfile.TemporaryDirectory() as tmp:
-            job = JobPlan(job_title="e2e")
-            save_job_plan(job)
-            from packages.orchestration.data_paths import resolve_data_root
-            data_dir = resolve_data_root()
-            result = _run_fixture_builder(job, "Fix calc", Path(tmp), data_dir, autonomy_level=4)
-            assert result["tests_passed"] is True
-            # calc.py should exist and have add/mul
-            calc = (Path(tmp) / "calc.py").read_text()
-            assert "def add" in calc
-            assert "def mul" in calc
-
-    def test_fixture_structured_patch_path(self):
-        """Must use structured patch, not direct file write."""
-        from packages.orchestration.autorun import _run_fixture_builder
-        from packages.orchestration.pingpong_job import JobPlan, save_job_plan
-
-        with tempfile.TemporaryDirectory() as tmp:
-            job = JobPlan(job_title="patch-path")
-            save_job_plan(job)
-            from packages.orchestration.data_paths import resolve_data_root
-            data_dir = resolve_data_root()
-            result = _run_fixture_builder(job, "Fix", Path(tmp), data_dir, autonomy_level=4)
-            assert result.get("structured_patch_created") is True
-            assert result.get("source_patch_applied") is True
-
-    def test_fixture_approval_gate(self):
-        from packages.orchestration.autorun import _run_fixture_builder
-        from packages.orchestration.pingpong_job import JobPlan, save_job_plan
-
-        with tempfile.TemporaryDirectory() as tmp:
-            job = JobPlan(job_title="approval")
-            save_job_plan(job)
-            from packages.orchestration.data_paths import resolve_data_root
-            data_dir = resolve_data_root()
-            result = _run_fixture_builder(job, "Fix", Path(tmp), data_dir, autonomy_level=4)
-            assert result.get("approval_required") is True
 
     def test_source_apply_blocks_env(self):
         from packages.orchestration.source_apply import _is_safe_path
@@ -471,11 +270,6 @@ class TestFixtureBuilderFakeE2ERepair:
         from packages.orchestration import source_apply
         assert hasattr(source_apply, "revert_apply")
 
-    def test_no_git_commit_in_fixture(self):
-        content = Path("packages/orchestration/autorun.py").read_text()
-        assert "git commit" not in content
-        assert "git add" not in content
-
     def test_source_apply_event_schema(self):
         """source_patch_applied event has required fields."""
         content = Path("packages/orchestration/source_apply.py").read_text()
@@ -490,120 +284,6 @@ class TestFixtureBuilderFakeE2ERepair:
 # ═══════════════════════════════════════════════════════════════════════════
 
 
-
-
-class TestFixtureBuilderWrongCalcRepair:
-    """Fixture builder uses wrong calc.py as starting point."""
-
-    def test_fixture_starts_with_wrong_calc(self):
-        """calc.py should start wrong (subtract instead of add)."""
-        from packages.orchestration.autorun import _run_fixture_builder
-        from packages.orchestration.pingpong_job import JobPlan, save_job_plan
-
-        with tempfile.TemporaryDirectory() as tmp:
-            job = JobPlan(job_title="wrong-calc")
-            save_job_plan(job)
-            from packages.orchestration.data_paths import resolve_data_root
-            data_dir = resolve_data_root()
-            # Run at low autonomy to see the wrong file exists
-            _run_fixture_builder(job, "Fix", Path(tmp), data_dir, autonomy_level=1)
-            calc = (Path(tmp) / "calc.py").read_text()
-            assert "return a - b" in calc  # wrong version exists
-
-    def test_fixture_fixes_calc(self):
-        """After full run, calc.py should have correct add/mul."""
-        from packages.orchestration.autorun import _run_fixture_builder
-        from packages.orchestration.pingpong_job import JobPlan, save_job_plan
-
-        with tempfile.TemporaryDirectory() as tmp:
-            job = JobPlan(job_title="fix-calc")
-            save_job_plan(job)
-            from packages.orchestration.data_paths import resolve_data_root
-            data_dir = resolve_data_root()
-            result = _run_fixture_builder(job, "Fix", Path(tmp), data_dir, autonomy_level=4)
-            calc = (Path(tmp) / "calc.py").read_text()
-            assert "return a + b" in calc
-            assert "return a * b" in calc
-            assert result["tests_passed"] is True
-
-    def test_fixture_uses_modify_not_create(self):
-        """Structured patch should use modify action (file already exists)."""
-        src = Path("packages/orchestration/autorun.py").read_text()
-        # Fixture builder uses modify because calc.py is pre-created wrong
-        assert 'action="modify"' in src
-
-    def test_fixture_structured_patch_path(self):
-        from packages.orchestration.autorun import _run_fixture_builder
-        from packages.orchestration.pingpong_job import JobPlan, save_job_plan
-
-        with tempfile.TemporaryDirectory() as tmp:
-            job = JobPlan(job_title="patch-path")
-            save_job_plan(job)
-            from packages.orchestration.data_paths import resolve_data_root
-            data_dir = resolve_data_root()
-            result = _run_fixture_builder(job, "Fix", Path(tmp), data_dir, autonomy_level=4)
-            assert result.get("structured_patch_created") is True
-            assert result.get("source_patch_applied") is True
-            assert result.get("approval_required") is True
-
-    def test_fixture_proof_collected(self):
-        from packages.orchestration.autorun import _run_fixture_builder
-        from packages.orchestration.pingpong_job import JobPlan, save_job_plan
-
-        with tempfile.TemporaryDirectory() as tmp:
-            job = JobPlan(job_title="proof")
-            save_job_plan(job)
-            from packages.orchestration.data_paths import resolve_data_root
-            data_dir = resolve_data_root()
-            result = _run_fixture_builder(job, "Prove", Path(tmp), data_dir, autonomy_level=4)
-            assert result["stage"] == "proof_collected"
-
-    def test_no_git_commit(self):
-        content = Path("packages/orchestration/autorun.py").read_text()
-        assert "git commit" not in content
-        assert "git add" not in content
-        assert "git push" not in content
-
-    def test_no_raw_leaks_in_fixture(self):
-        """Fixture builder events should not leak raw content."""
-        from packages.orchestration.autorun import _run_fixture_builder
-        from packages.orchestration.data_paths import resolve_data_root
-        from packages.orchestration.pingpong_job import JobPlan, save_job_plan
-        from packages.orchestration.timeline import load_run_events
-
-        with tempfile.TemporaryDirectory() as tmp:
-            job = JobPlan(job_title="leak-check")
-            save_job_plan(job)
-            data_dir = resolve_data_root()
-            _run_fixture_builder(job, "Fix", Path(tmp), data_dir, autonomy_level=4)
-            events = load_run_events(data_dir, job.job_id)
-            events_str = json.dumps(events)
-            for bad in ("raw_output", "command_output", "Traceback",
-                         "approval_reason", "diff_preview"):
-                assert bad not in events_str
-
-    def test_source_apply_event_schema(self):
-        """source_patch_applied event must have required fields."""
-        from packages.orchestration.autorun import _run_fixture_builder
-        from packages.orchestration.data_paths import resolve_data_root
-        from packages.orchestration.pingpong_job import JobPlan, save_job_plan
-        from packages.orchestration.timeline import load_run_events
-
-        with tempfile.TemporaryDirectory() as tmp:
-            job = JobPlan(job_title="event-check")
-            save_job_plan(job)
-            data_dir = resolve_data_root()
-            _run_fixture_builder(job, "Fix", Path(tmp), data_dir, autonomy_level=4)
-            events = load_run_events(data_dir, job.job_id)
-            apply_events = [e for e in events if e.get("event") == "source_patch_applied"]
-            assert len(apply_events) >= 1
-            meta = apply_events[0].get("metadata", {})
-            for field in ("apply_id", "success", "files_modified",
-                          "files_created", "error_count"):
-                assert field in meta, f"Missing field: {field}"
-
-
 # ═══════════════════════════════════════════════════════════════════════════
 # Step 137 — Smoke Closure
 # ═══════════════════════════════════════════════════════════════════════════
-

@@ -41,6 +41,27 @@ except Exception:  # pragma: no cover - defensive; canonical impl must exist
     _CANON_AVAILABLE = False
 
 
+def _load_ledger_reader():
+    """The live ledger's one canonical reader (T016 (b)), loaded from THIS script's sibling file.
+
+    The manifest reads the open set and the last booked verdict through
+    ``rotate_live_review.py``, never through a private regex of its own. It is loaded by path,
+    not as ``scripts.rotate_live_review``, because ``scripts`` is a namespace package that an
+    installed checkout elsewhere on ``sys.path`` could otherwise answer for.
+    """
+    import importlib.util
+    path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "rotate_live_review.py")
+    name = "_remedy_ledger_reader"
+    spec = importlib.util.spec_from_file_location(name, path)
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[name] = module  # its dataclasses resolve their module through sys.modules
+    spec.loader.exec_module(module)
+    return module
+
+
+_LEDGER_READER = _load_ledger_reader()
+
+
 def _git(cmd: list[str]) -> str:
     try:
         r = subprocess.run(
@@ -462,29 +483,12 @@ def _extract_review_state() -> dict:
 
     if os.path.isfile(lr_path):
         try:
-            with open(lr_path) as f:
-                full_content = f.read()
-            blocks = re.split(r"\n---\n+(?=# Live Review)", full_content)
-            content = blocks[0] if blocks else full_content
-
-            verdict_match = re.search(
-                r"##\s+Verdict\s+\(reviewer-owned\)\s*\n\s*\*?\*?([A-Z_]+)\*?\*?",
-                content,
-            )
-            if verdict_match:
-                verdict = verdict_match.group(1).strip("*").strip()
-            elif "pending" in content[:500].lower():
-                verdict = "PENDING"
-
-            for m in re.finditer(
-                r"###\s+(R-\d+)\s+.*?\n.*?(?=\n###|\n---|\Z)",
-                content, re.DOTALL,
-            ):
-                block = m.group(0)
-                finding_id = m.group(1)
-                if "**Resolved" not in block and "resolved" not in block.lower()[:200]:
-                    open_findings.append(finding_id)
-
+            with open(lr_path, encoding="utf-8") as f:
+                content = f.read()
+            # The ledger's state comes from its canonical reader: the open set by
+            # distinct id and the verdict of the last booked `Gate:` record.
+            verdict = _LEDGER_READER.latest_gate_verdict(content)
+            open_findings = _LEDGER_READER.open_finding_ids(content)
             builder_handoff_present = "## Builder Handoff" in content
         except OSError:
             pass
@@ -1291,11 +1295,10 @@ def validate_manual_completion(ev) -> list[str]:
     # 7: union must exactly equal every authoritative changed-file view.
     fjr_actual = {_mc_norm(f) for f in (fjr.get("actual_changed_files") or [])}
     fjr_expected = {_mc_norm(f) for f in (fjr.get("expected_changed_files") or [])}
-    # Round 15 (F4): a DELETED path is proven by its tombstone (its base_sha256), not by a
-    # current hash it cannot have. Counting only file_hashes would report a real, proven
-    # part of the change as an uncovered file.
+    # A DELETED path is proven by its tombstone (its base_sha256), not by a current hash it cannot
+    # have, and since R-0837 it is in no task's partition — so the union the tasks cover is the
+    # proof's LIVE paths, its file_hashes; the tombstones (R-0839) sit outside that union.
     proof_files = {_mc_norm(f) for f in (proof.get("file_hashes") or {})}
-    proof_files |= {_mc_norm(f) for f in (proof.get("tombstones") or {})}
     fv_auth = {_mc_norm(f) for f in (fv.get("authoritative_changed_files") or [])}
     cp_covered = {_mc_norm(f) for f in (cp.get("covered_files") or [])}
     for label, s in (
@@ -2412,8 +2415,9 @@ def evaluate_ready_gate_matrix(load_json) -> dict:
         proof = load_json("current_change_content_proof.json")
         if isinstance(proof, dict):
             fh = proof.get("file_hashes") if isinstance(proof.get("file_hashes"), dict) else {}
-            tomb = proof.get("tombstones") if isinstance(proof.get("tombstones"), dict) else {}
-            ctx["proof_authority"] = set(fh) | set(tomb)
+            # Change provenance covers the LIVE paths; a deleted path's tombstone (R-0839) is
+            # attested by the proof itself and bound to the subject by the coordinator.
+            ctx["proof_authority"] = set(fh)
             ctx["proof_hashes"] = dict(fh)
     except Exception:
         pass                                           # a corrupt proof blocks in the coordinator
@@ -2483,6 +2487,25 @@ def evaluate_ready_gate_matrix(load_json) -> dict:
                            f"malformed and blocks")
 
     return {"ok": not reasons, "gate_verdicts": verdicts, "blocking_reasons": reasons}
+
+
+#: R-0667: why a READY package can carry commit_execution_gate NEEDS_HUMAN_APPROVAL.
+_COMMIT_ARBITRATION_RULE = (
+    "package_status is governed by ready_gate_matrix. commit_execution_gate is a pre-acceptance "
+    "gate whose only accepted verdict is NEEDS_HUMAN_APPROVAL: a READY_FOR_REVIEW package is ready "
+    "for a human reviewer and still needs that human's approval before any commit. Any other "
+    "commit verdict, or a commit gate not exactly derived from the packaged verdicts, is listed in "
+    "ready_gate_matrix.blocking_reasons and blocks.")
+
+
+def commit_execution_arbitration(gate_matrix: dict) -> dict:
+    """R-0667: the commit-execution verdict beside the ready gate, with the rule arbitrating them."""
+    verdict = (gate_matrix.get("gate_verdicts") or {}).get(_COMMIT_GATE, "NOT_EVALUATED")
+    return {"commit_execution_gate_verdict": verdict,
+            "ready_gate_matrix_ok": bool(gate_matrix.get("ok")),
+            "governs_package_status": "ready_gate_matrix",
+            "human_approval_required": verdict == "NEEDS_HUMAN_APPROVAL",
+            "rule": _COMMIT_ARBITRATION_RULE}
 
 
 def _evidence_dir_gate_loader(ev: _EvidenceView):
@@ -2722,8 +2745,12 @@ def _build_alignment(
 
     alignment_verdict = "PASS" if not issues else "BLOCKED"
 
+    # R-0666: the count is derived from a list that names every file it counted, so a non-zero
+    # count can never sit beside only empty lists.
+    counted = sorted({f.split()[-1] for f in dirty_files if f.strip()})
     return {
-        "dirty_file_count_total": len(dirty_files),
+        "dirty_file_count_total": len(counted),
+        "dirty_files": counted,
         "dirty_source_test_files": dirty_source_test,
         "intended_commit_files": fv_changed or cp_covered,
         "change_provenance_covered_files": cp_covered,
@@ -3197,7 +3224,9 @@ def build_manifest_from_snapshot(
 
     alignment: dict | None = None
     if evidence_view is not None:
-        alignment = _build_alignment(dirty, evidence_view)
+        # R-0666: the same dirty set the review subject reports — this invocation's own packaging
+        # outputs (the root manifest the coordinator rebuilds over) are not dirty source.
+        alignment = _build_alignment(review_subject["dirty_files"], evidence_view)
         if alignment["verdict"] == "BLOCKED" and current_evidence:
             current_evidence["evidence_freshness"]["evidence_authoritative"] = False
 
@@ -3367,6 +3396,7 @@ def build_manifest_from_snapshot(
         "review_package_created": True,
         "package_status": package_status,
         "ready_gate_matrix": gate_matrix,
+        "commit_execution_arbitration": commit_execution_arbitration(gate_matrix),
         "final_verifier_reproducibility": fv_repro,
         "git_status_snapshot": {"status": git_snapshot["status"],
                                 "diagnostic": git_snapshot["diagnostic"]},

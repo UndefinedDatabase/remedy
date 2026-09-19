@@ -43,10 +43,6 @@ class TestRightPanelUserFirst:
         content = RIGHT_PANEL.read_text()
         assert "NeedsAttentionCard" in content
 
-    def test_no_primary_worker_status(self):
-        content = RIGHT_PANEL.read_text()
-        assert "WorkerStatusMini" not in content or "advancedSection" in content
-
     def test_no_primary_pipeline_panel(self):
         content = RIGHT_PANEL.read_text()
         assert "PipelinePanel" not in content or "advancedSection" in content
@@ -331,20 +327,15 @@ class TestEveryCustomPropertyResolves:
     CSS, so the failure is invisible to every other suite. F021 R31 shipped
     exactly that and the pill rendered square.
 
-    This is an ALLOWLIST rather than an emptiness assertion on purpose: four
-    properties were already unresolved before F021 began, each needing a value
-    decided against the design reference, and R-0364 forbids ordering a gate
-    that is red before the round that adds it. The set may shrink freely; it
-    cannot grow without turning this red."""
+    F021 pinned four pre-existing survivors as an allowlist. F273 T006 gave
+    each a value in `styles/tokens.css` (the mono alias names the reference's
+    `--remedy-font-mono`; the three warning tokens carry the values the banner
+    the reference calls canonical already rendered), so the allowlist is empty
+    and this now forbids ANY used-but-undefined `--remedy-*` property."""
 
-    KNOWN_UNRESOLVED = {
-        "--remedy-mono",
-        "--remedy-warning-bg",
-        "--remedy-warning-border",
-        "--remedy-warning-fg",
-    }
+    KNOWN_UNRESOLVED: set[str] = set()
 
-    def _unresolved(self):
+    def _scan(self):
         css_root = ROOT / "apps" / "ui" / "src"
         defined, used = set(), {}
         for path in sorted(css_root.rglob("*.css")):
@@ -352,7 +343,16 @@ class TestEveryCustomPropertyResolves:
             defined.update(re.findall(r"(--remedy-[a-z0-9-]+)\s*:", text))
             for name in re.findall(r"var\(\s*(--remedy-[a-z0-9-]+)", text):
                 used.setdefault(name, set()).add(path.name)
+        return defined, used
+
+    def _unresolved(self):
+        defined, used = self._scan()
         return {name: files for name, files in used.items() if name not in defined}
+
+    def test_the_scan_is_not_vacuous(self):
+        """An empty unresolved set is only evidence if the scan reads uses."""
+        defined, used = self._scan()
+        assert "--remedy-radius-pill" in used and "--remedy-radius-pill" in defined
 
     def test_the_unresolved_set_has_not_grown(self):
         unresolved = self._unresolved()

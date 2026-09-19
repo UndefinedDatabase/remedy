@@ -29,9 +29,11 @@ remedy job checkpoints <job_id> --json
 |------------|-------------|--------|-------|
 | `source_apply_proven` | from_apply → tests | **Implemented** | Runs tests via Remedy test_runner |
 | `approval_recorded` | from_approval → apply | Blocked | Structured patch payload not persisted |
-| `context_ready` | from_context → builder | Blocked | Builder resume not implemented |
 | `tests_failed` | from_test_failure → repair | Blocked | Repair resume not implemented |
 | `tests_passed` | complete | N/A | Nothing to resume |
+
+The `context_ready` and `patch_intent_created` checkpoints were deleted on 2026-09-19 with the
+goal-driven execution path whose run-log events alone reached them (finding R-0927).
 
 ### Resume from Applied Patch (from_apply)
 
@@ -56,7 +58,6 @@ Requires:
 |--------|---------|------------|
 | `resume_mode_not_implemented` | This resume path doesn't exist yet | Wait for future implementation |
 | `missing_patch_payload` | Structured patch not persisted on job | Re-run builder instead |
-| `approval_pending` | Patch needs approval first | `remedy patch approve <job_id> <intent_id>` |
 | `permission_denied` | Job lacks required permission | A job gets its grants from its mission's contract: `remedy job contract <job_id>` |
 | `missing_repo_path` | No target repo on job | Attach repo first |
 | `repo_path_not_found` | Repo directory doesn't exist | Check path |

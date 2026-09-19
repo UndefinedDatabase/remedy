@@ -39,9 +39,7 @@ class OvernightStopReason:
     EVIDENCE_INCOMPLETE = "evidence_incomplete"
     TEST_FAILED = "test_failed"
     REPAIR_AVAILABLE = "repair_available"
-    REPAIR_PENDING_APPROVAL = "repair_pending_approval"
     REPAIR_UNAVAILABLE = "repair_unavailable"
-    REVIEW_FINDINGS_OPEN = "review_findings_open"
     INTEGRITY_FAILED = "integrity_failed"
     PROVIDER_UNAVAILABLE = "provider_unavailable"
     UNSUPPORTED_STATE = "unsupported_state"
@@ -167,11 +165,8 @@ class _Inputs:
     apply_ids: list[str]
     verified_snapshots: int
     applied_records: int
-    tested_passed: int
     failure_artifacts: list[Any]
     unresolved_failures: int
-    repair_attempts: list[Any]
-    pending_repair_intents: list[Any]
     proof_status: str
     contract: Any
     usage: Any
@@ -180,7 +175,6 @@ class _Inputs:
 def _gather_inputs(job_id: str, data_dir: Path) -> _Inputs | None:
     from packages.orchestration.approval_queue import APPROVAL_APPROVED, APPROVAL_PENDING, list_patch_intents
     from packages.orchestration.pingpong_job import JobNotFoundError, require_job_plan
-    from packages.orchestration.repair_loop import load_repair_attempts
     from packages.orchestration.repository_snapshot import build_snapshot_truth, list_durable_apply_ids
     from packages.orchestration.run_contract import ensure_contract, load_usage
 
@@ -194,7 +188,7 @@ def _gather_inputs(job_id: str, data_dir: Path) -> _Inputs | None:
     pending = [i for i in intents if i.get("state") == APPROVAL_PENDING]
 
     apply_ids = list_durable_apply_ids(job_id, data_dir)
-    verified = applied = tested_passed = 0
+    verified = applied = 0
     # "applied" durable states persist after the post-apply test runs.
     _APPLIED_STATES = ("applied", "test_pending", "tested_passed", "tested_failed")
     for aid in apply_ids:
@@ -207,10 +201,6 @@ def _gather_inputs(job_id: str, data_dir: Path) -> _Inputs | None:
 
     failure_arts = [a for a in job.artifacts if (a.metadata or {}).get("test_failure")]
     unresolved = sum(1 for a in failure_arts if not (a.metadata or {}).get("failure_resolved"))
-
-    attempts = list(load_repair_attempts(job).values())
-    pending_repair = [a for a in attempts if a.status == "approval_required" and a.repair_intent_id]
-    tested_passed = sum(1 for a in attempts if a.status == "tested_passed")
 
     # Proof chain — authoritative (durable snapshot truth), best-effort.
     proof_status = "unknown"
@@ -229,9 +219,8 @@ def _gather_inputs(job_id: str, data_dir: Path) -> _Inputs | None:
     return _Inputs(
         job=job, data_dir=data_dir, intents=intents, approved_intents=approved,
         pending_intents=pending, apply_ids=apply_ids, verified_snapshots=verified,
-        applied_records=applied, tested_passed=tested_passed,
+        applied_records=applied,
         failure_artifacts=failure_arts, unresolved_failures=unresolved,
-        repair_attempts=attempts, pending_repair_intents=pending_repair,
         proof_status=proof_status, contract=contract, usage=usage,
     )
 
@@ -265,8 +254,6 @@ def _build_evidence_summary(inp: _Inputs) -> dict[str, Any]:
         "verified_snapshots": inp.verified_snapshots,
         "failure_artifacts": len(inp.failure_artifacts),
         "unresolved_failures": inp.unresolved_failures,
-        "repair_attempts": len(inp.repair_attempts),
-        "pending_repair_intents": len(inp.pending_repair_intents),
         "proof_status": inp.proof_status,
         "source": "durable_records+snapshot_truth+proof_chain",
     }
@@ -294,10 +281,6 @@ def _build_capabilities(inp: _Inputs, job_id: str) -> list[OvernightCapability]:
 
     caps.append(OvernightCapability(
         name="can_plan", status=_CAP_AVAILABLE, reason="Read-only planning is always available."))
-
-    caps.append(OvernightCapability(
-        name="can_build_fixture", status=_CAP_AVAILABLE,
-        reason="Deterministic fixture repair builder available (docs-only by default)."))
 
     caps.append(OvernightCapability(
         name="can_create_patch_intent",
@@ -338,13 +321,6 @@ def _build_capabilities(inp: _Inputs, job_id: str) -> list[OvernightCapability]:
         # task, but no command creates one, so the capability names no action.
         next_safe_action=""))
 
-    caps.append(OvernightCapability(
-        name="can_apply_approved_repair",
-        status=_CAP_AVAILABLE if (apply_ok and inp.pending_repair_intents == [] and any(
-            a.status == "approval_required" for a in inp.repair_attempts) is False and inp.approved_intents) else _CAP_BLOCKED,
-        reason="Approved repair intent flows through patch apply once approved.",
-        required_contract_action=ContractAction.PATCH_APPLY))
-
     revert_ok = perm(Capability.repo_revert) and action_allowed(ContractAction.REVERT)
     caps.append(OvernightCapability(
         name="can_revert_explicitly",
@@ -379,10 +355,6 @@ def _build_risks(inp: _Inputs) -> list[OvernightRisk]:
             id="unresolved_failures", severity="high",
             summary=f"{inp.unresolved_failures} unresolved test failure(s).",
             source="failure_artifacts"))
-    if inp.pending_repair_intents:
-        risks.append(OvernightRisk(
-            id="repair_pending_approval", severity="medium",
-            summary="Repair patch intent pending approval.", source="repair_attempts"))
     if inp.pending_intents:
         risks.append(OvernightRisk(
             id="intents_pending_approval", severity="medium",
@@ -467,25 +439,11 @@ def _build_checklist(inp: _Inputs, job_id: str) -> list[OvernightChecklistItem]:
                      evidence_kind="proof_chain", reason=f"proof={inp.proof_status}"))
     items.append(_ci("failure_artifact_created", "Failure artifact created",
                      "done" if inp.failure_artifacts else "skipped", evidence_kind="failure_artifact"))
-    proposed = [a for a in inp.repair_attempts if a.repair_intent_id]
-    items.append(_ci("repair_proposed", "Repair proposed",
-                     "done" if proposed else ("pending" if inp.failure_artifacts else "skipped"),
-                     evidence_kind="repair_attempt"))
-    repair_approved = [a for a in inp.repair_attempts
-                       if a.status in ("approved", "applied", "tested_passed", "tested_failed")]
-    items.append(_ci("repair_approved", "Repair approved",
-                     "done" if repair_approved else ("pending" if proposed else "skipped"),
-                     evidence_kind="repair_attempt"))
-    repair_applied = [a for a in inp.repair_attempts
-                      if a.status in ("applied", "tested_passed", "tested_failed")]
-    items.append(_ci("repair_applied", "Repair applied",
-                     "done" if repair_applied else ("pending" if repair_approved else "skipped"),
-                     evidence_kind="repair_attempt"))
-    resolved = [a for a in inp.repair_attempts if a.resolved_failure]
+    # R-0923: no repair attempt exists to propose, approve, apply or resolve anything.
     items.append(_ci("failure_resolved", "Failure resolved",
-                     "done" if resolved else ("pending" if inp.unresolved_failures else "skipped"),
+                     "pending" if inp.unresolved_failures else "skipped",
                      evidence_kind="failure_artifact"))
-    human_needed = bool(inp.pending_intents or inp.pending_repair_intents)
+    human_needed = bool(inp.pending_intents)
     items.append(_ci("human_decision_needed", "Human decision needed",
                      "pending" if human_needed else "skipped",
                      reason="Approvals pending." if human_needed else "",
@@ -499,11 +457,6 @@ def select_overnight_next_action(inp: _Inputs | None, job_id: str) -> OvernightN
     if inp is None:
         return OvernightNextAction("Review jobs", "remedy job list --json",
                                    "Job not found.", requires_human=True)
-    # Pending repair intent → approve it.
-    if inp.pending_repair_intents:
-        iid = inp.pending_repair_intents[0].repair_intent_id
-        return OvernightNextAction("Approve repair patch", f"remedy patch approve {job_id} {iid}",
-                                   "A repair patch intent is pending approval.", requires_human=True)
     # Pending normal intent → approve it.
     if inp.pending_intents:
         iid = inp.pending_intents[0]["intent_id"]
@@ -525,7 +478,7 @@ def select_overnight_next_action(inp: _Inputs | None, job_id: str) -> OvernightN
 
 def _build_stop_reasons(inp: _Inputs, budget: dict[str, Any], risks: list[OvernightRisk]) -> list[str]:
     out: list[str] = []
-    if inp.pending_intents or inp.pending_repair_intents:
+    if inp.pending_intents:
         out.append(OvernightStopReason.HUMAN_APPROVAL_REQUIRED)
     if inp.contract.stop_before_apply:
         out.append(OvernightStopReason.CONTRACT_BLOCKED)
@@ -533,8 +486,6 @@ def _build_stop_reasons(inp: _Inputs, budget: dict[str, Any], risks: list[Overni
         out.append(OvernightStopReason.BUDGET_EXHAUSTED)
     if inp.unresolved_failures > 0:
         out.append(OvernightStopReason.TEST_FAILED)
-    if inp.pending_repair_intents:
-        out.append(OvernightStopReason.REPAIR_PENDING_APPROVAL)
     if any(r.severity in ("blocker", "high") for r in risks):
         out.append(OvernightStopReason.MEDIUM_OR_HIGH_RISK)
     if any(r.id == "integrity_failed" for r in risks):
@@ -588,8 +539,6 @@ def build_overnight_readiness(
         report.blockers.append("no_tasks")
     if inp.unresolved_failures > 0:
         report.blockers.append("unresolved_failures")
-    if inp.pending_repair_intents:
-        report.blockers.append("repair_pending_approval")
     if _budget_exhausted:
         report.blockers.append("budget_exhausted")
     if any(r.severity == "blocker" for r in report.risks):

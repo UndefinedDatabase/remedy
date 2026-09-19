@@ -349,9 +349,7 @@ class TestRoutedHandler:
     @pytest.mark.parametrize(
         ("module_name", "handler_name", "extra_args"),
         [
-            pytest.param("memory", "_cmd_memory_candidates", (), id="memory-candidates"),
-            pytest.param("memory", "_cmd_memory_approve_candidate", ("cand-1",), id="memory-approve"),
-            pytest.param("memory", "_cmd_memory_reject_candidate", ("cand-1",), id="memory-reject"),
+            pytest.param("memory", "_cmd_memory_learn", (), id="memory-learn"),
         ],
     )
     def test_a_loading_handler_hands_load_job_the_id_a_short_prefix_resolves_to(
@@ -508,7 +506,6 @@ class TestMintIds:
 _JOB_EVIDENCE_OWNING_MODULES = (
     "packages.orchestration.pingpong_job",
     "packages.orchestration.job_evidence",
-    "packages.orchestration.repair_attest",
     "apps.cli.commands.do_cmd",
 )
 

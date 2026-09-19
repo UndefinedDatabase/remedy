@@ -315,6 +315,10 @@ class ReportSources:
     #: Where that number came from (BudgetCounters.actual_sources).  Every
     #: cost line names its basis (P6); a cost without a basis is not printed.
     cost_basis: tuple[str, ...] = ()
+    #: budget_guard.BudgetCounters.cost_description() — carried VERBATIM, its
+    #: ">= $N (M provider calls unpriced)" floor and "not-measured" included.
+    #: "" when no actuals were persisted, and then no money line is rendered.
+    cost_description: str = ""
     elapsed_seconds: float | None = None
     cycle_records: tuple[dict[str, Any], ...] = ()
     open_decision_lines: tuple[str, ...] = ()
@@ -548,6 +552,10 @@ def _cost_lines(sources: ReportSources) -> list[str]:
         return lines
     basis = ", ".join(sources.cost_basis) if sources.cost_basis else NOT_RECORDED
     lines.append(f"- Tokens: {sources.token_description} — basis: {basis}")
+    if sources.cost_description:
+        # R-0753: the money the job runner persisted from its live budget
+        # counters, carried verbatim; an unpriced run says so in words.
+        lines.append(f"- Money: {sources.cost_description} — basis: budget counters")
     if sources.elapsed_seconds is None:
         lines.append(f"- Elapsed: {NOT_RECORDED} — basis: {NOT_RECORDED}")
     else:
@@ -831,6 +839,7 @@ def _evidence_sources(job: Any) -> dict[str, Any]:
                     first_running_at=getattr(plan, "first_running_at", "") or None))
             extra["token_description"] = counters.token_description()
             extra["cost_basis"] = tuple(counters.actual_sources)
+            extra["cost_description"] = counters.cost_description()
             extra["elapsed_seconds"] = counters.elapsed_seconds
     except Exception:  # noqa: BLE001 — no actuals is "not recorded", never a zero
         pass

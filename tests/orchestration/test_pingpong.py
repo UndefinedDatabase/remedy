@@ -14,7 +14,6 @@ from packages.orchestration.pingpong_loop import (
     build_repo_context,
     export_pingpong_json,
     run_pingpong,
-    summarize_pingpong,
 )
 from packages.orchestration.pingpong_provider import (
     ClaudeProvider,
@@ -157,13 +156,6 @@ class TestReportShowsRounds:
         assert data["rounds"][0]["round"] == 1
         assert data["rounds"][1]["round"] == 2
 
-    def test_summary_shows_rounds(self, demo_repo: Path):
-        result = run_pingpong("Fix README", str(demo_repo), builder_name="fake", reviewer_name="fake", repair_rounds=2)
-        summary = summarize_pingpong(result)
-        assert "Round 1" in summary
-        assert "Round 2" in summary
-        assert "staged_review_passed" in summary
-
 
 # ---------------------------------------------------------------------------
 # 9. Max rounds blocks honestly
@@ -263,11 +255,6 @@ class TestFileTracking:
 # ---------------------------------------------------------------------------
 
 class TestCLIOutput:
-    def test_summary_mentions_mode(self, demo_repo: Path):
-        result = run_pingpong("Fix README", str(demo_repo), builder_name="fake", reviewer_name="fake")
-        summary = summarize_pingpong(result)
-        assert "staged" in summary.lower()
-
     def test_json_export_has_required_fields(self, demo_repo: Path):
         result = run_pingpong("Fix README", str(demo_repo), builder_name="fake", reviewer_name="fake")
         data = export_pingpong_json(result)
@@ -364,9 +351,10 @@ def test_pingpong_loop_test_command_runs_on_the_guarded_seam(tmp_path, monkeypat
         return subprocess.CompletedProcess(list(cmd), 0, b"out-line\n", b"err-line\n")
 
     monkeypatch.setattr(pingpong_loop, "run_guarded_test_command", _fake_guarded)
-    passed, summary = pingpong_loop._run_test_command("pytest -q", tmp_path, timeout_sec=17)
+    passed, summary, tripped = pingpong_loop._run_test_command("pytest -q", tmp_path, timeout_sec=17)
 
     assert passed is True
+    assert tripped == ""
     assert seen == {"cmd": ["pytest", "-q"], "timeout_sec": 17, "cwd": str(tmp_path)}
     assert summary.startswith("exit=0")
     assert "out-line" in summary

@@ -259,6 +259,11 @@ def _approval_counts(job: JobPlan) -> dict[str, int]:
     return counts
 
 
+def _first_intent_id(job: JobPlan, state: str) -> str:
+    """The id of the job's first patch intent in ``state``, the one a tip names (R-0989)."""
+    return next((i["intent_id"] for i in list_patch_intents(job) if i["state"] == state), "")
+
+
 # ---------------------------------------------------------------------------
 # Attention items
 # ---------------------------------------------------------------------------
@@ -267,19 +272,20 @@ def _approval_counts(job: JobPlan) -> dict[str, int]:
 def _derive_attention(job: JobPlan, signals: dict[str, Any]) -> list[str]:
     items: list[str] = []
     pending = sum(1 for t in job.tasks if t.status == RunState.PENDING)
+    jid = str(job.job_id)
 
     # Interrupted run — mention first (most alarming)
     if signals["has_interrupted"]:
         tt = signals["interrupted_task_type"] or "unknown"
         items.append(
-            f"Interrupted task detected (type: {tt}) — inspect with: remedy brain timeline <job_id>"
+            f"Interrupted task detected (type: {tt}) — inspect with: remedy brain timeline {jid}"
         )
 
     # workspace_write denied blocks all task execution
     if pending and not is_allowed(job, Capability.workspace_write):
         items.append(
             "workspace_write is required to run tasks — a job gets its repository "
-            "and grants from its mission's contract: remedy job contract <job_id>"
+            f"and grants from its mission's contract: remedy job contract {jid}"
         )
 
     # Patch intent risk and approval state
@@ -291,7 +297,7 @@ def _derive_attention(job: JobPlan, signals: dict[str, Any]) -> list[str]:
             if ac[APPROVAL_PENDING] > 0:
                 items.append(
                     f"Review patch intent risk — {ac[APPROVAL_PENDING]} pending "
-                    "decision(s): remedy patch list <job_id>"
+                    f"decision(s): remedy patch list {jid}"
                 )
             else:
                 items.append("Review patch intent risk levels before applying future changes.")
@@ -299,7 +305,7 @@ def _derive_attention(job: JobPlan, signals: dict[str, Any]) -> list[str]:
         if ac[APPROVAL_REJECTED] > 0:
             items.append(
                 f"{ac[APPROVAL_REJECTED]} patch intent(s) rejected — review or re-evaluate: "
-                "remedy patch list <job_id>"
+                f"remedy patch list {jid}"
             )
 
     # Verification failure on the most recent failed task run
@@ -322,7 +328,7 @@ def _derive_attention(job: JobPlan, signals: dict[str, Any]) -> list[str]:
     if (signals["last_patch"] or signals["last_repo"]) and repo_explicitly_denied:
         items.append(
             "Repo writes are denied — a job gets its repository and grants from "
-            "its mission's contract: remedy job contract <job_id>"
+            f"its mission's contract: remedy job contract {jid}"
         )
 
     return items
@@ -421,7 +427,7 @@ def _derive_next_action(job: JobPlan, signals: dict[str, Any]) -> str:
                 return (
                     f"  {_NEXT} Approve or reject pending patch intents, then run next task:\n"
                     f"      remedy patch list {job_id_str}\n"
-                    f"      remedy patch approve {job_id_str} <intent_id>\n"
+                    f"      remedy patch approve {job_id_str} {_first_intent_id(job, APPROVAL_PENDING)}\n"
                     f"      remedy job resume {job_id_str}"
                 )
             return (
@@ -442,11 +448,11 @@ def _derive_next_action(job: JobPlan, signals: dict[str, Any]) -> str:
     if total_intents > 0 and ac[APPROVAL_APPROVED] == total_intents:
         return (
             f"  {_NEXT} All patch intents approved — apply step is not implemented in v1.\n"
-            f"      Use: remedy patch show {job_id_str} <intent_id> to review."
+            f"      Use: remedy patch show {job_id_str} {_first_intent_id(job, APPROVAL_APPROVED)} to review."
         )
 
     # Nothing left to run
     return (
         f"  {_NEXT} No pending tasks. Inspect generated files\n"
-        f"      or create a new job: remedy do run \"<goal>\""
+        f"      or give Remedy a new order: remedy do, then the order in quotes"
     )

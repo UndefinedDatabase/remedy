@@ -440,6 +440,76 @@ def load_latest_valid(job_id: str) -> Checkpoint | None:
 
 
 # ---------------------------------------------------------------------------
+# The resume guards — one author for `job resume` and the loop's `resume_job`
+# ---------------------------------------------------------------------------
+
+#: What :func:`decide_checkpoint_resume` concluded.
+RESUME_STOPPED = "stopped"      # a pending stop request was consumed
+RESUME_REFUSED = "refused"      # a guard refused: worktree drift or plan gate
+RESUME_NOOP = "noop"            # every task is already complete
+RESUME_PROCEED = "resume"       # hand the job to the executor
+
+
+@dataclass(frozen=True)
+class ResumeDecision:
+    """The verdict of the resume guards, before any executor is reached.
+
+    ``reason`` is machine-readable (``worktree_drift``, ``plan_pending``,
+    ``plan_rejected``, ``all_green``, or the consumed stop's own reason);
+    ``detail`` is the one sentence a ledger or a log records.
+    """
+
+    action: str
+    reason: str = ""
+    detail: str = ""
+
+
+def decide_checkpoint_resume(job: Any, checkpoint: Checkpoint | None
+                             ) -> ResumeDecision:
+    """Run the three resume guards, in their contract order (F047 T002).
+
+    1. a PENDING STOP REQUEST is consumed first and wins;
+    2. the checkpoint's WORKTREE HEAD must match the live head (unknown is not
+       a mismatch, and a checkpoint that recorded none is not compared);
+    3. the PLAN-APPROVAL GATE is consulted, never bypassed.
+
+    Then an all-green job is a no-op. ``remedy job resume`` and the
+    orchestrator loop's ``resume_job`` move both call this, so the two doors
+    cannot disagree about when a job may continue.
+    """
+    from packages.core.models import RunState
+    from packages.orchestration.job_plan import task_plan_blocks_execution
+    from packages.orchestration.safe_points import consume_stop, stop_requested
+
+    jid = str(job.job_id)
+    if stop_requested(jid) is not None:
+        signal = consume_stop(jid)
+        reason = getattr(signal, "reason", "") if signal is not None else ""
+        return ResumeDecision(
+            RESUME_STOPPED, reason,
+            f"stop request consumed — not resuming"
+            f"{' (reason: ' + reason + ')' if reason else ''}")
+    if checkpoint is not None and checkpoint.worktree_head:
+        live_head = resolve_live_worktree_head(jid)
+        if live_head and live_head != checkpoint.worktree_head:
+            return ResumeDecision(
+                RESUME_REFUSED, "worktree_drift",
+                worktree_drift_message(checkpoint.worktree_head, live_head))
+    block_reason = task_plan_blocks_execution(job)
+    if block_reason == "pending":
+        return ResumeDecision(RESUME_REFUSED, "plan_pending",
+                              "the task plan is awaiting approval")
+    if block_reason == "rejected":
+        return ResumeDecision(RESUME_REFUSED, "plan_rejected",
+                              "the task plan was rejected")
+    tasks = list(getattr(job, "tasks", ()) or ())
+    if tasks and all(t.status == RunState.COMPLETED for t in tasks):
+        return ResumeDecision(RESUME_NOOP, "all_green",
+                              "already all green — nothing to resume")
+    return ResumeDecision(RESUME_PROCEED)
+
+
+# ---------------------------------------------------------------------------
 # Retention
 # ---------------------------------------------------------------------------
 

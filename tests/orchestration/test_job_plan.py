@@ -324,46 +324,6 @@ class TestPlanJobLlmNormalization:
         assert "split_band" in result.transformations[0]["reason"]
 
 
-class TestReplan:
-
-    def test_replan_appends_version(self, tmp_path):
-        from packages.orchestration.job_plan import replan
-
-        fp1 = TaskPlan(**json.loads(_valid_plan_json(2)))
-        fp1_dict = fp1.model_dump()
-        fp2 = TaskPlan(**json.loads(_valid_plan_json(3)))
-
-        updated, version = replan(fp1_dict, fp2, tmp_path)
-        assert version == 2
-        assert updated["_version"] == 2
-        assert len(updated["_versions"]) == 1
-        assert (tmp_path / "plan_v2.md").exists()
-
-    def test_replan_keeps_old_file(self, tmp_path):
-        from packages.orchestration.job_plan import replan, write_plan_md
-
-        fp1 = TaskPlan(**json.loads(_valid_plan_json(2)))
-        write_plan_md(fp1, tmp_path, version=1)
-        fp1_dict = fp1.model_dump()
-
-        fp2 = TaskPlan(**json.loads(_valid_plan_json(3)))
-        replan(fp1_dict, fp2, tmp_path)
-
-        assert (tmp_path / "plan.md").exists()
-        assert (tmp_path / "plan_v2.md").exists()
-
-    def test_replan_after_completed_task_rejected(self, tmp_path):
-        import pytest
-
-        from packages.orchestration.job_plan import ReplanRejectedError, replan
-
-        fp1 = TaskPlan(**json.loads(_valid_plan_json(2)))
-        fp2 = TaskPlan(**json.loads(_valid_plan_json(1)))
-
-        with pytest.raises(ReplanRejectedError, match="Cannot replan"):
-            replan(fp1.model_dump(), fp2, tmp_path, any_task_completed=True)
-
-
 class TestPlanJobLlmAcceptsAComposedPrompt:
     """R-0256: one composition feeds the provider AND the trace manifest."""
 

@@ -49,8 +49,13 @@ def no_model_call(monkeypatch):
     def tripwire(*args, **kwargs):
         raise AssertionError("remedy do reached a model-call factory under --no-llm")
 
+    # `study` binds `make_structured_call_fn` by `from … import`, so it is imported
+    # before intake is patched: imported under the patch, it would keep the tripwire
+    # for every later test. Its own binding is then tripped and restored like the rest.
+    import packages.orchestration.study  # noqa: F401
     monkeypatch.setattr("packages.orchestration.intake.make_provider_call_fn", tripwire)
     monkeypatch.setattr("packages.orchestration.intake.make_structured_call_fn", tripwire)
+    monkeypatch.setattr("packages.orchestration.study.make_structured_call_fn", tripwire)
     monkeypatch.setattr("packages.orchestration.study.study_call_fn", tripwire)
 
 
@@ -155,6 +160,19 @@ def test_shape_to_run_completes_on_the_named_fake_providers(repo, capsys):
     config = job.execution_config
     assert (config.builder, config.builder_source) == ("fake", "cli")
     assert (config.reviewer, config.reviewer_source) == ("fake", "cli")
+
+
+def test_the_teacher_narrates_the_job_do_ran_without_a_budget(repo, capsys):
+    """R-0812: `do` sets no budget, so no `budget.tick`; the task events still narrate."""
+    from apps.cli.commands.teacher_cmd import _cmd_teacher_narrate
+
+    [job_id] = _do_json(capsys)["job_ids"]
+    _cmd_teacher_narrate(job_id)
+    out = capsys.readouterr().out
+
+    assert "no events yet" not in out
+    assert "no narration for" not in out
+    assert "A task started:" in out and "A review round finished:" in out
 
 
 def _recorded_contract(repo, data, origins=frozenset({"planner"})):
@@ -683,6 +701,8 @@ def test_the_json_cost_has_a_row_per_role_with_the_ledgers_own_numbers(repo, cap
     [job_id] = data["job_ids"]
     report = query_cost(project_id=str(resolve_project(repo).id), job_id=job_id, by="role")
     assert report.ledger_exists and report.rows, "the run step mirrored nothing into the ledger"
+    # R-0807: one row per provider call, so the reviewer's calls are a role too.
+    assert [role["role"] for role in data["cost"]["roles"]] == ["builder", "reviewer"]
     assert data["cost"]["roles"] == [
         {"role": row.bucket, "calls": row.calls, "tokens_in": row.tokens_in,
          "tokens_out": row.tokens_out, "cache_read": row.cache_read, "cost_usd": row.cost_usd}
@@ -876,12 +896,12 @@ def test_contract_cli_tool_gates_the_job_on_its_whole_mission_checks_and_names_t
     assert [c["status"] for c in hygiene] == ["met"] * 3
 
     # Not met, in contract order: the four suite-judged template criteria
-    # (unmet: no tests) and the planner's milestone criterion (open: `do`'s job
-    # serves no milestone, so nothing evaluated it).
+    # (unmet: no tests) and the planner's milestone criterion (unmet: the job
+    # serves the plan's one milestone, so its gate evaluated it — R-0977).
     suite_judged = [c for c in whole if c["check"]["kind"] != "custom_cmd"]
     planner = [c for c in criteria if c["origin"] == "planner"]
     assert [c["status"] for c in suite_judged] == ["unmet"] * 4
-    assert [c["status"] for c in planner] == ["open"] * len(planner)
+    assert [c["status"] for c in planner] == ["unmet"] * len(planner)
     expected = [c["id"] for c in suite_judged + planner]
     assert expected == [c["id"] for c in criteria if c not in hygiene]
     assert data["unmet_blocking_criteria"] == expected
@@ -889,9 +909,39 @@ def test_contract_cli_tool_gates_the_job_on_its_whole_mission_checks_and_names_t
     out = _do(capsys, "--contract", "cli-tool", order="Write a CHANGELOG.md")
     [line] = [line for line in out.splitlines() if line.startswith("Contract: ")]
     named = ", ".join([f"{c['id']} (unmet)" for c in suite_judged]
-                      + [f"{c['id']} (open)" for c in planner])
+                      + [f"{c['id']} (unmet)" for c in planner])
     assert line == (f"Contract: 3 of {len(criteria)} criteria met; "
                     f"blocking criteria not met: {named}")
+
+
+def commit_a_passing_suite(repo: Path) -> None:
+    """One passing test under `tests/`, committed, so a pytest check has a suite to run."""
+    (repo / "tests").mkdir()
+    (repo / "tests" / "test_ok.py").write_text("def test_ok():\n    assert True\n")
+    _git(repo, "add", "-A")
+    _git(repo, "commit", "-qm", "suite")
+
+
+def test_a_gated_pytest_check_in_a_repo_with_a_passing_suite_leaves_the_job_completed(
+        repo, capsys, monkeypatch):
+    """F273: the gate's pytest wrote `tests/__pycache__/*.pyc` into the job's
+    worktree, so the job ended `job_handoff_coverage_failed` on a file no task
+    wrote. The repository has no `.gitignore`, as a fresh one has not."""
+    from packages.orchestration.pingpong_job import JOB_COMPLETED, load_job_plan
+
+    monkeypatch.delenv("PYTHONDONTWRITEBYTECODE", raising=False)
+    commit_a_passing_suite(repo)
+
+    data = json.loads(_do(capsys, "--json", "--contract", "cli-tool"))
+
+    [job_id] = data["job_ids"]
+    job = load_job_plan(job_id)
+    assert (job.state, job.error, job.unexpected_root_files) == (JOB_COMPLETED, "", [])
+    assert job.handoff_coverage_verdict == "PASS"
+    assert _step(data, "run")["status"] == "done"
+    assert data["contract"]["criteria"][0]["check"]["kind"] == "pytest"
+    assert {c["status"] for c in data["contract"]["criteria"]
+            if c["origin"] == "template"} == {"met"}
 
 
 def test_a_do_whose_order_proposes_no_template_names_only_criteria_not_met(repo, capsys):
@@ -901,13 +951,89 @@ def test_a_do_whose_order_proposes_no_template_names_only_criteria_not_met(repo,
 
     [job_id] = data["job_ids"]
     assert data["contract"]["template"] is None
-    # No whole-mission criterion: the job's slice is empty and it stores no DoD.
-    assert load_dod(job_id) is None
+    # No whole-mission criterion: the job's slice is the planner's criterion of
+    # the one milestone it serves, reported in its DoD and never held on (R-0977).
     criteria = data["contract"]["criteria"]
     assert criteria
+    assert [(c.id, c.blocking) for c in load_dod(job_id).checks] == [
+        (c["check"]["id"], False) for c in criteria]
     assert {(c["origin"], c["blocking"], c["status"]) for c in criteria} == {
-        ("planner", True, "open")}
+        ("planner", True, "unmet")}
     assert data["unmet_blocking_criteria"] == [c["id"] for c in criteria]
+
+
+# ── F273 R-0977: each `do` job records the milestone its outline came from ──
+
+
+def two_milestone_plan(monkeypatch) -> None:
+    """The no-provider planner plans two milestones, M1 then M2, one outline each."""
+    from packages.orchestration import mission_compiler
+    from packages.orchestration.mission_plan_schema import MissionPlan
+
+    real = mission_compiler.deterministic_mission_plan
+
+    def two(goal: str) -> MissionPlan:
+        body = real(goal).model_dump()
+        [only] = body["milestones"]
+        body["milestones"] = [
+            {**only, "id": ident, "goal": f"Write docs/{name}.md", "depends_on": after,
+             "jobs_draft": [{"title": f"Write docs/{name}.md",
+                             "goal": f"Write docs/{name}.md", "est_band": "S"}]}
+            for ident, name, after in (("M1", "one", []), ("M2", "two", ["M1"]))]
+        return MissionPlan.model_validate(body)
+
+    monkeypatch.setattr(mission_compiler, "deterministic_mission_plan", two)
+
+
+def test_a_two_milestone_do_ends_with_no_planner_criterion_open(repo, capsys, monkeypatch):
+    """R-0977: each job records the milestone whose outline it came from, so its
+    gate evaluates that milestone's planner criterion and none is left `open`.
+    The repository has no tests, so each reads `unmet`, and each job completes."""
+    from packages.orchestration.mission_contract import read_job_milestone
+    from packages.orchestration.pingpong_job import JOB_COMPLETED, load_job_plan
+
+    two_milestone_plan(monkeypatch)
+
+    data = json.loads(_do(capsys, "--json", "--commit", "Add the docs"))
+
+    assert data["shape"] == "milestones" and data["waiting_job_ids"] == []
+    planner = [c for c in data["contract"]["criteria"] if c["origin"] == "planner"]
+    assert [(c["milestones"], c["blocking"], c["status"]) for c in planner] == [
+        (["M1"], True, "unmet"), (["M2"], True, "unmet")]
+    job_ids = data["job_ids"]
+    assert [read_job_milestone(j) for j in job_ids] == ["M1", "M2"]
+    assert [load_job_plan(j).state for j in job_ids] == [JOB_COMPLETED] * 2
+    assert [c["evidence_ref"] for c in planner] == [
+        f"{job_ids[0]}:{planner[0]['check']['id']}", f"{job_ids[1]}:{planner[1]['check']['id']}"]
+    assert data["unmet_blocking_criteria"] == [c["id"] for c in planner]
+
+
+def test_a_two_milestone_do_in_a_repo_with_a_passing_suite_meets_both_planner_criteria(
+        repo, capsys, monkeypatch):
+    """R-0977 with a suite that passes: each job's gate runs its milestone's
+    pytest check green, so both planner criteria read `met`, none is blocking
+    the mission, and neither job's hand-off holds a file its gate wrote."""
+    from packages.orchestration.mission_contract import read_job_milestone
+    from packages.orchestration.pingpong_job import JOB_COMPLETED, load_job_plan
+
+    monkeypatch.delenv("PYTHONDONTWRITEBYTECODE", raising=False)
+    commit_a_passing_suite(repo)
+    two_milestone_plan(monkeypatch)
+
+    data = json.loads(_do(capsys, "--json", "--commit", "Add the docs"))
+
+    assert data["shape"] == "milestones" and data["waiting_job_ids"] == []
+    planner = [c for c in data["contract"]["criteria"] if c["origin"] == "planner"]
+    assert [(c["milestones"], c["blocking"], c["status"]) for c in planner] == [
+        (["M1"], True, "met"), (["M2"], True, "met")]
+    assert {c["check"]["kind"] for c in planner} == {"pytest"}
+    job_ids = data["job_ids"]
+    assert [read_job_milestone(j) for j in job_ids] == ["M1", "M2"]
+    assert [(load_job_plan(j).state, load_job_plan(j).unexpected_root_files)
+            for j in job_ids] == [(JOB_COMPLETED, [])] * 2
+    assert [c["evidence_ref"] for c in planner] == [
+        f"{job_ids[0]}:{planner[0]['check']['id']}", f"{job_ids[1]}:{planner[1]['check']['id']}"]
+    assert data["unmet_blocking_criteria"] == []
 
 
 def test_the_old_name_with_history_is_never_created(repo, capsys):

@@ -12,7 +12,6 @@ Public API::
     build_default_run_contract(job) -> RunContract
     evaluate_run_action(contract, action, ...) -> RunActionDecision
     export_run_contract_json(contract) -> dict[str, Any]
-    summarize_run_contract(contract) -> str
     save_contract(job, contract) -> None
     load_contract(job) -> RunContract | None
     ensure_contract(job) -> RunContract
@@ -395,6 +394,27 @@ _CLOUD_ACTIONS = frozenset({
 })
 
 
+def job_budget_limits(job: JobPlan) -> tuple[int | None, int | None]:
+    """The job's F018 ``(max_total_tokens, max_wall_clock_minutes * 60)``, each None when unset.
+
+    R-0935: ``JobPlan.budgets`` is the persisted dict, so it is validated into ``JobBudgets``
+    (a ``JobBudgets`` passes as-is). A budget that does not validate lends the contract nothing;
+    ``run_job`` blocks such a job with ``corrupt_budget_state`` before any action is judged.
+    """
+    from packages.core.models import JobBudgets
+
+    budgets = getattr(job, "budgets", None)
+    if budgets is None:
+        return None, None
+    if not isinstance(budgets, JobBudgets):
+        try:
+            budgets = JobBudgets.model_validate(budgets)
+        except ValueError:
+            return None, None
+    minutes = budgets.max_wall_clock_minutes
+    return budgets.max_total_tokens, (None if minutes is None else minutes * 60)
+
+
 def build_default_run_contract(job: JobPlan) -> RunContract:
     """Build a sensible default RunContract for a job.
 
@@ -405,14 +425,9 @@ def build_default_run_contract(job: JobPlan) -> RunContract:
     so there is ONE budget authority — JobBudgets is canonical for
     max_tokens and max_runtime_seconds when it specifies them.
     """
-    max_tokens = 200_000
-    max_runtime_seconds = 600
-    budgets = getattr(job, "budgets", None)
-    if budgets is not None:
-        if getattr(budgets, "max_total_tokens", None) is not None:
-            max_tokens = budgets.max_total_tokens
-        if getattr(budgets, "max_wall_clock_minutes", None) is not None:
-            max_runtime_seconds = budgets.max_wall_clock_minutes * 60
+    budget_tokens, budget_runtime = job_budget_limits(job)
+    max_tokens = 200_000 if budget_tokens is None else budget_tokens
+    max_runtime_seconds = 600 if budget_runtime is None else budget_runtime
 
     return RunContract(
         version=1,
@@ -497,17 +512,9 @@ def ensure_contract(job: JobPlan) -> RunContract:
 
 def _reconcile_budget_fields(job: JobPlan, contract: RunContract) -> RunContract:
     """If JobBudgets diverged from the persisted contract, update contract."""
-    budgets = getattr(job, "budgets", None)
-    if budgets is None:
-        return contract
-
-    want_tokens = contract.max_tokens
-    want_runtime = contract.max_runtime_seconds
-
-    if getattr(budgets, "max_total_tokens", None) is not None:
-        want_tokens = budgets.max_total_tokens
-    if getattr(budgets, "max_wall_clock_minutes", None) is not None:
-        want_runtime = budgets.max_wall_clock_minutes * 60
+    budget_tokens, budget_runtime = job_budget_limits(job)
+    want_tokens = contract.max_tokens if budget_tokens is None else budget_tokens
+    want_runtime = contract.max_runtime_seconds if budget_runtime is None else budget_runtime
 
     if want_tokens == contract.max_tokens and want_runtime == contract.max_runtime_seconds:
         return contract
@@ -949,68 +956,3 @@ def export_run_contract_json(contract: RunContract) -> dict[str, Any]:
         "created_at":            contract.created_at,
         "notes":                 contract.notes,
     }
-
-
-def export_run_action_decision_json(decision: RunActionDecision) -> dict[str, Any]:
-    """Export action decision as JSON dict."""
-    return {
-        "allowed": decision.allowed,
-        "status": decision.status,
-        "reason": decision.reason,
-        "next_safe_action": decision.next_safe_action,
-    }
-
-
-def summarize_run_contract(contract: RunContract) -> str:
-    """Return a human-readable summary of the RunContract."""
-    lines: list[str] = []
-    lines.append("Run Contract")
-    lines.append(f"  Version:         {contract.version}")
-    lines.append(f"  Contract ID:     {contract.contract_id}")
-    lines.append(f"  Job:             {contract.job_id[:8]}")
-    lines.append(f"  Scope:           {contract.scope}")
-    lines.append(f"  Autonomy:        {contract.autonomy_level}")
-    lines.append(f"  Model policy:    {contract.model_policy}")
-    lines.append(f"  Command policy:  {contract.command_policy}")
-    lines.append(f"  Max loops:       {contract.max_loops}")
-    lines.append(f"  Max test runs:   {contract.max_test_runs}")
-    lines.append(f"  Max runtime:     {contract.max_runtime_seconds}s")
-    lines.append(f"  Max tokens:      {contract.max_tokens:,}")
-    lines.append(f"  Max cost:        {contract.max_cost_cents} cents")
-    lines.append(f"  Stop before apply: {contract.stop_before_apply}")
-    lines.append(f"  Stop on unknown risk: {contract.stop_on_unknown_risk}")
-    lines.append(f"  Stop on medium risk:  {contract.stop_on_medium_risk}")
-    lines.append(f"  Prefer local:    {contract.prefer_local}")
-    lines.append(f"  No cloud:        {contract.no_cloud}")
-    lines.append(f"  Source:          {contract.source}")
-
-    lines.append("  Allowed actions:")
-    for a in contract.allowed_actions:
-        lines.append(f"    + {a}")
-
-    lines.append("  Denied actions:")
-    for d in contract.denied_actions:
-        lines.append(f"    - {d}")
-
-    if contract.allowed_paths:
-        lines.append("  Allowed paths:")
-        for p in contract.allowed_paths:
-            lines.append(f"    + {p}")
-
-    if contract.denied_paths:
-        lines.append("  Denied paths:")
-        for p in contract.denied_paths:
-            lines.append(f"    - {p}")
-
-    lines.append("  Stop conditions:")
-    for s in contract.stop_conditions:
-        lines.append(f"    * {s}")
-
-    lines.append("  Requires approval for:")
-    for r in contract.requires_approval_for:
-        lines.append(f"    ! {r}")
-
-    if contract.notes:
-        lines.append(f"  Notes: {contract.notes}")
-
-    return "\n".join(lines)

@@ -292,7 +292,7 @@ def test_the_shipped_required_type_set_holds_exactly_the_upgraded_producers():
     membership rather than to containment, so adding a type ahead of its
     producer's upgrade fails here first.
 
-    T002g CLOSED THE SET: all EIGHT producing types are named below, so the gate
+    T002g CLOSED THE SET: every producing type is named below, so the gate
     is fully live.  The two types this list still omits are the two
     ``decision_queue.DECISION_TYPES`` holds with NO PRODUCER AT ALL —
     ``worker_approval`` and ``revert_missing``, per DECISION F031 D3 — which is
@@ -300,7 +300,7 @@ def test_the_shipped_required_type_set_holds_exactly_the_upgraded_producers():
     """
     assert TRIPLE_REQUIRED_TYPES == frozenset({
         "token_budget", "test_failure", "patch_approval", "stop_reason",
-        "repo_dirty", "memory_review", "task_plan_approval", "task_decision",
+        "memory_review", "task_plan_approval", "task_decision",
     })
 
 
@@ -1062,10 +1062,10 @@ def _no_repo_stop_decision() -> HumanDecision:
 
 def _stop_record_naming_a_file() -> StopReason:
     return StopReason(
-        id="derived_dirty_repo",
+        id="derived_unsafe_path",
         job_id="0123456789abcdef",
-        source="git_status",
-        reason_code="dirty_repo_blocks_level",
+        source="patch",
+        reason_code="unsafe_path",
         severity="warning",
         status="active",
         created_at="2026-08-28T00:00:00+00:00",
@@ -1073,8 +1073,8 @@ def _stop_record_naming_a_file() -> StopReason:
         related_node_id="",
         related_intent_id="",
         related_file="packages/core/models.py",
-        safe_summary="Target repository has uncommitted changes.",
-        next_actions=("Commit or stash changes in target repo.",),
+        safe_summary="A patch touches an unsafe path.",
+        next_actions=("Review the patch.",),
     )
 
 
@@ -1111,9 +1111,9 @@ def test_the_stop_reason_card_cites_the_file_when_the_record_names_one(monkeypat
     decision = _related_file_stop_decision(monkeypatch)
 
     assert [(r.kind, r.target, r.label) for r in decision.evidence.refs] == [
-        ("failure", "derived_dirty_repo",
+        ("failure", "derived_unsafe_path",
          "the stop record that raised this decision"),
-        ("failure", "dirty_repo_blocks_level",
+        ("failure", "unsafe_path",
          "the reason code the run recorded"),
         ("file", "packages/core/models.py", "the file this stop is about"),
     ]
@@ -1163,161 +1163,6 @@ def test_a_stop_reason_decision_without_a_triple_is_refused_by_the_gate():
     message = str(excinfo.value)
     assert "sr:regression" in message
     assert "stop_reason" in message
-    assert "evidence_refs is empty: a decision must cite at least one ref." in message
-
-
-# ---------------------------------------------------------------------------
-# F032 T002e — the dirty-repo card, whose whole evidence is one run-log event
-#
-# These drive the REAL branch through `list_decisions` from BOTH shapes the
-# `git_status_read` event actually takes.  The thin one is the metadata
-# `_fixture_repo_dirty` in `tests/orchestration/test_decision_inbox.py` writes —
-# `dirty` and nothing else — and the full one is what the only non-test emitter,
-# the `repo status` command F261 deleted, wrote.  Pinning both is the point: `repo_dirty`
-# is ENFORCED from this round, so an unguarded fingerprint ref would refuse the
-# card on the thin event and take the inbox's per-type parametrization with it.
-# ---------------------------------------------------------------------------
-
-#: Neither half of the one unkeyed outcome varies with what the event carried,
-#: so both are written once and pinned wherever the outcome is asserted.
-REPO_DIRTY_EXPECTED_OUTCOME = (
-    "Committing or stashing the target repository's changes leaves a clean "
-    "tree, so a later diff shows only what this job did."
-)
-REPO_DIRTY_DOWNSIDE = (
-    "The job waits while that happens, and stashing work that is not this "
-    "job's can hide changes their author still needs."
-)
-
-#: The two event shapes, named after where each one comes from.
-THIN_GIT_STATUS_METADATA = {"dirty": True}
-FULL_GIT_STATUS_METADATA = {
-    "is_git_repo": True,
-    "git_available": True,
-    "branch": "feature/f032-evidence-triple",
-    "head_sha": "0216c5bb9d48",
-    "dirty": True,
-    "changed_file_count": 3,
-    "status_hash": "6f1c2d3e4a5b6c7d",
-}
-
-
-def _repo_dirty_decision(metadata: dict) -> HumanDecision:
-    """The card the real branch builds from one dirty `git_status_read`."""
-    events = [{
-        "event": "git_status_read",
-        "timestamp": "2026-08-28T09:00:00+00:00",
-        "metadata": metadata,
-    }]
-    decisions = [d for d in list_decisions(_StubJob(), events)
-                 if d.type == "repo_dirty"]
-    assert len(decisions) == 1
-    return decisions[0]
-
-
-def test_the_thin_git_status_event_still_yields_a_valid_repo_dirty_card():
-    """PINS THE CONDITIONAL: this event carries NO `status_hash`.
-
-    Made unconditional, the fingerprint ref would appear here targeting the
-    empty string, which rule (c) of ``evidence_triple_problems`` refuses
-    outright — and this is `_fixture_repo_dirty`'s own metadata, so the whole
-    inbox would raise instead of rendering.  The event NAME is the receipt that
-    keeps rule (a) satisfied with nothing else on the record.
-    """
-    decision = _repo_dirty_decision(THIN_GIT_STATUS_METADATA)
-
-    assert [(r.kind, r.target, r.label) for r in decision.evidence.refs] == [
-        ("failure", "git_status_read",
-         "the run-log event that reported the working tree dirty"),
-    ]
-    assert evidence_triple_problems(decision.evidence, options=[]) == []
-
-
-def test_the_repo_dirty_card_cites_the_event_and_the_status_fingerprint():
-    """The full metadata the deleted `repo status` command wrote yields both refs."""
-    decision = _repo_dirty_decision(FULL_GIT_STATUS_METADATA)
-
-    assert [(r.kind, r.target, r.label) for r in decision.evidence.refs] == [
-        ("failure", "git_status_read",
-         "the run-log event that reported the working tree dirty"),
-        ("failure", "6f1c2d3e4a5b6c7d",
-         "the status fingerprint that reading recorded"),
-    ]
-
-
-def test_the_repo_dirty_card_cites_no_branch_no_commit_and_no_count():
-    """A2 forbids inventing vocabulary, so three metadata keys stay uncited.
-
-    No kind in ``DECISION_EVIDENCE_REF_KINDS`` types a branch name, a commit or
-    a file count, and a ``file`` or ``failure`` ref pointing at one would lie
-    about what it is.  This fails if a later round cites them anyway.
-    """
-    decision = _repo_dirty_decision(FULL_GIT_STATUS_METADATA)
-    targets = [r.target for r in decision.evidence.refs]
-
-    assert "feature/f032-evidence-triple" not in targets
-    assert "0216c5bb9d48" not in targets
-    assert "3" not in targets
-
-
-@pytest.mark.parametrize(
-    "metadata",
-    [THIN_GIT_STATUS_METADATA, FULL_GIT_STATUS_METADATA],
-    ids=["thin-event", "full-metadata"],
-)
-def test_no_repo_dirty_ref_ever_points_at_nothing(metadata):
-    decision = _repo_dirty_decision(metadata)
-
-    assert decision.evidence.refs
-    assert all(r.target for r in decision.evidence.refs)
-    assert evidence_triple_problems(decision.evidence, options=[]) == []
-
-
-@pytest.mark.parametrize(
-    "metadata",
-    [THIN_GIT_STATUS_METADATA, FULL_GIT_STATUS_METADATA],
-    ids=["thin-event", "full-metadata"],
-)
-def test_the_repo_dirty_card_carries_exactly_one_unkeyed_outcome(metadata):
-    """DECISION F032 D3 rule (h): this branch offers no options at all.
-
-    Its one ``next_action`` is an instruction rather than an option word, so the
-    card keeps an EMPTY payload and owes exactly one outcome for the decision.
-    """
-    decision = _repo_dirty_decision(metadata)
-
-    assert decision.payload == {}
-    assert [(o.option, o.expected_outcome, o.downside)
-            for o in decision.evidence.outcomes] == [
-        (UNKEYED_OPTION, REPO_DIRTY_EXPECTED_OUTCOME, REPO_DIRTY_DOWNSIDE),
-    ]
-    outcome = decision.evidence.outcomes[0]
-    assert outcome.expected_outcome.strip()
-    assert outcome.downside.strip()
-
-
-def test_the_repo_dirty_card_exports_the_present_status():
-    wire = export_decision_json(_repo_dirty_decision(FULL_GIT_STATUS_METADATA))
-
-    assert wire["evidence_status"] == "present"
-    assert wire["evidence_status"] == DECISION_EVIDENCE_STATUS_PRESENT
-    assert wire["evidence_status"] != DECISION_EVIDENCE_STATUS_LEGACY
-
-
-def test_a_repo_dirty_decision_without_a_triple_is_refused_by_the_gate():
-    """`repo_dirty` is ENFORCED from this round, so a dropped triple raises."""
-    decision = _decision(
-        decision_id="dirty_repo",
-        decision_type="repo_dirty",
-        evidence=None,
-    )
-
-    with pytest.raises(DecisionEvidenceError) as excinfo:
-        enforce_decision_evidence([decision])
-
-    message = str(excinfo.value)
-    assert "dirty_repo" in message
-    assert "repo_dirty" in message
     assert "evidence_refs is empty: a decision must cite at least one ref." in message
 
 

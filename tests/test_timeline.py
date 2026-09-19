@@ -994,3 +994,23 @@ class TestTheRunLogSeamHasOneIdSpelling:
 
         events = load_run_events(tmp_path, job_id)
         assert [e["event"] for e in events] == ["project_memory_recalled"]
+
+
+class TestNextActionNamesNoPlaceholder:
+    """R-0970: the next-step tip prints real ids, or names the value in words."""
+
+    @pytest.mark.parametrize("pending", [False, True])
+    def test_rendered_text_has_no_angle_bracket_placeholder(self, pending):
+        import re
+
+        job = _make_job(tasks=[TaskEntry(title="X")] if pending else [])
+        if not pending:
+            job.tasks.append(TaskEntry(title="done", status=RunState.COMPLETED))
+
+        out = summarize_timeline(job, [])
+
+        assert re.findall(r"<[a-z_]+>", out) == []
+        if pending:
+            assert f"remedy job resume {job.job_id}" in out
+        else:
+            assert "remedy do, then the order in quotes" in out

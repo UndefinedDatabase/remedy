@@ -149,17 +149,6 @@ def _build_manifest(
             "excerpt": _redact_secrets((task_input.get("excerpt", "") or "")[:200]),
         }
 
-    # Scope plan summary
-    scope_plan = run_data.get("scope_plan")
-    scope_summary: dict[str, Any] | None = None
-    if scope_plan:
-        scope_summary = {
-            "plan_id": scope_plan.get("plan_id", ""),
-            "feature_count": len(scope_plan.get("features", [])),
-            "approved_count": len(scope_plan.get("approved_features", [])),
-            "denied_count": len(scope_plan.get("denied_features", [])),
-        }
-
     manifest: dict[str, Any] = {
         "bundle_version": "0.1.0",
         "run_id": run_data.get("run_id", ""),
@@ -170,7 +159,6 @@ def _build_manifest(
         "started_at": run_data.get("started_at", ""),
         "finished_at": run_data.get("finished_at", ""),
         "task_input": task_meta,
-        "scope_plan": scope_summary,
         "sections": {
             "manifest.json": "present",
             "summary.md": "present",
@@ -418,7 +406,7 @@ def write_evidence_bundle(
     behaviour bit-for-bit unchanged: no ledger is opened, no project is
     resolved, no file appears anywhere. Naming a target (``ledger_project_id``
     or ``ledger_path``) together with ``ledger_job_id`` and ``ledger_task_id``
-    records this task run as one ledger row. The mirror never changes this
+    records this task run's provider calls as ledger rows. The mirror never changes this
     function's return value and never fails the write —
     see ``_record_finalized_call_in_ledger``.
     """
@@ -534,18 +522,19 @@ def _record_finalized_call_in_ledger(
         # Imported lazily: a run that never asks for a ledger never pays for the
         # import, and the evidence exporter keeps its existing import graph.
         from packages.orchestration.token_ledger import (
-            call_record_from_evidence,
-            record_call,
+            call_records_from_evidence,
+            record_task_run_calls,
         )
 
         if out_path.parent.name != _TASK_RUNS_DIRNAME or out_path.name != str(task_id):
             # Not the task-run layout the ledger mirrors, so there is no honest
             # evidence_ref for the row. No row is invented for it.
             return
-        record = call_record_from_evidence(out_path.parent.parent, job_id, task_id)
-        if record is None:
+        # R-0807: one row per provider call where the evidence lists them.
+        records = call_records_from_evidence(out_path.parent.parent, job_id, task_id)
+        if records is None:
             return
-        record_call(record, project_id=project_id, path=ledger_path)
+        record_task_run_calls(records, project_id=project_id, path=ledger_path)
     except Exception:
         logger.error(
             "token ledger hook FAILED after writing evidence for task %r (the "
@@ -553,40 +542,3 @@ def _record_finalized_call_in_ledger(
             "remain the source of truth and reconcile can heal the mirror)",
             task_id, exc_info=True,
         )
-
-
-# ---------------------------------------------------------------------------
-# CLI entry point
-# ---------------------------------------------------------------------------
-
-def export_evidence(
-    run_id: str,
-    out_dir: str,
-) -> dict[str, Any]:
-    """Load a persisted run and export evidence bundle.
-
-    Returns JSON-serializable result with output paths and manifest.
-    Does not call providers. Does not mutate target repo.
-    """
-    from packages.orchestration.pingpong_loop import load_run
-
-    run_data = load_run(run_id)
-    if run_data is None:
-        return {"error": f"Run {run_id!r} not found", "run_id": run_id}
-
-    bundle = build_evidence_bundle(run_data)
-
-    # Load persisted prompt traces if available
-    from packages.orchestration.data_paths import run_dir
-    trace_file = run_dir(run_id) / "prompt_trace.jsonl"
-    if trace_file.exists():
-        bundle["prompt_trace_jsonl_path"] = str(trace_file)
-
-    written = write_evidence_bundle(bundle, out_dir)
-
-    return _redact_json_value({
-        "run_id": run_id,
-        "out_dir": str(Path(out_dir).resolve()),
-        "files": written,
-        "manifest": bundle["manifest"],
-    })

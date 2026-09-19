@@ -76,6 +76,13 @@ from packages.orchestration.product_smoke import (
     unregister,
 )
 from packages.orchestration.schemas.models import TaskPlan
+from tests.ports import worker_port
+
+#: This file's offset into the per-worker port range of ``tests/ports.py``.
+#: A literal default (it was 5273) is shared by every xdist worker, so the
+#: stopped-port assertions below could reach a port ANOTHER worker had just
+#: bound (R-0569); a per-worker port can only ever be bound by this worker.
+_SMOKE_PORT_OFFSET = 2
 
 FIXTURES = Path(__file__).parent / "fixtures" / "smoke"
 GOOD_APP = FIXTURES / "good_app.py"
@@ -87,9 +94,11 @@ BROKEN_APP = FIXTURES / "broken_start_app.py"
 # ---------------------------------------------------------------------------
 
 def write_runtime_config(root: Path, *, cmd: list[str], health_path: str = "/health",
-                         ready_timeout_s: float = 20.0, port: int = 5273,
+                         ready_timeout_s: float = 20.0, port: int | None = None,
                          env: dict[str, str] | None = None) -> None:
     """The F007 runtime configuration the harness reads to start this project."""
+    if port is None:
+        port = worker_port(_SMOKE_PORT_OFFSET)
     conf = root / ".remedy"
     conf.mkdir(exist_ok=True)
     argv = ", ".join(json.dumps(a) for a in cmd)
@@ -480,6 +489,21 @@ class TestEvidence:
         bare.mkdir()
         ev = run_check(smoke_check(blocking=False), bare)
         assert ev.argv == () and ev.exit_code is None and ev.duration_ms == 0
+
+
+def test_the_default_port_is_owned_by_the_worker(tmp_path, monkeypatch):
+    """R-0569: the stopped-port checks are only sound on a port no other xdist
+    worker can bind, so two workers must never be handed the same default."""
+    seen = {}
+    for worker in ("gw0", "gw5"):
+        monkeypatch.setenv("PYTEST_XDIST_WORKER", worker)
+        root = tmp_path / worker
+        root.mkdir()
+        write_runtime_config(root, cmd=[sys.executable, "app.py"])
+        text = (root / ".remedy" / "config.toml").read_text(encoding="utf-8")
+        seen[worker] = int(text.split("port = ")[1].splitlines()[0])
+        assert seen[worker] == worker_port(_SMOKE_PORT_OFFSET)
+    assert seen["gw0"] != seen["gw5"], seen
 
 
 def test_no_zombie_processes_after_the_suite(tmp_path):

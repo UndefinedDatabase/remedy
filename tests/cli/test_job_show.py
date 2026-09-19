@@ -29,7 +29,9 @@ from packages.orchestration import data_paths
 from packages.orchestration.pingpong_job import (
     TASK_APPLIED,
     TASK_BLOCKED,
+    TASK_PASSED,
     TASK_SKIPPED,
+    TASK_SPLIT,
     JobPlan,
     TaskEntry,
     _export_job,
@@ -37,6 +39,7 @@ from packages.orchestration.pingpong_job import (
     require_job_plan,
     run_job,
     save_job_plan,
+    task_is_done,
 )
 from packages.orchestration.pingpong_loop import load_run
 from packages.orchestration.pingpong_provider import FakeProvider
@@ -393,6 +396,36 @@ class TestSummarySection:
         assert data["synthetic_fields"] == 0
         assert "  Mode:    LIVE" in lines
         assert "  Events:  2" in lines
+
+
+class TestAJobRunnerJobReadsItsTasksAsDone:
+    """R-0898: the job runner marks a finished task `passed` or `applied_to_job_workspace`, never
+    `completed`, and the summary, status and report sections count both as done."""
+
+    def test_passed_and_applied_tasks_are_done_in_all_three_views(self, data_root, capsys) -> None:
+        job = JobPlan(job_title="runner job", state=RunState.COMPLETED, tasks=[
+            TaskEntry(task_id="T001", title="applied", status=TASK_APPLIED),
+            TaskEntry(task_id="T002", title="passed", status=TASK_PASSED),
+            TaskEntry(task_id="T003", title="waiting", status=RunState.PENDING),
+        ])
+        save_job_plan(job)
+
+        shown = _show(capsys, str(job.job_id), "--full")
+
+        sections = json.loads(shown.out)["sections"]
+        for name, heading, line in (("summary", "Summary", "  Tasks:   2/3 done, 1 pending"),
+                                    ("status", "Status", "  Tasks:     2/3 done, 1 pending"),
+                                    ("report", "Report", "  Tasks:     2/3 done, 1 pending")):
+            data = sections[name]["data"]
+            assert (data["task_count"], data["done_count"], data["pending_count"]) == (3, 2, 1), name
+            text = shown.err.split(f"--- {heading} ---\n", 1)[1].split("\n--- ", 1)[0]
+            assert line in text.splitlines(), name
+
+    def test_task_is_done_spans_both_vocabularies_and_nothing_else(self) -> None:
+        done = [TASK_PASSED, TASK_APPLIED, RunState.COMPLETED, "completed"]
+        not_done = [RunState.PENDING, TASK_BLOCKED, TASK_SKIPPED, TASK_SPLIT, "failed", "running"]
+        assert [task_is_done(TaskEntry(status=s)) for s in done] == [True] * len(done)
+        assert [task_is_done(TaskEntry(status=s)) for s in not_done] == [False] * len(not_done)
 
 
 class TestAnUnreadableJobRecord:

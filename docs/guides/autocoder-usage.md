@@ -31,7 +31,7 @@ remedy do "add a hello() function" --repo /tmp/myrepo --builder-provider ollama 
 ### Real Ollama smoke via pytest (opt-in)
 
 ```sh
-REMEDY_REAL_OLLAMA_SMOKE=1 python3 -m pytest tests/orchestration/test_real_do_ollama_smoke.py -v
+REMEDY_REAL_OLLAMA_SMOKE=1 python3 -m pytest tests/orchestration/test_real_ollama_smoke.py::TestRealOllamaSmoke -v
 ```
 
 ### Free VRAM after testing

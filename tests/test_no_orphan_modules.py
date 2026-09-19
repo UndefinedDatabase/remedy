@@ -61,6 +61,8 @@ SKIPPED_DIRS = frozenset({
 RESERVED_NAMESPACES = (
     # A fixture project the gauntlet copies and runs; its modules are its own.
     "scripts/gauntlet_sample_project/",
+    # The bench's own fixture project (DECISION F082 D3), copied and run the same way.
+    "scripts/bench_sample_project/",
 )
 
 #: Modules deliberately without a production importer: (repository path, reason).
@@ -74,15 +76,14 @@ ALLOWED_UNWIRED: tuple[tuple[str, str], ...] = (
     ("packages/orchestration/bench_run.py",
      "F082's on-demand bench run; never implicit by DECISION F082 D9, the one caller its guard permits"),
     ("packages/orchestration/ci_budgets.py",
-     "the ceilings the `budgets` CI stage's tests/orchestration/test_ci_budgets.py compares (DECISION F083 D5)"),
+     "the zero-findings lint rule the `budgets` CI stage's tests/orchestration/test_ci_budgets.py applies "
+     "(DECISION amend0911-feedback D7)"),
     ("packages/orchestration/event_schemas.py",
      "the event metadata registry DECISION F275 D18 keeps for run logs already on disk"),
     ("packages/orchestration/feature_mission_adapter.py",
      "F080's feature-to-mission adapter; its consumer is the self-build loop F248 registers"),
     ("packages/orchestration/hunk_apply.py",
      "F033's hunk apply seam, unwired by design (F033 D4); forbidden by name in the command-channel guard"),
-    ("packages/orchestration/role_conventions.py",
-     "finding R-0981: F105 T002's conventions loaders, which no prompt builder registers yet"),
     ("packages/orchestration/self_use_findings.py",
      "run by hand in every closure, STATUS_closure_protocol.md precondition 6 (F258 T003)"),
     ("packages/orchestration/self_use_generator.py",
@@ -91,8 +92,6 @@ ALLOWED_UNWIRED: tuple[tuple[str, str], ...] = (
      "run by hand in every closure, STATUS_closure_protocol.md precondition 6 (F258 T002); a D11 entry point"),
     ("scripts/remedy_agent_tooling_doctor.py",
      "run by hand after tooling changes, per .claude/skills/remedy-agent-tooling/SKILL.md"),
-    ("scripts/rotate_live_review.py",
-     "run by hand in every closure sequence, per docs/agents/self_drive_protocol.md"),
     ("scripts/self_run_gauntlet.py",
      "the gauntlet campaign CLI, run by hand (docs/adr/0001, gauntlet_evaluator.py names it)"),
 )

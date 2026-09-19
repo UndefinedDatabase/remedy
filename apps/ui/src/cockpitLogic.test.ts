@@ -43,22 +43,6 @@ describe("deriveAgentStatus", () => {
     expect(s.isRunning).toBe(false);
   });
 
-  it("Needs your decision when waiting for approval", () => {
-    const d = baseDashboard({
-      workerStatus: { worker_available: true, worker_id: "w", lifecycle_state: "waiting_for_approval", current_job_id: "", queue_count: 0, heartbeat_at: "", stale: false, why_it_stopped: "", next_command: "", redaction: "" },
-    });
-    expect(deriveAgentStatus(d).status).toBe("Needs your decision");
-  });
-
-  it("Blocked surfaces the stop reason", () => {
-    const d = baseDashboard({
-      workerStatus: { worker_available: true, worker_id: "w", lifecycle_state: "blocked", current_job_id: "", queue_count: 0, heartbeat_at: "", stale: false, why_it_stopped: "budget_exhausted", next_command: "", redaction: "" },
-    });
-    const s = deriveAgentStatus(d);
-    expect(s.status).toBe("Blocked");
-    expect(s.detail).toBe("budget exhausted");
-  });
-
   it("Working only when running", () => {
     const d = baseDashboard({ live: { ...baseDashboard().live, running: true, activeTaskLabel: "Fixing auth" } });
     const s = deriveAgentStatus(d);

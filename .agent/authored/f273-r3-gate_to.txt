@@ -1,0 +1,5 @@
+   `grep '^FAILED' <log> | sort > branch_failed.txt`
+   That list is ONE run's sample, not the branch's failure set (R-0645): an
+   empty list is evidence that this run failed nothing, never proof that the
+   branch introduces no failure, and the gate entry says "this run". A node
+   a later run finds red is attributed by step 3 like any other.

@@ -283,7 +283,7 @@ def check_injections_supported(injections: tuple[str, ...] | list[str]) -> None:
         if name in BLOCKED_INJECTIONS:
             raise MissingSeamError(
                 f"{name} cannot be injected at {BLOCKED_INJECTIONS[name]}: "
-                f"{MISSING_SEAM}")
+                "the loop has no boundary there that degrades the failure")
         raise MissingSeamError(f"unknown injection class {name!r}; the four are "
                                f"{', '.join(INJECTION_CLASSES)}")
 

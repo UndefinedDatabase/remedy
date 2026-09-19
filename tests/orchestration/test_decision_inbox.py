@@ -34,7 +34,6 @@ PRODUCING_DECISION_TYPES = (
     "patch_approval",
     "stop_reason",
     "test_failure",
-    "repo_dirty",
     "token_budget",
     "memory_review",
     "task_plan_approval",
@@ -121,14 +120,6 @@ def _fixture_test_failure() -> tuple[JobPlan, list[dict]]:
     }]
 
 
-def _fixture_repo_dirty() -> tuple[JobPlan, list[dict]]:
-    return _make_job(), [{
-        "event": "git_status_read",
-        "timestamp": "2026-08-23T11:30:00+00:00",
-        "metadata": {"dirty": True},
-    }]
-
-
 def _fixture_token_budget() -> tuple[JobPlan, list[dict]]:
     return _make_job(metadata={"target_repo": "/tmp/repo",
                                "budget_stop_reason": "budget_exhausted"}), []
@@ -164,14 +155,14 @@ def _fixture_proposal() -> tuple[JobPlan, list[dict]]:
     REMEDY_DATA_DIR, so we use that via the data_paths module.
     """
     from pathlib import Path
+
     from packages.orchestration.data_paths import resolve_data_root
+    from packages.orchestration.pingpong_job import save_job_plan
     from packages.orchestration.proposed_tasks import (
         ProposedTask,
         ProposedTaskStatus,
         add_proposed_task,
     )
-
-    from packages.orchestration.pingpong_job import save_job_plan
 
     job = _make_job()
     job_id = str(job.job_id)
@@ -195,7 +186,6 @@ PRODUCING_FIXTURES = {
     "patch_approval": _fixture_patch_approval,
     "stop_reason": _fixture_stop_reason,
     "test_failure": _fixture_test_failure,
-    "repo_dirty": _fixture_repo_dirty,
     "token_budget": _fixture_token_budget,
     "memory_review": _fixture_memory_review,
     "task_plan_approval": _fixture_task_plan_approval,

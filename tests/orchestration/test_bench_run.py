@@ -1,6 +1,7 @@
 """F082 — the bench run end to end, driven with doubles instead of a provider.
 
-No test here calls a model, shells out to ``git`` or writes a project registry.
+No test here calls a model or writes a project registry, and only property 9
+shells out to ``git``, for the real ``materialise``'s copies under tmp_path.
 The whole product path from the FROZEN order set to the history file is
 exercised, and every seam that would leave this machine is substituted at the
 call site through :class:`RunnerDeps`.
@@ -33,9 +34,10 @@ exist.
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import shutil
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import Any
 
@@ -50,10 +52,12 @@ from packages.orchestration.bench_history import (
 from packages.orchestration.bench_orders import (
     BenchOrderSetError,
     default_bench_orders_dir,
+    default_bench_template_dir,
     load_bench_order_set,
 )
 from packages.orchestration.bench_run import run_bench_campaign
-from packages.orchestration.gauntlet_runner import RunnerDeps
+from packages.orchestration.gauntlet_orders import load_order_set, template_tree_digest
+from packages.orchestration.gauntlet_runner import RunnerDeps, materialise_sample_project
 
 SERIES = "bench-run-test"
 
@@ -382,3 +386,60 @@ def test_a_deliberately_degraded_run_triggers_the_pass_drop_warning(
         f"Expected exactly one {REGRESSION_PASS_DROP} warning, for {held}, and "
         f"got {drops}. F082's third DONE condition is that a deliberately "
         "degraded fixture run triggers the regression warning.")
+
+
+# ---------------------------------------------------------------------------
+# 9. EACH ORDER RUNS IN ITS OWN WORLD, AND ITS EVIDENCE NAMES THAT WORLD
+#    — DECISION F082 D3, R-0411
+# ---------------------------------------------------------------------------
+
+GAUNTLET_WORLD = (("sampleproj",), template_tree_digest())
+BENCH_WORLD = (("benchproj",), template_tree_digest(default_bench_template_dir()))
+
+
+def _worlds(tmp_path: Path, data_root: Path, orders_dir: Path | None = None) -> dict:
+    """Per order, the project its workspace holds and the ``template_digest``
+    its ``run.json`` recorded — the REAL materialise (a git copy under
+    tmp_path), every other seam doubled."""
+    deps = replace(NoNetworkRun().deps(), materialise=materialise_sample_project)
+    result = run_bench_campaign(campaign_root=tmp_path / "campaign", data_root=data_root,
+                                history_path=tmp_path / "h.jsonl", series=SERIES,
+                                orders_dir=orders_dir, deps=deps)
+    assert not [o.crashed for o in result.outcomes if o.crashed]
+    return {o.order_id: (tuple(sorted(p.name for p in (o.run_dir / "workspace").iterdir()
+                                      if p.name in {"benchproj", "sampleproj"})),
+                         json.loads((o.run_dir / "run.json").read_text())["template_digest"])
+            for o in result.outcomes}
+
+
+def test_an_order_naming_the_bench_template_runs_in_it_and_its_evidence_says_so(
+        tmp_path: Path, data_root: Path) -> None:
+    """b03, re-pointed in a tmp copy of the set, gets the bench fixture and its
+    digest; every order still naming no bench template keeps the gauntlet's
+    world and digest, and the gauntlet's own frozen set still loads."""
+    orders_dir = tmp_path / "bench_orders"
+    shutil.copytree(default_bench_orders_dir(), orders_dir)
+    path = orders_dir / "b03-cli-render-refactor.json"
+    body = json.loads(path.read_text(encoding="utf-8"))
+    body["bench_template"] = "bench_sample_project"
+    path.write_text(json.dumps(body, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    manifest = json.loads((orders_dir / "manifest.json").read_text(encoding="utf-8"))
+    next(e for e in manifest["orders"] if e["id"] == body["id"])["digests"]["1"] = \
+        hashlib.sha256(path.read_bytes()).hexdigest()
+    (orders_dir / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n",
+                                              encoding="utf-8")
+
+    worlds = _worlds(tmp_path, data_root, orders_dir)
+    assert worlds[body["id"]] == BENCH_WORLD
+    assert worlds["b01-cli-report-width"] == GAUNTLET_WORLD != BENCH_WORLD
+    assert worlds == {o.id: BENCH_WORLD if o.template == "bench_sample_project" else GAUNTLET_WORLD
+                      for o in load_bench_order_set(orders_dir)}
+    assert len(load_order_set()) == 10
+
+
+def test_b04_and_b05_run_in_the_bench_fixture_and_the_rest_in_the_gauntlets(
+        tmp_path: Path, data_root: Path) -> None:
+    fixture_orders = {"b04-api-create-endpoint", "b05-widget-count-badge"}
+    assert _worlds(tmp_path, data_root) == {
+        order.id: BENCH_WORLD if order.id in fixture_orders else GAUNTLET_WORLD
+        for order in load_bench_order_set()}

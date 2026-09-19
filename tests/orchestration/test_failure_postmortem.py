@@ -139,10 +139,55 @@ class TestClassifyEveryClass:
             FailureSignals(runtime_probe_failed=True),
             FailureSignals(error_class="parse"),
             FailureSignals(error_class="config"),
+            # R-0568: the guard's own trip on a non-provider subprocess.
+            FailureSignals(tripped_limit="output_bytes"),
             FailureSignals(),
         ):
             produced.add(classify(signals).failure_class)
         assert produced == set(FailureClass)
+
+
+class TestGuardTrip:
+    """R-0568: a trip the execution guard reports is ``resource_limit``, limit named."""
+
+    @pytest.mark.parametrize("limit", ["wall_timeout", "cpu_seconds", "output_bytes"])
+    def test_a_trip_is_resource_limit_and_the_reason_names_the_limit(self, limit):
+        verdict = classify(FailureSignals(tripped_limit=limit))
+        assert verdict.failure_class is FailureClass.RESOURCE_LIMIT
+        assert verdict.signal_source == FP.SIGNAL_GUARD_TRIP
+        assert verdict.reason == f"tripped_limit={limit}"
+
+    def test_a_trip_beats_the_test_failed_status_the_layer_gave_up_with(self):
+        verdict = classify(FailureSignals(
+            tripped_limit="wall_timeout", terminal_status="test_failed",
+            error_text="Test command timed out after 120s"))
+        assert verdict.failure_class is FailureClass.RESOURCE_LIMIT
+        assert verdict.reason == (
+            "tripped_limit=wall_timeout: Test command timed out after 120s")
+
+    def test_a_typed_provider_timeout_is_never_overridden_by_a_trip(self):
+        """The provider's wall timeout keeps ``provider_timeout``, even beside a trip."""
+        verdict = classify(FailureSignals(
+            exception=subprocess.TimeoutExpired("claude", 60),
+            tripped_limit="wall_timeout"))
+        assert verdict.failure_class is FailureClass.PROVIDER_TIMEOUT
+        assert verdict.signal_source == FP.SIGNAL_TYPED_EXCEPTION
+
+    def test_no_trip_leaves_every_other_signal_where_it_was(self):
+        verdict = classify(FailureSignals(
+            tripped_limit="", terminal_status="test_failed",
+            error_text="Test command timed out after 120s"))
+        assert verdict.failure_class is FailureClass.TEST_FAILED
+
+    def test_the_task_rollup_names_the_limit_in_its_raw_reason(self):
+        class _Task:
+            task_id, run_id, final_status = "T001", "r1", "test_failed"
+            error, tripped_limit = "Test command timed out after 1s", "wall_timeout"
+
+        record = FP.build_task_rollup(_Task(), job_id="J1")
+        assert record.failure_class is FailureClass.RESOURCE_LIMIT
+        assert record.raw_reason.startswith("tripped_limit=wall_timeout")
+        assert record.terminal_status == "test_failed"
 
 
 class TestPrecedence:

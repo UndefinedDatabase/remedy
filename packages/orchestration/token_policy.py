@@ -12,15 +12,12 @@ Public API::
 
     build_default_token_policy(job) -> TokenPolicy
     derive_token_mode(job) -> str
-    export_token_policy_json(policy) -> dict[str, Any]
-    summarize_token_policy(policy) -> str
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
 from types import MappingProxyType
-from typing import Any
 
 from packages.core.models import RunState
 from packages.orchestration.pingpong_job import JobPlan
@@ -128,76 +125,6 @@ def build_default_token_policy(job: JobPlan) -> TokenPolicy:
         budget=MappingProxyType({"local_tokens": budget_local, "expensive_tokens": budget_expensive}),
         future_layers=_DEFAULT_FUTURE_LAYERS,
     )
-
-
-# ---------------------------------------------------------------------------
-# Export
-# ---------------------------------------------------------------------------
-
-
-def export_token_policy_json(policy: TokenPolicy) -> dict[str, Any]:
-    """Export a TokenPolicy as a JSON-serializable dict.
-
-    Includes both canonical field names (default_mode, max_context_tokens, etc.)
-    and detailed breakdown fields (zero_token_steps, local_first_steps, etc.).
-    """
-    return {
-        "version":              policy.version,
-        "job_id":               policy.job_id,
-        "scope":                policy.scope,
-        # Canonical summary fields (Step 56 spec)
-        "default_mode":         "caveman",
-        "max_context_tokens":   policy.budget.get("expensive_tokens", 100_000),
-        "local_first":          True,
-        "remote_model_requires_approval": True,
-        "prefer_zero_token_tools": True,
-        "prohibited_payloads":  list(policy.forbidden_context),
-        # Detailed breakdown
-        "zero_token_steps":     list(policy.zero_token_steps),
-        "local_first_steps":    list(policy.local_first_steps),
-        "expensive_model_steps": list(policy.expensive_model_steps),
-        "forbidden_context":    list(policy.forbidden_context),
-        "compaction_rules":     list(policy.compaction_rules),
-        "budget":               dict(policy.budget),
-        "future_layers":        list(policy.future_layers),
-    }
-
-
-def summarize_token_policy(policy: TokenPolicy) -> str:
-    """Return a human-readable summary of the TokenPolicy."""
-    lines: list[str] = []
-    lines.append("Token Policy")
-    lines.append(f"  Version:  {policy.version}")
-    lines.append(f"  Job:      {policy.job_id[:8]}")
-    lines.append(f"  Scope:    {policy.scope}")
-
-    lines.append("  Zero-token steps (no LLM):")
-    for s in policy.zero_token_steps:
-        lines.append(f"    0 {s}")
-
-    lines.append("  Local-first steps (cheap model):")
-    for s in policy.local_first_steps:
-        lines.append(f"    L {s}")
-
-    lines.append("  Expensive-model steps (frontier):")
-    for s in policy.expensive_model_steps:
-        lines.append(f"    $ {s}")
-
-    lines.append("  Forbidden context (never sent to LLM):")
-    for f in policy.forbidden_context:
-        lines.append(f"    X {f}")
-
-    lines.append("  Compaction rules:")
-    for c in policy.compaction_rules:
-        lines.append(f"    ~ {c}")
-
-    lines.append(f"  Budget: local={policy.budget.get('local_tokens', 0):,}  expensive={policy.budget.get('expensive_tokens', 0):,}")
-
-    lines.append("  Future layers:")
-    for fl in policy.future_layers:
-        lines.append(f"    > {fl}")
-
-    return "\n".join(lines)
 
 
 def derive_token_mode(job: JobPlan) -> str:

@@ -535,7 +535,7 @@ def _same_check(a_kind: Any, a_spec: Any, b_kind: Any, b_spec: Any) -> bool:
 
 
 def merge_contract_slice_into_dod(mission: Any, milestone_id: str | None,
-                                  job_id: str) -> int:
+                                  job_id: str, *, hold_on_milestone: bool = True) -> int:
     """Add a job's slice checks to its stored DoD; return how many were added.
 
     A slice criterion's check is added only when no check already in the DoD
@@ -548,9 +548,12 @@ def merge_contract_slice_into_dod(mission: Any, milestone_id: str | None,
     with ``blocking`` false — a reported check the gate evaluates and never
     holds on, because it describes the mission's end state and one job of a
     many-milestone mission cannot meet it.  A milestone-scoped criterion's
-    check keeps the criterion's ``blocking``.  The criterion's status still
-    follows the evidence (:func:`record_contract_results`), so the mission
-    gate still holds the achieve move on it.
+    check keeps the criterion's ``blocking`` unless ``hold_on_milestone`` is
+    false, when it too is a reported check (R-0977: `do`'s jobs, whose gate
+    evaluates their milestone's criterion without holding the job on it).
+    The criterion's status still follows the evidence
+    (:func:`record_contract_results`), so the mission gate still holds the
+    achieve move on it.
     """
     from packages.orchestration.dod_gate import dod_path, load_dod, store_dod
     from packages.orchestration.dod_schema import DOD_SCHEMA_V, DoD, DoDCheck
@@ -559,7 +562,8 @@ def merge_contract_slice_into_dod(mission: Any, milestone_id: str | None,
     if contract is None:
         return 0
     slice_checks = [DoDCheck.model_validate(
-                        {**c.check, "blocking": c.blocking and bool(c.milestones)})
+                        {**c.check, "blocking": (c.blocking and bool(c.milestones)
+                                                 and hold_on_milestone)})
                     for c in job_contract_slice(contract, milestone_id)
                     if c.check is not None]
     if not slice_checks:

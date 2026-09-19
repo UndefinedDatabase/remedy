@@ -10,13 +10,17 @@ All execution tests are skipped if bash is not on PATH.
 from __future__ import annotations
 
 import os
+import re
 import shutil
 import stat
 import subprocess
+import sys
 import textwrap
 from pathlib import Path
 
 import pytest
+
+from apps.cli.command_catalog import resolve_group
 
 SMOKE_SCRIPT = Path(__file__).resolve().parent.parent / "scripts" / "remedy_smoke.sh"
 _BASH = shutil.which("bash")
@@ -438,19 +442,19 @@ class TestSmokeScriptText:
         )
 
     # ------------------------------------------------------------------
-    # Step 30.12: --task-type on create-job, no plan-job
+    # Step 30.12: task_type= on create-job, no plan-job
     # ------------------------------------------------------------------
 
     def test_create_job_uses_task_type_flag(self):
         text = _script_text()
         assert "task_type=" in text, (
-            "create-job call must use --task-type to bypass planner"
+            "create-job call must pass task_type= to bypass planner"
         )
 
     def test_create_job_uses_write_readme_task_type(self):
         text = _script_text()
         assert "task_type='write_readme'" in text, (
-            "create-job must set --task-type write_readme for smoke determinism"
+            "create-job must set task_type='write_readme' for smoke determinism"
         )
 
     def test_create_job_uses_task_description_flag(self):
@@ -462,18 +466,18 @@ class TestSmokeScriptText:
     def test_plan_job_not_called_in_smoke(self):
         text = _script_text()
         # 'job plan' must not appear as a standalone remedy call in smoke.
-        # The smoke uses --task-type on create to bypass the planner.
+        # The smoke passes task_type= on create to bypass the planner.
         import re
         matches = re.findall(r'remedy\s+job\s+plan\b', text)
         assert matches == [], (
-            "smoke must not call 'remedy job plan' — explicit --task-type replaces the planner. "
+            "smoke must not call 'remedy job plan' — an explicit task_type= replaces the planner. "
             f"Found: {matches}"
         )
 
     def test_smoke_asserts_job_state_planned_after_create(self):
         text = _script_text()
         assert "state" in text and "planned" in text, (
-            "smoke must assert job state=planned after create-job --task-type"
+            "smoke must assert job state=planned after create-job with task_type="
         )
 
     def test_smoke_asserts_single_write_readme_task(self):
@@ -1300,6 +1304,97 @@ class TestSmokeScriptExecution:
         """))
         stub.chmod(stub.stat().st_mode | stat.S_IEXEC | stat.S_IXGRP | stat.S_IXOTH)
         env = {"PATH": f"{stub_dir}:{os.environ.get('PATH', '')}", "HOME": str(tmp_path)}
-        result = _run_in_bash(f"bash '{SMOKE_SCRIPT}'", env=env)
+        # The script writes its log under `.data/smoke/` of its working directory, so
+        # it runs in tmp_path, never in the checkout pytest runs from (R-0803).
+        result = _run_in_bash(f"bash '{SMOKE_SCRIPT}'", env=env, cwd=str(tmp_path))
         # Smoke will fail (stub exits 1), but remedy must have been invoked
         assert called_marker.exists(), "stub remedy was never called by direct run"
+        assert (tmp_path / ".data" / "smoke").is_dir(), "the smoke log did not land in its cwd"
+
+
+# ---------------------------------------------------------------------------
+# F273: the smoke's checks read against the product, not against its own text
+# ---------------------------------------------------------------------------
+
+
+def _line_index(lines: list[str], needle: str) -> int:
+    hits = [i for i, line in enumerate(lines) if needle in line]
+    assert len(hits) == 1, f"{needle!r} is on {len(hits)} lines of the smoke script, not one"
+    return hits[0]
+
+
+def _section_zero_words() -> tuple[list[str], list[str]]:
+    """The words section 0 runs `remedy "${grp}"` over, and the words its OK line prints."""
+    lines = _script_text().splitlines()
+    loop = re.fullmatch(r"\s*for grp in ([a-z ]+); do", lines[_line_index(lines, "for grp in ")])
+    printed = re.search(r"Group help: OK \(([a-z ]+)\)", lines[_line_index(lines, "Group help: OK")])
+    assert loop is not None and printed is not None
+    return loop.group(1).split(), printed.group(1).split()
+
+
+class TestSectionZeroGroupsAreCatalogGroups:
+    """R-0910: no advertised-command guard can read a word out of `"${grp}"`, so this one does."""
+
+    def test_every_word_section_zero_runs_is_a_catalog_group(self):
+        looped, _printed = _section_zero_words()
+        assert looped, "section 0 loops over no group"
+        unknown = [word for word in looped if resolve_group(word) is None]
+        assert unknown == [], f"section 0 runs `remedy <group>` for words the catalog has no group for: {unknown}"
+
+    def test_every_word_section_zero_prints_is_a_word_it_ran(self):
+        looped, printed = _section_zero_words()
+        assert printed and set(printed) <= set(looped), f"section 0 reports {printed}, ran {looped}"
+
+
+def _section_three_job_check() -> str:
+    """The python source section 3 runs over the `job show` output of the job it created."""
+    lines = _script_text().splitlines()
+    start = _line_index(lines, 'remedy job show "${JOB_ID}" > "${_TMP_JOB}"')
+    end = _line_index(lines, '" "${_TMP_JOB}"')
+    assert lines[start + 1].strip() == 'python3 -c "' and start + 2 < end
+    source = "\n".join(lines[start + 2:end]) + "\n"
+    # Inside bash double quotes these three would be rewritten; without them the
+    # extracted text is byte for byte what bash hands to python3.
+    assert not set(source) & {"$", "`", "\\"}
+    return source
+
+
+class TestSectionThreeReadsJobShow:
+    """R-0899: section 3's check runs against `job show` of a job created as section 3 creates it."""
+
+    def test_the_job_check_passes_on_the_job_show_output_of_a_created_job(self, tmp_path, monkeypatch, capsys):
+        from apps.cli.commands.job import _cmd_create_job
+        from apps.cli.grouped import main
+
+        (tmp_path / "data").mkdir()
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
+        monkeypatch.chdir(tmp_path)
+        main(["project", "create", "Smoke Project", "--description", "smoke test project"])
+        project_id = capsys.readouterr().out.strip()
+        _cmd_create_job(
+            "Create exactly one task with task_type write_readme.",
+            project_id=project_id,
+            task_type="write_readme",
+            task_description="Write/update README.md for smoke target.",
+        )
+        job_id = capsys.readouterr().out.strip()
+        main(["job", "show", job_id])
+        shown = tmp_path / "job_show.json"
+        shown.write_text(capsys.readouterr().out)
+
+        result = subprocess.run(
+            [sys.executable, "-c", _section_three_job_check(), str(shown)],
+            capture_output=True, text=True, cwd=tmp_path, timeout=60,
+        )
+
+        assert result.returncode == 0, result.stderr
+        assert "job state=planned, 1 task, task_type=write_readme: OK" in result.stdout
+
+
+class TestSectionTwelveSIsDropped:
+    """R-0980: only the test-only `autonomy_loop.py` emits `token_policy_applied`."""
+
+    def test_no_section_requires_the_token_policy_applied_event(self):
+        text = _script_text()
+        assert '_SMOKE_SECTION="12s"' not in text
+        assert "token_policy_applied" not in text

@@ -249,6 +249,42 @@ class TestUnflaggedProviderResolution:
         assert "reviewer_name" not in captured
         assert isinstance(captured["builder_provider"], FakeProvider)
 
+    def test_an_unflagged_run_records_the_role_configs_models(
+        self, tmp_path, isolate_data_root, demo_repo, monkeypatch
+    ):
+        """R-0890: the job's execution record names the role config's builder and
+        reviewer model, not an empty model with source ``default``. The provider
+        the resolved name would build is swapped for a fake, so nothing leaves
+        the process; the model it was asked for is recorded too."""
+        from packages.orchestration import pingpong_loop
+        from packages.orchestration.role_config import resolve_role_config
+
+        asked: dict = {}
+
+        def _fake_create(name, *, role, model="", **_kw):
+            asked[role] = (name, model)
+            return _pass_provider()
+
+        monkeypatch.setattr(pingpong_loop, "_create_provider_with_cwd", _fake_create)
+        queue_path = _write_queue(tmp_path, [dict(_PENDING_ITEM)])
+
+        _entry, _path, result = run_next_self_use_item(
+            tmp_path / "jobs", str(demo_repo), queue_path=queue_path, repair_rounds=0
+        )
+
+        builder_cfg = resolve_role_config("builder")
+        reviewer_cfg = resolve_role_config("reviewer")
+        assert builder_cfg.model and reviewer_cfg.model
+        ec = result.execution_config
+        assert ec.builder_model == builder_cfg.model
+        assert ec.reviewer_model == reviewer_cfg.model
+        assert ec.builder_model_source != "default"
+        assert ec.reviewer_model_source != "default"
+        assert ec.builder_effort == builder_cfg.effort
+        assert ec.reviewer_effort == reviewer_cfg.effort
+        assert asked["builder"] == (builder_cfg.provider, builder_cfg.model)
+        assert asked["reviewer"] == (reviewer_cfg.provider, reviewer_cfg.model)
+
 
 class TestGenerateThenRunEndToEnd:
     """The Acceptance criterion in ``docs/roadmap/features/T5_F258.md``: one full

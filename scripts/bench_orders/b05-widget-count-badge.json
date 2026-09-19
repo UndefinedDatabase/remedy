@@ -1,0 +1,32 @@
+{
+  "bench_order_version": 1,
+  "bench_template": "bench_sample_project",
+  "budget": {
+    "max_cycles": 4,
+    "max_iterations": 12,
+    "max_tokens": 600000,
+    "max_wall_seconds": 5400
+  },
+  "budget_rationale": "b03's sizing: one milestone confined to two static files plus one test, with no server change. A frontend order has no measured economics here, so the smallest measured sizing applies.",
+  "gauntlet_order_version": 1,
+  "goal": "In the sample project, add an item-count badge to the items widget: the served page gains an element with id item-count, and the script fills it from the /items response with '1 item' for one item, 'N items' otherwise, and 'No items yet' for an empty list, through a pure countLabel(n) function it exports beside renderItems. Judge it at the HTTP level: the served page and script carry the badge, and the service's suite is green.",
+  "id": "b05-widget-count-badge",
+  "injections": [],
+  "kind": "small_app_feature_with_smoke",
+  "milestones": [
+    {
+      "dod": [
+        "GET /widget serves a page containing an element with id item-count",
+        "GET /static/widget.js serves a script that defines and exports countLabel and writes its result into item-count",
+        "countLabel(0), countLabel(1) and countLabel(3) return 'No items yet', '1 item' and '3 items'",
+        "tests/test_api.py pins the served badge and stays green",
+        "no file outside benchproj/web/ and tests/test_api.py changed"
+      ],
+      "id": "m1",
+      "title": "Count badge served and wired"
+    }
+  ],
+  "rationale": "The frontend-widget capability, written against the bench's own fixture because the gauntlet's sample project holds no web asset (R-0411, DECISION F082 D3). F082's Design judges it by build plus the HTTP-level smoke with no browser dependency, and the fixture serves the widget page at /widget and its script at /static/widget.js so that smoke exists before the mission starts. Premise, checked by the bench's own test: neither the served page nor the served script mentions item-count or countLabel today, so the badge is genuinely absent; the script already separates the pure renderItems from the page-touching load, so the order asks the mission to follow a shape the file already shows.",
+  "risk_probed": "static_frontend_change_judged_at_the_http_level",
+  "title": "Add a count badge to a static widget served over HTTP"
+}

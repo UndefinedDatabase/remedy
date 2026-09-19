@@ -150,7 +150,10 @@ class TestExtractRemedyTable:
 
 
 class TestLoadConfig:
-    def test_defaults_no_files(self):
+    def test_defaults_no_files(self, monkeypatch):
+        # These data_dir tests measure resolution with no REMEDY_DATA_DIR set, which
+        # conftest's autouse `_isolated_data_root` (R-0803) sets for every test.
+        monkeypatch.delenv("REMEDY_DATA_DIR", raising=False)
         config = load_config(
             project_path=Path("/nonexistent/project.toml"),
             user_path=Path("/nonexistent/user.toml"),
@@ -160,7 +163,8 @@ class TestLoadConfig:
         assert config.get("data_dir") is None
         assert config.get_source("ollama.host") == ConfigSource.DEFAULT
 
-    def test_project_toml(self, tmp_path):
+    def test_project_toml(self, tmp_path, monkeypatch):
+        monkeypatch.delenv("REMEDY_DATA_DIR", raising=False)
         toml_file = tmp_path / "remedy.toml"
         toml_file.write_text('[remedy]\ndata_dir = "/custom/data"\n')
         config = load_config(
@@ -295,7 +299,8 @@ class TestWriteTomlTemplate:
 
 
 class TestSetConfigValue:
-    def test_creates_file(self, tmp_path):
+    def test_creates_file(self, tmp_path, monkeypatch):
+        monkeypatch.delenv("REMEDY_DATA_DIR", raising=False)
         path = tmp_path / "remedy.toml"
         set_config_value(path, "data_dir", "/custom")
         assert path.exists()
@@ -320,7 +325,8 @@ class TestSetConfigValue:
         if spec and not spec.env_only:
             set_config_value(path, "data_dir", "/ok")
 
-    def test_updates_existing(self, tmp_path):
+    def test_updates_existing(self, tmp_path, monkeypatch):
+        monkeypatch.delenv("REMEDY_DATA_DIR", raising=False)
         path = tmp_path / "remedy.toml"
         set_config_value(path, "data_dir", "/first")
         set_config_value(path, "data_dir", "/second")

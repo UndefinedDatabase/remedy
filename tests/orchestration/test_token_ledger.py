@@ -95,6 +95,7 @@ from packages.orchestration.token_ledger import (
     backfill_ledger,
     call_id_for_task_run,
     call_record_from_evidence,
+    call_records_from_evidence,
     job_id_for_evidence_dir,
     ledger_miss_count,
     merge_cost_reports,
@@ -1394,7 +1395,7 @@ class TestLiveMirrorOnTheProductionPath:
     feature ship switched off.
     """
 
-    def test_a_fake_provider_job_yields_its_task_run_as_a_row(
+    def test_a_fake_provider_job_yields_one_row_per_provider_call(
         self, live_data_root, live_job_repo, tmp_path
     ):
         from packages.orchestration.job_evidence import export_job_evidence
@@ -1412,13 +1413,15 @@ class TestLiveMirrorOnTheProductionPath:
             "supply the ledger_* target itself (finding R-0220)"
         )
 
-        call_id = f"{job.job_id}:T001"
-        assert _call_ids(ledger) == [call_id]
+        # R-0807: one builder call and one reviewer call, one row each.
+        call_id = f"{job.job_id}:T001:1"
+        assert _call_ids(ledger) == [call_id, f"{job.job_id}:T001:2"]
 
         row = _row(ledger, call_id)
         assert row["job_id"] == job.job_id
         assert row["task_id"] == "T001"
-        assert row["evidence_ref"] == "task_runs/T001"
+        assert row["role"] == "builder"
+        assert row["evidence_ref"] == "task_runs/T001#provider_attempts/1"
         assert row["ts_utc"]
         assert row["cost_basis"] in COST_BASES
 
@@ -1434,21 +1437,24 @@ class TestLiveMirrorOnTheProductionPath:
         out = tmp_path / "evidence"
         export_job_evidence(job.job_id, str(out))
 
-        expected = call_record_from_evidence(out, job.job_id, "T001")
-        assert expected is not None, "the exported tree carries no provider evidence"
+        records = call_records_from_evidence(out, job.job_id, "T001")
+        assert records, "the exported tree carries no provider evidence"
+        assert [r.role for r in records] == ["builder", "reviewer"]
 
-        row = _row(token_ledger_path_for(project.id), f"{job.job_id}:T001")
-        for field in (
-            "call_id", "job_id", "task_id", "role", "model",
-            "tokens_in", "tokens_out", "cache_read", "cache_write",
-            "cost_usd", "cost_basis", "ts_utc", "evidence_ref",
-        ):
-            assert row[field] == getattr(expected, field), field
+        for expected in records:
+            row = _row(token_ledger_path_for(project.id), expected.call_id)
+            for field in (
+                "call_id", "job_id", "task_id", "role", "model",
+                "tokens_in", "tokens_out", "cache_read", "cache_write",
+                "cost_usd", "cost_basis", "ts_utc", "evidence_ref",
+            ):
+                assert row[field] == getattr(expected, field), field
 
-        # A fake-provider call reports no price, and an unreported counter must
-        # not have become a zero on the way in (the P6 rule).
-        assert row["cost_usd"] is None
-        assert row["cost_basis"] == COST_BASIS_UNKNOWN
+            # A fake-provider call reports no price, and an unreported counter
+            # must not have become a zero on the way in (the P6 rule).
+            assert row["cost_usd"] is None
+            assert row["tokens_in"] is None
+            assert row["cost_basis"] == COST_BASIS_UNKNOWN
 
     def test_the_live_row_is_the_row_backfill_would_have_written(
         self, live_data_root, live_job_repo, tmp_path
@@ -1470,7 +1476,7 @@ class TestLiveMirrorOnTheProductionPath:
     def test_re_exporting_the_same_job_adds_no_second_row(
         self, live_data_root, live_job_repo, tmp_path
     ):
-        """The call_id is a pure function of (job, task), so a re-export is a no-op."""
+        """The call_id is a pure function of (job, task, seq), so a re-export is a no-op."""
         from packages.orchestration.job_evidence import export_job_evidence
         from packages.orchestration.project_registry import register_project_repo
 
@@ -1482,7 +1488,8 @@ class TestLiveMirrorOnTheProductionPath:
         after_first = _row_count(ledger)
 
         export_job_evidence(job.job_id, str(tmp_path / "second"))
-        assert _row_count(ledger) == after_first == 1
+        # Two rows: the task run's one builder call and one reviewer call (R-0807).
+        assert _row_count(ledger) == after_first == 2
 
     def test_the_export_never_fails_when_the_ledger_cannot_be_written(
         self, live_data_root, live_job_repo, tmp_path, monkeypatch, caplog
@@ -2313,9 +2320,10 @@ class TestCostTruthOnTheJobRunPath:
         assert report.total.measured_calls == 0
         assert report.total.unmeasured_calls >= 1
 
-        row = _row(token_ledger_path_for(project.id), f"{job.job_id}:T001")
-        assert row["cost_usd"] is None
-        assert row["cost_basis"] == COST_BASIS_UNKNOWN
+        for seq in (1, 2):
+            row = _row(token_ledger_path_for(project.id), f"{job.job_id}:T001:{seq}")
+            assert row["cost_usd"] is None
+            assert row["cost_basis"] == COST_BASIS_UNKNOWN
 
     def test_the_measured_row_carries_the_provider_reported_basis(
         self, live_data_root, live_job_repo,
@@ -2327,10 +2335,15 @@ class TestCostTruthOnTheJobRunPath:
         job = _run_measured_job(live_job_repo)
         mirror_job_run_into_ledger(job.job_id)
 
-        row = _row(token_ledger_path_for(project.id), f"{job.job_id}:T001")
-        assert row["cost_basis"] == COST_BASIS_PROVIDER_REPORTED
-        assert row["cost_usd"] is not None
-        assert row["tokens_in"] is not None and row["tokens_in"] > 0
+        # R-0807: each row carries ITS call's own figures — one call's usage,
+        # not the task run's two-call aggregate and not a split of it.
+        for seq, role in ((1, "builder"), (2, "reviewer")):
+            row = _row(token_ledger_path_for(project.id), f"{job.job_id}:T001:{seq}")
+            assert row["role"] == role
+            assert row["cost_basis"] == COST_BASIS_PROVIDER_REPORTED
+            assert row["cost_usd"] == _MeasuredStubProvider.USAGE["total_cost_usd"]
+            assert row["tokens_in"] == _MeasuredStubProvider.USAGE["input_tokens"]
+            assert row["tokens_out"] == _MeasuredStubProvider.USAGE["output_tokens"]
 
     def test_mirroring_twice_adds_no_second_row(
         self, live_data_root, live_job_repo,
@@ -2417,3 +2430,101 @@ class TestJobRunActuallyCallsTheMirror:
         err = capsys.readouterr().err
         assert "Cost NOT recorded to the ledger" in err
         assert "backfill-ledger" in err
+
+
+# ---------------------------------------------------------------------------
+# R-0807 (the F260 acceptance line) — every provider call is one ledger row
+# ---------------------------------------------------------------------------
+
+#: Two tasks. With the stock FakeProvider defaults each fails its first review
+#: and passes its second, so each task makes two rounds of builder + reviewer.
+_TWO_TASK_JOB_FILE = """\
+# Job: One row per call
+
+## Task 1
+Add a greeting.
+
+Acceptance:
+- file exists
+
+## Task 2
+Add a farewell.
+
+Acceptance:
+- file exists
+"""
+
+
+def _run_two_task_two_round_fake_job(repo):
+    """Named, not injected: each task run builds its OWN FakeProvider, so each
+    task starts at round 1 and makes four calls (a shared instance makes six)."""
+    from packages.orchestration.pingpong_job import parse_job_file, run_job
+
+    plan = parse_job_file(_TWO_TASK_JOB_FILE, str(repo))
+    return run_job(plan.job_id, builder_name="fake", reviewer_name="fake", repair_rounds=2)
+
+
+def _provider_calls_of(job):
+    """The run records' own list of provider calls, task by task."""
+    from packages.orchestration.pingpong_loop import load_run
+
+    return [
+        call for task in job.tasks
+        for call in load_run(task.run_id)["provider_evidence"]["provider_attempts"]
+    ]
+
+
+class TestOneRowPerProviderCall:
+    def test_a_two_task_two_round_job_has_one_row_per_call_and_both_roles(
+        self, live_data_root, live_job_repo,
+    ):
+        from packages.orchestration.job_evidence import mirror_job_run_into_ledger
+        from packages.orchestration.project_registry import register_project_repo
+
+        project = register_project_repo("one-row-per-call", str(live_job_repo))
+        job = _run_two_task_two_round_fake_job(live_job_repo)
+        assert mirror_job_run_into_ledger(job.job_id)["ledger_mirrored"] is True
+
+        calls = _provider_calls_of(job)
+        ledger = token_ledger_path_for(project.id)
+        assert _row_count(ledger) == len(calls) == 8
+        assert [(c["seq"], c["round"], c["role"]) for c in calls[:4]] == [
+            (1, 1, "builder"), (2, 1, "reviewer"), (3, 2, "builder"), (4, 2, "reviewer")]
+
+        report = query_cost(project_id=project.id, job_id=job.job_id, by="role")
+        assert [(r.bucket, r.calls) for r in report.rows] == [("builder", 4), ("reviewer", 4)]
+        assert report.total.calls == 8
+
+    def test_backfill_supersedes_a_task_runs_old_row_instead_of_double_counting(
+        self, live_data_root, live_job_repo, tmp_path,
+    ):
+        from packages.orchestration.job_evidence import export_job_evidence
+
+        job = _run_two_task_two_round_fake_job(live_job_repo)
+        out = tmp_path / "evidence"
+        export_job_evidence(job.job_id, str(out))
+        ledger = tmp_path / "ledger.sqlite"
+        for task in ("T001", "T002"):   # rows a pre-R-0807 ledger holds for this job
+            assert record_call(CallRecord(
+                call_id=call_id_for_task_run(job.job_id, task), job_id=job.job_id,
+                task_id=task, role="builder", ts_utc="2026-09-01T00:00:00+00:00",
+            ), path=ledger)
+
+        before = verify_ledger(out, path=ledger)
+        assert before.orphan_rows == [f"{job.job_id}:T001", f"{job.job_id}:T002"]
+
+        assert backfill_ledger(out, path=ledger).recorded == 2
+        assert _row_count(ledger) == 8
+        assert not any(cid.count(":") == 1 for cid in _call_ids(ledger))
+        assert verify_ledger(out, path=ledger).has_drift is False
+
+    def test_evidence_without_per_call_records_keeps_its_one_task_run_row(self, tmp_path):
+        """Pre-R-0807 evidence: attempts listed without `seq`, usage only in aggregate."""
+        _write_json_file(tmp_path / "task_runs" / "T001" / "provider_evidence.json", {
+            "provider_attempts": [{"role": "builder"}, {"role": "reviewer"}],
+            "usage": {"input_tokens": 7, "output_tokens": 3},
+        })
+
+        [record] = call_records_from_evidence(tmp_path, "job-old", "T001")
+        assert record.call_id == "job-old:T001"
+        assert (record.tokens_in, record.tokens_out) == (7, 3)

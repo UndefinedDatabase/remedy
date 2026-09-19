@@ -991,18 +991,17 @@ class TestChecklistSchemaAndLabels:
             assert item["state"] in ("done", "current", "pending", "blocked", "suggested"), f"bad state: {item['state']}"
             assert isinstance(item["checked"], bool)
 
-    def test_memory_candidate_in_checklist(self):
-        from packages.orchestration.memory_candidates import create_candidate
+    def test_a_memory_candidate_a_record_still_holds_is_not_listed(self):
+        """F273 R-0992: nothing writes the store and no word decides a candidate,
+        so the checklist lists none, even from a record written before."""
         from packages.orchestration.ui_view_model import build_checklist
 
         job = _make_job_s163()
-        create_candidate(job, "repair_pattern", "Repair fixed mul")
-        events = _make_events()
-        cl = build_checklist(job, events)
+        job.metadata = {"memory_candidates": [
+            {"id": "c1", "status": "pending", "safe_summary": "Repair fixed mul"}]}
+        cl = build_checklist(job, _make_events())
 
-        mem_items = [i for i in cl["items"] if i["kind"] == "memory"]
-        assert len(mem_items) >= 1
-        assert "Repair fixed mul" in mem_items[0]["label"]
+        assert [i for i in cl["items"] if i["kind"] == "memory"] == []
 
 
 # ===========================================================================

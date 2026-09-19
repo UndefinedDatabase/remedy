@@ -12,8 +12,9 @@ existing approval-gated path — while the raw provider diff stays private.
 
 Remedy deliberately has NO command that creates or inspects material any more: the
 intake and material-show commands were deleted with the Provider Trust Gate by
-F275 T001. Only `load_materials` — a pure read of material already on disk — survives,
-and R-0867 records which feature should reap the rest.
+F275 T001. On 2026-09-19 F273 deleted the module itself for finding R-0867, because
+nothing outside its own tests imported it any more, so this page describes code that
+no longer exists; material already on disk is not read by anything.
 
 ## accepted ≠ materialized ≠ applied
 

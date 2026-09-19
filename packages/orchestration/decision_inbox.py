@@ -124,8 +124,8 @@ def _answerable_by_decision_resolve(job: Any, decision_id: Any) -> bool:
     if str(decision_id).startswith("proposal:"):
         from packages.orchestration.data_paths import resolve_job_id
         from packages.orchestration.proposed_tasks import (
-            get_proposed_task,
             ProposedTaskStatus,
+            get_proposed_task,
         )
         job_id = resolve_job_id(str(getattr(job, "job_id", "")))
         task_id = str(decision_id)[9:]  # Remove "proposal:" prefix

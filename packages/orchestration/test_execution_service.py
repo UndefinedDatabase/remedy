@@ -476,12 +476,13 @@ def _validate_linkage(
                 next_safe_action=f"remedy job show {job.job_id} --json",
             )
     if intent_id:
-        # Intent IDs live in artifacts / metadata — check metadata
-        known_intents: set[str] = set()
-        for art in (job.artifacts or []):
-            pi = art.metadata.get("patch_intents") or {}
-            known_intents.update(pi.keys())
-        if intent_id not in known_intents:
+        # R-0921: resolved through the key the approval path writes
+        # (`patch_intent_explanations`), the same lookup `patch approve` and
+        # `patch apply` use. Nothing writes the `patch_intents` key this gate
+        # once read, so every intent id was refused.
+        from packages.orchestration.approval_queue import _find_artifact_for_intent
+
+        if _find_artifact_for_intent(job, intent_id) is None:
             return TestExecutionDecision(
                 allowed=False,
                 gate="linkage",
@@ -561,8 +562,8 @@ def execute_test_run(
 ) -> TestExecutionResult:
     """Run a test for a job. Enforces all gates. Returns a safe result.
 
-    This is the single entry point. CLI, repair_loop, and future flows all
-    call here. No raw output returned.
+    This is the single entry point. The CLI and future flows all call here.
+    No raw output returned.
 
     Args:
         request: Test execution request.

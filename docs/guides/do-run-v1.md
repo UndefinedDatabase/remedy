@@ -21,7 +21,7 @@ remedy do run "add a hello() function" --repo . --json
 | `init` | Registers the repository as a project if it is not one (or selects `--project`), and adds the ignore entries; writes no file into the repository. |
 | `study` | Studies the repository once, and only when it holds a commit with a tracked file; skipped when already studied. |
 | `plan` | Creates the mission record for the order, records the order, writes the contract template forced by `--contract` or proposed from the order onto it, and plans it. |
-| `shape` | Reads the shape from the plan — one job, or milestones — or from `--force-job` / `--force-mission`, and plans the jobs, each linked to the mission. |
+| `shape` | Reads the shape from the plan — one job, or milestones — or from `--force-job` / `--force-mission`, and plans the jobs, each linked to the mission and to the milestone it serves: the one whose outline it came from, or the plan's only milestone. Its gate evaluates that milestone's planner criterion, and never holds the job on it (R-0977, 2026-09-19). |
 | `run` | Runs the first job on the chosen builder and reviewer; in a walk of two or more jobs the rest wait until the job before them is applied and committed. Under a commit flag no job waits: each job but the last is run, applied and committed (or merged) before the next job's worktree is cut. |
 | `ui` | Opens the cockpit for the job that ran as a detached process, unless `--no-ui`. |
 | `apply` | Stops before apply and prints the apply command for each job that ran, unless `--apply` or a commit flag, which applies them; with a push, it then pushes the mission once. |
@@ -103,7 +103,8 @@ Read from the `do.run` catalog entry in `apps/cli/command_catalog.py`:
 - `--push` — only with a commit flag. Push is a mission-level act: `do` never
   passes it to a job's apply, and pushes the last commit it landed ONCE, after
   the last job, to the branch's configured upstream, never forced. A push is
-  held only by a blocking contract criterion that is `unmet`; each one still
+  held only by a blocking contract criterion that is `unmet` — a planner
+  criterion the repository's test suite does not pass is one; each one still
   `open`, which no check has evaluated yet, is named in the output and in
   `push`. In a walk of one job an `unmet` criterion refuses before anything is
   applied; in a walk of several the commits land and the push is refused. A
@@ -130,17 +131,18 @@ run with a commit flag push exactly as `--push` would; set without a commit flag
 
 ## Next-line commands
 
-`validate_next_safe_action_command` in `packages/orchestration/do_run.py`
-checks that a `remedy <group> <subcommand> ...` command names a real
-`<group>.<subcommand>` entry of the command catalog; `DoRunNextAction` in the
-same module is the label, command and reason of one next action, which
-`packages/orchestration/repair_loop.py` builds its results with.
+`DoRunNextAction` in `packages/orchestration/do_run.py` is the label, command
+and reason of one next action; the repair loop that built its results with it
+was deleted by F273 (R-0923), so no production module imports it now. The check that a `remedy <group> <subcommand> ...`
+command names a real `<group>.<subcommand>` entry of the command catalog is the
+test helper `names_catalog_command` in `tests/orchestration/catalog_commands.py`
+(R-0903).
 
 ## Source Files
 
 - `packages/orchestration/do_sequence.py` — the steps, `DO_SEQUENCE` and the walker
 - `apps/cli/commands/do_cmd.py` — CLI wiring and the output
-- `packages/orchestration/do_run.py` — `DoRunNextAction` and `validate_next_safe_action_command`
+- `packages/orchestration/do_run.py` — `DoRunNextAction`
 - `tests/cli/test_do_sequence_cli.py`, `tests/cli/test_do_flags.py` — the sequence through the CLI
 - `tests/orchestration/test_do_run.py` — the Next-line validator and the `do.run` catalog metadata
 

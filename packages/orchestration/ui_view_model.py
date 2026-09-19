@@ -1034,18 +1034,7 @@ def build_checklist(job: Any, events: list[dict[str, Any]]) -> dict[str, Any]:
     # Patch intents / approvals from events
     for e in events:
         etype = e.get("event", "")
-        if etype == "structured_patch_intent_created":
-            items.append({
-                "id": f"change-{len(items)}",
-                "label": "Proposed change",
-                "state": "done",
-                "kind": "change",
-                "checked": True,
-                "muted": False,
-                "node_id": "",
-                "next_action": {},
-            })
-        elif etype == "source_patch_applied":
+        if etype == "source_patch_applied":
             items.append({
                 "id": f"apply-{len(items)}",
                 "label": "Applied change",
@@ -1080,37 +1069,6 @@ def build_checklist(job: Any, events: list[dict[str, Any]]) -> dict[str, Any]:
                 "node_id": "",
                 "next_action": {},
             })
-
-    # Memory candidates from job metadata
-    candidates = (job.metadata or {}).get("memory_candidates", [])
-    for c in candidates:
-        items.append({
-            "id": c.get("id", f"mem-{len(items)}"),
-            "label": f"Memory: {c.get('safe_summary', 'candidate')[:40]}",
-            "state": "current" if c.get("status") == "pending" else "done",
-            "kind": "memory",
-            "checked": c.get("status") in ("approved", "rejected"),
-            "muted": c.get("status") != "pending",
-            "node_id": "",
-            "next_action": {
-                "label": "Review candidate",
-                "command": f"remedy memory candidates {str(job.job_id)[:8]}",
-            } if c.get("status") == "pending" else {},
-        })
-
-    # Reviewer recommendations
-    recs = (job.metadata or {}).get("reviewer_recommendations", [])
-    for r in recs:
-        items.append({
-            "id": r.get("id", f"review-{len(items)}"),
-            "label": f"Review: {r.get('safe_summary', 'suggestion')[:40]}",
-            "state": "suggested" if r.get("status") == "pending" else "done",
-            "kind": "review",
-            "checked": r.get("status") in ("accepted", "rejected"),
-            "muted": r.get("status") != "pending",
-            "node_id": "",
-            "next_action": {},
-        })
 
     return {
         "version": 1,

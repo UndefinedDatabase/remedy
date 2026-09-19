@@ -110,6 +110,22 @@ class TestLedgerTierPicksTheOldestEligibleFinding:
         assert entry is not None
         assert "R-0020" in entry.title
 
+    def test_a_finding_a_consumed_entry_targeted_is_skipped_for_the_next(self, tmp_path: Path):
+        """R-0838: the oldest open finding already has a consumed item, so the next one is picked."""
+        ledger = _write_ledger(tmp_path, [
+            _finding("R-0010", "Low", "Oldest, and already run once."),
+            _finding("R-0020", "Low", "Next oldest, never run."),
+        ])
+        queue_path = _write_queue(tmp_path, [_queue_item(
+            consumed_by="F001",
+            title="Address ledger finding R-0010",
+            provenance="generated (self-use-generator tier 1, ledger scan, R-0010)",
+        )])
+        entry = generate_self_use_item(queue_path=queue_path, ledger_path=ledger)
+        assert entry is not None
+        assert entry.title == "Address ledger finding R-0020"
+        assert entry.provenance == "generated (self-use-generator tier 1, ledger scan, R-0020)"
+
     def test_no_eligible_finding_answers_none(self, tmp_path: Path):
         ledger = _write_ledger(tmp_path, [_finding("R-0010", "Critical", "Ineligible only.")])
         entry = generate_self_use_item(
@@ -226,6 +242,25 @@ class TestAppendGeneratedItem:
         assert len(loaded) == 2
         assert loaded[0].id == "SU-001"
         assert loaded[0].consumed_by == "F001"
+
+    def test_non_ascii_it_did_not_author_keeps_its_bytes(self, tmp_path: Path):
+        """R-0785: an append leaves every byte before the new item as it was."""
+        queue_path = tmp_path / "self_use_queue.json"
+        body = {
+            "schema_version": 2,
+            "description": "curated — by hand, § 3 → here",
+            "items": [_queue_item(consumed_by="F001", why="An em dash — kept.")],
+        }
+        queue_path.write_text(json.dumps(body, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+        before = queue_path.read_bytes()
+        untouched = before[: -len(b"\n  ]\n}\n")]
+        ledger = _write_ledger(tmp_path, [_finding("R-0010", "Low")])
+        entry = generate_self_use_item(queue_path=queue_path, ledger_path=ledger)
+        assert entry is not None
+        append_generated_item(entry, queue_path)
+        after = queue_path.read_bytes()
+        assert after.startswith(untouched)
+        assert b"\\u" not in after
 
     def test_the_appended_jobmarkdown_parses_as_a_single_task_job(
         self, tmp_path: Path, isolate_data_root

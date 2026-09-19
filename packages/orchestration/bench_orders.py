@@ -49,20 +49,37 @@ from packages.orchestration.gauntlet_orders import (
     MANIFEST_FILENAME,
     GauntletOrder,
     OrderSetError,
+    default_template_dir,
     file_sha256,
     load_order,
+    template_tree_digest,
 )
 
 #: Bench-set version, bumped by a human when the set itself deliberately changes
 #: (an order added or removed). Per-ORDER versions are independent of it: an
 #: order's series is its own, which is the comparability honesty F082 asks for.
-BENCH_ORDER_SET_VERSION = 1
+#: v2 (R-0411, DECISION F082 D3) adds b04 and b05 against the bench's own
+#: fixture. No count or series is keyed on this number, so the bump resets
+#: nothing: b01 to b03 keep their version 1 bytes and their series.
+BENCH_ORDER_SET_VERSION = 2
+
+#: The worlds an order's ``bench_template`` key may name; absent is the gauntlet's.
+#: The bench owns its own project so the gauntlet's stays frozen (DECISION F082 D3).
+TEMPLATE_GAUNTLET = "gauntlet_sample_project"
+TEMPLATE_BENCH = "bench_sample_project"
+BENCH_TEMPLATES = (TEMPLATE_GAUNTLET, TEMPLATE_BENCH)
 
 
 def default_bench_orders_dir(repo_root: Path | None = None) -> Path:
     """Where the frozen bench set lives. One spelling, so nothing loads a copy."""
     root = repo_root or Path(__file__).resolve().parents[2]
     return root / "scripts" / "bench_orders"
+
+
+def default_bench_template_dir(repo_root: Path | None = None) -> Path:
+    """The bench-owned sample project (DECISION F082 D3). Never the gauntlet's."""
+    root = repo_root or Path(__file__).resolve().parents[2]
+    return root / "scripts" / TEMPLATE_BENCH
 
 
 class BenchOrderSetError(RuntimeError):
@@ -90,6 +107,12 @@ class BenchOrder:
 
     order: GauntletOrder
     version: int
+    #: Which sample project the order runs in, one of :data:`BENCH_TEMPLATES`.
+    template: str = TEMPLATE_GAUNTLET
+
+    def template_dir(self) -> Path:
+        """The directory this order's world is copied from."""
+        return default_bench_template_dir() if self.template == TEMPLATE_BENCH else default_template_dir()
 
     @property
     def id(self) -> str:
@@ -122,7 +145,11 @@ def load_bench_order(path: Path) -> BenchOrder:
     _require(isinstance(version, int) and not isinstance(version, bool) and version >= 1,
              f"{path.name}: bench_order_version must be a positive integer, "
              f"found {version!r}")
-    return BenchOrder(order=order, version=int(version))
+    template = body.get("bench_template", TEMPLATE_GAUNTLET)
+    _require(template in BENCH_TEMPLATES,
+             f"{path.name}: bench_template must be one of {BENCH_TEMPLATES}, "
+             f"found {template!r}")
+    return BenchOrder(order=order, version=int(version), template=template)
 
 
 def load_bench_manifest(orders_dir: Path | None = None) -> dict[str, Any]:
@@ -143,7 +170,8 @@ def load_bench_manifest(orders_dir: Path | None = None) -> dict[str, Any]:
     return body
 
 
-def load_bench_order_set(orders_dir: Path | None = None) -> tuple[BenchOrder, ...]:
+def load_bench_order_set(orders_dir: Path | None = None,
+                         bench_template_dir: Path | None = None) -> tuple[BenchOrder, ...]:
     """The bench set in manifest order, with every freeze check applied.
 
     Raises :class:`BenchOrderSetError` on the FIRST thing that does not hold: a
@@ -155,6 +183,13 @@ def load_bench_order_set(orders_dir: Path | None = None) -> tuple[BenchOrder, ..
     directory = orders_dir or default_bench_orders_dir()
     manifest = load_bench_manifest(directory)
     entries: list[dict[str, Any]] = manifest["orders"]
+
+    # Checked first: the bench freezes its own world as the gauntlet freezes its.
+    declared = str(manifest.get("bench_template_digest", ""))
+    actual_template = template_tree_digest(bench_template_dir or default_bench_template_dir())
+    _require(declared == actual_template,
+             f"{MANIFEST_FILENAME}: the bench sample project was edited: digest "
+             f"{actual_template} does not match bench_template_digest {declared!r}")
 
     listed = [str(entry.get("file", "")) for entry in entries]
     for name in listed:

@@ -20,9 +20,9 @@ from packages.orchestration.gauntlet_evaluator import (
 )
 from packages.orchestration.gauntlet_matrix import (
     MATRIX_JSON_FILENAME,
-    TOKENS_UNMEASURED_LABEL,
     MATRIX_MARKDOWN_FILENAME,
     MATRIX_VERSION,
+    TOKENS_UNMEASURED_LABEL,
     matrix_json,
     matrix_json_bytes,
     render_matrix_markdown,

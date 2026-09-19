@@ -209,14 +209,14 @@ class TestArchitectureGuards:
     def test_next_actions_catalog_backed(self, env):
         # The command the ATTEMPT ITSELF reports must resolve in the shipped catalog —
         # not a string this test supplies, which is what it used to assert.
-        from packages.orchestration.do_run import validate_next_safe_action_command
+        from tests.orchestration.catalog_commands import names_catalog_command
         job, pt = _approved_task(env)
         r = SE.start_self_execution(pt.id, str(job.job_id), env)
         assert r.next_safe_action
-        assert validate_next_safe_action_command(r.next_safe_action)
+        assert names_catalog_command(r.next_safe_action)
         rec = SE.reconcile_self_attempt(r.attempt_id, env)
         assert rec.next_safe_action
-        assert validate_next_safe_action_command(rec.next_safe_action)
+        assert names_catalog_command(rec.next_safe_action)
 
 
 # ---------------------------------------------------------------------------

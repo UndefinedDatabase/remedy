@@ -35,7 +35,7 @@ thing, or one word for two things.
 | **Task** | One step in a job plan; the planner chooses how many, bounded by configured maxima that are ceilings, not targets. | three spellings for one idea: `TaskEntry` in `packages/orchestration/pingpong_job.py`, alongside the `TASK_PENDING` to `TASK_SPLIT` state constants, `max_tasks` and the converters `task_entry_to_planned_task` and `planned_task_to_task_entry`; and `PlannedTask` and `ProposedTask` in `packages/orchestration/schemas/models.py` | one task type (F260) | no group of its own; it appears as `job run <id> --tasks n` and `job context <id> --task <t>` | a Round |
 | **Run** | One execution of the ping-pong loop for exactly one Task, owning exactly one evidence folder. | `RunState` in `packages/core/models.py`; `run_id`, `run_job` and the `run_manifest_path`, `run_manifest_created_at` and `run_manifest_episodes` fields in `packages/orchestration/pingpong_job.py`; `runs_dir` in `packages/orchestration/data_paths.py`. The word also names a provider call in one place and a whole execution in another | `run` means the per-task execution and nothing else | `run show <id>` and `run list` after F261; today the verb is scattered across `job run`, `do run`, `mission run` and more | the verb; a dogfood run; the run manifest |
 | **Round** | One pass inside a run: build, then tests, then review. Round 2 and later are repairs. | `max_rounds`, `max_rounds_source`, `repair_rounds_allowed`, `repair_rounds_used` and `repair_rounds_source` in `packages/orchestration/pingpong_job.py` | unchanged | none | a Task — a task can take several rounds |
-| **Worker** | A model in a role. The roles are Builder, Reviewer, Planner and Teacher, and the list is extensible. | nothing spells the concept itself; the roles appear as the `builder_model` and `reviewer_model` fields in `packages/orchestration/pingpong_job.py` | unchanged as a type, but the report names the ROLE and never says "Worker: fake" for a builder (DECISION amend0905-vocab D1) | the `worker` group: `list`, `show`, `resources`, `unload`, `status`, `doctor` after F261 | — |
+| **Worker** | A model in a role. The roles are Builder, Reviewer, Planner and Teacher, and the list is extensible. | nothing spells the concept itself; the roles appear as the `builder_model` and `reviewer_model` fields in `packages/orchestration/pingpong_job.py` | unchanged as a type, but the report names the ROLE and never says "Worker: fake" for a builder (DECISION amend0905-vocab D1) | the `worker` group: `list`, `show`, `resources`, `unload`, `doctor` after F261 and F273 | — |
 | **Decision** | A question Remedy cannot answer for itself, put to the human and answered with one command. | `HumanDecision` in `packages/orchestration/decision_queue.py`; the flight-plan approval path spells the same idea as `task_plan_approval_open` and `resolve_task_plan_approval` in `packages/orchestration/job_plan.py` | the approval stays a Decision; the retired noun leaves its name with DECISION amend0905-vocab D6 | the `decision` group: `list`, `show`, `resolve`, `explain` | a DECISION paragraph in `.agent/decisions.md`, which is Remedy's own build record and not a user concept |
 | **Evidence** | What one Run leaves behind: exactly one folder per task run, holding the inputs, the outputs and the proofs. | `build_evidence_bundle` in `packages/orchestration/pingpong_evidence.py`; `stream_evidence` and `job_evidence_dir` in `packages/orchestration/pingpong_job.py`; `mission_evidence_dir` in `packages/orchestration/mission_state.py`; `evidence_exports_dir` in `packages/orchestration/data_paths.py` | unchanged | `job evidence <id>`; `do evidence` until F261 deletes it | the run manifest, which is one file inside the folder |
 | **Gate** | A check that must pass before the work may proceed; it decides, and it records what it decided from. | `GateResult` in `packages/orchestration/dod_gate.py`, the only type under `packages/` named for the concept itself rather than for one particular gate; nothing in the seven sources spells it | unchanged | none | a Verdict — the gate is the check, the verdict is the Reviewer's judgement |
@@ -56,6 +56,28 @@ Where a cell names a module outside that list —
 amend0905-vocab D1 gave that word no table row and told F259 to write one from
 the feature that owns the concept; they were found by searching every `.py`
 file under `packages/` and under `apps/`.
+
+Status (2026-09-19, F273 finding R-0914): an operator repair is attested no
+longer. `attest_operator_repair`, which wrote an operator's hand-fix into a job's
+Evidence folder as an attested task, lost its only command word with F261 and is
+deleted, so no command records an operator repair, and `job evidence` no longer
+carries an attested task into its export. What survives is the closure
+evidence producer `create_manual_completion_bundle` in
+`packages/orchestration/job_evidence.py`, which writes its own operator-attested
+tasks through `packages/orchestration/manual_attestation.py`, and the
+attestable-source policy and safe-diff hashing in
+`packages/orchestration/repair_attest.py` that it, the review subject and the
+review package builders share.
+
+Status (2026-09-19, F273 finding R-0992): a job has no memory candidates any
+more. The goal-driven path, `autorun`, was the only code that wrote a candidate
+onto a job's record, and it is deleted, so the `memory_candidates` module, the
+words `memory candidates`,
+`memory approve-candidate` and `memory reject-candidate`, the cockpit's candidate
+count and checklist items, and the `dev status` key `memory_candidates_ok` are
+deleted with it. A candidate a job record written before still holds is not
+read. What a job taught is kept by `memory learn`, which writes proposed memory
+cards that `memory card-approve` and `memory card-reject` decide.
 
 ## Do not confuse these
 
@@ -93,6 +115,12 @@ own budget, its fences and its own **Plan** — and that plan is a list of
 **Tasks**. Each task is executed by exactly one **Run**, which owns exactly one
 evidence folder. Inside a run the work happens in **Rounds**: round 1 builds and
 reviews, and every later round repairs.
+
+A job's plan waits for your approval before any task runs. A plan you reject
+stays rejected: Remedy does not make a job's plan again. You answer it with a
+new order — `remedy do`, with `--plan-only` to read the new plan before anything
+runs. `remedy mission list --status planned` lists the missions no job has
+started yet, and `remedy mission show` prints the whole ledger a mission's runs wrote.
 
 Everything above the Run is bookkeeping. The Run is where a model actually
 writes code, and the evidence folder it leaves behind is what you read
@@ -182,7 +210,8 @@ The commands per surviving group:
   budget <id> [set …]`. Permissions, fences, assumptions, digest, summary, status,
   report, dod are sections of `job show --full`; they are not commands.
 - `run show <id> | list`.
-- `worker list | show | resources | unload | status | doctor`.
+- `worker list | show | resources | unload | doctor`. (`status` was deleted by DECISION F273 D17,
+  findings R-0927 and R-0928: nothing wrote the status it read.)
 - All other surviving groups keep their commands minus anything that imports a
   deleted module.
 

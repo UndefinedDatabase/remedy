@@ -88,13 +88,44 @@ def _cmd_mission_start(goal: str, *, project: str | None = None,
           f"{mission.id[:12]} \"<next step>\"")
 
 
-def _cmd_mission_list(*, project: str | None = None, all_projects: bool = False,
-                      json_output: bool = False) -> None:
+#: R-0904: `planned` is no stored status. It is an ACTIVE mission no job has
+#: started — none linked yet, or every linked job still pending or planned —
+#: which is what a queued goal was.
+MISSION_LIST_STATUS_PLANNED = "planned"
+_NOT_STARTED_JOB_STATES = ("pending", "planned")
+
+
+def _mission_has_status(mission: Any, status: str) -> bool:
     from packages.orchestration.mission_state import (
+        MISSION_STATUS_ACTIVE,
+        mission_job_state_label,
+    )
+
+    if status != MISSION_LIST_STATUS_PLANNED:
+        return bool(mission.status == status)
+    return mission.status == MISSION_STATUS_ACTIVE and all(
+        mission_job_state_label(link.job_id) in _NOT_STARTED_JOB_STATES
+        for link in mission.job_links)
+
+
+def _cmd_mission_list(*, project: str | None = None, all_projects: bool = False,
+                      json_output: bool = False, sort: str | None = None,
+                      desc: bool = False, since: str | None = None,
+                      until: str | None = None, limit: str | None = None,
+                      status: str | None = None) -> None:
+    from packages.orchestration.list_options import ListOptionError, apply_list_options
+    from packages.orchestration.mission_state import (
+        MISSION_STATUSES,
         list_missions_safe,
         project_ids_with_missions,
         render_mission_row,
     )
+
+    valid_statuses = (*MISSION_STATUSES, MISSION_LIST_STATUS_PLANNED)
+    if status is not None and status not in valid_statuses:
+        print(f"Error: --status must be one of {', '.join(valid_statuses)}.",
+              file=sys.stderr)
+        sys.exit(EXIT_USAGE)
 
     if all_projects:
         project_ids = project_ids_with_missions()
@@ -106,7 +137,23 @@ def _cmd_mission_list(*, project: str | None = None, all_projects: bool = False,
     for project_id in project_ids:
         missions, _degraded, skipped = list_missions_safe(project_id)
         skipped_total += len(skipped)
-        rows.extend((project_id, mission) for mission in missions)
+        rows.extend((project_id, mission) for mission in missions
+                    if status is None or _mission_has_status(mission, status))
+    try:
+        rows = apply_list_options(
+            rows,
+            sort=sort, desc=desc, since=since, until=until, limit=limit,
+            sort_fields={
+                "created_at": lambda r: (r[1].created_at, r[1].id),
+                "status": lambda r: r[1].status,
+                "goal": lambda r: r[1].goal,
+            },
+            default_sort_field="created_at",
+            date_getter=lambda r: r[1].created_at or None,
+        )
+    except ListOptionError as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        sys.exit(EXIT_ERROR)
 
     if json_output:
         print(_json.dumps({
@@ -166,22 +213,25 @@ def _cmd_mission_show(mission_id: str, *, project: str | None = None,
         MISSION_STATUS_PAUSED,
         render_mission_chain,
     )
+    from packages.orchestration.orchestrator_loop import read_ledger, render_ledger
 
     project_id = _resolve_project_id(project)
     mission = _load_mission_or_exit(project_id, mission_id)
+    # R-0929: the WHOLE ledger, every run's entries, read and never appended to.
+    ledger = read_ledger(project_id, mission.id)
 
     # The PAUSE is the condition, not the history: a mission that ran past an
     # old trip and is active again is not waiting for anybody.
     trips: list[Any] = []
     if mission.status == MISSION_STATUS_PAUSED:
-        from packages.orchestration.orchestrator_loop import read_ledger
         from packages.orchestration.watchdog import latest_trips_from_ledger
 
-        trips = latest_trips_from_ledger(read_ledger(project_id, mission.id))
+        trips = latest_trips_from_ledger(ledger)
 
     if json_output:
         print(_json.dumps({"version": 1, "mission": _mission_json(mission),
-                           "watchdog_trips": [t.to_json() for t in trips]},
+                           "watchdog_trips": [t.to_json() for t in trips],
+                           "ledger": ledger},
                           sort_keys=True))
         return
 
@@ -199,6 +249,11 @@ def _cmd_mission_show(mission_id: str, *, project: str | None = None,
         print("")
     for line in render_mission_chain(mission):
         print(line)
+    # An unrun mission prints no section, so its output is unchanged.
+    if ledger:
+        print("")
+        print(f"Ledger ({len(ledger)} entries):")
+        print(render_ledger(ledger))
 
 
 def _cmd_mission_plan(mission_id: str, *, project: str | None = None,
@@ -628,6 +683,12 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
         project=getattr(args, "project", None),
         all_projects=getattr(args, "all_projects", False),
         json_output=getattr(args, "json", False),
+        sort=getattr(args, "sort", None),
+        desc=getattr(args, "desc", False),
+        since=getattr(args, "since", None),
+        until=getattr(args, "until", None),
+        limit=getattr(args, "limit", None),
+        status=getattr(args, "status", None),
     ),
     "mission.continue": lambda args: _cmd_mission_continue(
         args.mission_id,

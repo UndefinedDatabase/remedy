@@ -60,6 +60,17 @@ TASK_SKIPPED = "skipped"
 # "the job blocked and this never got a chance."
 TASK_SPLIT = "split"
 
+#: R-0898: the statuses of a task whose work is done, over BOTH task vocabularies. The job
+#: runner writes TASK_PASSED and then TASK_APPLIED; the fulfillment, mission and queue paths
+#: write RunState.COMPLETED. Skipped and split tasks did no work of their own, so they are not done.
+TASK_DONE_STATUSES = frozenset({TASK_PASSED, TASK_APPLIED, RunState.COMPLETED.value})
+
+
+def task_is_done(task: object) -> bool:
+    """True when ``task``'s status is one of ``TASK_DONE_STATUSES`` (a string or a ``RunState``)."""
+    status = getattr(task, "status", None)
+    return (status.value if isinstance(status, RunState) else str(status)) in TASK_DONE_STATUSES
+
 # F112 T003b1: every TaskEntry's model-routing class, honestly defaulted rather
 # than inferred from title text (DECISION F112 D2) — the seeded
 # model_routing.TASK_CLASS_TIERS key F016's own build/repair tasks already are.
@@ -200,6 +211,10 @@ class TaskEntry:
     # F270 T001, DECISION F270 D1 (4): the commit this task landed on the job worktree
     # branch once applied; "" when none was made (copy mode, or not applied yet).
     worktree_commit: str = ""
+    # R-0568: the execution guard's `tripped_limit` on this task's last test run when
+    # that run did not pass; "" otherwise. The task post-mortem classifies it as
+    # `resource_limit` and names the limit.
+    tripped_limit: str = ""
 
 
 # F112 T003b2a: translates a live TaskEntry into the granularity machinery's
@@ -920,6 +935,7 @@ def _export_job(job: JobPlan) -> dict[str, Any]:
                 "output_artifact_ids": t.output_artifact_ids,
                 "budget": t.budget,
                 "worktree_commit": t.worktree_commit,
+                "tripped_limit": t.tripped_limit,
             }
             for t in job.tasks
         ],
@@ -1028,6 +1044,8 @@ def _import_job(data: dict[str, Any]) -> JobPlan:
             budget=t.get("budget"),
             # A record written before F270 carries no key: the task has no commit.
             worktree_commit=str(t.get("worktree_commit", "") or ""),
+            # A record written before R-0568 carries no key: no trip was recorded.
+            tripped_limit=str(t.get("tripped_limit", "") or ""),
         ))
     return job
 
@@ -2368,6 +2386,15 @@ def run_job(
     _accumulated_tokens = _prior_validated.get("total_tokens", 0)
     _accumulated_measured = _prior_validated.get("actual_call_count", 0)
     _accumulated_unmeasured = _accumulated_provider_calls - _accumulated_measured
+    # R-0986: the run's OWN cost-side triple, seeded from the persisted record (a
+    # version-1 record decodes to None, 0, 0). One row per provider attempt the
+    # task-run evidence lists, fake ones included, classified exactly as the
+    # ledger classifies that row — so it is the ledger's count, not a second one.
+    _own_cost_usd = _prior_validated.get("measured_cost_usd")
+    _own_priced = _prior_validated.get("priced_call_count", 0)
+    _own_unpriced = _prior_validated.get("unpriced_call_count", 0)
+    # The ledger triple the latest safe point read, or None when it read none.
+    _last_ledger_money = None
     # F018 Scope 7: compute _run_started_at from persisted first_running_at on resume.
     # Invalid or timezone-naive values block — never silently become now().
     _run_started_at = datetime.now(timezone.utc)
@@ -2431,18 +2458,58 @@ def run_job(
     def _on_provider_call(attempt):
         nonlocal _accumulated_provider_calls, _accumulated_tokens
         nonlocal _accumulated_measured, _accumulated_unmeasured
+        nonlocal _own_cost_usd, _own_priced, _own_unpriced
+        # R-0986: the cost side counts BEFORE the fake skip, because the ledger
+        # holds a row for every attempt `_build_provider_evidence` lists. The
+        # value and its validation are the ledger's own: `total_cost_usd` read
+        # by `token_truth._strict_cost`, priced when it is not None.
+        from packages.orchestration.token_truth import TokenEvidenceError, _strict_cost
+        try:
+            _cost = _strict_cost(getattr(attempt, "usage_actuals", None) or {},
+                                 "total_cost_usd", "provider_attempt")
+        except TokenEvidenceError:
+            _cost = None  # a corrupt figure is never a price
+        if _cost is None:
+            _own_unpriced += 1
+        else:
+            _own_priced += 1
+            _own_cost_usd = (_own_cost_usd or 0.0) + _cost
         if getattr(attempt, "provider", "fake") == "fake":
             return
         _accumulated_provider_calls += 1
         ua = getattr(attempt, "usage_actuals", None)
         if ua is not None:
             _accumulated_measured += 1
+            # R-0987: `usage_actuals` is a DICT (`_usage_actuals_dict`), so an
+            # attribute read was always 0. The total is `_aggregate_usage_actuals`'
+            # own: input plus output, cache tokens excluded, read the same way.
             _accumulated_tokens += (
-                getattr(ua, "input_tokens", 0) +
-                getattr(ua, "output_tokens", 0)
+                int(ua.get("input_tokens", 0) or 0) +
+                int(ua.get("output_tokens", 0) or 0)
             )
         else:
             _accumulated_unmeasured += 1
+
+    def _money_kwargs(*, always=False):
+        """The cost-side triple, as ``collect_counters_from_actuals`` kwargs.
+
+        R-0986: two observations of ONE counting basis — the ledger's rows and
+        the run's own tally of the same rows' figures — and the one covering MORE
+        rows wins whole; the fields are never mixed or added across the two. The
+        ledger leads for history this record never saw (a version-1 past, an
+        unpersisted exit); the run's own tally leads for calls not yet mirrored.
+        Empty when neither saw a row (unless *always*), so the counters keep
+        their defaults.
+        """
+        own = (_own_cost_usd, _own_priced, _own_unpriced)
+        best = own
+        if _last_ledger_money is not None and (
+                _last_ledger_money[1] + _last_ledger_money[2] > _own_priced + _own_unpriced):
+            best = _last_ledger_money
+        if best[1] + best[2] == 0 and not always:
+            return {}
+        return {"measured_cost_usd": best[0], "priced_call_count": best[1],
+                "unpriced_call_count": best[2]}
 
     def _build_budget_counters():
         """The counters this safe point evaluates against — built ONCE per check.
@@ -2452,7 +2519,9 @@ def run_job(
         prediction that disagrees with the backstop it is supposed to precede is
         worse than no prediction.
         """
+        nonlocal _last_ledger_money
         from packages.orchestration.budget_guard import collect_counters_from_actuals
+        _last_ledger_money = None
         _actuals = {
             "provider_call_count": _accumulated_provider_calls,
             "actual_call_count": _accumulated_measured,
@@ -2463,13 +2532,14 @@ def run_job(
         # F104: a `--max-cost-usd` limit is only enforceable if the guard knows what
         # the job has really cost, and the F103 ledger is the only place a real
         # provider cost figure lives. Skipped entirely when no cost limit is set —
-        # a SQLite query per safe point for a limit nobody configured is waste, and
-        # skipping keeps every existing budget path byte for byte unchanged.
+        # a SQLite query per safe point for a limit nobody configured is waste; such
+        # a job is priced by the run's own tally of the same rows (R-0986).
         if _job_budgets is not None and _job_budgets.max_cost_usd is not None:
             # WHY the swallow: budgets read a MIRROR — the ledger reflects evidence
             # files that are already the source of truth — and a broken mirror must
-            # never stop a healthy job. Any failure leaves the cost UNMEASURED
-            # (None, never 0.0 — P6) and the token/call/time limits still enforce.
+            # never stop a healthy job. Any failure leaves the cost to the run's
+            # own tally (None when it priced nothing, never 0.0 — P6) and the
+            # token/call/time limits still enforce.
             try:
                 from packages.orchestration.budget_guard import (
                     collect_ledger_cost_for_job as _collect_ledger_cost,
@@ -2485,31 +2555,32 @@ def run_job(
                     # All THREE ledger figures travel together: the priced count
                     # is what the cost side validates against, so discarding it
                     # is what made R-0224 (DECISION F104 D5).
-                    _ledger_cost, _ledger_priced, _ledger_unpriced = _collect_ledger_cost(
-                        job_id=job.job_id, project_id=_ledger_project)
+                    _last_ledger_money = tuple(_collect_ledger_cost(
+                        job_id=job.job_id, project_id=_ledger_project))
                     counters = collect_counters_from_actuals(
                         _actuals,
                         started_at=_run_started_at,
                         actual_sources=_sources,
-                        measured_cost_usd=_ledger_cost,
-                        unpriced_call_count=_ledger_unpriced,
-                        priced_call_count=_ledger_priced,
+                        **_money_kwargs(always=True),
                     )
             except Exception:
                 import logging as _logging
                 _logging.getLogger(__name__).error(
-                    "budget ledger cost read FAILED for job %r; the cost stays "
-                    "unmeasured for this safe point and the run continues (the "
+                    "budget ledger cost read FAILED for job %r; this safe point "
+                    "prices the job from the run's own tally and continues (the "
                     "evidence files remain the source of truth and the remaining "
                     "budget limits are unaffected)",
                     job.job_id, exc_info=True,
                 )
+                _last_ledger_money = None
                 counters = None
         if counters is None:
+            # R-0986: with no ledger figure, the run's own tally prices the job.
             counters = collect_counters_from_actuals(
                 _actuals,
                 started_at=_run_started_at,
                 actual_sources=_sources,
+                **_money_kwargs(),
             )
         return counters
 
@@ -2603,14 +2674,24 @@ def run_job(
         if _accumulated_measured > _prior_validated.get("actual_call_count", 0) if _prior_validated else _accumulated_measured > 0:
             _sources.add("pingpong_live")
         _sources.discard("persisted_resume")
+        from packages.orchestration.budget_guard import (
+            PERSISTED_ACTUALS_SCHEMA_VERSION as _actuals_schema_version,
+        )
+        # R-0753, R-0986: the money is the same cost-side triple the safe points
+        # evaluate — the latest ledger read or the run's own tally, whichever
+        # covers more rows, with the tally as of NOW so a call made after the
+        # last safe point is not dropped. No ledger is read here. The cost is
+        # None (unpriced, never 0.0) when no row was priced.
+        _money = _money_kwargs(always=True)
         job.budget_actuals = {
-            "schema_version": "1.0.0",
+            "schema_version": _actuals_schema_version,
             "provider_call_count": _accumulated_provider_calls,
             "actual_call_count": _accumulated_measured,
             "total_tokens": _accumulated_tokens,
             "started_at": _run_started_at.isoformat(),
             "actual_sources": tuple(sorted(_sources)),
             "unmeasured_call_count": _accumulated_unmeasured,
+            **_money,
         }
 
     # F018: allocate episode BEFORE computing budget identity so the stop
@@ -2701,6 +2782,7 @@ def run_job(
         _persist_job(job)
 
         tasks_run = 0
+        task_log = None     # R-0812: opened when the first task starts, one run id per call
         previous_summaries: list[TaskProofSummary] = []
         job_baselines: dict[str, tuple[bool, str]] = {}
 
@@ -2836,6 +2918,9 @@ def run_job(
                         _persist_job(job)
                         continue
 
+            if task_log is None:
+                task_log = _open_task_log(job)
+            _log_task_started(task_log, task)
             try:
                 result = run_pingpong(
                     task.title,
@@ -2880,8 +2965,11 @@ def run_job(
                 task.error = f"pingpong_exception: {exc}"
                 job.state = JOB_BLOCKED
                 job.error = f"task_{task.task_id}_failed: {exc}"
+                _log_task_ended(task_log, task, "pingpong_exception")
                 _persist_job(job)
                 return job
+
+            _log_task_rounds(task_log, task, result)
 
             # Record task result
             task.run_id = result.run_id
@@ -2891,11 +2979,13 @@ def run_job(
             task.safe_diff_files = list(result.safe_diff_files)
             task.repair_rounds_used = result.repair_rounds_used
             task.repair_rounds_allowed = result.repair_rounds_allowed
+            task.tripped_limit = ""           # this attempt's trip only, never a stale one
 
             # Extract test/reviewer info from rounds
             if result.rounds:
                 last_round = result.rounds[-1]
                 task.test_passed = last_round.test_passed
+                task.tripped_limit = last_round.test_tripped_limit
                 if last_round.reviewer_output:
                     task.reviewer_verdict = last_round.reviewer_output.verdict
 
@@ -2903,6 +2993,7 @@ def run_job(
             # its evidence is in the run record; the task never reached its completion/apply
             # boundary, so it goes back to `pending` and the job is stopped — NOT blocked,
             # NOT failed, and never dressed up as a provider or review failure.
+            # R-0812: so it writes no task_run_* terminal; `job_stopped` closes the log.
             if result.final_status == "stopped":
                 from packages.orchestration.safe_points import StopSignal as _StopSignal
                 signal = _StopSignal(
@@ -2926,6 +3017,7 @@ def run_job(
             if not gate_ok:
                 task.status = TASK_BLOCKED
                 task.error = f"completion_gate_failed: {'; '.join(gate_reasons)}"
+                _log_task_ended(task_log, task, "completion_gate_failed")
                 _block_job(job, idx, f"task_{task.task_id}_gate_failed: {'; '.join(gate_reasons)}")
                 return job
 
@@ -2937,6 +3029,7 @@ def run_job(
             if pre_guard.target_mutated:
                 task.status = TASK_BLOCKED
                 task.error = f"target_repo_mutated: {pre_guard.changed_target_files}"
+                _log_task_ended(task_log, task, "target_repo_mutated")
                 _block_job(job, idx, "target_repo_mutated_during_job")
                 return job
 
@@ -2958,6 +3051,7 @@ def run_job(
             if manifest.status != "applied":
                 task.status = TASK_BLOCKED
                 task.error = f"workspace_apply_blocked: {_manifest_block_reason(manifest)}"
+                _log_task_ended(task_log, task, "workspace_apply_blocked")
                 _block_job(job, idx, f"task_{task.task_id}_workspace_apply_blocked")
                 return job
 
@@ -2970,6 +3064,7 @@ def run_job(
             if post_guard.target_mutated:
                 task.status = TASK_BLOCKED
                 task.error = f"target_repo_mutated_after_apply: {post_guard.changed_target_files}"
+                _log_task_ended(task_log, task, "target_repo_mutated_after_apply")
                 _block_job(job, idx, "target_repo_mutated_after_apply")
                 return job
 
@@ -3000,9 +3095,11 @@ def run_job(
                     # D1 (5): a failed commit blocks the job; nothing is retried silently.
                     task.status = TASK_BLOCKED
                     task.error = f"worktree_commit_failed: {type(exc).__name__}: {exc}"
+                    _log_task_ended(task_log, task, "worktree_commit_failed")
                     _block_job(job, idx, f"task_{task.task_id}_worktree_commit_failed")
                     return job
 
+            _log_task_ended(task_log, task, "pass")
             tasks_run += 1
             _persist_job(job)
 
@@ -3129,20 +3226,33 @@ def resume_job_plan(job_id: str, **run_kwargs: Any) -> JobPlan:
     if job.state == JOB_COMPLETED and job.worktree_cleanup_status == "clean":
         return job                      # nothing to resume; do not recreate anything
 
-    if job.isolation_mode == "worktree":
-        if job.worktree_cleanup_status not in JOB_RECOVERABLE_STATES:
-            raise ValueError(
-                f"job_not_resumable: worktree cleanup_status="
-                f"{job.worktree_cleanup_status!r}"
-            )
-        from packages.orchestration import worktrees as W
-        if not W._branch_exists(job.repo_path, job.worktree_branch):
-            raise ValueError(
-                f"job_branch_missing: {job.worktree_branch!r}; refusing to create "
-                f"a replacement branch or fall back to a copy"
-            )
+    refusal = job_resume_refusal(job)
+    if refusal:
+        raise ValueError(refusal)
 
     return run_job(job_id, **run_kwargs)
+
+
+def job_resume_refusal(job: JobPlan) -> str:
+    """The reason a worktree job's recorded workspace cannot be continued, or ``""``.
+
+    One answer for ``resume_job_plan`` and the ``job run`` command (R-0913): a
+    cleanup status outside ``JOB_RECOVERABLE_STATES`` or a recorded branch that no
+    longer exists is refused, never rebuilt. A completed, cleanly cleaned job has
+    nothing to continue and is not refused here.
+    """
+    if job.isolation_mode != "worktree":
+        return ""
+    if job.state == JOB_COMPLETED and job.worktree_cleanup_status == "clean":
+        return ""
+    if job.worktree_cleanup_status not in JOB_RECOVERABLE_STATES:
+        return (f"job_not_resumable: worktree cleanup_status="
+                f"{job.worktree_cleanup_status!r}")
+    from packages.orchestration import worktrees as W
+    if not W._branch_exists(job.repo_path, job.worktree_branch):
+        return (f"job_branch_missing: {job.worktree_branch!r}; refusing to create "
+                f"a replacement branch or fall back to a copy")
+    return ""
 
 
 def _block_job(job: JobPlan, failed_idx: int, error: str) -> None:
@@ -3584,6 +3694,54 @@ def _write_stop_postmortem(job: JobPlan, signal: Any, task_id: str) -> None:
             f"stop_postmortem_write_failed: {type(write_exc).__name__}: {write_exc}")[:500]
 
 
+#: R-0812: what a task-lifecycle write may raise. It fails soft, as
+#: `safe_points._emit_budget_tick` does: a missing line must not stop the run it reports on.
+_TASK_LOG_ERRORS = (OSError, RuntimeError, ValueError, TypeError)
+
+
+def _open_task_log(job: JobPlan) -> Any:
+    """The job's run-log writer for task lifecycle events, or None if it cannot open."""
+    try:
+        from packages.orchestration.run_log import RunLogWriter
+        return RunLogWriter(job.job_id)
+    except _TASK_LOG_ERRORS:
+        return None
+
+
+# The event names below stay INLINE literals: tests/ui_contracts/test_humanize_catalog.py
+# derives the stream vocabulary from `.log("<name>", ...)` call sites.
+def _log_task_started(log: Any, task: TaskEntry) -> None:
+    """``task_run_started`` in the shape the timeline, cockpit and trust report read."""
+    try:
+        if log is not None:
+            log.log("task_run_started", task_id=task.task_id, task_type=task.task_class)
+    except _TASK_LOG_ERRORS:
+        pass
+
+
+def _log_task_rounds(log: Any, task: TaskEntry, result: Any) -> None:
+    """One ``task_round_completed`` per ping-pong round, with the reviewer's verdict."""
+    try:
+        for rnd in (result.rounds if log is not None else ()):
+            verdict = rnd.reviewer_output.verdict if rnd.reviewer_output else ""
+            log.log("task_round_completed", task_id=task.task_id,
+                    outcome=verdict or "no_review", round_number=rnd.round_number,
+                    round_kind=rnd.kind, test_passed=rnd.test_passed)
+    except _TASK_LOG_ERRORS:
+        pass
+
+
+def _log_task_ended(log: Any, task: TaskEntry, outcome: str) -> None:
+    """``task_run_completed`` for ``pass``, else ``task_run_failed`` naming the block."""
+    try:
+        if log is not None and outcome == "pass":
+            log.log("task_run_completed", task_id=task.task_id, outcome=outcome)
+        elif log is not None:
+            log.log("task_run_failed", task_id=task.task_id, outcome=outcome)
+    except _TASK_LOG_ERRORS:
+        pass
+
+
 def _append_job_stopped_event(job: JobPlan, signal: Any, task_id: str) -> None:
     """Exactly one ``job_stopped`` ledger event per CONSUMED request.
 
@@ -3756,6 +3914,7 @@ def _stop_job(job: JobPlan, signal: Any, *, task: TaskEntry | None,
 
     # --- 5. the durable STOPPED checkpoint --------------------------------------------
     job.state = JOB_STOPPED
+    job.finished_at = datetime.now(timezone.utc).isoformat()   # R-0828
     job.error = ""
     _persist_job(job)                 # if THIS throws, the request is still pending: good
 

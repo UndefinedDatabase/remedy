@@ -32,10 +32,8 @@ from packages.orchestration.run_manifest import (
     ManifestConflictError,
     ManifestError,
     RunManifestV1,
-    build_current_candidate,
     build_input_snapshot,
     build_run_manifest,
-    diff_manifests,
     is_secret_key,
     probe_provider_version,
     read_run_manifest,
@@ -411,27 +409,6 @@ class TestUniqueCallIdentity:
         assert len(keys) == len(set(keys))
         assert len({c.identity.task_id for c in m.calls}) == 2
 
-    def test_changing_one_of_two_same_role_calls_is_detected(self):
-        ref = _mk(calls=(_call("T001", 1, fp="h1"), _call("T002", 2, fp="h2")))
-        cand = _mk(calls=(_call("T001", 1, fp="h1"), _call("T002", 2, fp="CHANGED")))
-        diff = diff_manifests(ref, cand)
-        assert diff["same_inputs"] is False
-        assert any(e["category"] == "prompt" for e in diff["blocking"])
-
-    def test_reordered_calls_are_detected(self):
-        a = _call("T001", 1, fp="h1")
-        b = _call("T002", 2, role="reviewer", fp="h2")
-        ref = _mk(calls=(a, b))
-        # swap the sequence numbers so the ORDER differs (same fingerprints)
-        a2 = FinalizedCall(identity=CallIdentity(job_id="j", task_id="T001", run_id="rT001",
-                           sequence=2, role="builder", round=1, kind="attempt", call_id="c1"),
-                           fingerprint="h1", prepared_input={}, fingerprint_source="x", ok=True)
-        b2 = FinalizedCall(identity=CallIdentity(job_id="j", task_id="T002", run_id="rT002",
-                           sequence=1, role="reviewer", round=1, kind="attempt", call_id="c2"),
-                           fingerprint="h2", prepared_input={}, fingerprint_source="x", ok=True)
-        cand = _mk(calls=(a2, b2))
-        assert diff_manifests(ref, cand)["same_inputs"] is False
-
     def test_duplicate_call_identity_is_a_manifest_error(self, repo):
         fc = _call()
 
@@ -453,30 +430,12 @@ class TestUniqueCallIdentity:
                                    created_at="t",
                                    episode_snapshot=_wrap(episode_id="ep"))
 
-    def test_same_inputs_true_implies_logical_match(self):
-        diff = diff_manifests(_mk(), _mk())
-        assert diff["same_inputs"] is True and diff["logical_input_match"] is True
-
 
 # ---------------------------------------------------------------------------
 # F6/F10 — coverage
 # ---------------------------------------------------------------------------
 
 class TestCoverage:
-    def test_check_candidate_is_incomplete_and_never_same(self, data_root, repo):
-        job_id, _ = _run(_JOB, repo)
-        from packages.orchestration.pingpong_job import load_job_plan
-        ref = _manifest_of(job_id)
-        cand = build_current_candidate(ref, load_job_plan(job_id))
-        diff = diff_manifests(ref, cand)
-        assert diff["verification_complete"] is False
-        assert diff["same_inputs"] is None
-        assert cand.coverage.status == COVERAGE_INCOMPLETE
-
-    def test_two_complete_manifests_verify(self):
-        diff = diff_manifests(_mk(), _mk())
-        assert diff["verification_complete"] is True and diff["same_inputs"] is True
-
     def test_a_missing_run_record_is_a_coverage_problem(self, data_root, repo):
         job_id, _ = _run(_JOB, repo)
         from packages.orchestration.pingpong_job import load_job_plan
@@ -659,7 +618,6 @@ def _freeze_remedy_identity(monkeypatch):
     from packages.orchestration import run_manifest as _RM
     snapshot = _RM.remedy_worktree_identity()
     monkeypatch.setattr(_RM, "remedy_worktree_identity", lambda: snapshot)
-
 
 
 def _g(repo, cmd):

@@ -2,7 +2,7 @@
 
 Covers:
 - `DoRunNextAction`, the `Next:` line contract
-- `validate_next_safe_action_command` against the command catalog (Steps 926-927)
+- `names_catalog_command`, the tests/ helper the validator moved to (R-0903), against the command catalog (Steps 926-927)
 - The run contract defaults (Step 930)
 - The `do.run` catalog metadata (Step 929)
 - `do_run.py` imports no `source_apply` (Step 933)
@@ -12,11 +12,9 @@ The phased `remedy do` v1 flow and its tests were deleted by F268 round 10.
 
 from __future__ import annotations
 
-from packages.orchestration.do_run import (
-    DoRunNextAction,
-    validate_next_safe_action_command,
-)
+from packages.orchestration.do_run import DoRunNextAction
 from packages.orchestration.pingpong_job import JobPlan
+from tests.orchestration.catalog_commands import names_catalog_command
 
 # ---------------------------------------------------------------------------
 # Phase model tests (Step 906)
@@ -67,34 +65,34 @@ class TestNextSafeActionValidation:
 
     def test_validate_real_command(self):
         """remedy patch approve -> patch.approve exists."""
-        assert validate_next_safe_action_command("remedy patch approve job123 intent456") is True
+        assert names_catalog_command("remedy patch approve job123 intent456") is True
 
     def test_validate_job_context(self):
         """remedy job context -> job.context exists."""
-        assert validate_next_safe_action_command(
+        assert names_catalog_command(
             "remedy job context job123 --task T001 --json") is True
 
     def test_validate_job_show(self):
         """remedy job show -> job.show exists."""
-        assert validate_next_safe_action_command("remedy job show job123 --json") is True
+        assert names_catalog_command("remedy job show job123 --json") is True
 
     def test_validate_do_run(self):
         """remedy do run -> do.run exists."""
-        assert validate_next_safe_action_command('remedy do run "goal" --json') is True
+        assert names_catalog_command('remedy do run "goal" --json') is True
 
     def test_reject_fake_subcommand(self):
         """remedy patch does-not-exist -> fails."""
-        assert validate_next_safe_action_command("remedy patch does-not-exist job123") is False
+        assert names_catalog_command("remedy patch does-not-exist job123") is False
 
     def test_reject_group_only(self):
         """remedy patch -> fails (no subcommand)."""
-        assert validate_next_safe_action_command("remedy patch") is False
+        assert names_catalog_command("remedy patch") is False
 
     def test_reject_empty(self):
-        assert validate_next_safe_action_command("") is False
+        assert names_catalog_command("") is False
 
     def test_reject_non_remedy(self):
-        assert validate_next_safe_action_command("curl http://example.com") is False
+        assert names_catalog_command("curl http://example.com") is False
 
 
 # ---------------------------------------------------------------------------

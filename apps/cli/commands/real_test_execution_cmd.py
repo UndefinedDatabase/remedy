@@ -29,8 +29,25 @@ def _cmd_test_result(args: Any) -> None:
 
 
 def _cmd_test_list(args: Any) -> None:
+    from packages.orchestration.list_options import ListOptionError, apply_list_options
     from packages.orchestration.real_test_execution import list_test_runs
-    runs = list_test_runs(str(args.job_id))
+    try:
+        runs = apply_list_options(
+            list_test_runs(str(args.job_id)),
+            sort=getattr(args, "sort", None), desc=getattr(args, "desc", False),
+            since=getattr(args, "since", None), until=getattr(args, "until", None),
+            limit=getattr(args, "limit", None),
+            sort_fields={
+                "created_at": lambda r: r.get("created_at") or "",
+                "status": lambda r: r.get("status") or "",
+                "test_run_id": lambda r: r.get("test_run_id") or "",
+            },
+            default_sort_field="created_at",
+            date_getter=lambda r: r.get("created_at") or None,
+        )
+    except ListOptionError as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        sys.exit(1)
     out = {"job_id": str(args.job_id), "run_count": len(runs),
            "runs": [{"test_run_id": r.get("test_run_id"), "status": r.get("status"),
                      "exit_code": r.get("exit_code"), "created_at": r.get("created_at")}

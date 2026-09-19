@@ -19,7 +19,6 @@ label change reddens both.
 
 from __future__ import annotations
 
-import dataclasses
 import json
 import re
 from datetime import datetime, timedelta, timezone
@@ -52,6 +51,7 @@ from packages.orchestration.pingpong_job import JobPlan, TaskEntry, save_job_pla
 from packages.orchestration.run_report import (
     build_report_sources,
     recommended_next_action,
+    render_report_from_sources,
 )
 
 pytestmark = pytest.mark.unit
@@ -355,48 +355,24 @@ def test_ownership_is_empty_by_decision_f040_d3(shape):
 # ---------------------------------------------------------------------------
 
 
-def _persist_actuals(job: JobPlan) -> None:
-    """Give *job* a real persisted plan carrying the actuals record above."""
+def _persist_actuals(job: JobPlan, record: dict | None = None) -> None:
+    """Give *job* a real persisted plan carrying *record* (version 1 by default)."""
     save_job_plan(JobPlan(
         job_id=str(job.job_id),
         first_running_at=ACTUALS_STARTED_AT,
-        budget_actuals=dict(PERSISTED_ACTUALS),
+        budget_actuals=dict(record if record is not None else PERSISTED_ACTUALS),
     ))
 
 
-def _stand_in_for_the_price_producer(monkeypatch, *, cost, unpriced, priced):
-    """Add the F104 money fields the persisted route does not carry yet.
-
-    MEASURED, and pinned by the test below: ``counters_from_persisted`` sets
-    none of ``measured_cost_usd``, ``unpriced_call_count`` or
-    ``priced_call_count``, so counters built from a persisted record always
-    report an unpriced run and the digest's ``lower_bound`` and ``actual`` bases
-    are unreachable through that route TODAY.  Everything here stays real — the
-    plan is loaded, the record decoded, the counters built by the shipped
-    function — and only the three money fields are supplied, standing in for the
-    producer that will set them.  Delete this helper the day the route carries
-    them and assert the bases directly.
-    """
-    real = budget_guard.counters_from_persisted
-
-    def _with_money(validated, **kwargs):
-        return dataclasses.replace(
-            real(validated, **kwargs),
-            measured_cost_usd=cost,
-            unpriced_call_count=unpriced,
-            priced_call_count=priced,
-        )
-
-    monkeypatch.setattr(budget_guard, "counters_from_persisted", _with_money)
+def _priced_actuals(*, cost, priced, unpriced) -> dict:
+    """The version-2 record the job runner writes since R-0753: money included."""
+    return {**PERSISTED_ACTUALS, "schema_version": "2.0.0",
+            "measured_cost_usd": cost, "priced_call_count": priced,
+            "unpriced_call_count": unpriced}
 
 
-def test_the_persisted_cost_route_carries_no_money_today():
-    """The measurement the two monkeypatched tests below rest on.
-
-    When this reddens the route has learned to price a run: drop
-    ``_stand_in_for_the_price_producer`` and let the fixtures speak for
-    themselves.
-    """
+def test_an_old_version_record_decodes_with_no_money():
+    """Records written before R-0753 keep decoding, and say nothing about price."""
     counters = counters_from_persisted(
         decode_persisted_budget_actuals(dict(PERSISTED_ACTUALS),
                                         first_running_at=ACTUALS_STARTED_AT))
@@ -418,10 +394,23 @@ def test_cost_basis_is_absent_when_no_actuals_are_persisted():
     assert cost["value"] == "not-measured"
 
 
-def test_cost_basis_is_lower_bound_when_calls_are_unpriced(monkeypatch):
+def test_cost_basis_is_absent_for_an_old_version_record():
     job, events = SHAPE_FIXTURES[GREEN]()
     _persist_actuals(job)
-    _stand_in_for_the_price_producer(monkeypatch, cost=0.5, unpriced=2, priced=1)
+    cost = build_job_digest(job, events)["cost"]
+    assert cost == {"value": "not-measured", "basis": COST_BASIS_ABSENT}
+
+
+def test_cost_basis_is_absent_when_the_persisted_run_was_never_priced():
+    job, events = SHAPE_FIXTURES[GREEN]()
+    _persist_actuals(job, _priced_actuals(cost=None, priced=0, unpriced=2))
+    cost = build_job_digest(job, events)["cost"]
+    assert cost == {"value": "not-measured", "basis": COST_BASIS_ABSENT}
+
+
+def test_cost_basis_is_lower_bound_when_calls_are_unpriced():
+    job, events = SHAPE_FIXTURES[GREEN]()
+    _persist_actuals(job, _priced_actuals(cost=0.5, priced=1, unpriced=2))
 
     cost = build_job_digest(job, events)["cost"]
     expected = BudgetCounters(measured_cost_usd=0.5, unpriced_call_count=2,
@@ -433,10 +422,9 @@ def test_cost_basis_is_lower_bound_when_calls_are_unpriced(monkeypatch):
     assert cost["value"].startswith(">= $")
 
 
-def test_cost_basis_is_actual_when_every_call_is_priced(monkeypatch):
+def test_cost_basis_is_actual_when_every_call_is_priced():
     job, events = SHAPE_FIXTURES[GREEN]()
-    _persist_actuals(job)
-    _stand_in_for_the_price_producer(monkeypatch, cost=1.25, unpriced=0, priced=3)
+    _persist_actuals(job, _priced_actuals(cost=1.25, priced=3, unpriced=0))
 
     cost = build_job_digest(job, events)["cost"]
     expected = BudgetCounters(measured_cost_usd=1.25, unpriced_call_count=0,
@@ -444,6 +432,204 @@ def test_cost_basis_is_actual_when_every_call_is_priced(monkeypatch):
     assert cost["basis"] == COST_BASIS_ACTUAL
     assert cost["value"] == expected
     assert cost["value"] == "$1.2500"
+
+
+def test_the_report_renders_the_same_persisted_money():
+    """R-0753: the run report reads the money through the same persisted route."""
+    job, _ = SHAPE_FIXTURES[GREEN]()
+    _persist_actuals(job, _priced_actuals(cost=1.25, priced=3, unpriced=0))
+    sources = build_report_sources(job)
+    assert sources.cost_description == "$1.2500"
+    assert "- Money: $1.2500 — basis: budget counters" in render_report_from_sources(sources)
+
+
+def test_an_old_version_record_reports_its_money_as_not_measured():
+    job, _ = SHAPE_FIXTURES[GREEN]()
+    _persist_actuals(job)
+    assert build_report_sources(job).cost_description == "not-measured"
+
+
+# End to end: a real ``run_job`` with a measured stub provider writes the record,
+# and the digest reads it back.  The ledger is armed only AFTER a run returns
+# (``mirror_job_run_into_ledger``, as ``remedy do`` calls it), so a safe point's
+# ledger read sees the job's EARLIER runs only; R-0986 prices the record from the
+# run's own tally of the same rows, so it carries every run's calls — which is
+# why the job runs twice, and why the record then equals the ledger's own total.
+
+_TWO_TASK_JOB = """\
+# Job: Persisted money
+
+## Task 1
+Add a greeting.
+
+Acceptance:
+- file exists
+
+## Task 2
+Add a farewell.
+
+Acceptance:
+- file exists
+"""
+
+
+def _run_and_mirror(repo, *, measured: bool, runs: int = 2, budgets=None, mirror=True):
+    from packages.orchestration.job_evidence import mirror_job_run_into_ledger
+    from packages.orchestration.pingpong_job import load_job_plan, parse_job_file, run_job
+    from packages.orchestration.pingpong_provider import FakeProvider
+    from tests.orchestration.test_token_ledger import _MeasuredStubProvider
+
+    plan = parse_job_file(_TWO_TASK_JOB, str(repo))
+    plan.budgets = budgets
+    save_job_plan(plan)
+    cls, name = ((_MeasuredStubProvider, _MeasuredStubProvider.PROVIDER_NAME)
+                 if measured else (FakeProvider, "fake"))
+    for _ in range(runs):
+        job = run_job(
+            plan.job_id,
+            builder_name=name, reviewer_name=name,
+            builder_provider=cls(pass_on_round=1, fail_on_round=99),
+            reviewer_provider=cls(pass_on_round=1, fail_on_round=99),
+            repair_rounds=0, max_tasks=1,
+        )
+        if mirror:
+            assert mirror_job_run_into_ledger(job.job_id)["ledger_mirrored"] is True
+    return load_job_plan(plan.job_id)
+
+
+def _ledger_triple(job):
+    """What the F103 ledger holds for *job* — the basis the record must share."""
+    from packages.orchestration.budget_guard import collect_ledger_cost_for_job
+    from packages.orchestration.job_evidence import _resolve_job_ledger_project_id
+    return collect_ledger_cost_for_job(
+        job_id=job.job_id, project_id=_resolve_job_ledger_project_id(job))
+
+
+def test_a_measured_run_prices_the_digest_through_the_persisted_route(
+        tmp_path, monkeypatch):
+    from packages.orchestration.project_registry import register_project_repo
+    from tests.orchestration.test_token_ledger import _git_repo, _MeasuredStubProvider
+
+    monkeypatch.delenv("REMEDY_PROJECT", raising=False)
+    repo = _git_repo(tmp_path / "job_repo")
+    register_project_repo("persisted-money", str(repo))
+    job = _run_and_mirror(repo, measured=True, budgets={"max_cost_usd": 100.0})
+
+    record = job.budget_actuals
+    assert record["schema_version"] == "2.0.0"
+    # R-0986: both runs' four calls, not only the first run's mirrored two.
+    per_call = _MeasuredStubProvider.USAGE["total_cost_usd"]
+    assert record["measured_cost_usd"] == pytest.approx(4 * per_call)
+    assert (record["priced_call_count"], record["unpriced_call_count"]) == (4, 0)
+    # ONE basis: the record is what the ledger holds once every run is mirrored.
+    ledger_cost, ledger_priced, ledger_unpriced = _ledger_triple(job)
+    assert record["measured_cost_usd"] == pytest.approx(ledger_cost)
+    assert (record["priced_call_count"], record["unpriced_call_count"]) == (
+        ledger_priced, ledger_unpriced)
+    cost = build_job_digest(job, [])["cost"]
+    assert cost == {"value": f"${4 * per_call:.4f}", "basis": COST_BASIS_ACTUAL}
+
+
+@pytest.mark.parametrize("budgets", [None, {"max_total_tokens": 10_000_000},
+                                     {"max_cost_usd": 100.0}])
+def test_a_first_priced_run_persists_its_own_money_before_any_mirror(
+        tmp_path, monkeypatch, budgets):
+    """R-0986: no cost limit, or a first run the ledger has not seen, still prices.
+
+    No mirror runs, so the ledger holds nothing for the job: the money can only
+    be the run's own tally of its two calls.
+    """
+    from packages.orchestration.project_registry import register_project_repo
+    from tests.orchestration.test_token_ledger import _git_repo, _MeasuredStubProvider
+
+    monkeypatch.delenv("REMEDY_PROJECT", raising=False)
+    repo = _git_repo(tmp_path / "job_repo")
+    register_project_repo("persisted-money", str(repo))
+    job = _run_and_mirror(repo, measured=True, runs=1, budgets=budgets, mirror=False)
+
+    assert _ledger_triple(job) == (None, 0, 0)
+    record = job.budget_actuals
+    per_call = _MeasuredStubProvider.USAGE["total_cost_usd"]
+    assert record["measured_cost_usd"] == pytest.approx(2 * per_call)
+    assert (record["priced_call_count"], record["unpriced_call_count"]) == (2, 0)
+    assert build_job_digest(job, [])["cost"] == {
+        "value": f"${2 * per_call:.4f}", "basis": COST_BASIS_ACTUAL}
+
+
+@pytest.mark.parametrize("registered", [True, False])
+def test_a_cost_limit_stops_on_the_runs_own_spend_before_any_mirror(
+        tmp_path, monkeypatch, registered):
+    """R-0986: the guard sees this run's calls, which no ledger read can yet.
+
+    Registered, the ledger is read and holds no row, so the run's own tally
+    covers more; unregistered, no ledger is read at all. Either way two calls at
+    $0.125 pass a $0.20 limit inside the FIRST run.
+    """
+    from packages.orchestration.project_registry import register_project_repo
+    from tests.orchestration.test_token_ledger import _git_repo
+
+    monkeypatch.delenv("REMEDY_PROJECT", raising=False)
+    repo = _git_repo(tmp_path / "job_repo")
+    if registered:
+        register_project_repo("persisted-money", str(repo))
+    job = _run_and_mirror(repo, measured=True, runs=1,
+                          budgets={"max_cost_usd": 0.2}, mirror=False)
+    assert job.state == "stopped", (job.state, job.error)
+    assert job.stop_source == "budget"
+    assert job.stop_reason == "budget_exhausted:max_cost_usd"
+
+
+def _stub_call_tokens():
+    """One stub call's tokens by ``_aggregate_usage_actuals``' definition."""
+    from tests.orchestration.test_token_ledger import _MeasuredStubProvider
+    usage = _MeasuredStubProvider.USAGE
+    return usage["input_tokens"] + usage["output_tokens"]
+
+
+def test_a_measured_run_persists_the_sum_of_its_calls_tokens(tmp_path, monkeypatch):
+    """R-0987: the live token counter reads the dict the provider really returns."""
+    from tests.orchestration.test_token_ledger import _git_repo
+
+    monkeypatch.delenv("REMEDY_PROJECT", raising=False)
+    job = _run_and_mirror(_git_repo(tmp_path / "job_repo"), measured=True, runs=1,
+                          mirror=False)
+    record = job.budget_actuals
+    assert record["actual_call_count"] == 2
+    assert record["total_tokens"] == 2 * _stub_call_tokens()
+
+
+def test_a_token_limit_stops_on_live_tokens_before_any_mirror(tmp_path, monkeypatch):
+    """R-0987: two 1500-token calls pass a 2000-token limit inside the first run."""
+    from tests.orchestration.test_token_ledger import _git_repo
+
+    monkeypatch.delenv("REMEDY_PROJECT", raising=False)
+    job = _run_and_mirror(_git_repo(tmp_path / "job_repo"), measured=True, runs=1,
+                          budgets={"max_total_tokens": 2000}, mirror=False)
+    assert 2000 < 2 * _stub_call_tokens()
+    assert job.state == "stopped", (job.state, job.error)
+    assert job.stop_source == "budget"
+    assert job.stop_reason == "budget_exhausted:max_total_tokens"
+
+
+def test_an_unpriced_run_stays_absent_through_the_persisted_route(
+        tmp_path, monkeypatch):
+    from packages.orchestration.project_registry import register_project_repo
+    from tests.orchestration.test_token_ledger import _git_repo
+
+    monkeypatch.delenv("REMEDY_PROJECT", raising=False)
+    repo = _git_repo(tmp_path / "job_repo")
+    register_project_repo("persisted-money", str(repo))
+    job = _run_and_mirror(repo, measured=False, budgets={"max_cost_usd": 100.0})
+
+    record = job.budget_actuals
+    assert record["schema_version"] == "2.0.0"
+    assert record["measured_cost_usd"] is None
+    assert record["unpriced_call_count"] >= 1
+    # R-0986: the fake calls the accumulator skips are still the ledger's rows.
+    assert (record["measured_cost_usd"], record["priced_call_count"],
+            record["unpriced_call_count"]) == _ledger_triple(job)
+    assert build_job_digest(job, [])["cost"] == {
+        "value": "not-measured", "basis": COST_BASIS_ABSENT}
 
 
 @pytest.mark.parametrize("shape", SHAPES)

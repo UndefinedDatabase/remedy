@@ -168,6 +168,16 @@ class TestTheFeedIsFedFromTheStream:
             "silent drop D5 forbids"
         )
 
+    def test_the_card_prints_each_rows_seq(self):
+        """R-0664: `feedRowOf` putting the seq on the row (feedRow.test.ts) is
+        half the clause; the card is where it is printed. `key={row.seq}` is
+        not a print, so the assertion reads the rendered tag itself."""
+        code = strip_ts_comments(CARD.read_text())
+        rows = code[code.index("newestFirst.map(row => {"):]
+        assert "<span className={styles.activityTag}>#{row.seq}</span>" in rows, (
+            "a feed row must print its own seq"
+        )
+
     def test_there_is_still_exactly_one_subscription(self):
         calls = 0
         for path in sorted(UI_SRC.rglob("*.ts")) + sorted(UI_SRC.rglob("*.tsx")):
@@ -588,6 +598,25 @@ class TestAFeedRowJumpsToItsNode:
         assert "onSelectNode={onSelectNode}" in element[0], (
             "the feed focuses the same graph store the checklist already does"
         )
+
+    def test_the_shell_hands_the_graph_and_the_panel_one_callback(self):
+        """R-0664: the jump focuses the graph only because the shell hands the
+        SAME `onSelectNode` to the graph stage and to the panel. `tsc` forces
+        SOME callback there; this pins that it is the one the graph reads."""
+        shell = strip_ts_comments(SHELL.read_text())
+        assert "selectedNodeId, onSelectNode }" in shell, (
+            "the shell's own prop is the single callback both children share"
+        )
+        for tag in ("<BrainGraphStage", "<RightLivePanel"):
+            element = [l for l in shell.splitlines() if tag in l]
+            assert len(element) == 1, f"expected exactly one {tag} element"
+            assert "onSelectNode={onSelectNode}" in element[0], (
+                f"{tag} must receive the shell's onSelectNode, or a feed jump "
+                "focuses a store the graph never reads"
+            )
+        for rebind in ("const onSelectNode", "let onSelectNode",
+                       "function onSelectNode"):
+            assert rebind not in shell, "a local rebinding splits the one callback"
 
     def test_the_jump_row_has_its_button_reset(self):
         css = (UI_SRC / "components" / "panels" / "RightLivePanel.module.css").read_text()

@@ -878,16 +878,6 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         related=("worker.resources",),
     ),
     CommandEntry(
-        command_id="worker.status",
-        group_id="worker",
-        subcommand="status",
-        description="Show the current status of each worker: which role (builder, reviewer, planner or teacher) it is running, if any.",
-        action_class="read_only",
-        args=(_JSON_OPT,),
-        supports_json=True,
-        related=("worker.list",),
-    ),
-    CommandEntry(
         command_id="worker.doctor",
         group_id="worker",
         subcommand="doctor",
@@ -981,7 +971,11 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         subcommand="list",
         description="List missions (scoped to the current project by default; unreadable records are skipped and counted).",
         action_class="read_only",
-        args=(_PROJECT_SCOPE_OPT, _ALL_PROJECTS_FLAG, _JSON_OPT),
+        args=(
+            _PROJECT_SCOPE_OPT, _ALL_PROJECTS_FLAG,
+            ArgDef("--status", "Only missions in this status: active, paused, achieved, abandoned, or planned (active, and no job started yet)", required=False, is_option=True),
+            _JSON_OPT,
+        ),
         supports_json=True,
         related=("mission.start", "mission.show"),
     ),
@@ -1019,7 +1013,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         command_id="mission.show",
         group_id="mission",
         subcommand="show",
-        description="Show one mission and its job chain, each job with the state the job store reports now.",
+        description="Show one mission and its job chain, each job with the state the job store reports now, then every entry of the ledger its runs wrote (read-only).",
         action_class="read_only",
         args=(
             ArgDef("mission_id", "Mission id (or a unique prefix) that owns the jobs"),
@@ -1261,44 +1255,6 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
             ArgDef("--job", "Job ID scope (under its mission)", required=False, is_option=True),
         ),
     ),
-    CommandEntry(
-        command_id="memory.candidates",
-        group_id="memory",
-        subcommand="candidates",
-        description="List memory candidates for a job, under its mission (pending human approval).",
-        action_class="read_only",
-        args=(
-            _JOB_ID,
-            _JSON_OPT,
-        ),
-        supports_json=True,
-    ),
-    CommandEntry(
-        command_id="memory.approve-candidate",
-        group_id="memory",
-        subcommand="approve-candidate",
-        description="Approve a memory candidate (creates approved memory).",
-        action_class="approval_gate",
-        args=(
-            _JOB_ID,
-            ArgDef("candidate_id", "Candidate ID to approve", required=True),
-            _JSON_OPT,
-        ),
-        supports_json=True,
-    ),
-    CommandEntry(
-        command_id="memory.reject-candidate",
-        group_id="memory",
-        subcommand="reject-candidate",
-        description="Reject a memory candidate (no memory created).",
-        action_class="approval_gate",
-        args=(
-            _JOB_ID,
-            ArgDef("candidate_id", "Candidate ID to reject", required=True),
-            _JSON_OPT,
-        ),
-        supports_json=True,
-    ),
 
     # ── change ───────────────────────────────────────────────────────────
     CommandEntry(
@@ -1362,8 +1318,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         args=(
             _JOB_ID,
             ArgDef("--type", "Filter by event type", required=False, is_option=True),
-            ArgDef("--since", "Filter events after timestamp", required=False, is_option=True),
-            ArgDef("--limit", "Max events (default: 50)", required=False, is_option=True, default="50"),
+            ArgDef("--limit", "Max events, newest first (default: 50)", required=False, is_option=True, default="50"),
             _JSON_OPT,
         ),
         supports_json=True,
@@ -2295,8 +2250,8 @@ def _with_list_options(entry: CommandEntry) -> CommandEntry:
     """Attach the shared list-option surface to a list-shaped entry.
 
     Add-only-if-missing: a command that already declares one of these flags
-    by name (today only `event.list`, which already has `--since` and
-    `--limit`) keeps its own existing ArgDef for that name untouched and
+    by name (today only `event.list`, which keeps its own `--limit` for its
+    default of 50) keeps its own existing ArgDef for that name untouched and
     only gains the flags it is missing. Appending a second ArgDef of an
     already-present name crashes argparse at parser-build time with a
     conflicting-option error (verified against `grouped.build_parser()`).

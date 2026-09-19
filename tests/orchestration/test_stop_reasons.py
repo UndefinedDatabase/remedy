@@ -262,7 +262,7 @@ def _every_next_action(job, events) -> list[str]:
 
 
 def test_every_derived_next_action_names_the_real_job_and_no_placeholder(tmp_path, monkeypatch):
-    """R-0811: all four derived stop reasons at once — no `<…>` anywhere, the real ids everywhere."""
+    """R-0811: all three derived stop reasons at once — no `<…>` anywhere, the real ids everywhere."""
     import re
 
     from packages.orchestration.pingpong_job import JobPlan
@@ -274,15 +274,14 @@ def test_every_derived_next_action_names_the_real_job_and_no_placeholder(tmp_pat
         {"event": "test_run_completed", "metadata": {"status": "failed"}},
         {"event": "patch_intent_created", "metadata": {"intent_id": "intent-a1"}},
         {"event": "patch_intent_created", "metadata": {}},
-        {"event": "git_status_read", "metadata": {"dirty": True}},
     ]
 
     reasons = {r.id: r for r in derive_stop_reasons(job, events)}
 
-    assert sorted(reasons) == ["derived_dirty_repo", "derived_no_repo",
-                               "derived_not_approved", "derived_test_fail"]
+    assert sorted(reasons) == ["derived_no_repo", "derived_not_approved",
+                               "derived_test_fail"]
     actions = _every_next_action(job, events)
-    assert len(actions) == 6
+    assert len(actions) == 5
     for action in actions:
         assert not re.search(_PLACEHOLDER_RE, action), action
         assert str(job.job_id) in action, action

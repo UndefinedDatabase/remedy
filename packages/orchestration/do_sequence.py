@@ -762,8 +762,16 @@ def resolve_do_shape(plan: Any, *, force_job: bool = False,
     return do_shape_of_plan(plan), DO_SHAPE_SOURCE_PLANNER
 
 
-def _shape_job_orders(ctx: DoContext, shape: str) -> list[tuple[str, list[TaskEntry] | None]]:
-    """What to plan, one ``(order, deterministic_tasks)`` per job; ``None`` lets the planner choose."""
+def _shape_job_orders(
+        ctx: DoContext, shape: str,
+) -> list[tuple[str, list[TaskEntry] | None, str | None]]:
+    """What to plan, one ``(order, deterministic_tasks, milestone_id)`` per job.
+
+    ``None`` tasks let the planner choose.  ``milestone_id`` is the milestone
+    whose ``jobs_draft`` outline the job came from (R-0977); a job planned
+    from the order itself serves the plan's milestone when the plan has
+    exactly one, and no milestone when it has several.
+    """
     from packages.orchestration.task_deliverables import (
         deliverable_check_task,
         deliverable_task,
@@ -772,34 +780,44 @@ def _shape_job_orders(ctx: DoContext, shape: str) -> list[tuple[str, list[TaskEn
     )
 
     order = ctx.order
+    milestones = list(ctx.mission_plan.milestones) if ctx.mission_plan is not None else []
+    sole = str(milestones[0].id) if len(milestones) == 1 else None
     if shape == DO_SHAPE_ONE_JOB:
         slices = deterministic_job_plans(order)
         if len(slices) == 1:
-            return [(order, None)]
-        return [(order, tasks) for tasks in slices]
-    outlines = mission_plan_outlines(ctx.mission_plan)
+            return [(order, None, sole)]
+        return [(order, tasks, sole) for tasks in slices]
+    outlines = [(outline, str(milestone.id)) for milestone in milestones
+                for outline in milestone.jobs_draft]
     if len(outlines) >= 2:
-        return [(outline.goal, None) for outline in outlines]
+        return [(outline.goal, None, milestone_id) for outline, milestone_id in outlines]
     deliverables = extract_order_deliverables(order)
     if len(deliverables) >= 2:
-        return [(order, [deliverable_task(d, order)]) for d in deliverables]
+        return [(order, [deliverable_task(d, order)], sole) for d in deliverables]
     [only] = deliverables
-    return [(order, [deliverable_task(only, order)]),
-            (order, [deliverable_check_task(only, order)])]
+    return [(order, [deliverable_task(only, order)], sole),
+            (order, [deliverable_check_task(only, order)], sole)]
 
 
 def _step_shape(ctx: DoContext) -> tuple[str, str]:
     """Read the shape from the plan (or a force flag) and plan its jobs, linked to the mission (D5).
 
-    As each job is linked, its contract slice is merged into its DoD (DECISION
-    F269 D6 (3)); `do`'s jobs serve no milestone, so the slice is the
-    whole-mission criteria, whose checks the job's gate reports and never
-    holds on (D6 (1)).  Beside that merge, the contract binds the job to its
-    repository and grants it (DECISION F269 D7).
+    As each job is linked, it records the milestone whose ``jobs_draft`` it
+    came from (``_shape_job_orders``), and its contract slice is merged into
+    its DoD (DECISION F269 D6 (3)): the whole-mission criteria and that
+    milestone's criteria, whose checks the job's gate reports and never holds
+    on (D6 (1); ``hold_on_milestone=False``) — so the job's own gate evaluates
+    the planner's criterion of the milestone it serves and reads it `met` or
+    `unmet` onto the contract (R-0977).  A job of a plan with several
+    milestones that came from no outline (``--force-job``) serves none, and
+    its milestones' criteria stay `open`.
+    Beside that merge, the contract binds the job to its repository and
+    grants it (DECISION F269 D7).
     """
     from packages.orchestration.mission_contract import (
         grant_contract_job_repository,
         merge_contract_slice_into_dod,
+        record_job_milestone,
     )
     from packages.orchestration.mission_state import (
         MISSION_ROLE_FOLLOW_UP,
@@ -815,7 +833,7 @@ def _step_shape(ctx: DoContext) -> tuple[str, str]:
     ctx.shape, ctx.shape_source = shape, source
 
     shaped_jobs: list[OrderJobPlan] = []
-    for order, tasks in _shape_job_orders(ctx, shape):
+    for order, tasks, milestone_id in _shape_job_orders(ctx, shape):
         try:
             shaped = plan_order_job(
                 order,
@@ -831,7 +849,9 @@ def _step_shape(ctx: DoContext) -> tuple[str, str]:
         job_id = str(shaped.job.job_id)
         role = MISSION_ROLE_FOLLOW_UP if ctx.job_ids else MISSION_ROLE_INITIAL
         mission = link_job_to_mission(str(ctx.project.id), ctx.mission_id, job_id, role=role)
-        merge_contract_slice_into_dod(mission, None, job_id)
+        if milestone_id is not None:
+            record_job_milestone(job_id, milestone_id)
+        merge_contract_slice_into_dod(mission, milestone_id, job_id, hold_on_milestone=False)
         grant_contract_job_repository(mission, job_id)
         ctx.job_ids.append(job_id)
         shaped_jobs.append(shaped)

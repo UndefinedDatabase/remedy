@@ -418,6 +418,9 @@ class TestDeletedCommands:
         "loop.list",
         "loop.run",
         "loop.validate",
+        "memory.approve-candidate",
+        "memory.candidates",
+        "memory.reject-candidate",
         "mission.ledger",
         "orchestrator.decide",
         "orchestrator.idea",
@@ -458,6 +461,7 @@ class TestDeletedCommands:
         "token.economy-report",
         "token.estimate",
         "worker.run",
+        "worker.status",
     )
 
     def test_no_deleted_id_is_left_in_the_catalog(self) -> None:

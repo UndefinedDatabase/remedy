@@ -32,7 +32,7 @@ from typing import Any
 from packages.orchestration import data_paths
 from packages.orchestration.artifact_summary import render_tiered_diff_text, summary_call_fn
 from packages.orchestration.data_paths import mint_run_id
-from packages.orchestration.exec_guard import run_guarded_test_command
+from packages.orchestration.exec_guard import TRIPPED_LIMIT_ATTR, run_guarded_test_command
 from packages.orchestration.hunk_repair_findings import render_rejection_findings
 from packages.orchestration.pingpong_provider import (
     _REVIEWER_RETRY_PROMPT,
@@ -97,6 +97,8 @@ class ProviderAttempt:
     # stream evidence is off, or for fake/manual providers which never stream).
     stream_call_id: str = ""
     stream_artifact_refs: list[str] = field(default_factory=list)
+    # R-0807: the loop round this invocation belongs to (0 = not recorded).
+    round: int = 0
 
 
 @dataclass
@@ -111,6 +113,9 @@ class PingPongRound:
     builder_output: BuilderOutput | None = None
     test_passed: bool | None = None
     test_summary: str = ""
+    # R-0568: the execution guard's `tripped_limit` for a test run that did NOT pass,
+    # "" otherwise. A passing run's trip explains no failure, so it is not kept.
+    test_tripped_limit: str = ""
     reviewer_output: ReviewerOutput | None = None
     repair_prompt: str = ""
     started_at: str = ""
@@ -533,19 +538,14 @@ def build_finding_status_map(rounds: list[PingPongRound]) -> list[FindingStatusE
 
 
 # ---------------------------------------------------------------------------
-# Task input loading and validation
+# Task input
 # ---------------------------------------------------------------------------
-
-_MAX_TASK_BYTES = 100_000
-_MAX_TASK_TOKENS_ESTIMATED = 25_000
-_TASK_REVIEW_EXCERPT_CHARS = 4000
-
 
 @dataclass
 class TaskInput:
-    """Validated task input from file or stdin."""
-    kind: str  # "file" or "stdin"
-    path: str  # original user-provided path (empty for stdin)
+    """A task body with its hash, size and review excerpt."""
+    kind: str  # "job_task" from the job runner
+    path: str  # empty for a job task
     title: str
     body: str
     sha256: str
@@ -553,93 +553,6 @@ class TaskInput:
     char_count: int
     tokens_estimated: int
     excerpt: str
-
-
-def _derive_title(text: str) -> str:
-    """Derive task title from first heading or first non-empty line."""
-    for line in text.splitlines():
-        stripped = line.strip()
-        if not stripped:
-            continue
-        # Markdown heading
-        if stripped.startswith("#"):
-            return stripped.lstrip("#").strip()[:120]
-        # First non-empty line
-        return stripped[:120]
-    return "Untitled task"
-
-
-def load_task_file(path: str) -> TaskInput:
-    """Load and validate a task file. Raises ValueError on problems."""
-    p = Path(path)
-    if not p.exists():
-        raise ValueError(f"Task file not found: {path}")
-    if not p.is_file():
-        raise ValueError(f"Task path is not a file: {path}")
-    raw = p.read_bytes()
-    if len(raw) > _MAX_TASK_BYTES:
-        raise ValueError(
-            f"task_input_too_large: {len(raw)} bytes exceeds max {_MAX_TASK_BYTES}"
-        )
-    try:
-        text = raw.decode("utf-8")
-    except UnicodeDecodeError:
-        raise ValueError(f"Task file is not valid UTF-8: {path}")
-    if not text.strip():
-        raise ValueError("Task file is empty")
-    tokens_est = max(1, len(text) // 4)
-    if tokens_est > _MAX_TASK_TOKENS_ESTIMATED:
-        raise ValueError(
-            f"task_input_too_large: ~{tokens_est} tokens exceeds max {_MAX_TASK_TOKENS_ESTIMATED}"
-        )
-    sha = hashlib.sha256(raw).hexdigest()
-    title = _derive_title(text)
-    excerpt = text[:_TASK_REVIEW_EXCERPT_CHARS]
-    if len(text) > _TASK_REVIEW_EXCERPT_CHARS:
-        excerpt += "\n[TASK EXCERPT TRUNCATED]"
-    return TaskInput(
-        kind="file",
-        path=path,
-        title=title,
-        body=text,
-        sha256=sha,
-        byte_count=len(raw),
-        char_count=len(text),
-        tokens_estimated=tokens_est,
-        excerpt=excerpt,
-    )
-
-
-def load_task_stdin(text: str) -> TaskInput:
-    """Load and validate task input from stdin text. Raises ValueError on problems."""
-    if not text.strip():
-        raise ValueError("Task stdin is empty")
-    raw = text.encode("utf-8")
-    if len(raw) > _MAX_TASK_BYTES:
-        raise ValueError(
-            f"task_input_too_large: {len(raw)} bytes exceeds max {_MAX_TASK_BYTES}"
-        )
-    tokens_est = max(1, len(text) // 4)
-    if tokens_est > _MAX_TASK_TOKENS_ESTIMATED:
-        raise ValueError(
-            f"task_input_too_large: ~{tokens_est} tokens exceeds max {_MAX_TASK_TOKENS_ESTIMATED}"
-        )
-    sha = hashlib.sha256(raw).hexdigest()
-    title = _derive_title(text)
-    excerpt = text[:_TASK_REVIEW_EXCERPT_CHARS]
-    if len(text) > _TASK_REVIEW_EXCERPT_CHARS:
-        excerpt += "\n[TASK EXCERPT TRUNCATED]"
-    return TaskInput(
-        kind="stdin",
-        path="",
-        title=title,
-        body=text,
-        sha256=sha,
-        byte_count=len(raw),
-        char_count=len(text),
-        tokens_estimated=tokens_est,
-        excerpt=excerpt,
-    )
 
 
 def _persist_task_artifact(run_id: str, task: TaskInput) -> None:
@@ -945,9 +858,8 @@ def _dedupe_resumed_segments(
     return tuple(kept), tuple(replaced_names)
 
 
-# F105 T003 migration site 5. Rank order fixes two inversions the ad-hoc
-# concatenation had — `builder_scope_contract` (rank 2 DOSSIER) now precedes
-# `builder_context`, and the three rank-3 job-context segments now precede the
+# F105 T003 migration site 5. Rank order fixes the inversion the ad-hoc
+# concatenation had — the three rank-3 job-context segments now precede the
 # rank-4 `builder_task` — so this site's golden is equal-modulo-ordering, never
 # byte-exact.
 def compose_builder_prompt(
@@ -959,7 +871,6 @@ def compose_builder_prompt(
     staged_state: str = "",
     safe_diff: str = "",
     task_body: str = "",
-    scope_contract: str = "",
     test_result: str = "",
     hunk_ledger: Any = None,
     resume_hunks_text: str = "",
@@ -1018,11 +929,6 @@ def compose_builder_prompt(
     specs: list[tuple[str, SegmentStabilityRank, list[str]]] = [
         ("builder_system", SegmentStabilityRank.SYSTEM, [_BUILDER_SYSTEM, "\n"]),
     ]
-    if scope_contract:
-        specs.append((
-            "builder_scope_contract", SegmentStabilityRank.DOSSIER,
-            [f"{scope_contract}\n\n"],
-        ))
     specs.append(("builder_context", SegmentStabilityRank.JOB_CONTEXT, [context, "\n"]))
     if staged_state:
         specs.append((
@@ -1192,7 +1098,6 @@ def _build_builder_prompt(
     staged_state: str = "",
     safe_diff: str = "",
     task_body: str = "",
-    scope_contract: str = "",
     test_result: str = "",
     hunk_ledger: Any = None,
     resume_hunks_text: str = "",
@@ -1214,7 +1119,6 @@ def _build_builder_prompt(
         staged_state=staged_state,
         safe_diff=safe_diff,
         task_body=task_body,
-        scope_contract=scope_contract,
         test_result=test_result,
         hunk_ledger=hunk_ledger,
         resume_hunks_text=resume_hunks_text,
@@ -1506,7 +1410,7 @@ def _render_reviewer_scope_section(packet: dict[str, Any]) -> str:
 
 # F105 T003 migration site 6, the last of the six and the worst-ordered. Rank
 # order fixes the inversions the ad-hoc concatenation had — the rank-3
-# `reviewer_scope` and `reviewer_scope_contract` now precede the rank-4
+# `reviewer_scope` now precedes the rank-4
 # `reviewer_goal`, and on the fallback branch the rank-4 `reviewer_task_input`
 # now precedes the rank-5 `reviewer_repair` — so this site's golden is
 # equal-modulo-ordering, never byte-exact.
@@ -1521,7 +1425,6 @@ def compose_reviewer_prompt(
     task_excerpt: str = "",
     task_sha256: str = "",
     task_tokens_estimated: int = 0,
-    scope_contract: str = "",
     prior_findings: list[ReviewFinding] | None = None,
     repair_round: int = 0,
     scope_packet: dict[str, Any] | None = None,
@@ -1569,11 +1472,6 @@ def compose_reviewer_prompt(
         specs.append((
             "reviewer_scope", SegmentStabilityRank.JOB_CONTEXT,
             [_render_reviewer_scope_section(scope_packet)],
-        ))
-    if scope_contract:
-        specs.append((
-            "reviewer_scope_contract", SegmentStabilityRank.JOB_CONTEXT,
-            [f"{scope_contract}\n\n"],
         ))
     specs.append((
         "reviewer_goal", SegmentStabilityRank.TASK,
@@ -1754,7 +1652,6 @@ def _build_reviewer_prompt(
     task_excerpt: str = "",
     task_sha256: str = "",
     task_tokens_estimated: int = 0,
-    scope_contract: str = "",
     prior_findings: list[ReviewFinding] | None = None,
     repair_round: int = 0,
     scope_packet: dict[str, Any] | None = None,
@@ -1780,7 +1677,6 @@ def _build_reviewer_prompt(
         task_excerpt=task_excerpt,
         task_sha256=task_sha256,
         task_tokens_estimated=task_tokens_estimated,
-        scope_contract=scope_contract,
         prior_findings=prior_findings,
         repair_round=repair_round,
         scope_packet=scope_packet,
@@ -2425,6 +2321,9 @@ def _apply_fake_builder_changes(
         fp.parent.mkdir(parents=True, exist_ok=True)
         if fp.exists():
             content = fp.read_text(errors="replace")
+            # R-0810: a repair round keeps this task's one marker, never appends a second.
+            if f"<!-- Remedy: {goal} -->" in content.splitlines():
+                continue
             content += f"\n\n<!-- Remedy: {goal} -->\n"
             fp.write_text(content)
         else:
@@ -2534,6 +2433,20 @@ def _begin_stream_call(provider: Any, round_no: int, kind: str = "attempt") -> N
             pass
 
 
+def _offer_stable_prefix(provider: Any, composed: Any) -> None:
+    """Hand a cache-capable provider the stable prefix of the prompt it is sent next.
+
+    A no-op for providers that do not cache a prefix (every one but the
+    direct-API provider), the same duck-typed shape as ``_begin_stream_call``.
+    """
+    fn = getattr(provider, "offer_stable_prefix", None)
+    if callable(fn):
+        try:
+            fn(composed.stable_prefix())
+        except Exception:
+            pass
+
+
 def _record_attempt(
     result: PingPongResult,
     out: Any,
@@ -2542,9 +2455,11 @@ def _record_attempt(
     *,
     is_retry: bool = False,
     is_parse_retry: bool = False,
+    round_num: int = 0,
 ) -> None:
     """Record a provider attempt for usage accounting."""
     result.provider_attempts.append(ProviderAttempt(
+        round=round_num,
         role=role,
         provider=provider,
         usage_actuals=getattr(out, "usage_actuals", None),
@@ -2588,6 +2503,7 @@ def _call_with_retry(
     call_reasons: list[str] | None = None,
     stop_check: Callable[[], Any] | None = None,
     rate_governor: ProviderRateGovernor | None = None,
+    round_num: int = 0,
 ) -> Any:
     """Call a provider function with bounded retry on transient failures.
 
@@ -2633,7 +2549,8 @@ def _call_with_retry(
     # The parse-retry call is itself a retry of the logical review; its transport
     # retries stay part of that ONE logical parse retry.
     _record_attempt(result, out, role, provider,
-                    is_retry=is_parse_retry, is_parse_retry=is_parse_retry)
+                    is_retry=is_parse_retry, is_parse_retry=is_parse_retry,
+                    round_num=round_num)
     if on_provider_attempt is not None:
         on_provider_attempt(result.provider_attempts[-1])
     for attempt in range(MAX_RETRIES):
@@ -2650,6 +2567,7 @@ def _call_with_retry(
         # "what counts as a timeout" is a second definition, and definitions drift.
         is_timeout = is_timeout_error(out.error)
         is_nonzero = is_nonzero_exit_error(out.error)
+        # WHY: ReviewerOutput.verdict defaults to "blocked", so ONLY the "provider_error:" prefix keeps a reviewer transport error (a rate limit too) retryable — R-0378.
         is_reject = (
             hasattr(out, "verdict")
             and out.verdict in ("needs_repair", "fail", "blocked")
@@ -2710,7 +2628,8 @@ def _call_with_retry(
             on_call(attempt + 2, True)
         out = call_fn()
         _record_attempt(result, out, role, provider,
-                        is_retry=True, is_parse_retry=is_parse_retry)
+                        is_retry=True, is_parse_retry=is_parse_retry,
+                        round_num=round_num)
         if on_provider_attempt is not None:
             on_provider_attempt(result.provider_attempts[-1])
 
@@ -3436,6 +3355,7 @@ def run_pingpong(
             ))
 
             _begin_stream_call(builder_provider, round_num, "attempt")
+            _offer_stable_prefix(builder_provider, builder_composed)
             builder_call_reasons: list[str] = []
             builder_out = _call_with_retry(
                 lambda ts=builder_timeout: builder_provider.build(
@@ -3451,6 +3371,7 @@ def run_pingpong(
                 call_reasons=builder_call_reasons,
                 stop_check=_stopped,
                 rate_governor=_rate_governor,
+                round_num=round_num,
             )
             # F106 T002c: a resume attempt that errors falls back ONCE to the
             # full-context path within the same round — an honest, evidenced
@@ -3503,6 +3424,7 @@ def run_pingpong(
                     composed_prompt=builder_composed,
                 ))
                 _begin_stream_call(builder_provider, round_num, "attempt")
+                _offer_stable_prefix(builder_provider, builder_composed)
                 builder_call_reasons = []
                 builder_out = _call_with_retry(
                     lambda ts=builder_timeout: builder_provider.build(
@@ -3518,6 +3440,7 @@ def run_pingpong(
                     call_reasons=builder_call_reasons,
                     stop_check=_stopped,
                     rate_governor=_rate_governor,
+                    round_num=round_num,
                 )
                 builder_out.resume_fallback = True
                 # F109 T001b-ii: the resume failed, so nothing is proven about what that
@@ -3583,7 +3506,7 @@ def run_pingpong(
 
             # --- Test phase ---
             if has_test_command:
-                rd.test_passed, rd.test_summary = _run_test_command(
+                rd.test_passed, rd.test_summary, rd.test_tripped_limit = _run_test_command(
                     test_command, staging, timeout_sec=timeout_sec,
                 )
             else:
@@ -3776,6 +3699,7 @@ def run_pingpong(
                 break
 
             _begin_stream_call(reviewer_provider, round_num, "attempt")
+            _offer_stable_prefix(reviewer_provider, reviewer_composed)
             # ONE logical reviewer call: its attempt AND its single parse retry share this
             # sink, and nothing from the builder or an earlier round is in it.
             reviewer_call_reasons: list[str] = []
@@ -3798,6 +3722,7 @@ def run_pingpong(
                 call_reasons=reviewer_call_reasons,
                 stop_check=_stopped,
                 rate_governor=_rate_governor,
+                round_num=round_num,
             )
             # F106 T002c: a resume attempt that errors falls back ONCE to the
             # full-context path within the same round — an honest, evidenced
@@ -3835,6 +3760,7 @@ def run_pingpong(
                 # dedupe marker, then the full-content one without it). An eager
                 # append here would make a THIRD and double-count one call.
                 _begin_stream_call(reviewer_provider, round_num, "attempt")
+                _offer_stable_prefix(reviewer_provider, reviewer_composed)
                 reviewer_call_reasons = []
                 reviewer_out = _call_with_retry(
                     lambda ts=reviewer_timeout: reviewer_provider.review(
@@ -3855,6 +3781,7 @@ def run_pingpong(
                     call_reasons=reviewer_call_reasons,
                     stop_check=_stopped,
                     rate_governor=_rate_governor,
+                    round_num=round_num,
                 )
                 reviewer_out.resume_fallback = True
                 # F109 T001b-ii: mirrors the Builder fallback — the replaced output reports
@@ -3916,6 +3843,7 @@ def run_pingpong(
                     call_reasons=reviewer_call_reasons,
                     stop_check=_stopped,
                     rate_governor=_rate_governor,
+                    round_num=round_num,
                 )
                 retry_out.parse_retried = True
                 if not retry_out.error:
@@ -4212,15 +4140,18 @@ def _run_test_command(
     staging: Path,
     *,
     timeout_sec: int = 120,
-) -> tuple[bool, str]:
+) -> tuple[bool, str, str]:
     """Run a test command in the staging workspace.
 
-    Returns (passed, summary). Uses shlex.split — no shell=True.
+    Returns (passed, summary, tripped_limit). Uses shlex.split — no shell=True.
+    `tripped_limit` is the execution guard's own report of which limit it enforced
+    on a run that did NOT pass (R-0568) — "" when the run passed or the guard
+    tripped nothing — so the task's post-mortem can name the limit.
     """
     try:
         argv = shlex.split(command)
     except ValueError as exc:
-        return False, f"Invalid test command: {exc}"
+        return False, f"Invalid test command: {exc}", ""
     try:
         # Guarded since F085 T002b: rlimits, an env allowlist, a pinned cwd and the
         # guard's own wall deadline replace the bare spawn. The observable outcome is
@@ -4233,9 +4164,10 @@ def _run_test_command(
             cwd=str(staging),
         )
     except FileNotFoundError:
-        return False, f"Test command not found: {argv[0]}"
-    except subprocess.TimeoutExpired:
-        return False, f"Test command timed out after {timeout_sec}s"
+        return False, f"Test command not found: {argv[0]}", ""
+    except subprocess.TimeoutExpired as exc:
+        return (False, f"Test command timed out after {timeout_sec}s",
+                getattr(exc, TRIPPED_LIMIT_ATTR, None) or "")
 
     output = (proc.stdout or b"").decode("utf-8", "replace") + (proc.stderr or b"").decode("utf-8", "replace")
     if len(output) > _TEST_OUTPUT_CAP:
@@ -4246,7 +4178,8 @@ def _run_test_command(
         # Last few lines for summary
         last_lines = output.strip().splitlines()[-5:]
         summary += " | " + " ".join(last_lines)
-    return passed, summary
+    tripped = "" if passed else (getattr(proc, TRIPPED_LIMIT_ATTR, None) or "")
+    return passed, summary, tripped
 
 
 # ---------------------------------------------------------------------------
@@ -4504,6 +4437,27 @@ def _aggregate_usage_actuals(result: PingPongResult) -> dict[str, Any] | None:
     }
 
 
+#: The attempt's own counter names → the ``usage`` keys provider_evidence.json uses.
+_ATTEMPT_USAGE_KEYS = (
+    ("input_tokens", "input_tokens"),
+    ("output_tokens", "output_tokens"),
+    ("cache_read", "cache_read_input_tokens"),
+    ("cache_creation", "cache_creation_input_tokens"),
+)
+
+
+def _attempt_usage_evidence(ua: dict[str, Any] | None) -> dict[str, Any]:
+    """One attempt's OWN reported usage and cost, copied verbatim (R-0807).
+
+    A counter the provider did not report is left out, and ``usage`` is None when
+    it reported none at all (the fake provider): nothing is split, coerced or
+    defaulted here, so an unmeasured call stays unmeasured.
+    """
+    ua = ua or {}
+    usage = {out: ua[key] for key, out in _ATTEMPT_USAGE_KEYS if ua.get(key) is not None}
+    return {"usage": usage or None, "total_cost_usd": ua.get("total_cost_usd")}
+
+
 def _build_provider_evidence(result: PingPongResult) -> dict[str, Any]:
     """Build provider identity evidence with write mode and model info."""
     builder_kind = _provider_kind(result.builder_provider)
@@ -4537,8 +4491,14 @@ def _build_provider_evidence(result: PingPongResult) -> dict[str, Any]:
 
     # F004: list every real provider attempt with its per-call stream artifacts.
     # Fake/manual attempts never stream, so they contribute no references.
+    # R-0807: each attempt also carries its own position (``seq``, 1-based — the
+    # F103 ledger keys one row per attempt by it), its round, and the usage and
+    # cost THAT call reported — null where it reported none, never a share of the
+    # task run's aggregate.
     attempts_evidence = [
         {
+            "seq": seq,
+            "round": a.round,
             "role": a.role,
             "provider": a.provider,
             "is_retry": a.is_retry,
@@ -4546,8 +4506,9 @@ def _build_provider_evidence(result: PingPongResult) -> dict[str, Any]:
             "stream_call_id": a.stream_call_id,
             "stream_artifact_refs": list(a.stream_artifact_refs),
             "error": (a.error or "")[:200],
+            **_attempt_usage_evidence(a.usage_actuals),
         }
-        for a in result.provider_attempts
+        for seq, a in enumerate(result.provider_attempts, start=1)
     ]
     if attempts_evidence:
         evidence["provider_attempts"] = attempts_evidence
@@ -5118,146 +5079,3 @@ def _build_stop_info(result: PingPongResult) -> dict[str, Any]:
         "source": safe_text(result.stop_source or "")[:120],
         "requested_at": normalize_timestamp(result.stop_requested_at),
     }
-
-
-def summarize_pingpong(result: PingPongResult) -> str:
-    """Human-readable summary of a ping-pong run."""
-    lines = [
-        f"Run: {result.run_id}",
-        f"Goal: {result.goal}",
-        f"Mode: {result.mode}",
-        f"Builder: {result.builder_provider}",
-        f"Reviewer: {result.reviewer_provider}",
-        f"Rounds: {len(result.rounds)}/{result.max_rounds}",
-        f"Status: {result.final_status}",
-    ]
-    if result.tests_not_run:
-        lines.append("Tests: not run (no --test-command)")
-    if result.target_mutated:
-        lines.append(f"TARGET MUTATED: {result.changed_target_files}")
-    elif result.target_noise_detected:
-        lines.append("Target mutation: no meaningful target changes")
-        lines.append(f"Ignored target noise: {', '.join(result.ignored_target_noise_files)}")
-    norm_notes = [
-        d["normalization_note"]
-        for d in result.repair_decisions
-        if d.get("normalization_note")
-    ]
-    for note in norm_notes:
-        lines.append(f"Reviewer verdict normalized: {note}")
-    if result.reviewer_parse_retry_count > 0:
-        if result.reviewer_json_recovered:
-            lines.append(f"Reviewer parse: retried {result.reviewer_parse_retry_count}x, recovered")
-        else:
-            lines.append(f"Reviewer parse: retried {result.reviewer_parse_retry_count}x, NOT recovered")
-            if result.reviewer_parse_error:
-                lines.append(f"Parse error: {result.reviewer_parse_error}")
-    # F057: a run the governor paced says so, above the error line — a wait is run
-    # health, not a failure. The total is derived from the RECORDED waits and never
-    # from the governor's own total_waited_s(): the governor is not reachable from a
-    # PingPongResult, and a second source for one number is how the two drift.
-    if result.rate_limit_waits:
-        rate_limit_total_s = sum(w["waited_s"] for w in result.rate_limit_waits)
-        lines.append(
-            f"Rate limits: waited {rate_limit_total_s:.1f}s "
-            f"across {len(result.rate_limit_waits)} wait(s)"
-        )
-    if result.error:
-        lines.append(f"Error: {result.error}")
-    lines.append("")
-
-    # Repair loop summary
-    repair_status = _classify_repair_status(result)
-    # Check if any repair was triggered by test failure
-    test_driven = any(
-        d.get("reason") == "test_failure_evidence" for d in result.repair_decisions
-    )
-    if repair_status == "not_needed":
-        lines.append("Repair loop: not needed")
-    elif repair_status == "passed_after_repair":
-        trigger = "failed tests" if test_driven else "reviewer findings"
-        lines.append(f"Repair loop: passed after {result.repair_rounds_used} repair round(s) (triggered by {trigger})")
-        finding_map = build_finding_status_map(result.rounds)
-        resolved = [e.prior_finding_id for e in finding_map if e.status == "resolved"]
-        if resolved:
-            lines.append(f"Resolved findings: {', '.join(resolved)}")
-        lines.append("Open findings: none")
-    elif repair_status == "exhausted":
-        lines.append("Repair loop: exhausted")
-        if result.rounds:
-            last_rd = result.rounds[-1]
-            if last_rd.reviewer_output and last_rd.reviewer_output.findings:
-                open_ids = [f.id for f in last_rd.reviewer_output.findings]
-                lines.append(f"Open findings: {', '.join(open_ids)}")
-        if result.final_adjudication:
-            adj = result.final_adjudication
-            lines.append(f"Final adjudication: {adj['status']} — {adj['reason']}")
-            lines.append(f"Apply: {'allowed' if adj['apply_allowed'] else 'blocked'}")
-    elif repair_status == "stopped_on_test_failure":
-        lines.append("Repair loop: stopped — tests failed, repair disabled")
-        if result.final_adjudication:
-            adj = result.final_adjudication
-            lines.append(f"Final adjudication: {adj['status']} — {adj['reason']}")
-            lines.append(f"Apply: {'allowed' if adj['apply_allowed'] else 'blocked'}")
-    elif repair_status == "blocked_inconsistent_review":
-        lines.append("Repair loop: blocked by inconsistent review")
-    elif repair_status == "disabled":
-        pass  # no repair info if disabled
-    elif result.repair_rounds_allowed > 0:
-        lines.append(f"Repair rounds: {result.repair_rounds_used}/{result.repair_rounds_allowed}")
-
-    for rd in result.rounds:
-        kind_label = f" [{rd.kind}]" if rd.kind != "initial" else ""
-        lines.append(f"--- Round {rd.round_number}{kind_label} ---")
-        if rd.input_finding_ids:
-            lines.append(f"  Input findings: {len(rd.input_finding_ids)}")
-        if rd.resolved_finding_ids:
-            lines.append(f"  Resolved: {len(rd.resolved_finding_ids)}")
-        if rd.remaining_finding_ids:
-            lines.append(f"  Remaining: {len(rd.remaining_finding_ids)}")
-        if rd.builder_output:
-            lines.append(f"  Builder: {rd.builder_output.summary[:200]}")
-            if rd.builder_output.files_changed:
-                lines.append(f"  Files: {', '.join(rd.builder_output.files_changed)}")
-        if rd.test_passed is None:
-            lines.append("  Tests: not run")
-        else:
-            lines.append(f"  Tests: {'passed' if rd.test_passed else 'failed'} — {rd.test_summary}")
-        if rd.reviewer_output:
-            lines.append(f"  Reviewer: {rd.reviewer_output.verdict}")
-            if rd.reviewer_output.findings:
-                for f in rd.reviewer_output.findings:
-                    lines.append(f"    [{f.severity}] {f.id}: {f.summary}")
-            if rd.reviewer_output.summary:
-                lines.append(f"  Summary: {rd.reviewer_output.summary}")
-        lines.append("")
-
-    lines.append(f"Staged files: {result.staged_files}")
-    lines.append(f"Target mutated: {result.target_mutated}")
-    lines.append(f"Changed target files: {result.changed_target_files}")
-
-    if result.safe_diff_files:
-        lines.append(f"\nDiff files ({len(result.safe_diff_files)}): {', '.join(result.safe_diff_files)}")
-        if result.safe_diff_truncated:
-            lines.append("[diff truncated]")
-        if result.safe_diff_summary:
-            lines.append("\n" + result.safe_diff_summary)
-
-    if result.final_status == "staged_review_passed":
-        lines.append("\nResult: STAGED REVIEW PASSED — target not modified (staged mode).")
-    elif result.final_status == "max_rounds_reached":
-        lines.append(f"\nResult: MAX ROUNDS REACHED ({result.max_rounds}) — review not passed.")
-    elif result.final_status == "repair_exhausted":
-        lines.append(
-            f"\nResult: REPAIR EXHAUSTED — used {result.repair_rounds_used}/{result.repair_rounds_allowed} "
-            "repair rounds, findings remain."
-        )
-    elif result.final_status == "review_inconsistent":
-        lines.append("\nResult: REVIEW INCONSISTENT — reviewer output contradicts itself.")
-    elif result.final_status == "target_mutation_blocked":
-        lines.append("\nResult: TARGET MUTATION BLOCKED — safety guard caught target modification.")
-    else:
-        lines.append(f"\nResult: {result.final_status}")
-
-    lines.append(f"\nReport: remedy run show {result.run_id}")
-    return "\n".join(lines)

@@ -18,7 +18,6 @@ Selection rules (used by the review-zip selector):
 from __future__ import annotations
 
 import json
-import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -33,6 +32,11 @@ def _now() -> str:
 
 
 def _git(repo: str | Path, *args: str) -> str:
+    # WHY: imported here, not at module level, so importing this module carries no
+    # shell capability into the command door (R-0745; pinned by
+    # TestCommandDoorImportGuard in tests/ui_server/test_command_channel.py).
+    import subprocess
+
     try:
         r = subprocess.run(
             ["git", *args], cwd=str(repo), capture_output=True, text=True, timeout=15,
@@ -49,6 +53,8 @@ def _git_raw(repo: str | Path, *args: str) -> str:
     modified-but-unstaged file starts with a space. Stripping the output would
     shift the first line left and silently truncate its path.
     """
+    import subprocess  # function-scoped for the reason `_git` states
+
     try:
         r = subprocess.run(
             ["git", *args], cwd=str(repo), capture_output=True, text=True, timeout=15,

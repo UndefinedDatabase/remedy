@@ -1,0 +1,33 @@
+F273 Round 24 Review Zip Build Output (closure round A)
+
+Attempts: one zip build, READY_FOR_REVIEW on the first attempt.
+
+Command: bash scripts/make_review_zip.sh --evidence-dir .remedy-wt/f273_evidence_round24
+Built from a clean tree at the accepted HEAD c62aa3b1577b9308f7aaf09a48fc08ac6fd249ba.
+
+Script output (final lines):
+  REVIEW_PACKAGE_CREATED=true
+  PACKAGE_STATUS=READY_FOR_REVIEW
+  REVIEW_SUBJECT_ALIGNMENT=PASS
+  EVIDENCE_AUTHORITATIVE=true
+  REVIEW_PACKAGE_DIR=/home/decodeux/Repos/remedy-history/zips
+  ZIP_PATH=/home/decodeux/Repos/remedy-history/zips/remedy-review-20260919-225654-READY_FOR_REVIEW.zip
+
+Package Details:
+- Filename: remedy-review-20260919-225654-READY_FOR_REVIEW.zip
+- SHA-256: 01ac1c30685c56be29c98f130182d2c3bc1a248dcd5a8d30509a8d71fef6ca0d
+- Package status: READY_FOR_REVIEW
+- Package path: NOT ARCHIVED (left where the script built it, /home/decodeux/Repos/remedy-history/zips)
+- Member count: 4798
+- Authoritative count: 325
+- Manifest sha256: 86d495975ce576d98ad3ba57af34390ee23c30b5221769667b8118f8cc8abb58
+
+Read out of the package (.review_zip_manifest.json, committed_review_subject):
+- head_commit: c62aa3b1577b9308f7aaf09a48fc08ac6fd249ba (equals C3)
+- base_commit: 80f7c5290e434b13abc3d637b5fd9d5d06b8b1cc
+
+Evidence Validation:
+- is_valid_current_run: True
+- validation_errors: []
+
+Evidence directory: .remedy-wt/f273_evidence_round24 (not committed)

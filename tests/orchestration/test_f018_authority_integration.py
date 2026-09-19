@@ -433,6 +433,49 @@ class TestRunContractReconciliation:
         assert contract.max_tokens == 200000
 
 
+class TestR0935PersistedBudgetsReachTheRunContract:
+    """R-0935: a job's F018 budgets are the persisted dict, and they reach its run contract."""
+
+    def test_a_new_contract_inherits_the_token_and_wall_clock_budgets(self):
+        from packages.orchestration.pingpong_job import JobPlan, _export_job, _import_job
+        from packages.orchestration.run_contract import build_default_run_contract, ensure_contract
+
+        job = _import_job(_export_job(JobPlan(
+            job_title="budgeted", budgets={"max_total_tokens": 5000, "max_wall_clock_minutes": 3})))
+        assert isinstance(job.budgets, dict)
+
+        built = build_default_run_contract(job)
+        assert (built.max_tokens, built.max_runtime_seconds) == (5000, 180)
+        ensured = ensure_contract(job)
+        assert (ensured.max_tokens, ensured.max_runtime_seconds) == (5000, 180)
+
+    def test_a_persisted_contract_is_reconciled_to_the_budgets(self):
+        from packages.orchestration.pingpong_job import JobPlan
+        from packages.orchestration.run_contract import (
+            build_default_run_contract,
+            ensure_contract,
+            load_contract,
+            save_contract,
+        )
+
+        job = JobPlan(job_title="budgeted later")
+        save_contract(job, build_default_run_contract(job))
+        job.budgets = {"max_total_tokens": 7000, "max_wall_clock_minutes": 2}
+
+        ensured = ensure_contract(job)
+        assert (ensured.max_tokens, ensured.max_runtime_seconds) == (7000, 120)
+        stored = load_contract(job)
+        assert (stored.max_tokens, stored.max_runtime_seconds) == (7000, 120)
+
+    def test_a_budget_that_does_not_validate_lends_the_contract_nothing(self):
+        from packages.orchestration.pingpong_job import JobPlan
+        from packages.orchestration.run_contract import build_default_run_contract
+
+        job = JobPlan(job_title="corrupt", budgets={"max_total_tokens": True, "max_wall_clock_minutes": 3})
+        built = build_default_run_contract(job)
+        assert (built.max_tokens, built.max_runtime_seconds) == (200_000, 600)
+
+
 class TestRuntimeIntegrationGateNonzero:
     """Finding #14: gate must have nonzero real checks."""
 
@@ -1677,7 +1720,12 @@ Acceptance:
         actuals = result.budget_actuals
         assert actuals is not None
         assert actuals["provider_call_count"] == 3
-        assert actuals["schema_version"] == "1.0.0"
+        # R-0753, R-0986: the job runner writes version 2, which carries the
+        # run's own money with no cost limit too — none here: the fake reports no
+        # cost, so its three calls are the three unpriced rows the ledger would get.
+        assert actuals["schema_version"] == "2.0.0"
+        assert actuals["measured_cost_usd"] is None
+        assert (actuals["priced_call_count"], actuals["unpriced_call_count"]) == (0, 3)
         assert result.stop_source == "budget"
 
 

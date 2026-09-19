@@ -698,8 +698,18 @@ def _cmd_job_run(
 
     from packages.orchestration.pingpong_job import (
         export_job_report,
+        job_resume_refusal,
+        load_job_plan,
         run_job,
     )
+
+    # R-0913: a job whose recorded worktree cannot be continued is refused with
+    # resume_job_plan's own words, before anything runs or the record is touched.
+    _recorded = load_job_plan(job_id)
+    _refusal = job_resume_refusal(_recorded) if _recorded is not None else ""
+    if _refusal:
+        print(f"Error: {_refusal}", file=sys.stderr)
+        sys.exit(1)
 
     job = run_job(
         job_id,
@@ -754,7 +764,7 @@ def _cmd_job_evidence(
 ) -> None:
     """Export a self-contained evidence bundle for an entire job."""
     from packages.orchestration.data_paths import job_evidence_export_dir
-    from packages.orchestration.job_evidence import export_job_evidence
+    from packages.orchestration.job_evidence import UnsafeTaskIdError, export_job_evidence
 
     if not out:
         # Default to the hidden data-dir location; never litter the repo root.
@@ -765,10 +775,20 @@ def _cmd_job_evidence(
     # what this package is a review of.
     from packages.orchestration.review_subject import read_declared_base
 
-    result = export_job_evidence(
-        job_id, out, verification_commands=verification_command or None,
-        declared_base=read_declared_base(),
-    )
+    # R-0912: a persisted task id the evidence guard refuses is a handled error
+    # naming that id, never a traceback.
+    try:
+        result = export_job_evidence(
+            job_id, out, verification_commands=verification_command or None,
+            declared_base=read_declared_base(),
+        )
+    except UnsafeTaskIdError as exc:
+        print(
+            f"Error: job {job_id} cannot export its evidence: its task id "
+            f"{exc.task_id!r} is not T<digits> or sixteen lowercase hex characters.",
+            file=sys.stderr,
+        )
+        sys.exit(1)
 
     if not result.get("error"):
         _index_job_evidence(job_id, result.get("out_dir", out), "job.evidence")

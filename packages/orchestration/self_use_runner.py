@@ -105,7 +105,8 @@ def run_next_self_use_item(
     :func:`~packages.orchestration.role_config.resolve_role_config` before
     calling :func:`run_job`, so an unflagged run genuinely resolves the
     product default provider rather than :func:`run_job`'s own raw
-    ``"fake"`` fallback.
+    ``"fake"`` fallback. A role it resolves also gets the role config's
+    model and effort unless the caller passed them (R-0890).
 
     Answers ``(entry, job_file_path, result)`` — the queue entry that was
     run, the job file :func:`plan_next_self_use_item` rendered it to, and
@@ -134,7 +135,8 @@ def run_next_self_use_item(
             continue
         if run_job_kwargs.get(provider_kwarg) is not None:
             continue  # caller already injected a provider object explicitly
-        provider = resolve_role_config(role).provider
+        role_cfg = resolve_role_config(role)
+        provider = role_cfg.provider
         if not provider or provider.strip().lower() == "fake":
             raise SelfUseRunError(
                 f"{entry.id}: refusing to run unflagged — role config "
@@ -143,6 +145,11 @@ def run_next_self_use_item(
                 "run under the fake provider for tests"
             )
         run_job_kwargs[name_kwarg] = provider
+        # R-0890: the provider came from the role config, so its model and effort
+        # do too — otherwise the job records an empty model it never ran.
+        for field in ("model", "effort"):
+            if run_job_kwargs.get(f"{role}_{field}") is None:
+                run_job_kwargs[f"{role}_{field}"] = getattr(role_cfg, field)
     budgets = JobBudgets(
         max_provider_calls=max_provider_calls, max_cost_usd=max_cost_usd
     ).model_dump(mode="json")

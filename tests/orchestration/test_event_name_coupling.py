@@ -14,14 +14,17 @@ string literal and not an import.
 
 WHAT IT MEASURES. For every `.py` module this branch deleted, the last living
 blob is recovered from git and parsed for the event names it EMITTED — a string
-literal in first-positional-argument position of a run-log emit call. Each such
+literal in ANY positional slot of an emit call: a call named in `EMIT_FUNCS`, one
+whose snake_case name has an `emit` word (`_emit_continue`, `emit_important_event`),
+or one to a helper the module defines that forwards a parameter to such a call
+(finding R-0920: first-slot recovery was blind to every helper). Each such
 name is then looked for in the SURVIVING tree, both as an emitter and as a
 reader. A name with a surviving READER and no surviving EMITTER is a DEAD
 COUPLING: a consumer kept alive by a producer that no longer exists.
 
-WHY AN ALLOWLIST AND NOT A ZERO. The dead couplings that exist today are real
-and their disposal is a ruling DECISION F260 D3 owes, not a repair a test may
-make. So this is a RATCHET against a declared set, in the shape this repository
+WHY AN ALLOWLIST AND NOT A ZERO. The dead couplings the list held were real
+and their disposal was a ruling, not a repair a test may make; F273 has emptied
+it. So this is a RATCHET against a declared set, in the shape this repository
 already uses for dead advertisements: the set may SHRINK and never grow, and an
 entry that stops being a dead coupling must be removed from the list in the same
 commit, or assertion (c) reds. Remedy deliberately does not delete a schema for
@@ -45,20 +48,20 @@ EMIT_FUNCS = frozenset({"log", "_emit", "emit", "log_event", "write_event",
 READER_SUFFIXES = (".py", ".ts", ".tsx")
 
 # The dead couplings that exist today, each with the ruling that owns it. THIS LIST
-# ONLY EVER SHRINKS: DECISION F260 D3 disposes of `context_budget_optimized`, and
-# `git_status_read`, declared when DECISION F261 D15 deleted `repo status`, its only
-# emitter, is disposed of by finding R-0905. F261 round 17 deleted the `policy` group,
-# the only emitter of `run_contract_inspected` and `token_policy_inspected`, which the
-# level-4 signals of `packages/orchestration/autonomy_readiness.py` still read: the
-# ceiling rises by two and the couplings stay declared rather than invisible.
-KNOWN_DEAD_EVENT_COUPLINGS: tuple[str, ...] = (
-    "context_budget_optimized",
-    "git_status_read",
-    "run_contract_inspected",
-    "token_policy_inspected",
-)
+# ONLY EVER SHRINKS, and it is now empty: F273 deleted the schema and the NowCard
+# bookkeeping entry that read `context_budget_optimized` (R-0832). F273 also
+# deleted the readers of `git_status_read` (R-0905) and dropped the level-4 readiness
+# signals `run_contract_inspected` and `token_policy_inspected` fed (R-0907), and the
+# widened recovery (R-0920) found no further dead name once R-0919 deleted the
+# cockpit's `do_continue_stopped` reader. R-0927 deleted the goal-driven path, the
+# queue and the source-context injector, and with them the readers of the six names
+# only they emitted (`autorun_started`, `autorun_builder_completed`,
+# `autorun_provider_error`, `source_context_injected`, `structured_patch_intent_created`,
+# `task_execution_started`); `test_run_completed`, which a local holds before
+# `test_execution_service.py` emits it, is still emitted.
+KNOWN_DEAD_EVENT_COUPLINGS: tuple[str, ...] = ()
 
-_COUPLING_CEILING = 4
+_COUPLING_CEILING = 0
 
 
 def _git(*args: str) -> str:
@@ -72,24 +75,68 @@ def deleted_modules() -> list[str]:
     return sorted({p for p in out.split() if p.endswith(".py")})
 
 
+def _call_name(node: ast.Call) -> str:
+    fn = node.func
+    if isinstance(fn, ast.Attribute):
+        return fn.attr
+    return fn.id if isinstance(fn, ast.Name) else ""
+
+
+def _is_emit_call(node: ast.AST, helpers: frozenset[str] = frozenset()) -> bool:
+    if not isinstance(node, ast.Call):
+        return False
+    name = _call_name(node)
+    return (name in EMIT_FUNCS or name in helpers
+            or "emit" in name.strip("_").split("_"))
+
+
+def _emit_helpers(tree: ast.AST) -> frozenset[str]:
+    """Functions the module defines that forward a parameter to an emit call."""
+    helpers: set[str] = set()
+    for fdef in ast.walk(tree):
+        if not isinstance(fdef, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            continue
+        params = {a.arg for a in fdef.args.args + fdef.args.kwonlyargs}
+        if any(_is_emit_call(n) and any(isinstance(a, ast.Name) and a.id in params
+                                        for a in n.args)
+               for n in ast.walk(fdef)):
+            helpers.add(fdef.name)
+    return frozenset(helpers)
+
+
+def _literals(node: ast.AST) -> set[str]:
+    """The string literals an expression can only evaluate to: a constant, or a conditional
+    expression over such constants. Anything else yields nothing."""
+    if isinstance(node, ast.Constant) and isinstance(node.value, str):
+        return {node.value}
+    if isinstance(node, ast.IfExp):
+        body, orelse = _literals(node.body), _literals(node.orelse)
+        return body | orelse if body and orelse else set()
+    return set()
+
+
 def _emitted_names(source: str, path: str) -> set[str]:
     try:
         tree = ast.parse(source, filename=path)
     except SyntaxError:
         return set()
-    found: set[str] = set()
-    for node in ast.walk(tree):
-        if not isinstance(node, ast.Call) or not node.args:
+    helpers = _emit_helpers(tree)
+    names = {a.value for node in ast.walk(tree) if _is_emit_call(node, helpers)
+             for a in node.args
+             if isinstance(a, ast.Constant) and isinstance(a.value, str)}
+    # R-0927: a name held in a local first — `event_name = "a" if x else "b"` then
+    # `_emit(d, j, event_name, ...)` in `test_execution_service.py` — is emitted too.
+    for fdef in ast.walk(tree):
+        if not isinstance(fdef, (ast.FunctionDef, ast.AsyncFunctionDef)):
             continue
-        fn = node.func
-        name = fn.attr if isinstance(fn, ast.Attribute) else (
-            fn.id if isinstance(fn, ast.Name) else None)
-        if name not in EMIT_FUNCS:
-            continue
-        first = node.args[0]
-        if isinstance(first, ast.Constant) and isinstance(first.value, str):
-            found.add(first.value)
-    return found
+        held: dict[str, set[str]] = defaultdict(set)
+        for node in ast.walk(fdef):
+            if (isinstance(node, ast.Assign) and len(node.targets) == 1
+                    and isinstance(node.targets[0], ast.Name)):
+                held[node.targets[0].id] |= _literals(node.value)
+        names |= {lit for node in ast.walk(fdef) if _is_emit_call(node, helpers)
+                  for a in node.args if isinstance(a, ast.Name) for lit in held.get(a.id, ())}
+    return names
 
 
 def events_emitted_by_deleted_modules() -> dict[str, set[str]]:
@@ -144,6 +191,34 @@ class TestEventNameCouplingRatchet:
             "an event-name coupling to a deleted module is not declared: "
             f"{ {n: found[n] for n in undeclared} }"
         )
+
+    def test_the_recovery_finds_a_name_a_helper_emits(self) -> None:
+        # Finding R-0920: `do_continue.py` emitted every name through
+        # `_emit_continue(data_dir, job_id, event, metadata)`, third slot.
+        source = (
+            "def _record(data_dir, job_id, event):\n"
+            "    persist(data_dir, job_id, event)\n"
+            "    log_event(data_dir, job_id, event, {})\n"
+            "def run(d, j):\n"
+            "    _emit_continue(d, j, 'alpha_stopped', {})\n"
+            "    _record(d, j, 'beta_started')\n"
+            "    persist(d, j, 'gamma_not_an_event')\n"
+        )
+        assert _emitted_names(source, "m.py") == {"alpha_stopped", "beta_started"}
+        emitted = events_emitted_by_deleted_modules()
+        assert emitted.get("do_continue_stopped") == {
+            "packages/orchestration/do_continue.py"}
+
+    def test_the_recovery_finds_a_name_held_in_a_local(self) -> None:
+        # R-0927: `test_execution_service.py` holds `test_run_completed` in a local first.
+        source = (
+            "def run(d, j, s):\n"
+            "    name = 'alpha_timed_out' if s else 'alpha_completed'\n"
+            "    _emit(d, j, name, {})\n"
+            "    other = compute()\n"
+            "    _emit(d, j, other, {})\n"
+        )
+        assert _emitted_names(source, "m.py") == {"alpha_timed_out", "alpha_completed"}
 
     def test_the_declared_set_only_ever_shrinks(self) -> None:
         assert len(KNOWN_DEAD_EVENT_COUPLINGS) <= _COUPLING_CEILING

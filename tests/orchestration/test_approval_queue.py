@@ -392,7 +392,6 @@ class TestDecisionQueue:
         assert "patch_approval" in DECISION_TYPES
         assert "stop_reason" in DECISION_TYPES
         assert "test_failure" in DECISION_TYPES
-        assert "repo_dirty" in DECISION_TYPES
         assert "memory_review" in DECISION_TYPES
 
     def test_test_failure_decisions(self):
@@ -408,19 +407,6 @@ class TestDecisionQueue:
         assert len(test_decs) >= 1
         assert test_decs[0].severity == "blocker"
         assert test_decs[0].status == "open"
-
-    def test_dirty_repo_decision(self):
-        from packages.orchestration.decision_queue import list_decisions
-        job = _make_job_s68()
-        events = [
-            {"event": "git_status_read", "run_id": "r1", "job_id": str(job.job_id),
-             "timestamp": "2026-01-01T00:01:00", "outcome": "ok",
-             "metadata": {"dirty": True, "branch": "main", "changed_file_count": 3}},
-        ]
-        decisions = list_decisions(job, events)
-        dirty_decs = [d for d in decisions if d.type == "repo_dirty"]
-        assert len(dirty_decs) == 1
-        assert dirty_decs[0].severity == "warning"
 
     def test_explain_decisions(self):
         from packages.orchestration.decision_queue import explain_decisions
@@ -452,8 +438,8 @@ class TestDecisionQueue:
                 next_actions=("fix",), created_at="", resolved_at=None,
             ),
             HumanDecision(
-                id="d2", type="repo_dirty", status="open", severity="warning",
-                source="git", related_node_id="", related_intent_id="",
+                id="d2", type="token_budget", status="open", severity="warning",
+                source="budget", related_node_id="", related_intent_id="",
                 related_file="", safe_summary="dirty",
                 next_actions=(), created_at="", resolved_at=None,
             ),
@@ -464,16 +450,17 @@ class TestDecisionQueue:
         assert summary["medium_count"] == 1  # warning
 
     def test_get_decision(self):
-        from packages.orchestration.decision_queue import get_decision
+        from packages.orchestration.decision_queue import get_decision, list_decisions
         job = _make_job_s68()
         events = [
-            {"event": "git_status_read", "run_id": "r1", "job_id": str(job.job_id),
-             "timestamp": "2026-01-01", "outcome": "ok",
-             "metadata": {"dirty": True, "branch": "main", "changed_file_count": 1}},
+            {"event": "test_run_completed", "run_id": "r1", "job_id": str(job.job_id),
+             "timestamp": "2026-01-01", "outcome": "failed",
+             "metadata": {"status": "failed", "command": "pytest", "test_run_id": "tr1"}},
         ]
-        d = get_decision(job, events, "dirty_repo")
+        wanted = [d for d in list_decisions(job, events) if d.type == "test_failure"][0]
+        d = get_decision(job, events, wanted.id)
         assert d is not None
-        assert d.type == "repo_dirty"
+        assert d.type == "test_failure"
 
     def test_get_decision_not_found(self):
         from packages.orchestration.decision_queue import get_decision
@@ -513,89 +500,13 @@ class TestReviewerLoop:
         assert len(recs) == 1
         assert recs[0].title == "Add test"
 
-    def test_store_and_list_recommendations(self):
-        from packages.orchestration.reviewer import list_recommendations, run_reviewer, store_recommendations
-        job = _make_job_s101(1)
-
-        def custom_reviewer(context):
-            return [{"title": "Fix bug", "task_type": "fix", "reason": "regression"}]
-
-        recs = run_reviewer(job, reviewer_fn=custom_reviewer)
-        store_recommendations(job, recs)
-        stored = list_recommendations(job)
-        assert len(stored) == 1
-        assert stored[0]["title"] == "Fix bug"
-        assert stored[0]["status"] == "pending"
-
-    def test_store_and_list_recommendations_carries_created_at(self):
+    def test_recommendation_carries_created_at(self):
+        """The store that copied it is deleted (R-0908); run_reviewer still stamps it."""
         from datetime import datetime
 
-        from packages.orchestration.reviewer import list_recommendations, run_reviewer, store_recommendations
-
-        job = _make_job_s101(1)
-
-        def custom_reviewer(context):
-            return [{"title": "Add caching", "task_type": "perf", "reason": "latency"}]
-
-        recs = run_reviewer(job, reviewer_fn=custom_reviewer)
-        store_recommendations(job, recs)
-        stored = list_recommendations(job)
-        assert stored[0]["created_at"] != ""
-        datetime.fromisoformat(stored[0]["created_at"])
-
-    def test_accept_recommendation(self, tmp_path, monkeypatch):
-        from packages.orchestration.proposed_tasks import load_proposed_tasks
-        from packages.orchestration.reviewer import (
-            accept_recommendation,
-            run_reviewer,
-            store_recommendations,
-        )
-        monkeypatch.setattr(
-            "packages.orchestration.proposed_tasks._STORE_DIR",
-            tmp_path / "proposed_tasks",
-        )
-        job = _make_job_s101(1)
-
-        def custom_reviewer(context):
-            return [{"title": "Add docs", "task_type": "docs", "reason": "missing"}]
-
-        recs = run_reviewer(job, reviewer_fn=custom_reviewer)
-        store_recommendations(job, recs)
-        rec_id = job.metadata["reviewer_recommendations"][0]["id"]
-        initial_task_count = len(job.tasks)
-        ok = accept_recommendation(job, rec_id)
-        assert ok is True
-        assert len(job.tasks) == initial_task_count  # No direct task — creates ProposedTask instead
-        assert job.metadata["reviewer_recommendations"][0]["status"] == "accepted"
-        proposed = load_proposed_tasks(str(job.job_id))
-        assert len(proposed) == 1
-        assert proposed[0].title == "Add docs"
-
-    def test_reject_recommendation(self):
-        from packages.orchestration.reviewer import (
-            reject_recommendation,
-            run_reviewer,
-            store_recommendations,
-        )
-        job = _make_job_s101(1)
-
-        def custom_reviewer(context):
-            return [{"title": "Refactor", "task_type": "refactor", "reason": "tech debt"}]
-
-        recs = run_reviewer(job, reviewer_fn=custom_reviewer)
-        store_recommendations(job, recs)
-        rec_id = job.metadata["reviewer_recommendations"][0]["id"]
-        initial_task_count = len(job.tasks)
-        ok = reject_recommendation(job, rec_id)
-        assert ok is True
-        assert len(job.tasks) == initial_task_count  # No new task
-        assert job.metadata["reviewer_recommendations"][0]["status"] == "rejected"
-
-    def test_reject_nonexistent(self):
-        from packages.orchestration.reviewer import reject_recommendation
-        job = _make_job_s101(0)
-        ok = reject_recommendation(job, "nonexistent")
-        assert ok is False
+        from packages.orchestration.reviewer import run_reviewer
+        recs = run_reviewer(_make_job_s101(1), reviewer_fn=lambda ctx: [{"title": "Add caching"}])
+        datetime.fromisoformat(recs[0].created_at)
 
     def test_max_recommendations(self):
         from packages.orchestration.reviewer import run_reviewer

@@ -26,13 +26,13 @@ verification commands. If something is unproven, Remedy says so instead of guess
 
 ## Status
 
-85 of 281 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
+86 of 282 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
 
 | Tier | Name | Done | Total |
 |------|------|-----:|------:|
 | 0 | Foundation & Trust Core | 16 | 16 |
 | 1 | Self-Build Bootstrap | 22 | 22 |
-| 2 | Minimal Self-Build Runtime | 27 | 34 |
+| 2 | Minimal Self-Build Runtime | 28 | 35 |
 | 3 | Full Token Economy & Autonomy | 6 | 26 |
 | 4 | Memory & Learning | 1 | 17 |
 | 5 | Operator Cockpit | 13 | 34 |
@@ -63,7 +63,12 @@ F034 bundled clarification, F046 multi-cycle loop, F047 checkpoint & resume,
 F048 job queue, F251 full-suite stabilization, F252 standing-red paydown,
 F050 DAG scheduling, F051 escalate instead of block,
 F052 self-healing test rounds,
-F053 final & interim report.
+F053 final & interim report,
+F056 missions: persistent goal, jobs as execution units,
+F061 Definition-of-Done compiler, F062 product smoke as the closing gate,
+F069 mission compiler, F070 orchestrator loop inside Remedy,
+F071 mission dossier, F075 milestone gate: 10 flawless self-runs,
+F079 context handoffs, F080 machine-readable roadmap mirror & STATUS.md.
 
 Accepted in Tier 2 so far:
 F254 model alias table & dead-model doctor check,
@@ -162,7 +167,23 @@ a test fails on any module under `packages/`, `apps/` or `scripts/` that
 nothing outside the tests imports and no entry point runs, unless an
 allowance states why; `remedy doctor core` lists a catalog command nothing
 references; closure precondition 7 holds every feature to the rule that
-replacing is deleting; and five unreached modules are deleted).
+replacing is deleting; and five unreached modules are deleted),
+F273 findings paydown v1 (the open findings that describe a real defect were
+repaired as their own text specifies, from 130 open at the claim to 14 at the
+close, each of those carried by name to the next paydown: the suite runs on an
+isolated data root and fails when the configured one changes; the token
+ledger keeps one row per provider call; the integrity gate and the review
+package read the ledger through its one canonical reader; CI fails on any ruff
+finding and adds Python 3.12 to its matrix; and the modules, commands and
+cockpit sections nothing wrote to were deleted),
+F045 loop definitions, F057 rate-limit-aware scheduler,
+F077 autonomy watchdog, F082 self-benchmark, F083 CI self-check,
+F085 sandbox hardening, F111 diff-only repair,
+F115 prompt breakdown & cost report,
+F280 CLI vocabulary v2, part two (the gated prunes, the flight-plan rename
+and the help surface),
+F281 CLI help surface (descriptions, role labels, help wrapping, group
+order, README quickstart).
 
 Accepted in Tier 3 so far:
 F106 session resume instead of rebuild (repair rounds resume the original
@@ -254,6 +275,7 @@ evidence refs, an expected outcome and a downside, enforced where the decision
 is derived so a producer that omits one fails its own test; the inbox card
 renders the receipts, the honest note when a card has none, and each answer's
 own outcome and downside under the answer it belongs to).
+F033 hunk-level diff approval.
 F037 rendered diff viewer (a unified diff parsed server-side into structured
 JSON — files, hunks, lines and intraline spans — served per job and per task run,
 and rendered in the client with a file sidebar, hunk collapse beyond a size
@@ -285,13 +307,6 @@ from the oldest self-contained open finding in the reviewer's own ledger; the
 consumed item is RUN through the real job path to the normal approval gate,
 not merely planned; and any defect the run surfaces flows back into that same
 ledger as a normal finding).
-
-F106 session resume instead of rebuild (a repair round resumes the prior
-round's own provider session — gated on the provider honestly advertising
-support and a captured prior session id, never guessed — and sends only a
-hunk-selected findings delta in place of the full diff, with an honest,
-automatic fallback to full context the instant a resume attempt errors;
-the reduction is measured against a fixture repair chain, not assumed).
 
 Full per-feature state: [`docs/roadmap/STATUS.md`](docs/roadmap/STATUS.md)
 

@@ -24,13 +24,6 @@ class Budget(BaseModel):
     max_steps: int | None = None
 
 
-class AcceptanceCheck(BaseModel):
-    """Criteria that must pass before an artifact or task is accepted."""
-
-    description: str
-    required: bool = True
-
-
 class RunState(str, Enum):
     """Lifecycle state of a job or task."""
 
@@ -45,6 +38,11 @@ class RunState(str, Enum):
     # collapse can rename `status` to `state` without losing a state.
     BLOCKED = "blocked"
     STOPPED = "stopped"
+
+    def __str__(self) -> str:
+        # Since Python 3.11 `format()` of a mixed-in enum follows `__str__`, so without
+        # this `f"{job.state}"` renders `RunState.BLOCKED` there and `blocked` on 3.10.
+        return self.value
 
 
 class ArtifactKind(str, Enum):

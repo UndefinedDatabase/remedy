@@ -9,6 +9,10 @@
    `python3 -m pytest -n auto -q`
    Record: raw tail, full FAILED list, exit code, wall time.
    `grep '^FAILED' <log> | sort > branch_failed.txt`
+   That list is ONE run's sample, not the branch's failure set (R-0645): an
+   empty list is evidence that this run failed nothing, never proof that the
+   branch introduces no failure, and the gate entry says "this run". A node
+   a later run finds red is attributed by step 3 like any other.
 2. **No base run (amend0917-throughput, 2026-09-17).** The base is main
    at the merge base, and the hosted CI record of that commit is the only
    base evidence; no base worktree, base run or compare step exists. Every

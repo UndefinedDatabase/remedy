@@ -19,9 +19,7 @@ Autonomy levels:
 Public API::
 
     assess_job_readiness(job, events) -> ReadinessReport
-    assess_project_readiness(project_id, jobs, all_events) -> ReadinessReport
     export_readiness_json(report) -> dict
-    summarize_readiness(report) -> str
 """
 
 from __future__ import annotations
@@ -117,14 +115,6 @@ def _has_command_discovery(events: list[dict[str, Any]]) -> bool:
     return any(e.get("event") == "command_discovery_completed" for e in events)
 
 
-def _has_run_contract(events: list[dict[str, Any]]) -> bool:
-    return any(e.get("event") == "run_contract_inspected" for e in events)
-
-
-def _has_token_policy(events: list[dict[str, Any]]) -> bool:
-    return any(e.get("event") == "token_policy_inspected" for e in events)
-
-
 def _has_token_policy_applied(events: list[dict[str, Any]]) -> bool:
     return any(e.get("event") == "token_policy_applied" for e in events)
 
@@ -190,10 +180,6 @@ def _has_verified_snapshot(job: JobPlan, data_dir: Path) -> bool:
     return False
 
 
-def _has_git_status(events: list[dict[str, Any]]) -> bool:
-    return any(e.get("event") == "git_status_read" for e in events)
-
-
 def _has_pending_approvals(events: list[dict[str, Any]]) -> bool:
     """Check if there are unresolved approval blockers."""
     approved = set()
@@ -244,14 +230,11 @@ def _collect_signals(
         "apply_proof": _has_apply_proof(events),
         "test_proof": _has_test_proof(events),
         "approved_memory": _has_approved_memory(),
-        "token_policy": _has_token_policy(events),
         "token_policy_applied": _has_token_policy_applied(events),
-        "run_contract": _has_run_contract(events),
         "agent_loop": _has_agent_loop(events),
         "revert_snapshot": _has_revert_snapshot(events),
         "verified_snapshot": _has_verified_snapshot(job, data_dir),
         "no_pending_approvals": not _has_pending_approvals(events),
-        "git_status": _has_git_status(events),
         "no_open_decisions": _has_no_open_decisions(job, events),
     }
 
@@ -317,10 +300,10 @@ def _assess_level(
         _check("test_proof")
 
     elif lvl == 4:
-        # bounded_loop: need agent loop + run contract + token policy + no open decisions
+        # bounded_loop: need agent loop + applied token policy + no open decisions.
+        # R-0907: no longer the run-contract and token-policy inspection events,
+        # which nothing has emitted since F261 deleted the `policy` group.
         _check("agent_loop", f"remedy dev agent-loop {job_id}")
-        _check("run_contract")
-        _check("token_policy")
         _check("token_policy_applied")
         _check("no_open_decisions", f"remedy decision list {job_id}")
 
@@ -391,80 +374,6 @@ def assess_job_readiness(
     )
 
 
-def assess_project_readiness(
-    project_id: str,
-    jobs: list[JobPlan],
-    all_events: dict[str, list[dict[str, Any]]],
-    data_dir: Path | None = None,
-) -> ReadinessReport:
-    """Assess autonomy readiness across all linked jobs in a project."""
-    data_dir = data_dir if data_dir is not None else _resolve_readiness_data_dir()
-    if not jobs:
-        empty_levels = tuple(
-            LevelAssessment(
-                level=ld["level"], name=ld["name"], eligible=(ld["level"] == 0),
-                present_signals=("read_access",) if ld["level"] == 0 else (),
-                missing_signals=() if ld["level"] == 0 else ("no_linked_jobs",),
-                blockers=(), next_actions=(),
-            )
-            for ld in LEVELS
-        )
-        return ReadinessReport(
-            version=2, scope="project", job_id="",
-            project_id=project_id, highest_eligible_level=0,
-            levels=empty_levels, next_actions=("Create a linked job",),
-            signals={},
-        )
-
-    # Aggregate: level eligible if ANY linked job is eligible at that level
-    # Collect signals from all jobs
-    agg_signals: dict[str, bool] = {}
-    job_signals_list = []
-    for j in jobs:
-        js = _collect_signals(j, all_events.get(str(j.job_id), []), data_dir)
-        job_signals_list.append(js)
-        for k, v in js.items():
-            agg_signals[k] = agg_signals.get(k, False) or v
-
-    level_results: list[LevelAssessment] = []
-    for ld in LEVELS:
-        per_job = [_assess_level(ld, j, all_events.get(str(j.job_id), []), js) for j, js in zip(jobs, job_signals_list)]
-        any_eligible = any(a.eligible for a in per_job)
-        all_present = set()
-        all_missing = set()
-        all_blockers = set()
-        all_actions: list[str] = []
-        for a in per_job:
-            all_present.update(a.present_signals)
-            all_missing.update(a.missing_signals)
-            all_blockers.update(a.blockers)
-            all_actions.extend(a.next_actions)
-        if any_eligible:
-            all_missing.clear()
-        level_results.append(LevelAssessment(
-            level=ld["level"], name=ld["name"], eligible=any_eligible,
-            present_signals=tuple(sorted(all_present)),
-            missing_signals=tuple(sorted(all_missing)),
-            blockers=tuple(sorted(all_blockers)),
-            next_actions=tuple(dict.fromkeys(all_actions)),
-        ))
-
-    highest = max((a.level for a in level_results if a.eligible), default=-1)
-    first_missing_actions: tuple[str, ...] = ()
-    for a in level_results:
-        if not a.eligible:
-            first_missing_actions = a.next_actions
-            break
-
-    return ReadinessReport(
-        version=2, scope="project", job_id="",
-        project_id=project_id, highest_eligible_level=highest,
-        levels=tuple(level_results),
-        next_actions=first_missing_actions,
-        signals=agg_signals,
-    )
-
-
 def export_readiness_json(report: ReadinessReport) -> dict[str, Any]:
     """Export readiness report as safe JSON dict."""
     return {
@@ -490,25 +399,3 @@ def export_readiness_json(report: ReadinessReport) -> dict[str, Any]:
         "next_actions": list(report.next_actions),
         "signals": report.signals,
     }
-
-
-def summarize_readiness(report: ReadinessReport) -> str:
-    """Human-readable text summary of readiness."""
-    lines = [f"Autonomy Readiness ({report.scope}: {report.job_id[:8] or report.project_id[:8]})"]
-    lines.append(f"Highest eligible level: {report.highest_eligible_level}")
-    lines.append("")
-    for a in report.levels:
-        mark = "\u2713" if a.eligible else "\u2715"
-        lines.append(f"  [{mark}] Level {a.level}: {a.name}")
-        if a.present_signals:
-            lines.append(f"      present: {', '.join(a.present_signals)}")
-        if a.missing_signals:
-            lines.append(f"      missing: {', '.join(a.missing_signals)}")
-        if a.blockers:
-            lines.append(f"      blockers: {', '.join(a.blockers)}")
-    if report.next_actions:
-        lines.append("")
-        lines.append("Next actions:")
-        for act in report.next_actions:
-            lines.append(f"  \u2192 {act}")
-    return "\n".join(lines)

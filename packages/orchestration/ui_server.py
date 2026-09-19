@@ -446,18 +446,14 @@ def _build_snapshot_rollback_section(job: Any) -> dict[str, Any]:
     """Safe read-only Snapshot/Rollback Proof v1 cockpit summary (Step 1892). Honest restore flags;
     no fake rollback-ready; no mutation; no raw data."""
     try:
-        from packages.orchestration.real_test_execution import (
-            list_rollback_proofs,
-            list_snapshot_proofs,
-        )
+        from packages.orchestration.real_test_execution import list_snapshot_proofs
         snaps = list_snapshot_proofs(job_id=str(job.job_id))
-        rbs = list_rollback_proofs(job_id=str(job.job_id))
+        # R-0903: no command writes a rollback proof, so no restore is available or tested.
         return {
             "snapshot_recorded": bool(snaps),
             "snapshot_proof_count": len(snaps),
-            "restore_available": any(r.get("restore_available") for r in rbs),
+            "restore_available": False,
             "restore_tested": False,
-            "rollback_proof_count": len(rbs),
             "next_safe_action": f"remedy snapshot create {str(job.job_id)} --json",
             "live": False, "source": "real_test_execution",
         }
@@ -510,18 +506,13 @@ def _build_snapshot_section(job: Any, data_dir: Path | None) -> dict[str, Any]:
         return unknown
 
 
-def _build_continuation_section(
-    job: Any, events: list[dict[str, Any]], data_dir: Path | None,
-) -> dict[str, Any]:
-    """Safe continuation summary from do_continue events + approved intents.
+def _build_continuation_section(job: Any, data_dir: Path | None) -> dict[str, Any]:
+    """Safe continuation summary from approved intents.
 
     available: eligibility-light — at least one approved patch intent exists.
-    last_result / last_stop_reason: from the most recent do_continue_stopped
-    event metadata (safe enum labels only — no raw content).
     """
-    unknown = {"available": "unknown", "last_result": "unknown", "last_stop_reason": "unknown"}
     if data_dir is None:
-        return unknown
+        return {"available": "unknown"}
     # available — light approved-intent check (not the full eligibility gate)
     available = False
     try:
@@ -533,71 +524,7 @@ def _build_continuation_section(
         available = any(i.get("state") == APPROVAL_APPROVED for i in intents)
     except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
         available = False
-
-    # last result — most recent do_continue_stopped event
-    _RESULT_REASONS = {
-        "completed_verified", "test_failed_repair_available", "evidence_incomplete",
-    }
-    last_result = "none"
-    last_stop_reason = "none"
-    stopped = [e for e in events if e.get("event") == "do_continue_stopped"]
-    if stopped:
-        reason = str(stopped[-1].get("metadata", {}).get("stop_reason", ""))
-        last_stop_reason = reason or "none"
-        last_result = reason if reason in _RESULT_REASONS else "none"
-    return {
-        "available": available,
-        "last_result": last_result,
-        "last_stop_reason": last_stop_reason,
-    }
-
-
-def _build_repair_section(job: Any) -> dict[str, Any]:
-    """Safe read-only Repair Loop v1 summary for the cockpit (Step 1210).
-
-    Counts + safe statuses only — no failure output, no patch body, no source.
-    No mutation affordance: a pending approval surfaces a copyable CLI command,
-    never an Approve button.
-    """
-    attempts = (job.metadata or {}).get("repair_attempts_v1", {})
-    attempt_count = 0
-    pending_approval = 0
-    applied_count = 0
-    tested_passed_count = 0
-    tested_failed_count = 0
-    resolved_failure_count = 0
-    pending_intent_id = ""
-    if isinstance(attempts, dict):
-        for v in attempts.values():
-            if not isinstance(v, dict):
-                continue
-            attempt_count += 1
-            status = v.get("status")
-            if status == "approval_required":
-                pending_approval += 1
-                if not pending_intent_id and v.get("repair_intent_id"):
-                    pending_intent_id = str(v.get("repair_intent_id"))
-            if status in ("applied", "tested_passed", "tested_failed"):
-                applied_count += 1
-            if status == "tested_passed":
-                tested_passed_count += 1
-            if status == "tested_failed":
-                tested_failed_count += 1
-            if v.get("resolved_failure"):
-                resolved_failure_count += 1
-    next_action = ""
-    if pending_intent_id:
-        next_action = f"remedy patch approve {job.job_id} {pending_intent_id}"
-    return {
-        "attempt_count": attempt_count,
-        "pending_approval_count": pending_approval,
-        "applied_count": applied_count,
-        "tested_passed_count": tested_passed_count,
-        "tested_failed_count": tested_failed_count,
-        "resolved_failure_count": resolved_failure_count,
-        "next_safe_action": next_action,
-        "source": "repair_attempts_v1",
-    }
+    return {"available": available}
 
 
 def _build_overnight_section(job: Any, data_dir: Path | None) -> dict[str, Any]:
@@ -669,30 +596,6 @@ def _build_token_economy_section(job: Any) -> dict[str, Any]:
                 "source": "unavailable"}
 
 
-def _build_repair_request_section(job: Any) -> dict[str, Any]:
-    """Safe read-only Repair Request Builder summary for the cockpit (Step 1381).
-
-    Counts + latest target only. No buttons, no mutation, no external execution,
-    no raw request content."""
-    try:
-        from packages.orchestration.provider_patch_material import load_materials
-        from packages.orchestration.repair_request_builder import load_request_packages
-        packages = list(load_request_packages(job).values())
-        materialized = {m.get("failure_artifact_id") for m in load_materials(job).values()
-                        if m.get("material_state") == "materialized"}
-        pending = sum(1 for p in packages if p.get("failure_artifact_id") not in materialized)
-        latest = packages[-1].get("target_kind", "") if packages else "none"
-        return {
-            "request_package_count": len(packages),
-            "pending_response_count": pending,
-            "latest_request_target": latest,
-            "source": "repair_request_builder",
-        }
-    except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
-        return {"request_package_count": "unknown", "pending_response_count": "unknown",
-                "latest_request_target": "unknown", "source": "unavailable"}
-
-
 def _build_self_dogfood_section(job: Any) -> dict[str, Any]:
     """Safe read-only Self-Dogfood summary for the cockpit (Step 1418). Counts +
     latest status only. No buttons, no mutation, no raw findings."""
@@ -739,32 +642,6 @@ def _build_self_execution_section(job: Any) -> dict[str, Any]:
         return {"attempt_count": "unknown", "pending_candidate_count": "unknown",
                 "pending_approval_count": "unknown", "completed_count": "unknown",
                 "latest_state": "unknown", "source": "unavailable"}
-
-
-def _build_orchestrator_section(job: Any) -> dict[str, Any]:
-    """Safe read-only Orchestrator Brain summary for the cockpit (Step 1484). Latest
-    decision only. No buttons, no mutation, no raw content."""
-    try:
-        from packages.orchestration.orchestrator_brain import list_decisions
-        decisions = list_decisions(f"job:{job.job_id}")
-        if not decisions:
-            return {"decision_count": 0, "latest_stop_reason": "none", "confidence": "",
-                    "next_safe_action": "", "loop_guard_status": "", "model_routing_tier": "",
-                    "source": "orchestrator_brain"}
-        latest = decisions[-1]
-        return {
-            "decision_count": len(decisions),
-            "latest_stop_reason": latest.get("stop_reason", ""),
-            "confidence": latest.get("confidence", ""),
-            "next_safe_action": latest.get("next_safe_action", ""),
-            "loop_guard_status": latest.get("loop_guard_status", ""),
-            "model_routing_tier": (latest.get("model_routing_plan") or {}).get("tier", ""),
-            "source": "orchestrator_brain",
-        }
-    except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
-        return {"decision_count": "unknown", "latest_stop_reason": "unknown", "confidence": "unknown",
-                "next_safe_action": "", "loop_guard_status": "unknown",
-                "model_routing_tier": "unknown", "source": "unavailable"}
 
 
 _PROMPT_TRACE_PREVIEW_MAX = 1200
@@ -882,8 +759,7 @@ def _build_prompt_trace(ev_dir: Path | None) -> dict[str, Any]:
 
 
 # WHY: `metrics.open` and `open_decision_count` are both typed `int` with no "unknown"
-# state, so a failure here reads as 0 instead of propagating — unlike
-# `_build_orchestrator_section`, the richer shape that can answer "unknown". The event
+# state, so a failure here reads as 0 instead of propagating. The event
 # scans this replaces were constant zero in production: neither `human_decision_requested`
 # nor `stop_reason_recorded` has an emitter outside tests (DECISION F031 D2 / D9).
 def _count_open_decisions(job: Any, events: list[dict[str, Any]]) -> int:
@@ -1148,16 +1024,13 @@ def _build_dashboard(job: Any) -> dict[str, Any]:
             "proof": _metrics_proof_from_chain(proof_chain),
         },
         "snapshot": _build_snapshot_section(job, truth_data_dir),
-        "continuation": _build_continuation_section(job, events, truth_data_dir),
-        "repair": _build_repair_section(job),
+        "continuation": _build_continuation_section(job, truth_data_dir),
         "overnight": _build_overnight_section(job, truth_data_dir),
         "token_economy": _build_token_economy_section(job),
         "test_execution": _build_test_execution_section(job),
         "snapshot_rollback": _build_snapshot_rollback_section(job),
-        "repair_request": _build_repair_request_section(job),
         "self_dogfood": _build_self_dogfood_section(job),
         "self_execution": _build_self_execution_section(job),
-        "orchestrator": _build_orchestrator_section(job),
         "token_usage": _build_token_usage(events),
         "budget_final": _build_budget_final(events),
         "tasks": task_items,
@@ -1194,7 +1067,6 @@ def _build_dashboard(job: Any) -> dict[str, Any]:
         "pipeline": _build_pipeline_section(job, events),
         "resume": _build_resume_section(job, events),
         "project_summary": _build_project_summary_section(job),
-        "worker": _build_worker_section(),
         "redaction": {
             "policy": "safe_summaries_only",
             "raw_content_exposed": False,
@@ -1339,19 +1211,10 @@ def _build_project_summary_section(job: Any) -> dict[str, Any] | None:
         summary = build_project_summary(project, linked_jobs, all_events)
         patterns = detect_patterns(linked_jobs, all_events)
 
+        # R-0927: the real-builder count read an event only the deleted goal-driven
+        # path wrote, so no job can raise the confidence any more.
         model_confidence = "low"
         needs_real_check = True
-        real_builder_count = sum(
-            1 for evs in all_events.values() for ev in evs
-            if ev.get("event") == "autorun_builder_completed"
-            and ev.get("metadata", {}).get("provider") not in (None, "", "fixture", "mock")
-        )
-        if real_builder_count >= 15:
-            model_confidence = "high"
-            needs_real_check = False
-        elif real_builder_count >= 5:
-            model_confidence = "medium"
-            needs_real_check = False
 
         return {
             "project_id": summary.project_id,
@@ -1365,33 +1228,6 @@ def _build_project_summary_section(job: Any) -> dict[str, Any] | None:
             "needs_real_model_check": needs_real_check,
             "suggested_next_step": summary.suggested_next_step,
             "next_command": summary.next_command,
-            "redaction": "safe_metadata_only",
-        }
-    except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
-        return None
-
-
-def _build_worker_section() -> dict[str, Any] | None:
-    """Build safe worker status for dashboard."""
-    try:
-        from packages.orchestration.data_paths import resolve_data_root
-        from packages.orchestration.worker_queue import get_worker_status, list_queued
-
-        data_dir = resolve_data_root()
-        status = get_worker_status(data_dir)
-        queue = list_queued(data_dir)
-        queued_count = sum(1 for e in queue if e.lifecycle_state == "queued")
-
-        return {
-            "worker_available": bool(status.worker_id),
-            "worker_id": status.worker_id,
-            "lifecycle_state": status.lifecycle_state,
-            "current_job_id": status.current_job_id,
-            "queue_count": queued_count,
-            "heartbeat_at": status.heartbeat_at,
-            "stale": status.stale,
-            "why_it_stopped": status.why_it_stopped,
-            "next_command": "",
             "redaction": "safe_metadata_only",
         }
     except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
@@ -1413,10 +1249,7 @@ def _build_token_usage(events: list[dict[str, Any]]) -> dict[str, Any]:
         total += tokens
 
         ev = e.get("event", "")
-        if ev == "source_context_injected":
-            by_role["context"] = by_role.get("context", 0) + tokens
-            sources_seen.add("source_context")
-        elif ev == "project_memory_recalled":
+        if ev == "project_memory_recalled":
             by_role["memory"] = by_role.get("memory", 0) + tokens
             sources_seen.add("memory")
         elif ev == "repair_context_created":
@@ -1427,8 +1260,6 @@ def _build_token_usage(events: list[dict[str, Any]]) -> dict[str, Any]:
 
     known = total > 0
     missing: list[str] = []
-    if "source_context" not in sources_seen:
-        missing.append("source_context")
     if "memory" not in sources_seen:
         missing.append("memory")
 
@@ -1478,33 +1309,10 @@ def _build_pipeline_section(job: Any, events: list[dict[str, Any]]) -> dict[str,
     All fields derived from real events/job state. Unknown = null.
     No raw provider output, diffs, test output, or approval reasons.
     """
-    # Provider
-    started_events = [e for e in events if e.get("event") == "autorun_started"]
-    builder_events = [e for e in events if e.get("event") == "autorun_builder_completed"]
-    provider_error_events = [e for e in events if e.get("event") == "autorun_provider_error"]
-
+    # Provider and source context: R-0927 deleted the goal-driven path whose run-log
+    # events alone carried them, so they read as absent rather than guessed.
     provider = None
     provider_mode = "none"
-    if builder_events:
-        provider = builder_events[-1].get("metadata", {}).get("provider")
-        provider_mode = provider or "unknown"
-    elif provider_error_events:
-        provider = provider_error_events[-1].get("metadata", {}).get("provider")
-        provider_mode = provider or "unknown"
-
-    # Source context
-    ctx_events = [e for e in events if e.get("event") == "source_context_injected"]
-    source_context_injected = bool(ctx_events)
-    source_context_meta: dict[str, Any] = {}
-    if ctx_events:
-        cm = ctx_events[-1].get("metadata", {})
-        source_context_meta = {
-            "file_count": cm.get("file_count", 0),
-            "test_file_count": cm.get("test_file_count", 0),
-            "estimated_tokens": cm.get("estimated_tokens", 0),
-            "truncated": cm.get("truncated", False),
-            "selection_hash": str(cm.get("selection_hash", ""))[:12],
-        }
 
     # Memory
     mem_events = [e for e in events if e.get("event") == "project_memory_recalled"]
@@ -1515,7 +1323,7 @@ def _build_pipeline_section(job: Any, events: list[dict[str, Any]]) -> dict[str,
 
     # Parse
     parse_events = [e for e in events if e.get("event") == "builder_patch_parsed"]
-    structured_patch_attempted = bool(builder_events or parse_events)
+    structured_patch_attempted = bool(parse_events)
     parse_success = None
     parse_error_kind = ""
     if parse_events:
@@ -1525,21 +1333,15 @@ def _build_pipeline_section(job: Any, events: list[dict[str, Any]]) -> dict[str,
             parse_error_kind = pm.get("error_kind", "")
 
     # Intent / approval
-    intent_events = [e for e in events if e.get("event") in (
-        "structured_patch_intent_created", "builder_bridge_intent_approved")]
+    intent_events = [e for e in events if e.get("event") == "builder_bridge_intent_approved"]
     intent_id = ""
     intent_status = "none"
     approval_required = False
     approval_status = "none"
     if intent_events:
         intent_id = intent_events[-1].get("metadata", {}).get("intent_id", "")
-        if any(e.get("event") == "builder_bridge_intent_approved" for e in intent_events):
-            intent_status = "approved"
-            approval_status = "approved"
-        else:
-            intent_status = "created"
-            approval_required = True
-            approval_status = "pending"
+        intent_status = "approved"
+        approval_status = "approved"
 
     # Check job artifacts for pending approvals
     for art in job.artifacts:
@@ -1583,8 +1385,6 @@ def _build_pipeline_section(job: Any, events: list[dict[str, Any]]) -> dict[str,
     elif parse_events and not parse_success:
         pm = parse_events[-1].get("metadata", {})
         stop_reason = pm.get("stop_reason", "") or pm.get("error_kind", "")
-    elif provider_error_events:
-        stop_reason = provider_error_events[-1].get("metadata", {}).get("stop_reason", "")
     elif test_events and tests_passed is False:
         stop_reason = "test_failed_after_apply"
 
@@ -1619,10 +1419,7 @@ def _build_pipeline_section(job: Any, events: list[dict[str, Any]]) -> dict[str,
         "version": 1,
         "provider": provider,
         "provider_mode": provider_mode,
-        "source_context": {
-            "injected": source_context_injected,
-            **source_context_meta,
-        },
+        "source_context": {"injected": False},
         "memory": {
             "used": memory_used,
             "item_count": memory_item_count,
@@ -1889,14 +1686,6 @@ def _build_live_state_json(job: Any) -> dict[str, Any]:
         if test_events and not test_events[-1].get("metadata", {}).get("passed", True):
             bridge_stop_reason = "test_failed_after_apply"
 
-    # Reviewer pending count
-    recs = (job.metadata or {}).get("reviewer_recommendations", [])
-    reviewer_pending = sum(1 for r in recs if r.get("status") == "pending")
-
-    # Memory candidate count
-    candidates = (job.metadata or {}).get("memory_candidates", [])
-    memory_candidate_count = len(candidates)
-
     # Approved memory usage from events
     mem_events = [e for e in events if e.get("event") == "project_memory_recalled"]
     memory_used_count = mem_events[-1].get("metadata", {}).get("item_count", 0) if mem_events else 0
@@ -1924,8 +1713,6 @@ def _build_live_state_json(job: Any) -> dict[str, Any]:
         "builder_patch_parsed": bridge_parse_success,
         "builder_patch_error": bridge_parse_error,
         "stop_reason": bridge_stop_reason,
-        "reviewer_pending_count": reviewer_pending,
-        "memory_candidate_count": memory_candidate_count,
         "memory_used_count": memory_used_count,
         # Truth contract
         "demo_mode": os.environ.get("REMEDY_UI_DEMO_MODE") == "1",
@@ -2410,6 +2197,11 @@ COMMAND_EFFECT_SOURCE = "ui"
 #: this door issues (DECISION F009 D22, third clause).
 COMMAND_DECISION_STATE_MESSAGE = "decision is not open"
 
+#: What a `decision.resolve` whose `args.answer` is blank once stripped returns: a 400
+#: on field `answer`, audited `rejected_shape` (R-0685). Written once, a blank answer
+#: would resolve the decision with nothing and could never be corrected.
+COMMAND_BLANK_ANSWER_MESSAGE = "answer must not be blank"
+
 #: What an id that `_command_is_ui_exposed` admits but no dispatch clause matches
 #: returns. DECISION F009 D22 keeps the 501 as a GUARD rather than a placeholder:
 #: without it such a request falls off the end of the handler with no response
@@ -2861,7 +2653,8 @@ class _RemedyHandler(BaseHTTPRequestHandler):
                 return
             if accepted_body is None:
                 # D21, clause three: the effect RAN and DECLINED — the decision
-                # is absent or is no longer open. Nothing changed on disk, so
+                # is absent or is no longer open, or an absent answer degraded to ""
+                # and `answer_task_decision` refused it (R-0685). Nothing changed on disk, so
                 # nothing is published and a retry cannot answer it differently.
                 self._audit_attempt(str(job.job_id), "rejected_state", create=True,
                                     payload=payload)
@@ -2940,8 +2733,11 @@ class _RemedyHandler(BaseHTTPRequestHandler):
         DECISION F009 D21: `answer_task_decision` and `save_job` are BOTH the
         effect, because the answer is durable only once `save_job` returns, so a
         raise from either is D18 clause four's `rejected_effect`. A None return
-        is NOT a failure — the decision is absent or is no longer open — and the
-        caller answers it 409 and audits it `rejected_state`.
+        is NOT a failure — the decision is absent or is no longer open, or an
+        absent or non-string answer degraded to "", which `answer_task_decision`
+        refuses (R-0685) — and the caller answers it 409 and audits it
+        `rejected_state`. A blank STRING answer never gets here: it is
+        `_read_command_payload`'s 400 on field `answer`.
 
         DECISION F009 D22: `source` is deliberately NOT passed, so the answer
         takes `answer_task_decision`'s default of `human`. `answer_source` names
@@ -3303,6 +3099,13 @@ class _RemedyHandler(BaseHTTPRequestHandler):
         args = payload.get("args", {})
         if not isinstance(args, dict):
             return None, _command_field_error("args", "args must be a JSON object")
+        # R-0685: a blank answer is a SHAPE error, refused before any decision is read,
+        # so an OPEN decision is never answered "not open". An ABSENT or non-string
+        # answer still degrades to "" in `_dispatch_decision_resolve`, as D14 rules.
+        answer = args.get("answer")
+        if (command == DECISION_RESOLVE_COMMAND_ID and isinstance(answer, str)
+                and not answer.strip()):
+            return None, _command_field_error("answer", COMMAND_BLANK_ANSWER_MESSAGE)
         return {"command": command, "client_nonce": client_nonce, "args": args}, None
 
     def do_PUT(self) -> None:  # noqa: N802

@@ -65,6 +65,8 @@ from packages.orchestration.orchestrator_loop import (
     MILESTONES_DONE_KEY,
     OUTCOME_ITERATION_RETRYING,
     OUTCOME_REFUSED,
+    OUTCOME_RESUME_NOT_RUN,
+    OUTCOME_RESUMED,
     PROTOCOL_DOC_RELATIVE,
     PROTOCOL_VERSION,
     RETRYABLE_FAILURE_CLASSES,
@@ -104,6 +106,7 @@ from packages.orchestration.orchestrator_loop import (
     evaluate_dispatch,
     evaluate_milestone_done,
     evaluate_move,
+    evaluate_resume,
     ledger_path,
     loop_limits_from_config,
     mark_milestone_done,
@@ -190,6 +193,7 @@ class TestTheMoveSchema:
     def test_every_kind_validates_through_the_existing_validator(self, kind):
         payload = {
             "dispatch_job": {"milestone_id": "M001", "step": "do the work"},
+            "resume_job": {"milestone_id": "M001"},
             "declare_milestone_done": {"milestone_id": "M001"},
             "abort_with_reason": {"reason": "the plan is wrong"},
         }.get(kind, {})
@@ -1662,8 +1666,8 @@ class TestTheReDispatchGuard:
         assert evaluate_dispatch(mission, "M001", self._evidence(state)) == ""
 
     def test_a_paused_job_still_allows_a_dispatch(self, mission):
-        """The move schema has no resume kind, so refusing here would deadlock
-        the mission instead of guarding it."""
+        """`resume_job` continues a paused job (R-0762), but a fresh dispatch
+        stays legal for work the model judges better restarted."""
         assert evaluate_dispatch(mission, "M001", self._evidence("paused")) == ""
 
     def test_a_milestone_with_no_job_is_untouched(self, mission):
@@ -2724,3 +2728,167 @@ class TestAnAmendmentTakesEffectInTheNextRound:
         from packages.orchestration.orchestrator_loop import next_iteration_index
 
         assert next_iteration_index(PROJECT, ran["mission_id"], ran["root"]) == 4
+
+
+# ---------------------------------------------------------------------------
+# R-0762 — `resume_job` continues a paused or out-of-cycles job as the SAME job
+# ---------------------------------------------------------------------------
+
+
+def _one_task_step(job, _provider):
+    """Complete one pending task, as the task runner would, marking the job
+    running while it works."""
+    from packages.core.models import RunState
+    from packages.orchestration.long_run_executor import TaskAttempt
+
+    pending = [t for t in job.tasks if t.status == RunState.PENDING]
+    if not pending:
+        return TaskAttempt()
+    job.state = RunState.RUNNING
+    pending[0].status = RunState.COMPLETED
+    return TaskAttempt(task_id=pending[0].task_id, executed=True, verified=True)
+
+
+def _run_one_cycle(job):
+    """The executor seam, as the real multi-cycle executor with one cycle."""
+    from packages.orchestration.long_run_executor import CycleLimits, run_cycles
+
+    return run_cycles(job, CycleLimits(max_cycles=1), lambda _ctx: None,
+                      task_step=_one_task_step)
+
+
+class TestResumeJobContinuesTheSameJob:
+    """R-0762: a paused job and a `max_cycles_reached` job are CONTINUED — the
+    same job id, a new cycle run, no new job — behind the `job resume` guards;
+    a job that is not resumable is refused with the reason."""
+
+    @pytest.fixture()
+    def data_root(self, tmp_path, monkeypatch):
+        root = tmp_path / "remedy_data"
+        root.mkdir()
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(root))
+        return root
+
+    def _job_for_m001(self, tmp_path, mission, *, tasks: int = 3):
+        """A real job that served M001 and ran ONE cycle, which ended
+        max_cycles_reached; the ledger attributes it to M001."""
+        from packages.orchestration.pingpong_job import JobPlan, TaskEntry, save_job_plan
+
+        job = JobPlan(job_title="m001", tasks=[TaskEntry(title=f"t{i}", body="d")
+                                               for i in range(tasks)])
+        save_job_plan(job)
+        _run_one_cycle(job)
+        append_ledger_entry(PROJECT, mission.id, LedgerEntry(
+            iteration=1, context_digest="",
+            move={"kind": "dispatch_job",
+                  "payload": {"milestone_id": "M001", "step": "build M001"}},
+            outcome={"status": "dispatched", "job_id": str(job.job_id)}),
+            tmp_path)
+        return job
+
+    def _resume(self, tmp_path, mission, dispatched, execute=_run_one_cycle):
+        return run_mission(
+            mission.id, LoopLimits(max_iterations=1), project_id=PROJECT,
+            call_fn=_scripted(_move_json("resume_job", milestone_id="M001")),
+            root=tmp_path, dispatch=dispatched, execute=execute,
+            control_root_path=tmp_path / "control")
+
+    def _cycle_files(self, data_root, job):
+        return sorted(p.name for p in (data_root / "jobs" / str(job.job_id)
+                                       / "evidence" / "cycles")
+                      .glob("cycle_*.json"))
+
+    def test_a_max_cycles_reached_job_is_continued(self, tmp_path, mission,
+                                                   dispatched, data_root):
+        from packages.orchestration.pingpong_job import require_job_plan
+
+        job = self._job_for_m001(tmp_path, mission)
+        assert require_job_plan(str(job.job_id)).metadata[
+            "cycle_terminal_status"] == "max_cycles_reached"
+
+        result = self._resume(tmp_path, mission, dispatched)
+
+        outcome = result.entries[0].outcome
+        assert outcome["status"] == OUTCOME_RESUMED, outcome
+        assert outcome["job_id"] == str(job.job_id)
+        assert "from checkpoint 1" in outcome["detail"]
+        assert dispatched.seen == [], "no new job"
+        assert self._cycle_files(data_root, job) == ["cycle_0001.json",
+                                                     "cycle_0002.json"]
+
+    def test_a_paused_job_is_continued(self, tmp_path, mission, dispatched,
+                                       data_root):
+        from packages.core.models import RunState
+        from packages.orchestration.pingpong_job import require_job_plan, save_job_plan
+
+        job = self._job_for_m001(tmp_path, mission)
+        paused = require_job_plan(str(job.job_id))
+        paused.state = RunState.PAUSED
+        paused.metadata["cycle_terminal_status"] = "blocked"
+        save_job_plan(paused)
+
+        result = self._resume(tmp_path, mission, dispatched)
+
+        outcome = result.entries[0].outcome
+        assert outcome["status"] == OUTCOME_RESUMED, outcome
+        assert outcome["job_id"] == str(job.job_id)
+        assert dispatched.seen == []
+        assert self._cycle_files(data_root, job) == ["cycle_0001.json",
+                                                     "cycle_0002.json"]
+
+    def test_a_job_that_is_not_resumable_is_refused_with_a_reason(
+            self, tmp_path, mission, dispatched, data_root):
+        job = self._job_for_m001(tmp_path, mission, tasks=1)   # all green now
+        ran: list[Any] = []
+
+        result = self._resume(tmp_path, mission, dispatched,
+                              execute=lambda j: ran.append(j))
+
+        outcome = result.entries[0].outcome
+        assert outcome["status"] == OUTCOME_REFUSED
+        assert f"job {job.job_id} for milestone M001 is not resumable" in \
+            outcome["detail"]
+        assert "'completed'" in outcome["detail"]
+        assert ran == [] and dispatched.seen == []
+
+    def test_the_job_resume_stop_guard_holds_the_loop_too(
+            self, tmp_path, mission, dispatched, data_root):
+        job = self._job_for_m001(tmp_path, mission)
+        request_stop(str(job.job_id), reason="operator hold")
+        ran: list[Any] = []
+
+        result = self._resume(tmp_path, mission, dispatched,
+                              execute=lambda j: ran.append(j))
+
+        outcome = result.entries[0].outcome
+        assert outcome["status"] == OUTCOME_RESUME_NOT_RUN
+        assert "operator hold" in outcome["detail"]
+        assert stop_requested(str(job.job_id)) is None, "consumed, as job resume does"
+        assert ran == []
+
+    def test_a_resume_with_no_job_or_another_job_is_refused(self, mission):
+        assert "nothing to resume" in evaluate_resume(
+            mission, "M001", MilestoneEvidence())
+        paused = MilestoneEvidence(job_id="job-0002", job_state="paused")
+        assert evaluate_resume(mission, "M001", paused) == ""
+        assert "only the latest job is resumed" in evaluate_resume(
+            mission, "M001", paused, job_id="job-0001")
+
+    def test_the_in_flight_refusal_names_resume_job(self, mission):
+        out_of_cycles = MilestoneEvidence(
+            job_id="job-0001", job_state="running",
+            cycle_terminal_status="max_cycles_reached")
+        assert "Instead: resume_job for M001" in evaluate_dispatch(
+            mission, "M001", out_of_cycles)
+        assert "Instead: resume_job for M001" in evaluate_milestone_done(
+            mission, "M001", out_of_cycles)
+
+    def test_the_schema_accepts_and_validates_resume_job(self):
+        assert "resume_job" in ORCHESTRATOR_MOVE_KINDS
+        ok = validate_response(OrchestratorMove, _move_json(
+            "resume_job", milestone_id="M001", job_id="job-0001"))
+        assert ok.ok, ok.hint
+        assert not validate_response(OrchestratorMove,
+                                     _move_json("resume_job")).ok
+        assert not validate_response(OrchestratorMove, _move_json(
+            "resume_job", milestone_id="  ")).ok

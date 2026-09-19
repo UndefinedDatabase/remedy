@@ -20,7 +20,6 @@ _PRODUCT_MODULES = (
 _ALLOWED_LEGACY = {
     "packages/orchestration/self_dogfood.py",
     "packages/orchestration/self_dogfood_execution.py",
-    "packages/orchestration/orchestrator_brain.py",
     "packages/orchestration/integrity_gate.py",
     # The freshness gate binds packaged evidence to the agent's live review by
     # design: it derives the step range from .agent/plan.md AND

@@ -61,31 +61,146 @@ def extract_catalog_keys(source: str) -> list[str]:
     return CATALOG_ENTRY.findall(strip_ts_comments(source))
 
 
-def _event_argument(call: ast.Call) -> ast.expr | None:
+#: Emission calls by callee name: the position and the keyword of the event
+#: argument. `emit_important_event` counts because it appends through
+#: `timeline.append_run_event` to the run log the cockpit feed reads.
+EMISSION_CALLS: dict[str, tuple[int | None, str]] = {
+    "log": (0, "event"),
+    "append_run_event": (None, "event"),
+    "emit_important_event": (2, "event_type"),
+}
+
+#: A forwarding helper: the position and the name of its event parameter.
+Helpers = dict[str, tuple[int, str]]
+
+
+def _argument_at(call: ast.Call, position: int | None, keyword: str) -> ast.expr | None:
+    for item in call.keywords:
+        if item.arg == keyword:
+            return item.value
+    if position is not None and len(call.args) > position:
+        return call.args[position]
+    return None
+
+
+def _event_argument(call: ast.Call, helpers: Helpers | None = None) -> ast.expr | None:
     """The event argument of a run-log emission call, or None if this is not one.
 
-    A call site qualifies when the callee is an attribute named ``log`` or
-    ``append_run_event``, or a bare name ``append_run_event``, and an event
-    argument is present: the first positional argument for ``log``, or the
-    ``event=`` keyword for either.
+    A call site qualifies when the callee is an attribute named ``log``,
+    ``append_run_event`` or ``emit_important_event``, a bare name of either of the
+    last two, or a bare name in ``helpers`` — a function the same module defines
+    that forwards one of its parameters as the event to a qualifying call.
     """
     func = call.func
+    if isinstance(func, ast.Name) and helpers and func.id in helpers:
+        return _argument_at(call, *helpers[func.id])
     if isinstance(func, ast.Attribute):
         name = func.attr
-    elif isinstance(func, ast.Name):
+    elif isinstance(func, ast.Name) and func.id != "log":
         name = func.id
-        if name != "append_run_event":
-            return None
     else:
         return None
-    if name not in ("log", "append_run_event"):
+    if name not in EMISSION_CALLS:
         return None
-    for keyword in call.keywords:
-        if keyword.arg == "event":
-            return keyword.value
-    if name == "log" and call.args:
-        return call.args[0]
-    return None
+    return _argument_at(call, *EMISSION_CALLS[name])
+
+
+def forwarding_helpers(tree: ast.AST) -> Helpers:
+    """The module's own functions that pass a parameter on as an event name,
+    found to a fixed point so a helper of a helper is also recovered."""
+    functions = [node for node in ast.walk(tree)
+                 if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))]
+    helpers: Helpers = {}
+    changed = True
+    while changed:
+        changed = False
+        for fdef in functions:
+            if fdef.name in helpers:
+                continue
+            positional = [a.arg for a in fdef.args.posonlyargs + fdef.args.args]
+            params = set(positional) | {a.arg for a in fdef.args.kwonlyargs}
+            for node in ast.walk(fdef):
+                if not isinstance(node, ast.Call):
+                    continue
+                argument = _event_argument(node, helpers)
+                if isinstance(argument, ast.Name) and argument.id in params:
+                    position = (positional.index(argument.id)
+                                if argument.id in positional else None)
+                    helpers[fdef.name] = (position, argument.id)
+                    changed = True
+                    break
+    return helpers
+
+
+def literals_emitted_in(source: str) -> frozenset[str]:
+    """Distinct string-constant event names one module's source passes at
+    emission sites, its own forwarding helpers' call sites included."""
+    try:
+        tree = ast.parse(source)
+    except SyntaxError:
+        return frozenset()
+    helpers = forwarding_helpers(tree)
+    names: set[str] = set()
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Call):
+            continue
+        argument = _event_argument(node, helpers)
+        if isinstance(argument, ast.Constant) and isinstance(argument.value, str):
+            names.add(argument.value)
+    # R-0927: a name a function holds in a local first — `event_name = "a" if x else
+    # "b"` then `_emit(d, j, event_name, ...)` in `test_execution_service.py` — is a
+    # literal too. Once `autorun.py` went, that was the only emitter of
+    # `test_run_completed`, and its sibling `test_run_timed_out` had never been seen.
+    for fdef in ast.walk(tree):
+        if not isinstance(fdef, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            continue
+        held: dict[str, set[str]] = {}
+        for node in ast.walk(fdef):
+            if (isinstance(node, ast.Assign) and len(node.targets) == 1
+                    and isinstance(node.targets[0], ast.Name)):
+                held.setdefault(node.targets[0].id, set()).update(_held_literals(node.value))
+        for node in ast.walk(fdef):
+            if not isinstance(node, ast.Call):
+                continue
+            argument = _event_argument(node, helpers)
+            if isinstance(argument, ast.Name):
+                names |= held.get(argument.id, set())
+    return frozenset(names)
+
+
+def _held_literals(node: ast.expr) -> set[str]:
+    """The string literals an expression can only evaluate to: a constant, or a
+    conditional expression whose both arms are such. Anything else yields nothing."""
+    if isinstance(node, ast.Constant) and isinstance(node.value, str):
+        return {node.value}
+    if isinstance(node, ast.IfExp):
+        body, orelse = _held_literals(node.body), _held_literals(node.orelse)
+        return body | orelse if body and orelse else set()
+    return set()
+
+
+def emitter_sources(base: Path) -> list[Path]:
+    """The Python files under ``EMITTER_ROOTS`` that are Remedy source.
+
+    Any path with ``node_modules`` among its parts is gitignored vendored build
+    output (``apps/ui/node_modules`` ships third-party ``.py``), so it is skipped:
+    a dependency must never be able to add an event kind to this vocabulary
+    (R-0649).
+    """
+    return [
+        path
+        for root in EMITTER_ROOTS
+        for path in sorted((base / root).rglob("*.py"))
+        if "node_modules" not in path.relative_to(base).parts
+    ]
+
+
+def literals_emitted_by(paths: list[Path]) -> frozenset[str]:
+    """Distinct string-constant event names passed at emission sites in ``paths``."""
+    names: set[str] = set()
+    for path in paths:
+        names |= literals_emitted_in(path.read_text(encoding="utf-8", errors="replace"))
+    return frozenset(names)
 
 
 @lru_cache(maxsize=1)
@@ -96,20 +211,7 @@ def emission_literals() -> frozenset[str]:
     walk. They are covered by the generic line in ``humanize.ts`` instead, which
     is why that line is a contract and not a nicety.
     """
-    names: set[str] = set()
-    for root in EMITTER_ROOTS:
-        for path in sorted((REPO_ROOT / root).rglob("*.py")):
-            try:
-                tree = ast.parse(path.read_text(encoding="utf-8", errors="replace"))
-            except SyntaxError:
-                continue
-            for node in ast.walk(tree):
-                if not isinstance(node, ast.Call):
-                    continue
-                argument = _event_argument(node)
-                if isinstance(argument, ast.Constant) and isinstance(argument.value, str):
-                    names.add(argument.value)
-    return frozenset(names)
+    return literals_emitted_by(emitter_sources(REPO_ROOT))
 
 
 def _module_assignments(path: Path) -> dict[str, ast.expr]:
@@ -205,6 +307,60 @@ class TestKeyExtractor:
 class TestDerivation:
     def test_the_emitter_walk_finds_call_sites(self):
         assert emission_literals(), "the AST walk found no run-log emission literal"
+
+    def test_vendored_python_under_node_modules_is_not_walked(self, tmp_path):
+        """R-0649: a dependency's ``.py`` under ``node_modules`` must not define a
+        kind. The red control proves the plain walk DOES reach the vendored file,
+        so the exclusion is exercised rather than one that never matches."""
+        own = tmp_path / "packages" / "own.py"
+        vendored = tmp_path / "apps" / "ui" / "node_modules" / "dep" / "python" / "dep.py"
+        for path, kind in ((own, "own_kind"), (vendored, "vendored_kind")):
+            path.parent.mkdir(parents=True)
+            path.write_text(f"writer.log({kind!r})\n", encoding="utf-8")
+
+        assert vendored in (tmp_path / "apps").rglob("*.py"), "red control: unreached"
+        assert literals_emitted_by([own, vendored]) == {"own_kind", "vendored_kind"}
+
+        assert emitter_sources(tmp_path) == [own]
+        assert literals_emitted_by(emitter_sources(tmp_path)) == {"own_kind"}
+
+    def test_the_walk_finds_a_name_only_a_helper_emits(self):
+        """A module's own forwarding helper hides its callers' literals from a
+        walk that reads only emission calls: `builder_bridge._emit` emits
+        `repair_loop_stopped` and `test_execution_service._emit` emits
+        `contract_decision` that way. A helper of a helper counts too."""
+        source = (
+            "def _emit(data_dir, job_id, event, metadata):\n"
+            "    append_run_event(data_dir, job_id, event=event, metadata=metadata)\n"
+            "def _note(event, meta):\n"
+            "    return _emit('d', 'j', event, meta)\n"
+            "def _important(d, j, kind):\n"
+            "    emit_important_event(d, j, kind, {})\n"
+            "def run(d, j):\n"
+            "    _emit(d, j, 'alpha_stopped', {})\n"
+            "    _note('beta_started', {})\n"
+            "    _important(d, j, 'gamma_decided')\n"
+            "    persist(d, j, 'delta_not_an_event')\n"
+        )
+        assert literals_emitted_in(source) == {
+            "alpha_stopped", "beta_started", "gamma_decided"}
+        assert {"repair_loop_stopped", "contract_decision"} <= emission_literals()
+
+    def test_the_walk_finds_a_name_held_in_a_local(self):
+        """R-0927: `test_execution_service.py` holds `test_run_completed` and
+        `test_run_timed_out` in a local before it emits; a local bound to anything
+        but literals yields nothing."""
+        source = (
+            "def _emit(data_dir, job_id, event, metadata):\n"
+            "    append_run_event(data_dir, job_id, event=event, metadata=metadata)\n"
+            "def run(d, j, s):\n"
+            "    name = 'alpha_timed_out' if s else 'alpha_completed'\n"
+            "    _emit(d, j, name, {})\n"
+            "    other = compute()\n"
+            "    _emit(d, j, other, {})\n"
+        )
+        assert literals_emitted_in(source) == {"alpha_timed_out", "alpha_completed"}
+        assert {"test_run_completed", "test_run_timed_out"} <= emission_literals()
 
     def test_the_defined_trace_sets_are_read(self):
         assert trace_event_kinds(), "TRACE_EVENT_KINDS came back empty"

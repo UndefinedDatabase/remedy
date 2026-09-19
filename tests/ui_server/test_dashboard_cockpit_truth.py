@@ -74,12 +74,8 @@ class TestUnknownWhenNoDataDir:
 
     def test_continuation_unknown(self):
         job = JobPlan(job_title="t")
-        c = _build_continuation_section(job, [], None)
-        assert c == {
-            "available": "unknown",
-            "last_result": "unknown",
-            "last_stop_reason": "unknown",
-        }
+        c = _build_continuation_section(job, None)
+        assert c == {"available": "unknown"}
 
 
 class TestTaskTruthMaps:
@@ -225,33 +221,10 @@ class TestTaskTruthMaps:
         assert apply_alone["t2"] == "not_applied"
 
 
-class TestContinuationLastResult:
-    def test_last_result_from_stopped_event(self, tmp_path: Path):
-        job = JobPlan(job_title="t")
-        events = [
-            {"event": "do_continue_stopped",
-             "metadata": {"stop_reason": "completed_verified"}},
-        ]
-        c = _build_continuation_section(job, events, tmp_path)
-        assert c["last_result"] == "completed_verified"
-        assert c["last_stop_reason"] == "completed_verified"
-        assert c["available"] is False  # no approved intents on empty job
-
-    def test_non_result_stop_reason_maps_to_none(self, tmp_path: Path):
-        job = JobPlan(job_title="t")
-        events = [
-            {"event": "do_continue_stopped",
-             "metadata": {"stop_reason": "lease_unavailable"}},
-        ]
-        c = _build_continuation_section(job, events, tmp_path)
-        assert c["last_result"] == "none"
-        assert c["last_stop_reason"] == "lease_unavailable"
-
-    def test_no_stopped_event(self, tmp_path: Path):
-        job = JobPlan(job_title="t")
-        c = _build_continuation_section(job, [], tmp_path)
-        assert c["last_result"] == "none"
-        assert c["last_stop_reason"] == "none"
+class TestContinuationAvailable:
+    def test_no_approved_intent_reads_unavailable(self, tmp_path: Path):
+        c = _build_continuation_section(JobPlan(job_title="t"), tmp_path)
+        assert c == {"available": False}  # no approved intents on empty job
 
 
 class TestDashboardShape:
@@ -262,17 +235,10 @@ class TestDashboardShape:
         assert "proof" in dash["metrics"]
         assert "snapshot" in dash
         assert "continuation" in dash
-        assert "repair" in dash
+        # R-0926: the two repair sections read stores nothing writes, and went.
+        assert "repair" not in dash and "repair_request" not in dash
         for key in ("runs", "passed", "failed", "latest_state"):
             assert key in dash["metrics"]["tests"]
-
-    def test_repair_section_safe_shape(self):
-        job = JobPlan(job_title="t")
-        repair = _build_dashboard(job)["repair"]
-        assert repair["attempt_count"] == 0
-        assert repair["pending_approval_count"] == 0
-        assert repair["next_safe_action"] == ""  # no approve affordance without evidence
-        assert repair["source"] == "repair_attempts_v1"
 
     def test_overnight_section_present(self):
         job = JobPlan(job_title="t")
@@ -283,15 +249,6 @@ class TestDashboardShape:
         assert "can_run_unattended" in ov
         # No fabricated "ready" overnight state without evidence/policy.
         assert ov["can_run_unattended"] in (False, "unknown")
-
-    def test_repair_request_section_present(self):
-        # Read-only Repair Request Builder summary (Step 1381).
-        job = JobPlan(job_title="t")
-        dash = _build_dashboard(job)
-        assert "repair_request" in dash
-        rr = dash["repair_request"]
-        assert "request_package_count" in rr
-        assert "pending_response_count" in rr
 
     def test_self_dogfood_section_present(self):
         # Read-only Self-Dogfood summary (Step 1418).
@@ -311,16 +268,6 @@ class TestDashboardShape:
         assert "attempt_count" in se
         assert "pending_candidate_count" in se
         assert "pending_approval_count" in se
-
-    def test_orchestrator_section_present(self):
-        # Read-only Orchestrator Brain summary (Step 1484).
-        job = JobPlan(job_title="t")
-        dash = _build_dashboard(job)
-        assert "orchestrator" in dash
-        ob = dash["orchestrator"]
-        assert "decision_count" in ob
-        assert "latest_stop_reason" in ob
-        assert "model_routing_tier" in ob
 
     def test_unknown_when_data_dir_unavailable(self, monkeypatch):
         monkeypatch.setattr(ui_server, "_resolve_dashboard_data_dir", lambda: None)

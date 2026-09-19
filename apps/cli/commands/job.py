@@ -19,6 +19,7 @@ from packages.orchestration.pingpong_job import (
     TaskEntry,
     require_job_plan,
     save_job_plan,
+    task_is_done,
 )
 
 if TYPE_CHECKING:
@@ -27,6 +28,14 @@ if TYPE_CHECKING:
     from packages.orchestration.project_scope import ProjectScope
 
 _SAFE_TASK_TYPE_RE = re.compile(r'^[A-Za-z0-9_-]+$')
+
+
+def _plan_rejected_error(job_id_str: str) -> str:
+    """R-0915: the refusal for a rejected plan names what a user does next."""
+    from packages.orchestration.job_plan import REJECTED_PLAN_NEXT_STEP
+
+    return (f"Error: task plan rejected for job {job_id_str[:8]}.\n"
+            f"  {REJECTED_PLAN_NEXT_STEP}")
 
 
 def _cmd_create_job(
@@ -381,7 +390,7 @@ def _summary_section(job: JobPlan) -> tuple[dict, list[str]]:
 
     state = job.state.value if hasattr(job.state, "value") else str(job.state)
     task_count = len(job.tasks)
-    done_count = sum(1 for t in job.tasks if (t.status.value if hasattr(t.status, "value") else str(t.status)) == "completed")
+    done_count = sum(1 for t in job.tasks if task_is_done(t))
     pending_count = sum(1 for t in job.tasks if (t.status.value if hasattr(t.status, "value") else str(t.status)) == "pending")
     event_count = len(events)
     has_real_events = event_count > 0
@@ -422,7 +431,7 @@ def _status_section(job: JobPlan) -> tuple[dict, list[str]]:
 
     state = job.state.value if hasattr(job.state, "value") else str(job.state)
     task_count = len(job.tasks)
-    done_count = sum(1 for t in job.tasks if (t.status.value if hasattr(t.status, "value") else str(t.status)) == "completed")
+    done_count = sum(1 for t in job.tasks if task_is_done(t))
     pending_count = sum(1 for t in job.tasks if (t.status.value if hasattr(t.status, "value") else str(t.status)) == "pending")
 
     blockers: list[str] = []
@@ -435,20 +444,16 @@ def _status_section(job: JobPlan) -> tuple[dict, list[str]]:
         blockers.append("job_not_started")
     if state == "blocked":
         blockers.append("job_blocked")
-    # Surface fulfillment blockers
-    if truth.get("fulfillment_blockers"):
-        blockers.extend(truth["fulfillment_blockers"])
 
     if open_decision_view["next_action"]:
         next_action = open_decision_view["next_action"]
     elif truth["approval_required"]:
-        next_action = "remedy patch approve <job_id> <patch_intent_id>"
-    elif truth.get("fulfillment_next_action"):
-        next_action = truth["fulfillment_next_action"]
-    elif state == "completed" and truth.get("fulfillment_status") == "completed_verified":
-        next_action = f"remedy decision list {jid} --json"
+        # R-0989: name the first pending intent; with none recorded, list the job's intents.
+        pending_ids = truth["pending_intent_ids"]
+        next_action = (f"remedy patch approve {jid} {pending_ids[0]}" if pending_ids
+                       else f"remedy patch list {jid}")
     elif pending_count > 0:
-        next_action = "remedy job resume <job_id> --json"
+        next_action = f"remedy job resume {jid} --json"
     else:
         next_action = f"remedy job show {jid} --full --json"
 
@@ -465,9 +470,6 @@ def _status_section(job: JobPlan) -> tuple[dict, list[str]]:
         "approval_required": truth["approval_required"],
         "code_applied": truth["code_applied"],
         "latest_stop_reason": truth["latest_stop_reason"],
-        "fulfillment_status": truth.get("fulfillment_status", ""),
-        "staging_used": truth.get("staging_used", False),
-        "applied_to_target": truth.get("applied_to_target", False),
         "blockers": blockers,
         "next_safe_action": next_action,
         # F051: open decisions first, with the exact command that answers each.
@@ -517,7 +519,7 @@ def _report_section(job: JobPlan) -> tuple[dict, list[str]]:
 
     state = job.state.value if hasattr(job.state, "value") else str(job.state)
     task_count = len(job.tasks)
-    done_count = sum(1 for t in job.tasks if (t.status.value if hasattr(t.status, "value") else str(t.status)) == "completed")
+    done_count = sum(1 for t in job.tasks if task_is_done(t))
     pending_count = sum(1 for t in job.tasks if (t.status.value if hasattr(t.status, "value") else str(t.status)) == "pending")
 
     task_details = []
@@ -529,19 +531,6 @@ def _report_section(job: JobPlan) -> tuple[dict, list[str]]:
             "description": t.title[:120] if t.title else "",
             "type": t.inputs.get("task_type", "unknown") if t.inputs else "unknown",
         })
-
-    # Include fulfillment data if available
-    fulfillment_data: dict = {}
-    try:
-        from packages.orchestration.job_fulfillment import (
-            export_job_fulfillment_json,
-            list_fulfillment_records,
-        )
-        records = list_fulfillment_records(str(job.job_id), resolve_data_root())
-        if records:
-            fulfillment_data = export_job_fulfillment_json(records[-1])
-    except Exception:  # noqa: BLE001 — a read view never fails on the fulfillment record
-        pass
 
     report = {
         "job_id": str(job.job_id),
@@ -556,20 +545,13 @@ def _report_section(job: JobPlan) -> tuple[dict, list[str]]:
         "approval_required": truth["approval_required"],
         "latest_stop_reason": truth["latest_stop_reason"],
         "code_applied": truth["code_applied"],
-        "fulfillment_status": truth.get("fulfillment_status", ""),
-        "staging_used": truth.get("staging_used", False),
-        "applied_to_target": truth.get("applied_to_target", False),
-        "fulfillment_blockers": truth.get("fulfillment_blockers", []),
         # F051: a blocked run's next action is the command that answers its
         # most urgent open decision — that is what unblocks it.
-        "next_safe_action": (open_decision_view["next_action"]
-                             or truth.get("fulfillment_next_action", "")),
+        "next_safe_action": open_decision_view["next_action"],
         "open_decisions": open_decision_view["open_decisions"],
         "open_decision_count": len(open_decision_view["open_decisions"]),
         "tasks": task_details,
     }
-    if fulfillment_data:
-        report["fulfillment"] = fulfillment_data
 
     lines = [
         *open_decision_view["lines"],
@@ -886,7 +868,7 @@ def _cmd_run_next_task_local(job_id_str: str) -> None:
         sys.exit(3)
     elif block_reason == "rejected":
         print(
-            f"Error: task plan rejected for job {job_id_str[:8]}.",
+            _plan_rejected_error(job_id_str),
             file=sys.stderr,
         )
         sys.exit(3)
@@ -1207,7 +1189,7 @@ def _cmd_job_run_cycles(
         sys.exit(3)
     elif block_reason == "rejected":
         print(
-            f"Error: task plan rejected for job {job_id_str[:8]}.",
+            _plan_rejected_error(job_id_str),
             file=sys.stderr,
         )
         sys.exit(3)
@@ -1407,13 +1389,12 @@ def _cmd_job_resume(
     import json as _json
 
     from packages.orchestration.checkpoints import (
+        RESUME_NOOP,
+        RESUME_STOPPED,
         AllCheckpointsCorruptError,
+        decide_checkpoint_resume,
         load_latest_valid,
-        resolve_live_worktree_head,
-        worktree_drift_message,
     )
-    from packages.orchestration.job_plan import task_plan_blocks_execution
-    from packages.orchestration.safe_points import consume_stop, stop_requested
 
     job_id = resolve_job_id(job_id_str)
     try:
@@ -1445,36 +1426,22 @@ def _cmd_job_resume(
             _print_resume_preview(preview)
         return
 
-    # 1. Pending stop request — consumed first, and it wins.
-    if stop_requested(jid) is not None:
-        signal = consume_stop(jid)
-        reason = getattr(signal, "reason", "") if signal is not None else ""
-        message = (
-            f"Job {jid} | stop request consumed — not resuming"
-            f"{' (reason: ' + reason + ')' if reason else ''}"
-        )
+    # The three guards and the all-green check are ONE function the loop's
+    # `resume_job` move calls too; this command only renders its verdict.
+    decision = decide_checkpoint_resume(job, checkpoint)
+    if decision.action == RESUME_STOPPED:
         if json_output:
             print(_json.dumps(
                 {"job_id": jid, "action": "stopped", "resumed": False,
-                 "stop_reason": reason}, indent=2, sort_keys=True))
+                 "stop_reason": decision.reason}, indent=2, sort_keys=True))
         else:
-            print(message)
+            print(f"Job {jid} | {decision.detail}")
         return
 
-    # 2. Worktree drift — refuse, and name both heads.
-    if checkpoint is not None and checkpoint.worktree_head:
-        live_head = resolve_live_worktree_head(jid)
-        if live_head and live_head != checkpoint.worktree_head:
-            print(
-                "Error: " + worktree_drift_message(
-                    checkpoint.worktree_head, live_head),
-                file=sys.stderr,
-            )
-            sys.exit(3)
-
-    # 3. Plan-approval gate — the same check `remedy job resume` makes.
-    block_reason = task_plan_blocks_execution(job)
-    if block_reason == "pending":
+    if decision.reason == "worktree_drift":
+        print("Error: " + decision.detail, file=sys.stderr)
+        sys.exit(3)
+    if decision.reason == "plan_pending":
         print(
             f"Error: plan awaiting approval. "
             f"Run: remedy decision resolve {job_id_str[:8]} plan:approval "
@@ -1482,16 +1449,14 @@ def _cmd_job_resume(
             file=sys.stderr,
         )
         sys.exit(3)
-    if block_reason == "rejected":
+    if decision.reason == "plan_rejected":
         print(
-            f"Error: task plan rejected for job {job_id_str[:8]}.",
+            _plan_rejected_error(job_id_str),
             file=sys.stderr,
         )
         sys.exit(3)
 
-    # An all-green job has nothing to resume.
-    pending = [t for t in job.tasks if t.status != RunState.COMPLETED]
-    if job.tasks and not pending:
+    if decision.action == RESUME_NOOP:
         if json_output:
             print(_json.dumps(
                 {"job_id": jid, "action": "noop", "resumed": False,
@@ -1580,7 +1545,7 @@ def _cmd_resume(
         sys.exit(3)
     elif block_reason == "rejected":
         print(
-            f"Error: task plan rejected for job {job_id_str[:8]}.",
+            _plan_rejected_error(job_id_str),
             file=sys.stderr,
         )
         sys.exit(3)
@@ -1782,31 +1747,21 @@ def _extract_job_truth(job: JobPlan) -> dict:
     """Extract safe truth from job model for status/report views."""
     artifact_count = len(job.artifacts) if hasattr(job, 'artifacts') else 0
 
-    # Find patch intents and approval/apply status from artifact metadata
-    patch_intent_ids: list[str] = []
-    pending_intents = 0
-    code_applied = False
-    for a in (job.artifacts if hasattr(job, 'artifacts') else []):
-        meta = a.metadata if hasattr(a, 'metadata') and a.metadata else {}
-        if meta.get('patch_intent_count'):
-            intent_id = str(a.id) + '-0'
-            patch_intent_ids.append(intent_id)
-            # Check if this intent has been applied
-            apply_records = meta.get('patch_intent_apply_records', {})
-            intent_applied = False
-            for rec in apply_records.values():
-                if isinstance(rec, dict) and rec.get('state') == 'applied':
-                    code_applied = True
-                    intent_applied = True
-                    break
-            # Check approval state
-            approvals = meta.get('patch_intent_approvals', {})
-            intent_approved = approvals.get(intent_id, {}).get('state') == 'approved'
-            # Only pending if not yet applied and not approved
-            if not intent_applied and not intent_approved:
-                pending_intents += 1
-
-    approval_required = pending_intents > 0
+    # R-0990: the ids and states are the approval queue's, the ids `patch approve` accepts.
+    from packages.orchestration.approval_queue import APPROVAL_PENDING, list_patch_intents
+    intents = list_patch_intents(job)
+    patch_intent_ids = [i['intent_id'] for i in intents]
+    applied_ids = {
+        iid for a in job.artifacts
+        for iid, rec in (a.metadata.get('patch_intent_apply_records') or {}).items()
+        if isinstance(rec, dict) and rec.get('state') == 'applied'
+    }
+    code_applied = bool(applied_ids)
+    pending_intent_ids = [
+        i['intent_id'] for i in intents
+        if i['state'] == APPROVAL_PENDING and i['intent_id'] not in applied_ids
+    ]
+    approval_required = bool(pending_intent_ids)
     latest_stop_reason = ''
 
     # Check timeline for stop reason
@@ -1824,65 +1779,19 @@ def _extract_job_truth(job: JobPlan) -> dict:
             status_val = ev_data.get('status', '')
             if phase == 'approval_required' or status_val == 'approval_required':
                 latest_stop_reason = 'approval_required'
-                if not code_applied:
+                # Recorded intents are authoritative; the event speaks only when none is listed.
+                if not code_applied and not intents:
                     approval_required = True
                 break
-
-    # Also check fulfillment events for code_applied
-    if not code_applied:
-        for ev in events:
-            ev_data = ev if isinstance(ev, dict) else {}
-            if isinstance(ev_data, dict) and ev_data.get('event') == 'fulfillment_applied':
-                code_applied = True
-                break
-
-    # Load fulfillment record if available
-    fulfillment_status = ''
-    fulfillment_id = ''
-    staging_used = False
-    applied_to_target = False
-    fulfillment_blockers: list[str] = []
-    fulfillment_next_action = ''
-    try:
-        from packages.orchestration.job_fulfillment import list_fulfillment_records
-        records = list_fulfillment_records(str(job.job_id), data_dir)
-        if records:
-            latest = records[-1]
-            fulfillment_status = latest.status.value
-            fulfillment_id = latest.fulfillment_id
-            staging_used = latest.staging_used
-            applied_to_target = latest.applied_to_target
-            fulfillment_blockers = latest.contract_blockers or []
-            fulfillment_next_action = latest.next_safe_action or ''
-            # Surface fulfillment stop_reason as latest_stop_reason
-            if latest.stop_reason and not latest_stop_reason:
-                latest_stop_reason = latest.stop_reason
-            # Derive blocker from stop_reason if contract_blockers empty
-            if latest.status.value == 'blocked' and not fulfillment_blockers:
-                sr = latest.stop_reason or 'unknown'
-                # Extract first colon-delimited part as safe blocker
-                safe_reason = sr.split(':')[0] if ':' in sr else sr
-                fulfillment_blockers = [f'fulfillment_blocked:{safe_reason}']
-    except Exception:
-        pass
-
-    # When staging was used, applied_to_target is authoritative for code_applied
-    if staging_used:
-        code_applied = applied_to_target
 
     return {
         'artifact_count': artifact_count,
         'patch_intent_ids': patch_intent_ids,
+        'pending_intent_ids': pending_intent_ids,
         'approval_required': approval_required,
         'latest_stop_reason': latest_stop_reason,
         'event_count': len(events),
         'code_applied': code_applied,
-        'fulfillment_status': fulfillment_status,
-        'fulfillment_id': fulfillment_id,
-        'staging_used': staging_used,
-        'applied_to_target': applied_to_target,
-        'fulfillment_blockers': fulfillment_blockers,
-        'fulfillment_next_action': fulfillment_next_action,
     }
 
 
@@ -2016,9 +1925,12 @@ def _cmd_job_budget(
 
     _has_cost_limit = _budgets is not None and _budgets.max_cost_usd is not None
 
-    # F104 money actuals. The persisted budget-actuals record carries NO cost
-    # field — the F103 ledger is the only place a real provider cost lives — so
-    # a money-limited job reads it here, exactly as run_job's safe point does.
+    # F104 money actuals. Since R-0753 a version-2 persisted record carries the
+    # money its run's last safe point read, but that figure is as old as that
+    # safe point and the F103 ledger is where a real provider cost lives, so a
+    # money-limited job still reads it here, exactly as run_job's safe point does,
+    # and the persisted figure stands only when the read fails or no ledger
+    # project resolves.
     # READ-ONLY: `query_cost` never creates a ledger and never writes one, which
     # is what keeps the show form of `remedy job budget` writing nothing. Any failure
     # leaves the cost UNMEASURED (None, never 0.0 — P6) and every other limit
@@ -2030,7 +1942,7 @@ def _cmd_job_budget(
     # failure so both surfaces can say it out loud; it stays None when the read
     # succeeded or was never attempted, which is what keeps the two cases apart.
     _cost_read_error = None
-    if _has_cost_limit and counters is not None and counters.measured_cost_usd is None:
+    if _has_cost_limit and counters is not None:
         try:
             from dataclasses import replace as _replace
 
@@ -2252,9 +2164,22 @@ def _cmd_job_budget_set(
     if in_contract:
         from packages.orchestration.run_contract import (
             build_default_run_contract,
+            job_budget_limits,
             load_contract,
             save_contract,
         )
+        # R-0935: a job's F018 limit is canonical for the contract field it overlaps, and the
+        # next `ensure_contract` reconciles that field back to it, so a write here would not hold.
+        budget_tokens, budget_runtime = job_budget_limits(job)
+        f018_field = ""
+        if field_name == "max_tokens" and budget_tokens is not None:
+            f018_field = "max_total_tokens"
+        elif field_name == "max_runtime_seconds" and budget_runtime is not None:
+            f018_field = "max_wall_clock_minutes"
+        if f018_field:
+            _refuse_budget_set(
+                f"{field_name} follows this job's {f018_field}: set it with "
+                f"`remedy job run <job_id> --{f018_field.replace('_', '-')} <value>`.")
         contract = load_contract(job)
         if contract is None:
             contract = build_default_run_contract(job)

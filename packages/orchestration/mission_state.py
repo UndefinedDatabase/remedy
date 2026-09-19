@@ -212,7 +212,7 @@ class Mission:
     F069 stays byte-identical and every reader that predates F069 keeps working
     — which is why :data:`MISSION_SCHEMA_VERSION` does NOT move for it.  The
     body is the plan's ``model_dump()`` plus the ``_versions``/``_version``
-    keys the task-plan replan precedent established; ``None`` and an absent
+    keys the task plan's versioning established; ``None`` and an absent
     key both mean "not compiled yet".
 
     ``order`` and ``contract`` (F272) are the last two fields DECISION F260 D1

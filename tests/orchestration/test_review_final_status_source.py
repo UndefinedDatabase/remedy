@@ -15,7 +15,7 @@ MAKE = REPO_ROOT / "scripts" / "make_review_zip.sh"
 
 _SCRIPTS = ("make_review_zip.sh", "build_review_manifest.py", "build_review_zip.py",
             "build_observability_index.py", "select_review_evidence.py",
-            "stage_review_evidence.py")
+            "stage_review_evidence.py", "rotate_live_review.py")
 
 
 def _repo(tmp_path):

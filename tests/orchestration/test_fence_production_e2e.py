@@ -1,8 +1,7 @@
-"""F017 real production E2E — job_fulfillment and CLI fences.
+"""F017 real production E2E — CLI fences.
 
-Calls the actual run_job_fulfill() entry point and the
-fences section of `job show --full` with persisted jobs and fixtures. No mocks
-of fence enforcement.
+Calls the fences section of `job show --full` with persisted jobs and fixtures.
+No mocks of fence enforcement.
 """
 from __future__ import annotations
 
@@ -37,66 +36,6 @@ def _make_job(data_dir, repo, *, fences=None, name="test-job"):
     job = JobPlan(job_title=name, fences=fences, metadata={"target_repo": str(repo.resolve())})
     save_job_plan(job, root=data_dir)
     return job
-
-
-# ═══════════════════════════════════════════════════════════════════════════
-# job_fulfillment fence enforcement
-# ═══════════════════════════════════════════════════════════════════════════
-
-
-class TestJobFulfillmentFenceEnforcement:
-    """run_job_fulfill(): fence violation → staging discarded, nothing applied."""
-
-    def _run(self, job_id, repo, data_dir):
-        from packages.orchestration.job_fulfillment import run_job_fulfill
-        return run_job_fulfill(str(job_id), repo, data_dir=data_dir)
-
-    def test_per_job_deny_blocks_fulfillment(self, env):
-        data_dir, repo = env
-        fences = JobFences(deny=["docs/**"])
-        job = _make_job(data_dir, repo, fences=fences)
-        record = self._run(job.job_id, repo, data_dir)
-        assert record.stop_reason == "fence_violation"
-        assert record.applied_to_target is False
-        assert not record.changed_target_files
-        target = repo / "docs" / "CHANGES.md"
-        assert not target.exists()
-
-    def test_project_config_deny_blocks_fulfillment(self, env, monkeypatch):
-        data_dir, repo = env
-        monkeypatch.setenv("REMEDY_SCOPE_DENY", "docs/**")
-        job = _make_job(data_dir, repo)
-        record = self._run(job.job_id, repo, data_dir)
-        assert record.stop_reason == "fence_violation"
-        assert record.applied_to_target is False
-
-    def test_env_deny_blocks_fulfillment(self, env, monkeypatch):
-        data_dir, repo = env
-        monkeypatch.setenv("REMEDY_SCOPE_DENY", "docs/**")
-        job = _make_job(data_dir, repo)
-        record = self._run(job.job_id, repo, data_dir)
-        assert record.stop_reason == "fence_violation"
-        assert record.applied_to_target is False
-        target = repo / "docs" / "CHANGES.md"
-        assert not target.exists()
-
-    def test_fence_artifact_exists_after_violation(self, env):
-        data_dir, repo = env
-        fences = JobFences(deny=["docs/**"])
-        job = _make_job(data_dir, repo, fences=fences)
-        self._run(job.job_id, repo, data_dir)
-        artifacts = list(data_dir.rglob("fence_violations_*.json"))
-        assert len(artifacts) >= 1
-        data = json.loads(artifacts[0].read_text())
-        assert data["schema"] == "fence_violations/v2"
-        assert data["job_id"] == str(job.job_id)
-        assert data["applicator"] == "job_fulfillment"
-
-    def test_allowed_write_not_blocked_by_fences(self, env):
-        data_dir, repo = env
-        job = _make_job(data_dir, repo)
-        record = self._run(job.job_id, repo, data_dir)
-        assert record.stop_reason != "fence_violation"
 
 
 # ═══════════════════════════════════════════════════════════════════════════

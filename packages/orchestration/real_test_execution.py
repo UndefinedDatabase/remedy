@@ -3,7 +3,8 @@ Real Test Execution + Snapshot/Rollback Proof v1 (Steps 1877-1916).
 
 The first safe execution gate for Overnight Mode. Remedy can run ALLOWED test commands through the
 EXISTING bounded safe runner, turn results into durable evidence, create Test Failure Artifacts on
-failure, record honest Snapshot Proof, and read and audit Rollback Proof records already on disk.
+failure, and record honest Snapshot Proof. No command writes a Rollback Proof, so its reader and
+audit are deleted (R-0903).
 
   Workers execute. Remedy governs. Tests and rollback proof become durable gates.
 
@@ -454,15 +455,6 @@ def get_snapshot_proof(snapshot_id: str, data_dir: Path | None = None) -> dict |
 
 
 # ---------------------------------------------------------------------------
-# Rollback proof (Step 1882) — the reader of recorded proofs; nothing here writes one.
-# ---------------------------------------------------------------------------
-
-
-def list_rollback_proofs(job_id: str | None = None, data_dir: Path | None = None) -> list[dict]:
-    return _load_proofs("rollbacks", job_id, _resolve_ddir(data_dir))
-
-
-# ---------------------------------------------------------------------------
 # Integrity (Step 1893)
 # ---------------------------------------------------------------------------
 
@@ -485,22 +477,9 @@ def audit_test_run_safety(run: dict[str, Any]) -> list[dict[str, str]]:
     return out
 
 
-def audit_rollback_safety(rb: dict[str, Any], snapshots: dict[str, dict]) -> list[dict[str, str]]:
-    out: list[dict[str, str]] = []
-    rid = rb.get("rollback_proof_id", "")
-    if rb.get("restore_tested") and not rb.get("restore_available"):
-        out.append({"rollback_proof_id": rid, "code": "restore_tested_without_available"})
-    # restore_available must not be claimed against a metadata-only snapshot.
-    snap = snapshots.get(rb.get("snapshot_id", ""))
-    if rb.get("restore_available") and snap is not None and snap.get("strategy") in (
-            "metadata_only", "unavailable"):
-        out.append({"rollback_proof_id": rid, "code": "restore_available_on_metadata_snapshot"})
-    return out
-
-
 def test_execution_integrity(data_dir: Path | None = None,
                              test_runs: list[dict] | None = None) -> dict[str, Any]:
-    """Read-only invariant check over test runs + snapshot/rollback proofs. Safe codes only."""
+    """Read-only invariant check over test runs + snapshot proofs. Safe codes only."""
     ddir = _resolve_ddir(data_dir)
     violations: list[dict] = []
     runs = test_runs if test_runs is not None else list_test_runs("", ddir)
@@ -514,10 +493,7 @@ def test_execution_integrity(data_dir: Path | None = None,
         blob = json.dumps(s).lower()
         if "/home/" in blob or "/users/" in blob:
             violations.append({"snapshot_id": s.get("snapshot_id"), "code": "absolute_path_in_public"})
-    for rb in list_rollback_proofs(data_dir=ddir):
-        violations.extend(audit_rollback_safety(rb, snaps))
     return {"version": 1, "test_run_count": len(runs or []), "snapshot_count": len(snaps),
-            "rollback_count": len(list_rollback_proofs(data_dir=ddir)),
             "violation_count": len(violations), "passed": not violations, "violations": violations[:50]}
 
 

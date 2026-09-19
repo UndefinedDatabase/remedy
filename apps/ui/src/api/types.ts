@@ -40,11 +40,9 @@ export interface RemedySnapshotSummary {
   source: string;
 }
 
-/** Safe continuation summary derived from do_continue events + approved intents. */
+/** Safe continuation summary derived from approved intents. */
 export interface RemedyContinuationSummary {
   available: boolean | "unknown";
-  lastResult: string;
-  lastStopReason: string;
 }
 export interface RemedyNextAction { label: string; command: string; risk: "low" | "medium" | "high"; requiresHuman: boolean; }
 export interface RemedyJourneyItem { id: string; kind: RemedyTaskKind; title: string; subtitle: string; state: RemedyState; nodeId: string; visibleFromZoom: number; }
@@ -203,19 +201,6 @@ export interface RemedyProjectSummary {
   redaction: string;
 }
 
-export interface RemedyWorkerStatus {
-  worker_available: boolean;
-  worker_id: string;
-  lifecycle_state: string;
-  current_job_id: string;
-  queue_count: number;
-  heartbeat_at: string;
-  stale: boolean;
-  why_it_stopped: string;
-  next_command: string;
-  redaction: string;
-}
-
 /** `budgetFinal` is the LEDGER's own last budget tick, served as the dashboard's
  *  `budget_final` (DECISION F022 D7). It is carried as the arriving payload
  *  rather than as a decided view because `costReconciliation.ts` hands it to
@@ -230,4 +215,4 @@ export interface RemedyWorkerStatus {
  *  answer, `undefined` would not be. Remedy deliberately does NOT order,
  *  filter or count the cards here; that rule is T002b's subject and lives in
  *  `decisionCard.ts` when it lands. */
-export interface RemedyDashboard { jobId: string; title: string; description: string; conceptLabel: string; metrics: RemedyMetric[]; budgetFinal: BudgetTickFigures | null; phases: RemedyPhase[]; tasks: RemedyTaskItem[]; activity: RemedyActivityItem[]; graph: { nodes: RemedyGraphNode[]; edges: RemedyGraphEdge[]; }; nextAction: RemedyNextAction; live: RemedyLiveState; apiHealth: RemedyApiHealth; pipeline: RemedyPipeline | null; resume: RemedyResume | null; projectSummary: RemedyProjectSummary | null; workerStatus: RemedyWorkerStatus | null; timelineEvents?: RemedyTimelineEvent[]; snapshot: RemedySnapshotSummary | null; continuation: RemedyContinuationSummary | null; promptTrace?: RemedyPromptTraceSummary | null; decisionInbox: DecisionCardModel[]; }
+export interface RemedyDashboard { jobId: string; title: string; description: string; conceptLabel: string; metrics: RemedyMetric[]; budgetFinal: BudgetTickFigures | null; phases: RemedyPhase[]; tasks: RemedyTaskItem[]; activity: RemedyActivityItem[]; graph: { nodes: RemedyGraphNode[]; edges: RemedyGraphEdge[]; }; nextAction: RemedyNextAction; live: RemedyLiveState; apiHealth: RemedyApiHealth; pipeline: RemedyPipeline | null; resume: RemedyResume | null; projectSummary: RemedyProjectSummary | null; timelineEvents?: RemedyTimelineEvent[]; snapshot: RemedySnapshotSummary | null; continuation: RemedyContinuationSummary | null; promptTrace?: RemedyPromptTraceSummary | null; decisionInbox: DecisionCardModel[]; }

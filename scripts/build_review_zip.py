@@ -212,30 +212,43 @@ def _assert_authority_equality(*, authority: set, subject, content_proof, staged
     """F2 (round 20): authority MUST equal every other authoritative set — all decoded from the ONE
     staged byte map (F5). Any disagreement blocks."""
     from packages.orchestration.repair_attest import is_attestable_source
+    from packages.orchestration.review_subject import STATUS_DELETED
 
+    tombstones: dict = {}
     if content_proof is not None:
         if authority != content_proof.authority_paths():
             raise ArchivePlanError("authority set != Content-Proof file+tombstone paths")
         if content_proof.base_commit != subject.base_commit \
                 or content_proof.head_commit != subject.head_commit:
             raise ArchivePlanError("Content-Proof base/head != ReviewSubject base/head")
+        tombstones = dict(content_proof.tombstones)
+
+    # R-0839: a tombstone is a DELETED attestable path of the subject, carrying its removed blob.
+    deleted_subject = {f.path: f.base_sha256 for f in subject.files
+                       if is_attestable_source(f.path) and f.status == STATUS_DELETED}
+    for path, blob in sorted(tombstones.items()):
+        if deleted_subject.get(path) != blob:
+            raise ArchivePlanError(
+                f"Content-Proof tombstone {path!r} is not a deleted ReviewSubject path with that base blob")
+    # The LIVE authority — the paths with content — is what every coverage set below attests.
+    live_authority = authority - set(tombstones)
 
     # R-0837: a DELETED path attests through its tombstone (base_sha256), never through current content.
     attestable_subject = {f.path for f in subject.files if is_attestable_source(f.path) and f.current_sha256}
-    if authority != attestable_subject:
-        only_auth = sorted(authority - attestable_subject)[:4]
-        only_subj = sorted(attestable_subject - authority)[:4]
+    if live_authority != attestable_subject:
+        only_auth = sorted(live_authority - attestable_subject)[:4]
+        only_subj = sorted(attestable_subject - live_authority)[:4]
         raise ArchivePlanError(
             f"authority set != attestable ReviewSubject paths "
             f"(only_in_authority={only_auth}, only_in_subject={only_subj})")
 
     fv = staged.load_json("final_verifier_report.json")
     if fv is not None:
-        if authority != set(fv.get("authoritative_changed_files") or []):
+        if live_authority != set(fv.get("authoritative_changed_files") or []):
             raise ArchivePlanError("authority set != Final-Verifier authoritative_changed_files")
     cpg = staged.load_json("change_provenance_gate.json")
     if cpg is not None:
-        if authority != set(cpg.get("covered_files") or []):
+        if live_authority != set(cpg.get("covered_files") or []):
             raise ArchivePlanError("authority set != Change-Provenance covered_files")
 
 
@@ -469,6 +482,8 @@ def main() -> int:
                 _ms = "BLOCKED_EVIDENCE"
             base_manifest["package_status"] = _ms
             base_manifest["ready_gate_matrix"] = gate_matrix
+            base_manifest["commit_execution_arbitration"] = _brm.commit_execution_arbitration(
+                gate_matrix)
             base_manifest["snapshot_inventory_status"] = {
                 "ok": not inventory_problems, "problems": inventory_problems[:8]}
             base_manifest["package_hash_chain"] = {

@@ -24,7 +24,6 @@ Normal Remedy users never need to read, edit, or depend on this file.
 |-----|--------|----------------|
 | Parse review verdict for self-dogfood gates | `packages/orchestration/self_dogfood.py` | development self-test |
 | Parse review findings for self-dogfood execution | `packages/orchestration/self_dogfood_execution.py` | development self-test |
-| Orchestrator brain context | `packages/orchestration/orchestrator_brain.py` | development context |
 | Integrity gate checks | `packages/orchestration/integrity_gate.py` | development process health |
 
 ## Disallowed product/runtime uses

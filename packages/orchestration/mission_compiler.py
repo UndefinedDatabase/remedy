@@ -651,7 +651,7 @@ def write_mission_plan_md(plan: MissionPlan, evidence_dir: Path,
 # ---------------------------------------------------------------------------
 
 #: Keys the PERSISTED plan body carries beyond the model's own fields. The
-#: task-plan replan precedent (``job_plan.replan``) established this
+#: task plan's own ``_versions``/``_version`` keys established this
 #: spelling, and reusing it means one versioning convention in the codebase
 #: rather than two.
 PLAN_VERSIONS_KEY = "_versions"
@@ -723,8 +723,8 @@ def plan_mission(
 
     A recompile KEEPS every prior version — the old body moves into
     ``_versions`` and the previous ``mission_plan.md`` stays on disk beside the
-    new ``mission_plan_v<n>.md``, exactly as a task-plan replan keeps
-    ``plan.md``.  A plan a human already read and acted on is never destroyed.
+    new ``mission_plan_v<n>.md``, exactly as ``job_plan.write_plan_md``
+    keeps ``plan.md``.  A plan a human already read and acted on is never destroyed.
 
     Recompiling is REFUSED once any milestone is in progress
     (:func:`milestones_in_progress`): rewriting the route under running work
@@ -760,7 +760,7 @@ def plan_mission(
     if prompt_traces:
         # APPEND, never write: the trace file is per MISSION and a recompile is
         # a SECOND command against the same mission, so a write would destroy
-        # the first compile's evidence. Same reasoning as the F105 R28 replan.
+        # the first compile's evidence.
         from packages.orchestration.prompt_trace import append_trace_jsonl
         append_trace_jsonl(prompt_traces, evidence_dir / "prompt_trace.jsonl")
     plan = attach_milestone_dods(

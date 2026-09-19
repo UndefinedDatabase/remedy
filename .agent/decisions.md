@@ -15629,3 +15629,804 @@ event and the brain and change-set views read them.
 REVERSE: remove precondition 7, the two planted-command tests and their helper, and restore the
 comment, `patch_revert.py`, the five tests, the fixture, the allowance and the smoke lines from
 `8bacb0fc`; then delete this paragraph.
+
+## DECISION F273 D1 (2026-09-19, reviewer, round 1) — the suite runs on an isolated data root and fails when the configured root changed; the cockpit walk and the fake builder's single marker
+CONTEXT: T2_F273.md T001 builds R-0803 first, "a session-wide isolated data-root fixture in
+`tests/conftest.py`, proven by a full run that leaves the operator's data root byte-identical before
+and after", and R-0804 and R-0810 as their finding text specifies. Measured by the reviewer at
+`80f7c529` in a disposable worktree: `resolve_data_root()` in
+`packages/orchestration/data_paths.py` answers `REMEDY_DATA_DIR`, else the configured `data_dir`,
+else `<repo>/.data`; `tests/conftest.py` sets no data root; with no fixture,
+`tests/test_grouped_cli.py` alone leaves 8 new entries under the default root (`jobs/<id>/job.json`
+twice and a `job_logs/<id>/<run>.jsonl`), from `test_brain_graph_json` and
+`test_test_discover_json`. R-0804's `_JobPlanTaskAdapter` was deleted at `8601b92e` (F275 R104 C2)
+and no test walks the cockpit's read endpoints with a job the current job path created. R-0810 is
+live: `_apply_fake_builder_changes` in `packages/orchestration/pingpong_loop.py` appends the task's
+marker again in every repair round.
+CHOSEN: (1) R-0803. An autouse fixture `_isolated_data_root` in `tests/conftest.py` points
+`REMEDY_DATA_DIR` at a fresh `tmp_path_factory` directory for every test unless a wider-scoped
+fixture already set it, and removes it after the test; it does not request `monkeypatch`, for the
+teardown-order reason `_no_live_ollama_reach` records. `pytest_configure` records, in the xdist
+controller only, the configured root and its fingerprint, then drops an inherited
+`REMEDY_DATA_DIR`, so a root exported in the operator's shell is the one protected and no test sees
+it; `pytest_sessionfinish` re-fingerprints and, on any difference, sets the run's exit status to
+failed and prints `R-0803:` with the changed entries. The fingerprint is every entry's relative
+path, kind, size and `mtime_ns`: it stands in for "byte-identical" because hashing every file of the
+operator's root twice per run costs more than it buys, and a write that alters bytes moves size or
+mtime unless it resets them on purpose. `tests/test_data_root_isolation.py` pins the per-test half
+(the root is under the pytest temp base and not `<repo>/.data`, starts empty, and a child process
+inherits it). R-0803's resolution waits for the closure sequence's one full suite run (operator
+amendment amend0917-throughput rule 1), whose transcript must exit 0 with no `R-0803:` line. (2)
+R-0804. `tests/ui_server/test_handler_table_walk.py` builds a two-task job with `parse_job_file` and
+`run_job` naming the fake provider, derives the endpoint set from `do_GET` in
+`packages/orchestration/ui_server.py` with `ast` (the `handlers` dict's string keys and the strings
+compared against `endpoint`), and asserts 200 for each, naming every failing endpoint. No
+production change. (3) R-0810. `_apply_fake_builder_changes` skips a file that already carries the
+task's marker line, with a one-line comment naming the finding, and `TestFakeProviderE2E` in
+`tests/orchestration/test_pingpong_cli.py` asserts a two-round fake run leaves exactly one marker.
+ALTERNATIVES: a fixture that always overrides the variable, rejected because it sent
+`tests/orchestration/test_manual_completion_bundle.py`'s module-built job to the wrong root
+(measured); a sentinel file in the root, rejected because it detects only writes to itself; content
+hashes, rejected on cost as above; a hand-written endpoint list, rejected because an endpoint added
+later would go unwalked; hoisting `handlers` to module level, rejected as a production change made
+only for a test.
+REVERSE: remove the fixture, the two hooks and `_data_root_fingerprint` from `tests/conftest.py`,
+delete `tests/test_data_root_isolation.py` and `tests/ui_server/test_handler_table_walk.py`, remove
+the marker guard and its test, and delete this paragraph.
+
+## DECISION F273 D2 (2026-09-19, reviewer, round 2) — one ledger row per provider call; the unified job path writes task and round events the teacher narrates; round 1's five reds repaired
+CONTEXT: T2_F273.md T001 builds R-0807 and R-0812 as their finding text specifies. Measured by
+research helpers and re-measured by the reviewer at `f32363e9`: `call_id_for_task_run` in
+`packages/orchestration/token_ledger.py` keys one row per finalized task run (DECISION F103 D16), so
+a task of two rounds and four provider calls leaves one builder row and no reviewer row, while each
+`provider_attempts` entry of `provider_evidence.json` names its role and carries no usage of its
+own. D16's own last sentence orders the switch "when a per-request evidence record exists". For
+R-0812, `NARRATED_EVENTS` in `packages/orchestration/teacher_narration.py` holds the Stage 1 kinds;
+`run_job` in `packages/orchestration/pingpong_job.py`, which both `remedy do` and `remedy job run`
+reach, writes no task or round event, so a job with a budget narrates only `budget.tick` as
+unrecognised and a job without one narrates nothing. `task_run_started`, `task_run_completed`,
+`task_run_failed` and `task_run_noop` are still read by the timeline, trust report, brain and
+cockpit and written only by the classic single pass in `apps/cli/commands/job.py`.
+CHOSEN: (1) R-0807. Each `provider_attempts` entry gains `seq` (its 1-based position), `round`, and
+the `usage` and `total_cost_usd` THAT call reported, copied verbatim and null where it reported
+none, never a share of the task run's aggregate. A row is one attempt, keyed
+`"<job_id>:<task_id>:<seq>"` by `call_id_for_provider_call`, through the live hook,
+`backfill_ledger` and `verify_ledger` alike; an attempt is one real invocation, so a transport
+retry is its own row. Evidence written before this carries no `seq` and keeps its one D16 row.
+THE SUPERSEDE RULE: when a task run's per-call rows land, its old `"<job_id>:<task_id>"` row and
+that row's segments are deleted in the same transaction, because both describe the same spend; no
+schema migration, since a migration cannot know which old rows have per-call evidence on disk.
+Segment rows attach to per-call rows only when the trace's roles match the calls' roles in order,
+otherwise none is written. The D16 section of `docs/roadmap/features/T2_F103.md` gains a dated
+note that its switch was made. R-0807's resolution also needs "a real run's row count equals its
+call count", which no test may produce: it is read from the closure sequence's self-use run. (2)
+R-0812. `run_job` writes, through one `RunLogWriter` per call opened at the first task,
+`task_run_started` before a task's ping-pong, one `task_round_completed` per round with the
+reviewer's verdict (a new kind; nothing existing fit), `task_run_completed` with outcome `pass`
+after apply and commit, and `task_run_failed` naming the block on each of the six blocking exits,
+all fail-soft like `_emit_budget_tick`. A stopped task writes no task terminal: `job_stopped`
+closes the log, and readers then show the task as interrupted, which it is. The table gains
+`task_round_completed`, `budget.tick`, `job_stopped` and `command.accepted`, and
+`narrate_run_event` reads a field absent at top level from `metadata`, a top-level value winning.
+`apps/ui/src/api/humanizeCatalog.ts` gains the new kind, as
+`tests/ui_contracts/test_humanize_catalog.py` requires. (3) ROUND 1's REDS. The four
+`tests/orchestration/test_config.py` tests that measure resolution with no `REMEDY_DATA_DIR` delete
+the variable first; the walk test's docstring no longer names the deleted adapter class.
+ALTERNATIVES: splitting a task run's aggregate across its calls, rejected by D16 and the F075
+lesson; a numbered migration deleting old rows, rejected because it would drop history that has no
+per-call evidence; keying rows by `finalized_calls`, rejected because it merges transport retries
+that cost tokens; a `task_run_failed` for a stopped task, rejected because a stop is not a failure;
+an event name built from a constant, rejected because the catalog test reads literal call sites.
+REVERSE: restore `token_ledger.py`, `pingpong_evidence.py`, `pingpong_loop.py`, `pingpong_job.py`,
+`teacher_narration.py`, `stats_ledger_cmd.py` and `humanizeCatalog.ts` from `f32363e9`, drop the
+tests this round added or changed for (1) and (2) and the T2_F103.md note, keep (3), and delete
+this paragraph.
+
+## DECISION F273 D3 (2026-09-19, reviewer, round 3) — T003 closes on one clause and a deletion; T016 renders the run state as its value on every interpreter, reads the ledger through its canonical reader, and emits tombstones both producers agree on
+CONTEXT: T2_F273.md orders T003 (R-0396, R-0445, R-0645, R-0736) and T016 (items (a) and (b) mint
+their ids at the round that takes them; (c) is R-0839). Measured by the reviewer at `a5e3b9ce`:
+`docs/agents/integration_gate.md` no longer holds a base run or a parity copy since `e1686236`
+(amend0917-throughput), so R-0396, R-0445 and R-0736 describe a recipe that is gone, while step 1
+still turns one run's FAILED list into the branch's failure set without saying so (R-0645). T016
+(a), (b) and (c) are live as the ledger's R-0984, R-0985 and R-0839 describe, and building (c) found
+R-0983: the provider-run producer's tombstones are dicts the strict schema refuses.
+CHOSEN: (1) T003. Step 1 of `docs/agents/integration_gate.md` gains one clause: the FAILED list is
+one run's sample, an empty one is evidence and never proof, and a node a later run finds red is
+attributed by step 3. R-0396, R-0445 and R-0736 are resolved by that deletion, not by a new clause.
+(2) T016 (a). `RunState` gains `__str__` returning its value; `ArtifactKind`, the file's other
+`(str, Enum)`, stays out because no renderer formats a member of it. A guard asserts `str()`,
+`format()` and the f-string of every member equal its value, which is red on 3.10 at the base,
+since `str()` there reads `RunState.X`. The `ci` job of `.github/workflows/ci.yml` becomes a matrix
+over `'3.10'` and `'3.12'` with `fail-fast: false`, pinned by a test in
+`tests/orchestration/test_ci_workflow.py`. The 3.12 column's colour exists only on hosted CI, which
+runs on a pull request into `main`: R-0984's resolution reads it on F273's closure pull request.
+(3) T016 (b). `scripts/rotate_live_review.py` becomes the ledger's one reader: `open_finding_ids`
+(registered ids minus ids with at least one `Done:` line, sorted), `count_open_findings` as its
+length, and `latest_gate_verdict` (the first `VERDICT <TOKEN>` of the last `Gate:` record whose
+token is one of PASS, PASS_WITH_RISKS, FAIL, NEEDS_REPAIR, BLOCKED; `absent` or `unparsed`
+otherwise). The rotation's before-and-after equality is kept and now counts distinct ids.
+`scripts/build_review_manifest.py` loads that sibling file by path, because `scripts` is a namespace
+package another installed checkout could answer for, and the review-packaging tests that copy the
+pipeline scripts into a temporary repository copy it too; it leaves `ALLOWED_UNWIRED` in
+`tests/test_no_orphan_modules.py` now that a script imports it. The manifest tests that pinned the
+dead `## Verdict (reviewer-owned)` format are rewritten to the `Gate:` format, and one reads the
+real ledger. (4) T016 (c), R-0839. `create_manual_completion_bundle` writes a tombstone
+`path -> base_sha256` for each deleted attestable path. Because a tombstone joins the proof's
+authority set, the packager's `_assert_authority_equality` now binds every tombstone to a deleted
+subject path with the same base blob and holds the subject, final-verifier and change-provenance
+coverage sets to the LIVE authority, and the manifest's manual-completion union and gate-matrix
+`proof_authority` read `file_hashes` only; without that, emitting the tombstones R-0839 orders
+would refuse every deletion package R-0837 made packageable. (5) R-0983. `export_job_evidence`
+writes the same `path -> base_sha256` shape and refuses the proof when a deleted path carries no
+base blob, since no honest tombstone exists for it; the manual producer skips such a path instead,
+a case neither producer can reach from a coherent review subject, left as it is.
+ALTERNATIVES: a new clause in the deleted parity step, rejected because nothing runs it; `__str__` on
+`ArtifactKind` too, rejected for want of a renderer; importing `scripts.rotate_live_review` by
+package name, rejected because an editable install elsewhere answered for it in a measured run; a
+tombstone kept out of the authority set, rejected because `ContentProofV1.authority_paths()` is
+defined as the union and R-0839 names it; requiring a tombstone for EVERY subject deletion,
+rejected because bundles written before this carry `{}` and would be refused.
+REVERSE: restore `integration_gate.md`, `ci.yml`, `models.py`, `rotate_live_review.py`,
+`build_review_manifest.py`, `build_review_zip.py` and `job_evidence.py` from `a5e3b9ce`, drop the
+tests this round added or rewrote, and delete this paragraph.
+
+## DECISION F273 D4 (2026-09-19, reviewer, round 4) — T002: eight guards and harness waits repaired, three found already repaired, R-0499 and R-0662 carried with their reasons
+CONTEXT: T2_F273.md T002 names thirteen findings, each found by a mutation or a measured colour and
+each owed "a mutation that now dies". Measured by two research helpers and re-measured by the
+reviewer at `4862e71a`: R-0671, R-0689 and R-0690 were already repaired by `bcd4dd07` and
+`05bdeae1` and never booked; R-0499 is a one-in-twenty red of an eight-file sweep in a fresh
+worktree whose failing id was never captured; R-0662's fix binds the reviewer's block wording, not
+a file; the other eight are live.
+CHOSEN: (1) R-0518: `test_vitest_passes` in `tests/orchestration/test_test_runner.py` is skipped,
+naming the reason, when `apps/ui/node_modules` is absent — the finding's own fix; CI installs it,
+so there the node still runs. (2) R-0569: `write_runtime_config` in
+`tests/orchestration/test_product_smoke.py` defaults to `worker_port(2)` of `tests/ports.py`
+instead of the literal 5273, with a test that two workers get two ports. (3) R-0649: the emitter
+walk of `tests/ui_contracts/test_humanize_catalog.py` skips any path with `node_modules` among its
+parts, with a test whose red control proves the plain walk reaches a vendored file. (4) R-0664: two
+source guards in `tests/ui_contracts/test_brain_stream_ring.py`, one that the feed card prints each
+row's `#{row.seq}`, one that the shell hands the graph stage and the panel the same
+`onSelectNode`. (5) R-0691: the two assertions are renamed to what they hold and the class
+docstring states the residual a source guard cannot see — the finding's own fix. (6) R-0734 and
+R-0708: `tests/ui_server/server_start.py` holds one wait, used by every server-start site of
+`tests/ui_server/`: an absent, empty or half-written info file is "not started yet", the wait
+lasts as long as the server thread is alive and fails at once when it has exited, and a 120-second
+backstop exists only so a hung start cannot hang the suite. That backstop is NOT a raised ceiling:
+the operative bound is the thread's liveness, which R-0708's "adaptive" names, and the old flat
+five seconds is gone. R-0734 named the copy in `test_command_channel.py` and R-0708 the one in
+`test_live_state.py`; the six other copies of the same loop are the same race and are switched in
+the same round (amend0917-throughput rule 3). (7) R-0815: the guarded read in
+`tests/orchestration/test_job_stop_integration.py` addressed `runs/<run_id>.json`, a path the
+store never writes, so its assertion never ran; it now reads through `load_run`, fails when the
+record is absent, and asserts unconditionally. (8) R-0671, R-0689 and R-0690 are resolved by the
+commits that repaired them, each with the reviewer's own mutation. (9) R-0499 stays open: a research
+helper ran the sweep 21 times at `4862e71a` with no red, so there is still no id to capture, and
+its fix clause (order the sweep as a probe with `-rf`) stands for the next time it runs. (10)
+R-0662 stays open for the closure sequence's single consolidation pass of the §3 checklist, which
+may fold "a gate ordering node ids names both runners' mechanisms" into item 33; the list is frozen
+while a feature is open (amend0827 rule 4).
+ALTERNATIVES: polling to a longer flat deadline for R-0708, rejected because it is a raised ceiling;
+repairing R-0734's one named copy only, rejected because six identical copies would keep the same
+intermittent red; a test that installs `node_modules` for R-0518, rejected because a test must not
+install a toolchain.
+REVERSE: restore every test file this round modified from `4862e71a`, delete
+`tests/ui_server/server_start.py` and `tests/ui_server/test_server_start.py`, and delete this
+paragraph.
+
+## DECISION F273 D5 (2026-09-19, reviewer, round 5) — the integrity gate reads open Highs through the ledger's canonical reader; zero ruff findings replaces the ceiling of 26; R-0753 takes the route its own text names
+CONTEXT: T2_F273.md T004 (R-0648, R-0753, R-0774) and T005 (R-0469, R-0482, R-0468, with
+operator ruling DECISION amend0911-feedback D7: clear every ruff finding and fail CI on any, no
+baseline, no ceiling). Measured by research helpers and re-measured by the reviewer at `bb13258a`:
+`_check_high_blockers_open` in `packages/orchestration/integrity_gate.py` parses a `### R-xxxx:`
+shape the ledger no longer has and answers PASS while R-0803 and R-0807, both High, are open;
+R-0774 was repaired at `498d98dc`; R-0753 is live; `python3 -m ruff check . --statistics` reports 17 findings
+(13 I001, 2 F401, 1 F821, 1 UP035), not the slice's 26; and a CI stage already runs ruff — the
+`budgets` stage's `tests/orchestration/test_ci_budgets.py` holds DECISION F083 D5's ceiling of 26.
+CHOSEN: (1) R-0648. `scripts/rotate_live_review.py` gains `open_finding_severities` (each open id
+by distinct id mapped to the first word of its registration, lower-cased, for both the `— High,`
+and the `— Low —` forms), and the check reads it through the path-anchored loader
+`scripts/build_review_manifest.py` already uses; a reader that cannot load answers FAIL, never
+PASS. CONSEQUENCE, stated because it is user-visible: `remedy integrity check` on this repository
+reads FAIL from this round until R-0803 and R-0807 are resolved, which F273's closure sequence does
+before its integrity precondition, since precondition 1 forbids closing over an open High anyway.
+(2) R-0774 is booked as repaired by `498d98dc`. (3) R-0469. `check_injections_supported` in
+`packages/orchestration/gauntlet_injection.py` interpolates a literal where the deleted
+`MISSING_SEAM` stood, with a test that reaches the blocked branch and raised `NameError` at the
+base. R-0482 describes the same line and mechanism and is the NEWER id, so under §3 item 30 it is
+retired as R-0469's duplicate and both resolutions will say which is which. (4) R-0468 and D7. The
+`budgets` stage becomes the stage D7 asks for: `ci_budgets.py` drops `LINT_ERROR_CEILING` and
+`check_lint_ceiling` for `check_lint_clean`, which passes on zero findings only, and the live test
+fails on any finding and prints ruff's output; this supersedes DECISION F083 D5. The findings in
+Remedy's own files are fixed by an edit (import order, `collections.abc`, two unused imports, the
+undefined name) and none by `# noqa`, an ignore or a baseline. The two `I001` in the gauntlet sample
+project's tests are cleared by one configuration line, `src = [".",
+"scripts/gauntlet_sample_project"]` in `pyproject.toml`, which suppresses nothing: that sample is its own project, its imports are sorted
+correctly for it, and its template is digest-frozen by `scripts/gauntlet_orders/manifest.json`, so
+editing it would change the frozen bench set. `ruff` is pinned to `==0.15.17` in the `dev` extra,
+because a zero gate on an unpinned linter reddens with a new release and no code change, the drift
+D7 exists to end. (5) R-0753 takes the route its own text names — "the repair widens a persisted
+schema and its decoder" — in the next round: the persisted actuals record carries the money fields
+of the live counters it already holds, with a new schema version its decoder accepts beside the old
+one, and the digest and the run report read them. Composing the cost from the ledger at the reader
+was the alternative, rejected because the finding's text binds and a reader-side fix leaves the
+persisted record still unable to carry money across a process boundary.
+ALTERNATIVES: a new CI stage beside `budgets`, rejected because one already runs ruff live and two
+would disagree; re-freezing the gauntlet manifest to edit the sample, rejected because it changes a
+frozen bench set; keeping R-0482 as the record, rejected by item 30's direction.
+REVERSE: restore `integrity_gate.py`, `rotate_live_review.py`, `gauntlet_injection.py`,
+`ci_budgets.py`, `pyproject.toml` and the lint-fixed files from `bb13258a`, drop the tests this
+round added or changed, and delete this paragraph.
+
+## DECISION F273 D6 (2026-09-19, reviewer, round 6) — persisted actuals carry money as version 2; the door refuses a blank answer as a shape error; its import guard reads the transitive closure
+CONTEXT: DECISION F273 D5 (5) ruled R-0753 onto the route its text names. T008 (R-0745, R-0685)
+and T014 (R-0374, R-0378) were prototyped by research helpers and re-measured by the reviewer at
+`6c87c133`: R-0374 was repaired at `0d798e4f`; R-0745, R-0685 and R-0378 are live. T009's R-0568
+is live too and needs a ruling on which guard trips become a class, so it is taken by the next round
+with that ruling and its patch together (amend0917-throughput rule 3).
+CHOSEN: (1) R-0753. `budget_guard.py` adds persisted actuals version `2.0.0`, whose closed field set
+adds `measured_cost_usd` (null when unpriced, never 0.0), `priced_call_count` and
+`unpriced_call_count`; `1.0.0` keeps decoding with its money absent, an unknown field is still
+rejected, and corrupt money is rejected at the decode. `run_job` persists the money of the counters
+its latest safe point evaluated and reads no ledger to do it; `counters_from_persisted` carries the
+money, so the digest's cost basis reaches `actual` and `lower_bound`, and the run report gains a
+`- Money:` line. `remedy job budget` with a cost limit now always reads the ledger, the fresher
+figure, and falls back to the persisted money only when that read fails. What stays unreached is
+registered as R-0986, owned by F273: the live counters hold money only for a job with a cost limit
+and only for runs already mirrored. (2) R-0745. `TestCommandDoorImportGuard` gains a test walking
+the door's transitive module-level closure and asserting its intersection with the forbidden set
+EQUALS a recorded accepted set, `packages.common.secure_fs` and `shutil`, each with its route; the
+`subprocess` import in `packages/orchestration/evidence_index.py` moves into its two `_git`
+helpers, so the closure no longer reaches it. (3) R-0685. The door's `_read_command_payload`
+refuses a `decision.resolve` whose string answer is blank as a 400 on field `answer`, audited
+`rejected_shape`, before any decision is read, so an open decision is never answered "not open";
+`answer_task_decision` refuses a blank answer too and leaves the decision open, as the defence for
+every other caller, with its own unit test. An absent or non-string answer still degrades to "" and
+keeps its pinned 409. (4) R-0374 is booked as repaired by `0d798e4f`. (5) R-0378. A one-line WHY
+above `is_reject` names the `provider_error:` prefix dependency, and a seam test proves a prefixed
+reviewer rate limit is retried.
+ALTERNATIVES: a reader-side ledger composition for R-0753, rejected in D5; a 409 carrying a new
+message for R-0685, rejected because a blank answer is malformed input, not a state conflict.
+REVERSE: restore `budget_guard.py`, `pingpong_job.py`, `run_report.py`, `job.py`,
+`evidence_index.py`, `escalation.py`, `ui_server.py`, `pingpong_loop.py` and the two `apps/ui/src/api`
+files from `6c87c133`, drop the tests this round added or changed, and delete this paragraph.
+
+## DECISION F273 D7 (2026-09-19, reviewer, round 7) — a guard trip on a non-provider subprocess is `resource_limit`; the self-use track stops re-selecting, stops escaping and says what it is
+CONTEXT: T009's R-0568 needed a ruling on which guard trips become a class, taken in this round
+together with its patch (amend0917-throughput rule 3). Measured by a research helper and re-measured
+by the reviewer at `00b995e7`: `FailureClass` has no `resource_limit`, and every guard seam turns a
+trip into a plain `subprocess.TimeoutExpired` or `CompletedProcess` before any post-mortem writer
+sees it. T012 (R-0784, R-0785, R-0786) and the F273-owned R-0838 and R-0972 are live in
+`self_use_generator.py`, `self_use_findings.py` and `scripts/self_use_queue.json`.
+CHOSEN: (1) THE RULING. A trip the execution guard itself reports on a subprocess that is NOT a
+provider call is classified `resource_limit`, a new `FailureClass` member whose reason is
+`tripped_limit=<limit>`; a provider call's wall timeout keeps `provider_timeout`, which names it
+more precisely and which the seams' "the mechanism changes, the outcome does not" rule protects.
+The `classify` branch sits below the typed exception, so a provider's `TimeoutExpired` can never
+become `resource_limit`, and above the terminal status, because `test_failed` says the layer gave
+up, not that the guard's limit is why. (2) THE WIRING. `_completed_process_from_guarded` keeps the
+stdlib types exactly and attaches the guard's `tripped_limit` as an attribute on what it returns
+or raises; the one writer wired is the task post-mortem: a job task's failing test command carries
+its trip through the round (`test_tripped_limit`) and the task (`TaskEntry.tripped_limit`, saved
+and loaded, absent in older records) into `build_task_rollup`, whose `raw_reason` then names the
+limit. The other seam callers carry the attribute and nothing reads it yet; an output-size trip on a
+suite that failed for its own reasons reads `resource_limit`, which is the ruling taken literally.
+(3) R-0785. `append_generated_item` writes with `ensure_ascii=False`, and `scripts/self_use_queue.json`
+is re-serialised ONCE by that writer, which changes no parsed value, so the next append does not
+rewrite every escape in the file. (4) R-0786. The queue file's description names both sources of
+an item, the operator and `packages/orchestration/self_use_generator.py`. (5) R-0838. Tier 1 skips
+any finding an existing queue entry already targets, read back from the provenance the generator
+stamps; an operator-written item is not excluded, because nothing machine-readable names its
+target. (6) R-0784 takes the documentation route its own text allows: the generator's module
+docstring states that a generated item whose fix no builder can make blocks at the approval gate by
+design, and with (5) such a finding costs the track one close, not every close after it. (7)
+R-0972. `describe_self_use_run_defects` answers a defect for a `stopped` job quoting its
+`stop_reason` and `stop_source`, and one per task whose `final_status` is `stopped` — the field the
+stop writes, since a stopped task's `status` goes back to `pending`.
+ALTERNATIVES: `resource_limit` for a provider's wall trip too, rejected as less precise than
+`provider_timeout`; a subclass of `TimeoutExpired` to carry the trip, rejected because the
+classifier matches the stdlib name; filtering reviewer-bound findings out of Tier 1 for R-0784,
+rejected because no field says which fix binds the reviewer and a guess retires findings silently.
+REVERSE: restore `exec_guard.py`, `failure_postmortem.py`, `pingpong_loop.py`, `pingpong_job.py`,
+`self_use_generator.py`, `self_use_findings.py`, `scripts/self_use_queue.json` and `T2_F085.md` from
+`00b995e7`, drop the tests this round added or changed, and delete this paragraph.
+
+## DECISION F273 D8 (2026-09-19, reviewer, round 8) — the README lists and routed docs are pinned both ways, the review manifest says what it counted and who governs, the manual bundle's job report carries content, and a run prices and counts its own calls
+CONTEXT: T013 (R-0570, R-0665, R-0752, R-0769), T011 (R-0666, R-0667, R-0668), R-0986 and the
+R-0987 this round registers each needed a choice between routes their own texts allow, taken in the
+round that lands the patch (amend0917-throughput rule 3). Measured by research helpers and
+re-measured by the reviewer's dry run at `ec4e2e86`: the README's Tier 1, Tier 2 and Tier 5
+accepted lists were 9, 10 and 1 ids short of `docs/roadmap/STATUS.md`, and F106 had a second entry
+under Tier 5; 77 tracked docs named an `assumption_log` no tracked path contains; 14 feature files
+named `tests/ui_contract/`, the 13 of R-0752 and T013's own description in `T2_F273.md`; the
+review manifest's alignment counted the packaging's own untracked `.review_zip_manifest.json`; the
+manual completion bundle wrote `job_report.json` as zero bytes while `artifact_contract_gate.py`
+requires it and `fresh_evidence_gate.py` reads its `job_id`; and `run_job` priced a job only from
+the ledger, only under a cost limit, and counted live tokens as zero.
+CHOSEN: (1) R-0570 and R-0769. Every accepted STATUS id is an entry of the README list for its own
+tier, entered by its STATUS title with no invented prose, and the misplaced Tier 5 F106 paragraph
+is deleted rather than merged; two tests pin both directions, placement and uniqueness, reading
+each list to the next heading. (2) R-0665. `docs/ui/design_reference/assumption_log.md` is created,
+scoped to visual deviations from the design reference, and registered in `docs/README.md` and the
+design reference's own README; rewording the 77 files is rejected because `docs/roadmap/ROADMAP.md`
+names the log and may not be edited. A test holds the file and its index row while any doc names
+it. (3) R-0752. The 13 files are substituted, T013's own description is reworded so it names the
+plural path's singular form without spelling it, and a test forbids the singular path under
+`docs/roadmap/features/`. (4) R-0666. The alignment counts the review subject's own dirty set, and a
+new `dirty_files` list names every file its count counted. (5) R-0667. A top-level
+`commit_execution_arbitration` key beside `ready_gate_matrix` carries the commit gate's verdict, the
+matrix's `ok` and the rule: the ready gate governs package status, and `NEEDS_HUMAN_APPROVAL` means
+the package is ready for a human who still approves any commit. `scripts/build_review_zip.py`
+rebuilds the key where it rebuilds the matrix; that line has no red-proof, because the builder
+already wrote an equal value from the same bytes. (6) R-0668. The job report is populated, not
+dropped, because two gates read it; it carries only facts the manifest and `tasks.json` beside it
+already carry. (7) R-0986, THE RULING. `run_job` keeps its own tally of the job's cost side: one row
+per provider attempt the task-run evidence lists, fake ones included, each read by the ledger's own
+`token_truth._strict_cost` on `total_cost_usd`, seeded from the persisted version-2 record. That is
+the ledger's count taken earlier, not a second counting basis (R-0224, DECISION F104 D5). At each
+safe point and at persist the money is whichever of the latest ledger read and this tally covers
+more rows, taken whole and never added or mixed. A consequence taken on purpose: a `max_cost_usd`
+limit now sees the current run's spend and can stop it before any mirror, which is what F104's
+comment says the limit is for. (8) R-0987. The live counter reads the dict's `input_tokens` and
+`output_tokens` as `int(ua.get(k, 0) or 0)`, the one definition `_aggregate_usage_actuals` uses,
+cache tokens outside the total.
+ALTERNATIVES: rewording 77 docs for R-0665, rejected above; stopping the job report write,
+rejected because two gates read it; mirroring into the ledger before each persist for R-0986,
+rejected because it exports the whole evidence at every save and needs a registered project;
+adding the ledger and the tally, rejected as double counting.
+REVERSE: restore `README.md`, `docs/README.md`, `docs/ui/design_reference/README.md`, the 14
+feature files, `scripts/build_review_manifest.py`, `scripts/build_review_zip.py`,
+`packages/orchestration/job_evidence.py` and `packages/orchestration/pingpong_job.py` from
+`ec4e2e86`, delete `docs/ui/design_reference/assumption_log.md`, drop the tests this round added or
+changed, and delete this paragraph.
+
+## DECISION F273 D9 (2026-09-19, reviewer, round 9) — the bench gets its two missing orders on its own fixture and its evidence names the world it ran in; F273 wires the four list commands and F267 keeps its tests
+CONTEXT: T010's R-0411 and T007's R-0796 each needed a ruling taken in the round that lands the
+patch (amend0917-throughput rule 3). Measured by research helpers and re-measured by the reviewer's
+dry run at `db9a05cc`: the frozen bench set loads three orders; `run_order` in
+`packages/orchestration/gauntlet_runner.py` records `template_digest` of the gauntlet's default
+template whatever `materialise` copied, so a run on any other fixture would name the wrong world;
+of the nine list commands R-0796 kept in scope, F275 deleted five and `test.list`, `mission.list`,
+`change.list` and `event.list` survive unwired; and `T2_F267.md` names R-0796 "owned here" while
+the 2026-09-06 triage routed it to this feature's T007.
+CHOSEN: (1) R-0411, per DECISION F082 D3. `scripts/bench_sample_project/` is a stdlib-only fixture
+(a WSGI item service and a static widget); an order file may name it with `bench_template`, absent
+meaning the gauntlet's; the bench manifest freezes the fixture by `bench_template_digest`; and two
+orders against it, `b04-api-create-endpoint` and `b05-widget-count-badge`, each state a premise a
+test checks by behaviour. `BENCH_ORDER_SET_VERSION` goes to 2, which resets nothing because no count
+or series is keyed on it. (2) THE GAUNTLET EDIT, a reviewer ruling beyond DECISION F082 D1, which
+covers only R-0407. `RunnerDeps` gains `template_dir_fn`, default `None`, and `_evidence_body`
+digests the template it names; a gauntlet run passes `None` throughout, so its evidence bytes, the
+gauntlet manifest, its template digest and `GAUNTLET_ORDER_SET_VERSION` are unchanged. The bench
+hands one template choice to both the copy and the digest, read off the `run-NN-<order id>` name
+`run_order` gives each run directory, and fails closed when no single order matches. (3) b05's
+script is judged at the HTTP level only, as F082's Design's "no browser dependency" requires. (4)
+R-0796 AND F267. F273 lands F267's T001 — the four wirings, each with tests for an unknown sort
+field, the limit and the time window — and resolves R-0796, because the later routing and a built,
+red-proved patch both point here; F267 stays registered with T002 and T003, and its file says so
+in the same commit. `event.list` now returns the newest events first like every wired list, and
+`change.list` dates a change by its patch intent's `created_at`, so a change whose intent carries no
+date sorts last and drops out of a time window, as `patch list` already does. (5) R-0762 stays in
+T007 and is the next round's.
+ALTERNATIVES: editing the gauntlet's sample project, rejected by DECISION F082 D3; a bench run that
+records the gauntlet's digest as a known absence, rejected because evidence that names the wrong
+world is the defect R-0189 exists to prevent; leaving R-0796 to F267, rejected because the patch
+is built and the triage routed it here; a date field added to every patch-intent writer, rejected
+as outside both findings.
+REVERSE: restore `packages/orchestration/bench_orders.py`, `bench_run.py`, `gauntlet_runner.py`,
+`pyproject.toml`, `scripts/bench_orders/`, `docs/roadmap/features/T2_F082.md`,
+`docs/roadmap/features/T2_F267.md`, the four command modules and `apps/cli/command_catalog.py` from
+`db9a05cc`, delete `scripts/bench_sample_project/`, drop the tests this round added or changed,
+and delete this paragraph.
+
+## DECISION F273 D10 (2026-09-19, reviewer, round 10) — the orchestrator loop continues a paused or out-of-cycles job with `resume_job`; the shipped token sheet defines the four tokens it uses, the colour rule states its carve-out, and R-0622 is carried
+CONTEXT: T007's R-0762 and T006's R-0622, R-0661 and R-0755 each needed a ruling taken in the
+round that lands the patch (amend0917-throughput rule 3). Measured by research helpers and
+re-measured by the reviewer's dry run at `6871f1cd`: the om1 move schema in
+`packages/orchestration/orchestrator_move_schema.py` has no resume kind, and the loop's own comment
+says re-dispatch is the only way out of a paused job; a job that ended `max_cycles_reached` stays
+running, so the loop can neither dispatch for its milestone nor declare it done; `remedy job resume`
+holds its three guards inline in `apps/cli/commands/job.py`; four `--remedy-*` properties are used
+under `apps/ui/src` and defined nowhere, each rendering its `var()` fallback; 224 raw colour
+literals sit outside the token sheet while `tokens_rules.md` names a stylelint gate and a palette
+bridge that do not exist; and neither `typescript-eslint` nor any `@typescript-eslint/*` package is
+installed in `apps/ui/node_modules` or named in `package-lock.json`.
+CHOSEN: (1) R-0762. om1 gains `resume_job`, payload `milestone_id` and an optional `job_id` that
+must name the milestone's latest job. The loop continues that SAME job when it is paused, or when
+its last run ended `max_cycles_reached` and it has not finished; any other target is refused at
+evaluation with a reason. The guards are ONE function, `checkpoints.decide_checkpoint_resume` —
+a pending stop request consumed first, worktree drift refused, the plan-approval gate consulted,
+an all-green job a no-op — which `remedy job resume` now renders too, so the two doors cannot
+disagree; a guard that stops the move gives the non-terminal outcome `resume_not_run`. The resumed
+job runs through the executor seam a dispatch uses, which is the authority the loop already holds
+for a job it dispatched; `resume_job` grants no new goal. A re-dispatch of a paused job stays
+legal. The protocol document goes to v2 and names the move. The watchdog's no-progress trip still
+counts dispatches only, so repeated resumes of one milestone are bounded by the iteration budget.
+(2) R-0661. `apps/ui/src/styles/tokens.css` defines `--remedy-mono` as an alias of the reference's
+`--remedy-font-mono`, and the three warning tokens with the exact values the banner has always
+rendered, because the design reference defines no warning token and names that banner unchanged;
+`test_design_drift.py`'s allowlist of unresolved properties is now empty. (3) R-0755. The cheap
+half first, as its text asks: `tokens_rules.md` states the rule as it is enforced — raw colour
+forbidden outside the token sheet, `var()` fallbacks counted, a named carve-out for canvas, SVG and
+theme files that cannot resolve `var()`, and no stylelint gate yet — and
+`tests/ui_contracts/test_raw_colour_ratchet.py` pins every other file's count exactly, so the count
+can only fall. (4) R-0622 IS CARRIED, not built: its repair adds a devDependency, which needs a
+network install this session cannot perform, and a lint config naming a parser that is not
+installed would turn a loud red into a crash. It stays open under F273 and moves with F273's
+closure to the next paydown per amend0911-feedback rule A; the install to make is
+`typescript-eslint` at `^8`, and lint enters no gate until it exits 0 (R-0364).
+ALTERNATIVES: a resume only for paused jobs, rejected because an out-of-cycles job keeps its pending
+work and blocks dispatch; the loop calling the CLI function, rejected because it prints and exits;
+mapping the warning tokens to `--remedy-orange-400`, rejected because it recolours a surface the
+reference freezes; editing all 224 literals before any gate, rejected as out of scale; stylelint
+now, rejected for the same network install.
+REVERSE: restore `orchestrator_move_schema.py`, `orchestrator_loop.py`, `checkpoints.py`,
+`apps/cli/commands/job.py`, `docs/agents/orchestrator_protocol.md`, `apps/ui/src/styles/tokens.css`,
+`docs/ui/design_reference/tokens_rules.md` and `tests/ui_contracts/test_design_drift.py` from
+`6871f1cd`, drop the tests this round added, and delete this paragraph.
+
+## DECISION F273 D11 (2026-09-19, reviewer, round 11) — a job's snapshot keeps tracked ignored files, `job run` refuses an unresumable workspace, the self-use runner passes the role config's models, a passed or applied task is done, and a job's budgets reach its run contract
+CONTEXT: R-0974, R-0913, R-0890, R-0898 and R-0935 each needed a choice between routes their texts
+allow, taken in the round that lands the patch (amend0917-throughput rule 3). Measured by research
+helpers and re-measured by the reviewer's dry run at `e707b52e`: `write_tree` in
+`packages/orchestration/worktrees.py` adds into an empty temporary index, and its twin
+`write_tree_for_path` has no caller; `resume_job_plan`'s two refusals have no production caller;
+the self-use runner passes provider names only; `job show --full`'s summary, status and report
+sections count only `completed` while the job runner writes `passed` and `applied`; and
+`build_default_run_contract` and `_reconcile_budget_fields` read the persisted budgets dict as
+attributes, so a job's F018 limits never reach its contract.
+CHOSEN: (1) R-0974. The snapshot's temporary index is seeded with `git read-tree HEAD` before
+`git add -A`, and the dead `write_tree_for_path` is deleted. (2) R-0913, the Acceptance line's
+first branch. The two refusals are one function, `job_resume_refusal`, which `resume_job_plan`
+raises and `remedy job run` prints before `run_job` runs, leaving the record untouched; other
+callers of `run_job` create fresh jobs and are not changed. (3) R-0890, the runner half only. A role
+whose provider the runner takes from the role config also takes that config's model and effort
+unless the caller passed them; `run_job`'s own defaults are unchanged. (4) R-0898. One predicate,
+`task_is_done`, over `TASK_DONE_STATUSES` — `passed`, `applied` and `completed` — owned by
+`pingpong_job.py`, is used by the three views and by `run_job_fulfill`; skipped and split tasks
+did no work and are not done. The resume preview keeps its own rule, because the runner steps past
+skipped tasks too. (5) R-0935. `job_budget_limits` validates the persisted dict into `JobBudgets`,
+and both contract readers use it. The finding's question is answered by measurement: once the
+contract reads the budgets, a `job budget set` of `max_tokens` or `max_runtime_seconds` would be
+put back silently by the next `ensure_contract`, so that command now refuses those two fields when
+the job carries the overlapping F018 limit, naming the `job run` flag that sets it. Without the
+limit the write holds.
+ALTERNATIVES: routing R-0913 through `_acquire_job_workspace`, rejected because it would mark the
+job blocked instead of leaving the record untouched; `run_job` defaulting to the role config's
+model, rejected because it would pair a role's model with a provider given by flag; letting the
+reconcile overwrite a set value and documenting it, rejected as a command that silently does not
+hold.
+REVERSE: restore `worktrees.py`, `pingpong_job.py`, `apps/cli/commands/do_cmd.py`,
+`self_use_runner.py`, `apps/cli/commands/job.py`, `job_fulfillment.py` and `run_contract.py` from
+`e707b52e`, drop the tests this round added, and delete this paragraph.
+
+## DECISION F273 D12 (2026-09-19, reviewer, round 12) — a test run accepts the intent id an apply prints, the apply names its verifying test run, the continuation cycle is three commands, and the smoke script and its tests read what the product writes
+CONTEXT: R-0921, R-0917, R-0922, R-0916, R-0899, R-0910, R-0980, R-0978 and the R-0988 this round
+registers each needed a choice between routes their texts allow, taken in the round that lands the
+patch (amend0917-throughput rule 3). Measured by research helpers and re-measured by the reviewer's
+dry run at `4c375fc4`: `_validate_linkage` in `packages/orchestration/test_execution_service.py`
+resolves an intent id against a `patch_intents` key nothing writes; `patch apply` prints no next
+action; `--yes` on the run command is declared and no test drives it through the parser; the
+deleted `do_continue` left no single continuation word; the smoke script's job check reads `state`
+where `job show` prints `status`; section 12s requires an event only a test-only module emits;
+`test_study_run_dispatch_e2e` reaches whatever model answers on the default host; and
+`test_direct_run_calls_remedy_smoke` runs the script with no working directory, so its
+`.data/smoke/` log lands in the checkout pytest runs from.
+CHOSEN: (1) R-0921. The gate resolves an intent through `approval_queue._find_artifact_for_intent`,
+the lookup `patch approve` and `patch apply` use. (2) R-0917. `verifying_test_run_action` names
+`remedy test run <job> --intent-id <id> --apply-id <id>` for an applied or no-op apply; `patch
+apply` prints it as its last line and carries it as `next_safe_action` in its JSON. Both ids are
+the intent id, because the apply record writes `apply_id` equal to it; `--task-id` is left out
+because an intent's task need not be a job task. (3) R-0922. The code half landed at `ef618eac`;
+this round adds the test that runs `do run --yes` through the parser to the auto-approval branch,
+with the planner stubbed so no model is called. (4) R-0916, THE RULING its Acceptance line asks
+for: the continuation cycle is three surviving commands and no single word — `remedy patch apply`,
+then the `remedy test run` that (2) prints with the apply record's ids, then `remedy change proof`
+— with no lease or checkpoint of its own: `test run` holds its own job and repository leases,
+`patch apply` is idempotent by its apply record, and each step reads the durable record the one
+before wrote. A passing test run still names `job show` as its next action, not `change proof`;
+that link is left as it is. (5) R-0899. The smoke check reads `status`, and a test runs it on the
+`job show` output of a job created offline. (6) R-0910. A test holds every word section 0 loops
+over to the catalog's own group reader, which counts an alias as the group it names, as the CLI's
+dispatch does. (7) R-0980. Section 12s is dropped, and a test holds its absence. (8) R-0978. The
+test points `REMEDY_OLLAMA_HOST` at a local listener that hangs up, asserts that listener was the
+host asked, and lowers the subprocess timeout from 90 to 30 seconds; the test no longer depends on
+any model host. (9) R-0988. The fixture imports `study` before it patches and patches `study`'s own
+binding. (10) The smoke script's direct run is given a temporary working directory, so its log
+never lands in a checkout; this is one writer of R-0803's class, repaired here, and R-0803 itself
+still resolves at closure by its own transcript (§3 item 30: no second id).
+ALTERNATIVES: making a passing test run print `change proof`, rejected as a change no finding asks
+for; counting only group ids for R-0910, rejected because the dispatch accepts aliases; raising
+R-0978's timeout, forbidden by its own Acceptance line.
+REVERSE: restore `test_execution_service.py`, `patch_apply.py`, `apps/cli/commands/patch.py`,
+`scripts/remedy_smoke.sh` and the four test files from `4c375fc4`, and delete this paragraph.
+
+## DECISION F273 D13 (2026-09-19, reviewer, round 13) — the loop stamps each entry it prints, `mission show` renders the ledger, `mission list` filters by status, tips name real ids, `replan` goes, and the dead event readers and the level-4 inspection signals go with it
+CONTEXT: R-0930, R-0929, R-0904, R-0970, R-0915, R-0919, R-0920, R-0905 and R-0907 each needed a
+choice between routes their texts allow, taken in the round that lands the patch (amend0917-throughput
+rule 3). Measured by research helpers and re-measured by the reviewer's dry run at `b3baf7d5`:
+the loop's `_record` appends an entry with no time, and only the disk copy is stamped; `mission show`
+reads the ledger only for a paused mission's trips; `mission list` has no status filter while 25
+feature files carry a `mission list --status planned` heir sentence; six tips print `<job_id>` or
+`<intent_id>`; `job_plan.replan` has test callers only and the six rejected-plan refusals name no
+next step; the cockpit reads `do_continue_stopped`, whose emitter F275 deleted; the event-name
+recovery reads only an emit call's first argument; and nothing emits `git_status_read`,
+`run_contract_inspected` or `token_policy_inspected` while readers and readiness level 4 still wait
+for them.
+CHOSEN: (1) R-0930. `_record` stamps `recorded_at` itself, so the printed and the stored entry carry
+one time. (2) R-0929, the route its fix names: `mission show` renders the whole ledger after the
+chain, and its JSON carries it; a mission never run prints nothing new. (3) R-0904. `mission list
+--status` takes the four stored statuses and `planned`, which is derived at list time — an active
+mission no linked job has started — so the heir sentence holds as written and no feature file
+changes. (4) R-0970. Every tip in `timeline.py` and `trust_report.py` names the real job and intent
+ids, one command per intent; the `do` tip, which has no id, names its value in words. (5) R-0915.
+`replan` and `ReplanRejectedError` are deleted with their tests, and the six refusals print one
+next step: give the order anew with `remedy do`, with `--plan-only` to read the new plan first. The
+word `replan` survives only where it names a mission's plan, a different, living concept. (6)
+R-0919. The cockpit continuation section keeps `available` and loses its event half, its client
+fields and their fixtures. (7) R-0920. The recovery reads every positional string of an emit call,
+a call whose name holds the word `emit`, and a module's own helper that forwards a parameter to one;
+a test finds a name only a helper emits. (8) R-0905. The three readers of `git_status_read` are
+deleted, and with them the `repo_dirty` decision type and the `dirty_repo_blocks_level` reason code
+they produced, as the finding's text names. (9) R-0907. Both inspection signals are dropped from
+readiness level 4 rather than given emitters, and the six test-only exports are deleted with their
+tests; the architecture document says so, and still documents both events because old run logs
+carry them. The coupling ceiling falls from 4 to 1, since no new dead name surfaced. (10) R-0989,
+found in this round, is registered for the tips in `apps/cli/commands/job.py` and
+`packages/orchestration/cockpit.py` and is the next round's.
+ALTERNATIVES: a `--ledger` flag or a new word for R-0929, rejected because the finding names the
+existing view; a stored `planned` status, rejected because nothing would ever write it; emitters
+for the two inspection events, rejected because no surviving command inspects a contract or a
+policy; keeping `repo_dirty` with no producer, rejected as a type nothing can create.
+REVERSE: restore every file the two diffs touch from `b3baf7d5`, and delete this paragraph.
+
+## DECISION F273 D14 (2026-09-19, reviewer, round 14) — the last placeholder tips name real ids, and the dead brain, rollback, recommendation, evidence-export, task-file and fulfillment code goes with its tests
+CONTEXT: R-0989, R-0903, R-0908, R-0911, R-0932 and R-0936 each needed a choice between routes
+their texts allow, taken in the round that lands the patch (amend0917-throughput rule 3). Measured by
+research helpers and re-measured by the reviewer's dry run at `3a93d638`: `_status_section` and the
+cockpit print `<job_id>`, `<patch_intent_id>` and `<goal>` where the value is known or nameable;
+`orchestrator_brain.list_decisions`, the rollback-proof reader and audit, the reviewer's
+recommendation store and `pingpong_evidence.export_evidence` have test callers only, and nothing
+writes what the first three read; `load_task_file`, `load_task_stdin`, `summarize_pingpong` and the
+`scope_contract` parameters survive only for tests; and `run_job_fulfill` has no production caller,
+so the fulfillment spine, three staging functions and the fulfillment sections of `job show --full`
+read records nothing writes.
+CHOSEN: (1) R-0989. The status tip names the first pending intent, since a next action is one
+command, falling back to `patch list`; the cockpit's tips and attention items name the real job id
+and intent ids, and its goal tip names the order in words. (2) R-0903. `orchestrator_brain.py` is
+deleted with its dashboard section and tests, and the rollback reader and audit with theirs; the
+snapshot section reports no rollback count. `validate_next_safe_action_command` leaves production
+for `tests/orchestration/catalog_commands.py`, because seven test files use it to hold other
+modules' printed commands to the catalog, which is a test's job and not a product's. (3) R-0908.
+The two cockpit readers and the recommendation store are deleted with their tests; `run_reviewer`
+stays, because `dev status` probes it; and `docs/system/orchestrator-loop.md` says that no step
+replaced `review accept`, because the reviewer's verdict now acts inside `job run`. The finding's
+four `token_economy` exports are left for its own text to settle, since neither its fix nor its
+Acceptance line orders anything for them. (4) R-0911. `export_evidence` is deleted; every
+file-content assertion of its eight test classes is kept against `build_evidence_bundle` and
+`write_evidence_bundle`, the calls `job_evidence` makes, and only the assertions about the deleted
+function's return value go. (5) R-0932. The two loaders, `summarize_pingpong` and the
+`scope_contract` parameters are deleted with the tests that pinned only them; the two prompt goldens
+are re-cut by computation from their base render minus the dropped segment, with a declared-change
+note in each, because no generator exists. (6) R-0936. `job_fulfillment.py`, the three staging
+functions and the fulfillment sections of `job show --full` are deleted with their tests, and
+seven cockpit labels for events only that module emitted leave `humanizeCatalog.ts`. (7) R-0990,
+found in this round, is registered and is the next round's.
+ALTERNATIVES: naming every pending intent in one tip, rejected because a next action is one
+command; keeping the validator in production for tests, rejected as production code nothing runs;
+hand-editing the goldens, rejected as unprovable; keeping the fulfillment spine for a future heir,
+rejected because git is the archive (AGENTS.md, Replacing is deleting).
+REVERSE: restore every file the three diffs touch from `3a93d638`, and delete this paragraph.
+
+## DECISION F273 D15 (2026-09-19, reviewer, round 15) — the job views read intents from the approval queue, the manifest diff and the conventions module go, and four prototypes are held for rulings
+CONTEXT: R-0990, R-0931 and R-0981 each needed a choice between routes their texts allow, taken in
+the round that lands the patch (amend0917-throughput rule 3). Measured by research helpers and
+re-measured by the reviewer's dry run at `bce5bc3b`: `_extract_job_truth` names intents by
+`<uuid>-0` and reads approvals under that key; the manifest diff functions of
+`packages/orchestration/run_manifest.py` have test callers only since F261 deleted the command that
+ran them; and `packages/orchestration/role_conventions.py` has no importer. The same helpers
+prototyped the repair-loop group (R-0923, R-0918, R-0924, R-0925, R-0926), R-0914 and the worker
+queue (R-0927, R-0928), and the reviewer holds all three, below.
+CHOSEN: (1) R-0990. `_extract_job_truth` takes its ids and states from
+`approval_queue.list_patch_intents`, every intent of every artifact, and `approval_required` is a
+pending intent with no applied record; a rejected intent is not pending, an artifact that counts
+intents it does not explain has nothing `patch approve` could resolve and requires no approval, and
+the timeline's `approval_required` event speaks only when no intent is listed. The status tip reads
+the pending ids the truth now carries. (2) R-0931. The run-input drift check leaves with its
+command: `build_current_candidate`, `diff_manifests`, `load_latest_manifest_for_cli` and
+`CanonicalLoadResult` are deleted with their helpers and tests; manifests are still written,
+validated and exported, and `T0_F012.md` records that the check is gone, since no `docs/system/`
+page describes F012. (3) R-0981. `role_conventions.py` is deleted with its test, because
+registering its segment would change prompt bytes, which F105's Do-not-touch excludes;
+`T2_F105.md` records the reason, and three tests that read the conventions documents rather than
+the loader move to `tests/orchestration/test_conventions_documents.py`. (4) HELD, NOT LANDED: the
+R-0914 prototype deletes `create_manual_completion_bundle`, which
+`docs/roadmap/STATUS_closure_protocol.md` names as the closure evidence producer, so it would break
+this feature's own closure; R-0914 needs its own measurement of which attestation writer is live.
+The repair-loop prototype deletes `repair_loop.py` whole, against the "module stays whole" clause
+R-0923 cites from DECISION F261 D17, and drops two cockpit labels for events still emitted. The
+worker-queue prototype raises `_COUPLING_CEILING` from 1 to 6 and deletes a permission guard test
+whose live targets remain. Each is a ruling the next session takes with its patch.
+ALTERNATIVES: keeping `<uuid>-0` ids and translating them at `patch approve`, rejected as two id
+spellings for one intent; a drift view on `job show --full`, rejected because F261's Do-not-touch
+forbids widening it; landing the held prototypes now, rejected for the reasons in (4).
+REVERSE: restore `apps/cli/commands/job.py`, `run_manifest.py`, `role_conventions.py`, `T0_F012.md`,
+`T2_F105.md` and the touched tests from `bce5bc3b`, and delete this paragraph.
+
+## DECISION F273 D16 (2026-09-19, reviewer, round 16) — the repair loop goes whole, the catalog contract reads forwarding helpers, `job evidence` refuses by name, and R-0977 waits for its defect
+CONTEXT: DECISION F273 D15 (4) held the repair-loop prototype on two rulings, and the third session
+measured both with research helpers and the reviewer's dry run at `b22fe3bc`. The "module stays whole"
+clause R-0923 cites is DECISION F261 D17's rule that a F261 prune round deletes no package module; it
+bound F261's rounds, and R-0923's own FIX names deleting the attempt store's readers and writer as its
+second branch. The two cockpit labels the prototype dropped, `contract_decision` and
+`repair_loop_stopped`, are still emitted by the `_emit` helpers of `test_execution_service.py` and
+`builder_bridge.py`; the prototype dropped them only because the catalog contract cannot see a helper,
+which R-0991 records.
+CHOSEN: (1) R-0923, R-0925, R-0926, R-0918. `packages/orchestration/repair_loop.py` and
+`packages/orchestration/repair_request_builder.py` are deleted with their tests, the attempt store's
+readers in `mission_readiness.py` and `self_dogfood.py`, and the cockpit's `repair` and
+`repair_request` sections with their fixtures; the statuses nothing set go with the module, and
+`docs/system/repair-loop-v1.md` says a repair is only ever a phase of a run and an attempt has no
+post-apply state. The edited readiness and self-dogfood lines gain tests that pin them. (2) R-0924.
+With the store deleted no attempt exists whose approval state a surface could print, so its
+Acceptance line in `T2_F273.md` gains that branch, naming this DECISION (§4 item 7). (3) R-0991. The
+catalog contract recovers a name passed to a module's own forwarding helper, to a fixed point, and
+counts `emit_important_event`; both labels stay, and every newly visible name gets a catalog entry in
+the catalog's style. (4) R-0912. `_task_evidence_dir` raises `UnsafeTaskIdError`, a `ValueError`
+carrying the id, and `job evidence` catches it and exits 1 naming the id; a CLI test exports a job
+whose task carries the minted default. (5) R-0940, R-0954. `docs/agents/self_drive_protocol.md`
+gains two worker-step rules: a block copy's line count and sha256 are compared with the given text
+before the commit that saves it, and a disposable worktree is named under `.remedy-wt/` and removed
+as its step's last action, with the reviewer's `git worktree list` at the verdict. (6) R-0977 is NOT
+landed this round. Its FIX as written makes every `do` job block in a repository with no tests,
+which DECISION F269 D6 measured; the non-blocking variant a helper prototyped lets the gate's pytest
+write `__pycache__` files into the job worktree, which ends a `do` in any repository with a Python
+suite `job_handoff_coverage_failed`. That defect is reproducible at `b22fe3bc` under
+`--contract cli-tool`, and R-0977's round registers and repairs it first.
+ALTERNATIVES: keeping `repair_loop.py` whole and giving the store a writer, rejected because no
+surviving word starts a repair and a writer with no word is dead code; dropping the two labels,
+rejected because their events are still emitted; landing R-0977 non-blocking now, rejected for (6).
+REVERSE: restore the touched files from `b22fe3bc`, and delete this paragraph.
+
+## DECISION F273 D17 (2026-09-19, reviewer, round 17) — the operator attestation writer and its export overlay go while the closure producer stays, and the queue, the goal-driven path and `worker status` go without raising a ceiling
+CONTEXT: DECISION F273 D15 (4) held R-0914 and the worker queue. Research helpers measured both at
+`b22fe3bc` and the reviewer re-ran them on its dry-run tree over `9e753ffc`. `attest_operator_repair`
+in `packages/orchestration/repair_attest.py` has test callers only, but `create_manual_completion_bundle`
+in `packages/orchestration/job_evidence.py`, the closure evidence producer
+`docs/roadmap/STATUS_closure_protocol.md` names, reaches `manual_attestation.py` and the attestable-source
+policy and safe-diff hashing of `repair_attest.py`. The export's attestation overlay in `job_evidence.py`
+read only what `attest_operator_repair` wrote. For the queue, the deleted modules emitted event names that
+surviving code still read, and the prototype held earlier raised `_COUPLING_CEILING` to declare them,
+which this feature's Acceptance forbids.
+CHOSEN: (1) R-0914. `attest_operator_repair` and every symbol only it or tests reached are deleted, with
+the export's attestation overlay, its finalize step and the regression-coverage map only that step read,
+and their tests; `manual_attestation.py` and everything `create_manual_completion_bundle` reaches stay,
+and a scratch run of the producer still wrote a bundle the manifest validator accepted. An export of a job
+with no persisted attestation is unchanged apart from timestamps. `docs/system/vocabulary.md` says an
+operator repair is attested no longer, and R-0914's Acceptance line gains the branch that keeps the
+module (§4 item 7). (2) R-0927, R-0928. `job run` and `job stop` replace the queue: `worker_queue.py`,
+`task_execution.py`, `autorun.py` and `source_context.py`, which only `autorun.py` called, are deleted
+with their tests, and so are `worker status`, the cockpit's worker section and its UI client. The readers
+of the event names only those modules emitted go with them, in `event_replay.py`, `proof_chain.py`,
+`ui_server.py`, `ui_view_model.py`, the humanize catalog and `actionClass.ts`; fields they alone fed read
+as absent, and a test pins the project summary's confidence at `low`. `_COUPLING_CEILING` stays at 1.
+The coupling ratchet and the catalog contract also read a name held in a local before it is emitted,
+R-0991's class, which keeps `test_run_completed` and adds four catalog entries. The permission guard over
+`apply_structured_patch` is re-pointed at its three surviving callers rather than dropped. (3) R-0992,
+the memory-candidate store losing its only writer with `autorun.py`, is registered for this feature and
+taken with R-0977.
+ALTERNATIVES: deleting `manual_attestation.py` as R-0914's FIX first named, rejected because it would
+break this feature's own closure; keeping the overlay, rejected because nothing writes its input; raising
+the ceiling, rejected by the Acceptance; giving `worker status` a live source, rejected because no worker
+exists to report on once the queue is gone.
+REVERSE: restore the touched files from `9e753ffc`, and delete this paragraph.
+
+## DECISION F273 D18 (2026-09-19, reviewer, round 18) — a check writes no bytecode, each `do` job serves its milestone without being held on it, and the memory-candidate store goes
+CONTEXT: DECISION F273 D16 (6) held R-0977 because its FIX as written blocks every `do` job in a
+repository with no tests, which DECISION F269 D6 measured, and because the non-blocking variant exposed
+R-0993. D17 (3) took R-0992 into the same round. A research helper prototyped all three on the tree of
+`f445a2c0`, and the reviewer re-ran them in its own dry run.
+CHOSEN: (1) R-0993. `dod_process_exec_policy` gives every process check `PYTHONDONTWRITEBYTECODE=1`
+beside the scrubbed environment, and the pytest check runs with `-p no:cacheprovider`, so a check
+writes nothing into the worktree it judges; handoff coverage is unchanged, because a task may not write
+under `__pycache__` in the first place. (2) R-0977. `do`'s shape step records on each job the milestone
+whose `jobs_draft` it came from, or the plan's milestone when the plan has exactly one, and merges that
+milestone's slice with `hold_on_milestone=False`: the job's gate evaluates the planner's criterion and
+reads it `met` or `unmet` onto the contract, and never holds the job on it. This amends DECISION F269 D6
+(1) and (3) for `do` only; `mission run` keeps holding its jobs on their milestone. A job made with
+`--force-job` from a plan of several milestones serves none, so their criteria stay `open`. As a
+consequence of DECISION F270 D4 (6), which lets only an unmet blocking criterion hold a push back, a
+`do --push` in a repository with no passing suite is now refused after its commits land; operator
+question Q4 carries this as its third ruling. (3) R-0992. The memory-candidate store, the
+`memory candidates`, `memory approve-candidate` and `memory reject-candidate` words, the cockpit's
+candidate count and checklist items, the `dev status` key and the smoke section are deleted with
+their tests. `approve_candidate` imported a module this repository does not hold, swallowed the error
+and still reported `memory_created` true, so it goes rather than being given a writer.
+ALTERNATIVES: R-0977's FIX as written, rejected for D6's reason; hiding bytecode paths from handoff
+coverage, rejected because it treats a symptom and would also hide a real write; giving the memory
+candidates a writer, rejected because no surviving path proposes one.
+REVERSE: restore the touched files from `f445a2c0`, restore Q4 of `.agent/operator_questions.md`, and
+delete this paragraph.
+
+## DECISION F273 D19 (2026-09-19, reviewer, round 19) — the open ids F273 did not list are measured, the moot ones are booked, the dead residue goes, and DECISION F260 D3 gains the sentences four findings asked of it
+CONTEXT: amend0911-feedback rule A gives every open finding one owner. F273's third session measured every
+open id outside F273's own list at `f445a2c0` and again at `17c7f169`: a group is moot or already met,
+a group waits only on DECISION F260 D3, which F275 round 23 wrote on 2026-09-10 and DECISION F275 D20
+amended, and a group is live dead code or a small defect.
+CHOSEN: (1) The moot and met ids are booked in this round's first commit, each with its evidence: R-0830,
+R-0846, R-0849, R-0854, R-0857, R-0868, R-0869, R-0883, and R-0840, R-0842, R-0844, R-0845, R-0848, R-0853
+and R-0865, whose FIX binds only D3 and which D3 names. (2) Dead residue goes, with its tests:
+the three route-policy flags `apps/cli/grouped.py` still wired (R-0831); the readers of
+`context_budget_optimized`, which nothing emits, so `KNOWN_DEAD_EVENT_COUPLINGS` empties and
+`_COUPLING_CEILING` falls to 0 (R-0832); `_job_with_repo` (R-0850); the test-only functions of
+`proposed_tasks.py` and the three helpers only they called (R-0941);
+`packages/orchestration/provider_patch_material.py`, which no module imports, with the self-dogfood
+roadmap rule that tested for its file (R-0867); the two `REVIEW_FINDINGS_OPEN` members nothing sets
+(R-0863); and `AcceptanceCheck` with the `Verifier` protocol nothing implements (R-0884), because a task's
+acceptance criteria are text, by this ruling. (3) Small repairs: a job `_stop_job` moves to `stopped` gets
+its `finished_at` (R-0828), while a stop whose run manifest failed to write keeps the state it had and
+records the error, as `tests/cli/test_job_rerun_manifest.py` pins against a false clean stop; the
+self-use defect reporter also answers a stop that never finalized, a run-manifest error and a task that
+did not pass with a blank error (R-0826); and the smoke script's messages name the keyword arguments
+rather than retired flags (R-0937). (4) Amending DECISION F260 D3, as D20 did: Remedy deliberately ships
+without an automated execution-approval policy, and every execution is approved by a person (R-0851);
+Remedy deliberately accepts no candidate produced outside it (R-0852); Remedy deliberately runs no
+external builder until a later feature provides one, and the deleted `execution` surface took the
+fourteen `ContractAction` members EXECUTION_TEMPLATE_SHOW, EXECUTION_TEMPLATE_CREATE,
+EXECUTION_TEMPLATE_ENABLE, EXECUTION_TEMPLATE_DISABLE, EXECUTION_TEMPLATE_UPDATE, EXECUTION_APPROVE,
+EXECUTION_RUN, EXECUTION_SHOW, EXECUTION_DEBUG_BUNDLE, EXECUTION_APPROVAL_SHOW,
+EXECUTION_APPROVAL_VALIDATE, EXECUTION_APPROVAL_LIST, EXECUTION_OPERATOR_RUNBOOK and
+EXECUTION_CLAUDE_DOCTOR, removed at `795e4080` (R-0856); and the deleted `builder` surface took the six
+members BUILDER_ADAPTER_SHOW, BUILDER_ADAPTER_ENABLE, BUILDER_PACKAGE_CREATE, BUILDER_SESSION_CREATE,
+BUILDER_SESSION_SHOW and BUILDER_SESSION_INTAKE, removed at `3384dd53` (R-0860). The inheritors D3 names
+are closed features, so no feature inherits any of these today. `docs/system/core-product-spine-v0.md`
+stops listing the deleted groups as commands. (5) Carried to the next paydown, not ruled here: R-0819
+and R-0820, whose counter-measures wait for the checklist consolidation pass; R-0866, which DECISION
+F275 D12 (a) keeps open until a feature reopens the external-candidate route; R-0880, which D75 and D78
+of F275 keep open; R-0829, because this feature's own closure runs the packer it would change; R-0984,
+which the closure pull request's hosted CI decides.
+ALTERNATIVES: resolving the D3 group by a second D3, rejected because D3 exists; giving the dead
+functions callers, rejected because nothing needs them.
+REVERSE: restore the touched files from `17c7f169`, and delete this paragraph.
+
+## DECISION F273 D20 (2026-09-19, reviewer, round 20) — T015 is built: the direct-API provider keeps its usage and caches its prefix, one test proves every collected test runs in some CI stage, and the vitest ceiling is measured
+CONTEXT: T015 of `docs/roadmap/features/T2_F273.md` mints one id per item at the start of the round that
+takes it, and no round had taken it; its three items are registered as R-0994, R-0995 and R-0996 in this
+round's first commit. A research helper prototyped them on the tree of `fdece9ab` and the reviewer
+re-ran them in its own dry run.
+CHOSEN: (1) R-0994. `ClaudeProvider._call` returns the CLI provider's shape: its usage is read through
+`token_actuals`' envelope reader into `usage_actuals`, so `build` and `review` stop stamping
+`provider_actuals_unavailable` when the SDK reported usage, and `tokens_used` is input plus output as on
+the CLI path. `ComposedPrompt.stable_prefix()` is the leading run of segments ranked before `TASK`; the
+loop offers it to a provider that takes one, and the direct-API provider sends it as a `system` block
+with `cache_control` when the prompt starts with it, so the two parts concatenate to the prompt byte for
+byte. Failures map most-specific-first to a kind with the HTTP status and a redacted, capped message.
+`pyproject.toml` gains an `anthropic` extra that the ImportError text names. (2) R-0995. The partition
+T015 (b) asks for does not hold by construction, because the `budgets` and `smoke` stages select by path
+nodes the marker stages also select; the defect the item describes is a test no CI stage runs, so the
+guard asserts coverage: one collection, each stage's selection evaluated in-process with pytest's own
+expression reader, and every node selected by a CI stage or by the stage CI deliberately excludes. It
+runs in the `budgets` stage, whose budget rule still yields 300 s. This amends T015 (b) (§4 item 7), and
+T015 records it. (3) R-0996. Three runs of the vitest suite measured 1.01 s to 1.09 s on this machine; the
+30 s ceiling is more than twice that and stays, and the test's docstring records the numbers, the machine
+and the rule.
+ALTERNATIVES: a keyword on every provider's `build` for the prefix, rejected because it breaks every fake
+provider; one collection per stage, rejected at about 93 s; raising the vitest ceiling, rejected without
+a measurement.
+REVERSE: restore the touched files from `fdece9ab`, and delete this paragraph.
+
+## DECISION F273 D21 (2026-09-19, reviewer, round 22) — the closure suite's one bad node is repaired by a stronger property, never by a lower floor
+CONTEXT: F273's closure suite at `d2fc05b8` read one failed node, the retired-status scan's anti-blindness
+guard, which asserts more than 300 tracked production `.py` files. F273's deletions took that count from
+310 at the fork point to 299; `main`'s hosted CI at the fork point was green, so the node is this
+feature's to repair under amend0917-throughput (2), and R-0997 records it.
+CHOSEN: the guard asserts that the scan's corpus holds every tracked production file that calls
+`load_job_plan` or `require_job_plan`, found by `git grep` independently of the `git ls-files`
+enumeration, and that at least one exists. That names the files the scan exists to read, so it fails
+when the enumeration loses any of them, as the reviewer's dry run showed by dropping `apps` from it,
+and it no longer falls with the size of the repository. This is the first of at most three repair
+rounds; the round re-runs the full suite once, and its bad set must shrink strictly with no node newly
+bad.
+ALTERNATIVES: lowering the floor to 250, rejected as a weakened assertion that the next deletion
+crosses again; marking the node `xfail`, rejected because the repair is one test.
+REVERSE: restore `tests/orchestration/test_job_plan_state_reads.py` from `7e717bc4`, and delete this
+paragraph.

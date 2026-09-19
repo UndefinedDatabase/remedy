@@ -541,6 +541,37 @@ def test_a_nonzero_exit_comes_back_as_a_completed_process():
     assert isinstance(result, subprocess.CompletedProcess)
     assert result.returncode == 3
     assert b"ran" in result.stdout
+    assert getattr(result, exec_guard.TRIPPED_LIMIT_ATTR) is None
+
+
+@pytest.mark.subprocess
+def test_a_wall_trip_carries_the_tripped_limit_on_the_timeout_expired():
+    """R-0568: the trip survives the `subprocess.run`-shaped translation."""
+    with pytest.raises(subprocess.TimeoutExpired) as excinfo:
+        run_guarded_test_command(_child("import time\ntime.sleep(120)\n"),
+                                 timeout_sec=1, cwd=None)
+
+    assert type(excinfo.value) is subprocess.TimeoutExpired, "the stdlib type, unchanged"
+    assert getattr(excinfo.value, exec_guard.TRIPPED_LIMIT_ATTR) == "wall_timeout"
+
+
+@pytest.mark.subprocess
+def test_an_output_trip_carries_the_tripped_limit_on_the_completed_process(monkeypatch):
+    """R-0568: a capped stream is no exception, so the trip rides on the result."""
+    real_policy = exec_guard.test_command_exec_policy
+
+    def _tiny_cap(timeout_sec, cwd, **kw):
+        return real_policy(timeout_sec, cwd, output_cap_bytes=4096, **kw)
+
+    monkeypatch.setattr(exec_guard, "test_command_exec_policy", _tiny_cap)
+    result = run_guarded_test_command(
+        _child("import sys\nsys.stdout.write('x' * 20000)\nsys.exit(1)\n"),
+        timeout_sec=30, cwd=None,
+    )
+
+    assert type(result) is subprocess.CompletedProcess
+    assert result.returncode == 1
+    assert getattr(result, exec_guard.TRIPPED_LIMIT_ATTR) == "output_bytes"
 
 
 @pytest.mark.subprocess
@@ -606,7 +637,10 @@ def test_the_dod_process_policy_keeps_the_wall_timeout_its_class_is_defined_by()
     assert policy.cwd == "/tmp/dod-cwd"
     assert policy.core_file_bytes == 0
     assert policy.output_cap_bytes == exec_guard.DOD_PROCESS_OUTPUT_CAP_BYTES
-    assert policy.env is None
+    # F273: the one key SET rather than passed through, so a check never writes
+    # bytecode into the tree it judges; the scrub still builds the child from it.
+    assert policy.env["PYTHONDONTWRITEBYTECODE"] == "1"
+    assert exec_guard.plan_child_spawn(policy).env["PYTHONDONTWRITEBYTECODE"] == "1"
     assert policy.env_allowlist == exec_guard.DOD_PROCESS_ENV_ALLOWLIST
     assert not exec_guard.FORBIDDEN_ENV_KEYS & set(policy.env_allowlist)
     assert policy.cpu_seconds is None

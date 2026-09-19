@@ -7,6 +7,8 @@ import os
 import subprocess
 import sys
 
+import pytest
+
 from packages.orchestration.decision_queue import DECISION_TYPES, list_decisions
 from packages.orchestration.pingpong_job import JobPlan
 
@@ -406,6 +408,9 @@ class TestApprovalGateEnforcement:
         assert run.returncode == 3
         assert "task plan rejected" in run.stderr
         assert "replan" not in run.stderr
+        # R-0915: the refusal names what a user does next.
+        assert "give Remedy the order anew with `remedy do`" in run.stderr
+        assert "--plan-only" in run.stderr
 
 
 class TestDecisionResolve:
@@ -510,6 +515,36 @@ class TestAutoApproval:
         assert len(open_decisions) == 0
         assert len(resolved_decisions) == 1
         assert "auto-approved via --yes" in resolved_decisions[0].safe_summary
+
+    @pytest.mark.parametrize(("flags", "approval"), [((), "pending"), (("--yes",), "approved")])
+    def test_do_run_yes_through_the_parser_reaches_the_auto_approval(
+            self, tmp_path, monkeypatch, capsys, flags, approval):
+        """R-0922: `remedy do run --yes`, parsed from the catalog, reaches
+        `auto_approve_task_plan`; without the flag the plan waits. The walk runs
+        `--no-llm`, and only the shape step's `plan_order_job` is re-entered on the
+        mocked LLM plan, because the auto-approval lives on that branch alone."""
+        from apps.cli.grouped import main
+        from packages.orchestration import do_sequence
+        from packages.orchestration.pingpong_job import load_job_plan
+
+        repo = _git_repo(tmp_path)
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
+        monkeypatch.chdir(str(repo))
+        real_plan_order_job, seen = do_sequence.plan_order_job, []
+
+        def planned_on_the_llm_branch(order, **kwargs):
+            seen.append(kwargs["yes"])
+            _setup_llm_mocks(monkeypatch, plan_succeeds=True)
+            return real_plan_order_job(order, **{**kwargs, "no_llm": False})
+
+        monkeypatch.setattr(do_sequence, "plan_order_job", planned_on_the_llm_branch)
+        main(["do", "run", "test mission", "--no-llm", "--no-ui", "--plan-only", "--force-job",
+              "--json", "--builder-provider", "fake", "--reviewer-provider", "fake", *flags])
+        [job_id] = json.loads(capsys.readouterr().out)["job_ids"]
+        task_plan = load_job_plan(job_id).task_plan
+        assert seen == [bool(flags)]
+        assert task_plan["_approval"] == approval
+        assert ("_approval_audit" in task_plan) is bool(flags)
 
 
 class TestConfigBudgetPrecedence:
@@ -617,61 +652,6 @@ class TestConfigBudgetPrecedence:
         job_data = json.loads(show.stdout)
         # Plan fills max_provider_calls since config didn't set it
         assert job_data["budgets"]["max_provider_calls"] == 42
-
-
-class TestReplanApprovalRearm:
-    """R-0129: replan re-arms _approval to pending."""
-
-    def test_replan_rearms_approval(self, tmp_path):
-        from packages.orchestration.job_plan import replan
-        from packages.orchestration.schemas.models import TaskPlan
-
-        old_plan = {
-            "schema_v": "task_plan_v1",
-            "tasks": [{"id": "T001", "title": "X", "goal": "G",
-                        "acceptance": ["A"], "depends_on": [],
-                        "est_tokens_band": "M", "files_hint": []}],
-            "risks": [],
-            "_approval": "rejected",
-        }
-        new_plan = TaskPlan(
-            schema_v="task_plan_v1",
-            tasks=[{"id": "T001", "title": "Y", "goal": "G2",
-                    "acceptance": ["B"], "depends_on": [],
-                    "est_tokens_band": "S", "files_hint": []}],
-            risks=[],
-        )
-        ev_dir = tmp_path / "evidence"
-        ev_dir.mkdir()
-        result, version = replan(old_plan, new_plan, ev_dir)
-        assert result["_approval"] == "pending"
-        assert version == 2
-
-    def test_replan_rejected_after_completed_task(self, tmp_path):
-        import pytest
-
-        from packages.orchestration.job_plan import ReplanRejectedError, replan
-        from packages.orchestration.schemas.models import TaskPlan
-
-        old_plan = {
-            "schema_v": "task_plan_v1",
-            "tasks": [{"id": "T001", "title": "X", "goal": "G",
-                        "acceptance": ["A"], "depends_on": [],
-                        "est_tokens_band": "M", "files_hint": []}],
-            "risks": [],
-            "_approval": "approved",
-        }
-        new_plan = TaskPlan(
-            schema_v="task_plan_v1",
-            tasks=[{"id": "T001", "title": "Y", "goal": "G2",
-                    "acceptance": ["B"], "depends_on": [],
-                    "est_tokens_band": "S", "files_hint": []}],
-            risks=[],
-        )
-        ev_dir = tmp_path / "evidence"
-        ev_dir.mkdir()
-        with pytest.raises(ReplanRejectedError):
-            replan(old_plan, new_plan, ev_dir, any_task_completed=True)
 
 
 class TestApprovalGoldenPathCLI:

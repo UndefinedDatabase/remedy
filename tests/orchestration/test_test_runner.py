@@ -405,8 +405,31 @@ class TestVitestFrontendTestFoundation:
     def test_vitest_test_file_exists(self):
         assert Path("apps/ui/src/api/remedyApi.test.ts").is_file()
 
+    # apps/ui/node_modules is gitignored, so a fresh `git worktree` never carries
+    # it and vitest cannot resolve `vitest/config` there (R-0518). An absent
+    # install is a missing precondition, not a failing frontend: skip, naming it.
+    @pytest.mark.skipif(
+        not (_ROOT / "apps" / "ui" / "node_modules").is_dir(),
+        reason=(
+            "apps/ui/node_modules is absent (gitignored, never in a fresh "
+            "worktree); install it outside the test run to run vitest here"
+        ),
+    )
     def test_vitest_passes(self):
-        """Run vitest and check it passes."""
+        """Run vitest and check it passes, under a MEASURED 30 s ceiling.
+
+        Measured 2026-09-19 (F273 T015 (c)), three runs of `npx vitest run` from
+        apps/ui (vitest 2.1.9, node v22.22.2, 38 files, 728 tests) with only the
+        cache moved out of the tree: 1.09 s, 1.01 s, 1.02 s wall, npx start-up
+        included, on a 24-thread Intel i9-13900 with 65574340 kB of RAM, Linux 6.17. No
+        CI-runner figure exists: the CI log times stages, not this test.
+
+        The rule is `tests/orchestration/test_ci_stages.py`'s budget rule, twice
+        the measured maximum: 2 x 1.09 s = 2.18 s, which 30 s clears. Its
+        rounding step (a whole multiple of 300 s) is sized for stage budgets and
+        would RAISE this ceiling tenfold, so it is not applied: the ceiling
+        stays at 30 s rather than rise without a runner measurement.
+        """
         import subprocess
         r = subprocess.run(
             ["npx", "vitest", "run"],
@@ -522,17 +545,41 @@ class TestSourceApplyPermissionBoundary:
         assert any("intent_id" in e for e in result.errors)
 
     def test_no_public_command_reaches_without_permission(self):
-        """No CLI command can invoke source_apply without permission + intent."""
-        src = Path("packages/orchestration/autorun.py").read_text()
-        lines = src.splitlines()
-        call_starts = [i for i, line in enumerate(lines)
-                       if "apply_structured_patch(" in line]
-        assert len(call_starts) >= 1
-        for start in call_starts:
-            # Collect lines until we find the closing call
-            block = "\n".join(lines[start:start + 6])
-            assert "job=job" in block, f"call at line {start + 1} missing job=job:\n{block}"
-            assert "intent_id=" in block, f"call at line {start + 1} missing intent_id:\n{block}"
+        """No production caller can invoke source_apply without permission + intent.
+
+        Every call to ``apply_structured_patch`` under ``packages/`` and ``apps/`` must
+        pass the job (whose ``repo_generated_write`` permission the apply checks) and an
+        ``intent_id`` by keyword. Finding R-0927 deleted ``autorun.py``, the caller this
+        guard first read; the three that survive are named below, so a caller that is
+        added, moved or deleted reds here rather than escaping the scan.
+        """
+        calls: dict[str, int] = {}
+        for root in ("packages", "apps"):
+            for path in sorted((_ROOT / root).rglob("*.py")):
+                if "node_modules" in path.parts:
+                    continue
+                rel = path.relative_to(_ROOT).as_posix()
+                tree = ast.parse(path.read_text(encoding="utf-8"), filename=rel)
+                for node in ast.walk(tree):
+                    if not isinstance(node, ast.Call):
+                        continue
+                    fn = node.func
+                    name = fn.attr if isinstance(fn, ast.Attribute) else getattr(fn, "id", "")
+                    if name != "apply_structured_patch":
+                        continue
+                    calls[rel] = calls.get(rel, 0) + 1
+                    kw = {k.arg: k.value for k in node.keywords}
+                    where = f"{rel}:{node.lineno}"
+                    for required in ("job", "intent_id"):
+                        value = kw.get(required)
+                        assert value is not None, f"call at {where} missing {required}="
+                        assert not (isinstance(value, ast.Constant) and value.value is None), (
+                            f"call at {where} passes {required}=None")
+        assert calls == {
+            "packages/orchestration/builder_bridge.py": 1,
+            "packages/orchestration/diff_repair_apply.py": 1,
+            "packages/orchestration/hunk_apply.py": 1,
+        }
 
 
 # ---------------------------------------------------------------------------

@@ -79,6 +79,10 @@ _SUPERVISION_POLL_SECONDS = 0.01
 #: Read size of one stream-pump iteration.
 _READ_CHUNK_BYTES = 65536
 
+#: The attribute `_completed_process_from_guarded` sets on what it returns or raises,
+#: holding the guard's `tripped_limit` — see that function for why it is an attribute.
+TRIPPED_LIMIT_ATTR = "tripped_limit"
+
 #: Policy field name -> `resource` constant name, in the order they are applied.
 _RLIMIT_ATTRS = {
     "cpu_seconds": "RLIMIT_CPU",
@@ -654,13 +658,19 @@ def dod_process_exec_policy(timeout_sec: float, cwd: str | None) -> ExecGuardPol
     `deny_network=True` is amendment F085 D1's network column for this row: a DoD
     check is a bounded, project-authored command, so it takes the same proxy
     posture the `test` class takes, written after the scrub that would delete it.
+
+    `PYTHONDONTWRITEBYTECODE` is SET, never merely passed through (F273): a DoD
+    check judges the job's worktree before its hand-off, and a Python check that
+    wrote `__pycache__/*.pyc` into that tree would end the job
+    `job_handoff_coverage_failed` on files no task wrote. The value becomes the scrub
+    SOURCE beside `os.environ`, as `test_command_exec_policy`'s overlay does.
     """
     return ExecGuardPolicy(
         wall_timeout_seconds=float(timeout_sec),
         output_cap_bytes=DOD_PROCESS_OUTPUT_CAP_BYTES,
         cwd=cwd,
         core_file_bytes=0,
-        env=None,
+        env={**os.environ, "PYTHONDONTWRITEBYTECODE": "1"},
         env_allowlist=DOD_PROCESS_ENV_ALLOWLIST,
         deny_network=True,
     )
@@ -767,18 +777,31 @@ def _completed_process_from_guarded(
     Remedy deliberately does not fold `check=True` in here: only `runtime-build`
     asks for it, and one caller is not a pattern — the same reason this function
     itself waited for a third use.
+
+    WHY both return shapes carry a `TRIPPED_LIMIT_ATTR` attribute (R-0568): the
+    translation keeps the stdlib TYPES exactly — a subclass would stop matching the
+    classifier's `TimeoutExpired` name check — so the guard's trip, which the
+    `subprocess.run` shape has no field for, rides along as an attribute holding
+    `tripped_limit` (a limit name, or None). A caller that writes a failure
+    post-mortem reads it with `getattr(..., TRIPPED_LIMIT_ATTR, None)`; every other
+    caller never sees it.
     """
     if guarded.tripped_limit == "wall_timeout":
-        raise subprocess.TimeoutExpired(
+        timed_out = subprocess.TimeoutExpired(
             list(cmd), timeout_sec, output=guarded.stdout, stderr=guarded.stderr
         )
+        setattr(timed_out, TRIPPED_LIMIT_ATTR, guarded.tripped_limit)
+        raise timed_out
     returncode = guarded.returncode
     if returncode is None:
         try:
             returncode = -int(signal.Signals[guarded.term_signal].value)
         except (KeyError, ValueError, TypeError):
             returncode = -1
-    return subprocess.CompletedProcess(list(cmd), returncode, guarded.stdout, guarded.stderr)
+    completed = subprocess.CompletedProcess(
+        list(cmd), returncode, guarded.stdout, guarded.stderr)
+    setattr(completed, TRIPPED_LIMIT_ATTR, guarded.tripped_limit)
+    return completed
 
 
 #: WHY: the environment a `runtime-build` command may inherit, and its per-stream cap.

@@ -537,40 +537,6 @@ def retain_for_recovery(handle: WorktreeHandle, reason: str = "") -> dict[str, A
     }
 
 
-def write_tree_for_path(path: str | Path) -> str:
-    """F11: the deterministic write-tree of an existing worktree PATH, without a lock/handle.
-
-    Read-only against the worktree's real state — it stages into a PRIVATE temporary index
-    (``GIT_INDEX_FILE``), so the real index is untouched, nothing is committed and no branch
-    moves. Used by the manifest check to compute a resumable job workspace's CURRENT tree instead
-    of trusting the historical episode-start tree. Raises ``WorktreeError`` on any git failure.
-    """
-    import tempfile
-
-    p = Path(path)
-    if not p.is_dir():
-        raise WorktreeError(f"worktree path does not exist: {p.name}")
-    fd, tmp = tempfile.mkstemp(prefix="remedy-index-")
-    os.close(fd)
-    os.unlink(tmp)
-    env = {**os.environ, "GIT_INDEX_FILE": tmp}
-    try:
-        proc = subprocess.run(["git", "add", "-A", "."], cwd=str(p), env=env,
-                              capture_output=True, text=True, timeout=120)
-        if proc.returncode != 0:
-            raise WorktreeError(f"git add for tree snapshot failed: {proc.stderr[:200]}")
-        proc = subprocess.run(["git", "write-tree"], cwd=str(p), env=env,
-                              capture_output=True, text=True, timeout=60)
-        if proc.returncode != 0:
-            raise WorktreeError(f"git write-tree failed: {proc.stderr[:200]}")
-        return proc.stdout.strip()
-    finally:
-        try:
-            os.unlink(tmp)
-        except OSError:
-            pass
-
-
 def write_tree(handle: WorktreeHandle) -> str:
     """Deterministic tree object for the worktree's COMPLETE current state.
 
@@ -579,6 +545,10 @@ def write_tree(handle: WorktreeHandle) -> str:
     moves and nothing is ever merged. Two such trees, taken before and after a
     task, give an exact task-local diff without a commit — and without ever
     comparing filesystem timestamps.
+
+    R-0974: the temporary index is seeded from ``HEAD`` first, so a TRACKED file
+    that ``.gitignore`` matches stays in the snapshot; ``git add -A`` into an empty
+    index skips every ignored path, tracked or not.
     """
     import tempfile
 
@@ -587,6 +557,12 @@ def write_tree(handle: WorktreeHandle) -> str:
     os.unlink(tmp)                       # git wants to create it itself
     env = {**os.environ, "GIT_INDEX_FILE": tmp}
     try:
+        proc = subprocess.run(
+            ["git", "read-tree", "HEAD"], cwd=handle.path, env=env,
+            capture_output=True, text=True, timeout=60,
+        )
+        if proc.returncode != 0:
+            raise WorktreeError(f"git read-tree for tree snapshot failed: {proc.stderr[:200]}")
         proc = subprocess.run(
             ["git", "add", "-A", "."], cwd=handle.path, env=env,
             capture_output=True, text=True, timeout=120,

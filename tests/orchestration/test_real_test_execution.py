@@ -198,18 +198,6 @@ class TestIntegrity:
         codes = {v["code"] for v in rte.audit_test_run_safety(bad)}
         assert "passed_with_nonzero_exit" in codes
 
-    def test_audit_rollback_restore_on_metadata(self):
-        snaps = {"s1": {"snapshot_id": "s1", "strategy": "metadata_only"}}
-        rb = {"rollback_proof_id": "r", "snapshot_id": "s1", "restore_available": True}
-        codes = {v["code"] for v in rte.audit_rollback_safety(rb, snaps)}
-        assert "restore_available_on_metadata_snapshot" in codes
-
-    def test_audit_restore_tested_without_available(self):
-        rb = {"rollback_proof_id": "r", "snapshot_id": "s", "restore_tested": True,
-              "restore_available": False}
-        codes = {v["code"] for v in rte.audit_rollback_safety(rb, {})}
-        assert "restore_tested_without_available" in codes
-
     def test_integrity_flags_supplied_bad_run(self, env):
         ig = rte.test_execution_integrity(
             data_dir=env, test_runs=[{"test_run_id": "t", "status": "passed", "exit_code": 2}])

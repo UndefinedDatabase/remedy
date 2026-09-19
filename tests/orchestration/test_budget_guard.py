@@ -833,6 +833,8 @@ class TestLiveSafePointReadsTheLedgerCost:
             lambda job: (str(tmp_path / "ws"), None))
 
         pj.run_job("job-ledger-cost")
+        # R-0753: the job the run persisted its actuals onto, for the tests below.
+        self.job = fake_job
         return (stops[0] if stops else None), ledger_calls, counter_calls
 
     def test_ledger_cost_over_the_limit_stops_the_job(self, monkeypatch, tmp_path):
@@ -921,3 +923,145 @@ class TestLiveSafePointReadsTheLedgerCost:
         assert signal is not None, \
             "the cost was swallowed by the counter invariant again (R-0224)"
         assert signal.reason == "budget_exhausted:max_cost_usd"
+
+
+# ---------------------------------------------------------------------------
+# R-0753, DECISION F273 D5 (5) — the persisted actuals record carries money
+# ---------------------------------------------------------------------------
+
+_V1_RECORD = {
+    "schema_version": "1.0.0",
+    "provider_call_count": 4,
+    "actual_call_count": 3,
+    "unmeasured_call_count": 1,
+    "total_tokens": 4200,
+    "started_at": "2026-07-01T11:00:00+00:00",
+    "actual_sources": ["pingpong_live"],
+}
+
+
+def _v2_record(*, cost, priced, unpriced):
+    return {**_V1_RECORD, "schema_version": "2.0.0",
+            "measured_cost_usd": cost, "priced_call_count": priced,
+            "unpriced_call_count": unpriced}
+
+
+class TestPersistedActualsCarryMoney:
+    """The version-2 record round-trips F104's money; version 1 still decodes."""
+
+    def test_the_writer_writes_the_version_the_decoder_names(self):
+        from packages.orchestration.budget_guard import (
+            PERSISTED_ACTUALS_SCHEMA_V2,
+            PERSISTED_ACTUALS_SCHEMA_VERSION,
+        )
+        assert PERSISTED_ACTUALS_SCHEMA_VERSION == PERSISTED_ACTUALS_SCHEMA_V2 == "2.0.0"
+
+    @pytest.mark.parametrize("cost,priced,unpriced", [
+        (1.25, 3, 0), (0.5, 1, 2), (None, 0, 2), (0.0, 2, 0),
+    ])
+    def test_a_version_two_record_round_trips_its_money_into_counters(
+            self, cost, priced, unpriced):
+        from packages.orchestration.budget_guard import (
+            counters_from_persisted,
+            decode_persisted_budget_actuals,
+        )
+        validated = decode_persisted_budget_actuals(
+            _v2_record(cost=cost, priced=priced, unpriced=unpriced))
+        counters = counters_from_persisted(validated, now=T0)
+        # `is` for the null: an unpriced figure must not come back as 0.0 (P6).
+        if cost is None:
+            assert counters.measured_cost_usd is None
+        else:
+            assert counters.measured_cost_usd == cost
+        assert counters.priced_call_count == priced
+        assert counters.unpriced_call_count == unpriced
+        assert counters.measured_token_total == 4200
+
+    def test_an_old_version_record_still_decodes_with_its_money_absent(self):
+        from packages.orchestration.budget_guard import (
+            counters_from_persisted,
+            decode_persisted_budget_actuals,
+        )
+        validated = decode_persisted_budget_actuals(dict(_V1_RECORD))
+        assert validated["schema_version"] == "1.0.0"
+        counters = counters_from_persisted(validated, now=T0)
+        assert counters.measured_cost_usd is None
+        assert counters.priced_call_count == 0
+        assert counters.unpriced_call_count == 0
+        assert counters.cost_description() == "not-measured"
+
+    @pytest.mark.parametrize("record", [
+        {**_V1_RECORD, "surprise": 1},
+        # Money is a version-2 field: a version-1 record carrying it is corrupt.
+        {**_V1_RECORD, "measured_cost_usd": 1.0},
+        {**_v2_record(cost=1.0, priced=1, unpriced=0), "surprise": 1},
+    ])
+    def test_an_unknown_field_is_still_rejected(self, record):
+        from packages.orchestration.budget_guard import decode_persisted_budget_actuals
+        with pytest.raises(BudgetCounterError, match="unknown fields"):
+            decode_persisted_budget_actuals(record)
+
+    def test_a_version_two_record_without_its_money_is_rejected(self):
+        from packages.orchestration.budget_guard import decode_persisted_budget_actuals
+        with pytest.raises(BudgetCounterError, match="missing required fields"):
+            decode_persisted_budget_actuals({**_V1_RECORD, "schema_version": "2.0.0"})
+
+    def test_an_unknown_version_is_rejected(self):
+        from packages.orchestration.budget_guard import decode_persisted_budget_actuals
+        with pytest.raises(BudgetCounterError, match="schema_version"):
+            decode_persisted_budget_actuals({**_V1_RECORD, "schema_version": "3.0.0"})
+
+    @pytest.mark.parametrize("cost,priced,unpriced", [
+        (True, 1, 0), ("1.0", 1, 0), (-0.5, 1, 0), (float("nan"), 1, 0),
+        (float("inf"), 1, 0), (1.0, -1, 0), (1.0, 1, 2.0), (1.0, True, 0),
+        # Money with nothing priced to explain it — BudgetCounters' own contradiction.
+        (1.0, 0, 3),
+    ])
+    def test_corrupt_money_is_rejected_at_the_decode(self, cost, priced, unpriced):
+        from packages.orchestration.budget_guard import decode_persisted_budget_actuals
+        with pytest.raises(BudgetCounterError):
+            decode_persisted_budget_actuals(
+                _v2_record(cost=cost, priced=priced, unpriced=unpriced))
+
+
+class TestTheRunPersistsItsLiveMoney:
+    """The writer: ``run_job`` persists the money its safe point already read.
+
+    Driven through the real pre-work safe point, whose stop persists the actuals
+    before it stops. ONE ledger call is the proof the persist did not read the
+    ledger a second time: the money is the live counters' own.
+    """
+
+    _drive = TestLiveSafePointReadsTheLedgerCost._drive
+
+    def test_the_stopped_run_persists_the_ledger_money_its_safe_point_read(
+            self, monkeypatch, tmp_path):
+        from packages.orchestration.budget_guard import (
+            counters_from_persisted,
+            decode_persisted_budget_actuals,
+        )
+        signal, ledger_calls, _ = self._drive(
+            monkeypatch, tmp_path,
+            budgets={"max_cost_usd": 2.0},
+            ledger_result=(5.0, 3, 1),
+        )
+        assert signal is not None
+        assert len(ledger_calls) == 1
+        record = self.job.budget_actuals
+        assert record["schema_version"] == "2.0.0"
+        assert (record["measured_cost_usd"], record["priced_call_count"],
+                record["unpriced_call_count"]) == (5.0, 3, 1)
+        counters = counters_from_persisted(decode_persisted_budget_actuals(record))
+        assert counters.cost_description() == ">= $5.0000 (1 provider calls unpriced)"
+
+    def test_a_run_nobody_priced_persists_a_null_never_a_zero(
+            self, monkeypatch, tmp_path):
+        self._drive(
+            monkeypatch, tmp_path,
+            budgets={"max_cost_usd": 2.0},
+            ledger_result=(None, 0, 2),
+        )
+        record = self.job.budget_actuals
+        assert record is not None, "the safe point did not persist the actuals"
+        assert record["measured_cost_usd"] is None
+        assert record["unpriced_call_count"] == 2

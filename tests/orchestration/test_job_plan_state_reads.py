@@ -132,9 +132,25 @@ def scan_retired_job_plan_state_reads() -> list[str]:
 
 class TestNoRetiredJobPlanStateReads:
     def test_the_scan_reaches_a_real_corpus(self) -> None:
-        """Anti-blindness: a scan over nothing would pass for the wrong reason."""
-        files = _tracked_production_python_files()
-        assert len(files) > 300, f"corpus collapsed to {len(files)} files"
+        """Anti-blindness: a scan over nothing would pass for the wrong reason.
+
+        The corpus must hold every tracked production file that calls a JobPlan
+        loader, the files this scan exists to read, found by ``git grep``
+        independently of the enumeration. A file count would fall below any
+        fixed floor as modules are deleted (F273's closure suite read 299
+        against a floor of 300) without the scan going blind.
+        """
+        files = {str(p.relative_to(REPO_ROOT)) for p in _tracked_production_python_files()}
+        callers = {
+            rel for rel in subprocess.run(
+                ["git", "grep", "-l", "-w", "-E", "|".join(JOB_PLAN_LOADERS),
+                 "--", "packages", "apps"],
+                cwd=REPO_ROOT, capture_output=True, text=True, check=True,
+            ).stdout.split()
+            if rel.endswith(".py")
+        }
+        assert callers, "no tracked production file calls a JobPlan loader"
+        assert callers <= files, f"the corpus misses {sorted(callers - files)}"
 
     @pytest.mark.parametrize("loader", JOB_PLAN_LOADERS)
     def test_the_scan_sees_a_retired_read_when_one_is_there(self, loader: str) -> None:

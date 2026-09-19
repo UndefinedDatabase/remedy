@@ -108,6 +108,7 @@ CI_STAGES: tuple[CiStage, ...] = (
             "tests/orchestration/test_ci_budgets.py",
             "tests/test_subprocess_timeouts.py",
             "tests/test_no_orphan_modules.py",
+            "tests/orchestration/test_ci_stage_coverage.py",
         ),
     ),
     CiStage(

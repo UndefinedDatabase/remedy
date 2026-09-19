@@ -1,12 +1,17 @@
 # Repair Loop v1 (commands deleted 2026-09-16)
 
 > **Status (2026-09-16):** F261 round 22 deleted the `repair` command group
-> (DECISION amend0905-vocab D4 deletes every group it does not name). The engine this
-> page describes is still there and is still read — an overnight readiness report and
-> the self-dogfood inspection both load the repair attempts — but NO command builds a
-> repair context, creates a fix task, files a repair patch intent or prints an
-> attempt's approval state. The attempt store therefore has no writer left. The page
-> is kept as the record of what was built.
+> (DECISION amend0905-vocab D4 deletes every group it does not name), so NO command
+> builds a repair context, creates a fix task, files a repair patch intent or prints an
+> attempt's approval state. The page is kept as the record of what was built.
+>
+> **Status (F273):** F273 deleted the orchestration module `repair_loop` with the
+> repair-attempt store's writer and its readers — the overnight readiness report, the
+> self-dogfood inspection and the cockpit's `repair` section (R-0923, R-0926). A repair
+> is only ever a phase of a run: the repair rounds of `remedy job run <job_id>
+> --repair-rounds <n>`. A repair attempt has no post-apply state either: the `applied`,
+> `tested_passed`, `tested_failed` and `evidence_incomplete` statuses nothing set went
+> with the module (R-0918).
 
 Turn a real test failure into a bounded, safe, approval-gated repair **proposal**.
 Repair Loop v1 never applies code, never runs tests, and never calls a provider.
@@ -107,7 +112,7 @@ apply it through the central apply service — there is no repair apply bypass:
 > and a failing one moved the attempt to `tested_failed` and linked the new
 > failure artifact to the attempt and the prior failure. DECISION amend0905-vocab
 > D4 deleted the command, and `reconcile_repair_after_continue` in
-> `packages/orchestration/repair_loop.py` went with it because that command was
+> the orchestration module `repair_loop` went with it because that command was
 > its only production caller. The three commands above reproduce the apply, the
 > test and the proof reading; NOTHING reconciles repair truth any more, so a
 > repair attempt now stays `approval_required` and a failure is never marked

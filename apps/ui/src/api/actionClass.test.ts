@@ -14,7 +14,7 @@ describe("isActionKind", () => {
 
   it("excludes the inspection suffixes the NowCard stays quiet about", () => {
     expect(isActionKind("brain_node_inspected")).toBe(false);
-    expect(isActionKind("git_status_read")).toBe(false);
+    expect(isActionKind("a_kind_read")).toBe(false);
     expect(isActionKind("project_constitution_loaded")).toBe(false);
     expect(isActionKind("project_memory_recalled")).toBe(false);
     // The assessed-readiness kind left the catalog with the `readiness job` command,
@@ -45,11 +45,11 @@ describe("newestActionRow", () => {
   });
 
   it("is null when every row is bookkeeping", () => {
-    expect(newestActionRow([rowOf(1, "git_status_read")])).toBeNull();
+    expect(newestActionRow([rowOf(1, "brain_node_inspected")])).toBeNull();
   });
 
   it("returns the newest action row, skipping bookkeeping after it", () => {
-    const rows = [rowOf(1, "task_run_started"), rowOf(2, "builder_started"), rowOf(3, "git_status_read")];
+    const rows = [rowOf(1, "task_run_started"), rowOf(2, "builder_started"), rowOf(3, "brain_node_inspected")];
     expect(newestActionRow(rows)?.seq).toBe(2);
   });
 });
