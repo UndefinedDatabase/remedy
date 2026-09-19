@@ -88,6 +88,39 @@ def _event_argument(call: ast.Call) -> ast.expr | None:
     return None
 
 
+def emitter_sources(base: Path) -> list[Path]:
+    """The Python files under ``EMITTER_ROOTS`` that are Remedy source.
+
+    Any path with ``node_modules`` among its parts is gitignored vendored build
+    output (``apps/ui/node_modules`` ships third-party ``.py``), so it is skipped:
+    a dependency must never be able to add an event kind to this vocabulary
+    (R-0649).
+    """
+    return [
+        path
+        for root in EMITTER_ROOTS
+        for path in sorted((base / root).rglob("*.py"))
+        if "node_modules" not in path.relative_to(base).parts
+    ]
+
+
+def literals_emitted_by(paths: list[Path]) -> frozenset[str]:
+    """Distinct string-constant event names passed at emission sites in ``paths``."""
+    names: set[str] = set()
+    for path in paths:
+        try:
+            tree = ast.parse(path.read_text(encoding="utf-8", errors="replace"))
+        except SyntaxError:
+            continue
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.Call):
+                continue
+            argument = _event_argument(node)
+            if isinstance(argument, ast.Constant) and isinstance(argument.value, str):
+                names.add(argument.value)
+    return frozenset(names)
+
+
 @lru_cache(maxsize=1)
 def emission_literals() -> frozenset[str]:
     """Distinct string-constant event names passed at run-log emission sites.
@@ -96,20 +129,7 @@ def emission_literals() -> frozenset[str]:
     walk. They are covered by the generic line in ``humanize.ts`` instead, which
     is why that line is a contract and not a nicety.
     """
-    names: set[str] = set()
-    for root in EMITTER_ROOTS:
-        for path in sorted((REPO_ROOT / root).rglob("*.py")):
-            try:
-                tree = ast.parse(path.read_text(encoding="utf-8", errors="replace"))
-            except SyntaxError:
-                continue
-            for node in ast.walk(tree):
-                if not isinstance(node, ast.Call):
-                    continue
-                argument = _event_argument(node)
-                if isinstance(argument, ast.Constant) and isinstance(argument.value, str):
-                    names.add(argument.value)
-    return frozenset(names)
+    return literals_emitted_by(emitter_sources(REPO_ROOT))
 
 
 def _module_assignments(path: Path) -> dict[str, ast.expr]:
@@ -205,6 +225,22 @@ class TestKeyExtractor:
 class TestDerivation:
     def test_the_emitter_walk_finds_call_sites(self):
         assert emission_literals(), "the AST walk found no run-log emission literal"
+
+    def test_vendored_python_under_node_modules_is_not_walked(self, tmp_path):
+        """R-0649: a dependency's ``.py`` under ``node_modules`` must not define a
+        kind. The red control proves the plain walk DOES reach the vendored file,
+        so the exclusion is exercised rather than one that never matches."""
+        own = tmp_path / "packages" / "own.py"
+        vendored = tmp_path / "apps" / "ui" / "node_modules" / "dep" / "python" / "dep.py"
+        for path, kind in ((own, "own_kind"), (vendored, "vendored_kind")):
+            path.parent.mkdir(parents=True)
+            path.write_text(f"writer.log({kind!r})\n", encoding="utf-8")
+
+        assert vendored in (tmp_path / "apps").rglob("*.py"), "red control: unreached"
+        assert literals_emitted_by([own, vendored]) == {"own_kind", "vendored_kind"}
+
+        assert emitter_sources(tmp_path) == [own]
+        assert literals_emitted_by(emitter_sources(tmp_path)) == {"own_kind"}
 
     def test_the_defined_trace_sets_are_read(self):
         assert trace_event_kinds(), "TRACE_EVENT_KINDS came back empty"

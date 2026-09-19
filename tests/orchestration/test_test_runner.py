@@ -405,6 +405,16 @@ class TestVitestFrontendTestFoundation:
     def test_vitest_test_file_exists(self):
         assert Path("apps/ui/src/api/remedyApi.test.ts").is_file()
 
+    # apps/ui/node_modules is gitignored, so a fresh `git worktree` never carries
+    # it and vitest cannot resolve `vitest/config` there (R-0518). An absent
+    # install is a missing precondition, not a failing frontend: skip, naming it.
+    @pytest.mark.skipif(
+        not (_ROOT / "apps" / "ui" / "node_modules").is_dir(),
+        reason=(
+            "apps/ui/node_modules is absent (gitignored, never in a fresh "
+            "worktree); install it outside the test run to run vitest here"
+        ),
+    )
     def test_vitest_passes(self):
         """Run vitest and check it passes."""
         import subprocess
