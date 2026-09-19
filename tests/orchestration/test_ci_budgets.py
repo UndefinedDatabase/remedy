@@ -15,18 +15,20 @@ from pathlib import Path
 
 import pytest
 
+from packages.orchestration import ci_budgets
 from packages.orchestration.ci_budgets import (
-    LINT_ERROR_CEILING,
     BudgetCheck,
-    check_lint_ceiling,
+    check_lint_clean,
     parse_ruff_error_count,
 )
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
 
-def test_the_ceiling_is_the_ratcheted_number_decision_d5_froze():
-    assert LINT_ERROR_CEILING == 26
+def test_no_lint_ceiling_or_baseline_survives():
+    """DECISION amend0911-feedback D7: zero findings, no number to ratchet."""
+    assert not hasattr(ci_budgets, "LINT_ERROR_CEILING")
+    assert not hasattr(ci_budgets, "check_lint_ceiling")
 
 
 def test_parse_reads_the_count_out_of_ruffs_own_found_line():
@@ -52,32 +54,26 @@ def test_parse_refuses_empty_output():
         parse_ruff_error_count("")
 
 
-def test_a_count_below_the_ceiling_is_ok():
-    check = check_lint_ceiling(25)
+def test_zero_findings_is_ok():
+    check = check_lint_clean(0)
     assert isinstance(check, BudgetCheck)
     assert check.ok is True
-    assert (check.observed, check.ceiling) == (25, LINT_ERROR_CEILING)
+    assert check.observed == 0
 
 
-def test_a_count_exactly_at_the_ceiling_is_ok_because_the_ceiling_is_inclusive():
-    check = check_lint_ceiling(LINT_ERROR_CEILING)
-    assert check.ok is True
-
-
-def test_a_count_above_the_ceiling_fails_and_says_not_to_raise_the_ceiling():
-    check = check_lint_ceiling(27)
+def test_a_single_finding_fails_and_says_not_to_suppress_it():
+    check = check_lint_clean(1)
     assert check.ok is False
-    assert "27" in check.detail
-    assert "do not raise the ceiling" in check.detail
+    assert "1 ruff error" in check.detail
+    assert "do not add a baseline, a ceiling" in check.detail
 
 
 @pytest.mark.subprocess
-def test_this_repository_really_is_at_or_below_the_lint_ceiling():
-    """The live ratchet: ruff's own reading of this repository, its own config.
+def test_this_repository_has_no_ruff_findings():
+    """The live check: ruff's own reading of this repository, its own config.
 
-    If this goes red the finding is the NEW errors, not the ceiling. Lowering
-    the count is the fix; editing `LINT_ERROR_CEILING` upward is forbidden by
-    DECISION F083 D5.
+    If this goes red the fix is the findings themselves; a baseline, a ceiling,
+    a `# noqa` or an ignore is forbidden by DECISION amend0911-feedback D7.
     """
     done = subprocess.run(
         [sys.executable, "-m", "ruff", "check", "."],
@@ -88,5 +84,5 @@ def test_this_repository_really_is_at_or_below_the_lint_ceiling():
         check=False,
     )
     observed = parse_ruff_error_count(done.stdout)
-    check = check_lint_ceiling(observed)
-    assert check.ok, check.detail
+    check = check_lint_clean(observed)
+    assert check.ok, f"{check.detail}\n{done.stdout}"

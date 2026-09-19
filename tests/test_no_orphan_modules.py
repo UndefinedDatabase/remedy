@@ -74,7 +74,8 @@ ALLOWED_UNWIRED: tuple[tuple[str, str], ...] = (
     ("packages/orchestration/bench_run.py",
      "F082's on-demand bench run; never implicit by DECISION F082 D9, the one caller its guard permits"),
     ("packages/orchestration/ci_budgets.py",
-     "the ceilings the `budgets` CI stage's tests/orchestration/test_ci_budgets.py compares (DECISION F083 D5)"),
+     "the zero-findings lint rule the `budgets` CI stage's tests/orchestration/test_ci_budgets.py applies "
+     "(DECISION amend0911-feedback D7)"),
     ("packages/orchestration/event_schemas.py",
      "the event metadata registry DECISION F275 D18 keeps for run logs already on disk"),
     ("packages/orchestration/feature_mission_adapter.py",
