@@ -335,6 +335,15 @@ def test_an_unknown_injection_class_is_still_refused() -> None:
         check_injections_supported(["cosmic_ray"])
 
 
+def test_a_blocked_injection_class_is_refused_with_its_seam(
+        monkeypatch: pytest.MonkeyPatch) -> None:
+    """R-0469: the blocked branch raises the error it names, not NameError."""
+    monkeypatch.setitem(BLOCKED_INJECTIONS, "future_class", "call_fn")
+    with pytest.raises(MissingSeamError,
+                       match="future_class cannot be injected at call_fn"):
+        check_injections_supported(["future_class"])
+
+
 def test_build_injectors_refuses_before_wrapping_anything() -> None:
     with pytest.raises(MissingSeamError):
         build_injectors([INJECTION_TRUNCATED_MODEL_RESPONSE, "cosmic_ray"],
