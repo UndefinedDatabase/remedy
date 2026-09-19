@@ -11,7 +11,7 @@ joined them, so a bench run was four calls a caller had to know how to order.
 This module IS that join, and it is nothing else.
 
 ADDITIVE by construction (F082 inventory Q11): every product symbol below is
-IMPORTED. No gauntlet module is edited and no symbol moves out of one.
+IMPORTED. This module edits no gauntlet module and moves no symbol out of one.
 
 NO FAKE LIVES HERE. There is no double, no stub and no test-only branch in this
 file. A run that touches no network is a run whose :class:`RunnerDeps` the
@@ -36,14 +36,14 @@ one gets a :class:`TypeError` instead of a write into the operator's world.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 
 from packages.orchestration.bench_dry_run import dry_run_from_order_set
 from packages.orchestration.bench_history import append_bench_run
-from packages.orchestration.bench_orders import load_bench_order_set
+from packages.orchestration.bench_orders import BenchOrder, BenchOrderSetError, load_bench_order_set
 from packages.orchestration.capability_bench import BenchRecord
-from packages.orchestration.gauntlet_runner import OrderOutcome, RunnerDeps, run_campaign
+from packages.orchestration.gauntlet_runner import OrderOutcome, RunnerDeps, materialise_sample_project, run_campaign
 
 
 @dataclass(frozen=True)
@@ -57,6 +57,26 @@ class BenchRunResult:
     #: The sequence number ``append_bench_run`` spent on this run, or ``0`` when
     #: there was nothing to append.
     run_seq: int
+
+
+def bench_deps(deps: RunnerDeps, orders: tuple[BenchOrder, ...]) -> RunnerDeps:
+    """``deps`` with the bench's own ``materialise`` (DECISION F082 D3) and the
+    SAME template choice handed to the evidence digest, so ``run.json`` names
+    the world the run was copied from. ``run_order`` names each run directory
+    ``run-NN-<order id>``, so the order is read back off that name; a name
+    matching no single order raises, which ``run_order`` records as a crash."""
+    templates = {order.id: order.template_dir() for order in orders}
+
+    def template_dir(run_dir: Path) -> Path:
+        matches = [oid for oid in templates if run_dir.name.endswith(f"-{oid}")]
+        if len(matches) != 1:
+            raise BenchOrderSetError(f"{run_dir.name}: names no single bench order")
+        return templates[matches[0]]
+
+    def materialise(run_dir: Path) -> Path:
+        return materialise_sample_project(run_dir, template_dir=template_dir(run_dir))
+
+    return replace(deps, materialise=materialise, template_dir_fn=template_dir)
 
 
 # WHY the freeze runs BEFORE the campaign: a tampered set refuses before any order executes.
@@ -73,8 +93,14 @@ def run_bench_campaign(*, campaign_root: Path, data_root: Path,
 
     ``BenchOrder.order`` IS a real ``GauntletOrder``, so the set the freeze
     validated is handed to the runner unconverted and uncopied.
+
+    A ``deps`` still carrying the gauntlet's default ``materialise`` gets
+    :func:`bench_deps`; a caller that substituted the seam keeps its own.
     """
     orders = load_bench_order_set(orders_dir)
+    deps = deps or RunnerDeps()
+    if deps.materialise is materialise_sample_project:
+        deps = bench_deps(deps, orders)
     outcomes = run_campaign(tuple(bench.order for bench in orders), campaign_root,
                             deps=deps, real_data_root=data_root)
     rows = dry_run_from_order_set(evidence_dir=campaign_root, series=series,

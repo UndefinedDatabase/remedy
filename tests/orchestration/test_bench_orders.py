@@ -17,9 +17,10 @@ from packages.orchestration.bench_orders import (
     BENCH_ORDER_SET_VERSION,
     BenchOrderSetError,
     default_bench_orders_dir,
+    default_bench_template_dir,
     load_bench_order_set,
 )
-from packages.orchestration.gauntlet_orders import BUDGET_KEYS, ORDER_KINDS
+from packages.orchestration.gauntlet_orders import BUDGET_KEYS, ORDER_KINDS, template_tree_digest
 
 #: The ids the bench set is frozen at. Three, not five: F082's inventory S3
 #: found the API-endpoint and frontend-widget capabilities inexpressible against
@@ -220,6 +221,36 @@ def test_a_non_integer_version_tag_fails(bench_copy: Path):
     _write_manifest(bench_copy, manifest)
 
     with pytest.raises(BenchOrderSetError, match="bench_order_version must be a positive integer"):
+        load_bench_order_set(bench_copy)
+
+
+def test_the_manifest_records_the_bench_fixture_digest():
+    assert _read_manifest(default_bench_orders_dir())["bench_template_digest"] == \
+        template_tree_digest(default_bench_template_dir())
+
+
+def test_editing_the_bench_fixture_is_refused(tmp_path: Path):
+    """DECISION F082 D3: the bench's world is frozen with its set, as the gauntlet's is."""
+    fixture = tmp_path / "bench_sample_project"
+    shutil.copytree(default_bench_template_dir(), fixture)
+    assert [o.id for o in load_bench_order_set(bench_template_dir=fixture)] == \
+        list(EXPECTED_BENCH_ORDER_IDS)
+    (fixture / "README.md").write_text("edited\n", encoding="utf-8")
+    with pytest.raises(BenchOrderSetError, match="bench sample project was edited"):
+        load_bench_order_set(bench_template_dir=fixture)
+
+
+def test_an_unknown_bench_template_fails(bench_copy: Path):
+    path = bench_copy / "b01-cli-report-width.json"
+    body = json.loads(path.read_text(encoding="utf-8"))
+    body["bench_template"] = "somewhere_else"
+    path.write_text(json.dumps(body, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    manifest = _read_manifest(bench_copy)
+    _entry(manifest, "b01-cli-report-width")["digests"]["1"] = \
+        hashlib.sha256(path.read_bytes()).hexdigest()
+    _write_manifest(bench_copy, manifest)
+
+    with pytest.raises(BenchOrderSetError, match="bench_template must be one of"):
         load_bench_order_set(bench_copy)
 
 

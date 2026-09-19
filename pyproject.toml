@@ -53,7 +53,7 @@ line-length = 120
 # and its import sorting is correct there (`sampleproj` is first-party). Without
 # its root named here ruff reads `sampleproj` as third-party, and the file cannot
 # be "fixed" instead: the template is digest-frozen in scripts/gauntlet_orders.
-src = [".", "scripts/gauntlet_sample_project"]
+src = [".", "scripts/gauntlet_sample_project", "scripts/bench_sample_project"]
 extend-exclude = [
     ".git",
     ".data",

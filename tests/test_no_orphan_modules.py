@@ -61,6 +61,8 @@ SKIPPED_DIRS = frozenset({
 RESERVED_NAMESPACES = (
     # A fixture project the gauntlet copies and runs; its modules are its own.
     "scripts/gauntlet_sample_project/",
+    # The bench's own fixture project (DECISION F082 D3), copied and run the same way.
+    "scripts/bench_sample_project/",
 )
 
 #: Modules deliberately without a production importer: (repository path, reason).

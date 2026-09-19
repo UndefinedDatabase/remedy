@@ -1,5 +1,6 @@
 {
   "bench_order_set_version": 1,
+  "bench_template_digest": "18321e82360faa7af0f4d34431e48d95a59f71b59248e5add620fd323b8de3e2",
   "orders": [
     {
       "id": "b01-cli-report-width",
