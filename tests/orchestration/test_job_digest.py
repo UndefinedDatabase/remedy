@@ -451,8 +451,10 @@ def test_an_old_version_record_reports_its_money_as_not_measured():
 
 # End to end: a real ``run_job`` with a measured stub provider writes the record,
 # and the digest reads it back.  The ledger is armed only AFTER a run returns
-# (``mirror_job_run_into_ledger``, as ``remedy do`` calls it), so a safe point
-# sees the cost of the job's EARLIER runs — which is why the job runs twice.
+# (``mirror_job_run_into_ledger``, as ``remedy do`` calls it), so a safe point's
+# ledger read sees the job's EARLIER runs only; R-0986 prices the record from the
+# run's own tally of the same rows, so it carries every run's calls — which is
+# why the job runs twice, and why the record then equals the ledger's own total.
 
 _TWO_TASK_JOB = """\
 # Job: Persisted money
@@ -471,18 +473,18 @@ Acceptance:
 """
 
 
-def _run_twice_and_mirror(repo, *, measured: bool):
+def _run_and_mirror(repo, *, measured: bool, runs: int = 2, budgets=None, mirror=True):
     from packages.orchestration.job_evidence import mirror_job_run_into_ledger
     from packages.orchestration.pingpong_job import load_job_plan, parse_job_file, run_job
     from packages.orchestration.pingpong_provider import FakeProvider
     from tests.orchestration.test_token_ledger import _MeasuredStubProvider
 
     plan = parse_job_file(_TWO_TASK_JOB, str(repo))
-    plan.budgets = {"max_cost_usd": 100.0}
+    plan.budgets = budgets
     save_job_plan(plan)
     cls, name = ((_MeasuredStubProvider, _MeasuredStubProvider.PROVIDER_NAME)
                  if measured else (FakeProvider, "fake"))
-    for _ in range(2):
+    for _ in range(runs):
         job = run_job(
             plan.job_id,
             builder_name=name, reviewer_name=name,
@@ -490,8 +492,17 @@ def _run_twice_and_mirror(repo, *, measured: bool):
             reviewer_provider=cls(pass_on_round=1, fail_on_round=99),
             repair_rounds=0, max_tasks=1,
         )
-        assert mirror_job_run_into_ledger(job.job_id)["ledger_mirrored"] is True
+        if mirror:
+            assert mirror_job_run_into_ledger(job.job_id)["ledger_mirrored"] is True
     return load_job_plan(plan.job_id)
+
+
+def _ledger_triple(job):
+    """What the F103 ledger holds for *job* — the basis the record must share."""
+    from packages.orchestration.budget_guard import collect_ledger_cost_for_job
+    from packages.orchestration.job_evidence import _resolve_job_ledger_project_id
+    return collect_ledger_cost_for_job(
+        job_id=job.job_id, project_id=_resolve_job_ledger_project_id(job))
 
 
 def test_a_measured_run_prices_the_digest_through_the_persisted_route(
@@ -502,16 +513,102 @@ def test_a_measured_run_prices_the_digest_through_the_persisted_route(
     monkeypatch.delenv("REMEDY_PROJECT", raising=False)
     repo = _git_repo(tmp_path / "job_repo")
     register_project_repo("persisted-money", str(repo))
-    job = _run_twice_and_mirror(repo, measured=True)
+    job = _run_and_mirror(repo, measured=True, budgets={"max_cost_usd": 100.0})
 
     record = job.budget_actuals
     assert record["schema_version"] == "2.0.0"
-    # The second run's safe points read the FIRST run's two mirrored calls.
+    # R-0986: both runs' four calls, not only the first run's mirrored two.
+    per_call = _MeasuredStubProvider.USAGE["total_cost_usd"]
+    assert record["measured_cost_usd"] == pytest.approx(4 * per_call)
+    assert (record["priced_call_count"], record["unpriced_call_count"]) == (4, 0)
+    # ONE basis: the record is what the ledger holds once every run is mirrored.
+    ledger_cost, ledger_priced, ledger_unpriced = _ledger_triple(job)
+    assert record["measured_cost_usd"] == pytest.approx(ledger_cost)
+    assert (record["priced_call_count"], record["unpriced_call_count"]) == (
+        ledger_priced, ledger_unpriced)
+    cost = build_job_digest(job, [])["cost"]
+    assert cost == {"value": f"${4 * per_call:.4f}", "basis": COST_BASIS_ACTUAL}
+
+
+@pytest.mark.parametrize("budgets", [None, {"max_total_tokens": 10_000_000},
+                                     {"max_cost_usd": 100.0}])
+def test_a_first_priced_run_persists_its_own_money_before_any_mirror(
+        tmp_path, monkeypatch, budgets):
+    """R-0986: no cost limit, or a first run the ledger has not seen, still prices.
+
+    No mirror runs, so the ledger holds nothing for the job: the money can only
+    be the run's own tally of its two calls.
+    """
+    from packages.orchestration.project_registry import register_project_repo
+    from tests.orchestration.test_token_ledger import _git_repo, _MeasuredStubProvider
+
+    monkeypatch.delenv("REMEDY_PROJECT", raising=False)
+    repo = _git_repo(tmp_path / "job_repo")
+    register_project_repo("persisted-money", str(repo))
+    job = _run_and_mirror(repo, measured=True, runs=1, budgets=budgets, mirror=False)
+
+    assert _ledger_triple(job) == (None, 0, 0)
+    record = job.budget_actuals
     per_call = _MeasuredStubProvider.USAGE["total_cost_usd"]
     assert record["measured_cost_usd"] == pytest.approx(2 * per_call)
     assert (record["priced_call_count"], record["unpriced_call_count"]) == (2, 0)
-    cost = build_job_digest(job, [])["cost"]
-    assert cost == {"value": f"${2 * per_call:.4f}", "basis": COST_BASIS_ACTUAL}
+    assert build_job_digest(job, [])["cost"] == {
+        "value": f"${2 * per_call:.4f}", "basis": COST_BASIS_ACTUAL}
+
+
+@pytest.mark.parametrize("registered", [True, False])
+def test_a_cost_limit_stops_on_the_runs_own_spend_before_any_mirror(
+        tmp_path, monkeypatch, registered):
+    """R-0986: the guard sees this run's calls, which no ledger read can yet.
+
+    Registered, the ledger is read and holds no row, so the run's own tally
+    covers more; unregistered, no ledger is read at all. Either way two calls at
+    $0.125 pass a $0.20 limit inside the FIRST run.
+    """
+    from packages.orchestration.project_registry import register_project_repo
+    from tests.orchestration.test_token_ledger import _git_repo
+
+    monkeypatch.delenv("REMEDY_PROJECT", raising=False)
+    repo = _git_repo(tmp_path / "job_repo")
+    if registered:
+        register_project_repo("persisted-money", str(repo))
+    job = _run_and_mirror(repo, measured=True, runs=1,
+                          budgets={"max_cost_usd": 0.2}, mirror=False)
+    assert job.state == "stopped", (job.state, job.error)
+    assert job.stop_source == "budget"
+    assert job.stop_reason == "budget_exhausted:max_cost_usd"
+
+
+def _stub_call_tokens():
+    """One stub call's tokens by ``_aggregate_usage_actuals``' definition."""
+    from tests.orchestration.test_token_ledger import _MeasuredStubProvider
+    usage = _MeasuredStubProvider.USAGE
+    return usage["input_tokens"] + usage["output_tokens"]
+
+
+def test_a_measured_run_persists_the_sum_of_its_calls_tokens(tmp_path, monkeypatch):
+    """R-0987: the live token counter reads the dict the provider really returns."""
+    from tests.orchestration.test_token_ledger import _git_repo
+
+    monkeypatch.delenv("REMEDY_PROJECT", raising=False)
+    job = _run_and_mirror(_git_repo(tmp_path / "job_repo"), measured=True, runs=1,
+                          mirror=False)
+    record = job.budget_actuals
+    assert record["actual_call_count"] == 2
+    assert record["total_tokens"] == 2 * _stub_call_tokens()
+
+
+def test_a_token_limit_stops_on_live_tokens_before_any_mirror(tmp_path, monkeypatch):
+    """R-0987: two 1500-token calls pass a 2000-token limit inside the first run."""
+    from tests.orchestration.test_token_ledger import _git_repo
+
+    monkeypatch.delenv("REMEDY_PROJECT", raising=False)
+    job = _run_and_mirror(_git_repo(tmp_path / "job_repo"), measured=True, runs=1,
+                          budgets={"max_total_tokens": 2000}, mirror=False)
+    assert 2000 < 2 * _stub_call_tokens()
+    assert job.state == "stopped", (job.state, job.error)
+    assert job.stop_source == "budget"
+    assert job.stop_reason == "budget_exhausted:max_total_tokens"
 
 
 def test_an_unpriced_run_stays_absent_through_the_persisted_route(
@@ -522,12 +619,15 @@ def test_an_unpriced_run_stays_absent_through_the_persisted_route(
     monkeypatch.delenv("REMEDY_PROJECT", raising=False)
     repo = _git_repo(tmp_path / "job_repo")
     register_project_repo("persisted-money", str(repo))
-    job = _run_twice_and_mirror(repo, measured=False)
+    job = _run_and_mirror(repo, measured=False, budgets={"max_cost_usd": 100.0})
 
     record = job.budget_actuals
     assert record["schema_version"] == "2.0.0"
     assert record["measured_cost_usd"] is None
     assert record["unpriced_call_count"] >= 1
+    # R-0986: the fake calls the accumulator skips are still the ledger's rows.
+    assert (record["measured_cost_usd"], record["priced_call_count"],
+            record["unpriced_call_count"]) == _ledger_triple(job)
     assert build_job_digest(job, [])["cost"] == {
         "value": "not-measured", "basis": COST_BASIS_ABSENT}
 

@@ -2375,6 +2375,15 @@ def run_job(
     _accumulated_tokens = _prior_validated.get("total_tokens", 0)
     _accumulated_measured = _prior_validated.get("actual_call_count", 0)
     _accumulated_unmeasured = _accumulated_provider_calls - _accumulated_measured
+    # R-0986: the run's OWN cost-side triple, seeded from the persisted record (a
+    # version-1 record decodes to None, 0, 0). One row per provider attempt the
+    # task-run evidence lists, fake ones included, classified exactly as the
+    # ledger classifies that row — so it is the ledger's count, not a second one.
+    _own_cost_usd = _prior_validated.get("measured_cost_usd")
+    _own_priced = _prior_validated.get("priced_call_count", 0)
+    _own_unpriced = _prior_validated.get("unpriced_call_count", 0)
+    # The ledger triple the latest safe point read, or None when it read none.
+    _last_ledger_money = None
     # F018 Scope 7: compute _run_started_at from persisted first_running_at on resume.
     # Invalid or timezone-naive values block — never silently become now().
     _run_started_at = datetime.now(timezone.utc)
@@ -2438,21 +2447,58 @@ def run_job(
     def _on_provider_call(attempt):
         nonlocal _accumulated_provider_calls, _accumulated_tokens
         nonlocal _accumulated_measured, _accumulated_unmeasured
+        nonlocal _own_cost_usd, _own_priced, _own_unpriced
+        # R-0986: the cost side counts BEFORE the fake skip, because the ledger
+        # holds a row for every attempt `_build_provider_evidence` lists. The
+        # value and its validation are the ledger's own: `total_cost_usd` read
+        # by `token_truth._strict_cost`, priced when it is not None.
+        from packages.orchestration.token_truth import TokenEvidenceError, _strict_cost
+        try:
+            _cost = _strict_cost(getattr(attempt, "usage_actuals", None) or {},
+                                 "total_cost_usd", "provider_attempt")
+        except TokenEvidenceError:
+            _cost = None  # a corrupt figure is never a price
+        if _cost is None:
+            _own_unpriced += 1
+        else:
+            _own_priced += 1
+            _own_cost_usd = (_own_cost_usd or 0.0) + _cost
         if getattr(attempt, "provider", "fake") == "fake":
             return
         _accumulated_provider_calls += 1
         ua = getattr(attempt, "usage_actuals", None)
         if ua is not None:
             _accumulated_measured += 1
+            # R-0987: `usage_actuals` is a DICT (`_usage_actuals_dict`), so an
+            # attribute read was always 0. The total is `_aggregate_usage_actuals`'
+            # own: input plus output, cache tokens excluded, read the same way.
             _accumulated_tokens += (
-                getattr(ua, "input_tokens", 0) +
-                getattr(ua, "output_tokens", 0)
+                int(ua.get("input_tokens", 0) or 0) +
+                int(ua.get("output_tokens", 0) or 0)
             )
         else:
             _accumulated_unmeasured += 1
 
-    # The counters the latest safe point evaluated, or None before the first one.
-    _last_budget_counters = None
+    def _money_kwargs(*, always=False):
+        """The cost-side triple, as ``collect_counters_from_actuals`` kwargs.
+
+        R-0986: two observations of ONE counting basis — the ledger's rows and
+        the run's own tally of the same rows' figures — and the one covering MORE
+        rows wins whole; the fields are never mixed or added across the two. The
+        ledger leads for history this record never saw (a version-1 past, an
+        unpersisted exit); the run's own tally leads for calls not yet mirrored.
+        Empty when neither saw a row (unless *always*), so the counters keep
+        their defaults.
+        """
+        own = (_own_cost_usd, _own_priced, _own_unpriced)
+        best = own
+        if _last_ledger_money is not None and (
+                _last_ledger_money[1] + _last_ledger_money[2] > _own_priced + _own_unpriced):
+            best = _last_ledger_money
+        if best[1] + best[2] == 0 and not always:
+            return {}
+        return {"measured_cost_usd": best[0], "priced_call_count": best[1],
+                "unpriced_call_count": best[2]}
 
     def _build_budget_counters():
         """The counters this safe point evaluates against — built ONCE per check.
@@ -2462,8 +2508,9 @@ def run_job(
         prediction that disagrees with the backstop it is supposed to precede is
         worse than no prediction.
         """
-        nonlocal _last_budget_counters
+        nonlocal _last_ledger_money
         from packages.orchestration.budget_guard import collect_counters_from_actuals
+        _last_ledger_money = None
         _actuals = {
             "provider_call_count": _accumulated_provider_calls,
             "actual_call_count": _accumulated_measured,
@@ -2474,13 +2521,14 @@ def run_job(
         # F104: a `--max-cost-usd` limit is only enforceable if the guard knows what
         # the job has really cost, and the F103 ledger is the only place a real
         # provider cost figure lives. Skipped entirely when no cost limit is set —
-        # a SQLite query per safe point for a limit nobody configured is waste, and
-        # skipping keeps every existing budget path byte for byte unchanged.
+        # a SQLite query per safe point for a limit nobody configured is waste; such
+        # a job is priced by the run's own tally of the same rows (R-0986).
         if _job_budgets is not None and _job_budgets.max_cost_usd is not None:
             # WHY the swallow: budgets read a MIRROR — the ledger reflects evidence
             # files that are already the source of truth — and a broken mirror must
-            # never stop a healthy job. Any failure leaves the cost UNMEASURED
-            # (None, never 0.0 — P6) and the token/call/time limits still enforce.
+            # never stop a healthy job. Any failure leaves the cost to the run's
+            # own tally (None when it priced nothing, never 0.0 — P6) and the
+            # token/call/time limits still enforce.
             try:
                 from packages.orchestration.budget_guard import (
                     collect_ledger_cost_for_job as _collect_ledger_cost,
@@ -2496,35 +2544,33 @@ def run_job(
                     # All THREE ledger figures travel together: the priced count
                     # is what the cost side validates against, so discarding it
                     # is what made R-0224 (DECISION F104 D5).
-                    _ledger_cost, _ledger_priced, _ledger_unpriced = _collect_ledger_cost(
-                        job_id=job.job_id, project_id=_ledger_project)
+                    _last_ledger_money = tuple(_collect_ledger_cost(
+                        job_id=job.job_id, project_id=_ledger_project))
                     counters = collect_counters_from_actuals(
                         _actuals,
                         started_at=_run_started_at,
                         actual_sources=_sources,
-                        measured_cost_usd=_ledger_cost,
-                        unpriced_call_count=_ledger_unpriced,
-                        priced_call_count=_ledger_priced,
+                        **_money_kwargs(always=True),
                     )
             except Exception:
                 import logging as _logging
                 _logging.getLogger(__name__).error(
-                    "budget ledger cost read FAILED for job %r; the cost stays "
-                    "unmeasured for this safe point and the run continues (the "
+                    "budget ledger cost read FAILED for job %r; this safe point "
+                    "prices the job from the run's own tally and continues (the "
                     "evidence files remain the source of truth and the remaining "
                     "budget limits are unaffected)",
                     job.job_id, exc_info=True,
                 )
+                _last_ledger_money = None
                 counters = None
         if counters is None:
+            # R-0986: with no ledger figure, the run's own tally prices the job.
             counters = collect_counters_from_actuals(
                 _actuals,
                 started_at=_run_started_at,
                 actual_sources=_sources,
+                **_money_kwargs(),
             )
-        # R-0753: the persisted record carries THESE counters' money, so it is
-        # kept here rather than re-read from the ledger at persist time.
-        _last_budget_counters = counters
         return counters
 
     def _stop_check(*, next_task=None, previous_summaries=()):
@@ -2620,10 +2666,12 @@ def run_job(
         from packages.orchestration.budget_guard import (
             PERSISTED_ACTUALS_SCHEMA_VERSION as _actuals_schema_version,
         )
-        # R-0753: the money is the latest safe point's live counters' own — a
-        # figure the budget check already evaluated — and is None (unpriced,
-        # never 0.0) when no safe point priced the job.
-        _money = _last_budget_counters
+        # R-0753, R-0986: the money is the same cost-side triple the safe points
+        # evaluate — the latest ledger read or the run's own tally, whichever
+        # covers more rows, with the tally as of NOW so a call made after the
+        # last safe point is not dropped. No ledger is read here. The cost is
+        # None (unpriced, never 0.0) when no row was priced.
+        _money = _money_kwargs(always=True)
         job.budget_actuals = {
             "schema_version": _actuals_schema_version,
             "provider_call_count": _accumulated_provider_calls,
@@ -2632,9 +2680,7 @@ def run_job(
             "started_at": _run_started_at.isoformat(),
             "actual_sources": tuple(sorted(_sources)),
             "unmeasured_call_count": _accumulated_unmeasured,
-            "measured_cost_usd": _money.measured_cost_usd if _money is not None else None,
-            "priced_call_count": _money.priced_call_count if _money is not None else 0,
-            "unpriced_call_count": _money.unpriced_call_count if _money is not None else 0,
+            **_money,
         }
 
     # F018: allocate episode BEFORE computing budget identity so the stop
