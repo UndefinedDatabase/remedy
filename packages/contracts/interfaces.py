@@ -11,7 +11,7 @@ from __future__ import annotations
 from collections.abc import AsyncIterator
 from typing import Protocol, runtime_checkable
 
-from packages.core.models import AcceptanceCheck, Artifact
+from packages.core.models import Artifact
 from packages.orchestration.pingpong_job import JobPlan, TaskEntry
 
 
@@ -68,23 +68,6 @@ class RuntimeProvider(Protocol):
         Execute command.
 
         Returns (exit_code, stdout, stderr).
-        """
-        ...
-
-
-@runtime_checkable
-class Verifier(Protocol):
-    """Checks whether an artifact satisfies its acceptance criteria."""
-
-    async def verify(
-        self,
-        artifact: Artifact,
-        checks: list[AcceptanceCheck],
-    ) -> tuple[bool, list[str]]:
-        """
-        Run acceptance checks against an artifact.
-
-        Returns (passed, list_of_failure_messages).
         """
         ...
 

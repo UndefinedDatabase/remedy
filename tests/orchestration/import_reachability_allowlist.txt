@@ -178,7 +178,6 @@ packages.orchestration.prompt_segments
 packages.orchestration.prompt_trace
 packages.orchestration.proof_chain
 packages.orchestration.proposed_tasks
-packages.orchestration.provider_patch_material
 packages.orchestration.provider_timeouts
 packages.orchestration.provider_token_evidence
 packages.orchestration.rate_governor

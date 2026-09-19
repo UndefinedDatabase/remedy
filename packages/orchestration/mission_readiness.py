@@ -40,7 +40,6 @@ class OvernightStopReason:
     TEST_FAILED = "test_failed"
     REPAIR_AVAILABLE = "repair_available"
     REPAIR_UNAVAILABLE = "repair_unavailable"
-    REVIEW_FINDINGS_OPEN = "review_findings_open"
     INTEGRITY_FAILED = "integrity_failed"
     PROVIDER_UNAVAILABLE = "provider_unavailable"
     UNSUPPORTED_STATE = "unsupported_state"

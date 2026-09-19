@@ -18,29 +18,21 @@ from packages.orchestration.proposed_tasks import (
     ProposedTaskStoreError,
     add_proposed_task,
     approve_proposed_task,
-    backend_readiness,
     can_finalize,
     count_unresolved,
     count_unresolved_safe,
     defer_proposed_task,
     do_materialize,
     emit_proposed_task_event,
-    evaluate_all_proposed,
-    evaluate_proposed_task,
     get_proposed_task,
     list_approved_not_materialized,
     list_by_status,
     load_proposed_tasks,
     load_proposed_tasks_safe,
     materialize_approved_task,
-    overnight_readiness,
-    propose_rework,
-    propose_task_from_review_finding,
-    reconcile_materialized,
     reject_proposed_task,
     save_proposed_tasks,
     transition_status,
-    update_proposed_task,
 )
 
 
@@ -187,15 +179,6 @@ class TestStore:
         assert found is not None
         assert found.title == "Fix bug"
 
-    def test_update(self, tmp_store):
-        t = ProposedTask(title="Fix bug")
-        add_proposed_task(JOB_ID, t)
-        t.title = "Fix critical bug"
-        result = update_proposed_task(JOB_ID, t)
-        assert result is True
-        loaded = get_proposed_task(JOB_ID, t.id)
-        assert loaded.title == "Fix critical bug"
-
     def test_count_unresolved(self, tmp_store):
         add_proposed_task(JOB_ID, ProposedTask(title="A"))
         add_proposed_task(JOB_ID, ProposedTask(title="B", status=ProposedTaskStatus.APPROVED_FOR_BUILD))
@@ -276,63 +259,6 @@ class TestCorruptStore:
         tasks, degraded = load_proposed_tasks_safe("no-such-job")
         assert degraded is False
         assert tasks == []
-
-
-class TestReviewBridge:
-    def test_propose_from_review_finding(self, tmp_store):
-        t = propose_task_from_review_finding(JOB_ID, title="Add tests", reason="Coverage low")
-        assert t.status == ProposedTaskStatus.PROPOSED
-        assert t.source == ProposedTaskSource.REVIEWER
-        loaded = load_proposed_tasks(JOB_ID)
-        assert len(loaded) == 1
-
-    def test_propose_rework(self, tmp_store):
-        t = propose_rework(JOB_ID, failed_task_id="task-001", title="Fix test failure")
-        assert t.source == ProposedTaskSource.ORCHESTRATOR
-        assert t.task_type == "rework"
-        assert t.priority == "high"
-
-
-class TestEvaluator:
-    def test_evaluate_high_risk_needs_human(self, tmp_store):
-        t = ProposedTask(title="Risky change", risk="high")
-        add_proposed_task(JOB_ID, t)
-        result = evaluate_proposed_task(JOB_ID, t.id)
-        assert result.status == ProposedTaskStatus.EVALUATED
-        assert "high risk" in result.evaluation_notes
-
-    def test_evaluate_duplicate_rejected(self, tmp_store):
-        add_proposed_task(JOB_ID, ProposedTask(title="Fix bug", status=ProposedTaskStatus.APPROVED_FOR_BUILD))
-        t = ProposedTask(title="Fix bug")
-        add_proposed_task(JOB_ID, t)
-        result = evaluate_proposed_task(JOB_ID, t.id)
-        assert result.status == ProposedTaskStatus.REJECTED
-        assert "duplicate" in result.evaluation_notes
-
-    def test_evaluate_low_risk_no_approval_auto_approves(self, tmp_store):
-        t = ProposedTask(title="Minor fix", risk="low", approval_required=False)
-        add_proposed_task(JOB_ID, t)
-        result = evaluate_proposed_task(JOB_ID, t.id)
-        assert result.status == ProposedTaskStatus.APPROVED_FOR_BUILD
-
-    def test_evaluate_default_awaits_human(self, tmp_store):
-        t = ProposedTask(title="Normal task", risk="medium")
-        add_proposed_task(JOB_ID, t)
-        result = evaluate_proposed_task(JOB_ID, t.id)
-        assert result.status == ProposedTaskStatus.EVALUATED
-        assert "awaiting human" in result.evaluation_notes
-
-    def test_evaluate_all_proposed(self, tmp_store):
-        add_proposed_task(JOB_ID, ProposedTask(title="A", risk="medium"))
-        add_proposed_task(JOB_ID, ProposedTask(title="B", risk="medium"))
-        tasks = evaluate_all_proposed(JOB_ID)
-        assert all(t.status == ProposedTaskStatus.EVALUATED for t in tasks)
-
-    def test_evaluate_skips_already_evaluated(self, tmp_store):
-        t = ProposedTask(title="Already done", status=ProposedTaskStatus.EVALUATED)
-        add_proposed_task(JOB_ID, t)
-        result = evaluate_proposed_task(JOB_ID, t.id)
-        assert result.status == ProposedTaskStatus.EVALUATED  # unchanged
 
 
 class TestAddAndEvaluate:
@@ -601,15 +527,13 @@ class TestEndToEndFlow:
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         _create_real_job(tmp_path)
 
-        t = propose_task_from_review_finding(REAL_JOB_UUID, title="New feature", reason="Reviewer found gap", risk="medium")
+        t = ProposedTask(title="New feature", reason="Reviewer found gap", risk="medium")
+        add_proposed_task(REAL_JOB_UUID, t)
         assert t.status == ProposedTaskStatus.PROPOSED
         assert count_unresolved(REAL_JOB_UUID) == 1
 
         ok, _ = can_finalize(REAL_JOB_UUID)
         assert ok is False
-
-        evaluated = evaluate_proposed_task(REAL_JOB_UUID, t.id)
-        assert evaluated.status == ProposedTaskStatus.EVALUATED
 
         approved = approve_proposed_task(REAL_JOB_UUID, t.id)
         assert approved.status == ProposedTaskStatus.APPROVED_FOR_BUILD
@@ -624,15 +548,15 @@ class TestEndToEndFlow:
         assert ok is True
 
     def test_reject_flow(self, tmp_store):
-        t = propose_task_from_review_finding(JOB_ID, title="Bad idea", risk="low")
-        evaluate_proposed_task(JOB_ID, t.id)
+        t = ProposedTask(title="Bad idea", risk="low")
+        add_proposed_task(JOB_ID, t)
         rejected = reject_proposed_task(JOB_ID, t.id, reason="Not needed")
         assert rejected.status == ProposedTaskStatus.REJECTED
         assert count_unresolved(JOB_ID) == 0
 
     def test_defer_flow(self, tmp_store):
-        t = propose_task_from_review_finding(JOB_ID, title="Later", risk="low")
-        evaluate_proposed_task(JOB_ID, t.id)
+        t = ProposedTask(title="Later", risk="low")
+        add_proposed_task(JOB_ID, t)
         deferred = defer_proposed_task(JOB_ID, t.id, reason="Next sprint")
         assert deferred.status == ProposedTaskStatus.DEFERRED
         assert count_unresolved(JOB_ID) == 0
@@ -641,8 +565,8 @@ class TestEndToEndFlow:
         monkeypatch.setattr("packages.orchestration.proposed_tasks._STORE_DIR", tmp_path / "proposed_tasks")
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         _create_real_job(tmp_path)
-        t = propose_task_from_review_finding(REAL_JOB_UUID, title="Build it", risk="medium")
-        evaluate_proposed_task(REAL_JOB_UUID, t.id)
+        t = ProposedTask(title="Build it", risk="medium")
+        add_proposed_task(REAL_JOB_UUID, t)
         approve_proposed_task(REAL_JOB_UUID, t.id)
         materialized = do_materialize(REAL_JOB_UUID, t.id)
         assert materialized.materialized_task_id != ""
@@ -664,17 +588,6 @@ class TestFileLocking:
         add_proposed_task(JOB_ID, ProposedTask(title="C"))
         loaded = load_proposed_tasks(JOB_ID)
         assert len(loaded) == 3
-
-    def test_update_then_add_preserves_both(self, tmp_store):
-        t = ProposedTask(title="Original")
-        add_proposed_task(JOB_ID, t)
-        t.title = "Updated"
-        update_proposed_task(JOB_ID, t)
-        add_proposed_task(JOB_ID, ProposedTask(title="New"))
-        loaded = load_proposed_tasks(JOB_ID)
-        assert len(loaded) == 2
-        assert loaded[0].title == "Updated"
-        assert loaded[1].title == "New"
 
     def test_approve_then_materialize_preserves_state(self, tmp_path, monkeypatch):
         monkeypatch.setattr("packages.orchestration.proposed_tasks._STORE_DIR", tmp_path / "proposed_tasks")
@@ -752,114 +665,3 @@ class TestStoreRootResolution:
         add_proposed_task(JOB_ID, ProposedTask(title="Explicit"), root=explicit_root)
         assert load_proposed_tasks(JOB_ID, root=explicit_root)[0].title == "Explicit"
         assert load_proposed_tasks(JOB_ID) == []
-
-
-class TestReconciliation:
-    def test_consistent(self, tmp_path, monkeypatch):
-        monkeypatch.setattr("packages.orchestration.proposed_tasks._STORE_DIR", tmp_path / "proposed_tasks")
-        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        _create_real_job(tmp_path)
-        report = reconcile_materialized(REAL_JOB_UUID)
-        assert report["consistent"] is True
-
-    def test_missing_job_task(self, tmp_path, monkeypatch):
-        monkeypatch.setattr("packages.orchestration.proposed_tasks._STORE_DIR", tmp_path / "proposed_tasks")
-        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        _create_real_job(tmp_path)
-        t = ProposedTask(title="Ghost", status=ProposedTaskStatus.APPROVED_FOR_BUILD, materialized_task_id="nonexistent-task-id")
-        add_proposed_task(REAL_JOB_UUID, t)
-        report = reconcile_materialized(REAL_JOB_UUID)
-        assert report["consistent"] is False
-        assert t.id in report["missing_job_task"]
-
-    def test_corrupt_store(self, tmp_path, monkeypatch):
-        monkeypatch.setattr("packages.orchestration.proposed_tasks._STORE_DIR", tmp_path / "proposed_tasks")
-        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        _create_real_job(tmp_path)
-        pt_dir = tmp_path / "proposed_tasks"
-        pt_dir.mkdir(parents=True, exist_ok=True)
-        (pt_dir / f"{REAL_JOB_UUID}.json").write_text("corrupt")
-        report = reconcile_materialized(REAL_JOB_UUID)
-        assert report["consistent"] is False
-        assert report["proposals_degraded"] is True
-
-
-class TestBackendReadiness:
-    def test_healthy_job_no_work(self, tmp_path, monkeypatch):
-        monkeypatch.setattr("packages.orchestration.proposed_tasks._STORE_DIR", tmp_path / "proposed_tasks")
-        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        _create_real_job(tmp_path)
-        report = backend_readiness(REAL_JOB_UUID)
-        assert report["storage_health"]["healthy"] is True
-        assert report["build_readiness"]["ready"] is False
-        assert "no_pending_work" in report["build_readiness"]["blockers"]
-
-    def test_not_ready_with_unresolved(self, tmp_path, monkeypatch):
-        monkeypatch.setattr("packages.orchestration.proposed_tasks._STORE_DIR", tmp_path / "proposed_tasks")
-        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        _create_real_job(tmp_path)
-        add_proposed_task(REAL_JOB_UUID, ProposedTask(title="Pending"))
-        report = backend_readiness(REAL_JOB_UUID)
-        assert report["build_readiness"]["ready"] is False
-        assert any("unresolved" in b for b in report["build_readiness"]["blockers"])
-
-    def test_not_ready_missing_job(self, tmp_store):
-        report = backend_readiness("00000000-0000-0000-0000-000000000099")
-        assert report["storage_health"]["healthy"] is False
-        assert "job_not_found" in report["storage_health"]["blockers"]
-
-    def test_not_ready_corrupt_store(self, tmp_path, monkeypatch):
-        monkeypatch.setattr("packages.orchestration.proposed_tasks._STORE_DIR", tmp_path / "proposed_tasks")
-        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        _create_real_job(tmp_path)
-        pt_dir = tmp_path / "proposed_tasks"
-        pt_dir.mkdir(parents=True, exist_ok=True)
-        (pt_dir / f"{REAL_JOB_UUID}.json").write_text("corrupt")
-        report = backend_readiness(REAL_JOB_UUID)
-        assert report["storage_health"]["healthy"] is False
-        assert "proposal_store_degraded" in report["storage_health"]["blockers"]
-
-    def test_materialized_pending_task(self, tmp_path, monkeypatch):
-        monkeypatch.setattr("packages.orchestration.proposed_tasks._STORE_DIR", tmp_path / "proposed_tasks")
-        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        _create_real_job(tmp_path)
-        t = propose_task_from_review_finding(REAL_JOB_UUID, title="Work", risk="medium")
-        evaluate_proposed_task(REAL_JOB_UUID, t.id)
-        approve_proposed_task(REAL_JOB_UUID, t.id)
-        do_materialize(REAL_JOB_UUID, t.id)
-        report = backend_readiness(REAL_JOB_UUID)
-        assert report["storage_health"]["healthy"] is True
-        assert report["build_readiness"]["ready"] is True
-        assert report["build_readiness"]["pending_tasks"] == 1
-        assert report["finalize_readiness"]["ready"] is False
-
-    def test_execution_health_section(self, tmp_path, monkeypatch):
-        monkeypatch.setattr("packages.orchestration.proposed_tasks._STORE_DIR", tmp_path / "proposed_tasks")
-        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        _create_real_job(tmp_path)
-        report = backend_readiness(REAL_JOB_UUID)
-        assert "execution_health" in report
-        assert report["execution_health"]["pending_task_count"] == 0
-        assert report["execution_health"]["completed_task_count"] == 0
-
-    def test_corrupt_other_job_degrades_storage(self, tmp_path, monkeypatch):
-        monkeypatch.setattr("packages.orchestration.proposed_tasks._STORE_DIR", tmp_path / "proposed_tasks")
-        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        _create_real_job(tmp_path)
-        corrupt_path = tmp_path / "jobs" / "corrupt-job" / "job.json"
-        corrupt_path.parent.mkdir(parents=True)
-        corrupt_path.write_text("not json")
-        report = backend_readiness(REAL_JOB_UUID)
-        assert report["storage_health"]["job_store_skipped_files"] > 0
-        assert report["storage_health"]["healthy"] is False
-
-
-class TestOvernightReadiness:
-    def test_never_ready_yet(self, tmp_path, monkeypatch):
-        monkeypatch.setattr("packages.orchestration.proposed_tasks._STORE_DIR", tmp_path / "proposed_tasks")
-        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        _create_real_job(tmp_path)
-        report = overnight_readiness(REAL_JOB_UUID)
-        assert report["ready"] is False
-        assert "no_overnight_mode_implemented" in report["blockers"]
-        assert report["max_safe_autonomy_level"] == 0

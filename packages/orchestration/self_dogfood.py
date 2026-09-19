@@ -302,9 +302,6 @@ def _detect_roadmap(items: list) -> None:
         (has("ui_server.py"),
          "Operator Cockpit Mutations v0", "ui_server.py",
          "Read-only cockpit truth exists; consider gated cockpit mutations."),
-        (has("provider_patch_material.py") and has("patch_apply.py"),
-         "Git Commit Gate v0", "patch_apply.py",
-         "Proof/test/snapshot/apply stable; a human-gated commit gate could follow."),
     ]
     for ok, title, ev, detail in rules:
         if ok:

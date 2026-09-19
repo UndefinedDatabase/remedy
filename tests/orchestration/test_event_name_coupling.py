@@ -22,9 +22,9 @@ name is then looked for in the SURVIVING tree, both as an emitter and as a
 reader. A name with a surviving READER and no surviving EMITTER is a DEAD
 COUPLING: a consumer kept alive by a producer that no longer exists.
 
-WHY AN ALLOWLIST AND NOT A ZERO. The dead couplings that exist today are real
-and their disposal is a ruling DECISION F260 D3 owes, not a repair a test may
-make. So this is a RATCHET against a declared set, in the shape this repository
+WHY AN ALLOWLIST AND NOT A ZERO. The dead couplings the list held were real
+and their disposal was a ruling, not a repair a test may make; F273 has emptied
+it. So this is a RATCHET against a declared set, in the shape this repository
 already uses for dead advertisements: the set may SHRINK and never grow, and an
 entry that stops being a dead coupling must be removed from the list in the same
 commit, or assertion (c) reds. Remedy deliberately does not delete a schema for
@@ -48,7 +48,8 @@ EMIT_FUNCS = frozenset({"log", "_emit", "emit", "log_event", "write_event",
 READER_SUFFIXES = (".py", ".ts", ".tsx")
 
 # The dead couplings that exist today, each with the ruling that owns it. THIS LIST
-# ONLY EVER SHRINKS: DECISION F260 D3 disposes of `context_budget_optimized`. F273
+# ONLY EVER SHRINKS, and it is now empty: F273 deleted the schema and the NowCard
+# bookkeeping entry that read `context_budget_optimized` (R-0832). F273 also
 # deleted the readers of `git_status_read` (R-0905) and dropped the level-4 readiness
 # signals `run_contract_inspected` and `token_policy_inspected` fed (R-0907), and the
 # widened recovery (R-0920) found no further dead name once R-0919 deleted the
@@ -58,11 +59,9 @@ READER_SUFFIXES = (".py", ".ts", ".tsx")
 # `autorun_provider_error`, `source_context_injected`, `structured_patch_intent_created`,
 # `task_execution_started`); `test_run_completed`, which a local holds before
 # `test_execution_service.py` emits it, is still emitted.
-KNOWN_DEAD_EVENT_COUPLINGS: tuple[str, ...] = (
-    "context_budget_optimized",
-)
+KNOWN_DEAD_EVENT_COUPLINGS: tuple[str, ...] = ()
 
-_COUPLING_CEILING = 1
+_COUPLING_CEILING = 0
 
 
 def _git(*args: str) -> str:

@@ -1,7 +1,8 @@
-"""Tests for finalize and readiness after proposed tasks are materialized.
+"""Tests for finalize after proposed tasks are materialized.
 
-The worker execution path these tests once drove was deleted for finding R-0927; the
-proposed-task finalize and readiness checks stay.
+The worker execution path these tests once drove was deleted for finding R-0927, and
+the readiness report they also read was deleted for finding R-0941; the proposed-task
+finalize check stays.
 """
 
 from __future__ import annotations
@@ -14,10 +15,8 @@ from packages.orchestration.proposed_tasks import (
     ProposedTask,
     add_proposed_task,
     approve_proposed_task,
-    backend_readiness,
     can_finalize,
     do_materialize,
-    evaluate_proposed_task,
 )
 
 
@@ -35,24 +34,9 @@ class TestFinalizeAfterExecution:
         root, jid = _setup(tmp_path, monkeypatch)
         t = ProposedTask(title="Pending", risk="medium")
         add_proposed_task(jid, t, root=root)
-        evaluate_proposed_task(jid, t.id, root=root)
         approve_proposed_task(jid, t.id, root=root)
         do_materialize(jid, t.id, root=root)
 
         ok, reason = can_finalize(jid, pending_task_count=1, root=root)
         assert ok is False
         assert "pending" in reason
-
-
-class TestReadinessAfterExecution:
-    def test_build_ready_with_pending_task(self, tmp_path, monkeypatch):
-        root, jid = _setup(tmp_path, monkeypatch)
-        t = ProposedTask(title="Ready", risk="medium")
-        add_proposed_task(jid, t, root=root)
-        evaluate_proposed_task(jid, t.id, root=root)
-        approve_proposed_task(jid, t.id, root=root)
-        do_materialize(jid, t.id, root=root)
-
-        report = backend_readiness(jid, root=root)
-        assert report["build_readiness"]["ready"] is True
-        assert report["finalize_readiness"]["ready"] is False

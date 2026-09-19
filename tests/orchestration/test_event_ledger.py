@@ -46,7 +46,6 @@ class TestEventSchemaRegistry:
     def test_schemas_exist(self):
         from packages.orchestration.event_schemas import EVENT_METADATA_SCHEMAS
         assert "agent_loop_started" in EVENT_METADATA_SCHEMAS
-        assert "context_budget_optimized" in EVENT_METADATA_SCHEMAS
         assert "token_policy_applied" in EVENT_METADATA_SCHEMAS
 
     def test_schemas_are_frozensets(self):
@@ -58,10 +57,7 @@ class TestEventSchemaRegistry:
     def test_different_schemas_for_different_events(self):
         from packages.orchestration.event_schemas import EVENT_METADATA_SCHEMAS
         started = EVENT_METADATA_SCHEMAS["agent_loop_started"]
-        budget = EVENT_METADATA_SCHEMAS["context_budget_optimized"]
         policy = EVENT_METADATA_SCHEMAS["token_policy_applied"]
-        assert started != budget, "started and budget must differ"
-        assert budget != policy, "budget and policy must differ"
         assert started != policy, "started and policy must differ"
 
     def test_validate_valid_metadata(self):
@@ -101,18 +97,6 @@ class TestEventSchemaRegistry:
         from packages.orchestration.event_schemas import get_event_schema
         assert get_event_schema("agent_loop_started") is not None
         assert get_event_schema("nonexistent") is None
-
-    def test_context_budget_optimized_schema(self):
-        from packages.orchestration.event_schemas import EVENT_METADATA_SCHEMAS
-        schema = EVENT_METADATA_SCHEMAS["context_budget_optimized"]
-        assert len(schema) == 7
-        assert "mode" in schema
-        assert "budget" in schema
-        assert "estimated_tokens" in schema
-        assert "token_savings" in schema
-        assert "recommended_worker" in schema
-        assert "included_section_count" in schema
-        assert "excluded_section_count" in schema
 
     def test_forbidden_strings(self):
         from packages.orchestration.event_schemas import FORBIDDEN_STRINGS

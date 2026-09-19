@@ -255,15 +255,6 @@ def _add_command_args(parser: argparse.ArgumentParser, cmd: CommandEntry) -> Non
                 parser.add_argument("--repair-rounds", type=int, default=None, dest="repair_rounds", help=arg.help)
             elif arg.name == "--user-requested":
                 parser.add_argument("--user-requested", action="store_true", dest="user_requested", help=arg.help)
-            elif arg.name == "--prefer-local-for-cheap-tasks":
-                parser.add_argument("--prefer-local-for-cheap-tasks", action="store_true",
-                                    dest="prefer_local_for_cheap_tasks", help=arg.help)
-            elif arg.name == "--prefer-ollama-for-cheap-tasks":
-                parser.add_argument("--prefer-ollama-for-cheap-tasks", action="store_true",
-                                    dest="prefer_ollama_for_cheap_tasks", help=arg.help)
-            elif arg.name == "--require-human-approval-for-expensive":
-                parser.add_argument("--require-human-approval-for-expensive", action="store_true",
-                                    dest="require_human_approval_for_expensive", help=arg.help)
             # F011 kill switch
             elif arg.name == "--source":
                 parser.add_argument("--source", default=arg.default, help=arg.help)

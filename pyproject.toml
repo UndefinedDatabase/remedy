@@ -111,7 +111,6 @@ module = [
     "packages.orchestration.do_continue",
     "packages.orchestration.guidance",
     "packages.orchestration.proof_chain",
-    "packages.orchestration.provider_patch_material",
     "packages.orchestration.real_test_execution",
     "packages.orchestration.test_execution_service",
     "packages.orchestration.trust_report",

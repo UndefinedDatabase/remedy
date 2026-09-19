@@ -24,13 +24,6 @@ class Budget(BaseModel):
     max_steps: int | None = None
 
 
-class AcceptanceCheck(BaseModel):
-    """Criteria that must pass before an artifact or task is accepted."""
-
-    description: str
-    required: bool = True
-
-
 class RunState(str, Enum):
     """Lifecycle state of a job or task."""
 

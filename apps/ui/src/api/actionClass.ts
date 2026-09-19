@@ -16,7 +16,6 @@ const BOOKKEEPING_SUFFIXES: readonly string[] = [
  *  one stays a decision someone made rather than a pattern that drifted. */
 const BOOKKEEPING_KINDS: readonly string[] = [
   "brain_viewer_prepared",
-  "context_budget_optimized",
   "stream_cap_reached",
   "token_policy_applied",
 ];

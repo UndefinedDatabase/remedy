@@ -4,10 +4,9 @@ Smoke tests: verify that core models and contracts import without errors.
 
 
 def test_core_models_import():
-    from packages.core.models import AcceptanceCheck, Artifact, Budget, RunState
+    from packages.core.models import Artifact, Budget, RunState
     from packages.orchestration.pingpong_job import JobPlan, TaskEntry
     assert Budget is not None
-    assert AcceptanceCheck is not None
     assert Artifact is not None
     assert TaskEntry is not None
     assert RunState is not None
@@ -19,12 +18,10 @@ def test_contracts_interfaces_import():
         LLMWorker,
         MemoryGateway,
         RuntimeProvider,
-        Verifier,
     )
     assert LLMWorker is not None
     assert MemoryGateway is not None
     assert RuntimeProvider is not None
-    assert Verifier is not None
 
 
 def test_run_state_values():
@@ -65,6 +62,6 @@ def test_artifact_provenance():
 def test_interfaces_are_protocols():
     from typing import Protocol
 
-    from packages.contracts.interfaces import LLMWorker, MemoryGateway, RuntimeProvider, Verifier
-    for iface in (LLMWorker, MemoryGateway, RuntimeProvider, Verifier):
+    from packages.contracts.interfaces import LLMWorker, MemoryGateway, RuntimeProvider
+    for iface in (LLMWorker, MemoryGateway, RuntimeProvider):
         assert issubclass(iface, Protocol)
