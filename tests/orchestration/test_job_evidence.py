@@ -556,6 +556,49 @@ class TestSafeTaskIdHelper:
         assert "error" not in result
         assert (tmp_path / "evidence" / "task_runs" / minted / "provider_evidence.json").is_file()
 
+    def test_job_evidence_command_exports_a_job_whose_task_carries_the_minted_default(
+            self, isolate_data_root, demo_repo, tmp_path, capsys):
+        """R-0912: `remedy job evidence` exports a run job whose task id is the dataclass default."""
+        from apps.cli.grouped import main as cli_main
+        from packages.orchestration.pingpong_job import JobPlan, TaskEntry, _persist_job
+
+        job = JobPlan(repo_path=str(demo_repo), job_title="Minted ids",
+                      tasks=[TaskEntry(title="Write docs/a.md", body="Write docs/a.md")])
+        _persist_job(job)
+        [minted] = [t.task_id for t in job.tasks]
+        assert not minted.startswith("T")
+        run_job(job.job_id, builder_provider=_pass_provider(),
+                reviewer_provider=_pass_provider(), repair_rounds=0)
+        capsys.readouterr()
+        out = tmp_path / "evidence"
+
+        cli_main(["job", "evidence", job.job_id, "--out", str(out), "--json"])
+
+        captured = capsys.readouterr()
+        assert "error" not in json.loads(captured.out)
+        assert (out / "task_runs" / minted / "provider_evidence.json").is_file()
+
+    def test_job_evidence_command_refuses_an_unsafe_task_id_by_name(
+            self, isolate_data_root, demo_repo, tmp_path, capsys):
+        """R-0912: a persisted task id the guard refuses exits 1 with one line naming it."""
+        from apps.cli.grouped import main as cli_main
+        from packages.orchestration.pingpong_job import JobPlan, TaskEntry, _persist_job
+
+        job = JobPlan(repo_path=str(demo_repo), job_title="Unsafe id",
+                      tasks=[TaskEntry(task_id="../x", title="t", body="b")])
+        _persist_job(job)
+
+        with pytest.raises(SystemExit) as exc_info:
+            cli_main(["job", "evidence", job.job_id, "--out", str(tmp_path / "evidence")])
+
+        assert exc_info.value.code == 1
+        err = capsys.readouterr().err
+        assert err.strip().splitlines() == [
+            f"Error: job {job.job_id} cannot export its evidence: its task id '../x' "
+            "is not T<digits> or sixteen lowercase hex characters."
+        ]
+        assert "Traceback" not in err
+
     def test_symlinked_task_runs_blocked(self, tmp_path):
         """Step 4927: _task_evidence_dir blocks symlink escape via task_runs/."""
         from packages.orchestration.job_evidence import _task_evidence_dir

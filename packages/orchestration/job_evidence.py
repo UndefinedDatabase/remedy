@@ -47,23 +47,32 @@ _WORKSPACE_DIFF_MAX_CHARS = 500_000
 _SAFE_TASK_ID_RE = re.compile(r"^(?:T\d{3,}|[0-9a-f]{16})$")
 
 
+class UnsafeTaskIdError(ValueError):
+    """A persisted task id `_task_evidence_dir` refuses; carries the id so a caller can name it."""
+
+    def __init__(self, task_id: str) -> None:
+        self.task_id = task_id
+        super().__init__(
+            f"Unsafe task ID {task_id!r}: must match T<digits> (e.g. T001) or "
+            "sixteen lowercase hex characters. "
+            "Aborting evidence export to prevent path traversal."
+        )
+
+
 def _task_evidence_dir(out_base: str, task_id: str) -> Path:
     """Return a contained task evidence directory inside out_base/task_runs/.
 
     Only allows task IDs of the two shapes `_SAFE_TASK_ID_RE` names (T001, T002,
     ... or a minted sixteen-hex id).
-    Raises ValueError on malicious, corrupt, or unexpected task IDs to prevent
-    path traversal via persisted job state or symlink escapes.
+    Raises UnsafeTaskIdError (a ValueError) on malicious, corrupt, or unexpected
+    task IDs, and ValueError on symlink escapes, to prevent path traversal via
+    persisted job state.
 
     Uses _validate_output_path which calls .resolve() on the full joined path,
     following any symlinks in intermediate directories (e.g. out/task_runs/).
     """
     if not task_id or not _SAFE_TASK_ID_RE.fullmatch(task_id):
-        raise ValueError(
-            f"Unsafe task ID {task_id!r}: must match T<digits> (e.g. T001) or "
-            "sixteen lowercase hex characters. "
-            "Aborting evidence export to prevent path traversal."
-        )
+        raise UnsafeTaskIdError(task_id)
     return _validate_output_path(out_base, f"task_runs/{task_id}")
 
 
