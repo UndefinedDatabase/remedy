@@ -154,22 +154,29 @@ def _cmd_apply_patch_intent(job_id_str: str, intent_id: str, *, json_output: boo
         print(f"Error: {exc}", file=sys.stderr)
         sys.exit(1)
 
-    from packages.orchestration.patch_apply import apply_patch_intent, format_apply_result
+    from packages.orchestration.patch_apply import (
+        apply_patch_intent,
+        format_apply_result,
+        verifying_test_run_action,
+    )
 
     result = apply_patch_intent(job, intent_id)
     if result.state == "blocked":
         print(f"Error: {result.blocked_reason}", file=sys.stderr)
         sys.exit(1)
 
+    # R-0917: the apply names the test run that verifies it, with its ids.
+    next_action = verifying_test_run_action(str(job.job_id), result)
     if json_output:
         print(_json.dumps({
             "state": result.state, "intent_id": result.intent_id,
             "target_path": result.target_path, "action": result.action,
             "outcome": result.outcome, "bytes_written": result.bytes_written,
-            "line_count": result.line_count,
+            "line_count": result.line_count, "next_safe_action": next_action,
         }, sort_keys=True))
     else:
         print(format_apply_result(result))
+        print(f"Next: {next_action}")
 
 
 def _cmd_revert_patch_intent(

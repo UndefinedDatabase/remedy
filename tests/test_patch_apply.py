@@ -1086,6 +1086,34 @@ class TestCLI:
         assert data["state"] == "applied"
         assert "intent_id" in data
 
+    def test_apply_prints_the_test_run_that_carries_the_apply_records_ids(self, tmp_path, capsys):
+        """R-0917: the apply path names `remedy test run` with the job, intent and
+        apply ids its durable apply record carries, text and JSON alike."""
+        from unittest.mock import patch as mock_patch
+
+        from packages.orchestration.data_paths import resolve_data_root
+        from packages.orchestration.pingpong_job import save_job_plan
+        from packages.orchestration.repository_snapshot import load_durable_apply_record
+        job, _ = _make_job(tmp_repo=tmp_path)
+        intent_id = _add_artifact(job, action="create", risk=RISK_LOW)
+        _approve(job, intent_id)
+        _grant_repo_write(job)
+        save_job_plan(job)
+        argv = ["remedy", "patch", "apply", str(job.job_id), intent_id]
+        with mock_patch.object(sys, "argv", argv):
+            from apps.cli.main import main
+            main()
+        out = capsys.readouterr().out
+        rec = load_durable_apply_record(intent_id, str(job.job_id), resolve_data_root())
+        assert rec is not None
+        expected = (f"remedy test run {rec.job_id} --intent-id {rec.intent_id} "
+                    f"--apply-id {rec.apply_id}")
+        assert out.splitlines()[-1] == f"Next: {expected}"
+        with mock_patch.object(sys, "argv", [*argv, "--json"]):
+            main()
+        data = json.loads(capsys.readouterr().out)
+        assert (data["outcome"], data["next_safe_action"]) == ("already_applied", expected)
+
 
 # ---------------------------------------------------------------------------
 # 8. Trust report integration

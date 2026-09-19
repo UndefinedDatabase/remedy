@@ -647,7 +647,8 @@ class TestExecuteTestRunGates:
             confidence="medium", risk="low", reason="", requires_permission="repo_test_run")
         return [a, b]
 
-    def _run_with_candidates(self, tmp_path, candidates, command_id, captured):
+    def _run_with_candidates(self, tmp_path, candidates, command_id, captured,
+                             job=None, **linkage):
         """Drive execute_test_run with discovery stubbed to `candidates` and the real
         process replaced by a capture. Returns the TestExecutionResult."""
         from packages.orchestration.run_contract import RunUsage
@@ -661,7 +662,7 @@ class TestExecuteTestRunGates:
         with patch("packages.orchestration.test_execution_service.resolve_data_root",
                    return_value=tmp_path):
             with patch("packages.orchestration.test_execution_service.require_job_plan") as mock_load:
-                job = self._make_job_with_repo(tmp_path)
+                job = job or self._make_job_with_repo(tmp_path)
                 mock_load.return_value = job
                 with patch("packages.orchestration.test_execution_service.is_allowed",
                            return_value=True), \
@@ -677,8 +678,48 @@ class TestExecuteTestRunGates:
                            return_value=candidates), \
                      patch("packages.orchestration.test_execution_service._run_isolated_process",
                            side_effect=fake_run):
-                    req = TestExecutionRequest(job_id=str(job.job_id), command_id=command_id)
+                    req = TestExecutionRequest(job_id=str(job.job_id), command_id=command_id,
+                                               **linkage)
                     return execute_test_run(req)
+
+    def _job_with_an_applied_intent(self, tmp_path):
+        """A job carrying ONE intent as the approval path mints it, and its apply record."""
+        from packages.core.models import Artifact, ArtifactKind
+        from packages.orchestration.approval_queue import make_intent_id
+
+        job = self._make_job_with_repo(tmp_path)
+        artifact = Artifact(
+            name="builder_proposal", content="", kind=ArtifactKind.BUILDER_PROPOSAL,
+            task_id=str(uuid4()),
+            metadata={"patch_intent_explanations": [
+                {"file": "docs/a.md", "action": "create", "risk": "low",
+                 "reason": "r", "summary": "s"}]})
+        job.artifacts.append(artifact)
+        intent_id = make_intent_id(artifact.id, 0)
+        artifact.metadata["patch_intent_apply_records"] = {intent_id: {"state": "applied"}}
+        return job, intent_id
+
+    def test_an_intent_id_the_job_carries_passes_the_linkage_gate(self, tmp_path):
+        """R-0921: the real executor, given the intent and apply ids of an applied
+        intent, runs the test and links both, where it used to refuse every intent."""
+        job, intent_id = self._job_with_an_applied_intent(tmp_path)
+        captured: dict = {}
+        result = self._run_with_candidates(
+            tmp_path, self._two_test_candidates(), "test:makefile:test", captured,
+            job=job, intent_id=intent_id, apply_id=intent_id)
+        assert (result.status, result.stop_reason) == ("passed", "")
+        assert (result.linked_intent_id, result.linked_apply_id) == (intent_id, intent_id)
+        assert captured["argv"] == ["make", "test"]
+
+    def test_an_intent_id_the_job_does_not_carry_is_still_refused(self, tmp_path):
+        job, intent_id = self._job_with_an_applied_intent(tmp_path)
+        captured: dict = {}
+        result = self._run_with_candidates(
+            tmp_path, self._two_test_candidates(), "test:makefile:test", captured,
+            job=job, intent_id="0badc0de-0")
+        assert (result.status, result.stop_reason) == ("blocked", "invalid_linkage")
+        assert result.safe_summary == "intent_id '0badc0de-0' not found in job"
+        assert "argv" not in captured
 
     def test_explicit_command_id_executes_that_command(self, tmp_path):
         """R-0104: an explicit command_id runs and reports exactly that command."""

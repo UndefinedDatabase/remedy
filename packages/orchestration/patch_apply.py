@@ -380,6 +380,20 @@ def apply_patch_intent(
     return result
 
 
+def verifying_test_run_action(job_id: str, result: PatchApplyResult) -> str:
+    """The test run that verifies this apply, with its ids (R-0917); "" when blocked.
+
+    The durable apply record this module writes carries ``apply_id == intent_id``,
+    so both flags name the intent id. ``--task-id`` is deliberately absent: an
+    intent's task id need not be one of the job's tasks, and the linkage gate
+    refuses a task id that is not.
+    """
+    if result.state not in ("applied", "noop"):
+        return ""
+    return (f"remedy test run {job_id} --intent-id {result.intent_id} "
+            f"--apply-id {result.intent_id}")
+
+
 def format_apply_result(result: PatchApplyResult) -> str:
     """Format a PatchApplyResult for CLI output.
 
