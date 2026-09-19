@@ -138,9 +138,34 @@ class TestDoctorCore:
         assert "READY" in out
 
 
+def _plant_dead_command(monkeypatch) -> str:
+    """Add one catalog command nothing references and return its command_id.
+
+    The ids are minted per run from a uuid, so no text under `tests/` or
+    `scripts/` — this file included — can name them, and the handler is a
+    lambda that references no name, so the real scan in
+    `packages.orchestration.dead_command_check` has nothing to match.
+    """
+    import types
+    import uuid
+
+    import apps.cli.command_catalog as cat_mod
+    import apps.cli.commands as commands_mod
+
+    group = f"planted{uuid.uuid4().hex}"
+    sub = f"unused{uuid.uuid4().hex}"
+    command_id = f"{group}.{sub}"
+    entry = types.SimpleNamespace(command_id=command_id, group_id=group, subcommand=sub)
+    monkeypatch.setattr(cat_mod, "CATALOG", (*cat_mod.CATALOG, entry))
+    shipped_handlers = commands_mod.collect_all_handlers
+    monkeypatch.setattr(commands_mod, "collect_all_handlers",
+                        lambda: {**shipped_handlers(), command_id: lambda ns: None})
+    return command_id
+
+
 class TestDoctorCoreDeadCommands:
-    """T2_F271 design (c), scoped narrow by F281: the section only, always
-    shown — empty on the shipped catalog."""
+    """T2_F271 design (c) and T002: the section is always shown, empty on the
+    shipped catalog, and lists a planted dead command."""
 
     def test_text_mode_shows_the_section_empty(self, capsys):
         from apps.cli.commands.worker_facade_cmd import _cmd_doctor_core
@@ -154,6 +179,20 @@ class TestDoctorCoreDeadCommands:
         _cmd_doctor_core(_ns(json=True))
         out = json.loads(capsys.readouterr().out)
         assert out["dead_commands"] == []
+
+    def test_json_mode_lists_exactly_the_planted_command(self, monkeypatch, capsys):
+        from apps.cli.commands.worker_facade_cmd import _cmd_doctor_core
+        planted = _plant_dead_command(monkeypatch)
+        _cmd_doctor_core(_ns(json=True))
+        out = json.loads(capsys.readouterr().out)
+        assert out["dead_commands"] == [planted]
+
+    def test_text_mode_lists_the_planted_command_in_the_section(self, monkeypatch, capsys):
+        from apps.cli.commands.worker_facade_cmd import _cmd_doctor_core
+        planted = _plant_dead_command(monkeypatch)
+        _cmd_doctor_core(_ns(json=False))
+        out = capsys.readouterr().out
+        assert out.split("  dead commands:\n", 1)[1] == f"    {planted}\n"
 
 
 class TestDoctorCoreFromAnotherDirectory:

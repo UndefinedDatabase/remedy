@@ -279,9 +279,9 @@ def _cmd_doctor_core(ns: argparse.Namespace) -> None:
 
     # -----------------------------------------------------------------
     # T2_F271 design (c), scoped narrow by F281 (T2_F281.md Acceptance): the
-    # SECTION only — always shown, empty on the shipped catalog. The
-    # closure-precondition wiring and the fixture-based red-proof (planting a
-    # fake dead command and seeing it listed) are F271's, not this round's.
+    # SECTION only — always shown, empty on the shipped catalog. F271 T002
+    # plants a dead command and sees it listed here, in
+    # tests/cli/test_worker_facade_cmd.py::TestDoctorCoreDeadCommands.
     # -----------------------------------------------------------------
     try:
         from packages.orchestration.dead_command_check import dead_command_ids
