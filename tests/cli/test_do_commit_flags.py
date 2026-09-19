@@ -21,8 +21,10 @@ from tests.cli.test_do_sequence_cli import (  # noqa: F401 — fixtures used by 
     ORDER,
     _git,
     _step,
+    commit_a_passing_suite,
     no_model_call,
     repo,
+    two_milestone_plan,
 )
 
 MESSAGE = "Add the contact page"
@@ -217,6 +219,7 @@ def test_push_with_no_upstream_is_refused_before_any_step(repo, capsys):
 
 
 def test_push_sends_exactly_one_fast_forward_push_to_the_upstream(repo, capsys):
+    commit_a_passing_suite(repo)   # R-0977: the gate meets the planner's criteria
     remote = _bare_upstream(repo)
     branch = _branch(repo)
     before = _git(remote, "rev-parse", branch).strip()
@@ -236,6 +239,7 @@ def test_push_sends_exactly_one_fast_forward_push_to_the_upstream(repo, capsys):
 
 
 def test_the_key_with_a_commit_flag_pushes_once_without_push(repo, capsys, monkeypatch):
+    commit_a_passing_suite(repo)   # R-0977: the gate meets the planner's criteria
     _bare_upstream(repo)
     monkeypatch.setenv("REMEDY_APPLY_PUSH_AFTER_MISSION", "true")
 
@@ -303,11 +307,13 @@ def test_an_unmet_blocking_criterion_is_refused_before_anything_is_applied(
     assert data["landed"] == [] and data["push"]["pushed"] is False
 
 
-def test_an_open_blocking_criterion_is_pushed_and_named_in_the_json(repo, capsys):
-    """A `do` job serves no milestone, so the planner's criteria stay `open` (R-0977)."""
+def test_an_open_blocking_criterion_is_pushed_and_named_in_the_json(repo, capsys, monkeypatch):
+    """`--force-job` on a plan of two milestones makes one job that serves neither
+    milestone, so the planner's criteria stay `open` (R-0977)."""
     _bare_upstream(repo)
+    two_milestone_plan(monkeypatch)
 
-    code, data, _err = _run(capsys, "--commit", MESSAGE, "--push")
+    code, data, _err = _run(capsys, "--force-job", "--commit", MESSAGE, "--push")
 
     assert code == 0, data and _step(data, "apply")
     still_open = [c["id"] for c in data["contract"]["criteria"]
@@ -319,6 +325,7 @@ def test_an_open_blocking_criterion_is_pushed_and_named_in_the_json(repo, capsys
 
 
 def test_a_push_the_remote_refuses_leaves_the_commit_and_fails_the_walk(repo, capsys):
+    commit_a_passing_suite(repo)   # R-0977: the gate meets the planner's criteria
     remote = _bare_upstream(repo)
     (remote / "hooks" / "update").write_text(
         "#!/bin/sh\necho the remote is frozen >&2\nexit 1\n")
@@ -341,6 +348,7 @@ def test_a_push_the_remote_refuses_leaves_the_commit_and_fails_the_walk(repo, ca
 def test_a_two_job_walk_under_commit_lands_two_linear_commits_and_one_push(repo, capsys):
     from packages.orchestration.pingpong_job import load_job_plan
 
+    commit_a_passing_suite(repo)   # R-0977: the gate meets the planner's criteria
     _bare_upstream(repo)
     head = _head(repo)
 
@@ -412,6 +420,7 @@ def test_a_walk_that_stops_keeps_its_commit_and_pushes_nothing(repo, capsys, mon
 def test_the_apply_step_never_passes_push_to_a_job(repo, capsys, monkeypatch):
     from packages.orchestration import job_apply
 
+    commit_a_passing_suite(repo)   # R-0977: the gate meets the planner's criteria
     _bare_upstream(repo)
     real = job_apply.apply_job
     seen: list[dict] = []

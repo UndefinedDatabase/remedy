@@ -896,12 +896,12 @@ def test_contract_cli_tool_gates_the_job_on_its_whole_mission_checks_and_names_t
     assert [c["status"] for c in hygiene] == ["met"] * 3
 
     # Not met, in contract order: the four suite-judged template criteria
-    # (unmet: no tests) and the planner's milestone criterion (open: `do`'s job
-    # serves no milestone, so nothing evaluated it).
+    # (unmet: no tests) and the planner's milestone criterion (unmet: the job
+    # serves the plan's one milestone, so its gate evaluated it — R-0977).
     suite_judged = [c for c in whole if c["check"]["kind"] != "custom_cmd"]
     planner = [c for c in criteria if c["origin"] == "planner"]
     assert [c["status"] for c in suite_judged] == ["unmet"] * 4
-    assert [c["status"] for c in planner] == ["open"] * len(planner)
+    assert [c["status"] for c in planner] == ["unmet"] * len(planner)
     expected = [c["id"] for c in suite_judged + planner]
     assert expected == [c["id"] for c in criteria if c not in hygiene]
     assert data["unmet_blocking_criteria"] == expected
@@ -909,7 +909,7 @@ def test_contract_cli_tool_gates_the_job_on_its_whole_mission_checks_and_names_t
     out = _do(capsys, "--contract", "cli-tool", order="Write a CHANGELOG.md")
     [line] = [line for line in out.splitlines() if line.startswith("Contract: ")]
     named = ", ".join([f"{c['id']} (unmet)" for c in suite_judged]
-                      + [f"{c['id']} (open)" for c in planner])
+                      + [f"{c['id']} (unmet)" for c in planner])
     assert line == (f"Contract: 3 of {len(criteria)} criteria met; "
                     f"blocking criteria not met: {named}")
 
@@ -951,13 +951,89 @@ def test_a_do_whose_order_proposes_no_template_names_only_criteria_not_met(repo,
 
     [job_id] = data["job_ids"]
     assert data["contract"]["template"] is None
-    # No whole-mission criterion: the job's slice is empty and it stores no DoD.
-    assert load_dod(job_id) is None
+    # No whole-mission criterion: the job's slice is the planner's criterion of
+    # the one milestone it serves, reported in its DoD and never held on (R-0977).
     criteria = data["contract"]["criteria"]
     assert criteria
+    assert [(c.id, c.blocking) for c in load_dod(job_id).checks] == [
+        (c["check"]["id"], False) for c in criteria]
     assert {(c["origin"], c["blocking"], c["status"]) for c in criteria} == {
-        ("planner", True, "open")}
+        ("planner", True, "unmet")}
     assert data["unmet_blocking_criteria"] == [c["id"] for c in criteria]
+
+
+# ── F273 R-0977: each `do` job records the milestone its outline came from ──
+
+
+def two_milestone_plan(monkeypatch) -> None:
+    """The no-provider planner plans two milestones, M1 then M2, one outline each."""
+    from packages.orchestration import mission_compiler
+    from packages.orchestration.mission_plan_schema import MissionPlan
+
+    real = mission_compiler.deterministic_mission_plan
+
+    def two(goal: str) -> MissionPlan:
+        body = real(goal).model_dump()
+        [only] = body["milestones"]
+        body["milestones"] = [
+            {**only, "id": ident, "goal": f"Write docs/{name}.md", "depends_on": after,
+             "jobs_draft": [{"title": f"Write docs/{name}.md",
+                             "goal": f"Write docs/{name}.md", "est_band": "S"}]}
+            for ident, name, after in (("M1", "one", []), ("M2", "two", ["M1"]))]
+        return MissionPlan.model_validate(body)
+
+    monkeypatch.setattr(mission_compiler, "deterministic_mission_plan", two)
+
+
+def test_a_two_milestone_do_ends_with_no_planner_criterion_open(repo, capsys, monkeypatch):
+    """R-0977: each job records the milestone whose outline it came from, so its
+    gate evaluates that milestone's planner criterion and none is left `open`.
+    The repository has no tests, so each reads `unmet`, and each job completes."""
+    from packages.orchestration.mission_contract import read_job_milestone
+    from packages.orchestration.pingpong_job import JOB_COMPLETED, load_job_plan
+
+    two_milestone_plan(monkeypatch)
+
+    data = json.loads(_do(capsys, "--json", "--commit", "Add the docs"))
+
+    assert data["shape"] == "milestones" and data["waiting_job_ids"] == []
+    planner = [c for c in data["contract"]["criteria"] if c["origin"] == "planner"]
+    assert [(c["milestones"], c["blocking"], c["status"]) for c in planner] == [
+        (["M1"], True, "unmet"), (["M2"], True, "unmet")]
+    job_ids = data["job_ids"]
+    assert [read_job_milestone(j) for j in job_ids] == ["M1", "M2"]
+    assert [load_job_plan(j).state for j in job_ids] == [JOB_COMPLETED] * 2
+    assert [c["evidence_ref"] for c in planner] == [
+        f"{job_ids[0]}:{planner[0]['check']['id']}", f"{job_ids[1]}:{planner[1]['check']['id']}"]
+    assert data["unmet_blocking_criteria"] == [c["id"] for c in planner]
+
+
+def test_a_two_milestone_do_in_a_repo_with_a_passing_suite_meets_both_planner_criteria(
+        repo, capsys, monkeypatch):
+    """R-0977 with a suite that passes: each job's gate runs its milestone's
+    pytest check green, so both planner criteria read `met`, none is blocking
+    the mission, and neither job's hand-off holds a file its gate wrote."""
+    from packages.orchestration.mission_contract import read_job_milestone
+    from packages.orchestration.pingpong_job import JOB_COMPLETED, load_job_plan
+
+    monkeypatch.delenv("PYTHONDONTWRITEBYTECODE", raising=False)
+    commit_a_passing_suite(repo)
+    two_milestone_plan(monkeypatch)
+
+    data = json.loads(_do(capsys, "--json", "--commit", "Add the docs"))
+
+    assert data["shape"] == "milestones" and data["waiting_job_ids"] == []
+    planner = [c for c in data["contract"]["criteria"] if c["origin"] == "planner"]
+    assert [(c["milestones"], c["blocking"], c["status"]) for c in planner] == [
+        (["M1"], True, "met"), (["M2"], True, "met")]
+    assert {c["check"]["kind"] for c in planner} == {"pytest"}
+    job_ids = data["job_ids"]
+    assert [read_job_milestone(j) for j in job_ids] == ["M1", "M2"]
+    assert [(load_job_plan(j).state, load_job_plan(j).unexpected_root_files)
+            for j in job_ids] == [(JOB_COMPLETED, [])] * 2
+    assert [c["evidence_ref"] for c in planner] == [
+        f"{job_ids[0]}:{planner[0]['check']['id']}", f"{job_ids[1]}:{planner[1]['check']['id']}"]
+    assert data["unmet_blocking_criteria"] == []
 
 
 def test_the_old_name_with_history_is_never_created(repo, capsys):
