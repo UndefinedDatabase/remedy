@@ -12,35 +12,33 @@ command emits, and the meaning of each exit code
 
 ## Current Step
 
-Round 4 books round 3's PASS, registers and resolves `R-1013`, and disposes of
-`snapshot_created` per DECISION F277 D4. `autonomy_loop._decide` gated level 5
-on that event, which nothing writes, so level 5 answered "no snapshot for
-revert" for every job that ever reached it; the gate now reads the
-`verified_snapshot` signal the loop computes one statement earlier, which is
-the durable `build_snapshot_truth` check `autonomy_readiness` already uses.
-The branch had no test at all and now has four. The quarantine goes from three
-names to two.
+Round 5 books round 4's PASS and FINISHES T001 per DECISION F277 D5. The two
+names left in the quarantine turned out not to be accidents: a dated decision
+removed each one's writer and kept its readers so run logs already on disk
+keep rendering (F271 D3 under R-0982, and F031 D2 and D9). The set is renamed
+`RETIRED_EVENT_NAMES`, every entry must cite its ruling and name a reading
+module, a new guard asserts both from the source, and the feature file's T001
+design and Acceptance lines are amended to match.
 
 ## Next Steps
 
-1. `patch_intent_reverted`: its writer spells the event `revert_completed` and
-   carries no `intent_id`, the key `change_set.py` and `project_brain.py`
-   index by, so the disposition is a metadata contract before a repoint.
-2. `stop_reason_recorded`, whose readers in `project_summary.py`,
-   `ui_view_model.py` and `ui_server.py` are leftovers of DECISION F031 D2
-   and D9 and whose removal is a UI behaviour change.
-3. T002: `apps/cli/json_envelope.py` with `emit_ok` and `emit_error` over one
-   shape, and an error boundary around dispatch in `apps/cli/grouped.py`.
-4. T003: the shared `fail()` helper replacing the `print(...); sys.exit(1)`
-   pairs, and the read-only-without-`supports_json` set emptied.
-5. T004: the exit-code taxonomy under `docs/guides/`, asserted from the
-   catalog, plus the `tests/cli/test_json_contract.py` sweep.
-6. Closure: integration gate, evidence job, review zip, STATUS flip.
+1. T002: `apps/cli/json_envelope.py` with `emit_ok` and `emit_error` over one
+   shape (`schema_version`, `ok`, `sort_keys=True`), and an error boundary
+   around dispatch in `apps/cli/grouped.py` so no traceback reaches the
+   operator.
+2. T003: the shared `fail(code, message, *, json_output)` replacing the
+   `print(...); sys.exit(1)` pairs, one command group per commit, and the
+   read-only-without-`supports_json` set emptied.
+3. T004: the exit-code taxonomy under `docs/guides/`, asserted from the
+   catalog rather than from prose, plus `tests/cli/test_json_contract.py`
+   sweeping every `supports_json` command on success AND on an invalid
+   argument.
+4. Closure: integration gate (the full suite, once), evidence job, review zip,
+   STATUS flip.
 
 ## Risks
 
-Every disposition so far has replaced a dead event reader with a signal the
-repository already computes, so no new event name has had to be invented. The
-two survivors are not like that: one needs its writer's metadata widened and
-one removes user-visible UI behaviour, so both cost a decision rather than a
-repoint.
+T002 and T003 touch far more call sites than T001 did, and F261 settled which
+command groups survive, so the migration has a fixed target. The risk is the
+reverse of T001's: there the declaration had to catch up with the code, here
+the code has to catch up with a declaration that does not exist yet.
