@@ -6,7 +6,23 @@
 > candidate: description · source feature · date. Any entry present at
 > feature-claim time is a block condition.
 
-EMPTY — no candidate is open.
+The entry F276's closure gate recorded on 2026-09-20 — G3
+(`python3 -m pytest tests/docs/ -q`) went RED against the closure commit
+`092a69df`: `tests/docs/test_docs_consistency.py::TestPrimaryDocsAreHonest::
+test_the_readme_accepted_count_equals_the_status_count` failed because
+`README.md` still reads "86 of 282 registered items accepted." while
+`STATUS.md` now carries 87 `[x]` lines, and
+`::test_the_readme_tier_table_done_column_matches_the_ledger` failed
+because the README Tier status table's Tier 2 row still reads `Done=28`
+while the ledger derives 29 from `STATUS.md`'s `[x]` count for that tier.
+Both counters sit outside the P6 FROM/TO pair the round 14 block ordered
+(`.remedy-wt/f276-r14/readme_to.txt`, which updated only the Tier 2
+capability paragraph in the "Accepted in Tier N so far" prose); the round
+applied that payload verbatim per constraint 1 and reported the gap as a
+deviation once G3 surfaced it against the already-committed closure
+commit, rather than editing the payload. Fix: bump README.md's "N of M
+registered items accepted." line to 87 and its Tier 2 table Done cell to
+29, in their own small commit, with a G3 re-run proving green.
 
 The entry F280 round 26's own C1 recorded on 2026-09-17 — the block-save transport
 gap in `.agent/authored/f280-r26.md` — was registered in F281 round 1 as finding
