@@ -16430,3 +16430,128 @@ ALTERNATIVES: lowering the floor to 250, rejected as a weakened assertion that t
 crosses again; marking the node `xfail`, rejected because the repair is one test.
 REVERSE: restore `tests/orchestration/test_job_plan_state_reads.py` from `7e717bc4`, and delete this
 paragraph.
+
+## DECISION amend0920-selfuse-real D1 (2026-09-20, operator amendment, Part A) — a second planning service exists, and the flag that chooses it
+CONTEXT: operator question Q1's second ruling asked for `--planner-provider` to be added "in the same
+change that adds a second planning service". Until today `OllamaPlanner` was the only planner, so
+`make_structured_call_fn` constructed it directly and a provider flag would have accepted one value.
+CHOSEN: `packages/providers/claude_planner/provider.py` adds `ClaudeCliPlanner` with the same three
+methods and the same return types as `OllamaPlanner`, driving `claude -p` through the helpers the
+claude-cli ping-pong provider already uses (`build_claude_cli_args`, `_guarded_cli_run`,
+`_extract_cli_result_text`) rather than a second spawn point. The CLI enforces no schema this module
+is willing to depend on — `pingpong_provider` carries a classifier for `--json-schema` being rejected
+as unknown, which is proof enough that its support is not guaranteed — so the schema is stated in the
+system text with "Answer with one JSON object and nothing else.", the reply is stripped of code
+fences by the repository's own `_extract_json_object`, and it is validated. EXACTLY ONE RETRY, told
+what was wrong with the first reply; a second failure raises `pydantic.ValidationError`, the class
+`OllamaPlanner.plan` documents, raised BY VALIDATING THE REPLY and never hand-built.
+`make_structured_call_fn` gains `provider=`, legal values `None`, `ollama` and `claude-cli` spelled
+once in `PLANNER_PROVIDERS`; `None` asks the new `planner` role, whose built-in default is `ollama`,
+so an unconfigured repository plans exactly as it did. `--planner-provider` on `do.run` carries it,
+refused before any step when it names no planner, the way `--contract` refuses a name that is no
+template. The role is configurable through `planner.provider` and `planner.model`.
+FOUR THINGS THIS CHANGES BEYOND THE AMENDMENT'S LETTER, each because the letter could not be met
+honestly otherwise: (1) the amendment names `packages/orchestration/do_run.py` as the file holding
+the `make_structured_call_fn` calls; that file is 26 lines and holds none — F268 round 10 moved the
+whole `remedy do` flow into `do_sequence.py`, where all three calls including the mission-plan one
+live, and all three are wired there. (2) `ArgDef` has no `choices` field, so the two choices are
+named in the flag's help text, the way `--builder-provider` names its four, and ENFORCED by the
+handler's refusal and by the factory's `ValueError` rather than by argparse. (3) `do_sequence.py`
+recorded `provider="ollama"` as the planner of every mission plan and every intake trace; that string
+is now the planner that actually ran, resolved through `resolve_planner_target`, because a trace
+naming a service that did not serve is a trace that lies about its own run. (4) an unreachable
+`claude` CLI answers `None` and the caller plans deterministically — it never falls back to Ollama,
+for the same reason.
+ALTERNATIVES: sending `--json-schema` and classifying its rejection, rejected as a second
+failure mode on a path whose whole job is to answer one JSON object; inventing a planner exception
+class, rejected because the amendment asks for the class the Ollama planner raises.
+REVERSE: delete `packages/providers/claude_planner/`, the `provider=` parameter and
+`resolve_planner_target` from `packages/orchestration/intake.py`, the `--planner-provider` ArgDef and
+its refusal, the `planner_provider` field and the three call sites' `provider=` in `do_sequence.py`
+and `do_cmd.py`, the `planner` entries in `KNOWN_ROLES`, `_ROLE_DEFAULT_PROVIDERS`, `ROLE_TASK_CLASSES`
+and `ROLE_CONFIG_CALL_SITES`, the two `planner.*` config keys, and this paragraph.
+
+## DECISION amend0920-selfuse-real D2 (2026-09-20, operator amendment, Part B) — the self-use track runs on the frontier provider, on a finding a builder can finish
+CONTEXT: SU-019 to SU-023 — five consecutive closures — each generated a self-use item, ran it and
+landed no repair. Two causes, both measured from those runs rather than supposed. The generator
+handed the local 30B model findings like R-0499, a flaky sweep whose failing node was never captured
+and which names no repair at all; and the runner resolved the product-default `builder` and
+`reviewer` roles, which is the local model, for work that repairs THIS repository against THIS
+repository's review discipline. R-0999 records one such run in its own words: the builder changed no
+file and the reviewer failed it over the empty diff.
+CHOSEN, two parts. THE GENERATOR: Tier 1 offers a finding only when its paragraph NAMES a repair — a
+`FIX:` sentence — and does not say the repair is held by something the run does not control: `flaky`,
+`never captured`, `once in`, `operator`, `waits on`. The candidates are still walked oldest first, so
+the answer is the oldest REPAIRABLE finding rather than simply the oldest. The dedupe over every
+queue entry, consumed or not, is unchanged — `_targeted_findings` already read every entry, and a
+test now pins that it does. R-0784's ruling stands untouched: this filter reads what a paragraph SAYS
+about its own repair and never judges whether that repair is the right one. THE RUNNER: both sides
+come from ONE new role, `self_use`, defaulting to provider `claude-cli` on the alias table's Sonnet
+alias, with this path's own budget of 8 provider calls and 1.00 USD. Eight rather than six because
+six stopped a run mid-loop where the repair round was the point. One role rather than two so the
+reviewer can never be routed weaker than the builder it reviews. An explicitly injected provider
+object, or an explicit `builder_name`, still wins exactly as before.
+ONE DEVIATION FROM THE AMENDMENT'S LETTER: `never captured` is matched as the pattern
+`never (?:been )?captured`, because the instance it was written for — R-0499 — says "HAS NEVER BEEN
+CAPTURED", and a phrase that cannot match the finding it describes is not a filter. Every phrase is
+matched case-insensitively for the same reason: this ledger writes headlines in capitals.
+ALTERNATIVES: judging repairability by severity, rejected as the guess R-0784 forbids; raising the
+call cap without changing the provider, rejected because five runs show the cap was not the binding
+constraint; changing the product-default builder role, rejected as far wider than this path.
+REVERSE: restore `_oldest_open_low_or_medium_finding` and `_ROLE_KWARGS`'s resolution loop from
+`43d14817`, delete `_is_repairable`, `SELF_USE_ROLE`, `resolve_self_use_role_config`, the `self_use`
+entries in `KNOWN_ROLES`, `_ROLE_DEFAULT_PROVIDERS`, `_ROLE_DEFAULT_MODELS` and `ROLE_TASK_CLASSES`,
+the two `self_use.*` config keys, the sentence added to closure precondition 6, and this paragraph.
+
+## DECISION amend0920-selfuse-real D3 (2026-09-20, operator amendment, Part C) — the prepared evidence-skill text is applied, as recommended
+CONTEXT: operator question Q2 asked the operator to write the prepared text over
+`.claude/skills/remedy-evidence-review/SKILL.md`, because the F268 round 7 session's write there was
+refused by its permission system. The round's handoff named the payload and its checksum.
+CHOSEN: the recommendation as recommended. `.agent/authored/f268-r7-skill.md` was found at that path,
+its sha256 recomputed as `4a6bf8da8b59f9dac84ae9e183205fbfb08d84fbf0d9e8274da4d4d59494ccc8` —
+byte-for-byte the value the round 7 handoff names — and it was copied over the skill page whole. The
+diff is the four lines Q2 describes and nothing else: `_build_final_audit` in `do_cmd.py` becomes
+`_write_job_flow_artifacts` in `packages/orchestration/job_evidence.py`, `job_flow.json`'s field list
+loses `promote_ready` and gains `target_guard`, the final_verifier line drops `promote_ready`, and
+the safety line names a manual-only completion instead. The fallback branch — rewriting only the
+lines that mention `job_flow.json` and `_build_final_audit` from what the evidence writer produces —
+was not needed and was not taken. R-0892's SKILL.md half is resolved in `.agent/live_review.md`; its
+package-check half stays open and stays with F282.
+REVERSE: `git checkout 43d14817 -- .claude/skills/remedy-evidence-review/SKILL.md`, delete the
+resolution paragraph from the ledger, and delete this paragraph.
+
+## DECISION amend0920-selfuse-real D4 (2026-09-20, operator amendment, Part C) — Q1, Q2, Q4, Q5 and Q7 stand as executed, and leave the file
+CONTEXT: `.agent/operator_questions.md` holds five entries, every one of which ends "the
+recommendation is already executed and stands until you say otherwise". The operator amendment
+answers all five at once.
+CHOSEN: every recommendation stands AS RECOMMENDED, and each entry is deleted from the file. Q1's
+first ruling — the two named "loop" exceptions in help text — stands unchanged; Q1's second ruling is
+superseded by Part A, which builds the second planning service the recommendation made the flag wait
+for, so the flag now offers a real choice. Q2 is executed by D3 above. Q4's three rulings (the manual
+achieve command as the operator's override, a push held only by a FAILED blocking criterion, and the
+gap that left planner criteria unchecked now closed) stand. Q5's automatic contract-job grants stand.
+Q7's four behaviour changes stand. The file keeps its header; with no `### Q` left its body reads
+`EMPTY`, the format it used after amend0917.
+REVERSE: `git checkout 43d14817 -- .agent/operator_questions.md`, and delete this paragraph.
+
+## DECISION amend0920-selfuse-real D5 (2026-09-20, operator amendment, Part D) — nothing reads `decisions.md` whole, so nothing is registered and nothing is moved
+CONTEXT: Part D asked which sessions read `.agent/decisions.md` whole, and to register ONE finding
+naming the step and the bytes if any protocol step does.
+CHOSEN: the measurement was made and the answer is NONE, so no finding is registered — the amendment
+conditions the registration on the measurement, and inventing one would be the overclaim this
+repository's whole review discipline exists to stop. MEASURED at `43d14817` by grepping
+`decisions.md` and `.agent/authored` over the three named targets. `.claude/commands/` (five files)
+holds not one reference to either. `.claude/skills/remedy-self-drive/SKILL.md` (60 lines) holds not
+one. `docs/agents/self_drive_protocol.md` holds five: line 217 orders a DECISION to be WRITTEN there,
+and lines 78, 353, 382 and 414 name `.agent/authored/` per-file — a named payload, a named suite
+transcript — never the directory. The only other references anywhere under `.claude/` and
+`docs/agents/` are `remedy-commit-flow/SKILL.md` lines 29 and 59, both write-triggers, and
+`planner_reviewer_prompt.md` line 1011, which names the file as a target of byte forensics on an
+APPEND. Every reference is a WRITE or a write-trigger; not one is a whole-file read.
+THE SIZES, for the next session that asks: `.agent/decisions.md` 1686241 bytes, `.agent/live_review.md`
+361092 bytes, `.agent/authored/` 31507093 bytes over 2127 files.
+NOTHING IS MOVED OR EXCLUDED, per Part D's own instruction: `scripts/build_review_zip.py`'s authority
+equality makes a blind exclusion unsafe. Should a future step read either file whole, the repair
+Part D names is on record — rotate `[x]` features' DECISION blocks into `.agent/decisions_archive.md`
+the way `scripts/rotate_live_review.py` rotates the ledger.
+REVERSE: delete this paragraph.

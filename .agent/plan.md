@@ -10,16 +10,20 @@ answered operator questions deleted — the operator amendment's Parts A to E.
 
 ## Current Step
 
-Part A: `ClaudeCliPlanner`, the `--planner-provider` flag, the `planner` role.
+Part E: the gates, then the pull request, its hosted CI, the merge, and the
+fold-in of `origin/main` into `feature/f276-data-root-hygiene`.
 
 ## Next Steps
 
-1. Part B — the generator's eligibility filter and the `self_use` role.
-2. Part C — the evidence skill page, the deleted operator questions, D3–D5.
-3. Part D — measure the context load; register a finding only if one is owed.
-4. Part E — gates, pull request, merge, fold-in, handback.
+1. Run `ruff check .`, `tests/docs/`, `tests/cli/test_golden_path.py`, the
+   catalog tests, `test_do_run.py`, `test_self_use_*.py`, `test_config.py`
+   and every test this branch added.
+2. Push, open the pull request, watch both Python columns, merge when green.
+3. Merge `origin/main` into `feature/f276-data-root-hygiene` with `--no-ff`,
+   keeping BOTH sides of every append-only file, main first. Push it.
+4. Restore `ORIG_BRANCH` and write the handback.
 
 ## Risks
 
 - `do_run.py` holds no `make_structured_call_fn` call; the three sites named
-  are in `do_sequence.py` (F268 round 10 moved them). Recorded as a deviation.
+  are in `do_sequence.py` (F268 round 10 moved them). DECISION D1 records it.

@@ -429,3 +429,59 @@ Gate: F273 R24 — the F273 round 24 entry, CLOSURE ROUND A. VERDICT PASS. Re-de
 - R-1000 — Low, CLOSURE PRECONDITION 7 NAMES TWO EXEMPTION LISTS AND NOT THE THIRD, SO A FEATURE CAN EXEMPT A WHOLE TREE FROM THE ORPHAN SCAN WITHOUT ITS FEATURE FILE SAYING SO. Raised by the planner and reviewer of F273's fourth session while reading precondition 7 for F273's closure, after searching the ledger and its archive for `RESERVED_NAMESPACES` and for precondition 7 under §3 item 30: no finding describes it. THE DEFECT, read at `94e6fa87`: precondition 7 of `docs/roadmap/STATUS_closure_protocol.md` requires a line a feature adds to `tests/orchestration/import_reachability_allowlist.txt` or to `ALLOWED_UNWIRED` in `tests/test_no_orphan_modules.py` to be named in its feature file, while `find_orphans` in that test file also skips every path under a `RESERVED_NAMESPACES` entry, a whole tree, and no test checks that such a tree is the fixture project its docstring says it must be, where `test_every_allowed_unwired_entry_is_a_live_orphan` keeps `ALLOWED_UNWIRED` shrinking. F273 is the instance: `7347edba` (F273 R9 C2) added `scripts/bench_sample_project/` there with its reason in the file and DECISION F082 D3, and `docs/roadmap/features/T2_F273.md` does not name it; the tree is the bench's fixture project, so nothing unreached is hidden. WHY LOW: the one entry added is a real fixture project, and the gap is that the next one would pass unseen. FIX: precondition 7 names `RESERVED_NAMESPACES` beside the two lists, and a test asserts every entry is a tree with no production importer of its modules, so the exemption cannot cover a product module. Owner: F273, which carries it to the next findings-paydown feature at its closure.
 
 OWNERSHIP AT CLOSE, per amend0911-feedback rule A, booked by F273 R25. F273 closes owning every finding open once this commit lands: R-0499, R-0622, R-0662, R-0819, R-0820, R-0829, R-0866, R-0880, R-0892, R-0950, R-0984, R-0998, R-0999 and R-1000, by an `Owner: F273` tag or by a slice of `docs/roadmap/features/T2_F273.md`. It resolves none of them, so each is re-assigned from this paragraph onward to F282 — Findings paydown v2, which this closure registers under rule B in its own commit after the ledger rotation, and whose feature file carries one Acceptance line naming each id. The reasons they are carried, from DECISION F273 D19 (5), the Built State and the DECISIONs named: R-0819 and R-0820 wait for the checklist consolidation pass, as does R-0662; R-0866 until a feature reopens the external-candidate route; R-0880 on D75 and D78 of F275; R-0829 because F273's own closure runs the packer it would change; R-0984 on the 3.12 column of F273's closure pull request's hosted CI, which runs after this branch's last commit; R-0892 on the operator's write of `.claude/skills/remedy-evidence-review/SKILL.md`; R-0499 because 21 runs of its sweep produced no red whose id could be captured (DECISION F273 D4 (9)); R-0622 because its repair adds a devDependency whose install needs a network F273's sessions did not have (DECISION F273 D10 (4)); R-0950 because it is flagged for investigation with no code fix assigned; and R-0998, R-0999 and R-1000 because F273's closure found them after its closure suite.
+
+PARTIAL RESOLUTION of R-0892 at operator amendment amend0920-selfuse-real, Part C. NO NEW ID IS
+SPENT, per §3 item 30: R-0892 is OPEN and this is its own second half. R-0892's FIX names two
+obligations — a provider run through F268's flow exports a package that passes
+`scripts/build_review_manifest.py`'s required-artifact check, AND
+`.claude/skills/remedy-evidence-review/SKILL.md`, which still described `job_flow.json` and
+`_build_final_audit`, describes the heir's package. THE SECOND IS DISCHARGED HERE and the first is
+not. The prepared payload the F268 round 7 handoff named, `.agent/authored/f268-r7-skill.md`, was
+found at that path and its sha256 recomputed as
+`4a6bf8da8b59f9dac84ae9e183205fbfb08d84fbf0d9e8274da4d4d59494ccc8`, byte-for-byte the value that
+handoff records; it was copied over the skill page whole, and the page's own sha256 now reads that
+same value. The diff is four lines and no others: the writer line becomes
+`packages/orchestration/job_evidence.py` — `_write_job_flow_artifacts()`, replacing
+`apps/cli/commands/do_cmd.py` — `_build_final_audit()`, a function that reading `do_cmd.py` at
+`43d14817` confirms is gone; `job_flow.json`'s described fields lose `promote_ready` and gain
+`target_guard`, and reading `_write_job_flow_artifacts` confirms it writes `target_guard` and that
+the only `promote_ready` writers left under `packages/` are `manual_attestation.py` and
+`commit_execution_gate.py`, neither of them a job_flow writer; the final_verifier line drops the same
+field; and the safety line names a manual-only completion carrying none of the four flow files. WHY
+THIS IS NOT A `Done:` LINE: the required-artifact half is untouched by it, so retiring the id would
+retire an obligation nobody discharged. R-0892 stays OPEN and stays owned by F282, carrying that half
+alone; the reason the F273 closure's ownership paragraph gives for carrying it — "on the operator's
+write of `.claude/skills/remedy-evidence-review/SKILL.md`" — no longer applies to it.
+
+- R-1008 — Medium, FIVE CONSECUTIVE CLOSURES RAN THE SELF-USE TRACK AND NOT ONE LANDED A REPAIR,
+BECAUSE THE GENERATOR HANDED THE LOCAL MODEL FINDINGS THAT NAME NO REPAIR AND THE RUNNER RESOLVED THE
+PRODUCT-DEFAULT ROLES FOR WORK THAT REPAIRS THIS REPOSITORY. Raised under operator amendment
+amend0920-selfuse-real, Part B.5, at `43d14817`, after searching the open set and its archive for
+`self-use`, `self_use`, `SU-0`, `blocked` and `hollow` under §3 item 30: R-0784 and R-0999 each
+register ONE such run's blocked strings because closure precondition 6 requires it, and R-0838
+registers the generator re-selecting one finding — none describes the TRACK failing to land anything
+across five closures, which is this id's subject and is why it is minted rather than added to those.
+THE MEASUREMENT, read from the ledger and from `.agent/selfuse_f269` through `.agent/selfuse_f273`:
+SU-019 (F268), SU-020 (F269), SU-021 (F270), SU-022 (F271) and SU-023 (F273) each planned, each ran,
+each ended blocked or budget-stopped at the approval gate, and no self-use run in the track's history
+has ever produced a landed repair. TWO CAUSES, both measured rather than supposed. FIRST, the item.
+SU-023's finding was R-0499, whose own paragraph says the sweep goes red "about once in twenty runs"
+and that "THE FAILING NODE ID HAS NEVER BEEN CAPTURED", and which names no `FIX:` at all — so the job
+asked a builder to repair a defect that does not reproduce on demand and whose evidence does not
+exist. R-0999 records what followed in its own words: the builder changed no file, and the reviewer
+failed it over the empty diff. SECOND, the runner. `run_next_self_use_item` resolved `builder` and
+`reviewer` through `resolve_role_config`, whose product default is `ollama` on
+`muse-glimmer:latest` — the model every one of the five runs used, per the Gate: F273 R23 entry — for
+work that repairs THIS repository against THIS repository's review discipline, which is the hardest
+work the product does. WHY MEDIUM AND NOT LOW: nothing on disk is wrong and every run stopped at its
+gate as a blocked job must, so no product state is corrupt; what is lost is a closure precondition
+that has proven nothing for five features running, which makes "Remedy is used on Remedy" a ceremony
+rather than a check — and a precondition that cannot fail is the class this record already treats as
+a defect. FIX, AND IT IS BUILT BY THIS AMENDMENT RATHER THAN OWED: Tier 1 offers only a finding whose
+paragraph names a repair and does not say that repair is held by something the run does not control,
+and both sides of the run resolve from the new `self_use` role — the configured frontier provider, on
+this path's own budget of 8 calls and 1.00 USD (DECISION amend0920-selfuse-real D2). THE PROOF IS THE
+NEXT CLOSURE'S OWN RUN, and this finding resolves when one lands a repair: a `Done: R-1008` line is
+owed by the first closure whose self-use run produces a diff its reviewer passes, and by no earlier
+one. Until then it stays open however green the new tests are, because tests prove the wiring and
+only a run proves the track. Owner: F282.
