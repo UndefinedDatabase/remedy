@@ -526,4 +526,11 @@ the not-installed path exists to reproduce the hosted behaviour, so installed an
 equivalent there; only a SUBPROCESS test can reach a host, and only the loopback one its own fixture
 opens. RED PROOF, and it is the only honest one for an environment defect, the same shape R-0984's
 own FIX clause names: the hosted column is RED at `43d14817` and at `aeadfa45` and GREEN at the tip
-of this branch. Owner: F282.
+of this branch. MEASURED: run 35503727182, the first run carrying the extra, lists this node in
+NEITHER column's failures — `gh run view 35503727182 --log-failed | grep -c
+test_study_run_dispatch_e2e` reads 0 against 2 FAILED lines in total, both of them a DIFFERENT node
+(`tests/orchestration/test_ci_workflow.py::test_hosted_workflow_selects_no_tests_of_its_own`, which
+the repair's own comment tripped by spelling a stage marker expression inside the workflow file and
+which is repaired in the commit after it, by rewording the comment and never by touching the guard).
+So the node this finding is about went red-to-green on the hosted runner, which is the one
+environment where it could be shown at all. Owner: F282.

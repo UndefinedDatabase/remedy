@@ -51,19 +51,23 @@ jobs:
           cache: npm
           cache-dependency-path: apps/ui/package-lock.json
 
-      # The `ollama` extra is installed too, and it is NOT optional for the
-      # suite: `tests/cli/test_study_cmd.py::TestStudyCommandReachability::
-      # test_study_run_dispatch_e2e` asserts that `study run` asked the model
-      # host the test gave it, and `make_structured_call_fn` answers None at
-      # `import ollama` before it contacts any host — so without the package
-      # that assertion is unmeetable and the column is red for an environment
-      # reason rather than a product one (R-1009, 2026-09-20). Installing it
-      # brings the hosted environment into line with the one the suite is
-      # verified in; it starts no server, and `tests/conftest.py`'s
-      # `_no_live_ollama_reach` still refuses `ollama.Client` for every
-      # in-process test without the `real_ollama` marker, so only a SUBPROCESS
-      # test can reach a host, and only the loopback one its own fixture opens.
-      - name: Install Remedy with its dev and ollama extras
+      # The local-model client extra is installed too, and it is NOT optional
+      # for the suite: the study command's reachability test asserts that the
+      # command asked the model host its own fixture opened, and the structured
+      # call factory answers None at the client import before it contacts any
+      # host — so without that package the assertion is unmeetable and the
+      # column is red for an environment reason rather than a product one
+      # (R-1009, 2026-09-20). Installing it brings the hosted environment into
+      # line with the one the suite is verified in. It starts no server, and it
+      # changes nothing in process: the fixture in tests/conftest.py refuses the
+      # client for every in-process test that is not opted in to a live server,
+      # and its own comment says the not-installed path exists to reproduce the
+      # hosted behaviour. Only a subprocess test can reach a host, and only the
+      # loopback one its own fixture opens.
+      # NOTE: this comment deliberately spells no stage marker expression — the
+      # workflow must name no test selection of its own, which
+      # tests/orchestration/test_ci_workflow.py enforces by substring.
+      - name: Install Remedy with its dev and local-client extras
         run: python3 -m pip install -e ".[dev,ollama]"
 
       # DECISION F083 D6: the UI toolchain is a PRECONDITION of the `ui` stage,
