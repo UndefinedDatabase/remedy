@@ -86,10 +86,24 @@ Measured insertions: 51 (9+42). Matches expected exactly.
 
 Measured insertions: 28 (10+18). Matches expected exactly.
 
-### (this commit) F277 R9 C7: rewrite handoff for round 9
-Self-reference exception (handback template): a handback cannot table the commit that writes
-it. This is the round's single handoff-writing commit — no trailing bookkeeping trims are
-expected.
+Self-reference exception (handback template): the following commits, which only write and
+then complete this handoff, share one grouped table with per-commit attribution in Reason —
+a handback cannot table the commit that writes it (R-0149 pattern).
+
+### 29f2b0af F277 R9 C7: rewrite handoff for round 9
+| Path | +/- | Reason |
+|---|---|---|
+| .agent/handoff.md | +221/-123 (git show --numstat) | rewrite: this handback, first write, with placeholder G6 push/status/worktree readings not yet knowable before the push |
+
+### e35094f7 F277 R9 C7-fix: record the actual push outcome in the handoff
+| Path | +/- | Reason |
+|---|---|---|
+| .agent/handoff.md | +24/-4 | fill in the real `git push`/`git status`/`git worktree list` output for G6, only knowable after 29f2b0af was pushed |
+
+### (this commit) F277 R9 C7-fix2: reconcile the handoff's own commit table
+| Path | +/- | Reason |
+|---|---|---|
+| .agent/handoff.md | this edit | group 29f2b0af and e35094f7 into one per-commit table per the trailing-bookkeeping exception, and record the true final push (`e35094f7`, not `29f2b0af`) in G6 |
 
 ## External actions
 
@@ -215,13 +229,18 @@ Exit code: 0.
 
 ### G6 — push and tree, after C7
 
-- `git push -u origin feature/f277-machine-contracts` → `0ae3d6fd..29f2b0af
-  feature/f277-machine-contracts -> feature/f277-machine-contracts`, branch set to track the
-  remote. Succeeded.
-- `git status --porcelain` after push: empty.
-- `git worktree list` after push:
+- First push, after C7 (`29f2b0af`): `git push -u origin feature/f277-machine-contracts` →
+  `0ae3d6fd..29f2b0af feature/f277-machine-contracts -> feature/f277-machine-contracts`.
+  Succeeded.
+- Second push, after C7-fix (`e35094f7`): `git push -u origin feature/f277-machine-contracts`
+  → `29f2b0af..e35094f7 feature/f277-machine-contracts -> feature/f277-machine-contracts`.
+  Succeeded. This is the true final push this round makes before C7-fix2 (a pure
+  self-reconciliation edit whose own push is not separately chased, matching round 8's
+  C-STOP-fix2 precedent).
+- `git status --porcelain` after the second push: empty.
+- `git worktree list` after the second push:
 ```
-/home/decodeux/Repos/remedy                                  29f2b0af [feature/f277-machine-contracts]
+/home/decodeux/Repos/remedy                                  e35094f7 [feature/f277-machine-contracts]
 /home/decodeux/Repos/remedy/.remedy-wt/job-468c8e62a2cc4fac  1b9ae606 [remedy/job-468c8e62a2cc4fac]
 /home/decodeux/Repos/remedy/.remedy-wt/job-c1dba9c3d7874968  fd23710f [remedy/job-c1dba9c3d7874968]
 ```
@@ -265,12 +284,15 @@ block copy against `.remedy-wt/f277-r9-block.md`). All five: True. See G1(b) abo
    exactly, with no dropped, added, or reordered commit among the eight the block named. All
    nine payloads verified clean this round, unlike round 8 — the reviewer's fix (re-measuring
    `decisions.md` after its last edit) held. All six gates ran for real with no red result.
-2. **One trailing bookkeeping commit beyond C7.** C7 wrote this handoff with the G6 push
-   outcome not yet knowable (the push is C7's own trailing action); a second, small commit
-   filled in the real `git push`/`git status`/`git worktree list` readings for G6 once they
-   existed. This is the handback template's explicit "trailing bookkeeping commits that only
-   trim it" exception (R-0149 pattern), the same shape round 8's C-STOP-fix used — it adds no
-   new fact beyond the actual G6 output.
+2. **Two trailing bookkeeping commits beyond C7, not one.** C7 (`29f2b0af`) wrote this handoff
+   with the G6 push outcome not yet knowable (the push is C7's own trailing action); C7-fix
+   (`e35094f7`) filled in the real `git push`/`git status`/`git worktree list` readings for
+   G6 once they existed; this closing edit, C7-fix2, reconciles the Commits table's
+   attribution across all three and records the true final push SHA. This is the handback
+   template's explicit "trailing bookkeeping commits that only trim it" exception (R-0149
+   pattern), the identical shape round 8's C-STOP/C-STOP-fix/C-STOP-fix2 sequence used — each
+   edit adds no new fact beyond the actual push output, and C7-fix2's own push is not
+   separately chased (round 8's own precedent for the same self-reference tension).
 
 ## Next
 
