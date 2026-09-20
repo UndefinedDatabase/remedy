@@ -94,10 +94,18 @@ reporting output that does not exist. None were fabricated.
 
 ### G6 (the part that does apply: push and tree, for this round's own commit)
 
-- `git push -u origin feature/f277-machine-contracts` — reported below at push time.
-- `git status --porcelain` after commit and push: expected empty; reported below.
-- `git worktree list` after push: expected primary checkout plus the two pre-existing
-  `remedy/job-*` worktrees, nothing else (no G5 worktree was ever created this round).
+- `git push -u origin feature/f277-machine-contracts` → `a8e2e565..225445d7
+  feature/f277-machine-contracts -> feature/f277-machine-contracts`, branch set to track the
+  remote. Succeeded.
+- `git status --porcelain` after commit and push: empty.
+- `git worktree list` after push:
+```
+/home/decodeux/Repos/remedy                                  225445d7 [feature/f277-machine-contracts]
+/home/decodeux/Repos/remedy/.remedy-wt/job-468c8e62a2cc4fac  1b9ae606 [remedy/job-468c8e62a2cc4fac]
+/home/decodeux/Repos/remedy/.remedy-wt/job-c1dba9c3d7874968  fd23710f [remedy/job-c1dba9c3d7874968]
+```
+  Primary checkout plus the two pre-existing `remedy/job-*` worktrees, nothing else. No G5
+  worktree was ever created this round.
 
 ## Authored-text proofs
 
