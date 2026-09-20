@@ -123,6 +123,29 @@ def _cmd_discover_commands(job_id_str: str, *, as_json: bool) -> None:
     repo_root = _Path(target_repo_str).resolve()
     candidates = discover_commands(job, repo_root)
 
+    # F277 T001: running this command IS the signal.  `autonomy_readiness`
+    # gates level 3 on `command_discovery`, whose next action reads
+    # `remedy test discover <job>`, and `memory_learn` indexes the two
+    # metadata keys below — both had been reading a name nothing wrote.
+    # Emitted before the output branch so `--json` and plain text record
+    # the same fact, and never fatal: a ledger write must not break a
+    # read-only inspection.
+    from packages.orchestration.data_paths import resolve_data_root
+    from packages.orchestration.timeline import append_run_event
+
+    try:
+        append_run_event(
+            resolve_data_root(), str(job_id),
+            event="command_discovery_completed",
+            metadata={
+                "source_types": sorted({c.source_type for c in candidates}),
+                "candidate_count": len(candidates),
+                "repo_root": str(repo_root),
+            },
+        )
+    except OSError:
+        pass
+
     if as_json:
         from collections import Counter as _Counter
 

@@ -55,6 +55,7 @@ EVENT_NAMES: frozenset[str] = frozenset(
         "builder_patch_parsed",
         "builder_started",
         "command.accepted",
+        "command_discovery_completed",
         "context_coverage_inspected",
         "continued_from_node",
         "contract_decision",
@@ -139,9 +140,6 @@ EVENT_NAMES: frozenset[str] = frozenset(
 #: the dimension permanently absent.
 READ_ONLY_EVENT_NAMES: frozenset[str] = frozenset(
     {
-        # Read by `autonomy_readiness.py` and `memory_learn.py`; the readiness
-        # dimension it feeds has therefore never scored present.
-        "command_discovery_completed",
         # Read by `change_set.py`, `project_brain.py` and `ui_server.py`, which
         # replay reverts already on disk; `patch_intent_applied` and the other
         # patch_intent_* names are written, this one alone is not.  Its writer
