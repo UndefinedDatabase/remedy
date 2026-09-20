@@ -16564,3 +16564,35 @@ equality makes a blind exclusion unsafe. Should a future step read either file w
 Part D names is on record — rotate `[x]` features' DECISION blocks into `.agent/decisions_archive.md`
 the way `scripts/rotate_live_review.py` rotates the ledger.
 REVERSE: delete this paragraph.
+
+## DECISION amend0920-selfuse-real D6 (2026-09-20, operator amendment, Part E) — CI installs the ollama extra, because a red main is what blocked this amendment's own merge
+CONTEXT: this amendment's pull request 261 read RED on `ci (3.12)`, one node:
+`tests/cli/test_study_cmd.py::TestStudyCommandReachability::test_study_run_dispatch_e2e`. The same
+node fails on `main` at `43d14817`, this branch's fork point, on BOTH columns (run 35473013938), so
+under amend0917-throughput rule 2 it is not a node this amendment's changes broke. It is however
+what stands between Part E and its merge, and AGENTS.md's amend0820-gate-autonomy exception makes a
+red check on the open pull request's branch this session's work order rather than a blocker.
+CHOSEN: `.github/workflows/ci.yml` installs `.[dev,ollama]` instead of `.[dev]`. The test asserts
+that `study run` asked the model host its fixture opened; `make_structured_call_fn` answers `None`
+at `import ollama` before contacting any host, and the hosted job's own install line prints
+twenty-two distributions with `ollama` not among them, so the assertion is unmeetable there whatever
+the product does. Installing the extra brings the hosted environment into line with the one the suite
+is verified in — the same node reads `1 passed in 84.45s` in the primary checkout — and it keeps the
+assertion at FULL STRENGTH, which a skip-when-absent would not: a guard that switches itself off in
+the one environment that matters is the "gate that cannot fail" class this record already treats as a
+defect. It starts no server and changes nothing in process, because `tests/conftest.py`'s
+`_no_live_ollama_reach` refuses `ollama.Client` for every in-process test without the `real_ollama`
+marker and its own comment states that the not-installed path exists to REPRODUCE the hosted
+behaviour — so installed and absent are already equivalent in process, and only a subprocess test can
+reach a host.
+WHY THIS AMENDMENT FIXES SOMEONE ELSE'S DEFECT, stated plainly rather than left implied: F273's
+closure added the `assert asked` line, and a closure's own hosted CI runs only after its last commit,
+so it merged without ever seeing this column — the trap R-0984's carry-forward reason already names,
+sprung a second time on a different node. Every feature after F273 inherits an unmergeable `main`
+until someone repairs it, and this amendment is the one holding the pull request.
+ALTERNATIVES: skipping the assertion when `ollama` is not importable, rejected as a gate that cannot
+fail where it matters; merging the pull request red, rejected because the amendment says merge only
+when green and AGENTS.md's Open PR Gate says the same; leaving `main` red and reporting it, rejected
+because it makes Part E unfinishable and hands the next feature the same wall.
+REVERSE: restore the install line to `python3 -m pip install -e ".[dev]"` with its former step name,
+delete the comment above it, delete R-1009 from the ledger, and delete this paragraph.

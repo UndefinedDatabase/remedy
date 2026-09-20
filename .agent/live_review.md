@@ -485,3 +485,45 @@ NEXT CLOSURE'S OWN RUN, and this finding resolves when one lands a repair: a `Do
 owed by the first closure whose self-use run produces a diff its reviewer passes, and by no earlier
 one. Until then it stays open however green the new tests are, because tests prove the wiring and
 only a run proves the track. Owner: F282.
+
+- R-1009 — Medium, MAIN'S HOSTED CI HAS BEEN RED ON BOTH COLUMNS SINCE `43d14817` BECAUSE A CLOSURE
+ADDED AN ASSERTION THAT THE HOSTED ENVIRONMENT CANNOT MEET: IT REQUIRES A NETWORK PROBE THAT THE
+`ollama` PACKAGE MAKES, AND CI INSTALLS ONLY `.[dev]`, WHICH DOES NOT CARRY IT. Raised under operator
+amendment amend0920-selfuse-real at `aeadfa45`, from that amendment's own pull request 261 reading
+red, after searching the open set and its archive for `test_study_run_dispatch_e2e`, `R-0978`,
+`R-0961`, `study run` and `3.12` under §3 item 30: R-0984 is the 3.12 column's OTHER defect (a
+str-mixed enum's rendering) and is a different mechanism on the same column; R-0978 and R-0961
+concern this same test's host reachability and its subprocess timeout and are both RESOLVED in the
+archive; no finding describes this one. THE DEFECT, measured four ways and not inferred. (1) THE
+FAILING NODE is `tests/cli/test_study_cmd.py::TestStudyCommandReachability::
+test_study_run_dispatch_e2e`, failing `AssertionError: study run never asked the model host the test
+gave it` / `assert []`. (2) IT REPRODUCES AT THE FORK POINT, ON BOTH COLUMNS, BEFORE ANY COMMIT OF
+THIS AMENDMENT: run 35473013938 on `main` at `43d14817` — the very commit this branch was cut from —
+fails that same node on `ci (3.10)` and on `ci (3.12)`, so under amend0917-throughput rule 2 it is
+not this amendment's to have broken. (3) THE CAUSE IS THE ABSENT PACKAGE, read from the hosted job's
+own install line: job 106056424649 prints `Successfully installed annotated-types … typing-inspection`
+— twenty-two distributions, and `ollama` is not among them, because `.github/workflows/ci.yml` ran
+`python3 -m pip install -e ".[dev]"` and `pyproject.toml`'s `dev` extra is pytest, pytest-xdist,
+ruff, mypy, pytest-cov and coverage. `make_structured_call_fn` in
+`packages/orchestration/intake.py` answers `None` at `import ollama` BEFORE it constructs a client
+or contacts any host, which a direct probe confirms: with `sys.modules["ollama"]` broken the factory
+returns `None` and the loopback listener is never accepted. So the assertion is unmeetable in that
+environment, whatever the product does. (4) THE SAME NODE PASSES WHERE THE PACKAGE IS PRESENT: `1
+passed in 84.45s` in the primary checkout at `aeadfa45`, which has `ollama` installed. WHEN IT
+ENTERED: `80f7c529`'s run 35412813460 was green; the `assert asked` line was added between there and
+`43d14817` by F273's closure, whose own hosted CI runs only AFTER its last commit — which is the
+trap R-0984's carry-forward reason already names, sprung a second time on a different node. WHY
+MEDIUM: nothing on disk is wrong and no product behaviour is at fault — the cost is that `main` is
+unmergeable-by-the-rules for every feature after F273 until it is fixed, and that a reader of the red
+column is told a reachability claim failed when the environment simply cannot test it. FIX, APPLIED
+BY THIS AMENDMENT because it is what blocked its own merge and AGENTS.md's amend0820-gate-autonomy
+makes a red check on the open pull request's branch the session's work order: `.github/workflows/
+ci.yml` installs `.[dev,ollama]`, which brings the hosted environment into line with the one the
+suite is verified in, keeps the assertion at FULL STRENGTH rather than skipping it, starts no server,
+and changes nothing in process — `tests/conftest.py`'s `_no_live_ollama_reach` refuses
+`ollama.Client` for every in-process test without the `real_ollama` marker, and its own comment says
+the not-installed path exists to reproduce the hosted behaviour, so installed and absent are already
+equivalent there; only a SUBPROCESS test can reach a host, and only the loopback one its own fixture
+opens. RED PROOF, and it is the only honest one for an environment defect, the same shape R-0984's
+own FIX clause names: the hosted column is RED at `43d14817` and at `aeadfa45` and GREEN at the tip
+of this branch. Owner: F282.

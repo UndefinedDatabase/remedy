@@ -51,8 +51,20 @@ jobs:
           cache: npm
           cache-dependency-path: apps/ui/package-lock.json
 
-      - name: Install Remedy with its dev extra
-        run: python3 -m pip install -e ".[dev]"
+      # The `ollama` extra is installed too, and it is NOT optional for the
+      # suite: `tests/cli/test_study_cmd.py::TestStudyCommandReachability::
+      # test_study_run_dispatch_e2e` asserts that `study run` asked the model
+      # host the test gave it, and `make_structured_call_fn` answers None at
+      # `import ollama` before it contacts any host — so without the package
+      # that assertion is unmeetable and the column is red for an environment
+      # reason rather than a product one (R-1009, 2026-09-20). Installing it
+      # brings the hosted environment into line with the one the suite is
+      # verified in; it starts no server, and `tests/conftest.py`'s
+      # `_no_live_ollama_reach` still refuses `ollama.Client` for every
+      # in-process test without the `real_ollama` marker, so only a SUBPROCESS
+      # test can reach a host, and only the loopback one its own fixture opens.
+      - name: Install Remedy with its dev and ollama extras
+        run: python3 -m pip install -e ".[dev,ollama]"
 
       # DECISION F083 D6: the UI toolchain is a PRECONDITION of the `ui` stage,
       # not a part of it. Without this install the stage's tsc check skips here
