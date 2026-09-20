@@ -139,14 +139,15 @@ EVENT_NAMES: frozenset[str] = frozenset(
 #: the dimension permanently absent.
 READ_ONLY_EVENT_NAMES: frozenset[str] = frozenset(
     {
-        # Read by `stop_reasons.py` when classifying why a job stopped.
-        "approval_decision",
         # Read by `autonomy_readiness.py` and `memory_learn.py`; the readiness
         # dimension it feeds has therefore never scored present.
         "command_discovery_completed",
-        # Read by `autonomy_readiness.py`, `project_brain.py` and `ui_server.py`;
-        # `patch_intent_applied` and the other patch_intent_* names are written,
-        # this one alone is not.
+        # Read by `change_set.py`, `project_brain.py` and `ui_server.py`, which
+        # replay reverts already on disk; `patch_intent_applied` and the other
+        # patch_intent_* names are written, this one alone is not.  Its writer
+        # spells it `revert_completed` and carries no `intent_id`, the key two
+        # of those readers index by, so the rename is a metadata contract and
+        # not a spelling — see DECISION F277 D4.
         "patch_intent_reverted",
         # Read by `autonomy_loop.py`; the writer spells it
         # `snapshot_create_completed`.
@@ -155,10 +156,6 @@ READ_ONLY_EVENT_NAMES: frozenset[str] = frozenset(
         # `ui_server.py` already records in a comment that this name has no
         # emitter outside tests (DECISION F031 D2 / D9).
         "stop_reason_recorded",
-        # Read by `autonomy_readiness.py::_has_worker_adapters`, so that
-        # readiness dimension has scored absent since the day it was written —
-        # the instance docs/roadmap/features/T2_F277.md names by hand.
-        "worker_adapters_listed",
     }
 )
 
