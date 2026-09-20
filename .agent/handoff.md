@@ -67,14 +67,15 @@ then complete this handoff, share one grouped table with per-commit attribution 
 a handback cannot table the commit that writes it (R-0149 pattern), following round 9's
 identical precedent (C7/C7-fix).
 
-### (C4) F277 R10 C4: rewrite handoff for round 10
-### (C4-fix) F277 R10 C4-fix: record the actual push outcome in the handoff
+### bc42d21d F277 R10 C4: rewrite handoff for round 10
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/handoff.md | first write | this handback, with placeholder G6 push/status/worktree readings not yet knowable before the push |
-| .agent/handoff.md | fix-up | fill in the real `git push`/`git status`/`git worktree list` output for G6, only knowable after the first handoff commit was pushed |
+| .agent/handoff.md | +267/-301 (git show --numstat) | rewrite: this handback, first write, with placeholder G6 push/status/worktree readings not yet knowable before the push |
 
-(Exact SHAs for C4 and C4-fix are filled in below once made; see Deviations.)
+### (this commit) F277 R10 C4-fix: record the actual push outcome in the handoff
+| Path | +/- | Reason |
+|---|---|---|
+| .agent/handoff.md | this edit | fill in the real `git push`/`git status`/`git worktree list` output for G6, only knowable after `bc42d21d` was pushed |
 
 ## External actions
 
@@ -201,21 +202,16 @@ reading.
 
 | mutation | anchor count | result | exit | failed node ids |
 |---|---|---|---|---|
-| (a) mission_cmd.py: drop `, exit_code=EXIT_NO_PROJECT` from `_resolve_project_id`'s `no_project` call | 1 | 5 failed, 125 passed | 1 | `TestStart::test_starting_without_a_project_exits_three`, `TestStatusTransitions::test_a_transition_without_a_project_exits_three`, `TestNoProjectIsRefusedInTheCallersShape::test_under_json_it_is_an_envelope_on_stdout`, `TestNoProjectIsRefusedInTheCallersShape::test_without_json_it_is_the_two_lines_it_always_was`, `TestNoProjectIsRefusedInTheCallersShape` (5th) → see note |
+| (a) mission_cmd.py: drop `, exit_code=EXIT_NO_PROJECT` from `_resolve_project_id`'s `no_project` call | 1 | 5 failed, 125 passed | 1 | `test_mission_cmd.py::TestStart::test_starting_without_a_project_exits_three`, `test_mission_cmd.py::TestStatusTransitions::test_a_transition_without_a_project_exits_three`, `test_mission_cmd.py::TestNoProjectIsRefusedInTheCallersShape::test_under_json_it_is_an_envelope_on_stdout`, `test_mission_cmd.py::TestNoProjectIsRefusedInTheCallersShape::test_without_json_it_is_the_two_lines_it_always_was`, `test_contract_cmd.py::TestTheTwoSharedHelpersThreadTheFlagIntoThisGroupToo::test_no_project_is_an_envelope_under_json_and_exits_three` |
 | (b) mission_cmd.py: `_load_mission_or_exit`'s `MissionNotFoundError` branch, `json_output=json_output` → `json_output=False` | 1 | 2 failed, 128 passed | 1 | `TestPlan::test_planning_an_unknown_mission_exits_one`, `TestTheTwoSharedHelpersThreadTheFlagIntoThisGroupToo::test_an_unknown_mission_is_an_envelope_under_json` |
 | (c) mission_cmd.py: `"mission_plan_in_progress"` → `"plan_in_progress"` | 1 | 1 failed, 129 passed | 1 | `TestInProgressRefusal::test_a_recompile_is_refused_once_a_job_is_linked` |
 | (d) mission_cmd.py: `_load_mission_or_exit` call before `call_fn = None`, drop `, json_output=json_output` | 1 | 1 failed, 129 passed | 1 | `TestPlan::test_planning_an_unknown_mission_exits_one` |
 | (e) contract_cmd.py: drop `, json_output=json_output` from the `_resolve_project_id(project, ...)` call | 1 | 1 failed, 129 passed | 1 | `TestTheTwoSharedHelpersThreadTheFlagIntoThisGroupToo::test_no_project_is_an_envelope_under_json_and_exits_three` |
 | (f) contract_cmd.py: drop `, json_output=json_output` from the `_load_mission_or_exit(project_id, mission_id, ...)` call | 1 | 1 failed, 129 passed | 1 | `TestTheTwoSharedHelpersThreadTheFlagIntoThisGroupToo::test_an_unknown_mission_is_an_envelope_under_json` |
 
-Note on (a): the 5 failed node ids, exactly, were
-`TestStart::test_starting_without_a_project_exits_three`,
-`TestStatusTransitions::test_a_transition_without_a_project_exits_three`,
-`TestNoProjectIsRefusedInTheCallersShape::test_under_json_it_is_an_envelope_on_stdout`,
-`TestNoProjectIsRefusedInTheCallersShape::test_without_json_it_is_the_two_lines_it_always_was`,
-`TestTheTwoSharedHelpersThreadTheFlagIntoThisGroupToo::test_no_project_is_an_envelope_under_json_and_exits_three`
-(the fifth is in `test_contract_cmd.py`, not `test_mission_cmd.py` — both files were in the
-same pytest invocation). All five match the block's expected list exactly.
+Note on (a): mutation (a) is inside the shared helper `_resolve_project_id`, so it reddens
+callers in BOTH files in the same pytest invocation (four in `test_mission_cmd.py`, one in
+`test_contract_cmd.py`) — expected, since the block names this as the whole point of C3.
 
 Every reading matches the block's expected numbers and node ids exactly. Each file was
 restored byte-identically after its mutation (manual re-`Edit` back to the original text,
@@ -230,7 +226,17 @@ shows the primary checkout and the two pre-existing `remedy/job-*` worktrees onl
 
 ### G6 — push and tree, after C4
 
-(Filled in by the C4-fix commit once the push has actually run — see Deviations.)
+- `git push -u origin feature/f277-machine-contracts` →
+  `33d1c9df..bc42d21d feature/f277-machine-contracts -> feature/f277-machine-contracts`.
+  Succeeded.
+- `git status --porcelain` after the push: empty.
+- `git worktree list` after the push:
+```
+/home/decodeux/Repos/remedy                                  bc42d21d [feature/f277-machine-contracts]
+/home/decodeux/Repos/remedy/.remedy-wt/job-468c8e62a2cc4fac  1b9ae606 [remedy/job-468c8e62a2cc4fac]
+/home/decodeux/Repos/remedy/.remedy-wt/job-c1dba9c3d7874968  fd23710f [remedy/job-c1dba9c3d7874968]
+```
+  Primary checkout plus the two pre-existing `remedy/job-*` worktrees, nothing else.
 
 ## Authored-text proofs
 
