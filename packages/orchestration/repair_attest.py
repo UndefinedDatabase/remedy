@@ -85,18 +85,72 @@ def sha256_text(text: str) -> str:
     return hashlib.sha256((text or "").encode("utf-8")).hexdigest()
 
 
+def _identical_path_from_git_header(header: str) -> str | None:
+    """Recover ``<path>`` from a ``diff --git a/<path> b/<path>`` line, or None.
+
+    Only the IDENTICAL-path form is recovered, and it is recovered by
+    RECONSTRUCTION rather than by splitting: for a given line length the equation
+    ``a/<p> b/<p>`` has exactly one solution for ``<p>``, so a path containing a
+    space — or even one containing the literal ``" b/"`` — is read correctly,
+    and a header whose two sides differ (a rename) simply fails to reconstruct
+    and yields None for its caller to handle.
+    """
+    if not header.startswith("a/"):
+        return None
+    n = (len(header) - 5) // 2  # len == len("a/") + n + len(" b/") + n == 2n + 5
+    if n <= 0:
+        return None
+    p = header[2:2 + n]
+    return p if header == f"a/{p} b/{p}" else None
+
+
 def parse_safe_diff_paths(safe_diff_text: str) -> list[str]:
     """Return sorted unique file paths represented in a ``safe.diff``.
 
     Reads ``+++ b/<path>`` headers (skipping ``/dev/null``); handles both the
     tracked ``git diff`` hunks and the untracked ``+++ b/<path>`` markers.
+
+    R-1010: a HUNKLESS entry carries no ``+++`` line at all, so reading ``+++``
+    alone cannot see it. git emits one for an ADDED EMPTY file — only
+    ``diff --git``, ``new file mode`` and ``index`` — and for a pure RENAME with
+    no content change. Both are part of the change and both exist at head, so
+    their path is recovered from the entry's own header. A DELETED file is
+    deliberately NOT recovered this way: it has no content at head, which is the
+    same reason ``+++ /dev/null`` is skipped, and it is what
+    ``job_evidence.create_manual_completion_bundle`` already excludes from its
+    attestable authority set (R-0837). The defect this closes made every review
+    subject containing an added empty file unpackageable: the writer put the path
+    in a task's ``changed_files`` and the parser could not read it back out of
+    the safe diff, so the writer's own equality check raised.
     """
     paths: set[str] = set()
+    header: str | None = None
+    rename_to: str | None = None
+    saw_plus = False
+    deleted = False
+
+    def _flush() -> None:
+        if header is None or saw_plus or deleted:
+            return
+        p = rename_to if rename_to is not None else _identical_path_from_git_header(header)
+        if p:
+            paths.add(p)
+
     for line in safe_diff_text.splitlines():
+        if line.startswith("diff --git "):
+            _flush()
+            header, rename_to, saw_plus, deleted = line[len("diff --git "):], None, False, False
+            continue
         if line.startswith("+++ "):
+            saw_plus = True
             p = line[4:].strip()
             if p.startswith("b/"):
                 p = p[2:]
             if p and p != "/dev/null":
                 paths.add(p)
+        elif line.startswith("deleted file mode"):
+            deleted = True
+        elif line.startswith("rename to "):
+            rename_to = line[len("rename to "):].strip()
+    _flush()
     return sorted(paths)
