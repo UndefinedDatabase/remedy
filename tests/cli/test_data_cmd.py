@@ -55,6 +55,14 @@ def test_json_is_a_flag_that_parses_false_when_not_typed():
     assert args.json is True
 
 
+def test_apply_is_a_flag_that_parses_false_when_not_typed():
+    """`--apply` is declared ``is_flag``; only ``--json`` is special-cased by name."""
+    args, _ = build_parser().parse_known_args(["data", "reclaim"])
+    assert args.apply is False
+    args, _ = build_parser().parse_known_args(["data", "reclaim", "--apply"])
+    assert args.apply is True
+
+
 def test_format_data_bytes():
     assert format_data_bytes(0) == "0 B"
     assert format_data_bytes(1023) == "1023 B"

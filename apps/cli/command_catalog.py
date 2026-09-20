@@ -2138,6 +2138,24 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         args=(_JSON_OPT,),
         supports_json=True,
     ),
+    CommandEntry(
+        command_id="data.reclaim",
+        group_id="data",
+        subcommand="reclaim",
+        description="Preview the ephemeral scratch that can be freed; --apply removes exactly the previewed paths.",
+        # local_state_change, NOT apply_write: --apply deletes Remedy's OWN scratch
+        # under the data root and never writes into a target repository.
+        action_class="local_state_change",
+        args=(
+            # is_flag, because `--apply` takes no value and `grouped.py` only
+            # special-cases `--json` by name; without it the option would demand one.
+            ArgDef("--apply", "Actually delete the previewed paths (default: preview only)",
+                   required=False, is_option=True, is_flag=True),
+            _JSON_OPT,
+        ),
+        supports_json=True,
+        related=("data.usage",),
+    ),
 
     # ── config ──────────────────────────────────────────────────────────
     CommandEntry(
