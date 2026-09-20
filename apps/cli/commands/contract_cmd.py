@@ -48,8 +48,8 @@ def _cmd_mission_contract(mission_id: str, *, project: str | None = None,
     )
     from packages.orchestration.mission_contract import render_contract_lines
 
-    project_id = _resolve_project_id(project)
-    mission = _load_mission_or_exit(project_id, mission_id)
+    project_id = _resolve_project_id(project, json_output=json_output)
+    mission = _load_mission_or_exit(project_id, mission_id, json_output=json_output)
     contract = _read_contract_or_exit(mission, json_output=json_output)
 
     if json_output:
