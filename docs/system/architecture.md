@@ -2461,16 +2461,39 @@ Resolution order (unchanged from historical convention):
 **Invariant**: In production Python under `apps/` and `packages/`, `data_paths.py` is the only file that contains `os.environ.get("REMEDY_DATA_DIR")`. Scripts and tests may still read it directly.
 
 **Data-root classes (F276 T001).** Every top-level child of the data root is in
-exactly one of `data_paths.EPHEMERAL_CLASSES` (scratch: `job_workspaces`,
-`workspaces`, `runs`, `job_logs`, `review_staging.*`) or `DURABLE_CLASSES`
-(everything else), each entry naming its owning module and its reclaim rule; the
+exactly one of `data_paths.EPHEMERAL_CLASSES` (scratch: `job_workspaces` and
+`review_staging.*`) or `DURABLE_CLASSES` (everything else, `workspaces`, `runs` and
+`job_logs` among them since DECISION F276 D3), each entry naming its owning module
+and its reclaim rule; the
 class-named `*_dir()` helpers resolve through `data_class_dir(name)`, which refuses
 an unregistered name. `tests/test_data_root_classes.py` scans `packages/`, `apps/` and
 `scripts/` for every child the code creates and reds on one in neither class.
 `remedy data usage [--json]` (`packages/orchestration/data_footprint.py`) reports
 bytes and files per class and per child from one read-only walk that follows no
 symlink; a child no class names, such as a legacy `task_jobs/`, reports as
-`unclassified`. Reclaim is T002 and does not exist yet.
+`unclassified`.
+
+**Reclaiming the scratch (F276 T002).** `remedy data reclaim [--apply] [--json]`
+(`packages/orchestration/data_reclaim.py`) is preview-first: without `--apply` it
+computes a `ReclaimPlan` and deletes nothing. A candidate is a DIRECT CHILD of an
+ephemeral class DIRECTORY whose job resolves in the job store and is terminal —
+`pingpong_job.JOB_TERMINAL_STATES`, which is `completed`, `failed` and `cancelled`;
+`blocked`, `stopped` and `paused` keep their scratch because `remedy job resume`
+will want it. Under DECISION F276 D3 that is ONE class: `job_workspaces/`, whose
+children are the `staging_<job>` copies the non-git isolation path makes, so the job
+id is read from the child's own name and never from a file. `workspaces/`, `runs/`
+and `job_logs/` are durable and are never candidates — each mixes scratch with
+evidence that outlives its job (`snapshot inspect` and `snapshot list-applies` read
+the first, `job_evidence` the second, the timeline, trust report and cockpit the
+third), and a subtree rule that reached inside them to separate the two would give up
+the direct-child rule that makes deletion safe. Everything else is REPORTED
+rather than deleted: a durable or
+unclassified top-level child appears with its bytes under a heading that says it is
+not reclaimed, and a non-terminal job, an unresolvable job, a symlink, a real path
+outside the root and a `review_staging.*` directory that no job owns are each listed
+as a refusal with its reason. `apply_reclaim` re-checks every rule against the live
+filesystem before each deletion, so the plan is input and never authority; a second
+`--apply` over the same state removes nothing and exits 0.
 
 ### Part C — `packages/orchestration/path_utils.py`
 
