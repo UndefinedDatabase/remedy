@@ -25,6 +25,7 @@ from __future__ import annotations
 
 import dataclasses
 import json
+import os
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
@@ -32,6 +33,12 @@ from typing import Any
 from uuid import uuid4
 
 from packages.orchestration.data_paths import run_log_dir
+from packages.orchestration.event_names import assert_declared_event
+
+#: Development-only opt-in: reject an event name F277's declaration does not
+#: carry.  OFF by default because a ledger write must never break a running job
+#: — the check exists to fail a test run, not a production one.
+STRICT_EVENT_NAMES_ENV = "REMEDY_STRICT_EVENT_NAMES"
 
 # ---------------------------------------------------------------------------
 # Run ID
@@ -159,6 +166,8 @@ class RunLogWriter:
                 task_type="write_readme",
             )
         """
+        if os.environ.get(STRICT_EVENT_NAMES_ENV) == "1":
+            assert_declared_event(event)
         evt = RunEvent(
             event=event,
             job_id=self._job_id,
