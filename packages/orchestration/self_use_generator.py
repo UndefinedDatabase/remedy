@@ -97,6 +97,52 @@ _LEDGER_PROVENANCE_RE = re.compile(
 #: which are judgement calls a generator does not make for itself.
 _ELIGIBLE_SEVERITIES = ("Low", "Medium")
 
+#: THE SENTENCE THAT MAKES A FINDING REPAIRABLE. A paragraph without one names
+#: no repair, so the job rendered from it asks a builder to invent the fix and
+#: the reviewer to judge an invention — which is how SU-019 to SU-023 each
+#: reached the approval gate with nothing built (operator amendment
+#: amend0920-selfuse-real, DECISION D2).
+_FIX_SENTENCE_RE = re.compile(r"\bFIX\b\s*(?:,[^.]*?)?:", re.I)
+
+#: WORDS THAT SAY THE FIX IS NOT THIS RUN'S TO MAKE. Each one was read off the
+#: five hollow runs rather than guessed: `flaky` and `once in` mark a finding
+#: whose defect does not reproduce on demand, `never captured` marks one whose
+#: evidence does not exist yet, and `operator` and `waits on` mark one held by a
+#: person or by another feature. A builder given any of these cannot finish, and
+#: a run that cannot finish is a closure spent for nothing.
+#:
+#: MATCHED CASE-INSENSITIVELY, and that is load-bearing: this ledger writes a
+#: finding's headline in capitals, so R-0499's own "HAS NEVER BEEN CAPTURED"
+#: is invisible to a case-sensitive search for the very phrase that describes it.
+#: ``never captured`` is spelled as a PATTERN for the same reason — the ledger's
+#: own sentence is "has never BEEN captured", and a phrase that cannot match the
+#: instance it was written for is not a filter (amend0920-selfuse-real D2).
+_INELIGIBLE_PATTERNS: tuple[re.Pattern[str], ...] = (
+    re.compile(r"flaky", re.I),
+    re.compile(r"never (?:been )?captured", re.I),
+    re.compile(r"once in\b", re.I),
+    re.compile(r"\boperator\b", re.I),
+    re.compile(r"waits on", re.I),
+)
+
+
+def _is_repairable(paragraph: str) -> bool:
+    """Can a builder actually finish the job this paragraph would become?
+
+    Two questions, both answered from the paragraph's own bytes: does it NAME a
+    repair (a ``FIX:`` sentence), and does it say the repair is held by
+    something this run does not control (:data:`_INELIGIBLE_PATTERNS`)?
+
+    REMEDY DELIBERATELY DOES NOT JUDGE WHETHER THE NAMED FIX IS A GOOD ONE. That
+    is the reviewer's call and R-0784's ruling stands: this filter reads what
+    the paragraph SAYS about its own repair, never whether the repair is right.
+    What changed is that a paragraph naming NO repair at all is no longer
+    treated as one that does.
+    """
+    if not _FIX_SENTENCE_RE.search(paragraph):
+        return False
+    return not any(pattern.search(paragraph) for pattern in _INELIGIBLE_PATTERNS)
+
 
 class SelfUseGenerationError(RuntimeError):
     """A source this generator needs could not be read, or a render was unsafe.
@@ -153,19 +199,30 @@ def _oldest_open_low_or_medium_finding(
         return None
 
     candidates.sort()
-    _, oldest_id = candidates[0]
 
+    # THE OLDEST REPAIRABLE ONE, not simply the oldest. Eligibility is read from
+    # the paragraph, so the paragraph is extracted BEFORE the choice is made and
+    # the loop walks on when it is not repairable (amend0920-selfuse-real D2).
+    for _, candidate_id in candidates:
+        paragraph = _finding_paragraph(text, candidate_id, ledger_path)
+        if _is_repairable(paragraph):
+            return candidate_id, paragraph
+    return None
+
+
+def _finding_paragraph(text: str, r_id: str, ledger_path: Path) -> str:
+    """The registration paragraph of ``r_id``, verbatim, from ``text``."""
     paragraph_re = re.compile(
-        rf"^- {re.escape(oldest_id)} — (?:Low|Medium), .*?(?=\n\n|\Z)",
+        rf"^- {re.escape(r_id)} — (?:Low|Medium), .*?(?=\n\n|\Z)",
         re.M | re.S,
     )
     paragraph_match = paragraph_re.search(text)
     if paragraph_match is None:
         raise SelfUseGenerationError(
-            f"{ledger_path}: matched {oldest_id} by severity scan but could "
+            f"{ledger_path}: matched {r_id} by severity scan but could "
             "not re-extract its paragraph"
         )
-    return oldest_id, paragraph_match.group(0)
+    return paragraph_match.group(0)
 
 
 def _next_queue_id(queue_path: Path | None) -> str:
