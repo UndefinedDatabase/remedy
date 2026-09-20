@@ -202,9 +202,17 @@ shows the primary checkout and the two pre-existing `remedy/job-*` worktrees onl
 
 ### G6 — push and tree, after C3
 
-- `git push -u origin feature/f277-machine-contracts` → PENDING_AT_FIRST_WRITE
-- `git status --porcelain` after the push: PENDING_AT_FIRST_WRITE
-- `git worktree list` after the push: PENDING_AT_FIRST_WRITE
+- `git push -u origin feature/f277-machine-contracts` →
+  `e90faf51..8bdf7d78 feature/f277-machine-contracts -> feature/f277-machine-contracts`.
+  Succeeded.
+- `git status --porcelain` after the push: empty.
+- `git worktree list` after the push:
+```
+/home/decodeux/Repos/remedy                                  8bdf7d78 [feature/f277-machine-contracts]
+/home/decodeux/Repos/remedy/.remedy-wt/job-468c8e62a2cc4fac  1b9ae606 [remedy/job-468c8e62a2cc4fac]
+/home/decodeux/Repos/remedy/.remedy-wt/job-c1dba9c3d7874968  fd23710f [remedy/job-c1dba9c3d7874968]
+```
+  Primary checkout plus the two pre-existing `remedy/job-*` worktrees, nothing else.
 
 ## Authored-text proofs
 
