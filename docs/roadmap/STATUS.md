@@ -44,6 +44,7 @@ The tier-block order below is the operator-decided Self-Use sequence of 2026-08-
 - [x] F273 — Findings paydown v1 (T001-T016 built, the fourteen ids still open carried to F282; accepted 2026-09-19 · live review PASS_WITH_RISKS — ACCEPTED · Evidence job f273r24e1001 · package remedy-review-20260919-225654-READY_FOR_REVIEW.zip · SHA-256 01ac1c30685c56be29c98f130182d2c3bc1a248dcd5a8d30509a8d71fef6ca0d · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD c62aa3b1577b9308f7aaf09a48fc08ac6fd249ba)
 - [x] F276 — Data-root hygiene & disk budget (T001-T004 complete, the nineteen ids still open carried to F282; accepted 2026-09-20 · live review PASS_WITH_RISKS — ACCEPTED · Evidence job f276r13e1001 · package remedy-review-20260920-150902-READY_FOR_REVIEW.zip · SHA-256 b36e23f1e04adf64f953ba9fbc5825ff5a9942af97a8133616646417d6cd01f3 · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD 03e72f77fd74e72d6cdc8b2d2f00e3efe76e0315)
 - [~] F277 — Machine contracts: event vocabulary, JSON envelope, exit codes
+- [ ] F283 — Machine contracts, part two: the refusal sweep, the JSON gap and the exit-code taxonomy
 - [ ] F278 — Durable writes & loud failures
 - [ ] F279 — Configuration & toolchain truth: env registry, pinned dependencies, block lint
 
