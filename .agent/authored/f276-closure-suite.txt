@@ -1,58 +1,75 @@
-F276 INTEGRATION GATE — the one full suite run of this feature
-(operator amendment amend0917-throughput, 2026-09-17, rule 1)
+F276 INTEGRATION GATE — the repair run of this feature
+(operator amendment amend0917-throughput, 2026-09-17, rule 2;
+DECISION F276 D9, .agent/decisions.md)
 
-Run ONCE, by the worker of round 7, in the PRIMARY checkout
-/home/decodeux/Repos/remedy, never a worktree, after C3 (2eca3731) and
-before the handback. Nothing was repaired after reading it: amend0917
-rule 2 gives the repair rounds to the next round, which the reviewer
-authors after reading this file.
+This file REPLACES the transcript of round 7's rule-1 run, which was red.
+Closure precondition 2 reads ONE file by name, so the repair run's transcript
+takes the same path rather than sitting beside the old one; the run it
+replaces is not lost — it is the committed content of this path at a5193724,
+and its bad set is restated below so the shrinking rule rule 2 states is
+checkable on this file alone.
+
+Run ONCE, by the worker of round 8, in the PRIMARY checkout
+/home/decodeux/Repos/remedy, never a worktree. Under constraint 8 of that
+round's block it was not re-run to see whether a second attempt read
+differently: rule 2 spends repair rounds, not retries.
+
+WHAT WAS REPAIRED BEFORE THE RUN — and it is the ENVIRONMENT, not a test
+DECISION F276 D9 attributes round 7's three red nodes to a cold checkout:
+apps/ui/dist is gitignored and was absent, the UI server's start path
+auto-builds it, and that auto-build was still running while the workers
+pytest -n auto had already dispatched were trying to reach a server. The
+repair is therefore to build the artifact FIRST and then run the suite:
+
+  cd apps/ui && npm run build
+  EXIT CODE 0, last line: ✓ built in 1.45s
+  git status --porcelain immediately afterwards: EMPTY
+  (apps/ui/dist is gitignored, so the build changes no tracked file)
+
+Nothing was marked xfail, nothing was skipped, no assertion was weakened and
+no test was deleted.
 
 COMMAND
   python3 -m pytest -n auto -q
 
 CHECKOUT       /home/decodeux/Repos/remedy
-COMMIT         2eca3731 (C3 of round 7)
+COMMIT         b926615b787d41d4e252f9356b401944b1397731 (C1 of round 8)
 BRANCH         feature/f276-data-root-hygiene
 TREE           git status --porcelain empty at the start of the run
 
-EXIT CODE      1
+EXIT CODE      0
+               taken from the process object of the subprocess that ran
+               pytest, never from a pipeline, so it is pytest's own code and
+               not a downstream reader's
 
 PYTEST SUMMARY LINE, verbatim
-  3 failed, 17636 passed, 20 skipped, 1 warning in 232.32s (0:03:52)
+  17639 passed, 20 skipped, 1 warning in 219.97s (0:03:39)
 
-WALL CLOCK     317.10 seconds measured around the process by the caller
-               (pytest's own in-band reading is the 232.32s in the summary
+WALL CLOCK     304.96 seconds measured around the process by the caller
+               (pytest's own in-band reading is the 219.97s in the summary
                line above; the difference is collection, the xdist workers'
                start-up and the run's own teardown)
 
-BAD NODE IDS — 3, the complete set, not truncated
+BAD NODE IDS: none
+The run printed no FAILURES section, no ERRORS section, and no line beginning
+FAILED or ERROR: searched for mechanically over the captured output rather
+than read off the summary. The bad set of this run is empty.
+
+PREVIOUS BAD NODE IDS — 3, the complete set of the run this file replaces,
+quoted here so the shrinking rule is resolvable against one file
 tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_post_to_job_dashboard_is_405
 tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_a_near_miss_of_the_commands_path_is_405
 tests/ui_server/test_live_state.py::TestUIServerIntegration::test_put_rejected
 
-The run reported no ERRORS section; pytest printed a FAILURES section and a
-short test summary info section only, so the bad set is exactly the three
-failures listed above and there are no collection or teardown errors to add.
+THE SHRINKING RULE, as arithmetic
+  of the previous 3 bad nodes, still bad now: 0
+  nodes bad now that were not bad before:     0
+Rule 2 asks that the first number be smaller than 3 and the second be zero.
+0 < 3 and 0 == 0, so the bad set strictly shrank — to empty — with no node
+newly bad.
 
-DECISIVE CAPTURED OUTPUT of those three, quoted rather than characterised,
-because what a repair round needs first is whether these are a defect of
-this feature or a posture of the checkout:
-
-  tests/ui_server/server_start.py:66: Failed
-  E               Failed: Server thread exited before publishing its info file
-  ----------------------------- Captured stderr call -----------------------------
-  [remedy-ui] auto-build (dist missing)...
-  ERROR: React UI not built.
-    To fix, run:
-      cd apps/ui && npm install && npm run build
-
-All three failures are in tests/ui_server/ and all three fail at the same
-seam — the UI server never comes up because apps/ui has no built dist in
-this checkout. No failure is in tests/orchestration/, tests/cli/ or
-tests/docs, and none names apps/cli/commands/job.py,
-packages/core/models.py, packages/orchestration/budget_guard.py,
-packages/orchestration/budget_resolution.py,
-packages/orchestration/pingpong_job.py or any other file F276 touched.
-That is a reading, not a verdict: the verdict on what these three are is
-round 8's, and this file exists so that round can be authored from a
-measured set rather than from a recollection.
+ONE MORE READING, because a count is easier to trust when it reconciles: the
+previous run read 3 failed, 17636 passed, 20 skipped, for 17659 outcomes; this
+run reads 17639 passed, 20 skipped, for the same 17659. The three that were
+failing are the three that are now passing, and no test was added, removed or
+deselected between the two runs — round 8's C1 touches only .agent/ state.
