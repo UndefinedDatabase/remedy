@@ -198,8 +198,10 @@ The commands per surviving group:
   `--apply`, `--with-history`, `--step-by-step`, `--plan-only`, `--force-job`,
   `--force-mission`, `--contract <template>`, `--no-ui`, `--project`, `--repo`, the
   budget flags, the role flags (`--builder-model`, `--reviewer-model`,
-  `--planner-model`, and the `--*-provider` triplet), `--yes`, `--json`. Nothing
-  else under `do`.
+  `--planner-model`, and the `--*-provider` triplet — `--builder-provider`,
+  `--reviewer-provider` and `--planner-provider`, the last of which
+  amend0920-selfuse-real added once a second planning service existed to
+  choose), `--yes`, `--json`. Nothing else under `do`.
 - `mission list | show <id> [--full] | plan <id> | contract <id> | run <id> |
   continue <id> "<next step>" | pause | resume | achieve | abandon | watchdog |
   handoff | report | readiness | start "<goal>"`. `mission list` IS the operator's

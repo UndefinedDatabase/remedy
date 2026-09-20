@@ -88,6 +88,29 @@ text that runs.
 | `packages/orchestration/self_use_runner.py` | runs the planned item via `run_job` under a small budget, in the isolated worktree the target repo gives it. Stops at the approval gate; never applies, never marks consumed (F258 T002). |
 | `packages/orchestration/self_use_findings.py` | reads the run's own `JobPlan` and answers each defect verbatim: the job's `error`, its stop fields when it stopped or holds a `stop_reason`, its `run_manifest_error`, and each task's `error`, or its `final_status` when that `error` is blank and it did not pass. Registers nothing itself — the closing session mints the finding (F258 T003). |
 
+## Who runs it, and on what budget
+
+A self-use run repairs THIS repository against THIS repository's review
+discipline, so it is the hardest work the product does. Both sides of the run —
+the builder and the reviewer — are configured from ONE role, `self_use`, whose
+built-in default is the frontier provider `claude-cli` on the alias table's
+Sonnet alias, and the run carries its own budget of at most 8 provider calls and
+1.00 USD (DECISION amend0920-selfuse-real D2). THE REASON IS MEASURED, not
+preferred: SU-019 to SU-023 — five consecutive closures — each generated an item,
+ran it on the local model and landed no repair at all, so a track meant to prove
+Remedy on Remedy proved only that the closure ran. The product default for an
+ordinary user's job is untouched; this is the one path that opts out of it, and
+`self_use.provider` / `self_use.model` put it back. An explicitly injected
+provider object or an explicit `builder_name` still wins, as it always did.
+
+The generator only offers a finding a builder can actually finish: its paragraph
+must NAME a repair (a `FIX:` sentence) and must not say the repair is held by
+something the run does not control — a defect that is flaky or reproduces only
+once in so many runs, evidence that was never captured, or work that waits on
+the operator or on another feature. A finding held that way stays in the ledger
+for a session to pick up by hand; it is no longer handed to a builder who cannot
+finish it.
+
 ## Consumption — exactly one per feature close
 
 Precondition 6 of the closure protocol

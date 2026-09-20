@@ -1255,6 +1255,18 @@ ROLE_TASK_CLASSES: dict[str, str] = {
     # F266 D1: study reads repositories, tier matches teacher/summary
     "study": "summarize",
     "orchestrator": "mission",
+    # amend0920-selfuse-real D1: the planner's calls ARE the mission compile —
+    # `make_structured_call_fn` is what builds the `MissionPlanDraft` call_fn —
+    # so it declares the class the policy already pins to the top tier, and
+    # declaring it changes what a planner call RECORDS and nothing about which
+    # model runs (see role_config.py's own paragraph on that distinction).
+    "planner": "mission",
+    # amend0920-selfuse-real D2: `self_use` configures the BUILDER and REVIEWER
+    # of a self-use run, which is an ordinary repair job against this
+    # repository — the same class `builder` declares. One class serves both
+    # because both sides of that run are configured from this one role, so the
+    # reviewer is never routed weaker than the worker it reviews.
+    "self_use": "standard_build",
 }
 
 #: THE INHERITING ROLES — roles whose task class is not their own but the class of
@@ -1416,6 +1428,9 @@ DYNAMIC_ROLE_MARKER: str = "<dynamic>"
 ROLE_CONFIG_CALL_SITES: tuple[tuple[str, str], ...] = (
     ("apps/cli/commands/do_cmd.py", DYNAMIC_ROLE_MARKER),
     ("packages/orchestration/artifact_summary.py", "summary"),
+    # amend0920-selfuse-real D1: make_structured_call_fn asks the `planner` role
+    # which planning SERVICE to build, when no --planner-provider named one.
+    ("packages/orchestration/intake.py", "planner"),
     ("packages/orchestration/pingpong_job.py", DYNAMIC_ROLE_MARKER),
     ("packages/orchestration/role_config.py", "orchestrator"),
     ("packages/orchestration/self_use_runner.py", DYNAMIC_ROLE_MARKER),

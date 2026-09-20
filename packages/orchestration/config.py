@@ -530,6 +530,59 @@ _CONFIG_KEY_SPECS: tuple[ConfigKeySpec, ...] = (
         default=10,
     ),
     ConfigKeySpec(
+        key="self_use.provider",
+        env_var="REMEDY_SELF_USE_PROVIDER",
+        description=(
+            "Provider for BOTH the builder and the reviewer of a self-use run "
+            "(operator amendment amend0920-selfuse-real, DECISION D2). Unset "
+            "means `claude-cli`: a self-use run repairs THIS repository, which "
+            "is frontier work, and five consecutive runs on the local model "
+            "(SU-019 to SU-023) landed nothing. Set it to `ollama` to put the "
+            "track back on the local model."
+        ),
+        value_type=str,
+        default=None,
+    ),
+    ConfigKeySpec(
+        key="self_use.model",
+        env_var="REMEDY_SELF_USE_MODEL",
+        description=(
+            "Model for both roles of a self-use run (operator amendment "
+            "amend0920-selfuse-real, DECISION D2). Unset means the alias "
+            "table's Sonnet alias, which the run's cost bound of at most 8 "
+            "provider calls and 1.00 USD per closure is written for."
+        ),
+        value_type=str,
+        default=None,
+    ),
+    ConfigKeySpec(
+        key="planner.provider",
+        env_var="REMEDY_PLANNER_PROVIDER",
+        description=(
+            "Which service does the structured planning: `ollama` or "
+            "`claude-cli` (operator amendment amend0920-selfuse-real, DECISION "
+            "D1). Read by `packages.orchestration.intake.make_structured_call_fn` "
+            "when no `--planner-provider` was given. Unset means `ollama`, the "
+            "only planner Remedy had before the second one existed, so an "
+            "unconfigured repository plans exactly as it always did."
+        ),
+        value_type=str,
+        default=None,
+    ),
+    ConfigKeySpec(
+        key="planner.model",
+        env_var="REMEDY_PLANNER_MODEL",
+        description=(
+            "Model for the planner role, whichever service serves it (operator "
+            "amendment amend0920-selfuse-real, DECISION D1). Unset lets the "
+            "selected planner resolve its own default — the `ollama-default` "
+            "alias for Ollama, which also honours `ollama.planner.model`, and "
+            "the `claude-workhorse` alias for the Claude CLI."
+        ),
+        value_type=str,
+        default=None,
+    ),
+    ConfigKeySpec(
         key="teacher.model",
         env_var="REMEDY_TEACHER_MODEL",
         description=(

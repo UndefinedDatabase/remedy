@@ -1,25 +1,29 @@
-# Plan — F273 Findings paydown v1
+# Plan — operator amendment amend0920-selfuse-real
 
-Branch: feature/f273-findings-paydown-v1, cut from `main` at `80f7c529`
-(the merge commit of pull request 259, F271's closure).
+Branch: feature/amend0920-selfuse-real, cut from `origin/main` at `43d14817`
+(the merge commit of pull request 260, F273's closure).
 
 ## Goal
 
-Pay down the open findings that describe a real defect, each by the repair
-its own text names, with the evidence that discharged it
-(`docs/roadmap/features/T2_F273.md`).
+A planner that is not Ollama, a self-use track that can land a fix, and the
+answered operator questions deleted — the operator amendment's Parts A to E.
 
 ## Current Step
 
-Round 25 is closure round B: it books round 24's verdict, registers R-1000,
-moves every open finding to F282 by the ownership paragraph, rotates the
-ledger, registers F282, flips F273's STATUS line with the README and the
-self-use item's `consumed_by`, and opens the pull request into `main`.
+Part E: the gates, then the pull request, its hosted CI, the merge, and the
+fold-in of `origin/main` into `feature/f276-data-root-hygiene`.
 
 ## Next Steps
 
-1. The next session's Phase 1: rule 1 (`.agent/STOP`), then rule 2 merges
-   F273's pull request at the Open PR Gate once its hosted CI has run.
-2. The first round of the next feature books round 25's verdict and reads
-   the pull request's 3.12 column for R-0984, which F282 owns.
-3. Rule A5 then proposes the next unchecked STATUS line.
+1. Run `ruff check .`, `tests/docs/`, `tests/cli/test_golden_path.py`, the
+   catalog tests, `test_do_run.py`, `test_self_use_*.py`, `test_config.py`
+   and every test this branch added.
+2. Push, open the pull request, watch both Python columns, merge when green.
+3. Merge `origin/main` into `feature/f276-data-root-hygiene` with `--no-ff`,
+   keeping BOTH sides of every append-only file, main first. Push it.
+4. Restore `ORIG_BRANCH` and write the handback.
+
+## Risks
+
+- `do_run.py` holds no `make_structured_call_fn` call; the three sites named
+  are in `do_sequence.py` (F268 round 10 moved them). DECISION D1 records it.

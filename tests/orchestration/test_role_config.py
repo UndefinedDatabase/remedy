@@ -47,6 +47,7 @@ from packages.orchestration.role_config import (
     DEFAULT_PROVIDER,
     KNOWN_ROLES,
     PROMOTION_EVIDENCE_CONFIG_KEY,
+    ROLES_WITH_THEIR_OWN_DEFAULTS,
     TASK_CLASS_TIERS_CONFIG_KEY,
     RoleConfig,
     default_model_for_provider,
@@ -155,11 +156,16 @@ class TestAllRoles:
     def test_each_known_role_resolves(self, role):
         cfg = resolve_role_config(role)
         assert cfg.role == role
+        assert cfg.effort == DEFAULT_EFFORT
+        if role in ROLES_WITH_THEIR_OWN_DEFAULTS:
+            # Named, not skipped: the exception is asserted in
+            # TestTheSelfUseRole below, so opting a role out
+            # of the product default cannot pass unnoticed here.
+            return
         assert cfg.provider == DEFAULT_PROVIDER
         assert cfg.model == DEFAULT_MODEL
-        assert cfg.effort == DEFAULT_EFFORT
 
-    def test_all_ten_roles_present(self):
+    def test_all_twelve_roles_present(self):
         assert KNOWN_ROLES == (
             "builder",
             "reviewer",
@@ -181,6 +187,14 @@ class TestAllRoles:
             # F266: the repo-comprehension role. Same built-in defaults as
             # every other role.
             "study",
+            # amend0920-selfuse-real D1: the structured-planning role. Its
+            # default provider is `ollama` — the same one every other role
+            # resolves — so an unconfigured repository plans as it always did.
+            "planner",
+            # amend0920-selfuse-real D2: the builder-and-reviewer pair of a
+            # self-use run, and THE ONE ROLE whose built-in defaults are not the
+            # product's. See ROLES_WITH_THEIR_OWN_DEFAULTS.
+            "self_use",
         )
 
     def test_per_role_config_is_independent(self):
@@ -414,9 +428,11 @@ class TestWiringChangedNoResolution:
     def test_every_known_role_resolves_exactly_as_before(self, role):
         cfg = resolve_role_config(role)
         assert cfg.role == role
+        assert cfg.effort == DEFAULT_EFFORT
+        if role in ROLES_WITH_THEIR_OWN_DEFAULTS:
+            return
         assert cfg.provider == DEFAULT_PROVIDER
         assert cfg.model == DEFAULT_MODEL
-        assert cfg.effort == DEFAULT_EFFORT
 
     def test_a_config_file_override_still_wins_over_the_defaults(self):
         cfg = resolve_role_config(
@@ -1125,3 +1141,111 @@ class TestDemotingTheReviewerHalfIsRefusedByName:
         assert _round_pairing_holds(worker, reviewer)
         assert _recorded_tier(reviewer) == TASK_CLASS_TIERS[reviewer_class]
         assert reviewer.routed_call["promoted_by"] is None
+
+
+# ---------------------------------------------------------------------------
+# amend0920-selfuse-real: the `planner` and `self_use` roles
+# ---------------------------------------------------------------------------
+
+
+class TestThePlannerRole:
+    """DECISION amend0920-selfuse-real D1: a planner role whose default is Ollama."""
+
+    def test_planner_is_a_known_role(self):
+        from packages.orchestration.role_config import KNOWN_ROLES
+
+        assert "planner" in KNOWN_ROLES
+
+    def test_resolve_role_config_planner_defaults_to_ollama(self):
+        from packages.orchestration.role_config import resolve_role_config
+
+        cfg = resolve_role_config("planner")
+        assert cfg.provider == "ollama", (
+            "the default planner must stay the one Remedy always had, so an "
+            "unconfigured repository plans exactly as it did before"
+        )
+
+    def test_the_planner_default_model_is_the_ollama_default(self):
+        from packages.orchestration.model_aliases import resolve_model_alias
+        from packages.orchestration.role_config import resolve_role_config
+
+        assert resolve_role_config("planner").model == resolve_model_alias("ollama-default")
+
+    def test_a_configured_provider_outranks_the_built_in_default(self):
+        from packages.orchestration.role_config import resolve_role_config
+
+        cfg = resolve_role_config("planner", config_file={"provider": "claude-cli"})
+        assert cfg.provider == "claude-cli"
+        assert cfg.model == "claude-opus-4-8", "provider-aware model default still applies"
+
+    def test_the_planner_role_resolves_without_an_unknown_role_warning(self):
+        import warnings
+
+        from packages.orchestration.role_config import resolve_role_config
+
+        with warnings.catch_warnings():
+            warnings.simplefilter("error")
+            resolve_role_config("planner")
+
+    def test_both_config_keys_are_registered(self):
+        from packages.orchestration.config import all_key_specs
+
+        registered = {spec.key for spec in all_key_specs()}
+        assert "planner.provider" in registered
+        assert "planner.model" in registered
+
+
+class TestTheSelfUseRole:
+    """DECISION amend0920-selfuse-real D2: the one role whose default is NOT the product's."""
+
+    def test_self_use_is_a_known_role(self):
+        from packages.orchestration.role_config import KNOWN_ROLES
+
+        assert "self_use" in KNOWN_ROLES
+
+    def test_it_defaults_to_the_claude_cli_and_the_sonnet_alias(self):
+        from packages.orchestration.model_aliases import resolve_model_alias
+        from packages.orchestration.role_config import DEFAULT_EFFORT, resolve_role_config
+
+        cfg = resolve_role_config("self_use")
+        assert cfg.provider == "claude-cli"
+        assert cfg.model == resolve_model_alias("claude-workhorse")
+        assert cfg.effort == DEFAULT_EFFORT
+
+    def test_its_default_model_is_not_the_claude_cli_flagship(self):
+        """The cost bound of DECISION D2 is written for the workhorse, not the flagship."""
+        from packages.orchestration.model_aliases import resolve_model_alias
+        from packages.orchestration.role_config import (
+            default_model_for_provider,
+            resolve_role_config,
+        )
+
+        assert default_model_for_provider("claude-cli") == resolve_model_alias("claude-flagship")
+        assert resolve_role_config("self_use").model != resolve_model_alias("claude-flagship")
+
+    def test_a_configured_value_still_outranks_it(self):
+        from packages.orchestration.role_config import resolve_role_config
+
+        cfg = resolve_role_config(
+            "self_use", config_file={"provider": "ollama", "model": "muse-glimmer:latest"},
+        )
+        assert (cfg.provider, cfg.model) == ("ollama", "muse-glimmer:latest")
+
+
+class TestTheTenOlderRolesAreUntouched:
+    """Naming two roles with their own defaults must change nothing for the rest."""
+
+    def test_every_other_role_still_resolves_the_product_default(self):
+        from packages.orchestration.role_config import (
+            DEFAULT_MODEL,
+            DEFAULT_PROVIDER,
+            KNOWN_ROLES,
+            resolve_role_config,
+        )
+
+        for role in KNOWN_ROLES:
+            if role in ("self_use",):
+                continue
+            cfg = resolve_role_config(role)
+            assert cfg.provider == DEFAULT_PROVIDER, role
+            assert cfg.model == DEFAULT_MODEL, role
