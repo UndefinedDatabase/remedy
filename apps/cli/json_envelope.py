@@ -17,10 +17,10 @@ consumer that reads the old shape would break; adding a key does not break such
 a consumer, so adding a key does not bump it.
 
 Deliberate absences:
-  * Remedy deliberately does not make these functions exit.  Emission and exit
-    are separate so a caller can emit and then choose its code, and so a test
-    can call them without catching ``SystemExit``.  ``fail()`` (T003) is the
-    helper that does both.
+  * Remedy deliberately does not make ``emit_ok``/``emit_error`` exit.  Emission
+    and exit are separate so a caller can emit and then choose its code, and so
+    a test can call them without catching ``SystemExit``.  ``fail()`` is the
+    helper that does both, and it is what a command handler calls.
   * Remedy deliberately does not let a payload key overwrite ``schema_version``
     or ``ok``.  A command that passes one gets ``ValueError`` at the call site
     rather than a silently reshaped envelope, because the envelope is the one
@@ -35,7 +35,7 @@ from __future__ import annotations
 
 import json
 import sys
-from typing import Any
+from typing import Any, NoReturn
 
 #: The envelope's version.  Bumped only by a change that breaks a reader of the
 #: previous shape — adding a key does not.
@@ -82,6 +82,38 @@ def emit_error(error: str, message: str, **payload: Any) -> None:
     code carries the outcome for a shell; the envelope carries it for a parser.
     """
     _write(build_error(error, message, **payload), sys.stdout)
+
+
+def fail(
+    error: str,
+    message: str,
+    *,
+    json_output: bool,
+    exit_code: int = 1,
+    **payload: Any,
+) -> NoReturn:
+    """Report a failure in the shape the caller asked for, and exit.
+
+    F277 T003.  Replaces the ``print(f"Error: ...", file=sys.stderr)`` followed
+    by ``sys.exit(1)`` pair that this CLI had written out by hand at 237 sites,
+    of which the ones inside a ``--json`` command printed prose where a parser
+    was waiting for an object.
+
+    ``error`` is the stable machine token and fills the envelope's ``error``
+    key; ``message`` is the sentence a human reads.  The two are named as the
+    envelope names them and never as "code", because ``exit_code`` is also a
+    code and a reader should not have to ask which one a call site means
+    (DECISION F277 D7).
+
+    The text branch is byte-for-byte the line this CLI already printed, so
+    migrating a call site changes nothing an operator sees; only the ``--json``
+    branch gains a shape it did not have.
+    """
+    if json_output:
+        emit_error(error, message, **payload)
+    else:
+        print(f"Error: {message}", file=sys.stderr)
+    sys.exit(exit_code)
 
 
 def _reject_reserved(payload: dict[str, Any]) -> None:
