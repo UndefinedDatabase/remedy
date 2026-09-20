@@ -1231,6 +1231,21 @@ def _create_job_workspace_copy(job: JobPlan) -> str:
 
     target = Path(job.repo_path)
     ws = create_staging_workspace(target, ws_parent, job.job_id)
+    # F276 T003: what the ignore pass and the size ceiling left behind is DATA on the
+    # workspace, and data nothing reads is a silence. One line on this module's own
+    # logger — the seam `_run_predictive_budget`'s swallowed config read already
+    # reports on — rather than a new run-log EVENT: an event name enters the stream
+    # vocabulary `tests/ui_contracts/test_humanize_catalog.py` derives from
+    # `.log("<name>", ...)` call sites, and naming a new one is a product decision,
+    # not a log line. Nothing here is a path, a secret or a JobPlan field.
+    if ws.excluded_ignored or ws.excluded_oversize:
+        import logging as _logging
+        _logging.getLogger(__name__).info(
+            "staging copy for job %r skipped %d git-ignored and %d oversize file(s), "
+            "%d byte(s) not copied; filter=%s",
+            job.job_id, len(ws.excluded_ignored), len(ws.excluded_oversize),
+            ws.excluded_bytes, ws.gitignore_filter,
+        )
     return str(ws.staging_dir)
 
 
@@ -1420,6 +1435,44 @@ def _drop_checkpoint_refs(job: JobPlan) -> str:
     return "; ".join(errors)
 
 
+def _release_job_workspace_copy(job: JobPlan) -> Any:
+    """Free a COPY-mode job's staging workspace (F276 T003).
+
+    The opposite number of the worktree removal in :func:`_finalize_job_workspace`:
+    same hook, same moment. Until this existed the copy path had no cleanup at all —
+    ``_create_job_workspace_copy`` made ``job_workspaces/staging_<job>`` and nothing
+    ever removed it, which is the 650 GB F276 was written for.
+
+    ``release_staging_workspace`` decides everything else: it derives the path from
+    the class registry rather than from ``job.job_workspace_path``, re-reads the job
+    record to answer "is this job terminal", and returns rather than raises. The
+    ``isolation_mode`` guard here is not that decision — it is this hook declining to
+    ask the question for a job that never made a copy.
+
+    Returns the ``StagingRelease``, or ``None`` when no question was asked. NOTHING
+    RAISES OUT OF HERE: the only call site runs inside ``run_job``'s ``finally``, and
+    an exception there would replace the job's own outcome with a cleanup error. A
+    swallowed failure is not a SILENT one: it goes to this module's logger, the seam
+    the predictive-budget config read above already reports its own swallowed failure
+    on, because the alternative — a field on ``JobPlan`` — would change the persisted
+    record shape and that is a slice of its own.
+    """
+    from packages.orchestration.staging_workspace import release_staging_workspace
+
+    if job.isolation_mode != "copy":
+        return None
+    try:
+        return release_staging_workspace(job.job_id)
+    except Exception:
+        import logging as _logging
+        _logging.getLogger(__name__).error(
+            "staging workspace release FAILED for copy-mode job %r; its staging "
+            "copy is kept and `remedy data reclaim` will offer it later",
+            job.job_id, exc_info=True,
+        )
+        return None
+
+
 def _finalize_job_workspace(job: JobPlan, handle: Any) -> None:
     """The ONE cleanup path for a job-owned worktree.
 
@@ -1431,8 +1484,30 @@ def _finalize_job_workspace(job: JobPlan, handle: Any) -> None:
     raised): persist what we can, KEEP the worktree with every change it holds past
     the branch tip, release the lock, and stay recoverable. A clean cleanup is
     never claimed before it happened.
+
+    F276 T003: no handle means no worktree, which means this job ran in
+    ``isolation_mode="copy"``. Everything below is the worktree's and does not apply
+    to it; its staging copy is released instead, on this same hook, so a copy job
+    ends the way a worktree job does. The worktree path itself is untouched.
+
+    TWO LAYERS, AND THEY ARE NOT THE SAME CONDITION ON PURPOSE.
+    :func:`staging_workspace.release_staging_workspace` keeps its OWN floor — it
+    refuses any job that is not terminal by ``JOB_TERMINAL_STATES``, the vocabulary
+    ``data_reclaim`` judges by — because a public function that DELETES must refuse
+    on its own authority and must never free what ``remedy data reclaim`` would
+    refuse. THIS HOOK IS STRICTER: it releases only under the very condition it
+    already applies to a worktree below, ``job.state == JOB_COMPLETED and not
+    job.result_diff_error``, so a FAILED, CANCELLED, BLOCKED, PAUSED or STOPPED copy
+    job KEEPS its staging copy exactly as such a worktree job keeps its worktree.
+    That is the conservative direction, it leaves the operator the same inspection
+    window in both isolation modes, and it is what makes "the same terminal-state
+    hook the worktree cleanup already uses" literally true rather than nearly true.
+    Those copies are not stranded: ``remedy data reclaim`` frees them when the
+    operator asks, since a FAILED job IS terminal to the command that reclaims.
     """
     if handle is None:
+        if job.state == JOB_COMPLETED and not job.result_diff_error:
+            _release_job_workspace_copy(job)
         return
     from packages.orchestration import worktrees as W
     from packages.orchestration.data_paths import job_dir
