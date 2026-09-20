@@ -23,16 +23,25 @@ Review of `a8e2e565`..`HEAD` (HEAD is this round's single commit).
 
 ## Commits
 
-### This commit: F277 R8 C-STOP: record the round 8 payload transport failure and stop
+Self-reference exception (handback template): these two commits, which only write and then
+complete this handoff, share one grouped table with per-commit attribution in Reason —
+a handback cannot table the commit that writes it (R-0149 pattern).
+
+### 225445d7 F277 R8 C-STOP: record round 8 payload transport failure and stop
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/plan.md | +23/-19 | rewrite: record the round 8 blocker (decisions.md transport mismatch), no other content change |
-| .agent/handoff.md | rewrite | this handback, per the write-once rule |
+| .agent/plan.md | +27/-29 | rewrite: record the round 8 blocker (decisions.md transport mismatch), no other content change |
+| .agent/handoff.md | +105/-309 | rewrite: this handback, first write |
 
-No other file was touched. C1a, C1b, C2, C3, C4, C5, C6 as ordered by the block were NOT
-executed — see Deviations below. `.agent/live_review.md`, `.agent/decisions.md` and
-`.agent/prose_slips.md` are untouched at their `a8e2e565` bytes; `.agent/authored/` gained no
-new files this round.
+### ac378c4e F277 R8 C-STOP-fix: record the actual push outcome in the handoff
+| Path | +/- | Reason |
+|---|---|---|
+| .agent/handoff.md | +12/-4 | fill in the real `git push`/`git status`/`git worktree list` output for G6, only knowable after 225445d7 was pushed (the placeholder text in the first write said "reported below at push time") |
+
+No other file was touched by either commit. C1a, C1b, C2, C3, C4, C5, C6 as ordered by the
+block were NOT executed — see Deviations below. `.agent/live_review.md`,
+`.agent/decisions.md` and `.agent/prose_slips.md` are untouched at their `a8e2e565` bytes;
+`.agent/authored/` gained no new files this round.
 
 ## External actions
 
@@ -133,6 +142,16 @@ could be resolved.
    overturn if a different reading of "commit what is verified" is intended.
 3. No payload was edited, retyped, or worked around. No file outside `.agent/plan.md` and
    `.agent/handoff.md` was modified.
+4. **The handback took two commits plus this closing bookkeeping edit, not one.** `225445d7`
+   wrote the handoff with placeholder text for the G6 push/status/worktree readings (those
+   facts don't exist until after that commit is pushed); `ac378c4e` filled them in with the
+   real output. This third edit (still part of `ac378c4e`'s follow-on, committed together with
+   whatever SHA follows) only reconciles the Commits table's attribution across those two —
+   it adds no new fact. This is the handback template's explicit "trailing bookkeeping commits
+   that only trim it" exception, not the write-once rule's discouraged repeated-trim-for-a-cap
+   pattern (there is no cap left to trim against); it exists here because this round's
+   sequencing (write handoff, then push it, then need to report the push) is inherently
+   self-referential, the same tension the template's R-0149 exception already names.
 
 ## Next
 
