@@ -1,0 +1,16 @@
+diff --git a/docs/roadmap/features/T2_F277.md b/docs/roadmap/features/T2_F277.md
+--- a/docs/roadmap/features/T2_F277.md
++++ b/docs/roadmap/features/T2_F277.md
+@@ -216,8 +216,10 @@
+ T003 as well as for itself, which is why it moves with the slice it measures rather than being
+ attempted over a half-migrated surface.
+ 
+-**WHAT MOVED TO F283** (`docs/roadmap/features/T2_F283.md`, registered in the same commit that
+-struck them from the Acceptance list above): T003's remainder — the nineteen unmigrated
++**WHAT MOVED TO F283** (`docs/roadmap/features/T2_F283.md`, registered at `90976846` and
++struck from the Acceptance list above at `3c3ca820`, the two adjacent commits of round 12;
++this clause read "in the same commit" until round 13 corrected it): T003's remainder —
++the nineteen unmigrated
+ modules, `runtime_cmd.py` among them as its own round, and the catalog half — as F283's T001;
+ T004 whole as F283's T002; three Acceptance bullets verbatim; and finding R-1014, for whatever
+ half of its fix clause this closure's own checklist consolidation does not land. DECISIONs
