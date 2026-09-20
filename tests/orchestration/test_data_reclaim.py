@@ -9,12 +9,16 @@ from __future__ import annotations
 
 import json
 import os
+import re
+import shutil
+import time
 
 import pytest
 
 from apps.cli.grouped import main
 from packages.core.models import RunState
 from packages.orchestration.data_reclaim import (
+    REFUSAL_REASONS,
     ReclaimCandidate,
     ReclaimPlan,
     apply_reclaim,
@@ -38,6 +42,12 @@ def _scratch(root, data_class: str, name: str, payload: bytes = b"x" * 64):
     d.mkdir(parents=True)
     (d / "big.bin").write_bytes(payload)
     return d
+
+
+def _backdate(path, days: float) -> None:
+    """Move one path's own mtime ``days`` into the past — the orphan floor's input."""
+    when = time.time() - days * 86400.0
+    os.utime(path, (when, when))
 
 
 def _tree(root) -> set[str]:
@@ -354,3 +364,342 @@ def test_plan_reclaim_writes_nothing_and_a_missing_root_is_not_an_error(tmp_path
     assert plan.exists is False
     assert plan.candidates == ()
     assert not absent.exists()
+
+
+# ── The orphan rule: `--orphans` ─────────────────────────────────────────────
+#
+# WHY IT EXISTS, measured on the operator's real data root with the command round 2
+# built: `remedy data reclaim --json` read 1107 candidates worth 284 536 286 695 bytes
+# against 1886 refusals, of which 1885 were `job_unresolved` worth 638 395 396 948
+# bytes — and 1884 of those were `staging_<16-hex>` names with no job record on disk at
+# all (`.data/jobs/000bf7ccd9cb49f8` does not exist and `job show` answers "No job
+# matches"). 69 per cent of the reclaimable footprint was refused, and the feature
+# file's OPERATOR STEP expects `.data` under 10 GB after a reclaim, which cannot happen
+# while it stays refused.
+#
+# Every fixture below seeds a REAL job record wherever a record is meant to exist, so
+# the "no record" these tests exercise is a real absence and not a patched lookup.
+
+#: A 16-hex id no `_job` ever minted, so no record for it can exist by accident.
+_ORPHAN_ID = "0123456789abcdef"
+
+
+def test_without_the_flag_the_json_is_byte_for_byte_what_it_was(root, capsys):
+    """DEFAULT OFF, pinned on the SERIALISED document rather than a parsed subset.
+
+    The expected body is built in full here and dumped the way the command dumps it,
+    so this compares STRINGS: a key the orphan rule added, a candidate it widened
+    into, a total it moved — any of them reds this test. The seeded root deliberately
+    holds an old orphan, so the widening this pins is one the flag really performs.
+    """
+    from packages.orchestration.data_footprint import child_usage
+
+    done = _job(root, RunState.COMPLETED)
+    live = _job(root, RunState.RUNNING)
+    kept = _scratch(root, "job_workspaces", f"staging_{done}")
+    running = _scratch(root, "job_workspaces", f"staging_{live}")
+    orphan = _scratch(root, "job_workspaces", f"staging_{_ORPHAN_ID}")
+    _backdate(orphan, 400)
+    jobs_bytes, jobs_files = child_usage(str(root / "jobs"))
+
+    main(["data", "reclaim", "--json"])
+    out = capsys.readouterr().out
+
+    expected = {
+        "version": 1, "root": str(root), "exists": True, "applied": False,
+        "candidates": [{
+            "class": "job_workspaces", "name": f"staging_{done}", "path": str(kept),
+            "job_id": done, "job_state": "completed", "age_days": 0.0,
+            "bytes": 64, "files": 1,
+        }],
+        # Both refusals come from the one class directory, whose children are walked
+        # in NAME order, so the expected list is sorted the same way.
+        "refused": sorted([
+            {"class": "job_workspaces", "name": f"staging_{_ORPHAN_ID}",
+             "path": str(orphan), "reason": "job_unresolved",
+             "detail": f"no readable job record for {_ORPHAN_ID}",
+             "bytes": 64, "files": 1},
+            {"class": "job_workspaces", "name": f"staging_{live}", "path": str(running),
+             "reason": "job_not_terminal", "detail": f"job {live} is running, not terminal",
+             "bytes": 64, "files": 1},
+        ], key=lambda r: r["name"]),
+        "not_reclaimed": [
+            {"name": "jobs", "class": "durable", "bytes": jobs_bytes, "files": jobs_files},
+        ],
+        "total": {"candidates": 1, "bytes": 64, "files": 1, "refused": 2},
+        "removed": [], "freed": {"bytes": 0, "paths": 0},
+    }
+    assert out == json.dumps(expected, sort_keys=True) + "\n"
+
+
+def test_an_old_orphan_becomes_a_candidate_only_with_the_flag(root, capsys):
+    orphan = _scratch(root, "job_workspaces", f"staging_{_ORPHAN_ID}")
+    _backdate(orphan, 30)
+
+    main(["data", "reclaim", "--json"])
+    without = json.loads(capsys.readouterr().out)
+    main(["data", "reclaim", "--orphans", "--json"])
+    with_flag = json.loads(capsys.readouterr().out)
+
+    assert without["candidates"] == []
+    assert [r["reason"] for r in without["refused"]] == ["job_unresolved"]
+    assert [c["path"] for c in with_flag["candidates"]] == [str(orphan)]
+    assert with_flag["candidates"][0]["job_id"] == _ORPHAN_ID
+    assert with_flag["candidates"][0]["job_state"] == "no_record"
+    assert with_flag["refused"] == []
+    assert orphan.exists()          # both of those were PREVIEWS
+
+
+def test_a_young_orphan_is_refused_as_orphan_too_young_even_with_the_flag(root, capsys):
+    """The floor is the insurance for a record that is being written RIGHT NOW.
+
+    Under it the child is refused rather than skipped, under its own reason, so an
+    operator reading the report can see the path and why it was kept.
+    """
+    young = _scratch(root, "job_workspaces", f"staging_{_ORPHAN_ID}")
+    _backdate(young, 0.5)
+
+    main(["data", "reclaim", "--orphans", "--apply", "--json"])
+    body = json.loads(capsys.readouterr().out)
+
+    assert body["candidates"] == []
+    assert [r["reason"] for r in body["refused"]] == ["orphan_too_young"]
+    assert body["refused"][0]["detail"] == (
+        "no job record, and 0.50d is under the 1.0d orphan floor")
+    assert "orphan_too_young" in REFUSAL_REASONS
+    assert young.exists()
+
+
+def test_a_child_without_the_staging_prefix_is_never_an_orphan(root, capsys):
+    """The prefix is what says "a job's staging copy lives here".
+
+    Without it no job id is read at all, so there is no record to be missing, and
+    `--orphans` must not widen to it however old it is.
+    """
+    stray = _scratch(root, "job_workspaces", _ORPHAN_ID)
+    _backdate(stray, 400)
+
+    main(["data", "reclaim", "--orphans", "--apply", "--json"])
+    body = json.loads(capsys.readouterr().out)
+
+    assert body["candidates"] == []
+    assert [(r["name"], r["reason"]) for r in body["refused"]] == [
+        (_ORPHAN_ID, "job_unresolved")]
+    assert body["refused"][0]["detail"] == "no job id can be read from this path"
+    assert stray.exists()
+
+
+def test_a_live_jobs_staging_copy_is_never_an_orphan(root, capsys):
+    """Its record EXISTS and is not terminal, so the orphan branch is never reached."""
+    live = _job(root, RunState.RUNNING)
+    ws = _scratch(root, "job_workspaces", f"staging_{live}")
+    _backdate(ws, 400)
+
+    main(["data", "reclaim", "--orphans", "--apply", "--json"])
+    body = json.loads(capsys.readouterr().out)
+
+    assert body["candidates"] == []
+    assert [r["reason"] for r in body["refused"]] == ["job_not_terminal"]
+    assert ws.exists()
+
+
+def test_a_record_that_exists_but_cannot_be_read_is_never_an_orphan(root, capsys):
+    """An orphan's signature is NO RECORD, not an unreadable one.
+
+    A record that exists and will not parse belongs to a job that may still be
+    running; `load_job_plan_safe`'s ``degraded`` flag is the only thing that tells the
+    two apart, and both spell the same `job_unresolved` refusal without it.
+    """
+    from packages.orchestration.data_paths import job_record_path
+
+    live = _job(root, RunState.RUNNING)
+    job_record_path(live, root).write_text("{ not json at all")
+    ws = _scratch(root, "job_workspaces", f"staging_{live}")
+    _backdate(ws, 400)
+
+    main(["data", "reclaim", "--orphans", "--apply", "--json"])
+    body = json.loads(capsys.readouterr().out)
+
+    assert body["candidates"] == []
+    assert [r["reason"] for r in body["refused"]] == ["job_unresolved"]
+    assert ws.exists()
+
+
+def test_orphans_without_apply_deletes_nothing_and_names_both_totals(root, capsys):
+    done = _job(root, RunState.COMPLETED)
+    _scratch(root, "job_workspaces", f"staging_{done}")
+    orphan = _scratch(root, "job_workspaces", f"staging_{_ORPHAN_ID}")
+    _backdate(orphan, 30)
+    before = _tree(root)
+
+    main(["data", "reclaim", "--orphans"])
+
+    assert _tree(root) == before
+    out = capsys.readouterr().out
+    assert "nothing deleted" in out
+    # The operator sees the two numbers SEPARATELY before deciding.
+    assert re.search(r"orphans \(no job record\):\s+1 paths\s+64 B", out)
+    assert re.search(r"terminal jobs:\s+1 paths\s+64 B", out)
+
+
+def test_orphans_apply_deletes_exactly_the_previewed_orphans_and_a_second_run_is_a_noop(
+    root, capsys,
+):
+    done = _job(root, RunState.COMPLETED)
+    live = _job(root, RunState.RUNNING)
+    ordinary = _scratch(root, "job_workspaces", f"staging_{done}")
+    running = _scratch(root, "job_workspaces", f"staging_{live}")
+    old = _scratch(root, "job_workspaces", "staging_00000000deadbeef")
+    young = _scratch(root, "job_workspaces", "staging_11111111feedface")
+    _backdate(old, 30)
+    _backdate(young, 0.25)
+
+    main(["data", "reclaim", "--orphans", "--json"])
+    previewed = {c["path"] for c in json.loads(capsys.readouterr().out)["candidates"]}
+    assert previewed == {str(ordinary), str(old)}
+
+    main(["data", "reclaim", "--orphans", "--apply", "--json"])
+    body = json.loads(capsys.readouterr().out)
+
+    assert set(body["removed"]) == previewed
+    assert body["freed"] == {"bytes": 128, "paths": 2}
+    assert not old.exists()
+    assert not ordinary.exists()
+    assert running.exists()
+    assert young.exists()
+    after = _tree(root)
+
+    main(["data", "reclaim", "--orphans", "--apply", "--json"])
+    second = json.loads(capsys.readouterr().out)
+
+    assert second["removed"] == []
+    assert second["freed"]["bytes"] == 0
+    assert _tree(root) == after
+
+
+def test_the_orphan_json_shape(root, capsys):
+    """An orphan adds no key: `job_state` is the ONE mark, and it cannot collide."""
+    done = _job(root, RunState.COMPLETED)
+    _scratch(root, "job_workspaces", f"staging_{done}")
+    old = _scratch(root, "job_workspaces", "staging_00000000deadbeef")
+    young = _scratch(root, "job_workspaces", "staging_11111111feedface")
+    _backdate(old, 3)
+    _backdate(young, 0.25)
+
+    main(["data", "reclaim", "--orphans", "--json"])
+    body = json.loads(capsys.readouterr().out)
+
+    assert set(body) == {
+        "version", "root", "exists", "applied", "candidates",
+        "refused", "not_reclaimed", "total", "removed", "freed",
+    }
+    by_state = {c["job_state"]: c for c in body["candidates"]}
+    assert set(by_state) == {"completed", "no_record"}
+    assert set(by_state["no_record"]) == set(by_state["completed"]) == {
+        "class", "name", "path", "job_id", "job_state", "age_days", "bytes", "files",
+    }
+    assert by_state["no_record"]["path"] == str(old)
+    assert by_state["no_record"]["job_id"] == "00000000deadbeef"
+    assert by_state["no_record"]["age_days"] == 3.0
+    # The mark is a reserved token: no RunState is spelled this way, so a reader
+    # matching it exactly can never mistake an ordinary candidate for an orphan.
+    assert "no_record" not in {s.value for s in RunState}
+    assert [(r["name"], r["reason"]) for r in body["refused"]] == [
+        ("staging_11111111feedface", "orphan_too_young")]
+    assert body["total"] == {"candidates": 2, "bytes": 128, "files": 2, "refused": 1}
+
+
+def test_the_default_human_preview_names_the_unresolved_bytes_and_the_flag(root, capsys):
+    """DISCOVERABILITY: the flag is named where the bytes it would reclaim are printed.
+
+    An operator staring at a `job_unresolved` refusal must not have to read the source
+    to learn `--orphans` exists. The line is on the HUMAN default path ONLY, and the
+    three readings below are the three states it has to get right.
+    """
+    done = _job(root, RunState.COMPLETED)
+    _scratch(root, "job_workspaces", f"staging_{done}")
+    _backdate(_scratch(root, "job_workspaces", f"staging_{_ORPHAN_ID}"), 30)
+    _backdate(_scratch(root, "job_workspaces", "staging_00000000deadbeef"), 30)
+
+    main(["data", "reclaim"])
+    default = capsys.readouterr().out
+    main(["data", "reclaim", "--orphans"])
+    with_flag = capsys.readouterr().out
+
+    # 1. the DEFAULT names the count, the bytes and the flag
+    assert re.search(r"2 of those are job_unresolved \(128 B\) — re-run with --orphans",
+                     default)
+    # 2. typing the flag answers the question, so the hint is gone
+    assert "re-run with --orphans" not in with_flag
+    # 3. no `job_unresolved` refusal, no hint — it is an answer, never decoration
+    capsys.readouterr()
+    for path in root.glob("job_workspaces/staging_*"):
+        if path.name != f"staging_{done}":
+            shutil.rmtree(path)
+    main(["data", "reclaim"])
+    assert "re-run with --orphans" not in capsys.readouterr().out
+
+
+def test_the_default_json_carries_no_hint_and_the_human_line_is_not_in_it(root, capsys):
+    """The hint is a HUMAN line: the machine document is untouched by it.
+
+    `test_without_the_flag_the_json_is_byte_for_byte_what_it_was` already pins the whole
+    default document; this names the reason that test still passes after the hint
+    landed, on a root that definitely triggers the hint.
+    """
+    _backdate(_scratch(root, "job_workspaces", f"staging_{_ORPHAN_ID}"), 30)
+
+    main(["data", "reclaim", "--json"])
+    out = capsys.readouterr().out
+
+    assert "--orphans" not in out
+    assert set(json.loads(out)) == {
+        "version", "root", "exists", "applied", "candidates",
+        "refused", "not_reclaimed", "total", "removed", "freed",
+    }
+
+
+def test_a_record_that_appears_between_the_plan_and_the_apply_saves_the_orphan(root):
+    """The orphan VERDICT is re-derived at deletion, not only the structural rules.
+
+    It is the verdict that authorises deleting a directory NOTHING points at, so it is
+    the last one that may be taken on trust. The window is real — a job whose record is
+    being written reads exactly like a job whose record is gone — and the age floor
+    only narrows it. This closes it, and it needs no clock to do so.
+    """
+    ws = _scratch(root, "job_workspaces", f"staging_{_ORPHAN_ID}")
+    _backdate(ws, 400)
+
+    plan = plan_reclaim(root, orphans=True)
+    assert [c.job_state for c in plan.candidates] == ["no_record"]
+
+    save_job_plan(JobPlan(job_id=_ORPHAN_ID, repo_path=str(root),
+                          state=RunState.RUNNING), root)
+    outcome = apply_reclaim(plan)
+
+    assert outcome.removed == ()
+    assert [(r.reason, r.name) for r in outcome.refusals] == [
+        ("job_unresolved", f"staging_{_ORPHAN_ID}")]
+    assert f"{_ORPHAN_ID} appeared after the plan was computed" in outcome.refusals[0].detail
+    assert ws.exists()
+
+
+def test_an_orphan_freshened_between_the_plan_and_the_apply_is_refused_as_too_young(root):
+    """The second half of the deletion-time verdict: the mtime is read again too.
+
+    Its own test and its own mutation, because one branch of
+    `_orphan_deletion_refusal` going green would otherwise hide behind the other.
+    """
+    ws = _scratch(root, "job_workspaces", f"staging_{_ORPHAN_ID}")
+    _backdate(ws, 400)
+
+    plan = plan_reclaim(root, orphans=True)
+    assert [c.age_days for c in plan.candidates] == [400.0]
+
+    os.utime(ws, None)                      # something touched it after the preview
+    outcome = apply_reclaim(plan)
+
+    assert outcome.removed == ()
+    assert [(r.reason, r.name) for r in outcome.refusals] == [
+        ("orphan_too_young", f"staging_{_ORPHAN_ID}")]
+    assert ws.exists()
