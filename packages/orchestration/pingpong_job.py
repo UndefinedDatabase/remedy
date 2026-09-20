@@ -86,6 +86,28 @@ JOB_PAUSED = RunState.PAUSED
 #: queue item. It keeps its pending work and resumes at the first pending task.
 JOB_STOPPED = RunState.STOPPED
 
+#: F276 T002: the states a job NEVER runs again from. Nothing in this repository
+#: carried this reading before — `apps/cli/commands/status_cmd.py` spelled the same
+#: three states as a private local set, and `job_stop_cmd._FINISHED_STATES` answers a
+#: different question ("can a stop still be requested"). It is stated HERE because
+#: this module owns the `JOB_*` vocabulary, and stated EXPLICITLY rather than as "not
+#: runnable" because the distinction that matters is what may be deleted: `blocked`,
+#: `stopped` and `paused` are absent on purpose — each keeps its pending work and
+#: `remedy job resume` will want the workspace a data-root reclaim would otherwise
+#: free. A job record whose stored status is not a RunState loads as JOB_PLANNED, so
+#: an unrecognised state is non-terminal, which is the safe direction.
+JOB_TERMINAL_STATES: frozenset[RunState] = frozenset({
+    RunState.COMPLETED, RunState.FAILED, RunState.CANCELLED,
+})
+
+
+def job_is_terminal(state: object) -> bool:
+    """True when ``state`` — a ``RunState`` or its string value — is terminal."""
+    if isinstance(state, RunState):
+        return state in JOB_TERMINAL_STATES
+    return str(state) in {s.value for s in JOB_TERMINAL_STATES}
+
+
 # F272 move three: the lifecycle field is a ``RunState``, but a job record
 # written before this round may carry ANY string — `complete`, `dry_run` and
 # `promoted` all occur in records on disk today — so DECISION F272 D5's

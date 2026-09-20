@@ -75,10 +75,13 @@ def _cmd_status(
         except Exception:
             pass
 
-    _TERMINAL = {"completed", "failed", "cancelled"}
+    # F276 T002: the same three states this block used to spell for itself, now read
+    # from the one place that states them (`pingpong_job.JOB_TERMINAL_STATES`).
+    from packages.orchestration.pingpong_job import job_is_terminal
+
     stops_pending = 0
     for j in jobs:
-        if j.state.value in _TERMINAL:
+        if job_is_terminal(j.state):
             continue
         try:
             from packages.orchestration.safe_points import stop_requested
