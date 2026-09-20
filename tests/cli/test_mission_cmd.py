@@ -874,10 +874,23 @@ class TestPlan:
         assert record["mission_plan"]["_version"] == 1
 
     def test_planning_an_unknown_mission_exits_one(self, project):
+        """F277 T003: `--json` was passed, so the refusal is an envelope on stdout."""
         data_root, project_id = project
         proc = _plan(data_root, project_id, "0" * 32, expect_ok=False)
         assert proc.returncode == 1
-        assert "No mission matches" in proc.stderr
+        assert proc.stderr == ""
+        body = json.loads(proc.stdout)
+        assert body["ok"] is False and body["schema_version"] == 1
+        assert body["error"] == "mission_not_found"
+        assert "No mission matches" in body["message"]
+
+    def test_without_json_the_same_refusal_is_the_line_it_always_was(self, project):
+        data_root, project_id = project
+        proc = _run(["mission", "plan", "0" * 32, "--no-llm", "--project", project_id],
+                    data_root, expect_ok=False)
+        assert proc.returncode == 1
+        assert proc.stdout == ""
+        assert proc.stderr.startswith("Error: No mission matches")
 
 
 class TestRecompileVersioning:
@@ -918,8 +931,12 @@ class TestInProgressRefusal:
         proc = _plan(data_root, project_id, mission_id, expect_ok=False)
 
         assert proc.returncode == 1
-        assert "already in progress" in proc.stderr
-        assert "cannot be replanned" in proc.stderr
+        assert proc.stderr == ""
+        body = json.loads(proc.stdout)
+        assert body["ok"] is False
+        assert body["error"] == "mission_plan_in_progress"
+        assert "already in progress" in body["message"]
+        assert "cannot be replanned" in body["message"]
 
     def test_the_refusal_leaves_the_persisted_plan_untouched(self, project):
         data_root, project_id = project
@@ -1551,3 +1568,34 @@ class TestListStatusFilter:
 
         assert proc.returncode == 2
         assert "planned" in proc.stderr
+
+
+class TestNoProjectIsRefusedInTheCallersShape:
+    """F277 T003 — `_resolve_project_id`, the helper eight commands share.
+
+    Its refusal carries exit code 3, the same code `job create` uses, and it is
+    the one `fail()` site in this module whose exit code is neither 1 nor 2.
+    """
+
+    def test_under_json_it_is_an_envelope_on_stdout(self, tmp_path):
+        data_root = tmp_path / "data"
+        data_root.mkdir(parents=True)
+        proc = _run(["mission", "list", "--project", "no-such-project", "--json"],
+                    data_root, expect_ok=False)
+        assert proc.returncode == 3
+        assert proc.stderr == ""
+        body = json.loads(proc.stdout)
+        assert body["ok"] is False and body["schema_version"] == 1
+        assert body["error"] == "no_project"
+        assert "remedy init" in body["message"]
+
+    def test_without_json_it_is_the_two_lines_it_always_was(self, tmp_path):
+        data_root = tmp_path / "data"
+        data_root.mkdir(parents=True)
+        proc = _run(["mission", "list", "--project", "no-such-project"],
+                    data_root, expect_ok=False)
+        assert proc.returncode == 3
+        assert proc.stdout == ""
+        assert proc.stderr == (
+            "Error: no project found. Run: remedy init\n"
+            "  or pass --project <slug-or-id>\n")

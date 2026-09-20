@@ -27,6 +27,8 @@ import sys
 from collections.abc import Callable
 from typing import TYPE_CHECKING, Any
 
+from apps.cli.json_envelope import fail
+
 if TYPE_CHECKING:
     import argparse
 
@@ -36,7 +38,7 @@ EXIT_USAGE = 2
 EXIT_NO_PROJECT = 3
 
 
-def _resolve_project_id(project_flag: str | None) -> str:
+def _resolve_project_id(project_flag: str | None, *, json_output: bool = False) -> str:
     """The one project this command acts on, or exit 3 with the same wording as job create."""
     from packages.orchestration.project_registry import (
         ProjectNotFoundError,
@@ -46,12 +48,10 @@ def _resolve_project_id(project_flag: str | None) -> str:
     try:
         project, _source = select_project(project_flag, ".")
     except ProjectNotFoundError:
-        print(
-            "Error: no project found. Run: remedy init\n"
-            "  or pass --project <slug-or-id>",
-            file=sys.stderr,
-        )
-        sys.exit(EXIT_NO_PROJECT)
+        fail("no_project",
+             "no project found. Run: remedy init\n"
+             "  or pass --project <slug-or-id>",
+             json_output=json_output, exit_code=EXIT_NO_PROJECT)
     return str(project.id)
 
 
@@ -71,12 +71,11 @@ def _cmd_mission_start(goal: str, *, project: str | None = None,
                        json_output: bool = False) -> None:
     from packages.orchestration.mission_state import MissionError, create_mission
 
-    project_id = _resolve_project_id(project)
+    project_id = _resolve_project_id(project, json_output=json_output)
     try:
         mission = create_mission(project_id, goal)
     except MissionError as exc:
-        print(f"Error: {exc}", file=sys.stderr)
-        sys.exit(EXIT_ERROR)
+        fail("mission_error", str(exc), json_output=json_output)
 
     if json_output:
         print(_json.dumps({"version": 1, "mission": _mission_json(mission)},
@@ -123,14 +122,14 @@ def _cmd_mission_list(*, project: str | None = None, all_projects: bool = False,
 
     valid_statuses = (*MISSION_STATUSES, MISSION_LIST_STATUS_PLANNED)
     if status is not None and status not in valid_statuses:
-        print(f"Error: --status must be one of {', '.join(valid_statuses)}.",
-              file=sys.stderr)
-        sys.exit(EXIT_USAGE)
+        fail("invalid_status",
+             f"--status must be one of {', '.join(valid_statuses)}.",
+             json_output=json_output, exit_code=EXIT_USAGE)
 
     if all_projects:
         project_ids = project_ids_with_missions()
     else:
-        project_ids = [_resolve_project_id(project)]
+        project_ids = [_resolve_project_id(project, json_output=json_output)]
 
     rows: list[tuple[str, Any]] = []
     skipped_total = 0
@@ -152,8 +151,7 @@ def _cmd_mission_list(*, project: str | None = None, all_projects: bool = False,
             date_getter=lambda r: r[1].created_at or None,
         )
     except ListOptionError as exc:
-        print(f"Error: {exc}", file=sys.stderr)
-        sys.exit(EXIT_ERROR)
+        fail("invalid_list_option", str(exc), json_output=json_output)
 
     if json_output:
         print(_json.dumps({
@@ -173,7 +171,8 @@ def _cmd_mission_list(*, project: str | None = None, all_projects: bool = False,
               file=sys.stderr)
 
 
-def _load_mission_or_exit(project_id: str, mission_id: str) -> Any:
+def _load_mission_or_exit(project_id: str, mission_id: str, *,
+                          json_output: bool = False) -> Any:
     from packages.orchestration.mission_state import (
         MissionError,
         MissionNotFoundError,
@@ -185,11 +184,11 @@ def _load_mission_or_exit(project_id: str, mission_id: str) -> Any:
         resolved = resolve_mission_id(project_id, mission_id)
         return load_mission(project_id, resolved)
     except MissionNotFoundError:
-        print(f"Error: No mission matches {mission_id!r}. Try: remedy mission list.", file=sys.stderr)
-        sys.exit(EXIT_ERROR)
+        fail("mission_not_found",
+             f"No mission matches {mission_id!r}. Try: remedy mission list.",
+             json_output=json_output)
     except MissionError as exc:
-        print(f"Error: {exc}", file=sys.stderr)
-        sys.exit(EXIT_ERROR)
+        fail("mission_error", str(exc), json_output=json_output)
 
 
 def _cmd_mission_show(mission_id: str, *, project: str | None = None,
@@ -215,8 +214,8 @@ def _cmd_mission_show(mission_id: str, *, project: str | None = None,
     )
     from packages.orchestration.orchestrator_loop import read_ledger, render_ledger
 
-    project_id = _resolve_project_id(project)
-    mission = _load_mission_or_exit(project_id, mission_id)
+    project_id = _resolve_project_id(project, json_output=json_output)
+    mission = _load_mission_or_exit(project_id, mission_id, json_output=json_output)
     # R-0929: the WHOLE ledger, every run's entries, read and never appended to.
     ledger = read_ledger(project_id, mission.id)
 
@@ -270,8 +269,8 @@ def _cmd_mission_plan(mission_id: str, *, project: str | None = None,
     )
     from packages.orchestration.mission_state import MissionError
 
-    project_id = _resolve_project_id(project)
-    mission = _load_mission_or_exit(project_id, mission_id)
+    project_id = _resolve_project_id(project, json_output=json_output)
+    mission = _load_mission_or_exit(project_id, mission_id, json_output=json_output)
 
     call_fn = None
     if not no_llm:
@@ -287,11 +286,9 @@ def _cmd_mission_plan(mission_id: str, *, project: str | None = None,
         outcome = plan_mission(project_id, mission.id, call_fn,
                                provider="ollama", provider_kind="ollama")
     except MissionPlanInProgressError as exc:
-        print(f"Error: {exc}", file=sys.stderr)
-        sys.exit(EXIT_ERROR)
+        fail("mission_plan_in_progress", str(exc), json_output=json_output)
     except MissionError as exc:
-        print(f"Error: {exc}", file=sys.stderr)
-        sys.exit(EXIT_ERROR)
+        fail("mission_error", str(exc), json_output=json_output)
 
     if json_output:
         print(_json.dumps({
@@ -367,8 +364,8 @@ def _cmd_mission_set_status(mission_id: str, verb: str, *,
     """
     from packages.orchestration.mission_state import MissionError, set_mission_status
 
-    project_id = _resolve_project_id(project)
-    mission = _load_mission_or_exit(project_id, mission_id)
+    project_id = _resolve_project_id(project, json_output=json_output)
+    mission = _load_mission_or_exit(project_id, mission_id, json_output=json_output)
 
     # DECISION F269 D4 (5): `achieve` stays the human's judgement and is never
     # refused, but it says which blocking criteria it overrides.
@@ -389,8 +386,7 @@ def _cmd_mission_set_status(mission_id: str, verb: str, *,
     try:
         updated = set_mission_status(project_id, mission.id, _status_for_verb(verb))
     except MissionError as exc:
-        print(f"Error: {exc}", file=sys.stderr)
-        sys.exit(EXIT_ERROR)
+        fail("mission_error", str(exc), json_output=json_output)
 
     if json_output:
         body: dict[str, Any] = {"version": 1, "mission": _mission_json(updated)}
@@ -414,14 +410,13 @@ def _cmd_mission_continue(mission_id: str, next_step: str, *,
         is_verify_task,
     )
 
-    project_id = _resolve_project_id(project)
-    mission = _load_mission_or_exit(project_id, mission_id)
+    project_id = _resolve_project_id(project, json_output=json_output)
+    mission = _load_mission_or_exit(project_id, mission_id, json_output=json_output)
 
     try:
         job = continue_mission(project_id, mission.id, next_step)
     except MissionError as exc:
-        print(f"Error: {exc}", file=sys.stderr)
-        sys.exit(EXIT_ERROR)
+        fail("mission_error", str(exc), json_output=json_output)
 
     verify = job.tasks[0] if job.tasks and is_verify_task(job.tasks[0]) else None
     if json_output:
@@ -485,15 +480,15 @@ def _cmd_mission_run_loop(mission_id: str, *, project: str | None = None,
         run_mission,
     )
 
-    project_id = _resolve_project_id(project)
-    mission = _load_mission_or_exit(project_id, mission_id)
+    project_id = _resolve_project_id(project, json_output=json_output)
+    mission = _load_mission_or_exit(project_id, mission_id, json_output=json_output)
 
     try:
         limits = loop_limits_from_config(
             iterations_flag=int(iterations) if iterations else None)
     except ValueError as exc:
-        print(f"Error: {exc}", file=sys.stderr)
-        sys.exit(EXIT_USAGE)
+        fail("invalid_argument", str(exc), json_output=json_output,
+             exit_code=EXIT_USAGE)
 
     call_fn = None if no_llm else _orchestrator_call_fn()
     # `_orchestrator_call_fn` is unconditionally `make_structured_call_fn`,
@@ -545,8 +540,8 @@ def _cmd_mission_watchdog(mission_id: str, *, project: str | None = None,
     """
     from packages.orchestration.watchdog import evaluate_mission
 
-    project_id = _resolve_project_id(project)
-    mission = _load_mission_or_exit(project_id, mission_id)
+    project_id = _resolve_project_id(project, json_output=json_output)
+    mission = _load_mission_or_exit(project_id, mission_id, json_output=json_output)
     trips = evaluate_mission(project_id, mission.id)
 
     if json_output:
@@ -584,8 +579,7 @@ def _cmd_mission_handoff(mission_id: str, *, json_output: bool = False) -> None:
     try:
         path = build_handoff(mission_id)
     except MissionForHandoffNotFoundError as exc:
-        print(f"Error: {exc}", file=sys.stderr)
-        sys.exit(EXIT_ERROR)
+        fail("mission_not_found", str(exc), json_output=json_output)
 
     body = read_handoff(path)
     rendered = path.with_suffix(".md")
