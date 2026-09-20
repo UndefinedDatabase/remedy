@@ -3,8 +3,12 @@
 ``RunEvent.event`` is a bare ``str``.  Roughly forty modules read the ledger
 back by literal comparison, so a reader comparing against a name nothing writes
 is indistinguishable from one that works: it simply never matches, and the
-dimension it feeds scores absent forever.  Two such readers had been doing
-exactly that since the day they were written.  This module is the declaration
+dimension it feeds scores absent forever.  Six such readers existed when F277
+measured the tree.  Four were accidents and are gone — two readers deleted with
+what they fed, two names given the writer their readers had always named — and
+the two that remain are not accidents at all: they are RETIRED names, whose
+writers a dated decision removed and whose readers the same decision kept, so
+that run logs already on disk still render.  This module is the declaration all
 those comparisons can be checked against, and
 ``tests/orchestration/test_event_names.py`` is what checks them — by reading the
 code, not this docstring.
@@ -16,8 +20,8 @@ same reason.
 
 Public API::
 
-    EVENT_NAMES: frozenset[str]            # every name some code path WRITES
-    READ_ONLY_EVENT_NAMES: frozenset[str]  # names only READ — see below
+    EVENT_NAMES: frozenset[str]          # every name some code path WRITES
+    RETIRED_EVENT_NAMES: frozenset[str]  # names only READ, by ruling — see below
     is_declared_event(name) -> bool
     assert_declared_event(name) -> None    # raises ValueError on an unknown name
     known_event_names() -> tuple[str, ...]
@@ -35,6 +39,13 @@ Deliberate absences:
   * Remedy deliberately does not group these names by producer.  A name is
     written in one place and read in many, so any grouping would encode the
     writer's view of a table whose whole purpose is to serve the readers.
+  * Remedy deliberately does not mint a writer for a RETIRED name to make the
+    two sets collapse into one.  A retired name's writer was removed on
+    purpose and its readers were kept on purpose; re-creating the writer would
+    resurrect a mechanism a decision deleted, which AGENTS.md's "Replacing is
+    deleting" forbids, and deleting the readers would stop run logs already on
+    disk from rendering.  The set is therefore allowed to be non-empty, and
+    every entry cites the decision that retired it.
 """
 
 from __future__ import annotations
@@ -131,33 +142,42 @@ EVENT_NAMES: frozenset[str] = frozenset(
     }
 )
 
-#: Names some module READS and NOTHING writes — every comparison against one of
-#: these is dead code today.  This set is a QUARANTINE, not a vocabulary: it may
-#: only ever shrink, and the test enforces that in both directions (a name that
-#: gains a writer must move up into EVENT_NAMES; a name that loses its last
-#: reader must be deleted outright).  Each is disposed of by giving it a writer
-#: or by deleting the reader together with whatever it feeds — never by leaving
-#: the dimension permanently absent.
-READ_ONLY_EVENT_NAMES: frozenset[str] = frozenset(
+#: Names NOTHING writes any more and live code still READS, on purpose, so that
+#: run logs written before the writer was removed keep rendering.  Every entry
+#: names the decision that retired its writer: an entry with no such citation is
+#: an accident and belongs in neither set — give it a writer or delete its
+#: readers.  The test enforces both edges. A retired name that GAINS a writer
+#: moves up into EVENT_NAMES, because it is no longer retired; a retired name
+#: that loses its LAST reader is deleted outright, because nothing can then
+#: observe it.  Unlike the quarantine this set replaces, its floor is not zero:
+#: see the fourth deliberate absence above.
+RETIRED_EVENT_NAMES: frozenset[str] = frozenset(
     {
-        # Read by `change_set.py`, `project_brain.py` and `ui_server.py`, which
-        # replay reverts already on disk; `patch_intent_applied` and the other
-        # patch_intent_* names are written, this one alone is not.  Its writer
-        # spells it `revert_completed` and carries no `intent_id`, the key two
-        # of those readers index by, so the rename is a metadata contract and
-        # not a spelling — see DECISION F277 D4.
+        # Retired by DECISION F271 D3, which deleted its only writer
+        # `patch_revert.py` under finding R-0982 and ruled in as many words that
+        # the readers stay, each reading run logs already on disk.  Those readers
+        # are `change_set.py`, `project_brain.py` and `ui_server.py`; the fourth
+        # reader that ruling kept, `autonomy_readiness._has_revert_snapshot`, was
+        # deleted by F277 round 2 because it fed a signal no level checked, which
+        # is the one of the four that was an accident rather than a retirement.
+        # The live revert path writes `revert_completed`, a per-apply event that
+        # carries no `intent_id` and no path by design, so it is a different
+        # event and not this one under another spelling (DECISION F277 D5).
         "patch_intent_reverted",
-        # Read by `project_summary.py`, `ui_server.py` and `ui_view_model.py`.
-        # `ui_server.py` already records in a comment that this name has no
-        # emitter outside tests (DECISION F031 D2 / D9).
+        # Retired by DECISION F031 D2 and D9, which retired the blocker addend
+        # and the scan that read this name; `ui_server.py` carries that reading
+        # in a comment of its own above `_count_open_decisions`.  The readers
+        # `project_summary.py`, `ui_view_model.py` and `ui_server.py` render
+        # stop reasons from run logs already on disk, and five test files plant
+        # the event to exercise them.
         "stop_reason_recorded",
     }
 )
 
 
 def is_declared_event(name: str) -> bool:
-    """True when ``name`` is a declared event name, written or quarantined."""
-    return name in EVENT_NAMES or name in READ_ONLY_EVENT_NAMES
+    """True when ``name`` is a declared event name, written or retired."""
+    return name in EVENT_NAMES or name in RETIRED_EVENT_NAMES
 
 
 def assert_declared_event(name: str) -> None:
@@ -175,5 +195,5 @@ def assert_declared_event(name: str) -> None:
 
 
 def known_event_names() -> tuple[str, ...]:
-    """Every declared name, written and quarantined, in sorted order."""
-    return tuple(sorted(EVENT_NAMES | READ_ONLY_EVENT_NAMES))
+    """Every declared name, written and retired, in sorted order."""
+    return tuple(sorted(EVENT_NAMES | RETIRED_EVENT_NAMES))

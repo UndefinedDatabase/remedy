@@ -26,7 +26,10 @@ This module reads the CODE rather than the prose.  It walks every module under
   <literal>``, ``e["event"] in {...}``).
 
 and asserts ``read ⊆ declared`` and ``written ⊆ declared`` against
-``packages.orchestration.event_names``.
+``packages.orchestration.event_names``, where ``declared`` is
+``EVENT_NAMES | RETIRED_EVENT_NAMES``.  The stable invariant is therefore
+``read ⊆ written ∪ retired`` and ``written ⊆ declared``, not
+``read ⊆ written``: a retired name is read and never written, by ruling.
 
 Deliberate absences:
   * Remedy deliberately does not resolve event names across module boundaries.
@@ -42,12 +45,13 @@ from __future__ import annotations
 
 import ast
 import pathlib
+import re
 
 import pytest
 
 from packages.orchestration.event_names import (
     EVENT_NAMES,
-    READ_ONLY_EVENT_NAMES,
+    RETIRED_EVENT_NAMES,
     is_declared_event,
 )
 from packages.orchestration.run_log import STRICT_EVENT_NAMES_ENV, RunLogWriter
@@ -278,7 +282,7 @@ class TestTheEventVocabularyIsDeclared:
 
     def test_every_read_event_name_is_declared(self, collected) -> None:
         _, read = collected
-        declared = set(EVENT_NAMES) | set(READ_ONLY_EVENT_NAMES)
+        declared = set(EVENT_NAMES) | set(RETIRED_EVENT_NAMES)
         undeclared = sorted(set(read) - declared)
         assert not undeclared, (
             "these event names are READ but not declared: "
@@ -296,23 +300,23 @@ class TestTheEventVocabularyIsDeclared:
             + ", ".join(unused)
         )
 
-    def test_a_read_only_name_that_gains_a_writer_leaves_the_quarantine(
+    def test_a_retired_name_that_gains_a_writer_joins_the_vocabulary(
         self, collected
     ) -> None:
-        """The ratchet: READ_ONLY_EVENT_NAMES may only ever shrink."""
+        """A retired name that gains a writer is not retired any more."""
         written, _ = collected
-        resurrected = sorted(set(READ_ONLY_EVENT_NAMES) & set(written))
+        resurrected = sorted(set(RETIRED_EVENT_NAMES) & set(written))
         assert not resurrected, (
-            "these names are quarantined in READ_ONLY_EVENT_NAMES as having no "
-            "writer, but a writer now exists — move them into EVENT_NAMES: "
+            "these names are listed in RETIRED_EVENT_NAMES as having no writer, "
+            "but a writer now exists — move them into EVENT_NAMES: "
             + ", ".join(resurrected)
         )
 
-    def test_every_quarantined_name_really_has_a_reader(self, collected) -> None:
+    def test_every_retired_name_really_has_a_reader(self, collected) -> None:
         _, read = collected
-        orphans = sorted(set(READ_ONLY_EVENT_NAMES) - set(read))
+        orphans = sorted(set(RETIRED_EVENT_NAMES) - set(read))
         assert not orphans, (
-            "these names are quarantined as read-but-never-written, but nothing "
+            "these names are retired as read-but-never-written, but nothing "
             "reads them any more — delete the entry: " + ", ".join(orphans)
         )
 
@@ -325,7 +329,7 @@ class TestTheDeclarationModuleApi:
         assert not is_declared_event("no_such_event_name_exists")
 
     def test_the_two_sets_are_disjoint(self) -> None:
-        assert not (set(EVENT_NAMES) & set(READ_ONLY_EVENT_NAMES))
+        assert not (set(EVENT_NAMES) & set(RETIRED_EVENT_NAMES))
 
 
 class TestStrictModeRejectsAnUndeclaredName:
@@ -362,5 +366,63 @@ class TestStrictModeRejectsAnUndeclaredName:
         """Giving a quarantined name its writer must not have to fight the flag."""
         monkeypatch.setenv(STRICT_EVENT_NAMES_ENV, "1")
         writer = RunLogWriter("job-strict-quarantined", data_root=tmp_path)
-        writer.log(sorted(READ_ONLY_EVENT_NAMES)[0])
+        writer.log(sorted(RETIRED_EVENT_NAMES)[0])
         assert writer.path.read_text(encoding="utf-8").count("\n") == 1
+
+
+class TestEveryRetiredNameCitesTheDecisionThatRetiredIt:
+    """`RETIRED_EVENT_NAMES` is the one declaration whose floor is not zero.
+
+    `EVENT_NAMES` is checked against the code and cannot drift.  The retired set
+    cannot be: its members are read and never written BY DESIGN, so the two
+    ratchet tests above — gains-a-writer, loses-its-last-reader — leave a name
+    sitting there indefinitely, which is exactly the state a dead reader wants
+    to hide in.  What separates a retirement from an accident is a dated ruling,
+    so this reads the source and requires one per entry.  Without it the set is
+    a quarantine again, and F277 measured six names sitting in one.
+    """
+
+    SOURCE = (
+        REPO_ROOT / "packages" / "orchestration" / "event_names.py"
+    ).read_text(encoding="utf-8")
+
+    @staticmethod
+    def _comment_block_for(name: str) -> str:
+        """The contiguous run of `#` comment lines directly above the entry."""
+        lines = TestEveryRetiredNameCitesTheDecisionThatRetiredIt.SOURCE.splitlines()
+        entry = f'        "{name}",'
+        assert lines.count(entry) == 1, f"{name} is not listed exactly once"
+        index = lines.index(entry)
+        block: list[str] = []
+        while index > 0 and lines[index - 1].lstrip().startswith("#"):
+            index -= 1
+            block.insert(0, lines[index])
+        return "\n".join(block)
+
+    @pytest.mark.parametrize("name", sorted(RETIRED_EVENT_NAMES))
+    def test_the_entry_names_a_dated_decision(self, name) -> None:
+        block = self._comment_block_for(name)
+        assert block, f"{name} has no comment above it at all"
+        assert re.search(r"DECISION F\d+ D\d+", block), (
+            f"the RETIRED_EVENT_NAMES entry for {name!r} cites no decision. "
+            "A name is retired by a ruling that removed its writer and kept its "
+            "readers; without that citation it is a dead reader in hiding, and "
+            "the entry must be resolved instead — give the name a writer, or "
+            "delete every reader together with what it feeds.\n"
+            f"comment block read:\n{block}"
+        )
+
+    @pytest.mark.parametrize("name", sorted(RETIRED_EVENT_NAMES))
+    def test_the_entry_names_at_least_one_reading_module(self, name) -> None:
+        """The citation is only half: the entry must say WHO still reads it."""
+        block = self._comment_block_for(name)
+        assert re.search(r"`[\w/]+\.py`", block), (
+            f"the RETIRED_EVENT_NAMES entry for {name!r} names no reading module. "
+            "The test above proves a reader exists; this asks the entry to say "
+            "which, so the next reader of this file can check it without an AST."
+        )
+
+    def test_a_retired_name_is_declared_and_a_made_up_one_is_not(self) -> None:
+        for name in RETIRED_EVENT_NAMES:
+            assert is_declared_event(name)
+        assert not is_declared_event("no_such_retired_event_name")
