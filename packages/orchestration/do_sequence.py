@@ -119,6 +119,11 @@ class DoContext:
     #: `--planner-model`: `model=` of every structured planner call the plan and
     #: shape steps build (DECISION F268 D16 (7)).
     planner_model: str | None = None
+    #: `--planner-provider`: which SERVICE plans — `ollama`, `claude-cli`, or
+    #: `None` to take the `planner` role's own answer (operator amendment
+    #: amend0920-selfuse-real, DECISION D1). It reaches every
+    #: `make_structured_call_fn` this walk builds, beside `planner_model`.
+    planner_provider: str | None = None
     #: `--contract <name>`: the contract template the plan step writes onto the
     #: new mission; ``None`` applies the one proposed from the order, if any
     #: (DECISION F269 D1 (4)).
@@ -330,6 +335,7 @@ def plan_order_job(
     yes: bool = False,
     deterministic_tasks: list[TaskEntry] | None = None,
     planner_model: str | None = None,
+    planner_provider: str | None = None,
 ) -> OrderJobPlan:
     """Plan ONE job for an order: intake, then an LLM task plan or the deterministic one.
 
@@ -342,6 +348,9 @@ def plan_order_job(
     Every plan, LLM or deterministic, passes the deliverable validator.
     ``planner_model`` is ``model=`` of the intake and task-plan calls
     (DECISION F268 D16 (7)); omitted, the planner's configured model serves.
+    ``planner_provider`` is ``provider=`` of those same calls — which planning
+    SERVICE runs them (operator amendment amend0920-selfuse-real, DECISION D1);
+    omitted, the ``planner`` role answers, and its default is Ollama.
     Raises :class:`OrderJobPlanError` when an LLM task plan cannot be parsed
     (after writing the job's post-mortem), when a plan fails the validator,
     or when the order names more deliverables than one job holds.
@@ -377,10 +386,15 @@ def plan_order_job(
         intake_result = heuristic_intake(mission)
         intake_fallback_reason = "forced"
     else:
-        if planner_model:
+        from packages.orchestration.intake import resolve_planner_target
+
+        planner_name, _ = resolve_planner_target(planner_provider, planner_model)
+        if planner_model or planner_provider:
             from packages.orchestration.intake import make_structured_call_fn
             from packages.orchestration.schemas import JobIntake
-            call_fn = make_structured_call_fn(JobIntake, model=planner_model)
+            call_fn = make_structured_call_fn(
+                JobIntake, model=planner_model, provider=planner_provider,
+            )
         else:
             call_fn = make_provider_call_fn()
         if call_fn is not None:
@@ -389,11 +403,15 @@ def plan_order_job(
                 mission,
                 call_fn,
                 composed=intake_composed,
+                # The evidence names the planner that ACTUALLY ran, resolved
+                # through the one function that decides it. A trace that says
+                # "ollama" while the Claude CLI planned is a trace that lies
+                # about its own run (amend0920-selfuse-real, DECISION D1).
                 on_call=make_intake_call_recorder(
                     prompt_traces,
                     intake_composed,
-                    provider="ollama",
-                    provider_kind="ollama",
+                    provider=planner_name,
+                    provider_kind=planner_name,
                 ),
             )
             if intake_result.source == "heuristic":
@@ -417,7 +435,9 @@ def plan_order_job(
         # There is deliberately NO fallback to it — without a TaskPlan-bound
         # provider we skip LLM planning and take the deterministic skeleton
         # below, exactly as the no-provider path does.
-        plan_call_fn = make_structured_call_fn(TaskPlan, model=planner_model)
+        plan_call_fn = make_structured_call_fn(
+            TaskPlan, model=planner_model, provider=planner_provider,
+        )
 
     if plan_call_fn is not None:
         from packages.orchestration.job_plan import (
@@ -718,16 +738,25 @@ def _step_plan(ctx: DoContext) -> tuple[str, str]:
                      else "no contract template, none proposed from the order")
 
     call_fn = None
+    from packages.orchestration.intake import resolve_planner_target
+
+    planner_name, _ = resolve_planner_target(ctx.planner_provider, ctx.planner_model)
     if not ctx.no_llm:
         from packages.orchestration.intake import make_structured_call_fn
         from packages.orchestration.mission_plan_schema import MissionPlanDraft
 
-        call_fn = make_structured_call_fn(MissionPlanDraft, model=ctx.planner_model)
+        call_fn = make_structured_call_fn(
+            MissionPlanDraft, model=ctx.planner_model,
+            provider=ctx.planner_provider,
+        )
     try:
-        # Named exactly as `mission plan` names it: `make_structured_call_fn` is
-        # Ollama-backed. Without a provider the compiler plans deterministically.
+        # Named exactly as `mission plan` names it, and named HONESTLY: the
+        # planner that actually served is resolved through the one function
+        # that decides it, so the record cannot say "ollama" of a Claude CLI
+        # run (amend0920-selfuse-real, DECISION D1). Without a provider the
+        # compiler plans deterministically.
         outcome = plan_mission(project_id, mission.id, call_fn,
-                               provider="ollama", provider_kind="ollama")
+                               provider=planner_name, provider_kind=planner_name)
     except (MissionPlanInProgressError, MissionError) as exc:
         return DO_STEP_FAILED, f"mission {mission.id} was not planned: {exc}"
     ctx.mission_plan = outcome.plan
@@ -843,6 +872,7 @@ def _step_shape(ctx: DoContext) -> tuple[str, str]:
                 yes=ctx.yes,
                 deterministic_tasks=tasks,
                 planner_model=ctx.planner_model,
+                planner_provider=ctx.planner_provider,
             )
         except OrderJobPlanError as exc:
             return DO_STEP_FAILED, str(exc)
