@@ -147,6 +147,24 @@ class TestTheMissionView:
         assert proc.returncode == 1
         assert "origin is template, planner or amendment" in proc.stderr
 
+    def test_under_json_that_same_refusal_is_an_envelope_on_stdout(self, project):
+        """F277 T003: a `--json` command answers a broken body in JSON, not in prose."""
+        data_root, project_id = project
+        mission_id = _start(data_root, project_id, "Ship the tool")
+        broken = json.loads(json.dumps(CONTRACT))
+        broken["criteria"][1]["origin"] = "operator"
+        _store_contract(data_root, project_id, mission_id, broken)
+
+        proc = _run(["mission", "contract", mission_id, "--project", project_id, "--json"],
+                    data_root, expect_ok=False)
+
+        assert proc.returncode == 1
+        assert proc.stderr == ""
+        body = json.loads(proc.stdout)
+        assert body["ok"] is False and body["schema_version"] == 1
+        assert body["error"] == "invalid_contract"
+        assert "origin is template, planner or amendment" in body["message"]
+
 
 class TestTheMissionViewListsAmendments:
     """DECISION F269 D8 (5): `mission contract` shows each amendment."""
