@@ -231,16 +231,22 @@ end the response with:
   16, whose family it belonged to and which its own text named, leaving 36 items.
   Consolidated again at F260's closure on 2026-09-06: item 19 was merged into item
   31, the same rule about a second artefact, leaving 35 items.
+  Consolidated a third time at F276's closure on 2026-09-20: item 17 was merged into
+  item 15, the same rule about how the pair a block ships is DETERMINED, leaving 34
+  items.
   A merged item's NUMBER IS RETIRED AND NEVER REUSED, and the survivors are NEVER
-  RENUMBERED, so this list now runs 1 to 18, 20 to 31 and 33 to 37. The reason is that
+  RENUMBERED, so this list now runs 1 to 16, 18, 20 to 31 and 33 to 37. The reason is that
   `.agent/live_review.md` is append-only and cross-references these items by
   number from dated entries that cannot be corrected: renumbering would silently
   re-point every one of those references at a different rule, which is a worse
   failure than a gap in the numbering. That reason also fixes the DIRECTION of a
   merge, which F260's pass measured rather than assumed: `item 31` had 31 landed
   references across the record and its archive and the prose slips, and `item 19`
-  had none, so 19 was the number that could be retired without stranding one.
-  The next consolidation measures against 35.
+  had none, so 19 was the number that could be retired without stranding one. F276's
+  pass measured the same way and found no such free number left: at `8da83220` `item 17`
+  had ONE landed reference and `item 15` eleven, so 17 is the number that strands the
+  fewest rather than none, and this paragraph says so instead of implying a zero.
+  The next consolidation measures against 34.
   Reverse by deleting this paragraph.
   1. **Size.** Count the block's lines. Over 400 (DECISION F105 D5) → split or
      cut BEFORE emitting. A worker must save the block verbatim, so an oversize
@@ -467,6 +473,20 @@ end the response with:
       append obligation and never a FROM-zero count, and it says so in the same
       constraint, because the unattainable count is what turns a mislabelled pair into
       a false line in the permanent record.
+      Consolidated into this item at F276's closure on 2026-09-20 from what was ITEM 17;
+      that number is RETIRED, not reused. A PAIR THAT CHANGES A STRUCTURE'S ARITY SPANS
+      THE WHOLE STRUCTURE. Finding R-0509. When a TO adds or removes an entry of a
+      numbered list, a table, or any other structure whose items carry positional labels,
+      the FROM spans that WHOLE structure rather than a prefix of it, so the surviving
+      entries are renumbered by the pair itself. A prefix-shaped FROM leaves the old
+      labels standing on the untouched tail, and the applied file then carries two items
+      numbered 2 — which is what `.agent/plan.md` held for a round. It belongs here
+      because both clauses of this item govern how the pair a block SHIPS is DETERMINED
+      rather than what its label means: the containment test above fixes the pair's
+      SHAPE, this clause fixes how far its FROM must REACH, and item 4 — which states
+      what an APPEND claim requires — is the one that stays separate. No containment test
+      can answer the reach question, which is why the two are two clauses of one item and
+      not one sentence.
   16. **No heading states a count of the contents beneath it.** Finding R-0510. A
       section heading that restates a number its own body defines — "exactly these SIX
       paths", "the four commits" — drifts the moment an item is added, and the heading
@@ -520,16 +540,6 @@ end the response with:
       was right and only the adjective was wrong, which is why no gate the block ordered
       could see it and the WORKER caught each. Consolidated into this item at F259's
       closure on 2026-09-06 from what was item 32; that number is RETIRED, not reused.
-  17. **A pair that changes a structure's arity spans the whole structure.** Finding
-      R-0509. When a TO adds or removes an entry of a numbered list, a table, or any
-      other structure whose items carry positional labels, the FROM spans that WHOLE
-      structure rather than a prefix of it, so the surviving entries are renumbered by
-      the pair itself. A prefix-shaped FROM leaves the old labels standing on the
-      untouched tail, and the applied file then carries two items numbered 2 — which is
-      what `.agent/plan.md` held for a round. Item 4 asks what SHAPE a pair is and item
-      15 asks how that shape was determined; this one asks how far the FROM must REACH,
-      a question about the target's structure rather than about the pair's own bytes,
-      and no containment test can answer it.
   18. **A probe's recipe and its stated property are read against each other.** Finding
       R-0514. A block that orders a red-proof states BOTH what to mutate and what the
       result should show, and those two halves are checked against each other before
@@ -918,7 +928,7 @@ end the response with:
       ledger entry without a new id, per item 30: the list held an unnumbered
       checklist round ahead of an item labelled R56, so that label was already wrong
       by one before the round it named had begun. Items 16 and 17 are the neighbours.
-      Item 16 resolves a COUNT to the list it names, and item 17 makes a pair that
+      Item 16 resolves a COUNT to the list it names, and item 15 makes a pair that
       changes a structure's ARITY span the whole structure; neither reaches a prose
       sentence naming an ITEM the list does not hold, because no numeral is stated and
       no arity changes — the list is well-formed, correctly numbered, and simply
