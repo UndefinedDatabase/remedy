@@ -3490,10 +3490,25 @@ def decode_call_expectation_v1(raw: Any) -> CallExpectationV1:
     return CallExpectationV1(episode_phase=phase, tasks=tuple(tasks))
 
 
-_BUDGET_ALLOWED_KEYS = {
-    "max_total_tokens", "max_provider_calls", "max_wall_clock_minutes", "deadline",
-    "max_cost_usd",
-}
+#: The CLOSED budget schema a manifest accepts. DERIVED from `JobBudgets` rather
+#: than spelled again (F276 T004): this list was a second spelling of that model's
+#: field set, and the cost of the drift is on the record — R-0225 was `max_cost_usd`
+#: missing from it, which made every money-limited job unable to FINALIZE its budget
+#: stop, and F276's disk floor reproduced the identical failure the day it was added.
+#: A derived set cannot be one field behind the model. It is still CLOSED: a key
+#: `JobBudgets` does not declare is still rejected, and every per-key rule below is
+#: unchanged.
+def _budget_allowed_keys() -> frozenset[str]:
+    from packages.core.models import JobBudgets
+
+    return frozenset(JobBudgets.model_fields)
+
+
+#: The INTEGER limits, which share one rule. Derived the same way and by
+#: subtraction, so the two fields with rules of their own — `max_cost_usd`, which
+#: is fractional money, and `deadline`, which is a timestamp — are named once here
+#: and a new integer limit needs no edit at all.
+_BUDGET_NON_INTEGER_KEYS = frozenset({"max_cost_usd", "deadline"})
 
 
 def _decode_budgets_field(raw: Any) -> dict[str, Any] | None:
@@ -3511,10 +3526,11 @@ def _decode_budgets_field(raw: Any) -> dict[str, Any] | None:
     # Empty or all-null budget objects normalize to canonical null.
     if not raw or all(v is None for v in raw.values()):
         return None
-    unknown = set(raw.keys()) - _BUDGET_ALLOWED_KEYS
+    allowed = _budget_allowed_keys()
+    unknown = set(raw.keys()) - allowed
     if unknown:
         raise ManifestError(f"manifest.budgets has unknown keys: {sorted(unknown)}")
-    for k in ("max_total_tokens", "max_provider_calls", "max_wall_clock_minutes"):
+    for k in sorted(allowed - _BUDGET_NON_INTEGER_KEYS):
         v = raw.get(k)
         if v is None:
             continue

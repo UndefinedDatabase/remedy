@@ -3714,6 +3714,7 @@ def _write_stop_postmortem(job: JobPlan, signal: Any, task_id: str) -> None:
     ``job.stop_error``, which the evidence export turns into a BLOCKING integrity failure —
     the same rule F010 already applies to a failure it could not explain.
     """
+    from packages.orchestration.budget_guard import FREE_DISK_LIMIT
     from packages.orchestration.failure_postmortem import (
         POSTMORTEM_FILENAME,
         FailureSignals,
@@ -3722,7 +3723,18 @@ def _write_stop_postmortem(job: JobPlan, signal: Any, task_id: str) -> None:
     )
 
     _is_budget = getattr(signal, "source", "") == "budget"
-    _terminal = "budget_exhausted" if _is_budget else "stopped"
+    # F276 T004: the disk floor stops through THIS path and no other, but it
+    # gets its own terminal status, because a machine that ran out of space and
+    # a job that spent its tokens are different diagnoses. The reason is the one
+    # `safe_points.should_stop` composes, `budget_exhausted:<limit>`, so the
+    # comparison is against the whole string and not a suffix — a future limit
+    # whose name merely ends in the disk limit's cannot be mistaken for it.
+    if _is_budget and getattr(signal, "reason", "") == f"budget_exhausted:{FREE_DISK_LIMIT}":
+        _terminal = "disk_exhausted"
+    elif _is_budget:
+        _terminal = "budget_exhausted"
+    else:
+        _terminal = "stopped"
 
     try:
         record = build_job_rollup(

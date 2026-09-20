@@ -136,6 +136,9 @@ class TestClassifyEveryClass:
             FailureSignals(terminal_status="review_failed"),
             FailureSignals(terminal_status="stopped"),
             FailureSignals(terminal_status="budget_exhausted"),
+            # F276 T004: the disk floor's own class, produced by
+            # `pingpong_job._write_stop_postmortem` for a disk-limit stop.
+            FailureSignals(terminal_status="disk_exhausted"),
             FailureSignals(runtime_probe_failed=True),
             FailureSignals(error_class="parse"),
             FailureSignals(error_class="config"),

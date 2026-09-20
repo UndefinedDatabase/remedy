@@ -18,6 +18,8 @@ functions here stay pure so the stop path holds no estimation logic of its own.
 from __future__ import annotations
 
 import math
+import shutil
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
@@ -242,7 +244,21 @@ class BudgetEvaluation:
         }
 
 
+#: F276 T004 — the disk floor's limit name, which is its ``JobBudgets`` FIELD
+#: name, exactly as every other entry of ``_LIMIT_ORDER`` is. It is spelled once
+#: here because three modules read it: this one, ``safe_points`` through the
+#: ``budget_exhausted:<limit>`` reason it composes, and ``pingpong_job``, which
+#: decides a post-mortem's terminal status by comparing against that reason.
+FREE_DISK_LIMIT = "min_free_disk_bytes"
+
 _LIMIT_ORDER = (
+    # F276 T004. FIRST on purpose. ``first_exhausted_limit`` is the ONE limit the
+    # operator is told about, and every other name here is something the operator
+    # can simply raise. A full disk is not: raise the token limit on a machine
+    # with no space and the job walks into the same wall, having been told to do
+    # exactly that. The condition that makes the other recoveries impossible is
+    # the one worth naming.
+    FREE_DISK_LIMIT,
     "max_provider_calls",
     "max_total_tokens",
     "max_cost_usd",
@@ -251,12 +267,65 @@ _LIMIT_ORDER = (
 )
 
 
+#: The disk floor's PROBE SEAM. ``evaluate_budget`` never calls
+#: ``shutil.disk_usage`` itself: it calls whatever this module-level name is
+#: bound to, so a test overrides the whole process's answer by rebinding it and
+#: one caller overrides a single evaluation with the ``free_disk_probe``
+#: keyword. Nothing in the test suite is allowed to read the real filesystem
+#: here — a disk assertion made against the machine the suite happens to run on
+#: is not a test, it is a weather report.
+def default_free_disk_bytes() -> int:
+    """Free bytes of the filesystem the DATA ROOT lives on.
+
+    The data root is what fills up: staging copies, run logs and evidence all
+    land under it, and it is routinely on a different filesystem from the
+    checkout (``REMEDY_DATA_DIR``). ``resolve_data_root`` does not guarantee the
+    path exists, so this walks up to the nearest existing ancestor — the
+    filesystem of a directory Remedy is about to create is the filesystem of its
+    parent.
+    """
+    from packages.orchestration.data_paths import resolve_data_root
+
+    path = resolve_data_root()
+    while True:
+        try:
+            return int(shutil.disk_usage(path).free)
+        except (FileNotFoundError, NotADirectoryError):
+            parent = path.parent
+            if parent == path:
+                raise
+            path = parent
+
+
+#: Rebind THIS to change what every disk check in the process reads.
+FREE_DISK_PROBE: Callable[[], int] = default_free_disk_bytes
+
+
+def free_disk_bytes(probe: Callable[[], int] | None = None) -> int:
+    """Read free disk through the seam — the one reader every surface shares.
+
+    ``remedy doctor core`` calls this, and so does ``evaluate_budget``. That is
+    the whole point: a doctor that reported the real filesystem while the budget
+    check read an injected probe would agree with the job only by luck.
+    """
+    return int((probe if probe is not None else FREE_DISK_PROBE)())
+
+
 def evaluate_budget(
     budgets: JobBudgets | None,
     counters: BudgetCounters,
     *,
     now: datetime | None = None,
+    free_disk_probe: Callable[[], int] | None = None,
 ) -> BudgetEvaluation:
+    """Evaluate every configured limit against the actuals.
+
+    Still pure for every job that configures no disk floor: the probe is called
+    ONLY inside ``if budgets.min_free_disk_bytes is not None``, so a job whose
+    budgets predate F276 makes exactly the same calls it made before, and the
+    module's opening promise of "no writes, no stop, no side effects" is
+    narrowed rather than withdrawn — the one read is a ``statvfs``, injected.
+    """
     if budgets is None:
         return BudgetEvaluation(
             configured_limits=None,
@@ -335,6 +404,26 @@ def evaluate_budget(
         sources.append(f"deadline: {budgets.deadline.isoformat()}")
         if now >= budgets.deadline:
             exhausted_limits.append("deadline")
+
+    # F276 T004 — the FLOOR. Note the comparison: every limit above is exhausted
+    # at ``counter >= limit``, this one at ``free < floor``, so a floor of N
+    # accepts exactly N free bytes. A probe that RAISES is a warning and never a
+    # stop: a job must not die because a mount point went away under a stat, and
+    # the reactive limits above still hold.
+    if budgets.min_free_disk_bytes is not None:
+        try:
+            free = free_disk_bytes(free_disk_probe)
+        except Exception as disk_exc:
+            warnings.append(
+                f"free disk could not be read "
+                f"({type(disk_exc).__name__}: {disk_exc}); "
+                f"the {FREE_DISK_LIMIT} floor is not enforced for this evaluation"
+            )
+        else:
+            sources.append(
+                f"free_disk: {free}/{budgets.min_free_disk_bytes} bytes")
+            if free < budgets.min_free_disk_bytes:
+                exhausted_limits.append(FREE_DISK_LIMIT)
 
     first = None
     for limit_name in _LIMIT_ORDER:

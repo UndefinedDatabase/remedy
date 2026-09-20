@@ -123,6 +123,10 @@ _CONFIG_KEYS = {
     "max_wall_clock_minutes": "budget.max_wall_clock_minutes",
     "max_cost_usd": "budget.max_cost_usd",
     "deadline": "budget.deadline",
+    # F276 T004: the disk floor resolves through the SAME map, the same
+    # `_pos_int`, the same `ConfigSource.DEFAULT` handling and the same
+    # `_KEY_SPEC_MAP` fail-closed check on an unknown `budget.*` key.
+    "min_free_disk_bytes": "budget.min_free_disk_bytes",
 }
 
 
@@ -175,6 +179,12 @@ def resolve_job_budgets(
     max_provider_calls = _resolve_int("max_provider_calls", cli_max_provider_calls)
     max_wall_clock_minutes = _resolve_int("max_wall_clock_minutes", cli_max_wall_clock_minutes)
     max_cost_usd = _resolve_float("max_cost_usd", cli_max_cost_usd)
+    # F276 T004: no CLI layer, for the reason `resolve_predictive_budget_config`
+    # below already gives — the disk floor is a property of the MACHINE, not of
+    # one invocation, so an operator sets it once in config. Passing None here
+    # makes `_resolve_int` take its env > TOML > no-limit path, which is the same
+    # path every limit above takes when its flag is absent.
+    min_free_disk_bytes = _resolve_int("min_free_disk_bytes", None)
 
     deadline: datetime | None = None
     if cli_deadline is not None:
@@ -190,7 +200,8 @@ def resolve_job_budgets(
             deadline = _parse_deadline(raw_dl)
 
     if all(v is None for v in (max_total_tokens, max_provider_calls,
-                               max_wall_clock_minutes, max_cost_usd, deadline)):
+                               max_wall_clock_minutes, max_cost_usd, deadline,
+                               min_free_disk_bytes)):
         return None
 
     return JobBudgets(
@@ -199,7 +210,25 @@ def resolve_job_budgets(
         max_wall_clock_minutes=max_wall_clock_minutes,
         max_cost_usd=max_cost_usd,
         deadline=deadline,
+        min_free_disk_bytes=min_free_disk_bytes,
     )
+
+
+def resolve_min_free_disk_bytes(
+    *,
+    config_path: str | None = None,
+    project_root: str | None = None,
+) -> int | None:
+    """The configured disk floor alone, or None when no floor is configured.
+
+    ``remedy doctor core`` has no job and therefore no ``JobBudgets``, but it
+    must report the SAME number a job would be judged against. It reads the one
+    key through :func:`resolve_job_budgets` rather than through a second
+    resolution path, so a doctor that says "floor met" and a safe point that
+    stops the job can never be reading different config.
+    """
+    budgets = resolve_job_budgets(config_path=config_path, project_root=project_root)
+    return None if budgets is None else budgets.min_free_disk_bytes
 
 
 def resolve_predictive_budget_config(
