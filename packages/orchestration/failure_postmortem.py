@@ -94,6 +94,14 @@ class FailureClass(str, enum.Enum):
     STOPPED = "stopped"
     #: Reserved for F018's budgets. Classifiable; nothing in F010 produces it.
     BUDGET_EXHAUSTED = "budget_exhausted"
+    #: F276's disk floor. A SEPARATE class from ``BUDGET_EXHAUSTED`` although the
+    #: floor is carried on ``JobBudgets`` and stops through the same path,
+    #: because the two say opposite things to whoever reads the record: a budget
+    #: is exhausted by what this job spent and is raised by the operator, while
+    #: the disk was exhausted by the machine and is very often nothing this job
+    #: did. Folding them would make "which of my jobs ran the disk out" an
+    #: unanswerable question.
+    DISK_EXHAUSTED = "disk_exhausted"
     #: F017 scope fence violation. A write path was blocked by fence checks.
     FENCE_VIOLATION = "fence_violation"
     #: The HARNESS's own OS-level I/O or process failure — a killed process, a
@@ -186,6 +194,7 @@ TERMINAL_STATUS_CLASSES: dict[str, FailureClass] = {
     "runtime_probe_failed": FailureClass.RUNTIME_PROBE_FAILED,
     "stopped": FailureClass.STOPPED,
     "budget_exhausted": FailureClass.BUDGET_EXHAUSTED,
+    "disk_exhausted": FailureClass.DISK_EXHAUSTED,
     "fence_violation": FailureClass.FENCE_VIOLATION,
 }
 

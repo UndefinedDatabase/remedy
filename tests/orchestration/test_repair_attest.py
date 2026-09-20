@@ -199,3 +199,81 @@ def test_e2e_blocked_job_attest_verifier_pass(isolate_data_root, git_repo):
         path = out_dir / name
         assert path.exists(), f"missing {name}"
         assert isinstance(json.loads(path.read_text()), dict), f"invalid JSON: {name}"
+
+
+class TestHunklessDiffEntriesAreVisible:
+    """R-1010: an entry with no hunks has no ``+++`` line, and was therefore invisible.
+
+    ``create_manual_completion_bundle`` puts every attestable changed path into a task's
+    ``changed_files`` and then checks that ``parse_safe_diff_paths`` reads the same set back
+    out of that task's safe diff. An ADDED EMPTY file makes those two disagree: git writes
+    only ``diff --git``, ``new file mode`` and ``index`` for it, so the writer's own check
+    raised and no review package could be built for any branch holding one. F276's closure
+    met it when the operator merged main in with an empty ``__init__.py``.
+    """
+
+    ADDED_EMPTY = (
+        "diff --git a/packages/providers/claude_planner/__init__.py "
+        "b/packages/providers/claude_planner/__init__.py\n"
+        "new file mode 100644\n"
+        "index 00000000..e69de29b\n"
+    )
+    MODIFIED = (
+        "diff --git a/pkg/a.py b/pkg/a.py\n"
+        "index 1111111..2222222 100644\n"
+        "--- a/pkg/a.py\n"
+        "+++ b/pkg/a.py\n"
+        "@@ -1 +1 @@\n-x\n+y\n"
+    )
+    DELETED = (
+        "diff --git a/pkg/gone.py b/pkg/gone.py\n"
+        "deleted file mode 100644\n"
+        "index 3333333..0000000\n"
+        "--- a/pkg/gone.py\n"
+        "+++ /dev/null\n"
+        "@@ -1 +0,0 @@\n-x\n"
+    )
+    DELETED_EMPTY = (
+        "diff --git a/pkg/gone_empty.py b/pkg/gone_empty.py\n"
+        "deleted file mode 100644\n"
+        "index e69de29..0000000\n"
+    )
+    RENAMED = (
+        "diff --git a/pkg/old.py b/pkg/new.py\n"
+        "similarity index 100%\n"
+        "rename from pkg/old.py\n"
+        "rename to pkg/new.py\n"
+    )
+
+    def test_an_added_empty_file_is_named_by_its_header(self):
+        assert parse_safe_diff_paths(self.ADDED_EMPTY) == [
+            "packages/providers/claude_planner/__init__.py"]
+
+    def test_a_pure_rename_is_named_by_its_destination(self):
+        assert parse_safe_diff_paths(self.RENAMED) == ["pkg/new.py"]
+
+    def test_an_added_empty_file_whose_path_holds_a_space_is_read_whole(self):
+        text = ("diff --git a/pkg/with space.py b/pkg/with space.py\n"
+                "new file mode 100644\n"
+                "index 00000000..e69de29b\n")
+        assert parse_safe_diff_paths(text) == ["pkg/with space.py"]
+
+    def test_a_deleted_file_is_still_absent_whether_or_not_it_had_hunks(self):
+        # It has no content at head, which is why `+++ /dev/null` is skipped and why
+        # the bundle's attestable authority set already excludes it (R-0837).
+        assert parse_safe_diff_paths(self.DELETED) == []
+        assert parse_safe_diff_paths(self.DELETED_EMPTY) == []
+
+    def test_an_ordinary_modified_file_reads_exactly_as_before(self):
+        assert parse_safe_diff_paths(self.MODIFIED) == ["pkg/a.py"]
+
+    def test_a_mixed_diff_names_every_path_that_exists_at_head(self):
+        text = self.ADDED_EMPTY + self.MODIFIED + self.DELETED + self.RENAMED
+        assert parse_safe_diff_paths(text) == [
+            "packages/providers/claude_planner/__init__.py", "pkg/a.py", "pkg/new.py"]
+
+    def test_the_writers_own_round_trip_holds_for_an_added_empty_file(self):
+        # This is the exact equality `create_manual_completion_bundle` asserts per task.
+        files = ["packages/providers/claude_planner/__init__.py", "pkg/a.py"]
+        safe = build_safe_diff_text(self.ADDED_EMPTY + self.MODIFIED, [])
+        assert parse_safe_diff_paths(safe) == sorted(files)

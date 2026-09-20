@@ -1,0 +1,85 @@
+F276 INTEGRATION GATE — the re-run ordered by DECISION F276 D12
+(operator's merge of origin/main into this branch at 512ba69c invalidated the
+transcript this file held; see .agent/decisions.md, DECISION F276 D12 and D11)
+
+This file REPLACES the transcript committed at fd23710f, the same mechanism
+round 8 used when it replaced round 7's red transcript at this same path.
+Closure precondition 2 reads ONE file by name, so the re-run's transcript
+takes that same path rather than sitting beside the old one; the superseded
+run is not lost — it is recoverable from git history at fd23710f — and its
+summary is restated below so both runs resolve from this one file.
+
+Run ONCE, by the worker of round 11, in the PRIMARY checkout
+/home/decodeux/Repos/remedy, never a worktree.
+
+WHY THIS RUN EXISTS. After round 10 ended on the .agent/STOP sentinel, the
+operator merged origin/main into feature/f276-data-root-hygiene at 512ba69c,
+bringing in the amend0920-selfuse-real work (28 files changed between the
+fork point 43d148177efd145f179ba2d9875eaa675b1595b7 and main's tip
+8f129d71e311ccd58bdb01d63c78bb75dffbd382, including the new suite
+tests/orchestration/test_claude_planner.py). The transcript committed at
+fd23710f described a tree of 17659 outcomes; the merged tree collects 17740.
+Reading the old transcript back at closure would re-confirm nothing about
+this tree, so DECISION F276 D12 orders exactly one re-run on the merged tree.
+
+apps/ui BUILD, first, before the suite started (a cold apps/ui/dist would
+make the UI server's start path auto-build while xdist workers are already
+running, which reddened three tests/ui_server/ nodes in round 7):
+
+  cd apps/ui && npm run build
+  EXIT CODE 0, last line: ✓ built in 1.42s
+  git status --porcelain immediately afterwards: EMPTY
+  (apps/ui/dist is gitignored, so the build changes no tracked file)
+
+Nothing was marked xfail, nothing was skipped, no assertion was weakened and
+no test was deleted.
+
+COMMAND
+  python3 -m pytest -n auto -q
+
+CHECKOUT       /home/decodeux/Repos/remedy
+COMMIT         c6a519d195f1de3ed9f6b743f6937663502e52cb (C1 of round 11)
+BRANCH         feature/f276-data-root-hygiene
+TREE           git status --porcelain empty at the start of the run
+
+EXIT CODE      0
+               taken from the process object of the subprocess that ran
+               pytest, never from a pipeline, so it is pytest's own code and
+               not a downstream reader's
+
+PYTEST SUMMARY LINE, verbatim
+  17720 passed, 20 skipped, 1 warning in 253.14s (0:04:13)
+
+WALL CLOCK     337.24 seconds measured around the process by the caller
+               (pytest's own in-band reading is the 253.14s in the summary
+               line above; the difference is collection, the xdist workers'
+               start-up and the run's own teardown)
+
+BAD NODE IDS: none
+The run printed no FAILURES section, no ERRORS section, and no line beginning
+FAILED or ERROR: searched for mechanically over the captured output (grep for
+the literal strings "FAILURES", "^ERRORS", "^FAILED" and "^ERROR") rather than
+read off the summary. All three searches matched nothing. The bad set of this
+run is empty.
+
+THE SUPERSEDED RUN, so both resolve from this one file: the transcript
+committed at fd23710f read the summary line
+  17639 passed, 20 skipped, 1 warning in 219.97s (0:03:39)
+for 17659 outcomes, with an empty bad set (its own three previously-bad nodes
+had already shrunk to zero by round 8's repair).
+
+THE RECONCILIATION, which is this round's whole reason to exist: this run's
+outcome total is 17720 passed + 20 skipped = 17740. The superseded run's
+outcome total was 17659. The difference is 81 (17740 - 17659), and it is
+attributed to the merge of origin/main at 512ba69c: that merge brought in
+tests the branch did not hold at fd23710f, including the whole of
+tests/orchestration/test_claude_planner.py, none of which were ever exercised
+by the superseded run. No test was removed between the two runs; the
+difference is entirely additions the merge carried in.
+
+GOLDEN-PATH CANARY, named explicitly: tests/cli/test_golden_path.py collects
+42 node ids (verified separately by
+`python3 -m pytest tests/cli/test_golden_path.py -q --collect-only`, itself
+not a second run of the suite). Because this run's bad-node search above found
+zero FAILED/ERROR lines anywhere in the captured output, all 42 golden-path
+nodes are among the 17720 passed; none appear in any bad set.

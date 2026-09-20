@@ -16596,3 +16596,639 @@ when green and AGENTS.md's Open PR Gate says the same; leaving `main` red and re
 because it makes Part E unfinishable and hands the next feature the same wall.
 REVERSE: restore the install line to `python3 -m pip install -e ".[dev]"` with its former step name,
 delete the comment above it, delete R-1009 from the ledger, and delete this paragraph.
+## DECISION F276 D1 (2026-09-20, reviewer, round 1) — the data root's classes are DATA in `data_paths`, `data` is an advanced group, and the partition test's ruled count moves from thirty to thirty-one
+CONTEXT: T001 of `docs/roadmap/features/T2_F276.md` orders `EPHEMERAL_CLASSES` and `DURABLE_CLASSES`
+"both declared as data", an architecture test that reds on an unclassified child, and a read-only
+`remedy data usage`. Two things the feature file does not settle had to be: where the new command's
+group sits in the CLI surface, and what happens to `tests/cli/test_cli_ux.py::TestGroupDefIntegrity::test_catalog_partition_matches_d4`,
+which asserts `len(GROUPS) == 30` for the partition DECISION amend0905-vocab D4 names. A research
+helper inventoried the data root at `6daeb66e` by scanning `packages/`, `apps/` and `scripts/` and by
+calling every `*_dir()` helper; the reviewer re-applied that work in its own worktree and re-ran it.
+CHOSEN: (1) five ephemeral classes — `job_workspaces`, `workspaces`, `runs`, `job_logs` and the
+`review_staging.*` prefix class — and fifteen durable ones, each entry a frozen `DataRootClass`
+naming its owning module and its reclaim rule, with `classify_data_child` and `data_class_dir` as the
+only readers; the eleven class-named `*_dir()` helpers resolve through `data_class_dir`, so an
+unregistered name raises instead of composing a path. (2) The feature file's "ping-pong runs" and
+"task jobs" get NO entry: no code creates either today — ping-pong results live in `runs/` and
+`task_jobs/` was retired by DECISION F260 D-A — and a legacy `task_jobs/` on an operator disk reports
+as `unclassified`, which is the honest answer and the one `data usage` prints. (3) The `data` group is
+`user_facing=False`: it is advanced, reachable through `--all-commands`, and it does NOT enter
+`VISIBLE_GROUP_ORDER`, which D4 and DECISION amend0911-feedback D1 pin at sixteen visible groups plus
+two reserved slots. That pin is untouched; only the catalog's total moves, and the partition test's
+docstring says which group the thirty-first is and that it was added after D4 was ruled.
+ALTERNATIVES: a visible `data` group, rejected because it would edit the pinned visible order for a
+command an operator runs when disk runs out, not daily; leaving the helpers spelling their own
+literals beside the registry, rejected because two spellings of one name is what the registry exists
+to end; asking the operator to re-rule D4 before building, rejected under amend0917-throughput (5) —
+the recommendation is executed and stays reversible.
+REVERSE: delete the `data` GroupDef and the `data.usage` entry from `apps/cli/command_catalog.py`,
+restore `assert len(GROUPS) == 30` and the `_INTERNAL_GROUPS` set in `tests/cli/test_cli_ux.py`,
+delete `apps/cli/commands/data_cmd.py`, `packages/orchestration/data_footprint.py`,
+`tests/test_data_root_classes.py`, `tests/orchestration/test_data_footprint.py` and
+`tests/cli/test_data_cmd.py` with their two allowlist lines, restore `packages/orchestration/data_paths.py`
+from `43d14817`, and delete this paragraph.
+
+## DECISION F276 D2 (2026-09-20, reviewer, round 1) — F276's first round repairs the test that reddens hosted CI on `main`, although the repair is nobody's planned scope
+CONTEXT: pull request 260 merged F273's closure into `main` at this session's Open PR Gate as
+`43d14817`. Its hosted run 35470120934 on `6daeb66e` had failed BOTH columns on one node,
+`tests/cli/test_study_cmd.py::TestStudyCommandReachability::test_study_run_dispatch_e2e`, which is
+green in the primary checkout and absent from F273's committed closure-suite transcript. The cause,
+measured this round, is R-1001: the node asserts that a probe contacted the loopback host the test
+supplies, and that probe cannot exist without the optional `ollama` extra that hosted CI does not
+install. Under amend0911-feedback rule A the finding would default to F282, the next findings-paydown
+feature, and `main` would stay red until F282 runs.
+CHOSEN: F276 registers R-1001 in its first commit and repairs it in the next one, in the same round,
+and owns it. The repair guards the assertion with `importlib.util.find_spec("ollama") is not None`
+and leaves everything else standing, including the fake host that is what actually bounds the
+subprocess away from a real model. A red column on `main` is read by every later feature's closure
+evidence, so carrying it is more expensive than a nine-line test edit that four runs proved.
+ALTERNATIVES: adding `ollama` to the `dev` extra so hosted CI installs it, rejected because it arms a
+real provider import across every CI job to fix one assertion; deleting the assertion, rejected as a
+weakened test; leaving it to F282 with the column red meanwhile, rejected for the reason above.
+REVERSE: restore `tests/cli/test_study_cmd.py` from `43d14817`, and delete this paragraph.
+
+## DECISION F276 D3 (2026-09-20, reviewer, round 2) — reclaim addresses `job_workspaces` alone; `workspaces`, `runs` and `job_logs` are durable because live readers depend on them, and a class is a reclaim policy
+CONTEXT: T002 of `docs/roadmap/features/T2_F276.md` orders a preview-first `remedy data reclaim`
+whose `--apply` "deletes only the exact paths the preview named" and "refuses any workspace whose
+job is not terminal". A research helper prototyped it in its own worktree against the branch tip
+`96fd8f9c`; the reviewer re-applied that work, ran it and red-proved it. Building it exposed a
+question the feature file does not answer: T001 calls `workspaces`, `runs` and `job_logs`
+ephemeral, and all three hold data that outlives the job whose id names them. The helper measured
+the readers; the reviewer confirmed each by reading the source at `96fd8f9c`, and measured the
+yield with the command T001 built.
+CHOSEN: (1) `workspaces`, `runs` and `job_logs` move to `DURABLE_CLASSES`, each carrying the reader
+that keeps it: `workspaces/<job>` holds the `repository_snapshots/` and `apply_records/` that
+`repository_snapshot._snapshot_dir` and `_apply_record_dir` write and `snapshot_cmds.py:118` reads,
+which the catalog's own `snapshot.list-applies` description calls "durable apply records for a
+job"; `runs/<run_id>` holds the `result.json`, `prompt_trace.jsonl` and `prompt_trace_summary.json`
+that `job_evidence.py` reads for jobs that are ALREADY terminal, and the `result.json` and
+`result.diff` `worktree_resume.py` reads; `job_logs/<job>` is the event trail the timeline, the
+trust report, the cockpit and `pingpong_job` read. Two ephemeral classes remain, `job_workspaces`
+and `review_staging.*`, and exactly one has reclaim candidates. (2) A CLASS IS A RECLAIM POLICY,
+not a claim about how long a directory lives. Reclaim's safety comes from addressing whole DIRECT
+CHILDREN of a class directory; a subtree rule that reached inside a mixed directory to separate
+scratch from evidence would give that up, so a mixed directory stays durable until a later slice
+can split it, and age-based retention of the three kept classes is F166's. (3) The narrowing costs
+almost nothing, measured by `data usage --json` on the operator's root at `96fd8f9c`: of
+923560682122 bytes, `job_workspaces` holds 922931683643 — 99.93 per cent — against `runs`
+144775616, `workspaces` 39580459 and `job_logs` 17575775. (4) Terminal means `completed`, `failed`
+or `cancelled`, declared as `pingpong_job.JOB_TERMINAL_STATES` beside the `JOB_*` constants and
+read through `job_is_terminal`; `blocked`, `stopped`, `paused`, `planned`, `running` and `pending`
+keep their scratch, because `JOB_STOPPED`'s own docstring says a stopped job "keeps its pending
+work and resumes at the first pending task" and `job resume` is a live command. `status_cmd`'s
+private `_TERMINAL` set is routed through the same function so the vocabulary has one spelling.
+(5) `review_staging.*` stays ephemeral and is REFUSED by reclaim, because no job owns it and no age
+rule exists; its registry entry says so rather than promising a reclaim nothing performs. (6) A
+refusal the operator asked for exits 0; `delete_failed` — a deletion attempted and failed — exits
+1, pinned in both directions by tests, the failing case made real with an unwritable parent rather
+than a patched call. (7) The round is five code commits, none over 500 insertions. The alternative
+was one 507-line commit declared oversize; a declared oversize has to mean the change cannot be
+split, the helper's slice probe proved it can, so the allowance is not spent. The split's whole
+cost is two docstring rewordings in `data_reclaim.py` so that the module never names a command the
+catalog does not yet carry — `tests/cli/test_advertised_commands.py` forbids the module's prose
+landing before the catalog entry and `tests/orchestration/test_dead_command_check.py` forbids the
+catalog entry landing before a naming test, and those two guards together are what bracket the
+order.
+ALTERNATIVES: keeping the three classes ephemeral and refusing them inside reclaim, rejected
+because `data usage` would then report 923 GB of "ephemeral" bytes an operator cannot reclaim, and
+the report is the thing that must be honest; a subtree rule deleting a workspace's checkout while
+keeping its snapshots and apply records, rejected under (2) and for 0.004 per cent of the bytes;
+deleting a stopped job's scratch, rejected because `job resume` reads it; declaring the oversize
+commit, rejected under (7).
+REVERSE: restore `packages/orchestration/data_paths.py`, `packages/orchestration/data_footprint.py`,
+`packages/orchestration/pingpong_job.py`, `apps/cli/commands/status_cmd.py`,
+`apps/cli/commands/data_cmd.py`, `apps/cli/command_catalog.py`, `docs/system/architecture.md` and
+`tests/cli/test_data_cmd.py` from `96fd8f9c`, delete `packages/orchestration/data_reclaim.py`,
+`tests/orchestration/test_data_reclaim.py` and their allowlist line, delete the AMENDMENT paragraph
+this decision appended to `docs/roadmap/features/T2_F276.md`, and delete this paragraph.
+
+## DECISION F276 D4 (2026-09-20, reviewer, round 3) — an orphaned staging copy is reclaimable only when the operator asks for it by name, and the verdict is taken twice
+CONTEXT: R-1002, registered in this round's first commit, measures what T002 as built can actually
+free on the machine the feature was written for: 284536286695 bytes of the 922931683643 in
+`job_workspaces`, with 638395396948 refused because 1884 staging copies have no job record at all.
+The feature file's own OPERATOR STEP expects `.data` under 10 GB afterwards. A research helper
+prototyped the repair at `94441e34` in its own worktree; the reviewer re-applied it, re-ran the
+gates and re-proved three of its mutations.
+CHOSEN: (1) `remedy data reclaim --orphans`, a flag declared `is_flag=True` because `grouped.py`
+special-cases only `--json` by name, default OFF. With it, a DIRECT CHILD of `job_workspaces` whose
+name starts with `staging_`, whose remainder is non-empty, whose job id resolves to NO readable
+record, and whose own mtime is at least `ORPHAN_MIN_AGE_DAYS` old becomes a candidate; without it,
+nothing changes, which one test pins by comparing the serialised default JSON of a seeded root
+byte for byte against the document it produced before. (2) The floor is 1.0 day, and it insures
+against exactly one state: a staging directory CREATED while its record is still being written. A
+directory that was just created has a fresh mtime of its own, so the child's own `lstat` is the
+right reading and a subtree walk would answer a different question. An orphan under the floor is
+refused under its own reason, `orphan_too_young`, so the operator sees it rather than losing it
+from the report. (3) The orphan verdict is re-taken AT DELETION, not trusted from the plan: for a
+candidate whose state reads `no_record`, `apply_reclaim` re-reads the record and the mtime and
+refuses — `job_unresolved` if a record has appeared, `orphan_too_young` if the floor is no longer
+met. Every other candidate keeps the path it had. This is the one verdict that authorises deleting
+a directory nothing points at, so it is the last one to take on trust; the cost is one record read
+and one `lstat` per orphan against hundreds of gigabytes of deletion. (4) The machine-readable
+discriminator is the candidate's `job_state`, which reads `no_record` — a token no `RunState` member
+spells, pinned by a test — rather than a new JSON key, because a new key would change the default
+document the byte-identity test exists to protect. (5) The DEFAULT HUMAN preview gains one line
+naming how many paths are refused as `job_unresolved`, their bytes, and that `--orphans` can
+reclaim the ones no record owns; the JSON gains nothing. An operator looking at 638 GB of refusals
+must not have to read the source to learn the flag exists. The line's count is of the refusals, not
+a forecast of what `--orphans` would take, and its wording says so: forecasting would mean a second
+walk of a 923 GB tree. (6) A record that EXISTS but cannot be parsed is never an orphan, so a
+staging copy with a corrupt `job.json` keeps its scratch forever and no slice of F276 reaches it.
+(7) Every numeral this round writes into prose names its date and its denominator, because the
+93-per-cent and 98-per-cent readings of DECISION F276 D3 are both correct about different
+denominators and nothing on the page said so.
+ALTERNATIVES: making orphans candidates by default, rejected because "no record" is read from the
+filesystem and a default that deletes what it cannot explain is the wrong default for a command
+that frees hundreds of gigabytes; an `"orphan": true` key on every candidate, rejected under (4);
+a subtree mtime walk, rejected under (2); leaving the backlog to a future feature, rejected because
+R-1002 is High and the operator's disk is the reason the feature exists.
+REVERSE: restore `packages/orchestration/data_reclaim.py`, `apps/cli/commands/data_cmd.py`,
+`apps/cli/command_catalog.py`, `tests/cli/test_data_cmd.py`,
+`tests/orchestration/test_data_reclaim.py`, `docs/system/architecture.md` and
+`docs/roadmap/features/T2_F276.md` from `94441e34`, and delete this paragraph.
+
+## DECISION F276 D5 (2026-09-20, reviewer, round 4) — the copy's release is two layers, the ignore pass is guarded by the target's own `.git`, and the size ceiling is a backstop measured at 16 MiB
+CONTEXT: T003 of `docs/roadmap/features/T2_F276.md` orders `release_staging_workspace(job_id)`
+"called from the same terminal-state hook the worktree cleanup already uses", a `.gitignore`-aware
+copy filter and a per-file size ceiling. A research helper prototyped it at `543863a0`; the
+reviewer re-applied it, re-ran the gates and re-proved three of its mutations. Measuring first
+showed the feature file's sentence describes a hook that has no terminal-state predicate:
+`pingpong_job._finalize_job_workspace`, the "ONE cleanup path for a job-owned worktree", keys on
+`job.state == JOB_COMPLETED and not job.result_diff_error` and deliberately RETAINS a failed,
+cancelled, blocked, paused or stopped worktree, while T002's `job_is_terminal` reads
+`COMPLETED|FAILED|CANCELLED`. It also showed that `discard_staging`, which the feature file's
+Why-this-exists says the copy path never calls, does not exist at all at `543863a0` — F273's
+R-0936 paydown deleted it — so this slice supplies a cleanup that was never built rather than
+repairing one that broke.
+CHOSEN: (1) TWO LAYERS, so the two vocabularies do not have to be reconciled. The public
+`release_staging_workspace` refuses on its own authority through `job_state_refusal`, the same
+predicate `data reclaim` uses, because a function that deletes must never free what reclaim would
+refuse. The HOOK is stricter: it calls the release only under the literal condition
+`_finalize_job_workspace` already applies to a worktree, so a copy job that did not complete keeps
+its staging copy exactly as such a worktree job keeps its worktree, and `data reclaim` offers it to
+the operator later. That makes the feature file's sentence true of both the hook and its predicate.
+(2) The structural rules are REUSED, not re-spelled: `data_reclaim._deletion_refusal` and
+`_job_state` become public as `child_deletion_refusal` and `job_state_refusal`, and
+`_JOB_KEYED_PREFIXES` imports `staging_workspace.STAGING_DIR_PREFIX`, so the module that mints the
+directory name and the command that reads it cannot drift. (3) The ignore pass runs only when the
+TARGET holds its own `.git`, which is load-bearing rather than a convenience: a target nested
+inside another repository answers `git check-ignore` successfully with the OUTER repository's
+rules, and the helper's hand run demonstrated that an unguarded pass drops a file the outer
+`.gitignore` happens to name. One subprocess for the whole candidate list, pinned by a test that
+counts the calls; a `.git` FILE, as a git worktree checkout carries, counts deliberately. (4) The
+ceiling is `MAX_COPY_FILE_BYTES = 16 * 1024 * 1024`, a BACKSTOP behind the ignore pass rather than
+the main filter, measured on this repository at `543863a0`: two files at or above 5 MiB hold 86.4
+per cent of the untracked-and-tracked tree and both are gitignored artifacts, no tracked file of
+5358 reaches 5 MiB, and the largest tracked file is `.agent/live_review_archive.md` at 4284047
+bytes and append-only — so a 5 MiB ceiling would sit at 82 per cent of a file this workflow grows
+every round, while 16 MiB is 3.9 times it and still 4 to 26 times under the artifacts the backstop
+exists for. (5) `StagingWorkspace` records `excluded_ignored`, `excluded_oversize` and
+`excluded_bytes`, the last being the bytes of exactly those two lists and of no other, because a
+skipped directory is never walked and a total over all five exclusion lists would be a number no
+caller could interpret; `gitignore_filter` carries one of three matched tokens so a copy that ran
+unfiltered says so instead of looking like a copy with nothing to ignore. (6) Both new silences
+speak through the module logger `pingpong_job` already uses — what a copy excluded, and a release
+that failed inside `run_job`'s `finally` — and NOT through the run-log event stream, because an
+event name there is a product-vocabulary decision with a `humanizeCatalog.ts` entry behind it.
+(7) The cleanup condition is now spelled twice inside `_finalize_job_workspace`. Extracting a
+shared predicate would edit the worktree path the feature file's Do-not-touch protects, so the
+duplication is deliberate and the drift is covered behaviourally instead: a parametrised test keeps
+every non-completing state, and a mutation widening the hook to `job_is_terminal` reddens exactly
+the two states where the vocabularies differ.
+ALTERNATIVES: one predicate for hook and function, rejected under (1) because it would either
+strand failed copies against reclaim's reading or delete what the worktree path retains; deciding
+"is this a git repository" by running `check-ignore` and reading its exit code, rejected under (3)
+with a demonstration; a 5 MiB ceiling as the feature file's sample suggests, rejected under (4);
+a `JobPlan` field or a new run-log event for the two silences, rejected under (6) as a slice of its
+own that changes a persisted shape or a published vocabulary.
+REVERSE: restore `packages/orchestration/staging_workspace.py`,
+`packages/orchestration/data_reclaim.py`, `packages/orchestration/pingpong_job.py` and
+`docs/system/architecture.md` from `543863a0`, delete
+`tests/orchestration/test_staging_lifecycle.py` and the T003 amendment paragraph this decision
+appended to `docs/roadmap/features/T2_F276.md`, and delete this paragraph.
+
+## DECISION F276 D6 (2026-09-20, reviewer, round 5) — a staging copy is freed where its work is CONSUMED, not where its job finishes
+CONTEXT: R-1003, registered in this round's first commit, measures what F276's own round 4 broke:
+the release T003 put in `pingpong_job._finalize_job_workspace` runs inside `run_job`'s `finally` as
+soon as a copy-mode job completes, and `job_apply.apply_job` reads that same directory as the SOLE
+apply source for such a job. At `a112e1fa` `tests/orchestration/test_job_apply.py` reads
+`19 failed, 69 passed`; at `92d4c38b`, the commit before the hook, `88 passed`; neutering the four
+added lines at `a112e1fa` restores `88 passed`. Hosted CI on the merge base is green on every one
+of those nodes, so the regression is this branch's alone. DECISION F276 D5 reasoned about the disk
+and about the inspection window a FAILED job wants, and never asked what reads the directory of a
+job that SUCCEEDS.
+CHOSEN: (1) The terminal hook releases nothing. `_finalize_job_workspace`'s no-handle branch
+returns exactly as it did before T003, and `_release_job_workspace_copy`, whose only call site that
+was, is deleted rather than left uncalled. The asymmetry that justifies this is stated where the
+branch is: the worktree path may delete a completed job's worktree because
+`W.remove(handle, keep_branch=True)` keeps the work on a retained BRANCH, and a copy job has no
+branch, so its staging copy is the deliverable and not scratch until something has taken it. (2)
+`job_apply` releases it, after an apply whose status is exactly `applied` and whose final record
+`_apply_from_workspace` has already persisted — the record first, the directory second, so a
+failure between them can lose the copy or the record but never both, and the survivor is the one
+that says the target was written. Every other outcome keeps the copy: a dry run, a blocked apply,
+an unapproved apply, an `applied_*` variant that left the operator something to do, and a job
+nobody ever applies. (3) What frees an unapplied copy is `data reclaim`, which already treats a
+terminal job's staging copy as a candidate and, with `--orphans`, reaches the ones whose record is
+gone. The lifecycle therefore closes in one of two places, both of them operator-visible, and
+neither of them inside a `finally` the operator never sees. (4) The outcome is reported where a
+person reads it: `JobApplyResult.staging_release` renders `released <n> bytes`, `already gone` or
+`kept (<reason>)` in the applied summary, a refusal is logged as a warning with its reason, and a
+raise is logged with its traceback. It is deliberately NOT added to `export_job_apply_json` or to
+the durable record, because the record is written BEFORE the release by clause (2) and the key
+could only ever persist empty; the field's docstring says so, so the absence reads as a decision.
+(5) T003's acceptance line is amended in the feature file by an appended paragraph, never a
+rewrite: "a job finishing in `isolation_mode=copy` releases its staging workspace" becomes "a job
+whose work has been APPLIED releases its staging workspace, and a COMPLETED copy job that was never
+applied still has it", each half with its own red proof.
+ALTERNATIVES: keeping the hook and having `job_apply` materialise an apply source from evidence the
+way `_materialize_apply_source_owned` does for worktrees, rejected as a far larger change that
+would rebuild from a record what the filesystem already holds; gating the hook on an existing apply
+record, rejected because at the moment a job completes it has never been applied, so the release
+would be dead where it stands and alive only for a job applied before it finished, which is no
+ordering at all; releasing on the whole `applied_*` family, rejected because each of those statuses
+means the operator still has something to do or read and `applied_record_update_failed` means the
+record this release follows was never written.
+REVERSE: restore `packages/orchestration/pingpong_job.py`, `packages/orchestration/job_apply.py`,
+`tests/orchestration/test_staging_lifecycle.py`, `tests/orchestration/test_job_apply.py`,
+`docs/system/architecture.md` and `docs/roadmap/features/T2_F276.md` from `a112e1fa`, and delete
+this paragraph.
+
+## DECISION F276 D7 (2026-09-20, reviewer, round 6) — the disk floor is a budget like every other, its probe is injected, it has no default, and the post-mortem says `disk_exhausted` while the stop keeps one vocabulary
+CONTEXT: T004 of `docs/roadmap/features/T2_F276.md` orders `min_free_disk_bytes` on `JobBudgets`
+with a config override, a `free_disk` limit in `budget_guard.evaluate_budget` behind an injectable
+probe, a check at job start and at every safe point, the STOPPED path with post-mortem reason
+`disk_exhausted`, and a `doctor` disk section. A research helper prototyped it and then rebased it
+onto `caa9d073`; the reviewer re-applied, re-ran and re-proved it. Measuring first contradicted
+three of that sentence's clauses, and each contradiction is settled below rather than worked
+around.
+CHOSEN: (1) THE CHECK IS ALREADY ONE CALL, NOT TWO. `run_job` defines `_stop_check` once and calls
+it at four places — before the episode loop, at task dispatch, inside the ping-pong loop it is
+handed to, and after the loop — and each reaches `safe_points.should_stop` and then
+`evaluate_budget`. Putting the limit inside `evaluate_budget` therefore reaches job start and every
+safe point at once, and no call site is added. A job refused at the pre-work check is persisted
+STOPPED before `first_running_at` is stamped and before a workspace is acquired, which the tests
+pin by reading both as empty. (2) `remedy job stop` NEVER STOPS A JOB — it writes one control file
+and returns, as its own module docstring says — so "the STOPPED path it uses" is the runner's
+`_stop_job`, which a budget stop already takes with `source="budget"`. The disk limit takes that
+same path with `stop_reason` `budget_exhausted:min_free_disk_bytes`, one vocabulary for every
+limit, while the POST-MORTEM's `terminal_status` and `FailureClass` read `disk_exhausted`, which is
+where the acceptance line's word belongs and where an operator reads it. A second stop vocabulary
+was the alternative and is rejected. (3) THE DEFAULT IS ABSENT. `resolve_job_budgets` returns None
+when every field is None, and a non-None default would hand `run_contract.job_budget_limits` a
+budget where there was none for EVERY job and start writing a `budget-ticks.jsonl` for every job
+that writes none today. Measured for scale: one staging copy of this repository under T003's own
+filters is 24161614 bytes, while the feature file's sampled copy on the operator's machine is 1
+190.8 MB — two orders of magnitude apart for the same product, so Remedy does not guess what one
+job needs. `remedy doctor core` prints "floor: not configured" and names the key. (4) The probe is
+injected three ways: a module-level `FREE_DISK_PROBE` for the process, a `free_disk_probe`
+parameter on `evaluate_budget` and `should_stop` for a call, and one reader,
+`free_disk_bytes(probe=None)`, that both the guard and the doctor section use. The default probe
+calls `shutil.disk_usage` on the nearest existing ancestor of the data root, because
+`resolve_data_root` does not guarantee the path exists. No test touches the real filesystem and no
+test is skipped for lack of disk. (5) The comparison is a FLOOR — `free < limit` — where every
+other budget is a ceiling at `>=`, so a floor of N accepts exactly N; and the limit is FIRST in
+`_LIMIT_ORDER`, so a job breaching both disk and tokens is reported as disk, because a token
+ceiling can be raised and a full disk cannot. (6) `evaluate_budget` stays pure for every job
+without a floor: the probe is called only inside `if budgets.min_free_disk_bytes is not None`, the
+docstring's purity clause is narrowed rather than withdrawn, and a probe that raises becomes a
+warning and never a stop. (7) Config-only, no CLI flag: the floor is a property of the machine, not
+of an invocation, on the precedent `resolve_predictive_budget_config` already sets. (8)
+`run_manifest._BUDGET_ALLOWED_KEYS` is DERIVED from `JobBudgets.model_fields` instead of being a
+second hand-written spelling of them. The hand-written list has now failed twice — R-0225 for
+`max_cost_usd`, and this slice's own first run, where a field the model accepted and the manifest
+rejected left the job non-terminal with `run_manifest_write_failed`. The schema stays closed: a key
+`JobBudgets` does not declare is still rejected. (9) `doctor core` reports free bytes, the
+configured floor and whether it is met, and a configured floor that is not met makes `ready` false,
+because a floor that does not block is not a floor; an unconfigured floor is met. (10) The T004
+amendment is appended to the feature file, never rewritten, and its numerals name the commit they
+were measured at.
+ALTERNATIVES: adding call sites at job start and at each safe point as the feature file's wording
+suggests, rejected under (1) because they exist; `disk_exhausted` as the stop reason, rejected
+under (2); a non-zero default floor, rejected under (3); a CLI flag, rejected under (7); leaving
+the manifest's key list hand-written, rejected under (8) after two failures.
+REVERSE: restore `packages/core/models.py`, `packages/orchestration/config.py`,
+`packages/orchestration/budget_resolution.py`, `packages/orchestration/budget_guard.py`,
+`packages/orchestration/safe_points.py`, `packages/orchestration/failure_postmortem.py`,
+`packages/orchestration/pingpong_job.py`, `packages/orchestration/run_manifest.py`,
+`apps/cli/commands/worker_facade_cmd.py`, `docs/system/architecture.md`,
+`docs/system/job-budget-enforcement-v0.md` and `docs/roadmap/features/T2_F276.md` from
+`caa9d073`, delete `tests/orchestration/test_disk_floor.py` and the three lines this slice adds to
+`tests/orchestration/test_failure_postmortem.py`, and delete this paragraph.
+
+## DECISION F276 D8 (2026-09-20, reviewer, round 7) — a limit the operator can be stopped by is a limit the operator can see BY NAME, and the guard for that is written over the model rather than over the missing name
+
+CONTEXT: R-1006, raised at round 6's gate and measured at `b9e55410` by driving the real
+`apps.cli.commands.job._cmd_job_budget` over a persisted job. `remedy job budget <job_id>`
+renders its limits as one hand-written `if _budgets.<field> is not None` line per limit. That
+block was written when `JobBudgets` had five fields; T004 added a sixth and did not touch it, so
+the disk floor is the one limit whose NAME never appears. The pair of numbers is not lost — the
+evaluation's own `free_disk: <free>/<floor> bytes` source line prints whenever an evaluation ran
+— and `--json` carries the field, because that path is `model_dump`. The `elif _budgets_dict`
+fallback directly beside the block prints every key it holds, so the two branches of the same
+command disagree about the same job.
+
+CHOSEN. (1) The floor is printed in that block, as `min_free_disk_bytes`, the FIELD name, which
+is the label every other limit there already uses and the string `budget_exhausted:<limit>`, the
+config key `budget.min_free_disk_bytes` and the `--json` `limits` object all spell the same way.
+(2) It is listed LAST, after `deadline`. The block's order is neither `_LIMIT_ORDER` nor the
+model's declaration order — `max_cost_usd` and `max_wall_clock_minutes` sit the other way round
+from both — so there is no rule to follow, and appending is the one position that disturbs no
+ordering an existing test pins; `tests/orchestration/test_job_budgets.py` asserts
+`max_total_tokens < max_cost_usd < max_wall_clock_minutes` and nothing else about position.
+`_LIMIT_ORDER`'s reason for putting the disk FIRST is about which single limit a stop REPORTS,
+which this listing is not. (3) The guard is written over `JobBudgets.model_fields`, not over the
+one missing name: a test that configures every field of the model and asserts that every field
+name appears in the output goes red for the SEVENTH limit exactly as it would have gone red for
+the sixth. A second, narrow test pins the floor's own printed value, because the universal would
+also be satisfied by printing the name beside the wrong number. (4) Nothing else about the
+command changes — not the `--json` shape, not the source lines, not the `_budgets_dict`
+fallback, not the cost rendering.
+
+CONSEQUENCE: a configured disk floor appears in `remedy job budget <job_id>` under its own name,
+and the next limit added to `JobBudgets` cannot reach a release with this rendering one field
+behind the model. This is the same defect class as R-0225 and as the hand-written manifest key
+set this feature's own round 6 replaced with `run_manifest._budget_allowed_keys()` — a second
+spelling of a model's field set, drifting — arriving in a RENDERING rather than in a schema, and
+it is answered the same way: derive, or guard against the derivation.
+
+ALTERNATIVES: leaving it and carrying R-1006 to the next findings-paydown feature, rejected
+because the field is this feature's own and the repair is nine lines with a guard, so carrying it
+would close F276 knowing one of its own surfaces is incomplete; rewriting the block as a loop over
+`model_fields`, rejected because `max_cost_usd` and `deadline` have genuinely different renderings
+(`$%.4f` and `.isoformat()`) and a loop would either lose those or re-introduce a per-field
+special case with none of the clarity; listing the floor FIRST to mirror `_LIMIT_ORDER`, rejected
+under (2).
+
+REVERSE: delete the two printing lines and their comment from
+`apps/cli/commands/job.py::_cmd_job_budget`, delete the class
+`TestEveryConfiguredLimitIsNamedInTheTextOutput` from `tests/orchestration/test_job_budgets.py`,
+and delete this paragraph.
+
+## DECISION F276 D9 (2026-09-20, reviewer, round 8) — the closure suite's three red nodes are a cold checkout, not this feature's defect, and the repair is one re-run against a warm `dist`
+
+CONTEXT: operator amendment amend0917-throughput rule 1 gives a feature ONE full suite run,
+in the closure sequence's integration-gate round. F276 spent it at round 7's C4 and the
+transcript, committed at `a5193724`, is RED: `3 failed, 17636 passed, 20 skipped` at exit 1,
+with a complete bad set of three node ids, all in `tests/ui_server/`, all failing at
+`tests/ui_server/server_start.py` with `Server thread exited before publishing its info file`
+under a captured `ERROR: React UI not built.`. Rule 2 makes every bad node the feature's to
+fix unless main's hosted CI shows it red there, and caps repair at three rounds before an
+`xfail(strict=True)` and a follow-up feature.
+
+THE MEASUREMENT, taken by the reviewer with targeted tests and never the full suite, which is
+what rule 1 permits a reviewer dry run to use. `apps/ui/dist` is gitignored and absent from a
+cold checkout; the UI server's start path auto-builds it. Its `index.html` and its `assets/`
+were written at 09:32:22 on 2026-09-20, while C3 was committed at 09:18:21 and the suite ran
+after that — so the dist was built DURING the run, by the auto-build, while the `-n auto`
+workers that had already reached a UI test were failing to reach a server. Re-run alone
+against the now-present dist, in the primary checkout, those same three node ids read
+`3 passed in 85.32s` at exit 0.
+
+CHOSEN. (1) The three are attributed to the CHECKOUT's posture, not to F276 and not to a
+defect in the tests. Nothing in this feature's change set reaches `tests/ui_server/`,
+`apps/ui/` or the server start path, and the same three nodes pass unchanged once the artifact
+they need exists. (2) The repair under rule 2 is ONE re-run of the full suite, in the primary
+checkout, with `apps/ui/dist` already built before the run starts, and its transcript replaces
+`.agent/authored/f276-closure-suite.txt` — one canonical file, as closure precondition 2 reads
+it by name. That transcript states the PREVIOUS bad set of three explicitly beside its own, so
+the shrinking rule is checkable on the file rather than across two files. (3) Nothing is
+marked `xfail`, nothing is skipped, no assertion is weakened and no test is deleted. Rule 2
+reserves the mark for what is still red after the third repair round, and a node that passes
+on a re-run is not that. (4) If the re-run's bad set is NOT empty, the round records it and
+stops; the next repair round is authored from that reading, and F276 still has two of its
+three repair rounds left.
+
+CONSEQUENCE: the integration-gate transcript this closure reads is green and was produced by a
+run whose environment was made correct FIRST, rather than by a run whose result was
+reinterpreted afterwards. The cost is one extra full-suite run beyond rule 1's single run; that
+is precisely what rule 2 spends a repair round on, and it is spent once.
+
+A STANDING NOTE, not a rule: the auto-build racing `-n auto` makes the FIRST full-suite run in
+any cold checkout of this repository unreliable for `tests/ui_server/`, independently of what
+the branch changed. Building `apps/ui` before the integration-gate run is the cheap
+counter-measure, and the reason it is a note rather than a rule is that changing the
+integration-gate procedure belongs to the operator, not to a feature's closure. It is carried
+into `.agent/prose_slips.md` as a dated line so the next closure reads it.
+
+ALTERNATIVES: marking the three `xfail(strict=True)` and registering a "Suite repair after
+F276" follow-up under rule 2, rejected because rule 2 orders the mark only for what survives
+three repair rounds and these survive none — it would register a feature for work already done
+by an `npm run build`; closing PASS_WITH_RISKS on the red transcript, rejected for the same
+reason and because precondition 2 would then be met by a transcript nobody believes; re-reading
+the red run as green because the reviewer's targeted run passed, rejected outright — a
+transcript is the artifact precondition 2 names, and a reviewer's own reading is not a
+substitute for it.
+
+REVERSE: this decision changes no code. To reverse it, restore
+`.agent/authored/f276-closure-suite.txt` from `a5193724` and delete this paragraph.
+
+## DECISION F276 D10 (2026-09-20, reviewer, round 9) — the checklist consolidation merges item 17 into item 15 and says out loud that no free number was left, and the finding re-assignment follows the rotation rather than the verdict bookings
+
+PART ONE, THE CONSOLIDATION. Operator amendment amend0827-process-diet rule 4 gives a
+feature exactly one consolidation pass of the §3 pre-emission checklist, inside the
+closure sequence, and the list must come out the same length or shorter. It stood at 35.
+
+CHOSEN: item 17, "a pair that changes a structure's arity spans the whole structure",
+is merged into item 15, "pair shapes are classified by a containment test, never by
+eye", and the number 17 is RETIRED and never reused. The list comes out at 34, counted
+mechanically over the checklist's own numbering after the edit. The family is the right
+one and item 17's own text already named it: item 4 states what an APPEND claim
+REQUIRES, while 15 and 17 both govern how the pair a block SHIPS is determined — 15
+fixes the pair's SHAPE by a mechanical containment test, 17 fixes how far its FROM must
+REACH. No containment test answers the reach question, so the merged item states them as
+two clauses rather than one sentence, and neither clause loses a word of its instance.
+
+THE DIRECTION WAS MEASURED, and the measurement did not come out the way F260's did.
+That pass could retire item 19 because it had ZERO landed references, and the paragraph
+it wrote implies such a number will be there next time. At `8da83220`, counted over
+`.agent/live_review.md`, `.agent/live_review_archive.md`, `.agent/prose_slips.md` and
+`.agent/decisions.md`, EVERY surviving number has at least one landed reference: the
+smallest is item 17 at one, then item 29 at two, then items 21 and 27 at four each. So
+17 is the number that strands the fewest, not the number that strands none, and the
+consolidation paragraph in the prompt is amended to say that rather than to leave the
+earlier implication standing. The append-only record's references to item 17 are not
+rewritten — item 20 forbids that — and the retirement notice inside the merged item is
+what a later reader follows.
+
+ALTERNATIVES: merging item 29 into item 21, the two rules about a gate ordered AT A BASE,
+which is an equally real family but strands two references instead of one; merging item
+11 into item 16, rejected because the prompt's own text separates them deliberately and
+item 11 carries 25 landed references; and a no-op pass, which rule 4 permits by its
+letter — "the same length or shorter" — and which was rejected because the rule's stated
+intent is that merging is the move and a closure that spends the one pass on nothing
+spends it.
+
+PART TWO, WHERE THE RE-ASSIGNMENT COMMIT SITS. `docs/roadmap/STATUS_closure_protocol.md`
+step 5 states the finding re-assignment twice and the two statements disagree: its lead
+sentence puts it "After the rotation and BEFORE the STATUS `[x]` flip", and the
+parenthesis inside clause (i) says "same commit as the verdict bookings". The verdict
+bookings are this round's FIRST commit and the rotation is a later one, so no single
+commit satisfies both.
+
+CHOSEN, FIRST, THE PLACE: the re-assignment is its OWN commit, placed AFTER the rotation
+and before the flip, and the lead sentence governs. The reason is mechanical rather than
+aesthetic: the rotation rewrites `.agent/live_review.md` wholesale and re-baselines every
+byte offset in it, so an `Owner:` line edited before the rotation is an edit the rotation
+must carry through its own per-record sha256 verification, and an edit made after it is
+verified against the file the closure actually ships. The parenthesis is read as what it
+plainly is — wording from before the rotation existed as a step of this sequence.
+
+CHOSEN, SECOND, THE FORM: the re-assignment APPENDS a line to each open finding's
+paragraph and MODIFIES no landed byte. Measured at `8da83220`, the sixteen open findings
+divide three ways: seven carry no `Owner:` line at all, seven name `Owner: F273` — a
+feature that has since closed without re-assigning them, which is the gap amend0911
+rule A exists to prevent — and two already read `Owner: F282 — Findings paydown v2`. A
+literal reading of "Owner: line rewritten" would edit fourteen landed paragraphs, and
+seven of those have no such line to rewrite, so the instruction is already impossible as
+written for half its subjects. §3 item 20 forbids repairing landed text by rewriting it
+and names appending a dated correction as the way this record stays honest; that is
+exactly what this is. So each of the fourteen gains ONE new final line naming F282 and
+saying that it supersedes any earlier `Owner:` line in the same paragraph, the two that
+already name F282 are left untouched, and the commit's `git show --numstat` for that path
+reads insertions and ZERO deletions — which is itself the gate that no landed byte moved.
+
+CONSEQUENCE: the §3 checklist runs 1 to 16, 18, 20 to 31 and 33 to 37, and the next
+consolidation measures against 34. Every finding still open at this closure carries
+`Owner: F282 — Findings paydown v2`, written in a commit that follows the rotation, and
+no finding leaves this feature unowned.
+
+REVERSE: restore `docs/agents/planner_reviewer_prompt.md` from `8da83220`, which puts
+item 17 back and returns the list to 35; and for part two, move the re-assignment into
+the verdict-booking commit of a future closure. Then delete this paragraph.
+
+## DECISION F276 D11 (2026-09-20, reviewer, round 11) — the closure is two rounds, so `accepted HEAD` names the evidence round's handback commit; and the evidence run is scoped to what this feature built
+
+PART ONE, THE SPLIT AND WHAT `accepted HEAD` THEREFORE NAMES.
+`docs/roadmap/STATUS_closure_protocol.md` step 4 asks the REVIEWER to author the STATUS
+line and the worker to apply it verbatim, and that line must carry the package's
+filename, its SHA-256 and its archived path. None of those exist until the package is
+BUILT. Step 2 in turn requires the package to be built from a CLEAN tree after all
+content commits. A single round cannot satisfy both: the reviewer would have to author a
+line naming values no one has measured yet.
+
+CHOSEN: the closure runs as TWO rounds after the integration gate is re-confirmed. The
+EVIDENCE round performs the integrity check, builds the evidence job and builds the
+package, and reports the package's name, SHA-256 and archived path to the reviewer. The
+CLOSURE round applies the STATUS line the reviewer then authors from those measured
+values, together with the README counters and SU-024's `consumed_by`, in ONE commit which
+is the LAST on the branch, and opens the pull request.
+
+CONSEQUENCE, stated plainly because it is the part a later reader will check: the package
+is built after the EVIDENCE round's handback commit, so `accepted HEAD` names that commit,
+and exactly ONE commit — the closure commit — exists on the branch after the reviewed head
+the manifest records. That is what step 2's own sentence describes ("the final closure
+commit follows the READY zip"), and the STATUS line's `accepted HEAD` segment is the
+durable record of which commit the verdict and the package actually cover. The closure
+commit itself is bookkeeping over `docs/roadmap/STATUS.md`, `README.md`,
+`scripts/self_use_queue.json` and `.agent/` state, and it changes no file the package
+reviews.
+
+WHERE THE MEASURED VALUES LIVE BETWEEN THE TWO ROUNDS: in the evidence round's report to
+the reviewer and in a `package.txt` file on disk under that round's own scratch directory.
+They are not in that round's handback, because the handback commit precedes the build by
+construction. Should the session end between the two rounds, the package file itself is on
+disk and its SHA-256 is recomputable from it, so nothing is unrecoverable — which is the
+property that makes the split safe rather than merely convenient.
+
+PART TWO, WHAT THE EVIDENCE RUN COVERS. The verification record names six test FILES,
+sorted, and no directory: `tests/cli/test_data_cmd.py`,
+`tests/orchestration/test_data_footprint.py`, `tests/orchestration/test_data_reclaim.py`,
+`tests/orchestration/test_disk_floor.py`, `tests/orchestration/test_staging_lifecycle.py`
+and `tests/test_data_root_classes.py` — the suites this feature created, measured by the
+reviewer at `512ba69c` as collecting 112 node ids, the same count the same reviewer
+measured at `970f544b` before the merge D12 records. It deliberately does NOT carry a
+full-suite node-id list: `len(node_ids) == selected` forbids filtering, and the packaging
+metadata scan rejects the redaction-torture parametrizations whose ids embed fake secrets
+by design, so a full-suite record packages BLOCKED_EVIDENCE. That is closure pitfall (d),
+already on the protocol's own record. The full-suite proof rides instead in the committed
+integration-gate transcript `.agent/authored/f276-closure-suite.txt`, whose contents for
+this closure are the ones the re-run DECISION F276 D12 orders produces, and NOT the
+pre-merge reading that path held at `fd23710f`. Nothing green is claimed that was not run.
+
+THE BASE COMMIT IS THE FORK POINT, `43d148177efd145f179ba2d9875eaa675b1595b7`, at full
+length — pitfall (e) — and after the merge D12 records, that pitfall is LIVE on this
+branch rather than dormant. Re-measured by the reviewer at `512ba69c`: `git merge-base
+main 512ba69c` now answers `8f129d71e311ccd58bdb01d63c78bb75dffbd382`, which is main's own
+tip and is NOT the base; the first commit of `git rev-list --first-parent 512ba69c` that
+`git rev-list main` also holds is still the fork point above; and `git rev-list
+--ancestry-path <base>..512ba69c` and `git rev-list <base>..512ba69c` both read 59, the
+equality that is the only reading able to show the base is right. Before the merge, at
+`970f544b`, both read 45 and merge-base coincided with the fork point; that coincidence is
+gone and the earlier wording which relied on it is superseded here rather than in place.
+
+ALTERNATIVES: one round, with the worker composing the STATUS line from its own
+measurements — rejected outright, because step 4 reserves authorship of that line to the
+reviewer and a worker-authored acceptance line is the one thing this workflow exists to
+prevent. Building the package before the handback commit so its values could be recorded
+there — rejected because that leaves TWO commits after the reviewed head rather than one,
+and the manifest's `accepted HEAD` would then name a commit two behind the branch tip.
+
+REVERSE: this decision changes no code. To reverse it, close a future feature in one round
+by having the reviewer author a STATUS line with the package fields left as placeholders
+and a second commit filling them in; then delete this paragraph.
+
+## DECISION F276 D12 (2026-09-20, reviewer, round 11) — the operator's merge of main into this branch invalidated the committed integration-gate transcript, so the gate is re-run ONCE on the merged tree and the transcript is replaced in place
+
+WHAT HAPPENED, as readings and not as a summary. After round 10 ended on the STOP
+sentinel, the operator merged `origin/main` into `feature/f276-data-root-hygiene` at
+`512ba69c`, a merge commit whose first parent is round 10's `22e7fd95` and whose second is
+main's tip `8f129d71`. It brought in the amend0920-selfuse-real work: 28 files by
+`git diff --name-only 43d148177efd145f179ba2d9875eaa675b1595b7 8f129d71`, including the new
+module `packages/providers/claude_planner/provider.py` and the new suite
+`tests/orchestration/test_claude_planner.py`, and six of those paths are also paths this
+feature changed — `.agent/decisions.md`, `.agent/live_review.md`, `.agent/plan.md`,
+`apps/cli/command_catalog.py`, `packages/orchestration/config.py` and
+`tests/orchestration/import_reachability_allowlist.txt`.
+
+WHY THAT IS A CLOSURE PROBLEM. Closure precondition 2 asks that the integration-gate round
+have run the full suite once and that closure "re-confirms by reading that transcript". The
+transcript committed at `fd23710f` reads `17639 passed, 20 skipped` for 17659 outcomes, and
+it reconciles its own bad set against the run it replaced. At `512ba69c` the reviewer's own
+`python3 -m pytest -q --collect-only` reads 17740 tests collected. The two numbers describe
+different trees, and 81 of the tests that exist on the branch being closed were never in the
+run the transcript records — among them the whole of `tests/orchestration/test_claude_planner.py`.
+Reading that transcript therefore re-confirms nothing about this tree. Two smaller readings
+moved with it: `git merge-base main 512ba69c` no longer answers the fork point, which D11
+re-measures above; and `python3 -m apps.cli.main integrity check --json` at `512ba69c` reads
+`passed: true` with `live_review_verdict` at `pass`, where the round 10 block had recorded a
+`warn: no verdict found` as expected — so that block's own expectation note is stale too.
+
+CHOSEN: the integration gate is RE-RUN EXACTLY ONCE on the merged tree, by the worker, in
+the primary checkout, with `apps/ui` built first, and its transcript REPLACES
+`.agent/authored/f276-closure-suite.txt` in place. The replacement keeps the single path
+closure precondition 2 reads by name, and the new transcript restates the superseded run's
+summary line beside its own so a later reader can resolve both from one file. This is the
+same mechanism round 8 used when it replaced round 7's red transcript at that same path,
+and it is deliberately not a new one.
+
+WHY THIS IS NOT A BREACH OF THE ONE-RUN RULE. Operator amendment amend0917-throughput rule 1
+fixes the full suite at one run per FEATURE and forbids a round block from ordering it; its
+purpose, stated in its own reason clause, is that round verification had re-imported a cost
+the 2026-07-26 verification tiers had already excluded. That purpose is untouched here: no
+ROUND is buying a suite run for its own verification, and the count this feature spends is
+not rising because a round asked for reassurance. The tree the one run certifies was
+replaced under it by an action outside the loop, and rule 1's own precondition — that the
+transcript describes the tree being closed — cannot otherwise be met. Closing on a
+transcript of a different tree would be the failure mode `docs/roadmap/STATUS_closure_protocol.md`
+calls the one unforgivable one, and no rule asks for that trade.
+
+ALTERNATIVES. Close on the `fd23710f` transcript and note the merge as a risk — rejected:
+the STATUS line would carry a PASS whose evidence covers 81 fewer tests than the branch
+holds, and the risk note would be a sentence standing in for a measurement that costs one
+run. Revert the merge — rejected: guardrail G2 forbids rewriting this branch's history, the
+merge is the operator's own act, and main's content is wanted on the branch before the pull
+request. Ask the operator and wait — rejected because operator amendment amend0917-throughput
+rule 5 forbids exactly that stall; the question is written to `.agent/operator_questions.md`
+as Q1 and this decision is executed in the same round, which is what that rule requires.
+Treat the re-run as one of the three repair rounds amend0917 rule 2 allows — rejected as a
+mislabel: rule 2's repair rounds shrink a bad set, and this run has no bad set to shrink,
+so calling it a repair would spend a budget on a thing it does not describe.
+
+CONSEQUENCE FOR THE ROUNDS THAT FOLLOW. If the re-run is green, the evidence round proceeds
+as D11 describes and nothing else changes. If it is red, its bad set is this feature's under
+amend0917 rule 2, F276 has spent one of its three repair rounds at round 8 and has two left,
+and the closure does not proceed until that rule is satisfied.
+
+REVERSE: delete this paragraph and restore `.agent/authored/f276-closure-suite.txt` to its
+`fd23710f` content, which git holds unchanged.

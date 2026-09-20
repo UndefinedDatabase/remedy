@@ -415,16 +415,31 @@ class TestApproveApplies:
         assert result.status == "applied"
 
     def test_approve_verifies_file_contents(self, isolate_data_root, demo_repo):
+        """What landed in the target is byte-identical to what was reviewed.
+
+        The workspace bytes are read BEFORE the apply, not after: DECISION F276 D6
+        makes a successful apply the moment a copy job's staging workspace is
+        released, so reading it afterwards would be reading a directory this apply
+        has just consumed. The property under test is unchanged — reviewed bytes
+        equal applied bytes — and it is now measured across the apply rather than
+        after it.
+        """
         job = _run_completed_job(demo_repo)
+
+        workspace = Path(job.job_workspace_path)
+        reviewed = {
+            p.relative_to(workspace).as_posix(): p.read_bytes()
+            for p in workspace.rglob("*") if p.is_file()
+        }
 
         from packages.orchestration.job_apply import apply_job
         result = apply_job(job.job_id, str(demo_repo), approve=True)
 
-        workspace = Path(job.job_workspace_path)
+        assert result.files_applied
         for rel_path in result.files_applied:
-            ws_content = (workspace / rel_path).read_bytes()
+            assert rel_path in reviewed, f"not reviewed: {rel_path}"
             target_content = (demo_repo / rel_path).read_bytes()
-            assert ws_content == target_content, f"Mismatch: {rel_path}"
+            assert reviewed[rel_path] == target_content, f"Mismatch: {rel_path}"
 
     def test_approve_reports_applied_files(self, isolate_data_root, demo_repo):
         job = _run_completed_job(demo_repo)

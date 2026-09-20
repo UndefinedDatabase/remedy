@@ -313,6 +313,20 @@ _CONFIG_KEY_SPECS: tuple[ConfigKeySpec, ...] = (
         value_type=float,
         default=None,
     ),
+    # F276 T004. The default is None — no floor — for the reason DECISION F276 D7
+    # records: every other budget key defaults to None, `resolve_job_budgets`
+    # returns None when they all do, and a number here would hand a JobBudgets to
+    # every job that has none today.
+    ConfigKeySpec(
+        key="budget.min_free_disk_bytes",
+        env_var="REMEDY_BUDGET_MIN_FREE_DISK_BYTES",
+        description=(
+            "Free bytes that must remain on the data root's filesystem for a job "
+            "to start and to pass a safe point (F276 disk floor)"
+        ),
+        value_type=int,
+        default=None,
+    ),
     # F104 predictive inputs. The price basis has NO default on purpose
     # (DECISION F104 D4): an invented price would make every prediction a
     # fabrication, so with it unset the predictive path is inert.

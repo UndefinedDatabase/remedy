@@ -86,6 +86,28 @@ JOB_PAUSED = RunState.PAUSED
 #: queue item. It keeps its pending work and resumes at the first pending task.
 JOB_STOPPED = RunState.STOPPED
 
+#: F276 T002: the states a job NEVER runs again from. Nothing in this repository
+#: carried this reading before — `apps/cli/commands/status_cmd.py` spelled the same
+#: three states as a private local set, and `job_stop_cmd._FINISHED_STATES` answers a
+#: different question ("can a stop still be requested"). It is stated HERE because
+#: this module owns the `JOB_*` vocabulary, and stated EXPLICITLY rather than as "not
+#: runnable" because the distinction that matters is what may be deleted: `blocked`,
+#: `stopped` and `paused` are absent on purpose — each keeps its pending work and
+#: `remedy job resume` will want the workspace a data-root reclaim would otherwise
+#: free. A job record whose stored status is not a RunState loads as JOB_PLANNED, so
+#: an unrecognised state is non-terminal, which is the safe direction.
+JOB_TERMINAL_STATES: frozenset[RunState] = frozenset({
+    RunState.COMPLETED, RunState.FAILED, RunState.CANCELLED,
+})
+
+
+def job_is_terminal(state: object) -> bool:
+    """True when ``state`` — a ``RunState`` or its string value — is terminal."""
+    if isinstance(state, RunState):
+        return state in JOB_TERMINAL_STATES
+    return str(state) in {s.value for s in JOB_TERMINAL_STATES}
+
+
 # F272 move three: the lifecycle field is a ``RunState``, but a job record
 # written before this round may carry ANY string — `complete`, `dry_run` and
 # `promoted` all occur in records on disk today — so DECISION F272 D5's
@@ -1209,6 +1231,21 @@ def _create_job_workspace_copy(job: JobPlan) -> str:
 
     target = Path(job.repo_path)
     ws = create_staging_workspace(target, ws_parent, job.job_id)
+    # F276 T003: what the ignore pass and the size ceiling left behind is DATA on the
+    # workspace, and data nothing reads is a silence. One line on this module's own
+    # logger — the seam `_run_predictive_budget`'s swallowed config read already
+    # reports on — rather than a new run-log EVENT: an event name enters the stream
+    # vocabulary `tests/ui_contracts/test_humanize_catalog.py` derives from
+    # `.log("<name>", ...)` call sites, and naming a new one is a product decision,
+    # not a log line. Nothing here is a path, a secret or a JobPlan field.
+    if ws.excluded_ignored or ws.excluded_oversize:
+        import logging as _logging
+        _logging.getLogger(__name__).info(
+            "staging copy for job %r skipped %d git-ignored and %d oversize file(s), "
+            "%d byte(s) not copied; filter=%s",
+            job.job_id, len(ws.excluded_ignored), len(ws.excluded_oversize),
+            ws.excluded_bytes, ws.gitignore_filter,
+        )
     return str(ws.staging_dir)
 
 
@@ -1409,6 +1446,23 @@ def _finalize_job_workspace(job: JobPlan, handle: Any) -> None:
     raised): persist what we can, KEEP the worktree with every change it holds past
     the branch tip, release the lock, and stay recoverable. A clean cleanup is
     never claimed before it happened.
+
+    NO HANDLE MEANS NO WORKTREE, which means this job ran in
+    ``isolation_mode="copy"``, and NOTHING HERE APPLIES TO IT — this branch returns.
+
+    DECISION F276 D6 (2026-09-20) took the copy's release OUT of this hook, where
+    T003 had put it, and moved it to ``job_apply``. The asymmetry is the whole
+    reason: this hook may delete a completed job's WORKTREE because
+    ``W.remove(handle, keep_branch=True)`` below keeps every applied task on a
+    RETAINED BRANCH, so the work survives the directory. A copy-mode job has no
+    branch. Its staging copy IS the deliverable, and ``job_apply`` reads that very
+    directory as the SOLE apply source for a copy job, so releasing it here
+    destroyed the thing the operator had not taken yet — measured as 19 red nodes in
+    ``tests/orchestration/test_job_apply.py``. The copy is therefore freed where its
+    work is CONSUMED, after an apply that actually applied and after that apply's
+    record is durable. A copy job that is never applied keeps its copy, and
+    ``remedy data reclaim`` is the one path that frees it, which is correct: an
+    unapplied copy still holds work nobody has taken.
     """
     if handle is None:
         return
@@ -3660,6 +3714,7 @@ def _write_stop_postmortem(job: JobPlan, signal: Any, task_id: str) -> None:
     ``job.stop_error``, which the evidence export turns into a BLOCKING integrity failure —
     the same rule F010 already applies to a failure it could not explain.
     """
+    from packages.orchestration.budget_guard import FREE_DISK_LIMIT
     from packages.orchestration.failure_postmortem import (
         POSTMORTEM_FILENAME,
         FailureSignals,
@@ -3668,7 +3723,18 @@ def _write_stop_postmortem(job: JobPlan, signal: Any, task_id: str) -> None:
     )
 
     _is_budget = getattr(signal, "source", "") == "budget"
-    _terminal = "budget_exhausted" if _is_budget else "stopped"
+    # F276 T004: the disk floor stops through THIS path and no other, but it
+    # gets its own terminal status, because a machine that ran out of space and
+    # a job that spent its tokens are different diagnoses. The reason is the one
+    # `safe_points.should_stop` composes, `budget_exhausted:<limit>`, so the
+    # comparison is against the whole string and not a suffix — a future limit
+    # whose name merely ends in the disk limit's cannot be mistaken for it.
+    if _is_budget and getattr(signal, "reason", "") == f"budget_exhausted:{FREE_DISK_LIMIT}":
+        _terminal = "disk_exhausted"
+    elif _is_budget:
+        _terminal = "budget_exhausted"
+    else:
+        _terminal = "stopped"
 
     try:
         record = build_job_rollup(

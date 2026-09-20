@@ -9,6 +9,7 @@ The load-bearing properties:
 """
 from __future__ import annotations
 
+import importlib.util
 import json
 import os
 import socket
@@ -257,7 +258,14 @@ class TestStudyCommandReachability:
             thread.join(5)
 
         # The model host the test gave was the one asked, so no other host was.
-        assert asked, "study run never asked the model host the test gave it"
+        # R-1001: the probe that asks it is built by make_structured_call_fn, which
+        # returns None when the `ollama` PACKAGE is not importable — it is an optional
+        # extra (`pyproject.toml`, `[project.optional-dependencies] ollama`) and hosted
+        # CI installs `.[dev]` alone, so there the study falls back to its heuristics
+        # and asks nothing. The fake host below still bounds every environment: it is
+        # what `REMEDY_OLLAMA_HOST` names, so no real model can be reached either way.
+        if importlib.util.find_spec("ollama") is not None:
+            assert asked, "study run never asked the model host the test gave it"
         # The command must exit 0
         assert result.returncode == 0, f"study run failed: {result.stderr}"
         # The output must be valid JSON

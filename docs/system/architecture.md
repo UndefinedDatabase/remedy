@@ -2460,6 +2460,172 @@ Resolution order (unchanged from historical convention):
 
 **Invariant**: In production Python under `apps/` and `packages/`, `data_paths.py` is the only file that contains `os.environ.get("REMEDY_DATA_DIR")`. Scripts and tests may still read it directly.
 
+**Data-root classes (F276 T001).** Every top-level child of the data root is in
+exactly one of `data_paths.EPHEMERAL_CLASSES` (scratch: `job_workspaces` and
+`review_staging.*`) or `DURABLE_CLASSES` (everything else, `workspaces`, `runs` and
+`job_logs` among them since DECISION F276 D3), each entry naming its owning module
+and its reclaim rule; the
+class-named `*_dir()` helpers resolve through `data_class_dir(name)`, which refuses
+an unregistered name. `tests/test_data_root_classes.py` scans `packages/`, `apps/` and
+`scripts/` for every child the code creates and reds on one in neither class.
+`remedy data usage [--json]` (`packages/orchestration/data_footprint.py`) reports
+bytes and files per class and per child from one read-only walk that follows no
+symlink; a child no class names, such as a legacy `task_jobs/`, reports as
+`unclassified`.
+
+**Reclaiming the scratch (F276 T002).** `remedy data reclaim [--apply] [--orphans]
+[--json]`
+(`packages/orchestration/data_reclaim.py`) is preview-first: without `--apply` it
+computes a `ReclaimPlan` and deletes nothing. A candidate is a DIRECT CHILD of an
+ephemeral class DIRECTORY whose job resolves in the job store and is terminal —
+`pingpong_job.JOB_TERMINAL_STATES`, which is `completed`, `failed` and `cancelled`;
+`blocked`, `stopped` and `paused` keep their scratch because `remedy job resume`
+will want it. Under DECISION F276 D3 that is ONE class: `job_workspaces/`, whose
+children are the `staging_<job>` copies the non-git isolation path makes, so the job
+id is read from the child's own name and never from a file. `workspaces/`, `runs/`
+and `job_logs/` are durable and are never candidates — each mixes scratch with
+evidence that outlives its job (`snapshot inspect` and `snapshot list-applies` read
+the first, `job_evidence` the second, the timeline, trust report and cockpit the
+third), and a subtree rule that reached inside them to separate the two would give up
+the direct-child rule that makes deletion safe. Everything else is REPORTED
+rather than deleted: a durable or
+unclassified top-level child appears with its bytes under a heading that says it is
+not reclaimed, and a non-terminal job, an unresolvable job, a symlink, a real path
+outside the root and a `review_staging.*` directory that no job owns are each listed
+as a refusal with its reason. `apply_reclaim` re-checks every rule against the live
+filesystem before each deletion, so the plan is input and never authority; a second
+`--apply` over the same state removes nothing and exits 0.
+
+**The orphans, and the one flag that opts into them (F276 T002).** `--orphans` widens
+the plan by ONE case and no other: a `staging_<id>` child whose job record is GONE
+becomes a candidate instead of a `job_unresolved` refusal. It is OFF by default, and
+with it off the output — human and `--json` — is byte for byte what it was before the
+rule existed. Three narrowings make it safe. A record that EXISTS and will not parse is
+never an orphan, because that job may still be running and `load_job_plan_safe`'s
+`degraded` flag is what tells an unreadable record from an absent one. A child whose
+name does not carry the `staging_` prefix yields no job id at all and is never an
+orphan. And an orphan must have been untouched for `data_reclaim.ORPHAN_MIN_AGE_DAYS`,
+one day, which is the floor that keeps a job whose record is being written *right now*
+out of the set — the floor reads the child's OWN `lstat` mtime, because a directory
+created while its record is still being written has a fresh mtime of its own and a
+subtree walk would answer a different question; under it the child is refused as
+`orphan_too_young` rather than silently kept. The verdict is re-derived at the moment of
+deletion as well as in the plan: `apply_reclaim` re-reads the record and the mtime for
+every orphan candidate, so a record that appeared since the preview refuses as
+`job_unresolved` and saves its own scratch. An orphan candidate reports `job_state` `no_record` — a token no
+`RunState` holds — which is the one mark in the machine shape that distinguishes it, so
+a reader tells an orphan from an ordinary candidate without parsing prose, and the
+human preview names the orphan count and bytes separately from the terminal-job count
+and bytes. On the DEFAULT path the human preview names how many paths are refused as
+`job_unresolved`, their bytes, and that `--orphans` can reclaim them, so the flag is
+discoverable without reading the source; the `--json` document is unchanged by that
+line. The flag exists because the refusal is where the bytes are: measured 2026-09-20 on
+the operator's data root with the preview command, 1 107 candidates worth
+284 536 286 695 bytes against 1 886 refusals, of which 1 885 were `job_unresolved` worth
+638 395 396 948 bytes and 1 884 were staging copies with no job record on disk at all.
+Those two sums are 922 931 683 643 — exactly `job_workspaces`'s own footprint measured
+the same day — so the refused bytes are 69 per cent OF THAT CLASS, which is the
+denominator, and not of the 923 560 682 122-byte data root.
+
+**The copy-mode lifecycle (F276 T003).** A job whose target is not a git repository
+runs in `isolation_mode="copy"`: `pingpong_job._create_job_workspace_copy` calls
+`staging_workspace.create_staging_workspace` and leaves
+`job_workspaces/staging_<job>` behind. Nothing removed it — the worktree path had a
+cleanup path and the copy path had none, which is where the backlog above came from.
+At `543863a0` there was no cleanup of any kind on that path: `discard_staging` does
+not exist, F273's R-0936 paydown having deleted it, so this is the half that was never
+built rather than one that stopped working.
+`staging_workspace.release_staging_workspace(job_id)` is that missing half. It is the
+reclaim command narrowed to one job and it REUSES that command's rules rather than
+restating them: `data_reclaim.child_deletion_refusal` decides direct-child, symlink and
+inside-the-root, `data_reclaim.job_state_refusal` decides resolves-and-is-terminal,
+and every reason it returns is one of `data_reclaim.REFUSAL_REASONS`. The path is
+derived from the class registry and never read from the job record, and a second
+release is a no-op rather than an error, reported as `existed=False, released=False`
+with no reason — which a caller must not read as a refusal.
+
+**A copy is freed where its work is CONSUMED, not where its job finishes (DECISION
+F276 D6).** T003 called the release from `_finalize_job_workspace`, the hook the
+worktree removal runs on. That is wrong, and the asymmetry is the reason: the hook may
+delete a completed job's WORKTREE because `W.remove(handle, keep_branch=True)` keeps
+every applied task on a RETAINED BRANCH, so the work outlives the directory. A
+copy-mode job has no branch. Its staging copy IS the deliverable, and `job_apply` reads
+that very directory as the SOLE apply source for a copy job — `apply_job` branches on
+`isolation_mode`, and the non-worktree arm has no alternative source to fall back to.
+Releasing at completion therefore destroyed the work of every copy job nobody had
+applied yet, measured as 19 red nodes in `tests/orchestration/test_job_apply.py`.
+`_finalize_job_workspace`'s no-handle branch now returns and frees nothing, and
+`job_apply._release_consumed_staging_copy` performs the release after an apply whose
+status is exactly `applied`, and after that apply's record is already durable — so a
+failure between the two can lose the copy or the record, never both, and the record
+that survives is the one saying the target was written. A dry run, an unapproved
+preview, a blocked apply and every `applied_*` partial all KEEP the copy: keeping it is
+the recoverable mistake. A copy job that is never applied keeps its copy for good, and
+`remedy data reclaim` is the one path that frees it — correct, because an unapplied
+copy still holds work nobody has taken.
+
+**Two layers, and not the same condition (F276 T003, amended by D6).**
+`release_staging_workspace` keeps its own floor: it refuses any job that is not
+terminal by `pingpong_job.JOB_TERMINAL_STATES` — `completed`, `failed`, `cancelled` —
+because a public function that deletes must refuse on its own authority and must never
+free what `remedy data reclaim` would refuse. Its CALLER is stricter, and since D6 that
+caller is the apply rather than the terminal hook: a job is released only when its work
+has just been taken. What the copy's filters left behind goes to `pingpong_job`'s own
+logger; what became of the copy after an apply is named on `JobApplyResult
+.staging_release` — `released <n> bytes`, `already gone`, or `kept (<reason>)` — printed
+in the applied summary, with a refusal or a raise also logged by `job_apply` with its
+reason. Neither speaks through a new run-log event name or a new `JobPlan` field.
+
+**What the copy leaves behind (F276 T003).** The filtered copy gained two filters
+beside its older rules — which exclude the thirteen names in `_EXCLUDE_DIRS` AND every
+dot-directory, escaping symlinks, and `.env*` files, while a dot-FILE that is not
+`.env*` is copied. The tree is enumerated first, then ONE `git check-ignore --stdin
+-z` pass over the whole candidate list decides which paths the target's own ignore
+rules cover — one subprocess for the tree, never one per file — and then a per-file
+ceiling, `staging_workspace.MAX_COPY_FILE_BYTES` at 16 MiB, catches what no ignore
+rule covers. The pass runs only when the target holds its own `.git`, because a target
+nested inside another repository answers `check-ignore` successfully with the OUTER
+repository's rules and that one stat is what makes the pass mean the target's own
+ignore file; a `.git` file rather than a directory — a git worktree checkout — counts,
+deliberately. When the guard fails, or git does, the copy proceeds UNFILTERED and says
+so through `StagingWorkspace.gitignore_filter` and `gitignore_detail` rather than
+looking like a copy of a target with nothing to ignore. `check-ignore` consults the
+index, so a tracked file is never dropped. What the two filters skipped is recorded on
+`StagingWorkspace` as `excluded_ignored`, `excluded_oversize` and `excluded_bytes` —
+the bytes of exactly those two lists and of no other, because `excluded_dirs`,
+`excluded_symlinks` and `excluded_env_files` are never measured and a total over all
+five would be a number no caller could interpret.
+
+**The disk floor (F276 T004).** `JobBudgets.min_free_disk_bytes` is a budget like the
+others — absent by default, overridden through `budget.min_free_disk_bytes` in
+`remedy.toml` or `REMEDY_BUDGET_MIN_FREE_DISK_BYTES`, resolved by the same
+`resolve_job_budgets` and validated strictly positive by the same model validator — and
+it is the ONE FLOOR among them. Every other limit is exhausted at `counter >= limit`;
+this one at `free < floor`, so a floor of N accepts exactly N free bytes.
+`budget_guard.evaluate_budget` checks it LAST and `_LIMIT_ORDER` names it FIRST, because
+`first_exhausted_limit` is the single limit an operator is told about and a full disk is
+the one condition that makes raising any of the others pointless. No new call site
+enforces it: `evaluate_budget` is already what `safe_points.should_stop` evaluates at
+every safe point, and `pingpong_job.run_job`'s pre-work `_stop_check()` — the job-start
+check — is the same function. Exhaustion therefore takes the STOPPED path a budget stop
+already takes, `_stop_job` with a `source="budget"` signal reading
+`budget_exhausted:min_free_disk_bytes`.
+
+**One probe, injected, read by both surfaces (F276 T004).** `evaluate_budget` never calls
+`shutil.disk_usage`: it calls `budget_guard.free_disk_bytes`, which reads the module-level
+`FREE_DISK_PROBE` seam unless a caller passes `free_disk_probe=` for one evaluation
+(`should_stop` forwards it). The default probe reads the filesystem of the DATA ROOT —
+what actually fills up, and routinely a different filesystem from the checkout — walking
+up to the nearest existing ancestor, because `resolve_data_root` does not promise the
+path exists. `remedy doctor core` gains a `disk` section reading that same function and
+the same `resolve_min_free_disk_bytes` config route, so what the doctor reports and what
+stops a job cannot be two different numbers; the section states free bytes, the
+configured floor and whether the floor is met, and an unconfigured floor is MET rather
+than a failed check. The post-mortem a disk stop writes carries terminal status and
+failure class `disk_exhausted`, deliberately not `budget_exhausted`: a budget is
+exhausted by what this job spent and an operator raises it, while the disk was exhausted
+by the machine and is often nothing this job did.
+
 ### Part C — `packages/orchestration/path_utils.py`
 
 **Single canonical path-component sanitizer.**

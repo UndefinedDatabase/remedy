@@ -297,6 +297,36 @@ def _cmd_doctor_core(ns: argparse.Namespace) -> None:
         dead_commands = []
         _check("dead_command_scan", False, _safe_err(exc))
 
+    # -----------------------------------------------------------------
+    # F276 T004 — free disk against the configured floor.
+    #
+    # Read through `budget_guard.free_disk_bytes`, which is the SAME seam
+    # `evaluate_budget` reads, and through `resolve_min_free_disk_bytes`, which
+    # is the same config resolution a job's budgets go through. A doctor that
+    # stat'd the filesystem itself would agree with the job that gets stopped
+    # only by coincidence, and would be unable to say what the job will see.
+    #
+    # `floor_met` is True when NO floor is configured: "you did not ask for a
+    # floor" is not a failed health check, and reporting it as one would make
+    # `ready` False on every machine that has not configured F276.
+    # -----------------------------------------------------------------
+    disk: dict[str, Any] = {"free_bytes": None, "floor_bytes": None,
+                            "floor_met": None, "error": ""}
+    try:
+        from packages.orchestration.budget_guard import free_disk_bytes
+        from packages.orchestration.budget_resolution import resolve_min_free_disk_bytes
+        free_bytes = free_disk_bytes()
+        floor_bytes = resolve_min_free_disk_bytes()
+        floor_met = floor_bytes is None or free_bytes >= floor_bytes
+        disk = {"free_bytes": free_bytes, "floor_bytes": floor_bytes,
+                "floor_met": floor_met, "error": ""}
+        _check("disk_floor", floor_met,
+               f"{free_bytes} bytes free, floor "
+               f"{'not configured' if floor_bytes is None else floor_bytes}")
+    except Exception as exc:
+        disk["error"] = _safe_err(exc)
+        _check("disk_floor", False, _safe_err(exc))
+
     blockers: list[str] = [str(c["check"]) for c in checks if not c["ok"]]
     ready = len(blockers) == 0
 
@@ -306,6 +336,7 @@ def _cmd_doctor_core(ns: argparse.Namespace) -> None:
         "blockers": blockers,
         "warnings": warnings,
         "dead_commands": dead_commands,
+        "disk": disk,
     }
 
     if getattr(ns, "json", False):
@@ -323,6 +354,18 @@ def _cmd_doctor_core(ns: argparse.Namespace) -> None:
             # The compact rendering; `--json` carries the full `detail`.
             print(f"  [WARN] {w['warning']}: {w['summary']}")
         print("  (run with --json for each warning's full recorded reason)")
+    # Both numbers, always, and the verdict in words — the same three facts the
+    # `--json` `disk` object carries.
+    print("  disk:")
+    if disk["error"]:
+        print(f"    free disk could not be read: {disk['error']}")
+    elif disk["floor_bytes"] is None:
+        print(f"    {disk['free_bytes']} bytes free · floor: not configured "
+              f"(set budget.min_free_disk_bytes) · floor met: yes")
+    else:
+        print(f"    {disk['free_bytes']} bytes free · floor: "
+              f"{disk['floor_bytes']} bytes · floor met: "
+              f"{'yes' if disk['floor_met'] else 'NO'}")
     print("  dead commands:")
     if dead_commands:
         for cid in dead_commands:

@@ -129,10 +129,17 @@ class JobBudgets(BaseModel):
     # only non-integer limit here (F104 max_cost_usd).
     max_cost_usd: StrictFloat | StrictInt | None = None
     deadline: datetime | None = None
+    #: F276 T004. The one FLOOR among the limits: every field above is a
+    #: ceiling a counter climbs towards, this is a level free disk must stay at
+    #: or above. It is exhausted when the probe reads STRICTLY BELOW it, so a
+    #: floor of N accepts exactly N. Absent means no limit, exactly as above —
+    #: see DECISION F276 D7 for why the default is absent rather than a number.
+    min_free_disk_bytes: StrictInt | None = None
 
     @model_validator(mode="after")
     def _validate_budget_fields(self) -> JobBudgets:
-        for name in ("max_total_tokens", "max_provider_calls", "max_wall_clock_minutes"):
+        for name in ("max_total_tokens", "max_provider_calls", "max_wall_clock_minutes",
+                     "min_free_disk_bytes"):
             val = getattr(self, name)
             if val is not None:
                 if val <= 0:

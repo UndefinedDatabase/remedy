@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 import os
 import shlex
 import subprocess
@@ -387,6 +388,14 @@ class JobApplyResult:
     #: DECISION F270 D4 (3): `remedy do`'s walk of several jobs asks --commit-auto
     #: for each job's title before the mission's goal; not a record field.
     commit_auto_title_first: bool = False
+    #: DECISION F276 D6: what became of a COPY-mode job's staging workspace after
+    #: this apply — "released <n> bytes", "already gone", or "kept (<reason>)".
+    #: Empty for a worktree job, which has no staging copy. NOT a record field,
+    #: and that is deliberate rather than an omission: the durable record is
+    #: written BEFORE the release by design, so a key for it in
+    #: ``export_job_apply_json`` could only ever be persisted empty. The live
+    #: summary and the module logger are where a person reads this.
+    staging_release: str = ""
 
 
 # ---------------------------------------------------------------------------
@@ -984,6 +993,68 @@ def push_to_upstream(target: Path, sha: str, branch_expected: str) -> PushOutcom
 # Apply logic
 # ---------------------------------------------------------------------------
 
+#: The ONE apply outcome that frees a copy job's staging workspace (DECISION
+#: F276 D6). Deliberately not the ``applied_*`` family: ``applied_test_failed``,
+#: ``applied_push_failed``, ``applied_cleanup_failed`` and
+#: ``applied_record_update_failed`` all mean the operator has something left to
+#: do or something left to read, and the last of them means the record this
+#: release is supposed to follow was never written. Keeping the copy is the
+#: recoverable mistake; deleting it is not.
+APPLY_STATUS_RELEASES_STAGING = "applied"
+
+
+def _release_consumed_staging_copy(job: Any, result: JobApplyResult) -> None:
+    """Free a copy-mode job's staging workspace once its work has been APPLIED.
+
+    The opposite number of ``_finalize_job_workspace``'s worktree removal, moved
+    here by DECISION F276 D6 because a copy job has no retained branch: its
+    staging copy IS the deliverable, this function's caller has just read it as
+    the sole apply source, and freeing it at job completion — where T003 put it —
+    destroyed the work of every copy job nobody had applied yet.
+
+    NOTHING RAISES OUT OF HERE. The apply has already happened and its record is
+    already durable; a hygiene step that turned a successful apply into an
+    exception would be strictly worse than a kept directory. A refusal or a
+    failure is NOT silent, though: it lands on ``result.staging_release`` for the
+    human summary and on this module's logger with its reason, the same seam
+    ``_create_job_workspace_copy`` reports its own exclusions on (DECISION F276
+    D5 (6) — a new run-log event name is a published-vocabulary decision).
+    """
+    if getattr(job, "isolation_mode", "") != "copy":
+        return
+    if result.status != APPLY_STATUS_RELEASES_STAGING:
+        result.staging_release = f"kept (apply status {result.status})"
+        return
+    try:
+        from packages.orchestration.staging_workspace import release_staging_workspace
+        released = release_staging_workspace(result.job_id)
+    except Exception as exc:
+        result.staging_release = f"kept (release raised {type(exc).__name__})"
+        logging.getLogger(__name__).error(
+            "staging workspace release FAILED for applied copy-mode job %r; the "
+            "apply stands and its staging copy is kept, so `remedy data reclaim` "
+            "will offer it later",
+            result.job_id, exc_info=True,
+        )
+        return
+    if released.released:
+        result.staging_release = f"released {released.freed_bytes} bytes"
+        return
+    if not released.existed:
+        # A second apply of the same job, or an operator who already ran
+        # `data reclaim`. A no-op, not a refusal, and it warns about nothing —
+        # `StagingRelease` keeps `existed` and `released` apart precisely so this
+        # case and a refusal cannot be read as the same thing.
+        result.staging_release = "already gone"
+        return
+    result.staging_release = f"kept ({released.reason})"
+    logging.getLogger(__name__).warning(
+        "staging workspace release REFUSED for applied copy-mode job %r: %s %s; "
+        "the apply stands and `remedy data reclaim` will offer the copy later",
+        result.job_id, released.reason, released.detail,
+    )
+
+
 def _block(
     result: JobApplyResult,
     reason: str,
@@ -1431,12 +1502,20 @@ def apply_job(
             workspace = Path(ws_path)
             if not workspace.is_dir():
                 return _block(result, f"workspace_missing: {ws_path}")
-            return _apply_from_workspace(
+            copy_out = _apply_from_workspace(
                 job, result, workspace, target_repo,
                 approve=approve, dry_run=dry_run, test_command=test_command,
                 skip_blocked=skip_blocked,
                 commit_with_history=commit_with_history,
             )
+            # DECISION F276 D6: the staging copy is freed HERE, where its work is
+            # consumed, and nowhere else. `_apply_from_workspace` has already
+            # written the final record by the time it returns, so the record is
+            # durable BEFORE the directory goes: a failure between the two can
+            # lose the copy or the record, never both, and the surviving record
+            # is the one that says the target was written.
+            _release_consumed_staging_copy(job, copy_out)
+            return copy_out
     finally:
         if apply_source is not None:
             try:
@@ -2145,6 +2224,10 @@ def summarize_job_apply(result: JobApplyResult) -> str:
             lines.append(
                 f"Post-test: {'passed' if result.post_test_passed else 'FAILED'}"
             )
+        # DECISION F276 D6: this apply is what consumes a copy job's staging
+        # workspace, so this is where the operator is told what became of it.
+        if result.staging_release:
+            lines.append(f"Staging workspace: {result.staging_release}")
         lines.append("")
         pushed = (f"Pushed it to {result.push_remote} {result.push_ref}, never forced."
                   if result.pushed else "Nothing was pushed.")

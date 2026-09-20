@@ -684,11 +684,18 @@ def should_stop(
     counters: Any | None = None,
     now: datetime | None = None,
     control_root_path: Path | None = None,
+    free_disk_probe: Any | None = None,
 ) -> ShouldStopResult:
     """Unified safe-point check: operator stop first, then budget, then continue.
 
     This is the SINGLE entry point for safe-point evaluation.
     Call it once per safe point; never call stop_requested and budget check separately.
+
+    *free_disk_probe* is handed straight to ``evaluate_budget`` (F276 T004). It
+    is a PER-CALL override of ``budget_guard.FREE_DISK_PROBE`` and defaults to
+    None, which means "use the module seam" — the disk floor needs no new call
+    site here, because ``evaluate_budget`` is already the one thing every safe
+    point evaluates.
     """
     signal = stop_requested(job_id, control_root_path=control_root_path)
     if signal is not None:
@@ -702,7 +709,8 @@ def should_stop(
     if budgets is not None and counters is not None:
         from packages.orchestration.budget_guard import evaluate_budget
 
-        evaluation = evaluate_budget(budgets, counters, now=now)
+        evaluation = evaluate_budget(budgets, counters, now=now,
+                                     free_disk_probe=free_disk_probe)
         _emit_budget_tick(job_id, evaluation)
         if evaluation.exhausted:
             limit = evaluation.first_exhausted_limit or "unknown"
