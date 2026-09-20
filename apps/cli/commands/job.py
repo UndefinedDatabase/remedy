@@ -2053,6 +2053,15 @@ def _cmd_job_budget(
                 print(f"  max_wall_clock_minutes: {_budgets.max_wall_clock_minutes}")
             if _budgets.deadline is not None:
                 print(f"  deadline:              {_budgets.deadline.isoformat()}")
+            # F276 T004 (R-1006): the disk FLOOR is a limit like the others and
+            # belongs in the labelled list. The `free_disk:` source line further
+            # down already carries the pair of numbers whenever the evaluation
+            # ran, but it is not the limit's NAME, and the name is what an
+            # operator greps for and what every other limit gets. Listed LAST,
+            # after `deadline`, because appending disturbs no ordering this
+            # block's existing tests already pin.
+            if _budgets.min_free_disk_bytes is not None:
+                print(f"  min_free_disk_bytes:   {_budgets.min_free_disk_bytes}")
         elif _budgets_dict is not None:
             for k, v in _budgets_dict.items():
                 if v is not None:

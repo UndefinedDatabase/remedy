@@ -1492,3 +1492,42 @@ class TestJobBudgetCliRendersPredictions:
         data = self._json(job.job_id, capsys)
         assert data["counters"]["measured_cost_usd"] is None
         assert data["counters"]["unpriced_call_count"] == 1
+
+
+class TestEveryConfiguredLimitIsNamedInTheTextOutput:
+    """R-1006 — the labelled limits block lists the disk floor too.
+
+    The class the first test guards against is not "the floor is missing": it
+    is "a limit was added to ``JobBudgets`` and this hand-written rendering was
+    not". So the guard is written over ``JobBudgets.model_fields`` and goes red
+    for the SEVENTH limit as readily as it did for the sixth. The second test
+    pins the floor's own reading, because a universal over a field set would
+    also be satisfied by printing the name with the wrong value.
+    """
+
+    def _text(self, job_id, capsys):
+        from apps.cli.commands.job import _cmd_job_budget
+        _cmd_job_budget(job_id, json_output=False)
+        return capsys.readouterr().out
+
+    def test_every_field_of_job_budgets_is_named(self, budget_cli_repo, capsys):
+        from packages.core.models import JobBudgets
+
+        job = _save_budget_job(budget_cli_repo, budgets={
+            "max_total_tokens": 100000,
+            "max_provider_calls": 12,
+            "max_wall_clock_minutes": 30,
+            "max_cost_usd": 2.0,
+            "deadline": "2099-01-01T00:00:00+00:00",
+            "min_free_disk_bytes": 5_000_000_000,
+        })
+        out = self._text(job.job_id, capsys)
+        missing = [name for name in JobBudgets.model_fields
+                   if f"{name}:" not in out]
+        assert missing == [], f"limits configured but never named: {missing}"
+
+    def test_the_floor_prints_its_own_number(self, budget_cli_repo, capsys):
+        job = _save_budget_job(budget_cli_repo, budgets={
+            "min_free_disk_bytes": 5_000_000_000})
+        out = self._text(job.job_id, capsys)
+        assert _line_value(out.splitlines(), "min_free_disk_bytes") == "5000000000"
