@@ -2596,6 +2596,36 @@ the bytes of exactly those two lists and of no other, because `excluded_dirs`,
 `excluded_symlinks` and `excluded_env_files` are never measured and a total over all
 five would be a number no caller could interpret.
 
+**The disk floor (F276 T004).** `JobBudgets.min_free_disk_bytes` is a budget like the
+others — absent by default, overridden through `budget.min_free_disk_bytes` in
+`remedy.toml` or `REMEDY_BUDGET_MIN_FREE_DISK_BYTES`, resolved by the same
+`resolve_job_budgets` and validated strictly positive by the same model validator — and
+it is the ONE FLOOR among them. Every other limit is exhausted at `counter >= limit`;
+this one at `free < floor`, so a floor of N accepts exactly N free bytes.
+`budget_guard.evaluate_budget` checks it LAST and `_LIMIT_ORDER` names it FIRST, because
+`first_exhausted_limit` is the single limit an operator is told about and a full disk is
+the one condition that makes raising any of the others pointless. No new call site
+enforces it: `evaluate_budget` is already what `safe_points.should_stop` evaluates at
+every safe point, and `pingpong_job.run_job`'s pre-work `_stop_check()` — the job-start
+check — is the same function. Exhaustion therefore takes the STOPPED path a budget stop
+already takes, `_stop_job` with a `source="budget"` signal reading
+`budget_exhausted:min_free_disk_bytes`.
+
+**One probe, injected, read by both surfaces (F276 T004).** `evaluate_budget` never calls
+`shutil.disk_usage`: it calls `budget_guard.free_disk_bytes`, which reads the module-level
+`FREE_DISK_PROBE` seam unless a caller passes `free_disk_probe=` for one evaluation
+(`should_stop` forwards it). The default probe reads the filesystem of the DATA ROOT —
+what actually fills up, and routinely a different filesystem from the checkout — walking
+up to the nearest existing ancestor, because `resolve_data_root` does not promise the
+path exists. `remedy doctor core` gains a `disk` section reading that same function and
+the same `resolve_min_free_disk_bytes` config route, so what the doctor reports and what
+stops a job cannot be two different numbers; the section states free bytes, the
+configured floor and whether the floor is met, and an unconfigured floor is MET rather
+than a failed check. The post-mortem a disk stop writes carries terminal status and
+failure class `disk_exhausted`, deliberately not `budget_exhausted`: a budget is
+exhausted by what this job spent and an operator raises it, while the disk was exhausted
+by the machine and is often nothing this job did.
+
 ### Part C — `packages/orchestration/path_utils.py`
 
 **Single canonical path-component sanitizer.**

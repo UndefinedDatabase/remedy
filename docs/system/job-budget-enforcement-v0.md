@@ -1,14 +1,14 @@
 # Job Budget Enforcement v0
 
 > What a Remedy JOB may consume, and how a run is stopped before it exceeds
-> that. Built by F018 (the four original limits) and F104 (the money limit and
-> the predictive stop). The target plan is
+> that. Built by F018 (the four original limits), F104 (the money limit and
+> the predictive stop) and F276 (the disk floor). The target plan is
 > [T2_F104.md](../roadmap/features/T2_F104.md); this page describes what is
 > built. Not the *run contract* budgets of
 > [run-contract-v1.md](run-contract-v1.md) — those are the loop / test / runtime
 > caps of a single run contract, a different mechanism.
 
-## The five limits
+## The six limits
 
 A job carries an optional `JobBudgets` record, resolved by
 `packages/orchestration/budget_resolution.py` with the precedence **CLI flag >
@@ -21,16 +21,31 @@ env var > project `remedy.toml` > no limit**. Unset means *no limit*.
 | `max_cost_usd` | US dollars | `--max-cost-usd` |
 | `max_wall_clock_minutes` | minutes | `--max-wall-clock-minutes` |
 | `deadline` | ISO-8601 UTC instant | `--deadline` |
+| `min_free_disk_bytes` | bytes free | *(no flag; config only)* |
+
+`min_free_disk_bytes` (F276) is the only FLOOR here and the only one with no CLI
+flag: it is a property of the machine rather than of an invocation, so it is set
+through `budget.min_free_disk_bytes` in `remedy.toml` or the environment variable
+`REMEDY_BUDGET_MIN_FREE_DISK_BYTES`. Every other limit is exhausted at
+`counter >= limit`; this one at `free < floor`, so a floor of N accepts exactly N
+free bytes. The reading comes from `budget_guard.free_disk_bytes`, an injectable
+seam over `shutil.disk_usage` of the DATA ROOT's filesystem, and the probe is
+called only when the floor is configured.
 
 When several limits are exhausted at once, the one REPORTED is the first in
-`_LIMIT_ORDER` (`packages/orchestration/budget_guard.py`) — the table order
-above. That is a reporting rule only: any exhausted limit stops the job.
+`_LIMIT_ORDER` (`packages/orchestration/budget_guard.py`), which is
+`min_free_disk_bytes` and then the table order above. The disk is first because
+every other limit is one an operator can simply raise, and raising a token limit
+on a machine with no space walks the job into the same wall. That is a reporting
+rule only: any exhausted limit stops the job.
 
-`max_cost_usd` is also part of the CLOSED budget schema of the F012 run manifest
-(`_BUDGET_ALLOWED_KEYS` in `packages/orchestration/run_manifest.py`). A budget
-field `JobBudgets` accepts but the manifest rejects cannot FINALIZE a stop at
-all — the job is left running with the stop request pending — so the two are
-kept in step deliberately.
+Every `JobBudgets` field is also part of the CLOSED budget schema of the F012 run
+manifest (`_budget_allowed_keys()` in `packages/orchestration/run_manifest.py`),
+which DERIVES the set from `JobBudgets.model_fields`. A budget field `JobBudgets`
+accepts but the manifest rejects cannot FINALIZE a stop at all — the job is left
+running with the stop request pending — and that failure has now happened twice,
+once for `max_cost_usd` (R-0225) and once for `min_free_disk_bytes`, which is why
+the list is derived rather than spelled a second time.
 
 ## Cost is nullable by design
 
@@ -48,7 +63,14 @@ left of the limit is only a CEILING, `<= $1.4000`. No price is ever invented.
 **Reactive** — after a provider call, at every safe point, `evaluate_budget`
 compares recorded actuals against the limits and stops the job through the
 ordinary F011 stop path with reason `budget_exhausted:<limit>`. This is the
-BACKSTOP and it is unconditional.
+BACKSTOP and it is unconditional. The `<limit>` is always the `JobBudgets` FIELD
+name, `min_free_disk_bytes` included, so there is one stop vocabulary and not
+two. The POST-MORTEM that stop writes carries terminal status and failure class
+`budget_exhausted` for every limit except the disk floor, which gets its own
+`disk_exhausted` (F276): a budget is exhausted by what this job spent and an
+operator raises it, while the disk was exhausted by the machine and is often
+nothing this job did, and folding the two would make "which of my jobs ran the
+disk out" unanswerable.
 
 **Predictive** — at the task-dispatch safe point in `run_job`
 (`packages/orchestration/pingpong_job.py`), BEFORE a task is dispatched and
