@@ -290,3 +290,67 @@ def test_every_derived_next_action_names_the_real_job_and_no_placeholder(tmp_pat
         f"remedy patch approve {job.job_id} intent-a1",
         f"remedy patch list {job.job_id} names the intent ids to approve",
     )
+
+
+class TestADecidedIntentIsNotAwaitingApproval:
+    """F277 T001: `derived_not_approved` used to fire for every patch intent.
+
+    The comprehension compared against `approval_decision`, a name nothing in
+    this repository has ever written, so the `not any(...)` guard was vacuously
+    true and an approved intent was reported as a blocker forever.  The names
+    the repository really writes are `patch_intent_approved` and
+    `patch_intent_rejected`.
+    """
+
+    @staticmethod
+    def _reasons(events):
+        from packages.orchestration.pingpong_job import JobPlan
+        from packages.orchestration.stop_reasons import derive_stop_reasons
+
+        job = JobPlan(job_title="approval bookkeeping")
+        return {r.id: r for r in derive_stop_reasons(job, events)}
+
+    def test_an_undecided_intent_still_blocks(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
+        reasons = self._reasons(
+            [{"event": "patch_intent_created", "metadata": {"intent_id": "i-1"}}]
+        )
+        assert "derived_not_approved" in reasons
+        assert reasons["derived_not_approved"].safe_summary == (
+            "1 patch intent(s) awaiting approval."
+        )
+
+    def test_an_approved_intent_no_longer_blocks(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
+        reasons = self._reasons(
+            [
+                {"event": "patch_intent_created", "metadata": {"intent_id": "i-1"}},
+                {"event": "patch_intent_approved", "metadata": {"intent_id": "i-1"}},
+            ]
+        )
+        assert "derived_not_approved" not in reasons
+
+    def test_a_rejected_intent_no_longer_blocks(self, tmp_path, monkeypatch):
+        """A rejected intent is decided, not waiting — the same reading
+        `autonomy_readiness._has_pending_approvals` already had."""
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
+        reasons = self._reasons(
+            [
+                {"event": "patch_intent_created", "metadata": {"intent_id": "i-1"}},
+                {"event": "patch_intent_rejected", "metadata": {"intent_id": "i-1"}},
+            ]
+        )
+        assert "derived_not_approved" not in reasons
+
+    def test_only_the_matching_intent_is_decided(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
+        reasons = self._reasons(
+            [
+                {"event": "patch_intent_created", "metadata": {"intent_id": "i-1"}},
+                {"event": "patch_intent_created", "metadata": {"intent_id": "i-2"}},
+                {"event": "patch_intent_approved", "metadata": {"intent_id": "i-1"}},
+            ]
+        )
+        assert reasons["derived_not_approved"].safe_summary == (
+            "1 patch intent(s) awaiting approval."
+        )

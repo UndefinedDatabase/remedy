@@ -14,8 +14,8 @@ This module reads the CODE rather than the prose.  It walks every module under
   ``timeline.append_run_event``, plus — by fixpoint — every function that
   forwards its own parameter into a known sink.  That fixpoint is what makes the
   set honest: the repository wraps all three sinks in per-module ``_emit``
-  helpers, and a collector that reads only ``RunLogWriter.log`` sees 50 of the
-  84 names and reports 15 phantom dead readers.
+  helpers, and the same collector with the fixpoint removed sees 51 of the 83
+  written names and reports 15 phantom dead readers.
 * READ — every literal compared against an event lookup (``e.get("event") ==
   <literal>``, ``e["event"] in {...}``).
 
