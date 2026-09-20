@@ -1,29 +1,29 @@
-# Context — F276 Data-root hygiene & disk budget
+# Context — F277 Machine contracts: event vocabulary, JSON envelope, exit codes
 
 ## Active Branch
-feature/f276-data-root-hygiene, cut from `main` at `43d14817` (the merge
-commit of pull request 260, F273's closure).
+feature/f277-machine-contracts, cut from `main` at `f2494c02` (the merge
+commit of pull request 262, F276's closure).
 
 ## Scope
-F276 (Tier 2). Per `docs/roadmap/features/T2_F276.md`: T001 the class
-registry and `remedy data usage`; T002 `remedy data reclaim`, dry run by
-default; T003 the copy-mode staging lifecycle; T004 a disk floor that
-behaves like every other budget. The feature file's Orchestrator brief
-fixes that order.
+F277 (Tier 2). Per `docs/roadmap/features/T2_F277.md`: T001 the event
+vocabulary; T002 the JSON envelope and the dispatch error boundary; T003 the
+`fail()` helper and the JSON gaps; T004 the exit-code taxonomy and the
+contract sweep. The feature file's Orchestrator brief fixes that order — T001
+is independent and lands first, T002 before T003, T004 last.
 
 ## Do not touch
-F166's evidence retention, and the worktree cleanup path of
-`packages/orchestration/pingpong_job.py` ("The ONE cleanup path for a
-job-owned worktree"), which already works and is not this feature's to
-re-route.
+The event names themselves: this feature declares the vocabulary that exists,
+it does not rename it. The catalog's command SET, which F261 owns.
+`progress_ledger.py`, which F275 already deleted — its dead reader is history,
+not work, and must not be re-created.
 
 ## Constraints
-- Never read, list or write the operator's `.data/` by hand: a measurement
-  of the real data root is `remedy data usage`, which this feature builds.
-  Every test measures a tmp root through `REMEDY_DATA_DIR`.
 - `python3 -m ruff check <path>` is the spelling every gate orders.
 - A round touching `docs/roadmap/**` also gates `tests/docs/` and
   `tests/orchestration/test_roadmap_index.py`.
+- A new module under `packages/` reachable from the entry points must be added
+  to `tests/orchestration/import_reachability_allowlist.txt` in the same
+  commit, or `tests/orchestration/test_import_reachability.py` goes red.
 - Destructive verification runs only inside a disposable git worktree under
   `.remedy-wt/`, never in the primary checkout, which satisfies
   `git status --porcelain` empty at every verdict.

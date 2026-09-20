@@ -1,40 +1,44 @@
-# Plan — F276 Data-root hygiene & disk budget
+# Plan — F277 Machine contracts: event vocabulary, JSON envelope, exit codes
 
-Branch: feature/f276-data-root-hygiene, cut from `main` at `43d14817`. The
-operator merged `origin/main` back into it at `512ba69c`. Pull request 262
-is OPEN and unmerged over it.
+Branch: feature/f277-machine-contracts, cut from `main` at `f2494c02`, the
+merge commit of pull request 262 (F276's closure). No pull request is open.
 
 ## Goal
 
-Every directory class under the data root has a named owner and a reclaim
-rule, an operator reclaims scratch through one preview-first command, and a
-job refuses to start below a disk floor
-(`docs/roadmap/features/T2_F276.md`).
+Three machine-facing contracts become declarations a test can read: the event
+vocabulary written into the run ledger, the JSON envelope every `--json`
+command emits, and the meaning of each exit code
+(`docs/roadmap/features/T2_F277.md`).
 
 ## Current Step
 
-Round 15 repairs what round 14's closure commit left red. It books round
-14's verdict, registers `R-1011` — `README.md`'s accepted counter and its
-Tier 2 Done cell still carried the pre-closure numbers, so the ledger
-cross-check `tests/docs/` went red at `b07a2eda` — repairs both cells,
-resolves the finding, and empties `.agent/candidates.md` of the entry round
-14 filed. Commits on this branch are the work order that operator amendment
-amend0820-gate-autonomy names when a check over an open pull request is red.
+Round 1 claims F277, re-heads `.agent/live_review.md`, books F276 round 15's
+verdict, and builds T001: `packages/orchestration/event_names.py` declaring the
+83 event names this repository writes, the six it only reads quarantined beside
+them, the AST test that measures both from the source, and an opt-in strict
+check in `RunLogWriter.log`. DECISIONs F277 D1 and D2 carry the collector
+design and the quarantine, and D2 amends T001's Acceptance line.
 
 ## Next Steps
 
-1. The pull request is NOT merged this session. The next feature's Open PR
-   Gate merges it, which is the operator's manual-review window.
-2. The next session claims the next feature by Rule A5 and books this
-   feature's closing verdict in its first round.
-3. The open findings are carried, not resolved — 19 by distinct id, 12
-   Medium and 7 Low, none High, every one naming `Owner: F282`. R-1010 and
-   R-1011 were both raised and repaired inside this feature and are not
-   among them.
+1. Dispose of the six quarantined names — one commit each, a writer or the
+   reader deleted with what it feeds — until `READ_ONLY_EVENT_NAMES` is empty
+   and `read ⊆ written ⊆ declared` holds. This is what round 1 defers.
+2. T002: `apps/cli/json_envelope.py` with `emit_ok` and `emit_error` over one
+   shape, and an error boundary around dispatch in `apps/cli/grouped.py` so no
+   traceback reaches the operator.
+3. T003: the shared `fail()` helper replacing the `print(...); sys.exit(1)`
+   pairs, one command group per commit, and the read-only-without-`supports_json`
+   set emptied.
+4. T004: the exit-code taxonomy documented under `docs/guides/` and asserted
+   from the catalog, plus `tests/cli/test_json_contract.py` sweeping every
+   `supports_json` command on success AND on an invalid argument.
+5. Closure: the integration gate runs the full suite once, then the evidence
+   job, the review zip and the STATUS flip.
 
 ## Risks
 
-The hosted CI column on pull request 262 is the last unmeasured surface:
-this branch carries main's own amend0920 work through the operator's merge,
-and the pull request's first run is the first time that combination is
-exercised on a hosted runner rather than here.
+The collector reads the code statically, so a name assembled across a module
+boundary is invisible to it by construction. The strict-mode flag is the
+runtime backstop, and it is off by default; nothing yet runs the suite with it
+on. Whether it should be turned on inside the test suite is round 2's question.
