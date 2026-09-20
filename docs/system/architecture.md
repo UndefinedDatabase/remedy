@@ -2527,6 +2527,58 @@ Those two sums are 922 931 683 643 — exactly `job_workspaces`'s own footprint 
 the same day — so the refused bytes are 69 per cent OF THAT CLASS, which is the
 denominator, and not of the 923 560 682 122-byte data root.
 
+**The copy-mode lifecycle (F276 T003).** A job whose target is not a git repository
+runs in `isolation_mode="copy"`: `pingpong_job._create_job_workspace_copy` calls
+`staging_workspace.create_staging_workspace` and leaves
+`job_workspaces/staging_<job>` behind. Nothing removed it — the worktree path had a
+cleanup path and the copy path had none, which is where the backlog above came from.
+At `543863a0` there was no cleanup of any kind on that path: `discard_staging` does
+not exist, F273's R-0936 paydown having deleted it, so this is the half that was never
+built rather than one that stopped working.
+`staging_workspace.release_staging_workspace(job_id)` is that missing half, called
+from `_finalize_job_workspace`, the same hook the worktree removal runs on, on the
+branch that hook takes when there is no worktree handle at all. It is the reclaim
+command narrowed to one job and it REUSES that command's rules rather than restating
+them: `data_reclaim.child_deletion_refusal` decides direct-child, symlink and
+inside-the-root, `data_reclaim.job_state_refusal` decides resolves-and-is-terminal,
+and every reason it returns is one of `data_reclaim.REFUSAL_REASONS`. The path is
+derived from the class registry and never read from the job record, and a second
+release is a no-op rather than an error.
+
+**Two layers, and not the same condition (F276 T003).** `release_staging_workspace`
+keeps its own floor: it refuses any job that is not terminal by
+`pingpong_job.JOB_TERMINAL_STATES` — `completed`, `failed`, `cancelled` — because a
+public function that deletes must refuse on its own authority and must never free what
+`remedy data reclaim` would refuse. The hook is stricter. `_finalize_job_workspace`
+calls the release only under the condition it already applies to a worktree,
+`job.state == JOB_COMPLETED and not job.result_diff_error`, so a failed, cancelled,
+blocked, paused or stopped copy job keeps its staging copy exactly as such a worktree
+job keeps its worktree — the conservative direction, and the same inspection window in
+both isolation modes. Those copies are not stranded: `remedy data reclaim` frees them
+when the operator asks. What the copy's filters left behind, and any release failure
+the `finally` would otherwise swallow, each go to `pingpong_job`'s own logger — one
+line apiece — rather than to a new run-log event name or a new `JobPlan` field.
+
+**What the copy leaves behind (F276 T003).** The filtered copy gained two filters
+beside its older rules — which exclude the thirteen names in `_EXCLUDE_DIRS` AND every
+dot-directory, escaping symlinks, and `.env*` files, while a dot-FILE that is not
+`.env*` is copied. The tree is enumerated first, then ONE `git check-ignore --stdin
+-z` pass over the whole candidate list decides which paths the target's own ignore
+rules cover — one subprocess for the tree, never one per file — and then a per-file
+ceiling, `staging_workspace.MAX_COPY_FILE_BYTES` at 16 MiB, catches what no ignore
+rule covers. The pass runs only when the target holds its own `.git`, because a target
+nested inside another repository answers `check-ignore` successfully with the OUTER
+repository's rules and that one stat is what makes the pass mean the target's own
+ignore file; a `.git` file rather than a directory — a git worktree checkout — counts,
+deliberately. When the guard fails, or git does, the copy proceeds UNFILTERED and says
+so through `StagingWorkspace.gitignore_filter` and `gitignore_detail` rather than
+looking like a copy of a target with nothing to ignore. `check-ignore` consults the
+index, so a tracked file is never dropped. What the two filters skipped is recorded on
+`StagingWorkspace` as `excluded_ignored`, `excluded_oversize` and `excluded_bytes` —
+the bytes of exactly those two lists and of no other, because `excluded_dirs`,
+`excluded_symlinks` and `excluded_env_files` are never measured and a total over all
+five would be a number no caller could interpret.
+
 ### Part C — `packages/orchestration/path_utils.py`
 
 **Single canonical path-component sanitizer.**
