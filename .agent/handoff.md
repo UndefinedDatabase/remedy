@@ -1,208 +1,233 @@
-# Handoff — F276 Data-root hygiene & disk budget · Round 8
+# Handoff — F276 Data-root hygiene & disk budget · Round 9
 
 ## Session
 
-SESSION 2 of feature F276 · round 8 · rounds so far 8
+SESSION 2 of feature F276 · round 9 · rounds so far 9
 
-Context self-assessment: the worker verified the step block's bytes before doing anything else — 246 lines, sha256 `20aef44c5d1717d58e91b42ff30600351acd09f7f6a370a9d03baad30cf1da59`, both readings identical to the digest the delegation message named — then read AGENTS.md in full, `docs/agents/handback_template.md` and `docs/roadmap/STATUS_closure_protocol.md` including precondition 6 word for word, then all four remaining payloads with their digests checked before use; every numeral below is the output of a command run in this round, never a recollection, and the two exit codes that decide the round were taken from a subprocess object rather than from a pipeline.
+Context self-assessment: the worker verified the step block's bytes before doing anything else — 221 lines, sha256 `eb5c1c4e41bb0b86916f1f13fa4d1f851c9ae0e1f7d5bde23a038c2fed73608b`, both readings identical to the digest the delegation message named — then read AGENTS.md in full, `docs/agents/handback_template.md` and `docs/roadmap/STATUS_closure_protocol.md` step 5 word for word, then the four remaining payloads with their digests checked before use; every numeral below is the output of a command run in this round, never a recollection, and G5's two exit codes were taken from a subprocess object rather than from a pipeline.
 
 ## Range
 
-Review of 9fb2ab65..HEAD — branch `feature/f276-data-root-hygiene`.
+Review of 8da83220..HEAD — branch `feature/f276-data-root-hygiene`.
 
 ## Summary
 
-Round 8 is the closure sequence's SECOND HALF minus its last round. It books round 7's verdict, resolves R-1006, spends this feature's ONE repair round on the integration gate — which is now GREEN — and consumes the one self-use item closure precondition 6 requires.
-- C1 books round 7's PASS over the five commits ending at `9fb2ab65`, writes the reviewer-authored `Done: R-1006`, appends DECISION F276 D9, adds two prose-slip lines, rewrites the plan, and saves byte copies of the five reviewer payloads.
-- C2 is the repair run. `apps/ui` was BUILT FIRST, then `python3 -m pytest -n auto -q` ran ONCE in the primary checkout: `17639 passed, 20 skipped, 1 warning in 219.97s`, exit 0. `.agent/authored/f276-closure-suite.txt` is rewritten in place and states the previous bad set of three beside its own empty one.
-- C3 is the self-use item. The generator supplied SU-024, the runner ran it against a REAL provider (ollama / muse-glimmer:latest) to the approval gate, never applied, and the run's two defect strings are recorded verbatim. NOTHING IS REGISTERED — that is round 9's reviewer-authored text.
-- C4 is this handoff. No pull request was opened, STATUS was not flipped, the ledger was not rotated, no evidence job was built and `consumed_by` was NOT set.
+Round 9 is the closure sequence's third part: the bookkeeping, and the three steps that must precede the evidence package. It flips no STATUS line, touches no README, builds no package and opens no pull request; those are round 10's.
+- C1 books round 8's PASS over the four commits ending at `8da83220`, registers R-1007 from the self-use run closure precondition 6 consumed, appends DECISION F276 D10, rewrites the plan, and saves byte copies of the four reviewer payloads.
+- C2 spends this feature's ONE §3 checklist consolidation pass: item 17 merged into item 15, the number 17 retired, the list left at 34, and the prompt's consolidation paragraph amended to say that no free number remained.
+- C3 is the ledger rotation, run by `scripts/rotate_live_review.py` and by nothing else: 25 gate records and 4 finding pairs moved, open findings 17 before and 17 after.
+- C4 re-assigns every still-open finding to F282 by APPENDING one line per paragraph — 14 ids, ZERO deletions.
+- C5 is this handoff.
 
 ## Item status
 
 | Item | Status | Reason |
 |------|--------|--------|
-| C1 bookkeeping | done | five payload copies + four state files; 440 insertions, 9 paths |
-| C2 the repair run | done | one path; the suite is GREEN at exit 0 and the transcript says so |
-| C3 the self-use item | done | seven paths; SU-024 generated, planned, run for real, defects recorded |
-| C4 handoff | done | this file |
-| G1 transport + state | done | 9 readings, every one True; saved block matches the delegation digest |
-| G2 the UI build | done | exit 0, `✓ built in 1.45s`, `git status --porcelain` EMPTY afterwards |
-| G3 the repair run | done | exit 0 from the process, `17639 passed, 20 skipped`; bad set EMPTY; 0 still bad of 3, 0 newly bad |
-| G4 the canary | done | `42 passed in 132.99s (0:02:12)`, exit 0, run AFTER the real self-use job |
-| G5 push, tree, job leftovers | done | pushed; tree EMPTY; no `.agent/STOP`; job branches 38 → 39, worktrees 2 → 3 |
-| R-1006 | **resolved** | `Done: R-1006` written by the reviewer in P2 and applied at C1 |
-| R-1003 | resolved in round 6 | untouched this round |
-| R-1004 | open | Medium, re-assigned to F282 by round 9; not fixed here |
-| R-1005 | open | Medium, re-assigned to F282 by round 9; not fixed here |
-| SU-024 defect string 1 | recorded, NOT registered | `job c1dba9c3d7874968 (stopped): stop_reason=budget_exhausted:max_provider_calls; stop_source=budget` |
-| SU-024 defect string 2 | recorded, NOT registered | `T001 (pending): final_status=stopped` |
+| C1 bookkeeping | done | 4 payload copies + 3 state files; 445 insertions over 7 paths |
+| C2 the consolidation | done | one path; blob `073486a2`, 34 items, 17 absent |
+| C3 the rotation | done | script-run only; two ledger paths; 68 lines moved, byte-conserving |
+| C4 the re-assignment | done | one path; 14 insertions, 0 deletions |
+| C5 handoff | done | this file |
+| G1 transport + state | done | 7 readings, every one True; saved block matches the delegation digest |
+| G2 the consolidation | done | (a) blob EQUAL, (b) 34 items and 17 absent, (c) exactly one path |
+| G3 the rotation | done | every printed line below; open findings 17 → 17; exactly the two ledger paths |
+| G4 the re-assignment | done | (a) deletions ZERO, (b) 14 appended / 3 skipped, (c) 17 = 17, (d) 20/20 and 3/3 |
+| G5 the canary + docs | done | `42 passed`, exit 0; `314 passed`, exit 0 |
+| G6 push and tree | done | pushed; tree EMPTY; no `.agent/STOP`; 3 worktrees, two of them jobs' |
+| R-1007 | **registered** | Medium; the reviewer's text in P2, applied at C1, never the worker's |
+| R-1003, R-1006 | resolved in earlier rounds | untouched this round |
+| R-1004, R-1005 | open | already carried the F282 owner string; skipped by C4 by design |
+| STATUS flip | not done | round 10's, per the block's Goal |
+| README sync | not done | round 10's |
+| evidence job + package | not done | round 10's |
+| `consumed_by` for SU-024 | not set | round 10's closure commit |
 
 ## Commits
 
-### b926615b F276 R8 C1: the round 8 bookkeeping
+### f1ea73a7 F276 R9 C1: the round 9 bookkeeping
 | Path | +/- | Reason |
 |------|-----|--------|
-| .agent/authored/f276-r8-block.md | +246/-0 | byte copy of P1, the step block |
-| .agent/authored/f276-r8-decisions.md | +58/-0 | byte copy of P3 |
-| .agent/authored/f276-r8-ledger.md | +4/-0 | byte copy of P2 |
-| .agent/authored/f276-r8-plan.md | +43/-0 | byte copy of P4 |
-| .agent/authored/f276-r8-prose-slips.md | +2/-0 | byte copy of P5 |
-| .agent/decisions.md | +58/-0 | DECISION F276 D9 appended |
-| .agent/live_review.md | +4/-0 | round 7 verdict PASS + `Done: R-1006` |
-| .agent/plan.md | +23/-22 | rewritten to round 8 |
-| .agent/prose_slips.md | +2/-0 | two dated lines |
+| .agent/authored/f276-r9-block.md | +221/-0 | byte copy of P1, the step block |
+| .agent/authored/f276-r9-decisions.md | +74/-0 | byte copy of P3 |
+| .agent/authored/f276-r9-plan.md | +44/-0 | byte copy of P4 |
+| .agent/authored/f276-r9-ledger.md | +4/-0 | byte copy of P2 |
+| .agent/decisions.md | +74/-0 | DECISION F276 D10 appended |
+| .agent/live_review.md | +4/-0 | round 8's PASS verdict and the R-1007 registration appended |
+| .agent/plan.md | +24/-23 | rewritten to round 9 |
 
-Insertions by `git show --numstat`: **440**, under 500.
+Insertions 445, deletions 23, 7 paths — under the 500 cap.
 
-### fd23710f F276 R8 C2: the integration gate's repair run
+### 319ae0f0 F276 R9 C2: the §3 checklist consolidation
 | Path | +/- | Reason |
 |------|-----|--------|
-| .agent/authored/f276-closure-suite.txt | +56/-39 | the green transcript replaces the red one, same path |
+| docs/agents/planner_reviewer_prompt.md | +24/-14 | item 17 merged into item 15; 17 retired; item 35's cross-reference repointed; the consolidation paragraph amended to 34 |
 
-Insertions by `git show --numstat`: **56**, under 500.
+Insertions 24, deletions 14, 1 path. Applied from P5 with `git apply`, never retyped.
 
-### 8039555d F276 R8 C3: the self-use item
+### 649ce611 F276 R9 C3: the ledger rotation
 | Path | +/- | Reason |
 |------|-----|--------|
-| .agent/selfuse_f276/SU-024.md | +7/-0 | the job file the planner rendered |
-| .agent/selfuse_f276/execution_config.json | +1/-0 | which provider actually ran |
-| .agent/selfuse_f276/job_plan_state.txt | +7/-0 | the returned JobPlan's state |
-| .agent/selfuse_f276/queue_entry_and_job_file.txt | +8/-0 | the entry and the job file path |
-| .agent/selfuse_f276/run_defects.txt | +9/-0 | every defect string, verbatim |
-| .agent/selfuse_f276/self_use_run_console_transcript.txt | +43/-0 | the full console transcript of the run |
-| scripts/self_use_queue.json | +8/-0 | the generated pending entry only; `consumed_by` NOT set |
+| .agent/live_review.md | +0/-68 | 25 gate records and 4 finding pairs left the live ledger |
+| .agent/live_review_archive.md | +68/-0 | the same 68 lines arrived, sha256-verified by the script |
 
-Insertions by `git show --numstat`: **83**, under 500.
+Insertions 68, deletions 68, 2 paths. NO SIZE EXEMPTION IS NEEDED and none is claimed: the block anticipated a wholesale rewrite, and the measured diff is a 68-line move whose insertion count is far under 500. The byte readings agree — the ledger lost 77108 bytes and the archive gained exactly 77108.
 
-### (this commit) F276 R8 C4: the round 8 handoff
-A handoff cannot table the commit that writes it (R-0149 pattern). Its path set is exactly `.agent/handoff.md`.
+### 6bbd8771 F276 R9 C4: the finding re-assignment to F282
+| Path | +/- | Reason |
+|------|-----|--------|
+| .agent/live_review.md | +14/-0 | one new final line in each of 14 open findings' paragraphs |
+
+Insertions 14, deletions 0, 1 path. The ZERO is the gate.
+
+### C5 — this handoff (self-reference, R-0149 pattern)
+| Path | +/- | Reason |
+|------|-----|--------|
+| .agent/handoff.md | rewritten | a handoff cannot table the commit that writes it |
 
 ## External actions
 
-| Command | Outcome |
-|---------|---------|
-| `git push origin feature/f276-data-root-hygiene` | performed at G5, after this commit; the reading is in the round report |
-| `cd apps/ui && npm run build` | exit 0, `✓ built in 1.45s`; writes only the gitignored `apps/ui/dist` |
-| self-use job `c1dba9c3d7874968` | a REAL job: created branch `remedy/job-c1dba9c3d7874968` and a worktree under `.remedy-wt/`, both LEFT ALONE by design |
-| `gh` | never run. No pull request was created, edited or merged. |
-| worktree add / remove | none by this worker; the only new worktree is the self-use job's own |
+- `git push origin feature/f276-data-root-hygiene` — after C5, G6. No `gh` command was run, no pull request was opened or edited, nothing was merged, no branch was deleted and no history was rewritten.
+- No worktree was added or removed. The two job worktrees under `.remedy-wt/` are jobs', left alone per the block's constraint 5.
 
 ## Verification
 
-**G1 TRANSPORT AND STATE, at C1** — exit 0, 9 readings, every one True.
+**G1 — TRANSPORT AND STATE, at C1.** 7 readings, every one True, 0 False.
 
-    True  .agent/authored/f276-r8-block.md == payload block.md
-    True  .agent/authored/f276-r8-ledger.md == payload ledger.md
-    True  .agent/authored/f276-r8-decisions.md == payload decisions.md
-    True  .agent/authored/f276-r8-plan.md == payload plan.md
-    True  .agent/authored/f276-r8-prose-slips.md == payload prose_slips.md
-    True  .agent/live_review.md == 9fb2ab65 bytes + ledger.md bytes
-    True  .agent/decisions.md == 9fb2ab65 bytes + decisions.md bytes
-    True  .agent/prose_slips.md == 9fb2ab65 bytes + prose_slips.md bytes
-    True  .agent/plan.md == plan.md bytes
-    readings: 9
-    all True: True
-    SAVED BLOCK on disk : lines 246  sha256 20aef44c5d1717d58e91b42ff30600351acd09f7f6a370a9d03baad30cf1da59
-    DELEGATION message  : lines 246  sha256 20aef44c5d1717d58e91b42ff30600351acd09f7f6a370a9d03baad30cf1da59
+```
+R1  .agent/authored/f276-r9-block.md         == payload block.md     : True
+R2  .agent/authored/f276-r9-ledger.md        == payload ledger.md    : True
+R3  .agent/authored/f276-r9-decisions.md     == payload decisions.md : True
+R4  .agent/authored/f276-r9-plan.md          == payload plan.md      : True
+R5  .agent/live_review.md   == 8da83220 bytes + ledger.md    : True
+R6  .agent/decisions.md     == 8da83220 bytes + decisions.md : True
+R7  .agent/plan.md          == payload plan.md               : True
+readings: 7 | every one True: True | False count: 0
+```
 
-**G2 THE UI BUILD, at C2 and BEFORE the suite run** — exit 0.
+The saved block beside the delegation's own numbers, two readings side by side (R-0954):
 
-    COMMAND: npm run build
-    CWD: /home/decodeux/Repos/remedy/apps/ui
-    EXIT CODE FROM THE PROCESS: 0
-    last line: ✓ built in 1.45s
-    git status --porcelain immediately afterwards: (no output — EMPTY)
+```
+saved  .agent/authored/f276-r9-block.md : lines 221  sha256 eb5c1c4e41bb0b86916f1f13fa4d1f851c9ae0e1f7d5bde23a038c2fed73608b
+delegation message stated for P1        : lines 221  sha256 eb5c1c4e41bb0b86916f1f13fa4d1f851c9ae0e1f7d5bde23a038c2fed73608b
+```
 
-No `npm install` was run and none was needed; the build took 1.45s against the `node_modules` already in this checkout, matching the reviewer's own measurement of `built in 1.41s`.
+This covers the chain `.remedy-wt/f276-r9/` originals → the committed `.agent/authored/` copies → the committed state files. It makes no claim about the bytes that reached the worker's prompt, which this workflow cannot measure.
 
-**G3 THE REPAIR RUN, at C2** — exit 0, taken from the subprocess object, never from a pipe.
+**G2 — THE CONSOLIDATION, at C2.** Three readings.
 
-    COMMAND: python3 -m pytest -n auto -q
-    CWD: /home/decodeux/Repos/remedy
-    EXIT CODE FROM THE PROCESS: 0
-    WALL CLOCK SECONDS: 304.96
-    17639 passed, 20 skipped, 1 warning in 219.97s (0:03:39)
+```
+(a) git rev-parse C2:docs/agents/planner_reviewer_prompt.md
+    exit 0 -> 073486a24b07721fa6364368cc573f8313c1ed52
+    expected 073486a24b07721fa6364368cc573f8313c1ed52
+    EQUAL: True
+(b) first '  N. **' line (1-indexed): 251
+    numbers: [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,18,20,21,22,23,24,25,26,27,28,29,30,31,33,34,35,36,37]
+    length: 34 | must be 34 | EQUAL: True
+    17 among them: False | must be absent | ABSENT: True
+(c) git diff --name-only C1 C2
+    exit 0 -> ['docs/agents/planner_reviewer_prompt.md']
+    exactly the one path: True
+```
 
-    BAD NODE IDS: none
-    (searched mechanically over the captured output for `^FAILED `, `^ERROR `,
-     `=== FAILURES ===` and `=== ERRORS ===` — zero matches)
+(b) was bounded TWO independent ways and the two agree, which is why it is a cross-check and not a partition that cannot fail: BOUND A takes the region from the first `  N. **` line to the line before the exact string `- Verification tiers (operator decision 2026-07-26):`, which introduces the next numbered list in the file at line 1031; BOUND B ignores line numbers entirely and cuts the numbering run at the first item whose number does not exceed its predecessor. Both yield the same 34 numbers. The whole-file count without a bound reads 38, because the verification-tiers list contributes 1, 2, 3 and 5 — so an unbounded count would have passed nothing and is recorded here to show the bound is load-bearing.
 
-    THE SHRINKING RULE, as numbers:
-      of round 7's 3 bad nodes, still bad now : 0
-      nodes bad now that were not bad then    : 0
-    Rule 2 asks the first to be smaller than 3 and the second to be zero. 0 < 3
-    and 0 == 0, so the bad set strictly shrank — to empty — with no node newly bad.
+**G3 — THE ROTATION, at C3.** Every line the script printed, and it was run with no arguments from the repository root; neither ledger was edited by hand.
 
-The two runs reconcile: 3 + 17636 + 20 = 17659 outcomes then, 17639 + 20 = 17659 now.
+```
+gate records moved: 25
+finding pairs moved: 4 (8 records)
+old ledger size: 411123 bytes
+new ledger size: 334015 bytes
+old archive size: 4284047 bytes
+new archive size: 4361155 bytes
+open findings before: 17
+open findings after: 17
+written: /home/decodeux/Repos/remedy/.agent/live_review.md and /home/decodeux/Repos/remedy/.agent/live_review_archive.md
+```
 
-**G4 THE CANARY, after C3, in the primary checkout** — exit 0.
+Exit 0; the script did not refuse. THE SAFETY PROPERTY HELD: open findings 17 before and 17 after, identical, which is the invariant the script prints so that a rotation can never be mistaken for a resolution. The two size deltas are 77108 bytes each and opposite, so every byte that left one file arrived in the other. F276's own `Gate:` records stayed, because F276 is `[~]` at this commit.
 
-    COMMAND: python3 -m pytest tests/cli/test_golden_path.py -q
-    CWD: /home/decodeux/Repos/remedy
-    EXIT CODE FROM THE PROCESS: 0
-    42 passed in 132.99s (0:02:12)
+```
+git diff --name-only C2 C3
+.agent/live_review.md
+.agent/live_review_archive.md
+```
 
-Run deliberately AFTER the real self-use job, which is the state a canary exists to check.
+**G4 — THE RE-ASSIGNMENT, at C4.** Four readings.
 
-**G5 PUSH, TREE AND WHAT THE JOB LEFT, after C4** — the readings are in the round report; the push, the empty `git status --porcelain`, the absent `.agent/STOP`, the full `git worktree list` and the job-branch counts taken before C3 and after C4 (38 and 39) are all recorded there.
+```
+(a) git show --numstat C4 -- .agent/live_review.md
+    exit 0 -> 14	0	.agent/live_review.md
+    insertions 14 | deletions 0 | DELETIONS ARE ZERO: True
+(c) open findings                        : 17
+    open findings whose paragraph holds  : 17
+    repr of the string counted           : 'Owner: F282 — Findings paydown v2'
+    the two counts are equal             : True
+    open findings WITHOUT it             : []
+(d) registered: C3 20 | C4 20 | identical set: True
+    resolved  : C3  3 | C4  3 | identical set: True
+    four numbers: 20 20 3 3
+```
 
-**THE OPEN SET**, measured at HEAD by both readings:
+(b) The open set was computed from `.agent/live_review.md` AS IT STANDS AFTER C3. APPENDED TO, 14 ids: `R-0499`, `R-0622`, `R-0662`, `R-0819`, `R-0820`, `R-0829`, `R-0866`, `R-0880`, `R-0892`, `R-0950`, `R-0984`, `R-0998`, `R-0999`, `R-1000`. SKIPPED, 3 ids, each for the one reason the block names — the paragraph already contains the exact string `Owner: F282 — Findings paydown v2` and was therefore left completely untouched: `R-1004`, `R-1005`, `R-1007`. 14 + 3 = 17, the open count.
 
-    count_open_findings() -> 16
-    OPEN BY DISTINCT ID   -> 16
-    severities: High 0, Medium 9, Low 7
-    R-1006 in the Done set: True
+**G5 — THE CANARY, after C4, in the primary checkout.** Each exit code read off the `subprocess` object, no pipeline.
 
-Registrations added over `9fb2ab65..HEAD`: **0** lines matching `^\+- R-`. Resolutions added: exactly one, `Done: R-1006`, which is P2's and reviewer-authored.
+```
+python3 -m pytest tests/cli/test_golden_path.py -q
+42 passed in 130.92s (0:02:10)
+exit 0
+
+python3 -m pytest tests/docs -q
+314 passed in 85.16s (0:01:25)
+exit 0
+```
+
+**G6 — PUSH AND TREE, after C5.**
+
+```
+git push origin feature/f276-data-root-hygiene
+git status --porcelain   -> EMPTY
+ls .agent/STOP           -> No such file or directory (ABSENT)
+git worktree list
+/home/decodeux/Repos/remedy                                  [feature/f276-data-root-hygiene]
+/home/decodeux/Repos/remedy/.remedy-wt/job-468c8e62a2cc4fac  1b9ae606 [remedy/job-468c8e62a2cc4fac]
+/home/decodeux/Repos/remedy/.remedy-wt/job-c1dba9c3d7874968  fd23710f [remedy/job-c1dba9c3d7874968]
+```
+
+Three entries: the primary checkout and the two job worktrees, which are jobs' and are expected. No disposable worktree was created this round — no destructive verification was ordered.
 
 ## Authored-text proofs
 
-Five reviewer-authored texts were applied this round; each committed `.agent/authored/` copy was compared to its payload on disk byte for byte, and all five are equal (G1 readings 1–5). Digests, identical on both sides:
+All four reviewer-authored payloads applied this round compare EQUAL disk-to-disk against their committed `.agent/authored/` copies; those are readings R1 to R4 of G1 above, and readings R5 to R7 carry each applied text through to the state file it landed in. Digests verified BEFORE use, each against the number the block states:
 
-| Payload | Lines | sha256 |
-|---------|-------|--------|
-| P1 block.md | 246 | `20aef44c5d1717d58e91b42ff30600351acd09f7f6a370a9d03baad30cf1da59` |
-| P2 ledger.md | 4 | `6ba01f3ef232816e86c7850f6ddf4799d68273a40584ff04e8d090f5bb99cb93` |
-| P3 decisions.md | 58 | `7f71b167601c5d198fdd31a76c77c9ec582c2e2d517f7b4bee78394e16c114ba` |
-| P4 plan.md | 43 | `8df1095f45da9ec7c42f72948caba7b06db88987fef3087f569c9437ba693b3d` |
-| P5 prose_slips.md | 2 | `1a9a44a01a0d05b4f875b870ac0b9d4a849ed80a8ee0a9fb35522fe7bc512b03` |
+| Payload | Lines | sha256 | Verified before use |
+|---------|-------|--------|---------------------|
+| P1 block.md | 221 | `eb5c1c4e…608b` | yes |
+| P2 ledger.md | 4 | `a31d4ed9…4e2a` | yes |
+| P3 decisions.md | 74 | `fdcaa54f…2055` | yes |
+| P4 plan.md | 44 | `f3602a4d…f5fa` | yes |
+| P5 f276-r9.diff | 77 | `1bc99001…0eb4` | yes |
 
-Containment test before emission, one reading per pair, all four False as the block predicted: `.agent/live_review.md` contains P2 — False; `.agent/decisions.md` contains P3 — False; `.agent/prose_slips.md` contains P5 — False; `.agent/plan.md` contains P4 — False.
+The containment tests the block states were re-run mechanically before emission and reproduce its three readings: `.agent/live_review.md` contains P2 — false; `.agent/decisions.md` contains P3 — false; `.agent/plan.md` contains P4 — false. All three are new bytes and no FROM-count proof is owed.
 
-## The self-use outcome
+## Open findings
 
-Closure precondition 6, consumed by this round and recorded for round 9 to register.
+17 by both readings at HEAD: `scripts/rotate_live_review.py::count_open_findings` answers 17, and `open_finding_ids` answers 17 entries over 17 distinct ids. By severity: 10 Medium, 7 Low, NONE High. Registered ids number 20 distinct over 21 paragraphs — `R-0809` appears twice and is resolved — against 3 distinct resolved ids.
 
-- The queue held NO pending item: `pending_self_use_items()` answered `()`, length 0.
-- `generate_and_append_if_empty()` answered `SU-024`, "Address ledger finding R-0662", provenance `generated (self-use-generator tier 1, ledger scan, R-0662)`. It is NOT None, so the track is not exhausted.
-- `run_next_self_use_item(dest_dir=Path(".agent/selfuse_f276"), repo_path=".")` was called with NO `builder_name` and NO `reviewer_name`, so the runner resolved its own roles.
-- The resolved `execution_config` records `builder='ollama', builder_source='cli', reviewer='ollama', reviewer_source='cli'` on `muse-glimmer:latest` at effort `medium`. A real provider ran; nothing was faked.
-- The returned `JobPlan`: `state = stopped`, `job_id = c1dba9c3d7874968`, `error = ''`. Never applied.
-- `describe_self_use_run_defects(result)` returned a tuple of length **2**. Both strings, verbatim:
+The count reads 17 where round 8 measured 16 because C1 registered `R-1007`; nothing was resolved and nothing vanished, and the rotation's own before/after pair proves it.
 
-      job c1dba9c3d7874968 (stopped): stop_reason=budget_exhausted:max_provider_calls; stop_source=budget
-      T001 (pending): final_status=stopped
-
-- NOTHING WAS REGISTERED. No `- R-` line and no `Done:` line beyond P2's was written this round. Turning these two strings into R-id findings is reviewer-authored text and is round 9's first commit.
-- `consumed_by` for SU-024 is still `""`. Precondition 6 puts that edit in the closure commit.
+Every one of the 17 now carries `Owner: F282 — Findings paydown v2`, counted at C4 as 17 of 17. No finding leaves this feature unowned.
 
 ## Deviations & assumptions
 
-1. **The UI build ran TWICE, and the second run is the one G2 reports.** The first invocation was made directly and its exit code was therefore only inferable from the absence of an error rather than read from the process. Rather than report an inferred code, the build was re-run once through the same no-pipe subprocess wrapper the suite uses, and G2's `EXIT CODE FROM THE PROCESS: 0` and last line `✓ built in 1.45s` are that second run's. The build is idempotent and writes only the gitignored `apps/ui/dist`; `git status --porcelain` was EMPTY after it. Constraint 8's ONCE rule binds the full suite, not the build, and the full suite ran exactly once. Declared because the block says "Report its exit code and its last line" and a reader is entitled to know which of two runs the numbers belong to.
-
-2. **The self-use console transcript is named `self_use_run_console_transcript.txt`, not `run_transcript.txt`.** The block orders "the full transcript of the run" recorded under `.agent/selfuse_f276/`, each file "named for what it holds". The obvious name is ignored by this repository: `.gitignore` line 230 is a bare `run_transcript.txt`, which matches that basename in EVERY directory, so the file staged as untracked-and-ignored and would have been silently absent from C3. `.gitignore` is outside this round's change set, so the file was renamed instead of the ignore rule edited. `git check-ignore -v .agent/selfuse_f276/run_transcript.txt` reported `.gitignore:230:run_transcript.txt`, which is the measurement behind this.
-
-3. **No finding is registered for either self-use defect string, by instruction.** They are recorded verbatim in `.agent/selfuse_f276/run_defects.txt` and quoted above and in the round report. This is the block's own order, declared here because a reader auditing precondition 6 will look for R-ids and must know why there are none yet.
-
-4. **The self-use job left a branch and a worktree behind.** `remedy/job-c1dba9c3d7874968` and `/home/decodeux/Repos/remedy/.remedy-wt/job-c1dba9c3d7874968`. The job-branch count went 38 → 39 and `git worktree list` went 2 → 3 entries. A job that does not complete retains both BY DESIGN; neither was deleted and neither makes the primary checkout dirty — `git status --porcelain` there is empty.
-
-5. **The commit sequence was C1, C2, C3, C4 in exactly that order**, with no extra commit, none dropped and none reordered.
-
-6. **No path outside the change set was written.** `docs/roadmap/STATUS.md`, `README.md`, `docs/roadmap/features/T2_F276.md`, `docs/agents/planner_reviewer_prompt.md`, `.agent/candidates.md` and the `consumed_by` field of `scripts/self_use_queue.json` are all untouched. `.agent/STOP` was read from disk before the first commit and does not exist.
-
-7. **No destructive verification was ordered and none was performed**; no disposable worktree was created by this worker.
+1. **G5 was run twice, and the numbers reported are the SECOND, wrapped run's.** The first invocation went through the tool directly, where a non-zero exit surfaces as an error but the exit code itself could only be inferred. The two suites were therefore re-run inside a `subprocess.run` wrapper that prints `p.returncode`, and G5's figures above are that run's: `42 passed in 130.92s` and `314 passed in 85.16s`, both exit 0. The first run read `42 passed in 130.50s` and `314 passed in 85.30s` — same counts, different wall clock, no contradiction.
+2. **G6's push and its three post-commit readings necessarily postdate this file.** The write-once rule forbids a second handoff commit, so the push of C5 and the `git status` / `.agent/STOP` / `git worktree list` readings taken after it cannot be written into the commit that carries them. The worktree list and the STOP absence above were measured at C4, and the push and the empty tree are performed and read immediately after C5 and reported in full in the round report. Nothing else in this file is forward-looking.
+3. **G2(b)'s bound is the worker's, not the block's.** The block orders the count "within the pre-emission checklist" without fixing that region's boundary, and the file holds a SECOND `  N. **` list — the verification tiers at line 1031 — which an unbounded count folds in, yielding 38 rather than 34. Two independent bounds were therefore computed and shown to agree, and the unbounded 38 is reported beside them so the reader can see which number the bound is responsible for. The block's substantive claim is confirmed either way for 17, which is absent under every reading.
+4. **C3 needed no size exemption and none is claimed.** The block's constraint 4 pre-authorises one, reading the rotation as a wholesale ledger rewrite. Measured, it is a 68-line move at 68 insertions, so the AGENTS.md counting rule is satisfied outright and the single-state-file exemption is left unspent.
+5. **No finding was registered by the worker.** `R-1007` is the reviewer's text, arriving in P2 and applied byte for byte at C1.
+6. **The commit sequence ran C1, C2, C3, C4, C5 in that order** — no extra commit, none dropped, none reordered — and no path outside the block's change set was written. `docs/roadmap/STATUS.md`, `README.md`, `docs/roadmap/features/T2_F276.md`, `scripts/self_use_queue.json`, `.agent/candidates.md` and `.agent/prose_slips.md` were not touched.
 
 ## Next
 
-Round 9, the closure's last round, authored by the reviewer: book round 8's verdict and register the two SU-024 defect strings as R-ids; `remedy integrity check --json`; the ledger rotation as its own commit; re-assign every still-open finding to F282 after that rotation; the §3 checklist consolidation pass; the evidence job and a fresh review package; then the STATUS `[x]` flip with the README counters and the `consumed_by` edit in ONE commit as the last commit on the branch, and the pull request into `main`.
+Round 10, the closure's last: `remedy integrity check --json` reading PASS, the evidence job through `job_evidence.create_manual_completion_bundle`, a FRESH review package whose `base_commit` is the fork point `43d14817` with the two `rev-list` readings agreeing, and then the closure commit — STATUS `[x]`, the README counters, SU-024's `consumed_by` and the final `.agent/` state — followed by the pull request into `main`.
