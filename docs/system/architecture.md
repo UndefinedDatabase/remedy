@@ -2535,29 +2535,46 @@ cleanup path and the copy path had none, which is where the backlog above came f
 At `543863a0` there was no cleanup of any kind on that path: `discard_staging` does
 not exist, F273's R-0936 paydown having deleted it, so this is the half that was never
 built rather than one that stopped working.
-`staging_workspace.release_staging_workspace(job_id)` is that missing half, called
-from `_finalize_job_workspace`, the same hook the worktree removal runs on, on the
-branch that hook takes when there is no worktree handle at all. It is the reclaim
-command narrowed to one job and it REUSES that command's rules rather than restating
-them: `data_reclaim.child_deletion_refusal` decides direct-child, symlink and
+`staging_workspace.release_staging_workspace(job_id)` is that missing half. It is the
+reclaim command narrowed to one job and it REUSES that command's rules rather than
+restating them: `data_reclaim.child_deletion_refusal` decides direct-child, symlink and
 inside-the-root, `data_reclaim.job_state_refusal` decides resolves-and-is-terminal,
 and every reason it returns is one of `data_reclaim.REFUSAL_REASONS`. The path is
 derived from the class registry and never read from the job record, and a second
-release is a no-op rather than an error.
+release is a no-op rather than an error, reported as `existed=False, released=False`
+with no reason — which a caller must not read as a refusal.
 
-**Two layers, and not the same condition (F276 T003).** `release_staging_workspace`
-keeps its own floor: it refuses any job that is not terminal by
-`pingpong_job.JOB_TERMINAL_STATES` — `completed`, `failed`, `cancelled` — because a
-public function that deletes must refuse on its own authority and must never free what
-`remedy data reclaim` would refuse. The hook is stricter. `_finalize_job_workspace`
-calls the release only under the condition it already applies to a worktree,
-`job.state == JOB_COMPLETED and not job.result_diff_error`, so a failed, cancelled,
-blocked, paused or stopped copy job keeps its staging copy exactly as such a worktree
-job keeps its worktree — the conservative direction, and the same inspection window in
-both isolation modes. Those copies are not stranded: `remedy data reclaim` frees them
-when the operator asks. What the copy's filters left behind, and any release failure
-the `finally` would otherwise swallow, each go to `pingpong_job`'s own logger — one
-line apiece — rather than to a new run-log event name or a new `JobPlan` field.
+**A copy is freed where its work is CONSUMED, not where its job finishes (DECISION
+F276 D6).** T003 called the release from `_finalize_job_workspace`, the hook the
+worktree removal runs on. That is wrong, and the asymmetry is the reason: the hook may
+delete a completed job's WORKTREE because `W.remove(handle, keep_branch=True)` keeps
+every applied task on a RETAINED BRANCH, so the work outlives the directory. A
+copy-mode job has no branch. Its staging copy IS the deliverable, and `job_apply` reads
+that very directory as the SOLE apply source for a copy job — `apply_job` branches on
+`isolation_mode`, and the non-worktree arm has no alternative source to fall back to.
+Releasing at completion therefore destroyed the work of every copy job nobody had
+applied yet, measured as 19 red nodes in `tests/orchestration/test_job_apply.py`.
+`_finalize_job_workspace`'s no-handle branch now returns and frees nothing, and
+`job_apply._release_consumed_staging_copy` performs the release after an apply whose
+status is exactly `applied`, and after that apply's record is already durable — so a
+failure between the two can lose the copy or the record, never both, and the record
+that survives is the one saying the target was written. A dry run, an unapproved
+preview, a blocked apply and every `applied_*` partial all KEEP the copy: keeping it is
+the recoverable mistake. A copy job that is never applied keeps its copy for good, and
+`remedy data reclaim` is the one path that frees it — correct, because an unapplied
+copy still holds work nobody has taken.
+
+**Two layers, and not the same condition (F276 T003, amended by D6).**
+`release_staging_workspace` keeps its own floor: it refuses any job that is not
+terminal by `pingpong_job.JOB_TERMINAL_STATES` — `completed`, `failed`, `cancelled` —
+because a public function that deletes must refuse on its own authority and must never
+free what `remedy data reclaim` would refuse. Its CALLER is stricter, and since D6 that
+caller is the apply rather than the terminal hook: a job is released only when its work
+has just been taken. What the copy's filters left behind goes to `pingpong_job`'s own
+logger; what became of the copy after an apply is named on `JobApplyResult
+.staging_release` — `released <n> bytes`, `already gone`, or `kept (<reason>)` — printed
+in the applied summary, with a refusal or a raise also logged by `job_apply` with its
+reason. Neither speaks through a new run-log event name or a new `JobPlan` field.
 
 **What the copy leaves behind (F276 T003).** The filtered copy gained two filters
 beside its older rules — which exclude the thirteen names in `_EXCLUDE_DIRS` AND every
