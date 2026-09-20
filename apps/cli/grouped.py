@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import argparse
 import sys
+from collections.abc import Callable
 
 from apps.cli.command_catalog import (
     GROUPS,
@@ -538,7 +539,52 @@ def main(argv: list[str] | None = None) -> None:
         print(f"Error: no handler for {command_id}", file=sys.stderr)
         sys.exit(1)
 
-    handler(args)
+    _dispatch(handler, args, command_id, raw)
+
+
+def _dispatch(
+    handler: Callable[[argparse.Namespace], None],
+    args: argparse.Namespace,
+    command_id: str,
+    raw: list[str],
+) -> None:
+    """Call the handler behind the boundary that keeps tracebacks off the wire.
+
+    F277 T002.  `handler(args)` used to be called bare, so any uncaught
+    exception in any of the several hundred handlers reached the operator as a
+    Python traceback — and, under `--json`, as a traceback where a parser was
+    waiting for an object.
+
+    The boundary catches `Exception` and not a project base class, because
+    this repository has no single base: `RoadmapGrammarError`,
+    `WorktreeError`, `ReviewZipError` and two dozen siblings derive straight
+    from `Exception` or `RuntimeError` with nothing in common above them, and
+    the failures that actually reach an operator as a traceback are the ones
+    nobody declared — `KeyError`, `AttributeError`, `OSError`.  A base-class
+    boundary would catch the declared few and let the undeclared many
+    through, which is the opposite of the property this exists to buy
+    (DECISION F277 D6).
+
+    `SystemExit` and `KeyboardInterrupt` pass through untouched: the first is
+    how every handler in this CLI ends deliberately, and swallowing the second
+    would make Ctrl-C look like a crash.
+    """
+    try:
+        handler(args)
+    except (SystemExit, KeyboardInterrupt):
+        raise
+    except Exception as exc:  # noqa: BLE001 - the whole point is the catch-all
+        message = f"{type(exc).__name__}: {exc}"
+        if _wants_json(raw):
+            from apps.cli.json_envelope import emit_error
+
+            emit_error(
+                "unhandled_command_error", message, command=command_id,
+            )
+        else:
+            where = f"remedy {args._group} {args._subcmd}"
+            print(render_error(where, message), file=sys.stderr)
+        sys.exit(1)
 
 
 if __name__ == "__main__":
