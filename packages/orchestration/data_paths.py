@@ -74,22 +74,55 @@ class DataRootClass:
     prefix: bool = False
 
 
+# DECISION F276 D3 (2026-09-20): A CLASS HERE IS A RECLAIM POLICY, not a statement
+# about how long a directory happens to live. T001 filed `workspaces`, `runs` and
+# `job_logs` as EPHEMERAL and T002's prototype showed all three readings wrong: each
+# mixes scratch with EVIDENCE THAT OUTLIVES ITS JOB, and reclaim's safety comes from
+# addressing whole DIRECT CHILDREN — a subtree rule that reached inside them to
+# separate the two would give that safety up. So a directory that mixes the two stays
+# DURABLE until a later slice can split it, and reclaim v1 addresses `job_workspaces`
+# alone. What each move keeps, with its readers:
+#   * `workspaces/<job>` holds `repository_snapshots/<snapshot_id>` and
+#     `apply_records/` — put there by `repository_snapshot._snapshot_dir` and
+#     `_apply_record_dir`, read by `apps/cli/commands/snapshot_cmds.py:118`, and
+#     described by the catalog's own `snapshot.list-applies` as "durable apply records
+#     for a job". Deleting a terminal job's workspace destroys a rollback proof the
+#     product advertises as durable.
+#   * `runs/<run_id>` is read by the evidence pipeline for jobs that are ALREADY
+#     terminal: `job_evidence.py` reads `run_dir(task.run_id)/result.json` (line 2261),
+#     `prompt_trace.jsonl` (2376) and `prompt_trace_summary.json` (428, 2563), and
+#     `worktree_resume.py` reads `result.json` and `result.diff`. Deleting it guts that
+#     job's own evidence bundle.
+#   * `job_logs/<job>` is the event trail `timeline.load_run_events`, `trust_report`,
+#     `cockpit` and `pingpong_job`'s own reader depend on.
+# The yield says the narrowing costs nothing. Measured on the operator's root this
+# session by `remedy data usage --json`: total 923 560 682 122 bytes, `job_workspaces`
+# 922 931 683 643, `runs` 144 775 616, `workspaces` 39 580 459, `job_logs` 17 575 775.
+# Reclaiming `job_workspaces` alone is 99.98 % of the ephemeral bytes and is precisely
+# the 650 GB the feature file was written for. Age-based retention of the three kept
+# classes is F166's, not F276's.
+
 EPHEMERAL_CLASSES: tuple[DataRootClass, ...] = (
     DataRootClass("job_workspaces", "packages.orchestration.pingpong_job",
                   "a staging_<job> copy whose job is terminal"),
-    DataRootClass("workspaces", "packages.orchestration.workspace",
-                  "a <job> workspace whose job is terminal"),
-    DataRootClass("runs", "packages.orchestration.pingpong_loop",
-                  "a <run> directory whose job is terminal"),
-    DataRootClass("job_logs", "packages.orchestration.run_log",
-                  "a <job> run log whose job is terminal"),
     DataRootClass("review_staging", "scripts/make_review_zip.sh",
-                  "any review_staging.* directory; the script's EXIT trap missed it",
+                  "none yet; `data reclaim` REFUSES it, because no job owns it and no "
+                  "age rule exists for it",
                   prefix=True),
 )
 
 DURABLE_CLASSES: tuple[DataRootClass, ...] = (
     DataRootClass("jobs", "packages.orchestration.pingpong_job", "never; the job record and evidence"),
+    # The three DECISION F276 D3 moves, in the order the comment above states them.
+    DataRootClass("workspaces", "packages.orchestration.workspace",
+                  "never here; the snapshot proofs and apply records `snapshot inspect` "
+                  "and `snapshot list-applies` read — retention is F166's"),
+    DataRootClass("runs", "packages.orchestration.pingpong_loop",
+                  "never here; the result, prompt trace and trace summary `job_evidence` "
+                  "reads — retention is F166's"),
+    DataRootClass("job_logs", "packages.orchestration.run_log",
+                  "never here; the timeline, trust report and cockpit read it — "
+                  "retention is F166's"),
     DataRootClass("projects", "packages.orchestration.project_registry", "never; project registry, ledgers, locks"),
     DataRootClass("missions", "packages.orchestration.mission_state", "never; mission records"),
     DataRootClass("control", "packages.orchestration.safe_points", "never; stop requests and their archive"),

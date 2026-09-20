@@ -10,6 +10,7 @@ only place a class is decided.
 Public API::
 
     footprint(root) -> DataFootprint
+    child_usage(path) -> (bytes, files)
     export_footprint_json(fp) -> dict
 """
 
@@ -92,6 +93,24 @@ def _subtree_usage(top: str) -> tuple[int, int]:
                 total_bytes += size
                 total_files += 1
     return total_bytes, total_files
+
+
+def child_usage(path: Path | str) -> tuple[int, int]:
+    """(bytes, files) of ONE data-root child: a directory's whole subtree, or itself.
+
+    A symlink is never followed — it counts as one file of its own ``lstat`` size —
+    and a path that cannot be stat'ed counts as nothing. ``data_reclaim`` measures a
+    reclaim candidate with this, so a candidate's bytes and its ``data usage`` bytes
+    are one number produced by one function.
+    """
+    p = os.fspath(path)
+    try:
+        st = os.lstat(p)
+    except OSError:
+        return (0, 0)
+    if os.path.isdir(p) and not os.path.islink(p):
+        return _subtree_usage(p)
+    return (st.st_size, 1)
 
 
 def footprint(root: Path | str) -> DataFootprint:
