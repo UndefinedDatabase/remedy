@@ -114,6 +114,7 @@ packages.orchestration.dod_schema
 packages.orchestration.era_integrity
 packages.orchestration.escalation
 packages.orchestration.event_ledger
+packages.orchestration.event_names
 packages.orchestration.event_persistence
 packages.orchestration.event_replay
 packages.orchestration.evidence_index
