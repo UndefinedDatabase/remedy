@@ -20,6 +20,7 @@ from apps.cli.json_envelope import (
     build_ok,
     emit_error,
     emit_ok,
+    fail,
 )
 
 
@@ -177,3 +178,53 @@ class TestNoTracebackReachesTheOperator:
         grouped.main(["job", "list"])
         assert capsys.readouterr().out == "handler ran\n"
         assert isinstance(seen["args"], argparse.Namespace)
+
+
+class TestFailReportsInOneShapeAndExits:
+    """F277 T003 — the helper the 237 hand-written `print(); sys.exit()` pairs migrate onto."""
+
+    def test_under_json_it_is_the_envelope_and_nothing_else(self, capsys) -> None:
+        with pytest.raises(SystemExit) as caught:
+            fail("invalid_job_id", "No job matches 'zz'.", json_output=True)
+        captured = capsys.readouterr()
+        assert caught.value.code == 1
+        assert captured.err == ""
+        payload = json.loads(captured.out)
+        assert payload == {
+            "schema_version": SCHEMA_VERSION,
+            "ok": False,
+            "error": "invalid_job_id",
+            "message": "No job matches 'zz'.",
+        }
+
+    def test_without_json_it_is_the_line_this_cli_already_printed(self, capsys) -> None:
+        """Byte-for-byte the text branch, so a migrated call site changes nothing visible."""
+        with pytest.raises(SystemExit) as caught:
+            fail("invalid_job_id", "No job matches 'zz'.", json_output=False)
+        captured = capsys.readouterr()
+        assert caught.value.code == 1
+        assert captured.out == ""
+        assert captured.err == "Error: No job matches 'zz'.\n"
+
+    def test_the_exit_code_is_the_callers_and_defaults_to_one(self, capsys) -> None:
+        with pytest.raises(SystemExit) as caught:
+            fail("bad_config", "no runtime spec", json_output=False, exit_code=2)
+        assert caught.value.code == 2
+        capsys.readouterr()
+
+    def test_the_payload_reaches_the_envelope(self, capsys) -> None:
+        with pytest.raises(SystemExit):
+            fail("job_not_found", "gone", json_output=True, job_id="abc")
+        assert json.loads(capsys.readouterr().out)["job_id"] == "abc"
+
+    def test_a_payload_may_not_overwrite_the_envelope_here_either(self, capsys) -> None:
+        with pytest.raises(ValueError, match="envelope's own keys"):
+            fail("e", "m", json_output=True, ok="hijacked")
+
+    def test_it_never_returns(self) -> None:
+        """A call site that follows `fail()` with real code is a bug the type says."""
+        import typing
+
+        import apps.cli.json_envelope as mod
+
+        assert typing.get_type_hints(mod.fail)["return"] is typing.NoReturn
