@@ -2473,7 +2473,8 @@ bytes and files per class and per child from one read-only walk that follows no
 symlink; a child no class names, such as a legacy `task_jobs/`, reports as
 `unclassified`.
 
-**Reclaiming the scratch (F276 T002).** `remedy data reclaim [--apply] [--json]`
+**Reclaiming the scratch (F276 T002).** `remedy data reclaim [--apply] [--orphans]
+[--json]`
 (`packages/orchestration/data_reclaim.py`) is preview-first: without `--apply` it
 computes a `ReclaimPlan` and deletes nothing. A candidate is a DIRECT CHILD of an
 ephemeral class DIRECTORY whose job resolves in the job store and is terminal —
@@ -2494,6 +2495,37 @@ outside the root and a `review_staging.*` directory that no job owns are each li
 as a refusal with its reason. `apply_reclaim` re-checks every rule against the live
 filesystem before each deletion, so the plan is input and never authority; a second
 `--apply` over the same state removes nothing and exits 0.
+
+**The orphans, and the one flag that opts into them (F276 T002).** `--orphans` widens
+the plan by ONE case and no other: a `staging_<id>` child whose job record is GONE
+becomes a candidate instead of a `job_unresolved` refusal. It is OFF by default, and
+with it off the output — human and `--json` — is byte for byte what it was before the
+rule existed. Three narrowings make it safe. A record that EXISTS and will not parse is
+never an orphan, because that job may still be running and `load_job_plan_safe`'s
+`degraded` flag is what tells an unreadable record from an absent one. A child whose
+name does not carry the `staging_` prefix yields no job id at all and is never an
+orphan. And an orphan must have been untouched for `data_reclaim.ORPHAN_MIN_AGE_DAYS`,
+one day, which is the floor that keeps a job whose record is being written *right now*
+out of the set — the floor reads the child's OWN `lstat` mtime, because a directory
+created while its record is still being written has a fresh mtime of its own and a
+subtree walk would answer a different question; under it the child is refused as
+`orphan_too_young` rather than silently kept. The verdict is re-derived at the moment of
+deletion as well as in the plan: `apply_reclaim` re-reads the record and the mtime for
+every orphan candidate, so a record that appeared since the preview refuses as
+`job_unresolved` and saves its own scratch. An orphan candidate reports `job_state` `no_record` — a token no
+`RunState` holds — which is the one mark in the machine shape that distinguishes it, so
+a reader tells an orphan from an ordinary candidate without parsing prose, and the
+human preview names the orphan count and bytes separately from the terminal-job count
+and bytes. On the DEFAULT path the human preview names how many paths are refused as
+`job_unresolved`, their bytes, and that `--orphans` can reclaim them, so the flag is
+discoverable without reading the source; the `--json` document is unchanged by that
+line. The flag exists because the refusal is where the bytes are: measured 2026-09-20 on
+the operator's data root with the preview command, 1 107 candidates worth
+284 536 286 695 bytes against 1 886 refusals, of which 1 885 were `job_unresolved` worth
+638 395 396 948 bytes and 1 884 were staging copies with no job record on disk at all.
+Those two sums are 922 931 683 643 — exactly `job_workspaces`'s own footprint measured
+the same day — so the refused bytes are 69 per cent OF THAT CLASS, which is the
+denominator, and not of the 923 560 682 122-byte data root.
 
 ### Part C — `packages/orchestration/path_utils.py`
 
