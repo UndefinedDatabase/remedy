@@ -12,38 +12,36 @@ command emits, and the meaning of each exit code
 
 ## Current Step
 
-T001 and T002 are finished. Round 7 books round 6's PASS and opens T003: the
-shared `fail(error, message, *, json_output, exit_code=1, **payload)` in
-`apps/cli/json_envelope.py`, and the first two command groups migrated onto it
-— `event` and `file`, which are the two whose handlers already thread
-`json_output` end to end, so the migration is the pairs themselves and nothing
-else. DECISION F277 D7 fixes the helper's parameter spellings and records that
-T003's planning numbers are stale: 145 commands, not 339; 33 read-only without
-`supports_json`, not 49; 237 `print(...); sys.exit(...)` pairs across 28 files.
+T001 and T002 are finished. Round 7 (booked) migrated the `event` and `file`
+groups onto the shared `fail()` helper and closed clean (PASS).
+
+Round 8 is BLOCKED before any commit. The R8 block ordered five state-payload
+appends/rewrite (C1a/C1b: ledger.md, decisions.md, plan.md, slips.md) and five
+`git apply` diffs (C2-C6: job context, worker, change, blocker, contract). Nine
+payloads were verified against the block's PAYLOADS table before use; eight
+matched byte-for-byte and `decisions.md` did not (54 lines both, but 4185
+bytes/sha256 `2b34e363...` measured vs 4192 bytes/sha256 `41456077...`
+expected). Per the block's own rule ("do not guess which half of a
+disagreement is wrong"), no commit consuming any payload was made.
 
 ## Next Steps
 
-1. T003 continues, one command group per commit, over the remaining 26 files:
-   the large groups (`job`, `decision`, `project`, `brain`, `do`, `patch`) are
-   a round each, the small ones bundle. `runtime_cmd.py`'s local `_fail`
-   prototype is deleted onto the shared helper in that group's own round.
-2. T003 closes with the catalog half: the 33 read-only commands that do not
-   declare `supports_json` — including `init run` and `dev status`, which
-   honour `--json` and declare `False` — and the catalog test that asserts the
-   set is empty.
-3. T004: the exit-code taxonomy under `docs/guides/`, asserted from the
-   catalog rather than from prose, plus `tests/cli/test_json_contract.py`
-   sweeping every `supports_json` command on success AND on an invalid
-   argument, with catalog-to-dispatch parity in the same file.
-4. Closure: the §3 checklist consolidation pass, which is where `R-1014`'s fix
-   clause lands — merged into item 12, never appended, because the list may
-   not grow; then the integration gate (the full suite, once), the evidence
-   job, the review zip and the STATUS flip.
+1. Operator/reviewer regenerates or corrects the `decisions.md` payload (or
+   the block's table entry) for round 8; re-verify all nine payloads before
+   any commit is attempted.
+2. Once transport is clean, resume the R8 bundle: C1a, C1b, then C2-C6
+   (job context, worker, change, blocker, contract groups onto `fail()`).
+3. T003 catalog-half closure: the 33 read-only-without-`supports_json`
+   commands (including `init run`, `dev status`), plus the catalog test.
+4. T004: exit-code taxonomy under `docs/guides/`, asserted from the catalog,
+   plus `tests/cli/test_json_contract.py`'s sweep.
+5. Closure: §3 checklist consolidation (R-1014's fix merged into item 12),
+   full-suite integration gate, evidence job, review zip, STATUS flip.
 
 ## Risks
 
-T003 is the largest slice of this feature and its size was measured only in
-round 7: 237 call sites. A round that migrates a group whose handlers do NOT
-already thread `json_output` has to thread it first, and threading is where a
-behaviour change can hide — so each group's round carries at least one test
-proving the text branch is byte-identical to the line the CLI printed before.
+T003 is the largest slice of this feature; each migrated group's round
+carries a test proving the text branch is byte-identical to the prior print.
+Round 8's blocker is a transport-integrity issue on one payload file, not a
+code or design risk — re-verify before trusting any file under
+`.remedy-wt/f277-r8-payloads/` a second time.
