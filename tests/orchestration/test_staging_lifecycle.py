@@ -68,11 +68,20 @@ def _git_repo(path):
 
 
 # ---------------------------------------------------------------------------
-# The release, on the hook the worktree cleanup already uses
+# The terminal hook, which releases NOTHING (DECISION F276 D6)
 # ---------------------------------------------------------------------------
 
-def test_terminal_copy_job_is_released_by_the_hook(root):
-    """THE RED PROOF the feature file names: remove the call and this reddens."""
+def test_a_completed_copy_job_keeps_its_staging_copy_through_the_hook(root):
+    """THE REGRESSION GUARD of DECISION F276 D6, and the point of the round.
+
+    T003 released here, at job completion. That destroyed the deliverable of every
+    copy job nobody had applied yet, because a copy job has NO retained branch —
+    its staging copy is the only place the work exists, and ``job_apply`` reads
+    that very directory as its sole apply source. Measured: 19 red nodes in
+    ``tests/orchestration/test_job_apply.py`` at ``f7d668d9``, all green at
+    ``92d4c38b`` and under a neuter of the four added lines. Put the release back
+    into the hook and this test goes red — which is the whole reason it exists.
+    """
     job = _job(root, RunState.COMPLETED)
     staging = _staging(root, job.job_id)
     assert staging.is_dir()
@@ -80,46 +89,36 @@ def test_terminal_copy_job_is_released_by_the_hook(root):
     # handle=None IS the copy case: a copy job never has a worktree handle.
     _finalize_job_workspace(job, None)
 
-    assert not staging.exists()
+    assert staging.is_dir()
+    assert (staging / "copied.txt").exists()
 
 
-def test_non_terminal_copy_job_keeps_its_staging_copy(root):
-    """`remedy job resume` will want it, so a running job's scratch is not freed."""
+def test_a_running_copy_job_is_refused_by_the_release_s_own_floor(root):
+    """LAYER TWO, unchanged by D6: `remedy job resume` will want this scratch.
+
+    The hook keeps it because the hook keeps everything now; the interesting claim
+    is the one below it — the PUBLIC function refuses a non-terminal job on its own
+    authority, in ``data_reclaim``'s vocabulary, so nothing can free what reclaim
+    would refuse.
+    """
     job = _job(root, RunState.RUNNING)
     staging = _staging(root, job.job_id)
 
     _finalize_job_workspace(job, None)
-
     assert staging.is_dir()
-    assert (staging / "copied.txt").exists()
 
     outcome = release_staging_workspace(job.job_id, root)
     assert outcome.reason == "job_not_terminal"
     assert outcome.existed is True
     assert outcome.released is False
-
-
-def test_failed_copy_job_keeps_its_staging_copy_through_the_hook(root):
-    """LAYER ONE. The hook is as strict as the worktree path: only COMPLETED frees.
-
-    A FAILED job IS terminal to ``data_reclaim``, so this is not the release refusing
-    — it is the hook never asking, exactly as a FAILED worktree job keeps its
-    worktree. Widen the hook's condition to ``job_is_terminal`` and this reddens.
-    """
-    job = _job(root, RunState.FAILED)
-    staging = _staging(root, job.job_id)
-
-    _finalize_job_workspace(job, None)
-
     assert staging.is_dir()
-    assert (staging / "copied.txt").exists()
 
 
-def test_release_frees_that_same_failed_job_on_its_own_authority(root):
-    """LAYER TWO. The public function's own floor is reclaim's, and FAILED clears it.
+def test_release_frees_a_failed_job_on_its_own_authority(root):
+    """LAYER TWO's positive case: FAILED clears reclaim's floor, so a direct call frees it.
 
-    The pair with the test above: the same job, the same state, released when called
-    directly and kept when reached through the hook. Two layers, each pinned.
+    Its pair is the parametrised hook test above, where the same FAILED job is kept:
+    the hook asks nobody, the function decides for itself.
     """
     job = _job(root, RunState.FAILED)
     staging = _staging(root, job.job_id)
@@ -132,16 +131,24 @@ def test_release_frees_that_same_failed_job_on_its_own_authority(root):
 
 
 @pytest.mark.parametrize("state", [
-    RunState.BLOCKED, RunState.PAUSED, RunState.STOPPED, RunState.CANCELLED,
+    RunState.COMPLETED, RunState.FAILED, RunState.BLOCKED,
+    RunState.PAUSED, RunState.STOPPED, RunState.CANCELLED,
 ])
-def test_the_hook_keeps_every_copy_job_that_did_not_complete(root, state):
-    """Each keeps its pending work or its evidence; `data reclaim` offers them later."""
+def test_the_terminal_hook_keeps_every_copy_job_whatever_its_state(root, state):
+    """DECISION F276 D6: the hook's copy branch frees NOTHING, in any state.
+
+    ``COMPLETED`` is in this list on purpose and is the state that regressed; the
+    other five were already kept by T003 and are here so a repair that traded one
+    state for another cannot pass. What frees a copy is an APPLY that applied, and
+    failing that, ``remedy data reclaim`` when the operator asks.
+    """
     job = _job(root, state)
     staging = _staging(root, job.job_id)
 
     _finalize_job_workspace(job, None)
 
     assert staging.is_dir()
+    assert (staging / "copied.txt").exists()
 
 
 def test_second_release_is_a_no_op_not_an_error(root):
@@ -324,3 +331,155 @@ def test_a_copy_made_under_the_data_root_is_the_one_the_release_finds(root, tmp_
     assert outcome.released is True
     assert outcome.path == os.fspath(ws.staging_dir)
     assert not ws.staging_dir.exists()
+
+
+# ---------------------------------------------------------------------------
+# The apply is what CONSUMES a copy, and the only thing that frees it
+# (DECISION F276 D6). These run the REAL ``run_job`` over a NON-GIT target —
+# which is what puts a job in ``isolation_mode="copy"`` — with the fake builder
+# and reviewer, so no provider is called, and then the REAL ``apply_job``.
+# ---------------------------------------------------------------------------
+
+_APPLY_JOB_TEXT = """\
+# Job: Staging Release
+
+## Task 1
+Add a test file.
+
+Acceptance:
+- file exists
+"""
+
+
+@pytest.fixture()
+def copy_job(root, tmp_path):
+    """A COMPLETED copy-mode job over a non-git target, and its staging copy."""
+    from pathlib import Path
+
+    from packages.orchestration.pingpong_job import parse_job_file, run_job
+    from packages.orchestration.pingpong_provider import FakeProvider
+
+    target = tmp_path / "target"
+    target.mkdir()
+    (target / "README.md").write_text("# Demo\n")
+
+    plan = parse_job_file(_APPLY_JOB_TEXT, str(target))
+    done = run_job(
+        plan.job_id,
+        builder_provider=FakeProvider(pass_on_round=1, fail_on_round=99),
+        reviewer_provider=FakeProvider(pass_on_round=1, fail_on_round=99),
+        repair_rounds=0,
+    )
+    assert done.state == RunState.COMPLETED, done.error
+    assert done.isolation_mode == "copy"
+    staging = Path(done.job_workspace_path)
+    assert staging.is_dir(), "the job's own copy must survive its completion"
+    return done, target, staging
+
+
+def test_a_completed_copy_job_that_was_never_applied_keeps_its_copy(copy_job):
+    """END TO END, and the regression the 19 ``test_job_apply`` nodes needed.
+
+    Nothing between ``run_job`` returning and an operator deciding what to do may
+    delete this directory: it holds work nobody has taken.
+    """
+    _done, _target, staging = copy_job
+
+    assert staging.is_dir()
+    assert any(staging.rglob("*"))
+
+
+def test_an_applied_copy_jobs_staging_copy_is_gone_after_the_apply(copy_job):
+    from packages.orchestration.job_apply import apply_job
+
+    done, target, staging = copy_job
+
+    result = apply_job(done.job_id, str(target), approve=True)
+
+    assert result.status == "applied"
+    assert not staging.exists()
+    assert result.staging_release.startswith("released ")
+
+
+def test_a_dry_run_apply_leaves_the_staging_copy_in_place(copy_job):
+    """A preview consumes nothing, so it frees nothing."""
+    from packages.orchestration.job_apply import apply_job
+
+    done, target, staging = copy_job
+
+    result = apply_job(done.job_id, str(target), dry_run=True)
+
+    assert result.status == "dry_run"
+    assert staging.is_dir()
+    assert result.staging_release == "kept (apply status dry_run)"
+
+
+def test_an_unapproved_apply_leaves_the_staging_copy_in_place(copy_job):
+    """No ``--approve`` is a preview too, by a different route to the same status."""
+    from packages.orchestration.job_apply import apply_job
+
+    done, target, staging = copy_job
+
+    result = apply_job(done.job_id, str(target))
+
+    assert result.status == "dry_run"
+    assert staging.is_dir()
+
+
+def test_a_blocked_apply_leaves_the_staging_copy_in_place(copy_job):
+    """The apply refused, so the work is still untaken and its copy still holds it."""
+    from packages.orchestration.job_apply import apply_job
+
+    done, target, staging = copy_job
+    missing_target = target / "not_a_directory"
+
+    result = apply_job(done.job_id, str(missing_target), approve=True)
+
+    assert result.status == "blocked"
+    assert not missing_target.exists()
+    assert staging.is_dir()
+    assert result.staging_release == "kept (apply status blocked)"
+
+
+def test_a_second_apply_of_the_same_job_finds_its_source_gone(copy_job):
+    """What the release MEANS, stated from the other side."""
+    from packages.orchestration.job_apply import apply_job
+
+    done, target, staging = copy_job
+
+    assert apply_job(done.job_id, str(target), approve=True).status == "applied"
+    assert not staging.exists()
+
+    second = apply_job(done.job_id, str(target), approve=True)
+    assert second.status == "blocked"
+    assert "workspace_missing" in second.blocked_reason
+
+
+def test_the_no_op_release_is_reported_as_already_gone_not_as_a_refusal(root):
+    """``existed=False`` is a no-op, and must never be rendered as a refusal."""
+    from packages.orchestration.job_apply import (
+        JobApplyResult,
+        _release_consumed_staging_copy,
+    )
+
+    job = _job(root, RunState.COMPLETED)          # no staging copy on disk at all
+    result = JobApplyResult(job_id=job.job_id, status="applied")
+
+    _release_consumed_staging_copy(job, result)
+
+    assert result.staging_release == "already gone"
+
+
+def test_a_worktree_job_gets_no_staging_release_line_at_all(root):
+    """The field stays EMPTY for a mode that has no staging copy — not "kept"."""
+    from packages.orchestration.job_apply import (
+        JobApplyResult,
+        _release_consumed_staging_copy,
+    )
+
+    job = _job(root, RunState.COMPLETED, isolation_mode="worktree")
+    result = JobApplyResult(job_id=job.job_id, status="applied")
+
+    _release_consumed_staging_copy(job, result)
+
+    assert result.staging_release == ""
