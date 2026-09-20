@@ -1,0 +1,7 @@
+THE STATE OF THE JobPlan run_next_self_use_item RETURNED.
+A job that ends BLOCKED at the normal approval gate ran; it was not
+applied, which is what closure precondition 6 asks for.
+
+state  : stopped
+job_id : c1dba9c3d7874968
+error  : ''

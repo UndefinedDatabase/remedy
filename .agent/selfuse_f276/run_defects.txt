@@ -1,0 +1,9 @@
+EVERY STRING describe_self_use_run_defects RETURNED FOR THIS RUN,
+one per line, verbatim and never summarised. REGISTERING them as R-id
+findings is reviewer-authored text and belongs to round 9; this round
+registers nothing.
+
+tuple length: 2
+
+job c1dba9c3d7874968 (stopped): stop_reason=budget_exhausted:max_provider_calls; stop_source=budget
+T001 (pending): final_status=stopped
