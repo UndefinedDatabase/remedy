@@ -56,11 +56,20 @@ root. ``--orphans`` opts INTO exactly that case and into nothing else:
   no symlink, real path inside the root, and every one of them re-checked at the moment
   of deletion — is unchanged.
 
+THE RULES ARE EXPORTED, not only applied. F276 T003 releases ONE job's staging copy
+at the moment that job ends, which is this command narrowed to a single path, so it
+calls :func:`child_deletion_refusal` and :func:`job_state_refusal` below instead of
+spelling direct-child, symlink, inside-the-root and is-terminal a second time. Both
+were private to this module until that caller existed; nothing about what they decide
+changed when they were exported.
+
 Public API::
 
     plan_reclaim(root, *, now=None, orphans=False) -> ReclaimPlan
     apply_reclaim(plan) -> ReclaimOutcome
     export_reclaim_json(plan, outcome=None) -> dict
+    child_deletion_refusal(path, root, *, data_class=None) -> (reason, detail)
+    job_state_refusal(job_id, root) -> (state, reason, record_exists)
     REFUSAL_REASONS / ORPHAN_MIN_AGE_DAYS / ORPHAN_JOB_STATE
 """
 
@@ -79,6 +88,7 @@ from packages.orchestration.data_paths import (
     classify_data_child,
     data_class_dir,
 )
+from packages.orchestration.staging_workspace import STAGING_DIR_PREFIX
 
 #: Every reason this command declines a path, in report order. A refusal is part of
 #: the output contract, so the reasons are named here rather than spelled at the
@@ -99,8 +109,11 @@ REFUSAL_REASONS: tuple[str, ...] = (
 #: `runs` and `job_logs` are DURABLE, so no job-id derivation for them exists here —
 #: `runs` in particular never needed one at this layer, since a run id contains no job
 #: id and the mapping lived in that run's own ``result.json``.
+#: The prefix is IMPORTED from the module that makes the name rather than re-spelled:
+#: ``staging_workspace.create_staging_workspace`` names the directory and this command
+#: reads the name, so one constant means they cannot drift apart.
 _JOB_KEYED_PREFIXES: dict[str, str] = {
-    "job_workspaces": "staging_",
+    "job_workspaces": STAGING_DIR_PREFIX,
 }
 
 #: How old an orphan must be before ``orphans=True`` will make it a candidate, in days.
@@ -221,7 +234,7 @@ def _job_id_for(data_class: str, name: str) -> str:
     return name[len(prefix):]
 
 
-def _job_state(job_id: str, root: Path) -> tuple[str, str, bool]:
+def job_state_refusal(job_id: str, root: Path) -> tuple[str, str, bool]:
     """``(state, refusal_reason, record_exists)`` for one job id.
 
     The reason is ``""`` when the job is terminal. ``record_exists`` separates the TWO
@@ -230,6 +243,9 @@ def _job_state(job_id: str, root: Path) -> tuple[str, str, bool]:
     belongs to a job that may still be running and is never an orphan.
     ``load_job_plan_safe``'s ``degraded`` flag is exactly that distinction, and reading
     it here is cheaper and more honest than stat-ing the record a second time.
+
+    PUBLIC because ``staging_workspace.release_staging_workspace`` asks the same
+    question about one job at the moment that job ends; see the module docstring.
     """
     from packages.orchestration.pingpong_job import job_is_terminal, load_job_plan_safe
 
@@ -369,7 +385,7 @@ def _plan_class(
             if not job_id:
                 reason, detail = "job_unresolved", "no job id can be read from this path"
             else:
-                state, reason, record_exists = _job_state(job_id, root)
+                state, reason, record_exists = job_state_refusal(job_id, root)
                 if reason == "job_unresolved":
                     detail = f"no readable job record for {job_id}"
                     # An ORPHAN, and only when the operator asked for orphans: the name
@@ -394,18 +410,28 @@ def _plan_class(
         ))
 
 
-def _deletion_refusal(path: str, root: Path) -> tuple[str, str]:
+def child_deletion_refusal(path: str, root: Path, *,
+                           data_class: str | None = None) -> tuple[str, str]:
     """``(reason, detail)`` for a path apply must not delete; ``("", "")`` to proceed.
 
     The plan is INPUT, not authority. Every structural rule the planner applied is
     applied again here against the LIVE filesystem, so a plan that was hand-built,
     edited or computed against another root cannot reach a path this command is not
     allowed to touch.
+
+    ``data_class`` narrows the first rule from "some ephemeral class directory" to
+    ONE named one. ``apply_reclaim`` passes nothing, because a plan may span classes;
+    ``staging_workspace.release_staging_workspace`` names ``job_workspaces``, because
+    a lifecycle release that reached any other class would be a defect and should be
+    refused rather than performed.
     """
     parent = os.path.dirname(os.path.normpath(path))
     class_name = os.path.basename(parent)
     if class_name not in _class_dir_names():
         return ("not_a_direct_child", f"{class_name!r} is not an ephemeral class directory")
+    if data_class is not None and class_name != data_class:
+        return ("not_a_direct_child",
+                f"{class_name!r} is not the {data_class!r} class directory")
     expected = os.path.normpath(os.fspath(data_class_dir(class_name, root)))
     if os.path.normpath(parent) != expected:
         return ("not_a_direct_child", "not a direct child of this root's class directory")
@@ -420,7 +446,7 @@ def _orphan_deletion_refusal(cand: ReclaimCandidate, root: Path,
                              now: float) -> tuple[str, str]:
     """``(reason, detail)`` for an ORPHAN at the moment of deletion; ``("", "")`` to go.
 
-    :func:`_deletion_refusal` re-derives every STRUCTURAL rule because the plan is
+    :func:`child_deletion_refusal` re-derives every STRUCTURAL rule because the plan is
     input and not authority. This is the one VERDICT that has to be re-derived too: it
     is what authorises deleting a directory NOTHING points at, so it is the last thing
     that may be taken on trust. The record is read again and the mtime is read again,
@@ -459,7 +485,7 @@ def apply_reclaim(plan: ReclaimPlan) -> ReclaimOutcome:
     freed = 0
 
     for cand in plan.candidates:
-        reason, detail = _deletion_refusal(cand.path, root)
+        reason, detail = child_deletion_refusal(cand.path, root)
         if not reason and cand.job_state == ORPHAN_JOB_STATE:
             reason, detail = _orphan_deletion_refusal(cand, root, now)
         if reason:
