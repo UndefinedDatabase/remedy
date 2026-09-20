@@ -5,17 +5,22 @@ feature/f277-machine-contracts, cut from `main` at `f2494c02` (the merge
 commit of pull request 262, F276's closure).
 
 ## Scope
-F277 (Tier 2). Per `docs/roadmap/features/T2_F277.md`: T001 the event
-vocabulary; T002 the JSON envelope and the dispatch error boundary; T003 the
-`fail()` helper and the JSON gaps; T004 the exit-code taxonomy and the
-contract sweep. The feature file's Orchestrator brief fixes that order — T001
-is independent and lands first, T002 before T003, T004 last.
+F277 (Tier 2), CLOSING AT A SPLIT SCOPE. Per `docs/roadmap/features/T2_F277.md`
+as amended by DECISION F277 D10: T001 the event vocabulary and T002 the JSON
+envelope and the dispatch error boundary are COMPLETE and are what F277 ships;
+T003 the `fail()` helper and the JSON gaps is APPLIED IN PART — the helper and
+nine of twenty-eight CLI modules — and its remainder, together with T004 the
+exit-code taxonomy and the contract sweep whole, moves to F283. This session's
+remaining work is the closure sequence of
+`docs/roadmap/STATUS_closure_protocol.md`, not another slice.
 
 ## Do not touch
 The event names themselves: this feature declares the vocabulary that exists,
 it does not rename it. The catalog's command SET, which F261 owns.
 `progress_ledger.py`, which F275 already deleted — its dead reader is history,
-not work, and must not be re-created.
+not work, and must not be re-created. F283's scope: no further group is
+migrated on this branch, because a slice registered to another feature is not
+this feature's to spend a closure round on.
 
 ## Constraints
 - `python3 -m ruff check <path>` is the spelling every gate orders.
@@ -32,6 +37,8 @@ not work, and must not be re-created.
   integration-gate round; a round runs targeted pytest files, the golden
   path, `tests/docs/` when `docs/roadmap/**` changed, and ruff. A resource
   or timing reading belongs to the round that measured it.
+- The feature ledger is ATOMIC: a `TOTAL_FEATURES` pin, the README counters,
+  the STATUS line and the feature file of a registration land in ONE commit.
 - No finding is resolved by deleting a test, weakening an assertion or
   raising a ceiling.
 
