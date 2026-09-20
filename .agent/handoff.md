@@ -336,13 +336,29 @@ Constraint 3 therefore holds: no production file, no test file other than
 
 ### G6 — push and tree, after C4
 
-C4 commits this handoff and THEN pushes, so the three readings below do not exist at the
-moment C4 is written. They are recorded verbatim by the trailing C4-fix commit, which
+C4 commits this handoff and THEN pushes, so the three readings below did not exist at the
+moment C4 was written. They are recorded verbatim by the trailing C4-fix commit, which
 touches nothing else (deviation 3).
 
-- `git push -u origin feature/f277-machine-contracts` → RECORDED BY C4-fix.
-- `git status --porcelain` after the push → RECORDED BY C4-fix.
-- `git worktree list` after the push → RECORDED BY C4-fix.
+- `git push -u origin feature/f277-machine-contracts`, real exit code **0**:
+```
+To github.com:UndefinedDatabase/remedy.git
+   67b0972d..805387e0  feature/f277-machine-contracts -> feature/f277-machine-contracts
+Branch 'feature/f277-machine-contracts' set up to track remote branch 'feature/f277-machine-contracts' from 'origin'.
+```
+  Succeeded. The remote tip of the branch is `805387e0`, which is C4.
+- `git status --porcelain` after the push: **empty** (no output), exit code 0.
+- `git worktree list` after the push, exit code 0:
+```
+/home/decodeux/Repos/remedy                                  805387e0 [feature/f277-machine-contracts]
+/home/decodeux/Repos/remedy/.remedy-wt/job-468c8e62a2cc4fac  1b9ae606 [remedy/job-468c8e62a2cc4fac]
+/home/decodeux/Repos/remedy/.remedy-wt/job-c1dba9c3d7874968  fd23710f [remedy/job-c1dba9c3d7874968]
+```
+  Three entries: the primary checkout and the two pre-existing `remedy/job-*` worktrees,
+  nothing else. No worktree was added or removed this round.
+
+C4-fix, the commit carrying this paragraph, is itself pushed immediately after it; its own
+push outcome is reported in the session output rather than recursively here.
 
 ## Authored-text proofs
 
