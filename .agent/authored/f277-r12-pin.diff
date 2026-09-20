@@ -1,0 +1,17 @@
+diff --git a/tests/docs/test_docs_consistency.py b/tests/docs/test_docs_consistency.py
+--- a/tests/docs/test_docs_consistency.py
++++ b/tests/docs/test_docs_consistency.py
+@@ -82,7 +82,12 @@
+ #: paydown v2), was registered on 2026-09-19 by F273's closure under operator
+ #: amendment amend0911-feedback rule B and placed after F263, the fifth
+ #: unaccepted line below F273; see T2_F282.md.
+-TOTAL_FEATURES = 282
++#: One more, F283 (machine contracts, part two: the refusal sweep, the JSON
++#: gap and the exit-code taxonomy), was registered on 2026-09-21 by F277's
++#: split-and-close under operator amendment amend0905-throughput and placed
++#: directly after F277 under amend0906-split-placement; see T2_F283.md and
++#: DECISION F277 D10.
++TOTAL_FEATURES = 283
+ 
+ #: Documents that must never contain a stale claim.
+ PRIMARY_DOCS = [
