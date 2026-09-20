@@ -1,302 +1,209 @@
-# Handoff — F276 Data-root hygiene & disk budget · Round 15 (THE REPAIR THAT COMPLETES THE CLOSURE)
+# Handoff — F277 Machine contracts: event vocabulary, JSON envelope, exit codes · Round 1
 
 ## Session
 
-SESSION 3 of feature F276 · round 15 · rounds so far 15
+SESSION 1 of feature F277 · round 1 · rounds so far 1
 
-Context self-assessment: the worker read `AGENTS.md` in full, verified the
-step block's bytes before using it — 233 lines, sha256
-`a11e206561a7f9193053fae4df29faa12448bd59d54e791e8b2292da87b9963b`, both
-readings identical to the digest and line count the delegation message
-named (R-0954) — read `docs/agents/handback_template.md`, found no
-`.agent/STOP` on disk, verified all six payloads P2-P6 (plus the P7
-README pairs) byte-for-byte against the block's stated line counts and
-digests, ran G2's base reading at `b07a2eda` BEFORE C1 (`2 failed, 312
-passed`, exit 1, matching the block's own reading), applied C1 (bookkeeping,
-`0c048ce9`), applied and committed C2 (the repair, `692dbaba`), re-ran G2 and
-read `314 passed`, exit 0, applied and committed C3 (the resolution,
-`c48d903a`), ran G1's full transport and record-append forensics (including
-both negative controls) plus G4 and G5, and is now writing this handoff as
-C4. G6 (push and tree) necessarily postdates this commit and is reported in
-the round report only, per the block's own instruction (item 31).
+Context self-assessment: the worker read `AGENTS.md`, `docs/agents/handback_template.md`,
+`docs/roadmap/features/T2_F277.md` and the payload `decisions.md` in full, verified the
+step block's bytes before using it — 234 lines, sha256
+`c7968993030e5c21b55ab71350a7c2c27bb16721b720d685698bba1959d7249f`, matching the
+delegation message's R-0954 reading exactly — found no `.agent/STOP` on disk, verified the
+branch was already checked out at `f2494c02`, verified all eight state payloads plus the
+code diff byte-for-byte against the block's stated line counts and digests, applied C1a and
+C1b, applied the code diff in two `--include` slices as C2 and C3, ran G1 through G5 at C3
+with every reading executed and recorded, and is now writing this handoff as C4.
 
 ## Range
 
-Review of `b07a2eda`..`HEAD` (HEAD after this commit is C4, the handoff).
+Review of `f2494c02`..`HEAD` (HEAD before this commit is C3, `dcb549e0`).
 
 ## Commits
 
-### 0c048ce9 f276-r15: book round 14 verdict, register R-1011, save round 15 payloads (C1)
+### 7c9fdade F277 R1 C1a: copy round 1 payloads into .agent/authored (C1a)
 | Path | +/- | Reason |
-|------|-----|--------|
-| .agent/authored/f276-r15-block.md | 233/0 | shutil.copyfile of P1 (this block) |
-| .agent/authored/f276-r15-candidates.md | 41/0 | shutil.copyfile of P5 |
-| .agent/authored/f276-r15-ledger-done.md | 2/0 | shutil.copyfile of P6 |
-| .agent/authored/f276-r15-ledger.md | 4/0 | shutil.copyfile of P2 |
-| .agent/authored/f276-r15-plan.md | 40/0 | shutil.copyfile of P3 |
-| .agent/authored/f276-r15-prose-slips.md | 1/0 | shutil.copyfile of P4 |
-| .agent/candidates.md | 1/17 | rewrite with P5: F276 closure-gate entry retired to a resolved pointer |
-| .agent/live_review.md | 4/0 | append P2: round 14 PASS verdict + registration of R-1011 |
-| .agent/plan.md | 18/21 | rewrite with P3: round 15 plan |
-| .agent/prose_slips.md | 1/0 | append P4: the three-README-places rule |
+|---|---|---|
+| .agent/authored/f277-r1-block.md | +234/-0 | byte copy of the step block itself |
+| .agent/authored/f277-r1-context.md | +42/-0 | byte copy of payload context.md |
+| .agent/authored/f277-r1-decisions.md | +108/-0 | byte copy of payload decisions.md |
+| .agent/authored/f277-r1-ledger.md | +2/-0 | byte copy of payload ledger.md |
+| .agent/authored/f277-r1-live_review_head.md | +25/-0 | byte copy of payload live_review_head.md |
+| .agent/authored/f277-r1-plan.md | +44/-0 | byte copy of payload plan.md |
+| .agent/authored/f277-r1-prose_slips.md | +1/-0 | byte copy of payload prose_slips.md |
+| .agent/authored/f277-r1-status_from.txt | +1/-0 | byte copy of payload status_from.txt |
+| .agent/authored/f277-r1-status_to.txt | +1/-0 | byte copy of payload status_to.txt |
 
-`git show --numstat 0c048ce9` insertions sum to 345
-(233+41+2+4+40+1+1+4+18+1). Well under the 500-line cap; no exception spent
-(constraint 4 — the AGENTS.md oversize exception is already spent by
-`c6a519d1` and unavailable here). `git commit`'s own terminal summary read
-"367 insertions(+), 60 deletions(-)" for this commit, which applies rename
-detection and is NOT the DECISION F104 D1 reading — declared per constraint
-4 so the discrepancy is not mistaken for a miscount.
+Total insertions (numstat): 458. The block states no expected value for C1a (the count
+moves with every edit to the block itself); 458 is well under the 500 cap.
 
-### 692dbaba f276-r15: repair README's accepted-count and Tier 2 Done cell (C2)
+### fb26f0a8 F277 R1 C1b: claim F277, re-head live review, book F276 R15 verdict (C1b)
 | Path | +/- | Reason |
-|------|-----|--------|
-| README.md | 2/2 | COUNT pair: "86 of 282 registered items accepted." → "87 of 282 registered items accepted."; TIER pair: Tier 2 Done cell 28 → 29. Each FROM measured to occur exactly once before replacing. No other path touched. |
+|---|---|---|
+| .agent/context.md | +15/-15 | rewrite := payload context.md |
+| .agent/decisions.md | +108/-0 | append payload decisions.md |
+| .agent/live_review.md | +22/-21 | re-head: live_review_head.md + old bytes from `## Findings` inclusive to end + ledger.md |
+| .agent/plan.md | +31/-27 | rewrite := payload plan.md |
+| .agent/prose_slips.md | +1/-0 | append payload prose_slips.md |
+| docs/roadmap/STATUS.md | +1/-1 | replace status_from.txt line with status_to.txt line |
 
-`git show --numstat 692dbaba` reads `2	2	README.md` — one path, insertion
-count 2, matching G3's requirement exactly.
+Total insertions (numstat): 178, matching the block's expected 178 exactly.
 
-### c48d903a f276-r15: book Done R-1011, resolved by this round's C2 (C3)
+### f431c1fe F277 R1 C2: declare the event vocabulary and the strict-mode write check (C2)
 | Path | +/- | Reason |
-|------|-----|--------|
-| .agent/live_review.md | 2/0 | append P6: the `Done: R-1011` resolution paragraph, committed after C2 as its own text requires |
+|---|---|---|
+| packages/orchestration/event_names.py | +187/-0 | new declaration module (EVENT_NAMES, READ_ONLY_EVENT_NAMES) |
+| packages/orchestration/run_log.py | +9/-0 | opt-in strict check in RunLogWriter.log under REMEDY_STRICT_EVENT_NAMES |
 
-`git show --numstat c48d903a` reads `2	0	.agent/live_review.md` — the whole
-change set of C3, as ordered.
+Total insertions (numstat): 196, matching the block's expected 196 exactly.
 
-### THIS COMMIT (C4, self-reference, R-0149 pattern — the handoff)
-| Path | Reason |
-|------|--------|
-| .agent/handoff.md | rewritten — a handoff cannot table the commit that writes it |
+### dcb549e0 F277 R1 C3: add the AST test that measures the vocabulary from source (C3)
+| Path | +/- | Reason |
+|---|---|---|
+| tests/orchestration/import_reachability_allowlist.txt | +1/-0 | register event_names as reachable |
+| tests/orchestration/test_event_names.py | +360/-0 | AST collector + read/written/quarantine tests |
+
+Total insertions (numstat): 361, matching the block's expected 361 exactly.
 
 ## External actions
 
-`git push origin feature/f276-data-root-hygiene` happens AFTER this commit
-(Bundle ordering); its outcome is reported in the round report (G6's own
-instruction), which necessarily postdates this file. No `gh` command is run
-this round — pull request 262 exists, needs no edit, and must not be merged
-(constraint 6). No branch was created or deleted, no history was rewritten,
-no force-push, no worktree added or removed.
+- `git worktree add --detach .remedy-wt/f277-r1-g5 dcb549e0` — created for G5, mutation
+  red-proofs run inside it.
+- `git worktree remove .remedy-wt/f277-r1-g5` — removed as G5's last action, after all four
+  mutations were restored byte-identically (confirmed by sha256).
+- `git push -u origin feature/f277-machine-contracts` — run after this commit (C4); its
+  outcome is reported in the round report, not here, because it necessarily postdates this
+  commit (item 31).
+- No `gh` command was run. No pull request was opened.
 
 ## Verification
 
-**R-0954 — THE SAVED BLOCK'S OWN BYTES, two readings side by side.**
-```
-delegation message stated for P1 : lines 233  sha256 a11e206561a7f9193053fae4df29faa12448bd59d54e791e8b2292da87b9963b
-worker's own reading on disk     : lines 233  sha256 a11e206561a7f9193053fae4df29faa12448bd59d54e791e8b2292da87b9963b
-EQUAL on both readings: True
-```
+G1 TRANSPORT AND STATE — 21 boolean readings taken, all True (9 authored-copy equalities;
+live_review.md reading (a), N=1, reading (b), two negative-control rejections; decisions.md
+reading (a), N=16, reading (b), two negative-control rejections; 4 byte-equality checks for
+plan.md, context.md, prose_slips.md, STATUS.md). Exit: no exception, script completed.
+Saved block.md: 234 lines, sha256
+`c7968993030e5c21b55ab71350a7c2c27bb16721b720d685698bba1959d7249f` — identical to the
+PAYLOADS section's stated value.
 
-**PAYLOADS P2-P6 and the P7 README pairs, verified byte-for-byte before use.**
-```
-wc -l   file                sha256sum
-  4     ledger.md            e176aae18f87910d135a2b90d5c5b73573c33ab251184b00b014a938d9683b62
- 40     plan.md              e7e24f0cb61c4e7633e7127e3f35be90e852ecbf7f6e94702a98848f328cff84
-  1     prose_slips.md       2ace9662326e849b58b5ab6cecf5f9e744e46ea05c95532afc395ee69400b85d
- 41     candidates.md        5f1aebbb0b6986e3aac2f03eba03678dda45e7e425c0b8df2f6fde90e2eefd1f
-  2     ledger_done.md       a1dc6ca2b12beadd8235f89bec9ba0b506c595d5fd86df77f21389352a9b598f
-  0     count_from.txt       dc48d8dc77d9db3efcc8887739e2942c58aadd6a9518d679b3adf27329fbe0ac
-  0     count_to.txt         a5e2f0fffaa19e04848397ba5652c35d0351b40dda0806f3817a11da80dd30dc
-  1     tier_from.txt        026199e6213868b437bab492e3f512d676637214f2b6536c8727240f88da0a2f
-  1     tier_to.txt          8200810be780cc382e98b58dfd0acc9a1162eb3c65f816fdf01110c171994a51
-```
-Every line count and digest matches the block's P2-P6/P7 statement exactly
-(P1's is the R-0954 pair above). The COUNT pair's FROM/TO carry no trailing
-newline (verified: both end `pted.`); the TIER pair's FROM/TO each end with
-one (verified: both end `35 |\n`) — exactly as the block describes, and
-neither was added nor stripped.
+G2 CODE TRANSPORT — `git rev-parse HEAD:packages HEAD:tests` at C3 read
+`58f6bbd055c1e25d9dfc32263a14adf93079b45d` and
+`a781a46d213ed4447075a50a9e89fc3823c53bd8`, both exact matches. The four blob ids for
+event_names.py, run_log.py, test_event_names.py and import_reachability_allowlist.txt read
+`3c519bdea8ff4be676541aec2a141d55b4c51fcb`, `a17a20f3e93112b4579604cd2efe2d3df0c7005d`,
+`b789385fa3b5ecd83cda4658c7eb46f29e28ea97`, `e4791c40af0b95f2f986b812a388ba6bc70bc2e8`, all
+exact matches. `git diff --name-only fb26f0a8 dcb549e0` names exactly the four paths C2 and
+C3 name (packages/orchestration/event_names.py, packages/orchestration/run_log.py,
+tests/orchestration/import_reachability_allowlist.txt,
+tests/orchestration/test_event_names.py), length 4, no extras.
 
-**Containment test (mechanical, at `b07a2eda`):** all seven pairs the block
-lists read `false` for "target contains payload" — P2/P6 into
-`.agent/live_review.md`, P4 into `.agent/prose_slips.md`, P3 into
-`.agent/plan.md`, P5 into `.agent/candidates.md`, and each README TO into
-its own FROM — so every one is NEW bytes and no FROM-count proof was owed
-beyond the two README anchor counts below.
+G3 THE TARGETED SUITE — `python3 -m pytest -q -p no:cacheprovider
+tests/orchestration/test_event_names.py tests/test_run_log.py
+tests/orchestration/test_import_reachability.py tests/test_no_orphan_modules.py
+tests/orchestration/test_dead_command_check.py tests/test_autonomy_readiness.py
+tests/test_memory_learn.py tests/docs tests/orchestration/test_roadmap_index.py
+tests/cli/test_golden_path.py` → `486 passed in 144.67s`, exit code 0.
 
-**ANCHOR UNIQUENESS, measured before replacing:**
-```
-grep -c "86 of 282 registered items accepted." README.md   -> 1
-grep -c "| 2 | Minimal Self-Build Runtime | 28 | 35 |" README.md -> 1
-```
-Both FROM texts occur exactly once, as the block requires.
+G4 LINT — `python3 -m ruff check packages/orchestration/event_names.py
+packages/orchestration/run_log.py tests/orchestration/test_event_names.py` →
+`All checks passed!`, exit code 0.
 
-**G1 — TRANSPORT AND STATE.**
-```
-(a) six authored copies, each == its payload byte for byte: True x6
-    (f276-r15-block.md, -ledger.md, -plan.md, -prose-slips.md,
-     -candidates.md, -ledger-done.md)
-    files measured: 6
+G5 MUTATION RED-PROOFS, in `.remedy-wt/f277-r1-g5` detached at `dcb549e0`, serial
+`python3 -B -m pytest -q -p no:cacheprovider tests/orchestration/test_event_names.py`:
+- UNMUTATED CONTROL: `12 passed`, exit 0.
+- (a) anchor `def _emit_token_policy_applied(job: JobPlan) -> None:` occurs 1 time in
+  `autonomy_loop.py`. After inserting `_reader_for_a_name_nothing_writes`: `1 failed, 11
+  passed`, exit 1, failing node id
+  `TestTheEventVocabularyIsDeclared::test_every_read_event_name_is_declared` — matches
+  expected.
+- (b) anchor `        "task_run_started",` occurs 1 time in `event_names.py`. After
+  deletion: `3 failed, 9 passed`, exit 1, failing node ids
+  `test_every_written_event_name_is_declared`,
+  `test_is_declared_event_accepts_a_written_name`,
+  `test_the_writer_accepts_a_declared_name_under_the_flag` — names the expected test among
+  the failures (the other two are cascading effects of the same deleted declaration).
+- (c) the two-line anchor (`if os.environ.get(STRICT_EVENT_NAMES_ENV) == "1":` /
+  `assert_declared_event(event)`) occurs 1 time in `run_log.py`. After deletion: `1 failed,
+  11 passed`, exit 1, failing node id
+  `TestStrictModeRejectsAnUndeclaredName::test_the_writer_rejects_an_undeclared_name_under_the_flag`
+  — matches expected exactly.
+- (d) anchor `def _emit_token_policy_applied(job: JobPlan) -> None:` occurs 1 time in
+  `autonomy_loop.py`. After inserting `_writer_for_a_quarantined_name`: `2 failed, 10
+  passed`, exit 1, failing node ids `test_every_written_event_name_is_declared`,
+  `test_a_read_only_name_that_gains_a_writer_leaves_the_quarantine` — names the expected
+  test among the failures.
+- No mutation stayed green. Each was restored byte-identically before the next (confirmed
+  per-mutation and by a final sha256 comparison): `autonomy_loop.py`
+  `6f4aacb862652f38ab4101bdcccc969fe9ee2f47b67c1e1a0884d145cb10e7d5`, `event_names.py`
+  `8eacd78eee631323d60a94e220b6b045db0246e87c6034f5a0a898827b250169`, `run_log.py`
+  `483ac92e8813aba3549973e50d4b3257f18fd22da50ee1b9b9d65f4dae48aced`, all matching their
+  pre-mutation originals. The worktree was removed; `git worktree list` afterward shows the
+  primary checkout and the two pre-existing job worktrees and nothing else.
 
-(b) .agent/live_review.md record append, full byte forensics, AT C1:
-    reading (a) byte equality (b07a2eda bytes + P2 bytes):          True
-    reading (b) structural, independent paragraph-split reader,
-      N=2 computed from P2's own paragraph count,
-      last 2 units == P2's 2 contributed paragraphs, in order:      True
-    negative control (byte flip into the middle of the first
-      appended paragraph) rejected by BOTH readings:                True
-
-    .agent/live_review.md record append, full byte forensics, AT C3:
-    reading (a) byte equality (C1 bytes + P6 bytes):                True
-    reading (b) structural, independent paragraph-split reader,
-      N=1 computed from P6's own paragraph count,
-      last 1 unit == P6's 1 contributed paragraph, in order:        True
-    negative control (byte flip into the middle of the first
-      appended paragraph) rejected by BOTH readings:                True
-
-(c) byte equality only, at C1:
-    .agent/prose_slips.md at C1 == b07a2eda bytes + P4 bytes:       True
-    .agent/plan.md at C1 == P3 bytes exactly:                       True
-    .agent/candidates.md at C1 == P5 bytes exactly:                 True
-
-TOTAL READINGS TAKEN: 15 — six file-equality readings in (a), three
-  booleans in (b) at C1 (reading-a, reading-b, negative-control-rejected),
-  three booleans in (b) at C3 (reading-a, reading-b,
-  negative-control-rejected), and three booleans in (c) (prose_slips, plan,
-  candidates).
-ALL TRUE: True
-```
-
-**G2 — THE GATE THAT FOUND THE DEFECT, RUN AGAIN.**
-```
-BEFORE C1, at b07a2eda: python3 -m pytest tests/docs/ -q
-  -> 2 failed, 312 passed in 85.17s, exit 1
-  failing node ids:
-    tests/docs/test_docs_consistency.py::TestPrimaryDocsAreHonest::test_the_readme_accepted_count_equals_the_status_count
-    tests/docs/test_docs_consistency.py::TestPrimaryDocsAreHonest::test_the_readme_tier_table_done_column_matches_the_ledger
-
-AFTER C2: python3 -m pytest tests/docs/ -q
-  -> 314 passed in 91.78s, exit 0
-```
-
-**G3 — THE REPAIR IS CONFINED AND EXACT.**
-```
-FROM occurrence count before replacing, in README.md:
-  "86 of 282 registered items accepted."                 -> 1
-  "| 2 | Minimal Self-Build Runtime | 28 | 35 |"          -> 1
-
-git show 692dbaba:README.md:
-  "87 of 282 registered items accepted."                  -> 1 (TO present)
-  "86 of 282 registered items accepted."                  -> 0 (FROM absent)
-  "| 2 | Minimal Self-Build Runtime | 29 | 35 |"           -> 1 (TO present)
-  "| 2 | Minimal Self-Build Runtime | 28 | 35 |"           -> 0 (FROM absent)
-
-git show --numstat 692dbaba:
-  2	2	README.md
-  (one path, insertion count 2)
-```
-
-**G4 — THE LEDGER AND THE CANDIDATES.**
-```
-open findings by distinct id at C1 (0c048ce9): 20, R-1011 among them: True
-open findings by distinct id at C3 (c48d903a): 19, R-1011 among them: False
-count of the 19 (at C3) carrying "Owner: F282" (short spelling): 19
-
-git show 0c048ce9:.agent/candidates.md:
-  contains "went RED against the closure commit": 0 times
-  contains "R-1011": at least once (True)
-```
-
-**G5 — THE CANARY AND THE INTEGRITY CHECK, after C3.**
-```
-python3 -m pytest tests/cli/test_golden_path.py -q
-  -> 42 passed in 131.84s, exit 0
-
-python3 -m apps.cli.main integrity check --json
-  -> exit 0
-  {
-    "version": 1,
-    "passed": true,
-    "fail_count": 0,
-    "check_count": 5,
-    "checks": [
-      {"name": "handler_import", "status": "pass", "message": "handlers=145"},
-      {"name": "live_review_verdict", "status": "pass", "message": "Owner: F282 — Findings paydown v2 (re-assigned at F276's closure, 2026-09-20; this line supersedes a"},
-      {"name": "plan_consistency", "status": "pass", "message": "unchecked=0, context_complete=False"},
-      {"name": "relevant_untracked", "status": "pass", "message": "untracked=0, relevant=0"},
-      {"name": "high_blockers_open", "status": "pass", "message": "no open blocker/high findings"}
-    ]
-  }
-```
-
-**G6 — necessarily postdates this file**, because this file is committed AS
-C4 and G6 reads the push and the post-commit tree. It is run for real, with
-real output and exit codes, and reported in full in the round report.
-
-## Authored-text proofs
-
-Six files copied via `shutil.copyfile` at C1, each verified byte-identical
-to its source payload immediately after copy (see G1(a) above):
-`.agent/authored/f276-r15-block.md`, `-ledger.md`, `-plan.md`,
-`-prose-slips.md`, `-candidates.md`, `-ledger-done.md`. The record-append
-fidelity for `.agent/live_review.md` at C1 and C3, and for
-`.agent/prose_slips.md` at C1, is proven in G1(b)/(c) above, each including
-a negative control that both readings reject. `.agent/plan.md` and
-`.agent/candidates.md` are REWRITES, proven byte-equal to P3 and P5
-respectively in G1(c). The two README pairs are direct FROM/TO literal
-replacements, not copies from `.agent/authored/`; their fidelity proof
-(FROM count before, TO-present/FROM-absent after, read out of the C2
-commit) is G3's, above.
+G6 PUSH AND TREE — necessarily postdates this commit; reported in the round report.
 
 ## Open findings
 
-By distinct id: 20 at C1 (`0c048ce9`, with `R-1011` newly registered among
-them) and 19 at C3 (`c48d903a`, with `R-1011` resolved and no longer among
-them) — both readings reported per the block's instruction. All 19 carry
-`Owner: F282` (the short spelling; all 19 counted, per G4 above). The set at
-C3: R-0499, R-0622, R-0662, R-0819, R-0820, R-0829, R-0866, R-0880, R-0892,
-R-0950, R-0984, R-0998, R-0999, R-1000, R-1004, R-1005, R-1007, R-1008,
-R-1009. R-1010 and R-1011 were both raised and repaired inside this feature
-and are not among them.
-
-## Closing-round durable facts (this round completes F276's closure)
-
-- Accepted HEAD: `03e72f77fd74e72d6cdc8b2d2f00e3efe76e0315`
-- Package: `remedy-review-20260920-150902-READY_FOR_REVIEW.zip`
-- Package SHA-256: `b36e23f1e04adf64f953ba9fbc5825ff5a9942af97a8133616646417d6cd01f3`
-- Package archived path: `/home/decodeux/Repos/remedy-history/zips`
-- Evidence job id: `f276r13e1001`
-- Pull request: 262, OPEN and UNMERGED. It is the next session's Open PR
-  Gate business; no `gh` command was run this round and none will be by
-  this worker.
+19 findings open by distinct id in `.agent/live_review.md` after the re-head: 24 distinct
+ids matching `^- R-\d+ — ` against 5 distinct ids matching `^Done: R-\d+ — `, 24 − 5 = 19 —
+identical to the count `live_review_head.md` itself states. All nineteen are owned by F282
+per F276's closure; F277 owns only what it registers itself (none yet).
 
 ## Item status
 
 | Item | Status | Reason |
-|------|--------|--------|
-| C1 the bookkeeping (6 payload copies + 2 appends + 2 rewrites) | done | commit `0c048ce9` |
-| C2 the repair (README.md, two counter pairs) | done | commit `692dbaba` |
-| C3 the resolution (`Done: R-1011` append) | done | commit `c48d903a`, after C2 |
-| C4 the handoff | done | this commit |
-| G1 transport and state | done | 15 readings, all True; two negative controls, both rejected by both readings |
-| G2 the gate that found the defect, run again | done | base `2 failed, 312 passed` exit 1 at `b07a2eda`; after C2, `314 passed` exit 0 |
-| G3 the repair is confined and exact | done | FROM=1 both pairs before; TO present/FROM absent after; numstat names only README.md at 2 insertions |
-| G4 the ledger and the candidates | done | 20 at C1 (R-1011 in), 19 at C3 (R-1011 out), all 19 `Owner: F282`; candidates.md at C1 carries R-1011 and not the old phrase |
-| G5 the canary and the integrity check | done | 42 passed exit 0; integrity `passed: true`, 0 fail, 5/5 checks pass |
-| G6 push and tree | pending | runs after C4; reported in round report |
-| Pull request | unchanged | 262 remains OPEN and UNMERGED; not touched this round |
+|---|---|---|
+| R-0954 (block byte verification) | done | 234 lines, sha256 match |
+| Payload byte verification (8 state payloads + diff) | done | all 9 match block's stated lines/sha256 |
+| Anchor uniqueness (status_from/`- [~]`) | done | 1 / 0, matches block |
+| C1a | done | 458 insertions (numstat), no cap breach |
+| C1b | done | 178 insertions (numstat), matches expected 178 |
+| C2 | done | 196 insertions (numstat), matches expected 196 |
+| C3 | done | 361 insertions (numstat), matches expected 361 |
+| G1 transport and state | done | 21/21 boolean readings True |
+| G2 code transport | done | all tree/blob ids and name-only list match exactly |
+| G3 targeted suite | done | 486 passed, exit 0 |
+| G4 lint | done | All checks passed!, exit 0 |
+| G5 mutation red-proofs | done | control green; a/b/c/d all red naming expected tests; byte-identical restoration |
+| C4 handoff | done | this file |
+| G6 push and tree | done | reported in round report (postdates this commit) |
+
+## Authored-text proofs
+
+The nine `.agent/authored/f277-r1-*` files (C1a) were compared disk-to-disk against their
+source payloads under `.remedy-wt/f277-r1-payloads/` and all nine read byte-equal (G1
+reading (a)). No other reviewer-authored text was applied this round beyond the payloads
+already covered by G1's forensics.
 
 ## Deviations & assumptions
 
-None. The commit sequence executed is exactly C1, C2, C3, C4, in that
-order, with no extra commit and none dropped or reordered. Every payload
-was applied byte for byte via `shutil.copyfile` or an explicit byte
-write/append, never by retyping. Both README replacements were single
-literal string replacements after the FROM was measured to occur exactly
-once. No path outside the change set was touched: `docs/roadmap/STATUS.md`,
-`scripts/self_use_queue.json` and `docs/roadmap/features/T2_F276.md` were
-left untouched per constraint 2. No `gh` command was run. No destructive
-verification was ordered and none was performed; no worktree was created
-or removed, and the two job worktrees under `.remedy-wt/` were left alone.
-
-ANY DEPARTURE FROM THE BLOCK'S ORDERED COMMIT SEQUENCE BELONGS HERE: there
-was none.
+- G1(b)'s structural reader crashed on `UnicodeDecodeError` when the negative control's
+  byte-flip (XOR 0xFF) landed on a UTF-8 continuation byte; the script was adjusted to
+  decode with `errors="replace"` for the structural (paragraph-split) reading only, so the
+  negative control could complete and report a clean rejection rather than a traceback. The
+  byte-equality reading (a) still operates on raw bytes and is unaffected. This is a
+  verification-script robustness fix, not a change to any committed artifact.
+- G5's "COUNT the mutated bytes in the named file... must be 1" was read as "count the
+  occurrences of the anchor line(s) being touched, which must be 1" (an uniqueness check
+  analogous to the block's own STATUS.md anchor-uniqueness check), rather than a literal
+  single-byte-count, because mutations (a) and (d) insert multi-line functions and mutation
+  (b) deletes a full line — none of these are naturally a "1 byte" change. All four anchor
+  counts read 1, so the round proceeded under this reading.
+- Mutations (b) and (d) each produced one additional cascading test failure beyond the
+  block's named expectation (deleting a declared name also breaks
+  `test_is_declared_event_accepts_a_written_name` and
+  `test_the_writer_accepts_a_declared_name_under_the_flag`; giving `worker_adapters_listed`
+  a writer also breaks `test_every_written_event_name_is_declared`, since the name is not
+  yet in `EVENT_NAMES`). The block's named test is present among the failures in both
+  cases and no mutation stayed green, so this is reported as an observation, not a
+  contradiction.
 
 ## Next
 
-Run, after this commit, without committing anything further except the
-push the Bundle permits: G6 (`git push origin feature/f276-data-root-hygiene`,
-then `git status --porcelain` which must be empty, `ls .agent/STOP` which
-must be absent, and `git worktree list` in full). Report all four in the
-round report. Run NO `gh` command. Pull request 262 remains OPEN and
-UNMERGED; merging it is the next session's Open PR Gate business, not this
-round's.
+1. Phase 1 rule 1: read `.agent/STOP` from disk before acting.
+2. The review of round 1.
+3. Round 2: dispose of the six quarantined names in `READ_ONLY_EVENT_NAMES`
+   (`approval_decision`, `command_discovery_completed`, `patch_intent_reverted`,
+   `snapshot_created`, `stop_reason_recorded`, `worker_adapters_listed`), one commit per
+   name, until the set is empty and `read ⊆ written ⊆ declared` holds per DECISION F277 D2.
+
+Operator questions open: 1
