@@ -213,6 +213,20 @@ All checks passed!
 ```
 Exit code: 0.
 
+### G6 — push and tree, after C7
+
+- `git push -u origin feature/f277-machine-contracts` → `0ae3d6fd..29f2b0af
+  feature/f277-machine-contracts -> feature/f277-machine-contracts`, branch set to track the
+  remote. Succeeded.
+- `git status --porcelain` after push: empty.
+- `git worktree list` after push:
+```
+/home/decodeux/Repos/remedy                                  29f2b0af [feature/f277-machine-contracts]
+/home/decodeux/Repos/remedy/.remedy-wt/job-468c8e62a2cc4fac  1b9ae606 [remedy/job-468c8e62a2cc4fac]
+/home/decodeux/Repos/remedy/.remedy-wt/job-c1dba9c3d7874968  fd23710f [remedy/job-c1dba9c3d7874968]
+```
+  Primary checkout plus the two pre-existing `remedy/job-*` worktrees, nothing else.
+
 ### G5 — mutation red-proofs, disposable worktree
 
 `git worktree add --detach .remedy-wt/f277-r9-g5 23345808` → succeeded, detached HEAD at
@@ -247,10 +261,16 @@ block copy against `.remedy-wt/f277-r9-block.md`). All five: True. See G1(b) abo
 
 ## Deviations & assumptions
 
-None. The block's ordered commit sequence (C1a, C1b, C2, C3, C4, C5, C6, C7) was followed
-exactly, with no dropped, added, or reordered commit. All nine payloads verified clean this
-round, unlike round 8 — the reviewer's fix (re-measuring `decisions.md` after its last edit)
-held. All six gates ran for real with no red result.
+1. The block's ordered commit sequence (C1a, C1b, C2, C3, C4, C5, C6, C7) was followed
+   exactly, with no dropped, added, or reordered commit among the eight the block named. All
+   nine payloads verified clean this round, unlike round 8 — the reviewer's fix (re-measuring
+   `decisions.md` after its last edit) held. All six gates ran for real with no red result.
+2. **One trailing bookkeeping commit beyond C7.** C7 wrote this handoff with the G6 push
+   outcome not yet knowable (the push is C7's own trailing action); a second, small commit
+   filled in the real `git push`/`git status`/`git worktree list` readings for G6 once they
+   existed. This is the handback template's explicit "trailing bookkeeping commits that only
+   trim it" exception (R-0149 pattern), the same shape round 8's C-STOP-fix used — it adds no
+   new fact beyond the actual G6 output.
 
 ## Next
 
