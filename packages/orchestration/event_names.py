@@ -147,9 +147,6 @@ READ_ONLY_EVENT_NAMES: frozenset[str] = frozenset(
         # of those readers index by, so the rename is a metadata contract and
         # not a spelling — see DECISION F277 D4.
         "patch_intent_reverted",
-        # Read by `autonomy_loop.py`; the writer spells it
-        # `snapshot_create_completed`.
-        "snapshot_created",
         # Read by `project_summary.py`, `ui_server.py` and `ui_view_model.py`.
         # `ui_server.py` already records in a comment that this name has no
         # emitter outside tests (DECISION F031 D2 / D9).
