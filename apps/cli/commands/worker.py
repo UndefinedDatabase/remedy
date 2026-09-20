@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 import json as _json
-import sys
 from collections.abc import Callable
 from typing import TYPE_CHECKING
+
+from apps.cli.json_envelope import fail
 
 if TYPE_CHECKING:
     import argparse
@@ -41,8 +42,7 @@ def _cmd_workers(
             date_getter=None,
         )
     except ListOptionError as exc:
-        print(f"Error: {exc}", file=sys.stderr)
-        sys.exit(1)
+        fail("invalid_list_option", str(exc), json_output=json_output)
 
     if json_output:
         print(_json.dumps(export_worker_specs_json(specs), sort_keys=True))
@@ -59,8 +59,8 @@ def _cmd_worker_show(provider_id: str, *, json_output: bool = False) -> None:
     specs = list_worker_specs()
     match = next((s for s in specs if s.provider_id == provider_id), None)
     if match is None:
-        print(f"Error: unknown provider: {provider_id}", file=sys.stderr)
-        sys.exit(1)
+        fail("unknown_provider", f"unknown provider: {provider_id}",
+             json_output=json_output)
     if json_output:
         print(_json.dumps(export_worker_specs_json((match,)), sort_keys=True))
     else:
@@ -151,8 +151,8 @@ def _cmd_worker_unload(
     import subprocess
 
     if provider != "ollama":
-        print(f"Error: unsupported provider for unload: {provider}", file=sys.stderr)
-        sys.exit(1)
+        fail("unsupported_provider", f"unsupported provider for unload: {provider}",
+             json_output=json_output)
 
     if not shutil.which("ollama"):
         msg = "ollama not found — no models to unload"
@@ -183,8 +183,8 @@ def _cmd_worker_unload(
         except (subprocess.TimeoutExpired, OSError):
             pass
     else:
-        print("Error: specify --model NAME or --all", file=sys.stderr)
-        sys.exit(1)
+        fail("missing_argument", "specify --model NAME or --all",
+             json_output=json_output)
 
     results: list[dict] = []
     for t in targets:
