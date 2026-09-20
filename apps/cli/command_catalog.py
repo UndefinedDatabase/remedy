@@ -1560,6 +1560,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
             ArgDef("--builder-model", "Model for the builder role on every task `do` runs (default: the builder role config)", required=False, is_option=True, default=None),
             ArgDef("--reviewer-model", "Model for the reviewer role on every task `do` runs (default: the reviewer role config)", required=False, is_option=True, default=None),
             ArgDef("--planner-model", "Model for every planner call of the plan and shape steps (default: the planner's configured model)", required=False, is_option=True, default=None),
+            ArgDef("--planner-provider", "Which service plans: ollama or claude-cli (default: the configured planner role)", required=False, is_option=True, default=None),
             ArgDef("--yes", "Approve the job's plan of tasks unattended: audited, every open question takes its documented default", required=False, is_option=True, is_flag=True),
             ArgDef("--no-ui", "Do not open the cockpit", required=False, is_option=True, default="false"),
             ArgDef("--max-total-tokens", "Maximum total tokens for this job (F018 budget)", required=False, is_option=True, default=None),

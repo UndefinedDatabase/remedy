@@ -256,6 +256,7 @@ packages.orchestration.worker_adapters
 packages.orchestration.workspace
 packages.orchestration.worktree_resume
 packages.orchestration.worktrees
+packages.providers.claude_planner.provider
 packages.providers.ollama_builder.provider
 packages.providers.ollama_planner.provider
 packages.runtimes

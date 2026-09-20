@@ -400,6 +400,110 @@ Owner: F282 — Findings paydown v2 (re-assigned at F276's closure, 2026-09-20; 
 
 OWNERSHIP AT CLOSE, per amend0911-feedback rule A, booked by F273 R25. F273 closes owning every finding open once this commit lands: R-0499, R-0622, R-0662, R-0819, R-0820, R-0829, R-0866, R-0880, R-0892, R-0950, R-0984, R-0998, R-0999 and R-1000, by an `Owner: F273` tag or by a slice of `docs/roadmap/features/T2_F273.md`. It resolves none of them, so each is re-assigned from this paragraph onward to F282 — Findings paydown v2, which this closure registers under rule B in its own commit after the ledger rotation, and whose feature file carries one Acceptance line naming each id. The reasons they are carried, from DECISION F273 D19 (5), the Built State and the DECISIONs named: R-0819 and R-0820 wait for the checklist consolidation pass, as does R-0662; R-0866 until a feature reopens the external-candidate route; R-0880 on D75 and D78 of F275; R-0829 because F273's own closure runs the packer it would change; R-0984 on the 3.12 column of F273's closure pull request's hosted CI, which runs after this branch's last commit; R-0892 on the operator's write of `.claude/skills/remedy-evidence-review/SKILL.md`; R-0499 because 21 runs of its sweep produced no red whose id could be captured (DECISION F273 D4 (9)); R-0622 because its repair adds a devDependency whose install needs a network F273's sessions did not have (DECISION F273 D10 (4)); R-0950 because it is flagged for investigation with no code fix assigned; and R-0998, R-0999 and R-1000 because F273's closure found them after its closure suite.
 
+PARTIAL RESOLUTION of R-0892 at operator amendment amend0920-selfuse-real, Part C. NO NEW ID IS
+SPENT, per §3 item 30: R-0892 is OPEN and this is its own second half. R-0892's FIX names two
+obligations — a provider run through F268's flow exports a package that passes
+`scripts/build_review_manifest.py`'s required-artifact check, AND
+`.claude/skills/remedy-evidence-review/SKILL.md`, which still described `job_flow.json` and
+`_build_final_audit`, describes the heir's package. THE SECOND IS DISCHARGED HERE and the first is
+not. The prepared payload the F268 round 7 handoff named, `.agent/authored/f268-r7-skill.md`, was
+found at that path and its sha256 recomputed as
+`4a6bf8da8b59f9dac84ae9e183205fbfb08d84fbf0d9e8274da4d4d59494ccc8`, byte-for-byte the value that
+handoff records; it was copied over the skill page whole, and the page's own sha256 now reads that
+same value. The diff is four lines and no others: the writer line becomes
+`packages/orchestration/job_evidence.py` — `_write_job_flow_artifacts()`, replacing
+`apps/cli/commands/do_cmd.py` — `_build_final_audit()`, a function that reading `do_cmd.py` at
+`43d14817` confirms is gone; `job_flow.json`'s described fields lose `promote_ready` and gain
+`target_guard`, and reading `_write_job_flow_artifacts` confirms it writes `target_guard` and that
+the only `promote_ready` writers left under `packages/` are `manual_attestation.py` and
+`commit_execution_gate.py`, neither of them a job_flow writer; the final_verifier line drops the same
+field; and the safety line names a manual-only completion carrying none of the four flow files. WHY
+THIS IS NOT A `Done:` LINE: the required-artifact half is untouched by it, so retiring the id would
+retire an obligation nobody discharged. R-0892 stays OPEN and stays owned by F282, carrying that half
+alone; the reason the F273 closure's ownership paragraph gives for carrying it — "on the operator's
+write of `.claude/skills/remedy-evidence-review/SKILL.md`" — no longer applies to it.
+
+- R-1008 — Medium, FIVE CONSECUTIVE CLOSURES RAN THE SELF-USE TRACK AND NOT ONE LANDED A REPAIR,
+BECAUSE THE GENERATOR HANDED THE LOCAL MODEL FINDINGS THAT NAME NO REPAIR AND THE RUNNER RESOLVED THE
+PRODUCT-DEFAULT ROLES FOR WORK THAT REPAIRS THIS REPOSITORY. Raised under operator amendment
+amend0920-selfuse-real, Part B.5, at `43d14817`, after searching the open set and its archive for
+`self-use`, `self_use`, `SU-0`, `blocked` and `hollow` under §3 item 30: R-0784 and R-0999 each
+register ONE such run's blocked strings because closure precondition 6 requires it, and R-0838
+registers the generator re-selecting one finding — none describes the TRACK failing to land anything
+across five closures, which is this id's subject and is why it is minted rather than added to those.
+THE MEASUREMENT, read from the ledger and from `.agent/selfuse_f269` through `.agent/selfuse_f273`:
+SU-019 (F268), SU-020 (F269), SU-021 (F270), SU-022 (F271) and SU-023 (F273) each planned, each ran,
+each ended blocked or budget-stopped at the approval gate, and no self-use run in the track's history
+has ever produced a landed repair. TWO CAUSES, both measured rather than supposed. FIRST, the item.
+SU-023's finding was R-0499, whose own paragraph says the sweep goes red "about once in twenty runs"
+and that "THE FAILING NODE ID HAS NEVER BEEN CAPTURED", and which names no `FIX:` at all — so the job
+asked a builder to repair a defect that does not reproduce on demand and whose evidence does not
+exist. R-0999 records what followed in its own words: the builder changed no file, and the reviewer
+failed it over the empty diff. SECOND, the runner. `run_next_self_use_item` resolved `builder` and
+`reviewer` through `resolve_role_config`, whose product default is `ollama` on
+`muse-glimmer:latest` — the model every one of the five runs used, per the Gate: F273 R23 entry — for
+work that repairs THIS repository against THIS repository's review discipline, which is the hardest
+work the product does. WHY MEDIUM AND NOT LOW: nothing on disk is wrong and every run stopped at its
+gate as a blocked job must, so no product state is corrupt; what is lost is a closure precondition
+that has proven nothing for five features running, which makes "Remedy is used on Remedy" a ceremony
+rather than a check — and a precondition that cannot fail is the class this record already treats as
+a defect. FIX, AND IT IS BUILT BY THIS AMENDMENT RATHER THAN OWED: Tier 1 offers only a finding whose
+paragraph names a repair and does not say that repair is held by something the run does not control,
+and both sides of the run resolve from the new `self_use` role — the configured frontier provider, on
+this path's own budget of 8 calls and 1.00 USD (DECISION amend0920-selfuse-real D2). THE PROOF IS THE
+NEXT CLOSURE'S OWN RUN, and this finding resolves when one lands a repair: a `Done: R-1008` line is
+owed by the first closure whose self-use run produces a diff its reviewer passes, and by no earlier
+one. Until then it stays open however green the new tests are, because tests prove the wiring and
+only a run proves the track. Owner: F282.
+
+- R-1009 — Medium, MAIN'S HOSTED CI HAS BEEN RED ON BOTH COLUMNS SINCE `43d14817` BECAUSE A CLOSURE
+ADDED AN ASSERTION THAT THE HOSTED ENVIRONMENT CANNOT MEET: IT REQUIRES A NETWORK PROBE THAT THE
+`ollama` PACKAGE MAKES, AND CI INSTALLS ONLY `.[dev]`, WHICH DOES NOT CARRY IT. Raised under operator
+amendment amend0920-selfuse-real at `aeadfa45`, from that amendment's own pull request 261 reading
+red, after searching the open set and its archive for `test_study_run_dispatch_e2e`, `R-0978`,
+`R-0961`, `study run` and `3.12` under §3 item 30: R-0984 is the 3.12 column's OTHER defect (a
+str-mixed enum's rendering) and is a different mechanism on the same column; R-0978 and R-0961
+concern this same test's host reachability and its subprocess timeout and are both RESOLVED in the
+archive; no finding describes this one. THE DEFECT, measured four ways and not inferred. (1) THE
+FAILING NODE is `tests/cli/test_study_cmd.py::TestStudyCommandReachability::
+test_study_run_dispatch_e2e`, failing `AssertionError: study run never asked the model host the test
+gave it` / `assert []`. (2) IT REPRODUCES AT THE FORK POINT, ON BOTH COLUMNS, BEFORE ANY COMMIT OF
+THIS AMENDMENT: run 35473013938 on `main` at `43d14817` — the very commit this branch was cut from —
+fails that same node on `ci (3.10)` and on `ci (3.12)`, so under amend0917-throughput rule 2 it is
+not this amendment's to have broken. (3) THE CAUSE IS THE ABSENT PACKAGE, read from the hosted job's
+own install line: job 106056424649 prints `Successfully installed annotated-types … typing-inspection`
+— twenty-two distributions, and `ollama` is not among them, because `.github/workflows/ci.yml` ran
+`python3 -m pip install -e ".[dev]"` and `pyproject.toml`'s `dev` extra is pytest, pytest-xdist,
+ruff, mypy, pytest-cov and coverage. `make_structured_call_fn` in
+`packages/orchestration/intake.py` answers `None` at `import ollama` BEFORE it constructs a client
+or contacts any host, which a direct probe confirms: with `sys.modules["ollama"]` broken the factory
+returns `None` and the loopback listener is never accepted. So the assertion is unmeetable in that
+environment, whatever the product does. (4) THE SAME NODE PASSES WHERE THE PACKAGE IS PRESENT: `1
+passed in 84.45s` in the primary checkout at `aeadfa45`, which has `ollama` installed. WHEN IT
+ENTERED: `80f7c529`'s run 35412813460 was green; the `assert asked` line was added between there and
+`43d14817` by F273's closure, whose own hosted CI runs only AFTER its last commit — which is the
+trap R-0984's carry-forward reason already names, sprung a second time on a different node. WHY
+MEDIUM: nothing on disk is wrong and no product behaviour is at fault — the cost is that `main` is
+unmergeable-by-the-rules for every feature after F273 until it is fixed, and that a reader of the red
+column is told a reachability claim failed when the environment simply cannot test it. FIX, APPLIED
+BY THIS AMENDMENT because it is what blocked its own merge and AGENTS.md's amend0820-gate-autonomy
+makes a red check on the open pull request's branch the session's work order: `.github/workflows/
+ci.yml` installs `.[dev,ollama]`, which brings the hosted environment into line with the one the
+suite is verified in, keeps the assertion at FULL STRENGTH rather than skipping it, starts no server,
+and changes nothing in process — `tests/conftest.py`'s `_no_live_ollama_reach` refuses
+`ollama.Client` for every in-process test without the `real_ollama` marker, and its own comment says
+the not-installed path exists to reproduce the hosted behaviour, so installed and absent are already
+equivalent there; only a SUBPROCESS test can reach a host, and only the loopback one its own fixture
+opens. RED PROOF, and it is the only honest one for an environment defect, the same shape R-0984's
+own FIX clause names: the hosted column is RED at `43d14817` and at `aeadfa45` and GREEN at the tip
+of this branch. MEASURED: run 35503727182, the first run carrying the extra, lists this node in
+NEITHER column's failures — `gh run view 35503727182 --log-failed | grep -c
+test_study_run_dispatch_e2e` reads 0 against 2 FAILED lines in total, both of them a DIFFERENT node
+(`tests/orchestration/test_ci_workflow.py::test_hosted_workflow_selects_no_tests_of_its_own`, which
+the repair's own comment tripped by spelling a stage marker expression inside the workflow file and
+which is repaired in the commit after it, by rewording the comment and never by touching the guard).
+So the node this finding is about went red-to-green on the hosted runner, which is the one
+environment where it could be shown at all. Owner: F282.
 Gate: F276 R1 — the F276 round 1 entry. VERDICT PASS. Re-derived by the planner and reviewer of F276's first session over `43d14817`..`96fd8f9c`, not taken from the handback. A python check printed 45 readings, every one True. The range is exactly the five commits `b1395893`, `57286568`, `6e126dd2`, `c8916d2d` and `96fd8f9c`. Each of the eight `.agent/authored/f276-r1-*` copies equals the reviewer's scratch original in `.remedy-wt/f276-r1/`, the saved block reading 114 lines and sha256 `6fded040586e53cbc2dbacb0dfeeea55ec691a21244ecd2222687fca6e3001ce`, the digest the delegation named. At C1 `.agent/live_review.md` equals the head payload plus the `43d14817` bytes from `## Findings` onward plus the ledger payload, `.agent/decisions.md` equals its `43d14817` bytes plus the DECISION payload, `.agent/plan.md` and `.agent/context.md` equal their payloads, and `docs/roadmap/STATUS.md` equals its `43d14817` bytes with the claim pair applied once — the pair's containment test read `TO contains FROM: False`, a REWRITE, and the FROM occurs 0 times and the TO once after it. C1's path set is exactly the eight payload copies, the four `.agent/` state files and the STATUS file. C2 touches `tests/cli/test_study_cmd.py` alone, C3 exactly `packages/orchestration/data_paths.py` and `tests/test_data_root_classes.py`, C4 exactly the nine remaining carrier paths, and C5 `.agent/handoff.md` alone; nothing under `packages`, `apps`, `tests`, `docs`, `scripts` or `README.md` changed after C4. At C4 `git rev-parse` reads `0545a9d3450fa2fdb41ac026c192d1e3ac4f7cfa` for `packages`, `c57d66e877e5e4a370a9234cfd5fb8a2c6290e61` for `apps` and `3ddec410900ee2f3cb14ddb6d7cb2c91b07089bc` for `tests`, and `d39a7663e2ed5833715d74cad907e26d69bed610` for `docs/system/architecture.md` — the objects of the reviewer's own dry run, so the committed code is byte-identical to the tree the reviewer red-proved before authoring. Insertions read 394, 9, 351, 362 and 90, each under 500. The handoff carries the session line, a `Landed: R-1001` line and no `Done:` line, and the local tip equals origin. THE REVIEWER'S OWN RE-RUN at `96fd8f9c` in the primary checkout: the block's G3 command over its seventeen paths read `945 passed in 170.08s` at exit 0, and `python3 -m ruff check` over the ten touched files read `All checks passed!`. RED PROOFS, run by the reviewer in its own disposable worktree over the same trees before authoring and reproduced by the worker's G5 at C4: the unmutated control read `91 passed` at exit 0; an unclassified `foo_dir` helper appended to `data_paths.py` made `tests/test_data_root_classes.py::test_every_child_the_code_creates_is_in_exactly_one_class` fail, naming `foo` and its site; `entry.is_dir(follow_symlinks=False)` replaced by `True` in `data_footprint._subtree_usage` made three nodes of `tests/orchestration/test_data_footprint.py` fail, the symlink node among them; and the `data` GroupDef line deleted from the catalog made eight nodes fail across `tests/cli/test_data_cmd.py` and `tests/cli/test_cli_ux.py`. No mutation stayed green, and every file was restored byte-identically. The ledger at `96fd8f9c` reads 15 open findings by `count_open_findings` and 15 by distinct id.
 
 THE BUILT COMMAND, MEASURED ON THE OPERATOR'S OWN DATA ROOT by the reviewer at `96fd8f9c`: `python3 -m apps.cli.grouped data usage --json` reports 923560682122 bytes in 8056050 files, of which `job_workspaces` alone holds 922931683643 bytes in 7610163 files. The feature file's Why-this-exists recorded 650 GB in `job_workspaces` on 2026-09-08, measured by `remedy brain` in a unit that section does not state, so the two readings are not subtracted here: what is measured is that twelve days later the class holds 922931683643 bytes and 99.93 per cent of the data root's bytes. Six top-level children are in no class and are reported as `unclassified` — `evidence`, `job_promotions`, `pingpong_runs`, `queue`, `task_jobs` and one `remedy-job-evidence-*` bundle, 225469797 bytes together — which is the registry working as designed: nothing deletes them, and no class claims them.

@@ -23,7 +23,10 @@
    `packages.orchestration.self_use_queue.next_self_use_item` answers — has
    been planned through `packages.orchestration.self_use_job` and RUN
    through `packages.orchestration.self_use_runner.run_next_self_use_item`
-   (F258 T002) to the normal approval gate like any other job — never
+   (F258 T002) to the normal approval gate like any other job. The run uses
+   the `self_use` role configuration (DECISION amend0920-selfuse-real D2), so
+   the builder and reviewer are the configured frontier provider, never the
+   local model by accident. Never
    applied (the word `promoted` retired by DECISION amend0905-vocab D5) — and its `consumed_by` set to this
    feature's id in the closure commit. Before that: every string
    `packages.orchestration.self_use_findings.describe_self_use_run_defects`

@@ -277,39 +277,131 @@ def run_intake(
     )
 
 
+#: The planner services ``make_structured_call_fn`` can build. ``None`` is not
+#: listed because it is not a service: it means "ask the planner role", which
+#: answers one of these. Spelled ONCE so the factory, the CLI flag's refusal and
+#: the tests cannot come to disagree about what is legal.
+PLANNER_PROVIDERS: tuple[str, ...] = ("ollama", "claude-cli")
+
+
+def resolve_planner_target(
+    provider: str | None = None, model: str | None = None,
+) -> tuple[str, str | None]:
+    """``(provider, model)`` for a planner call — the ONE place that decision is made.
+
+    ``provider`` is an explicit choice (``--planner-provider``) and wins.
+    ``None`` asks the ``planner`` role, whose built-in default is ``ollama``
+    (packages/orchestration/role_config.py), so an unconfigured repository
+    resolves exactly what it resolved before this function existed.
+
+    The answered MODEL is ``None`` unless something actually named one — the
+    ``model`` argument, or ``planner.model`` in the configuration. ``None`` is
+    not a missing answer: it means "let the selected planner resolve its own
+    default", which for Ollama still includes ``ollama.planner.model`` and the
+    two ``REMEDY_OLLAMA_*`` variables its provider has always read. Answering a
+    model here in that case would silently take that resolution away.
+
+    Raises:
+        ValueError: ``provider`` is neither ``None`` nor a member of
+            :data:`PLANNER_PROVIDERS`. An unknown planner is a refusal, never a
+            quiet fall back to the other one.
+    """
+    from packages.orchestration.config import get_config
+    from packages.orchestration.role_config import resolve_role_config
+
+    if provider is not None and provider not in PLANNER_PROVIDERS:
+        raise ValueError(
+            f"Unknown planner provider {provider!r}; "
+            f"the planners are {', '.join(PLANNER_PROVIDERS)}."
+        )
+
+    cfg = get_config()
+    configured_model = cfg.get("planner.model")
+    resolved_model = model or (configured_model if configured_model else None)
+
+    if provider is not None:
+        return provider, resolved_model
+
+    overrides: dict[str, str] = {}
+    configured_provider = cfg.get("planner.provider")
+    if configured_provider:
+        overrides["provider"] = str(configured_provider)
+    role_cfg = resolve_role_config("planner", config_file=overrides)
+    resolved_provider = role_cfg.provider
+    if resolved_provider not in PLANNER_PROVIDERS:
+        raise ValueError(
+            f"planner.provider is {resolved_provider!r}, which is not a planner; "
+            f"the planners are {', '.join(PLANNER_PROVIDERS)}."
+        )
+    return resolved_provider, resolved_model
+
+
 def make_structured_call_fn(
     model_cls: type[BaseModel],
     *,
     model: str | None = None,
+    provider: str | None = None,
 ) -> Callable[[str, int], str] | None:
-    """Build an Ollama-backed call_fn bound to ``model_cls``, or None.
+    """Build a planner-backed call_fn bound to ``model_cls``, or None.
+
+    ``provider`` names the planning SERVICE: ``"ollama"``, ``"claude-cli"``, or
+    ``None`` to take the ``planner`` role's own answer (operator amendment
+    amend0920-selfuse-real, DECISION D1). That role's built-in default is
+    ``ollama``, so ``provider=None`` on an unconfigured repository builds
+    exactly the call_fn this factory built before a second planner existed.
 
     ``model`` overrides the planner's configured model for this call_fn only —
     the F070 orchestrator role names a top-tier model through
     ``orchestrator.model`` without changing anything for any other caller.
     Omitted, the planner resolves the model exactly as it always has.
 
-    Ollama enforces the schema NATIVELY (``format=``), so the schema bound
-    here decides the SHAPE of every response the returned callable can
-    produce — the prompt cannot override it. A call_fn built for one model
+    THE SCHEMA BOUND HERE DECIDES THE SHAPE OF EVERY RESPONSE the returned
+    callable can produce, whichever planner serves: Ollama enforces it
+    NATIVELY (``format=``) and the Claude CLI planner states it in the system
+    text and validates the reply itself. A call_fn built for one model
     therefore must never drive a structured call for another: the provider
     would answer in the bound shape and validation would fail on every
     attempt, retry included.
 
-    Delegates to OllamaPlanner.raw_call so all Ollama config (host, model,
-    temperature, num_predict) is resolved in one place.
-    """
-    try:
-        from packages.providers.ollama_planner.provider import OllamaPlanner
-        planner = OllamaPlanner(model=model) if model else OllamaPlanner()
-    except Exception:
-        return None
+    ANSWERS ``None`` WHEN THE SELECTED PLANNER IS NOT REACHABLE — an Ollama
+    server that does not list, a ``claude`` CLI that is not on PATH — and the
+    caller plans deterministically instead. It does NOT fall back to the other
+    planner: a run that silently changes which service planned it is a run
+    whose evidence lies about itself.
 
-    try:
-        import ollama
-        ollama.Client(host=planner.host).list()
-    except Exception:
-        return None
+    Raises:
+        ValueError: ``provider`` is not a member of :data:`PLANNER_PROVIDERS`.
+    """
+    planner_provider, planner_model = resolve_planner_target(provider, model)
+
+    if planner_provider == "claude-cli":
+        import shutil
+
+        try:
+            from packages.providers.claude_planner.provider import ClaudeCliPlanner
+            planner: Any = (
+                ClaudeCliPlanner(model=planner_model)
+                if planner_model else ClaudeCliPlanner()
+            )
+        except Exception:
+            return None
+        if not shutil.which("claude"):
+            return None
+    else:
+        try:
+            from packages.providers.ollama_planner.provider import OllamaPlanner
+            planner = (
+                OllamaPlanner(model=planner_model)
+                if planner_model else OllamaPlanner()
+            )
+        except Exception:
+            return None
+
+        try:
+            import ollama
+            ollama.Client(host=planner.host).list()
+        except Exception:
+            return None
 
     schema = to_json_schema(model_cls)
 

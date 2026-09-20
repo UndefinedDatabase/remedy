@@ -52,8 +52,22 @@ def _write_ledger(tmp_path: Path, paragraphs: list[str], name: str = "live_revie
     return path
 
 
-def _finding(r_id: str, severity: str, body: str = "Some prose describing the defect.") -> str:
-    return f"- {r_id} — {severity}, {body}"
+#: The repair sentence every fixture finding carries unless it is testing the
+#: absence of one. Tier 1 only offers a finding whose paragraph NAMES a repair
+#: (amend0920-selfuse-real D2), so a fixture without this is a fixture about
+#: ineligibility — which is what `fix=""` says out loud.
+_FIX_SENTENCE = "FIX: repair it and pin the repair with a test."
+
+
+def _finding(
+    r_id: str,
+    severity: str,
+    body: str = "Some prose describing the defect.",
+    *,
+    fix: str = _FIX_SENTENCE,
+) -> str:
+    tail = f" {fix}" if fix else ""
+    return f"- {r_id} — {severity}, {body}{tail}"
 
 
 @pytest.fixture
@@ -156,9 +170,11 @@ class TestLedgerTierSafety:
 
     def test_a_paragraph_shaped_like_a_heading_raises_rather_than_generating(self, tmp_path: Path):
         ledger = _write_ledger(tmp_path, [
+            # The FIX: sentence is load-bearing here too: see the sibling test.
             "- R-0010 — Low, a defect whose prose happens to include\n"
             "## Task 2\n"
-            "a line that looks like a second task heading."
+            "a line that looks like a second task heading.\n"
+            f"{_FIX_SENTENCE}"
         ])
         with pytest.raises(SelfUseGenerationError):
             generate_self_use_item(
@@ -168,8 +184,12 @@ class TestLedgerTierSafety:
 
     def test_a_paragraph_containing_an_acceptance_marker_raises(self, tmp_path: Path):
         ledger = _write_ledger(tmp_path, [
+            # Carries a FIX: sentence on purpose — without one the finding is
+            # not eligible at all (amend0920-selfuse-real D2) and the safety
+            # check this test exists for would never be reached.
             "- R-0010 — Low, a defect whose prose happens to include\n"
-            "Acceptance: something that looks like a real acceptance marker."
+            "Acceptance: something that looks like a real acceptance marker.\n"
+            f"{_FIX_SENTENCE}"
         ])
         with pytest.raises(SelfUseGenerationError):
             generate_self_use_item(
@@ -343,3 +363,116 @@ class TestAgainstTheRealShippedLedger:
             assert entry.id == "SU-002"
             assert entry.title.startswith("Address ledger finding R-")
             assert entry.consumed_by == ""
+
+
+# ---------------------------------------------------------------------------
+# amend0920-selfuse-real Part B.1 — only a finding a builder can actually repair
+# ---------------------------------------------------------------------------
+
+
+class TestOnlyARepairableFindingIsOffered:
+    """DECISION amend0920-selfuse-real D2, the evidence: SU-019 to SU-023.
+
+    Five consecutive closures generated an item, ran it, and landed nothing.
+    Each was handed a finding whose paragraph named no repair it could make.
+    Tier 1 now reads the paragraph for one.
+    """
+
+    def test_the_repairable_one_is_picked_over_a_flaky_and_an_already_queued_one(
+        self, tmp_path
+    ):
+        """The amendment's own fixture: three findings, exactly one eligible."""
+        ledger = _write_ledger(tmp_path, [
+            # Oldest, and already the source of a queue entry — excluded by the
+            # dedupe that was already here (R-0838).
+            _finding("R-0010", "Low", "An already-queued defect."),
+            # Next oldest, and unrepairable: its own text says the failing node
+            # was never captured and that it is flaky.
+            _finding(
+                "R-0020", "Low",
+                "THE SWEEP GOES RED ABOUT ONCE IN TWENTY RUNS AND THE FAILING "
+                "NODE ID HAS NEVER BEEN CAPTURED. It is flaky.",
+                fix="",
+            ),
+            # The one a builder can finish.
+            _finding("R-0030", "Low", "A reader looks for a key that moved."),
+        ])
+        queue = _write_queue(tmp_path, [_queue_item(
+            id="SU-001",
+            provenance="generated (self-use-generator tier 1, ledger scan, R-0010)",
+            consumed_by="F999",
+        )])
+
+        entry = generate_self_use_item(queue_path=queue, ledger_path=ledger)
+
+        assert entry is not None, "one of the three findings is repairable"
+        assert "R-0030" in entry.title, (
+            f"picked {entry.title!r}; R-0010 is already queued and R-0020 names "
+            "no repair it could make"
+        )
+        assert "R-0020" not in entry.job_markdown
+        assert "R-0010" not in entry.job_markdown
+
+    def test_a_paragraph_that_names_no_repair_is_not_offered_at_all(self, tmp_path):
+        ledger = _write_ledger(tmp_path, [
+            _finding("R-0010", "Low", "A defect nobody said how to repair.", fix=""),
+        ])
+        queue = _write_queue(tmp_path, [])
+        assert generate_self_use_item(queue_path=queue, ledger_path=ledger) is None
+
+    @pytest.mark.parametrize("phrase", [
+        "it is flaky under load",
+        "the failing node was never captured",
+        "the node was never been captured",
+        "it reddens once in twenty runs",
+        "this waits on the next feature",
+        "only the operator can apply it",
+    ])
+    def test_each_held_phrase_withdraws_a_finding_that_otherwise_qualifies(
+        self, tmp_path, phrase
+    ):
+        """Same paragraph, same FIX sentence — only the held phrase differs."""
+        control = _write_ledger(
+            tmp_path, [_finding("R-0010", "Low", "A plain defect.")], name="control.md",
+        )
+        held = _write_ledger(
+            tmp_path, [_finding("R-0010", "Low", f"A plain defect, but {phrase}.")],
+            name="held.md",
+        )
+        queue = _write_queue(tmp_path, [])
+
+        assert generate_self_use_item(queue_path=queue, ledger_path=control) is not None, (
+            "the control must qualify, or this test proves nothing"
+        )
+        assert generate_self_use_item(queue_path=queue, ledger_path=held) is None, (
+            f"{phrase!r} must withdraw the finding"
+        )
+
+    def test_the_headline_case_of_the_ledger_does_not_hide_a_held_phrase(self, tmp_path):
+        """This ledger writes headlines in capitals; the filter reads them anyway."""
+        ledger = _write_ledger(tmp_path, [
+            _finding("R-0010", "Low", "THE NODE ID HAS NEVER BEEN CAPTURED."),
+        ])
+        queue = _write_queue(tmp_path, [])
+        assert generate_self_use_item(queue_path=queue, ledger_path=ledger) is None
+
+    def test_the_dedupe_reads_every_queue_entry_consumed_or_not(self, tmp_path):
+        """R-0838's rule, restated as a test: a CONSUMED entry still excludes its finding."""
+        ledger = _write_ledger(tmp_path, [
+            _finding("R-0010", "Low", "Targeted by a consumed entry."),
+            _finding("R-0020", "Low", "Targeted by a pending entry."),
+            _finding("R-0030", "Low", "Targeted by nothing."),
+        ])
+        queue = _write_queue(tmp_path, [
+            _queue_item(
+                id="SU-001", consumed_by="F900",
+                provenance="generated (self-use-generator tier 1, ledger scan, R-0010)",
+            ),
+            _queue_item(
+                id="SU-002", consumed_by="",
+                provenance="generated (self-use-generator tier 1, ledger scan, R-0020)",
+            ),
+        ])
+        entry = generate_self_use_item(queue_path=queue, ledger_path=ledger)
+        assert entry is not None
+        assert "R-0030" in entry.title

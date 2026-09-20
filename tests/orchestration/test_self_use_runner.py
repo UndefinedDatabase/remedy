@@ -17,7 +17,7 @@ import pytest
 import packages.orchestration.self_use_runner as self_use_runner
 from packages.orchestration.pingpong_job import JOB_COMPLETED
 from packages.orchestration.pingpong_provider import FakeProvider
-from packages.orchestration.role_config import RoleConfig
+from packages.orchestration.role_config import DEFAULT_PROVIDER, RoleConfig
 from packages.orchestration.self_use_runner import SelfUseRunError, run_next_self_use_item
 
 _PENDING_ITEM = {
@@ -109,8 +109,10 @@ class TestRunNextSelfUseItem:
             reviewer_provider=_pass_provider(),
             repair_rounds=0,
         )
-        assert result.budgets["max_provider_calls"] == 6
-        assert result.budgets["max_cost_usd"] == 0.50
+        # amend0920-selfuse-real D2 raised this path's own bound: six stopped a
+        # run mid-loop where the repair round was the point.
+        assert result.budgets["max_provider_calls"] == 8
+        assert result.budgets["max_cost_usd"] == 1.00
 
     def test_it_never_mutates_the_target_repo(self, tmp_path, isolate_data_root, demo_repo):
         queue_path = _write_queue(tmp_path, [dict(_PENDING_ITEM)])
@@ -155,11 +157,17 @@ class TestRunNextSelfUseItem:
 
 
 class TestUnflaggedProviderResolution:
-    """R-0757: an unflagged run must resolve the product's REAL default
-    provider (role_config.DEFAULT_PROVIDER), never silently inherit
-    run_job's own raw "fake" fallback."""
+    """R-0757: an unflagged run must resolve a REAL configured provider, never
+    silently inherit run_job's own raw "fake" fallback.
 
-    def test_it_resolves_the_real_default_provider_when_unflagged(
+    WHICH provider that is changed at amend0920-selfuse-real (DECISION D2): both
+    sides now come from the one `self_use` role, whose built-in default is the
+    frontier provider, rather than one each from the product-default `builder`
+    and `reviewer` roles. R-0757's own rule — resolve something real or refuse —
+    is untouched and still pinned below.
+    """
+
+    def test_it_resolves_the_self_use_role_when_unflagged(
         self, tmp_path, isolate_data_root, demo_repo, monkeypatch
     ):
         queue_path = _write_queue(tmp_path, [dict(_PENDING_ITEM)])
@@ -176,8 +184,12 @@ class TestUnflaggedProviderResolution:
         )
 
         assert result == "STUB_RESULT"
-        assert captured["builder_name"] == "ollama"
-        assert captured["reviewer_name"] == "ollama"
+        assert captured["builder_name"] == "claude-cli"
+        assert captured["reviewer_name"] == "claude-cli"
+        assert captured["builder_name"] != DEFAULT_PROVIDER, (
+            "the whole point of DECISION D2: this path opts OUT of the product "
+            "default, so a run never reaches the local model by accident"
+        )
 
     def test_it_refuses_rather_than_run_fake_when_resolution_names_fake(
         self, tmp_path, isolate_data_root, demo_repo, monkeypatch
@@ -257,7 +269,6 @@ class TestUnflaggedProviderResolution:
         the resolved name would build is swapped for a fake, so nothing leaves
         the process; the model it was asked for is recorded too."""
         from packages.orchestration import pingpong_loop
-        from packages.orchestration.role_config import resolve_role_config
 
         asked: dict = {}
 
@@ -272,8 +283,9 @@ class TestUnflaggedProviderResolution:
             tmp_path / "jobs", str(demo_repo), queue_path=queue_path, repair_rounds=0
         )
 
-        builder_cfg = resolve_role_config("builder")
-        reviewer_cfg = resolve_role_config("reviewer")
+        # Both sides come from the ONE self_use role (amend0920-selfuse-real D2),
+        # so the expectation is read from that role rather than from two.
+        builder_cfg = reviewer_cfg = self_use_runner.resolve_self_use_role_config()
         assert builder_cfg.model and reviewer_cfg.model
         ec = result.execution_config
         assert ec.builder_model == builder_cfg.model
@@ -296,7 +308,10 @@ class TestGenerateThenRunEndToEnd:
         queue_path = _write_queue(tmp_path, [])
         ledger_path = tmp_path / "live_review.md"
         ledger_path.write_text(
-            "- R-0001 — Low, A TEST FINDING FOR THE FIXTURE. Fix the thing "
+            # The FIX: sentence is what makes the finding eligible at all
+            # (amend0920-selfuse-real D2); without it Tier 1 offers nothing and
+            # the end-to-end cycle this test exists for never starts.
+            "- R-0001 — Low, A TEST FINDING FOR THE FIXTURE. FIX: fix the thing "
             "described here.\n",
             encoding="utf-8",
         )
@@ -315,3 +330,123 @@ class TestGenerateThenRunEndToEnd:
         assert entry.id == generated.id
         assert job_file_path.exists()
         assert result.state == JOB_COMPLETED
+
+
+# ---------------------------------------------------------------------------
+# amend0920-selfuse-real Part B.2 — the `self_use` role and this path's budget
+# ---------------------------------------------------------------------------
+
+
+class TestTheSelfUseRoleAndItsBudget:
+    """DECISION amend0920-selfuse-real D2.
+
+    SU-019 to SU-023 each ran on the local model and landed no repair. The run
+    now resolves the configured frontier provider, with a budget written for a
+    run that has to finish: at most 8 provider calls and 1.00 USD per closure.
+    """
+
+    def _captured_run_kwargs(self, tmp_path, demo_repo, monkeypatch, **kwargs):
+        queue_path = _write_queue(tmp_path, [dict(_PENDING_ITEM)])
+        captured: dict = {}
+
+        def _stub_run_job(job_id, **run_kwargs):
+            captured.update(run_kwargs)
+            return "STUB_RESULT"
+
+        monkeypatch.setattr(self_use_runner, "run_job", _stub_run_job)
+        run_next_self_use_item(
+            tmp_path / "jobs", str(demo_repo), queue_path=queue_path, **kwargs
+        )
+        return captured
+
+    def test_the_run_kwargs_carry_the_claude_cli_and_the_sonnet_model(
+        self, tmp_path, isolate_data_root, demo_repo, monkeypatch
+    ):
+        from packages.orchestration.model_aliases import resolve_model_alias
+
+        captured = self._captured_run_kwargs(tmp_path, demo_repo, monkeypatch)
+        sonnet = resolve_model_alias("claude-workhorse")
+        assert captured["builder_name"] == "claude-cli"
+        assert captured["reviewer_name"] == "claude-cli"
+        assert captured["builder_model"] == sonnet
+        assert captured["reviewer_model"] == sonnet
+
+    def test_the_call_cap_is_eight_and_the_cost_bound_one_dollar(
+        self, tmp_path, isolate_data_root, demo_repo, monkeypatch
+    ):
+        captured = self._captured_run_kwargs(tmp_path, demo_repo, monkeypatch)
+        budgets = captured["budgets"]
+        assert budgets["max_provider_calls"] == 8, (
+            "six stopped a run mid-loop; DECISION D2 buys the repair round"
+        )
+        assert budgets["max_cost_usd"] == 1.00
+
+    def test_the_caller_still_overrides_the_budget(
+        self, tmp_path, isolate_data_root, demo_repo, monkeypatch
+    ):
+        captured = self._captured_run_kwargs(
+            tmp_path, demo_repo, monkeypatch, max_provider_calls=2, max_cost_usd=0.10,
+        )
+        assert captured["budgets"]["max_provider_calls"] == 2
+        assert captured["budgets"]["max_cost_usd"] == 0.10
+
+    def test_both_sides_come_from_ONE_role_and_cannot_drift_apart(
+        self, tmp_path, isolate_data_root, demo_repo, monkeypatch
+    ):
+        """The builder and the reviewer of a self-use run are the same pair."""
+        captured = self._captured_run_kwargs(tmp_path, demo_repo, monkeypatch)
+        assert captured["builder_name"] == captured["reviewer_name"]
+        assert captured["builder_model"] == captured["reviewer_model"]
+        assert captured["builder_effort"] == captured["reviewer_effort"]
+
+    def test_it_reads_the_self_use_role_and_not_the_builder_or_reviewer_role(
+        self, tmp_path, isolate_data_root, demo_repo, monkeypatch
+    ):
+        """The roles asked for are named, so a silent return to the old pair reddens."""
+        asked: list[str] = []
+        real = self_use_runner.resolve_role_config
+
+        def _spy(role, *args, **kwargs):
+            asked.append(role)
+            return real(role, *args, **kwargs)
+
+        monkeypatch.setattr(self_use_runner, "resolve_role_config", _spy)
+        self._captured_run_kwargs(tmp_path, demo_repo, monkeypatch)
+
+        assert asked == ["self_use"], f"resolved {asked!r}"
+
+    def test_an_injected_provider_object_still_wins(
+        self, tmp_path, isolate_data_root, demo_repo, monkeypatch
+    ):
+        captured = self._captured_run_kwargs(
+            tmp_path, demo_repo, monkeypatch,
+            builder_provider=_pass_provider(), reviewer_provider=_pass_provider(),
+        )
+        assert "builder_name" not in captured
+        assert "reviewer_name" not in captured
+
+    def test_an_explicit_name_still_wins(
+        self, tmp_path, isolate_data_root, demo_repo, monkeypatch
+    ):
+        captured = self._captured_run_kwargs(
+            tmp_path, demo_repo, monkeypatch,
+            builder_name="fake", reviewer_name="fake",
+        )
+        assert captured["builder_name"] == "fake"
+        assert captured["reviewer_name"] == "fake"
+
+    def test_the_operator_can_put_the_track_back_on_the_local_model(
+        self, tmp_path, isolate_data_root, demo_repo, monkeypatch
+    ):
+        """`self_use.provider` is the reverse switch DECISION D2 promises."""
+        monkeypatch.setenv("REMEDY_SELF_USE_PROVIDER", "ollama")
+        monkeypatch.setenv("REMEDY_SELF_USE_MODEL", "muse-glimmer:latest")
+        from packages.orchestration.config import reset_config
+
+        reset_config()
+        try:
+            captured = self._captured_run_kwargs(tmp_path, demo_repo, monkeypatch)
+            assert captured["builder_name"] == "ollama"
+            assert captured["builder_model"] == "muse-glimmer:latest"
+        finally:
+            reset_config()

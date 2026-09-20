@@ -81,6 +81,12 @@ Read from the `do.run` catalog entry in `apps/cli/command_catalog.py`:
 - `--builder-provider`, `--reviewer-provider` — claude, claude-cli, fake or ollama
 - `--builder-model`, `--reviewer-model` — model for the role on every task `do` runs
 - `--planner-model` — model for every planner call of the plan and shape steps
+- `--planner-provider` — which service makes those planner calls: `ollama`
+  or `claude-cli`; a name that is neither exits 2 before any step. Omitted,
+  the configured `planner` role answers, and its default is `ollama`
+  (operator amendment amend0920-selfuse-real, DECISION D1). The planner the
+  walk actually used is the one its prompt traces and the mission plan
+  record name.
 - `--yes` — approve the job's plan of tasks unattended
 - `--no-ui` — do not open the cockpit
 - `--max-total-tokens`, `--max-provider-calls`, `--max-wall-clock-minutes`,

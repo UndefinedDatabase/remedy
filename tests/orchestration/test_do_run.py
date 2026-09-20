@@ -155,3 +155,104 @@ class TestContractConsolidation:
         c = build_default_run_contract(JobPlan(job_title="test"))
         assert len(c.denied_actions) > 0
         assert "apply" in c.denied_actions
+
+
+# ---------------------------------------------------------------------------
+# amend0920-selfuse-real Part A: the `--planner-provider` flag and its route
+# ---------------------------------------------------------------------------
+
+
+class TestPlannerProviderFlag:
+    """`do.run` declares the flag, and the flag reaches the Claude planner factory."""
+
+    def _do_run_args(self):
+        from apps.cli.command_catalog import CATALOG
+        entry = next(e for e in CATALOG if e.command_id == "do.run")
+        return {arg.name: arg for arg in entry.args}
+
+    def test_do_run_declares_planner_provider(self):
+        arg = self._do_run_args()["--planner-provider"]
+        assert arg.is_option is True
+        assert arg.is_flag is False, "it takes a value, it is not a boolean flag"
+        assert arg.required is False
+        assert arg.default is None, "default None means the configured planner role"
+
+    def test_the_declared_choices_are_the_factory_s_own(self):
+        """The help text names every planner the factory accepts, and no other."""
+        from packages.orchestration.intake import PLANNER_PROVIDERS
+
+        assert PLANNER_PROVIDERS == ("ollama", "claude-cli")
+        help_text = self._do_run_args()["--planner-provider"].help
+        for planner in PLANNER_PROVIDERS:
+            assert planner in help_text, f"{planner} is not offered in the help"
+
+    def test_planner_provider_sits_beside_planner_model(self):
+        from apps.cli.command_catalog import CATALOG
+        entry = next(e for e in CATALOG if e.command_id == "do.run")
+        names = [a.name for a in entry.args]
+        assert names.index("--planner-provider") == names.index("--planner-model") + 1
+
+    def test_claude_cli_reaches_the_claude_planner_factory(self, monkeypatch):
+        """`--planner-provider claude-cli` builds the Claude planner, not the Ollama one."""
+        built: list[str] = []
+
+        class _FakeClaudePlanner:
+            def __init__(self, model=None, **kwargs):
+                built.append("claude-cli")
+                self.model = model or "claude-test"
+
+            def raw_call(self, prompt, *, schema, system=None):
+                return "{}"
+
+        monkeypatch.setattr(
+            "packages.providers.claude_planner.provider.ClaudeCliPlanner",
+            _FakeClaudePlanner,
+        )
+        monkeypatch.setattr("shutil.which", lambda name: f"/usr/bin/{name}")
+
+        def _ollama_tripwire(*args, **kwargs):
+            raise AssertionError("the Ollama planner must not be built for claude-cli")
+
+        monkeypatch.setattr(
+            "packages.providers.ollama_planner.provider.OllamaPlanner",
+            _ollama_tripwire,
+        )
+
+        from packages.orchestration.intake import make_structured_call_fn
+        from packages.orchestration.schemas import JobIntake
+
+        call_fn = make_structured_call_fn(JobIntake, provider="claude-cli")
+        assert call_fn is not None
+        assert built == ["claude-cli"]
+        assert getattr(call_fn, "resolved_model", None) == "claude-test"
+
+    def test_an_absent_claude_cli_answers_none_and_never_falls_back(self, monkeypatch):
+        monkeypatch.setattr("shutil.which", lambda name: None)
+
+        def _ollama_tripwire(*args, **kwargs):
+            raise AssertionError("an unreachable claude-cli must not fall back to Ollama")
+
+        monkeypatch.setattr(
+            "packages.providers.ollama_planner.provider.OllamaPlanner",
+            _ollama_tripwire,
+        )
+
+        from packages.orchestration.intake import make_structured_call_fn
+        from packages.orchestration.schemas import JobIntake
+
+        assert make_structured_call_fn(JobIntake, provider="claude-cli") is None
+
+    def test_an_unknown_planner_is_refused(self):
+        import pytest
+
+        from packages.orchestration.intake import make_structured_call_fn
+        from packages.orchestration.schemas import JobIntake
+
+        with pytest.raises(ValueError, match="Unknown planner provider"):
+            make_structured_call_fn(JobIntake, provider="gpt-cli")
+
+    def test_the_do_context_carries_the_planner_provider(self):
+        from packages.orchestration.do_sequence import DoContext
+
+        assert DoContext(order="x").planner_provider is None
+        assert DoContext(order="x", planner_provider="claude-cli").planner_provider == "claude-cli"

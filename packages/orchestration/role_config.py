@@ -50,6 +50,8 @@ moves which TIER a call records, never which model runs.
 Public API::
 
     KNOWN_ROLES: tuple of recognised role names
+    ROLES_WITH_THEIR_OWN_DEFAULTS: the roles that resolve something other than
+        the product default provider/model — DERIVED, and ``{"self_use"}`` today
     TASK_CLASS_TIERS_CONFIG_KEY: the config key carrying the override table
     PROMOTION_EVIDENCE_CONFIG_KEY: the config key carrying the evidence table
     RoleConfig: resolved provider/model/effort for one role
@@ -131,6 +133,21 @@ DEFAULT_MODEL = _PROVIDER_DEFAULT_MODELS[DEFAULT_PROVIDER]
 #: resolve without the unknown-role warning, and tiered `summarize` for routing
 #: bookkeeping only (DECISION F266 D1). Default model is the same provider-aware
 #: default every other role gets, operator-overridable as usual.
+#: ``planner`` (operator amendment amend0920-selfuse-real, DECISION D1) is the
+#: structured-planning role behind
+#: ``packages.orchestration.intake.make_structured_call_fn``. It is registered
+#: here so an operator can name the planning SERVICE — `planner.provider` and
+#: `planner.model` through `remedy config` — now that a second one exists
+#: (``packages/providers/claude_planner/provider.py``). Its default provider
+#: stays ``ollama``, so an unconfigured repository plans exactly as it did
+#: before this role was named.
+#: ``self_use`` (operator amendment amend0920-selfuse-real, DECISION D2) is the
+#: builder-and-reviewer pair of the self-use track's own runs
+#: (``packages.orchestration.self_use_runner``), and it is the ONE role whose
+#: built-in default is not the product default: a self-use run that lands a
+#: repair in this repository is frontier work, and five consecutive runs proved
+#: the local model cannot do it. Default provider ``claude-cli``, default model
+#: the alias table's Sonnet alias.
 KNOWN_ROLES: tuple[str, ...] = (
     "builder",
     "reviewer",
@@ -142,6 +159,38 @@ KNOWN_ROLES: tuple[str, ...] = (
     "teacher",
     "summary",
     "study",
+    "planner",
+    "self_use",
+)
+
+#: PER-ROLE built-in defaults, for the roles whose default is not the product's.
+#: A role absent from these tables resolves exactly as it did before they
+#: existed — ``DEFAULT_PROVIDER`` and that provider's default model — so naming
+#: two roles here changes nothing for the ten that came before them.
+_ROLE_DEFAULT_PROVIDERS: dict[str, str] = {
+    "planner": "ollama",
+    "self_use": "claude-cli",
+}
+
+#: A role whose default MODEL is not simply its provider's default. ``self_use``
+#: is the only one: ``claude-cli``'s own default is the flagship, and the
+#: self-use track's cost bound (at most 8 calls per closure, DECISION
+#: amend0920-selfuse-real D2) is written for the workhorse.
+_ROLE_DEFAULT_MODELS: dict[str, str] = {
+    "self_use": resolve_model_alias("claude-workhorse"),
+}
+
+#: THE ROLES THAT ACTUALLY RESOLVE SOMETHING OTHER THAN THE PRODUCT DEFAULT, and
+#: it is DERIVED rather than typed: ``planner`` names its own default provider
+#: above and that provider IS :data:`DEFAULT_PROVIDER`, so it belongs here only
+#: if that ever stops being true. The pins in tests/orchestration/test_role_config.py
+#: read this set, so a role opted out of the product default is opted out in ONE
+#: place and the pin that guards the rest cannot be quietly widened.
+ROLES_WITH_THEIR_OWN_DEFAULTS: frozenset[str] = frozenset(
+    role
+    for role in set(_ROLE_DEFAULT_PROVIDERS) | set(_ROLE_DEFAULT_MODELS)
+    if _ROLE_DEFAULT_PROVIDERS.get(role, DEFAULT_PROVIDER) != DEFAULT_PROVIDER
+    or _ROLE_DEFAULT_MODELS.get(role, DEFAULT_MODEL) != DEFAULT_MODEL
 )
 
 #: Resolvable fields on a RoleConfig, in declaration order.
@@ -411,11 +460,21 @@ def resolve_role_config(
         if value is not None:
             resolved[field_name] = value
 
+    # A role with its own built-in default provider takes it here, AFTER
+    # cli_args and config_file, so a configured value still wins over it.
+    if "provider" not in resolved and role in _ROLE_DEFAULT_PROVIDERS:
+        resolved["provider"] = _ROLE_DEFAULT_PROVIDERS[role]
+
     # Provider-aware model default: if provider is set but model is not,
-    # use the provider's default model instead of the global default.
+    # use the provider's default model instead of the global default. A role
+    # naming its own default model outranks that, for the reason
+    # _ROLE_DEFAULT_MODELS states.
     if "model" not in resolved:
-        provider = resolved.get("provider", DEFAULT_PROVIDER)
-        resolved["model"] = default_model_for_provider(provider)
+        if role in _ROLE_DEFAULT_MODELS:
+            resolved["model"] = _ROLE_DEFAULT_MODELS[role]
+        else:
+            provider = resolved.get("provider", DEFAULT_PROVIDER)
+            resolved["model"] = default_model_for_provider(provider)
 
     return RoleConfig(
         role=role,

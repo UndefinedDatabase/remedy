@@ -210,6 +210,7 @@ def _cmd_do_order(
     builder_model: str | None = None,
     reviewer_model: str | None = None,
     planner_model: str | None = None,
+    planner_provider: str | None = None,
     project: str | None = None,
     max_total_tokens: str | None = None,
     max_provider_calls: str | None = None,
@@ -251,7 +252,10 @@ def _cmd_do_order(
     project the init step uses; the budget flags are resolved before the first
     step and reach the run, as do `--builder-model` and `--reviewer-model`,
     which every `remedy job run` Next line carries too; `--planner-model`
-    reaches every structured planner call (DECISION F268 D16 (4) to (7)).
+    reaches every structured planner call (DECISION F268 D16 (4) to (7)), and
+    `--planner-provider` names which SERVICE makes those calls — `ollama` or
+    `claude-cli`, checked by `_cmd_do` before any step (operator amendment
+    amend0920-selfuse-real, DECISION D1).
     `contract` is the template `--contract` forces, already checked by
     `_cmd_do`; ``None`` lets the plan step apply the one proposed from the
     order (DECISION F269 D1 (4)). ``commit``, ``commit_auto`` and
@@ -317,6 +321,7 @@ def _cmd_do_order(
         builder_model=builder_model,
         reviewer_model=reviewer_model,
         planner_model=planner_model,
+        planner_provider=planner_provider,
         contract_template=contract,
         no_ui=no_ui,
         yes=yes,
@@ -390,6 +395,7 @@ def _cmd_do(
     builder_model: str | None = None,
     reviewer_model: str | None = None,
     planner_model: str | None = None,
+    planner_provider: str | None = None,
     no_ui: bool = False,
     max_total_tokens: str | None = None,
     max_provider_calls: str | None = None,
@@ -419,6 +425,18 @@ def _cmd_do(
     mode, push_source = _resolve_do_commit_flags(
         repo, commit=commit, commit_auto=commit_auto,
         commit_with_history=commit_with_history, push=push, plan_only=plan_only)
+    # amend0920-selfuse-real DECISION D1: a planner that is not a planner exits 2
+    # before any step, the way `--contract` refuses a name that is not a template.
+    # The list of legal values is READ from the factory, never retyped here.
+    if planner_provider is not None:
+        from packages.orchestration.intake import PLANNER_PROVIDERS
+
+        if planner_provider not in PLANNER_PROVIDERS:
+            print(f"Error: --planner-provider {planner_provider!r} is not a "
+                  f"planner; the planners are {', '.join(PLANNER_PROVIDERS)}. "
+                  "Nothing was run.", file=sys.stderr)
+            sys.exit(2)
+
     # DECISION F269 D1 (4): a name that is not a template exits 2 before any step.
     if contract is not None:
         from packages.orchestration.contract_templates import list_contract_templates
@@ -433,6 +451,7 @@ def _cmd_do(
                   yes=yes, builder_provider=builder_provider,
                   reviewer_provider=reviewer_provider, builder_model=builder_model,
                   reviewer_model=reviewer_model, planner_model=planner_model,
+                  planner_provider=planner_provider,
                   project=project, max_total_tokens=max_total_tokens,
                   max_provider_calls=max_provider_calls,
                   max_wall_clock_minutes=max_wall_clock_minutes,
@@ -901,6 +920,7 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
         builder_model=getattr(args, "builder_model", None),
         reviewer_model=getattr(args, "reviewer_model", None),
         planner_model=getattr(args, "planner_model", None),
+        planner_provider=getattr(args, "planner_provider", None),
         no_ui=bool(getattr(args, "no_ui", False)),
         max_total_tokens=getattr(args, "max_total_tokens", None),
         max_provider_calls=getattr(args, "max_provider_calls", None),
