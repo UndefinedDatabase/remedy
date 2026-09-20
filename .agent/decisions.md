@@ -16465,11 +16465,20 @@ for the same reason.
 ALTERNATIVES: sending `--json-schema` and classifying its rejection, rejected as a second
 failure mode on a path whose whole job is to answer one JSON object; inventing a planner exception
 class, rejected because the amendment asks for the class the Ollama planner raises.
+THE ONE NEW MODULE IS DECLARED, per closure precondition 7: the run that added it read
+`tests/orchestration/test_import_reachability.py` RED with
+`packages.providers.claude_planner.provider` named as reachable from the D11 (c) entry points and
+absent from the allowlist, and the line was added to
+`tests/orchestration/import_reachability_allowlist.txt` beside the Ollama planner's own. This
+amendment has no feature file, so this paragraph is where the precondition's naming obligation is
+discharged. `tests/test_no_orphan_modules.py` needs nothing: `make_structured_call_fn` imports the
+module in a function body and that scanner walks the whole AST, so it is reached, and no
+`ALLOWED_UNWIRED` entry is added or removed.
 REVERSE: delete `packages/providers/claude_planner/`, the `provider=` parameter and
 `resolve_planner_target` from `packages/orchestration/intake.py`, the `--planner-provider` ArgDef and
 its refusal, the `planner_provider` field and the three call sites' `provider=` in `do_sequence.py`
 and `do_cmd.py`, the `planner` entries in `KNOWN_ROLES`, `_ROLE_DEFAULT_PROVIDERS`, `ROLE_TASK_CLASSES`
-and `ROLE_CONFIG_CALL_SITES`, the two `planner.*` config keys, and this paragraph.
+and `ROLE_CONFIG_CALL_SITES`, the two `planner.*` config keys, the allowlist line, and this paragraph.
 
 ## DECISION amend0920-selfuse-real D2 (2026-09-20, operator amendment, Part B) — the self-use track runs on the frontier provider, on a finding a builder can finish
 CONTEXT: SU-019 to SU-023 — five consecutive closures — each generated a self-use item, ran it and

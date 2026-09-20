@@ -49,6 +49,7 @@ Deliberate absences:
 
 from __future__ import annotations
 
+import json
 import os
 from typing import Any
 
@@ -257,8 +258,6 @@ class ClaudeCliPlanner:
                     raise
                 last_reason = str(exc)[:500]
                 continue
-            import json
-
             return json.dumps(obj, separators=(",", ":")), validated
         raise AssertionError("unreachable: the loop returns or raises on attempt 2")
 
@@ -291,8 +290,6 @@ class ClaudeCliPlanner:
         ``format=`` already guarantees to be schema-shaped JSON. The caller
         parses it, exactly as it parses Ollama's.
         """
-        import json
-
         text, _ = self._call_validated(
             prompt,
             system=system if system is not None else _SYSTEM_PROMPT,
