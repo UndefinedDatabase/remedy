@@ -18,12 +18,12 @@ Evidence dirs are ephemeral build artifacts (gitignored). Review zips are also g
 - `packages/orchestration/final_verifier.py` — final verification gate
 - `packages/orchestration/token_truth.py` — actual vs estimated token tracking
 - `packages/orchestration/fresh_evidence_gate.py` — fresh evidence commit gate
-- `apps/cli/commands/do_cmd.py` — `_build_final_audit()` reads verifier report
+- `packages/orchestration/job_evidence.py` — `_write_job_flow_artifacts()` writes job_flow.json, the agent run trace, its summary and command_transcript.json from the job's own records (DECISION F268 D13)
 
 ## Evidence Dir Structure
 ```
 remedy-job-evidence-{id}/
-  job_flow.json              — main job record (job_id, final_audit, promote_ready)
+  job_flow.json              — flow record (job_id, final_audit, target_guard)
   manifest.json              — evidence manifest
   agent_run_trace.jsonl      — raw trace
   agent_run_trace_summary.json
@@ -49,7 +49,7 @@ remedy-job-evidence-{id}/
 - `BLOCKED_EVIDENCE` — evidence incomplete or validation failed
 
 ## Verification Gates
-- **final_verifier**: drives `final_audit.status` and `promote_ready` in job_flow.json
+- **final_verifier**: its verdict is `final_audit.status` in job_flow.json
 - **missing_tests_gate**: checks test execution (sandbox-blocked = NEEDS_TESTS, not PASS)
 - **token_truth**: never cross-contaminates estimated into actual fields
 - **scratch_file_guard**: checks for leftover scratch files
@@ -68,4 +68,4 @@ python3 -c "import json; print(json.dumps(json.load(open('remedy-job-evidence-xx
 ## Safety
 - Evidence dirs are build artifacts — delete freely, they're gitignored
 - Never fabricate evidence
-- `promote_ready=false` when verifier says NEEDS_REPAIR or NEEDS_TESTS
+- A manual-only completion carries none of the four flow files; the manifest marks them not applicable
