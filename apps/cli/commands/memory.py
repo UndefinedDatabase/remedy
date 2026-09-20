@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 import json as _json
-import sys
 from collections.abc import Callable
 from typing import TYPE_CHECKING
 
+from apps.cli.json_envelope import fail
 from packages.orchestration.data_paths import lookup_job_id
 
 if TYPE_CHECKING:
@@ -104,8 +104,7 @@ def _cmd_memory_list(
             date_getter=lambda e: e.created_at,
         )
     except ListOptionError as exc:
-        print(f"Error: {exc}", file=sys.stderr)
-        sys.exit(1)
+        fail("invalid_list_option", str(exc), json_output=json_output)
 
     if json_output:
         output = [
@@ -143,13 +142,12 @@ def _cmd_memory_learn(
     try:
         job_id = lookup_job_id(job_id_str)
     except ValueError:
-        print(f"Error: No job matches {job_id_str!r}. Try: remedy job list.", file=sys.stderr)
-        sys.exit(1)
+        fail("invalid_job_id", f"No job matches {job_id_str!r}. Try: remedy job list.",
+             json_output=json_output)
     try:
         job = require_job_plan(job_id)
     except JobNotFoundError as exc:
-        print(f"Error: {exc}", file=sys.stderr)
-        sys.exit(1)
+        fail("job_not_found", str(exc), json_output=json_output)
 
     from packages.orchestration.data_paths import resolve_data_root
     from packages.orchestration.memory_learn import export_learn_json, learn_from_job
@@ -188,8 +186,8 @@ def _cmd_memory_card_show(
 
     card = get_memory_card(memory_id, project_id=project_id, job_id=job_id)
     if card is None:
-        print(f"Error: memory card not found: {memory_id}", file=sys.stderr)
-        sys.exit(1)
+        fail("memory_card_not_found", f"memory card not found: {memory_id}",
+             json_output=json_output)
 
     if json_output:
         print(_json.dumps({
@@ -219,13 +217,14 @@ def _cmd_memory_card_approve(
     *,
     project_id: str | None = None,
     job_id: str | None = None,
+    json_output: bool = False,
 ) -> None:
     from packages.memory.local_gateway import approve_memory_card
 
     card = approve_memory_card(memory_id, project_id=project_id, job_id=job_id)
     if card is None:
-        print(f"Error: memory card not found: {memory_id}", file=sys.stderr)
-        sys.exit(1)
+        fail("memory_card_not_found", f"memory card not found: {memory_id}",
+             json_output=json_output)
     print(f"Approved: {card.id} key={card.key}")
 
 
@@ -234,13 +233,14 @@ def _cmd_memory_card_reject(
     *,
     project_id: str | None = None,
     job_id: str | None = None,
+    json_output: bool = False,
 ) -> None:
     from packages.memory.local_gateway import reject_memory_card
 
     card = reject_memory_card(memory_id, project_id=project_id, job_id=job_id)
     if card is None:
-        print(f"Error: memory card not found: {memory_id}", file=sys.stderr)
-        sys.exit(1)
+        fail("memory_card_not_found", f"memory card not found: {memory_id}",
+             json_output=json_output)
     print(f"Rejected: {card.id} key={card.key}")
 
 
@@ -249,13 +249,14 @@ def _cmd_memory_card_stale(
     *,
     project_id: str | None = None,
     job_id: str | None = None,
+    json_output: bool = False,
 ) -> None:
     from packages.memory.local_gateway import mark_stale
 
     card = mark_stale(memory_id, project_id=project_id, job_id=job_id)
     if card is None:
-        print(f"Error: memory card not found: {memory_id}", file=sys.stderr)
-        sys.exit(1)
+        fail("memory_card_not_found", f"memory card not found: {memory_id}",
+             json_output=json_output)
     print(f"Marked stale: {card.id} key={card.key}")
 
 
@@ -265,13 +266,14 @@ def _cmd_memory_card_supersede(
     *,
     project_id: str | None = None,
     job_id: str | None = None,
+    json_output: bool = False,
 ) -> None:
     from packages.memory.local_gateway import supersede_memory_card
 
     old, new = supersede_memory_card(old_id, new_id, project_id=project_id, job_id=job_id)
     if old is None:
-        print(f"Error: old memory card not found: {old_id}", file=sys.stderr)
-        sys.exit(1)
+        fail("memory_card_not_found", f"old memory card not found: {old_id}",
+             json_output=json_output)
     print(f"Superseded: {old_id[:8]} by {new_id[:8]}")
 
 
@@ -281,6 +283,7 @@ def _cmd_memory_card_contradict(
     *,
     project_id: str | None = None,
     job_id: str | None = None,
+    json_output: bool = False,
 ) -> None:
     from packages.memory.local_gateway import contradict_memory_card
 
@@ -288,8 +291,8 @@ def _cmd_memory_card_contradict(
         memory_id, by_id, project_id=project_id, job_id=job_id,
     )
     if contradicted is None:
-        print(f"Error: memory card not found: {memory_id}", file=sys.stderr)
-        sys.exit(1)
+        fail("memory_card_not_found", f"memory card not found: {memory_id}",
+             json_output=json_output)
     print(f"Contradicted: {memory_id[:8]} by {by_id[:8]}")
 
 
@@ -333,25 +336,30 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
         args.memory_id,
         project_id=getattr(args, "project", None),
         job_id=getattr(args, "job", None),
+        json_output=getattr(args, "json", False),
     ),
     "memory.card-reject": lambda args: _cmd_memory_card_reject(
         args.memory_id,
         project_id=getattr(args, "project", None),
         job_id=getattr(args, "job", None),
+        json_output=getattr(args, "json", False),
     ),
     "memory.card-stale": lambda args: _cmd_memory_card_stale(
         args.memory_id,
         project_id=getattr(args, "project", None),
         job_id=getattr(args, "job", None),
+        json_output=getattr(args, "json", False),
     ),
     "memory.card-supersede": lambda args: _cmd_memory_card_supersede(
         args.old_id, args.new_id,
         project_id=getattr(args, "project", None),
         job_id=getattr(args, "job", None),
+        json_output=getattr(args, "json", False),
     ),
     "memory.card-contradict": lambda args: _cmd_memory_card_contradict(
         args.memory_id, args.by_id,
         project_id=getattr(args, "project", None),
         job_id=getattr(args, "job", None),
+        json_output=getattr(args, "json", False),
     ),
 }
