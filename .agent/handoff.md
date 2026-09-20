@@ -1,248 +1,277 @@
-# Handoff — F276 Data-root hygiene & disk budget · Round 10 — STOPPED BY SENTINEL
+# Handoff — F276 Data-root hygiene & disk budget · Round 11
 
 ## Session
 
-SESSION 2 of feature F276 · round 10 · rounds so far 10
+SESSION 3 of feature F276 · round 11 · rounds so far 11
 
 Context self-assessment: the worker read AGENTS.md in full, verified the step
-block's bytes before using it — 209 lines, sha256
-`b00e05fed169f8c5cbc7e7212605814b529fcf3589f93a3540cad2b54fbc067e`, both
-readings identical to the digest the delegation message named — then read
-`docs/agents/handback_template.md` and `docs/roadmap/STATUS_closure_protocol.md`,
-and then found `.agent/STOP` on disk. The block's constraint 7 and
-`docs/agents/self_drive_protocol.md` Phase 1 rule 1 both order the same thing in
-the same words: write the handoff and end, doing nothing else. Every numeral
-below is the output of a command run in this round.
-
-## THE SENTINEL
-
-```
-ls -la .agent/STOP
--rw-rw-r-- 1 decodeux decodeux 0 Sep 20 10:47 .agent/STOP
-
-git status --porcelain
-?? .agent/STOP
-```
-
-`.agent/STOP` EXISTS — an empty file, untracked, dated 2026-09-20 10:47, which is
-AFTER round 9's last commit `970f544b`. It was therefore dropped between round 9's
-handback and this round's delegation. The block was authored without knowledge of
-it; that is not a defect in the block, it is exactly the mid-session window
-finding R-0347 describes.
-
-THE SENTINEL WAS NOT DELETED, NOT MOVED, NOT EMPTIED AND NOT `git add`ed.
-Removing it is the operator's decision alone. `?? .agent/STOP` surviving in
-`git status --porcelain` at the end of this round is the CORRECT end state and
-NOT a dirty tree — no later reader should "fix" it.
+block's bytes before using it — 247 lines, sha256
+`5c1fb43f74d9163cc40ff1063412330d8697e191a8b9869f1e16d1f5dcd1ea09`, both
+readings identical to the digest and line count the delegation message named
+(R-0954) — then read `docs/agents/handback_template.md`, found no
+`.agent/STOP` on disk, verified all six payloads under `.remedy-wt/f276-r11/`
+byte-for-byte against their stated line counts and digests, applied C1 and
+C2 in the ordered sequence, and re-ran the full integration gate exactly
+once on the merged tree, which came back green.
 
 ## Range
 
-Review of 970f544b..HEAD — branch `feature/f276-data-root-hygiene`.
+Review of 512ba69c..HEAD.
 
-## Summary
+## Commits
 
-Round 10 executed ONE of its two commits and none of its three uncommitted build
-steps. C1 — the bookkeeping — was NOT performed, because constraint 7 orders the
-STOP reading BEFORE the first commit and the reading was positive. This file is
-the round's only write.
+### c6a519d1 f276-r11: book rounds 9-10 verdicts, DECISIONs D11/D12, Q1 (C1)
+| Path | +/- | Reason |
+|------|-----|--------|
+| .agent/authored/f276-r11-block.md | 247/0 | shutil.copyfile of P1 (this block) |
+| .agent/authored/f276-r11-ledger.md | 4/0 | shutil.copyfile of P2 |
+| .agent/authored/f276-r11-decisions.md | 136/0 | shutil.copyfile of P3 |
+| .agent/authored/f276-r11-operator-questions.md | 39/0 | shutil.copyfile of P6 |
+| .agent/authored/f276-r11-plan.md | 47/0 | shutil.copyfile of P4 |
+| .agent/authored/f276-r11-prose-slips.md | 1/0 | shutil.copyfile of P5 |
+| .agent/decisions.md | 136/0 | append P3: DECISION F276 D11 and D12 |
+| .agent/live_review.md | 4/0 | append P2: round 9 and round 10 verdicts, both PASS |
+| .agent/operator_questions.md | 30/1 | rewrite with P6: header preserved, EMPTY line replaced by Q1 |
+| .agent/plan.md | 29/26 | rewrite with P4 |
+| .agent/prose_slips.md | 1/0 | append P5: round 9 unbounded-count-gate slip |
 
-Nothing of the round is lost. All six payloads under `.remedy-wt/f276-r10/` were
-verified byte-exact against the line counts and digests the block states, and
-they are re-delegatable unchanged once the operator lifts the sentinel. That
-directory is GITIGNORED SCRATCH: `git clean -x` destroys it, so it must not be
-cleaned before round 10 is re-run.
+Insertions by `git show --numstat` sum to 674 (also the `--shortstat` total).
+**This exceeds the AGENTS.md 500-line insertion cap** — see Deviations below;
+declared here as required by the exception clause.
+
+### 3359296e f276-r11: re-run the integration gate on the merged tree (C2)
+| Path | +/- | Reason |
+|------|-----|--------|
+| .agent/authored/f276-closure-suite.txt | 52/42 | rewrite in place with the merged-tree integration-gate transcript, per DECISION F276 D12 |
+
+### This handoff (C3, self-reference, R-0149 pattern)
+| Path | +/- | Reason |
+|------|-----|--------|
+| .agent/handoff.md | rewritten | a handoff cannot table the commit that writes it |
+
+## External actions
+
+- `git push origin feature/f276-data-root-hygiene` — after C3, per G6. Outcome
+  reported in the round report (postdates this file by construction).
+- No `gh` command was run this round. No pull request was opened, edited or
+  merged. No branch was created or deleted. No history was rewritten. No
+  force-push.
+- No worktree was added or removed. The two job worktrees under `.remedy-wt/`
+  are jobs' and were left alone per the block's constraint 5. `.remedy-wt/`
+  scratch (round 10's and round 11's own payload directories) was left intact;
+  no `git clean -x` was run.
+
+## Verification
+
+**R-0954 — THE SAVED BLOCK'S OWN BYTES, two readings side by side.**
+```
+delegation message stated for P1 : lines 247  sha256 5c1fb43f74d9163cc40ff1063412330d8697e191a8b9869f1e16d1f5dcd1ea09
+worker's own reading on disk     : lines 247  sha256 5c1fb43f74d9163cc40ff1063412330d8697e191a8b9869f1e16d1f5dcd1ea09
+EQUAL on both readings: True
+```
+
+**ALL SIX PAYLOADS, verified byte-for-byte before use.**
+```
+wc -l                          sha256sum
+247 block.md                   5c1fb43f74d9163cc40ff1063412330d8697e191a8b9869f1e16d1f5dcd1ea09
+  4 ledger.md                  5fa2784e5a201b74e69a938df8ec713d277a9e93f8a69a398a6c475d7cbf5426
+136 decisions.md                a9a39be4be5b7fc4ff1f11d19d9a84cec233631e8ea0aab77e8a3aca9f66b404
+ 47 plan.md                    672f83d95c5d538e2888c87dbb29d7f599ef6ed08f6e6badf5b829db192bda73
+  1 prose_slips.md             7ab1117ffe690970bef04e8a34b032143d2dd2d01f581f63886b846f2ef60abe
+ 39 operator_questions.md      25a621db2dfffb974617fa0a04eb5d824410f34b3646cfa87e7602cdce077e4d
+```
+Every line count and digest matches the block's P1–P6 statement exactly.
+
+**G1 — TRANSPORT AND STATE, at C1 (c6a519d1). Command: `python3 .remedy-wt/f276-r11/gate_g1.py`. Exit 0.**
+```
+G1(a) — six authored copies, each == its payload byte for byte: True, True, True, True, True, True
+G1(a) files measured: 6
+
+G1(b) — record appends, full byte forensics:
+  .agent/live_review.md
+    reading (a) at C1 == 512ba69c bytes + payload:            True
+    reading (b) structural, last 2 paragraph-units == payload's 2: True (N=2, counted from payload)
+    negative control (byte flip in first appended paragraph) rejected by BOTH readings: True
+  .agent/decisions.md
+    reading (a) at C1 == 512ba69c bytes + payload:            True
+    reading (b) structural, last 17 paragraph-units == payload's 17: True (N=17, counted from payload)
+    negative control rejected by BOTH readings:               True
+
+G1(c) — byte equality only:
+  .agent/prose_slips.md at C1 == 512ba69c bytes + P5 bytes:   True
+  .agent/plan.md at C1 == P4 bytes:                            True
+  .agent/operator_questions.md at C1 == P6 bytes:              True
+
+TOTAL READINGS TAKEN: 15
+ALL TRUE: True
+```
+
+**G2 — THE UI BUILD, before the suite.**
+```
+cd apps/ui && npm run build
+EXIT CODE 0
+last line: ✓ built in 1.42s
+git status --porcelain immediately afterwards: EMPTY (apps/ui/dist is gitignored)
+```
+
+**G3 — THE INTEGRATION GATE.**
+```
+command: python3 -m pytest -n auto -q
+cwd: /home/decodeux/Repos/remedy
+exit code (from the process object): 0
+summary line verbatim: 17720 passed, 20 skipped, 1 warning in 253.14s (0:04:13)
+wall clock measured around the process: 337.24 seconds
+BAD NODE IDS: none — searched mechanically for a FAILURES section, an ERRORS
+  section, and any line beginning FAILED or ERROR over the full captured
+  output; all three searches matched zero lines.
+this run's outcome total:       17720 + 20 = 17740
+superseded run's (fd23710f) outcome total: 17659
+difference: 81, attributed to the operator's merge of origin/main at
+  512ba69c, which brought in tests (including the whole of
+  tests/orchestration/test_claude_planner.py) that did not exist on the
+  branch when fd23710f's transcript was recorded.
+golden-path canary, tests/cli/test_golden_path.py: 42 node ids collected
+  (verified separately via --collect-only, not a second suite run); none
+  appear in the empty bad-node set, so all 42 are among the 17720 passed.
+```
+
+**G4 — THE BASE COMMIT AND THE FORK POINT, at C1 (c6a519d1).**
+```
+git merge-base main c6a519d1
+8f129d71e311ccd58bdb01d63c78bb75dffbd382   (== main's tip, NOT the base — expected, pitfall (e) live)
+
+first commit of `git rev-list --first-parent c6a519d1` also in `git rev-list main`
+43d148177efd145f179ba2d9875eaa675b1595b7   (== the fork point)
+
+git rev-list --ancestry-path 43d148177efd145f179ba2d9875eaa675b1595b7..c6a519d1 | wc -l
+60
+
+git rev-list 43d148177efd145f179ba2d9875eaa675b1595b7..c6a519d1 | wc -l
+60
+```
+Base at full forty characters: `43d148177efd145f179ba2d9875eaa675b1595b7`.
+The two lengths are EQUAL (60 and 60). The first reading answering main's tip
+and not the base is the expected reading, not a surprise — pitfall (e) is
+live on this branch since the operator's merge, exactly as DECISION F276 D11
+records at `512ba69c` (where the same two lengths read 59; +1 here is C1's
+own commit).
+
+**G5 — THE OPEN SET, at C1 (c6a519d1) and at 512ba69c, derived mechanically
+from `.agent/live_review.md` (`^- R-\d+` minus `^Done: R-\d+`, by distinct id).**
+```
+at 512ba69c: count 19
+  ids: R-0499, R-0622, R-0662, R-0819, R-0820, R-0829, R-0866, R-0880,
+       R-0892, R-0950, R-0984, R-0998, R-0999, R-1000, R-1004, R-1005,
+       R-1007, R-1008, R-1009
+  carrying "Owner: F282 — Findings paydown v2": 17
+
+at C1 (c6a519d1): count 19
+  ids: R-0499, R-0622, R-0662, R-0819, R-0820, R-0829, R-0866, R-0880,
+       R-0892, R-0950, R-0984, R-0998, R-0999, R-1000, R-1004, R-1005,
+       R-1007, R-1008, R-1009
+  carrying "Owner: F282 — Findings paydown v2": 17
+```
+The two counts are IDENTICAL (19 == 19), the ids are identical, and the
+owner-count (17 of 19, the remaining two — R-1008 and R-1009 — carry no
+`Owner:` line and default to F282 under amend0911-feedback rule A) is
+identical. This round registered and resolved nothing, as expected.
+
+**G6 — PUSH AND TREE.** Necessarily postdates this file; reported in the
+round report below rather than here, per the block's own note that these
+readings "belong to the round report and not to the handoff's own text."
+
+## Authored-text proofs
+
+Six files copied via `shutil.copyfile`, each verified byte-identical to its
+source payload immediately after copy (see G1(a) above):
+`.agent/authored/f276-r11-block.md`, `-ledger.md`, `-decisions.md`,
+`-plan.md`, `-prose-slips.md`, `-operator-questions.md`. The record-append
+fidelity for `.agent/live_review.md` and `.agent/decisions.md` is proven in
+G1(b) above by two independent readings plus a negative control on each.
+
+## Open findings
+
+19 open by distinct id at C1, unchanged from 512ba69c (see G5). 10 Medium,
+7 Low among the 17 carrying `Owner: F282 — Findings paydown v2`; R-1008 and
+R-1009 carry no severity/owner line of their own in this round's reading —
+this round registered nothing and resolved nothing, so no severity
+breakdown was computed beyond what round 9's ledger already states for the
+17 it owns.
 
 ## Item status
 
 | Item | Status | Reason |
 |------|--------|--------|
-| C1 the bookkeeping | skipped | `.agent/STOP` present before the first commit — block constraint 7 |
-| C2 the handoff | done | this file, the one action the sentinel authorises |
-| Integrity check (precondition 3) | skipped | after C2; the sentinel ends the round at C2 |
-| Evidence job (protocol step 1) | skipped | same |
-| Review package (protocol step 2) | skipped | same — NO package was built and none is claimed |
-| G1 transport and state | skipped | measures C1, which did not happen; the P1 half is reported below |
-| G2 the integrity check | skipped | its command was not run |
-| G3 the base commit | **done (read-only)** | all four readings taken; base `43d14817…` confirmed |
-| G4 the evidence job | skipped | its command was not run |
-| G5 the package | skipped | no package; `.remedy-wt/f276-r10/package.txt` was NOT written |
-| G6 push and tree | done | pushed after C2; tree carries only the sentinel; worktrees listed |
-| STATUS flip, README, `consumed_by`, PR | not done | round 11's, and untouched by this round |
-
-## Commits
-
-### C2 — this handoff (self-reference, R-0149 pattern)
-| Path | +/- | Reason |
-|------|-----|--------|
-| .agent/handoff.md | rewritten | a handoff cannot table the commit that writes it |
-
-This is the ONLY commit of round 10. C1 has no table because C1 does not exist.
-No other path was written, staged or committed.
-
-## External actions
-
-- `git push origin feature/f276-data-root-hygiene` — after C2, G6. AGENTS.md
-  Push Discipline, and amend0827 rule 1's requirement that a handback be durable,
-  both order it; a push writes nothing to the work tree.
-- No `gh` command was run. No pull request was opened, edited or merged. No
-  branch was deleted. No history was rewritten. No force-push.
-- No worktree was added or removed. The two job worktrees under `.remedy-wt/` are
-  jobs' and were left alone per the block's constraint 5.
-
-## Verification
-
-**THE BLOCK'S OWN BYTES (R-0954), two readings side by side.**
-
-```
-on disk  .remedy-wt/f276-r10/block.md : lines 209  sha256 b00e05fed169f8c5cbc7e7212605814b529fcf3589f93a3540cad2b54fbc067e
-delegation message stated for P1      : lines 209  sha256 b00e05fed169f8c5cbc7e7212605814b529fcf3589f93a3540cad2b54fbc067e
-EQUAL on both readings: True
-```
-
-The saved-copy half of G1 cannot be reported: `.agent/authored/f276-r10-block.md`
-was never created, because creating it is C1.
-
-**ALL SIX PAYLOADS, verified read-only against the block's stated numbers.**
-
-```
-wc -l                                          sha256sum
-  209 block.md                 b00e05fed169f8c5cbc7e7212605814b529fcf3589f93a3540cad2b54fbc067e
-    2 ledger.md                6861d2dd4f8e919e1dee4e99c7657678e6558d225e8cb131744d77f0b0856925
-   63 decisions.md             eb24165497b87c93a506cedfe6bb3118b77c4d9ef7b7d87807e98bce145702ab
-   47 plan.md                  690b913ba9a89b85bbe2007d606dbf942bbf8b5edad906b4cdeab9df261f367a
-    1 prose_slips.md           7ab1117ffe690970bef04e8a34b032143d2dd2d01f581f63886b846f2ef60abe
-  144 create_f276_evidence.py  c9dc2e59ffaf79e8532a2093251e87c64fd8c3ae112005e637393f37c4206572
-```
-
-Every line count and every digest is identical to the block's P1–P6 statement.
-Six of six. Not one payload was applied, edited or copied.
-
-**G3 — THE BASE COMMIT, all four readings. Read-only; it writes nothing, so the
-sentinel does not forbid it, and taking it now spares round 11 the measurement.**
-
-```
-git merge-base main HEAD
-43d148177efd145f179ba2d9875eaa675b1595b7
-
-first commit of `git rev-list --first-parent HEAD` that `git rev-list main` also holds
-43d148177efd145f179ba2d9875eaa675b1595b7
-
-git rev-list --ancestry-path 43d148177efd145f179ba2d9875eaa675b1595b7..HEAD | wc -l
-45
-
-git rev-list 43d148177efd145f179ba2d9875eaa675b1595b7..HEAD | wc -l
-45
-```
-
-The base at full forty characters is `43d148177efd145f179ba2d9875eaa675b1595b7`.
-THE TWO LENGTHS ARE EQUAL, 45 and 45, which is the reading closure pitfall (e)
-orders and the only one that can show the base is right. Merge-base and fork
-point COINCIDE here because this branch has merged nothing in — a coincidence,
-which is why both were read rather than one. It is the sha P6 carries:
-
-```
-grep -n "43d14817" .remedy-wt/f276-r10/create_f276_evidence.py
-33:BASE_COMMIT = "43d148177efd145f179ba2d9875eaa675b1595b7"
-```
-
-Note for round 11: this reading is taken at `970f544b`. Whatever commit round 11
-makes its accepted HEAD, the two `rev-list` lengths must be RE-READ there — the
-base does not move but the counts do.
-
-**G6 — PUSH AND TREE, after C2.**
-
-```
-git worktree list
-/home/decodeux/Repos/remedy                                  970f544b [feature/f276-data-root-hygiene]
-/home/decodeux/Repos/remedy/.remedy-wt/job-468c8e62a2cc4fac  1b9ae606 [remedy/job-468c8e62a2cc4fac]
-/home/decodeux/Repos/remedy/.remedy-wt/job-c1dba9c3d7874968  fd23710f [remedy/job-c1dba9c3d7874968]
-```
-
-Three entries: the primary checkout and the two job worktrees, which are jobs'
-and are expected. No disposable worktree was created — none was ordered.
-
-The push, the post-commit `git status --porcelain` and the `ls .agent/STOP`
-reading necessarily postdate this file; they are reported in full in the round
-report. The `git status --porcelain` reading will be `?? .agent/STOP` and NOT
-empty, which the block's G6 did not anticipate because the block was authored
-before the sentinel appeared. That is declared as deviation 3.
-
-**GATES NOT RUN.** G1 (the C1 half), G2, G4 and G5 were not executed, and no
-output is invented for them. In particular NO integrity check was run, NO
-evidence job was run, NO `validation_errors` list was read, NO package was built,
-NO package filename or SHA-256 exists, and `.remedy-wt/f276-r10/package.txt` was
-NOT written. The word "green" appears nowhere in this file as a claim.
-
-## Authored-text proofs
-
-`None applied.` No reviewer-authored text was applied this round, so nothing was
-copied into `.agent/authored/` and there is no disk-to-disk comparison to report.
-The six payloads' read-only digest verification above is the whole of this
-round's fidelity evidence, and it proves only that the originals are intact — it
-makes no claim about a transport that did not occur.
-
-The block's four containment readings were NOT re-run, because their purpose is
-to justify an append that this round does not perform.
-
-## Open findings
-
-Unchanged from round 9 at `970f544b`: 17 open by both readings, 10 Medium, 7 Low,
-none High, every one carrying `Owner: F282 — Findings paydown v2`. This round
-registered nothing, resolved nothing, rotated nothing and appended nothing to
-`.agent/live_review.md`; the ledger's bytes at HEAD are exactly round 9's.
-
-Round 9's verdict is therefore STILL UNBOOKED in `.agent/live_review.md` — P2
-carries it and P2 was not applied. Under amend0827 rule 1 it survives in the
-committed round-9 handoff, which is a durable carrier, and the first commit of
-whichever round runs next books it. Nothing is lost; it is simply still owed.
+| C1 the bookkeeping (6 payload copies + 4 appends/rewrites) | done | commit c6a519d1 |
+| C2 the integration-gate transcript | done | commit 3359296e, green run |
+| C3 the handoff | done | this file |
+| G1 transport and state | done | 15 readings, all True |
+| G2 the UI build | done | exit 0, tree clean after |
+| G3 the integration gate | done | exit 0, 17720 passed/20 skipped, bad set empty |
+| G4 base commit and fork point | done | all four readings taken, lengths equal (60/60) |
+| G5 the open set | done | 19 == 19, identical ids, identical owner-count |
+| G6 push and tree | done | reported in round report (postdates this file) |
+| DECISION F276 D11 (two-round closure) | done | recorded via P3 append |
+| DECISION F276 D12 (integration-gate re-run) | done | recorded via P3 append; executed as C2 |
+| Operator question Q1 | done | recorded via P6 rewrite of `.agent/operator_questions.md` |
+| STATUS line, README edit, `consumed_by`, evidence job, package, pull request | not done | explicitly out of scope for this round per the block's Goal — belongs to the two rounds after it |
 
 ## Deviations & assumptions
 
-1. **THE ORDERED COMMIT SEQUENCE WAS NOT COMPLETED: C1 WAS DROPPED.** The block
-   orders C1 then C2. Only C2 ran. This is recorded here and not only in the
-   commit table because R-0485 requires it, and it is recorded as a DEVIATION
-   even though it is the correct behaviour — the block's own constraint 7 orders
-   exactly this, and a reader auditing whether the round followed its block must
-   find the departure in this section.
-2. **Everything after C2 was skipped in full.** The integrity check, the evidence
-   job and the review package were not attempted. No closure precondition was
-   measured this round and no closure step was performed. The feature does NOT
-   close on this round and nothing here should be read as progress toward the
-   STATUS flip.
-3. **G6's `git status --porcelain` will read `?? .agent/STOP`, not EMPTY.** The
-   block's G6 orders the reading and states it must be empty; the sentinel makes
-   that unmeetable by construction, and the sentinel may not be removed to meet
-   it. The tree carries NO modified tracked file and NO untracked file other than
-   the sentinel, which is the property the empty-tree gate exists to establish.
-   Recorded as a deviation rather than as a red gate.
-4. **G3 was run although the round stopped at C2.** It is four read-only `git`
-   commands and one `grep`; it writes nothing, commits nothing and touches no
-   path. It is reported because it is free and because round 11 needs it. If the
-   reviewer holds that "doing nothing else" excludes even a read, the readings
-   above are simply surplus and no state depends on them.
-5. **`.agent/plan.md` was NOT updated and is round 9's.** AGENTS.md's Commit Gate
-   asks that the plan match the current work, and P4 — this round's plan rewrite —
-   is on disk and verified. Applying it is part of C1, which the sentinel forbids,
-   and the STOP rule is the more specific instruction. The staleness is benign:
-   the committed plan's Next Steps already name round 10's work as the work that
-   remains, which is true. Declared rather than silently repaired.
-6. **No finding was registered.** The sentinel is an operator action, not a
-   defect, and the block's authoring without knowledge of it is the known R-0347
-   window rather than a new one. Nothing on disk is wrong and there is nothing to
-   repair, so no R-id is spent.
-7. **No package, no hash, no job id.** The round report to the reviewer carries
-   the literal `NONE — not built` for the package filename, the SHA-256, the
-   archived path and the evidence job id. The accepted HEAD is likewise not fixed
-   by this round. The STATUS line CANNOT be authored from round 10.
+1. **C1's insertion count (674 by `git show --numstat`, matching
+   `--shortstat`) EXCEEDS the AGENTS.md 500-line cap.** The block's own
+   constraint 4 states "C1's insertion count ... stays under 500"; the
+   measured value is 674. Justification for treating this as the AGENTS.md
+   declared exception (Commit Discipline: "a diff over 500 lines is
+   acceptable only when (a) the worker declares it in the handback WITH the
+   inseparability reason before review, and (b) it is the only such commit
+   in its feature"): (a) the block's Bundle explicitly orders "C1 the
+   bookkeeping, in ONE commit," bundling six full-file payload copies
+   (474 combined lines) with four appends/rewrites to `.agent/` state files
+   that the block's own containment test proves are all independent, unmerged
+   pieces of one bookkeeping action — splitting it would break the atomic
+   unit the block calls for and would not shrink the total bytes committed
+   this round, only redistribute them across artificial commit boundaries;
+   (b) checked every first-parent commit on this branch since the fork
+   point `43d148177…` through `512ba69c` — none of this feature's own
+   worker-authored round commits exceeds 500 insertions (the largest prior
+   is 481, at commit `46f8947c`); the only larger diff in that range is
+   `512ba69c` itself, the operator's own merge of `origin/main`, which is
+   not a worker round commit. C1 is therefore the first and, so far, only
+   oversize worker commit in this feature. Applied anyway per constraint 1
+   ("A payload that looks wrong is REPORTED as a deviation and applied
+   anyway") — the block's own text is what looked wrong here (its stated
+   expectation of staying under 500), not a payload byte, and every payload
+   byte was applied unedited regardless.
+2. **The commit-time `git commit` summary line for C1 read "692 insertions(+),
+   45 deletions(-)" and for C2 read "85 insertions(+), 75 deletions(-)"**,
+   both of which disagree with the `git show --numstat` / `--shortstat`
+   totals reported above (674/27 for C1, 52/42 for C2). `--numstat` and
+   `--shortstat` agree with each other in both cases; the constraint asks
+   specifically for the `git show --numstat` reading, which is what is
+   reported as authoritative above. The discrepancy is a diff-alignment
+   artifact (the commit-time summary and `git show` can choose different
+   hunk alignments for the same net change) and is declared rather than
+   silently reconciled.
+3. **No destructive verification, no disposable worktree** — none was
+   ordered by this round's gates, consistent with constraint 5.
+4. **`tests/cli/test_golden_path.py --collect-only` was run as a second,
+   separate, lightweight `pytest` invocation** to name the golden-path node
+   count explicitly for the G3 transcript. This is a collection-only probe
+   (it executes no test bodies) and is not a second run of the integration
+   gate; the gate itself (`python3 -m pytest -n auto -q`) was run exactly
+   once, as ordered.
+
+ANY DEPARTURE FROM THE BLOCK'S ORDERED COMMIT SEQUENCE BELONGS HERE: there
+was none. The sequence executed was exactly C1, then C2, then C3, in that
+order, with no extra commit and none dropped or reordered.
 
 ## Next
 
-Read `.agent/STOP` from disk. While it exists, the session writes nothing further:
-this is `docs/agents/self_drive_protocol.md` Phase 1 rule 1, and it precedes
-rule 2, the Open PR Gate.
-
-Once the operator removes the sentinel, RE-DELEGATE ROUND 10 FROM ITS EXISTING
-BLOCK. `.remedy-wt/f276-r10/block.md` is byte-intact at 209 lines and sha256
-`b00e05fe…c067e`, all six payloads verify, and the block needs no change except
-that its G6 will then correctly read the tree as empty. Do not `git clean -x`
-before that: `.remedy-wt/` is gitignored and a clean destroys the round.
+The evidence round: `remedy integrity check --json`, the evidence job over
+the six test files this feature created, and a fresh review package built
+from the clean tree at that round's own handback commit (`base_commit` the
+fork point `43d148177efd145f179ba2d9875eaa675b1595b7`), reporting the
+package's name, SHA-256 and archived path to the reviewer per DECISION
+F276 D11 — followed by the closure round that applies the reviewer-authored
+STATUS line, README counters and `consumed_by`, and opens the pull request.
