@@ -3,17 +3,17 @@
 from __future__ import annotations
 
 import json as _json
-import sys
 from collections.abc import Callable
 from typing import TYPE_CHECKING
 
+from apps.cli.json_envelope import fail
 from packages.orchestration.data_paths import lookup_job_id
 
 if TYPE_CHECKING:
     import argparse
 
 
-def _load_job_events(job_id_str: str):
+def _load_job_events(job_id_str: str, *, json_output: bool = False):
     """Load job and events, exit on error. Returns (job, events, job_id_str)."""
     from packages.orchestration.data_paths import resolve_data_root
     from packages.orchestration.pingpong_job import JobNotFoundError, require_job_plan
@@ -22,13 +22,12 @@ def _load_job_events(job_id_str: str):
     try:
         job_id = lookup_job_id(job_id_str)
     except ValueError:
-        print(f"Error: No job matches {job_id_str!r}. Try: remedy job list.", file=sys.stderr)
-        sys.exit(1)
+        fail("invalid_job_id", f"No job matches {job_id_str!r}. Try: remedy job list.",
+             json_output=json_output)
     try:
         job = require_job_plan(job_id)
     except JobNotFoundError as exc:
-        print(f"Error: {exc}", file=sys.stderr)
-        sys.exit(1)
+        fail("job_not_found", str(exc), json_output=json_output)
 
     data_dir = resolve_data_root()
     events = load_run_events(data_dir, job_id)
@@ -52,7 +51,7 @@ def _cmd_event_list(
     )
     from packages.orchestration.list_options import ListOptionError, apply_list_options
 
-    _job, events, jid = _load_job_events(job_id_str)
+    _job, events, jid = _load_job_events(job_id_str, json_output=json_output)
     # Every row of the requested type first; the shared helper then filters by
     # time, orders newest-first and caps — so --limit keeps the NEWEST events.
     result = list_events(jid, events, event_type=event_type, limit=len(events) + 1)
@@ -69,8 +68,7 @@ def _cmd_event_list(
             date_getter=lambda e: e.timestamp or None,
         )
     except ListOptionError as exc:
-        print(f"Error: {exc}", file=sys.stderr)
-        sys.exit(1)
+        fail("invalid_list_option", str(exc), json_output=json_output)
 
     if json_output:
         print(_json.dumps({
@@ -98,12 +96,11 @@ def _cmd_event_show(
         get_event,
     )
 
-    _job, events, jid = _load_job_events(job_id_str)
+    _job, events, jid = _load_job_events(job_id_str, json_output=json_output)
     event = get_event(jid, events, event_id)
 
     if event is None:
-        print(f"Error: event not found: {event_id}", file=sys.stderr)
-        sys.exit(1)
+        fail("event_not_found", f"event not found: {event_id}", json_output=json_output)
 
     if json_output:
         print(_json.dumps({
@@ -132,7 +129,7 @@ def _cmd_event_timeline(
         export_event_timeline_json,
     )
 
-    _job, events, jid = _load_job_events(job_id_str)
+    _job, events, jid = _load_job_events(job_id_str, json_output=json_output)
     timeline = build_event_timeline(jid, events)
 
     if json_output:
