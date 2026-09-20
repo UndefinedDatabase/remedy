@@ -1,132 +1,118 @@
-# Handoff — F276 Data-root hygiene & disk budget · Round 4
+# Handoff — F276 Data-root hygiene & disk budget · Round 5
 
 ## Session
 
-SESSION 1 of feature F276 · round 4 · rounds so far 4
+SESSION 1 of feature F276 · round 5 · rounds so far 5
 
-Context self-assessment: the worker read the step block and verified its sha256 before anything else, then AGENTS.md in full, `docs/agents/handback_template.md`, `docs/roadmap/features/T2_F276.md`, the `decisions.md` payload (DECISION F276 D5, which rules where the block is terser), the `ledger.md` payload carrying round 3's verdict and the reviewer's `Done: R-1002`, and the whole 1082-line code diff before applying a single slice of it, and held all of it without loss; every numeral below is the output of a command run in this round, not a recollection.
+Context self-assessment: the worker read the step block and verified its sha256 (`7912cf78…`, 105 lines) before anything else, then AGENTS.md in full, `docs/agents/handback_template.md`, `docs/roadmap/features/T2_F276.md`, the `decisions.md` payload (DECISION F276 D6, which rules where the block is terser), the `ledger.md` payload carrying round 4's verdict and the three registrations, the `prose_slips.md` payload, and the whole 674-line code diff before applying a single slice of it, and held all of it without loss; every numeral below is the output of a command run in this round, not a recollection.
 
 ## Range
 
-Review of 543863a0..HEAD — branch `feature/f276-data-root-hygiene`.
+Review of a112e1fa..HEAD — branch `feature/f276-data-root-hygiene`.
 
 ## Summary
 
-Round 4 books round 3's verdict, resolves R-1002 with the reviewer's own text, and builds T003.
-- C1 books round 3's PASS over the five commits of `94441e34`..`543863a0`, applies the reviewer's `Done: R-1002` paragraph, appends DECISION F276 D5 and rewrites the plan to this round; the four reviewer payloads are saved byte-exact under `.agent/authored/`.
-- C2 lands `release_staging_workspace` plus the copy's two new filters — one `git check-ignore --stdin -z` pass guarded by the target's own `.git`, and the 16 MiB per-file backstop — and exports `child_deletion_refusal` and `job_state_refusal` so the release reuses the reclaim command's rules instead of respelling them.
-- C3 wires the hook: `_finalize_job_workspace`'s no-handle branch, which IS the copy case, releases only under the very condition it already applies to a worktree; the tests pin both layers.
-- C4 adds the architecture section and the feature-file amendment. C5 is this handoff. No pull request was opened.
+Round 5 books round 4's verdict, registers R-1003, R-1004 and R-1005, and repairs the regression F276's own round 4 introduced.
+- C1 books round 4's PASS ON WHAT IT GATED over the five commits of `543863a0`..`a112e1fa` and records that the gate list itself was too narrow; registers R-1003 (High), R-1004 (Medium) and R-1005 (Medium); appends DECISION F276 D6 and the round-4 gate slip; rewrites the plan. The five reviewer payloads are saved byte-exact under `.agent/authored/`.
+- C2 is the repair: `_finalize_job_workspace`'s no-handle branch returns and frees nothing, `_release_job_workspace_copy` is deleted rather than left uncalled, and `job_apply._release_consumed_staging_copy` frees the copy after an apply whose status is exactly `applied` and whose record is already durable. Every other outcome keeps the copy.
+- C3 rewrites the architecture section and amends the feature file's T003 and its acceptance line in place.
+- C4 is this handoff. No pull request was opened.
 
 ## Item status
 
 | Item | Status | Reason |
 |------|--------|--------|
 | C1 bookkeeping | done | |
-| C2 the release and the copy filters | done | |
-| C3 the hook and its two layers | done | |
-| C4 the docs | done | |
-| C5 handoff | done | |
-| G1 transport + state | done | 12 readings, every one True |
-| G2 code transport | done | four object ids as ordered; six paths and no other |
-| G3 targeted suite | done | `583 passed in 176.72s`, exit 0, 0 failed |
+| C2 the repair and its tests | done | production and tests in one commit, as the block orders |
+| C3 the docs | done | |
+| C4 handoff | done | |
+| G1 transport + state | done | 14 readings, every one True |
+| G2 code transport | done | five object ids exactly as ordered; six paths and no other |
+| G3 the consumer first | done | `579 passed in 174.72s`, exit 0, 0 failed; the pair measured |
 | G4 ruff | done | `All checks passed!`, exit 0 |
-| G5 mutation red-proofs | done | control green; all three mutations red; none stayed green |
+| G5 mutation red-proofs | done | control green; both mutations red; neither stayed green |
 | G6 push + clean tree | done | reported in the round report; it follows this commit |
-| R-1002 | done | resolved by the reviewer's own `Done:` paragraph, applied byte-exact at C1 |
+| R-1003 | done | repaired at C2; it stays OPEN in the ledger — only the reviewer resolves |
+| R-1004 | registered | Medium, owner F282; not this round's to fix |
+| R-1005 | registered | Medium, owner F282; not this round's to fix |
+
+Landed: R-1003 — repaired by C2 `e754a6db`, with its docs at C3 `458ffe25`. It remains OPEN in the committed ledger and in the counts below: only the reviewer's own authored text resolves a finding.
 
 ## Commits
 
-### bc8b15b2 F276 R4 C1: the round 4 bookkeeping
+### b86e0e6d F276 R5 C1: the round 5 bookkeeping
 
 | Path | +/- | Reason |
 |------|-----|--------|
-| .agent/authored/f276-r4-block.md | 104/0 | byte copy of the step block |
-| .agent/authored/f276-r4-decisions.md | 60/0 | byte copy of the D5 payload |
-| .agent/authored/f276-r4-ledger.md | 4/0 | byte copy of the ledger payload |
-| .agent/authored/f276-r4-plan.md | 32/0 | byte copy of the plan payload |
-| .agent/decisions.md | 60/0 | `543863a0` bytes + the D5 payload |
-| .agent/live_review.md | 4/0 | `543863a0` bytes + the ledger payload: round 3's PASS and `Done: R-1002` |
-| .agent/plan.md | 15/14 | rewritten to the plan payload |
+| .agent/authored/f276-r5-block.md | 105/0 | byte copy of the step block |
+| .agent/authored/f276-r5-decisions.md | 47/0 | byte copy of the D6 payload |
+| .agent/authored/f276-r5-ledger.md | 8/0 | byte copy of the ledger payload |
+| .agent/authored/f276-r5-plan.md | 31/0 | byte copy of the plan payload |
+| .agent/authored/f276-r5-prose_slips.md | 1/0 | byte copy of the prose-slip payload |
+| .agent/decisions.md | 47/0 | `a112e1fa` bytes + the D6 payload |
+| .agent/live_review.md | 8/0 | `a112e1fa` bytes + the ledger payload: round 4's verdict and R-1003/R-1004/R-1005 |
+| .agent/plan.md | 7/8 | rewritten to the plan payload |
+| .agent/prose_slips.md | 1/0 | `a112e1fa` bytes + the one-line round-4 gate slip |
 
-Insertions 279.
+Insertions 255.
 
-### 92d4c38b F276 R4 C2: the release and the copy's two new filters
-
-| Path | +/- | Reason |
-|------|-----|--------|
-| packages/orchestration/data_reclaim.py | 32/6 | `_deletion_refusal`/`_job_state` exported, `STAGING_DIR_PREFIX` imported |
-| packages/orchestration/staging_workspace.py | 300/34 | the release, the enumerate-then-filter copy, the ignore pass, the ceiling |
-
-Insertions 332.
-
-### f7d668d9 F276 R4 C3: the hook and its two layers
+### e754a6db F276 R5 C2: the R-1003 repair
 
 | Path | +/- | Reason |
 |------|-----|--------|
-| packages/orchestration/pingpong_job.py | 75/0 | `_release_job_workspace_copy`, the hook's copy branch, the two log lines |
-| tests/orchestration/test_staging_lifecycle.py | 326/0 | both layers, the no-op second release, the symlink refusal, the two filters |
+| packages/orchestration/job_apply.py | 84/1 | `APPLY_STATUS_RELEASES_STAGING`, `_release_consumed_staging_copy`, the call after `_apply_from_workspace`, the `staging_release` field and its summary line |
+| packages/orchestration/pingpong_job.py | 16/59 | `_release_job_workspace_copy` deleted; the no-handle branch returns and frees nothing; the docstring states the asymmetry |
+| tests/orchestration/test_job_apply.py | 18/3 | `test_approve_verifies_file_contents` reads the workspace BEFORE the apply and gains `assert result.files_applied` |
+| tests/orchestration/test_staging_lifecycle.py | 189/30 | the hook keeps a copy in every state including COMPLETED; eight end-to-end apply cases over a real `run_job` with fake providers; the no-op and the worktree-job cases |
 
-Insertions 401.
+Insertions 307.
 
-### 127d31ea F276 R4 C4: the docs
+### 458ffe25 F276 R5 C3: the docs
 
 | Path | +/- | Reason |
 |------|-----|--------|
-| docs/roadmap/features/T2_F276.md | 51/0 | the round 4 amendment to T003 |
-| docs/system/architecture.md | 52/0 | the lifecycle, the two layers, what the copy leaves behind |
+| docs/roadmap/features/T2_F276.md | 38/4 | T003's opening line amended in place, the round-5 amendment, the rewritten acceptance line |
+| docs/system/architecture.md | 37/20 | the "freed where its work is CONSUMED" section replaces the terminal-hook one; the two layers restated with the apply as the stricter caller |
 
-Insertions 103.
-
-### C5 — this handoff
-
-`.agent/handoff.md` alone. A handoff cannot table the commit that writes it (R-0149 pattern).
-
-Every commit is under the 500-insertion cap of AGENTS.md Commit Discipline; none was declared oversize.
+Insertions 75.
 
 ## External actions
 
-- `git worktree add --detach /home/decodeux/Repos/remedy/.remedy-wt/f276-r4-mut 127d31ea` — exit 0, created for G5 only.
-- `git worktree remove --force /home/decodeux/Repos/remedy/.remedy-wt/f276-r4-mut` — exit 0, as G5's last action. `git worktree list` afterwards shows the primary checkout and the operator's `job-468c8e62a2cc4fac` and nothing else.
-- `git push origin feature/f276-data-root-hygiene` — reported in the round report; it follows this commit.
-- No pull request created, edited or merged. No branch created or deleted. No `gh` command run.
+- `git worktree add --detach .remedy-wt/f276-r5-base a112e1fa` — created for G3's base reading; removed with `git worktree remove --force` as that step's last action.
+- `git worktree add --detach .remedy-wt/f276-r5-mut 458ffe25` — created for G5; removed with `git worktree remove --force` as that step's last action.
+- `git worktree list` after both removals shows the primary checkout plus `.remedy-wt/f276-proto5`, `.remedy-wt/f276-proto5-base` and `.remedy-wt/job-468c8e62a2cc4fac`, all three untouched. Nothing was pruned.
+- `git push origin feature/f276-data-root-hygiene` — follows this commit; its result is in the round report.
+- No pull request was created, edited or merged. No `gh` command was run.
 
 ## Verification
 
-- G1 transport + state — `python3 -B .remedy-wt/f276-r4/g1_transport.py` → exit 0. Five payload digests True (`ledger.md`, `decisions.md`, `plan.md`, `block.md`, `f276-r4.diff`), four `.agent/authored/f276-r4-*` copies equal their payload True, `.agent/live_review.md` == `543863a0` bytes + ledger.md True, `.agent/decisions.md` == `543863a0` bytes + decisions.md True, `.agent/plan.md` == plan.md True. `READINGS 12 ALL TRUE True`. Saved block 104 lines sha256 `a60c8b28e63704fca3f289b90a0256373f412b805478ee7288ea3856588857c9`; source block 104 lines, same sha256.
-- G2 code transport — `git rev-parse 127d31ea:packages 127d31ea:apps 127d31ea:tests 127d31ea:docs` → exit 0, `1cb7b9cf47cdcda2eb5b0c617f2a8673e45b416d`, `c6512f5298473ca4de84e8c8dbb811283c8e0f60`, `9ec093b7cefa773b20f9440f73a1f65a8001b43a`, `67a539fe31ec58b441a21b1366a9c280526caff8` — the four objects the block ordered, `apps` being the base's unchanged object. `git diff --name-only bc8b15b2 127d31ea` → exit 0, length 6, exactly: `docs/roadmap/features/T2_F276.md`, `docs/system/architecture.md`, `packages/orchestration/data_reclaim.py`, `packages/orchestration/pingpong_job.py`, `packages/orchestration/staging_workspace.py`, `tests/orchestration/test_staging_lifecycle.py`.
-- G3 targeted suite — the block's fifteen paths, serial, no `-n`, in the primary checkout → `583 passed in 176.72s (0:02:56)`, exit 0, 0 failed.
-- G4 ruff — `python3 -m ruff check packages/orchestration/staging_workspace.py packages/orchestration/data_reclaim.py packages/orchestration/pingpong_job.py tests/orchestration/test_staging_lifecycle.py` → `All checks passed!`, exit 0.
-- G5 mutation red-proofs — in the disposable worktree at `127d31ea`; imported `packages.orchestration.staging_workspace` resolved to `/home/decodeux/Repos/remedy/.remedy-wt/f276-r4-mut/packages/orchestration/staging_workspace.py`, so no editable install shadowed it. Control `77 passed in 1.80s`, exit 0. (a) the hook's condition line and the `_release_job_workspace_copy(job)` line under it deleted, each counted 1 occurrence: exit 1, `1 failed, 76 passed`, FAILED `tests/orchestration/test_staging_lifecycle.py::test_terminal_copy_job_is_released_by_the_hook`. (b) that same condition line replaced by `if job_is_terminal(job.state):`, 1 occurrence: exit 1, `2 failed, 75 passed`, FAILED `test_failed_copy_job_keeps_its_staging_copy_through_the_hook` and `test_the_hook_keeps_every_copy_job_that_did_not_complete[cancelled]` — exactly the two states where the hook's vocabulary and `job_is_terminal`'s differ, as DECISION F276 D5 (7) predicts. (c) `MAX_COPY_FILE_BYTES: int = 16 * 1024 * 1024` replaced by `1 << 62`, 1 occurrence: exit 1, `2 failed, 75 passed`, FAILED `test_the_ceiling_has_the_value_its_measurement_chose` and `test_file_over_the_ceiling_is_skipped_even_when_git_does_not_ignore_it`. No mutation stayed green. Both files restored byte-identically — `pingpong_job.py` `368f3fb8011655ccbf01acbbea56d1c935ffa8ed4cf575aa1a719a0b1ecc1d1b`, `staging_workspace.py` `ded8a7c00247c3dcdd55615a1624756f511048057f29788dd886d24733e753aa`, both matching their pre-mutation readings — and the worktree's `git status --porcelain` was empty before removal.
-- G6 push + clean tree — follows this commit; reported in the round report.
-- Per-commit greens (constraint 7): C2 alone `130 passed in 94.50s` exit 0 over the reclaim, data-cmd, class-registry, data-paths and job-fulfillment tests, with ruff green on both edited modules; C3 alone `18 passed in 84.56s` exit 0 on the new lifecycle file with no skips, so the sandbox did not refuse `git init`; C4 touches documentation only and is covered by G3's `tests/docs` leg.
-- Full suite: NOT run, per the block (amend0917-throughput rule 1).
+- G1 transport + state — a python check printed 14 readings, every one True: each of the five payload digests matches the block's, `.agent/live_review.md` / `.agent/decisions.md` / `.agent/prose_slips.md` each equal their `a112e1fa` bytes plus their payload as committed at C3, `.agent/plan.md` equals the plan payload, and each of the five `.agent/authored/f276-r5-*` copies equals its payload. SAVED BLOCK `.agent/authored/f276-r5-block.md`: lines=105 sha256=`7912cf784cfa90f39faebfa79de129cae6af20c261432f42292c306e4c2df463`; the block's own bytes: lines=105 sha256=`7912cf784cfa90f39faebfa79de129cae6af20c261432f42292c306e4c2df463`. Identical.
+- G2 code transport — `git rev-parse 458ffe25:packages 458ffe25:apps 458ffe25:tests` printed `9e1b3373800e449a81a7ebb2f2f56975d0b58297`, `c6512f5298473ca4de84e8c8dbb811283c8e0f60`, `0f4b7d2c49dc32ab41f5ba8acacda65f4ee32b66`; `git rev-parse 458ffe25:docs/system/architecture.md 458ffe25:docs/roadmap/features/T2_F276.md` printed `8a44350174409c3ddc6900e8098c786c43f4cbc4` and `9867b144cba64de8a17e3d2e3266a1f8275b47ab` — all five exactly the objects the block names. `git diff --name-only b86e0e6d 458ffe25` printed 6 paths and no other: `docs/roadmap/features/T2_F276.md`, `docs/system/architecture.md`, `packages/orchestration/job_apply.py`, `packages/orchestration/pingpong_job.py`, `tests/orchestration/test_job_apply.py`, `tests/orchestration/test_staging_lifecycle.py`.
+- G3 the consumer first — the eleven-path command, serial, no `-n`, in the primary checkout: `579 passed in 174.72s (0:02:54)`, exit 0, 0 failed. THE MEASURED PAIR, two separate readings: (i) `tests/orchestration/test_job_apply.py` alone at C3 in the primary checkout — `88 passed in 92.68s (0:01:32)`, exit 0; (ii) the same file alone at `a112e1fa` in the disposable worktree `.remedy-wt/f276-r5-base` — `19 failed, 69 passed in 11.66s`, exit 1, the 19 node ids being `TestDryRunCompleted::{test_completed_job_dry_run_ready, test_dry_run_human_readable, test_dry_run_json_machine_verifiable}`, `TestDryRunMissingWorkspace::test_missing_workspace_blocks`, `TestApproveRequiresFlag::test_no_approve_no_dry_run_is_dry_run`, `TestApproveApplies::{test_approve_applies_safe_files, test_approve_does_not_push, test_approve_reports_applied_files}`, `TestApprovePostTest::{test_post_apply_test_runs, test_post_apply_test_failure_reported}`, `TestJobApplyRecord::{test_dry_run_persists_record, test_approved_persists_record, test_the_record_is_stored_under_job_apply_records_by_its_job_apply_id}`, `TestCLICommandShape::{test_cli_dry_run_json, test_cli_text_output}`, `TestTargetClobberBlocked::{test_target_modified_after_job_blocks, test_clean_target_allows_apply}`, `TestJobApplyRecordPersistence::test_unwritable_job_apply_record_dir_blocks_approved` and `TestCLICommandPaths::test_cli_approve_applies`. The regression is red at the base and green at C3.
+- G4 ruff — `python3 -m ruff check packages/orchestration/pingpong_job.py packages/orchestration/job_apply.py tests/orchestration/test_staging_lifecycle.py tests/orchestration/test_job_apply.py` printed `All checks passed!`, exit 0.
+- G5 mutation red-proofs — one disposable worktree `.remedy-wt/f276-r5-mut` at C3, `__pycache__` purged before each run, `python3 -B`. The imports resolved inside the worktree: `/home/decodeux/Repos/remedy/.remedy-wt/f276-r5-mut/packages/orchestration/job_apply.py` and `…/pingpong_job.py`, so no editable install shadowed them. CONTROL (unmutated): `115 passed in 15.79s`, exit 0. (a) the line `            _release_consumed_staging_copy(job, copy_out)` in `job_apply.py`, counted 1 occurrence, replaced by `pass`: exit 1, `4 failed, 111 passed in 16.24s`, FAILED `test_an_applied_copy_jobs_staging_copy_is_gone_after_the_apply`, `test_a_dry_run_apply_leaves_the_staging_copy_in_place`, `test_a_blocked_apply_leaves_the_staging_copy_in_place`, `test_a_second_apply_of_the_same_job_finds_its_source_gone`, all in `tests/orchestration/test_staging_lifecycle.py` — the four nodes R-1003's red proof predicts. (b) the two lines `    if handle is None:` and its `        return` in `pingpong_job._finalize_job_workspace`, counted 1 occurrence, replaced by that branch releasing a completed copy job again — T003's own bug restored: exit 1, `22 failed, 87 passed, 6 errors in 12.63s`. The guard `test_a_completed_copy_job_keeps_its_staging_copy_through_the_hook` went red, together with `test_the_terminal_hook_keeps_every_copy_job_whatever_its_state[completed]` and 20 nodes of `tests/orchestration/test_job_apply.py` — the 19 of the base reading plus `TestApproveApplies::test_approve_verifies_file_contents`, which C2 strengthened. The 6 errors, read with a second `-rfE` run rather than inferred, are the six `copy_job`-fixture tests of `test_staging_lifecycle.py`, whose fixture asserts "the job's own copy must survive its completion": `test_a_completed_copy_job_that_was_never_applied_keeps_its_copy`, `test_an_applied_copy_jobs_staging_copy_is_gone_after_the_apply`, `test_a_dry_run_apply_leaves_the_staging_copy_in_place`, `test_an_unapproved_apply_leaves_the_staging_copy_in_place`, `test_a_blocked_apply_leaves_the_staging_copy_in_place`, `test_a_second_apply_of_the_same_job_finds_its_source_gone`. NO MUTATION STAYED GREEN. Both files restored byte-identically — `job_apply.py` `48d0cb4f30d9be1ad6a0213a0a8dd14b4d19d9f36269785c547aa607180b9992`, `pingpong_job.py` `5ef6ac73f9a235d51f337863cb8d8f3bccf72430e6e590960bafede10098ea4f`, each matching its pre-mutation reading — the worktree's `git status --porcelain` was empty before removal, and `git worktree list` after removal shows the primary checkout and the three worktrees this round was told not to touch.
+- G6 push + clean tree — follows this commit; the reading is in the round report.
 
 ## Open findings
 
-14 by `scripts/rotate_live_review.py::count_open_findings` and 14 by distinct id, measured on `.agent/live_review.md` as committed at `bc8b15b2`: R-0499, R-0622, R-0662, R-0819, R-0820, R-0829, R-0866, R-0880, R-0892, R-0950, R-0984, R-0998, R-0999, R-1000. Round 3 left 15 by both readings; R-1002 is resolved by the reviewer's own `Done:` paragraph applied at C1, which is the one change to the count. No open High remains.
+17 by distinct id and 17 by the canonical formula `scripts/rotate_live_review.py::count_open_findings`, both measured on the committed ledger at `458ffe25:.agent/live_review.md`: R-0499, R-0622, R-0662, R-0819, R-0820, R-0829, R-0866, R-0880, R-0892, R-0950, R-0984, R-0998, R-0999, R-1000, R-1003, R-1004, R-1005. By severity: 1 High (R-1003, repaired this round and awaiting the reviewer's own resolution), 9 Medium, 7 Low. Fourteen were open at `a112e1fa`; this round's three registrations are the difference.
 
 ## Authored-text proofs
 
-All four reviewer payloads were copied with `shutil.copyfile` and never retyped. Disk-to-disk byte comparison against the committed `.agent/authored/` copy, all True (G1): `f276-r4-block.md` `a60c8b28e63704fca3f289b90a0256373f412b805478ee7288ea3856588857c9` (104 lines), `f276-r4-ledger.md` `9b2e50af972c9b0b40cf7de5ec0a2d87d119dea501ba3801fd19eda2c31622b4` (4 lines), `f276-r4-decisions.md` `989e18eb9651c333cf026324bd1c7e2d50d887b9a708d4ba0ed974c56153208d` (60 lines), `f276-r4-plan.md` `51d8c896418fbf90029c21d3db930dc4d569dbd91520c6c83325ab593b1d9a49` (32 lines). The code diff `f276-r4.diff` verified at `a8262b6302b6a5c4036e8a87c056d68b44eba9796a105898a39f46c2cb774fe1` before the first `git apply`, and applied in three disjoint `--include` slices, never whole and never edited.
+All five reviewer payloads were copied with `shutil.copyfile` and never retyped. Disk-to-disk, as committed at C3 against the reviewer's scratch originals: `.agent/authored/f276-r5-block.md`, `-ledger.md`, `-decisions.md`, `-plan.md` and `-prose_slips.md` each compare byte-equal to their payload, and the three appended record files each equal their `a112e1fa` bytes plus their payload exactly. Every digest was verified before use and again at G1. The code diff was applied with `git apply` in the block's two disjoint `--include` slices; no hunk was retyped or edited.
 
 ## Deviations & assumptions
 
-- No departure from the block's ordered commit sequence: C1 to C5 in order, one commit each, none added, none dropped, none reordered.
-- The `Done: R-1002` paragraph in this round's ledger append is the REVIEWER'S text, applied byte-exact as part of the ledger payload. The worker wrote no `Done:` paragraph of its own and no `Landed:` line anywhere this round.
-- The diff leaves one stale doc cross-reference the worker did not repair, because a hunk may not be edited: `packages/orchestration/data_reclaim.py` line 123 still reads ``(see :func:`_job_state`)`` in the comment above `ORPHAN_JOB_STATE`, while the function is now `job_state_refusal`. It is a comment, not code; no gate reads it; ruff is green over the file. Reported rather than fixed.
-- MEASURED AND SURPRISING: pytest session start in the PRIMARY checkout costs about 83 s before any test runs, while the identical tree in a fresh worktree starts in under 2 s. `--collect-only` on `tests/orchestration/test_staging_lifecycle.py` read `18 tests collected in 83.22s`, and `--durations=8` showed the tests themselves at 0.11 s setup and 0.01 s per call. The cause is the repository's own R-0803 guard: `tests/conftest.py::pytest_configure` calls `_data_root_fingerprint(resolve_data_root())`, which `os.walk`s and `lstat`s every entry under the configured data root — in the primary checkout that is the operator's 923 GB `.data`, and in a worktree it does not exist and returns `None` at once. This is pre-existing, is not caused by this round, and changes no gate's colour; it is why G3's wall-clock is dominated by a constant.
-- Consequent assumption, stated rather than hidden: the worker never read, listed, wrote or deleted anything under `.data/` itself. The block-ordered pytest commands do stat it, through that R-0803 guard, which is the repository's own deliberate mechanism and not a probe of the worker's.
-- The `__pycache__` purge before every G5 run reported `purged __pycache__ dirs: 0` on all four runs. That is not a purge that failed: `python3 -B` writes no bytecode and `-p no:cacheprovider` writes no pytest cache, so there was nothing to remove. The purge ran and found the worktree already clean.
-- G5's `-rf` short summary is the source of every FAILED node id quoted above; no node id was inferred from a test name.
-- `.agent/STOP` was checked from disk before the handoff and does not exist.
-- Every test and probe used a tmp root set in-process through the suite's own `root` fixture with `monkeypatch`; no `REMEDY_DATA_DIR` was ever set as a shell assignment.
-- Nothing under `.remedy-wt/` entered a commit; it is gitignored scratch.
+- THE BLOCK'S COMMIT SEQUENCE WAS FOLLOWED EXACTLY: C1, C2, C3, C4, no extra commit, none dropped, none reordered.
+- Mutation (b) reddened MORE than the ledger's R-1003 paragraph predicts. That paragraph says "the guard … and 21 further nodes go red, the 19 of `test_job_apply.py` among them"; the measured reading is 22 failed plus 6 errors. The cause is in this round's own C2: `TestApproveApplies::test_approve_verifies_file_contents` used to pass VACUOUSLY when the apply blocked, because `result.files_applied` was empty and its loop body never ran, which is why it is absent from the base's 19; C2 added `assert result.files_applied`, so it now goes red for the right reason. The 6 errors are the new `copy_job` fixture refusing to set up when the hook eats the copy. Both readings are stronger than predicted, not weaker, and no assertion was weakened anywhere.
+- An extra reading beyond the block's literal ordering: mutation (b) was run a second time with `-rfE` so the six error node ids could be READ rather than inferred. It mutated and restored the same file byte-identically and left the worktree clean.
+- R-1004's cost is visible in this round's own gates and is recorded as a measurement, not a complaint: G3's eleven-path run took 277s of wall clock for 174.72s of tests in the primary checkout, and `test_job_apply.py` alone took 178.83s wall for 92.68s of tests there against 11.93s wall for the whole run in a worktree. The data-root fingerprint of `tests/conftest.py` is the difference; the operator's `.data` was never read, listed or written by this worker.
+- Every `REMEDY_DATA_DIR` in play is set in-process by the suite's own fixtures. No shell assignment was used, no provider was called, and pytest ran serially with no `-n` in every invocation.
 
 ## Next
 
-1. Phase 1 rule 1 of `docs/agents/self_drive_protocol.md` — re-read `.agent/STOP` from disk; if it exists, write the handoff and end the session, doing nothing else.
-2. The review of round 4: re-run G1 to G6 independently and read `git diff 543863a0..HEAD` bottom-up, then book the verdict.
-3. T004 — `min_free_disk_bytes` on `JobBudgets` behind an injectable probe, a `free_disk` limit in `budget_guard.evaluate_budget`, checked at job start and every safe point, exhaustion taking the STOPPED path with post-mortem reason `disk_exhausted`, and a `doctor` disk section.
+1. Phase 1 rule 1 — re-read `.agent/STOP` from disk; if it exists, write the handoff and end the session, doing nothing else.
+2. Otherwise review round 5: re-run G1 to G6 independently and read `git diff a112e1fa..HEAD` bottom-up, then book the verdict. R-1003 is repaired here and still open in the ledger — its resolution paragraph is the reviewer's to write.
+3. Then T004 — `min_free_disk_bytes` on `JobBudgets` behind an injectable probe, the `free_disk` limit inside `evaluate_budget`, the STOPPED path with post-mortem status `disk_exhausted`, and a `doctor` disk section.
 
 Operator questions open: 5
