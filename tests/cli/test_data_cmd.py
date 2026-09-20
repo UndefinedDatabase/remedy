@@ -63,6 +63,26 @@ def test_apply_is_a_flag_that_parses_false_when_not_typed():
     assert args.apply is True
 
 
+def test_orphans_is_a_flag_that_parses_false_when_not_typed_and_composes():
+    """`--orphans` is declared ``is_flag``; `grouped.py` special-cases only `--json`.
+
+    The COMPOSITION is pinned as hard as the parse: the orphan rule widens the plan
+    and replaces nothing, so the flag has to survive beside `--apply` and `--json`.
+    Not typing it must leave it False — a widening nobody typed is the one outcome
+    this flag may never have.
+    """
+    args, _ = build_parser().parse_known_args(["data", "reclaim"])
+    assert args.orphans is False
+    args, _ = build_parser().parse_known_args(["data", "reclaim", "--orphans"])
+    assert (args.orphans, args.apply, args.json) == (True, False, False)
+    args, _ = build_parser().parse_known_args(
+        ["data", "reclaim", "--orphans", "--apply", "--json"])
+    assert (args.orphans, args.apply, args.json) == (True, True, True)
+    args, _ = build_parser().parse_known_args(
+        ["data", "reclaim", "--json", "--apply"])
+    assert (args.orphans, args.apply, args.json) == (False, True, True)
+
+
 def test_format_data_bytes():
     assert format_data_bytes(0) == "0 B"
     assert format_data_bytes(1023) == "1023 B"

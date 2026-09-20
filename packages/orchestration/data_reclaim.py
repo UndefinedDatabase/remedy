@@ -31,12 +31,37 @@ path this command declines to delete is exactly the path an operator needs to se
   ``class_not_job_keyed`` and reported, never deleted, until a later slice gives it
   an owner.
 
+THE ORPHANS, and the one flag that opts into them. A ``staging_<id>`` child whose job
+record is GONE is refused above as ``job_unresolved``, and on a real root that refusal
+is where the bytes are. MEASURED 2026-09-20 ON THE OPERATOR'S DATA ROOT with the
+command round 2 built: 1107 candidates worth 284 536 286 695 bytes, against 1886
+refusals of which 1885 are ``job_unresolved`` worth 638 395 396 948 bytes — and 1884 of
+THOSE are ``staging_<16-hex>`` names with no job record on disk at all
+(``.data/jobs/<id>`` does not exist and ``job show`` answers "No job matches"). Those
+two figures SUM to 922 931 683 643, which is exactly the `job_workspaces` footprint
+DECISION F276 D3 measured the same day, so the refused bytes are 69 per cent OF THAT
+CLASS'S OWN 922 931 683 643 — the denominator is `job_workspaces`, not the whole data
+root. ``--orphans`` opts INTO exactly that case and into nothing else:
+
+- The flag is OFF by default, and with it off this module's output is what it was
+  before the rule existed, path for path and byte for byte.
+- An orphan is a child whose job record is ABSENT. A record that EXISTS and will not
+  parse is never an orphan: ``load_job_plan_safe`` reports that as ``degraded``, and a
+  job whose record is corrupt may still be running.
+- An orphan must also be at least :data:`ORPHAN_MIN_AGE_DAYS` old, and one under the
+  floor is refused under its OWN reason, ``orphan_too_young``, so the operator sees it
+  rather than wondering where it went.
+- An orphan candidate reports :data:`ORPHAN_JOB_STATE` as its ``job_state``, which is
+  the ONE thing in the machine shape that marks it. Every other rule — direct child,
+  no symlink, real path inside the root, and every one of them re-checked at the moment
+  of deletion — is unchanged.
+
 Public API::
 
-    plan_reclaim(root, *, now=None) -> ReclaimPlan
+    plan_reclaim(root, *, now=None, orphans=False) -> ReclaimPlan
     apply_reclaim(plan) -> ReclaimOutcome
     export_reclaim_json(plan, outcome=None) -> dict
-    REFUSAL_REASONS
+    REFUSAL_REASONS / ORPHAN_MIN_AGE_DAYS / ORPHAN_JOB_STATE
 """
 
 from __future__ import annotations
@@ -61,6 +86,7 @@ from packages.orchestration.data_paths import (
 REFUSAL_REASONS: tuple[str, ...] = (
     "job_not_terminal",
     "job_unresolved",
+    "orphan_too_young",
     "class_not_job_keyed",
     "not_a_direct_child",
     "symlink",
@@ -76,6 +102,29 @@ REFUSAL_REASONS: tuple[str, ...] = (
 _JOB_KEYED_PREFIXES: dict[str, str] = {
     "job_workspaces": "staging_",
 }
+
+#: How old an orphan must be before ``orphans=True`` will make it a candidate, in days.
+#: WHY A FLOOR EXISTS AT ALL: "this job has no record" is read from the filesystem, and
+#: a job whose record is BEING WRITTEN right now is indistinguishable, on disk, from a
+#: job whose record is gone forever — ``pingpong_job._create_job_workspace_copy`` makes
+#: the staging directory and the record is persisted around it, so the window is short
+#: but real. WHY 1.0: the window is seconds, a day is four orders of magnitude wider
+#: than it, and the orphans this rule was written for are months old, so the floor
+#: costs the operator nothing and buys back the only case that could lose live work.
+#: WHY THE CHILD'S OWN `lstat` MTIME AND NOT THE NEWEST MTIME IN ITS SUBTREE: the state
+#: this floor insures against is a staging directory CREATED while its record is still
+#: being written, and a directory that was just created has a fresh mtime OF ITS OWN.
+#: A subtree walk would answer a different question — "when was anything in here last
+#: touched" — which is not the question the floor asks.
+ORPHAN_MIN_AGE_DAYS: float = 1.0
+
+#: The ``job_state`` an ORPHAN candidate reports, and the only mark that distinguishes
+#: one in the machine shape. NOT ``""``: an empty state is what every REFUSAL carries
+#: (see :func:`_job_state`), and no reader can tell an empty string from an absent key.
+#: NOT a ``RunState`` value either — no state is spelled ``no_record`` — so it can never
+#: collide with a state a real job record holds, and a reader that matches on it
+#: exactly is reading a token rather than parsing prose.
+ORPHAN_JOB_STATE: str = "no_record"
 
 
 @dataclass(frozen=True)
@@ -172,17 +221,25 @@ def _job_id_for(data_class: str, name: str) -> str:
     return name[len(prefix):]
 
 
-def _job_state(job_id: str, root: Path) -> tuple[str, str]:
-    """``(state, refusal_reason)`` for one job id; the reason is ``""`` when terminal."""
+def _job_state(job_id: str, root: Path) -> tuple[str, str, bool]:
+    """``(state, refusal_reason, record_exists)`` for one job id.
+
+    The reason is ``""`` when the job is terminal. ``record_exists`` separates the TWO
+    ways a job fails to resolve, which is the whole basis of the orphan rule: no record
+    on disk is an orphan's signature, while a record that exists and cannot be parsed
+    belongs to a job that may still be running and is never an orphan.
+    ``load_job_plan_safe``'s ``degraded`` flag is exactly that distinction, and reading
+    it here is cheaper and more honest than stat-ing the record a second time.
+    """
     from packages.orchestration.pingpong_job import job_is_terminal, load_job_plan_safe
 
-    plan, _degraded = load_job_plan_safe(job_id, root)
+    plan, degraded = load_job_plan_safe(job_id, root)
     if plan is None:
-        return ("", "job_unresolved")
+        return ("", "job_unresolved", degraded)
     state = str(getattr(plan.state, "value", plan.state))
     if not job_is_terminal(plan.state):
-        return (state, "job_not_terminal")
-    return (state, "")
+        return (state, "job_not_terminal", True)
+    return (state, "", True)
 
 
 def _inside(path: str, root: Path) -> bool:
@@ -197,16 +254,50 @@ def _inside(path: str, root: Path) -> bool:
         return False
 
 
-def _age_days(path: str, now: float) -> float:
+def _age_seconds(path: str, now: float) -> float:
+    """Seconds since ``path``'s own mtime; ``lstat``, so a symlink is not followed.
+
+    0.0 when the path cannot be stat-ed, which is the SAFE end for the orphan floor:
+    an unreadable age reads as brand new and is refused.
+    """
     try:
         mtime = os.lstat(path).st_mtime
     except OSError:
         return 0.0
-    return round(max(0.0, now - mtime) / 86400.0, 1)
+    return max(0.0, now - mtime)
 
 
-def plan_reclaim(root: Path | str, *, now: float | None = None) -> ReclaimPlan:
-    """Compute what could be freed under ``root``. Writes nothing, deletes nothing."""
+def _age_days(path: str, now: float) -> float:
+    """The REPORTED age, rounded to a tenth of a day for a person to read."""
+    return round(_age_seconds(path, now) / 86400.0, 1)
+
+
+def _orphan_verdict(path: str, now: float) -> tuple[str, str, str]:
+    """``(job_state, refusal_reason, detail)`` for a child whose job record is ABSENT.
+
+    Reached only when the caller asked for orphans. An empty reason means CANDIDATE.
+
+    The floor is compared on UNROUNDED seconds while :func:`_age_days` reports a
+    rounded figure on purpose: a child 0.96 days old prints as ``1.0d`` and must still
+    be refused, because the floor is a real threshold and not a printed one.
+    """
+    age = _age_seconds(path, now)
+    if age >= ORPHAN_MIN_AGE_DAYS * 86400.0:
+        return (ORPHAN_JOB_STATE, "", "")
+    return ("", "orphan_too_young",
+            f"no job record, and {age / 86400.0:.2f}d is under the "
+            f"{ORPHAN_MIN_AGE_DAYS:.1f}d orphan floor")
+
+
+def plan_reclaim(root: Path | str, *, now: float | None = None,
+                 orphans: bool = False) -> ReclaimPlan:
+    """Compute what could be freed under ``root``. Writes nothing, deletes nothing.
+
+    ``orphans`` OPTS IN to the staging copies whose job record is gone, and to nothing
+    else. It defaults to False, and with it False the plan this returns is the plan
+    this function returned before the orphan rule existed — same candidates, same
+    refusals, same bytes.
+    """
     root_path = Path(root)
     root_str = os.fspath(root_path)
     at = time.time() if now is None else now
@@ -226,7 +317,8 @@ def plan_reclaim(root: Path | str, *, now: float | None = None) -> ReclaimPlan:
         kind = classify_data_child(entry.name) or "unclassified"
         is_dir = entry.is_dir(follow_symlinks=False)
         if kind == "ephemeral" and entry.name in class_dirs and is_dir:
-            _plan_class(entry.name, entry.path, root_path, at, candidates, refusals)
+            _plan_class(entry.name, entry.path, root_path, at, candidates, refusals,
+                        orphans)
             continue
         size, files = child_usage(entry.path)
         if kind == "ephemeral":
@@ -255,6 +347,7 @@ def _plan_class(
     now: float,
     candidates: list[ReclaimCandidate],
     refusals: list[ReclaimRefusal],
+    orphans: bool = False,
 ) -> None:
     """Judge every DIRECT child of one ephemeral class directory. Reads only."""
     try:
@@ -276,9 +369,15 @@ def _plan_class(
             if not job_id:
                 reason, detail = "job_unresolved", "no job id can be read from this path"
             else:
-                state, reason = _job_state(job_id, root)
+                state, reason, record_exists = _job_state(job_id, root)
                 if reason == "job_unresolved":
                     detail = f"no readable job record for {job_id}"
+                    # An ORPHAN, and only when the operator asked for orphans: the name
+                    # carried a job id (so the prefix matched and its remainder was not
+                    # empty) and no record exists for it. A record that exists and will
+                    # not parse keeps the refusal above.
+                    if orphans and not record_exists:
+                        state, reason, detail = _orphan_verdict(child.path, now)
                 elif reason:
                     detail = f"job {job_id} is {state}, not terminal"
 
@@ -317,19 +416,52 @@ def _deletion_refusal(path: str, root: Path) -> tuple[str, str]:
     return ("", "")
 
 
+def _orphan_deletion_refusal(cand: ReclaimCandidate, root: Path,
+                             now: float) -> tuple[str, str]:
+    """``(reason, detail)`` for an ORPHAN at the moment of deletion; ``("", "")`` to go.
+
+    :func:`_deletion_refusal` re-derives every STRUCTURAL rule because the plan is
+    input and not authority. This is the one VERDICT that has to be re-derived too: it
+    is what authorises deleting a directory NOTHING points at, so it is the last thing
+    that may be taken on trust. The record is read again and the mtime is read again,
+    against the live filesystem — a record that appeared since the plan was computed
+    refuses as ``job_unresolved``, a floor no longer met refuses as
+    ``orphan_too_young``. One file read per orphan, against deleting hundreds of
+    gigabytes. An ORDINARY candidate never reaches here and keeps its existing path.
+    """
+    from packages.orchestration.pingpong_job import load_job_plan_safe
+
+    job_plan, degraded = load_job_plan_safe(cand.job_id, root)
+    if job_plan is not None or degraded:
+        return ("job_unresolved",
+                f"a job record for {cand.job_id} appeared after the plan was computed")
+    if _age_seconds(cand.path, now) < ORPHAN_MIN_AGE_DAYS * 86400.0:
+        return ("orphan_too_young",
+                f"no job record, but it no longer meets the "
+                f"{ORPHAN_MIN_AGE_DAYS:.1f}d orphan floor")
+    return ("", "")
+
+
 def apply_reclaim(plan: ReclaimPlan) -> ReclaimOutcome:
     """Delete exactly the paths ``plan`` holds, re-checking every rule at deletion.
 
     A path that is already gone is neither removed nor refused — re-applying a plan
     over a state it has already reclaimed is a no-op, not an error.
+
+    An ORPHAN candidate — one whose ``job_state`` is :data:`ORPHAN_JOB_STATE` — has its
+    VERDICT re-derived here too, not only the structural rules; see
+    :func:`_orphan_deletion_refusal`.
     """
     root = Path(plan.root)
+    now = time.time()
     removed: list[str] = []
     refusals: list[ReclaimRefusal] = []
     freed = 0
 
     for cand in plan.candidates:
         reason, detail = _deletion_refusal(cand.path, root)
+        if not reason and cand.job_state == ORPHAN_JOB_STATE:
+            reason, detail = _orphan_deletion_refusal(cand, root, now)
         if reason:
             refusals.append(ReclaimRefusal(
                 data_class=cand.data_class, name=cand.name, path=cand.path,

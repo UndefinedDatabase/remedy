@@ -2151,6 +2151,13 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
             # special-cases `--json` by name; without it the option would demand one.
             ArgDef("--apply", "Actually delete the previewed paths (default: preview only)",
                    required=False, is_option=True, is_flag=True),
+            # is_flag for the same reason `--apply` is. OFF by default and never
+            # implied: an orphan is a staging copy whose job record is GONE, which the
+            # default REFUSES, so reclaiming one is an opt-in the operator types.
+            ArgDef("--orphans",
+                   "Also reclaim staging copies no record owns any more, at least a "
+                   "day old (default: refuse them)",
+                   required=False, is_option=True, is_flag=True),
             _JSON_OPT,
         ),
         supports_json=True,

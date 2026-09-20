@@ -48,13 +48,19 @@ def _cmd_data_usage(*, json_output: bool = False) -> None:
     print(f"  {'total':<13} {format_data_bytes(fp.total_bytes):>10}  {fp.total_files} files")
 
 
-def _cmd_data_reclaim(*, apply_it: bool = False, json_output: bool = False) -> None:
+def _cmd_data_reclaim(*, apply_it: bool = False, json_output: bool = False,
+                      orphans: bool = False) -> None:
     """Preview, or with ``apply_it`` remove, the data root's reclaimable scratch.
 
     The preview is the DEFAULT and it deletes nothing. ``--apply`` removes exactly
     the paths the plan it just computed holds; `data_reclaim.apply_reclaim` re-checks
     every rule against the live filesystem, so nothing this function prints can widen
     what is deleted.
+
+    ``orphans`` widens the PLAN by one case — a staging copy whose job record is gone,
+    which the default refuses — and widens nothing else. It is orthogonal to
+    ``apply_it``: the preview is still the default, so ``--orphans`` on its own prints
+    a wider preview and deletes nothing at all.
 
     EXIT CODE (DECISION F276 D3 (e)): 0, including when paths were refused — a refusal
     is the guarded answer the operator asked for. 1 only when a deletion was ATTEMPTED
@@ -64,16 +70,16 @@ def _cmd_data_reclaim(*, apply_it: bool = False, json_output: bool = False) -> N
     from packages.orchestration.data_reclaim import apply_reclaim, plan_reclaim
 
     root = resolve_data_root()
-    plan = plan_reclaim(root)
+    plan = plan_reclaim(root, orphans=orphans)
     outcome = apply_reclaim(plan) if apply_it else None
-    _print_reclaim(plan, outcome, json_output=json_output)
+    _print_reclaim(plan, outcome, json_output=json_output, orphans=orphans)
     if outcome is not None and outcome.had_failure:
         _sys.exit(1)
 
 
-def _print_reclaim(plan, outcome, *, json_output: bool) -> None:
+def _print_reclaim(plan, outcome, *, json_output: bool, orphans: bool = False) -> None:
     """Render one reclaim plan and its outcome. Prints; never decides an exit code."""
-    from packages.orchestration.data_reclaim import export_reclaim_json
+    from packages.orchestration.data_reclaim import ORPHAN_JOB_STATE, export_reclaim_json
 
     if json_output:
         print(_json.dumps(export_reclaim_json(plan, outcome), sort_keys=True))
@@ -101,12 +107,38 @@ def _print_reclaim(plan, outcome, *, json_output: bool) -> None:
     else:
         print(f"  {'Removed' if outcome else 'Reclaimable'}: nothing")
 
+    # The two numbers an operator decides on, named SEPARATELY: an orphan is reclaimed
+    # because no record for it exists, a terminal job's copy because its record says the
+    # job is over, and those are different kinds of confidence. Printed ONLY when the
+    # operator opted in, so the default preview is byte for byte what it was before,
+    # and only when there is something to split: the heading above already says
+    # "nothing", and two zero lines under it would be noise, not an answer.
+    if orphans and listed:
+        orphaned = [c for c in listed if c.job_state == ORPHAN_JOB_STATE]
+        ordinary = [c for c in listed if c.job_state != ORPHAN_JOB_STATE]
+        for label, group in (("orphans (no job record):", orphaned),
+                             ("terminal jobs:", ordinary)):
+            print(f"    of those, {label:<26}{len(group)} paths  "
+                  f"{format_data_bytes(sum(c.bytes for c in group))}")
+
     refusals = list(plan.refusals) + list(outcome.refusals if outcome else ())
     if refusals:
         print("  Refused (kept, with the reason):")
         for r in refusals:
             print(f"    {_rel(r.path)}  {r.reason}: {r.detail}  "
                   f"{format_data_bytes(r.bytes)}")
+    # DISCOVERABILITY, and the DEFAULT path only. An operator reading hundreds of
+    # gigabytes of `job_unresolved` must not have to read the source to learn that
+    # `--orphans` exists. Printed when the flag was NOT typed and there is something for
+    # it to consider, so it is an answer rather than noise; the `--json` document is
+    # untouched by it, which is what keeps the machine shape byte-identical by default.
+    if not orphans:
+        unresolved = [r for r in refusals if r.reason == "job_unresolved"]
+        if unresolved:
+            print(f"    {len(unresolved)} of those are job_unresolved "
+                  f"({format_data_bytes(sum(r.bytes for r in unresolved))}) — re-run "
+                  f"with --orphans to reclaim the ones no record owns any more")
+
     if plan.unreclaimed:
         print("  Not reclaimed — reclaim addresses ephemeral classes only:")
         for u in plan.unreclaimed:
@@ -125,5 +157,6 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
     "data.reclaim": lambda args: _cmd_data_reclaim(
         apply_it=getattr(args, "apply", False),
         json_output=getattr(args, "json", False),
+        orphans=getattr(args, "orphans", False),
     ),
 }
