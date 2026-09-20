@@ -12,33 +12,36 @@ command emits, and the meaning of each exit code
 
 ## Current Step
 
-Round 1 claims F277, re-heads `.agent/live_review.md`, books F276 round 15's
-verdict, and builds T001: `packages/orchestration/event_names.py` declaring the
-83 event names this repository writes, the six it only reads quarantined beside
-them, the AST test that measures both from the source, and an opt-in strict
-check in `RunLogWriter.log`. DECISIONs F277 D1 and D2 carry the collector
-design and the quarantine, and D2 amends T001's Acceptance line.
+Round 2 books round 1's PASS, registers and resolves `R-1012`, and disposes of
+three of the six quarantined event names per DECISION F277 D4:
+`worker_adapters_listed` is deleted with its zero-caller reader,
+`approval_decision`'s reader is repointed at `patch_intent_approved` and
+`patch_intent_rejected` so an approved intent stops being reported as a
+blocker, and `patch_intent_reverted` loses the dead `revert_snapshot` signal
+while `project_brain`'s `revert_capable` starts reading the authoritative
+`verified_snapshot`. The quarantine shrinks from six names to four.
 
 ## Next Steps
 
-1. Dispose of the six quarantined names — one commit each, a writer or the
-   reader deleted with what it feeds — until `READ_ONLY_EVENT_NAMES` is empty
-   and `read ⊆ written ⊆ declared` holds. This is what round 1 defers.
-2. T002: `apps/cli/json_envelope.py` with `emit_ok` and `emit_error` over one
-   shape, and an error boundary around dispatch in `apps/cli/grouped.py` so no
-   traceback reaches the operator.
-3. T003: the shared `fail()` helper replacing the `print(...); sys.exit(1)`
-   pairs, one command group per commit, and the read-only-without-`supports_json`
-   set emptied.
-4. T004: the exit-code taxonomy documented under `docs/guides/` and asserted
-   from the catalog, plus `tests/cli/test_json_contract.py` sweeping every
-   `supports_json` command on success AND on an invalid argument.
-5. Closure: the integration gate runs the full suite once, then the evidence
-   job, the review zip and the STATUS flip.
+1. `command_discovery_completed` gets a writer in the discovery path, with the
+   metadata keys `memory_learn` already reads (`source_types`,
+   `candidate_count`); this is what makes autonomy level 3 reachable at all.
+2. `snapshot_created`, the `autonomy_loop` level-5 gate, routed through
+   `build_snapshot_truth`; plus the rest of `patch_intent_reverted`, whose
+   remaining readers index by a key its writer does not carry.
+3. `stop_reason_recorded`, whose three readers are leftovers of DECISION F031
+   D2 and D9 and whose removal is a UI behaviour change.
+4. T002: `apps/cli/json_envelope.py` with `emit_ok` and `emit_error` over one
+   shape, and an error boundary around dispatch in `apps/cli/grouped.py`.
+5. T003: the shared `fail()` helper replacing the `print(...); sys.exit(1)`
+   pairs, and the read-only-without-`supports_json` set emptied.
+6. T004: the exit-code taxonomy under `docs/guides/`, asserted from the
+   catalog, plus the `tests/cli/test_json_contract.py` sweep.
+7. Closure: integration gate, evidence job, review zip, STATUS flip.
 
 ## Risks
 
-The collector reads the code statically, so a name assembled across a module
-boundary is invisible to it by construction. The strict-mode flag is the
-runtime backstop, and it is off by default; nothing yet runs the suite with it
-on. Whether it should be turned on inside the test suite is round 2's question.
+`_discover_sinks` derives a sink's positional index from the DEFINITION's
+argument list, so a bound METHOD sink would be read one position off at its
+call sites. Measured at `9114721f` the discovery adds seven sinks and none is
+a method — but step 1 mints a writer, and a method would be invisible to it.
