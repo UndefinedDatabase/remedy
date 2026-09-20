@@ -353,10 +353,18 @@ C4 commits this handoff and THEN pushes, so the readings below did not exist at 
 was written. They are recorded verbatim by the trailing C4-fix commit, which touches nothing
 else (deviation 2).
 
-- `git push -u origin feature/f277-machine-contracts` — PENDING AT THIS COMMIT. The real
-  command output and its real exit code are written here by C4-fix; nothing is claimed about
-  them in advance, and if the push fails this section will say so.
-- `git status --porcelain` after the push — PENDING AT THIS COMMIT, filled in by C4-fix.
+- `git push -u origin feature/f277-machine-contracts`, real exit code **0**:
+```
+To github.com:UndefinedDatabase/remedy.git
+   4f335b03..8ffc7bba  feature/f277-machine-contracts -> feature/f277-machine-contracts
+Branch 'feature/f277-machine-contracts' set up to track remote branch 'feature/f277-machine-contracts' from 'origin'.
+```
+  SUCCEEDED. The remote tip of the branch is `8ffc7bba`, which is C4. At the moment C4 was
+  committed this section read "PENDING AT THIS COMMIT" rather than a predicted SHA — no push
+  reading was written before the push happened.
+- `git status --porcelain` after the push: **empty** (no output), real exit code **0**.
+  Constraint 5 holds: no tracked file is left dirty, despite the run writing under `.data/`,
+  under its own job worktree and under the gitignored scratch directory.
 
 C4-fix, the commit carrying this paragraph, is pushed immediately after it; its own push
 outcome is reported in the session output rather than recursively here.
