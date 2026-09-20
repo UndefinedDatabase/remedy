@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 import json as _json
-import sys
 from collections.abc import Callable
 from typing import TYPE_CHECKING
+
+from apps.cli.json_envelope import fail
 
 if TYPE_CHECKING:
     import argparse
@@ -41,8 +42,7 @@ def _cmd_blocker_list(
             date_getter=lambda s: s.created_at or None,
         )
     except ListOptionError as exc:
-        print(f"Error: {exc}", file=sys.stderr)
-        sys.exit(1)
+        fail("invalid_list_option", str(exc), json_output=json_output)
 
     if json_output:
         print(_json.dumps({
@@ -73,8 +73,8 @@ def _cmd_blocker_show(
 
     sr = get_stop_reason(job_id_str, stop_id)
     if sr is None:
-        print(f"Error: blocker not found: {stop_id}", file=sys.stderr)
-        sys.exit(1)
+        fail("blocker_not_found", f"blocker not found: {stop_id}",
+             json_output=json_output)
 
     if json_output:
         print(_json.dumps({
@@ -99,13 +99,14 @@ def _cmd_blocker_resolve(
     stop_id: str,
     *,
     reason: str | None = None,
+    json_output: bool = False,
 ) -> None:
     from packages.orchestration.stop_reasons import resolve_stop_reason
 
     sr = resolve_stop_reason(job_id_str, stop_id, reason or "manually resolved")
     if sr is None:
-        print(f"Error: blocker not found: {stop_id}", file=sys.stderr)
-        sys.exit(1)
+        fail("blocker_not_found", f"blocker not found: {stop_id}",
+             json_output=json_output)
     print(f"Resolved: {sr.id[:8]} ({sr.reason_code})")
 
 
@@ -128,5 +129,6 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
         args.job_id,
         args.stop_id,
         reason=getattr(args, "reason", None),
+        json_output=getattr(args, "json", False),
     ),
 }
