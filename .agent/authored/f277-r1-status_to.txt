@@ -1,0 +1,1 @@
+- [~] F277 — Machine contracts: event vocabulary, JSON envelope, exit codes
