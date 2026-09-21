@@ -1,8 +1,8 @@
-F277 closure integration gate -- the full suite, run ONCE (amend0917 rule 1)
+F277 closure integration gate -- the full suite, re-run against the repaired tree (amend0917 rule 1, on the standing answer to operator question Q1 of 2026-09-20)
 command: python3 -m pytest -n auto -q
-checkout: primary checkout, HEAD 42af218883ca7bb94fee851860bb6e632a011fc1
-real exit code: 1
-wall clock seconds: 324
-summary: 1 failed, 17812 passed, 20 skipped, 1 warning in 238.47s (0:03:58)
-bad node ids (failed plus errors): 1
-tests/ui_contracts/test_humanize_catalog.py::TestCatalogCoversTheStreamVocabulary::test_catalog_keys_equal_the_static_stream_vocabulary
+checkout: primary checkout, HEAD 8d82ceb41fb3e2e03a00571411bf8c41a374dfd9
+real exit code: 0
+wall clock seconds: 326
+summary: 17813 passed, 20 skipped, 1 warning in 240.52s (0:04:00)
+bad node ids (failed plus errors): 0
+no bad nodes
