@@ -49,6 +49,23 @@ def _make_and_save(tmp_path, monkeypatch, **kwargs):
     return p
 
 
+def _make_and_save_raw(tmp_path, monkeypatch, **kwargs):
+    """Like `_make_and_save`, but writes the JSON file directly instead of calling
+    `save_project` — bypasses `_validate_slug`'s uniqueness check so a duplicate-slug
+    fixture (two projects sharing one slug, the `AmbiguousProjectError` trigger) can be
+    persisted at all."""
+    monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+    from packages.orchestration.project_registry import RemyProject, _projects_dir
+
+    defaults = {"name": "Test Project"}
+    defaults.update(kwargs)
+    p = RemyProject(**defaults)
+    d = _projects_dir()
+    d.mkdir(parents=True, exist_ok=True)
+    (d / f"{p.id}.json").write_text(p.model_dump_json(indent=2))
+    return p
+
+
 # ---------------------------------------------------------------------------
 # _cmd_project_current — exact JSON schema
 # ---------------------------------------------------------------------------
@@ -177,6 +194,48 @@ class TestProjectCurrentCommand:
         out = capsys.readouterr().out
         data = json.loads(out)
         assert data["job_count"] == 2
+
+
+# ---------------------------------------------------------------------------
+# _cmd_project_current — the ambiguous-slug refusal, moved onto `fail()` at F283
+# round 9 (DECISION F283 D4 gives it the `Error: ` prefix `ERROR: ` never had)
+# ---------------------------------------------------------------------------
+
+
+class TestProjectCurrentAmbiguousRefusal:
+    def test_json_output_is_an_envelope(self, tmp_path, monkeypatch, capsys):
+        monkeypatch.delenv("REMEDY_PROJECT", raising=False)
+        _make_and_save_raw(tmp_path, monkeypatch, slug="dup")
+        _make_and_save_raw(tmp_path, monkeypatch, slug="dup")
+
+        from apps.cli.commands.project import _cmd_project_current
+
+        with pytest.raises(SystemExit) as exc:
+            _cmd_project_current(project_flag="dup", json_output=True)
+        assert exc.value.code == 1
+        captured = capsys.readouterr()
+        assert captured.err == ""
+        body = json.loads(captured.out)
+        assert body["schema_version"] == 1
+        assert body["ok"] is False
+        assert body["error"] == "ambiguous_project"
+        assert "dup" in body["message"]
+
+    def test_text_mode_uses_error_prefix(self, tmp_path, monkeypatch, capsys):
+        """DECISION F283 D4: this refusal printed `ERROR: ` before the migration; it now
+        reads `Error: `, the case every other refusal in the CLI uses."""
+        monkeypatch.delenv("REMEDY_PROJECT", raising=False)
+        _make_and_save_raw(tmp_path, monkeypatch, slug="dup")
+        _make_and_save_raw(tmp_path, monkeypatch, slug="dup")
+
+        from apps.cli.commands.project import _cmd_project_current
+
+        with pytest.raises(SystemExit) as exc:
+            _cmd_project_current(project_flag="dup", json_output=False)
+        assert exc.value.code == 1
+        err = capsys.readouterr().err
+        assert err.startswith("Error: ")
+        assert "ERROR:" not in err
 
 
 # ---------------------------------------------------------------------------

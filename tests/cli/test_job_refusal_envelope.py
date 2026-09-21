@@ -308,6 +308,44 @@ class TestDoRefusalsAreAllMigrated:
         )
 
 
+class TestProjectRefusalsAreAllMigrated:
+    """F283 round 9 — 23 of `project.py`'s 25 mechanical print-then-exit pairs move onto
+    `fail()`, the six uppercase `ERROR: ` sites among them migrated under DECISION F283
+    D4 (they now read `Error: `). Two sites stay, one in each split, because their
+    `print` carries no prefix at all (`print(str(exc), file=sys.stderr)`) and D4 reaches
+    only a prefixed line: `_cmd_project_current`'s `(ProjectNotFoundError,
+    InvalidProjectSelectorError)` branch (its handler carries `json_output`, so it is
+    the one flagged site) and `_cmd_project_attach_repo`'s identical branch (its handler
+    carries none, so it is the one unflagged site)."""
+
+    def test_exactly_one_flagged_site_remains(self):
+        flagged, _ = _refusal_sites("project.py")
+        assert len(flagged) == 1, (
+            "expected exactly the one unprefixed ProjectNotFoundError/"
+            f"InvalidProjectSelectorError site left unmigrated, found {len(flagged)} "
+            f"at lines {flagged}"
+        )
+
+    def test_exactly_one_unflagged_site_remains(self):
+        _, unflagged = _refusal_sites("project.py")
+        assert len(unflagged) == 1, (
+            "expected exactly the one unprefixed ProjectNotFoundError/"
+            f"InvalidProjectSelectorError site left unmigrated, found {len(unflagged)} "
+            f"at lines {unflagged}"
+        )
+
+    def test_the_module_calls_the_shared_helper(self):
+        path = pathlib.Path(__file__).resolve().parents[2] / "apps" / "cli" / "commands" / "project.py"
+        tree = ast.parse(path.read_text())
+        imported = {
+            alias.name
+            for node in ast.walk(tree)
+            if isinstance(node, ast.ImportFrom) and node.module == "apps.cli.json_envelope"
+            for alias in node.names
+        }
+        assert "fail" in imported
+
+
 def _invoke(fn, **kwargs) -> tuple[int | None, str, str]:
     out, err = io.StringIO(), io.StringIO()
     code: int | None = None
