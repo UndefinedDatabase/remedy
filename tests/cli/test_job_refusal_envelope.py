@@ -30,7 +30,6 @@ _EXITING_RESOLVER_REMAINING = {
     "contract_cmd.py": 1,
     "decision.py": 4,
     "job_context_cmd.py": 1,
-    "patch.py": 7,
     "project.py": 1,
     "teacher_cmd.py": 2,
 }

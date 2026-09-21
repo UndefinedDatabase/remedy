@@ -7,7 +7,7 @@ import sys
 from collections.abc import Callable
 from typing import TYPE_CHECKING
 
-from packages.orchestration.data_paths import resolve_job_id
+from apps.cli.job_id_arg import resolve_job_id_or_fail
 from packages.orchestration.pingpong_job import JobNotFoundError, require_job_plan, save_job_plan
 
 if TYPE_CHECKING:
@@ -24,7 +24,7 @@ def _cmd_list_patch_intents(
     until: str | None = None,
     limit: str | None = None,
 ) -> None:
-    job_id = resolve_job_id(job_id_str)
+    job_id = resolve_job_id_or_fail(job_id_str, json_output=json_output)
     try:
         job = require_job_plan(job_id)
     except JobNotFoundError as exc:
@@ -60,7 +60,7 @@ def _cmd_list_patch_intents(
 
 
 def _cmd_show_patch_intent(job_id_str: str, intent_id: str) -> None:
-    job_id = resolve_job_id(job_id_str)
+    job_id = resolve_job_id_or_fail(job_id_str, json_output=False)
     try:
         job = require_job_plan(job_id)
     except JobNotFoundError as exc:
@@ -89,7 +89,7 @@ def _cmd_show_patch_intent(job_id_str: str, intent_id: str) -> None:
 
 
 def _cmd_approve_patch_intent(job_id_str: str, intent_id: str, reason: str | None) -> None:
-    job_id = resolve_job_id(job_id_str)
+    job_id = resolve_job_id_or_fail(job_id_str, json_output=False)
     try:
         job = require_job_plan(job_id)
     except JobNotFoundError as exc:
@@ -118,7 +118,7 @@ def _cmd_approve_patch_intent(job_id_str: str, intent_id: str, reason: str | Non
 
 
 def _cmd_reject_patch_intent(job_id_str: str, intent_id: str, reason: str | None) -> None:
-    job_id = resolve_job_id(job_id_str)
+    job_id = resolve_job_id_or_fail(job_id_str, json_output=False)
     try:
         job = require_job_plan(job_id)
     except JobNotFoundError as exc:
@@ -147,7 +147,7 @@ def _cmd_reject_patch_intent(job_id_str: str, intent_id: str, reason: str | None
 
 
 def _cmd_apply_patch_intent(job_id_str: str, intent_id: str, *, json_output: bool = False) -> None:
-    job_id = resolve_job_id(job_id_str)
+    job_id = resolve_job_id_or_fail(job_id_str, json_output=json_output)
     try:
         job = require_job_plan(job_id)
     except JobNotFoundError as exc:
@@ -191,7 +191,7 @@ def _cmd_revert_patch_intent(
     apply_id is canonical. intent_id is used as apply_id fallback (patch_apply.py
     stores apply_id == intent_id for markdown applies).
     """
-    job_id = resolve_job_id(job_id_str)
+    job_id = resolve_job_id_or_fail(job_id_str, json_output=json_output)
     try:
         require_job_plan(job_id)
     except JobNotFoundError as exc:
@@ -322,7 +322,7 @@ def _cmd_approve_hunks(
     touches no repository. Every refusal the operator sees comes from `hunk_approval` or
     `hunk_decision_record`; this handler mints none of its own.
     """
-    job_id = resolve_job_id(job_id_str)
+    job_id = resolve_job_id_or_fail(job_id_str, json_output=json_output)
     try:
         job = require_job_plan(job_id)
     except JobNotFoundError as exc:
