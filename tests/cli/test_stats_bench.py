@@ -349,6 +349,24 @@ class TestRegressionWarnings:
                 CMD._cmd_stats_bench(project=project_id, multiplier=bad)
             assert excinfo.value.code == CMD.EXIT_USAGE
 
+    def test_an_unusable_multiplier_answers_invalid_argument_under_json(
+        self, history, project_id, capsys
+    ):
+        """`_validate_multiplier`'s refusal, migrated onto `fail()`: one envelope on
+        stdout, no prose on stderr."""
+        with pytest.raises(SystemExit) as excinfo:
+            CMD._cmd_stats_bench(project=project_id, multiplier="not-a-number",
+                                 json_output=True)
+
+        assert excinfo.value.code == CMD.EXIT_USAGE
+        captured = capsys.readouterr()
+        assert captured.err == ""
+        payload = json.loads(captured.out)
+        assert payload["schema_version"] == 1
+        assert payload["ok"] is False
+        assert payload["error"] == "invalid_argument"
+        assert "not-a-number" in payload["message"]
+
 
 class TestTooFewRunsSaysWhy:
     @pytest.fixture

@@ -8,14 +8,15 @@ different sentences and only one of them is good news.
 from __future__ import annotations
 
 import json as _json
-import sys
 from datetime import datetime
+
+from apps.cli.json_envelope import fail
 
 EXIT_USAGE = 2
 EXIT_ERROR = 1
 
 
-def _validate_since(raw: str) -> str:
+def _validate_since(raw: str, *, json_output: bool) -> str:
     """Same ``--since`` language the event ledger already speaks: an ISO-8601 timestamp."""
     text = (raw or "").strip()
     if not text:
@@ -23,12 +24,13 @@ def _validate_since(raw: str) -> str:
     try:
         datetime.fromisoformat(text.replace("Z", "+00:00"))
     except ValueError:
-        print(
-            f"Error: --since {raw!r} is not an ISO-8601 timestamp "
+        fail(
+            "invalid_argument",
+            f"--since {raw!r} is not an ISO-8601 timestamp "
             f"(e.g. 2026-07-13 or 2026-07-13T12:00:00+00:00)",
-            file=sys.stderr,
+            json_output=json_output,
+            exit_code=EXIT_USAGE,
         )
-        raise SystemExit(EXIT_USAGE) from None
     return text
 
 
@@ -42,7 +44,7 @@ def _cmd_stats_failures(*, job: str = "", since: str = "",
         render_human,
     )
 
-    since = _validate_since(since)
+    since = _validate_since(since, json_output=json_output)
 
     scoped_ids = None
     if not job:
@@ -57,11 +59,7 @@ def _cmd_stats_failures(*, job: str = "", since: str = "",
     except FailureStatsError as exc:
         # An unreadable evidence root is not "no failures". Saying so would be the exact
         # lie this feature exists to prevent.
-        if json_output:
-            print(_json.dumps({"ok": False, "error": str(exc)}, indent=2))
-        else:
-            print(f"Error: {exc}", file=sys.stderr)
-        raise SystemExit(EXIT_ERROR)
+        fail("evidence_unreadable", str(exc), json_output=json_output)
 
     if json_output:
         print(_json.dumps(result, indent=2))

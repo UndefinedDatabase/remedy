@@ -162,6 +162,62 @@ def _refusal_sites(filename: str = "job.py") -> tuple[list[int], list[int]]:
     return flagged, unflagged
 
 
+def _raise_systemexit_lines(filename: str) -> list[int]:
+    """Every `raise SystemExit(...)` line in a command module, AST-read.
+
+    `stats_ledger_cmd.py`, `bench_cmd.py`, `failure_stats_cmd.py` and
+    `job_stop_cmd.py` refuse with a `raise SystemExit(n)` statement rather than
+    a `sys.exit(n)` expression, so `_refusal_sites` (which matches only the
+    latter, `job.py`'s own shape) never sees them; this is the same reading for
+    the `raise` form.
+    """
+    path = _JOB_PY.parent / filename
+    tree = ast.parse(path.read_text())
+    lines: list[int] = []
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Raise):
+            continue
+        exc = node.exc
+        if isinstance(exc, ast.Call) and isinstance(exc.func, ast.Name) and exc.func.id == "SystemExit":
+            lines.append(node.lineno)
+    return lines
+
+
+class TestStatsRefusalsAreAllMigrated:
+    """F283 round 11 C3 — `stats_ledger_cmd.py`, `bench_cmd.py` and
+    `failure_stats_cmd.py`'s refusals move onto `fail()`, the exiting helpers
+    (`_validate_by`, `_validate_period_bound`, `_one_project_ledger`,
+    `_require_evidence_dir`, `_validate_multiplier`, `_one_project_history`,
+    `_validate_since`) taking a REQUIRED `json_output` every caller now passes.
+    `stats_ledger_cmd.py::_cmd_stats_verify_ledger`'s `raise SystemExit(EXIT_DRIFT)`
+    is a RESULT, not a refusal (this round's block, restating DECISIONs F277
+    D7-D9), and is the one survivor this ratchet allows. Round 11 C4 extends this
+    class to `job_stop_cmd.py`."""
+
+    _MODULES = ("stats_ledger_cmd.py", "bench_cmd.py", "failure_stats_cmd.py")
+
+    def test_no_mechanical_print_then_exit_pair_survives(self):
+        for filename in self._MODULES:
+            flagged, unflagged = _refusal_sites(filename)
+            assert flagged == [] and unflagged == [], (
+                f"expected no print-then-exit pair left in {filename}, found "
+                f"flagged={flagged} unflagged={unflagged}"
+            )
+
+    def test_stats_ledger_keeps_only_the_verify_ledger_drift_exit(self):
+        lines = _raise_systemexit_lines("stats_ledger_cmd.py")
+        assert len(lines) == 1, (
+            f"expected exactly one raise SystemExit left in stats_ledger_cmd.py, "
+            f"found {lines}"
+        )
+        source = (_JOB_PY.parent / "stats_ledger_cmd.py").read_text()
+        assert "EXIT_DRIFT" in source.splitlines()[lines[0] - 1]
+
+    def test_bench_and_failure_stats_have_no_raise_systemexit_left(self):
+        assert _raise_systemexit_lines("bench_cmd.py") == []
+        assert _raise_systemexit_lines("failure_stats_cmd.py") == []
+
+
 class TestTheFlaggedRefusalsAreAllMigrated:
     def test_no_flagged_print_then_exit_pair_survives(self):
         flagged, _ = _refusal_sites()

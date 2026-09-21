@@ -244,3 +244,21 @@ class TestPeriodBoundValidation:
         err = capsys.readouterr().err
         assert "--until" in err
         assert "--since" not in err
+
+    def test_a_bad_until_answers_invalid_argument_under_json(self, report_ledger,
+                                                              project_id, capsys):
+        """`_validate_period_bound`'s refusal, migrated onto `fail()`: one envelope
+        on stdout, no prose on stderr."""
+        with pytest.raises(SystemExit) as exc:
+            CMD._cmd_stats_report(since=SINCE, until="next tuesday",
+                                  project=project_id, json_output=True)
+
+        assert exc.value.code == CMD.EXIT_USAGE
+        captured = capsys.readouterr()
+        assert captured.err == ""
+        payload = json.loads(captured.out)
+        assert payload["schema_version"] == 1
+        assert payload["ok"] is False
+        assert payload["error"] == "invalid_argument"
+        assert "--until" in payload["message"]
+        assert "--since" not in payload["message"]

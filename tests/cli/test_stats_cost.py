@@ -513,6 +513,25 @@ class TestStatsCacheView:
         assert exc.value.code == CMD.EXIT_ERROR
         assert "cannot read the token ledger" in capsys.readouterr().err
 
+    def test_an_unreadable_ledger_answers_ledger_unreadable_under_json(
+        self, filled_ledger, project_id, capsys
+    ):
+        """The `_load_ledger_reports` helper's branched refusal, migrated onto
+        `fail()`: one envelope on stdout, no prose on stderr."""
+        filled_ledger.write_bytes(b"this is not a database")
+
+        with pytest.raises(SystemExit) as exc:
+            CMD._cmd_stats_cache(project=project_id, json_output=True)
+
+        assert exc.value.code == CMD.EXIT_ERROR
+        captured = capsys.readouterr()
+        assert captured.err == ""
+        payload = json.loads(captured.out)
+        assert payload["schema_version"] == 1
+        assert payload["ok"] is False
+        assert payload["error"] == "ledger_unreadable"
+        assert "cannot read the token ledger" in payload["message"]
+
     def test_the_json_share_carries_its_reason_and_never_a_zero(
         self, filled_ledger, project_id, capsys
     ):

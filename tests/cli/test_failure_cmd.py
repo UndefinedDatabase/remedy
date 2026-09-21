@@ -205,6 +205,29 @@ class TestCli:
         assert exc.value.code == CMD.EXIT_USAGE
         assert "not an ISO-8601 timestamp" in capsys.readouterr().err
 
+    def test_an_unreadable_evidence_root_answers_evidence_unreadable_under_json(
+        self, tmp_path, monkeypatch, capsys
+    ):
+        """`FailureStatsError`'s refusal, migrated onto `fail()`: one envelope on
+        stdout, no prose on stderr. The corpus is the same unreadable-root shape
+        `test_an_unreadable_evidence_root_is_an_error_not_silence` builds above,
+        reached this time through the CLI command rather than `collect_failures`."""
+        root = tmp_path / "data"
+        root.mkdir()
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(root))
+        (root / "evidence_exports").write_text("this is a file, not a directory")
+
+        with pytest.raises(SystemExit) as exc:
+            CMD._cmd_stats_failures(json_output=True)
+
+        assert exc.value.code == CMD.EXIT_ERROR
+        captured = capsys.readouterr()
+        assert captured.err == ""
+        payload = json.loads(captured.out)
+        assert payload["schema_version"] == 1
+        assert payload["ok"] is False
+        assert payload["error"] == "evidence_unreadable"
+
     def test_an_empty_corpus_exits_zero(self, evidence_root, capsys):
         CMD._cmd_stats_failures()                         # no SystemExit
         assert "No failures recorded." in capsys.readouterr().out
