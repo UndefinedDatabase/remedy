@@ -1,74 +1,89 @@
-# Handoff — F283 Machine contracts, part two: refusal sweep, JSON gap, exit-code taxonomy · Round 1 · CLAIM + SLICE A
+# Handoff — F283 Machine contracts, part two: refusal sweep, JSON gap, exit-code taxonomy · Round 2 · SLICE B PART ONE + R-1020
 
 ## Session
 
-SESSION 1 of feature F283 · round 1 · rounds so far 1
+SESSION 1 of feature F283 · round 2 · rounds so far 2
 
-This round claimed F283 from `main` at `d0d40e89`, booked F277 round 19's PASS, resolved
-R-1018, emptied `.agent/candidates.md`, re-headed the live review record, and landed T001's
-first product slice: the twenty already-flagged `sys.exit` refusal sites in
-`apps/cli/commands/job.py` migrated onto the shared `fail()` helper, with its new pinning
-test. Context self-assessment: roughly two-thirds of the working budget remained at the
-point this handoff was written — no compression was needed.
+This round booked round 1's PASS, registered R-1020 (52 of 111 `supports_json` commands
+reach a shared EXITING helper under `packages/` that prints prose and exits before the
+handler's own failure path, so threading `json_output` alone cannot meet T001's Acceptance
+line), and migrated eleven more refusal sites of `apps/cli/commands/job.py`: five in
+`_cmd_create_job`, one in `_cmd_show_job` (threaded), and five in `_cmd_plan_job_local`, plus
+`_refuse_budget_set` itself and its six callers threaded. R-1020 is pinned executable with a
+`strict` xfail, not fixed — it reports XFAIL, not XPASS. Context self-assessment: roughly
+half the working budget remained at the point this handoff was written.
 
 ## Range
 
-Review of `d0d40e89`..`HEAD`.
+Review of `2aa0a6f8`..`HEAD`.
+
+## Block self-verification (R-0954)
+
+| reading | measured | given | equal |
+|---|---|---|---|
+| line count | 265 | 265 | True |
+| sha256 | `2dcc1e0c0f0a56ce7aa118783f0caf554e2f2fdd6844e0cfcc3e2805f75b7734` | `2dcc1e0c0f0a56ce7aa118783f0caf554e2f2fdd6844e0cfcc3e2805f75b7734` | True |
+
+Neither reading differed, so the round went ahead.
+
+## Pre-flight
+
+- `ls .agent/STOP`: `No such file or directory`. No STOP on disk.
+- `git status --porcelain`: empty.
+- `git branch --show-current`: `feature/f283-machine-contracts-part-two`.
+- `git log --oneline -1`: `2aa0a6f8`, matching the delegation message.
 
 ## Commits
 
-### 40f0edcc F283 R1 C1a: copy round 1 block into .agent/authored/
+### 4d1fe176 F283 R2 C1a: copy round 2 block into .agent/authored/
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f283-r1-block.md | +282/-0 | byte-for-byte copy of this round's step block |
+| .agent/authored/f283-r2-block.md | +265/-0 | byte-for-byte copy of this round's step block |
 
-Measured insertions (`git show --numstat`): **282**. Expected: the block's own measured
-line count, 282. They **MATCH**. Well under the 500-line cap.
+Measured insertions (`git show --numstat`): **265**. Expected: the block's own measured line
+count, 265. They **MATCH**. Well under the 500-line cap.
 
-### bb42e30c F283 R1 C1b: copy round 1 bookkeeping payloads into .agent/authored/
+### 5fc0ca59 F283 R2 C1b: copy round 2 payloads into .agent/authored/
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f283-r1-candidates.diff | +40/-0 | byte-for-byte copy of candidates.diff |
-| .agent/authored/f283-r1-context.md | +64/-0 | byte-for-byte copy of context.md |
-| .agent/authored/f283-r1-ledger.md | +4/-0 | byte-for-byte copy of ledger.md |
-| .agent/authored/f283-r1-plan.md | +49/-0 | byte-for-byte copy of plan.md |
-| .agent/authored/f283-r1-rehead.diff | +61/-0 | byte-for-byte copy of rehead.diff |
-| .agent/authored/f283-r1-slips.md | +1/-0 | byte-for-byte copy of slips.md |
-| .agent/authored/f283-r1-status.diff | +11/-0 | byte-for-byte copy of status.diff |
+| .agent/authored/f283-r2-f283.diff | +25/-0 | byte-for-byte copy of f283.diff |
+| .agent/authored/f283-r2-job.diff | +229/-0 | byte-for-byte copy of job.diff |
+| .agent/authored/f283-r2-ledger.md | +4/-0 | byte-for-byte copy of ledger.md |
+| .agent/authored/f283-r2-plan.md | +49/-0 | byte-for-byte copy of plan.md |
+| .agent/authored/f283-r2-tests.diff | +52/-0 | byte-for-byte copy of tests.diff |
 
-Measured insertions (`git show --numstat`): **230**. Expected: **230**
-(40+64+4+49+61+1+11). They **MATCH**.
+Measured insertions (`git show --numstat`): **359**. Expected: **359**
+(25+229+4+49+52). They **MATCH**.
 
-### 9e6d74aa F283 R1 C1c: copy round 1 product payloads into .agent/authored/
+### b5b7d1ac F283 R2 C2: book round 1's PASS and register R-1020
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f283-r1-job.diff | +274/-0 | byte-for-byte copy of job.diff |
-| .agent/authored/f283-r1-test_job_refusal_envelope.py | +186/-0 | byte-for-byte copy of the new test file |
+| .agent/live_review.md | +4/-0 | append ledger.md by strict byte concatenation: round-1 `Gate:` entry and `- R-1020` registration |
+| .agent/plan.md | +31/-31 | rewrite to plan.md payload, byte-identical |
+| docs/roadmap/features/T2_F283.md | +9/-0 | `git apply` of f283.diff |
 
-Measured insertions: **460**. Expected: **460** (274+186). They **MATCH**.
+Measured insertions (`git show --numstat`): **44** (4+31+9). **Expected 45 per the block —
+MY MEASUREMENT DIFFERS BY ONE.** Reported per the block's own instruction ("If yours differs,
+report what you measured and say so"): `git diff --shortstat` independently confirmed **44
+insertions(+), 31 deletions(-)**, and `git show --numstat` on the committed tree gives the
+same three per-path numbers (4, 31, 9) that sum to 44. The block's own prose for this commit
+also states the `f283.diff` hunk as `(+10/-0)`; reading the applied diff and the resulting
+`git diff --numstat` both give **9**, not 10 — the diff's two hunks add 2 and 7 lines
+respectively, summing to 9. I did not force either number to match; I retyped nothing and
+applied the payload exactly as given. `git commit`'s own printed summary line for this commit
+read `62 insertions(+), 49 deletions(-)`, a third figure that agrees with neither reading —
+the same false-summary-line phenomenon round 1's handoff recorded under Deviations for its
+own C2; `git show --numstat` and an independent `git diff --shortstat` (44/31) are the
+authoritative readings and agree with each other.
 
-### 17be08e7 F283 R1 C2: claim F283, book round 19's PASS and resolve R-1018
+### 8741ea88 F283 R2 C3: thread the json flag into job show and budget set, migrate eleven refusals
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/live_review.md | +34/-22 | `git apply` rehead.diff (+30/-22), then append ledger.md's round-19 `Gate:` entry and `Done: R-1018` resolution (+4 more, cumulative +34/-22) |
-| docs/roadmap/STATUS.md | +1/-1 | `git apply` status.diff: F283's line flips to `[~]` |
-| .agent/candidates.md | +1/-33 | `git apply` candidates.diff: all three prior entries retired, replaced with the single EMPTY line |
-| .agent/plan.md | +36/-32 | rewrite to plan.md payload, byte-identical |
-| .agent/context.md | +36/-21 | rewrite to context.md payload, byte-identical |
-| .agent/prose_slips.md | +1/-0 | append slips.md by strict byte concatenation |
+| apps/cli/commands/job.py | +58/-44 | `git apply` job.diff: eleven sites migrated onto `fail()`; `_cmd_show_job` and `_refuse_budget_set` gain `json_output`; `job.show` dispatch lambda threads `getattr(args, "json", False)` |
+| tests/cli/test_job_refusal_envelope.py | +30/-3 | `git apply` tests.diff: ratchet's expected count 20→8, plus the new `strict` xfail pinning R-1020 |
 
-Measured insertions (`git show --numstat`): **109** (1+36+34+36+1+1). Expected: **109**.
-They **MATCH**. Deletions also total 109 (33+21+22+32+0+1), matching insertions exactly —
-confirmed with `git diff --shortstat` independently of `git commit`'s own summary line,
-which is discussed under Deviations.
-
-### 3f754a9c F283 R1 C3: migrate job's twenty flagged refusals onto the shared fail
-| Path | +/- | Reason |
-|---|---|---|
-| apps/cli/commands/job.py | +76/-64 | `git apply` job.diff: the twenty `print(...); sys.exit(...)` pairs whose handler already carries `json_output` migrated onto `fail()`; `_plan_rejected_error` split into itself plus `_plan_rejected_message` |
-| tests/cli/test_job_refusal_envelope.py | +186/-0 | new file, copied whole from the payload; pins the migration and guards against a reverted site |
-
-Measured insertions: **262** (76+186). Expected: **262**. They **MATCH**.
+Measured insertions: **88** (58+30). Expected: **88** (58 for job.py, 30 for the test file).
+They **MATCH**.
 
 ### C4 — THE HANDBACK (this commit)
 | Path | +/- | Reason |
@@ -76,176 +91,126 @@ Measured insertions: **262** (76+186). Expected: **262**. They **MATCH**.
 | .agent/handoff.md | rewrite | this handback, written once; a single `.agent/**` state file, exempt from the 500-line cap under DECISION F104 D1 |
 
 Self-reference exception (handback template, R-0149 pattern): a handback cannot table the
-commit that writes it. No trailing bookkeeping commit follows C4 — push and read-only `gh`
-queries come next, never another commit.
+commit that writes it.
 
 ## External actions
 
-- `git checkout -b feature/f283-machine-contracts-part-two` from `main` at `d0d40e89` —
-  branch created.
-- `git worktree add .remedy-wt/f283-r1-mutation-a 3f754a9c` for G5's two mutation
-  red-proofs, then `git worktree remove --force .remedy-wt/f283-r1-mutation-a` — force was
-  required because the second mutation (the restored `print`/`sys.exit` pair) left the
-  worktree with an uncommitted, deliberately-never-committed edit; the primary checkout was
-  never touched by either mutation.
+- `git worktree add .remedy-wt/f283-r2-mutation 8741ea88` for G5, detached HEAD — used for
+  both the threading proof and the two mutation red-proofs, then
+  `git worktree remove --force .remedy-wt/f283-r2-mutation` — force was required because the
+  ratchet mutation (b) left the worktree with an uncommitted, deliberately-never-committed
+  edit; the primary checkout was never touched.
 - `git push -u origin feature/f283-machine-contracts-part-two` after C4 — real outcome
-  reported in the worker's session reply, since it ships this very file and cannot be known
-  before it exists.
-- `gh pr list --state open ...` and `gh run list --branch
-  feature/f283-machine-contracts-part-two ...` after the push — real outcomes reported in
-  the session reply.
-- **NOTHING IS MERGED.** No `gh pr merge`, no `gh pr create` (the block explicitly forbids
-  opening a PR at claim time), no checkout of `main`, no branch deletion.
-- No worktree other than the one disposable one above was added or removed. The three
+  reported in the session reply, since it ships this very file.
+- `gh pr list --state open ...` after the push — real outcome reported in the session reply.
+- **NOTHING IS MERGED.** No `gh pr merge`, no `gh pr create`, no checkout of `main`, no branch
+  deletion.
+- No worktree other than the one disposable G5 worktree was added or removed. The three
   `remedy/job-*` worktrees were left alone throughout.
 
 ## Verification
 
-### Pre-flight
-
-- `ls .agent/STOP`: `No such file or directory`. There is no STOP on disk.
-- `git status --porcelain`: empty.
-- `git branch --show-current`: `main`.
-- `git log --oneline -1`: `d0d40e89`, the commit the delegation message named.
-- Block self-verification (R-0954), `.remedy-wt/f283-r1-block.md`:
-
-| reading | measured | given | equal |
-|---|---|---|---|
-| line count | 282 | 282 | True |
-| sha256 | `46144bc3f0f046f38181f8eabdd303a12b09f4650821e06589c2f14e2c3091fa` | `46144bc3f0f046f38181f8eabdd303a12b09f4650821e06589c2f14e2c3091fa` | True |
-
-Neither reading differs, so the round went ahead. `git checkout -b
-feature/f283-machine-contracts-part-two` then created the branch (no `git pull`, per the
-block's explicit instruction that `main` was already at the merge commit).
-
-### G1 — PAYLOADS transport, twenty-seven readings, then ten authored copies
+### G1 — PAYLOADS transport, fifteen readings, then six authored copies
 
 | file | lines measured/given | bytes measured/given | sha256 equal |
 |---|---|---|---|
-| candidates.diff | 40/40 | 2721/2721 | True |
-| context.md | 64/64 | 3524/3524 | True |
-| job.diff | 274/274 | 10716/10716 | True |
-| ledger.md | 4/4 | 5446/5446 | True |
-| plan.md | 49/49 | 2536/2536 | True |
-| rehead.diff | 61/61 | 6758/6758 | True |
-| slips.md | 1/1 | 1160/1160 | True |
-| status.diff | 11/11 | 1933/1933 | True |
-| test_job_refusal_envelope.py | 186/186 | 6879/6879 | True |
+| f283.diff | 25/25 | 1428/1428 | True |
+| job.diff | 229/229 | 10824/10824 | True |
+| ledger.md | 4/4 | 7749/7749 | True |
+| plan.md | 49/49 | 2586/2586 | True |
+| tests.diff | 52/52 | 2841/2841 | True |
 
-**All twenty-seven readings equal: True.** The four diffs (`rehead.diff`, `status.diff`,
-`candidates.diff`, `job.diff`) each dry-ran with `git apply --check` at real exit code **0**
-before any real apply — `job.diff` was checked twice: once before C1c's copy, once again
-immediately before C3's real apply, both exit 0.
+**All fifteen readings equal: True.** The three diffs (`f283.diff`, `job.diff`, `tests.diff`)
+each dry-ran with `git apply --check` at real exit code **0** before any real apply.
 
-Ten `.agent/authored/f283-r1-*` copies (the block copy plus nine payloads), each compared
+Six `.agent/authored/f283-r2-*` copies (the block copy plus five payloads), each compared
 byte-for-byte with its source via `filecmp.cmp(..., shallow=False)` at copy time:
 
 | copy | identical |
 |---|---|
-| f283-r1-block.md | True |
-| f283-r1-rehead.diff | True |
-| f283-r1-ledger.md | True |
-| f283-r1-status.diff | True |
-| f283-r1-candidates.diff | True |
-| f283-r1-plan.md | True |
-| f283-r1-context.md | True |
-| f283-r1-slips.md | True |
-| f283-r1-job.diff | True |
-| f283-r1-test_job_refusal_envelope.py | True |
+| f283-r2-block.md | True |
+| f283-r2-f283.diff | True |
+| f283-r2-job.diff | True |
+| f283-r2-ledger.md | True |
+| f283-r2-plan.md | True |
+| f283-r2-tests.diff | True |
 
-**Copies compared: 10. All True.**
+**Copies compared: 6. All True.**
 
-### G2 — THE CLAIM'S BOOKKEEPING
+### G2 — THE BOOKING
 
-**(a) `.agent/live_review.md` append by strict byte concatenation**, base = file AFTER the
-re-head and BEFORE the ledger append:
+**(a) `.agent/live_review.md` append by strict byte concatenation**:
 
 | stage | bytes |
 |---|---|
-| pre (post-rehead, pre-append) | 433255 |
-| payload (ledger.md) | 5446 |
-| post (measured) | 438701 |
+| pre (post-round-1, pre-append) | 438701 |
+| payload (ledger.md) | 7749 |
+| post (measured) | 446450 |
 | pre + payload == post | True |
 
-Matches the reviewer's `433255 + 5446 = 438701` exactly. (Pre-rehead byte count, for
-completeness: 432408, also equal to the reviewer's stated pre-rehead figure.)
+Matches the reviewer's `438701 + 7749 = 446450` exactly.
 
-**(b) `.agent/prose_slips.md` append**, same method:
-
-| stage | bytes |
-|---|---|
-| pre | 357369 |
-| payload (slips.md) | 1160 |
-| post (measured) | 358529 |
-| pre + payload == post | True |
-
-Matches the reviewer's `357369 + 1160 = 358529` exactly.
-
-**(c) Open set by distinct id**, via `open_finding_ids` from `scripts/rotate_live_review.py`
-(imported and called directly):
+**(b) Open set by distinct id**, via `open_finding_ids` from `scripts/rotate_live_review.py`
+(imported and called directly against `git show <rev>:.agent/live_review.md` text):
 
 | rev | OPEN by distinct id | reviewer's |
 |---|---|---|
-| `d0d40e89` | **24** | 24 |
-| C2 (`17be08e7`) | **23** | 23 |
+| `2aa0a6f8` | **23** | 23 |
+| C2 (`b5b7d1ac`) | **24** | 24 |
 
-Set difference: removed `{R-1018}`, added `{}` (empty) — exactly the block's claim.
+Set difference: added exactly `{R-1020}`, removed `{}` (empty) — exactly the block's claim.
 
-**(d) `.agent/plan.md` and `.agent/context.md` at C2** equal their payloads byte-for-byte:
+**(c) `.agent/plan.md` at C2 equals plan.md byte-for-byte**:
 
 | file | sha256 (both sides) | equal |
 |---|---|---|
-| .agent/plan.md | `2eec9950e3ffe44c769283a155373eea929f50f622a276420f1bd3ee0ff7df61` | True |
-| .agent/context.md | `aaefe21dbad44ce009124e1155f766aa067e9ce86a878997baf5a267f7aa441e` | True |
+| .agent/plan.md | `a0c9d01a8ebf2140d845cddd4ac207580bb607ace8a53f8cde86fec40cbef405` | True |
 
-`.agent/plan.md` line count: **49**, under the AGENTS.md 50-line rule.
+Line count: **49**, under the AGENTS.md 50-line rule.
 
-**(e) STATUS line and candidates.md**, read back in full:
-
-- STATUS: `- [~] F283 — Machine contracts, part two: the refusal sweep, the JSON gap and the exit-code taxonomy` — matches the required `- [~] F283 — ` prefix.
-- `.agent/candidates.md` full body carries its standing header and the single line:
-  `EMPTY — every entry was registered as a finding and the register is the record.` —
-  matches exactly.
-
-**(f) `git diff --name-only <C1c> <C2>`** (`9e6d74aa`..`17be08e7`) names exactly **six**
+**(d) `git diff --name-only <C1b> <C2>`** (`5fc0ca59`..`b5b7d1ac`) names exactly **three**
 paths:
 
 ```
-.agent/candidates.md
-.agent/context.md
 .agent/live_review.md
 .agent/plan.md
-.agent/prose_slips.md
-docs/roadmap/STATUS.md
+docs/roadmap/features/T2_F283.md
 ```
 
 ### G3 — THE SLICE IS THE REVIEWER'S BYTES
 
-`git apply --check .remedy-wt/f283-r1-payloads/job.diff` at C2: real exit code **0**, run
-immediately before the real apply (also exit 0). `git diff --name-only <C2> <C3>`
-(`17be08e7`..`3f754a9c`) names exactly:
+`git apply --check` on `job.diff` and `tests.diff` at C2: both real exit code **0**, run
+immediately before their real applies (also exit 0 each). `git diff --name-only <C2> <C3>`
+(`b5b7d1ac`..`8741ea88`) names exactly:
 
 ```
 apps/cli/commands/job.py
 tests/cli/test_job_refusal_envelope.py
 ```
 
-Two paths, as required. `fail(` call-site count in the committed `apps/cli/commands/job.py`
-tree: a line-scan for `fail(` not preceded by a word character (excluding the local `_fail`
-helper at lines 916–949 and its five call sites, and excluding two docstring/prose mentions
-at lines 40 and 42) yields **20** real call sites, at lines 179, 1141, 1187, 1192, 1198,
-1210, 1220, 1409, 1416, 1445, 1447, 1453, 1534, 1539, 1545, 1579, 1590, 1920, 2177, 2218.
-The reviewer's table above also lists **20** rows. Both are **20**.
+Two paths, as required.
+
+`fail(` call-site count in the committed `apps/cli/commands/job.py` tree: a line-scan for
+`fail(` not preceded by a word character finds 34 raw hits; excluding the two docstring/prose
+mentions at lines 40 and 42 (same exclusion round 1's handoff used) yields **32** real call
+sites. The reviewer's stated count is **32** (20 round 1 + 11 round 2 + 1 inside
+`_refuse_budget_set` itself). Both are **32**.
+
+Print-then-exit pairs remaining in a handler WITHOUT `json_output`, counted via the test
+module's own `_refusal_sites()` helper: **8**, at lines `[870, 918, 860, 876, 931, 935, 939,
+943]`. Locating each by AST function boundary: all eight resolve to `_cmd_run_next_task_local`
+and no other function. Matches the reviewer's 8, all in `_cmd_run_next_task_local`.
 
 ### G4 — THE SLICE WORKS AND THE OPERATOR SEES THE SAME BYTES
 
 ```
-$ bash -c 'python3 -m pytest -q -p no:cacheprovider tests/docs/ tests/orchestration/test_roadmap_index.py tests/cli/test_job_refusal_envelope.py tests/cli/test_job_budget_set.py tests/cli/test_job_commands.py tests/cli/test_job_show.py tests/cli/test_job_stop.py tests/cli/test_job_report.py tests/cli/test_plan_approval.py tests/cli/test_json_envelope.py tests/cli/test_golden_path.py tests/test_data_paths.py; echo "REAL_EXIT=$?"'
-611 passed in 145.16s (0:02:25)
+$ bash -c 'python3 -m pytest -q -p no:cacheprovider tests/docs/ tests/cli/test_job_refusal_envelope.py tests/cli/test_job_budget_set.py tests/cli/test_job_commands.py tests/cli/test_job_show.py tests/cli/test_job_stop.py tests/cli/test_job_report.py tests/cli/test_plan_approval.py tests/cli/test_json_envelope.py tests/cli/test_golden_path.py tests/test_cli_main.py tests/test_data_paths.py tests/test_run_log_cli.py tests/orchestration/test_structured_planner_cli.py; echo "REAL_EXIT=$?"'
+703 passed, 1 xfailed in 145.60s (0:02:25)
 REAL_EXIT=0
 ```
 
-Matches the reviewer's `611 passed` at real exit code 0 exactly.
+Matches the reviewer's `703 passed, 1 xfailed` at real exit code 0 exactly. **XFAIL COUNT: 1**
+— not an XPASS.
 
 ```
 $ python3 -m ruff check apps/cli/commands/job.py tests/cli/test_job_refusal_envelope.py
@@ -263,54 +228,65 @@ $ python3 -m apps.cli.main integrity check --json
   {"name": "high_blockers_open", "status": "pass", "message": "no open blocker/high findings"}
 ]}
 ```
-Real exit code **0**. All five checks `pass`, `passed: true`, `fail_count: 0`, matching the
-reviewer's reading. The full suite was NOT re-run — amend0917 rule 1 gives a feature exactly
-one full-suite run and F283 has not spent it yet (belongs to its closure).
+Real exit code **0**. All five checks `pass`, `passed: true`, `fail_count: 0`. The full suite
+was NOT re-run — amend0917 rule 1 gives F283 exactly one full-suite run, spent at closure.
 
-### G5 — THE NEW TEST GATES THE PRODUCT
+### G5 — THE NEW BEHAVIOUR IS REAL AND THE GUARD STILL GATES
 
-Disposable worktree `.remedy-wt/f283-r1-mutation-a` added at `3f754a9c` (C3), used for both
-mutations sequentially, removed after both.
+Disposable worktree `.remedy-wt/f283-r2-mutation` added at `8741ea88` (C3), used for the
+threading proof and both mutations, removed after.
 
-**(a) Rename one token** (`fail("invalid_list_option"` → `fail("list_error"` at line 179):
+**(a) PROVE THE THREADING** — `_cmd_job_budget_set(job_id="zzzznotajob",
+field_name="not_a_field", raw_value="5", json_output=...)`:
+
+`json_output=True`: exit **2**, stderr `''` (empty), stdout envelope
+`{"error": "unknown_budget_field", "message": "unknown budget field 'not_a_field'. Settable:
+...", "ok": false, "schema_version": 1}`.
+
+`json_output=False`: exit **2**, stdout `''` (empty), stderr
+`Error: unknown budget field 'not_a_field'. Settable: ...\n`.
+
+Both match the block's required shapes exactly.
+
+**(b) MUTATE AND SHOW RED — reported honestly, including the one that does not go red.**
+
+Mutation 1 — rename the token (`"unknown_budget_field"` → `"bad_field"` at the
+`_refuse_budget_set` call site inside `_cmd_job_budget_set`, since the token is passed through
+`_refuse_budget_set(...)` rather than directly as `fail("unknown_budget_field"...)` — the
+block's literal `fail(` phrasing names the shared helper's own effect, not its call-site
+spelling; I mutated the token string this round's diff introduced at line 2166):
 
 ```
 $ bash -c 'python3 -m pytest -q -p no:cacheprovider tests/cli/test_job_refusal_envelope.py; echo "REAL_EXIT=$?"'
-...F....
-FAILED tests/cli/test_job_refusal_envelope.py::TestARefusalIsAnEnvelopeUnderJson::test_an_unknown_sort_field_names_the_condition
-AssertionError: assert 'list_error' == 'invalid_list_option'
-1 failed, 7 passed in 0.39s
+.......x.
+8 passed, 1 xfailed in 0.36s
+REAL_EXIT=0
+```
+
+**This does NOT go red.** No test in `tests/cli/test_job_refusal_envelope.py` names the
+`unknown_budget_field` token, so renaming it is invisible to the suite — exactly the gap the
+block calls "the reviewer's own gap," reported here rather than hidden. Reverted with
+`git checkout -- apps/cli/commands/job.py` in the disposable worktree before mutation 2.
+
+Mutation 2 — the ratchet (`assert len(unflagged) == 8` → `== 9` in
+`test_the_unflagged_sites_are_counted_not_forgotten`):
+
+```
+$ bash -c 'python3 -m pytest -q -p no:cacheprovider .../test_job_refusal_envelope.py -k test_the_unflagged_sites_are_counted_not_forgotten; echo "REAL_EXIT=$?"'
+F
+AssertionError: expected the 9 sites whose handler has no json flag, found 8 at lines [870, 918, 860, 876, 931, 935, 939, 943]
+1 failed, 8 deselected in 0.23s
 REAL_EXIT=1
 ```
 
-Matches the reviewer's `1 failed, 7 passed` at exit 1, on
-`TestARefusalIsAnEnvelopeUnderJson::test_an_unknown_sort_field_names_the_condition`, exactly.
+**This goes RED** at `test_the_unflagged_sites_are_counted_not_forgotten`, exactly as the
+block names it.
 
-The mutation was then reverted (`git checkout -- apps/cli/commands/job.py` in the disposable
-worktree) before mutation (b).
-
-**(b) Restore one site** (`checkpoint_not_found` at lines 1578–1583 put back to
-`print(f"Error: checkpoint not found: {checkpoint_id}", file=sys.stderr); sys.exit(1)`):
+`git worktree remove --force .remedy-wt/f283-r2-mutation` (force needed: mutation 2 left the
+worktree dirty by design, never committed). `git worktree list` after removal:
 
 ```
-$ bash -c 'python3 -m pytest -q -p no:cacheprovider tests/cli/test_job_refusal_envelope.py; echo "REAL_EXIT=$?"'
-F.......
-FAILED tests/cli/test_job_refusal_envelope.py::TestTheFlaggedRefusalsAreAllMigrated::test_no_flagged_print_then_exit_pair_survives
-AssertionError: these job.py refusals have `json_output` in scope and still print prose: lines [1580]
-1 failed, 7 passed in 0.32s
-REAL_EXIT=1
-```
-
-Matches the reviewer's `1 failed, 7 passed` at exit 1, on
-`TestTheFlaggedRefusalsAreAllMigrated::test_no_flagged_print_then_exit_pair_survives`,
-exactly.
-
-`git worktree remove --force .remedy-wt/f283-r1-mutation-a` (force needed: the second
-mutation left the worktree dirty by design, never committed). `git worktree list` after
-removal:
-
-```
-/home/decodeux/Repos/remedy                                  3f754a9c [feature/f283-machine-contracts-part-two]
+/home/decodeux/Repos/remedy                                  8741ea88 [feature/f283-machine-contracts-part-two]
 /home/decodeux/Repos/remedy/.remedy-wt/job-468c8e62a2cc4fac  1b9ae606 [remedy/job-468c8e62a2cc4fac]
 /home/decodeux/Repos/remedy/.remedy-wt/job-86f628f5e4fb4e0c  aca27d4a [remedy/job-86f628f5e4fb4e0c]
 /home/decodeux/Repos/remedy/.remedy-wt/job-c1dba9c3d7874968  fd23710f [remedy/job-c1dba9c3d7874968]
@@ -321,114 +297,118 @@ Only the primary checkout and the three `remedy/job-*` worktrees remain.
 ### G6 — TREE AND PUSH
 
 Reported in full in the worker's session reply once this commit exists (push carries this
-file, per DECISION amend0827 D2 — no trailing commit may add these readings after the fact).
-Expected at that point: `git status --porcelain` empty; `git log --oneline -n 6` showing C4,
-C3, C2, C1c, C1b, C1a in that order; `git worktree list` showing the primary checkout and
-the three `remedy/job-*` worktrees and nothing else; the push's real outcome; `gh pr list`
-empty (no PR opens at claim time); and the `gh run list` run id/status for this branch.
+file). At write time: `git status --porcelain` empty; `git log --oneline -n 5` shows C4, C3,
+C2, C1b, C1a in that order (`8741ea88`, `b5b7d1ac`, `5fc0ca59`, `4d1fe176` below this commit);
+`git worktree list` shows the primary checkout and the three `remedy/job-*` worktrees and
+nothing else. Push outcome and `gh pr list` reported in the session reply.
 
 ### The round's whole tracked path set (before this commit)
 
-`git diff --name-only d0d40e89 3f754a9c` — **18** paths:
+`git diff --name-only 2aa0a6f8 8741ea88` — **11** paths:
 
 | # | path | introduced by |
 |---|---|---|
-| 1 | .agent/authored/f283-r1-block.md | C1a `40f0edcc` |
-| 2 | .agent/authored/f283-r1-candidates.diff | C1b `bb42e30c` |
-| 3 | .agent/authored/f283-r1-context.md | C1b `bb42e30c` |
-| 4 | .agent/authored/f283-r1-ledger.md | C1b `bb42e30c` |
-| 5 | .agent/authored/f283-r1-plan.md | C1b `bb42e30c` |
-| 6 | .agent/authored/f283-r1-rehead.diff | C1b `bb42e30c` |
-| 7 | .agent/authored/f283-r1-slips.md | C1b `bb42e30c` |
-| 8 | .agent/authored/f283-r1-status.diff | C1b `bb42e30c` |
-| 9 | .agent/authored/f283-r1-job.diff | C1c `9e6d74aa` |
-| 10 | .agent/authored/f283-r1-test_job_refusal_envelope.py | C1c `9e6d74aa` |
-| 11 | .agent/candidates.md | C2 `17be08e7` |
-| 12 | .agent/context.md | C2 `17be08e7` |
-| 13 | .agent/live_review.md | C2 `17be08e7` |
-| 14 | .agent/plan.md | C2 `17be08e7` |
-| 15 | .agent/prose_slips.md | C2 `17be08e7` |
-| 16 | docs/roadmap/STATUS.md | C2 `17be08e7` |
-| 17 | apps/cli/commands/job.py | C3 `3f754a9c` |
-| 18 | tests/cli/test_job_refusal_envelope.py | C3 `3f754a9c` |
+| 1 | .agent/authored/f283-r2-block.md | C1a `4d1fe176` |
+| 2 | .agent/authored/f283-r2-f283.diff | C1b `5fc0ca59` |
+| 3 | .agent/authored/f283-r2-job.diff | C1b `5fc0ca59` |
+| 4 | .agent/authored/f283-r2-ledger.md | C1b `5fc0ca59` |
+| 5 | .agent/authored/f283-r2-plan.md | C1b `5fc0ca59` |
+| 6 | .agent/authored/f283-r2-tests.diff | C1b `5fc0ca59` |
+| 7 | .agent/live_review.md | C2 `b5b7d1ac` |
+| 8 | .agent/plan.md | C2 `b5b7d1ac` |
+| 9 | docs/roadmap/features/T2_F283.md | C2 `b5b7d1ac` |
+| 10 | apps/cli/commands/job.py | C3 `8741ea88` |
+| 11 | tests/cli/test_job_refusal_envelope.py | C3 `8741ea88` |
 
-Plus `.agent/handoff.md` from this commit makes **19** — set-equal to constraint 3's
-enumeration (ten authored copies plus nine named files). `.agent/decisions.md`,
-`.agent/operator_questions.md`, `README.md`, any `docs/roadmap/features/*.md`, and any
-module other than `job.py` appear **0** times.
+Plus `.agent/handoff.md` from this commit makes **12** — set-equal to constraint 3's
+enumeration (six authored copies plus the five named tracked paths plus the handoff itself).
+`.agent/candidates.md`, `.agent/context.md`, `.agent/decisions.md`,
+`.agent/operator_questions.md`, `README.md`, `docs/roadmap/STATUS.md`, and any module other
+than `job.py` appear **0** times.
 
 ## Authored-text proofs
 
-- The ten copies at C1a/C1b/C1c, compared with the reviewer's originals under
-  `.remedy-wt/f283-r1-payloads/` and `.remedy-wt/f283-r1-block.md`: **ten readings, all
+- The six copies at C1a/C1b, compared with the reviewer's originals under
+  `.remedy-wt/f283-r2-payloads/` and `.remedy-wt/f283-r2-block.md`: **six readings, all
   True** (G1).
-- The two REWRITE payloads against their committed files: `.agent/plan.md` and
-  `.agent/context.md` are sha256-equal to their payloads (G2d).
-- The two APPEND payloads against their committed files: strict byte concatenation True for
-  both `.agent/live_review.md` (ledger.md) and `.agent/prose_slips.md` (slips.md), all byte
-  numbers equal to the reviewer's (G2a, G2b).
-- The four DIFF payloads: each applied with `git apply`, never retyped; each dry-ran with
-  `git apply --check` at exit 0 first (G1, G3).
-- No payload was edited or retyped. All ten copies were made with `shutil.copyfile`; the two
-  appends by reading the payload's bytes and concatenating them; the four diffs applied with
+- The one REWRITE payload against its committed file: `.agent/plan.md` is sha256-equal to its
+  payload (G2c).
+- The one APPEND payload against its committed file: strict byte concatenation True for
+  `.agent/live_review.md` (ledger.md), byte numbers equal to the reviewer's (G2a).
+- The three DIFF payloads (`f283.diff`, `job.diff`, `tests.diff`): each applied with
+  `git apply`, never retyped; each dry-ran with `git apply --check` at exit 0 first (G1, G3).
+- No payload was edited or retyped. All six copies were made with `shutil.copyfile`; the one
+  append by reading the payload's bytes and concatenating them; the three diffs applied with
   `git apply` only.
 
 ## Deviations & assumptions
 
-1. **The bundle ran C1a, C1b, C1c, C2, C3 — five commits, exactly as ordered — before this
-   handback commit C4.** Nothing was added, dropped or reordered.
-2. **`git commit`'s own printed summary line for C2 momentarily read `130 insertions(+), 130
-   deletions(-)`** in one intermediate tool-output capture, while `git show --numstat`,
-   `git show --stat`, and an independent `git diff --shortstat 9e6d74aa 17be08e7` all agree
-   on **109/109**. Re-running `git show --stat HEAD` after the fact confirmed 109/109
-   consistently; the 130 reading did not reproduce and no on-disk artifact reflects it. Per
-   `.agent/prose_slips.md` rule this is recorded here rather than spent as a finding: nothing
-   under `apps/`, `packages/`, `tests/` or `docs/` is affected, and every gate that measured
-   this commit's insertions used the reproducible 109 figure.
-3. **No trailing commit for the C4 push, `gh pr list`, or `gh run list`; all three go in the
-   session reply**, consistent with DECISION amend0827 D2 and F277's own round-19 precedent:
-   the push carries this very file, so its outcome cannot be known before the commit exists.
-4. **One disposable worktree (`.remedy-wt/f283-r1-mutation-a`) was reused for both G5
-   mutations sequentially** rather than two separate worktrees — the block's own phrasing
-   ("REMOVE the worktree", singular) supports this reading, and neither mutation was ever
-   committed. `git checkout -- apps/cli/commands/job.py` cleanly reverted mutation (a) before
-   mutation (b) was applied in the same worktree.
-5. **Scratch hygiene.** No log or script was written outside the gitignored
-   `.remedy-wt/f283-r1-scratch/` (unused this round — all measurement was done with inline
-   `python3` heredocs and reported directly) and the one disposable worktree above. Nothing
-   was written into `.remedy-wt/f283-r1-payloads/`.
-6. **Constraint 4 held throughout**: only the twenty sites named in the block's token table
-   were touched; the twenty slice-B sites (`_cmd_create_job`, `_cmd_show_job`,
-   `_cmd_plan_job_local`, `_cmd_run_next_task_local`, `_refuse_budget_set`) and the four
-   non-mechanical sites were not migrated, edited, or referenced.
+1. **The bundle ran C1a, C1b, C2, C3 — four commits, exactly as ordered — before this handback
+   commit C4.** Nothing was added, dropped or reordered.
+2. **C2's measured insertions are 44, not the block's stated 45**, and the `f283.diff` hunk
+   for `docs/roadmap/features/T2_F283.md` measures +9/-0, not the block's stated +10/-0. Both
+   were reported per the block's own instruction rather than forced to match; `git show
+   --numstat`, an independent `git diff --shortstat`, and a direct read of the applied diff's
+   two hunks (2 lines + 7 lines = 9) all agree on 44/9. Nothing was retyped or edited to make
+   either number match — the payload was applied byte-for-byte via `git apply` exactly as
+   given.
+3. **`git commit`'s own printed summary line for C2 read `62 insertions(+), 49 deletions(-)`**,
+   a third figure agreeing with neither the block's 45 nor the measured 44. This is the same
+   false-summary-line phenomenon round 1's handoff recorded for its own C2 (there: printed 130
+   insertions/130 deletions against a reproducible 109/109). `git show --numstat` and an
+   independent `git diff --shortstat` are the authoritative readings and agree with each other
+   at 44/31; nothing under `apps/`, `packages/`, `tests/` or `docs/` is affected by this
+   printed-summary artifact.
+4. **G5(b) mutation 1 targeted the token string at the `_refuse_budget_set` call site**
+   (`"unknown_budget_field"` → `"bad_field"`), since this round's own diff routes that
+   condition through `_refuse_budget_set(token, message, json_output=...)` rather than a
+   direct `fail("unknown_budget_field"...)` call — the shared helper is what the block's
+   `fail(` phrasing names by effect. The mutation still exercises the exact behaviour the block
+   describes (a token silently renamed with no test noticing) and reproduced the reviewer's
+   stated non-red result exactly.
+5. **No trailing commit for the C4 push or `gh pr list`; both go in the session reply**,
+   consistent with DECISION amend0827 D2 and round 1's own precedent: the push carries this
+   very file, so its outcome cannot be known before the commit exists.
+6. **One disposable worktree (`.remedy-wt/f283-r2-mutation`) was reused for the threading proof
+   and both G5 mutations sequentially** rather than separate worktrees — consistent with round
+   1's reading of the block's singular "REMOVE the worktree" phrasing. Neither mutation was
+   ever committed; `git checkout --` cleanly reverted mutation 1 before mutation 2 was applied
+   in the same worktree.
+7. **Scratch hygiene.** Three small scripts were written to the gitignored
+   `.remedy-wt/f283-r2-scratch/` (`count_fail_sites.py`, `find_unflagged_pairs.py`,
+   `locate_functions.py`, `prove_threading.py`) for measurement; none were committed, nothing
+   was written into `.remedy-wt/f283-r2-payloads/`.
+8. **Constraint 4 held throughout**: only the eleven sites named in the block's token table
+   were touched (`_cmd_create_job` ×5, `_cmd_show_job` ×1, `_cmd_plan_job_local` ×5, plus
+   `_refuse_budget_set` and its six callers); `_cmd_run_next_task_local`'s eight sites and the
+   four non-mechanical sites were not migrated, edited, or referenced. R-1020 was registered,
+   not repaired — the xfail reports XFAIL (1 xfailed in G4, confirmed again isolated in G5),
+   never XPASS.
 
 ## Item-status table
 
 | Item | Status | Reason |
 |---|---|---|
-| Pre-flight (STOP, git state, block self-verify) | done | no STOP; tree clean on `main` at `d0d40e89`; block 282 lines / matching sha256 |
-| Branch cut | done | `feature/f283-machine-contracts-part-two` created from `main`, no pull |
-| C1a copy block | done | 282 insertions, matches block's own line count |
-| C1b copy 7 bookkeeping payloads | done | 230 insertions, matches expected 230 |
-| C1c copy 2 product payloads | done | 460 insertions, matches expected 460 |
-| C2 claim F283, book round 19 PASS, resolve R-1018 | done | 109/109, matches expected 109; all sub-checks (a)-(f) verified |
-| C3 migrate job's 20 flagged refusals | done | 262 insertions (76+186), matches expected; 2 paths only |
+| Pre-flight (STOP, git state, block self-verify) | done | no STOP; tree clean at `2aa0a6f8`; block 265 lines / matching sha256 |
+| C1a copy block | done | 265 insertions, matches block's own line count |
+| C1b copy 5 payloads | done | 359 insertions, matches expected 359 |
+| C2 book round 1 PASS, register R-1020 | deviated | 44/9 measured vs block's stated 45/10 — reported per block's own instruction, nothing retyped |
+| C3 migrate 11 refusals, thread json_output | done | 88 insertions (58+30), matches expected; 2 paths only |
 | C4 the handback | done | this commit |
-| G1 payload transport + authored copies | done | 27/27 payload readings equal; 10/10 authored copies byte-identical; 4/4 diffs dry-ran at exit 0 |
-| G2(a) live_review.md append | done | 433255 + 5446 = 438701, equal to reviewer's |
-| G2(b) prose_slips.md append | done | 357369 + 1160 = 358529, equal to reviewer's |
-| G2(c) open set by distinct id | done | 24 at `d0d40e89`, 23 at C2; removed exactly {R-1018}, added {} |
-| G2(d) plan.md/context.md rewrites | done | both sha256-equal to payload; plan.md 49 lines, under 50 |
-| G2(e) STATUS line + candidates.md | done | `[~] F283 —` prefix; candidates.md carries the single EMPTY line |
-| G2(f) six-path diff | done | exactly 6 paths at C1c..C2 |
-| G3 slice is reviewer's bytes | done | apply-check exit 0; 2 paths; 20 fail( call sites, matching reviewer's 20-row table |
-| G4 slice works, ruff, integrity | done | 611 passed/exit 0; ruff exit 0; integrity all 5 pass, fail_count 0 |
-| G5 mutation red-proofs | done | mutation (a) 1 failed/7 passed exit 1 at the named test; mutation (b) 1 failed/7 passed exit 1 at the named test; worktree cleanly force-removed |
-| G6 tree, push, PR list, CI run | pending at write time | reported in the worker's session reply with real exit codes |
+| G1 payload transport + authored copies | done | 15/15 payload readings equal; 6/6 authored copies byte-identical; 3/3 diffs dry-ran at exit 0 |
+| G2(a) live_review.md append | done | 438701 + 7749 = 446450, equal to reviewer's |
+| G2(b) open set by distinct id | done | 23 at `2aa0a6f8`, 24 at C2; added exactly {R-1020}, removed {} |
+| G2(c) plan.md rewrite | done | sha256-equal to payload; 49 lines, under 50 |
+| G2(d) three-path diff | done | exactly 3 paths at C1b..C2 |
+| G3 slice is reviewer's bytes | done | apply-check exit 0 ×2; 2 paths; 32 fail( sites; 8 unflagged pairs all in `_cmd_run_next_task_local` |
+| G4 slice works, ruff, integrity | done | 703 passed/1 xfailed/exit 0; ruff exit 0; integrity all 5 pass, fail_count 0 |
+| G5(a) threading proof | done | json_output=True: exit 2, empty stderr, envelope; json_output=False: exit 2, empty stdout, prose stderr |
+| G5(b) mutation red-proofs | done | mutation 1 does NOT go red (8 passed/1 xfailed, exit 0) — reported honestly; mutation 2 goes RED (1 failed, exit 1) at the named test; worktree cleanly force-removed |
+| G6 tree, push, PR list | pending at write time | reported in the worker's session reply with real exit codes |
 | Constraint 1 no payload edited/retyped | done | `shutil.copyfile`, byte concatenation, `git apply` only |
-| Constraint 2 every commit under 500 insertions | done | 282, 230, 460, 109, 262; this handoff exempt as single `.agent/**` state file |
-| Constraint 3 no unnamed file touched | done | 19 paths after this commit, set-equal to the enumeration |
-| Constraint 4 no unnamed refusal site migrated | done | only the 20 named sites touched; slice-B and non-mechanical sites untouched |
+| Constraint 2 every commit under 500 insertions | done | 265, 359, 44, 88; this handoff exempt as single `.agent/**` state file |
+| Constraint 3 no unnamed file touched | done | 12 paths after this commit, set-equal to the enumeration |
+| Constraint 4 no unnamed refusal site migrated, R-1020 not repaired | done | only the 11 named sites touched; xfail reports XFAIL, not XPASS |
 | Constraint 5 stop on red | done | no gate went red |
 | Constraint 6 nothing is merged | done | no `gh pr merge`, no `gh pr create`, no checkout of `main`, no branch deletion |
 | Constraint 7 leave job worktrees alone | done | only one disposable G5 worktree added/removed; `remedy/job-*` untouched |
@@ -436,12 +416,11 @@ module other than `job.py` appear **0** times.
 ## Next
 
 1. Phase 1 rule 1: read `.agent/STOP` from disk.
-2. The review of round 1 — C1a, C1b, C1c, C2, C3, C4, with all six gates re-derived.
-3. Then round 2 — SLICE B, which threads `json_output` into `_cmd_show_job`,
-   `_cmd_create_job`, `_cmd_plan_job_local`, `_cmd_run_next_task_local` and
-   `_refuse_budget_set`, and migrates their twenty sites. `job.show` and `job.run` both
-   declare `supports_json: True` and both answer a failure in prose today — the gap T001
-   exists to close.
+2. The review of round 2 — C1a, C1b, C2, C3, C4, with all six gates re-derived.
+3. Then round 3 — R-1020's repair, which the reviewer rules comes BEFORE any further group
+   migration, because T001's catalog half is worth nothing while 52 of the 111
+   `supports_json` commands answer a bad argument in prose. Round 3 must delete the `xfail`
+   mark in the same commit that turns it green.
 
-Open findings count: **23** (after C2). Operator-questions count: **2** (Q1, Q2 — both
+Open findings count: **24** (after C2). Operator-questions count: **2** (Q1, Q2 — both
 unchanged by this round).
