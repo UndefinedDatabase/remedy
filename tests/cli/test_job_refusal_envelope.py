@@ -98,10 +98,17 @@ class TestTheFlaggedRefusalsAreAllMigrated:
         )
 
     def test_the_unflagged_sites_are_counted_not_forgotten(self):
-        """The rest of T001. When the flag is threaded this number falls; it never rises."""
+        """The rest of T001. When the flag is threaded this number falls; it never rises.
+
+        20 at the slice-A round; 8 once slice B threaded `_cmd_show_job`,
+        `_cmd_create_job`, `_cmd_plan_job_local` and `_refuse_budget_set`. The eight left
+        are all in `_cmd_run_next_task_local`, which ten tests monkeypatch with a
+        single-positional lambda — threading it moves those tests too, so it is its own
+        round.
+        """
         _, unflagged = _refusal_sites()
-        assert len(unflagged) == 20, (
-            f"expected the 20 sites whose handler has no json flag, found {len(unflagged)} "
+        assert len(unflagged) == 8, (
+            f"expected the 8 sites whose handler has no json flag, found {len(unflagged)} "
             f"at lines {unflagged}"
         )
 
@@ -176,6 +183,26 @@ class TestWithoutJsonTheOperatorSeesTheSameBytes:
         assert code == 1
         assert out == ""
         assert err == "Error: No job matches 'zzzznotajob'. Try: remedy job list.\n"
+
+    @pytest.mark.xfail(strict=True, reason="R-1020: resolve_job_id exits in prose before the handler")
+    def test_a_threaded_command_still_refuses_in_prose_when_a_shared_helper_exits(self):
+        """R-1020, pinned red on purpose: threading the flag is not enough.
+
+        `job.show` declares `supports_json: True` and its handler now takes and uses
+        `json_output` — but the refusal a bad id actually reaches is
+        `packages.orchestration.data_paths.resolve_job_id`, which prints prose and exits
+        before the handler's own failure path is reached. 52 of the catalog's 111
+        `supports_json` commands call one of those shared EXITING helpers. This test is
+        `strict`, so the round that fixes R-1020 turns it green and must delete the mark
+        in the same commit.
+        """
+        from apps.cli.commands.job import _cmd_show_job
+
+        code, out, err = _invoke(_cmd_show_job, job_id_str="zzzznotajob", json_output=True)
+        assert code == 1
+        assert err == ""
+        body = json.loads(out)
+        assert body["error"] == "invalid_job_id"
 
     def test_the_rejected_plan_sentence_keeps_its_prefix_for_the_unmigrated_sites(self):
         """`_plan_rejected_error` still writes `Error: ` for the sites still on print()."""
