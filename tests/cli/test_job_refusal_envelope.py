@@ -343,3 +343,64 @@ class TestTheAmbiguousBranchAnswersInTheEnvelope:
         assert out == ""
         _, _, reference_err = _invoke(resolve_job_id, raw="aaaa1111")
         assert err == reference_err
+
+
+class TestEveryMigratedJsonCommandAnswersABadIdInTheEnvelope:
+    """C8 — the whole layer proved through the REAL parser, not the handler directly.
+
+    Every command below now resolves its job id through
+    `apps.cli.job_id_arg.resolve_job_id_or_fail` (round 3 for `job.*`, round 4 for the
+    rest). `zzzznotajob` is neither a UUID nor a short hex prefix, so it fails
+    `lookup_job_id`'s shape check before any command-specific logic runs — the SAME
+    refusal, `invalid_job_id` at exit 1, for every command here except `job.stop`,
+    whose bespoke handling in `job_stop_cmd.py` answers `job_not_found` at exit 3
+    (C3's SPEC). A command whose refusal fires before its id reaches the resolver is
+    simply not in this table — see the handback for the one measured that way.
+    """
+
+    #: command_id -> the positional args after group/subcommand, read off the catalog
+    #: entry (`apps.cli.command_catalog.CATALOG`) for each command's own required
+    #: positionals. `teacher.ask` takes its job id through `--job-id`, an option, not
+    #: a positional — so its "placeholder" is the required `question` positional and
+    #: the job id is passed as the option explicitly.
+    _ARGV_TAIL: dict[str, list[str]] = {
+        "change.list": ["zzzznotajob"],
+        "change.show": ["zzzznotajob", "intent-placeholder"],
+        "change.proof": ["zzzznotajob"],
+        "decision.list": ["zzzznotajob"],
+        "decision.show": ["zzzznotajob", "decision-placeholder"],
+        "job.contract": ["zzzznotajob"],
+        "job.context": ["zzzznotajob"],
+        "job.stop": ["zzzznotajob"],
+        "patch.list": ["zzzznotajob"],
+        "patch.apply": ["zzzznotajob", "intent-placeholder"],
+        "patch.revert": ["zzzznotajob", "intent-placeholder"],
+        "patch.approve-hunks": ["zzzznotajob"],
+        "teacher.narrate": ["zzzznotajob"],
+        "teacher.ask": ["question-placeholder", "--job-id", "zzzznotajob"],
+    }
+
+    @pytest.mark.parametrize("command_id", sorted(_ARGV_TAIL))
+    def test_a_bad_job_id_answers_in_the_envelope(self, command_id, monkeypatch, tmp_path):
+        from apps.cli.command_catalog import CATALOG
+        from apps.cli.grouped import main
+
+        entry = next(c for c in CATALOG if c.command_id == command_id)
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        argv = [entry.group_id, entry.subcommand, *self._ARGV_TAIL[command_id], "--json"]
+
+        out, err = io.StringIO(), io.StringIO()
+        with pytest.raises(SystemExit) as caught:
+            with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+                main(argv)
+
+        assert err.getvalue() == ""
+        body = json.loads(out.getvalue())
+        assert body["ok"] is False
+        assert body["schema_version"] == 1
+        if command_id == "job.stop":
+            assert caught.value.code == 3
+            assert body["error"] == "job_not_found"
+        else:
+            assert caught.value.code == 1
+            assert body["error"] == "invalid_job_id"
