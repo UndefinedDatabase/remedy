@@ -348,14 +348,16 @@ class TestJobFacadeNoAgent:
     """Job status/report work without .agent directory."""
 
     def test_job_status_invalid_id_safe(self):
-        """A bad id fails safely: named error on stderr, no partial JSON.
+        """A bad id fails safely, in the envelope: named error, no stderr.
 
-        The machine token `invalid_job_id` is a `stop_reason` of the test
-        execution service; the job CLI reports a bad id as a human error on
-        stderr and exits non-zero. This pins that behaviour instead.
+        The command has answered in the envelope since F283 round 3
+        (`6ce6a67c`); R-1025 registered that this test still pinned the
+        pre-round-3 prose shape it was meant to guard against, and this is
+        its repair.
         """
         import contextlib
         import io
+        import json
 
         from apps.cli.grouped import main
         out, err = io.StringIO(), io.StringIO()
@@ -366,10 +368,13 @@ class TestJobFacadeNoAgent:
             except SystemExit as exc:
                 code = exc.code
         assert code not in (None, 0)
-        assert "No job matches" in err.getvalue()
-        assert "not-a-uuid" in err.getvalue()
+        assert err.getvalue() == ""
         assert "Traceback" not in err.getvalue()
-        assert out.getvalue().strip() == ""
+        payload = json.loads(out.getvalue())
+        assert payload["ok"] is False
+        assert payload["error"] == "invalid_job_id"
+        assert "not-a-uuid" in payload["message"]
+        assert "Traceback" not in out.getvalue()
 
 # ---------------------------------------------------------------------------
 # Steps 3229-3237: Enriched truth, demo integration, safety proofs
