@@ -1,35 +1,35 @@
-# Handoff — F283 Machine contracts, part two: refusal sweep, JSON gap, exit-code taxonomy · Round 10 · `do --json` one envelope, grouped's parser refusals, `test` group, R-1026
+# Handoff — F283 Machine contracts, part two: refusal sweep, JSON gap, exit-code taxonomy · Round 11 · `stats` refusals, `job stop`, R-1026 booked
 
 ## Session
 
-SESSION 3 of feature F283 · round 10 · rounds so far 10
+SESSION 3 of feature F283 · round 11 · rounds so far 11
 
-This round booked round 9's PASS (five commits `d6eda8ea`..`859f883c`, all six gates
-PASS, one finding registered), registered R-1026 and recorded DECISIONs F283 D5 and D6.
-Then, one commit each: `_cmd_do_order`'s `--json` branch now builds its result document
-and answers it in ONE envelope — `emit_ok(**document)` on success, `fail("step_failed",
-..., json_output=True, failed_step=last.name, **document)` on a failed walk — resolving
-the double-envelope hazard round 9 correctly declined (D5); every parse-level usage
-refusal in `apps/cli/grouped.py::main` now asks `_wants_json(raw)` and answers in the
-envelope when it holds, at the SAME exit code, through a small shared helper
-(`_usage_refusal`) plus two `fail()` calls for the post-parse pairs (D6); the `test`
-group's three refusals in `apps/cli/commands/test_cmds.py` moved onto `fail()`; and the
-three sites R-1026 named — `job_context_cmd.py::_cmd_job_context`,
-`project.py::_cmd_attach_project_job` and `::_cmd_project_adopt` — now pass
-`job_not_found` instead of `invalid_job_id`.
-Context self-assessment: roughly 96% of the working budget remained at the point this
-handoff was written (about 14.4M of 15M tokens).
+This round booked round 10's PASS (verdict PASS on all six gates, R-1026
+resolved). Then, one commit each: every refusal in `stats_ledger_cmd.py`,
+`bench_cmd.py` and `failure_stats_cmd.py` moved onto `fail()`, the exiting
+helpers (`_validate_by`, `_validate_period_bound`, `_one_project_ledger`,
+`_require_evidence_dir`, `_validate_multiplier`, `_one_project_history`,
+`_validate_since`) gaining a REQUIRED `json_output` every caller now passes;
+`job_stop_cmd.py`'s four `raise SystemExit` refusals (`_unknown_job`, the
+`validate_job_id` refusal, `job_not_stoppable`, `stop_not_requested`) moved the
+same way, leaving `job_stop_cmd.py` with no `raise SystemExit` at all; and the
+two refusals round 10's own probe found unpinned — `_cmd_test_status`'s
+`job_not_found` and `_cmd_discover_commands`'s `job_store_error` — gained tests,
+plus the mis-attributed DECISION F283 D5 citation in
+`tests/test_command_discovery.py`'s docstring was corrected.
+Context self-assessment: roughly 98% of the working budget remained at the
+point this handoff was written.
 
 ## Range
 
-Review of `859f883c`..`HEAD`.
+Review of `590abe57`..`HEAD`.
 
 ## Block self-verification (R-0954)
 
 | reading | measured | given | equal |
 |---|---|---|---|
-| line count | 240 | 240 | True |
-| sha256 | `ac2ab5f6b85401844eb490b82f660dad84dffaa463ad778d6727084d9a5c0a79` | `ac2ab5f6b85401844eb490b82f660dad84dffaa463ad778d6727084d9a5c0a79` | True |
+| line count | 221 | 221 | True |
+| sha256 | `4e9166abec91d27b0b5f02edb0077338177dd9d3e454f2e4b330387bcd3c50fe` | `4e9166abec91d27b0b5f02edb0077338177dd9d3e454f2e4b330387bcd3c50fe` | True |
 
 Neither reading differed, so the round went ahead.
 
@@ -38,69 +38,59 @@ Neither reading differed, so the round went ahead.
 - `ls .agent/STOP`: `No such file or directory`. No STOP on disk.
 - `git status --porcelain`: empty.
 - `git branch --show-current`: `feature/f283-machine-contracts-part-two`.
-- `git log --oneline -1`: `859f883c`, matching the delegation message.
+- `git log --oneline -1`: `590abe57`, matching the delegation message.
 
 ## Commits
 
-### 1b9f3367 F283 R10 C1: copy round 10 block and payloads into .agent/authored/
+### 4f4128f8 F283 R11 C1: copy round 11 block and payloads into .agent/authored/
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f283-r10-block.md | +240/-0 | byte-for-byte copy of this round's step block |
-| .agent/authored/f283-r10-decisions.md | +62/-0 | byte-for-byte copy of decisions.md |
-| .agent/authored/f283-r10-ledger.md | +4/-0 | byte-for-byte copy of ledger.md |
-| .agent/authored/f283-r10-plan.md | +39/-0 | byte-for-byte copy of plan.md |
+| .agent/authored/f283-r11-block.md | +221/-0 | byte-for-byte copy of this round's step block |
+| .agent/authored/f283-r11-ledger.md | +4/-0 | byte-for-byte copy of ledger.md |
+| .agent/authored/f283-r11-plan.md | +36/-0 | byte-for-byte copy of plan.md |
 
-Measured insertions (`git show --numstat`): **345** (240+62+4+39).
+Measured insertions (`git show --numstat`): **261** (221+4+36).
 
-### d8b31461 F283 R10 C2: book round 9's PASS, register R-1026, record D5 and D6
+### d077d310 F283 R11 C2: book round 10's PASS, resolve R-1026
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/decisions.md | +62/-0 | append decisions.md: DECISIONs F283 D5 and D6 |
-| .agent/live_review.md | +4/-0 | append ledger.md by strict byte concatenation: round-9 `Gate:` entry, registration of R-1026 |
-| .agent/plan.md | +19/-15 | rewrite to plan.md payload, byte-identical; git's line diff shows only the lines that changed, not the whole file |
+| .agent/live_review.md | +4/-0 | append ledger.md by strict byte concatenation: round-10 `Gate:` entry, `Done:` line resolving R-1026 |
+| .agent/plan.md | +11/-14 | rewrite to plan.md payload, byte-identical; git's line diff shows only the lines that changed |
 
-Measured insertions (`git show --numstat`): **85** (62+4+19); 15 deletions from the plan.md rewrite.
+Measured insertions: **15** (4+11); 14 deletions from the plan.md rewrite.
 
-### 14aabb59 F283 R10 C3: do --json answers in one envelope
+### 6672ff15 F283 R11 C3: stats refusals answer through fail(), helpers take the flag
 | Path | +/- | Reason |
 |---|---|---|
-| apps/cli/commands/do_cmd.py | +25/-26 | `emit_ok` imported alongside `fail`; `_cmd_do_order`'s `json_output` branch builds `document` (the same dict, same keys) and, when `ctx.failed`, calls `fail("step_failed", f"{last.name} failed: {last.detail}", json_output=True, failed_step=last.name, **document)` (new token), else `emit_ok(**document)` and returns; the text branch is unchanged and its trailing line becomes `fail("step_failed", ..., json_output=False)`; the NOT-migrated comment is deleted |
-| tests/cli/test_do_flags.py | +21/-1 | `test_an_unknown_project_exits_1_with_the_init_step_failed_and_no_mission` repaired to assert an empty stderr and the envelope (`ok` false, `error` `step_failed`, `failed_step` `init`, `message`); added `test_a_successful_do_json_object_carries_schema_version_1_and_ok_true` and `test_a_failed_walk_in_text_mode_still_writes_error_init_failed_on_stderr` |
-| tests/cli/test_do_commit_flags.py | +5/-1 | `test_a_push_the_remote_refuses_leaves_the_commit_and_fails_the_walk` repaired the same way (`failed_step` `apply`) |
-| tests/cli/test_do_sequence_cli.py | +5/-1 | `test_an_apply_the_baseline_check_refuses_fails_the_walk_naming_the_job` repaired the same way (`failed_step` `apply`) |
-| tests/cli/test_job_refusal_envelope.py | +12/-11 | `TestDoRefusalsAreAllMigrated` docstring and assertion updated: NO flagged site remains (`test_no_flagged_print_then_exit_pair_survives`), not one |
+| apps/cli/commands/stats_ledger_cmd.py | +46/-46 | `fail` imported (`sys` import dropped, now unused); `_validate_by`, `_validate_period_bound`, `_one_project_ledger`, `_require_evidence_dir` gain a required `json_output`, every caller passes its own; `_load_ledger_reports`'s and `_cmd_stats_report`'s branched `sqlite3.Error` catches become one `fail("ledger_unreadable", ...)` each |
+| apps/cli/commands/bench_cmd.py | +13/-13 | `fail` imported (`sys` dropped); `_validate_multiplier`, `_one_project_history` gain a required `json_output`, `_cmd_stats_bench` passes its own |
+| apps/cli/commands/failure_stats_cmd.py | +10/-12 | `fail` imported (`sys` dropped); `_validate_since` gains a required `json_output`; the branched `FailureStatsError` catch becomes `fail("evidence_unreadable", str(exc), json_output=json_output)` |
+| tests/cli/test_stats_cost.py | +19/-0 | `test_an_unreadable_ledger_answers_ledger_unreadable_under_json`: one envelope (`ledger_unreadable`), empty stderr |
+| tests/cli/test_stats_report.py | +18/-0 | `test_a_bad_until_answers_invalid_argument_under_json`: one envelope (`invalid_argument`), empty stderr |
+| tests/cli/test_stats_bench.py | +18/-0 | `test_an_unusable_multiplier_answers_invalid_argument_under_json`: one envelope (`invalid_argument`), empty stderr |
+| tests/cli/test_failure_cmd.py | +23/-0 | `test_an_unreadable_evidence_root_answers_evidence_unreadable_under_json`: one envelope (`evidence_unreadable`), empty stderr |
+| tests/cli/test_job_refusal_envelope.py | +56/-0 | new `_raise_systemexit_lines` AST helper and `TestStatsRefusalsAreAllMigrated`: no mechanical print-then-exit pair in the three modules, `stats_ledger_cmd.py` keeps exactly one `raise SystemExit` (`EXIT_DRIFT`), `bench_cmd.py`/`failure_stats_cmd.py` keep none |
 
-Measured insertions: **68** (25+5+21+5+12); 40 deletions.
+Measured insertions: **203** (46+13+10+19+18+18+23+56); 71 deletions.
 
-### 5f8ffc69 F283 R10 C4: parser usage refusals answer in the envelope under --json
+### 5f598cf3 F283 R11 C4: job stop refusals answer through fail()
 | Path | +/- | Reason |
 |---|---|---|
-| apps/cli/grouped.py | +28/-20 | `emit_error`/`fail` imported at module level (the `_dispatch` local import of `emit_error` removed as redundant); new helper `_usage_refusal(where, token, message, raw, exit_code=2)` — the envelope under `--json`, today's prose otherwise, same exit code; the conflicting-options site, the unknown-group site and the unknown-subcommand site call it; the usage-error-on-a-known-subcommand site answers `missing_argument`/`invalid_argument` inline under `--json` (keeping today's command-help text otherwise); the unrecognized-arguments site calls the helper; the two post-parse pairs become `fail("unknown_command", ...)` and `fail("no_handler", ...)` with `json_output=_wants_json(raw)` |
-| tests/cli/test_do_flags.py | +6/-2 | `test_a_flag_removed_from_do_exits_2_and_runs_nothing`'s four parameters repaired to assert exit 2, empty stderr and the envelope (`error` `unrecognized_arguments`), keeping the nothing-was-written assertions |
-| tests/cli/test_job_refusal_envelope.py | +21/-0 | `TestGroupedRefusalsAreAllMigrated`: no print-then-exit pair survives in `../grouped.py` |
-| tests/test_grouped_cli.py | +49/-0 | `TestParserRefusalsAnswerInTheEnvelopeUnderJson`: unknown subcommand, unrecognized argument, missing positional and the conflicting pair each exit 2 with an empty stderr and one envelope under `--json`; without `--json` the unrecognized-argument stderr is byte-identical to `render_error`'s |
+| apps/cli/commands/job_stop_cmd.py | +14/-25 | `fail` imported at module level (`sys` dropped); `_unknown_job`'s branched pair, `validate_job_id`'s `StopControlError` branch, `job_not_stoppable`'s branched pair and `stop_not_requested`'s branched pair all become one `fail()` call each, keeping every payload key (`job_id`, `job_status`, `detail`) the old JSON object carried |
+| tests/cli/test_job_refusal_envelope.py | +8/-2 | `TestStatsRefusalsAreAllMigrated` extended to `job_stop_cmd.py`: added to `_MODULES`, new `test_job_stop_has_no_raise_systemexit_left` |
+| tests/cli/test_job_stop.py | +25/-2 | `test_an_unknown_job_exits_3_in_json_mode_too` gains a `job_id` assertion; new `test_a_malformed_job_id_answers_invalid_job_id_under_json`; `test_a_completed_job_says_so_in_json_too` gains `schema_version`/`job_id` assertions; `test_an_unwritable_control_area_says_so_in_json_too` gains `schema_version`/`job_id`/`detail` assertions |
 
-Measured insertions: **104** (28+6+21+49); 22 deletions.
+Measured insertions: **47** (14+8+25); 29 deletions.
 
-### a50d9715 F283 R10 C5: test group refusals answer through fail()
+### 861e10be F283 R11 C5: pin the two test-group refusals round 10 left untested
 | Path | +/- | Reason |
 |---|---|---|
-| apps/cli/commands/test_cmds.py | +6/-12 | `fail` imported; `_cmd_discover_commands`'s `except Exception` catch-all → `fail("job_store_error", str(exc), json_output=as_json)` (reused, `job.py`'s own token for the identical `require_job_plan` condition); its branched `no_target_repo` site → `fail("no_target_repo", "no target_repo attached.", json_output=as_json, job_id=str(job_id), candidates=[])` (reused, BRANCHED rule); `_cmd_test_status`'s branched `job_not_found` site → `fail("job_not_found", f"No job matches {job_id_str!r}. Try: remedy job list.", json_output=as_json, job_id=job_id_str)` (reused, BRANCHED rule); `_cmd_run_tests` unchanged |
-| tests/cli/test_job_refusal_envelope.py | +18/-0 | `TestTestCmdsRefusalsAreAllMigrated`: no print-then-exit pair survives in `test_cmds.py` |
-| tests/test_command_discovery.py | +46/-0 | `TestDiscoverNoTargetRepoAnswersInTheEnvelope`: `test discover --json` on a job with no target repo answers one envelope (`no_target_repo`, `job_id`, `candidates` `[]`, empty stderr); text mode stderr reads `Error: no target_repo attached.\n` exactly — the ONE test file judged nearest, chosen because it already exercises `_cmd_discover_commands` directly with a saved `JobPlan` fixture |
+| tests/cli/test_job_refusal_envelope.py | +60/-0 | new `TestRound10sUntestedRefusalsNowPinned`: `_cmd_test_status`'s `job_not_found` (a fresh UUID the resolver accepts, a store that holds nothing) and `_cmd_discover_commands`'s `job_store_error` (`require_job_plan` monkeypatched to raise) each answer one envelope with an empty stderr |
+| tests/test_command_discovery.py | +3/-2 | `TestDiscoverNoTargetRepoAnswersInTheEnvelope`'s docstring corrected: the branched-site rule is the migration rule's own (F277 D7-D9), not DECISION F283 D5, which is `do --json`'s one-envelope rule |
 
-Measured insertions: **70** (6+18+46); 12 deletions.
+Measured insertions: **63** (60+3); 2 deletions. No `Done:` line written — the reviewer writes it.
 
-### b492c193 F283 R10 C6: a job the store cannot find answers job_not_found (R-1026)
-| Path | +/- | Reason |
-|---|---|---|
-| apps/cli/commands/job_context_cmd.py | +1/-1 | `_cmd_job_context`'s `JobNotFoundError` site: `invalid_job_id` → `job_not_found` (reused, R-1026) |
-| apps/cli/commands/project.py | +2/-2 | `_cmd_attach_project_job`'s and `_cmd_project_adopt`'s `JobNotFoundError` sites: `invalid_job_id` → `job_not_found` (reused, R-1026); nothing else changes |
-| tests/cli/test_job_context_cmd.py | +25/-0 | `TestJobContextRefusesInTheCallersShape::test_a_job_the_store_cannot_find_answers_job_not_found`: the resolver accepts the id (monkeypatched to identity), `require_job_plan` raises `JobNotFoundError`, answers one envelope with `job_not_found` and an empty stderr |
-
-Measured insertions: **28** (1+2+25); 3 deletions. No `Done:` line written — the reviewer writes it.
-
-### C7 — THE HANDBACK (this commit)
+### C6 — THE HANDBACK (this commit)
 | Path | +/- | Reason |
 |---|---|---|
 | .agent/handoff.md | rewrite | this handback, written once; a single `.agent/**` state file, exempt from the 500-line cap under DECISION F104 D1 |
@@ -110,12 +100,13 @@ table the commit that writes it.
 
 ## External actions
 
-- `git worktree add .remedy-wt/f283-r10-redproof b492c193` for G5 — used for the
-  unmutated control and all four mutation red-proofs, then
-  `git worktree remove .remedy-wt/f283-r10-redproof --force` — a plain remove
-  sufficed because every mutation was reverted by hand back to the original text
-  (verified clean with `git status --porcelain` after each revert) before removal.
-- `git push origin feature/f283-machine-contracts-part-two` after C7 — real
+- `git worktree add .remedy-wt/f283-r11-redproof HEAD` (at `861e10be`) for G5 —
+  used for the unmutated control and all four mutation red-proofs, then
+  `git worktree remove .remedy-wt/f283-r11-redproof` — a plain remove sufficed
+  because every mutation was reverted with `git checkout --` back to the
+  original committed text (verified clean with `git status --porcelain` after
+  each revert) before removal.
+- `git push origin feature/f283-machine-contracts-part-two` after C6 — real
   outcome reported in the session reply, since it ships this very file.
 - `gh pr list --state open ...` after the push — real outcome reported in the
   session reply.
@@ -126,57 +117,53 @@ table the commit that writes it.
 
 ## Verification
 
-### G1 — PAYLOADS transport, then four authored copies
+### G1 — PAYLOADS transport, then three authored copies
 
 | file | lines measured/given | bytes measured/given | sha256 equal |
 |---|---|---|---|
-| decisions.md | 62/62 | 4523/4523 | True |
-| ledger.md | 4/4 | 4492/4492 | True |
-| plan.md | 39/39 | 1760/1760 | True |
+| ledger.md | 4/4 | 4563/4563 | True |
+| plan.md | 36/36 | 1555/1555 | True |
 
 **All readings equal: True.**
 
-Four `.agent/authored/f283-r10-*` copies (the block copy plus three payloads), each
-read back from the committed tree with `git show 1b9f3367:<path>` and compared
-byte-for-byte with its source:
+Three `.agent/authored/f283-r11-*` copies (the block copy plus two payloads),
+each read back from the committed tree with `git show 4f4128f8:<path>` and
+compared byte-for-byte with its source:
 
 | copy | bytes | identical to source |
 |---|---|---|
-| f283-r10-block.md | 16210 | True |
-| f283-r10-decisions.md | 4523 | True |
-| f283-r10-ledger.md | 4492 | True |
-| f283-r10-plan.md | 1760 | True |
+| f283-r11-block.md | 14202 | True |
+| f283-r11-ledger.md | 4563 | True |
+| f283-r11-plan.md | 1555 | True |
 
-**Copies compared: 4. All True.**
+**Copies compared: 3. All True.**
 
 ### G2 — THE BOOKING
 
 **(a) Append arithmetic**, by strict byte concatenation:
 
-| file | pre (`859f883c`) | payload | post | pre+payload==post |
+| file | pre (`590abe57`) | payload | post | pre+payload==post |
 |---|---|---|---|---|
-| .agent/live_review.md | 492157 | 4492 | 496649 | True |
-| .agent/decisions.md | 1799308 | 4523 | 1803831 | True |
+| .agent/live_review.md | 496649 | 4563 | 501212 | True |
 
-Matches the reviewer's stated `492157 + ledger.md = 496649` and
-`1799308 + decisions.md = 1803831` exactly.
+Matches the reviewer's stated `496649 + ledger.md = 501212` exactly.
 
-**(b) Line-anchored on the committed ledger**: `^Gate: F283 R9 — ` = **1**;
-`^- R-1026 — ` = **1**. Open set by distinct id, via `open_finding_ids` from
+**(b) Line-anchored on the committed ledger**: `^Gate: F283 R10 — ` = **1**;
+`^Done: R-1026 — ` = **1**. Open set by distinct id, via `open_finding_ids` from
 `scripts/rotate_live_review.py` (imported and called directly):
 
 | rev | OPEN by distinct id |
 |---|---|
-| `859f883c` | **22** |
-| C2 (`d8b31461`) | **23** |
+| `590abe57` | **23** |
+| C2 (`d077d310`) | **22** |
 
-Added: `['R-1026']`. Removed: `[]`. Matches the reviewer's stated 22 → 23, ADDED
-`R-1026`, REMOVED empty, exactly.
+Added: `[]`. Removed: `['R-1026']`. Matches the reviewer's stated 23 → 22, ADDED
+empty, REMOVED `R-1026`, exactly.
 
 **(c) `.agent/plan.md` at C2 equals plan.md byte-for-byte**: sha256-equal to the
-payload; committed blob and payload compared directly (both hash equal).
+payload (`6d159a6c91398989243abf4115b95d88ed9b90d6a77460b76a8895ebeff9576c` both).
 
-Line count: **39**, under the AGENTS.md 50-line rule.
+Line count: **36**, under the AGENTS.md 50-line rule.
 
 ### G3 — THE CHANGE, COUNTED FROM THE TREE
 
@@ -184,260 +171,225 @@ Line count: **39**, under the AGENTS.md 50-line rule.
 
 | commit | paths changed | insertions |
 |---|---|---|
-| C3 `d8b31461`→`14aabb59` | apps/cli/commands/do_cmd.py, tests/cli/test_do_commit_flags.py, tests/cli/test_do_flags.py, tests/cli/test_do_sequence_cli.py, tests/cli/test_job_refusal_envelope.py | 68 |
-| C4 `14aabb59`→`5f8ffc69` | apps/cli/grouped.py, tests/cli/test_do_flags.py, tests/cli/test_job_refusal_envelope.py, tests/test_grouped_cli.py | 104 |
-| C5 `5f8ffc69`→`a50d9715` | apps/cli/commands/test_cmds.py, tests/cli/test_job_refusal_envelope.py, tests/test_command_discovery.py | 70 |
-| C6 `a50d9715`→`b492c193` | apps/cli/commands/job_context_cmd.py, apps/cli/commands/project.py, tests/cli/test_job_context_cmd.py | 28 |
+| C3 `d077d310`→`6672ff15` | apps/cli/commands/bench_cmd.py, apps/cli/commands/failure_stats_cmd.py, apps/cli/commands/stats_ledger_cmd.py, tests/cli/test_failure_cmd.py, tests/cli/test_job_refusal_envelope.py, tests/cli/test_stats_bench.py, tests/cli/test_stats_cost.py, tests/cli/test_stats_report.py | 203 |
+| C4 `6672ff15`→`5f598cf3` | apps/cli/commands/job_stop_cmd.py, tests/cli/test_job_refusal_envelope.py, tests/cli/test_job_stop.py | 47 |
+| C5 `5f598cf3`→`861e10be` | tests/cli/test_job_refusal_envelope.py, tests/test_command_discovery.py | 63 |
 
-At C6, `python3 .remedy-wt/f283-r6-scratch/pairs.py do_cmd.py ../grouped.py test_cmds.py
-project.py job_context_cmd.py`:
+**`raise SystemExit` count per module, before (`590abe57`) and after C4:**
 
-```
-do_cmd.py exits 1 mechanical 0 flagged 0 unflagged 0
-   142 _refuse_before_any_step False None
-../grouped.py exits 4 mechanical 0 flagged 0 unflagged 0
-   456 _usage_refusal False None
-   595 _dispatch False None
-   519 main False None
-   516 main False None
-test_cmds.py exits 2 mechanical 0 flagged 0 unflagged 0
-   53 _cmd_run_tests False as_json
-   46 _cmd_run_tests False as_json
-project.py exits 2 mechanical 2 flagged 1 unflagged 1
-   345 _cmd_project_current True json_output
-   387 _cmd_project_attach_repo True None
-job_context_cmd.py exits 0 mechanical 0 flagged 0 unflagged 0
-```
+| module | before | after |
+|---|---|---|
+| stats_ledger_cmd.py | 9 | 1 (the surviving `verify-ledger` `EXIT_DRIFT`, a RESULT not a refusal) |
+| bench_cmd.py | 3 | 0 |
+| failure_stats_cmd.py | 2 | 0 |
+| job_stop_cmd.py | 4 | 0 |
 
-Matches the reviewer's stated readings exactly: `do_cmd` `mechanical 0`, `grouped`
-`mechanical 0`, `test_cmds` `mechanical 0`, `project` unchanged
-(`mechanical 2 flagged 1 unflagged 1` — the two no-prefix
-`ProjectNotFoundError`/`InvalidProjectSelectorError` sites the migration rule never
-reaches), `job_context` `exits 0`.
+Matches the reviewer's stated readings (9/3/2/4 before, 1/0/0/0 after) exactly.
 
-`git diff --name-only 859f883c b492c193 -- packages/` prints **nothing** (real
+`git diff --name-only 590abe57 861e10be -- packages/` prints **nothing** (real
 exit code implicit 0, empty stdout) — confirmed `packages/` untouched across the
 whole round.
 
-### Token list — every `fail()`/`emit_error()` token C3 to C6 use, its line, new or reused
+### Token list — every `fail()` token C3 and C4 use, its line, new or reused
 
-| commit | line | token | new/reused | search behind a `new` one |
-|---|---|---|---|---|
-| C3 | 369 | step_failed | new | `grep -rn 'fail("step_failed"\|"step_failed"' apps/cli/ tests/` before this commit: 0 hits anywhere |
-| C3 | 388 | step_failed | reused (same commit, L369) | — |
-| C4 | 497 | conflicting_options | reused (the hand-written dict this site replaced already used this exact string at `grouped.py:487`, just not through `fail()`/`emit_error()` — DECISION F283 D6 names it "replacing the hand-written object, which lacks `schema_version`") | — |
-| C4 | 502 | unknown_command | new | `grep -n '"unknown_command"' apps/cli/**/*.py` before this commit: 0 hits anywhere under `apps/cli/` |
-| C4 | 506 | unknown_command | reused (same commit, L502) | — |
-| C4 | 512 | missing_argument | reused (`job.py:63` and `worker.py:158` already use this token for "a required argument/flag combination was not given" — the same condition argparse's own "the following arguments are required" message names) | — |
-| C4 | 514 | invalid_argument | reused (widely used already — `do_cmd.py`, `job.py`, `mission_cmd.py` — for "the value given for an argument is not one of the allowed ones", the same condition a non-missing usage error names) | — |
-| C4 | 540 | unrecognized_arguments | new | `grep -n '"unrecognized_arguments"' apps/cli/**/*.py` before this commit: 0 hits anywhere under `apps/cli/` |
-| C4 | 545 | unknown_command | reused (same commit, L502) | — |
-| C4 | 550 | no_handler | new | `grep -n '"no_handler"' apps/cli/**/*.py` before this commit: 0 hits anywhere under `apps/cli/` |
-| C5 | 105 | job_store_error | reused (`job.py:213` uses it for the identical `require_job_plan`-raises condition) | — |
-| C5 | 109 | no_target_repo | reused (`job_context_cmd.py:281`, pre-existing, uses it for the identical "job has no target_repo attached" condition) | — |
-| C5 | 206 | job_not_found | reused (`brain.py` and many other modules already use it for the identical `JobNotFoundError`/`require_job_plan` condition) | — |
-| C6 | 276 (job_context_cmd.py) | job_not_found | reused (this round's own R-1026 repair; the spelling every other `JobNotFoundError` site in `apps/cli/` already uses) | — |
-| C6 | 152 (project.py) | job_not_found | reused (same as above) | — |
-| C6 | 433 (project.py) | job_not_found | reused (same as above) | — |
+| commit | module | line | token | new/reused | search behind a `new` one |
+|---|---|---|---|---|---|
+| C3 | stats_ledger_cmd.py | 75 | invalid_argument | reused (`decision.py`, `do_cmd.py`, `job.py`, `mission_cmd.py`, `grouped.py` already use it) | — |
+| C3 | stats_ledger_cmd.py | 104 | invalid_argument | reused (same as above) | — |
+| C3 | stats_ledger_cmd.py | 146 | option_not_applicable | reused (`decision.py` already uses it) | — |
+| C3 | stats_ledger_cmd.py | 155 | no_project | reused (`decision.py`, `job.py`, `mission_cmd.py`, `project.py` already use it) | — |
+| C3 | stats_ledger_cmd.py | 167 | missing_argument | reused (`decision.py`, `job.py`, `worker.py`, `grouped.py` already use it) | — |
+| C3 | stats_ledger_cmd.py | 171 | path_not_found | new | `git grep -l '"path_not_found"' 590abe57 -- apps/cli/`: 0 hits anywhere |
+| C3 | stats_ledger_cmd.py | 337 | ledger_unreadable | new | `git grep -l '"ledger_unreadable"' 590abe57 -- apps/cli/`: 0 hits anywhere |
+| C3 | stats_ledger_cmd.py | 556 | ledger_unreadable | reused (same commit, L337) | — |
+| C3 | bench_cmd.py | 99 | invalid_argument | reused (see above) | — |
+| C3 | bench_cmd.py | 102 | invalid_argument | reused (same commit, L99) | — |
+| C3 | bench_cmd.py | 119 | no_project | reused (see above) | — |
+| C3 | failure_stats_cmd.py | 27 | invalid_argument | reused (see above) | — |
+| C3 | failure_stats_cmd.py | 62 | evidence_unreadable | new | `git grep -l '"evidence_unreadable"' 590abe57 -- apps/cli/`: 0 hits anywhere |
+| C4 | job_stop_cmd.py | 66 | job_not_found | reused (this module's own pre-existing `fail()` call at old L100-106 already used it; 15 other modules do too) | — |
+| C4 | job_stop_cmd.py | 86 | invalid_job_id | reused (`apps/cli/job_id_arg.py` already uses this spelling for the identical malformed-id condition) | — |
+| C4 | job_stop_cmd.py | 145 | job_not_stoppable | reused (this file's own OLD JSON literal, at `590abe57`, already spelled this condition this way — the migration keeps the existing spelling, DECISION F277 D8 part (a)) | — |
+| C4 | job_stop_cmd.py | 153 | stop_not_requested | reused (same reasoning as `job_not_stoppable`, this file's own old JSON literal) | — |
 
-New tokens this round: `step_failed`, `unknown_command`, `unrecognized_arguments`,
-`no_handler` — four, each confirmed absent from any `fail("<token>"`/`emit_error("<token>"`/
-bare-string search over `apps/cli/` before its introducing commit.
+New tokens this round: `path_not_found`, `ledger_unreadable`, `evidence_unreadable`
+— three, each confirmed absent from any `fail("<token>"`/`"<token>"` search over
+`apps/cli/` before its introducing commit.
 
 ### G4 — TARGETED SELECTION, ruff, integrity
 
-`.remedy-wt/f283-r10-scratch/selection.txt`: **100** space-separated paths (round 9's
-selection plus every test file a search for this round's targets found).
-`tests/test_command_discovery.py` (C5's named test file) is already in the list —
-no separate run needed.
-
-Each reading below was taken with the NOT-YET-COMMITTED-for-this-commit files
-stashed away, so it reflects the real state at that exact commit, not the round's
-final working tree:
+`.remedy-wt/f283-r11-scratch/selection.txt`: **106** space-separated paths
+(round 10's selection plus every test file a search for this round's targets
+found).
 
 | when | exit code | summary |
 |---|---|---|
-| after C3 | 0 | 4207 passed, 1 skipped |
-| after C4 | 0 | 4213 passed, 1 skipped |
-| after C5 | 0 | 4216 passed, 1 skipped |
-| after C6 | 0 | 4217 passed, 1 skipped |
+| after C3 | 0 | 4464 passed, 1 skipped |
+| after C4 | 0 | 4466 passed, 1 skipped |
+| after C5 | 0 | 4468 passed, 1 skipped |
 
-Zero failed, zero errors at each; the reviewer read `4205 passed, 1 skipped` at
-`859f883c` — the passed count only rose, at every step. `python3 -m ruff check` over
-every `.py` path the round touched (`apps/cli/commands/do_cmd.py`,
-`apps/cli/commands/job_context_cmd.py`, `apps/cli/commands/project.py`,
-`apps/cli/commands/test_cmds.py`, `apps/cli/grouped.py`,
-`tests/cli/test_do_commit_flags.py`, `tests/cli/test_do_flags.py`,
-`tests/cli/test_do_sequence_cli.py`, `tests/cli/test_job_context_cmd.py`,
-`tests/cli/test_job_refusal_envelope.py`, `tests/test_command_discovery.py`,
-`tests/test_grouped_cli.py`): **All checks passed!**
+Zero failed, zero errors at each; the reviewer read `4457 passed, 1 skipped` at
+`590abe57` — the passed count only rose, at every step (+7 at C3, +2 at C4, +2
+at C5 — one new test per new commit-level envelope test, plus C3's three new
+`TestStatsRefusalsAreAllMigrated` ratchet tests and C4's one extension).
+`python3 -m ruff check` over every `.py` path the round touched
+(`apps/cli/commands/bench_cmd.py`, `apps/cli/commands/failure_stats_cmd.py`,
+`apps/cli/commands/job_stop_cmd.py`, `apps/cli/commands/stats_ledger_cmd.py`,
+`tests/cli/test_failure_cmd.py`, `tests/cli/test_job_refusal_envelope.py`,
+`tests/cli/test_job_stop.py`, `tests/cli/test_stats_bench.py`,
+`tests/cli/test_stats_cost.py`, `tests/cli/test_stats_report.py`,
+`tests/test_command_discovery.py`): **All checks passed!**
 `python3 -m apps.cli.main integrity check --json`: `"passed": true, "fail_count": 0`,
 all five checks (`handler_import`, `live_review_verdict`, `plan_consistency`,
 `relevant_untracked`, `high_blockers_open`) read `"status": "pass"`.
 
 ### G5 — RED-PROOFS
 
-Disposable worktree `.remedy-wt/f283-r10-redproof` at `b492c193`, never committed.
-Ran the seven test files C3 to C6 touched (`test_do_flags.py`, `test_do_commit_flags.py`,
-`test_do_sequence_cli.py`, `test_job_refusal_envelope.py`, `test_grouped_cli.py`,
-`test_command_discovery.py`, `test_job_context_cmd.py`).
+Disposable worktree `.remedy-wt/f283-r11-redproof` at `861e10be`, never
+committed. Ran the seven test files C3 to C5 touched (`test_stats_cost.py`,
+`test_stats_report.py`, `test_stats_bench.py`, `test_failure_cmd.py`,
+`test_job_stop.py`, `test_job_refusal_envelope.py`, `test_command_discovery.py`).
 
 | step | exit code | result |
 |---|---|---|
-| unmutated control | 0 | 555 passed |
-| (a) `_cmd_do_order`'s `--json` failed-walk branch deleted (the `if ctx.failed: ... emit_ok(**document)` block replaced by a bare `emit_ok(**document); return`) | 1 | `7 failed, 548 passed` — C3's repaired `test_an_unknown_project_exits_1_with_the_init_step_failed_and_no_mission` among them (the target), plus six collateral failures in `test_do_commit_flags.py`/`test_do_sequence_cli.py` whose walks also fail and now reach `emit_ok` instead of the envelope |
-| (b) `grouped.py:452`, `_usage_refusal`'s `if _wants_json(raw):` forced to `if False:` | 1 | `7 failed, 548 passed` — the four repaired `test_a_flag_removed_from_do_exits_2_and_runs_nothing` parameters and three of C4's `TestParserRefusalsAnswerInTheEnvelopeUnderJson` tests (`test_conflicting_pair`, `test_unknown_subcommand`, `test_unrecognized_argument`) |
-| (c) `test_cmds.py`'s `no_target_repo` site forced to `json_output=False` | 1 | `2 failed, 553 passed` — C5's envelope test (the target, `TestDiscoverNoTargetRepoAnswersInTheEnvelope::test_json_mode_is_one_envelope_with_job_id_and_empty_candidates`) plus one collateral failure in `tests/test_grouped_cli.py::TestGroupedExecution::test_test_discover_json`, which also reads that same refusal's `--json` shape |
-| (d) `job_context_cmd.py`'s refusal passes `invalid_job_id` again | 1 | `1 failed, 554 passed` — C6's `test_a_job_the_store_cannot_find_answers_job_not_found` (the target, alone) |
+| unmutated control | 0 | 301 passed |
+| (a) `_load_ledger_reports`'s `ledger_unreadable` `fail()` call forced to `json_output=False` | 1 | `1 failed, 41 passed` (`tests/cli/test_stats_cost.py` alone) — C3's `test_an_unreadable_ledger_answers_ledger_unreadable_under_json` (the target, alone) |
+| (b) `bench_cmd.py::_validate_multiplier`'s first branch put back as its old `print` + `raise SystemExit(EXIT_USAGE) from None` (named: `_validate_multiplier`) | 1 | `2 failed, 93 passed` (`tests/cli/test_stats_bench.py` + `tests/cli/test_job_refusal_envelope.py`) — C3's `test_an_unusable_multiplier_answers_invalid_argument_under_json` (the target) and the C3 ratchet `TestStatsRefusalsAreAllMigrated::test_bench_and_failure_stats_have_no_raise_systemexit_left` |
+| (c) `job_stop_cmd.py`'s `invalid_job_id` refusal passes `"bad_job_id"` instead | 1 | `1 failed, 26 passed` (`tests/cli/test_job_stop.py` alone) — C4's `test_a_malformed_job_id_answers_invalid_job_id_under_json` (the target, alone) |
+| (d) `test_cmds.py::_cmd_test_status`'s `job_not_found` refusal passes `"no_such_job"` instead | 1 | `1 failed, 68 passed` (`tests/cli/test_job_refusal_envelope.py` alone) — C5's `test_test_status_job_not_found_answers_in_the_envelope` (the target, alone) |
 
-Each mutation was reverted by hand and confirmed clean with `git status --porcelain`
-before the next. `git worktree remove .remedy-wt/f283-r10-redproof --force` afterward.
-`git worktree list` (post-removal): the primary checkout at `b492c193` plus the three
-`remedy/job-*` worktrees — `.remedy-wt/job-468c8e62a2cc4fac`, `.remedy-wt/job-86f628f5e4fb4e0c`,
+Each mutation was reverted with `git checkout --` and confirmed clean with
+`git status --porcelain` before the next. `git worktree remove
+.remedy-wt/f283-r11-redproof` afterward. `git worktree list` (post-removal): the
+primary checkout at `861e10be` plus the three `remedy/job-*` worktrees —
+`.remedy-wt/job-468c8e62a2cc4fac`, `.remedy-wt/job-86f628f5e4fb4e0c`,
 `.remedy-wt/job-c1dba9c3d7874968` — untouched throughout.
 
 ## Deviations & assumptions
 
-1. **The bundle ran C1 through C6 — six commits, exactly as ordered — before
-   this handback commit C7.** Nothing was added, dropped or reordered.
-2. **No expected insertion figure is given for C2's rewrite or for C3/C4/C5/C6,
+1. **The bundle ran C1 through C5 — five commits, exactly as ordered — before
+   this handback commit C6.** Nothing was added, dropped or reordered.
+2. **Mutation (b)'s named helper is `bench_cmd.py::_validate_multiplier`, not
+   `_one_project_history`.** The block names the helper to restore only as
+   "one helper's `fail()`", leaving the choice to the worker; `_one_project_history`
+   was tried first and reverted unused, because it has no dedicated `--json`
+   envelope test of its own (only a text-mode one), so mutating it would have
+   reddened the C3 ratchet alone and left the block's "that helper's envelope
+   test must fail" clause unmet. `_validate_multiplier` has both.
+3. **`_load_ledger_reports`'s and `_cmd_stats_report`'s `ledger_unreadable`
+   message keeps the old prose's exact wording** (`"cannot read the token
+   ledger: {exc}"`) rather than the bare `str(exc)` the tokens list's aside
+   ("their old JSON put the exception text in `error`; it now sits in
+   `message`") might suggest in isolation. This keeps the migration rule's own,
+   more specific instruction — "the text branch stays byte-identical" for a
+   BRANCHED site — satisfied exactly: `fail()` writes one message to both
+   branches, so the text branch's `Error: cannot read the token ledger: {exc}`
+   line is unchanged byte-for-byte, and the JSON branch's `message` key carries
+   that same sentence (still containing the raw exception text) where the old
+   JSON's `error` key held only `str(exc)`.
+4. **No expected insertion figure is given for C2's rewrite or for C3/C4/C5,
    per the block's own convention**: only measured figures are reported above,
-   and none of them was forced to match a prediction.
-3. **`tests/test_command_discovery.py` was chosen as "the ONE test file C5
-   judges nearest"**, over `tests/orchestration/test_test_execution_service.py`
-   and others, because it already houses a class
-   (`TestDiscoveryRecordsItselfInTheRunLedger`) that exercises
-   `_cmd_discover_commands` directly against a saved `JobPlan` fixture, so the
-   `no_target_repo` refusal fits the same fixture shape (a job with no
-   `target_repo` in its metadata) rather than needing a new harness.
-4. **G5 mutations (a) and (b) each reddened more tests than the one the block
-   names.** (a) names only C3's repaired unknown-project test as the one that
-   "must fail"; deleting the whole failed-walk branch also breaks every OTHER
-   test in the selected files whose walk fails under `--json` and now reaches
-   `emit_ok` instead of the envelope (six collateral failures in
-   `test_do_commit_flags.py` and `test_do_sequence_cli.py`, listed above by
-   name). (b) names "C4's `--json` tests and the four repaired parameters";
-   forcing `_usage_refusal`'s json branch off also breaks
-   `test_conflicting_pair` (uses the same helper for the same reason).
-   Reported exactly as measured, not trimmed to the named test alone — R-0485's
-   lesson from round 9's own handback.
-5. **`apps/cli/grouped.py`'s C4 diff removes one line beyond the block's own
-   text**: the local `from apps.cli.json_envelope import emit_error` inside
-   `_dispatch` became redundant once `emit_error`/`fail` were imported at
-   module level for the new refusal sites, so it was deleted rather than left
-   as an unused duplicate. No behavior changed; `_dispatch` still calls
-   `emit_error` the same way.
-6. **Constraints 1, 3, 4, 6 and 7 held throughout.** No payload was edited or
-   retyped; the round's tracked path set is exactly the 19 paths (before this
+   none forced to match a prediction.
+5. **Constraints 1, 3, 4, 6 and 7 held throughout.** No payload was edited or
+   retyped; the round's tracked path set is exactly the 16 paths (before this
    commit) constraint 3 enumerates plus `.agent/handoff.md` from this commit
-   makes 20 (verified by set-equality below); `packages/` was never touched;
-   every commit from C3 on left the targeted G4 selection at zero failed,
-   measured against the REAL state at that commit (the not-yet-committed later
-   changes were stashed out of the working tree before each reading, then
-   restored — see the G4 note above); nothing was merged, no PR created, no
-   checkout of `main`; the one G5 worktree was removed as G5's last action and
-   the three `remedy/job-*` worktrees were left alone.
+   makes 17 (verified by set-equality below); `packages/` was never touched;
+   every commit from C3 on left the targeted G4 selection at zero failed;
+   nothing was merged, no PR created, no checkout of `main`; the one G5
+   worktree was removed as G5's last action and the three `remedy/job-*`
+   worktrees were left alone.
 
 ### The round's whole tracked path set (before this commit)
 
-`git diff --name-only 859f883c b492c193` — **19** distinct paths
-(`tests/cli/test_do_flags.py` touched by both C3 and C4;
-`tests/cli/test_job_refusal_envelope.py` touched by C3, C4 and C5 — each counted
-once); plus `.agent/handoff.md` from this commit makes **20** — set-equal to
-constraint 3's enumeration (4 authored copies + live_review.md + decisions.md +
-plan.md + handoff.md + do_cmd.py + grouped.py + test_cmds.py + job_context_cmd.py +
-project.py + test_do_flags.py + test_do_commit_flags.py + test_do_sequence_cli.py +
-test_job_refusal_envelope.py + test_grouped_cli.py + test_job_context_cmd.py +
-test_command_discovery.py, the ONE test file C5 names):
+`git diff --name-only 590abe57 861e10be` — **16** distinct paths
+(`tests/cli/test_job_refusal_envelope.py` touched by C3, C4 and C5 — counted
+once); plus `.agent/handoff.md` from this commit makes **17** — set-equal to
+constraint 3's enumeration (3 authored copies + live_review.md + plan.md +
+handoff.md + stats_ledger_cmd.py + bench_cmd.py + failure_stats_cmd.py +
+job_stop_cmd.py + test_stats_cost.py + test_stats_report.py + test_stats_bench.py
++ test_failure_cmd.py + test_job_stop.py + test_job_refusal_envelope.py +
+test_command_discovery.py):
 
 | # | path | introduced by |
 |---|---|---|
-| 1 | .agent/authored/f283-r10-block.md | C1 `1b9f3367` |
-| 2 | .agent/authored/f283-r10-decisions.md | C1 `1b9f3367` |
-| 3 | .agent/authored/f283-r10-ledger.md | C1 `1b9f3367` |
-| 4 | .agent/authored/f283-r10-plan.md | C1 `1b9f3367` |
-| 5 | .agent/decisions.md | C2 `d8b31461` |
-| 6 | .agent/live_review.md | C2 `d8b31461` |
-| 7 | .agent/plan.md | C2 `d8b31461` |
-| 8 | apps/cli/commands/do_cmd.py | C3 `14aabb59` |
-| 9 | tests/cli/test_do_commit_flags.py | C3 `14aabb59` |
-| 10 | tests/cli/test_do_flags.py | C3 `14aabb59`, touched again by C4 `5f8ffc69` |
-| 11 | tests/cli/test_do_sequence_cli.py | C3 `14aabb59` |
-| 12 | tests/cli/test_job_refusal_envelope.py | C3 `14aabb59`, touched again by C4 `5f8ffc69` and C5 `a50d9715` |
-| 13 | apps/cli/grouped.py | C4 `5f8ffc69` |
-| 14 | tests/test_grouped_cli.py | C4 `5f8ffc69` |
-| 15 | apps/cli/commands/test_cmds.py | C5 `a50d9715` |
-| 16 | tests/test_command_discovery.py | C5 `a50d9715` |
-| 17 | apps/cli/commands/job_context_cmd.py | C6 `b492c193` |
-| 18 | apps/cli/commands/project.py | C6 `b492c193` |
-| 19 | tests/cli/test_job_context_cmd.py | C6 `b492c193` |
-| 20 | .agent/handoff.md | C7 (this commit) |
-
-(The table lists 20 rows, one per DISTINCT path — 19 before this commit, 20
-after `.agent/handoff.md` lands — matching constraint 3's enumeration exactly;
-`test_do_flags.py` and `tests/cli/test_job_refusal_envelope.py` are each one row
-even though touched by multiple commits, noted in the "introduced by" column.)
+| 1 | .agent/authored/f283-r11-block.md | C1 `4f4128f8` |
+| 2 | .agent/authored/f283-r11-ledger.md | C1 `4f4128f8` |
+| 3 | .agent/authored/f283-r11-plan.md | C1 `4f4128f8` |
+| 4 | .agent/live_review.md | C2 `d077d310` |
+| 5 | .agent/plan.md | C2 `d077d310` |
+| 6 | apps/cli/commands/bench_cmd.py | C3 `6672ff15` |
+| 7 | apps/cli/commands/failure_stats_cmd.py | C3 `6672ff15` |
+| 8 | apps/cli/commands/stats_ledger_cmd.py | C3 `6672ff15` |
+| 9 | tests/cli/test_failure_cmd.py | C3 `6672ff15` |
+| 10 | tests/cli/test_job_refusal_envelope.py | C3 `6672ff15`, touched again by C4 `5f598cf3` and C5 `861e10be` |
+| 11 | tests/cli/test_stats_bench.py | C3 `6672ff15` |
+| 12 | tests/cli/test_stats_cost.py | C3 `6672ff15` |
+| 13 | tests/cli/test_stats_report.py | C3 `6672ff15` |
+| 14 | apps/cli/commands/job_stop_cmd.py | C4 `5f598cf3` |
+| 15 | tests/cli/test_job_stop.py | C4 `5f598cf3` |
+| 16 | tests/test_command_discovery.py | C5 `861e10be` |
+| 17 | .agent/handoff.md | C6 (this commit) |
 
 No path outside the enumeration was touched: `.agent/candidates.md`,
-`.agent/context.md`, `.agent/operator_questions.md`, `.agent/prose_slips.md`,
-`README.md`, `docs/roadmap/**`, and `apps/cli/json_envelope.py` appear **0**
-times. `packages/` appears **0** times (confirmed above under G3).
+`.agent/context.md`, `.agent/decisions.md`, `.agent/operator_questions.md`,
+`.agent/prose_slips.md`, `README.md`, `docs/roadmap/**`, `scripts/**` and
+`apps/cli/json_envelope.py` appear **0** times. `packages/` appears **0** times
+(confirmed above under G3).
 
 ## Authored-text proofs
 
-- The four copies at C1, compared with the reviewer's originals under
-  `.remedy-wt/f283-r10-payloads/` and `.remedy-wt/f283-r10-block.md`: **four
+- The three copies at C1, compared with the reviewer's originals under
+  `.remedy-wt/f283-r11-payloads/` and `.remedy-wt/f283-r11-block.md`: **three
   readings, all True** (G1).
 - The one REWRITE payload against its committed file: `.agent/plan.md`'s
   committed sha256 equals the payload's sha256 (G2c).
-- The two APPEND payloads against their committed files: strict byte
-  concatenation True for `.agent/live_review.md` (ledger.md) and
-  `.agent/decisions.md` (decisions.md), byte numbers equal to the reviewer's
-  (G2a).
-- No payload was edited or retyped. All four `.agent/authored/` copies and the
-  one product-file rewrite were made with `shutil.copyfile`; the two appends by
-  reading each payload's bytes and writing base+payload back to disk.
+- The one APPEND payload against its committed file: strict byte concatenation
+  True for `.agent/live_review.md` (ledger.md), byte numbers equal to the
+  reviewer's (G2a).
+- No payload was edited or retyped. Both `.agent/authored/` copies of the
+  payloads and the one product-file rewrite were made with `shutil.copyfile`;
+  the one append by reading the payload's bytes and writing base+payload back
+  to disk.
 - Every change under `apps/` and `tests/` this round was WORKER-authored to the
-  block's SPEC — there is no reviewer-authored diff to compare against for those
-  files; the block's SPEC prose is the standard they were written to, and
-  G3/G4/G5 above are the proof they meet it.
+  block's SPEC — there is no reviewer-authored diff to compare against for
+  those files; the block's SPEC prose is the standard they were written to,
+  and G3/G4/G5 above are the proof they meet it.
 
 ## Item-status table
 
 | Item | Status | Reason |
 |---|---|---|
-| Pre-flight (STOP, git state, block self-verify) | done | no STOP; tree clean at `859f883c`; block 240 lines / matching sha256 |
-| C1 copy block + 3 payloads | done | 345 insertions |
-| C2 book round 9 PASS, register R-1026, record D5/D6 | done | 85 insertions (62+4+19, 15 deletions from plan rewrite); open set 22→23, added R-1026 |
-| C3 do --json answers in one envelope | done | 68 insertions; `step_failed` (new) used at both the failure and success paths of `_cmd_do_order`'s `--json` branch |
-| C4 parser usage refusals answer in the envelope under --json | done | 104 insertions; `_usage_refusal` helper plus two direct `fail()` calls; four new tokens, four reused |
-| C5 test group refusals answer through fail() | done | 70 insertions; three sites migrated, `_cmd_run_tests` left alone |
-| C6 R-1026: job the store cannot find answers job_not_found | done | 28 insertions; three sites' token corrected, one test added |
-| C7 the handback | done | this commit |
-| G1 payload transport + authored copies | done | 3/3 payload readings equal; 4/4 authored copies byte-identical |
-| G2(a) live_review.md + decisions.md append | done | 492157+4492=496649; 1799308+4523=1803831 |
-| G2(b) R-1026 registration pairing + open set by distinct id | done | 1 Gate line, 1 R-1026 line; 22→23, added R-1026, removed none |
-| G2(c) plan.md rewrite | done | sha256-equal to payload; 39 lines, under 50 |
-| G3 change counted from the tree | done | per-commit diffs and insertions reported; `pairs.py` matches at C6; 0 paths under `packages/` |
-| G4 targeted selection, ruff, integrity | done | 4207/4213/4216/4217 passed, 0 failed/errors at each (up from 4205); ruff exit 0; integrity all 5 pass, fail_count 0 |
-| G5 red-proofs (a)(b)(c)(d) | done | all four go RED, each including the named target test, three with honestly-reported collateral failures; unmutated control 555 passed |
+| Pre-flight (STOP, git state, block self-verify) | done | no STOP; tree clean at `590abe57`; block 221 lines / matching sha256 |
+| C1 copy block + 2 payloads | done | 261 insertions |
+| C2 book round 10 PASS, resolve R-1026 | done | 15 insertions (4+11, 14 deletions from plan rewrite); open set 23→22, removed R-1026 |
+| C3 stats refusals answer through fail() | done | 203 insertions; 3 new tokens (`path_not_found`, `ledger_unreadable`, `evidence_unreadable`), 10 reused |
+| C4 job stop refusals answer through fail() | done | 47 insertions; 0 new tokens (all 4 reused), `job_stop_cmd.py` left with 0 `raise SystemExit` |
+| C5 pin the two test-group refusals round 10 left untested | done | 63 insertions; two new tests plus the docstring correction |
+| C6 the handback | done | this commit |
+| G1 payload transport + authored copies | done | 2/2 payload readings equal; 3/3 authored copies byte-identical |
+| G2(a) live_review.md append | done | 496649+4563=501212 |
+| G2(b) R-1026 resolution pairing + open set by distinct id | done | 1 Gate line, 1 Done line; 23→22, removed R-1026, added none |
+| G2(c) plan.md rewrite | done | sha256-equal to payload; 36 lines, under 50 |
+| G3 change counted from the tree | done | per-commit diffs and insertions reported; raise-SystemExit counts 9/3/2/4→1/0/0/0; 0 paths under `packages/` |
+| G4 targeted selection, ruff, integrity | done | 4464/4466/4468 passed, 0 failed/errors at each (up from 4457); ruff exit 0; integrity all 5 pass, fail_count 0 |
+| G5 red-proofs (a)(b)(c)(d) | done | all four go RED, each reddening exactly its named target test (plus, for (b), the C3 ratchet the block itself names); unmutated control 301 passed |
 | G6 tree, push, PR list | pending at write time | reported in the worker's session reply with real exit codes |
 | Constraint 1 no payload edited/retyped | done | `shutil.copyfile`, byte concatenation only |
-| Constraint 2 every commit under 500 insertions | done | 345, 85, 68, 104, 70, 28; this handoff exempt as single `.agent/**` state file |
-| Constraint 3 no unnamed file touched | done | 19 paths before this commit (20 after), set-equal to the enumeration |
-| Constraint 4 G4 selection at zero failed after every commit | done | 4207/4213/4216/4217 passed, measured against the real per-commit state (later changes stashed out before each reading) |
+| Constraint 2 every commit under 500 insertions | done | 261, 15, 203, 47, 63; this handoff exempt as single `.agent/**` state file |
+| Constraint 3 no unnamed file touched | done | 16 paths before this commit (17 after), set-equal to the enumeration |
+| Constraint 4 G4 selection at zero failed after every commit | done | 4464/4466/4468 passed, 0 failed/errors at each |
 | Constraint 5 STOP if a gate goes red outside constraint 3's path set | done (n/a) | no gate went red outside the named paths; no STOP was needed |
 | Constraint 6 nothing is merged | done | no `gh pr merge`, no `gh pr create`, no checkout of `main`, no branch deletion |
-| Constraint 7 G5 worktree under .remedy-wt/, removed, listed | done | `.remedy-wt/f283-r10-redproof`, removed as G5's last action, `git worktree list` reported after; the three `remedy/job-*` worktrees untouched |
+| Constraint 7 G5 worktree under .remedy-wt/, removed, listed | done | `.remedy-wt/f283-r11-redproof`, removed as G5's last action, `git worktree list` reported after; the three `remedy/job-*` worktrees untouched |
 
 ## Next
 
 1. Phase 1 rule 1: read `.agent/STOP` from disk.
-2. The review of round 10 — C1 through C7, with all six gates re-derived.
-3. Then the tail of the refusal sweep as `.agent/plan.md` lists it: `patch`,
-   `config`, `real_test_execution`, `ui`, `self`, `decision`, `snapshot`,
-   `worker_facade`, the cost-preview confirmation, the `stats`, `bench`,
-   `failure_stats` and `job stop` `SystemExit` sites, and the unprefixed
-   refusals of `--json` handlers; then `runtime_cmd.py` as its own round.
+2. The review of round 11 — C1 through C6, with all six gates re-derived.
+3. Then the rest of the tail as `.agent/plan.md` lists it: `patch`, `config`,
+   `real_test_execution`, `snapshot`, `self`, `worker_facade`, the cost-preview
+   confirmation, and the unprefixed refusals of `--json` handlers;
+   `runtime_cmd.py` as its own round; then T001's catalog half and T002's
+   success-envelope half.
 
-Open findings count: **23**. Operator-questions count: **2**.
+Open findings count: **22**. Operator-questions count: **2**.
