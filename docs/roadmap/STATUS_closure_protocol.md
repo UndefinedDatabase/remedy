@@ -133,8 +133,10 @@
    the manual path's `manual_attestation._vt_run_v11` preserves the
    caller's order — so a bundle built through
    `create_manual_completion_bundle` is sorted only if the CALLER sorted.
-   That divergence is registered as finding R-1017; until it is repaired,
-   sort the list at the call site. Measured at F277's `9dbd8e6d`: the
+   That divergence is registered as finding R-1017, and operator
+   amendment amend0921-operator-feedback repaired it on 2026-09-21:
+   `_vt_run_v11` now sorts and de-duplicates the list like its sibling,
+   so the call site no longer has to. Measured at F277's `9dbd8e6d`: the
    document as built gave `runs[0] test_files is not sorted` with
    `passed` unresolvable, and the same document with that one list sorted
    validated clean at 105. This pitfall first cost the F082 closure a
