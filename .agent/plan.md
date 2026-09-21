@@ -12,25 +12,27 @@ is documented and asserted from the catalog
 
 ## Current Step
 
-ROUND 7. It books round 6's PASS and R-1022's `Done:`, registers R-1023 and
-R-1024, and records DECISION F283 D2. Then, one commit each:
-R-1023 — `decision.py`'s two forked tokens take the spellings the product
-already has, and a test pins that module's token set; R-1024 — the
-cost-preview gate takes `json_output`, puts its human lines on stderr under
-it, and refuses a non-terminal stdin through `fail()`; the `brain` group's
-refusal pairs; the `patch` group's refusal pairs.
+ROUND 8. It books round 7's PASS and the `Done:` lines of R-1023 and R-1024,
+and records DECISION F283 D3. Then, one commit each: the single-pass
+`job run --json` answers in the envelope on success, on a verification
+failure and when no task is pending; a blocked `job resume` refuses through
+`fail()` with its old keys kept; the `patch list` refusal round 7 left
+untested gets its test; R-1025 — the product-spine test that pinned
+R-1020's prose asserts the envelope; R-1019 — `worker unload` checks for `--model` or
+`--all` before it probes for `ollama`; the `do_cmd` group's refusal pairs move
+onto `fail()`.
 
 ## Next Steps
 
-1. The non-mechanical `job.py` sites: the verification-failure loop and the
-   single-pass `job run --json` success line, which is prose; `_cmd_resume`'s
-   two hand-rolled `resumed: false` objects.
-2. The remaining groups largest first — `project`, `do_cmd`, `grouped`,
-   `test_cmds`, then the tail; `runtime_cmd.py` is its own round.
+1. The `project` group, whose refusals mix `Error:` and `ERROR:` prefixes —
+   a ruling on the uppercase form lands with the patch that applies it.
+2. The remaining groups largest first — `grouped`, `test_cmds`, then the
+   tail; `runtime_cmd.py` is its own round.
 3. T001's catalog half, then T002's taxonomy and sweep.
 
 ## Risks
 
-Twenty-five findings are open; R-1023 and R-1024 are this feature's own and
-are repaired this round. The refusal pairs left are several sessions of work,
-so the soft limit of 7 sessions and 25 rounds is the number to watch.
+Twenty-four findings are open; R-1019 and R-1025 are this feature's own and
+are repaired this round, with their `Done:` lines booked in the next. The refusal
+pairs left are several sessions of work, so the soft limit of 7 sessions and
+25 rounds is the number to watch.
