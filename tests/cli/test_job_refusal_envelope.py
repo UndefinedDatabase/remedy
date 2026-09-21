@@ -481,3 +481,113 @@ class TestEveryMigratedJsonCommandAnswersABadIdInTheEnvelope:
         else:
             assert caught.value.code == 1
             assert body["error"] == "invalid_job_id"
+
+
+class TestAPrefixTwoJobsShareIsRefusedAsAmbiguousThroughTheParser:
+    """C8 — R-1021 proved through the REAL parser, not the handler directly.
+
+    Every migrated site (rounds 4 and 5) now resolves its job id through
+    `apps.cli.job_id_arg.resolve_job_id_or_fail`, so a prefix two jobs share raises
+    `JobIdAmbiguous` there and answers `ambiguous_job_id` at exit 2 — instead of the
+    false `invalid_job_id`/"no job matches" R-1021 named — for every one of these
+    commands.
+
+    `event.replay` is deliberately NOT in either table below: `_cmd_event_replay`
+    (`apps/cli/commands/event.py`) hands `job_id_str` straight to
+    `packages.orchestration.event_replay.replay_job`, which never calls
+    `lookup_job_id` — it loads whatever run-log events exist for that literal string
+    and returns a degraded `JobReplayState` rather than failing. An ambiguous prefix
+    therefore never reaches the resolver on this command's argv, so it is left out
+    rather than forced or skipped (measured by reading `event.py` and
+    `packages/orchestration/event_replay.py`).
+    """
+
+    #: command_id -> the catalog entry's own positionals plus required options, read
+    #: off `apps.cli.command_catalog.CATALOG` — never typed by hand.
+    _JSON_COMMAND_IDS: tuple[str, ...] = (
+        "brain.graph", "brain.node", "brain.context", "brain.continue",
+        "event.list", "event.show", "event.timeline",
+        "file.why", "memory.learn",
+        "snapshot.inspect", "snapshot.list-applies",
+        "test.discover", "test.status",
+    )
+    #: command_id -> the same, for the five commands with no `--json` at all.
+    _TEXT_COMMAND_IDS: tuple[str, ...] = (
+        "brain.view", "brain.trust", "brain.timeline", "brain.cockpit",
+        "brain.constitution",
+    )
+
+    @staticmethod
+    def _two_ambiguous_jobs(monkeypatch, tmp_path) -> list[str]:
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        jobs_path = tmp_path / "jobs"
+        ids = [
+            "aaaa1111-0000-0000-0000-000000000001",
+            "aaaa1111-0000-0000-0000-000000000002",
+        ]
+        for job_id in ids:
+            record_dir = jobs_path / job_id
+            record_dir.mkdir(parents=True, exist_ok=True)
+            (record_dir / "job.json").write_text(json.dumps({"job_id": job_id}))
+        return sorted(ids)
+
+    @staticmethod
+    def _argv_tail(entry) -> list[str]:
+        """`aaaa1111` for the job id, a name-derived placeholder for every other
+        required positional, and `--flag value` for every required option — all read
+        off the catalog entry rather than hand-typed per command."""
+        tail: list[str] = []
+        for arg in entry.args:
+            if arg.is_option:
+                continue
+            tail.append("aaaa1111" if arg.name == "job_id" else f"{arg.name}-placeholder")
+        for arg in entry.args:
+            if arg.is_option and arg.required:
+                tail.extend([arg.name, f"{arg.name.lstrip('-')}-placeholder"])
+        return tail
+
+    @pytest.mark.parametrize("command_id", _JSON_COMMAND_IDS)
+    def test_a_json_command_answers_ambiguous_in_the_envelope(
+        self, command_id, monkeypatch, tmp_path
+    ):
+        from apps.cli.command_catalog import CATALOG
+        from apps.cli.grouped import main
+
+        matches = self._two_ambiguous_jobs(monkeypatch, tmp_path)
+        entry = next(c for c in CATALOG if c.command_id == command_id)
+        argv = [entry.group_id, entry.subcommand, *self._argv_tail(entry), "--json"]
+
+        out, err = io.StringIO(), io.StringIO()
+        with pytest.raises(SystemExit) as caught:
+            with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+                main(argv)
+
+        assert caught.value.code == 2
+        assert err.getvalue() == ""
+        body = json.loads(out.getvalue())
+        assert body["ok"] is False
+        assert body["error"] == "ambiguous_job_id"
+        assert body["matches"] == matches
+
+    @pytest.mark.parametrize("command_id", _TEXT_COMMAND_IDS)
+    def test_a_text_command_matches_the_exiting_resolvers_stderr(
+        self, command_id, monkeypatch, tmp_path
+    ):
+        from apps.cli.command_catalog import CATALOG
+        from apps.cli.grouped import main
+        from packages.orchestration.data_paths import resolve_job_id
+
+        self._two_ambiguous_jobs(monkeypatch, tmp_path)
+        entry = next(c for c in CATALOG if c.command_id == command_id)
+        argv = [entry.group_id, entry.subcommand, *self._argv_tail(entry)]
+
+        out, err = io.StringIO(), io.StringIO()
+        with pytest.raises(SystemExit) as caught:
+            with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+                main(argv)
+
+        assert caught.value.code == 2
+        assert out.getvalue() == ""
+
+        _, _, reference_err = _invoke(resolve_job_id, raw="aaaa1111")
+        assert err.getvalue() == reference_err
