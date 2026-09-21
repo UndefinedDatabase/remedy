@@ -7,7 +7,8 @@ import sys
 from collections.abc import Callable
 from typing import TYPE_CHECKING
 
-from packages.orchestration.data_paths import lookup_job_id, resolve_data_root
+from apps.cli.job_id_arg import resolve_job_id_or_fail
+from packages.orchestration.data_paths import resolve_data_root
 from packages.orchestration.pingpong_job import JobNotFoundError, require_job_plan
 
 if TYPE_CHECKING:
@@ -15,11 +16,7 @@ if TYPE_CHECKING:
 
 
 def _cmd_brain(job_id_str: str, *, json_output: bool = False) -> None:
-    try:
-        job_id = lookup_job_id(job_id_str)
-    except ValueError:
-        print(f"Error: No job matches {job_id_str!r}. Try: remedy job list.", file=sys.stderr)
-        sys.exit(1)
+    job_id = resolve_job_id_or_fail(job_id_str, json_output=json_output)
     try:
         job = require_job_plan(job_id)
     except JobNotFoundError as exc:
@@ -62,11 +59,7 @@ def _cmd_brain(job_id_str: str, *, json_output: bool = False) -> None:
 
 
 def _cmd_brain_node(job_id_str: str, node_id: str, *, json_output: bool = False) -> None:
-    try:
-        job_id = lookup_job_id(job_id_str)
-    except ValueError:
-        print(f"Error: No job matches {job_id_str!r}. Try: remedy job list.", file=sys.stderr)
-        sys.exit(1)
+    job_id = resolve_job_id_or_fail(job_id_str, json_output=json_output)
     try:
         job = require_job_plan(job_id)
     except JobNotFoundError as exc:
@@ -113,11 +106,7 @@ def _cmd_brain_node(job_id_str: str, node_id: str, *, json_output: bool = False)
 
 
 def _cmd_brain_view(job_id_str: str) -> None:
-    try:
-        job_id = lookup_job_id(job_id_str)
-    except ValueError:
-        print(f"Error: No job matches {job_id_str!r}. Try: remedy job list.", file=sys.stderr)
-        sys.exit(1)
+    job_id = resolve_job_id_or_fail(job_id_str, json_output=False)
     try:
         job = require_job_plan(job_id)
     except JobNotFoundError as exc:
@@ -166,11 +155,7 @@ def _cmd_brain_view(job_id_str: str) -> None:
 
 def _prepare_viewer(job_id_str: str):
     """Shared helper: build viewer, return (index_path, job)."""
-    try:
-        job_id = lookup_job_id(job_id_str)
-    except ValueError:
-        print(f"Error: No job matches {job_id_str!r}. Try: remedy job list.", file=sys.stderr)
-        sys.exit(1)
+    job_id = resolve_job_id_or_fail(job_id_str, json_output=False)
     try:
         job = require_job_plan(job_id)
     except JobNotFoundError as exc:
@@ -279,11 +264,7 @@ def _cmd_export_viewer(job_id_str: str, out_path: str) -> None:
 
 
 def _cmd_context(job_id_str: str, *, json_output: bool = False) -> None:
-    try:
-        job_id = lookup_job_id(job_id_str)
-    except ValueError:
-        print(f"Error: No job matches {job_id_str!r}. Try: remedy job list.", file=sys.stderr)
-        sys.exit(1)
+    job_id = resolve_job_id_or_fail(job_id_str, json_output=json_output)
     try:
         job = require_job_plan(job_id)
     except JobNotFoundError as exc:
@@ -333,11 +314,7 @@ def _cmd_context(job_id_str: str, *, json_output: bool = False) -> None:
 
 
 def _cmd_trust_report(job_id_str: str) -> None:
-    try:
-        job_id = lookup_job_id(job_id_str)
-    except ValueError:
-        print(f"Error: No job matches {job_id_str!r}. Try: remedy job list.", file=sys.stderr)
-        sys.exit(1)
+    job_id = resolve_job_id_or_fail(job_id_str, json_output=False)
     try:
         job = require_job_plan(job_id)
     except JobNotFoundError as exc:
@@ -358,11 +335,7 @@ def _cmd_trust_report(job_id_str: str) -> None:
 
 
 def _cmd_timeline(job_id_str: str) -> None:
-    try:
-        job_id = lookup_job_id(job_id_str)
-    except ValueError:
-        print(f"Error: No job matches {job_id_str!r}. Try: remedy job list.", file=sys.stderr)
-        sys.exit(1)
+    job_id = resolve_job_id_or_fail(job_id_str, json_output=False)
     try:
         job = require_job_plan(job_id)
     except JobNotFoundError as exc:
@@ -379,11 +352,7 @@ def _cmd_timeline(job_id_str: str) -> None:
 
 
 def _cmd_cockpit(job_id_str: str) -> None:
-    try:
-        job_id = lookup_job_id(job_id_str)
-    except ValueError:
-        print(f"Error: No job matches {job_id_str!r}. Try: remedy job list.", file=sys.stderr)
-        sys.exit(1)
+    job_id = resolve_job_id_or_fail(job_id_str, json_output=False)
     try:
         job = require_job_plan(job_id)
     except JobNotFoundError as exc:
@@ -404,11 +373,7 @@ def _cmd_cockpit(job_id_str: str) -> None:
 
 
 def _cmd_constitution(job_id_str: str) -> None:
-    try:
-        job_id = lookup_job_id(job_id_str)
-    except ValueError:
-        print(f"Error: No job matches {job_id_str!r}. Try: remedy job list.", file=sys.stderr)
-        sys.exit(1)
+    job_id = resolve_job_id_or_fail(job_id_str, json_output=False)
     try:
         job = require_job_plan(job_id)
     except JobNotFoundError as exc:
@@ -439,11 +404,7 @@ def _cmd_brain_continue(
     job_id_str: str, node_id: str, prompt: str,
     *, task_type: str | None = None, json_output: bool = False,
 ) -> None:
-    try:
-        job_id = lookup_job_id(job_id_str)
-    except ValueError:
-        print(f"Error: No job matches {job_id_str!r}. Try: remedy job list.", file=sys.stderr)
-        sys.exit(1)
+    job_id = resolve_job_id_or_fail(job_id_str, json_output=json_output)
     try:
         job = require_job_plan(job_id)
     except JobNotFoundError as exc:
@@ -487,11 +448,7 @@ def _cmd_brain_continue(
 
 
 def _cmd_agent_loop(job_id_str: str) -> None:
-    try:
-        job_id = lookup_job_id(job_id_str)
-    except ValueError:
-        print(f"Error: No job matches {job_id_str!r}. Try: remedy job list.", file=sys.stderr)
-        sys.exit(1)
+    job_id = resolve_job_id_or_fail(job_id_str, json_output=False)
     try:
         job = require_job_plan(job_id)
     except JobNotFoundError as exc:
