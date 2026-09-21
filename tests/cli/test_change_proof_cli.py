@@ -192,7 +192,7 @@ def test_file_why_proof_status_agrees_with_change_proof_path(capsys):
     proof_data = json.loads(capsys.readouterr().out)
 
     with patch("apps.cli.commands.file.require_job_plan", return_value=job), \
-         patch("apps.cli.commands.file.lookup_job_id", side_effect=lambda raw: raw), \
+         patch("apps.cli.commands.file.resolve_job_id_or_fail", side_effect=lambda raw, **_: raw), \
          patch("apps.cli.commands.file.resolve_data_root", return_value="/tmp"), \
          patch("packages.orchestration.timeline.load_run_events", return_value=events):
         _cmd_file_why(job_id, "src/auth.py", json_output=True)

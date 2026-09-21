@@ -8,7 +8,7 @@ from collections.abc import Callable
 from typing import TYPE_CHECKING
 from uuid import UUID
 
-from packages.orchestration.data_paths import lookup_job_id
+from apps.cli.job_id_arg import resolve_job_id_or_fail
 from packages.orchestration.pingpong_job import JobNotFoundError, list_job_plans, require_job_plan, save_job_plan
 
 if TYPE_CHECKING:
@@ -153,10 +153,10 @@ def _cmd_attach_project_job(project_id_str: str, job_id_str: str) -> None:
     except ProjectNotFoundError:
         print(f"ERROR: project not found: {project_id_str}", file=sys.stderr)
         sys.exit(1)
+    job_id = resolve_job_id_or_fail(job_id_str, json_output=False)
     try:
-        job_id = lookup_job_id(job_id_str)
         job = require_job_plan(job_id)
-    except (ValueError, JobNotFoundError):
+    except JobNotFoundError:
         print(f"Error: No job matches {job_id_str!r}. Try: remedy job list.", file=sys.stderr)
         sys.exit(1)
     added = attach_job(project, job_id)
@@ -430,7 +430,6 @@ def _cmd_project_adopt(
     *,
     project_flag: str | None = None,
 ) -> None:
-    from apps.cli.job_id_arg import resolve_job_id_or_fail
     from packages.orchestration.project_registry import (
         ProjectNotFoundError,
         attach_job,

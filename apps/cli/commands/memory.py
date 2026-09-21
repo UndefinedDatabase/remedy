@@ -6,8 +6,8 @@ import json as _json
 from collections.abc import Callable
 from typing import TYPE_CHECKING
 
+from apps.cli.job_id_arg import resolve_job_id_or_fail
 from apps.cli.json_envelope import fail
-from packages.orchestration.data_paths import lookup_job_id
 
 if TYPE_CHECKING:
     import argparse
@@ -139,11 +139,7 @@ def _cmd_memory_learn(
 ) -> None:
     from packages.orchestration.pingpong_job import JobNotFoundError, require_job_plan
 
-    try:
-        job_id = lookup_job_id(job_id_str)
-    except ValueError:
-        fail("invalid_job_id", f"No job matches {job_id_str!r}. Try: remedy job list.",
-             json_output=json_output)
+    job_id = resolve_job_id_or_fail(job_id_str, json_output=json_output)
     try:
         job = require_job_plan(job_id)
     except JobNotFoundError as exc:

@@ -35,12 +35,8 @@ _EXITING_RESOLVER_REMAINING: dict[str, int] = {}
 #: `resolve_job_id_or_fail`. Measured at C3 by the reviewer's
 #: `.remedy-wt/f283-r5-scratch/lookup_ctx.py`.
 _LOOKUP_CALLERS: dict[str, int] = {
-    "event.py": 1,
-    "file.py": 1,
     "job_id_arg.py": 1,
     "job_stop_cmd.py": 1,
-    "memory.py": 1,
-    "project.py": 1,
 }
 
 
