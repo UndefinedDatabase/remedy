@@ -205,6 +205,22 @@ class TestCli:
         assert exc.value.code == CMD.EXIT_USAGE
         assert "not an ISO-8601 timestamp" in capsys.readouterr().err
 
+    def test_an_invalid_since_under_json_answers_the_envelope(self, corpus, capsys):
+        """F283 R12 C5 — round 11's own probe found this refusal unpinned: forcing
+        `_validate_since`'s call to `fail()` to pass `json_output=False` left the
+        whole selection green, because every existing `--since` test used the text
+        mode. This is the `--json` reading."""
+        with pytest.raises(SystemExit) as exc:
+            CMD._cmd_stats_failures(since="last tuesday", json_output=True)
+        assert exc.value.code == CMD.EXIT_USAGE
+        captured = capsys.readouterr()
+        assert captured.err == ""
+        payload = json.loads(captured.out)
+        assert payload["schema_version"] == 1
+        assert payload["ok"] is False
+        assert payload["error"] == "invalid_argument"
+        assert "not an ISO-8601 timestamp" in payload["message"]
+
     def test_an_unreadable_evidence_root_answers_evidence_unreadable_under_json(
         self, tmp_path, monkeypatch, capsys
     ):

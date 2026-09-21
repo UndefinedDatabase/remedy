@@ -388,6 +388,40 @@ class TestBackfillLedger:
         assert "read-only aggregation" in capsys.readouterr().err
         assert not token_ledger_path_for(project_id).exists()
 
+    def test_a_missing_evidence_directory_under_json_answers_path_not_found(
+        self, tmp_path, project_id, capsys
+    ):
+        """F283 R12 C5 — round 11's own probe found this refusal unpinned: forcing
+        `_require_evidence_dir`'s call to `fail()` to pass `json_output=False` left
+        the whole selection green, because every existing test here used text mode."""
+        with pytest.raises(SystemExit) as exc:
+            CMD._cmd_stats_backfill_ledger(evidence_dir=str(tmp_path / "nope"),
+                                           project=project_id, json_output=True)
+        assert exc.value.code == CMD.EXIT_USAGE
+        captured = capsys.readouterr()
+        assert captured.err == ""
+        payload = json.loads(captured.out)
+        assert payload["schema_version"] == 1
+        assert payload["ok"] is False
+        assert payload["error"] == "path_not_found"
+
+    def test_all_projects_under_json_answers_option_not_applicable(
+        self, evidence_dir, project_id, capsys
+    ):
+        """F283 R12 C5 — the same unpinned gap for `_one_project_ledger`'s
+        `--all-projects` refusal."""
+        with pytest.raises(SystemExit) as exc:
+            CMD._cmd_stats_backfill_ledger(evidence_dir=str(evidence_dir),
+                                           all_projects=True, json_output=True)
+        assert exc.value.code == CMD.EXIT_USAGE
+        captured = capsys.readouterr()
+        assert captured.err == ""
+        payload = json.loads(captured.out)
+        assert payload["schema_version"] == 1
+        assert payload["ok"] is False
+        assert payload["error"] == "option_not_applicable"
+        assert not token_ledger_path_for(project_id).exists()
+
 
 class TestVerifyLedger:
     def test_a_clean_reconcile_exits_zero(self, filled_ledger, evidence_dir,
