@@ -26,7 +26,6 @@ _JOB_PY = pathlib.Path(__file__).resolve().parents[2] / "apps" / "cli" / "comman
 #: reading (DECISION F283 D1's correction — `decision.py` also binds the resolver as
 #: `_rji`). Falls as each commit below migrates a module; never rises.
 _EXITING_RESOLVER_REMAINING = {
-    "change.py": 3,
     "contract_cmd.py": 1,
     "decision.py": 4,
     "job_context_cmd.py": 1,
