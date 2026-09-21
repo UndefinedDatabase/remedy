@@ -88,17 +88,22 @@ def _cmd_job_stop(job_id: str, *, reason: str = "", source: str = "cli",
         raise SystemExit(EXIT_USAGE) from None
 
     if _load_job(job_id) is None:
-        from packages.orchestration.data_paths import resolve_job_id
+        from apps.cli.job_id_arg import refuse_ambiguous_job_id
+        from apps.cli.json_envelope import fail
+        from packages.orchestration.data_paths import JobIdAmbiguous, JobIdError, lookup_job_id
+
         try:
-            job_id = resolve_job_id(job_id)
-        except SystemExit as exc:
-            if exc.code == 2:
-                raise
-            if json_output:
-                print(_json.dumps(
-                    {"ok": False, "error": "job_not_found", "job_id": job_id}, indent=2
-                ))
-            raise SystemExit(EXIT_UNKNOWN_JOB) from None
+            job_id = lookup_job_id(job_id)
+        except JobIdAmbiguous as exc:
+            refuse_ambiguous_job_id(job_id, exc.matches, json_output=json_output)
+        except JobIdError:
+            fail(
+                "job_not_found",
+                f"No job matches {job_id!r}. Try: remedy job list.",
+                json_output=json_output,
+                exit_code=EXIT_UNKNOWN_JOB,
+                job_id=job_id,
+            )
 
     if status:
         _print_status(job_id, json_output=json_output)

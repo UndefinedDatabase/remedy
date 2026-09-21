@@ -179,7 +179,11 @@ class TestItRefusesToLie:
         with pytest.raises(SystemExit) as exc:
             CMD._cmd_job_stop("0123456789abcdef", json_output=True)
         assert exc.value.code == 3
-        assert json.loads(capsys.readouterr().out)["error"] == "job_not_found"
+        captured = capsys.readouterr()
+        assert captured.err == ""
+        body = json.loads(captured.out)
+        assert body["error"] == "job_not_found"
+        assert body["schema_version"] == 1
 
     def test_status_for_an_unknown_job_exits_3(self, data_root):
         with pytest.raises(SystemExit) as exc:

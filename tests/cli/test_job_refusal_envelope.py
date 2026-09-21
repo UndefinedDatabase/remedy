@@ -22,6 +22,54 @@ import pytest
 
 _JOB_PY = pathlib.Path(__file__).resolve().parents[2] / "apps" / "cli" / "commands" / "job.py"
 
+#: R-1020's remainder at F283 round 4's C3, measured at `3b4acafd` by an alias-aware
+#: reading (DECISION F283 D1's correction — `decision.py` also binds the resolver as
+#: `_rji`). Falls as each commit below migrates a module; never rises.
+_EXITING_RESOLVER_REMAINING = {
+    "change.py": 3,
+    "contract_cmd.py": 1,
+    "decision.py": 4,
+    "job_context_cmd.py": 1,
+    "patch.py": 7,
+    "project.py": 1,
+    "teacher_cmd.py": 2,
+}
+
+
+def _exiting_resolver_calls(source: str) -> int:
+    """Every call ``source`` reaches ``resolve_job_id`` through, alias-aware.
+
+    Collects the names a ``from packages.orchestration.data_paths import
+    resolve_job_id`` (or ``... as <alias>``) binds, at module level or inside a
+    function ANYWHERE in the tree, then counts the ``ast.Call`` nodes whose callee is
+    one of those names, OR an attribute access whose final segment is
+    ``resolve_job_id`` (``data_paths.resolve_job_id``, an ``__import__`` expression,
+    any base at all) — so a call that dodges the alias set by reaching through the
+    module object still counts. Round 3's guard matched only the bare name
+    ``resolve_job_id`` and missed `decision.py`'s `_rji` alias; this is the repair.
+    """
+    tree = ast.parse(source)
+    aliases: set[str] = set()
+    for node in ast.walk(tree):
+        if (
+            isinstance(node, ast.ImportFrom)
+            and node.module == "packages.orchestration.data_paths"
+        ):
+            for alias in node.names:
+                if alias.name == "resolve_job_id":
+                    aliases.add(alias.asname or alias.name)
+
+    count = 0
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Call):
+            continue
+        func = node.func
+        if isinstance(func, ast.Name) and func.id in aliases:
+            count += 1
+        elif isinstance(func, ast.Attribute) and func.attr == "resolve_job_id":
+            count += 1
+    return count
+
 
 def _refusal_sites() -> tuple[list[int], list[int]]:
     """Partition job.py's `print(..., file=sys.stderr)` + `sys.exit(n)` pairs.
@@ -221,29 +269,85 @@ class TestTheExitingResolverIsStillReachable:
     """R-1020's remainder, counted rather than remembered.
 
     `resolve_job_id` prints a prose refusal and exits. Every call site of it is a
-    `supports_json` command that cannot answer a machine. This number falls as the
-    sweep reaches each module; it never rises.
+    `supports_json` command that cannot answer a machine. `_EXITING_RESOLVER_REMAINING`
+    falls as the sweep reaches each module; it never grows.
     """
 
-    def test_the_call_sites_outside_job_py_are_counted(self):
-        import ast
+    def test_a_binding_inside_a_function_is_still_counted(self):
+        source = (
+            "def f():\n"
+            "    from packages.orchestration.data_paths import resolve_job_id as _x\n"
+            "    return _x('a')\n"
+        )
+        assert _exiting_resolver_calls(source) == 1
 
+    def test_an_attribute_call_is_counted_even_without_an_alias(self):
+        """The round 3 mutation the guard missed: reaching the resolver through the
+        module object rather than a bare name."""
+        source = (
+            "def f():\n"
+            "    return data_paths.resolve_job_id('a')\n"
+        )
+        assert _exiting_resolver_calls(source) == 1
+
+    def test_the_remaining_call_sites_match_the_measured_dict(self):
         root = pathlib.Path(__file__).resolve().parents[2] / "apps" / "cli"
         found: dict[str, int] = {}
         for path in sorted(root.rglob("*.py")):
-            tree = ast.parse(path.read_text())
-            n = sum(
-                1
-                for node in ast.walk(tree)
-                if isinstance(node, ast.Call)
-                and isinstance(node.func, ast.Name)
-                and node.func.id == "resolve_job_id"
-            )
+            n = _exiting_resolver_calls(path.read_text())
             if n:
                 found[path.name] = n
-        assert "job.py" not in found, (
-            f"job.py should call resolve_job_id_or_fail now, found {found.get('job.py')}"
+        assert "job.py" not in found
+        assert "job_id_arg.py" not in found
+        assert found == _EXITING_RESOLVER_REMAINING, (
+            f"measured {found}, constant says {_EXITING_RESOLVER_REMAINING}"
         )
-        assert sum(found.values()) == 17, (
-            f"expected R-1020's 17 remaining call sites, found {sum(found.values())}: {found}"
-        )
+
+
+class TestTheAmbiguousBranchAnswersInTheEnvelope:
+    """R-1020's coverage gap, closed. Round 3 landed `resolve_job_id_or_fail`'s ambiguous
+    exit with no test reaching it; this proves its exit code, its token and its `matches`
+    payload, and proves the text branch byte-identical to the exiting resolver's — computed
+    against the real function, not typed by hand."""
+
+    @staticmethod
+    def _two_ambiguous_jobs(monkeypatch, tmp_path) -> list[str]:
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        jobs_path = tmp_path / "jobs"
+        ids = [
+            "aaaa1111-0000-0000-0000-000000000001",
+            "aaaa1111-0000-0000-0000-000000000002",
+        ]
+        for job_id in ids:
+            record_dir = jobs_path / job_id
+            record_dir.mkdir(parents=True, exist_ok=True)
+            (record_dir / "job.json").write_text(json.dumps({"job_id": job_id}))
+        return sorted(ids)
+
+    def test_json_output_carries_the_matches_and_leaves_stderr_empty(
+        self, monkeypatch, tmp_path
+    ):
+        from apps.cli.job_id_arg import resolve_job_id_or_fail
+
+        matches = self._two_ambiguous_jobs(monkeypatch, tmp_path)
+        code, out, err = _invoke(resolve_job_id_or_fail, raw="aaaa1111", json_output=True)
+        assert code == 2
+        assert err == ""
+        body = json.loads(out)
+        assert body["ok"] is False
+        assert body["schema_version"] == 1
+        assert body["error"] == "ambiguous_job_id"
+        assert body["matches"] == matches
+
+    def test_without_json_stderr_matches_the_exiting_resolver_byte_for_byte(
+        self, monkeypatch, tmp_path
+    ):
+        from apps.cli.job_id_arg import resolve_job_id_or_fail
+        from packages.orchestration.data_paths import resolve_job_id
+
+        self._two_ambiguous_jobs(monkeypatch, tmp_path)
+        code, out, err = _invoke(resolve_job_id_or_fail, raw="aaaa1111", json_output=False)
+        assert code == 2
+        assert out == ""
+        _, _, reference_err = _invoke(resolve_job_id, raw="aaaa1111")
+        assert err == reference_err

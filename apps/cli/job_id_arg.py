@@ -25,8 +25,34 @@ one indented line per match, so an operator's terminal does not change.
 
 from __future__ import annotations
 
+from typing import NoReturn
+
 from apps.cli.json_envelope import fail
 from packages.orchestration.data_paths import JobIdAmbiguous, JobIdError, lookup_job_id
+
+
+def refuse_ambiguous_job_id(raw: str, matches: list[str], *, json_output: bool) -> NoReturn:
+    """Refuse in the envelope: ``raw`` is a prefix more than one job matches.
+
+    The shared body of the ambiguous branch, split out so a caller that reaches
+    :func:`lookup_job_id` itself — rather than through :func:`resolve_job_id_or_fail` —
+    can still answer the SAME refusal. `apps/cli/commands/job_stop_cmd.py` is that
+    caller: it needs `job_id` in the envelope's own payload, which
+    :func:`resolve_job_id_or_fail` does not carry.
+
+    Exit 2, always — the code the exiting resolver already used. Under ``--json`` the
+    envelope additionally carries ``matches``, the full job ids it could have meant, so
+    a machine can disambiguate without re-running the command and parsing a prose list.
+    """
+    matches = sorted(matches)
+    listed = "\n".join(f"  {m[:8]}" for m in matches)
+    fail(
+        "ambiguous_job_id",
+        f"ambiguous job id prefix '{raw}' matches {len(matches)} jobs:\n{listed}",
+        json_output=json_output,
+        exit_code=2,
+        matches=matches,
+    )
 
 
 def resolve_job_id_or_fail(raw: str, *, json_output: bool) -> str:
@@ -35,23 +61,11 @@ def resolve_job_id_or_fail(raw: str, *, json_output: bool) -> str:
     Exit 1 when the string names no job, exit 2 when a prefix names more than one —
     the two codes the exiting resolver already used, unchanged, because renumbering
     them belongs to F283's T002 taxonomy and not to this repair.
-
-    Under ``--json`` the ambiguous refusal additionally carries ``matches``, the full
-    job ids it could have meant, so a machine can disambiguate without re-running the
-    command and parsing a prose list.
     """
     try:
         return lookup_job_id(raw)
     except JobIdAmbiguous as exc:
-        matches = sorted(exc.matches)
-        listed = "\n".join(f"  {m[:8]}" for m in matches)
-        fail(
-            "ambiguous_job_id",
-            f"ambiguous job id prefix '{raw}' matches {len(matches)} jobs:\n{listed}",
-            json_output=json_output,
-            exit_code=2,
-            matches=matches,
-        )
+        refuse_ambiguous_job_id(raw, exc.matches, json_output=json_output)
     except JobIdError:
         fail(
             "invalid_job_id",
