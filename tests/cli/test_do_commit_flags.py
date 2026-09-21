@@ -334,12 +334,16 @@ def test_a_push_the_remote_refuses_leaves_the_commit_and_fails_the_walk(repo, ca
     code, data, err = _run(capsys, "--commit", MESSAGE, "--push")
 
     assert code == 1
+    assert err == ""
+    assert data["ok"] is False
+    assert data["error"] == "step_failed"
+    assert data["failed_step"] == "apply"
     detail = _step(data, "apply")["detail"]
     assert "the remote is frozen" in detail and "push it by hand" in detail
+    assert data["message"] == f"apply failed: {detail}"
     assert _git(remote, "rev-parse", _branch(repo)).strip() == before
     assert data["landed"][0]["sha"] == _head(repo) != before
     assert data["push"]["pushed"] is False and "the remote is frozen" in data["push"]["error"]
-    assert "Error: apply failed" in err
 
 
 # ── A walk of several jobs chains under a commit flag ──

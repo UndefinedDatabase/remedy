@@ -21,7 +21,7 @@ from apps.cli.commands.run_invocation import (
 from apps.cli.commands.run_invocation import (
     invocation_from_args as _invocation_from_args,
 )
-from apps.cli.json_envelope import fail
+from apps.cli.json_envelope import emit_ok, fail
 
 if TYPE_CHECKING:
     import argparse
@@ -347,7 +347,7 @@ def _cmd_do_order(
     contract = do_mission_contract(ctx)
 
     if json_output:
-        print(json.dumps({
+        document = {
             "mission_id": ctx.mission_id or None,
             "job_ids": list(ctx.job_ids),
             "waiting_job_ids": list(ctx.waiting_job_ids),
@@ -363,31 +363,30 @@ def _cmd_do_order(
             "landed": list(ctx.landed),
             "push": ctx.push_outcome,
             "next": list(ctx.next_lines),
-        }, indent=2))
-    else:
-        for result in ctx.results:
-            print(f"[{result.status}] {result.name}: {result.detail}")
-            if result.name == "shape" and result.status == "done":
-                for job in jobs:
-                    for number, task in enumerate(job["tasks"], start=1):
-                        print(f"  job {job['job_id']} task {number}: {task['title']}"
-                              f" — deliverable: {task['deliverable'] or '(none)'}")
-        contract_line = do_contract_summary_line(contract)
-        if contract_line is not None:
-            print(contract_line)
-        for line in do_cost_summary_lines(cost):
-            print(line)
-        for line in ctx.next_lines:
-            print(f"Next: {line}")
+        }
+        if ctx.failed:
+            last = ctx.results[-1]
+            fail("step_failed", f"{last.name} failed: {last.detail}",
+                 json_output=True, failed_step=last.name, **document)
+        emit_ok(**document)
+        return
+    for result in ctx.results:
+        print(f"[{result.status}] {result.name}: {result.detail}")
+        if result.name == "shape" and result.status == "done":
+            for job in jobs:
+                for number, task in enumerate(job["tasks"], start=1):
+                    print(f"  job {job['job_id']} task {number}: {task['title']}"
+                          f" — deliverable: {task['deliverable'] or '(none)'}")
+    contract_line = do_contract_summary_line(contract)
+    if contract_line is not None:
+        print(contract_line)
+    for line in do_cost_summary_lines(cost):
+        print(line)
+    for line in ctx.next_lines:
+        print(f"Next: {line}")
     if ctx.failed:
-        # NOT migrated (deviation, see handback): `json_output` already printed the
-        # WHOLE result document above, unconditionally — wrapping this line in
-        # `fail()` would print a SECOND JSON object to stdout under `--json`,
-        # breaking the one-envelope invariant `fail()` exists to enforce rather
-        # than upholding it. The AST-only rule cannot see that prior print.
-        print(f"Error: {ctx.results[-1].name} failed: {ctx.results[-1].detail}",
-              file=sys.stderr)
-        sys.exit(1)
+        fail("step_failed", f"{ctx.results[-1].name} failed: {ctx.results[-1].detail}",
+             json_output=False)
 
 
 def _cmd_do(

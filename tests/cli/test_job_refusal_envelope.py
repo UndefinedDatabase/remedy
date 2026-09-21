@@ -275,24 +275,25 @@ class TestDoRefusalsAreAllMigrated:
     commit the tests in `tests/cli/test_do_sequence_cli.py` and `tests/cli/test_cli_ux.py`
     that pinned their old `--json` shape (empty stdout, prose on stderr).
 
-    One flagged site stays: `_cmd_do_order`'s `ctx.failed` site. `json_output` already
-    prints the WHOLE result document to stdout unconditionally, earlier in the same
-    function, so wrapping its trailing print+exit in `fail()` would print a SECOND JSON
-    object to stdout under `--json` — the one-envelope invariant `fail()` exists to
-    enforce, broken instead of upheld. The AST rule cannot see that prior print, and no
-    test repair fixes this one — it is a genuine double-envelope bug, not an old-shape
-    assertion.
+    F283 round 10 migrates the last one, `_cmd_do_order`'s `ctx.failed` site, by
+    DECISION F283 D5: the `--json` branch now builds its result document and, on a
+    failed walk, passes it as `fail()`'s own `**payload` — `fail("step_failed", ...,
+    json_output=True, failed_step=last.name, **document)` — instead of printing the
+    document and THEN a separate trailing print+exit, so there is only ever one
+    envelope on stdout. The text branch's trailing line becomes
+    `fail("step_failed", ..., json_output=False)`, byte-identical on stderr. The AST
+    rule now sees a single `fail()` call at that site, not a print-then-exit pair, so
+    no flagged site remains.
 
     `_refuse_before_any_step` prints one line per refusal sentence before its one
     `sys.exit(2)` — more than one print is possible — so it is not mechanical by the
     rule and stays too; `_refusal_sites` does not count it either, since its immediate
     predecessor statement is the `for` loop, not a `print` call."""
 
-    def test_exactly_one_flagged_site_remains(self):
+    def test_no_flagged_print_then_exit_pair_survives(self):
         flagged, _ = _refusal_sites("do_cmd.py")
-        assert len(flagged) == 1, (
-            f"expected exactly the ctx.failed site left unmigrated, found "
-            f"{len(flagged)} at lines {flagged}"
+        assert flagged == [], (
+            f"expected no flagged sites left, found {len(flagged)} at lines {flagged}"
         )
 
     def test_no_unflagged_print_then_exit_pair_survives(self):

@@ -678,6 +678,7 @@ def test_an_apply_the_baseline_check_refuses_fails_the_walk_naming_the_job(
 
     assert exc.value.code == 1
     captured = capsys.readouterr()
+    assert captured.err == ""
     data = json.loads(captured.out)
     [job_id] = data["job_ids"]
     apply = _step(data, "apply")
@@ -686,7 +687,10 @@ def test_an_apply_the_baseline_check_refuses_fails_the_walk_naming_the_job(
     assert "target_changed_since_job: docs/README.md" in apply["detail"]
     assert data["stopped_before_apply"] is True
     assert (repo / "docs" / "README.md").read_text() == "edited by hand\n"
-    assert f"Error: apply failed: job {job_id} was not applied" in captured.err
+    assert data["ok"] is False
+    assert data["error"] == "step_failed"
+    assert data["failed_step"] == "apply"
+    assert data["message"] == f"apply failed: {apply['detail']}"
 
 
 # ── R-0807's F268 half: measured tokens per role and cost (DECISION F268 D11) ──
