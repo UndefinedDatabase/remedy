@@ -362,6 +362,24 @@ class TestGroupedRefusalsAreAllMigrated:
         )
 
 
+class TestTestCmdsRefusalsAreAllMigrated:
+    """F283 round 10 — `apps/cli/commands/test_cmds.py`'s three refusals move onto
+    `fail()`: `_cmd_discover_commands`'s `except Exception` catch-all (reusing
+    `job_store_error`, the token `job.py`'s own `require_job_plan` failure already
+    uses for the identical condition) and its branched `no_target_repo` site, and
+    `_cmd_test_status`'s branched `job_not_found` site, both migrated by the BRANCHED
+    rule with their extra payload keys (`job_id` / `candidates`, `job_id`) kept.
+    `_cmd_run_tests` stays — it prints a result document, T002's own shape, not a
+    mechanical print-then-exit pair."""
+
+    def test_no_pair_survives(self):
+        flagged, unflagged = _refusal_sites("test_cmds.py")
+        assert flagged == [] and unflagged == [], (
+            f"expected no print-then-exit pair left in test_cmds.py, found "
+            f"flagged={flagged} unflagged={unflagged}"
+        )
+
+
 def _invoke(fn, **kwargs) -> tuple[int | None, str, str]:
     out, err = io.StringIO(), io.StringIO()
     code: int | None = None

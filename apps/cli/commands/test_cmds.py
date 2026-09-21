@@ -8,6 +8,7 @@ from collections.abc import Callable
 from typing import TYPE_CHECKING
 
 from apps.cli.job_id_arg import resolve_job_id_or_fail
+from apps.cli.json_envelope import fail
 
 if TYPE_CHECKING:
     import argparse
@@ -101,16 +102,12 @@ def _cmd_discover_commands(job_id_str: str, *, as_json: bool) -> None:
         from packages.orchestration.pingpong_job import require_job_plan
         job = require_job_plan(job_id)
     except Exception as exc:
-        print(f"Error: {exc}", file=sys.stderr)
-        sys.exit(1)
+        fail("job_store_error", str(exc), json_output=as_json)
 
     target_repo_str = job.metadata.get("target_repo")
     if not target_repo_str:
-        if as_json:
-            print(_json.dumps({"job_id": str(job_id), "candidates": [], "error": "no_target_repo"}))
-        else:
-            print("Error: no target_repo attached.", file=sys.stderr)
-        sys.exit(1)
+        fail("no_target_repo", "no target_repo attached.", json_output=as_json,
+             job_id=str(job_id), candidates=[])
 
     from pathlib import Path as _Path
 
@@ -206,11 +203,8 @@ def _cmd_test_status(job_id_str: str, *, as_json: bool = False) -> None:
     try:
         job = require_job_plan(job_id)
     except JobNotFoundError:
-        if as_json:
-            print(_json.dumps({"error": "job_not_found", "job_id": job_id_str}))
-        else:
-            print(f"Error: No job matches {job_id_str!r}. Try: remedy job list.", file=sys.stderr)
-        sys.exit(1)
+        fail("job_not_found", f"No job matches {job_id_str!r}. Try: remedy job list.",
+             json_output=as_json, job_id=job_id_str)
 
     data_dir = resolve_data_root()
     workspace = data_dir / "workspaces" / str(job_id)
