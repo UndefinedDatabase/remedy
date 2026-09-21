@@ -9,6 +9,7 @@ from collections.abc import Callable
 from datetime import datetime, timezone
 from typing import TYPE_CHECKING, Any
 
+from apps.cli.json_envelope import fail
 from packages.core.models import RunState
 from packages.orchestration.data_paths import resolve_data_root, resolve_job_id
 from packages.orchestration.job_runner import PlanJobResult
@@ -32,9 +33,19 @@ _SAFE_TASK_TYPE_RE = re.compile(r'^[A-Za-z0-9_-]+$')
 
 def _plan_rejected_error(job_id_str: str) -> str:
     """R-0915: the refusal for a rejected plan names what a user does next."""
+    return "Error: " + _plan_rejected_message(job_id_str)
+
+
+def _plan_rejected_message(job_id_str: str) -> str:
+    """The same sentence without the `Error: ` prefix, for the ``fail()`` sites.
+
+    ``fail()`` writes the prefix itself, so a migrated site must pass the message
+    without it; the unmigrated sites still call ``_plan_rejected_error``.  The pair
+    collapses into one function when F283 T001 reaches the rest of this module.
+    """
     from packages.orchestration.job_plan import REJECTED_PLAN_NEXT_STEP
 
-    return (f"Error: task plan rejected for job {job_id_str[:8]}.\n"
+    return (f"task plan rejected for job {job_id_str[:8]}.\n"
             f"  {REJECTED_PLAN_NEXT_STEP}")
 
 
@@ -165,8 +176,7 @@ def _cmd_list_jobs(
             date_getter=lambda j: j.created_at,
         )
     except ListOptionError as exc:
-        print(f"Error: {exc}", file=sys.stderr)
-        sys.exit(1)
+        fail("invalid_list_option", str(exc), json_output=json_output)
     if json_output:
         import json as _json
         print(_json.dumps({
@@ -1128,8 +1138,7 @@ def _cmd_job_run_cycles(
     try:
         limits, resolved = limits_from_config(get_config(), cycles_flag=cycles)
     except ValueError as exc:
-        print(f"Error: {exc}", file=sys.stderr)
-        sys.exit(2)
+        fail("invalid_argument", str(exc), json_output=json_output, exit_code=2)
 
     if resolved.capped:
         origin = "--cycles" if resolved.source == "flag" else "cycles.max_cycles"
@@ -1175,24 +1184,22 @@ def _cmd_job_run_cycles(
     try:
         job = require_job_plan(job_id)
     except JobNotFoundError as exc:
-        print(f"Error: {exc}", file=sys.stderr)
-        sys.exit(1)
+        fail("job_not_found", str(exc), json_output=json_output)
 
     from packages.orchestration.job_plan import task_plan_blocks_execution
     block_reason = task_plan_blocks_execution(job)
     if block_reason == "pending":
-        print(
-            f"Error: plan awaiting approval. "
-            f"Run: remedy decision resolve {job_id_str[:8]} plan:approval --reason approve",
-            file=sys.stderr,
+        fail(
+            "plan_awaiting_approval",
+            f'plan awaiting approval. Run: remedy decision resolve {job_id_str[:8]} plan:approval --reason approve',
+            json_output=json_output, exit_code=3,
         )
-        sys.exit(3)
     elif block_reason == "rejected":
-        print(
-            _plan_rejected_error(job_id_str),
-            file=sys.stderr,
+        fail(
+            "plan_rejected",
+            _plan_rejected_message(job_id_str),
+            json_output=json_output, exit_code=3,
         )
-        sys.exit(3)
 
     from packages.orchestration.permissions import Capability
     from packages.orchestration.permissions import is_allowed as _perm_allowed
@@ -1200,18 +1207,17 @@ def _cmd_job_run_cycles(
     from packages.providers.ollama_builder.provider import OllamaBuilder
 
     if not _perm_allowed(job, Capability.workspace_write):
-        print(
-            f"Error: permission denied — workspace_write is not granted for job {job.job_id}",
-            file=sys.stderr,
+        fail(
+            "permission_denied",
+            f'permission denied — workspace_write is not granted for job {job.job_id}',
+            json_output=json_output,
         )
-        sys.exit(1)
 
     log = RunLogWriter(job_id=job.job_id)
     try:
         builder = OllamaBuilder()
     except Exception as exc:
-        print(f"Error: builder unavailable — {exc}", file=sys.stderr)
-        sys.exit(1)
+        fail("builder_unavailable", f'builder unavailable — {exc}', json_output=json_output)
 
     limits = replace(limits, budgets=job.budgets)
     result = run_cycles(job, limits, builder.build,
@@ -1400,21 +1406,18 @@ def _cmd_job_resume(
     try:
         job = require_job_plan(job_id)
     except JobNotFoundError as exc:
-        print(f"Error: {exc}", file=sys.stderr)
-        sys.exit(1)
+        fail("job_not_found", str(exc), json_output=json_output)
 
     jid = str(job.job_id)
 
     try:
         checkpoint = load_latest_valid(jid)
     except AllCheckpointsCorruptError as exc:
-        print(
-            f"Error: no usable checkpoint for job {jid} — "
-            f"{len(exc.paths)} checkpoint(s) failed hash verification "
-            f"({', '.join(exc.paths)}). They are kept on disk for inspection.",
-            file=sys.stderr,
+        fail(
+            "checkpoints_corrupt",
+            f"no usable checkpoint for job {jid} — {len(exc.paths)} checkpoint(s) failed hash verification ({', '.join(exc.paths)}). They are kept on disk for inspection.",
+            json_output=json_output,
         )
-        sys.exit(1)
 
     # A dry run stops HERE: it reports what the checks below would decide and
     # consumes none of them.  It must never reach the executor (R-0146).
@@ -1439,22 +1442,19 @@ def _cmd_job_resume(
         return
 
     if decision.reason == "worktree_drift":
-        print("Error: " + decision.detail, file=sys.stderr)
-        sys.exit(3)
+        fail("worktree_drift", decision.detail, json_output=json_output, exit_code=3)
     if decision.reason == "plan_pending":
-        print(
-            f"Error: plan awaiting approval. "
-            f"Run: remedy decision resolve {job_id_str[:8]} plan:approval "
-            f"--reason approve",
-            file=sys.stderr,
+        fail(
+            "plan_awaiting_approval",
+            f'plan awaiting approval. Run: remedy decision resolve {job_id_str[:8]} plan:approval --reason approve',
+            json_output=json_output, exit_code=3,
         )
-        sys.exit(3)
     if decision.reason == "plan_rejected":
-        print(
-            _plan_rejected_error(job_id_str),
-            file=sys.stderr,
+        fail(
+            "plan_rejected",
+            _plan_rejected_message(job_id_str),
+            json_output=json_output, exit_code=3,
         )
-        sys.exit(3)
 
     if decision.action == RESUME_NOOP:
         if json_output:
@@ -1531,24 +1531,22 @@ def _cmd_resume(
     try:
         job = require_job_plan(job_id)
     except JobNotFoundError as exc:
-        print(f"Error: {exc}", file=sys.stderr)
-        sys.exit(1)
+        fail("job_not_found", str(exc), json_output=json_output)
 
     from packages.orchestration.job_plan import task_plan_blocks_execution
     block_reason = task_plan_blocks_execution(job)
     if block_reason == "pending":
-        print(
-            f"Error: plan awaiting approval. "
-            f"Run: remedy decision resolve {job_id_str[:8]} plan:approval --reason approve",
-            file=sys.stderr,
+        fail(
+            "plan_awaiting_approval",
+            f'plan awaiting approval. Run: remedy decision resolve {job_id_str[:8]} plan:approval --reason approve',
+            json_output=json_output, exit_code=3,
         )
-        sys.exit(3)
     elif block_reason == "rejected":
-        print(
-            _plan_rejected_error(job_id_str),
-            file=sys.stderr,
+        fail(
+            "plan_rejected",
+            _plan_rejected_message(job_id_str),
+            json_output=json_output, exit_code=3,
         )
-        sys.exit(3)
 
     data_dir = resolve_data_root()
 
@@ -1578,16 +1576,22 @@ def _cmd_resume(
     cp = next((c for c in cps if c.id == checkpoint_id), None)
 
     if not cp:
-        print(f"Error: checkpoint not found: {checkpoint_id}", file=sys.stderr)
-        sys.exit(1)
+        fail(
+            "checkpoint_not_found",
+            f'checkpoint not found: {checkpoint_id}',
+            json_output=json_output,
+        )
 
     if not cp.safe_to_resume:
         append_run_event(data_dir, job_id, event="resume_blocked", metadata={
             "checkpoint_id": checkpoint_id, "checkpoint_kind": cp.kind,
             "blocked_reason": cp.blocked_reason,
         })
-        print(f"Error: checkpoint not safe to resume: {cp.blocked_reason}", file=sys.stderr)
-        sys.exit(1)
+        fail(
+            "checkpoint_not_resumable",
+            f'checkpoint not safe to resume: {cp.blocked_reason}',
+            json_output=json_output,
+        )
 
     # F006 phase 1 (prepare): lock and verify the exact recorded worktree of the
     # interrupted run. Nothing is removed yet — the continuation has to run INSIDE
@@ -1913,8 +1917,11 @@ def _cmd_job_budget(
         try:
             require_job_plan(job_id)
         except JobNotFoundError:
-            print(f"Error: No job matches {job_id!r}. Try: remedy job list.", file=sys.stderr)
-            sys.exit(1)
+            fail(
+                "job_not_found",
+                f'No job matches {job_id!r}. Try: remedy job list.',
+                json_output=json_output,
+            )
 
     if _budgets is None and _budgets_dict is None:
         if json_output:
@@ -2167,8 +2174,11 @@ def _cmd_job_budget_set(
     try:
         job = require_job_plan(job_id)
     except JobNotFoundError:
-        print(f"Error: No job matches {job_id!r}. Try: remedy job list.", file=sys.stderr)
-        sys.exit(1)
+        fail(
+            "job_not_found",
+            f'No job matches {job_id!r}. Try: remedy job list.',
+            json_output=json_output,
+        )
 
     if in_contract:
         from packages.orchestration.run_contract import (
@@ -2205,9 +2215,11 @@ def _cmd_job_budget_set(
         old_value = getattr(profile, field_name)
         setattr(profile, field_name, new_value)
         if not save_token_budget_profile(profile):
-            print(f"Error: the token budget profile of job {job.job_id} could not be written.",
-                  file=sys.stderr)
-            sys.exit(1)
+            fail(
+                "budget_not_written",
+                f'the token budget profile of job {job.job_id} could not be written.',
+                json_output=json_output,
+            )
         store = "token_budget_profile"
 
     if json_output:
