@@ -6,9 +6,13 @@ No shell=True. No Traceback in stderr on error paths.
 
 from __future__ import annotations
 
+import contextlib
+import io
 import json
 import subprocess
 import sys
+
+import pytest
 
 _NULL_JOB_ID = "00000000-0000-0000-0000-000000000000"
 _NULL_SNAP_ID = "00000000-0000-0000-0000-111111111111"
@@ -61,6 +65,22 @@ class TestSnapshotInspectCLI:
         combined = r.stdout + r.stderr
         for forbidden in ("blob_", "diff --git", "Traceback", "recovery_blob"):
             assert forbidden not in combined, f"Forbidden term in output: {forbidden}"
+
+    def test_a_bad_job_id_carries_job_id_in_the_envelope(self):
+        """F283 R5 C5 — `resolve_job_id_or_fail`'s payload pass-through keeps the
+        `job_id` key `snapshot inspect --json` already printed, through the real
+        parser rather than the handler directly."""
+        from apps.cli.grouped import main
+
+        out, err = io.StringIO(), io.StringIO()
+        with pytest.raises(SystemExit) as caught:
+            with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+                main(["snapshot", "inspect", "zzzznotajob", _NULL_SNAP_ID, "--json"])
+        assert caught.value.code == 1
+        assert err.getvalue() == ""
+        body = json.loads(out.getvalue())
+        assert body["error"] == "invalid_job_id"
+        assert body["job_id"] == "zzzznotajob"
 
 
 # ---------------------------------------------------------------------------

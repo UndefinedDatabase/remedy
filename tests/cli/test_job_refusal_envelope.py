@@ -41,7 +41,6 @@ _LOOKUP_CALLERS: dict[str, int] = {
     "job_stop_cmd.py": 1,
     "memory.py": 1,
     "project.py": 1,
-    "snapshot_cmds.py": 2,
     "test_cmds.py": 2,
 }
 
