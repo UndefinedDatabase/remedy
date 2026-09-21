@@ -1,0 +1,11 @@
+diff --git a/apps/ui/src/api/humanizeCatalog.ts b/apps/ui/src/api/humanizeCatalog.ts
+--- a/apps/ui/src/api/humanizeCatalog.ts
++++ b/apps/ui/src/api/humanizeCatalog.ts
+@@ -21,6 +21,7 @@
+   "builder_prompt_created": "The builder's prompt was assembled.",
+   "builder_started": "The builder started work on the task.",
+   "command.accepted": "The command was accepted and queued for the run.",
++  "command_discovery_completed": "Test-command discovery finished and recorded what it found.",
+   "context_coverage_inspected": "Context coverage was inspected for this task.",
+   "continued_from_node": "The run continued from an earlier brain node.",
+   "contract_decision": "A run contract decision was recorded.",

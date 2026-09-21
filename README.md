@@ -26,13 +26,13 @@ verification commands. If something is unproven, Remedy says so instead of guess
 
 ## Status
 
-87 of 282 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
+88 of 283 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
 
 | Tier | Name | Done | Total |
 |------|------|-----:|------:|
 | 0 | Foundation & Trust Core | 16 | 16 |
 | 1 | Self-Build Bootstrap | 22 | 22 |
-| 2 | Minimal Self-Build Runtime | 29 | 35 |
+| 2 | Minimal Self-Build Runtime | 30 | 36 |
 | 3 | Full Token Economy & Autonomy | 6 | 26 |
 | 4 | Memory & Learning | 1 | 17 |
 | 5 | Operator Cockpit | 13 | 34 |
@@ -189,7 +189,14 @@ root given a named owner and a reclaim rule in one registry the code reads;
 `data usage` reporting the footprint per class and `data reclaim` previewing
 before it deletes, `--apply` required to remove anything and a terminal job's
 workspace never taken; and a job refusing to start below a disk floor rather
-than failing part-written).
+than failing part-written),
+F277 machine contracts (the event vocabulary a run ledger may carry declared in
+one module and checked against the code that writes and reads it; one JSON
+envelope every `--json` command answers in, on success and on failure, with an
+error boundary that turns an uncaught crash into that envelope instead of a
+traceback; and the shared refusal helper nine command groups now answer through
+— the remaining groups, the catalog gap and the exit-code taxonomy belong to the
+follow-up feature the STATUS ledger registers directly behind this one).
 
 Accepted in Tier 3 so far:
 F106 session resume instead of rebuild (repair rounds resume the original

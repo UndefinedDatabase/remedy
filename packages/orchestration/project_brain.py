@@ -650,7 +650,7 @@ def _build_readiness_node(acc: _Acc) -> None:
                 "missing_count": sum(len(a.missing_signals) for a in report.levels),
                 "blocker_count": sum(len(a.blockers) for a in report.levels),
                 "scope": report.scope,
-                "revert_capable": sigs.get("revert_snapshot", False),
+                "revert_capable": sigs.get("verified_snapshot", False),
                 "test_capable": sigs.get("test_proof", False),
                 "memory_present": sigs.get("approved_memory", False),
                 "token_policy_applied": sigs.get("token_policy_applied", False),

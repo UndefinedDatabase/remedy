@@ -263,11 +263,17 @@ def derive_stop_reasons(
                           f"remedy test run {job_id}"),
         ))
 
-    # Unapproved intents
+    # Unapproved intents.  F277 T001: the decision is recorded as
+    # `patch_intent_approved` or `patch_intent_rejected` — nothing has ever
+    # written `approval_decision`, so this comprehension used to report every
+    # intent as awaiting approval, decided ones included.  A rejected intent
+    # is decided, not waiting, which is the same reading
+    # `autonomy_readiness._has_pending_approvals` already had.
+    _DECIDED = ("patch_intent_approved", "patch_intent_rejected")
     unapproved = [e for e in events
                   if e.get("event") == "patch_intent_created"
                   and not any(
-                      a.get("event") == "approval_decision"
+                      a.get("event") in _DECIDED
                       and a.get("metadata", {}).get("intent_id") == e.get("metadata", {}).get("intent_id")
                       for a in events
                   )]

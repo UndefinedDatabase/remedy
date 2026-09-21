@@ -26,9 +26,10 @@ Exit codes:
 from __future__ import annotations
 
 import subprocess
-import sys
 from pathlib import Path
 from typing import Any
+
+from apps.cli.json_envelope import fail
 
 #: Directories the rglob fallback never lists. A real git checkout excludes
 #: these through the index anyway, so the fallback only has to imitate it.
@@ -272,22 +273,21 @@ def _cmd_job_context(
         resolved = resolve_job_id(job_id_str)
         job = require_job_plan(resolved)
     except JobNotFoundError:
-        print(f"Error: No job matches {job_id_str!r}. Try: remedy job list.", file=sys.stderr)
-        sys.exit(1)
+        fail("invalid_job_id", f"No job matches {job_id_str!r}. Try: remedy job list.",
+             json_output=json_output)
 
     repo_str = _job_target_repo(job)
     if not repo_str:
-        print(f"Job {job_id_str[:8]} has no target_repo attached", file=sys.stderr)
-        sys.exit(2)
+        fail("no_target_repo", f"Job {job_id_str[:8]} has no target_repo attached",
+             json_output=json_output, exit_code=2)
     repo_root = Path(repo_str)
     if not repo_root.is_dir():
-        print(f"Target repo does not exist: {repo_str}", file=sys.stderr)
-        sys.exit(2)
+        fail("target_repo_missing", f"Target repo does not exist: {repo_str}",
+             json_output=json_output, exit_code=2)
 
     task, error = resolve_task_for_context(task_ref, list(job.tasks))
     if task is None:
-        print(f"Error: {error}", file=sys.stderr)
-        sys.exit(3)
+        fail("task_not_resolvable", str(error), json_output=json_output, exit_code=3)
 
     fenced_paths = _task_files_hint(task)
     candidates, candidate_source = _repo_candidate_paths_with_source(repo_root)

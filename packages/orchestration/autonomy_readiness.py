@@ -127,18 +127,10 @@ def _has_approved_memory() -> bool:
         return False
 
 
-def _has_worker_adapters(events: list[dict[str, Any]]) -> bool:
-    return any(e.get("event") == "worker_adapters_listed" for e in events)
-
-
 def _has_agent_loop(events: list[dict[str, Any]]) -> bool:
     return any(
         e.get("event", "").startswith("agent_loop_") for e in events
     )
-
-
-def _has_revert_snapshot(events: list[dict[str, Any]]) -> bool:
-    return any(e.get("event") == "patch_intent_reverted" for e in events)
 
 
 def _has_verified_snapshot(job: JobPlan, data_dir: Path) -> bool:
@@ -232,7 +224,6 @@ def _collect_signals(
         "approved_memory": _has_approved_memory(),
         "token_policy_applied": _has_token_policy_applied(events),
         "agent_loop": _has_agent_loop(events),
-        "revert_snapshot": _has_revert_snapshot(events),
         "verified_snapshot": _has_verified_snapshot(job, data_dir),
         "no_pending_approvals": not _has_pending_approvals(events),
         "no_open_decisions": _has_no_open_decisions(job, events),

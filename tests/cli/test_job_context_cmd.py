@@ -285,3 +285,52 @@ def test_an_unknown_job_of_either_shape_still_exits_one(tmp_path, env):
         r = run_grouped_cli(["job", "context", unknown, "--task", "T001"], env)
         assert r.returncode == 1, f"{unknown}: {r.stdout}{r.stderr}"
         assert "Traceback" not in r.stderr
+
+
+class TestJobContextRefusesInTheCallersShape:
+    """F277 T003 — the `job context` exit codes 1, 2 and 3 through the shared `fail()`."""
+
+    @staticmethod
+    def _run(monkeypatch, job, **flags):
+        import pytest as _pytest
+
+        from apps.cli.commands import job_context_cmd as mod
+        from packages.orchestration import data_paths, pingpong_job
+
+        # The handler imports both names INSIDE the function, so the patch has to
+        # land on the defining module rather than on the handler's own namespace.
+        monkeypatch.setattr(data_paths, "resolve_job_id", lambda raw: raw)
+        monkeypatch.setattr(pingpong_job, "require_job_plan", lambda _jid: job)
+        with _pytest.raises(SystemExit) as caught:
+            mod._cmd_job_context("abcdef01", json_output=True, **flags)
+        return caught.value.code
+
+    def test_no_target_repo_is_exit_two_and_names_its_token(self, monkeypatch, capsys):
+        import json
+        from types import SimpleNamespace
+
+        code = self._run(monkeypatch, SimpleNamespace(repo_path="", metadata={}, tasks=[]))
+        assert code == 2
+        body = json.loads(capsys.readouterr().out)
+        assert body["ok"] is False and body["error"] == "no_target_repo"
+
+    def test_a_target_repo_that_is_gone_is_exit_two_with_its_own_token(
+        self, monkeypatch, capsys, tmp_path
+    ):
+        import json
+        from types import SimpleNamespace
+
+        gone = tmp_path / "gone"
+        code = self._run(monkeypatch, SimpleNamespace(repo_path=str(gone), metadata={}, tasks=[]))
+        assert code == 2
+        body = json.loads(capsys.readouterr().out)
+        assert body["error"] == "target_repo_missing"
+
+    def test_an_unresolvable_task_is_exit_three(self, monkeypatch, capsys, tmp_path):
+        import json
+        from types import SimpleNamespace
+
+        code = self._run(monkeypatch, SimpleNamespace(repo_path=str(tmp_path), metadata={}, tasks=[]))
+        assert code == 3
+        body = json.loads(capsys.readouterr().out)
+        assert body["error"] == "task_not_resolvable"

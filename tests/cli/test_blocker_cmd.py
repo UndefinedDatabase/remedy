@@ -69,3 +69,45 @@ class TestBlockerListOptions:
         with pytest.raises(SystemExit) as exc:
             _cmd_blocker_list("job-1", json_output=True, sort="bogus")
         assert exc.value.code == 1
+
+
+class TestABlockerRefusalIsShapedLikeTheCaller:
+    """F277 T003 — the `blocker` group migrated onto the shared `fail()`."""
+
+    def test_a_missing_blocker_is_an_envelope_under_json(self, capsys):
+        import json
+
+        from apps.cli.commands.blocker import _cmd_blocker_show
+
+        with patch("packages.orchestration.stop_reasons.get_stop_reason",
+                   return_value=None), pytest.raises(SystemExit) as exc:
+            _cmd_blocker_show("job-1", "no-such-blocker", json_output=True)
+        assert exc.value.code == 1
+        captured = capsys.readouterr()
+        assert captured.err == ""
+        body = json.loads(captured.out)
+        assert body["ok"] is False and body["schema_version"] == 1
+        assert body["error"] == "blocker_not_found"
+
+    def test_without_json_it_is_the_line_it_always_was(self, capsys):
+        from apps.cli.commands.blocker import _cmd_blocker_show
+
+        with patch("packages.orchestration.stop_reasons.get_stop_reason",
+                   return_value=None), pytest.raises(SystemExit) as exc:
+            _cmd_blocker_show("job-1", "no-such-blocker", json_output=False)
+        assert exc.value.code == 1
+        captured = capsys.readouterr()
+        assert captured.out == ""
+        assert captured.err == "Error: blocker not found: no-such-blocker\n"
+
+    def test_resolve_now_threads_the_flag_it_never_had(self, capsys):
+        """`blocker resolve` carries no `--json` in the catalog yet; the handler is ready."""
+        import json
+
+        from apps.cli.commands.blocker import _cmd_blocker_resolve
+
+        with patch("packages.orchestration.stop_reasons.resolve_stop_reason",
+                   return_value=None), pytest.raises(SystemExit) as exc:
+            _cmd_blocker_resolve("job-1", "no-such-blocker", json_output=True)
+        assert exc.value.code == 1
+        assert json.loads(capsys.readouterr().out)["error"] == "blocker_not_found"

@@ -17232,3 +17232,496 @@ and the closure does not proceed until that rule is satisfied.
 
 REVERSE: delete this paragraph and restore `.agent/authored/f276-closure-suite.txt` to its
 `fd23710f` content, which git holds unchanged.
+
+DECISION F277 D1 (2026-09-20, round 1) — THE EVENT COLLECTOR RESOLVES SINKS BY FIXPOINT, NOT
+`RunLogWriter.log` ALONE, AND RESOLVES NAMES PER SCOPE.
+
+CONTEXT. `docs/roadmap/features/T2_F277.md` T001 specifies the AST test as collecting written
+names from "the first argument of `RunLogWriter.log`, `"event"` dict keys, resolving
+module-level constants and tuples", and its "Why this exists" section states that exactly two
+literals are read and never written. The reviewer built that collector and ran it against
+`f2494c02` before authoring this round. It reports 50 written names and FIFTEEN read-but-never-
+written names, not two. The gap is not noise: this repository writes run-ledger events through
+THREE sink APIs — `RunLogWriter.log`, `event_persistence.emit_important_event` and
+`timeline.append_run_event` — and wraps all three in per-module private helpers, so a collector
+that reads only `RunLogWriter.log` cannot see, for one example among many,
+`test_execution_service.py` emitting `test_run_completed` through its own `_emit` with the name
+computed in a local ternary. Thirteen of those fifteen are phantoms: names that ARE written, by
+a route the specified collector does not model.
+
+CHOSEN. The collector seeds three sinks and then takes a FIXPOINT: any function that forwards
+its OWN parameter into a known sink becomes a sink at that parameter's position. A private
+helper — one whose name begins with an underscore — is matched only inside its own file, because
+`builder_bridge.py`, `test_execution_service.py` and `long_run_executor.py` each define `_emit`
+and the event argument sits at a DIFFERENT position in `long_run_executor`'s; matching a private
+helper by bare name reads the wrong argument and silently collects a `job_id`. Name resolution
+is per-scope rather than flat: a flat map lets a sentinel `state = "unknown"` in one function
+resolve an `{"event": name}` in another, and it did — `unknown` appeared in the vocabulary until
+the scope chain removed it, and removed nothing else.
+
+MEASURED, by the reviewer, at `f2494c02`, with the collector this round ships: 83 names written,
+30 read, SIX read and never written. The count is stable across the two independent bug fixes
+that produced it, and each fix is explained by a named mechanism rather than by a tuned number.
+
+ALTERNATIVES. Ship the collector the feature file specifies and register the thirteen phantoms
+as findings — rejected: they are not defects, and a gate that reports thirteen false positives
+is a gate the next round learns to disbelieve. Widen `read ⊆ written` to `read ⊆ declared` and
+declare the phantoms — rejected: that writes the collector's blind spot into the permanent
+table, which is the opposite of what a declaration is for. Resolve names across module
+boundaries — rejected as out of proportion: the strict-mode flag catches at RUNTIME what static
+resolution would cost a great deal to catch statically, and the module says so in its Deliberate
+absences.
+
+REVERSE: delete this paragraph and restore the collector's `SEED_SINKS` to `RunLogWriter.log`
+alone, dropping `_discover_sinks` and the scope chain in
+`tests/orchestration/test_event_names.py`.
+
+
+DECISION F277 D2 (2026-09-20, round 1) — THE SIX DEAD READERS ARE QUARANTINED IN A SET THAT MAY
+ONLY SHRINK, AND T001'S ACCEPTANCE LINE IS AMENDED TO SAY SO.
+
+CONTEXT. `docs/roadmap/features/T2_F277.md` Acceptance asks that "read ⊆ written ⊆ declared
+holds". Measured at `f2494c02` it does NOT hold and cannot be made to hold by declaring
+anything: six names are read by live code and written by nothing —
+`approval_decision`, `command_discovery_completed`, `patch_intent_reverted`, `snapshot_created`,
+`stop_reason_recorded` and `worker_adapters_listed`. The feature file anticipates one of them,
+`worker_adapters_listed`, and rules that it must either be given a writer or deleted with its
+score contribution, "and leaving the dimension permanently absent is not" correct. That ruling
+is right and it applies to all six; the file simply had not measured the other five. This is a
+wrong spec routed to planning under docs/agents/planner_reviewer_prompt.md §4 item 7.
+
+CHOSEN. `event_names.py` declares TWO sets. `EVENT_NAMES` is the written vocabulary.
+`READ_ONLY_EVENT_NAMES` is a QUARANTINE carrying exactly those six, each with the modules that
+read it and a one-line note on what is wrong. The test makes the quarantine a ratchet that
+cannot rot in either direction: a quarantined name that gains a writer fails
+`test_a_read_only_name_that_gains_a_writer_leaves_the_quarantine` and must move up, and a
+quarantined name that loses its last reader fails
+`test_every_quarantined_name_really_has_a_reader` and must be deleted. Round 2 disposes of all
+six, one commit per name, each by the feature file's own rule — a writer, or the reader deleted
+together with what it feeds — and empties the set, at which point `read ⊆ written ⊆ declared`
+holds as the Acceptance line asks and the quarantine becomes an empty frozenset the test still
+guards. The Acceptance line is not weakened: it is reached in round 2 rather than asserted
+falsely in round 1.
+
+ALTERNATIVES. Dispose of all six in round 1 alongside the claim and the module — rejected on
+size: the module and its test are already 557 insertions, over the AGENTS.md cap and split
+across two commits here, and six behavioural dispositions each need their own red proof.
+Assert `read ⊆ written` in round 1 and let it land red — rejected: a branch tip that ships red
+to buy a tidier table is the thing R-1011 was registered for one feature ago. Declare the six
+in `EVENT_NAMES` — rejected: it makes the table lie, and the test's
+`test_no_declared_name_is_unused` exists to stop exactly that.
+
+REVERSE: delete this paragraph, merge `READ_ONLY_EVENT_NAMES` into `EVENT_NAMES` and drop the
+two ratchet tests.
+
+
+DECISION F277 D3 (2026-09-20, round 1) — UNDER SELF-DRIVE, THE PHASE 1 OPEN PR GATE IS THE
+SESSION'S OWN ACT AND NOT A DELEGATED ONE.
+
+CONTEXT. `docs/agents/planner_reviewer_prompt.md` §0 says the planner/reviewer never merges and
+that "every merge is an instruction to the worker". `docs/agents/self_drive_protocol.md` Phase 1
+rule 2 instead addresses the session directly — an open non-draft `feature/*` pull request into
+`main` is merged "at the Open PR Gate (AGENTS.md) before any new branch" — and guardrail G1
+phrases the merge as a constraint on the SESSION. The two cannot both be followed literally,
+because Phase 1 runs BEFORE any round exists and workers are one per round.
+
+CHOSEN. The session ran the gate itself: pull request 262 was verified OPEN, non-draft, base
+`main`, head `feature/*`, `mergeable: MERGEABLE`, `mergeStateStatus: CLEAN` with both hosted CI
+checks at `SUCCESS`, and merged with `gh pr merge 262 --merge --delete-branch`, landing
+`f2494c02`. The reason this does not weaken the single-writer rule is what that rule protects:
+self-drive states it exists so that production code never merges self-certified, and this merge
+certified nothing — F276's rounds were each gated by a reviewer that did not write them, and the
+merge only lands what was already reviewed. No work-tree file was edited by the session.
+
+ALTERNATIVES. Delegate the merge to round 1's worker — rejected: it puts a `gh pr merge` inside
+a round whose block also creates the branch the merge must precede, and AGENTS.md forbids
+creating a branch while a mergeable pull request is open. Leave the pull request open and claim
+F277 anyway — rejected by the same AGENTS.md sentence.
+
+REVERSE: delete this paragraph. It records a reading, not a change; nothing on disk depends on
+it and any later relay may rule the other way for the next feature.
+
+DECISION F277 D4 (2026-09-20, round 2) — THE SIX QUARANTINED NAMES ARE DISPOSED OF IN FOUR
+ROUNDS, AND ROUND 2 TAKES THE THREE WHOSE ANSWER IS ALREADY IN THE REPOSITORY.
+
+CONTEXT. `READ_ONLY_EVENT_NAMES` is a quarantine, not a vocabulary: round 1 measured six names
+that live code READS and nothing WRITES, and `docs/roadmap/features/T2_F277.md` rules that each
+is given a writer or deleted together with its score contribution, never left absent. The six
+are not one kind of problem. Measured by the reviewer at `9114721f`, `approval_decision` has ONE
+event-name reader, `worker_adapters_listed` has one, `patch_intent_reverted` has four,
+`command_discovery_completed` has two, and `snapshot_created` and `stop_reason_recorded` each
+feed user-visible behaviour. A single round that touched all six would mix a two-line deletion
+with a metadata-contract change and a UI behaviour change.
+
+CHOSEN. Round 2 disposes of the three whose correct answer is a name this repository already
+writes, or no reader at all, and states what the remaining rounds take.
+
+  (1) `worker_adapters_listed` — DELETED with its reader. `autonomy_readiness._has_worker_adapters`
+  is a private function with ZERO callers: it is absent from `_collect_signals`, from every level
+  in `_assess_level` and from every test, so its "score contribution" is empty and there is
+  nothing to remove beside the function itself. This is the instance the feature file names by
+  hand, and the honest disposition is deletion, not a writer minted to feed a signal nobody reads.
+
+  (2) `approval_decision` — the READER IS REPOINTED at the names the repository writes.
+  `stop_reasons.derive_stop_reasons` derived `derived_not_approved` from `not any(a.get("event")
+  == "approval_decision" ...)`, a comparison that has never matched, so the guard was vacuously
+  true and EVERY patch intent was reported as awaiting approval, decided ones included. The
+  decision is really recorded as `patch_intent_approved` or `patch_intent_rejected`, both of
+  which are in `EVENT_NAMES`. A rejected intent is decided and not waiting, which is the reading
+  `autonomy_readiness._has_pending_approvals` already had — this change makes the two modules
+  agree rather than inventing a third rule.
+
+  (3) `patch_intent_reverted` — ONE OF ITS FOUR READERS GOES; the name STAYS quarantined.
+  `autonomy_readiness._has_revert_snapshot` fed a `revert_snapshot` signal that NO level checks,
+  and `project_brain._build_readiness_node` published it as `"revert_capable"`, so that field
+  has read False for every job ever built. The authoritative durable check `verified_snapshot`
+  (Step 1159) sits in the same signal dict and is what level 5 already gates on, so
+  `revert_capable` is repointed at it and the dead signal is deleted. The name stays in the
+  quarantine because `change_set.py`, `project_brain.py` and `ui_server.py` still replay reverts
+  already on disk, and `tests/orchestration/test_source_apply.py` pins that on purpose. Its
+  remaining disposition is a METADATA CONTRACT and not a rename: the writer spells it
+  `revert_completed` and carries `apply_id`, `snapshot_id`, `state`, `paths_restored` and
+  `paths_deleted` but no `intent_id`, which is the key two of those three readers index by.
+
+ALTERNATIVES. Dispose of all six in round 2 — rejected: it bundles a deletion, a contract change
+and a UI change behind one verdict. Mint a writer for `worker_adapters_listed` so the dimension
+scores present — rejected: there is no dimension, because nothing reads the function. Rename
+`patch_intent_reverted` to `revert_completed` at its readers — rejected: two readers index by a
+key that event does not carry, so the rename would silently drop them to zero matches, which is
+the defect this feature exists to remove rather than to relocate.
+
+WHAT THE REMAINING ROUNDS TAKE, so nothing is deferred without an owner. Round 3:
+`command_discovery_completed`, whose two readers — the level-3 `command_discovery` gate and
+`memory_learn`'s `context.command_discovery.*` entries — make autonomy level 3 permanently
+ineligible for every job; its disposition is a writer in the discovery path, and the metadata
+keys are fixed by `memory_learn`, which reads `source_types` and `candidate_count`. Round 4:
+`snapshot_created`, the `autonomy_loop` level-5 gate, routed through `build_snapshot_truth`
+rather than renamed, plus the remainder of `patch_intent_reverted`. Round 5:
+`stop_reason_recorded`, whose readers in `project_summary.py`, `ui_view_model.py` and
+`ui_server.py` are leftovers of DECISION F031 D2 and D9 and whose removal is a UI behaviour
+change.
+
+REVERSE: delete this paragraph and restore the three code sites from git history at `9114721f`.
+Reversing (2) reinstates a blocker stop reason on every approved intent, and reversing (3)
+reinstates a `revert_capable` field that is False by construction; both are recorded here so the
+cost of the reversal is visible before it is paid.
+
+DECISION F277 D5 (2026-09-20, round 5) — THE QUARANTINE BECOMES THE RETIRED SET, AND ITS
+FLOOR IS NOT ZERO.
+
+CONTEXT. T001 declared `READ_ONLY_EVENT_NAMES` a QUARANTINE that "may only ever shrink" and
+ruled every entry disposed of by giving it a writer or deleting its readers, "never by leaving
+the dimension permanently absent". DECISION F277 D4 then disposed of four of the six names on
+exactly that reading, and it was the right reading for all four. It is the wrong reading for
+the two that remain, and the reason is on the record rather than in the code.
+
+WHAT THE RECORD SAYS, read by the reviewer at `fa448bef`. `patch_intent_reverted` lost its
+writer to DECISION F271 D3, which deleted `packages/orchestration/patch_revert.py` under
+finding `R-0982` and ruled in as many words: "The four readers of `patch_intent_reverted` stay,
+each reading run logs already on disk." `stop_reason_recorded` lost its scan to DECISION F031
+D2 and D9, and `ui_server.py` carries that reading today in a comment above
+`_count_open_decisions`. Neither name is an accident. Each is a name whose WRITER a dated
+decision removed and whose READERS the same decision kept on purpose, so that run logs written
+before the removal still render.
+
+CHOSEN. `READ_ONLY_EVENT_NAMES` is renamed `RETIRED_EVENT_NAMES` and its contract is restated:
+names nothing writes any more and live code still reads, on purpose, each entry citing the
+decision that retired its writer and naming a module that still reads it. Both halves are
+asserted from the source by
+`tests/orchestration/test_event_names.py::TestEveryRetiredNameCitesTheDecisionThatRetiredIt`,
+because the two ratchet tests cannot tell a retirement from a dead reader hiding in the set —
+they only fire when a name gains a writer or loses its last reader, and a genuine accident does
+neither. The citation is what makes the difference legible, and a guard is what keeps it
+honest. `docs/roadmap/features/T2_F277.md` is amended in the same round, per
+docs/agents/planner_reviewer_prompt.md §4 item 7: T001's design sentence and its Acceptance
+line now read `read ⊆ declared` and `written ⊆ declared` over
+`EVENT_NAMES | RETIRED_EVENT_NAMES`, and a second Acceptance line carries the citation guard.
+The old rule stands unchanged for an ACCIDENT and simply does not reach a RETIREMENT.
+
+ALTERNATIVES. Mint writers so the set empties — rejected: re-creating a writer a decision
+deleted resurrects the mechanism that decision replaced, which AGENTS.md's "Replacing is
+deleting" forbids outright, and it would make `remedy` emit events for the sole purpose of
+satisfying a declaration. Delete the readers so the set empties — rejected: three modules
+render revert history and three render stop reasons out of run logs already on disk, five test
+files pin the second group, and deleting them would break exactly the rendering F271 D3 and
+F031 D9 preserved. Leave the set named `READ_ONLY_EVENT_NAMES` and only widen its comment —
+rejected under AGENTS.md's one-spelling-per-concept rule: the set no longer means
+"quarantined, pending disposal", and a name that lies about its contents is what this feature
+exists to remove.
+
+THE TWO SETS TOGETHER ARE NOW STABLE, which is the property T001 was really after: every name
+the code writes is in `EVENT_NAMES`, every name the code reads is in one of the two, no name is
+in both, every retired name has a reader and no writer, and every retired entry cites its
+ruling. The collector proves the first four from the source in every run; the citation guard
+proves the fifth.
+
+REVERSE: delete this paragraph, rename the set back and restore the two Acceptance lines from
+git history at `fa448bef`. Reversing it does not restore the quarantine's emptiability — it
+only stops the file saying why the two survivors are there.
+
+DECISION F277 D6 (2026-09-20, round 6) — THE ERROR BOUNDARY CATCHES `Exception`, BECAUSE THE
+PROJECT EXCEPTION BASE T002 NAMES DOES NOT EXIST.
+
+CONTEXT. `docs/roadmap/features/T2_F277.md` T002 reads: "An error boundary around dispatch in
+`grouped.py` maps this project's exception base to an exit code and routes through `emit_error`
+under `--json` and through the current stderr text otherwise. A traceback never reaches the
+operator." The reviewer looked for that base before authoring the round and there is none.
+Measured at `91034712`: `packages/` declares two dozen `*Error` classes — `RoadmapGrammarError`,
+`WorktreeError`, `ReviewZipError`, `SelfUseQueueError`, `PromptSegmentError`, `ArchivePlanError`
+and the rest — and each derives straight from `Exception` or from `RuntimeError`, with nothing
+in common above them. There is no `RemedyError` and nothing plays that part.
+
+CHOSEN. The boundary catches `Exception`. The sentence "a traceback never reaches the operator"
+is the property T002 is really buying, and the exceptions that actually reach an operator as a
+traceback are the ones nobody declared — a `KeyError` on a metadata dict, an `AttributeError` on
+a `None`, an `OSError` on a path. A base-class boundary would catch the declared few and let the
+undeclared many through, which is the opposite of the stated property; the spec's mechanism and
+its goal point in different directions, and the goal is the half that was measured. `SystemExit`
+and `KeyboardInterrupt` pass through untouched, which costs nothing because both are
+`BaseException` and `except Exception` never sees them; the explicit re-raise clause is there so
+that a later widening of the catch cannot silently swallow a deliberate exit or a Ctrl-C, and
+the round's red control proves that clause is what saves it — widening to `BaseException` WITH
+the clause removed is the only mutation that reddens the two passthrough tests. The exit code is
+1, and T004 documents it with the rest of the taxonomy.
+
+ALTERNATIVES. Introduce a `RemedyError` base and re-parent two dozen classes onto it — rejected
+twice over: it is a cross-cutting refactor of `packages/` inside a slice whose change set is two
+CLI files, and it would still not catch the undeclared exceptions that are the actual defect, so
+it buys the wrong property at a large price. Catch `Exception` but re-raise anything not derived
+from a known project class — rejected: that is the base-class boundary again, wearing a
+catch-all's clothes. Leave the boundary out and fix handlers one by one — rejected: there are
+several hundred handlers and the feature file's own red proof asks for a boundary.
+
+The feature file is amended in the same round as this patch, per operator amendment
+amend0917-throughput rule 3 and docs/agents/planner_reviewer_prompt.md §4 item 7: T002's
+paragraph now states the real mechanism and keeps the original sentence beside it as the history
+of what was assumed before the tree was read.
+
+REVERSE: delete this paragraph, restore T002's paragraph from git history at `91034712`, and
+narrow the `except Exception` in `apps/cli/grouped.py::_dispatch`. Reversing it re-admits
+tracebacks from every undeclared failure, under `--json` as well, which is the state this slice
+was written to end.
+
+DECISION F277 D7 (2026-09-20, round 7) — `fail()` IS SPELLED `fail(error, message, *,
+json_output, exit_code=1, **payload)`, AND T003's PLANNING NUMBERS ARE RE-MEASURED.
+
+CONTEXT. `docs/roadmap/features/T2_F277.md` T003 reads: "A shared `fail(code, message, *,
+json_output)` replaces the `print(...); sys.exit(1)` pairs". That signature names two different
+things with one word. The envelope this helper writes into already has a key called `error`
+holding a stable machine token, and the same function has to be able to set the process exit
+code, because `runtime_cmd.py` alone exits 2, 3, 4 and 5 by a documented contract. A call site
+reading `fail("invalid_job_id", ...)` beside one reading `fail(2, ...)` would be two different
+functions wearing one name. Separately, every number T003 was planned against was measured at
+`a5bf8949`, before F261 deleted two thirds of the CLI surface.
+
+CHOSEN, part (a) — the signature. `error` first, because that is what the envelope's key is
+called and what `emit_error`'s own first parameter is called, so the concept keeps one spelling
+from the call site to the wire (AGENTS.md, Code Discoverability Conventions). `message` second,
+unchanged. `json_output` keyword-only, unchanged, and spelled as the handlers already spell the
+flag they thread. `exit_code` keyword-only with a default of 1, because all but a handful of the
+237 migrated sites exit 1 and the handful that do not are exactly the ones that should have to
+say so. `**payload` carried through to the envelope, so a call site can attach the job id or the
+error class it already holds without building the envelope itself. The return annotation is
+`NoReturn`: a call site that writes a statement after `fail()` is then a type error rather than
+unreachable code, and the round asserts that annotation from the module rather than trusting it.
+The text branch prints `f"Error: {message}"` to stderr, which is byte-for-byte the line this CLI
+already printed at those 237 sites, so a migration changes nothing an operator sees and only the
+`--json` branch gains a shape it did not have.
+
+CHOSEN, part (b) — the numbers. Measured at `62b40261` and written into T003 so no later round
+plans against the old ones: the catalog holds 145 commands, not 339; 132 are read-only by the
+derived rule `not may_mutate_repo and not may_execute_commands` and 33 of those do not declare
+`supports_json`, not 49; there are 237 `print(...); sys.exit(...)` pairs across 28 files under
+`apps/cli/`. Of the three commands T2_F277 says accept `--json` and ignore it, the file only
+ever named two: `remedy readiness job`, whose whole group F261 deleted at `2f46e267`, and
+`remedy do plan`, which still answers a failure with a JSON body on stdout followed by a bare
+`Error: ...` line on stderr. The slice therefore stops chasing a list of three and repairs the
+failure path at every site it reaches, with T004's sweep as the proof over the whole surface.
+Found while measuring that: `init run` and `dev status` each carry a `--json` argument and each
+honours it, yet both declare `supports_json = False` — a false declaration, fixed with the
+read-only set rather than as its own item.
+
+ALTERNATIVES. Keep `code` as the feature file spells it and let the exit code be positional —
+rejected: it makes the ambiguity permanent at 237 call sites, which is the population that has
+to be readable. Name it `error_code` — rejected: it reads as a number, which is the confusion
+being removed. Put `fail()` in a new module beside the envelope — rejected: `json_envelope.py`'s
+own docstring already announces `fail()` as the helper that emits and exits, written in round 6,
+and a second module would split one contract across two files. Let `fail()` take the whole
+envelope dict — rejected: the two-token shape is what makes a consumer able to branch without
+reading prose, and a dict parameter invites a call site to reshape it.
+
+REVERSE: delete this paragraph, restore T003's paragraph from git history at `62b40261`, and
+rename the parameters at every migrated call site. Reversing part (b) alone means re-adopting
+counts that describe a CLI surface F261 deleted, which is how a later round plans work that does
+not exist.
+
+DECISION F277 D8 (2026-09-20, round 8) — THE ERROR TOKEN IS A VOCABULARY, NOT A FREE STRING,
+AND TWO MIGRATED MESSAGES GAIN THE `Error: ` PREFIX THEY NEVER HAD.
+
+CONTEXT. `fail(error, message, ...)` puts a token on the wire that a machine consumer is
+invited to branch on, and T2_F277's Acceptance asks for a parseable envelope on every
+`--json` command. A token a call site invents locally is worth nothing to that consumer: two
+commands answering the same condition under two spellings is the same defect as no token at
+all. Measured while migrating: `apps/cli/commands/job.py` already raises
+`ShowSectionError("no_target_repo", ...)` and `ShowSectionError("target_repo_missing", ...)`
+for exactly the two conditions `job context` refuses on, with the same message text, and
+`apps/cli/commands/test_cmds.py` and `apps/cli/commands/patch.py` each already write
+`"error": "no_target_repo"` into their own JSON. A vocabulary therefore already exists in the
+product, unevenly, and the migration either joins it or forks it.
+
+CHOSEN, part (a) — ONE TOKEN PER CONDITION, REPO-WIDE, AND THE EXISTING SPELLING WINS. Where
+the product already spells a condition, the migration adopts that spelling: `no_target_repo`
+and `target_repo_missing` in `job context` are the two `job show` already raises. Where
+it does not, the token is named for the CONDITION and never for the command, so the same
+condition reads the same in every group — `invalid_job_id` for an id that resolves to nothing,
+`job_not_found` for a store that has no such job, `invalid_list_option` for every refusal
+`apply_list_options` raises, `missing_argument` for an omitted required flag. Tokens landed so
+far, across the seven migrated groups: `invalid_job_id`, `job_not_found`, `invalid_list_option`,
+`event_not_found`, `no_target_repo`, `target_repo_missing`, `task_not_resolvable`,
+`unknown_provider`, `unsupported_provider`, `missing_argument`, `change_not_found`,
+`invalid_path`, `blocker_not_found`, `invalid_contract`, and `unhandled_command_error` from
+the round 6 boundary. T004's sweep is where this list becomes a thing a test reads rather than
+a thing a decision lists; until then this paragraph is the register, and a round that mints a
+token checks it here first.
+
+CHOSEN, part (b) — THE TWO UNPREFIXED MESSAGES ARE PREFIXED, DELIBERATELY. `job context`
+printed `Job abcdef01 has no target_repo attached` and `Target repo does not exist: <path>`
+with no `Error: ` prefix, alone among the CLI's refusals. Migrating them onto `fail()` gives
+them the prefix, because `fail()`'s text branch is one line by construction and a helper with
+a per-call-site prefix switch would be a helper that does not unify anything. This is a
+user-visible change to two lines and it is the smaller inconsistency: an operator grepping for
+`Error: ` was missing exactly these two refusals. No test pinned either string — checked
+before the change, not after — and the round's own tests pin the new text. The two exit codes,
+2 and 3, are unchanged and are now asserted, which they were not before.
+
+ALTERNATIVES. Let each call site pick its own token and reconcile at T004 — rejected: T004
+asserts a sweep, and a sweep cannot invent the vocabulary it is meant to check; reconciling
+fifteen spellings after the fact is a rename across every migrated group. Put the vocabulary in
+a module now, as a frozen set with a guard, the way T001 did for event names — rejected for
+this round only, not on the merits: the set is still growing one group per round and a guard
+over a moving set buys a round of churn per round of migration. It is the right shape and T004
+is where it lands. Keep the two unprefixed messages byte-identical by giving `fail()` a
+`prefix` parameter — rejected: that is a switch whose only caller is the inconsistency it
+preserves.
+
+REVERSE: delete this paragraph. Part (a) reverses by nothing on disk — it is a rule the next
+round reads, and abandoning it means the next group mints its own spellings. Part (b) reverses
+by restoring the two `print(...)` lines in `apps/cli/commands/job_context_cmd.py` from git
+history at `a8e2e565` and dropping the two message assertions the round's tests carry.
+
+DECISION F277 D9 (2026-09-20, round 10) — A CATCH-ALL EXCEPTION GETS A CATCH-ALL TOKEN,
+NAMED FOR THE LAYER THAT REFUSED AND NOT FOR THE CONDITION IT WILL NOT NAME.
+
+CONTEXT. DECISION F277 D8 rules that an error token is named for the CONDITION, so that the
+same condition reads the same in every group. `mission_cmd.py` is the first module where that
+rule meets a wall. Four of its twelve refusal sites are `except MissionError as exc:` with the
+message `str(exc)`, and `MissionError` is the mission layer's single base: it is raised for a
+mission already achieved, a mission with no plan, a status transition the record forbids, a
+goal too short, and roughly a dozen other conditions, each distinguished only by the prose it
+carries. There is no condition to name, because the code that raises it did not keep one.
+
+CHOSEN. The token is `mission_error`, at all four sites. It is named for the layer that
+refused, and it is honest about exactly what it tells a consumer: the mission layer rejected
+this call, and the sentence is in `message`. A consumer that branches on `mission_error` learns
+which SUBSYSTEM failed, which is real information and is more than the bare `Error:` line it
+replaces, and it learns no more than the product currently knows. The alternative to naming it
+is inventing a condition the raise site never recorded — a token derived by matching on the
+message text would be a parser over prose, which is the defect this whole slice exists to end,
+and it would go stale the first time a sentence was reworded.
+
+THE RULE THIS SETS for the rest of T003 and for T004's sweep: where a module's refusals come
+from a SINGLE exception whose instances are distinguished only by prose, the token is
+`<layer>_error` and the layer is the module's own subsystem — `mission_error` here. Where the
+raise sites are distinguishable — a not-found, a usage error, a state conflict — they keep
+their own tokens, and this round does that too: `mission_not_found`,
+`mission_plan_in_progress`, `invalid_status`, `invalid_argument`, `no_project`,
+`invalid_list_option`. A `<layer>_error` token is therefore a statement that the layer below
+does not classify its own failures, and it is the right place to look when someone later wants
+it to.
+
+ALTERNATIVES. Give each `except MissionError` site a token named for its call site — rejected:
+`mission_show_error` and `mission_plan_error` name the COMMAND and not the condition, so two
+commands hitting the same underlying refusal would report two tokens, which is the drift D8
+forbids in the other direction. Classify by matching the message text — rejected above: a
+parser over prose. Widen `MissionError` into a hierarchy first — the right long-term answer
+and explicitly out of scope: it is a refactor of `packages/orchestration/mission_state.py`
+inside a slice whose change set is CLI call sites, and `fail()` can adopt the finer tokens
+later without any call site moving, because the token is an argument and not a shape.
+
+ALSO IN THIS ROUND, AND IT IS WHY `contract_cmd.py` IS TOUCHED AGAIN. `_resolve_project_id`
+and `_load_mission_or_exit` live in `mission_cmd.py` and are imported by `contract_cmd.py`,
+which round 9 migrated. Threading `json_output` into the two helpers changes nothing for the
+contract group unless the flag is threaded at the two call sites THERE as well. The reviewer's
+first mutation set did not cover those two lines and both stayed GREEN under mutation, which
+is what a red proof is for: the round would have shipped two threaded arguments no test
+watches. Two tests were added in `tests/cli/test_contract_cmd.py` before emission and both
+mutations now redden.
+
+REVERSE: delete this paragraph and rename the four `mission_error` tokens. Reversing the rule
+means the next module with a single-base exception layer either invents conditions or leaves
+its refusals untokenised.
+
+DECISION F277 D10 (2026-09-21, round 12) — F277 REACHED THE SEVEN-SESSION SOFT LIMIT AND
+CLOSES AT THE SCOPE IT HAS BUILT; THE REST BECOMES F283.
+
+CONTEXT. Operator amendment amend0827-process-diet rule 6 sets the soft limit at 25 rounds
+OR 7 sessions per feature, whichever is reached first, and
+`docs/agents/planner_reviewer_prompt.md` §2 renders the second half as "at 7/7 the row is
+followed by the scope report, not by another step". The handoff chain on this branch is
+continuous and monotone — session 1 at round 1, session 2 at rounds 2 to 6, session 3 at
+round 7, session 4 at round 8, session 5 at round 9, session 6 at rounds 10 and 11 — so the
+session reading this handback is F277's SEVENTH and the limit is reached at round 11 of 25.
+The round budget is not what ran out; the session budget is, because five of the six
+sessions before this one delivered one or two rounds each.
+
+Operator amendment amend0905-throughput makes the standing default at the soft limit
+SPLIT-AND-CLOSE, executed by the session on its own authority, and reserves the old hard
+stop with an operator question for the case where no self-consistent close is possible.
+
+CHOSEN. Split and close. F277 closes on T001 and T002 complete and T003 in part, and its
+remaining scope is registered as F283 — Machine contracts, part two: the refusal sweep, the
+JSON gap and the exit-code taxonomy — placed directly after F277's own STATUS line inside
+the same Tier 2 heading, per amend0906-split-placement, so Rule A5 proposes it next.
+
+WHY THE CLOSE IS SELF-CONSISTENT, which is the only question the default leaves open.
+Nothing F277 ships is half-built. T001 is a complete contract: `event_names.py` declares the
+vocabulary, the AST test asserts read and written both subset of declared, every
+`RETIRED_EVENT_NAMES` entry cites its ruling and names a living reader, and the four
+accidents DECISION F277 D5 found are disposed of. T002 is a complete contract:
+`json_envelope.py` carries one shape with `emit_ok`, `emit_error` and `fail`, and the error
+boundary in `grouped.py` means no traceback reaches an operator. T003 is a MIGRATION onto
+the helper T002 landed — nine of twenty-eight modules done — and a migration is the one
+kind of slice that is coherent at any prefix, because every unmigrated site still behaves
+exactly as it did before F277 opened. T004 is a sweep that measures T003's completion and
+is meaningless before it. So the seam between F277 and F283 falls between two finished
+declarations and their unfinished application, which is where a seam belongs.
+
+WHAT MOVES. F277's T003 minus the nine applied modules, and F277's T004 whole, become
+F283's T001 and T002, copied from F277's file rather than re-planned, with DECISIONs F277
+D7, D8 and D9 travelling with them. Three of F277's seven Acceptance bullets move with
+them and are struck from F277's list in the same commit that registers F283. Finding R-1014
+moves to F283 for whatever half of its fix clause F277's own closure consolidation does not
+land.
+
+ALTERNATIVES CONSIDERED. (a) Row on and finish T003 and T004 in this session: forbidden in
+as many words — "on reaching it the next obligation is NOT more work" — and dishonest about
+the cost, since nineteen modules and a documented taxonomy is not one session's work at the
+one-to-two rounds per session this feature has been managing. (b) The hard stop with an
+operator question: reserved by amend0905-throughput for a scope that cannot close
+self-consistently, and this one can, so taking it would spend a session waiting for a
+ruling the default already supplies — which is the exact failure amend0905-throughput cites
+F262's round 23 for. (c) Close F277 and carry the remainder with no feature file, as a
+finding: that is the attic AGENTS.md's Scope Control forbids, and nineteen unmigrated
+modules is not a defect to be paid down, it is planned work.
+
+CONSEQUENCE. F277's STATUS line names the slices that moved, in the shape F261's and F280's
+lines already use. F283 is registered THIN in the ledger-atomic sense — feature file,
+STATUS line, `TOTAL_FEATURES` pin and README counters in ONE commit — and is filled at
+claim, not now. The operator may reverse this by deleting F283's four registration edits and
+re-opening F277's STATUS line; the work itself is untouched either way, because nothing in
+this decision changes a line of product code.
+
+REVERSE by deleting this paragraph, deleting `docs/roadmap/features/T2_F283.md`, removing
+F283's STATUS line, restoring `TOTAL_FEATURES` to 282 with its comment, restoring the README
+counters, restoring F277's three struck Acceptance bullets from git history at `67b0972d`,
+and flipping F277's STATUS line back to `[~]`.

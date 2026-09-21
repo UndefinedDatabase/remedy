@@ -389,6 +389,20 @@ end the response with:
       CONTROL — break the property on purpose inside a disposable worktree and
       confirm the command really goes red — because a command that cannot fail
       proves nothing at all when it passes.
+      Finding R-1014 adds what a dry run must EMIT, which this item as first written
+      leaves to the reviewer's hands. Every table a block ships that pairs a name with
+      a measured value — a path with its blob id, a payload with its digest, a commit
+      with its insertion count — is PRINTED by the dry run that measured it, one row
+      per line from a SINGLE tool call over the same list the slices are built from,
+      and the block copies those lines verbatim. A value read off one command's output
+      and typed into a table beside another's is a transcription, and a transcription
+      is where this class lands: the F277 R5 instance ran `git hash-object` over three
+      paths in argument order and `git diff --numstat` over the same three in
+      alphabetical order, in one shell command, and read the hashes against the wrong
+      listing — so all three hashes were correct, all three paths were correct, the
+      mapping was rotated by one row, and no gate the block ordered could see it
+      because every value in the table was real. The red control above proves a
+      command can fail; this clause removes the step between the command and the page.
   13. **An ordering constraint is checked against the block's OWN commit sequence.**
       Finding R-0483. A constraint of the form "take reading X before any pytest
       command runs this round" is read back against the commits the SAME block

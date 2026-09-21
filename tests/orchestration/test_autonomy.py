@@ -875,3 +875,78 @@ class TestAutonomyLoopExport:
         assert "Autonomy Loop" in text
         assert "Level: 0" in text
 
+
+
+class TestTheLevelFiveGateReadsDurableSnapshotTruth:
+    """F277 T001: autonomy level 5 was blocked for every job that reached it.
+
+    `autonomy_loop._decide` gated level 5 on a `snapshot_created` event, a name
+    nothing in this repository writes, so the `any(...)` was always False and
+    the loop answered "no snapshot for revert" however good the snapshot was.
+    The signal that answers the question is `verified_snapshot`, which
+    `autonomy_readiness` derives from `repository_snapshot.build_snapshot_truth`
+    (Step 1159) and which `run_autonomy_loop` computes one statement before it
+    calls `_decide`.  The branch had no test at all until this one.
+    """
+
+    @staticmethod
+    def _decide_at_level_5(signals):
+        from packages.orchestration.autonomy_loop import _decide
+
+        job = JobPlan(job_id=mint_job_id(), job_title="revert-gate",
+                      user_prompt="t", tasks=[TaskEntry(title="t")])
+        return _decide(job, [], 5, 5, [], 1, signals)
+
+    def test_a_durably_verified_snapshot_unblocks_the_level(self):
+        decision, reason, _, blocked_by = self._decide_at_level_5(
+            {"verified_snapshot": True}
+        )
+        assert decision == "complete"
+        assert blocked_by == ""
+        assert "revert capability confirmed" in reason
+
+    def test_no_durable_snapshot_blocks_the_level(self):
+        decision, reason, _, blocked_by = self._decide_at_level_5(
+            {"verified_snapshot": False}
+        )
+        assert decision == "blocked"
+        assert blocked_by == "missing_snapshot"
+        assert "durably verified" in reason
+
+    def test_the_retired_event_no_longer_decides_anything(self):
+        """A `snapshot_created` event is not proof and must not unblock."""
+        from packages.orchestration.autonomy_loop import _decide
+
+        job = JobPlan(job_id=mint_job_id(), job_title="revert-gate",
+                      user_prompt="t", tasks=[TaskEntry(title="t")])
+        events = [{"event": "snapshot_created", "metadata": {"snapshot_id": "s-1"}},
+                  {"event": "snapshot_create_completed", "metadata": {}}]
+        decision, _, _, blocked_by = _decide(job, events, 5, 5, [], 1,
+                                             {"verified_snapshot": False})
+        assert decision == "blocked"
+        assert blocked_by == "missing_snapshot"
+
+    def test_the_loop_hands_the_gate_the_signals_it_computed(self, tmp_path, monkeypatch):
+        """The wiring, not the branch: `run_autonomy_loop` must pass `signals`.
+
+        A default of None would make the gate block silently forever, which is
+        indistinguishable on the page from the defect this round removes.
+        """
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        import packages.orchestration.autonomy_loop as loop
+
+        seen = {}
+        real = loop._decide
+
+        def spy(*args):
+            seen["argc"] = len(args)
+            seen["signals"] = args[6] if len(args) > 6 else None
+            return real(*args)
+
+        monkeypatch.setattr(loop, "_decide", spy)
+        job = JobPlan(job_id=mint_job_id(), job_title="wiring", user_prompt="t",
+                      tasks=[TaskEntry(title="t", status=RunState.PENDING)])
+        loop.run_autonomy_loop(job, [], max_cycles=1, autonomy_level=5)
+        assert seen["argc"] == 7, "run_autonomy_loop stopped passing the signal dict"
+        assert isinstance(seen["signals"], dict)
+        assert "verified_snapshot" in seen["signals"]

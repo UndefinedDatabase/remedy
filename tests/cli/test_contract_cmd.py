@@ -147,6 +147,24 @@ class TestTheMissionView:
         assert proc.returncode == 1
         assert "origin is template, planner or amendment" in proc.stderr
 
+    def test_under_json_that_same_refusal_is_an_envelope_on_stdout(self, project):
+        """F277 T003: a `--json` command answers a broken body in JSON, not in prose."""
+        data_root, project_id = project
+        mission_id = _start(data_root, project_id, "Ship the tool")
+        broken = json.loads(json.dumps(CONTRACT))
+        broken["criteria"][1]["origin"] = "operator"
+        _store_contract(data_root, project_id, mission_id, broken)
+
+        proc = _run(["mission", "contract", mission_id, "--project", project_id, "--json"],
+                    data_root, expect_ok=False)
+
+        assert proc.returncode == 1
+        assert proc.stderr == ""
+        body = json.loads(proc.stdout)
+        assert body["ok"] is False and body["schema_version"] == 1
+        assert body["error"] == "invalid_contract"
+        assert "origin is template, planner or amendment" in body["message"]
+
 
 class TestTheMissionViewListsAmendments:
     """DECISION F269 D8 (5): `mission contract` shows each amendment."""
@@ -261,3 +279,32 @@ class TestTheCatalog:
         assert entry.may_mutate_repo is False
         assert entry.may_execute_commands is False
         assert command_id in collect_all_handlers()
+
+
+class TestTheTwoSharedHelpersThreadTheFlagIntoThisGroupToo:
+    """F277 T003 — `mission contract` calls `_resolve_project_id` and
+    `_load_mission_or_exit`, which live in `mission_cmd`. Migrating them onto
+    `fail()` only helps this group if the flag is threaded at both call sites
+    HERE, so both are proved here rather than assumed from the other file.
+    """
+
+    def test_no_project_is_an_envelope_under_json_and_exits_three(self, tmp_path):
+        data_root = tmp_path / "data"
+        data_root.mkdir(parents=True)
+        proc = _run(["mission", "contract", "0" * 32, "--project", "no-such-project",
+                     "--json"], data_root, expect_ok=False)
+        assert proc.returncode == 3
+        assert proc.stderr == ""
+        body = json.loads(proc.stdout)
+        assert body["ok"] is False and body["schema_version"] == 1
+        assert body["error"] == "no_project"
+
+    def test_an_unknown_mission_is_an_envelope_under_json(self, project):
+        data_root, project_id = project
+        proc = _run(["mission", "contract", "0" * 32, "--project", project_id, "--json"],
+                    data_root, expect_ok=False)
+        assert proc.returncode == 1
+        assert proc.stderr == ""
+        body = json.loads(proc.stdout)
+        assert body["ok"] is False
+        assert body["error"] == "mission_not_found"

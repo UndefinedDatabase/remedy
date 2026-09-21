@@ -21,6 +21,7 @@ export const STREAM_EVENT_CATALOG: Readonly<Record<string, string>> = {
   "builder_prompt_created": "The builder's prompt was assembled.",
   "builder_started": "The builder started work on the task.",
   "command.accepted": "The command was accepted and queued for the run.",
+  "command_discovery_completed": "Test-command discovery finished and recorded what it found.",
   "context_coverage_inspected": "Context coverage was inspected for this task.",
   "continued_from_node": "The run continued from an earlier brain node.",
   "contract_decision": "A run contract decision was recorded.",

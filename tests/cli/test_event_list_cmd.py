@@ -45,10 +45,40 @@ def test_type_still_filters_before_the_list_options(capsys):
 
 
 def test_an_unknown_sort_field_exits_nonzero_naming_the_valid_set(capsys):
+    """F277 T003: under `--json` the refusal is an envelope on stdout, not prose on stderr."""
     with pytest.raises(SystemExit) as exc:
         _event_list(capsys, sort="bogus")
     assert exc.value.code == 1
-    assert "valid fields: event_type, outcome, timestamp" in capsys.readouterr().err
+    captured = capsys.readouterr()
+    assert captured.err == ""
+    body = json.loads(captured.out)
+    assert body["ok"] is False
+    assert body["schema_version"] == 1
+    assert body["error"] == "invalid_list_option"
+    assert "valid fields: event_type, outcome, timestamp" in body["message"]
+
+
+def test_without_json_the_same_refusal_is_the_line_it_always_was(capsys):
+    from apps.cli.commands.event import _cmd_event_list
+
+    with patch("apps.cli.commands.event._load_job_events",
+               return_value=(None, list(_EVENTS), _JOB)), pytest.raises(SystemExit) as exc:
+        _cmd_event_list(_JOB, json_output=False, sort="bogus")
+    assert exc.value.code == 1
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert "valid fields: event_type, outcome, timestamp" in captured.err
+
+
+def test_an_unknown_job_is_an_envelope_under_json(capsys):
+    """The pair inside `_load_job_events` is migrated too, and it threads the flag."""
+    from apps.cli.commands.event import _cmd_event_list
+
+    with pytest.raises(SystemExit) as exc:
+        _cmd_event_list("not-a-job-id", json_output=True)
+    assert exc.value.code == 1
+    body = json.loads(capsys.readouterr().out)
+    assert body["ok"] is False and body["error"] == "invalid_job_id"
 
 
 def test_the_parsed_command_line_reaches_the_handler(capsys):

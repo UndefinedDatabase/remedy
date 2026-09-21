@@ -43,6 +43,7 @@ apps.cli.commands.ui
 apps.cli.commands.worker
 apps.cli.commands.worker_facade_cmd
 apps.cli.cost_preview_confirm
+apps.cli.json_envelope
 packages.common
 packages.common.path_redaction
 packages.common.public_text_redaction
@@ -114,6 +115,7 @@ packages.orchestration.dod_schema
 packages.orchestration.era_integrity
 packages.orchestration.escalation
 packages.orchestration.event_ledger
+packages.orchestration.event_names
 packages.orchestration.event_persistence
 packages.orchestration.event_replay
 packages.orchestration.evidence_index

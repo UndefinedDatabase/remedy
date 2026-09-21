@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 import json as _json
-import sys
 from collections.abc import Callable
 from typing import TYPE_CHECKING
 
+from apps.cli.json_envelope import fail
 from packages.orchestration.data_paths import resolve_data_root, resolve_job_id
 from packages.orchestration.pingpong_job import JobNotFoundError, require_job_plan
 
@@ -28,8 +28,7 @@ def _cmd_change_list(
     try:
         job = require_job_plan(job_id)
     except JobNotFoundError as exc:
-        print(f"Error: {exc}", file=sys.stderr)
-        sys.exit(1)
+        fail("job_not_found", str(exc), json_output=json_output)
 
     from packages.orchestration.approval_queue import list_patch_intents
     from packages.orchestration.change_set import (
@@ -60,8 +59,7 @@ def _cmd_change_list(
             date_getter=lambda c: created.get(c.intent_id) or None,
         )
     except ListOptionError as exc:
-        print(f"Error: {exc}", file=sys.stderr)
-        sys.exit(1)
+        fail("invalid_list_option", str(exc), json_output=json_output)
 
     if json_output:
         print(_json.dumps(export_change_list_json(str(job_id), changes), sort_keys=True))
@@ -74,8 +72,7 @@ def _cmd_change_show(job_id_str: str, intent_id: str, *, json_output: bool = Fal
     try:
         job = require_job_plan(job_id)
     except JobNotFoundError as exc:
-        print(f"Error: {exc}", file=sys.stderr)
-        sys.exit(1)
+        fail("job_not_found", str(exc), json_output=json_output)
 
     from packages.orchestration.change_set import (
         derive_change_set,
@@ -90,8 +87,8 @@ def _cmd_change_show(job_id_str: str, intent_id: str, *, json_output: bool = Fal
 
     entry = next((c for c in changes if c.intent_id == intent_id), None)
     if entry is None:
-        print(f"Error: change not found for intent {intent_id!r}", file=sys.stderr)
-        sys.exit(1)
+        fail("change_not_found", f"change not found for intent {intent_id!r}",
+             json_output=json_output)
 
     if json_output:
         print(_json.dumps(export_change_show_json(str(job_id), entry), sort_keys=True))
@@ -104,13 +101,12 @@ def _cmd_change_proof(job_id_str: str, *, path: str | None = None, json_output: 
     try:
         job = require_job_plan(job_id)
     except JobNotFoundError as exc:
-        print(f"Error: {exc}", file=sys.stderr)
-        sys.exit(1)
+        fail("job_not_found", str(exc), json_output=json_output)
 
     # Validate path — no traversal
     if path and (".." in path or path.startswith("/")):
-        print("Error: path must be relative without '..'", file=sys.stderr)
-        sys.exit(1)
+        fail("invalid_path", "path must be relative without '..'",
+             json_output=json_output)
 
     from packages.orchestration.proof_chain import (
         build_proof_chain,

@@ -328,3 +328,62 @@ class TestContractRepoTip:
         for action in actions:
             assert not re.search(r"<[a-z_]+>", action), action
             assert str(job.job_id) in action, action
+
+
+class TestTheBrainReadsTheAuthoritativeRevertSignal:
+    """F277 T001: the readiness node's `revert_capable` followed a phantom.
+
+    It read the `revert_snapshot` signal, which `_has_revert_snapshot` derived
+    from `patch_intent_reverted` — a name three modules read and nothing writes.
+    The field therefore reported False for every job ever built.  The
+    authoritative durable check `verified_snapshot` (Step 1159) sits beside it
+    in the same signal dict and is what level 5 already gates on.
+    """
+
+    @staticmethod
+    def _readiness_node(job, events):
+        from packages.orchestration.project_brain import build_project_brain
+
+        graph = build_project_brain(job, events)
+        nodes = [n for n in graph.nodes if n.type == "autonomy_readiness"]
+        assert nodes, "the brain built no readiness node"
+        return nodes[0]
+
+    def _job(self):
+        from packages.orchestration.pingpong_job import save_job_plan
+
+        job = JobPlan(
+            job_id=mint_job_id(), job_title="revert-signal", user_prompt="test",
+            tasks=[TaskEntry(title="t", status=RunState.PENDING)],
+        )
+        save_job_plan(job)
+        return job
+
+    def test_a_revert_event_alone_does_not_make_the_brain_revert_capable(
+        self, tmp_path, monkeypatch
+    ):
+        """The event goes to DISK, because `_build_readiness_node` reloads the
+        run log itself and never reads the list `build_project_brain` was given —
+        a test that only passes the event in is vacuous by construction."""
+        from packages.orchestration.timeline import append_run_event
+
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        job = self._job()
+        append_run_event(tmp_path, str(job.job_id), event="patch_intent_reverted")
+        from packages.orchestration.timeline import load_run_events
+
+        assert any(
+            e.get("event") == "patch_intent_reverted"
+            for e in load_run_events(tmp_path, str(job.job_id))
+        ), "the fixture failed to write the event the assertion depends on"
+        node = self._readiness_node(job, [])
+        assert node.metadata["revert_capable"] is False
+
+    def test_the_signal_dict_no_longer_carries_the_phantom(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        from packages.orchestration.autonomy_readiness import assess_job_readiness
+
+        job = self._job()
+        report = assess_job_readiness(job, [])
+        assert "revert_snapshot" not in report.signals
+        assert "verified_snapshot" in report.signals

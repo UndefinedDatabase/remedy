@@ -1184,3 +1184,82 @@ class TestConstitutionDiscoveryIntegration:
         # Should complete quickly, no hang
         candidates = discover_commands(job, tmp_path)
         assert len(candidates) >= 2
+
+
+class TestDiscoveryRecordsItselfInTheRunLedger:
+    """F277 T001: `command_discovery_completed` had readers and no writer.
+
+    `autonomy_readiness` gates autonomy level 3 on the `command_discovery`
+    signal and offers `remedy test discover <job>` as the action that supplies
+    it, and `memory_learn` indexes `source_types` and `candidate_count` out of
+    the same event.  Nothing wrote it, so level 3 was unreachable for every job
+    that ever existed and the two memory entries were never stored.  Running the
+    command is now the write.
+    """
+
+    @staticmethod
+    def _repo(tmp_path):
+        repo = tmp_path / "repo"
+        repo.mkdir()
+        (repo / "pyproject.toml").write_text("[project]\nname = 'x'\n", encoding="utf-8")
+        (repo / "tests").mkdir()
+        (repo / "Makefile").write_text("test:\n\tpytest\n", encoding="utf-8")
+        return repo
+
+    def _discover(self, tmp_path, monkeypatch, capsys, *, as_json=False):
+        from apps.cli.commands.test_cmds import _cmd_discover_commands
+        from packages.orchestration.pingpong_job import save_job_plan
+
+        data_dir = tmp_path / "data"
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(data_dir))
+        repo = self._repo(tmp_path)
+        job = _make_job()
+        job.metadata["target_repo"] = str(repo)
+        save_job_plan(job)
+        _cmd_discover_commands(str(job.job_id), as_json=as_json)
+        capsys.readouterr()
+        return job, data_dir
+
+    @staticmethod
+    def _written(data_dir, job):
+        from packages.orchestration.timeline import load_run_events
+
+        return [e for e in load_run_events(data_dir, str(job.job_id))
+                if e.get("event") == "command_discovery_completed"]
+
+    def test_the_event_carries_the_keys_memory_learn_reads(
+        self, tmp_path, monkeypatch, capsys
+    ):
+        from packages.orchestration.command_discovery import discover_commands
+
+        job, data_dir = self._discover(tmp_path, monkeypatch, capsys)
+        written = self._written(data_dir, job)
+        assert len(written) == 1, "discovery must record itself exactly once"
+        meta = written[0].get("metadata", {})
+        expected = discover_commands(job, tmp_path / "repo")
+        assert meta["candidate_count"] == len(expected) > 0
+        assert meta["source_types"] == sorted({c.source_type for c in expected})
+
+    def test_the_json_mode_records_the_same_fact(self, tmp_path, monkeypatch, capsys):
+        job, data_dir = self._discover(tmp_path, monkeypatch, capsys, as_json=True)
+        assert len(self._written(data_dir, job)) == 1
+
+    def test_the_readiness_signal_is_now_reachable(self, tmp_path, monkeypatch, capsys):
+        """The point of the writer: level 3's `command_discovery` can be present."""
+        from packages.orchestration.autonomy_readiness import assess_job_readiness
+        from packages.orchestration.timeline import load_run_events
+
+        job, data_dir = self._discover(tmp_path, monkeypatch, capsys)
+        events = load_run_events(data_dir, str(job.job_id))
+        assert assess_job_readiness(job, events).signals["command_discovery"] is True
+        assert assess_job_readiness(job, []).signals["command_discovery"] is False
+
+    def test_memory_learn_stores_the_two_entries(self, tmp_path, monkeypatch, capsys):
+        from packages.orchestration.memory_learn import learn_from_job
+        from packages.orchestration.timeline import load_run_events
+
+        job, data_dir = self._discover(tmp_path, monkeypatch, capsys)
+        events = load_run_events(data_dir, str(job.job_id))
+        keys = {entry["key"] for entry in learn_from_job(job, events).entries}
+        assert "context.command_discovery.sources" in keys
+        assert "context.command_discovery.count" in keys

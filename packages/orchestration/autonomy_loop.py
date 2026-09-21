@@ -78,6 +78,7 @@ def run_autonomy_loop(
         # Determine decision
         decision, reason, next_action, blocked_by = _decide(
             job, events, autonomy_level, readiness_level, active_blockers, cycle_num,
+            report.signals,
         )
 
         cycles.append(CycleDecision(
@@ -141,6 +142,7 @@ def _decide(
     readiness_level: int,
     active_blockers: list,
     cycle_num: int,
+    signals: dict[str, bool] | None = None,
 ) -> tuple[str, str, str, str]:
     """Return (decision, reason, next_action, blocked_by).
 
@@ -217,11 +219,19 @@ def _decide(
         return ("run_task", "bounded loop cycle (level 4: bounded_loop)",
                 "remedy job resume <job_id>", "")
 
-    # Level 5: revert_capable — can revert applied patches
+    # Level 5: revert_capable — can revert applied patches.
+    # F277 T001: this gate used to read a `snapshot_created` event, a name
+    # nothing in this repository has ever written, so level 5 was blocked for
+    # every job that ever reached it.  `verified_snapshot` is the durable
+    # check `repository_snapshot.build_snapshot_truth` answers (Step 1159) and
+    # is what `autonomy_readiness` already gates its own level 5 on; the
+    # caller computes it one statement before this one.  A rename to
+    # `snapshot_create_completed` was rejected because that event is the
+    # generic one Step 1159 removed as insufficient proof.
     if autonomy_level == 5:
-        has_snapshot = any(e.get("event") == "snapshot_created" for e in events)
-        if not has_snapshot:
-            return ("blocked", "no snapshot for revert (level 5: revert_capable)",
+        if not (signals or {}).get("verified_snapshot", False):
+            return ("blocked",
+                    "no durably verified snapshot for revert (level 5: revert_capable)",
                     "create snapshot before revert", "missing_snapshot")
         return ("complete", "revert capability confirmed (level 5: revert_capable)", "none", "")
 

@@ -97,3 +97,44 @@ class TestWorkerDoctor:
         out = json.loads(capsys.readouterr().out)
         assert out["ready"] is False
         assert f"provider_{catalog_provider_id}" in out["blockers"]
+
+
+class TestAWorkerRefusalIsShapedLikeTheCaller:
+    """F277 T003 — the `worker` group migrated onto the shared `fail()`."""
+
+    def test_an_unknown_provider_is_an_envelope_under_json(self, capsys):
+        from apps.cli.commands.worker import _cmd_worker_show
+
+        with pytest.raises(SystemExit) as exc:
+            _cmd_worker_show("no-such-provider", json_output=True)
+        assert exc.value.code == 1
+        captured = capsys.readouterr()
+        assert captured.err == ""
+        body = json.loads(captured.out)
+        assert body["ok"] is False and body["schema_version"] == 1
+        assert body["error"] == "unknown_provider"
+        assert "no-such-provider" in body["message"]
+
+    def test_without_json_it_is_the_line_it_always_was(self, capsys):
+        from apps.cli.commands.worker import _cmd_worker_show
+
+        with pytest.raises(SystemExit) as exc:
+            _cmd_worker_show("no-such-provider", json_output=False)
+        assert exc.value.code == 1
+        captured = capsys.readouterr()
+        assert captured.out == ""
+        assert captured.err == "Error: unknown provider: no-such-provider\n"
+
+    def test_unload_without_a_target_names_both_flags(self, monkeypatch, capsys):
+        # The refusal is the caller's, not the environment's: pin `ollama` on PATH
+        # so the missing-argument branch is what this test reaches.
+        import shutil as _shutil
+        monkeypatch.setattr(_shutil, "which", lambda name: "/usr/bin/ollama" if name == "ollama" else None)
+        from apps.cli.commands.worker import _cmd_worker_unload
+
+        with pytest.raises(SystemExit) as exc:
+            _cmd_worker_unload(json_output=True)
+        assert exc.value.code == 1
+        body = json.loads(capsys.readouterr().out)
+        assert body["error"] == "missing_argument"
+        assert "--model" in body["message"] and "--all" in body["message"]

@@ -14,9 +14,10 @@ D2 rule exits 1 naming the rule.
 from __future__ import annotations
 
 import json as _json
-import sys
 from collections.abc import Callable
 from typing import TYPE_CHECKING, Any
+
+from apps.cli.json_envelope import fail
 
 if TYPE_CHECKING:
     import argparse
@@ -24,7 +25,7 @@ if TYPE_CHECKING:
 EXIT_ERROR = 1
 
 
-def _read_contract_or_exit(mission: Any) -> Any:
+def _read_contract_or_exit(mission: Any, *, json_output: bool = False) -> Any:
     """The mission's contract or None; a body breaking a D2 rule exits 1."""
     from packages.orchestration.mission_contract import (
         ContractError,
@@ -34,8 +35,8 @@ def _read_contract_or_exit(mission: Any) -> Any:
     try:
         return read_mission_contract(mission)
     except ContractError as exc:
-        print(f"Error: mission {mission.id}: {exc}", file=sys.stderr)
-        sys.exit(EXIT_ERROR)
+        fail("invalid_contract", f"mission {mission.id}: {exc}",
+             json_output=json_output, exit_code=EXIT_ERROR)
 
 
 def _cmd_mission_contract(mission_id: str, *, project: str | None = None,
@@ -47,9 +48,9 @@ def _cmd_mission_contract(mission_id: str, *, project: str | None = None,
     )
     from packages.orchestration.mission_contract import render_contract_lines
 
-    project_id = _resolve_project_id(project)
-    mission = _load_mission_or_exit(project_id, mission_id)
-    contract = _read_contract_or_exit(mission)
+    project_id = _resolve_project_id(project, json_output=json_output)
+    mission = _load_mission_or_exit(project_id, mission_id, json_output=json_output)
+    contract = _read_contract_or_exit(mission, json_output=json_output)
 
     if json_output:
         print(_json.dumps({"version": 1, "mission_id": mission.id,
@@ -85,12 +86,13 @@ def _cmd_job_contract(job_id_str: str, *, json_output: bool = False) -> None:
     try:
         require_job_plan(job_id)
     except (JobNotFoundError, JobStoreError) as exc:
-        print(f"Error: {exc}", file=sys.stderr)
-        sys.exit(EXIT_ERROR)
+        fail("job_not_found", str(exc), json_output=json_output,
+             exit_code=EXIT_ERROR)
 
     milestone_id = read_job_milestone(job_id)
     mission = mission_for_job(job_id)
-    contract = _read_contract_or_exit(mission) if mission is not None else None
+    contract = (_read_contract_or_exit(mission, json_output=json_output)
+                if mission is not None else None)
     criteria = (job_contract_slice(contract, milestone_id)
                 if contract is not None else ())
 

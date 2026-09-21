@@ -315,7 +315,7 @@ def test_change_proof_in_handlers():
 # ---------------------------------------------------------------------------
 
 
-def _change_list_json(capsys, **flags):
+def _change_list_json(capsys, *, json_output=True, **flags):
     from apps.cli.commands.change import _cmd_change_list
     explanations = [
         {"file": "src/old.py", "action": "modify", "risk": "low", "reason": "", "summary": "",
@@ -332,7 +332,7 @@ def _change_list_json(capsys, **flags):
          patch("apps.cli.commands.change.resolve_job_id", side_effect=lambda raw: raw), \
          patch("apps.cli.commands.change.resolve_data_root", return_value="/tmp"), \
          patch("packages.orchestration.timeline.load_run_events", return_value=[]):
-        _cmd_change_list(str(job.job_id), json_output=True, **flags)
+        _cmd_change_list(str(job.job_id), json_output=json_output, **flags)
     return [c["target_path"] for c in json.loads(capsys.readouterr().out)["changes"]]
 
 
@@ -347,7 +347,38 @@ def test_change_list_limit_and_time_window_filter_the_rows(capsys):
 
 
 def test_change_list_unknown_sort_field_exits_nonzero(capsys):
+    """F277 T003: under `--json` the refusal is an envelope on stdout, not prose on stderr."""
     with pytest.raises(SystemExit) as exc:
         _change_list_json(capsys, sort="bogus")
     assert exc.value.code == 1
-    assert "valid fields: created_at, risk, status, target_path" in capsys.readouterr().err
+    captured = capsys.readouterr()
+    assert captured.err == ""
+    body = json.loads(captured.out)
+    assert body["ok"] is False and body["schema_version"] == 1
+    assert body["error"] == "invalid_list_option"
+    assert "valid fields: created_at, risk, status, target_path" in body["message"]
+
+
+def test_change_list_without_json_keeps_the_line_it_always_printed(capsys):
+    """The text branch is the same line, so migrating changed nothing an operator sees."""
+    with pytest.raises(SystemExit) as exc:
+        _change_list_json(capsys, json_output=False, sort="bogus")
+    assert exc.value.code == 1
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert captured.err.startswith("Error: ")
+    assert "valid fields: created_at, risk, status, target_path" in captured.err
+
+
+def test_a_traversing_path_is_refused_as_an_envelope_under_json(capsys):
+    """`change proof --path ../x` — the one site in this group that is not a lookup."""
+    from apps.cli.commands.change import _cmd_change_proof
+
+    job = JobPlan(job_title="test-job", user_prompt="x")
+    with patch("apps.cli.commands.change.require_job_plan", return_value=job), \
+         patch("apps.cli.commands.change.resolve_job_id", side_effect=lambda raw: raw), \
+         pytest.raises(SystemExit) as exc:
+        _cmd_change_proof(str(job.job_id), path="../etc/passwd", json_output=True)
+    assert exc.value.code == 1
+    body = json.loads(capsys.readouterr().out)
+    assert body["ok"] is False and body["error"] == "invalid_path"

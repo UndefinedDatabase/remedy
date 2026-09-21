@@ -1,0 +1,31 @@
+diff --git a/docs/roadmap/STATUS_closure_protocol.md b/docs/roadmap/STATUS_closure_protocol.md
+--- a/docs/roadmap/STATUS_closure_protocol.md
++++ b/docs/roadmap/STATUS_closure_protocol.md
+@@ -122,6 +122,27 @@
+    return the SAME count, or the base is wrong. A branch with no merges
+    makes the two bases coincide, which is why carrying an earlier
+    closure's base wording forward generalises a coincidence.
++
++   A sixth, from the F277 R16 attempt (one validator error, packaged
++   BLOCKED_EVIDENCE): (f) each verification record's `test_files` must be
++   SORTED. `build_review_manifest._vt_safe_files` rejects an unsorted list
++   (`if tf != sorted(tf)`), which rejects the whole VerificationTests
++   document, leaves `vt_passed` unconfirmable and packages
++   BLOCKED_EVIDENCE. Two producers of that one field disagree:
++   `job_evidence._build_verification_tests` sorts each run's list, while
++   the manual path's `manual_attestation._vt_run_v11` preserves the
++   caller's order — so a bundle built through
++   `create_manual_completion_bundle` is sorted only if the CALLER sorted.
++   That divergence is registered as finding R-1017; until it is repaired,
++   sort the list at the call site. Measured at F277's `9dbd8e6d`: the
++   document as built gave `runs[0] test_files is not sorted` with
++   `passed` unresolvable, and the same document with that one list sorted
++   validated clean at 105. This pitfall first cost the F082 closure a
++   round on 2026-08-15 and was never written down, which is why it cost
++   another one here. CHEAPER THAN A REBUILD: call
++   `build_review_manifest.validate_verification_tests` on the produced
++   `verification_tests.json` and require an empty problem list BEFORE
++   paying for a package build.
+ 2. **Review zip (worker) — MANDATORY, fresh, never skipped.** Build via the
+    canonical sequence below. Verify committed_review_subject spans
+    BASE..HEAD and the zip import check passes. Record `package <filename>`

@@ -143,3 +143,28 @@ def test_file_why_json_no_private_path_leak(env, capsys):
     assert str(data_dir) not in out
     assert str(repo_root) not in out
     assert "blob_" not in out
+
+
+class TestAnUnknownJobIsReportedInTheCallersShape:
+    """F277 T003 — `file why` migrated onto the shared `fail()`."""
+
+    def test_under_json_it_is_an_envelope_on_stdout(self, capsys):
+        import json
+
+        with pytest.raises(SystemExit) as exc:
+            _cmd_file_why("not-a-job-id", PATH, json_output=True)
+        captured = capsys.readouterr()
+        assert exc.value.code == 1
+        assert captured.err == ""
+        body = json.loads(captured.out)
+        assert body["ok"] is False
+        assert body["schema_version"] == 1
+        assert body["error"] == "invalid_job_id"
+
+    def test_without_json_it_is_the_line_it_always_was(self, capsys):
+        with pytest.raises(SystemExit) as exc:
+            _cmd_file_why("not-a-job-id", PATH, json_output=False)
+        captured = capsys.readouterr()
+        assert exc.value.code == 1
+        assert captured.out == ""
+        assert captured.err.startswith("Error: No job matches 'not-a-job-id'.")
