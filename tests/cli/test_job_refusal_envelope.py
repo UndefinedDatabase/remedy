@@ -27,7 +27,6 @@ _JOB_PY = pathlib.Path(__file__).resolve().parents[2] / "apps" / "cli" / "comman
 #: `_rji`). Falls as each commit below migrates a module; never rises.
 _EXITING_RESOLVER_REMAINING = {
     "contract_cmd.py": 1,
-    "decision.py": 4,
     "job_context_cmd.py": 1,
     "project.py": 1,
     "teacher_cmd.py": 2,

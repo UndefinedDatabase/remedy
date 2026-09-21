@@ -7,7 +7,8 @@ import sys
 from collections.abc import Callable
 from typing import TYPE_CHECKING, Any
 
-from packages.orchestration.data_paths import resolve_job_id
+from apps.cli.job_id_arg import resolve_job_id_or_fail
+from apps.cli.json_envelope import fail
 
 if TYPE_CHECKING:
     import argparse
@@ -18,18 +19,17 @@ if TYPE_CHECKING:
 _ESCALATION_PREFIX = "td:"
 
 
-def _load_job_events(job_id_str: str):
+def _load_job_events(job_id_str: str, *, json_output: bool = False):
     """Load job and events. Returns (job, events, job_id_str)."""
     from packages.orchestration.data_paths import resolve_data_root
     from packages.orchestration.pingpong_job import JobNotFoundError, require_job_plan
     from packages.orchestration.timeline import load_run_events
 
-    job_id = resolve_job_id(job_id_str)
+    job_id = resolve_job_id_or_fail(job_id_str, json_output=json_output)
     try:
         job = require_job_plan(job_id)
     except JobNotFoundError as exc:
-        print(f"Error: {exc}", file=sys.stderr)
-        sys.exit(1)
+        fail("job_not_found", str(exc), json_output=json_output)
 
     data_dir = resolve_data_root()
     events = load_run_events(data_dir, job_id)
@@ -49,7 +49,7 @@ def _cmd_decision_list(
     from packages.orchestration.decision_queue import export_decision_json, list_decisions
     from packages.orchestration.list_options import ListOptionError, apply_list_options
 
-    job, events, jid = _load_job_events(job_id_str)
+    job, events, jid = _load_job_events(job_id_str, json_output=json_output)
     decisions = list_decisions(job, events)
     try:
         decisions = apply_list_options(
@@ -86,7 +86,7 @@ def _cmd_decision_list(
 def _cmd_decision_show(job_id_str: str, decision_id: str, *, json_output: bool = False) -> None:
     from packages.orchestration.decision_queue import export_decision_json, get_decision
 
-    job, events, jid = _load_job_events(job_id_str)
+    job, events, jid = _load_job_events(job_id_str, json_output=json_output)
     d = get_decision(job, events, decision_id)
 
     if d is None:
@@ -244,14 +244,13 @@ def _cmd_decision_resolve(
         # one that lands here — no separate answer command exists.
         from datetime import datetime, timezone
 
-        from packages.orchestration.data_paths import resolve_job_id as _rji
         from packages.orchestration.escalation import (
             answer_task_decision,
             find_task_decision,
         )
         from packages.orchestration.pingpong_job import JobNotFoundError, require_job_plan, save_job_plan
 
-        job_id = _rji(job_id_str)
+        job_id = resolve_job_id_or_fail(job_id_str, json_output=False)
         try:
             job = require_job_plan(job_id)
         except JobNotFoundError as exc:
@@ -309,10 +308,9 @@ def _cmd_decision_resolve(
                   f"as its contract.")
             print(f"  Next: remedy mission plan {follow_up}")
     elif decision_id.startswith("plan:"):
-        from packages.orchestration.data_paths import resolve_job_id as _rji
         from packages.orchestration.pingpong_job import JobNotFoundError, require_job_plan
 
-        job_id = _rji(job_id_str)
+        job_id = resolve_job_id_or_fail(job_id_str, json_output=False)
         try:
             job = require_job_plan(job_id)
         except JobNotFoundError as exc:
@@ -386,7 +384,6 @@ def _cmd_decision_resolve(
             print(f"Task plan rejected for job {job_id_str}.")
             print(f"  {REJECTED_PLAN_NEXT_STEP}")
     elif decision_id.startswith("proposal:"):
-        from packages.orchestration.data_paths import resolve_job_id as _rji
         from packages.orchestration.proposed_tasks import (
             approve_proposed_task,
             defer_proposed_task,
@@ -395,7 +392,7 @@ def _cmd_decision_resolve(
             reject_proposed_task,
         )
 
-        job_id = _rji(job_id_str)
+        job_id = resolve_job_id_or_fail(job_id_str, json_output=False)
         task_id = decision_id[9:]  # Remove "proposal:" prefix
 
         task = get_proposed_task(job_id, task_id)
