@@ -95,14 +95,16 @@ def _exiting_resolver_calls(source: str) -> int:
     return count
 
 
-def _refusal_sites() -> tuple[list[int], list[int]]:
-    """Partition job.py's `print(..., file=sys.stderr)` + `sys.exit(n)` pairs.
+def _refusal_sites(filename: str = "job.py") -> tuple[list[int], list[int]]:
+    """Partition a command module's `print(..., file=sys.stderr)` + `sys.exit(n)` pairs.
 
     Returns (sites whose handler has `json_output` in scope, sites without it).
     Reading the code is the point: a prose claim about how many sites were migrated
-    is exactly the claim that goes stale, and this reads the tree instead.
+    is exactly the claim that goes stale, and this reads the tree instead. Defaults to
+    `job.py`, so its existing callers do not change.
     """
-    tree = ast.parse(_JOB_PY.read_text())
+    path = _JOB_PY.parent / filename
+    tree = ast.parse(path.read_text())
     parent: dict[ast.AST, ast.AST] = {}
     for node in ast.walk(tree):
         for child in ast.iter_child_nodes(node):
@@ -187,6 +189,28 @@ class TestTheFlaggedRefusalsAreAllMigrated:
 
     def test_the_module_calls_the_shared_helper(self):
         assert "from apps.cli.json_envelope import fail" in _JOB_PY.read_text()
+
+
+class TestDecisionsRefusalsAreAllMigrated:
+    """F283 round 6 — `decision.py`'s refusal pairs move onto `fail()` under DECISION
+    F277 D8's one-token-per-condition rule. The derived-decision refusal near the end
+    of `_cmd_decision_resolve` prints two lines, neither `Error: `-prefixed, before its
+    exit, so it is not mechanical by the rule and stays — the one site the unflagged
+    list still counts."""
+
+    def test_no_flagged_print_then_exit_pair_survives(self):
+        flagged, _ = _refusal_sites("decision.py")
+        assert flagged == [], (
+            "these decision.py refusals have `json_output` in scope and still print "
+            f"prose: lines {flagged}"
+        )
+
+    def test_exactly_one_unflagged_site_remains(self):
+        _, unflagged = _refusal_sites("decision.py")
+        assert len(unflagged) == 1, (
+            f"expected exactly the one derived-decision refusal left unmigrated, found "
+            f"{len(unflagged)} at lines {unflagged}"
+        )
 
 
 def _invoke(fn, **kwargs) -> tuple[int | None, str, str]:

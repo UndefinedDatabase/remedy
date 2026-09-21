@@ -64,8 +64,7 @@ def _cmd_decision_list(
             date_getter=lambda d: d.created_at or None,
         )
     except ListOptionError as exc:
-        print(f"Error: {exc}", file=sys.stderr)
-        sys.exit(1)
+        fail("invalid_list_option", str(exc), json_output=json_output)
 
     if json_output:
         print(_json.dumps({
@@ -90,8 +89,8 @@ def _cmd_decision_show(job_id_str: str, decision_id: str, *, json_output: bool =
     d = get_decision(job, events, decision_id)
 
     if d is None:
-        print(f"Error: decision not found: {decision_id}", file=sys.stderr)
-        sys.exit(1)
+        fail("decision_not_found", f"decision not found: {decision_id}",
+             json_output=json_output)
 
     if json_output:
         print(_json.dumps({
@@ -176,15 +175,21 @@ def _create_mission_for_job(job: Any) -> None:
 
     project_id = str(getattr(job, "project_id", "") or "")
     if not project_id:
-        print("Error: this job has no project, so it cannot start a mission.\n"
-              "  Register one with: remedy init", file=sys.stderr)
-        sys.exit(1)
+        fail(
+            "job_has_no_project",
+            "this job has no project, so it cannot start a mission.\n"
+            "  Register one with: remedy init",
+            json_output=False,
+        )
 
     existing = mission_for_job(str(job.job_id))
     if existing is not None:
-        print(f"Error: job {str(job.job_id)[:8]} already belongs to mission "
-              f"{existing.id[:12]} — one job, one mission.", file=sys.stderr)
-        sys.exit(1)
+        fail(
+            "mission_already_linked",
+            f"job {str(job.job_id)[:8]} already belongs to mission "
+            f"{existing.id[:12]} — one job, one mission.",
+            json_output=False,
+        )
 
     intake = getattr(job, "intake", None)
     goal = ""
@@ -197,8 +202,7 @@ def _create_mission_for_job(job: Any) -> None:
         link_job_to_mission(project_id, mission.id, str(job.job_id),
                             MISSION_ROLE_INITIAL)
     except MissionError as exc:
-        print(f"Error: could not start the mission: {exc}", file=sys.stderr)
-        sys.exit(1)
+        fail("mission_error", f"could not start the mission: {exc}", json_output=False)
 
     print(f"Mission {mission.id} started for this goal.")
     print(f"  Goal:  {mission.goal}")
@@ -216,18 +220,20 @@ def _cmd_decision_resolve(
     # ``--answer`` bundles the task plan's clarification questions; a task
     # decision carries exactly one question, answered through --reason.
     if answer and not decision_id.startswith("plan:"):
-        print(
-            f"Error: --answer is only valid for the task-plan approval "
+        fail(
+            "option_not_applicable",
+            f"--answer is only valid for the task-plan approval "
             f"decision, not {decision_id!r}.",
-            file=sys.stderr)
-        sys.exit(1)
+            json_output=False,
+        )
     # F056: same rule for the mission opt-in — it belongs to the plan approval.
     if as_mission and not decision_id.startswith("plan:"):
-        print(
-            f"Error: --as-mission is only valid for the task-plan approval "
+        fail(
+            "option_not_applicable",
+            f"--as-mission is only valid for the task-plan approval "
             f"decision, not {decision_id!r}.",
-            file=sys.stderr)
-        sys.exit(1)
+            json_output=False,
+        )
 
     # Decisions are derived — resolve the underlying record if possible
     if decision_id.startswith("sr:"):
@@ -235,8 +241,8 @@ def _cmd_decision_resolve(
         stop_id = decision_id[3:]
         sr = resolve_stop_reason(job_id_str, stop_id, reason or "manually resolved")
         if sr is None:
-            print(f"Error: stop reason not found: {stop_id}", file=sys.stderr)
-            sys.exit(1)
+            fail("stop_reason_not_found", f"stop reason not found: {stop_id}",
+                 json_output=False)
         print(f"Resolved stop reason: {sr.id[:8]} ({sr.reason_code})")
     elif decision_id.startswith(_ESCALATION_PREFIX):
         # F051: a task asked a question mid-run.  ``--reason`` carries the
@@ -254,35 +260,35 @@ def _cmd_decision_resolve(
         try:
             job = require_job_plan(job_id)
         except JobNotFoundError as exc:
-            print(f"Error: {exc}", file=sys.stderr)
-            sys.exit(1)
+            fail("job_not_found", str(exc), json_output=False)
 
         record = find_task_decision(job, decision_id)
         if record is None:
-            print(f"Error: decision not found: {decision_id}", file=sys.stderr)
-            sys.exit(1)
+            fail("decision_not_found", f"decision not found: {decision_id}",
+                 json_output=False)
 
         answer_text = (reason or "").strip() or str(record.get("safe_default", ""))
         if not answer_text:
-            print(
-                "Error: --reason carries the answer for a task decision, and "
+            fail(
+                "missing_argument",
+                "--reason carries the answer for a task decision, and "
                 "this one has no safe default to fall back on.\n"
                 f"  remedy decision resolve {job_id_str} {decision_id} "
                 '--reason "<your answer>"',
-                file=sys.stderr,
+                json_output=False,
             )
-            sys.exit(1)
 
         answered = answer_task_decision(
             job, decision_id, answer=answer_text,
             now=datetime.now(timezone.utc))
         if answered is None:
             # Answers are written once — say which answer already stands.
-            print(
-                f"Error: decision {decision_id} is already answered "
+            fail(
+                "decision_already_answered",
+                f"decision {decision_id} is already answered "
                 f"({record.get('answer_source', '')}): {record.get('answer', '')}",
-                file=sys.stderr)
-            sys.exit(1)
+                json_output=False,
+            )
 
         save_job_plan(job)
         print(f"Answered {decision_id} for job {job_id_str}: {answered['answer']}")
@@ -300,9 +306,12 @@ def _cmd_decision_resolve(
         try:
             follow_up = start_remainder_follow_up_mission(str(job.job_id), answered)
         except (ContractError, MissionError) as exc:
-            print(f"Error: the answer is recorded, but the follow-up mission was "
-                  f"not started: {exc}", file=sys.stderr)
-            sys.exit(1)
+            fail(
+                "follow_up_mission_error",
+                f"the answer is recorded, but the follow-up mission was "
+                f"not started: {exc}",
+                json_output=False,
+            )
         if follow_up is not None:
             print(f"Follow-up mission {follow_up} started with the unmet criteria "
                   f"as its contract.")
@@ -314,8 +323,7 @@ def _cmd_decision_resolve(
         try:
             job = require_job_plan(job_id)
         except JobNotFoundError as exc:
-            print(f"Error: {exc}", file=sys.stderr)
-            sys.exit(1)
+            fail("job_not_found", str(exc), json_output=False)
 
         from packages.orchestration.job_plan import (
             REJECTED_PLAN_NEXT_STEP,
@@ -330,39 +338,35 @@ def _cmd_decision_resolve(
             # mistake worth naming, not a generic "nothing pending".
             if answer and isinstance(fp, dict) and clarifications_already_resolved(
                     fp.get("clarifications_resolved")):
-                print(
-                    "Error: clarifications already resolved for this job — "
+                fail(
+                    "clarifications_already_resolved",
+                    "clarifications already resolved for this job — "
                     f"answers are immutable.\n  {REJECTED_PLAN_NEXT_STEP}",
-                    file=sys.stderr)
-                sys.exit(1)
-            print("Error: no pending task plan approval for this job.", file=sys.stderr)
-            sys.exit(1)
+                    json_output=False,
+                )
+            fail("no_pending_plan_approval", "no pending task plan approval for this job.",
+                 json_output=False)
 
         if reason not in ("approve", "reject"):
-            print(
-                "Error: --reason must be 'approve' or 'reject'.\n"
+            fail(
+                "invalid_reason",
+                "--reason must be 'approve' or 'reject'.\n"
                 f"  remedy decision resolve {job_id_str} plan:approval --reason approve\n"
                 f"  remedy decision resolve {job_id_str} plan:approval --reason reject",
-                file=sys.stderr,
+                json_output=False,
             )
-            sys.exit(1)
 
         questions = open_clarification_questions(fp.get("clarifications_resolved"))
         if answer and reason != "approve":
-            print(
-                "Error: --answer applies only when approving the plan.",
-                file=sys.stderr)
-            sys.exit(1)
+            fail("option_not_applicable", "--answer applies only when approving the plan.",
+                 json_output=False)
         if as_mission and reason != "approve":
-            print(
-                "Error: --as-mission applies only when approving the plan.",
-                file=sys.stderr)
-            sys.exit(1)
+            fail("option_not_applicable", "--as-mission applies only when approving the plan.",
+                 json_output=False)
         try:
             answers = parse_answer_options(answer, questions)
         except AnswerParseError as exc:
-            print(f"Error: {exc}", file=sys.stderr)
-            sys.exit(1)
+            fail("answer_parse_error", str(exc), json_output=False)
 
         if reason == "approve":
             log_path = resolve_task_plan_approval(
@@ -397,18 +401,18 @@ def _cmd_decision_resolve(
 
         task = get_proposed_task(job_id, task_id)
         if task is None:
-            print(f"Error: proposed task not found: {task_id}", file=sys.stderr)
-            sys.exit(1)
+            fail("proposed_task_not_found", f"proposed task not found: {task_id}",
+                 json_output=False)
 
         if reason not in ("approve", "reject", "defer"):
-            print(
-                "Error: --reason must be 'approve', 'reject', or 'defer'.\n"
+            fail(
+                "invalid_reason",
+                "--reason must be 'approve', 'reject', or 'defer'.\n"
                 f"  remedy decision resolve {job_id_str} proposal:{task_id} --reason approve\n"
                 f"  remedy decision resolve {job_id_str} proposal:{task_id} --reason reject\n"
                 f"  remedy decision resolve {job_id_str} proposal:{task_id} --reason defer",
-                file=sys.stderr,
+                json_output=False,
             )
-            sys.exit(1)
 
         if reason == "approve":
             # Approve and materialize the task
@@ -418,43 +422,46 @@ def _cmd_decision_resolve(
                 # First approve the unresolved task
                 task = approve_proposed_task(job_id, task_id)
                 if task is None:
-                    print(f"Error: failed to approve proposed task {task_id}", file=sys.stderr)
-                    sys.exit(1)
+                    fail("proposed_task_operation_failed",
+                         f"failed to approve proposed task {task_id}", json_output=False)
 
             # Materialize only if approved and not already materialized
             if task.status == ProposedTaskStatus.APPROVED_FOR_BUILD and not task.is_materialized:
                 task = do_materialize(job_id, task_id)
                 if task is None:
-                    print(f"Error: failed to materialize proposed task {task_id}", file=sys.stderr)
-                    sys.exit(1)
+                    fail("proposed_task_operation_failed",
+                         f"failed to materialize proposed task {task_id}", json_output=False)
                 print(f"Proposed task {task_id} approved and materialized for job {job_id_str}.")
             else:
                 # Task is rejected, deferred, or already materialized
-                print(
-                    f"Error: cannot approve a {task.status.value} proposed task: {task_id}",
-                    file=sys.stderr)
-                sys.exit(1)
+                fail(
+                    "proposed_task_invalid_state",
+                    f"cannot approve a {task.status.value} proposed task: {task_id}",
+                    json_output=False,
+                )
         elif reason == "reject":
             if task.is_terminal():
-                print(
-                    f"Error: cannot reject a terminal proposed task ({task.status.value}): {task_id}",
-                    file=sys.stderr)
-                sys.exit(1)
+                fail(
+                    "proposed_task_invalid_state",
+                    f"cannot reject a terminal proposed task ({task.status.value}): {task_id}",
+                    json_output=False,
+                )
             task = reject_proposed_task(job_id, task_id)
             if task is None:
-                print(f"Error: failed to reject proposed task {task_id}", file=sys.stderr)
-                sys.exit(1)
+                fail("proposed_task_operation_failed",
+                     f"failed to reject proposed task {task_id}", json_output=False)
             print(f"Proposed task {task_id} rejected for job {job_id_str}.")
         elif reason == "defer":
             if task.is_terminal():
-                print(
-                    f"Error: cannot defer a terminal proposed task ({task.status.value}): {task_id}",
-                    file=sys.stderr)
-                sys.exit(1)
+                fail(
+                    "proposed_task_invalid_state",
+                    f"cannot defer a terminal proposed task ({task.status.value}): {task_id}",
+                    json_output=False,
+                )
             task = defer_proposed_task(job_id, task_id)
             if task is None:
-                print(f"Error: failed to defer proposed task {task_id}", file=sys.stderr)
-                sys.exit(1)
+                fail("proposed_task_operation_failed",
+                     f"failed to defer proposed task {task_id}", json_output=False)
             print(f"Proposed task {task_id} deferred for job {job_id_str}.")
     else:
         print(f"Decision '{decision_id}' is derived and cannot be directly resolved.", file=sys.stderr)
