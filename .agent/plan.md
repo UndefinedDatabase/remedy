@@ -12,24 +12,28 @@ is documented and asserted from the catalog
 
 ## Current Step
 
-ROUND 9. It books round 8's PASS and the `Done:` lines of R-1019 and R-1025,
-and records DECISION F283 D4. Then, one commit each: the `project` group's
-refusal pairs move onto `fail()`, its uppercase `ERROR: ` sites included
-under D4; and the three `do` refusals round 8 correctly declined — the
-contract-template lookup in `_cmd_do`, the run lookup in `_cmd_run_show` and
-the list-option refusal in `_cmd_run_list` — move with the tests that pinned
-their old `--json` shape.
+ROUND 10. It books round 9's PASS, registers R-1026 and records DECISIONs
+F283 D5 and D6. Then, one commit each: `remedy do --json` answers in one
+envelope, a failed walk carrying its result document (D5); the parser's usage
+refusals in `apps/cli/grouped.py` answer in the envelope under `--json` (D6);
+the `test` group's refusals move onto `fail()`; and the three refusals R-1026
+names pass `job_not_found`.
 
 ## Next Steps
 
-1. `_cmd_do_order`'s failure line, which follows a result document already
-   printed under `--json`: the result document itself takes the envelope.
-2. The remaining groups largest first — `grouped`, `test_cmds`, then the
-   tail; `runtime_cmd.py` is its own round.
-3. T001's catalog half, then T002's taxonomy and sweep.
+1. The tail of the refusal sweep: `patch`, `config`, `real_test_execution`,
+   `ui`, `self`, `decision`, `snapshot`, `worker_facade`, the cost-preview
+   confirmation, the `stats`, `bench`, `failure_stats` and `job stop`
+   `SystemExit` sites, and the unprefixed refusals of `--json` handlers.
+2. `runtime_cmd.py`, its own round.
+3. T001's catalog half: the read-only commands without `supports_json`, and
+   the catalog test asserting that set is empty.
+4. T002: success envelopes, the exit-code taxonomy under `docs/guides/`, and
+   `tests/cli/test_json_contract.py`'s sweep.
 
 ## Risks
 
-Twenty-two findings are open and none is this feature's own. The refusal
-pairs left are several sessions of work, so the soft limit of 7 sessions and
-25 rounds is the number to watch.
+Twenty-three findings are open after this round's booking, one of them this
+feature's own (R-1026, repaired in this round). Ten rounds are spent of the
+soft limit of 25, in the third of 7 sessions; the success-envelope half of
+T002 is the largest piece left.
