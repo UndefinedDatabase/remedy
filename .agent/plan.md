@@ -12,27 +12,24 @@ is documented and asserted from the catalog
 
 ## Current Step
 
-ROUND 8. It books round 7's PASS and the `Done:` lines of R-1023 and R-1024,
-and records DECISION F283 D3. Then, one commit each: the single-pass
-`job run --json` answers in the envelope on success, on a verification
-failure and when no task is pending; a blocked `job resume` refuses through
-`fail()` with its old keys kept; the `patch list` refusal round 7 left
-untested gets its test; R-1025 — the product-spine test that pinned
-R-1020's prose asserts the envelope; R-1019 — `worker unload` checks for `--model` or
-`--all` before it probes for `ollama`; the `do_cmd` group's refusal pairs move
-onto `fail()`.
+ROUND 9. It books round 8's PASS and the `Done:` lines of R-1019 and R-1025,
+and records DECISION F283 D4. Then, one commit each: the `project` group's
+refusal pairs move onto `fail()`, its uppercase `ERROR: ` sites included
+under D4; and the three `do` refusals round 8 correctly declined — the
+contract-template lookup in `_cmd_do`, the run lookup in `_cmd_run_show` and
+the list-option refusal in `_cmd_run_list` — move with the tests that pinned
+their old `--json` shape.
 
 ## Next Steps
 
-1. The `project` group, whose refusals mix `Error:` and `ERROR:` prefixes —
-   a ruling on the uppercase form lands with the patch that applies it.
+1. `_cmd_do_order`'s failure line, which follows a result document already
+   printed under `--json`: the result document itself takes the envelope.
 2. The remaining groups largest first — `grouped`, `test_cmds`, then the
    tail; `runtime_cmd.py` is its own round.
 3. T001's catalog half, then T002's taxonomy and sweep.
 
 ## Risks
 
-Twenty-four findings are open; R-1019 and R-1025 are this feature's own and
-are repaired this round, with their `Done:` lines booked in the next. The refusal
+Twenty-two findings are open and none is this feature's own. The refusal
 pairs left are several sessions of work, so the soft limit of 7 sessions and
 25 rounds is the number to watch.
