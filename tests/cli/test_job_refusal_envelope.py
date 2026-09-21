@@ -28,12 +28,11 @@ _JOB_PY = pathlib.Path(__file__).resolve().parents[2] / "apps" / "cli" / "comman
 #: 4: no module under `apps/cli/` calls the exiting resolver.
 _EXITING_RESOLVER_REMAINING: dict[str, int] = {}
 
-#: R-1021's own remainder: every hand-caught `lookup_job_id` site outside
-#: `apps.cli.job_id_arg`, falling to `job_id_arg.py` and `job_stop_cmd.py` alone once
-#: the sweep is done — the two callers that handle `JobIdAmbiguous` themselves and so
-#: keep talking to `lookup_job_id` directly instead of through
-#: `resolve_job_id_or_fail`. Measured at C3 by the reviewer's
-#: `.remedy-wt/f283-r5-scratch/lookup_ctx.py`.
+#: R-1021's own remainder: every `lookup_job_id` call site under `apps/cli/`, falling
+#: to `job_id_arg.py` and `job_stop_cmd.py` alone once the sweep is done — the two
+#: callers that handle `JobIdAmbiguous` themselves and so keep talking to
+#: `lookup_job_id` directly instead of through `resolve_job_id_or_fail`. Measured at
+#: `63141657`.
 _LOOKUP_CALLERS: dict[str, int] = {
     "job_id_arg.py": 1,
     "job_stop_cmd.py": 1,
@@ -378,7 +377,7 @@ class TestLookupJobIdIsPinnedToItsTwoHandlers:
 
 
 class TestResolveJobIdOrFailForwardsAPayload:
-    """R-1022's layer change: `resolve_job_id_or_fail` (and the `refuse_ambiguous_job_id`
+    """R-1021's layer change: `resolve_job_id_or_fail` (and the `refuse_ambiguous_job_id`
     it calls) forward `**payload` to every `fail()` they make, so a caller that already
     carried its own envelope key — `snapshot_cmds.py` and
     `test_cmds.py::_cmd_test_status`, both of which print a `job_id` key today — keeps
@@ -394,6 +393,26 @@ class TestResolveJobIdOrFailForwardsAPayload:
         assert err == ""
         body = json.loads(out)
         assert body["error"] == "invalid_job_id"
+        assert body["job_id"] == "x"
+
+    def test_the_ambiguous_branch_carries_the_extra_payload(self, monkeypatch, tmp_path):
+        """Round 5's probe (d) found this path unproved: no test passed a payload on
+        the ambiguous branch, so its forwarding was asserted nowhere. This is that
+        test, over the same two-ambiguous-jobs fixture
+        `TestTheAmbiguousBranchAnswersInTheEnvelope` uses."""
+        from apps.cli.job_id_arg import resolve_job_id_or_fail
+
+        matches = TestTheAmbiguousBranchAnswersInTheEnvelope._two_ambiguous_jobs(
+            monkeypatch, tmp_path
+        )
+        code, out, err = _invoke(
+            resolve_job_id_or_fail, raw="aaaa1111", json_output=True, job_id="x"
+        )
+        assert code == 2
+        assert err == ""
+        body = json.loads(out)
+        assert body["error"] == "ambiguous_job_id"
+        assert body["matches"] == matches
         assert body["job_id"] == "x"
 
 
