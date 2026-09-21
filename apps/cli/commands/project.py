@@ -430,7 +430,7 @@ def _cmd_project_adopt(
     *,
     project_flag: str | None = None,
 ) -> None:
-    from packages.orchestration.data_paths import resolve_job_id
+    from apps.cli.job_id_arg import resolve_job_id_or_fail
     from packages.orchestration.project_registry import (
         ProjectNotFoundError,
         attach_job,
@@ -448,7 +448,7 @@ def _cmd_project_adopt(
         )
         sys.exit(3)
 
-    resolved_id = resolve_job_id(job_id_str)
+    resolved_id = resolve_job_id_or_fail(job_id_str, json_output=False)
 
     try:
         job = require_job_plan(resolved_id)

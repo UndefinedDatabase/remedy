@@ -69,7 +69,7 @@ def _cmd_mission_contract(mission_id: str, *, project: str | None = None,
 
 def _cmd_job_contract(job_id_str: str, *, json_output: bool = False) -> None:
     """``remedy job contract <id>`` — the slice of its mission's contract a job serves."""
-    from packages.orchestration.data_paths import resolve_job_id
+    from apps.cli.job_id_arg import resolve_job_id_or_fail
     from packages.orchestration.mission_contract import (
         job_contract_slice,
         read_job_milestone,
@@ -82,7 +82,7 @@ def _cmd_job_contract(job_id_str: str, *, json_output: bool = False) -> None:
         require_job_plan,
     )
 
-    job_id = resolve_job_id(job_id_str)
+    job_id = resolve_job_id_or_fail(job_id_str, json_output=json_output)
     try:
         require_job_plan(job_id)
     except (JobNotFoundError, JobStoreError) as exc:

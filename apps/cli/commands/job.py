@@ -360,7 +360,7 @@ def _assumptions_section(job: JobPlan) -> tuple[dict, list[str]]:
 def _digest_section(job: JobPlan) -> tuple[dict, list[str]]:
     """The former `job digest` command: the completion digest's CLI parity (F040 T003).
 
-    The HTTP route's little sibling. `job show` resolves the job with `resolve_job_id` and
+    The HTTP route's little sibling. `job show` resolves the job with `resolve_job_id_or_fail` and
     `require_job_plan`, this view loads its run events with `load_run_events`, and it shows
     the SAME `build_job_digest` envelope the route builds, so the CLI and the route can
     never disagree about the same job.

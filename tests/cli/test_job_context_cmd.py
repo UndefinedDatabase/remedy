@@ -295,11 +295,12 @@ class TestJobContextRefusesInTheCallersShape:
         import pytest as _pytest
 
         from apps.cli.commands import job_context_cmd as mod
-        from packages.orchestration import data_paths, pingpong_job
+        from packages.orchestration import pingpong_job
 
-        # The handler imports both names INSIDE the function, so the patch has to
-        # land on the defining module rather than on the handler's own namespace.
-        monkeypatch.setattr(data_paths, "resolve_job_id", lambda raw: raw)
+        # `resolve_job_id_or_fail` is imported at MODULE level (F283 round 4), so the
+        # patch lands on the handler's own namespace; `require_job_plan` is imported
+        # INSIDE the function, so its patch still has to land on the defining module.
+        monkeypatch.setattr(mod, "resolve_job_id_or_fail", lambda raw, **_: raw)
         monkeypatch.setattr(pingpong_job, "require_job_plan", lambda _jid: job)
         with _pytest.raises(SystemExit) as caught:
             mod._cmd_job_context("abcdef01", json_output=True, **flags)

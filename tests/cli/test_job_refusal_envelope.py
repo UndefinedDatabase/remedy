@@ -22,15 +22,10 @@ import pytest
 
 _JOB_PY = pathlib.Path(__file__).resolve().parents[2] / "apps" / "cli" / "commands" / "job.py"
 
-#: R-1020's remainder at F283 round 4's C3, measured at `3b4acafd` by an alias-aware
-#: reading (DECISION F283 D1's correction — `decision.py` also binds the resolver as
-#: `_rji`). Falls as each commit below migrates a module; never rises.
-_EXITING_RESOLVER_REMAINING = {
-    "contract_cmd.py": 1,
-    "job_context_cmd.py": 1,
-    "project.py": 1,
-    "teacher_cmd.py": 2,
-}
+#: R-1020's remainder, measured at `3b4acafd` by an alias-aware reading (DECISION F283
+#: D1's correction — `decision.py` also binds the resolver as `_rji`) and driven to
+#: EMPTY by F283 round 4: no module under `apps/cli/` calls the exiting resolver.
+_EXITING_RESOLVER_REMAINING: dict[str, int] = {}
 
 
 def _exiting_resolver_calls(source: str) -> int:
