@@ -125,7 +125,11 @@ class TestAWorkerRefusalIsShapedLikeTheCaller:
         assert captured.out == ""
         assert captured.err == "Error: unknown provider: no-such-provider\n"
 
-    def test_unload_without_a_target_names_both_flags(self, capsys):
+    def test_unload_without_a_target_names_both_flags(self, monkeypatch, capsys):
+        # The refusal is the caller's, not the environment's: pin `ollama` on PATH
+        # so the missing-argument branch is what this test reaches.
+        import shutil as _shutil
+        monkeypatch.setattr(_shutil, "which", lambda name: "/usr/bin/ollama" if name == "ollama" else None)
         from apps.cli.commands.worker import _cmd_worker_unload
 
         with pytest.raises(SystemExit) as exc:
