@@ -1,0 +1,23 @@
+--- a/docs/roadmap/features/T2_F283.md
++++ b/docs/roadmap/features/T2_F283.md
+@@ -65,12 +65,20 @@
+ - The read-only-without-`supports_json` set is empty.
+ - Every exit code in use is documented and the documentation is asserted from the
+   catalog, not from prose.
++- R-1019 is resolved: `worker unload` with neither `--model` nor `--all` refuses with
++  `missing_argument` whether or not `ollama` is on PATH.
+ 
+ ## Findings this feature owns
+ R-1014, moved from F277 by DECISION F277 D10 — the §3 consolidation pass its fix clause
+ asks for is F277's closure work, and whichever half of it F277's closure does not land is
+ this feature's. `.agent/live_review.md` is append-only, so its entry keeps its old owner
+ line and the move is recorded by that DECISION and by F277's closure re-assignment.
++
++R-1019, registered at F277's Open PR Gate on 2026-09-21 and assigned here under operator
++amendment amend0911-feedback rule A — `_cmd_worker_unload` probes `shutil.which("ollama")`
++before it checks that a target was named, so a malformed invocation answers with a success
++envelope and exit 0 on any machine without the provider installed. That is refusal shape,
++which is this feature's T001.
+ 
+ ## Do not touch
+ The event names themselves and `packages/orchestration/event_names.py`: F277 declared that
