@@ -216,6 +216,8 @@ class TestResumeBlocksHonestly:
         assert out["resumed"] is False
         assert out["blocked_reason"] == "worktree_recovery_blocked"
         assert "does not match recorded" in out["worktrees"][0]["blocked_reason"]
+        assert out["ok"] is False
+        assert out["error"] == "resume_blocked"
 
         assert not W._branch_exists(repo, "remedy/someone-else")
         assert Path(interrupted["handle"].path).is_dir()   # nothing destroyed

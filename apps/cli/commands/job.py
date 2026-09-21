@@ -1638,16 +1638,14 @@ def _cmd_resume(
             "blocked_reason": "ambiguous_recoverable_worktrees",
             "run_ids": [s.run_id for s in sessions],
         })
-        if json_output:
-            print(_json.dumps({
-                "resumed": False,
-                "blocked_reason": "ambiguous_recoverable_worktrees",
-                "worktrees": [o.to_json() for o in wt_outcomes],
-            }, indent=2))
-        else:
-            print("Resume blocked: ambiguous_recoverable_worktrees "
-                  f"({', '.join(s.run_id for s in sessions)})", file=sys.stderr)
-        sys.exit(1)
+        message = "ambiguous recoverable worktrees:\n" + "\n".join(
+            f"  {s.run_id}" for s in sessions
+        )
+        fail(
+            "resume_blocked", message, json_output=json_output,
+            resumed=False, blocked_reason="ambiguous_recoverable_worktrees",
+            worktrees=[o.to_json() for o in wt_outcomes],
+        )
 
     wt_blocked = [o for o in wt_outcomes if o.blocked and not o.recovered]
     if wt_blocked:
@@ -1657,17 +1655,14 @@ def _cmd_resume(
             "blocked_reason": "worktree_recovery_blocked",
             "worktrees": wt_json,
         })
-        if json_output:
-            print(_json.dumps({
-                "resumed": False,
-                "blocked_reason": "worktree_recovery_blocked",
-                "worktrees": wt_json,
-            }, indent=2))
-        else:
-            for o in wt_blocked:
-                print(f"Resume blocked: worktree {o.run_id}: {o.blocked_reason}",
-                      file=sys.stderr)
-        sys.exit(1)
+        message = "worktree recovery blocked:\n" + "\n".join(
+            f"  worktree {o.run_id}: {o.blocked_reason}" for o in wt_blocked
+        )
+        fail(
+            "resume_blocked", message, json_output=json_output,
+            resumed=False, blocked_reason="worktree_recovery_blocked",
+            worktrees=wt_json,
+        )
     for o in wt_outcomes:
         append_run_event(data_dir, job_id, event="worktree_prepared", metadata={
             "run_id": o.run_id, "branch": o.branch,

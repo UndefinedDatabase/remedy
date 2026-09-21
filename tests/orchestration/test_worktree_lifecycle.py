@@ -215,6 +215,8 @@ class TestMultipleRecoverableWorktrees:
         out = _resume(job_with_events, capsys, expect_exit=True)
 
         assert out["blocked_reason"] == "ambiguous_recoverable_worktrees"
+        assert out["ok"] is False
+        assert out["error"] == "resume_blocked"
         assert called == {}                       # no continuation ran at all
         # Neither worktree was removed, and neither is marked clean.
         assert Path(ha.path).is_dir() and Path(hb.path).is_dir()
