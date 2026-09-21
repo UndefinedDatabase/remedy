@@ -9,24 +9,23 @@ Three machine-facing contracts become declarations a test can read: the event
 vocabulary written into the run ledger, the JSON envelope every `--json`
 command emits, and the meaning of each exit code
 (`docs/roadmap/features/T2_F277.md`). F277 closes on the first two complete
-and the third half applied; DECISION F277 D10 moved the rest to F283, which
-is registered and placed directly after F277.
+and the third half applied; DECISION F277 D10 moved the rest to F283.
 
 ## Current Step
 
-Round 13 is FAIL and round 14 is its repair. Generating the closure's
-self-use item wrote a ledger paragraph carrying a retired word into
-`scripts/self_use_queue.json`, so the branch tip is red on
-`tests/docs/test_retired_promote_word.py`. Round 14 registers that as
-`R-1015` and the run's own blocked strings as `R-1016`, lands the
-`KEPT_BY_SENSE` stopgap the guard's sense `H` already provides for, and then
-runs the integration gate — the full suite ONCE, transcript committed.
+Round 14 is PASS and the integration gate is RED at exactly one node. Round
+15 is the first repair round under the shrinking rule of amend0917 rule 2:
+`command_discovery_completed` got its writer in round 3 and never got the
+matching entry in the UI's humanize catalog, so a Python emitter and a
+TypeScript catalog have drifted apart. The repair is one catalog line. The
+suite is then re-run and its transcript replaced, on the standing answer to
+operator question Q1 — the one run belongs to the code actually shipped.
 
 ## Next Steps
 
-1. Any closure-suite repair the shrinking rule of amend0917 rule 2 orders:
-   each repair round strictly shrinks the bad set with no node newly bad, at
-   most three, then `xfail(strict=True)` and a follow-up feature for the rest.
+1. If the re-run is green, the bad set has shrunk from one to zero with no
+   node newly bad and the shrinking rule is satisfied in one round of the
+   three it allows. If it is red, round 16 is the second repair round.
 2. The evidence job (`create_manual_completion_bundle`, feature-scoped) and a
    FRESH review zip. `base_commit` is the branch's FORK POINT, `f2494c02`,
    and the two `rev-list` counts must agree or the base is wrong.
@@ -39,8 +38,8 @@ runs the integration gate — the full suite ONCE, transcript committed.
 
 ## Risks
 
-Round 12's mirror commit spent this feature's one permitted oversize commit
-at 661 insertions, so every later mirror must stay under 500. Three wrong
-expected-insertion counts in two rounds share one cause — a number about the
-tree produced by hand — and from round 14 every such number comes from the
-script that measures the payload digests.
+Round 12's mirror commit spent this feature's one permitted oversize commit,
+so every later mirror must stay under 500. Four numerals the reviewer wrote
+by hand across three rounds were wrong and the worker caught every one; from
+round 14 the tree numbers come from a script, and the one that still slipped
+was a count of the block's own prose, which no script reads.
