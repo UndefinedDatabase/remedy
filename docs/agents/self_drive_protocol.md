@@ -337,6 +337,22 @@ rule 4). Amended 2026-09-17 by amend0917-throughput rule 5: an entry never
 stalls the session; the recommendation is executed as a reversible DECISION in
 the same round. Reverse by deleting this paragraph and the file.
 
+Operator amendment amend0921-operator-feedback (2026-09-21), rule 3 — PLAIN
+SENTENCES FOR THE OPERATOR, EVERYWHERE. Every text addressed to the operator —
+an operator-questions entry, the "for you" part of a session report, the
+operator-facing paragraphs of `.agent/handoff.md`, README paragraphs written for
+a user, and any product output a human reads — is written in complete, simple
+sentences. The writer assumes the reader does not know the internal vocabulary:
+every feature number, finding id, command name, file name and figure is
+explained in plain words the first time it appears in that text; no invented
+compound terms; no bare shorthand. Technical references may stand in a heading,
+never alone in a body sentence. This is the operator's most important standing
+rule and it applies to Remedy's own user-facing output as a product rule as
+well. `tests/docs/test_operator_questions_shape.py` pins the four body labels of
+every operator-questions entry and refuses a body line that is a bare reference
+token. Reverse by deleting this paragraph, DECISION amend0921-operator-feedback
+D3 and that test.
+
 Operator amendment amend0911-f275-to-scope (2026-09-11, folded into
 amend0911-feedback) — F275's soft limit of 20 sessions and 60 rounds
 (amend0908-f275-finish rule 1) is LIFTED without a replacement number, by
