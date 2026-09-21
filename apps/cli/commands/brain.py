@@ -8,6 +8,7 @@ from collections.abc import Callable
 from typing import TYPE_CHECKING
 
 from apps.cli.job_id_arg import resolve_job_id_or_fail
+from apps.cli.json_envelope import fail
 from packages.orchestration.data_paths import resolve_data_root
 from packages.orchestration.pingpong_job import JobNotFoundError, require_job_plan
 
@@ -20,8 +21,7 @@ def _cmd_brain(job_id_str: str, *, json_output: bool = False) -> None:
     try:
         job = require_job_plan(job_id)
     except JobNotFoundError as exc:
-        print(f"Error: {exc}", file=sys.stderr)
-        sys.exit(1)
+        fail("job_not_found", str(exc), json_output=json_output)
 
     from pathlib import Path
 
@@ -63,8 +63,7 @@ def _cmd_brain_node(job_id_str: str, node_id: str, *, json_output: bool = False)
     try:
         job = require_job_plan(job_id)
     except JobNotFoundError as exc:
-        print(f"Error: {exc}", file=sys.stderr)
-        sys.exit(1)
+        fail("job_not_found", str(exc), json_output=json_output)
 
     from pathlib import Path
 
@@ -89,8 +88,7 @@ def _cmd_brain_node(job_id_str: str, node_id: str, *, json_output: bool = False)
     try:
         detail = build_brain_node_detail(job, graph, node_id, events)
     except ValueError as exc:
-        print(f"Error: {exc}", file=sys.stderr)
-        sys.exit(1)
+        fail("node_not_found", str(exc), json_output=json_output)
 
     if json_output:
         print(_json.dumps(export_brain_node_detail_json(detail), sort_keys=True))
@@ -110,8 +108,7 @@ def _cmd_brain_view(job_id_str: str) -> None:
     try:
         job = require_job_plan(job_id)
     except JobNotFoundError as exc:
-        print(f"Error: {exc}", file=sys.stderr)
-        sys.exit(1)
+        fail("job_not_found", str(exc), json_output=False)
 
     from pathlib import Path
 
@@ -159,8 +156,7 @@ def _prepare_viewer(job_id_str: str):
     try:
         job = require_job_plan(job_id)
     except JobNotFoundError as exc:
-        print(f"Error: {exc}", file=sys.stderr)
-        sys.exit(1)
+        fail("job_not_found", str(exc), json_output=False)
 
     from pathlib import Path
 
@@ -268,8 +264,7 @@ def _cmd_context(job_id_str: str, *, json_output: bool = False) -> None:
     try:
         job = require_job_plan(job_id)
     except JobNotFoundError as exc:
-        print(f"Error: {exc}", file=sys.stderr)
-        sys.exit(1)
+        fail("job_not_found", str(exc), json_output=json_output)
 
     from pathlib import Path
 
@@ -318,8 +313,7 @@ def _cmd_trust_report(job_id_str: str) -> None:
     try:
         job = require_job_plan(job_id)
     except JobNotFoundError as exc:
-        print(f"Error: {exc}", file=sys.stderr)
-        sys.exit(1)
+        fail("job_not_found", str(exc), json_output=False)
 
     from pathlib import Path
 
@@ -339,8 +333,7 @@ def _cmd_timeline(job_id_str: str) -> None:
     try:
         job = require_job_plan(job_id)
     except JobNotFoundError as exc:
-        print(f"Error: {exc}", file=sys.stderr)
-        sys.exit(1)
+        fail("job_not_found", str(exc), json_output=False)
 
     from packages.orchestration.timeline import load_run_events, summarize_timeline
     data_dir = resolve_data_root()
@@ -356,8 +349,7 @@ def _cmd_cockpit(job_id_str: str) -> None:
     try:
         job = require_job_plan(job_id)
     except JobNotFoundError as exc:
-        print(f"Error: {exc}", file=sys.stderr)
-        sys.exit(1)
+        fail("job_not_found", str(exc), json_output=False)
 
     from pathlib import Path
 
@@ -377,8 +369,7 @@ def _cmd_constitution(job_id_str: str) -> None:
     try:
         job = require_job_plan(job_id)
     except JobNotFoundError as exc:
-        print(f"Error: {exc}", file=sys.stderr)
-        sys.exit(1)
+        fail("job_not_found", str(exc), json_output=False)
 
     from pathlib import Path
 
@@ -408,8 +399,7 @@ def _cmd_brain_continue(
     try:
         job = require_job_plan(job_id)
     except JobNotFoundError as exc:
-        print(f"Error: {exc}", file=sys.stderr)
-        sys.exit(1)
+        fail("job_not_found", str(exc), json_output=json_output)
 
     from pathlib import Path
 
@@ -432,8 +422,7 @@ def _cmd_brain_continue(
     try:
         result = continue_from_node(job, graph, node_id, prompt, task_type=task_type)
     except ValueError as exc:
-        print(f"Error: {exc}", file=sys.stderr)
-        sys.exit(1)
+        fail("node_not_found", str(exc), json_output=json_output)
 
     if json_output:
         print(_json.dumps(export_continue_result_json(result), sort_keys=True))
@@ -452,8 +441,7 @@ def _cmd_agent_loop(job_id_str: str) -> None:
     try:
         job = require_job_plan(job_id)
     except JobNotFoundError as exc:
-        print(f"Error: {exc}", file=sys.stderr)
-        sys.exit(1)
+        fail("job_not_found", str(exc), json_output=False)
 
     from packages.orchestration.agent_loop import derive_agent_loop_state, summarize_agent_loop_state
     from packages.orchestration.run_log import RunLogWriter

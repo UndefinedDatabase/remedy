@@ -212,6 +212,25 @@ class TestDecisionsRefusalsAreAllMigrated:
         )
 
 
+class TestBrainRefusalsAreAllMigrated:
+    """F283 round 7 — every one of `brain.py`'s 13 mechanical print-then-exit pairs is
+    `Error: `-prefixed with a single print before its exit, so the migration rule
+    excludes none of them: no flagged and no unflagged site is left."""
+
+    def test_no_flagged_print_then_exit_pair_survives(self):
+        flagged, _ = _refusal_sites("brain.py")
+        assert flagged == [], (
+            "these brain.py refusals have `json_output` in scope and still print "
+            f"prose: lines {flagged}"
+        )
+
+    def test_no_unflagged_print_then_exit_pair_survives(self):
+        _, unflagged = _refusal_sites("brain.py")
+        assert unflagged == [], (
+            f"expected no sites left whose handler has no json flag, found {unflagged}"
+        )
+
+
 def _invoke(fn, **kwargs) -> tuple[int | None, str, str]:
     out, err = io.StringIO(), io.StringIO()
     code: int | None = None
