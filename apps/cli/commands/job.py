@@ -32,17 +32,12 @@ if TYPE_CHECKING:
 _SAFE_TASK_TYPE_RE = re.compile(r'^[A-Za-z0-9_-]+$')
 
 
-def _plan_rejected_error(job_id_str: str) -> str:
-    """R-0915: the refusal for a rejected plan names what a user does next."""
-    return "Error: " + _plan_rejected_message(job_id_str)
-
-
 def _plan_rejected_message(job_id_str: str) -> str:
-    """The same sentence without the `Error: ` prefix, for the ``fail()`` sites.
+    """The rejected-plan sentence, with no ``Error: `` prefix.
 
-    ``fail()`` writes the prefix itself, so a migrated site must pass the message
-    without it; the unmigrated sites still call ``_plan_rejected_error``.  The pair
-    collapses into one function when F283 T001 reaches the rest of this module.
+    This is the one form: every call site is now a ``fail()`` site, and
+    ``fail()`` writes the prefix itself, so the message it is given never
+    carries one.
     """
     from packages.orchestration.job_plan import REJECTED_PLAN_NEXT_STEP
 
@@ -852,29 +847,28 @@ def _cmd_plan_job_local(job_id_str: str) -> None:
         )
 
 
-def _cmd_run_next_task_local(job_id_str: str) -> None:
-    job_id = resolve_job_id_or_fail(job_id_str, json_output=False)
+def _cmd_run_next_task_local(job_id_str: str, *, json_output: bool = False) -> None:
+    job_id = resolve_job_id_or_fail(job_id_str, json_output=json_output)
     try:
         job = require_job_plan(job_id)
     except JobNotFoundError as exc:
-        print(f"Error: {exc}", file=sys.stderr)
-        sys.exit(1)
+        fail("job_not_found", str(exc), json_output=json_output)
 
     from packages.orchestration.job_plan import task_plan_blocks_execution
     block_reason = task_plan_blocks_execution(job)
     if block_reason == "pending":
-        print(
-            f"Error: plan awaiting approval. "
-            f"Run: remedy decision resolve {job_id_str[:8]} plan:approval --reason approve",
-            file=sys.stderr,
+        fail(
+            "plan_awaiting_approval",
+            f'plan awaiting approval. '
+            f'Run: remedy decision resolve {job_id_str[:8]} plan:approval --reason approve',
+            json_output=json_output, exit_code=3,
         )
-        sys.exit(3)
     elif block_reason == "rejected":
-        print(
-            _plan_rejected_error(job_id_str),
-            file=sys.stderr,
+        fail(
+            "plan_rejected",
+            _plan_rejected_message(job_id_str),
+            json_output=json_output, exit_code=3,
         )
-        sys.exit(3)
 
     from pathlib import Path
 
@@ -915,8 +909,11 @@ def _cmd_run_next_task_local(job_id_str: str) -> None:
 
     if not _perm_allowed(job, Capability.workspace_write):
         _fail("permission_denied", capability="workspace_write")
-        print(f"Error: permission denied — workspace_write is not granted for job {job.job_id}", file=sys.stderr)
-        sys.exit(1)
+        fail(
+            "permission_denied",
+            f'permission denied — workspace_write is not granted for job {job.job_id}',
+            json_output=json_output,
+        )
 
     start = time.monotonic()
     try:
@@ -928,20 +925,17 @@ def _cmd_run_next_task_local(job_id_str: str) -> None:
         result: RunTaskResult = run_next_task(job, builder.build)
     except ImportError as exc:
         _fail("missing_dependency", error_category="ImportError")
-        print(f"Error: missing dependency — {exc}", file=sys.stderr)
-        sys.exit(1)
+        fail("missing_dependency", f'missing dependency — {exc}', json_output=json_output)
     except ValidationError as exc:
         _fail("invalid_builder_output", error_category="ValidationError")
-        print(f"Error: builder returned invalid output — {exc}", file=sys.stderr)
-        sys.exit(1)
+        fail("invalid_builder_output", f'builder returned invalid output — {exc}',
+             json_output=json_output)
     except ValueError as exc:
         _fail("configuration_error", error_category="ValueError")
-        print(f"Error: configuration — {exc}", file=sys.stderr)
-        sys.exit(1)
+        fail("configuration_error", f'configuration — {exc}', json_output=json_output)
     except Exception as exc:
         _fail("builder_error", error_category=type(exc).__name__)
-        print(f"Error: builder execution failed — {exc}", file=sys.stderr)
-        sys.exit(1)
+        fail("builder_error", f'builder execution failed — {exc}', json_output=json_output)
     elapsed_ms = (time.monotonic() - start) * 1000
 
     if not result.changed:
@@ -1170,7 +1164,7 @@ def _cmd_job_run_cycles(
                 "the cycle loop, which the F075 milestone gate enables.",
                 file=sys.stderr,
             )
-        _cmd_run_next_task_local(job_id_str)
+        _cmd_run_next_task_local(job_id_str, json_output=json_output)
         return
 
     job_id = resolve_job_id_or_fail(job_id_str, json_output=json_output)

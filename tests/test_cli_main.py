@@ -188,6 +188,39 @@ class TestWorkspaceWriteDenialPreBuilder:
         reloaded = load_job_plan(job.job_id)
         assert len(reloaded.artifacts) == 0
 
+    def test_denied_answers_in_the_envelope_under_json(self, tmp_path, monkeypatch, capsys):
+        import json
+
+        job = self._setup_denied_job(tmp_path, monkeypatch)
+        from apps.cli.commands.job import _cmd_run_next_task_local
+
+        with pytest.raises(SystemExit) as exc_info:
+            _cmd_run_next_task_local(str(job.job_id), json_output=True)
+        assert exc_info.value.code == 1
+        out, err = capsys.readouterr()
+        assert err == ""
+        body = json.loads(out)
+        assert body["ok"] is False
+        assert body["error"] == "permission_denied"
+
+    def test_the_run_cycles_caller_threads_json_output(self, tmp_path, monkeypatch, capsys):
+        """The single-pass call site of `_cmd_job_run_cycles` threads its own flag."""
+        import json
+
+        job = self._setup_denied_job(tmp_path, monkeypatch)
+        from apps.cli.commands.job import _cmd_job_run_cycles
+
+        with pytest.raises(SystemExit) as exc_info:
+            _cmd_job_run_cycles(str(job.job_id), json_output=True, yes=True)
+        assert exc_info.value.code == 1
+        out, err = capsys.readouterr()
+        assert err == ""
+        # The cost-preview note (estimate unavailable, proceeding on --yes)
+        # prints its own line first; the envelope is the last line of stdout.
+        body = json.loads(out.strip().splitlines()[-1])
+        assert body["ok"] is False
+        assert body["error"] == "permission_denied"
+
 
 # ---------------------------------------------------------------------------
 # no-pending-tasks behavior with workspace_write denied (Step 10 fix)

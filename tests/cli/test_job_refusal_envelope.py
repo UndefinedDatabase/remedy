@@ -173,15 +173,16 @@ class TestTheFlaggedRefusalsAreAllMigrated:
         """The rest of T001. When the flag is threaded this number falls; it never rises.
 
         20 at the slice-A round; 8 once slice B threaded `_cmd_show_job`,
-        `_cmd_create_job`, `_cmd_plan_job_local` and `_refuse_budget_set`. The eight left
-        are all in `_cmd_run_next_task_local`, which ten tests monkeypatch with a
-        single-positional lambda — threading it moves those tests too, so it is its own
-        round.
+        `_cmd_create_job`, `_cmd_plan_job_local` and `_refuse_budget_set`; 0 once round 6
+        threaded `_cmd_run_next_task_local` and moved its eight mechanical pairs onto
+        `fail()`, updating the ten tests that monkeypatched it with a single-positional
+        lambda in the same commit. The verification-failure loop at the end of that
+        function prints more than one line before its exit, so it was never mechanical
+        and is not counted here.
         """
         _, unflagged = _refusal_sites()
-        assert len(unflagged) == 8, (
-            f"expected the 8 sites whose handler has no json flag, found {len(unflagged)} "
-            f"at lines {unflagged}"
+        assert unflagged == [], (
+            f"expected no sites left whose handler has no json flag, found {unflagged}"
         )
 
     def test_the_module_calls_the_shared_helper(self):
@@ -280,12 +281,11 @@ class TestWithoutJsonTheOperatorSeesTheSameBytes:
         body = json.loads(out)
         assert body["error"] == "invalid_job_id"
 
-    def test_the_rejected_plan_sentence_keeps_its_prefix_for_the_unmigrated_sites(self):
-        """`_plan_rejected_error` still writes `Error: ` for the sites still on print()."""
-        from apps.cli.commands.job import _plan_rejected_error, _plan_rejected_message
+    def test_the_rejected_plan_sentence_carries_no_error_prefix(self):
+        """`_plan_rejected_message` is the one form now; `fail()` writes the prefix."""
+        from apps.cli.commands.job import _plan_rejected_message
 
         job_id = "0123456789abcdef"
-        assert _plan_rejected_error(job_id) == "Error: " + _plan_rejected_message(job_id)
         assert not _plan_rejected_message(job_id).startswith("Error: ")
 
 
