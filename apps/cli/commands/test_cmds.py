@@ -7,7 +7,7 @@ import sys
 from collections.abc import Callable
 from typing import TYPE_CHECKING
 
-from packages.orchestration.data_paths import lookup_job_id
+from apps.cli.job_id_arg import resolve_job_id_or_fail
 
 if TYPE_CHECKING:
     import argparse
@@ -96,11 +96,7 @@ def _print_result_text(result: object, *, out=None) -> None:
 
 
 def _cmd_discover_commands(job_id_str: str, *, as_json: bool) -> None:
-    try:
-        job_id = lookup_job_id(job_id_str)
-    except ValueError:
-        print(f"Error: No job matches {job_id_str!r}. Try: remedy job list.", file=sys.stderr)
-        sys.exit(1)
+    job_id = resolve_job_id_or_fail(job_id_str, json_output=as_json)
     try:
         from packages.orchestration.pingpong_job import require_job_plan
         job = require_job_plan(job_id)
@@ -205,14 +201,7 @@ def _cmd_test_status(job_id_str: str, *, as_json: bool = False) -> None:
     from packages.orchestration.pingpong_job import JobNotFoundError, require_job_plan
     from packages.orchestration.run_contract import ensure_contract, export_usage_json, load_usage
 
-    try:
-        job_id = lookup_job_id(job_id_str)
-    except ValueError:
-        if as_json:
-            print(_json.dumps({"error": "invalid_job_id", "job_id": job_id_str}))
-        else:
-            print(f"Error: No job matches {job_id_str!r}. Try: remedy job list.", file=sys.stderr)
-        sys.exit(1)
+    job_id = resolve_job_id_or_fail(job_id_str, json_output=as_json, job_id=job_id_str)
 
     try:
         job = require_job_plan(job_id)
