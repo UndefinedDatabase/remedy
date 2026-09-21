@@ -138,3 +138,18 @@ class TestAWorkerRefusalIsShapedLikeTheCaller:
         body = json.loads(capsys.readouterr().out)
         assert body["error"] == "missing_argument"
         assert "--model" in body["message"] and "--all" in body["message"]
+
+    def test_unload_without_a_target_refuses_before_the_provider_probe(self, monkeypatch, capsys):
+        # R-1019 — the missing-argument refusal must fire even when `ollama` is not on
+        # PATH: pin `shutil.which` to `None` so a real, unpinned PATH read (finding
+        # R-1018) can never make this test pass or fail by accident.
+        import shutil as _shutil
+        monkeypatch.setattr(_shutil, "which", lambda name: None)
+        from apps.cli.commands.worker import _cmd_worker_unload
+
+        with pytest.raises(SystemExit) as exc:
+            _cmd_worker_unload(json_output=True)
+        assert exc.value.code == 1
+        body = json.loads(capsys.readouterr().out)
+        assert body["error"] == "missing_argument"
+        assert "--model" in body["message"] and "--all" in body["message"]

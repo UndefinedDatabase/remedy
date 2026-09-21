@@ -154,6 +154,10 @@ def _cmd_worker_unload(
         fail("unsupported_provider", f"unsupported provider for unload: {provider}",
              json_output=json_output)
 
+    if not model and not unload_all:
+        fail("missing_argument", "specify --model NAME or --all",
+             json_output=json_output)
+
     if not shutil.which("ollama"):
         msg = "ollama not found — no models to unload"
         if json_output:
@@ -182,9 +186,6 @@ def _cmd_worker_unload(
                     targets.append(parts[0])
         except (subprocess.TimeoutExpired, OSError):
             pass
-    else:
-        fail("missing_argument", "specify --model NAME or --all",
-             json_output=json_output)
 
     results: list[dict] = []
     for t in targets:
