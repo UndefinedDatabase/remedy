@@ -149,7 +149,7 @@ def _cmd_attach_project_job(project_id_str: str, job_id_str: str) -> None:
     try:
         job = require_job_plan(job_id)
     except JobNotFoundError:
-        fail("invalid_job_id", f"No job matches {job_id_str!r}. Try: remedy job list.", json_output=False)
+        fail("job_not_found", f"No job matches {job_id_str!r}. Try: remedy job list.", json_output=False)
     added = attach_job(project, job_id)
     save_project(project)
     if job.metadata.get("project_id") != project_id_str:
@@ -430,7 +430,7 @@ def _cmd_project_adopt(
     try:
         job = require_job_plan(resolved_id)
     except JobNotFoundError:
-        fail("invalid_job_id", f"No job matches {resolved_id[:8]!r}. Try: remedy job list.",
+        fail("job_not_found", f"No job matches {resolved_id[:8]!r}. Try: remedy job list.",
              json_output=False, exit_code=3)
 
     if job.project_id:

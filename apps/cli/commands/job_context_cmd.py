@@ -273,7 +273,7 @@ def _cmd_job_context(
         resolved = resolve_job_id_or_fail(job_id_str, json_output=json_output)
         job = require_job_plan(resolved)
     except JobNotFoundError:
-        fail("invalid_job_id", f"No job matches {job_id_str!r}. Try: remedy job list.",
+        fail("job_not_found", f"No job matches {job_id_str!r}. Try: remedy job list.",
              json_output=json_output)
 
     repo_str = _job_target_repo(job)
