@@ -12,29 +12,31 @@ is documented and asserted from the catalog
 
 ## Current Step
 
-ROUND 5, R-1021. It books round 4's PASS, R-1020's `Done:` and R-1022's
-registration, then moves the nineteen hand-caught `lookup_job_id` sites onto
-`apps/cli/job_id_arg.py::resolve_job_id_or_fail`, one module per commit, so a
-prefix two jobs share is refused as ambiguous at exit 2 everywhere instead of
-as "no job matches" at exit 1. `resolve_job_id_or_fail` gains a payload
-pass-through so `snapshot` and `test` keep the `job_id` key their JSON already
-carried. A guard pins `lookup_job_id` to the two callers that handle the
-ambiguous case themselves, and R-1022's two sentences are corrected.
+ROUND 6, the `job` group's last mechanical refusals and the `decision` group.
+It books round 5's PASS and R-1021's `Done:`, corrects R-1022's three further
+sentences, and tests the ambiguous branch's payload.
+
+`_cmd_run_next_task_local` takes `json_output`, its eight print-then-exit
+pairs move onto `fail()`, and the ten tests that monkeypatch it with a
+single-positional stand-in accept the keyword in the same commit. The
+`_plan_rejected_error` / `_plan_rejected_message` pair collapses to one.
+`decision.py`'s refusal pairs move onto `fail()` under DECISION F277 D8's
+one-token-per-condition rule; the derived-decision refusal, two unprefixed
+lines, stays and is counted.
 
 ## Next Steps
 
-1. `_cmd_run_next_task_local`, the last eight print-then-exit pairs in
-   `job.py`; ten tests monkeypatch it with a single-positional lambda and move
-   in the same commit.
-2. The four non-mechanical `job.py` sites: a loop of verification failures, a
-   bare exit after a cost confirmation, two hand-rolled JSON objects.
-3. The remaining groups largest first — `decision`, `brain`, `project`,
-   `patch`, `do_cmd`, `grouped`, `test_cmds`, then the tail; `runtime_cmd.py`
-   is its own round.
-4. T001's catalog half, then T002's taxonomy and sweep.
+1. The non-mechanical `job.py` sites: the verification-failure loop, a bare
+   exit after a cost confirmation, two hand-rolled JSON objects — and the
+   single-pass `job run --json` success line, which is prose.
+2. The remaining groups largest first — `brain`, `project`, `patch`,
+   `do_cmd`, `grouped`, `test_cmds`, then the tail; `runtime_cmd.py` is its
+   own round.
+3. T001's catalog half, then T002's taxonomy and sweep.
 
 ## Risks
 
-Twenty-five findings are open; R-1021 and R-1022 are this feature's own. The
-refusal pairs outside `job.py` are several sessions of work, so the soft limit
-of 7 sessions and 25 rounds is the number to watch.
+Twenty-four findings are open; R-1022 is this feature's own, is repaired this
+round, and has its `Done:` booked in the next. The refusal pairs outside `job.py` and `decision.py` are several
+sessions of work, so the soft limit of 7 sessions and 25 rounds is the number
+to watch.
