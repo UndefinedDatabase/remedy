@@ -1,45 +1,49 @@
-# Plan — F277 Machine contracts: event vocabulary, JSON envelope, exit codes
+# Plan — F283 Machine contracts, part two: the refusal sweep, the JSON gap and the exit-code taxonomy
 
-Branch: feature/f277-machine-contracts, cut from `main` at `f2494c02`, the
-merge commit of pull request 262 (F276's closure). F277's STATUS line is
-already `[x]` at `3d59a870`; pull request 263 is open and carries the whole
-feature.
+Branch: feature/f283-machine-contracts-part-two, cut from `main` at
+`d0d40e89`, the merge commit of pull request 263 (F277's closure).
 
 ## Goal
 
-Three machine-facing contracts become declarations a test can read: the event
-vocabulary written into the run ledger, the JSON envelope every `--json`
-command emits, and the meaning of each exit code
-(`docs/roadmap/features/T2_F277.md`). F277 closed on the first two complete
-and the third half applied; DECISION F277 D10 moved the rest to F283.
+F277 left three machine-facing contracts declared and one of them half
+applied. This feature finishes it: every CLI refusal answers a machine in the
+envelope, the read-only-without-`supports_json` set becomes empty, and every
+exit code in use is documented and asserted from the catalog
+(`docs/roadmap/features/T2_F283.md`).
 
 ## Current Step
 
-THE CI REPAIR ROUND, ordered by operator amendment amend0820-gate-autonomy:
-CI run 35552041486 at `3d59a870` ended RED on both matrix legs, so repairing
-this branch is the session's work order and commits on the open pull
-request's branch are explicitly allowed for it. One node failed and no other:
-`tests/cli/test_worker.py::TestAWorkerRefusalIsShapedLikeTheCaller::test_unload_without_a_target_names_both_flags`,
-which reaches F277's `missing_argument` refusal only on a machine that has
-`ollama` on PATH. This round books round 18's PASS, registers R-1018 for the
-test and R-1019 for the product ordering it uncovered, and pins the probe in
-the idiom the same module already uses. No production line changes.
+ROUND 1, THE CLAIM. It books F277 round 19's PASS and resolves R-1018, empties
+`.agent/candidates.md`, re-heads the live review record, flips F283 to `[~]`,
+and lands T001's first slice.
+
+T001 SLICE A, measured on `apps/cli/commands/job.py` at `d0d40e89` by reading
+the tree rather than the prose: 44 `sys.exit` sites, of which 40 are a single
+stderr `print()` immediately before the exit. Twenty of those 40 sit in a
+handler that ALREADY carries `json_output` — those are slice A and this round
+migrates them onto `fail()`, threading nothing and changing no caller. The
+other twenty have no flag in scope; the remaining 4 carry a loop or a
+hand-rolled JSON branch. Both groups are named below.
 
 ## Next Steps
 
-1. CI re-runs on the push; the gate reads it before anything else.
-2. The Open PR Gate merges pull request 263 once the run is green — that
-   merge is the next session's first action and it precedes any new branch.
-3. Rule A5 then proposes F283, which stands directly behind F277 in the
-   ledger, and which now owns R-1019 as well as R-1014.
-4. F283's FIRST reviewed round resolves and empties `.agent/candidates.md`,
-   which still holds three entries; a non-empty candidates file is a block
-   condition at feature-claim time.
+1. SLICE B — thread `json_output` into `_cmd_show_job`, `_cmd_create_job`,
+   `_cmd_plan_job_local`, `_cmd_run_next_task_local` and `_refuse_budget_set`,
+   then migrate their 20 sites. `job.show` and `job.run` declare
+   `supports_json: True` in the catalog and answer failures in prose today,
+   which is the gap T001 exists to close.
+2. THE FOUR NON-MECHANICAL SITES of `job.py` — lines 1093 (a loop of printed
+   verification failures), 1237 (a bare exit after a cost confirmation), 1629
+   and 1649 (hand-rolled JSON objects that are not the envelope).
+3. The remaining groups in the brief's order: `decision` (28 pairs), `brain`
+   (24), `project` (22), `do_cmd` (13), `patch` (15), `grouped` (8),
+   `test_cmds` (5), then the tail. `runtime_cmd.py` is its own round.
+4. The catalog half of T001, then T002's taxonomy and sweep, which is the
+   acceptance evidence for everything above it.
 
 ## Risks
 
-Twenty-four findings are open after this round's two registrations. R-1018 is
-fixed by the same round that registers it, so its `Done:` line is owed to the
-first commit of the next round under amend0827 rule 1; it is not lost, and the
-handoff names it. R-1019 is deliberately not fixed here: moving the argument
-check changes user-visible CLI behaviour and belongs to F283's refusal sweep.
+Twenty-three findings are open after this round resolves R-1018, every one Low
+or Medium. R-1019 is this feature's own and is fixed by slice B, not by slice A.
+The 167 refusal pairs measured across the un-migrated modules are more than one
+session's work, so the soft limit of 7 sessions and 25 rounds binds from here.
