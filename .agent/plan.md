@@ -12,22 +12,22 @@ is documented and asserted from the catalog
 
 ## Current Step
 
-ROUND 12. It books round 11's PASS and records DECISION F283 D7. Then, one
-commit each: the `patch`, `snapshot`, `real_test_execution` and `self`
-refusals move onto `fail()`; `config`, `project current`, `mission run` and
-the cost-preview confirmation follow under D7; and the three `stats`
-refusals round 11 left unpinned gain their tests.
+ROUND 13. It books round 12's PASS and records DECISION F283 D8. Then, one
+commit each: `runtime_cmd.py`'s `_fail` is replaced by refusals through
+`fail()` keyed on the error class; and its four result-shaped failure exits
+answer one envelope under `--json`.
 
 ## Next Steps
 
-1. `runtime_cmd.py`, its own round.
-2. T001's catalog half: the read-only commands without `supports_json`, and
+1. T001's catalog half: the read-only commands without `supports_json`, and
    the catalog test asserting that set is empty.
-3. T002: success envelopes, the exit-code taxonomy under `docs/guides/`, and
+2. T002: success envelopes, the exit-code taxonomy under `docs/guides/`, and
    `tests/cli/test_json_contract.py`'s sweep.
+3. The closure sequence.
 
 ## Risks
 
-Twenty-two findings are open and none is this feature's own. Twelve rounds
+Twenty-two findings are open and none is this feature's own. Thirteen rounds
 are spent of the soft limit of 25, in the third of 7 sessions; the
-success-envelope half of T002 is the largest piece left.
+success-envelope half of T002 is the largest piece left, and the runtime
+suites flake under xdist, so they run serially.
