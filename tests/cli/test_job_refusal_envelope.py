@@ -187,7 +187,18 @@ class TestTheFlaggedRefusalsAreAllMigrated:
         )
 
     def test_the_module_calls_the_shared_helper(self):
-        assert "from apps.cli.json_envelope import fail" in _JOB_PY.read_text()
+        """`fail` is imported from `apps.cli.json_envelope` — alone or, as of F283 round
+        8's `emit_ok` (DECISION F283 D3 part (a)), alongside another name on the same
+        line. Read with `ast` rather than a literal substring, so a second import on
+        that line does not make this check stale (finding, this round's own sweep)."""
+        tree = ast.parse(_JOB_PY.read_text())
+        imported = {
+            alias.name
+            for node in ast.walk(tree)
+            if isinstance(node, ast.ImportFrom) and node.module == "apps.cli.json_envelope"
+            for alias in node.names
+        }
+        assert "fail" in imported
 
 
 class TestDecisionsRefusalsAreAllMigrated:
@@ -251,6 +262,49 @@ class TestPatchRefusalsAreAllMigrated:
         assert len(unflagged) == 1, (
             f"expected exactly the one show-intent multi-print site left unmigrated, "
             f"found {len(unflagged)} at lines {unflagged}"
+        )
+
+
+class TestDoRefusalsAreAllMigrated:
+    """F283 round 8 — 14 of `do_cmd.py`'s 18 mechanical print-then-exit pairs (11 whose
+    handler carried `json_output`, 3 in `_validate_role_override`, which carries none)
+    move onto `fail()`. Four flagged sites stay, all deviations from the block recorded
+    in the round 8 handback, because migrating any one of them breaks a passing test
+    outside this round's tracked file set and this round may name only ONE `do` test
+    file to repair inside — chosen as `tests/cli/test_do_flags.py`, for the
+    budget-value site, R-1019/R-1025's sibling migration in the SAME round already
+    spending that one repair:
+
+    - `_cmd_do_order`'s `ctx.failed` site: `json_output` already prints the WHOLE result
+      document to stdout unconditionally, earlier in the same function, so wrapping its
+      trailing print+exit in `fail()` would print a SECOND JSON object to stdout under
+      `--json` — the one-envelope invariant `fail()` exists to enforce, broken instead
+      of upheld. The AST rule cannot see that prior print, and no choice of the one
+      repairable test file fixes this one — it is a genuine double-envelope bug, not an
+      old-shape assertion.
+    - `_cmd_do`'s no-such-contract-template site and `_cmd_run_show`'s no-such-run site
+      and `_cmd_run_list`'s invalid-sort-field site: each migration repairs the OLD
+      broken shape (empty stdout under `--json`) exactly as intended, but the tests that
+      pin those three old shapes live in `tests/cli/test_do_sequence_cli.py` and
+      `tests/cli/test_cli_ux.py`, neither the one named `do` file.
+
+    `_refuse_before_any_step` prints one line per refusal sentence before its one
+    `sys.exit(2)` — more than one print is possible — so it is not mechanical by the
+    rule and stays too; `_refusal_sites` does not count it either, since its immediate
+    predecessor statement is the `for` loop, not a `print` call."""
+
+    def test_exactly_four_flagged_sites_remain(self):
+        flagged, _ = _refusal_sites("do_cmd.py")
+        assert len(flagged) == 4, (
+            "expected exactly the ctx.failed, no-such-contract-template, no-such-run "
+            f"and invalid-sort-field sites left unmigrated, found {len(flagged)} at "
+            f"lines {flagged}"
+        )
+
+    def test_no_unflagged_print_then_exit_pair_survives(self):
+        _, unflagged = _refusal_sites("do_cmd.py")
+        assert unflagged == [], (
+            f"expected no sites left whose handler has no json flag, found {unflagged}"
         )
 
 

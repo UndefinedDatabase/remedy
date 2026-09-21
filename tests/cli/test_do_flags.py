@@ -145,14 +145,21 @@ def test_max_total_tokens_is_the_jobs_recorded_budget(repo, capsys):
 
 
 def test_an_invalid_budget_value_exits_2_and_leaves_the_repository_unregistered(repo, capsys):
+    """F283 round 8 — `_cmd_do_order`'s budget-resolution refusal moved onto `fail()`
+    under DECISION F277 D8: under `--json` it now answers a machine in the envelope
+    (`ok` false, `error` `invalid_budget`) instead of printing on stderr with an empty
+    stdout, the shape this whole feature exists to end."""
     from packages.orchestration.pingpong_job import list_job_plans
     from packages.orchestration.project_registry import resolve_project
 
     code, out, err = _exit_code_and_output(capsys, "--max-total-tokens", "many")
 
     assert code == 2
-    assert out == ""
-    assert "Nothing was run." in err
+    assert err == ""
+    body = json.loads(out)
+    assert body["ok"] is False
+    assert body["error"] == "invalid_budget"
+    assert "Nothing was run." in body["message"]
     assert resolve_project(repo) is None
     assert list_job_plans() == []
 

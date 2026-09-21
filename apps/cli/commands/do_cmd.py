@@ -21,6 +21,7 @@ from apps.cli.commands.run_invocation import (
 from apps.cli.commands.run_invocation import (
     invocation_from_args as _invocation_from_args,
 )
+from apps.cli.json_envelope import fail
 
 if TYPE_CHECKING:
     import argparse
@@ -49,25 +50,25 @@ def _validate_role_override(role: str, field: str, value: object) -> None:
     if value is None:
         return
     if field == "provider" and value not in _VALID_ROLE_PROVIDERS:
-        print(
-            f"Error: invalid --{role}-provider: {value!r}. "
+        fail(
+            "invalid_argument",
+            f"invalid --{role}-provider: {value!r}. "
             f"Allowed: {', '.join(sorted(_VALID_ROLE_PROVIDERS))}.",
-            file=sys.stderr,
+            json_output=False, exit_code=2,
         )
-        sys.exit(2)
     if field == "effort" and value not in _VALID_ROLE_EFFORTS:
-        print(
-            f"Error: invalid --{role}-effort: {value!r}. "
+        fail(
+            "invalid_argument",
+            f"invalid --{role}-effort: {value!r}. "
             f"Allowed: {', '.join(sorted(_VALID_ROLE_EFFORTS))}.",
-            file=sys.stderr,
+            json_output=False, exit_code=2,
         )
-        sys.exit(2)
     if field == "model" and not str(value).strip():
-        print(
-            f"Error: invalid --{role}-model: must not be empty.",
-            file=sys.stderr,
+        fail(
+            "invalid_argument",
+            f"invalid --{role}-model: must not be empty.",
+            json_output=False, exit_code=2,
         )
-        sys.exit(2)
 
 
 def _resolve_cli_role_configs(
@@ -265,12 +266,12 @@ def _cmd_do_order(
     job, and `push`, the mission's one push or null (D4 (7)).
     """
     if not order or not order.strip():
-        print("Error: order must not be empty.", file=sys.stderr)
-        sys.exit(2)
+        fail("invalid_argument", "order must not be empty.",
+             json_output=json_output, exit_code=2)
     if force_job and force_mission:
-        print("Error: --force-job and --force-mission cannot be given together.",
-              file=sys.stderr)
-        sys.exit(2)
+        fail("invalid_argument",
+             "--force-job and --force-mission cannot be given together.",
+             json_output=json_output, exit_code=2)
     _validate_role_override("builder", "provider", builder_provider)
     _validate_role_override("reviewer", "provider", reviewer_provider)
     _validate_role_override("builder", "model", builder_model)
@@ -295,8 +296,8 @@ def _cmd_do_order(
                 project_root=repo,
             )
         except (BudgetConfigError, ValueError) as exc:
-            print(f"Error: {exc} Nothing was run.", file=sys.stderr)
-            sys.exit(2)
+            fail("invalid_budget", f"{exc} Nothing was run.",
+                 json_output=json_output, exit_code=2)
         budgets_dict = budgets.model_dump(mode="json") if budgets is not None else None
 
     from packages.orchestration.do_sequence import (
@@ -379,6 +380,11 @@ def _cmd_do_order(
         for line in ctx.next_lines:
             print(f"Next: {line}")
     if ctx.failed:
+        # NOT migrated (deviation, see handback): `json_output` already printed the
+        # WHOLE result document above, unconditionally — wrapping this line in
+        # `fail()` would print a SECOND JSON object to stdout under `--json`,
+        # breaking the one-envelope invariant `fail()` exists to enforce rather
+        # than upholding it. The AST-only rule cannot see that prior print.
         print(f"Error: {ctx.results[-1].name} failed: {ctx.results[-1].detail}",
               file=sys.stderr)
         sys.exit(1)
@@ -432,10 +438,10 @@ def _cmd_do(
         from packages.orchestration.intake import PLANNER_PROVIDERS
 
         if planner_provider not in PLANNER_PROVIDERS:
-            print(f"Error: --planner-provider {planner_provider!r} is not a "
-                  f"planner; the planners are {', '.join(PLANNER_PROVIDERS)}. "
-                  "Nothing was run.", file=sys.stderr)
-            sys.exit(2)
+            fail("unsupported_provider",
+                 f"--planner-provider {planner_provider!r} is not a "
+                 f"planner; the planners are {', '.join(PLANNER_PROVIDERS)}. "
+                 "Nothing was run.", json_output=json_output, exit_code=2)
 
     # DECISION F269 D1 (4): a name that is not a template exits 2 before any step.
     if contract is not None:
@@ -665,12 +671,12 @@ def _cmd_job_run(
         repair_effort=repair_effort,
     )
     if claude_cli_write_mode is not None and claude_cli_write_mode not in _VALID_CLI_WRITE_MODES:
-        print(
-            f"Error: invalid --claude-cli-write-mode: {claude_cli_write_mode!r}. "
+        fail(
+            "invalid_argument",
+            f"invalid --claude-cli-write-mode: {claude_cli_write_mode!r}. "
             f"Allowed: {', '.join(sorted(_VALID_CLI_WRITE_MODES))}.",
-            file=sys.stderr,
+            json_output=json_output, exit_code=2,
         )
-        sys.exit(2)
 
     repair_rounds_val: int | None = None
     repair_source: str | None = None
@@ -679,8 +685,7 @@ def _cmd_job_run(
         try:
             repair_rounds_val, repair_source = resolve_repair_rounds(repair_rounds)
         except ValueError as exc:
-            print(f"Error: {exc}", file=sys.stderr)
-            sys.exit(2)
+            fail("invalid_argument", str(exc), json_output=json_output, exit_code=2)
 
     # F018: only resolve budgets from CLI/config when the caller explicitly passed budget
     # flags.  When no flags are given, the persisted JobPlan budgets are authoritative —
@@ -695,12 +700,12 @@ def _cmd_job_run(
         from packages.orchestration.pingpong_job import JOB_STOPPED, load_job_plan
         _existing = load_job_plan(job_id)
         if _existing is not None and _existing.state == JOB_STOPPED:
-            print(
-                "Error: job is stopped — budget limits cannot be changed via CLI flags. "
+            fail(
+                "job_stopped",
+                "job is stopped — budget limits cannot be changed via CLI flags. "
                 "Use the Decision workflow (extend/abandon) to resume a stopped job.",
-                file=sys.stderr,
+                json_output=json_output, exit_code=2,
             )
-            sys.exit(2)
         from packages.orchestration.budget_resolution import BudgetConfigError, resolve_job_budgets
         try:
             budgets = resolve_job_budgets(
@@ -711,8 +716,7 @@ def _cmd_job_run(
                 cli_deadline=deadline,
             )
         except (BudgetConfigError, ValueError) as exc:
-            print(f"Error: {exc}", file=sys.stderr)
-            sys.exit(2)
+            fail("invalid_budget", str(exc), json_output=json_output, exit_code=2)
         budgets_dict = budgets.model_dump(mode="json") if budgets is not None else None
 
     from packages.orchestration.pingpong_job import (
@@ -727,8 +731,7 @@ def _cmd_job_run(
     _recorded = load_job_plan(job_id)
     _refusal = job_resume_refusal(_recorded) if _recorded is not None else ""
     if _refusal:
-        print(f"Error: {_refusal}", file=sys.stderr)
-        sys.exit(1)
+        fail("job_not_resumable", _refusal, json_output=json_output)
 
     job = run_job(
         job_id,
@@ -802,19 +805,18 @@ def _cmd_job_evidence(
             declared_base=read_declared_base(),
         )
     except UnsafeTaskIdError as exc:
-        print(
-            f"Error: job {job_id} cannot export its evidence: its task id "
+        fail(
+            "unsafe_task_id",
+            f"job {job_id} cannot export its evidence: its task id "
             f"{exc.task_id!r} is not T<digits> or sixteen lowercase hex characters.",
-            file=sys.stderr,
+            json_output=json_output,
         )
-        sys.exit(1)
 
     if not result.get("error"):
         _index_job_evidence(job_id, result.get("out_dir", out), "job.evidence")
 
     if result.get("error"):
-        print(f"Error: {result['error']}", file=sys.stderr)
-        sys.exit(1)
+        fail("job_not_found", result["error"], json_output=json_output)
 
     if json_output:
         print(json.dumps(result, indent=2))
