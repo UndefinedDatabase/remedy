@@ -5,45 +5,45 @@ Branch: feature/f283-machine-contracts-part-two, cut from `main` at
 
 ## Goal
 
-F277 left three machine-facing contracts declared and one of them half
-applied. This feature finishes it: every CLI refusal answers a machine in the
-envelope, the read-only-without-`supports_json` set becomes empty, and every
-exit code in use is documented and asserted from the catalog
+Every CLI refusal answers a machine in the envelope, the
+read-only-without-`supports_json` set becomes empty, and every exit code in use
+is documented and asserted from the catalog
 (`docs/roadmap/features/T2_F283.md`).
 
 ## Current Step
 
-ROUND 1, THE CLAIM. It books F277 round 19's PASS and resolves R-1018, empties
-`.agent/candidates.md`, re-heads the live review record, flips F283 to `[~]`,
-and lands T001's first slice.
+ROUND 2, T001 SLICE B PART ONE. It books round 1's PASS, registers R-1020, and
+migrates the eleven refusal sites of `apps/cli/commands/job.py` outside
+`job run`. `_cmd_show_job` and `_refuse_budget_set` serve commands declaring
+`supports_json: True`, so the flag is THREADED into both; `_cmd_create_job` has
+no catalog entry and no dispatch lambda and `job.plan` declares
+`supports_json: False`, so those ten sites migrate with `json_output=False`.
 
-T001 SLICE A, measured on `apps/cli/commands/job.py` at `d0d40e89` by reading
-the tree rather than the prose: 44 `sys.exit` sites, of which 40 are a single
-stderr `print()` immediately before the exit. Twenty of those 40 sit in a
-handler that ALREADY carries `json_output` — those are slice A and this round
-migrates them onto `fail()`, threading nothing and changing no caller. The
-other twenty have no flag in scope; the remaining 4 carry a loop or a
-hand-rolled JSON branch. Both groups are named below.
+R-1020 IS WHAT THIS ROUND LEARNED. Threading is not enough: for 52 of the
+catalog's 111 `supports_json` commands the refusal that fires is in a shared
+EXITING helper under `packages/` — `resolve_job_id`, `_exit_ambiguous` or
+`require_job_plan` — which prints prose and exits before the handler's own
+failure path. `job show --json` on a bad id still writes prose with the flag
+threaded. A `strict` xfail pins it, so the repair has a red-to-green target.
 
 ## Next Steps
 
-1. SLICE B — thread `json_output` into `_cmd_show_job`, `_cmd_create_job`,
-   `_cmd_plan_job_local`, `_cmd_run_next_task_local` and `_refuse_budget_set`,
-   then migrate their 20 sites. `job.show` and `job.run` declare
-   `supports_json: True` in the catalog and answer failures in prose today,
-   which is the gap T001 exists to close.
-2. THE FOUR NON-MECHANICAL SITES of `job.py` — lines 1093 (a loop of printed
-   verification failures), 1237 (a bare exit after a cost confirmation), 1629
-   and 1649 (hand-rolled JSON objects that are not the envelope).
-3. The remaining groups in the brief's order: `decision` (28 pairs), `brain`
-   (24), `project` (22), `do_cmd` (13), `patch` (15), `grouped` (8),
-   `test_cmds` (5), then the tail. `runtime_cmd.py` is its own round.
-4. The catalog half of T001, then T002's taxonomy and sweep, which is the
-   acceptance evidence for everything above it.
+1. ROUND 3 — R-1020's repair, which the reviewer rules comes BEFORE any further
+   group migration: the three helpers gain a non-exiting form or take the
+   caller's `json_output`, the ambiguous-prefix message gets its shape
+   decision, and the xfail flips green with its mark deleted in that commit.
+2. `_cmd_run_next_task_local`, the last eight sites in `job.py`; ten tests
+   monkeypatch it with a single-positional lambda and move in the same commit.
+3. The four non-mechanical `job.py` sites: a loop of verification failures, a
+   bare exit after a cost confirmation, two hand-rolled JSON objects.
+4. The remaining groups largest first — `decision` 28, `brain` 24, `project`
+   22, `patch` 15, `do_cmd` 13, `grouped` 8, `test_cmds` 5, then the tail;
+   `runtime_cmd.py` is its own round.
+5. T001's catalog half, then T002's taxonomy and sweep.
 
 ## Risks
 
-Twenty-three findings are open after this round resolves R-1018, every one Low
-or Medium. R-1019 is this feature's own and is fixed by slice B, not by slice A.
-The 167 refusal pairs measured across the un-migrated modules are more than one
-session's work, so the soft limit of 7 sessions and 25 rounds binds from here.
+Twenty-four findings are open after this round registers R-1020, and R-1020 is
+the one that changes the plan: it puts the Acceptance criterion out of reach of
+a pure `apps/cli` sweep, and it is this feature's own. The 167 refusal pairs
+across the un-migrated modules were already more than one session's work.
