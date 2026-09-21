@@ -1148,6 +1148,7 @@ def _cmd_job_run_cycles(
         confirm_above_usd=resolve_confirm_above_usd(),
         yes=(yes or unattended),
         command_name="job.resume",
+        json_output=json_output,
     ):
         print("Cancelled. Nothing was run.")
         return

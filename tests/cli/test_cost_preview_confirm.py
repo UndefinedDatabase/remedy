@@ -6,6 +6,8 @@ Covers `render_estimate_line` / `confirm_cost_preview` in
 """
 from __future__ import annotations
 
+import json
+
 import pytest
 
 from apps.cli import cost_preview_confirm as cpc
@@ -107,3 +109,34 @@ class TestUnavailableIsTreatedAsExpensive:
         result = cpc.confirm_cost_preview(
             UNAVAILABLE, confirm_above_usd=999999.0, yes=True, command_name="do")
         assert result is True
+
+
+class TestJsonOutputKeepsStdoutTheOneParseableObject:
+    """DECISION F283 D2 — under `json_output=True` every human line moves to
+    stderr, and the non-terminal refusal answers through `fail()` instead of
+    printing its own `Error: ` line."""
+
+    def test_yes_under_json_writes_nothing_to_stdout_and_the_line_to_stderr(
+            self, capsys):
+        result = cpc.confirm_cost_preview(
+            AVAILABLE, confirm_above_usd=0.5, yes=True, command_name="do",
+            json_output=True)
+        assert result is True
+        captured = capsys.readouterr()
+        assert captured.out == ""
+        assert "--yes" in captured.err
+
+    def test_non_tty_under_json_exits_usage_with_empty_stderr_and_an_envelope(
+            self, monkeypatch, capsys):
+        monkeypatch.setattr(cpc, "_stdin_is_a_tty", lambda: False)
+        with pytest.raises(SystemExit) as exc:
+            cpc.confirm_cost_preview(
+                AVAILABLE, confirm_above_usd=0.5, yes=False, command_name="do",
+                json_output=True)
+        assert exc.value.code == cpc.EXIT_USAGE
+        captured = capsys.readouterr()
+        assert captured.err == ""
+        body = json.loads(captured.out)
+        assert body["ok"] is False
+        assert body["error"] == "confirmation_required"
+        assert "do" in body["message"]

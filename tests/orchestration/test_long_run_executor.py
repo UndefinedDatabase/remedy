@@ -920,7 +920,7 @@ class TestJobRunCommand:
 
         seen: dict = {}
 
-        def fake_confirm(estimate, *, confirm_above_usd, yes, command_name):
+        def fake_confirm(estimate, *, confirm_above_usd, yes, command_name, json_output=False):
             seen["estimate"] = estimate
             seen["yes"] = yes
             seen["command_name"] = command_name

@@ -214,10 +214,11 @@ class TestWorkspaceWriteDenialPreBuilder:
             _cmd_job_run_cycles(str(job.job_id), json_output=True, yes=True)
         assert exc_info.value.code == 1
         out, err = capsys.readouterr()
-        assert err == ""
-        # The cost-preview note (estimate unavailable, proceeding on --yes)
-        # prints its own line first; the envelope is the last line of stdout.
-        body = json.loads(out.strip().splitlines()[-1])
+        # DECISION F283 D2: under --json the cost-preview note (estimate
+        # unavailable, proceeding on --yes) moves to stderr, so stdout carries
+        # only the envelope and can be parsed as ONE object, whole.
+        assert "proceeding without prompt" in err
+        body = json.loads(out)
         assert body["ok"] is False
         assert body["error"] == "permission_denied"
 
