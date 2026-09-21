@@ -114,3 +114,48 @@ class TestDecisionRefusalsAnswerInTheEnvelope:
         body = json.loads(out)
         assert body["ok"] is False
         assert body["error"] == "invalid_list_option"
+
+
+class TestTheTokenVocabularyJoinsTheProduct:
+    """R-1023, DECISION F277 D8 part (a) — one token per condition, repo-wide,
+    existing spelling wins. Round 6 minted `job_has_no_project` and
+    `invalid_reason`, forking spellings the product already had elsewhere in
+    `apps/cli/`: `no_project` (`job.py`, `mission_cmd.py`) and
+    `invalid_argument` (`job.py`, `mission_cmd.py`). This pins the SET of
+    tokens `decision.py` passes to `fail()`, read off the AST, so a rename
+    reds."""
+
+    _PINNED_TOKENS = frozenset({
+        "answer_parse_error", "clarifications_already_resolved",
+        "decision_already_answered", "decision_not_found",
+        "follow_up_mission_error", "invalid_argument", "invalid_list_option",
+        "job_not_found", "missing_argument", "mission_already_linked",
+        "mission_error", "no_pending_plan_approval", "no_project",
+        "option_not_applicable", "proposed_task_invalid_state",
+        "proposed_task_not_found", "proposed_task_operation_failed",
+        "stop_reason_not_found",
+    })
+
+    def test_the_fail_call_tokens_match_the_pin(self):
+        import ast
+        import pathlib
+
+        path = (
+            pathlib.Path(__file__).resolve().parents[2]
+            / "apps" / "cli" / "commands" / "decision.py"
+        )
+        tree = ast.parse(path.read_text())
+        tokens = {
+            node.args[0].value
+            for node in ast.walk(tree)
+            if (
+                isinstance(node, ast.Call)
+                and isinstance(node.func, ast.Name)
+                and node.func.id == "fail"
+                and node.args
+                and isinstance(node.args[0], ast.Constant)
+            )
+        }
+        assert tokens == self._PINNED_TOKENS, (
+            f"decision.py's fail() token vocabulary changed: {tokens ^ self._PINNED_TOKENS}"
+        )

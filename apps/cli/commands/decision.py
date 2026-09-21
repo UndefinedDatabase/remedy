@@ -176,7 +176,7 @@ def _create_mission_for_job(job: Any) -> None:
     project_id = str(getattr(job, "project_id", "") or "")
     if not project_id:
         fail(
-            "job_has_no_project",
+            "no_project",
             "this job has no project, so it cannot start a mission.\n"
             "  Register one with: remedy init",
             json_output=False,
@@ -349,7 +349,7 @@ def _cmd_decision_resolve(
 
         if reason not in ("approve", "reject"):
             fail(
-                "invalid_reason",
+                "invalid_argument",
                 "--reason must be 'approve' or 'reject'.\n"
                 f"  remedy decision resolve {job_id_str} plan:approval --reason approve\n"
                 f"  remedy decision resolve {job_id_str} plan:approval --reason reject",
@@ -406,7 +406,7 @@ def _cmd_decision_resolve(
 
         if reason not in ("approve", "reject", "defer"):
             fail(
-                "invalid_reason",
+                "invalid_argument",
                 "--reason must be 'approve', 'reject', or 'defer'.\n"
                 f"  remedy decision resolve {job_id_str} proposal:{task_id} --reason approve\n"
                 f"  remedy decision resolve {job_id_str} proposal:{task_id} --reason reject\n"
