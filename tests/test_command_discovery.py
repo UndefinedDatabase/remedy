@@ -1267,9 +1267,10 @@ class TestDiscoveryRecordsItselfInTheRunLedger:
 
 class TestDiscoverNoTargetRepoAnswersInTheEnvelope:
     """F283 round 10 — `_cmd_discover_commands`'s branched `no_target_repo` refusal
-    moves onto `fail()` under DECISION F283 D5's BRANCHED rule (F277 D8/D9): the
+    moves onto `fail()` under the migration rule's BRANCHED form (F277 D7-D9): the
     `--json` branch keeps its `job_id` and `candidates` keys, the text branch stays
-    byte-identical."""
+    byte-identical. Corrected in round 11: this docstring cited DECISION F283 D5,
+    which is `do --json`'s one-envelope rule and names no branched form at all."""
 
     def test_json_mode_is_one_envelope_with_job_id_and_empty_candidates(
         self, tmp_path, monkeypatch, capsys

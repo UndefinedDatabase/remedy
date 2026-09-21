@@ -864,3 +864,63 @@ class TestAPrefixTwoJobsShareIsRefusedAsAmbiguousThroughTheParser:
 
         _, _, reference_err = _invoke(resolve_job_id, raw="aaaa1111")
         assert err.getvalue() == reference_err
+
+
+class TestRound10sUntestedRefusalsNowPinned:
+    """F283 round 10 migrated these two lines onto `fail()` but the round's own
+    probe found both unpinned: renaming either token left the whole 561-test
+    selection green. Round 11 closes both gaps.
+
+    Both refusals sit BEHIND `resolve_job_id_or_fail`, so each test's job id is a
+    fresh, full UUID: `lookup_job_id` returns it without touching disk (it is
+    already a valid UUID string), which is the resolver "accepting" it, while the
+    job store genuinely holds no such job — the shape C5's block orders.
+    """
+
+    def test_test_status_job_not_found_answers_in_the_envelope(
+        self, monkeypatch, tmp_path
+    ):
+        from uuid import uuid4
+
+        from apps.cli.commands.test_cmds import _cmd_test_status
+
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        job_id = str(uuid4())
+
+        code, out, err = _invoke(_cmd_test_status, job_id_str=job_id, as_json=True)
+
+        assert code == 1
+        assert err == ""
+        body = json.loads(out)
+        assert body["schema_version"] == 1
+        assert body["ok"] is False
+        assert body["error"] == "job_not_found"
+        assert body["job_id"] == job_id
+
+    def test_discover_commands_job_store_error_answers_in_the_envelope(
+        self, monkeypatch, tmp_path
+    ):
+        from uuid import uuid4
+
+        import apps.cli.commands.test_cmds as test_cmds_mod
+        from packages.orchestration import pingpong_job
+
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        job_id = str(uuid4())
+
+        def _raise(*_args, **_kwargs):
+            raise RuntimeError("job store is unreachable")
+
+        monkeypatch.setattr(pingpong_job, "require_job_plan", _raise)
+
+        code, out, err = _invoke(
+            test_cmds_mod._cmd_discover_commands, job_id_str=job_id, as_json=True
+        )
+
+        assert code == 1
+        assert err == ""
+        body = json.loads(out)
+        assert body["schema_version"] == 1
+        assert body["ok"] is False
+        assert body["error"] == "job_store_error"
+        assert "job store is unreachable" in body["message"]
