@@ -161,7 +161,7 @@ def _cmd_config_init(args: argparse.Namespace) -> None:
             fail("config_file_exists", msg, json_output=True)
         else:
             print(msg, file=sys.stderr)
-            sys.exit(1)
+        sys.exit(1)
 
     write_toml_template(path)
     if use_json:
@@ -186,7 +186,7 @@ def _cmd_config_set(args: argparse.Namespace) -> None:
             fail("invalid_config_value", str(exc), json_output=True)
         else:
             print(str(exc), file=sys.stderr)
-            sys.exit(1)
+        sys.exit(1)
 
     reset_config()
     if use_json:
