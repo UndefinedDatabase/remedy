@@ -25,13 +25,15 @@ one indented line per match, so an operator's terminal does not change.
 
 from __future__ import annotations
 
-from typing import NoReturn
+from typing import Any, NoReturn
 
 from apps.cli.json_envelope import fail
 from packages.orchestration.data_paths import JobIdAmbiguous, JobIdError, lookup_job_id
 
 
-def refuse_ambiguous_job_id(raw: str, matches: list[str], *, json_output: bool) -> NoReturn:
+def refuse_ambiguous_job_id(
+    raw: str, matches: list[str], *, json_output: bool, **payload: Any
+) -> NoReturn:
     """Refuse in the envelope: ``raw`` is a prefix more than one job matches.
 
     The shared body of the ambiguous branch, split out so a caller that reaches
@@ -43,6 +45,8 @@ def refuse_ambiguous_job_id(raw: str, matches: list[str], *, json_output: bool) 
     Exit 2, always — the code the exiting resolver already used. Under ``--json`` the
     envelope additionally carries ``matches``, the full job ids it could have meant, so
     a machine can disambiguate without re-running the command and parsing a prose list.
+    ``payload`` is forwarded to the `fail()` call this makes, so a caller with its own
+    envelope keys keeps them on the ambiguous branch too.
     """
     matches = sorted(matches)
     listed = "\n".join(f"  {m[:8]}" for m in matches)
@@ -52,23 +56,28 @@ def refuse_ambiguous_job_id(raw: str, matches: list[str], *, json_output: bool) 
         json_output=json_output,
         exit_code=2,
         matches=matches,
+        **payload,
     )
 
 
-def resolve_job_id_or_fail(raw: str, *, json_output: bool) -> str:
+def resolve_job_id_or_fail(raw: str, *, json_output: bool, **payload: Any) -> str:
     """The job id ``raw`` names, or a refusal in the envelope and an exit.
 
     Exit 1 when the string names no job, exit 2 when a prefix names more than one —
     the two codes the exiting resolver already used, unchanged, because renumbering
-    them belongs to F283's T002 taxonomy and not to this repair.
+    them belongs to F283's T002 taxonomy and not to this repair. ``payload`` is
+    forwarded to every `fail()` this makes, so a caller that already carried its own
+    envelope key (a ``job_id`` in today's JSON, say) keeps it after moving here; with
+    no payload, behaviour is unchanged.
     """
     try:
         return lookup_job_id(raw)
     except JobIdAmbiguous as exc:
-        refuse_ambiguous_job_id(raw, exc.matches, json_output=json_output)
+        refuse_ambiguous_job_id(raw, exc.matches, json_output=json_output, **payload)
     except JobIdError:
         fail(
             "invalid_job_id",
             f"No job matches {raw!r}. Try: remedy job list.",
             json_output=json_output,
+            **payload,
         )

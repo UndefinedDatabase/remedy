@@ -22,10 +22,49 @@ import pytest
 
 _JOB_PY = pathlib.Path(__file__).resolve().parents[2] / "apps" / "cli" / "commands" / "job.py"
 
-#: R-1020's remainder, measured at `3b4acafd` by an alias-aware reading (DECISION F283
-#: D1's correction — `decision.py` also binds the resolver as `_rji`) and driven to
-#: EMPTY by F283 round 4: no module under `apps/cli/` calls the exiting resolver.
+#: R-1020's remainder, measured at `3b4acafd` by an alias-aware reading (the alias
+#: correction — `decision.py` also binds the resolver as `_rji` — is recorded in the
+#: `Gate: F283 R3` entry of `.agent/live_review.md`) and driven to EMPTY by F283 round
+#: 4: no module under `apps/cli/` calls the exiting resolver.
 _EXITING_RESOLVER_REMAINING: dict[str, int] = {}
+
+#: R-1021's own remainder: every hand-caught `lookup_job_id` site outside
+#: `apps.cli.job_id_arg`, falling to `job_id_arg.py` and `job_stop_cmd.py` alone once
+#: the sweep is done — the two callers that handle `JobIdAmbiguous` themselves and so
+#: keep talking to `lookup_job_id` directly instead of through
+#: `resolve_job_id_or_fail`. Measured at C3 by the reviewer's
+#: `.remedy-wt/f283-r5-scratch/lookup_ctx.py`.
+_LOOKUP_CALLERS: dict[str, int] = {
+    "brain.py": 11,
+    "event.py": 1,
+    "file.py": 1,
+    "job_id_arg.py": 1,
+    "job_stop_cmd.py": 1,
+    "memory.py": 1,
+    "project.py": 1,
+    "snapshot_cmds.py": 2,
+    "test_cmds.py": 2,
+}
+
+
+def _lookup_calls(source: str) -> int:
+    """Every call ``source`` makes to ``lookup_job_id``, by bare name or attribute.
+
+    Counts an ``ast.Call`` node whose callee is the name ``lookup_job_id`` OR an
+    attribute access whose final segment is ``lookup_job_id`` (``mod.lookup_job_id``),
+    so a caller that reaches it through a module object still counts.
+    """
+    tree = ast.parse(source)
+    count = 0
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Call):
+            continue
+        func = node.func
+        if isinstance(func, ast.Name) and func.id == "lookup_job_id":
+            count += 1
+        elif isinstance(func, ast.Attribute) and func.attr == "lookup_job_id":
+            count += 1
+    return count
 
 
 def _exiting_resolver_calls(source: str) -> int:
@@ -296,6 +335,51 @@ class TestTheExitingResolverIsStillReachable:
         )
 
 
+class TestLookupJobIdIsPinnedToItsTwoHandlers:
+    """R-1021's sweep, counted rather than remembered. `_LOOKUP_CALLERS` falls as each
+    hand-caught site moves onto `resolve_job_id_or_fail`; it never grows, and it falls
+    to `job_id_arg.py` and `job_stop_cmd.py` alone — the two callers that handle
+    `JobIdAmbiguous` themselves."""
+
+    def test_an_attribute_call_in_a_source_string_counts(self):
+        source = (
+            "def f():\n"
+            "    return mod.lookup_job_id('a')\n"
+        )
+        assert _lookup_calls(source) == 1
+
+    def test_the_call_sites_match_the_measured_dict(self):
+        root = pathlib.Path(__file__).resolve().parents[2] / "apps" / "cli"
+        found: dict[str, int] = {}
+        for path in sorted(root.rglob("*.py")):
+            n = _lookup_calls(path.read_text())
+            if n:
+                found[path.name] = n
+        assert found == _LOOKUP_CALLERS, (
+            f"measured {found}, constant says {_LOOKUP_CALLERS}"
+        )
+
+
+class TestResolveJobIdOrFailForwardsAPayload:
+    """R-1022's layer change: `resolve_job_id_or_fail` (and the `refuse_ambiguous_job_id`
+    it calls) forward `**payload` to every `fail()` they make, so a caller that already
+    carried its own envelope key — `snapshot_cmds.py` and
+    `test_cmds.py::_cmd_test_status`, both of which print a `job_id` key today — keeps
+    it after moving onto the shared resolver."""
+
+    def test_the_not_found_branch_carries_the_extra_payload(self):
+        from apps.cli.job_id_arg import resolve_job_id_or_fail
+
+        code, out, err = _invoke(
+            resolve_job_id_or_fail, raw="zzzznotajob", json_output=True, job_id="x"
+        )
+        assert code == 1
+        assert err == ""
+        body = json.loads(out)
+        assert body["error"] == "invalid_job_id"
+        assert body["job_id"] == "x"
+
+
 class TestTheAmbiguousBranchAnswersInTheEnvelope:
     """R-1020's coverage gap, closed. Round 3 landed `resolve_job_id_or_fail`'s ambiguous
     exit with no test reaching it; this proves its exit code, its token and its `matches`
@@ -354,8 +438,8 @@ class TestEveryMigratedJsonCommandAnswersABadIdInTheEnvelope:
     `lookup_job_id`'s shape check before any command-specific logic runs — the SAME
     refusal, `invalid_job_id` at exit 1, for every command here except `job.stop`,
     whose bespoke handling in `job_stop_cmd.py` answers `job_not_found` at exit 3
-    (C3's SPEC). A command whose refusal fires before its id reaches the resolver is
-    simply not in this table — see the handback for the one measured that way.
+    (C3's SPEC). A command whose refusal fires before it reaches the resolver would be
+    left out of this table and named in its round's handback; in round 4, none was.
     """
 
     #: command_id -> the positional args after group/subcommand, read off the catalog
