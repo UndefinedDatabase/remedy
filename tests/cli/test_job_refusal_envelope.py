@@ -341,6 +341,27 @@ class TestProjectRefusalsAreAllMigrated:
         assert "fail" in imported
 
 
+class TestGroupedRefusalsAreAllMigrated:
+    """F283 round 10 — every parse-level refusal in `apps/cli/grouped.py::main` asks
+    `_wants_json(raw)` and answers in the envelope when it holds (DECISION F283 D6):
+    the conflicting-options pair, the unknown-group and unknown-subcommand pairs, the
+    unrecognized-arguments pair, the usage error on a known subcommand, and the two
+    post-parse pairs (`unknown_command` when no command id was resolved, `no_handler`
+    when the dispatch table has none), the last two now calling `fail()` directly. No
+    `print(..., file=sys.stderr)` + `sys.exit(n)` pair whose immediate predecessor
+    statement is the print itself survives in the module: the ones the AST rule could
+    once see are gone, and `_usage_refusal`'s own text-mode print sits inside an
+    `if`/`else`, never directly before its `sys.exit`, so it was never mechanical by
+    the rule's own definition."""
+
+    def test_no_pair_survives(self):
+        flagged, unflagged = _refusal_sites("../grouped.py")
+        assert flagged == [] and unflagged == [], (
+            f"expected no print-then-exit pair left in grouped.py, found "
+            f"flagged={flagged} unflagged={unflagged}"
+        )
+
+
 def _invoke(fn, **kwargs) -> tuple[int | None, str, str]:
     out, err = io.StringIO(), io.StringIO()
     code: int | None = None

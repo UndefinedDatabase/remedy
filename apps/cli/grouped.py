@@ -35,6 +35,7 @@ from apps.cli.help_renderer import (
     render_group_help,
     render_root_help,
 )
+from apps.cli.json_envelope import emit_error, fail
 
 # ---------------------------------------------------------------------------
 # Dispatch table: catalog command_id -> handler callable
@@ -444,6 +445,17 @@ def _wants_json(raw: list[str]) -> bool:
     return "--json" in (raw or [])
 
 
+def _usage_refusal(where: str, token: str, message: str, raw: list[str], *, exit_code: int = 2) -> None:
+    """The repeated shape behind every parse-level refusal (DECISION F283 D6):
+    the envelope under ``--json``, today's prose otherwise; the exit code is the
+    SAME either way."""
+    if _wants_json(raw):
+        emit_error(token, message)
+    else:
+        print(render_error(where, message), file=sys.stderr)
+    sys.exit(exit_code)
+
+
 def main(argv: list[str] | None = None) -> None:
     """Entry point for the grouped CLI."""
     # Pre-scan for --version first: it answers from anywhere in the tree and must
@@ -482,26 +494,26 @@ def main(argv: list[str] | None = None) -> None:
         msg = getattr(exc, "message", "")
         if msg and ("not allowed with" in msg or "mutually exclusive" in msg):
             where = f"remedy {raw[0]} {raw[1]}" if len(raw) >= 2 else "remedy"
-            if _wants_json(raw):
-                import json as _json
-                print(_json.dumps({"ok": False, "error": "conflicting_options",
-                                   "message": msg}, indent=2))
-            else:
-                print(render_error(where, msg), file=sys.stderr)
-            sys.exit(2)
+            _usage_refusal(where, "conflicting_options", msg, raw)
         if not raw:
             _print_root_help()
             return
         if resolve_group(raw[0]) is None:
-            print(render_error("remedy", f"Unknown command '{raw[0]}'."), file=sys.stderr)
-            sys.exit(2)
+            _usage_refusal("remedy", "unknown_command", f"Unknown command '{raw[0]}'.", raw)
         if len(raw) >= 2:
             subcmds = {c.subcommand for c in get_commands_for_group(raw[0])}
             if raw[1] not in subcmds and not raw[1].startswith("-"):
-                print(render_error(f"remedy {raw[0]}", f"Unknown command '{raw[1]}'."), file=sys.stderr)
-                sys.exit(2)
-            # Missing required args for a valid command — show command help
+                _usage_refusal(f"remedy {raw[0]}", "unknown_command", f"Unknown command '{raw[1]}'.", raw)
+            # Missing required args for a valid command — the envelope under
+            # --json (DECISION F283 D6); today's command help otherwise.
             if raw[1] in subcmds:
+                if _wants_json(raw):
+                    message = msg or f"invalid arguments for remedy {raw[0]} {raw[1]}"
+                    token = ("missing_argument"
+                             if message.startswith("the following arguments are required")
+                             else "invalid_argument")
+                    emit_error(token, message)
+                    sys.exit(2)
                 cmd = next(c for c in get_commands_for_group(raw[0]) if c.subcommand == raw[1])
                 _print_command_help(raw[0], cmd)
                 sys.exit(2)
@@ -525,19 +537,17 @@ def main(argv: list[str] | None = None) -> None:
 
     # Handle unknown args after successful parse
     if unknown:
-        print(render_error(f"remedy {args._group} {args._subcmd}", f"Unrecognized arguments: {' '.join(unknown)}"), file=sys.stderr)
-        sys.exit(2)
+        _usage_refusal(f"remedy {args._group} {args._subcmd}", "unrecognized_arguments",
+                       f"Unrecognized arguments: {' '.join(unknown)}", raw)
 
     command_id = getattr(args, "_command_id", None)
     if command_id is None:
-        print("Error: unknown command", file=sys.stderr)
-        sys.exit(1)
+        fail("unknown_command", "unknown command", json_output=_wants_json(raw))
 
     dispatch = _get_dispatch_table()
     handler = dispatch.get(command_id)
     if handler is None:
-        print(f"Error: no handler for {command_id}", file=sys.stderr)
-        sys.exit(1)
+        fail("no_handler", f"no handler for {command_id}", json_output=_wants_json(raw))
 
     _dispatch(handler, args, command_id, raw)
 
@@ -576,8 +586,6 @@ def _dispatch(
     except Exception as exc:  # noqa: BLE001 - the whole point is the catch-all
         message = f"{type(exc).__name__}: {exc}"
         if _wants_json(raw):
-            from apps.cli.json_envelope import emit_error
-
             emit_error(
                 "unhandled_command_error", message, command=command_id,
             )

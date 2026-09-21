@@ -255,9 +255,13 @@ def test_a_flag_removed_from_do_exits_2_and_runs_nothing(repo, capsys, removed):
     from packages.orchestration.pingpong_job import list_job_plans
     from packages.orchestration.project_registry import resolve_project
 
-    code, out, _err = _exit_code_and_output(capsys, *removed)
+    code, out, err = _exit_code_and_output(capsys, *removed)
 
     assert code == 2
-    assert out == ""
+    assert err == ""
+    data = json.loads(out)
+    assert data["schema_version"] == 1
+    assert data["ok"] is False
+    assert data["error"] == "unrecognized_arguments"
     assert list_job_plans() == []
     assert resolve_project(repo) is None
