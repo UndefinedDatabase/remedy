@@ -184,6 +184,7 @@ class TestItRefusesToLie:
         body = json.loads(captured.out)
         assert body["error"] == "job_not_found"
         assert body["schema_version"] == 1
+        assert body["job_id"] == "0123456789abcdef"
 
     def test_status_for_an_unknown_job_exits_3(self, data_root):
         with pytest.raises(SystemExit) as exc:
@@ -196,6 +197,19 @@ class TestItRefusesToLie:
             CMD._cmd_job_stop(bad)
         assert exc.value.code == 2
         assert "invalid job id" in capsys.readouterr().err
+
+    def test_a_malformed_job_id_answers_invalid_job_id_under_json(self, data_root, capsys):
+        """`validate_job_id`'s `StopControlError`, migrated onto `fail()`: one
+        envelope on stdout, no prose on stderr."""
+        with pytest.raises(SystemExit) as exc:
+            CMD._cmd_job_stop("../etc", json_output=True)
+        assert exc.value.code == 2
+        captured = capsys.readouterr()
+        assert captured.err == ""
+        payload = json.loads(captured.out)
+        assert payload["schema_version"] == 1
+        assert payload["ok"] is False
+        assert payload["error"] == "invalid_job_id"
 
     def test_a_completed_job_is_not_told_that_work_will_stop(self, job, capsys):
         job.state = JOB_COMPLETED
@@ -221,9 +235,13 @@ class TestItRefusesToLie:
             CMD._cmd_job_stop(job.job_id, json_output=True)
 
         assert exc.value.code == 1
-        payload = json.loads(capsys.readouterr().out)
+        captured = capsys.readouterr()
+        assert captured.err == ""
+        payload = json.loads(captured.out)
+        assert payload["schema_version"] == 1
         assert payload["ok"] is False
         assert payload["error"] == "job_not_stoppable"
+        assert payload["job_id"] == job.job_id
         assert payload["job_status"] == JOB_COMPLETED
         assert stop_requested(job.job_id) is None
 
@@ -247,8 +265,13 @@ class TestItRefusesToLie:
             with pytest.raises(SystemExit) as exc:
                 CMD._cmd_job_stop(job.job_id, reason="x", json_output=True)
             assert exc.value.code == 1
-            payload = json.loads(capsys.readouterr().out)
+            captured = capsys.readouterr()
+            assert captured.err == ""
+            payload = json.loads(captured.out)
+            assert payload["schema_version"] == 1
             assert payload["ok"] is False and payload["error"] == "stop_not_requested"
+            assert payload["job_id"] == job.job_id
+            assert payload["detail"]
         finally:
             os.chmod(root, 0o700)
 

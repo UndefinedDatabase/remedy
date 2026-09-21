@@ -192,9 +192,12 @@ class TestStatsRefusalsAreAllMigrated:
     `stats_ledger_cmd.py::_cmd_stats_verify_ledger`'s `raise SystemExit(EXIT_DRIFT)`
     is a RESULT, not a refusal (this round's block, restating DECISIONs F277
     D7-D9), and is the one survivor this ratchet allows. Round 11 C4 extends this
-    class to `job_stop_cmd.py`."""
+    class to `job_stop_cmd.py`: `_unknown_job`, the `validate_job_id` refusal,
+    `job_not_stoppable` and `stop_not_requested` move the same way, and no
+    `raise SystemExit` is left in that module at all."""
 
-    _MODULES = ("stats_ledger_cmd.py", "bench_cmd.py", "failure_stats_cmd.py")
+    _MODULES = ("stats_ledger_cmd.py", "bench_cmd.py", "failure_stats_cmd.py",
+                "job_stop_cmd.py")
 
     def test_no_mechanical_print_then_exit_pair_survives(self):
         for filename in self._MODULES:
@@ -216,6 +219,9 @@ class TestStatsRefusalsAreAllMigrated:
     def test_bench_and_failure_stats_have_no_raise_systemexit_left(self):
         assert _raise_systemexit_lines("bench_cmd.py") == []
         assert _raise_systemexit_lines("failure_stats_cmd.py") == []
+
+    def test_job_stop_has_no_raise_systemexit_left(self):
+        assert _raise_systemexit_lines("job_stop_cmd.py") == []
 
 
 class TestTheFlaggedRefusalsAreAllMigrated:
