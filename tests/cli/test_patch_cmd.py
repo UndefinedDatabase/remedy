@@ -238,7 +238,9 @@ class TestItMintsNoRefusalVocabularyOfItsOwn:
 
         assert exc.value.code == 1
         payload = json.loads(capsys.readouterr().out)
-        assert payload["code"] == REFUSAL_MISSING_REASON
+        assert payload["schema_version"] == 1
+        assert payload["ok"] is False
+        assert payload["error"] == REFUSAL_MISSING_REASON
         assert payload["hunk_ids"] == [HUNK_IDS[0]]
         assert HUNK_DECISIONS_METADATA_KEY not in load_job_plan(job.job_id).metadata
 
@@ -255,7 +257,9 @@ class TestItMintsNoRefusalVocabularyOfItsOwn:
 
         assert exc.value.code == 1
         payload = json.loads(capsys.readouterr().out)
-        assert payload["code"] == HUNK_RECORD_REFUSAL_NO_DIFF
+        assert payload["schema_version"] == 1
+        assert payload["ok"] is False
+        assert payload["error"] == HUNK_RECORD_REFUSAL_NO_DIFF
         assert DIFF_REASON_NO_EVIDENCE_DIR in payload["message"]
         assert HUNK_DECISIONS_METADATA_KEY not in load_job_plan(job.job_id).metadata
 

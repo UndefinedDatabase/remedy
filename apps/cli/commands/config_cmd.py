@@ -8,6 +8,8 @@ import sys
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from apps.cli.json_envelope import fail
+
 if TYPE_CHECKING:
     from collections.abc import Callable
 
@@ -46,8 +48,7 @@ def _cmd_config_list(args: argparse.Namespace) -> None:
             date_getter=None,
         )
     except ListOptionError as exc:
-        print(f"Error: {exc}", file=sys.stderr)
-        sys.exit(1)
+        fail("invalid_list_option", str(exc), json_output=use_json)
 
     if use_json:
         entries = []
@@ -88,8 +89,11 @@ def _cmd_config_get(args: argparse.Namespace) -> None:
     use_json = getattr(args, "json", False)
 
     if cv is None and spec is None:
-        print(f"Unknown config key: {key}", file=sys.stderr)
-        sys.exit(1)
+        if use_json:
+            fail("unknown_config_key", f"Unknown config key: {key}", json_output=True)
+        else:
+            print(f"Unknown config key: {key}", file=sys.stderr)
+            sys.exit(1)
 
     val = cv.value if cv else None
     source = cv.source.value if cv else "default"
@@ -154,11 +158,10 @@ def _cmd_config_init(args: argparse.Namespace) -> None:
     if path.exists():
         msg = f"{path} already exists. Not overwriting."
         if use_json:
-            json.dump({"error": msg}, sys.stdout, indent=2)
-            sys.stdout.write("\n")
+            fail("config_file_exists", msg, json_output=True)
         else:
             print(msg, file=sys.stderr)
-        sys.exit(1)
+            sys.exit(1)
 
     write_toml_template(path)
     if use_json:
@@ -180,11 +183,10 @@ def _cmd_config_set(args: argparse.Namespace) -> None:
         set_config_value(target, key, value)
     except ValueError as exc:
         if use_json:
-            json.dump({"error": str(exc)}, sys.stdout, indent=2)
-            sys.stdout.write("\n")
+            fail("invalid_config_value", str(exc), json_output=True)
         else:
             print(str(exc), file=sys.stderr)
-        sys.exit(1)
+            sys.exit(1)
 
     reset_config()
     if use_json:

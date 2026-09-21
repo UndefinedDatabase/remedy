@@ -378,7 +378,13 @@ class TestProjectRefusalsAreAllMigrated:
     only a prefixed line: `_cmd_project_current`'s `(ProjectNotFoundError,
     InvalidProjectSelectorError)` branch (its handler carries `json_output`, so it is
     the one flagged site) and `_cmd_project_attach_repo`'s identical branch (its handler
-    carries none, so it is the one unflagged site)."""
+    carries none, so it is the one unflagged site). Round 12 (DECISION F283 D7) gives
+    `_cmd_project_current`'s branch an `if json_output:` guard whose `else` is the
+    ORIGINAL two lines, byte for byte, so the print-then-exit pair this ratchet counts
+    now sits one level deeper — still the SAME one flagged site, just behind the guard,
+    answering `project_not_found` or `invalid_project_selector` under `--json` while the
+    text branch is untouched. `_cmd_project_attach_repo`'s unflagged site is untouched by
+    this round and stays as it was."""
 
     def test_exactly_one_flagged_site_remains(self):
         flagged, _ = _refusal_sites("project.py")

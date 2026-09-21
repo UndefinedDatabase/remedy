@@ -239,6 +239,67 @@ class TestProjectCurrentAmbiguousRefusal:
 
 
 # ---------------------------------------------------------------------------
+# _cmd_project_current — the ProjectNotFoundError / InvalidProjectSelectorError
+# branch, moved onto `fail()` at F283 round 12 (DECISION F283 D7): a bare
+# `print(str(exc))` line with no `Error: ` prefix, so the text branch stays
+# byte for byte and only `--json` gains a shape.
+# ---------------------------------------------------------------------------
+
+
+class TestProjectCurrentNotFoundAndInvalidSelector:
+    def test_unknown_selector_json_answers_project_not_found(self, tmp_path, monkeypatch, capsys):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        monkeypatch.delenv("REMEDY_PROJECT", raising=False)
+
+        from apps.cli.commands.project import _cmd_project_current
+
+        with pytest.raises(SystemExit) as exc:
+            _cmd_project_current(project_flag="no-such-slug", json_output=True)
+        assert exc.value.code == 3
+        captured = capsys.readouterr()
+        assert captured.err == ""
+        body = json.loads(captured.out)
+        assert body["schema_version"] == 1
+        assert body["ok"] is False
+        assert body["error"] == "project_not_found"
+
+    def test_empty_selector_json_answers_invalid_project_selector(self, tmp_path, monkeypatch, capsys):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        monkeypatch.delenv("REMEDY_PROJECT", raising=False)
+
+        from apps.cli.commands.project import _cmd_project_current
+
+        with pytest.raises(SystemExit) as exc:
+            _cmd_project_current(project_flag="   ", json_output=True)
+        assert exc.value.code == 3
+        captured = capsys.readouterr()
+        assert captured.err == ""
+        body = json.loads(captured.out)
+        assert body["schema_version"] == 1
+        assert body["ok"] is False
+        assert body["error"] == "invalid_project_selector"
+
+    def test_unknown_selector_text_mode_bytes_are_unchanged(self, tmp_path, monkeypatch, capsys):
+        """The text branch is the original `print(str(exc))` line, untouched."""
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        monkeypatch.delenv("REMEDY_PROJECT", raising=False)
+
+        from apps.cli.commands.project import _cmd_project_current
+        from packages.orchestration.project_registry import ProjectNotFoundError
+
+        with pytest.raises(SystemExit) as exc:
+            _cmd_project_current(project_flag="no-such-slug", json_output=False)
+        assert exc.value.code == 3
+        captured = capsys.readouterr()
+        assert captured.out == ""
+        expected = str(
+            ProjectNotFoundError(selector_value="no-such-slug", selector_source="flag")
+        )
+        assert captured.err == f"{expected}\n"
+        assert not captured.err.startswith("Error: ")
+
+
+# ---------------------------------------------------------------------------
 # _cmd_list_projects slug column
 # ---------------------------------------------------------------------------
 

@@ -7,18 +7,14 @@ No provider execution. No auto-approval. No secret storage.
 from __future__ import annotations
 
 import json
-import sys
 from collections.abc import Callable
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, NoReturn
+from typing import TYPE_CHECKING, Any
+
+from apps.cli.json_envelope import fail
 
 if TYPE_CHECKING:
     import argparse
-
-
-def _err(msg: str) -> NoReturn:
-    print(json.dumps({"error": msg}), file=sys.stderr)
-    sys.exit(1)
 
 
 # ---------------------------------------------------------------------------
@@ -37,7 +33,7 @@ def _cmd_mission_run(ns: argparse.Namespace) -> None:
     """
     run_id = getattr(ns, "run_id", "")
     if not run_id:
-        _err("run_id required")
+        fail("missing_argument", "run_id required", json_output=getattr(ns, "json", False))
 
     from apps.cli.commands.mission_cmd import _cmd_mission_run_loop
     _cmd_mission_run_loop(

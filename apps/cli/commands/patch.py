@@ -356,16 +356,12 @@ def _cmd_approve_hunks(
         # A refused decision is not a decision: `save_job` is NOT called, so nothing the
         # operator did not decide reaches the job.
         if json_output:
-            print(_json.dumps({
-                "code": result.code,
-                "message": result.message,
-                "hunk_ids": list(result.hunk_ids),
-            }, sort_keys=True))
+            fail(result.code, result.message, json_output=True, hunk_ids=list(result.hunk_ids))
         else:
             print(f"Error: {result.message}", file=sys.stderr)
             if result.hunk_ids:
                 print(f"  hunks: {', '.join(result.hunk_ids)}", file=sys.stderr)
-        sys.exit(1)
+            sys.exit(1)
 
     save_job_plan(job)
 

@@ -341,8 +341,16 @@ def _cmd_project_current(
     except AmbiguousProjectError as exc:
         fail("ambiguous_project", str(exc), json_output=json_output)
     except (ProjectNotFoundError, InvalidProjectSelectorError) as exc:
-        print(str(exc), file=sys.stderr)
-        sys.exit(3)
+        if json_output:
+            token = (
+                "project_not_found"
+                if isinstance(exc, ProjectNotFoundError)
+                else "invalid_project_selector"
+            )
+            fail(token, str(exc), json_output=True, exit_code=3)
+        else:
+            print(str(exc), file=sys.stderr)
+            sys.exit(3)
 
     if json_output:
         print(_json.dumps({

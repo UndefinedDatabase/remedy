@@ -75,10 +75,7 @@ def confirm_cost_preview(
             f"{line}. stdin is not a terminal, so there is nobody to "
             f"confirm. Pass --yes to run '{command_name}' without a prompt."
         )
-        if json_output:
-            fail("confirmation_required", message, json_output=json_output, exit_code=EXIT_USAGE)
-        print(f"Error: {message}", file=sys.stderr)
-        sys.exit(EXIT_USAGE)
+        fail("confirmation_required", message, json_output=json_output, exit_code=EXIT_USAGE)
 
     print(line, file=human)
     prompt = f"Continue running '{command_name}'? [y/N] "
