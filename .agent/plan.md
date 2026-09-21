@@ -12,31 +12,25 @@ is documented and asserted from the catalog
 
 ## Current Step
 
-ROUND 6, the `job` group's last mechanical refusals and the `decision` group.
-It books round 5's PASS and R-1021's `Done:`, corrects R-1022's three further
-sentences, and tests the ambiguous branch's payload.
-
-`_cmd_run_next_task_local` takes `json_output`, its eight print-then-exit
-pairs move onto `fail()`, and the ten tests that monkeypatch it with a
-single-positional stand-in accept the keyword in the same commit. The
-`_plan_rejected_error` / `_plan_rejected_message` pair collapses to one.
-`decision.py`'s refusal pairs move onto `fail()` under DECISION F277 D8's
-one-token-per-condition rule; the derived-decision refusal, two unprefixed
-lines, stays and is counted.
+ROUND 7. It books round 6's PASS and R-1022's `Done:`, registers R-1023 and
+R-1024, and records DECISION F283 D2. Then, one commit each:
+R-1023 — `decision.py`'s two forked tokens take the spellings the product
+already has, and a test pins that module's token set; R-1024 — the
+cost-preview gate takes `json_output`, puts its human lines on stderr under
+it, and refuses a non-terminal stdin through `fail()`; the `brain` group's
+refusal pairs; the `patch` group's refusal pairs.
 
 ## Next Steps
 
-1. The non-mechanical `job.py` sites: the verification-failure loop, a bare
-   exit after a cost confirmation, two hand-rolled JSON objects — and the
-   single-pass `job run --json` success line, which is prose.
-2. The remaining groups largest first — `brain`, `project`, `patch`,
-   `do_cmd`, `grouped`, `test_cmds`, then the tail; `runtime_cmd.py` is its
-   own round.
+1. The non-mechanical `job.py` sites: the verification-failure loop and the
+   single-pass `job run --json` success line, which is prose; `_cmd_resume`'s
+   two hand-rolled `resumed: false` objects.
+2. The remaining groups largest first — `project`, `do_cmd`, `grouped`,
+   `test_cmds`, then the tail; `runtime_cmd.py` is its own round.
 3. T001's catalog half, then T002's taxonomy and sweep.
 
 ## Risks
 
-Twenty-four findings are open; R-1022 is this feature's own, is repaired this
-round, and has its `Done:` booked in the next. The refusal pairs outside `job.py` and `decision.py` are several
-sessions of work, so the soft limit of 7 sessions and 25 rounds is the number
-to watch.
+Twenty-five findings are open; R-1023 and R-1024 are this feature's own and
+are repaired this round. The refusal pairs left are several sessions of work,
+so the soft limit of 7 sessions and 25 rounds is the number to watch.
