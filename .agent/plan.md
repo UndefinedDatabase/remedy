@@ -12,28 +12,28 @@ is documented and asserted from the catalog
 
 ## Current Step
 
-ROUND 2, T001 SLICE B PART ONE. It books round 1's PASS, registers R-1020, and
-migrates the eleven refusal sites of `apps/cli/commands/job.py` outside
-`job run`. `_cmd_show_job` and `_refuse_budget_set` serve commands declaring
-`supports_json: True`, so the flag is THREADED into both; `_cmd_create_job` has
-no catalog entry and no dispatch lambda and `job.plan` declares
-`supports_json: False`, so those ten sites migrate with `json_output=False`.
+ROUND 3, R-1020's FIRST REPAIR. It books round 2's PASS, appends a CORRECTION
+to R-1020 — the registration overstated the blast radius, counting
+`require_job_plan` as an exiting helper when it raises — and lands the layer
+the finding needs: `apps/cli/job_id_arg.py::resolve_job_id_or_fail`, which
+catches what `lookup_job_id` raises and refuses through `fail()`.
 
-R-1020 IS WHAT THIS ROUND LEARNED. Threading is not enough: for 52 of the
-catalog's 111 `supports_json` commands the refusal that fires is in a shared
-EXITING helper under `packages/` — `resolve_job_id`, `_exit_ambiguous` or
-`require_job_plan` — which prints prose and exits before the handler's own
-failure path. `job show --json` on a bad id still writes prose with the flag
-threaded. A `strict` xfail pins it, so the repair has a red-to-green target.
+THE ENVELOPE DOES NOT MOVE INTO `packages/`. `resolve_job_id` stays as it is
+for callers with no failure path of their own and the `--json` callers move up;
+pushing `fail()` down would make storage depend on a command's stdout shape.
+
+`job.py`'s six call sites move this round and the strict xfail turns green with
+its mark deleted in the same commit. Seventeen call sites remain in eight other
+modules, so R-1020 stays OPEN and a second guard counts them.
 
 ## Next Steps
 
-1. ROUND 3 — R-1020's repair, which the reviewer rules comes BEFORE any further
-   group migration: the three helpers gain a non-exiting form or take the
-   caller's `json_output`, the ambiguous-prefix message gets its shape
-   decision, and the xfail flips green with its mark deleted in that commit.
-2. `_cmd_run_next_task_local`, the last eight sites in `job.py`; ten tests
-   monkeypatch it with a single-positional lambda and move in the same commit.
+1. R-1020's remaining seventeen call sites: `patch` 7, `change` 3,
+   `teacher_cmd` 2, then `contract_cmd`, `decision`, `job_context_cmd`,
+   `job_stop_cmd` and `project` at one each.
+2. `_cmd_run_next_task_local`, the last eight print-then-exit pairs in
+   `job.py`; ten tests monkeypatch it with a single-positional lambda and move
+   in the same commit.
 3. The four non-mechanical `job.py` sites: a loop of verification failures, a
    bare exit after a cost confirmation, two hand-rolled JSON objects.
 4. The remaining groups largest first — `decision` 28, `brain` 24, `project`
@@ -43,7 +43,7 @@ threaded. A `strict` xfail pins it, so the repair has a red-to-green target.
 
 ## Risks
 
-Twenty-four findings are open after this round registers R-1020, and R-1020 is
-the one that changes the plan: it puts the Acceptance criterion out of reach of
-a pure `apps/cli` sweep, and it is this feature's own. The 167 refusal pairs
-across the un-migrated modules were already more than one session's work.
+Twenty-four findings are open; R-1020 is this feature's own and is repaired for
+one module of nine. The measured work left — 156 refusal pairs outside `job.py`
+plus 17 resolver call sites — is several sessions, so the soft limit of 7
+sessions and 25 rounds is the number to watch.
