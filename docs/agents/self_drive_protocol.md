@@ -222,6 +222,14 @@ already past its limit with a pending scope report at session start.
 Rationale: F262's round 23 wrote a correct scope report and then waited a
 session for a ruling the default would have supplied. Reverse by deleting this paragraph.
 
+Operator amendment amend0921-operator-feedback (2026-09-21), rule 2 — SESSIONS
+COUNT REGARDLESS OF ROUNDS. The seven-session soft limit counts sessions no
+matter how many rounds each one delivered, because a session's cold start is the
+cost being limited, so a session that ends after one or two rounds still counts.
+The remedy for sessions that end early is fewer authoring errors, with numbers
+printed by scripts rather than typed, and not a softer limit. Reverse by
+deleting this paragraph and DECISION amend0921-operator-feedback D2.
+
 Operator amendment amend0906-split-placement (2026-09-06) — A FOLLOW-UP FEATURE
 SPLIT OFF AN OPEN FEATURE IS PLACED DIRECTLY AFTER ITS PARENT. When a session
 registers the remaining scope of feature F<p> as a new feature F<q>, the new
@@ -328,6 +336,22 @@ of `docs/agents/planner_reviewer_prompt.md` is untouched by this rule (amend0827
 rule 4). Amended 2026-09-17 by amend0917-throughput rule 5: an entry never
 stalls the session; the recommendation is executed as a reversible DECISION in
 the same round. Reverse by deleting this paragraph and the file.
+
+Operator amendment amend0921-operator-feedback (2026-09-21), rule 3 — PLAIN
+SENTENCES FOR THE OPERATOR, EVERYWHERE. Every text addressed to the operator —
+an operator-questions entry, the "for you" part of a session report, the
+operator-facing paragraphs of `.agent/handoff.md`, README paragraphs written for
+a user, and any product output a human reads — is written in complete, simple
+sentences. The writer assumes the reader does not know the internal vocabulary:
+every feature number, finding id, command name, file name and figure is
+explained in plain words the first time it appears in that text; no invented
+compound terms; no bare shorthand. Technical references may stand in a heading,
+never alone in a body sentence. This is the operator's most important standing
+rule and it applies to Remedy's own user-facing output as a product rule as
+well. `tests/docs/test_operator_questions_shape.py` pins the four body labels of
+every operator-questions entry and refuses a body line that is a bare reference
+token. Reverse by deleting this paragraph, DECISION amend0921-operator-feedback
+D3 and that test.
 
 Operator amendment amend0911-f275-to-scope (2026-09-11, folded into
 amend0911-feedback) — F275's soft limit of 20 sessions and 60 rounds
@@ -450,6 +474,17 @@ closure protocol otherwise, Rule A5, the split-and-close default. Reason: the
 verification tiers of 2026-07-26 already excluded the full suite from round
 verification; F275's overlay habit re-imported it and it never left. Reverse by
 deleting this paragraph and restoring the four sibling edits amend0917 names.
+
+Operator amendment amend0921-operator-feedback (2026-09-21), rule 1 — THE ONE
+RUN BELONGS TO THE SHIPPED TREE. The one full-suite run a feature is allowed
+belongs to the tree that is actually shipped. If the branch moves after the
+recorded run — an operator merge of main into the branch, an operator commit on
+the branch, or any commit made outside the loop — the closure re-runs the suite
+once on the new tree, and the new transcript replaces the old one at the same
+path, `.agent/authored/f<id>-closure-suite.txt`, while the old one stays in git
+history. This is not a second run in the sense amend0917-throughput forbids; it
+is the one run, taken on the right tree. Reverse by deleting this paragraph and
+DECISION amend0921-operator-feedback D1.
 
 Operator amendment amend0827-process-diet (2026-08-27), rule 4 — the
 pre-emission checklist of docs/agents/planner_reviewer_prompt.md §3 is FROZEN

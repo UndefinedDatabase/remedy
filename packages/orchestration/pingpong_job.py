@@ -206,6 +206,9 @@ class TaskEntry:
     status: str = TASK_PENDING
     run_id: str = ""
     final_status: str = ""
+    # R-1016: why the run ended ``provider_unavailable`` — the run's error text,
+    # which names the provider child's exit code and stderr tail; "" otherwise.
+    final_status_detail: str = ""
     safe_diff_files: list[str] = field(default_factory=list)
     test_passed: bool | None = None
     reviewer_verdict: str = ""
@@ -942,6 +945,7 @@ def _export_job(job: JobPlan) -> dict[str, Any]:
                 "status": t.status,
                 "run_id": t.run_id,
                 "final_status": t.final_status,
+                "final_status_detail": t.final_status_detail,
                 "safe_diff_files": t.safe_diff_files,
                 "test_passed": t.test_passed,
                 "reviewer_verdict": t.reviewer_verdict,
@@ -1050,6 +1054,8 @@ def _import_job(data: dict[str, Any]) -> JobPlan:
             status=t.get("status", TASK_PENDING),
             run_id=t.get("run_id", ""),
             final_status=t.get("final_status", ""),
+            # A record written before R-1016 carries no key: no detail was recorded.
+            final_status_detail=str(t.get("final_status_detail", "") or ""),
             safe_diff_files=t.get("safe_diff_files", []),
             test_passed=t.get("test_passed"),
             reviewer_verdict=t.get("reviewer_verdict", ""),
@@ -1908,6 +1914,17 @@ def _strict_apply_to_workspace(
 # ---------------------------------------------------------------------------
 # Deterministic job task completion gate (Step 4857)
 # ---------------------------------------------------------------------------
+
+def final_status_detail_of(result: Any) -> str:
+    """The cause a task records beside ``final_status=provider_unavailable`` (R-1016).
+
+    The run's ``error`` is the failed provider call's text, which names the child's
+    exit code and the redacted tail of its stderr. Every other outcome records "".
+    """
+    if getattr(result, "final_status", "") != "provider_unavailable":
+        return ""
+    return str(getattr(result, "error", "") or "")
+
 
 def validate_job_task_result(result: Any) -> tuple[bool, list[str]]:
     """Validate a ping-pong result before applying to job workspace.
@@ -3030,6 +3047,7 @@ def run_job(
             if result.run_id and result.run_id not in job.run_refs:
                 job.run_refs.append(result.run_id)
             task.final_status = result.final_status
+            task.final_status_detail = final_status_detail_of(result)
             task.safe_diff_files = list(result.safe_diff_files)
             task.repair_rounds_used = result.repair_rounds_used
             task.repair_rounds_allowed = result.repair_rounds_allowed

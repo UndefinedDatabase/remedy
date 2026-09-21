@@ -170,7 +170,9 @@ def _vt_run_v11(run: dict, head_sha: str = "") -> dict[str, Any]:
         "output_hash": output_hash,
         "head_sha": str(run.get("head_sha", "") or "") or head_sha,
         "duration_seconds": 0.0 if duration is None else round(float(duration), 3),
-        "test_files": list(run.get("test_files") or []),
+        # Sorted and de-duplicated like job_evidence._build_verification_tests, because
+        # build_review_manifest rejects an unsorted per-run list (R-1017).
+        "test_files": sorted({str(f) for f in (run.get("test_files") or [])}),
         "stdout_summary": stdout_summary,
     }
 

@@ -85,6 +85,10 @@ class BuilderOutput:
     stream_call_id: str = ""
     stream_artifact_refs: list[str] = field(default_factory=list)
     prepared_input: Any = None  # F012: fingerprint of the EXACT transport request
+    # R-1016: when the provider's child process exited nonzero, its exit code and
+    # the redacted last lines of its stderr; None and "" otherwise.
+    exit_code: int | None = None
+    stderr_tail: str = ""
 
 
 @dataclass
@@ -140,6 +144,10 @@ class ReviewerOutput:
     stream_call_id: str = ""
     stream_artifact_refs: list[str] = field(default_factory=list)
     prepared_input: Any = None  # F012: fingerprint of the EXACT transport request
+    # R-1016: when the provider's child process exited nonzero, its exit code and
+    # the redacted last lines of its stderr; None and "" otherwise.
+    exit_code: int | None = None
+    stderr_tail: str = ""
 
 
 # ---------------------------------------------------------------------------
@@ -902,6 +910,40 @@ def _usage_actuals_dict(actuals: Any, cli_ver: str | None) -> dict[str, Any]:
     }
 
 
+#: How many trailing stderr lines a failed CLI call keeps (R-1016).
+_STDERR_TAIL_LINES = 20
+
+
+def _stderr_tail(stderr: str, lines: int = _STDERR_TAIL_LINES) -> str:
+    """The last ``lines`` lines of a child's stderr, through the stream secret redaction."""
+    from packages.orchestration.stream_evidence import redact_text
+
+    return redact_text("\n".join((stderr or "").splitlines()[-lines:]))
+
+
+class _CliNonZeroExit(RuntimeError):
+    """The CLI child exited nonzero; carries its exit code and redacted stderr tail.
+
+    Finding R-1016: a self-use run ended ``provider_unavailable`` and nothing on
+    disk named the cause. The provider's output object copies both attributes, so
+    the run record and the job task can name the cause. Subclasses RuntimeError,
+    so every caller that caught the old plain error still catches this one.
+    """
+
+    def __init__(self, returncode: int, stderr: str) -> None:
+        self.returncode = returncode
+        self.stderr_tail = _stderr_tail(stderr)
+        super().__init__(f"claude CLI exited {returncode}: {self.stderr_tail}")
+
+
+def _exit_detail(exc: BaseException) -> dict[str, Any]:
+    """The output fields a failed call's exception can fill: exit code and stderr tail."""
+    code = getattr(exc, "returncode", None)
+    if not isinstance(code, int):
+        return {}
+    return {"exit_code": code, "stderr_tail": _stderr_tail(getattr(exc, "stderr_tail", "") or "")}
+
+
 class _StreamNonZeroExit(RuntimeError):
     """The streamed CLI exited nonzero, carrying what it still produced.
 
@@ -1301,7 +1343,7 @@ class ClaudeCliProvider:
             # Typed so the structured Reviewer can classify from the envelope it
             # carries; every other caller still sees a plain RuntimeError.
             raise _StreamNonZeroExit(
-                f"claude CLI exited {run.returncode}: {run.stderr_tail[:500]}",
+                f"claude CLI exited {run.returncode}: {_stderr_tail(run.stderr_tail)}",
                 returncode=run.returncode,
                 stderr_tail=run.stderr_tail,
                 final=final_env,
@@ -1348,8 +1390,7 @@ class ClaudeCliProvider:
             raise RuntimeError(f"claude CLI timed out after {timeout_sec}s")
         elapsed_ms = int((time.monotonic() - start) * 1000)
         if proc.returncode != 0:
-            stderr = proc.stderr[:500] if proc.stderr else ""
-            raise RuntimeError(f"claude CLI exited {proc.returncode}: {stderr}")
+            raise _CliNonZeroExit(proc.returncode, proc.stderr or "")
         raw = proc.stdout or ""
 
         actuals, parse_reason = parse_cli_result_detailed(raw)
@@ -1498,7 +1539,7 @@ class ClaudeCliProvider:
                     error_detail="native structured-output retries exhausted: "
                     + "; ".join(str(e) for e in env.errors)[:180],
                 )
-            raise RuntimeError(f"claude CLI exited {proc.returncode}: {stderr[:500]}")
+            raise _CliNonZeroExit(proc.returncode, stderr)
 
         # Finding 3: structured retry exhaustion → parse (usage/cost retained).
         if env.structured_retry_exhausted:
@@ -1588,6 +1629,7 @@ class ClaudeCliProvider:
                 actual_missing_reason="provider_error",
                 stream_artifact_refs=self._persisted_stream_refs(),
                 stream_call_id=self._last_stream_call_id,
+                **_exit_detail(exc),
             )
 
     def review(
@@ -1704,6 +1746,7 @@ class ClaudeCliProvider:
                 actual_missing_reason="provider_error",
                 stream_artifact_refs=self._persisted_stream_refs(),
                 stream_call_id=self._last_stream_call_id,
+                **_exit_detail(exc),
             )
 
 

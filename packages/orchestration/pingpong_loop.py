@@ -4940,6 +4940,18 @@ def _build_worktree_json(result: PingPongResult) -> dict[str, Any]:
     }
 
 
+def _add_exit_detail(block: dict[str, Any], out: Any) -> None:
+    """Name a failed provider child's exit code and stderr tail in the run record (R-1016).
+
+    Only a call whose child exited nonzero carries them, so an ordinary round's
+    JSON keeps exactly the keys it always had.
+    """
+    code = getattr(out, "exit_code", None)
+    if code is not None:
+        block["exit_code"] = code
+        block["stderr_tail"] = getattr(out, "stderr_tail", "")
+
+
 def export_pingpong_json(result: PingPongResult) -> dict[str, Any]:
     """Export result as safe JSON (no raw prompts, no secrets)."""
     rounds = []
@@ -4963,6 +4975,7 @@ def export_pingpong_json(result: PingPongResult) -> dict[str, Any]:
                 "tokens_used": rd.builder_output.tokens_used,
                 "error": rd.builder_output.error,
             }
+            _add_exit_detail(round_data["builder"], rd.builder_output)
         round_data["test_passed"] = rd.test_passed
         round_data["test_summary"] = rd.test_summary
         if rd.reviewer_output:
@@ -4986,6 +4999,7 @@ def export_pingpong_json(result: PingPongResult) -> dict[str, Any]:
                 "parse_retried": rd.reviewer_output.parse_retried,
                 "parse_retry_recovered": rd.reviewer_output.parse_retry_recovered,
             }
+            _add_exit_detail(round_data["reviewer"], rd.reviewer_output)
         rounds.append(round_data)
 
     report_path = str(data_paths.run_dir(result.run_id) / "result.json")
