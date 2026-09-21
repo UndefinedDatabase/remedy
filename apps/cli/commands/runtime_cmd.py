@@ -13,6 +13,16 @@ Every lifecycle transition — read state, verify identity, start/stop, commit �
 under the project's lifecycle lock, so serve/probe/stop can never create a duplicate
 runtime or orphan one. `serve` reports a runtime as running only AFTER HTTP readiness.
 
+Refusals answer through `fail()`, keyed on the error class (DECISION F283 D8):
+`_runtime_refusal(error_class, message, exit_code, *, json_output, **payload)` looks
+`error_class` up in `RUNTIME_ERROR_TOKENS` — the exit-code contract's own seven
+conditions, plus `runtime_error` for a class the supervisor subprocess reports that the
+table does not name — and calls `fail()` with that token, keeping `error_class` in the
+payload beside every other key the call site passes: it is a contract with the
+supervisor subprocess and `packages/runtimes/dev_server.py`, not an implementation
+detail this module is entitled to drop. Under `--json` every refusal answers
+`{"schema_version": 1, "ok": false, "error": <token>, "message": <text>, ...payload}`.
+
 No provider call, no shell, no Docker, no SSE (F008), no project registry (F146).
 """
 from __future__ import annotations
@@ -22,6 +32,9 @@ import json as _json
 import os
 import sys
 from pathlib import Path
+from typing import NoReturn
+
+from apps.cli.json_envelope import fail
 
 EXIT_CONFIG = 2
 EXIT_START = 3
@@ -29,14 +42,33 @@ EXIT_READY = 4
 EXIT_STATE = 5          # lifecycle/state failure: stop failed, survivors, bad state
 EXIT_STOP = EXIT_STATE  # kept for readers of the previous contract
 
+#: DECISION F283 D8 — one token per error class, the class the exit-code contract (and
+#: the supervisor subprocess, and `packages/runtimes/dev_server.py`) is keyed on. A
+#: class the supervisor reports that this table does not name answers "runtime_error"
+#: rather than raising: a stale enum on one side of that boundary must never crash the
+#: CLI reading it.
+RUNTIME_ERROR_TOKENS: dict[str, str] = {
+    "config": "runtime_config_error",
+    "start": "runtime_start_failed",
+    "ready": "runtime_not_ready",
+    "handshake": "runtime_handshake_timeout",
+    "state": "runtime_state_error",
+    "lock": "runtime_lock_busy",
+    "stop": "runtime_stop_failed",
+}
 
-def _fail(message: str, code: int, *, json_output: bool,
-          payload: dict | None = None) -> None:
-    if json_output:
-        print(_json.dumps({"ok": False, "error": message, **(payload or {})}, indent=2))
-    else:
-        print(f"Error: {message}", file=sys.stderr)
-    sys.exit(code)
+
+def _runtime_refusal(error_class: str, message: str, exit_code: int, *,
+                      json_output: bool, **payload) -> NoReturn:
+    """Every refusal in this module: `fail()`, keyed on `error_class`.
+
+    `error_class` is kept in the payload beside every other key the call site passes,
+    so the token this looks up and the class a consumer branches on can never drift
+    apart.
+    """
+    token = RUNTIME_ERROR_TOKENS.get(error_class, "runtime_error")
+    fail(token, message, json_output=json_output, exit_code=exit_code,
+         error_class=error_class, **payload)
 
 
 def _resolve(repo: str, json_output: bool):
@@ -47,8 +79,7 @@ def _resolve(repo: str, json_output: bool):
     try:
         return root, resolve_spec(root)
     except RuntimeConfigError as exc:
-        _fail(str(exc), EXIT_CONFIG, json_output=json_output,
-              payload={"error_class": "config"})
+        _runtime_refusal("config", str(exc), EXIT_CONFIG, json_output=json_output)
     return None, None       # unreachable
 
 
@@ -66,11 +97,11 @@ def _state_guard(root, json_output: bool):
 
     load = load_state_result(root)
     if load.kind in (STATE_CORRUPT, STATE_UNREADABLE):
-        _fail(
+        _runtime_refusal(
+            "state",
             f"runtime state is {load.kind}: {load.error}. Refusing to start or stop "
             f"anything; inspect {load.path} manually.",
-            EXIT_STATE, json_output=json_output,
-            payload={"error_class": "state", "state": load.to_json()},
+            EXIT_STATE, json_output=json_output, state=load.to_json(),
         )
     return load
 
@@ -162,9 +193,9 @@ def _serve_supervisor(root, spec, json_output: bool):
     except (OSError, ValueError) as exc:
         with contextlib.suppress(OSError):
             spec_file.unlink()            # no supervisor will ever ingest it
-        _fail(f"the supervisor could not be started: {type(exc).__name__}: {exc}",
-              EXIT_START, json_output=json_output,
-              payload={"error_class": "start"})
+        _runtime_refusal(
+            "start", f"the supervisor could not be started: {type(exc).__name__}: {exc}",
+            EXIT_START, json_output=json_output)
         return None
 
     deadline = time.monotonic() + min(SUP.HANDSHAKE_TIMEOUT_S,
@@ -186,12 +217,12 @@ def _serve_supervisor(root, spec, json_output: bool):
         # returned — never a number read out of a file.
         cleanup = stop_process_tree(proc.pid)
         _cleanup_control_files(root)
-        _fail(f"supervisor handshake timed out after "
-              f"{int(deadline - time.monotonic() + spec.ready_timeout_s)}s",
-              EXIT_STATE if cleanup["survivors"] else EXIT_READY,
-              json_output=json_output,
-              payload={"error_class": "handshake",
-                       "survivors": cleanup["survivors"]})
+        _runtime_refusal(
+            "handshake",
+            f"supervisor handshake timed out after "
+            f"{int(deadline - time.monotonic() + spec.ready_timeout_s)}s",
+            EXIT_STATE if cleanup["survivors"] else EXIT_READY,
+            json_output=json_output, survivors=cleanup["survivors"])
         return None
 
     with contextlib.suppress(OSError):
@@ -203,11 +234,10 @@ def _serve_supervisor(root, spec, json_output: bool):
         code = (EXIT_STATE if survivors or cls == "state"
                 else EXIT_START if cls == "start" else EXIT_READY)
         _cleanup_control_files(root)
-        _fail(str(payload.get("error", "supervisor failed")), code,
-              json_output=json_output,
-              payload={"error_class": cls, "survivors": survivors,
-                       "log_tail": payload.get("log_tail", ""),
-                       "cleanup": payload.get("cleanup", {})})
+        _runtime_refusal(
+            cls, str(payload.get("error", "supervisor failed")), code,
+            json_output=json_output, survivors=survivors,
+            log_tail=payload.get("log_tail", ""), cleanup=payload.get("cleanup", {}))
         return None
 
     # --- the handshake itself must prove WHO wrote it -------------------------
@@ -217,7 +247,8 @@ def _serve_supervisor(root, spec, json_output: bool):
     if (payload.get("instance_id") != instance_id
             or payload.get("supervisor_pid") != proc.pid):
         cleanup = _retire_own_supervisor(root, proc, instance_id)
-        _fail(
+        _runtime_refusal(
+            "state",
             "the runtime handshake does not belong to this serve "
             f"(instance {payload.get('instance_id')!r}, supervisor pid "
             f"{payload.get('supervisor_pid')!r}); nothing outside this command's own "
@@ -225,9 +256,8 @@ def _serve_supervisor(root, spec, json_output: bool):
             + ("" if not cleanup["survivors"]
                else f". Cleanup left survivors {cleanup['survivors']}: "
                     "stop them manually"),
-            EXIT_STATE, json_output=json_output,
-            payload={"error_class": "state", "survivors": cleanup["survivors"],
-                     "manual_cleanup": cleanup["manual_cleanup"]})
+            EXIT_STATE, json_output=json_output, survivors=cleanup["survivors"],
+            manual_cleanup=cleanup["manual_cleanup"])
         return None
 
     # The CLI only reports success once a DURABLE `running` state exists that the ONE
@@ -249,23 +279,18 @@ def _serve_supervisor(root, spec, json_output: bool):
     if ours and state.status in (*LOG_FAILURE_STATUSES, STATUS_EXITED):
         _cleanup_control_files(root)
         survivors = [p for p in state.survivors if _pid_alive(p)]
-        _fail(
+        _runtime_refusal(
+            "state",
             f"{state.status}: "
             + (state.stop_error or state.log_error
                or f"the runtime reached {state.status!r} right after it started")
             + ("" if not survivors
                else f"; processes survived: {survivors} — stop them manually"),
             EXIT_STATE, json_output=json_output,
-            payload={
-                "error_class": "state",
-                "runtime_status": state.status,
-                "log_error": state.log_error,
-                "stop_error": state.stop_error,
-                "app_exit_code": state.app_exit_code,
-                "survivors": survivors,
-                "manual_cleanup": survivors,
-                "log_tail": read_log_tail(state.log_path) if state.log_path else "",
-            })
+            runtime_status=state.status, log_error=state.log_error,
+            stop_error=state.stop_error, app_exit_code=state.app_exit_code,
+            survivors=survivors, manual_cleanup=survivors,
+            log_tail=read_log_tail(state.log_path) if state.log_path else "")
         return None
 
     ident = classify_runtime(state, root)
@@ -277,15 +302,14 @@ def _serve_supervisor(root, spec, json_output: bool):
         cleanup = _retire_own_supervisor(root, proc, instance_id)
         if not cleanup["survivors"]:
             clear_state(root)
-        _fail(
+        _runtime_refusal(
+            "state",
             "supervisor reported success but no verified running state exists; "
             + ("the runtime it created was stopped"
                if not cleanup["survivors"] else
                f"cleanup left survivors {cleanup['survivors']} — stop them manually"),
-            EXIT_STATE, json_output=json_output,
-            payload={"error_class": "state", "survivors": cleanup["survivors"],
-                     "manual_cleanup": cleanup["manual_cleanup"],
-                     "identity": ident.to_json()})
+            EXIT_STATE, json_output=json_output, survivors=cleanup["survivors"],
+            manual_cleanup=cleanup["manual_cleanup"], identity=ident.to_json())
         return None
     return state, payload
 
@@ -390,14 +414,13 @@ def _cmd_runtime_serve(repo: str = ".", *, json_output: bool = False) -> None:
             if existing is not None and existing.status in LOG_FAILURE_STATUSES:
                 # A recorded logging failure is a diagnostic, not a free slot: starting a
                 # new runtime here would overwrite the only account of what went wrong.
-                _fail(
+                _runtime_refusal(
+                    "state",
                     f"{existing.status}: {existing.stop_error or existing.log_error}. "
                     f"Nothing was started; run `remedy runtime stop` to clear it.",
                     EXIT_STATE, json_output=json_output,
-                    payload={"error_class": "state",
-                             "runtime_status": existing.status,
-                             "log_error": existing.log_error,
-                             "survivors": list(existing.survivors)},
+                    runtime_status=existing.status, log_error=existing.log_error,
+                    survivors=list(existing.survivors),
                 )
                 return
 
@@ -413,24 +436,24 @@ def _cmd_runtime_serve(repo: str = ".", *, json_output: bool = False) -> None:
                 if status == STATUS_RUNNING:
                     if (existing.spec_fingerprint
                             and existing.spec_fingerprint != spec.fingerprint()):
-                        _fail(
+                        _runtime_refusal(
+                            "config",
                             "runtime_spec_mismatch: a different runtime is already "
                             f"running for this project (pid {existing.pid}, port "
                             f"{existing.port}). Run `remedy runtime stop` first.",
                             EXIT_CONFIG, json_output=json_output,
-                            payload={"error_class": "config",
-                                     "running": existing.to_json()},
+                            running=existing.to_json(),
                         )
                         return
                     if existing.supervisor_pid and not existing.instance_id:
                         # A supervised runtime with nothing binding its supervisor to
                         # this record cannot be re-attached to safely.
-                        _fail(
+                        _runtime_refusal(
+                            "state",
                             "the running runtime has no instance id binding it to its "
                             "supervisor. Run `remedy runtime stop` first.",
                             EXIT_STATE, json_output=json_output,
-                            payload={"error_class": "state",
-                                     "identity": ident.to_json()},
+                            identity=ident.to_json(),
                         )
                         return
                     payload = {"ok": True, "already_running": True,
@@ -445,64 +468,64 @@ def _cmd_runtime_serve(repo: str = ".", *, json_output: bool = False) -> None:
                 if status == STATUS_STARTING:
                     # A bare `starting` state is NOT success. Who owns it?
                     if ident.supervisor.verified:
-                        _fail(
+                        _runtime_refusal(
+                            "state",
                             "runtime_start_in_progress: a supervisor (pid "
                             f"{existing.supervisor_pid}) is still starting this "
                             f"runtime. Wait, or run `remedy runtime stop`.",
                             EXIT_STATE, json_output=json_output,
-                            payload={"error_class": "state",
-                                     "runtime_status": STATUS_STARTING,
-                                     "starting": existing.to_json()},
+                            runtime_status=STATUS_STARTING,
+                            starting=existing.to_json(),
                         )
                         return
-                    _fail(
+                    _runtime_refusal(
+                        "state",
                         "interrupted_start: a `starting` runtime has no live "
                         "supervisor. Nothing was started; run `remedy runtime stop` "
                         "to clean it up.",
                         EXIT_STATE, json_output=json_output,
-                        payload={"error_class": "state",
-                                 "runtime_status": "interrupted_start",
-                                 "interrupted": existing.to_json()},
+                        runtime_status="interrupted_start",
+                        interrupted=existing.to_json(),
                     )
                     return
 
                 if status == STATUS_PROBING:
-                    _fail(
+                    _runtime_refusal(
+                        "state",
                         "a one-shot probe currently owns this runtime; a permanent "
                         "serve will not attach to it. Try again shortly.",
                         EXIT_STATE, json_output=json_output,
-                        payload={"error_class": "state",
-                                 "runtime_status": STATUS_PROBING},
+                        runtime_status=STATUS_PROBING,
                     )
                     return
 
-                _fail(
+                _runtime_refusal(
+                    "state",
                     f"runtime state is {status!r}: {existing.stop_error or ''} "
                     f"Run `remedy runtime stop` to clean it up.",
                     EXIT_STATE, json_output=json_output,
-                    payload={"error_class": "state", "runtime_status": status,
-                             "state": existing.to_json()},
+                    runtime_status=status, state=existing.to_json(),
                 )
                 return
 
             if existing is not None and ident.ownership == OWNER_SUPERVISOR_MISSING:
-                _fail(
+                _runtime_refusal(
+                    "state",
                     f"supervisor_missing: {ident.reason}. Nothing was started; run "
                     f"`remedy runtime stop` or clean up pid {existing.pid} manually.",
                     EXIT_STATE, json_output=json_output,
-                    payload={"error_class": "state",
-                             "runtime_status": STATUS_SUPERVISOR_MISSING,
-                             "identity": ident.to_json()},
+                    runtime_status=STATUS_SUPERVISOR_MISSING,
+                    identity=ident.to_json(),
                 )
                 return
 
             if existing is not None and ident.ownership != OWNER_GONE:
-                _fail(
+                _runtime_refusal(
+                    "state",
                     f"runtime state cannot be trusted ({ident.ownership}: "
                     f"{ident.reason or check.reason}). Nothing was started; run "
                     f"`remedy runtime stop` or clean up manually.",
-                    EXIT_STATE, json_output=json_output,
-                    payload={"error_class": "state", "identity": ident.to_json()},
+                    EXIT_STATE, json_output=json_output, identity=ident.to_json(),
                 )
                 return
 
@@ -511,8 +534,7 @@ def _cmd_runtime_serve(repo: str = ".", *, json_output: bool = False) -> None:
                 return
             state, handshake = started
     except RuntimeLockError as exc:
-        _fail(str(exc), EXIT_STATE, json_output=json_output,
-              payload={"error_class": "lock"})
+        _runtime_refusal("lock", str(exc), EXIT_STATE, json_output=json_output)
         return
 
     payload = {
@@ -568,14 +590,12 @@ def _cmd_runtime_probe(repo: str = ".", *, json_output: bool = False) -> None:
                 # application. The runtime is not usable and the record is a diagnostic:
                 # report it, do not start anything beside it, and let `runtime stop`
                 # clear it once the processes are proven gone.
-                _fail(
+                _runtime_refusal(
+                    "state",
                     f"{existing.status}: {existing.stop_error or existing.log_error}",
                     EXIT_STATE, json_output=json_output,
-                    payload={"error_class": "state",
-                             "runtime_status": existing.status,
-                             "log_error": existing.log_error,
-                             "survivors": list(existing.survivors),
-                             "state": existing.to_json()},
+                    runtime_status=existing.status, log_error=existing.log_error,
+                    survivors=list(existing.survivors), state=existing.to_json(),
                 )
                 return
 
@@ -600,29 +620,27 @@ def _cmd_runtime_probe(repo: str = ".", *, json_output: bool = False) -> None:
                         save_state(existing)
                 else:
                     clear_state(root)
-                _fail(
+                _runtime_refusal(
+                    "state",
                     f"supervisor_missing: {ident.reason}. Nothing was killed"
                     + ("; the recorded application is gone too"
                        if not survivors else
                        f"; inspect pid {existing.pid} and clean it up manually"),
                     EXIT_STATE, json_output=json_output,
-                    payload={"error_class": "state",
-                             "runtime_status": STATUS_SUPERVISOR_MISSING,
-                             "survivors": survivors,
-                             "manual_cleanup": survivors,
-                             "supervisor_identity": sup.to_json(),
-                             "identity": ident.to_json()},
+                    runtime_status=STATUS_SUPERVISOR_MISSING, survivors=survivors,
+                    manual_cleanup=survivors, supervisor_identity=sup.to_json(),
+                    identity=ident.to_json(),
                 )
                 return
 
             if existing is not None and ident.usable:
                 served = existing
             elif existing is not None and not ident.may_auto_clear:
-                _fail(
+                _runtime_refusal(
+                    "state",
                     f"runtime state cannot be trusted ({ident.ownership}: "
                     f"{ident.reason or check.reason}). Nothing was started or stopped.",
-                    EXIT_STATE, json_output=json_output,
-                    payload={"error_class": "state", "identity": ident.to_json()},
+                    EXIT_STATE, json_output=json_output, identity=ident.to_json(),
                 )
                 return
 
@@ -634,8 +652,8 @@ def _cmd_runtime_probe(repo: str = ".", *, json_output: bool = False) -> None:
                 except RuntimeStartError as exc:
                     rollback = getattr(exc, "rollback", {}) or {}
                     code = EXIT_STATE if rollback.get("survivors") else EXIT_START
-                    _fail(str(exc), code, json_output=json_output,
-                          payload={"error_class": "start", "rollback": rollback})
+                    _runtime_refusal("start", str(exc), code, json_output=json_output,
+                                      rollback=rollback)
                     return
 
                 result = server.wait_ready()
@@ -673,8 +691,7 @@ def _cmd_runtime_probe(repo: str = ".", *, json_output: bool = False) -> None:
                              else EXIT_READY)
                 return
     except RuntimeLockError as exc:
-        _fail(str(exc), EXIT_STATE, json_output=json_output,
-              payload={"error_class": "lock"})
+        _runtime_refusal("lock", str(exc), EXIT_STATE, json_output=json_output)
         return
 
     # An already-served runtime: a short HTTP request, no lifecycle ownership.
@@ -690,23 +707,19 @@ def _cmd_runtime_probe(repo: str = ".", *, json_output: bool = False) -> None:
         with lifecycle_lock(root):
             fresh = _revalidate_served(root, served)
     except RuntimeLockError as exc:
-        _fail(str(exc), EXIT_STATE, json_output=json_output,
-              payload={"error_class": "lock"})
+        _runtime_refusal("lock", str(exc), EXIT_STATE, json_output=json_output)
         return
 
     if fresh["changed"]:
-        _fail(
+        _runtime_refusal(
+            "state",
             f"the served runtime changed while it was being probed: {fresh['reason']}. "
             f"The HTTP status ({status or 'none'}) says nothing about a runtime nobody "
             f"owns any more.",
             EXIT_STATE, json_output=json_output,
-            payload={"error_class": "state",
-                     "runtime_status": fresh["runtime_status"],
-                     "managed_by_serve": True, "stopped": False,
-                     "status_code": status,
-                     "log_error": fresh["log_error"],
-                     "survivors": fresh["survivors"],
-                     "identity": fresh["identity"]},
+            runtime_status=fresh["runtime_status"], managed_by_serve=True,
+            stopped=False, status_code=status, log_error=fresh["log_error"],
+            survivors=fresh["survivors"], identity=fresh["identity"],
         )
         return
 
@@ -811,8 +824,7 @@ def _cmd_runtime_stop(repo: str = ".", *, json_output: bool = False) -> None:
     try:
         result = stop_recorded_runtime(root)
     except RuntimeLockError as exc:
-        _fail(str(exc), EXIT_STATE, json_output=json_output,
-              payload={"error_class": "lock"})
+        _runtime_refusal("lock", str(exc), EXIT_STATE, json_output=json_output)
         return
 
     ok = bool(result.get("ok"))

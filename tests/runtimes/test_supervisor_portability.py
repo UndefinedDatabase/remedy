@@ -643,7 +643,7 @@ class TestPostHandshakeValidation:
         monkeypatch.setattr(DS, "load_state", real_load)
 
         assert code == 5
-        assert "no verified running state" in out["error"]
+        assert "no verified running state" in out["message"]
         assert out["survivors"] == []
         assert not _alive(seen["app"]) and not _alive(seen["sup"])
         assert _with_data_root(data_root, load_state, project) is None
@@ -1300,7 +1300,7 @@ class TestProbeRevalidatesAfterTheHttpRequest:
 
             assert code == 5, out
             assert out["ok"] is False
-            assert "different runtime instance" in out["error"]
+            assert "different runtime instance" in out["message"]
             assert _alive(app) and _alive(sup), "nothing was killed"
         finally:
             _kill(app, sup)
@@ -2371,7 +2371,7 @@ class TestPostHandshakeTerminalState:
         assert "injected pump failure right after the handshake" in out["log_error"]
         assert out["stop_error"]
         assert out["survivors"] == [] and out["manual_cleanup"] == []
-        assert "no verified running state" not in out["error"]
+        assert "no verified running state" not in out["message"]
 
         # The diagnostic survives the CLI: that is what a later probe reads.
         state = _with_data_root(data_root, load_state, project)
@@ -2401,7 +2401,7 @@ class TestPostHandshakeTerminalState:
         assert out["runtime_status"] == DS.STATUS_EXITED, out
         assert out["app_exit_code"] is not None
         assert out["survivors"] == []
-        assert "no verified running state" not in out["error"]
+        assert "no verified running state" not in out["message"]
 
         state = _with_data_root(data_root, load_state, project)
         assert state is not None and state.status == DS.STATUS_EXITED

@@ -419,7 +419,7 @@ class TestSpecFingerprint:
                 runtime_cmd._cmd_runtime_serve(str(project), json_output=True)
             assert exc.value.code == runtime_cmd.EXIT_CONFIG
             out = _split_json(capsys.readouterr().out)[0]
-            assert "runtime_spec_mismatch" in out["error"]
+            assert "runtime_spec_mismatch" in out["message"]
             assert _alive(served["pid"]), "the old runtime must stay alive"
             assert load_state(project).pid == served["pid"]
         finally:

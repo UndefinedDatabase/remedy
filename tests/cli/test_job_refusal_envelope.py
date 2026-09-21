@@ -531,6 +531,43 @@ class TestSelfCmdRefusalsAreAllMigrated:
         assert "fail" in imported
 
 
+class TestRuntimeCmdRefusalsAreAllMigrated:
+    """F283 round 13 (DECISION F283 D8) — `runtime_cmd.py`'s local `_fail` is deleted;
+    every refusal now calls the module's own `_runtime_refusal`, which calls `fail()`
+    with the token keyed on `error_class`. The four result-shaped failure exits D8
+    names (the one-shot probe's cleanup survivors, its readiness failure, a served
+    runtime's failed health check, and a `stop` that did not stop) each print their own
+    message behind an `if json_output: ... else: ...` branch and only THEN reach
+    `sys.exit`, so the `sys.exit`'s immediate predecessor statement is the `if`/`else`
+    itself, never a bare `print(..., file=sys.stderr)` — none of the four was ever a
+    mechanical pair by this ratchet's own AST rule, and none is now either. Both lists
+    come back empty."""
+
+    def test_no_fail_function_is_defined(self):
+        path = _JOB_PY.parent / "runtime_cmd.py"
+        tree = ast.parse(path.read_text())
+        names = {node.name for node in ast.walk(tree) if isinstance(node, ast.FunctionDef)}
+        assert "_fail" not in names
+
+    def test_no_pair_survives(self):
+        flagged, unflagged = _refusal_sites("runtime_cmd.py")
+        assert flagged == [] and unflagged == [], (
+            f"expected no print-then-exit pair left in runtime_cmd.py, found "
+            f"flagged={flagged} unflagged={unflagged}"
+        )
+
+    def test_the_module_calls_the_shared_helper(self):
+        path = _JOB_PY.parent / "runtime_cmd.py"
+        tree = ast.parse(path.read_text())
+        imported = {
+            alias.name
+            for node in ast.walk(tree)
+            if isinstance(node, ast.ImportFrom) and node.module == "apps.cli.json_envelope"
+            for alias in node.names
+        }
+        assert "fail" in imported
+
+
 def _invoke(fn, **kwargs) -> tuple[int | None, str, str]:
     out, err = io.StringIO(), io.StringIO()
     code: int | None = None

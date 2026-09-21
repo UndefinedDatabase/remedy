@@ -97,6 +97,24 @@ class TestCatalog:
         assert args.repo == "." and args.json is True
 
 
+class TestRuntimeErrorTokens:
+    """DECISION F283 D8 — one token per error class, and every class this module
+    passes to `_runtime_refusal` must be a key the table can look up."""
+
+    def test_every_token_is_distinct(self):
+        tokens = runtime_cmd.RUNTIME_ERROR_TOKENS
+        assert len(set(tokens.values())) == len(tokens)
+
+    def test_every_class_the_module_passes_is_a_key(self):
+        import inspect
+        import re
+
+        source = inspect.getsource(runtime_cmd)
+        classes = set(re.findall(r'_runtime_refusal\(\s*"([a-z]+)"', source))
+        assert classes, "expected at least one literal error_class in the source"
+        assert classes <= set(runtime_cmd.RUNTIME_ERROR_TOKENS)
+
+
 # ---------------------------------------------------------------------------
 # serve / probe / stop
 # ---------------------------------------------------------------------------
@@ -157,6 +175,9 @@ class TestServe:
             runtime_cmd._cmd_runtime_serve(str(empty), json_output=True)
         assert exc.value.code == runtime_cmd.EXIT_CONFIG
         out = json.loads(capsys.readouterr().out)
+        assert out["schema_version"] == 1
+        assert out["ok"] is False
+        assert out["error"] == "runtime_config_error"
         assert out["error_class"] == "config"
 
 
@@ -210,6 +231,11 @@ class TestProbe:
         with pytest.raises(SystemExit) as exc:
             runtime_cmd._cmd_runtime_probe(str(empty), json_output=True)
         assert exc.value.code == runtime_cmd.EXIT_CONFIG
+        out = json.loads(capsys.readouterr().out)
+        assert out["schema_version"] == 1
+        assert out["ok"] is False
+        assert out["error"] == "runtime_config_error"
+        assert out["error_class"] == "config"
 
 
 class TestStop:

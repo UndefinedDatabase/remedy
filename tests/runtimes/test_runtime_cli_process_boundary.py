@@ -373,7 +373,7 @@ class TestSupervisorFailures:
 
         assert code == 3, (code, err)
         assert out["ok"] is False and out["error_class"] == "start"
-        assert "exited before readiness" in out["error"]
+        assert "exited before readiness" in out["message"]
         assert "fatal" in out.get("log_tail", "")
         assert _state(data_root, project) is None
 
