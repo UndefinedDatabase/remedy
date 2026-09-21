@@ -17725,3 +17725,11 @@ REVERSE by deleting this paragraph, deleting `docs/roadmap/features/T2_F283.md`,
 F283's STATUS line, restoring `TOTAL_FEATURES` to 282 with its comment, restoring the README
 counters, restoring F277's three struck Acceptance bullets from git history at `67b0972d`,
 and flipping F277's STATUS line back to `[~]`.
+
+## DECISION amend0921-operator-feedback D1 (2026-09-21, operator answer to Q1) — the second full-suite run stands, and the one run belongs to the shipped tree
+
+The second full-suite run stands, and this is the standing rule: the one full-suite run a feature is allowed belongs to the tree that is actually shipped. If the branch moves after the recorded run — an operator merge of main into the branch, an operator commit on the branch, or any commit outside the loop — the closure re-runs the suite once on the new tree, the new transcript replaces the old one at the same path (`.agent/authored/f<id>-closure-suite.txt`), and the old one stays in git history. This is not a second run in the sense amend0917-throughput forbids; it is the one run, taken on the right tree. The same rule is recorded as rule 1 of this amendment in `docs/agents/self_drive_protocol.md`, and the operator question that asked it (Q1 in `.agent/operator_questions.md`) is deleted in the same commit. Reverse by deleting this paragraph.
+
+## DECISION amend0921-operator-feedback D2 (2026-09-21, operator answer to Q2) — the split of F277 into F277 and F283 stands, and sessions count regardless of rounds
+
+The split of F277 into F277 and F283 stands. The seven-session soft limit counts sessions regardless of how many rounds each delivered, because a session's cold start is the cost being limited. A session that ends after one or two rounds still counts as a session. The remedy for sessions that end early is fewer authoring errors (numbers printed by scripts, not typed), which is already the standing counter-measure, not a softer limit. The same rule is recorded as rule 2 of this amendment in `docs/agents/self_drive_protocol.md`, and the operator question that asked it (Q2 in `.agent/operator_questions.md`) is deleted in the same commit. Reverse by deleting this paragraph.

@@ -222,6 +222,14 @@ already past its limit with a pending scope report at session start.
 Rationale: F262's round 23 wrote a correct scope report and then waited a
 session for a ruling the default would have supplied. Reverse by deleting this paragraph.
 
+Operator amendment amend0921-operator-feedback (2026-09-21), rule 2 — SESSIONS
+COUNT REGARDLESS OF ROUNDS. The seven-session soft limit counts sessions no
+matter how many rounds each one delivered, because a session's cold start is the
+cost being limited, so a session that ends after one or two rounds still counts.
+The remedy for sessions that end early is fewer authoring errors, with numbers
+printed by scripts rather than typed, and not a softer limit. Reverse by
+deleting this paragraph and DECISION amend0921-operator-feedback D2.
+
 Operator amendment amend0906-split-placement (2026-09-06) — A FOLLOW-UP FEATURE
 SPLIT OFF AN OPEN FEATURE IS PLACED DIRECTLY AFTER ITS PARENT. When a session
 registers the remaining scope of feature F<p> as a new feature F<q>, the new
@@ -450,6 +458,17 @@ closure protocol otherwise, Rule A5, the split-and-close default. Reason: the
 verification tiers of 2026-07-26 already excluded the full suite from round
 verification; F275's overlay habit re-imported it and it never left. Reverse by
 deleting this paragraph and restoring the four sibling edits amend0917 names.
+
+Operator amendment amend0921-operator-feedback (2026-09-21), rule 1 — THE ONE
+RUN BELONGS TO THE SHIPPED TREE. The one full-suite run a feature is allowed
+belongs to the tree that is actually shipped. If the branch moves after the
+recorded run — an operator merge of main into the branch, an operator commit on
+the branch, or any commit made outside the loop — the closure re-runs the suite
+once on the new tree, and the new transcript replaces the old one at the same
+path, `.agent/authored/f<id>-closure-suite.txt`, while the old one stays in git
+history. This is not a second run in the sense amend0917-throughput forbids; it
+is the one run, taken on the right tree. Reverse by deleting this paragraph and
+DECISION amend0921-operator-feedback D1.
 
 Operator amendment amend0827-process-diet (2026-08-27), rule 4 — the
 pre-emission checklist of docs/agents/planner_reviewer_prompt.md §3 is FROZEN
