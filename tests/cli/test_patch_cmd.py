@@ -378,3 +378,27 @@ class TestTheEvidenceDirectoryComesFromTheRESOLVEDJobId:
         assert [row["state"] for row in record["hunks"]] == [
             "approved", "pending", "pending"]
         assert "no_diff_available" not in capsys.readouterr().err
+
+
+class TestListPatchIntentsInvalidListOptionIsAnEnvelope:
+    """F283 R8 C6 — round 7's coverage gap: `_cmd_list_patch_intents`'s own
+    `invalid_list_option` refusal (a different call site than `_cmd_approve_hunks`'s
+    `job_not_found`, which round 7's one patch envelope test reached instead) gets its
+    own test."""
+
+    def test_an_invalid_sort_field_answers_invalid_list_option_in_the_envelope(
+        self, isolated, capsys,
+    ):
+        job = _job()
+
+        with pytest.raises(SystemExit) as exc:
+            CMD._cmd_list_patch_intents(
+                str(job.job_id), json_output=True, sort="not_a_real_field",
+            )
+
+        assert exc.value.code == 1
+        captured = capsys.readouterr()
+        assert captured.err == ""
+        body = json.loads(captured.out)
+        assert body["ok"] is False
+        assert body["error"] == "invalid_list_option"
