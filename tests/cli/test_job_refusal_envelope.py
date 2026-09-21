@@ -231,6 +231,29 @@ class TestBrainRefusalsAreAllMigrated:
         )
 
 
+class TestPatchRefusalsAreAllMigrated:
+    """F283 round 7 — `patch.py`'s refusal pairs move onto `fail()`. Two sites print MORE
+    THAN ONE line before their exit, so the migration rule excludes both and they stay:
+    `_cmd_show_patch_intent`'s intent-not-found message (its handler carries no
+    `json_output`, so it counts as the one unflagged site) and
+    `_cmd_revert_patch_intent`'s revert-blocked message (its handler carries
+    `json_output`, so it counts as the one flagged site)."""
+
+    def test_exactly_one_flagged_site_remains(self):
+        flagged, _ = _refusal_sites("patch.py")
+        assert len(flagged) == 1, (
+            f"expected exactly the one revert-blocked multi-print site left unmigrated, "
+            f"found {len(flagged)} at lines {flagged}"
+        )
+
+    def test_exactly_one_unflagged_site_remains(self):
+        _, unflagged = _refusal_sites("patch.py")
+        assert len(unflagged) == 1, (
+            f"expected exactly the one show-intent multi-print site left unmigrated, "
+            f"found {len(unflagged)} at lines {unflagged}"
+        )
+
+
 def _invoke(fn, **kwargs) -> tuple[int | None, str, str]:
     out, err = io.StringIO(), io.StringIO()
     code: int | None = None

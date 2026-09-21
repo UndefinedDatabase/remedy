@@ -8,6 +8,7 @@ from collections.abc import Callable
 from typing import TYPE_CHECKING
 
 from apps.cli.job_id_arg import resolve_job_id_or_fail
+from apps.cli.json_envelope import fail
 from packages.orchestration.pingpong_job import JobNotFoundError, require_job_plan, save_job_plan
 
 if TYPE_CHECKING:
@@ -28,8 +29,7 @@ def _cmd_list_patch_intents(
     try:
         job = require_job_plan(job_id)
     except JobNotFoundError as exc:
-        print(f"Error: {exc}", file=sys.stderr)
-        sys.exit(1)
+        fail("job_not_found", str(exc), json_output=json_output)
 
     from packages.orchestration.approval_queue import format_intent_list, list_patch_intents
     from packages.orchestration.list_options import ListOptionError, apply_list_options
@@ -47,8 +47,7 @@ def _cmd_list_patch_intents(
             date_getter=lambda i: i.get("created_at") or None,
         )
     except ListOptionError as exc:
-        print(f"Error: {exc}", file=sys.stderr)
-        sys.exit(1)
+        fail("invalid_list_option", str(exc), json_output=json_output)
     if json_output:
         print(_json.dumps({
             "version": 1,
@@ -64,8 +63,7 @@ def _cmd_show_patch_intent(job_id_str: str, intent_id: str) -> None:
     try:
         job = require_job_plan(job_id)
     except JobNotFoundError as exc:
-        print(f"Error: {exc}", file=sys.stderr)
-        sys.exit(1)
+        fail("job_not_found", str(exc), json_output=False)
 
     from packages.orchestration.approval_queue import (
         _find_artifact_for_intent,
@@ -93,8 +91,7 @@ def _cmd_approve_patch_intent(job_id_str: str, intent_id: str, reason: str | Non
     try:
         job = require_job_plan(job_id)
     except JobNotFoundError as exc:
-        print(f"Error: {exc}", file=sys.stderr)
-        sys.exit(1)
+        fail("job_not_found", str(exc), json_output=False)
 
     from packages.orchestration.approval_queue import set_approval_state
     from packages.orchestration.run_log import RunLogWriter
@@ -102,8 +99,7 @@ def _cmd_approve_patch_intent(job_id_str: str, intent_id: str, reason: str | Non
     try:
         entry = set_approval_state(job, intent_id, "approved", reason=reason)
     except ValueError as exc:
-        print(f"Error: {exc}", file=sys.stderr)
-        sys.exit(1)
+        fail("patch_intent_not_found", str(exc), json_output=False)
 
     save_job_plan(job)
     log = RunLogWriter(job_id=job.job_id)
@@ -122,8 +118,7 @@ def _cmd_reject_patch_intent(job_id_str: str, intent_id: str, reason: str | None
     try:
         job = require_job_plan(job_id)
     except JobNotFoundError as exc:
-        print(f"Error: {exc}", file=sys.stderr)
-        sys.exit(1)
+        fail("job_not_found", str(exc), json_output=False)
 
     from packages.orchestration.approval_queue import set_approval_state
     from packages.orchestration.run_log import RunLogWriter
@@ -131,8 +126,7 @@ def _cmd_reject_patch_intent(job_id_str: str, intent_id: str, reason: str | None
     try:
         entry = set_approval_state(job, intent_id, "rejected", reason=reason)
     except ValueError as exc:
-        print(f"Error: {exc}", file=sys.stderr)
-        sys.exit(1)
+        fail("patch_intent_not_found", str(exc), json_output=False)
 
     save_job_plan(job)
     log = RunLogWriter(job_id=job.job_id)
@@ -151,8 +145,7 @@ def _cmd_apply_patch_intent(job_id_str: str, intent_id: str, *, json_output: boo
     try:
         job = require_job_plan(job_id)
     except JobNotFoundError as exc:
-        print(f"Error: {exc}", file=sys.stderr)
-        sys.exit(1)
+        fail("job_not_found", str(exc), json_output=json_output)
 
     from packages.orchestration.patch_apply import (
         apply_patch_intent,
@@ -162,8 +155,7 @@ def _cmd_apply_patch_intent(job_id_str: str, intent_id: str, *, json_output: boo
 
     result = apply_patch_intent(job, intent_id)
     if result.state == "blocked":
-        print(f"Error: {result.blocked_reason}", file=sys.stderr)
-        sys.exit(1)
+        fail("patch_apply_blocked", result.blocked_reason, json_output=json_output)
 
     # R-0917: the apply names the test run that verifies it, with its ids.
     next_action = verifying_test_run_action(str(job.job_id), result)
@@ -195,8 +187,7 @@ def _cmd_revert_patch_intent(
     try:
         require_job_plan(job_id)
     except JobNotFoundError as exc:
-        print(f"Error: {exc}", file=sys.stderr)
-        sys.exit(1)
+        fail("job_not_found", str(exc), json_output=json_output)
 
     from pathlib import Path as _Path
 
@@ -326,8 +317,7 @@ def _cmd_approve_hunks(
     try:
         job = require_job_plan(job_id)
     except JobNotFoundError as exc:
-        print(f"Error: {exc}", file=sys.stderr)
-        sys.exit(1)
+        fail("job_not_found", str(exc), json_output=json_output)
 
     # Deferred like every other handler in this file: the grouped CLI imports this module
     # to build its dispatch table on every single invocation.

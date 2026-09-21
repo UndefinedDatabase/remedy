@@ -295,6 +295,23 @@ class TestItMintsNoRefusalVocabularyOfItsOwn:
         assert "Error:" in capsys.readouterr().err
 
 
+class TestARefusalIsAnEnvelopeUnderJson:
+    """F283 R7 C6 — `_cmd_approve_hunks`'s `JobNotFoundError` catch moved onto `fail()`;
+    under `--json` the unknown-job refusal answers a machine in the envelope instead of
+    printing an `Error: ` line to stderr."""
+
+    def test_an_unknown_job_id_answers_job_not_found_in_the_envelope(self, isolated, capsys):
+        with pytest.raises(SystemExit) as exc:
+            CMD._cmd_approve_hunks(str(uuid4()), approve=["h1"], json_output=True)
+
+        assert exc.value.code == 1
+        captured = capsys.readouterr()
+        assert captured.err == ""
+        body = json.loads(captured.out)
+        assert body["ok"] is False
+        assert body["error"] == "job_not_found"
+
+
 class TestTheEvidenceDirectoryComesFromTheRESOLVEDJobId:
     """Finding R-0744, as the two forms `resolve_job_id` exists to accept.
 
