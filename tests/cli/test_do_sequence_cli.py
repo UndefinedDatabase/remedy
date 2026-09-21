@@ -852,9 +852,15 @@ def test_contract_naming_no_template_exits_2_naming_the_templates_and_writes_not
 
     assert exc.value.code == 2
     captured = capsys.readouterr()
-    assert captured.out == ""
-    assert ("--contract 'nosuch' is not a contract template; the templates are "
-            "api-service, cli-tool, python-library, website. Nothing was run.") in captured.err
+    assert captured.err == ""
+    body = json.loads(captured.out)
+    assert body["schema_version"] == 1
+    assert body["ok"] is False
+    assert body["error"] == "unsupported_contract_template"
+    assert body["message"] == (
+        "--contract 'nosuch' is not a contract template; the templates are "
+        "api-service, cli-tool, python-library, website. Nothing was run."
+    )
     assert [p for p in data_root.rglob("*") if p.is_file()] == []
     assert resolve_project(repo) is None
     assert list_job_plans() == []

@@ -813,7 +813,13 @@ class TestRunList:
         with pytest.raises(SystemExit) as exc:
             _cmd_run_list(json_output=True, sort="nope")
         assert exc.value.code == 1
-        assert "unknown --sort field" in capsys.readouterr().err
+        captured = capsys.readouterr()
+        assert captured.err == ""
+        body = json.loads(captured.out)
+        assert body["schema_version"] == 1
+        assert body["ok"] is False
+        assert body["error"] == "invalid_list_option"
+        assert "unknown --sort field" in body["message"]
 
     def test_empty_store_prints_the_empty_message(self, tmp_path, monkeypatch, capsys):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "empty"))
@@ -830,5 +836,20 @@ class TestRunShow:
 
         with pytest.raises(SystemExit) as exc:
             _cmd_run_show("no-such-run", json_output=True)
+        assert exc.value.code == 1
+        captured = capsys.readouterr()
+        assert captured.err == ""
+        body = json.loads(captured.out)
+        assert body["schema_version"] == 1
+        assert body["ok"] is False
+        assert body["error"] == "run_not_found"
+        assert body["message"] == "No run matches 'no-such-run'. Try: remedy run list."
+
+    def test_missing_run_text_mode_keeps_the_error_prefix(self, tmp_path, monkeypatch, capsys):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "empty"))
+        from apps.cli.commands.do_cmd import _cmd_run_show
+
+        with pytest.raises(SystemExit) as exc:
+            _cmd_run_show("no-such-run", json_output=False)
         assert exc.value.code == 1
         assert capsys.readouterr().err == "Error: No run matches 'no-such-run'. Try: remedy run list.\n"

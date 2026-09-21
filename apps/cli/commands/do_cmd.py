@@ -449,10 +449,10 @@ def _cmd_do(
 
         templates = list_contract_templates()
         if contract not in templates:
-            print(f"Error: --contract {contract!r} is not a contract template; the "
-                  f"templates are {', '.join(templates) or '(none)'}. Nothing was run.",
-                  file=sys.stderr)
-            sys.exit(2)
+            fail("unsupported_contract_template",
+                 f"--contract {contract!r} is not a contract template; the "
+                 f"templates are {', '.join(templates) or '(none)'}. Nothing was run.",
+                 json_output=json_output, exit_code=2)
     _cmd_do_order(goal, repo=repo, json_output=json_output, no_llm=no_llm,
                   yes=yes, builder_provider=builder_provider,
                   reviewer_provider=reviewer_provider, builder_model=builder_model,
@@ -480,8 +480,8 @@ def _cmd_run_show(
 
     data = load_run(run_id)
     if data is None:
-        print(f"Error: No run matches {run_id!r}. Try: remedy run list.", file=sys.stderr)
-        sys.exit(1)
+        fail("run_not_found", f"No run matches {run_id!r}. Try: remedy run list.",
+             json_output=json_output)
 
     if json_output:
         print(json.dumps(data, indent=2))
@@ -519,8 +519,7 @@ def _cmd_run_list(
             date_getter=lambda r: r.get("finished_at") or None,
         )
     except ListOptionError as exc:
-        print(f"Error: {exc}", file=sys.stderr)
-        sys.exit(1)
+        fail("invalid_list_option", str(exc), json_output=json_output)
 
     if not runs:
         print("No ping-pong runs found.")
