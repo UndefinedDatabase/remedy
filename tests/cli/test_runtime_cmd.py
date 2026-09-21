@@ -223,6 +223,7 @@ class TestProbe:
         assert exc.value.code == runtime_cmd.EXIT_READY
         out = json.loads(capsys.readouterr().out)
         assert out["ok"] is False and out["stopped"] is True
+        assert out["error"] == "runtime_not_ready" and out["error_class"] == "ready"
         assert load_state(root) is None
 
     def test_a_missing_runtime_exits_2(self, tmp_path, capsys):
@@ -282,6 +283,34 @@ class TestStop:
         finally:
             victim.kill()
             victim.wait()
+
+    def test_stop_answers_the_envelope_when_identity_cannot_be_trusted(
+            self, tmp_path, capsys):
+        """A sibling of `test_stop_never_kills_a_reused_pid`: THAT test's reused-pid
+        record clears automatically (`ok` stays True, nothing exits), so it never
+        reaches the `stop`-that-did-not-stop envelope C4 adds. A project digest
+        mismatch does: `classify_runtime` cannot auto-clear an `identity_mismatch`
+        record, so `stop_recorded_runtime` answers `ok=False` and this command exits 5
+        with `runtime_state_error` in the envelope.
+        """
+        import time
+
+        from packages.runtimes.dev_server import RuntimeState, save_state
+
+        root = _project(tmp_path, "server.py", SERVER)
+        save_state(RuntimeState(
+            pid=999999, create_time=time.time(), port=1234,
+            status="running", project_root=str(root),
+            project_id="not-the-real-project-digest",
+        ))
+        with pytest.raises(SystemExit) as exc:
+            runtime_cmd._cmd_runtime_stop(str(root), json_output=True)
+        assert exc.value.code == runtime_cmd.EXIT_STATE
+        out = json.loads(capsys.readouterr().out)
+        assert out["schema_version"] == 1
+        assert out["ok"] is False
+        assert out["error"] == "runtime_state_error"
+        assert "message" in out and out["message"]
 
 
 class TestTheSupervisorEnvironmentIsScrubbed:

@@ -23,6 +23,13 @@ supervisor subprocess and `packages/runtimes/dev_server.py`, not an implementati
 detail this module is entitled to drop. Under `--json` every refusal answers
 `{"schema_version": 1, "ok": false, "error": <token>, "message": <text>, ...payload}`.
 
+Four exits print a RESULT document instead of refusing outright — the one-shot probe's
+cleanup survivors, a one-shot probe that did not reach readiness, a served runtime whose
+health URL failed, and a `stop` that did not stop — and their text branches are
+unchanged. Under `--json` a failing one of these answers the SAME envelope shape, built
+with `emit_error()`: the token from `RUNTIME_ERROR_TOKENS`, the result document's own
+`error` sentence as `message`, and every other key the document carried.
+
 No provider call, no shell, no Docker, no SSE (F008), no project registry (F146).
 """
 from __future__ import annotations
@@ -34,7 +41,7 @@ import sys
 from pathlib import Path
 from typing import NoReturn
 
-from apps.cli.json_envelope import fail
+from apps.cli.json_envelope import emit_error, fail
 
 EXIT_CONFIG = 2
 EXIT_START = 3
@@ -665,19 +672,24 @@ def _cmd_runtime_probe(repo: str = ".", *, json_output: bool = False) -> None:
                 payload = {**result.to_json(), "managed_by_serve": False,
                            "stopped": not survivors, "survivors": survivors}
                 if survivors:
-                    payload["ok"] = False
-                    payload["error"] = (
-                        f"managed processes survived the probe cleanup: {survivors}")
+                    message = f"managed processes survived the probe cleanup: {survivors}"
                     payload["error_class"] = "stop"
                     if json_output:
-                        print(_json.dumps(payload, indent=2))
+                        rest = {k: v for k, v in payload.items() if k not in ("ok", "error")}
+                        emit_error(RUNTIME_ERROR_TOKENS["stop"], message, **rest)
                     else:
                         print(f"Probe cleanup FAILED: survivors {survivors}",
                               file=sys.stderr)
                     sys.exit(EXIT_STATE)
 
                 if json_output:
-                    print(_json.dumps(payload, indent=2))
+                    if result.ok:
+                        print(_json.dumps(payload, indent=2))
+                    else:
+                        cls = result.error_class or "start"
+                        token = RUNTIME_ERROR_TOKENS.get(cls, "runtime_error")
+                        rest = {k: v for k, v in payload.items() if k not in ("ok", "error")}
+                        emit_error(token, result.error, **rest)
                 else:
                     if result.ok:
                         print(f"Probe OK: {result.url} (status {result.status_code}, "
@@ -736,7 +748,11 @@ def _cmd_runtime_probe(repo: str = ".", *, json_output: bool = False) -> None:
                "runtime_status": fresh["runtime_status"],
                "survivors": fresh["survivors"]}
     if json_output:
-        print(_json.dumps(payload, indent=2))
+        if good:
+            print(_json.dumps(payload, indent=2))
+        else:
+            rest = {k: v for k, v in payload.items() if k not in ("ok", "error")}
+            emit_error(RUNTIME_ERROR_TOKENS["ready"], result.error, **rest)
     else:
         print(f"Probe {'OK' if good else 'FAILED'}: {served.url} "
               f"(pid {served.pid}, still running)")
@@ -831,7 +847,13 @@ def _cmd_runtime_stop(repo: str = ".", *, json_output: bool = False) -> None:
     survivors = result.get("survivors") or []
 
     if json_output:
-        print(_json.dumps(result, indent=2))
+        if ok:
+            print(_json.dumps(result, indent=2))
+        else:
+            cls = "stop" if survivors else "state"
+            message = result.get("stop_error") or result.get("reason") or "stop failed"
+            rest = {k: v for k, v in result.items() if k not in ("ok", "error")}
+            emit_error(RUNTIME_ERROR_TOKENS[cls], message, **rest)
     elif survivors:
         print(f"Runtime stop FAILED: {result.get('stop_error')}", file=sys.stderr)
         print(f"  Survivors: {survivors}", file=sys.stderr)
