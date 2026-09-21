@@ -1,0 +1,229 @@
+diff --git a/apps/cli/commands/job.py b/apps/cli/commands/job.py
+index 1f0722a8..f9a9bd52 100644
+--- a/apps/cli/commands/job.py
++++ b/apps/cli/commands/job.py
+@@ -7,7 +7,7 @@ import sys
+ import time
+ from collections.abc import Callable
+ from datetime import datetime, timezone
+-from typing import TYPE_CHECKING, Any
++from typing import TYPE_CHECKING, Any, NoReturn
+ 
+ from apps.cli.json_envelope import fail
+ from packages.core.models import RunState
+@@ -64,21 +64,18 @@ def _cmd_create_job(
+     from packages.orchestration.run_log import RunLogWriter
+ 
+     if task_description is not None and task_type is None:
+-        print("Error: --task-description requires --task-type", file=sys.stderr)
+-        sys.exit(1)
++        fail("missing_argument", '--task-description requires --task-type', json_output=False)
+ 
+     if task_type is not None:
+         task_type = task_type.strip()
+         if not task_type:
+-            print("Error: --task-type must not be empty", file=sys.stderr)
+-            sys.exit(1)
++            fail("invalid_task_type", '--task-type must not be empty', json_output=False)
+         if not _SAFE_TASK_TYPE_RE.match(task_type):
+-            print(
+-                "Error: --task-type contains invalid characters; "
+-                "allowed: letters, digits, underscores, hyphens",
+-                file=sys.stderr,
++            fail(
++                "invalid_task_type",
++                '--task-type contains invalid characters; allowed: letters, digits, underscores, hyphens',
++                json_output=False,
+             )
+-            sys.exit(1)
+ 
+     from packages.orchestration.project_registry import ProjectNotFoundError, select_project
+ 
+@@ -87,12 +84,11 @@ def _cmd_create_job(
+         project, _src = select_project(project_id, ".")
+         project_id = str(project.id)
+     except ProjectNotFoundError:
+-        print(
+-            "Error: no project found. Run: remedy init\n"
+-            "  or pass --project <slug-or-id>",
+-            file=sys.stderr,
++        fail(
++            "no_project",
++            'no project found. Run: remedy init\n  or pass --project <slug-or-id>',
++            json_output=False, exit_code=3,
+         )
+-        sys.exit(3)
+ 
+     metadata: dict = {}
+     metadata["project_id"] = project_id
+@@ -118,8 +114,7 @@ def _cmd_create_job(
+             project_root=_project_repo,
+         )
+     except (BudgetConfigError, ValueError) as exc:
+-        print(f"Error: {exc}", file=sys.stderr)
+-        sys.exit(2)
++        fail("invalid_budget", str(exc), json_output=False, exit_code=2)
+ 
+     job = JobPlan(
+         job_title=prompt[:50],
+@@ -209,7 +204,7 @@ def _scope_label(job: JobPlan, scope: ProjectScope, known_ids: set[str]) -> str:
+     return ""
+ 
+ 
+-def _cmd_show_job(job_id_str: str, *, full: bool = False) -> None:
++def _cmd_show_job(job_id_str: str, *, full: bool = False, json_output: bool = False) -> None:
+     import json
+ 
+     from packages.orchestration.pingpong_job import _export_job, collect_blocked_task_findings
+@@ -219,8 +214,7 @@ def _cmd_show_job(job_id_str: str, *, full: bool = False) -> None:
+         job = require_job_plan(job_id)
+     except (JobNotFoundError, JobStoreError) as exc:
+         # R-0902: a record that exists and cannot be read is named, like a missing one, never a traceback.
+-        print(f"Error: {exc}", file=sys.stderr)
+-        sys.exit(1)
++        fail("job_store_error", str(exc), json_output=json_output)
+     shown = _export_job(job)
+     # R-0806: why a task blocked is readable here, without opening evidence JSON.
+     # The key is appended, so every key the JSON carried before keeps its place.
+@@ -729,8 +723,7 @@ def _cmd_plan_job_local(job_id_str: str) -> None:
+     try:
+         job = require_job_plan(job_id)
+     except JobNotFoundError as exc:
+-        print(f"Error: {exc}", file=sys.stderr)
+-        sys.exit(1)
++        fail("job_not_found", str(exc), json_output=False)
+ 
+     from packages.orchestration.llm_planner import annotate_planning_result, plan_job_with_llm
+     from packages.orchestration.run_log import RunLogWriter
+@@ -787,13 +780,11 @@ def _cmd_plan_job_local(job_id_str: str) -> None:
+             log.log("planning_failed", provider="ollama", role="planner", model=planner.model,
+                     outcome="error", message="structured planner capability missing",
+                     error_category="config")
+-            print(
+-                "Error: structured planner requires a plan_raw capability the "
+-                "installed planner does not provide; set REMEDY_PLANNER_FREETEXT=1 "
+-                "to use the legacy planner.",
+-                file=sys.stderr,
++            fail(
++                "planner_capability_missing",
++                'structured planner requires a plan_raw capability the installed planner does not provide; set REMEDY_PLANNER_FREETEXT=1 to use the legacy planner.',
++                json_output=False,
+             )
+-            sys.exit(1)
+         _pp_schema = to_json_schema(PlannerPlan)
+         call_planner = make_structured_planner(
+             lambda p, _a, _r=_raw_plan, _s=_pp_schema: _r(p, schema=_s),
+@@ -821,20 +812,21 @@ def _cmd_plan_job_local(job_id_str: str) -> None:
+         # exception's class name.
+         log.log("planning_failed", provider="ollama", role="planner", model=planner.model,
+                 outcome="error", message=str(exc), error_category="parse")
+-        print(f"Error: planner structured output invalid after one retry: {exc}", file=sys.stderr)
+-        sys.exit(1)
++        fail(
++            "planner_output_invalid",
++            f'planner structured output invalid after one retry: {exc}',
++            json_output=False,
++        )
+     except ImportError as exc:
+         _persist_plan_traces()
+         log.log("planning_failed", provider="ollama", role="planner", model=planner.model,
+                 outcome="error", message="planning failed", error_category=type(exc).__name__)
+-        print(f"Error: {exc}", file=sys.stderr)
+-        sys.exit(1)
++        fail("missing_dependency", str(exc), json_output=False)
+     except Exception as exc:
+         _persist_plan_traces()
+         log.log("planning_failed", provider="ollama", role="planner", model=planner.model,
+                 outcome="error", message="planning failed", error_category=type(exc).__name__)
+-        print(f"Error: Ollama planning failed: {exc}", file=sys.stderr)
+-        sys.exit(1)
++        fail("planner_failed", f'Ollama planning failed: {exc}', json_output=False)
+     elapsed_ms = (time.monotonic() - start) * 1000
+     _persist_plan_traces()
+ 
+@@ -2123,9 +2115,13 @@ _JOB_BUDGETS_FIELDS = (
+     "max_total_tokens", "max_provider_calls", "max_wall_clock_minutes", "max_cost_usd", "deadline")
+ 
+ 
+-def _refuse_budget_set(message: str) -> None:
+-    print(f"Error: {message}", file=sys.stderr)
+-    sys.exit(2)
++def _refuse_budget_set(error: str, message: str, *, json_output: bool) -> NoReturn:
++    """`job budget set` refuses in the envelope when the caller asked for one.
++
++    The token is the CALLER's, because only the caller knows which condition it
++    hit; this helper exists so the exit code 2 is written once (DECISION F277 D8).
++    """
++    fail(error, message, json_output=json_output, exit_code=2)
+ 
+ 
+ def _cmd_job_budget_route(args: argparse.Namespace) -> None:
+@@ -2138,7 +2134,10 @@ def _cmd_job_budget_route(args: argparse.Namespace) -> None:
+     field_name = getattr(args, "field", None)
+     value = getattr(args, "value", None)
+     if action != "set" or field_name is None or value is None:
+-        _refuse_budget_set(f"use `{_BUDGET_SET_FORM}`, or `remedy job budget <job_id>` to show.")
++        _refuse_budget_set(
++            "invalid_argument",
++            f"use `{_BUDGET_SET_FORM}`, or `remedy job budget <job_id>` to show.",
++            json_output=json_output)
+     _cmd_job_budget_set(args.job_id, field_name, value, json_output=json_output)
+ 
+ 
+@@ -2157,18 +2156,29 @@ def _cmd_job_budget_set(
+     if field_name in _JOB_BUDGETS_FIELDS:
+         flag = "--" + field_name.replace("_", "-")
+         _refuse_budget_set(
++            "budget_field_wrong_store",
+             f"{field_name} is a job run limit: set it with `remedy job run <job_id> {flag} <value>`; "
+-            "a stopped job's limits change through its Decision.")
++            "a stopped job's limits change through its Decision.",
++            json_output=json_output)
+     in_contract = field_name in _RUN_CONTRACT_BUDGET_FIELDS
+     if not in_contract and field_name not in _TOKEN_PROFILE_BUDGET_FIELDS:
+-        _refuse_budget_set(f"unknown budget field {field_name!r}. Settable: {settable}.")
++        _refuse_budget_set(
++            "unknown_budget_field",
++            f"unknown budget field {field_name!r}. Settable: {settable}.",
++            json_output=json_output)
+     try:
+         new_value = int(raw_value)
+     except ValueError:
+-        _refuse_budget_set(f"{field_name} takes an integer, got {raw_value!r}. Settable: {settable}.")
++        _refuse_budget_set(
++            "invalid_budget_value",
++            f"{field_name} takes an integer, got {raw_value!r}. Settable: {settable}.",
++            json_output=json_output)
+     floor = 0 if in_contract else 1
+     if new_value < floor:
+-        _refuse_budget_set(f"{field_name} must be >= {floor}, got {new_value}.")
++        _refuse_budget_set(
++            "invalid_budget_value",
++            f"{field_name} must be >= {floor}, got {new_value}.",
++            json_output=json_output)
+ 
+     # The show form's lookup and its not-found error.
+     try:
+@@ -2197,8 +2207,10 @@ def _cmd_job_budget_set(
+             f018_field = "max_wall_clock_minutes"
+         if f018_field:
+             _refuse_budget_set(
++                "budget_field_wrong_store",
+                 f"{field_name} follows this job's {f018_field}: set it with "
+-                f"`remedy job run <job_id> --{f018_field.replace('_', '-')} <value>`.")
++                f"`remedy job run <job_id> --{f018_field.replace('_', '-')} <value>`.",
++                json_output=json_output)
+         contract = load_contract(job)
+         if contract is None:
+             contract = build_default_run_contract(job)
+@@ -2240,7 +2252,9 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
+         until=getattr(args, "until", None),
+         limit=getattr(args, "limit", None),
+     ),
+-    "job.show": lambda args: _cmd_show_job(args.job_id, full=getattr(args, "full", False)),
++    "job.show": lambda args: _cmd_show_job(
++        args.job_id, full=getattr(args, "full", False),
++        json_output=getattr(args, "json", False)),
+     "job.budget": _cmd_job_budget_route,
+     "job.plan": lambda args: _cmd_plan_job_local(args.job_id),
+     "job.checkpoints": lambda args: _cmd_checkpoints(
