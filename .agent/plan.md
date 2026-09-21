@@ -12,19 +12,17 @@ is documented and asserted from the catalog
 
 ## Current Step
 
-ROUND 10. It books round 9's PASS, registers R-1026 and records DECISIONs
-F283 D5 and D6. Then, one commit each: `remedy do --json` answers in one
-envelope, a failed walk carrying its result document (D5); the parser's usage
-refusals in `apps/cli/grouped.py` answer in the envelope under `--json` (D6);
-the `test` group's refusals move onto `fail()`; and the three refusals R-1026
-names pass `job_not_found`.
+ROUND 11. It books round 10's PASS and resolves R-1026. Then, one commit
+each: the `stats` refusals in `stats_ledger_cmd.py`, `bench_cmd.py` and
+`failure_stats_cmd.py` move onto `fail()`, the exiting helpers taking the
+caller's `json_output`; `job stop`'s refusals do the same; and the two
+refusals round 10 left untested gain their tests.
 
 ## Next Steps
 
-1. The tail of the refusal sweep: `patch`, `config`, `real_test_execution`,
-   `ui`, `self`, `decision`, `snapshot`, `worker_facade`, the cost-preview
-   confirmation, the `stats`, `bench`, `failure_stats` and `job stop`
-   `SystemExit` sites, and the unprefixed refusals of `--json` handlers.
+1. The rest of the tail: `patch`, `config`, `real_test_execution`,
+   `snapshot`, `self`, `worker_facade`, the cost-preview confirmation, and
+   the unprefixed refusals of `--json` handlers.
 2. `runtime_cmd.py`, its own round.
 3. T001's catalog half: the read-only commands without `supports_json`, and
    the catalog test asserting that set is empty.
@@ -33,7 +31,6 @@ names pass `job_not_found`.
 
 ## Risks
 
-Twenty-three findings are open after this round's booking, one of them this
-feature's own (R-1026, repaired in this round). Ten rounds are spent of the
-soft limit of 25, in the third of 7 sessions; the success-envelope half of
-T002 is the largest piece left.
+Twenty-two findings are open after this round's booking and none is this
+feature's own. Eleven rounds are spent of the soft limit of 25, in the third
+of 7 sessions; the success-envelope half of T002 is the largest piece left.
