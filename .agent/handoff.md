@@ -401,3 +401,74 @@ G3). `tests/runtimes/test_apps_ui_probe.py`, allowed but unneeded, appears
    is empty.
 
 Open findings count: **22**. Operator-questions count: **2**.
+
+## Reviewer verdict on round 13, and the end of session 3 (STOP)
+
+Written by the planner and reviewer of F283's third session after the worker's C5 above,
+and appended to this handback by a delegated worker as the session's last commit. It is
+the durable carrier of round 13's verdict (amend0827 rule 1): the first commit of the next
+round books it into `.agent/live_review.md`.
+
+VERDICT ON ROUND 13: PASS ON ALL SIX GATES. Re-derived over `2ac999da`..`160bc2bc` by the
+reviewer's own runs. The range is five commits in the block's order C1 to C5 — `e8a1e6b8`
+258, `c38cab8a` 45, `aa42e451` 194, `77b36204` 59 and the handback `160bc2bc` 249
+insertions by `git show --numstat`, each under the cap, and each commit's path list is the
+one its SPEC names. The four `.agent/authored/f283-r13-*` blobs read out of `e8a1e6b8`
+equal the reviewer's originals; `.agent/live_review.md` at `c38cab8a` is its `2ac999da`
+bytes plus ledger.md, 507616 bytes, and `.agent/decisions.md` its base plus decisions.md,
+1809197 bytes, both unchanged at `160bc2bc`; `.agent/plan.md` equals its payload at both.
+The open set stays at 22. In `apps/cli/commands/runtime_cmd.py` no line holds `_fail(` and
+28 hold `_runtime_refusal(`; `RUNTIME_ERROR_TOKENS` carries D8's seven tokens and every
+refusal keeps `error_class` in its payload. The four result-shaped failure exits answer one
+envelope under `--json` through `emit_error` followed by their existing exits, where D8's
+text says "one failure envelope" and names no writer; the effect is the one D8 rules.
+Selection A (109 paths, `-n auto`) reads `4571 passed, 1 skipped` and selection B (the five
+`tests/runtimes/` suites, serial) `204 passed`, both at real exit code 0, against `4565
+passed, 1 skipped` and `204 passed` at `2ac999da`; `ruff check` over the seven touched
+Python paths passes; `integrity check --json` passes at `fail_count` 0. The reviewer's own
+mutations, in the disposable worktree `.remedy-wt/f283-r13-reviewer` at `160bc2bc`, removed
+afterwards, over `tests/cli/test_runtime_cmd.py` and `tests/cli/test_job_refusal_envelope.py`:
+control `98 passed`; the token lookup ignoring the class reads `2 failed, 96 passed` on both
+missing-spec tests; `stop`'s token fixed to `runtime_stop_failed` reads `1 failed, 97
+passed` on `test_stop_answers_the_envelope_when_identity_cannot_be_trusted`; two classes
+sharing one token reads `2 failed, 96 passed`, the distinctness test among them; post-revert
+`98 passed`. `git stash list` reads the same first entry as before the session.
+
+Round 12's verdict is booked in round 13's C2 (`c38cab8a`). One reviewer-prose slip to book
+in `.agent/prose_slips.md` with the next round's bookkeeping: round 12's block marked
+`project_not_found` "(new)" beside `invalid_project_selector`, where only the second was
+new; the worker measured it and reported it reused.
+
+WHY THE SESSION ENDS HERE. At the verdict of round 13 the reviewer's `git status
+--porcelain` read `?? .agent/STOP`: an empty file dated 2026-09-21 19:25, after round 13's
+last commit at 19:16. Guardrail G6 of `docs/agents/self_drive_protocol.md` binds: no commit
+was half-written, so this addendum is written and the session ends. The session ran four
+delegated rounds, 10 to 13, all PASS — the floor of four is met and the target of six to
+eight is not, and the STOP file is the reason. `.agent/STOP` is the operator's file and is
+neither committed nor removed by this session.
+
+SESSION 3 of feature F283 · rounds 10 to 13 · rounds so far 13 of the soft limit of 25 ·
+sessions 3 of 7. Context self-assessment: roughly 97% of the reviewer's working budget
+remained, so the end is the STOP file's and not the context's.
+
+WHAT T001 STILL NEEDS. The refusal sweep over `apps/cli/` is done outside three kinds of
+site a later round may still meet: multi-line text refusals of commands that declare no
+`supports_json` (`patch show`, `decision resolve`, `ui open`, `ui latest`,
+`project attach-repo`), which no machine reads; result documents that exit non-zero
+without an envelope (`test run --json` and two `job` exits), which are T002's success and
+result half; and the catalog half itself.
+
+## Next (session 4)
+
+1. Phase 1 rule 1: read `.agent/STOP` from disk. While it exists, write nothing and end;
+   the operator removes it to resume.
+2. Phase 1 rule 2: the Open PR Gate — no pull request is open for this branch, and none is
+   opened before closure.
+3. Round 14's first commit books round 13's verdict above into `.agent/live_review.md` and
+   the prose slip into `.agent/prose_slips.md`; the round itself is T001's catalog half —
+   the read-only commands without `supports_json`, and the catalog test asserting that set
+   is empty.
+4. Then T002: success envelopes, the exit-code taxonomy under `docs/guides/`, and
+   `tests/cli/test_json_contract.py`'s sweep; then the closure sequence.
+
+Open findings: 22, none F283's own. Operator questions open: 2.
