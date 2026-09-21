@@ -310,7 +310,12 @@ class TestPatchRefusalsAreAllMigrated:
     `_cmd_show_patch_intent`'s intent-not-found message (its handler carries no
     `json_output`, so it counts as the one unflagged site) and
     `_cmd_revert_patch_intent`'s revert-blocked message (its handler carries
-    `json_output`, so it counts as the one flagged site)."""
+    `json_output`, so it counts as the one flagged site). Round 12 migrates
+    `_cmd_revert_patch_intent`'s three BRANCHED sites (`ambiguous_intent_id`,
+    `no_apply_record`, `no_target_repo`) onto `fail()` too, but none of the three was
+    ever a mechanical `print`-then-`sys.exit` PAIR by this ratchet's own AST rule — the
+    `print` sat inside an `if`/`else`, never directly before the `sys.exit` — so this
+    class's two counts are unchanged by that round."""
 
     def test_exactly_one_flagged_site_remains(self):
         flagged, _ = _refusal_sites("patch.py")
@@ -440,6 +445,84 @@ class TestTestCmdsRefusalsAreAllMigrated:
             f"expected no print-then-exit pair left in test_cmds.py, found "
             f"flagged={flagged} unflagged={unflagged}"
         )
+
+
+class TestSnapshotCmdsRefusalsAreAllMigrated:
+    """F283 round 12 — `snapshot_cmds.py`'s three refusals (two `job_not_found`
+    branches and one `snapshot_not_found` branch) move onto `fail()`. Each was
+    BRANCHED on `as_json` rather than a mechanical single-line print, so none was
+    ever counted by `_refusal_sites` either; the ratchet below reads the module for
+    no PAIR left at all, mechanical or branched, the same shape the other migrated
+    modules pin."""
+
+    def test_no_pair_survives(self):
+        flagged, unflagged = _refusal_sites("snapshot_cmds.py")
+        assert flagged == [] and unflagged == [], (
+            f"expected no print-then-exit pair left in snapshot_cmds.py, found "
+            f"flagged={flagged} unflagged={unflagged}"
+        )
+
+    def test_the_module_calls_the_shared_helper(self):
+        path = _JOB_PY.parent / "snapshot_cmds.py"
+        tree = ast.parse(path.read_text())
+        imported = {
+            alias.name
+            for node in ast.walk(tree)
+            if isinstance(node, ast.ImportFrom) and node.module == "apps.cli.json_envelope"
+            for alias in node.names
+        }
+        assert "fail" in imported
+
+
+class TestRealTestExecutionRefusalsAreAllMigrated:
+    """F283 round 12 — `real_test_execution_cmd.py`'s three refusals
+    (`_cmd_test_result`'s `test_run_not_found`, `_cmd_test_list`'s reused
+    `invalid_list_option`, `_cmd_snapshot_show`'s `snapshot_proof_not_found`) move
+    onto `fail()` by the plain rule; each handler takes a single `args` parameter and
+    reads its flag with `getattr(args, "json", False)`, so `_refusal_sites`'s
+    `json_output`-in-scope test never applied here — all three sat in the unflagged
+    list before this round and neither list holds anything now."""
+
+    def test_no_pair_survives(self):
+        flagged, unflagged = _refusal_sites("real_test_execution_cmd.py")
+        assert flagged == [] and unflagged == [], (
+            f"expected no print-then-exit pair left in real_test_execution_cmd.py, "
+            f"found flagged={flagged} unflagged={unflagged}"
+        )
+
+    def test_the_module_calls_the_shared_helper(self):
+        path = _JOB_PY.parent / "real_test_execution_cmd.py"
+        tree = ast.parse(path.read_text())
+        imported = {
+            alias.name
+            for node in ast.walk(tree)
+            if isinstance(node, ast.ImportFrom) and node.module == "apps.cli.json_envelope"
+            for alias in node.names
+        }
+        assert "fail" in imported
+
+
+class TestSelfCmdRefusalsAreAllMigrated:
+    """F283 round 12 — `self_cmd.py`'s one refusal (`self propose --top`'s
+    `invalid_argument`) moves onto `fail()` by the plain rule, exit 1 unchanged."""
+
+    def test_no_pair_survives(self):
+        flagged, unflagged = _refusal_sites("self_cmd.py")
+        assert flagged == [] and unflagged == [], (
+            f"expected no print-then-exit pair left in self_cmd.py, found "
+            f"flagged={flagged} unflagged={unflagged}"
+        )
+
+    def test_the_module_calls_the_shared_helper(self):
+        path = _JOB_PY.parent / "self_cmd.py"
+        tree = ast.parse(path.read_text())
+        imported = {
+            alias.name
+            for node in ast.walk(tree)
+            if isinstance(node, ast.ImportFrom) and node.module == "apps.cli.json_envelope"
+            for alias in node.names
+        }
+        assert "fail" in imported
 
 
 def _invoke(fn, **kwargs) -> tuple[int | None, str, str]:

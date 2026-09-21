@@ -218,38 +218,32 @@ def _cmd_revert_patch_intent(
         if len(matches) == 1:
             resolved_apply_id = matches[0].apply_id
         elif len(matches) > 1:
-            if json_output:
-                print(_json.dumps({
-                    "error": "ambiguous_intent_id",
-                    "intent_id": intent_id,
-                    "apply_ids": [m.apply_id for m in matches],
-                }))
-            else:
-                print(
-                    f"Error: intent {intent_id!r} matches {len(matches)} apply records. "
-                    "Use --apply-id to specify one.",
-                    file=sys.stderr,
-                )
-            sys.exit(1)
+            fail(
+                "ambiguous_intent_id",
+                f"intent {intent_id!r} matches {len(matches)} apply records. "
+                "Use --apply-id to specify one.",
+                json_output=json_output,
+                intent_id=intent_id,
+                apply_ids=[m.apply_id for m in matches],
+            )
         else:
-            if json_output:
-                print(_json.dumps({"error": "no_apply_record", "intent_id": intent_id}))
-            else:
-                print(
-                    f"Error: no durable apply record found for intent {intent_id!r}. "
-                    "Use 'remedy snapshot list-applies <job_id>' to inspect.",
-                    file=sys.stderr,
-                )
-            sys.exit(1)
+            fail(
+                "no_apply_record",
+                f"no durable apply record found for intent {intent_id!r}. "
+                "Use 'remedy snapshot list-applies <job_id>' to inspect.",
+                json_output=json_output,
+                intent_id=intent_id,
+            )
 
     # repo_root from job metadata
     target_repo_str: str = job.metadata.get("target_repo", "") or ""
     if not target_repo_str:
-        if json_output:
-            print(_json.dumps({"error": "no_target_repo", "job_id": job_id_str}))
-        else:
-            print(f"Error: job {job_id_str!r} has no target_repo in metadata.", file=sys.stderr)
-        sys.exit(1)
+        fail(
+            "no_target_repo",
+            f"job {job_id_str!r} has no target_repo in metadata.",
+            json_output=json_output,
+            job_id=job_id_str,
+        )
     repo_root = _Path(target_repo_str)
 
     result = revert_repository_apply(job_id_str, resolved_apply_id, repo_root, data_dir)

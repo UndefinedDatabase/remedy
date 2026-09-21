@@ -111,10 +111,19 @@ def test_test_list_since_and_until_filter_by_created_at(capsys):
 
 
 def test_test_list_unknown_sort_field_exits_nonzero(capsys):
+    """F283 R12 C3 — `invalid_list_option` used to print to stderr regardless of
+    `--json`; the plain rule now answers the envelope on stdout when the flag holds,
+    matching every other mechanical refusal in this module."""
     with pytest.raises(SystemExit) as exc:
         _test_list_json(capsys, sort="bogus")
     assert exc.value.code == 1
-    assert "valid fields: created_at, status, test_run_id" in capsys.readouterr().err
+    captured = capsys.readouterr()
+    assert captured.err == ""
+    body = json.loads(captured.out)
+    assert body["schema_version"] == 1
+    assert body["ok"] is False
+    assert body["error"] == "invalid_list_option"
+    assert "valid fields: created_at, status, test_run_id" in body["message"]
 
 
 def test_test_integrity(env):
@@ -130,6 +139,31 @@ def test_invalid_ids(env):
     assert r1.returncode == 1 and "Traceback" not in r1.stderr
     r2 = run_grouped_cli(["snapshot", "show", "nope", "--json"], env)
     assert r2.returncode == 1
+
+
+def test_test_result_not_found_answers_the_envelope(env):
+    """F283 R12 C3 — `_cmd_test_result`'s bare `Error: test run not found` line moves
+    onto `fail()` by the plain rule; `--json` now answers the envelope instead of the
+    prose it always printed regardless of the flag."""
+    r = run_grouped_cli(["test", "result", "nope", "--json"], env)
+    assert r.returncode == 1
+    assert r.stderr == ""
+    body = json.loads(r.stdout)
+    assert body["schema_version"] == 1
+    assert body["ok"] is False
+    assert body["error"] == "test_run_not_found"
+
+
+def test_snapshot_show_not_found_answers_the_envelope(env):
+    """F283 R12 C3 — `_cmd_snapshot_show`'s bare `Error: snapshot proof not found`
+    line moves onto `fail()` the same way."""
+    r = run_grouped_cli(["snapshot", "show", "nope", "--json"], env)
+    assert r.returncode == 1
+    assert r.stderr == ""
+    body = json.loads(r.stdout)
+    assert body["schema_version"] == 1
+    assert body["ok"] is False
+    assert body["error"] == "snapshot_proof_not_found"
 
 
 def test_json_purity(env):

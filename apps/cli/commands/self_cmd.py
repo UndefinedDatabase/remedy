@@ -7,9 +7,10 @@ through the existing approval flow). No apply, no approval, no execution, no git
 from __future__ import annotations
 
 import json
-import sys
 from collections.abc import Callable
 from typing import TYPE_CHECKING, Any
+
+from apps.cli.json_envelope import fail
 
 if TYPE_CHECKING:
     import argparse
@@ -62,8 +63,7 @@ def _cmd_self_propose(args: Any) -> None:
         try:
             top = int(raw_top)
         except (TypeError, ValueError):
-            print("Error: --top must be an integer", file=sys.stderr)
-            sys.exit(1)
+            fail("invalid_argument", "--top must be an integer", json_output=getattr(args, "json", False))
     result = propose_self_improvement(args.job_id, item_ids=item_ids, top=top)
     data = export_result_json(result)
     if getattr(args, "json", False):

@@ -82,6 +82,30 @@ class TestSnapshotInspectCLI:
         assert body["error"] == "invalid_job_id"
         assert body["job_id"] == "zzzznotajob"
 
+    def test_an_unknown_snapshot_answers_the_envelope(self, monkeypatch, tmp_path):
+        """F283 R12 C3 — `snapshot_not_found` moves onto `fail()`; the job must exist
+        (past the `job_not_found` check) so this reaches the site the round adds."""
+        from uuid import uuid4
+
+        from apps.cli.commands import snapshot_cmds as CMD
+        from packages.orchestration.pingpong_job import JobPlan, save_job_plan
+
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        job_id = str(uuid4())
+        save_job_plan(JobPlan(job_id=job_id, job_title="snapshot probe"))
+
+        out, err = io.StringIO(), io.StringIO()
+        with pytest.raises(SystemExit) as caught:
+            with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+                CMD._cmd_snapshot_inspect(job_id, "no-such-snapshot", as_json=True)
+        assert caught.value.code == 1
+        assert err.getvalue() == ""
+        body = json.loads(out.getvalue())
+        assert body["schema_version"] == 1
+        assert body["ok"] is False
+        assert body["error"] == "snapshot_not_found"
+        assert body["snapshot_id"] == "no-such-snapshot"
+
 
 # ---------------------------------------------------------------------------
 # snapshot list-applies
@@ -148,3 +172,25 @@ class TestPatchRevertCLI:
         from apps.cli.commands import patch
         source = inspect.getsource(patch)
         assert "shell=True" not in source
+
+    def test_no_apply_record_answers_the_envelope(self, monkeypatch, tmp_path):
+        """F283 R12 C3 — `_cmd_revert_patch_intent`'s BRANCHED `no_apply_record` site
+        moves onto one `fail()` call under DECISION F283 D7's predecessor, the
+        migration rule's branched-site clause. The job must exist and carry no apply
+        records at all, so the scan finds zero matches."""
+        from uuid import uuid4
+
+        from packages.orchestration.pingpong_job import JobPlan, save_job_plan
+
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        job_id = str(uuid4())
+        save_job_plan(JobPlan(job_id=job_id, job_title="revert probe"))
+
+        r = _run_cli("patch", "revert", job_id, "no-such-intent", "--json")
+        assert r.returncode == 1
+        assert r.stderr == ""
+        body = json.loads(r.stdout)
+        assert body["schema_version"] == 1
+        assert body["ok"] is False
+        assert body["error"] == "no_apply_record"
+        assert body["intent_id"] == "no-such-intent"

@@ -79,6 +79,19 @@ def test_propose_top_then_idempotent(env):
     assert not d2["proposed_task_ids"] and len(d2["skipped_existing"]) == 2
 
 
+def test_propose_bad_top_answers_the_envelope(env):
+    """F283 R12 C3 — `self propose --top`'s `Error: --top must be an integer` line
+    moves onto `fail()` by the plain rule, token `invalid_argument`, exit 1."""
+    job_id = _job(env)
+    r = run_grouped_cli(["self", "propose", job_id, "--top", "not-a-number", "--json"], env)
+    assert r.returncode == 1
+    assert r.stderr == ""
+    body = json.loads(r.stdout)
+    assert body["schema_version"] == 1
+    assert body["ok"] is False
+    assert body["error"] == "invalid_argument"
+
+
 def test_propose_explicit_item(env):
     job_id = _job(env)
     insp = json.loads(run_grouped_cli(["self", "inspect", "--job-id", job_id, "--json"], env).stdout)

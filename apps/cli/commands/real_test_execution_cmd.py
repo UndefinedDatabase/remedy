@@ -8,9 +8,10 @@ honest proofs. Test EXECUTION itself stays on the existing `test run`
 from __future__ import annotations
 
 import json
-import sys
 from collections.abc import Callable
 from typing import TYPE_CHECKING, Any
+
+from apps.cli.json_envelope import fail
 
 if TYPE_CHECKING:
     import argparse
@@ -20,8 +21,7 @@ def _cmd_test_result(args: Any) -> None:
     from packages.orchestration.real_test_execution import get_test_run
     rec = get_test_run(str(args.test_run_id))
     if rec is None:
-        print("Error: test run not found", file=sys.stderr)
-        sys.exit(1)
+        fail("test_run_not_found", "test run not found", json_output=getattr(args, "json", False))
     if getattr(args, "json", False):
         print(json.dumps(rec, indent=2))
         return
@@ -46,8 +46,7 @@ def _cmd_test_list(args: Any) -> None:
             date_getter=lambda r: r.get("created_at") or None,
         )
     except ListOptionError as exc:
-        print(f"Error: {exc}", file=sys.stderr)
-        sys.exit(1)
+        fail("invalid_list_option", str(exc), json_output=getattr(args, "json", False))
     out = {"job_id": str(args.job_id), "run_count": len(runs),
            "runs": [{"test_run_id": r.get("test_run_id"), "status": r.get("status"),
                      "exit_code": r.get("exit_code"), "created_at": r.get("created_at")}
@@ -89,8 +88,7 @@ def _cmd_snapshot_show(args: Any) -> None:
     from packages.orchestration.real_test_execution import get_snapshot_proof
     rec = get_snapshot_proof(str(args.snapshot_id))
     if rec is None:
-        print("Error: snapshot proof not found", file=sys.stderr)
-        sys.exit(1)
+        fail("snapshot_proof_not_found", "snapshot proof not found", json_output=getattr(args, "json", False))
     if getattr(args, "json", False):
         print(json.dumps(rec, indent=2))
         return
