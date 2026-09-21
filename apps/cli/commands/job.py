@@ -10,7 +10,7 @@ from datetime import datetime, timezone
 from typing import TYPE_CHECKING, Any, NoReturn
 
 from apps.cli.job_id_arg import resolve_job_id_or_fail
-from apps.cli.json_envelope import fail
+from apps.cli.json_envelope import emit_ok, fail
 from packages.core.models import RunState
 from packages.orchestration.data_paths import resolve_data_root
 from packages.orchestration.job_runner import PlanJobResult
@@ -893,6 +893,9 @@ def _cmd_run_next_task_local(job_id_str: str, *, json_output: bool = False) -> N
 
     if not any(t.status == RunState.PENDING for t in job.tasks):
         log.log("task_run_noop", outcome="no_pending_tasks")
+        if json_output:
+            emit_ok(job_id=str(job.job_id), outcome="no_pending_tasks", log=str(log.path))
+            return
         print(f"Job {job.job_id} — no pending tasks.  log={log.path}")
         return
 
@@ -1071,6 +1074,32 @@ def _cmd_run_next_task_local(job_id_str: str, *, json_output: bool = False) -> N
         log.log("task_run_completed", task_id=str(result.task_id), outcome="pass")
     else:
         log.log("task_run_failed", task_id=str(result.task_id), outcome="fail")
+
+    if json_output:
+        envelope_payload: dict[str, Any] = dict(
+            job_id=str(result.job.job_id),
+            task_id=str(result.task_id),
+            task_type=task_type,
+            model=builder.model,
+            elapsed_ms=round(elapsed_ms),
+            remaining=pending_remaining,
+            file=str(mf.path),
+            repo=repo_applied[0] if repo_applied else None,
+            patch_intents=patch_intent_count,
+            failures=[{"check": f.check, "message": f.message} for f in vr.failures],
+            dry_run=dry_run_block or None,
+            log=str(log.path),
+        )
+        if vr.passed:
+            emit_ok(verified=True, **envelope_payload)
+            return
+        fail(
+            "verification_failed",
+            f"{len(vr.failures)} verification check(s) failed",
+            json_output=True,
+            verified=False,
+            **envelope_payload,
+        )
 
     file_info = f" file={mf.path}"
     repo_info = f" repo={repo_applied[0]}" if repo_applied else ""
