@@ -12,38 +12,36 @@ is documented and asserted from the catalog
 
 ## Current Step
 
-ROUND 3, R-1020's FIRST REPAIR. It books round 2's PASS, appends a CORRECTION
-to R-1020 — the registration overstated the blast radius, counting
-`require_job_plan` as an exiting helper when it raises — and lands the layer
-the finding needs: `apps/cli/job_id_arg.py::resolve_job_id_or_fail`, which
-catches what `lookup_job_id` raises and refuses through `fail()`.
+ROUND 4, R-1020's SECOND AND LAST REPAIR. It books round 3's PASS, corrects
+the call-site count on the record — `decision.py` binds the exiting resolver
+a second time as `_rji`, so twenty sites remained and not seventeen — and
+registers R-1021.
 
-THE ENVELOPE DOES NOT MOVE INTO `packages/`. `resolve_job_id` stays as it is
-for callers with no failure path of their own and the `--json` callers move up;
-pushing `fail()` down would make storage depend on a command's stdout shape.
-
-`job.py`'s six call sites move this round and the strict xfail turns green with
-its mark deleted in the same commit. Seventeen call sites remain in eight other
-modules, so R-1020 stays OPEN and a second guard counts them.
+It then moves all twenty onto `apps/cli/job_id_arg.py`, one module per commit,
+largest first, under a guard that reads every import binding rather than one
+name. `decision.list` and `decision.show` get the flag threaded into
+`decision.py`'s `_load_job_events`; `job stop` answers in the envelope; the
+ambiguous branch of the layer gets its first test. When the round ends no
+module under `apps/cli/` calls the exiting resolver, and R-1020's `Done:` is
+booked in the first commit of the round after the one that verifies it.
 
 ## Next Steps
 
-1. R-1020's remaining seventeen call sites: `patch` 7, `change` 3,
-   `teacher_cmd` 2, then `contract_cmd`, `decision`, `job_context_cmd`,
-   `job_stop_cmd` and `project` at one each.
+1. R-1021: the nineteen `lookup_job_id` call sites that report an ambiguous
+   prefix as matching nothing move onto `resolve_job_id_or_fail` — `brain` 11,
+   `snapshot_cmds` 2, `test_cmds` 2, then `event`, `file`, `memory`, `project`.
 2. `_cmd_run_next_task_local`, the last eight print-then-exit pairs in
    `job.py`; ten tests monkeypatch it with a single-positional lambda and move
    in the same commit.
 3. The four non-mechanical `job.py` sites: a loop of verification failures, a
    bare exit after a cost confirmation, two hand-rolled JSON objects.
-4. The remaining groups largest first — `decision` 28, `brain` 24, `project`
-   22, `patch` 15, `do_cmd` 13, `grouped` 8, `test_cmds` 5, then the tail;
-   `runtime_cmd.py` is its own round.
+4. The remaining groups largest first — `decision`, `brain`, `project`,
+   `patch`, `do_cmd`, `grouped`, `test_cmds`, then the tail; `runtime_cmd.py`
+   is its own round.
 5. T001's catalog half, then T002's taxonomy and sweep.
 
 ## Risks
 
-Twenty-four findings are open; R-1020 is this feature's own and is repaired for
-one module of nine. The measured work left — 156 refusal pairs outside `job.py`
-plus 17 resolver call sites — is several sessions, so the soft limit of 7
-sessions and 25 rounds is the number to watch.
+Twenty-five findings are open; R-1020 and R-1021 are this feature's own. The
+refusal pairs outside `job.py` are several sessions of work, so the soft limit
+of 7 sessions and 25 rounds is the number to watch.
