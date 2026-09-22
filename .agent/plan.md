@@ -10,20 +10,19 @@ silently incomplete (`docs/roadmap/features/T2_F278.md`).
 
 ## Current Step
 
-ROUND 6 books round 5's PASS and DECISION F278 D5, makes the secret detector
-in `run_manifest.py` fail closed, and marks every blind handler in
-`job_evidence.py`, `run_manifest.py` and `scripts/build_review_manifest.py`
-with a noqa reason, one file per commit, comment text only.
+ROUND 7 books round 6's PASS, registers R-1036, R-1037 and R-1038 with
+DECISION F278 D6, repairs R-1036 so a lost final job review is recorded as a
+blocking one, and marks the second group of blind handlers: the job,
+pingpong, apply, command-line, runtime and snapshot modules.
 
 ## Next Steps
 
-1. T003, the next marking group: the job, pingpong, apply, runtime and
-   snapshot modules, each handler narrowed or given a reason.
-2. T003, the last marking group, in whose final commit BLE001 joins `select`
-   and the ratchet test freezes the count of excused handlers.
-3. The closure sequence.
+1. The last marking round: repair R-1037 and R-1038 first, mark the third
+   group, then turn BLE001 on in `pyproject.toml` with the ratchet test that
+   freezes the count of excused handlers.
+2. The closure sequence.
 
 ## Risks
 
-A reason drafted by a research agent is only as good as its reading; the
-reviewer checks the ones that could hide a defect against the code.
+Three open findings are this feature's own until they are repaired; the
+closure cannot run while any of them is open.
