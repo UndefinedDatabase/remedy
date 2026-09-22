@@ -13,22 +13,22 @@ is documented and asserted from the catalog
 
 ## Current Step
 
-ROUND 22, the closure sequence's first half. It books round 21's PASS and
-resolves R-1033, writes the feature file's Built State, folds this feature's
-one prose lesson into the reviewer checklist without lengthening it, runs the
-closure's self-use item to its approval gate, and runs the feature's one full
-suite, committing the transcript.
+ROUND 23, the closure sequence's evidence half. It books round 22's PASS,
+registers R-1035 from the self-use run's own defect reader, builds the feature
+evidence bundle against the fork point `d0d40e89`, and builds the fresh review
+package, recording its name, its SHA-256 and the directory it was archived to.
 
 ## Next Steps
 
-1. The closure sequence's second half: register whatever the self-use run's
-   own defect reader reports, the evidence job, a fresh review zip, the ledger
-   rotation, the STATUS line with the README counters in the same commit, and
-   the pull request, which is never merged in the session that opens it.
+1. The closure sequence's last round: the ledger rotation as its own commit,
+   then the STATUS line, the README capability paragraph, the README accepted
+   count with its Next clause and the README tier row in ONE commit with the
+   self-use entry's `consumed_by`, then the pull request, which the session
+   that opens it never merges.
 
 ## Risks
 
-Twenty-five findings are open after this round's resolution and none is this
-feature's own. Twenty-two rounds are spent of the soft limit of 25; the
-closure's second half is the twenty-third, which leaves two rounds for a
-repair the full suite or the packaging may still ask for.
+Twenty-six findings are open after this round's registration and none is this
+feature's own. Twenty-three rounds are spent of the soft limit of 25, so the
+closure commit is the twenty-fourth and one round is left for a repair the
+packaging may still ask for.
