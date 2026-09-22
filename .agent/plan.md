@@ -13,23 +13,22 @@ is documented and asserted from the catalog
 
 ## Current Step
 
-ROUND 15. It books round 14's PASS and a prose slip, pins the two properties
-round 14's review found unpinned, and lands the catalog half's second group
-under DECISION F283 D9: `decision resolve`, `decision explain`, `job plan` and
-the seven `brain` commands declare `supports_json` and answer in the envelope,
-and the ratchet shrinks to the `ui` and `project` commands.
+ROUND 16. It books round 15's PASS and a prose slip, pins what round 15's
+review found unpinned, and lands the catalog half's last group under DECISION
+F283 D9: the five `ui` and five `project` commands declare `supports_json` and
+answer in the envelope, and the ratchet asserts the read-only set is empty.
+T001 is then complete.
 
 ## Next Steps
 
-1. The catalog half's last group: the five `ui` and five `project` commands,
-   with the ratchet asserting the set empty.
-2. T002: success envelopes, the exit-code taxonomy under `docs/guides/`, and
+1. T002: success envelopes for the `supports_json` commands that still print a
+   raw document, the exit-code taxonomy under `docs/guides/`, and
    `tests/cli/test_json_contract.py`'s sweep.
-3. The closure sequence, whose one full suite runs on the merged tree.
+2. The closure sequence, whose one full suite runs on the merged tree.
 
 ## Risks
 
-Twenty-four findings are open and none is this feature's own. Fifteen rounds
+Twenty-four findings are open and none is this feature's own. Sixteen rounds
 are spent of the soft limit of 25, in the fourth of 7 sessions; T002's success
 half is the largest piece left, and the runtime suites flake under xdist, so
 they run serially.
