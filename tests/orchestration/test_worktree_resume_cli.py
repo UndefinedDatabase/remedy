@@ -269,6 +269,62 @@ class TestResumeBlocksHonestly:
             W.remove(holder)
 
 
+class TestResumeRefusesWhereItDidNotResume:
+    """DECISION F283 D12 (6): a branch that did not resume answers a refusal,
+    never a silent `ok: true` at exit 0."""
+
+    def test_from_apply_refusal_answers_resume_blocked(
+        self, interrupted, capsys, monkeypatch,
+    ):
+        def _blocked(job, checkpoint_id, data_dir, workspace_root=None):
+            return event_replay.ResumeResult(
+                checkpoint_id=checkpoint_id, checkpoint_kind="source_apply_proven",
+                resume_mode="from_apply", resumed=False,
+                blocked_reason="permission_denied",
+            )
+
+        monkeypatch.setattr(event_replay, "execute_resume_from_apply", _blocked)
+
+        with pytest.raises(SystemExit) as exc:
+            job_cmd._cmd_resume(interrupted["job_id"],
+                                checkpoint_id=interrupted["checkpoint"],
+                                json_output=True)
+        assert exc.value.code == 1
+        out = json.loads(capsys.readouterr().out)
+        assert out["ok"] is False
+        assert out["error"] == "resume_blocked"
+        assert out["resumed"] is False
+        assert out["blocked_reason"] == "permission_denied"
+
+    def test_unimplemented_resume_mode_answers_resume_blocked(
+        self, interrupted, capsys, monkeypatch,
+    ):
+        # A checkpoint made safe to resume under a mode other than `from_apply`
+        # — `find_checkpoints` at `98a85b67` never produces one, so this
+        # reaches the branch only by monkeypatching it directly.
+        def _fake_find_checkpoints(replay):
+            return [event_replay.JobCheckpoint(
+                id=interrupted["checkpoint"], job_id=interrupted["job_id"],
+                kind="manual_apply_proven", label="Manual apply — unsupported",
+                status="available", safe_to_resume=True,
+                resume_mode="from_manual_apply", resume_mode_supported=False,
+            )]
+
+        monkeypatch.setattr(event_replay, "find_checkpoints", _fake_find_checkpoints)
+
+        with pytest.raises(SystemExit) as exc:
+            job_cmd._cmd_resume(interrupted["job_id"],
+                                checkpoint_id=interrupted["checkpoint"],
+                                json_output=True)
+        assert exc.value.code == 1
+        out = json.loads(capsys.readouterr().out)
+        assert out["ok"] is False
+        assert out["error"] == "resume_blocked"
+        assert out["resumed"] is False
+        assert out["blocked_reason"] == "resume_mode_not_implemented"
+        assert interrupted["called"] == {}          # from_apply was never called
+
+
 class TestNoProviderCalls:
     def test_resume_never_constructs_a_provider(self, interrupted, capsys, monkeypatch):
         import packages.orchestration.pingpong_loop as PL

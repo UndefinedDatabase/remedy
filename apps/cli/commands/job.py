@@ -1717,37 +1717,48 @@ def _cmd_resume(
             result.blocked_reason or "continuation did not complete successfully",
         )
 
-        if json_output:
-            _payload = export_resume_result_json(result)
-            _payload["worktrees"] = wt_json
-            emit_ok(**_payload)
-        else:
-            if result.resumed:
+        _payload = export_resume_result_json(result)
+        _payload["worktrees"] = wt_json
+        if result.resumed:
+            if json_output:
+                emit_ok(**_payload)
+            else:
                 status_str = "passed" if result.tests_passed else "failed"
                 print(f"Resumed from {cp.kind}. Tests {status_str}.")
                 if result.test_run_id:
                     print(f"  Test run: {result.test_run_id}")
-            else:
-                print(f"Resume blocked: {result.blocked_reason}")
-        return
+            return
+        # The continuation refused before it ran, or ran and did not
+        # complete — a success envelope would lie about the outcome (D12 (6)).
+        # Carries every key `export_resume_result_json` returns, so a machine
+        # consumer sees the same shape it would on success, plus the refusal.
+        fail(
+            "resume_blocked",
+            result.blocked_reason or "continuation did not complete successfully",
+            json_output=json_output,
+            **_payload,
+        )
     _finish_worktrees(False, f"resume mode {cp.resume_mode!r} not implemented")
 
-    # Unimplemented resume mode — do not fake success
+    # Unimplemented resume mode — do not fake success (D12 (6)). Unreachable at
+    # `98a85b67`: `find_checkpoints` above marks only `from_apply` checkpoints
+    # `safe_to_resume`, so no live code path names a mode here today. Converted
+    # so that adding a mode later cannot make this branch a silent success.
     from packages.orchestration.timeline import append_run_event as _emit
     _emit(data_dir, job_id, event="resume_blocked", metadata={
         "checkpoint_id": checkpoint_id, "checkpoint_kind": cp.kind,
         "blocked_reason": "resume_mode_not_implemented",
     })
-    if json_output:
-        emit_ok(
-            resumed=False,
-            blocked_reason="resume_mode_not_implemented",
-            checkpoint_kind=cp.kind,
-            resume_mode=cp.resume_mode,
-            worktrees=wt_json,
-        )
-    else:
-        print(f"Resume blocked: mode '{cp.resume_mode}' not implemented yet.")
+    fail(
+        "resume_blocked",
+        f"resume mode {cp.resume_mode!r} not implemented yet",
+        json_output=json_output,
+        resumed=False,
+        blocked_reason="resume_mode_not_implemented",
+        checkpoint_kind=cp.kind,
+        resume_mode=cp.resume_mode,
+        worktrees=wt_json,
+    )
 
 
 
