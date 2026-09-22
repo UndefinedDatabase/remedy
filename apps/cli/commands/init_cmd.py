@@ -7,6 +7,8 @@ import sys
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from apps.cli.json_envelope import fail
+
 if TYPE_CHECKING:
     import argparse
 
@@ -75,8 +77,12 @@ def _handle_init(args: argparse.Namespace) -> None:
 
     if not is_git_repo(cwd):
         if json_mode:
-            _json.dump({"error": "not a git repository"}, sys.stdout)
-            print()
+            fail(
+                "not_a_git_repo",
+                "remedy init requires a git repository — run `git init` first.",
+                json_output=True,
+                exit_code=4,
+            )
         else:
             print(
                 "remedy init requires a git repository — run `git init` first.",

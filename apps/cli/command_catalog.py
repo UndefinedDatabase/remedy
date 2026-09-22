@@ -240,6 +240,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
             ArgDef("--print-only", "Show what would happen without writing anything", required=False, is_option=True, is_flag=True),
             ArgDef("--json", "Output as JSON", required=False, is_option=True, default="false"),
         ),
+        supports_json=True,
     ),
 
     # ── status ──────────────────────────────────────────────────────────
@@ -2031,6 +2032,8 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         subcommand="smoke-help",
         description="Show smoke test instructions.",
         action_class="dev_helper",
+        args=(_JSON_OPT,),
+        supports_json=True,
     ),
     CommandEntry(
         command_id="dev.status",
@@ -2041,6 +2044,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         args=(
             ArgDef("--json", "Output JSON", required=False, is_option=True),
         ),
+        supports_json=True,
     ),
 
     # ── progress ────────────────────────────────────────────────────────

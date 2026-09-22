@@ -258,6 +258,72 @@ class TestCatalogJSONSupport:
             assert cmd.supports_json, f"{cid} should support JSON"
 
 
+# ---------------------------------------------------------------------------
+# The read-only-without-`supports_json` ratchet (DECISION F283 D9)
+# ---------------------------------------------------------------------------
+
+#: F283 R14 C3 — the read-only commands (the D7 derived rule: neither
+#: `may_mutate_repo` nor `may_execute_commands`) that still do not declare
+#: `supports_json`, after `init run`, `dev status` and `dev smoke-help` leave
+#: the set. Shrinks each round a D9 group lands; the round that lands the
+#: last group asserts the set is empty and deletes this constant.
+_READ_ONLY_WITHOUT_SUPPORTS_JSON: frozenset[str] = frozenset({
+    "blocker.resolve",
+    "brain.cockpit",
+    "brain.constitution",
+    "brain.export-viewer",
+    "brain.open",
+    "brain.timeline",
+    "brain.trust",
+    "brain.view",
+    "decision.explain",
+    "decision.resolve",
+    "job.plan",
+    "memory.card-approve",
+    "memory.card-contradict",
+    "memory.card-reject",
+    "memory.card-stale",
+    "memory.card-supersede",
+    "memory.store",
+    "patch.approve",
+    "patch.reject",
+    "patch.show",
+    "project.adopt",
+    "project.attach",
+    "project.attach-job",
+    "project.attach-repo",
+    "project.create",
+    "ui.latest",
+    "ui.open",
+    "ui.start",
+    "ui.status",
+    "ui.stop",
+})
+
+
+class TestReadOnlyWithoutSupportsJSONRatchet:
+    """DECISION F283 D9 — a command can neither leave this set unannounced nor
+    join it: the derived set (read-only by the D7 rule, still missing
+    `supports_json`) must equal this module's own pinned constant by
+    EQUALITY."""
+
+    def test_the_derived_set_equals_the_pinned_constant(self) -> None:
+        derived = frozenset(
+            cmd.command_id for cmd in CATALOG
+            if not cmd.may_mutate_repo
+            and not cmd.may_execute_commands
+            and not cmd.supports_json
+        )
+        assert derived == _READ_ONLY_WITHOUT_SUPPORTS_JSON
+
+    def test_every_command_carrying_json_declares_supports_json(self) -> None:
+        for cmd in CATALOG:
+            if any(a.name == "--json" for a in cmd.args):
+                assert cmd.supports_json, (
+                    f"{cmd.command_id} carries --json but does not declare supports_json"
+                )
+
+
 class TestCatalogLookups:
     def test_get_group(self) -> None:
         g = get_group("job")
