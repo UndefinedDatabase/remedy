@@ -161,3 +161,21 @@ class TestBlockerResolveAnswersJSONThroughTheDispatcher:
         assert body["ok"] is True and body["schema_version"] == 1
         assert body["id"] == long_id
         assert len(body["id"]) > 8
+
+
+class TestBlockerListAnswersJSONThroughTheDispatcher:
+    """F283 R18 C3 (R-1031) — `blocker list`'s success document, through the real
+    argv dispatcher (`apps.cli.grouped.main`), carries the envelope `emit_ok`
+    added at F283 R17 C5 (`dbc49b6b`)."""
+
+    @patch(_LIST_STOPS)
+    def test_list_answers_the_envelope(self, mock_list, capsys):
+        import json
+
+        from apps.cli.grouped import main
+
+        mock_list.return_value = [_stop()]
+        main(["blocker", "list", "job-1", "--json"])
+        body = json.loads(capsys.readouterr().out)
+        assert body["ok"] is True and body["schema_version"] == 1
+        assert body["job_id"] == "job-1"

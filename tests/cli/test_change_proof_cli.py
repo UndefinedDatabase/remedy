@@ -310,6 +310,27 @@ def test_change_proof_in_handlers():
     assert "change.proof" in COMMAND_HANDLERS
 
 
+def test_change_proof_answers_the_envelope_through_the_dispatcher(capsys):
+    """F283 R18 C3 (R-1031) — `change proof`'s success document, through the real
+    argv dispatcher (`apps.cli.grouped.main`), carries the envelope `emit_ok`
+    added at F283 R17 C5 (`dbc49b6b`)."""
+    from apps.cli.grouped import main
+
+    job, _, _ = _make_test_job()
+    job_id = str(job.job_id)
+
+    with patch("apps.cli.commands.change.require_job_plan", return_value=job), \
+         patch("apps.cli.commands.change.resolve_job_id_or_fail", side_effect=lambda raw, **_: raw), \
+         patch("apps.cli.commands.change.resolve_data_root", return_value="/tmp"), \
+         patch("packages.orchestration.timeline.load_run_events", return_value=[]):
+        main(["change", "proof", job_id, "--json"])
+
+    data = json.loads(capsys.readouterr().out)
+    assert data["schema_version"] == 1
+    assert data["ok"] is True
+    assert data["version"] == 2
+
+
 # ---------------------------------------------------------------------------
 # change list — shared list options (R-0796)
 # ---------------------------------------------------------------------------

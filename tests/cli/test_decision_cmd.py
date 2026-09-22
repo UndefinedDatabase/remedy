@@ -204,6 +204,24 @@ class TestDecisionExplainAndResolveAnswerJSONThroughTheDispatcher:
         )
 
 
+class TestDecisionListAnswersJSONThroughTheDispatcher:
+    """F283 R18 C3 (R-1031) — `decision list`'s success document, through the
+    real argv dispatcher (`apps.cli.grouped.main`), carries the envelope
+    `emit_ok` added at F283 R17 C5 (`dbc49b6b`)."""
+
+    @patch(_LIST_DECISIONS)
+    @patch(_LOAD_JOB_EVENTS)
+    def test_list_answers_the_envelope(self, mock_load, mock_list, capsys):
+        from apps.cli.grouped import main
+
+        mock_load.return_value = (None, [], "job-1")
+        mock_list.return_value = [_decision()]
+        main(["decision", "list", "job-1", "--json"])
+        body = json.loads(capsys.readouterr().out)
+        assert body["ok"] is True and body["schema_version"] == 1
+        assert body["job_id"] == "job-1"
+
+
 class TestDecisionResolveProposalAnswersJSONThroughTheDispatcher:
     """F283 R15 C4 (DECISION F283 D9) — `decision resolve proposal:<id>` proved
     end to end through the CLI dispatcher, over a real proposed-task store, the

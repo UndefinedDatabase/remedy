@@ -133,6 +133,26 @@ class TestSnapshotListAppliesCLI:
         for forbidden in ("blob_", "diff --git", "Traceback", "recovery_blob"):
             assert forbidden not in combined
 
+    def test_answers_the_envelope_for_a_real_job(self, monkeypatch, tmp_path):
+        """F283 R18 C3 (R-1031) — the success document, through the real
+        subprocess dispatcher, carries the envelope `emit_ok` added at F283
+        R17 C5 (`dbc49b6b`)."""
+        from uuid import uuid4
+
+        from packages.orchestration.pingpong_job import JobPlan, save_job_plan
+
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        job_id = str(uuid4())
+        save_job_plan(JobPlan(job_id=job_id, job_title="list-applies probe"))
+
+        r = _run_cli("snapshot", "list-applies", job_id, "--json")
+        assert r.returncode == 0
+        body = json.loads(r.stdout)
+        assert body["schema_version"] == 1
+        assert body["ok"] is True
+        assert body["job_id"] == job_id
+        assert body["apply_records"] == []
+
 
 # ---------------------------------------------------------------------------
 # patch revert

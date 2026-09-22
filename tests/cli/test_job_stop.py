@@ -125,6 +125,21 @@ class TestTheHappyPath:
         assert stop_requested(job.job_id) is not None
 
 
+class TestJSONThroughTheDispatcher:
+    """F283 R18 C3 (R-1031) — `job stop`'s success document, through the real
+    argv dispatcher (`apps.cli.grouped.main`), carries the envelope `emit_ok`
+    added at F283 R17 C5 (`dbc49b6b`)."""
+
+    def test_stop_answers_the_envelope(self, job, capsys):
+        from apps.cli.grouped import main
+
+        main(["job", "stop", job.job_id, "--reason", "dispatched", "--json"])
+        payload = json.loads(capsys.readouterr().out)
+        assert payload["schema_version"] == 1
+        assert payload["ok"] is True
+        assert payload["job_id"] == job.job_id
+
+
 class TestStatus:
     def test_status_distinguishes_none_pending_and_consumed(self, job, capsys):
         CMD._cmd_job_stop(job.job_id, status=True, json_output=True)
