@@ -13,22 +13,25 @@ is documented and asserted from the catalog
 
 ## Current Step
 
-ROUND 16. It books round 15's PASS and a prose slip, pins what round 15's
-review found unpinned, and lands the catalog half's last group under DECISION
-F283 D9: the five `ui` and five `project` commands declare `supports_json` and
-answer in the envelope, and the ratchet asserts the read-only set is empty.
-T001 is then complete.
+ROUND 17. It books round 16's PASS, registers and repairs R-1030, pins what
+round 16's review found unpinned, records DECISION F283 D10 and lands its
+ratchet, then converts the success documents of twenty of the smaller command
+modules to the envelope.
 
 ## Next Steps
 
-1. T002: success envelopes for the `supports_json` commands that still print a
-   raw document, the exit-code taxonomy under `docs/guides/`, and
-   `tests/cli/test_json_contract.py`'s sweep.
-2. The closure sequence, whose one full suite runs on the merged tree.
+1. T002's success half, second batch: the fourteen modules with the most
+   raw-document sites, `job`, `mission`, `self`, `project`, `config`,
+   `worker`, `brain`, `do`, `test`, `runtime`, `event`, `memory`, `patch` and
+   `stats`, leaving the ratchet at the text-branch survivors.
+2. T002's last slice: the exit-code taxonomy under `docs/guides/` asserted
+   from the catalog, catalog-to-dispatch parity, and the sweep in
+   `tests/cli/test_json_contract.py`.
+3. The closure sequence, whose one full suite runs on the merged tree.
 
 ## Risks
 
-Twenty-four findings are open and none is this feature's own. Sixteen rounds
-are spent of the soft limit of 25, in the fourth of 7 sessions; T002's success
-half is the largest piece left, and the runtime suites flake under xdist, so
-they run serially.
+Twenty-five findings are open and one of them, R-1030, is this feature's own.
+Seventeen rounds are spent of the soft limit of 25, in the fourth of 7
+sessions; the closure needs its own rounds, so the second batch and the sweep
+must each fit one round.
