@@ -144,6 +144,9 @@ class TestDoctorCore:
         from apps.cli.commands.worker_facade_cmd import _cmd_doctor_core
         _cmd_doctor_core(_ns(json=True))
         out = json.loads(capsys.readouterr().out)
+        # F283 R17 C6 (D10): the success document answers through the envelope.
+        assert out["schema_version"] == 1
+        assert out["ok"] is True
         assert out["ready"] is True
         assert out["blockers"] == []
         check_names = {c["check"] for c in out["checks"]}

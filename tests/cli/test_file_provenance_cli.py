@@ -135,6 +135,8 @@ def test_file_why_applied_state(env, capsys):
 
 
 def test_file_why_json_no_private_path_leak(env, capsys):
+    import json
+
     data_dir, repo_root = env
     job, _ = _build_job_with_apply(data_dir, repo_root, apply_state="reverted")
     _cmd_file_why(str(job.job_id), PATH, json_output=True)
@@ -142,6 +144,10 @@ def test_file_why_json_no_private_path_leak(env, capsys):
     assert '"reverted"' in out
     assert str(data_dir) not in out
     assert str(repo_root) not in out
+    # F283 R17 C6 (D10): the success document now answers through the envelope.
+    body = json.loads(out)
+    assert body["schema_version"] == 1
+    assert body["ok"] is True
     assert "blob_" not in out
 
 

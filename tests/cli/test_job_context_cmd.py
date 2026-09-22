@@ -104,7 +104,11 @@ def _entry(entries, path):
 def _run_json(env, job_id, *extra):
     r = run_grouped_cli(["job", "context", job_id, *extra, "--json"], env)
     assert r.returncode == 0, r.stderr
-    return json.loads(r.stdout)
+    body = json.loads(r.stdout)
+    # F283 R17 C6 (D10): the success document answers through the envelope.
+    assert body["schema_version"] == 1
+    assert body["ok"] is True
+    return body
 
 
 def test_fenced_file_is_tier_one_and_rendered_full(tmp_path, env):

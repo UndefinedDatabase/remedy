@@ -7,10 +7,9 @@ different sentences and only one of them is good news.
 """
 from __future__ import annotations
 
-import json as _json
 from datetime import datetime
 
-from apps.cli.json_envelope import fail
+from apps.cli.json_envelope import emit_ok, fail
 
 EXIT_USAGE = 2
 EXIT_ERROR = 1
@@ -62,7 +61,7 @@ def _cmd_stats_failures(*, job: str = "", since: str = "",
         fail("evidence_unreadable", str(exc), json_output=json_output)
 
     if json_output:
-        print(_json.dumps(result, indent=2))
+        emit_ok(**result)
     else:
         print(render_human(result))
 

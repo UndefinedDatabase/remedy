@@ -2,12 +2,11 @@
 
 from __future__ import annotations
 
-import json as _json
 from collections.abc import Callable
 from typing import TYPE_CHECKING
 
 from apps.cli.job_id_arg import resolve_job_id_or_fail
-from apps.cli.json_envelope import fail
+from apps.cli.json_envelope import emit_ok, fail
 from packages.orchestration.data_paths import resolve_data_root
 from packages.orchestration.pingpong_job import JobNotFoundError, require_job_plan
 
@@ -37,7 +36,7 @@ def _cmd_file_why(job_id_str: str, path: str, *, json_output: bool = False) -> N
     prov = build_file_provenance(job, events, path, data_dir=data_dir)
 
     if json_output:
-        print(_json.dumps(export_file_provenance_json(prov), sort_keys=True))
+        emit_ok(**export_file_provenance_json(prov))
     else:
         print(summarize_file_provenance(prov))
 

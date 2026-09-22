@@ -6,12 +6,11 @@ No provider execution. No auto-approval. No secret storage.
 
 from __future__ import annotations
 
-import json
 from collections.abc import Callable
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-from apps.cli.json_envelope import fail
+from apps.cli.json_envelope import emit_ok, fail
 
 if TYPE_CHECKING:
     import argparse
@@ -336,7 +335,7 @@ def _cmd_doctor_core(ns: argparse.Namespace) -> None:
     }
 
     if getattr(ns, "json", False):
-        print(json.dumps(result, indent=2))
+        emit_ok(**result)
         return
     print(f"Core Product Spine: {'READY' if ready else 'NOT READY'}")
     for c in checks:

@@ -196,6 +196,9 @@ class TestCli:
     def test_the_filters_reach_the_aggregator(self, corpus, capsys):
         CMD._cmd_stats_failures(job="J2", json_output=True)
         result = json.loads(capsys.readouterr().out)
+        # F283 R17 C6 (D10): the success document answers through the envelope.
+        assert result["schema_version"] == 1
+        assert result["ok"] is True
         assert result["filters"]["job"] == "J2"
         assert result["total_postmortems"] == 1
 

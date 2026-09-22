@@ -261,8 +261,7 @@ def _cmd_job_context(
     json_output: bool = False,
 ) -> None:
     """Compile and render one task's context (F107 T004 part 2a). READ-ONLY."""
-    import json as _json
-
+    from apps.cli.json_envelope import emit_ok
     from packages.orchestration.context_compiler import (
         compile_task_context,
         export_omitted_context_json,
@@ -309,7 +308,7 @@ def _cmd_job_context(
     }
 
     if json_output:
-        print(_json.dumps(result, indent=2))
+        emit_ok(**result)
     else:
         _print_text_view(result)
 

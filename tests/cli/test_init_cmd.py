@@ -451,6 +451,9 @@ class TestInitJson:
         assert r.returncode == 0, f"stderr: {r.stderr}"
 
         data = json.loads(r.stdout)
+        # F283 R17 C6 (D10): the success document answers through the envelope.
+        assert data["schema_version"] == 1
+        assert data["ok"] is True
         assert "steps" in data
         assert "summary" in data
         assert isinstance(data["steps"], list)

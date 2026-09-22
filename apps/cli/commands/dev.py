@@ -167,7 +167,7 @@ def _dev_status(*, json_output: bool = False) -> None:
     status["advisories"] = advisories
 
     if json_output:
-        print(json.dumps(status, indent=2))
+        emit_ok(**status)
     else:
         print("Remedy Developer Status")
         print("=" * 40)

@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
-import json as _json
 import sys
 from collections import defaultdict
 from typing import TYPE_CHECKING
+
+from apps.cli.json_envelope import emit_ok
 
 if TYPE_CHECKING:
     import argparse
@@ -141,7 +142,7 @@ def _cmd_status(
         if degraded:
             result["degraded"] = True
             result["skipped_files"] = skipped_files
-        print(_json.dumps(result, indent=2))
+        emit_ok(**result)
         return
 
     if project_slug:

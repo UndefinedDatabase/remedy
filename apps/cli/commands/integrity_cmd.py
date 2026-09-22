@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
-import json
 import sys
 from typing import Any
+
+from apps.cli.json_envelope import emit_ok, fail
 
 
 def _cmd_integrity_check(args: Any) -> None:
@@ -20,12 +21,16 @@ def _cmd_integrity_check(args: Any) -> None:
     result = run_integrity_checks(collect_only=collect_only)
 
     if getattr(args, "json", False):
-        print(json.dumps(export_integrity_json(result), indent=2))
+        document = export_integrity_json(result)
+        if not result.passed:
+            fail("integrity_failed",
+                 f"integrity gate failed with {result.fail_count} failing check(s)",
+                 json_output=True, **document)
+        emit_ok(**document)
     else:
         print(summarize_integrity(result))
-
-    if not result.passed:
-        sys.exit(1)
+        if not result.passed:
+            sys.exit(1)
 
 
 COMMAND_HANDLERS = {

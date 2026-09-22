@@ -49,9 +49,8 @@ from __future__ import annotations
 
 def _cmd_teacher_narrate(job_id_str: str, *, json_output: bool = False) -> None:
     """Narrate one job's run log. READ-ONLY: nothing on this path writes."""
-    import json as _json
-
     from apps.cli.job_id_arg import resolve_job_id_or_fail
+    from apps.cli.json_envelope import emit_ok
     from packages.orchestration.data_paths import resolve_data_root
     from packages.orchestration.teacher_narration import narrate_run_events
     from packages.orchestration.timeline import load_run_events
@@ -62,11 +61,11 @@ def _cmd_teacher_narrate(job_id_str: str, *, json_output: bool = False) -> None:
     sentences = narrate_run_events(events)
 
     if json_output:
-        print(_json.dumps({
-            "job_id": str(job_id),
-            "event_count": len(events),
-            "narration": sentences,
-        }, indent=2))
+        emit_ok(
+            job_id=str(job_id),
+            event_count=len(events),
+            narration=sentences,
+        )
         return
 
     print(f"Teacher narration for job {str(job_id)[:8]} ({len(events)} events)")
@@ -140,9 +139,8 @@ def _cmd_teacher_ask(
     CLI flag and stays None in every real invocation. It exists so the tests can
     prove this command's behaviour without a running Ollama (DECISION F255 D8).
     """
-    import json as _json
-
     from apps.cli.job_id_arg import resolve_job_id_or_fail
+    from apps.cli.json_envelope import emit_ok
     from packages.orchestration.data_paths import resolve_data_root
     from packages.orchestration.project_scope import resolve_scope
     from packages.orchestration.teacher_model import ask_teacher
@@ -206,17 +204,17 @@ def _cmd_teacher_ask(
     )
 
     if json_output:
-        print(_json.dumps({
-            "question": question,
-            "job_id": resolved_job or "",
-            "level": resolved_level,
-            "model": answer.model,
-            "refused": answer.refused,
-            "answer": answer.text,
-            "grounding_sources": list(sources),
-            "call_id": answer.call_id,
-            "billed": answer.billed,
-        }, indent=2))
+        emit_ok(
+            question=question,
+            job_id=resolved_job or "",
+            level=resolved_level,
+            model=answer.model,
+            refused=answer.refused,
+            answer=answer.text,
+            grounding_sources=list(sources),
+            call_id=answer.call_id,
+            billed=answer.billed,
+        )
         return
 
     print(f"Teacher answer ({answer.model})")

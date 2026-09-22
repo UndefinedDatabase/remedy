@@ -2,12 +2,11 @@
 
 from __future__ import annotations
 
-import json as _json
 import sys
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from apps.cli.json_envelope import fail
+from apps.cli.json_envelope import emit_ok, fail
 
 if TYPE_CHECKING:
     import argparse
@@ -150,8 +149,7 @@ def _handle_init(args: argparse.Namespace) -> None:
     }
 
     if json_mode:
-        _json.dump({"steps": steps, "summary": summary}, sys.stdout, indent=2)
-        print()
+        emit_ok(steps=steps, summary=summary)
     else:
         for step in steps:
             line = f"[{step['status']}] {step['target']}"

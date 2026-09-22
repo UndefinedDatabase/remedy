@@ -79,6 +79,9 @@ class TestStudyRunWritesCards:
         err = captured.err
 
         result = json.loads(out)
+        # F283 R17 C6 (D10): the success document answers through the envelope.
+        assert result["schema_version"] == 1
+        assert result["ok"] is True
         assert result["cards_written"] == ["study:structure", "study:core_modules", "study:conventions", "study:entry_points"]
         assert result["partial"] is False
         # Verify the warning fired when no registered project found
