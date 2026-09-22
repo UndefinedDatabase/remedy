@@ -39,6 +39,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from packages.common.secure_fs import durable_write
+
 #: How much of a log file is ever read back into memory or evidence.
 LOG_TAIL_BYTES = 64 * 1024
 
@@ -317,35 +319,6 @@ def ensure_runtime_dir(project_root: str | Path) -> Path:
     for name in RUNTIME_ARTIFACTS:
         harden_path(rdir / name)
     return rdir
-
-
-def atomic_write_bytes(path: str | Path, data: bytes) -> None:
-    """Write a PRIVATE file atomically: 0600 temp file, fsync, os.replace.
-
-    The temp file is created with the final mode, so the replaced file is never even
-    briefly world-readable, and a failed write never leaves its temp file behind.
-    """
-    target = Path(path)
-    target.parent.mkdir(parents=True, exist_ok=True)
-    tmp = target.with_name(f".{target.name}.{os.getpid()}.tmp")
-    try:
-        fd = os.open(str(tmp), os.O_WRONLY | os.O_CREAT | os.O_TRUNC,
-                     RUNTIME_FILE_MODE)
-        try:
-            os.write(fd, data)
-            with contextlib.suppress(OSError):
-                os.fsync(fd)
-        finally:
-            os.close(fd)
-        os.replace(tmp, target)
-    except Exception:
-        with contextlib.suppress(OSError):
-            tmp.unlink()
-        raise
-
-
-def atomic_write_text(path: str | Path, text: str) -> None:
-    atomic_write_bytes(path, text.encode("utf-8"))
 
 
 def open_private_file(path: str | Path):
@@ -651,7 +624,7 @@ def save_state(state: RuntimeState) -> Path:
             "refusing to persist a live state without a process creation time")
     ensure_runtime_dir(state.project_root)
     path = state_path(state.project_root)
-    atomic_write_text(path, json.dumps(state.to_json(), indent=2) + "\n")
+    durable_write(path, json.dumps(state.to_json(), indent=2) + "\n")
     return path
 
 
@@ -1955,7 +1928,7 @@ def stop_recorded_runtime(project_root: str | Path) -> dict[str, Any]:
             req = stop_request_path(project_root)
             with contextlib.suppress(OSError):
                 req.parent.mkdir(parents=True, exist_ok=True)
-                _atomic_write(req, f"{state.instance_id}\n")
+                durable_write(req, f"{state.instance_id}\n")
             deadline = time.monotonic() + STOP_REQUEST_TIMEOUT_S
             while time.monotonic() < deadline:
                 if not _pid_alive(state.supervisor_pid):
@@ -2048,11 +2021,6 @@ def stop_recorded_runtime(project_root: str | Path) -> dict[str, Any]:
             "supervisor_stopped": supervisor_stopped or not state.supervisor_pid,
             **result,
         }
-
-
-def _atomic_write(path: Path, text: str) -> None:
-    """Create a private control file atomically (owner-only). Kept for callers."""
-    atomic_write_text(path, text)
 
 
 def _pid_alive(pid: int) -> bool:

@@ -21,12 +21,9 @@ SCANNED_ROOTS = ("packages", "apps", "scripts")
 ALLOWED_ROOT = "packages/common/"
 HELPER_NAME = re.compile(r"_?atomic_(private_)?write")
 
-#: (module path, function name) — the copies not yet migrated. Only ever shrinks.
-STILL_TO_MIGRATE = frozenset({
-    ("packages/runtimes/dev_server.py", "_atomic_write"),
-    ("packages/runtimes/dev_server.py", "atomic_write_bytes"),
-    ("packages/runtimes/dev_server.py", "atomic_write_text"),
-})
+#: (module path, function name) — the copies not yet migrated. Only ever shrinks, and
+#: T002 of F278 emptied it: a new entry here is a new copy, which the guard forbids.
+STILL_TO_MIGRATE: frozenset[tuple[str, str]] = frozenset()
 
 
 def _private_helper_definitions(root: Path) -> set[tuple[str, str]]:

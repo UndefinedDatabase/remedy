@@ -125,6 +125,7 @@ def _serve_supervisor(root, spec, json_output: bool):
     import sys as _sys
     import time
 
+    from packages.common.secure_fs import durable_write
     from packages.runtimes import runtime_supervisor as SUP
     from packages.runtimes.dev_server import (
         LOG_FAILURE_STATUSES,
@@ -132,7 +133,6 @@ def _serve_supervisor(root, spec, json_output: bool):
         STATUS_EXITED,
         STATUS_RUNNING,
         _pid_alive,
-        atomic_write_text,
         choose_port,
         classify_runtime,
         clear_state,
@@ -162,8 +162,8 @@ def _serve_supervisor(root, spec, json_output: bool):
     # The spec carries the runtime ENV, so it is written 0600 and the supervisor
     # deletes it the moment it has read it.
     spec_file = spec_file_path(root)
-    atomic_write_text(spec_file,
-                      json.dumps({**spec.to_json(), "env": dict(spec.env)}, indent=2))
+    durable_write(spec_file,
+                  json.dumps({**spec.to_json(), "env": dict(spec.env)}, indent=2))
 
     env = dict(os.environ)
     env["REMEDY_RUNTIME_PORT"] = str(port)
@@ -346,9 +346,9 @@ def _retire_own_supervisor(root, proc, instance_id: str) -> dict:
     """
     import time
 
+    from packages.common.secure_fs import durable_write
     from packages.runtimes.dev_server import (
         _pid_alive,
-        atomic_write_text,
         load_state,
         stop_process_tree,
         stop_request_path,
@@ -359,7 +359,8 @@ def _retire_own_supervisor(root, proc, instance_id: str) -> dict:
     # 1. ask our own supervisor to stop its runtime, bound to our instance id
     req = stop_request_path(root)
     with contextlib.suppress(OSError):
-        atomic_write_text(req, f"{instance_id}\n")
+        req.parent.mkdir(parents=True, exist_ok=True)
+        durable_write(req, f"{instance_id}\n")
 
     # 2. wait for it to go
     deadline = time.monotonic() + 15.0

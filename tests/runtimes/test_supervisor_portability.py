@@ -27,6 +27,7 @@ from apps.cli.commands import runtime_cmd
 # imported from its owning module rather than through dev_server's private
 # alias, which no longer exists.
 from packages.common.path_redaction import ABS_PATH_RE
+from packages.common.secure_fs import durable_write
 from packages.runtimes import dev_server as DS
 from packages.runtimes import runtime_supervisor as SUP
 from packages.runtimes.dev_server import (
@@ -1003,7 +1004,7 @@ class TestRuntimeArtifactsArePrivate:
         # file as soon as it has read it, so it cannot be inspected afterwards.
         rdir = _with_data_root(data_root, DS.ensure_runtime_dir, secret_project)
         spec = rdir / "runtime.spec.json"
-        DS.atomic_write_text(spec, json.dumps({"env": {"API_TOKEN": SECRET}}))
+        durable_write(spec, json.dumps({"env": {"API_TOKEN": SECRET}}))
         try:
             assert _mode(spec) == 0o600
         finally:

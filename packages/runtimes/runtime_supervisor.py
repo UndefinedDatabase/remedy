@@ -40,6 +40,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from packages.common.secure_fs import durable_write
 from packages.runtimes.dev_server import (
     GRACE_SECONDS,
     LOG_TAIL_BYTES,
@@ -56,7 +57,6 @@ from packages.runtimes.dev_server import (
     RuntimeSpec,
     RuntimeState,
     _process_create_time,
-    atomic_write_text,
     clear_state,
     ensure_runtime_dir,
     http_probe,
@@ -83,7 +83,8 @@ HANDSHAKE_TIMEOUT_S = 90.0
 def write_handshake(path: Path, payload: dict[str, Any]) -> None:
     """Atomic PRIVATE handshake write: the reader never sees a half-written result,
     and no other user ever sees the result at all."""
-    atomic_write_text(path, json.dumps(payload, indent=2) + "\n")
+    path.parent.mkdir(parents=True, exist_ok=True)
+    durable_write(path, json.dumps(payload, indent=2) + "\n")
 
 
 def read_handshake(path: Path) -> dict[str, Any] | None:
@@ -403,8 +404,8 @@ class Supervisor:
     def _quarantine(self, stop_file: Path, reason: str) -> None:
         """Set an invalid stop request aside; never act on it, never loop on it."""
         with contextlib.suppress(OSError):
-            atomic_write_text(stop_file.with_name(stop_file.name + ".invalid"),
-                              f"{reason}\n")
+            durable_write(stop_file.with_name(stop_file.name + ".invalid"),
+                          f"{reason}\n")
         with contextlib.suppress(OSError):
             stop_file.unlink()
 
@@ -484,7 +485,7 @@ class Supervisor:
         durable runtime.json — untouched — remains the only identity a command may act on.
         """
         with contextlib.suppress(Exception):
-            atomic_write_text(
+            durable_write(
                 log_failure_note_path(self.project_root),
                 json.dumps({
                     "status": status,
