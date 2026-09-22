@@ -1,0 +1,499 @@
+diff --git a/packages/orchestration/hunk_identity.py b/packages/orchestration/hunk_identity.py
+index 0c0d5187..bd05c8d0 100644
+--- a/packages/orchestration/hunk_identity.py
++++ b/packages/orchestration/hunk_identity.py
+@@ -53,10 +53,10 @@ def _total_text(value: object) -> str:
+     functions lean on. A value whose ``__str__`` is broken contributes its ``repr()``."""
+     try:
+         return str(value)
+-    except Exception:
++    except Exception:  # noqa: BLE001 — str() failed; fall back to repr()
+         try:
+             return repr(value)
+-        except Exception:
++        except Exception:  # noqa: BLE001 — repr() failed too; fall back to the unoverridable object repr
+             return object.__repr__(value)
+ 
+ 
+@@ -66,7 +66,7 @@ def _occurrence_text(occurrence: Any) -> str:
+     for a caller that passes a string, ``None`` or an object by mistake."""
+     try:
+         return str(int(occurrence))
+-    except Exception:
++    except Exception:  # noqa: BLE001 — value isn't a number; fall back to its text form
+         return _total_text(occurrence)
+ 
+ 
+@@ -90,7 +90,7 @@ def normalise_old_side(lines: Iterable[str]) -> str:
+     items: list[Any]
+     try:
+         items = list(lines)
+-    except Exception:
++    except Exception:  # noqa: BLE001 — value isn't iterable; treat it as a single line
+         # Not iterable at all. Treat the argument as a single line rather than raising:
+         # a wrong-typed call must still get a usable id back.
+         items = [lines]
+diff --git a/packages/orchestration/hunk_repair_findings.py b/packages/orchestration/hunk_repair_findings.py
+index e1c2a69c..a87dfb68 100644
+--- a/packages/orchestration/hunk_repair_findings.py
++++ b/packages/orchestration/hunk_repair_findings.py
+@@ -82,10 +82,10 @@ def _total_text(value: object) -> str:
+     be would put words in an operator's mouth."""
+     try:
+         return str(value)
+-    except Exception:
++    except Exception:  # noqa: BLE001 — str() failed; fall back to repr()
+         try:
+             return repr(value)
+-        except Exception:
++        except Exception:  # noqa: BLE001 — repr() failed too; fall back to the unoverridable object repr
+             return object.__repr__(value)
+ 
+ 
+@@ -128,5 +128,5 @@ def render_rejection_findings(ledger: Any) -> str:
+         if not rendered:
+             return ""
+         return "\n".join([REJECTION_FINDINGS_HEADING, ""] + rendered)
+-    except Exception:
++    except Exception:  # noqa: BLE001 — unreadable ledger yields an empty block, never a partial one
+         return ""
+diff --git a/packages/orchestration/hunk_subset_diff.py b/packages/orchestration/hunk_subset_diff.py
+index 6c47c208..77813360 100644
+--- a/packages/orchestration/hunk_subset_diff.py
++++ b/packages/orchestration/hunk_subset_diff.py
+@@ -128,10 +128,10 @@ def _total_text(value: object) -> str:
+     name is private there."""
+     try:
+         return str(value)
+-    except Exception:
++    except Exception:  # noqa: BLE001 — str() failed; fall back to repr()
+         try:
+             return repr(value)
+-        except Exception:
++        except Exception:  # noqa: BLE001 — repr() failed too; fall back to the unoverridable object repr
+             return object.__repr__(value)
+ 
+ 
+@@ -145,7 +145,7 @@ def _entries(value: Any) -> list[Any]:
+         return [value]
+     try:
+         return list(value)
+-    except Exception:
++    except Exception:  # noqa: BLE001 — value isn't iterable; treat it as a single entry
+         return [value]
+ 
+ 
+diff --git a/packages/orchestration/intake.py b/packages/orchestration/intake.py
+index 0c17f85c..1d0289d7 100644
+--- a/packages/orchestration/intake.py
++++ b/packages/orchestration/intake.py
+@@ -249,7 +249,7 @@ def run_intake(
+             on_call=on_call,
+             allow_parse_retry=True,
+         )
+-    except Exception:
++    except Exception:  # noqa: BLE001 — provider failure falls back to the heuristic intake
+         result = heuristic_intake(mission)
+         result.error_hint = "provider error"
+         return result
+@@ -383,7 +383,7 @@ def make_structured_call_fn(
+                 ClaudeCliPlanner(model=planner_model)
+                 if planner_model else ClaudeCliPlanner()
+             )
+-        except Exception:
++        except Exception:  # noqa: BLE001 — unreachable planner is reported as absent, not a crash
+             return None
+         if not shutil.which("claude"):
+             return None
+@@ -394,13 +394,13 @@ def make_structured_call_fn(
+                 OllamaPlanner(model=planner_model)
+                 if planner_model else OllamaPlanner()
+             )
+-        except Exception:
++        except Exception:  # noqa: BLE001 — unreachable planner is reported as absent, not a crash
+             return None
+ 
+         try:
+             import ollama
+             ollama.Client(host=planner.host).list()
+-        except Exception:
++        except Exception:  # noqa: BLE001 — ollama server not reachable; report the planner as absent
+             return None
+ 
+     schema = to_json_schema(model_cls)
+diff --git a/packages/orchestration/integrity_gate.py b/packages/orchestration/integrity_gate.py
+index 6c11f3d2..3bf66146 100644
+--- a/packages/orchestration/integrity_gate.py
++++ b/packages/orchestration/integrity_gate.py
+@@ -102,7 +102,7 @@ def _check_handler_import() -> IntegrityCheck:
+         if not isinstance(handlers, dict):
+             return IntegrityCheck("handler_import", IntegrityStatus.FAIL, "collect_all_handlers did not return dict")
+         return IntegrityCheck("handler_import", IntegrityStatus.PASS, f"handlers={len(handlers)}")
+-    except Exception as exc:
++    except Exception as exc:  # noqa: BLE001 — an unimportable handler set is reported as a FAIL, not a crash
+         return IntegrityCheck("handler_import", IntegrityStatus.FAIL, f"import failed: {type(exc).__name__}: {exc}"[:200])
+ 
+ 
+@@ -211,7 +211,7 @@ def _check_relevant_untracked() -> IntegrityCheck:
+                                   f"{len(relevant)} relevant untracked: {', '.join(relevant[:5])}"[:200])
+ 
+         return IntegrityCheck("relevant_untracked", IntegrityStatus.PASS, f"untracked={len(untracked)}, relevant=0")
+-    except Exception as exc:
++    except Exception as exc:  # noqa: BLE001 — a git failure skips this check rather than failing the gate
+         return IntegrityCheck("relevant_untracked", IntegrityStatus.SKIP, f"error: {exc}"[:200])
+ 
+ 
+@@ -247,7 +247,7 @@ def _check_high_blockers_open() -> IntegrityCheck:
+     text = live_review.read_text(encoding="utf-8", errors="replace")
+     try:
+         severities = _load_ledger_reader().open_finding_severities(text)
+-    except Exception as exc:
++    except Exception as exc:  # noqa: BLE001 — an unreadable ledger reader fails the check, never passes it
+         # An unreadable ledger reader is a FAIL, never a PASS: a check that cannot
+         # read the ledger has not established that nothing severe is open.
+         return IntegrityCheck("high_blockers_open", IntegrityStatus.FAIL,
+@@ -304,7 +304,7 @@ def _check_collect_only() -> IntegrityCheck:
+         return IntegrityCheck("collect_only", IntegrityStatus.FAIL,
+                               "collect-only failed: "
+                               + (result.stderr or b"").decode("utf-8", "replace")[:200])
+-    except Exception as exc:
++    except Exception as exc:  # noqa: BLE001 — a broken test harness skips this check rather than failing the gate
+         return IntegrityCheck("collect_only", IntegrityStatus.SKIP, f"error: {exc}"[:200])
+ 
+ 
+diff --git a/packages/orchestration/job_plan.py b/packages/orchestration/job_plan.py
+index 873e218b..28b023b4 100644
+--- a/packages/orchestration/job_plan.py
++++ b/packages/orchestration/job_plan.py
+@@ -469,7 +469,7 @@ def plan_job_llm(
+             on_call=on_call,
+             allow_parse_retry=True,
+         )
+-    except Exception as exc:
++    except Exception as exc:  # noqa: BLE001 — provider call failure is reported as a task-plan error, not raised
+         return TaskPlanResult(
+             plan=None, source="llm", error_hint=f"provider error: {exc}")
+ 
+@@ -489,7 +489,7 @@ def plan_job_llm(
+         normalized = normalize_plan(plan, granularity or granularity_config())
+         plan = normalized.plan
+         transformations = normalized.as_dicts()
+-    except Exception as exc:
++    except Exception as exc:  # noqa: BLE001 — misconfigured thresholds must not lose an otherwise valid plan
+         # Misconfigured thresholds must not lose a valid plan; same fail-open
+         # rule the normalizer applies to its own revalidation.
+         transformations = [{
+diff --git a/packages/orchestration/manual_attestation.py b/packages/orchestration/manual_attestation.py
+index c34d999e..7d33703a 100644
+--- a/packages/orchestration/manual_attestation.py
++++ b/packages/orchestration/manual_attestation.py
+@@ -182,7 +182,7 @@ def _read_verdict(path: str, default: str = "BLOCKED") -> str:
+     try:
+         with open(path, encoding="utf-8") as fh:
+             return str(json.load(fh).get("verdict") or default)
+-    except Exception:
++    except Exception:  # noqa: BLE001 — unreadable gate file defaults to the safe BLOCKED verdict
+         return default
+ 
+ 
+diff --git a/packages/orchestration/mission_compiler.py b/packages/orchestration/mission_compiler.py
+index 8a5a83aa..a1988bd2 100644
+--- a/packages/orchestration/mission_compiler.py
++++ b/packages/orchestration/mission_compiler.py
+@@ -407,7 +407,7 @@ def compile_mission_plan(
+             on_call=on_call,
+             allow_parse_retry=True,
+         )
+-    except Exception as exc:
++    except Exception as exc:  # noqa: BLE001 — composition or provider failure degrades to the deterministic fallback
+         return _fallback(goal, hint=f"provider error: {exc}")
+ 
+     if not outcome.ok:
+diff --git a/packages/orchestration/mission_dossier.py b/packages/orchestration/mission_dossier.py
+index c26a2f69..d4894170 100644
+--- a/packages/orchestration/mission_dossier.py
++++ b/packages/orchestration/mission_dossier.py
+@@ -632,7 +632,7 @@ def compress_dossier(dossier: MissionDossier,
+             call_fn,
+             on_call=on_call,
+             allow_parse_retry=False)
+-    except Exception as exc:
++    except Exception as exc:  # noqa: BLE001 — a failed compression call returns the dossier unchanged
+         return CompressionResult(
+             ok=False, dossier=dossier, status=COMPRESSION_PROVIDER_ERROR,
+             detail=f"the compression call raised: {exc}")
+diff --git a/packages/orchestration/orchestrator_loop.py b/packages/orchestration/orchestrator_loop.py
+index ac40b67a..88012c70 100644
+--- a/packages/orchestration/orchestrator_loop.py
++++ b/packages/orchestration/orchestrator_loop.py
+@@ -374,7 +374,7 @@ def open_mission_decisions(mission: Any) -> list[dict[str, Any]]:
+     for link in getattr(mission, "job_links", ()) or ():
+         try:
+             job = require_job_plan(normalize_job_id(link.job_id))
+-        except Exception:
++        except Exception:  # noqa: BLE001 — an unreadable job's decisions are dropped, not the whole mission
+             # A job that cannot be read cannot be asked about its decisions.
+             # Recorded as absent rather than raised: one unreadable job must
+             # not make the whole mission undecidable.
+@@ -1313,7 +1313,7 @@ def run_mission(
+             elif blocker == "" and _was_dispatch(move):
+                 # A released (or un-run) gate ends the streak.
+                 blocked_milestone, blocked_blockers = "", []
+-        except Exception as exc:
++        except Exception as exc:  # noqa: BLE001 — an iteration failure is classified and recorded, not left to crash
+             failure_class, detail = record_iteration_failure(
+                 pid, mission_id, exc, root=root, iteration=iteration)
+             result.iterations = step
+@@ -1909,7 +1909,7 @@ def collect_milestone_evidence(project_id: str, mission_id: str,
+     handback: Any = None
+     try:
+         job = require_job_plan(normalize_job_id(job_id))
+-    except Exception:
++    except Exception:  # noqa: BLE001 — an unreadable job's evidence is absent, never reported as passing
+         # An unreadable job is an ABSENT observation, never a passing one.
+         return MilestoneEvidence(job_id=job_id)
+     state = str(getattr(getattr(job, "state", ""), "value", getattr(job, "state", "")))
+@@ -2151,7 +2151,7 @@ def escalate_repeated_refusal(project_id: str, mission_id: str, reason: str, *,
+                 "attached to a decision — a human has to look at the mission")
+     try:
+         job = require_job_plan(normalize_job_id(link.job_id))
+-    except Exception as exc:
++    except Exception as exc:  # noqa: BLE001 — an unreadable job is reported as an escalation failure message
+         return f"the mission's latest job could not be read to escalate: {exc}"
+     tasks = list(getattr(job, "tasks", ()) or ())
+     if not tasks:
+@@ -2287,7 +2287,7 @@ def record_iteration_failure(project_id: str, mission_id: str,
+             raw_reason=f"iteration {iteration}: {text}",
+             terminal_status=TERMINAL_ITERATION_FAILED,
+         ), root=evidence)
+-    except Exception as write_exc:  # honest, never fatal
++    except Exception as write_exc:  # noqa: BLE001 — postmortem write failure is noted in the detail text, never fatal
+         detail += (f"; the post-mortem could not be written "
+                    f"({type(write_exc).__name__}: {write_exc})")
+     return verdict.failure_class, detail
+diff --git a/packages/orchestration/product_smoke.py b/packages/orchestration/product_smoke.py
+index 737dabfb..40bce53f 100644
+--- a/packages/orchestration/product_smoke.py
++++ b/packages/orchestration/product_smoke.py
+@@ -205,13 +205,13 @@ def smoke_config() -> dict[str, Any]:
+     try:
+         from packages.orchestration.config import get_config
+         cfg = get_config()
+-    except Exception:  # noqa: BLE001 - config unavailable = documented defaults
++    except Exception:  # noqa: BLE001 — config unavailable = documented defaults
+         return out
+ 
+     def _get(key: str, default: Any) -> Any:
+         try:
+             value = cfg.get(f"smoke.{key}")
+-        except Exception:  # noqa: BLE001
++        except Exception:  # noqa: BLE001 — config value unreadable; use the caller's default
+             return default
+         return default if value is None else value
+ 
+diff --git a/packages/orchestration/run_report.py b/packages/orchestration/run_report.py
+index 9c7e1fa1..b2305565 100644
+--- a/packages/orchestration/run_report.py
++++ b/packages/orchestration/run_report.py
+@@ -887,7 +887,7 @@ def _evidence_sources(job: Any) -> dict[str, Any]:
+             )
+             for d in still_open
+         )
+-    except Exception:  # noqa: BLE001
++    except Exception:  # noqa: BLE001 — an unreadable decision queue is not recorded
+         pass
+ 
+     return extra
+diff --git a/packages/orchestration/safe_publish.py b/packages/orchestration/safe_publish.py
+index 9c959c66..c8634cf5 100644
+--- a/packages/orchestration/safe_publish.py
++++ b/packages/orchestration/safe_publish.py
+@@ -208,7 +208,7 @@ def git_tracked_status(path: str, repo_root: str) -> tuple[str, str]:
+         return "GIT_UNAVAILABLE", "git executable not found"
+     except subprocess.TimeoutExpired:
+         return "GIT_TIMED_OUT", "git ls-files timed out"
+-    except Exception as exc:                               # pragma: no cover - defensive
++    except Exception as exc:  # noqa: BLE001 — unclassified git failure blocks publish  # pragma: no cover - defensive
+         return "GIT_FAILED", f"{type(exc).__name__}: {str(exc)[:100]}"
+     if r.returncode == 0:
+         return "TRACKED", ""
+diff --git a/packages/orchestration/scope_fences.py b/packages/orchestration/scope_fences.py
+index 4497c541..a8e85a96 100644
+--- a/packages/orchestration/scope_fences.py
++++ b/packages/orchestration/scope_fences.py
+@@ -862,7 +862,7 @@ def enforce_change_set(
+             effective=effective,
+         )
+         persistence_status = "persisted"
+-    except Exception as persist_exc:
++    except Exception as persist_exc:  # noqa: BLE001 — recording evidence is best effort; the violation still raises
+         persistence_status = "failed"
+         secondary_diagnostic = _sanitize_diagnostic(str(persist_exc))
+         logger.error(
+diff --git a/packages/orchestration/source_apply.py b/packages/orchestration/source_apply.py
+index c7b0715f..2e4076e9 100644
+--- a/packages/orchestration/source_apply.py
++++ b/packages/orchestration/source_apply.py
+@@ -361,7 +361,7 @@ def apply_structured_patch(
+                 "files_created": result.files_created,
+                 "error_count": len(result.errors),
+             })
+-        except Exception:
++        except Exception:  # noqa: BLE001 — recording this event is best-effort; must not break the apply
+             pass
+ 
+     return result
+diff --git a/packages/orchestration/study.py b/packages/orchestration/study.py
+index 91915f07..9c98bc5e 100644
+--- a/packages/orchestration/study.py
++++ b/packages/orchestration/study.py
+@@ -287,7 +287,7 @@ def run_study(
+                 narrated = call_fn(prompt, 300)
+                 if narrated and narrated.strip():
+                     category_values[category] = narrated.strip()
+-            except Exception:
++            except Exception:  # noqa: BLE001 — narration call failure keeps the heuristic value instead
+                 pass  # Fall back to heuristic on any exception
+ 
+             # Increment counter for next check
+diff --git a/packages/orchestration/task_granularity.py b/packages/orchestration/task_granularity.py
+index f5238ead..00b11d65 100644
+--- a/packages/orchestration/task_granularity.py
++++ b/packages/orchestration/task_granularity.py
+@@ -520,7 +520,7 @@ def normalize_plan(
+         # Constructing the model IS the revalidation: TaskPlan's own
+         # _validate_dag runs here. No validation logic is copied.
+         new_plan = TaskPlan(**data)
+-    except Exception as exc:
++    except Exception as exc:  # noqa: BLE001 — revalidation failure falls back to the pre-normalization plan
+         # Fail open to the plan the human is about to approve, never to a
+         # broken one — and say so in the record.
+         return NormalizationResult(
+diff --git a/packages/orchestration/token_economy.py b/packages/orchestration/token_economy.py
+index d0dafb0e..f2397e07 100644
+--- a/packages/orchestration/token_economy.py
++++ b/packages/orchestration/token_economy.py
+@@ -323,7 +323,7 @@ def _inspect(job_id: str, task_id: str, data_dir: Path) -> Any:
+         job = load_job_plan(normalize_job_id(job_id), data_dir)
+         events = load_run_events(data_dir, job.job_id)
+         return inspect_context(job, events, task_id=task_id or None)
+-    except Exception:
++    except Exception:  # noqa: BLE001 — context inspection is best effort; any failure means no inspection
+         # Best-effort read-only helper — any failure (missing job, import, parse) → no inspection.
+         return None
+ 
+@@ -649,7 +649,7 @@ def routing_token_hint(job_id: str, *, task_type: str = "repair",
+             "next_safe_action": d.next_safe_action,
+             "estimated": True,
+         }
+-    except Exception:
++    except Exception:  # noqa: BLE001 — on any failure returns a safe unknown hint, never a cheap one
+         return {"estimated_token_band": TokenBand.UNKNOWN, "estimated_cost_band": TokenBand.UNKNOWN,
+                 "budget_status": BudgetStatus.UNKNOWN, "context_pack_kind": "",
+                 "requires_human_approval": True, "token_budget_warning": "",
+diff --git a/packages/orchestration/watchdog.py b/packages/orchestration/watchdog.py
+index c4bbc9d4..872962c4 100644
+--- a/packages/orchestration/watchdog.py
++++ b/packages/orchestration/watchdog.py
+@@ -520,7 +520,7 @@ def act_on_trips(
+                       "the mission"))
+         try:
+             job = require_job_plan(normalize_job_id(link.job_id))
+-        except Exception as exc:
++        except Exception as exc:  # noqa: BLE001 — an unreadable job is reported as a trip note, not a crash
+             return TripAction(
+                 trip=trip,
+                 note=f"the mission's latest job could not be read: {exc}")
+diff --git a/packages/orchestration/worktree_resume.py b/packages/orchestration/worktree_resume.py
+index 141f62b2..08dc2e46 100644
+--- a/packages/orchestration/worktree_resume.py
++++ b/packages/orchestration/worktree_resume.py
+@@ -121,7 +121,7 @@ def _safe_update_persisted_run(run_id: str, patch: dict[str, Any]) -> str:
+     try:
+         _update_persisted_run(run_id, patch)
+         return ""
+-    except Exception as exc:
++    except Exception as exc:  # noqa: BLE001 — persistence failure is reported as text, never raised
+         return f"{type(exc).__name__}: {exc}"
+ 
+ 
+@@ -214,7 +214,7 @@ def prepare_worktree_resume(run_id: str) -> tuple[WorktreeResumeSession | None,
+         return _block("worktree lock is held by another process (run still active)")
+     except W.WorktreeError as exc:
+         return _block(f"worktree recovery failed: {exc}")
+-    except Exception as exc:      # recovery released its lock; block honestly
++    except Exception as exc:  # noqa: BLE001 — recovery failure blocks resume; the lock was already freed
+         return _block(f"worktree recovery failed: {type(exc).__name__}: {exc}")
+ 
+     if handle is None:
+@@ -287,7 +287,7 @@ def prepare_worktree_resume(run_id: str) -> tuple[WorktreeResumeSession | None,
+     try:
+         outcome.head = W.snapshot(handle)
+         info = W.write_result_diff(handle, _run_dir(run_id) / "result.diff")
+-    except Exception as exc:
++    except Exception as exc:  # noqa: BLE001 — hand-off diff could not be saved; retain the worktree and block
+         # Preparing the hand-off failed. Keep the worktree and its uncommitted
+         # changes, release the lock, and block: never continue into a workspace
+         # whose diff we could not preserve.
+@@ -341,7 +341,7 @@ def finalize_worktree_resume(session: WorktreeResumeSession) -> WorktreeResumeOu
+     try:
+         outcome.head = W.snapshot(handle)
+         info = W.write_result_diff(handle, _run_dir(run_id) / "result.diff")
+-    except Exception as exc:
++    except Exception as exc:  # noqa: BLE001 — final diff could not be saved; retain the worktree for recovery
+         return _retain(f"final diff not persisted: {type(exc).__name__}: {exc}")
+ 
+     outcome.result_diff_sha256 = info["sha256"]
+@@ -362,7 +362,7 @@ def finalize_worktree_resume(session: WorktreeResumeSession) -> WorktreeResumeOu
+ 
+     try:
+         res = W.remove(handle, keep_branch=True)          # never a merge
+-    except Exception as exc:
++    except Exception as exc:  # noqa: BLE001 — cleanup failure retains the worktree instead of losing the work
+         return _retain(f"worktree cleanup failed: {type(exc).__name__}: {exc}")
+ 
+     outcome.cleanup_status = res["cleanup_status"]
+diff --git a/packages/orchestration/worktrees.py b/packages/orchestration/worktrees.py
+index b85ec4ab..bb4a7bb6 100644
+--- a/packages/orchestration/worktrees.py
++++ b/packages/orchestration/worktrees.py
+@@ -743,7 +743,7 @@ def remove(handle: WorktreeHandle, *, keep_branch: bool = True) -> dict[str, Any
+         if not keep_branch:
+             _git(root, "branch", "-D", handle.branch, check=False)
+             branch_kept = False
+-    except Exception as exc:
++    except Exception as exc:  # noqa: BLE001 — cleanup failure is reported through the result's error field, not raised
+         error = f"{type(exc).__name__}: {exc}"
+     finally:
+         release_lock(handle)             # always claimable again
+@@ -754,7 +754,7 @@ def remove(handle: WorktreeHandle, *, keep_branch: bool = True) -> dict[str, Any
+         try:
+             still_there = path.exists()
+             still_registered = _worktree_registered(root, path)
+-        except Exception as exc:
++        except Exception as exc:  # noqa: BLE001 — verification failure is reported as a cleanup error
+             error = f"cleanup verification failed: {type(exc).__name__}: {exc}"
+     if not error:
+         if still_there:
+diff --git a/packages/runtimes/dev_server.py b/packages/runtimes/dev_server.py
+index ffa98989..f9d0bd8c 100644
+--- a/packages/runtimes/dev_server.py
++++ b/packages/runtimes/dev_server.py
+@@ -1349,7 +1349,7 @@ class LogPump:
+                 written += len(chunk)
+                 if written > self.max_bytes:
+                     written = self._trim(out)
+-        except Exception as exc:            # surfaced, never swallowed
++        except Exception as exc:  # noqa: BLE001 — the read/write failure is captured and surfaced, never swallowed
+             self.error = f"{type(exc).__name__}: {exc}"
+         finally:
+             self.started.set()
+@@ -1585,7 +1585,7 @@ class DevServer:
+             try:
+                 save_state(keep)
+                 rollback["partial_state_removed"] = False
+-            except Exception as exc:
++            except Exception as exc:  # noqa: BLE001 — state-persist failure is appended to the reported stop error
+                 rollback["stop_error"] += f"; state not persisted: {exc}"
+         return rollback
+ 
