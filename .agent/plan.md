@@ -13,23 +13,22 @@ is documented and asserted from the catalog
 
 ## Current Step
 
-ROUND 21. It books round 20's PASS, corrects the round 19 entry's verdict
-token and resolves R-1032, registers R-1033 and R-1034, records DECISION F283
-D13, lands T002's sweep and the catalog-to-dispatch parity in
-`tests/cli/test_json_contract.py`, and makes `stats report --json` answer in
-the envelope.
+ROUND 22, the closure sequence's first half. It books round 21's PASS and
+resolves R-1033, writes the feature file's Built State, folds this feature's
+one prose lesson into the reviewer checklist without lengthening it, runs the
+closure's self-use item to its approval gate, and runs the feature's one full
+suite, committing the transcript.
 
 ## Next Steps
 
-1. The closure sequence: the Built State and Acceptance of
-   `docs/roadmap/features/T2_F283.md`, the evidence job and a fresh review zip,
-   the STATUS line, the pull request. Its one full suite runs on the merged
-   tree (DECISION amend0921-operator-feedback D1).
+1. The closure sequence's second half: register whatever the self-use run's
+   own defect reader reports, the evidence job, a fresh review zip, the ledger
+   rotation, the STATUS line with the README counters in the same commit, and
+   the pull request, which is never merged in the session that opens it.
 
 ## Risks
 
-Twenty-six findings are open after this round's registrations. R-1033 is this
-feature's own and its repair lands in this round, to be resolved on the record
-at the next gate; R-1034 belongs to the next paydown feature. Twenty-one rounds
-are spent of the soft limit of 25, in the fifth of 7 sessions; the closure
-must fit the four rounds left.
+Twenty-five findings are open after this round's resolution and none is this
+feature's own. Twenty-two rounds are spent of the soft limit of 25; the
+closure's second half is the twenty-third, which leaves two rounds for a
+repair the full suite or the packaging may still ask for.
