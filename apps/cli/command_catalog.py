@@ -26,6 +26,8 @@ from __future__ import annotations
 from dataclasses import dataclass, replace
 from typing import Literal
 
+from apps.cli.exit_codes import EXIT_CODE_FLOOR
+
 # ---------------------------------------------------------------------------
 # Types
 # ---------------------------------------------------------------------------
@@ -115,6 +117,10 @@ class CommandEntry:
     #: derived from another flag such as may_execute_commands.
     is_expensive: bool = False
     related: tuple[str, ...] = ()
+    #: The codes this command's handler can exit with (DECISION F283 D12 (4)),
+    #: ascending, always the floor plus whatever it reaches above it.
+    #: `tests/cli/test_exit_codes.py` asserts this against a static reading.
+    exit_codes: tuple[int, ...] = EXIT_CODE_FLOOR
 
 
 # ---------------------------------------------------------------------------
@@ -241,6 +247,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
             ArgDef("--json", "Output as JSON", required=False, is_option=True, default="false"),
         ),
         supports_json=True,
+        exit_codes=(0, 1, 2, 4),
     ),
 
     # ── status ──────────────────────────────────────────────────────────
@@ -355,6 +362,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         may_mutate_repo=False,
         may_execute_commands=False,
         related=("job.run", "job.show"),
+        exit_codes=(0, 1, 2, 3),
     ),
     CommandEntry(
         command_id="job.budget",
@@ -399,6 +407,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         args=(_JOB_ID, _TASK_OPT, _JSON_OPT),
         supports_json=True,
         related=("job.show",),
+        exit_codes=(0, 1, 2, 3),
     ),
     CommandEntry(
         command_id="job.contract",
@@ -506,6 +515,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         ),
         supports_json=True,
         related=("project.show", "project.list"),
+        exit_codes=(0, 1, 2, 3),
     ),
     CommandEntry(
         command_id="project.attach",
@@ -520,6 +530,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         ),
         supports_json=True,
         related=("project.current",),
+        exit_codes=(0, 1, 2, 3),
     ),
     CommandEntry(
         command_id="project.adopt",
@@ -534,6 +545,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         ),
         supports_json=True,
         related=("project.attach-job", "job.list"),
+        exit_codes=(0, 1, 2, 3),
     ),
 
     # ── patch ────────────────────────────────────────────────────────────
@@ -926,6 +938,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         ),
         supports_json=True,
         related=("mission.report", "mission.watchdog"),
+        exit_codes=(0, 1, 2, 3),
     ),
     CommandEntry(
         command_id="mission.watchdog",
@@ -940,6 +953,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         ),
         supports_json=True,
         related=("mission.show", "mission.resume"),
+        exit_codes=(0, 1, 2, 3),
     ),
     CommandEntry(
         command_id="mission.handoff",
@@ -986,6 +1000,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         ),
         supports_json=True,
         related=("mission.list", "mission.show"),
+        exit_codes=(0, 1, 2, 3),
     ),
     CommandEntry(
         command_id="mission.list",
@@ -1000,6 +1015,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         ),
         supports_json=True,
         related=("mission.start", "mission.show"),
+        exit_codes=(0, 1, 2, 3),
     ),
     CommandEntry(
         command_id="mission.continue",
@@ -1015,6 +1031,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         ),
         supports_json=True,
         related=("mission.show", "mission.start"),
+        exit_codes=(0, 1, 2, 3),
     ),
     CommandEntry(
         command_id="mission.plan",
@@ -1030,6 +1047,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         ),
         supports_json=True,
         related=("mission.show", "mission.start"),
+        exit_codes=(0, 1, 2, 3),
     ),
     CommandEntry(
         command_id="mission.show",
@@ -1044,6 +1062,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         ),
         supports_json=True,
         related=("mission.list", "mission.start"),
+        exit_codes=(0, 1, 2, 3),
     ),
     CommandEntry(
         command_id="mission.contract",
@@ -1058,6 +1077,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         ),
         supports_json=True,
         related=("mission.show", "job.contract"),
+        exit_codes=(0, 1, 2, 3),
     ),
     # Status transitions are their own explicit subcommands (R-0163): the verb
     # names the status, and nothing else in Remedy ever moves it.
@@ -1074,6 +1094,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         ),
         supports_json=True,
         related=("mission.show", "mission.list"),
+        exit_codes=(0, 1, 2, 3),
     ),
     CommandEntry(
         command_id="mission.abandon",
@@ -1088,6 +1109,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         ),
         supports_json=True,
         related=("mission.show", "mission.list"),
+        exit_codes=(0, 1, 2, 3),
     ),
     CommandEntry(
         command_id="mission.pause",
@@ -1102,6 +1124,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         ),
         supports_json=True,
         related=("mission.show", "mission.list"),
+        exit_codes=(0, 1, 2, 3),
     ),
     CommandEntry(
         command_id="mission.resume",
@@ -1116,6 +1139,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         ),
         supports_json=True,
         related=("mission.pause", "mission.watchdog"),
+        exit_codes=(0, 1, 2, 3),
     ),
     CommandEntry(
         command_id="mission.readiness",
@@ -1438,6 +1462,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         requires_permission=True,
         is_expensive=True,
         related=("job.checkpoints", "event.replay"),
+        exit_codes=(0, 1, 2, 3),
     ),
 
     # ── blocker ─────────────────────────────────────────────────────────
@@ -1879,6 +1904,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         ),
         may_mutate_repo=False,
         may_execute_commands=True,
+        exit_codes=(0, 1, 2, 3, 4, 5),
     ),
     CommandEntry(
         command_id="runtime.probe",
@@ -1894,6 +1920,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         ),
         may_mutate_repo=False,
         may_execute_commands=True,
+        exit_codes=(0, 1, 2, 3, 4, 5),
     ),
     CommandEntry(
         command_id="runtime.stop",
@@ -1909,6 +1936,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         ),
         may_mutate_repo=False,
         may_execute_commands=True,
+        exit_codes=(0, 1, 2, 5),
     ),
 
     CommandEntry(
