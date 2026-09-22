@@ -515,11 +515,17 @@ def _cmd_stats_report(*, since: str = "", until: str = "", job: str = "",
     across projects but nothing folds the segment breakdown, so an all-projects
     report would publish one project's breakdown under a multi-project total —
     the very mismatch `cost_report._same_question` exists to refuse.
+
+    Under `--json` the success answer is the envelope (R-1033): the document
+    `cost_report_json` returns is spread into `emit_ok`, keeping every key the
+    old bare document carried. `cost_report_json_bytes` — the serialised text
+    form of the same document, for a caller that writes a report to disk — is
+    untouched and simply unused here now.
     """
     import sqlite3
 
     from packages.orchestration.cost_report import (
-        cost_report_json_bytes,
+        cost_report_json,
         render_cost_report_markdown,
     )
     from packages.orchestration.token_ledger import (
@@ -555,11 +561,21 @@ def _cmd_stats_report(*, since: str = "", until: str = "", job: str = "",
         fail("ledger_unreadable", f"cannot read the token ledger: {exc}",
              json_output=json_output)
 
-    rendered = (cost_report_json_bytes if json_output else render_cost_report_markdown)(
+    no_comparison_reason = None if period.available else period.unavailable_reason
+    if json_output:
+        document = cost_report_json(
+            cost, shares, label=label, prior=prior,
+            no_comparison_reason=no_comparison_reason,
+        )
+        emit_ok(**document)
+        return
+
+    rendered = render_cost_report_markdown(
         cost, shares, label=label, prior=prior,
-        no_comparison_reason=None if period.available else period.unavailable_reason,
+        no_comparison_reason=no_comparison_reason,
     )
-    # Both renderers already end in exactly one newline; print must not add a second.
+    # The markdown renderer already ends in exactly one newline; print must
+    # not add a second.
     print(rendered, end="")
 
 

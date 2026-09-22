@@ -184,6 +184,23 @@ class TestReportRendering:
             "since": SINCE, "until": UNTIL, "job": "", "by": None,
             "timezone": "UTC"}
 
+    def test_the_json_success_answer_is_the_envelope_over_a_real_ledger(
+        self, report_ledger, project_id, capsys
+    ):
+        """R-1033 — this run HAS a ledger, so it reaches the document rather
+        than refusing before it: the gap the sweep cannot see on its own."""
+        CMD._cmd_stats_report(since=SINCE, until=UNTIL, project=project_id,
+                              json_output=True)
+        payload = json.loads(capsys.readouterr().out)
+
+        assert payload["schema_version"] == 1
+        assert payload["ok"] is True
+        # Every key the old bare document carried is still here, alongside
+        # the two the envelope adds.
+        assert payload["total"]["calls"] >= 1
+        assert "buckets" in payload
+        assert "segments" in payload
+
 
 class TestPriorPeriodComparison:
     def test_a_closed_period_compares_against_the_window_that_abuts_it(
