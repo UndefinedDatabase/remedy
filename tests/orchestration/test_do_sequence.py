@@ -90,3 +90,32 @@ def test_a_completed_apply_step_is_not_stopping_before_apply():
     ctx = walk_do_sequence(DoContext(order="o"), _spy_table([]))
 
     assert ctx.stopped_before_apply is False
+
+
+# F278 T003, R-1037 — a plan's budgets and fences either hold or refuse the order.
+
+
+def test_valid_limits_become_the_jobs_budgets_and_fences():
+    from packages.orchestration.do_sequence import order_job_limits
+
+    budgets, fences = order_job_limits({"max_provider_calls": 3, "not_a_field": 1},
+                                       {"allow": ["src/**"]})
+    assert budgets.max_provider_calls == 3
+    assert fences.allow == ["src/**"]
+
+
+def test_no_limits_mean_none_for_each():
+    from packages.orchestration.do_sequence import order_job_limits
+
+    assert order_job_limits(None, {}) == (None, None)
+
+
+@pytest.mark.parametrize("budgets, fences, named", [
+    ({"max_provider_calls": "lots"}, None, "job budgets rejected"),
+    (None, {"allow": "src/**"}, "job fences rejected"),
+])
+def test_a_limit_that_does_not_validate_refuses_the_order(budgets, fences, named):
+    from packages.orchestration.do_sequence import OrderJobPlanError, order_job_limits
+
+    with pytest.raises(OrderJobPlanError, match=named):
+        order_job_limits(budgets, fences)
