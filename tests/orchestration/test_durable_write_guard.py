@@ -23,7 +23,6 @@ HELPER_NAME = re.compile(r"_?atomic_(private_)?write")
 
 #: (module path, function name) — the copies not yet migrated. Only ever shrinks.
 STILL_TO_MIGRATE = frozenset({
-    ("packages/orchestration/token_economy.py", "_atomic_write"),
     ("packages/runtimes/dev_server.py", "_atomic_write"),
     ("packages/runtimes/dev_server.py", "atomic_write_bytes"),
     ("packages/runtimes/dev_server.py", "atomic_write_text"),

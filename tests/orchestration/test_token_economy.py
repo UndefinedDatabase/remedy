@@ -362,3 +362,29 @@ class TestTokensToCostUsd:
 
     def test_both_none_propagates_none(self):
         assert te.tokens_to_cost_usd(None, None) is None
+
+
+class TestProfileWriteIsDurable:
+    """F278 T002: the budget profile goes through `durable_write`, and a failed write answers
+    False as `save_token_budget_profile` always has (DECISION F278 D2)."""
+
+    def test_the_profile_is_written_through_durable_write(self, tmp_path, monkeypatch):
+        seen: list[str] = []
+        real = te.durable_write
+
+        def recording(path, data, **kw):
+            seen.append(Path(path).name)
+            real(path, data, **kw)
+
+        monkeypatch.setattr(te, "durable_write", recording)
+        assert te.save_token_budget_profile(te.default_token_budget_profile("jD"),
+                                            data_dir=tmp_path) is True
+        assert seen == ["budget_profile.json"]
+
+    def test_a_failed_write_answers_false(self, tmp_path, monkeypatch):
+        def failing(path, data, **kw):
+            raise OSError("disk full")
+
+        monkeypatch.setattr(te, "durable_write", failing)
+        assert te.save_token_budget_profile(te.default_token_budget_profile("jD"),
+                                            data_dir=tmp_path) is False
