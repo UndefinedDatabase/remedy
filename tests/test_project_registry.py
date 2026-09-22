@@ -423,3 +423,35 @@ class TestProjectNotFoundError:
         uid = uuid4()
         err = ProjectNotFoundError(uid)
         assert err.project_id == uid
+
+
+class TestSaveIsDurable:
+    """F278 T002: a project record goes through `durable_write`, and a failed write raises."""
+
+    def test_the_record_is_written_through_durable_write(self, tmp_path, monkeypatch):
+        from packages.orchestration import project_registry as pr
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        seen: list[str] = []
+        real = pr.durable_write
+
+        def recording(path, data, **kw):
+            seen.append(path.name)
+            real(path, data, **kw)
+
+        monkeypatch.setattr(pr, "durable_write", recording)
+        p = _make_project()
+        save_project(p)
+        assert seen == [f"{p.id}.json"]
+        assert load_project(p.id).id == p.id
+
+    def test_a_failed_write_raises_and_leaves_nothing(self, tmp_path, monkeypatch):
+        from packages.orchestration import project_registry as pr
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+
+        def failing(path, data, **kw):
+            raise OSError("disk full")
+
+        monkeypatch.setattr(pr, "durable_write", failing)
+        with pytest.raises(OSError, match="disk full"):
+            save_project(_make_project())
+        assert list((tmp_path / "projects").iterdir()) == []
