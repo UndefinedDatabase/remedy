@@ -525,7 +525,7 @@ def resolve_retention(config: Any = None) -> int:
             return DEFAULT_RETENTION
     try:
         value = config.get(CONFIG_KEY_RETENTION)
-    except Exception:  # noqa: BLE001
+    except Exception:  # noqa: BLE001 — retention must never break a write
         return DEFAULT_RETENTION
     if value is None:
         return DEFAULT_RETENTION

@@ -566,7 +566,7 @@ def plan_order_job(
             ev_dir.mkdir(parents=True, exist_ok=True)
             try:
                 write_postmortem(ev_dir, pm, root=ev_dir)
-            except Exception as exc:
+            except Exception as exc:  # noqa: BLE001 — postmortem write failure is only warned about, not fatal
                 print(f"Warning: postmortem write failed: {exc}", file=sys.stderr)
             raise OrderJobPlanError(
                 f"task plan generation failed: "

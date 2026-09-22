@@ -351,5 +351,5 @@ def load_latest_hunk_ledger_from_metadata(
         if winner is None:
             return HunkDecisionLedger(())
         return import_hunk_ledger(winner)
-    except Exception:
+    except Exception:  # noqa: BLE001 — malformed metadata yields an empty ledger, never a partial one
         return HunkDecisionLedger(())

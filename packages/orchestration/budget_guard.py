@@ -413,7 +413,7 @@ def evaluate_budget(
     if budgets.min_free_disk_bytes is not None:
         try:
             free = free_disk_bytes(free_disk_probe)
-        except Exception as disk_exc:
+        except Exception as disk_exc:  # noqa: BLE001 — a disk-free probe failure is a warning, not a job stop
             warnings.append(
                 f"free disk could not be read "
                 f"({type(disk_exc).__name__}: {disk_exc}); "
@@ -527,7 +527,7 @@ def derive_next_task_token_band(task, previous_summaries=()) -> str:
                 total += _tokens
         return token_economy.estimate_task_token_band(
             task_type="job_task", context_estimate=total)
-    except Exception:
+    except Exception:  # noqa: BLE001 — token-band estimation failure degrades to UNKNOWN, never raises
         return TokenBand.UNKNOWN
 
 

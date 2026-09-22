@@ -56,7 +56,7 @@ def build_guidance_cards(
                 command=f"remedy decision list {job_id}",
                 related_node_type="decision_queue",
             ))
-    except (ImportError, Exception):
+    except (ImportError, Exception):  # noqa: BLE001 — one card's failure must not remove the rest of the list
         pass
 
     # 2. Stop reasons / blockers
@@ -73,7 +73,7 @@ def build_guidance_cards(
                 command=f"remedy blocker list {job_id}",
                 related_node_type="stop_reason",
             ))
-    except (ImportError, Exception):
+    except (ImportError, Exception):  # noqa: BLE001 — one card's failure must not remove the rest of the list
         pass
 
     # 3. Test status

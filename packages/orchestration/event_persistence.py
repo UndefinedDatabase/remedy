@@ -62,6 +62,6 @@ def emit_important_event(
         return EventPersistenceResult(event_type, "complete")
     except (OSError, ValueError, TypeError):
         return EventPersistenceResult(event_type, "failed", "append_failed")
-    except Exception:
+    except Exception:  # noqa: BLE001 — unexpected errors are reported as failed status, never raised
         # Defensive: any unexpected error is surfaced as a failed status, not raised.
         return EventPersistenceResult(event_type, "failed", "unexpected")

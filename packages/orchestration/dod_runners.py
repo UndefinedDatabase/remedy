@@ -663,7 +663,7 @@ def _run_runtime_flow(check: DoDCheck, ctx: _RunContext) -> CheckEvidence:
 
     try:
         spec = resolve_spec(ctx.root)
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001 — unresolvable runtime config is reported as a refusal, not a crash
         return _refused(
             check, REASON_RUNTIME_NOT_CONFIGURED, [], "",
             f"the runtime harness cannot start this project: {exc}")
