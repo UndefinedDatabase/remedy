@@ -125,6 +125,9 @@ class TestServe:
         runtime_cmd._cmd_runtime_serve(str(root), json_output=True)
         out = json.loads(capsys.readouterr().out)
         try:
+            # F283 R18 C4 (DECISION F283 D10) — the success document, through
+            # `emit_ok`, now carries the envelope.
+            assert out["schema_version"] == 1
             assert out["ok"] is True and out["status"] == "running"
             assert out["port"] > 0 and out["url"].startswith("http://127.0.0.1:")
             assert _alive(out["pid"])

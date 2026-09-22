@@ -2,12 +2,11 @@
 
 from __future__ import annotations
 
-import json as _json
 from collections.abc import Callable
 from typing import TYPE_CHECKING
 
 from apps.cli.job_id_arg import resolve_job_id_or_fail
-from apps.cli.json_envelope import fail
+from apps.cli.json_envelope import emit_ok, fail
 
 if TYPE_CHECKING:
     import argparse
@@ -67,11 +66,11 @@ def _cmd_event_list(
         fail("invalid_list_option", str(exc), json_output=json_output)
 
     if json_output:
-        print(_json.dumps({
-            "version": 1,
-            "job_id": jid,
-            "events": [export_ledger_event_json(e) for e in result],
-        }, sort_keys=True))
+        emit_ok(
+            version=1,
+            job_id=jid,
+            events=[export_ledger_event_json(e) for e in result],
+        )
     else:
         if not result:
             print(f"No events for job {jid[:8]}.")
@@ -99,11 +98,11 @@ def _cmd_event_show(
         fail("event_not_found", f"event not found: {event_id}", json_output=json_output)
 
     if json_output:
-        print(_json.dumps({
-            "version": 1,
-            "job_id": jid,
-            "event": export_ledger_event_json(event),
-        }, sort_keys=True))
+        emit_ok(
+            version=1,
+            job_id=jid,
+            event=export_ledger_event_json(event),
+        )
     else:
         print(f"Event: {event.event_id}")
         print(f"  Type: {event.event_type}")
@@ -129,7 +128,7 @@ def _cmd_event_timeline(
     timeline = build_event_timeline(jid, events)
 
     if json_output:
-        print(_json.dumps(export_event_timeline_json(timeline), sort_keys=True))
+        emit_ok(**export_event_timeline_json(timeline))
     else:
         print(f"Event Timeline for {jid[:8]} ({timeline.event_count} events)")
         for e in timeline.events:
@@ -152,7 +151,7 @@ def _cmd_event_replay(
     replay = replay_job(job_id_str, data_dir)
 
     if json_output:
-        print(_json.dumps(export_replay_json(replay), indent=2))
+        emit_ok(**export_replay_json(replay))
     else:
         print(f"Replay: {replay.job_id[:8]}")
         print(f"  Events: {replay.event_count}")

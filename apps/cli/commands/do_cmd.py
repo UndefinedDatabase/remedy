@@ -9,7 +9,6 @@ The module also holds the `run.show`, `run.list`, `job.run`, `job.apply` and
 
 from __future__ import annotations
 
-import json
 import subprocess
 import sys
 from collections.abc import Callable
@@ -483,7 +482,7 @@ def _cmd_run_show(
              json_output=json_output)
 
     if json_output:
-        print(json.dumps(data, indent=2))
+        emit_ok(**data)
     else:
         _print_text_report(run_id, data)
 
@@ -520,14 +519,14 @@ def _cmd_run_list(
     except ListOptionError as exc:
         fail("invalid_list_option", str(exc), json_output=json_output)
 
+    if json_output:
+        emit_ok(runs=runs)
+        return
     if not runs:
         print("No ping-pong runs found.")
         return
-    if json_output:
-        print(json.dumps(runs, indent=2))
-    else:
-        for r in runs:
-            print(f"  {r['run_id']}  {r['status']:<24s}  {r['goal']}")
+    for r in runs:
+        print(f"  {r['run_id']}  {r['status']:<24s}  {r['goal']}")
 
 
 def _print_text_report(run_id: str, data: dict) -> None:
@@ -760,7 +759,7 @@ def _cmd_job_run(
     if json_output:
         report = export_job_report(job)
         report["cost_mirror"] = cost_mirror
-        print(json.dumps(report, indent=2))
+        emit_ok(**report)
     else:
         from packages.orchestration.pingpong_job import format_job_report_text
         print(format_job_report_text(job))
@@ -817,7 +816,7 @@ def _cmd_job_evidence(
         fail("job_not_found", result["error"], json_output=json_output)
 
     if json_output:
-        print(json.dumps(result, indent=2))
+        emit_ok(**result)
     else:
         print(f"Job evidence bundle exported to: {result['out_dir']}")
         for filename in sorted(result.get("files", {}).keys()):
@@ -871,7 +870,7 @@ def _cmd_job_apply(
     )
 
     if json_output:
-        print(json.dumps(export_job_apply_json(result), indent=2))
+        emit_ok(**export_job_apply_json(result))
     else:
         print(summarize_job_apply(result))
 

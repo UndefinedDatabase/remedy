@@ -32,13 +32,25 @@ def env(tmp_path, monkeypatch):
 
 
 def test_snapshot_create_show(env):
+    """F283 R18 C4 (DECISION F283 D10) — the success document, through the real
+    subprocess dispatcher, carries the envelope `emit_ok` added this round. The
+    record's OWN `schema_version` (a domain string, unrelated to the envelope's
+    integer of the same name) survives renamed to `record_schema_version`
+    (`_envelope_safe` in `real_test_execution_cmd.py`) rather than being
+    dropped, since the two clash by name only."""
     jid = _job(env)
     r = run_grouped_cli(["snapshot", "create", jid, "--json"], env)
     assert r.returncode == 0, r.stderr
     d = json.loads(r.stdout)
+    assert d["schema_version"] == 1
+    assert d["ok"] is True
+    assert d["record_schema_version"] == "real-test-execution-v1"
     assert d["restore_available"] is False and "Traceback" not in r.stdout
     r2 = run_grouped_cli(["snapshot", "show", d["snapshot_id"], "--json"], env)
-    assert json.loads(r2.stdout)["snapshot_id"] == d["snapshot_id"]
+    body2 = json.loads(r2.stdout)
+    assert body2["schema_version"] == 1
+    assert body2["ok"] is True
+    assert body2["snapshot_id"] == d["snapshot_id"]
 
 
 def test_test_list_empty(env):

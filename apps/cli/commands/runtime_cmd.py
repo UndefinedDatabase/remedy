@@ -35,13 +35,12 @@ No provider call, no shell, no Docker, no SSE (F008), no project registry (F146)
 from __future__ import annotations
 
 import contextlib
-import json as _json
 import os
 import sys
 from pathlib import Path
 from typing import NoReturn
 
-from apps.cli.json_envelope import emit_error, fail
+from apps.cli.json_envelope import emit_error, emit_ok, fail
 
 EXIT_CONFIG = 2
 EXIT_START = 3
@@ -463,10 +462,10 @@ def _cmd_runtime_serve(repo: str = ".", *, json_output: bool = False) -> None:
                             identity=ident.to_json(),
                         )
                         return
-                    payload = {"ok": True, "already_running": True,
+                    payload = {"already_running": True,
                                "ownership": ident.ownership, **existing.to_json()}
                     if json_output:
-                        print(_json.dumps(payload, indent=2))
+                        emit_ok(**payload)
                     else:
                         print(f"Runtime already running (pid {existing.pid}) on "
                               f"{existing.url}\n  Log: {existing.log_path}")
@@ -545,11 +544,11 @@ def _cmd_runtime_serve(repo: str = ".", *, json_output: bool = False) -> None:
         return
 
     payload = {
-        "ok": True, "already_running": False, **state.to_json(),
+        "already_running": False, **state.to_json(),
         "status_code": handshake.get("status_code", 0),
     }
     if json_output:
-        print(_json.dumps(payload, indent=2))
+        emit_ok(**payload)
     else:
         print(f"Runtime started (app pid {state.pid}, "
               f"supervisor pid {state.supervisor_pid})")
@@ -684,7 +683,7 @@ def _cmd_runtime_probe(repo: str = ".", *, json_output: bool = False) -> None:
 
                 if json_output:
                     if result.ok:
-                        print(_json.dumps(payload, indent=2))
+                        emit_ok(**{k: v for k, v in payload.items() if k != "ok"})
                     else:
                         cls = result.error_class or "start"
                         token = RUNTIME_ERROR_TOKENS.get(cls, "runtime_error")
@@ -749,7 +748,7 @@ def _cmd_runtime_probe(repo: str = ".", *, json_output: bool = False) -> None:
                "survivors": fresh["survivors"]}
     if json_output:
         if good:
-            print(_json.dumps(payload, indent=2))
+            emit_ok(**{k: v for k, v in payload.items() if k != "ok"})
         else:
             rest = {k: v for k, v in payload.items() if k not in ("ok", "error")}
             emit_error(RUNTIME_ERROR_TOKENS["ready"], result.error, **rest)
@@ -848,7 +847,7 @@ def _cmd_runtime_stop(repo: str = ".", *, json_output: bool = False) -> None:
 
     if json_output:
         if ok:
-            print(_json.dumps(result, indent=2))
+            emit_ok(**{k: v for k, v in result.items() if k != "ok"})
         else:
             cls = "stop" if survivors else "state"
             message = result.get("stop_error") or result.get("reason") or "stop failed"
