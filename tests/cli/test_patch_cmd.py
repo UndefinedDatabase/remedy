@@ -34,6 +34,7 @@ from __future__ import annotations
 import difflib
 import json
 from pathlib import Path
+from types import SimpleNamespace
 from uuid import UUID, uuid4
 
 import pytest
@@ -406,3 +407,101 @@ class TestListPatchIntentsInvalidListOptionIsAnEnvelope:
         body = json.loads(captured.out)
         assert body["ok"] is False
         assert body["error"] == "invalid_list_option"
+
+
+class TestShowApproveRejectAnswerJSONThroughTheDispatcher:
+    """F283 R14 C5 (DECISION F283 D9) — `patch show`, `patch approve` and `patch
+    reject` now declare `--json` in the catalog; both shapes proved end to end
+    through the CLI dispatcher. `resolve_job_id_or_fail` and `require_job_plan`
+    are stubbed on the `CMD` module object (the same seam `test_a_refusal_never_
+    persists_the_job` above patches `save_job_plan` through), and the queue
+    functions are patched at their `packages.orchestration.approval_queue`
+    source, since the handler imports them lazily inside its own body."""
+
+    def test_show_answers_the_envelope(self, monkeypatch, capsys):
+        from apps.cli.grouped import main
+
+        fake_job = SimpleNamespace(job_id="job-1")
+        monkeypatch.setattr(CMD, "resolve_job_id_or_fail", lambda *a, **k: "job-1")
+        monkeypatch.setattr(CMD, "require_job_plan", lambda job_id: fake_job)
+        monkeypatch.setattr(
+            "packages.orchestration.approval_queue.get_patch_intent",
+            lambda job, intent_id: {"intent_id": intent_id, "state": "pending"},
+        )
+        monkeypatch.setattr(
+            "packages.orchestration.approval_queue._find_artifact_for_intent",
+            lambda job, intent_id: None,
+        )
+
+        main(["patch", "show", "job-1", "5", "--json"])
+        body = json.loads(capsys.readouterr().out)
+        assert body["ok"] is True and body["schema_version"] == 1
+        assert body["job_id"] == "job-1"
+        assert body["intent"] == {"intent_id": "5", "state": "pending"}
+        assert body["diff_preview"] is None
+
+    def test_show_refusal_is_the_envelope_through_the_dispatcher(self, monkeypatch, capsys):
+        from apps.cli.grouped import main
+
+        fake_job = SimpleNamespace(job_id="job-1")
+        monkeypatch.setattr(CMD, "resolve_job_id_or_fail", lambda *a, **k: "job-1")
+        monkeypatch.setattr(CMD, "require_job_plan", lambda job_id: fake_job)
+        monkeypatch.setattr(
+            "packages.orchestration.approval_queue.get_patch_intent",
+            lambda job, intent_id: None,
+        )
+
+        with pytest.raises(SystemExit) as exc:
+            main(["patch", "show", "job-1", "no-such-intent", "--json"])
+        assert exc.value.code == 1
+        body = json.loads(capsys.readouterr().out)
+        assert body["ok"] is False
+        assert body["error"] == "patch_intent_not_found"
+
+    def test_approve_answers_the_envelope(self, monkeypatch, capsys):
+        from apps.cli.grouped import main
+
+        fake_job = SimpleNamespace(job_id="job-1")
+        entry = {"intent_id": "5", "target_path": "f.py", "risk": "low"}
+        monkeypatch.setattr(CMD, "resolve_job_id_or_fail", lambda *a, **k: "job-1")
+        monkeypatch.setattr(CMD, "require_job_plan", lambda job_id: fake_job)
+        monkeypatch.setattr(CMD, "save_job_plan", lambda job: None)
+        monkeypatch.setattr(
+            "packages.orchestration.approval_queue.set_approval_state",
+            lambda job, intent_id, state, reason=None: entry,
+        )
+        monkeypatch.setattr(
+            "packages.orchestration.run_log.RunLogWriter",
+            lambda **kw: SimpleNamespace(log=lambda *a, **k: None),
+        )
+
+        main(["patch", "approve", "job-1", "5", "--json"])
+        body = json.loads(capsys.readouterr().out)
+        assert body["ok"] is True and body["schema_version"] == 1
+        assert body["intent_id"] == "5" and body["target_path"] == "f.py"
+        assert body["risk"] == "low" and body["state"] == "approved"
+        assert body["reason_recorded"] is False
+
+    def test_reject_answers_the_envelope(self, monkeypatch, capsys):
+        from apps.cli.grouped import main
+
+        fake_job = SimpleNamespace(job_id="job-1")
+        entry = {"intent_id": "5", "target_path": "f.py", "risk": "low"}
+        monkeypatch.setattr(CMD, "resolve_job_id_or_fail", lambda *a, **k: "job-1")
+        monkeypatch.setattr(CMD, "require_job_plan", lambda job_id: fake_job)
+        monkeypatch.setattr(CMD, "save_job_plan", lambda job: None)
+        monkeypatch.setattr(
+            "packages.orchestration.approval_queue.set_approval_state",
+            lambda job, intent_id, state, reason=None: entry,
+        )
+        monkeypatch.setattr(
+            "packages.orchestration.run_log.RunLogWriter",
+            lambda **kw: SimpleNamespace(log=lambda *a, **k: None),
+        )
+
+        main(["patch", "reject", "job-1", "5", "--reason", "scope", "--json"])
+        body = json.loads(capsys.readouterr().out)
+        assert body["ok"] is True and body["schema_version"] == 1
+        assert body["intent_id"] == "5" and body["target_path"] == "f.py"
+        assert body["risk"] == "low" and body["state"] == "rejected"
+        assert body["reason_recorded"] is True

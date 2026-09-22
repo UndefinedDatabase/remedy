@@ -307,15 +307,18 @@ class TestBrainRefusalsAreAllMigrated:
 class TestPatchRefusalsAreAllMigrated:
     """F283 round 7 — `patch.py`'s refusal pairs move onto `fail()`. Two sites print MORE
     THAN ONE line before their exit, so the migration rule excludes both and they stay:
-    `_cmd_show_patch_intent`'s intent-not-found message (its handler carries no
-    `json_output`, so it counts as the one unflagged site) and
+    `_cmd_show_patch_intent`'s intent-not-found message (its handler carried no
+    `json_output`, so it counted as the one unflagged site) and
     `_cmd_revert_patch_intent`'s revert-blocked message (its handler carries
     `json_output`, so it counts as the one flagged site). Round 12 migrates
     `_cmd_revert_patch_intent`'s three BRANCHED sites (`ambiguous_intent_id`,
     `no_apply_record`, `no_target_repo`) onto `fail()` too, but none of the three was
     ever a mechanical `print`-then-`sys.exit` PAIR by this ratchet's own AST rule — the
     `print` sat inside an `if`/`else`, never directly before the `sys.exit` — so this
-    class's two counts are unchanged by that round."""
+    class's two counts are unchanged by that round. F283 R14 C5 (DECISION F283 D9)
+    migrates the show-intent pair too — its two `print(..., file=sys.stderr)` lines
+    become ONE `fail("patch_intent_not_found", ...)` call, so no unflagged site is
+    left at all; the flagged revert-blocked site is untouched by that round."""
 
     def test_exactly_one_flagged_site_remains(self):
         flagged, _ = _refusal_sites("patch.py")
@@ -324,11 +327,11 @@ class TestPatchRefusalsAreAllMigrated:
             f"found {len(flagged)} at lines {flagged}"
         )
 
-    def test_exactly_one_unflagged_site_remains(self):
+    def test_no_unflagged_site_remains(self):
         _, unflagged = _refusal_sites("patch.py")
-        assert len(unflagged) == 1, (
-            f"expected exactly the one show-intent multi-print site left unmigrated, "
-            f"found {len(unflagged)} at lines {unflagged}"
+        assert unflagged == [], (
+            f"expected the show-intent multi-print site to be migrated onto fail(), "
+            f"found unflagged sites at lines {unflagged}"
         )
 
 

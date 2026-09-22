@@ -6,7 +6,7 @@ import json as _json
 from collections.abc import Callable
 from typing import TYPE_CHECKING
 
-from apps.cli.json_envelope import fail
+from apps.cli.json_envelope import emit_ok, fail
 
 if TYPE_CHECKING:
     import argparse
@@ -107,7 +107,10 @@ def _cmd_blocker_resolve(
     if sr is None:
         fail("blocker_not_found", f"blocker not found: {stop_id}",
              json_output=json_output)
-    print(f"Resolved: {sr.id[:8]} ({sr.reason_code})")
+    if json_output:
+        emit_ok(id=sr.id, reason_code=sr.reason_code)
+    else:
+        print(f"Resolved: {sr.id[:8]} ({sr.reason_code})")
 
 
 COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {

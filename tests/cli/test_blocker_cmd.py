@@ -111,3 +111,34 @@ class TestABlockerRefusalIsShapedLikeTheCaller:
             _cmd_blocker_resolve("job-1", "no-such-blocker", json_output=True)
         assert exc.value.code == 1
         assert json.loads(capsys.readouterr().out)["error"] == "blocker_not_found"
+
+
+class TestBlockerResolveAnswersJSONThroughTheDispatcher:
+    """F283 R14 C5 (DECISION F283 D9) — `blocker resolve` now declares `--json` in
+    the catalog; both shapes proved end to end through the CLI dispatcher."""
+
+    def test_resolve_answers_the_envelope(self, capsys):
+        import json
+
+        from apps.cli.grouped import main
+
+        resolved = _stop(status="resolved")
+        with patch("packages.orchestration.stop_reasons.resolve_stop_reason",
+                   return_value=resolved):
+            main(["blocker", "resolve", "job-1", "stop-1", "--json"])
+        body = json.loads(capsys.readouterr().out)
+        assert body["ok"] is True and body["schema_version"] == 1
+        assert body["id"] == "stop-1" and body["reason_code"] == "test_failed"
+
+    def test_a_missing_blocker_is_the_envelope_through_the_dispatcher(self, capsys):
+        import json
+
+        from apps.cli.grouped import main
+
+        with patch("packages.orchestration.stop_reasons.resolve_stop_reason",
+                   return_value=None), pytest.raises(SystemExit) as exc:
+            main(["blocker", "resolve", "job-1", "no-such-blocker", "--json"])
+        assert exc.value.code == 1
+        body = json.loads(capsys.readouterr().out)
+        assert body["ok"] is False
+        assert body["error"] == "blocker_not_found"

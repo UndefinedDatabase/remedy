@@ -8,7 +8,7 @@ from collections.abc import Callable
 from typing import TYPE_CHECKING
 
 from apps.cli.job_id_arg import resolve_job_id_or_fail
-from apps.cli.json_envelope import fail
+from apps.cli.json_envelope import emit_ok, fail
 from packages.orchestration.pingpong_job import JobNotFoundError, require_job_plan, save_job_plan
 
 if TYPE_CHECKING:
@@ -58,12 +58,12 @@ def _cmd_list_patch_intents(
     print(format_intent_list(intents))
 
 
-def _cmd_show_patch_intent(job_id_str: str, intent_id: str) -> None:
-    job_id = resolve_job_id_or_fail(job_id_str, json_output=False)
+def _cmd_show_patch_intent(job_id_str: str, intent_id: str, *, json_output: bool = False) -> None:
+    job_id = resolve_job_id_or_fail(job_id_str, json_output=json_output)
     try:
         job = require_job_plan(job_id)
     except JobNotFoundError as exc:
-        fail("job_not_found", str(exc), json_output=False)
+        fail("job_not_found", str(exc), json_output=json_output)
 
     from packages.orchestration.approval_queue import (
         _find_artifact_for_intent,
@@ -73,9 +73,12 @@ def _cmd_show_patch_intent(job_id_str: str, intent_id: str) -> None:
 
     item = get_patch_intent(job, intent_id)
     if item is None:
-        print(f"Error: patch intent {intent_id!r} not found in job {job_id}.", file=sys.stderr)
-        print("Use 'remedy patch list <job_id>' to see available intent IDs.", file=sys.stderr)
-        sys.exit(1)
+        fail(
+            "patch_intent_not_found",
+            f"patch intent {intent_id!r} not found in job {job_id}.\n"
+            "Use 'remedy patch list <job_id>' to see available intent IDs.",
+            json_output=json_output,
+        )
 
     diff_preview: str | None = None
     found = _find_artifact_for_intent(job, intent_id)
@@ -83,15 +86,20 @@ def _cmd_show_patch_intent(job_id_str: str, intent_id: str) -> None:
         artifact, _ = found
         diff_preview = artifact.metadata.get("patch_intent_diff_preview")
 
-    print(format_intent_detail(item, diff_preview))
+    if json_output:
+        emit_ok(job_id=job_id, intent=item, diff_preview=diff_preview)
+    else:
+        print(format_intent_detail(item, diff_preview))
 
 
-def _cmd_approve_patch_intent(job_id_str: str, intent_id: str, reason: str | None) -> None:
-    job_id = resolve_job_id_or_fail(job_id_str, json_output=False)
+def _cmd_approve_patch_intent(
+    job_id_str: str, intent_id: str, reason: str | None, *, json_output: bool = False,
+) -> None:
+    job_id = resolve_job_id_or_fail(job_id_str, json_output=json_output)
     try:
         job = require_job_plan(job_id)
     except JobNotFoundError as exc:
-        fail("job_not_found", str(exc), json_output=False)
+        fail("job_not_found", str(exc), json_output=json_output)
 
     from packages.orchestration.approval_queue import set_approval_state
     from packages.orchestration.run_log import RunLogWriter
@@ -99,7 +107,7 @@ def _cmd_approve_patch_intent(job_id_str: str, intent_id: str, reason: str | Non
     try:
         entry = set_approval_state(job, intent_id, "approved", reason=reason)
     except ValueError as exc:
-        fail("patch_intent_not_found", str(exc), json_output=False)
+        fail("patch_intent_not_found", str(exc), json_output=json_output)
 
     save_job_plan(job)
     log = RunLogWriter(job_id=job.job_id)
@@ -108,17 +116,25 @@ def _cmd_approve_patch_intent(job_id_str: str, intent_id: str, reason: str | Non
         intent_id=entry["intent_id"], target_path=entry["target_path"],
         risk=entry["risk"], reason_present=reason is not None,
     )
-    print(f"Approved: {entry['intent_id']} ({entry['target_path']})")
-    print(f"  reason: {'recorded' if reason else 'none'}")
-    print("Note: approval is metadata only — no files have been modified.")
+    if json_output:
+        emit_ok(
+            intent_id=entry["intent_id"], target_path=entry["target_path"],
+            risk=entry["risk"], state="approved", reason_recorded=bool(reason),
+        )
+    else:
+        print(f"Approved: {entry['intent_id']} ({entry['target_path']})")
+        print(f"  reason: {'recorded' if reason else 'none'}")
+        print("Note: approval is metadata only — no files have been modified.")
 
 
-def _cmd_reject_patch_intent(job_id_str: str, intent_id: str, reason: str | None) -> None:
-    job_id = resolve_job_id_or_fail(job_id_str, json_output=False)
+def _cmd_reject_patch_intent(
+    job_id_str: str, intent_id: str, reason: str | None, *, json_output: bool = False,
+) -> None:
+    job_id = resolve_job_id_or_fail(job_id_str, json_output=json_output)
     try:
         job = require_job_plan(job_id)
     except JobNotFoundError as exc:
-        fail("job_not_found", str(exc), json_output=False)
+        fail("job_not_found", str(exc), json_output=json_output)
 
     from packages.orchestration.approval_queue import set_approval_state
     from packages.orchestration.run_log import RunLogWriter
@@ -126,7 +142,7 @@ def _cmd_reject_patch_intent(job_id_str: str, intent_id: str, reason: str | None
     try:
         entry = set_approval_state(job, intent_id, "rejected", reason=reason)
     except ValueError as exc:
-        fail("patch_intent_not_found", str(exc), json_output=False)
+        fail("patch_intent_not_found", str(exc), json_output=json_output)
 
     save_job_plan(job)
     log = RunLogWriter(job_id=job.job_id)
@@ -135,9 +151,15 @@ def _cmd_reject_patch_intent(job_id_str: str, intent_id: str, reason: str | None
         intent_id=entry["intent_id"], target_path=entry["target_path"],
         risk=entry["risk"], reason_present=reason is not None,
     )
-    print(f"Rejected: {entry['intent_id']} ({entry['target_path']})")
-    print(f"  reason: {'recorded' if reason else 'none'}")
-    print("Note: rejection is metadata only — no files have been modified.")
+    if json_output:
+        emit_ok(
+            intent_id=entry["intent_id"], target_path=entry["target_path"],
+            risk=entry["risk"], state="rejected", reason_recorded=bool(reason),
+        )
+    else:
+        print(f"Rejected: {entry['intent_id']} ({entry['target_path']})")
+        print(f"  reason: {'recorded' if reason else 'none'}")
+        print("Note: rejection is metadata only — no files have been modified.")
 
 
 def _cmd_apply_patch_intent(job_id_str: str, intent_id: str, *, json_output: bool = False) -> None:
@@ -387,9 +409,14 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
         until=getattr(args, "until", None),
         limit=getattr(args, "limit", None),
     ),
-    "patch.show": lambda args: _cmd_show_patch_intent(args.job_id, args.intent_id),
-    "patch.approve": lambda args: _cmd_approve_patch_intent(args.job_id, args.intent_id, getattr(args, "reason", None)),
-    "patch.reject": lambda args: _cmd_reject_patch_intent(args.job_id, args.intent_id, getattr(args, "reason", None)),
+    "patch.show": lambda args: _cmd_show_patch_intent(
+        args.job_id, args.intent_id, json_output=getattr(args, "json", False)),
+    "patch.approve": lambda args: _cmd_approve_patch_intent(
+        args.job_id, args.intent_id, getattr(args, "reason", None),
+        json_output=getattr(args, "json", False)),
+    "patch.reject": lambda args: _cmd_reject_patch_intent(
+        args.job_id, args.intent_id, getattr(args, "reason", None),
+        json_output=getattr(args, "json", False)),
     "patch.apply": lambda args: _cmd_apply_patch_intent(args.job_id, args.intent_id, json_output=getattr(args, "json", False)),
     "patch.revert": lambda args: _cmd_revert_patch_intent(
         args.job_id, args.intent_id,

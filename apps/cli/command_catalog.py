@@ -544,7 +544,8 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         subcommand="show",
         description="Show a specific patch intent.",
         action_class="read_only",
-        args=(_JOB_ID, _INTENT_ID),
+        args=(_JOB_ID, _INTENT_ID, _JSON_OPT),
+        supports_json=True,
         related=("patch.approve", "patch.reject"),
     ),
     CommandEntry(
@@ -553,7 +554,8 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         subcommand="approve",
         description="Approve a patch intent for application.",
         action_class="approval_gate",
-        args=(_JOB_ID, _INTENT_ID, _REASON_OPT),
+        args=(_JOB_ID, _INTENT_ID, _REASON_OPT, _JSON_OPT),
+        supports_json=True,
         related=("patch.apply", "patch.reject"),
     ),
     CommandEntry(
@@ -562,7 +564,8 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         subcommand="reject",
         description="Reject a patch intent.",
         action_class="approval_gate",
-        args=(_JOB_ID, _INTENT_ID, _REASON_OPT),
+        args=(_JOB_ID, _INTENT_ID, _REASON_OPT, _JSON_OPT),
+        supports_json=True,
         related=("patch.approve",),
     ),
     CommandEntry(
@@ -1453,7 +1456,9 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
             _JOB_ID,
             ArgDef("stop_id", "Stop reason ID"),
             _REASON_OPT,
+            _JSON_OPT,
         ),
+        supports_json=True,
     ),
 
     # ── decision ────────────────────────────────────────────────────────

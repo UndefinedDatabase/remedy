@@ -373,10 +373,13 @@ def test_every_operator_facing_advertised_flag_is_declared_by_its_command() -> N
 
 
 def test_flag_scanner_reports_a_flag_the_command_does_not_declare() -> None:
-    found = scan_advertised_command_flags('command=f"remedy patch approve {job_id} {iid} --json",')
+    """F283 R14 C5 gives `patch approve` a `--json` flag, so this example now uses a
+    flag no command declares."""
+    found = scan_advertised_command_flags(
+        'command=f"remedy patch approve {job_id} {iid} --not-a-real-flag",')
 
-    assert found == [(("patch", "approve"), ["--json"])]
-    assert "--json" not in _declared_flags()[("patch", "approve")]
+    assert found == [(("patch", "approve"), ["--not-a-real-flag"])]
+    assert "--not-a-real-flag" not in _declared_flags()[("patch", "approve")]
 
 
 def test_flag_scanner_stops_where_the_command_line_ends() -> None:
