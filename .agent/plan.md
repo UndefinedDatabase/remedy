@@ -13,20 +13,21 @@ is documented and asserted from the catalog
 
 ## Current Step
 
-ROUND 19. It books round 18's PASS, resolves R-1031 on the record, records
-DECISION F283 D11, pins `patch revert`'s failure token, and converts the last
-six modules' success documents to the envelope under DECISION F283 D10:
-`job`, `mission`, `self`, `project`, `config` and `worker`.
+ROUND 20. It books round 19's PASS, records DECISION F283 D12 (the exit-code
+taxonomy), adds `apps/cli/exit_codes.py` and the catalog's `exit_codes` field
+with its test, writes the guide `docs/guides/exit-codes.md`, and makes
+`job resume --checkpoint` refuse where it did not resume.
 
 ## Next Steps
 
-1. T002's last slice: the exit-code taxonomy under `docs/guides/` asserted
-   from the catalog, catalog-to-dispatch parity, and the sweep in
-   `tests/cli/test_json_contract.py`.
+1. T002's sweep: `tests/cli/test_json_contract.py`, in which every
+   `supports_json` command reachable without a positional argument answers a
+   parseable envelope on success and on an invalid argument, and
+   catalog-to-dispatch parity is asserted.
 2. The closure sequence, whose one full suite runs on the merged tree.
 
 ## Risks
 
-Twenty-four findings are open and none is this feature's own. Nineteen rounds
-are spent of the soft limit of 25, in the fourth of 7 sessions; the sweep and
-the closure must fit the six rounds left.
+Twenty-four findings are open and none is this feature's own. Twenty rounds
+are spent of the soft limit of 25, in the fifth of 7 sessions; the sweep and
+the closure must fit the five rounds left.
