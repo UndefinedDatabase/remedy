@@ -26,6 +26,7 @@ No provider is invoked by this module: it consumes an iterable of lines.
 """
 from __future__ import annotations
 
+import contextlib
 import hashlib
 import json
 import re
@@ -67,6 +68,8 @@ EVENT_RESULT = "result"
 EVENT_PROVIDER_ERROR = "provider_error"
 EVENT_MALFORMED = "malformed"
 EVENT_CAP_REACHED = "stream_cap_reached"
+#: A step of the capture failed and the artifact is incomplete in the way the event names.
+EVENT_DEGRADED = "stream_degraded"
 
 
 @dataclass
@@ -83,6 +86,9 @@ class StreamCaptureResult:
     remaining_lines_unknown: bool = False
     max_bytes: int = DEFAULT_MAX_BYTES
     event_counts: dict[str, int] = field(default_factory=dict)
+    #: One ``{"step", "error_type"}`` entry per capture step that failed. Empty means no
+    #: step failed; it never means "not checked".
+    degradations: list[dict[str, str]] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -98,6 +104,7 @@ class StreamCaptureResult:
             "remaining_lines_unknown": self.remaining_lines_unknown,
             "max_bytes": self.max_bytes,
             "event_counts": dict(self.event_counts),
+            "degradations": [dict(d) for d in self.degradations],
         }
 
 
@@ -439,8 +446,10 @@ def capture_stream_evidence(
                     if callable(on_cap):
                         try:
                             on_cap()
-                        except Exception:
-                            pass
+                        except Exception as exc:  # noqa: BLE001 — recorded as a degradation below
+                            failed = _degradation("on_cap", exc)
+                            result.degradations.append(failed)
+                            _emit(ev_fh, {"event_type": EVENT_DEGRADED, **failed})
                 cap_ev: dict[str, Any] = {
                     "event_type": EVENT_CAP_REACHED,
                     "raw_line_number": line_no,
@@ -491,6 +500,34 @@ def capture_stream_evidence(
                 _emit(ev_fh, {**ev, **backref})
 
     return result
+
+
+def _degradation(step: str, exc: BaseException) -> dict[str, str]:
+    """One degradation entry: the step that failed and the exception's TYPE.
+
+    Remedy deliberately does not keep the exception's message here: an OS error message can
+    carry an absolute path, and this entry is written into evidence that is packaged.
+    """
+    return {"step": step, "error_type": type(exc).__name__}
+
+
+def _append_degradation_events(
+    result: StreamCaptureResult, entries: list[dict[str, str]],
+) -> None:
+    """Record failures that happened after the capture closed its files.
+
+    Each entry joins ``result.degradations`` and is appended to the events file as a
+    ``stream_degraded`` event, continuing its ``seq``, so neither the returned object nor
+    the persisted artifact claims a clean run it did not have.
+    """
+    with open(result.events_path, "a", encoding="utf-8") as fh:
+        for entry in entries:
+            result.degradations.append(entry)
+            result.events_written += 1
+            result.event_counts[EVENT_DEGRADED] = result.event_counts.get(EVENT_DEGRADED, 0) + 1
+            fh.write(json.dumps({"event_type": EVENT_DEGRADED, **entry,
+                                 "schema_version": SCHEMA_VERSION,
+                                 "seq": result.events_written}) + "\n")
 
 
 def iter_process_lines(stdout: Iterable[str]) -> Iterator[str]:
@@ -549,35 +586,33 @@ def _stop_process_tree(proc: Any) -> None:
     """
     import os
     import signal
+    import subprocess
 
+    # Each handler names the one exception its call raises for an expected reason — a
+    # process or group that is already gone, or one still alive after the grace period —
+    # so anything else propagates instead of being taken for "already stopped".
     def _signal_group(sig: int) -> bool:
         try:
             os.killpg(os.getpgid(proc.pid), sig)
             return True
-        except Exception:
+        except OSError:
             return False
 
     if proc.poll() is not None:
         return
     if not _signal_group(signal.SIGTERM):
-        try:
+        with contextlib.suppress(OSError):
             proc.terminate()
-        except Exception:
-            pass
     try:
         proc.wait(timeout=_TERM_GRACE_SEC)
         return
-    except Exception:
+    except subprocess.TimeoutExpired:
         pass
     if not _signal_group(signal.SIGKILL):
-        try:
+        with contextlib.suppress(OSError):
             proc.kill()
-        except Exception:
-            pass
-    try:
+    with contextlib.suppress(subprocess.TimeoutExpired):
         proc.wait(timeout=_TERM_GRACE_SEC)
-    except Exception:
-        pass
 
 
 def run_streamed_command(
@@ -649,6 +684,8 @@ def run_streamed_command(
 
     stderr_chunks: list[str] = []
     stderr_bytes = {"n": 0}
+    # Steps that fail around the capture; appended to its artifact once the capture is done.
+    run_degradations: list[dict[str, str]] = []
 
     def _drain_stderr() -> None:
         if proc.stderr is None:
@@ -664,8 +701,8 @@ def run_streamed_command(
                     len(c) for c in stderr_chunks
                 ) > STDERR_TAIL_BYTES * 2:
                     stderr_chunks.pop(0)
-        except Exception:
-            pass
+        except (OSError, ValueError) as exc:
+            run_degradations.append(_degradation("stderr_drain", exc))
 
     watchdog = threading.Thread(target=_watchdog, daemon=True)
     stderr_thread = threading.Thread(target=_drain_stderr, daemon=True)
@@ -681,27 +718,29 @@ def run_streamed_command(
         if proc.stdout is not None:
             try:
                 proc.stdout.close()
-            except Exception:
-                pass
+            except OSError as exc:
+                run_degradations.append(_degradation("stdout_close", exc))
         # stdout is exhausted (or the tree was stopped); reap without hanging.
         try:
             proc.wait(timeout=max(0.0, timeout_sec - (time.monotonic() - start)) + _TERM_GRACE_SEC)
-        except Exception:
+        except subprocess.TimeoutExpired:
             timed_out.set()
             _stop_process_tree(proc)
             try:
                 proc.wait(timeout=_TERM_GRACE_SEC)
-            except Exception:
-                pass
+            except subprocess.TimeoutExpired as exc:
+                run_degradations.append(_degradation("process_reap", exc))
         finished.set()          # release the watchdog immediately
         watchdog.join(timeout=_TERM_GRACE_SEC + 1.0)
         stderr_thread.join(timeout=_TERM_GRACE_SEC + 1.0)
         if proc.stderr is not None:
             try:
                 proc.stderr.close()
-            except Exception:
-                pass
+            except OSError as exc:
+                run_degradations.append(_degradation("stderr_close", exc))
 
+    if run_degradations:
+        _append_degradation_events(capture, run_degradations)
     tail = "".join(stderr_chunks)[-STDERR_TAIL_BYTES:]
 
     return StreamRunResult(
