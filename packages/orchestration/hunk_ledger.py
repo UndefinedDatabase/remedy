@@ -133,10 +133,10 @@ def _total_text(value: object) -> str:
     ``repr()`` is broken too contributes the unoverridable ``object.__repr__``."""
     try:
         return str(value)
-    except Exception:
+    except Exception:  # noqa: BLE001 — text coercion must degrade to repr, never raise
         try:
             return repr(value)
-        except Exception:
+        except Exception:  # noqa: BLE001 — even a broken repr must still yield some text
             return object.__repr__(value)
 
 
@@ -146,7 +146,7 @@ def _total_flag(value: object) -> bool:
     here only ever WIDEN what this module asserts about disk."""
     try:
         return bool(value)
-    except Exception:
+    except Exception:  # noqa: BLE001 — an unreadable flag must read false, never true
         return False
 
 
@@ -155,7 +155,7 @@ def _total_attr(value: object, name: str) -> Any:
     ``__getattr__`` contributes nothing rather than propagating its exception."""
     try:
         return getattr(value, name, None)
-    except Exception:
+    except Exception:  # noqa: BLE001 — an unreadable attribute contributes nothing, not a crash
         return None
 
 
@@ -176,7 +176,7 @@ def _entries(value: Any) -> list[Any]:
         return [value]
     try:
         return list(value)
-    except Exception:
+    except Exception:  # noqa: BLE001 — a value that resists iteration counts as one entry
         return [value]
 
 
@@ -354,5 +354,5 @@ def import_hunk_ledger(exported: Any) -> HunkDecisionLedger:
                 HunkLedgerEntry(hunk_id=identifier, state=state, reason=reason, landing=landing)
             )
         return HunkDecisionLedger(tuple(entries))
-    except Exception:
+    except Exception:  # noqa: BLE001 — an unreadable ledger import yields empty, never partial
         return HunkDecisionLedger(())

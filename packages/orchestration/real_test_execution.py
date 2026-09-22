@@ -201,14 +201,14 @@ def resolve_allowed_command(
         from packages.orchestration.command_discovery import discover_commands
         from packages.orchestration.pingpong_job import require_job_plan
         job = require_job_plan(normalize_job_id(job_id), ddir)
-    except Exception:
+    except Exception:  # noqa: BLE001 — a bad or missing job must block the command, not crash
         return False, None, "job not found or unloadable"
     repo = (job.metadata or {}).get("target_repo", "")
     if not repo:
         return False, None, "job has no target repo"
     try:
         candidates = discover_commands(job, Path(repo))
-    except Exception:
+    except Exception:  # noqa: BLE001 — discovery failing blocks the command like any refusal
         return False, None, "command discovery failed"
     if not command_id:
         # No explicit id → the safe runner will select the best test candidate itself.
@@ -263,7 +263,7 @@ def run_allowed_test(
             job_id=job_id, source="real_test_execution_v1",
             command_id=command_id,
             requested_timeout_seconds=float(timeout_seconds) if timeout_seconds else None))
-    except Exception as exc:  # the runner is the only execution path; failures stay safe metadata
+    except Exception as exc:  # noqa: BLE001 — failures on the only execution path become safe metadata
         res.status = TestRunStatus.ERROR
         res.stop_reason = "runner_error"
         res.safe_summary = _scrub_public(f"Test runner error: {type(exc).__name__}")[:200]
@@ -296,7 +296,7 @@ def list_test_runs(job_id: str, data_dir: Path | None = None) -> list[dict]:
     try:
         from packages.orchestration.pingpong_job import require_job_plan
         job = require_job_plan(normalize_job_id(job_id), ddir)
-    except Exception:
+    except Exception:  # noqa: BLE001 — an unreadable job means no tests to list, not a crash
         return []
     runs = (job.metadata or {}).get("test_runs", [])
     return list(runs) if isinstance(runs, list) else []
@@ -313,12 +313,12 @@ def get_test_run(test_run_id: str, data_dir: Path | None = None) -> dict | None:
                 continue
             try:
                 job = require_job_plan(normalize_job_id(str(jid)), ddir)
-            except Exception:
+            except Exception:  # noqa: BLE001 — one bad job must not stop the scan for the test run
                 continue
             for r in (job.metadata or {}).get("test_runs", []):
                 if r.get("test_run_id") == test_run_id:
                     return r
-    except Exception:
+    except Exception:  # noqa: BLE001 — a scan failure means the run was not found, not a crash
         return None
     return None
 
@@ -375,7 +375,7 @@ def create_snapshot_proof(job_id: str, *, data_dir: Path | None = None) -> Snaps
         from packages.orchestration.pingpong_job import load_job_plan
         job = load_job_plan(normalize_job_id(job_id), ddir)
         repo = (job.metadata or {}).get("target_repo", "")
-    except Exception:
+    except Exception:  # noqa: BLE001 — no readable job means the snapshot is unavailable
         repo = ""
     if not repo or not Path(repo).is_dir():
         proof.strategy = "unavailable"

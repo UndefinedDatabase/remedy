@@ -360,7 +360,7 @@ def _run_isolated_process(
         except subprocess.TimeoutExpired:
             status = "timeout"
             _kill_process_group(proc)
-        except Exception:
+        except Exception:  # noqa: BLE001 — an unexpected wait failure must still reap and report it
             status = "environment_failure"
             _kill_process_group(proc)
 
@@ -379,7 +379,7 @@ def _kill_process_group(proc: subprocess.Popen) -> None:  # type: ignore[type-ar
         # Process already gone
         try:
             proc.wait(timeout=1.0)
-        except Exception:
+        except Exception:  # noqa: BLE001 — a best-effort reap after the process is gone may fail
             pass
         return
     # SIGTERM
@@ -400,7 +400,7 @@ def _kill_process_group(proc: subprocess.Popen) -> None:  # type: ignore[type-ar
     # Final wait to reap
     try:
         proc.wait(timeout=2.0)
-    except Exception:
+    except Exception:  # noqa: BLE001 — the last reap attempt is best-effort and must not raise
         pass
 
 
@@ -923,7 +923,7 @@ def _persist_test_record(
         return True
     except (OSError, ValueError, KeyError):
         return False
-    except Exception:
+    except Exception:  # noqa: BLE001 — an unexpected persist failure still surfaces as a warning
         return False  # unexpected — caller surfaces as evidence warning
 
 
@@ -989,7 +989,7 @@ def _create_failure_artifact(
         return True
     except (OSError, ValueError, AttributeError):
         return False
-    except Exception:
+    except Exception:  # noqa: BLE001 — an unexpected artifact failure still surfaces as a warning
         return False  # unexpected — caller surfaces as evidence warning
 
 
@@ -1035,7 +1035,7 @@ def finalize_test_outcome(
         usage_ok = True
     except (OSError, ValueError):
         warnings.append("usage_persist_failed")
-    except Exception:
+    except Exception:  # noqa: BLE001 — an unexpected usage-persist failure surfaces as a warning
         warnings.append("usage_persist_unexpected_failure")
 
     record_ok = _persist_test_record(

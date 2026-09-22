@@ -467,7 +467,7 @@ def create_snapshot(
             try:
                 import shutil
                 shutil.rmtree(snap_dir, ignore_errors=True)
-            except Exception:
+            except Exception:  # noqa: BLE001 — cleanup after a failed snapshot must not mask the failure
                 pass
             return SnapshotCreateResult(
                 success=False,
@@ -506,7 +506,7 @@ def create_snapshot(
             try:
                 import shutil
                 shutil.rmtree(snap_dir, ignore_errors=True)
-            except Exception:
+            except Exception:  # noqa: BLE001 — cleanup after a failed snapshot must not mask the failure
                 pass
             return SnapshotCreateResult(
                 success=False,
@@ -526,7 +526,7 @@ def create_snapshot(
             try:
                 import shutil
                 shutil.rmtree(snap_dir, ignore_errors=True)
-            except Exception:
+            except Exception:  # noqa: BLE001 — cleanup after a failed snapshot must not mask the failure
                 pass
             return SnapshotCreateResult(
                 success=False,
@@ -545,7 +545,7 @@ def create_snapshot(
             try:
                 import shutil
                 shutil.rmtree(snap_dir, ignore_errors=True)
-            except Exception:
+            except Exception:  # noqa: BLE001 — cleanup after a failed snapshot must not mask the failure
                 pass
             return SnapshotCreateResult(
                 success=False,
@@ -570,7 +570,7 @@ def create_snapshot(
             try:
                 import shutil
                 shutil.rmtree(snap_dir, ignore_errors=True)
-            except Exception:
+            except Exception:  # noqa: BLE001 — cleanup after a failed snapshot must not mask the failure
                 pass
             return SnapshotCreateResult(
                 success=False,
@@ -638,7 +638,7 @@ def create_snapshot(
         try:
             import shutil
             shutil.rmtree(snap_dir, ignore_errors=True)
-        except Exception:
+        except Exception:  # noqa: BLE001 — cleanup after a failed snapshot must not mask the failure
             pass
         return SnapshotCreateResult(
             success=False,
