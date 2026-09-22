@@ -1,97 +1,80 @@
-# Handback — F278 Durable writes & loud failures · Round 4 · Book round 3, end T002
+# Handback — F278 Durable writes & loud failures · Round 5 · Book round 4, T003's first slice
 
 ## Session
 
-SESSION 1 of feature F278 · round 4 · rounds so far 4
+SESSION 1 of feature F278 · round 5 · rounds so far 5
 
-This round booked round 3's PASS and DECISION F278 D3 into the durable
-ledger files, then ended T002: `dev_server`'s three `atomic_write_bytes`,
-`atomic_write_text` and `_atomic_write` helpers are deleted; every
-caller — `runtime_supervisor`, `apps/cli/commands/runtime_cmd.py` and one
-test — now imports `durable_write` directly, with an explicit `mkdir` added
-at the two sites (supervisor handshake write, command stop-request write)
-the old helper used to cover; the guard's `STILL_TO_MIGRATE` set is now
-empty. The two inline temporary-file writers,
-`repository_snapshot.update_apply_record_state` (keeps its boolean) and
-`project_registry.save_project` (keeps raising), moved onto `durable_write`
-in their own commits, each with a new test class in its own file. All five
-gates (G1–G5) ran clean and matched the reviewer's dry-run readings exactly;
-the revert probes confirmed each deletion/migration turns its owning test(s)
-red on its own. Context self-assessment: a comfortable majority of the
+This round booked round 4's PASS and DECISION F278 D4 into the durable ledger
+files, then landed T003's first slice in one product commit:
+`packages/orchestration/stream_evidence.py`'s blind exception handlers are
+narrowed to the exception each call expects (`OSError` for signalling/closing
+an already-gone process, `subprocess.TimeoutExpired` for a wait) or recorded
+as a degradation; the stream artifact gains a `degradations` field in
+`StreamCaptureResult.to_dict` and as `stream_degraded` events in
+`run_events.jsonl`; the one remaining broad handler around the caller-supplied
+`on_cap` callback keeps `except Exception` with a `# noqa: BLE001` reason. A
+new `TestDegradations` class in `tests/orchestration/test_stream_evidence.py`
+covers a clean capture, the on_cap failure path, the after-capture append
+path and a real subprocess run with a monkeypatched failing `stderr.close()`.
+All five gates (G1–G5) ran clean and matched the reviewer's dry-run readings
+exactly (transport, booking, product bytes/BLE001 count, tests, and the four
+red-proof mutations). Context self-assessment: a comfortable majority of the
 working budget remains at handback.
 
 ## Range
 
-Review of `ce53bd0c`..`HEAD`.
+Review of `924f7dd6`..`HEAD`.
 
 ## Commits
 
-### 42695ab7 F278 R4 C1a: copy round 4 block and bookkeeping payloads into .agent/authored/
+### 94a7443e F278 R5 C1a: copy round 5 block and bookkeeping payloads into .agent/authored/
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f278-r4-block.md | +205/-0 | Bookkeeping copy of this round's step block (R-0954 transport) |
-| .agent/authored/f278-r4-decisions.md | +37/-0 | Bookkeeping copy of the decisions.md append payload |
-| .agent/authored/f278-r4-ledger.md | +2/-0 | Bookkeeping copy of the live_review.md append payload |
-| .agent/authored/f278-r4-plan.md | +29/-0 | Bookkeeping copy of the plan.md rewrite payload |
+| .agent/authored/f278-r5-block.md | +186/-0 | Bookkeeping copy of this round's step block (R-0954 transport) |
+| .agent/authored/f278-r5-decisions.md | +36/-0 | Bookkeeping copy of the decisions.md append payload |
+| .agent/authored/f278-r5-ledger.md | +2/-0 | Bookkeeping copy of the live_review.md append payload |
+| .agent/authored/f278-r5-plan.md | +29/-0 | Bookkeeping copy of the plan.md rewrite payload |
 
-Measured insertions: 273 (block 205 + 68 payload lines), under the 500 cap; matches the block's expected value exactly.
+Measured insertions: 253 (block 186 + 67 payload lines), under the 500 cap;
+matches the block's expected value exactly.
 
-### dda9dea1 F278 R4 C1b: copy round 4 product payloads into .agent/authored/
+### 0deb8e47 F278 R5 C1b: copy round 5 product payloads into .agent/authored/
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f278-r4-dev.diff | +222/-0 | Bookkeeping copy of the runtime-group migration diff |
-| .agent/authored/f278-r4-reg.diff | +89/-0 | Bookkeeping copy of the project_registry migration diff |
-| .agent/authored/f278-r4-revert_probes.py | +51/-0 | Bookkeeping copy of the G5 revert-probe tool |
-| .agent/authored/f278-r4-snap.diff | +95/-0 | Bookkeeping copy of the repository_snapshot migration diff |
+| .agent/authored/f278-r5-mutations.py | +56/-0 | Bookkeeping copy of the G5 mutation-tool payload |
+| .agent/authored/f278-r5-stream.diff | +275/-0 | Bookkeeping copy of the stream degradations diff |
 
-Measured insertions: 457 (222+89+51+95), matches the block's expected value exactly.
+Measured insertions: 331 (56+275), matches the block's expected value exactly.
 
-### c02906f9 F278 R4 C2: book round 3's PASS and DECISION F278 D3
+### 77e9177d F278 R5 C2: book round 4's PASS and DECISION F278 D4
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/decisions.md | +37/-0 | `decisions.md` appended by byte concatenation |
+| .agent/decisions.md | +36/-0 | `decisions.md` appended by byte concatenation |
 | .agent/live_review.md | +2/-0 | `ledger.md` appended by byte concatenation |
-| .agent/plan.md | +9/-11 | Rewritten to plan.md payload for round 4 |
+| .agent/plan.md | +11/-11 | Rewritten to plan.md payload for round 5 |
 
-Measured insertions: 48 (37+2+9), matches the block's expected value exactly. Deletions: 11, all from the plan.md rewrite.
+Measured insertions: 49 (36+2+11), matches the block's expected value exactly.
+Deletions: 11, all from the plan.md rewrite.
 
-### a63636af F278 R4 C3: move the runtime records onto durable_write and empty the guard's set
+### 1bea8ec1 F278 R5 C3: record stream capture degradations and narrow its handlers
 | Path | +/- | Reason |
 |---|---|---|
-| apps/cli/commands/runtime_cmd.py | +6/-5 | `atomic_write_text` calls replaced with `durable_write`; the stop-request write gains an explicit `mkdir` |
-| packages/runtimes/dev_server.py | +4/-36 | `atomic_write_bytes`, `atomic_write_text` and `_atomic_write` deleted; the two remaining internal callers (`save_state`, `stop_recorded_runtime`) call `durable_write` directly |
-| packages/runtimes/runtime_supervisor.py | +6/-5 | `atomic_write_text` calls replaced with `durable_write`; the handshake write gains an explicit `mkdir` |
-| tests/orchestration/test_durable_write_guard.py | +3/-6 | `STILL_TO_MIGRATE` emptied to `frozenset()` |
-| tests/runtimes/test_supervisor_portability.py | +2/-1 | Test updated to call `durable_write` directly instead of the deleted `DS.atomic_write_text` alias |
+| packages/orchestration/stream_evidence.py | +61/-22 | `_stop_process_tree`'s handlers narrowed to `OSError`/`TimeoutExpired`; `StreamCaptureResult` gains `degradations`; `run_streamed_command` records a failed stderr drain, stdout close, process reap or stderr close as a degradation once the capture is done; `capture_stream_evidence`'s `on_cap` handler records and emits a `stream_degraded` event, keeping `except Exception` with a noqa reason |
+| tests/orchestration/test_stream_evidence.py | +78/-0 | New `TestDegradations` class: clean capture, on_cap failure, after-capture append, and a real subprocess run with a failing `stderr.close()` |
 
-`git apply --check` real exit 0, `git apply` real exit 0. Measured insertions: 21 (6+4+6+3+2), matches the block's expected value exactly.
+`git apply --check` real exit 0, `git apply` real exit 0. Measured
+insertions: 139 (61+78), matches the block's expected value exactly.
 
-### e2da5b8c F278 R4 C4: move the apply-record state update onto durable_write
-| Path | +/- | Reason |
-|---|---|---|
-| packages/orchestration/repository_snapshot.py | +4/-15 | `update_apply_record_state`'s hand-rolled temp-file + `os.replace` replaced with `durable_write`; keeps its boolean via try/except |
-| tests/orchestration/test_repository_snapshot.py | +40/-0 | New `TestApplyRecordStateIsDurable` class: durable-write routing and false-on-failure with the record left unchanged |
-
-`git apply --check` real exit 0, `git apply` real exit 0. Measured insertions: 44 (4+40), matches the block's expected value exactly.
-
-### cde8d5f3 F278 R4 C5: move the project record onto durable_write
-| Path | +/- | Reason |
-|---|---|---|
-| packages/orchestration/project_registry.py | +3/-14 | `save_project`'s `tempfile.mkstemp` + `os.replace` replaced with `durable_write`; keeps raising on failure |
-| tests/test_project_registry.py | +32/-0 | New `TestSaveIsDurable` class: durable-write routing and raise-on-failure with nothing left on disk |
-
-`git apply --check` real exit 0, `git apply` real exit 0. Measured insertions: 35 (3+32), matches the block's expected value exactly.
-
-### C6 (this commit) F278 R4 C6: rewrite handoff for round 4
+### C4 (this commit) F278 R5 C4: rewrite handoff for round 5
 | Path | +/- | Reason |
 |---|---|---|
 | .agent/handoff.md | rewritten | This handback, per docs/agents/handback_template.md |
 
 ## External actions
 
-- `git worktree add --detach .remedy-wt/f278-r4-probe cde8d5f3` — real exit 0.
-- `python3 .remedy-wt/f278-r4-payloads/revert_probes.py .remedy-wt/f278-r4-probe ce53bd0c` — real exit 0 (see Verification, G5).
-- `git worktree remove --force .remedy-wt/f278-r4-probe` — real exit 0.
+- `git worktree add --detach .remedy-wt/f278-r5-mut 1bea8ec1` — real exit 0.
+- `python3 .remedy-wt/f278-r5-payloads/mutations.py .remedy-wt/f278-r5-mut` — real exit 0 (see Verification, G5).
+- `git worktree remove --force .remedy-wt/f278-r5-mut` — real exit 0.
 - `git worktree prune` — real exit 0.
 - `git push origin feature/f278-durable-writes-loud-failures` — see Verification, G6, for the real outcome (reported separately since it runs after this commit).
 - No `gh pr create`, no `gh pr merge`, no force-push, no `git stash`, no checkout of another branch: none run, per the block's constraints.
@@ -100,86 +83,84 @@ Measured insertions: 48 (37+2+9), matches the block's expected value exactly. De
 
 BEFORE ANYTHING ELSE:
 - `ls .agent/STOP` → `No such file or directory`, exit 2, absent (proceed).
-- `git status --porcelain` → empty. `git branch --show-current` → `feature/f278-durable-writes-loud-failures`. `git log --oneline -1` → `ce53bd0c F278 R3 C6: rewrite handoff for round 3`.
-- Block bytes (R-0954): measured lines=205, sha256=`5ecaa3f036621a693f46a97fef4751b3231c52f25e83f590fddf59b16212b232`; matches both given readings exactly.
+- `git status --porcelain` → empty. `git branch --show-current` → `feature/f278-durable-writes-loud-failures`. `git log --oneline -1` → `924f7dd6 F278 R4 C6: rewrite handoff for round 4`.
+- Block bytes (R-0954): measured lines=186, sha256=`09db3e27f1b741a33dcfd4e6c07c98849a9f2e2adf7e2bb75589d1bf2afc9c53`; matches both given readings exactly.
 - `git worktree list` (before) → primary checkout + `.remedy-wt/job-129b3ad7206d4f8d` only.
 - `git branch --list 'remedy/job-*' | wc -l` → 38.
 
-PAYLOADS — all 7 measured and matched the block's table exactly (lines/bytes/sha256): decisions.md (37/2639), dev.diff (222/9394), ledger.md (2/2554), plan.md (29/1070), reg.diff (89/3425), revert_probes.py (51/1986), snap.diff (95/3997). All sha256 readings matched the table verbatim.
+PAYLOADS — all 5 measured and matched the block's table exactly (lines/bytes/sha256): decisions.md (36/2721), ledger.md (2/2939), mutations.py (56/2283), plan.md (29/1058), stream.diff (275/11131). All sha256 readings matched the table verbatim.
 
-G1 TRANSPORT — every `.agent/authored/f278-r4-*` copy read back with `git show <commit>:<path>` and compared byte-for-byte against its source: all 8 copies (block.md + 7 payloads) matched exactly.
+G1 TRANSPORT — every `.agent/authored/f278-r5-*` copy read back with `git show <commit>:<path>` and compared byte-for-byte against its source: all 6 copies (block.md + 5 payloads) matched exactly (block.md against `.remedy-wt/f278-r5-block.md`, the other 5 against their `.remedy-wt/f278-r5-payloads/` originals).
 
-G2 THE BOOKING — at C2 (`c02906f9`), each appended/rewritten file's byte count matched `ce53bd0c` bytes plus the payload's bytes by strict concatenation (live_review.md: 430456+2554=433010; decisions.md: 1844455+2639=1847094; plan.md rewritten to 1070), and the sha256 read with `git show c02906f9:<path>` matched the reviewer's dry-run reading for all three files:
-- `.agent/live_review.md`: bytes=433010, sha256=`11dee21ae698fb999218dca428ba694efaa8d8b9500a9b354743a00a7b209c9e` — MATCH
-- `.agent/decisions.md`: bytes=1847094, sha256=`261feb3990ab5d221be23db2925aeceb7bf507f9de6a0b3f3fc83ad71cc3d2ac` — MATCH
-- `.agent/plan.md`: bytes=1070, sha256=`1a4ebc33f20ebab4850918210d74d059a979f077284daa3daece359606a82c29` — MATCH
+G2 THE BOOKING — at C2 (`77e9177d`), the byte counts matched `924f7dd6` bytes plus each payload's bytes by strict concatenation (live_review.md: 433010+2939=435949; decisions.md: 1847094+2721=1849815; plan.md rewritten to 1058), and the sha256 read with `git show 77e9177d:<path>` matched the reviewer's dry-run reading for all three files:
+- `.agent/live_review.md`: bytes=435949, sha256=`68313ce3e282ef331c07614bdde29bf4a2abb07483491bd17c4014b54b1ff1fa` — MATCH
+- `.agent/decisions.md`: bytes=1849815, sha256=`c77fde5f327391bf0aada4372f53172a7f07164cef3349369eff150892b99e1c` — MATCH
+- `.agent/plan.md`: bytes=1058, sha256=`54e1accca56d2146515fe4e2bafdb716691a91fe58d47c6da52c77dff116f58b` — MATCH
 
-Open-finding-id set via `open_finding_ids` (`scripts/rotate_live_review.py`) over `.agent/live_review.md` TEXT: at `ce53bd0c` count=26; at C2 (`c02906f9`) count=26; `base - c2` = `[]`; `c2 - base` = `[]` — both differences empty, matching the reviewer's 26/26.
+Open-finding-id set via `open_finding_ids` (`scripts/rotate_live_review.py`) over `.agent/live_review.md` TEXT: at `924f7dd6` count=26; at C2 (`77e9177d`) count=26; `base - c2` = `[]`; `c2 - base` = `[]` — both differences empty, matching the reviewer's 26/26.
 
-G3 THE PRODUCT BYTES — at C5 (`cde8d5f3`), sha256 of each file read with `git show cde8d5f3:<path>`, all 9 MATCH:
-- `apps/cli/commands/runtime_cmd.py`: bytes=40387, sha256=`b222d6c83d053c12f298d543ecd0771dcfd6d529ed33d4e347fe0843eda18298`
-- `packages/orchestration/project_registry.py`: bytes=31199, sha256=`bf7230c33583129d7854c482fd37a8c0cd334161b510109d6172665919225631`
-- `packages/orchestration/repository_snapshot.py`: bytes=59062, sha256=`a27604da7bb71f75c11e484970535be0a264037eabc476565a99fd3c00c72ea5`
-- `packages/runtimes/dev_server.py`: bytes=88155, sha256=`c0b6c65155c76d22992eab741856a6594cfded51135d8c043b9d7cde6698982d`
-- `packages/runtimes/runtime_supervisor.py`: bytes=25280, sha256=`f37d1160a70036b27251614d078cc0df8e97c07efeeae1764a75bf38380f05eb`
-- `tests/orchestration/test_durable_write_guard.py`: bytes=3145, sha256=`3eca8ebc217dbaed4ec35f42b9a6266c2e9054a642a3dd4f4fd5a15d9ea39a93`
-- `tests/orchestration/test_repository_snapshot.py`: bytes=43121, sha256=`54c047e1968dbd7066f376e10d6c58b7285e25bfedfb9585c530e201a011cd93`
-- `tests/runtimes/test_supervisor_portability.py`: bytes=106273, sha256=`6fcaaad3f6867249ccf215d899f4579a15eb4ea3f8a5878982b1ac826acc9f9b`
-- `tests/test_project_registry.py`: bytes=15351, sha256=`9955bda0a7539475c750cb1f0d629a31216becf01ce5f7b48ed7b761606568f5`
+Note: `git commit`'s own summary line for C2 read "67 insertions(+), 29 deletions(-)" (a rename/rewrite-detection artifact of the commit-summary diff algorithm against the 1.8MB `.agent/decisions.md` and `.agent/live_review.md` files); the authoritative reading per the block's own instruction (item 8: "each commit's insertion count ... as `git show --numstat` gives it") is `git show --numstat 77e9177d`, which read 36+2+11=49 insertions, 11 deletions — exactly the block's expected value. Reported here per the block's deviation-reporting instinct even though the numbers ultimately match; see Deviations & assumptions.
 
-G4 THE TESTS — command (the block's own, in the primary checkout at C5, including `tests/runtimes/` and `tests/cli/test_golden_path.py` as the block's own G4 command lists):
+G3 THE PRODUCT BYTES — at C3 (`1bea8ec1`), sha256 of each file read with `git show 1bea8ec1:<path>`, both MATCH:
+- `packages/orchestration/stream_evidence.py`: bytes=36246, sha256=`d284904286486579a191928993996a5c15dc004816dc46285e42c23ebf6eaca4`
+- `tests/orchestration/test_stream_evidence.py`: bytes=19788, sha256=`98278280ec8842641cee78b6b1f4e27affd0c0d09de0544586a2f9eb46b3d4c2`
+
+`python3 -m ruff check --select BLE001 packages/orchestration/stream_evidence.py` → `All checks passed!`, real exit 0. (At `924f7dd6` the same command read `Found 11 errors.`, per the reviewer's own measurement — not re-run this round since the block states it as the reviewer's prior reading.)
+
+G4 THE TESTS — command (the block's own, in the primary checkout at C3, WITH `tests/cli/test_golden_path.py` as the block's own command lists it):
 ```
-python3 -m pytest -q -p no:cacheprovider tests/orchestration/test_durable_write_guard.py tests/runtimes/ tests/cli/test_runtime_cmd.py tests/orchestration/test_repository_snapshot.py tests/test_project_registry.py tests/orchestration/test_project_resolution.py tests/cli/test_project_current.py tests/test_no_orphan_modules.py tests/orchestration/test_import_reachability.py tests/regression/test_resource_safety.py tests/orchestration/test_test_runner.py tests/orchestration/test_live_review_rotation.py tests/orchestration/test_integrity_gate.py tests/cli/test_golden_path.py
+python3 -m pytest -q -p no:cacheprovider tests/orchestration/test_stream_evidence.py tests/orchestration/test_stream_evidence_integration.py tests/orchestration/test_stream_export_e2e.py tests/orchestration/test_event_names.py tests/orchestration/test_event_name_coupling.py tests/regression/test_resource_safety.py tests/orchestration/test_test_runner.py tests/orchestration/test_live_review_rotation.py tests/orchestration/test_integrity_gate.py tests/cli/test_golden_path.py
 ```
-Result: `663 passed in 409.12s (0:06:49)`, real exit 0 (`${PIPESTATUS[0]}`). The reviewer's own run, in a disposable worktree WITHOUT the golden path file, read `615 passed, 6 skipped` at exit 0 in about four minutes; this run's command already includes `tests/cli/test_golden_path.py` and `tests/runtimes/` as the block states them, giving a higher pass count and no reported skip, consistent with the block's own note that `tests/runtimes/` (real processes) accounts for most of the time.
+Result: `279 passed in 186.64s (0:03:06)`, real exit 0 (`${PIPESTATUS[0]}`). The reviewer's own run, WITHOUT the golden path, in a disposable worktree carrying C2 and C3, read `236 passed, 1 skipped` at exit 0; this run's command includes `tests/cli/test_golden_path.py` as the block states it, giving a higher pass count and no reported skip — consistent with the block's own framing ("report what you read").
 
-`python3 -m ruff check` over every Python path of the G3 table (9 files) → `All checks passed!`, real exit 0.
+`python3 -m ruff check` over both files of the G3 table → `All checks passed!`, real exit 0.
 
 `python3 -m apps.cli.main integrity check --json` → `fail_count: 0`, `ok: true`, `passed: true`, all 5 checks `pass` (`handler_import`, `live_review_verdict`, `plan_consistency` with `unchecked=0, context_complete=False`, `relevant_untracked` with `untracked=0, relevant=0`, `high_blockers_open`). Real exit 0.
 
-G5 THE REVERT PROBES — `git worktree add --detach .remedy-wt/f278-r4-probe cde8d5f3` real exit 0. `python3 .remedy-wt/f278-r4-payloads/revert_probes.py .remedy-wt/f278-r4-probe ce53bd0c` real exit 0, full output:
+G5 THE RED PROOFS — `git worktree add --detach .remedy-wt/f278-r5-mut 1bea8ec1` real exit 0. `python3 .remedy-wt/f278-r5-payloads/mutations.py .remedy-wt/f278-r5-mut` real exit 0, full output:
 ```
 control_before REAL_EXIT=0
-117 passed in 2.37s
-p1_dev_server_only REAL_EXIT=1
-FAILED tests/orchestration/test_durable_write_guard.py::test_no_private_atomic_write_helper_outside_packages_common
-1 failed, 116 passed in 2.19s
-p1_dev_server_only restored clean: True
-p2_dev_server_group REAL_EXIT=1
-FAILED tests/orchestration/test_durable_write_guard.py::test_no_private_atomic_write_helper_outside_packages_common
-1 failed, 116 passed in 2.19s
-p2_dev_server_group restored clean: True
-p3_repository_snapshot REAL_EXIT=1
-FAILED tests/orchestration/test_repository_snapshot.py::TestApplyRecordStateIsDurable::test_the_update_is_written_through_durable_write
-FAILED tests/orchestration/test_repository_snapshot.py::TestApplyRecordStateIsDurable::test_a_failed_write_answers_false_and_keeps_the_record
-2 failed, 115 passed in 2.23s
-p3_repository_snapshot restored clean: True
-p4_project_registry REAL_EXIT=1
-FAILED tests/test_project_registry.py::TestSaveIsDurable::test_the_record_is_written_through_durable_write
-FAILED tests/test_project_registry.py::TestSaveIsDurable::test_a_failed_write_raises_and_leaves_nothing
-2 failed, 115 passed in 2.17s
-p4_project_registry restored clean: True
+4 passed in 0.26s
+m1_on_cap_not_recorded FROM count in file: 1
+m1_on_cap_not_recorded REAL_EXIT=1
+FAILED tests/orchestration/test_stream_evidence.py::TestDegradations::test_a_failing_cap_callback_is_recorded_in_the_result_and_the_events
+1 failed, 3 passed in 0.25s
+m1_on_cap_not_recorded restored byte-identical: True
+m2_stderr_close_not_recorded FROM count in file: 1
+m2_stderr_close_not_recorded REAL_EXIT=1
+FAILED tests/orchestration/test_stream_evidence.py::TestDegradations::test_a_failing_stderr_close_reaches_the_run_artifact
+1 failed, 3 passed in 0.25s
+m2_stderr_close_not_recorded restored byte-identical: True
+m3_run_degradations_not_appended FROM count in file: 1
+m3_run_degradations_not_appended REAL_EXIT=1
+FAILED tests/orchestration/test_stream_evidence.py::TestDegradations::test_a_failing_stderr_close_reaches_the_run_artifact
+1 failed, 3 passed in 0.25s
+m3_run_degradations_not_appended restored byte-identical: True
+m4_to_dict_drops_degradations FROM count in file: 1
+m4_to_dict_drops_degradations REAL_EXIT=1
+FAILED tests/orchestration/test_stream_evidence.py::TestDegradations::test_a_clean_capture_records_no_degradation
+FAILED tests/orchestration/test_stream_evidence.py::TestDegradations::test_a_failing_cap_callback_is_recorded_in_the_result_and_the_events
+2 failed, 2 passed in 0.25s
+m4_to_dict_drops_degradations restored byte-identical: True
 control_after REAL_EXIT=0
-117 passed in 2.18s
+4 passed in 0.23s
 ```
-Every reading matches the reviewer's stated expectations exactly: control_before 117 passed/0; p1 and p2 each 1 failed/116 passed/1 at the guard's `test_no_private_atomic_write_helper_outside_packages_common`; p3 2 failed/115 passed/1, both `TestApplyRecordStateIsDurable` tests; p4 2 failed/115 passed/1, both `TestSaveIsDurable` tests; control_after 117 passed/0; every `restored clean` line `True`.
+Every reading matches the reviewer's stated expectations exactly: control_before `4 passed`/exit 0; m1 `1 failed, 3 passed`/exit 1 at `test_a_failing_cap_callback_is_recorded_in_the_result_and_the_events`; m2 and m3 each `1 failed, 3 passed`/exit 1 at `test_a_failing_stderr_close_reaches_the_run_artifact`; m4 `2 failed, 2 passed`/exit 1 at `test_a_clean_capture_records_no_degradation` and the on_cap test; control_after `4 passed`/exit 0; every `restored byte-identical` line `True`.
 
-`git worktree remove --force .remedy-wt/f278-r4-probe` real exit 0. `git worktree prune` real exit 0. `git worktree list` afterward → primary checkout (`feature/f278-durable-writes-loud-failures`) and `.remedy-wt/job-129b3ad7206d4f8d` only — the probe worktree is gone.
+`git worktree remove --force .remedy-wt/f278-r5-mut` real exit 0. `git worktree prune` real exit 0. `git worktree list` afterward → primary checkout (`feature/f278-durable-writes-loud-failures`) and `.remedy-wt/job-129b3ad7206d4f8d` only — the mutation worktree is gone.
 
-G6 TREE AND PUSH — reported in the session's final reply, not this file, since it runs after this commit (C6). The handback cannot contain readings that postdate its own write.
+G6 TREE AND PUSH — reported in the session's final reply, not this file, since it runs after this commit (C4). The handback cannot contain readings that postdate its own write.
 
 ## Authored-text proofs
 
 Fidelity protocol (docs/agents/split_workflow.md, R-0147/R-0144/R-0148): byte-identity proof = mechanical disk-to-disk comparison of the applied location against the `.agent/authored/` copy.
 
-- `decisions.md` (append): `.agent/decisions.md` at C2 sha256 `261feb...71cc3d2ac` == payload sha256 concatenated onto the `ce53bd0c` bytes (G2). MATCH.
-- `ledger.md` (append): `.agent/live_review.md` at C2 sha256 `11dee2...7b209c9e` == payload sha256 concatenated onto the `ce53bd0c` bytes (G2). MATCH.
-- `plan.md` (rewrite): `.agent/plan.md` at C2 sha256 `1a4ebc...606a82c29` == payload sha256 exactly (G2). MATCH.
-- `dev.diff` (applied): `.agent/authored/f278-r4-dev.diff` at C1b byte-identical to the payload (G1); `git apply --check` and `git apply` both real exit 0 at C3; resulting files' sha256 at C5 match the G3 table. MATCH.
-- `snap.diff` (applied): `.agent/authored/f278-r4-snap.diff` at C1b byte-identical to the payload (G1); `git apply --check` and `git apply` both real exit 0 at C4; resulting files' sha256 at C5 match the G3 table. MATCH.
-- `reg.diff` (applied): `.agent/authored/f278-r4-reg.diff` at C1b byte-identical to the payload (G1); `git apply --check` and `git apply` both real exit 0 at C5; resulting files' sha256 at C5 match the G3 table. MATCH.
-- `revert_probes.py`: a TOOL run against the disposable probe worktree, never applied to a tracked file. `.agent/authored/f278-r4-revert_probes.py` at C1b verified byte-identical to the payload (G1). N/A for an "applied location" comparison by design.
-- This block (`f278-r4-block.md`): `.agent/authored/f278-r4-block.md` at C1a verified byte-identical to `.remedy-wt/f278-r4-block.md` (G1) and to the two readings given in the delegation message.
+- `decisions.md` (append): `.agent/decisions.md` at C2 sha256 `c77fde...892b99e1c` == payload sha256 concatenated onto the `924f7dd6` bytes (G2). MATCH.
+- `ledger.md` (append): `.agent/live_review.md` at C2 sha256 `68313c...4014b54b1ff1fa` == payload sha256 concatenated onto the `924f7dd6` bytes (G2). MATCH.
+- `plan.md` (rewrite): `.agent/plan.md` at C2 sha256 `54e1ac...d47dff116f58b` == payload sha256 exactly (G2). MATCH.
+- `stream.diff` (applied): `.agent/authored/f278-r5-stream.diff` at C1b byte-identical to the payload (G1); `git apply --check` and `git apply` both real exit 0 at C3; resulting files' sha256 at C3 match the G3 table. MATCH.
+- `mutations.py`: a TOOL run against the disposable mutation worktree, never applied to a tracked file. `.agent/authored/f278-r5-mutations.py` at C1b verified byte-identical to the payload (G1). N/A for an "applied location" comparison by design.
+- This block (`f278-r5-block.md`): `.agent/authored/f278-r5-block.md` at C1a verified byte-identical to `.remedy-wt/f278-r5-block.md` (G1) and to the two readings given in the delegation message.
 
 ## Item-Status Table
 
@@ -190,25 +171,31 @@ Fidelity protocol (docs/agents/split_workflow.md, R-0147/R-0144/R-0148): byte-id
 | C2 | done | |
 | C3 | done | |
 | C4 | done | |
-| C5 | done | |
-| C6 | done | |
 | G1 TRANSPORT | done | |
 | G2 THE BOOKING | done | |
 | G3 THE PRODUCT BYTES | done | |
 | G4 THE TESTS | done | |
-| G5 THE REVERT PROBES | done | |
-| G6 TREE AND PUSH | done | runs after C6; real readings reported in the session's final chat reply, not this file |
+| G5 THE RED PROOFS | done | |
+| G6 TREE AND PUSH | done | runs after C4; real readings reported in the session's final chat reply, not this file |
 
 ## Deviations & assumptions
 
-None. The round followed the block's ordered commit sequence (C1a, C1b, C2,
-C3, C4, C5, C6) exactly, touched exactly the tracked path set the block
-names, ran no full suite, and left `.remedy-wt/job-129b3ad7206d4f8d`, its
-branch, and every existing stash untouched.
+The round followed the block's ordered commit sequence (C1a, C1b, C2, C3, C4)
+exactly, touched exactly the tracked path set the block names, ran no full
+suite, and left `.remedy-wt/job-129b3ad7206d4f8d`, its branch, and every
+existing stash untouched. One non-load-bearing prose note: `git commit`'s
+own one-line summary for C2 read "67 insertions(+), 29 deletions(-)" against
+the block's expected 49/11, a rewrite-detection artifact of that command's
+own diff algorithm over the two multi-megabyte ledger files; `git show
+--numstat 77e9177d`, the reading the block's item 8 actually orders, read
+36+2+11=49 insertions and 11 deletions, matching the block exactly. No
+finding: no product byte differs, both readings are logged above.
 
 ## Next
 
-Phase 1 rule 1 (read `.agent/STOP` from disk), then the review of round 4,
-then T003 — BLE001 with a frozen ignore list, starting with the handlers in
-`packages/orchestration/stream_evidence.py`. Open findings: 26. Operator
-questions: 0.
+Phase 1 rule 1 (read `.agent/STOP` from disk), then the review of round 5,
+then T003's marking rounds: the remaining blind handlers, module group by
+module group, each narrowed to the exception it expects or marked
+`# noqa: BLE001 — <reason>`, with BLE001 joining `select` in `pyproject.toml`
+only in the last marking commit once the count of unmarked sites is zero.
+Open findings: 26. Operator questions: 0.
