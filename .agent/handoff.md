@@ -1,97 +1,96 @@
-# Handback — F278 Durable writes & loud failures · Round 2 · Book round 1, land T002's guard as a ratchet, migrate two helper groups
+# Handback — F278 Durable writes & loud failures · Round 3 · Book round 2, migrate the boolean helpers
 
 ## Session
 
-SESSION 1 of feature F278 · round 2 · rounds so far 2
+SESSION 1 of feature F278 · round 3 · rounds so far 3
 
-This round booked round 1's PASS and DECISION F278 D1 into the durable
-ledger files, landed `tests/orchestration/test_durable_write_guard.py` as
-a ratchet over the surviving private atomic-write helpers, and migrated
-the first two helper groups onto `durable_write`: `pingpong_job`'s
-`atomic_write_text` (with its three importers — `checkpoints.py`,
-`mission_compiler.py`, `mission_state.py`) and `proposed_tasks._atomic_write`
-— each deleted in the commit that moved its callers, with its guard-set
-entry removed in the same diff. All five gates (G1–G5) ran clean and
-matched the reviewer's dry-run readings exactly; the revert probes
-confirmed each deletion turns the guard red on its own. Context
-self-assessment: a comfortable majority of the working budget remains at
-handback.
+This round booked round 2's PASS and DECISION F278 D2 into the durable
+ledger files, then migrated the three remaining boolean-returning
+`_atomic_write` helpers onto `durable_write`: `real_test_execution._atomic_write`
+(two `create_snapshot_proof` call sites, now let the write error propagate),
+`self_dogfood_execution._atomic_write` (`save_attempt` keeps its boolean via
+an explicit try/except, `_store_request` now propagates), and
+`token_economy._atomic_write` (`save_token_budget_profile` keeps its
+boolean). Each deletion removed its entry from the guard's
+`STILL_TO_MIGRATE` set in the same commit that moved its callers, and each
+module's own test file gained a test class covering the durable-write path
+and the loud-failure path. All five gates (G1–G5) ran clean and matched the
+reviewer's dry-run readings exactly; the revert probes confirmed each
+deletion turns the guard red on its own. Context self-assessment: a
+comfortable majority of the working budget remains at handback.
 
 ## Range
 
-Review of `41254292`..`HEAD`.
+Review of `b449d7b2`..`HEAD`.
 
 ## Commits
 
-### e4e44827 F278 R2 C1a: copy round 2 block and bookkeeping payloads into .agent/authored/
+### 6258aed1 F278 R3 C1a: copy round 3 block and bookkeeping payloads into .agent/authored/
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f278-r2-block.md | +214/-0 | Bookkeeping copy of this round's step block (R-0954 transport) |
-| .agent/authored/f278-r2-decisions.md | +44/-0 | Bookkeeping copy of the decisions.md append payload |
-| .agent/authored/f278-r2-ledger.md | +2/-0 | Bookkeeping copy of the live_review.md append payload |
-| .agent/authored/f278-r2-plan.md | +33/-0 | Bookkeeping copy of the plan.md rewrite payload |
-| .agent/authored/f278-r2-prose_slips.md | +1/-0 | Bookkeeping copy of the prose_slips.md append payload |
+| .agent/authored/f278-r3-block.md | +201/-0 | Bookkeeping copy of this round's step block (R-0954 transport) |
+| .agent/authored/f278-r3-decisions.md | +32/-0 | Bookkeeping copy of the decisions.md append payload |
+| .agent/authored/f278-r3-ledger.md | +2/-0 | Bookkeeping copy of the live_review.md append payload |
+| .agent/authored/f278-r3-plan.md | +31/-0 | Bookkeeping copy of the plan.md rewrite payload |
 
-Measured insertions: 294 (block 214 + 80 payload lines), under the 500 cap; matches the block's expected value exactly.
+Measured insertions: 266 (block 201 + 65 payload lines), under the 500 cap; matches the block's expected value exactly.
 
-### 073944eb F278 R2 C1b: copy round 2 product payloads into .agent/authored/
+### 1bf35d5e F278 R3 C1b: copy round 3 product payloads into .agent/authored/
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f278-r2-pingpong.diff | +186/-0 | Bookkeeping copy of the pingpong-group migration diff |
-| .agent/authored/f278-r2-proposed.diff | +79/-0 | Bookkeeping copy of the proposed-tasks migration diff |
-| .agent/authored/f278-r2-revert_probes.py | +51/-0 | Bookkeeping copy of the G5 revert-probe tool |
-| .agent/authored/f278-r2-test_durable_write_guard.py | +76/-0 | Bookkeeping copy of the new guard test file |
+| .agent/authored/f278-r3-revert_probes.py | +47/-0 | Bookkeeping copy of the G5 revert-probe tool |
+| .agent/authored/f278-r3-rte.diff | +114/-0 | Bookkeeping copy of the real_test_execution migration diff |
+| .agent/authored/f278-r3-sd.diff | +121/-0 | Bookkeeping copy of the self_dogfood_execution migration diff |
+| .agent/authored/f278-r3-te.diff | +112/-0 | Bookkeeping copy of the token_economy migration diff |
 
-Measured insertions: 392 (186 + 79 + 51 + 76), matches the block's expected value exactly.
+Measured insertions: 394 (47 + 114 + 121 + 112), matches the block's expected value exactly.
 
-### 88b4528e F278 R2 C2: book round 1's PASS and DECISION F278 D1
+### c9aef442 F278 R3 C2: book round 2's PASS and DECISION F278 D2
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/decisions.md | +44/-0 | `decisions.md` appended by byte concatenation |
+| .agent/decisions.md | +32/-0 | `decisions.md` appended by byte concatenation |
 | .agent/live_review.md | +2/-0 | `ledger.md` appended by byte concatenation |
-| .agent/plan.md | +11/-13 | Rewritten to plan.md payload for round 2 |
-| .agent/prose_slips.md | +1/-0 | `prose_slips.md` appended by byte concatenation (no separator: file already ended in a newline) |
+| .agent/plan.md | +11/-13 | Rewritten to plan.md payload for round 3 |
 
-Measured insertions: 58 (44 + 2 + 11 + 1), matches the block's expected value exactly. Deletions: 13, all from the plan.md rewrite.
+Measured insertions: 45 (32 + 2 + 11), matches the block's expected value exactly. Deletions: 13, all from the plan.md rewrite.
 
-### e36fde5a F278 R2 C3: add the private atomic-write guard as a ratchet
+### 43747468 F278 R3 C3: move the snapshot proof record onto durable_write
 | Path | +/- | Reason |
 |---|---|---|
-| tests/orchestration/test_durable_write_guard.py | +76/-0 | New file, copied whole from the payload and `git add`ed |
+| packages/orchestration/real_test_execution.py | +7/-27 | `_atomic_write` deleted; both `create_snapshot_proof` sites gain explicit `mkdir(mode=0o700)` and call `durable_write`, letting a failed write raise |
+| tests/orchestration/test_durable_write_guard.py | +0/-1 | `real_test_execution.py`'s `STILL_TO_MIGRATE` entry removed |
+| tests/orchestration/test_real_test_execution.py | +28/-0 | New `TestSnapshotRecordIsDurableAndLoud` class: durable-write routing + raise-on-failure, both parametrized over `repo` |
 
-Measured insertions: 76, matches the block's expected value exactly.
+`git apply --check` real exit 0, `git apply` real exit 0. Measured insertions: 35 (7+0+28), matches the block's expected value exactly.
 
-### ef10bcba F278 R2 C4: move the job, checkpoint and mission records onto durable_write
+### ce7eb57c F278 R3 C4: move the self-use attempt and request records onto durable_write
 | Path | +/- | Reason |
 |---|---|---|
-| packages/orchestration/checkpoints.py | +2/-2 | Import + call site moved from the deleted helper to `durable_write` |
-| packages/orchestration/mission_compiler.py | +2/-2 | Import + call site moved to `durable_write` |
-| packages/orchestration/mission_state.py | +3/-3 | Import + both call sites moved to `durable_write` |
-| packages/orchestration/pingpong_job.py | +3/-26 | `atomic_write_text` deleted; `_persist_job` gains an explicit `mkdir` and calls `durable_write` |
-| tests/orchestration/test_checkpoints.py | +3/-3 | Patches retargeted from `checkpoints._atomic_write` (no longer exists) to `checkpoints.durable_write` |
-| tests/orchestration/test_durable_write_guard.py | +0/-1 | `pingpong_job.py`'s `STILL_TO_MIGRATE` entry removed |
+| packages/orchestration/self_dogfood_execution.py | +10/-23 | `_atomic_write` and `import os` deleted; `save_attempt` keeps its boolean via try/except around `durable_write`, `_store_request` now lets the write raise |
+| tests/orchestration/test_durable_write_guard.py | +0/-1 | `self_dogfood_execution.py`'s `STILL_TO_MIGRATE` entry removed |
+| tests/orchestration/test_self_dogfood_execution.py | +34/-0 | New `TestAttemptRecordsAreDurable` class: durable-write routing for both records, boolean-false on attempt-write failure, raise on request-write failure |
 
-`git apply --check` real exit 0, `git apply` real exit 0. Measured insertions: 13 (2+2+3+3+3+0), matches the block's expected value exactly.
+`git apply --check` real exit 0, `git apply` real exit 0. Measured insertions: 44 (10+0+34), matches the block's expected value exactly.
 
-### a427034f F278 R2 C5: move proposed tasks onto durable_write
+### 1e3dcb40 F278 R3 C5: move the token budget profile onto durable_write
 | Path | +/- | Reason |
 |---|---|---|
-| packages/orchestration/proposed_tasks.py | +2/-25 | `_atomic_write` deleted; `save_proposed_tasks` calls `durable_write` |
-| tests/orchestration/test_durable_write_guard.py | +0/-1 | `proposed_tasks.py`'s `STILL_TO_MIGRATE` entry removed |
-| tests/orchestration/test_task_execution.py | +1/-1 | Source guard now requires the string `durable_write` instead of `_atomic_write` |
+| packages/orchestration/token_economy.py | +8/-26 | `_atomic_write` and `import os` deleted; `save_token_budget_profile` keeps its boolean via try/except around `mkdir(mode=0o700)` + `durable_write` |
+| tests/orchestration/test_durable_write_guard.py | +0/-1 | `token_economy.py`'s `STILL_TO_MIGRATE` entry removed |
+| tests/orchestration/test_token_economy.py | +26/-0 | New `TestProfileWriteIsDurable` class: durable-write routing, boolean-false on failure |
 
-`git apply --check` real exit 0, `git apply` real exit 0. Measured insertions: 3 (2+0+1), matches the block's expected value exactly.
+`git apply --check` real exit 0, `git apply` real exit 0. Measured insertions: 34 (8+0+26), matches the block's expected value exactly.
 
-### C6 (this commit) F278 R2 C6: rewrite handoff for round 2
+### C6 (this commit) F278 R3 C6: rewrite handoff for round 3
 | Path | +/- | Reason |
 |---|---|---|
 | .agent/handoff.md | rewritten | This handback, per docs/agents/handback_template.md |
 
 ## External actions
 
-- `git worktree add --detach .remedy-wt/f278-r2-probe a427034f` — real exit 0.
-- `python3 .remedy-wt/f278-r2-payloads/revert_probes.py .remedy-wt/f278-r2-probe 41254292` — real exit 0 (see Verification, G5).
-- `git worktree remove --force .remedy-wt/f278-r2-probe` — real exit 0.
+- `git worktree add --detach .remedy-wt/f278-r3-probe 1e3dcb40` — real exit 0.
+- `python3 .remedy-wt/f278-r3-payloads/revert_probes.py .remedy-wt/f278-r3-probe b449d7b2` — real exit 0 (see Verification, G5).
+- `git worktree remove --force .remedy-wt/f278-r3-probe` — real exit 0.
 - `git worktree prune` — real exit 0.
 - `git push origin feature/f278-durable-writes-loud-failures` — see Verification, G6, for the real outcome (reported separately since it runs after this commit).
 - No `gh pr create`, no `gh pr merge`, no force-push, no `git stash`, no checkout of another branch: none run, per the block's constraints.
@@ -99,70 +98,73 @@ Measured insertions: 76, matches the block's expected value exactly.
 ## Verification
 
 BEFORE ANYTHING ELSE:
-- `ls .agent/STOP` → `No such file or directory`, real exit 2 (absent, proceed).
-- `git status --porcelain` → empty. `git branch --show-current` → `feature/f278-durable-writes-loud-failures`. `git log --oneline -1` → `41254292 F278 R1 C4: rewrite handoff for round 1`.
-- Block bytes (R-0954): measured lines=214, sha256=`a18e02f525da5578345cfeb28a5e5ec2820100dc0aaa90162ac1a97df7edf20e`; matches both given readings exactly.
+- `ls .agent/STOP` → `No such file or directory`, absent (proceed).
+- `git status --porcelain` → empty. `git branch --show-current` → `feature/f278-durable-writes-loud-failures`. `git log --oneline -1` → `b449d7b2 F278 R2 C6: rewrite handoff for round 2`.
+- Block bytes (R-0954): measured lines=201, sha256=`6601943a46b5e91139f1938f4ec71cd954debedc681b6dfdfdd99951da2ab6eb`; matches both given readings exactly.
 - `git worktree list` (before) → primary checkout + `.remedy-wt/job-129b3ad7206d4f8d` only.
 - `git branch --list 'remedy/job-*' | wc -l` → 38.
 
-PAYLOADS — all 8 measured and matched the block's table exactly (lines/bytes/sha256): decisions.md (44/3424), ledger.md (2/3117), pingpong.diff (186/8741), plan.md (33/1380), proposed.diff (79/3157), prose_slips.md (1/299), revert_probes.py (51/1981), test_durable_write_guard.py (76/3563). All sha256 readings matched the table verbatim.
+PAYLOADS — all 7 measured and matched the block's table exactly (lines/bytes/sha256): decisions.md (32/2269), ledger.md (2/3018), plan.md (31/1234), revert_probes.py (47/1897), rte.diff (114/5450), sd.diff (121/5042), te.diff (112/4846). All sha256 readings matched the table verbatim.
 
-G1 TRANSPORT — every `.agent/authored/f278-r2-*` copy read back with `git show <commit>:<path>` and compared byte-for-byte against its source: all 9 copies (block.md + 8 payloads) matched exactly.
+G1 TRANSPORT — every `.agent/authored/f278-r3-*` copy read back with `git show <commit>:<path>` and compared byte-for-byte against its source: all 8 copies (block.md + 7 payloads) matched exactly.
 
-G2 THE BOOKING — at C2 (`88b4528e`), each appended/rewritten file's byte count matched `41254292` bytes plus the payload's bytes by strict concatenation, and the sha256 read with `git show 88b4528e:<path>` matched the reviewer's dry-run reading for all four files:
-- `.agent/live_review.md`: bytes=427438, sha256=`d00deba9917bd06a55316ca02b116353a2e02dcc197e40cbde2db8909c3f04ed` — MATCH
-- `.agent/decisions.md`: bytes=1842186, sha256=`c9a02a6f2d5f9b716877d564529a4d7bda2f88a3f8121eaadbe6204e61319e15` — MATCH
-- `.agent/prose_slips.md`: bytes=363591, sha256=`1bc24fe2fc5cf7e0273d78f56d136c55d190169985e2bcdf1993a2abc0c5231f` — MATCH
-- `.agent/plan.md`: bytes=1380, sha256=`5dcb97ba8679da99b017154cc4a3ed0a499e95dceb89058b00c5356296c88112` — MATCH
+G2 THE BOOKING — at C2 (`c9aef442`), each appended/rewritten file's byte count matched `b449d7b2` bytes plus the payload's bytes by strict concatenation (live_review.md: 427438+3018=430456; decisions.md: 1842186+2269=1844455; plan.md rewritten to 1234), and the sha256 read with `git show c9aef442:<path>` matched the reviewer's dry-run reading for all three files:
+- `.agent/live_review.md`: bytes=430456, sha256=`9e5fd03a7c7e3ec308268fc3ca25276f8ee30156585c661efb5ae0f7a34bfbee` — MATCH
+- `.agent/decisions.md`: bytes=1844455, sha256=`228754110918a12a5e4add02145e566a92dbe7dcfef74e10ec75a90e5345d853` — MATCH
+- `.agent/plan.md`: bytes=1234, sha256=`31cab2fd08429194bd8a035b0cce9e8a56121adeb857e7e76cffcca92992d816` — MATCH
 
-Open-finding-id set via `open_finding_ids` (`scripts/rotate_live_review.py`) over `.agent/live_review.md` TEXT: at `41254292` count=26; at C2 (`88b4528e`) count=26; `base - c2` = `[]`; `c2 - base` = `[]` — both differences empty, matching the reviewer's 26/26.
+Open-finding-id set via `open_finding_ids` (`scripts/rotate_live_review.py`) over `.agent/live_review.md` TEXT: at `b449d7b2` count=26; at C2 (`c9aef442`) count=26; `base - c2` = `[]`; `c2 - base` = `[]` — both differences empty, matching the reviewer's 26/26.
 
-G3 THE PRODUCT BYTES — at C5 (`a427034f`), sha256 of each file read with `git show a427034f:<path>`, all 8 MATCH:
-- `tests/orchestration/test_durable_write_guard.py`: bytes=3427, sha256=`72cab2e7073a81380d1626f48c50eb6397a376e32f85d658724e420f19c9ba57`
-- `packages/orchestration/pingpong_job.py`: bytes=193002, sha256=`b67a13c58a8069ef80030dd567a151fe0a3c67e2727c2d7f0a9cf8d934e8f194`
-- `packages/orchestration/checkpoints.py`: bytes=22340, sha256=`49b896b169d21a5021713f51d20a8fbb69e82b49c57d785242e0548a715a57a3`
-- `packages/orchestration/mission_compiler.py`: bytes=33617, sha256=`b817772e0d825074aed3c7fc446026f9607d6af4383576fd651c695be1f1548c`
-- `packages/orchestration/mission_state.py`: bytes=47639, sha256=`30e64304b59cea9bea53fb4b6c52aae0d43ec4fd1817c52c2213884a7bdb7f25`
-- `packages/orchestration/proposed_tasks.py`: bytes=19964, sha256=`d49887a87083215ab8ecaea98e2f41a3380179e0e8382b726174cca558c27042`
-- `tests/orchestration/test_checkpoints.py`: bytes=16950, sha256=`5548d4cabf427645d81ef086ea0449e2a68a0744ade1aa96f43d18da7cfbd995`
-- `tests/orchestration/test_task_execution.py`: bytes=708, sha256=`d29e60164a46d6cd57e09b9dfafb58c72ab2c89b0d386b1e68d101fd92635452`
+G3 THE PRODUCT BYTES — at C5 (`1e3dcb40`), sha256 of each file read with `git show 1e3dcb40:<path>`, all 7 MATCH:
+- `packages/orchestration/real_test_execution.py`: bytes=20693, sha256=`71e2937dce02ff262b72987f5959817887ea3649c98af25d26feedb78c4e69a1`
+- `packages/orchestration/self_dogfood_execution.py`: bytes=32243, sha256=`26bcba0716070a7d788586c860a1772cceacabcfe218782041aebe6b85ebf22f`
+- `packages/orchestration/token_economy.py`: bytes=36221, sha256=`42bc47d864411c12a3f3e7c57ff312b44656850f9d49e25d1688825ebe75bcaa`
+- `tests/orchestration/test_durable_write_guard.py`: bytes=3214, sha256=`a7324ec24a9ab0376f4abc3c9f8d6952ae9744ff9b8e02c3b43ab74d5fa9cb8b`
+- `tests/orchestration/test_real_test_execution.py`: bytes=11575, sha256=`c6515d5de9e4d6c0c249e0db6b37c9999c3f1df2280ddb08086dbf1cc8bf8b18`
+- `tests/orchestration/test_self_dogfood_execution.py`: bytes=12989, sha256=`2802c9cced19f7bc0c59dcd2ff6a54f17975908ee2a90c628d1a93ca40ea6975`
+- `tests/orchestration/test_token_economy.py`: bytes=18052, sha256=`fafcc0b7161737b906fd0ab55b0c2130c0f26db919425750491a739344dc5bb8`
 
 G4 THE TESTS — command (the block's own, in the primary checkout at C5, WITH `tests/cli/test_golden_path.py`, unlike the reviewer's own dry-run selection which excluded it):
 ```
-python3 -m pytest -q -p no:cacheprovider tests/orchestration/test_durable_write_guard.py tests/orchestration/test_checkpoints.py tests/orchestration/test_task_execution.py tests/orchestration/test_mission_compiler.py tests/orchestration/test_mission_state.py tests/orchestration/test_proposed_tasks.py tests/orchestration/test_pingpong.py tests/orchestration/test_pingpong_integration.py tests/orchestration/test_resume_kill.py tests/orchestration/test_mission_e2e.py tests/storage/test_persistence.py tests/cli/test_job_commands.py tests/test_imports.py tests/test_no_orphan_modules.py tests/orchestration/test_import_reachability.py tests/orchestration/test_secure_fs_durable_write.py tests/regression/test_resource_safety.py tests/orchestration/test_test_runner.py tests/orchestration/test_live_review_rotation.py tests/orchestration/test_integrity_gate.py tests/cli/test_golden_path.py
+python3 -m pytest -q -p no:cacheprovider tests/orchestration/test_durable_write_guard.py tests/orchestration/test_real_test_execution.py tests/orchestration/test_self_dogfood_execution.py tests/orchestration/test_token_economy.py tests/cli/test_real_test_execution_cli.py tests/cli/test_self_dogfood_execution_cli.py tests/cli/test_self_dogfood_cli.py tests/orchestration/test_self_dogfood.py tests/test_token_policy.py tests/test_no_orphan_modules.py tests/orchestration/test_import_reachability.py tests/regression/test_resource_safety.py tests/orchestration/test_test_runner.py tests/orchestration/test_live_review_rotation.py tests/orchestration/test_integrity_gate.py tests/cli/test_golden_path.py
 ```
-Result: `602 passed in 164.27s`, real exit 0 (`${PIPESTATUS[0]}`). The reviewer's own run, in a disposable worktree WITHOUT the golden path file, read `559 passed, 1 skipped` at exit 0; the primary checkout run here includes `test_golden_path.py`, which the reviewer's selection did not, accounting for the higher pass count and the absent skip.
+Result: `308 passed in 160.64s`, real exit 0 (`${PIPESTATUS[0]}`). The reviewer's own run, in a disposable worktree WITHOUT the golden path file, read `265 passed, 1 skipped` at exit 0; the primary checkout run here includes `test_golden_path.py`, which the reviewer's selection did not, accounting for the higher pass count and the absent skip.
 
-`python3 -m ruff check` over every Python path of the G3 table (8 files) → `All checks passed!`, real exit 0.
+`python3 -m ruff check` over every Python path of the G3 table (7 files) → `All checks passed!`, real exit 0.
 
 `python3 -m apps.cli.main integrity check --json` → `fail_count: 0`, `ok: true`, `passed: true`, all 5 checks `pass` (`handler_import`, `live_review_verdict`, `plan_consistency`, `relevant_untracked` with `untracked=0, relevant=0`, `high_blockers_open`). Real exit 0.
 
-G5 THE REVERT PROBES — `git worktree add --detach .remedy-wt/f278-r2-probe a427034f` real exit 0. `python3 .remedy-wt/f278-r2-payloads/revert_probes.py .remedy-wt/f278-r2-probe 41254292` real exit 0, full output:
+G5 THE REVERT PROBES — `git worktree add --detach .remedy-wt/f278-r3-probe 1e3dcb40` real exit 0. `python3 .remedy-wt/f278-r3-payloads/revert_probes.py .remedy-wt/f278-r3-probe b449d7b2` real exit 0, full output:
 ```
 control_before REAL_EXIT=0
-42 passed in 2.30s
-p1_pingpong_helper_only REAL_EXIT=1
+92 passed in 2.55s
+p1_real_test_execution REAL_EXIT=1
 FAILED tests/orchestration/test_durable_write_guard.py::test_no_private_atomic_write_helper_outside_packages_common
-1 failed, 41 passed in 2.18s
-p1_pingpong_helper_only restored clean: True
-p2_pingpong_group REAL_EXIT=1
+FAILED tests/orchestration/test_real_test_execution.py::TestSnapshotRecordIsDurableAndLoud::test_the_record_is_written_through_durable_write[True]
+FAILED tests/orchestration/test_real_test_execution.py::TestSnapshotRecordIsDurableAndLoud::test_the_record_is_written_through_durable_write[False]
+FAILED tests/orchestration/test_real_test_execution.py::TestSnapshotRecordIsDurableAndLoud::test_a_failed_write_raises[True]
+FAILED tests/orchestration/test_real_test_execution.py::TestSnapshotRecordIsDurableAndLoud::test_a_failed_write_raises[False]
+5 failed, 87 passed in 2.40s
+p1_real_test_execution restored clean: True
+p2_self_dogfood_execution REAL_EXIT=1
 FAILED tests/orchestration/test_durable_write_guard.py::test_no_private_atomic_write_helper_outside_packages_common
-FAILED tests/orchestration/test_checkpoints.py::TestWriteFailureIsContained::test_record_cycle_checkpoint_returns_the_reason_instead_of_raising
-FAILED tests/orchestration/test_checkpoints.py::TestWriteFailureIsContained::test_the_failure_is_logged_loudly
-FAILED tests/orchestration/test_checkpoints.py::TestCycleBoundaryWiring::test_a_failed_checkpoint_write_does_not_break_the_cycle
-4 failed, 38 passed in 2.17s
-p2_pingpong_group restored clean: True
-p3_proposed_tasks REAL_EXIT=1
+FAILED tests/orchestration/test_self_dogfood_execution.py::TestAttemptRecordsAreDurable::test_both_records_are_written_through_durable_write
+FAILED tests/orchestration/test_self_dogfood_execution.py::TestAttemptRecordsAreDurable::test_a_failed_attempt_write_answers_false
+FAILED tests/orchestration/test_self_dogfood_execution.py::TestAttemptRecordsAreDurable::test_a_failed_request_write_raises
+4 failed, 88 passed in 2.34s
+p2_self_dogfood_execution restored clean: True
+p3_token_economy REAL_EXIT=1
 FAILED tests/orchestration/test_durable_write_guard.py::test_no_private_atomic_write_helper_outside_packages_common
-FAILED tests/orchestration/test_task_execution.py::TestModularArchitectureGuards::test_storage_access_through_helpers
-2 failed, 40 passed in 2.17s
-p3_proposed_tasks restored clean: True
+FAILED tests/orchestration/test_token_economy.py::TestProfileWriteIsDurable::test_the_profile_is_written_through_durable_write
+FAILED tests/orchestration/test_token_economy.py::TestProfileWriteIsDurable::test_a_failed_write_answers_false
+3 failed, 89 passed in 2.46s
+p3_token_economy restored clean: True
 control_after REAL_EXIT=0
-42 passed in 2.19s
+92 passed in 2.36s
 ```
-Every reading matches the reviewer's stated expectations exactly: control_before 42 passed/0; p1 1 failed/41 passed/1 at the guard test; p2 4 failed/38 passed/1 at the guard test plus three in `test_checkpoints.py`; p3 2 failed/40 passed/1 at the guard test plus `TestModularArchitectureGuards::test_storage_access_through_helpers`; control_after 42 passed/0; every `restored clean` line `True`.
+Every reading matches the reviewer's stated expectations exactly: control_before 92 passed/0; p1 5 failed/87 passed/1 at the guard test plus the four `TestSnapshotRecordIsDurableAndLoud` cases; p2 4 failed/88 passed/1 at the guard test plus the three `TestAttemptRecordsAreDurable` tests; p3 3 failed/89 passed/1 at the guard test plus the two `TestProfileWriteIsDurable` tests; control_after 92 passed/0; every `restored clean` line `True`.
 
-`git worktree remove --force .remedy-wt/f278-r2-probe` real exit 0. `git worktree prune` real exit 0. `git worktree list` afterward → primary checkout (`feature/f278-durable-writes-loud-failures`) and `.remedy-wt/job-129b3ad7206d4f8d` only — the probe worktree is gone.
+`git worktree remove --force .remedy-wt/f278-r3-probe` real exit 0. `git worktree prune` real exit 0. `git worktree list` afterward → primary checkout (`feature/f278-durable-writes-loud-failures`) and `.remedy-wt/job-129b3ad7206d4f8d` only — the probe worktree is gone.
 
 G6 TREE AND PUSH — reported in the session's final reply, not this file, since it runs after this commit (C6). The handback cannot contain readings that postdate its own write.
 
@@ -170,15 +172,14 @@ G6 TREE AND PUSH — reported in the session's final reply, not this file, since
 
 Fidelity protocol (docs/agents/split_workflow.md, R-0147/R-0144/R-0148): byte-identity proof = mechanical disk-to-disk comparison of the applied location against the `.agent/authored/` copy.
 
-- `decisions.md` (append): `.agent/decisions.md` at C2 sha256 `c9a02a6f...61319e15` == payload sha256 concatenated onto the `41254292` bytes (G2). MATCH.
-- `ledger.md` (append): `.agent/live_review.md` at C2 sha256 `d00deba9...909c3f04ed` == payload sha256 concatenated onto the `41254292` bytes (G2). MATCH.
-- `prose_slips.md` (append): `.agent/prose_slips.md` at C2 sha256 `1bc24fe2...93a2abc0c5231f` == payload sha256 concatenated onto the `41254292` bytes, no separator (G2). MATCH.
-- `plan.md` (rewrite): `.agent/plan.md` at C2 sha256 `5dcb97ba...296c88112` == payload sha256 exactly (G2). MATCH.
-- `test_durable_write_guard.py` (copied whole): `.agent/authored/f278-r2-test_durable_write_guard.py` at C1b byte-identical to the payload (G1); the tracked test file at C3 sha256 matched the copy before C4/C5 each removed one `STILL_TO_MIGRATE` line (both later diffs applied cleanly per their own `git apply --check`). MATCH at C3; further changes at C4/C5 are the block's own product diffs, not a fidelity break.
-- `pingpong.diff` (applied): `.agent/authored/f278-r2-pingpong.diff` at C1b byte-identical to the payload (G1); `git apply --check` and `git apply` both real exit 0 at C4; resulting files' sha256 at C5 match the G3 table. MATCH.
-- `proposed.diff` (applied): `.agent/authored/f278-r2-proposed.diff` at C1b byte-identical to the payload (G1); `git apply --check` and `git apply` both real exit 0 at C5; resulting files' sha256 at C5 match the G3 table. MATCH.
-- `revert_probes.py`: a TOOL run against the disposable probe worktree, never applied to a tracked file. `.agent/authored/f278-r2-revert_probes.py` at C1b verified byte-identical to the payload (G1). N/A for an "applied location" comparison by design.
-- This block (`f278-r2-block.md`): `.agent/authored/f278-r2-block.md` at C1a verified byte-identical to `.remedy-wt/f278-r2-block.md` (G1) and to the two readings given in the delegation message.
+- `decisions.md` (append): `.agent/decisions.md` at C2 sha256 `228754...345d853` == payload sha256 concatenated onto the `b449d7b2` bytes (G2). MATCH.
+- `ledger.md` (append): `.agent/live_review.md` at C2 sha256 `9e5fd0...34bfbee` == payload sha256 concatenated onto the `b449d7b2` bytes (G2). MATCH.
+- `plan.md` (rewrite): `.agent/plan.md` at C2 sha256 `31cab2...92992d816` == payload sha256 exactly (G2). MATCH.
+- `rte.diff` (applied): `.agent/authored/f278-r3-rte.diff` at C1b byte-identical to the payload (G1); `git apply --check` and `git apply` both real exit 0 at C3; resulting files' sha256 at C5 match the G3 table. MATCH.
+- `sd.diff` (applied): `.agent/authored/f278-r3-sd.diff` at C1b byte-identical to the payload (G1); `git apply --check` and `git apply` both real exit 0 at C4; resulting files' sha256 at C5 match the G3 table. MATCH.
+- `te.diff` (applied): `.agent/authored/f278-r3-te.diff` at C1b byte-identical to the payload (G1); `git apply --check` and `git apply` both real exit 0 at C5; resulting files' sha256 at C5 match the G3 table. MATCH.
+- `revert_probes.py`: a TOOL run against the disposable probe worktree, never applied to a tracked file. `.agent/authored/f278-r3-revert_probes.py` at C1b verified byte-identical to the payload (G1). N/A for an "applied location" comparison by design.
+- This block (`f278-r3-block.md`): `.agent/authored/f278-r3-block.md` at C1a verified byte-identical to `.remedy-wt/f278-r3-block.md` (G1) and to the two readings given in the delegation message.
 
 ## Item-Status Table
 
@@ -207,7 +208,7 @@ branch, and every existing stash untouched.
 
 ## Next
 
-Phase 1 rule 1 (read `.agent/STOP` from disk), then the review of round 2,
-then T002's remaining boolean helpers in `real_test_execution`,
-`self_dogfood_execution` and `token_economy`. Open findings: 26. Operator
-questions: 0.
+Phase 1 rule 1 (read `.agent/STOP` from disk), then the review of round 3,
+then T002's last group — `dev_server`'s helpers with `runtime_supervisor`
+and `runtime_cmd`, and the inline writers in `repository_snapshot` and
+`project_registry`. Open findings: 26. Operator questions: 0.
