@@ -3230,8 +3230,18 @@ def run_job(
                     (_fjr_dir / "final_job_repair_loop.json").write_text(
                         _json.dumps(_repair_loop, indent=2) + "\n"
                     )
-            except Exception:
-                pass  # Best-effort; do not block job completion
+            except Exception as exc:  # noqa: BLE001 — a lost review is recorded as a blocking one
+                # The job stays complete, but a review that could not be written must not read as
+                # "no review", which the final verifier passes: write one that blocks instead.
+                job.metadata["final_job_review_error"] = type(exc).__name__
+                from packages.orchestration.data_paths import job_dir as _fjr_job_dir
+                _fjr_path = _fjr_job_dir(job.job_id) / "final_job_review.json"
+                if not _fjr_path.exists():
+                    _fjr_path.parent.mkdir(parents=True, exist_ok=True)
+                    _fjr_path.write_text(_json.dumps({
+                        "job_id": job.job_id, "verdict": "BLOCKED", "findings": [],
+                        "review_error": type(exc).__name__,
+                    }, indent=2) + "\n")
 
         elif has_pending and max_tasks > 0 and tasks_run >= max_tasks:
             job.state = JOB_PAUSED

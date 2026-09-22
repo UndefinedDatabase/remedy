@@ -214,3 +214,31 @@ class TestExportPingpongJsonIntegration:
         exported = export_pingpong_json(result)
         assert "task_actor_binding" in exported
         assert exported["task_actor_binding"] is not None
+
+
+class TestRunJobFinalReviewFailure:
+    """F278 T003: a final review that cannot be built is recorded as BLOCKING, never lost."""
+
+    def test_a_review_that_cannot_be_built_blocks_the_apply(
+            self, isolate_data_root, demo_repo, monkeypatch):
+        from packages.orchestration import final_job_review as fjr_mod
+        from packages.orchestration.final_verifier import _final_job_review_check
+
+        def boom(**_kw):
+            raise RuntimeError("review builder exploded")
+
+        monkeypatch.setattr(fjr_mod, "build_final_job_review", boom)
+        job = parse_job_file(_TWO_TASK_JOB, str(demo_repo))
+        completed_job = run_job(
+            job.job_id,
+            builder_provider=_pass_provider(),
+            reviewer_provider=_pass_provider(),
+            repair_rounds=0,
+        )
+        assert completed_job.state == JOB_COMPLETED
+        assert completed_job.metadata["final_job_review_error"] == "RuntimeError"
+        data = json.loads((job_dir(completed_job.job_id) / "final_job_review.json").read_text())
+        assert data["verdict"] == "BLOCKED"
+        assert data["review_error"] == "RuntimeError"
+        assert "exploded" not in json.dumps(data)
+        assert _final_job_review_check(job_dir(completed_job.job_id))["blocked"] is True
