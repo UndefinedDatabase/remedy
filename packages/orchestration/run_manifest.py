@@ -201,7 +201,7 @@ def _run_probe(argv: list[str], cwd: str | None = None) -> str:
     try:
         proc = subprocess.run(argv, capture_output=True, text=True, shell=False,
                               timeout=_VERSION_PROBE_TIMEOUT_S, cwd=cwd)
-    except Exception:
+    except Exception:  # noqa: BLE001 — version probe failure just means version unavailable
         return UNAVAILABLE
     if proc.returncode != 0 or not proc.stdout or not proc.stdout.strip():
         return UNAVAILABLE
@@ -321,7 +321,7 @@ def _helper_neutralizing_args(cwd: str, env: dict[str, str]) -> list[str]:
         proc = subprocess.run(
             ["git", "config", "--name-only", "--get-regexp", _HELPER_CONFIG_PATTERN],
             capture_output=True, shell=False, timeout=5, cwd=cwd, env=env)
-    except Exception:
+    except Exception:  # noqa: BLE001 — helper discovery failure falls back to default neutralization
         return args
     if proc.returncode != 0:
         return args                     # nothing configured (git exits 1)
@@ -355,7 +355,7 @@ def _git_bytes(repo_path: str, args: list[str], *, timeout: int = 15):
             capture_output=True, shell=False, timeout=timeout, cwd=repo_path, env=env)
     except subprocess.TimeoutExpired:
         return False, b"", f"git {args[0]} timed out"
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001 — any other subprocess failure becomes a reported git-command failure
         return False, b"", f"git {args[0]} failed: {type(exc).__name__}"
     if proc.returncode != 0:
         return False, b"", f"git {args[0]} exited {proc.returncode}"
@@ -433,20 +433,20 @@ def _open_contained_workspace_fd(canonical_root: str | Path,
     try:
         parts = _fs.lexical_parts(claimed, root, error_cls=ManifestError,
                                   noun="job workspace")
-    except Exception:
+    except Exception:  # noqa: BLE001 — containment lexical check must fail closed on any error
         return None
     if not parts:
         # The root itself is not a workspace; an empty relative path names no target.
         return None
     try:
         fd = _fs.anchor_root(root, error_cls=ManifestError, noun="job workspace", create=False)
-    except Exception:
+    except Exception:  # noqa: BLE001 — containment anchor open must fail closed on any error
         return None
     for part in parts:
         try:
             nxt = _fs.open_verified_dir(part, dir_fd=fd, error_cls=ManifestError,
                                         noun="job workspace")
-        except Exception:
+        except Exception:  # noqa: BLE001 — containment traversal must fail closed on any error
             os.close(fd)
             return None
         os.close(fd)
@@ -845,7 +845,7 @@ def _job_workspace_identity(job: Any) -> WorktreeIdentity:
 
     try:
         root = _wt.worktrees_root_for(repo)
-    except Exception:
+    except Exception:  # noqa: BLE001 — worktree root resolution failure reports as unavailable, not a crash
         return WorktreeIdentity(GIT_UNAVAILABLE, UNAVAILABLE, "",
                                 ("the canonical worktree root is unavailable",))
     _contained, state = contained_workspace_path(Path(ws_path), repo)
@@ -879,7 +879,7 @@ def contained_workspace_path(candidate: Path, repo: str | Path) -> tuple[Path | 
 
     try:
         root = Path(_wt.worktrees_root_for(repo))
-    except Exception:
+    except Exception:  # noqa: BLE001 — any root-resolution failure fails closed as an escape
         return None, WS_ESCAPES
     try:
         rel = Path(candidate).relative_to(root)
@@ -892,7 +892,7 @@ def contained_workspace_path(candidate: Path, repo: str | Path) -> tuple[Path | 
                                   create=False)
     except _fs.MissingComponent:
         return None, WS_ABSENT
-    except Exception:
+    except Exception:  # noqa: BLE001 — any non-missing anchor failure fails closed as an escape
         return None, WS_ESCAPES
     fd = root_fd
     try:
@@ -904,7 +904,7 @@ def contained_workspace_path(candidate: Path, repo: str | Path) -> tuple[Path | 
                                             noun="job workspace")
             except _fs.MissingComponent:
                 return None, WS_ABSENT
-            except Exception:
+            except Exception:  # noqa: BLE001 — any non-missing traversal failure fails closed as an escape
                 return None, WS_ESCAPES
             if fd != root_fd:
                 os.close(fd)
@@ -1106,7 +1106,7 @@ def capture_episode_input_snapshot(job: Any, *, episode_id: str, capture_phase: 
     extra = tuple(safe_text(p)[:400] for p in extra_problems if p)
     try:
         snap = build_input_snapshot(job, inspect_target=True)
-    except Exception as exc:             # capture failure is DATA, not a swallowed None
+    except Exception as exc:  # noqa: BLE001 — capture failure is DATA, not a swallowed None
         return EpisodeInputSnapshotV1(
             snapshot_v=EPISODE_SNAPSHOT_VERSION, episode_id=str(episode_id or ""),
             captured_at=stamp, capture_phase=str(capture_phase or ""),
@@ -1861,7 +1861,7 @@ def _finalized_calls_seal(entries: Any) -> str:
     """
     try:
         return hashlib.sha256(_fs.json_bytes(entries, sort_keys=True)).hexdigest()
-    except Exception:
+    except Exception:  # noqa: BLE001 — hashing failure yields an empty seal, not a crash
         return ""
 
 
@@ -2998,7 +2998,7 @@ def validate_run_manifest(manifest: RunManifestV1, *, published: bool = True,
             if len(_fs.json_bytes(c.prepared_input, sort_keys=True)) > \
                     _S.MAX_PREPARED_INPUT_BYTES:
                 problems.append(f"call {ident.call_id} prepared_input exceeds the size limit")
-        except Exception:
+        except Exception:  # noqa: BLE001 — prepared_input serialization failure recorded as a validation problem
             problems.append(f"call {ident.call_id} prepared_input is not serializable")
         # F8: a PUBLISHED call must carry a real, canonically-named, hash-bound artifact.
         ref = c.artifact
@@ -3127,7 +3127,7 @@ def validate_run_manifest(manifest: RunManifestV1, *, published: bool = True,
             problems.append(f"job_input: {p}")
         try:
             expected = job_input_definition_sha256(snap.job_input)
-        except Exception:
+        except Exception:  # noqa: BLE001 — job_input hash failure recorded as a validation problem
             expected = ""
             problems.append("job_input definition is not canonically serializable")
         if expected and manifest.job_input_sha256 != expected:
@@ -3139,7 +3139,7 @@ def validate_run_manifest(manifest: RunManifestV1, *, published: bool = True,
             if len(_fs.json_bytes(snap.to_json(), sort_keys=True)) > \
                     _S.MAX_INPUT_SNAPSHOT_BYTES:
                 problems.append("input snapshot exceeds the size limit")
-        except Exception:
+        except Exception:  # noqa: BLE001 — snapshot serialization failure recorded as a validation problem
             problems.append("input snapshot is not canonically serializable")
 
     # F5/F7: the stop request id is stopped-only terminal metadata, kept SEPARATE from the
@@ -3761,7 +3761,7 @@ def _contains_local_path(value: str) -> bool:
         from packages.orchestration.failure_postmortem import safe_text
         probe = _neutralize_slash_commands(_probe_text(value))
         return safe_text(probe) != probe
-    except Exception:
+    except Exception:  # noqa: BLE001 — path-scrub failure falls back to a simple prefix check
         return value.startswith("/") or value.startswith("~/")
 
 
@@ -4047,7 +4047,7 @@ def _is_safe_request_id(value: str) -> bool:
     try:
         from packages.orchestration.safe_points import is_safe_id
         return bool(is_safe_id(value))
-    except Exception:
+    except Exception:  # noqa: BLE001 — safe-id check failure falls back to inline heuristic
         v = str(value or "")
         return bool(v) and len(v) <= 64 and "/" not in v and ".." not in v and " " not in v
 
@@ -4229,7 +4229,7 @@ def validate_input_snapshot(snap: InputSnapshot) -> list[str]:
     try:
         if len(_fs.json_bytes(snap.to_json(), sort_keys=True)) > _S.MAX_INPUT_SNAPSHOT_BYTES:
             problems.append("input snapshot payload is oversized")
-    except Exception:
+    except Exception:  # noqa: BLE001 — snapshot size check failure recorded as a validation problem
         problems.append("input snapshot is not canonically serializable")
     if isinstance(snap.job_input, dict) and int(snap.job_input.get("job_input_v", 0) or 0) != 1:
         problems.append("unsupported job_input version")
@@ -5109,7 +5109,7 @@ def _projections_match(ev: Path, verified: VerifiedCanonicalChain) -> bool:
     """
     try:
         index, root_fd = load_index_verified(ev)
-    except Exception:
+    except Exception:  # noqa: BLE001 — index load failure means the no-op fast path doesn't apply
         return False
     try:
         if index is None:
@@ -5121,7 +5121,7 @@ def _projections_match(ev: Path, verified: VerifiedCanonicalChain) -> bool:
         mirror = _fs.read_verified_file(MANIFEST_FILENAME, root_fd,
                                         max_bytes=_S.MAX_EPISODE_MANIFEST_BYTES,
                                         error_cls=ManifestError, noun="run manifest")
-    except Exception:
+    except Exception:  # noqa: BLE001 — mirror read failure means projections don't match
         return False
     finally:
         os.close(root_fd)
@@ -5206,7 +5206,7 @@ def cleanup_abandoned_stages(evidence_dir: str | Path, *, root: str | Path,
         stage_root_fd = _fs.anchor_destination(Path(evidence_dir) / STAGING_SUBDIR, Path(root),
                                                error_cls=ManifestError, noun="run-manifest",
                                                create=False, dir_mode=MANIFEST_DIR_MODE)
-    except (_fs.MissingComponent, Exception):
+    except (_fs.MissingComponent, Exception):  # noqa: BLE001 — missing or failed stage root means nothing to clean up
         return removed                      # nothing staged, nothing to clean
     try:
         names = sorted(_fs.list_dir_names(stage_root_fd, error_cls=ManifestError,
@@ -5229,7 +5229,7 @@ def cleanup_abandoned_stages(evidence_dir: str | Path, *, root: str | Path,
                 _fs.remove_tree_at(name, stage_root_fd, error_cls=ManifestError,
                                    noun="run-manifest staging")
                 removed.append(name)
-    except Exception:
+    except Exception:  # noqa: BLE001 — stage cleanup must never break the caller's real work
         return removed                      # hygiene never breaks the caller's real work
     finally:
         os.close(stage_root_fd)
