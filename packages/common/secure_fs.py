@@ -31,6 +31,7 @@ import fcntl
 import os
 import secrets
 import stat
+import tempfile
 import time
 from collections.abc import Callable
 from pathlib import Path
@@ -38,6 +39,8 @@ from typing import Any
 
 __all__ = [
     "SecureFsError",
+    "durable_write",
+    "durable_write_json",
     "exclusive_lock_fd",
     "release_lock_fd",
     "publish_dir_atomically",
@@ -794,3 +797,64 @@ def json_bytes(payload: Any, *, indent: int = 2, sort_keys: bool = True) -> byte
 
     return (json.dumps(payload, indent=indent, sort_keys=sort_keys,
                        allow_nan=False) + "\n").encode("utf-8")
+
+
+# Remedy's ONE path-based durable write: every whole-file publication by path goes through here.
+def durable_write(path: Path | str, data: bytes | str, *, mode: int = 0o600,
+                  fsync_dir: bool = True) -> None:
+    """Publish ``data`` at ``path`` whole or not at all, and make the publication survive a crash.
+
+    The temporary file comes from ``tempfile.mkstemp`` in the DESTINATION directory, so it is on
+    the same filesystem as the target (``os.replace`` is only atomic there) and its name is
+    unpredictable: two writers of one record never share a temporary path, which is the race a
+    fixed sibling such as ``path.with_suffix(".tmp")`` loses — one writer publishes, and the
+    other's ``os.replace`` then finds nothing to move, or publishes a file both wrote into. The
+    prefix keeps the WHOLE destination name, so ``a.b.json`` and ``a.b.yaml`` never collide the
+    way ``with_suffix`` makes them.
+
+    The order is the guarantee: write every byte, fsync the file, ``os.replace``, then fsync the
+    parent directory. Without the file fsync the rename can publish a name whose data never
+    reached the disk; without the directory fsync the rename itself can be lost on power failure
+    while the data was safe. ``fsync_dir=False`` exists for a caller that publishes many files
+    into one directory and fsyncs it once itself.
+
+    The file gets exactly ``mode``, whatever the umask. On every failure before the rename the
+    temporary file is unlinked and the exception propagates; nothing is swallowed, and an
+    existing file at ``path`` is left as it was.
+    """
+    target = Path(path)
+    payload = data.encode("utf-8") if isinstance(data, str) else bytes(data)
+    directory = target.parent
+    fd, tmp_name = tempfile.mkstemp(dir=directory, prefix=f".{target.name}.", suffix=".tmp")
+    try:
+        try:
+            os.fchmod(fd, mode)
+            view = memoryview(payload)
+            written = 0
+            while written < len(payload):
+                chunk = os.write(fd, view[written:])
+                if chunk <= 0:
+                    raise OSError(errno.EIO, f"write made no progress at byte {written}")
+                written += chunk
+            os.fsync(fd)
+        finally:
+            os.close(fd)
+        os.replace(tmp_name, target)
+    except BaseException:
+        with contextlib.suppress(OSError):
+            os.unlink(tmp_name)
+        raise
+    if fsync_dir:
+        dir_fd = os.open(directory, os.O_RDONLY | getattr(os, "O_DIRECTORY", 0))
+        try:
+            os.fsync(dir_fd)
+        finally:
+            os.close(dir_fd)
+
+
+def durable_write_json(path: Path | str, payload: Any, *, indent: int = 2,
+                       sort_keys: bool = True, mode: int = 0o600,
+                       fsync_dir: bool = True) -> None:
+    """``durable_write`` of ``json_bytes(payload)`` — standard JSON, one trailing newline."""
+    durable_write(path, json_bytes(payload, indent=indent, sort_keys=sort_keys),
+                  mode=mode, fsync_dir=fsync_dir)
