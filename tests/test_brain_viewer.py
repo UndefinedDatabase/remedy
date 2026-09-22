@@ -1206,7 +1206,9 @@ class TestBrainCommandsAnswerJSONThroughTheDispatcher:
         assert isinstance(body["detail_count"], int)
 
     def test_open_answers_the_envelope(self, tmp_path, monkeypatch, capsys):
+        import subprocess
         import sys
+        from unittest.mock import patch
 
         from apps.cli.main import main
 
@@ -1214,12 +1216,18 @@ class TestBrainCommandsAnswerJSONThroughTheDispatcher:
         job = _make_job()
         save_job_plan(job)
         monkeypatch.setattr(sys, "argv", ["remedy", "brain", "open", str(job.job_id), "--json"])
-        main()
+        # No real opener: a live xdg-open/open call would launch a browser on
+        # whatever machine runs this suite (the opener still "runs" per the
+        # SPEC — it is the subprocess launch itself, not its visible effect,
+        # that `opened` reports on).
+        with patch.object(subprocess, "Popen") as mock_popen:
+            main()
+        assert mock_popen.called
         body = json.loads(capsys.readouterr().out)
         assert body["ok"] is True and body["schema_version"] == 1
         assert body["job_id"] == str(job.job_id)
         assert "index_path" in body
-        assert isinstance(body["opened"], bool)
+        assert body["opened"] is True
 
     def test_export_viewer_answers_the_envelope(self, tmp_path, monkeypatch, capsys):
         import sys
