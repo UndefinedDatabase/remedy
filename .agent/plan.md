@@ -13,17 +13,15 @@ is documented and asserted from the catalog
 
 ## Current Step
 
-ROUND 17. It books round 16's PASS, registers and repairs R-1030, pins what
-round 16's review found unpinned, records DECISION F283 D10 and lands its
-ratchet, then converts the success documents of twenty of the smaller command
-modules to the envelope.
+ROUND 18. It books round 17's PASS, registers and repairs R-1031, resolves
+R-1030 on the record, and converts the success documents of eight modules to
+the envelope under DECISION F283 D10: `runtime`, `do`, `test`, `event`,
+`memory`, `patch`, `stats` and `brain`.
 
 ## Next Steps
 
-1. T002's success half, second batch: the fourteen modules with the most
-   raw-document sites, `job`, `mission`, `self`, `project`, `config`,
-   `worker`, `brain`, `do`, `test`, `runtime`, `event`, `memory`, `patch` and
-   `stats`, leaving the ratchet at the text-branch survivors.
+1. T002's success half, last batch: `job`, `mission`, `self`, `project`,
+   `config` and `worker`, leaving the ratchet at the text-branch survivors.
 2. T002's last slice: the exit-code taxonomy under `docs/guides/` asserted
    from the catalog, catalog-to-dispatch parity, and the sweep in
    `tests/cli/test_json_contract.py`.
@@ -31,7 +29,7 @@ modules to the envelope.
 
 ## Risks
 
-Twenty-five findings are open and one of them, R-1030, is this feature's own.
-Seventeen rounds are spent of the soft limit of 25, in the fourth of 7
-sessions; the closure needs its own rounds, so the second batch and the sweep
+Twenty-five findings are open and one of them, R-1031, is this feature's own.
+Eighteen rounds are spent of the soft limit of 25, in the fourth of 7
+sessions; the closure needs its own rounds, so the last batch and the sweep
 must each fit one round.
