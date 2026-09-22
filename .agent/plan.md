@@ -10,20 +10,20 @@ silently incomplete (`docs/roadmap/features/T2_F278.md`).
 
 ## Current Step
 
-ROUND 4 books round 3's PASS and DECISION F278 D3, then ends T002: the three
-runtime helpers in `dev_server` are deleted and their callers in
-`runtime_supervisor` and `runtime_cmd` import `durable_write`; the inline
-writers in `repository_snapshot` and `project_registry` move onto it; the
-guard's set is empty.
+ROUND 5 books round 4's PASS and DECISION F278 D4, then takes T003's first
+slice: `stream_evidence.py`'s blind handlers are narrowed or recorded, and the
+stream artifact gains `degradations`, both in `to_dict` and as
+`stream_degraded` events.
 
 ## Next Steps
 
-1. T003, loud failures: BLE001 enabled with a frozen ignore list, the nine
-   handlers in `stream_evidence.py` first, a `degradations` field on the
-   stream artifact, and a reason on every remaining ignored site.
-2. The closure sequence.
+1. T003, the remaining blind handlers, module group by module group: each
+   narrowed to the exception it expects or marked with a noqa reason.
+2. T003, the last marking commit: BLE001 joins `select`, and the ratchet test
+   freezes the count of excused handlers.
+3. The closure sequence.
 
 ## Risks
 
-A runtime record whose fsync fails now raises where it was suppressed; the
-call sites that must not raise already carry their own `suppress`.
+About 257 handlers remain to be read, so the marking rounds are the bulk of
+T003; a handler whose narrowing is not obvious is marked, never guessed.
