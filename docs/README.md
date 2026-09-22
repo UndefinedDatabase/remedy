@@ -32,6 +32,7 @@
 | continuation cycle (deleted) | [do-continue-v1.md](guides/do-continue-v1.md) | guide |
 | do run | [do-run-v1.md](guides/do-run-v1.md) | guide |
 | exec guard | [exec-guard-limitations-v0.md](system/exec-guard-limitations-v0.md) | system |
+| exit code | [exit-codes.md](guides/exit-codes.md) | guide |
 | hunk approval | [hunk-approval-user-guide-v1.md](guides/hunk-approval-user-guide-v1.md) | guide |
 | job budget | [job-budget-enforcement-v0.md](system/job-budget-enforcement-v0.md) | system |
 | job context | [job-context-view-user-guide-v0.md](guides/job-context-view-user-guide-v0.md) | guide |
@@ -124,6 +125,7 @@ User-facing guides, quickstarts, and usage documentation.
 | [cost-report-user-guide-v0.md](guides/cost-report-user-guide-v0.md) | Reading `remedy stats report` |
 | [do-continue-v1.md](guides/do-continue-v1.md) | The one-cycle apply flow F261 round 21 deleted |
 | [do-run-v1.md](guides/do-run-v1.md) | `remedy do` cohesive flow |
+| [exit-codes.md](guides/exit-codes.md) | Every CLI exit code's meaning, asserted from the command catalog |
 | [hunk-approval-user-guide-v1.md](guides/hunk-approval-user-guide-v1.md) | Recording a hunk-level approve and reject decision over a job's diff |
 | [job-context-view-user-guide-v0.md](guides/job-context-view-user-guide-v0.md) | What one task's compiled context carries and what was omitted |
 | [real-test-execution-snapshot-rollback-user-guide-v1.md](guides/real-test-execution-snapshot-rollback-user-guide-v1.md) | Test execution + snapshot/rollback usage |

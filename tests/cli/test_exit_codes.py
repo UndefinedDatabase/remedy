@@ -1,5 +1,5 @@
 """Assert every catalog command's declared exit codes against a static reading
-of its handler (DECISION F283 D12 (4)).
+of its handler (DECISION F283 D12 (4)), and the guide against both (D12 (3)).
 
 The reader below is adapted from the reviewer's prototype
 (``.remedy-wt/f283-r20-scratch/reach_proto.py``, pinned at ``98a85b67``): per
@@ -26,9 +26,15 @@ import pytest
 
 from apps.cli.command_catalog import CATALOG, CommandEntry
 from apps.cli.commands import collect_all_handlers
-from apps.cli.exit_codes import EXIT_CODE_FLOOR, exit_codes_for_group
+from apps.cli.exit_codes import (
+    CLI_EXIT_CODES,
+    EXIT_CODE_FLOOR,
+    RUNTIME_EXIT_CODES,
+    exit_codes_for_group,
+)
 
 _REPO_ROOT = Path(__file__).resolve().parent.parent.parent
+_GUIDE_PATH = _REPO_ROOT / "docs" / "guides" / "exit-codes.md"
 
 #: Call-site parameter names that PASS a caller's own exit code through rather
 #: than choosing one — reading them as a literal would blame the wrong site.
@@ -269,3 +275,62 @@ def test_declared_codes_equal_the_codes_the_handler_reaches(entry: CommandEntry)
         f"{entry.command_id}: handler reaches {sorted(reached_above_floor)} above the "
         f"floor, catalog declares {sorted(declared_above_floor)}"
     )
+
+
+# ---------------------------------------------------------------------------
+# The guide, asserted from the catalog (D12 (3))
+# ---------------------------------------------------------------------------
+
+
+def _parse_pipe_tables(text: str) -> list[list[list[str]]]:
+    """Every markdown pipe-table in `text`, each a list of rows (header
+    included, the `---` separator row excluded), each row a list of cells."""
+    tables: list[list[list[str]]] = []
+    rows: list[list[str]] = []
+    for line in text.splitlines():
+        stripped = line.strip()
+        if stripped.startswith("|") and stripped.endswith("|"):
+            body = stripped.strip("|")
+            if set(body.replace("|", "").strip()) <= set("-: "):
+                continue   # the header/body separator row
+            rows.append([cell.strip() for cell in body.split("|")])
+        elif rows:
+            tables.append(rows)
+            rows = []
+    if rows:
+        tables.append(rows)
+    return tables
+
+
+def test_guide_tables_equal_the_module_and_the_catalog() -> None:
+    """`docs/guides/exit-codes.md` is read from `apps/cli/exit_codes.py` and
+    the catalog's declarations above the floor, never authored from prose."""
+    text = _GUIDE_PATH.read_text()
+    tables = _parse_pipe_tables(text)
+
+    code_tables = [t for t in tables if t[0] == ["Code", "Name", "Meaning"]]
+    assert len(code_tables) == 2, (
+        f"expected exactly 2 `| Code | Name | Meaning |` tables (CLI, runtime), found {len(code_tables)}"
+    )
+    cli_rows, runtime_rows = code_tables
+
+    def _as_meanings(rows: list[list[str]]) -> list[tuple[int, str, str]]:
+        return [(int(r[0]), r[1], r[2]) for r in rows[1:]]
+
+    assert _as_meanings(cli_rows) == [(m.code, m.name, m.meaning) for m in CLI_EXIT_CODES]
+    assert _as_meanings(runtime_rows) == [(m.code, m.name, m.meaning) for m in RUNTIME_EXIT_CODES]
+
+    command_tables = [t for t in tables if t[0] == ["Command", "Exit codes"]]
+    assert len(command_tables) == 1, "expected exactly 1 `| Command | Exit codes |` table"
+    [command_rows] = command_tables
+
+    guide_declared = {
+        row[0].strip("`"): frozenset(int(c.strip()) for c in row[1].split(","))
+        for row in command_rows[1:]
+    }
+    catalog_declared = {
+        f"remedy {e.group_id} {e.subcommand}": frozenset(_above_floor(set(e.exit_codes)))
+        for e in CATALOG
+        if _above_floor(set(e.exit_codes))
+    }
+    assert guide_declared == catalog_declared
