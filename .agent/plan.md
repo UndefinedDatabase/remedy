@@ -10,20 +10,21 @@ silently incomplete (`docs/roadmap/features/T2_F278.md`).
 
 ## Current Step
 
-ROUND 8 books round 7's PASS, resolves R-1036 and records DECISION F278 D7,
-repairs R-1037 and R-1038, narrows one handler, marks the last group of
-blind handlers, and turns BLE001 on with the ratchet test; T003 is then
-complete and every Acceptance line of T2_F278.md has its evidence.
+ROUND 9, the closure sequence's first half. It books round 8's PASS and
+resolves R-1037 and R-1038, writes the feature file's Built State, folds this
+feature's two prose lessons into the reviewer checklist without lengthening
+it, runs the closure's self-use item to its approval gate, and runs the
+feature's one full suite, committing the transcript.
 
 ## Next Steps
 
-1. The closure sequence, first half: resolve R-1037 and R-1038, write the
-   Built State, run the one checklist pass, the self-use item, and the
-   feature's one full suite.
-2. The closure sequence, second half: the evidence job and the review
-   package, then the rotation, the accepted STATUS line and the PR.
+1. The closure sequence's second half: register whatever the self-use run's
+   own defect reader reports, the evidence job and a fresh review zip.
+2. The closing round: the ledger rotation, the STATUS line with the README
+   counters in the same commit, and the pull request, which is never merged
+   in the session that opens it.
 
 ## Risks
 
-None known beyond the closure's own; the frozen count of excused handlers
-is 290 and only falls from here.
+Twenty-six findings are open after this round's resolutions and none is this
+feature's own. Nine rounds are spent of the soft limit of 25.
