@@ -55,9 +55,9 @@ from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
+from packages.common.secure_fs import durable_write
 from packages.orchestration.data_paths import missions_dir, normalize_job_id
 from packages.orchestration.exec_guard import run_guarded_test_command
-from packages.orchestration.pingpong_job import atomic_write_text as _atomic_write
 
 #: Bumped whenever the record body changes shape.  A reader meeting a version
 #: it does not know refuses that record rather than guessing at its meaning.
@@ -396,7 +396,7 @@ def save_mission(mission: Mission, root: Path | None = None) -> Path:
                 f"mission {mission.id} already exists with a different goal — "
                 f"a changed goal is a new mission (remedy mission start)")
     path.parent.mkdir(parents=True, exist_ok=True)
-    _atomic_write(path, json.dumps(mission.to_json(), indent=2, sort_keys=True))
+    durable_write(path, json.dumps(mission.to_json(), indent=2, sort_keys=True))
     return path
 
 
@@ -974,7 +974,7 @@ def write_mission_verify_record(run: MissionFollowupRun) -> Path:
     """Persist the follow-up run record atomically, next to the job's evidence."""
     path = mission_verify_record_path(run.job_id)
     path.parent.mkdir(parents=True, exist_ok=True)
-    _atomic_write(path, json.dumps(run.to_json(), indent=2, sort_keys=True))
+    durable_write(path, json.dumps(run.to_json(), indent=2, sort_keys=True))
     return path
 
 

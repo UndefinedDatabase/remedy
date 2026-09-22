@@ -291,13 +291,13 @@ class TestWriteFailureIsContained:
         def boom(*_a, **_kw):
             raise OSError("disk full")
 
-        monkeypatch.setattr(cp, "_atomic_write", boom)
+        monkeypatch.setattr(cp, "durable_write", boom)
         path, reason = record_cycle_checkpoint(JOB_ID, 1)
         assert path is None
         assert "disk full" in reason
 
     def test_the_failure_is_logged_loudly(self, monkeypatch, caplog):
-        monkeypatch.setattr(cp, "_atomic_write", lambda *_a, **_k: (_ for _ in ()).throw(
+        monkeypatch.setattr(cp, "durable_write", lambda *_a, **_k: (_ for _ in ()).throw(
             OSError("disk full")))
         with caplog.at_level("WARNING"):
             record_cycle_checkpoint(JOB_ID, 1)
@@ -368,7 +368,7 @@ class TestCycleBoundaryWiring:
         assert loaded.job_snapshot_sha256.startswith("sha256:")
 
     def test_a_failed_checkpoint_write_does_not_break_the_cycle(self, monkeypatch):
-        monkeypatch.setattr(cp, "_atomic_write", lambda *_a, **_k: (_ for _ in ()).throw(
+        monkeypatch.setattr(cp, "durable_write", lambda *_a, **_k: (_ for _ in ()).throw(
             OSError("disk full")))
         job = _job()
         result = _run_one_cycle(job)

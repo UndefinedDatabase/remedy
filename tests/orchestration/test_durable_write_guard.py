@@ -23,7 +23,6 @@ HELPER_NAME = re.compile(r"_?atomic_(private_)?write")
 
 #: (module path, function name) — the copies not yet migrated. Only ever shrinks.
 STILL_TO_MIGRATE = frozenset({
-    ("packages/orchestration/pingpong_job.py", "atomic_write_text"),
     ("packages/orchestration/proposed_tasks.py", "_atomic_write"),
     ("packages/orchestration/real_test_execution.py", "_atomic_write"),
     ("packages/orchestration/self_dogfood_execution.py", "_atomic_write"),

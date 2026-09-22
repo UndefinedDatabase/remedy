@@ -22,7 +22,6 @@ import json as _json
 import os
 import re
 import shutil
-import tempfile
 from dataclasses import dataclass, field, replace
 from datetime import datetime, timezone
 from pathlib import Path
@@ -31,6 +30,7 @@ from typing import TYPE_CHECKING, Any
 # F272 T002: the closed types JobPlan's administrative fields carry. Imported at
 # module level and not under TYPE_CHECKING because `_import_job` reconstructs
 # them at runtime from the job record's plain JSON.
+from packages.common.secure_fs import durable_write
 from packages.core.models import Artifact, Budget, JobFences, RunState
 
 # F260 D2: one minting function per KIND of id. This module names JOBs, TASKs and
@@ -498,30 +498,6 @@ class JobStoreError(Exception):
     """Raised when a job record exists and cannot be read."""
 
 
-# The one atomic text writer: the job record below and the checkpoint, mission and
-# compiled-mission records each write through it rather than carrying their own.
-def atomic_write_text(path: Path, data: str) -> None:
-    """Write ``data`` to ``path`` as UTF-8 by an fsynced replace, creating the parent.
-
-    An interrupted write leaves the previous file or the new one, never a torn file,
-    and removes its temporary file.
-    """
-    path.parent.mkdir(parents=True, exist_ok=True)
-    fd, tmp = tempfile.mkstemp(dir=str(path.parent), suffix=".tmp")
-    try:
-        with os.fdopen(fd, "wb") as fh:
-            fh.write(data.encode("utf-8"))
-            fh.flush()
-            os.fsync(fh.fileno())
-        os.replace(tmp, path)
-    except BaseException:
-        try:
-            os.unlink(tmp)
-        except OSError:
-            pass
-        raise
-
-
 # ``root`` overrides the store's base directory for ONE call, which is how a caller
 # reads or writes a job record outside the process data root (DECISION F275 D23).
 # ``data_paths.job_record_path`` always accepted it; these three never passed it on.
@@ -533,7 +509,8 @@ def _persist_job(job: JobPlan, root: Path | None = None) -> Path:
     from packages.orchestration.data_paths import job_record_path
 
     out = job_record_path(job.job_id, root)
-    atomic_write_text(out, _json.dumps(_export_job(job), indent=2) + "\n")
+    out.parent.mkdir(parents=True, exist_ok=True)
+    durable_write(out, _json.dumps(_export_job(job), indent=2) + "\n")
     return out
 
 

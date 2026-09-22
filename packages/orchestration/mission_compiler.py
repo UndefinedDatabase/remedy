@@ -41,6 +41,7 @@ from typing import Any
 
 from pydantic import model_validator
 
+from packages.common.secure_fs import durable_write
 from packages.orchestration.dod_compiler import DoDCompileResult, compile_dod
 from packages.orchestration.mission_plan_schema import (
     MAX_MILESTONE_DRAFT_JOBS,
@@ -51,7 +52,6 @@ from packages.orchestration.mission_plan_schema import (
     MissionPlan,
     MissionPlanDraft,
 )
-from packages.orchestration.pingpong_job import atomic_write_text as _atomic_write
 from packages.orchestration.prompt_facts import repo_facts_block
 from packages.orchestration.prompt_segments import (
     ComposedPrompt,
@@ -558,7 +558,7 @@ def attach_milestone_dods(
     for ms in plan.milestones:
         result = compile_milestone_dod(goal, ms, call_fn)
         filename = milestone_dod_filename(ms.id)
-        _atomic_write(
+        durable_write(
             evidence_dir / filename,
             json.dumps(result.dod.model_dump(), indent=2, sort_keys=True))
         milestones.append(ms.model_copy(update={"dod_ref": filename}))
