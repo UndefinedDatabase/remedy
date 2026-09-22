@@ -279,7 +279,7 @@ def _parsed_decision_stamp(value: Any) -> datetime | None:
     no time to order it by."""
     try:
         return datetime.fromisoformat(value)
-    except Exception:
+    except (TypeError, ValueError):
         return None
 
 
