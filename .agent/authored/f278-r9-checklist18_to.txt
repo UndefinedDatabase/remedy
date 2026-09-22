@@ -1,0 +1,10 @@
+      the hazard, order the argument, not the function.
+      The same reading binds the INTERPRETER a mutation runs under. F278's round 8 is
+      the instance: its tool edited one module twice within one second, the second
+      edit left the file exactly as long as the first, and Python's bytecode cache
+      keys a compiled module by the source's modification second and size, so the
+      second run imported the FIRST mutation's code and reported its red as its own.
+      Both mutations were real, and both went red when the reviewer re-ran them one at
+      a time; only the reading was void. A recipe that edits a module and re-imports
+      it in a fresh process names `python3 -B`, because the cache is a default that
+      nobody orders and that no control run can see.
