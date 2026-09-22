@@ -458,6 +458,31 @@ class TestShowApproveRejectAnswerJSONThroughTheDispatcher:
         assert body["ok"] is False
         assert body["error"] == "patch_intent_not_found"
 
+    def test_show_refusal_without_json_is_the_two_old_stderr_lines(self, monkeypatch, capsys):
+        """F283 R15 C3 — pins the text branch's byte identity: the refusal message
+        joins its two lines with `\\n`, and `fail()`'s `Error: ` prefix lands only
+        on the first, so stderr reads exactly the two old lines. Round 14 left this
+        unpinned; correct on disk, but no test spent an id on it until now."""
+        from apps.cli.grouped import main
+
+        fake_job = SimpleNamespace(job_id="job-1")
+        monkeypatch.setattr(CMD, "resolve_job_id_or_fail", lambda *a, **k: "job-1")
+        monkeypatch.setattr(CMD, "require_job_plan", lambda job_id: fake_job)
+        monkeypatch.setattr(
+            "packages.orchestration.approval_queue.get_patch_intent",
+            lambda job, intent_id: None,
+        )
+
+        with pytest.raises(SystemExit) as exc:
+            main(["patch", "show", "job-1", "no-such-intent"])
+        assert exc.value.code == 1
+        captured = capsys.readouterr()
+        assert captured.out == ""
+        assert captured.err == (
+            "Error: patch intent 'no-such-intent' not found in job job-1.\n"
+            "Use 'remedy patch list <job_id>' to see available intent IDs.\n"
+        )
+
     def test_approve_answers_the_envelope(self, monkeypatch, capsys):
         from apps.cli.grouped import main
 

@@ -142,3 +142,22 @@ class TestBlockerResolveAnswersJSONThroughTheDispatcher:
         body = json.loads(capsys.readouterr().out)
         assert body["ok"] is False
         assert body["error"] == "blocker_not_found"
+
+    def test_resolve_answers_the_full_id_not_the_text_branchs_short_one(self, capsys):
+        """F283 R15 C3 — the text branch prints `sr.id[:8]`; the envelope must not
+        inherit that truncation. `stop-1` (six characters) never exercised this:
+        pin it with a stop id longer than eight characters."""
+        import json
+
+        from apps.cli.grouped import main
+
+        long_id = "stop-reason-0123456789"
+        resolved = _stop(status="resolved")
+        resolved.id = long_id
+        with patch("packages.orchestration.stop_reasons.resolve_stop_reason",
+                   return_value=resolved):
+            main(["blocker", "resolve", "job-1", long_id, "--json"])
+        body = json.loads(capsys.readouterr().out)
+        assert body["ok"] is True and body["schema_version"] == 1
+        assert body["id"] == long_id
+        assert len(body["id"]) > 8
