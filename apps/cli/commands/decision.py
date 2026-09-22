@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json as _json
 import sys
 from collections.abc import Callable
 from typing import TYPE_CHECKING, Any
@@ -67,11 +66,11 @@ def _cmd_decision_list(
         fail("invalid_list_option", str(exc), json_output=json_output)
 
     if json_output:
-        print(_json.dumps({
-            "version": 1,
-            "job_id": jid,
-            "decisions": [export_decision_json(d) for d in decisions],
-        }, sort_keys=True))
+        emit_ok(
+            version=1,
+            job_id=jid,
+            decisions=[export_decision_json(d) for d in decisions],
+        )
     else:
         if not decisions:
             print(f"No pending decisions for job {jid[:8]}.")
@@ -93,11 +92,11 @@ def _cmd_decision_show(job_id_str: str, decision_id: str, *, json_output: bool =
              json_output=json_output)
 
     if json_output:
-        print(_json.dumps({
-            "version": 1,
-            "job_id": jid,
-            "decision": export_decision_json(d),
-        }, sort_keys=True))
+        emit_ok(
+            version=1,
+            job_id=jid,
+            decision=export_decision_json(d),
+        )
     else:
         print(f"Decision: {d.id}")
         print(f"  Type: {d.type}")

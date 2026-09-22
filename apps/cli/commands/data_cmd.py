@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
-import json as _json
 import os as _os
 import sys as _sys
 from collections.abc import Callable
 from typing import TYPE_CHECKING
+
+from apps.cli.json_envelope import emit_ok
 
 if TYPE_CHECKING:
     import argparse
@@ -32,7 +33,7 @@ def _cmd_data_usage(*, json_output: bool = False) -> None:
 
     fp = footprint(resolve_data_root())
     if json_output:
-        print(_json.dumps(export_footprint_json(fp), sort_keys=True))
+        emit_ok(**export_footprint_json(fp))
         return
     print(f"Data root: {fp.root}")
     if not fp.exists:
@@ -82,7 +83,7 @@ def _print_reclaim(plan, outcome, *, json_output: bool, orphans: bool = False) -
     from packages.orchestration.data_reclaim import ORPHAN_JOB_STATE, export_reclaim_json
 
     if json_output:
-        print(_json.dumps(export_reclaim_json(plan, outcome), sort_keys=True))
+        emit_ok(**export_reclaim_json(plan, outcome))
         return
 
     print(f"Data root: {plan.root}")

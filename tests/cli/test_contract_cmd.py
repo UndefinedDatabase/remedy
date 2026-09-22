@@ -111,7 +111,7 @@ class TestTheMissionView:
                                 project_id, "--json"], data_root).stdout)
 
         assert body == {"version": 1, "mission_id": mission_id,
-                        "contract": CONTRACT}
+                        "contract": CONTRACT, "schema_version": 1, "ok": True}
 
     def test_no_contract_is_one_sentence_and_null(self, project):
         data_root, project_id = project
@@ -255,7 +255,8 @@ class TestTheJobView:
         assert text.stdout.strip() == (
             f"Job {job_id} belongs to no mission, so it has no contract.")
         assert body == {"version": 1, "job_id": job_id, "mission_id": None,
-                        "milestone_id": None, "contract": None}
+                        "milestone_id": None, "contract": None,
+                        "schema_version": 1, "ok": True}
 
     def test_an_unknown_job_exits_1(self, project):
         data_root, _project_id = project

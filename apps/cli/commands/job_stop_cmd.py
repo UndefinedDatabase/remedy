@@ -10,9 +10,7 @@ consumed, and is this job actually stopped?
 """
 from __future__ import annotations
 
-import json as _json
-
-from apps.cli.json_envelope import fail
+from apps.cli.json_envelope import emit_ok, fail
 
 EXIT_ERROR = 1
 EXIT_USAGE = 2
@@ -43,7 +41,7 @@ def _print_status(job_id: str, *, json_output: bool) -> None:
     payload["stopped"] = job.state == "stopped"
 
     if json_output:
-        print(_json.dumps(payload, indent=2))
+        emit_ok(**payload)
         return
 
     print(f"Job {job_id} — state: {job.state}")
@@ -119,16 +117,16 @@ def _cmd_job_stop(job_id: str, *, reason: str = "", source: str = "cli",
         pending = stop_requested(job_id)
         if pending is None:
             if json_output:
-                print(_json.dumps({
-                    "ok": True, "already_stopped": True, "job_id": job_id,
-                    "job_status": job.state,
-                    "stop": {
+                emit_ok(
+                    already_stopped=True, job_id=job_id,
+                    job_status=job.state,
+                    stop={
                         "request_id": job.stop_request_id,
                         "reason": job.stop_reason,
                         "source": job.stop_source,
                         "stopped_at": job.stopped_at,
                     },
-                }, indent=2))
+                )
             else:
                 print(f"Job {job_id} is already stopped — no new stop was requested.")
                 print(f"  last stop: {job.stop_request_id or 'unknown'} · reason: "
@@ -154,8 +152,7 @@ def _cmd_job_stop(job_id: str, *, reason: str = "", source: str = "cli",
              json_output=json_output, detail=str(exc), job_id=job_id)
 
     if json_output:
-        print(_json.dumps({"ok": True, "job_id": job_id, "job_status": job.state,
-                           "stop": signal.to_json()}, indent=2))
+        emit_ok(job_id=job_id, job_status=job.state, stop=signal.to_json())
     else:
         print("Stop requested — it will take effect at the next safe point.")
         print(f"  job: {job_id} · request: {signal.request_id} · reason: {signal.reason}")

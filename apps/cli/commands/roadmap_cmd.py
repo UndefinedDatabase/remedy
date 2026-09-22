@@ -12,9 +12,10 @@ the first ``[ ]`` line is next.
 
 from __future__ import annotations
 
-import json
 import sys
 from typing import Any
+
+from apps.cli.json_envelope import emit_ok
 
 
 def _build(args: Any):
@@ -95,7 +96,7 @@ def _cmd_roadmap_status(args: Any) -> None:
             "index_file": str(index_file),
             "started": False,
         }
-        print(json.dumps(payload, indent=2))
+        emit_ok(**payload)
         return
 
     lines: list[str] = []
@@ -125,13 +126,13 @@ def _cmd_roadmap_next(args: Any) -> None:
     feature, reason = proposed_feature(index)
 
     if getattr(args, "json", False):
-        print(json.dumps({
-            "reason": reason,
-            "feature": feature.as_dict() if feature else None,
-            "file": feature.file if feature else "",
-            "index_file": str(index_file),
-            "started": False,
-        }, indent=2))
+        emit_ok(
+            reason=reason,
+            feature=feature.as_dict() if feature else None,
+            file=feature.file if feature else "",
+            index_file=str(index_file),
+            started=False,
+        )
         return
 
     if feature is None:

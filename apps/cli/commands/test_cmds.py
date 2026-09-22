@@ -2,13 +2,12 @@
 
 from __future__ import annotations
 
-import json as _json
 import sys
 from collections.abc import Callable
 from typing import TYPE_CHECKING
 
 from apps.cli.job_id_arg import resolve_job_id_or_fail
-from apps.cli.json_envelope import fail
+from apps.cli.json_envelope import emit_error, emit_ok, fail
 
 if TYPE_CHECKING:
     import argparse
@@ -41,9 +40,14 @@ def _cmd_run_tests(
 
     if as_json:
         from dataclasses import asdict
-        print(_json.dumps(asdict(result)))
+        document = asdict(result)
         if result.status not in ("passed",):
+            # `document` carries `exit_code`, one of `fail()`'s own parameter
+            # names, so this path writes `emit_error` directly (D10 (3)).
+            emit_error("test_run_failed",
+                       result.safe_summary or f"test run {result.status}", **document)
             sys.exit(1)
+        emit_ok(**document)
         return
 
     # Text output — no raw output printed
@@ -173,7 +177,7 @@ def _cmd_discover_commands(job_id_str: str, *, as_json: bool) -> None:
                 "by_risk": by_risk, "total": len(candidates),
             },
         }
-        print(_json.dumps(output))
+        emit_ok(**output)
         return
 
     if not candidates:
@@ -192,8 +196,6 @@ def _cmd_discover_commands(job_id_str: str, *, as_json: bool) -> None:
 
 def _cmd_test_status(job_id_str: str, *, as_json: bool = False) -> None:
     """Show lease state, latest test run, and usage for a job. Read-only."""
-    import json as _json
-
     from packages.orchestration.data_paths import resolve_data_root
     from packages.orchestration.pingpong_job import JobNotFoundError, require_job_plan
     from packages.orchestration.run_contract import ensure_contract, export_usage_json, load_usage
@@ -251,7 +253,7 @@ def _cmd_test_status(job_id_str: str, *, as_json: bool = False) -> None:
     }
 
     if as_json:
-        print(_json.dumps(out_dict))
+        emit_ok(**out_dict)
         return
 
     print(f"Test status for job {job_id_str}")

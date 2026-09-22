@@ -2,12 +2,11 @@
 
 from __future__ import annotations
 
-import json as _json
 from collections.abc import Callable
 from typing import TYPE_CHECKING
 
 from apps.cli.job_id_arg import resolve_job_id_or_fail
-from apps.cli.json_envelope import fail
+from apps.cli.json_envelope import emit_ok, fail
 
 if TYPE_CHECKING:
     import argparse
@@ -68,7 +67,7 @@ def _cmd_snapshot_inspect(job_id_str: str, snapshot_id: str, *, as_json: bool = 
     }
 
     if as_json:
-        print(_json.dumps(out))
+        emit_ok(**out)
         return
 
     print(f"Snapshot {snap.snapshot_id}")
@@ -129,7 +128,7 @@ def _cmd_snapshot_list_applies(job_id_str: str, *, as_json: bool = False) -> Non
     out = {"job_id": job_id_str, "apply_records": records_out}
 
     if as_json:
-        print(_json.dumps(out))
+        emit_ok(**out)
         return
 
     if not records_out:

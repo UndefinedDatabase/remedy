@@ -2,12 +2,11 @@
 
 from __future__ import annotations
 
-import json as _json
 from collections.abc import Callable
 from typing import TYPE_CHECKING
 
 from apps.cli.job_id_arg import resolve_job_id_or_fail
-from apps.cli.json_envelope import fail
+from apps.cli.json_envelope import emit_ok, fail
 from packages.orchestration.data_paths import resolve_data_root
 from packages.orchestration.pingpong_job import JobNotFoundError, require_job_plan
 
@@ -63,7 +62,7 @@ def _cmd_change_list(
         fail("invalid_list_option", str(exc), json_output=json_output)
 
     if json_output:
-        print(_json.dumps(export_change_list_json(str(job_id), changes), sort_keys=True))
+        emit_ok(**export_change_list_json(str(job_id), changes))
     else:
         print(summarize_change_list(changes))
 
@@ -92,7 +91,7 @@ def _cmd_change_show(job_id_str: str, intent_id: str, *, json_output: bool = Fal
              json_output=json_output)
 
     if json_output:
-        print(_json.dumps(export_change_show_json(str(job_id), entry), sort_keys=True))
+        emit_ok(**export_change_show_json(str(job_id), entry))
     else:
         print(summarize_change_show(entry))
 
@@ -123,7 +122,7 @@ def _cmd_change_proof(job_id_str: str, *, path: str | None = None, json_output: 
     chain = build_proof_chain(job, events, path=path, data_dir=data_dir)
 
     if json_output:
-        print(_json.dumps(export_proof_chain_json(chain), sort_keys=True))
+        emit_ok(**export_proof_chain_json(chain))
     else:
         print(summarize_proof_chain(chain))
 

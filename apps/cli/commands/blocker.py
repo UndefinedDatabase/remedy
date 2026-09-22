@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json as _json
 from collections.abc import Callable
 from typing import TYPE_CHECKING
 
@@ -45,11 +44,11 @@ def _cmd_blocker_list(
         fail("invalid_list_option", str(exc), json_output=json_output)
 
     if json_output:
-        print(_json.dumps({
-            "version": 1,
-            "job_id": job_id_str,
-            "stop_reasons": [export_stop_reason_json(s) for s in stops],
-        }, sort_keys=True))
+        emit_ok(
+            version=1,
+            job_id=job_id_str,
+            stop_reasons=[export_stop_reason_json(s) for s in stops],
+        )
     else:
         if not stops:
             print(f"No blockers for job {job_id_str[:8]}.")
@@ -77,11 +76,11 @@ def _cmd_blocker_show(
              json_output=json_output)
 
     if json_output:
-        print(_json.dumps({
-            "version": 1,
-            "job_id": job_id_str,
-            "stop_reason": export_stop_reason_json(sr),
-        }, sort_keys=True))
+        emit_ok(
+            version=1,
+            job_id=job_id_str,
+            stop_reason=export_stop_reason_json(sr),
+        )
     else:
         print(f"Blocker: {sr.id}")
         print(f"  Code: {sr.reason_code}")

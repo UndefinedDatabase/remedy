@@ -298,16 +298,6 @@ class TestRawJSONDocumentSitesRatchet:
         "apps/cli/commands/memory.py": 4,
         "apps/cli/commands/patch.py": 4,
         "apps/cli/commands/stats_ledger_cmd.py": 4,
-        "apps/cli/commands/bench_cmd.py": 3,
-        "apps/cli/commands/change.py": 3,
-        "apps/cli/commands/job_stop_cmd.py": 3,
-        "apps/cli/commands/test_cmds.py": 3,
-        "apps/cli/commands/blocker.py": 2,
-        "apps/cli/commands/contract_cmd.py": 2,
-        "apps/cli/commands/data_cmd.py": 2,
-        "apps/cli/commands/decision.py": 2,
-        "apps/cli/commands/roadmap_cmd.py": 2,
-        "apps/cli/commands/snapshot_cmds.py": 2,
         "apps/cli/commands/teacher_cmd.py": 2,
         "apps/cli/commands/dev.py": 1,
         "apps/cli/commands/failure_stats_cmd.py": 1,
@@ -324,4 +314,4 @@ class TestRawJSONDocumentSitesRatchet:
         assert _raw_json_document_sites_by_module() == self.RAW_SITES_BY_MODULE
 
     def test_the_pinned_total_is_the_measured_total(self) -> None:
-        assert sum(self.RAW_SITES_BY_MODULE.values()) == 122
+        assert sum(self.RAW_SITES_BY_MODULE.values()) == 98
