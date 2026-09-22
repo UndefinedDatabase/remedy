@@ -967,3 +967,43 @@ class TestRevertEvidenceStatus:
         assert result.snapshot_state_persisted is True
         assert result.event_evidence_status == "complete"
         assert result.evidence_warnings == []
+
+
+class TestApplyRecordStateIsDurable:
+    """F278 T002: the state update goes through `durable_write`, and a failed write answers
+    False with the record left exactly as it was."""
+
+    def _seed(self, data_dir):
+        save_durable_apply_record(DurableApplyRecord(
+            apply_id=APPLY_ID, job_id=JOB_ID, intent_id=INTENT_ID,
+            snapshot_id="s1", state="applied", target_paths=["f.py"],
+            applied_at="2026-06-12T10:00:00+00:00",
+            before_proof={}, after_proof={}, snapshot_verified=True,
+        ), JOB_ID, data_dir)
+
+    def test_the_update_is_written_through_durable_write(self, tmp_env, monkeypatch):
+        from packages.orchestration import repository_snapshot as rs
+        _, data_dir = tmp_env
+        self._seed(data_dir)
+        seen: list[str] = []
+        real = rs.durable_write
+
+        def recording(path, data, **kw):
+            seen.append(Path(path).name)
+            real(path, data, **kw)
+
+        monkeypatch.setattr(rs, "durable_write", recording)
+        assert rs.update_apply_record_state(JOB_ID, APPLY_ID, "tested_passed", data_dir) is True
+        assert seen == [f"{APPLY_ID}.json"]
+
+    def test_a_failed_write_answers_false_and_keeps_the_record(self, tmp_env, monkeypatch):
+        from packages.orchestration import repository_snapshot as rs
+        _, data_dir = tmp_env
+        self._seed(data_dir)
+
+        def failing(path, data, **kw):
+            raise OSError("disk full")
+
+        monkeypatch.setattr(rs, "durable_write", failing)
+        assert rs.update_apply_record_state(JOB_ID, APPLY_ID, "tested_passed", data_dir) is False
+        assert load_durable_apply_record(APPLY_ID, JOB_ID, data_dir).state == "applied"

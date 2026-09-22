@@ -42,6 +42,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 from uuid import uuid4
 
+from packages.common.secure_fs import durable_write
 from packages.orchestration.data_paths import resolve_data_root
 
 if TYPE_CHECKING:
@@ -1012,7 +1013,7 @@ def update_apply_record_state(
 ) -> bool:
     """Canonically update a DurableApplyRecord's state (Step 1163).
 
-    - Atomic write (temp file + os.replace) — no torn records.
+    - Durable write (`secure_fs.durable_write`) — no torn records.
     - Legal transitions only; impossible transitions are rejected without
       mutating the record. Repeated transitions are idempotent.
     - State history is recorded as safe (state, timestamp) codes — no content.
@@ -1053,23 +1054,11 @@ def update_apply_record_state(
         })
     data["state_history"] = history[-50:]  # bounded
 
-    tmp_path = record_path.with_suffix(".json.tmp")
     try:
-        tmp_path.write_bytes(
-            json.dumps(data, indent=2, sort_keys=True).encode("utf-8")
-        )
-        try:
-            os.chmod(tmp_path, stat.S_IRUSR | stat.S_IWUSR)
-        except OSError:
-            pass
-        os.replace(tmp_path, record_path)
-        return True
+        durable_write(record_path, json.dumps(data, indent=2, sort_keys=True).encode("utf-8"))
     except OSError:
-        try:
-            tmp_path.unlink()
-        except OSError:
-            pass
         return False
+    return True
 
 
 # ---------------------------------------------------------------------------
