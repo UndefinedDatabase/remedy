@@ -407,7 +407,7 @@ def compile_mission_plan(
             on_call=on_call,
             allow_parse_retry=True,
         )
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001 — composition or provider failure degrades to the deterministic fallback
         return _fallback(goal, hint=f"provider error: {exc}")
 
     if not outcome.ok:

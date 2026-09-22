@@ -520,7 +520,7 @@ def normalize_plan(
         # Constructing the model IS the revalidation: TaskPlan's own
         # _validate_dag runs here. No validation logic is copied.
         new_plan = TaskPlan(**data)
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001 — revalidation failure falls back to the pre-normalization plan
         # Fail open to the plan the human is about to approve, never to a
         # broken one — and say so in the record.
         return NormalizationResult(

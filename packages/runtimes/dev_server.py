@@ -1349,7 +1349,7 @@ class LogPump:
                 written += len(chunk)
                 if written > self.max_bytes:
                     written = self._trim(out)
-        except Exception as exc:            # surfaced, never swallowed
+        except Exception as exc:  # noqa: BLE001 — the read/write failure is captured and surfaced, never swallowed
             self.error = f"{type(exc).__name__}: {exc}"
         finally:
             self.started.set()
@@ -1585,7 +1585,7 @@ class DevServer:
             try:
                 save_state(keep)
                 rollback["partial_state_removed"] = False
-            except Exception as exc:
+            except Exception as exc:  # noqa: BLE001 — state-persist failure is appended to the reported stop error
                 rollback["stop_error"] += f"; state not persisted: {exc}"
         return rollback
 

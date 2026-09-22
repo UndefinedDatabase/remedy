@@ -469,7 +469,7 @@ def plan_job_llm(
             on_call=on_call,
             allow_parse_retry=True,
         )
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001 — provider call failure is reported as a task-plan error, not raised
         return TaskPlanResult(
             plan=None, source="llm", error_hint=f"provider error: {exc}")
 
@@ -489,7 +489,7 @@ def plan_job_llm(
         normalized = normalize_plan(plan, granularity or granularity_config())
         plan = normalized.plan
         transformations = normalized.as_dicts()
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001 — misconfigured thresholds must not lose an otherwise valid plan
         # Misconfigured thresholds must not lose a valid plan; same fail-open
         # rule the normalizer applies to its own revalidation.
         transformations = [{

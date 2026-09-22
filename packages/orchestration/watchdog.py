@@ -520,7 +520,7 @@ def act_on_trips(
                       "the mission"))
         try:
             job = require_job_plan(normalize_job_id(link.job_id))
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 — an unreadable job is reported as a trip note, not a crash
             return TripAction(
                 trip=trip,
                 note=f"the mission's latest job could not be read: {exc}")

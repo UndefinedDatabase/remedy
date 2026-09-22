@@ -249,7 +249,7 @@ def run_intake(
             on_call=on_call,
             allow_parse_retry=True,
         )
-    except Exception:
+    except Exception:  # noqa: BLE001 — provider failure falls back to the heuristic intake
         result = heuristic_intake(mission)
         result.error_hint = "provider error"
         return result
@@ -383,7 +383,7 @@ def make_structured_call_fn(
                 ClaudeCliPlanner(model=planner_model)
                 if planner_model else ClaudeCliPlanner()
             )
-        except Exception:
+        except Exception:  # noqa: BLE001 — unreachable planner is reported as absent, not a crash
             return None
         if not shutil.which("claude"):
             return None
@@ -394,13 +394,13 @@ def make_structured_call_fn(
                 OllamaPlanner(model=planner_model)
                 if planner_model else OllamaPlanner()
             )
-        except Exception:
+        except Exception:  # noqa: BLE001 — unreachable planner is reported as absent, not a crash
             return None
 
         try:
             import ollama
             ollama.Client(host=planner.host).list()
-        except Exception:
+        except Exception:  # noqa: BLE001 — ollama server not reachable; report the planner as absent
             return None
 
     schema = to_json_schema(model_cls)

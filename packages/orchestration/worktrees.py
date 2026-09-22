@@ -743,7 +743,7 @@ def remove(handle: WorktreeHandle, *, keep_branch: bool = True) -> dict[str, Any
         if not keep_branch:
             _git(root, "branch", "-D", handle.branch, check=False)
             branch_kept = False
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001 — cleanup failure is reported through the result's error field, not raised
         error = f"{type(exc).__name__}: {exc}"
     finally:
         release_lock(handle)             # always claimable again
@@ -754,7 +754,7 @@ def remove(handle: WorktreeHandle, *, keep_branch: bool = True) -> dict[str, Any
         try:
             still_there = path.exists()
             still_registered = _worktree_registered(root, path)
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 — verification failure is reported as a cleanup error
             error = f"cleanup verification failed: {type(exc).__name__}: {exc}"
     if not error:
         if still_there:

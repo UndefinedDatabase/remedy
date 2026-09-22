@@ -208,7 +208,7 @@ def git_tracked_status(path: str, repo_root: str) -> tuple[str, str]:
         return "GIT_UNAVAILABLE", "git executable not found"
     except subprocess.TimeoutExpired:
         return "GIT_TIMED_OUT", "git ls-files timed out"
-    except Exception as exc:                               # pragma: no cover - defensive
+    except Exception as exc:  # noqa: BLE001 — unclassified git failure blocks publish  # pragma: no cover - defensive
         return "GIT_FAILED", f"{type(exc).__name__}: {str(exc)[:100]}"
     if r.returncode == 0:
         return "TRACKED", ""

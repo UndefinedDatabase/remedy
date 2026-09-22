@@ -121,7 +121,7 @@ def _safe_update_persisted_run(run_id: str, patch: dict[str, Any]) -> str:
     try:
         _update_persisted_run(run_id, patch)
         return ""
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001 — persistence failure is reported as text, never raised
         return f"{type(exc).__name__}: {exc}"
 
 
@@ -214,7 +214,7 @@ def prepare_worktree_resume(run_id: str) -> tuple[WorktreeResumeSession | None,
         return _block("worktree lock is held by another process (run still active)")
     except W.WorktreeError as exc:
         return _block(f"worktree recovery failed: {exc}")
-    except Exception as exc:      # recovery released its lock; block honestly
+    except Exception as exc:  # noqa: BLE001 — recovery failure blocks resume; the lock was already freed
         return _block(f"worktree recovery failed: {type(exc).__name__}: {exc}")
 
     if handle is None:
@@ -287,7 +287,7 @@ def prepare_worktree_resume(run_id: str) -> tuple[WorktreeResumeSession | None,
     try:
         outcome.head = W.snapshot(handle)
         info = W.write_result_diff(handle, _run_dir(run_id) / "result.diff")
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001 — hand-off diff could not be saved; retain the worktree and block
         # Preparing the hand-off failed. Keep the worktree and its uncommitted
         # changes, release the lock, and block: never continue into a workspace
         # whose diff we could not preserve.
@@ -341,7 +341,7 @@ def finalize_worktree_resume(session: WorktreeResumeSession) -> WorktreeResumeOu
     try:
         outcome.head = W.snapshot(handle)
         info = W.write_result_diff(handle, _run_dir(run_id) / "result.diff")
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001 — final diff could not be saved; retain the worktree for recovery
         return _retain(f"final diff not persisted: {type(exc).__name__}: {exc}")
 
     outcome.result_diff_sha256 = info["sha256"]
@@ -362,7 +362,7 @@ def finalize_worktree_resume(session: WorktreeResumeSession) -> WorktreeResumeOu
 
     try:
         res = W.remove(handle, keep_branch=True)          # never a merge
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001 — cleanup failure retains the worktree instead of losing the work
         return _retain(f"worktree cleanup failed: {type(exc).__name__}: {exc}")
 
     outcome.cleanup_status = res["cleanup_status"]

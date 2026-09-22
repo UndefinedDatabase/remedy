@@ -323,7 +323,7 @@ def _inspect(job_id: str, task_id: str, data_dir: Path) -> Any:
         job = load_job_plan(normalize_job_id(job_id), data_dir)
         events = load_run_events(data_dir, job.job_id)
         return inspect_context(job, events, task_id=task_id or None)
-    except Exception:
+    except Exception:  # noqa: BLE001 — context inspection is best effort; any failure means no inspection
         # Best-effort read-only helper — any failure (missing job, import, parse) → no inspection.
         return None
 
@@ -649,7 +649,7 @@ def routing_token_hint(job_id: str, *, task_type: str = "repair",
             "next_safe_action": d.next_safe_action,
             "estimated": True,
         }
-    except Exception:
+    except Exception:  # noqa: BLE001 — on any failure returns a safe unknown hint, never a cheap one
         return {"estimated_token_band": TokenBand.UNKNOWN, "estimated_cost_band": TokenBand.UNKNOWN,
                 "budget_status": BudgetStatus.UNKNOWN, "context_pack_kind": "",
                 "requires_human_approval": True, "token_budget_warning": "",
