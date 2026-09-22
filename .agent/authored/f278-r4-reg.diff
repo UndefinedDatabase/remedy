@@ -1,0 +1,89 @@
+diff --git a/packages/orchestration/project_registry.py b/packages/orchestration/project_registry.py
+index ed19003c..7e2eda14 100644
+--- a/packages/orchestration/project_registry.py
++++ b/packages/orchestration/project_registry.py
+@@ -46,7 +46,6 @@ import logging
+ import os
+ import re
+ import subprocess
+-import tempfile
+ from datetime import datetime, timezone
+ from pathlib import Path
+ from typing import Any
+@@ -54,6 +53,7 @@ from uuid import UUID, uuid4
+ 
+ from pydantic import BaseModel, Field
+ 
++from packages.common.secure_fs import durable_write
+ from packages.orchestration.data_paths import projects_dir as _projects_dir
+ 
+ _log = logging.getLogger(__name__)
+@@ -182,7 +182,7 @@ def _validate_slug(slug: str | None, project_id: UUID) -> None:
+ 
+ 
+ def save_project(project: RemyProject) -> None:
+-    """Persist a RemyProject to disk as JSON (atomic: temp file + os.replace).
++    """Persist a RemyProject to disk as JSON (`secure_fs.durable_write`).
+ 
+     When slug is None, auto-derives one from: canonical_repo_path dir name,
+     then repo_paths[0] dir name, then project.name. Validates slug contract:
+@@ -199,18 +199,7 @@ def save_project(project: RemyProject) -> None:
+     _validate_slug(project.slug, project.id)
+     d = _projects_dir()
+     d.mkdir(parents=True, exist_ok=True)
+-    target = d / f"{project.id}.json"
+-    fd, tmp_path = tempfile.mkstemp(dir=str(d), suffix=".tmp")
+-    try:
+-        with os.fdopen(fd, "w", encoding="utf-8") as f:
+-            f.write(project.model_dump_json(indent=2))
+-        os.replace(tmp_path, str(target))
+-    except BaseException:
+-        try:
+-            os.unlink(tmp_path)
+-        except OSError:
+-            pass
+-        raise
++    durable_write(d / f"{project.id}.json", project.model_dump_json(indent=2))
+ 
+ 
+ def _project_set_readonly() -> list[RemyProject]:
+diff --git a/tests/test_project_registry.py b/tests/test_project_registry.py
+index 4675b9f8..339baf83 100644
+--- a/tests/test_project_registry.py
++++ b/tests/test_project_registry.py
+@@ -423,3 +423,35 @@ class TestProjectNotFoundError:
+         uid = uuid4()
+         err = ProjectNotFoundError(uid)
+         assert err.project_id == uid
++
++
++class TestSaveIsDurable:
++    """F278 T002: a project record goes through `durable_write`, and a failed write raises."""
++
++    def test_the_record_is_written_through_durable_write(self, tmp_path, monkeypatch):
++        from packages.orchestration import project_registry as pr
++        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
++        seen: list[str] = []
++        real = pr.durable_write
++
++        def recording(path, data, **kw):
++            seen.append(path.name)
++            real(path, data, **kw)
++
++        monkeypatch.setattr(pr, "durable_write", recording)
++        p = _make_project()
++        save_project(p)
++        assert seen == [f"{p.id}.json"]
++        assert load_project(p.id).id == p.id
++
++    def test_a_failed_write_raises_and_leaves_nothing(self, tmp_path, monkeypatch):
++        from packages.orchestration import project_registry as pr
++        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
++
++        def failing(path, data, **kw):
++            raise OSError("disk full")
++
++        monkeypatch.setattr(pr, "durable_write", failing)
++        with pytest.raises(OSError, match="disk full"):
++            save_project(_make_project())
++        assert list((tmp_path / "projects").iterdir()) == []

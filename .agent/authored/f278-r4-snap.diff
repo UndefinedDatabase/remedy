@@ -1,0 +1,95 @@
+diff --git a/packages/orchestration/repository_snapshot.py b/packages/orchestration/repository_snapshot.py
+index 3b885492..3014c3de 100644
+--- a/packages/orchestration/repository_snapshot.py
++++ b/packages/orchestration/repository_snapshot.py
+@@ -42,6 +42,7 @@ from pathlib import Path
+ from typing import TYPE_CHECKING, Any
+ from uuid import uuid4
+ 
++from packages.common.secure_fs import durable_write
+ from packages.orchestration.data_paths import resolve_data_root
+ 
+ if TYPE_CHECKING:
+@@ -1012,7 +1013,7 @@ def update_apply_record_state(
+ ) -> bool:
+     """Canonically update a DurableApplyRecord's state (Step 1163).
+ 
+-    - Atomic write (temp file + os.replace) — no torn records.
++    - Durable write (`secure_fs.durable_write`) — no torn records.
+     - Legal transitions only; impossible transitions are rejected without
+       mutating the record. Repeated transitions are idempotent.
+     - State history is recorded as safe (state, timestamp) codes — no content.
+@@ -1053,23 +1054,11 @@ def update_apply_record_state(
+         })
+     data["state_history"] = history[-50:]  # bounded
+ 
+-    tmp_path = record_path.with_suffix(".json.tmp")
+     try:
+-        tmp_path.write_bytes(
+-            json.dumps(data, indent=2, sort_keys=True).encode("utf-8")
+-        )
+-        try:
+-            os.chmod(tmp_path, stat.S_IRUSR | stat.S_IWUSR)
+-        except OSError:
+-            pass
+-        os.replace(tmp_path, record_path)
+-        return True
++        durable_write(record_path, json.dumps(data, indent=2, sort_keys=True).encode("utf-8"))
+     except OSError:
+-        try:
+-            tmp_path.unlink()
+-        except OSError:
+-            pass
+         return False
++    return True
+ 
+ 
+ # ---------------------------------------------------------------------------
+diff --git a/tests/orchestration/test_repository_snapshot.py b/tests/orchestration/test_repository_snapshot.py
+index 9619a205..7a108cad 100644
+--- a/tests/orchestration/test_repository_snapshot.py
++++ b/tests/orchestration/test_repository_snapshot.py
+@@ -967,3 +967,43 @@ class TestRevertEvidenceStatus:
+         assert result.snapshot_state_persisted is True
+         assert result.event_evidence_status == "complete"
+         assert result.evidence_warnings == []
++
++
++class TestApplyRecordStateIsDurable:
++    """F278 T002: the state update goes through `durable_write`, and a failed write answers
++    False with the record left exactly as it was."""
++
++    def _seed(self, data_dir):
++        save_durable_apply_record(DurableApplyRecord(
++            apply_id=APPLY_ID, job_id=JOB_ID, intent_id=INTENT_ID,
++            snapshot_id="s1", state="applied", target_paths=["f.py"],
++            applied_at="2026-06-12T10:00:00+00:00",
++            before_proof={}, after_proof={}, snapshot_verified=True,
++        ), JOB_ID, data_dir)
++
++    def test_the_update_is_written_through_durable_write(self, tmp_env, monkeypatch):
++        from packages.orchestration import repository_snapshot as rs
++        _, data_dir = tmp_env
++        self._seed(data_dir)
++        seen: list[str] = []
++        real = rs.durable_write
++
++        def recording(path, data, **kw):
++            seen.append(Path(path).name)
++            real(path, data, **kw)
++
++        monkeypatch.setattr(rs, "durable_write", recording)
++        assert rs.update_apply_record_state(JOB_ID, APPLY_ID, "tested_passed", data_dir) is True
++        assert seen == [f"{APPLY_ID}.json"]
++
++    def test_a_failed_write_answers_false_and_keeps_the_record(self, tmp_env, monkeypatch):
++        from packages.orchestration import repository_snapshot as rs
++        _, data_dir = tmp_env
++        self._seed(data_dir)
++
++        def failing(path, data, **kw):
++            raise OSError("disk full")
++
++        monkeypatch.setattr(rs, "durable_write", failing)
++        assert rs.update_apply_record_state(JOB_ID, APPLY_ID, "tested_passed", data_dir) is False
++        assert load_durable_apply_record(APPLY_ID, JOB_ID, data_dir).state == "applied"
