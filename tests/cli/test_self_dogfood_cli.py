@@ -42,6 +42,9 @@ def test_inspect_no_job(env):
     r = run_grouped_cli(["self", "inspect", "--json"], env)
     assert r.returncode == 0, r.stderr
     d = json.loads(r.stdout)
+    # F283 R19 C5 (DECISION F283 D10) — `emit_ok` adds `schema_version` and `ok`.
+    assert d["schema_version"] == 1
+    assert d["ok"] is True
     assert "item_count" in d
     assert "Traceback" not in r.stdout and "Traceback" not in r.stderr
 

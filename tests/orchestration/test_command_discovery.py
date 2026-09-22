@@ -140,7 +140,9 @@ class TestWorkerUnloadExactSchemaEdgeCases:
             with patch("builtins.print") as mock_print:
                 _cmd_worker_unload(provider="ollama", unload_all=True, json_output=True)
                 data = json.loads(mock_print.call_args[0][0])
+                # F283 R19 C5 (DECISION F283 D10) — `emit_ok` adds `schema_version` and `ok`.
                 assert set(data.keys()) == {
+                    "schema_version", "ok",
                     "version", "provider", "attempted",
                     "stopped", "skipped", "errors", "unavailable",
                 }

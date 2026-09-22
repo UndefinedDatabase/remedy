@@ -791,7 +791,9 @@ class TestProjectContextCLI:
         save_project(p)
         _cmd_project_context(str(p.id), json_output=True)
         d = json.loads(capsys.readouterr().out)
-        assert set(d.keys()) == _EXPECTED_TOP_KEYS
+        # F283 R19 C5 (DECISION F283 D10) — `emit_ok` adds `schema_version` and `ok`
+        # on top of `export_project_context_coverage_json`'s own keys.
+        assert set(d.keys()) == {"schema_version", "ok", *_EXPECTED_TOP_KEYS}
 
     def test_json_scope_is_project(self, tmp_path, monkeypatch, capsys):
         self._env(tmp_path, monkeypatch)

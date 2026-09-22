@@ -284,14 +284,16 @@ class TestRawJSONDocumentSitesRatchet:
     text-branch survivors of D10 (5), each with its reason in a comment."""
 
     RAW_SITES_BY_MODULE = {
-        "apps/cli/commands/self_cmd.py": 8,
-        "apps/cli/commands/project.py": 7,
-        "apps/cli/commands/config_cmd.py": 6,
-        "apps/cli/commands/worker.py": 6,
+        # DECISION F283 D10 (5) — a raw document printed WITHOUT `--json`, in a
+        # text branch, is out of scope. `_cmd_project_attach_repo` ("project
+        # attach") prints this JSON document unconditionally in its non-JSON
+        # branch, below the `if json_output: emit_ok(...); return` above it,
+        # so this is the one text-branch survivor D10 (6) names.
+        "apps/cli/commands/project.py": 1,
     }
 
     def test_the_pinned_counts_match_the_scan(self) -> None:
         assert _raw_json_document_sites_by_module() == self.RAW_SITES_BY_MODULE
 
     def test_the_pinned_total_is_the_measured_total(self) -> None:
-        assert sum(self.RAW_SITES_BY_MODULE.values()) == 27
+        assert sum(self.RAW_SITES_BY_MODULE.values()) == 1

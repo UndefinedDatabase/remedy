@@ -58,13 +58,13 @@ def _cmd_list_projects(
     except ListOptionError as exc:
         fail("invalid_list_option", str(exc), json_output=json_output)
     if json_output:
-        print(_json.dumps({
-            "version": 1,
-            "project_count": len(projects),
-            "projects": [{"id": str(p.id), "slug": p.slug or "", "name": p.name,
-                          "description": p.description or "",
-                          "created_at": p.created_at.isoformat()} for p in projects],
-        }, sort_keys=True))
+        emit_ok(
+            version=1,
+            project_count=len(projects),
+            projects=[{"id": str(p.id), "slug": p.slug or "", "name": p.name,
+                      "description": p.description or "",
+                      "created_at": p.created_at.isoformat()} for p in projects],
+        )
         return
     if not projects:
         print("No projects found.")
@@ -98,7 +98,7 @@ def _cmd_show_project(project_id_str: str, *, json_output: bool = False) -> None
     all_jobs = list_job_plans()
     linked_jobs = [j for j in all_jobs if str(j.job_id) in project.job_ids]
     if json_output:
-        print(_json.dumps(export_project_json(project, linked_jobs), indent=2))
+        emit_ok(**export_project_json(project, linked_jobs))
     else:
         print(summarize_project(project, linked_jobs))
 
@@ -203,7 +203,7 @@ def _cmd_project_context(project_id_str: str, *, json_output: bool = False) -> N
     snapshot = derive_project_context_coverage(project, linked_jobs)
 
     if json_output:
-        print(_json.dumps(export_project_context_coverage_json(snapshot), sort_keys=True))
+        emit_ok(**export_project_context_coverage_json(snapshot))
     else:
         print(summarize_project_context_coverage(snapshot))
 
@@ -258,7 +258,7 @@ def _cmd_project_brain(project_id_str: str, *, json_output: bool = False) -> Non
     )
 
     if json_output:
-        print(_json.dumps(export_project_brain_aggregate_json(agg), sort_keys=True))
+        emit_ok(**export_project_brain_aggregate_json(agg))
     else:
         print(summarize_project_brain_aggregate(agg))
 
@@ -312,7 +312,7 @@ def _cmd_project_summary(project_id_str: str, *, json_output: bool = False) -> N
     ]
 
     if json_output:
-        print(_json.dumps(export_project_summary_json(summary), sort_keys=True))
+        emit_ok(**export_project_summary_json(summary))
     else:
         print(f"Project: {project.name} ({project_id_str[:8]})")
         print(f"Jobs: {summary.job_count} (active={summary.active_job_count}, completed={summary.completed_job_count}, blocked={summary.blocked_job_count})")
@@ -366,13 +366,13 @@ def _cmd_project_current(
             sys.exit(3)
 
     if json_output:
-        print(_json.dumps({
-            "project_id": str(project.id),
-            "slug": project.slug,
-            "repo": project.canonical_repo_path,
-            "job_count": len(project.job_ids),
-            "selection_source": source,
-        }, indent=2))
+        emit_ok(
+            project_id=str(project.id),
+            slug=project.slug,
+            repo=project.canonical_repo_path,
+            job_count=len(project.job_ids),
+            selection_source=source,
+        )
     else:
         print(f"slug  : {project.slug}")
         print(f"id    : {project.id}")

@@ -25,9 +25,14 @@ class TestConfigCli:
     def test_config_list_json(self):
         r = subprocess.run([*_CLI, "config", "list", "--json"], capture_output=True, text=True, timeout=30)
         assert r.returncode == 0
-        data = json.loads(r.stdout)
-        assert isinstance(data, list)
-        keys = {e["key"] for e in data}
+        body = json.loads(r.stdout)
+        # F283 R19 C5 (DECISION F283 D10 (4)) — the old bare list is now the
+        # envelope's `entries` key.
+        assert body["schema_version"] == 1
+        assert body["ok"] is True
+        entries = body["entries"]
+        assert isinstance(entries, list)
+        keys = {e["key"] for e in entries}
         assert "ollama.host" in keys
         assert "data_dir" in keys
         assert "ui.host" in keys
@@ -35,9 +40,10 @@ class TestConfigCli:
     def test_config_show_alias(self):
         r = subprocess.run([*_CLI, "config", "show", "--json"], capture_output=True, text=True, timeout=30)
         assert r.returncode == 0
-        data = json.loads(r.stdout)
-        assert isinstance(data, list)
-        assert any(e["key"] == "ollama.host" for e in data)
+        body = json.loads(r.stdout)
+        entries = body["entries"]
+        assert isinstance(entries, list)
+        assert any(e["key"] == "ollama.host" for e in entries)
 
     def test_config_get(self):
         r = subprocess.run([*_CLI, "config", "get", "ollama.host"], capture_output=True, text=True, timeout=30)
@@ -177,7 +183,7 @@ class TestConfigCli:
         )
         assert r.returncode == 0
         data = json.loads(r.stdout)
-        assert len(data) == 1
+        assert len(data["entries"]) == 1
 
     def test_config_list_unknown_sort_field_exits_nonzero(self):
         """F283 R12 C3 — `invalid_list_option` used to print to stderr regardless of

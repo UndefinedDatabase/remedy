@@ -111,12 +111,17 @@ class TestProjectCurrentCommand:
         _cmd_project_current(json_output=True)
         out = capsys.readouterr().out
         data = json.loads(out)
+        # F283 R19 C5 (DECISION F283 D10) — `emit_ok` adds `schema_version` and `ok`.
+        assert data["schema_version"] == 1
+        assert data["ok"] is True
         assert data["project_id"] == str(p.id)
         assert data["slug"] == "myrepo"
         assert data["repo"] == str(repo.resolve())
         assert data["job_count"] == 3
         assert data["selection_source"] == "cwd"
-        assert set(data.keys()) == {"project_id", "slug", "repo", "job_count", "selection_source"}
+        assert set(data.keys()) == {
+            "schema_version", "ok",
+            "project_id", "slug", "repo", "job_count", "selection_source"}
 
     def test_exit_3_when_unresolved(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))

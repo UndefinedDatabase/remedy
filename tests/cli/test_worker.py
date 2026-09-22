@@ -32,6 +32,9 @@ class TestWorkerDoctor:
         from apps.cli.commands.worker import _cmd_worker_doctor
         _cmd_worker_doctor(json_output=True)
         out = json.loads(capsys.readouterr().out)
+        # F283 R19 C5 (DECISION F283 D10) — `emit_ok` adds `schema_version` and `ok`.
+        assert out["schema_version"] == 1
+        assert out["ok"] is True
         assert out["ready"] is True
         assert out["blockers"] == []
         check_names = {c["check"] for c in out["checks"]}

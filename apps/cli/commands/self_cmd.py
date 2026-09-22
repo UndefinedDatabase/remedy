@@ -6,11 +6,10 @@ through the existing approval flow). No apply, no approval, no execution, no git
 
 from __future__ import annotations
 
-import json
 from collections.abc import Callable
 from typing import TYPE_CHECKING, Any
 
-from apps.cli.json_envelope import fail
+from apps.cli.json_envelope import emit_ok, fail
 
 if TYPE_CHECKING:
     import argparse
@@ -24,7 +23,7 @@ def _cmd_self_inspect(args: Any) -> None:
     insp = build_self_dogfood_inspection(getattr(args, "job_id", None))
     data = export_inspection_json(insp)
     if getattr(args, "json", False):
-        print(json.dumps(data, indent=2))
+        emit_ok(**data)
         return
     print(f"Self-dogfood inspect: {data['repository_identity']}")
     print(f"  items: {data['item_count']}  blockers: {len(data['blockers'])}  "
@@ -44,7 +43,7 @@ def _cmd_self_plan(args: Any) -> None:
     plan = build_self_improvement_plan(getattr(args, "job_id", None))
     data = export_plan_json(plan)
     if getattr(args, "json", False):
-        print(json.dumps(data, indent=2))
+        emit_ok(**data)
         return
     print(f"Self-improvement plan: {data['item_count']} item(s) in {len(data['groups'])} group(s)")
     for it in data["recommended"]:
@@ -67,7 +66,7 @@ def _cmd_self_propose(args: Any) -> None:
     result = propose_self_improvement(args.job_id, item_ids=item_ids, top=top)
     data = export_result_json(result)
     if getattr(args, "json", False):
-        print(json.dumps(data, indent=2))
+        emit_ok(**data)
         return
     print(f"Self-propose: {data['stop_reason']}")
     print(f"  proposed: {len(data['proposed_task_ids'])}  skipped: {len(data['skipped_existing'])}")
@@ -91,7 +90,7 @@ def _cmd_self_report(args: Any) -> None:
         for a in attempts
     ]
     if getattr(args, "json", False):
-        print(json.dumps(data, indent=2))
+        emit_ok(**data)
         return
     md = render_report_markdown(data)
     if attempts:
@@ -109,7 +108,7 @@ def _cmd_self_execute(args: Any) -> None:
     result = start_self_execution(args.proposed_task_id, getattr(args, "job_id", None))
     data = export_result_json(result)
     if getattr(args, "json", False):
-        print(json.dumps(data, indent=2))
+        emit_ok(**data)
         return
     print(f"Self execute: {data['state']}  stop: {data['stop_reason']}")
     if data["request_package_id"]:
@@ -124,7 +123,7 @@ def _cmd_self_status(args: Any) -> None:
     attempts = [get_attempt(attempt_id)] if attempt_id else list_attempts()
     attempts = [a for a in attempts if a]
     if getattr(args, "json", False):
-        print(json.dumps({"attempts": attempts}, indent=2))
+        emit_ok(attempts=attempts)
         return
     print(f"Self attempts: {len(attempts)}")
     for a in attempts:
@@ -139,7 +138,7 @@ def _cmd_self_reconcile(args: Any) -> None:
     )
     data = export_result_json(reconcile_self_attempt(args.attempt_id))
     if getattr(args, "json", False):
-        print(json.dumps(data, indent=2))
+        emit_ok(**data)
         return
     print(f"Self reconcile: {data['state']}  stop: {data['stop_reason']}  proof: {data['proof_status']}")
     if data["next_safe_action"]:
@@ -150,7 +149,7 @@ def _cmd_self_integrity(args: Any) -> None:
     from packages.orchestration.self_dogfood_execution import self_integrity_check
     data = self_integrity_check()
     if getattr(args, "json", False):
-        print(json.dumps(data, indent=2))
+        emit_ok(**data)
         return
     print(f"Self integrity: passed={data['passed']}  attempts={data['attempt_count']}  "
           f"issues={data['issue_count']}")
