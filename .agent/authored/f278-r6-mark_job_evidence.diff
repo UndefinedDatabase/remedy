@@ -1,0 +1,260 @@
+diff --git a/packages/orchestration/job_evidence.py b/packages/orchestration/job_evidence.py
+index 44ff0c6b..8a6186ce 100644
+--- a/packages/orchestration/job_evidence.py
++++ b/packages/orchestration/job_evidence.py
+@@ -116,7 +116,7 @@ def _resolve_job_ledger_project_id(job: Any) -> str | None:
+         from packages.orchestration.project_registry import resolve_project
+ 
+         project = resolve_project(repo_path)
+-    except Exception:
++    except Exception:  # noqa: BLE001 — ledger target resolution failure must not block export
+         logger.warning(
+             "token ledger target could not be resolved for repo %r; the live "
+             "mirror stays inert for this export and the evidence files, which "
+@@ -158,13 +158,13 @@ def mirror_job_run_into_ledger(job_id: str) -> dict[str, Any]:
+ 
+     try:
+         out_dir = str(job_evidence_export_dir(job_id))
+-    except Exception as exc:
++    except Exception as exc:  # noqa: BLE001 — cost mirror must never fail a completed job run
+         return {"ledger_mirrored": False, "out_dir": "",
+                 "error": f"{type(exc).__name__}: {exc}"}
+ 
+     try:
+         result = export_job_evidence(job_id, out_dir)
+-    except Exception as exc:
++    except Exception as exc:  # noqa: BLE001 — cost mirror must never fail a completed job run
+         logger.warning(
+             "cost mirror failed for job %s; the run itself is unaffected and "
+             "remedy stats backfill-ledger can still mirror the evidence later",
+@@ -317,7 +317,7 @@ def export_job_evidence(
+ 
+     try:
+         _write_job_postmortem(job, str(out_path), written, postmortem_failures)
+-    except Exception as exc:
++    except Exception as exc:  # noqa: BLE001 — post-mortem export failure is recorded, not fatal
+         from packages.orchestration.failure_postmortem import safe_text as _safe
+         postmortem_failures.append({
+             "scope": "job", "job_id": job.job_id,
+@@ -338,7 +338,7 @@ def export_job_evidence(
+         try:
+             _write_task_postmortems(
+                 job.job_id, task, str(out_path), written, postmortem_failures)
+-        except Exception as exc:
++        except Exception as exc:  # noqa: BLE001 — task post-mortem failure is recorded, not fatal
+             from packages.orchestration.failure_postmortem import safe_text as _safe
+             postmortem_failures.append({
+                 "scope": "task", "task_id": task.task_id,
+@@ -361,7 +361,7 @@ def export_job_evidence(
+                     encoding="utf-8",
+                 )
+                 written[_sl_rel] = str(_sl_path)
+-        except Exception as exc:
++        except Exception as exc:  # noqa: BLE001 — stream artifact failure is recorded as an error file
+             _rel = f"task_runs/{task.task_id}/stream_artifacts.error.txt"
+             _p = _validate_output_path(str(out_path), _rel)
+             _p.parent.mkdir(parents=True, exist_ok=True)
+@@ -370,7 +370,7 @@ def export_job_evidence(
+         try:
+             from packages.orchestration.review_scope import write_review_scope_packet
+             write_review_scope_packet(task, job.job_workspace_path, str(out_path), written)
+-        except Exception as exc:
++        except Exception as exc:  # noqa: BLE001 — review scope failure is recorded as an error file
+             rel = f"task_runs/{task.task_id}/review_scope_packet.error.txt"
+             err_path = _validate_output_path(str(out_path), rel)
+             err_path.write_text(
+@@ -387,7 +387,7 @@ def export_job_evidence(
+                 job.job_workspace_path,
+                 written,
+             )
+-        except Exception as exc:
++        except Exception as exc:  # noqa: BLE001 — spec compliance check failure is recorded as an error file
+             rel = f"task_runs/{task.task_id}/spec_compliance_check.error.txt"
+             err_path = _validate_output_path(str(out_path), rel)
+             err_path.write_text(
+@@ -400,7 +400,7 @@ def export_job_evidence(
+                 write_missing_tests_gate,
+             )
+             write_missing_tests_gate(task, str(out_path), written)
+-        except Exception as exc:
++        except Exception as exc:  # noqa: BLE001 — missing tests gate failure is recorded as an error file
+             rel = f"task_runs/{task.task_id}/missing_tests_gate.error.txt"
+             err_path = _validate_output_path(str(out_path), rel)
+             err_path.write_text(
+@@ -448,7 +448,7 @@ def export_job_evidence(
+             _exec_path.parent.mkdir(parents=True, exist_ok=True)
+             _exec_path.write_text(json.dumps(_redact_json_value(_exec_ev), indent=2) + "\n", encoding="utf-8")
+             written[_exec_rel] = str(_exec_path)
+-        except Exception as exc:
++        except Exception as exc:  # noqa: BLE001 — execution evidence failure is recorded as an error file
+             rel = f"task_runs/{task.task_id}/task_execution_evidence.error.txt"
+             err_path = _validate_output_path(str(out_path), rel)
+             err_path.write_text(
+@@ -490,7 +490,7 @@ def export_job_evidence(
+             _ab_path.parent.mkdir(parents=True, exist_ok=True)
+             _ab_path.write_text(json.dumps(_redact_json_value(_ab), indent=2) + "\n", encoding="utf-8")
+             written[_ab_rel] = str(_ab_path)
+-        except Exception as exc:
++        except Exception as exc:  # noqa: BLE001 — actor binding failure is recorded as an error file
+             rel = f"task_runs/{task.task_id}/task_actor_binding.error.txt"
+             err_path = _validate_output_path(str(out_path), rel)
+             err_path.write_text(
+@@ -512,7 +512,7 @@ def export_job_evidence(
+             all_allowed,
+             written,
+         )
+-    except Exception as exc:
++    except Exception as exc:  # noqa: BLE001 — scratch file guard failure is recorded as an error file
+         rel = "scratch_file_guard.error.txt"
+         err_path = _validate_output_path(str(out_path), rel)
+         err_path.write_text(
+@@ -529,7 +529,7 @@ def export_job_evidence(
+     try:
+         from packages.orchestration.token_truth import write_token_truth
+         write_token_truth(str(out_path), written)
+-    except Exception as exc:
++    except Exception as exc:  # noqa: BLE001 — token truth failure is recorded as an error file
+         rel = "token_truth.error.txt"
+         err_path = _validate_output_path(str(out_path), rel)
+         err_path.write_text(
+@@ -591,7 +591,7 @@ def export_job_evidence(
+         _tcp_path = _validate_output_path(str(out_path), "token_cost_policy.json")
+         _tcp_path.write_text(json.dumps(_redact_json_value(_tcp), indent=2) + "\n", encoding="utf-8")
+         written["token_cost_policy.json"] = str(_tcp_path)
+-    except Exception as exc:
++    except Exception as exc:  # noqa: BLE001 — token cost policy failure is recorded as an error file
+         rel = "token_cost_policy.error.txt"
+         err_path = _validate_output_path(str(out_path), rel)
+         err_path.write_text(
+@@ -633,7 +633,7 @@ def export_job_evidence(
+         _fjr_path = _validate_output_path(str(out_path), "final_job_review.json")
+         _fjr_path.write_text(json.dumps(_redact_json_value(_fjr), indent=2) + "\n", encoding="utf-8")
+         written["final_job_review.json"] = str(_fjr_path)
+-    except Exception as exc:
++    except Exception as exc:  # noqa: BLE001 — final job review failure is recorded as an error file
+         rel = "final_job_review.error.txt"
+         err_path = _validate_output_path(str(out_path), rel)
+         err_path.write_text(
+@@ -677,7 +677,7 @@ def export_job_evidence(
+     try:
+         _write_run_manifest_export(job, str(out_path), written, manifest_failures,
+                                    manifest_notes)
+-    except Exception as exc:
++    except Exception as exc:  # noqa: BLE001 — run manifest export failure is recorded, not fatal
+         from packages.orchestration.failure_postmortem import safe_text as _safe
+         manifest_failures.append({
+             "scope": "job", "job_id": job.job_id,
+@@ -703,7 +703,7 @@ def export_job_evidence(
+         m = re.search(r"(?<!\d)(\d{4,})\s*-\s*(\d{4,})(?!\d)", plan_text)
+         step_range = f"{m.group(1)}-{m.group(2)}" if m else None
+         write_fresh_evidence_gate(str(out_path), job.job_id, step_range, written)
+-    except Exception as exc:
++    except Exception as exc:  # noqa: BLE001 — fresh evidence gate failure is recorded as an error file
+         _write_gate_error("fresh_evidence_gate.error.txt", exc)
+ 
+     # Runtime integration gate — moved AFTER verification_tests so it can bind
+@@ -819,7 +819,7 @@ def export_job_evidence(
+                 (_pdir / _name).write_bytes(_raw)
+                 _patches.append(f"{COMMIT_PATCH_DIRNAME}/{_name}")
+             written[COMMIT_PATCH_DIRNAME] = str(_pdir)
+-    except Exception as exc:
++    except Exception as exc:  # noqa: BLE001 — content proof gate failure is recorded as an error file
+         _write_gate_error("current_change_content_proof.error.txt", exc)
+ 
+     # Change provenance gate — every dirty source file must be backed by evidence.
+@@ -829,7 +829,7 @@ def export_job_evidence(
+             str(out_path), dirty_files, job.job_id, written,
+             repo_root=_repo,
+         )
+-    except Exception as exc:
++    except Exception as exc:  # noqa: BLE001 — change provenance gate failure is recorded as an error file
+         _write_gate_error("change_provenance_gate.error.txt", exc)
+ 
+     # Verification tests — execute the EXPLICIT verification commands and record
+@@ -846,7 +846,7 @@ def export_job_evidence(
+             _vt_path = _validate_output_path(str(out_path), "verification_tests.json")
+             _vt_path.write_text(json.dumps(_vt_data, indent=2) + "\n", encoding="utf-8")
+             written["verification_tests.json"] = str(_vt_path)
+-    except Exception as exc:
++    except Exception as exc:  # noqa: BLE001 — verification test run failure is recorded as an error file
+         _write_gate_error("verification_tests.error.txt", exc)
+ 
+     # Runtime integration gate — AFTER verification_tests so it can bind to
+@@ -858,7 +858,7 @@ def export_job_evidence(
+             str(out_path), _repo_root, written,
+             verification_data=_vt_data,
+         )
+-    except Exception as exc:
++    except Exception as exc:  # noqa: BLE001 — runtime integration gate failure is recorded as an error file
+         _write_gate_error("runtime_integration_gate.error.txt", exc)
+ 
+     # Final verifier report — aggregates all gates into a single verdict.
+@@ -866,14 +866,14 @@ def export_job_evidence(
+     try:
+         from packages.orchestration.final_verifier import write_final_verifier_report
+         write_final_verifier_report(str(out_path), written)
+-    except Exception as exc:
++    except Exception as exc:  # noqa: BLE001 — final verifier failure is recorded as an error file
+         _write_gate_error("final_verifier_report.error.txt", exc)
+ 
+     # Artifact contract gate — after final verifier, so it can check completeness.
+     try:
+         from packages.orchestration.artifact_contract_gate import write_artifact_contract_gate
+         write_artifact_contract_gate(str(out_path), written, current_job_id=job.job_id)
+-    except Exception as exc:
++    except Exception as exc:  # noqa: BLE001 — artifact contract gate failure is recorded as an error file
+         _write_gate_error("artifact_contract_gate.error.txt", exc)
+ 
+     # Commit execution gate — terminal gate: reads all other gate verdicts.
+@@ -888,21 +888,21 @@ def export_job_evidence(
+             final_verifier_verdict=_gate_verdict("final_verifier_report.json"),
+             change_provenance_verdict=_gate_verdict("change_provenance_gate.json"),
+         )
+-    except Exception as exc:
++    except Exception as exc:  # noqa: BLE001 — commit execution gate failure is recorded as an error file
+         _write_gate_error("commit_execution_gate.error.txt", exc)
+ 
+     # Second pass: artifact_contract after commit_execution exists.
+     try:
+         from packages.orchestration.artifact_contract_gate import write_artifact_contract_gate
+         write_artifact_contract_gate(str(out_path), written, current_job_id=job.job_id)
+-    except Exception as exc:
++    except Exception as exc:  # noqa: BLE001 — second-pass artifact contract failure is recorded as an error file
+         _write_gate_error("artifact_contract_gate.error.txt", exc)
+ 
+     # Final pass: re-run final verifier so it sees commit_execution_gate verdict.
+     try:
+         from packages.orchestration.final_verifier import write_final_verifier_report
+         write_final_verifier_report(str(out_path), written)
+-    except Exception as exc:
++    except Exception as exc:  # noqa: BLE001 — second-pass final verifier failure is skipped, first pass recorded
+         pass
+ 
+     # Terminal refresh: commit_execution reads final verifier's updated verdict.
+@@ -917,7 +917,7 @@ def export_job_evidence(
+             final_verifier_verdict=_gate_verdict("final_verifier_report.json"),
+             change_provenance_verdict=_gate_verdict("change_provenance_gate.json"),
+         )
+-    except Exception as exc:
++    except Exception as exc:  # noqa: BLE001 — terminal commit-gate refresh failure is skipped; first pass recorded
+         pass
+ 
+     from datetime import datetime, timezone
+@@ -1781,7 +1781,7 @@ def _default_verification_runner(command: str, repo: str) -> dict[str, Any]:
+         _h = _sp.run(["git", "rev-parse", "HEAD"], cwd=repo, capture_output=True,
+                       text=True, timeout=10, env=_env)
+         head_sha = (_h.stdout or "").strip()
+-    except Exception:
++    except Exception:  # noqa: BLE001 — git HEAD lookup is best-effort; head_sha stays blank on failure
+         pass
+     return {
+         "exit_code": result.returncode,
+@@ -1823,7 +1823,7 @@ def _run_verifications(
+         _h_d = _sp_head.run(["git", "rev-parse", "HEAD"], cwd=repo,
+                              capture_output=True, text=True, timeout=10)
+         _head_sha_default = (_h_d.stdout or "").strip()
+-    except Exception:
++    except Exception:  # noqa: BLE001 — git HEAD lookup is best-effort; head_sha stays blank on failure
+         pass
+     for i, cmd in enumerate(cmds):
+         rid = f"vr-{i + 1:04d}"
