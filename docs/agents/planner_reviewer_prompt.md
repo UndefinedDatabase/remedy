@@ -579,6 +579,15 @@ end the response with:
       preserved" — and the block kept the citation while dropping the qualifier, which is
       how a correct precedent becomes an incorrect order. Where a mechanism's DEFAULT is
       the hazard, order the argument, not the function.
+      The same reading binds the INTERPRETER a mutation runs under. F278's round 8 is
+      the instance: its tool edited one module twice within one second, the second
+      edit left the file exactly as long as the first, and Python's bytecode cache
+      keys a compiled module by the source's modification second and size, so the
+      second run imported the FIRST mutation's code and reported its red as its own.
+      Both mutations were real, and both went red when the reviewer re-ran them one at
+      a time; only the reading was void. A recipe that edits a module and re-imports
+      it in a fresh process names `python3 -B`, because the cache is a default that
+      nobody orders and that no control run can see.
   20. **A slice states a fact about a file the same block edits only with the commit
       it was read at.** Finding R-0520. An authored slice may assert a present-tense
       fact about a source file — "these modules reference neither symbol", "this
@@ -785,6 +794,13 @@ end the response with:
       counts after and before — where `git diff --numstat` reads `270  224`, the two
       differing by exactly the lines the old and new block share. Full-file rewrites
       are where this bites, because only there do the counts and the columns diverge.
+      The same reading reaches a SECTION the template or AGENTS.md mandates and the
+      block's own list of what to report leaves out. F278's round 1 block listed the
+      handback's sections without the item-status table AGENTS.md requires of every
+      completion report over an ordered bundle, and the worker, writing to the block,
+      shipped none. A block's report list names every mandated section or names none
+      and points at the template, because the worker follows the list, and the section
+      the list omits is the one that goes missing.
   29. **A gate that measures a NON-CURRENT revision names the mechanism that reads it
       without writing.** Finding R-0594. When a done-when orders a tool run "at <base>"
       as well as at the round's own commit, the block names HOW the base bytes reach
