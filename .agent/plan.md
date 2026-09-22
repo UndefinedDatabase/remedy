@@ -13,22 +13,19 @@ is documented and asserted from the catalog
 
 ## Current Step
 
-ROUND 23, the closure sequence's evidence half. It books round 22's PASS,
-registers R-1035 from the self-use run's own defect reader, builds the feature
-evidence bundle against the fork point `d0d40e89`, and builds the fresh review
-package, recording its name, its SHA-256 and the directory it was archived to.
+ROUND 24, the closure. It books round 23's PASS, rotates the finding ledger as
+its own commit, then flips the STATUS line to accepted with the README's three
+pinned places and the self-use entry's `consumed_by` in that same commit, and
+opens the pull request, which this session never merges.
 
 ## Next Steps
 
-1. The closure sequence's last round: the ledger rotation as its own commit,
-   then the STATUS line, the README capability paragraph, the README accepted
-   count with its Next clause and the README tier row in ONE commit with the
-   self-use entry's `consumed_by`, then the pull request, which the session
-   that opens it never merges.
+1. Nothing on this branch. The pull request waits for the operator's review
+   window and is merged at the next feature's Open PR Gate; the next session
+   claims the next unchecked feature under Rule A5.
 
 ## Risks
 
-Twenty-six findings are open after this round's registration and none is this
-feature's own. Twenty-three rounds are spent of the soft limit of 25, so the
-closure commit is the twenty-fourth and one round is left for a repair the
-packaging may still ask for.
+Twenty-six findings are open and none is this feature's own. Twenty-four rounds
+are spent of the soft limit of 25, and the work left after this round is the
+merge, which belongs to another session.
