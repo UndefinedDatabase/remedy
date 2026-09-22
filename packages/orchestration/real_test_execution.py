@@ -46,6 +46,7 @@ from typing import Any
 from uuid import uuid4
 
 from packages.common.public_text_redaction import _safe_path_label, _scrub_public
+from packages.common.secure_fs import durable_write
 from packages.orchestration.data_paths import normalize_job_id
 
 SCHEMA_VERSION = "real-test-execution-v1"
@@ -336,29 +337,6 @@ def _snap_path(job_id: str, snapshot_id: str, data_dir: Path) -> Path:
     return _rte_root(job_id, data_dir) / "snapshots" / f"{snapshot_id}.json"
 
 
-def _atomic_write(path: Path, data: bytes, mode: int = 0o600) -> bool:
-    try:
-        path.parent.mkdir(parents=True, exist_ok=True)
-        try:
-            os.chmod(path.parent, 0o700)
-        except OSError:
-            pass
-        tmp = path.with_suffix(path.suffix + ".tmp")
-        tmp.write_bytes(data)
-        try:
-            os.chmod(tmp, mode)
-        except OSError:
-            pass
-        os.replace(tmp, path)
-        try:
-            os.chmod(path, mode)
-        except OSError:
-            pass
-        return True
-    except OSError:
-        return False
-
-
 def _inventory_hash(repo_root: Path) -> tuple[str, int]:
     """Deterministic, bounded metadata hash over the repo's tracked-ish file inventory: sorted
     (rel_path, size) pairs. No file contents are read. Skips VCS/build/data dirs. Returns (hash, n)."""
@@ -403,8 +381,9 @@ def create_snapshot_proof(job_id: str, *, data_dir: Path | None = None) -> Snaps
         proof.strategy = "unavailable"
         proof.safe_summary = "No repo available — snapshot proof unavailable."
         proof.restore_available = False
-        _atomic_write(_snap_path(job_id, proof.snapshot_id, ddir),
-                      json.dumps(proof.to_dict(), indent=2).encode("utf-8"))
+        snap = _snap_path(job_id, proof.snapshot_id, ddir)
+        snap.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+        durable_write(snap, json.dumps(proof.to_dict(), indent=2).encode("utf-8"))
         return proof
     proof.repo_path = repo
     h, n = _inventory_hash(Path(repo))
@@ -413,8 +392,9 @@ def create_snapshot_proof(job_id: str, *, data_dir: Path | None = None) -> Snaps
     proof.restore_available = False   # metadata-only — never claims restore
     proof.safe_summary = (f"Metadata snapshot recorded over {n} file(s). This is a snapshot POINT "
                           "(inventory hash) only — it does NOT provide rollback restore.")
-    _atomic_write(_snap_path(job_id, proof.snapshot_id, ddir),
-                  json.dumps(proof.to_dict(), indent=2).encode("utf-8"))
+    snap = _snap_path(job_id, proof.snapshot_id, ddir)
+    snap.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+    durable_write(snap, json.dumps(proof.to_dict(), indent=2).encode("utf-8"))
     return proof
 
 
