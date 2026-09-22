@@ -714,12 +714,12 @@ def _print_intake_block(intake: dict) -> None:
         p(f"  Dropped clarifications: {dropped}")
 
 
-def _cmd_plan_job_local(job_id_str: str) -> None:
-    job_id = resolve_job_id_or_fail(job_id_str, json_output=False)
+def _cmd_plan_job_local(job_id_str: str, *, json_output: bool = False) -> None:
+    job_id = resolve_job_id_or_fail(job_id_str, json_output=json_output)
     try:
         job = require_job_plan(job_id)
     except JobNotFoundError as exc:
-        fail("job_not_found", str(exc), json_output=False)
+        fail("job_not_found", str(exc), json_output=json_output)
 
     from packages.orchestration.llm_planner import annotate_planning_result, plan_job_with_llm
     from packages.orchestration.run_log import RunLogWriter
@@ -779,7 +779,7 @@ def _cmd_plan_job_local(job_id_str: str) -> None:
             fail(
                 "planner_capability_missing",
                 'structured planner requires a plan_raw capability the installed planner does not provide; set REMEDY_PLANNER_FREETEXT=1 to use the legacy planner.',
-                json_output=False,
+                json_output=json_output,
             )
         _pp_schema = to_json_schema(PlannerPlan)
         call_planner = make_structured_planner(
@@ -811,18 +811,18 @@ def _cmd_plan_job_local(job_id_str: str) -> None:
         fail(
             "planner_output_invalid",
             f'planner structured output invalid after one retry: {exc}',
-            json_output=False,
+            json_output=json_output,
         )
     except ImportError as exc:
         _persist_plan_traces()
         log.log("planning_failed", provider="ollama", role="planner", model=planner.model,
                 outcome="error", message="planning failed", error_category=type(exc).__name__)
-        fail("missing_dependency", str(exc), json_output=False)
+        fail("missing_dependency", str(exc), json_output=json_output)
     except Exception as exc:
         _persist_plan_traces()
         log.log("planning_failed", provider="ollama", role="planner", model=planner.model,
                 outcome="error", message="planning failed", error_category=type(exc).__name__)
-        fail("planner_failed", f'Ollama planning failed: {exc}', json_output=False)
+        fail("planner_failed", f'Ollama planning failed: {exc}', json_output=json_output)
     elapsed_ms = (time.monotonic() - start) * 1000
     _persist_plan_traces()
 
@@ -831,7 +831,11 @@ def _cmd_plan_job_local(job_id_str: str) -> None:
 
     if not result.changed:
         log.log("planning_completed", provider="ollama", role="planner", model=planner.model, outcome="noop")
-        print(f"Job {result.job.job_id} already planned — no changes made.  log={log.path}")
+        if json_output:
+            emit_ok(job_id=str(result.job.job_id), changed=False, model=planner.model,
+                    task_count=len(result.job.tasks), log_path=str(log.path))
+        else:
+            print(f"Job {result.job.job_id} already planned — no changes made.  log={log.path}")
     else:
         from packages.orchestration.artifact_index import planning_artifact
         pa = planning_artifact(result.job.artifacts)
@@ -841,10 +845,15 @@ def _cmd_plan_job_local(job_id_str: str) -> None:
             artifact_id=artifact_id_str, outcome="changed", elapsed_ms=round(elapsed_ms),
             task_count=len(result.job.tasks),
         )
-        print(
-            f"Job {result.job.job_id} | role=planner model={planner.model} "
-            f"tasks={len(result.job.tasks)} elapsed={round(elapsed_ms)}ms  log={log.path}"
-        )
+        if json_output:
+            emit_ok(job_id=str(result.job.job_id), changed=True, model=planner.model,
+                    task_count=len(result.job.tasks), log_path=str(log.path),
+                    elapsed_ms=round(elapsed_ms))
+        else:
+            print(
+                f"Job {result.job.job_id} | role=planner model={planner.model} "
+                f"tasks={len(result.job.tasks)} elapsed={round(elapsed_ms)}ms  log={log.path}"
+            )
 
 
 def _cmd_run_next_task_local(job_id_str: str, *, json_output: bool = False) -> None:
@@ -2276,7 +2285,10 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
         args.job_id, full=getattr(args, "full", False),
         json_output=getattr(args, "json", False)),
     "job.budget": _cmd_job_budget_route,
-    "job.plan": lambda args: _cmd_plan_job_local(args.job_id),
+    "job.plan": lambda args: _cmd_plan_job_local(
+        args.job_id,
+        json_output=getattr(args, "json", False),
+    ),
     "job.checkpoints": lambda args: _cmd_checkpoints(
         args.job_id,
         json_output=getattr(args, "json", False),

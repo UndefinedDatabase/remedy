@@ -301,3 +301,39 @@ class TestPlannerTraceCarriesItsSegmentManifest:
         source = inspect.getsource(job_cmd)
         assert "on_prompt_composed=_plan_compositions.append" in source
         assert "composed_prompt=_plan_compositions[-1]" in source
+
+
+class TestPlanJobAnswersJSONThroughTheDispatcher:
+    """F283 R15 C5 (DECISION F283 D9) — `job plan` now declares `--json` in the
+    catalog; both the success shape and the `planner_failed` refusal proved end
+    to end through the CLI dispatcher."""
+
+    def test_plan_answers_the_envelope(self, tmp_path, monkeypatch, capsys):
+        from apps.cli.grouped import main
+
+        monkeypatch.delenv("REMEDY_PLANNER_FREETEXT", raising=False)
+        job = _make_job(tmp_path, monkeypatch)
+        planner = _FakePlanner([VALID_PLAN])
+        with _patch_planner(planner):
+            main(["job", "plan", str(job.job_id), "--json"])
+        body = json.loads(capsys.readouterr().out)
+        assert body["ok"] is True and body["schema_version"] == 1
+        assert body["job_id"] == str(job.job_id)
+        assert body["changed"] is True
+        assert body["model"] == "fake-model"
+        assert body["task_count"] >= 1
+        assert "log_path" in body
+        assert "elapsed_ms" in body
+
+    def test_planner_failure_is_the_envelope_through_the_dispatcher(
+            self, tmp_path, monkeypatch, capsys):
+        from apps.cli.grouped import main
+
+        job = _make_job(tmp_path, monkeypatch)
+        planner = _RaisingPlanner([VALID_PLAN], raise_on=(1,))
+        with _patch_planner(planner), pytest.raises(SystemExit) as exc:
+            main(["job", "plan", str(job.job_id), "--json"])
+        assert exc.value.code == 1
+        body = json.loads(capsys.readouterr().out)
+        assert body["ok"] is False
+        assert body["error"] == "planner_failed"

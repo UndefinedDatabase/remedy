@@ -384,7 +384,8 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         subcommand="plan",
         description="Plan tasks for a job using local LLM.",
         action_class="write_metadata",
-        args=(_JOB_ID,),
+        args=(_JOB_ID, _JSON_OPT),
+        supports_json=True,
         related=("job.resume",),
     ),
 
