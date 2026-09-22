@@ -87,7 +87,7 @@ def _dev_status(*, json_output: bool = False) -> None:
             and len(origins) == 1
             and vm["visible_counts_by_zoom"][0] == 1
         )
-    except Exception:
+    except Exception:  # noqa: BLE001 — a UI-contract check failure must not block other checks
         pass
 
     # Check task progress
@@ -97,7 +97,7 @@ def _dev_status(*, json_output: bool = False) -> None:
         job = JobPlan(job_title="tp-check")
         tp = build_task_progress(job, [])
         status["task_progress_ok"] = tp["version"] == 1
-    except Exception:
+    except Exception:  # noqa: BLE001 — a task-progress check failure must not block other checks
         pass
 
     # Check worker cleanup — availability, not functionality
@@ -116,28 +116,28 @@ def _dev_status(*, json_output: bool = False) -> None:
             risk="low", applicability="applicable", requires_approval=False,
         )
         status["autocoder_fake_e2e_ok"] = callable(apply_structured_patch)
-    except (ImportError, Exception):
+    except (ImportError, Exception):  # noqa: BLE001 — an autocoder check failure must not block other checks
         status["autocoder_fake_e2e_ok"] = False
 
     # Check repair loop — module importable and build_repair_context callable
     try:
         from packages.orchestration.repair_context import build_repair_context
         status["repair_loop_ok"] = callable(build_repair_context)
-    except (ImportError, Exception):
+    except (ImportError, Exception):  # noqa: BLE001 — a repair-loop check failure must not block other checks
         status["repair_loop_ok"] = False
 
     # Check reviewer loop — module importable
     try:
         from packages.orchestration.reviewer import run_reviewer
         status["reviewer_loop_ok"] = callable(run_reviewer)
-    except (ImportError, Exception):
+    except (ImportError, Exception):  # noqa: BLE001 — a reviewer-loop check failure must not block other checks
         status["reviewer_loop_ok"] = False
 
     # Check live UI — server importable and build function callable
     try:
         from packages.orchestration.ui_server import _build_live_state_json
         status["live_ui_ok"] = callable(_build_live_state_json)
-    except (ImportError, Exception):
+    except (ImportError, Exception):  # noqa: BLE001 — a live-UI check failure must not block other checks
         status["live_ui_ok"] = False
 
     # Remaining blockers (hard failures) vs advisories (informational)
