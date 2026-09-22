@@ -1,0 +1,1 @@
+- [~] F283 — Machine contracts, part two: the refusal sweep, the JSON gap and the exit-code taxonomy
