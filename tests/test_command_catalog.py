@@ -262,11 +262,12 @@ class TestCatalogJSONSupport:
 # The read-only-without-`supports_json` ratchet (DECISION F283 D9)
 # ---------------------------------------------------------------------------
 
-#: F283 R14 C3 — the read-only commands (the D7 derived rule: neither
+#: F283 R14 C4 — the read-only commands (the D7 derived rule: neither
 #: `may_mutate_repo` nor `may_execute_commands`) that still do not declare
-#: `supports_json`, after `init run`, `dev status` and `dev smoke-help` leave
-#: the set. Shrinks each round a D9 group lands; the round that lands the
-#: last group asserts the set is empty and deletes this constant.
+#: `supports_json`, after `init run`, `dev status`, `dev smoke-help`, `memory
+#: store` and the five memory card mutations leave the set. Shrinks each
+#: round a D9 group lands; the round that lands the last group asserts the
+#: set is empty and deletes this constant.
 _READ_ONLY_WITHOUT_SUPPORTS_JSON: frozenset[str] = frozenset({
     "blocker.resolve",
     "brain.cockpit",
@@ -279,12 +280,6 @@ _READ_ONLY_WITHOUT_SUPPORTS_JSON: frozenset[str] = frozenset({
     "decision.explain",
     "decision.resolve",
     "job.plan",
-    "memory.card-approve",
-    "memory.card-contradict",
-    "memory.card-reject",
-    "memory.card-stale",
-    "memory.card-supersede",
-    "memory.store",
     "patch.approve",
     "patch.reject",
     "patch.show",

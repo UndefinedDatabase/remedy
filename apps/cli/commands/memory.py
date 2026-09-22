@@ -7,7 +7,7 @@ from collections.abc import Callable
 from typing import TYPE_CHECKING
 
 from apps.cli.job_id_arg import resolve_job_id_or_fail
-from apps.cli.json_envelope import fail
+from apps.cli.json_envelope import emit_ok, fail
 
 if TYPE_CHECKING:
     import argparse
@@ -21,6 +21,7 @@ def _cmd_memory_store(
     job_id: str | None = None,
     tags: str | None = None,
     approved: bool = False,
+    json_output: bool = False,
 ) -> None:
     from packages.memory.local_gateway import store_memory
 
@@ -33,7 +34,10 @@ def _cmd_memory_store(
         tags=tag_list,
         approved=approved,
     )
-    print(f"Stored: {entry.id} key={entry.key}")
+    if json_output:
+        emit_ok(id=str(entry.id), key=entry.key)
+    else:
+        print(f"Stored: {entry.id} key={entry.key}")
 
 
 def _cmd_memory_recall(
@@ -221,7 +225,11 @@ def _cmd_memory_card_approve(
     if card is None:
         fail("memory_card_not_found", f"memory card not found: {memory_id}",
              json_output=json_output)
-    print(f"Approved: {card.id} key={card.key}")
+    if json_output:
+        emit_ok(id=str(card.id), key=card.key, review_status=card.review_status,
+                 validity=card.validity, approved=card.approved)
+    else:
+        print(f"Approved: {card.id} key={card.key}")
 
 
 def _cmd_memory_card_reject(
@@ -237,7 +245,11 @@ def _cmd_memory_card_reject(
     if card is None:
         fail("memory_card_not_found", f"memory card not found: {memory_id}",
              json_output=json_output)
-    print(f"Rejected: {card.id} key={card.key}")
+    if json_output:
+        emit_ok(id=str(card.id), key=card.key, review_status=card.review_status,
+                 validity=card.validity, approved=card.approved)
+    else:
+        print(f"Rejected: {card.id} key={card.key}")
 
 
 def _cmd_memory_card_stale(
@@ -253,7 +265,11 @@ def _cmd_memory_card_stale(
     if card is None:
         fail("memory_card_not_found", f"memory card not found: {memory_id}",
              json_output=json_output)
-    print(f"Marked stale: {card.id} key={card.key}")
+    if json_output:
+        emit_ok(id=str(card.id), key=card.key, review_status=card.review_status,
+                 validity=card.validity, approved=card.approved)
+    else:
+        print(f"Marked stale: {card.id} key={card.key}")
 
 
 def _cmd_memory_card_supersede(
@@ -270,7 +286,10 @@ def _cmd_memory_card_supersede(
     if old is None:
         fail("memory_card_not_found", f"old memory card not found: {old_id}",
              json_output=json_output)
-    print(f"Superseded: {old_id[:8]} by {new_id[:8]}")
+    if json_output:
+        emit_ok(old_id=old_id, new_id=new_id)
+    else:
+        print(f"Superseded: {old_id[:8]} by {new_id[:8]}")
 
 
 def _cmd_memory_card_contradict(
@@ -289,7 +308,10 @@ def _cmd_memory_card_contradict(
     if contradicted is None:
         fail("memory_card_not_found", f"memory card not found: {memory_id}",
              json_output=json_output)
-    print(f"Contradicted: {memory_id[:8]} by {by_id[:8]}")
+    if json_output:
+        emit_ok(memory_id=memory_id, by_id=by_id)
+    else:
+        print(f"Contradicted: {memory_id[:8]} by {by_id[:8]}")
 
 
 COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
@@ -299,6 +321,7 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
         job_id=getattr(args, "job", None),
         tags=getattr(args, "tags", None),
         approved=bool(getattr(args, "approved", False)),
+        json_output=getattr(args, "json", False),
     ),
     "memory.recall": lambda args: _cmd_memory_recall(
         project_id=getattr(args, "project", None),

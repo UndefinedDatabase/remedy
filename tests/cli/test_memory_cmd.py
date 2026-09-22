@@ -5,15 +5,15 @@ them are byte-identical, which is why the group is migrated in one commit: the
 same condition now carries the same token, `memory_card_not_found`, wherever a
 card lookup comes back empty.
 
-Five of the six card commands carry no `--json` argument in the catalog yet —
-they are in the read-only-without-`supports_json` set T003 empties at the end of
-the slice — so their handlers are threaded and proved here at the handler, which
-is where the flag will arrive once the catalog declares it.
+All six card commands now declare `supports_json` in the catalog (F283 R14 C4
+closed this group's slice of the read-only-without-`supports_json` set, DECISION
+F283 D9); their handlers are still threaded and proved here at the handler.
 """
 
 from __future__ import annotations
 
 import json
+from types import SimpleNamespace
 from unittest.mock import patch
 
 import pytest
@@ -101,16 +101,82 @@ class TestTheJobLookupInLearnRefusesTheSameWayEveryGroupDoes:
         assert captured.err.startswith("Error: No job matches 'not-a-job-id'.")
 
 
-class TestTheCatalogStillDeclaresWhatItDeclared:
-    def test_the_five_card_mutations_are_still_the_json_gap_this_slice_closes_later(self):
-        """A guard on the premise of this module's docstring, not on the migration.
+class TestStoreAndTheCardMutationsAnswerJSONThroughTheDispatcher:
+    """F283 R14 C4 — `memory store` and the five card mutations answer `--json`
+    in the envelope, exercised end to end through the CLI dispatcher."""
 
-        If one of these five gains `supports_json` before T003's catalog half
-        lands, the sentence above stops being true and this test says so.
-        """
+    def test_store_answers_the_envelope(self, capsys):
+        from apps.cli.grouped import main
+
+        entry = SimpleNamespace(id="mem-1", key="k1")
+        with patch(_GATEWAY + "store_memory", return_value=entry):
+            main(["memory", "store", "k1", "v1", "--json"])
+        body = json.loads(capsys.readouterr().out)
+        assert body["ok"] is True and body["schema_version"] == 1
+        assert body["id"] == "mem-1" and body["key"] == "k1"
+
+    @pytest.mark.parametrize(
+        ("subcommand", "gateway"),
+        [
+            ("card-approve", "approve_memory_card"),
+            ("card-reject", "reject_memory_card"),
+            ("card-stale", "mark_stale"),
+        ],
+    )
+    def test_a_card_mutation_answers_the_envelope(self, capsys, subcommand, gateway):
+        from apps.cli.grouped import main
+
+        card = SimpleNamespace(
+            id="card-1", key="k1", review_status="approved",
+            validity="valid", approved=True,
+        )
+        with patch(_GATEWAY + gateway, return_value=card):
+            main(["memory", subcommand, "card-1", "--json"])
+        body = json.loads(capsys.readouterr().out)
+        assert body["ok"] is True and body["schema_version"] == 1
+        assert body["id"] == "card-1" and body["key"] == "k1"
+        assert body["review_status"] == "approved"
+        assert body["validity"] == "valid"
+        assert body["approved"] is True
+
+    def test_supersede_answers_the_envelope_with_full_ids(self, capsys):
+        from apps.cli.grouped import main
+
+        with patch(_GATEWAY + "supersede_memory_card",
+                   return_value=(SimpleNamespace(id="old-1"), SimpleNamespace(id="new-1"))):
+            main(["memory", "card-supersede", "old-1", "new-1", "--json"])
+        body = json.loads(capsys.readouterr().out)
+        assert body["ok"] is True
+        assert body["old_id"] == "old-1" and body["new_id"] == "new-1"
+
+    def test_contradict_answers_the_envelope_with_full_ids(self, capsys):
+        from apps.cli.grouped import main
+
+        with patch(_GATEWAY + "contradict_memory_card",
+                   return_value=(SimpleNamespace(id="mem-1"), SimpleNamespace(id="by-1"))):
+            main(["memory", "card-contradict", "mem-1", "by-1", "--json"])
+        body = json.loads(capsys.readouterr().out)
+        assert body["ok"] is True
+        assert body["memory_id"] == "mem-1" and body["by_id"] == "by-1"
+
+    def test_a_card_refusal_is_the_envelope_through_the_dispatcher(self, capsys):
+        from apps.cli.grouped import main
+
+        with patch(_GATEWAY + "approve_memory_card", return_value=None), \
+             pytest.raises(SystemExit) as exc:
+            main(["memory", "card-approve", "no-such-card", "--json"])
+        assert exc.value.code == 1
+        body = json.loads(capsys.readouterr().out)
+        assert body["ok"] is False
+        assert body["error"] == "memory_card_not_found"
+
+
+class TestTheCatalogNowDeclaresJSONForEveryCardCommand:
+    def test_all_six_card_commands_declare_supports_json(self):
+        """F283 R14 C4 closed the gap this module's docstring used to describe:
+        all six card commands now declare `supports_json`."""
         from apps.cli.command_catalog import get_command
 
-        gap = ["memory.card-approve", "memory.card-reject", "memory.card-stale",
-               "memory.card-supersede", "memory.card-contradict"]
-        assert [get_command(c).supports_json for c in gap] == [False] * 5
-        assert get_command("memory.card-show").supports_json is True
+        cards = ["memory.card-show", "memory.card-approve", "memory.card-reject",
+                 "memory.card-stale", "memory.card-supersede", "memory.card-contradict"]
+        assert [get_command(c).supports_json for c in cards] == [True] * 6

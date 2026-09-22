@@ -1136,7 +1136,9 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
             ArgDef("--job", "Job UUID scope (under its mission)", required=False, is_option=True),
             ArgDef("--tags", "Comma-separated tags", required=False, is_option=True),
             ArgDef("--approved", "Mark as approved", required=False, is_option=True),
+            _JSON_OPT,
         ),
+        supports_json=True,
     ),
     CommandEntry(
         command_id="memory.recall",
@@ -1205,7 +1207,9 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
             ArgDef("memory_id", "Memory entry ID", required=True),
             ArgDef("--project", "Project's repo, ID scope", required=False, is_option=True),
             ArgDef("--job", "Job ID scope (under its mission)", required=False, is_option=True),
+            _JSON_OPT,
         ),
+        supports_json=True,
     ),
     CommandEntry(
         command_id="memory.card-reject",
@@ -1217,7 +1221,9 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
             ArgDef("memory_id", "Memory entry ID", required=True),
             ArgDef("--project", "Project's repo, ID scope", required=False, is_option=True),
             ArgDef("--job", "Job ID scope (under its mission)", required=False, is_option=True),
+            _JSON_OPT,
         ),
+        supports_json=True,
     ),
     CommandEntry(
         command_id="memory.card-stale",
@@ -1229,7 +1235,9 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
             ArgDef("memory_id", "Memory entry ID", required=True),
             ArgDef("--project", "Project's repo, ID scope", required=False, is_option=True),
             ArgDef("--job", "Job ID scope (under its mission)", required=False, is_option=True),
+            _JSON_OPT,
         ),
+        supports_json=True,
     ),
     CommandEntry(
         command_id="memory.card-supersede",
@@ -1242,7 +1250,9 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
             ArgDef("new_id", "Memory ID that supersedes", required=True),
             ArgDef("--project", "Project's repo, ID scope", required=False, is_option=True),
             ArgDef("--job", "Job ID scope (under its mission)", required=False, is_option=True),
+            _JSON_OPT,
         ),
+        supports_json=True,
     ),
     CommandEntry(
         command_id="memory.card-contradict",
@@ -1255,7 +1265,9 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
             ArgDef("by_id", "Memory ID that contradicts", required=True),
             ArgDef("--project", "Project's repo, ID scope", required=False, is_option=True),
             ArgDef("--job", "Job ID scope (under its mission)", required=False, is_option=True),
+            _JSON_OPT,
         ),
+        supports_json=True,
     ),
 
     # ── change ───────────────────────────────────────────────────────────
