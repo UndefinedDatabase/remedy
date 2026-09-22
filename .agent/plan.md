@@ -10,20 +10,20 @@ silently incomplete (`docs/roadmap/features/T2_F278.md`).
 
 ## Current Step
 
-ROUND 5 books round 4's PASS and DECISION F278 D4, then takes T003's first
-slice: `stream_evidence.py`'s blind handlers are narrowed or recorded, and the
-stream artifact gains `degradations`, both in `to_dict` and as
-`stream_degraded` events.
+ROUND 6 books round 5's PASS and DECISION F278 D5, makes the secret detector
+in `run_manifest.py` fail closed, and marks every blind handler in
+`job_evidence.py`, `run_manifest.py` and `scripts/build_review_manifest.py`
+with a noqa reason, one file per commit, comment text only.
 
 ## Next Steps
 
-1. T003, the remaining blind handlers, module group by module group: each
-   narrowed to the exception it expects or marked with a noqa reason.
-2. T003, the last marking commit: BLE001 joins `select`, and the ratchet test
-   freezes the count of excused handlers.
+1. T003, the next marking group: the job, pingpong, apply, runtime and
+   snapshot modules, each handler narrowed or given a reason.
+2. T003, the last marking group, in whose final commit BLE001 joins `select`
+   and the ratchet test freezes the count of excused handlers.
 3. The closure sequence.
 
 ## Risks
 
-About 257 handlers remain to be read, so the marking rounds are the bulk of
-T003; a handler whose narrowing is not obvious is marked, never guessed.
+A reason drafted by a research agent is only as good as its reading; the
+reviewer checks the ones that could hide a defect against the code.
