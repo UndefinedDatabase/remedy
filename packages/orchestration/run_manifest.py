@@ -3710,8 +3710,8 @@ def _contains_secret(value: str) -> bool:
         from packages.orchestration.stream_evidence import redact_text
         probe = _probe_text(value)
         return redact_text(probe) != probe
-    except Exception:
-        return False
+    except Exception:  # noqa: BLE001 — a detector that failed cannot clear the value
+        return True
 
 
 _SLASH_CMD_RE = re.compile(
