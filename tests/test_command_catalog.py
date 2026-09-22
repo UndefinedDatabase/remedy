@@ -267,16 +267,10 @@ class TestCatalogJSONSupport:
 #: `supports_json`, after `init run`, `dev status`, `dev smoke-help`, `memory
 #: store`, the five memory card mutations, `blocker resolve`, the three
 #: `patch` commands, `decision resolve`, `decision explain`, `job plan` and
-#: the seven `brain` report and viewer commands leave the set. These ten are
-#: exactly the D9 leaves to the last group (`ui` and `project`). Shrinks each
-#: round a D9 group lands; the round that lands the last group asserts the
-#: set is empty and deletes this constant.
+#: the seven `brain` report and viewer commands leave the set. These ten were
+#: exactly the D9 leaves to the last group (`ui` and `project`). F283 R16 C4
+#: lands the five `project` commands, leaving only the five `ui` commands.
 _READ_ONLY_WITHOUT_SUPPORTS_JSON: frozenset[str] = frozenset({
-    "project.adopt",
-    "project.attach",
-    "project.attach-job",
-    "project.attach-repo",
-    "project.create",
     "ui.latest",
     "ui.open",
     "ui.start",

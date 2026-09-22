@@ -421,7 +421,9 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         args=(
             ArgDef("name", "Project name (its repo)"),
             ArgDef("--description", "Project description (its repo)", required=False, is_option=True),
+            _JSON_OPT,
         ),
+        supports_json=True,
         related=("project.show",),
     ),
     CommandEntry(
@@ -449,7 +451,8 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         subcommand="attach-repo",
         description="Attach a repository path to a project.",
         action_class="write_metadata",
-        args=(_PROJECT_ID, ArgDef("repo_path", "Path to the repository")),
+        args=(_PROJECT_ID, ArgDef("repo_path", "Path to the repository"), _JSON_OPT),
+        supports_json=True,
     ),
     CommandEntry(
         command_id="project.attach-job",
@@ -457,7 +460,8 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         subcommand="attach-job",
         description="Link a job to a project's repo, under its mission.",
         action_class="write_metadata",
-        args=(_PROJECT_ID, _JOB_ID),
+        args=(_PROJECT_ID, _JOB_ID, _JSON_OPT),
+        supports_json=True,
     ),
     CommandEntry(
         command_id="project.brain",
@@ -512,7 +516,9 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         args=(
             ArgDef("--project", "Project's repo, slug or UUID", required=False, is_option=True),
             ArgDef("--repo", "Path to the repository", required=True, is_option=True),
+            _JSON_OPT,
         ),
+        supports_json=True,
         related=("project.current",),
     ),
     CommandEntry(
@@ -524,7 +530,9 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         args=(
             _JOB_ID,
             ArgDef("--project", "Project's repo, slug or UUID", required=False, is_option=True),
+            _JSON_OPT,
         ),
+        supports_json=True,
         related=("project.attach-job", "job.list"),
     ),
 

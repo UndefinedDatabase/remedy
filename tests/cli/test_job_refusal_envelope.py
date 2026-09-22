@@ -280,7 +280,7 @@ class TestDecisionsRefusalsAreAllMigrated:
             f"prose: lines {flagged}"
         )
 
-    def test_exactly_one_unflagged_site_remains(self):
+    def test_no_unflagged_site_remains(self):
         _, unflagged = _refusal_sites("decision.py")
         assert unflagged == [], (
             f"expected no sites left whose handler has no json flag, found {unflagged}"
@@ -388,8 +388,11 @@ class TestProjectRefusalsAreAllMigrated:
     ORIGINAL two lines, byte for byte, so the print-then-exit pair this ratchet counts
     now sits one level deeper — still the SAME one flagged site, just behind the guard,
     answering `project_not_found` or `invalid_project_selector` under `--json` while the
-    text branch is untouched. `_cmd_project_attach_repo`'s unflagged site is untouched by
-    this round and stays as it was."""
+    text branch is untouched. F283 R16 C4 gives `_cmd_project_attach_repo` its own
+    `json_output` flag and the SAME D7 shape, but with the shared `sys.exit(3)` sitting
+    AFTER the `if`/`else` rather than inside it, so the print-then-exit pair this ratchet
+    counts no longer exists at all — the site leaves the unflagged set without joining
+    the flagged one, which is why the flagged count is unchanged at one."""
 
     def test_exactly_one_flagged_site_remains(self):
         flagged, _ = _refusal_sites("project.py")
@@ -399,12 +402,11 @@ class TestProjectRefusalsAreAllMigrated:
             f"at lines {flagged}"
         )
 
-    def test_exactly_one_unflagged_site_remains(self):
+    def test_no_unflagged_site_remains(self):
         _, unflagged = _refusal_sites("project.py")
-        assert len(unflagged) == 1, (
-            "expected exactly the one unprefixed ProjectNotFoundError/"
-            f"InvalidProjectSelectorError site left unmigrated, found {len(unflagged)} "
-            f"at lines {unflagged}"
+        assert unflagged == [], (
+            "expected no sites left whose handler has no json flag, found "
+            f"{unflagged}"
         )
 
     def test_the_module_calls_the_shared_helper(self):
