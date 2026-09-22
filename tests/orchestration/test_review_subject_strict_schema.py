@@ -112,3 +112,22 @@ class TestReviewSubjectSchema:
         s = _subject()
         s["files"][0]["EXTRA_SECRET"] = "/home/alice/id_rsa"
         assert validate_review_subject_schema(s)
+
+
+class TestMetadataScannerFailsClosed:
+    """F278 T003, R-1038: a metadata value the scanners could not look at is not safe."""
+
+    def test_a_scanner_that_raises_does_not_clear_the_value(self, monkeypatch):
+        from packages.orchestration import review_subject as rs
+        from packages.orchestration import run_manifest
+
+        def broken(value):
+            raise RuntimeError("scanner unavailable")
+
+        monkeypatch.setattr(run_manifest, "_contains_local_path", broken)
+        assert rs._metadata_is_safe("an ordinary value") is False
+
+    def test_an_ordinary_value_is_still_safe(self):
+        from packages.orchestration import review_subject as rs
+
+        assert rs._metadata_is_safe("an ordinary value") is True
