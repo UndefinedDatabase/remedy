@@ -13,23 +13,20 @@ is documented and asserted from the catalog
 
 ## Current Step
 
-ROUND 18. It books round 17's PASS, registers and repairs R-1031, resolves
-R-1030 on the record, and converts the success documents of eight modules to
-the envelope under DECISION F283 D10: `runtime`, `do`, `test`, `event`,
-`memory`, `patch`, `stats` and `brain`.
+ROUND 19. It books round 18's PASS, resolves R-1031 on the record, records
+DECISION F283 D11, pins `patch revert`'s failure token, and converts the last
+six modules' success documents to the envelope under DECISION F283 D10:
+`job`, `mission`, `self`, `project`, `config` and `worker`.
 
 ## Next Steps
 
-1. T002's success half, last batch: `job`, `mission`, `self`, `project`,
-   `config` and `worker`, leaving the ratchet at the text-branch survivors.
-2. T002's last slice: the exit-code taxonomy under `docs/guides/` asserted
+1. T002's last slice: the exit-code taxonomy under `docs/guides/` asserted
    from the catalog, catalog-to-dispatch parity, and the sweep in
    `tests/cli/test_json_contract.py`.
-3. The closure sequence, whose one full suite runs on the merged tree.
+2. The closure sequence, whose one full suite runs on the merged tree.
 
 ## Risks
 
-Twenty-five findings are open and one of them, R-1031, is this feature's own.
-Eighteen rounds are spent of the soft limit of 25, in the fourth of 7
-sessions; the closure needs its own rounds, so the last batch and the sweep
-must each fit one round.
+Twenty-four findings are open and none is this feature's own. Nineteen rounds
+are spent of the soft limit of 25, in the fourth of 7 sessions; the sweep and
+the closure must fit the six rounds left.
