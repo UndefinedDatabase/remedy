@@ -462,3 +462,75 @@ times.
    parity, and the sweep in `tests/cli/test_json_contract.py`.
 
 Open findings count: **24**. Operator-questions count: **0**.
+
+## Reviewer verdict on round 19, and the end of session 4
+
+Written by the planner and reviewer of F283's fourth session after the worker's C6 above, and
+appended to this handback by a delegated worker as the session's last commit. It is the durable
+carrier of round 19's verdict (amend0827 rule 1): the first commit of the next round books it into
+`.agent/live_review.md` as the `Gate: F283 R19 — ` entry.
+
+VERDICT ON ROUND 19: PASS ON ALL SIX GATES, WITH ONE GUARDRAIL BREACH DECLARED. Re-derived over
+`5d1510ca`..`0fc2f2b5` by the reviewer's own runs. The range is 6 commits in the block's order C1
+to C6 — `69aabf38` 256, `1dab21ea` 44, `04202844` 33, `83ded2a2` 110, `01d8d973` 97, `0fc2f2b5` 307 insertions by `git show --numstat`, each under the cap — and each commit's
+path list is one the block's constraint 3 allows. The four `.agent/authored/f283-r19-*` blobs read out
+of `69aabf38` equal the reviewer's originals; `.agent/live_review.md` at `1dab21ea` is its `5d1510ca`
+bytes plus ledger.md, 540287 bytes, and `.agent/decisions.md` its base plus decisions.md, 1829140
+bytes, both unchanged at `0fc2f2b5`; `.agent/plan.md` equals its payload at both. The open set reads
+25 at `5d1510ca` and 24 at `1dab21ea`, REMOVED `R-1031`. `apps/cli/commands/job.py`,
+`mission_cmd.py`, `self_cmd.py`, `project.py`, `config_cmd.py` and `worker.py` write every `--json`
+success document through `emit_ok` with its old keys kept, `config list --json` answers `entries`
+where it wrote a bare list, and the raw-document scanner reads one site left under `apps/cli/`, the
+TEXT branch of `project attach`, which D10 (5) keeps and the ratchet names. Selection A reads
+`11460 passed, 13 skipped` at real exit code 0 against `11459 passed, 13 skipped` at `5d1510ca`; `ruff check` over the round's 19
+touched Python paths passes; `integrity check --json` passes at `fail_count` 0; the golden path reads
+`42 passed`. With the six modules restored from `5d1510ca` in the disposable worktree
+`.remedy-wt/f283-r19-reviewer` and every test kept, a test of each of the six failed (13 failed
+tests outside the UI suites, which that worktree could not build). The reviewer's mutations there,
+removed afterwards: control reads `40 passed` at exit 0; v1 revert failure token fixed to revert_failed reads `1 failed, 39 passed` at exit 1 on `test_a_refused_revert_answers_its_block_reason_as_the_envelope_error`; v2 config list writes the bare list reads `3 failed, 37 passed` at exit 1 on `test_config_list_json, test_config_list_limit, test_config_show_alias`. The second mutation was confounded, because `config_cmd.py` imports no
+`json` and the reds are a `NameError`; the restore above is the clean reading, since the base file
+wrote the bare list and the three `config` tests failed against it.
+
+THE BREACH. The worker ran `git stash -u` in the primary checkout while diagnosing a test, which the
+block forbids, saw it at once and ran `git stash pop` in the same turn; `git stash list`'s first entry
+is the one it was before the round, the tree is clean, and nothing was committed in the stashed
+state. It left nothing wrong on disk, so it spends no id, and the handback declares it.
+
+AN OBSERVATION FOR THE EXIT-CODE SLICE, NOT A FINDING. `job resume --json` on a checkpoint whose resume
+mode is not implemented answers `ok` true with `blocked_reason` and exits 0, as it did before this
+round; D10 follows the exit code, so the conversion is correct. Whether a blocked resume should exit
+0 is a question the exit-code taxonomy has to answer, and the next round should read it there.
+
+WHY THE SESSION ENDS HERE. Session 4 ran six delegated rounds, 14 to 19, all PASS, which meets the
+target of six to eight. The next round is T002's last slice: a new decision on the exit-code
+taxonomy, its guide under `docs/guides/`, its assertion from the catalog, catalog-to-dispatch parity
+and the sweep in `tests/cli/test_json_contract.py`. It is a design round rather than a conversion,
+and the reviewer's context is heavily used after six rounds of measurement, so it is started in a
+fresh session.
+
+SESSION 4 of feature F283 · rounds 14 to 19 · rounds so far 19 of the soft limit of 25 · sessions 4
+of 7. Context self-assessment: roughly a third of the reviewer's working budget remained, enough to
+write this and not enough to author and review a design round well.
+
+FOR THE OPERATOR, IN PLAIN WORDS. This feature makes every Remedy command that offers machine-readable
+output answer in one fixed shape, on success and on failure. In this session every read-only command
+learned to answer that way, and every command that printed its own JSON now wraps it in the shared
+shape without dropping any field older readers use. What is left is a written list of what each exit
+number means, a test that checks every such command at once, and the closing steps. Nothing is
+waiting on you.
+
+## Next (session 5)
+
+1. Phase 1 rule 1: read `.agent/STOP` from disk. While it exists, write nothing and end.
+2. Phase 1 rule 2: the Open PR Gate — no pull request is open for this branch, and none is opened
+   before closure.
+3. Round 20's first commit books round 19's verdict above into `.agent/live_review.md`. The round is
+   T002's last slice: measure every exit code in use under `apps/cli/` (`sys.exit(n)` and
+   `fail(..., exit_code=n)`), record the taxonomy as a DECISION, write it under `docs/guides/`,
+   assert it from the catalog, assert catalog-to-dispatch parity, and land the sweep in
+   `tests/cli/test_json_contract.py`: every `supports_json` command reachable without a positional
+   argument answers a parseable envelope on success and on a deliberately invalid argument.
+4. Then the closure sequence, whose one full suite runs on the merged tree (DECISION
+   amend0921-operator-feedback D1), within the six rounds left of the soft limit.
+
+Open findings: 24, none F283's own. Operator questions open: 0.
