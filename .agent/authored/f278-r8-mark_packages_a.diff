@@ -1,0 +1,220 @@
+diff --git a/packages/orchestration/artifact_summary.py b/packages/orchestration/artifact_summary.py
+index 6f357407..2471ff82 100644
+--- a/packages/orchestration/artifact_summary.py
++++ b/packages/orchestration/artifact_summary.py
+@@ -315,7 +315,7 @@ def generate_artifact_summary(
+             on_call=on_call,
+             allow_parse_retry=True,
+         )
+-    except Exception as exc:
++    except Exception as exc:  # noqa: BLE001 — generation failure becomes a fallback summary, not a crash
+         classification = classify(FailureSignals(exception=exc))
+         return _fallback_summary(
+             sections, full_ref, artifact_hash, reason=classification.failure_class.value)
+diff --git a/packages/orchestration/budget_guard.py b/packages/orchestration/budget_guard.py
+index 6ba1b050..3297088e 100644
+--- a/packages/orchestration/budget_guard.py
++++ b/packages/orchestration/budget_guard.py
+@@ -413,7 +413,7 @@ def evaluate_budget(
+     if budgets.min_free_disk_bytes is not None:
+         try:
+             free = free_disk_bytes(free_disk_probe)
+-        except Exception as disk_exc:
++        except Exception as disk_exc:  # noqa: BLE001 — a disk-free probe failure is a warning, not a job stop
+             warnings.append(
+                 f"free disk could not be read "
+                 f"({type(disk_exc).__name__}: {disk_exc}); "
+@@ -527,7 +527,7 @@ def derive_next_task_token_band(task, previous_summaries=()) -> str:
+                 total += _tokens
+         return token_economy.estimate_task_token_band(
+             task_type="job_task", context_estimate=total)
+-    except Exception:
++    except Exception:  # noqa: BLE001 — token-band estimation failure degrades to UNKNOWN, never raises
+         return TokenBand.UNKNOWN
+ 
+ 
+diff --git a/packages/orchestration/builder_models.py b/packages/orchestration/builder_models.py
+index 701cb91d..d1822ef9 100644
+--- a/packages/orchestration/builder_models.py
++++ b/packages/orchestration/builder_models.py
+@@ -122,7 +122,7 @@ def parse_builder_patch(output: BuilderOutput) -> BuilderPatchResult:
+ 
+     try:
+         patch = parse_structured_patch(text)
+-    except Exception:
++    except Exception:  # noqa: BLE001 — a malformed patch is reported as a parse failure, not a crash
+         return BuilderPatchResult(
+             parse_success=False,
+             error_kind="parse_exception",
+diff --git a/packages/orchestration/checkpoints.py b/packages/orchestration/checkpoints.py
+index 485c7cd9..22d9f60a 100644
+--- a/packages/orchestration/checkpoints.py
++++ b/packages/orchestration/checkpoints.py
+@@ -525,7 +525,7 @@ def resolve_retention(config: Any = None) -> int:
+             return DEFAULT_RETENTION
+     try:
+         value = config.get(CONFIG_KEY_RETENTION)
+-    except Exception:  # noqa: BLE001
++    except Exception:  # noqa: BLE001 — retention must never break a write
+         return DEFAULT_RETENTION
+     if value is None:
+         return DEFAULT_RETENTION
+diff --git a/packages/orchestration/do_sequence.py b/packages/orchestration/do_sequence.py
+index 33d516c7..c5dcebe7 100644
+--- a/packages/orchestration/do_sequence.py
++++ b/packages/orchestration/do_sequence.py
+@@ -566,7 +566,7 @@ def plan_order_job(
+             ev_dir.mkdir(parents=True, exist_ok=True)
+             try:
+                 write_postmortem(ev_dir, pm, root=ev_dir)
+-            except Exception as exc:
++            except Exception as exc:  # noqa: BLE001 — postmortem write failure is only warned about, not fatal
+                 print(f"Warning: postmortem write failed: {exc}", file=sys.stderr)
+             raise OrderJobPlanError(
+                 f"task plan generation failed: "
+diff --git a/packages/orchestration/dod_compiler.py b/packages/orchestration/dod_compiler.py
+index 5636b6a0..4074c173 100644
+--- a/packages/orchestration/dod_compiler.py
++++ b/packages/orchestration/dod_compiler.py
+@@ -404,7 +404,7 @@ def compile_dod(
+             on_call=on_call,
+             allow_parse_retry=True,
+         )
+-    except Exception as exc:
++    except Exception as exc:  # noqa: BLE001 — provider failure falls back to a deterministic DoD
+         return _fallback(
+             plan, intake, default_selector, hint=f"provider error: {exc}",
+             worktree_root=worktree_root)
+diff --git a/packages/orchestration/dod_runners.py b/packages/orchestration/dod_runners.py
+index 125f34dc..7112518b 100644
+--- a/packages/orchestration/dod_runners.py
++++ b/packages/orchestration/dod_runners.py
+@@ -663,7 +663,7 @@ def _run_runtime_flow(check: DoDCheck, ctx: _RunContext) -> CheckEvidence:
+ 
+     try:
+         spec = resolve_spec(ctx.root)
+-    except Exception as exc:
++    except Exception as exc:  # noqa: BLE001 — unresolvable runtime config is reported as a refusal, not a crash
+         return _refused(
+             check, REASON_RUNTIME_NOT_CONFIGURED, [], "",
+             f"the runtime harness cannot start this project: {exc}")
+diff --git a/packages/orchestration/event_persistence.py b/packages/orchestration/event_persistence.py
+index bdd3afd4..97dc7797 100644
+--- a/packages/orchestration/event_persistence.py
++++ b/packages/orchestration/event_persistence.py
+@@ -62,6 +62,6 @@ def emit_important_event(
+         return EventPersistenceResult(event_type, "complete")
+     except (OSError, ValueError, TypeError):
+         return EventPersistenceResult(event_type, "failed", "append_failed")
+-    except Exception:
++    except Exception:  # noqa: BLE001 — unexpected errors are reported as failed status, never raised
+         # Defensive: any unexpected error is surfaced as a failed status, not raised.
+         return EventPersistenceResult(event_type, "failed", "unexpected")
+diff --git a/packages/orchestration/gauntlet_runner.py b/packages/orchestration/gauntlet_runner.py
+index d685dbba..f93a1309 100644
+--- a/packages/orchestration/gauntlet_runner.py
++++ b/packages/orchestration/gauntlet_runner.py
+@@ -559,7 +559,7 @@ def run_order(order: GauntletOrder, *, campaign_root: Path, real_data_root: Path
+                                   entries, mission, injectors, before,
+                                   data_root, models, template_dir)
+             gate = latest_gate_result(mission)
+-    except Exception as exc:  # a crashed run is a FAILED run, with evidence
++    except Exception as exc:  # noqa: BLE001 — a crashed run becomes a failed run, with evidence
+         crashed = f"{type(exc).__name__}: {exc}"
+         terminal = terminal or TERMINAL_RUNNER_CRASHED
+         gate = None
+@@ -572,7 +572,7 @@ def run_order(order: GauntletOrder, *, campaign_root: Path, real_data_root: Path
+                                       time.monotonic() - started,
+                                       entries, mission, injectors, before,
+                                       data_root, models, template_dir)
+-        except Exception as collect_exc:  # R-0180: the fallback keeps the run
++        except Exception as collect_exc:  # noqa: BLE001 — collector failure falls back to a minimal evidence body
+             body = _minimal_body(order, before)
+             body["terminal_status"] = terminal
+             body["postmortems"] = [{
+@@ -698,7 +698,7 @@ def run_campaign(orders: tuple[GauntletOrder, ...], campaign_root: Path, *,
+         try:
+             outcome = run_order(order, campaign_root=campaign_root,
+                                 real_data_root=real_root, deps=deps, index=index)
+-        except Exception as exc:  # R-0180: the order dies, the campaign does not
++        except Exception as exc:  # noqa: BLE001 — one order's crash must not stop the whole campaign
+             outcome = OrderOutcome(
+                 order_id=order.id,
+                 run_dir=campaign_root / f"run-{index:02d}-{order.id}",
+diff --git a/packages/orchestration/guidance.py b/packages/orchestration/guidance.py
+index 38b6f520..71ace61d 100644
+--- a/packages/orchestration/guidance.py
++++ b/packages/orchestration/guidance.py
+@@ -56,7 +56,7 @@ def build_guidance_cards(
+                 command=f"remedy decision list {job_id}",
+                 related_node_type="decision_queue",
+             ))
+-    except (ImportError, Exception):
++    except (ImportError, Exception):  # noqa: BLE001 — one card's failure must not remove the rest of the list
+         pass
+ 
+     # 2. Stop reasons / blockers
+@@ -73,7 +73,7 @@ def build_guidance_cards(
+                 command=f"remedy blocker list {job_id}",
+                 related_node_type="stop_reason",
+             ))
+-    except (ImportError, Exception):
++    except (ImportError, Exception):  # noqa: BLE001 — one card's failure must not remove the rest of the list
+         pass
+ 
+     # 3. Test status
+diff --git a/packages/orchestration/hunk_approval.py b/packages/orchestration/hunk_approval.py
+index 25d1a8d0..af9cc627 100644
+--- a/packages/orchestration/hunk_approval.py
++++ b/packages/orchestration/hunk_approval.py
+@@ -108,10 +108,10 @@ def _total_text(value: object) -> str:
+     ``repr()`` is broken too contributes the unoverridable ``object.__repr__``."""
+     try:
+         return str(value)
+-    except Exception:
++    except Exception:  # noqa: BLE001 — str() failed; fall back to repr()
+         try:
+             return repr(value)
+-        except Exception:
++        except Exception:  # noqa: BLE001 — repr() failed too; fall back to the unoverridable object repr
+             return object.__repr__(value)
+ 
+ 
+@@ -126,7 +126,7 @@ def _entries(value: Any) -> list[Any]:
+         return [value]
+     try:
+         return list(value)
+-    except Exception:
++    except Exception:  # noqa: BLE001 — value isn't iterable; treat it as a single entry
+         return [value]
+ 
+ 
+@@ -159,7 +159,7 @@ def _mapping_value(entry: Mapping, keys: tuple[str, ...]) -> Any:
+         try:
+             if key in entry:
+                 return entry[key]
+-        except Exception:
++        except Exception:  # noqa: BLE001 — a broken mapping access contributes nothing for this key
+             continue
+     return None
+ 
+@@ -191,7 +191,7 @@ def _normalise_rejection(entry: Any) -> HunkRejection:
+     if isinstance(entry, Sequence) and not isinstance(entry, (str, bytes, bytearray)):
+         try:
+             parts = list(entry)
+-        except Exception:
++        except Exception:  # noqa: BLE001 — entry claims to be a sequence but isn't; treat it as empty
+             parts = []
+         return HunkRejection(
+             _total_text(parts[0]) if parts else "",
+diff --git a/packages/orchestration/hunk_decision_record.py b/packages/orchestration/hunk_decision_record.py
+index 31503f25..a74950ea 100644
+--- a/packages/orchestration/hunk_decision_record.py
++++ b/packages/orchestration/hunk_decision_record.py
+@@ -351,5 +351,5 @@ def load_latest_hunk_ledger_from_metadata(
+         if winner is None:
+             return HunkDecisionLedger(())
+         return import_hunk_ledger(winner)
+-    except Exception:
++    except Exception:  # noqa: BLE001 — malformed metadata yields an empty ledger, never a partial one
+         return HunkDecisionLedger(())
