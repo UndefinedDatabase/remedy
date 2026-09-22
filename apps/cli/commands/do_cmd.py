@@ -181,7 +181,7 @@ def _resolve_do_commit_flags(
         top = None                     # not a repository: the init step fails and says so
     try:
         key = push_after_mission_enabled(load_config(Path(top or repo) / "remedy.toml"))
-    except Exception:
+    except Exception:  # noqa: BLE001 — never pushes based on a config value it cannot read
         key = False                    # Remedy never pushes on a value it cannot read
     source = "--push" if push else ("apply.push_after_mission" if key and mode else "")
     if key and not mode:
@@ -896,7 +896,7 @@ def _index_job_evidence(job_id: str, evidence_out: str, source_command: str) -> 
         try:
             from packages.orchestration.job_evidence import _read_changed_files_for_index
             changed = _read_changed_files_for_index(evidence_out)
-        except Exception:
+        except Exception:  # noqa: BLE001 — index evidence is optional; fall back to another changed-file source
             changed = []
         if not changed:
             changed = dirty_source_test_files(repo)
@@ -904,7 +904,7 @@ def _index_job_evidence(job_id: str, evidence_out: str, source_command: str) -> 
             job_id, evidence_out, repo_path=repo, job_status=status,
             changed_files=changed, source_command=source_command,
         )
-    except Exception:
+    except Exception:  # noqa: BLE001 — evidence indexing is best effort; must not break the export
         pass
 
 

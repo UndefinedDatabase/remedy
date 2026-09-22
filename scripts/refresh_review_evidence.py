@@ -98,7 +98,7 @@ def refresh_staged_evidence(staged_dir: str, repo_root: str) -> dict:
                 "new_checks_passed": new_gate.get("checks_passed"),
                 "new_verdict": new_gate.get("verdict"),
             })
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001 — gate regeneration failure is recorded in the report, not raised
         report["issues"].append(
             f"failed to regenerate runtime_integration_gate: "
             f"{type(exc).__name__}: {exc}")

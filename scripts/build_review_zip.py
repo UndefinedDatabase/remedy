@@ -599,7 +599,7 @@ def main() -> int:
     except (ReviewZipError, ArchivePlanError) as exc:
         print(f"REVIEW_ZIP_ERROR: {exc}", file=sys.stderr)
         return 2
-    except Exception as exc:                         # a ReviewSubjectError/ContentProofError/etc.
+    except Exception as exc:  # noqa: BLE001 — any other packaging error exits 2 with its name
         print(f"REVIEW_ZIP_ERROR: {type(exc).__name__}: {exc}", file=sys.stderr)
         return 2
 

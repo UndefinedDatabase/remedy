@@ -250,7 +250,7 @@ def _cmd_project_brain(project_id_str: str, *, json_output: bool = False) -> Non
         if target_repo:
             try:
                 consts[jid] = load_project_constitution(Path(target_repo))
-            except Exception:
+            except Exception:  # noqa: BLE001 — constitution is optional; treat load failure as absent
                 consts[jid] = None
 
     agg = build_project_brain_aggregate(

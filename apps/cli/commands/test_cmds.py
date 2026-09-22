@@ -105,7 +105,7 @@ def _cmd_discover_commands(job_id_str: str, *, as_json: bool) -> None:
     try:
         from packages.orchestration.pingpong_job import require_job_plan
         job = require_job_plan(job_id)
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001 — job lookup failure is reported, not raised, from a read command
         fail("job_store_error", str(exc), json_output=as_json)
 
     target_repo_str = job.metadata.get("target_repo")

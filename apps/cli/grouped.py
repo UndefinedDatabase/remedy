@@ -583,7 +583,7 @@ def _dispatch(
         handler(args)
     except (SystemExit, KeyboardInterrupt):
         raise
-    except Exception as exc:  # noqa: BLE001 - the whole point is the catch-all
+    except Exception as exc:  # noqa: BLE001 — the whole point is the catch-all
         message = f"{type(exc).__name__}: {exc}"
         if _wants_json(raw):
             emit_error(
