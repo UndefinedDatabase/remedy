@@ -262,23 +262,16 @@ class TestCatalogJSONSupport:
 # The read-only-without-`supports_json` ratchet (DECISION F283 D9)
 # ---------------------------------------------------------------------------
 
-#: F283 R15 C5 — the read-only commands (the D7 derived rule: neither
+#: F283 R15 C6 — the read-only commands (the D7 derived rule: neither
 #: `may_mutate_repo` nor `may_execute_commands`) that still do not declare
 #: `supports_json`, after `init run`, `dev status`, `dev smoke-help`, `memory
 #: store`, the five memory card mutations, `blocker resolve`, the three
-#: `patch` commands, `decision resolve`, `decision explain` and `job plan`
-#: leave the set. These nine are exactly the D9 leaves to the later groups
-#: (`brain`, then `ui`, `project`). Shrinks each round a D9 group lands; the
-#: round that lands the last group asserts the set is empty and deletes this
-#: constant.
+#: `patch` commands, `decision resolve`, `decision explain`, `job plan` and
+#: the seven `brain` report and viewer commands leave the set. These ten are
+#: exactly the D9 leaves to the last group (`ui` and `project`). Shrinks each
+#: round a D9 group lands; the round that lands the last group asserts the
+#: set is empty and deletes this constant.
 _READ_ONLY_WITHOUT_SUPPORTS_JSON: frozenset[str] = frozenset({
-    "brain.cockpit",
-    "brain.constitution",
-    "brain.export-viewer",
-    "brain.open",
-    "brain.timeline",
-    "brain.trust",
-    "brain.view",
     "project.adopt",
     "project.attach",
     "project.attach-job",

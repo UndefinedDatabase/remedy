@@ -8,7 +8,7 @@ from collections.abc import Callable
 from typing import TYPE_CHECKING
 
 from apps.cli.job_id_arg import resolve_job_id_or_fail
-from apps.cli.json_envelope import fail
+from apps.cli.json_envelope import emit_ok, fail
 from packages.orchestration.data_paths import resolve_data_root
 from packages.orchestration.pingpong_job import JobNotFoundError, require_job_plan
 
@@ -103,12 +103,12 @@ def _cmd_brain_node(job_id_str: str, node_id: str, *, json_output: bool = False)
     )
 
 
-def _cmd_brain_view(job_id_str: str) -> None:
-    job_id = resolve_job_id_or_fail(job_id_str, json_output=False)
+def _cmd_brain_view(job_id_str: str, *, json_output: bool = False) -> None:
+    job_id = resolve_job_id_or_fail(job_id_str, json_output=json_output)
     try:
         job = require_job_plan(job_id)
     except JobNotFoundError as exc:
-        fail("job_not_found", str(exc), json_output=False)
+        fail("job_not_found", str(exc), json_output=json_output)
 
     from pathlib import Path
 
@@ -139,7 +139,12 @@ def _cmd_brain_view(job_id_str: str) -> None:
     out_dir = data_dir / "viewers" / str(job_id)
     index_path = write_brain_viewer_files(viewer_data, out_dir)
 
-    print(f"Brain Viewer: {index_path}")
+    if json_output:
+        emit_ok(job_id=str(job.job_id), index_path=str(index_path),
+                node_count=len(graph.nodes), edge_count=len(graph.edges),
+                detail_count=len(viewer_data.node_details))
+    else:
+        print(f"Brain Viewer: {index_path}")
 
     log = RunLogWriter(job_id=job.job_id)
     log.log(
@@ -150,13 +155,13 @@ def _cmd_brain_view(job_id_str: str) -> None:
     )
 
 
-def _prepare_viewer(job_id_str: str):
+def _prepare_viewer(job_id_str: str, *, json_output: bool = False):
     """Shared helper: build viewer, return (index_path, job)."""
-    job_id = resolve_job_id_or_fail(job_id_str, json_output=False)
+    job_id = resolve_job_id_or_fail(job_id_str, json_output=json_output)
     try:
         job = require_job_plan(job_id)
     except JobNotFoundError as exc:
-        fail("job_not_found", str(exc), json_output=False)
+        fail("job_not_found", str(exc), json_output=json_output)
 
     from pathlib import Path
 
@@ -185,29 +190,37 @@ def _prepare_viewer(job_id_str: str):
     return index_path, job, viewer_data, graph
 
 
-def _cmd_brain_open(job_id_str: str) -> None:
-    index_path, job, _, _ = _prepare_viewer(job_id_str)
-    print(f"Brain Viewer: {index_path}")
+def _cmd_brain_open(job_id_str: str, *, json_output: bool = False) -> None:
+    index_path, job, _, _ = _prepare_viewer(job_id_str, json_output=json_output)
+    if not json_output:
+        print(f"Brain Viewer: {index_path}")
 
     import platform
     import subprocess
     system = platform.system()
+    opened = False
     try:
         if system == "Darwin":
             subprocess.Popen(["open", str(index_path)])
+            opened = True
         elif system == "Linux":
             subprocess.Popen(["xdg-open", str(index_path)])
+            opened = True
         elif system == "Windows":
             import os
             os.startfile(str(index_path))  # type: ignore[attr-defined]
+            opened = True
         else:
             print("(open manually — no platform opener detected)", file=sys.stderr)
     except (OSError, FileNotFoundError):
         print("(open manually — opener unavailable)", file=sys.stderr)
 
+    if json_output:
+        emit_ok(job_id=str(job.job_id), index_path=str(index_path), opened=opened)
+
 
 def _cmd_viewer_path(job_id_str: str, *, json_output: bool = False) -> None:
-    index_path, job, viewer_data, graph = _prepare_viewer(job_id_str)
+    index_path, job, viewer_data, graph = _prepare_viewer(job_id_str, json_output=json_output)
     if json_output:
         import json as _j
         print(_j.dumps({
@@ -223,13 +236,13 @@ def _cmd_viewer_path(job_id_str: str, *, json_output: bool = False) -> None:
         print(str(index_path))
 
 
-def _cmd_export_viewer(job_id_str: str, out_path: str) -> None:
+def _cmd_export_viewer(job_id_str: str, out_path: str, *, json_output: bool = False) -> None:
     import json as _j
     import shutil
     from datetime import datetime, timezone
     from pathlib import Path
 
-    index_path, job, viewer_data, graph = _prepare_viewer(job_id_str)
+    index_path, job, viewer_data, graph = _prepare_viewer(job_id_str, json_output=json_output)
     src_dir = index_path.parent
     dst = Path(out_path)
     dst.mkdir(parents=True, exist_ok=True)
@@ -255,8 +268,12 @@ def _cmd_export_viewer(job_id_str: str, out_path: str) -> None:
         "redaction_summary": "No raw content, secrets, or external assets.",
     }
     (dst / "viewer_manifest.json").write_text(_j.dumps(manifest, sort_keys=True, indent=2))
-    print(f"Exported to: {dst}")
-    print("  index.html, viewer_data.json, viewer_manifest.json")
+    files = ["index.html", "viewer_data.json", "viewer_manifest.json"]
+    if json_output:
+        emit_ok(job_id=str(job.job_id), out_dir=str(dst), files=files)
+    else:
+        print(f"Exported to: {dst}")
+        print("  index.html, viewer_data.json, viewer_manifest.json")
 
 
 def _cmd_context(job_id_str: str, *, json_output: bool = False) -> None:
@@ -308,12 +325,12 @@ def _cmd_context(job_id_str: str, *, json_output: bool = False) -> None:
     )
 
 
-def _cmd_trust_report(job_id_str: str) -> None:
-    job_id = resolve_job_id_or_fail(job_id_str, json_output=False)
+def _cmd_trust_report(job_id_str: str, *, json_output: bool = False) -> None:
+    job_id = resolve_job_id_or_fail(job_id_str, json_output=json_output)
     try:
         job = require_job_plan(job_id)
     except JobNotFoundError as exc:
-        fail("job_not_found", str(exc), json_output=False)
+        fail("job_not_found", str(exc), json_output=json_output)
 
     from pathlib import Path
 
@@ -325,31 +342,43 @@ def _cmd_trust_report(job_id_str: str) -> None:
     target_repo_str = job.metadata.get("target_repo")
     constitution = load_project_constitution(Path(target_repo_str)) if target_repo_str else None
     events = load_run_events(data_dir, job_id)
-    print(summarize_trust_report(job, events, data_dir=data_dir, constitution=constitution))
+    text = summarize_trust_report(job, events, data_dir=data_dir, constitution=constitution)
+    if json_output:
+        emit_ok(job_id=str(job.job_id), text=text)
+    else:
+        print(text)
 
 
-def _cmd_timeline(job_id_str: str) -> None:
-    job_id = resolve_job_id_or_fail(job_id_str, json_output=False)
+def _cmd_timeline(job_id_str: str, *, json_output: bool = False) -> None:
+    job_id = resolve_job_id_or_fail(job_id_str, json_output=json_output)
     try:
         job = require_job_plan(job_id)
     except JobNotFoundError as exc:
-        fail("job_not_found", str(exc), json_output=False)
+        fail("job_not_found", str(exc), json_output=json_output)
 
     from packages.orchestration.timeline import load_run_events, summarize_timeline
     data_dir = resolve_data_root()
     events = load_run_events(data_dir, job_id)
     if not events:
-        print(f"No run logs found for job {job_id}.")
+        text = f"No run logs found for job {job_id}."
+        if json_output:
+            emit_ok(job_id=str(job_id), event_count=0, text=text)
+        else:
+            print(text)
         return
-    print(summarize_timeline(job, events))
+    text = summarize_timeline(job, events)
+    if json_output:
+        emit_ok(job_id=str(job_id), event_count=len(events), text=text)
+    else:
+        print(text)
 
 
-def _cmd_cockpit(job_id_str: str) -> None:
-    job_id = resolve_job_id_or_fail(job_id_str, json_output=False)
+def _cmd_cockpit(job_id_str: str, *, json_output: bool = False) -> None:
+    job_id = resolve_job_id_or_fail(job_id_str, json_output=json_output)
     try:
         job = require_job_plan(job_id)
     except JobNotFoundError as exc:
-        fail("job_not_found", str(exc), json_output=False)
+        fail("job_not_found", str(exc), json_output=json_output)
 
     from pathlib import Path
 
@@ -361,15 +390,19 @@ def _cmd_cockpit(job_id_str: str) -> None:
     target_repo_str = job.metadata.get("target_repo")
     constitution = load_project_constitution(Path(target_repo_str) if target_repo_str else None)
     events = load_run_events(data_dir, job_id)
-    print(summarize_cockpit(job, events, data_dir=data_dir, constitution=constitution))
+    text = summarize_cockpit(job, events, data_dir=data_dir, constitution=constitution)
+    if json_output:
+        emit_ok(job_id=str(job.job_id), text=text)
+    else:
+        print(text)
 
 
-def _cmd_constitution(job_id_str: str) -> None:
-    job_id = resolve_job_id_or_fail(job_id_str, json_output=False)
+def _cmd_constitution(job_id_str: str, *, json_output: bool = False) -> None:
+    job_id = resolve_job_id_or_fail(job_id_str, json_output=json_output)
     try:
         job = require_job_plan(job_id)
     except JobNotFoundError as exc:
-        fail("job_not_found", str(exc), json_output=False)
+        fail("job_not_found", str(exc), json_output=json_output)
 
     from pathlib import Path
 
@@ -380,7 +413,11 @@ def _cmd_constitution(job_id_str: str) -> None:
     repo_root = Path(target_repo_str) if target_repo_str else None
 
     constitution = load_project_constitution(repo_root)
-    print(render_constitution(constitution, repo_root))
+    text = render_constitution(constitution, repo_root)
+    if json_output:
+        emit_ok(job_id=str(job.job_id), text=text)
+    else:
+        print(text)
 
     log = RunLogWriter(job_id=job.job_id)
     log.log(
@@ -465,18 +502,25 @@ def _cmd_agent_loop(job_id_str: str) -> None:
 COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
     "brain.graph": lambda args: _cmd_brain(args.job_id, json_output=args.json),
     "brain.node": lambda args: _cmd_brain_node(args.job_id, args.node_id, json_output=args.json),
-    "brain.view": lambda args: _cmd_brain_view(args.job_id),
-    "brain.open": lambda args: _cmd_brain_open(args.job_id),
+    "brain.view": lambda args: _cmd_brain_view(
+        args.job_id, json_output=getattr(args, "json", False)),
+    "brain.open": lambda args: _cmd_brain_open(
+        args.job_id, json_output=getattr(args, "json", False)),
     "brain.viewer-path": lambda args: _cmd_viewer_path(args.job_id, json_output=args.json),
-    "brain.export-viewer": lambda args: _cmd_export_viewer(args.job_id, args.out),
+    "brain.export-viewer": lambda args: _cmd_export_viewer(
+        args.job_id, args.out, json_output=getattr(args, "json", False)),
     "brain.context": lambda args: _cmd_context(args.job_id, json_output=args.json),
-    "brain.trust": lambda args: _cmd_trust_report(args.job_id),
-    "brain.timeline": lambda args: _cmd_timeline(args.job_id),
-    "brain.cockpit": lambda args: _cmd_cockpit(args.job_id),
+    "brain.trust": lambda args: _cmd_trust_report(
+        args.job_id, json_output=getattr(args, "json", False)),
+    "brain.timeline": lambda args: _cmd_timeline(
+        args.job_id, json_output=getattr(args, "json", False)),
+    "brain.cockpit": lambda args: _cmd_cockpit(
+        args.job_id, json_output=getattr(args, "json", False)),
     "brain.continue": lambda args: _cmd_brain_continue(
         args.job_id, args.node_id, args.prompt,
         task_type=getattr(args, "task_type", None),
         json_output=args.json,
     ),
-    "brain.constitution": lambda args: _cmd_constitution(args.job_id),
+    "brain.constitution": lambda args: _cmd_constitution(
+        args.job_id, json_output=getattr(args, "json", False)),
 }

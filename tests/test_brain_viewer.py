@@ -1179,3 +1179,142 @@ class TestBrainViewerPlaceholderOrder:
         html = index_path.read_text()
         assert "__STATIC_FALLBACK__" not in html
         assert "__VIEWER_DATA_JSON__" not in html
+
+
+class TestBrainCommandsAnswerJSONThroughTheDispatcher:
+    """F283 R15 C6 (DECISION F283 D9) — `brain view`, `open`, `export-viewer`,
+    `trust`, `timeline`, `cockpit` and `constitution` now declare `--json` in
+    the catalog; each success envelope proved end to end through the CLI
+    dispatcher, plus one `job_not_found` refusal shared by the group."""
+
+    def test_view_answers_the_envelope(self, tmp_path, monkeypatch, capsys):
+        import sys
+
+        from apps.cli.main import main
+
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        job = _make_job()
+        save_job_plan(job)
+        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "view", str(job.job_id), "--json"])
+        main()
+        body = json.loads(capsys.readouterr().out)
+        assert body["ok"] is True and body["schema_version"] == 1
+        assert body["job_id"] == str(job.job_id)
+        assert "index_path" in body
+        assert isinstance(body["node_count"], int)
+        assert isinstance(body["edge_count"], int)
+        assert isinstance(body["detail_count"], int)
+
+    def test_open_answers_the_envelope(self, tmp_path, monkeypatch, capsys):
+        import sys
+
+        from apps.cli.main import main
+
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        job = _make_job()
+        save_job_plan(job)
+        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "open", str(job.job_id), "--json"])
+        main()
+        body = json.loads(capsys.readouterr().out)
+        assert body["ok"] is True and body["schema_version"] == 1
+        assert body["job_id"] == str(job.job_id)
+        assert "index_path" in body
+        assert isinstance(body["opened"], bool)
+
+    def test_export_viewer_answers_the_envelope(self, tmp_path, monkeypatch, capsys):
+        import sys
+
+        from apps.cli.main import main
+
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        job = _make_job()
+        save_job_plan(job)
+        out_dir = tmp_path / "exported"
+        monkeypatch.setattr(sys, "argv", [
+            "remedy", "brain", "export-viewer", str(job.job_id),
+            "--out", str(out_dir), "--json",
+        ])
+        main()
+        body = json.loads(capsys.readouterr().out)
+        assert body["ok"] is True and body["schema_version"] == 1
+        assert body["job_id"] == str(job.job_id)
+        assert body["out_dir"] == str(out_dir)
+        assert body["files"] == ["index.html", "viewer_data.json", "viewer_manifest.json"]
+
+    def test_trust_answers_the_envelope(self, tmp_path, monkeypatch, capsys):
+        import sys
+
+        from apps.cli.main import main
+
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        job = _make_job()
+        save_job_plan(job)
+        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "trust", str(job.job_id), "--json"])
+        main()
+        body = json.loads(capsys.readouterr().out)
+        assert body["ok"] is True and body["schema_version"] == 1
+        assert body["job_id"] == str(job.job_id)
+        assert isinstance(body["text"], str) and body["text"]
+
+    def test_timeline_with_no_events_answers_the_envelope(self, tmp_path, monkeypatch, capsys):
+        import sys
+
+        from apps.cli.main import main
+
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        job = _make_job()
+        save_job_plan(job)
+        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "timeline", str(job.job_id), "--json"])
+        main()
+        body = json.loads(capsys.readouterr().out)
+        assert body["ok"] is True and body["schema_version"] == 1
+        assert body["job_id"] == str(job.job_id)
+        assert body["event_count"] == 0
+        assert "No run logs found for job" in body["text"]
+
+    def test_cockpit_answers_the_envelope(self, tmp_path, monkeypatch, capsys):
+        import sys
+
+        from apps.cli.main import main
+
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        job = _make_job()
+        save_job_plan(job)
+        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "cockpit", str(job.job_id), "--json"])
+        main()
+        body = json.loads(capsys.readouterr().out)
+        assert body["ok"] is True and body["schema_version"] == 1
+        assert body["job_id"] == str(job.job_id)
+        assert isinstance(body["text"], str) and body["text"]
+
+    def test_constitution_answers_the_envelope(self, tmp_path, monkeypatch, capsys):
+        import sys
+
+        from apps.cli.main import main
+
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        job = _make_job()
+        save_job_plan(job)
+        monkeypatch.setattr(
+            sys, "argv", ["remedy", "brain", "constitution", str(job.job_id), "--json"])
+        main()
+        body = json.loads(capsys.readouterr().out)
+        assert body["ok"] is True and body["schema_version"] == 1
+        assert body["job_id"] == str(job.job_id)
+        assert isinstance(body["text"], str) and body["text"]
+
+    def test_a_missing_job_is_the_envelope_through_the_dispatcher(
+            self, tmp_path, monkeypatch, capsys):
+        import sys
+
+        from apps.cli.main import main
+
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        fake_id = str(uuid4())
+        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "trust", fake_id, "--json"])
+        with pytest.raises(SystemExit) as exc:
+            main()
+        assert exc.value.code == 1
+        body = json.loads(capsys.readouterr().out)
+        assert body["ok"] is False
+        assert body["error"] == "job_not_found"

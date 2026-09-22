@@ -738,7 +738,8 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         subcommand="view",
         description="Open the interactive brain viewer.",
         action_class="read_only",
-        args=(_JOB_ID,),
+        args=(_JOB_ID, _JSON_OPT),
+        supports_json=True,
         related=("brain.graph",),
     ),
     CommandEntry(
@@ -757,7 +758,8 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         subcommand="trust",
         description="Show the trust report for a job (under its mission).",
         action_class="read_only",
-        args=(_JOB_ID,),
+        args=(_JOB_ID, _JSON_OPT),
+        supports_json=True,
         related=("brain.timeline",),
     ),
     CommandEntry(
@@ -766,7 +768,8 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         subcommand="timeline",
         description="Show the event timeline for a job (under its mission).",
         action_class="read_only",
-        args=(_JOB_ID,),
+        args=(_JOB_ID, _JSON_OPT),
+        supports_json=True,
         related=("brain.trust",),
     ),
 
@@ -776,7 +779,8 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         subcommand="cockpit",
         description="Show the human cockpit summary for a job (under its mission).",
         action_class="read_only",
-        args=(_JOB_ID,),
+        args=(_JOB_ID, _JSON_OPT),
+        supports_json=True,
         related=("brain.graph", "brain.trust"),
     ),
     CommandEntry(
@@ -801,7 +805,8 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         subcommand="constitution",
         description="Show the project's repo constitution for a job (under its mission).",
         action_class="read_only",
-        args=(_JOB_ID,),
+        args=(_JOB_ID, _JSON_OPT),
+        supports_json=True,
         related=("brain.context",),
     ),
     CommandEntry(
@@ -810,7 +815,8 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         subcommand="open",
         description="Generate and open the brain viewer in default browser.",
         action_class="read_only",
-        args=(_JOB_ID,),
+        args=(_JOB_ID, _JSON_OPT),
+        supports_json=True,
         related=("brain.view", "brain.viewer-path"),
     ),
     CommandEntry(
@@ -832,7 +838,9 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         args=(
             _JOB_ID,
             ArgDef("--out", "Output directory path", required=True, is_option=True),
+            _JSON_OPT,
         ),
+        supports_json=True,
         related=("brain.open", "brain.viewer-path"),
     ),
 
