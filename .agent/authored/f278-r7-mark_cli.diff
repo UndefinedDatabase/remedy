@@ -1,0 +1,207 @@
+diff --git a/apps/cli/commands/dev.py b/apps/cli/commands/dev.py
+index d838c950..51af520c 100644
+--- a/apps/cli/commands/dev.py
++++ b/apps/cli/commands/dev.py
+@@ -87,7 +87,7 @@ def _dev_status(*, json_output: bool = False) -> None:
+             and len(origins) == 1
+             and vm["visible_counts_by_zoom"][0] == 1
+         )
+-    except Exception:
++    except Exception:  # noqa: BLE001 — a UI-contract check failure must not block other checks
+         pass
+ 
+     # Check task progress
+@@ -97,7 +97,7 @@ def _dev_status(*, json_output: bool = False) -> None:
+         job = JobPlan(job_title="tp-check")
+         tp = build_task_progress(job, [])
+         status["task_progress_ok"] = tp["version"] == 1
+-    except Exception:
++    except Exception:  # noqa: BLE001 — a task-progress check failure must not block other checks
+         pass
+ 
+     # Check worker cleanup — availability, not functionality
+@@ -116,28 +116,28 @@ def _dev_status(*, json_output: bool = False) -> None:
+             risk="low", applicability="applicable", requires_approval=False,
+         )
+         status["autocoder_fake_e2e_ok"] = callable(apply_structured_patch)
+-    except (ImportError, Exception):
++    except (ImportError, Exception):  # noqa: BLE001 — an autocoder check failure must not block other checks
+         status["autocoder_fake_e2e_ok"] = False
+ 
+     # Check repair loop — module importable and build_repair_context callable
+     try:
+         from packages.orchestration.repair_context import build_repair_context
+         status["repair_loop_ok"] = callable(build_repair_context)
+-    except (ImportError, Exception):
++    except (ImportError, Exception):  # noqa: BLE001 — a repair-loop check failure must not block other checks
+         status["repair_loop_ok"] = False
+ 
+     # Check reviewer loop — module importable
+     try:
+         from packages.orchestration.reviewer import run_reviewer
+         status["reviewer_loop_ok"] = callable(run_reviewer)
+-    except (ImportError, Exception):
++    except (ImportError, Exception):  # noqa: BLE001 — a reviewer-loop check failure must not block other checks
+         status["reviewer_loop_ok"] = False
+ 
+     # Check live UI — server importable and build function callable
+     try:
+         from packages.orchestration.ui_server import _build_live_state_json
+         status["live_ui_ok"] = callable(_build_live_state_json)
+-    except (ImportError, Exception):
++    except (ImportError, Exception):  # noqa: BLE001 — a live-UI check failure must not block other checks
+         status["live_ui_ok"] = False
+ 
+     # Remaining blockers (hard failures) vs advisories (informational)
+diff --git a/apps/cli/commands/job.py b/apps/cli/commands/job.py
+index 70c69aa0..5421e50f 100644
+--- a/apps/cli/commands/job.py
++++ b/apps/cli/commands/job.py
+@@ -815,7 +815,7 @@ def _cmd_plan_job_local(job_id_str: str, *, json_output: bool = False) -> None:
+         log.log("planning_failed", provider="ollama", role="planner", model=planner.model,
+                 outcome="error", message="planning failed", error_category=type(exc).__name__)
+         fail("missing_dependency", str(exc), json_output=json_output)
+-    except Exception as exc:
++    except Exception as exc:  # noqa: BLE001 — any planner failure is reported, never crashes the CLI
+         _persist_plan_traces()
+         log.log("planning_failed", provider="ollama", role="planner", model=planner.model,
+                 outcome="error", message="planning failed", error_category=type(exc).__name__)
+@@ -942,7 +942,7 @@ def _cmd_run_next_task_local(job_id_str: str, *, json_output: bool = False) -> N
+     except ValueError as exc:
+         _fail("configuration_error", error_category="ValueError")
+         fail("configuration_error", f'configuration — {exc}', json_output=json_output)
+-    except Exception as exc:
++    except Exception as exc:  # noqa: BLE001 — any builder failure is reported, never crashes the CLI
+         _fail("builder_error", error_category=type(exc).__name__)
+         fail("builder_error", f'builder execution failed — {exc}', json_output=json_output)
+     elapsed_ms = (time.monotonic() - start) * 1000
+@@ -1238,7 +1238,7 @@ def _cmd_job_run_cycles(
+     log = RunLogWriter(job_id=job.job_id)
+     try:
+         builder = OllamaBuilder()
+-    except Exception as exc:
++    except Exception as exc:  # noqa: BLE001 — builder construction failure is reported, not a crash
+         fail("builder_unavailable", f'builder unavailable — {exc}', json_output=json_output)
+ 
+     limits = replace(limits, budgets=job.budgets)
+@@ -1620,7 +1620,7 @@ def _cmd_resume(
+         for s in sessions:
+             try:
+                 _wtr.retain_worktree_resume(s, reason)
+-            except Exception:                     # one failure must not leak the rest
++            except Exception:  # noqa: BLE001 — one session's retain failure must not skip the rest
+                 _wtr.W.release_lock(s.handle)
+ 
+     if len(sessions) > 1:
+@@ -1677,7 +1677,7 @@ def _cmd_resume(
+                 else:
+                     out = _wtr.retain_worktree_resume(s, reason)
+                     event = "worktree_retained"
+-            except Exception as exc:
++            except Exception as exc:  # noqa: BLE001 — a session's cleanup failure must not strand its lock
+                 _wtr.W.release_lock(s.handle)      # never strand the lock
+                 append_run_event(data_dir, job_id, event="worktree_retained", metadata={
+                     "run_id": s.run_id,
+@@ -1894,7 +1894,7 @@ def _cmd_job_budget(
+             try:
+                 _budgets = JobBudgets.model_validate(job_plan.budgets)
+                 _budgets_dict = job_plan.budgets
+-            except Exception:
++            except Exception:  # noqa: BLE001 — an unparseable budget still shows its raw stored values
+                 _budgets_dict = job_plan.budgets
+ 
+         if getattr(job_plan, "budget_actuals", None) is not None:
+@@ -1911,7 +1911,7 @@ def _cmd_job_budget(
+                 if _budgets is not None:
+                     evaluation = evaluate_budget(_budgets, counters)
+                 _counter_status = "evaluated"
+-            except (BudgetCounterError, Exception) as _budget_exc:
++            except (BudgetCounterError, Exception) as _budget_exc:  # noqa: BLE001 — corrupted budgets must not crash
+                 _counter_status = "corrupt"
+                 _counter_diagnostic = str(_budget_exc)
+                 counters = None
+@@ -1981,7 +1981,7 @@ def _cmd_job_budget(
+                     unpriced_call_count=_unpriced,
+                 )
+                 evaluation = evaluate_budget(_budgets, counters)
+-        except Exception as _cost_exc:
++        except Exception as _cost_exc:  # noqa: BLE001 — a broken cost ledger read must not crash budget display
+             # Recorded BEFORE the log call, so a logging subsystem that is itself
+             # broken cannot cost the operator the diagnosis. The displayed cost is
+             # unchanged — still not-measured, never 0.0 (P6).
+@@ -1994,7 +1994,7 @@ def _cmd_job_budget(
+                     "(the evidence files remain the source of truth)",
+                     _job_display_id, exc_info=True,
+                 )
+-            except Exception:
++            except Exception:  # noqa: BLE001 — a broken log handler must not crash the inspector
+                 # An inspection command never dies because a log handler died.
+                 pass
+ 
+@@ -2033,7 +2033,7 @@ def _cmd_job_budget(
+                         config=resolve_predictive_budget_config(
+                             project_root=(getattr(_plan, "repo_path", "") or None)),
+                     )
+-        except Exception as _pred_exc:
++        except Exception as _pred_exc:  # noqa: BLE001 — a broken cost estimate must not break the rest of the view
+             _prediction = None
+             _prediction_note = (
+                 f"unavailable ({type(_pred_exc).__name__}: {_pred_exc})"[:160])
+diff --git a/apps/cli/commands/worker_facade_cmd.py b/apps/cli/commands/worker_facade_cmd.py
+index f9b3e1fc..23bf549d 100644
+--- a/apps/cli/commands/worker_facade_cmd.py
++++ b/apps/cli/commands/worker_facade_cmd.py
+@@ -119,7 +119,7 @@ def _cmd_doctor_core(ns: argparse.Namespace) -> None:
+                 _check(name, False, f"{attr} not found in {module}")
+             else:
+                 _check(name, True, f"{attr} available")
+-        except Exception as exc:
++        except Exception as exc:  # noqa: BLE001 — an import probe failure is that check's own result
+             _check(name, False, _safe_err(exc))
+ 
+     _try_import("worker_facade", "apps.cli.commands.worker_facade_cmd", "COMMAND_HANDLERS")
+@@ -128,7 +128,7 @@ def _cmd_doctor_core(ns: argparse.Namespace) -> None:
+         cat = importlib.import_module("apps.cli.command_catalog")
+         _check("command_catalog", True,
+                f"{len(cat.CATALOG)} commands, {len(cat.GROUPS)} groups")
+-    except Exception as exc:
++    except Exception as exc:  # noqa: BLE001 — a catalog import failure is that check's own result
+         _check("command_catalog", False, _safe_err(exc))
+ 
+     _try_import("run_contract", "packages.orchestration.run_contract", "ContractAction")
+@@ -171,7 +171,7 @@ def _cmd_doctor_core(ns: argparse.Namespace) -> None:
+                f"{len(shipped_entries)} shipped + "
+                f"{len(dead_ids) - len(shipped_entries)} config-only dead ids "
+                f"({len(dead_ids)} total)")
+-    except Exception as exc:
++    except Exception as exc:  # noqa: BLE001 — a dead-model-list read failure is its own check result
+         _check("dead_model_list", False, _safe_err(exc))
+ 
+     if dead_ids:
+@@ -264,7 +264,7 @@ def _cmd_doctor_core(ns: argparse.Namespace) -> None:
+                       f"{value} is the resolved value of config key {spec.key} "
+                       f"(env {spec.env_var}). Fix: change {spec.key} to a live "
+                       f"id. {_dead_provenance(value)}")
+-        except Exception as exc:
++        except Exception as exc:  # noqa: BLE001 — a dead-model mismatch becomes an advisory, not a blocker
+             # Already compact, and there is no fuller record to hold back:
+             # both renderings are the same sentence.
+             comparison_failed = ("the known-dead ids could not be compared "
+@@ -288,7 +288,7 @@ def _cmd_doctor_core(ns: argparse.Namespace) -> None:
+         )
+         _check("dead_command_scan", True,
+                f"{len(dead_commands)} dead of {len(cat_mod.CATALOG)} commands")
+-    except Exception as exc:
++    except Exception as exc:  # noqa: BLE001 — a dead-command scan failure is that check's own result
+         dead_commands = []
+         _check("dead_command_scan", False, _safe_err(exc))
+ 
+@@ -318,7 +318,7 @@ def _cmd_doctor_core(ns: argparse.Namespace) -> None:
+         _check("disk_floor", floor_met,
+                f"{free_bytes} bytes free, floor "
+                f"{'not configured' if floor_bytes is None else floor_bytes}")
+-    except Exception as exc:
++    except Exception as exc:  # noqa: BLE001 — a disk-floor read failure is that check's own result
+         disk["error"] = _safe_err(exc)
+         _check("disk_floor", False, _safe_err(exc))
+ 

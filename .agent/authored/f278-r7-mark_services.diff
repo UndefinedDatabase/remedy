@@ -1,0 +1,288 @@
+diff --git a/packages/orchestration/hunk_ledger.py b/packages/orchestration/hunk_ledger.py
+index 31fe2120..1b079aa4 100644
+--- a/packages/orchestration/hunk_ledger.py
++++ b/packages/orchestration/hunk_ledger.py
+@@ -133,10 +133,10 @@ def _total_text(value: object) -> str:
+     ``repr()`` is broken too contributes the unoverridable ``object.__repr__``."""
+     try:
+         return str(value)
+-    except Exception:
++    except Exception:  # noqa: BLE001 — text coercion must degrade to repr, never raise
+         try:
+             return repr(value)
+-        except Exception:
++        except Exception:  # noqa: BLE001 — even a broken repr must still yield some text
+             return object.__repr__(value)
+ 
+ 
+@@ -146,7 +146,7 @@ def _total_flag(value: object) -> bool:
+     here only ever WIDEN what this module asserts about disk."""
+     try:
+         return bool(value)
+-    except Exception:
++    except Exception:  # noqa: BLE001 — an unreadable flag must read false, never true
+         return False
+ 
+ 
+@@ -155,7 +155,7 @@ def _total_attr(value: object, name: str) -> Any:
+     ``__getattr__`` contributes nothing rather than propagating its exception."""
+     try:
+         return getattr(value, name, None)
+-    except Exception:
++    except Exception:  # noqa: BLE001 — an unreadable attribute contributes nothing, not a crash
+         return None
+ 
+ 
+@@ -176,7 +176,7 @@ def _entries(value: Any) -> list[Any]:
+         return [value]
+     try:
+         return list(value)
+-    except Exception:
++    except Exception:  # noqa: BLE001 — a value that resists iteration counts as one entry
+         return [value]
+ 
+ 
+@@ -354,5 +354,5 @@ def import_hunk_ledger(exported: Any) -> HunkDecisionLedger:
+                 HunkLedgerEntry(hunk_id=identifier, state=state, reason=reason, landing=landing)
+             )
+         return HunkDecisionLedger(tuple(entries))
+-    except Exception:
++    except Exception:  # noqa: BLE001 — an unreadable ledger import yields empty, never partial
+         return HunkDecisionLedger(())
+diff --git a/packages/orchestration/real_test_execution.py b/packages/orchestration/real_test_execution.py
+index 3c7459f4..7c4a9502 100644
+--- a/packages/orchestration/real_test_execution.py
++++ b/packages/orchestration/real_test_execution.py
+@@ -201,14 +201,14 @@ def resolve_allowed_command(
+         from packages.orchestration.command_discovery import discover_commands
+         from packages.orchestration.pingpong_job import require_job_plan
+         job = require_job_plan(normalize_job_id(job_id), ddir)
+-    except Exception:
++    except Exception:  # noqa: BLE001 — a bad or missing job must block the command, not crash
+         return False, None, "job not found or unloadable"
+     repo = (job.metadata or {}).get("target_repo", "")
+     if not repo:
+         return False, None, "job has no target repo"
+     try:
+         candidates = discover_commands(job, Path(repo))
+-    except Exception:
++    except Exception:  # noqa: BLE001 — discovery failing blocks the command like any refusal
+         return False, None, "command discovery failed"
+     if not command_id:
+         # No explicit id → the safe runner will select the best test candidate itself.
+@@ -263,7 +263,7 @@ def run_allowed_test(
+             job_id=job_id, source="real_test_execution_v1",
+             command_id=command_id,
+             requested_timeout_seconds=float(timeout_seconds) if timeout_seconds else None))
+-    except Exception as exc:  # the runner is the only execution path; failures stay safe metadata
++    except Exception as exc:  # noqa: BLE001 — failures on the only execution path become safe metadata
+         res.status = TestRunStatus.ERROR
+         res.stop_reason = "runner_error"
+         res.safe_summary = _scrub_public(f"Test runner error: {type(exc).__name__}")[:200]
+@@ -296,7 +296,7 @@ def list_test_runs(job_id: str, data_dir: Path | None = None) -> list[dict]:
+     try:
+         from packages.orchestration.pingpong_job import require_job_plan
+         job = require_job_plan(normalize_job_id(job_id), ddir)
+-    except Exception:
++    except Exception:  # noqa: BLE001 — an unreadable job means no tests to list, not a crash
+         return []
+     runs = (job.metadata or {}).get("test_runs", [])
+     return list(runs) if isinstance(runs, list) else []
+@@ -313,12 +313,12 @@ def get_test_run(test_run_id: str, data_dir: Path | None = None) -> dict | None:
+                 continue
+             try:
+                 job = require_job_plan(normalize_job_id(str(jid)), ddir)
+-            except Exception:
++            except Exception:  # noqa: BLE001 — one bad job must not stop the scan for the test run
+                 continue
+             for r in (job.metadata or {}).get("test_runs", []):
+                 if r.get("test_run_id") == test_run_id:
+                     return r
+-    except Exception:
++    except Exception:  # noqa: BLE001 — a scan failure means the run was not found, not a crash
+         return None
+     return None
+ 
+@@ -375,7 +375,7 @@ def create_snapshot_proof(job_id: str, *, data_dir: Path | None = None) -> Snaps
+         from packages.orchestration.pingpong_job import load_job_plan
+         job = load_job_plan(normalize_job_id(job_id), ddir)
+         repo = (job.metadata or {}).get("target_repo", "")
+-    except Exception:
++    except Exception:  # noqa: BLE001 — no readable job means the snapshot is unavailable
+         repo = ""
+     if not repo or not Path(repo).is_dir():
+         proof.strategy = "unavailable"
+diff --git a/packages/orchestration/repository_snapshot.py b/packages/orchestration/repository_snapshot.py
+index 3014c3de..81a7e758 100644
+--- a/packages/orchestration/repository_snapshot.py
++++ b/packages/orchestration/repository_snapshot.py
+@@ -467,7 +467,7 @@ def create_snapshot(
+             try:
+                 import shutil
+                 shutil.rmtree(snap_dir, ignore_errors=True)
+-            except Exception:
++            except Exception:  # noqa: BLE001 — cleanup after a failed snapshot must not mask the failure
+                 pass
+             return SnapshotCreateResult(
+                 success=False,
+@@ -506,7 +506,7 @@ def create_snapshot(
+             try:
+                 import shutil
+                 shutil.rmtree(snap_dir, ignore_errors=True)
+-            except Exception:
++            except Exception:  # noqa: BLE001 — cleanup after a failed snapshot must not mask the failure
+                 pass
+             return SnapshotCreateResult(
+                 success=False,
+@@ -526,7 +526,7 @@ def create_snapshot(
+             try:
+                 import shutil
+                 shutil.rmtree(snap_dir, ignore_errors=True)
+-            except Exception:
++            except Exception:  # noqa: BLE001 — cleanup after a failed snapshot must not mask the failure
+                 pass
+             return SnapshotCreateResult(
+                 success=False,
+@@ -545,7 +545,7 @@ def create_snapshot(
+             try:
+                 import shutil
+                 shutil.rmtree(snap_dir, ignore_errors=True)
+-            except Exception:
++            except Exception:  # noqa: BLE001 — cleanup after a failed snapshot must not mask the failure
+                 pass
+             return SnapshotCreateResult(
+                 success=False,
+@@ -570,7 +570,7 @@ def create_snapshot(
+             try:
+                 import shutil
+                 shutil.rmtree(snap_dir, ignore_errors=True)
+-            except Exception:
++            except Exception:  # noqa: BLE001 — cleanup after a failed snapshot must not mask the failure
+                 pass
+             return SnapshotCreateResult(
+                 success=False,
+@@ -638,7 +638,7 @@ def create_snapshot(
+         try:
+             import shutil
+             shutil.rmtree(snap_dir, ignore_errors=True)
+-        except Exception:
++        except Exception:  # noqa: BLE001 — cleanup after a failed snapshot must not mask the failure
+             pass
+         return SnapshotCreateResult(
+             success=False,
+diff --git a/packages/orchestration/test_execution_service.py b/packages/orchestration/test_execution_service.py
+index 122ae39b..6984f3f6 100644
+--- a/packages/orchestration/test_execution_service.py
++++ b/packages/orchestration/test_execution_service.py
+@@ -360,7 +360,7 @@ def _run_isolated_process(
+         except subprocess.TimeoutExpired:
+             status = "timeout"
+             _kill_process_group(proc)
+-        except Exception:
++        except Exception:  # noqa: BLE001 — an unexpected wait failure must still reap and report it
+             status = "environment_failure"
+             _kill_process_group(proc)
+ 
+@@ -379,7 +379,7 @@ def _kill_process_group(proc: subprocess.Popen) -> None:  # type: ignore[type-ar
+         # Process already gone
+         try:
+             proc.wait(timeout=1.0)
+-        except Exception:
++        except Exception:  # noqa: BLE001 — a best-effort reap after the process is gone may fail
+             pass
+         return
+     # SIGTERM
+@@ -400,7 +400,7 @@ def _kill_process_group(proc: subprocess.Popen) -> None:  # type: ignore[type-ar
+     # Final wait to reap
+     try:
+         proc.wait(timeout=2.0)
+-    except Exception:
++    except Exception:  # noqa: BLE001 — the last reap attempt is best-effort and must not raise
+         pass
+ 
+ 
+@@ -923,7 +923,7 @@ def _persist_test_record(
+         return True
+     except (OSError, ValueError, KeyError):
+         return False
+-    except Exception:
++    except Exception:  # noqa: BLE001 — an unexpected persist failure still surfaces as a warning
+         return False  # unexpected — caller surfaces as evidence warning
+ 
+ 
+@@ -989,7 +989,7 @@ def _create_failure_artifact(
+         return True
+     except (OSError, ValueError, AttributeError):
+         return False
+-    except Exception:
++    except Exception:  # noqa: BLE001 — an unexpected artifact failure still surfaces as a warning
+         return False  # unexpected — caller surfaces as evidence warning
+ 
+ 
+@@ -1035,7 +1035,7 @@ def finalize_test_outcome(
+         usage_ok = True
+     except (OSError, ValueError):
+         warnings.append("usage_persist_failed")
+-    except Exception:
++    except Exception:  # noqa: BLE001 — an unexpected usage-persist failure surfaces as a warning
+         warnings.append("usage_persist_unexpected_failure")
+ 
+     record_ok = _persist_test_record(
+diff --git a/packages/runtimes/runtime_supervisor.py b/packages/runtimes/runtime_supervisor.py
+index c15477b1..edad4edb 100644
+--- a/packages/runtimes/runtime_supervisor.py
++++ b/packages/runtimes/runtime_supervisor.py
+@@ -273,7 +273,7 @@ class Supervisor:
+                 keep_bytes=int(cap) // 2 if cap else None,
+             )
+             self.pump.start()
+-        except Exception as exc:
++        except Exception as exc:  # noqa: BLE001 — a pump that won't start must still be reported, not lost
+             cleanup = self._stop_app()
+             return self._finalize_failure(f"log pump failed to start: {exc}", "start")
+ 
+@@ -314,7 +314,7 @@ class Supervisor:
+                 instance_id=self.instance_id,
+             )
+             save_state(self.state)
+-        except Exception as exc:
++        except Exception as exc:  # noqa: BLE001 — an unpersisted starting state must be reported as failed
+             return self._finalize_failure(
+                 f"starting state could not be persisted: {exc}", "state")
+ 
+@@ -329,7 +329,7 @@ class Supervisor:
+             self.state.status = STATUS_RUNNING
+             self.state.log_error = self.pump.error if self.pump else ""
+             save_state(self.state)
+-        except Exception as exc:
++        except Exception as exc:  # noqa: BLE001 — a status that can't be saved must still fail loudly
+             return self._finalize_failure(
+                 f"running state could not be persisted: {exc}", "state")
+ 
+@@ -344,7 +344,7 @@ class Supervisor:
+                 "status_code": ready["status_code"],
+                 "instance_id": self.instance_id,
+             })
+-        except Exception as exc:
++        except Exception as exc:  # noqa: BLE001 — a handshake write failure must reach the operator
+             return self._finalize_failure(
+                 f"handshake could not be written: {exc}", "state")
+ 
+@@ -463,7 +463,7 @@ class Supervisor:
+         updated.stop_error = detail
+         try:
+             save_state(updated)
+-        except Exception as exc:
++        except Exception as exc:  # noqa: BLE001 — a write failure must not erase a survivor's only record
+             if survivors:
+                 # NEVER clear here. The pre-existing record — pid, creation time, pgid,
+                 # sid, instance id — is the only thing that lets a later probe or stop
+@@ -580,7 +580,7 @@ def main(argv: list[str] | None = None) -> int:
+                      handshake=Path(args.handshake), instance_id=args.instance)
+     try:
+         return sup.run()
+-    except Exception as exc:                      # never a raw traceback on disk
++    except Exception as exc:  # noqa: BLE001 — a supervisor crash must never leave a raw traceback
+         return sup._finalize_failure(
+             f"supervisor failed: {type(exc).__name__}: {exc}", "state")
+ 
