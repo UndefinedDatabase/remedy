@@ -1540,7 +1540,9 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
             ArgDef("--host", "Bind host (only 127.0.0.1 allowed)", required=False, is_option=True, default="127.0.0.1"),
             ArgDef("--no-open", "Do not open browser automatically", required=False, is_option=True, default="false"),
             ArgDef("--info-file", "Write server info JSON to this path", required=False, is_option=True),
+            _JSON_OPT,
         ),
+        supports_json=True,
         related=("brain.view",),
     ),
     CommandEntry(
@@ -1549,7 +1551,8 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         subcommand="latest",
         description="Open the most recently started UI session in a browser.",
         action_class="read_only",
-        args=(),
+        args=(_JSON_OPT,),
+        supports_json=True,
     ),
     CommandEntry(
         command_id="ui.status",
@@ -1560,7 +1563,9 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         args=(
             ArgDef("--all", "Also show the last ten ended sessions with their end time",
                    required=False, is_option=True, is_flag=True),
+            _JSON_OPT,
         ),
+        supports_json=True,
     ),
     CommandEntry(
         command_id="ui.stop",
@@ -1568,7 +1573,8 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         subcommand="stop",
         description="Stop all running UI sessions.",
         action_class="read_only",
-        args=(),
+        args=(_JSON_OPT,),
+        supports_json=True,
     ),
     CommandEntry(
         command_id="ui.open",
@@ -1576,7 +1582,8 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         subcommand="open",
         description="Open browser for a specific job UI session (under its mission).",
         action_class="read_only",
-        args=(_JOB_ID,),
+        args=(_JOB_ID, _JSON_OPT),
+        supports_json=True,
     ),
 
     # ── do ───────────────────────────────────────────────────────────────

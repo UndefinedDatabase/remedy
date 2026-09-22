@@ -262,37 +262,26 @@ class TestCatalogJSONSupport:
 # The read-only-without-`supports_json` ratchet (DECISION F283 D9)
 # ---------------------------------------------------------------------------
 
-#: F283 R15 C6 — the read-only commands (the D7 derived rule: neither
-#: `may_mutate_repo` nor `may_execute_commands`) that still do not declare
-#: `supports_json`, after `init run`, `dev status`, `dev smoke-help`, `memory
-#: store`, the five memory card mutations, `blocker resolve`, the three
-#: `patch` commands, `decision resolve`, `decision explain`, `job plan` and
-#: the seven `brain` report and viewer commands leave the set. These ten were
-#: exactly the D9 leaves to the last group (`ui` and `project`). F283 R16 C4
-#: lands the five `project` commands, leaving only the five `ui` commands.
-_READ_ONLY_WITHOUT_SUPPORTS_JSON: frozenset[str] = frozenset({
-    "ui.latest",
-    "ui.open",
-    "ui.start",
-    "ui.status",
-    "ui.stop",
-})
-
 
 class TestReadOnlyWithoutSupportsJSONRatchet:
-    """DECISION F283 D9 — a command can neither leave this set unannounced nor
-    join it: the derived set (read-only by the D7 rule, still missing
-    `supports_json`) must equal this module's own pinned constant by
-    EQUALITY."""
+    """DECISION F283 D9 — the catalog half's last group, `ui`, lands in F283
+    R16 C5, after `init`, `dev`, `memory`, `blocker`, `patch`, `decision`,
+    `job plan`, `brain` and `project` already emptied the rest of the set the
+    D7 derived rule found (neither `may_mutate_repo` nor `may_execute_commands`
+    declared, and `supports_json` still missing). The derived set is now
+    EMPTY, by D9 (6), and the pinned constant this class used to check it
+    against is deleted with it — a command can neither leave the read-only set
+    unannounced nor join it without declaring `supports_json` in the same
+    change."""
 
-    def test_the_derived_set_equals_the_pinned_constant(self) -> None:
+    def test_the_derived_set_is_empty(self) -> None:
         derived = frozenset(
             cmd.command_id for cmd in CATALOG
             if not cmd.may_mutate_repo
             and not cmd.may_execute_commands
             and not cmd.supports_json
         )
-        assert derived == _READ_ONLY_WITHOUT_SUPPORTS_JSON
+        assert derived == frozenset()
 
     def test_every_command_carrying_json_declares_supports_json(self) -> None:
         for cmd in CATALOG:

@@ -525,6 +525,155 @@ class TestSessionRegistry:
         assert "DEAD" in captured.out
 
 
+# ---------------------------------------------------------------------------
+# F283 R16 C5 (DECISION F283 D9) — the five `ui` commands answer `--json` in
+# the envelope; the read-only-without-`supports_json` set they leave behind is
+# empty. No test here launches a real browser or opener: `_try_open_browser`
+# is mocked throughout.
+# ---------------------------------------------------------------------------
+
+
+def _write_live_session(tmp_path, *, job_id="job-1", port=8787, pid=None):
+    sessions_dir = tmp_path / "ui" / "sessions"
+    sessions_dir.mkdir(parents=True, exist_ok=True)
+    info = {
+        "job_id": job_id, "pid": pid if pid is not None else os.getpid(), "port": port,
+        "url": f"http://127.0.0.1:{port}/?job={job_id}",
+    }
+    (sessions_dir / "session-1.json").write_text(json.dumps(info, indent=2))
+    return info
+
+
+class TestUISessionCommandsAnswerTheEnvelope:
+
+    def test_latest_answers_the_envelope(self, tmp_path, monkeypatch, capsys):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        info = _write_live_session(tmp_path)
+
+        from apps.cli import grouped
+        with patch("packages.orchestration.ui_server._try_open_browser"):
+            grouped.main(["ui", "latest", "--json"])
+        body = json.loads(capsys.readouterr().out)
+        assert body["ok"] is True and body["schema_version"] == 1
+        assert body["url"] == info["url"]
+        assert body["job_id"] == info["job_id"]
+        assert body["pid"] == info["pid"]
+
+    def test_latest_no_session_answers_ui_session_not_found(self, tmp_path, monkeypatch, capsys):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        from apps.cli import grouped
+        with pytest.raises(SystemExit) as exc:
+            grouped.main(["ui", "latest", "--json"])
+        assert exc.value.code == 1
+        captured = capsys.readouterr()
+        assert captured.err == ""
+        body = json.loads(captured.out)
+        assert body["ok"] is False
+        assert body["error"] == "ui_session_not_found"
+
+    def test_status_answers_the_envelope(self, tmp_path, monkeypatch, capsys):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        info = _write_live_session(tmp_path)
+
+        from apps.cli import grouped
+        grouped.main(["ui", "status", "--json"])
+        body = json.loads(capsys.readouterr().out)
+        assert body["ok"] is True and body["schema_version"] == 1
+        assert body["sessions"] == [
+            {"job_id": info["job_id"], "port": info["port"],
+             "pid": info["pid"], "url": info["url"]}
+        ]
+        assert body["dead"] == []
+
+    def test_status_all_lists_dead_with_ended_at(self, tmp_path, monkeypatch, capsys):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        import datetime
+        dead_dir = tmp_path / "ui" / "sessions_dead"
+        dead_dir.mkdir(parents=True, exist_ok=True)
+        dead_info = {
+            "job_id": "dead-job", "pid": 999999999, "port": 8788,
+            "ended_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+        }
+        (dead_dir / "dead-session.json").write_text(json.dumps(dead_info, indent=2))
+
+        from apps.cli import grouped
+        grouped.main(["ui", "status", "--all", "--json"])
+        body = json.loads(capsys.readouterr().out)
+        assert body["sessions"] == []
+        assert body["dead"] == [
+            {"job_id": "dead-job", "port": 8788, "pid": 999999999,
+             "ended_at": dead_info["ended_at"]}
+        ]
+
+    def test_stop_answers_the_envelope(self, tmp_path, monkeypatch, capsys):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        info = _write_live_session(tmp_path, pid=424242)
+        monkeypatch.setattr("apps.cli.commands.ui._is_pid_alive", lambda pid: True)
+        mock_kill = MagicMock()
+        monkeypatch.setattr("apps.cli.commands.ui.os.kill", mock_kill)
+
+        from apps.cli import grouped
+        grouped.main(["ui", "stop", "--json"])
+        body = json.loads(capsys.readouterr().out)
+        assert body["ok"] is True and body["schema_version"] == 1
+        assert body["stopped"] == [{"pid": 424242, "job_id": info["job_id"]}]
+        assert body["failed"] == []
+        mock_kill.assert_called_once()
+
+    def test_open_answers_the_envelope(self, tmp_path, monkeypatch, capsys):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        info = _write_live_session(tmp_path)
+
+        from apps.cli import grouped
+        with patch("packages.orchestration.ui_server._try_open_browser"):
+            grouped.main(["ui", "open", info["job_id"], "--json"])
+        body = json.loads(capsys.readouterr().out)
+        assert body["ok"] is True and body["schema_version"] == 1
+        assert body["url"] == info["url"]
+        assert body["job_id"] == info["job_id"]
+
+    def test_open_no_session_answers_ui_session_not_found(self, tmp_path, monkeypatch, capsys):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        from apps.cli import grouped
+        with pytest.raises(SystemExit) as exc:
+            grouped.main(["ui", "open", "no-such-job", "--json"])
+        assert exc.value.code == 1
+        captured = capsys.readouterr()
+        assert captured.err == ""
+        body = json.loads(captured.out)
+        assert body["ok"] is False
+        assert body["error"] == "ui_session_not_found"
+
+
+class TestUIStartAnswersTheEnvelope:
+    """`ui start --json` prints one envelope once the server is bound, then
+    serves. `serve_forever` is patched to return immediately and the browser
+    opener is mocked, so this test never blocks and never reaches a real
+    browser."""
+
+    def test_ui_start_json_answers_the_envelope(self, tmp_path, monkeypatch, capsys):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        job = _make_job()
+        from packages.orchestration.pingpong_job import save_job_plan
+        save_job_plan(job)
+
+        from packages.orchestration.ui_server import start_ui_server
+
+        with patch("http.server.ThreadingHTTPServer.serve_forever", return_value=None), \
+             patch("packages.orchestration.ui_server._try_open_browser") as mock_open:
+            start_ui_server(
+                str(job.job_id), host="127.0.0.1", port=0,
+                token="test-token", open_browser=True, info_file=None,
+                json_output=True,
+            )
+        body = json.loads(capsys.readouterr().out)
+        assert body["ok"] is True and body["schema_version"] == 1
+        assert body["job_id"] == str(job.job_id)
+        assert body["host"] == "127.0.0.1"
+        assert body["url"].startswith("http://127.0.0.1:")
+        assert "pid" in body and "port" in body and "info_file" in body
+        mock_open.assert_called_once()
+
 
 
 class TestLiveGrowth:
