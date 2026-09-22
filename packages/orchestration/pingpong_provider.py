@@ -628,7 +628,7 @@ class ClaudeProvider:
                 actual_missing_reason=missing,
                 prepared_input=_pi,
             )
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 — a provider failure becomes a typed error, not a crash
             return BuilderOutput(
                 error=_api_error_text(exc),
                 provider="claude",
@@ -667,7 +667,7 @@ class ClaudeProvider:
             out.actual_missing_reason = missing
             out.prepared_input = _pi
             return out
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 — a provider failure becomes a typed error, not a crash
             return ReviewerOutput(
                 error=_api_error_text(exc),
                 provider="claude",
@@ -1272,7 +1272,7 @@ class ClaudeCliProvider:
             )
             if proc.returncode == 0 and proc.stdout and proc.stdout.strip():
                 self._cli_version = proc.stdout.strip()
-        except Exception:
+        except Exception:  # noqa: BLE001 — the CLI version is cosmetic and must never fail the call
             pass
         return self._cli_version
 
@@ -1622,7 +1622,7 @@ class ClaudeCliProvider:
                 stream_artifact_refs=self.last_stream_artifact_refs,
                 stream_call_id=self._last_stream_call_id,
             )
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 — a provider failure becomes a typed error, not a crash
             return BuilderOutput(
                 error=f"provider_error: {type(exc).__name__}: {exc}",
                 provider="claude-cli",
@@ -1739,7 +1739,7 @@ class ClaudeCliProvider:
                 stream_artifact_refs=self.last_stream_artifact_refs,
                 stream_call_id=self._last_stream_call_id,
             )
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 — a provider failure becomes a typed error, not a crash
             return ReviewerOutput(
                 error=f"provider_error: {type(exc).__name__}: {exc}",
                 provider="claude-cli",
@@ -1888,7 +1888,7 @@ class OllamaPingPongProvider:
                 actual_missing_reason="provider_actuals_unavailable",
                 prepared_input=_pi,
             )
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 — a provider failure becomes a typed error, not a crash
             return BuilderOutput(
                 error=f"provider_error: {type(exc).__name__}: {exc}",
                 provider="ollama",
@@ -1934,7 +1934,7 @@ class OllamaPingPongProvider:
             out.actual_missing_reason = "provider_actuals_unavailable"
             out.prepared_input = _pi
             return out
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 — a provider failure becomes a typed error, not a crash
             return ReviewerOutput(
                 error=f"provider_error: {type(exc).__name__}: {exc}",
                 error_class="provider_error",
