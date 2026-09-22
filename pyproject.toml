@@ -66,7 +66,10 @@ extend-exclude = [
 ]
 
 [tool.ruff.lint]
-select = ["E", "F", "W", "I", "UP"]
+# BLE001 (blind `except Exception`): a handler that must catch everything carries
+# `# noqa: BLE001 — <reason>`, and tests/test_ble001_ratchet.py holds their count
+# and their reasons (F278 T003, DECISION F278 D7).
+select = ["E", "F", "W", "I", "UP", "BLE001"]
 ignore = [
     "E501",   # line-too-long — 330 hits across long descriptions and compact data; deferred
     "E702",   # multiple-statements-on-semicolon — 136 hits in compact test/data patterns; deferred
@@ -75,7 +78,7 @@ ignore = [
 ]
 
 [tool.ruff.lint.per-file-ignores]
-"tests/**" = ["F811"]  # redefined-while-unused — pytest fixtures redefine names intentionally
+"tests/**" = ["F811", "BLE001"]  # F811: pytest fixtures redefine names intentionally; BLE001: a test may catch anything to assert on it
 "packages/orchestration/run_contract.py" = ["F402"]  # loop var `field` shadows dataclass import — safe
 
 # -- Mypy (permissive baseline v0) --
