@@ -36,13 +36,13 @@ Public API::
 from __future__ import annotations
 
 import json
-import os
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
+from packages.common.secure_fs import durable_write
 from packages.orchestration.data_paths import normalize_job_id
 
 # ---------------------------------------------------------------------------
@@ -333,30 +333,16 @@ def _attempt_dir(attempt_id: str, data_dir: Path) -> Path:
     return _attempts_root(data_dir) / attempt_id
 
 
-def _atomic_write(path: Path, data: bytes, mode: int = 0o600) -> bool:
-    try:
-        path.parent.mkdir(parents=True, exist_ok=True)
-        tmp = path.with_suffix(path.suffix + ".tmp")
-        tmp.write_bytes(data)
-        try:
-            os.chmod(tmp, mode)
-        except OSError:
-            pass
-        os.replace(tmp, path)
-        try:
-            os.chmod(path, mode)
-        except OSError:
-            pass
-        return True
-    except OSError:
-        return False
-
-
 def save_attempt(attempt: SelfImprovementAttempt, data_dir: Path) -> bool:
     attempt.updated_at = _now()
     adir = _attempt_dir(attempt.attempt_id, data_dir)
-    return _atomic_write(adir / "attempt.json",
-                         json.dumps(attempt.to_dict(), indent=2, sort_keys=True).encode("utf-8"))
+    try:
+        adir.mkdir(parents=True, exist_ok=True)
+        durable_write(adir / "attempt.json",
+                      json.dumps(attempt.to_dict(), indent=2, sort_keys=True).encode("utf-8"))
+    except OSError:
+        return False
+    return True
 
 
 def get_attempt(attempt_id: str, data_dir: Path | None = None) -> dict | None:
@@ -564,7 +550,8 @@ def _build_self_request_text(item: Any, job_id: str) -> str:
 def _store_request(attempt_id: str, data_dir: Path, text: str) -> str:
     rpid = uuid4().hex[:16]
     rdir = _attempt_dir(attempt_id, data_dir)
-    _atomic_write(rdir / "request.md", text.encode("utf-8", errors="replace"))
+    rdir.mkdir(parents=True, exist_ok=True)
+    durable_write(rdir / "request.md", text.encode("utf-8", errors="replace"))
     return rpid
 
 
