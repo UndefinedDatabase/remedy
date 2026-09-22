@@ -13,21 +13,23 @@ is documented and asserted from the catalog
 
 ## Current Step
 
-ROUND 20. It books round 19's PASS, records DECISION F283 D12 (the exit-code
-taxonomy), adds `apps/cli/exit_codes.py` and the catalog's `exit_codes` field
-with its test, writes the guide `docs/guides/exit-codes.md`, and makes
-`job resume --checkpoint` refuse where it did not resume.
+ROUND 21. It books round 20's PASS, corrects the round 19 entry's verdict
+token and resolves R-1032, registers R-1033 and R-1034, records DECISION F283
+D13, lands T002's sweep and the catalog-to-dispatch parity in
+`tests/cli/test_json_contract.py`, and makes `stats report --json` answer in
+the envelope.
 
 ## Next Steps
 
-1. T002's sweep: `tests/cli/test_json_contract.py`, in which every
-   `supports_json` command reachable without a positional argument answers a
-   parseable envelope on success and on an invalid argument, and
-   catalog-to-dispatch parity is asserted.
-2. The closure sequence, whose one full suite runs on the merged tree.
+1. The closure sequence: the Built State and Acceptance of
+   `docs/roadmap/features/T2_F283.md`, the evidence job and a fresh review zip,
+   the STATUS line, the pull request. Its one full suite runs on the merged
+   tree (DECISION amend0921-operator-feedback D1).
 
 ## Risks
 
-Twenty-four findings are open and none is this feature's own. Twenty rounds
-are spent of the soft limit of 25, in the fifth of 7 sessions; the sweep and
-the closure must fit the five rounds left.
+Twenty-six findings are open after this round's registrations. R-1033 is this
+feature's own and its repair lands in this round, to be resolved on the record
+at the next gate; R-1034 belongs to the next paydown feature. Twenty-one rounds
+are spent of the soft limit of 25, in the fifth of 7 sessions; the closure
+must fit the four rounds left.
