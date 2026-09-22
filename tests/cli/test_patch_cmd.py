@@ -216,11 +216,16 @@ class TestTheHappyPath:
         CMD._cmd_approve_hunks(str(job.job_id), approve=[HUNK_IDS[0]], json_output=True)
 
         payload = json.loads(capsys.readouterr().out)
-        assert payload["task_id"] == "job"
-        assert payload["attempt"] == DIFF_JOB_ARTIFACT_NAME
-        assert payload["decided_at"]
-        assert [row["id"] for row in payload["hunks"]] == HUNK_IDS
-        assert payload == load_job_plan(job.job_id).metadata[HUNK_DECISIONS_METADATA_KEY][
+        # F283 R18 C5 (DECISION F283 D10) — the envelope `emit_ok` adds
+        # `schema_version` and `ok`; the stored record carries neither.
+        assert payload["schema_version"] == 1
+        assert payload["ok"] is True
+        record = {k: v for k, v in payload.items() if k not in ("schema_version", "ok")}
+        assert record["task_id"] == "job"
+        assert record["attempt"] == DIFF_JOB_ARTIFACT_NAME
+        assert record["decided_at"]
+        assert [row["id"] for row in record["hunks"]] == HUNK_IDS
+        assert record == load_job_plan(job.job_id).metadata[HUNK_DECISIONS_METADATA_KEY][
             f"job:{DIFF_JOB_ARTIFACT_NAME}"]
 
 

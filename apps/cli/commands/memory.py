@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json as _json
 from collections.abc import Callable
 from typing import TYPE_CHECKING
 
@@ -69,7 +68,7 @@ def _cmd_memory_recall(
             }
             for e in entries
         ]
-        print(_json.dumps({"version": 1, "entries": output, "count": len(output)}, sort_keys=True))
+        emit_ok(version=1, entries=output, count=len(output))
     else:
         if not entries:
             scope = f"project={project_id}" if project_id else (f"job={job_id}" if job_id else "global")
@@ -123,7 +122,7 @@ def _cmd_memory_list(
             }
             for e in entries
         ]
-        print(_json.dumps({"version": 1, "entries": output, "count": len(output)}, sort_keys=True))
+        emit_ok(version=1, entries=output, count=len(output))
     else:
         if not entries:
             scope = f"project={project_id}" if project_id else (f"job={job_id}" if job_id else "global")
@@ -159,7 +158,7 @@ def _cmd_memory_learn(
     result = learn_from_job(job, events, approved=approved)
 
     if json_output:
-        print(_json.dumps(export_learn_json(result), sort_keys=True))
+        emit_ok(**export_learn_json(result))
     else:
         print(f"Memory learn: {result.learned_count} created, {result.skipped_count} skipped")
         for e in result.entries:
@@ -190,17 +189,17 @@ def _cmd_memory_card_show(
              json_output=json_output)
 
     if json_output:
-        print(_json.dumps({
-            "version": 1,
-            "id": str(card.id), "key": card.key, "value": card.value,
-            "summary": card.summary, "tags": card.tags,
-            "source_type": card.source_type, "source_id": card.source_id,
-            "scope": card.scope, "validity": card.validity,
-            "review_status": card.review_status, "approved": card.approved,
-            "evidence_refs": card.evidence_refs,
-            "supersedes": card.supersedes, "contradicts": card.contradicts,
-            "created_at": card.created_at, "updated_at": card.updated_at,
-        }, sort_keys=True))
+        emit_ok(
+            version=1,
+            id=str(card.id), key=card.key, value=card.value,
+            summary=card.summary, tags=card.tags,
+            source_type=card.source_type, source_id=card.source_id,
+            scope=card.scope, validity=card.validity,
+            review_status=card.review_status, approved=card.approved,
+            evidence_refs=card.evidence_refs,
+            supersedes=card.supersedes, contradicts=card.contradicts,
+            created_at=card.created_at, updated_at=card.updated_at,
+        )
     else:
         print(f"Memory Card: {card.id}")
         print(f"  key: {card.key}")

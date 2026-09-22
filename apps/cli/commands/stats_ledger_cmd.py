@@ -28,10 +28,9 @@ the mirror; `verify-ledger` is how a disagreement between the two is found; and
 """
 from __future__ import annotations
 
-import json as _json
 from pathlib import Path
 
-from apps.cli.json_envelope import fail
+from apps.cli.json_envelope import emit_ok, fail
 from packages.orchestration.cost_report import COST_UNMEASURED_LABEL
 
 EXIT_USAGE = 2
@@ -352,8 +351,8 @@ def _cmd_stats_cost(*, since: str = "", job: str = "", by: str | None = None,
         since=since, job=job, by=by, project=project,
         all_projects=all_projects, json_output=json_output)
     if json_output:
-        print(_json.dumps(_cost_payload(
-            report, ledgers_read=ledgers_read, scope_label=scope_label), indent=2))
+        emit_ok(**_cost_payload(
+            report, ledgers_read=ledgers_read, scope_label=scope_label))
     else:
         print(_render_cost_human(
             report, ledgers_read=ledgers_read, scope_label=scope_label))
@@ -498,8 +497,8 @@ def _cmd_stats_cache(*, since: str = "", job: str = "", by: str | None = None,
         since=since, job=job, by=by, project=project,
         all_projects=all_projects, json_output=json_output)
     if json_output:
-        print(_json.dumps(_cache_payload(
-            report, ledgers_read=ledgers_read, scope_label=scope_label), indent=2))
+        emit_ok(**_cache_payload(
+            report, ledgers_read=ledgers_read, scope_label=scope_label))
     else:
         print(_render_cache_human(
             report, ledgers_read=ledgers_read, scope_label=scope_label))
@@ -576,15 +575,15 @@ def _cmd_stats_backfill_ledger(*, evidence_dir: str = "",
     result = backfill_ledger(base, path=ledger)
 
     if json_output:
-        print(_json.dumps({
-            "version": COST_OUTPUT_VERSION,
-            "evidence_dir": str(base),
-            "ledger": str(ledger),
-            "scanned": result.scanned,
-            "recorded": result.recorded,
-            "skipped": result.skipped,
-            "failed": result.failed,
-        }, indent=2))
+        emit_ok(
+            version=COST_OUTPUT_VERSION,
+            evidence_dir=str(base),
+            ledger=str(ledger),
+            scanned=result.scanned,
+            recorded=result.recorded,
+            skipped=result.skipped,
+            failed=result.failed,
+        )
         return
 
     print(f"Backfill of {base} into {ledger}")
@@ -608,7 +607,7 @@ def _cmd_stats_verify_ledger(*, evidence_dir: str = "",
     result = verify_ledger(base, path=ledger)
 
     if json_output:
-        print(_json.dumps({
+        document = {
             "version": COST_OUTPUT_VERSION,
             "evidence_dir": str(base),
             "ledger": str(ledger),
@@ -618,24 +617,34 @@ def _cmd_stats_verify_ledger(*, evidence_dir: str = "",
             "drifted_rows": result.drifted_rows,
             "unreadable": result.unreadable,
             "has_drift": result.has_drift,
-        }, indent=2))
-    else:
-        print(f"Reconcile of {base} against {ledger}")
-        print(f"  checked:  {result.checked} task run(s) carrying provider evidence")
-        print(f"  missing:  {len(result.missing_rows)} row(s) on disk with no row in the ledger")
-        print(f"  orphan:   {len(result.orphan_rows)} row(s) in the ledger with no evidence")
-        print(f"  drifted:  {len(result.drifted_rows)} row(s) whose contents no longer match")
-        print(f"  unreadable: {len(result.unreadable)} task run(s) nothing can be said about")
-        for label, ids in (("missing", result.missing_rows),
-                           ("orphan", result.orphan_rows),
-                           ("drifted", result.drifted_rows)):
-            for call_id in ids:
-                print(f"    {label}: {call_id}")
+        }
         if result.has_drift:
-            print("DRIFT: the files are the source of truth, so the ledger is wrong here. "
-                  "Run 'remedy stats backfill-ledger' to re-record missing rows.")
-        else:
-            print("Clean: the ledger agrees with the evidence files.")
+            # DECISION F283 D10 (3) — a result document that exits non-zero
+            # answers ONE failure envelope instead of the raw document
+            # followed by a bare exit.
+            fail("ledger_drift",
+                 "the ledger disagrees with the evidence files; the files "
+                 "are the source of truth",
+                 json_output=True, exit_code=EXIT_DRIFT, **document)
+        emit_ok(**document)
+        return
+
+    print(f"Reconcile of {base} against {ledger}")
+    print(f"  checked:  {result.checked} task run(s) carrying provider evidence")
+    print(f"  missing:  {len(result.missing_rows)} row(s) on disk with no row in the ledger")
+    print(f"  orphan:   {len(result.orphan_rows)} row(s) in the ledger with no evidence")
+    print(f"  drifted:  {len(result.drifted_rows)} row(s) whose contents no longer match")
+    print(f"  unreadable: {len(result.unreadable)} task run(s) nothing can be said about")
+    for label, ids in (("missing", result.missing_rows),
+                       ("orphan", result.orphan_rows),
+                       ("drifted", result.drifted_rows)):
+        for call_id in ids:
+            print(f"    {label}: {call_id}")
+    if result.has_drift:
+        print("DRIFT: the files are the source of truth, so the ledger is wrong here. "
+              "Run 'remedy stats backfill-ledger' to re-record missing rows.")
+    else:
+        print("Clean: the ledger agrees with the evidence files.")
 
     if result.has_drift:
         raise SystemExit(EXIT_DRIFT)

@@ -26,6 +26,8 @@ from apps.cli.commands.memory import (
     _cmd_memory_card_stale,
     _cmd_memory_card_supersede,
     _cmd_memory_learn,
+    _cmd_memory_list,
+    _cmd_memory_recall,
 )
 
 _GATEWAY = "packages.memory.local_gateway."
@@ -81,6 +83,40 @@ class TestEveryCardLookupRefusesUnderOneToken:
         body = json.loads(capsys.readouterr().out)
         assert body["error"] == "memory_card_not_found"
         assert "no-such-card" in body["message"]
+
+
+class TestTheReadPathsAnswerTheEnvelope:
+    """F283 R18 C5 (DECISION F283 D10) — `memory card-show`, `memory recall`
+    and `memory list`'s success documents, previously raw `json.dumps` sites,
+    now carry the envelope `emit_ok` added this round."""
+
+    def test_card_show_answers_the_envelope(self, capsys):
+        card = SimpleNamespace(
+            id="card-1", key="k1", value="v1", summary="s1", tags=["t1"],
+            source_type="manual", source_id="", scope="job", validity="valid",
+            review_status="approved", approved=True, evidence_refs=[],
+            supersedes=None, contradicts=None,
+            created_at="2026-09-01T00:00:00+00:00", updated_at="2026-09-01T00:00:00+00:00",
+        )
+        with patch(_GATEWAY + "get_memory_card", return_value=card):
+            _cmd_memory_card_show("card-1", json_output=True)
+        body = json.loads(capsys.readouterr().out)
+        assert body["ok"] is True and body["schema_version"] == 1
+        assert body["id"] == "card-1" and body["key"] == "k1"
+
+    def test_recall_answers_the_envelope(self, capsys):
+        with patch(_GATEWAY + "recall_memory", return_value=[]):
+            _cmd_memory_recall(json_output=True)
+        body = json.loads(capsys.readouterr().out)
+        assert body["ok"] is True and body["schema_version"] == 1
+        assert body["version"] == 1 and body["entries"] == [] and body["count"] == 0
+
+    def test_list_answers_the_envelope(self, capsys):
+        with patch(_GATEWAY + "list_memory", return_value=[]):
+            _cmd_memory_list(json_output=True)
+        body = json.loads(capsys.readouterr().out)
+        assert body["ok"] is True and body["schema_version"] == 1
+        assert body["version"] == 1 and body["entries"] == [] and body["count"] == 0
 
 
 class TestTheJobLookupInLearnRefusesTheSameWayEveryGroupDoes:

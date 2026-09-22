@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json as _json
 import sys
 from collections.abc import Callable
 from typing import TYPE_CHECKING
@@ -43,7 +42,7 @@ def _cmd_brain(job_id_str: str, *, json_output: bool = False) -> None:
     graph = build_project_brain(job, events, constitution=constitution)
 
     if json_output:
-        print(_json.dumps(export_project_brain_json(graph), sort_keys=True))
+        emit_ok(**export_project_brain_json(graph))
     else:
         print(summarize_project_brain(graph))
 
@@ -91,7 +90,7 @@ def _cmd_brain_node(job_id_str: str, node_id: str, *, json_output: bool = False)
         fail("node_not_found", str(exc), json_output=json_output)
 
     if json_output:
-        print(_json.dumps(export_brain_node_detail_json(detail), sort_keys=True))
+        emit_ok(**export_brain_node_detail_json(detail))
     else:
         print(summarize_brain_node_detail(detail))
 
@@ -222,16 +221,15 @@ def _cmd_brain_open(job_id_str: str, *, json_output: bool = False) -> None:
 def _cmd_viewer_path(job_id_str: str, *, json_output: bool = False) -> None:
     index_path, job, viewer_data, graph = _prepare_viewer(job_id_str, json_output=json_output)
     if json_output:
-        import json as _j
-        print(_j.dumps({
-            "version": 1,
-            "job_id": str(job.job_id),
-            "index_path": str(index_path),
-            "viewer_data_path": str(index_path.parent / "viewer_data.json"),
-            "node_count": len(graph.nodes),
-            "edge_count": len(graph.edges),
-            "detail_count": len(viewer_data.node_details),
-        }, sort_keys=True))
+        emit_ok(
+            version=1,
+            job_id=str(job.job_id),
+            index_path=str(index_path),
+            viewer_data_path=str(index_path.parent / "viewer_data.json"),
+            node_count=len(graph.nodes),
+            edge_count=len(graph.edges),
+            detail_count=len(viewer_data.node_details),
+        )
     else:
         print(str(index_path))
 
@@ -312,7 +310,7 @@ def _cmd_context(job_id_str: str, *, json_output: bool = False) -> None:
     snapshot = derive_context_coverage(job, events, constitution=constitution)
 
     if json_output:
-        print(_json.dumps(export_context_coverage_json(snapshot), sort_keys=True))
+        emit_ok(**export_context_coverage_json(snapshot))
     else:
         print(summarize_context_coverage(snapshot))
 
@@ -462,7 +460,7 @@ def _cmd_brain_continue(
         fail("node_not_found", str(exc), json_output=json_output)
 
     if json_output:
-        print(_json.dumps(export_continue_result_json(result), sort_keys=True))
+        emit_ok(**export_continue_result_json(result))
     else:
         print(f"Created child job: {result.child_job_id}")
         print(f"  Parent: {result.parent_job_id[:8]}")

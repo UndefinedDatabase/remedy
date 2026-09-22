@@ -937,7 +937,14 @@ class TestCLIBrain:
         main()
         out = capsys.readouterr().out
         data = json.loads(out)
-        assert set(data.keys()) == {"version", "job_id", "nodes", "edges", "degraded"}
+        # F283 R18 C5 (DECISION F283 D10) — the envelope `emit_ok` adds
+        # `schema_version` and `ok`.
+        assert data["schema_version"] == 1
+        assert data["ok"] is True
+        assert set(data.keys()) == {
+            "version", "job_id", "nodes", "edges", "degraded",
+            "schema_version", "ok",
+        }
 
     def test_json_flag_does_not_leak_sentinels(self, tmp_path, monkeypatch, capsys):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))

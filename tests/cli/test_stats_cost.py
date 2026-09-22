@@ -203,6 +203,9 @@ class TestCostJsonShape:
         CMD._cmd_stats_cost(project=project_id, by="role", json_output=True)
         payload = json.loads(capsys.readouterr().out)
 
+        # F283 R18 C5 (DECISION F283 D10) — the envelope `emit_ok` added this round.
+        assert payload["schema_version"] == 1
+        assert payload["ok"] is True
         assert set(payload) >= {
             "version", "scope", "ledgers_read", "filters", "basis", "total", "rows"}
         assert payload["filters"] == {"since": "", "job": "", "by": "role"}
@@ -465,6 +468,12 @@ class TestVerifyLedger:
 
         assert exc.value.code == CMD.EXIT_DRIFT
         payload = json.loads(capsys.readouterr().out)
+        # F283 R18 C5 (DECISION F283 D10 (3)) — a result document that exits
+        # non-zero now answers ONE failure envelope instead of the raw
+        # document followed by a bare exit.
+        assert payload["schema_version"] == 1
+        assert payload["ok"] is False
+        assert payload["error"] == "ledger_drift"
         assert payload["missing_rows"] == [f"{JOB_ID}:{TASK_MEASURED}"]
         assert payload["has_drift"] is True
 

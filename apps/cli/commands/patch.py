@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json as _json
 import sys
 from collections.abc import Callable
 from typing import TYPE_CHECKING
@@ -49,11 +48,7 @@ def _cmd_list_patch_intents(
     except ListOptionError as exc:
         fail("invalid_list_option", str(exc), json_output=json_output)
     if json_output:
-        print(_json.dumps({
-            "version": 1,
-            "intent_count": len(intents),
-            "intents": intents,
-        }, sort_keys=True))
+        emit_ok(version=1, intent_count=len(intents), intents=intents)
         return
     print(format_intent_list(intents))
 
@@ -182,12 +177,12 @@ def _cmd_apply_patch_intent(job_id_str: str, intent_id: str, *, json_output: boo
     # R-0917: the apply names the test run that verifies it, with its ids.
     next_action = verifying_test_run_action(str(job.job_id), result)
     if json_output:
-        print(_json.dumps({
-            "state": result.state, "intent_id": result.intent_id,
-            "target_path": result.target_path, "action": result.action,
-            "outcome": result.outcome, "bytes_written": result.bytes_written,
-            "line_count": result.line_count, "next_safe_action": next_action,
-        }, sort_keys=True))
+        emit_ok(
+            state=result.state, intent_id=result.intent_id,
+            target_path=result.target_path, action=result.action,
+            outcome=result.outcome, bytes_written=result.bytes_written,
+            line_count=result.line_count, next_safe_action=next_action,
+        )
     else:
         print(format_apply_result(result))
         print(f"Next: {next_action}")
@@ -271,7 +266,7 @@ def _cmd_revert_patch_intent(
     result = revert_repository_apply(job_id_str, resolved_apply_id, repo_root, data_dir)
 
     if json_output:
-        print(_json.dumps({
+        document = {
             "success": result.success,
             "apply_id": result.apply_id,
             "snapshot_id": result.snapshot_id,
@@ -283,9 +278,19 @@ def _cmd_revert_patch_intent(
             "drift_path_count": result.drift_path_count,
             "verification_failures": result.verification_failures,
             "safe_summary": result.safe_summary,
-        }, sort_keys=True))
-        if not result.success:
-            sys.exit(1)
+        }
+        if result.success:
+            emit_ok(**document)
+            return
+        # DECISION F283 D10 (3) — a result document that exits non-zero answers
+        # ONE failure envelope, token named for the condition (DECISION F277
+        # D8): `block_reason` when the revert was refused before it started,
+        # else the terminal `state` itself.
+        fail(
+            result.block_reason or result.state or "revert_failed",
+            result.safe_summary or f"revert {result.state}",
+            json_output=True, exit_code=1, **document,
+        )
         return
 
     if not result.success:
@@ -388,7 +393,7 @@ def _cmd_approve_hunks(
     save_job_plan(job)
 
     if json_output:
-        print(_json.dumps(result.exported, sort_keys=True))
+        emit_ok(**result.exported)
         return
 
     states = [entry.state for entry in result.ledger.entries]

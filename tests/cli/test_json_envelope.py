@@ -290,14 +290,10 @@ class TestRawJSONDocumentSitesRatchet:
         "apps/cli/commands/project.py": 7,
         "apps/cli/commands/config_cmd.py": 6,
         "apps/cli/commands/worker.py": 6,
-        "apps/cli/commands/brain.py": 5,
-        "apps/cli/commands/memory.py": 4,
-        "apps/cli/commands/patch.py": 4,
-        "apps/cli/commands/stats_ledger_cmd.py": 4,
     }
 
     def test_the_pinned_counts_match_the_scan(self) -> None:
         assert _raw_json_document_sites_by_module() == self.RAW_SITES_BY_MODULE
 
     def test_the_pinned_total_is_the_measured_total(self) -> None:
-        assert sum(self.RAW_SITES_BY_MODULE.values()) == 68
+        assert sum(self.RAW_SITES_BY_MODULE.values()) == 51
