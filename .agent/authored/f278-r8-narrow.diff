@@ -1,0 +1,13 @@
+diff --git a/packages/orchestration/hunk_decision_record.py b/packages/orchestration/hunk_decision_record.py
+index cd490896..31503f25 100644
+--- a/packages/orchestration/hunk_decision_record.py
++++ b/packages/orchestration/hunk_decision_record.py
+@@ -279,7 +279,7 @@ def _parsed_decision_stamp(value: Any) -> datetime | None:
+     no time to order it by."""
+     try:
+         return datetime.fromisoformat(value)
+-    except Exception:
++    except (TypeError, ValueError):
+         return None
+ 
+ 
