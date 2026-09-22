@@ -535,3 +535,36 @@ class TestShowApproveRejectAnswerJSONThroughTheDispatcher:
         assert body["intent_id"] == "5" and body["target_path"] == "f.py"
         assert body["risk"] == "low" and body["state"] == "rejected"
         assert body["reason_recorded"] is True
+
+
+class TestRevertRefusalIsAnEnvelope:
+    """DECISION F283 D11 (2) — round 18 (`8abd1553`) wrote the fallback chain
+    `result.block_reason or result.state or "revert_failed"` in
+    `_cmd_revert_patch_intent`, but pinned it with no test; this is that test.
+    A revert the revert path REFUSES (no apply record on disk, so
+    `revert_repository_apply`'s first gate blocks it before anything is
+    touched) answers ONE failure envelope whose `error` is the refusal's own
+    `block_reason`, `ok` is false, and the exit code is the revert's own (1)."""
+
+    def test_a_refused_revert_answers_its_block_reason_as_the_envelope_error(
+        self, isolated, capsys,
+    ):
+        job = _job()
+        job.metadata["target_repo"] = "/repo"
+        save_job_plan(job)
+
+        with pytest.raises(SystemExit) as exc:
+            CMD._cmd_revert_patch_intent(
+                str(job.job_id), "intent-1", apply_id="no-such-apply-id",
+                json_output=True,
+            )
+
+        assert exc.value.code == 1
+        captured = capsys.readouterr()
+        assert captured.err == ""
+        payload = json.loads(captured.out)
+        assert payload["schema_version"] == 1
+        assert payload["ok"] is False
+        assert payload["error"] == "no_apply_record"
+        assert payload["block_reason"] == "no_apply_record"
+        assert payload["success"] is False
