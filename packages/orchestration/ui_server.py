@@ -3185,10 +3185,10 @@ def start_ui_server(
     json_output: bool = False,
 ) -> None:
     """Start the read-only UI server. Blocks until Ctrl-C."""
-    # F283 R16 C5 (DECISION F283 D9): imported inside the function, as
-    # `apps.cli.json_envelope` itself already imports `apps.cli.command_catalog`
-    # inside a function — this module lives under `packages/` and must not take
-    # an `apps/` import at module scope.
+    # F283 R16 C5 (DECISION F283 D9), comment repaired at R-1030: imported
+    # inside the function, the idiom this module's own `_command_is_ui_exposed`
+    # already uses for `apps.cli.command_catalog` — this module lives under
+    # `packages/` and must not take an `apps/` import at module scope.
     from apps.cli.json_envelope import emit_ok, fail
 
     # Security: refuse non-localhost

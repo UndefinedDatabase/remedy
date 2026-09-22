@@ -620,6 +620,26 @@ class TestUISessionCommandsAnswerTheEnvelope:
         assert body["failed"] == []
         mock_kill.assert_called_once()
 
+    def test_stop_kill_failure_answers_a_failed_entry(self, tmp_path, monkeypatch, capsys):
+        """R-1030's round 16 probe: dropping `error` from a `failed` entry
+        reddens no test — pin the shape `os.kill` raising produces."""
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        info = _write_live_session(tmp_path, pid=424242)
+        monkeypatch.setattr("apps.cli.commands.ui._is_pid_alive", lambda pid: True)
+        monkeypatch.setattr(
+            "apps.cli.commands.ui.os.kill",
+            MagicMock(side_effect=OSError("no such process")),
+        )
+
+        from apps.cli import grouped
+        grouped.main(["ui", "stop", "--json"])
+        body = json.loads(capsys.readouterr().out)
+        assert body["ok"] is True and body["schema_version"] == 1
+        assert body["stopped"] == []
+        assert body["failed"] == [
+            {"pid": 424242, "job_id": info["job_id"], "error": "no such process"}
+        ]
+
     def test_open_answers_the_envelope(self, tmp_path, monkeypatch, capsys):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         info = _write_live_session(tmp_path)
@@ -674,6 +694,37 @@ class TestUIStartAnswersTheEnvelope:
         assert "pid" in body and "port" in body and "info_file" in body
         mock_open.assert_called_once()
 
+    def test_missing_job_answers_job_not_found(self, tmp_path, monkeypatch, capsys):
+        """A well-formed but unknown job id is `_load_job`'s 404 branch."""
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        from packages.orchestration.ui_server import start_ui_server
+
+        with pytest.raises(SystemExit) as exc:
+            start_ui_server(
+                str(uuid4()), host="127.0.0.1", port=0,
+                token="test-token", open_browser=False, info_file=None,
+                json_output=True,
+            )
+        assert exc.value.code == 1
+        body = json.loads(capsys.readouterr().out)
+        assert body["ok"] is False
+        assert body["error"] == "job_not_found"
+
+    def test_malformed_job_id_answers_invalid_job_id(self, tmp_path, monkeypatch, capsys):
+        """A job id that is not hex at all is `_load_job`'s 400 branch."""
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        from packages.orchestration.ui_server import start_ui_server
+
+        with pytest.raises(SystemExit) as exc:
+            start_ui_server(
+                "not-a-hex-id!!", host="127.0.0.1", port=0,
+                token="test-token", open_browser=False, info_file=None,
+                json_output=True,
+            )
+        assert exc.value.code == 1
+        body = json.loads(capsys.readouterr().out)
+        assert body["ok"] is False
+        assert body["error"] == "invalid_job_id"
 
 
 class TestLiveGrowth:

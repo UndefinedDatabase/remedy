@@ -463,6 +463,26 @@ class TestProjectCreateAndAttachAnswerJSONThroughTheDispatcher:
         assert body["job_id"] == str(job.job_id)
         assert body["added"] is True
 
+    def test_attach_job_already_attached_answers_added_false(self, tmp_path, monkeypatch, capsys):
+        """R-1030's round 16 probe: forcing `added` always True reddens no test —
+        pin the already-attached case so a regression there is caught."""
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        p = _make_and_save(tmp_path, monkeypatch, slug="myproj")
+        from packages.orchestration.pingpong_job import JobPlan, save_job_plan
+        job = JobPlan(job_title="t")
+        save_job_plan(job)
+
+        from apps.cli.grouped import main
+
+        main(["project", "attach-job", str(p.id), str(job.job_id), "--json"])
+        capsys.readouterr()
+        main(["project", "attach-job", str(p.id), str(job.job_id), "--json"])
+        body = json.loads(capsys.readouterr().out)
+        assert body["ok"] is True and body["schema_version"] == 1
+        assert body["project_id"] == str(p.id)
+        assert body["job_id"] == str(job.job_id)
+        assert body["added"] is False
+
     def test_attach_answers_the_envelope(self, tmp_path, monkeypatch, capsys):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         monkeypatch.delenv("REMEDY_PROJECT", raising=False)
