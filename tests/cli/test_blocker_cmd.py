@@ -111,3 +111,71 @@ class TestABlockerRefusalIsShapedLikeTheCaller:
             _cmd_blocker_resolve("job-1", "no-such-blocker", json_output=True)
         assert exc.value.code == 1
         assert json.loads(capsys.readouterr().out)["error"] == "blocker_not_found"
+
+
+class TestBlockerResolveAnswersJSONThroughTheDispatcher:
+    """F283 R14 C5 (DECISION F283 D9) — `blocker resolve` now declares `--json` in
+    the catalog; both shapes proved end to end through the CLI dispatcher."""
+
+    def test_resolve_answers_the_envelope(self, capsys):
+        import json
+
+        from apps.cli.grouped import main
+
+        resolved = _stop(status="resolved")
+        with patch("packages.orchestration.stop_reasons.resolve_stop_reason",
+                   return_value=resolved):
+            main(["blocker", "resolve", "job-1", "stop-1", "--json"])
+        body = json.loads(capsys.readouterr().out)
+        assert body["ok"] is True and body["schema_version"] == 1
+        assert body["id"] == "stop-1" and body["reason_code"] == "test_failed"
+
+    def test_a_missing_blocker_is_the_envelope_through_the_dispatcher(self, capsys):
+        import json
+
+        from apps.cli.grouped import main
+
+        with patch("packages.orchestration.stop_reasons.resolve_stop_reason",
+                   return_value=None), pytest.raises(SystemExit) as exc:
+            main(["blocker", "resolve", "job-1", "no-such-blocker", "--json"])
+        assert exc.value.code == 1
+        body = json.loads(capsys.readouterr().out)
+        assert body["ok"] is False
+        assert body["error"] == "blocker_not_found"
+
+    def test_resolve_answers_the_full_id_not_the_text_branchs_short_one(self, capsys):
+        """F283 R15 C3 — the text branch prints `sr.id[:8]`; the envelope must not
+        inherit that truncation. `stop-1` (six characters) never exercised this:
+        pin it with a stop id longer than eight characters."""
+        import json
+
+        from apps.cli.grouped import main
+
+        long_id = "stop-reason-0123456789"
+        resolved = _stop(status="resolved")
+        resolved.id = long_id
+        with patch("packages.orchestration.stop_reasons.resolve_stop_reason",
+                   return_value=resolved):
+            main(["blocker", "resolve", "job-1", long_id, "--json"])
+        body = json.loads(capsys.readouterr().out)
+        assert body["ok"] is True and body["schema_version"] == 1
+        assert body["id"] == long_id
+        assert len(body["id"]) > 8
+
+
+class TestBlockerListAnswersJSONThroughTheDispatcher:
+    """F283 R18 C3 (R-1031) — `blocker list`'s success document, through the real
+    argv dispatcher (`apps.cli.grouped.main`), carries the envelope `emit_ok`
+    added at F283 R17 C5 (`dbc49b6b`)."""
+
+    @patch(_LIST_STOPS)
+    def test_list_answers_the_envelope(self, mock_list, capsys):
+        import json
+
+        from apps.cli.grouped import main
+
+        mock_list.return_value = [_stop()]
+        main(["blocker", "list", "job-1", "--json"])
+        body = json.loads(capsys.readouterr().out)
+        assert body["ok"] is True and body["schema_version"] == 1
+        assert body["job_id"] == "job-1"

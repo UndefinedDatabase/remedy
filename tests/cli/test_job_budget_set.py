@@ -98,7 +98,11 @@ class TestR0906TheTestRunBudget:
     def test_json_names_job_field_old_new_and_store(self, data_root, tmp_path, capsys):
         job = _job(tmp_path)
         assert _cli("job", "budget", job.job_id, "set", "max_loops", "4", "--json") == 0
-        assert json.loads(capsys.readouterr().out) == {
+        # F283 R19 C4 (DECISION F283 D10) — `emit_ok` adds `schema_version` and `ok`.
+        payload = json.loads(capsys.readouterr().out)
+        assert payload["schema_version"] == 1
+        assert payload["ok"] is True
+        assert {k: v for k, v in payload.items() if k not in ("schema_version", "ok")} == {
             "job_id": job.job_id, "field": "max_loops", "old": 10, "new": 4,
             "store": "run_contract"}
 

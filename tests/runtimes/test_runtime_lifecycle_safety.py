@@ -251,7 +251,7 @@ class TestManagedIdentity:
                 runtime_cmd._cmd_runtime_serve(str(project), json_output=True)
             assert exc.value.code == runtime_cmd.EXIT_CONFIG
             out = json.loads(capsys.readouterr().out)
-            assert "runtime_spec_mismatch" in out["error"]
+            assert "runtime_spec_mismatch" in out["message"]
             assert _alive(served["pid"]), "the running runtime must not be killed"
             assert load_state(project).pid == served["pid"]   # not overwritten
         finally:

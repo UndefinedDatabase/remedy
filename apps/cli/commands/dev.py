@@ -7,6 +7,8 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
+from apps.cli.json_envelope import emit_ok
+
 if TYPE_CHECKING:
     import argparse
 
@@ -14,7 +16,13 @@ if TYPE_CHECKING:
 from apps.cli.commands.brain import _cmd_agent_loop
 
 
-def _dev_smoke_help() -> None:
+def _dev_smoke_help(*, json_output: bool = False) -> None:
+    if json_output:
+        emit_ok(commands=[
+            "source scripts/remedy_smoke.sh && remedy_smoke",
+            "bash scripts/remedy_smoke.sh",
+        ])
+        return
     print("Smoke test:")
     print("  source scripts/remedy_smoke.sh && remedy_smoke")
     print("")
@@ -159,7 +167,7 @@ def _dev_status(*, json_output: bool = False) -> None:
     status["advisories"] = advisories
 
     if json_output:
-        print(json.dumps(status, indent=2))
+        emit_ok(**status)
     else:
         print("Remedy Developer Status")
         print("=" * 40)
@@ -196,6 +204,6 @@ def _dev_status(*, json_output: bool = False) -> None:
 
 COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
     "dev.agent-loop": lambda args: _cmd_agent_loop(args.job_id),
-    "dev.smoke-help": lambda args: _dev_smoke_help(),
+    "dev.smoke-help": lambda args: _dev_smoke_help(json_output=getattr(args, "json", False)),
     "dev.status": lambda args: _dev_status(json_output=getattr(args, "json", False)),
 }

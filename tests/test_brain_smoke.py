@@ -79,6 +79,8 @@ _DETAIL_KEYS = frozenset({
     "job_id", "node_id", "node_type", "title", "status", "risk",
     "explanation", "why_it_exists", "connected_to", "evidence",
     "affected_files", "next_actions", "redaction_notes",
+    # F283 R18 C5 (DECISION F283 D10) — the envelope `emit_ok` adds.
+    "schema_version", "ok",
 })
 
 
@@ -749,7 +751,13 @@ class TestBrainRedactionHardening:
 
 
 class TestBrainNodeUnknownNode:
-    """brain-node with an unknown node_id must exit 1 with a safe, truncated error."""
+    """brain-node with an unknown node_id must exit 1 with a safe, truncated error.
+
+    F283 R7 C5: `_cmd_brain_node`'s `ValueError` catch moved onto `fail()` as
+    `node_not_found`, so under `--json` the safe message now lives in the
+    envelope on stdout and stderr goes empty, instead of an `Error: ` line on
+    stderr above an empty stdout.
+    """
 
     def test_unknown_node_exits_1(self, tmp_path, monkeypatch, capsys):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
@@ -763,7 +771,7 @@ class TestBrainNodeUnknownNode:
             main()
         assert exc.value.code == 1
 
-    def test_unknown_node_stdout_empty(self, tmp_path, monkeypatch, capsys):
+    def test_unknown_node_stdout_is_the_envelope(self, tmp_path, monkeypatch, capsys):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         job = _make_job()
         save_job_plan(job)
@@ -773,9 +781,12 @@ class TestBrainNodeUnknownNode:
         monkeypatch.setattr(sys, "argv", ["remedy", "brain", "node", str(job.job_id), "does-not-exist", "--json"])
         with pytest.raises(SystemExit):
             main()
-        assert capsys.readouterr().out == ""
+        body = json.loads(capsys.readouterr().out)
+        assert body["ok"] is False
+        assert body["error"] == "node_not_found"
+        assert "not found" in body["message"].lower()
 
-    def test_unknown_node_stderr_safe_message(self, tmp_path, monkeypatch, capsys):
+    def test_unknown_node_stderr_empty(self, tmp_path, monkeypatch, capsys):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         job = _make_job()
         save_job_plan(job)
@@ -785,8 +796,7 @@ class TestBrainNodeUnknownNode:
         monkeypatch.setattr(sys, "argv", ["remedy", "brain", "node", str(job.job_id), "does-not-exist", "--json"])
         with pytest.raises(SystemExit):
             main()
-        err = capsys.readouterr().err
-        assert "node not found" in err.lower()
+        assert capsys.readouterr().err == ""
 
     def test_unknown_node_stderr_no_traceback(self, tmp_path, monkeypatch, capsys):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
@@ -800,7 +810,7 @@ class TestBrainNodeUnknownNode:
             main()
         assert "Traceback" not in capsys.readouterr().err
 
-    def test_long_node_id_safely_truncated_in_stderr(self, tmp_path, monkeypatch, capsys):
+    def test_long_node_id_safely_truncated_in_the_envelope(self, tmp_path, monkeypatch, capsys):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         job = _make_job()
         save_job_plan(job)
@@ -811,7 +821,36 @@ class TestBrainNodeUnknownNode:
         monkeypatch.setattr(sys, "argv", ["remedy", "brain", "node", str(job.job_id), long_id, "--json"])
         with pytest.raises(SystemExit):
             main()
-        err = capsys.readouterr().err
+        body = json.loads(capsys.readouterr().out)
         # The full 200-char id must not appear verbatim; the truncated version is present
-        assert long_id not in err
-        assert len(err) > 0
+        assert long_id not in body["message"]
+        assert len(body["message"]) > 0
+
+
+# ---------------------------------------------------------------------------
+# TestBrainGraphJobRecordMissing
+# ---------------------------------------------------------------------------
+
+
+class TestBrainGraphJobRecordMissing:
+    """F283 R7 C5 — the required envelope test: a `--json` brain command whose job id
+    RESOLVES (a well-formed UUID `lookup_job_id` returns without touching disk) but
+    whose job record is missing answers `job_not_found`, with an empty stderr. Proves
+    `_cmd_brain`'s migrated `JobNotFoundError` catch."""
+
+    def test_a_resolvable_id_with_no_job_record_answers_job_not_found(
+            self, tmp_path, monkeypatch, capsys):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        fake_id = str(uuid4())
+        import sys
+
+        from apps.cli.main import main
+        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "graph", fake_id, "--json"])
+        with pytest.raises(SystemExit) as exc:
+            main()
+        assert exc.value.code == 1
+        captured = capsys.readouterr()
+        assert captured.err == ""
+        body = json.loads(captured.out)
+        assert body["ok"] is False
+        assert body["error"] == "job_not_found"

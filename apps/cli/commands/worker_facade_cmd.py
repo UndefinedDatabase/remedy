@@ -6,19 +6,14 @@ No provider execution. No auto-approval. No secret storage.
 
 from __future__ import annotations
 
-import json
-import sys
 from collections.abc import Callable
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, NoReturn
+from typing import TYPE_CHECKING, Any
+
+from apps.cli.json_envelope import emit_ok, fail
 
 if TYPE_CHECKING:
     import argparse
-
-
-def _err(msg: str) -> NoReturn:
-    print(json.dumps({"error": msg}), file=sys.stderr)
-    sys.exit(1)
 
 
 # ---------------------------------------------------------------------------
@@ -37,7 +32,7 @@ def _cmd_mission_run(ns: argparse.Namespace) -> None:
     """
     run_id = getattr(ns, "run_id", "")
     if not run_id:
-        _err("run_id required")
+        fail("missing_argument", "run_id required", json_output=getattr(ns, "json", False))
 
     from apps.cli.commands.mission_cmd import _cmd_mission_run_loop
     _cmd_mission_run_loop(
@@ -340,7 +335,7 @@ def _cmd_doctor_core(ns: argparse.Namespace) -> None:
     }
 
     if getattr(ns, "json", False):
-        print(json.dumps(result, indent=2))
+        emit_ok(**result)
         return
     print(f"Core Product Spine: {'READY' if ready else 'NOT READY'}")
     for c in checks:

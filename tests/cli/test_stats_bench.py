@@ -183,6 +183,20 @@ class TestRegistration:
             series=None, multiplier=None, project=project_id, json=True))
         assert json.loads(capsys.readouterr().out)["series"] == SERIES
 
+    def test_answers_the_envelope_through_the_argv_dispatcher(
+        self, history, project_id, capsys
+    ):
+        """F283 R18 C3 (R-1031) — the success document, through the real argv
+        dispatcher (`apps.cli.grouped.main`), carries the envelope `emit_ok`
+        added at F283 R17 C5 (`dbc49b6b`)."""
+        from apps.cli.grouped import main
+
+        main(["stats", "bench", "--project", project_id, "--json"])
+        payload = json.loads(capsys.readouterr().out)
+        assert payload["schema_version"] == 1
+        assert payload["ok"] is True
+        assert payload["series"] == SERIES
+
 
 class TestReadingWritesNothing:
     def test_neither_output_mode_changes_one_byte_of_the_history(
@@ -348,6 +362,24 @@ class TestRegressionWarnings:
             with pytest.raises(SystemExit) as excinfo:
                 CMD._cmd_stats_bench(project=project_id, multiplier=bad)
             assert excinfo.value.code == CMD.EXIT_USAGE
+
+    def test_an_unusable_multiplier_answers_invalid_argument_under_json(
+        self, history, project_id, capsys
+    ):
+        """`_validate_multiplier`'s refusal, migrated onto `fail()`: one envelope on
+        stdout, no prose on stderr."""
+        with pytest.raises(SystemExit) as excinfo:
+            CMD._cmd_stats_bench(project=project_id, multiplier="not-a-number",
+                                 json_output=True)
+
+        assert excinfo.value.code == CMD.EXIT_USAGE
+        captured = capsys.readouterr()
+        assert captured.err == ""
+        payload = json.loads(captured.out)
+        assert payload["schema_version"] == 1
+        assert payload["ok"] is False
+        assert payload["error"] == "invalid_argument"
+        assert "not-a-number" in payload["message"]
 
 
 class TestTooFewRunsSaysWhy:

@@ -459,6 +459,49 @@ class TestDecisionResolve:
         assert exc_info.value.code == 1
 
 
+class TestDecisionResolvePlanAnswersJSONThroughTheDispatcher:
+    """F283 R15 C4 (DECISION F283 D9) — `decision resolve` now declares `--json`
+    in the catalog; the `plan:` approve and reject outcomes proved end to end
+    through the CLI dispatcher, each envelope's keys per the block's SPEC."""
+
+    def test_approve_answers_the_envelope(self, tmp_path, monkeypatch, capsys):
+        from apps.cli.grouped import main
+        from packages.orchestration.pingpong_job import save_job_plan
+
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
+        job = JobPlan(job_title="t", task_plan={"_approval": "pending"})
+        save_job_plan(job)
+        short_id = str(job.job_id)
+
+        main(["decision", "resolve", short_id, "plan:approval",
+              "--reason", "approve", "--json"])
+        body = json.loads(capsys.readouterr().out)
+        assert body["ok"] is True and body["schema_version"] == 1
+        assert body["decision_id"] == "plan:approval" and body["job_id"] == short_id
+        assert body["outcome"] == "approved"
+        assert body["answers"] == []
+        assert body["mission_id"] is None
+        assert "assumption_log" in body
+
+    def test_reject_answers_the_envelope(self, tmp_path, monkeypatch, capsys):
+        from apps.cli.grouped import main
+        from packages.orchestration.job_plan import REJECTED_PLAN_NEXT_STEP
+        from packages.orchestration.pingpong_job import save_job_plan
+
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
+        job = JobPlan(job_title="t", task_plan={"_approval": "pending"})
+        save_job_plan(job)
+        short_id = str(job.job_id)
+
+        main(["decision", "resolve", short_id, "plan:approval",
+              "--reason", "reject", "--json"])
+        body = json.loads(capsys.readouterr().out)
+        assert body["ok"] is True and body["schema_version"] == 1
+        assert body["decision_id"] == "plan:approval" and body["job_id"] == short_id
+        assert body["outcome"] == "rejected"
+        assert body["next_step"] == REJECTED_PLAN_NEXT_STEP
+
+
 class TestAutoApproval:
     """R-0124: --yes auto-approves with audit trail."""
 

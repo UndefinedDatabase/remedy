@@ -31,6 +31,21 @@ def test_the_newest_event_leads_by_default(capsys):
     assert _event_list(capsys) == ["job_completed", "test_run_completed", "job_created"]
 
 
+def test_the_success_document_answers_the_envelope(capsys):
+    """F283 R18 C4 (DECISION F283 D10) — `event list`'s success document,
+    through `emit_ok`, carries the envelope; every old top-level key stays."""
+    from apps.cli.commands.event import _cmd_event_list
+
+    with patch("apps.cli.commands.event._load_job_events",
+               return_value=(None, list(_EVENTS), _JOB)):
+        _cmd_event_list(_JOB, json_output=True)
+    body = json.loads(capsys.readouterr().out)
+    assert body["schema_version"] == 1
+    assert body["ok"] is True
+    assert body["job_id"] == _JOB
+    assert body["version"] == 1
+
+
 def test_limit_keeps_the_newest_events(capsys):
     assert _event_list(capsys, limit="2") == ["job_completed", "test_run_completed"]
 

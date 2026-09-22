@@ -1263,3 +1263,50 @@ class TestDiscoveryRecordsItselfInTheRunLedger:
         keys = {entry["key"] for entry in learn_from_job(job, events).entries}
         assert "context.command_discovery.sources" in keys
         assert "context.command_discovery.count" in keys
+
+
+class TestDiscoverNoTargetRepoAnswersInTheEnvelope:
+    """F283 round 10 — `_cmd_discover_commands`'s branched `no_target_repo` refusal
+    moves onto `fail()` under the migration rule's BRANCHED form (F277 D7-D9): the
+    `--json` branch keeps its `job_id` and `candidates` keys, the text branch stays
+    byte-identical. Corrected in round 11: this docstring cited DECISION F283 D5,
+    which is `do --json`'s one-envelope rule and names no branched form at all."""
+
+    def test_json_mode_is_one_envelope_with_job_id_and_empty_candidates(
+        self, tmp_path, monkeypatch, capsys
+    ):
+        from apps.cli.commands.test_cmds import _cmd_discover_commands
+        from packages.orchestration.pingpong_job import save_job_plan
+
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
+        job = _make_job()  # no target_repo in metadata
+        save_job_plan(job)
+
+        with pytest.raises(SystemExit) as exc:
+            _cmd_discover_commands(str(job.job_id), as_json=True)
+
+        assert exc.value.code == 1
+        captured = capsys.readouterr()
+        assert captured.err == ""
+        data = json.loads(captured.out)
+        assert data["ok"] is False
+        assert data["error"] == "no_target_repo"
+        assert data["job_id"] == str(job.job_id)
+        assert data["candidates"] == []
+
+    def test_text_mode_stderr_reads_error_no_target_repo_attached(
+        self, tmp_path, monkeypatch, capsys
+    ):
+        from apps.cli.commands.test_cmds import _cmd_discover_commands
+        from packages.orchestration.pingpong_job import save_job_plan
+
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
+        job = _make_job()
+        save_job_plan(job)
+
+        with pytest.raises(SystemExit) as exc:
+            _cmd_discover_commands(str(job.job_id), as_json=False)
+
+        assert exc.value.code == 1
+        captured = capsys.readouterr()
+        assert captured.err == "Error: no target_repo attached.\n"

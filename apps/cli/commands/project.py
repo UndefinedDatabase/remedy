@@ -8,14 +8,15 @@ from collections.abc import Callable
 from typing import TYPE_CHECKING
 from uuid import UUID
 
-from packages.orchestration.data_paths import lookup_job_id
+from apps.cli.job_id_arg import resolve_job_id_or_fail
+from apps.cli.json_envelope import emit_ok, fail
 from packages.orchestration.pingpong_job import JobNotFoundError, list_job_plans, require_job_plan, save_job_plan
 
 if TYPE_CHECKING:
     import argparse
 
 
-def _cmd_create_project(name: str, description: str | None) -> None:
+def _cmd_create_project(name: str, description: str | None, *, json_output: bool = False) -> None:
     from packages.orchestration.project_registry import (
         RemyProject,
         _unique_slug,
@@ -25,7 +26,10 @@ def _cmd_create_project(name: str, description: str | None) -> None:
     slug = _unique_slug(slugify(name))
     project = RemyProject(name=name, slug=slug, description=description)
     save_project(project)
-    print(project.id)
+    if json_output:
+        emit_ok(project_id=str(project.id), name=project.name, slug=project.slug)
+    else:
+        print(project.id)
 
 
 def _cmd_list_projects(
@@ -52,16 +56,15 @@ def _cmd_list_projects(
             date_getter=lambda p: p.created_at.isoformat(),
         )
     except ListOptionError as exc:
-        print(f"Error: {exc}", file=sys.stderr)
-        sys.exit(1)
+        fail("invalid_list_option", str(exc), json_output=json_output)
     if json_output:
-        print(_json.dumps({
-            "version": 1,
-            "project_count": len(projects),
-            "projects": [{"id": str(p.id), "slug": p.slug or "", "name": p.name,
-                          "description": p.description or "",
-                          "created_at": p.created_at.isoformat()} for p in projects],
-        }, sort_keys=True))
+        emit_ok(
+            version=1,
+            project_count=len(projects),
+            projects=[{"id": str(p.id), "slug": p.slug or "", "name": p.name,
+                      "description": p.description or "",
+                      "created_at": p.created_at.isoformat()} for p in projects],
+        )
         return
     if not projects:
         print("No projects found.")
@@ -84,25 +87,25 @@ def _cmd_show_project(project_id_str: str, *, json_output: bool = False) -> None
     try:
         pid = UUID(project_id_str)
     except ValueError:
-        print(f"ERROR: invalid project UUID: {project_id_str}", file=sys.stderr)
-        sys.exit(1)
+        fail("invalid_project_id", f"invalid project UUID: {project_id_str}", json_output=json_output)
     try:
         path = _projects_dir() / f"{pid}.json"
         if not path.exists():
             raise ProjectNotFoundError(pid)
         project = _load_project_readonly(path)
     except ProjectNotFoundError:
-        print(f"ERROR: project not found: {project_id_str}", file=sys.stderr)
-        sys.exit(1)
+        fail("project_not_found", f"project not found: {project_id_str}", json_output=json_output)
     all_jobs = list_job_plans()
     linked_jobs = [j for j in all_jobs if str(j.job_id) in project.job_ids]
     if json_output:
-        print(_json.dumps(export_project_json(project, linked_jobs), indent=2))
+        emit_ok(**export_project_json(project, linked_jobs))
     else:
         print(summarize_project(project, linked_jobs))
 
 
-def _cmd_attach_project_repo(project_id_str: str, repo_path_str: str) -> None:
+def _cmd_attach_project_repo(
+    project_id_str: str, repo_path_str: str, *, json_output: bool = False,
+) -> None:
     from packages.orchestration.project_registry import (
         NotAGitRepoError,
         ProjectNotFoundError,
@@ -114,28 +117,29 @@ def _cmd_attach_project_repo(project_id_str: str, repo_path_str: str) -> None:
     try:
         pid = UUID(project_id_str)
     except ValueError:
-        print(f"ERROR: invalid project UUID: {project_id_str}", file=sys.stderr)
-        sys.exit(1)
+        fail("invalid_project_id", f"invalid project UUID: {project_id_str}", json_output=json_output)
     try:
         project = load_project(pid)
     except ProjectNotFoundError:
-        print(f"ERROR: project not found: {project_id_str}", file=sys.stderr)
-        sys.exit(1)
+        fail("project_not_found", f"project not found: {project_id_str}", json_output=json_output)
     try:
         changed, repo_real = attach_repo_canonical(project, repo_path_str)
     except NotAGitRepoError:
-        print(f"ERROR: {repo_path_str!r} is not a git repository.", file=sys.stderr)
-        sys.exit(2)
+        fail("not_a_git_repo", f"{repo_path_str!r} is not a git repository.",
+             json_output=json_output, exit_code=2)
     except RepoOwnershipConflictError as exc:
-        print(f"ERROR: {exc}", file=sys.stderr)
-        sys.exit(1)
-    if changed:
+        fail("repo_ownership_conflict", str(exc), json_output=json_output)
+    if json_output:
+        emit_ok(project_id=str(pid), repo=repo_real, changed=changed)
+    elif changed:
         print(f"Attached repo to project {str(pid)[:8]}")
     else:
         print(f"Repo already attached to project {str(pid)[:8]} (no-op)")
 
 
-def _cmd_attach_project_job(project_id_str: str, job_id_str: str) -> None:
+def _cmd_attach_project_job(
+    project_id_str: str, job_id_str: str, *, json_output: bool = False,
+) -> None:
     from packages.orchestration.project_registry import (
         ProjectNotFoundError,
         attach_job,
@@ -146,25 +150,25 @@ def _cmd_attach_project_job(project_id_str: str, job_id_str: str) -> None:
     try:
         pid = UUID(project_id_str)
     except ValueError:
-        print(f"ERROR: invalid project UUID: {project_id_str}", file=sys.stderr)
-        sys.exit(1)
+        fail("invalid_project_id", f"invalid project UUID: {project_id_str}", json_output=json_output)
     try:
         project = load_project(pid)
     except ProjectNotFoundError:
-        print(f"ERROR: project not found: {project_id_str}", file=sys.stderr)
-        sys.exit(1)
+        fail("project_not_found", f"project not found: {project_id_str}", json_output=json_output)
+    job_id = resolve_job_id_or_fail(job_id_str, json_output=json_output)
     try:
-        job_id = lookup_job_id(job_id_str)
         job = require_job_plan(job_id)
-    except (ValueError, JobNotFoundError):
-        print(f"Error: No job matches {job_id_str!r}. Try: remedy job list.", file=sys.stderr)
-        sys.exit(1)
+    except JobNotFoundError:
+        fail("job_not_found", f"No job matches {job_id_str!r}. Try: remedy job list.",
+             json_output=json_output)
     added = attach_job(project, job_id)
     save_project(project)
     if job.metadata.get("project_id") != project_id_str:
         job.metadata["project_id"] = project_id_str
         save_job_plan(job)
-    if added:
+    if json_output:
+        emit_ok(project_id=str(pid), job_id=job_id, added=added)
+    elif added:
         print(f"Attached job {job_id[:8]} to project {str(pid)[:8]}")
     else:
         print(f"Job already attached to project {str(pid)[:8]} (no-op)")
@@ -185,23 +189,21 @@ def _cmd_project_context(project_id_str: str, *, json_output: bool = False) -> N
     try:
         pid = UUID(project_id_str)
     except ValueError:
-        print(f"Error: invalid project ID: {project_id_str!r}", file=sys.stderr)
-        sys.exit(1)
+        fail("invalid_project_id", f"invalid project ID: {project_id_str!r}", json_output=json_output)
     try:
         path = _projects_dir() / f"{pid}.json"
         if not path.exists():
             raise ProjectNotFoundError(pid)
         project = _load_project_readonly(path)
     except ProjectNotFoundError:
-        print(f"Error: project not found: {project_id_str}", file=sys.stderr)
-        sys.exit(1)
+        fail("project_not_found", f"project not found: {project_id_str}", json_output=json_output)
 
     all_jobs = list_job_plans()
     linked_jobs = [j for j in all_jobs if str(j.job_id) in project.job_ids]
     snapshot = derive_project_context_coverage(project, linked_jobs)
 
     if json_output:
-        print(_json.dumps(export_project_context_coverage_json(snapshot), sort_keys=True))
+        emit_ok(**export_project_context_coverage_json(snapshot))
     else:
         print(summarize_project_context_coverage(snapshot))
 
@@ -226,16 +228,14 @@ def _cmd_project_brain(project_id_str: str, *, json_output: bool = False) -> Non
     try:
         pid = UUID(project_id_str)
     except ValueError:
-        print(f"Error: invalid project ID: {project_id_str!r}", file=sys.stderr)
-        sys.exit(1)
+        fail("invalid_project_id", f"invalid project ID: {project_id_str!r}", json_output=json_output)
     try:
         path = _projects_dir() / f"{pid}.json"
         if not path.exists():
             raise ProjectNotFoundError(pid)
         project = _load_project_readonly(path)
     except ProjectNotFoundError:
-        print(f"Error: project not found: {project_id_str}", file=sys.stderr)
-        sys.exit(1)
+        fail("project_not_found", f"project not found: {project_id_str}", json_output=json_output)
 
     all_jobs = list_job_plans()
     linked_jobs = [j for j in all_jobs if str(j.job_id) in project.job_ids]
@@ -258,7 +258,7 @@ def _cmd_project_brain(project_id_str: str, *, json_output: bool = False) -> Non
     )
 
     if json_output:
-        print(_json.dumps(export_project_brain_aggregate_json(agg), sort_keys=True))
+        emit_ok(**export_project_brain_aggregate_json(agg))
     else:
         print(summarize_project_brain_aggregate(agg))
 
@@ -282,16 +282,14 @@ def _cmd_project_summary(project_id_str: str, *, json_output: bool = False) -> N
     try:
         pid = UUID(project_id_str)
     except ValueError:
-        print(f"Error: invalid project ID: {project_id_str!r}", file=sys.stderr)
-        sys.exit(1)
+        fail("invalid_project_id", f"invalid project ID: {project_id_str!r}", json_output=json_output)
     try:
         path = _projects_dir() / f"{pid}.json"
         if not path.exists():
             raise ProjectNotFoundError(pid)
         project = _load_project_readonly(path)
     except ProjectNotFoundError:
-        print(f"Error: project not found: {project_id_str}", file=sys.stderr)
-        sys.exit(1)
+        fail("project_not_found", f"project not found: {project_id_str}", json_output=json_output)
 
     all_jobs = list_job_plans()
     linked_jobs = [j for j in all_jobs if str(j.job_id) in project.job_ids]
@@ -314,7 +312,7 @@ def _cmd_project_summary(project_id_str: str, *, json_output: bool = False) -> N
     ]
 
     if json_output:
-        print(_json.dumps(export_project_summary_json(summary), sort_keys=True))
+        emit_ok(**export_project_summary_json(summary))
     else:
         print(f"Project: {project.name} ({project_id_str[:8]})")
         print(f"Jobs: {summary.job_count} (active={summary.active_job_count}, completed={summary.completed_job_count}, blocked={summary.blocked_job_count})")
@@ -354,20 +352,27 @@ def _cmd_project_current(
     try:
         project, source = select_project(project_flag, cwd)
     except AmbiguousProjectError as exc:
-        print(f"ERROR: {exc}", file=sys.stderr)
-        sys.exit(1)
+        fail("ambiguous_project", str(exc), json_output=json_output)
     except (ProjectNotFoundError, InvalidProjectSelectorError) as exc:
-        print(str(exc), file=sys.stderr)
-        sys.exit(3)
+        if json_output:
+            token = (
+                "project_not_found"
+                if isinstance(exc, ProjectNotFoundError)
+                else "invalid_project_selector"
+            )
+            fail(token, str(exc), json_output=True, exit_code=3)
+        else:
+            print(str(exc), file=sys.stderr)
+            sys.exit(3)
 
     if json_output:
-        print(_json.dumps({
-            "project_id": str(project.id),
-            "slug": project.slug,
-            "repo": project.canonical_repo_path,
-            "job_count": len(project.job_ids),
-            "selection_source": source,
-        }, indent=2))
+        emit_ok(
+            project_id=str(project.id),
+            slug=project.slug,
+            repo=project.canonical_repo_path,
+            job_count=len(project.job_ids),
+            selection_source=source,
+        )
     else:
         print(f"slug  : {project.slug}")
         print(f"id    : {project.id}")
@@ -380,6 +385,7 @@ def _cmd_project_attach_repo(
     repo_path_str: str,
     *,
     project_flag: str | None = None,
+    json_output: bool = False,
 ) -> None:
     import os
 
@@ -397,24 +403,39 @@ def _cmd_project_attach_repo(
     try:
         project, _source = select_project(project_flag, cwd)
     except AmbiguousProjectError as exc:
-        print(f"ERROR: {exc}", file=sys.stderr)
-        sys.exit(1)
+        fail("ambiguous_project", str(exc), json_output=json_output)
     except (ProjectNotFoundError, InvalidProjectSelectorError) as exc:
-        print(str(exc), file=sys.stderr)
+        # DECISION F283 D7's shape: the shared `sys.exit(3)` sits AFTER the
+        # if/else, so this print-then-exit pair is no longer one the AST
+        # refusal-site ratchet counts at all — same two tokens by exception
+        # class, same exit 3, as `_cmd_project_current`'s identical branch.
+        token = (
+            "project_not_found"
+            if isinstance(exc, ProjectNotFoundError)
+            else "invalid_project_selector"
+        )
+        if json_output:
+            fail(token, str(exc), json_output=True, exit_code=3)
+        else:
+            print(str(exc), file=sys.stderr)
         sys.exit(3)
 
     old_canonical = project.canonical_repo_path
     try:
         changed, repo_real = attach_repo_canonical(project, repo_path_str)
     except NotAGitRepoError:
-        print(
-            f"ERROR: {repo_path_str!r} is not a git repository.",
-            file=sys.stderr,
-        )
-        sys.exit(2)
+        fail("not_a_git_repo", f"{repo_path_str!r} is not a git repository.",
+             json_output=json_output, exit_code=2)
     except RepoOwnershipConflictError as exc:
-        print(f"ERROR: {exc}", file=sys.stderr)
-        sys.exit(1)
+        fail("repo_ownership_conflict", str(exc), json_output=json_output)
+
+    if json_output:
+        emit_ok(
+            project_id=str(project.id), slug=project.slug,
+            old_repo=old_canonical if changed else repo_real,
+            new_repo=repo_real, changed=changed,
+        )
+        return
 
     print(_json.dumps({
         "project_id": str(project.id),
@@ -429,8 +450,8 @@ def _cmd_project_adopt(
     job_id_str: str,
     *,
     project_flag: str | None = None,
+    json_output: bool = False,
 ) -> None:
-    from packages.orchestration.data_paths import resolve_job_id
     from packages.orchestration.project_registry import (
         ProjectNotFoundError,
         attach_job,
@@ -441,37 +462,40 @@ def _cmd_project_adopt(
     try:
         project, _src = select_project(project_flag, ".")
     except ProjectNotFoundError:
-        print(
-            "Error: no project found. Run: remedy init\n"
+        fail(
+            "no_project",
+            "no project found. Run: remedy init\n"
             "  or pass --project <slug-or-id>",
-            file=sys.stderr,
+            json_output=json_output, exit_code=3,
         )
-        sys.exit(3)
 
-    resolved_id = resolve_job_id(job_id_str)
+    resolved_id = resolve_job_id_or_fail(job_id_str, json_output=json_output)
 
     try:
         job = require_job_plan(resolved_id)
     except JobNotFoundError:
-        print(f"Error: No job matches {resolved_id[:8]!r}. Try: remedy job list.", file=sys.stderr)
-        sys.exit(3)
+        fail("job_not_found", f"No job matches {resolved_id[:8]!r}. Try: remedy job list.",
+             json_output=json_output, exit_code=3)
 
     if job.project_id:
-        print(
-            f"Error: job {resolved_id[:8]} already belongs to project {job.project_id[:8]}",
-            file=sys.stderr,
-        )
-        sys.exit(2)
+        fail("job_already_in_project",
+             f"job {resolved_id[:8]} already belongs to project {job.project_id[:8]}",
+             json_output=json_output, exit_code=2)
 
     job.project_id = str(project.id)
     save_job_plan(job)
     attach_job(project, str(job.job_id))
     save_project(project)
-    print(f"Adopted {resolved_id[:8]} into project {project.slug or project.id}.")
+    if json_output:
+        emit_ok(job_id=resolved_id, project_id=str(project.id), slug=project.slug)
+    else:
+        print(f"Adopted {resolved_id[:8]} into project {project.slug or project.id}.")
 
 
 COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
-    "project.create": lambda args: _cmd_create_project(args.name, getattr(args, "description", None)),
+    "project.create": lambda args: _cmd_create_project(
+        args.name, getattr(args, "description", None), json_output=args.json,
+    ),
     "project.list": lambda args: _cmd_list_projects(
         json_output=args.json,
         sort=getattr(args, "sort", None),
@@ -481,8 +505,12 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
         limit=getattr(args, "limit", None),
     ),
     "project.show": lambda args: _cmd_show_project(args.project_id, json_output=args.json),
-    "project.attach-repo": lambda args: _cmd_attach_project_repo(args.project_id, args.repo_path),
-    "project.attach-job": lambda args: _cmd_attach_project_job(args.project_id, args.job_id),
+    "project.attach-repo": lambda args: _cmd_attach_project_repo(
+        args.project_id, args.repo_path, json_output=args.json,
+    ),
+    "project.attach-job": lambda args: _cmd_attach_project_job(
+        args.project_id, args.job_id, json_output=args.json,
+    ),
     "project.brain": lambda args: _cmd_project_brain(args.project_id, json_output=args.json),
     "project.context": lambda args: _cmd_project_context(args.project_id, json_output=args.json),
     "project.summary": lambda args: _cmd_project_summary(args.project_id, json_output=args.json),
@@ -493,9 +521,11 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
     "project.attach": lambda args: _cmd_project_attach_repo(
         args.repo,
         project_flag=getattr(args, "project", None),
+        json_output=args.json,
     ),
     "project.adopt": lambda args: _cmd_project_adopt(
         args.job_id,
         project_flag=getattr(args, "project", None),
+        json_output=args.json,
     ),
 }

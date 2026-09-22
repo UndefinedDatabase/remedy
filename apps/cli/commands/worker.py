@@ -2,11 +2,10 @@
 
 from __future__ import annotations
 
-import json as _json
 from collections.abc import Callable
 from typing import TYPE_CHECKING
 
-from apps.cli.json_envelope import fail
+from apps.cli.json_envelope import emit_ok, fail
 
 if TYPE_CHECKING:
     import argparse
@@ -45,7 +44,7 @@ def _cmd_workers(
         fail("invalid_list_option", str(exc), json_output=json_output)
 
     if json_output:
-        print(_json.dumps(export_worker_specs_json(specs), sort_keys=True))
+        emit_ok(**export_worker_specs_json(specs))
     else:
         print(summarize_worker_specs(specs))
 
@@ -62,7 +61,7 @@ def _cmd_worker_show(provider_id: str, *, json_output: bool = False) -> None:
         fail("unknown_provider", f"unknown provider: {provider_id}",
              json_output=json_output)
     if json_output:
-        print(_json.dumps(export_worker_specs_json((match,)), sort_keys=True))
+        emit_ok(**export_worker_specs_json((match,)))
     else:
         print(f"Worker: {match.display_name} ({match.provider_id})")
         print(f"  Roles: {', '.join(match.supported_roles)}")
@@ -117,7 +116,7 @@ def _cmd_worker_resources(*, json_output: bool = False) -> None:
         result["gpu"] = {"available": False}
 
     if json_output:
-        print(_json.dumps(result, sort_keys=True))
+        emit_ok(**result)
     else:
         print("Worker Resources")
         ol = result["ollama"]
@@ -154,14 +153,18 @@ def _cmd_worker_unload(
         fail("unsupported_provider", f"unsupported provider for unload: {provider}",
              json_output=json_output)
 
+    if not model and not unload_all:
+        fail("missing_argument", "specify --model NAME or --all",
+             json_output=json_output)
+
     if not shutil.which("ollama"):
         msg = "ollama not found — no models to unload"
         if json_output:
-            print(_json.dumps({
-                "version": 1, "provider": provider,
-                "attempted": 0, "stopped": [], "skipped": [],
-                "errors": [], "unavailable": True,
-            }))
+            emit_ok(
+                version=1, provider=provider,
+                attempted=0, stopped=[], skipped=[],
+                errors=[], unavailable=True,
+            )
         else:
             print(msg)
         return
@@ -182,9 +185,6 @@ def _cmd_worker_unload(
                     targets.append(parts[0])
         except (subprocess.TimeoutExpired, OSError):
             pass
-    else:
-        fail("missing_argument", "specify --model NAME or --all",
-             json_output=json_output)
 
     results: list[dict] = []
     for t in targets:
@@ -207,7 +207,7 @@ def _cmd_worker_unload(
         "errors": errors, "unavailable": False,
     }
     if json_output:
-        print(_json.dumps(out, sort_keys=True))
+        emit_ok(**out)
     else:
         for r in results:
             status = "stopped" if r["stopped"] else f"failed ({r['error']})"
@@ -262,7 +262,7 @@ def _cmd_worker_doctor(*, json_output: bool = False) -> None:
     }
 
     if json_output:
-        print(_json.dumps(result, sort_keys=True))
+        emit_ok(**result)
         return
     print(f"Worker Doctor: {'READY' if ready else 'NOT READY'}")
     for c in checks:

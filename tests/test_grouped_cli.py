@@ -392,6 +392,55 @@ class TestBootcampStyleErrors:
         assert "Traceback" not in combined
 
 
+class TestParserRefusalsAnswerInTheEnvelopeUnderJson:
+    """DECISION F283 D6 — a usage refusal the parser raises, under `--json`, answers
+    one envelope on stdout with an empty stderr, at the SAME exit code prose used."""
+
+    def test_unknown_subcommand(self) -> None:
+        stdout, stderr, rc = _capture_grouped(["job", "bogus", "--json"])
+        assert rc == 2
+        assert stderr == ""
+        data = json.loads(stdout)
+        assert data["schema_version"] == 1
+        assert data["ok"] is False
+        assert data["error"] == "unknown_command"
+
+    def test_unrecognized_argument(self) -> None:
+        stdout, stderr, rc = _capture_grouped(["job", "list", "--bogus-flag", "--json"])
+        assert rc == 2
+        assert stderr == ""
+        data = json.loads(stdout)
+        assert data["schema_version"] == 1
+        assert data["ok"] is False
+        assert data["error"] == "unrecognized_arguments"
+
+    def test_missing_positional(self) -> None:
+        stdout, stderr, rc = _capture_grouped(["brain", "graph", "--json"])
+        assert rc == 2
+        assert stderr == ""
+        data = json.loads(stdout)
+        assert data["schema_version"] == 1
+        assert data["ok"] is False
+        assert data["error"] == "missing_argument"
+
+    def test_conflicting_pair(self) -> None:
+        stdout, stderr, rc = _capture_grouped(
+            ["job", "run", "zzzznotajob", "--stream-evidence", "--no-stream-evidence", "--json"])
+        assert rc == 2
+        assert stderr == ""
+        data = json.loads(stdout)
+        assert data["schema_version"] == 1
+        assert data["ok"] is False
+        assert data["error"] == "conflicting_options"
+
+    def test_unrecognized_argument_without_json_matches_render_error(self) -> None:
+        from apps.cli.help_renderer import render_error
+        stdout, stderr, rc = _capture_grouped(["job", "list", "--bogus-flag"])
+        assert rc == 2
+        assert stdout == ""
+        assert stderr == render_error("remedy job list", "Unrecognized arguments: --bogus-flag") + "\n"
+
+
 class TestMainPyIsThin:
     """main.py must be a thin bridge — under 80 lines, no _cmd_ definitions."""
 

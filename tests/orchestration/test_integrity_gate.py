@@ -2,8 +2,12 @@
 
 from __future__ import annotations
 
+import argparse
 import json
 
+import pytest
+
+from packages.orchestration import integrity_gate
 from packages.orchestration.integrity_gate import (
     IntegrityCheck,
     IntegrityGateResult,
@@ -254,3 +258,42 @@ def test_collect_only_runs_on_the_guarded_seam(monkeypatch):
     assert check.status is integrity_gate.IntegrityStatus.FAIL
     assert "boom-" in check.message
     assert "undecodable" in check.message
+
+
+# F283 R17 C6 — `integrity check --json` answers in the envelope (D10)
+
+
+class TestIntegrityCheckJSONEnvelope:
+    """`apps.cli.commands.integrity_cmd._cmd_integrity_check` under `--json`:
+    a passing gate answers `emit_ok`, and a failing one answers ONE
+    `integrity_failed` failure envelope (D10 (3)) rather than a raw document
+    followed by a bare `sys.exit(1)`."""
+
+    @staticmethod
+    def _args(*, collect_only: bool = False) -> argparse.Namespace:
+        return argparse.Namespace(json=True, collect_only=collect_only)
+
+    def test_a_passing_gate_answers_emit_ok(self, monkeypatch, capsys):
+        from apps.cli.commands import integrity_cmd
+
+        result = IntegrityGateResult(checks=[IntegrityCheck("a", IntegrityStatus.PASS, "ok")])
+        monkeypatch.setattr(integrity_gate, "run_integrity_checks", lambda **kw: result)
+        integrity_cmd._cmd_integrity_check(self._args())
+        body = json.loads(capsys.readouterr().out)
+        assert body["schema_version"] == 1 and body["ok"] is True
+        assert body["passed"] is True
+        assert body["fail_count"] == 0
+
+    def test_a_failing_gate_answers_one_failure_envelope_and_exits_1(self, monkeypatch, capsys):
+        from apps.cli.commands import integrity_cmd
+
+        result = IntegrityGateResult(checks=[IntegrityCheck("a", IntegrityStatus.FAIL, "boom")])
+        monkeypatch.setattr(integrity_gate, "run_integrity_checks", lambda **kw: result)
+        with pytest.raises(SystemExit) as caught:
+            integrity_cmd._cmd_integrity_check(self._args())
+        assert caught.value.code == 1
+        body = json.loads(capsys.readouterr().out)
+        assert body["schema_version"] == 1 and body["ok"] is False
+        assert body["error"] == "integrity_failed"
+        assert body["passed"] is False
+        assert body["fail_count"] == 1

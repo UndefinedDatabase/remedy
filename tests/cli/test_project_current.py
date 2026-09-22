@@ -49,6 +49,23 @@ def _make_and_save(tmp_path, monkeypatch, **kwargs):
     return p
 
 
+def _make_and_save_raw(tmp_path, monkeypatch, **kwargs):
+    """Like `_make_and_save`, but writes the JSON file directly instead of calling
+    `save_project` — bypasses `_validate_slug`'s uniqueness check so a duplicate-slug
+    fixture (two projects sharing one slug, the `AmbiguousProjectError` trigger) can be
+    persisted at all."""
+    monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+    from packages.orchestration.project_registry import RemyProject, _projects_dir
+
+    defaults = {"name": "Test Project"}
+    defaults.update(kwargs)
+    p = RemyProject(**defaults)
+    d = _projects_dir()
+    d.mkdir(parents=True, exist_ok=True)
+    (d / f"{p.id}.json").write_text(p.model_dump_json(indent=2))
+    return p
+
+
 # ---------------------------------------------------------------------------
 # _cmd_project_current — exact JSON schema
 # ---------------------------------------------------------------------------
@@ -94,12 +111,17 @@ class TestProjectCurrentCommand:
         _cmd_project_current(json_output=True)
         out = capsys.readouterr().out
         data = json.loads(out)
+        # F283 R19 C5 (DECISION F283 D10) — `emit_ok` adds `schema_version` and `ok`.
+        assert data["schema_version"] == 1
+        assert data["ok"] is True
         assert data["project_id"] == str(p.id)
         assert data["slug"] == "myrepo"
         assert data["repo"] == str(repo.resolve())
         assert data["job_count"] == 3
         assert data["selection_source"] == "cwd"
-        assert set(data.keys()) == {"project_id", "slug", "repo", "job_count", "selection_source"}
+        assert set(data.keys()) == {
+            "schema_version", "ok",
+            "project_id", "slug", "repo", "job_count", "selection_source"}
 
     def test_exit_3_when_unresolved(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
@@ -177,6 +199,109 @@ class TestProjectCurrentCommand:
         out = capsys.readouterr().out
         data = json.loads(out)
         assert data["job_count"] == 2
+
+
+# ---------------------------------------------------------------------------
+# _cmd_project_current — the ambiguous-slug refusal, moved onto `fail()` at F283
+# round 9 (DECISION F283 D4 gives it the `Error: ` prefix `ERROR: ` never had)
+# ---------------------------------------------------------------------------
+
+
+class TestProjectCurrentAmbiguousRefusal:
+    def test_json_output_is_an_envelope(self, tmp_path, monkeypatch, capsys):
+        monkeypatch.delenv("REMEDY_PROJECT", raising=False)
+        _make_and_save_raw(tmp_path, monkeypatch, slug="dup")
+        _make_and_save_raw(tmp_path, monkeypatch, slug="dup")
+
+        from apps.cli.commands.project import _cmd_project_current
+
+        with pytest.raises(SystemExit) as exc:
+            _cmd_project_current(project_flag="dup", json_output=True)
+        assert exc.value.code == 1
+        captured = capsys.readouterr()
+        assert captured.err == ""
+        body = json.loads(captured.out)
+        assert body["schema_version"] == 1
+        assert body["ok"] is False
+        assert body["error"] == "ambiguous_project"
+        assert "dup" in body["message"]
+
+    def test_text_mode_uses_error_prefix(self, tmp_path, monkeypatch, capsys):
+        """DECISION F283 D4: this refusal printed `ERROR: ` before the migration; it now
+        reads `Error: `, the case every other refusal in the CLI uses."""
+        monkeypatch.delenv("REMEDY_PROJECT", raising=False)
+        _make_and_save_raw(tmp_path, monkeypatch, slug="dup")
+        _make_and_save_raw(tmp_path, monkeypatch, slug="dup")
+
+        from apps.cli.commands.project import _cmd_project_current
+
+        with pytest.raises(SystemExit) as exc:
+            _cmd_project_current(project_flag="dup", json_output=False)
+        assert exc.value.code == 1
+        err = capsys.readouterr().err
+        assert err.startswith("Error: ")
+        assert "ERROR:" not in err
+
+
+# ---------------------------------------------------------------------------
+# _cmd_project_current — the ProjectNotFoundError / InvalidProjectSelectorError
+# branch, moved onto `fail()` at F283 round 12 (DECISION F283 D7): a bare
+# `print(str(exc))` line with no `Error: ` prefix, so the text branch stays
+# byte for byte and only `--json` gains a shape.
+# ---------------------------------------------------------------------------
+
+
+class TestProjectCurrentNotFoundAndInvalidSelector:
+    def test_unknown_selector_json_answers_project_not_found(self, tmp_path, monkeypatch, capsys):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        monkeypatch.delenv("REMEDY_PROJECT", raising=False)
+
+        from apps.cli.commands.project import _cmd_project_current
+
+        with pytest.raises(SystemExit) as exc:
+            _cmd_project_current(project_flag="no-such-slug", json_output=True)
+        assert exc.value.code == 3
+        captured = capsys.readouterr()
+        assert captured.err == ""
+        body = json.loads(captured.out)
+        assert body["schema_version"] == 1
+        assert body["ok"] is False
+        assert body["error"] == "project_not_found"
+
+    def test_empty_selector_json_answers_invalid_project_selector(self, tmp_path, monkeypatch, capsys):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        monkeypatch.delenv("REMEDY_PROJECT", raising=False)
+
+        from apps.cli.commands.project import _cmd_project_current
+
+        with pytest.raises(SystemExit) as exc:
+            _cmd_project_current(project_flag="   ", json_output=True)
+        assert exc.value.code == 3
+        captured = capsys.readouterr()
+        assert captured.err == ""
+        body = json.loads(captured.out)
+        assert body["schema_version"] == 1
+        assert body["ok"] is False
+        assert body["error"] == "invalid_project_selector"
+
+    def test_unknown_selector_text_mode_bytes_are_unchanged(self, tmp_path, monkeypatch, capsys):
+        """The text branch is the original `print(str(exc))` line, untouched."""
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        monkeypatch.delenv("REMEDY_PROJECT", raising=False)
+
+        from apps.cli.commands.project import _cmd_project_current
+        from packages.orchestration.project_registry import ProjectNotFoundError
+
+        with pytest.raises(SystemExit) as exc:
+            _cmd_project_current(project_flag="no-such-slug", json_output=False)
+        assert exc.value.code == 3
+        captured = capsys.readouterr()
+        assert captured.out == ""
+        expected = str(
+            ProjectNotFoundError(selector_value="no-such-slug", selector_source="flag")
+        )
+        assert captured.err == f"{expected}\n"
+        assert not captured.err.startswith("Error: ")
 
 
 # ---------------------------------------------------------------------------
@@ -289,6 +414,142 @@ class TestProjectAttachCommand:
         data = json.loads(out)
         assert data["project_id"] == str(p.id)
         assert data["changed"] is True
+
+
+# ---------------------------------------------------------------------------
+# project create and attach — --json envelopes (F283 R16 C4, DECISION F283 D9)
+# ---------------------------------------------------------------------------
+
+
+class TestProjectCreateAndAttachAnswerJSONThroughTheDispatcher:
+    """F283 R16 C4 (DECISION F283 D9) — the five `project` create and attach
+    commands declare `supports_json` and answer in the envelope, each proved
+    end to end through the CLI dispatcher."""
+
+    def test_create_answers_the_envelope(self, tmp_path, monkeypatch, capsys):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        from apps.cli.grouped import main
+
+        main(["project", "create", "My App", "--json"])
+        body = json.loads(capsys.readouterr().out)
+        assert body["ok"] is True and body["schema_version"] == 1
+        assert body["name"] == "My App"
+        assert isinstance(body["project_id"], str) and body["project_id"]
+        assert isinstance(body["slug"], str) and body["slug"]
+
+    def test_attach_repo_answers_the_envelope(self, tmp_path, monkeypatch, capsys):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        repo = tmp_path / "repo1"
+        _init_git(repo)
+        p = _make_and_save(tmp_path, monkeypatch, slug="myproj")
+
+        from apps.cli.grouped import main
+
+        main(["project", "attach-repo", str(p.id), str(repo), "--json"])
+        body = json.loads(capsys.readouterr().out)
+        assert body["ok"] is True and body["schema_version"] == 1
+        assert body["project_id"] == str(p.id)
+        assert body["repo"] == str(repo.resolve())
+        assert body["changed"] is True
+
+    def test_attach_job_answers_the_envelope(self, tmp_path, monkeypatch, capsys):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        p = _make_and_save(tmp_path, monkeypatch, slug="myproj")
+        from packages.orchestration.pingpong_job import JobPlan, save_job_plan
+        job = JobPlan(job_title="t")
+        save_job_plan(job)
+
+        from apps.cli.grouped import main
+
+        main(["project", "attach-job", str(p.id), str(job.job_id), "--json"])
+        body = json.loads(capsys.readouterr().out)
+        assert body["ok"] is True and body["schema_version"] == 1
+        assert body["project_id"] == str(p.id)
+        assert body["job_id"] == str(job.job_id)
+        assert body["added"] is True
+
+    def test_attach_job_already_attached_answers_added_false(self, tmp_path, monkeypatch, capsys):
+        """R-1030's round 16 probe: forcing `added` always True reddens no test —
+        pin the already-attached case so a regression there is caught."""
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        p = _make_and_save(tmp_path, monkeypatch, slug="myproj")
+        from packages.orchestration.pingpong_job import JobPlan, save_job_plan
+        job = JobPlan(job_title="t")
+        save_job_plan(job)
+
+        from apps.cli.grouped import main
+
+        main(["project", "attach-job", str(p.id), str(job.job_id), "--json"])
+        capsys.readouterr()
+        main(["project", "attach-job", str(p.id), str(job.job_id), "--json"])
+        body = json.loads(capsys.readouterr().out)
+        assert body["ok"] is True and body["schema_version"] == 1
+        assert body["project_id"] == str(p.id)
+        assert body["job_id"] == str(job.job_id)
+        assert body["added"] is False
+
+    def test_attach_answers_the_envelope(self, tmp_path, monkeypatch, capsys):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        monkeypatch.delenv("REMEDY_PROJECT", raising=False)
+        repo1 = tmp_path / "repo1"
+        _init_git(repo1)
+        p = _make_and_save(
+            tmp_path, monkeypatch,
+            slug="myproj",
+            canonical_repo_path=str(repo1.resolve()),
+            repo_paths=[str(repo1.resolve())],
+        )
+        monkeypatch.chdir(repo1)
+        repo2 = tmp_path / "repo2"
+        _init_git(repo2)
+
+        from apps.cli.grouped import main
+
+        main(["project", "attach", "--repo", str(repo2), "--json"])
+        body = json.loads(capsys.readouterr().out)
+        assert body["ok"] is True and body["schema_version"] == 1
+        assert body["project_id"] == str(p.id)
+        assert body["slug"] == "myproj"
+        assert body["new_repo"] == str(repo2.resolve())
+        assert body["changed"] is True
+
+    def test_attach_selector_refusal_answers_the_envelope(self, tmp_path, monkeypatch, capsys):
+        """`_cmd_project_attach_repo`'s unprefixed `(ProjectNotFoundError,
+        InvalidProjectSelectorError)` branch, the last unmigrated refusal site
+        `project.py` had — answers `project_not_found` under `--json` exactly
+        as `_cmd_project_current`'s identical branch does."""
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        monkeypatch.delenv("REMEDY_PROJECT", raising=False)
+        monkeypatch.chdir(tmp_path)
+
+        from apps.cli.grouped import main
+
+        with pytest.raises(SystemExit) as exc:
+            main(["project", "attach", "--project", "no-such-slug",
+                  "--repo", str(tmp_path), "--json"])
+        assert exc.value.code == 3
+        captured = capsys.readouterr()
+        assert captured.err == ""
+        body = json.loads(captured.out)
+        assert body["ok"] is False
+        assert body["error"] == "project_not_found"
+
+    def test_adopt_answers_the_envelope(self, tmp_path, monkeypatch, capsys):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        monkeypatch.delenv("REMEDY_PROJECT", raising=False)
+        p = _make_and_save(tmp_path, monkeypatch, slug="myproj")
+        from packages.orchestration.pingpong_job import JobPlan, save_job_plan
+        job = JobPlan(job_title="t")
+        save_job_plan(job)
+
+        from apps.cli.grouped import main
+
+        main(["project", "adopt", str(job.job_id), "--project", "myproj", "--json"])
+        body = json.loads(capsys.readouterr().out)
+        assert body["ok"] is True and body["schema_version"] == 1
+        assert body["job_id"] == str(job.job_id)
+        assert body["project_id"] == str(p.id)
+        assert body["slug"] == "myproj"
 
 
 # ---------------------------------------------------------------------------

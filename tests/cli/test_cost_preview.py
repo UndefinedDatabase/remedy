@@ -18,7 +18,7 @@ class TestJobRunCostPreviewAcceptance:
 
         monkeypatch.setattr("apps.cli.cost_preview_confirm._stdin_is_a_tty", lambda: False)
         ran: list[str] = []
-        monkeypatch.setattr(job_cmd, "_cmd_run_next_task_local", ran.append)
+        monkeypatch.setattr(job_cmd, "_cmd_run_next_task_local", lambda _j, **_kw: ran.append(_j))
 
         with pytest.raises(SystemExit) as exc:
             job_cmd._cmd_job_run_cycles("abc12345")
@@ -30,7 +30,7 @@ class TestJobRunCostPreviewAcceptance:
         from apps.cli.commands import job as job_cmd
 
         monkeypatch.setattr("apps.cli.cost_preview_confirm._stdin_is_a_tty", lambda: False)
-        monkeypatch.setattr(job_cmd, "_cmd_run_next_task_local", lambda _: None)
+        monkeypatch.setattr(job_cmd, "_cmd_run_next_task_local", lambda _j, **_kw: None)
 
         with pytest.raises(SystemExit):
             job_cmd._cmd_job_run_cycles("abc12345")
@@ -44,7 +44,7 @@ class TestJobRunCostPreviewAcceptance:
 
         monkeypatch.setattr("apps.cli.cost_preview_confirm._stdin_is_a_tty", lambda: False)
         ran: list[str] = []
-        monkeypatch.setattr(job_cmd, "_cmd_run_next_task_local", ran.append)
+        monkeypatch.setattr(job_cmd, "_cmd_run_next_task_local", lambda _j, **_kw: ran.append(_j))
 
         job_cmd._cmd_job_run_cycles("abc12345", yes=True)
 
@@ -55,7 +55,7 @@ class TestJobRunCostPreviewAcceptance:
 
         monkeypatch.setattr("apps.cli.cost_preview_confirm._stdin_is_a_tty", lambda: False)
         ran: list[str] = []
-        monkeypatch.setattr(job_cmd, "_cmd_run_next_task_local", ran.append)
+        monkeypatch.setattr(job_cmd, "_cmd_run_next_task_local", lambda _j, **_kw: ran.append(_j))
 
         job_cmd._cmd_job_run_cycles("abc12345", unattended=True)
 
@@ -66,7 +66,7 @@ class TestJobRunCostPreviewAcceptance:
         # printed line is no exception, even in the unavailable case.
         from apps.cli.commands import job as job_cmd
 
-        monkeypatch.setattr(job_cmd, "_cmd_run_next_task_local", lambda _: None)
+        monkeypatch.setattr(job_cmd, "_cmd_run_next_task_local", lambda _j, **_kw: None)
 
         job_cmd._cmd_job_run_cycles("abc12345", yes=True)
 

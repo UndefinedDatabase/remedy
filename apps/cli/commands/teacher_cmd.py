@@ -40,32 +40,32 @@ Exit codes:
 * 0 — narrated, answered, OR REFUSED; an absent or empty run log narrates to
   nothing and is still 0, and a refusal is still 0 because a teacher that could
   fail a run would not be passive;
-* 1 or 2 — raised by ``resolve_job_id`` itself: an unusable id, or a short
-  prefix matching more than one job. These commands add no exit path of their
-  own.
+* 1 or 2 — raised by ``apps.cli.job_id_arg.resolve_job_id_or_fail`` itself: an
+  unusable id, or a short prefix matching more than one job. These commands add
+  no exit path of their own. Under ``--json`` the refusal is the envelope.
 """
 from __future__ import annotations
 
 
 def _cmd_teacher_narrate(job_id_str: str, *, json_output: bool = False) -> None:
     """Narrate one job's run log. READ-ONLY: nothing on this path writes."""
-    import json as _json
-
-    from packages.orchestration.data_paths import resolve_data_root, resolve_job_id
+    from apps.cli.job_id_arg import resolve_job_id_or_fail
+    from apps.cli.json_envelope import emit_ok
+    from packages.orchestration.data_paths import resolve_data_root
     from packages.orchestration.teacher_narration import narrate_run_events
     from packages.orchestration.timeline import load_run_events
 
     # Read-only: the resolver opens directories and writes nothing.
-    job_id = resolve_job_id(job_id_str)
+    job_id = resolve_job_id_or_fail(job_id_str, json_output=json_output)
     events = load_run_events(resolve_data_root(), job_id)
     sentences = narrate_run_events(events)
 
     if json_output:
-        print(_json.dumps({
-            "job_id": str(job_id),
-            "event_count": len(events),
-            "narration": sentences,
-        }, indent=2))
+        emit_ok(
+            job_id=str(job_id),
+            event_count=len(events),
+            narration=sentences,
+        )
         return
 
     print(f"Teacher narration for job {str(job_id)[:8]} ({len(events)} events)")
@@ -139,9 +139,9 @@ def _cmd_teacher_ask(
     CLI flag and stays None in every real invocation. It exists so the tests can
     prove this command's behaviour without a running Ollama (DECISION F255 D8).
     """
-    import json as _json
-
-    from packages.orchestration.data_paths import resolve_data_root, resolve_job_id
+    from apps.cli.job_id_arg import resolve_job_id_or_fail
+    from apps.cli.json_envelope import emit_ok
+    from packages.orchestration.data_paths import resolve_data_root
     from packages.orchestration.project_scope import resolve_scope
     from packages.orchestration.teacher_model import ask_teacher
     from packages.orchestration.teacher_qa import DEFAULT_LEVEL, build_teacher_context
@@ -169,7 +169,7 @@ def _cmd_teacher_ask(
     resolved_job: str | None = None
     events: list[dict] = []
     if job_id:
-        resolved_job = resolve_job_id(job_id)
+        resolved_job = resolve_job_id_or_fail(job_id, json_output=json_output)
         events = load_run_events(resolve_data_root(), resolved_job)
 
     code: str | None = None
@@ -204,17 +204,17 @@ def _cmd_teacher_ask(
     )
 
     if json_output:
-        print(_json.dumps({
-            "question": question,
-            "job_id": resolved_job or "",
-            "level": resolved_level,
-            "model": answer.model,
-            "refused": answer.refused,
-            "answer": answer.text,
-            "grounding_sources": list(sources),
-            "call_id": answer.call_id,
-            "billed": answer.billed,
-        }, indent=2))
+        emit_ok(
+            question=question,
+            job_id=resolved_job or "",
+            level=resolved_level,
+            model=answer.model,
+            refused=answer.refused,
+            answer=answer.text,
+            grounding_sources=list(sources),
+            call_id=answer.call_id,
+            billed=answer.billed,
+        )
         return
 
     print(f"Teacher answer ({answer.model})")

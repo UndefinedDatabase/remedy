@@ -2,12 +2,11 @@
 
 from __future__ import annotations
 
-import json as _json
 from collections.abc import Callable
 from typing import TYPE_CHECKING
 
-from apps.cli.json_envelope import fail
-from packages.orchestration.data_paths import lookup_job_id
+from apps.cli.job_id_arg import resolve_job_id_or_fail
+from apps.cli.json_envelope import emit_ok, fail
 
 if TYPE_CHECKING:
     import argparse
@@ -21,6 +20,7 @@ def _cmd_memory_store(
     job_id: str | None = None,
     tags: str | None = None,
     approved: bool = False,
+    json_output: bool = False,
 ) -> None:
     from packages.memory.local_gateway import store_memory
 
@@ -33,7 +33,10 @@ def _cmd_memory_store(
         tags=tag_list,
         approved=approved,
     )
-    print(f"Stored: {entry.id} key={entry.key}")
+    if json_output:
+        emit_ok(id=str(entry.id), key=entry.key)
+    else:
+        print(f"Stored: {entry.id} key={entry.key}")
 
 
 def _cmd_memory_recall(
@@ -65,7 +68,7 @@ def _cmd_memory_recall(
             }
             for e in entries
         ]
-        print(_json.dumps({"version": 1, "entries": output, "count": len(output)}, sort_keys=True))
+        emit_ok(version=1, entries=output, count=len(output))
     else:
         if not entries:
             scope = f"project={project_id}" if project_id else (f"job={job_id}" if job_id else "global")
@@ -119,7 +122,7 @@ def _cmd_memory_list(
             }
             for e in entries
         ]
-        print(_json.dumps({"version": 1, "entries": output, "count": len(output)}, sort_keys=True))
+        emit_ok(version=1, entries=output, count=len(output))
     else:
         if not entries:
             scope = f"project={project_id}" if project_id else (f"job={job_id}" if job_id else "global")
@@ -139,11 +142,7 @@ def _cmd_memory_learn(
 ) -> None:
     from packages.orchestration.pingpong_job import JobNotFoundError, require_job_plan
 
-    try:
-        job_id = lookup_job_id(job_id_str)
-    except ValueError:
-        fail("invalid_job_id", f"No job matches {job_id_str!r}. Try: remedy job list.",
-             json_output=json_output)
+    job_id = resolve_job_id_or_fail(job_id_str, json_output=json_output)
     try:
         job = require_job_plan(job_id)
     except JobNotFoundError as exc:
@@ -159,7 +158,7 @@ def _cmd_memory_learn(
     result = learn_from_job(job, events, approved=approved)
 
     if json_output:
-        print(_json.dumps(export_learn_json(result), sort_keys=True))
+        emit_ok(**export_learn_json(result))
     else:
         print(f"Memory learn: {result.learned_count} created, {result.skipped_count} skipped")
         for e in result.entries:
@@ -190,17 +189,17 @@ def _cmd_memory_card_show(
              json_output=json_output)
 
     if json_output:
-        print(_json.dumps({
-            "version": 1,
-            "id": str(card.id), "key": card.key, "value": card.value,
-            "summary": card.summary, "tags": card.tags,
-            "source_type": card.source_type, "source_id": card.source_id,
-            "scope": card.scope, "validity": card.validity,
-            "review_status": card.review_status, "approved": card.approved,
-            "evidence_refs": card.evidence_refs,
-            "supersedes": card.supersedes, "contradicts": card.contradicts,
-            "created_at": card.created_at, "updated_at": card.updated_at,
-        }, sort_keys=True))
+        emit_ok(
+            version=1,
+            id=str(card.id), key=card.key, value=card.value,
+            summary=card.summary, tags=card.tags,
+            source_type=card.source_type, source_id=card.source_id,
+            scope=card.scope, validity=card.validity,
+            review_status=card.review_status, approved=card.approved,
+            evidence_refs=card.evidence_refs,
+            supersedes=card.supersedes, contradicts=card.contradicts,
+            created_at=card.created_at, updated_at=card.updated_at,
+        )
     else:
         print(f"Memory Card: {card.id}")
         print(f"  key: {card.key}")
@@ -225,7 +224,11 @@ def _cmd_memory_card_approve(
     if card is None:
         fail("memory_card_not_found", f"memory card not found: {memory_id}",
              json_output=json_output)
-    print(f"Approved: {card.id} key={card.key}")
+    if json_output:
+        emit_ok(id=str(card.id), key=card.key, review_status=card.review_status,
+                 validity=card.validity, approved=card.approved)
+    else:
+        print(f"Approved: {card.id} key={card.key}")
 
 
 def _cmd_memory_card_reject(
@@ -241,7 +244,11 @@ def _cmd_memory_card_reject(
     if card is None:
         fail("memory_card_not_found", f"memory card not found: {memory_id}",
              json_output=json_output)
-    print(f"Rejected: {card.id} key={card.key}")
+    if json_output:
+        emit_ok(id=str(card.id), key=card.key, review_status=card.review_status,
+                 validity=card.validity, approved=card.approved)
+    else:
+        print(f"Rejected: {card.id} key={card.key}")
 
 
 def _cmd_memory_card_stale(
@@ -257,7 +264,11 @@ def _cmd_memory_card_stale(
     if card is None:
         fail("memory_card_not_found", f"memory card not found: {memory_id}",
              json_output=json_output)
-    print(f"Marked stale: {card.id} key={card.key}")
+    if json_output:
+        emit_ok(id=str(card.id), key=card.key, review_status=card.review_status,
+                 validity=card.validity, approved=card.approved)
+    else:
+        print(f"Marked stale: {card.id} key={card.key}")
 
 
 def _cmd_memory_card_supersede(
@@ -274,7 +285,10 @@ def _cmd_memory_card_supersede(
     if old is None:
         fail("memory_card_not_found", f"old memory card not found: {old_id}",
              json_output=json_output)
-    print(f"Superseded: {old_id[:8]} by {new_id[:8]}")
+    if json_output:
+        emit_ok(old_id=old_id, new_id=new_id)
+    else:
+        print(f"Superseded: {old_id[:8]} by {new_id[:8]}")
 
 
 def _cmd_memory_card_contradict(
@@ -293,7 +307,10 @@ def _cmd_memory_card_contradict(
     if contradicted is None:
         fail("memory_card_not_found", f"memory card not found: {memory_id}",
              json_output=json_output)
-    print(f"Contradicted: {memory_id[:8]} by {by_id[:8]}")
+    if json_output:
+        emit_ok(memory_id=memory_id, by_id=by_id)
+    else:
+        print(f"Contradicted: {memory_id[:8]} by {by_id[:8]}")
 
 
 COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
@@ -303,6 +320,7 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
         job_id=getattr(args, "job", None),
         tags=getattr(args, "tags", None),
         approved=bool(getattr(args, "approved", False)),
+        json_output=getattr(args, "json", False),
     ),
     "memory.recall": lambda args: _cmd_memory_recall(
         project_id=getattr(args, "project", None),

@@ -196,6 +196,9 @@ class TestCli:
     def test_the_filters_reach_the_aggregator(self, corpus, capsys):
         CMD._cmd_stats_failures(job="J2", json_output=True)
         result = json.loads(capsys.readouterr().out)
+        # F283 R17 C6 (D10): the success document answers through the envelope.
+        assert result["schema_version"] == 1
+        assert result["ok"] is True
         assert result["filters"]["job"] == "J2"
         assert result["total_postmortems"] == 1
 
@@ -204,6 +207,45 @@ class TestCli:
             CMD._cmd_stats_failures(since="last tuesday")
         assert exc.value.code == CMD.EXIT_USAGE
         assert "not an ISO-8601 timestamp" in capsys.readouterr().err
+
+    def test_an_invalid_since_under_json_answers_the_envelope(self, corpus, capsys):
+        """F283 R12 C5 — round 11's own probe found this refusal unpinned: forcing
+        `_validate_since`'s call to `fail()` to pass `json_output=False` left the
+        whole selection green, because every existing `--since` test used the text
+        mode. This is the `--json` reading."""
+        with pytest.raises(SystemExit) as exc:
+            CMD._cmd_stats_failures(since="last tuesday", json_output=True)
+        assert exc.value.code == CMD.EXIT_USAGE
+        captured = capsys.readouterr()
+        assert captured.err == ""
+        payload = json.loads(captured.out)
+        assert payload["schema_version"] == 1
+        assert payload["ok"] is False
+        assert payload["error"] == "invalid_argument"
+        assert "not an ISO-8601 timestamp" in payload["message"]
+
+    def test_an_unreadable_evidence_root_answers_evidence_unreadable_under_json(
+        self, tmp_path, monkeypatch, capsys
+    ):
+        """`FailureStatsError`'s refusal, migrated onto `fail()`: one envelope on
+        stdout, no prose on stderr. The corpus is the same unreadable-root shape
+        `test_an_unreadable_evidence_root_is_an_error_not_silence` builds above,
+        reached this time through the CLI command rather than `collect_failures`."""
+        root = tmp_path / "data"
+        root.mkdir()
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(root))
+        (root / "evidence_exports").write_text("this is a file, not a directory")
+
+        with pytest.raises(SystemExit) as exc:
+            CMD._cmd_stats_failures(json_output=True)
+
+        assert exc.value.code == CMD.EXIT_ERROR
+        captured = capsys.readouterr()
+        assert captured.err == ""
+        payload = json.loads(captured.out)
+        assert payload["schema_version"] == 1
+        assert payload["ok"] is False
+        assert payload["error"] == "evidence_unreadable"
 
     def test_an_empty_corpus_exits_zero(self, evidence_root, capsys):
         CMD._cmd_stats_failures()                         # no SystemExit

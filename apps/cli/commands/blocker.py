@@ -2,11 +2,10 @@
 
 from __future__ import annotations
 
-import json as _json
 from collections.abc import Callable
 from typing import TYPE_CHECKING
 
-from apps.cli.json_envelope import fail
+from apps.cli.json_envelope import emit_ok, fail
 
 if TYPE_CHECKING:
     import argparse
@@ -45,11 +44,11 @@ def _cmd_blocker_list(
         fail("invalid_list_option", str(exc), json_output=json_output)
 
     if json_output:
-        print(_json.dumps({
-            "version": 1,
-            "job_id": job_id_str,
-            "stop_reasons": [export_stop_reason_json(s) for s in stops],
-        }, sort_keys=True))
+        emit_ok(
+            version=1,
+            job_id=job_id_str,
+            stop_reasons=[export_stop_reason_json(s) for s in stops],
+        )
     else:
         if not stops:
             print(f"No blockers for job {job_id_str[:8]}.")
@@ -77,11 +76,11 @@ def _cmd_blocker_show(
              json_output=json_output)
 
     if json_output:
-        print(_json.dumps({
-            "version": 1,
-            "job_id": job_id_str,
-            "stop_reason": export_stop_reason_json(sr),
-        }, sort_keys=True))
+        emit_ok(
+            version=1,
+            job_id=job_id_str,
+            stop_reason=export_stop_reason_json(sr),
+        )
     else:
         print(f"Blocker: {sr.id}")
         print(f"  Code: {sr.reason_code}")
@@ -107,7 +106,10 @@ def _cmd_blocker_resolve(
     if sr is None:
         fail("blocker_not_found", f"blocker not found: {stop_id}",
              json_output=json_output)
-    print(f"Resolved: {sr.id[:8]} ({sr.reason_code})")
+    if json_output:
+        emit_ok(id=sr.id, reason_code=sr.reason_code)
+    else:
+        print(f"Resolved: {sr.id[:8]} ({sr.reason_code})")
 
 
 COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {

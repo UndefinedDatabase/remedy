@@ -3182,20 +3182,28 @@ def start_ui_server(
     token: str | None = None,
     open_browser: bool = False,
     info_file: str | None = None,
+    json_output: bool = False,
 ) -> None:
     """Start the read-only UI server. Blocks until Ctrl-C."""
+    # F283 R16 C5 (DECISION F283 D9), comment repaired at R-1030: imported
+    # inside the function, the idiom this module's own `_command_is_ui_exposed`
+    # already uses for `apps.cli.command_catalog` — this module lives under
+    # `packages/` and must not take an `apps/` import at module scope.
+    from apps.cli.json_envelope import emit_ok, fail
+
     # Security: refuse non-localhost
     if host not in ("127.0.0.1", "localhost", "::1"):
-        print(f"Error: refusing to bind {host} — only 127.0.0.1 allowed", file=sys.stderr)
-        sys.exit(1)
+        fail("host_not_allowed", f"refusing to bind {host} — only 127.0.0.1 allowed",
+             json_output=json_output)
     # Normalize to 127.0.0.1
     host = "127.0.0.1"
 
     # Validate job exists
     job, err = _load_job(job_id)
     if err:
-        print(f"Error: {err[1]['error']}", file=sys.stderr)
-        sys.exit(1)
+        status_code, err_body = err
+        token_name = "job_not_found" if status_code == 404 else "invalid_job_id"
+        fail(token_name, err_body["error"], json_output=json_output)
 
     if token is None:
         token = secrets.token_urlsafe(24)
@@ -3232,8 +3240,13 @@ def start_ui_server(
         }
         Path(info_file).write_text(json.dumps(info, indent=2))
 
-    print(f"\nRemedy UI: {url}\n")
-    print("Press Ctrl-C to stop.\n")
+    if json_output:
+        emit_ok(url=url, host=host, port=actual_port, job_id=job_id,
+                pid=os.getpid(), info_file=info_file)
+        sys.stdout.flush()
+    else:
+        print(f"\nRemedy UI: {url}\n")
+        print("Press Ctrl-C to stop.\n")
 
     # Optional browser open
     if open_browser:

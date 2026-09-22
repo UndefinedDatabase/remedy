@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 import argparse
-import json
 import sys
 from pathlib import Path
 from typing import TYPE_CHECKING
+
+from apps.cli.json_envelope import emit_ok, fail
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -46,8 +47,7 @@ def _cmd_config_list(args: argparse.Namespace) -> None:
             date_getter=None,
         )
     except ListOptionError as exc:
-        print(f"Error: {exc}", file=sys.stderr)
-        sys.exit(1)
+        fail("invalid_list_option", str(exc), json_output=use_json)
 
     if use_json:
         entries = []
@@ -64,8 +64,10 @@ def _cmd_config_list(args: argparse.Namespace) -> None:
                 "type": spec.value_type.__name__,
                 "is_default": cv.is_default if cv else True,
             })
-        json.dump(entries, sys.stdout, indent=2)
-        sys.stdout.write("\n")
+        # DECISION F283 D10 (4) — the old document is a bare list, not an
+        # object, so it is carried under one named key; every reader of it in
+        # this repository changes in the same commit.
+        emit_ok(entries=entries)
         return
 
     for spec in specs:
@@ -88,8 +90,11 @@ def _cmd_config_get(args: argparse.Namespace) -> None:
     use_json = getattr(args, "json", False)
 
     if cv is None and spec is None:
-        print(f"Unknown config key: {key}", file=sys.stderr)
-        sys.exit(1)
+        if use_json:
+            fail("unknown_config_key", f"Unknown config key: {key}", json_output=True)
+        else:
+            print(f"Unknown config key: {key}", file=sys.stderr)
+            sys.exit(1)
 
     val = cv.value if cv else None
     source = cv.source.value if cv else "default"
@@ -97,14 +102,13 @@ def _cmd_config_get(args: argparse.Namespace) -> None:
         val = "[REDACTED]" if val is not None else None
 
     if use_json:
-        json.dump({
-            "key": key,
-            "value": val,
-            "source": source,
-            "env_var": spec.env_var if spec else None,
-            "description": spec.description if spec else None,
-        }, sys.stdout, indent=2)
-        sys.stdout.write("\n")
+        emit_ok(
+            key=key,
+            value=val,
+            source=source,
+            env_var=spec.env_var if spec else None,
+            description=spec.description if spec else None,
+        )
         return
 
     val_str = str(val) if val is not None else "(not set)"
@@ -124,14 +128,13 @@ def _cmd_config_sources(args: argparse.Namespace) -> None:
     use_json = getattr(args, "json", False)
 
     if use_json:
-        json.dump({
-            "project_path": _redact_path(report.project_path),
-            "project_loaded": report.project_loaded,
-            "user_path": _redact_path(report.user_path),
-            "user_loaded": report.user_loaded,
-            "warnings": report.warnings,
-        }, sys.stdout, indent=2)
-        sys.stdout.write("\n")
+        emit_ok(
+            project_path=_redact_path(report.project_path),
+            project_loaded=report.project_loaded,
+            user_path=_redact_path(report.user_path),
+            user_loaded=report.user_loaded,
+            warnings=report.warnings,
+        )
         return
 
     print("Config sources:")
@@ -154,16 +157,14 @@ def _cmd_config_init(args: argparse.Namespace) -> None:
     if path.exists():
         msg = f"{path} already exists. Not overwriting."
         if use_json:
-            json.dump({"error": msg}, sys.stdout, indent=2)
-            sys.stdout.write("\n")
+            fail("config_file_exists", msg, json_output=True)
         else:
             print(msg, file=sys.stderr)
         sys.exit(1)
 
     write_toml_template(path)
     if use_json:
-        json.dump({"created": str(path)}, sys.stdout, indent=2)
-        sys.stdout.write("\n")
+        emit_ok(created=str(path))
     else:
         print(f"Created {path}")
 
@@ -180,16 +181,14 @@ def _cmd_config_set(args: argparse.Namespace) -> None:
         set_config_value(target, key, value)
     except ValueError as exc:
         if use_json:
-            json.dump({"error": str(exc)}, sys.stdout, indent=2)
-            sys.stdout.write("\n")
+            fail("invalid_config_value", str(exc), json_output=True)
         else:
             print(str(exc), file=sys.stderr)
         sys.exit(1)
 
     reset_config()
     if use_json:
-        json.dump({"key": key, "value": value, "path": str(target)}, sys.stdout, indent=2)
-        sys.stdout.write("\n")
+        emit_ok(key=key, value=value, path=str(target))
     else:
         print(f"Set {key} = {value} in {target}")
 
@@ -202,8 +201,7 @@ def _cmd_config_validate(args: argparse.Namespace) -> None:
     use_json = getattr(args, "json", False)
 
     if use_json:
-        json.dump({"valid": len(warnings) == 0, "warnings": warnings}, sys.stdout, indent=2)
-        sys.stdout.write("\n")
+        emit_ok(valid=len(warnings) == 0, warnings=warnings)
         return
 
     if warnings:

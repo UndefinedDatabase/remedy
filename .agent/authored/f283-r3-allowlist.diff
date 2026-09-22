@@ -1,0 +1,12 @@
+diff --git a/tests/orchestration/import_reachability_allowlist.txt b/tests/orchestration/import_reachability_allowlist.txt
+index c8cf618a..f6649118 100644
+--- a/tests/orchestration/import_reachability_allowlist.txt
++++ b/tests/orchestration/import_reachability_allowlist.txt
+@@ -43,6 +43,7 @@ apps.cli.commands.ui
+ apps.cli.commands.worker
+ apps.cli.commands.worker_facade_cmd
+ apps.cli.cost_preview_confirm
++apps.cli.job_id_arg
+ apps.cli.json_envelope
+ packages.common
+ packages.common.path_redaction

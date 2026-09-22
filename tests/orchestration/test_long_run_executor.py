@@ -841,7 +841,7 @@ class TestJobRunCommand:
         from apps.cli.commands import job as job_cmd
 
         seen: list[str] = []
-        monkeypatch.setattr(job_cmd, "_cmd_run_next_task_local", seen.append)
+        monkeypatch.setattr(job_cmd, "_cmd_run_next_task_local", lambda _j, **_kw: seen.append(_j))
         job_cmd._cmd_job_run_cycles("abc12345", yes=True)
         assert seen == ["abc12345"]
 
@@ -910,7 +910,7 @@ class TestJobRunCommand:
         monkeypatch.setattr(
             "apps.cli.cost_preview_confirm.confirm_cost_preview", lambda *a, **k: False)
         ran: list[str] = []
-        monkeypatch.setattr(job_cmd, "_cmd_run_next_task_local", ran.append)
+        monkeypatch.setattr(job_cmd, "_cmd_run_next_task_local", lambda _j, **_kw: ran.append(_j))
         job_cmd._cmd_job_run_cycles("abc12345")
         assert ran == []
         assert "Cancelled" in capsys.readouterr().out
@@ -920,7 +920,7 @@ class TestJobRunCommand:
 
         seen: dict = {}
 
-        def fake_confirm(estimate, *, confirm_above_usd, yes, command_name):
+        def fake_confirm(estimate, *, confirm_above_usd, yes, command_name, json_output=False):
             seen["estimate"] = estimate
             seen["yes"] = yes
             seen["command_name"] = command_name
@@ -928,7 +928,7 @@ class TestJobRunCommand:
 
         monkeypatch.setattr("apps.cli.cost_preview_confirm.confirm_cost_preview", fake_confirm)
         ran: list[str] = []
-        monkeypatch.setattr(job_cmd, "_cmd_run_next_task_local", ran.append)
+        monkeypatch.setattr(job_cmd, "_cmd_run_next_task_local", lambda _j, **_kw: ran.append(_j))
         job_cmd._cmd_job_run_cycles("abc12345", unattended=True)
         assert seen["estimate"].band_usd_high is None
         assert seen["yes"] is True

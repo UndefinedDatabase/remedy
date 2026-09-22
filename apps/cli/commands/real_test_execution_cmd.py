@@ -7,10 +7,10 @@ honest proofs. Test EXECUTION itself stays on the existing `test run`
 
 from __future__ import annotations
 
-import json
-import sys
 from collections.abc import Callable
 from typing import TYPE_CHECKING, Any
+
+from apps.cli.json_envelope import emit_ok, fail
 
 if TYPE_CHECKING:
     import argparse
@@ -20,10 +20,9 @@ def _cmd_test_result(args: Any) -> None:
     from packages.orchestration.real_test_execution import get_test_run
     rec = get_test_run(str(args.test_run_id))
     if rec is None:
-        print("Error: test run not found", file=sys.stderr)
-        sys.exit(1)
+        fail("test_run_not_found", "test run not found", json_output=getattr(args, "json", False))
     if getattr(args, "json", False):
-        print(json.dumps(rec, indent=2))
+        emit_ok(**rec)
         return
     print(f"Test run {rec.get('test_run_id')}: status={rec.get('status')} exit={rec.get('exit_code')}")
 
@@ -46,14 +45,13 @@ def _cmd_test_list(args: Any) -> None:
             date_getter=lambda r: r.get("created_at") or None,
         )
     except ListOptionError as exc:
-        print(f"Error: {exc}", file=sys.stderr)
-        sys.exit(1)
+        fail("invalid_list_option", str(exc), json_output=getattr(args, "json", False))
     out = {"job_id": str(args.job_id), "run_count": len(runs),
            "runs": [{"test_run_id": r.get("test_run_id"), "status": r.get("status"),
                      "exit_code": r.get("exit_code"), "created_at": r.get("created_at")}
                     for r in runs]}
     if getattr(args, "json", False):
-        print(json.dumps(out, indent=2))
+        emit_ok(**out)
         return
     if not out["runs"]:
         print(f"No test runs for {str(args.job_id)[:8]}.")
@@ -66,9 +64,28 @@ def _cmd_test_integrity(args: Any) -> None:
     from packages.orchestration.real_test_execution import test_execution_integrity
     data = test_execution_integrity()
     if getattr(args, "json", False):
-        print(json.dumps(data, indent=2))
+        emit_ok(**data)
         return
     print(f"Test execution integrity: passed={data['passed']} violations={data['violation_count']}")
+
+
+def _envelope_safe(document: dict[str, Any]) -> dict[str, Any]:
+    """A copy of ``document`` with the envelope's own ``schema_version``/``ok``
+    keys renamed, when the document happens to carry one under that name.
+
+    `SnapshotProof.to_dict()` (`packages/orchestration/real_test_execution.py`)
+    carries its OWN `schema_version` — the record schema's version string, a
+    domain concept that predates `apps.cli.json_envelope` and is unrelated to
+    the envelope's integer of the same name. `emit_ok()` refuses a payload
+    that carries either reserved key (F277 T002), so the two are told apart by
+    name rather than one silently shadowing the other.
+    """
+    out = dict(document)
+    if "schema_version" in out:
+        out["record_schema_version"] = out.pop("schema_version")
+    if "ok" in out:
+        out["record_ok"] = out.pop("ok")
+    return out
 
 
 def _cmd_snapshot_create(args: Any) -> None:
@@ -79,7 +96,7 @@ def _cmd_snapshot_create(args: Any) -> None:
     proof = create_snapshot_proof(str(args.job_id))
     data = export_snapshot_proof_json(proof)
     if getattr(args, "json", False):
-        print(json.dumps(data, indent=2))
+        emit_ok(**_envelope_safe(data))
         return
     print(f"Snapshot proof {data['snapshot_id']} (strategy={data['strategy']})")
     print(f"  restore_available: {data['restore_available']} (metadata snapshot is NOT a rollback restore)")
@@ -89,10 +106,9 @@ def _cmd_snapshot_show(args: Any) -> None:
     from packages.orchestration.real_test_execution import get_snapshot_proof
     rec = get_snapshot_proof(str(args.snapshot_id))
     if rec is None:
-        print("Error: snapshot proof not found", file=sys.stderr)
-        sys.exit(1)
+        fail("snapshot_proof_not_found", "snapshot proof not found", json_output=getattr(args, "json", False))
     if getattr(args, "json", False):
-        print(json.dumps(rec, indent=2))
+        emit_ok(**_envelope_safe(rec))
         return
     print(f"Snapshot {rec.get('snapshot_id')}: restore_available={rec.get('restore_available')}")
 

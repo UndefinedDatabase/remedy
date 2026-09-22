@@ -919,6 +919,18 @@ end the response with:
       FAILS, while every instance here is an order that SUCCEEDS against a file the
       block never read. Nothing is unsatisfiable when the target already satisfies the
       order, and nothing goes red until a guard the block never named finally runs.
+      A GENERATED LIST that a new file JOINS is a target of this kind too, and it is the
+      one this clause adds:
+      `tests/orchestration/import_reachability_allowlist.txt` is the measured closure of
+      the entry points, written by the test that computes it, so a block ordering a NEW
+      module under `apps/` or `packages/` names that list in its own change set. F283's
+      round 20 is the instance: the block enumerated its paths without it, C3's
+      `apps/cli/exit_codes.py` joined the closure by being imported from the catalog, and
+      the round spent a commit nobody ordered to add the one line — the worker found the
+      red itself, fixed it and declared it, which is the round rescuing the reviewer.
+      The neighbour above reads the TESTS that guard a path; this reads the LIST a guard
+      regenerates, which no reading of the target file can show, because the file the
+      block writes is not the file that goes red.
 
   35. **A description and the enumeration it points at are read against each other,
       and the enumeration is the half that gets executed.** Findings R-0699 and

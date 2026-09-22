@@ -95,6 +95,39 @@ class TestMissionRun:
             _cmd_mission_run(_ns(run_id="", job_id="", max_steps=10,
                                  max_seconds=300, json=True))
 
+    def test_run_no_run_id_json_answers_the_envelope(self, capsys):
+        """F283 R12 C4 (DECISION F283 D7) — `_err` deleted; its caller now calls
+        `fail()`, so `--json` answers the one shape every command answers in rather
+        than the `{"error": msg}` object `_err` used to print to STDERR in both
+        modes."""
+        from apps.cli.commands.worker_facade_cmd import _cmd_mission_run
+
+        with pytest.raises(SystemExit) as exc:
+            _cmd_mission_run(_ns(run_id="", job_id="", max_steps=10,
+                                 max_seconds=300, json=True))
+        assert exc.value.code == 1
+        captured = capsys.readouterr()
+        assert captured.err == ""
+        body = json.loads(captured.out)
+        assert body["schema_version"] == 1
+        assert body["ok"] is False
+        assert body["error"] == "missing_argument"
+        assert body["message"] == "run_id required"
+
+    def test_run_no_run_id_text_mode_pins_the_error_prefixed_line(self, capsys):
+        """The third deliberate text change of this kind (DECISION F283 D7):
+        `_err`'s old `{"error": "run_id required"}` line on stderr becomes
+        `Error: run_id required`, the line every other `fail()` refusal writes."""
+        from apps.cli.commands.worker_facade_cmd import _cmd_mission_run
+
+        with pytest.raises(SystemExit) as exc:
+            _cmd_mission_run(_ns(run_id="", job_id="", max_steps=10,
+                                 max_seconds=300, json=False))
+        assert exc.value.code == 1
+        captured = capsys.readouterr()
+        assert captured.out == ""
+        assert captured.err == "Error: run_id required\n"
+
 
 # ---------------------------------------------------------------------------
 # collect_all_handlers includes facade
@@ -111,6 +144,9 @@ class TestDoctorCore:
         from apps.cli.commands.worker_facade_cmd import _cmd_doctor_core
         _cmd_doctor_core(_ns(json=True))
         out = json.loads(capsys.readouterr().out)
+        # F283 R17 C6 (D10): the success document answers through the envelope.
+        assert out["schema_version"] == 1
+        assert out["ok"] is True
         assert out["ready"] is True
         assert out["blockers"] == []
         check_names = {c["check"] for c in out["checks"]}

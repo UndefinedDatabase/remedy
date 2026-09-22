@@ -124,6 +124,10 @@ class TestRoadmapNext:
         assert payload["feature"]["id"] == "F002"
         assert payload["file"] == "docs/roadmap/features/T0_F002.md"
         assert payload["started"] is False
+        # F283 R18 C3 (R-1031) — the envelope `emit_ok` added at F283 R17 C5
+        # (`dbc49b6b`), proved through the real subprocess dispatcher.
+        assert payload["schema_version"] == 1
+        assert payload["ok"] is True
 
     def test_in_progress_line_wins_over_first_unchecked(self, fixture_repo):
         """Rule A5: a `[~]` line is the active feature and is reported as such."""

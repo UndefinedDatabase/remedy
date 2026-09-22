@@ -10,8 +10,7 @@ consumed, and is this job actually stopped?
 """
 from __future__ import annotations
 
-import json as _json
-import sys
+from apps.cli.json_envelope import emit_ok, fail
 
 EXIT_ERROR = 1
 EXIT_USAGE = 2
@@ -42,7 +41,7 @@ def _print_status(job_id: str, *, json_output: bool) -> None:
     payload["stopped"] = job.state == "stopped"
 
     if json_output:
-        print(_json.dumps(payload, indent=2))
+        emit_ok(**payload)
         return
 
     print(f"Job {job_id} — state: {job.state}")
@@ -62,12 +61,13 @@ def _print_status(job_id: str, *, json_output: bool) -> None:
 
 
 def _unknown_job(job_id: str, *, json_output: bool) -> None:
-    if json_output:
-        print(_json.dumps({"ok": False, "error": "job_not_found", "job_id": job_id},
-                          indent=2))
-    else:
-        print(f"Error: No job matches {job_id!r}. Try: remedy job list.", file=sys.stderr)
-    raise SystemExit(EXIT_UNKNOWN_JOB)
+    fail(
+        "job_not_found",
+        f"No job matches {job_id!r}. Try: remedy job list.",
+        json_output=json_output,
+        exit_code=EXIT_UNKNOWN_JOB,
+        job_id=job_id,
+    )
 
 
 def _cmd_job_stop(job_id: str, *, reason: str = "", source: str = "cli",
@@ -81,24 +81,24 @@ def _cmd_job_stop(job_id: str, *, reason: str = "", source: str = "cli",
 
         validate_job_id(job_id)
     except StopControlError as exc:
-        if json_output:
-            print(_json.dumps({"ok": False, "error": str(exc)}, indent=2))
-        else:
-            print(f"Error: {exc}", file=sys.stderr)
-        raise SystemExit(EXIT_USAGE) from None
+        fail("invalid_job_id", str(exc), json_output=json_output, exit_code=EXIT_USAGE)
 
     if _load_job(job_id) is None:
-        from packages.orchestration.data_paths import resolve_job_id
+        from apps.cli.job_id_arg import refuse_ambiguous_job_id
+        from packages.orchestration.data_paths import JobIdAmbiguous, JobIdError, lookup_job_id
+
         try:
-            job_id = resolve_job_id(job_id)
-        except SystemExit as exc:
-            if exc.code == 2:
-                raise
-            if json_output:
-                print(_json.dumps(
-                    {"ok": False, "error": "job_not_found", "job_id": job_id}, indent=2
-                ))
-            raise SystemExit(EXIT_UNKNOWN_JOB) from None
+            job_id = lookup_job_id(job_id)
+        except JobIdAmbiguous as exc:
+            refuse_ambiguous_job_id(job_id, exc.matches, json_output=json_output)
+        except JobIdError:
+            fail(
+                "job_not_found",
+                f"No job matches {job_id!r}. Try: remedy job list.",
+                json_output=json_output,
+                exit_code=EXIT_UNKNOWN_JOB,
+                job_id=job_id,
+            )
 
     if status:
         _print_status(job_id, json_output=json_output)
@@ -117,16 +117,16 @@ def _cmd_job_stop(job_id: str, *, reason: str = "", source: str = "cli",
         pending = stop_requested(job_id)
         if pending is None:
             if json_output:
-                print(_json.dumps({
-                    "ok": True, "already_stopped": True, "job_id": job_id,
-                    "job_status": job.state,
-                    "stop": {
+                emit_ok(
+                    already_stopped=True, job_id=job_id,
+                    job_status=job.state,
+                    stop={
                         "request_id": job.stop_request_id,
                         "reason": job.stop_reason,
                         "source": job.stop_source,
                         "stopped_at": job.stopped_at,
                     },
-                }, indent=2))
+                )
             else:
                 print(f"Job {job_id} is already stopped — no new stop was requested.")
                 print(f"  last stop: {job.stop_request_id or 'unknown'} · reason: "
@@ -140,28 +140,19 @@ def _cmd_job_stop(job_id: str, *, reason: str = "", source: str = "cli",
         # waiting for a stop that cannot happen.
         message = (f"job {job_id} is already {job.state}; there is no work left to stop "
                    f"and no stop was requested")
-        if json_output:
-            print(_json.dumps({"ok": False, "error": "job_not_stoppable",
-                               "job_id": job_id, "job_status": job.state}, indent=2))
-        else:
-            print(f"Error: {message}", file=sys.stderr)
-        raise SystemExit(EXIT_ERROR)
+        fail("job_not_stoppable", message, json_output=json_output,
+             job_id=job_id, job_status=job.state)
 
     try:
         signal = request_stop(job_id, reason=reason, source=source or "cli")
     except StopControlError as exc:
         # An unwritable control area is never a silent no-op: the operator must know that
         # NOTHING asked this job to stop.
-        if json_output:
-            print(_json.dumps({"ok": False, "error": "stop_not_requested",
-                               "detail": str(exc), "job_id": job_id}, indent=2))
-        else:
-            print(f"Error: no stop was requested — {exc}", file=sys.stderr)
-        raise SystemExit(EXIT_ERROR) from None
+        fail("stop_not_requested", f"no stop was requested — {exc}",
+             json_output=json_output, detail=str(exc), job_id=job_id)
 
     if json_output:
-        print(_json.dumps({"ok": True, "job_id": job_id, "job_status": job.state,
-                           "stop": signal.to_json()}, indent=2))
+        emit_ok(job_id=job_id, job_status=job.state, stop=signal.to_json())
     else:
         print("Stop requested — it will take effect at the next safe point.")
         print(f"  job: {job_id} · request: {signal.request_id} · reason: {signal.reason}")

@@ -203,6 +203,9 @@ class TestCostJsonShape:
         CMD._cmd_stats_cost(project=project_id, by="role", json_output=True)
         payload = json.loads(capsys.readouterr().out)
 
+        # F283 R18 C5 (DECISION F283 D10) — the envelope `emit_ok` added this round.
+        assert payload["schema_version"] == 1
+        assert payload["ok"] is True
         assert set(payload) >= {
             "version", "scope", "ledgers_read", "filters", "basis", "total", "rows"}
         assert payload["filters"] == {"since": "", "job": "", "by": "role"}
@@ -388,6 +391,40 @@ class TestBackfillLedger:
         assert "read-only aggregation" in capsys.readouterr().err
         assert not token_ledger_path_for(project_id).exists()
 
+    def test_a_missing_evidence_directory_under_json_answers_path_not_found(
+        self, tmp_path, project_id, capsys
+    ):
+        """F283 R12 C5 — round 11's own probe found this refusal unpinned: forcing
+        `_require_evidence_dir`'s call to `fail()` to pass `json_output=False` left
+        the whole selection green, because every existing test here used text mode."""
+        with pytest.raises(SystemExit) as exc:
+            CMD._cmd_stats_backfill_ledger(evidence_dir=str(tmp_path / "nope"),
+                                           project=project_id, json_output=True)
+        assert exc.value.code == CMD.EXIT_USAGE
+        captured = capsys.readouterr()
+        assert captured.err == ""
+        payload = json.loads(captured.out)
+        assert payload["schema_version"] == 1
+        assert payload["ok"] is False
+        assert payload["error"] == "path_not_found"
+
+    def test_all_projects_under_json_answers_option_not_applicable(
+        self, evidence_dir, project_id, capsys
+    ):
+        """F283 R12 C5 — the same unpinned gap for `_one_project_ledger`'s
+        `--all-projects` refusal."""
+        with pytest.raises(SystemExit) as exc:
+            CMD._cmd_stats_backfill_ledger(evidence_dir=str(evidence_dir),
+                                           all_projects=True, json_output=True)
+        assert exc.value.code == CMD.EXIT_USAGE
+        captured = capsys.readouterr()
+        assert captured.err == ""
+        payload = json.loads(captured.out)
+        assert payload["schema_version"] == 1
+        assert payload["ok"] is False
+        assert payload["error"] == "option_not_applicable"
+        assert not token_ledger_path_for(project_id).exists()
+
 
 class TestVerifyLedger:
     def test_a_clean_reconcile_exits_zero(self, filled_ledger, evidence_dir,
@@ -431,6 +468,12 @@ class TestVerifyLedger:
 
         assert exc.value.code == CMD.EXIT_DRIFT
         payload = json.loads(capsys.readouterr().out)
+        # F283 R18 C5 (DECISION F283 D10 (3)) — a result document that exits
+        # non-zero now answers ONE failure envelope instead of the raw
+        # document followed by a bare exit.
+        assert payload["schema_version"] == 1
+        assert payload["ok"] is False
+        assert payload["error"] == "ledger_drift"
         assert payload["missing_rows"] == [f"{JOB_ID}:{TASK_MEASURED}"]
         assert payload["has_drift"] is True
 
@@ -512,6 +555,25 @@ class TestStatsCacheView:
 
         assert exc.value.code == CMD.EXIT_ERROR
         assert "cannot read the token ledger" in capsys.readouterr().err
+
+    def test_an_unreadable_ledger_answers_ledger_unreadable_under_json(
+        self, filled_ledger, project_id, capsys
+    ):
+        """The `_load_ledger_reports` helper's branched refusal, migrated onto
+        `fail()`: one envelope on stdout, no prose on stderr."""
+        filled_ledger.write_bytes(b"this is not a database")
+
+        with pytest.raises(SystemExit) as exc:
+            CMD._cmd_stats_cache(project=project_id, json_output=True)
+
+        assert exc.value.code == CMD.EXIT_ERROR
+        captured = capsys.readouterr()
+        assert captured.err == ""
+        payload = json.loads(captured.out)
+        assert payload["schema_version"] == 1
+        assert payload["ok"] is False
+        assert payload["error"] == "ledger_unreadable"
+        assert "cannot read the token ledger" in payload["message"]
 
     def test_the_json_share_carries_its_reason_and_never_a_zero(
         self, filled_ledger, project_id, capsys

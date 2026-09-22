@@ -497,6 +497,9 @@ class TestTeacherAskOutput:
         _cmd_teacher_ask("what is a task?", call=_answering(), json_output=True)
 
         payload = json.loads(capsys.readouterr().out)
+        # F283 R17 C6 (D10): the success document answers through the envelope.
+        assert payload["schema_version"] == 1
+        assert payload["ok"] is True
         assert payload["refused"] is False
         assert payload["billed"] is True
         assert payload["call_id"] == _ledger_rows(teacher_ledger)[0]["call_id"]

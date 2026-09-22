@@ -28,10 +28,9 @@ the mirror; `verify-ledger` is how a disagreement between the two is found; and
 """
 from __future__ import annotations
 
-import json as _json
-import sys
 from pathlib import Path
 
+from apps.cli.json_envelope import emit_ok, fail
 from packages.orchestration.cost_report import COST_UNMEASURED_LABEL
 
 EXIT_USAGE = 2
@@ -63,7 +62,7 @@ _FIGURE_COLUMNS = (
 )
 
 
-def _validate_by(raw: str | None) -> str | None:
+def _validate_by(raw: str | None, *, json_output: bool) -> str | None:
     """`--by` accepts exactly the ledger's own group keys, or nothing at all."""
     from packages.orchestration.token_ledger import COST_GROUP_KEYS
 
@@ -71,17 +70,17 @@ def _validate_by(raw: str | None) -> str | None:
     if not text:
         return None
     if text not in COST_GROUP_KEYS:
-        print(
-            f"Error: --by {raw!r} is not a grouping; use one of "
-            f"{', '.join(COST_GROUP_KEYS)}",
-            file=sys.stderr,
+        fail(
+            "invalid_argument",
+            f"--by {raw!r} is not a grouping; use one of {', '.join(COST_GROUP_KEYS)}",
+            json_output=json_output,
+            exit_code=EXIT_USAGE,
         )
-        raise SystemExit(EXIT_USAGE)
     return text
 
 
 # One end of a report period, validated under ITS OWN FLAG NAME.
-def _validate_period_bound(raw: str | None, *, flag: str) -> str:
+def _validate_period_bound(raw: str | None, *, flag: str, json_output: bool) -> str:
     """`--since` or `--until` as an ISO-8601 timestamp, or a usage error NAMING it.
 
     `flag` is a parameter rather than a hardcoded word because this validator
@@ -100,12 +99,13 @@ def _validate_period_bound(raw: str | None, *, flag: str) -> str:
         # accepts, so a bound this command takes is one the query can compare.
         datetime.fromisoformat(text.replace("Z", "+00:00"))
     except ValueError:
-        print(
-            f"Error: {flag} {raw!r} is not an ISO-8601 timestamp "
+        fail(
+            "invalid_argument",
+            f"{flag} {raw!r} is not an ISO-8601 timestamp "
             f"(e.g. 2026-07-13 or 2026-07-13T12:00:00+00:00)",
-            file=sys.stderr,
+            json_output=json_output,
+            exit_code=EXIT_USAGE,
         )
-        raise SystemExit(EXIT_USAGE) from None
     return text
 
 
@@ -128,7 +128,8 @@ def _ledger_paths_for_scope(project: str | None, all_projects: bool) -> tuple[li
     return [token_ledger_path_for(scope.project_id)], f"project {scope.project_id}"
 
 
-def _one_project_ledger(project: str | None, all_projects: bool, *, action: str) -> Path:
+def _one_project_ledger(project: str | None, all_projects: bool, *, action: str,
+                        json_output: bool) -> Path:
     """The single ledger a per-project command acts on, or a usage error.
 
     `--all-projects` is refused here on purpose. Backfill WRITES, and a reconcile
@@ -140,33 +141,34 @@ def _one_project_ledger(project: str | None, all_projects: bool, *, action: str)
     from packages.orchestration.token_ledger import token_ledger_path_for
 
     if all_projects:
-        print(
-            f"Error: --all-projects is a read-only aggregation for 'stats cost'; "
+        fail(
+            "option_not_applicable",
+            f"--all-projects is a read-only aggregation for 'stats cost'; "
             f"{action} needs exactly one project. Use --project <slug-or-uuid>.",
-            file=sys.stderr,
+            json_output=json_output,
+            exit_code=EXIT_USAGE,
         )
-        raise SystemExit(EXIT_USAGE)
     scope = resolve_scope(project_flag=project, all_projects=False)
     if scope.project_id is None:
-        print(
-            f"Error: no project resolved for {action}. Run inside a registered "
+        fail(
+            "no_project",
+            f"no project resolved for {action}. Run inside a registered "
             f"project or pass --project <slug-or-uuid>.",
-            file=sys.stderr,
+            json_output=json_output,
         )
-        raise SystemExit(EXIT_ERROR)
     return token_ledger_path_for(scope.project_id)
 
 
-def _require_evidence_dir(raw: str) -> Path:
+def _require_evidence_dir(raw: str, *, json_output: bool) -> Path:
     """The evidence directory must exist; scanning a typo would report a false zero."""
     text = (raw or "").strip()
     if not text:
-        print("Error: an evidence directory is required", file=sys.stderr)
-        raise SystemExit(EXIT_USAGE)
+        fail("missing_argument", "an evidence directory is required",
+             json_output=json_output, exit_code=EXIT_USAGE)
     path = Path(text)
     if not path.is_dir():
-        print(f"Error: evidence directory not found: {text}", file=sys.stderr)
-        raise SystemExit(EXIT_USAGE)
+        fail("path_not_found", f"evidence directory not found: {text}",
+             json_output=json_output, exit_code=EXIT_USAGE)
     return path
 
 
@@ -321,8 +323,8 @@ def _load_ledger_reports(*, since: str, job: str, by: str | None,
     from packages.orchestration.token_ledger import merge_cost_reports, query_cost
 
     # One spelling of "what is a valid --since", shared with `stats failures`.
-    since = _validate_since(since)
-    by = _validate_by(by)
+    since = _validate_since(since, json_output=json_output)
+    by = _validate_by(by, json_output=json_output)
     ledgers, scope_label = _ledger_paths_for_scope(project, all_projects)
 
     try:
@@ -331,11 +333,8 @@ def _load_ledger_reports(*, since: str, job: str, by: str | None,
             for path in ledgers
         ]
     except sqlite3.Error as exc:
-        if json_output:
-            print(_json.dumps({"ok": False, "error": str(exc)}, indent=2))
-        else:
-            print(f"Error: cannot read the token ledger: {exc}", file=sys.stderr)
-        raise SystemExit(EXIT_ERROR) from None
+        fail("ledger_unreadable", f"cannot read the token ledger: {exc}",
+             json_output=json_output)
 
     report = reports[0] if len(reports) == 1 else merge_cost_reports(reports)
     # What was actually READ, not what was looked for: a project whose ledger does
@@ -352,8 +351,8 @@ def _cmd_stats_cost(*, since: str = "", job: str = "", by: str | None = None,
         since=since, job=job, by=by, project=project,
         all_projects=all_projects, json_output=json_output)
     if json_output:
-        print(_json.dumps(_cost_payload(
-            report, ledgers_read=ledgers_read, scope_label=scope_label), indent=2))
+        emit_ok(**_cost_payload(
+            report, ledgers_read=ledgers_read, scope_label=scope_label))
     else:
         print(_render_cost_human(
             report, ledgers_read=ledgers_read, scope_label=scope_label))
@@ -498,8 +497,8 @@ def _cmd_stats_cache(*, since: str = "", job: str = "", by: str | None = None,
         since=since, job=job, by=by, project=project,
         all_projects=all_projects, json_output=json_output)
     if json_output:
-        print(_json.dumps(_cache_payload(
-            report, ledgers_read=ledgers_read, scope_label=scope_label), indent=2))
+        emit_ok(**_cache_payload(
+            report, ledgers_read=ledgers_read, scope_label=scope_label))
     else:
         print(_render_cache_human(
             report, ledgers_read=ledgers_read, scope_label=scope_label))
@@ -516,11 +515,17 @@ def _cmd_stats_report(*, since: str = "", until: str = "", job: str = "",
     across projects but nothing folds the segment breakdown, so an all-projects
     report would publish one project's breakdown under a multi-project total —
     the very mismatch `cost_report._same_question` exists to refuse.
+
+    Under `--json` the success answer is the envelope (R-1033): the document
+    `cost_report_json` returns is spread into `emit_ok`, keeping every key the
+    old bare document carried. `cost_report_json_bytes` — the serialised text
+    form of the same document, for a caller that writes a report to disk — is
+    untouched and simply unused here now.
     """
     import sqlite3
 
     from packages.orchestration.cost_report import (
-        cost_report_json_bytes,
+        cost_report_json,
         render_cost_report_markdown,
     )
     from packages.orchestration.token_ledger import (
@@ -529,10 +534,11 @@ def _cmd_stats_report(*, since: str = "", until: str = "", job: str = "",
         query_segment_shares,
     )
 
-    since = _validate_period_bound(since, flag="--since")
-    until = _validate_period_bound(until, flag="--until")
-    by = _validate_by(by)
-    ledger = _one_project_ledger(project, False, action="stats report")
+    since = _validate_period_bound(since, flag="--since", json_output=json_output)
+    until = _validate_period_bound(until, flag="--until", json_output=json_output)
+    by = _validate_by(by, json_output=json_output)
+    ledger = _one_project_ledger(project, False, action="stats report",
+                                 json_output=json_output)
 
     period = prior_report_period(since or None, until or None)
     try:
@@ -552,17 +558,24 @@ def _cmd_stats_report(*, since: str = "", until: str = "", job: str = "",
         # A database error is not a zero, so this refuses to render rather than
         # publishing an empty report — the same choice `_load_ledger_reports`
         # makes, for the same reason.
-        if json_output:
-            print(_json.dumps({"ok": False, "error": str(exc)}, indent=2))
-        else:
-            print(f"Error: cannot read the token ledger: {exc}", file=sys.stderr)
-        raise SystemExit(EXIT_ERROR) from None
+        fail("ledger_unreadable", f"cannot read the token ledger: {exc}",
+             json_output=json_output)
 
-    rendered = (cost_report_json_bytes if json_output else render_cost_report_markdown)(
+    no_comparison_reason = None if period.available else period.unavailable_reason
+    if json_output:
+        document = cost_report_json(
+            cost, shares, label=label, prior=prior,
+            no_comparison_reason=no_comparison_reason,
+        )
+        emit_ok(**document)
+        return
+
+    rendered = render_cost_report_markdown(
         cost, shares, label=label, prior=prior,
-        no_comparison_reason=None if period.available else period.unavailable_reason,
+        no_comparison_reason=no_comparison_reason,
     )
-    # Both renderers already end in exactly one newline; print must not add a second.
+    # The markdown renderer already ends in exactly one newline; print must
+    # not add a second.
     print(rendered, end="")
 
 
@@ -572,20 +585,21 @@ def _cmd_stats_backfill_ledger(*, evidence_dir: str = "",
                                json_output: bool = False) -> None:
     from packages.orchestration.token_ledger import backfill_ledger
 
-    base = _require_evidence_dir(evidence_dir)
-    ledger = _one_project_ledger(project, all_projects, action="backfill-ledger")
+    base = _require_evidence_dir(evidence_dir, json_output=json_output)
+    ledger = _one_project_ledger(project, all_projects, action="backfill-ledger",
+                                 json_output=json_output)
     result = backfill_ledger(base, path=ledger)
 
     if json_output:
-        print(_json.dumps({
-            "version": COST_OUTPUT_VERSION,
-            "evidence_dir": str(base),
-            "ledger": str(ledger),
-            "scanned": result.scanned,
-            "recorded": result.recorded,
-            "skipped": result.skipped,
-            "failed": result.failed,
-        }, indent=2))
+        emit_ok(
+            version=COST_OUTPUT_VERSION,
+            evidence_dir=str(base),
+            ledger=str(ledger),
+            scanned=result.scanned,
+            recorded=result.recorded,
+            skipped=result.skipped,
+            failed=result.failed,
+        )
         return
 
     print(f"Backfill of {base} into {ledger}")
@@ -603,12 +617,13 @@ def _cmd_stats_verify_ledger(*, evidence_dir: str = "",
                              json_output: bool = False) -> None:
     from packages.orchestration.token_ledger import verify_ledger
 
-    base = _require_evidence_dir(evidence_dir)
-    ledger = _one_project_ledger(project, all_projects, action="verify-ledger")
+    base = _require_evidence_dir(evidence_dir, json_output=json_output)
+    ledger = _one_project_ledger(project, all_projects, action="verify-ledger",
+                                 json_output=json_output)
     result = verify_ledger(base, path=ledger)
 
     if json_output:
-        print(_json.dumps({
+        document = {
             "version": COST_OUTPUT_VERSION,
             "evidence_dir": str(base),
             "ledger": str(ledger),
@@ -618,24 +633,34 @@ def _cmd_stats_verify_ledger(*, evidence_dir: str = "",
             "drifted_rows": result.drifted_rows,
             "unreadable": result.unreadable,
             "has_drift": result.has_drift,
-        }, indent=2))
-    else:
-        print(f"Reconcile of {base} against {ledger}")
-        print(f"  checked:  {result.checked} task run(s) carrying provider evidence")
-        print(f"  missing:  {len(result.missing_rows)} row(s) on disk with no row in the ledger")
-        print(f"  orphan:   {len(result.orphan_rows)} row(s) in the ledger with no evidence")
-        print(f"  drifted:  {len(result.drifted_rows)} row(s) whose contents no longer match")
-        print(f"  unreadable: {len(result.unreadable)} task run(s) nothing can be said about")
-        for label, ids in (("missing", result.missing_rows),
-                           ("orphan", result.orphan_rows),
-                           ("drifted", result.drifted_rows)):
-            for call_id in ids:
-                print(f"    {label}: {call_id}")
+        }
         if result.has_drift:
-            print("DRIFT: the files are the source of truth, so the ledger is wrong here. "
-                  "Run 'remedy stats backfill-ledger' to re-record missing rows.")
-        else:
-            print("Clean: the ledger agrees with the evidence files.")
+            # DECISION F283 D10 (3) — a result document that exits non-zero
+            # answers ONE failure envelope instead of the raw document
+            # followed by a bare exit.
+            fail("ledger_drift",
+                 "the ledger disagrees with the evidence files; the files "
+                 "are the source of truth",
+                 json_output=True, exit_code=EXIT_DRIFT, **document)
+        emit_ok(**document)
+        return
+
+    print(f"Reconcile of {base} against {ledger}")
+    print(f"  checked:  {result.checked} task run(s) carrying provider evidence")
+    print(f"  missing:  {len(result.missing_rows)} row(s) on disk with no row in the ledger")
+    print(f"  orphan:   {len(result.orphan_rows)} row(s) in the ledger with no evidence")
+    print(f"  drifted:  {len(result.drifted_rows)} row(s) whose contents no longer match")
+    print(f"  unreadable: {len(result.unreadable)} task run(s) nothing can be said about")
+    for label, ids in (("missing", result.missing_rows),
+                       ("orphan", result.orphan_rows),
+                       ("drifted", result.drifted_rows)):
+        for call_id in ids:
+            print(f"    {label}: {call_id}")
+    if result.has_drift:
+        print("DRIFT: the files are the source of truth, so the ledger is wrong here. "
+              "Run 'remedy stats backfill-ledger' to re-record missing rows.")
+    else:
+        print("Clean: the ledger agrees with the evidence files.")
 
     if result.has_drift:
         raise SystemExit(EXIT_DRIFT)

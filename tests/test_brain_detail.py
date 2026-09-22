@@ -827,6 +827,8 @@ class TestCLIBrainNode:
             "job_id", "node_id", "node_type", "title", "status", "risk",
             "explanation", "why_it_exists", "connected_to", "evidence",
             "affected_files", "next_actions", "redaction_notes",
+            # F283 R18 C5 (DECISION F283 D10) — the envelope `emit_ok` adds.
+            "schema_version", "ok",
         }
         assert set(data.keys()) == expected
 

@@ -249,8 +249,13 @@ class TestFailingRun:
         _make_job_with_repo(data_root, job_id, repo)
 
         r = run_grouped_cli(["test", "run", job_id, "--json"], data_root, timeout=30)
-        assert r.returncode != 0
+        assert r.returncode == 1
         out = json.loads(r.stdout)
+        # F283 R17 C5 (D10 (3)): a failed run answers ONE failure envelope,
+        # written by emit_error because the document carries `exit_code`.
+        assert out["schema_version"] == 1
+        assert out["ok"] is False
+        assert out["error"] == "test_run_failed"
         assert out["status"] == "failed"
         assert out["exit_code"] != 0
 

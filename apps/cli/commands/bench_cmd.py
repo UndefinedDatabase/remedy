@@ -39,12 +39,11 @@ pass.
 """
 from __future__ import annotations
 
-import json as _json
-import sys
 from pathlib import Path
 from typing import Any
 
 from apps.cli.commands.stats_ledger_cmd import UNMEASURED
+from apps.cli.json_envelope import emit_ok, fail
 from packages.orchestration.bench_history import (
     REGRESSION_MULTIPLIER_DEFAULT,
     BenchHistoryEntry,
@@ -84,7 +83,7 @@ _FIGURE_COLUMNS = (
 )
 
 
-def _validate_multiplier(raw: str | float | None) -> float:
+def _validate_multiplier(raw: str | float | None, *, json_output: bool) -> float:
     """`--multiplier` as a positive float, or a usage error naming the flag.
 
     Zero and negatives are refused rather than clamped: a multiplier of 0 makes
@@ -96,15 +95,15 @@ def _validate_multiplier(raw: str | float | None) -> float:
     try:
         value = float(raw)
     except (TypeError, ValueError):
-        print(f"Error: --multiplier {raw!r} is not a number", file=sys.stderr)
-        raise SystemExit(EXIT_USAGE) from None
+        fail("invalid_argument", f"--multiplier {raw!r} is not a number",
+             json_output=json_output, exit_code=EXIT_USAGE)
     if value <= 0:
-        print(f"Error: --multiplier {raw!r} must be greater than 0", file=sys.stderr)
-        raise SystemExit(EXIT_USAGE)
+        fail("invalid_argument", f"--multiplier {raw!r} must be greater than 0",
+             json_output=json_output, exit_code=EXIT_USAGE)
     return value
 
 
-def _one_project_history(project: str | None) -> tuple[Path, str]:
+def _one_project_history(project: str | None, *, json_output: bool) -> tuple[Path, str]:
     """The single project's history file, plus a human label for the scope.
 
     EXACTLY ONE PROJECT and no `--all-projects`: two projects' benches are two
@@ -116,12 +115,12 @@ def _one_project_history(project: str | None) -> tuple[Path, str]:
 
     scope = resolve_scope(project_flag=project, all_projects=False)
     if scope.project_id is None:
-        print(
-            "Error: no project resolved for stats bench. Run inside a registered "
+        fail(
+            "no_project",
+            "no project resolved for stats bench. Run inside a registered "
             "project or pass --project <slug-or-uuid>.",
-            file=sys.stderr,
+            json_output=json_output,
         )
-        raise SystemExit(EXIT_ERROR)
     return bench_history_path_for(scope.project_id), f"project {scope.project_id}"
 
 
@@ -331,8 +330,8 @@ def _cmd_stats_bench(*, series: str | None = None,
     """Read the history, pick the series, and render its trend. Writes nothing."""
     from packages.orchestration.bench_history import bench_regressions
 
-    factor = _validate_multiplier(multiplier)
-    path, scope_label = _one_project_history(project)
+    factor = _validate_multiplier(multiplier, json_output=json_output)
+    path, scope_label = _one_project_history(project, json_output=json_output)
     entries = load_bench_history(path)
     available = _series_present(entries)
 
@@ -345,10 +344,10 @@ def _cmd_stats_bench(*, series: str | None = None,
             if exists else "nothing has been recorded yet — the bench has not run"
         )
         if json_output:
-            print(_json.dumps(_bench_payload(
+            emit_ok(**_bench_payload(
                 path=path, scope_label=scope_label, series=None,
                 selected_by="none", available=available, rows=[], run_seqs=[],
-                warnings=(), multiplier=factor) | {"empty_reason": reason}, indent=2))
+                warnings=(), multiplier=factor) | {"empty_reason": reason})
         else:
             print(f"Capability bench trend — {scope_label}")
             print(f"History: {path}")
@@ -364,11 +363,11 @@ def _cmd_stats_bench(*, series: str | None = None,
     if not mine:
         # Naming what IS there beats an empty table that looks like a clean run.
         if json_output:
-            print(_json.dumps(_bench_payload(
+            emit_ok(**_bench_payload(
                 path=path, scope_label=scope_label, series=chosen,
                 selected_by=selected_by, available=available, rows=[],
                 run_seqs=[], warnings=(), multiplier=factor)
-                | {"empty_reason": "no row of this series is recorded"}, indent=2))
+                | {"empty_reason": "no row of this series is recorded"})
         else:
             print(f"Capability bench trend — {scope_label}")
             print(f"History: {path}")
@@ -380,10 +379,10 @@ def _cmd_stats_bench(*, series: str | None = None,
     warnings = bench_regressions(entries, series=chosen, multiplier=factor)
 
     if json_output:
-        print(_json.dumps(_bench_payload(
+        emit_ok(**_bench_payload(
             path=path, scope_label=scope_label, series=chosen,
             selected_by=selected_by, available=available, rows=mine,
-            run_seqs=run_seqs, warnings=warnings, multiplier=factor), indent=2))
+            run_seqs=run_seqs, warnings=warnings, multiplier=factor))
     else:
         print(_render_bench_human(
             path=path, scope_label=scope_label, series=chosen,

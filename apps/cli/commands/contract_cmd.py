@@ -13,11 +13,10 @@ D2 rule exits 1 naming the rule.
 """
 from __future__ import annotations
 
-import json as _json
 from collections.abc import Callable
 from typing import TYPE_CHECKING, Any
 
-from apps.cli.json_envelope import fail
+from apps.cli.json_envelope import emit_ok, fail
 
 if TYPE_CHECKING:
     import argparse
@@ -53,10 +52,8 @@ def _cmd_mission_contract(mission_id: str, *, project: str | None = None,
     contract = _read_contract_or_exit(mission, json_output=json_output)
 
     if json_output:
-        print(_json.dumps({"version": 1, "mission_id": mission.id,
-                           "contract": (contract.to_json()
-                                        if contract is not None else None)},
-                          sort_keys=True))
+        emit_ok(version=1, mission_id=mission.id,
+                contract=(contract.to_json() if contract is not None else None))
         return
     if contract is None:
         print(f"Mission {mission.id} has no contract yet.")
@@ -69,7 +66,7 @@ def _cmd_mission_contract(mission_id: str, *, project: str | None = None,
 
 def _cmd_job_contract(job_id_str: str, *, json_output: bool = False) -> None:
     """``remedy job contract <id>`` — the slice of its mission's contract a job serves."""
-    from packages.orchestration.data_paths import resolve_job_id
+    from apps.cli.job_id_arg import resolve_job_id_or_fail
     from packages.orchestration.mission_contract import (
         job_contract_slice,
         read_job_milestone,
@@ -82,7 +79,7 @@ def _cmd_job_contract(job_id_str: str, *, json_output: bool = False) -> None:
         require_job_plan,
     )
 
-    job_id = resolve_job_id(job_id_str)
+    job_id = resolve_job_id_or_fail(job_id_str, json_output=json_output)
     try:
         require_job_plan(job_id)
     except (JobNotFoundError, JobStoreError) as exc:
@@ -97,15 +94,15 @@ def _cmd_job_contract(job_id_str: str, *, json_output: bool = False) -> None:
                 if contract is not None else ())
 
     if json_output:
-        print(_json.dumps({
-            "version": 1,
-            "job_id": job_id,
-            "mission_id": mission.id if mission is not None else None,
-            "milestone_id": milestone_id,
-            "contract": ({"template": contract.template,
-                          "criteria": [c.to_json() for c in criteria]}
-                         if contract is not None else None),
-        }, sort_keys=True))
+        emit_ok(
+            version=1,
+            job_id=job_id,
+            mission_id=mission.id if mission is not None else None,
+            milestone_id=milestone_id,
+            contract=({"template": contract.template,
+                       "criteria": [c.to_json() for c in criteria]}
+                      if contract is not None else None),
+        )
         return
     if mission is None:
         print(f"Job {job_id} belongs to no mission, so it has no contract.")

@@ -32,13 +32,25 @@ def env(tmp_path, monkeypatch):
 
 
 def test_snapshot_create_show(env):
+    """F283 R18 C4 (DECISION F283 D10) — the success document, through the real
+    subprocess dispatcher, carries the envelope `emit_ok` added this round. The
+    record's OWN `schema_version` (a domain string, unrelated to the envelope's
+    integer of the same name) survives renamed to `record_schema_version`
+    (`_envelope_safe` in `real_test_execution_cmd.py`) rather than being
+    dropped, since the two clash by name only."""
     jid = _job(env)
     r = run_grouped_cli(["snapshot", "create", jid, "--json"], env)
     assert r.returncode == 0, r.stderr
     d = json.loads(r.stdout)
+    assert d["schema_version"] == 1
+    assert d["ok"] is True
+    assert d["record_schema_version"] == "real-test-execution-v1"
     assert d["restore_available"] is False and "Traceback" not in r.stdout
     r2 = run_grouped_cli(["snapshot", "show", d["snapshot_id"], "--json"], env)
-    assert json.loads(r2.stdout)["snapshot_id"] == d["snapshot_id"]
+    body2 = json.loads(r2.stdout)
+    assert body2["schema_version"] == 1
+    assert body2["ok"] is True
+    assert body2["snapshot_id"] == d["snapshot_id"]
 
 
 def test_test_list_empty(env):
@@ -111,10 +123,19 @@ def test_test_list_since_and_until_filter_by_created_at(capsys):
 
 
 def test_test_list_unknown_sort_field_exits_nonzero(capsys):
+    """F283 R12 C3 — `invalid_list_option` used to print to stderr regardless of
+    `--json`; the plain rule now answers the envelope on stdout when the flag holds,
+    matching every other mechanical refusal in this module."""
     with pytest.raises(SystemExit) as exc:
         _test_list_json(capsys, sort="bogus")
     assert exc.value.code == 1
-    assert "valid fields: created_at, status, test_run_id" in capsys.readouterr().err
+    captured = capsys.readouterr()
+    assert captured.err == ""
+    body = json.loads(captured.out)
+    assert body["schema_version"] == 1
+    assert body["ok"] is False
+    assert body["error"] == "invalid_list_option"
+    assert "valid fields: created_at, status, test_run_id" in body["message"]
 
 
 def test_test_integrity(env):
@@ -130,6 +151,31 @@ def test_invalid_ids(env):
     assert r1.returncode == 1 and "Traceback" not in r1.stderr
     r2 = run_grouped_cli(["snapshot", "show", "nope", "--json"], env)
     assert r2.returncode == 1
+
+
+def test_test_result_not_found_answers_the_envelope(env):
+    """F283 R12 C3 — `_cmd_test_result`'s bare `Error: test run not found` line moves
+    onto `fail()` by the plain rule; `--json` now answers the envelope instead of the
+    prose it always printed regardless of the flag."""
+    r = run_grouped_cli(["test", "result", "nope", "--json"], env)
+    assert r.returncode == 1
+    assert r.stderr == ""
+    body = json.loads(r.stdout)
+    assert body["schema_version"] == 1
+    assert body["ok"] is False
+    assert body["error"] == "test_run_not_found"
+
+
+def test_snapshot_show_not_found_answers_the_envelope(env):
+    """F283 R12 C3 — `_cmd_snapshot_show`'s bare `Error: snapshot proof not found`
+    line moves onto `fail()` the same way."""
+    r = run_grouped_cli(["snapshot", "show", "nope", "--json"], env)
+    assert r.returncode == 1
+    assert r.stderr == ""
+    body = json.loads(r.stdout)
+    assert body["schema_version"] == 1
+    assert body["ok"] is False
+    assert body["error"] == "snapshot_proof_not_found"
 
 
 def test_json_purity(env):

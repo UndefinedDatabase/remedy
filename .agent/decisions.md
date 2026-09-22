@@ -17753,3 +17753,481 @@ The operator asked: "what keeps Remedy on the newest Python and package versions
 ## DECISION amend0921-operator-feedback D7 (2026-09-21, operator amendment, delegated) — three retained job worktrees removed, thirty-seven worktree-less job branches kept
 
 The loop is forbidden to remove the worktrees Remedy's jobs leave behind, so they accumulate. This amendment was allowed exactly one kind of deletion: a `remedy/job-*` worktree whose branch has no commits beyond main, or whose job has no `job.json` under the data root, is removed together with its branch. `git worktree list` showed three such worktrees under `.remedy-wt/`, and each branch had zero commits beyond both `origin/main` and the local `main` and a clean working tree: `remedy/job-468c8e62a2cc4fac` (tip `1b9ae606`, a probe from F273's round 23 on 2026-09-19), `remedy/job-86f628f5e4fb4e0c` (tip `aca27d4a`, the blocked self-use run of F277's round 13 that finding R-1016 describes; its evidence lives under the data root, not in the worktree) and `remedy/job-c1dba9c3d7874968` (tip `fd23710f`, from F276's round 8 on 2026-09-20). All three were removed with `git worktree remove --force` and their branches deleted with `git branch -D`. Nothing else was removed. Thirty-seven further `remedy/job-*` branches exist without any worktree; the amendment's permission covers worktrees, so they were kept and are named here for a later decision. The data root could not be read from this session, so the `job.json` condition was not needed and not tested; the zero-commits condition alone qualified all three. Reverse by recreating a branch from its tip commit named above (`git branch remedy/job-<id> <tip>`); the worktrees held no uncommitted work.
+
+DECISION F283 D2 (2026-09-21, round 7) — UNDER `--json` THE COST-PREVIEW ESTIMATE LINE GOES TO
+STDERR, AND THE NON-TERMINAL REFUSAL GOES THROUGH `fail()`.
+
+CONTEXT. Finding R-1024. `apps/cli/cost_preview_confirm.py::confirm_cost_preview` prints the
+estimate line to stdout on every path that proceeds, and on a non-terminal stdin without `--yes`
+prints an `Error:` line to stderr and exits 2 itself. Its one caller is `_cmd_job_run_cycles`,
+which serves `job run` and `job resume`, and both declare `supports_json`. Under `--json` a
+consumer therefore reads a prose line before the command's JSON, or reads prose and nothing.
+
+CHOSEN. The helper takes `json_output: bool = False`, and its caller passes its own. Under the
+flag, every line the helper prints for a human goes to stderr instead of stdout, byte for byte
+the same text; and the non-terminal refusal becomes `fail("confirmation_required", <the same
+sentence without its "Error: " prefix>, json_output=json_output, exit_code=EXIT_USAGE)`. With the
+flag off nothing changes: the same lines on the same streams, the same exit code. The estimate
+line is kept rather than dropped under `--json` because its docstring states why it exists — "so
+the skip is visible in evidence" — and stderr keeps it visible to the operator and to any log
+that captures both streams, while stdout stays the one parseable object the envelope promises.
+
+ALTERNATIVES. Put the estimate into the command's JSON as a key — rejected for this round: the
+helper returns a bool before the command has built any output, so carrying the estimate would
+change the helper's return shape and every caller's success document, which is T002's sweep and
+not a refusal repair. Suppress the line under `--json` — rejected: it removes the audit trail of
+a skipped confirmation, which is the one thing the `--yes` branch exists to leave behind.
+
+REVERSE by deleting this paragraph and restoring `apps/cli/cost_preview_confirm.py` and its one
+call site in `apps/cli/commands/job.py` from git history at the parent of the commit that lands
+this decision's patch.
+
+DECISION F283 D3 (2026-09-21, round 8) — THE SINGLE-PASS `job run --json` ANSWERS IN THE ENVELOPE,
+AND A BLOCKED RESUME REFUSES THROUGH `fail()` WITH ITS OLD KEYS KEPT.
+
+CONTEXT. `job run` and `job resume` declare `supports_json`. While the resolved cycle count is
+one — the F046 rollout default — `_cmd_job_run_cycles` hands the run to
+`_cmd_run_next_task_local`, which prints its outcome as a prose line on stdout whatever the flag
+says: `Job <id> | task=... verified=pass log=...`, a dry-run block after it when there is one,
+and on a verification failure one `verification failure:` line per failed check on stderr and
+exit 1. A job with no pending task prints `Job <id> — no pending tasks. log=...` and exits 0.
+The multi-cycle branch, by contrast, already prints `result.to_json()` under the flag. Separately,
+`_cmd_resume` refuses a blocked resume by hand: under the flag it prints its own
+`{"resumed": false, "blocked_reason": ..., "worktrees": [...]}` with no `ok` and no
+`schema_version`, and without it prints `Resume blocked: ...` lines with no `Error: ` prefix.
+
+CHOSEN, part (a) — THE SINGLE PASS. Under the flag, `_cmd_run_next_task_local` writes exactly
+one envelope to stdout and no prose there. A run that verified is `emit_ok(...)` carrying the
+facts the prose line carries, as keys: `job_id`, `task_id`, `task_type`, `model`,
+`elapsed_ms`, `remaining`, `file`, `repo` (null when none), `patch_intents`, `verified` (true),
+`failures` (empty), `dry_run` (the dry-run block's text, or null) and `log`. A run whose
+verification failed is `fail("verification_failed", "<n> verification check(s) failed",
+json_output=True, ...)` carrying the same keys with `verified` false and `failures` a list of
+`{"check", "message"}` objects, at exit 1 — the same code the text branch uses, because the
+work happened and the failure is its verdict, which is what `fail()`'s `ok: false` says to a
+machine. A job with no pending task is `emit_ok(job_id=..., outcome="no_pending_tasks",
+log=...)` at exit 0. With the flag off every byte and exit code is unchanged.
+
+CHOSEN, part (b) — THE BLOCKED RESUME. Both blocked branches become
+`fail("resume_blocked", <message>, json_output=json_output, resumed=False,
+blocked_reason=<the same value>, worktrees=<the same list>)` at exit 1. The three keys a
+consumer already reads stay under the same names and values, and the envelope adds `ok`,
+`schema_version`, `error` and `message`. The text branch gains the `Error: ` prefix, as DECISION
+F277 D8 part (b) ruled for the two unprefixed `job context` refusals and for the same reason: an
+operator grepping for `Error: ` was missing these; the per-worktree lines become the message's
+indented continuation lines, so each blocked worktree is still named on its own line.
+
+ALTERNATIVES. Print `result.to_json()`-style raw objects for the single pass, as the
+multi-cycle branch does — rejected: T002's acceptance line asks for the envelope on success, and
+adding one more un-enveloped success document is adding to that sweep's work. Leave the blocked
+resume's JSON as it is and only add `ok` by hand — rejected: that is a second hand-rolled
+envelope, the exact shape `fail()` exists to replace.
+
+REVERSE by deleting this paragraph and restoring `_cmd_run_next_task_local` and `_cmd_resume` in
+`apps/cli/commands/job.py` from git history at the parent of the commit that lands this
+decision's patch.
+
+DECISION F283 D4 (2026-09-21, round 9) — AN UPPERCASE `ERROR: ` REFUSAL IS MIGRATED LIKE A
+`Error: ` ONE, AND GAINS THE CASE EVERY OTHER REFUSAL USES.
+
+CONTEXT. `apps/cli/commands/project.py` writes its refusals in two spellings: `Error: ...` at
+some sites and `ERROR: ...` at others — `invalid project UUID`, `project not found`, `is not a
+git repository`, and an ambiguous project selector among them. `fail()` writes `Error: ` and has
+no switch for the case, by DECISION F277 D8 part (b)'s ruling against a per-call-site prefix. The
+migration rule this feature's blocks state reaches only a `print` that begins with `Error: `, so
+as written it would leave every uppercase site in prose. Measured before this decision: no test
+under `tests/` asserts the string `ERROR:` at all.
+
+CHOSEN. A pair whose `print` begins with `ERROR: ` is migrated exactly like one that begins with
+`Error: `: the message passed to `fail()` is the text after the prefix, and the operator now
+reads `Error: ` where the line read `ERROR: `. This is the second deliberate text change of its
+kind, after D8 part (b)'s two unprefixed `job context` lines, and for the same reason: an
+operator grepping for the prefix every other refusal in the CLI uses was missing these. Nothing
+else in any message changes. A `print(str(exc), file=sys.stderr)` with NO prefix at all is still
+not reached by the rule; it stays and is counted, because giving it a prefix is a wording choice
+about a message the exception composes, not a case normalisation.
+
+ALTERNATIVES. Leave the uppercase sites in prose until a later round — rejected: they are
+refusals of `supports_json` commands like the rest, and deferring them is deferring the defect.
+Give `fail()` a case switch — rejected by D8 part (b)'s own reasoning; it preserves the
+inconsistency it exists to remove.
+
+REVERSE by deleting this paragraph and restoring `apps/cli/commands/project.py` from git history
+at the parent of the commit that lands this decision's patch.
+
+DECISION F283 D5 (2026-09-21, round 10) — `remedy do --json` ANSWERS IN ONE ENVELOPE, AND A
+FAILED WALK CARRIES ITS WHOLE RESULT DOCUMENT INSIDE THE FAILURE ENVELOPE.
+
+CONTEXT. `apps/cli/commands/do_cmd.py::_cmd_do_order` prints its result document under `--json`
+unconditionally and then, when a step failed, prints `Error: <step> failed: <detail>` on stderr and
+exits 1. Round 8 declined to move that last line onto `fail()`, correctly: a `fail()` after the
+document puts a second JSON object on stdout. The document itself carries neither `schema_version`
+nor `ok`, so a consumer cannot tell a failed walk from a finished one without reading the exit code.
+Measured at `859f883c`: the only programmatic reader outside `tests/` is
+`scripts/remedy_smoke.sh`, which reads `mission_id`, `job_ids` and `stopped_before_apply` as
+top-level keys of one object.
+
+CHOSEN. Under `--json` the handler builds the same document with the same keys and emits exactly
+one object: `emit_ok(**document)` when no step failed, and
+`fail("step_failed", "<step> failed: <detail>", json_output=True, failed_step=<step>, **document)`
+when one did — so the failure envelope carries `ok` false, the token, the sentence, the name of the
+step and every key the document carried before, at exit 1. Every key stays top-level, so a reader
+of the old object keeps working. The object is written by the envelope's own writer, compact and
+with sorted keys, where the old one was indented; its content is unchanged. The text branch is
+byte-identical, its failure line now written by `fail(..., json_output=False)`.
+
+ALTERNATIVES. Print the failure envelope after the document — rejected: two objects on stdout is the
+defect. Nest the document under one key — rejected: it breaks every reader of the old top-level
+keys for no gain. Keep the old object and add `ok` by hand — rejected: that is a second envelope
+writer, which is what F277 T002 removed.
+
+REVERSE by deleting this paragraph and restoring `_cmd_do_order` from git history at the parent
+of the commit that lands this decision's patch.
+
+DECISION F283 D6 (2026-09-21, round 10) — A USAGE REFUSAL THE PARSER RAISES ANSWERS IN THE
+ENVELOPE WHEN `--json` IS ON THE COMMAND LINE.
+
+CONTEXT. `apps/cli/grouped.py::main` refuses an unknown group, an unknown subcommand, an
+unrecognized argument and a usage error on a known subcommand before any handler runs, in prose on
+stderr — or, for the last, with the command's help text — and exits 2. Under `--json` a parser then
+reads an empty stdout, or help text, which is the failure shape this feature exists to remove, and
+T002's sweep fires exactly these refusals with its deliberately invalid argument. One refusal there
+already answers in JSON, a conflicting-options object written by hand without `schema_version`.
+`_dispatch` already asks `_wants_json(raw)` — whether `--json` appears in the arguments — before
+it answers in the envelope, because no handler has parsed the flag yet.
+
+CHOSEN. Each of those refusals asks `_wants_json(raw)`. When it holds, the answer is one failure
+envelope on stdout, written by `emit_error`, and the exit code is unchanged: `conflicting_options`
+for the conflicting pair (the token that object already used), `unknown_command` for an unknown
+group or subcommand, `unrecognized_arguments` for an argument the parser did not consume, and for a
+usage error on a known subcommand `missing_argument` when the parser's message begins "the
+following arguments are required" and `invalid_argument` otherwise, the parser's own message being
+the envelope's `message`. When it does not hold, stderr and stdout are byte-identical to today,
+help text included. The text branch is `render_error`'s, which `fail()` cannot write, so these
+sites call `emit_error` and exit themselves rather than calling `fail()`. The two internal
+refusals after the parse — a missing command id and a missing handler — are ordinary
+`Error: `-prefixed pairs and move onto `fail()` with `json_output=_wants_json(raw)`, as
+`unknown_command` and `no_handler`.
+
+ALTERNATIVES. Leave parse-level refusals in prose and let T002's sweep exclude them — rejected: the
+sweep's invalid-argument half is the half F277 found broken. Give `fail()` a way to write
+`render_error`'s text — rejected: `fail`'s signature is F277's contract and this feature's file
+forbids changing it.
+
+REVERSE by deleting this paragraph and restoring `apps/cli/grouped.py::main` from git history at
+the parent of the commit that lands this decision's patch.
+
+DECISION F283 D7 (2026-09-21, round 12) — A REFUSAL IN A `--json` HANDLER THAT `fail()` CANNOT
+WRITE BYTE FOR BYTE ANSWERS THE ENVELOPE UNDER `--json` AND KEEPS ITS TEXT.
+
+CONTEXT. The migration rule reaches a refusal whose text is one `Error: `-prefixed line, because
+that is the line `fail()` writes. Measured at `e964343b`, the refusals left in `supports_json`
+handlers outside `runtime_cmd.py` include ones whose text is something else: a bare
+`print(str(exc))` in `project current` and in `config set`, a bare sentence in `config get` and
+`config init`, and two lines in `patch approve-hunks`. Under `--json` each answers prose on stderr,
+or a hand-written object without `schema_version` and `ok` — `config` writes `{"error": <the
+sentence>}` and `patch approve-hunks` writes `{"code": ..., "message": ..., "hunk_ids": ...}`. D4
+normalised a prefix's CASE; it gave no ruling on a line with no prefix, and said so. One more
+shape exists: `apps/cli/commands/worker_facade_cmd.py::_err` writes `{"error": <msg>}` to STDERR in
+both modes, reached only by `mission run` with an empty id.
+
+CHOSEN. Such a site takes the envelope under `--json` — `fail(<token>, <the text the line
+printed>, json_output=True[, exit_code=<n>], <kept keys>)` guarded by the handler's flag — and
+its text branch stays exactly as it is, however many lines it prints. The tokens: `project
+current` gives `project_not_found` for `ProjectNotFoundError` and `invalid_project_selector` for
+`InvalidProjectSelectorError`, at exit 3; `config get` gives `unknown_config_key`, `config init`
+`config_file_exists` and `config set` `invalid_config_value`; `patch approve-hunks` gives the
+decision core's own refusal code as the token, keeping `hunk_ids`, so the old `code` key becomes
+the envelope's `error` and is not repeated. `_err` is deleted and its one caller calls
+`fail("missing_argument", "run_id required", json_output=<flag>)`, so that line's text becomes
+`Error: run_id required` — the third deliberate text change of this kind, after D8 part (b) and
+D4, because a JSON object on stderr is a shape no reader of either stream expects. The
+cost-preview refusal in `apps/cli/cost_preview_confirm.py`, whose text is already the line
+`fail()` writes, collapses to one `fail()` call with no change to either branch.
+
+ALTERNATIVES. Give each of these lines an `Error: ` prefix so the plain rule reaches them —
+rejected: it rewords messages an operator reads for no gain to a machine, which is D4's own
+reason for leaving unprefixed lines alone. Leave them in prose until T002 — rejected: they are
+refusals of `supports_json` commands and T002's sweep would find them red.
+
+REVERSE by deleting this paragraph and restoring the named handlers from git history at the
+parent of the commit that lands this decision's patch.
+
+DECISION F283 D8 (2026-09-21, round 13) — `remedy runtime` REFUSES THROUGH `fail()` WITH A TOKEN
+PER ERROR CLASS, AND `error_class` SURVIVES IN THE PAYLOAD.
+
+CONTEXT. `apps/cli/commands/runtime_cmd.py` refuses through a local `_fail(message, code, *,
+json_output, payload)` that under `--json` prints `{"ok": false, "error": <the message>, ...}`
+without `schema_version`, so its `error` key holds a sentence where every other command's holds a
+token. Every call passes an `error_class` — `config`, `start`, `ready`, `handshake`, `state`,
+`lock` or `stop` — which the module docstring's exit-code contract (2 to 5) is keyed on and which
+is a contract with the supervisor subprocess and `packages/runtimes/dev_server.py`; this
+feature's file rules that it survives. Four more exits print a result document and then exit
+non-zero: the one-shot probe's cleanup survivors, a one-shot probe that did not reach readiness,
+a served runtime whose health URL failed, and a `stop` that did not stop — the D5 shape.
+
+CHOSEN. `_fail` is deleted. A module-local `_runtime_refusal(error_class, message, exit_code, *,
+json_output, **payload)` calls `fail()` with the token `RUNTIME_ERROR_TOKENS[error_class]`,
+`exit_code` unchanged and `error_class` kept in the payload beside every key the old call passed,
+so the token and the class cannot drift apart. The tokens: `config` → `runtime_config_error`,
+`start` → `runtime_start_failed`, `ready` → `runtime_not_ready`, `handshake` →
+`runtime_handshake_timeout`, `state` → `runtime_state_error`, `lock` → `runtime_lock_busy`,
+`stop` → `runtime_stop_failed`, and a class the supervisor reports that the table does not
+name → `runtime_error`. The four result-shaped exits answer ONE failure envelope under `--json`
+carrying the result document's keys except `ok` and `error`, whose sentence becomes the
+envelope's `message`, at the exit code they use today; their text branches are unchanged. The old
+`error` key held the sentence; a reader of it now reads `message`.
+
+ALTERNATIVES. Fold `error_class` into the token and drop the key — rejected by this feature's own
+file. Keep `_fail` and add `schema_version` to it — rejected: it is a second envelope writer.
+Give each call site its own token — rejected: the class is the condition the exit-code contract
+already names, and seven tokens keyed on it are what a consumer can branch on.
+
+REVERSE by deleting this paragraph and restoring `apps/cli/commands/runtime_cmd.py` from git
+history at the parent of the commit that lands this decision's patch.
+
+## DECISION amend0921-operator-feedback D8 (2026-09-21, operator amendment, delegated judgement) — main was pulled into F283's branch although main's STATUS file does not mark F283 as in progress
+
+The amendment ordered main to be merged into the open feature branch if `docs/roadmap/STATUS.md` on main showed a feature marked in progress (`- [~]`) and a branch existed for it. On main, after pull request 264 merged as `048a107e`, no line carries that mark, because F283 (machine contracts, part two) was claimed on its own branch and its in-progress mark lives only there; main still lists F283 as not started. The literal condition was therefore not met. The amendment's own opening sentence names the purpose, which is to pull main into the open feature branch, and F283's branch `feature/f283-machine-contracts-part-two` is the only open one, so main was merged into it with `git merge --no-ff` as merge commit `5ca50335`. The two conflicts, in `.agent/decisions.md` and `.agent/live_review.md`, were both appends at the end of the file and were resolved by keeping both sides, main's first. `tests/docs/` (315 passed), the golden-path canary (42 passed) and ruff (no findings) are green on the merged tree. Under DECISION D1 of this amendment, F283's closure re-runs its one full suite on this moved tree. Reverse by reverting the merge commit on the branch.
+
+DECISION F283 D9 (2026-09-22, round 14) — THE CATALOG HALF EMPTIES THE READ-ONLY SET BY
+TEACHING EACH COMMAND `--json`, AND A COMMAND THAT GAINS THE FLAG ANSWERS IN THE ENVELOPE
+FROM ITS FIRST COMMIT.
+
+CONTEXT. The derived rule of DECISION F277 D7 calls a command read-only when it declares
+neither `may_mutate_repo` nor `may_execute_commands`. Measured at `dc4c1e60` by that rule, the
+catalog holds 132 read-only commands and 33 of them do not declare `supports_json`: `init run`,
+`dev status`, `dev smoke-help`, `memory store` and the five memory card mutations, `blocker
+resolve`, `patch show`, `patch approve`, `patch reject`, `job plan`, the seven `brain` report
+and viewer commands, `decision resolve`, `decision explain`, the five `ui` commands and the
+five `project` create and attach commands. Two of them, `init run` and `dev status`, already
+carry `--json` and honour it; that is D7's false declaration. The rest print text only, and
+several print a report that a function under `packages/` renders as one string, with no
+structured exporter beside it.
+
+CHOSEN. (1) The set is emptied by making each command answer `--json`, and never by changing
+`may_mutate_repo` or `may_execute_commands`: those two flags say what a command does, and
+setting one to shrink a list would make the catalog lie. (2) A command that gains `--json` in
+this half answers success with `emit_ok(**payload)` and every refusal with
+`fail(..., json_output=json_output)`. It writes no raw `json.dumps` document and no `version`
+key, because `schema_version` is the envelope's. The payload holds the values the handler
+already has: the ids it resolved, the paths it wrote, the records it changed and the counts it
+printed. Where the text output is a report that a `packages/` function returns as one string,
+the payload carries that string under `text` beside the ids; splitting a report into keys is
+not this feature's scope, and a later feature may add keys without bumping `schema_version`.
+(3) Nothing but the output changes under `--json`: an opener still opens, a server still
+serves, a record is still written, and the envelope says what was done. Warnings stay on
+stderr, so stdout under `--json` carries exactly one envelope. The one exception is `ui
+start`, which runs until it is stopped: it prints its one envelope once the server is bound,
+and then serves. (4) `init run` and `dev status` gain only the declaration here, together with
+the `--json` branch of `init run`'s not-a-repository refusal moving onto `fail()` with its exit
+code 4 and the reused token `not_a_git_repo`, its text branch kept under DECISION F283 D7. Their success documents are raw `json.dumps` sites like the others
+T002's success half converts, and they are converted there, with the others, by one rule. (5) A
+handler lambda reads the flag as `getattr(args, "json", False)`, because the UI command door
+builds its own argument namespace for the one command of this set it exposes, `decision
+resolve`. (6) A ratchet in `tests/test_command_catalog.py` pins the commands still missing the
+declaration by EQUALITY, so a command can neither leave the set unannounced nor join it. Each
+round that lands a group removes that group from the ratchet, and the round that lands the last
+group asserts the set is empty and deletes the constant. The groups land in this order: `init`,
+`dev`, `memory`, `blocker` and `patch` first; then `decision`, `job plan` and `brain`; then
+`ui` and `project`.
+
+ALTERNATIVES. Mark `ui start`, `ui open` and `brain open` as `may_execute_commands` so that they
+leave the set — rejected, because they start a server or an opener rather than executing a
+command the operator named, and a flag set to satisfy a test is the false declaration D7 found.
+Emit a raw document now and let T002 wrap it later — rejected, because it writes the output
+of the same thirty-one commands twice. Give every report its own structured keys now — rejected, because it
+reaches into `packages/` renderers the acceptance list does not ask for.
+
+REVERSE by deleting this paragraph, restoring each named command's catalog entry and handler
+from git history at `dc4c1e60`, and deleting the ratchet.
+
+DECISION F283 D10 (2026-09-22, round 17) — EVERY `--json` SUCCESS PATH WRITES ITS DOCUMENT
+THROUGH THE ENVELOPE, ADDITIVELY, AND A RESULT THAT FAILED IS A FAILURE ENVELOPE.
+
+CONTEXT. The acceptance list asks every `supports_json` command for a parseable envelope with
+`schema_version` and `ok` on success. Measured at `488fd05a` by the scanner
+`.remedy-wt/f283-r17-scratch/raw_sites.py`, 122 calls under `apps/cli/` still write a raw JSON
+document to stdout, `print(<json>.dumps(...))` or `<json>.dump(..., sys.stdout)`, across 34
+modules. A mechanical conversion of all of them in a disposable worktree turned 43 tests red in
+the round's selection, and every one of those reads the old document's exact shape. DECISION
+F283 D5 already rules this for `remedy do`; this decision takes its rule to every command.
+
+CHOSEN. (1) A `--json` success path writes `emit_ok(**document)`. The conversion is ADDITIVE:
+every top-level key of the old document stays, with the same name and the same value, including
+a `version` key where one exists, and the envelope adds `schema_version` and `ok`. Adding keys
+breaks no reader by the envelope's own contract, and a later decision may retire `version`. The
+envelope's writer is compact with sorted keys, where some old documents were indented; the
+content is unchanged. (2) A document that carries its own `ok`: when it is true it is dropped,
+because the envelope's `ok` says the same; when it is false the path is a failure and follows
+(3). (3) A path that prints a result document and then exits non-zero answers ONE failure
+envelope instead, as D5 rules: `fail(<token>, <sentence>, json_output=True, exit_code=<the same
+code>, **document)`, the token named for the condition by DECISION F277 D8. Where the document
+carries a key named like one of `fail()`'s own parameters — `error`, `message`, `json_output` or
+`exit_code` — the path writes `emit_error(<token>, <sentence>, **document)` followed by its
+existing `sys.exit(<code>)`, as the four result-shaped exits of `runtime_cmd.py` already do under
+DECISION F283 D8. (4) A top-level document that is not an object is carried under one named key,
+and every reader of it inside the repository changes in the same commit. (5) A raw document
+printed WITHOUT `--json`, in a text branch, is out of scope and stays as it is. (6) A ratchet in
+`tests/cli/test_json_envelope.py` counts the raw-document sites per module with the scanner's
+rule and pins them by EQUALITY; each conversion commit lowers it, and when the conversion is done
+it names only the text-branch survivors of (5), each with its reason.
+
+ALTERNATIVES. Nest the old document under one key such as `data` — rejected: it breaks every
+reader of the old top-level keys, which D5 already rejected for the same reason. Drop `version`
+while converting — rejected: removing a key can break a reader, and the envelope promises only
+that adding one cannot. Leave result documents that exit non-zero as they are — rejected: a
+parser would read `ok` true beside a failing exit code.
+
+REVERSE by deleting this paragraph and restoring each converted module and the ratchet from git
+history at `488fd05a`.
+
+DECISION F283 D11 (2026-09-22, round 19) — TWO SHAPES DECISION F283 D10 DID NOT RULE, TAKEN AS
+ROUND 18 TOOK THEM.
+
+CONTEXT. Round 18 met two cases D10 names no rule for, and its worker decided both and declared
+them. First, `SnapshotProof.to_dict()` in `packages/orchestration/real_test_execution.py` carries
+its own `schema_version`, the record schema's version string, which collides by name with the
+envelope's reserved key, so `emit_ok` refuses the document as it stands. Second, `patch revert
+--json` on a revert that was refused or failed names its condition through the result's
+`block_reason`, else its terminal `state`, and not through one fixed token; measured at
+`5d1510ca`, the `block_reason` values are string literals the revert path of
+`packages/orchestration/repository_snapshot.py` sets, among them `no_apply_record`,
+`no_snapshot`, `permission_denied`, `contract_denied`, `verify_failed` and `post_apply_drift`.
+
+CHOSEN. (1) A document key that collides with one of the envelope's reserved keys,
+`schema_version` or `ok`, is renamed with the prefix `record_`, so `record_schema_version` and
+`record_ok`, by one helper in the module that writes the document, and its value is unchanged.
+This is the one place a D10 conversion is not additive, because the envelope's own key is the
+contract every consumer is entitled to assume. (2) Where a module already names a failure
+condition in a closed set of literals of its own, that literal is the token: `patch revert`
+passes its `block_reason`, else its `state`, else `revert_failed`. DECISION F277 D8 rules that a
+token is named for the condition, and those literals are the condition's name.
+
+ALTERNATIVES. Nest the snapshot record under one key — rejected: it breaks every reader of the
+record's other keys to save one. Drop the record's version string — rejected: it removes
+information a reader may use. One fixed `revert_failed` token for every failed revert —
+rejected: it discards the condition the module already names.
+
+REVERSE by deleting this paragraph and restoring `_envelope_safe` in
+`apps/cli/commands/real_test_execution_cmd.py` and `_cmd_revert_patch_intent` in
+`apps/cli/commands/patch.py` from git history at `9f36956f`.
+
+DECISION F283 D12 (2026-09-22, round 20) — THE EXIT-CODE TAXONOMY: ONE MEANING PER CODE FOR
+THE CLI, THE RUNTIME GROUP'S OWN CONTRACT BESIDE IT, AND EVERY COMMAND'S CODES DECLARED IN THE
+CATALOG.
+
+CONTEXT. No document gave any exit code a meaning. Measured at `98a85b67` by an AST scan of
+`apps/cli/` over `sys.exit(...)`, `SystemExit(...)` and `fail(..., exit_code=...)`: literal
+code 1 at 193 sites, 2 at 25, 3 at 17 and 4 at 2, plus 28 sites that name a module constant
+or a computed value, and those constants resolve to 1 to 5. The code 3 already meant one thing
+wherever it was written (no project, an unknown job or task, a plan awaiting approval or
+rejected, worktree drift), 4 meant "not a git repository" in `init`, and the `runtime` group
+used 2 to 5 for a contract of its own, keyed on `error_class`, that the supervisor subprocess
+and `packages/runtimes/dev_server.py` read (the feature file's T001). Round 19's reviewer also
+observed that `job resume --checkpoint` answers `ok` true at exit 0 in branches that did not
+resume, and left the ruling to this decision.
+
+CHOSEN. (1) The CLI's meanings. 0 `ok`: the command did what it was asked, including finding
+nothing to do or honouring a pending stop request. 1 `failed`: the command ran and did not do
+what was asked — a refusal, a failed operation, a red check, drift found; it is the general
+failure and the code of every refusal no narrower meaning claims. 2 `usage`: the invocation
+itself is wrong — an unknown command, or a missing, invalid, unrecognised or conflicting
+argument — and nothing was attempted. 3 `not_ready`: the invocation is well formed, but what it
+names is absent or not in a state the command can act on. 4 `environment`: the machine lacks a
+prerequisite the command cannot supply, such as a git repository.
+(2) The `runtime` group keeps its contract, because a process outside the CLI reads it: 2
+`config`, the runtime configuration is missing or invalid; 3 `start`, the server did not
+start; 4 `ready`, it started and never answered ready; 5 `state`, a lifecycle or state failure
+such as a failed stop, surviving processes or an unreadable state file. 0 and 1 mean what they
+mean everywhere, and a malformed invocation of a runtime command still exits 2.
+(3) The meanings are written once, as two tables in a new module `apps/cli/exit_codes.py`.
+The guide `docs/guides/exit-codes.md` carries both tables and one row per command that
+declares more than the floor below, and a test asserts all of it equal to the module and to
+the catalog, so the guide is read from the catalog and never from prose.
+(4) Every catalog entry declares its codes in a new field, `CommandEntry.exit_codes`, whose
+default `(0, 1, 2)` is the floor every command reaches: the parser exits 2 on a malformed
+invocation and the dispatch boundary exits 1 on an unhandled exception. A command declares a
+code above the floor exactly when its handler reaches it. `tests/cli/test_exit_codes.py` reads
+each handler statically — its own body, the same-module functions it calls, the `apps.cli`
+functions it imports, and a code passed into a helper's `exit_code` parameter at the call site
+— and asserts, per command, that the codes above the floor it reaches EQUAL the codes above the
+floor it declares, and that every declared code has a meaning in its group's table. A site
+whose code that reading cannot resolve is named in the test with the codes a reader verified
+by hand, and an unnamed unresolved site fails the test.
+(5) No existing site is renumbered. A code is a contract with every script that reads it, so an
+older site that answers a not-ready condition with 1 stays at 1, which (1) permits.
+(6) Round 19's observation. `_cmd_resume` in `apps/cli/commands/job.py` answered a success
+envelope at exit 0 in two branches that did not resume: a `from_apply` continuation refused by
+its own validation, and a resume mode with no implementation. The second is unreachable at
+`98a85b67`, since `packages/orchestration/event_replay.py` marks only `from_apply` checkpoints
+safe to resume, and is converted so that adding a mode cannot make it a silent success. Both
+now refuse through `fail("resume_blocked", ...)` at exit 1 with `resumed` false and the
+`blocked_reason` and `worktrees` keys, the token, code and keys the two sibling refusals of
+`_cmd_resume` already use. A resume that ran and whose tests came out red still exits 0: it
+did what it was asked, and the outcome is its data, `tests_passed`.
+
+ALTERNATIVES. Document the codes in the guide alone — rejected: the feature file asks for the
+documentation to be asserted from the catalog, and prose drifts. Declare codes per group
+instead of per command — rejected: one `project` command reaching 3 would license 3 for every
+`project` command, so the declaration would say nothing. Renumber the older not-ready sites to
+3 — rejected: it breaks shell callers for a tidier table. Fold the runtime codes into the CLI
+table — rejected: it changes a contract a subprocess reads.
+
+REVERSE by deleting this paragraph, `apps/cli/exit_codes.py`, `docs/guides/exit-codes.md` with
+its two rows in `docs/README.md`, `tests/cli/test_exit_codes.py` and the `exit_codes` field
+with its declarations in `apps/cli/command_catalog.py`, and by restoring `_cmd_resume` in
+`apps/cli/commands/job.py` from git history at `98a85b67`.
+
+DECISION F283 D13 (2026-09-22, round 21) — WHAT THE `--json` SWEEP RUNS, WHAT IT ASSERTS, AND WHAT
+IT DELIBERATELY DOES NOT PREPARE.
+
+CONTEXT. T002's last line asks for a sweep over every `supports_json` command reachable without a
+positional argument, asserting a parseable envelope on success AND on a deliberately invalid
+argument, with catalog-to-dispatch parity in the same file. Two things had to be measured before
+that could be ordered, and the reviewer measured both at `a100a48a` by running the commands. First,
+an invalid argument is refused at PARSE level, before any handler runs, so that half is safe for
+every command in the catalog and not only for the ones without a positional: all 144
+`supports_json` commands answer an envelope with `ok` false at exit 2 when given an unrecognised
+option. Second, a command that RUNS is only safe when it neither mutates the repository nor
+executes anything, and the catalog's own classification is not enough on its own — `ui stop`
+declares `read_only` while it stops every running UI session (finding R-1034).
+
+CHOSEN. (1) The sweep lives in `tests/cli/test_json_contract.py` and has two halves. The INVALID
+half runs every `supports_json` command in the catalog with one unrecognised option and `--json`.
+The SUCCESS half runs every `supports_json` command that needs no positional argument, whose
+action class is `read_only`, which neither mutates the repository nor executes commands, and which
+is not excluded by name: 33 commands at `a100a48a`.
+(2) Both halves assert the same three properties of what the command wrote to standard output: it
+parses as ONE JSON object; that object carries `schema_version` 1 and a boolean `ok`; and the exit
+code is 0 if and only if `ok` is true. The third is the join between this feature's two halves —
+the envelope says what happened and DECISION F283 D12 (1) says the number must agree with it — and
+it is the assertion that would have caught a success envelope shipped at a failing exit code.
+(3) Exclusions are BY NAME with their reason in the test, never by a silent filter. At `a100a48a`
+there is one: `ui.stop`, which stops live sessions on the machine running the suite, under finding
+R-1034.
+(4) Both halves run IN PROCESS, calling the grouped CLI's own entry point with an argument list,
+under the suite's isolated data root (`_isolated_data_root` in `tests/conftest.py`, which points
+`REMEDY_DATA_DIR` at a temporary directory for every test). Measured by the reviewer: the success
+half takes about three seconds in that environment, against seventeen seconds for `data usage`
+alone when it reads a real data root.
+(5) PARITY: every catalog `command_id` has exactly one handler in the dispatch table and every
+dispatch key is a catalog `command_id`. Measured at `a100a48a`: 145 entries and 145 handlers.
+(6) DELIBERATE ABSENCE. The sweep prepares no project, no job and no token ledger, so a command
+that needs one answers a REFUSAL envelope rather than a success envelope, and the sweep asserts the
+envelope and the exit-code agreement rather than the contents. Preparing a full world for 33
+commands would make the sweep a fixture suite whose failures are about the fixture, and the
+per-command tests this feature has been landing since round 14 are where the CONTENT is pinned.
+The gap that absence leaves is real and this round shows it: `stats report --json` answers an
+envelope in an empty data root, because it refuses without a project, and answers a document that
+is not an envelope when a ledger exists (finding R-1033), which only a test with a ledger reaches.
+That is the shape of what the sweep can and cannot see, stated here rather than discovered later.
+
+ALTERNATIVES. Sweep only the commands without a positional argument in the invalid half too —
+rejected: the parse level refuses before any handler runs, so the wider half is free and covers
+every command. Derive the safe set from `action_class` alone — rejected, R-1034 is the
+counter-example. Prepare a project and a ledger for the success half — rejected under (6). Assert
+only that the output parses — rejected: the exit-code agreement in (2) is the property a machine
+consumer actually depends on.
+
+REVERSE by deleting this paragraph and `tests/cli/test_json_contract.py`.

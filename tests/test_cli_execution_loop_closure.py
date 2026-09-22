@@ -166,6 +166,26 @@ class TestSmokeScriptNewCliSections:
         assert " do " in script
 
 
+class TestDevSmokeHelpJson:
+    """F283 R14 C3 — `dev smoke-help` answers `--json` in the envelope."""
+
+    def test_dev_smoke_help_json_through_the_dispatcher(self):
+        import contextlib
+        import io
+
+        from apps.cli.grouped import main
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            main(["dev", "smoke-help", "--json"])
+        data = json.loads(buf.getvalue())
+        assert data["schema_version"] == 1
+        assert data["ok"] is True
+        assert data["commands"] == [
+            "source scripts/remedy_smoke.sh && remedy_smoke",
+            "bash scripts/remedy_smoke.sh",
+        ]
+
+
 # =========================================================================
 # Step 161 — Dev Status Expanded
 # =========================================================================

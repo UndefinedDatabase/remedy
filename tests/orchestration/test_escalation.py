@@ -1093,7 +1093,7 @@ class TestUnattendedRunLoopCliFlag:
         # runs, so the flag cannot do what its help promises.
         from apps.cli.commands import job as job_cmd
 
-        monkeypatch.setattr(job_cmd, "_cmd_run_next_task_local", lambda _: None)
+        monkeypatch.setattr(job_cmd, "_cmd_run_next_task_local", lambda _j, **_kw: None)
         job_cmd._cmd_job_run_cycles("abc12345", unattended=True)
 
         assert "--unattended has no effect" in capsys.readouterr().err
@@ -1101,7 +1101,7 @@ class TestUnattendedRunLoopCliFlag:
     def test_the_single_pass_is_silent_without_the_flag(self, monkeypatch, capsys):
         from apps.cli.commands import job as job_cmd
 
-        monkeypatch.setattr(job_cmd, "_cmd_run_next_task_local", lambda _: None)
+        monkeypatch.setattr(job_cmd, "_cmd_run_next_task_local", lambda _j, **_kw: None)
         job_cmd._cmd_job_run_cycles("abc12345", yes=True)
 
         assert "--unattended" not in capsys.readouterr().err

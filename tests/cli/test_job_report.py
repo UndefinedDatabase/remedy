@@ -254,8 +254,11 @@ class TestTheProgressView:
         job = saved_job()
         section, _text = show_report(capsys, str(job.job_id))
         data = section["data"]
-        assert list(data) == [*PROGRESS_KEYS, "run_report"]
-        assert list(data["run_report"]) == ["mode", "sources", "markdown"]
+        # F283 R19 C4 (DECISION F283 D10) — `emit_ok`'s writer sorts every
+        # level, so the KEY SET is asserted rather than the insertion order
+        # the envelope no longer preserves.
+        assert set(data) == {*PROGRESS_KEYS, "run_report"}
+        assert set(data["run_report"]) == {"mode", "sources", "markdown"}
         assert data["job_id"] == str(job.job_id)
         assert (data["task_count"], data["done_count"], data["pending_count"]) == (2, 2, 0)
         assert [task["description"] for task in data["tasks"]] == ["task 0", "task 1"]

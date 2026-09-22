@@ -1,0 +1,1 @@
+2026-09-22, F283 round 20 — the block's constraint 3 enumerated the round's paths and did not name `tests/orchestration/import_reachability_allowlist.txt`, which a new module under `apps/cli/` always grows; the worker spent the constraint's one discretionary slot on it and declared the extra commit.

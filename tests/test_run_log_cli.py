@@ -18,6 +18,7 @@ via monkeypatch so tests write to tmp_path.
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -278,6 +279,21 @@ class TestRunNextTaskLocalNoop:
         out = capsys.readouterr().out
         assert "log=" in out
 
+    def test_noop_json_output_answers_in_the_envelope(self, tmp_path, monkeypatch, capsys):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        job = JobPlan(job_title="test", state=RunState.PENDING)
+        save_job_plan(job)
+
+        from apps.cli.commands.job import _cmd_run_next_task_local
+
+        _cmd_run_next_task_local(str(job.job_id), json_output=True)
+
+        out = capsys.readouterr().out
+        payload = json.loads(out)
+        assert payload["ok"] is True
+        assert payload["outcome"] == "no_pending_tasks"
+        assert payload["job_id"] == str(job.job_id)
+
 
 # ---------------------------------------------------------------------------
 # run-next-task-local run log — full success path
@@ -324,7 +340,7 @@ def _build_success_mocks(tmp_path, job: JobPlan, task: TaskEntry):
 class TestRunNextTaskLocalSuccess:
     """Full success path: all expected run log events are written."""
 
-    def _run_success(self, tmp_path, monkeypatch, task_type="write_readme"):
+    def _run_success(self, tmp_path, monkeypatch, task_type="write_readme", json_output=False):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
 
         job = JobPlan(job_title="test", state=RunState.RUNNING)
@@ -363,7 +379,7 @@ class TestRunNextTaskLocalSuccess:
         ):
             from apps.cli.commands.job import _cmd_run_next_task_local
 
-            _cmd_run_next_task_local(str(job.job_id))
+            _cmd_run_next_task_local(str(job.job_id), json_output=json_output)
 
         return job, _run_events_for_job(tmp_path, job.job_id)
 
@@ -418,6 +434,15 @@ class TestRunNextTaskLocalSuccess:
         out = capsys.readouterr().out
         assert "log=" in out
 
+    def test_success_json_output_answers_in_the_envelope(self, tmp_path, monkeypatch, capsys):
+        job, _ = self._run_success(tmp_path, monkeypatch, json_output=True)
+        out = capsys.readouterr().out
+        payload = json.loads(out)
+        assert payload["ok"] is True
+        assert payload["verified"] is True
+        assert payload["job_id"] == str(job.job_id)
+        assert payload["failures"] == []
+
 
 # ---------------------------------------------------------------------------
 # run-next-task-local — verification failure
@@ -425,7 +450,7 @@ class TestRunNextTaskLocalSuccess:
 
 
 class TestRunNextTaskVerificationFailure:
-    def _run_verification_failure(self, tmp_path, monkeypatch):
+    def _run_verification_failure(self, tmp_path, monkeypatch, json_output=False):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
 
         job = JobPlan(job_title="test", state=RunState.RUNNING)
@@ -499,8 +524,9 @@ class TestRunNextTaskVerificationFailure:
         ):
             from apps.cli.commands.job import _cmd_run_next_task_local
 
-            with pytest.raises(SystemExit):
-                _cmd_run_next_task_local(str(job.job_id))
+            with pytest.raises(SystemExit) as exc_info:
+                _cmd_run_next_task_local(str(job.job_id), json_output=json_output)
+        self._last_exit_code = exc_info.value.code
 
         return _run_events_for_job(tmp_path, job.job_id)
 
@@ -526,6 +552,18 @@ class TestRunNextTaskVerificationFailure:
         events = self._run_verification_failure(tmp_path, monkeypatch)
         ev = next(e for e in events if e["event"] == "task_run_failed")
         assert ev["outcome"] == "fail"
+
+    def test_json_output_answers_in_the_envelope(self, tmp_path, monkeypatch, capsys):
+        self._run_verification_failure(tmp_path, monkeypatch, json_output=True)
+        assert self._last_exit_code == 1
+        out = capsys.readouterr().out
+        payload = json.loads(out)
+        assert payload["ok"] is False
+        assert payload["error"] == "verification_failed"
+        assert payload["verified"] is False
+        assert payload["failures"] == [
+            {"check": "required_section:Summary:", "message": "missing section"}
+        ]
 
 
 # ---------------------------------------------------------------------------

@@ -7,10 +7,12 @@ import sys
 import time
 from collections.abc import Callable
 from datetime import datetime, timezone
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, NoReturn
 
+from apps.cli.job_id_arg import resolve_job_id_or_fail
+from apps.cli.json_envelope import emit_ok, fail
 from packages.core.models import RunState
-from packages.orchestration.data_paths import resolve_data_root, resolve_job_id
+from packages.orchestration.data_paths import resolve_data_root
 from packages.orchestration.job_runner import PlanJobResult
 from packages.orchestration.pingpong_job import (
     JobNotFoundError,
@@ -30,11 +32,16 @@ if TYPE_CHECKING:
 _SAFE_TASK_TYPE_RE = re.compile(r'^[A-Za-z0-9_-]+$')
 
 
-def _plan_rejected_error(job_id_str: str) -> str:
-    """R-0915: the refusal for a rejected plan names what a user does next."""
+def _plan_rejected_message(job_id_str: str) -> str:
+    """The rejected-plan sentence, with no ``Error: `` prefix.
+
+    This is the one form: every call site is now a ``fail()`` site, and
+    ``fail()`` writes the prefix itself, so the message it is given never
+    carries one.
+    """
     from packages.orchestration.job_plan import REJECTED_PLAN_NEXT_STEP
 
-    return (f"Error: task plan rejected for job {job_id_str[:8]}.\n"
+    return (f"task plan rejected for job {job_id_str[:8]}.\n"
             f"  {REJECTED_PLAN_NEXT_STEP}")
 
 
@@ -53,21 +60,18 @@ def _cmd_create_job(
     from packages.orchestration.run_log import RunLogWriter
 
     if task_description is not None and task_type is None:
-        print("Error: --task-description requires --task-type", file=sys.stderr)
-        sys.exit(1)
+        fail("missing_argument", '--task-description requires --task-type', json_output=False)
 
     if task_type is not None:
         task_type = task_type.strip()
         if not task_type:
-            print("Error: --task-type must not be empty", file=sys.stderr)
-            sys.exit(1)
+            fail("invalid_task_type", '--task-type must not be empty', json_output=False)
         if not _SAFE_TASK_TYPE_RE.match(task_type):
-            print(
-                "Error: --task-type contains invalid characters; "
-                "allowed: letters, digits, underscores, hyphens",
-                file=sys.stderr,
+            fail(
+                "invalid_task_type",
+                '--task-type contains invalid characters; allowed: letters, digits, underscores, hyphens',
+                json_output=False,
             )
-            sys.exit(1)
 
     from packages.orchestration.project_registry import ProjectNotFoundError, select_project
 
@@ -76,12 +80,11 @@ def _cmd_create_job(
         project, _src = select_project(project_id, ".")
         project_id = str(project.id)
     except ProjectNotFoundError:
-        print(
-            "Error: no project found. Run: remedy init\n"
-            "  or pass --project <slug-or-id>",
-            file=sys.stderr,
+        fail(
+            "no_project",
+            'no project found. Run: remedy init\n  or pass --project <slug-or-id>',
+            json_output=False, exit_code=3,
         )
-        sys.exit(3)
 
     metadata: dict = {}
     metadata["project_id"] = project_id
@@ -107,8 +110,7 @@ def _cmd_create_job(
             project_root=_project_repo,
         )
     except (BudgetConfigError, ValueError) as exc:
-        print(f"Error: {exc}", file=sys.stderr)
-        sys.exit(2)
+        fail("invalid_budget", str(exc), json_output=False, exit_code=2)
 
     job = JobPlan(
         job_title=prompt[:50],
@@ -165,17 +167,15 @@ def _cmd_list_jobs(
             date_getter=lambda j: j.created_at,
         )
     except ListOptionError as exc:
-        print(f"Error: {exc}", file=sys.stderr)
-        sys.exit(1)
+        fail("invalid_list_option", str(exc), json_output=json_output)
     if json_output:
-        import json as _json
-        print(_json.dumps({
-            "version": 1,
-            "job_count": len(jobs),
-            "jobs": [{"id": str(job.job_id), "state": job.state.value, "name": job.job_title,
-                     "created_at": job.created_at,
-                     "project_id": job.project_id or ""} for job in jobs],
-        }, sort_keys=True))
+        emit_ok(
+            version=1,
+            job_count=len(jobs),
+            jobs=[{"id": str(job.job_id), "state": job.state.value, "name": job.job_title,
+                  "created_at": job.created_at,
+                  "project_id": job.project_id or ""} for job in jobs],
+        )
         return
     if not jobs:
         print("No jobs found.")
@@ -199,18 +199,15 @@ def _scope_label(job: JobPlan, scope: ProjectScope, known_ids: set[str]) -> str:
     return ""
 
 
-def _cmd_show_job(job_id_str: str, *, full: bool = False) -> None:
-    import json
-
+def _cmd_show_job(job_id_str: str, *, full: bool = False, json_output: bool = False) -> None:
     from packages.orchestration.pingpong_job import _export_job, collect_blocked_task_findings
 
-    job_id = resolve_job_id(job_id_str)
+    job_id = resolve_job_id_or_fail(job_id_str, json_output=json_output)
     try:
         job = require_job_plan(job_id)
     except (JobNotFoundError, JobStoreError) as exc:
         # R-0902: a record that exists and cannot be read is named, like a missing one, never a traceback.
-        print(f"Error: {exc}", file=sys.stderr)
-        sys.exit(1)
+        fail("job_store_error", str(exc), json_output=json_output)
     shown = _export_job(job)
     # R-0806: why a task blocked is readable here, without opening evidence JSON.
     # The key is appended, so every key the JSON carried before keeps its place.
@@ -218,7 +215,7 @@ def _cmd_show_job(job_id_str: str, *, full: bool = False) -> None:
     section_text: list[str] = []
     if full:
         shown["sections"], section_text = _build_show_sections(job)
-    print(json.dumps(shown, indent=2))
+    emit_ok(**shown)
     if job.intake:
         _print_intake_block(job.intake)
     _print_blocked_task_findings(str(job.job_id), shown["blocked_task_findings"])
@@ -355,7 +352,7 @@ def _assumptions_section(job: JobPlan) -> tuple[dict, list[str]]:
 def _digest_section(job: JobPlan) -> tuple[dict, list[str]]:
     """The former `job digest` command: the completion digest's CLI parity (F040 T003).
 
-    The HTTP route's little sibling. `job show` resolves the job with `resolve_job_id` and
+    The HTTP route's little sibling. `job show` resolves the job with `resolve_job_id_or_fail` and
     `require_job_plan`, this view loads its run events with `load_run_events`, and it shows
     the SAME `build_job_digest` envelope the route builds, so the CLI and the route can
     never disagree about the same job.
@@ -714,13 +711,12 @@ def _print_intake_block(intake: dict) -> None:
         p(f"  Dropped clarifications: {dropped}")
 
 
-def _cmd_plan_job_local(job_id_str: str) -> None:
-    job_id = resolve_job_id(job_id_str)
+def _cmd_plan_job_local(job_id_str: str, *, json_output: bool = False) -> None:
+    job_id = resolve_job_id_or_fail(job_id_str, json_output=json_output)
     try:
         job = require_job_plan(job_id)
     except JobNotFoundError as exc:
-        print(f"Error: {exc}", file=sys.stderr)
-        sys.exit(1)
+        fail("job_not_found", str(exc), json_output=json_output)
 
     from packages.orchestration.llm_planner import annotate_planning_result, plan_job_with_llm
     from packages.orchestration.run_log import RunLogWriter
@@ -777,13 +773,11 @@ def _cmd_plan_job_local(job_id_str: str) -> None:
             log.log("planning_failed", provider="ollama", role="planner", model=planner.model,
                     outcome="error", message="structured planner capability missing",
                     error_category="config")
-            print(
-                "Error: structured planner requires a plan_raw capability the "
-                "installed planner does not provide; set REMEDY_PLANNER_FREETEXT=1 "
-                "to use the legacy planner.",
-                file=sys.stderr,
+            fail(
+                "planner_capability_missing",
+                'structured planner requires a plan_raw capability the installed planner does not provide; set REMEDY_PLANNER_FREETEXT=1 to use the legacy planner.',
+                json_output=json_output,
             )
-            sys.exit(1)
         _pp_schema = to_json_schema(PlannerPlan)
         call_planner = make_structured_planner(
             lambda p, _a, _r=_raw_plan, _s=_pp_schema: _r(p, schema=_s),
@@ -811,20 +805,21 @@ def _cmd_plan_job_local(job_id_str: str) -> None:
         # exception's class name.
         log.log("planning_failed", provider="ollama", role="planner", model=planner.model,
                 outcome="error", message=str(exc), error_category="parse")
-        print(f"Error: planner structured output invalid after one retry: {exc}", file=sys.stderr)
-        sys.exit(1)
+        fail(
+            "planner_output_invalid",
+            f'planner structured output invalid after one retry: {exc}',
+            json_output=json_output,
+        )
     except ImportError as exc:
         _persist_plan_traces()
         log.log("planning_failed", provider="ollama", role="planner", model=planner.model,
                 outcome="error", message="planning failed", error_category=type(exc).__name__)
-        print(f"Error: {exc}", file=sys.stderr)
-        sys.exit(1)
+        fail("missing_dependency", str(exc), json_output=json_output)
     except Exception as exc:
         _persist_plan_traces()
         log.log("planning_failed", provider="ollama", role="planner", model=planner.model,
                 outcome="error", message="planning failed", error_category=type(exc).__name__)
-        print(f"Error: Ollama planning failed: {exc}", file=sys.stderr)
-        sys.exit(1)
+        fail("planner_failed", f'Ollama planning failed: {exc}', json_output=json_output)
     elapsed_ms = (time.monotonic() - start) * 1000
     _persist_plan_traces()
 
@@ -833,7 +828,11 @@ def _cmd_plan_job_local(job_id_str: str) -> None:
 
     if not result.changed:
         log.log("planning_completed", provider="ollama", role="planner", model=planner.model, outcome="noop")
-        print(f"Job {result.job.job_id} already planned — no changes made.  log={log.path}")
+        if json_output:
+            emit_ok(job_id=str(result.job.job_id), changed=False, model=planner.model,
+                    task_count=len(result.job.tasks), log_path=str(log.path))
+        else:
+            print(f"Job {result.job.job_id} already planned — no changes made.  log={log.path}")
     else:
         from packages.orchestration.artifact_index import planning_artifact
         pa = planning_artifact(result.job.artifacts)
@@ -843,35 +842,39 @@ def _cmd_plan_job_local(job_id_str: str) -> None:
             artifact_id=artifact_id_str, outcome="changed", elapsed_ms=round(elapsed_ms),
             task_count=len(result.job.tasks),
         )
-        print(
-            f"Job {result.job.job_id} | role=planner model={planner.model} "
-            f"tasks={len(result.job.tasks)} elapsed={round(elapsed_ms)}ms  log={log.path}"
-        )
+        if json_output:
+            emit_ok(job_id=str(result.job.job_id), changed=True, model=planner.model,
+                    task_count=len(result.job.tasks), log_path=str(log.path),
+                    elapsed_ms=round(elapsed_ms))
+        else:
+            print(
+                f"Job {result.job.job_id} | role=planner model={planner.model} "
+                f"tasks={len(result.job.tasks)} elapsed={round(elapsed_ms)}ms  log={log.path}"
+            )
 
 
-def _cmd_run_next_task_local(job_id_str: str) -> None:
-    job_id = resolve_job_id(job_id_str)
+def _cmd_run_next_task_local(job_id_str: str, *, json_output: bool = False) -> None:
+    job_id = resolve_job_id_or_fail(job_id_str, json_output=json_output)
     try:
         job = require_job_plan(job_id)
     except JobNotFoundError as exc:
-        print(f"Error: {exc}", file=sys.stderr)
-        sys.exit(1)
+        fail("job_not_found", str(exc), json_output=json_output)
 
     from packages.orchestration.job_plan import task_plan_blocks_execution
     block_reason = task_plan_blocks_execution(job)
     if block_reason == "pending":
-        print(
-            f"Error: plan awaiting approval. "
-            f"Run: remedy decision resolve {job_id_str[:8]} plan:approval --reason approve",
-            file=sys.stderr,
+        fail(
+            "plan_awaiting_approval",
+            f'plan awaiting approval. '
+            f'Run: remedy decision resolve {job_id_str[:8]} plan:approval --reason approve',
+            json_output=json_output, exit_code=3,
         )
-        sys.exit(3)
     elif block_reason == "rejected":
-        print(
-            _plan_rejected_error(job_id_str),
-            file=sys.stderr,
+        fail(
+            "plan_rejected",
+            _plan_rejected_message(job_id_str),
+            json_output=json_output, exit_code=3,
         )
-        sys.exit(3)
 
     from pathlib import Path
 
@@ -896,6 +899,9 @@ def _cmd_run_next_task_local(job_id_str: str) -> None:
 
     if not any(t.status == RunState.PENDING for t in job.tasks):
         log.log("task_run_noop", outcome="no_pending_tasks")
+        if json_output:
+            emit_ok(job_id=str(job.job_id), outcome="no_pending_tasks", log=str(log.path))
+            return
         print(f"Job {job.job_id} — no pending tasks.  log={log.path}")
         return
 
@@ -912,8 +918,11 @@ def _cmd_run_next_task_local(job_id_str: str) -> None:
 
     if not _perm_allowed(job, Capability.workspace_write):
         _fail("permission_denied", capability="workspace_write")
-        print(f"Error: permission denied — workspace_write is not granted for job {job.job_id}", file=sys.stderr)
-        sys.exit(1)
+        fail(
+            "permission_denied",
+            f'permission denied — workspace_write is not granted for job {job.job_id}',
+            json_output=json_output,
+        )
 
     start = time.monotonic()
     try:
@@ -925,20 +934,17 @@ def _cmd_run_next_task_local(job_id_str: str) -> None:
         result: RunTaskResult = run_next_task(job, builder.build)
     except ImportError as exc:
         _fail("missing_dependency", error_category="ImportError")
-        print(f"Error: missing dependency — {exc}", file=sys.stderr)
-        sys.exit(1)
+        fail("missing_dependency", f'missing dependency — {exc}', json_output=json_output)
     except ValidationError as exc:
         _fail("invalid_builder_output", error_category="ValidationError")
-        print(f"Error: builder returned invalid output — {exc}", file=sys.stderr)
-        sys.exit(1)
+        fail("invalid_builder_output", f'builder returned invalid output — {exc}',
+             json_output=json_output)
     except ValueError as exc:
         _fail("configuration_error", error_category="ValueError")
-        print(f"Error: configuration — {exc}", file=sys.stderr)
-        sys.exit(1)
+        fail("configuration_error", f'configuration — {exc}', json_output=json_output)
     except Exception as exc:
         _fail("builder_error", error_category=type(exc).__name__)
-        print(f"Error: builder execution failed — {exc}", file=sys.stderr)
-        sys.exit(1)
+        fail("builder_error", f'builder execution failed — {exc}', json_output=json_output)
     elapsed_ms = (time.monotonic() - start) * 1000
 
     if not result.changed:
@@ -1075,6 +1081,32 @@ def _cmd_run_next_task_local(job_id_str: str) -> None:
     else:
         log.log("task_run_failed", task_id=str(result.task_id), outcome="fail")
 
+    if json_output:
+        envelope_payload: dict[str, Any] = dict(
+            job_id=str(result.job.job_id),
+            task_id=str(result.task_id),
+            task_type=task_type,
+            model=builder.model,
+            elapsed_ms=round(elapsed_ms),
+            remaining=pending_remaining,
+            file=str(mf.path),
+            repo=repo_applied[0] if repo_applied else None,
+            patch_intents=patch_intent_count,
+            failures=[{"check": f.check, "message": f.message} for f in vr.failures],
+            dry_run=dry_run_block or None,
+            log=str(log.path),
+        )
+        if vr.passed:
+            emit_ok(verified=True, **envelope_payload)
+            return
+        fail(
+            "verification_failed",
+            f"{len(vr.failures)} verification check(s) failed",
+            json_output=True,
+            verified=False,
+            **envelope_payload,
+        )
+
     file_info = f" file={mf.path}"
     repo_info = f" repo={repo_applied[0]}" if repo_applied else ""
     pi_info = f" patch_intents={patch_intent_count}" if patch_intent_count > 0 else ""
@@ -1115,7 +1147,6 @@ def _cmd_job_run_cycles(
     pausing the branch until a human answers.  A decision with no safe default
     waits either way.  Default OFF — attended behavior is untouched.
     """
-    import json as _json
     from dataclasses import replace
 
     from packages.orchestration.config import get_config
@@ -1128,8 +1159,7 @@ def _cmd_job_run_cycles(
     try:
         limits, resolved = limits_from_config(get_config(), cycles_flag=cycles)
     except ValueError as exc:
-        print(f"Error: {exc}", file=sys.stderr)
-        sys.exit(2)
+        fail("invalid_argument", str(exc), json_output=json_output, exit_code=2)
 
     if resolved.capped:
         origin = "--cycles" if resolved.source == "flag" else "cycles.max_cycles"
@@ -1152,6 +1182,7 @@ def _cmd_job_run_cycles(
         confirm_above_usd=resolve_confirm_above_usd(),
         yes=(yes or unattended),
         command_name="job.resume",
+        json_output=json_output,
     ):
         print("Cancelled. Nothing was run.")
         return
@@ -1168,31 +1199,29 @@ def _cmd_job_run_cycles(
                 "the cycle loop, which the F075 milestone gate enables.",
                 file=sys.stderr,
             )
-        _cmd_run_next_task_local(job_id_str)
+        _cmd_run_next_task_local(job_id_str, json_output=json_output)
         return
 
-    job_id = resolve_job_id(job_id_str)
+    job_id = resolve_job_id_or_fail(job_id_str, json_output=json_output)
     try:
         job = require_job_plan(job_id)
     except JobNotFoundError as exc:
-        print(f"Error: {exc}", file=sys.stderr)
-        sys.exit(1)
+        fail("job_not_found", str(exc), json_output=json_output)
 
     from packages.orchestration.job_plan import task_plan_blocks_execution
     block_reason = task_plan_blocks_execution(job)
     if block_reason == "pending":
-        print(
-            f"Error: plan awaiting approval. "
-            f"Run: remedy decision resolve {job_id_str[:8]} plan:approval --reason approve",
-            file=sys.stderr,
+        fail(
+            "plan_awaiting_approval",
+            f'plan awaiting approval. Run: remedy decision resolve {job_id_str[:8]} plan:approval --reason approve',
+            json_output=json_output, exit_code=3,
         )
-        sys.exit(3)
     elif block_reason == "rejected":
-        print(
-            _plan_rejected_error(job_id_str),
-            file=sys.stderr,
+        fail(
+            "plan_rejected",
+            _plan_rejected_message(job_id_str),
+            json_output=json_output, exit_code=3,
         )
-        sys.exit(3)
 
     from packages.orchestration.permissions import Capability
     from packages.orchestration.permissions import is_allowed as _perm_allowed
@@ -1200,18 +1229,17 @@ def _cmd_job_run_cycles(
     from packages.providers.ollama_builder.provider import OllamaBuilder
 
     if not _perm_allowed(job, Capability.workspace_write):
-        print(
-            f"Error: permission denied — workspace_write is not granted for job {job.job_id}",
-            file=sys.stderr,
+        fail(
+            "permission_denied",
+            f'permission denied — workspace_write is not granted for job {job.job_id}',
+            json_output=json_output,
         )
-        sys.exit(1)
 
     log = RunLogWriter(job_id=job.job_id)
     try:
         builder = OllamaBuilder()
     except Exception as exc:
-        print(f"Error: builder unavailable — {exc}", file=sys.stderr)
-        sys.exit(1)
+        fail("builder_unavailable", f'builder unavailable — {exc}', json_output=json_output)
 
     limits = replace(limits, budgets=job.budgets)
     result = run_cycles(job, limits, builder.build,
@@ -1219,7 +1247,7 @@ def _cmd_job_run_cycles(
                         unattended=unattended)
 
     if json_output:
-        print(_json.dumps(result.to_json(), indent=2, sort_keys=True))
+        emit_ok(**result.to_json())
     else:
         print(
             f"Job {job.job_id} | cycles={result.cycles_run}/{limits.max_cycles} "
@@ -1386,8 +1414,6 @@ def _cmd_job_resume(
     Exit codes: 0 ok / no-op / stop consumed · 1 job or checkpoint problem ·
     3 refused by a guard (head drift, plan-approval gate).
     """
-    import json as _json
-
     from packages.orchestration.checkpoints import (
         RESUME_NOOP,
         RESUME_STOPPED,
@@ -1396,32 +1422,29 @@ def _cmd_job_resume(
         load_latest_valid,
     )
 
-    job_id = resolve_job_id(job_id_str)
+    job_id = resolve_job_id_or_fail(job_id_str, json_output=json_output)
     try:
         job = require_job_plan(job_id)
     except JobNotFoundError as exc:
-        print(f"Error: {exc}", file=sys.stderr)
-        sys.exit(1)
+        fail("job_not_found", str(exc), json_output=json_output)
 
     jid = str(job.job_id)
 
     try:
         checkpoint = load_latest_valid(jid)
     except AllCheckpointsCorruptError as exc:
-        print(
-            f"Error: no usable checkpoint for job {jid} — "
-            f"{len(exc.paths)} checkpoint(s) failed hash verification "
-            f"({', '.join(exc.paths)}). They are kept on disk for inspection.",
-            file=sys.stderr,
+        fail(
+            "checkpoints_corrupt",
+            f"no usable checkpoint for job {jid} — {len(exc.paths)} checkpoint(s) failed hash verification ({', '.join(exc.paths)}). They are kept on disk for inspection.",
+            json_output=json_output,
         )
-        sys.exit(1)
 
     # A dry run stops HERE: it reports what the checks below would decide and
     # consumes none of them.  It must never reach the executor (R-0146).
     if dry_run:
         preview = _resume_preview(job, jid, checkpoint)
         if json_output:
-            print(_json.dumps(preview, indent=2, sort_keys=True))
+            emit_ok(**preview)
         else:
             _print_resume_preview(preview)
         return
@@ -1431,36 +1454,30 @@ def _cmd_job_resume(
     decision = decide_checkpoint_resume(job, checkpoint)
     if decision.action == RESUME_STOPPED:
         if json_output:
-            print(_json.dumps(
-                {"job_id": jid, "action": "stopped", "resumed": False,
-                 "stop_reason": decision.reason}, indent=2, sort_keys=True))
+            emit_ok(job_id=jid, action="stopped", resumed=False,
+                    stop_reason=decision.reason)
         else:
             print(f"Job {jid} | {decision.detail}")
         return
 
     if decision.reason == "worktree_drift":
-        print("Error: " + decision.detail, file=sys.stderr)
-        sys.exit(3)
+        fail("worktree_drift", decision.detail, json_output=json_output, exit_code=3)
     if decision.reason == "plan_pending":
-        print(
-            f"Error: plan awaiting approval. "
-            f"Run: remedy decision resolve {job_id_str[:8]} plan:approval "
-            f"--reason approve",
-            file=sys.stderr,
+        fail(
+            "plan_awaiting_approval",
+            f'plan awaiting approval. Run: remedy decision resolve {job_id_str[:8]} plan:approval --reason approve',
+            json_output=json_output, exit_code=3,
         )
-        sys.exit(3)
     if decision.reason == "plan_rejected":
-        print(
-            _plan_rejected_error(job_id_str),
-            file=sys.stderr,
+        fail(
+            "plan_rejected",
+            _plan_rejected_message(job_id_str),
+            json_output=json_output, exit_code=3,
         )
-        sys.exit(3)
 
     if decision.action == RESUME_NOOP:
         if json_output:
-            print(_json.dumps(
-                {"job_id": jid, "action": "noop", "resumed": False,
-                 "reason": "all_green"}, indent=2, sort_keys=True))
+            emit_ok(job_id=jid, action="noop", resumed=False, reason="all_green")
         else:
             print(f"Job {jid} | already all green — nothing to resume")
         return
@@ -1483,8 +1500,6 @@ def _cmd_job_resume(
 
 
 def _cmd_checkpoints(job_id_str: str, *, json_output: bool = False) -> None:
-    import json as _json
-
     from packages.orchestration.event_replay import (
         export_checkpoints_json,
         find_checkpoints,
@@ -1496,11 +1511,7 @@ def _cmd_checkpoints(job_id_str: str, *, json_output: bool = False) -> None:
     cps = find_checkpoints(replay)
 
     if json_output:
-        print(_json.dumps({
-            "version": 1,
-            "job_id": job_id_str,
-            "checkpoints": export_checkpoints_json(cps),
-        }, indent=2))
+        emit_ok(version=1, job_id=job_id_str, checkpoints=export_checkpoints_json(cps))
     else:
         if not cps:
             print(f"No checkpoints for job {job_id_str[:8]}.")
@@ -1520,42 +1531,38 @@ def _cmd_resume(
     dry_run: bool = False,
     json_output: bool = False,
 ) -> None:
-    import json as _json
-
     from packages.orchestration.event_replay import (
         export_dry_run_json,
         resume_dry_run,
     )
 
-    job_id = resolve_job_id(job_id_str)
+    job_id = resolve_job_id_or_fail(job_id_str, json_output=json_output)
     try:
         job = require_job_plan(job_id)
     except JobNotFoundError as exc:
-        print(f"Error: {exc}", file=sys.stderr)
-        sys.exit(1)
+        fail("job_not_found", str(exc), json_output=json_output)
 
     from packages.orchestration.job_plan import task_plan_blocks_execution
     block_reason = task_plan_blocks_execution(job)
     if block_reason == "pending":
-        print(
-            f"Error: plan awaiting approval. "
-            f"Run: remedy decision resolve {job_id_str[:8]} plan:approval --reason approve",
-            file=sys.stderr,
+        fail(
+            "plan_awaiting_approval",
+            f'plan awaiting approval. Run: remedy decision resolve {job_id_str[:8]} plan:approval --reason approve',
+            json_output=json_output, exit_code=3,
         )
-        sys.exit(3)
     elif block_reason == "rejected":
-        print(
-            _plan_rejected_error(job_id_str),
-            file=sys.stderr,
+        fail(
+            "plan_rejected",
+            _plan_rejected_message(job_id_str),
+            json_output=json_output, exit_code=3,
         )
-        sys.exit(3)
 
     data_dir = resolve_data_root()
 
     if dry_run:
         dr = resume_dry_run(job, checkpoint_id, data_dir)
         if json_output:
-            print(_json.dumps(export_dry_run_json(dr), indent=2))
+            emit_ok(**export_dry_run_json(dr))
         else:
             status = "can resume" if dr.can_resume else "blocked"
             print(f"Resume dry-run: {status}")
@@ -1578,16 +1585,22 @@ def _cmd_resume(
     cp = next((c for c in cps if c.id == checkpoint_id), None)
 
     if not cp:
-        print(f"Error: checkpoint not found: {checkpoint_id}", file=sys.stderr)
-        sys.exit(1)
+        fail(
+            "checkpoint_not_found",
+            f'checkpoint not found: {checkpoint_id}',
+            json_output=json_output,
+        )
 
     if not cp.safe_to_resume:
         append_run_event(data_dir, job_id, event="resume_blocked", metadata={
             "checkpoint_id": checkpoint_id, "checkpoint_kind": cp.kind,
             "blocked_reason": cp.blocked_reason,
         })
-        print(f"Error: checkpoint not safe to resume: {cp.blocked_reason}", file=sys.stderr)
-        sys.exit(1)
+        fail(
+            "checkpoint_not_resumable",
+            f'checkpoint not safe to resume: {cp.blocked_reason}',
+            json_output=json_output,
+        )
 
     # F006 phase 1 (prepare): lock and verify the exact recorded worktree of the
     # interrupted run. Nothing is removed yet — the continuation has to run INSIDE
@@ -1617,16 +1630,14 @@ def _cmd_resume(
             "blocked_reason": "ambiguous_recoverable_worktrees",
             "run_ids": [s.run_id for s in sessions],
         })
-        if json_output:
-            print(_json.dumps({
-                "resumed": False,
-                "blocked_reason": "ambiguous_recoverable_worktrees",
-                "worktrees": [o.to_json() for o in wt_outcomes],
-            }, indent=2))
-        else:
-            print("Resume blocked: ambiguous_recoverable_worktrees "
-                  f"({', '.join(s.run_id for s in sessions)})", file=sys.stderr)
-        sys.exit(1)
+        message = "ambiguous recoverable worktrees:\n" + "\n".join(
+            f"  {s.run_id}" for s in sessions
+        )
+        fail(
+            "resume_blocked", message, json_output=json_output,
+            resumed=False, blocked_reason="ambiguous_recoverable_worktrees",
+            worktrees=[o.to_json() for o in wt_outcomes],
+        )
 
     wt_blocked = [o for o in wt_outcomes if o.blocked and not o.recovered]
     if wt_blocked:
@@ -1636,17 +1647,14 @@ def _cmd_resume(
             "blocked_reason": "worktree_recovery_blocked",
             "worktrees": wt_json,
         })
-        if json_output:
-            print(_json.dumps({
-                "resumed": False,
-                "blocked_reason": "worktree_recovery_blocked",
-                "worktrees": wt_json,
-            }, indent=2))
-        else:
-            for o in wt_blocked:
-                print(f"Resume blocked: worktree {o.run_id}: {o.blocked_reason}",
-                      file=sys.stderr)
-        sys.exit(1)
+        message = "worktree recovery blocked:\n" + "\n".join(
+            f"  worktree {o.run_id}: {o.blocked_reason}" for o in wt_blocked
+        )
+        fail(
+            "resume_blocked", message, json_output=json_output,
+            resumed=False, blocked_reason="worktree_recovery_blocked",
+            worktrees=wt_json,
+        )
     for o in wt_outcomes:
         append_run_event(data_dir, job_id, event="worktree_prepared", metadata={
             "run_id": o.run_id, "branch": o.branch,
@@ -1709,37 +1717,48 @@ def _cmd_resume(
             result.blocked_reason or "continuation did not complete successfully",
         )
 
-        if json_output:
-            _payload = export_resume_result_json(result)
-            _payload["worktrees"] = wt_json
-            print(_json.dumps(_payload, indent=2))
-        else:
-            if result.resumed:
+        _payload = export_resume_result_json(result)
+        _payload["worktrees"] = wt_json
+        if result.resumed:
+            if json_output:
+                emit_ok(**_payload)
+            else:
                 status_str = "passed" if result.tests_passed else "failed"
                 print(f"Resumed from {cp.kind}. Tests {status_str}.")
                 if result.test_run_id:
                     print(f"  Test run: {result.test_run_id}")
-            else:
-                print(f"Resume blocked: {result.blocked_reason}")
-        return
+            return
+        # The continuation refused before it ran, or ran and did not
+        # complete — a success envelope would lie about the outcome (D12 (6)).
+        # Carries every key `export_resume_result_json` returns, so a machine
+        # consumer sees the same shape it would on success, plus the refusal.
+        fail(
+            "resume_blocked",
+            result.blocked_reason or "continuation did not complete successfully",
+            json_output=json_output,
+            **_payload,
+        )
     _finish_worktrees(False, f"resume mode {cp.resume_mode!r} not implemented")
 
-    # Unimplemented resume mode — do not fake success
+    # Unimplemented resume mode — do not fake success (D12 (6)). Unreachable at
+    # `98a85b67`: `find_checkpoints` above marks only `from_apply` checkpoints
+    # `safe_to_resume`, so no live code path names a mode here today. Converted
+    # so that adding a mode later cannot make this branch a silent success.
     from packages.orchestration.timeline import append_run_event as _emit
     _emit(data_dir, job_id, event="resume_blocked", metadata={
         "checkpoint_id": checkpoint_id, "checkpoint_kind": cp.kind,
         "blocked_reason": "resume_mode_not_implemented",
     })
-    if json_output:
-        print(_json.dumps({
-            "resumed": False,
-            "blocked_reason": "resume_mode_not_implemented",
-            "checkpoint_kind": cp.kind,
-            "resume_mode": cp.resume_mode,
-            "worktrees": wt_json,
-        }))
-    else:
-        print(f"Resume blocked: mode '{cp.resume_mode}' not implemented yet.")
+    fail(
+        "resume_blocked",
+        f"resume mode {cp.resume_mode!r} not implemented yet",
+        json_output=json_output,
+        resumed=False,
+        blocked_reason="resume_mode_not_implemented",
+        checkpoint_kind=cp.kind,
+        resume_mode=cp.resume_mode,
+        worktrees=wt_json,
+    )
 
 
 
@@ -1851,8 +1870,6 @@ def _cmd_job_budget(
     json_output: bool = False,
 ) -> None:
     """Show budget limits and current counters for a job."""
-    import json as _json
-
     from packages.orchestration.budget_guard import evaluate_budget
     from packages.orchestration.pingpong_job import load_job_plan, require_job_plan
 
@@ -1913,12 +1930,15 @@ def _cmd_job_budget(
         try:
             require_job_plan(job_id)
         except JobNotFoundError:
-            print(f"Error: No job matches {job_id!r}. Try: remedy job list.", file=sys.stderr)
-            sys.exit(1)
+            fail(
+                "job_not_found",
+                f'No job matches {job_id!r}. Try: remedy job list.',
+                json_output=json_output,
+            )
 
     if _budgets is None and _budgets_dict is None:
         if json_output:
-            print(_json.dumps({"job_id": _job_display_id, "budgets": None}, indent=2))
+            emit_ok(job_id=_job_display_id, budgets=None)
         else:
             print(f"Job {_job_display_id[:8]}: no budgets configured.")
         return
@@ -2039,7 +2059,7 @@ def _cmd_job_budget(
             "prediction": _prediction.to_json() if _prediction is not None else None,
             "recorded_prediction": _recorded_prediction,
         }
-        print(_json.dumps(out, indent=2))
+        emit_ok(**out)
     else:
         print(f"Budget for job {_job_display_id[:8]} ({_found_as}):")
         if _budgets is not None:
@@ -2116,9 +2136,13 @@ _JOB_BUDGETS_FIELDS = (
     "max_total_tokens", "max_provider_calls", "max_wall_clock_minutes", "max_cost_usd", "deadline")
 
 
-def _refuse_budget_set(message: str) -> None:
-    print(f"Error: {message}", file=sys.stderr)
-    sys.exit(2)
+def _refuse_budget_set(error: str, message: str, *, json_output: bool) -> NoReturn:
+    """`job budget set` refuses in the envelope when the caller asked for one.
+
+    The token is the CALLER's, because only the caller knows which condition it
+    hit; this helper exists so the exit code 2 is written once (DECISION F277 D8).
+    """
+    fail(error, message, json_output=json_output, exit_code=2)
 
 
 def _cmd_job_budget_route(args: argparse.Namespace) -> None:
@@ -2131,7 +2155,10 @@ def _cmd_job_budget_route(args: argparse.Namespace) -> None:
     field_name = getattr(args, "field", None)
     value = getattr(args, "value", None)
     if action != "set" or field_name is None or value is None:
-        _refuse_budget_set(f"use `{_BUDGET_SET_FORM}`, or `remedy job budget <job_id>` to show.")
+        _refuse_budget_set(
+            "invalid_argument",
+            f"use `{_BUDGET_SET_FORM}`, or `remedy job budget <job_id>` to show.",
+            json_output=json_output)
     _cmd_job_budget_set(args.job_id, field_name, value, json_output=json_output)
 
 
@@ -2143,32 +2170,45 @@ def _cmd_job_budget_set(
     json_output: bool = False,
 ) -> None:
     """Write ONE budget field of a job's run contract or token budget profile (DECISION F280 D3)."""
-    import json as _json
     from dataclasses import replace as _replace
 
     settable = ", ".join(_RUN_CONTRACT_BUDGET_FIELDS + _TOKEN_PROFILE_BUDGET_FIELDS)
     if field_name in _JOB_BUDGETS_FIELDS:
         flag = "--" + field_name.replace("_", "-")
         _refuse_budget_set(
+            "budget_field_wrong_store",
             f"{field_name} is a job run limit: set it with `remedy job run <job_id> {flag} <value>`; "
-            "a stopped job's limits change through its Decision.")
+            "a stopped job's limits change through its Decision.",
+            json_output=json_output)
     in_contract = field_name in _RUN_CONTRACT_BUDGET_FIELDS
     if not in_contract and field_name not in _TOKEN_PROFILE_BUDGET_FIELDS:
-        _refuse_budget_set(f"unknown budget field {field_name!r}. Settable: {settable}.")
+        _refuse_budget_set(
+            "unknown_budget_field",
+            f"unknown budget field {field_name!r}. Settable: {settable}.",
+            json_output=json_output)
     try:
         new_value = int(raw_value)
     except ValueError:
-        _refuse_budget_set(f"{field_name} takes an integer, got {raw_value!r}. Settable: {settable}.")
+        _refuse_budget_set(
+            "invalid_budget_value",
+            f"{field_name} takes an integer, got {raw_value!r}. Settable: {settable}.",
+            json_output=json_output)
     floor = 0 if in_contract else 1
     if new_value < floor:
-        _refuse_budget_set(f"{field_name} must be >= {floor}, got {new_value}.")
+        _refuse_budget_set(
+            "invalid_budget_value",
+            f"{field_name} must be >= {floor}, got {new_value}.",
+            json_output=json_output)
 
     # The show form's lookup and its not-found error.
     try:
         job = require_job_plan(job_id)
     except JobNotFoundError:
-        print(f"Error: No job matches {job_id!r}. Try: remedy job list.", file=sys.stderr)
-        sys.exit(1)
+        fail(
+            "job_not_found",
+            f'No job matches {job_id!r}. Try: remedy job list.',
+            json_output=json_output,
+        )
 
     if in_contract:
         from packages.orchestration.run_contract import (
@@ -2187,8 +2227,10 @@ def _cmd_job_budget_set(
             f018_field = "max_wall_clock_minutes"
         if f018_field:
             _refuse_budget_set(
+                "budget_field_wrong_store",
                 f"{field_name} follows this job's {f018_field}: set it with "
-                f"`remedy job run <job_id> --{f018_field.replace('_', '-')} <value>`.")
+                f"`remedy job run <job_id> --{f018_field.replace('_', '-')} <value>`.",
+                json_output=json_output)
         contract = load_contract(job)
         if contract is None:
             contract = build_default_run_contract(job)
@@ -2205,14 +2247,16 @@ def _cmd_job_budget_set(
         old_value = getattr(profile, field_name)
         setattr(profile, field_name, new_value)
         if not save_token_budget_profile(profile):
-            print(f"Error: the token budget profile of job {job.job_id} could not be written.",
-                  file=sys.stderr)
-            sys.exit(1)
+            fail(
+                "budget_not_written",
+                f'the token budget profile of job {job.job_id} could not be written.',
+                json_output=json_output,
+            )
         store = "token_budget_profile"
 
     if json_output:
-        print(_json.dumps({"job_id": str(job.job_id), "field": field_name, "old": old_value,
-                           "new": new_value, "store": store}, indent=2))
+        emit_ok(job_id=str(job.job_id), field=field_name, old=old_value,
+                new=new_value, store=store)
     else:
         print(f"Job {job.job_id}: {field_name} {old_value} -> {new_value} ({store}).")
 
@@ -2228,9 +2272,14 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
         until=getattr(args, "until", None),
         limit=getattr(args, "limit", None),
     ),
-    "job.show": lambda args: _cmd_show_job(args.job_id, full=getattr(args, "full", False)),
+    "job.show": lambda args: _cmd_show_job(
+        args.job_id, full=getattr(args, "full", False),
+        json_output=getattr(args, "json", False)),
     "job.budget": _cmd_job_budget_route,
-    "job.plan": lambda args: _cmd_plan_job_local(args.job_id),
+    "job.plan": lambda args: _cmd_plan_job_local(
+        args.job_id,
+        json_output=getattr(args, "json", False),
+    ),
     "job.checkpoints": lambda args: _cmd_checkpoints(
         args.job_id,
         json_output=getattr(args, "json", False),

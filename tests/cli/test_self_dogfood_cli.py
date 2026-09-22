@@ -42,6 +42,9 @@ def test_inspect_no_job(env):
     r = run_grouped_cli(["self", "inspect", "--json"], env)
     assert r.returncode == 0, r.stderr
     d = json.loads(r.stdout)
+    # F283 R19 C5 (DECISION F283 D10) — `emit_ok` adds `schema_version` and `ok`.
+    assert d["schema_version"] == 1
+    assert d["ok"] is True
     assert "item_count" in d
     assert "Traceback" not in r.stdout and "Traceback" not in r.stderr
 
@@ -77,6 +80,19 @@ def test_propose_top_then_idempotent(env):
     r2 = run_grouped_cli(["self", "propose", job_id, "--top", "2", "--json"], env)
     d2 = json.loads(r2.stdout)
     assert not d2["proposed_task_ids"] and len(d2["skipped_existing"]) == 2
+
+
+def test_propose_bad_top_answers_the_envelope(env):
+    """F283 R12 C3 — `self propose --top`'s `Error: --top must be an integer` line
+    moves onto `fail()` by the plain rule, token `invalid_argument`, exit 1."""
+    job_id = _job(env)
+    r = run_grouped_cli(["self", "propose", job_id, "--top", "not-a-number", "--json"], env)
+    assert r.returncode == 1
+    assert r.stderr == ""
+    body = json.loads(r.stdout)
+    assert body["schema_version"] == 1
+    assert body["ok"] is False
+    assert body["error"] == "invalid_argument"
 
 
 def test_propose_explicit_item(env):

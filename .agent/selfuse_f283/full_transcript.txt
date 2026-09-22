@@ -1,0 +1,13 @@
+Job ID: 129b3ad7206d4f8d
+Job Title: Address ledger finding R-0950
+Job State: blocked
+Execution: {"builder": "claude-cli", "builder_effort": "medium", "builder_effort_source": "cli", "builder_model": "claude-sonnet-4-6", "builder_model_source": "cli", "builder_source": "cli", "claude_cli_write_mode": "none", "claude_cli_write_mode_source": "default", "context_strategy": "task_bounded_sequential_job", "max_output_chars": 50000, "max_output_chars_source": "default", "max_rounds": 3, "max_rounds_source": "default", "max_tasks": 1, "max_tasks_source": "invocation", "repair_effort": "", "repair_effort_source": "default", "repair_model": "", "repair_model_source": "default", "repair_provider": "", "repair_provider_source": "default", "repair_rounds_allowed": 2, "repair_rounds_source": "default", "reviewer": "claude-cli", "reviewer_effort": "medium", "reviewer_effort_source": "cli", "reviewer_model": "claude-sonnet-4-6", "reviewer_model_source": "cli", "reviewer_source": "cli", "stream_evidence": false, "stream_evidence_source": "default", "test_command": "", "test_command_source": "default", "timeout_profile": "", "timeout_profile_source": "default", "timeout_sec": 120, "timeout_sec_source": "default"}
+
+Task Summary:
+
+Task T001:
+- Status: blocked
+- Reviewer Verdict: 
+- Final Status: provider_unavailable
+- Error: completion_gate_failed: final_status=provider_unavailable; missing_reviewer_output
+

@@ -451,6 +451,9 @@ class TestInitJson:
         assert r.returncode == 0, f"stderr: {r.stderr}"
 
         data = json.loads(r.stdout)
+        # F283 R17 C6 (D10): the success document answers through the envelope.
+        assert data["schema_version"] == 1
+        assert data["ok"] is True
         assert "steps" in data
         assert "summary" in data
         assert isinstance(data["steps"], list)
@@ -458,6 +461,19 @@ class TestInitJson:
         assert "slug" in data["summary"]
         assert "uuid" in data["summary"]
         assert "next" in data["summary"]
+
+    def test_not_a_git_repo_answers_the_envelope(self, tmp_path):
+        """F283 R14 C3 — the not-a-repository refusal under --json is one envelope."""
+        plain_dir = tmp_path / "notgit"
+        plain_dir.mkdir()
+        env = _make_env(tmp_path)
+        r = _run_init(plain_dir, env, ["--json"])
+        assert r.returncode == 4, f"expected exit 4, got {r.returncode}"
+
+        data = json.loads(r.stdout)
+        assert data["schema_version"] == 1
+        assert data["ok"] is False
+        assert data["error"] == "not_a_git_repo"
 
     def test_json_print_only_combined(self, tmp_path):
         """--json --print-only emits valid JSON without writing."""

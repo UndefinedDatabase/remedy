@@ -261,6 +261,9 @@ class TestScopedListingsCLI:
         result = _run_cli(["status", "--json"], env, cwd=str(repo_a))
         assert result.returncode == 0
         data = json.loads(result.stdout)
+        # F283 R17 C6 (D10): the success document answers through the envelope.
+        assert data["schema_version"] == 1
+        assert data["ok"] is True
         assert data["scope"] == slug_a
 
         # --project B from cwd=A: project slug shows B, not A (R-0108)

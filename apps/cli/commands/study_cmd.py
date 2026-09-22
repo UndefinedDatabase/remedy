@@ -7,9 +7,10 @@ project state and may cost a model call.
 """
 from __future__ import annotations
 
-import json as _json
 import os
 import sys
+
+from apps.cli.json_envelope import emit_ok
 
 
 def _cmd_study_run(
@@ -53,14 +54,14 @@ def _cmd_study_run(
         record_study_pass(scope.project_id, target)
 
     if json_output:
-        print(_json.dumps({
-            "project_id": result.project_id,
-            "job_id": result.job_id,
-            "cards_written": result.cards_written,
-            "partial": result.partial,
-            "stopped_reason": result.stopped_reason,
-            "entries_scanned": result.entries_scanned,
-        }, indent=2))
+        emit_ok(
+            project_id=result.project_id,
+            job_id=result.job_id,
+            cards_written=result.cards_written,
+            partial=result.partial,
+            stopped_reason=result.stopped_reason,
+            entries_scanned=result.entries_scanned,
+        )
         return
 
     print(f"Studied repository: {target}")

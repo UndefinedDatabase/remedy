@@ -678,6 +678,7 @@ def test_an_apply_the_baseline_check_refuses_fails_the_walk_naming_the_job(
 
     assert exc.value.code == 1
     captured = capsys.readouterr()
+    assert captured.err == ""
     data = json.loads(captured.out)
     [job_id] = data["job_ids"]
     apply = _step(data, "apply")
@@ -686,7 +687,10 @@ def test_an_apply_the_baseline_check_refuses_fails_the_walk_naming_the_job(
     assert "target_changed_since_job: docs/README.md" in apply["detail"]
     assert data["stopped_before_apply"] is True
     assert (repo / "docs" / "README.md").read_text() == "edited by hand\n"
-    assert f"Error: apply failed: job {job_id} was not applied" in captured.err
+    assert data["ok"] is False
+    assert data["error"] == "step_failed"
+    assert data["failed_step"] == "apply"
+    assert data["message"] == f"apply failed: {apply['detail']}"
 
 
 # ── R-0807's F268 half: measured tokens per role and cost (DECISION F268 D11) ──
@@ -852,9 +856,15 @@ def test_contract_naming_no_template_exits_2_naming_the_templates_and_writes_not
 
     assert exc.value.code == 2
     captured = capsys.readouterr()
-    assert captured.out == ""
-    assert ("--contract 'nosuch' is not a contract template; the templates are "
-            "api-service, cli-tool, python-library, website. Nothing was run.") in captured.err
+    assert captured.err == ""
+    body = json.loads(captured.out)
+    assert body["schema_version"] == 1
+    assert body["ok"] is False
+    assert body["error"] == "unsupported_contract_template"
+    assert body["message"] == (
+        "--contract 'nosuch' is not a contract template; the templates are "
+        "api-service, cli-tool, python-library, website. Nothing was run."
+    )
     assert [p for p in data_root.rglob("*") if p.is_file()] == []
     assert resolve_project(repo) is None
     assert list_job_plans() == []

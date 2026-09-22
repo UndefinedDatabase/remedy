@@ -317,6 +317,7 @@ def test_the_json_shape(root, capsys):
     assert set(body) == {
         "version", "root", "exists", "applied", "candidates",
         "refused", "not_reclaimed", "total", "removed", "freed",
+        "schema_version", "ok",
     }
     assert body["version"] == 1
     assert body["root"] == str(root)
@@ -428,6 +429,7 @@ def test_without_the_flag_the_json_is_byte_for_byte_what_it_was(root, capsys):
         ],
         "total": {"candidates": 1, "bytes": 64, "files": 1, "refused": 2},
         "removed": [], "freed": {"bytes": 0, "paths": 0},
+        "schema_version": 1, "ok": True,
     }
     assert out == json.dumps(expected, sort_keys=True) + "\n"
 
@@ -592,6 +594,7 @@ def test_the_orphan_json_shape(root, capsys):
     assert set(body) == {
         "version", "root", "exists", "applied", "candidates",
         "refused", "not_reclaimed", "total", "removed", "freed",
+        "schema_version", "ok",
     }
     by_state = {c["job_state"]: c for c in body["candidates"]}
     assert set(by_state) == {"completed", "no_record"}
@@ -656,6 +659,7 @@ def test_the_default_json_carries_no_hint_and_the_human_line_is_not_in_it(root, 
     assert set(json.loads(out)) == {
         "version", "root", "exists", "applied", "candidates",
         "refused", "not_reclaimed", "total", "removed", "freed",
+        "schema_version", "ok",
     }
 
 

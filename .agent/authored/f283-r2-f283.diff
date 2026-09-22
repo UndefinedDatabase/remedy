@@ -1,0 +1,25 @@
+--- a/docs/roadmap/features/T2_F283.md
++++ b/docs/roadmap/features/T2_F283.md
+@@ -67,6 +67,8 @@
+   catalog, not from prose.
+ - R-1019 is resolved: `worker unload` with neither `--model` nor `--all` refuses with
+   `missing_argument` whether or not `ollama` is on PATH.
++- R-1020 is resolved: no `supports_json` command reaches a shared helper that prints a
++  refusal and exits, and the strict xfail pinning that gap is green with its mark gone.
+ 
+ ## Findings this feature owns
+ R-1014, moved from F277 by DECISION F277 D10 — the §3 consolidation pass its fix clause
+@@ -79,6 +81,13 @@
+ before it checks that a target was named, so a malformed invocation answers with a success
+ envelope and exit 0 on any machine without the provider installed. That is refusal shape,
+ which is this feature's T001.
++
++R-1020, registered at this feature's round 2 authoring dry run on 2026-09-21 — for 52 of
++the catalog's 111 `supports_json` commands the refusal that fires is in a shared EXITING
++helper under `packages/` (`resolve_job_id`, `_exit_ambiguous`, `require_job_plan`), which
++prints prose and exits before the handler's own failure path. It is the reason T001's
++Acceptance line cannot be met by migrating `print(...); sys.exit()` pairs inside
++`apps/cli/` alone, and its repair comes BEFORE T001's catalog half.
+ 
+ ## Do not touch
+ The event names themselves and `packages/orchestration/event_names.py`: F277 declared that

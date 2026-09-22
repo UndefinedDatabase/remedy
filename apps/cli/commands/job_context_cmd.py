@@ -29,6 +29,7 @@ import subprocess
 from pathlib import Path
 from typing import Any
 
+from apps.cli.job_id_arg import resolve_job_id_or_fail
 from apps.cli.json_envelope import fail
 
 #: Directories the rglob fallback never lists. A real git checkout excludes
@@ -260,20 +261,18 @@ def _cmd_job_context(
     json_output: bool = False,
 ) -> None:
     """Compile and render one task's context (F107 T004 part 2a). READ-ONLY."""
-    import json as _json
-
+    from apps.cli.json_envelope import emit_ok
     from packages.orchestration.context_compiler import (
         compile_task_context,
         export_omitted_context_json,
     )
-    from packages.orchestration.data_paths import resolve_job_id
     from packages.orchestration.pingpong_job import JobNotFoundError, require_job_plan
 
     try:
-        resolved = resolve_job_id(job_id_str)
+        resolved = resolve_job_id_or_fail(job_id_str, json_output=json_output)
         job = require_job_plan(resolved)
     except JobNotFoundError:
-        fail("invalid_job_id", f"No job matches {job_id_str!r}. Try: remedy job list.",
+        fail("job_not_found", f"No job matches {job_id_str!r}. Try: remedy job list.",
              json_output=json_output)
 
     repo_str = _job_target_repo(job)
@@ -309,7 +308,7 @@ def _cmd_job_context(
     }
 
     if json_output:
-        print(_json.dumps(result, indent=2))
+        emit_ok(**result)
     else:
         _print_text_view(result)
 

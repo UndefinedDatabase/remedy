@@ -789,13 +789,17 @@ class TestRunList:
         return run_pingpong(goal, str(demo), builder_provider=p, reviewer_provider=p)
 
     def test_no_flag_prints_list_runs_verbatim(self, tmp_path, monkeypatch, capsys):
-        """`run list --json` prints the bytes `do report list --json` printed."""
+        """F283 R18 C4 (DECISION F283 D10 (4)) — `run list --json` answers
+        `emit_ok(runs=<the list>)`; the `runs` key carries `list_runs()` verbatim."""
         self._one_run(tmp_path, monkeypatch, "Fix")
         from apps.cli.commands.do_cmd import _cmd_run_list
         from packages.orchestration.pingpong_loop import list_runs
 
         _cmd_run_list(json_output=True)
-        assert capsys.readouterr().out == json.dumps(list_runs(), indent=2) + "\n"
+        payload = json.loads(capsys.readouterr().out)
+        assert payload["schema_version"] == 1
+        assert payload["ok"] is True
+        assert payload["runs"] == list_runs()
 
     def test_limit_flag_is_honoured(self, tmp_path, monkeypatch, capsys):
         """The five flags the catalog attaches are real, not decoration."""
@@ -804,7 +808,7 @@ class TestRunList:
         from apps.cli.commands.do_cmd import _cmd_run_list
 
         _cmd_run_list(json_output=True, limit="1")
-        assert len(json.loads(capsys.readouterr().out)) == 1
+        assert len(json.loads(capsys.readouterr().out)["runs"]) == 1
 
     def test_unknown_sort_field_exits_without_a_traceback(self, tmp_path, monkeypatch, capsys):
         self._one_run(tmp_path, monkeypatch, "Fix")
@@ -813,13 +817,36 @@ class TestRunList:
         with pytest.raises(SystemExit) as exc:
             _cmd_run_list(json_output=True, sort="nope")
         assert exc.value.code == 1
-        assert "unknown --sort field" in capsys.readouterr().err
+        captured = capsys.readouterr()
+        assert captured.err == ""
+        body = json.loads(captured.out)
+        assert body["schema_version"] == 1
+        assert body["ok"] is False
+        assert body["error"] == "invalid_list_option"
+        assert "unknown --sort field" in body["message"]
 
-    def test_empty_store_prints_the_empty_message(self, tmp_path, monkeypatch, capsys):
+    def test_empty_store_answers_the_envelope_with_an_empty_runs_list(
+        self, tmp_path, monkeypatch, capsys
+    ):
+        """F283 R18 C4 (DECISION F283 D10 (4)) — an empty store no longer prints
+        the text-branch prose under `--json`; it answers `emit_ok(runs=[])`."""
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "empty"))
         from apps.cli.commands.do_cmd import _cmd_run_list
 
         _cmd_run_list(json_output=True)
+        payload = json.loads(capsys.readouterr().out)
+        assert payload["schema_version"] == 1
+        assert payload["ok"] is True
+        assert payload["runs"] == []
+
+    def test_empty_store_prints_the_empty_message_without_json(
+        self, tmp_path, monkeypatch, capsys
+    ):
+        """The prose line stays in the text branch (DECISION F283 D10 (4))."""
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "empty"))
+        from apps.cli.commands.do_cmd import _cmd_run_list
+
+        _cmd_run_list(json_output=False)
         assert capsys.readouterr().out == "No ping-pong runs found.\n"
 
 
@@ -830,5 +857,20 @@ class TestRunShow:
 
         with pytest.raises(SystemExit) as exc:
             _cmd_run_show("no-such-run", json_output=True)
+        assert exc.value.code == 1
+        captured = capsys.readouterr()
+        assert captured.err == ""
+        body = json.loads(captured.out)
+        assert body["schema_version"] == 1
+        assert body["ok"] is False
+        assert body["error"] == "run_not_found"
+        assert body["message"] == "No run matches 'no-such-run'. Try: remedy run list."
+
+    def test_missing_run_text_mode_keeps_the_error_prefix(self, tmp_path, monkeypatch, capsys):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "empty"))
+        from apps.cli.commands.do_cmd import _cmd_run_show
+
+        with pytest.raises(SystemExit) as exc:
+            _cmd_run_show("no-such-run", json_output=False)
         assert exc.value.code == 1
         assert capsys.readouterr().err == "Error: No run matches 'no-such-run'. Try: remedy run list.\n"

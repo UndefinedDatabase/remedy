@@ -509,6 +509,9 @@ class TestDevStatusCommandSchema:
         with patch("builtins.print") as mock_print:
             _dev_status(json_output=True)
             data = json.loads(mock_print.call_args[0][0])
+            # F283 R17 C6 (D10): the success document answers through the envelope.
+            assert data["schema_version"] == 1
+            assert data["ok"] is True
             required = {
                 "version", "cli_ok", "latest_smoke", "ui_contract_ok",
                 "task_progress_ok", "worker_cleanup_ok",

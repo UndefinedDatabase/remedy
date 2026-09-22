@@ -9,7 +9,9 @@ the red proof ``docs/roadmap/features/T2_F277.md`` names in its Acceptance list.
 from __future__ import annotations
 
 import argparse
+import ast
 import json
+import pathlib
 
 import pytest
 
@@ -22,6 +24,8 @@ from apps.cli.json_envelope import (
     emit_ok,
     fail,
 )
+
+REPO_ROOT = pathlib.Path(__file__).resolve().parents[2]
 
 
 class TestTheEnvelopeHasOneShape:
@@ -228,3 +232,68 @@ class TestFailReportsInOneShapeAndExits:
         import apps.cli.json_envelope as mod
 
         assert typing.get_type_hints(mod.fail)["return"] is typing.NoReturn
+
+
+def _raw_json_document_sites_by_module() -> dict[str, int]:
+    """Every call under `apps/cli/` that writes a raw JSON document to stdout —
+    `print(<json>.dumps(...))` or `<json>.dump(..., sys.stdout)` — counted per
+    module, by DECISION F283 D10's rule. The reviewer's scratch scanner
+    `.remedy-wt/f283-r17-scratch/raw_sites.py` counts by this same walk; this
+    copy is the one that ships, so the ratchet below needs no scratch file."""
+    per_mod: dict[str, int] = {}
+    for f in sorted((REPO_ROOT / "apps/cli").rglob("*.py")):
+        src = f.read_text()
+        tree = ast.parse(src)
+        for n in ast.walk(tree):
+            if not isinstance(n, ast.Call):
+                continue
+            fn = n.func
+            dumped = None
+            if isinstance(fn, ast.Name) and fn.id == "print" and n.args:
+                a = n.args[0]
+                if (
+                    isinstance(a, ast.Call)
+                    and isinstance(a.func, ast.Attribute)
+                    and a.func.attr == "dumps"
+                    and not any(
+                        k.arg == "file"
+                        and not (isinstance(k.value, ast.Attribute) and k.value.attr == "stdout")
+                        for k in n.keywords
+                    )
+                ):
+                    dumped = a.args[0] if a.args else None
+            elif isinstance(fn, ast.Attribute) and fn.attr == "dump" and len(n.args) >= 2:
+                s = n.args[1]
+                if isinstance(s, ast.Attribute) and s.attr == "stdout":
+                    dumped = n.args[0]
+            if dumped is None:
+                continue
+            rel = str(f.relative_to(REPO_ROOT))
+            per_mod[rel] = per_mod.get(rel, 0) + 1
+    return per_mod
+
+
+class TestRawJSONDocumentSitesRatchet:
+    """DECISION F283 D10 (6) — a ratchet on the raw-document sites left under
+    `apps/cli/`: a `--json` success path that still writes its document with a
+    bare `print(<json>.dumps(...))` or `<json>.dump(..., sys.stdout)` instead
+    of through the envelope. Pinned by EQUALITY against the reading this
+    commit measures; each conversion commit lowers the pinned count for the
+    modules it converts, dropping a module from the dict once its raw sites
+    reach zero, and when the conversion is complete the dict names only the
+    text-branch survivors of D10 (5), each with its reason in a comment."""
+
+    RAW_SITES_BY_MODULE = {
+        # DECISION F283 D10 (5) — a raw document printed WITHOUT `--json`, in a
+        # text branch, is out of scope. `_cmd_project_attach_repo` ("project
+        # attach") prints this JSON document unconditionally in its non-JSON
+        # branch, below the `if json_output: emit_ok(...); return` above it,
+        # so this is the one text-branch survivor D10 (6) names.
+        "apps/cli/commands/project.py": 1,
+    }
+
+    def test_the_pinned_counts_match_the_scan(self) -> None:
+        assert _raw_json_document_sites_by_module() == self.RAW_SITES_BY_MODULE
+
+    def test_the_pinned_total_is_the_measured_total(self) -> None:
+        assert sum(self.RAW_SITES_BY_MODULE.values()) == 1

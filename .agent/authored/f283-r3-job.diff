@@ -1,0 +1,70 @@
+diff --git a/apps/cli/commands/job.py b/apps/cli/commands/job.py
+index f9a9bd52..1ed04885 100644
+--- a/apps/cli/commands/job.py
++++ b/apps/cli/commands/job.py
+@@ -9,9 +9,10 @@ from collections.abc import Callable
+ from datetime import datetime, timezone
+ from typing import TYPE_CHECKING, Any, NoReturn
+ 
++from apps.cli.job_id_arg import resolve_job_id_or_fail
+ from apps.cli.json_envelope import fail
+ from packages.core.models import RunState
+-from packages.orchestration.data_paths import resolve_data_root, resolve_job_id
++from packages.orchestration.data_paths import resolve_data_root
+ from packages.orchestration.job_runner import PlanJobResult
+ from packages.orchestration.pingpong_job import (
+     JobNotFoundError,
+@@ -209,7 +210,7 @@ def _cmd_show_job(job_id_str: str, *, full: bool = False, json_output: bool = Fa
+ 
+     from packages.orchestration.pingpong_job import _export_job, collect_blocked_task_findings
+ 
+-    job_id = resolve_job_id(job_id_str)
++    job_id = resolve_job_id_or_fail(job_id_str, json_output=json_output)
+     try:
+         job = require_job_plan(job_id)
+     except (JobNotFoundError, JobStoreError) as exc:
+@@ -719,7 +720,7 @@ def _print_intake_block(intake: dict) -> None:
+ 
+ 
+ def _cmd_plan_job_local(job_id_str: str) -> None:
+-    job_id = resolve_job_id(job_id_str)
++    job_id = resolve_job_id_or_fail(job_id_str, json_output=False)
+     try:
+         job = require_job_plan(job_id)
+     except JobNotFoundError as exc:
+@@ -852,7 +853,7 @@ def _cmd_plan_job_local(job_id_str: str) -> None:
+ 
+ 
+ def _cmd_run_next_task_local(job_id_str: str) -> None:
+-    job_id = resolve_job_id(job_id_str)
++    job_id = resolve_job_id_or_fail(job_id_str, json_output=False)
+     try:
+         job = require_job_plan(job_id)
+     except JobNotFoundError as exc:
+@@ -1172,7 +1173,7 @@ def _cmd_job_run_cycles(
+         _cmd_run_next_task_local(job_id_str)
+         return
+ 
+-    job_id = resolve_job_id(job_id_str)
++    job_id = resolve_job_id_or_fail(job_id_str, json_output=json_output)
+     try:
+         job = require_job_plan(job_id)
+     except JobNotFoundError as exc:
+@@ -1394,7 +1395,7 @@ def _cmd_job_resume(
+         load_latest_valid,
+     )
+ 
+-    job_id = resolve_job_id(job_id_str)
++    job_id = resolve_job_id_or_fail(job_id_str, json_output=json_output)
+     try:
+         job = require_job_plan(job_id)
+     except JobNotFoundError as exc:
+@@ -1519,7 +1520,7 @@ def _cmd_resume(
+         resume_dry_run,
+     )
+ 
+-    job_id = resolve_job_id(job_id_str)
++    job_id = resolve_job_id_or_fail(job_id_str, json_output=json_output)
+     try:
+         job = require_job_plan(job_id)
+     except JobNotFoundError as exc:

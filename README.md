@@ -26,13 +26,13 @@ verification commands. If something is unproven, Remedy says so instead of guess
 
 ## Status
 
-88 of 283 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
+89 of 283 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
 
 | Tier | Name | Done | Total |
 |------|------|-----:|------:|
 | 0 | Foundation & Trust Core | 16 | 16 |
 | 1 | Self-Build Bootstrap | 22 | 22 |
-| 2 | Minimal Self-Build Runtime | 30 | 36 |
+| 2 | Minimal Self-Build Runtime | 31 | 36 |
 | 3 | Full Token Economy & Autonomy | 6 | 26 |
 | 4 | Memory & Learning | 1 | 17 |
 | 5 | Operator Cockpit | 13 | 34 |
@@ -196,7 +196,12 @@ envelope every `--json` command answers in, on success and on failure, with an
 error boundary that turns an uncaught crash into that envelope instead of a
 traceback; and the shared refusal helper nine command groups now answer through
 — the remaining groups, the catalog gap and the exit-code taxonomy belong to the
-follow-up feature the STATUS ledger registers directly behind this one).
+follow-up feature the STATUS ledger registers directly behind this one),
+F283 machine contracts part two (the follow-up that finished it: every command that
+answers a machine now answers in the same envelope on success and on refusal, no
+read-only command is left that cannot answer a machine at all, and every exit code
+the CLI uses has one written meaning that a test checks against the command catalog
+rather than against prose).
 
 Accepted in Tier 3 so far:
 F106 session resume instead of rebuild (repair rounds resume the original

@@ -34,6 +34,7 @@ from __future__ import annotations
 import difflib
 import json
 from pathlib import Path
+from types import SimpleNamespace
 from uuid import UUID, uuid4
 
 import pytest
@@ -215,11 +216,16 @@ class TestTheHappyPath:
         CMD._cmd_approve_hunks(str(job.job_id), approve=[HUNK_IDS[0]], json_output=True)
 
         payload = json.loads(capsys.readouterr().out)
-        assert payload["task_id"] == "job"
-        assert payload["attempt"] == DIFF_JOB_ARTIFACT_NAME
-        assert payload["decided_at"]
-        assert [row["id"] for row in payload["hunks"]] == HUNK_IDS
-        assert payload == load_job_plan(job.job_id).metadata[HUNK_DECISIONS_METADATA_KEY][
+        # F283 R18 C5 (DECISION F283 D10) — the envelope `emit_ok` adds
+        # `schema_version` and `ok`; the stored record carries neither.
+        assert payload["schema_version"] == 1
+        assert payload["ok"] is True
+        record = {k: v for k, v in payload.items() if k not in ("schema_version", "ok")}
+        assert record["task_id"] == "job"
+        assert record["attempt"] == DIFF_JOB_ARTIFACT_NAME
+        assert record["decided_at"]
+        assert [row["id"] for row in record["hunks"]] == HUNK_IDS
+        assert record == load_job_plan(job.job_id).metadata[HUNK_DECISIONS_METADATA_KEY][
             f"job:{DIFF_JOB_ARTIFACT_NAME}"]
 
 
@@ -238,7 +244,9 @@ class TestItMintsNoRefusalVocabularyOfItsOwn:
 
         assert exc.value.code == 1
         payload = json.loads(capsys.readouterr().out)
-        assert payload["code"] == REFUSAL_MISSING_REASON
+        assert payload["schema_version"] == 1
+        assert payload["ok"] is False
+        assert payload["error"] == REFUSAL_MISSING_REASON
         assert payload["hunk_ids"] == [HUNK_IDS[0]]
         assert HUNK_DECISIONS_METADATA_KEY not in load_job_plan(job.job_id).metadata
 
@@ -255,7 +263,9 @@ class TestItMintsNoRefusalVocabularyOfItsOwn:
 
         assert exc.value.code == 1
         payload = json.loads(capsys.readouterr().out)
-        assert payload["code"] == HUNK_RECORD_REFUSAL_NO_DIFF
+        assert payload["schema_version"] == 1
+        assert payload["ok"] is False
+        assert payload["error"] == HUNK_RECORD_REFUSAL_NO_DIFF
         assert DIFF_REASON_NO_EVIDENCE_DIR in payload["message"]
         assert HUNK_DECISIONS_METADATA_KEY not in load_job_plan(job.job_id).metadata
 
@@ -293,6 +303,23 @@ class TestItMintsNoRefusalVocabularyOfItsOwn:
 
         assert exc.value.code == 1
         assert "Error:" in capsys.readouterr().err
+
+
+class TestARefusalIsAnEnvelopeUnderJson:
+    """F283 R7 C6 — `_cmd_approve_hunks`'s `JobNotFoundError` catch moved onto `fail()`;
+    under `--json` the unknown-job refusal answers a machine in the envelope instead of
+    printing an `Error: ` line to stderr."""
+
+    def test_an_unknown_job_id_answers_job_not_found_in_the_envelope(self, isolated, capsys):
+        with pytest.raises(SystemExit) as exc:
+            CMD._cmd_approve_hunks(str(uuid4()), approve=["h1"], json_output=True)
+
+        assert exc.value.code == 1
+        captured = capsys.readouterr()
+        assert captured.err == ""
+        body = json.loads(captured.out)
+        assert body["ok"] is False
+        assert body["error"] == "job_not_found"
 
 
 class TestTheEvidenceDirectoryComesFromTheRESOLVEDJobId:
@@ -361,3 +388,183 @@ class TestTheEvidenceDirectoryComesFromTheRESOLVEDJobId:
         assert [row["state"] for row in record["hunks"]] == [
             "approved", "pending", "pending"]
         assert "no_diff_available" not in capsys.readouterr().err
+
+
+class TestListPatchIntentsInvalidListOptionIsAnEnvelope:
+    """F283 R8 C6 — round 7's coverage gap: `_cmd_list_patch_intents`'s own
+    `invalid_list_option` refusal (a different call site than `_cmd_approve_hunks`'s
+    `job_not_found`, which round 7's one patch envelope test reached instead) gets its
+    own test."""
+
+    def test_an_invalid_sort_field_answers_invalid_list_option_in_the_envelope(
+        self, isolated, capsys,
+    ):
+        job = _job()
+
+        with pytest.raises(SystemExit) as exc:
+            CMD._cmd_list_patch_intents(
+                str(job.job_id), json_output=True, sort="not_a_real_field",
+            )
+
+        assert exc.value.code == 1
+        captured = capsys.readouterr()
+        assert captured.err == ""
+        body = json.loads(captured.out)
+        assert body["ok"] is False
+        assert body["error"] == "invalid_list_option"
+
+
+class TestShowApproveRejectAnswerJSONThroughTheDispatcher:
+    """F283 R14 C5 (DECISION F283 D9) — `patch show`, `patch approve` and `patch
+    reject` now declare `--json` in the catalog; both shapes proved end to end
+    through the CLI dispatcher. `resolve_job_id_or_fail` and `require_job_plan`
+    are stubbed on the `CMD` module object (the same seam `test_a_refusal_never_
+    persists_the_job` above patches `save_job_plan` through), and the queue
+    functions are patched at their `packages.orchestration.approval_queue`
+    source, since the handler imports them lazily inside its own body."""
+
+    def test_show_answers_the_envelope(self, monkeypatch, capsys):
+        from apps.cli.grouped import main
+
+        fake_job = SimpleNamespace(job_id="job-1")
+        monkeypatch.setattr(CMD, "resolve_job_id_or_fail", lambda *a, **k: "job-1")
+        monkeypatch.setattr(CMD, "require_job_plan", lambda job_id: fake_job)
+        monkeypatch.setattr(
+            "packages.orchestration.approval_queue.get_patch_intent",
+            lambda job, intent_id: {"intent_id": intent_id, "state": "pending"},
+        )
+        monkeypatch.setattr(
+            "packages.orchestration.approval_queue._find_artifact_for_intent",
+            lambda job, intent_id: None,
+        )
+
+        main(["patch", "show", "job-1", "5", "--json"])
+        body = json.loads(capsys.readouterr().out)
+        assert body["ok"] is True and body["schema_version"] == 1
+        assert body["job_id"] == "job-1"
+        assert body["intent"] == {"intent_id": "5", "state": "pending"}
+        assert body["diff_preview"] is None
+
+    def test_show_refusal_is_the_envelope_through_the_dispatcher(self, monkeypatch, capsys):
+        from apps.cli.grouped import main
+
+        fake_job = SimpleNamespace(job_id="job-1")
+        monkeypatch.setattr(CMD, "resolve_job_id_or_fail", lambda *a, **k: "job-1")
+        monkeypatch.setattr(CMD, "require_job_plan", lambda job_id: fake_job)
+        monkeypatch.setattr(
+            "packages.orchestration.approval_queue.get_patch_intent",
+            lambda job, intent_id: None,
+        )
+
+        with pytest.raises(SystemExit) as exc:
+            main(["patch", "show", "job-1", "no-such-intent", "--json"])
+        assert exc.value.code == 1
+        body = json.loads(capsys.readouterr().out)
+        assert body["ok"] is False
+        assert body["error"] == "patch_intent_not_found"
+
+    def test_show_refusal_without_json_is_the_two_old_stderr_lines(self, monkeypatch, capsys):
+        """F283 R15 C3 — pins the text branch's byte identity: the refusal message
+        joins its two lines with `\\n`, and `fail()`'s `Error: ` prefix lands only
+        on the first, so stderr reads exactly the two old lines. Round 14 left this
+        unpinned; correct on disk, but no test spent an id on it until now."""
+        from apps.cli.grouped import main
+
+        fake_job = SimpleNamespace(job_id="job-1")
+        monkeypatch.setattr(CMD, "resolve_job_id_or_fail", lambda *a, **k: "job-1")
+        monkeypatch.setattr(CMD, "require_job_plan", lambda job_id: fake_job)
+        monkeypatch.setattr(
+            "packages.orchestration.approval_queue.get_patch_intent",
+            lambda job, intent_id: None,
+        )
+
+        with pytest.raises(SystemExit) as exc:
+            main(["patch", "show", "job-1", "no-such-intent"])
+        assert exc.value.code == 1
+        captured = capsys.readouterr()
+        assert captured.out == ""
+        assert captured.err == (
+            "Error: patch intent 'no-such-intent' not found in job job-1.\n"
+            "Use 'remedy patch list <job_id>' to see available intent IDs.\n"
+        )
+
+    def test_approve_answers_the_envelope(self, monkeypatch, capsys):
+        from apps.cli.grouped import main
+
+        fake_job = SimpleNamespace(job_id="job-1")
+        entry = {"intent_id": "5", "target_path": "f.py", "risk": "low"}
+        monkeypatch.setattr(CMD, "resolve_job_id_or_fail", lambda *a, **k: "job-1")
+        monkeypatch.setattr(CMD, "require_job_plan", lambda job_id: fake_job)
+        monkeypatch.setattr(CMD, "save_job_plan", lambda job: None)
+        monkeypatch.setattr(
+            "packages.orchestration.approval_queue.set_approval_state",
+            lambda job, intent_id, state, reason=None: entry,
+        )
+        monkeypatch.setattr(
+            "packages.orchestration.run_log.RunLogWriter",
+            lambda **kw: SimpleNamespace(log=lambda *a, **k: None),
+        )
+
+        main(["patch", "approve", "job-1", "5", "--json"])
+        body = json.loads(capsys.readouterr().out)
+        assert body["ok"] is True and body["schema_version"] == 1
+        assert body["intent_id"] == "5" and body["target_path"] == "f.py"
+        assert body["risk"] == "low" and body["state"] == "approved"
+        assert body["reason_recorded"] is False
+
+    def test_reject_answers_the_envelope(self, monkeypatch, capsys):
+        from apps.cli.grouped import main
+
+        fake_job = SimpleNamespace(job_id="job-1")
+        entry = {"intent_id": "5", "target_path": "f.py", "risk": "low"}
+        monkeypatch.setattr(CMD, "resolve_job_id_or_fail", lambda *a, **k: "job-1")
+        monkeypatch.setattr(CMD, "require_job_plan", lambda job_id: fake_job)
+        monkeypatch.setattr(CMD, "save_job_plan", lambda job: None)
+        monkeypatch.setattr(
+            "packages.orchestration.approval_queue.set_approval_state",
+            lambda job, intent_id, state, reason=None: entry,
+        )
+        monkeypatch.setattr(
+            "packages.orchestration.run_log.RunLogWriter",
+            lambda **kw: SimpleNamespace(log=lambda *a, **k: None),
+        )
+
+        main(["patch", "reject", "job-1", "5", "--reason", "scope", "--json"])
+        body = json.loads(capsys.readouterr().out)
+        assert body["ok"] is True and body["schema_version"] == 1
+        assert body["intent_id"] == "5" and body["target_path"] == "f.py"
+        assert body["risk"] == "low" and body["state"] == "rejected"
+        assert body["reason_recorded"] is True
+
+
+class TestRevertRefusalIsAnEnvelope:
+    """DECISION F283 D11 (2) — round 18 (`8abd1553`) wrote the fallback chain
+    `result.block_reason or result.state or "revert_failed"` in
+    `_cmd_revert_patch_intent`, but pinned it with no test; this is that test.
+    A revert the revert path REFUSES (no apply record on disk, so
+    `revert_repository_apply`'s first gate blocks it before anything is
+    touched) answers ONE failure envelope whose `error` is the refusal's own
+    `block_reason`, `ok` is false, and the exit code is the revert's own (1)."""
+
+    def test_a_refused_revert_answers_its_block_reason_as_the_envelope_error(
+        self, isolated, capsys,
+    ):
+        job = _job()
+        job.metadata["target_repo"] = "/repo"
+        save_job_plan(job)
+
+        with pytest.raises(SystemExit) as exc:
+            CMD._cmd_revert_patch_intent(
+                str(job.job_id), "intent-1", apply_id="no-such-apply-id",
+                json_output=True,
+            )
+
+        assert exc.value.code == 1
+        captured = capsys.readouterr()
+        assert captured.err == ""
+        payload = json.loads(captured.out)
+        assert payload["schema_version"] == 1
+        assert payload["ok"] is False
+        assert payload["error"] == "no_apply_record"
+        assert payload["block_reason"] == "no_apply_record"
+        assert payload["success"] is False

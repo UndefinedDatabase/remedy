@@ -1,0 +1,73 @@
+diff --git a/tests/cli/test_job_refusal_envelope.py b/tests/cli/test_job_refusal_envelope.py
+index 3f757f13..727dede1 100644
+--- a/tests/cli/test_job_refusal_envelope.py
++++ b/tests/cli/test_job_refusal_envelope.py
+@@ -184,17 +184,21 @@ class TestWithoutJsonTheOperatorSeesTheSameBytes:
+         assert out == ""
+         assert err == "Error: No job matches 'zzzznotajob'. Try: remedy job list.\n"
+ 
+-    @pytest.mark.xfail(strict=True, reason="R-1020: resolve_job_id exits in prose before the handler")
+-    def test_a_threaded_command_still_refuses_in_prose_when_a_shared_helper_exits(self):
+-        """R-1020, pinned red on purpose: threading the flag is not enough.
+-
+-        `job.show` declares `supports_json: True` and its handler now takes and uses
+-        `json_output` — but the refusal a bad id actually reaches is
+-        `packages.orchestration.data_paths.resolve_job_id`, which prints prose and exits
+-        before the handler's own failure path is reached. 52 of the catalog's 111
+-        `supports_json` commands call one of those shared EXITING helpers. This test is
+-        `strict`, so the round that fixes R-1020 turns it green and must delete the mark
+-        in the same commit.
++    def test_a_threaded_command_answers_a_bad_id_in_the_envelope(self):
++        """R-1020 repaired FOR THIS COMMAND; the finding stays open for the rest.
++
++        `job.show` declares `supports_json: True`. Its handler takes `json_output`, and
++        as of F283 round 3 it resolves the id through
++        `apps.cli.job_id_arg.resolve_job_id_or_fail`, which catches what `lookup_job_id`
++        raises instead of letting `resolve_job_id` print prose and exit above it. This
++        test carried a `strict` xfail for exactly one round; the mark was deleted in the
++        commit that turned it green.
++
++        R-1020 is NOT resolved by that. `resolve_job_id` keeps 17 call sites in eight
++        other command modules — `change`, `contract_cmd`, `decision`, `job_context_cmd`,
++        `job_stop_cmd`, `patch`, `project`, `teacher_cmd` — and every `supports_json`
++        command reached through one of them still answers a bad id in prose. The guard
++        below counts them so the remainder cannot be forgotten.
+         """
+         from apps.cli.commands.job import _cmd_show_job
+ 
+@@ -211,3 +215,35 @@ class TestWithoutJsonTheOperatorSeesTheSameBytes:
+         job_id = "0123456789abcdef"
+         assert _plan_rejected_error(job_id) == "Error: " + _plan_rejected_message(job_id)
+         assert not _plan_rejected_message(job_id).startswith("Error: ")
++
++
++class TestTheExitingResolverIsStillReachable:
++    """R-1020's remainder, counted rather than remembered.
++
++    `resolve_job_id` prints a prose refusal and exits. Every call site of it is a
++    `supports_json` command that cannot answer a machine. This number falls as the
++    sweep reaches each module; it never rises.
++    """
++
++    def test_the_call_sites_outside_job_py_are_counted(self):
++        import ast
++
++        root = pathlib.Path(__file__).resolve().parents[2] / "apps" / "cli"
++        found: dict[str, int] = {}
++        for path in sorted(root.rglob("*.py")):
++            tree = ast.parse(path.read_text())
++            n = sum(
++                1
++                for node in ast.walk(tree)
++                if isinstance(node, ast.Call)
++                and isinstance(node.func, ast.Name)
++                and node.func.id == "resolve_job_id"
++            )
++            if n:
++                found[path.name] = n
++        assert "job.py" not in found, (
++            f"job.py should call resolve_job_id_or_fail now, found {found.get('job.py')}"
++        )
++        assert sum(found.values()) == 17, (
++            f"expected R-1020's 17 remaining call sites, found {sum(found.values())}: {found}"
++        )

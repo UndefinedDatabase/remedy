@@ -258,6 +258,39 @@ class TestCatalogJSONSupport:
             assert cmd.supports_json, f"{cid} should support JSON"
 
 
+# ---------------------------------------------------------------------------
+# The read-only-without-`supports_json` ratchet (DECISION F283 D9)
+# ---------------------------------------------------------------------------
+
+
+class TestReadOnlyWithoutSupportsJSONRatchet:
+    """DECISION F283 D9 — the catalog half's last group, `ui`, lands in F283
+    R16 C5, after `init`, `dev`, `memory`, `blocker`, `patch`, `decision`,
+    `job plan`, `brain` and `project` already emptied the rest of the set the
+    D7 derived rule found (neither `may_mutate_repo` nor `may_execute_commands`
+    declared, and `supports_json` still missing). The derived set is now
+    EMPTY, by D9 (6), and the pinned constant this class used to check it
+    against is deleted with it — a command can neither leave the read-only set
+    unannounced nor join it without declaring `supports_json` in the same
+    change."""
+
+    def test_the_derived_set_is_empty(self) -> None:
+        derived = frozenset(
+            cmd.command_id for cmd in CATALOG
+            if not cmd.may_mutate_repo
+            and not cmd.may_execute_commands
+            and not cmd.supports_json
+        )
+        assert derived == frozenset()
+
+    def test_every_command_carrying_json_declares_supports_json(self) -> None:
+        for cmd in CATALOG:
+            if any(a.name == "--json" for a in cmd.args):
+                assert cmd.supports_json, (
+                    f"{cmd.command_id} carries --json but does not declare supports_json"
+                )
+
+
 class TestCatalogLookups:
     def test_get_group(self) -> None:
         g = get_group("job")

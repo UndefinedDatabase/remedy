@@ -121,14 +121,34 @@ def test_an_unknown_project_exits_1_with_the_init_step_failed_and_no_mission(rep
     code, out, err = _exit_code_and_output(capsys, "--project", "no-such-project")
 
     assert code == 1
+    assert err == ""
     data = json.loads(out)
+    assert data["ok"] is False
+    assert data["error"] == "step_failed"
+    assert data["failed_step"] == "init"
     assert [(s["name"], s["status"]) for s in data["steps"]] == [("init", "failed")]
     assert "no-such-project" in _step(data, "init")["detail"]
     assert data["mission_id"] is None
+    assert data["message"] == f"init failed: {_step(data, 'init')['detail']}"
     assert project_ids_with_missions() == []
     assert list_job_plans() == []
     assert resolve_project(repo) is None
-    assert "Error: init failed: " in err
+
+
+def test_a_successful_do_json_object_carries_schema_version_1_and_ok_true(repo, capsys):
+    data = _do_json(capsys)
+    assert data["schema_version"] == 1
+    assert data["ok"] is True
+    assert "mission_id" in data
+
+
+def test_a_failed_walk_in_text_mode_still_writes_error_init_failed_on_stderr(repo, capsys):
+    with pytest.raises(SystemExit) as exc:
+        main(["do", ORDER, "--no-llm", "--no-ui", *FAKE_ROLES,
+              "--project", "no-such-project"])
+    assert exc.value.code == 1
+    captured = capsys.readouterr()
+    assert captured.err.startswith("Error: init failed: ")
 
 
 # ── the budget flags (DECISION F268 D16 (5)) ─────────────────────────────────
@@ -145,14 +165,21 @@ def test_max_total_tokens_is_the_jobs_recorded_budget(repo, capsys):
 
 
 def test_an_invalid_budget_value_exits_2_and_leaves_the_repository_unregistered(repo, capsys):
+    """F283 round 8 — `_cmd_do_order`'s budget-resolution refusal moved onto `fail()`
+    under DECISION F277 D8: under `--json` it now answers a machine in the envelope
+    (`ok` false, `error` `invalid_budget`) instead of printing on stderr with an empty
+    stdout, the shape this whole feature exists to end."""
     from packages.orchestration.pingpong_job import list_job_plans
     from packages.orchestration.project_registry import resolve_project
 
     code, out, err = _exit_code_and_output(capsys, "--max-total-tokens", "many")
 
     assert code == 2
-    assert out == ""
-    assert "Nothing was run." in err
+    assert err == ""
+    body = json.loads(out)
+    assert body["ok"] is False
+    assert body["error"] == "invalid_budget"
+    assert "Nothing was run." in body["message"]
     assert resolve_project(repo) is None
     assert list_job_plans() == []
 
@@ -228,9 +255,13 @@ def test_a_flag_removed_from_do_exits_2_and_runs_nothing(repo, capsys, removed):
     from packages.orchestration.pingpong_job import list_job_plans
     from packages.orchestration.project_registry import resolve_project
 
-    code, out, _err = _exit_code_and_output(capsys, *removed)
+    code, out, err = _exit_code_and_output(capsys, *removed)
 
     assert code == 2
-    assert out == ""
+    assert err == ""
+    data = json.loads(out)
+    assert data["schema_version"] == 1
+    assert data["ok"] is False
+    assert data["error"] == "unrecognized_arguments"
     assert list_job_plans() == []
     assert resolve_project(repo) is None

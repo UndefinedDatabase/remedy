@@ -104,7 +104,11 @@ def _entry(entries, path):
 def _run_json(env, job_id, *extra):
     r = run_grouped_cli(["job", "context", job_id, *extra, "--json"], env)
     assert r.returncode == 0, r.stderr
-    return json.loads(r.stdout)
+    body = json.loads(r.stdout)
+    # F283 R17 C6 (D10): the success document answers through the envelope.
+    assert body["schema_version"] == 1
+    assert body["ok"] is True
+    return body
 
 
 def test_fenced_file_is_tier_one_and_rendered_full(tmp_path, env):
@@ -295,11 +299,12 @@ class TestJobContextRefusesInTheCallersShape:
         import pytest as _pytest
 
         from apps.cli.commands import job_context_cmd as mod
-        from packages.orchestration import data_paths, pingpong_job
+        from packages.orchestration import pingpong_job
 
-        # The handler imports both names INSIDE the function, so the patch has to
-        # land on the defining module rather than on the handler's own namespace.
-        monkeypatch.setattr(data_paths, "resolve_job_id", lambda raw: raw)
+        # `resolve_job_id_or_fail` is imported at MODULE level (F283 round 4), so the
+        # patch lands on the handler's own namespace; `require_job_plan` is imported
+        # INSIDE the function, so its patch still has to land on the defining module.
+        monkeypatch.setattr(mod, "resolve_job_id_or_fail", lambda raw, **_: raw)
         monkeypatch.setattr(pingpong_job, "require_job_plan", lambda _jid: job)
         with _pytest.raises(SystemExit) as caught:
             mod._cmd_job_context("abcdef01", json_output=True, **flags)
@@ -313,6 +318,31 @@ class TestJobContextRefusesInTheCallersShape:
         assert code == 2
         body = json.loads(capsys.readouterr().out)
         assert body["ok"] is False and body["error"] == "no_target_repo"
+
+    def test_a_job_the_store_cannot_find_answers_job_not_found(self, monkeypatch, capsys):
+        """R-1026: the resolver accepts the id (an ambiguous-prefix-free hex string);
+        the store simply has no record for it. Both are `JobNotFoundError`'s
+        condition, so both answer the SAME token the rest of `apps/cli/` gives it,
+        never the resolver's own `invalid_job_id`."""
+        from apps.cli.commands import job_context_cmd as mod
+        from packages.orchestration import pingpong_job
+
+        monkeypatch.setattr(mod, "resolve_job_id_or_fail", lambda raw, **_: raw)
+
+        def _not_found(job_id: str):
+            raise pingpong_job.JobNotFoundError(job_id)
+
+        monkeypatch.setattr(pingpong_job, "require_job_plan", _not_found)
+
+        with pytest.raises(SystemExit) as caught:
+            mod._cmd_job_context("abcdef01", json_output=True)
+
+        assert caught.value.code == 1
+        captured = capsys.readouterr()
+        assert captured.err == ""
+        body = json.loads(captured.out)
+        assert body["ok"] is False
+        assert body["error"] == "job_not_found"
 
     def test_a_target_repo_that_is_gone_is_exit_two_with_its_own_token(
         self, monkeypatch, capsys, tmp_path

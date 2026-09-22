@@ -1,0 +1,16 @@
+F283 R22 C6 — the feature's ONE full suite, primary checkout, `python3 -m pytest -n auto -q`.
+
+Command: python3 -m pytest -n auto -q
+Real exit code: 0
+
+Summary line:
+18503 passed, 20 skipped, 1 warning in 248.77s (0:04:08)
+
+Bad node ids (FAILED / ERROR): NONE — the run is fully green.
+
+tests/orchestration/test_import_reachability.py: not among the bad nodes (there are none).
+tests/test_no_orphan_modules.py: not among the bad nodes (there are none).
+
+One warning, not a failure:
+tests/orchestration/test_model_routing.py::TestTheUndeclaredRolePathWarnsAndAnswersConservatively::test_it_matches_role_configs_own_unknown_role_behaviour
+  packages/orchestration/model_routing.py:1393: UserWarning: Role 'a_role_nobody_declared_a_class_for' declares no task class; routing conservatively as 'undeclared_role'. Declared roles: builder, design_worker, final_verifier, orchestrator, planner, reviewer, self_use, study, summary, teacher, test_worker; inheriting roles: repair.

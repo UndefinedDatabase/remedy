@@ -82,7 +82,7 @@ def test_handler_text_output(capsys):
     job_id = str(job.job_id)
 
     with patch("apps.cli.commands.change.require_job_plan", return_value=job), \
-         patch("apps.cli.commands.change.resolve_job_id", side_effect=lambda raw: raw), \
+         patch("apps.cli.commands.change.resolve_job_id_or_fail", side_effect=lambda raw, **_: raw), \
          patch("apps.cli.commands.change.resolve_data_root", return_value="/tmp"), \
          patch("packages.orchestration.timeline.load_run_events", return_value=[]):
         _cmd_change_proof(job_id)
@@ -99,7 +99,7 @@ def test_handler_text_does_not_overclaim_verified(capsys):
     job_id = str(job.job_id)
 
     with patch("apps.cli.commands.change.require_job_plan", return_value=job), \
-         patch("apps.cli.commands.change.resolve_job_id", side_effect=lambda raw: raw), \
+         patch("apps.cli.commands.change.resolve_job_id_or_fail", side_effect=lambda raw, **_: raw), \
          patch("apps.cli.commands.change.resolve_data_root", return_value="/tmp"), \
          patch("packages.orchestration.timeline.load_run_events", return_value=events):
         _cmd_change_proof(job_id)
@@ -114,7 +114,7 @@ def test_handler_json_output(capsys):
     job_id = str(job.job_id)
 
     with patch("apps.cli.commands.change.require_job_plan", return_value=job), \
-         patch("apps.cli.commands.change.resolve_job_id", side_effect=lambda raw: raw), \
+         patch("apps.cli.commands.change.resolve_job_id_or_fail", side_effect=lambda raw, **_: raw), \
          patch("apps.cli.commands.change.resolve_data_root", return_value="/tmp"), \
          patch("packages.orchestration.timeline.load_run_events", return_value=[]):
         _cmd_change_proof(job_id, json_output=True)
@@ -134,7 +134,7 @@ def test_handler_json_incomplete_when_test_order_unknown(capsys):
     job_id = str(job.job_id)
 
     with patch("apps.cli.commands.change.require_job_plan", return_value=job), \
-         patch("apps.cli.commands.change.resolve_job_id", side_effect=lambda raw: raw), \
+         patch("apps.cli.commands.change.resolve_job_id_or_fail", side_effect=lambda raw, **_: raw), \
          patch("apps.cli.commands.change.resolve_data_root", return_value="/tmp"), \
          patch("packages.orchestration.timeline.load_run_events", return_value=events):
         _cmd_change_proof(job_id, json_output=True)
@@ -151,7 +151,7 @@ def test_handler_text_incomplete_when_test_order_unknown(capsys):
     job_id = str(job.job_id)
 
     with patch("apps.cli.commands.change.require_job_plan", return_value=job), \
-         patch("apps.cli.commands.change.resolve_job_id", side_effect=lambda raw: raw), \
+         patch("apps.cli.commands.change.resolve_job_id_or_fail", side_effect=lambda raw, **_: raw), \
          patch("apps.cli.commands.change.resolve_data_root", return_value="/tmp"), \
          patch("packages.orchestration.timeline.load_run_events", return_value=events):
         _cmd_change_proof(job_id)
@@ -168,7 +168,7 @@ def test_change_show_does_not_display_unrelated_latest_global_test(capsys):
     job_id = str(job.job_id)
 
     with patch("apps.cli.commands.change.require_job_plan", return_value=job), \
-         patch("apps.cli.commands.change.resolve_job_id", side_effect=lambda raw: raw), \
+         patch("apps.cli.commands.change.resolve_job_id_or_fail", side_effect=lambda raw, **_: raw), \
          patch("apps.cli.commands.change.resolve_data_root", return_value="/tmp"), \
          patch("packages.orchestration.timeline.load_run_events", return_value=events):
         _cmd_change_show(job_id, iid)
@@ -185,14 +185,14 @@ def test_file_why_proof_status_agrees_with_change_proof_path(capsys):
     job_id = str(job.job_id)
 
     with patch("apps.cli.commands.change.require_job_plan", return_value=job), \
-         patch("apps.cli.commands.change.resolve_job_id", side_effect=lambda raw: raw), \
+         patch("apps.cli.commands.change.resolve_job_id_or_fail", side_effect=lambda raw, **_: raw), \
          patch("apps.cli.commands.change.resolve_data_root", return_value="/tmp"), \
          patch("packages.orchestration.timeline.load_run_events", return_value=events):
         _cmd_change_proof(job_id, path="src/auth.py", json_output=True)
     proof_data = json.loads(capsys.readouterr().out)
 
     with patch("apps.cli.commands.file.require_job_plan", return_value=job), \
-         patch("apps.cli.commands.file.lookup_job_id", side_effect=lambda raw: raw), \
+         patch("apps.cli.commands.file.resolve_job_id_or_fail", side_effect=lambda raw, **_: raw), \
          patch("apps.cli.commands.file.resolve_data_root", return_value="/tmp"), \
          patch("packages.orchestration.timeline.load_run_events", return_value=events):
         _cmd_file_why(job_id, "src/auth.py", json_output=True)
@@ -207,7 +207,7 @@ def test_handler_json_structured_next_action(capsys):
     job_id = str(job.job_id)
 
     with patch("apps.cli.commands.change.require_job_plan", return_value=job), \
-         patch("apps.cli.commands.change.resolve_job_id", side_effect=lambda raw: raw), \
+         patch("apps.cli.commands.change.resolve_job_id_or_fail", side_effect=lambda raw, **_: raw), \
          patch("apps.cli.commands.change.resolve_data_root", return_value="/tmp"), \
          patch("packages.orchestration.timeline.load_run_events", return_value=[]):
         _cmd_change_proof(job_id, json_output=True)
@@ -227,7 +227,7 @@ def test_handler_path_filter(capsys):
     job_id = str(job.job_id)
 
     with patch("apps.cli.commands.change.require_job_plan", return_value=job), \
-         patch("apps.cli.commands.change.resolve_job_id", side_effect=lambda raw: raw), \
+         patch("apps.cli.commands.change.resolve_job_id_or_fail", side_effect=lambda raw, **_: raw), \
          patch("apps.cli.commands.change.resolve_data_root", return_value="/tmp"), \
          patch("packages.orchestration.timeline.load_run_events", return_value=[]):
         _cmd_change_proof(job_id, path="src/auth.py", json_output=True)
@@ -275,7 +275,7 @@ def test_handler_no_traceback(capsys):
     job_id = str(job.job_id)
 
     with patch("apps.cli.commands.change.require_job_plan", return_value=job), \
-         patch("apps.cli.commands.change.resolve_job_id", side_effect=lambda raw: raw), \
+         patch("apps.cli.commands.change.resolve_job_id_or_fail", side_effect=lambda raw, **_: raw), \
          patch("apps.cli.commands.change.resolve_data_root", return_value="/tmp"), \
          patch("packages.orchestration.timeline.load_run_events", return_value=[]):
         _cmd_change_proof(job_id)
@@ -291,7 +291,7 @@ def test_handler_output_bounded(capsys):
     job_id = str(job.job_id)
 
     with patch("apps.cli.commands.change.require_job_plan", return_value=job), \
-         patch("apps.cli.commands.change.resolve_job_id", side_effect=lambda raw: raw), \
+         patch("apps.cli.commands.change.resolve_job_id_or_fail", side_effect=lambda raw, **_: raw), \
          patch("apps.cli.commands.change.resolve_data_root", return_value="/tmp"), \
          patch("packages.orchestration.timeline.load_run_events", return_value=[]):
         _cmd_change_proof(job_id)
@@ -308,6 +308,27 @@ def test_handler_output_bounded(capsys):
 def test_change_proof_in_handlers():
     from apps.cli.commands.change import COMMAND_HANDLERS
     assert "change.proof" in COMMAND_HANDLERS
+
+
+def test_change_proof_answers_the_envelope_through_the_dispatcher(capsys):
+    """F283 R18 C3 (R-1031) — `change proof`'s success document, through the real
+    argv dispatcher (`apps.cli.grouped.main`), carries the envelope `emit_ok`
+    added at F283 R17 C5 (`dbc49b6b`)."""
+    from apps.cli.grouped import main
+
+    job, _, _ = _make_test_job()
+    job_id = str(job.job_id)
+
+    with patch("apps.cli.commands.change.require_job_plan", return_value=job), \
+         patch("apps.cli.commands.change.resolve_job_id_or_fail", side_effect=lambda raw, **_: raw), \
+         patch("apps.cli.commands.change.resolve_data_root", return_value="/tmp"), \
+         patch("packages.orchestration.timeline.load_run_events", return_value=[]):
+        main(["change", "proof", job_id, "--json"])
+
+    data = json.loads(capsys.readouterr().out)
+    assert data["schema_version"] == 1
+    assert data["ok"] is True
+    assert data["version"] == 2
 
 
 # ---------------------------------------------------------------------------
@@ -329,7 +350,7 @@ def _change_list_json(capsys, *, json_output=True, **flags):
     job = JobPlan(job_title="test-job", user_prompt="x")
     job.artifacts = [art]
     with patch("apps.cli.commands.change.require_job_plan", return_value=job), \
-         patch("apps.cli.commands.change.resolve_job_id", side_effect=lambda raw: raw), \
+         patch("apps.cli.commands.change.resolve_job_id_or_fail", side_effect=lambda raw, **_: raw), \
          patch("apps.cli.commands.change.resolve_data_root", return_value="/tmp"), \
          patch("packages.orchestration.timeline.load_run_events", return_value=[]):
         _cmd_change_list(str(job.job_id), json_output=json_output, **flags)
@@ -376,7 +397,7 @@ def test_a_traversing_path_is_refused_as_an_envelope_under_json(capsys):
 
     job = JobPlan(job_title="test-job", user_prompt="x")
     with patch("apps.cli.commands.change.require_job_plan", return_value=job), \
-         patch("apps.cli.commands.change.resolve_job_id", side_effect=lambda raw: raw), \
+         patch("apps.cli.commands.change.resolve_job_id_or_fail", side_effect=lambda raw, **_: raw), \
          pytest.raises(SystemExit) as exc:
         _cmd_change_proof(str(job.job_id), path="../etc/passwd", json_output=True)
     assert exc.value.code == 1

@@ -26,6 +26,8 @@ from __future__ import annotations
 from dataclasses import dataclass, replace
 from typing import Literal
 
+from apps.cli.exit_codes import EXIT_CODE_FLOOR
+
 # ---------------------------------------------------------------------------
 # Types
 # ---------------------------------------------------------------------------
@@ -115,6 +117,10 @@ class CommandEntry:
     #: derived from another flag such as may_execute_commands.
     is_expensive: bool = False
     related: tuple[str, ...] = ()
+    #: The codes this command's handler can exit with (DECISION F283 D12 (4)),
+    #: ascending, always the floor plus whatever it reaches above it.
+    #: `tests/cli/test_exit_codes.py` asserts this against a static reading.
+    exit_codes: tuple[int, ...] = EXIT_CODE_FLOOR
 
 
 # ---------------------------------------------------------------------------
@@ -240,6 +246,8 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
             ArgDef("--print-only", "Show what would happen without writing anything", required=False, is_option=True, is_flag=True),
             ArgDef("--json", "Output as JSON", required=False, is_option=True, default="false"),
         ),
+        supports_json=True,
+        exit_codes=(0, 1, 2, 4),
     ),
 
     # ── status ──────────────────────────────────────────────────────────
@@ -354,6 +362,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         may_mutate_repo=False,
         may_execute_commands=False,
         related=("job.run", "job.show"),
+        exit_codes=(0, 1, 2, 3),
     ),
     CommandEntry(
         command_id="job.budget",
@@ -383,7 +392,8 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         subcommand="plan",
         description="Plan tasks for a job using local LLM.",
         action_class="write_metadata",
-        args=(_JOB_ID,),
+        args=(_JOB_ID, _JSON_OPT),
+        supports_json=True,
         related=("job.resume",),
     ),
 
@@ -397,6 +407,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         args=(_JOB_ID, _TASK_OPT, _JSON_OPT),
         supports_json=True,
         related=("job.show",),
+        exit_codes=(0, 1, 2, 3),
     ),
     CommandEntry(
         command_id="job.contract",
@@ -419,7 +430,9 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         args=(
             ArgDef("name", "Project name (its repo)"),
             ArgDef("--description", "Project description (its repo)", required=False, is_option=True),
+            _JSON_OPT,
         ),
+        supports_json=True,
         related=("project.show",),
     ),
     CommandEntry(
@@ -447,7 +460,8 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         subcommand="attach-repo",
         description="Attach a repository path to a project.",
         action_class="write_metadata",
-        args=(_PROJECT_ID, ArgDef("repo_path", "Path to the repository")),
+        args=(_PROJECT_ID, ArgDef("repo_path", "Path to the repository"), _JSON_OPT),
+        supports_json=True,
     ),
     CommandEntry(
         command_id="project.attach-job",
@@ -455,7 +469,8 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         subcommand="attach-job",
         description="Link a job to a project's repo, under its mission.",
         action_class="write_metadata",
-        args=(_PROJECT_ID, _JOB_ID),
+        args=(_PROJECT_ID, _JOB_ID, _JSON_OPT),
+        supports_json=True,
     ),
     CommandEntry(
         command_id="project.brain",
@@ -500,6 +515,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         ),
         supports_json=True,
         related=("project.show", "project.list"),
+        exit_codes=(0, 1, 2, 3),
     ),
     CommandEntry(
         command_id="project.attach",
@@ -510,8 +526,11 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         args=(
             ArgDef("--project", "Project's repo, slug or UUID", required=False, is_option=True),
             ArgDef("--repo", "Path to the repository", required=True, is_option=True),
+            _JSON_OPT,
         ),
+        supports_json=True,
         related=("project.current",),
+        exit_codes=(0, 1, 2, 3),
     ),
     CommandEntry(
         command_id="project.adopt",
@@ -522,8 +541,11 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         args=(
             _JOB_ID,
             ArgDef("--project", "Project's repo, slug or UUID", required=False, is_option=True),
+            _JSON_OPT,
         ),
+        supports_json=True,
         related=("project.attach-job", "job.list"),
+        exit_codes=(0, 1, 2, 3),
     ),
 
     # ── patch ────────────────────────────────────────────────────────────
@@ -543,7 +565,8 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         subcommand="show",
         description="Show a specific patch intent.",
         action_class="read_only",
-        args=(_JOB_ID, _INTENT_ID),
+        args=(_JOB_ID, _INTENT_ID, _JSON_OPT),
+        supports_json=True,
         related=("patch.approve", "patch.reject"),
     ),
     CommandEntry(
@@ -552,7 +575,8 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         subcommand="approve",
         description="Approve a patch intent for application.",
         action_class="approval_gate",
-        args=(_JOB_ID, _INTENT_ID, _REASON_OPT),
+        args=(_JOB_ID, _INTENT_ID, _REASON_OPT, _JSON_OPT),
+        supports_json=True,
         related=("patch.apply", "patch.reject"),
     ),
     CommandEntry(
@@ -561,7 +585,8 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         subcommand="reject",
         description="Reject a patch intent.",
         action_class="approval_gate",
-        args=(_JOB_ID, _INTENT_ID, _REASON_OPT),
+        args=(_JOB_ID, _INTENT_ID, _REASON_OPT, _JSON_OPT),
+        supports_json=True,
         related=("patch.approve",),
     ),
     CommandEntry(
@@ -733,7 +758,8 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         subcommand="view",
         description="Open the interactive brain viewer.",
         action_class="read_only",
-        args=(_JOB_ID,),
+        args=(_JOB_ID, _JSON_OPT),
+        supports_json=True,
         related=("brain.graph",),
     ),
     CommandEntry(
@@ -752,7 +778,8 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         subcommand="trust",
         description="Show the trust report for a job (under its mission).",
         action_class="read_only",
-        args=(_JOB_ID,),
+        args=(_JOB_ID, _JSON_OPT),
+        supports_json=True,
         related=("brain.timeline",),
     ),
     CommandEntry(
@@ -761,7 +788,8 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         subcommand="timeline",
         description="Show the event timeline for a job (under its mission).",
         action_class="read_only",
-        args=(_JOB_ID,),
+        args=(_JOB_ID, _JSON_OPT),
+        supports_json=True,
         related=("brain.trust",),
     ),
 
@@ -771,7 +799,8 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         subcommand="cockpit",
         description="Show the human cockpit summary for a job (under its mission).",
         action_class="read_only",
-        args=(_JOB_ID,),
+        args=(_JOB_ID, _JSON_OPT),
+        supports_json=True,
         related=("brain.graph", "brain.trust"),
     ),
     CommandEntry(
@@ -796,7 +825,8 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         subcommand="constitution",
         description="Show the project's repo constitution for a job (under its mission).",
         action_class="read_only",
-        args=(_JOB_ID,),
+        args=(_JOB_ID, _JSON_OPT),
+        supports_json=True,
         related=("brain.context",),
     ),
     CommandEntry(
@@ -805,7 +835,8 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         subcommand="open",
         description="Generate and open the brain viewer in default browser.",
         action_class="read_only",
-        args=(_JOB_ID,),
+        args=(_JOB_ID, _JSON_OPT),
+        supports_json=True,
         related=("brain.view", "brain.viewer-path"),
     ),
     CommandEntry(
@@ -827,7 +858,9 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         args=(
             _JOB_ID,
             ArgDef("--out", "Output directory path", required=True, is_option=True),
+            _JSON_OPT,
         ),
+        supports_json=True,
         related=("brain.open", "brain.viewer-path"),
     ),
 
@@ -905,6 +938,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         ),
         supports_json=True,
         related=("mission.report", "mission.watchdog"),
+        exit_codes=(0, 1, 2, 3),
     ),
     CommandEntry(
         command_id="mission.watchdog",
@@ -919,6 +953,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         ),
         supports_json=True,
         related=("mission.show", "mission.resume"),
+        exit_codes=(0, 1, 2, 3),
     ),
     CommandEntry(
         command_id="mission.handoff",
@@ -965,6 +1000,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         ),
         supports_json=True,
         related=("mission.list", "mission.show"),
+        exit_codes=(0, 1, 2, 3),
     ),
     CommandEntry(
         command_id="mission.list",
@@ -979,6 +1015,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         ),
         supports_json=True,
         related=("mission.start", "mission.show"),
+        exit_codes=(0, 1, 2, 3),
     ),
     CommandEntry(
         command_id="mission.continue",
@@ -994,6 +1031,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         ),
         supports_json=True,
         related=("mission.show", "mission.start"),
+        exit_codes=(0, 1, 2, 3),
     ),
     CommandEntry(
         command_id="mission.plan",
@@ -1009,6 +1047,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         ),
         supports_json=True,
         related=("mission.show", "mission.start"),
+        exit_codes=(0, 1, 2, 3),
     ),
     CommandEntry(
         command_id="mission.show",
@@ -1023,6 +1062,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         ),
         supports_json=True,
         related=("mission.list", "mission.start"),
+        exit_codes=(0, 1, 2, 3),
     ),
     CommandEntry(
         command_id="mission.contract",
@@ -1037,6 +1077,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         ),
         supports_json=True,
         related=("mission.show", "job.contract"),
+        exit_codes=(0, 1, 2, 3),
     ),
     # Status transitions are their own explicit subcommands (R-0163): the verb
     # names the status, and nothing else in Remedy ever moves it.
@@ -1053,6 +1094,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         ),
         supports_json=True,
         related=("mission.show", "mission.list"),
+        exit_codes=(0, 1, 2, 3),
     ),
     CommandEntry(
         command_id="mission.abandon",
@@ -1067,6 +1109,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         ),
         supports_json=True,
         related=("mission.show", "mission.list"),
+        exit_codes=(0, 1, 2, 3),
     ),
     CommandEntry(
         command_id="mission.pause",
@@ -1081,6 +1124,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         ),
         supports_json=True,
         related=("mission.show", "mission.list"),
+        exit_codes=(0, 1, 2, 3),
     ),
     CommandEntry(
         command_id="mission.resume",
@@ -1095,6 +1139,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         ),
         supports_json=True,
         related=("mission.pause", "mission.watchdog"),
+        exit_codes=(0, 1, 2, 3),
     ),
     CommandEntry(
         command_id="mission.readiness",
@@ -1135,7 +1180,9 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
             ArgDef("--job", "Job UUID scope (under its mission)", required=False, is_option=True),
             ArgDef("--tags", "Comma-separated tags", required=False, is_option=True),
             ArgDef("--approved", "Mark as approved", required=False, is_option=True),
+            _JSON_OPT,
         ),
+        supports_json=True,
     ),
     CommandEntry(
         command_id="memory.recall",
@@ -1204,7 +1251,9 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
             ArgDef("memory_id", "Memory entry ID", required=True),
             ArgDef("--project", "Project's repo, ID scope", required=False, is_option=True),
             ArgDef("--job", "Job ID scope (under its mission)", required=False, is_option=True),
+            _JSON_OPT,
         ),
+        supports_json=True,
     ),
     CommandEntry(
         command_id="memory.card-reject",
@@ -1216,7 +1265,9 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
             ArgDef("memory_id", "Memory entry ID", required=True),
             ArgDef("--project", "Project's repo, ID scope", required=False, is_option=True),
             ArgDef("--job", "Job ID scope (under its mission)", required=False, is_option=True),
+            _JSON_OPT,
         ),
+        supports_json=True,
     ),
     CommandEntry(
         command_id="memory.card-stale",
@@ -1228,7 +1279,9 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
             ArgDef("memory_id", "Memory entry ID", required=True),
             ArgDef("--project", "Project's repo, ID scope", required=False, is_option=True),
             ArgDef("--job", "Job ID scope (under its mission)", required=False, is_option=True),
+            _JSON_OPT,
         ),
+        supports_json=True,
     ),
     CommandEntry(
         command_id="memory.card-supersede",
@@ -1241,7 +1294,9 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
             ArgDef("new_id", "Memory ID that supersedes", required=True),
             ArgDef("--project", "Project's repo, ID scope", required=False, is_option=True),
             ArgDef("--job", "Job ID scope (under its mission)", required=False, is_option=True),
+            _JSON_OPT,
         ),
+        supports_json=True,
     ),
     CommandEntry(
         command_id="memory.card-contradict",
@@ -1254,7 +1309,9 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
             ArgDef("by_id", "Memory ID that contradicts", required=True),
             ArgDef("--project", "Project's repo, ID scope", required=False, is_option=True),
             ArgDef("--job", "Job ID scope (under its mission)", required=False, is_option=True),
+            _JSON_OPT,
         ),
+        supports_json=True,
     ),
 
     # ── change ───────────────────────────────────────────────────────────
@@ -1405,6 +1462,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         requires_permission=True,
         is_expensive=True,
         related=("job.checkpoints", "event.replay"),
+        exit_codes=(0, 1, 2, 3),
     ),
 
     # ── blocker ─────────────────────────────────────────────────────────
@@ -1440,7 +1498,9 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
             _JOB_ID,
             ArgDef("stop_id", "Stop reason ID"),
             _REASON_OPT,
+            _JSON_OPT,
         ),
+        supports_json=True,
     ),
 
     # ── decision ────────────────────────────────────────────────────────
@@ -1478,7 +1538,9 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
             _REASON_OPT,
             _ANSWER_OPT,
             _AS_MISSION_FLAG,
+            _JSON_OPT,
         ),
+        supports_json=True,
     ),
     CommandEntry(
         command_id="decision.explain",
@@ -1486,7 +1548,8 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         subcommand="explain",
         description="Explain all pending decisions for a job (under its mission).",
         action_class="read_only",
-        args=(_JOB_ID,),
+        args=(_JOB_ID, _JSON_OPT),
+        supports_json=True,
     ),
 
     # ── ui ───────────────────────────────────────────────────────────────
@@ -1502,7 +1565,9 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
             ArgDef("--host", "Bind host (only 127.0.0.1 allowed)", required=False, is_option=True, default="127.0.0.1"),
             ArgDef("--no-open", "Do not open browser automatically", required=False, is_option=True, default="false"),
             ArgDef("--info-file", "Write server info JSON to this path", required=False, is_option=True),
+            _JSON_OPT,
         ),
+        supports_json=True,
         related=("brain.view",),
     ),
     CommandEntry(
@@ -1511,7 +1576,8 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         subcommand="latest",
         description="Open the most recently started UI session in a browser.",
         action_class="read_only",
-        args=(),
+        args=(_JSON_OPT,),
+        supports_json=True,
     ),
     CommandEntry(
         command_id="ui.status",
@@ -1522,7 +1588,9 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         args=(
             ArgDef("--all", "Also show the last ten ended sessions with their end time",
                    required=False, is_option=True, is_flag=True),
+            _JSON_OPT,
         ),
+        supports_json=True,
     ),
     CommandEntry(
         command_id="ui.stop",
@@ -1530,7 +1598,8 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         subcommand="stop",
         description="Stop all running UI sessions.",
         action_class="read_only",
-        args=(),
+        args=(_JSON_OPT,),
+        supports_json=True,
     ),
     CommandEntry(
         command_id="ui.open",
@@ -1538,7 +1607,8 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         subcommand="open",
         description="Open browser for a specific job UI session (under its mission).",
         action_class="read_only",
-        args=(_JOB_ID,),
+        args=(_JOB_ID, _JSON_OPT),
+        supports_json=True,
     ),
 
     # ── do ───────────────────────────────────────────────────────────────
@@ -1834,6 +1904,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         ),
         may_mutate_repo=False,
         may_execute_commands=True,
+        exit_codes=(0, 1, 2, 3, 4, 5),
     ),
     CommandEntry(
         command_id="runtime.probe",
@@ -1849,6 +1920,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         ),
         may_mutate_repo=False,
         may_execute_commands=True,
+        exit_codes=(0, 1, 2, 3, 4, 5),
     ),
     CommandEntry(
         command_id="runtime.stop",
@@ -1864,6 +1936,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         ),
         may_mutate_repo=False,
         may_execute_commands=True,
+        exit_codes=(0, 1, 2, 5),
     ),
 
     CommandEntry(
@@ -2031,6 +2104,8 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         subcommand="smoke-help",
         description="Show smoke test instructions.",
         action_class="dev_helper",
+        args=(_JSON_OPT,),
+        supports_json=True,
     ),
     CommandEntry(
         command_id="dev.status",
@@ -2041,6 +2116,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         args=(
             ArgDef("--json", "Output JSON", required=False, is_option=True),
         ),
+        supports_json=True,
     ),
 
     # ── progress ────────────────────────────────────────────────────────

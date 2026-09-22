@@ -268,7 +268,13 @@ class TestTheDefaultOutputOnlyGainsTheFindingsKey:
 
         data = json.loads(shown.out)
         old = json.loads(json.dumps(_export_job(require_job_plan(job.job_id))))
-        assert list(data) == [*old, "blocked_task_findings"]
+        # F283 R19 C4 (DECISION F283 D10) — `emit_ok` adds `schema_version` and
+        # `ok`, and its writer sorts every level, so the KEY SET is what stays
+        # asserted here rather than an insertion order the envelope no longer
+        # carries.
+        assert data["schema_version"] == 1
+        assert data["ok"] is True
+        assert set(data) == {"schema_version", "ok", *old, "blocked_task_findings"}
         assert {key: data[key] for key in old} == old
         assert data["blocked_task_findings"] == []
         assert shown.err == ""
@@ -293,7 +299,11 @@ class TestSections:
 
         registered = [name for name, _builder in job_commands._SHOW_SECTIONS]
         assert registered == ["permissions", "fences", "assumptions", "digest", "summary", "status", "report", "dod"]
-        assert list(json.loads(shown.out)["sections"]) == registered
+        # F283 R19 C4 (DECISION F283 D10) — `emit_ok`'s writer sorts every
+        # level, so the D4 order is pinned above, in `_SHOW_SECTIONS` and
+        # `_SHOW_SECTION_ORDER`; the JSON object's own key order is an accident
+        # of the envelope's sort and only the SET of sections is asserted here.
+        assert set(json.loads(shown.out)["sections"]) == set(registered)
         assert registered == [name for name in job_commands._SHOW_SECTION_ORDER if name in registered]
         assert job_commands._SHOW_SECTION_ORDER == (
             "permissions", "fences", "assumptions", "digest", "summary", "status", "report", "dod",
@@ -349,6 +359,10 @@ def _summary_section(shown) -> tuple[dict, list[str]]:
 class TestSummarySection:
     """The former `job summary` command is the `summary` section of `job show --full`."""
 
+    #: F283 R19 C4 (DECISION F283 D10) — `emit_ok`'s writer sorts every level,
+    #: so this is the KEY SET the section's `data` carries, asserted against
+    #: `set(data)` below rather than the insertion order the envelope no
+    #: longer preserves.
     KEYS = ["job_id", "name", "state", "task_count", "done_count", "pending_count",
             "event_count", "demo_mode", "data_honest", "synthetic_fields"]
 
@@ -367,7 +381,7 @@ class TestSummarySection:
 
         assert section["ok"] is True
         data = section["data"]
-        assert list(data) == self.KEYS
+        assert set(data) == set(self.KEYS)
         assert data["job_id"] == str(job.job_id)
         assert (data["task_count"], data["done_count"], data["pending_count"]) == (2, 1, 1)
         assert data["event_count"] == 0
@@ -388,7 +402,7 @@ class TestSummarySection:
 
         assert section["ok"] is True
         data = section["data"]
-        assert list(data) == self.KEYS
+        assert set(data) == set(self.KEYS)
         assert (data["task_count"], data["done_count"], data["pending_count"]) == (2, 1, 1)
         assert data["event_count"] == 2
         assert data["demo_mode"] is False

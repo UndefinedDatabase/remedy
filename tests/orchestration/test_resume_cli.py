@@ -317,8 +317,12 @@ class TestDegradations:
         job = make_job(pending=0, completed=2)
         resume(job, json_output=True)
         payload = _json.loads(capsys.readouterr().out)
-        assert payload == {"job_id": str(job.job_id), "action": "noop",
-                           "resumed": False, "reason": "all_green"}
+        # F283 R19 C4 (DECISION F283 D10) — `emit_ok` adds `schema_version` and `ok`.
+        assert payload["schema_version"] == 1
+        assert payload["ok"] is True
+        assert {k: v for k, v in payload.items() if k not in ("schema_version", "ok")} == {
+            "job_id": str(job.job_id), "action": "noop",
+            "resumed": False, "reason": "all_green"}
 
     def test_a_job_with_no_tasks_at_all_is_not_mistaken_for_all_green(
             self, handed_off, capsys):

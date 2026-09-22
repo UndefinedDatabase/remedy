@@ -97,6 +97,24 @@ class TestCatalog:
         assert args.repo == "." and args.json is True
 
 
+class TestRuntimeErrorTokens:
+    """DECISION F283 D8 — one token per error class, and every class this module
+    passes to `_runtime_refusal` must be a key the table can look up."""
+
+    def test_every_token_is_distinct(self):
+        tokens = runtime_cmd.RUNTIME_ERROR_TOKENS
+        assert len(set(tokens.values())) == len(tokens)
+
+    def test_every_class_the_module_passes_is_a_key(self):
+        import inspect
+        import re
+
+        source = inspect.getsource(runtime_cmd)
+        classes = set(re.findall(r'_runtime_refusal\(\s*"([a-z]+)"', source))
+        assert classes, "expected at least one literal error_class in the source"
+        assert classes <= set(runtime_cmd.RUNTIME_ERROR_TOKENS)
+
+
 # ---------------------------------------------------------------------------
 # serve / probe / stop
 # ---------------------------------------------------------------------------
@@ -107,6 +125,9 @@ class TestServe:
         runtime_cmd._cmd_runtime_serve(str(root), json_output=True)
         out = json.loads(capsys.readouterr().out)
         try:
+            # F283 R18 C4 (DECISION F283 D10) — the success document, through
+            # `emit_ok`, now carries the envelope.
+            assert out["schema_version"] == 1
             assert out["ok"] is True and out["status"] == "running"
             assert out["port"] > 0 and out["url"].startswith("http://127.0.0.1:")
             assert _alive(out["pid"])
@@ -157,6 +178,9 @@ class TestServe:
             runtime_cmd._cmd_runtime_serve(str(empty), json_output=True)
         assert exc.value.code == runtime_cmd.EXIT_CONFIG
         out = json.loads(capsys.readouterr().out)
+        assert out["schema_version"] == 1
+        assert out["ok"] is False
+        assert out["error"] == "runtime_config_error"
         assert out["error_class"] == "config"
 
 
@@ -202,6 +226,7 @@ class TestProbe:
         assert exc.value.code == runtime_cmd.EXIT_READY
         out = json.loads(capsys.readouterr().out)
         assert out["ok"] is False and out["stopped"] is True
+        assert out["error"] == "runtime_not_ready" and out["error_class"] == "ready"
         assert load_state(root) is None
 
     def test_a_missing_runtime_exits_2(self, tmp_path, capsys):
@@ -210,6 +235,11 @@ class TestProbe:
         with pytest.raises(SystemExit) as exc:
             runtime_cmd._cmd_runtime_probe(str(empty), json_output=True)
         assert exc.value.code == runtime_cmd.EXIT_CONFIG
+        out = json.loads(capsys.readouterr().out)
+        assert out["schema_version"] == 1
+        assert out["ok"] is False
+        assert out["error"] == "runtime_config_error"
+        assert out["error_class"] == "config"
 
 
 class TestStop:
@@ -256,6 +286,34 @@ class TestStop:
         finally:
             victim.kill()
             victim.wait()
+
+    def test_stop_answers_the_envelope_when_identity_cannot_be_trusted(
+            self, tmp_path, capsys):
+        """A sibling of `test_stop_never_kills_a_reused_pid`: THAT test's reused-pid
+        record clears automatically (`ok` stays True, nothing exits), so it never
+        reaches the `stop`-that-did-not-stop envelope C4 adds. A project digest
+        mismatch does: `classify_runtime` cannot auto-clear an `identity_mismatch`
+        record, so `stop_recorded_runtime` answers `ok=False` and this command exits 5
+        with `runtime_state_error` in the envelope.
+        """
+        import time
+
+        from packages.runtimes.dev_server import RuntimeState, save_state
+
+        root = _project(tmp_path, "server.py", SERVER)
+        save_state(RuntimeState(
+            pid=999999, create_time=time.time(), port=1234,
+            status="running", project_root=str(root),
+            project_id="not-the-real-project-digest",
+        ))
+        with pytest.raises(SystemExit) as exc:
+            runtime_cmd._cmd_runtime_stop(str(root), json_output=True)
+        assert exc.value.code == runtime_cmd.EXIT_STATE
+        out = json.loads(capsys.readouterr().out)
+        assert out["schema_version"] == 1
+        assert out["ok"] is False
+        assert out["error"] == "runtime_state_error"
+        assert "message" in out and out["message"]
 
 
 class TestTheSupervisorEnvironmentIsScrubbed:
