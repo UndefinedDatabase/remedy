@@ -1,52 +1,38 @@
-# Context — F283 Machine contracts, part two: the refusal sweep, the JSON gap and the exit-code taxonomy
+# Context — F278 Durable writes & loud failures
 
 ## Active Branch
-feature/f283-machine-contracts-part-two, cut from `main` at `d0d40e89` (the
-merge commit of pull request 263, F277's closure).
+feature/f278-durable-writes-loud-failures, cut from `main` at `9817a927` (the
+merge commit of pull request 265, F283's closure).
 
 ## Scope
-F283 (Tier 2), registered by F277's split-and-close under DECISION F277 D10 and
-placed directly behind its parent under amend0906-split-placement. T001 is the
-refusal sweep carried over from F277's T003, verbatim and not re-planned: the
-`print(...); sys.exit(...)` pairs move onto the shared `fail()`, one command
-group per commit, the `--json` commands that answer a failure in prose are
-fixed, and the read-only-without-`supports_json` set becomes empty. T002 is
-F277's T004 whole: the exit-code taxonomy documented under `docs/guides/` and
-asserted from the catalog, with `tests/cli/test_json_contract.py` sweeping
-every reachable `supports_json` command on success AND on a deliberately
-invalid argument. T002 lands last because its sweep is T001's acceptance
-evidence.
+F278 (Tier 2), registered 2026-09-08 by operator order
+amend0908-brainstorm-intake. T001 adds ONE path-based durable write to
+`packages/common/secure_fs.py`. T002 migrates every surviving private
+atomic-write helper onto it and deletes the copy (AGENTS.md, "Replacing is
+deleting"), then an AST guard holds the line. T003 enables ruff's BLE001 with a
+frozen ignore list and makes the F004 stream evidence writer record the step
+that failed instead of swallowing it.
 
 ## Do not touch
-The event names and `packages/orchestration/event_names.py`: F277 declared that
-vocabulary and this feature does not rename it. `apps/cli/json_envelope.py`'s
-shape — the envelope, its two reserved keys and `fail`'s signature are F277's
-contract, and a change to them is a new decision, not a sweep. The catalog's
-command SET, which F261 owns. The nine modules F277 already migrated
-(`blocker`, `change`, `contract_cmd`, `event`, `file`, `job_context_cmd`,
-`memory`, `mission_cmd`, `worker`) are not re-migrated.
+`storage.py`'s existing `mkstemp` placement. The stream artifact's existing
+fields. The BLE001 ignore list's size upward. The existing descriptor-anchored
+writers in `secure_fs.py` (`write_file_atomically`, `append_line_at`,
+`publish_dir_atomically`), which hold a directory fd and are a different
+contract from a write by path.
 
 ## Active assumptions
-- A migrated site keeps the exit code it already used. The taxonomy is T002's
-  work, and re-numbering a code during T001 would hide a behaviour change
-  inside a rename.
-- `fail()` writes the `Error: ` prefix itself, so a migrated site passes its
-  message WITHOUT the prefix. That is the one transformation a reader must
-  check at every site, and the existing suite asserts several of those lines
-  byte-for-byte.
-- A token is named for the CONDITION (DECISION F277 D8); a catch-all handler
-  gets a token named for the layer that refused (DECISION F277 D9). One
-  spelling per concept: `job_not_found`, `invalid_list_option`,
-  `permission_denied`, `invalid_argument`, `missing_argument`, `no_project`
-  and `missing_dependency` already exist and are reused, never re-spelled.
+- F275 has landed, so the survivor list T002 migrates is re-derived from the
+  tree at the round that takes it; the feature file's 2026-09-08 counts are
+  history, not a plan.
+- A migrated call site keeps its return-type contract and its file mode; a
+  site that relied on the umask passes the mode it used to get explicitly.
 
 ## Constraints
 - `python3 -m ruff check <path>` is the spelling every gate orders.
 - A round touching `docs/roadmap/**` also gates `tests/docs/` and
   `tests/orchestration/test_roadmap_index.py`.
-- A new module under `packages/` reachable from the entry points must be added
-  to `tests/orchestration/import_reachability_allowlist.txt` in the same
-  commit, or `tests/orchestration/test_import_reachability.py` goes red.
+- A new module under `packages/` reachable from the entry points is added to
+  `tests/orchestration/import_reachability_allowlist.txt` in the same commit.
 - Destructive verification runs only inside a disposable git worktree under
   `.remedy-wt/`, never in the primary checkout, which satisfies
   `git status --porcelain` empty at every verdict.

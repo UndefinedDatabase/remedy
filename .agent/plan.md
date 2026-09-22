@@ -1,31 +1,35 @@
-# Plan — F283 Machine contracts, part two: the refusal sweep, the JSON gap and the exit-code taxonomy
+# Plan — F278 Durable writes & loud failures
 
-Branch: feature/f283-machine-contracts-part-two, cut from `main` at
-`d0d40e89`, the merge commit of pull request 263 (F277's closure); `main`
-was merged in again at `5ca50335` (DECISION amend0921-operator-feedback D8).
+Branch: feature/f278-durable-writes-loud-failures, cut from `main` at
+`9817a927`, the merge commit of pull request 265 (F283's closure).
 
 ## Goal
 
-Every CLI refusal answers a machine in the envelope, the
-read-only-without-`supports_json` set becomes empty, and every exit code in use
-is documented and asserted from the catalog
-(`docs/roadmap/features/T2_F283.md`).
+One durable write in this repository, used everywhere, and no artifact that is
+silently incomplete (`docs/roadmap/features/T2_F278.md`).
 
 ## Current Step
 
-ROUND 24, the closure. It books round 23's PASS, rotates the finding ledger as
-its own commit, then flips the STATUS line to accepted with the README's three
-pinned places and the self-use entry's `consumed_by` in that same commit, and
-opens the pull request, which this session never merges.
+ROUND 1 claims F278, re-heads the review record and lands T001:
+`durable_write` and `durable_write_json` in `packages/common/secure_fs.py`,
+which fsync the file and the parent directory, use an unpredictable temporary
+file in the destination directory, and unlink it on every failure path; with
+`tests/orchestration/test_secure_fs_durable_write.py` and both red proofs.
 
 ## Next Steps
 
-1. Nothing on this branch. The pull request waits for the operator's review
-   window and is merged at the next feature's Open PR Gate; the next session
-   claims the next unchecked feature under Rule A5.
+1. T002, the migration: re-derive the surviving private atomic-write helpers
+   from the tree, replace each with an import of `durable_write` and delete
+   it, one module per commit, keeping each call site's return-type contract.
+2. T002's AST guard: no function named `_?atomic_(private_)?write` outside
+   `packages/common/`, with its red proof.
+3. T003, loud failures: BLE001 enabled with a frozen ignore list, the nine
+   handlers in `stream_evidence.py` first, a `degradations` field on the
+   stream artifact, and a reason on every remaining ignored site.
+4. The closure sequence.
 
 ## Risks
 
-Twenty-six findings are open and none is this feature's own. Twenty-four rounds
-are spent of the soft limit of 25, and the work left after this round is the
-merge, which belongs to another session.
+`os.replace` of a directory entry and the directory fsync are POSIX
+behaviour; the helper fails loudly rather than silently where either is
+refused.
