@@ -169,14 +169,13 @@ def _cmd_list_jobs(
     except ListOptionError as exc:
         fail("invalid_list_option", str(exc), json_output=json_output)
     if json_output:
-        import json as _json
-        print(_json.dumps({
-            "version": 1,
-            "job_count": len(jobs),
-            "jobs": [{"id": str(job.job_id), "state": job.state.value, "name": job.job_title,
-                     "created_at": job.created_at,
-                     "project_id": job.project_id or ""} for job in jobs],
-        }, sort_keys=True))
+        emit_ok(
+            version=1,
+            job_count=len(jobs),
+            jobs=[{"id": str(job.job_id), "state": job.state.value, "name": job.job_title,
+                  "created_at": job.created_at,
+                  "project_id": job.project_id or ""} for job in jobs],
+        )
         return
     if not jobs:
         print("No jobs found.")
@@ -201,8 +200,6 @@ def _scope_label(job: JobPlan, scope: ProjectScope, known_ids: set[str]) -> str:
 
 
 def _cmd_show_job(job_id_str: str, *, full: bool = False, json_output: bool = False) -> None:
-    import json
-
     from packages.orchestration.pingpong_job import _export_job, collect_blocked_task_findings
 
     job_id = resolve_job_id_or_fail(job_id_str, json_output=json_output)
@@ -218,7 +215,7 @@ def _cmd_show_job(job_id_str: str, *, full: bool = False, json_output: bool = Fa
     section_text: list[str] = []
     if full:
         shown["sections"], section_text = _build_show_sections(job)
-    print(json.dumps(shown, indent=2))
+    emit_ok(**shown)
     if job.intake:
         _print_intake_block(job.intake)
     _print_blocked_task_findings(str(job.job_id), shown["blocked_task_findings"])
@@ -1150,7 +1147,6 @@ def _cmd_job_run_cycles(
     pausing the branch until a human answers.  A decision with no safe default
     waits either way.  Default OFF — attended behavior is untouched.
     """
-    import json as _json
     from dataclasses import replace
 
     from packages.orchestration.config import get_config
@@ -1251,7 +1247,7 @@ def _cmd_job_run_cycles(
                         unattended=unattended)
 
     if json_output:
-        print(_json.dumps(result.to_json(), indent=2, sort_keys=True))
+        emit_ok(**result.to_json())
     else:
         print(
             f"Job {job.job_id} | cycles={result.cycles_run}/{limits.max_cycles} "
@@ -1418,8 +1414,6 @@ def _cmd_job_resume(
     Exit codes: 0 ok / no-op / stop consumed · 1 job or checkpoint problem ·
     3 refused by a guard (head drift, plan-approval gate).
     """
-    import json as _json
-
     from packages.orchestration.checkpoints import (
         RESUME_NOOP,
         RESUME_STOPPED,
@@ -1450,7 +1444,7 @@ def _cmd_job_resume(
     if dry_run:
         preview = _resume_preview(job, jid, checkpoint)
         if json_output:
-            print(_json.dumps(preview, indent=2, sort_keys=True))
+            emit_ok(**preview)
         else:
             _print_resume_preview(preview)
         return
@@ -1460,9 +1454,8 @@ def _cmd_job_resume(
     decision = decide_checkpoint_resume(job, checkpoint)
     if decision.action == RESUME_STOPPED:
         if json_output:
-            print(_json.dumps(
-                {"job_id": jid, "action": "stopped", "resumed": False,
-                 "stop_reason": decision.reason}, indent=2, sort_keys=True))
+            emit_ok(job_id=jid, action="stopped", resumed=False,
+                    stop_reason=decision.reason)
         else:
             print(f"Job {jid} | {decision.detail}")
         return
@@ -1484,9 +1477,7 @@ def _cmd_job_resume(
 
     if decision.action == RESUME_NOOP:
         if json_output:
-            print(_json.dumps(
-                {"job_id": jid, "action": "noop", "resumed": False,
-                 "reason": "all_green"}, indent=2, sort_keys=True))
+            emit_ok(job_id=jid, action="noop", resumed=False, reason="all_green")
         else:
             print(f"Job {jid} | already all green — nothing to resume")
         return
@@ -1509,8 +1500,6 @@ def _cmd_job_resume(
 
 
 def _cmd_checkpoints(job_id_str: str, *, json_output: bool = False) -> None:
-    import json as _json
-
     from packages.orchestration.event_replay import (
         export_checkpoints_json,
         find_checkpoints,
@@ -1522,11 +1511,7 @@ def _cmd_checkpoints(job_id_str: str, *, json_output: bool = False) -> None:
     cps = find_checkpoints(replay)
 
     if json_output:
-        print(_json.dumps({
-            "version": 1,
-            "job_id": job_id_str,
-            "checkpoints": export_checkpoints_json(cps),
-        }, indent=2))
+        emit_ok(version=1, job_id=job_id_str, checkpoints=export_checkpoints_json(cps))
     else:
         if not cps:
             print(f"No checkpoints for job {job_id_str[:8]}.")
@@ -1546,8 +1531,6 @@ def _cmd_resume(
     dry_run: bool = False,
     json_output: bool = False,
 ) -> None:
-    import json as _json
-
     from packages.orchestration.event_replay import (
         export_dry_run_json,
         resume_dry_run,
@@ -1579,7 +1562,7 @@ def _cmd_resume(
     if dry_run:
         dr = resume_dry_run(job, checkpoint_id, data_dir)
         if json_output:
-            print(_json.dumps(export_dry_run_json(dr), indent=2))
+            emit_ok(**export_dry_run_json(dr))
         else:
             status = "can resume" if dr.can_resume else "blocked"
             print(f"Resume dry-run: {status}")
@@ -1737,7 +1720,7 @@ def _cmd_resume(
         if json_output:
             _payload = export_resume_result_json(result)
             _payload["worktrees"] = wt_json
-            print(_json.dumps(_payload, indent=2))
+            emit_ok(**_payload)
         else:
             if result.resumed:
                 status_str = "passed" if result.tests_passed else "failed"
@@ -1756,13 +1739,13 @@ def _cmd_resume(
         "blocked_reason": "resume_mode_not_implemented",
     })
     if json_output:
-        print(_json.dumps({
-            "resumed": False,
-            "blocked_reason": "resume_mode_not_implemented",
-            "checkpoint_kind": cp.kind,
-            "resume_mode": cp.resume_mode,
-            "worktrees": wt_json,
-        }))
+        emit_ok(
+            resumed=False,
+            blocked_reason="resume_mode_not_implemented",
+            checkpoint_kind=cp.kind,
+            resume_mode=cp.resume_mode,
+            worktrees=wt_json,
+        )
     else:
         print(f"Resume blocked: mode '{cp.resume_mode}' not implemented yet.")
 
@@ -1876,8 +1859,6 @@ def _cmd_job_budget(
     json_output: bool = False,
 ) -> None:
     """Show budget limits and current counters for a job."""
-    import json as _json
-
     from packages.orchestration.budget_guard import evaluate_budget
     from packages.orchestration.pingpong_job import load_job_plan, require_job_plan
 
@@ -1946,7 +1927,7 @@ def _cmd_job_budget(
 
     if _budgets is None and _budgets_dict is None:
         if json_output:
-            print(_json.dumps({"job_id": _job_display_id, "budgets": None}, indent=2))
+            emit_ok(job_id=_job_display_id, budgets=None)
         else:
             print(f"Job {_job_display_id[:8]}: no budgets configured.")
         return
@@ -2067,7 +2048,7 @@ def _cmd_job_budget(
             "prediction": _prediction.to_json() if _prediction is not None else None,
             "recorded_prediction": _recorded_prediction,
         }
-        print(_json.dumps(out, indent=2))
+        emit_ok(**out)
     else:
         print(f"Budget for job {_job_display_id[:8]} ({_found_as}):")
         if _budgets is not None:
@@ -2178,7 +2159,6 @@ def _cmd_job_budget_set(
     json_output: bool = False,
 ) -> None:
     """Write ONE budget field of a job's run contract or token budget profile (DECISION F280 D3)."""
-    import json as _json
     from dataclasses import replace as _replace
 
     settable = ", ".join(_RUN_CONTRACT_BUDGET_FIELDS + _TOKEN_PROFILE_BUDGET_FIELDS)
@@ -2264,8 +2244,8 @@ def _cmd_job_budget_set(
         store = "token_budget_profile"
 
     if json_output:
-        print(_json.dumps({"job_id": str(job.job_id), "field": field_name, "old": old_value,
-                           "new": new_value, "store": store}, indent=2))
+        emit_ok(job_id=str(job.job_id), field=field_name, old=old_value,
+                new=new_value, store=store)
     else:
         print(f"Job {job.job_id}: {field_name} {old_value} -> {new_value} ({store}).")
 

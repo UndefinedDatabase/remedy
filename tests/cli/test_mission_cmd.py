@@ -1096,6 +1096,9 @@ class TestHandoffCommand:
         body = json.loads(_run(["mission", "handoff", mission_id, "--json"],
                                data_root).stdout)
 
+        # F283 R19 C4 (DECISION F283 D10) — `emit_ok` adds `schema_version` and `ok`.
+        assert body["schema_version"] == 1
+        assert body["ok"] is True
         assert body["mission_id"] == mission_id
         assert Path(body["handoff"]).is_file()
         assert Path(body["rendered"]).is_file()

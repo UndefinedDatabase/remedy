@@ -284,8 +284,6 @@ class TestRawJSONDocumentSitesRatchet:
     text-branch survivors of D10 (5), each with its reason in a comment."""
 
     RAW_SITES_BY_MODULE = {
-        "apps/cli/commands/job.py": 13,
-        "apps/cli/commands/mission_cmd.py": 11,
         "apps/cli/commands/self_cmd.py": 8,
         "apps/cli/commands/project.py": 7,
         "apps/cli/commands/config_cmd.py": 6,
@@ -296,4 +294,4 @@ class TestRawJSONDocumentSitesRatchet:
         assert _raw_json_document_sites_by_module() == self.RAW_SITES_BY_MODULE
 
     def test_the_pinned_total_is_the_measured_total(self) -> None:
-        assert sum(self.RAW_SITES_BY_MODULE.values()) == 51
+        assert sum(self.RAW_SITES_BY_MODULE.values()) == 27

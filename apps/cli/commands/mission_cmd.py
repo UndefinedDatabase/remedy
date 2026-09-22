@@ -22,12 +22,11 @@ the LISTING over the project areas that exist on disk.
 """
 from __future__ import annotations
 
-import json as _json
 import sys
 from collections.abc import Callable
 from typing import TYPE_CHECKING, Any
 
-from apps.cli.json_envelope import fail
+from apps.cli.json_envelope import emit_ok, fail
 
 if TYPE_CHECKING:
     import argparse
@@ -78,8 +77,7 @@ def _cmd_mission_start(goal: str, *, project: str | None = None,
         fail("mission_error", str(exc), json_output=json_output)
 
     if json_output:
-        print(_json.dumps({"version": 1, "mission": _mission_json(mission)},
-                          sort_keys=True))
+        emit_ok(version=1, mission=_mission_json(mission))
         return
     print(mission.id)
     print(f"  Goal: {mission.goal}")
@@ -154,11 +152,11 @@ def _cmd_mission_list(*, project: str | None = None, all_projects: bool = False,
         fail("invalid_list_option", str(exc), json_output=json_output)
 
     if json_output:
-        print(_json.dumps({
-            "version": 1,
-            "missions": [_mission_json(m) for _pid, m in rows],
-            "skipped_records": skipped_total,
-        }, sort_keys=True))
+        emit_ok(
+            version=1,
+            missions=[_mission_json(m) for _pid, m in rows],
+            skipped_records=skipped_total,
+        )
         return
 
     if not rows:
@@ -228,10 +226,9 @@ def _cmd_mission_show(mission_id: str, *, project: str | None = None,
         trips = latest_trips_from_ledger(ledger)
 
     if json_output:
-        print(_json.dumps({"version": 1, "mission": _mission_json(mission),
-                           "watchdog_trips": [t.to_json() for t in trips],
-                           "ledger": ledger},
-                          sort_keys=True))
+        emit_ok(version=1, mission=_mission_json(mission),
+                watchdog_trips=[t.to_json() for t in trips],
+                ledger=ledger)
         return
 
     # Empty trips print NOTHING, so an unpaused mission's output is byte for
@@ -291,20 +288,20 @@ def _cmd_mission_plan(mission_id: str, *, project: str | None = None,
         fail("mission_error", str(exc), json_output=json_output)
 
     if json_output:
-        print(_json.dumps({
-            "version": 1,
-            "mission_id": mission.id,
-            "plan_version": outcome.version,
-            "source": outcome.source,
-            "error_hint": outcome.error_hint,
-            "plan_path": str(outcome.plan_path or ""),
-            "milestones": [
+        emit_ok(
+            version=1,
+            mission_id=mission.id,
+            plan_version=outcome.version,
+            source=outcome.source,
+            error_hint=outcome.error_hint,
+            plan_path=str(outcome.plan_path or ""),
+            milestones=[
                 {"id": m.id, "goal": m.goal, "depends_on": list(m.depends_on),
                  "dod_ref": m.dod_ref, "jobs_draft": len(m.jobs_draft)}
                 for m in outcome.plan.milestones
             ],
-            "jobs_created": 0,
-        }, sort_keys=True))
+            jobs_created=0,
+        )
         return
 
     print(mission.id)
@@ -392,7 +389,7 @@ def _cmd_mission_set_status(mission_id: str, verb: str, *,
         body: dict[str, Any] = {"version": 1, "mission": _mission_json(updated)}
         if verb == "achieve":
             body["unmet_blocking_criteria"] = unmet
-        print(_json.dumps(body, sort_keys=True))
+        emit_ok(**body)
         return
     print(updated.id)
     if unmet:
@@ -420,17 +417,17 @@ def _cmd_mission_continue(mission_id: str, next_step: str, *,
 
     verify = job.tasks[0] if job.tasks and is_verify_task(job.tasks[0]) else None
     if json_output:
-        print(_json.dumps({
-            "version": 1,
-            "mission_id": mission.id,
-            "job_id": str(job.job_id),
-            "role": job.metadata.get("mission_role", ""),
-            "verify_first_task": (
+        emit_ok(
+            version=1,
+            mission_id=mission.id,
+            job_id=str(job.job_id),
+            role=job.metadata.get("mission_role", ""),
+            verify_first_task=(
                 {"description": verify.title,
                  "verify_command": verify.inputs.get("verify_command", "")}
                 if verify is not None else None),
-            "tasks": [t.title for t in job.tasks],
-        }, sort_keys=True))
+            tasks=[t.title for t in job.tasks],
+        )
         return
 
     print(str(job.job_id))
@@ -502,15 +499,15 @@ def _cmd_mission_run_loop(mission_id: str, *, project: str | None = None,
     entries = read_ledger(project_id, mission.id)
 
     if json_output:
-        print(_json.dumps({
-            "version": 1,
-            "mission_id": mission.id,
-            "terminal": result.terminal,
-            "detail": result.detail,
-            "iterations": result.iterations,
-            "max_iterations": limits.max_iterations,
-            "ledger_entries": len(entries),
-        }, sort_keys=True))
+        emit_ok(
+            version=1,
+            mission_id=mission.id,
+            terminal=result.terminal,
+            detail=result.detail,
+            iterations=result.iterations,
+            max_iterations=limits.max_iterations,
+            ledger_entries=len(entries),
+        )
         return
 
     print(mission.id)
@@ -545,9 +542,8 @@ def _cmd_mission_watchdog(mission_id: str, *, project: str | None = None,
     trips = evaluate_mission(project_id, mission.id)
 
     if json_output:
-        print(_json.dumps({"version": 1, "mission_id": mission.id,
-                           "trips": [trip.to_json() for trip in trips]},
-                          sort_keys=True))
+        emit_ok(version=1, mission_id=mission.id,
+                trips=[trip.to_json() for trip in trips])
         return
 
     print(mission.id)
@@ -584,9 +580,9 @@ def _cmd_mission_handoff(mission_id: str, *, json_output: bool = False) -> None:
     body = read_handoff(path)
     rendered = path.with_suffix(".md")
     if json_output:
-        print(_json.dumps({"version": 1, "mission_id": body["mission_id"],
-                           "handoff": str(path), "rendered": str(rendered),
-                           "gaps": body.get("gaps", [])}, sort_keys=True))
+        emit_ok(version=1, mission_id=body["mission_id"],
+                handoff=str(path), rendered=str(rendered),
+                gaps=body.get("gaps", []))
         return
 
     print(str(path))
@@ -611,7 +607,7 @@ def _cmd_mission_readiness(job_id: str, *, json_output: bool = False) -> None:
     )
     data = export_readiness_json(build_overnight_readiness(str(job_id)))
     if json_output:
-        print(_json.dumps(data, indent=2))
+        emit_ok(**data)
         return
     print(f"Mission readiness: {str(job_id)[:8]}")
     print(f"  level: {data['readiness_level']}  ready: {data['ready']}  "
@@ -644,7 +640,7 @@ def _cmd_mission_report(job_id: str, *, markdown: bool = False,
         print(render_overnight_report_markdown(data))
         return
     if json_output:
-        print(_json.dumps(data, indent=2))
+        emit_ok(**data)
         return
     print(render_overnight_report_markdown(data))
 
