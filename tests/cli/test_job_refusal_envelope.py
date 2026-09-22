@@ -265,10 +265,13 @@ class TestTheFlaggedRefusalsAreAllMigrated:
 
 class TestDecisionsRefusalsAreAllMigrated:
     """F283 round 6 — `decision.py`'s refusal pairs move onto `fail()` under DECISION
-    F277 D8's one-token-per-condition rule. The derived-decision refusal near the end
-    of `_cmd_decision_resolve` prints two lines, neither `Error: `-prefixed, before its
-    exit, so it is not mechanical by the rule and stays — the one site the unflagged
-    list still counts."""
+    F277 D8's one-token-per-condition rule. F283 R15 C4 (DECISION F283 D9) gives
+    `_cmd_decision_resolve` a `json_output` flag and reshapes the derived-decision
+    refusal near the end of the handler onto `if json_output: fail(...) else: <the two
+    prints>` followed by one shared `sys.exit(1)` — the `sys.exit(1)` no longer sits
+    directly after a `print(..., file=sys.stderr)` in the same body (an `if`/`else`
+    statement sits between them instead), so this ratchet's AST rule no longer counts
+    it as a site at all: no flagged and no unflagged site is left."""
 
     def test_no_flagged_print_then_exit_pair_survives(self):
         flagged, _ = _refusal_sites("decision.py")
@@ -279,9 +282,8 @@ class TestDecisionsRefusalsAreAllMigrated:
 
     def test_exactly_one_unflagged_site_remains(self):
         _, unflagged = _refusal_sites("decision.py")
-        assert len(unflagged) == 1, (
-            f"expected exactly the one derived-decision refusal left unmigrated, found "
-            f"{len(unflagged)} at lines {unflagged}"
+        assert unflagged == [], (
+            f"expected no sites left whose handler has no json flag, found {unflagged}"
         )
 
 

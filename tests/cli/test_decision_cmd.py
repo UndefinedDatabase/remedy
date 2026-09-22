@@ -116,6 +116,116 @@ class TestDecisionRefusalsAnswerInTheEnvelope:
         assert body["error"] == "invalid_list_option"
 
 
+class TestDecisionExplainAndResolveAnswerJSONThroughTheDispatcher:
+    """F283 R15 C4 (DECISION F283 D9) — `decision explain` and `decision resolve`
+    now declare `--json` in the catalog; each shape proved end to end through
+    the CLI dispatcher."""
+
+    @patch("packages.orchestration.decision_queue.explain_decisions")
+    @patch(_LOAD_JOB_EVENTS)
+    def test_explain_answers_the_envelope(self, mock_load, mock_explain, capsys):
+        from apps.cli.grouped import main
+
+        mock_load.return_value = (None, [], "job-1")
+        mock_explain.return_value = "No pending decisions."
+
+        main(["decision", "explain", "job-1", "--json"])
+        body = json.loads(capsys.readouterr().out)
+        assert body["ok"] is True and body["schema_version"] == 1
+        assert body["job_id"] == "job-1"
+        assert body["text"] == "No pending decisions."
+
+    def test_resolve_sr_answers_the_envelope(self, capsys):
+        from apps.cli.grouped import main
+        from packages.orchestration.stop_reasons import StopReason
+
+        resolved = StopReason(
+            id="stop-1", job_id="job-1", source="test", reason_code="test_failed",
+            severity="warning", status="resolved", created_at="2026-09-01T00:00:00+00:00",
+            resolved_at="2026-09-02T00:00:00+00:00", related_node_id="",
+            related_intent_id="", related_file="", safe_summary="a blocker",
+            next_actions=(),
+        )
+        with patch("packages.orchestration.stop_reasons.resolve_stop_reason",
+                   return_value=resolved):
+            main(["decision", "resolve", "job-1", "sr:stop-1", "--json"])
+        body = json.loads(capsys.readouterr().out)
+        assert body["ok"] is True and body["schema_version"] == 1
+        assert body["decision_id"] == "sr:stop-1" and body["job_id"] == "job-1"
+        assert body["outcome"] == "resolved"
+        assert body["stop_id"] == "stop-1" and body["reason_code"] == "test_failed"
+
+    def test_resolve_a_missing_task_decision_is_the_envelope(self, capsys):
+        from apps.cli.grouped import main
+
+        with patch("apps.cli.commands.decision.resolve_job_id_or_fail",
+                   return_value="job-1"), \
+             patch("packages.orchestration.pingpong_job.require_job_plan",
+                   return_value=object()), \
+             patch("packages.orchestration.escalation.find_task_decision",
+                   return_value=None), \
+             pytest.raises(SystemExit) as exc:
+            main(["decision", "resolve", "job-1", "td:no-such", "--json"])
+        assert exc.value.code == 1
+        body = json.loads(capsys.readouterr().out)
+        assert body["ok"] is False
+        assert body["error"] == "decision_not_found"
+
+    def test_resolve_a_derived_decision_is_not_resolvable_in_the_envelope(self, capsys):
+        from apps.cli.grouped import main
+
+        with pytest.raises(SystemExit) as exc:
+            main(["decision", "resolve", "job-1", "bogus:xyz", "--json"])
+        assert exc.value.code == 1
+        captured = capsys.readouterr()
+        assert captured.err == ""
+        body = json.loads(captured.out)
+        assert body["ok"] is False
+        assert body["error"] == "decision_not_resolvable"
+        assert "bogus:xyz" in body["message"]
+        assert "Resolve the underlying record" in body["message"]
+
+
+class TestDecisionResolveProposalAnswersJSONThroughTheDispatcher:
+    """F283 R15 C4 (DECISION F283 D9) — `decision resolve proposal:<id>` proved
+    end to end through the CLI dispatcher, over a real proposed-task store, the
+    same recipe `tests/orchestration/test_proposal_decision.py` uses."""
+
+    _JOB_ID = "12345678-1234-5678-1234-567812345678"
+
+    @pytest.fixture
+    def store(self, monkeypatch, tmp_path):
+        monkeypatch.setattr(
+            "packages.orchestration.proposed_tasks._STORE_DIR",
+            tmp_path / "proposed_tasks",
+        )
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        job_dir = tmp_path / "jobs" / self._JOB_ID
+        job_dir.mkdir(parents=True, exist_ok=True)
+        (job_dir / "job.json").write_text(json.dumps({
+            "job_id": self._JOB_ID, "job_title": "test-job",
+            "created_at": "2026-09-01T00:00:00Z", "tasks": [], "status": "pending",
+            "artifacts": [], "budget": {"max_steps": 10, "max_tokens": 0, "max_cost_usd": 0.0},
+            "metadata": {},
+        }))
+        return tmp_path
+
+    def test_reject_answers_the_envelope(self, store, capsys):
+        from apps.cli.grouped import main
+        from packages.orchestration.proposed_tasks import ProposedTask, ProposedTaskStatus, add_proposed_task
+
+        t = ProposedTask(title="Unresolved task", status=ProposedTaskStatus.PROPOSED)
+        add_proposed_task(self._JOB_ID, t, root=store)
+
+        main(["decision", "resolve", self._JOB_ID, f"proposal:{t.id}",
+              "--reason", "reject", "--json"])
+        body = json.loads(capsys.readouterr().out)
+        assert body["ok"] is True and body["schema_version"] == 1
+        assert body["decision_id"] == f"proposal:{t.id}" and body["job_id"] == self._JOB_ID
+        assert body["outcome"] == "rejected"
+        assert body["task_id"] == t.id
+
+
 class TestTheTokenVocabularyJoinsTheProduct:
     """R-1023, DECISION F277 D8 part (a) — one token per condition, repo-wide,
     existing spelling wins. Round 6 minted `job_has_no_project` and
@@ -128,6 +238,7 @@ class TestTheTokenVocabularyJoinsTheProduct:
     _PINNED_TOKENS = frozenset({
         "answer_parse_error", "clarifications_already_resolved",
         "decision_already_answered", "decision_not_found",
+        "decision_not_resolvable",
         "follow_up_mission_error", "invalid_argument", "invalid_list_option",
         "job_not_found", "missing_argument", "mission_already_linked",
         "mission_error", "no_pending_plan_approval", "no_project",

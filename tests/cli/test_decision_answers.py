@@ -148,6 +148,42 @@ class TestResolveWithAnswers:
         assert exc.value.code == 1
 
 
+class TestDecisionResolveTaskAnswerAnswersJSONThroughTheDispatcher:
+    """F283 R15 C4 (DECISION F283 D9) — `decision resolve` on a `td:` task
+    decision proved end to end through the CLI dispatcher: the envelope's
+    `outcome` is `answered`, carrying `answer`, `cross_references`,
+    `follow_up_mission` (null here — the question is not a contract-remainder
+    marker) and `next_command`, the resume line the text branch prints."""
+
+    def test_answered_answers_the_envelope(self, tmp_path, monkeypatch, capsys):
+        from datetime import datetime, timezone
+
+        from apps.cli.grouped import main
+        from packages.orchestration.escalation import enqueue_task_decision
+        from packages.orchestration.pingpong_job import save_job_plan
+
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
+        job = JobPlan(job_title="t")
+        record = enqueue_task_decision(
+            job, task_id="T1", question="Which path?",
+            safe_default="", impact="", now=datetime.now(timezone.utc))
+        save_job_plan(job)
+        decision_id = record["decision_id"]
+
+        main(["decision", "resolve", str(job.job_id), decision_id,
+              "--reason", "go fast", "--json"])
+        body = json.loads(capsys.readouterr().out)
+        assert body["ok"] is True and body["schema_version"] == 1
+        assert body["decision_id"] == decision_id and body["job_id"] == str(job.job_id)
+        assert body["outcome"] == "answered"
+        assert body["answer"] == "go fast"
+        assert body["cross_references"] == []
+        assert body["follow_up_mission"] is None
+        assert body["next_command"] == (
+            f"Resume the run: remedy job resume {job.job_id} --json"
+        )
+
+
 class TestWriteBackAndImmutability:
     """T002 — approve writes answers AND defaults; then they are frozen."""
 

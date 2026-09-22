@@ -1496,7 +1496,9 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
             _REASON_OPT,
             _ANSWER_OPT,
             _AS_MISSION_FLAG,
+            _JSON_OPT,
         ),
+        supports_json=True,
     ),
     CommandEntry(
         command_id="decision.explain",
@@ -1504,7 +1506,8 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         subcommand="explain",
         description="Explain all pending decisions for a job (under its mission).",
         action_class="read_only",
-        args=(_JOB_ID,),
+        args=(_JOB_ID, _JSON_OPT),
+        supports_json=True,
     ),
 
     # ── ui ───────────────────────────────────────────────────────────────
