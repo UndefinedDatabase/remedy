@@ -10,19 +10,20 @@ silently incomplete (`docs/roadmap/features/T2_F278.md`).
 
 ## Current Step
 
-ROUND 7 books round 6's PASS, registers R-1036, R-1037 and R-1038 with
-DECISION F278 D6, repairs R-1036 so a lost final job review is recorded as a
-blocking one, and marks the second group of blind handlers: the job,
-pingpong, apply, command-line, runtime and snapshot modules.
+ROUND 8 books round 7's PASS, resolves R-1036 and records DECISION F278 D7,
+repairs R-1037 and R-1038, narrows one handler, marks the last group of
+blind handlers, and turns BLE001 on with the ratchet test; T003 is then
+complete and every Acceptance line of T2_F278.md has its evidence.
 
 ## Next Steps
 
-1. The last marking round: repair R-1037 and R-1038 first, mark the third
-   group, then turn BLE001 on in `pyproject.toml` with the ratchet test that
-   freezes the count of excused handlers.
-2. The closure sequence.
+1. The closure sequence, first half: resolve R-1037 and R-1038, write the
+   Built State, run the one checklist pass, the self-use item, and the
+   feature's one full suite.
+2. The closure sequence, second half: the evidence job and the review
+   package, then the rotation, the accepted STATUS line and the PR.
 
 ## Risks
 
-Three open findings are this feature's own until they are repaired; the
-closure cannot run while any of them is open.
+None known beyond the closure's own; the frozen count of excused handlers
+is 290 and only falls from here.
