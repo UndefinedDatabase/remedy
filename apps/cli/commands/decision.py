@@ -300,12 +300,12 @@ def _cmd_decision_resolve(
             )
 
         save_job_plan(job)
-        next_command = f"Resume the run: remedy job resume {job_id_str} --json"
+        next_command = f"remedy job resume {job_id_str} --json"
         if not json_output:
             print(f"Answered {decision_id} for job {job_id_str}: {answered['answer']}")
             for ref in answered.get("cross_references", []):
                 print(f"  Same question also asked as: {ref}")
-            print(next_command)
+            print(f"Resume the run: {next_command}")
         # DECISION F269 D9 (3): a `yes` to a contract remainder decision starts
         # the follow-up mission; every other answer is recorded and no more.
         from packages.orchestration.mission_contract import (

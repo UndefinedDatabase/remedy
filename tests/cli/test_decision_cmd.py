@@ -185,6 +185,24 @@ class TestDecisionExplainAndResolveAnswerJSONThroughTheDispatcher:
         assert "bogus:xyz" in body["message"]
         assert "Resolve the underlying record" in body["message"]
 
+    def test_resolve_a_derived_decision_without_json_writes_its_two_old_stderr_lines(
+        self, capsys,
+    ):
+        """F283 R16 C3 — the text branch is untouched by C3's `next_command`
+        narrowing: `decision resolve` on a derived decision without `--json`
+        still writes exactly its two old stderr lines and exits 1."""
+        from apps.cli.grouped import main
+
+        with pytest.raises(SystemExit) as exc:
+            main(["decision", "resolve", "job-1", "bogus:xyz"])
+        assert exc.value.code == 1
+        captured = capsys.readouterr()
+        assert captured.out == ""
+        assert captured.err == (
+            "Decision 'bogus:xyz' is derived and cannot be directly resolved.\n"
+            "Resolve the underlying record (patch intent, test, etc.) instead.\n"
+        )
+
 
 class TestDecisionResolveProposalAnswersJSONThroughTheDispatcher:
     """F283 R15 C4 (DECISION F283 D9) — `decision resolve proposal:<id>` proved

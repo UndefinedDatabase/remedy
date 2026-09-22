@@ -153,7 +153,8 @@ class TestDecisionResolveTaskAnswerAnswersJSONThroughTheDispatcher:
     decision proved end to end through the CLI dispatcher: the envelope's
     `outcome` is `answered`, carrying `answer`, `cross_references`,
     `follow_up_mission` (null here — the question is not a contract-remainder
-    marker) and `next_command`, the resume line the text branch prints."""
+    marker) and `next_command`, the command alone (F283 R16 C3 narrows it —
+    the text branch alone carries the `Resume the run: ` prefix)."""
 
     def test_answered_answers_the_envelope(self, tmp_path, monkeypatch, capsys):
         from datetime import datetime, timezone
@@ -180,7 +181,7 @@ class TestDecisionResolveTaskAnswerAnswersJSONThroughTheDispatcher:
         assert body["cross_references"] == []
         assert body["follow_up_mission"] is None
         assert body["next_command"] == (
-            f"Resume the run: remedy job resume {job.job_id} --json"
+            f"remedy job resume {job.job_id} --json"
         )
 
 
