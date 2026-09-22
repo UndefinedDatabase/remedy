@@ -10,19 +10,18 @@ silently incomplete (`docs/roadmap/features/T2_F278.md`).
 
 ## Current Step
 
-ROUND 1 claims F278, re-heads the review record and lands T001:
-`durable_write` and `durable_write_json` in `packages/common/secure_fs.py`,
-which fsync the file and the parent directory, use an unpredictable temporary
-file in the destination directory, and unlink it on every failure path; with
-`tests/orchestration/test_secure_fs_durable_write.py` and both red proofs.
+ROUND 2 books round 1's PASS and DECISION F278 D1, then lands T002's guard as
+a ratchet and the first two migrations: `pingpong_job.atomic_write_text`
+with its three importers, and `proposed_tasks._atomic_write`, each deleted in
+the commit that moves its callers onto `durable_write`.
 
 ## Next Steps
 
-1. T002, the migration: re-derive the surviving private atomic-write helpers
-   from the tree, replace each with an import of `durable_write` and delete
-   it, one module per commit, keeping each call site's return-type contract.
-2. T002's AST guard: no function named `_?atomic_(private_)?write` outside
-   `packages/common/`, with its red proof.
+1. T002, the boolean helpers: `real_test_execution`, `self_dogfood_execution`
+   and `token_economy`, each keeping its call sites' boolean contract.
+2. T002, `dev_server`'s three helpers with `runtime_supervisor` and
+   `runtime_cmd`, and the inline writers in `repository_snapshot` and
+   `project_registry`; the ratchet's set ends empty.
 3. T003, loud failures: BLE001 enabled with a frozen ignore list, the nine
    handlers in `stream_evidence.py` first, a `degradations` field on the
    stream artifact, and a reason on every remaining ignored site.
@@ -30,6 +29,5 @@ file in the destination directory, and unlink it on every failure path; with
 
 ## Risks
 
-`os.replace` of a directory entry and the directory fsync are POSIX
-behaviour; the helper fails loudly rather than silently where either is
-refused.
+The directory fsync adds one system call per record written; the job,
+checkpoint and mission records are small and written once per cycle.
