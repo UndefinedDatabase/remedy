@@ -1,0 +1,81 @@
+diff --git a/constraints.txt b/constraints.txt
+index 912a43b4..5a597cb5 100644
+--- a/constraints.txt
++++ b/constraints.txt
+@@ -650,3 +650,23 @@ typing-extensions==4.16.0 \
+ typing-inspection==0.4.4 \
+     --hash=sha256:547274fa6b0a561ccf549cc9524b999a578e737d015d8709d021f9d0d13bea47 \
+     --hash=sha256:65b8397ba37ccbce054456aaccddfc91e6e3083c92824df348d96ca832f3f147
++uv==0.12.18 \
++    --hash=sha256:03da66a73d0ac01fb7a95d096aebf5993b51ec65df620d57f415e111e6789c88 \
++    --hash=sha256:0a3c4e415515bd4c24c7516523d9042a2957ce716423e193f8b2be9fb8773340 \
++    --hash=sha256:0a8fa0c6408c1bedf8a19219b471d6c14ae98695940b20269fcb7514a136cfa4 \
++    --hash=sha256:145f17e2b7f165da9bd4dd14c4c2525d5b1647cb8daadb684106babedbc502ff \
++    --hash=sha256:328abf19b5992b4846f96d1d4440cdd9e0b7d20c0f00b0644e68ca8cfb561c26 \
++    --hash=sha256:4f9769cf34558a026ff9b8e04cdf9d25c16fe3d61f35956daf6548f2b0379ff0 \
++    --hash=sha256:53a035e48cbe94ca47ee304b293060b690d0ac03140a64ff3ff4713eabcede99 \
++    --hash=sha256:77b71bc25d274a04594d32167b0f766fb5b6805980c3aed02872c468e1905e7e \
++    --hash=sha256:799dcef1ef97ab6491b34f5827e2da8dd9153d65be056c779b60a2d4d3d6c45b \
++    --hash=sha256:98a8a4786db518b4d708eacc96aadfc0626072d5873c708bcab8239e6453176d \
++    --hash=sha256:99c64f9f3eea3eb3fd496c29da47462824da0e47775b3b39d444d9832c815549 \
++    --hash=sha256:9aa0ef69c7cb2aff485a0e9ce46feeb7b6dbeef3d796ffd04b944cf355ba8334 \
++    --hash=sha256:9c237410b6b193e691c7c37752fd7f3cfebd9b5d5331c53e748f004c6397334f \
++    --hash=sha256:9c77a4de02c2b7737f6d4eb5fcd359bc0f0948f2a4133f8095c527addb84fc56 \
++    --hash=sha256:b656468f973ac363ac96b0b6b9bf9c5f5836cd84b664d0ca67b67bb8e35f9bcf \
++    --hash=sha256:cbbfcca37cf678b5135f61f722631a2a85e2eddc459ba64692054011f160f6c2 \
++    --hash=sha256:d5037ec17654c756fc9841270f413c5fc9ecef89108b443f5dd34600a3ccdb19 \
++    --hash=sha256:e7ab1387b222ab640dbd057b95548a199e4c621aa35e9f6a32c0516c76e7637d \
++    --hash=sha256:fbe0489871e74ebfb70379a32526c62b9fb615acf13576b9f19bc09a142f62b0
+diff --git a/pyproject.toml b/pyproject.toml
+index 98489793..6933ed9e 100644
+--- a/pyproject.toml
++++ b/pyproject.toml
+@@ -11,7 +11,7 @@ requires-python = ">=3.10"
+ dependencies = ["pydantic>=2.0,<3", "psutil>=5.9,<8"]
+ 
+ [project.optional-dependencies]
+-dev = ["pytest", "pytest-xdist", "ruff==0.15.17", "mypy", "pytest-cov", "coverage"]
++dev = ["pytest", "pytest-xdist", "ruff==0.15.17", "mypy", "pytest-cov", "coverage", "uv==0.12.18"]
+ ollama = ["ollama>=0.4"]
+ anthropic = ["anthropic>=0.40"]
+ 
+diff --git a/tests/conftest.py b/tests/conftest.py
+index f48f9cf9..c6fda9a8 100644
+--- a/tests/conftest.py
++++ b/tests/conftest.py
+@@ -64,17 +64,34 @@ def _isolated_data_root(tmp_path_factory):
+     os.environ.pop("REMEDY_DATA_DIR", None)
+ 
+ 
++#: How deep the data-root guard reads: the root's own children and theirs (R-1004).
++DATA_ROOT_GUARD_DEPTH = 2
++
++
+ def _data_root_fingerprint(root):
+-    """Every entry below ``root`` as (relative path, kind, size, mtime_ns), sorted."""
++    """Every entry at most ``DATA_ROOT_GUARD_DEPTH`` below ``root``, as (path, kind, size, mtime_ns).
++
++    R-1004: the guard once walked the WHOLE root, eight million entries on the operator's
++    machine and about two minutes per pytest session, twice. A record Remedy writes lives in
++    a directory one or two levels down (``jobs/<id>/``, ``runs/<id>/``), and creating,
++    deleting or atomically replacing anything inside such a directory changes that
++    directory's own mtime, which this reading carries. WHAT IT CANNOT SEE: a file rewritten
++    in place below that depth, and an entry added three or more levels down, which moves
++    only a directory the reading does not reach. Every durable write in this repository is
++    an atomic replace, so the pollution R-0803 exists for still shows.
++    """
+     import os
+     if not os.path.lexists(root):
+         return None
+     entries = []
+     for dirpath, dirnames, filenames in os.walk(root):
++        depth = 0 if dirpath == root else os.path.relpath(dirpath, root).count(os.sep) + 1
+         for name in dirnames + filenames:
+             path = os.path.join(dirpath, name)
+             st = os.lstat(path)
+             entries.append((os.path.relpath(path, root), st.st_mode >> 12, st.st_size, st.st_mtime_ns))
++        if depth + 1 >= DATA_ROOT_GUARD_DEPTH:
++            dirnames[:] = []
+     return sorted(entries)
+ 
+ 
