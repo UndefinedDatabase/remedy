@@ -1,0 +1,173 @@
+diff --git a/packages/orchestration/final_verifier.py b/packages/orchestration/final_verifier.py
+index b2936b1e..002e10d2 100644
+--- a/packages/orchestration/final_verifier.py
++++ b/packages/orchestration/final_verifier.py
+@@ -826,6 +826,13 @@ def build_final_verifier_report(evidence_dir: str) -> dict[str, Any]:
+     )
+     manifest_integrity_blocked = bool(manifest_failures)
+ 
++    # F263 T001: a human change record the bundle carries that does not verify BLOCKS — the
++    # human's edit is evidence, and evidence that cannot be proved intact is not clean.
++    _hc_integrity = _read_json(base / "human_change_integrity.json")
++    human_change_integrity_blocked = bool(
++        list(_hc_integrity.get("failures") or []) if isinstance(_hc_integrity, dict) else []
++    )
++
+     unresolved_findings = _collect_unresolved_findings(base, task_ids)
+ 
+     _vt_runs = verification_tests.get("runs") if isinstance(verification_tests, dict) else None
+@@ -935,6 +942,7 @@ def build_final_verifier_report(evidence_dir: str) -> dict[str, Any]:
+     gates_blocked = (
+         postmortem_integrity_blocked
+         or manifest_integrity_blocked
++        or human_change_integrity_blocked
+         or scratch_file_guard == "BLOCKED"
+         or spec_compliance == "BLOCKED"
+         or any_core_gate_blocked
+@@ -1028,6 +1036,7 @@ def build_final_verifier_report(evidence_dir: str) -> dict[str, Any]:
+         "postmortem_failures": postmortem_failures,
+         "postmortem_integrity_blocked": postmortem_integrity_blocked,
+         "manifest_integrity_blocked": manifest_integrity_blocked,
++        "human_change_integrity_blocked": human_change_integrity_blocked,
+         "change_provenance": change_provenance,
+         "change_provenance_gate": change_provenance,
+         "fresh_evidence_gate": fresh_evidence_gate,
+diff --git a/packages/orchestration/human_change.py b/packages/orchestration/human_change.py
+index e98517da..885520ad 100644
+--- a/packages/orchestration/human_change.py
++++ b/packages/orchestration/human_change.py
+@@ -237,6 +237,44 @@ def verify_human_change_record(path: Path) -> list[str]:
+     return problems
+ 
+ 
++#: The bundle's integrity artifact for the records it carries (DECISION F263 D2). A failure in it
++#: BLOCKS the final verifier, like a lost post-mortem: a package must not look clean while a
++#: human change it carries cannot be proved intact.
++INTEGRITY_FILE = "human_change_integrity.json"
++
++
++def export_human_change_records(
++    job_id: str, out_dir: Path, *, root: Path | None = None,
++) -> tuple[dict[str, Any], list[str]]:
++    """Copy the job's records into ``out_dir/human_changes/`` and verify every COPY.
++
++    Returns the integrity artifact and the bundle-relative paths written. A job with no
++    records exports none and is intact.
++    """
++    from packages.orchestration.data_paths import job_evidence_dir
++
++    source = job_evidence_dir(job_id, root) / RECORD_DIRNAME
++    records: list[str] = []
++    failures: list[str] = []
++    written: list[str] = []
++    for record in sorted(source.glob("hcr-*.json")) if source.is_dir() else []:
++        record_id = record.stem
++        records.append(record_id)
++        dest = Path(out_dir) / RECORD_DIRNAME
++        dest.mkdir(parents=True, exist_ok=True)
++        for name in (record.name, f"{record_id}.diff"):
++            try:
++                (dest / name).write_bytes((source / name).read_bytes())
++            except OSError as exc:
++                failures.append(f"{record_id}: {name} could not be copied: {exc}")
++                continue
++            written.append(f"{RECORD_DIRNAME}/{name}")
++        failures.extend(f"{record_id}: {p}" for p in verify_human_change_record(dest / record.name))
++    integrity = {"schema_version": "1.0.0", "ok": not failures, "records": records,
++                 "failures": failures}
++    return integrity, written
++
++
+ def absorb(
+     job_id: str, repo_path: str | Path, last_known: TargetState, *, detected_by: str,
+     rebase: Callable[[HumanChange], None], root: Path | None = None,
+diff --git a/packages/orchestration/job_evidence.py b/packages/orchestration/job_evidence.py
+index 8a6186ce..e8442b68 100644
+--- a/packages/orchestration/job_evidence.py
++++ b/packages/orchestration/job_evidence.py
+@@ -691,6 +691,14 @@ def export_job_evidence(
+     }
+     _write_json(MANIFEST_INTEGRITY_FILE, _manifest_integrity)
+ 
++    # F263 T001: every human change record travels into the bundle and is verified THERE, on
++    # the copy a reviewer reads; a record that does not verify BLOCKS, like the two above.
++    from packages.orchestration import human_change as _hc
++    _hc_integrity, _hc_written = _hc.export_human_change_records(job.job_id, out_path)
++    for _rel in _hc_written:
++        written[_rel] = str(out_path / _rel)
++    _write_json(_hc.INTEGRITY_FILE, _hc_integrity)
++
+     # Fresh evidence gate — verify this evidence belongs to the current job run.
+     # Step range is derived from the project's .agent/plan.md title.
+     try:
+diff --git a/packages/orchestration/manual_attestation.py b/packages/orchestration/manual_attestation.py
+index 7d33703a..5e2898e3 100644
+--- a/packages/orchestration/manual_attestation.py
++++ b/packages/orchestration/manual_attestation.py
+@@ -234,6 +234,9 @@ def build_manual_completion_gates(evidence_dir: str, *, job_id: str, authority:
+        {"schema_version": "1.0.0", "ok": True, "failures": [], "notes": []})
+     _w(os.path.join(evidence_dir, "postmortem_integrity.json"),
+        {"schema_version": "1.0.0", "ok": True, "failures": []})
++    # F263 T001: a manual completion carries no human change record of its own.
++    _w(os.path.join(evidence_dir, "human_change_integrity.json"),
++       {"schema_version": "1.0.0", "ok": True, "records": [], "failures": []})
+     # The runtime verdict is READ BACK from the gate just written: a hardcoded
+     # "PASS" here contradicted the packaged artifact whenever the gate failed,
+     # and the coordinator rejects exactly that disagreement.
+diff --git a/scripts/build_review_manifest.py b/scripts/build_review_manifest.py
+index 111b6b74..531ed4ff 100644
+--- a/scripts/build_review_manifest.py
++++ b/scripts/build_review_manifest.py
+@@ -1381,7 +1381,8 @@ _VERDICT_GATES = {
+     "change_provenance_gate.json": {"PASS"},
+     "runtime_integration_gate.json": {"PASS"},
+ }
+-_OK_GATES = ("manifest_integrity.json", "postmortem_integrity.json")
++_OK_GATES = ("manifest_integrity.json", "postmortem_integrity.json",
++             "human_change_integrity.json")
+ _COMMIT_GATE = "commit_execution_gate.json"
+ _ALL_READY_GATES = tuple(_VERDICT_GATES) + _OK_GATES + (_COMMIT_GATE,)
+ 
+@@ -1398,7 +1399,8 @@ _GATE_ALLOWED_FIELDS = {
+         "evidence_completeness", "execution_mode_blocked", "execution_mode_by_task",
+         "execution_mode_findings", "file_set_alignment_status", "final_job_review_blocked",
+         "final_job_review_findings", "final_job_review_verdict", "fresh_evidence_gate",
+-        "human_final_reviewer_required", "invocation_args_warnings", "manifest_integrity_blocked",
++        "human_change_integrity_blocked", "human_final_reviewer_required",
++        "invocation_args_warnings", "manifest_integrity_blocked",
+         "manual_completion", "missing_evidence", "missing_tests_gate", "model_mismatch_blocked",
+         "model_mismatch_warnings", "model_needs_repair", "operator_attested_tasks",
+         "postmortem_failures", "postmortem_integrity_blocked", "recommended_action",
+@@ -1426,6 +1428,7 @@ _GATE_ALLOWED_FIELDS = {
+         "verdict"}),
+     "manifest_integrity.json": frozenset({"failures", "notes", "ok", "schema_version"}),
+     "postmortem_integrity.json": frozenset({"failures", "ok", "schema_version"}),
++    "human_change_integrity.json": frozenset({"failures", "ok", "records", "schema_version"}),
+     "commit_execution_gate.json": frozenset({
+         "blocked_gates", "gate_checks", "issues", "non_pass_gates", "promote_ready",
+         "schema_version", "verdict"}),
+@@ -1689,6 +1692,7 @@ _GATE_SCHEMA = {
+         "sticky_binding_by_task": _Map("task_id", BOOL),
+         "manual_completion": BOOL, "human_final_reviewer_required": BOOL,
+         "postmortem_integrity_blocked": BOOL, "manifest_integrity_blocked": BOOL,
++        "human_change_integrity_blocked": BOOL,
+         "final_job_review_blocked": BOOL, "execution_mode_blocked": BOOL,
+         "model_mismatch_blocked": BOOL, "model_needs_repair": BOOL,
+         "token_cost_has_critical": BOOL, "token_cost_policy_present": BOOL,
+@@ -1738,6 +1742,8 @@ _GATE_SCHEMA = {
+         "schema_version": STR, "ok": BOOL, "failures": _Arr(_FINDING), "notes": _Arr(STR)}),
+     "postmortem_integrity.json": _Obj({
+         "schema_version": STR, "ok": BOOL, "failures": _Arr(_FINDING)}),
++    "human_change_integrity.json": _Obj({
++        "schema_version": STR, "ok": BOOL, "records": _Arr(STR), "failures": _Arr(STR)}),
+     "commit_execution_gate.json": _Obj({
+         "schema_version": STR, "verdict": STR, "gate_checks": _Map("gate_name", STR),
+         "blocked_gates": _Arr(STR), "non_pass_gates": _Arr(STR), "promote_ready": BOOL,
+@@ -1901,6 +1907,7 @@ def _gate_semantic_problems(name: str, gate: dict, verdicts: dict, ctx: dict) ->
+             ("change_source_mismatches", []), ("review_subject_uncovered_files", []),
+             ("content_hash_mismatches", []), ("postmortem_failures", []),
+             ("postmortem_integrity_blocked", False), ("manifest_integrity_blocked", False),
++            ("human_change_integrity_blocked", False),
+             # F2 (round 24): the remaining FV blocking fields.
+             ("final_job_review_blocked", False), ("execution_mode_blocked", False),
+             ("model_mismatch_blocked", False), ("model_needs_repair", False),
