@@ -1115,6 +1115,42 @@ def env_value_parses(raw: str, spec: ConfigKeySpec) -> bool:
     return True
 
 
+_ENV_SPEC_MAP: dict[str, ConfigKeySpec] = {spec.env_var: spec for spec in _CONFIG_KEY_SPECS}
+
+
+def env_value(name: str, environ: Mapping[str, str] | None = None) -> Any:
+    """The registered variable `name`, read from the LIVE environment as its declared type.
+
+    Live, and never through the cached :func:`get_config`, because every caller reads a value
+    the process or a test may set after the configuration was first loaded. When the variable
+    is unset, an env-only variable answers its spec's default, and any other answers None so
+    that its caller goes on to the next source, `remedy.toml`. A boolean reads as yes only for
+    the words in ``BOOL_TRUE_WORDS``, exactly as :func:`_coerce_value` reads it. A whole number
+    or a number that does not parse raises ValueError naming the variable and the type it must
+    be, rather than guessing. A name no spec registers raises KeyError: a read the registry
+    cannot see is the drift F279 T001 ends (DECISION F279 D4).
+    """
+    spec = _ENV_SPEC_MAP.get(name)
+    if spec is None:
+        raise KeyError(f"{name} is not a registered Remedy variable")
+    raw = (os.environ if environ is None else environ).get(name)
+    if raw is None:
+        return spec.default if spec.env_only else None
+    if spec.value_type is bool:
+        return raw.lower() in BOOL_TRUE_WORDS
+    if spec.value_type in (int, float):
+        try:
+            return spec.value_type(raw)
+        except ValueError:
+            raise ValueError(
+                f"Environment variable {name} must be {type_words(spec)} (got {raw!r})") from None
+    if spec.value_type is list:
+        return [part.strip() for part in raw.split(",") if part.strip()]
+    if spec.value_type is dict:
+        raise ValueError(f"Environment variable {name} cannot carry a table; set it in remedy.toml")
+    return raw
+
+
 def unknown_env_variables(environ: Mapping[str, str]) -> list[tuple[str, str | None]]:
     """Every `REMEDY_` name set in `environ` that no spec registers, with its closest registered name.
 

@@ -25,13 +25,13 @@ from __future__ import annotations
 
 import dataclasses
 import json
-import os
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
+from packages.orchestration.config import env_value
 from packages.orchestration.data_paths import run_log_dir
 from packages.orchestration.event_names import assert_declared_event
 
@@ -166,7 +166,7 @@ class RunLogWriter:
                 task_type="write_readme",
             )
         """
-        if os.environ.get(STRICT_EVENT_NAMES_ENV) == "1":
+        if env_value(STRICT_EVENT_NAMES_ENV):
             assert_declared_event(event)
         evt = RunEvent(
             event=event,
