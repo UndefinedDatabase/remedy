@@ -11,7 +11,7 @@ requires-python = ">=3.10"
 dependencies = ["pydantic>=2.0,<3", "psutil>=5.9,<8"]
 
 [project.optional-dependencies]
-dev = ["pytest", "pytest-xdist", "ruff==0.15.17", "mypy", "pytest-cov", "coverage"]
+dev = ["pytest", "pytest-xdist", "ruff==0.15.17", "mypy", "pytest-cov", "coverage", "uv==0.12.18"]
 ollama = ["ollama>=0.4"]
 anthropic = ["anthropic>=0.40"]
 
