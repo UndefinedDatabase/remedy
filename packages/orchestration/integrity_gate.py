@@ -254,7 +254,14 @@ def _check_repo_root_hygiene() -> IntegrityCheck:
                 f"{len(offenders)} root leftovers: {named}"[:200])
         return IntegrityCheck("repo_root_hygiene", IntegrityStatus.PASS,
                               "no reviewer scratch, evidence dir or archive at the root")
-    except Exception as exc:  # noqa: BLE001 — an unreadable root skips this check rather than failing the gate
+    except OSError as exc:
+        # NARROW ON PURPOSE, and it is the whole set: the body reads the root
+        # directory and matches names, so the only failure it can have is the
+        # directory being unreadable or gone. `fnmatch` over a str raises
+        # nothing. A blind `except Exception` here would have been the 291st
+        # excused handler against a ratchet frozen at 290
+        # (tests/test_ble001_ratchet.py), and the ratchet is right: a handler
+        # that names what it expects is the thing being asked for.
         return IntegrityCheck("repo_root_hygiene", IntegrityStatus.SKIP, f"error: {exc}"[:200])
 
 

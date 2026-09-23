@@ -19148,3 +19148,30 @@ this one, so it was not performed. The stale refs are named here so a later sess
 reasoning instead of re-deriving it, and deleting them is deliberately NOT done by this amendment:
 it is the operator's call, and git history is the archive either way. REVERSE by deleting this
 paragraph and merging `origin/main` into whichever of those refs is wanted.
+
+## DECISION amend0923-selfuse-write D10 — the root-hygiene check's handler is narrowed to `OSError` rather than excused, and the gate selection that missed it is named (2026-09-23)
+
+Hosted CI run 35893482610 ended RED on both Python columns with
+`tests/test_ble001_ratchet.py::test_the_count_of_excused_handlers_never_rises`:
+`291 excused blind handlers, above the frozen 290`. THE CAUSE WAS THIS AMENDMENT'S OWN C7:
+`_check_repo_root_hygiene` in `packages/orchestration/integrity_gate.py` was written in the file's
+existing style, `except Exception as exc:  # noqa: BLE001`, which is the 291st such mark against a
+ratchet that only ever falls. THE RATCHET'S OWN MESSAGE NAMES THE FIX and it was followed exactly —
+"narrow the new handler to the exceptions it expects instead of excusing it" — so the handler now
+catches `OSError` alone. That is the whole set, not a guess: the body reads the root directory with
+`Path(".").iterdir()` and matches names with `fnmatch`, so an unreadable or absent directory is the
+only failure available to it, and `fnmatch` over a `str` raises nothing. `MAX_EXCUSED` was NOT
+raised; the count is back at 290, measured. A new test,
+`TestRepoRootHygiene::test_an_unreadable_root_skips_rather_than_fails`, makes `iterdir` raise
+`PermissionError` and asserts the check answers SKIP, so the narrowed handler is exercised rather
+than merely asserted.
+
+WHY THE LOCAL GATES MISSED IT, stated plainly because the gap is the lesson: `tests/test_ble001_ratchet.py`
+sits at the `tests/` ROOT, and the amendment's Part 5 selection names `tests/docs/`, `tests/cli/`
+and a list of `tests/orchestration/` files — none of which reaches it. This branch DID sweep the
+root-level tests once, while measuring Part 2E's blast radius, and that sweep was green; the blind
+handler arrived afterwards, in C7, and the sweep was never repeated. A selection that is green is
+not evidence about a file it does not collect. After the repair the same sweep reads
+`4642 passed, 13 skipped` at exit 0 and `tests/orchestration/test_integrity_gate.py` reads
+`25 passed`. REVERSE by restoring the blind handler and raising `MAX_EXCUSED` to 291 — which is
+precisely what the ratchet exists to prevent, so do not.

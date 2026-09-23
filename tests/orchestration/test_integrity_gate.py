@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+from pathlib import Path
 
 import pytest
 
@@ -347,6 +348,24 @@ class TestRepoRootHygiene:
         named = [n for n in range(9) if f"remedy-review-{n}-scratch" in check.message]
         assert len(named) == 5, f"named {named}"
         assert "9" in check.message, "the message must state the true total"
+
+    def test_an_unreadable_root_skips_rather_than_fails(self, tmp_path, monkeypatch):
+        """The handler is narrowed to OSError, so the SKIP path is proved here.
+
+        A blind `except Exception` would have been the 291st excused handler
+        against the ratchet frozen at 290 in tests/test_ble001_ratchet.py.
+        Reading the root directory is the only thing this check does that can
+        fail, so OSError is the whole set — and this test is what says so.
+        """
+        monkeypatch.chdir(tmp_path)
+
+        def _boom(self):
+            raise PermissionError("root is unreadable")
+
+        monkeypatch.setattr(Path, "iterdir", _boom)
+        check = integrity_gate._check_repo_root_hygiene()
+        assert check.status is IntegrityStatus.SKIP
+        assert "root is unreadable" in check.message
 
     def test_the_check_is_registered_in_the_gate(self, tmp_path, monkeypatch):
         monkeypatch.chdir(tmp_path)
