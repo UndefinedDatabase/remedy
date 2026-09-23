@@ -19273,3 +19273,29 @@ ceiling the caller passes or the order file declares is never raised. ALTERNATIV
 the verdict on every outcome, not only a stop — rejected, because other outcomes already take it
 from their last round and widening it changes what finished tasks report. HOW TO REVERSE: restore
 the five product files from `a5715ae8`; the new tests go red.
+
+## DECISION F282 D5 — an empty diff is the evidence a failing review needs; the generator skips a retired word; `ui stop` changes local state; a reserved tree is held to its promise (2026-09-24)
+
+R-0999's FIX clause offers two rulings and leaves the choice to the owning round. CHOSEN: the
+empty staged diff counts as the evidence a `fail` or `needs_repair` needs. When the builder
+staged nothing and the reviewer fails it with no finding, `run_pingpong` adds one finding,
+`EMPTY-change`, carrying the reviewer's summary as its details, exactly as round hygiene already
+adds its findings to the reviewer's list, and the repair loop runs; the builder gets its second
+try with a finding that says what is missing. ALTERNATIVE CONSIDERED: block with a reason naming
+the builder — rejected, because it gives up the repair round the finding says was lost, and it
+would need a new terminal status every reader of the closed status map must learn. A `fail`
+without a finding over a NON-empty diff is still the reviewer's incoherence, unchanged.
+
+R-1015: the generator's Tier 1 walks past a paragraph carrying the retired job-result word the
+way it walks past an unrepairable one, never raising. Its pattern mirrors the one guard that
+reads every tracked file, `tests/docs/test_retired_promote_word.py`, and a test there pins the two
+equal. The guard's entry for `scripts/self_use_queue.json` stays, because SU-025's recorded text
+still carries the word and the guard requires every listed token to occur; its comment now says
+the screen is in place and the entry goes when that text does. The generator itself gains an
+entry of sense H, because it spells the pattern it screens for.
+
+R-1034: `ui.stop` is `local_state_change`, the class `data reclaim` already uses for a command
+that changes local state without touching the repository. R-1000: precondition 7 names
+`RESERVED_NAMESPACES`, and `tests/test_no_orphan_modules.py` holds every entry to an existing
+tree that holds modules and that no scanned file outside it imports. HOW TO REVERSE: restore the
+touched files from `17caab1d`; the new tests go red.

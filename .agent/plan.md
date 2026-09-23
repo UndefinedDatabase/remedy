@@ -12,17 +12,18 @@ distinct id, and the feature file lists every one under a slice.
 
 ## Current Step
 
-ROUND 4 books round 3's PASS and the resolutions of R-1040 and R-1005, and
-lands T006 and T007: a stopped self-use task keeps the reviewer's last
-verdict and the default call ceiling clears the loop (R-1007), and a
-timed-out provider call ends `provider_timeout` (R-1016, R-1027, R-1035,
-DECISION F282 D4).
+ROUND 5 books round 4's PASS and the resolutions of R-1007, R-1016, R-1027
+and R-1035, and lands T008 to T011: an empty diff is the evidence a failing
+review needs (R-0999), the self-use generator skips a retired word
+(R-1015), `ui stop` is a local state change (R-1034), and closure
+precondition 7 names `RESERVED_NAMESPACES` (R-1000), DECISION F282 D5.
 
 ## Next Steps
 
-1. T008 to T011: R-0999, R-1015, R-1034 and R-1000.
-2. T012 to T018, then T019 in the closure's consolidation pass.
-3. The closure sequence, whose self-use run is R-1008's only proof.
+1. T012 and T013: R-1004 in `tests/conftest.py`, R-1045's `uv` pin.
+2. T014 to T018: R-0892, R-0622, R-1029, R-0866, then the flakes.
+3. T019 in the closure's consolidation pass, then the closure sequence,
+   whose self-use run is R-1008's only proof.
 
 ## Risks
 
