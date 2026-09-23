@@ -138,8 +138,8 @@ class PingPongResult:
     max_rounds: int = 3
     rounds: list[PingPongRound] = field(default_factory=list)
     final_status: str = ""  # staged_review_passed, staged_blocked, max_rounds_reached,
-                             # provider_unavailable, test_failed, review_failed,
-                             # target_mutation_blocked, builder_no_changes
+                             # provider_unavailable, provider_timeout, test_failed,
+                             # review_failed, target_mutation_blocked, builder_no_changes
     staged_files: list[str] = field(default_factory=list)
     changed_target_files: list[str] = field(default_factory=list)
     ignored_target_noise_files: list[str] = field(default_factory=list)
@@ -2636,6 +2636,18 @@ def _call_with_retry(
     return out
 
 
+def provider_failure_status(error: str) -> str:
+    """The final status of a run whose provider call failed for good.
+
+    R-1016, R-1027 and R-1035: three closures recorded ``provider_unavailable`` over a
+    call that timed out after its limit while the provider was there all along, which
+    sent readers looking for a missing binary. A call the timeout predicate recognises
+    ends ``provider_timeout``; every other failure keeps ``provider_unavailable``. The
+    error text beside it names the limit, as ``claude CLI timed out after 600s`` does.
+    """
+    return "provider_timeout" if is_timeout_error(error) else "provider_unavailable"
+
+
 def shared_call_id(out: Any, role: str, round_no: int, kind: str) -> str:
     """The ONE call-identity function F010's post-mortem writer and F012's manifest both use.
 
@@ -3470,7 +3482,7 @@ def run_pingpong(
                 )
                 rd.finished_at = datetime.now(timezone.utc).isoformat()
                 result.rounds.append(rd)
-                result.final_status = "provider_unavailable"
+                result.final_status = provider_failure_status(builder_out.error)
                 result.error = builder_out.error
                 break
 

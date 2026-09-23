@@ -1548,6 +1548,7 @@ RUN_FINAL_STATUS_TO_LEDGER_STATE = {
     "max_rounds_reached": "failed",
     "repair_exhausted": "failed",
     "provider_unavailable": "failed",
+    "provider_timeout": "failed",          # R-1016: a timed-out call, not a missing provider
     "context_error": "failed",
     "run_error": "failed",
 }

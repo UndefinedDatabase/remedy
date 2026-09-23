@@ -187,6 +187,7 @@ def is_io_failure_error(error: str | None) -> bool:
 #: not a failure (``staged_review_passed``) is deliberately absent.
 TERMINAL_STATUS_CLASSES: dict[str, FailureClass] = {
     "provider_unavailable": FailureClass.PROVIDER_UNAVAILABLE,
+    "provider_timeout": FailureClass.PROVIDER_TIMEOUT,
     "test_failed": FailureClass.TEST_FAILED,
     "review_failed": FailureClass.REVIEW_FAILED,
     "worktree_conflict": FailureClass.WORKTREE_CONFLICT,

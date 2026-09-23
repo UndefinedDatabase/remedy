@@ -1915,12 +1915,13 @@ def _strict_apply_to_workspace(
 # ---------------------------------------------------------------------------
 
 def final_status_detail_of(result: Any) -> str:
-    """The cause a task records beside ``final_status=provider_unavailable`` (R-1016).
+    """The cause a task records beside a provider failure (R-1016).
 
-    The run's ``error`` is the failed provider call's text, which names the child's
-    exit code and the redacted tail of its stderr. Every other outcome records "".
+    The run's ``error`` is the failed provider call's text: for ``provider_unavailable``
+    it names the child's exit code and the redacted tail of its stderr, and for
+    ``provider_timeout`` the limit the call ran into. Every other outcome records "".
     """
-    if getattr(result, "final_status", "") != "provider_unavailable":
+    if getattr(result, "final_status", "") not in ("provider_unavailable", "provider_timeout"):
         return ""
     return str(getattr(result, "error", "") or "")
 
@@ -3111,6 +3112,12 @@ def run_job(
             # NOT failed, and never dressed up as a provider or review failure.
             # R-0812: so it writes no task_run_* terminal; `job_stopped` closes the log.
             if result.final_status == "stopped":
+                # R-1007: a budget stop can land after a round the reviewer never reached,
+                # and the verdict of the last round it DID reach is what tells a reader
+                # whether the model was failing or was cut short.
+                task.reviewer_verdict = next(
+                    (rd.reviewer_output.verdict for rd in reversed(result.rounds)
+                     if rd.reviewer_output), task.reviewer_verdict)
                 from packages.orchestration.safe_points import StopSignal as _StopSignal
                 signal = _StopSignal(
                     job_id=job.job_id,
