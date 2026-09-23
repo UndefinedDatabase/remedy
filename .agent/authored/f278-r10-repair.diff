@@ -1,0 +1,13 @@
+diff --git a/packages/orchestration/runtime_integration_gate.py b/packages/orchestration/runtime_integration_gate.py
+index 402fdbe1..95bd3d21 100644
+--- a/packages/orchestration/runtime_integration_gate.py
++++ b/packages/orchestration/runtime_integration_gate.py
+@@ -136,7 +136,7 @@ INTEGRATION_CHECKS: tuple[dict[str, str], ...] = (
+         "check_id": "f146_registry_atomic_save",
+         "source_file": _F146_REGISTRY,
+         "check_type": "call_exists",
+-        "pattern": "os.replace",
++        "pattern": "durable_write(",
+     },
+     {
+         "check_id": "f146_registry_read_only_resolution",
