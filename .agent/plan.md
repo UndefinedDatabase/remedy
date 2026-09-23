@@ -12,19 +12,22 @@ record, and the job re-bases onto it instead of failing on drift
 
 ## Current Step
 
-ROUND 6 books round 5's PASS, records DECISION F263 D6, and lands T003's
-apply half: every apply absorbs before a file is copied, the apply's drift
-block is deleted, and a hand edit the job also changed stops the apply
-with its name. With it every slice, T001 to T003, has landed.
+ROUND 7 is the closure sequence's first half. It books round 6's PASS,
+adds the guard test that holds the explicit command, the run's safe points
+and the apply to one implementation of absorption, writes the feature
+file's Built State, generates and runs the closure's self-use item, and
+runs the feature's one full suite. Every slice, T001 to T003, has landed.
 
 ## Next Steps
 
-1. The closure's first round: the Built State in the feature file, the
-   closure's self-use item, and the feature's one full-suite run.
-2. The evidence bundle and the review package.
-3. The ledger rotation, the accepted STATUS line and the pull request.
+1. The registrations the self-use run's defects ask for, and any repair
+   the full suite requires.
+2. The evidence job and the review package.
+3. The ledger rotation, the accepted STATUS line with the README counters,
+   and the pull request.
 
 ## Risks
 
-The cost of the check is recorded per job; the closure reads it from a
-real job's record and states it in the Built State.
+The cost of the human-change check is read from the self-use job's own
+record, the first real job to run with absorption; a job that stops
+before its first safe point would carry no reading.
