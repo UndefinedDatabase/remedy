@@ -1,0 +1,37 @@
+diff --git a/.agent/decisions.md b/.agent/decisions.md
+index 5d886d14..f6d891a0 100644
+--- a/.agent/decisions.md
++++ b/.agent/decisions.md
+@@ -19244,3 +19244,32 @@ this reading name, and each drives the real `run_job` to a persisted STOPPED sta
+ R-1040's FIX clause is followed as written: a ledger answer that names no priced and no unpriced
+ call leaves the persisted figures standing, and one that names at least one call replaces them,
+ as before. HOW TO REVERSE either: restore the file from `59fa1bd8`; the new tests go red.
++
++## DECISION F282 D4 — a timed-out provider call ends `provider_timeout`, a stopped task keeps its last verdict, and the self-use call ceiling clears the loop (2026-09-24)
++
++R-1016's FIX clause asks that the job-level status say timeout, with its limit, instead of
++`provider_unavailable`; R-1035's narrowed clause says the distinguishing text is already persisted
++on the task and only the status word hides it. CHOSEN: `run_pingpong` ends a run whose builder
++call failed for good at `provider_timeout` when `is_timeout_error` — the one predicate the retry
++path and the post-mortem classifier already share — recognises the error, and at
++`provider_unavailable` otherwise. The new status joins the two CLOSED maps that must know it
++(`RUN_FINAL_STATUS_TO_LEDGER_STATE`, as `failed`; `TERMINAL_STATUS_CLASSES`, as the existing
++`provider_timeout` class) and `final_status_detail_of`, so the task keeps the error text, which
++names the limit (`claude CLI timed out after 120s`). The job's gate string and every defect string
++`describe_self_use_run_defects` returns then read `final_status=provider_timeout` with no code of
++their own. The per-call seconds ARE the limit for a timeout, so no second elapsed figure is added;
++the run record's round wall clock keeps the total. NOT CHANGED: `_fail_early`, which fires when a
++provider cannot even be constructed and is therefore a genuinely unavailable one, the orchestrator's
++retryable classes, whose caught exceptions were already classed by the same predicate, and the
++patch pipeline's separate `stop_reason` vocabulary in `builder_bridge.py` and `ui_server.py`.
++R-1027's own remaining clause — that the next such run name its cause on disk — was met by F263's
++job `6a38b3203cca4928`, whose task detail reads the 120-second timeout.
++
++R-1007, both halves. The stop path now records on the task the verdict of the LAST round the
++reviewer reached, not only of the last round, because a budget stop lands between a builder call
++and its review. And `run_next_self_use_item` raises its DEFAULT call ceiling to one more than
++`2 x (1 + repair_rounds) x max_tasks` whenever 8 would tie or undercut what the loop can spend; a
++ceiling the caller passes or the order file declares is never raised. ALTERNATIVE CONSIDERED: record
++the verdict on every outcome, not only a stop — rejected, because other outcomes already take it
++from their last round and widening it changes what finished tasks report. HOW TO REVERSE: restore
++the five product files from `a5715ae8`; the new tests go red.
