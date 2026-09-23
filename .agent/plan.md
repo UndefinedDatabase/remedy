@@ -10,18 +10,19 @@ silently incomplete (`docs/roadmap/features/T2_F278.md`).
 
 ## Current Step
 
-ROUND 11, the closure sequence's evidence half. It books round 10's PASS and
-resolves R-1039, then builds the feature's evidence bundle against the fork
-point and a fresh review package, recording the package's name, its SHA-256,
-the directory it lives in and the accepted head it covers.
+ROUND 12, the closing round. It books round 11's PASS, rotates the finding
+ledger into its archive, accepts F278 in `docs/roadmap/STATUS.md` with the
+README's three pinned places and the self-use item's `consumed_by` in the same
+commit, and opens the pull request, which this session never merges.
 
 ## Next Steps
 
-1. The closing round: the ledger rotation, then the STATUS line with the
-   README counters and the self-use item's `consumed_by` in one commit, and
-   the pull request, which is never merged in the session that opens it.
+1. The Open PR Gate at the start of the next feature's session merges this
+   branch's pull request, after the operator's review window.
+2. Rule A5 then claims the first unchecked feature in
+   `docs/roadmap/STATUS.md`.
 
 ## Risks
 
-Twenty-six findings are open after this round's resolution and none is this
-feature's own. Eleven rounds are spent of the soft limit of 25.
+Twenty-six findings are open and none is this feature's own. Twelve rounds
+were spent across two sessions, under the soft limit of 25.
