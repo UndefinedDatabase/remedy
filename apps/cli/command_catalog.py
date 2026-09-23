@@ -145,6 +145,7 @@ GROUPS: dict[str, GroupDef] = {
     "teacher": GroupDef("teacher", "Teacher", "Explain a run from its evidence. Read-only, never steers it.", feature="F255", reach="teacher"),
     "runtime": GroupDef("runtime", "Runtime", "Start, probe and stop the project's repo dev server.", feature="F007", reach="job-path"),
     "stats": GroupDef("stats", "Stats", "Honest counts from the run evidence on disk.", feature="F010", reach="job-path"),
+    "absorb": GroupDef("absorb", "Absorb", "Absorb hand edits into this repo's unfinished jobs and their tasks.", feature="F263", reach="job-path"),
     # -- Advanced / internal commands (callable but hidden from default help) --
     "patch": GroupDef("patch", "Patch", "Review and apply patch intents.", user_facing=False, feature="F033", reach="job-path"),
     "test": GroupDef("test", "Test", "Discover and execute tests in the project's repo.", user_facing=False, feature="F261", reach="job-path"),
@@ -167,8 +168,8 @@ GROUPS: dict[str, GroupDef] = {
 
 #: The default `remedy --help` order (DECISION amend0905-vocab D4, clarified by
 #: amend0911-feedback D1): the sixteen visible groups in this fixed order, then
-#: `absorb` (F263) and `chat` (F264) once each ships — two reserved slots, not
-#: registered as empty groups (D1). `_print_root_help` iterates this tuple, never
+#: `absorb` (F263, shipped) and `chat` (F264) once it ships — the reserved slot is
+#: not registered as an empty group (D1). `_print_root_help` iterates this tuple, never
 #: `GROUPS`' own dict order, so a new visible group added elsewhere in `GROUPS`
 #: cannot silently reorder the help output; `TestVisibleGroupOrder` in
 #: `tests/test_command_catalog.py` pins both the tuple's own content and its
@@ -176,6 +177,7 @@ GROUPS: dict[str, GroupDef] = {
 VISIBLE_GROUP_ORDER: tuple[str, ...] = (
     "do", "mission", "job", "run", "decision", "status", "stats", "teacher",
     "memory", "ui", "config", "doctor", "project", "init", "worker", "runtime",
+    "absorb",
 )
 
 
@@ -248,6 +250,22 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         ),
         supports_json=True,
         exit_codes=(0, 1, 2, 4),
+    ),
+
+    # ── absorb (F263 T002, DECISION F259 D1) ────────────────────────────
+    CommandEntry(
+        command_id="absorb.run",
+        group_id="absorb",
+        subcommand="run",
+        description="Record the repo's hand edits as human change proof in each unfinished "
+                    "job's evidence, then re-base the job and its tasks onto them.",
+        action_class="write_metadata",
+        args=(
+            ArgDef("--job", "Absorb into this one job and its tasks only (its UUID)",
+                   required=False, is_option=True),
+            _JSON_OPT,
+        ),
+        supports_json=True,
     ),
 
     # ── status ──────────────────────────────────────────────────────────

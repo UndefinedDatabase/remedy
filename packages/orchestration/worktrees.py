@@ -221,6 +221,28 @@ def _acquire_lock(repo_path: str | Path, job_id: str) -> tuple[int, Path]:
     return fd, path
 
 
+def lock_is_held(repo_path: str | Path, job_id: str) -> bool:
+    """Does a live process hold this job's worktree lock right now? Takes nothing it keeps.
+
+    F263 T002: `remedy absorb` must not rewrite the record of a job a runner is holding.
+    A missing lock file means no runner ever claimed it, so nobody holds it.
+    """
+    path = lock_path_for(repo_path, job_id)
+    try:
+        fd = os.open(str(path), os.O_RDWR)
+    except FileNotFoundError:
+        return False
+    try:
+        fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except OSError:
+        return True
+    else:
+        fcntl.flock(fd, fcntl.LOCK_UN)
+        return False
+    finally:
+        os.close(fd)
+
+
 def release_lock(handle: WorktreeHandle) -> None:
     """Release the handle's lock. Safe to call twice."""
     fd = handle._lock_fd

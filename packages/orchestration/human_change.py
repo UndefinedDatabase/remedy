@@ -275,6 +275,45 @@ def export_human_change_records(
     return integrity, written
 
 
+@dataclass(frozen=True)
+class JobAbsorbOutcome:
+    job_id: str
+    status: str  # "absorbed" | "unchanged" | "skipped_running" | "skipped_no_state"
+    record_path: Path | None = None
+    files: tuple[FileChange, ...] = ()
+
+
+def absorb_job(job: Any, *, detected_by: str, root: Path | None = None) -> JobAbsorbOutcome:
+    """Absorb the target's human change into ONE job: certify it, then re-base the job.
+
+    The one implementation behind `remedy absorb` and, from T003, the run's own safe points
+    (T2_F263.md, Design). The re-base is a state operation: the job's checkpoint ref and its
+    `target_last_known` move to the tree the human left, and the job record is persisted. No
+    file in the repository is written. A job holding no last known state — made before F263,
+    or a non-git copy job — has nothing to measure against and is skipped, not failed.
+    """
+    from packages.orchestration import worktrees as W
+    from packages.orchestration.pingpong_job import job_worktree_id, save_job_plan
+
+    last_known = TargetState.from_dict(job.target_last_known)
+    if last_known is None:
+        return JobAbsorbOutcome(job_id=job.job_id, status="skipped_no_state")
+
+    def rebase(change: HumanChange) -> None:
+        ref = job.target_last_known.get("ref") or W.checkpoint_ref(
+            job_worktree_id(job.job_id), LAST_KNOWN_REF_NAME)
+        W.set_checkpoint_ref(job.repo_path, ref, change.after.tree)
+        job.target_last_known = {**change.after.to_dict(), "ref": ref}
+        save_job_plan(job, root)
+
+    outcome = absorb(job.job_id, job.repo_path, last_known, detected_by=detected_by,
+                     rebase=rebase, root=root)
+    if outcome.change is None:
+        return JobAbsorbOutcome(job_id=job.job_id, status="unchanged")
+    return JobAbsorbOutcome(job_id=job.job_id, status="absorbed",
+                            record_path=outcome.record_path, files=outcome.change.files)
+
+
 def absorb(
     job_id: str, repo_path: str | Path, last_known: TargetState, *, detected_by: str,
     rebase: Callable[[HumanChange], None], root: Path | None = None,

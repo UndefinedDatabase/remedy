@@ -704,7 +704,8 @@ class TestStatus:
 class TestHelpPinning:
     def test_visible_groups_in_d4_order(self, tmp_path):
         """DECISION amend0905-vocab D4 (binding, complete): the sixteen visible
-        groups appear in `remedy --help` in this fixed order, `do` pinned first."""
+        groups, then F263's `absorb`, appear in `remedy --help` in this fixed order,
+        `do` pinned first."""
         from apps.cli.command_catalog import VISIBLE_GROUP_ORDER
 
         repo = _git_repo(tmp_path)

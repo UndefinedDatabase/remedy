@@ -5,6 +5,7 @@
 # Blank lines and lines beginning with a hash are ignored by the reader.
 apps.cli.command_catalog
 apps.cli.commands
+apps.cli.commands.absorb_cmd
 apps.cli.commands.bench_cmd
 apps.cli.commands.blocker
 apps.cli.commands.brain
