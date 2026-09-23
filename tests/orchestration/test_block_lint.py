@@ -85,6 +85,40 @@ class TestEachRule:
         wrong = _by_item(lint_block("the open-findings count, 2\n", repo), 10)
         assert not wrong.ok and "holds 1" in wrong.detail
 
+    def test_a_stated_count_is_the_open_set_after_the_payloads_the_block_names(self, tmp_path):
+        """R-1041: a block that registers one id and resolves one states the count AFTER."""
+        repo = _fake_repo(tmp_path, ledger="- R-0001 — Low, a.\n- R-0002 — Low, b.\n")
+        payloads = repo / ".remedy-wt" / "fx-r1-payloads"
+        payloads.mkdir(parents=True)
+        (payloads / "ledger.diff").write_text(
+            "--- a/.agent/live_review.md\n+++ b/.agent/live_review.md\n@@ -2 +2,5 @@\n"
+            " - R-0002 — Low, b.\n+\n+- R-0003 — Low, a new one.\n+\n"
+            "+Done: R-0001 — repaired.\n", encoding="utf-8")
+        (payloads / "plan.md").write_text("- R-0009 — Low, quoted in a plan, not booked.\n",
+                                          encoding="utf-8")
+        head = (f"PAYLOADS — under `.remedy-wt/fx-r1-payloads/`.\n| ledger.diff | 7 | 1 | {SHA} |\n"
+                f"| plan.md | 1 | 1 | {SHA} |\n")
+        after = _by_item(lint_block(head + "the open-findings count, 2\n", repo), 10)
+        assert after.ok, after.detail
+        assert after.detail == ("states 2; .agent/live_review.md holds 2 open by distinct id, and the "
+                                "block registers 1 and resolves 1, leaving 2")
+        before = _by_item(lint_block(head + "the open-findings count, 3\n", repo), 10)
+        assert not before.ok and "leaving 2" in before.detail
+
+    def test_only_lines_a_diff_adds_to_the_ledger_count(self, tmp_path):
+        repo = _fake_repo(tmp_path, ledger="- R-0001 — Low, a.\n- R-0002 — Low, b.\n")
+        payloads = repo / ".remedy-wt" / "fx-r2-payloads"
+        payloads.mkdir(parents=True)
+        (payloads / "ledger.diff").write_text(
+            "--- a/.agent/live_review.md\n+++ b/.agent/live_review.md\n@@ -1,2 +1 @@\n"
+            "-Done: R-0002 — a line this diff removes.\n"
+            "--- a/.agent/decisions.md\n+++ b/.agent/decisions.md\n@@ -1 +1,2 @@\n"
+            "+Done: R-0001 — a decision quoting a resolution.\n", encoding="utf-8")
+        head = f"under `.remedy-wt/fx-r2-payloads/`\n| ledger.diff | 7 | 1 | {SHA} |\n"
+        check = _by_item(lint_block(head + "the open-findings count, 2\n", repo), 10)
+        assert check.ok, check.detail
+        assert "registers 0 and resolves 0, leaving 2" in check.detail
+
     def test_a_path_a_command_names_must_resolve_unless_the_block_creates_it(self, tmp_path):
         repo = _fake_repo(tmp_path)
         fence = "```\npython3 -m pytest tests/test_here.py tests/test_new.py\n```\n"
