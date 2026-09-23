@@ -1,0 +1,1 @@
+- [~] F279 — Configuration & toolchain truth: env registry, pinned dependencies, block lint
