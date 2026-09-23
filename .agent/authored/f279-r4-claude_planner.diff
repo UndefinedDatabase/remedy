@@ -1,0 +1,36 @@
+diff --git a/packages/providers/claude_planner/provider.py b/packages/providers/claude_planner/provider.py
+index 1b368e2e..922e20b9 100644
+--- a/packages/providers/claude_planner/provider.py
++++ b/packages/providers/claude_planner/provider.py
+@@ -63,10 +63,6 @@ from packages.orchestration.planner_models import PlannerOutput
+ #: and never this file.
+ _DEFAULT_MODEL = resolve_model_alias("claude-workhorse")
+ 
+-#: Per-call wall timeout handed to the shared exec guard, in seconds. A planning
+-#: call is one prompt and one JSON object, so this is generous rather than tight.
+-_DEFAULT_TIMEOUT_SEC = 300
+-
+ #: How much of one reply is kept. Far past any schema-shaped answer; a reply
+ #: longer than this is a runaway, and truncating it makes the JSON invalid,
+ #: which is exactly the outcome a runaway deserves.
+@@ -109,16 +105,10 @@ def _resolve_timeout(override: int | None) -> int:
+     """Resolve the per-call wall timeout; a malformed env var is an error, not a guess."""
+     if override is not None:
+         return int(override)
+-    env_timeout = os.environ.get("REMEDY_CLAUDE_PLANNER_TIMEOUT")
+-    if env_timeout is not None:
+-        try:
+-            return int(env_timeout)
+-        except ValueError:
+-            raise ValueError(
+-                "Environment variable REMEDY_CLAUDE_PLANNER_TIMEOUT must be an "
+-                f"integer number of seconds (got {env_timeout!r})"
+-            ) from None
+-    return _DEFAULT_TIMEOUT_SEC
++    # The default, 300 seconds, lives in the variable's spec (DECISION F279 D4).
++    from packages.orchestration.config import env_value
++
++    return env_value("REMEDY_CLAUDE_PLANNER_TIMEOUT")
+ 
+ 
+ def _schema_reply_model(schema: dict) -> type[BaseModel]:

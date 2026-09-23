@@ -1,0 +1,47 @@
+diff --git a/packages/providers/ollama_builder/provider.py b/packages/providers/ollama_builder/provider.py
+index c9cd33ed..29c1ac2c 100644
+--- a/packages/providers/ollama_builder/provider.py
++++ b/packages/providers/ollama_builder/provider.py
+@@ -245,7 +245,7 @@ class OllamaBuilder:
+     ) -> None:
+         import os
+ 
+-        from packages.orchestration.config import get_config
++        from packages.orchestration.config import env_value, get_config
+ 
+         cfg = get_config()
+         self.model = _resolve_model(model)
+@@ -253,29 +253,19 @@ class OllamaBuilder:
+         self.prompt_profile_name = prompt_profile or "context_rich"
+         self.prompt_profile = get_prompt_profile(self.prompt_profile_name)
+ 
+-        env_temp = os.environ.get("REMEDY_OLLAMA_BUILDER_TEMPERATURE")
++        env_temp = env_value("REMEDY_OLLAMA_BUILDER_TEMPERATURE")
+         if temperature is not None:
+             self.temperature: float | None = temperature
+         elif env_temp is not None:
+-            try:
+-                self.temperature = float(env_temp)
+-            except ValueError:
+-                raise ValueError(
+-                    f"Environment variable REMEDY_OLLAMA_BUILDER_TEMPERATURE must be a float (got {env_temp!r})"
+-                )
++            self.temperature = env_temp
+         else:
+             self.temperature = cfg.get("ollama.builder.temperature")
+ 
+-        env_num = os.environ.get("REMEDY_OLLAMA_BUILDER_NUM_PREDICT")
++        env_num = env_value("REMEDY_OLLAMA_BUILDER_NUM_PREDICT")
+         if num_predict is not None:
+             self.num_predict: int | None = num_predict
+         elif env_num is not None:
+-            try:
+-                self.num_predict = int(env_num)
+-            except ValueError:
+-                raise ValueError(
+-                    f"Environment variable REMEDY_OLLAMA_BUILDER_NUM_PREDICT must be an integer (got {env_num!r})"
+-                )
++            self.num_predict = env_num
+         else:
+             self.num_predict = cfg.get("ollama.builder.num_predict")
+ 
