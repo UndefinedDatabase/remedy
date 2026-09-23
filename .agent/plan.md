@@ -11,22 +11,20 @@ checklist items a machine can check (`docs/roadmap/features/T2_F279.md`).
 
 ## Current Step
 
-ROUND 4 books round 3's PASS, records DECISION F279 D4 with the feature
-file's note, and lands T001's reader half: `env_value` in
-`packages/orchestration/config.py` reads a registered variable from the live
-environment as its declared type, the eleven typed reads move onto it, and a
-guard keeps typed reads on it. T002 landed in round 1; T001's registry,
-doctor and guide in rounds 2 and 3.
+ROUND 5 books round 4's PASS, records DECISION F279 D5 with the feature
+file's amendment, and lands T003: `remedy integrity block <path>` lints a
+step block against items 1, 3, 10, 24, 30, 31 and 37 of the reviewer's
+checklist, and a guard holds every rule to a live item and to a sentence
+that item contains. T001 and T002 are complete.
 
 ## Next Steps
 
-1. T003, `remedy block lint`, unless the operator has dropped it.
-2. T004, the toolchain refresh order and `remedy doctor toolchain`.
-3. The closure sequence, with the one full-suite run.
+1. T004, the toolchain refresh order and `remedy doctor toolchain`.
+2. The closure sequence, with the one full-suite run.
 
 ## Risks
 
 `constraints.txt` (round 1) is F279's one declared oversize commit; no
 second may follow. Hosted CI first runs the new install steps at the
 closure's pull request. Under `pytest -n 6` in a fresh worktree the UI
-server tests show failures at the base as well; serially they pass.
+server tests fail at the base as well; serially they pass.

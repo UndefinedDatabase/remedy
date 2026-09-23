@@ -18612,3 +18612,40 @@ variable would then mean different things to `remedy doctor core` and to its rea
 REVERSE by deleting this paragraph and `env_value`, restoring the eleven reads and the Claude
 planner's `_DEFAULT_TIMEOUT_SEC` from git history at `0a529d69`, and deleting the reader tests
 and the typed-read guard from `tests/orchestration/test_env_registry.py`.
+
+DECISION F279 D5 (2026-09-23, round 5) — THE BLOCK LINTER IS `remedy integrity block <path>`,
+SEVEN RULES OVER SEVEN LIVE ITEMS, EACH HELD TO ITS ITEM BY THE CHECKLIST'S OWN TEXT.
+
+CONTEXT. T003 names the command `remedy block lint <path>`. A `block` group would be the
+catalog's thirty-second, and `tests/cli/test_cli_ux.py` pins the group partition DECISION
+amend0905-vocab D4 ruled; the `integrity` group already holds the self-build pre-handoff check,
+which is what a lint of a block before a worker sees it is. Measured by the reviewer at
+`182e7ea0`: the checklist's live items run 1 to 16, 18, 20 to 31 and 33 to 37, and the same file
+numbers a second list, the verification tiers, with the same leading shape; the ledger and its
+archive already register four ids twice, `R-0809`, `R-0958`, `R-0959` and `R-0960`.
+
+CHOSEN. (1) The command is `remedy integrity block <path>`, read-only, `--json`, exit 1 on any
+violation, one result per rule naming the item number and the checklist sentence it enforces.
+(2) The rules are the ones T003 lists, mapped to the items that state them: item 1, the block's
+line count against 400; item 3, a `plan.md` payload in the block's payload table under 50 lines;
+item 10, a stated open-findings count against the open set recomputed from the ledger; item 24,
+every repository path a fenced command names resolves on disk unless the block declares it a
+NEW FILE; item 30, every id the linted text registers is new to the ledger and the archive,
+which is the part of "no duplicate R-ids" a block can still prevent, the four existing
+duplicates being history; item 31, a gate the block orders before the handback commit does not
+itself run after it; and item 37, no line is a run of one repeated character, a bare code fence
+excepted because its length is Markdown syntax. (3) `tests/orchestration/test_block_lint.py`
+reads the live item numbers from the checklist's own region, and holds every rule to a live
+number and to a sentence that item really contains, so pointing a rule at a retired number, or
+a rule whose item is reworded, fails the guard. (4) The rules read the reviewer's current block
+shape, the payload table and the "G1 to G5 run before C7 is written" sentence; a block written
+otherwise answers "nothing to check" for those items, never a false failure.
+
+ALTERNATIVES. A new `block` group — rejected for the D4 partition. A rule over the whole
+ledger for duplicate ids — rejected: it fails on four landed duplicates no block can repair,
+and a lint that always fails is read by nobody.
+
+REVERSE by deleting this paragraph, `packages/orchestration/block_lint.py`,
+`tests/orchestration/test_block_lint.py`, the `integrity.block` catalog entry and handler, and the
+module's line in `tests/orchestration/import_reachability_allowlist.txt`, and by restoring T003's
+acceptance line in `docs/roadmap/features/T2_F279.md` from git history at `182e7ea0`.
