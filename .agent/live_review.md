@@ -1,28 +1,28 @@
-# Live Review — F278 Durable writes & loud failures
+# Live Review — F279 Configuration & toolchain truth: env registry, pinned dependencies, block lint
 
-> Round-by-round review record, re-headed at the F278 claim per
-> docs/agents/planner_reviewer_prompt.md §1. The heading this replaces named F283, whose STATUS
-> line went `[x]` at `36af73a5` and whose pull request 265 merged into `main` at the reviewer's
-> Open PR Gate under docs/agents/self_drive_protocol.md, as `9817a927`, after both hosted CI jobs
-> of run 35779620811 ended `success`. F283's round 24 — its closure round — has no gate entry,
+> Round-by-round review record, re-headed at the F279 claim per
+> docs/agents/planner_reviewer_prompt.md §1. The heading this replaces named F278, whose STATUS
+> line went `[x]` at `176e0090` and whose pull request 266 merged into `main` at the reviewer's
+> Open PR Gate under docs/agents/self_drive_protocol.md, as `c9bc5c20`, after both hosted CI jobs
+> of run 35806318373 ended `success`. F278's round 12 — its closure round — has no gate entry,
 > by construction (§4 item 13 of docs/agents/planner_reviewer_prompt.md); its verdict lives in
-> `.agent/handoff.md` at `36af73a5` and in the pull request. Only the heading, this paragraph and
+> `.agent/handoff.md` at `176e0090` and in the pull request. Only the heading, this paragraph and
 > the `## Steps` section below are rewritten. Everything from the `## Findings` line to the end
 > of the file is carried forward BYTE-IDENTICAL, and finding ids continue the monotonic R-XXXX
-> series across the re-head. The open set at `9817a927`, computed with `open_finding_ids` from
-> `scripts/rotate_live_review.py`, is 26 by distinct id; none of them names F278 as its owner,
-> and F278 owns whatever it registers itself.
+> series across the re-head. The open set at `c9bc5c20`, computed with `open_finding_ids` from
+> `scripts/rotate_live_review.py`, is 26 by distinct id; none of them names F279 as its owner,
+> and F279 owns whatever it registers itself.
 
 ## Steps
 
-THE ORDER BELOW IS T2_F278.md's Orchestrator brief. R1 claims F278, re-heads this record and
-lands T001 alone: `durable_write` and `durable_write_json` in `packages/common/secure_fs.py`, with
-the fsync red proof and the concurrent-writer red proof, because every later slice is a
-migration onto a helper that has to be right first. T002 migrates every surviving private
-atomic-write helper onto it and deletes the copy, one module per commit, after re-deriving the
-survivor list from the tree rather than from the feature file's count, and ends with the AST
-guard. T003, loud failures, enables BLE001 with a frozen ignore list and starts with the nine
-handlers in `stream_evidence.py`. Every round's handback states the open set by distinct id.
+THE ORDER BELOW IS T2_F279.md's Orchestrator brief. R1 claims F279, re-heads this record and
+lands T002, the pinned toolchain, first, because every measurement the other slices take is
+taken against an unpinned toolchain until it lands. The slice as registered names a lint ceiling
+that no longer exists and an install flag that a hash-pinned file cannot use beside an editable
+install; DECISION F279 D1 re-states it against the tree and amends the feature file in the same
+round. T001, the environment-variable registry, follows and splits at the registry, doctor and
+docs boundary; T003, block lint, and T004, the toolchain refresh, come last. Every round's
+handback states the open set by distinct id.
 ## Findings
 
 - R-0499 — Low, THE EIGHT-FILE STRUCTURAL SWEEP GOES RED ABOUT ONCE IN TWENTY RUNS INSIDE A FRESH GIT WORKTREE, AND THE FAILING NODE ID HAS NEVER BEEN CAPTURED. Raised by the reviewer at the R8 authoring dry run. Two observations exist and both are inside a disposable worktree, never in the primary checkout: the F085 R7 worker saw one red in 22 runs on a scratch worktree carrying a larger draft change and did not capture the node id, and the reviewer saw one red in 14 runs on the R8 dry-run worktree and did not capture it either, because the run that produced it was not the run that carried `-rf` output to the log. The red reading is `1 failed, 348 passed, 7 skipped` against the green `350 passed, 6 skipped`, so a test that normally PASSES was SKIPPED in the same run that another test failed — which is the signature of an environment-conditional skip rather than of a logic defect. The sweep's only environment-conditional member is `test_typescript_compiles` in `tests/ui_server/test_dashboard_contract.py`, which resolves `apps/ui/node_modules/.bin/tsc` relative to the file's own tree, skips with "UI toolchain absent" when that path is missing, and otherwise shells out to a REAL `tsc --noEmit` under `timeout=30` — the one member of the eight-file sweep that depends on a heavy external toolchain and on wall-clock. `node_modules` is gitignored, so a fresh worktree's copy of it is populated out of band and its state at the worktree's FIRST sweep run is not something the sweep controls. Nothing in the F085 change set reaches any of the eight files, so this is a pre-existing property of the gate and not of the guard. Counter-measure, already applied in the block that registers this finding: the sweep is ordered as a PROBE carrying `-rf`, never as an expected COLOUR, and a red run reports its FAILED node id verbatim and hands back rather than re-running until green — which is the only way the id gets captured. The finding resolves when a red run finally names the test. Whether `test_typescript_compiles` belongs in a structural sweep at all is a question for the F252 flake work and is NOT claimed here. OPEN.
