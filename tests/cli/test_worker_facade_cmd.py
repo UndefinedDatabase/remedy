@@ -7,6 +7,24 @@ import json
 
 import pytest
 
+
+@pytest.fixture(autouse=True)
+def _no_foreign_remedy_variables(monkeypatch):
+    """Run every test here as if the shell carried no `REMEDY_` variable Remedy would warn about.
+
+    `remedy doctor core` warns about an unregistered or unparsable `REMEDY_` variable
+    (F279 T001), and an operator's shell may carry other tools' names under the same prefix.
+    A test that asserts which warnings appear must not depend on the shell it runs in.
+    """
+    import os
+
+    from packages.orchestration.config import unknown_env_variables, unparsable_env_variables
+    for name, _closest in unknown_env_variables(os.environ):
+        monkeypatch.delenv(name)
+    for name, _spec in unparsable_env_variables(os.environ):
+        monkeypatch.delenv(name)
+
+
 # ---------------------------------------------------------------------------
 # Handler registry
 # ---------------------------------------------------------------------------
@@ -197,6 +215,45 @@ def _plant_dead_command(monkeypatch) -> str:
     monkeypatch.setattr(commands_mod, "collect_all_handlers",
                         lambda: {**shipped_handlers(), command_id: lambda ns: None})
     return command_id
+
+
+class TestDoctorCoreEnvironment:
+    """F279 T001: the environment is read against the variable registry, as advisories only."""
+
+    def _warnings(self, capsys, kind):
+        from apps.cli.commands.worker_facade_cmd import _cmd_doctor_core
+        _cmd_doctor_core(_ns(json=True))
+        out = json.loads(capsys.readouterr().out)
+        return out, [w for w in out["warnings"] if w["warning"] == kind]
+
+    def test_a_clean_environment_warns_about_nothing(self, capsys):
+        out, _ = self._warnings(capsys, "unknown_env_variable")
+        assert [w for w in out["warnings"] if w["warning"].endswith("_env_variable")] == []
+
+    def test_an_unknown_variable_is_named_with_its_closest_registered_match(self, monkeypatch, capsys):
+        monkeypatch.setenv("REMEDY_UI_PROT", "8765")
+        out, hits = self._warnings(capsys, "unknown_env_variable")
+        assert len(hits) == 1
+        assert "REMEDY_UI_PROT" in hits[0]["summary"] and "REMEDY_UI_PORT" in hits[0]["summary"]
+        assert "If you meant REMEDY_UI_PORT" in hits[0]["detail"]
+        assert out["ready"] is True and "unknown_env_variable" not in out["blockers"]
+
+    def test_a_registered_variable_that_does_not_parse_is_named_without_its_value(
+            self, monkeypatch, capsys):
+        monkeypatch.setenv("REMEDY_UI_PORT", "eighty-secret")
+        out, hits = self._warnings(capsys, "unparsable_env_variable")
+        assert len(hits) == 1
+        assert "REMEDY_UI_PORT" in hits[0]["summary"] and "a whole number" in hits[0]["summary"]
+        assert "eighty-secret" not in json.dumps(out)
+        assert out["ready"] is True
+
+    def test_text_mode_prints_the_compact_line(self, monkeypatch, capsys):
+        from apps.cli.commands.worker_facade_cmd import _cmd_doctor_core
+        monkeypatch.setenv("REMEDY_UI_PROT", "8765")
+        _cmd_doctor_core(_ns(json=False))
+        text = capsys.readouterr().out
+        assert "[WARN] unknown_env_variable: REMEDY_UI_PROT" in text
+        assert "Core Product Spine: READY" in text
 
 
 class TestDoctorCoreDeadCommands:
