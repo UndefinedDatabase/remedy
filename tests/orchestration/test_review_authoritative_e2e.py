@@ -95,7 +95,7 @@ def _complete_gates(authority=None, file_hashes=None, job_id="e2e-job-01", step=
             "missing_tests_gate": "PASS", "change_source_mismatches": [],
             "review_subject_uncovered_files": [], "content_hash_mismatches": [],
             "postmortem_failures": [], "postmortem_integrity_blocked": False,
-            "manifest_integrity_blocked": False,
+            "manifest_integrity_blocked": False, "human_change_integrity_blocked": False,
             "final_job_review_blocked": False, "execution_mode_blocked": False,
             "model_mismatch_blocked": False, "model_needs_repair": False, "missing_evidence": [],
             "execution_mode_findings": [], "final_job_review_findings": [],
@@ -150,6 +150,8 @@ def _complete_gates(authority=None, file_hashes=None, job_id="e2e-job-01", step=
         "manifest_integrity.json": {"schema_version": "1.0.0", "ok": True, "failures": [],
                                     "notes": []},
         "postmortem_integrity.json": {"schema_version": "1.0.0", "ok": True, "failures": []},
+        "human_change_integrity.json": {"schema_version": "1.0.0", "ok": True, "records": [],
+                                        "failures": []},
         "commit_execution_gate.json": {
             "schema_version": "1.0.0", "verdict": "NEEDS_HUMAN_APPROVAL", "promote_ready": False,
             "blocked_gates": [], "non_pass_gates": ["final_verifier"],

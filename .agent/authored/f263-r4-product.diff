@@ -1,0 +1,185 @@
+diff --git a/apps/cli/command_catalog.py b/apps/cli/command_catalog.py
+index 4e2a1ca5..f38fd60d 100644
+--- a/apps/cli/command_catalog.py
++++ b/apps/cli/command_catalog.py
+@@ -145,6 +145,7 @@ GROUPS: dict[str, GroupDef] = {
+     "teacher": GroupDef("teacher", "Teacher", "Explain a run from its evidence. Read-only, never steers it.", feature="F255", reach="teacher"),
+     "runtime": GroupDef("runtime", "Runtime", "Start, probe and stop the project's repo dev server.", feature="F007", reach="job-path"),
+     "stats": GroupDef("stats", "Stats", "Honest counts from the run evidence on disk.", feature="F010", reach="job-path"),
++    "absorb": GroupDef("absorb", "Absorb", "Absorb hand edits into this repo's unfinished jobs and their tasks.", feature="F263", reach="job-path"),
+     # -- Advanced / internal commands (callable but hidden from default help) --
+     "patch": GroupDef("patch", "Patch", "Review and apply patch intents.", user_facing=False, feature="F033", reach="job-path"),
+     "test": GroupDef("test", "Test", "Discover and execute tests in the project's repo.", user_facing=False, feature="F261", reach="job-path"),
+@@ -167,8 +168,8 @@ GROUPS: dict[str, GroupDef] = {
+ 
+ #: The default `remedy --help` order (DECISION amend0905-vocab D4, clarified by
+ #: amend0911-feedback D1): the sixteen visible groups in this fixed order, then
+-#: `absorb` (F263) and `chat` (F264) once each ships — two reserved slots, not
+-#: registered as empty groups (D1). `_print_root_help` iterates this tuple, never
++#: `absorb` (F263, shipped) and `chat` (F264) once it ships — the reserved slot is
++#: not registered as an empty group (D1). `_print_root_help` iterates this tuple, never
+ #: `GROUPS`' own dict order, so a new visible group added elsewhere in `GROUPS`
+ #: cannot silently reorder the help output; `TestVisibleGroupOrder` in
+ #: `tests/test_command_catalog.py` pins both the tuple's own content and its
+@@ -176,6 +177,7 @@ GROUPS: dict[str, GroupDef] = {
+ VISIBLE_GROUP_ORDER: tuple[str, ...] = (
+     "do", "mission", "job", "run", "decision", "status", "stats", "teacher",
+     "memory", "ui", "config", "doctor", "project", "init", "worker", "runtime",
++    "absorb",
+ )
+ 
+ 
+@@ -250,6 +252,22 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
+         exit_codes=(0, 1, 2, 4),
+     ),
+ 
++    # ── absorb (F263 T002, DECISION F259 D1) ────────────────────────────
++    CommandEntry(
++        command_id="absorb.run",
++        group_id="absorb",
++        subcommand="run",
++        description="Record the repo's hand edits as human change proof in each unfinished "
++                    "job's evidence, then re-base the job and its tasks onto them.",
++        action_class="write_metadata",
++        args=(
++            ArgDef("--job", "Absorb into this one job and its tasks only (its UUID)",
++                   required=False, is_option=True),
++            _JSON_OPT,
++        ),
++        supports_json=True,
++    ),
++
+     # ── status ──────────────────────────────────────────────────────────
+     CommandEntry(
+         command_id="status.run",
+diff --git a/apps/cli/commands/__init__.py b/apps/cli/commands/__init__.py
+index 2b0121ff..0d887f5e 100644
+--- a/apps/cli/commands/__init__.py
++++ b/apps/cli/commands/__init__.py
+@@ -26,6 +26,7 @@ def read_agent_file(name: str) -> str:
+ def collect_all_handlers() -> dict[str, Callable[[argparse.Namespace], None]]:
+     """Collect COMMAND_HANDLERS from every group module."""
+     from apps.cli.commands import (
++        absorb_cmd,
+         bench_cmd,
+         blocker,
+         brain,
+@@ -65,6 +66,6 @@ def collect_all_handlers() -> dict[str, Callable[[argparse.Namespace], None]]:
+     )
+ 
+     table: dict[str, Callable[[argparse.Namespace], None]] = {}
+-    for mod in (init_cmd, job, project, patch, test_cmds, brain, worker, memory, file, change, event, blocker, decision, ui, do_cmd, self_cmd, real_test_execution_cmd, dev, roadmap_cmd, integrity_cmd, snapshot_cmds, config_cmd, worker_facade_cmd, runtime_cmd, failure_stats_cmd, stats_ledger_cmd, job_stop_cmd, job_context_cmd, status_cmd, mission_cmd, bench_cmd, ci_cmd, teacher_cmd, study_cmd, contract_cmd, data_cmd):
++    for mod in (init_cmd, job, project, patch, test_cmds, brain, worker, memory, file, change, event, blocker, decision, ui, do_cmd, self_cmd, real_test_execution_cmd, dev, roadmap_cmd, integrity_cmd, snapshot_cmds, config_cmd, worker_facade_cmd, runtime_cmd, failure_stats_cmd, stats_ledger_cmd, job_stop_cmd, job_context_cmd, status_cmd, mission_cmd, bench_cmd, ci_cmd, teacher_cmd, study_cmd, contract_cmd, data_cmd, absorb_cmd):
+         table.update(mod.COMMAND_HANDLERS)
+     return table
+diff --git a/apps/cli/grouped.py b/apps/cli/grouped.py
+index c81b18b3..a5f870f5 100644
+--- a/apps/cli/grouped.py
++++ b/apps/cli/grouped.py
+@@ -289,8 +289,9 @@ class _SilentParser(argparse.ArgumentParser):
+         raise SystemExit(status)
+ 
+ 
+-_DEFAULT_COMMAND: dict[str, str] = {"ui": "start", "do": "run", "init": "run", "status": "run"}
+-_ALWAYS_INJECT: set[str] = {"init", "status"}
++_DEFAULT_COMMAND: dict[str, str] = {
++    "ui": "start", "do": "run", "init": "run", "status": "run", "absorb": "run"}
++_ALWAYS_INJECT: set[str] = {"init", "status", "absorb"}
+ 
+ 
+ def build_parser() -> argparse.ArgumentParser:
+diff --git a/packages/orchestration/human_change.py b/packages/orchestration/human_change.py
+index 885520ad..27cdd370 100644
+--- a/packages/orchestration/human_change.py
++++ b/packages/orchestration/human_change.py
+@@ -275,6 +275,45 @@ def export_human_change_records(
+     return integrity, written
+ 
+ 
++@dataclass(frozen=True)
++class JobAbsorbOutcome:
++    job_id: str
++    status: str  # "absorbed" | "unchanged" | "skipped_running" | "skipped_no_state"
++    record_path: Path | None = None
++    files: tuple[FileChange, ...] = ()
++
++
++def absorb_job(job: Any, *, detected_by: str, root: Path | None = None) -> JobAbsorbOutcome:
++    """Absorb the target's human change into ONE job: certify it, then re-base the job.
++
++    The one implementation behind `remedy absorb` and, from T003, the run's own safe points
++    (T2_F263.md, Design). The re-base is a state operation: the job's checkpoint ref and its
++    `target_last_known` move to the tree the human left, and the job record is persisted. No
++    file in the repository is written. A job holding no last known state — made before F263,
++    or a non-git copy job — has nothing to measure against and is skipped, not failed.
++    """
++    from packages.orchestration import worktrees as W
++    from packages.orchestration.pingpong_job import job_worktree_id, save_job_plan
++
++    last_known = TargetState.from_dict(job.target_last_known)
++    if last_known is None:
++        return JobAbsorbOutcome(job_id=job.job_id, status="skipped_no_state")
++
++    def rebase(change: HumanChange) -> None:
++        ref = job.target_last_known.get("ref") or W.checkpoint_ref(
++            job_worktree_id(job.job_id), LAST_KNOWN_REF_NAME)
++        W.set_checkpoint_ref(job.repo_path, ref, change.after.tree)
++        job.target_last_known = {**change.after.to_dict(), "ref": ref}
++        save_job_plan(job, root)
++
++    outcome = absorb(job.job_id, job.repo_path, last_known, detected_by=detected_by,
++                     rebase=rebase, root=root)
++    if outcome.change is None:
++        return JobAbsorbOutcome(job_id=job.job_id, status="unchanged")
++    return JobAbsorbOutcome(job_id=job.job_id, status="absorbed",
++                            record_path=outcome.record_path, files=outcome.change.files)
++
++
+ def absorb(
+     job_id: str, repo_path: str | Path, last_known: TargetState, *, detected_by: str,
+     rebase: Callable[[HumanChange], None], root: Path | None = None,
+diff --git a/packages/orchestration/worktrees.py b/packages/orchestration/worktrees.py
+index e626985b..28ab05ab 100644
+--- a/packages/orchestration/worktrees.py
++++ b/packages/orchestration/worktrees.py
+@@ -221,6 +221,28 @@ def _acquire_lock(repo_path: str | Path, job_id: str) -> tuple[int, Path]:
+     return fd, path
+ 
+ 
++def lock_is_held(repo_path: str | Path, job_id: str) -> bool:
++    """Does a live process hold this job's worktree lock right now? Takes nothing it keeps.
++
++    F263 T002: `remedy absorb` must not rewrite the record of a job a runner is holding.
++    A missing lock file means no runner ever claimed it, so nobody holds it.
++    """
++    path = lock_path_for(repo_path, job_id)
++    try:
++        fd = os.open(str(path), os.O_RDWR)
++    except FileNotFoundError:
++        return False
++    try:
++        fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
++    except OSError:
++        return True
++    else:
++        fcntl.flock(fd, fcntl.LOCK_UN)
++        return False
++    finally:
++        os.close(fd)
++
++
+ def release_lock(handle: WorktreeHandle) -> None:
+     """Release the handle's lock. Safe to call twice."""
+     fd = handle._lock_fd
+diff --git a/tests/orchestration/import_reachability_allowlist.txt b/tests/orchestration/import_reachability_allowlist.txt
+index 40047954..8d71cde3 100644
+--- a/tests/orchestration/import_reachability_allowlist.txt
++++ b/tests/orchestration/import_reachability_allowlist.txt
+@@ -5,6 +5,7 @@
+ # Blank lines and lines beginning with a hash are ignored by the reader.
+ apps.cli.command_catalog
+ apps.cli.commands
++apps.cli.commands.absorb_cmd
+ apps.cli.commands.bench_cmd
+ apps.cli.commands.blocker
+ apps.cli.commands.brain

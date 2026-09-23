@@ -1,0 +1,4 @@
+From describe_self_use_run_defects():
+
+1. job 6a38b3203cca4928 (blocked): task_T001_gate_failed: final_status=provider_unavailable; missing_reviewer_output
+2. T001 (blocked): completion_gate_failed: final_status=provider_unavailable; missing_reviewer_output

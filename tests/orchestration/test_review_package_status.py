@@ -312,6 +312,8 @@ class TestReviewZipPackageStatus:
             "schema_version": "1.0.0", "ok": True, "failures": [], "notes": []}))
         (ev / "postmortem_integrity.json").write_text(json.dumps({
             "schema_version": "1.0.0", "ok": True, "failures": []}))
+        (ev / "human_change_integrity.json").write_text(json.dumps({
+            "schema_version": "1.0.0", "ok": True, "records": [], "failures": []}))
         (ev / "commit_execution_gate.json").write_text(json.dumps({
             "schema_version": "1.0.0", "verdict": "NEEDS_HUMAN_APPROVAL", "promote_ready": False,
             "blocked_gates": [], "non_pass_gates": ["final_verifier"],

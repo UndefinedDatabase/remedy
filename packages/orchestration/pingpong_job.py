@@ -407,6 +407,9 @@ class JobPlan:
     result_diff_error: str = ""
     job_initial_tree: str = ""            # tree of the workspace before task 1
     job_initial_tree_ref: str = ""        # checkpoint ref keeping that tree alive
+    # F263 T001: the TARGET checkout's last known state (`human_change.TargetState` plus the
+    # checkpoint ref keeping its tree alive). A human change is measured against it.
+    target_last_known: dict | None = None
     # F006 hand-off coverage: the root diff must be EXACTLY the reviewed task work.
     root_changed_files: list[str] = field(default_factory=list)
     reviewed_task_files: list[str] = field(default_factory=list)
@@ -861,6 +864,7 @@ def _export_job(job: JobPlan) -> dict[str, Any]:
         },
         "job_initial_tree": job.job_initial_tree,
         "job_initial_tree_ref": job.job_initial_tree_ref,
+        "target_last_known": job.target_last_known,
         # F011: the last stop episode. Absent from every job file written before F011, and
         # absent from a job that was never stopped — both load as "no stop", not as an error.
         "stop": {
@@ -974,6 +978,7 @@ def _import_job(data: dict[str, Any]) -> JobPlan:
         result_diff_error=(data.get("worktree") or {}).get("result_diff_error", ""),
         job_initial_tree=data.get("job_initial_tree", ""),
         job_initial_tree_ref=data.get("job_initial_tree_ref", ""),
+        target_last_known=data.get("target_last_known") or None,
         handoff_coverage_verdict=(data.get("handoff_coverage") or {}).get("verdict", ""),
         root_changed_files=(data.get("handoff_coverage") or {}).get("root_changed_files", []),
         reviewed_task_files=(data.get("handoff_coverage") or {}).get("reviewed_task_files", []),
@@ -1262,7 +1267,24 @@ def _create_job_workspace(job: JobPlan) -> tuple[str, Any]:
     job.job_initial_tree_ref = W.checkpoint_ref(
         job_worktree_id(job.job_id), "job-initial")
     W.set_checkpoint_ref(job.repo_path, job.job_initial_tree_ref, job.job_initial_tree)
+    _record_target_last_known(job)
     return handle.path, handle
+
+
+def _record_target_last_known(job: JobPlan) -> None:
+    """F263 T001: the target's last known state, behind its own checkpoint ref.
+
+    The ref is NOT one `_drop_checkpoint_refs` drops, because a human change is measured
+    against this tree after the run ends too. A git job made before F263 gets its state here
+    when a run resumes it (T003), so it is never left without one.
+    """
+    from packages.orchestration import human_change as HC
+    from packages.orchestration import worktrees as W
+
+    state = HC.capture_target_state(job.repo_path)
+    ref = W.checkpoint_ref(job_worktree_id(job.job_id), HC.LAST_KNOWN_REF_NAME)
+    W.set_checkpoint_ref(job.repo_path, ref, state.tree)
+    job.target_last_known = {**state.to_dict(), "ref": ref}
 
 
 def _acquire_job_workspace(job: JobPlan) -> tuple[str, Any]:
@@ -2787,8 +2809,31 @@ def run_job(
 
 
     try:
-        # Step 4837: Snapshot real target repo before any task runs
-        target_snap = _snapshot_target_repo(job.repo_path)
+        # F263 T003 (DECISION F263 D5): a git job ABSORBS a human change at every safe point
+        # instead of blocking on it. Only a non-git copy job, which has no tree to certify,
+        # keeps the file-walk snapshot guard (Step 4837) below.
+        absorbs = job_handle is not None
+        target_snap = {} if absorbs else _snapshot_target_repo(job.repo_path)
+        if absorbs and not job.target_last_known:
+            _record_target_last_known(job)
+        if absorbs:
+            # The guard's flags mean "a change the run could not take in"; a git job takes in
+            # every change it can certify and blocks on any it cannot, so they stay False and
+            # each change is a human change record instead.
+            job.target_guard = TargetGuard()
+        _absorb_error = ""
+
+        def _absorb_here(point: str) -> str:
+            # The first failure sticks: every later point reports it, and the next job-level
+            # point blocks the job on it. A run safe point inside a task can only record it.
+            nonlocal _absorb_error
+            if absorbs and not _absorb_error:
+                _absorb_error = _absorb_at_safe_point(job, point)
+            return _absorb_error
+
+        def _run_stop_check(**kwargs):
+            _absorb_here("run_safe_point")
+            return _stop_check(**kwargs)
 
         # F012 (F4): record the job-workspace tree at THIS episode's start. For a resume, it
         # already contains the work applied by earlier episodes, which is a material input.
@@ -2829,6 +2874,13 @@ def run_job(
         job.state = JOB_RUNNING
         _persist_job(job)
 
+        _absorb_block = _absorb_here("episode_start")
+        if _absorb_block:
+            job.state = JOB_BLOCKED
+            job.error = _absorb_block
+            _persist_job(job)
+            return job
+
         tasks_run = 0
         task_log = None     # R-0812: opened when the first task starts, one run id per call
         previous_summaries: list[TaskProofSummary] = []
@@ -2854,6 +2906,11 @@ def run_job(
 
             if max_tasks > 0 and tasks_run >= max_tasks:
                 break
+
+            _absorb_block = _absorb_here("before_task")
+            if _absorb_block:
+                _block_job(job, idx, _absorb_block)
+                return job
 
             # SAFE POINT — before dispatching a task. A stop that was requested while the
             # job was not running is consumed HERE, before any work begins: zero provider
@@ -3001,7 +3058,7 @@ def run_job(
                     workspace_handle=job_handle,
                     workspace_owner="job" if job_handle is not None else "run",
                     workspace_start_tree=task.task_start_tree,
-                    stop_check=_stop_check,
+                    stop_check=_run_stop_check,
                     episode_id=job.active_episode_id,
                     on_provider_call=_on_provider_call,
                     compiled_context_paths=compiled_context_paths,
@@ -3072,15 +3129,26 @@ def run_job(
 
             task.status = TASK_PASSED
 
-            # Step 4887: Pre-apply target repo guard — blocks before workspace apply
-            pre_guard = _check_target_repo_guard(job.repo_path, target_snap)
-            job.target_guard = pre_guard
-            if pre_guard.target_mutated:
-                task.status = TASK_BLOCKED
-                task.error = f"target_repo_mutated: {pre_guard.changed_target_files}"
-                _log_task_ended(task_log, task, "target_repo_mutated")
-                _block_job(job, idx, "target_repo_mutated_during_job")
-                return job
+            # Step 4887: Pre-apply target repo guard — blocks before workspace apply. For a
+            # git job the guard is GONE (DECISION D-E of T2_F263.md): a hand edit is absorbed
+            # here instead, and only a failure to absorb it blocks.
+            if absorbs:
+                _absorb_block = _absorb_here("pre_apply")
+                if _absorb_block:
+                    task.status = TASK_BLOCKED
+                    task.error = _absorb_block
+                    _log_task_ended(task_log, task, "human_change_absorb_failed")
+                    _block_job(job, idx, _absorb_block)
+                    return job
+            else:
+                pre_guard = _check_target_repo_guard(job.repo_path, target_snap)
+                job.target_guard = pre_guard
+                if pre_guard.target_mutated:
+                    task.status = TASK_BLOCKED
+                    task.error = f"target_repo_mutated: {pre_guard.changed_target_files}"
+                    _log_task_ended(task_log, task, "target_repo_mutated")
+                    _block_job(job, idx, "target_repo_mutated_during_job")
+                    return job
 
             # Step 4835: Strict workspace apply (Step 4976: baseline capture).
             # In a job-owned worktree the task already wrote INTO the workspace,
@@ -3107,15 +3175,17 @@ def run_job(
             task.status = TASK_APPLIED
             task.task_attempt_state = "complete"   # the tree id is kept for audit
 
-            # Step 4889: Post-apply target guard — defense-in-depth sanity check
-            post_guard = _check_target_repo_guard(job.repo_path, target_snap)
-            job.target_guard = post_guard
-            if post_guard.target_mutated:
-                task.status = TASK_BLOCKED
-                task.error = f"target_repo_mutated_after_apply: {post_guard.changed_target_files}"
-                _log_task_ended(task_log, task, "target_repo_mutated_after_apply")
-                _block_job(job, idx, "target_repo_mutated_after_apply")
-                return job
+            # Step 4889: Post-apply target guard — defense-in-depth sanity check. A git job
+            # absorbs at the safe point after this task instead.
+            if not absorbs:
+                post_guard = _check_target_repo_guard(job.repo_path, target_snap)
+                job.target_guard = post_guard
+                if post_guard.target_mutated:
+                    task.status = TASK_BLOCKED
+                    task.error = f"target_repo_mutated_after_apply: {post_guard.changed_target_files}"
+                    _log_task_ended(task_log, task, "target_repo_mutated_after_apply")
+                    _block_job(job, idx, "target_repo_mutated_after_apply")
+                    return job
 
             # Step 4839: Build proof summary
             task.proof_summary = TaskProofSummary(
@@ -3151,6 +3221,11 @@ def run_job(
             _log_task_ended(task_log, task, "pass")
             tasks_run += 1
             _persist_job(job)
+
+            _absorb_block = _absorb_here("after_task")
+            if _absorb_block:
+                _block_job(job, idx, _absorb_block)
+                return job
 
             # SAFE POINT — the task is durably APPLIED and stays that way. A stop observed
             # now takes effect before the NEXT task is dispatched.
@@ -3312,6 +3387,33 @@ def job_resume_refusal(job: JobPlan) -> str:
         return (f"job_branch_missing: {job.worktree_branch!r}; refusing to create "
                 f"a replacement branch or fall back to a copy")
     return ""
+
+
+def _absorb_at_safe_point(job: JobPlan, point: str) -> str:
+    """F263 T003: absorb a human change into the RUNNING job; "" or why it could not be.
+
+    `human_change.absorb_job` is the one path `remedy absorb` takes too. Every check is
+    measured into `job.metadata["human_change_checks"]` — count, total and slowest, in
+    seconds — which is where the Acceptance list's cost of the check is read from.
+    """
+    import time
+
+    from packages.orchestration import human_change as HC
+    from packages.orchestration import worktrees as W
+
+    started = time.monotonic()
+    try:
+        HC.absorb_job(job, detected_by=f"run:{point}")
+        error = ""
+    except (HC.HumanChangeError, W.WorktreeError, OSError) as exc:
+        error = f"human_change_absorb_failed at {point}: {exc}"
+    elapsed = time.monotonic() - started
+    checks = job.metadata.setdefault(
+        "human_change_checks", {"count": 0, "total_seconds": 0.0, "max_seconds": 0.0})
+    checks["count"] += 1
+    checks["total_seconds"] = round(checks["total_seconds"] + elapsed, 6)
+    checks["max_seconds"] = round(max(checks["max_seconds"], elapsed), 6)
+    return error
 
 
 def _block_job(job: JobPlan, failed_idx: int, error: str) -> None:

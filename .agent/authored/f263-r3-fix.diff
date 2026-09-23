@@ -1,0 +1,28 @@
+diff --git a/pyproject.toml b/pyproject.toml
+index 04bce811..98489793 100644
+--- a/pyproject.toml
++++ b/pyproject.toml
+@@ -65,6 +65,11 @@ extend-exclude = [
+     "node_modules",
+     "apps/ui/dist",
+     "apps/ui/coverage",
++    # WHY: `.agent/authored/` holds byte-verbatim transport copies of the payloads a round
++    # applied; they are records, never imported or run, and cannot be edited once committed,
++    # so linting them would bind a landed record to a rule it can no longer meet (DECISION
++    # F263 D3). The applied file itself is linted where it lives.
++    ".agent/authored",
+ ]
+ 
+ [tool.ruff.lint]
+diff --git a/tests/orchestration/test_human_change_evidence.py b/tests/orchestration/test_human_change_evidence.py
+index 7c5b811d..2e7bb3c6 100644
+--- a/tests/orchestration/test_human_change_evidence.py
++++ b/tests/orchestration/test_human_change_evidence.py
+@@ -13,7 +13,6 @@ import pytest
+ 
+ from packages.orchestration import human_change as HC
+ from packages.orchestration import pingpong_job as PJ
+-from packages.orchestration.data_paths import job_evidence_dir
+ from packages.orchestration.final_verifier import build_final_verifier_report
+ from packages.orchestration.job_evidence import export_job_evidence
+ 

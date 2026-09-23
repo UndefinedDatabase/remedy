@@ -1,0 +1,65 @@
+diff --git a/tests/cli/test_cli_ux.py b/tests/cli/test_cli_ux.py
+index 10a648c0..8a95ce59 100644
+--- a/tests/cli/test_cli_ux.py
++++ b/tests/cli/test_cli_ux.py
+@@ -15,7 +15,8 @@ from apps.cli.grouped import main as grouped_main
+ 
+ _USER_FACING_GROUPS = {
+     "do", "mission", "job", "run", "decision", "status", "stats",
+-    "teacher", "memory", "ui", "config", "doctor", "project", "init", "worker", "runtime"
++    "teacher", "memory", "ui", "config", "doctor", "project", "init", "worker", "runtime",
++    "absorb",
+ }
+ 
+ # Internal groups that MUST NOT appear in default help
+@@ -755,11 +756,12 @@ class TestGroupDefIntegrity:
+         assert sorted(kept - set(GROUPS)) == []
+ 
+     def test_catalog_partition_matches_d4(self):
+-        """The catalog carries exactly 31 groups partitioned as DECISION amend0905-vocab D4 names them.
++        """The catalog carries exactly 32 groups partitioned as DECISION amend0905-vocab D4 names them.
+ 
+-        The 31st is F276's advanced `data` group, added after D4 was ruled.
++        The 31st is F276's advanced `data` group, added after D4 was ruled; the 32nd is F263's
++        visible `absorb`, the first reserved slot D4 named.
+         """
+-        assert len(GROUPS) == 31
++        assert len(GROUPS) == 32
+ 
+         # Only roadmap should be hidden
+         hidden_groups = {gid for gid, g in GROUPS.items() if g.hidden}
+diff --git a/tests/cli/test_golden_path.py b/tests/cli/test_golden_path.py
+index d0572349..0d88e97c 100644
+--- a/tests/cli/test_golden_path.py
++++ b/tests/cli/test_golden_path.py
+@@ -704,7 +704,8 @@ class TestStatus:
+ class TestHelpPinning:
+     def test_visible_groups_in_d4_order(self, tmp_path):
+         """DECISION amend0905-vocab D4 (binding, complete): the sixteen visible
+-        groups appear in `remedy --help` in this fixed order, `do` pinned first."""
++        groups, then F263's `absorb`, appear in `remedy --help` in this fixed order,
++        `do` pinned first."""
+         from apps.cli.command_catalog import VISIBLE_GROUP_ORDER
+ 
+         repo = _git_repo(tmp_path)
+diff --git a/tests/test_command_catalog.py b/tests/test_command_catalog.py
+index afbe6213..8f9cd576 100644
+--- a/tests/test_command_catalog.py
++++ b/tests/test_command_catalog.py
+@@ -323,13 +323,15 @@ class TestCatalogLookups:
+ 
+ class TestVisibleGroupOrder:
+     """DECISION amend0905-vocab D4, clarified by amend0911-feedback D1: the
+-    default `remedy --help` order is these sixteen groups in this fixed order."""
++    default `remedy --help` order is these sixteen groups in this fixed order, then
++    `absorb`, the first of the two reserved slots, filled by F263."""
+ 
+     def test_visible_group_order_matches_d4(self) -> None:
+         from apps.cli.command_catalog import VISIBLE_GROUP_ORDER
+         assert VISIBLE_GROUP_ORDER == (
+             "do", "mission", "job", "run", "decision", "status", "stats", "teacher",
+             "memory", "ui", "config", "doctor", "project", "init", "worker", "runtime",
++            "absorb",
+         )
+ 
+     def test_visible_group_order_is_exactly_the_visible_groups(self) -> None:

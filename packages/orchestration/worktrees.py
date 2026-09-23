@@ -221,6 +221,28 @@ def _acquire_lock(repo_path: str | Path, job_id: str) -> tuple[int, Path]:
     return fd, path
 
 
+def lock_is_held(repo_path: str | Path, job_id: str) -> bool:
+    """Does a live process hold this job's worktree lock right now? Takes nothing it keeps.
+
+    F263 T002: `remedy absorb` must not rewrite the record of a job a runner is holding.
+    A missing lock file means no runner ever claimed it, so nobody holds it.
+    """
+    path = lock_path_for(repo_path, job_id)
+    try:
+        fd = os.open(str(path), os.O_RDWR)
+    except FileNotFoundError:
+        return False
+    try:
+        fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except OSError:
+        return True
+    else:
+        fcntl.flock(fd, fcntl.LOCK_UN)
+        return False
+    finally:
+        os.close(fd)
+
+
 def release_lock(handle: WorktreeHandle) -> None:
     """Release the handle's lock. Safe to call twice."""
     fd = handle._lock_fd
@@ -550,6 +572,15 @@ def write_tree(handle: WorktreeHandle) -> str:
     that ``.gitignore`` matches stays in the snapshot; ``git add -A`` into an empty
     index skips every ignored path, tracked or not.
     """
+    return write_tree_at(handle.path)
+
+
+def write_tree_at(path: str | Path) -> str:
+    """``write_tree`` for any git checkout, a job worktree or the target itself.
+
+    F263 T001 takes the TARGET checkout's tree with it, which is why the body
+    lives here and not behind a ``WorktreeHandle``: the target has no handle.
+    """
     import tempfile
 
     fd, tmp = tempfile.mkstemp(prefix="remedy-index-")
@@ -558,19 +589,19 @@ def write_tree(handle: WorktreeHandle) -> str:
     env = {**os.environ, "GIT_INDEX_FILE": tmp}
     try:
         proc = subprocess.run(
-            ["git", "read-tree", "HEAD"], cwd=handle.path, env=env,
+            ["git", "read-tree", "HEAD"], cwd=str(path), env=env,
             capture_output=True, text=True, timeout=60,
         )
         if proc.returncode != 0:
             raise WorktreeError(f"git read-tree for tree snapshot failed: {proc.stderr[:200]}")
         proc = subprocess.run(
-            ["git", "add", "-A", "."], cwd=handle.path, env=env,
+            ["git", "add", "-A", "."], cwd=str(path), env=env,
             capture_output=True, text=True, timeout=120,
         )
         if proc.returncode != 0:
             raise WorktreeError(f"git add for tree snapshot failed: {proc.stderr[:200]}")
         proc = subprocess.run(
-            ["git", "write-tree"], cwd=handle.path, env=env,
+            ["git", "write-tree"], cwd=str(path), env=env,
             capture_output=True, text=True, timeout=60,
         )
         if proc.returncode != 0:

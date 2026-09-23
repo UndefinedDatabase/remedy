@@ -1,0 +1,106 @@
+diff --git a/packages/orchestration/pingpong_job.py b/packages/orchestration/pingpong_job.py
+index 0c7b7f3d..a7547869 100644
+--- a/packages/orchestration/pingpong_job.py
++++ b/packages/orchestration/pingpong_job.py
+@@ -407,6 +407,9 @@ class JobPlan:
+     result_diff_error: str = ""
+     job_initial_tree: str = ""            # tree of the workspace before task 1
+     job_initial_tree_ref: str = ""        # checkpoint ref keeping that tree alive
++    # F263 T001: the TARGET checkout's last known state (`human_change.TargetState` plus the
++    # checkpoint ref keeping its tree alive). A human change is measured against it.
++    target_last_known: dict | None = None
+     # F006 hand-off coverage: the root diff must be EXACTLY the reviewed task work.
+     root_changed_files: list[str] = field(default_factory=list)
+     reviewed_task_files: list[str] = field(default_factory=list)
+@@ -861,6 +864,7 @@ def _export_job(job: JobPlan) -> dict[str, Any]:
+         },
+         "job_initial_tree": job.job_initial_tree,
+         "job_initial_tree_ref": job.job_initial_tree_ref,
++        "target_last_known": job.target_last_known,
+         # F011: the last stop episode. Absent from every job file written before F011, and
+         # absent from a job that was never stopped — both load as "no stop", not as an error.
+         "stop": {
+@@ -974,6 +978,7 @@ def _import_job(data: dict[str, Any]) -> JobPlan:
+         result_diff_error=(data.get("worktree") or {}).get("result_diff_error", ""),
+         job_initial_tree=data.get("job_initial_tree", ""),
+         job_initial_tree_ref=data.get("job_initial_tree_ref", ""),
++        target_last_known=data.get("target_last_known") or None,
+         handoff_coverage_verdict=(data.get("handoff_coverage") or {}).get("verdict", ""),
+         root_changed_files=(data.get("handoff_coverage") or {}).get("root_changed_files", []),
+         reviewed_task_files=(data.get("handoff_coverage") or {}).get("reviewed_task_files", []),
+@@ -1244,6 +1249,7 @@ def _create_job_workspace(job: JobPlan) -> tuple[str, Any]:
+     Returns ``(workspace_path, handle)``; ``handle`` is None only for the non-git
+     copy fallback.
+     """
++    from packages.orchestration import human_change as HC
+     from packages.orchestration import worktrees as W
+ 
+     if not W.is_git_repo(job.repo_path):
+@@ -1262,6 +1268,12 @@ def _create_job_workspace(job: JobPlan) -> tuple[str, Any]:
+     job.job_initial_tree_ref = W.checkpoint_ref(
+         job_worktree_id(job.job_id), "job-initial")
+     W.set_checkpoint_ref(job.repo_path, job.job_initial_tree_ref, job.job_initial_tree)
++    # F263 T001: the target's last known state. Its ref is NOT one `_drop_checkpoint_refs`
++    # drops, because a human change is measured against this tree after the run ends too.
++    state = HC.capture_target_state(job.repo_path)
++    ref = W.checkpoint_ref(job_worktree_id(job.job_id), HC.LAST_KNOWN_REF_NAME)
++    W.set_checkpoint_ref(job.repo_path, ref, state.tree)
++    job.target_last_known = {**state.to_dict(), "ref": ref}
+     return handle.path, handle
+ 
+ 
+diff --git a/packages/orchestration/worktrees.py b/packages/orchestration/worktrees.py
+index bb4a7bb6..e626985b 100644
+--- a/packages/orchestration/worktrees.py
++++ b/packages/orchestration/worktrees.py
+@@ -550,6 +550,15 @@ def write_tree(handle: WorktreeHandle) -> str:
+     that ``.gitignore`` matches stays in the snapshot; ``git add -A`` into an empty
+     index skips every ignored path, tracked or not.
+     """
++    return write_tree_at(handle.path)
++
++
++def write_tree_at(path: str | Path) -> str:
++    """``write_tree`` for any git checkout, a job worktree or the target itself.
++
++    F263 T001 takes the TARGET checkout's tree with it, which is why the body
++    lives here and not behind a ``WorktreeHandle``: the target has no handle.
++    """
+     import tempfile
+ 
+     fd, tmp = tempfile.mkstemp(prefix="remedy-index-")
+@@ -558,19 +567,19 @@ def write_tree(handle: WorktreeHandle) -> str:
+     env = {**os.environ, "GIT_INDEX_FILE": tmp}
+     try:
+         proc = subprocess.run(
+-            ["git", "read-tree", "HEAD"], cwd=handle.path, env=env,
++            ["git", "read-tree", "HEAD"], cwd=str(path), env=env,
+             capture_output=True, text=True, timeout=60,
+         )
+         if proc.returncode != 0:
+             raise WorktreeError(f"git read-tree for tree snapshot failed: {proc.stderr[:200]}")
+         proc = subprocess.run(
+-            ["git", "add", "-A", "."], cwd=handle.path, env=env,
++            ["git", "add", "-A", "."], cwd=str(path), env=env,
+             capture_output=True, text=True, timeout=120,
+         )
+         if proc.returncode != 0:
+             raise WorktreeError(f"git add for tree snapshot failed: {proc.stderr[:200]}")
+         proc = subprocess.run(
+-            ["git", "write-tree"], cwd=handle.path, env=env,
++            ["git", "write-tree"], cwd=str(path), env=env,
+             capture_output=True, text=True, timeout=60,
+         )
+         if proc.returncode != 0:
+diff --git a/tests/orchestration/import_reachability_allowlist.txt b/tests/orchestration/import_reachability_allowlist.txt
+index 7381a0b2..40047954 100644
+--- a/tests/orchestration/import_reachability_allowlist.txt
++++ b/tests/orchestration/import_reachability_allowlist.txt
+@@ -133,6 +133,7 @@ packages.orchestration.fresh_evidence_gate
+ packages.orchestration.git_status
+ packages.orchestration.guidance
+ packages.orchestration.handoff
++packages.orchestration.human_change
+ packages.orchestration.hunk_approval
+ packages.orchestration.hunk_decision_record
+ packages.orchestration.hunk_identity

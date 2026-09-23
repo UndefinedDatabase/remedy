@@ -5,6 +5,7 @@
 # Blank lines and lines beginning with a hash are ignored by the reader.
 apps.cli.command_catalog
 apps.cli.commands
+apps.cli.commands.absorb_cmd
 apps.cli.commands.bench_cmd
 apps.cli.commands.blocker
 apps.cli.commands.brain
@@ -133,6 +134,7 @@ packages.orchestration.fresh_evidence_gate
 packages.orchestration.git_status
 packages.orchestration.guidance
 packages.orchestration.handoff
+packages.orchestration.human_change
 packages.orchestration.hunk_approval
 packages.orchestration.hunk_decision_record
 packages.orchestration.hunk_identity

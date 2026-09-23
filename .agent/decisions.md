@@ -18711,3 +18711,224 @@ REVERSE by deleting this paragraph, `docs/orders/toolchain-refresh.md` with its 
 its docs test, the order tier and its tests in `packages/orchestration/self_use_generator.py`
 and `tests/orchestration/test_self_use_generator.py`, and the `order_path` argument in
 `tests/orchestration/test_self_use_runner.py`.
+
+DECISION F263 D1 (2026-09-23, round 1) — THE LAST KNOWN STATE IS ONE TREE OBJECT OF THE TARGET
+CHECKOUT, AND THE HUMAN CHANGE RECORD IS A SEALED JSON FILE BESIDE ITS DIFF, WRITTEN BEFORE ANY
+RE-BASE.
+
+CONTEXT. T001 of T2_F263.md decides the evidence shape before either caller exists. Measured by
+the reviewer at `54a23101`: a job persists no state of the TARGET checkout at all — the run guard
+(`pingpong_loop._snapshot_target`) hashes every file into memory once per episode and never
+writes it down, and `job_initial_tree` is the tree of the job's own worktree, not of the checkout
+the human edits. `worktrees.write_tree` already takes a complete tree through a private index,
+untracked files included, without touching the user's index; it was reachable only through a job
+worktree's handle. BLE001 is selected and its ratchet is frozen at 290 excused handlers.
+
+CHOSEN. (1) The last known state is `human_change.TargetState` — the target checkout's tree
+object, taken by `worktrees.write_tree_at`, which is `write_tree`'s body moved behind a path, plus
+the commit `HEAD` names and the time. A git job records it as `target_last_known` in its record
+when its workspace is created, and a checkpoint ref named `target-last-known` keeps the tree
+alive; `_drop_checkpoint_refs` does not drop that ref, because a human change is measured against
+it after the run ends as well. (2) A human change is a difference between that tree and the
+current one, classified by the run guard's own three rules, so Remedy's artifacts, its data root
+and tool-cache noise are named in the record but never counted as the human's; a difference made
+only of those is no human change. (3) The record is `jobs/<id>/evidence/human_changes/<id>.json`
+beside `<id>.diff`, where the id is `hcr-` plus the first twelve characters of the before and
+after trees, so the same transition is certified once and a second detection returns the record
+already on disk untouched. The diff is written first; the record carries its sha256 and a
+`record_sha256` seal over every other field, and `verify_human_change_record` recomputes both.
+Both files go through `durable_write`. (4) `absorb` detects, writes the record, and only then
+calls the re-base step it is given. It catches nothing: a re-base that raises reaches the caller
+with the record already durable, which is what "the record survives a failed re-base" means and
+what a new `noqa: BLE001` could not buy under the frozen ratchet. T001 ships no re-base; T002 and
+T003 supply the step. (5) A non-git target has no tree to take and keeps the existing file-walk
+guard; T003 decides its absorption.
+
+ALTERNATIVES. Persist the run guard's per-file sha256 map — rejected: it is the size of the
+repository, and a tree comparison is one string equality. A numbered record sequence — rejected:
+two detections of one change would certify it twice. Catch the re-base's error inside `absorb` —
+rejected: it would need a blind handler, and it would turn a loud failure into a status field.
+
+REVERSE by deleting this paragraph, `packages/orchestration/human_change.py`,
+`tests/orchestration/test_human_change.py` and the module's allowlist line, restoring
+`write_tree`'s body in `packages/orchestration/worktrees.py`, and removing `target_last_known`
+from `packages/orchestration/pingpong_job.py`.
+
+DECISION F263 D2 (2026-09-23, round 2) — A HUMAN CHANGE RECORD IS A READY GATE OF THE REVIEW
+PACKAGE: THE BUNDLE CARRIES EVERY RECORD, VERIFIES THE COPY, AND A RECORD THAT DOES NOT VERIFY
+BLOCKS.
+
+CONTEXT. T2_F263.md's Design gives the record "the same standing as any other evidence
+artifact". Measured by the reviewer at `a34cc4b0`: the export (`job_evidence.export_job_evidence`)
+copies nothing from `jobs/<id>/evidence/human_changes/`, so a package never shows the human's
+edit. The bundle has two integrity artifacts of the same kind — `postmortem_integrity.json` and
+`manifest_integrity.json`, each carrying `ok` and a `failures` list — whose failures the final
+verifier turns into BLOCKED, and `scripts/build_review_manifest.py` requires both as closed-schema
+READY gates. The closure's own producer, `manual_attestation.build_manual_completion_gates`,
+writes both with empty failure lists.
+
+CHOSEN. (1) `human_change.export_human_change_records` copies each record and its diff into
+`human_changes/` of the bundle and runs `verify_human_change_record` on the COPY, the bytes a
+reviewer reads; `export_job_evidence` writes the result as `human_change_integrity.json`,
+`{schema_version, ok, records, failures}`, where `records` names every record id and each failure
+is one string naming its record. A job with no record exports an intact empty set. (2) The final
+verifier reads the file, reports `human_change_integrity_blocked`, and a non-empty failure list
+makes the verdict BLOCKED, exactly as the two integrity artifacts above do. (3) The review
+manifest adds the file to its ok-gates with a closed schema, adds the new verifier field to the
+verifier's closed field set and schema, and requires it to read false for READY. (4) The manual
+completion producer writes an intact empty set, so a closure package stays READY. (5) The
+closure protocol's list of the gates that producer emits names the new one. (6) The review zip's
+early binding list is left alone: its loader binds any gate on first read, so the entry would
+change nothing a test or a package can observe.
+
+ALTERNATIVES. Fold record failures into `postmortem_integrity.json` — rejected: that file means a
+post-mortem could not be written, and a reader of a BLOCKED package would be sent to the wrong
+place. Verify the records in the job's own evidence directory rather than in the bundle —
+rejected: the bundle is what a reviewer reads, and a copy that went wrong would pass. Make the
+file optional for READY — rejected: an absent integrity file would read as intact.
+
+REVERSE by deleting this paragraph and `tests/orchestration/test_human_change_evidence.py`,
+removing `export_human_change_records` and `INTEGRITY_FILE` from
+`packages/orchestration/human_change.py`, the export block in
+`packages/orchestration/job_evidence.py`, `human_change_integrity_blocked` from
+`packages/orchestration/final_verifier.py`, the file's lines in
+`packages/orchestration/manual_attestation.py` and `scripts/build_review_manifest.py`, the two
+fixture lines in `tests/orchestration/test_review_authoritative_e2e.py` and
+`tests/orchestration/test_review_package_status.py`, and the name in
+`docs/roadmap/STATUS_closure_protocol.md`.
+
+DECISION F263 D3 (2026-09-23, round 3) — RUFF DOES NOT LINT `.agent/authored/`: THE TRANSPORT
+COPIES ARE RECORDS, AND THE FILES THEY WERE APPLIED TO ARE LINTED WHERE THEY LIVE.
+
+CONTEXT. Finding R-1042. Measured by the reviewer at `0e2e04ef`: `.agent/authored/` holds 40
+Python files, every one a byte-verbatim copy of a payload some round applied, committed before
+the payload is applied and never edited afterwards (docs/agents/self_drive_protocol.md, Phase 2
+step 1). `ruff check .` lints them because `pyproject.toml`'s `extend-exclude` names no `.agent`
+path, so one lint defect in a payload is carried into a record that cannot be repaired, and CI's
+`budgets` stage, which requires zero findings, stays red for as long as the record exists.
+
+CHOSEN. (1) `.agent/authored` joins `extend-exclude` in `pyproject.toml`, with a comment giving
+the reason. (2) Nothing else in `.agent/` changes status: no other directory there holds Python.
+(3) Every applied file is still linted at its own path, and every block's own ruff gate names
+the applied paths, so the exclusion removes a second reading of the same bytes and nothing else.
+
+ALTERNATIVES. Rewrite the landed copy — rejected: the copy is the transport proof, and changing
+it would make every later disk-to-disk comparison of that round false. Add a `per-file-ignores`
+entry for `F401` alone — rejected: the next payload defect would be another rule. Store payload
+copies under a non-Python suffix — rejected for landed rounds, which would stay red, and left
+open for later rounds as a convention change.
+
+REVERSE by deleting this paragraph and the `.agent/authored` entry with its comment from
+`pyproject.toml`.
+
+DECISION F263 D4 (2026-09-23, round 4) — `remedy absorb` ABSORBS INTO EVERY UNFINISHED JOB OF
+THE REPOSITORY IT RUNS IN, LEAVES A RUNNING JOB TO ITS OWN RUNNER, AND RE-BASES BY MOVING THE
+JOB'S LAST KNOWN STATE, THROUGH THE ONE PATH THE RUN WILL USE.
+
+CONTEXT. T002 of T2_F263.md orders the explicit command over T001's machinery, with its catalog
+entry and help text; DECISION F259 D1 names it `absorb`, and DECISION amend0911-feedback D1
+reserves its help slot after `runtime`. Measured by the reviewer at `d5fe145f`: jobs are scoped
+elsewhere by project id, never by repository path, and a job's worktree lock is the only sign
+that a runner holds it, with no helper that asks whether it is held. `job apply` leaves an
+applied job `completed`, so no state tells an applied job from one that still waits.
+
+CHOSEN. (1) `human_change.absorb_job` is the one implementation: it measures the job's last
+known state, certifies the change through `absorb`, and re-bases by moving the job's
+`target-last-known` checkpoint ref and its `target_last_known` to the tree the human left, then
+persisting the job. No file in the repository is written. A job with no last known state is
+skipped, not failed. T003 calls the same function from the run's safe points. (2) The command
+selects every persisted job whose `repo_path` resolves to the repository it runs in, whose state
+is neither `failed` nor `cancelled`, and — with `--job` — whose id is the one named; `completed`
+jobs stay in, because a hand edit before `job apply` is exactly the second demo case. (3) A job
+whose worktree lock a live process holds is reported `skipped_running` and not touched: a
+second writer of its record would lose the runner's next save; `worktrees.lock_is_held` asks the
+lock without keeping it. (4) The group `absorb` is visible, in the help slot after `runtime`,
+and a bare `remedy absorb` runs `absorb run`, like `init` and `status`. The command answers
+`--json` with one row per job, its status, its record name and its files; it exits 0 when it
+ran, 1 outside a git repository, for an unknown `--job` or when a job cannot be absorbed, and 2
+on usage — the floor, so no exit-code table row is owed.
+
+ALTERNATIVES. Scope by project, as `job list` does — rejected: a hand edit happens in one
+repository, and a project may hold several. Absorb into a running job too — rejected: the
+runner rewrites the whole record at its next save and would drop the re-base; T003's safe
+points are where a running job absorbs. Skip `completed` jobs — rejected: that is the job a
+hand edit before `job apply` must reach.
+
+REVERSE by deleting this paragraph, `apps/cli/commands/absorb_cmd.py`,
+`tests/cli/test_absorb_cmd.py` and the module's allowlist line, removing `absorb_job` and
+`JobAbsorbOutcome` from `packages/orchestration/human_change.py`, `lock_is_held` from
+`packages/orchestration/worktrees.py`, the `absorb` group, entry and help slot from
+`apps/cli/command_catalog.py`, its two entries in `apps/cli/grouped.py`, its import in
+`apps/cli/commands/__init__.py`, and restoring the three pinned tests from git history at
+`d5fe145f`.
+
+DECISION F263 D5 (2026-09-23, round 5) — A GIT JOB ABSORBS A HUMAN CHANGE AT EVERY SAFE POINT
+AND NO LONGER BLOCKS ON IT; ONLY A NON-GIT COPY JOB KEEPS THE FILE-WALK GUARD.
+
+CONTEXT. T003 of T2_F263.md: the run detects a human change at a safe point, absorbs it through
+T001 and T002's shared path, and continues, and the drift error for this case is DELETED rather
+than kept as a fallback. Measured by the reviewer at `a2361d9a`: `run_job` in
+`packages/orchestration/pingpong_job.py` hashes every target file into memory once per episode
+and, for a git job and a copy job alike, blocks the job with `target_repo_mutated_during_job`
+before a task's apply and with `target_repo_mutated_after_apply` after it. Its job-level safe
+points are the one before any work, the one before each task and the one after each applied
+task, and it hands `_stop_check` to `run_pingpong`, which calls it at the run's own safe points.
+Every test that pins the drift error runs a job over a directory that is not a git repository.
+
+CHOSEN. (1) For a job with a worktree — every git job — the two drift blocks are gone. The run
+calls `human_change.absorb_job` at the episode start, before each task, at every safe point of
+the task's own run, where the pre-apply guard stood, and after each applied task, so a hand edit
+is certified and the job's last known state moves onto it while the job keeps running. (2) A
+failure to absorb is never silent: the first one sticks, and the next job-level point blocks the
+job with `human_change_absorb_failed at <point>: <reason>`; nothing in the repository is written
+either way. (3) Every check is counted and timed into `job.metadata["human_change_checks"]` —
+count, total seconds, slowest — which is where the Acceptance list's cost is measured. (4) A git
+job made before F263 has no last known state; a run that resumes it records one first. (5) The
+job's `target_guard` keeps its flags false for a git job: they now mean a change the run could
+not take in, and such a change blocks the job instead. (6) A copy job over a non-git directory
+keeps the file-walk guard and its drift block unchanged: without a tree it has no diff to
+certify, and blocking is the "stop and say why" D-E allows. (7) `job apply` and `do run --apply`
+are the next round's half of T003.
+
+ALTERNATIVES. Absorb only at the job-level points — rejected: the Acceptance list asks for every
+safe point of a run. Keep the drift block as a fallback when absorption fails — rejected: T003
+deletes it, and a failed absorption already blocks with its own reason. Stop a job whose
+absorption failed through the kill switch's stop request — rejected: that path records an
+operator or budget stop, and this is neither.
+
+REVERSE by deleting this paragraph and `tests/orchestration/test_human_change_in_run.py`, and
+restoring `packages/orchestration/pingpong_job.py` from git history at `a2361d9a`.
+
+DECISION F263 D6 (2026-09-23, round 6) — EVERY APPLY ABSORBS FIRST, THE APPLY'S DRIFT BLOCK IS
+DELETED, AND A HAND EDIT THE JOB ALSO CHANGED STOPS THE APPLY WITH ITS NAME.
+
+CONTEXT. The Acceptance list of T2_F263.md: `job apply` and `do run --apply`, and every commit
+flag, always run the detection first and absorb before apply, and a hand edit made between the
+run's end and the apply is absorbed and neither overwritten nor discarded (DECISION
+amend0921-operator-feedback D4). Measured by the reviewer at `5fd8b648`: `apply_job` in
+`packages/orchestration/job_apply.py` refuses with `target_mutated_during_job` whenever the job's
+guard flag is set, then compares every file the job changed with the baseline its task recorded
+and refuses a changed one as `baseline_check_failed` — and `do run --apply` and every commit
+flag reach the apply through `apply_job`. After round 5 a git job's guard flag is never set.
+
+CHOSEN. (1) `apply_job` calls `human_change.absorb_job` right after the readiness gates, before
+any source is materialized or any file copied, for every job holding a last known state, a
+dry run included: the record is evidence, and the repository is not written. A failure to
+absorb refuses the apply with `human_change_absorb_failed: <reason>`. (2) The drift block on
+the guard flag is deleted. (3) `human_change.recorded_human_changes` names every path of the
+job's intact records, from any safe point or from this apply, and when the baseline check
+refuses a path among them its reason keeps every existing baseline reason and adds
+`human_change_conflict: <paths>` with the sentence that the apply stops rather than overwrite
+either side. Nothing is merged, copied or reverted on that path; the human's file keeps its
+bytes. (4) The test that pinned the deleted block now pins that the flag alone refuses nothing.
+
+ALTERNATIVES. Absorb only on an approved apply — rejected: the Acceptance list says always, and
+a dry run is where an operator first learns that a human change meets the job. Name only the
+paths the apply itself detects — rejected: an edit absorbed at a run's safe point is just as
+much the human's when the apply meets it. Resolve the conflict by preferring either side —
+rejected: DECISION D-E forbids discarding the human's side, and the job's side is reviewed work.
+
+REVERSE by deleting this paragraph and `tests/orchestration/test_human_change_at_apply.py`,
+removing `recorded_human_changes` from `packages/orchestration/human_change.py`, and restoring
+`packages/orchestration/job_apply.py` and `tests/orchestration/test_job_apply.py` from git history
+at `5fd8b648`.

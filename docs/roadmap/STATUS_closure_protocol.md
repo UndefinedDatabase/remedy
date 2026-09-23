@@ -66,7 +66,8 @@
    create_manual_completion_bundle(review_feature_id=<fxxx>, ...)` — it
    emits the full closed-schema gate set (final_verifier_report,
    fresh_evidence, artifact_contract, change_provenance, manifest_
-   integrity, postmortem_integrity, commit_execution, runtime_integration).
+   integrity, postmortem_integrity, human_change_integrity (F263),
+   commit_execution, runtime_integration).
    `write_runtime_integration_gate` alone is NOT a bundle and packages as
    BLOCKED_EVIDENCE.
    Packaging-deadlock rule: a High finding about closure packaging blocks

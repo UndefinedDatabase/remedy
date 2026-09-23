@@ -26,13 +26,13 @@ verification commands. If something is unproven, Remedy says so instead of guess
 
 ## Status
 
-91 of 283 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
+92 of 283 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
 
 | Tier | Name | Done | Total |
 |------|------|-----:|------:|
 | 0 | Foundation & Trust Core | 16 | 16 |
 | 1 | Self-Build Bootstrap | 22 | 22 |
-| 2 | Minimal Self-Build Runtime | 33 | 36 |
+| 2 | Minimal Self-Build Runtime | 34 | 36 |
 | 3 | Full Token Economy & Autonomy | 6 | 26 |
 | 4 | Memory & Learning | 1 | 17 |
 | 5 | Operator Cockpit | 13 | 34 |
@@ -216,7 +216,14 @@ and a guide generated from the list; continuous integration installs one exact,
 hash-checked set of tool versions; a command checks the review loop's step
 instructions against seven rules of its own checklist; and a doctor report shows
 each pinned tool beside its newest release, with a standing order that raises the
-pins no more than once every fourteen days and never merges on its own).
+pins no more than once every fourteen days and never merges on its own),
+F263 human-change absorption (a file a person edits by hand while a job runs, or
+after the job has finished but before its result is applied, is noticed at every
+safe stopping point, recorded with its exact changes as sealed evidence in the
+job's review package, and taken as the job's new starting point instead of
+failing the job; applying the job never overwrites or throws away such an edit,
+and when the job changed the same file it stops and names that file; a new
+command, remedy absorb, runs the same single path by hand).
 
 Accepted in Tier 3 so far:
 F106 session resume instead of rebuild (repair rounds resume the original

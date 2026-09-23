@@ -50,7 +50,7 @@ The tier-block order below is the operator-decided Self-Use sequence of 2026-08-
 
 ## Tier 2 — Human-change absorption (operator order amend0831)
 
-- [ ] F263 — Human-change absorption (absorb)
+- [x] F263 — Human-change absorption (absorb) (T001-T003 complete, the one suite node that fails only under parallel runs recorded against R-0950 and the self-use run's provider timeout against R-1035; accepted 2026-09-23 · live review PASS_WITH_RISKS — ACCEPTED · Evidence job f263r8e1001 · package remedy-review-20260923-143535-READY_FOR_REVIEW.zip · SHA-256 b25a25aeb9eae8ef717b4793555b3862463bc80f3060f6b1e38f6af9756c735b · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD 5c98b36411337d932733b441203a7b10f1fa2336)
 - [ ] F282 — Findings paydown v2
 
 ## Tier 5 — Steering & Learning Surfaces (operator order amend0831)
