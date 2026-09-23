@@ -31,6 +31,11 @@ _ALLOWED_LEGACY = {
     # the same category as self_dogfood.py and integrity_gate.py above, never
     # a runtime dependency of an end-user's job.
     "packages/orchestration/self_use_generator.py",
+    # F279's block linter, `remedy integrity block <path>` (DECISION F279 D5), recomputes the
+    # open-finding count a step block states from the ledger and searches the ledger and its
+    # archive for every id the block registers. It checks the reviewer's own step blocks, the
+    # same development-only category as integrity_gate.py above.
+    "packages/orchestration/block_lint.py",
 }
 
 _LIVE_REVIEW_PATTERN = re.compile(
