@@ -12,17 +12,16 @@ distinct id, and the feature file lists every one under a slice.
 
 ## Current Step
 
-ROUND 5 books round 4's PASS and the resolutions of R-1007, R-1016, R-1027
-and R-1035, and lands T008 to T011: an empty diff is the evidence a failing
-review needs (R-0999), the self-use generator skips a retired word
-(R-1015), `ui stop` is a local state change (R-1034), and closure
-precondition 7 names `RESERVED_NAMESPACES` (R-1000), DECISION F282 D5.
+ROUND 6 books round 5's PASS and the resolutions of R-0999, R-1015,
+R-1034 and R-1000, and lands T012 and T013: the data-root guard reads two
+levels instead of eight million entries (R-1004), and `uv` is pinned in
+the `dev` extra with `constraints.txt` regenerated (R-1045), DECISION
+F282 D6.
 
 ## Next Steps
 
-1. T012 and T013: R-1004 in `tests/conftest.py`, R-1045's `uv` pin.
-2. T014 to T018: R-0892, R-0622, R-1029, R-0866, then the flakes.
-3. T019 in the closure's consolidation pass, then the closure sequence,
+1. T014 to T018: R-0892, R-0622, R-1029, R-0866, then the flakes.
+2. T019 in the closure's consolidation pass, then the closure sequence,
    whose self-use run is R-1008's only proof.
 
 ## Risks
