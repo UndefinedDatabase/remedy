@@ -1,28 +1,30 @@
-# Plan — F263 Human-change absorption (absorb)
+# Plan — amendment amend0923-selfuse-write
 
-Branch: feature/f263-human-change-absorption, cut from `main` at
-`54a23101`, the merge commit of pull request 267 (F279's closure).
+Branch: feature/amend0923-selfuse-write, cut from `origin/main` at
+`64cffc44`, the merge commit of pull request 268 (F263's closure).
 
 ## Goal
 
-A human who edits the target repository while a job runs is the authority:
-the edit is detected, certified into the job's evidence as a human change
-record, and the job re-bases onto it instead of failing on drift
-(`docs/roadmap/features/T2_F263.md`, DECISION D-E).
+Make the self-use track able to DELIVER — its builder gets a write tool,
+its per-call timeout fits a real call, and an order file may declare the
+budget it needs — and clean the repository root, so reviewer scratch can
+neither sit there nor be packaged.
 
 ## Current Step
 
-ROUND 9 closes F263. It books round 8's PASS, rotates the finding ledger
-into its archive, accepts F263 in `docs/roadmap/STATUS.md` with the README's
-pinned counts and the self-use item's `consumed_by` in the same commit, and
-opens the pull request, which this session never merges.
+Part 1 is done: R-1043, R-1044 and R-1045 are registered in
+`.agent/live_review.md`, and R-1016, R-1035 and R-0829 carry one new
+measured evidence sentence each. Next is Part 2A/B, the runner's write
+mode and timeout, each with its own red proof.
 
 ## Next Steps
 
-1. The next session's Open PR Gate merges this pull request, then Rule A5
-   claims the first unchecked feature in `docs/roadmap/STATUS.md`.
+1. Part 2 A/B/C/D/E — the self-use fixes, each with a red proof.
+2. Part 4 — repo-root hygiene: move the leftovers out, then make them
+   impossible in the packer and the integrity gate; closes R-0829.
+3. Part 5 — gates, a real package, the pull request and the merge.
 
 ## Risks
 
-One suite node that fails only under parallel runs is recorded against
-R-0950, and the self-use run's provider timeout against R-1035.
+Part 2E changes a product default and Part 4.4 turns two lenient packer
+tests into refusals; every test either touches is listed in the handback.

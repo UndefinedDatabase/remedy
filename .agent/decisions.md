@@ -18932,3 +18932,55 @@ REVERSE by deleting this paragraph and `tests/orchestration/test_human_change_at
 removing `recorded_human_changes` from `packages/orchestration/human_change.py`, and restoring
 `packages/orchestration/job_apply.py` and `tests/orchestration/test_job_apply.py` from git history
 at `5fd8b648`.
+
+## DECISION amend0923-selfuse-write D6 — the next free finding id is R-1043, and the abandoned R-43xx branches do not move it (2026-09-23)
+
+The amendment orders the next free finding id taken as the highest `R-<n>` in
+`.agent/live_review.md` and `.agent/live_review_archive.md` on `origin/main` AND on every open
+`origin/feature/*` branch. Measured on 2026-09-23: on `origin/main` the highest is `R-1042`, and
+`gh pr list --state open` reports zero open pull requests once pull request 268 is merged, so no
+branch is open in the workflow's sense of the word. Forty-one `origin/feature/*` REFS survive
+nonetheless, none of them with a pull request and the newest of them last committed on
+2026-06-29. Four of those refs carry a completely different, abandoned numbering — the highest is
+`R-4333` in `origin/feature/prompt-trace-lens-ui-v1`, whose `.agent/live_review.md` reads "3 Low
+findings (R-4331, R-4332, R-4333)" under a per-round heading shape this ledger has not used since
+it took its present form. Those numbers were never part of the monotonic series this repository
+has run since; continuing from them would jump the series by more than three thousand and make
+every future id unreadable against the archive. THE RULING: the series continues from the live
+record, so this amendment uses R-1043, R-1044 and R-1045, and the dead refs' orphan numbering is
+noted here rather than honoured. REVERSE by deleting this paragraph; nothing on disk depends on
+it beyond the three ids already spent.
+
+## DECISION amend0923-selfuse-write D7 — registering a finding moves no README or STATUS counter, so none was edited (2026-09-23)
+
+Part 1 of the amendment orders the README and STATUS counters updated "exactly as the
+ledger-atomicity rule (`tests/docs/test_docs_consistency.py`) requires, in the same commit". That
+rule turns out to be about a different ledger. Every counter `tests/docs/test_docs_consistency.py`
+pins — the accepted-feature count in `README.md`, the Done column of its tier table and its
+per-tier accepted lists — is derived from `docs/roadmap/STATUS.md`, the ROADMAP execution ledger,
+and not from `.agent/live_review.md`, the FINDING ledger. Neither `README.md` nor
+`docs/roadmap/STATUS.md` states an open-findings count at all: the only numbers either file
+carries about findings are inside prose about closed features. MEASURED: with R-1043, R-1044 and
+R-1045 appended and the three evidence sentences added, `python3 -m pytest -q -p no:cacheprovider
+tests/docs/` reads `322 passed` at exit 0 with no file outside `.agent/` touched. THE RULING: the
+registration commit edits `.agent/live_review.md` and the task-state files alone, and this
+paragraph is the record that the ordered counter update was looked for and found not to exist.
+REVERSE by deleting this paragraph.
+
+## DECISION amend0923-selfuse-write D8 — the evidence sentence added to R-1016 and R-1035 states what was measured, not the arithmetic the order guessed (2026-09-23)
+
+Part 1 of the amendment orders one evidence sentence appended to both R-1016 and R-1035 saying
+that "the arithmetic 513 s is approximately 4 x 120 s suggests four timed-out attempts", with Part
+3 to measure it afterwards. Part 3 was run FIRST, because the records were already to hand, and
+the guess is wrong: all three runs record exactly THREE builder attempts, not four.
+`python3 -m apps.cli.main run show <id> --json` reads `retries_used` 2 and three entries in
+`provider_evidence.provider_attempts` for run `3662fda0b0824e61` (F283), `73a48603ca65474c`
+(F278) and `9e1544e204ea4091` (F277), each attempt carrying `provider_error: RuntimeError: claude
+CLI timed out after 120s`, over round wall clocks of 510.239, 510.306 and 510.365 seconds. With
+`RETRY_BACKOFFS` `[30, 120]` in `packages/orchestration/provider_timeouts.py`, three 120-second
+timeouts plus a 30-second and a 120-second backoff is 510 seconds exactly. Writing the ordered
+sentence would have put a number on the permanent record that the same commit's own measurement
+contradicts, which is the class of defect R-0533 exists to punish. THE RULING: both paragraphs
+receive the MEASURED decomposition instead of the hypothesis, and Part 3's own sentence on R-1035
+is that measurement rather than a second one. REVERSE by deleting this paragraph; the ledger text
+is append-only and is corrected by dating, never by editing.
