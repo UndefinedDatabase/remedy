@@ -1,173 +1,257 @@
-# Handback — F279 Configuration & toolchain truth · Round 11 · The closure: the rotation, the accepted STATUS line, and the pull request
+# Handback — F263 Human-change absorption (absorb) · Round 1 · Claim, re-head, DECISION D1, and T001's foundation
 
 ## Session
 
-SESSION 2 of feature F279 · round 11 · rounds so far 11
+SESSION 1 of feature F263 · round 1 · rounds so far 1
 
-This round booked round 10's PASS into the ledger, rotated the finding
-ledger into its archive as its own commit, flipped F279's `docs/roadmap/STATUS.md`
-line to accepted with the README's three pinned places (the accepted count,
-the Tier 2 Done cell, and the Tier 2 prose entry) and the self-use queue
-entry `SU-028`'s `consumed_by` field, all in one closure commit, and opened
-the pull request, which this session does not merge. Context self-assessment:
-the large majority of the session's working context budget remains unused
-at handback.
+This round cut `feature/f263-human-change-absorption` from `main` at
+`54a23101` (PR 267's merge commit), claimed F263, re-headed the live
+review record, recorded DECISION F263 D1 (the human change record's
+shape), and landed the first half of T001:
+`packages/orchestration/human_change.py`, the target checkout's last
+known state recorded on every git job behind its own checkpoint ref, and
+the certified human change record written before any re-base, with the
+tests and their red proofs. No re-base ships this round. Context
+self-assessment: roughly two-thirds of the session's working context
+budget remained at handback.
 
 ## Range
 
-Review of `081b9b6c`..`HEAD`.
+Review of `54a23101`..`HEAD`.
 
 ## Commits
 
-### 945a9fd5 F279 R11 C1: copy round 11 block and payloads into .agent/authored/
+### 22e95530 F263 R1 C1a: copy round 1 block and bookkeeping payloads into .agent/authored/
 
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f279-r11-block.md | +195/-0 | Bookkeeping copy of this round's step block (R-0954 transport) |
-| .agent/authored/f279-r11-ledger.md | +2/-0 | Payload copy |
-| .agent/authored/f279-r11-plan.md | +27/-0 | Payload copy |
-| .agent/authored/f279-r11-readme_count_from.txt | +1/-0 | Payload copy (unterminated, counted as 1 line by git) |
-| .agent/authored/f279-r11-readme_count_to.txt | +1/-0 | Payload copy (unterminated) |
-| .agent/authored/f279-r11-readme_prose_from.txt | +1/-0 | Payload copy (unterminated) |
-| .agent/authored/f279-r11-readme_prose_to.txt | +9/-0 | Payload copy (8 newlines, unterminated final line counted as 1) |
-| .agent/authored/f279-r11-readme_tier_from.txt | +1/-0 | Payload copy (unterminated) |
-| .agent/authored/f279-r11-readme_tier_to.txt | +1/-0 | Payload copy (unterminated) |
-| .agent/authored/f279-r11-status_from.txt | +1/-0 | Payload copy (unterminated) |
-| .agent/authored/f279-r11-status_to.txt | +1/-0 | Payload copy (unterminated) |
+| .agent/authored/f263-r1-block.md | +242/-0 | Bookkeeping copy of this round's step block (R-0954 transport) |
+| .agent/authored/f263-r1-status.diff | +13/-0 | Payload copy |
+| .agent/authored/f263-r1-rehead.diff | +50/-0 | Payload copy |
+| .agent/authored/f263-r1-plan.md | +34/-0 | Payload copy |
+| .agent/authored/f263-r1-context.md | +45/-0 | Payload copy |
+| .agent/authored/f263-r1-decisions.diff | +50/-0 | Payload copy |
 
-Measured insertions: 240 (195 + 2 + 27 + 1 + 1 + 1 + 9 + 1 + 1 + 1 + 1),
-matching the block's stated formula "this block's line count plus 45"
-(195 + 45 = 240) exactly, per `git show --numstat 945a9fd5` and `git commit`'s
-own report `11 files changed, 240 insertions(+)`.
+Measured insertions: 434 (242 + 13 + 50 + 34 + 45 + 50), matching the
+block's stated formula "this block's line count plus 192" (242 + 192 =
+434) exactly, per `git show --numstat 22e95530` and `git commit`'s own
+report `6 files changed, 434 insertions(+)`. Under the 500 cap.
 
-### 001fe2e7 F279 R11 C2: book round 10's PASS
+### e6f912ce F263 R1 C1b: copy round 1 product payloads into .agent/authored/
 
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/live_review.md | +2/-0 | Strict byte-append of `ledger.md`'s round-10 `Gate:` entry |
-| .agent/plan.md | +8/-10 | Rewritten to the round-11 `plan.md` payload |
+| .agent/authored/f263-r1-product.diff | +106/-0 | Payload copy |
+| .agent/authored/f263-r1-human_change.py | +255/-0 | Payload copy |
+| .agent/authored/f263-r1-mutations.py | +84/-0 | Payload copy |
 
-Measured insertions/deletions by `git show --numstat 001fe2e7`: `2 0
-.agent/live_review.md` and `8 10 .agent/plan.md` — matching the block's
-expected 2 and 8 exactly.
+Measured insertions by `git show --numstat e6f912ce`: 445 (106 + 255 +
+84), matching the block's expected 445 exactly.
 
-### f50ce764 F279 R11 C3: rotate the finding ledger into its archive
-
-| Path | +/- | Reason |
-|---|---|---|
-| .agent/live_review.md | +0/-22 | `scripts/rotate_live_review.py` moved 11 gate records out |
-| .agent/live_review_archive.md | +22/-0 | Same 11 gate records appended to the archive |
-
-Measured by `git show --numstat f50ce764`: `0 22 .agent/live_review.md` and
-`22 0 .agent/live_review_archive.md`. The script's own printed output (full,
-verbatim): `gate records moved: 11`, `finding pairs moved: 0 (0 records)`,
-`old ledger size: 402643 bytes`, `new ledger size: 371291 bytes`, `old
-archive size: 4667384 bytes`, `new archive size: 4698736 bytes`, `open
-findings before: 28`, `open findings after: 28`, `written:
-/home/decodeux/Repos/remedy/.agent/live_review.md and
-/home/decodeux/Repos/remedy/.agent/live_review_archive.md` — all matching
-the block's G3 expectation exactly, including both post-rotation sha256
-digests (`a460e325...` for the ledger, `3ec23624...` for the archive).
-
-### (this commit) F279 R11 C4: accept F279 in STATUS with its README pins and the self-use entry
+### a47aa8ef F263 R1 C1c: copy round 1 test payload into .agent/authored/
 
 | Path | +/- | Reason |
 |---|---|---|
-| docs/roadmap/STATUS.md | +1/-1 | `status` pair applied: F279's `[~]` line becomes the accepted `[x]` line |
-| README.md | +11/-3 | `readme_count`, `readme_tier` and `readme_prose` pairs applied: the accepted count, the Tier 2 Done cell, and the Tier 2 prose entry |
-| scripts/self_use_queue.json | +1/-1 | `SU-028`'s `"consumed_by": "",` becomes `"consumed_by": "F279",`, the only such marker in the file, nothing else touched |
+| .agent/authored/f263-r1-test_human_change.py | +206/-0 | Payload copy |
+
+Measured insertions by `git show --numstat a47aa8ef`: 206, matching the
+block's expected 206 exactly.
+
+### 958f7ec2 F263 R1 C2: claim F263 and re-head the live review record
+
+| Path | +/- | Reason |
+|---|---|---|
+| .agent/live_review.md | +17/-18 | `git apply` of rehead.diff |
+| docs/roadmap/STATUS.md | +1/-1 | `git apply` of status.diff — F263's line becomes `[~]` (claimed) |
+| .agent/plan.md | +21/-14 | Rewritten to the round-1 `plan.md` payload |
+| .agent/context.md | +15/-17 | Rewritten to the round-1 `context.md` payload |
+
+Measured insertions by `git show --numstat 958f7ec2`: `15 17
+.agent/context.md`, `17 18 .agent/live_review.md`, `21 14 .agent/plan.md`,
+`1 1 docs/roadmap/STATUS.md` — matching the block's expected 15, 17, 21, 1
+exactly.
+
+### 66078e11 F263 R1 C3: record DECISION F263 D1, the human change record's shape
+
+| Path | +/- | Reason |
+|---|---|---|
+| .agent/decisions.md | +42/-0 | `git apply` of decisions.diff |
+
+Measured insertions by `git show --numstat 66078e11`: 42, matching the
+block's expected 42 exactly.
+
+### e60c496d F263 R1 C4: record the target's last known state and certify human changes
+
+| Path | +/- | Reason |
+|---|---|---|
+| packages/orchestration/human_change.py | +255/-0 | New module, copied whole then `git add`ed |
+| packages/orchestration/pingpong_job.py | +12/-0 | `git apply` of product.diff — `JobPlan.target_last_known`, export/import, and the capture call in `_create_job_workspace` |
+| packages/orchestration/worktrees.py | +12/-3 | `git apply` of product.diff — `write_tree` body moved into new `write_tree_at(path)` so a non-worktree target can be measured |
+| tests/orchestration/import_reachability_allowlist.txt | +1/-0 | `git apply` of product.diff — registers the new module (an untracked/unlisted module fails `integrity check`'s `relevant_untracked`) |
+
+Measured insertions by `git show --numstat e60c496d`: `255 0
+packages/orchestration/human_change.py`, `12 0
+packages/orchestration/pingpong_job.py`, `12 3
+packages/orchestration/worktrees.py`, `1 0
+tests/orchestration/import_reachability_allowlist.txt` — matching the
+block's expected 255, 12, 12, 1 exactly.
+
+### 26c3c8ac F263 R1 C5: test the human change record and the job's last known state
+
+| Path | +/- | Reason |
+|---|---|---|
+| tests/orchestration/test_human_change.py | +206/-0 | New test file, copied whole then `git add`ed |
+
+Measured insertions by `git show --numstat 26c3c8ac`: 206, matching the
+block's expected 206 exactly.
+
+### (this commit) F263 R1 C6: rewrite handoff for round 1
+
+| Path | +/- | Reason |
+|---|---|---|
 | .agent/handoff.md | rewritten | This handback, per `docs/agents/handback_template.md` — a handback cannot table the commit that writes it (R-0149 self-reference exception) |
-
-Measured insertions/deletions for the three non-self-referential paths by
-`git diff --numstat` before staging: `1 1 docs/roadmap/STATUS.md`, `11 3
-README.md`, `1 1 scripts/self_use_queue.json`.
 
 ## External actions
 
-- `git push origin feature/f279-configuration-toolchain-truth` after C4 —
-  real outcome reported in the worker's final reply (write-once rule: this
-  file is written once per handback).
-- `gh pr create --base main --head feature/f279-configuration-toolchain-truth`
-  after the push — number and URL reported in the worker's final reply only,
-  per the block.
-- No worktree add/remove this round.
+- `git checkout -b feature/f263-human-change-absorption` from `main` at
+  `54a23101` — created, no pull (Open PR Gate already ran before this
+  round; `main` was already at the merge commit).
+- `git worktree add --detach .remedy-wt/f263-r1-mut 26c3c8ac` for G5 —
+  created.
+- `git worktree remove --force .remedy-wt/f263-r1-mut` then `git worktree
+  prune` after G5 — removed; `git worktree list` afterward showed only
+  the primary checkout and the three `.remedy-wt/job-*` worktrees
+  constraint 6 names.
+- `git push -u origin feature/f263-human-change-absorption` after C6 —
+  real outcome reported in the worker's final reply (G6 readings cannot
+  live in this committed file per the block).
+- No `gh pr create` — the block orders none; the branch opens its pull
+  request at F263's closure.
 
 ## Verification
 
-**G1 — transport**: every payload's lines/bytes/sha256 read against the
-block's PAYLOADS table (via a recomputation script over
-`.remedy-wt/f279-r11-payloads/`): all ten rows `True`. Every committed
-`.agent/authored/f279-r11-*` blob read with `git show 945a9fd5:<path>`
-compared byte-for-byte against its source under `.remedy-wt/`: all eleven
-pairs (the block plus the ten payloads) `EQUAL`, matching lengths and sha256
-prefixes.
+**G1 — transport**: every payload's lines/bytes/sha256 measured against
+the block's PAYLOADS table: all nine rows matched exactly (status.diff
+13/527, rehead.diff 50/5681, plan.md 34/1463, context.md 45/2166,
+decisions.diff 50/3839, product.diff 106/5611, human_change.py 255/9853,
+test_human_change.py 206/9046, mutations.py 84/3191 — sha256 digests all
+equal to the table). Every committed `.agent/authored/f263-r1-*` blob
+read with `git show <commit>:<path>` compared byte-for-byte against its
+`.remedy-wt/` source: all ten pairs (the block plus the nine payloads)
+byte-identical = True.
 
-**G2 — the booking**: `.agent/live_review.md` after C2 read 402643 bytes,
-sha256 `aed8b129c596220e1bcb9d9a08450e3a376627e7e79881af202fa8714c8f2c85`
-(both matching the block exactly); `^Gate: F279 R10 — ` occurs once; the
-open set via `open_finding_ids` reads 28; `.agent/plan.md` sha256
-`695238ee1a62b81da01a821675f460245af3c695f8e8d8f9ff998ed85441bdfa` equals
-`plan.md`'s own sha256 — sha256-equal as required.
+**G2 — the bookkeeping**: at C2, `git show 958f7ec2:<path>` sha256 for
+`.agent/live_review.md` (371115 bytes), `docs/roadmap/STATUS.md` (47565
+bytes), `.agent/plan.md` (1463 bytes) and `.agent/context.md` (2166
+bytes), and at C3 `.agent/decisions.md` (1878109 bytes) — all five
+byte counts and sha256 digests matched the block's G2 table exactly. Open
+finding ids via `scripts/rotate_live_review.py`'s `open_finding_ids` over
+the file TEXT: 28 at `54a23101`, 28 at C2, `base - c2 = []`, `c2 - base =
+[]` — both differences empty, matching the reviewer's reading of 28 and
+28. F263's STATUS line at C2 read in full: `- [~] F263 — Human-change
+absorption (absorb)`. `git diff --name-only a47aa8ef 958f7ec2` named
+exactly `.agent/context.md`, `.agent/live_review.md`, `.agent/plan.md`,
+`docs/roadmap/STATUS.md`; `git diff --name-only 958f7ec2 66078e11` named
+exactly `.agent/decisions.md` — both matching C2's and C3's path lists.
 
-**G3 — the rotation**: reported above under C3's table; every reading
-(11 gate records, 0 finding pairs, 402643→371291, 4667384→4698736, 28
-before/after, both post-rotation sha256 digests) matches the block's stated
-values exactly, and C3's path set is exactly `.agent/live_review.md` and
-`.agent/live_review_archive.md`.
+**G3 — the product**: at C5, `git show 26c3c8ac:<path>` sha256 for
+`packages/orchestration/human_change.py` (9853 bytes),
+`packages/orchestration/worktrees.py` (31800 bytes),
+`packages/orchestration/pingpong_job.py` (195753 bytes),
+`tests/orchestration/import_reachability_allowlist.txt` (9903 bytes) and
+`tests/orchestration/test_human_change.py` (9046 bytes) — all five byte
+counts and sha256 digests matched the block's G3 table exactly.
+`git diff --name-only 66078e11 e60c496d` named exactly
+`packages/orchestration/human_change.py`,
+`packages/orchestration/pingpong_job.py`,
+`packages/orchestration/worktrees.py`,
+`tests/orchestration/import_reachability_allowlist.txt`;
+`git diff --name-only e60c496d 26c3c8ac` named exactly
+`tests/orchestration/test_human_change.py` — both matching C4's and C5's
+path lists.
 
-**G4 — the closure edits**, before C4 was committed:
+**G4 — the tests**, in the primary checkout at C5, serially:
+`python3 -m pytest -q -p no:cacheprovider` over the block's 19-file
+selection (including the golden path) → `737 passed in 248.04s`, real
+exit 0 (`${PIPESTATUS[0]}` read via the pipeline). The reviewer's
+disposable-worktree run (without the golden path) read `693 passed, 2
+skipped`; the primary checkout carries the UI toolchain a worktree lacks,
+so those 2 skips passed here instead, and the golden path file added its
+own passing tests on top — no failures, no unexpected skips. Then
+`python3 -m ruff check packages/orchestration/human_change.py
+packages/orchestration/worktrees.py packages/orchestration/pingpong_job.py
+tests/orchestration/test_human_change.py` → `All checks passed!`, real
+exit 0. Then `python3 -m apps.cli.main integrity check --json` → all five
+checks (`handler_import`, `live_review_verdict`, `plan_consistency`,
+`relevant_untracked`, `high_blockers_open`) `pass`, `fail_count: 0`,
+`ok: true`, `passed: true`, real exit 0.
 
-- `status`: FROM count before 1, after 0; TO count after 1.
-- `readme_count`: FROM count before 1, after 0; TO count after 1.
-- `readme_tier`: FROM count before 1, after 0; TO count after 1.
-- `readme_prose`: FROM count before 1, after 0; TO count after 1.
-- `scripts/self_use_queue.json`: `"consumed_by": "",` count before 1, after
-  0; `"consumed_by": "F279",` count after 1, landing inside the `SU-028`
-  entry (confirmed by locating the string's context in the file, which
-  reads the `id": "SU-028"` block immediately above it); `python3 -m
-  json.tool scripts/self_use_queue.json` exit 0; `git diff --numstat --
-  scripts/self_use_queue.json` reads `1 1`.
-- Post-edit sha256: `docs/roadmap/STATUS.md`
-  `2c26c3dc9d79c4315ef1e2ce1609bd5a938dc6a861098bd83eea8cec36798523`,
-  `README.md`
-  `3332b211e47a672c6f95ddf74fbae418e2e615adf47f16da0fa6056e60c069d6`,
-  `scripts/self_use_queue.json`
-  `e9b690f7a2a456f6672b4eb4616f422cc726608471a16dabaa4b150a26e6dc25` — all
-  three matching the block's stated digests exactly.
-- `python3 -m pytest tests/docs/ -q`: `322 passed in 85.07s`, real exit 0 —
-  matching the block's stated dry-run reading exactly.
-
-**G5 — the tree**, with C4's edits in place before the commit:
-`python3 -m apps.cli.main integrity check --json` → `{"check_count": 5,
-"checks": [{"name": "handler_import", "status": "pass"}, {"name":
-"live_review_verdict", "status": "pass"}, {"name": "plan_consistency",
-"status": "pass"}, {"name": "relevant_untracked", "status": "pass"},
-{"name": "high_blockers_open", "status": "pass"}], "fail_count": 0, "ok":
-true, "passed": true}`, real exit 0. `python3 -m pytest
-tests/cli/test_golden_path.py -q`: `42 passed in 130.85s`, real exit 0. The
-full suite is not re-run this round; it is committed at
-`.agent/authored/f279-closure-suite.txt` from round 9.
+**G5 — the red proofs**: `git worktree add --detach .remedy-wt/f263-r1-mut
+26c3c8ac` then `python3 -B .remedy-wt/f263-r1-payloads/mutations.py
+.remedy-wt/f263-r1-mut`, whole output:
+`control_before` `17 passed in 1.68s` exit 0;
+`m1_rebase_before_the_record` FROM count 1, `2 failed, 15 passed in
+1.65s` exit 1 (`test_the_record_is_on_disk_before_the_rebase_runs`,
+`test_a_failed_rebase_leaves_the_record_and_the_hand_edit`), restored
+byte-identical True;
+`m2_untracked_files_not_captured` FROM count 1, `5 failed, 12 passed in
+1.72s` exit 1, restored byte-identical True;
+`m3_noise_counted_as_content` FROM count 1, `1 failed, 16 passed in
+1.50s` exit 1, restored byte-identical True;
+`m4_diff_digest_unchecked` FROM count 1, `1 failed, 16 passed in 1.65s`
+exit 1, restored byte-identical True;
+`m5_seal_unchecked` FROM count 1, `1 failed, 16 passed in 1.67s` exit 1,
+restored byte-identical True;
+`m6_record_rewritten` FROM count 1, `1 failed, 16 passed in 1.63s` exit
+1, restored byte-identical True;
+`m7_job_records_no_state` FROM count 1, `2 failed, 15 passed in 1.70s`
+exit 1, restored byte-identical True;
+`m8_import_drops_the_state` FROM count 1, `1 failed, 16 passed in 2.01s`
+exit 1, restored byte-identical True;
+`control_after` `17 passed in 1.94s` exit 0 — every reading exactly
+matches the reviewer's simulated readings (m1: 2 failed; m2: 5 failed;
+m3–m6, m8: 1 failed each; m7: 2 failed; both controls 17 passed).
+`git worktree remove --force .remedy-wt/f263-r1-mut` then `git worktree
+prune`, both exit 0; `git worktree list` afterward showed only the
+primary checkout plus the three `.remedy-wt/job-*` worktrees.
 
 ## Authored-text proofs
 
-- `.agent/authored/f279-r11-block.md` (C1) == `.remedy-wt/f279-r11-block.md`: equal, sha256 `2711ede1307dcba2aed3d330f94d47f2a23e6153ae2251aa8667e037bae72d58` both sides.
-- `.agent/authored/f279-r11-ledger.md` (C1) == `.remedy-wt/f279-r11-payloads/ledger.md`: equal, sha256 `e34012ff9fc8b946aead9381cedb5e98026d592f5fd7ec86f5a933ebb7f2d365` both sides.
-- `.agent/authored/f279-r11-plan.md` (C1) == `.remedy-wt/f279-r11-payloads/plan.md`: equal, sha256 `695238ee1a62b81da01a821675f460245af3c695f8e8d8f9ff998ed85441bdfa` both sides.
-- The four `.agent/authored/f279-r11-readme_*` and `f279-r11-status_*` FROM/TO pairs (C1) == their `.remedy-wt/f279-r11-payloads/` sources: equal, all eight sha256 as listed in the block's PAYLOADS table.
-- APPLIED text: the bytes C2 appended to `.agent/live_review.md` (the tail after round 10's ending) compared byte-for-byte to the committed `.agent/authored/f279-r11-ledger.md` blob: equal.
-- APPLIED text: `.agent/plan.md` as rewritten by C2 compared byte-for-byte to the committed `.agent/authored/f279-r11-plan.md` blob: equal.
-- APPLIED text: the four FROM/TO pairs as applied to `docs/roadmap/STATUS.md` and `README.md` in C4 — each target's TO count read 1 after the edit, matching the committed `.agent/authored/f279-r11-*_to.txt` blobs' content by construction (Python string replacement using the payload's own bytes, never retyped).
+- `.agent/authored/f263-r1-block.md` (C1a) == `.remedy-wt/f263-r1-block.md`: byte-identical True.
+- `.agent/authored/f263-r1-status.diff` (C1a) == `.remedy-wt/f263-r1-payloads/status.diff`: byte-identical True.
+- `.agent/authored/f263-r1-rehead.diff` (C1a) == `.remedy-wt/f263-r1-payloads/rehead.diff`: byte-identical True.
+- `.agent/authored/f263-r1-plan.md` (C1a) == `.remedy-wt/f263-r1-payloads/plan.md`: byte-identical True.
+- `.agent/authored/f263-r1-context.md` (C1a) == `.remedy-wt/f263-r1-payloads/context.md`: byte-identical True.
+- `.agent/authored/f263-r1-decisions.diff` (C1a) == `.remedy-wt/f263-r1-payloads/decisions.diff`: byte-identical True.
+- `.agent/authored/f263-r1-product.diff` (C1b) == `.remedy-wt/f263-r1-payloads/product.diff`: byte-identical True.
+- `.agent/authored/f263-r1-human_change.py` (C1b) == `.remedy-wt/f263-r1-payloads/human_change.py`: byte-identical True.
+- `.agent/authored/f263-r1-mutations.py` (C1b) == `.remedy-wt/f263-r1-payloads/mutations.py`: byte-identical True.
+- `.agent/authored/f263-r1-test_human_change.py` (C1c) == `.remedy-wt/f263-r1-payloads/test_human_change.py`: byte-identical True.
+- APPLIED text: `packages/orchestration/human_change.py` as committed at
+  C4 (`git show e60c496d:packages/orchestration/human_change.py`)
+  compared byte-for-byte to the committed `.agent/authored/f263-r1-human_change.py`
+  blob and to the source payload: sha256 `09a885ea94200cae771cf754d4ac4d50d3fb5e8b4d2f2c233a59de0c470ce8aa` all three, equal.
+- APPLIED text: `tests/orchestration/test_human_change.py` as committed at
+  C5 compared byte-for-byte to the committed
+  `.agent/authored/f263-r1-test_human_change.py` blob and to the source
+  payload: sha256 `e51f21d1d4664e4e45f6eb5ffe895fd7734a8070cdab58b16ceabad57c464ebd`
+  all three, equal.
+- APPLIED text: `rehead.diff`, `status.diff`, `decisions.diff` and
+  `product.diff` were each `git apply --check`ed (exit 0) then `git
+  apply`ed (exit 0) unedited, never retyped; G2 and G3's post-apply
+  sha256 matches against the reviewer's simulated readings are the
+  disk-to-disk proof that the applied bytes equal the payload's bytes.
 
 ## Deviations & assumptions
 
-None. The round followed C1, C2, C3, C4 in the block's exact order, with
-the push and the pull request placed after C4 as ordered.
+None. The round followed C1a, C1b, C1c, C2, C3, C4, C5 in the block's
+exact order, gates G1 through G5 all ran and all passed before C6 was
+written, and no payload was edited or retyped.
 
 ## Next
 
-Phase 1 rule 1 (read `.agent/STOP` from disk), then the Open PR Gate — the
-pull request this round opens is merged by the NEXT feature's session,
-never by this one — and then Rule A5, the first unchecked feature in
-`docs/roadmap/STATUS.md`, which reads `F263 — Human-change absorption
-(absorb)`. Open findings count: 28, none of them owned by F279.
+Phase 1 rule 1 (read `.agent/STOP` from disk), then the review of round
+1, then T001's second half — the human change record joining the job's
+exported evidence and its verification, so a package carries it like any
+other artifact. Open findings count: 28, none of them owned by F263.
 Operator-questions count: 0.
