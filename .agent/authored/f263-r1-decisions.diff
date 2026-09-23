@@ -1,0 +1,50 @@
+diff --git a/.agent/decisions.md b/.agent/decisions.md
+index 7c34f71e..e0498c36 100644
+--- a/.agent/decisions.md
++++ b/.agent/decisions.md
+@@ -18711,3 +18711,45 @@ REVERSE by deleting this paragraph, `docs/orders/toolchain-refresh.md` with its
+ its docs test, the order tier and its tests in `packages/orchestration/self_use_generator.py`
+ and `tests/orchestration/test_self_use_generator.py`, and the `order_path` argument in
+ `tests/orchestration/test_self_use_runner.py`.
++
++DECISION F263 D1 (2026-09-23, round 1) — THE LAST KNOWN STATE IS ONE TREE OBJECT OF THE TARGET
++CHECKOUT, AND THE HUMAN CHANGE RECORD IS A SEALED JSON FILE BESIDE ITS DIFF, WRITTEN BEFORE ANY
++RE-BASE.
++
++CONTEXT. T001 of T2_F263.md decides the evidence shape before either caller exists. Measured by
++the reviewer at `54a23101`: a job persists no state of the TARGET checkout at all — the run guard
++(`pingpong_loop._snapshot_target`) hashes every file into memory once per episode and never
++writes it down, and `job_initial_tree` is the tree of the job's own worktree, not of the checkout
++the human edits. `worktrees.write_tree` already takes a complete tree through a private index,
++untracked files included, without touching the user's index; it was reachable only through a job
++worktree's handle. BLE001 is selected and its ratchet is frozen at 290 excused handlers.
++
++CHOSEN. (1) The last known state is `human_change.TargetState` — the target checkout's tree
++object, taken by `worktrees.write_tree_at`, which is `write_tree`'s body moved behind a path, plus
++the commit `HEAD` names and the time. A git job records it as `target_last_known` in its record
++when its workspace is created, and a checkpoint ref named `target-last-known` keeps the tree
++alive; `_drop_checkpoint_refs` does not drop that ref, because a human change is measured against
++it after the run ends as well. (2) A human change is a difference between that tree and the
++current one, classified by the run guard's own three rules, so Remedy's artifacts, its data root
++and tool-cache noise are named in the record but never counted as the human's; a difference made
++only of those is no human change. (3) The record is `jobs/<id>/evidence/human_changes/<id>.json`
++beside `<id>.diff`, where the id is `hcr-` plus the first twelve characters of the before and
++after trees, so the same transition is certified once and a second detection returns the record
++already on disk untouched. The diff is written first; the record carries its sha256 and a
++`record_sha256` seal over every other field, and `verify_human_change_record` recomputes both.
++Both files go through `durable_write`. (4) `absorb` detects, writes the record, and only then
++calls the re-base step it is given. It catches nothing: a re-base that raises reaches the caller
++with the record already durable, which is what "the record survives a failed re-base" means and
++what a new `noqa: BLE001` could not buy under the frozen ratchet. T001 ships no re-base; T002 and
++T003 supply the step. (5) A non-git target has no tree to take and keeps the existing file-walk
++guard; T003 decides its absorption.
++
++ALTERNATIVES. Persist the run guard's per-file sha256 map — rejected: it is the size of the
++repository, and a tree comparison is one string equality. A numbered record sequence — rejected:
++two detections of one change would certify it twice. Catch the re-base's error inside `absorb` —
++rejected: it would need a blind handler, and it would turn a loud failure into a status field.
++
++REVERSE by deleting this paragraph, `packages/orchestration/human_change.py`,
++`tests/orchestration/test_human_change.py` and the module's allowlist line, restoring
++`write_tree`'s body in `packages/orchestration/worktrees.py`, and removing `target_last_known`
++from `packages/orchestration/pingpong_job.py`.
