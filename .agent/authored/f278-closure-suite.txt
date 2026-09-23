@@ -1,24 +1,19 @@
-F278 R9 C6 — the feature's ONE full suite, `python3 -m pytest -n auto -q` in the primary
-checkout, run 2026-09-23. Real exit code: 1.
+F278 R10 C4 — the feature's ONE full suite, `python3 -m pytest -n auto -q` in the primary
+checkout, run 2026-09-23. Real exit code: 0.
 
 Summary line:
-5 failed, 18541 passed, 20 skipped, 1 warning in 258.51s (0:04:18)
+18546 passed, 20 skipped, 1 warning in 251.83s (0:04:11)
 
-Bad node ids (5):
-tests/orchestration/test_f018_package_pipeline_e2e.py::TestGateProducerV110::test_gate_passes_with_all_bindings
-tests/orchestration/test_f018_package_pipeline_e2e.py::TestManualAttestationGate::test_build_manual_gates_produces_v110
-tests/orchestration/test_f018_package_pipeline_e2e.py::TestManifestValidatorV110::test_v110_gate_passes_semantic_validation
-tests/orchestration/test_f146_package_pipeline_e2e.py::TestF146GateScope::test_f146_gate_passes_with_verification
-tests/orchestration/test_f018_authority_integration.py::TestRuntimeIntegrationGateNonzero::test_gate_static_checks_pass_on_live_repo
+Bad node ids (0):
+(none)
 
 closure precondition 7 (import reachability / no orphan modules): neither
 `tests/orchestration/test_import_reachability.py` nor `tests/test_no_orphan_modules.py`
 appears among the bad node ids above.
 
-Failure shape, read from the captured log (not diagnosed further — repair order is the
-reviewer's per amend0917-throughput rule 2): all five failures are in
-`build_runtime_integration_gate` "call_exists" / verification-gate checks reading the
-LIVE repository tree (`test_f018_package_pipeline_e2e.py`, `test_f146_package_pipeline_e2e.py`,
-`test_f018_authority_integration.py`), not in any module this round's commits touched.
+Shrinking reading (operator amendment amend0917-throughput rule 2): the previous bad set,
+the five ids of round 9's transcript at `82c47da0`, all built the `f146_registry_atomic_save`
+check via `build_runtime_integration_gate`; the new bad set is empty, a strict subset of the
+previous set; no node is newly bad.
 
-Full log: /home/decodeux/remedy-gate-scratch/f278-r9-suite.log (outside the repository).
+Full log: /home/decodeux/remedy-gate-scratch/f278-r10-suite.log (outside the repository).
