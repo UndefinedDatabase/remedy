@@ -1,167 +1,173 @@
-# Handback — F279 Configuration & toolchain truth · Round 10 · The closure sequence's evidence half: the bundle and the package
+# Handback — F279 Configuration & toolchain truth · Round 11 · The closure: the rotation, the accepted STATUS line, and the pull request
 
 ## Session
 
-SESSION 2 of feature F279 · round 10 · rounds so far 10
+SESSION 2 of feature F279 · round 11 · rounds so far 11
 
-This round booked round 9's PASS and its two flaky suite nodes into the
-ledger as recurrences of R-0950 and R-1028, built the feature's evidence
-bundle against the fork point `c9bc5c2057b57db8e0a6f4505c91374ac364a5f8`,
-and built the fresh review package. Nothing closed. Context remaining at
-handback: roughly two-thirds of the budget, ample for the reviewer to open
-round 11.
+This round booked round 10's PASS into the ledger, rotated the finding
+ledger into its archive as its own commit, flipped F279's `docs/roadmap/STATUS.md`
+line to accepted with the README's three pinned places (the accepted count,
+the Tier 2 Done cell, and the Tier 2 prose entry) and the self-use queue
+entry `SU-028`'s `consumed_by` field, all in one closure commit, and opened
+the pull request, which this session does not merge. Context self-assessment:
+the large majority of the session's working context budget remains unused
+at handback.
 
 ## Range
 
-Review of `118b645e`..`9ee2659888d3c30969d102616503cc2898e26e2c`
+Review of `081b9b6c`..`HEAD`.
 
 ## Commits
 
-### f97ddad3 F279 R10 C1: copy round 10 block and payloads into .agent/authored/
+### 945a9fd5 F279 R11 C1: copy round 11 block and payloads into .agent/authored/
 
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f279-r10-block.md | 167/0 | byte-for-byte copy of this round's block |
-| .agent/authored/f279-r10-create_f279_evidence.py | 133/0 | byte-for-byte copy of the A1 evidence tool |
-| .agent/authored/f279-r10-ledger.md | 6/0 | byte-for-byte copy of the ledger append payload |
-| .agent/authored/f279-r10-plan.md | 29/0 | byte-for-byte copy of the plan rewrite payload |
+| .agent/authored/f279-r11-block.md | +195/-0 | Bookkeeping copy of this round's step block (R-0954 transport) |
+| .agent/authored/f279-r11-ledger.md | +2/-0 | Payload copy |
+| .agent/authored/f279-r11-plan.md | +27/-0 | Payload copy |
+| .agent/authored/f279-r11-readme_count_from.txt | +1/-0 | Payload copy (unterminated, counted as 1 line by git) |
+| .agent/authored/f279-r11-readme_count_to.txt | +1/-0 | Payload copy (unterminated) |
+| .agent/authored/f279-r11-readme_prose_from.txt | +1/-0 | Payload copy (unterminated) |
+| .agent/authored/f279-r11-readme_prose_to.txt | +9/-0 | Payload copy (8 newlines, unterminated final line counted as 1) |
+| .agent/authored/f279-r11-readme_tier_from.txt | +1/-0 | Payload copy (unterminated) |
+| .agent/authored/f279-r11-readme_tier_to.txt | +1/-0 | Payload copy (unterminated) |
+| .agent/authored/f279-r11-status_from.txt | +1/-0 | Payload copy (unterminated) |
+| .agent/authored/f279-r11-status_to.txt | +1/-0 | Payload copy (unterminated) |
 
-Measured insertions: 335 (167 + 133 + 6 + 29), matching the block's stated
-"this block's line count plus 168" (167 + 168 = 335), per `git commit`'s own
-report `4 files changed, 335 insertions(+)`.
+Measured insertions: 240 (195 + 2 + 27 + 1 + 1 + 1 + 9 + 1 + 1 + 1 + 1),
+matching the block's stated formula "this block's line count plus 45"
+(195 + 45 = 240) exactly, per `git show --numstat 945a9fd5` and `git commit`'s
+own report `11 files changed, 240 insertions(+)`.
 
-### 9ee26598 F279 R10 C2: book round 9's PASS and record the two flaky nodes as recurrences
+### 001fe2e7 F279 R11 C2: book round 10's PASS
 
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/live_review.md | 6/0 | strict byte-append of ledger.md's Gate + two Recurrence paragraphs |
-| .agent/plan.md | 10/12 | rewrite to plan.md payload |
+| .agent/live_review.md | +2/-0 | Strict byte-append of `ledger.md`'s round-10 `Gate:` entry |
+| .agent/plan.md | +8/-10 | Rewritten to the round-11 `plan.md` payload |
 
-Measured insertions/deletions by `git show --numstat 9ee26598`: `6	0	.agent/live_review.md` and `10	12	.agent/plan.md` — matching the block's expected 6 and 10 exactly. This commit's full sha, `9ee2659888d3c30969d102616503cc2898e26e2c`, is this closure's ACCEPTED HEAD.
+Measured insertions/deletions by `git show --numstat 001fe2e7`: `2 0
+.agent/live_review.md` and `8 10 .agent/plan.md` — matching the block's
+expected 2 and 8 exactly.
 
-C3 (this handoff's own commit) carries no table of its own: a handoff
-cannot table the commit that writes it (R-0149 pattern, self-reference
-exception).
+### f50ce764 F279 R11 C3: rotate the finding ledger into its archive
+
+| Path | +/- | Reason |
+|---|---|---|
+| .agent/live_review.md | +0/-22 | `scripts/rotate_live_review.py` moved 11 gate records out |
+| .agent/live_review_archive.md | +22/-0 | Same 11 gate records appended to the archive |
+
+Measured by `git show --numstat f50ce764`: `0 22 .agent/live_review.md` and
+`22 0 .agent/live_review_archive.md`. The script's own printed output (full,
+verbatim): `gate records moved: 11`, `finding pairs moved: 0 (0 records)`,
+`old ledger size: 402643 bytes`, `new ledger size: 371291 bytes`, `old
+archive size: 4667384 bytes`, `new archive size: 4698736 bytes`, `open
+findings before: 28`, `open findings after: 28`, `written:
+/home/decodeux/Repos/remedy/.agent/live_review.md and
+/home/decodeux/Repos/remedy/.agent/live_review_archive.md` — all matching
+the block's G3 expectation exactly, including both post-rotation sha256
+digests (`a460e325...` for the ledger, `3ec23624...` for the archive).
+
+### (this commit) F279 R11 C4: accept F279 in STATUS with its README pins and the self-use entry
+
+| Path | +/- | Reason |
+|---|---|---|
+| docs/roadmap/STATUS.md | +1/-1 | `status` pair applied: F279's `[~]` line becomes the accepted `[x]` line |
+| README.md | +11/-3 | `readme_count`, `readme_tier` and `readme_prose` pairs applied: the accepted count, the Tier 2 Done cell, and the Tier 2 prose entry |
+| scripts/self_use_queue.json | +1/-1 | `SU-028`'s `"consumed_by": "",` becomes `"consumed_by": "F279",`, the only such marker in the file, nothing else touched |
+| .agent/handoff.md | rewritten | This handback, per `docs/agents/handback_template.md` — a handback cannot table the commit that writes it (R-0149 self-reference exception) |
+
+Measured insertions/deletions for the three non-self-referential paths by
+`git diff --numstat` before staging: `1 1 docs/roadmap/STATUS.md`, `11 3
+README.md`, `1 1 scripts/self_use_queue.json`.
 
 ## External actions
 
-- `git push origin feature/f279-configuration-toolchain-truth` after C2: real outcome `118b645e..9ee26598  feature/f279-configuration-toolchain-truth -> feature/f279-configuration-toolchain-truth`.
-- `git push origin feature/f279-configuration-toolchain-truth` after C3: to ship this handback (outcome reported in the worker's final reply, not repeated here per write-once).
-- No `gh pr` command was run. No worktree add/remove.
+- `git push origin feature/f279-configuration-toolchain-truth` after C4 —
+  real outcome reported in the worker's final reply (write-once rule: this
+  file is written once per handback).
+- `gh pr create --base main --head feature/f279-configuration-toolchain-truth`
+  after the push — number and URL reported in the worker's final reply only,
+  per the block.
+- No worktree add/remove this round.
 
 ## Verification
 
-**A1 — the evidence job**, from repo root: `bash -c 'python3 .remedy-wt/f279-r10-payloads/create_f279_evidence.py > .remedy-wt/f279-r10-scratch/evidence.log 2>&1; echo "REAL_EXIT=$?"'` → `REAL_EXIT=0`.
+**G1 — transport**: every payload's lines/bytes/sha256 read against the
+block's PAYLOADS table (via a recomputation script over
+`.remedy-wt/f279-r11-payloads/`): all ten rows `True`. Every committed
+`.agent/authored/f279-r11-*` blob read with `git show 945a9fd5:<path>`
+compared byte-for-byte against its source under `.remedy-wt/`: all eleven
+pairs (the block plus the ten payloads) `EQUAL`, matching lengths and sha256
+prefixes.
 
-Evidence log (`.remedy-wt/f279-r10-scratch/evidence.log`), full contents:
+**G2 — the booking**: `.agent/live_review.md` after C2 read 402643 bytes,
+sha256 `aed8b129c596220e1bcb9d9a08450e3a376627e7e79881af202fa8714c8f2c85`
+(both matching the block exactly); `^Gate: F279 R10 — ` occurs once; the
+open set via `open_finding_ids` reads 28; `.agent/plan.md` sha256
+`695238ee1a62b81da01a821675f460245af3c695f8e8d8f9ff998ed85441bdfa` equals
+`plan.md`'s own sha256 — sha256-equal as required.
 
-```
-head 9ee2659888d3c30969d102616503cc2898e26e2c
-ancestry-path count 52
-plain count 52
-collected node ids 149
-red control: unsafe among the real ids 0 []
-red control: planted id -> a local absolute path
-pytest exit 0, {'passed': 149, 'failed': 0, 'skipped': 0}, output_hash b60a824effd8c9038ea6b819826c5bb6675e3a639c9e81ea5055e5351b7607a7
-validate_verification_tests problems [] passed 149
-is_valid_current_run True
-validation_errors []
-gates written: ['artifact_contract_gate.json', 'change_provenance_gate.json', 'commit_execution_gate.json', 'fresh_evidence_gate.json', 'runtime_integration_gate.json', 'final_verifier_report.json']
-{
-  "job_id": "f279r10e1001",
-  "head_commit": "9ee2659888d3c30969d102616503cc2898e26e2c",
-  "authority_count": 37,
-  "partition": {"T001": 13, "T002": 13, "T003": 11},
-  "commit_count": 52,
-  "verdict": "PASS_WITH_RISKS",
-  "manual_completion": true,
-  "operator_attested_tasks": ["T001", "T002", "T003"],
-  "total_passed": 149
-}
-```
+**G3 — the rotation**: reported above under C3's table; every reading
+(11 gate records, 0 finding pairs, 402643→371291, 4667384→4698736, 28
+before/after, both post-rotation sha256 digests) matches the block's stated
+values exactly, and C3's path set is exactly `.agent/live_review.md` and
+`.agent/live_review_archive.md`.
 
-Both ancestry counts equal at 52; collected node ids 149 equal the pytest
-pass count 149; the red control's planted id answered `a local absolute
-path` with 0 unsafe among the real ids; pytest exit 0 with 149 passed, 0
-failed, 0 skipped; `validate_verification_tests` problem list empty over
-149 passed; `is_valid_current_run` True with an empty validation_errors
-list. Every count reads exactly one more than the reviewer's simulation (51
-ancestry/plain, 148 node ids, 148 passed) because this round's C1 block copy
-joins the parametrized block test of `test_block_lint.py`, matching the
-block's own prediction. Evidence job id: `f279r10e1001`.
+**G4 — the closure edits**, before C4 was committed:
 
-`.remedy-wt/f279-r10-evidence/` (gitignored) holds, among others, the files
-named `*_gate.json`, `*_integrity.json` and `final_verifier_report.json`:
-`artifact_contract_gate.json`, `change_provenance_gate.json`,
-`commit_execution_gate.json`, `fresh_evidence_gate.json`,
-`runtime_integration_gate.json`, `final_verifier_report.json`,
-`manifest_integrity.json`, `postmortem_integrity.json` — all eight required
-names present (`ls` of the directory).
+- `status`: FROM count before 1, after 0; TO count after 1.
+- `readme_count`: FROM count before 1, after 0; TO count after 1.
+- `readme_tier`: FROM count before 1, after 0; TO count after 1.
+- `readme_prose`: FROM count before 1, after 0; TO count after 1.
+- `scripts/self_use_queue.json`: `"consumed_by": "",` count before 1, after
+  0; `"consumed_by": "F279",` count after 1, landing inside the `SU-028`
+  entry (confirmed by locating the string's context in the file, which
+  reads the `id": "SU-028"` block immediately above it); `python3 -m
+  json.tool scripts/self_use_queue.json` exit 0; `git diff --numstat --
+  scripts/self_use_queue.json` reads `1 1`.
+- Post-edit sha256: `docs/roadmap/STATUS.md`
+  `2c26c3dc9d79c4315ef1e2ce1609bd5a938dc6a861098bd83eea8cec36798523`,
+  `README.md`
+  `3332b211e47a672c6f95ddf74fbae418e2e615adf47f16da0fa6056e60c069d6`,
+  `scripts/self_use_queue.json`
+  `e9b690f7a2a456f6672b4eb4616f422cc726608471a16dabaa4b150a26e6dc25` — all
+  three matching the block's stated digests exactly.
+- `python3 -m pytest tests/docs/ -q`: `322 passed in 85.07s`, real exit 0 —
+  matching the block's stated dry-run reading exactly.
 
-**A2 — the review package**: tree clean and branch pushed first (`git
-status --porcelain` empty; local HEAD `9ee26598` = `origin/...` HEAD
-`9ee26598`). `bash scripts/make_review_zip.sh --evidence-dir
-.remedy-wt/f279-r10-evidence` → final JSON line:
-`{"member_count": 5299, "authoritative_count": 37, "symlink_count": 0,
-"tombstone_count": 0, "final_path":
-"/home/decodeux/Repos/remedy-history/zips/remedy-review-20260923-091251-READY_FOR_REVIEW.zip",
-"final_sha256":
-"c59772f93dab75c9a8aa9da3624fa48f45fcc9afe0a372958ce74c2663640224",
-"publication_capability": "SUPPORTED", "package_status":
-"READY_FOR_REVIEW", "evidence_authoritative": true,
-"review_subject_alignment": "PASS", "manifest_sha256":
-"b5c4af1d211845acf5cfe52e98712b59782c66ccb4f4ee047833873be420e1dd"}` and the
-summary block: `PACKAGE_STATUS=READY_FOR_REVIEW`,
-`EVIDENCE_AUTHORITATIVE=true`,
-`ZIP_PATH=/home/decodeux/Repos/remedy-history/zips/remedy-review-20260923-091251-READY_FOR_REVIEW.zip`.
-
-Package filename: `remedy-review-20260923-091251-READY_FOR_REVIEW.zip`.
-SHA-256 (independently recomputed with Python's `hashlib.sha256` over the
-file, matching the script's own `final_sha256`):
-`c59772f93dab75c9a8aa9da3624fa48f45fcc9afe0a372958ce74c2663640224`. Archived
-directory: `/home/decodeux/Repos/remedy-history/zips`.
-
-`committed_review_subject` read from `.review_zip_manifest.json` inside the
-package: `"base_commit": "c9bc5c2057b57db8e0a6f4505c91374ac364a5f8"`,
-`"head_commit": "9ee2659888d3c30969d102616503cc2898e26e2c"` — head equals
-C2's full sha, base equals the fork point. The package's own
-`package_status` field (read from the same manifest) reads
-`"READY_FOR_REVIEW"`.
-
-Zip import check: `zipfile.is_zipfile(path)` → `True`; `zf.testzip()` →
-`None`.
-
-**G5 — the tree, after A2**: `python3 -m apps.cli.main integrity check
---json` → `{"check_count": 5, "checks": [{"name": "handler_import",
-"status": "pass"}, {"name": "live_review_verdict", "status": "pass"},
-{"name": "plan_consistency", "status": "pass"}, {"name":
-"relevant_untracked", "status": "pass"}, {"name": "high_blockers_open",
-"status": "pass"}], "fail_count": 0, "ok": true, "passed": true}` — all
-five checks `pass`, `fail_count` 0. `git status --porcelain` empty, no
-relevant untracked file. `git worktree list` unchanged: the primary
-checkout plus the three pre-existing `job-*` worktrees
-(`job-129b3ad7206d4f8d`, `job-e7268925db3a4831`, `job-e7a145761bf04f86`),
-none added or removed.
+**G5 — the tree**, with C4's edits in place before the commit:
+`python3 -m apps.cli.main integrity check --json` → `{"check_count": 5,
+"checks": [{"name": "handler_import", "status": "pass"}, {"name":
+"live_review_verdict", "status": "pass"}, {"name": "plan_consistency",
+"status": "pass"}, {"name": "relevant_untracked", "status": "pass"},
+{"name": "high_blockers_open", "status": "pass"}], "fail_count": 0, "ok":
+true, "passed": true}`, real exit 0. `python3 -m pytest
+tests/cli/test_golden_path.py -q`: `42 passed in 130.85s`, real exit 0. The
+full suite is not re-run this round; it is committed at
+`.agent/authored/f279-closure-suite.txt` from round 9.
 
 ## Authored-text proofs
 
-- `.agent/authored/f279-r10-block.md` (C1) == `.remedy-wt/f279-r10-block.md`: equal, sha256 `333a773ba2f9b2d0478b4b2c94fec409b3acd46301b4f44b104573d3f079ac8d` both sides.
-- `.agent/authored/f279-r10-create_f279_evidence.py` (C1) == `.remedy-wt/f279-r10-payloads/create_f279_evidence.py`: equal, sha256 `bac2fe446f8e3017ee98c09663bec053600187965f3cbd5d178c2f83709c70da` both sides.
-- `.agent/authored/f279-r10-ledger.md` (C1) == `.remedy-wt/f279-r10-payloads/ledger.md`: equal, sha256 `787102b238cb87dfba93c90ccbde50666f22364fc42ef00a6543b386ad05de7d` both sides.
-- `.agent/authored/f279-r10-plan.md` (C1) == `.remedy-wt/f279-r10-payloads/plan.md`: equal, sha256 `04d6e1514f50fae0b28c61acdabaac3b1fe0284cdd960b907e7db10076deb4fa` both sides.
-- APPLIED text: the bytes C2 appended to `.agent/live_review.md` (the tail after round 9's ending) compared byte-for-byte to the committed `.agent/authored/f279-r10-ledger.md` blob: equal.
-- APPLIED text: `.agent/plan.md` as rewritten by C2 compared byte-for-byte to the committed `.agent/authored/f279-r10-plan.md` blob: equal.
+- `.agent/authored/f279-r11-block.md` (C1) == `.remedy-wt/f279-r11-block.md`: equal, sha256 `2711ede1307dcba2aed3d330f94d47f2a23e6153ae2251aa8667e037bae72d58` both sides.
+- `.agent/authored/f279-r11-ledger.md` (C1) == `.remedy-wt/f279-r11-payloads/ledger.md`: equal, sha256 `e34012ff9fc8b946aead9381cedb5e98026d592f5fd7ec86f5a933ebb7f2d365` both sides.
+- `.agent/authored/f279-r11-plan.md` (C1) == `.remedy-wt/f279-r11-payloads/plan.md`: equal, sha256 `695238ee1a62b81da01a821675f460245af3c695f8e8d8f9ff998ed85441bdfa` both sides.
+- The four `.agent/authored/f279-r11-readme_*` and `f279-r11-status_*` FROM/TO pairs (C1) == their `.remedy-wt/f279-r11-payloads/` sources: equal, all eight sha256 as listed in the block's PAYLOADS table.
+- APPLIED text: the bytes C2 appended to `.agent/live_review.md` (the tail after round 10's ending) compared byte-for-byte to the committed `.agent/authored/f279-r11-ledger.md` blob: equal.
+- APPLIED text: `.agent/plan.md` as rewritten by C2 compared byte-for-byte to the committed `.agent/authored/f279-r11-plan.md` blob: equal.
+- APPLIED text: the four FROM/TO pairs as applied to `docs/roadmap/STATUS.md` and `README.md` in C4 — each target's TO count read 1 after the edit, matching the committed `.agent/authored/f279-r11-*_to.txt` blobs' content by construction (Python string replacement using the payload's own bytes, never retyped).
 
 ## Deviations & assumptions
 
-None. The round followed C1, C2, A1, A2, C3 in the block's exact order,
-with the push placed after C2 and before A1 as ordered.
+None. The round followed C1, C2, C3, C4 in the block's exact order, with
+the push and the pull request placed after C4 as ordered.
 
 ## Next
 
-Phase 1 rule 1 (read `.agent/STOP` from disk), then the review of round 10.
-After that, the closing round: the ledger rotation, the STATUS line with
-the README counters and the self-use item's `consumed_by` in the same
-commit, and the pull request. Open findings after this round: the same set
-as at `118b645e` (28 by distinct id, both differences empty per G2).
+Phase 1 rule 1 (read `.agent/STOP` from disk), then the Open PR Gate — the
+pull request this round opens is merged by the NEXT feature's session,
+never by this one — and then Rule A5, the first unchecked feature in
+`docs/roadmap/STATUS.md`, which reads `F263 — Human-change absorption
+(absorb)`. Open findings count: 28, none of them owned by F279.
 Operator-questions count: 0.
