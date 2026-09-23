@@ -39,7 +39,9 @@ Read, in order, and nothing more unless a step below demands it:
    (STATUS_closure_protocol.md, "Closure-candidate findings").
 5. Only on demand: AGENTS.md sections, docs/agents/* conventions,
    ROADMAP.md tier context, design_reference (mandatory for UI features),
-   specific source files the current review requires.
+   specific source files the current review requires. `.agent/decisions.md`
+   is never read whole: its last five `## DECISION` entries and the ones the
+   feature file or the handoff names, by heading (R-1029).
 Fresh feature → first paste block includes: Open PR Gate (merges the
 previous feature's PR — the operator had their manual-review window), the
 authored `[ ]`→`[~]` STATUS claim, live_review.md reset, branch creation,
