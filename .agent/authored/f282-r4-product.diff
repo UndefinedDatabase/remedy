@@ -1,0 +1,141 @@
+diff --git a/packages/orchestration/failure_postmortem.py b/packages/orchestration/failure_postmortem.py
+index fa8dfb7a..40f53cf8 100644
+--- a/packages/orchestration/failure_postmortem.py
++++ b/packages/orchestration/failure_postmortem.py
+@@ -187,6 +187,7 @@ def is_io_failure_error(error: str | None) -> bool:
+ #: not a failure (``staged_review_passed``) is deliberately absent.
+ TERMINAL_STATUS_CLASSES: dict[str, FailureClass] = {
+     "provider_unavailable": FailureClass.PROVIDER_UNAVAILABLE,
++    "provider_timeout": FailureClass.PROVIDER_TIMEOUT,
+     "test_failed": FailureClass.TEST_FAILED,
+     "review_failed": FailureClass.REVIEW_FAILED,
+     "worktree_conflict": FailureClass.WORKTREE_CONFLICT,
+diff --git a/packages/orchestration/pingpong_job.py b/packages/orchestration/pingpong_job.py
+index 3129227e..a851f0ba 100644
+--- a/packages/orchestration/pingpong_job.py
++++ b/packages/orchestration/pingpong_job.py
+@@ -1915,12 +1915,13 @@ def _strict_apply_to_workspace(
+ # ---------------------------------------------------------------------------
+ 
+ def final_status_detail_of(result: Any) -> str:
+-    """The cause a task records beside ``final_status=provider_unavailable`` (R-1016).
++    """The cause a task records beside a provider failure (R-1016).
+ 
+-    The run's ``error`` is the failed provider call's text, which names the child's
+-    exit code and the redacted tail of its stderr. Every other outcome records "".
++    The run's ``error`` is the failed provider call's text: for ``provider_unavailable``
++    it names the child's exit code and the redacted tail of its stderr, and for
++    ``provider_timeout`` the limit the call ran into. Every other outcome records "".
+     """
+-    if getattr(result, "final_status", "") != "provider_unavailable":
++    if getattr(result, "final_status", "") not in ("provider_unavailable", "provider_timeout"):
+         return ""
+     return str(getattr(result, "error", "") or "")
+ 
+@@ -3111,6 +3112,12 @@ def run_job(
+             # NOT failed, and never dressed up as a provider or review failure.
+             # R-0812: so it writes no task_run_* terminal; `job_stopped` closes the log.
+             if result.final_status == "stopped":
++                # R-1007: a budget stop can land after a round the reviewer never reached,
++                # and the verdict of the last round it DID reach is what tells a reader
++                # whether the model was failing or was cut short.
++                task.reviewer_verdict = next(
++                    (rd.reviewer_output.verdict for rd in reversed(result.rounds)
++                     if rd.reviewer_output), task.reviewer_verdict)
+                 from packages.orchestration.safe_points import StopSignal as _StopSignal
+                 signal = _StopSignal(
+                     job_id=job.job_id,
+diff --git a/packages/orchestration/pingpong_loop.py b/packages/orchestration/pingpong_loop.py
+index 808a9cec..34d184ce 100644
+--- a/packages/orchestration/pingpong_loop.py
++++ b/packages/orchestration/pingpong_loop.py
+@@ -138,8 +138,8 @@ class PingPongResult:
+     max_rounds: int = 3
+     rounds: list[PingPongRound] = field(default_factory=list)
+     final_status: str = ""  # staged_review_passed, staged_blocked, max_rounds_reached,
+-                             # provider_unavailable, test_failed, review_failed,
+-                             # target_mutation_blocked, builder_no_changes
++                             # provider_unavailable, provider_timeout, test_failed,
++                             # review_failed, target_mutation_blocked, builder_no_changes
+     staged_files: list[str] = field(default_factory=list)
+     changed_target_files: list[str] = field(default_factory=list)
+     ignored_target_noise_files: list[str] = field(default_factory=list)
+@@ -2636,6 +2636,18 @@ def _call_with_retry(
+     return out
+ 
+ 
++def provider_failure_status(error: str) -> str:
++    """The final status of a run whose provider call failed for good.
++
++    R-1016, R-1027 and R-1035: three closures recorded ``provider_unavailable`` over a
++    call that timed out after its limit while the provider was there all along, which
++    sent readers looking for a missing binary. A call the timeout predicate recognises
++    ends ``provider_timeout``; every other failure keeps ``provider_unavailable``. The
++    error text beside it names the limit, as ``claude CLI timed out after 600s`` does.
++    """
++    return "provider_timeout" if is_timeout_error(error) else "provider_unavailable"
++
++
+ def shared_call_id(out: Any, role: str, round_no: int, kind: str) -> str:
+     """The ONE call-identity function F010's post-mortem writer and F012's manifest both use.
+ 
+@@ -3470,7 +3482,7 @@ def run_pingpong(
+                 )
+                 rd.finished_at = datetime.now(timezone.utc).isoformat()
+                 result.rounds.append(rd)
+-                result.final_status = "provider_unavailable"
++                result.final_status = provider_failure_status(builder_out.error)
+                 result.error = builder_out.error
+                 break
+ 
+diff --git a/packages/orchestration/run_manifest.py b/packages/orchestration/run_manifest.py
+index 268bee02..0dc327fe 100644
+--- a/packages/orchestration/run_manifest.py
++++ b/packages/orchestration/run_manifest.py
+@@ -1548,6 +1548,7 @@ RUN_FINAL_STATUS_TO_LEDGER_STATE = {
+     "max_rounds_reached": "failed",
+     "repair_exhausted": "failed",
+     "provider_unavailable": "failed",
++    "provider_timeout": "failed",          # R-1016: a timed-out call, not a missing provider
+     "context_error": "failed",
+     "run_error": "failed",
+ }
+diff --git a/packages/orchestration/self_use_runner.py b/packages/orchestration/self_use_runner.py
+index 513f1cc0..82bd5c57 100644
+--- a/packages/orchestration/self_use_runner.py
++++ b/packages/orchestration/self_use_runner.py
+@@ -290,8 +290,10 @@ def run_next_self_use_item(
+     THE BUDGET IS RESOLVED IN THREE LAYERS, strongest first (R-1044): a
+     keyword this caller passed explicitly, then the ``Budget:`` line the order
+     file declares for itself (see :func:`parse_order_budget`), then this
+-    module's own defaults — ``max_provider_calls`` 8, ``max_cost_usd`` 1.00,
+-    ``max_tasks`` 1 and ``timeout_sec`` 600. When the planned job holds MORE
++    module's own defaults — ``max_provider_calls`` 8, raised to one more than the
++    loop itself can spend when ``repair_rounds`` or ``max_tasks`` would make 8 a tie
++    (R-1007), ``max_cost_usd`` 1.00, ``max_tasks`` 1 and ``timeout_sec`` 600. When
++    the planned job holds MORE
+     tasks than the effective ``max_tasks``, this function refuses BEFORE any
+     provider call rather than spend a budget it already knows cannot finish
+     the order.
+@@ -332,10 +334,21 @@ def run_next_self_use_item(
+             return declared[name]
+         return default
+ 
++    calls_defaulted = isinstance(max_provider_calls, _Unset) and "max_provider_calls" not in declared
+     max_provider_calls = _resolve(
+         "max_provider_calls", max_provider_calls, _MAX_PROVIDER_CALLS)
+     max_cost_usd = _resolve("max_cost_usd", max_cost_usd, _MAX_COST_USD)
+     max_tasks = _resolve("max_tasks", max_tasks, 1)
++    # R-1007: the default call ceiling is a BACKSTOP, never a tie with the loop. A
++    # task spends two calls a round over at most `1 + repair_rounds` rounds, so a
++    # default at or below that stops a task at its last reviewer call and records a
++    # budget where the reviewer's verdict belongs. A passed or declared ceiling is
++    # the caller's own and stands as given.
++    if calls_defaulted:
++        repair_rounds = run_job_kwargs.get("repair_rounds")
++        repair_rounds = 2 if repair_rounds is None else int(repair_rounds)
++        loop_calls = 2 * (1 + repair_rounds) * (max_tasks or 1)
++        max_provider_calls = max(_MAX_PROVIDER_CALLS, loop_calls + 1)
+     # R-1044: an order the run cannot finish is refused before it costs
+     # anything. `.agent/selfuse_f279/result_state.txt` is what this prevents:
+     # a five-task standing order stopped at `budget_exhausted:max_cost_usd`
