@@ -1,98 +1,81 @@
-# Handback — F263 Human-change absorption (absorb) · Round 4 · Book round 3's PASS, record DECISION F263 D4, land T002 `remedy absorb` — PASS
+# Handback — F263 Human-change absorption (absorb) · Round 5 · Book round 4's PASS, record DECISION F263 D5, land T003's run half — PASS
 
 ## Session
 
-SESSION 1 of feature F263 · round 4 · rounds so far 4
+SESSION 1 of feature F263 · round 5 · rounds so far 5
 
-This round booked round 3's PASS into the ledger with DECISION F263 D4
-(C2), then landed T002 in one bundle: `packages/orchestration/human_change.py`'s
-new `absorb_job`/`JobAbsorbOutcome`, `packages/orchestration/worktrees.py`'s
-new `lock_is_held`, the new `apps/cli/commands/absorb_cmd.py` handler, its
-catalog entry, visible help slot (`VISIBLE_GROUP_ORDER`, group count 32)
-and bare form, plus the three pinned tests that move with it (C3). G1
-through G5 all ran and every reading matched the block's stated
-expectation, including the pytest count divergence the block itself
-anticipated (my run, unlike the reviewer's disposable-worktree dry run,
-included `tests/cli/test_golden_path.py` as the block's own G4 command
-orders). Context self-assessment: nearly all of the session's working
-context budget remained at handback.
+This round booked round 4's PASS into the ledger with DECISION F263 D5
+(C2), then landed T003's run half in one commit (C3): a git job now
+absorbs a hand edit at every safe point — episode start, before each
+task, inside the task's own run (via `_run_stop_check`), where the
+pre-apply guard stood, and after each applied task — and keeps running;
+the two drift-block guards (`Step 4887` pre-apply, `Step 4889` post-apply)
+are gone for a git job; every check is counted and timed into
+`job.metadata["human_change_checks"]`; a non-git copy job is unchanged
+and keeps its file-walk snapshot guard. G1 through G5 all ran and every
+reading matched the block's stated expectation, including the old-
+behaviour red proof (`old_runner`, pingpong_job.py at `a2361d9a`, 5
+failed naming `target_repo_mutated_during_job`) and the pytest count
+divergence the block itself anticipated (my run, unlike the reviewer's
+disposable-worktree dry run, included `tests/cli/test_golden_path.py` as
+the block's own G4 command orders). Context self-assessment: a large
+majority of the session's working context budget remained at handback.
 
 ## Range
 
-Review of `d5fe145f`..`HEAD`.
+Review of `a2361d9a`..`HEAD`.
 
 ## Commits
 
-### 46131302 F263 R4 C1a: copy round 4 block and bookkeeping payloads into .agent/authored/
+### 2e279c9f F263 R5 C1a: copy round 5 block, bookkeeping payloads and red-proof tool
 
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f263-r4-block.md | +211/-0 | Bookkeeping copy of this round's step block (R-0954 transport) |
-| .agent/authored/f263-r4-ledger.md | +2/-0 | Payload copy |
-| .agent/authored/f263-r4-decisions.md | +41/-0 | Payload copy |
-| .agent/authored/f263-r4-plan.md | +30/-0 | Payload copy |
+| .agent/authored/f263-r5-block.md | +184/-0 | Bookkeeping copy of this round's step block (R-0954 transport) |
+| .agent/authored/f263-r5-ledger.md | +2/-0 | Payload copy |
+| .agent/authored/f263-r5-decisions.md | +37/-0 | Payload copy |
+| .agent/authored/f263-r5-plan.md | +30/-0 | Payload copy |
+| .agent/authored/f263-r5-mutations.py | +86/-0 | Payload copy (G5 tool) |
 
-Measured insertions by `git show --numstat 46131302`: 284 (211+41+2+30),
-matching the block's stated formula "this block's line count plus 73"
-(211 + 73 = 284) exactly. Under the 500 cap.
+Measured insertions by `git show --numstat 2e279c9f`: 339 (184+37+2+86+30),
+matching the block's stated formula "this block's line count plus 155"
+(184 + 155 = 339) exactly. Under the 500 cap.
 
-### 09e59026 F263 R4 C1b: copy round 4 product payloads into .agent/authored/
-
-| Path | +/- | Reason |
-|---|---|---|
-| .agent/authored/f263-r4-product.diff | +185/-0 | Payload copy |
-| .agent/authored/f263-r4-absorb_cmd.py | +98/-0 | Payload copy |
-| .agent/authored/f263-r4-pins.diff | +65/-0 | Payload copy |
-
-Measured insertions by `git show --numstat 09e59026`: 348 (185+98+65),
-matching the block's expected 348 exactly.
-
-### aa15014e F263 R4 C1c: copy round 4 test payloads into .agent/authored/
+### 0dbc34f2 F263 R5 C1b: copy round 5 product payloads into .agent/authored/
 
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f263-r4-test_absorb_cmd.py | +167/-0 | Payload copy |
-| .agent/authored/f263-r4-mutations.py | +81/-0 | Payload copy (G5 tool) |
+| .agent/authored/f263-r5-product.diff | +218/-0 | Payload copy |
+| .agent/authored/f263-r5-test_human_change_in_run.py | +175/-0 | Payload copy |
 
-Measured insertions by `git show --numstat aa15014e`: 248 (167+81),
-matching the block's expected 248 exactly.
+Measured insertions by `git show --numstat 0dbc34f2`: 393 (218+175),
+matching the block's expected 393 exactly.
 
-### d0890e7f F263 R4 C2: book round 3's PASS and DECISION F263 D4
-
-| Path | +/- | Reason |
-|---|---|---|
-| .agent/decisions.md | +41/-0 | Append of decisions.md payload (DECISION F263 D4) |
-| .agent/live_review.md | +2/-0 | Append of ledger.md payload (round 3's PASS entry) |
-| .agent/plan.md | +8/-9 | Rewritten to the round-4 `plan.md` payload |
-
-Measured insertions by `git show --numstat d0890e7f`: `41 0
-.agent/decisions.md`, `2 0 .agent/live_review.md`, `8 9 .agent/plan.md`
-— matching the block's expected 41, 2, 8 exactly.
-
-### ec4ee4bc F263 R4 C3: add remedy absorb over the one absorb path
+### 6948a67d F263 R5 C2: book round 4's PASS and DECISION F263 D5
 
 | Path | +/- | Reason |
 |---|---|---|
-| apps/cli/command_catalog.py | +20/-2 | `git apply` of product.diff — `absorb` group, `VISIBLE_GROUP_ORDER` entry, `absorb.run` catalog entry |
-| apps/cli/commands/__init__.py | +2/-1 | `git apply` of product.diff — registers `absorb_cmd` in `collect_all_handlers` |
-| apps/cli/grouped.py | +3/-2 | `git apply` of product.diff — `absorb` in `_DEFAULT_COMMAND` and `_ALWAYS_INJECT` (bare form) |
-| packages/orchestration/human_change.py | +39/-0 | `git apply` of product.diff — `JobAbsorbOutcome`, `absorb_job` |
-| packages/orchestration/worktrees.py | +22/-0 | `git apply` of product.diff — `lock_is_held` |
-| tests/orchestration/import_reachability_allowlist.txt | +1/-0 | `git apply` of product.diff — `apps.cli.commands.absorb_cmd` allowlisted |
-| tests/test_command_catalog.py | +3/-1 | `git apply` of pins.diff — visible-group-order pin, group count 32 |
-| tests/cli/test_cli_ux.py | +6/-4 | `git apply` of pins.diff — `_USER_FACING_GROUPS`, D4 partition count 32 |
-| tests/cli/test_golden_path.py | +2/-1 | `git apply` of pins.diff — help-pinning docstring |
-| apps/cli/commands/absorb_cmd.py | +98/-0 | New file, copied whole from absorb_cmd.py payload |
-| tests/cli/test_absorb_cmd.py | +167/-0 | New file, copied whole from test_absorb_cmd.py payload |
+| .agent/decisions.md | +37/-0 | Append of decisions.md payload (DECISION F263 D5) |
+| .agent/live_review.md | +2/-0 | Append of ledger.md payload (round 4's PASS entry) |
+| .agent/plan.md | +9/-9 | Rewritten to the round-5 `plan.md` payload |
 
-Measured insertions by `git show --numstat ec4ee4bc`: 20, 2, 98, 3, 39,
-22, 167, 6, 2, 1, 3 — matching the block's expected 20/2/98/3/39/22/167/6/2/1/3
-exactly (363 total insertions, 11 deletions). `git apply --check` then
-`git apply` for product.diff: real exit 0, 0. `git apply --check` then
-`git apply` for pins.diff: real exit 0, 0. Both new files `git add`ed
-before commit — `relevant_untracked` reads 0 at G4.
+Measured insertions by `git show --numstat 6948a67d`: `37 0
+.agent/decisions.md`, `2 0 .agent/live_review.md`, `9 9 .agent/plan.md`
+— matching the block's expected 37, 2, 9 exactly.
 
-### (this commit) F263 R4 C4: rewrite handoff for round 4
+### 5f4ea374 F263 R5 C3: absorb human changes at every safe point of a git job's run
+
+| Path | +/- | Reason |
+|---|---|---|
+| packages/orchestration/pingpong_job.py | +115/-25 | `git apply` of product.diff — safe-point absorption at episode start, before/inside/after each task, drift guards gone for a git job, checks counted and timed via `_absorb_at_safe_point` |
+| tests/orchestration/test_human_change_in_run.py | +175/-0 | New file, copied whole from test_human_change_in_run.py payload |
+
+Measured insertions by `git show --numstat 5f4ea374`: 115, 175 —
+matching the block's expected 115/175 exactly (290 total insertions, 25
+deletions). `git apply --check` then `git apply` for product.diff: real
+exit 0, 0. New test file `git add`ed before commit.
+
+### (this commit) F263 R5 C4: rewrite handoff for round 5
 
 | Path | +/- | Reason |
 |---|---|---|
@@ -100,9 +83,9 @@ before commit — `relevant_untracked` reads 0 at G4.
 
 ## External actions
 
-- `git worktree add --detach .remedy-wt/f263-r4-mut ec4ee4bc` (at C3) for
+- `git worktree add --detach .remedy-wt/f263-r5-mut 5f4ea374` (at C3) for
   G5: real exit 0.
-- `git worktree remove --force .remedy-wt/f263-r4-mut`: real exit 0.
+- `git worktree remove --force .remedy-wt/f263-r5-mut`: real exit 0.
   `git worktree prune`: real exit 0.
 - No `gh pr create`, no merge, no branch deletion — none ordered, none
   taken.
@@ -113,62 +96,53 @@ before commit — `relevant_untracked` reads 0 at G4.
 ## Verification
 
 **G1 — transport**: every payload's lines/bytes/sha256 measured against
-the block's PAYLOADS table: all eight rows matched exactly (ledger.md
-2/2244, decisions.md 41/3115, plan.md 30/1163, product.diff 185/9570,
-absorb_cmd.py 98/4118, pins.diff 65/3094, test_absorb_cmd.py 167/6800,
-mutations.py 81/2936 — sha256 digests all equal to the table). Every
-committed `.agent/authored/f263-r4-*` blob read with `git show
-<commit>:<path>` compared byte-for-byte against its `.remedy-wt/` source:
-all nine pairs (the block plus the eight payloads) byte-identical = True.
+the block's PAYLOADS table: all six rows matched exactly (ledger.md
+2/2015, decisions.md 37/2897, plan.md 30/1163, mutations.py 86/3318,
+product.diff 218/10604, test_human_change_in_run.py 175/7082 — sha256
+digests all equal to the table). Every committed `.agent/authored/f263-r5-*`
+blob read with `git show <commit>:<path>` compared byte-for-byte against
+its `.remedy-wt/` source: all seven pairs (the block plus the six
+payloads) byte-identical = True, sha256 equal to the table in every case.
 
-**G2 — the booking**: pre-C2 `.agent/live_review.md` (377686 bytes) +
-ledger.md payload (2244 bytes) = 379930 bytes, matching `git show
-d0890e7f:.agent/live_review.md` sha256
-`1a669d064f7c6b410289bb7d7ea9ff0f3b5759c5631b150d72b4340f35c8108c`
-exactly. Pre-C2 `.agent/decisions.md` (1882987 bytes) + decisions.md
-payload (3115 bytes) = 1886102 bytes, matching sha256
-`d2f6f01249ee5cf5a398c827a6aec7ab12678f025b15fdc5a482d69e80e50fd6`
+**G2 — the booking**: pre-C2 `.agent/live_review.md` (379930 bytes) +
+ledger.md payload (2015 bytes) = 381945 bytes, matching `git show
+6948a67d:.agent/live_review.md` sha256
+`aec166cabaf5e3f9b046977a764f3fa348a298cd9691d5e8746f24693ed24856`
+exactly. Pre-C2 `.agent/decisions.md` (1886102 bytes) + decisions.md
+payload (2897 bytes) = 1888999 bytes, matching sha256
+`f7f52c3191ebe365bedeed1a0792903626dd3d3f84b3924318bb905ed099d21f`
 exactly. `.agent/plan.md` at C2 equals plan.md payload: 1163 bytes, sha256
-`11b32fa937b036ca348b8bd0472ea49a37cc522aac7ce3b832881750f9a4df7d` — all
+`9e262b13c87c1e2c7d7cfbd3b785344dc18a3ebb14124c74d8ea2c7e22a12a35` — all
 three match the block's reviewer-simulated table exactly. Open finding
 ids via `scripts/rotate_live_review.py`'s `open_finding_ids(text)` read
-against `.agent/live_review.md`: at base `d5fe145f`, count 28; at C2
-`d0890e7f`, count 28; both set differences empty — matching the block's
-reading of 28, 28, both empty exactly.
+against `.agent/live_review.md`: at base `a2361d9a`, count 28 (distinct
+28); at C2 `6948a67d`, count 28 (distinct 28); both set differences
+empty — matching the block's reading of 28, 28, both empty exactly.
 
-**G3 — the product bytes**: at C3 (`ec4ee4bc`), `git show ec4ee4bc:<path>`
-for all eleven paths in the block's table — bytes and sha256 both
-matched exactly:
+**G3 — the product bytes**: at C3 (`5f4ea374`), `git show 5f4ea374:<path>`
+for both paths in the block's table — bytes and sha256 both matched
+exactly:
 
 | path | bytes | sha256 | match |
 |---|---|---|---|
-| packages/orchestration/human_change.py | 13476 | a8d2e52ad1f901981c79bbf35b4b65ac63f0bca4862b26d2a44c9a4050edb6f2 | True |
-| packages/orchestration/worktrees.py | 32486 | f60edc5e59e7544dce3faff9b91d835677587e51270d61880c90da61359141db | True |
-| apps/cli/command_catalog.py | 111748 | ab3cb70b386def9d8ed6ab4a0ebe9d84c397095f9ec4c5fd437a2d22d46f82fa | True |
-| apps/cli/grouped.py | 28934 | b6bcf7dde1158b31783af3c33e8ba693eb4a132380493875141d408a68dac329 | True |
-| apps/cli/commands/__init__.py | 2065 | ac8cfcb63b70b50850bcbcf2256078caa6d757c487b9637295c4db330ded8c5a | True |
-| tests/orchestration/import_reachability_allowlist.txt | 9932 | fcb6cdc1dc8c3b9c0ce2548aaa1ba2349ef6eaa8caa70c28129f6c05439266e3 | True |
-| tests/test_command_catalog.py | 22526 | 1f03949b66afe54dfc2a31a2a62f2333e68030e8a5acf8a759e04fffa4047e30 | True |
-| tests/cli/test_cli_ux.py | 39149 | a74a39b3fdd97e8841ed86c459cfd9b505f87fd096938d8097965628f8eb82fe | True |
-| tests/cli/test_golden_path.py | 34675 | 633a0384d1fa63d56960870de63e8f3d1657c17b2425db58576906fc9733673d | True |
-| apps/cli/commands/absorb_cmd.py | 4118 | a96e0f27501a0abe0a76537f07069dfb9f4b4bb28a8b5a7e3f12cbc5bf367bd1 | True |
-| tests/cli/test_absorb_cmd.py | 6800 | 8ba2357b44e83fc8f122185300ad36dc576c08a7ade495ffc8039714dceab3b0 | True |
+| packages/orchestration/pingpong_job.py | 199695 | 2e987b2f1c452d49a30091af22e0d96c9df2696384afa3d8014a03ebec7e9568 | True |
+| tests/orchestration/test_human_change_in_run.py | 7082 | 22b6d8e9ebac1af5e89a39009401e8333902544abf37b1bb02d159846af19adf | True |
 
-All eleven pairs equal the block's table.
+Both pairs equal the block's table.
 
 **G4 — the tests and the lint, ALL PASSING**: in the primary checkout at
 C3, SERIALLY: `python3 -m pytest -q -p no:cacheprovider` over the block's
-exact 22-path selection (including `tests/cli/test_golden_path.py`, which
-the block's own command orders here, unlike the reviewer's disposable-
-worktree dry run which excluded it) → `1738 passed in 340.75s`, real exit
-0 (`PIPESTATUS[0]`). The reviewer's own run (without the golden path, in
-a disposable worktree) read `1694 passed, 2 skipped` at exit 0; my run
-read 0 skipped and 44 more passing tests — the golden path's own tests
-plus this primary checkout's environment (no external-binary probe
+exact 23-path selection (including `tests/cli/test_golden_path.py`, which
+the block's own G4 command orders here, unlike the reviewer's disposable-
+worktree dry run which explicitly excluded it) → `743 passed in 379.84s`,
+real exit 0 (`PIPESTATUS[0]`). The reviewer's own run (without the golden
+path, in a disposable worktree) read `699 passed, 2 skipped` at exit 0;
+my run read 0 skipped and 44 more passing tests — the golden path's own
+tests plus this primary checkout's environment (no external-binary probe
 skipped here that the reviewer's disposable worktree skipped) account for
 the delta; no failures either way, so this is reported as read, not
 treated as a red gate (the block orders "report what you read", as it did
-at round 3 for the identical pattern). Then `python3 -m ruff check .`
+at rounds 3 and 4 for the identical pattern). Then `python3 -m ruff check .`
 over the WHOLE repository from its root: `All checks passed!`, real exit
 0. `python3 -m apps.cli.main integrity check --json`: all five checks
 (`handler_import`, `live_review_verdict`, `plan_consistency`,
@@ -176,75 +150,75 @@ over the WHOLE repository from its root: `All checks passed!`, real exit
 `ok: true`, `passed: true`, real exit 0.
 
 **G5 — the red proofs, all matching**: `git worktree add --detach
-.remedy-wt/f263-r4-mut ec4ee4bc` real exit 0; `python3 -B
-.remedy-wt/f263-r4-payloads/mutations.py .remedy-wt/f263-r4-mut`, real
-exit 0 overall: `control_before` `11 passed` exit 0; `m1_running_job_rewritten`
-1 failed exit 1; `m2_lock_probe_never_sees_a_holder` 2 failed exit 1;
-`m3_rebase_leaves_the_ref` 1 failed exit 1; `m4_rebase_not_persisted` 2
-failed exit 1; `m5_every_repository_absorbed` 1 failed exit 1;
-`m6_job_option_ignored` 1 failed exit 1; `m7_ended_jobs_absorbed` 1 failed
-exit 1; `m8_bare_absorb_prints_help` 1 failed exit 1; `control_after` `11
-passed` exit 0; every `restored byte-identical` line `True` (8 of 8) —
-matching the block's table of 1/2/1/2/1/1/1/1 exactly. Then `git worktree
-remove --force .remedy-wt/f263-r4-mut` (real exit 0), `git worktree
-prune` (real exit 0); `git worktree list` after: primary checkout at
-`ec4ee4bc` plus the three `.remedy-wt/job-*` worktrees only (`09441a92`,
-`cc8696a3`, `03d435e5`) — no new worktree or branch left behind (R-0940).
+.remedy-wt/f263-r5-mut 5f4ea374` real exit 0; `python3 -B
+.remedy-wt/f263-r5-payloads/mutations.py .remedy-wt/f263-r5-mut a2361d9a`,
+real exit 0 overall: `control_before` `14 passed` exit 0; `old_runner`
+(pingpong_job.py restored to its `a2361d9a` bytes) 5 failed exit 1, every
+assertion line naming `target_repo_mutated_during_job` — the OLD
+behaviour, restored byte-identical True; `m1_the_drift_guard_back_for_git_jobs`
+5 failed exit 1; `m2_run_safe_points_do_not_check` 1 failed exit 1;
+`m3_checks_not_counted` 1 failed exit 1;
+`m4_a_failed_check_does_not_block_before_apply` 1 failed exit 1;
+`m5_an_old_job_gets_no_last_known_state` 1 failed exit 1;
+`m6_no_guard_record_for_a_git_job` 1 failed exit 1; `control_after` `14
+passed` exit 0; every `restored byte-identical` line `True` (7 of 7) —
+matching the block's table of 5(old)/5/1/1/1/1/1 exactly. Then `git
+worktree remove --force .remedy-wt/f263-r5-mut` (real exit 0), `git
+worktree prune` (real exit 0); `git worktree list` after: primary
+checkout at `5f4ea374` plus the three `.remedy-wt/job-*` worktrees only
+(`09441a92`, `cc8696a3`, `03d435e5`) — no new worktree or branch left
+behind (R-0940).
 
 ## Authored-text proofs
 
-- `.agent/authored/f263-r4-block.md` (C1a) == `.remedy-wt/f263-r4-block.md`: byte-identical True (15157 bytes, sha256 `f299d909e829501915e7d146540522cd878d3c1718df729f8441874beb678dee`).
-- `.agent/authored/f263-r4-ledger.md` (C1a) == `.remedy-wt/f263-r4-payloads/ledger.md`: byte-identical True (2244 bytes).
-- `.agent/authored/f263-r4-decisions.md` (C1a) == `.remedy-wt/f263-r4-payloads/decisions.md`: byte-identical True (3115 bytes).
-- `.agent/authored/f263-r4-plan.md` (C1a) == `.remedy-wt/f263-r4-payloads/plan.md`: byte-identical True (1163 bytes).
-- `.agent/authored/f263-r4-product.diff` (C1b) == `.remedy-wt/f263-r4-payloads/product.diff`: byte-identical True (9570 bytes).
-- `.agent/authored/f263-r4-absorb_cmd.py` (C1b) == `.remedy-wt/f263-r4-payloads/absorb_cmd.py`: byte-identical True (4118 bytes).
-- `.agent/authored/f263-r4-pins.diff` (C1b) == `.remedy-wt/f263-r4-payloads/pins.diff`: byte-identical True (3094 bytes).
-- `.agent/authored/f263-r4-test_absorb_cmd.py` (C1c) == `.remedy-wt/f263-r4-payloads/test_absorb_cmd.py`: byte-identical True (6800 bytes).
-- `.agent/authored/f263-r4-mutations.py` (C1c) == `.remedy-wt/f263-r4-payloads/mutations.py`: byte-identical True (2936 bytes).
-- APPLIED text: `product.diff` and `pins.diff` were each `git apply
-  --check`ed (exit 0) then `git apply`ed (exit 0) unedited, never
-  retyped; G3's post-apply sha256 matches against the block's table are
-  the disk-to-disk proof that the applied bytes equal the payload's
-  bytes. `absorb_cmd.py` and `test_absorb_cmd.py` were copied whole via
-  `shutil.copyfile` to their landing paths, then read back at C3 in G3 —
-  both byte-identical to their payloads.
+- `.agent/authored/f263-r5-block.md` (C1a) == `.remedy-wt/f263-r5-block.md`: byte-identical True (12994 bytes, sha256 `76eb1b55e626bf3b417816cfa8b4b5657c285ca45aefa9198b8924cb4bb0441e`).
+- `.agent/authored/f263-r5-ledger.md` (C1a) == `.remedy-wt/f263-r5-payloads/ledger.md`: byte-identical True (2015 bytes).
+- `.agent/authored/f263-r5-decisions.md` (C1a) == `.remedy-wt/f263-r5-payloads/decisions.md`: byte-identical True (2897 bytes).
+- `.agent/authored/f263-r5-plan.md` (C1a) == `.remedy-wt/f263-r5-payloads/plan.md`: byte-identical True (1163 bytes).
+- `.agent/authored/f263-r5-mutations.py` (C1a) == `.remedy-wt/f263-r5-payloads/mutations.py`: byte-identical True (3318 bytes).
+- `.agent/authored/f263-r5-product.diff` (C1b) == `.remedy-wt/f263-r5-payloads/product.diff`: byte-identical True (10604 bytes).
+- `.agent/authored/f263-r5-test_human_change_in_run.py` (C1b) == `.remedy-wt/f263-r5-payloads/test_human_change_in_run.py`: byte-identical True (7082 bytes).
+- APPLIED text: `product.diff` was `git apply --check`ed (exit 0) then
+  `git apply`ed (exit 0) unedited, never retyped; G3's post-apply sha256
+  match against the block's table is the disk-to-disk proof that the
+  applied bytes equal the payload's bytes. `test_human_change_in_run.py`
+  was copied whole via `shutil.copyfile` to its landing path, then read
+  back at C3 in G3 — byte-identical to its payload.
 
 ## Item-status table
 
 | Item | Status | Reason |
 |---|---|---|
-| C1a | done | 284 insertions, matches block formula (211+73) |
-| C1b | done | 348 insertions, matches block exactly |
-| C1c | done | 248 insertions, matches block exactly |
-| C2 | done | 41/2/8 insertions, matches block exactly; G2 fully passed |
-| C3 | done | 20/2/98/3/39/22/167/6/2/1/3 insertions, matches block exactly; G3 fully passed |
+| C1a | done | 339 insertions, matches block formula (184+155) |
+| C1b | done | 393 insertions, matches block exactly |
+| C2 | done | 37/2/9 insertions, matches block exactly; G2 fully passed |
+| C3 | done | 115/175 insertions, matches block exactly; G3 fully passed |
 | C4 | done | this handback |
 | G1 | done | all readings match |
 | G2 | done | all readings match; open-set 28 at base and at C2, both differences empty |
 | G3 | done | all readings match |
-| G4 | done | pytest 1738 passed, exit 0 (deviation from reviewer's 1694/2-skipped explained, not a red gate); ruff `All checks passed!` exit 0; integrity check all-pass exit 0 |
-| G5 | done | mutations.py: 1/2/1/2/1/1/1/1 failures exit 1, controls 11 passed exit 0, all 8 restores byte-identical |
-| T002 (`remedy absorb`) | done | command, catalog entry, help slot, bare form and pinned tests landed at C3; proved by G3 (bytes) and G5 (red proofs) |
+| G4 | done | pytest 743 passed, exit 0 (deviation from reviewer's 699/2-skipped explained, not a red gate); ruff `All checks passed!` exit 0; integrity check all-pass exit 0 |
+| G5 | done | mutations.py: old_runner 5 failed (OLD behaviour, target_repo_mutated_during_job), m1-m6 5/1/1/1/1/1 failures exit 1, controls 14 passed exit 0, all 7 restores byte-identical |
+| T003 run half | done | safe-point absorption at episode start, before/inside/after each task, drift guards gone for a git job, checks counted and timed; landed at C3; proved by G3 (bytes) and G5 (red proofs including the old-behaviour proof) |
 
 ## Deviations & assumptions
 
 None from the block's ordered commit sequence: bytes verified before use,
-the six-commit bundle landed in order C1a–C1b–C1c–C2–C3–C4, no payload
-was edited or retyped, G1 through G5 all ran and every reading matched
-the block's stated expectation. One reported-not-treated-as-deviation
-note: G4's pytest count read `1738 passed` (0 skipped) against the
-reviewer's disposable-worktree reading of `1694 passed, 2 skipped` —
-expected, since the block's own G4 command includes
-`tests/cli/test_golden_path.py` while the reviewer explicitly ran
-"WITHOUT the golden path"; no failures in either reading, and the block
-itself says "report what you read" rather than asserting the reviewer's
-count would recur (the identical pattern occurred at round 3). No other
-worktree, branch or stash was touched.
+the five-commit bundle landed in order C1a-C1b-C2-C3-C4, no payload was
+edited or retyped, G1 through G5 all ran and every reading matched the
+block's stated expectation. One reported-not-treated-as-deviation note:
+G4's pytest count read `743 passed` (0 skipped) against the reviewer's
+disposable-worktree reading of `699 passed, 2 skipped` — expected, since
+the block's own G4 command includes `tests/cli/test_golden_path.py` while
+the reviewer explicitly ran "WITHOUT the golden path"; no failures in
+either reading, and the block itself says "report what you read" rather
+than asserting the reviewer's count would recur (the identical pattern
+occurred at rounds 3 and 4). No other worktree, branch or stash was
+touched.
 
 ## Next
 
 Phase 1 rule 1 (read `.agent/STOP` from disk), then the review of round
-4, then T003 — absorption at every safe point of a run and before every
-apply, deleting the drift error it replaces. Open findings count: 28.
-Operator-questions count: 0.
+5, then T003's apply half — `job apply` and `do run --apply` absorbing
+before a single file is copied. Open findings count: 28. Operator-
+questions count: 0.
