@@ -19224,3 +19224,23 @@ after counts — which is a gate that cannot fail; or require blocks to state th
 round — which reverses the convention every handback of this workflow uses. HOW TO REVERSE:
 restore `check_open_set` in `packages/orchestration/block_lint.py` from `5f9e4725`; the two new
 tests in `tests/orchestration/test_block_lint.py` then go red.
+
+## DECISION F282 D3 — R-1005 is two defects, both repaired; R-1040 keeps a ledger reading only when it names a call (2026-09-23)
+
+R-1005's reproduction splits in two when it is run on this repository's own Python, 3.10. A
+deadline written `+00:00` fails the pre-publication round-trip because the manifest builder binds
+the job's budgets dict as it stands while the strict decoder returns the deadline in canonical
+UTC ending `Z`, so the two records never compare equal; and a deadline written `Z` — the form
+`JobBudgets.model_dump(mode="json")` itself produces — fails outright, because `fromisoformat`
+reads a trailing `Z` only from Python 3.11 on, so the decoder cannot read its own output. CHOSEN:
+repair both, in `packages/orchestration/run_manifest.py` — the decoder spells a trailing `Z` as
+`+00:00` before parsing, and the builder binds the budgets through `_decode_budgets_field`, the
+same function the reader applies, so the bound record is already in the form the round-trip
+returns. ALTERNATIVE CONSIDERED: stop normalizing in the decoder — rejected, because the
+canonical form is what makes two manifests of the same budgets hash alike, and it is the reader's
+contract, not the writer's. The test is parametrized over all three spellings the finding and
+this reading name, and each drives the real `run_job` to a persisted STOPPED state.
+
+R-1040's FIX clause is followed as written: a ledger answer that names no priced and no unpriced
+call leaves the persisted figures standing, and one that names at least one call replaces them,
+as before. HOW TO REVERSE either: restore the file from `59fa1bd8`; the new tests go red.

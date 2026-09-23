@@ -12,15 +12,15 @@ distinct id, and the feature file lists every one under a slice.
 
 ## Current Step
 
-ROUND 2 books round 1's PASS and R-0998's resolution, resolves T002's
-remaining ids by evidence — R-1009, R-1043, R-1044 and R-0880 — and lands
-T003: `remedy integrity block` counts the open set after the round from
-the ledger payloads a block names (R-1041, DECISION F282 D2).
+ROUND 3 books round 2's PASS and R-1041's resolution, and lands T004 and
+T005: `remedy job budget` keeps a recorded cost when the ledger names no
+call (R-1040), and a deadline stop writes its run manifest and finalizes
+(R-1005, DECISION F282 D3).
 
 ## Next Steps
 
-1. T004 and T005, the budget readings: R-1040 and R-1005.
-2. T006 to T011 in the feature file's order, several to a round.
+1. T006 to T008: R-1007, then R-1016, R-1027 and R-1035, then R-0999.
+2. T009 to T011: R-1015, R-1034 and R-1000.
 3. T012 to T018, then T019 in the closure's consolidation pass.
 4. The closure sequence, whose self-use run is R-1008's only proof.
 
