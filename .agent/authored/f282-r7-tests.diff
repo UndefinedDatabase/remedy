@@ -1,0 +1,122 @@
+diff --git a/tests/docs/test_bootstrap_reads_decisions_by_part.py b/tests/docs/test_bootstrap_reads_decisions_by_part.py
+new file mode 100644
+index 00000000..94f6d82f
+--- /dev/null
++++ b/tests/docs/test_bootstrap_reads_decisions_by_part.py
+@@ -0,0 +1,32 @@
++"""Session bootstrap reads `.agent/decisions.md` by part, never whole (R-1029).
++
++Both bootstrap texts — the self-drive protocol's Phase 0 and the planner prompt's §1 — say
++which part: the last five `## DECISION` entries and those the feature file or handoff names.
++"""
++from __future__ import annotations
++
++from pathlib import Path
++
++REPO_ROOT = Path(__file__).resolve().parents[2]
++
++
++def _section(path: str, start: str, end: str) -> str:
++    text = (REPO_ROOT / path).read_text(encoding="utf-8")
++    return text[text.index(start):text.index(end, text.index(start))]
++
++
++def _normalized(text: str) -> str:
++    return " ".join(text.split())
++
++
++def test_phase_0_reads_decisions_by_part():
++    phase0 = _normalized(_section("docs/agents/self_drive_protocol.md", "## Phase 0", "## Phase 1"))
++    assert "`.agent/decisions.md` is NEVER read whole at session start" in phase0
++    assert "last five `## DECISION` entries" in phase0
++    assert "the active feature file or the handoff names" in phase0
++
++
++def test_the_planner_bootstrap_reads_decisions_by_part():
++    bootstrap = _normalized(_section("docs/agents/planner_reviewer_prompt.md", "## 1. Bootstrap", "## 2."))
++    assert "`.agent/decisions.md` is never read whole" in bootstrap
++    assert "last five `## DECISION` entries" in bootstrap
+diff --git a/tests/ui_contracts/test_digest_mount.py b/tests/ui_contracts/test_digest_mount.py
+index 0544b508..7dcf46f2 100644
+--- a/tests/ui_contracts/test_digest_mount.py
++++ b/tests/ui_contracts/test_digest_mount.py
+@@ -194,15 +194,25 @@ class TestLastSeenIsReadBeforeItIsWritten:
+         # Scoped to the effect whose body calls writeLastSeen, so a stray
+         # second write elsewhere in the file cannot satisfy the check above
+         # by accident.
++        # R-0622: the lint that now parses this file requires the port among the
++        # dependencies, so the key is the job and a port built ONCE per mount — which
++        # keeps the effect running once per job, the property this guard exists for.
+         code = shell_code()
+         match = re.search(
+-            r"useEffect\(\s*\(\s*\)\s*=>\s*\{\s*digestPort\.writeLastSeen\(([^;]*)\);\s*\},\s*\[dashboard\.jobId\]\)",
++            r"useEffect\(\s*\(\s*\)\s*=>\s*\{\s*digestPort\.writeLastSeen\(([^;]*)\);\s*\},"
++            r"\s*\[digestPort,\s*dashboard\.jobId\]\)",
+             code,
+         )
+         assert match, (
+-            "no useEffect keyed on [dashboard.jobId] alone whose entire "
++            "no useEffect keyed on [digestPort, dashboard.jobId] whose entire "
+             "body is one call to digestPort.writeLastSeen(...) was found"
+         )
++        assert re.search(
++            r"const digestPort = useMemo\(\s*\(\)\s*=>\s*browserDigestVisibilityPort\("
++            r"\s*window\.localStorage\s*\),\s*\[\]\s*\)", code), (
++            "the port must be built once per mount (useMemo with no dependencies), or "
++            "keying the write effect on it would record 'last seen' on every render"
++        )
+ 
+ 
+ class TestStorageEdgeBindsTheRealLocalStorage:
+diff --git a/tests/ui_contracts/test_ui_lint.py b/tests/ui_contracts/test_ui_lint.py
+new file mode 100644
+index 00000000..99c61fde
+--- /dev/null
++++ b/tests/ui_contracts/test_ui_lint.py
+@@ -0,0 +1,46 @@
++"""`npm run lint` in `apps/ui` is a real gate: it parses TypeScript and exits 0 (R-0622).
++
++Until F282 the lint configuration set no TypeScript parser, so every file stopped at its first
++type annotation, the `react-hooks` rules never evaluated, and the run exited 1 on parse errors
++alone. This runs the app's OWN eslint binary, as `test_typescript_compiles` runs its own `tsc`,
++and skips only when the UI toolchain is absent (DECISION F083 D6). The probe below goes in on
++stdin under a file name inside `src/`, so the checkout is never written (R-0645).
++"""
++from __future__ import annotations
++
++import subprocess
++from pathlib import Path
++
++import pytest
++
++UI_ROOT = Path(__file__).resolve().parents[2] / "apps" / "ui"
++LOCAL_ESLINT = UI_ROOT / "node_modules" / ".bin" / "eslint"
++
++HOOK_DEFECT = (
++    'import { useEffect } from "react";\n'
++    "export function Probe({ id }: { id: string }): null {\n"
++    "  useEffect(() => { console.log(id); }, []);\n"
++    "  return null;\n"
++    "}\n"
++)
++
++
++def _eslint(*args: str, stdin: str | None = None) -> subprocess.CompletedProcess:
++    if not LOCAL_ESLINT.is_file():
++        pytest.skip(f"UI toolchain absent: {LOCAL_ESLINT.parent.parent} is missing; run `npm ci --prefix apps/ui`")
++    return subprocess.run([str(LOCAL_ESLINT), *args], cwd=str(UI_ROOT), capture_output=True, timeout=120,
++                          input=stdin.encode("utf-8") if stdin is not None else None)
++
++
++def test_the_ui_lint_passes_with_no_problem():
++    result = _eslint("src", "--max-warnings", "0")
++    assert result.returncode == 0, result.stdout.decode()[-4000:]
++
++
++def test_the_lint_parses_typescript_and_reaches_the_hook_rules():
++    """A lint that cannot parse the language passes nothing: a real hook defect must be seen."""
++    result = _eslint("--stdin", "--stdin-filename", "src/lintProbe.tsx", "--format", "json",
++                     stdin=HOOK_DEFECT)
++    out = result.stdout.decode()
++    assert "Parsing error" not in out, out
++    assert "react-hooks/exhaustive-deps" in out, out
