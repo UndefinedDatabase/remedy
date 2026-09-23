@@ -12,21 +12,18 @@ record, and the job re-bases onto it instead of failing on drift
 
 ## Current Step
 
-ROUND 1 claims F263, re-heads the finding ledger, records DECISION F263 D1,
-and lands T001's foundation: `packages/orchestration/human_change.py`, the
-target's last known state recorded on every git job behind its own
-checkpoint ref, and the certified human change record written before any
-re-base, with the tests and their red proofs.
+ROUND 2 books round 1's PASS, records DECISION F263 D2, and finishes T001:
+the job's evidence export carries every human change record, verifies each
+copy into `human_change_integrity.json`, and a record that does not verify
+blocks the final verifier and the review package's READY gate.
 
 ## Next Steps
 
-1. T001's second half: the record joins the job's exported evidence and its
-   verification, so a package carries it like any other artifact.
-2. T002, `remedy absorb`: the explicit command over the same `absorb` path,
-   with its catalog entry, help text and re-base of the job's state.
-3. T003, absorption at every safe point and before every apply, deleting
+1. T002, `remedy absorb`: the explicit command over the same `absorb`
+   path, with its catalog entry, help text and re-base of the job's state.
+2. T003, absorption at every safe point and before every apply, deleting
    the drift error it replaces, with the demo case end to end.
-4. The closure sequence, with the one full-suite run.
+3. The closure sequence, with the one full-suite run.
 
 ## Risks
 
