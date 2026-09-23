@@ -12,17 +12,17 @@ distinct id, and the feature file lists every one under a slice.
 
 ## Current Step
 
-ROUND 3 books round 2's PASS and R-1041's resolution, and lands T004 and
-T005: `remedy job budget` keeps a recorded cost when the ledger names no
-call (R-1040), and a deadline stop writes its run manifest and finalizes
-(R-1005, DECISION F282 D3).
+ROUND 4 books round 3's PASS and the resolutions of R-1040 and R-1005, and
+lands T006 and T007: a stopped self-use task keeps the reviewer's last
+verdict and the default call ceiling clears the loop (R-1007), and a
+timed-out provider call ends `provider_timeout` (R-1016, R-1027, R-1035,
+DECISION F282 D4).
 
 ## Next Steps
 
-1. T006 to T008: R-1007, then R-1016, R-1027 and R-1035, then R-0999.
-2. T009 to T011: R-1015, R-1034 and R-1000.
-3. T012 to T018, then T019 in the closure's consolidation pass.
-4. The closure sequence, whose self-use run is R-1008's only proof.
+1. T008 to T011: R-0999, R-1015, R-1034 and R-1000.
+2. T012 to T018, then T019 in the closure's consolidation pass.
+3. The closure sequence, whose self-use run is R-1008's only proof.
 
 ## Risks
 
