@@ -19068,3 +19068,64 @@ from 2026-06-17 00:15 — the coverage artifact is by far the largest thing in t
 listed here for the operator rather than moved, because it is neither scratch nor a package and
 removing it is not this amendment's call. REVERSE by moving each of the four back to the
 repository root.
+
+## DECISION amend0923-selfuse-write D5 — root leftovers are REFUSED by the packer, not warned about, and the integrity gate catches them every round (2026-09-23)
+
+The operator ruled on 2026-09-23 that reviewer scratch, deprecated root evidence directories and
+stray archives must never be packaged NOR tolerated at the repository root. R-0829 measured what
+tolerating them cost: `unzip -Z1` counts the same 65 files of F110-era scratch in each of three
+consecutive accepted packages. THREE CHANGES CARRY THE RULING. First, the detritus gate at the top
+of `scripts/make_review_zip.sh`, which already refused `*_WAS_HERE.txt`, now also matches a depth-1
+`remedy-review-*` directory, a depth-1 `remedy-job-evidence-*` directory and a depth-1 `*.zip`
+file, with the same behaviour it always had: print the names, exit 1, before anything is read.
+Second, the source file list is filtered through `git check-ignore`, so no path git ignores can be
+packaged even if some future shape escapes the refusal — a list of `-prune` paths must be extended
+every time a new ignored directory appears, and asking git cannot go stale. Third,
+`_check_repo_root_hygiene` in `packages/orchestration/integrity_gate.py` fails on the same four
+shapes, so a leftover is caught in the round that created it rather than in an accepted package
+weeks later; a package is built once per closure and `remedy integrity check` runs every round.
+
+TWO EXCEPTIONS ARE DELIBERATE AND BOTH ARE NARROW. (a) When the configured output directory IS the
+repository root, the `*.zip` shape alone is dropped from the match. `tests/conftest.py` sets
+`REMEDY_REVIEW_DIR="."` so every mini repository receives its own package, and a packer that
+refused the archive it had just written could not run twice in the same tree; a real operator run
+publishes to `~/Repos/remedy-history/zips`, where the shape stays live. The two directory shapes
+are refused either way. (b) A `remedy-job-evidence-*` directory that THIS BUILD was explicitly
+handed through `--evidence-dir` is spared, because a directory the operator named as the build's
+INPUT is not a leftover; refusing it would make the flag unusable rather than enforce the ruling,
+which is about scratch nobody selected. Every other such directory at the root is still refused,
+which is exactly the deprecated auto-selection this ruling targets.
+
+TEN TESTS CHANGED, and every one of them changed because the DECISION moved, never because an
+assertion was weakened — each now asserts a refusal where it used to assert tolerance, and the two
+that merely used a root directory as a convenient fixture keep their original subject with the
+fixture moved. In `tests/orchestration/test_review_zip_hygiene.py`:
+`test_single_root_evidence_dir_is_ignored_with_warning` became
+`test_single_root_evidence_dir_is_refused`;
+`test_invalid_root_dirs_still_create_a_code_snapshot_zip` became
+`test_invalid_root_dirs_are_refused_rather_than_snapshotted`; `test_stale_dirs_not_in_zip` became
+`test_stale_dirs_are_refused_not_merely_left_out`;
+`test_manifest_has_no_current_evidence_for_root_dirs` became
+`test_root_dirs_never_reach_a_manifest_because_they_are_refused`, and its original assertion —
+that a manifest never claims evidence the package does not carry — is preserved on a reachable
+input as the new `test_a_clean_repo_with_no_evidence_states_no_current_evidence`;
+`test_ignored_root_dirs_are_reported_with_remedies` became
+`test_refused_root_dirs_are_reported_with_the_places_they_belong`;
+`test_root_dirs_are_counted_as_ignored_not_as_candidates` became
+`test_root_dirs_are_not_candidates_and_are_now_refused_outright`; and
+`test_legacy_root_evidence_is_ignored_with_warning` became
+`test_legacy_root_evidence_is_refused`. Two kept their names and their subjects with the sibling
+bundle moved out of the root, where a second bundle may still legitimately live:
+`test_explicit_valid_override_wins` and `test_unselected_evidence_not_in_zip`. One got STRONGER:
+`test_evidence_under_current_prefix` now selects its bundle explicitly, so the prefix rule is
+measured over a non-empty set of evidence members where the old form passed vacuously over zero.
+The capability those root-sibling tests covered — an explicit selection beating a newer bundle —
+is still held on the path that still exists, the `.data/` evidence index, by
+`TestIndexedEvidenceSelection::test_explicit_job_id_selects_exactly_that_job` and
+`test_no_args_select_newest_aligned_job_on_current_branch`.
+
+The now-unreachable "deprecated remedy-job-evidence-* dirs — IGNORED" warning further down the
+script is KEPT, so the script stays idempotent if the gate is ever relaxed. REVERSE by restoring
+the four-line `DETRITUS` find, deleting the `git check-ignore` filter block, deleting
+`_check_repo_root_hygiene` and its registration, and restoring the ten tests from git history at
+`5e32f7ab`.
