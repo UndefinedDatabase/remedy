@@ -17,9 +17,11 @@ three older findings carry a new measured sentence; the self-use runner
 asks for a write tool and ten minutes per call, an order file may declare
 its own budget, the product default for the builder's write mode moved,
 the four root leftovers are moved out, and the packer and the integrity
-gate both refuse them now. What remains is Part 5: the gate selection,
-`ruff`, `remedy integrity check`, one real package with its member check,
-the `Done: R-0829` paragraph, the pull request and the merge.
+gate both refuse them now. Part 5's gates are green — 2505 passed on the
+ordered selection, `ruff check .` clean, `integrity check` 6 of 6 with the
+new check passing — one real package is built and its 5081 members carry
+no leftover and no git-ignored path, and R-0829 is closed. What remains is
+the pull request, hosted CI and the merge.
 
 ## Next Steps
 
