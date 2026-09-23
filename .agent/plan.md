@@ -11,15 +11,16 @@ checklist items a machine can check (`docs/roadmap/features/T2_F279.md`).
 
 ## Current Step
 
-ROUND 5 books round 4's PASS, records DECISION F279 D5 with the feature
-file's amendment, and lands T003: `remedy integrity block <path>` lints a
-step block against items 1, 3, 10, 24, 30, 31 and 37 of the reviewer's
-checklist, and a guard holds every rule to a live item and to a sentence
-that item contains. T001 and T002 are complete.
+ROUND 6 books round 5's PASS, records DECISION F279 D6, and lands T004's
+report half: `remedy doctor toolchain` shows each pinned tool's installed,
+pinned and newest version, and a test holds the CI matrix to exactly two
+Python versions. T001, T002 and T003 are complete.
 
 ## Next Steps
 
-1. T004, the toolchain refresh order and `remedy doctor toolchain`.
+1. T004's order half: `docs/orders/toolchain-refresh.md`, a docs test
+   pinning its section headings, and the self-use generator minting an item
+   from it no more than once every 14 days.
 2. The closure sequence, with the one full-suite run.
 
 ## Risks

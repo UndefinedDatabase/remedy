@@ -18649,3 +18649,31 @@ REVERSE by deleting this paragraph, `packages/orchestration/block_lint.py`,
 `tests/orchestration/test_block_lint.py`, the `integrity.block` catalog entry and handler, and the
 module's line in `tests/orchestration/import_reachability_allowlist.txt`, and by restoring T003's
 acceptance line in `docs/roadmap/features/T2_F279.md` from git history at `182e7ea0`.
+
+DECISION F279 D6 (2026-09-23, round 6) — `remedy doctor toolchain` REPORTS THE RUNTIME
+DEPENDENCIES AND THE `dev` EXTRA, ASKS THE PACKAGE INDEX ONLY WHEN ALLOWED, AND NEVER GUESSES.
+
+CONTEXT. T004 orders a report of each pinned tool's installed, pinned and newest version, the
+newest "network permitting; unknown offline, never 0". `remedy doctor core` promises no network.
+Measured by the reviewer at `86e12317` in its own shell: installed `psutil` 5.9.0 against a pin of
+7.2.2, `pytest` 9.0.3 against 9.1.1 and `mypy` 2.1.0 against 2.3.1, while the package index names
+`ruff` 0.16.8 against the pinned 0.15.17 — the drift the report exists to show.
+
+CHOSEN. (1) The tools reported are Remedy's own dependencies and its `dev` extra as
+`pyproject.toml` declares them, the set T004's refresh order raises; the `ollama` client extra is
+pinned for CI but is not a tool the refresh order moves. (2) `remedy doctor toolchain` is a new
+command beside `doctor core`, which keeps its no-network promise; `--offline` skips the index,
+and any fetch that fails, times out after five seconds or answers nothing reads "unknown". (3)
+The report is advisory and always exits 0: a drifted developer environment is information, not
+a failure. (4) `packages/orchestration/toolchain.py` holds the report and joins the entry points'
+import closure, so its line is added to `tests/orchestration/import_reachability_allowlist.txt`.
+(5) `tests/orchestration/test_ci_workflow.py` asserts the matrix names exactly two versions, the
+first being the floor `requires-python` promises.
+
+ALTERNATIVES. Fold the report into `doctor core` — rejected: that command's description promises
+no network. Report "0" or leave the column out when offline — rejected: T004 says unknown.
+
+REVERSE by deleting this paragraph, `packages/orchestration/toolchain.py`,
+`tests/orchestration/test_toolchain.py`, the `doctor.toolchain` catalog entry and handler, the
+module's allowlist line, its name in the handler-set test of `tests/cli/test_worker_facade_cmd.py`,
+and the matrix test in `tests/orchestration/test_ci_workflow.py`.
