@@ -550,6 +550,15 @@ def write_tree(handle: WorktreeHandle) -> str:
     that ``.gitignore`` matches stays in the snapshot; ``git add -A`` into an empty
     index skips every ignored path, tracked or not.
     """
+    return write_tree_at(handle.path)
+
+
+def write_tree_at(path: str | Path) -> str:
+    """``write_tree`` for any git checkout, a job worktree or the target itself.
+
+    F263 T001 takes the TARGET checkout's tree with it, which is why the body
+    lives here and not behind a ``WorktreeHandle``: the target has no handle.
+    """
     import tempfile
 
     fd, tmp = tempfile.mkstemp(prefix="remedy-index-")
@@ -558,19 +567,19 @@ def write_tree(handle: WorktreeHandle) -> str:
     env = {**os.environ, "GIT_INDEX_FILE": tmp}
     try:
         proc = subprocess.run(
-            ["git", "read-tree", "HEAD"], cwd=handle.path, env=env,
+            ["git", "read-tree", "HEAD"], cwd=str(path), env=env,
             capture_output=True, text=True, timeout=60,
         )
         if proc.returncode != 0:
             raise WorktreeError(f"git read-tree for tree snapshot failed: {proc.stderr[:200]}")
         proc = subprocess.run(
-            ["git", "add", "-A", "."], cwd=handle.path, env=env,
+            ["git", "add", "-A", "."], cwd=str(path), env=env,
             capture_output=True, text=True, timeout=120,
         )
         if proc.returncode != 0:
             raise WorktreeError(f"git add for tree snapshot failed: {proc.stderr[:200]}")
         proc = subprocess.run(
-            ["git", "write-tree"], cwd=handle.path, env=env,
+            ["git", "write-tree"], cwd=str(path), env=env,
             capture_output=True, text=True, timeout=60,
         )
         if proc.returncode != 0:

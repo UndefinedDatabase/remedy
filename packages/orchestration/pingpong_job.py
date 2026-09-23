@@ -407,6 +407,9 @@ class JobPlan:
     result_diff_error: str = ""
     job_initial_tree: str = ""            # tree of the workspace before task 1
     job_initial_tree_ref: str = ""        # checkpoint ref keeping that tree alive
+    # F263 T001: the TARGET checkout's last known state (`human_change.TargetState` plus the
+    # checkpoint ref keeping its tree alive). A human change is measured against it.
+    target_last_known: dict | None = None
     # F006 hand-off coverage: the root diff must be EXACTLY the reviewed task work.
     root_changed_files: list[str] = field(default_factory=list)
     reviewed_task_files: list[str] = field(default_factory=list)
@@ -861,6 +864,7 @@ def _export_job(job: JobPlan) -> dict[str, Any]:
         },
         "job_initial_tree": job.job_initial_tree,
         "job_initial_tree_ref": job.job_initial_tree_ref,
+        "target_last_known": job.target_last_known,
         # F011: the last stop episode. Absent from every job file written before F011, and
         # absent from a job that was never stopped — both load as "no stop", not as an error.
         "stop": {
@@ -974,6 +978,7 @@ def _import_job(data: dict[str, Any]) -> JobPlan:
         result_diff_error=(data.get("worktree") or {}).get("result_diff_error", ""),
         job_initial_tree=data.get("job_initial_tree", ""),
         job_initial_tree_ref=data.get("job_initial_tree_ref", ""),
+        target_last_known=data.get("target_last_known") or None,
         handoff_coverage_verdict=(data.get("handoff_coverage") or {}).get("verdict", ""),
         root_changed_files=(data.get("handoff_coverage") or {}).get("root_changed_files", []),
         reviewed_task_files=(data.get("handoff_coverage") or {}).get("reviewed_task_files", []),
@@ -1244,6 +1249,7 @@ def _create_job_workspace(job: JobPlan) -> tuple[str, Any]:
     Returns ``(workspace_path, handle)``; ``handle`` is None only for the non-git
     copy fallback.
     """
+    from packages.orchestration import human_change as HC
     from packages.orchestration import worktrees as W
 
     if not W.is_git_repo(job.repo_path):
@@ -1262,6 +1268,12 @@ def _create_job_workspace(job: JobPlan) -> tuple[str, Any]:
     job.job_initial_tree_ref = W.checkpoint_ref(
         job_worktree_id(job.job_id), "job-initial")
     W.set_checkpoint_ref(job.repo_path, job.job_initial_tree_ref, job.job_initial_tree)
+    # F263 T001: the target's last known state. Its ref is NOT one `_drop_checkpoint_refs`
+    # drops, because a human change is measured against this tree after the run ends too.
+    state = HC.capture_target_state(job.repo_path)
+    ref = W.checkpoint_ref(job_worktree_id(job.job_id), HC.LAST_KNOWN_REF_NAME)
+    W.set_checkpoint_ref(job.repo_path, ref, state.tree)
+    job.target_last_known = {**state.to_dict(), "ref": ref}
     return handle.path, handle
 
 

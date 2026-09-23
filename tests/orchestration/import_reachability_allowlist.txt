@@ -133,6 +133,7 @@ packages.orchestration.fresh_evidence_gate
 packages.orchestration.git_status
 packages.orchestration.guidance
 packages.orchestration.handoff
+packages.orchestration.human_change
 packages.orchestration.hunk_approval
 packages.orchestration.hunk_decision_record
 packages.orchestration.hunk_identity
