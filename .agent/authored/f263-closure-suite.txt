@@ -1,0 +1,22 @@
+F263 R7 C6 — the feature's ONE full suite (amend0917-throughput rule 1)
+
+Command: python3 -m pytest -n auto -q
+Real exit code: 1
+Summary line: 1 failed, 18692 passed, 20 skipped, 1 warning in 346.85s (0:05:46)
+
+Bad node ids (full list, 1 of them):
+- tests/orchestration/test_run_manifest_logical_identity.py::TestTwoRealRunsShareLogicalIdentity::test_different_execution_identities_same_logical_hash
+
+Failure detail (from the transcript):
+AssertionError: assert 'e7db56a1f52ca71054fa8b132d3ba751409dd2284271c8fbc8cea1adc8837583' == 'a3614acc6ae0236918c6ac5ac1cba562be7a23a199910be058f8a537928aa21c'
+at tests/orchestration/test_run_manifest_logical_identity.py:65, in
+test_different_execution_identities_same_logical_hash: two real runs of
+the same job over the same input are asserted to share one
+logical_input_sha256(), and did not.
+
+Closure precondition 7 check: neither
+tests/orchestration/test_import_reachability.py nor
+tests/test_no_orphan_modules.py holds a bad node id in this run.
+
+Log written to (sandbox refused ~/remedy-gate-scratch/, see handoff
+Deviations): .remedy-wt/f263-r7-worker/f263-r7-full-suite.log
