@@ -2331,9 +2331,19 @@ def run_job(
         max_rounds, ec.max_rounds if ec else None, 3)
     test_command, test_cmd_src = _resolve_cfg(
         test_command, ec.test_command if ec else None, "")
+    # DECISION amend0923-selfuse-write D3, repairing R-1043: the BUILDER's
+    # product default is "allowed-tools", not "none". A builder with no write
+    # tool cannot change a file, so three consecutive self-use closures — F277,
+    # F283 and F278 — recorded `claude_cli_write_mode: none` with source
+    # `default` and returned an empty diff by construction. The builder works in
+    # an isolated worktree and the approval gate in job_apply.py still stands
+    # between that worktree and the branch, so this widens nothing that was not
+    # already gated. THE REVIEWER IS NOT AFFECTED: its "none" is hard-coded in
+    # pingpong_loop._create_provider_with_cwd and _build_provider_evidence, and
+    # a reviewer that can edit what it reviews can make its verdict true.
     claude_cli_write_mode, write_mode_src = _resolve_cfg(
         claude_cli_write_mode,
-        ec.claude_cli_write_mode if ec else None, "none")
+        ec.claude_cli_write_mode if ec else None, "allowed-tools")
 
     if repair_rounds is not None:
         rr_src = repair_rounds_source or "cli"

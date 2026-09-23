@@ -2153,6 +2153,27 @@ class TestWriteModeContinuation:
         assert result2.execution_config.claude_cli_write_mode == "none"
         assert result2.execution_config.claude_cli_write_mode_source == "cli"
 
+    def test_the_product_default_gives_the_builder_a_write_tool(
+        self, isolate_data_root, demo_repo
+    ):
+        """DECISION amend0923-selfuse-write D3, repairing R-1043.
+
+        A builder with no write tool cannot change a file, so a job run with
+        no `--claude-cli-write-mode` produced an empty diff by construction.
+        The default is now `allowed-tools`: the builder works in an isolated
+        worktree and the approval gate in job_apply.py still stands between
+        that worktree and the branch, so nothing ungated is reachable.
+        """
+        job = parse_job_file(_TWO_TASK_JOB, str(demo_repo))
+        result = run_job(
+            job.job_id,
+            builder_provider=_pass_provider(),
+            reviewer_provider=_pass_provider(),
+            max_tasks=1,
+        )
+        assert result.execution_config.claude_cli_write_mode == "allowed-tools"
+        assert result.execution_config.claude_cli_write_mode_source == "default"
+
 
 # ---------------------------------------------------------------------------
 # Step 4874 — Execution config source/audit fields

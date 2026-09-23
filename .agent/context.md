@@ -32,6 +32,9 @@ before the order file declared a budget.
   decision changing, not the assertion weakening.
 - Every judgment call is a dated, reversible `DECISION
   amend0923-selfuse-write D<n>` paragraph in `.agent/decisions.md`.
+- Resource safety binds here as everywhere: never two pytest processes
+  alive at once, every long pytest run bounded by a timeout, and no
+  `pkill -f` pattern that could match the running shell itself.
 
 ## Steps
 The item-status table lives in the handback at

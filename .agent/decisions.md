@@ -19018,3 +19018,53 @@ rather than authored. THE RULING: the queue file is left exactly as it is. The n
 the generator appends copies the order file as it then stands and therefore carries the `Budget:`
 line automatically, with no hand edit anywhere. REVERSE by deleting this paragraph; nothing on disk
 changes either way.
+
+## DECISION amend0923-selfuse-write D3 — the BUILDER's product default for `--claude-cli-write-mode` becomes `allowed-tools`; the reviewer's stays `none` (2026-09-23)
+
+`_resolve_cfg` in `packages/orchestration/pingpong_job.py` answered `"none"` when nothing chose a
+write mode, so every `remedy do run` and `remedy job run` that did not pass the flag started its
+claude-cli builder with NO WRITE TOOL. That is the cause of R-1043: three consecutive self-use
+closures — F277's job `86f628f5e4fb4e0c`, F283's `129b3ad7206d4f8d` and F278's
+`e7268925db3a4831` — each recorded `claude_cli_write_mode: none` with source `default`, and a
+builder that cannot write returns an empty diff by construction. The default is now
+`"allowed-tools"`. WHY THAT IS SAFE AND NOT A WIDENING OF ANYTHING: the builder does not work in
+the operator's checkout. It works in an isolated worktree under `.remedy-wt/` that the job creates
+for it, and `packages/orchestration/job_apply.py` still refuses to apply anything without the
+explicit `--approve` barrier, so nothing the builder writes reaches a branch without a human. THE
+REVIEWER IS NOT TOUCHED AND MUST NOT BE: `_create_provider_with_cwd` and `_build_provider_evidence`
+in `packages/orchestration/pingpong_loop.py` hard-code the reviewer at `"none"`, because a reviewer
+that can edit the tree it is reviewing can make its own verdict true, which is the one thing the
+two-role split exists to prevent. That hard-coding is now pinned by a test of its own. THE HELP
+TEXT MOVED WITH THE DEFAULT: `--claude-cli-write-mode` in `apps/cli/command_catalog.py` reads
+"Claude CLI write mode for the BUILDER: none, allowed-tools, dangerous-skip (default:
+allowed-tools, persisted on continuation). The reviewer never writes". NO DOCUMENT UNDER `docs/`
+stated the old default; `grep -rn "default: none" docs/` returns nothing. THE MEASURED BLAST
+RADIUS IS ZERO: `python3 -m pytest -q -n 4 tests/orchestration/ tests/cli/ tests/docs/` reads
+`14040 passed, 7 skipped` at exit 0 with the new default, so NO existing test pinned the old one
+and the list of tests this decision changed is empty. The amendment's ceiling of fifteen reds is
+not approached. REVERSE by putting `"none"` back as the third argument of that one `_resolve_cfg`
+call, restoring the help string, and deleting
+`TestWriteModeContinuation::test_the_product_default_gives_the_builder_a_write_tool`.
+
+## DECISION amend0923-selfuse-write D4 — four leftovers were MOVED out of the repository root, none deleted (2026-09-23)
+
+The repository root held reviewer scratch, a deprecated evidence directory and a finished package.
+Nothing was deleted; every one was moved, and each move is reversible by running it backwards.
+THE FOUR MOVES, source then destination, all outside git and therefore in no commit:
+`remedy-review-r9-scratch/` to `~/Repos/remedy-history/attic/2026-09-23/remedy-review-r9-scratch`;
+`remedy-review-r10-scratch/` to `~/Repos/remedy-history/attic/2026-09-23/remedy-review-r10-scratch`;
+`remedy-job-evidence-f112-closure/` to
+`~/Repos/remedy-history/attic/2026-09-23/remedy-job-evidence-f112-closure`; and
+`remedy-review-20260823-135731-READY_FOR_REVIEW.zip` to
+`~/Repos/remedy-history/zips/remedy-review-20260823-135731-READY_FOR_REVIEW.zip`, which is where
+finished packages live and where no file of that name already existed, so no SHA-256 comparison was
+needed and no `.dup` copy was made. No `*_WAS_HERE.txt` file existed to move. THE IGNORED ROOT
+ENTRIES THAT STAY, each named here rather than touched, because none of them is reviewer detritus:
+`.data/`, `.remedy-wt/`, `node_modules/` and the cache directories `.mypy_cache/`, `.pytest_cache/`,
+`.ruff_cache/` and `__pycache__/` are all named exceptions; `.brain/` is 1.2 MB last modified
+2026-09-08 11:26; `.claude/settings.local.json` is 9025 bytes last modified 2026-07-09 13:23; and
+`.coverage` is 436084736 bytes last modified 2026-09-12 07:13 with `.coverage_reports/` beside it
+from 2026-06-17 00:15 — the coverage artifact is by far the largest thing in the checkout and is
+listed here for the operator rather than moved, because it is neither scratch nor a package and
+removing it is not this amendment's call. REVERSE by moving each of the four back to the
+repository root.
