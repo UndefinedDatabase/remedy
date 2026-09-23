@@ -194,14 +194,24 @@ class TestLastSeenIsReadBeforeItIsWritten:
         # Scoped to the effect whose body calls writeLastSeen, so a stray
         # second write elsewhere in the file cannot satisfy the check above
         # by accident.
+        # R-0622: the lint that now parses this file requires the port among the
+        # dependencies, so the key is the job and a port built ONCE per mount — which
+        # keeps the effect running once per job, the property this guard exists for.
         code = shell_code()
         match = re.search(
-            r"useEffect\(\s*\(\s*\)\s*=>\s*\{\s*digestPort\.writeLastSeen\(([^;]*)\);\s*\},\s*\[dashboard\.jobId\]\)",
+            r"useEffect\(\s*\(\s*\)\s*=>\s*\{\s*digestPort\.writeLastSeen\(([^;]*)\);\s*\},"
+            r"\s*\[digestPort,\s*dashboard\.jobId\]\)",
             code,
         )
         assert match, (
-            "no useEffect keyed on [dashboard.jobId] alone whose entire "
+            "no useEffect keyed on [digestPort, dashboard.jobId] whose entire "
             "body is one call to digestPort.writeLastSeen(...) was found"
+        )
+        assert re.search(
+            r"const digestPort = useMemo\(\s*\(\)\s*=>\s*browserDigestVisibilityPort\("
+            r"\s*window\.localStorage\s*\),\s*\[\]\s*\)", code), (
+            "the port must be built once per mount (useMemo with no dependencies), or "
+            "keying the write effect on it would record 'last seen' on every render"
         )
 
 
