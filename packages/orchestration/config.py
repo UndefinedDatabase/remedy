@@ -271,6 +271,169 @@ _CONFIG_KEY_SPECS: tuple[ConfigKeySpec, ...] = (
         default=False,
         env_only=True,
     ),
+    # F279 T001 (DECISION F279 D2): every REMEDY_ name production code reads is registered
+    # here, so the entries below are the env-only variables that were read before they were
+    # listed. tests/orchestration/test_env_registry.py holds the line.
+    ConfigKeySpec(
+        key="agent_dir",
+        env_var="REMEDY_AGENT_DIR",
+        description=(
+            "Directory of the .agent state files the self-dogfood inspection reads; the "
+            "inspection also sets it for its own children (env-only)"
+        ),
+        value_type=str,
+        default=".agent",
+        env_only=True,
+    ),
+    ConfigKeySpec(
+        key="claude_planner.model",
+        env_var="REMEDY_CLAUDE_PLANNER_MODEL",
+        description=(
+            "Model for the Claude CLI planner; beats planner.model and the alias table's "
+            "default (env-only)"
+        ),
+        value_type=str,
+        default=None,
+        env_only=True,
+    ),
+    ConfigKeySpec(
+        key="claude_planner.timeout_seconds",
+        env_var="REMEDY_CLAUDE_PLANNER_TIMEOUT",
+        description=(
+            "Per-call wall timeout of the Claude CLI planner, in whole seconds (env-only)"
+        ),
+        value_type=int,
+        default=300,
+        env_only=True,
+    ),
+    ConfigKeySpec(
+        key="planner.freetext",
+        env_var="REMEDY_PLANNER_FREETEXT",
+        description=(
+            "Legacy free-text planner parsing instead of the structured plan schema "
+            "(env-only flag)"
+        ),
+        value_type=bool,
+        default=False,
+        env_only=True,
+    ),
+    ConfigKeySpec(
+        key="reviewer.freetext",
+        env_var="REMEDY_REVIEWER_FREETEXT",
+        description=(
+            "Legacy free-text reviewer parsing instead of the structured review schema "
+            "(env-only flag)"
+        ),
+        value_type=bool,
+        default=False,
+        env_only=True,
+    ),
+    ConfigKeySpec(
+        key="project",
+        env_var="REMEDY_PROJECT",
+        description=(
+            "Registered project a command acts on, as UUID or slug, before cwd "
+            "autodetection (env-only)"
+        ),
+        value_type=str,
+        default=None,
+        env_only=True,
+    ),
+    ConfigKeySpec(
+        key="tests.runner_timeout_seconds",
+        env_var="REMEDY_PYTEST_TIMEOUT_SEC",
+        description=(
+            "Wall budget of one scripts/remedy_pytest_runner.py run, which every CI stage "
+            "goes through; a different budget from tests.pytest_timeout_seconds (env-only)"
+        ),
+        value_type=int,
+        default=600,
+        env_only=True,
+    ),
+    ConfigKeySpec(
+        key="tests.runner_python",
+        env_var="REMEDY_PYTHON",
+        description=(
+            "Python interpreter scripts/remedy_pytest_runner.py runs pytest under; the "
+            "runner's own interpreter when unset (env-only)"
+        ),
+        value_type=str,
+        default=None,
+        env_only=True,
+    ),
+    ConfigKeySpec(
+        key="review.base",
+        env_var="REMEDY_REVIEW_BASE",
+        description=(
+            "Git base the review subject is diffed against; an invalid base is refused, "
+            "never ignored (env-only)"
+        ),
+        value_type=str,
+        default=None,
+        env_only=True,
+    ),
+    ConfigKeySpec(
+        key="runtime.log_max_bytes",
+        env_var="REMEDY_RUNTIME_LOG_MAX",
+        description=(
+            "Byte cap on a supervised runtime's captured log; uncapped when unset "
+            "(env-only)"
+        ),
+        value_type=int,
+        default=None,
+        env_only=True,
+    ),
+    ConfigKeySpec(
+        key="runtime.port",
+        env_var="REMEDY_RUNTIME_PORT",
+        description=(
+            "Port a supervised runtime is started on, overriding the one its spec declares "
+            "(env-only)"
+        ),
+        value_type=int,
+        default=None,
+        env_only=True,
+    ),
+    ConfigKeySpec(
+        key="events.strict_names",
+        env_var="REMEDY_STRICT_EVENT_NAMES",
+        description=(
+            "Refuse a run-log event whose name is not declared; tests only, a job never "
+            "fails a ledger write on it (env-only flag)"
+        ),
+        value_type=bool,
+        default=False,
+        env_only=True,
+    ),
+    ConfigKeySpec(
+        key="ui.allow_legacy_fallback",
+        env_var="REMEDY_UI_ALLOW_LEGACY_FALLBACK",
+        description=(
+            "Serve the legacy app shell when the built UI is missing, with a warning "
+            "(env-only flag)"
+        ),
+        value_type=bool,
+        default=False,
+        env_only=True,
+    ),
+    ConfigKeySpec(
+        key="ui.demo_mode",
+        env_var="REMEDY_UI_DEMO_MODE",
+        description=(
+            "Label the cockpit's synthetic placeholder data as demo data (env-only flag)"
+        ),
+        value_type=bool,
+        default=False,
+        env_only=True,
+    ),
+    ConfigKeySpec(
+        key="ui.no_auto_build",
+        env_var="REMEDY_UI_NO_AUTO_BUILD",
+        description="Skip the UI server's automatic npm build of apps/ui (env-only flag)",
+        value_type=bool,
+        default=False,
+        env_only=True,
+    ),
     ConfigKeySpec(
         key="scope.allow",
         env_var="REMEDY_SCOPE_ALLOW",
