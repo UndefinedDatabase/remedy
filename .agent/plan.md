@@ -1,35 +1,32 @@
-# Plan — amendment amend0923-selfuse-write
+# Plan — F282 Findings paydown v2
 
-Branch: feature/amend0923-selfuse-write, cut from `origin/main` at
-`64cffc44`, the merge commit of pull request 268 (F263's closure).
+Branch: feature/f282-findings-paydown-v2, cut from `main` at
+`b8fa02ba`, the merge commit of pull request 269 (amend0923-selfuse-write).
 
 ## Goal
 
-Make the self-use track able to DELIVER — its builder gets a write tool,
-its per-call timeout fits a real call, and an order file may declare the
-budget it needs — and clean the repository root, so reviewer scratch can
-neither sit there nor be packaged.
+Pay down the open findings that describe a real defect, each by the repair
+its own text names, with the evidence that discharged it
+(`docs/roadmap/features/T2_F282.md`). The open set at the claim is 30 by
+distinct id, and the feature file lists every one under a slice.
 
 ## Current Step
 
-Parts 1 through 4 are done. R-1043, R-1044 and R-1045 are registered and
-three older findings carry a new measured sentence; the self-use runner
-asks for a write tool and ten minutes per call, an order file may declare
-its own budget, the product default for the builder's write mode moved,
-the four root leftovers are moved out, and the packer and the integrity
-gate both refuse them now. Part 5's gates are green — 2505 passed on the
-ordered selection, `ruff check .` clean, `integrity check` 6 of 6 with the
-new check passing — one real package is built and its 5081 members carry
-no leftover and no git-ignored path, and R-0829 is closed. What remains is
-the pull request, hosted CI and the merge.
+ROUND 1 claims F282, re-heads the live review record with F263's round 9
+verdict, writes the slice list, resolves R-0984 by its hosted reading and
+lands T001: `_check_live_review_verdict` reads the last `Gate:` record
+through the ledger's own reader (R-0998), with its tests and red proofs.
 
 ## Next Steps
 
-1. Part 5 — gates, a real package, the pull request and the merge.
-2. Restore the original branch, which pull request 268's merge deleted,
-   so the restore target is `main`.
+1. T002's remaining evidence resolutions — R-1009, R-1043, R-1044, R-0880 —
+   with T003, R-1041 in `packages/orchestration/block_lint.py`.
+2. T004 and T005, the budget readings: R-1040 and R-1005.
+3. T006 to T011 in the feature file's order, several to a round.
+4. T012 to T018, then T019 in the closure's consolidation pass.
+5. The closure sequence, whose self-use run is R-1008's only proof.
 
 ## Risks
 
-Part 2E changes a product default and Part 4.4 turns two lenient packer
-tests into refusals; every test either touches is listed in the handback.
+T014, T015 and T018 may not fit one round each; what does not fit is
+carried by name to the next paydown feature at this closure.
