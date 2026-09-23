@@ -10,22 +10,18 @@ silently incomplete (`docs/roadmap/features/T2_F278.md`).
 
 ## Current Step
 
-ROUND 10, the first closure repair round. It books round 9's PASS, registers
-R-1039 and records the self-use run's recurrence of R-1035, repairs R-1039 —
-the runtime-integration gate's registry check still pinned `os.replace` — and
-re-runs the feature's full suite, rewriting the transcript, which must show the
-five bad nodes gone and none newly bad.
+ROUND 11, the closure sequence's evidence half. It books round 10's PASS and
+resolves R-1039, then builds the feature's evidence bundle against the fork
+point and a fresh review package, recording the package's name, its SHA-256,
+the directory it lives in and the accepted head it covers.
 
 ## Next Steps
 
-1. The closure sequence's second half: the evidence job and a fresh review
-   zip, from a clean tree after the last content commit.
-2. The closing round: the ledger rotation, the STATUS line with the README
-   counters in the same commit, and the pull request, which is never merged
-   in the session that opens it.
+1. The closing round: the ledger rotation, then the STATUS line with the
+   README counters and the self-use item's `consumed_by` in one commit, and
+   the pull request, which is never merged in the session that opens it.
 
 ## Risks
 
-Twenty-seven findings are open after this round's registration, one of them
-this feature's own until its resolution is booked. Ten rounds are spent of the
-soft limit of 25; amendment rule 2 allows two more repair rounds.
+Twenty-six findings are open after this round's resolution and none is this
+feature's own. Eleven rounds are spent of the soft limit of 25.
