@@ -1381,7 +1381,8 @@ _VERDICT_GATES = {
     "change_provenance_gate.json": {"PASS"},
     "runtime_integration_gate.json": {"PASS"},
 }
-_OK_GATES = ("manifest_integrity.json", "postmortem_integrity.json")
+_OK_GATES = ("manifest_integrity.json", "postmortem_integrity.json",
+             "human_change_integrity.json")
 _COMMIT_GATE = "commit_execution_gate.json"
 _ALL_READY_GATES = tuple(_VERDICT_GATES) + _OK_GATES + (_COMMIT_GATE,)
 
@@ -1398,7 +1399,8 @@ _GATE_ALLOWED_FIELDS = {
         "evidence_completeness", "execution_mode_blocked", "execution_mode_by_task",
         "execution_mode_findings", "file_set_alignment_status", "final_job_review_blocked",
         "final_job_review_findings", "final_job_review_verdict", "fresh_evidence_gate",
-        "human_final_reviewer_required", "invocation_args_warnings", "manifest_integrity_blocked",
+        "human_change_integrity_blocked", "human_final_reviewer_required",
+        "invocation_args_warnings", "manifest_integrity_blocked",
         "manual_completion", "missing_evidence", "missing_tests_gate", "model_mismatch_blocked",
         "model_mismatch_warnings", "model_needs_repair", "operator_attested_tasks",
         "postmortem_failures", "postmortem_integrity_blocked", "recommended_action",
@@ -1426,6 +1428,7 @@ _GATE_ALLOWED_FIELDS = {
         "verdict"}),
     "manifest_integrity.json": frozenset({"failures", "notes", "ok", "schema_version"}),
     "postmortem_integrity.json": frozenset({"failures", "ok", "schema_version"}),
+    "human_change_integrity.json": frozenset({"failures", "ok", "records", "schema_version"}),
     "commit_execution_gate.json": frozenset({
         "blocked_gates", "gate_checks", "issues", "non_pass_gates", "promote_ready",
         "schema_version", "verdict"}),
@@ -1689,6 +1692,7 @@ _GATE_SCHEMA = {
         "sticky_binding_by_task": _Map("task_id", BOOL),
         "manual_completion": BOOL, "human_final_reviewer_required": BOOL,
         "postmortem_integrity_blocked": BOOL, "manifest_integrity_blocked": BOOL,
+        "human_change_integrity_blocked": BOOL,
         "final_job_review_blocked": BOOL, "execution_mode_blocked": BOOL,
         "model_mismatch_blocked": BOOL, "model_needs_repair": BOOL,
         "token_cost_has_critical": BOOL, "token_cost_policy_present": BOOL,
@@ -1738,6 +1742,8 @@ _GATE_SCHEMA = {
         "schema_version": STR, "ok": BOOL, "failures": _Arr(_FINDING), "notes": _Arr(STR)}),
     "postmortem_integrity.json": _Obj({
         "schema_version": STR, "ok": BOOL, "failures": _Arr(_FINDING)}),
+    "human_change_integrity.json": _Obj({
+        "schema_version": STR, "ok": BOOL, "records": _Arr(STR), "failures": _Arr(STR)}),
     "commit_execution_gate.json": _Obj({
         "schema_version": STR, "verdict": STR, "gate_checks": _Map("gate_name", STR),
         "blocked_gates": _Arr(STR), "non_pass_gates": _Arr(STR), "promote_ready": BOOL,
@@ -1901,6 +1907,7 @@ def _gate_semantic_problems(name: str, gate: dict, verdicts: dict, ctx: dict) ->
             ("change_source_mismatches", []), ("review_subject_uncovered_files", []),
             ("content_hash_mismatches", []), ("postmortem_failures", []),
             ("postmortem_integrity_blocked", False), ("manifest_integrity_blocked", False),
+            ("human_change_integrity_blocked", False),
             # F2 (round 24): the remaining FV blocking fields.
             ("final_job_review_blocked", False), ("execution_mode_blocked", False),
             ("model_mismatch_blocked", False), ("model_needs_repair", False),

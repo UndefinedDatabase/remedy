@@ -826,6 +826,13 @@ def build_final_verifier_report(evidence_dir: str) -> dict[str, Any]:
     )
     manifest_integrity_blocked = bool(manifest_failures)
 
+    # F263 T001: a human change record the bundle carries that does not verify BLOCKS — the
+    # human's edit is evidence, and evidence that cannot be proved intact is not clean.
+    _hc_integrity = _read_json(base / "human_change_integrity.json")
+    human_change_integrity_blocked = bool(
+        list(_hc_integrity.get("failures") or []) if isinstance(_hc_integrity, dict) else []
+    )
+
     unresolved_findings = _collect_unresolved_findings(base, task_ids)
 
     _vt_runs = verification_tests.get("runs") if isinstance(verification_tests, dict) else None
@@ -935,6 +942,7 @@ def build_final_verifier_report(evidence_dir: str) -> dict[str, Any]:
     gates_blocked = (
         postmortem_integrity_blocked
         or manifest_integrity_blocked
+        or human_change_integrity_blocked
         or scratch_file_guard == "BLOCKED"
         or spec_compliance == "BLOCKED"
         or any_core_gate_blocked
@@ -1028,6 +1036,7 @@ def build_final_verifier_report(evidence_dir: str) -> dict[str, Any]:
         "postmortem_failures": postmortem_failures,
         "postmortem_integrity_blocked": postmortem_integrity_blocked,
         "manifest_integrity_blocked": manifest_integrity_blocked,
+        "human_change_integrity_blocked": human_change_integrity_blocked,
         "change_provenance": change_provenance,
         "change_provenance_gate": change_provenance,
         "fresh_evidence_gate": fresh_evidence_gate,

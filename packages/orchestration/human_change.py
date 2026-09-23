@@ -237,6 +237,44 @@ def verify_human_change_record(path: Path) -> list[str]:
     return problems
 
 
+#: The bundle's integrity artifact for the records it carries (DECISION F263 D2). A failure in it
+#: BLOCKS the final verifier, like a lost post-mortem: a package must not look clean while a
+#: human change it carries cannot be proved intact.
+INTEGRITY_FILE = "human_change_integrity.json"
+
+
+def export_human_change_records(
+    job_id: str, out_dir: Path, *, root: Path | None = None,
+) -> tuple[dict[str, Any], list[str]]:
+    """Copy the job's records into ``out_dir/human_changes/`` and verify every COPY.
+
+    Returns the integrity artifact and the bundle-relative paths written. A job with no
+    records exports none and is intact.
+    """
+    from packages.orchestration.data_paths import job_evidence_dir
+
+    source = job_evidence_dir(job_id, root) / RECORD_DIRNAME
+    records: list[str] = []
+    failures: list[str] = []
+    written: list[str] = []
+    for record in sorted(source.glob("hcr-*.json")) if source.is_dir() else []:
+        record_id = record.stem
+        records.append(record_id)
+        dest = Path(out_dir) / RECORD_DIRNAME
+        dest.mkdir(parents=True, exist_ok=True)
+        for name in (record.name, f"{record_id}.diff"):
+            try:
+                (dest / name).write_bytes((source / name).read_bytes())
+            except OSError as exc:
+                failures.append(f"{record_id}: {name} could not be copied: {exc}")
+                continue
+            written.append(f"{RECORD_DIRNAME}/{name}")
+        failures.extend(f"{record_id}: {p}" for p in verify_human_change_record(dest / record.name))
+    integrity = {"schema_version": "1.0.0", "ok": not failures, "records": records,
+                 "failures": failures}
+    return integrity, written
+
+
 def absorb(
     job_id: str, repo_path: str | Path, last_known: TargetState, *, detected_by: str,
     rebase: Callable[[HumanChange], None], root: Path | None = None,

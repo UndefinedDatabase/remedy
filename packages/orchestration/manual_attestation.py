@@ -234,6 +234,9 @@ def build_manual_completion_gates(evidence_dir: str, *, job_id: str, authority: 
        {"schema_version": "1.0.0", "ok": True, "failures": [], "notes": []})
     _w(os.path.join(evidence_dir, "postmortem_integrity.json"),
        {"schema_version": "1.0.0", "ok": True, "failures": []})
+    # F263 T001: a manual completion carries no human change record of its own.
+    _w(os.path.join(evidence_dir, "human_change_integrity.json"),
+       {"schema_version": "1.0.0", "ok": True, "records": [], "failures": []})
     # The runtime verdict is READ BACK from the gate just written: a hardcoded
     # "PASS" here contradicted the packaged artifact whenever the gate failed,
     # and the coordinator rejects exactly that disagreement.

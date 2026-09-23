@@ -691,6 +691,14 @@ def export_job_evidence(
     }
     _write_json(MANIFEST_INTEGRITY_FILE, _manifest_integrity)
 
+    # F263 T001: every human change record travels into the bundle and is verified THERE, on
+    # the copy a reviewer reads; a record that does not verify BLOCKS, like the two above.
+    from packages.orchestration import human_change as _hc
+    _hc_integrity, _hc_written = _hc.export_human_change_records(job.job_id, out_path)
+    for _rel in _hc_written:
+        written[_rel] = str(out_path / _rel)
+    _write_json(_hc.INTEGRITY_FILE, _hc_integrity)
+
     # Fresh evidence gate — verify this evidence belongs to the current job run.
     # Step range is derived from the project's .agent/plan.md title.
     try:
