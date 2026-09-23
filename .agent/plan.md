@@ -12,19 +12,19 @@ record, and the job re-bases onto it instead of failing on drift
 
 ## Current Step
 
-ROUND 4 books round 3's PASS, records DECISION F263 D4, and lands T002:
-`remedy absorb`, its catalog entry, help slot and bare form, over
-`human_change.absorb_job` — the one path that certifies a hand edit and
-re-bases a job's last known state, which the run's safe points will call.
+ROUND 5 books round 4's PASS, records DECISION F263 D5, and lands T003's
+run half: a git job absorbs a hand edit at every safe point and keeps
+running, the two drift blocks are gone for it, each check is counted and
+timed, and the demo case runs end to end.
 
 ## Next Steps
 
-1. T003, absorption at every safe point and before every apply, deleting
-   the drift error it replaces, with the demo case end to end and the
-   cost of the check measured.
+1. T003's apply half: `job apply` and `do run --apply` absorb before a
+   single file is copied, a hand edit that meets the job's own change
+   stops the apply and says why, and the second demo case runs.
 2. The closure sequence, with the one full-suite run.
 
 ## Risks
 
-Capturing the target's tree hashes every file once per capture; T003 must
-measure that cost at every safe point, as the Acceptance list requires.
+A hand edit to a file the job also changed is only met at apply; the next
+round decides that it stops there rather than overwrite either side.
