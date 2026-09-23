@@ -4,9 +4,10 @@ Eligibility, branch/main safety, state machine, idempotency, redaction and archi
 guards. No real provider / git / main mutation.
 
 Remedy deliberately has no end-to-end flow test here any more: F275 T001 deleted the
-Provider Trust Gate and its `provider intake-repair` command, so nothing can move an
-attempt past `awaiting_external_candidate` and the round trip the old test drove no
-longer exists (R-0866).
+Provider Trust Gate and its `provider intake-repair` command, so nothing can bring a
+candidate into an attempt and the round trip the old test drove no longer exists. An
+attempt therefore stops `blocked` once its request is prepared, and says why (R-0866,
+DECISION F282 D8).
 """
 from __future__ import annotations
 
@@ -117,19 +118,54 @@ class TestEligibility:
 
 
 class TestStartAndIdempotency:
-    def test_execute_awaits_candidate(self, env):
+    def test_execute_stops_blocked_at_the_removed_candidate_route(self, env):
+        """R-0866: no candidate can arrive, so the attempt does not wait for one."""
         job, pt = _approved_task(env)
         r = SE.start_self_execution(pt.id, str(job.job_id), env)
-        assert r.state == SE.AttemptState.AWAITING_EXTERNAL_CANDIDATE
+        assert r.state == SE.AttemptState.BLOCKED
+        assert r.stop_reason == SE.StopReason.EXTERNAL_CANDIDATE_ROUTE_REMOVED
         assert r.request_package_id
-        assert r.next_safe_action == "remedy self status --json"
+        assert r.next_safe_action == f"remedy self status --attempt-id {r.attempt_id} --json"
+        [stored] = SE.list_attempts(env)
+        assert stored["state"] == SE.AttemptState.BLOCKED
+        assert SE.AttemptState.AWAITING_EXTERNAL_CANDIDATE not in [
+            c["phase"] for c in stored["checkpoints"]]
 
     def test_execute_idempotent_resume(self, env):
         job, pt = _approved_task(env)
         r1 = SE.start_self_execution(pt.id, str(job.job_id), env)
         r2 = SE.start_self_execution(pt.id, str(job.job_id), env)
         assert r1.attempt_id == r2.attempt_id
+        assert r2.stop_reason == SE.StopReason.EXTERNAL_CANDIDATE_ROUTE_REMOVED
         assert len(SE.list_attempts(env)) == 1
+
+    def test_reconcile_ends_an_attempt_an_older_remedy_parked(self, env):
+        """An attempt left at `awaiting_external_candidate` with no intent leaves it."""
+        job, pt = _approved_task(env)
+        a = SE.SelfImprovementAttempt(
+            attempt_id="parked1", job_id=str(job.job_id), proposed_task_id=pt.id,
+            state=SE.AttemptState.AWAITING_EXTERNAL_CANDIDATE, request_package_id="req",
+            stop_reason=SE.StopReason.AWAITING_EXTERNAL_CANDIDATE, created_at=SE._now())
+        SE.save_attempt(a, env)
+        r = SE.reconcile_self_attempt("parked1", env)
+        assert r.state == SE.AttemptState.BLOCKED
+        assert r.stop_reason == SE.StopReason.EXTERNAL_CANDIDATE_ROUTE_REMOVED
+        assert r.next_safe_action == "remedy self status --attempt-id parked1 --json"
+        assert SE.get_attempt("parked1", env)["state"] == SE.AttemptState.BLOCKED
+        again = SE.reconcile_self_attempt("parked1", env)
+        assert (again.state, again.stop_reason) == (r.state, r.stop_reason)
+
+    def test_reconcile_keeps_a_parked_attempt_whose_intent_is_on_disk(self, env):
+        """DECISION F275 D12 (a): the rail past the parked state still runs for an intent."""
+        job, pt = _approved_task(env)
+        a = SE.SelfImprovementAttempt(
+            attempt_id="parked2", job_id=str(job.job_id), proposed_task_id=pt.id,
+            state=SE.AttemptState.AWAITING_EXTERNAL_CANDIDATE, request_package_id="req",
+            patch_intent_id="intent-1", created_at=SE._now())
+        SE.save_attempt(a, env)
+        r = SE.reconcile_self_attempt("parked2", env)
+        assert r.state == SE.AttemptState.AWAITING_EXTERNAL_CANDIDATE
+        assert r.stop_reason != SE.StopReason.EXTERNAL_CANDIDATE_ROUTE_REMOVED
 
     def test_main_blocks_start(self, env, monkeypatch):
         monkeypatch.setattr(SE, "current_branch", lambda: "main")

@@ -77,13 +77,14 @@ def test_missing_proposed_task(env):
     assert "Traceback" not in r.stdout and "Traceback" not in r.stderr
 
 
-def test_approved_execute_awaits_candidate(env, work_repo):
+def test_approved_execute_stops_at_the_removed_candidate_route(env, work_repo):
     job_id, pt = _approved_task(env)
     r = run_grouped_cli(["self", "execute", pt, "--job-id", job_id, "--json"], env, cwd=work_repo)
     assert r.returncode == 0, r.stderr
     d = json.loads(r.stdout)
-    assert d["state"] == "awaiting_external_candidate"
-    assert d["next_safe_action"] == "remedy self status --json"
+    assert d["state"] == "blocked"
+    assert d["stop_reason"] == "external_candidate_route_removed"
+    assert d["next_safe_action"] == f"remedy self status --attempt-id {d['attempt_id']} --json"
 
 
 def test_execute_idempotent(env, work_repo):
