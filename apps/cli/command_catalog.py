@@ -1631,7 +1631,8 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         group_id="ui",
         subcommand="stop",
         description="Stop all running UI sessions.",
-        action_class="read_only",
+        # R-1034: it stops every running UI server, so it changes local state.
+        action_class="local_state_change",
         args=(_JSON_OPT,),
         supports_json=True,
     ),

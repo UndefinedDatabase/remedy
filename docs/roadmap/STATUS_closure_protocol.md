@@ -55,7 +55,9 @@
    is reachable from the entry points) and `tests/test_no_orphan_modules.py`
    (no module under `packages/`, `apps/` or `scripts/` lacks a non-test
    importer unless `ALLOWED_UNWIRED` lists it with its reason). A line this
-   feature adds to either list is named in its feature file. AGENTS.md's
+   feature adds to either list, or to `RESERVED_NAMESPACES` in that same test
+   file — which exempts a whole tree, and must name a fixture project nothing
+   in production imports — is named in its feature file. AGENTS.md's
    Scope Control rule "Replacing is deleting" binds this closure; it is
    cited here, not restated.
 

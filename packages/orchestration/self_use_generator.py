@@ -120,6 +120,11 @@ _ELIGIBLE_SEVERITIES = ("Low", "Medium")
 #: amend0920-selfuse-real, DECISION D2).
 _FIX_SENTENCE_RE = re.compile(r"\bFIX\b\s*(?:,[^.]*?)?:", re.I)
 
+#: The retired job-result verb `tests/docs/test_retired_promote_word.py` holds every
+#: tracked file to (DECISION amend0905-vocab D5); a test there pins the two patterns
+#: equal, so this copy cannot drift from the guard it screens for (R-1015).
+RETIRED_WORD = re.compile(r"promot", re.IGNORECASE)
+
 #: WORDS THAT SAY THE FIX IS NOT THIS RUN'S TO MAKE. Each one was read off the
 #: five hollow runs rather than guessed: `flaky` and `once in` mark a finding
 #: whose defect does not reproduce on demand, `never captured` marks one whose
@@ -264,7 +269,10 @@ def _oldest_open_low_or_medium_finding(
     # the loop walks on when it is not repairable (amend0920-selfuse-real D2).
     for _, candidate_id in candidates:
         paragraph = _finding_paragraph(text, candidate_id, ledger_path)
-        if _is_repairable(paragraph):
+        # R-1015: the paragraph is copied verbatim into a tracked file, which the
+        # retired-word guard reads, so a paragraph quoting a retired word is walked
+        # past exactly like an unrepairable one — skipped, never raised over.
+        if _is_repairable(paragraph) and not RETIRED_WORD.search(paragraph):
             return candidate_id, paragraph
     return None
 

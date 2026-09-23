@@ -2388,6 +2388,15 @@ def round_hygiene_findings(
             for finding in run_hygiene_rule(rule, changes)]
 
 
+def empty_change_finding(reviewer_summary: str) -> ReviewFinding:
+    """The finding an empty staged diff stands for when the reviewer fails it (R-0999)."""
+    return ReviewFinding(
+        id="EMPTY-change", severity="high",
+        summary="the builder staged no change, so nothing the task asks for was done",
+        details=reviewer_summary,
+        required_fix="make the change the task asks for; a plan or a command not run is no change")
+
+
 # ---------------------------------------------------------------------------
 # F001: Retry wrapper for provider calls
 # ---------------------------------------------------------------------------
@@ -3923,6 +3932,13 @@ def run_pingpong(
                 reviewer_out.findings = list(reviewer_out.findings) + hygiene_findings
                 if reviewer_out.verdict == "pass":
                     reviewer_out.verdict = "needs_repair"
+            # R-0999: a builder that staged nothing gives a failing reviewer nothing to
+            # point at, and a `fail` without a finding would block the task as the
+            # REVIEWER's incoherence. The empty diff is the evidence, so it becomes the
+            # finding and the repair loop gets its second try.
+            if (not result.staged_files and not reviewer_out.findings
+                    and reviewer_out.verdict in ("needs_repair", "fail")):
+                reviewer_out.findings = [empty_change_finding(reviewer_out.summary)]
 
             # --- Reviewer output coherence validation ---
             coherence_error = validate_reviewer_output(reviewer_out, test_passed=rd.test_passed)
