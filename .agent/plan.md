@@ -11,22 +11,21 @@ checklist items a machine can check (`docs/roadmap/features/T2_F279.md`).
 
 ## Current Step
 
-ROUND 8 opens the closure sequence. It books round 7's PASS, writes the
-feature file's Built State, generates and runs the closure's self-use item
-to its approval gate, and runs this feature's one full suite, committing
-its transcript. Every slice, T001 to T004, has a PASS round.
+ROUND 9 is the closure's first repair round. It books round 8's PASS,
+records the self-use run as a recurrence of R-1007, registers R-1040 and
+R-1041, repairs the two guard tests the closure suite found red, and runs the
+feature's one full suite again on the repaired tree, whose transcript
+replaces round 8's at the same path.
 
 ## Next Steps
 
-1. Register whatever the self-use run's defect list asks for, and repair
-   every bad node the closure suite lists, under the shrinking rule.
-2. The evidence job and the review package, with the accepted HEAD.
-3. The closing round: the ledger rotation, the STATUS line with the README
+1. The evidence job and the review package, with the accepted HEAD.
+2. The closing round: the ledger rotation, the STATUS line with the README
    counters in the same commit, and the pull request.
 
 ## Risks
 
 `constraints.txt` (round 1) is F279's one declared oversize commit; no
 second may follow. Hosted CI first runs the new install steps at the
-closure's pull request. The self-use item is the toolchain refresh order,
-the first order the track has queued.
+closure's pull request. Under the shrinking rule this round must leave no
+bad node and add none; at most two more repair rounds remain.
