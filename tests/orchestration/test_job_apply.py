@@ -266,7 +266,10 @@ class TestDryRunFailedTests:
 
 
 class TestDryRunTargetMutation:
-    def test_target_mutation_blocks(self, isolate_data_root, demo_repo):
+    def test_a_recorded_target_mutation_no_longer_blocks_by_itself(
+            self, isolate_data_root, demo_repo):
+        """F263 T003 deleted the apply's drift block (DECISION F263 D6): a guard flag alone
+        refuses nothing, and this job is refused by the next check it fails instead."""
         from packages.orchestration.pingpong_job import (
             JobPlan,
             TargetGuard,
@@ -290,7 +293,8 @@ class TestDryRunTargetMutation:
         result = apply_job(job.job_id, str(demo_repo), dry_run=True)
 
         assert result.status == "blocked"
-        assert "target_mutated" in result.blocked_reason
+        assert "target_mutated" not in result.blocked_reason
+        assert result.blocked_reason.startswith("missing_apply_manifest: T001")
 
 
 class TestDryRunUnsafePaths:

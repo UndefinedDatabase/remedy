@@ -1460,10 +1460,21 @@ def apply_job(
         if t.test_passed is False:
             return _block(result, f"tests_failed: {t.task_id}")
 
-    # --- Target guard ---
-    tg = job.target_guard
-    if tg and tg.target_mutated:
-        return _block(result, "target_mutated_during_job")
+    # --- Human changes (F263 T003, DECISION F263 D6) ---
+    # The drift block that stood here is GONE (DECISION D-E of T2_F263.md). Every apply first
+    # absorbs what a human changed since the job's last known state, so the change is certified
+    # before a single file is copied; a file the job changed too is refused by the baseline
+    # check below, which then names it as the human's.
+    human_changed: frozenset[str] = frozenset()
+    if job.target_last_known:
+        from packages.orchestration import human_change as HC
+        from packages.orchestration.worktrees import WorktreeError
+
+        try:
+            HC.absorb_job(job, detected_by="apply")
+        except (HC.HumanChangeError, WorktreeError, OSError) as exc:
+            return _block(result, f"human_change_absorb_failed: {exc}")
+        human_changed = HC.recorded_human_changes(job.job_id)
     result.target_guard_ok = True
 
     # --- Require explicit apply manifests, no fallback ---
@@ -1494,6 +1505,7 @@ def apply_job(
                     skip_blocked=skip_blocked,
                     persist_final=False,
                     commit_with_history=commit_with_history,
+                    human_changed=human_changed,
                 )
         else:
             ws_path = job.job_workspace_path
@@ -1507,6 +1519,7 @@ def apply_job(
                 approve=approve, dry_run=dry_run, test_command=test_command,
                 skip_blocked=skip_blocked,
                 commit_with_history=commit_with_history,
+                human_changed=human_changed,
             )
             # DECISION F276 D6: the staging copy is freed HERE, where its work is
             # consumed, and nowhere else. `_apply_from_workspace` has already
@@ -1611,8 +1624,13 @@ def _apply_from_workspace(
     skip_blocked: bool = False,
     persist_final: bool = True,
     commit_with_history: bool = False,
+    human_changed: frozenset[str] = frozenset(),
 ) -> JobApplyResult:
     """The existing baseline-aware apply, against a resolved source.
+
+    ``human_changed`` names every path a human change record of the job carries (F263 T003):
+    a baseline refusal on one of them is reported as the human's change, which the apply stops
+    for rather than overwrite either side.
 
     ``commit_with_history`` (DECISION F270 D2) leaves every gate below as it
     is; its refusals are checked after them and again right before the merge,
@@ -1722,6 +1740,14 @@ def _apply_from_workspace(
     result.file_readiness = readiness
     result.target_clean = clean
     if not clean:
+        conflicts = sorted({r.split(": ", 1)[1] for r in block_reasons
+                            if ": " in r and r.split(": ", 1)[1] in human_changed})
+        if conflicts:
+            return _block(result, (
+                f"baseline_check_failed: {block_reasons}; human_change_conflict: "
+                f"{', '.join(conflicts)} changed by hand since the job's last known state and "
+                f"changed by the job too; the apply stops rather than overwrite either side "
+                f"(DECISION D-E of T2_F263.md)"))
         return _block(result, f"baseline_check_failed: {block_reasons}")
 
     # --- Mode fidelity: the source must still carry the reviewed file mode ---

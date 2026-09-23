@@ -314,6 +314,21 @@ def absorb_job(job: Any, *, detected_by: str, root: Path | None = None) -> JobAb
                             record_path=outcome.record_path, files=outcome.change.files)
 
 
+def recorded_human_changes(job_id: str, *, root: Path | None = None) -> frozenset[str]:
+    """Every path any intact human change record of the job names — at a safe point or at
+    apply. A record that does not verify names nothing here; the evidence export reports it."""
+    from packages.orchestration.data_paths import job_evidence_dir
+
+    folder = job_evidence_dir(job_id, root) / RECORD_DIRNAME
+    paths: set[str] = set()
+    for record in sorted(folder.glob("hcr-*.json")) if folder.is_dir() else []:
+        if verify_human_change_record(record):
+            continue
+        body = json.loads(record.read_text(encoding="utf-8"))
+        paths.update(str(f["path"]) for f in body.get("files", []))
+    return frozenset(paths)
+
+
 def absorb(
     job_id: str, repo_path: str | Path, last_known: TargetState, *, detected_by: str,
     rebase: Callable[[HumanChange], None], root: Path | None = None,
