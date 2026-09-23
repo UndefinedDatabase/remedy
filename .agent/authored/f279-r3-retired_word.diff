@@ -1,0 +1,14 @@
+diff --git a/tests/docs/test_retired_promote_word.py b/tests/docs/test_retired_promote_word.py
+index 23f7cc22..dc8a0e8e 100644
+--- a/tests/docs/test_retired_promote_word.py
++++ b/tests/docs/test_retired_promote_word.py
+@@ -63,6 +63,9 @@ KEPT_BY_SENSE: dict[str, tuple[str, frozenset[str]]] = {
+     "docs/agents/planner_reviewer_prompt.md": (K4, frozenset({
+         "promoted", "promotion",
+     })),
++    "docs/guides/environment.md": (K1, frozenset({
++        "promotion", "promotion_evidence", "remedy_model_routing_promotion_evidence",
++    })),
+     "docs/system/architecture.md": (K5_NODE, frozenset({
+         "promoted",
+     })),
