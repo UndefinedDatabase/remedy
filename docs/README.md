@@ -17,6 +17,7 @@
 | split workflow | [split_workflow.md](agents/split_workflow.md) | agents |
 | self-drive | [self_drive_protocol.md](agents/self_drive_protocol.md) | agents |
 | self-use track | [self-use-track-v1.md](system/self-use-track-v1.md) | system |
+| toolchain refresh order | [toolchain-refresh.md](orders/toolchain-refresh.md) | orders |
 | architecture | [architecture.md](system/architecture.md) | system |
 | autocoder | [autocoder-usage.md](guides/autocoder-usage.md) | guide |
 | brain | [orchestrator-brain-v0.md](system/orchestrator-brain-v0.md) | system |
@@ -193,6 +194,15 @@ proposed from the order or forced with `remedy do --contract <name>`, and carrie
 | [api-service.md](contracts/api-service.md) | The contract floor for an order that builds an HTTP API service |
 | [cli-tool.md](contracts/cli-tool.md) | The contract floor for an order that builds a command-line tool |
 | [python-library.md](contracts/python-library.md) | The contract floor for an order that builds a Python library |
+
+## Maintenance Orders (`docs/orders/`)
+
+Standing orders written as job files, which the self-use track queues verbatim on a cadence
+(DECISION F279 D7).
+
+| File | Description |
+|------|-------------|
+| [toolchain-refresh.md](orders/toolchain-refresh.md) | Raise the pinned toolchain, read the release notes first, run the suite once, open a pull request; at most every fourteen days |
 
 ## Roadmap (`docs/roadmap/`)
 
