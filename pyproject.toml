@@ -65,6 +65,11 @@ extend-exclude = [
     "node_modules",
     "apps/ui/dist",
     "apps/ui/coverage",
+    # WHY: `.agent/authored/` holds byte-verbatim transport copies of the payloads a round
+    # applied; they are records, never imported or run, and cannot be edited once committed,
+    # so linting them would bind a landed record to a rule it can no longer meet (DECISION
+    # F263 D3). The applied file itself is linted where it lives.
+    ".agent/authored",
 ]
 
 [tool.ruff.lint]

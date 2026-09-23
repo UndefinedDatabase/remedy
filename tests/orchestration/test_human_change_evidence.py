@@ -13,7 +13,6 @@ import pytest
 
 from packages.orchestration import human_change as HC
 from packages.orchestration import pingpong_job as PJ
-from packages.orchestration.data_paths import job_evidence_dir
 from packages.orchestration.final_verifier import build_final_verifier_report
 from packages.orchestration.job_evidence import export_job_evidence
 
