@@ -18932,3 +18932,246 @@ REVERSE by deleting this paragraph and `tests/orchestration/test_human_change_at
 removing `recorded_human_changes` from `packages/orchestration/human_change.py`, and restoring
 `packages/orchestration/job_apply.py` and `tests/orchestration/test_job_apply.py` from git history
 at `5fd8b648`.
+
+## DECISION amend0923-selfuse-write D6 — the next free finding id is R-1043, and the abandoned R-43xx branches do not move it (2026-09-23)
+
+The amendment orders the next free finding id taken as the highest `R-<n>` in
+`.agent/live_review.md` and `.agent/live_review_archive.md` on `origin/main` AND on every open
+`origin/feature/*` branch. Measured on 2026-09-23: on `origin/main` the highest is `R-1042`, and
+`gh pr list --state open` reports zero open pull requests once pull request 268 is merged, so no
+branch is open in the workflow's sense of the word. Forty-one `origin/feature/*` REFS survive
+nonetheless, none of them with a pull request and the newest of them last committed on
+2026-06-29. Four of those refs carry a completely different, abandoned numbering — the highest is
+`R-4333` in `origin/feature/prompt-trace-lens-ui-v1`, whose `.agent/live_review.md` reads "3 Low
+findings (R-4331, R-4332, R-4333)" under a per-round heading shape this ledger has not used since
+it took its present form. Those numbers were never part of the monotonic series this repository
+has run since; continuing from them would jump the series by more than three thousand and make
+every future id unreadable against the archive. THE RULING: the series continues from the live
+record, so this amendment uses R-1043, R-1044 and R-1045, and the dead refs' orphan numbering is
+noted here rather than honoured. REVERSE by deleting this paragraph; nothing on disk depends on
+it beyond the three ids already spent.
+
+## DECISION amend0923-selfuse-write D7 — registering a finding moves no README or STATUS counter, so none was edited (2026-09-23)
+
+Part 1 of the amendment orders the README and STATUS counters updated "exactly as the
+ledger-atomicity rule (`tests/docs/test_docs_consistency.py`) requires, in the same commit". That
+rule turns out to be about a different ledger. Every counter `tests/docs/test_docs_consistency.py`
+pins — the accepted-feature count in `README.md`, the Done column of its tier table and its
+per-tier accepted lists — is derived from `docs/roadmap/STATUS.md`, the ROADMAP execution ledger,
+and not from `.agent/live_review.md`, the FINDING ledger. Neither `README.md` nor
+`docs/roadmap/STATUS.md` states an open-findings count at all: the only numbers either file
+carries about findings are inside prose about closed features. MEASURED: with R-1043, R-1044 and
+R-1045 appended and the three evidence sentences added, `python3 -m pytest -q -p no:cacheprovider
+tests/docs/` reads `322 passed` at exit 0 with no file outside `.agent/` touched. THE RULING: the
+registration commit edits `.agent/live_review.md` and the task-state files alone, and this
+paragraph is the record that the ordered counter update was looked for and found not to exist.
+REVERSE by deleting this paragraph.
+
+## DECISION amend0923-selfuse-write D8 — the evidence sentence added to R-1016 and R-1035 states what was measured, not the arithmetic the order guessed (2026-09-23)
+
+Part 1 of the amendment orders one evidence sentence appended to both R-1016 and R-1035 saying
+that "the arithmetic 513 s is approximately 4 x 120 s suggests four timed-out attempts", with Part
+3 to measure it afterwards. Part 3 was run FIRST, because the records were already to hand, and
+the guess is wrong: all three runs record exactly THREE builder attempts, not four.
+`python3 -m apps.cli.main run show <id> --json` reads `retries_used` 2 and three entries in
+`provider_evidence.provider_attempts` for run `3662fda0b0824e61` (F283), `73a48603ca65474c`
+(F278) and `9e1544e204ea4091` (F277), each attempt carrying `provider_error: RuntimeError: claude
+CLI timed out after 120s`, over round wall clocks of 510.239, 510.306 and 510.365 seconds. With
+`RETRY_BACKOFFS` `[30, 120]` in `packages/orchestration/provider_timeouts.py`, three 120-second
+timeouts plus a 30-second and a 120-second backoff is 510 seconds exactly. Writing the ordered
+sentence would have put a number on the permanent record that the same commit's own measurement
+contradicts, which is the class of defect R-0533 exists to punish. THE RULING: both paragraphs
+receive the MEASURED decomposition instead of the hypothesis, and Part 3's own sentence on R-1035
+is that measurement rather than a second one. REVERSE by deleting this paragraph; the ledger text
+is append-only and is corrected by dating, never by editing.
+
+## DECISION amend0923-selfuse-write D1 — `docs/orders/toolchain-refresh.md` declares five tasks, forty calls, ten dollars and fifteen minutes per call (2026-09-23)
+
+The order file now carries one line, `Budget: max_tasks=5, max_provider_calls=40,
+max_cost_usd=10.00, timeout_sec=900`, directly under its opening paragraph and above the first
+`## Task` heading, where `packages.orchestration.self_use_runner.parse_order_budget` reads it and
+`packages.orchestration.pingpong_job.parse_job_file` does not. EACH NUMBER HAS A REASON.
+`max_tasks=5` is the order's own task count, five, measured by counting its `## Task` headings;
+anything smaller makes the runner refuse the order it was written to execute.
+`max_provider_calls=40` is eight per task, which is the per-item allowance
+`_MAX_PROVIDER_CALLS` already grants a single-finding repair — a build round, a review round, two
+repair rounds and room for a retry — carried across all five tasks rather than shared between
+them. `max_cost_usd=10.00` is ten times the one-dollar bound written for a one-task item, which is
+the same proportion; the run this replaces spent $1.37 on a single task before stopping, so a
+five-task order that reads release notes from the network and runs the whole suite is not going to
+fit in one dollar. `timeout_sec=900` is fifteen minutes, chosen because Task 4 runs the WHOLE
+pytest suite in one call: that suite alone takes over two minutes of wall clock in this repository,
+and the provider must read its output and repair against it inside the same call, so the 600-second
+self-use default is too tight here even though it is right in general. REVERSIBLE: delete the
+`Budget:` line and the order falls back to the runner's own defaults, which is exactly the state
+this amendment found — a run that refuses before spending, rather than one that spends and
+delivers nothing, because `run_next_self_use_item` now checks the task count first.
+
+## DECISION amend0923-selfuse-write D2 — `scripts/self_use_queue.json` is NOT edited by hand, so SU-028 keeps the text it was queued with (2026-09-23)
+
+`scripts/self_use_queue.json` holds the self-use queue, and its entry `SU-028` carries a VERBATIM
+copy of `docs/orders/toolchain-refresh.md` as it stood when the generator queued it on 2026-09-23,
+before the `Budget:` line of DECISION D1 existed. That entry is already consumed by F279's
+closure. Editing the queued copy by hand would rewrite an item's recorded text after the run that
+consumed it, which is falsifying a record rather than fixing a defect, and the queue is generated
+rather than authored. THE RULING: the queue file is left exactly as it is. The next order-tier item
+the generator appends copies the order file as it then stands and therefore carries the `Budget:`
+line automatically, with no hand edit anywhere. REVERSE by deleting this paragraph; nothing on disk
+changes either way.
+
+## DECISION amend0923-selfuse-write D3 — the BUILDER's product default for `--claude-cli-write-mode` becomes `allowed-tools`; the reviewer's stays `none` (2026-09-23)
+
+`_resolve_cfg` in `packages/orchestration/pingpong_job.py` answered `"none"` when nothing chose a
+write mode, so every `remedy do run` and `remedy job run` that did not pass the flag started its
+claude-cli builder with NO WRITE TOOL. That is the cause of R-1043: three consecutive self-use
+closures — F277's job `86f628f5e4fb4e0c`, F283's `129b3ad7206d4f8d` and F278's
+`e7268925db3a4831` — each recorded `claude_cli_write_mode: none` with source `default`, and a
+builder that cannot write returns an empty diff by construction. The default is now
+`"allowed-tools"`. WHY THAT IS SAFE AND NOT A WIDENING OF ANYTHING: the builder does not work in
+the operator's checkout. It works in an isolated worktree under `.remedy-wt/` that the job creates
+for it, and `packages/orchestration/job_apply.py` still refuses to apply anything without the
+explicit `--approve` barrier, so nothing the builder writes reaches a branch without a human. THE
+REVIEWER IS NOT TOUCHED AND MUST NOT BE: `_create_provider_with_cwd` and `_build_provider_evidence`
+in `packages/orchestration/pingpong_loop.py` hard-code the reviewer at `"none"`, because a reviewer
+that can edit the tree it is reviewing can make its own verdict true, which is the one thing the
+two-role split exists to prevent. That hard-coding is now pinned by a test of its own. THE HELP
+TEXT MOVED WITH THE DEFAULT: `--claude-cli-write-mode` in `apps/cli/command_catalog.py` reads
+"Claude CLI write mode for the BUILDER: none, allowed-tools, dangerous-skip (default:
+allowed-tools, persisted on continuation). The reviewer never writes". NO DOCUMENT UNDER `docs/`
+stated the old default; `grep -rn "default: none" docs/` returns nothing. THE MEASURED BLAST
+RADIUS IS ZERO: `python3 -m pytest -q -n 4 tests/orchestration/ tests/cli/ tests/docs/` reads
+`14040 passed, 7 skipped` at exit 0 with the new default, so NO existing test pinned the old one
+and the list of tests this decision changed is empty. The amendment's ceiling of fifteen reds is
+not approached. REVERSE by putting `"none"` back as the third argument of that one `_resolve_cfg`
+call, restoring the help string, and deleting
+`TestWriteModeContinuation::test_the_product_default_gives_the_builder_a_write_tool`.
+
+## DECISION amend0923-selfuse-write D4 — four leftovers were MOVED out of the repository root, none deleted (2026-09-23)
+
+The repository root held reviewer scratch, a deprecated evidence directory and a finished package.
+Nothing was deleted; every one was moved, and each move is reversible by running it backwards.
+THE FOUR MOVES, source then destination, all outside git and therefore in no commit:
+`remedy-review-r9-scratch/` to `~/Repos/remedy-history/attic/2026-09-23/remedy-review-r9-scratch`;
+`remedy-review-r10-scratch/` to `~/Repos/remedy-history/attic/2026-09-23/remedy-review-r10-scratch`;
+`remedy-job-evidence-f112-closure/` to
+`~/Repos/remedy-history/attic/2026-09-23/remedy-job-evidence-f112-closure`; and
+`remedy-review-20260823-135731-READY_FOR_REVIEW.zip` to
+`~/Repos/remedy-history/zips/remedy-review-20260823-135731-READY_FOR_REVIEW.zip`, which is where
+finished packages live and where no file of that name already existed, so no SHA-256 comparison was
+needed and no `.dup` copy was made. No `*_WAS_HERE.txt` file existed to move. THE IGNORED ROOT
+ENTRIES THAT STAY, each named here rather than touched, because none of them is reviewer detritus:
+`.data/`, `.remedy-wt/`, `node_modules/` and the cache directories `.mypy_cache/`, `.pytest_cache/`,
+`.ruff_cache/` and `__pycache__/` are all named exceptions; `.brain/` is 1.2 MB last modified
+2026-09-08 11:26; `.claude/settings.local.json` is 9025 bytes last modified 2026-07-09 13:23; and
+`.coverage` is 436084736 bytes last modified 2026-09-12 07:13 with `.coverage_reports/` beside it
+from 2026-06-17 00:15 — the coverage artifact is by far the largest thing in the checkout and is
+listed here for the operator rather than moved, because it is neither scratch nor a package and
+removing it is not this amendment's call. REVERSE by moving each of the four back to the
+repository root.
+
+## DECISION amend0923-selfuse-write D5 — root leftovers are REFUSED by the packer, not warned about, and the integrity gate catches them every round (2026-09-23)
+
+The operator ruled on 2026-09-23 that reviewer scratch, deprecated root evidence directories and
+stray archives must never be packaged NOR tolerated at the repository root. R-0829 measured what
+tolerating them cost: `unzip -Z1` counts the same 65 files of F110-era scratch in each of three
+consecutive accepted packages. THREE CHANGES CARRY THE RULING. First, the detritus gate at the top
+of `scripts/make_review_zip.sh`, which already refused `*_WAS_HERE.txt`, now also matches a depth-1
+`remedy-review-*` directory, a depth-1 `remedy-job-evidence-*` directory and a depth-1 `*.zip`
+file, with the same behaviour it always had: print the names, exit 1, before anything is read.
+Second, the source file list is filtered through `git check-ignore`, so no path git ignores can be
+packaged even if some future shape escapes the refusal — a list of `-prune` paths must be extended
+every time a new ignored directory appears, and asking git cannot go stale. Third,
+`_check_repo_root_hygiene` in `packages/orchestration/integrity_gate.py` fails on the same four
+shapes, so a leftover is caught in the round that created it rather than in an accepted package
+weeks later; a package is built once per closure and `remedy integrity check` runs every round.
+
+TWO EXCEPTIONS ARE DELIBERATE AND BOTH ARE NARROW. (a) When the configured output directory IS the
+repository root, the `*.zip` shape alone is dropped from the match. `tests/conftest.py` sets
+`REMEDY_REVIEW_DIR="."` so every mini repository receives its own package, and a packer that
+refused the archive it had just written could not run twice in the same tree; a real operator run
+publishes to `~/Repos/remedy-history/zips`, where the shape stays live. The two directory shapes
+are refused either way. (b) A `remedy-job-evidence-*` directory that THIS BUILD was explicitly
+handed through `--evidence-dir` is spared, because a directory the operator named as the build's
+INPUT is not a leftover; refusing it would make the flag unusable rather than enforce the ruling,
+which is about scratch nobody selected. Every other such directory at the root is still refused,
+which is exactly the deprecated auto-selection this ruling targets.
+
+TEN TESTS CHANGED, and every one of them changed because the DECISION moved, never because an
+assertion was weakened — each now asserts a refusal where it used to assert tolerance, and the two
+that merely used a root directory as a convenient fixture keep their original subject with the
+fixture moved. In `tests/orchestration/test_review_zip_hygiene.py`:
+`test_single_root_evidence_dir_is_ignored_with_warning` became
+`test_single_root_evidence_dir_is_refused`;
+`test_invalid_root_dirs_still_create_a_code_snapshot_zip` became
+`test_invalid_root_dirs_are_refused_rather_than_snapshotted`; `test_stale_dirs_not_in_zip` became
+`test_stale_dirs_are_refused_not_merely_left_out`;
+`test_manifest_has_no_current_evidence_for_root_dirs` became
+`test_root_dirs_never_reach_a_manifest_because_they_are_refused`, and its original assertion —
+that a manifest never claims evidence the package does not carry — is preserved on a reachable
+input as the new `test_a_clean_repo_with_no_evidence_states_no_current_evidence`;
+`test_ignored_root_dirs_are_reported_with_remedies` became
+`test_refused_root_dirs_are_reported_with_the_places_they_belong`;
+`test_root_dirs_are_counted_as_ignored_not_as_candidates` became
+`test_root_dirs_are_not_candidates_and_are_now_refused_outright`; and
+`test_legacy_root_evidence_is_ignored_with_warning` became
+`test_legacy_root_evidence_is_refused`. Two kept their names and their subjects with the sibling
+bundle moved out of the root, where a second bundle may still legitimately live:
+`test_explicit_valid_override_wins` and `test_unselected_evidence_not_in_zip`. One got STRONGER:
+`test_evidence_under_current_prefix` now selects its bundle explicitly, so the prefix rule is
+measured over a non-empty set of evidence members where the old form passed vacuously over zero.
+The capability those root-sibling tests covered — an explicit selection beating a newer bundle —
+is still held on the path that still exists, the `.data/` evidence index, by
+`TestIndexedEvidenceSelection::test_explicit_job_id_selects_exactly_that_job` and
+`test_no_args_select_newest_aligned_job_on_current_branch`.
+
+The now-unreachable "deprecated remedy-job-evidence-* dirs — IGNORED" warning further down the
+script is KEPT, so the script stays idempotent if the gate is ever relaxed. REVERSE by restoring
+the four-line `DETRITUS` find, deleting the `git check-ignore` filter block, deleting
+`_check_repo_root_hygiene` and its registration, and restoring the ten tests from git history at
+`5e32f7ab`.
+
+## DECISION amend0923-selfuse-write D9 — the forty-one stale `origin/feature/*` refs are not "open branches" and were not merged forward (2026-09-23)
+
+Part 5 of the amendment orders that if an `origin/feature/*` branch other than this one is open, it
+is checked out, `origin/main` is merged into it with `--no-ff`, `tests/docs/` is run there and it is
+pushed. MEASURED on 2026-09-23 after pull request 268 was merged: `gh pr list --state open` reports
+ZERO pull requests, so no branch is open in the sense AGENTS.md's Open PR Gate uses the word.
+Forty-one `origin/feature/*` refs nonetheless survive on the remote, and every one of them is
+abandoned: none has a pull request, and the most recently committed of them,
+`origin/feature/prompt-trace-lens-ui-v1`, last moved on 2026-06-29, nearly three months ago. Four of
+them still carry the abandoned R-43xx finding numbering that DECISION D6 rules out of the series.
+Merging `main` into forty-one dead refs would create forty-one merge commits and forty-one pushes,
+would resurrect branches nobody intends to land, and would make the remote's branch list
+permanently harder to read — the opposite of what a hygiene amendment is for. THE RULING: the
+merge-forward step applies to a branch with an open pull request, of which there are none besides
+this one, so it was not performed. The stale refs are named here so a later session finds this
+reasoning instead of re-deriving it, and deleting them is deliberately NOT done by this amendment:
+it is the operator's call, and git history is the archive either way. REVERSE by deleting this
+paragraph and merging `origin/main` into whichever of those refs is wanted.
+
+## DECISION amend0923-selfuse-write D10 — the root-hygiene check's handler is narrowed to `OSError` rather than excused, and the gate selection that missed it is named (2026-09-23)
+
+Hosted CI run 35893482610 ended RED on both Python columns with
+`tests/test_ble001_ratchet.py::test_the_count_of_excused_handlers_never_rises`:
+`291 excused blind handlers, above the frozen 290`. THE CAUSE WAS THIS AMENDMENT'S OWN C7:
+`_check_repo_root_hygiene` in `packages/orchestration/integrity_gate.py` was written in the file's
+existing style, `except Exception as exc:  # noqa: BLE001`, which is the 291st such mark against a
+ratchet that only ever falls. THE RATCHET'S OWN MESSAGE NAMES THE FIX and it was followed exactly —
+"narrow the new handler to the exceptions it expects instead of excusing it" — so the handler now
+catches `OSError` alone. That is the whole set, not a guess: the body reads the root directory with
+`Path(".").iterdir()` and matches names with `fnmatch`, so an unreadable or absent directory is the
+only failure available to it, and `fnmatch` over a `str` raises nothing. `MAX_EXCUSED` was NOT
+raised; the count is back at 290, measured. A new test,
+`TestRepoRootHygiene::test_an_unreadable_root_skips_rather_than_fails`, makes `iterdir` raise
+`PermissionError` and asserts the check answers SKIP, so the narrowed handler is exercised rather
+than merely asserted.
+
+WHY THE LOCAL GATES MISSED IT, stated plainly because the gap is the lesson: `tests/test_ble001_ratchet.py`
+sits at the `tests/` ROOT, and the amendment's Part 5 selection names `tests/docs/`, `tests/cli/`
+and a list of `tests/orchestration/` files — none of which reaches it. This branch DID sweep the
+root-level tests once, while measuring Part 2E's blast radius, and that sweep was green; the blind
+handler arrived afterwards, in C7, and the sweep was never repeated. A selection that is green is
+not evidence about a file it does not collect. After the repair the same sweep reads
+`4642 passed, 13 skipped` at exit 0 and `tests/orchestration/test_integrity_gate.py` reads
+`25 passed`. REVERSE by restoring the blind handler and raising `MAX_EXCUSED` to 291 — which is
+precisely what the ratchet exists to prevent, so do not.

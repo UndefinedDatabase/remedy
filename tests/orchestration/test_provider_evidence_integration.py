@@ -290,6 +290,26 @@ class TestLoopTokenAccounting:
         ev = _build_provider_evidence(result)
         assert ev["actual_available"] is False
 
+    def test_the_reviewer_never_gets_a_write_tool_whatever_the_builder_has(self):
+        """DECISION amend0923-selfuse-write D3, the half that does NOT move.
+
+        The builder's product default became `allowed-tools` so a run can land
+        a change (R-1043). The reviewer's stays `none` and is not configurable
+        from the same flag: a reviewer that can edit the tree it is reviewing
+        can make its own verdict true, which is the one thing the two-role
+        split exists to prevent.
+        """
+        result = PingPongResult(
+            builder_provider="claude-cli",
+            reviewer_provider="claude-cli",
+            claude_cli_write_mode="allowed-tools",
+        )
+        ev = _build_provider_evidence(result)
+        assert ev["builder_write_mode"] == "allowed-tools"
+        assert ev["builder_can_write_staging"] is True
+        assert ev["reviewer_write_mode"] == "none"
+        assert ev["reviewer_can_write_staging"] is False
+
 
 # ---------------------------------------------------------------------------
 # token_truth: confidence + cost aggregation

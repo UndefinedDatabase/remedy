@@ -95,10 +95,53 @@ done
 # Alignment/validity checks are warnings only — zip always builds.
 
 # --- Detritus check (before evidence selection — always runs) ---
-DETRITUS="$(find . -maxdepth 1 \( -name '*_WAS_HERE.txt' -o -name 'BUILDER_WAS_HERE.txt' -o -name 'REVIEWER_WAS_HERE.txt' \) 2>/dev/null | sed 's#^\./##' || true)"
+# DECISION amend0923-selfuse-write D5, operator ruling of 2026-09-23: reviewer
+# scratch, deprecated root evidence directories and stray archives must never be
+# packaged and must never be merely tolerated. R-0829 measured the cost of
+# tolerating them — 65 files of F110-era scratch in each of three consecutive
+# packages — so all three shapes now join `*_WAS_HERE.txt` at this gate, with the
+# same behaviour: print the list, exit 1, before anything is read.
+#
+# The one exception is this build's OWN output directory. `tests/conftest.py`
+# sets REMEDY_REVIEW_DIR="." so each mini repository receives its own package,
+# and a packer that then refused the archive it had just written could never run
+# twice. So when the configured output directory IS the repository root, the
+# `*.zip` shape alone is dropped from the match; the two directory shapes are
+# refused either way, and a real operator run publishes to
+# ~/Repos/remedy-history/zips where the shape stays live.
+#
+# The second exception is this build's OWN SELECTED EVIDENCE. `--evidence-dir`
+# may legitimately name a `remedy-job-evidence-*` directory at the root, and a
+# directory the operator explicitly passed as this build's INPUT is not a
+# leftover. Refusing it would make the flag unusable rather than enforce the
+# ruling, which is about scratch nobody selected. Every OTHER such directory is
+# still refused, which is exactly the deprecated auto-selection D5 targets.
+ROOT_REAL="$(cd "$ROOT" && pwd -P)"
+REVIEW_DIR_REAL="$(cd "$REMEDY_REVIEW_DIR" && pwd -P)"
+DETRITUS_ZIP_ARGS=()
+if [[ "$REVIEW_DIR_REAL" != "$ROOT_REAL" ]]; then
+  DETRITUS_ZIP_ARGS=(-o -type f -name '*.zip')
+fi
+DETRITUS_KEEP_ARGS=()
+if [[ -n "${EVIDENCE_DIR:-}" && -d "$EVIDENCE_DIR" ]]; then
+  SELECTED_EVIDENCE_REAL="$(cd "$EVIDENCE_DIR" && pwd -P)"
+  if [[ "$(dirname "$SELECTED_EVIDENCE_REAL")" == "$ROOT_REAL" ]]; then
+    DETRITUS_KEEP_ARGS=(-path "./$(basename "$SELECTED_EVIDENCE_REAL")" -prune -o)
+  fi
+fi
+DETRITUS="$(find . -maxdepth 1 \
+  ${DETRITUS_KEEP_ARGS[@]+"${DETRITUS_KEEP_ARGS[@]}"} \
+  \( \
+     -name '*_WAS_HERE.txt' \
+  -o -type d -name 'remedy-review-*' \
+  -o -type d -name 'remedy-job-evidence-*' \
+  ${DETRITUS_ZIP_ARGS[@]+"${DETRITUS_ZIP_ARGS[@]}"} \
+  \) -print 2>/dev/null | sed 's#^\./##' || true)"
 if [[ -n "$DETRITUS" ]]; then
   echo "Debug/test detritus found in repo root — remove before review zip:"
   echo "$DETRITUS"
+  echo "Reviewer scratch belongs under .remedy-wt/, evidence under .data/, and" >&2
+  echo "finished packages under ~/Repos/remedy-history/zips." >&2
   exit 1
 fi
 
@@ -284,6 +327,51 @@ find . \
   -print0 \
   | sed -z 's#^\./##' \
   | sort -z -u > "$TMP0"
+
+# R-0829's FIX clause, carried by amendment amend0923-selfuse-write (2026-09-23):
+# EVERY PATH GIT IGNORES IS DROPPED HERE. The `-prune` arm above names excluded
+# paths one at a time, so any ignored directory it did not happen to name was
+# packaged — which is how 65 files of `remedy-review-r9-scratch/` and
+# `remedy-review-r10-scratch/` reached three consecutive accepted packages. A
+# list must be extended every time a new ignored directory appears; asking git
+# cannot go stale. `check-ignore --stdin -z --non-matching --verbose` answers
+# four NUL-terminated fields per path — source, line number, pattern, pathname —
+# and the pattern field is EMPTY for a path that is not ignored, which is the
+# only thing read below. The NUL delimiting survives end to end.
+if git rev-parse --git-dir >/dev/null 2>&1; then
+  TMP0_KEPT="$(mktemp)"
+  # check-ignore exits 1 when NO path is ignored, which is an ordinary answer and
+  # not a failure, so its status is swallowed; a real failure is caught by the
+  # empty-output guard below instead.
+  if { git check-ignore --stdin -z --non-matching --verbose < "$TMP0" 2>/dev/null || true; } \
+     | python3 -c '
+import sys
+fields = sys.stdin.buffer.read().split(b"\0")
+out = []
+i = 0
+while i + 3 < len(fields):
+    _source, _line, pattern, pathname = fields[i:i + 4]
+    i += 4
+    if not pattern:
+        out.append(pathname)
+sys.stdout.buffer.write(b"".join(p + b"\0" for p in out))
+' > "$TMP0_KEPT"; then
+    # Never replace a non-empty list with an empty one: an empty answer means the
+    # filter failed, not that the repository holds no files.
+    if [[ -s "$TMP0_KEPT" || ! -s "$TMP0" ]]; then
+      mv "$TMP0_KEPT" "$TMP0"
+    else
+      echo "WARNING: the git-ignored filter answered nothing; source list kept as found." >&2
+      rm -f "$TMP0_KEPT"
+    fi
+  else
+    echo "WARNING: git check-ignore failed; source list kept as found." >&2
+    rm -f "$TMP0_KEPT"
+  fi
+else
+  echo "NOTE: not a git repository — the git-ignored filter is skipped." >&2
+fi
+
 # F8 (round 17): the repo file list is NUL-delimited so a filename containing a newline survives
 # into the archive. `$TMP` (newline) stays for the manifest/alignment steps, which only ever see
 # ordinary source paths.

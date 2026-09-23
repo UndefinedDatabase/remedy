@@ -6,6 +6,8 @@ this order is how the pins move on purpose. Remedy's self-use track may turn thi
 job no more than once every fourteen days. The job ends with a pull request for a person to
 review. Nothing in it merges anything.
 
+Budget: max_tasks=5, max_provider_calls=40, max_cost_usd=10.00, timeout_sec=900
+
 ## Task 1 — Find the pinned tools that have a newer release
 
 Run `remedy doctor toolchain`. For each tool it lists, compare the pinned version with the

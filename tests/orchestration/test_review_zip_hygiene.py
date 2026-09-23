@@ -383,7 +383,17 @@ class TestAutoSelectLatestEvidence:
     select evidence. The explicit-selection tests below are unchanged.
     """
 
-    def test_single_root_evidence_dir_is_ignored_with_warning(self, tmp_path: Path):
+    def test_single_root_evidence_dir_is_refused(self, tmp_path: Path):
+        """DECISION amend0923-selfuse-write D5, 2026-09-23 — REWRITTEN.
+
+        This test formerly asserted the LENIENT behaviour: a root
+        `remedy-job-evidence-*` directory was warned about as "IGNORED" and the
+        packer went on to build a code snapshot. The operator ruled on
+        2026-09-23 that such leftovers must never be packaged NOR tolerated, so
+        the same input is now a refusal. The retirement this class holds is
+        unchanged and in fact strengthened: root-dir auto-selection is still
+        dead, and the directory is now refused rather than silently skipped.
+        """
         repo = _make_git_repo_with_scripts(tmp_path)
         ev = repo / "remedy-job-evidence-aaa111"
         _make_valid_evidence(ev, "aaa")
@@ -392,13 +402,18 @@ class TestAutoSelectLatestEvidence:
             ["bash", "scripts/make_review_zip.sh"],
             cwd=repo, capture_output=True, text=True, timeout=30,
         )
-        assert proc.returncode == 0, f"Failed: {proc.stdout}\n{proc.stderr}"
+        out = proc.stdout + proc.stderr
+        assert proc.returncode == 1, f"expected a refusal: {out}"
+        assert "remedy-job-evidence-aaa111" in out
         assert "Auto-selected" not in proc.stdout
-        assert "IGNORED" in proc.stderr
-        assert "PACKAGE_STATUS=NO_EVIDENCE" in proc.stdout
+        assert not list(repo.glob("*.zip")), "no archive may be written"
 
-    def test_invalid_root_dirs_still_create_a_code_snapshot_zip(self, tmp_path: Path):
-        """Unusable root dirs never block the snapshot — they are just ignored."""
+    def test_invalid_root_dirs_are_refused_rather_than_snapshotted(self, tmp_path: Path):
+        """DECISION amend0923-selfuse-write D5, 2026-09-23 — REWRITTEN.
+
+        Formerly: "Unusable root dirs never block the snapshot — they are just
+        ignored." Now they block it, by name, before anything is read.
+        """
         repo = _make_git_repo_with_scripts(tmp_path)
 
         bad1 = repo / "remedy-job-evidence-bad1"
@@ -413,10 +428,11 @@ class TestAutoSelectLatestEvidence:
             ["bash", "scripts/make_review_zip.sh"],
             cwd=repo, capture_output=True, text=True, timeout=30,
         )
-        assert proc.returncode == 0, f"Failed: {proc.stdout}\n{proc.stderr}"
-        assert "not a final review package" in proc.stdout
-        assert "IGNORED" in proc.stderr
-        assert list(repo.glob("*.zip"))
+        out = proc.stdout + proc.stderr
+        assert proc.returncode == 1, f"expected a refusal: {out}"
+        assert "remedy-job-evidence-bad1" in out
+        assert "remedy-job-evidence-bad2" in out
+        assert not list(repo.glob("*.zip")), "no archive may be written"
 
     def test_explicit_incomplete_creates_zip(self, tmp_path: Path):
         """Explicit incomplete evidence → zip created, validation in manifest."""
@@ -472,6 +488,16 @@ class TestAutoSelectLatestEvidence:
         assert val["selected_candidate_status"] == "incomplete"
 
     def test_explicit_valid_override_wins(self, tmp_path: Path):
+        """DECISION amend0923-selfuse-write D5, 2026-09-23 — AMENDED.
+
+        The subject is unchanged: an explicitly selected older bundle beats a
+        newer one, because mtime selects nothing. What moved is the newer
+        SIBLING, which used to sit beside it in the repository root and is now
+        refused there; it lives outside the checkout instead, which is where a
+        second bundle can still legitimately be. The root-sibling form of this
+        scenario is the deprecated auto-selection D5 kills, and the modern form
+        is covered by TestIndexedEvidenceSelection below.
+        """
         import os
         repo = _make_git_repo_with_scripts(tmp_path)
 
@@ -479,7 +505,8 @@ class TestAutoSelectLatestEvidence:
         _make_valid_evidence(old, "old")
         os.utime(old / "job_flow.json", (1000000, 1000000))
 
-        new = repo / "remedy-job-evidence-new222"
+        new = tmp_path / "elsewhere" / "remedy-job-evidence-new222"
+        new.parent.mkdir()
         _make_valid_evidence(new, "new")
         os.utime(new / "job_flow.json", (2000000, 2000000))
 
@@ -498,8 +525,15 @@ class TestAutoSelectLatestEvidence:
             jf = zf.read("evidence/current/job_flow.json").decode()
             assert '"old"' in jf
 
-    def test_stale_dirs_not_in_zip(self, tmp_path: Path):
-        """Neither root dir rides along — mtime buys nothing any more."""
+    def test_stale_dirs_are_refused_not_merely_left_out(self, tmp_path: Path):
+        """DECISION amend0923-selfuse-write D5, 2026-09-23 — REWRITTEN.
+
+        Formerly this asserted that neither root dir rides along and the build
+        goes on. Stronger now: unselected root evidence is refused outright, so
+        it cannot appear in a package by any route. The property that mtime
+        buys nothing survives on the path that still exists — the `.data/`
+        evidence index — in TestIndexedEvidenceSelection below.
+        """
         import os
         repo = _make_git_repo_with_scripts(tmp_path)
 
@@ -515,21 +549,24 @@ class TestAutoSelectLatestEvidence:
             ["bash", "scripts/make_review_zip.sh"],
             cwd=repo, capture_output=True, text=True, timeout=30,
         )
-        assert proc.returncode == 0, f"Failed: {proc.stdout}\n{proc.stderr}"
+        out = proc.stdout + proc.stderr
+        assert proc.returncode == 1, f"expected a refusal: {out}"
+        assert "remedy-job-evidence-stale1" in out
+        assert "remedy-job-evidence-current1" in out
+        assert not list(repo.glob("*.zip"))
 
-        from zipfile import ZipFile
-        zips = list(repo.glob("*.zip"))
-        assert zips
-        with ZipFile(zips[0]) as zf:
-            names = zf.namelist()
-            assert not any("stale1" in n for n in names), \
-                "Stale evidence must not appear in zip"
-            assert not any("current1" in n for n in names), \
-                "An unselected root dir must not appear either"
-            assert not any(n.startswith("evidence/") for n in names)
+    def test_root_dirs_never_reach_a_manifest_because_they_are_refused(
+        self, tmp_path: Path
+    ):
+        """DECISION amend0923-selfuse-write D5, 2026-09-23 — REWRITTEN.
 
-    def test_manifest_has_no_current_evidence_for_root_dirs(self, tmp_path: Path):
-        """The manifest must not claim evidence the package does not carry."""
+        Formerly: root dirs are ignored and the manifest must not then claim
+        evidence the package does not carry. A manifest that could make that
+        false claim is no longer reachable from this input, because the build
+        stops first. The "manifest never claims absent evidence" property is
+        still pinned, on a reachable input, by
+        test_a_clean_repo_with_no_evidence_states_no_current_evidence below.
+        """
         import os
         repo = _make_git_repo_with_scripts(tmp_path)
 
@@ -540,6 +577,25 @@ class TestAutoSelectLatestEvidence:
         new = repo / "remedy-job-evidence-bbb222"
         _make_valid_evidence(new, "bbb")
         os.utime(new / "job_flow.json", (2000000, 2000000))
+
+        proc = subprocess.run(
+            ["bash", "scripts/make_review_zip.sh"],
+            cwd=repo, capture_output=True, text=True, timeout=30,
+        )
+        out = proc.stdout + proc.stderr
+        assert proc.returncode == 1, f"expected a refusal: {out}"
+        assert "remedy-job-evidence-aaa111" in out
+        assert not list(repo.glob("*.zip"))
+
+    def test_a_clean_repo_with_no_evidence_states_no_current_evidence(
+        self, tmp_path: Path
+    ):
+        """The manifest must not claim evidence the package does not carry.
+
+        This is the surviving, reachable form of the assertion the test above
+        used to make from an input that is now refused.
+        """
+        repo = _make_git_repo_with_scripts(tmp_path)
 
         proc = subprocess.run(
             ["bash", "scripts/make_review_zip.sh"],
@@ -576,8 +632,16 @@ class TestAutoSelectLatestEvidence:
         ce = manifest["current_evidence"]
         assert ce["selection_mode"] == "explicit"
 
-    def test_ignored_root_dirs_are_reported_with_remedies(self, tmp_path: Path):
-        """Ignoring is never silent: the count and both remedies are printed."""
+    def test_refused_root_dirs_are_reported_with_the_places_they_belong(
+        self, tmp_path: Path
+    ):
+        """DECISION amend0923-selfuse-write D5, 2026-09-23 — REWRITTEN.
+
+        Formerly: ignoring is never silent, so the count and both remedies are
+        printed. Refusing is never silent either — the refusal names every
+        offending directory and says where such files belong, which is strictly
+        more than the old warning told the reader.
+        """
         import os
         repo = _make_git_repo_with_scripts(tmp_path)
 
@@ -593,10 +657,11 @@ class TestAutoSelectLatestEvidence:
             ["bash", "scripts/make_review_zip.sh"],
             cwd=repo, capture_output=True, text=True, timeout=30,
         )
-        assert proc.returncode == 0, f"Failed: {proc.stdout}\n{proc.stderr}"
-        assert "2 deprecated remedy-job-evidence-* dir(s)" in proc.stderr
-        assert "--evidence-dir" in proc.stderr
-        assert "To index: 'job evidence'." in proc.stderr
+        out = proc.stdout + proc.stderr
+        assert proc.returncode == 1, f"expected a refusal: {out}"
+        assert "remedy-job-evidence-good1" in out
+        assert "remedy-job-evidence-bad1" in out
+        assert ".remedy-wt/" in out and ".data/" in out
 
     def test_missing_command_transcript_creates_zip_with_warning(self, tmp_path: Path):
         """Missing command_transcript.json → zip created, validation records it.
@@ -649,7 +714,14 @@ class TestAutoSelectLatestEvidence:
         assert "review.json" in result["required_task_artifacts"]["T001"]
 
     def test_unselected_evidence_not_in_zip(self, tmp_path: Path):
-        """With an explicit selection, the sibling root dir stays out."""
+        """With an explicit selection, an unselected sibling stays out.
+
+        DECISION amend0923-selfuse-write D5, 2026-09-23 — AMENDED: the sibling
+        moved out of the repository root, where it is now refused outright, to
+        a directory beside the checkout. The subject is unchanged and in fact
+        doubly held: an unselected bundle cannot reach the archive by being
+        ignored, and one at the root cannot reach it at all.
+        """
         import os
         repo = _make_git_repo_with_scripts(tmp_path)
 
@@ -657,7 +729,8 @@ class TestAutoSelectLatestEvidence:
         _make_valid_evidence(sel, "selected")
         os.utime(sel / "job_flow.json", (2000000, 2000000))
 
-        other = repo / "remedy-job-evidence-other"
+        other = tmp_path / "elsewhere" / "remedy-job-evidence-other"
+        other.parent.mkdir()
         _make_valid_evidence(other, "other")
         os.utime(other / "job_flow.json", (1000000, 1000000))
 
@@ -665,7 +738,7 @@ class TestAutoSelectLatestEvidence:
             ["bash", "scripts/make_review_zip.sh", "--evidence-dir", str(sel)],
             cwd=repo, capture_output=True, text=True, timeout=30,
         )
-        assert proc.returncode == 0
+        assert proc.returncode == 0, f"{proc.stdout}\n{proc.stderr}"
 
         from zipfile import ZipFile
         zips = list(repo.glob("*.zip"))
@@ -675,26 +748,39 @@ class TestAutoSelectLatestEvidence:
             assert "evidence/current/job_flow.json" in names
 
     def test_evidence_under_current_prefix(self, tmp_path: Path):
+        """DECISION amend0923-selfuse-write D5, 2026-09-23 — AMENDED, and the
+        assertion is stronger for it. The bundle is now SELECTED explicitly
+        instead of left at the root unselected, so the archive really carries
+        evidence and the prefix rule is measured over a non-empty set; the old
+        form passed vacuously over zero evidence members.
+        """
         repo = _make_git_repo_with_scripts(tmp_path)
         ev = repo / "remedy-job-evidence-preftest"
         _make_valid_evidence(ev, "preftest")
 
         proc = subprocess.run(
-            ["bash", "scripts/make_review_zip.sh"],
+            ["bash", "scripts/make_review_zip.sh", "--evidence-dir", str(ev)],
             cwd=repo, capture_output=True, text=True, timeout=30,
         )
-        assert proc.returncode == 0
+        assert proc.returncode == 0, f"{proc.stdout}\n{proc.stderr}"
 
         from zipfile import ZipFile
         zips = list(repo.glob("*.zip"))
         with ZipFile(zips[0]) as zf:
             ev_files = [n for n in zf.namelist()
                         if n.startswith("evidence/")]
+            assert ev_files, "the archive must actually carry evidence"
             assert all(n.startswith("evidence/current/") for n in ev_files)
 
-    def test_root_dirs_are_counted_as_ignored_not_as_candidates(self, tmp_path: Path):
-        """R-4332 counted rejected CANDIDATES; root dirs are no longer
-        candidates at all, so the count they now feed is the ignored count."""
+    def test_root_dirs_are_not_candidates_and_are_now_refused_outright(
+        self, tmp_path: Path
+    ):
+        """DECISION amend0923-selfuse-write D5, 2026-09-23 — REWRITTEN.
+
+        Root dirs stopped being selection CANDIDATES at 01e2018; they are now
+        not tolerated either. Every one of the three is named in the refusal,
+        valid and invalid alike, because the gate reads shapes and not contents.
+        """
         import os
         repo = _make_git_repo_with_scripts(tmp_path)
 
@@ -712,15 +798,12 @@ class TestAutoSelectLatestEvidence:
             ["bash", "scripts/make_review_zip.sh"],
             cwd=repo, capture_output=True, text=True, timeout=30,
         )
-        assert proc.returncode == 0
-
-        import json
-        from zipfile import ZipFile
-        assert "3 deprecated remedy-job-evidence-* dir(s)" in proc.stderr
-        zips = list(repo.glob("*.zip"))
-        with ZipFile(zips[0]) as zf:
-            manifest = json.loads(zf.read(".review_zip_manifest.json"))
-        assert manifest["current_evidence"] is None
+        out = proc.stdout + proc.stderr
+        assert proc.returncode == 1, f"expected a refusal: {out}"
+        for name in ("remedy-job-evidence-good", "remedy-job-evidence-bad1",
+                     "remedy-job-evidence-bad2"):
+            assert name in out
+        assert not list(repo.glob("*.zip"))
 
 
 class TestFilenamePattern:
@@ -949,18 +1032,21 @@ class TestIndexedEvidenceSelection:
         m = _zip_manifest(repo)
         assert m["current_evidence"]["job_id"] == "current001"
 
-    def test_legacy_root_evidence_is_ignored_with_warning(self, tmp_path: Path):
-        """The deprecated root fallback is gone (01e2018 / bd93397): legacy
-        dirs are warned about and ignored, never selected."""
+    def test_legacy_root_evidence_is_refused(self, tmp_path: Path):
+        """DECISION amend0923-selfuse-write D5, 2026-09-23 — REWRITTEN.
+
+        The deprecated root fallback was removed at 01e2018 / bd93397 and the
+        leftover directory was then merely warned about. It is now refused: it
+        was never selected, and it must not sit in the root either.
+        """
         repo = _make_git_repo_with_scripts(tmp_path)
         _make_valid_evidence(repo / "remedy-job-evidence-legacy1", "legacy1")
 
         proc = _run_zip(repo)
-        assert proc.returncode == 0, proc.stdout + proc.stderr
         combined = proc.stdout + proc.stderr
-        assert "deprecated" in combined.lower(), combined
-        assert "IGNORED" in proc.stderr
-        assert _zip_manifest(repo)["current_evidence"] is None
+        assert proc.returncode == 1, combined
+        assert "remedy-job-evidence-legacy1" in combined
+        assert not list(repo.glob("*.zip"))
 
     def test_jsonl_and_status_md_participate_in_alignment(self, tmp_path: Path):
         """A bundle covering only .py could never align if .jsonl/.md were ignored."""
@@ -994,3 +1080,150 @@ class TestIndexedEvidenceSelection:
         hits = sorted({m for pref in forbidden
                        for m in re.findall(re.escape(pref) + r"[^\"\\ ,]*", blob)})
         assert not hits, f"review manifest leaks absolute paths: {hits}"
+
+
+# ---------------------------------------------------------------------------
+# amendment amend0923-selfuse-write — R-0829 and DECISION D5:
+# the packer ships nothing git ignores, and refuses root leftovers outright
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.skipif(
+    shutil.which("git") is None
+    or shutil.which("bash") is None
+    or shutil.which("zip") is None,
+    reason="git, bash, zip required",
+)
+class TestThePackerShipsNothingGitIgnores:
+    """R-0829's own FIX clause, which this amendment carries.
+
+    The packer's exclusion list was a hardcoded set of `-prune` paths, so every
+    ignored directory the list did not happen to name was packaged. Measured on
+    three packages of 2026-09-22 and 2026-09-23: 65 files of F110-era reviewer
+    scratch under `remedy-review-r9-scratch/` and `remedy-review-r10-scratch/`
+    in each. The list is now backed by `git check-ignore`, which cannot go
+    stale the way a list does.
+    """
+
+    def _repo_with_an_ignored_directory(self, tmp_path: Path) -> Path:
+        repo = _make_git_repo_with_scripts(tmp_path)
+        _make_valid_evidence(repo / "remedy-job-evidence-test", "ignored-test")
+        (repo / ".gitignore").write_text("secret_scratch/\n")
+        scratch = repo / "secret_scratch"
+        scratch.mkdir()
+        (scratch / "a_note.txt").write_text("scratch nobody should receive\n")
+        env = {**os.environ, "GIT_AUTHOR_NAME": "test", "GIT_AUTHOR_EMAIL": "t@t",
+               "GIT_COMMITTER_NAME": "test", "GIT_COMMITTER_EMAIL": "t@t"}
+        subprocess.run(["git", "add", ".gitignore"], cwd=repo, check=True,
+                       capture_output=True, text=True)
+        subprocess.run(["git", "commit", "-m", "ignore scratch"], cwd=repo,
+                       capture_output=True, text=True, timeout=15, env=env)
+        return repo
+
+    def test_no_member_of_the_archive_is_a_path_git_ignores(self, tmp_path: Path):
+        repo = self._repo_with_an_ignored_directory(tmp_path)
+
+        proc = subprocess.run(
+            ["bash", "scripts/make_review_zip.sh",
+             "--evidence-dir", str(repo / "remedy-job-evidence-test")],
+            cwd=repo, capture_output=True, text=True, timeout=120,
+        )
+        assert proc.returncode == 0, f"{proc.stdout}\n{proc.stderr}"
+
+        from zipfile import ZipFile
+        zips = list(repo.glob("*.zip"))
+        assert zips, "the packer must still build an archive"
+        with ZipFile(zips[0]) as zf:
+            names = zf.namelist()
+        leaked = [n for n in names if n.startswith("secret_scratch/")]
+        assert leaked == [], f"the packer shipped git-ignored paths: {leaked}"
+        assert any(n.endswith("README.md") for n in names), (
+            "the tracked sources must still be packaged — this filter must not "
+            "empty the archive"
+        )
+
+
+@pytest.mark.skipif(
+    shutil.which("git") is None or shutil.which("bash") is None,
+    reason="git and bash required",
+)
+class TestThePackerRefusesRootLeftovers:
+    """DECISION amend0923-selfuse-write D5, 2026-09-23.
+
+    The operator ruled that reviewer scratch, deprecated evidence directories
+    and stray archives must never be packaged NOR tolerated at the repository
+    root. The detritus gate, which already refused `*_WAS_HERE.txt`, now
+    refuses those three shapes as well, with the same print-and-exit-1
+    behaviour and before anything is read.
+    """
+
+    def _repo(self, tmp_path: Path) -> Path:
+        repo = _make_git_repo_with_scripts(tmp_path)
+        _make_valid_evidence(repo / "remedy-job-evidence-test", "refusal-test")
+        return repo
+
+    def _run(self, repo: Path, review_dir: Path) -> subprocess.CompletedProcess:
+        return subprocess.run(
+            ["bash", "scripts/make_review_zip.sh",
+             "--evidence-dir", str(repo / "remedy-job-evidence-test")],
+            cwd=repo, capture_output=True, text=True, timeout=60,
+            env={**os.environ, "REMEDY_REVIEW_DIR": str(review_dir)},
+        )
+
+    def test_a_scratch_dir_and_a_stray_zip_are_both_refused_by_name(
+        self, tmp_path: Path
+    ):
+        repo = self._repo(tmp_path)
+        (repo / "remedy-review-x-scratch").mkdir()
+        (repo / "foo.zip").write_bytes(b"not a package\n")
+        review_dir = tmp_path / "packages_out"
+
+        proc = self._run(repo, review_dir)
+
+        out = proc.stdout + proc.stderr
+        assert proc.returncode == 1, f"expected a refusal, got {proc.returncode}\n{out}"
+        assert "remedy-review-x-scratch" in out
+        assert "foo.zip" in out
+        assert not list(review_dir.glob("*.zip")), "nothing may be written"
+
+    def test_a_root_evidence_dir_is_refused_rather_than_ignored(self, tmp_path: Path):
+        """The old behaviour warned "IGNORED" and packaged a code snapshot."""
+        repo = self._repo(tmp_path)
+        (repo / "remedy-job-evidence-aaa111").mkdir()
+        review_dir = tmp_path / "packages_out"
+
+        proc = self._run(repo, review_dir)
+
+        out = proc.stdout + proc.stderr
+        assert proc.returncode == 1, f"expected a refusal, got {proc.returncode}\n{out}"
+        assert "remedy-job-evidence-aaa111" in out
+        assert not list(review_dir.glob("*.zip"))
+
+    def test_the_packages_own_output_directory_is_not_its_own_detritus(
+        self, tmp_path: Path
+    ):
+        """REMEDY_REVIEW_DIR="." is what tests/conftest.py sets, so a build
+        that writes its archive INTO the repository root must not then refuse
+        the archive it just wrote. Only the configured output directory is
+        spared, and only for the `*.zip` shape."""
+        repo = self._repo(tmp_path)
+
+        first = subprocess.run(
+            ["bash", "scripts/make_review_zip.sh",
+             "--evidence-dir", str(repo / "remedy-job-evidence-test")],
+            cwd=repo, capture_output=True, text=True, timeout=60,
+            env={**os.environ, "REMEDY_REVIEW_DIR": "."},
+        )
+        assert first.returncode == 0, f"{first.stdout}\n{first.stderr}"
+        assert list(repo.glob("*.zip")), "the archive must land in the root"
+
+        second = subprocess.run(
+            ["bash", "scripts/make_review_zip.sh",
+             "--evidence-dir", str(repo / "remedy-job-evidence-test")],
+            cwd=repo, capture_output=True, text=True, timeout=60,
+            env={**os.environ, "REMEDY_REVIEW_DIR": "."},
+        )
+        assert second.returncode == 0, (
+            "the packer's own output must not be read as detritus\n"
+            f"{second.stdout}\n{second.stderr}"
+        )

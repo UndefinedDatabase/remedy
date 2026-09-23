@@ -204,6 +204,27 @@ Standing orders written as job files, which the self-use track queues verbatim o
 |------|-------------|
 | [toolchain-refresh.md](orders/toolchain-refresh.md) | Raise the pinned toolchain, read the release notes first, run the suite once, open a pull request; at most every fourteen days |
 
+## What belongs in the repository root
+
+The repository root is for TRACKED files only. Everything a session produces along the
+way has a home of its own, and none of those homes is the root: reviewer scratch —
+probes, mutation scripts, authored blocks, captured logs — lives under `.remedy-wt/`;
+job evidence and run records live under `.data/`; and a finished review package lives
+under `~/Repos/remedy-history/zips/`, which is where `scripts/make_review_zip.sh`
+publishes it and where `REMEDY_REVIEW_DIR` can point it instead.
+
+Two things enforce this rather than merely asking for it. The packer REFUSES to build a
+package while the root holds a `remedy-review-*` directory, a `remedy-job-evidence-*`
+directory, a stray `*.zip` or a `*_WAS_HERE.txt` marker: it prints the offending names
+and exits 1 before reading anything. Its source list is also filtered through
+`git check-ignore`, so no path git ignores can be packaged even if some future
+directory escapes the refusal. And `remedy integrity check` carries a
+`repo_root_hygiene` check that fails on the same four shapes, so a leftover is caught
+in the round that created it instead of in an accepted package weeks later — which is
+what finding R-0829 measured, 65 files of abandoned scratch in each of three
+consecutive packages. Move such a directory out of the root; do not delete evidence
+that a record may still point at.
+
 ## Roadmap (`docs/roadmap/`)
 
 The target plan for the product. See [ROADMAP.md](roadmap/ROADMAP.md) for the full 258-feature
