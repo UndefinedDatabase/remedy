@@ -12,19 +12,19 @@ record, and the job re-bases onto it instead of failing on drift
 
 ## Current Step
 
-ROUND 5 books round 4's PASS, records DECISION F263 D5, and lands T003's
-run half: a git job absorbs a hand edit at every safe point and keeps
-running, the two drift blocks are gone for it, each check is counted and
-timed, and the demo case runs end to end.
+ROUND 6 books round 5's PASS, records DECISION F263 D6, and lands T003's
+apply half: every apply absorbs before a file is copied, the apply's drift
+block is deleted, and a hand edit the job also changed stops the apply
+with its name. With it every slice, T001 to T003, has landed.
 
 ## Next Steps
 
-1. T003's apply half: `job apply` and `do run --apply` absorb before a
-   single file is copied, a hand edit that meets the job's own change
-   stops the apply and says why, and the second demo case runs.
-2. The closure sequence, with the one full-suite run.
+1. The closure's first round: the Built State in the feature file, the
+   closure's self-use item, and the feature's one full-suite run.
+2. The evidence bundle and the review package.
+3. The ledger rotation, the accepted STATUS line and the pull request.
 
 ## Risks
 
-A hand edit to a file the job also changed is only met at apply; the next
-round decides that it stops there rather than overwrite either side.
+The cost of the check is recorded per job; the closure reads it from a
+real job's record and states it in the Built State.
