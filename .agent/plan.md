@@ -12,18 +12,17 @@ record, and the job re-bases onto it instead of failing on drift
 
 ## Current Step
 
-ROUND 3 books round 2's FAIL with finding R-1042, repairs it under DECISION
-F263 D3 — the unused import dropped, and `.agent/authored` excluded from
-ruff — and runs round 2's red proofs, which never ran, so T001 is proved
-whole: the record, its evidence path and its READY gate.
+ROUND 4 books round 3's PASS, records DECISION F263 D4, and lands T002:
+`remedy absorb`, its catalog entry, help slot and bare form, over
+`human_change.absorb_job` — the one path that certifies a hand edit and
+re-bases a job's last known state, which the run's safe points will call.
 
 ## Next Steps
 
-1. T002, `remedy absorb`: the explicit command over the same `absorb`
-   path, with its catalog entry, help text and re-base of the job's state.
-2. T003, absorption at every safe point and before every apply, deleting
-   the drift error it replaces, with the demo case end to end.
-3. The closure sequence, with the one full-suite run.
+1. T003, absorption at every safe point and before every apply, deleting
+   the drift error it replaces, with the demo case end to end and the
+   cost of the check measured.
+2. The closure sequence, with the one full-suite run.
 
 ## Risks
 
