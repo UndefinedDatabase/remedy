@@ -297,3 +297,60 @@ class TestIntegrityCheckJSONEnvelope:
         assert body["error"] == "integrity_failed"
         assert body["passed"] is False
         assert body["fail_count"] == 1
+
+
+# ---------------------------------------------------------------------------
+# amendment amend0923-selfuse-write — the repository root holds tracked files only
+# ---------------------------------------------------------------------------
+
+
+class TestRepoRootHygiene:
+    """R-0829 and DECISION amend0923-selfuse-write D5, 2026-09-23.
+
+    The packer refuses these shapes at build time, but a build happens once per
+    closure. This check runs every round, so reviewer scratch cannot sit in the
+    root for the weeks it took R-0829 to be noticed.
+    """
+
+    @staticmethod
+    def _check(tmp_path, monkeypatch):
+        monkeypatch.chdir(tmp_path)
+        return integrity_gate._check_repo_root_hygiene()
+
+    def test_a_clean_root_passes(self, tmp_path, monkeypatch):
+        (tmp_path / "packages").mkdir()
+        check = self._check(tmp_path, monkeypatch)
+        assert check.name == "repo_root_hygiene"
+        assert check.status is IntegrityStatus.PASS
+
+    def test_reviewer_scratch_fails_and_is_named(self, tmp_path, monkeypatch):
+        (tmp_path / "remedy-review-old-scratch").mkdir()
+        check = self._check(tmp_path, monkeypatch)
+        assert check.status is IntegrityStatus.FAIL
+        assert "remedy-review-old-scratch" in check.message
+
+    def test_each_refused_shape_fails(self, tmp_path, monkeypatch):
+        (tmp_path / "remedy-job-evidence-f112-closure").mkdir()
+        (tmp_path / "stray.zip").write_bytes(b"x")
+        (tmp_path / "BUILDER_WAS_HERE.txt").write_text("x")
+        check = self._check(tmp_path, monkeypatch)
+        assert check.status is IntegrityStatus.FAIL
+        for name in ("remedy-job-evidence-f112-closure", "stray.zip",
+                     "BUILDER_WAS_HERE.txt"):
+            assert name in check.message
+
+    def test_the_message_names_at_most_five(self, tmp_path, monkeypatch):
+        for i in range(9):
+            (tmp_path / f"remedy-review-{i}-scratch").mkdir()
+        check = self._check(tmp_path, monkeypatch)
+        assert check.status is IntegrityStatus.FAIL
+        named = [n for n in range(9) if f"remedy-review-{n}-scratch" in check.message]
+        assert len(named) == 5, f"named {named}"
+        assert "9" in check.message, "the message must state the true total"
+
+    def test_the_check_is_registered_in_the_gate(self, tmp_path, monkeypatch):
+        monkeypatch.chdir(tmp_path)
+        result = run_integrity_checks()
+        names = [c.name for c in result.checks]
+        assert "repo_root_hygiene" in names
+        assert names.index("repo_root_hygiene") == names.index("relevant_untracked") + 1

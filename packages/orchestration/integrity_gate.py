@@ -2,7 +2,8 @@
 Integrity Gate v1 — lightweight pre-handoff checks.
 
 Verifies handler imports, live_review state, plan consistency,
-and relevant untracked files before claiming PASS.
+relevant untracked files, repository-root hygiene and open blocker/high
+findings before claiming PASS.
 
 Public API::
 
@@ -17,6 +18,7 @@ import re
 import subprocess
 from dataclasses import dataclass, field
 from enum import Enum
+from fnmatch import fnmatch
 from pathlib import Path
 
 from packages.orchestration.exec_guard import run_guarded_test_command
@@ -215,6 +217,47 @@ def _check_relevant_untracked() -> IntegrityCheck:
         return IntegrityCheck("relevant_untracked", IntegrityStatus.SKIP, f"error: {exc}"[:200])
 
 
+#: The shapes the repository root must never hold, as fnmatch patterns over a
+#: depth-1 entry's NAME. Reviewer scratch, deprecated root evidence directories,
+#: stray archives and debug markers — the same four `scripts/make_review_zip.sh`
+#: refuses at its detritus gate, kept in step with it by name.
+_ROOT_DETRITUS_PATTERNS = (
+    "remedy-review-*",
+    "remedy-job-evidence-*",
+    "*.zip",
+    "*_WAS_HERE.txt",
+)
+
+
+def _check_repo_root_hygiene() -> IntegrityCheck:
+    """Check that the repository root holds no reviewer scratch or stray package.
+
+    R-0829 and DECISION amend0923-selfuse-write D5 (2026-09-23). The packer
+    refuses these shapes too, but a package is built once per closure, and
+    `remedy-review-r9-scratch/` sat in this root for weeks before a reviewer
+    noticed it in an accepted package. This runs every round instead.
+
+    The root is resolved the way every other check in this file resolves it —
+    relative to the working directory — so it measures the checkout the gate was
+    invoked in.
+    """
+    try:
+        offenders = sorted(
+            entry.name
+            for entry in Path(".").iterdir()
+            if any(fnmatch(entry.name, pattern) for pattern in _ROOT_DETRITUS_PATTERNS)
+        )
+        if offenders:
+            named = ", ".join(offenders[:5])
+            return IntegrityCheck(
+                "repo_root_hygiene", IntegrityStatus.FAIL,
+                f"{len(offenders)} root leftovers: {named}"[:200])
+        return IntegrityCheck("repo_root_hygiene", IntegrityStatus.PASS,
+                              "no reviewer scratch, evidence dir or archive at the root")
+    except Exception as exc:  # noqa: BLE001 — an unreadable root skips this check rather than failing the gate
+        return IntegrityCheck("repo_root_hygiene", IntegrityStatus.SKIP, f"error: {exc}"[:200])
+
+
 def _load_ledger_reader():
     """``scripts/rotate_live_review.py``, the ledger's one canonical reader, loaded by path.
 
@@ -277,6 +320,7 @@ def run_integrity_checks(*, collect_only: bool = False) -> IntegrityGateResult:
     result.checks.append(_check_live_review_verdict())
     result.checks.append(_check_plan_consistency())
     result.checks.append(_check_relevant_untracked())
+    result.checks.append(_check_repo_root_hygiene())
     result.checks.append(_check_high_blockers_open())
 
     if collect_only:
