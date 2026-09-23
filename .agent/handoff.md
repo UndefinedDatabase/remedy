@@ -1,109 +1,99 @@
-# Handback — F279 Configuration & toolchain truth · Round 3 · Book round 2's PASS, record DECISION F279 D3, land T001's doctor and docs half
+# Handback — F279 Configuration & toolchain truth · Round 4 · Book round 3's PASS, record DECISION F279 D4, land T001's reader half
 
 ## Session
 
-SESSION 1 of feature F279 · round 3 · rounds so far 3
+SESSION 1 of feature F279 · round 4 · rounds so far 4
 
-This round booked round 2's PASS into the ledger, recorded DECISION F279 D3
-(the seven `REMEDY_` names the shell scripts under `scripts/` expand, and the
-two real-Ollama opt-ins, are registered and guarded), and landed T001's
-doctor and docs half: `remedy doctor core` now carries two ADVISORY warning
-kinds — an unknown `REMEDY_` variable named with its closest registered
-match, and a registered variable whose value does not read as its declared
-type, named without its value — and `docs/guides/environment.md` is
-GENERATED from the registry by `write_environment_guide()`, indexed in
-`docs/README.md`, and held by a drift test
-(`tests/docs/test_environment_guide.py`). All of G1-G5 ran before this
-handoff was written and matched the block's stated expectations exactly,
-byte for byte and reading for reading. Context self-assessment: a
-comfortable majority of the working budget remains at handback.
+This round booked round 3's PASS into the ledger, recorded DECISION F279 D4
+(UI flags and the strict event-name flag now read yes for 1, true or yes
+rather than "1" alone; a whole-number or number variable that fails to parse
+now fails naming the variable and its type, an empty value included; the
+Claude planner's 300-second timeout default now lives in the variable's spec
+alone; text reads, the standalone `scripts/` scripts and the two runtime
+port reads keep their own reads), and landed T001's reader half: `env_value`
+in `packages/orchestration/config.py` reads a registered variable from the
+live environment as its declared type, the eleven typed reads (ui_server.py
+x4, run_log.py, claude_planner/provider.py, ollama_builder/provider.py,
+ollama_planner/provider.py, runtime_supervisor.py, and others) moved onto
+it, and `tests/orchestration/test_env_registry.py` guards every typed read
+stays on it. All of G1-G5 ran before this handoff was written and matched
+the block's stated expectations exactly, byte for byte and reading for
+reading. Context self-assessment: a comfortable majority of the working
+budget remains at handback.
 
 ## Range
 
-Review of `cec312cb`..`HEAD`.
+Review of `0a529d69`..`HEAD`.
 
 ## Commits
 
-### 3e81ba12 F279 R3 C1a: copy round 3 block and bookkeeping payloads into .agent/authored/
+### 3af08afc F279 R4 C1a: copy round 4 block and bookkeeping payloads into .agent/authored/
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f279-r3-block.md | +265/-0 | Bookkeeping copy of this round's step block (R-0954 transport) |
-| .agent/authored/f279-r3-ledger.diff | +10/-0 | Payload copy |
-| .agent/authored/f279-r3-plan.md | +34/-0 | Payload copy |
-| .agent/authored/f279-r3-decisions.diff | +45/-0 | Payload copy |
+| .agent/authored/f279-r4-block.md | +235/-0 | Bookkeeping copy of this round's step block (R-0954 transport) |
+| .agent/authored/f279-r4-ledger.diff | +10/-0 | Payload copy |
+| .agent/authored/f279-r4-plan.md | +32/-0 | Payload copy |
+| .agent/authored/f279-r4-decisions.diff | +43/-0 | Payload copy |
+| .agent/authored/f279-r4-feature.diff | +15/-0 | Payload copy |
+| .agent/authored/f279-r4-slips.diff | +9/-0 | Payload copy |
 
-Measured insertions: 354 (265+10+34+45), matching the block's "this block's
-line count plus 89" formula (265+89=354) exactly, well under the 500 cap.
+Measured insertions: 344 (block's line count 235 plus 109), matching the
+block's formula and its stated total exactly, well under the 500 cap.
 
-### c57a6ebb F279 R3 C1b: copy round 3 registry payloads into .agent/authored/
+### c5dc31b4 F279 R4 C1b: copy round 4 product payloads into .agent/authored/
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f279-r3-config.diff | +246/-0 | Payload copy |
-| .agent/authored/f279-r3-test_env_registry.diff | +96/-0 | Payload copy |
-| .agent/authored/f279-r3-mutations.py | +70/-0 | Payload copy (G5 tool, never applied to a tracked file) |
+| .agent/authored/f279-r4-config.diff | +47/-0 | Payload copy |
+| .agent/authored/f279-r4-ollama_builder.diff | +47/-0 | Payload copy |
+| .agent/authored/f279-r4-ollama_planner.diff | +45/-0 | Payload copy |
+| .agent/authored/f279-r4-claude_planner.diff | +36/-0 | Payload copy |
+| .agent/authored/f279-r4-ui_server.diff | +55/-0 | Payload copy |
+| .agent/authored/f279-r4-run_log.diff | +28/-0 | Payload copy |
+| .agent/authored/f279-r4-runtime_supervisor.diff | +21/-0 | Payload copy |
+| .agent/authored/f279-r4-test_env_registry.diff | +122/-0 | Payload copy |
+| .agent/authored/f279-r4-mutations.py | +62/-0 | Payload copy (G5 tool, never applied to a tracked file) |
 
-Measured insertions: 412, matching the block's expected 412 exactly.
+Measured insertions: 463, matching the block's expected 463 exactly.
 
-### 00947a7e F279 R3 C1c: copy round 3 doctor and docs payloads into .agent/authored/
+### 2a8f7efa F279 R4 C2: book round 3's PASS and record DECISION F279 D4
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f279-r3-worker_facade_cmd.diff | +46/-0 | Payload copy |
-| .agent/authored/f279-r3-test_worker_facade_cmd.diff | +75/-0 | Payload copy |
-| .agent/authored/f279-r3-docs_index.diff | +20/-0 | Payload copy |
-| .agent/authored/f279-r3-retired_word.diff | +14/-0 | Payload copy |
-| .agent/authored/f279-r3-test_environment_guide.py | +38/-0 | Payload copy |
+| .agent/live_review.md | +2/-0 | `ledger.diff` applied: round 3's `Gate:` entry appended |
+| .agent/plan.md | +11/-13 | Rewritten to the round-4 plan.md payload |
+| .agent/decisions.md | +35/-0 | `decisions.diff` applied: DECISION F279 D4 recorded |
+| docs/roadmap/features/T2_F279.md | +4/-0 | `feature.diff` applied: the feature file's note |
+| .agent/prose_slips.md | +1/-0 | `slips.diff` applied: one prose-slip line appended |
 
-Measured insertions: 193, matching the block's expected 193 exactly.
-
-### 138ea602 F279 R3 C2: book round 2's PASS and record DECISION F279 D3
-| Path | +/- | Reason |
-|---|---|---|
-| .agent/live_review.md | +2/-0 | `ledger.diff` applied: round 2's `Gate:` entry appended |
-| .agent/plan.md | +11/-14 | Rewritten to the round-3 plan.md payload |
-| .agent/decisions.md | +37/-0 | `decisions.diff` applied: DECISION F279 D3 recorded |
-
-Measured insertions (`git diff --numstat`): 37 decisions.md, 2
-live_review.md, 11 plan.md — matching the block's expected counts exactly.
-
-### 595fd3b0 F279 R3 C3: register the shell scripts' names and read the environment against the registry
-| Path | +/- | Reason |
-|---|---|---|
-| packages/orchestration/config.py | +220/-1 | `config.diff` applied: seven shell-script `REMEDY_` names plus two real-Ollama opt-ins registered as env-only specs; `env_value_parses`/`unknown_env_variables`/`unparsable_env_variables`/`write_environment_guide` added |
-| tests/orchestration/test_env_registry.py | +54/-2 | `test_env_registry.diff` applied: guards for the new names and the environment-against-registry checks |
-
-Measured insertions: 220 config.py, 54 test_env_registry.py — matching the
+Measured insertions (`git diff --numstat`): 35 decisions.md, 2
+live_review.md, 11 plan.md, 1 prose_slips.md, 4 T2_F279.md — matching the
 block's expected counts exactly.
 
-### c7d19be0 F279 R3 C4: remedy doctor core names unknown and unparsable REMEDY_ variables
+### 49cb9d1b F279 R4 C3: read every typed REMEDY_ variable through the registry reader
 | Path | +/- | Reason |
 |---|---|---|
-| apps/cli/commands/worker_facade_cmd.py | +35/-0 | `worker_facade_cmd.diff` applied: `_cmd_doctor_core` emits ADVISORY warnings for unknown and unparsable `REMEDY_` variables, never printing a value |
-| tests/cli/test_worker_facade_cmd.py | +57/-0 | `test_worker_facade_cmd.diff` applied: tests for both warning kinds |
+| packages/orchestration/config.py | +36/-0 | `config.diff` applied: `env_value()` added, reading a registered variable from the live environment as its declared type |
+| packages/orchestration/run_log.py | +2/-2 | `run_log.diff` applied: its typed read moved onto `env_value` |
+| packages/orchestration/ui_server.py | +11/-4 | `ui_server.diff` applied: four typed reads (demo mode x2, no-auto-build, allow-legacy-fallback) moved onto `env_value` |
+| packages/providers/claude_planner/provider.py | +4/-14 | `claude_planner.diff` applied: its timeout read moved onto `env_value`; the provider's private 300s default deleted |
+| packages/providers/ollama_builder/provider.py | +5/-15 | `ollama_builder.diff` applied: its typed reads moved onto `env_value` |
+| packages/providers/ollama_planner/provider.py | +5/-15 | `ollama_planner.diff` applied: its typed reads moved onto `env_value` |
+| packages/runtimes/runtime_supervisor.py | +5/-3 | `runtime_supervisor.diff` applied: the log-cap read moved onto `env_value`; an empty `REMEDY_RUNTIME_LOG_MAX` now fails loudly instead of silently meaning no cap |
+| tests/orchestration/test_env_registry.py | +98/-0 | `test_env_registry.diff` applied: the reader's own tests plus the guard holding all eleven typed reads on it |
 
-Measured insertions: 35 worker_facade_cmd.py, 57 test_worker_facade_cmd.py —
-matching the block's expected counts exactly.
+Measured insertions: 36 config.py, 2 run_log.py, 11 ui_server.py, 4
+claude_planner provider.py, 5 ollama_builder provider.py, 5 ollama_planner
+provider.py, 5 runtime_supervisor.py, 98 test_env_registry.py — matching
+the block's expected counts exactly.
 
-### d1338c24 F279 R3 C5: generate docs/guides/environment.md from the registry and index it
-| Path | +/- | Reason |
-|---|---|---|
-| docs/guides/environment.md | +105/-0 (new file) | Generated by `write_environment_guide()` from the registry C3 lands |
-| docs/README.md | +2/-0 | `docs_index.diff` applied: two index lines for the new guide |
-| tests/docs/test_environment_guide.py | +38/-0 (new file) | Copied whole from the payload; drift test holding the committed guide to the registry rendering |
-| tests/docs/test_retired_promote_word.py | +3/-0 | `retired_word.diff` applied: the guide's `model_routing` quote of "promotion" registered under the same sense `config.py` already carries |
-
-Measured insertions: 2 README.md, 105 environment.md, 38
-test_environment_guide.py, 3 test_retired_promote_word.py — matching the
-block's expected counts exactly.
-
-### (this commit) F279 R3 C6: rewrite handoff for round 3
+### (this commit) F279 R4 C4: rewrite handoff for round 4
 | Path | +/- | Reason |
 |---|---|---|
 | .agent/handoff.md | rewritten | This handback, per docs/agents/handback_template.md |
 
 ## External actions
 
-- `git worktree add --detach .remedy-wt/f279-r3-mut d1338c24` — created for
-  G5; `git worktree remove --force .remedy-wt/f279-r3-mut` then
+- `git worktree add --detach .remedy-wt/f279-r4-mut 49cb9d1b` — created for
+  G5; `git worktree remove --force .remedy-wt/f279-r4-mut` then
   `git worktree prune` removed it as G5's last action. `git worktree list`
   afterward showed only the primary checkout and the two pre-existing
   `.remedy-wt/job-*` worktrees.
@@ -121,128 +111,134 @@ BEFORE ANYTHING ELSE:
 - `ls .agent/STOP` → `ls: cannot access '.agent/STOP': No such file or directory`, real exit 2 (ENOENT), absent — proceed.
 - `git status --porcelain` → empty. `git branch --show-current` →
   `feature/f279-configuration-toolchain-truth`. `git log --oneline -1` →
-  `cec312cb F279 R2 C4: rewrite handoff for round 2`. All three matched.
-- Block bytes (R-0954): measured line count (newline count)=265,
-  sha256=`2d8bdbfcbf2488efe880fbcc35973997654dbfa397d5ef8b1fb967df8884a5ca`;
+  `0a529d69 F279 R3 C6: rewrite handoff for round 3`. All three matched.
+- Block bytes (R-0954): measured line count (newline count)=235,
+  sha256=`341d57ddc5b7bd4f29fbed7caa0bdbf767dcf1d44cf2c29c272a3944674e00df`;
   matches both readings given in the delegation message exactly.
-- `git worktree list` (before any change) → primary checkout at `cec312cb`
+- `git worktree list` (before any change) → primary checkout at `0a529d69`
   plus `.remedy-wt/job-129b3ad7206d4f8d` (`09441a92`) and
   `.remedy-wt/job-e7268925db3a4831` (`cc8696a3`).
 - `git stash list | head -1` →
   `stash@{0}: WIP on (no branch): 365051fa F277 R17 C3: rewrite handoff for round 17 with the rebuilt package readings`.
 
-PAYLOADS — all 11 measured and matched the block's table exactly (line
-count, byte count, sha256): config.diff (246/9768/`2b0e70c4...`),
-decisions.diff (45/3263/`354bb319...`), docs_index.diff
-(20/1586/`c187ffdd...`), ledger.diff (10/7184/`2de45a20...`), mutations.py
-(70/3094/`4750e1c4...`), plan.md (34/1452/`ba92c746...`), retired_word.diff
-(14/640/`184da4c7...`), test_env_registry.diff (96/4520/`ee3d6e6d...`),
-test_environment_guide.py (38/1513/`02dea8e4...`),
-test_worker_facade_cmd.diff (75/3515/`7c64c1f2...`), worker_facade_cmd.diff
-(46/2513/`d903b609...`).
+PAYLOADS — all 14 measured and matched the block's table exactly (line
+count, byte count, sha256): claude_planner.diff (36/1716/`c2538346...`),
+config.diff (47/2367/`48e630d4...`), decisions.diff (43/3307/`1ba8b559...`),
+feature.diff (15/1022/`825ad48a...`), ledger.diff (10/6964/`f0a999bd...`),
+mutations.py (62/2701/`4290c666...`), ollama_builder.diff
+(47/2049/`c407d116...`), ollama_planner.diff (45/1970/`2618c9dd...`),
+plan.md (32/1322/`33556ec3...`), run_log.diff (28/949/`528a3448...`),
+runtime_supervisor.diff (21/1056/`7a627d2f...`), slips.diff
+(9/1635/`146e3b40...`), test_env_registry.diff (122/6073/`e074be00...`),
+ui_server.diff (55/2430/`cd203efb...`).
 
 `git apply --check` then `git apply` for every `.diff` payload (ledger,
-decisions, config, test_env_registry, worker_facade_cmd,
-test_worker_facade_cmd, docs_index, retired_word): all 8 pairs at real exit
-code 0, in the commit order the block specifies.
+decisions, feature, slips, config, ollama_builder, ollama_planner,
+claude_planner, ui_server, run_log, runtime_supervisor,
+test_env_registry): all 12 pairs at real exit code 0, in the commit order
+the block specifies. `.agent/plan.md` was a rewrite by `shutil.copyfile`,
+never a `git apply`.
 
-G1 TRANSPORT — every `.agent/authored/f279-r3-*` copy (12 files, including
+G1 TRANSPORT — every `.agent/authored/f279-r4-*` copy (15 files, including
 the block copy) read back with `git show <adding-commit>:<path>` and
-compared byte-for-byte against its source (`.remedy-wt/f279-r3-block.md` for
-the block, `.remedy-wt/f279-r3-payloads/<name>` for the rest): all 12
+compared byte-for-byte against its source (`.remedy-wt/f279-r4-block.md` for
+the block, `.remedy-wt/f279-r4-payloads/<name>` for the rest): all 15
 matched exactly.
 
-G2 THE BOOKKEEPING — at C2 (`138ea602`): `.agent/live_review.md`
-bytes=378596 sha256=`52b760cb...` MATCH; `.agent/plan.md` bytes=1452
-sha256=`ba92c746...` MATCH; `.agent/decisions.md` bytes=1864432
-sha256=`cb58b438...` MATCH. Open-finding-id set via `open_finding_ids`
+G2 THE BOOKKEEPING — at C2 (`2a8f7efa`): `.agent/live_review.md`
+bytes=380746 sha256=`85cb0df6...` MATCH; `.agent/plan.md` bytes=1322
+sha256=`33556ec3...` MATCH; `.agent/decisions.md` bytes=1867202
+sha256=`2c5cac8d...` MATCH; `docs/roadmap/features/T2_F279.md` bytes=8575
+sha256=`05493ada...` MATCH; `.agent/prose_slips.md` bytes=364451
+sha256=`5a97f18d...` MATCH. Open-finding-id set via `open_finding_ids`
 (`scripts/rotate_live_review.py`), computed over `.agent/live_review.md`
-text at `cec312cb` and at C2: 26 and 26, both set differences empty —
-matching the block's 26/26 exactly. Lines beginning `Gate: F279 R2 — ` at
-`cec312cb` and at C2: 0 and 1 — matching the block's 0/1 exactly.
-`git diff --name-only <C1c> <C2>` → exactly `.agent/decisions.md`,
-`.agent/live_review.md`, `.agent/plan.md` — matches C2's list.
+text at `0a529d69` and at C2: 26 and 26, both set differences empty —
+matching the block's 26/26 exactly. Lines beginning `Gate: F279 R3 — ` at
+`0a529d69` and at C2: 0 and 1 — matching the block's 0/1 exactly.
+`git diff --name-only <C1b> <C2>` → exactly `.agent/decisions.md`,
+`.agent/live_review.md`, `.agent/plan.md`, `.agent/prose_slips.md`,
+`docs/roadmap/features/T2_F279.md` — matches C2's list.
 
-G3 THE PRODUCT — `git diff --name-only <C2> <C3>` → exactly
-`packages/orchestration/config.py`, `tests/orchestration/test_env_registry.py`
-— matches C3's list. `git diff --name-only <C3> <C4>` → exactly
-`apps/cli/commands/worker_facade_cmd.py`,
-`tests/cli/test_worker_facade_cmd.py` — matches C4's list.
-`git diff --name-only <C4> <C5>` → exactly `docs/README.md`,
-`docs/guides/environment.md`, `tests/docs/test_environment_guide.py`,
-`tests/docs/test_retired_promote_word.py` — matches C5's list. At C3
-(`595fd3b0`): `packages/orchestration/config.py` bytes=60320
-sha256=`acb63eee...` MATCH; `tests/orchestration/test_env_registry.py`
-bytes=6431 sha256=`1edb95a7...` MATCH. At C4 (`c7d19be0`):
-`apps/cli/commands/worker_facade_cmd.py` bytes=20196 sha256=`4a87ea41...`
-MATCH; `tests/cli/test_worker_facade_cmd.py` bytes=33658
-sha256=`36b6686c...` MATCH. At C5 (`d1338c24`): `docs/guides/environment.md`
-bytes=20564 sha256=`e5ec241b...` MATCH; `docs/README.md` bytes=18076
-sha256=`39a1472d...` MATCH; `tests/docs/test_environment_guide.py`
-bytes=1513 sha256=`02dea8e4...` MATCH; `tests/docs/test_retired_promote_word.py`
-bytes=15876 sha256=`5243991590...` MATCH. No digest differed, so no
-`git diff --no-index` stop was needed.
+G3 THE READER — `git diff --name-only <C2> <C3>` → exactly
+`packages/orchestration/config.py`, `packages/orchestration/run_log.py`,
+`packages/orchestration/ui_server.py`,
+`packages/providers/claude_planner/provider.py`,
+`packages/providers/ollama_builder/provider.py`,
+`packages/providers/ollama_planner/provider.py`,
+`packages/runtimes/runtime_supervisor.py`,
+`tests/orchestration/test_env_registry.py` — matches C3's list exactly. At
+C3 (`49cb9d1b`): `packages/orchestration/config.py` bytes=62161
+sha256=`cb2ad6ad...` MATCH; `packages/providers/ollama_builder/provider.py`
+bytes=11447 sha256=`99e5b308...` MATCH;
+`packages/providers/ollama_planner/provider.py` bytes=7658
+sha256=`c18029b6...` MATCH; `packages/providers/claude_planner/provider.py`
+bytes=13104 sha256=`3c9a9bb7...` MATCH;
+`packages/orchestration/ui_server.py` bytes=147335 sha256=`e69cada6...`
+MATCH; `packages/orchestration/run_log.py` bytes=6845 sha256=`77da32cb...`
+MATCH; `packages/runtimes/runtime_supervisor.py` bytes=25721
+sha256=`3d5c8885...` MATCH; `tests/orchestration/test_env_registry.py`
+bytes=11442 sha256=`52f60d4b...` MATCH. No digest differed, so no `git
+diff --no-index` stop was needed.
 
-G4 THE TESTS — the ordered pytest selection (real exit code 0):
-`897 passed in 324.63s (0:05:24)`. The reviewer ran the same selection
-WITHOUT `tests/cli/test_golden_path.py` inside a disposable worktree and
-read `853 passed, 2 skipped` at exit 0; this round ran the full selection
-INCLUDING golden path in the primary checkout, which carries the UI toolchain
-a worktree lacks (as the block anticipates), accounting for the different
-pass/skip counts.
-`python3 -m ruff check packages/orchestration/config.py apps/cli/commands/worker_facade_cmd.py tests/orchestration/test_env_registry.py tests/cli/test_worker_facade_cmd.py tests/docs/test_environment_guide.py tests/docs/test_retired_promote_word.py`
-→ `All checks passed!`, real exit 0. `python3 -m apps.cli.main integrity check --json`
-→ all 5 checks `pass` (`handler_import`, `live_review_verdict`,
-`plan_consistency`, `relevant_untracked`, `high_blockers_open`), `fail_count`
-0, real exit 0. `python3 -m apps.cli.main doctor core` → `Core Product
-Spine: READY`, with 4 `[WARN] unknown_env_variable` lines naming this
-machine's foreign `REMEDY_LOOP_DIR`, `REMEDY_MODEL`, `REMEDY_REPO` (no close
-match) and `REMEDY_SUBAGENT_MODEL` (closest registered: `REMEDY_AGENT_DIR`)
-— none blocking READY, none printing a value, real exit 0.
+G4 THE TESTS — the ordered pytest selection, run SERIALLY (real exit code
+0): `2244 passed, 4 skipped in 397.78s (0:06:37)`. The reviewer ran the same
+selection WITHOUT `tests/cli/test_golden_path.py` inside a disposable
+worktree and read `2201 passed, 5 skipped` at exit 0; this round ran the
+full selection INCLUDING golden path in the primary checkout, which carries
+the UI toolchain a worktree lacks (as the block anticipates), accounting for
+the different pass/skip counts.
+`python3 -m ruff check packages/orchestration/config.py
+packages/orchestration/run_log.py packages/orchestration/ui_server.py
+packages/providers/claude_planner/provider.py
+packages/providers/ollama_builder/provider.py
+packages/providers/ollama_planner/provider.py
+packages/runtimes/runtime_supervisor.py
+tests/orchestration/test_env_registry.py`
+→ `All checks passed!`, real exit 0. `python3 -m apps.cli.main integrity
+check --json` → all 5 checks `pass` (`handler_import`,
+`live_review_verdict`, `plan_consistency`, `relevant_untracked`,
+`high_blockers_open`), `fail_count` 0, real exit 0.
 
-G5 THE RED PROOFS — `git worktree add --detach .remedy-wt/f279-r3-mut d1338c24`
-real exit 0. `python3 -B .remedy-wt/f279-r3-payloads/mutations.py .remedy-wt/f279-r3-mut`
-real exit 0, full output:
+G5 THE RED PROOFS — `git worktree add --detach .remedy-wt/f279-r4-mut
+49cb9d1b` real exit 0. `python3 -B .remedy-wt/f279-r4-payloads/mutations.py
+.remedy-wt/f279-r4-mut` real exit 0, full output:
 ```
 control_before REAL_EXIT=0
-61 passed in 63.28s (0:01:03)
-m1_registered_names_called_unknown FROM count in packages/orchestration/config.py: 1
-m1_registered_names_called_unknown REAL_EXIT=1
-FAILED tests/orchestration/test_env_registry.py::TestTheEnvironmentAgainstTheRegistry::test_registered_names_and_other_prefixes_are_not_unknown
-1 failed, 60 passed in 63.32s (0:01:03)
-m1_registered_names_called_unknown restored byte-identical: True
-m2_every_boolean_word_accepted FROM count in packages/orchestration/config.py: 1
-m2_every_boolean_word_accepted REAL_EXIT=1
-FAILED tests/orchestration/test_env_registry.py::TestTheEnvironmentAgainstTheRegistry::test_a_value_that_does_not_read_as_its_type_is_named
-1 failed, 60 passed in 63.20s (0:01:03)
-m2_every_boolean_word_accepted restored byte-identical: True
-m3_doctor_drops_the_unparsable_warning FROM count in apps/cli/commands/worker_facade_cmd.py: 1
-m3_doctor_drops_the_unparsable_warning REAL_EXIT=1
-FAILED tests/cli/test_worker_facade_cmd.py::TestDoctorCoreEnvironment::test_a_registered_variable_that_does_not_parse_is_named_without_its_value
-1 failed, 60 passed in 63.06s (0:01:03)
-m3_doctor_drops_the_unparsable_warning restored byte-identical: True
-m4_doctor_drops_the_closest_match FROM count in apps/cli/commands/worker_facade_cmd.py: 1
-m4_doctor_drops_the_closest_match REAL_EXIT=1
-FAILED tests/cli/test_worker_facade_cmd.py::TestDoctorCoreEnvironment::test_an_unknown_variable_is_named_with_its_closest_registered_match
-1 failed, 60 passed in 63.15s (0:01:03)
-m4_doctor_drops_the_closest_match restored byte-identical: True
-m5_registry_changed_without_the_guide FROM count in packages/orchestration/config.py: 1
-m5_registry_changed_without_the_guide REAL_EXIT=1
-FAILED tests/docs/test_environment_guide.py::test_the_committed_guide_is_the_registry_rendered
-1 failed, 60 passed in 63.50s (0:01:03)
-m5_registry_changed_without_the_guide restored byte-identical: True
-m6_unregistered_shell_expansion FROM count in scripts/remedy_pytest.sh: 1
-m6_unregistered_shell_expansion REAL_EXIT=1
-FAILED tests/orchestration/test_env_registry.py::test_every_remedy_name_a_shell_script_expands_is_registered
-1 failed, 60 passed in 63.34s (0:01:03)
-m6_unregistered_shell_expansion restored byte-identical: True
+57 passed in 2.88s
+m1_boolean_reads_only_one FROM count in packages/orchestration/config.py: 1
+m1_boolean_reads_only_one REAL_EXIT=1
+FAILED tests/orchestration/test_env_registry.py::TestTheRegistryReader::test_a_boolean_reads_yes_only_for_the_registered_words
+1 failed, 56 passed in 2.84s
+m1_boolean_reads_only_one restored byte-identical: True
+m2_unset_answers_the_default_everywhere FROM count in packages/orchestration/config.py: 1
+m2_unset_answers_the_default_everywhere REAL_EXIT=1
+FAILED tests/orchestration/test_env_registry.py::TestTheRegistryReader::test_an_unset_variable_remedy_toml_may_carry_answers_none
+1 failed, 56 passed in 2.93s
+m2_unset_answers_the_default_everywhere restored byte-identical: True
+m3_parse_error_names_nothing FROM count in packages/orchestration/config.py: 1
+m3_parse_error_names_nothing REAL_EXIT=1
+FAILED tests/orchestration/test_env_registry.py::TestTheRegistryReader::test_a_number_that_does_not_parse_names_the_variable_and_its_type
+FAILED tests/test_ollama_builder.py::test_invalid_temperature_raises_with_var_name
+FAILED tests/test_ollama_builder.py::test_invalid_num_predict_raises_with_var_name
+3 failed, 54 passed in 2.92s
+m3_parse_error_names_nothing restored byte-identical: True
+m4_a_typed_read_bypasses_the_reader FROM count in packages/orchestration/ui_server.py: 1
+m4_a_typed_read_bypasses_the_reader REAL_EXIT=1
+FAILED tests/orchestration/test_env_registry.py::test_a_typed_variable_is_read_through_the_registry_reader
+1 failed, 56 passed in 2.86s
+m4_a_typed_read_bypasses_the_reader restored byte-identical: True
 control_after REAL_EXIT=0
-61 passed in 63.06s (0:01:03)
+57 passed in 2.83s
 ```
 Every reading matches the reviewer's stated expectations exactly: control
-61/61 passed, m1-m6 each 1 failed at the exact test node id the block names,
-control_after 61 passed.
-`git worktree remove --force .remedy-wt/f279-r3-mut` real exit 0,
+57/57 passed, m1 1 failed at
+`TestTheRegistryReader::test_a_boolean_reads_yes_only_for_the_registered_words`,
+m2 1 failed at
+`TestTheRegistryReader::test_an_unset_variable_remedy_toml_may_carry_answers_none`,
+m3 3 failed at the three named tests, m4 1 failed at
+`test_a_typed_variable_is_read_through_the_registry_reader`, control_after
+57 passed.
+`git worktree remove --force .remedy-wt/f279-r4-mut` real exit 0,
 `git worktree prune` real exit 0. `git worktree list` afterward → primary
 checkout plus the two `.remedy-wt/job-*` worktrees only.
 
@@ -252,80 +248,64 @@ Fidelity protocol (docs/agents/split_workflow.md, R-0147/R-0144/R-0148):
 byte-identity proof = mechanical disk-to-disk comparison of the applied
 location against the `.agent/authored/` copy.
 
-- This block (`f279-r3-block.md`): `.agent/authored/f279-r3-block.md` at C1a
-  verified byte-identical to `.remedy-wt/f279-r3-block.md` (G1) and to the
-  two readings given in the delegation message.
-- All 10 payloads (ledger.diff, plan.md, decisions.diff, config.diff,
-  test_env_registry.diff, mutations.py, worker_facade_cmd.diff,
-  test_worker_facade_cmd.diff, docs_index.diff, retired_word.diff,
-  test_environment_guide.py): each `.agent/authored/f279-r3-<name>` copy
-  verified byte-identical to its `.remedy-wt/f279-r3-payloads/<name>` source
-  (G1).
+- This block (`f279-r4-block.md`): `.agent/authored/f279-r4-block.md` at
+  C1a verified byte-identical to `.remedy-wt/f279-r4-block.md` (G1) and to
+  the two readings given in the delegation message.
+- All 13 payloads (ledger.diff, plan.md, decisions.diff, feature.diff,
+  slips.diff, config.diff, ollama_builder.diff, ollama_planner.diff,
+  claude_planner.diff, ui_server.diff, run_log.diff,
+  runtime_supervisor.diff, test_env_registry.diff, mutations.py): each
+  `.agent/authored/f279-r4-<name>` copy verified byte-identical to its
+  `.remedy-wt/f279-r4-payloads/<name>` source (G1).
 - Every `.diff` payload applied by `git apply` (never retyped): ledger,
-  decisions, config, test_env_registry, worker_facade_cmd,
-  test_worker_facade_cmd, docs_index, retired_word — all 8, `git apply
-  --check` then `git apply`, real exit 0 both times, and the resulting
-  tracked-file digests MATCH the reviewer's stated readings exactly at
-  G2/G3.
+  decisions, feature, slips, config, ollama_builder, ollama_planner,
+  claude_planner, ui_server, run_log, runtime_supervisor,
+  test_env_registry — all 12, `git apply --check` then `git apply`, real
+  exit 0 both times, and the resulting tracked-file digests MATCH the
+  reviewer's stated readings exactly at G2/G3.
 - `plan.md` (rewrite, never retyped): `shutil.copyfile` from the payload;
-  resulting `.agent/plan.md` digest MATCHES the reviewer's stated G2 reading
-  exactly.
-- `test_environment_guide.py` (new file, copied whole, never retyped):
-  `shutil.copyfile` from the payload to `tests/docs/`; resulting digest
-  MATCHES the reviewer's stated G3 reading exactly.
-- `docs/guides/environment.md` is NOT a payload; it was GENERATED by running
-  the block's exact command (`write_environment_guide()`), real exit 0, and
-  its resulting digest MATCHES the reviewer's stated G3 reading exactly —
-  the generator and the registry agree with the reviewer's tree.
+  resulting `.agent/plan.md` digest MATCHES the reviewer's stated G2
+  reading exactly.
 
 ## Item-Status Table
 
 | Item | Status | Reason |
 |---|---|---|
-| C1a | done | 354 insertions, matches 265+89 formula |
-| C1b | done | 412 insertions, matches expectation |
-| C1c | done | 193 insertions, matches expectation |
-| C2 | done | round 2's PASS booked, DECISION F279 D3 recorded, all three insertion counts match |
-| C3 | done | registry landed, both counts match |
-| C4 | done | doctor report landed, both counts match |
-| C5 | done | guide generated, indexed, drift test in place, all four counts match |
-| C6 | done | this handback |
-| G1 TRANSPORT | done | all 12 authored copies byte-identical to source |
-| G2 THE BOOKKEEPING | done | all 3 digests match, 26/26 open-finding set empty diff, 0/1 Gate-line count matches, file-list matches |
-| G3 THE PRODUCT | done | file-lists and all 8 digests match, no stop needed |
-| G4 THE TESTS | done | 897 passed exit 0, ruff clean exit 0, integrity 5/5 pass exit 0, doctor core READY with 4 foreign-variable warnings |
-| G5 THE RED PROOFS | done | control/m1-m6/control_after all match reviewer's exact readings, worktree cleaned up |
-| G6 TREE AND PUSH | done | reported in the session's final reply, not this file, since it runs after C6 |
+| C1a | done | 344 insertions, matches 235+109 formula |
+| C1b | done | 463 insertions, matches expectation |
+| C2 | done | round 3's PASS booked, DECISION F279 D4 recorded, all five insertion counts match |
+| C3 | done | reader and its eleven callers landed, all eight counts match |
+| C4 | done | this handback |
+| G1 TRANSPORT | done | all 15 authored copies byte-identical to source |
+| G2 THE BOOKKEEPING | done | all 5 digests match, 26/26 open-finding set empty diff, 0/1 Gate-line count matches, file-list matches |
+| G3 THE READER | done | file-list and all 8 digests match, no stop needed |
+| G4 THE TESTS | done | 2244 passed, 4 skipped, exit 0, ruff clean exit 0, integrity 5/5 pass exit 0 |
+| G5 THE RED PROOFS | done | control/m1-m4/control_after all match reviewer's exact readings, worktree cleaned up |
+| G6 TREE AND PUSH | done | reported in the session's final reply, not this file, since it runs after C4 |
 
 ## Deviations & assumptions
 
-The round followed the block's ordered commit sequence (C1a, C1b, C1c, C2,
-C3, C4, C5, C6) exactly and touched exactly the tracked path set constraint
-3 names — confirmed by `git diff --name-only cec312cb HEAD` before C6 was
-written.
+The round followed the block's ordered commit sequence (C1a, C1b, C2, C3,
+C4) exactly and touched exactly the tracked path set constraint 3 names —
+confirmed by `git diff --name-only 0a529d69 HEAD` before C4 was written.
 
-No oversize commit this round (largest was C3's 274 insertions gross by
-`git diff --stat` / 220 net by numstat for the product file, well under the
-500 cap; F279's one declared oversize commit remains round 1's C5).
+No oversize commit this round (largest was C1b's 463 insertions, well under
+the 500 cap; F279's one declared oversize commit remains round 1's C5).
 
-One sandbox friction, not a deviation from the block: the first attempt at
-the payload-verification script was refused by the sandbox as
-"expansion obfuscation" (an f-string dict literal with braces inside a
-Python heredoc), matching the block's own warning about dollar-brace shapes
-in heredocs even though this script carried no `$`. Written to a file under
-`.remedy-wt/f279-r3-scratch/` and run from there instead, per the block's
-own prescribed workaround; no payload was retyped or edited, and this cost
-no reading.
+No sandbox friction beyond the block's own anticipated shapes: every
+measurement script was written to a file under
+`.remedy-wt/f279-r4-scratch/` and run with `python3 <file>` or `bash
+<file>`, never as an inline heredoc or `VAR=x cmd` shape; no payload was
+retyped or edited.
 
 No other procedural deviation. Nothing was merged this round, per
 constraint 5. No `remedy/job-*` branch or self-use worktree was created,
-touched or deleted beyond the round's own `.remedy-wt/f279-r3-mut`, which
+touched or deleted beyond the round's own `.remedy-wt/f279-r4-mut`, which
 was created and removed within G5 per constraint 6. The full suite was not
-run, per constraint 7 (amend0917 rule 1) — F279's one full-suite run belongs
-to its closure.
+run, per constraint 7 (amend0917 rule 1) — F279's one full-suite run
+belongs to its closure.
 
 ## Next
 
-Phase 1 rule 1 (read `.agent/STOP` from disk), then the review of round 3,
-then T001's reader half — the direct `REMEDY_` reads moved onto one registry
-reader. Open findings: 26. Operator questions: 0.
+Phase 1 rule 1 (read `.agent/STOP` from disk), then the review of round 4,
+then T003 — `remedy block lint`. Open findings: 26. Operator questions: 0.
