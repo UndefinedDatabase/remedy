@@ -1,0 +1,34 @@
+F279 R8 C5 — the feature's ONE full suite, `python3 -m pytest -n auto -q` in the primary
+checkout, run 2026-09-23. Real exit code: 1.
+
+Summary line:
+2 failed, 18631 passed, 20 skipped, 1 warning in 244.23s (0:04:04)
+
+Bad node ids (2):
+tests/orchestration/test_development_artifact_boundary.py::TestWhitelistBoundary::test_no_new_product_dependency
+tests/orchestration/test_review_subject_resolution.py::TestProductionIsTheOnlyImplementation::test_the_env_var_is_read_in_exactly_one_module
+
+closure precondition 7 (import reachability / no orphan modules): neither
+`tests/orchestration/test_import_reachability.py` nor `tests/test_no_orphan_modules.py`
+appears among the bad node ids above.
+
+Failure detail, quoted from the run:
+
+FAILED tests/orchestration/test_development_artifact_boundary.py::TestWhitelistBoundary::test_no_new_product_dependency
+  AssertionError: New live_review.md dependency in product code:
+    - packages/orchestration/block_lint.py (matched: 'live_review.md') — remove the dependency or add to _ALLOWED_LEGACY if development-only
+
+FAILED tests/orchestration/test_review_subject_resolution.py::TestProductionIsTheOnlyImplementation::test_the_env_var_is_read_in_exactly_one_module
+  AssertionError: ['review_subject.py', 'config.py'] == ['review_subject.py']
+    Left contains one more item: 'config.py'
+
+One warning, not a failure:
+tests/orchestration/test_model_routing.py::TestTheUndeclaredRolePathWarnsAndAnswersConservatively::test_it_matches_role_configs_own_unknown_role_behaviour
+  packages/orchestration/model_routing.py:1393: UserWarning: Role 'a_role_nobody_declared_a_class_for' declares no task class; routing conservatively as 'undeclared_role'. Declared roles: builder, design_worker, final_verifier, orchestrator, planner, reviewer, self_use, study, summary, teacher, test_worker; inheriting roles: repair.
+
+Full log: /home/decodeux/remedy-gate-scratch/f279-r8-full-suite.log (outside the repository).
+
+Per block constraint 4 (amend0917-throughput rule 2), a RED suite is this feature's own
+work and not a reason to stop: the transcript above is committed exactly as measured, every
+bad node id is reported, and the repair round is the reviewer's to order. No test was
+weakened, deleted or marked xfail to reach this reading.
