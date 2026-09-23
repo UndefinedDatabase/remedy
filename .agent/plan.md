@@ -1,27 +1,34 @@
-# Plan — F279 Configuration & toolchain truth
+# Plan — F263 Human-change absorption (absorb)
 
-Branch: feature/f279-configuration-toolchain-truth, cut from `main` at
-`c9bc5c20`, the merge commit of pull request 266 (F278's closure).
+Branch: feature/f263-human-change-absorption, cut from `main` at
+`54a23101`, the merge commit of pull request 267 (F279's closure).
 
 ## Goal
 
-Three things this repository asserts about itself become measurable: which
-environment variables exist, which tool versions CI installs, and which
-checklist items a machine can check (`docs/roadmap/features/T2_F279.md`).
+A human who edits the target repository while a job runs is the authority:
+the edit is detected, certified into the job's evidence as a human change
+record, and the job re-bases onto it instead of failing on drift
+(`docs/roadmap/features/T2_F263.md`, DECISION D-E).
 
 ## Current Step
 
-ROUND 11 closes F279. It books round 10's PASS, rotates the finding ledger
-into its archive, accepts F279 in `docs/roadmap/STATUS.md` with the README's
-pinned counts and the self-use item's `consumed_by` in the same commit, and
-opens the pull request, which this session never merges.
+ROUND 1 claims F263, re-heads the finding ledger, records DECISION F263 D1,
+and lands T001's foundation: `packages/orchestration/human_change.py`, the
+target's last known state recorded on every git job behind its own
+checkpoint ref, and the certified human change record written before any
+re-base, with the tests and their red proofs.
 
 ## Next Steps
 
-1. The next session's Open PR Gate merges this pull request, then Rule A5
-   claims the first unchecked feature in `docs/roadmap/STATUS.md`.
+1. T001's second half: the record joins the job's exported evidence and its
+   verification, so a package carries it like any other artifact.
+2. T002, `remedy absorb`: the explicit command over the same `absorb` path,
+   with its catalog entry, help text and re-base of the job's state.
+3. T003, absorption at every safe point and before every apply, deleting
+   the drift error it replaces, with the demo case end to end.
+4. The closure sequence, with the one full-suite run.
 
 ## Risks
 
-Hosted CI first runs the new install steps on this pull request. Two known
-flaky suite nodes and the findings R-1040 and R-1041 are carried to F282.
+Capturing the target's tree hashes every file once per capture; T003 must
+measure that cost at every safe point, as the Acceptance list requires.

@@ -50,7 +50,7 @@ The tier-block order below is the operator-decided Self-Use sequence of 2026-08-
 
 ## Tier 2 — Human-change absorption (operator order amend0831)
 
-- [ ] F263 — Human-change absorption (absorb)
+- [~] F263 — Human-change absorption (absorb)
 - [ ] F282 — Findings paydown v2
 
 ## Tier 5 — Steering & Learning Surfaces (operator order amend0831)
