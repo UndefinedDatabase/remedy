@@ -1,242 +1,193 @@
-# Handback — F279 Configuration & toolchain truth · Round 1 · Claim F279 and land T002
+# Handback — F279 Configuration & toolchain truth · Round 2 · Book round 1's PASS, record DECISION F279 D2, land T001's registry half
 
 ## Session
 
-SESSION 1 of feature F279 · round 1 · rounds so far 1
+SESSION 1 of feature F279 · round 2 · rounds so far 2
 
-This round cut `feature/f279-configuration-toolchain-truth` from `main` at
-`c9bc5c20`, claimed F279 (re-heading `.agent/live_review.md`, `.agent/plan.md`,
-`.agent/context.md` and flipping F279's `docs/roadmap/STATUS.md` line to `[~]`),
-recorded DECISION F279 D1 restating T002 against the current tree (the
-`--require-hashes -r` / `--no-deps -e .` / `pip check` install shape, replacing
-the stale `-c <hashed file>` acceptance line), and landed T002 itself: upper
-bounds on `pydantic` and `psutil`, a GENERATED hash-pinned `constraints.txt`
-(produced once by `uv pip compile`, byte-identical to the reviewer's two
-independent runs), the two-step pinned install and `pip check` in CI, README
-documentation, and the guarding tests — `test_toolchain_pins.py` and the
-`test_ci_workflow.py` additions — each backed by the red-proof script
-(`mutations.py`) run against a disposable `--detach` worktree at C6. All of
-G1-G5 ran before this handoff was written and matched the block's stated
-expectations exactly, byte for byte and reading for reading. Context
-self-assessment: a comfortable majority of the working budget remains at
-handback.
+This round booked round 1's PASS into the ledger, recorded DECISION F279 D2
+(config.py is the registry, not a new module) with the feature file's T001
+amendment, and landed T001's registry half: the fifteen `REMEDY_` names
+production code spelled without a spec are now registered as env-only keys
+in `packages/orchestration/config.py`'s `_CONFIG_KEY_SPECS`, and a new
+`tests/orchestration/test_env_registry.py` holds every such name to the
+registry, each guard backed by a red-proof (`mutations.py`) run against a
+disposable `--detach` worktree at C3. All of G1-G5 ran before this handoff
+was written and matched the block's stated expectations exactly, byte for
+byte and reading for reading. Context self-assessment: a comfortable
+majority of the working budget remains at handback.
 
 ## Range
 
-Review of `c9bc5c20`..`HEAD`.
+Review of `62c689e1`..`HEAD`.
 
 ## Commits
 
-### 736e244e F279 R1 C1a: copy round 1 block and bookkeeping payloads into .agent/authored/
+### ce2bf78e F279 R2 C1a: copy round 2 block and bookkeeping payloads into .agent/authored/
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f279-r1-block.md | +267/-0 | Bookkeeping copy of this round's step block (R-0954 transport) |
-| .agent/authored/f279-r1-status.diff | +13/-0 | Payload copy |
-| .agent/authored/f279-r1-rehead.diff | +51/-0 | Payload copy |
-| .agent/authored/f279-r1-plan.md | +34/-0 | Payload copy |
-| .agent/authored/f279-r1-context.md | +47/-0 | Payload copy |
-| .agent/authored/f279-r1-decisions.diff | +48/-0 | Payload copy |
-| .agent/authored/f279-r1-feature.diff | +36/-0 | Payload copy |
+| .agent/authored/f279-r2-block.md | +214/-0 | Bookkeeping copy of this round's step block (R-0954 transport) |
+| .agent/authored/f279-r2-ledger.diff | +10/-0 | Payload copy |
+| .agent/authored/f279-r2-plan.md | +37/-0 | Payload copy |
+| .agent/authored/f279-r2-decisions.diff | +38/-0 | Payload copy |
+| .agent/authored/f279-r2-feature.diff | +17/-0 | Payload copy |
 
-Measured insertions: 496 (267+13+51+34+47+48+36 = 496), matching the block's
-"line count plus 229" formula (267+229=496) exactly, under the 500 cap.
+Measured insertions: 316 (214+10+37+38+17 = 316), matching the block's "this
+block's line count plus 102" formula (214+102=316) exactly, under the 500 cap.
 
-### 7b18afc9 F279 R1 C1b: copy round 1 product payloads into .agent/authored/
+### 1b0eb1ac F279 R2 C1b: copy round 2 product payloads into .agent/authored/
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f279-r1-pyproject.diff | +15/-0 | Payload copy |
-| .agent/authored/f279-r1-ci.diff | +36/-0 | Payload copy |
-| .agent/authored/f279-r1-readme.diff | +19/-0 | Payload copy |
-| .agent/authored/f279-r1-test_ci_workflow.diff | +28/-0 | Payload copy |
-| .agent/authored/f279-r1-test_toolchain_pins.py | +113/-0 | Payload copy |
-| .agent/authored/f279-r1-mutations.py | +84/-0 | Payload copy (G5 tool, never applied to a tracked file) |
+| .agent/authored/f279-r2-config.diff | +174/-0 | Payload copy |
+| .agent/authored/f279-r2-test_env_registry.py | +93/-0 | Payload copy |
+| .agent/authored/f279-r2-mutations.py | +67/-0 | Payload copy (G5 tool, never applied to a tracked file) |
 
-Measured insertions: 295, matching the block's expected 295 exactly.
+Measured insertions: 334, matching the block's expected 334 exactly.
 
-### bbc54329 F279 R1 C2: claim F279 and re-head the live review record
+### a52bc565 F279 R2 C2: book round 1's PASS, record DECISION F279 D2 and amend T001
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/live_review.md | +18/-18 | `rehead.diff` applied (`git apply`, check then real, both exit 0) |
-| docs/roadmap/STATUS.md | +1/-1 | `status.diff` applied: F279's line flips `[ ]` → `[~]` |
-| .agent/plan.md | +21/-15 | Rewritten to the round-1 plan.md payload |
-| .agent/context.md | +17/-20 | Rewritten to the round-1 context.md payload |
+| .agent/live_review.md | +2/-0 | `ledger.diff` applied: round 1's `Gate:` entry appended |
+| .agent/plan.md | +15/-12 | Rewritten to the round-2 plan.md payload |
+| .agent/decisions.md | +30/-0 | `decisions.diff` applied: DECISION F279 D2 recorded |
+| docs/roadmap/features/T2_F279.md | +6/-0 | `feature.diff` applied: T001 amended to match the decision |
 
-Measured insertions (git show --numstat): 17 context.md, 18 live_review.md,
-21 plan.md, 1 STATUS.md — matching the block's expected counts exactly.
+Measured insertions (`git diff --numstat`): 30 decisions.md, 2
+live_review.md, 15 plan.md, 6 T2_F279.md — matching the block's expected
+counts exactly.
 
-### 5eb83879 F279 R1 C3: record DECISION F279 D1 and amend T002 to the tree
+### aa5d90a2 F279 R2 C3: register every REMEDY_ name production code spells, and guard it
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/decisions.md | +40/-0 | `decisions.diff` applied: DECISION F279 D1 restates T002's install shape |
-| docs/roadmap/features/T2_F279.md | +14/-4 | `feature.diff` applied: T002 amended to match the decision |
+| packages/orchestration/config.py | +163/-0 | `config.diff` applied: 15 unregistered `REMEDY_` names added to `_CONFIG_KEY_SPECS` as env-only |
+| tests/orchestration/test_env_registry.py | +93/-0 | New file, copied whole from the payload, `git add`ed |
 
-Measured insertions: 40 decisions.md, 14 T2_F279.md — matching the block's
-expected counts exactly.
+Measured insertions: 163 config.py, 93 test_env_registry.py — matching the
+block's expected counts exactly.
 
-### 19adda8e F279 R1 C4: bound pydantic and psutil below their next major version
-| Path | +/- | Reason |
-|---|---|---|
-| pyproject.toml | +3/-1 | `pyproject.diff` applied: upper bounds added to `pydantic` and `psutil` |
-
-Measured insertions: 3, matching the block's expected 3 exactly.
-
-### 525dc9ab F279 R1 C5: add constraints.txt, the generated hash-pinned toolchain
-| Path | +/- | Reason |
-|---|---|---|
-| constraints.txt | +652/-0 | GENERATED by `uv pip compile` per DECISION F279 D1's header command |
-
-Measured insertions: 652 — DECLARED OVERSIZE COMMIT, see Deviations.
-`constraints.txt` bytes=53521, sha256=`7e6649c616a2c9facccb9241ad1385126094f388c203c7f7023bd148e7e92dbb`,
-matching the reviewer's stated G3 reading exactly (PyPI answered identically
-to the reviewer's own two runs).
-
-### c2429111 F279 R1 C6: install the pinned toolchain in CI and guard it
-| Path | +/- | Reason |
-|---|---|---|
-| .github/workflows/ci.yml | +16/-2 | `ci.diff` applied: two-step `--require-hashes` install + `pip check` |
-| README.md | +8/-0 | `readme.diff` applied: pinned-install documentation |
-| tests/orchestration/test_ci_workflow.py | +20/-0 | `test_ci_workflow.diff` applied: new guard tests |
-| tests/orchestration/test_toolchain_pins.py | +113/-0 | New file, copied whole from the payload, `git add`ed |
-
-Measured insertions: 16 ci.yml, 8 README.md, 20 test_ci_workflow.py,
-113 test_toolchain_pins.py — matching the block's expected counts exactly.
-
-### (this commit) F279 R1 C7: rewrite handoff for round 1
+### (this commit) F279 R2 C4: rewrite handoff for round 2
 | Path | +/- | Reason |
 |---|---|---|
 | .agent/handoff.md | rewritten | This handback, per docs/agents/handback_template.md |
 
 ## External actions
 
-- `git checkout -b feature/f279-configuration-toolchain-truth` from `main` at
-  `c9bc5c20` — done, no pull (Open PR Gate already ran before this round; `main`
-  was already at the merge commit).
-- `git worktree add --detach .remedy-wt/f279-r1-mut c2429111` — created for G5;
-  `git worktree remove --force .remedy-wt/f279-r1-mut` then `git worktree prune`
-  removed it as G5's last action. `git worktree list` afterward showed only the
-  primary checkout and the two pre-existing `.remedy-wt/job-*` worktrees.
-- `git push -u origin feature/f279-configuration-toolchain-truth` — see the
+- `git worktree add --detach .remedy-wt/f279-r2-mut aa5d90a2` — created for
+  G5; `git worktree remove --force .remedy-wt/f279-r2-mut` then
+  `git worktree prune` removed it as G5's last action. `git worktree list`
+  afterward showed only the primary checkout and the two pre-existing
+  `.remedy-wt/job-*` worktrees.
+- `git push origin feature/f279-configuration-toolchain-truth` — see the
   session's final reply for the real outcome; it runs after this commit.
 - No `gh pr create`, no `gh pr merge`, no force-push, no `git stash`, no
   checkout of `main` or any other branch/commit in the primary checkout: none
-  run, per constraints 5 and 6.
+  run, per constraint 5.
 - `.remedy-wt/job-129b3ad7206d4f8d`, `.remedy-wt/job-e7268925db3a4831`, their
   branches and every existing stash were left untouched.
 
 ## Verification
 
 BEFORE ANYTHING ELSE:
-- `ls .agent/STOP` → `ls: cannot access '.agent/STOP': No such file or directory`, real exit 2 (ENOENT), absent — proceed.
-- `git status --porcelain` → empty. `git branch --show-current` → `main`. `git log --oneline -1` → `c9bc5c20 Merge pull request #266 from UndefinedDatabase/feature/f278-durable-writes-loud-failures`. All three matched. `git checkout -b feature/f279-configuration-toolchain-truth` → switched, branch confirmed.
-- Block bytes (R-0954): measured line count (newline count)=267, sha256=`81fd790e2c48990ec80fe701d1adeb06c79215f96d1dd1e13ada8ae16044c1ac`; matches both readings given in the delegation message exactly.
-- `git worktree list` (before any change) → primary checkout at `c9bc5c20` plus `.remedy-wt/job-129b3ad7206d4f8d` (`09441a92`) and `.remedy-wt/job-e7268925db3a4831` (`cc8696a3`). `git branch --list 'remedy/job-*' | wc -l` → `39`.
+- `ls .agent/STOP` → `ls: cannot access '/home/decodeux/Repos/remedy/.agent/STOP': No such file or directory`, real exit 2 (ENOENT), absent — proceed.
+- `git status --porcelain` → empty. `git branch --show-current` →
+  `feature/f279-configuration-toolchain-truth`. `git log --oneline -1` →
+  `62c689e1 F279 R1 C7: rewrite handoff for round 1`. All three matched.
+- Block bytes (R-0954): measured line count (newline count)=214,
+  sha256=`806ea9daafef8068f2fd744417c310e3a5376014bed51c868c7aa182de1d9d8d`;
+  matches both readings given in the delegation message exactly.
+- `git worktree list` (before any change) → primary checkout at `62c689e1`
+  plus `.remedy-wt/job-129b3ad7206d4f8d` (`09441a92`) and
+  `.remedy-wt/job-e7268925db3a4831` (`cc8696a3`).
+- `git stash list | head -1` →
+  `stash@{0}: WIP on (no branch): 365051fa F277 R17 C3: rewrite handoff for round 17 with the rebuilt package readings`.
 
-PAYLOADS — all 12 measured and matched the block's table exactly (line count,
-byte count, sha256): status.diff (13/1973/`32ae7209...`), rehead.diff
-(51/5850/`47101839...`), plan.md (34/1456/`bc0ac652...`), context.md
-(47/2229/`235d0f3b...`), decisions.diff (48/3494/`281fb600...`), feature.diff
-(36/2564/`51f30833...`), pyproject.diff (15/642/`885e4b51...`), ci.diff
-(36/1822/`d5ec5924...`), readme.diff (19/483/`cb574849...`),
-test_ci_workflow.diff (28/1572/`b4cb8404...`), test_toolchain_pins.py
-(113/5164/`e7d5112f...`), mutations.py (84/3097/`9c5d4b81...`).
+PAYLOADS — all 7 measured and matched the block's table exactly (line count,
+byte count, sha256): config.diff (174/5717/`386cc4f5...`), decisions.diff
+(38/2697/`1d7420e4...`), feature.diff (17/1046/`6ae3410b...`), ledger.diff
+(10/7685/`c5d50428...`), mutations.py (67/2592/`6a4db126...`), plan.md
+(37/1599/`87ef5e1b...`), test_env_registry.py (93/3883/`16ae49f0...`).
 
-`git apply --check` then `git apply` for every `.diff` payload (rehead,
-status, decisions, feature, pyproject, ci, readme, test_ci_workflow): all 8
-pairs at real exit code 0, in the commit order the block specifies.
+`git apply --check` then `git apply` for every `.diff` payload (ledger,
+decisions, feature, config): all 4 pairs at real exit code 0, in the commit
+order the block specifies.
 
-G1 TRANSPORT — every `.agent/authored/f279-r1-*` copy (13 files, plus the
-block copy) read back with `git show <adding-commit>:<path>` and compared
-byte-for-byte against its source (`.remedy-wt/f279-r1-block.md` for the block,
-`.remedy-wt/f279-r1-payloads/<name>` for the rest): all 13 matched exactly.
+G1 TRANSPORT — every `.agent/authored/f279-r2-*` copy (8 files, including
+the block copy) read back with `git show <adding-commit>:<path>` and
+compared byte-for-byte against its source (`.remedy-wt/f279-r2-block.md` for
+the block, `.remedy-wt/f279-r2-payloads/<name>` for the rest): all 8 matched
+exactly.
 
-G2 THE BOOKKEEPING — at C2 (`bbc54329`): `.agent/live_review.md`
-bytes=374034 sha256=`67d2b5d0...` MATCH; `docs/roadmap/STATUS.md`
-bytes=47144 sha256=`913d3124...` MATCH; `.agent/plan.md` bytes=1456
-sha256=`bc0ac652...` MATCH; `.agent/context.md` bytes=2229
-sha256=`235d0f3b...` MATCH. At C3 (`5eb83879`): `.agent/decisions.md`
-bytes=1859397 sha256=`d2ae7ef5...` MATCH; `docs/roadmap/features/T2_F279.md`
-bytes=7780 sha256=`4724aa54...` MATCH. Open-finding-id set via
-`open_finding_ids` (`scripts/rotate_live_review.py`), computed over
-`.agent/live_review.md` text at `c9bc5c20` and at C2: 26 and 26, both set
-differences empty — matching the block's 26/26 exactly. F279's STATUS line
-at C2 read in full: `- [~] F279 — Configuration & toolchain truth: env
-registry, pinned dependencies, block lint`, beginning `- [~] F279 — ` as
-required. `git diff --name-only <C1b> <C2>` → exactly `.agent/context.md`,
-`.agent/live_review.md`, `.agent/plan.md`, `docs/roadmap/STATUS.md` — matches
-C2's list. `git diff --name-only <C2> <C3>` → exactly `.agent/decisions.md`,
-`docs/roadmap/features/T2_F279.md` — matches C3's list.
+G2 THE BOOKKEEPING — at C2 (`a52bc565`): `.agent/live_review.md`
+bytes=376430 sha256=`01c7cc95...` MATCH; `.agent/plan.md` bytes=1599
+sha256=`87ef5e1b...` MATCH; `.agent/decisions.md` bytes=1861590
+sha256=`87e7757e...` MATCH; `docs/roadmap/features/T2_F279.md` bytes=8234
+sha256=`7eba8a4c...` MATCH. Open-finding-id set via `open_finding_ids`
+(`scripts/rotate_live_review.py`), computed over `.agent/live_review.md`
+text at `62c689e1` and at C2: 26 and 26, both set differences empty —
+matching the block's 26/26 exactly. Lines beginning `Gate: F279 R1 — ` at
+`62c689e1` and at C2: 0 and 1 — matching the block's 0/1 exactly.
+`git diff --name-only <C1b> <C2>` → exactly `.agent/decisions.md`,
+`.agent/live_review.md`, `.agent/plan.md`,
+`docs/roadmap/features/T2_F279.md` — matches C2's list.
 
-G3 THE PRODUCT — at C6 (`c2429111`): `pyproject.toml` bytes=5766
-sha256=`4817c168...` MATCH; `constraints.txt` bytes=53521
-sha256=`7e6649c6...` MATCH; `.github/workflows/ci.yml` bytes=4606
-sha256=`e53a3e15...` MATCH; `README.md` bytes=23594 sha256=`6bf8b865...`
-MATCH; `tests/orchestration/test_ci_workflow.py` bytes=4244
-sha256=`7b016456...` MATCH; `tests/orchestration/test_toolchain_pins.py`
-bytes=5164 sha256=`e7d5112f...` MATCH. `constraints.txt` matched the
-reviewer's reading exactly — no PyPI-answered-differently case, no diff to
-report. `git diff --name-only <C3> <C4>` → `pyproject.toml`, matches C4.
-`git diff --name-only <C4> <C5>` → `constraints.txt`, matches C5.
-`git diff --name-only <C5> <C6>` → `.github/workflows/ci.yml`, `README.md`,
-`tests/orchestration/test_ci_workflow.py`,
-`tests/orchestration/test_toolchain_pins.py`, matches C6.
+G3 THE REGISTRY — `git diff --name-only <C2> <C3>` → exactly
+`packages/orchestration/config.py`, `tests/orchestration/test_env_registry.py`
+— matches C3's list. At C3 (`aa5d90a2`): `packages/orchestration/config.py`
+bytes=51844 sha256=`d69f3d33...` MATCH; `tests/orchestration/test_env_registry.py`
+bytes=3883 sha256=`16ae49f0...` MATCH.
 
 G4 THE TESTS — the ordered pytest selection (real exit code 0):
-`664 passed, 1 skipped in 162.17s`. The reviewer ran the same selection
-WITHOUT `tests/cli/test_golden_path.py` inside a disposable worktree and read
-`620 passed, 3 skipped` at exit 0; this round ran the full selection
+`1025 passed in 294.25s (0:04:54)`. The reviewer ran the same selection
+WITHOUT `tests/cli/test_golden_path.py` inside a disposable worktree and
+read `981 passed, 2 skipped` at exit 0; this round ran the full selection
 INCLUDING golden path in the primary checkout, which carries the UI toolchain
 a worktree lacks (as the block anticipates), accounting for the different
-pass/skip counts. `python3 -m ruff check tests/orchestration/test_toolchain_pins.py tests/orchestration/test_ci_workflow.py`
+pass/skip counts.
+`python3 -m ruff check packages/orchestration/config.py tests/orchestration/test_env_registry.py`
 → `All checks passed!`, real exit 0. `python3 -m apps.cli.main integrity check --json`
 → all 5 checks `pass` (`handler_import`, `live_review_verdict`,
 `plan_consistency`, `relevant_untracked`, `high_blockers_open`), `fail_count`
 0, real exit 0.
 
-G5 THE RED PROOFS — `git worktree add --detach .remedy-wt/f279-r1-mut c2429111`
-real exit 0. `python3 -B .remedy-wt/f279-r1-payloads/mutations.py .remedy-wt/f279-r1-mut`
+G5 THE RED PROOFS — `git worktree add --detach .remedy-wt/f279-r2-mut aa5d90a2`
+real exit 0. `python3 -B .remedy-wt/f279-r2-payloads/mutations.py .remedy-wt/f279-r2-mut`
 real exit 0, full output:
 ```
 control_before REAL_EXIT=0
-15 passed in 0.28s
-m1_unhashed_install FROM count in .github/workflows/ci.yml: 1
-m1_unhashed_install REAL_EXIT=1
-FAILED tests/orchestration/test_ci_workflow.py::test_hosted_workflow_installs_the_hash_pinned_toolchain_before_remedy
-1 failed, 14 passed in 0.29s
-m1_unhashed_install restored byte-identical: True
-m2_cache_key_dropped FROM count in .github/workflows/ci.yml: 1
-m2_cache_key_dropped REAL_EXIT=1
-FAILED tests/orchestration/test_ci_workflow.py::test_hosted_workflow_keys_its_pip_cache_on_the_pinned_set
-1 failed, 14 passed in 0.29s
-m2_cache_key_dropped restored byte-identical: True
-m3_ruff_pin_moved FROM count in pyproject.toml: 1
-m3_ruff_pin_moved REAL_EXIT=1
-FAILED tests/orchestration/test_toolchain_pins.py::test_every_declared_dependency_is_pinned_inside_its_declared_range
-FAILED tests/orchestration/test_toolchain_pins.py::test_the_pinned_ruff_is_the_ruff_the_lint_gate_is_pinned_to
-2 failed, 13 passed in 0.29s
-m3_ruff_pin_moved restored byte-identical: True
-m4_psutil_unbounded FROM count in pyproject.toml: 1
-m4_psutil_unbounded REAL_EXIT=1
-FAILED tests/orchestration/test_toolchain_pins.py::test_the_runtime_dependencies_carry_an_upper_bound
-1 failed, 14 passed in 0.29s
-m4_psutil_unbounded restored byte-identical: True
-m5_ruff_hashes_stripped FROM count in constraints.txt: 1
-m5_ruff_hashes_stripped REAL_EXIT=1
-FAILED tests/orchestration/test_toolchain_pins.py::test_every_pin_is_exact_and_carries_a_hash
-1 failed, 14 passed in 0.29s
-m5_ruff_hashes_stripped restored byte-identical: True
-m6_psutil_unpinned FROM count in constraints.txt: 1
-m6_psutil_unpinned REAL_EXIT=1
-FAILED tests/orchestration/test_toolchain_pins.py::test_every_declared_dependency_is_pinned_inside_its_declared_range
-1 failed, 14 passed in 0.29s
-m6_psutil_unpinned restored byte-identical: True
+4 passed in 1.87s
+m1_unregistered_literal_read FROM count in packages/orchestration/run_log.py: 1
+m1_unregistered_literal_read REAL_EXIT=1
+FAILED tests/orchestration/test_env_registry.py::test_every_literal_env_read_names_a_registered_variable
+FAILED tests/orchestration/test_env_registry.py::test_every_remedy_name_production_code_spells_is_registered
+2 failed, 2 passed in 1.89s
+m1_unregistered_literal_read restored byte-identical: True
+m2_unregistered_name_in_a_constant FROM count in packages/runtimes/runtime_config.py: 1
+m2_unregistered_name_in_a_constant REAL_EXIT=1
+FAILED tests/orchestration/test_env_registry.py::test_every_remedy_name_production_code_spells_is_registered
+1 failed, 3 passed in 1.89s
+m2_unregistered_name_in_a_constant restored byte-identical: True
+m3_spec_removed FROM count in packages/orchestration/config.py: 1
+m3_spec_removed REAL_EXIT=1
+FAILED tests/orchestration/test_env_registry.py::test_every_literal_env_read_names_a_registered_variable
+FAILED tests/orchestration/test_env_registry.py::test_every_remedy_name_production_code_spells_is_registered
+2 failed, 2 passed in 1.89s
+m3_spec_removed restored byte-identical: True
+m4_env_var_registered_twice FROM count in packages/orchestration/config.py: 1
+m4_env_var_registered_twice REAL_EXIT=1
+FAILED tests/orchestration/test_env_registry.py::test_every_literal_env_read_names_a_registered_variable
+FAILED tests/orchestration/test_env_registry.py::test_every_remedy_name_production_code_spells_is_registered
+FAILED tests/orchestration/test_env_registry.py::test_every_registered_variable_is_a_remedy_name_and_registered_once
+3 failed, 1 passed in 1.89s
+m4_env_var_registered_twice restored byte-identical: True
 control_after REAL_EXIT=0
-15 passed in 0.28s
+4 passed in 1.87s
 ```
 Every reading matches the reviewer's stated expectations exactly: control
-15/15 passed, m1-m6 each 1 (or 2 for m3) failed at exit 1 at the named tests,
-control_after 15 passed. `git worktree remove --force .remedy-wt/f279-r1-mut`
-real exit 0, `git worktree prune` real exit 0. `git worktree list` afterward
-→ primary checkout plus the two `.remedy-wt/job-*` worktrees only.
+4/4 passed, m1 2 failed at the two named tests, m2 1 failed at the named
+test, m3 2 failed at the same two tests as m1, m4 3 failed at the three
+named tests, control_after 4 passed.
+`git worktree remove --force .remedy-wt/f279-r2-mut` real exit 0,
+`git worktree prune` real exit 0. `git worktree list` afterward → primary
+checkout plus the two `.remedy-wt/job-*` worktrees only.
 
 ## Authored-text proofs
 
@@ -244,77 +195,64 @@ Fidelity protocol (docs/agents/split_workflow.md, R-0147/R-0144/R-0148):
 byte-identity proof = mechanical disk-to-disk comparison of the applied
 location against the `.agent/authored/` copy.
 
-- This block (`f279-r1-block.md`): `.agent/authored/f279-r1-block.md` at C1a
-  verified byte-identical to `.remedy-wt/f279-r1-block.md` (G1) and to the
+- This block (`f279-r2-block.md`): `.agent/authored/f279-r2-block.md` at C1a
+  verified byte-identical to `.remedy-wt/f279-r2-block.md` (G1) and to the
   two readings given in the delegation message.
-- All 12 payloads (status.diff, rehead.diff, plan.md, context.md,
-  decisions.diff, feature.diff, pyproject.diff, ci.diff, readme.diff,
-  test_ci_workflow.diff, test_toolchain_pins.py, mutations.py): each
-  `.agent/authored/f279-r1-<name>` copy verified byte-identical to its
-  `.remedy-wt/f279-r1-payloads/<name>` source (G1).
-- Every `.diff` payload applied by `git apply` (never retyped): rehead,
-  status, decisions, feature, pyproject, ci, readme, test_ci_workflow — all
-  8, `git apply --check` then `git apply`, real exit 0 both times, and the
-  resulting tracked-file digests MATCH the reviewer's stated readings exactly
-  at G2/G3.
-- `plan.md` and `context.md` (rewrites, never retyped): `shutil.copyfile`
-  from the payload; resulting `.agent/plan.md` and `.agent/context.md`
-  digests MATCH the reviewer's stated G2 readings exactly.
-- `test_toolchain_pins.py` (new file, copied whole, never retyped):
+- All 6 payloads (ledger.diff, plan.md, decisions.diff, feature.diff,
+  config.diff, test_env_registry.py, mutations.py): each
+  `.agent/authored/f279-r2-<name>` copy verified byte-identical to its
+  `.remedy-wt/f279-r2-payloads/<name>` source (G1).
+- Every `.diff` payload applied by `git apply` (never retyped): ledger,
+  decisions, feature, config — all 4, `git apply --check` then `git apply`,
+  real exit 0 both times, and the resulting tracked-file digests MATCH the
+  reviewer's stated readings exactly at G2/G3.
+- `plan.md` (rewrite, never retyped): `shutil.copyfile` from the payload;
+  resulting `.agent/plan.md` digest MATCHES the reviewer's stated G2 reading
+  exactly.
+- `test_env_registry.py` (new file, copied whole, never retyped):
   `shutil.copyfile` from the payload to `tests/orchestration/`; resulting
   digest MATCHES the reviewer's stated G3 reading exactly.
-- `constraints.txt` (NOT a payload — GENERATED by the command in DECISION
-  F279 D1's own header, run once): resulting digest MATCHES the reviewer's
-  stated G3 reading exactly, confirming PyPI answered identically to both of
-  the reviewer's own runs.
 
 ## Item-Status Table
 
 | Item | Status | Reason |
 |---|---|---|
-| C1a | done | 496 insertions, matches 267+229 formula |
-| C1b | done | 295 insertions, matches expectation |
-| C2 | done | claim + rehead, all four insertion counts match |
-| C3 | done | DECISION F279 D1 recorded, T002 amended, both counts match |
-| C4 | done | pydantic/psutil upper bounds, 3 insertions matches |
-| C5 | done | constraints.txt generated, 652 insertions, DECLARED OVERSIZE (see Deviations) |
-| C6 | done | CI/README/guards installed, all four counts match |
-| C7 | done | this handback |
-| G1 TRANSPORT | done | all 13 authored copies byte-identical to source |
-| G2 THE BOOKKEEPING | done | all 6 digests match, 26/26 open-finding set empty diff, STATUS line correct, both file-lists match |
-| G3 THE PRODUCT | done | all 6 digests match, no PyPI drift, all three file-lists match |
-| G4 THE TESTS | done | 664 passed/1 skipped exit 0, ruff clean exit 0, integrity 5/5 pass exit 0 |
-| G5 THE RED PROOFS | done | control/m1-m6/control_after all match reviewer's exact readings, worktree cleaned up |
-| G6 TREE AND PUSH | done | reported in the session's final reply, not this file, since it runs after C7 |
+| C1a | done | 316 insertions, matches 214+102 formula |
+| C1b | done | 334 insertions, matches expectation |
+| C2 | done | round 1's PASS booked, DECISION F279 D2 recorded, T001 amended, all four insertion counts match |
+| C3 | done | registry + guard landed, both counts match |
+| C4 | done | this handback |
+| G1 TRANSPORT | done | all 8 authored copies byte-identical to source |
+| G2 THE BOOKKEEPING | done | all 4 digests match, 26/26 open-finding set empty diff, 0/1 Gate-line count matches, file-list matches |
+| G3 THE REGISTRY | done | file-list and both digests match |
+| G4 THE TESTS | done | 1025 passed exit 0, ruff clean exit 0, integrity 5/5 pass exit 0 |
+| G5 THE RED PROOFS | done | control/m1-m4/control_after all match reviewer's exact readings, worktree cleaned up |
+| G6 TREE AND PUSH | done | reported in the session's final reply, not this file, since it runs after C4 |
 
 ## Deviations & assumptions
 
-The round followed the block's ordered commit sequence (C1a, C1b, C2, C3, C4,
-C5, C6, C7) exactly and touched exactly the tracked path set constraint 3
-names — confirmed by `git diff --name-only c9bc5c20 HEAD` before C7 was
-written, which listed precisely the 13 `.agent/authored/f279-r1-*` copies,
-`.agent/context.md`, `.agent/decisions.md`, `.agent/live_review.md`,
-`.agent/plan.md`, `.github/workflows/ci.yml`, `README.md`, `constraints.txt`,
-`docs/roadmap/STATUS.md`, `docs/roadmap/features/T2_F279.md`,
-`pyproject.toml`, `tests/orchestration/test_ci_workflow.py` and
-`tests/orchestration/test_toolchain_pins.py`.
+The round followed the block's ordered commit sequence (C1a, C1b, C2, C3, C4)
+exactly and touched exactly the tracked path set constraint 3 names —
+confirmed by `git diff --name-only 62c689e1 HEAD` before C4 was written,
+which listed precisely the 8 `.agent/authored/f279-r2-*` copies,
+`.agent/decisions.md`, `.agent/live_review.md`, `.agent/plan.md`,
+`docs/roadmap/features/T2_F279.md`, `packages/orchestration/config.py` and
+`tests/orchestration/test_env_registry.py`.
 
-DECLARED OVERSIZE COMMIT (AGENTS.md exception): C5 (`525dc9ab`, 652
-insertions) is F279's one declared oversize commit — "a generated lockfile
-is one indivisible artifact; splitting it would leave a commit whose pinned
-set pip refuses, and the file is reproduced byte for byte by the command in
-its own header (DECISION F279 D1)". This is the only oversize commit in the
-round/feature so far.
+No oversize commit this round (largest was C2's 53 insertions net, well
+under the 500 cap; F279's one declared oversize commit remains round 1's C5).
 
-No other procedural deviation. Nothing was merged this round, per constraint
-5. No `remedy/job-*` branch or self-use worktree was created, touched or
-deleted beyond the round's own `.remedy-wt/f279-r1-mut`, which was created
-and removed within G5 per constraint 6. The full suite was not run, per
-constraint 7 (amend0917 rule 1) — F279's one full-suite run belongs to its
-closure.
+No other procedural deviation. Nothing was merged this round, per
+constraint 5. No `remedy/job-*` branch or self-use worktree was created,
+touched or deleted beyond the round's own `.remedy-wt/f279-r2-mut`, which
+was created and removed within G5 per constraint 6. The full suite was not
+run, per constraint 7 (amend0917 rule 1) — F279's one full-suite run belongs
+to its closure.
 
 ## Next
 
-Phase 1 rule 1 (read `.agent/STOP` from disk), then the review of round 1,
-then T001 — the environment-variable registry, re-derived from the tree.
-Open findings: 26. Operator questions: 0.
+Phase 1 rule 1 (read `.agent/STOP` from disk), then the review of round 2,
+then T001's doctor and docs half — `remedy doctor core` naming unknown and
+unparsable `REMEDY_*` variables, and the generated
+`docs/guides/environment.md` with its drift test. Open findings: 26.
+Operator questions: 0.
