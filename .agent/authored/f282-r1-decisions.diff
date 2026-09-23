@@ -1,0 +1,38 @@
+diff --git a/.agent/decisions.md b/.agent/decisions.md
+index 03aa145b..bf4199db 100644
+--- a/.agent/decisions.md
++++ b/.agent/decisions.md
+@@ -19175,3 +19175,33 @@ not evidence about a file it does not collect. After the repair the same sweep r
+ `4642 passed, 13 skipped` at exit 0 and `tests/orchestration/test_integrity_gate.py` reads
+ `25 passed`. REVERSE by restoring the blind handler and raising `MAX_EXCUSED` to 291 — which is
+ precisely what the ratchet exists to prevent, so do not.
++
++## DECISION F282 D1 — the paydown takes the whole open set, one slice per module, and R-0998's check fails a complete context on anything but a pass (2026-09-23)
++
++THE SLICE LIST. `open_finding_ids` over `.agent/live_review.md` at `b8fa02ba`, F282's fork point,
++reads 30 ids, and `docs/roadmap/features/T2_F282.md` now lists every one of them under a slice,
++one slice per module, in the order the rounds take them. Four of the 30 carry no F282 owner line:
++R-1034 and R-1035 name "the next findings-paydown feature", which is F282, and R-1043 and R-1044
++name operator amendment amend0923-selfuse-write, which merged as `b8fa02ba` without a `Done:` line
++for either. Rule A of amend0911-feedback says a finding whose owner closes without it goes to the
++next paydown feature, and that closure did not write the line, so THIS CLAIM TAKES ALL FOUR and
++says so in the feature file rather than editing four landed paragraphs. The paydown rule reads
++"registered before the claim date"; R-1043, R-1044 and R-1045 were registered ON the claim date,
++and they are taken anyway, because R-1045 names F282 as its owner by its own text and the other
++two are resolutions of work already landed, not repairs this feature must build. ALTERNATIVES
++CONSIDERED: leave the four ownerless and let the closure's ownership paragraph sweep them — which
++is the carry-forward rule A forbids; or take only the ids the old Acceptance list named — which
++leaves every id registered after F273's closure outside the plan of the feature that owns it.
++
++R-0998's READING. The finding's FIX clause fixes the reader (`latest_gate_verdict`, loaded by path
++as the high-blocker check loads it) and two tests; it does not say what the check answers when
++the ledger holds no `Gate:` record, or one whose verdict does not parse, under a context that says
++complete. CHOSEN: FAIL for both, because a check that exists to stop a completion claim over a
++verdict that is not a pass has, in either case, no pass to point at; WARN for both when context
++does not say complete, which keeps the check's old visible-but-harmless answer for a record in
++progress; a FAIL, a repair or a block mid-feature is reported as PASS with the verdict in the
++message, because a repair round following a FAIL is the normal shape of a feature. The loader's
++failures are caught by name — `OSError`, `ImportError`, `SyntaxError`, `AttributeError` — and not
++by `except Exception`, because `tests/test_ble001_ratchet.py` holds the excused blind handlers at
++their frozen ceiling. HOW TO REVERSE: restore `_check_live_review_verdict` from `b8fa02ba`; the
++tests under `TestLiveReviewVerdictReadsTheLastGateRecord` then go red, which is their job.

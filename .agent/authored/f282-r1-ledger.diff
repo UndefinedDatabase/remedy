@@ -1,0 +1,63 @@
+diff --git a/.agent/live_review.md b/.agent/live_review.md
+index 7e2d360f..55d17d8c 100644
+--- a/.agent/live_review.md
++++ b/.agent/live_review.md
+@@ -1,27 +1,31 @@
+-# Live Review — F263 Human-change absorption (absorb)
+-
+-> Round-by-round review record, re-headed at the F263 claim per
+-> docs/agents/planner_reviewer_prompt.md §1. The heading this replaces named F279, whose STATUS
+-> line went `[x]` at `78f20a9c` and whose pull request 267 merged into `main` at the reviewer's
+-> Open PR Gate under docs/agents/self_drive_protocol.md, as `54a23101`, after both hosted CI jobs
+-> of run 35831961259 ended `success`. F279's round 11 — its closure round — has no gate entry,
+-> by construction (§4 item 13 of docs/agents/planner_reviewer_prompt.md); its verdict lives in
+-> `.agent/handoff.md` at `78f20a9c` and in the pull request. Only the heading, this paragraph and
+-> the `## Steps` section below are rewritten. Everything from the `## Findings` line to the end
+-> of the file is carried forward BYTE-IDENTICAL, and finding ids continue the monotonic R-XXXX
+-> series across the re-head. The open set at `54a23101`, computed with `open_finding_ids` from
+-> `scripts/rotate_live_review.py`, is 28 by distinct id; none of them names F263 as its owner,
+-> and F263 owns whatever it registers itself.
++# Live Review — F282 Findings paydown v2
++
++> Round-by-round review record, re-headed at the F282 claim per
++> docs/agents/planner_reviewer_prompt.md §1. The heading this replaces named F263, whose STATUS
++> line went `[x]` at `52c66a68` and whose pull request 268 the operator merged into `main` as
++> `64cffc44`, with both hosted CI columns of that pull request ending `pass`. F263's round 9 —
++> its closure round — has no gate entry, by construction (§4 item 13 of
++> docs/agents/planner_reviewer_prompt.md), and no reviewer read it before the merge; the
++> planner and reviewer of F282's first session read it at this claim, over `872b4c23`..`52c66a68`:
++> VERDICT PASS. Its four commits carry 241, 10, 24 and 205 insertions by `git show --numstat`,
++> each under the 500-line cap; the round's block and its ten payloads read out of `52c66a68`
++> equal the reviewer's originals under `.remedy-wt/` byte for byte; `docs/roadmap/STATUS.md`,
++> `README.md` and `scripts/self_use_queue.json` at `52c66a68` carry exactly the sha256 that
++> round's block ordered; and `52c66a68` is the second parent of `64cffc44`. Operator amendment
++> amend0923-selfuse-write then merged as `b8fa02ba`, this branch's fork point, resolving R-0829
++> and registering R-1043, R-1044 and R-1045. Only the heading, this paragraph and the `## Steps`
++> section below are rewritten. Everything from the `## Findings` line to the end of the file is
++> carried forward BYTE-IDENTICAL, and finding ids continue the monotonic R-XXXX series across
++> the re-head. The open set at `b8fa02ba`, computed with `open_finding_ids` from
++> `scripts/rotate_live_review.py`, is 30 by distinct id, and F282 owns all of them: its feature
++> file lists each under a slice.
+ 
+ ## Steps
+ 
+-THE ORDER BELOW IS T2_F263.md's Orchestrator brief. R1 claims F263, re-heads this record and
+-lands T001's foundation: the target checkout's last known state, recorded on every git job, and
+-the human change record, detected against it and certified into the job's evidence before any
+-re-base, with DECISION F263 D1 fixing the evidence shape. T002, `remedy absorb`, comes next over
+-the same machinery; T003, absorption at a run's safe points and before every apply, comes last
+-and deletes the drift error it replaces. Every round's handback states the open set by distinct
+-id.
++THE ORDER BELOW IS T2_F282.md's Task slicing, written at the claim. R1 claims F282, re-heads
++this record, resolves R-0984 by its hosted reading and lands T001, R-0998's verdict reader.
++Later rounds take the slices in the file's order, several to a round where they are small,
++and every round's handback states the open set by distinct id.
+ ## Findings
+ 
+ - R-0499 — Low, THE EIGHT-FILE STRUCTURAL SWEEP GOES RED ABOUT ONCE IN TWENTY RUNS INSIDE A FRESH GIT WORKTREE, AND THE FAILING NODE ID HAS NEVER BEEN CAPTURED. Raised by the reviewer at the R8 authoring dry run. Two observations exist and both are inside a disposable worktree, never in the primary checkout: the F085 R7 worker saw one red in 22 runs on a scratch worktree carrying a larger draft change and did not capture the node id, and the reviewer saw one red in 14 runs on the R8 dry-run worktree and did not capture it either, because the run that produced it was not the run that carried `-rf` output to the log. The red reading is `1 failed, 348 passed, 7 skipped` against the green `350 passed, 6 skipped`, so a test that normally PASSES was SKIPPED in the same run that another test failed — which is the signature of an environment-conditional skip rather than of a logic defect. The sweep's only environment-conditional member is `test_typescript_compiles` in `tests/ui_server/test_dashboard_contract.py`, which resolves `apps/ui/node_modules/.bin/tsc` relative to the file's own tree, skips with "UI toolchain absent" when that path is missing, and otherwise shells out to a REAL `tsc --noEmit` under `timeout=30` — the one member of the eight-file sweep that depends on a heavy external toolchain and on wall-clock. `node_modules` is gitignored, so a fresh worktree's copy of it is populated out of band and its state at the worktree's FIRST sweep run is not something the sweep controls. Nothing in the F085 change set reaches any of the eight files, so this is a pre-existing property of the gate and not of the guard. Counter-measure, already applied in the block that registers this finding: the sweep is ordered as a PROBE carrying `-rf`, never as an expected COLOUR, and a red run reports its FAILED node id verbatim and hands back rather than re-running until green — which is the only way the id gets captured. The finding resolves when a red run finally names the test. Whether `test_typescript_compiles` belongs in a structural sweep at all is a question for the F252 flake work and is NOT claimed here. OPEN.
+@@ -571,3 +575,5 @@ Gate: F263 R8 — the F263 round 8 entry: the booking of round 7 and of two recu
+ - R-1045 — Low, THE TOOL THAT REGENERATES `constraints.txt` IS NEITHER PINNED, NOR INSTALLED BY CI, NOR LISTED BY `remedy doctor toolchain`, THOUGH THE FILE'S OWN HEADER NAMES IT. Registered by the operator's delegate under operator amendment amend0923-selfuse-write, 2026-09-23. THE EVIDENCE: line 2 of `constraints.txt` records the command that produced it, `uv pip compile pyproject.toml --extra dev --extra ollama --universal --python-version 3.10 --generate-hashes --no-annotate --exclude-newer 2026-09-23T00:00:00Z -o constraints.txt`, so `uv` is the one tool the pinning discipline depends on; the `dev` extra in `pyproject.toml` lists `pytest`, `pytest-xdist`, `ruff==0.15.17`, `mypy`, `pytest-cov` and `coverage` and does not list `uv`; `uv` occurs zero times in `.github/workflows/ci.yml`; and `python3 -m apps.cli.main doctor toolchain` prints a table of eight tools — pydantic, psutil, pytest, pytest-xdist, ruff, mypy, pytest-cov and coverage — that does not include it. WHY LOW: nothing is wrong in the repository today and the pins on disk are correct; the cost is that the one tool whose version decides what every other pin becomes is itself unpinned, so a `constraints.txt` regenerated on a different machine can differ for a reason no artifact records. SEARCHED BEFORE MINTING (checklist item 30): `uv `, `constraints.txt` and `doctor toolchain` occur zero times in `.agent/live_review.md`; the two archive hits are F278's oversize-commit declaration and F279's generator reproduction, neither of which is about pinning the generator itself. FIX: pin `uv` in the `dev` extra of `pyproject.toml` and list it in the table `remedy doctor toolchain` prints. Owner: F282 — Findings paydown v2.
+ 
+ Done: R-0829 — RESOLVED BY MEASUREMENT AT THE CLOSE OF OPERATOR AMENDMENT amend0923-selfuse-write, 2026-09-23. R-0829's own FIX clause, which is binding on the feature that takes the id, asked for two things: that the packer exclude every path `git check-ignore` accepts rather than maintain a list that must be extended each time a new ignored directory appears, and that a guard build a package in a temporary tree holding a freshly created ignored directory and assert no member of the archive is a path git ignores. BOTH ARE ON DISK. `scripts/make_review_zip.sh` now filters its NUL-delimited source list through `git check-ignore --stdin -z --non-matching --verbose` and drops every path whose pattern field comes back non-empty, skipping the filter with a note on stderr when the root is not a git repository and never replacing a non-empty list with an empty one; and `tests/orchestration/test_review_zip_hygiene.py::TestThePackerShipsNothingGitIgnores::test_no_member_of_the_archive_is_a_path_git_ignores` builds a package in a mini repository whose `.gitignore` names a directory holding one file and asserts no member sits under it, while also asserting the tracked sources are still there so the filter cannot pass by emptying the archive. THE RED SIDE WAS RUN AND RECORDED BEFORE THE FIX, at `5e32f7ab`: that test and the two refusal tests beside it read 3 failed, 1 passed. THE REPAIR IS MEASURED ON A REAL PACKAGE, not on the guard alone: `scripts/make_review_zip.sh` built `remedy-review-20260923-190048-NO_EVIDENCE.zip` into `/home/decodeux/Repos/remedy-history/zips` from this branch at `1a1b06b2`, and `unzip -Z1` over its 5081 members counts ZERO beginning `remedy-review-`, zero beginning `remedy-job-evidence-`, zero ending `.zip`, and zero that `git check-ignore` accepts — against the 65 scratch files this finding measured in each of the three packages of 2026-09-22 and 2026-09-23. TWO GUARDS WERE ADDED BEYOND THE FIX CLAUSE, under DECISION amend0923-selfuse-write D5: the packer's detritus gate now REFUSES a `remedy-review-*` directory, a `remedy-job-evidence-*` directory or a stray `*.zip` at the repository root outright, and `_check_repo_root_hygiene` in `packages/orchestration/integrity_gate.py` fails on the same four shapes every round, so the next leftover is caught where it is created rather than in an accepted package weeks later — which is the delay this finding's own history measures. THE ROOT ITSELF WAS CLEANED FIRST, by moving and never deleting: the two scratch directories and `remedy-job-evidence-f112-closure` went to `~/Repos/remedy-history/attic/2026-09-23/` and `remedy-review-20260823-135731-READY_FOR_REVIEW.zip` to `~/Repos/remedy-history/zips/`, each move recorded with its exact source and destination in DECISION amend0923-selfuse-write D4. NO README OR STATUS COUNTER MOVES WITH THIS RESOLUTION: neither file states an open-findings count, and every counter `tests/docs/test_docs_consistency.py` pins is derived from `docs/roadmap/STATUS.md`, the roadmap ledger, not from this one — measured and recorded as DECISION amend0923-selfuse-write D7.
++
++Done: R-0984 — RESOLVED BY ITS HOSTED READING at F282's claim, 2026-09-23, by the planner and reviewer of F282's first session; the repair itself is F273's T016 (a), and this line names the column the finding waited on. THE REPAIR ON DISK, read at `b8fa02ba`: `RunState` in `packages/core/models.py` defines `__str__` returning `self.value`, with a comment naming the Python 3.11 change to `format()` of a mixed-in enum. THE COLUMN THE ACCEPTANCE LINE NAMES: hosted run 35470120934, F273's closure pull request 260 at `6daeb66e`, ended with its `ci (3.12)` column FAILED, and its failed log names exactly one node, `tests/cli/test_study_cmd.py::TestStudyCommandReachability::test_study_run_dispatch_e2e`, in the `fast` stage at `1 failed, 3736 passed` — R-1001's node, resolved at F276 R1 — while its `standard` stage read `12955 passed, 7 skipped` with none failed. THAT STAGE IS THE ONE HOLDING THIS FINDING'S TEST: `python3 -m pytest --collect-only` over `tests/orchestration/test_job_state_field.py` under the `standard` stage's own marker expression from `packages/orchestration/ci_stages.py`, `(integration or subprocess) and not real_ollama`, collects `TestTheRenderingIsUnchanged::test_a_blocked_job_renders_and_exports_as_the_plain_word_blocked` among 14, so the 3.12 column ran the test and passed it. A COLUMN OF ITS OWN, GREEN: hosted run 35902025271, the push of `b8fa02ba` to `main`, ended `success` on both `ci (3.10)` and `ci (3.12)`, its 3.12 `standard` stage reading `13404 passed, 7 skipped`. The 3.12 column is therefore no longer blind to this class: it runs the rendering test and it is green.
