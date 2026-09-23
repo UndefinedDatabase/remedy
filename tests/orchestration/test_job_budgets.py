@@ -1240,6 +1240,33 @@ class TestJobBudgetCliRendersPredictions:
         assert _line_value(lines, "remaining") is None
         assert _line_value(lines, "next_task_expected") is None
 
+    # -- R-1040: an EMPTY ledger answer does not replace a recorded cost ---
+    def test_an_empty_ledger_leaves_the_persisted_overspend_standing(
+            self, budget_cli_repo, capsys, monkeypatch):
+        # The ledger resolves but holds no row for this job; the job itself recorded
+        # $1.3733 over three priced calls and one unpriced against a $1.00 limit.
+        _cli_arm_ledger(monkeypatch)
+        job = _save_budget_job(budget_cli_repo, budgets={"max_cost_usd": 1.0},
+                               money=(1.373349, 3, 1))
+        lines = self._text(job.job_id, capsys).splitlines()
+        assert _line_value(lines, "spent").startswith(">= $1.3733")
+        assert _line_value(lines, "exhausted") == "True"
+        data = self._json(job.job_id, capsys)
+        assert data["counters"]["measured_cost_usd"] == 1.373349
+        assert data["counters"]["priced_call_count"] == 3
+        assert data["counters"]["unpriced_call_count"] == 1
+
+    def test_a_ledger_naming_a_call_still_replaces_the_persisted_cost(
+            self, budget_cli_repo, capsys, monkeypatch):
+        _cli_arm_ledger(monkeypatch)
+        job = _save_budget_job(budget_cli_repo, budgets={"max_cost_usd": 1.0},
+                               money=(1.373349, 3, 1))
+        _cli_record_call(job.job_id, call_id=f"{job.job_id}-a", cost=0.25)
+        data = self._json(job.job_id, capsys)
+        assert data["counters"]["measured_cost_usd"] == 0.25
+        assert data["counters"]["priced_call_count"] == 1
+        assert data["counters"]["unpriced_call_count"] == 0
+
     # -- R-0227: a BROKEN ledger read is not the same as an unpriced job ---
     def _break_the_ledger_read(self, monkeypatch):
         """Make the production ledger read raise, leaving everything else real."""

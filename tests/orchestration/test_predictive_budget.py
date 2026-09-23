@@ -799,6 +799,22 @@ class TestPredictiveStopAtTheLiveDispatchSafePoint:
         assert on_disk.stop_source == "budget"
         assert on_disk.finished_at.strip()
 
+    @pytest.mark.parametrize("deadline", [
+        "2020-01-01T00:00:00+00:00", "2020-01-01T00:00:00.250000+00:00", "2020-01-01T00:00:00Z"])
+    def test_a_deadline_stop_persists_stopped(self, isolate_data_root, demo_repo, monkeypatch, deadline):
+        # R-1005: a past deadline is the one limit whose exhaustion is certain, and its
+        # stop must write its run manifest and finalize like every other budget stop.
+        from packages.orchestration.pingpong_job import JOB_STOPPED, load_job_plan
+        done, builder, _r = self._run(monkeypatch, demo_repo, budgets={"deadline": deadline},
+                                      arm_ledger=False)
+        assert done.run_manifest_error == ""
+        assert done.stop_error == ""
+        on_disk = load_job_plan(done.job_id)
+        assert on_disk.state == JOB_STOPPED
+        assert on_disk.stop_reason == "budget_exhausted:deadline"
+        assert on_disk.finished_at.strip()
+        assert builder.build_calls == 0
+
     # -- REGRESSION: the inert paths --------------------------------------
     def test_without_a_cost_limit_nothing_is_predicted(
             self, isolate_data_root, demo_repo, monkeypatch):
