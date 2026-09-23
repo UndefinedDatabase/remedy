@@ -11,24 +11,21 @@ checklist items a machine can check (`docs/roadmap/features/T2_F279.md`).
 
 ## Current Step
 
-ROUND 2 books round 1's PASS, records DECISION F279 D2 with the feature
-file's T001 amendment, and lands T001's registry half: the fifteen
-`REMEDY_` names production code spelled without a spec are registered as
-env-only keys in `packages/orchestration/config.py`, and
-`tests/orchestration/test_env_registry.py` holds every name to the registry.
-T002 landed in round 1.
+ROUND 3 books round 2's PASS, records DECISION F279 D3, and lands T001's
+doctor and docs half: the shell scripts' `REMEDY_` names and the two
+real-Ollama opt-ins are registered and guarded; `remedy doctor core` warns
+about an unknown `REMEDY_` variable with its closest registered name and
+about a registered one whose value does not read as its type; and
+`docs/guides/environment.md` is rendered from the registry, indexed, and
+held by a drift test. T002 landed in round 1, T001's registry in round 2.
 
 ## Next Steps
 
-1. T001's doctor and docs half: `remedy doctor core` names an unknown
-   `REMEDY_*` variable with its closest registered match and a registered
-   one whose value does not parse; a generated `docs/guides/environment.md`
-   with its drift test and its `docs/README.md` index line.
-2. T001's reader half: the direct `REMEDY_` reads move onto one registry
+1. T001's reader half: the direct `REMEDY_` reads move onto one registry
    reader, so each type and default lives in its spec alone.
-3. T003, `remedy block lint`, unless the operator has dropped it.
-4. T004, the toolchain refresh order and `remedy doctor toolchain`.
-5. The closure sequence, with the one full-suite run.
+2. T003, `remedy block lint`, unless the operator has dropped it.
+3. T004, the toolchain refresh order and `remedy doctor toolchain`.
+4. The closure sequence, with the one full-suite run.
 
 ## Risks
 

@@ -18540,3 +18540,40 @@ a variable, which a read-site scan cannot see.
 
 REVERSE by deleting this paragraph, the fifteen specs under the F279 T001 comment in
 `packages/orchestration/config.py`, and `tests/orchestration/test_env_registry.py`.
+
+DECISION F279 D3 (2026-09-23, round 3) — `remedy doctor core` READS THE ENVIRONMENT AGAINST THE
+REGISTRY AS ADVISORIES, THE SHELL SCRIPTS' NAMES ARE REGISTERED, AND THE GUIDE IS RENDERED FROM
+THE REGISTRY BY A FUNCTION, NOT A SCRIPT.
+
+CONTEXT. Measured by the reviewer at `cec312cb`: the shell scripts under `scripts/` expand seven
+`REMEDY_` names that no spec registers, `REMEDY_REVIEW_DIR` among them, which `tests/conftest.py`
+sets for every test run; the tests read two operator opt-ins for the real-Ollama tests; and the
+reviewer's own shell carries four `REMEDY_` names that belong to another tool. `remedy doctor
+core` already separates blocking checks from advisory warnings.
+
+CHOSEN. (1) The seven shell-script names and the two opt-ins are registered as env-only specs,
+and the guard in `tests/orchestration/test_env_registry.py` also holds every `$REMEDY_` and
+`${REMEDY_` expansion in the shell scripts under `scripts/` and at the root. (2) An unknown
+`REMEDY_` variable, named with its closest registered name compared after the shared prefix,
+and a registered variable whose value does not read as its type are ADVISORY warnings, never
+blockers: another tool may share the prefix, and READY must not depend on the operator's shell.
+No value is ever printed, because a variable may carry a secret. (3) A boolean variable reads as
+yes for 1, true or yes and as no for 0, false, no or empty — the words `_coerce_value` already
+honours — and any other value is reported, because `_coerce_value` would read it as no without a
+word. (4) `docs/guides/environment.md` is rendered by `render_environment_guide()` in
+`packages/orchestration/config.py` and written by `write_environment_guide()`; a separate script
+would be an orphan module under `tests/test_no_orphan_modules.py`, and the guide names the
+one-line command that regenerates it. (5) `tests/cli/test_worker_facade_cmd.py` removes foreign
+and unparsable `REMEDY_` variables from the environment for its own tests, so a test that
+asserts which warnings appear does not depend on the shell it runs in.
+
+ALTERNATIVES. Make an unknown variable a blocker — rejected for (2). Print the value of an
+unparsable variable — rejected: a doctor report is pasted into issues. A new
+`scripts/render_environment_guide.py` — rejected for (4).
+
+REVERSE by deleting this paragraph, the nine specs under the DECISION F279 D3 comment and the
+functions under "The environment against the registry" in `packages/orchestration/config.py`,
+the F279 T001 section of `_cmd_doctor_core`, `docs/guides/environment.md` with its two index
+lines, its entry in `tests/docs/test_retired_promote_word.py` and
+`tests/docs/test_environment_guide.py`, and the shell-script guard and the environment
+tests added to `tests/orchestration/test_env_registry.py` and `tests/cli/test_worker_facade_cmd.py`.
