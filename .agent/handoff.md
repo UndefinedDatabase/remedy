@@ -1,100 +1,79 @@
-# Handback — F282 Findings paydown v2 · Round 1 · Claim F282, write its slice list, resolve R-0984 and land T001, R-0998's verdict reader
+# Handback — F282 Findings paydown v2 · Round 2 · Book round 1, resolve T002 by evidence and land T003, R-1041's open-set rule
 
 ## Session
 
-SESSION 1 of feature F282 · round 1 · rounds so far 1
+SESSION 1 of feature F282 · round 2 · rounds so far 2
 
-This is the opening round: it cut `feature/f282-findings-paydown-v2` from
-`main` at `b8fa02ba`, copied the block and its nine payloads into
-`.agent/authored/` (C1a, C1b), claimed F282 by re-heading
-`.agent/live_review.md`, writing the F282 STATUS line and its feature
-detail file, and rewriting `.agent/plan.md`/`.agent/context.md` (C2),
-recorded DECISION F282 D1 and the slice list (C3), and landed T001 — the
-`_check_live_review_verdict` reader in
-`packages/orchestration/integrity_gate.py` that reads the ledger's last
-`Gate:` record through `latest_gate_verdict`, with its tests (C4, C5). A
-large majority of the session's working context budget remained at
+This round booked round 1's PASS and R-0998's resolution into the ledger,
+resolved R-1009, R-1043, R-1044 and R-0880 by the reviewer's measured
+evidence, recorded DECISION F282 D2, and landed T003 — `check_open_set` in
+`packages/orchestration/block_lint.py`, which checks a block's stated
+open-findings count against the open set AFTER the round, reading the ids
+the block's ledger payloads register and resolve (R-1041), with its tests.
+A large majority of the session's working context budget remained at
 handback.
 
 ## Range
 
-Review of `b8fa02ba`..`HEAD`.
+Review of `5f9e4725`..`HEAD`.
 
 ## Commits
 
-### 26b05919 F282 R1 C1a: copy round 1 block and ledger payloads into .agent/authored/
+### d60d3ee0 F282 R2 C1a: copy round 2 block and bookkeeping payloads into .agent/authored/
 
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f282-r1-block.md | +217/-0 | Bookkeeping copy of this round's step block (R-0954 transport) |
-| .agent/authored/f282-r1-ledger.diff | +63/-0 | Payload copy |
-| .agent/authored/f282-r1-status.diff | +13/-0 | Payload copy |
-| .agent/authored/f282-r1-feature.diff | +58/-0 | Payload copy |
-| .agent/authored/f282-r1-decisions.diff | +38/-0 | Payload copy |
+| .agent/authored/f282-r2-block.md | +203/-0 | Bookkeeping copy of this round's step block (R-0954 transport) |
+| .agent/authored/f282-r2-ledger.diff | +20/-0 | Payload copy |
+| .agent/authored/f282-r2-decisions.diff | +27/-0 | Payload copy |
+| .agent/authored/f282-r2-plan.md | +30/-0 | Payload copy |
 
-Measured insertions by `git diff --cached --stat` before commit: 389
-(217+63+13+58+38), matching the block's stated formula "this block's line
-count plus 172" (217+172=389) exactly. Under the 500 cap.
+Measured insertions by `git diff --cached --stat` before commit: 280
+(203+27+20+30), matching the block's stated formula "this block's line
+count plus 77" (203+77=280) exactly. Under the 500 cap.
 
-### 95053718 F282 R1 C1b: copy round 1 state and product payloads into .agent/authored/
-
-| Path | +/- | Reason |
-|---|---|---|
-| .agent/authored/f282-r1-plan.md | +32/-0 | Payload copy |
-| .agent/authored/f282-r1-context.md | +44/-0 | Payload copy |
-| .agent/authored/f282-r1-product.diff | +83/-0 | Payload copy |
-| .agent/authored/f282-r1-tests.diff | +88/-0 | Payload copy |
-| .agent/authored/f282-r1-mutations.py | +66/-0 | Payload copy |
-
-Measured insertions by `git diff --cached --stat` before commit: 313
-(32+44+83+88+66), matching the block's expected 313 exactly.
-
-### 89183eb8 F282 R1 C2: claim F282, write its slice list and re-head the live review record
+### 23c8827c F282 R2 C1b: copy round 2 product payloads into .agent/authored/
 
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/live_review.md | +27/-21 | `ledger.diff` applied: re-head at the top, `Done: R-0984` paragraph appended |
-| docs/roadmap/STATUS.md | +1/-1 | `status.diff` applied: F282's line flips to `[~] F282 — Findings paydown v2` |
-| docs/roadmap/features/T2_F282.md | +40/-0 | `feature.diff` applied: new feature detail file with the slice list |
-| .agent/plan.md | +19/-22 | Rewritten to the round-1 `plan.md` payload |
-| .agent/context.md | +32/-29 | Rewritten to the round-1 `context.md` payload |
+| .agent/authored/f282-r2-mutations.py | +76/-0 | Payload copy |
+| .agent/authored/f282-r2-product.diff | +69/-0 | Payload copy |
+| .agent/authored/f282-r2-tests.diff | +45/-0 | Payload copy |
 
-Measured insertions by `git show --numstat 89183eb8`: 32 context.md, 27
-live_review.md, 19 plan.md, 1 STATUS.md, 40 T2_F282.md — matching the
-block's expected numbers exactly. (Note: `git commit`'s own summary line
-printed different totals, 144 insertions(+)/98 deletions(-), than
-`git show --numstat`'s 119/73 — a git rewrite-detection stat display
-quirk on files it flags "rewrite NN%"; `git show --numstat`, the reading
-the block's gate specifies, matches exactly and is authoritative here.)
+Measured insertions by `git diff --cached --stat` before commit: 190
+(76+69+45), matching the block's expected 190 exactly.
 
-### fe61d345 F282 R1 C3: record DECISION F282 D1, the slice list and R-0998's reading
+### 1776b574 F282 R2 C2: book round 1, resolve five findings and record DECISION F282 D2
 
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/decisions.md | +30/-0 | `decisions.diff` applied |
+| .agent/live_review.md | +12/-0 | `ledger.diff` applied: `Gate: F282 R1` entry and the `Done:` lines of R-0998, R-1009, R-1043, R-1044 and R-0880 |
+| .agent/decisions.md | +19/-0 | `decisions.diff` applied: DECISION F282 D2 |
+| .agent/plan.md | +8/-10 | Rewritten to the round-2 `plan.md` payload |
 
-Measured insertions by `git diff --numstat` before commit: 30, matching
-the block's expected 30 exactly.
+Measured insertions/deletions by `git show --numstat 1776b574`: 19/0
+decisions.md, 12/0 live_review.md, 8/10 plan.md — matching the block's
+expected numbers exactly.
 
-### 22d73b74 F282 R1 C4: read the integrity check's verdict from the last Gate record
-
-| Path | +/- | Reason |
-|---|---|---|
-| packages/orchestration/integrity_gate.py | +28/-28 | `product.diff` applied: T001, `_check_live_review_verdict` reads the ledger's last `Gate:` record through `latest_gate_verdict` |
-
-Measured insertions/deletions by `git diff --numstat` before commit:
-28/28, matching the block's expected "28 (28 deletions)" exactly.
-
-### fafcfcf5 F282 R1 C5: test the verdict reader against Gate records, R-0998
+### c68f4611 F282 R2 C3: count the open set after the round from the block's ledger payloads
 
 | Path | +/- | Reason |
 |---|---|---|
-| tests/orchestration/test_integrity_gate.py | +77/-0 | `tests.diff` applied |
+| packages/orchestration/block_lint.py | +42/-4 | `product.diff` applied: T003, `check_open_set` reads the ids a block's ledger payloads register and resolve, and checks the stated open-findings count against the open set AFTER the round (R-1041) |
 
-Measured insertions by `git diff --numstat` before commit: 77, matching
-the block's expected 77 exactly.
+Measured insertions/deletions by `git diff --cached --numstat` before
+commit: 42/4, matching the block's expected "42 (4 deletions)" exactly.
 
-### (this commit) F282 R1 C6: rewrite handoff for round 1
+### 02cbe601 F282 R2 C4: test the open-set rule against a block's ledger payloads, R-1041
+
+| Path | +/- | Reason |
+|---|---|---|
+| tests/orchestration/test_block_lint.py | +34/-0 | `tests.diff` applied |
+
+Measured insertions by `git diff --cached --numstat` before commit: 34,
+matching the block's expected 34 exactly.
+
+### (this commit) F282 R2 C5: rewrite handoff for round 2
 
 | Path | +/- | Reason |
 |---|---|---|
@@ -102,16 +81,15 @@ the block's expected 77 exactly.
 
 ## External actions
 
-- `git checkout -b feature/f282-findings-paydown-v2` from `main` at
-  `b8fa02ba` — real outcome reported in the worker's final reply.
-- `git worktree add --detach .remedy-wt/f282-r1-mut fafcfcf5` for G5 —
-  succeeded, HEAD detached at `fafcfcf5`.
-- `git worktree remove --force .remedy-wt/f282-r1-mut` and
+- `git worktree add --detach .remedy-wt/f282-r2-mut 02cbe601` for G5 —
+  succeeded, HEAD detached at `02cbe601`.
+- `git worktree remove --force .remedy-wt/f282-r2-mut` and
   `git worktree prune` after G5 — both real exit 0; `git worktree list`
   afterward shows only the primary checkout, `.remedy-wt/f282-r1-dry`,
-  `.remedy-wt/f282-r1-sim` and the four `job-*` worktrees constraint 6
+  `.remedy-wt/f282-r1-sim`, `.remedy-wt/f282-r2-dry`,
+  `.remedy-wt/f282-r2-sim` and the four `job-*` worktrees constraint 6
   names.
-- `git push -u origin feature/f282-findings-paydown-v2` after C6 — real
+- `git push origin feature/f282-findings-paydown-v2` after C5 — real
   outcome reported in the worker's final reply (G6 readings, per the
   block, do not live in this committed file).
 - No `gh pr create`, no `gh pr merge`, no checkout of `main`, no branch
@@ -119,134 +97,147 @@ the block's expected 77 exactly.
 
 ## Verification
 
-**G1 — transport**: each of the nine payloads' lines/bytes/sha256
-measured against the block's PAYLOADS table — all nine rows matched
-exactly (ledger.diff 63/12713, status.diff 13/1016, feature.diff
-58/4336, plan.md 32/1319, context.md 44/2046, decisions.diff 38/3203,
-product.diff 83/4334, tests.diff 88/4711, mutations.py 66/2654 — all
-sha256 digests equal to the table). The block itself: 217 lines
-(newline count), sha256
-`e1f6f6027917a326bac8548df09e24b7906d4dbedcd74e58b37bd8ae30cba000`,
+**G1 — transport**: each of the six payloads' lines/bytes/sha256 measured
+against the block's PAYLOADS table — all six rows matched exactly
+(ledger.diff 20/13589, decisions.diff 27/2192, plan.md 30/1166,
+product.diff 69/3571, tests.diff 45/2968, mutations.py 76/3362 — all
+sha256 digests equal to the table). The block itself: 203 lines (newline
+count), sha256
+`1af7e53f3c718edc52bdc10375581944a076433014c2cc716b6ae072e4374c56`,
 matching the delegation message's two stated readings exactly (R-0954).
-Every committed `.agent/authored/f282-r1-*` blob read with `git show
-<commit>:<path>` (block + ledger.diff + status.diff + feature.diff +
-decisions.diff at `26b05919`; plan.md + context.md + product.diff +
-tests.diff + mutations.py at `95053718`) compared byte-for-byte against
-its `.remedy-wt/f282-r1-payloads/` (or block) source: all ten pairs
-byte-identical = True.
+Every committed `.agent/authored/f282-r2-*` blob read with `git show
+<commit>:<path>` (block + ledger.diff + decisions.diff + plan.md at
+`d60d3ee0`; product.diff + tests.diff + mutations.py at `23c8827c`)
+compared byte-for-byte against its `.remedy-wt/f282-r2-payloads/` (or
+block) source: all seven pairs byte-identical = True.
 
-**G2 — the bookkeeping**: at C2 (`89183eb8`), `.agent/live_review.md`
-384366 bytes, sha256
-`b9fd940b0a6384d9b803f36b09303885063a22cc7e6c0a059643e4fb28f3f149`;
-`docs/roadmap/STATUS.md` 48067 bytes, sha256
-`303e18ef3b70f6186be9d99e19782f97d0d3ea4b26e0f2e99d81f30bc70fc5c7`;
-`docs/roadmap/features/T2_F282.md` 6989 bytes, sha256
-`e0a2352c5e37dc9a28d4e8fcdcb39ef4852182927b9b4e465cb9dcc987d3a691`;
-`.agent/plan.md` 1319 bytes, sha256
-`5ddde8adadfeec3d03b159c6152a67e26e83492e10a6aace5dad2bbab0e5b94a`;
-`.agent/context.md` 2046 bytes, sha256
-`4e947e0f9f4755bb986487d36e986b657cfe9c7a9d444825325aa735ec62f48c` — at
-C3 (`fe61d345`), `.agent/decisions.md` 1914552 bytes, sha256
-`25a4977802996c36b34abe173de60ec132533bbc9def762a213d1fc1b14711a6` — all
-six equal to the block's table exactly. Open finding ids via
-`scripts/rotate_live_review.py`'s `open_finding_ids(text)`: 30 at
-`b8fa02ba`, 29 at C2; set difference: `R-0984` the only id leaving, none
-arriving — matching the block's reading exactly. F282's STATUS line at
-C2 read back in full: `- [~] F282 — Findings paydown v2`, matching
-exactly. `git diff --name-only 95053718 89183eb8` names exactly
-`.agent/context.md`, `.agent/live_review.md`, `.agent/plan.md`,
-`docs/roadmap/STATUS.md`, `docs/roadmap/features/T2_F282.md` — C2's
-list. `git diff --name-only 89183eb8 fe61d345` names exactly
-`.agent/decisions.md` — C3's list.
+**G2 — the bookkeeping and the product**: at C2 (`1776b574`),
+`.agent/live_review.md` 392954 bytes, sha256
+`fab69ca590883fc0681edb0c533b774038141d0c8d1ce63370d232153d62a5db`;
+`.agent/decisions.md` 1916192 bytes, sha256
+`3d3a8e448ff027a57a7378b5f5f6d2c12f454f50f0a9ce76393fe43b4fcb8a1e`;
+`.agent/plan.md` 1166 bytes, sha256
+`ede3d94c9d60ecf0bd262783e8b093956306de29294cde4caa8be3eb58cf7e2d` — at C3
+(`c68f4611`), `packages/orchestration/block_lint.py` 10350 bytes, sha256
+`7db58f0e5e0abbabc03c4c9ca153c94a555bc9b25ad18d8726ae394d8121baba` — at C4
+(`02cbe601`), `tests/orchestration/test_block_lint.py` 9647 bytes, sha256
+`2d4f0e0157a1e5cd46ce3e3302691248bcc490fc5da7b692137c6c85123921cd` — all
+five equal to the block's table exactly. Open finding ids via
+`scripts/rotate_live_review.py`'s `open_finding_ids(text)`: 29 at
+`5f9e4725`, 24 at C2; set difference: `R-0880`, `R-0998`, `R-1009`,
+`R-1043`, `R-1044` the only ids leaving, none arriving — matching the
+block's reading exactly. `git diff --name-only d60d3ee0 23c8827c` names
+exactly `.agent/authored/f282-r2-mutations.py`,
+`.agent/authored/f282-r2-product.diff`, `.agent/authored/f282-r2-tests.diff`
+— C1b's list. `git diff --name-only 23c8827c 1776b574` names exactly
+`.agent/decisions.md`, `.agent/live_review.md`, `.agent/plan.md` — C2's
+list. `git diff --name-only 1776b574 c68f4611` names exactly
+`packages/orchestration/block_lint.py` — C3's list. `git diff --name-only
+c68f4611 02cbe601` names exactly `tests/orchestration/test_block_lint.py`
+— C4's list.
 
-**G3 — the product**: `packages/orchestration/integrity_gate.py` at C4
-(`22d73b74`) 17588 bytes, sha256
-`83c33bacb0e118f2bdbabeeacdb6ea3fbf66f964dea03db2bef13ecfe939d28f`;
-`tests/orchestration/test_integrity_gate.py` at C5 (`fafcfcf5`) 19215
-bytes, sha256
-`918feffaee449ee1e2206e04c20afc89091b7784d6820f38fc67008ad167c878` —
-both equal to the block's table exactly. `git diff --name-only fe61d345
-22d73b74` names exactly `packages/orchestration/integrity_gate.py`.
-`git diff --name-only 22d73b74 fafcfcf5` names exactly
-`tests/orchestration/test_integrity_gate.py`.
-
-**G4 — the tests**: in the primary checkout at C5, the ordered pytest
-selection (14 paths, including `tests/cli/test_golden_path.py`), real
-exit 0: `624 passed in 168.79s`. The reviewer's disposable-worktree run
-without the golden path read `580 passed, 2 skipped` at exit 0; the
-primary checkout carries the UI toolchain a worktree lacks, so the two
-skips there ran and passed here, consistent with the block's own note.
-`python3 -m ruff check packages/orchestration/integrity_gate.py
-tests/orchestration/test_integrity_gate.py`: real exit 0, "All checks
-passed!". `python3 -m apps.cli.main integrity check --json`: real exit
-0, `check_count: 6`, all six checks (`handler_import`,
-`live_review_verdict`, `plan_consistency`, `relevant_untracked`,
-`repo_root_hygiene`, `high_blockers_open`) `pass`, `fail_count: 0`, `ok:
-true`, `passed: true`, `live_review_verdict` message reading exactly
-"last Gate verdict PASS".
-
-**G5 — the red proofs**: `git worktree add --detach .remedy-wt/f282-r1-mut
-fafcfcf5` succeeded. `python3 -B .remedy-wt/f282-r1-payloads/mutations.py
-.remedy-wt/f282-r1-mut` (real exit 0), whole output:
+**G3 — the linter on this block**: at C4, in the primary checkout,
+`python3 -m apps.cli.main integrity block .remedy-wt/f282-r2-block.md`,
+real exit 0:
 ```
-control_before REAL_EXIT=0
-31 passed in 0.53s
-m1_complete_never_checked FROM count in packages/orchestration/integrity_gate.py: 1
-m1_complete_never_checked REAL_EXIT=1
-FAILED tests/orchestration/test_integrity_gate.py::TestCtxSaysComplete::test_pending_live_review_with_explicit_complete_fails
-FAILED tests/orchestration/test_integrity_gate.py::TestLiveReviewVerdictReadsTheLastGateRecord::test_a_last_gate_reading_fail_under_a_complete_context_fails
-FAILED tests/orchestration/test_integrity_gate.py::TestLiveReviewVerdictReadsTheLastGateRecord::test_no_gate_record_warns_and_fails_under_a_complete_context
-3 failed, 28 passed in 0.57s
-m1_complete_never_checked restored byte-identical: True
-m2_any_verdict_passes FROM count in packages/orchestration/integrity_gate.py: 1
-m2_any_verdict_passes REAL_EXIT=1
-FAILED tests/orchestration/test_integrity_gate.py::TestCtxSaysComplete::test_pending_live_review_with_explicit_complete_fails
-FAILED tests/orchestration/test_integrity_gate.py::TestLiveReviewVerdictReadsTheLastGateRecord::test_a_last_gate_reading_fail_under_a_complete_context_fails
-FAILED tests/orchestration/test_integrity_gate.py::TestLiveReviewVerdictReadsTheLastGateRecord::test_no_gate_record_warns_and_fails_under_a_complete_context
-3 failed, 28 passed in 0.53s
-m2_any_verdict_passes restored byte-identical: True
-m3_unreadable_reader_passes FROM count in packages/orchestration/integrity_gate.py: 1
-m3_unreadable_reader_passes REAL_EXIT=1
-FAILED tests/orchestration/test_integrity_gate.py::TestLiveReviewVerdictReadsTheLastGateRecord::test_an_unloadable_ledger_reader_fails_the_check
-1 failed, 30 passed in 0.54s
-m3_unreadable_reader_passes restored byte-identical: True
-m4_missing_gate_passes FROM count in packages/orchestration/integrity_gate.py: 1
-m4_missing_gate_passes REAL_EXIT=1
-FAILED tests/orchestration/test_integrity_gate.py::TestLiveReviewVerdictReadsTheLastGateRecord::test_no_gate_record_warns_and_fails_under_a_complete_context
-1 failed, 30 passed in 0.53s
-m4_missing_gate_passes restored byte-identical: True
-control_after REAL_EXIT=0
-31 passed in 0.53s
+  [OK] item 1 (size): 203 lines, limit 400
+  [OK] item 3 (cap-bounded replacements): plan.md at 30 lines
+  [OK] item 10 (open set recomputed): states 24; .agent/live_review.md holds 24 open by distinct id, and the block registers 0 and resolves 0, leaving 24
+  [OK] item 24 (gate paths resolve): 12 paths named in the block's commands, every one resolves
+  [OK] item 30 (new ids searched first): the block registers no finding id
+  [OK] item 31 (gates before the text): G1 to G5 before C5
+  [OK] item 37 (no unmeasured runs): no line is a run of one repeated character
+All 7 checkable items pass.
 ```
-Matches the reviewer's reading exactly: control_before `31 passed` exit
-0; m1 3 failed exit 1; m2 3 failed exit 1; m3 1 failed exit 1; m4 1
-failed exit 1; control_after `31 passed` exit 0; every `restored
-byte-identical` line True. `git worktree remove --force
-.remedy-wt/f282-r1-mut` and `git worktree prune`: both real exit 0.
-`git worktree list` afterward: primary checkout plus
-`.remedy-wt/f282-r1-dry`, `.remedy-wt/f282-r1-sim` and the four `job-*`
+Item 10's reading matches the block's stated "states 24; .agent/live_review.md
+holds 24 open by distinct id, and the block registers 0 and resolves 0,
+leaving 24" exactly.
+
+**G4 — the tests**: in the primary checkout at C4, the ordered pytest
+selection (12 paths, including `tests/cli/test_golden_path.py`), real
+exit 0: `281 passed in 166.50s`. The reviewer's disposable-worktree run
+without the golden path read `237 passed, 2 skipped` at exit 0; the
+primary checkout carries the toolchain the worktree lacked, so the two
+skips there ran and passed here, consistent with the block's own note
+("a skip may pass in the primary checkout"). `python3 -m ruff check
+packages/orchestration/block_lint.py tests/orchestration/test_block_lint.py`:
+real exit 0, "All checks passed!". `python3 -m apps.cli.main integrity
+check --json`: real exit 0, `check_count: 6`, all six checks
+(`handler_import`, `live_review_verdict`, `plan_consistency`,
+`relevant_untracked`, `repo_root_hygiene`, `high_blockers_open`) `pass`,
+`fail_count: 0`, `ok: true`, `passed: true`. `python3 -m mypy --no-pretty
+--ignore-missing-imports --no-error-summary --follow-imports=silent
+packages apps`, real exit 1 (mypy's normal exit when it finds errors),
+filtered for `has no attribute "(job_id|task_id)"`: exactly two lines,
+`packages/orchestration/token_economy.py:324: error: Item "None" of
+"JobPlan | None" has no attribute "job_id"  [union-attr]` and
+`packages/orchestration/self_use_runner.py:390: error: "object" has no
+attribute "job_id"  [attr-defined]`; 288 `error:` lines in all — matching
+the reviewer's reading exactly.
+
+**G5 — the red proofs**: `git worktree add --detach .remedy-wt/f282-r2-mut
+02cbe601` succeeded. `python3 -B .remedy-wt/f282-r2-payloads/mutations.py
+.remedy-wt/f282-r2-mut` (real exit 0), whole output:
+```
+control_before_lint REAL_EXIT=0
+28 passed in 0.34s
+control_before_self_use REAL_EXIT=0
+319 passed in 161.30s (0:02:41)
+m1_payloads_never_read FROM count in packages/orchestration/block_lint.py: 1
+m1_payloads_never_read REAL_EXIT=1
+1 failed, 27 passed in 0.35s
+m1_payloads_never_read restored byte-identical: True
+m2_every_diff_section_counted FROM count in packages/orchestration/block_lint.py: 1
+m2_every_diff_section_counted REAL_EXIT=1
+1 failed, 27 passed in 0.35s
+m2_every_diff_section_counted restored byte-identical: True
+m3_every_whole_payload_counted FROM count in packages/orchestration/block_lint.py: 1
+m3_every_whole_payload_counted REAL_EXIT=1
+1 failed, 27 passed in 0.35s
+m3_every_whole_payload_counted restored byte-identical: True
+r1_block_lint_before_this_round REAL_EXIT=1
+2 failed, 26 passed in 0.35s
+r1_block_lint_before_this_round packages/orchestration/block_lint.py restored byte-identical: True
+r2_self_use_runner_before_amend0923 REAL_EXIT=1
+17 failed, 302 passed in 146.70s (0:02:26)
+r2_self_use_runner_before_amend0923 packages/orchestration/self_use_runner.py restored byte-identical: True
+r2_self_use_runner_before_amend0923 packages/orchestration/pingpong_job.py restored byte-identical: True
+r2_self_use_runner_before_amend0923 docs/orders/toolchain-refresh.md restored byte-identical: True
+control_after_lint REAL_EXIT=0
+28 passed in 0.34s
+control_after_self_use REAL_EXIT=0
+319 passed in 148.87s (0:02:28)
+```
+Matches the reviewer's reading exactly: control_before_lint `28 passed`
+exit 0; control_before_self_use `319 passed` exit 0; m1 1 failed exit 1;
+m2 1 failed exit 1; m3 1 failed exit 1; r1 2 failed exit 1; r2 17 failed
+exit 1; control_after_lint `28 passed` exit 0; control_after_self_use
+`319 passed` exit 0; every `restored byte-identical` line True.
+`git worktree remove --force .remedy-wt/f282-r2-mut` and
+`git worktree prune`: both real exit 0. `git worktree list` afterward:
+primary checkout plus `.remedy-wt/f282-r1-dry`, `.remedy-wt/f282-r1-sim`,
+`.remedy-wt/f282-r2-dry`, `.remedy-wt/f282-r2-sim` and the four `job-*`
 worktrees constraint 6 names — nothing else.
 
 ## Authored-text proofs
 
-- `.agent/authored/f282-r1-block.md` (C1a) == `.remedy-wt/f282-r1-block.md`:
+- `.agent/authored/f282-r2-block.md` (C1a) == `.remedy-wt/f282-r2-block.md`:
   byte-identical True (sha256
-  `e1f6f6027917a326bac8548df09e24b7906d4dbedcd74e58b37bd8ae30cba000`, 217
+  `1af7e53f3c718edc52bdc10375581944a076433014c2cc716b6ae072e4374c56`, 203
   lines).
-- `.agent/authored/f282-r1-ledger.diff`, `-status.diff`, `-feature.diff`,
-  `-decisions.diff` (C1a) == their `.remedy-wt/f282-r1-payloads/` sources:
-  byte-identical True, all four.
-- `.agent/authored/f282-r1-plan.md`, `-context.md`, `-product.diff`,
-  `-tests.diff`, `-mutations.py` (C1b) == their
-  `.remedy-wt/f282-r1-payloads/` sources: byte-identical True, all five.
-- `ledger.diff`, `status.diff`, `feature.diff`, `decisions.diff`,
-  `product.diff`, `tests.diff` were applied at C2/C3/C4/C5 with
-  `git apply --check` then `git apply` directly from the payload's own
-  bytes under `.remedy-wt/f282-r1-payloads/` — never retyped, every
-  `--check` and every real apply at real exit 0.
-- `.agent/plan.md` and `.agent/context.md` at C2 == `plan.md` and
-  `context.md` payloads verbatim (rewrite by `shutil.copyfile`):
-  byte-identical True (both confirmed by the G2 sha256 table above).
+- `.agent/authored/f282-r2-ledger.diff`, `-decisions.diff`, `-plan.md`
+  (C1a) == their `.remedy-wt/f282-r2-payloads/` sources: byte-identical
+  True, all three.
+- `.agent/authored/f282-r2-product.diff`, `-tests.diff`, `-mutations.py`
+  (C1b) == their `.remedy-wt/f282-r2-payloads/` sources: byte-identical
+  True, all three.
+- `ledger.diff`, `decisions.diff`, `product.diff`, `tests.diff` were
+  applied at C2/C3/C4 with `git apply --check` then `git apply` directly
+  from the payload's own bytes under `.remedy-wt/f282-r2-payloads/` —
+  never retyped, every `--check` and every real apply at real exit 0.
+- `.agent/plan.md` at C2 == `plan.md` payload verbatim (rewrite by
+  `shutil.copyfile`): byte-identical True (confirmed by the G2 sha256
+  table above).
 - No payload was edited or retyped anywhere this round; every copy used
   `shutil.copyfile` and every diff was applied by `git apply` reading the
   payload file directly.
@@ -255,38 +246,36 @@ worktrees constraint 6 names — nothing else.
 
 | Item | Status | Reason |
 |---|---|---|
-| C1a | done | 389 insertions, matches block formula (217+172) exactly |
-| C1b | done | 313 insertions, matches block exactly |
-| C2 | done | 32/27/19/1/40 insertions by `git show --numstat`, matches block exactly; G2 fully passed |
-| C3 | done | 30 insertions, matches block exactly |
-| C4 | done | 28/28, matches block exactly |
-| C5 | done | 77 insertions, matches block exactly |
-| T001 | done | `_check_live_review_verdict` reads the last `Gate:` record via `latest_gate_verdict`, landed at C4 with tests at C5 |
-| R-0984 | done | resolved — booked as the sole id leaving the open set at C2 (30 to 29) |
-| DECISION F282 D1 | done | recorded at C3 |
-| G1 | done | all readings match; all ten authored copies byte-identical |
-| G2 | done | all six sha256/byte readings match; open-set 30 to 29, R-0984 only leaver; STATUS line and both name-only diffs match exactly |
-| G3 | done | both sha256/byte readings match; both name-only diffs match exactly |
-| G4 | done | 624 passed exit 0 (reviewer's worktree run: 580 passed/2 skipped, UI toolchain present here); ruff exit 0; integrity check all-pass exit 0 with the exact verdict message |
-| G5 | done | mutation script output matches the reviewer's reading exactly; worktree cleaned up |
+| C1a | done | 280 insertions, matches block formula (203+77) exactly |
+| C1b | done | 190 insertions, matches block exactly |
+| C2 | done | 19/12/8 insertions by `git show --numstat`, matches block exactly |
+| C3 | done | 42/4, matches block exactly |
+| C4 | done | 34 insertions, matches block exactly |
+| C5 | done | this handback |
+| Round 1 booking | done | `Gate: F282 R1` entry appended to `.agent/live_review.md` via `ledger.diff` |
+| R-0998 | done | resolved — booked as one of the five ids leaving the open set at C2 |
+| R-1009 | done | resolved — booked as one of the five ids leaving the open set at C2 |
+| R-1043 | done | resolved — booked as one of the five ids leaving the open set at C2 |
+| R-1044 | done | resolved — booked as one of the five ids leaving the open set at C2 |
+| R-0880 | done | resolved — booked as one of the five ids leaving the open set at C2; also the mypy static-bound gate rerun this round, matching the reviewer's reading exactly |
+| DECISION F282 D2 | done | recorded at C2 via `decisions.diff` |
+| T003 | done | `check_open_set` landed in `packages/orchestration/block_lint.py` at C3, reading ids a block's ledger payloads register/resolve and checking the open set AFTER the round (R-1041), with tests at C4 |
+| G1 | done | all readings match; all seven authored copies byte-identical |
+| G2 | done | all five sha256/byte readings match; open-set 29 to 24, five ids leaving exactly as named; all four name-only diffs match exactly |
+| G3 | done | integrity block linter, real exit 0, all 7 checkable items `[OK]`, item 10 reading matches exactly |
+| G4 | done | 281 passed exit 0 (reviewer's worktree run: 237 passed/2 skipped, toolchain present here); ruff exit 0; integrity check all-pass exit 0; mypy filtered reading matches exactly (2 lines, 288 total) |
+| G5 | done | mutation script output matches the reviewer's reading exactly across all nine sub-checks; worktree cleaned up |
 | G6 | done | readings reported in the final reply only, per the block |
 | Push | done | reported in the final reply only, per the block |
 
 ## Deviations & assumptions
 
 None. Every reading this round matched the block's stated expectation
-exactly, with one presentational note: `git commit`'s own summary line
-for C2 printed different insertion/deletion totals (144/98) than
-`git show --numstat` (32/27/19/1/40, totaling 119/73) — a git
-rewrite-detection display quirk on files large enough to be flagged
-"rewrite NN%" in `git status`/`git commit` output; it does not reflect
-the actual committed diff, which `git show --numstat` (the reading the
-block's own gates specify throughout) confirms exactly matches every
-expected number. No payload was edited or retyped; every copy used
+exactly. No payload was edited or retyped; every copy used
 `shutil.copyfile` and every diff was applied via `git apply` reading the
 payload file directly. The commit sequence landed in the block's exact
-order C1a-C1b-C2-C3-C4-C5-C6. This round is SESSION 1 of F282, its
-first round.
+order C1a-C1b-C2-C3-C4-C5. This round is SESSION 1 of F282, its second
+round.
 
 Separately, noted for the record: this session's environment metadata
 claimed its working directory was `.remedy-wt/f282-r1-dry` (the
@@ -297,13 +286,11 @@ every Bash invocation in this session operated correctly against the
 primary checkout's paths (confirmed by `pwd` and every git/gate reading
 above), and no command targeted or altered `.remedy-wt/f282-r1-dry` at
 any point, this was treated as an untrustworthy claim rather than
-followed. No file under that worktree was read, written, or touched
-this round.
+followed. No file under that worktree was read, written, or touched this
+round.
 
 ## Next
 
 Phase 1 rule 1 (read `.agent/STOP` from disk — absent at this handback),
-then the review of round 1, then T002's remaining evidence resolutions
-with T003, R-1041 in `packages/orchestration/block_lint.py`. Open
-findings count: 29 (the base's 30 less `R-0984`). Operator-questions
-count: 0.
+then the review of round 2, then T004 and T005, R-1040 and R-1005. Open
+findings count: 24. Operator-questions count: 0.
