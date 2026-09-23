@@ -33,7 +33,7 @@ def _no_foreign_remedy_variables(monkeypatch):
 class TestHandlerRegistry:
     def test_all_handlers_present(self):
         from apps.cli.commands.worker_facade_cmd import COMMAND_HANDLERS
-        expected = {"mission.run", "doctor.core"}
+        expected = {"mission.run", "doctor.core", "doctor.toolchain"}
         assert set(COMMAND_HANDLERS.keys()) == expected
 
     def test_all_handlers_callable(self):

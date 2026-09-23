@@ -66,6 +66,21 @@ def test_hosted_workflow_runs_the_floor_and_a_current_interpreter():
     assert "fail-fast: false" in text
 
 
+def test_hosted_workflow_matrix_names_exactly_the_floor_and_one_current_python():
+    """T2_F279 T004: the matrix runs the oldest supported Python and one newer one, no more,
+    and its first entry is the floor `requires-python` promises."""
+    import re
+
+    matrix = re.search(r"python-version: \[([^\]]*)\]", workflow_text())
+    assert matrix is not None
+    versions = [v.strip().strip("'\"") for v in matrix.group(1).split(",")]
+    assert len(versions) == 2, versions
+    floor = re.search(r'requires-python = ">=([0-9.]+)"',
+                      (REPO_ROOT / "pyproject.toml").read_text(encoding="utf-8"))
+    assert floor is not None and versions[0] == floor.group(1)
+    assert tuple(map(int, versions[1].split("."))) > tuple(map(int, versions[0].split(".")))
+
+
 def test_hosted_workflow_checks_out_the_full_history():
     """A shallow clone hides the deleted modules the event-name coupling ratchet reads (R-0889)."""
     text = workflow_text()
