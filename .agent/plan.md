@@ -12,18 +12,17 @@ record, and the job re-bases onto it instead of failing on drift
 
 ## Current Step
 
-ROUND 8 is the closure sequence's evidence half. It books round 7's PASS
-and records the self-use run's defect and the one flaky suite node as
-recurrences of findings already open, then builds the evidence bundle
-against the fork point and the fresh review package.
+ROUND 9 closes F263. It books round 8's PASS, rotates the finding ledger
+into its archive, accepts F263 in `docs/roadmap/STATUS.md` with the README's
+pinned counts and the self-use item's `consumed_by` in the same commit, and
+opens the pull request, which this session never merges.
 
 ## Next Steps
 
-1. The closing round: the ledger rotation, the accepted STATUS line with
-   the README counters and the self-use item's `consumed_by`, and the pull
-   request.
+1. The next session's Open PR Gate merges this pull request, then Rule A5
+   claims the first unchecked feature in `docs/roadmap/STATUS.md`.
 
 ## Risks
 
-A package that does not read READY_FOR_REVIEW blocks the closure; the
-round stops and hands back rather than edit an evidence file.
+One suite node that fails only under parallel runs is recorded against
+R-0950, and the self-use run's provider timeout against R-1035.
