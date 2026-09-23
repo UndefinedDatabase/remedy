@@ -19129,3 +19129,22 @@ script is KEPT, so the script stays idempotent if the gate is ever relaxed. REVE
 the four-line `DETRITUS` find, deleting the `git check-ignore` filter block, deleting
 `_check_repo_root_hygiene` and its registration, and restoring the ten tests from git history at
 `5e32f7ab`.
+
+## DECISION amend0923-selfuse-write D9 — the forty-one stale `origin/feature/*` refs are not "open branches" and were not merged forward (2026-09-23)
+
+Part 5 of the amendment orders that if an `origin/feature/*` branch other than this one is open, it
+is checked out, `origin/main` is merged into it with `--no-ff`, `tests/docs/` is run there and it is
+pushed. MEASURED on 2026-09-23 after pull request 268 was merged: `gh pr list --state open` reports
+ZERO pull requests, so no branch is open in the sense AGENTS.md's Open PR Gate uses the word.
+Forty-one `origin/feature/*` refs nonetheless survive on the remote, and every one of them is
+abandoned: none has a pull request, and the most recently committed of them,
+`origin/feature/prompt-trace-lens-ui-v1`, last moved on 2026-06-29, nearly three months ago. Four of
+them still carry the abandoned R-43xx finding numbering that DECISION D6 rules out of the series.
+Merging `main` into forty-one dead refs would create forty-one merge commits and forty-one pushes,
+would resurrect branches nobody intends to land, and would make the remote's branch list
+permanently harder to read — the opposite of what a hygiene amendment is for. THE RULING: the
+merge-forward step applies to a branch with an open pull request, of which there are none besides
+this one, so it was not performed. The stale refs are named here so a later session finds this
+reasoning instead of re-deriving it, and deleting them is deliberately NOT done by this amendment:
+it is the operator's call, and git history is the archive either way. REVERSE by deleting this
+paragraph and merging `origin/main` into whichever of those refs is wanted.
