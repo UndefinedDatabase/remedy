@@ -15,9 +15,9 @@ neither sit there nor be packaged.
 Part 1 and Part 2A/B are done: R-1043, R-1044 and R-1045 are registered
 and three older findings carry a new measured sentence; the self-use
 runner now asks `run_job` for a write tool and for a ten-minute per-call
-timeout. Next is Part 2C, `parse_order_budget`, so an order file may
-declare the budget it needs and the runner refuses loudly when it cannot
-fit the order.
+timeout, and `parse_order_budget` lets an order file declare the budget it
+needs while the runner refuses loudly when it cannot fit the order. Next
+is Part 2D, the `Budget:` line in `docs/orders/toolchain-refresh.md`.
 
 ## Next Steps
 

@@ -515,3 +515,147 @@ class TestTheBuilderCanWriteAndHasTimeToAnswer:
     ):
         captured = self._captured(tmp_path, demo_repo, monkeypatch, timeout_sec=45)
         assert captured["timeout_sec"] == 45
+
+
+_FIVE_TASK_MARKDOWN = (
+    "# Job: A standing order\n\n"
+    "Some prose the planner ignores.\n\n"
+    "## Task 1\nOne.\n\nAcceptance:\n- done\n\n"
+    "## Task 2\nTwo.\n\nAcceptance:\n- done\n\n"
+    "## Task 3\nThree.\n\nAcceptance:\n- done\n\n"
+    "## Task 4\nFour.\n\nAcceptance:\n- done\n\n"
+    "## Task 5\nFive.\n\nAcceptance:\n- done\n"
+)
+
+_BUDGET_LINE = (
+    "Budget: max_tasks=5, max_provider_calls=40, max_cost_usd=10.00, timeout_sec=900"
+)
+
+_FIVE_TASK_MARKDOWN_WITH_BUDGET = _FIVE_TASK_MARKDOWN.replace(
+    "Some prose the planner ignores.\n",
+    "Some prose the planner ignores.\n\n" + _BUDGET_LINE + "\n",
+)
+
+
+def _order_item(markdown: str, item_id: str = "SU-099") -> dict:
+    return {
+        "id": item_id,
+        "title": "A standing order",
+        "why": "Because an order tier hands the runner more than one task.",
+        "job_markdown": markdown,
+        "consumed_by": "",
+        "provenance": "generated (fixture, order tier)",
+    }
+
+
+class TestAnOrderFileDeclaresItsOwnBudget:
+    """R-1044, registered 2026-09-23.
+
+    `.agent/selfuse_f279/result_state.txt` records a five-task order stopped
+    at `budget_exhausted:max_cost_usd` with all five tasks still pending: the
+    runner's one-task, eight-call, one-dollar bound was written for a
+    single-finding repair item and cannot fit a standing order. An order file
+    may now declare what it needs, and a run that cannot fit the order it was
+    given refuses before it spends anything.
+    """
+
+    def _run(self, tmp_path, demo_repo, monkeypatch, markdown, **kwargs):
+        queue_path = _write_queue(tmp_path, [_order_item(markdown)])
+        captured: dict = {}
+        called = {"run_job": False}
+
+        def _stub_run_job(job_id, **run_kwargs):
+            called["run_job"] = True
+            captured.update(run_kwargs)
+            return "STUB_RESULT"
+
+        monkeypatch.setattr(self_use_runner, "run_job", _stub_run_job)
+        try:
+            run_next_self_use_item(
+                tmp_path / "jobs", str(demo_repo), queue_path=queue_path, **kwargs
+            )
+        finally:
+            self._called = called
+        return captured
+
+    def test_a_five_task_order_without_a_budget_line_refuses_before_spending(
+        self, tmp_path, isolate_data_root, demo_repo, monkeypatch
+    ):
+        with pytest.raises(SelfUseRunError, match="has 5 tasks but this run may execute at most 1"):
+            self._run(tmp_path, demo_repo, monkeypatch, _FIVE_TASK_MARKDOWN)
+        assert self._called["run_job"] is False, (
+            "R-1044: the whole point is that nothing is paid for before the refusal"
+        )
+
+    def test_the_declared_budget_is_what_the_run_is_given(
+        self, tmp_path, isolate_data_root, demo_repo, monkeypatch
+    ):
+        captured = self._run(
+            tmp_path, demo_repo, monkeypatch, _FIVE_TASK_MARKDOWN_WITH_BUDGET
+        )
+        assert captured["max_tasks"] == 5
+        assert captured["budgets"]["max_provider_calls"] == 40
+        assert captured["budgets"]["max_cost_usd"] == 10.00
+        assert captured["timeout_sec"] == 900
+
+    def test_an_explicit_argument_beats_the_declared_budget(
+        self, tmp_path, isolate_data_root, demo_repo, monkeypatch
+    ):
+        with pytest.raises(SelfUseRunError, match="has 5 tasks but this run may execute at most 2"):
+            self._run(
+                tmp_path, demo_repo, monkeypatch,
+                _FIVE_TASK_MARKDOWN_WITH_BUDGET, max_tasks=2,
+            )
+        assert self._called["run_job"] is False
+
+    def test_the_planner_never_sees_the_budget_line(self):
+        """`parse_job_file` ignores everything before the first task heading."""
+        from packages.orchestration.pingpong_job import parse_job_file
+
+        plan = parse_job_file(_FIVE_TASK_MARKDOWN_WITH_BUDGET, ".")
+        bodies = "\n".join(t.body for t in plan.tasks)
+        assert "Budget:" not in bodies
+        assert len(plan.tasks) == 5
+
+
+class TestParseOrderBudget:
+    """The declaration is read from the order file, or refused by name."""
+
+    def test_it_reads_every_key_in_any_order_with_loose_whitespace(self):
+        declared = self_use_runner.parse_order_budget(
+            "# Job: x\n\n"
+            "Budget:   timeout_sec = 900 ,max_cost_usd=10.00,  max_tasks=5 , "
+            "max_provider_calls=40\n\n## Task 1\nBody.\n"
+        )
+        assert declared == {
+            "max_tasks": 5,
+            "max_provider_calls": 40,
+            "max_cost_usd": 10.00,
+            "timeout_sec": 900,
+        }
+
+    def test_keys_are_optional(self):
+        assert self_use_runner.parse_order_budget(
+            "Budget: max_tasks=3\n\n## Task 1\nBody.\n"
+        ) == {"max_tasks": 3}
+
+    def test_no_budget_line_is_an_empty_declaration_not_an_error(self):
+        assert self_use_runner.parse_order_budget(_FIVE_TASK_MARKDOWN) == {}
+
+    def test_a_budget_line_after_the_first_task_heading_is_not_read(self):
+        assert self_use_runner.parse_order_budget(
+            "## Task 1\nBody.\n\nBudget: max_tasks=5\n"
+        ) == {}
+
+    @pytest.mark.parametrize("line", [
+        "Budget:",
+        "Budget: max_tasks",
+        "Budget: max_tasks=",
+        "Budget: max_tasks=many",
+        "Budget: max_widgets=5",
+        "Budget: max_tasks=5, max_tasks=6",
+    ])
+    def test_a_malformed_line_refuses_and_names_the_line(self, line):
+        with pytest.raises(SelfUseRunError) as excinfo:
+            self_use_runner.parse_order_budget(line + "\n\n## Task 1\nBody.\n")
+        assert line in str(excinfo.value), "the refusal must quote the line it read"
