@@ -12,22 +12,18 @@ record, and the job re-bases onto it instead of failing on drift
 
 ## Current Step
 
-ROUND 7 is the closure sequence's first half. It books round 6's PASS,
-adds the guard test that holds the explicit command, the run's safe points
-and the apply to one implementation of absorption, writes the feature
-file's Built State, generates and runs the closure's self-use item, and
-runs the feature's one full suite. Every slice, T001 to T003, has landed.
+ROUND 8 is the closure sequence's evidence half. It books round 7's PASS
+and records the self-use run's defect and the one flaky suite node as
+recurrences of findings already open, then builds the evidence bundle
+against the fork point and the fresh review package.
 
 ## Next Steps
 
-1. The registrations the self-use run's defects ask for, and any repair
-   the full suite requires.
-2. The evidence job and the review package.
-3. The ledger rotation, the accepted STATUS line with the README counters,
-   and the pull request.
+1. The closing round: the ledger rotation, the accepted STATUS line with
+   the README counters and the self-use item's `consumed_by`, and the pull
+   request.
 
 ## Risks
 
-The cost of the human-change check is read from the self-use job's own
-record, the first real job to run with absorption; a job that stops
-before its first safe point would carry no reading.
+A package that does not read READY_FOR_REVIEW blocks the closure; the
+round stops and hands back rather than edit an evidence file.
