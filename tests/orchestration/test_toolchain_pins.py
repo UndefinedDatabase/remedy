@@ -90,6 +90,17 @@ def test_the_pinned_ruff_is_the_ruff_the_lint_gate_is_pinned_to():
     assert pinned_versions()["ruff"] == specifiers[0].version
 
 
+def test_the_generator_the_header_names_is_pinned_like_the_linter():
+    """R-1045: the header's own command runs `uv`, so `dev` pins it with `==` and CI installs it."""
+    dev = [Requirement(text) for text in project_table()["optional-dependencies"]["dev"]]
+    uv = [requirement for requirement in dev if canonicalize_name(requirement.name) == "uv"]
+    assert len(uv) == 1
+    specifiers = list(uv[0].specifier)
+    assert len(specifiers) == 1 and specifiers[0].operator == "==", uv[0]
+    assert pinned_versions()["uv"] == specifiers[0].version
+    assert constraints_text().splitlines()[1].removeprefix("#    ").split()[0] == "uv"
+
+
 def test_the_runtime_dependencies_carry_an_upper_bound():
     """A new major version of `pydantic` or `psutil` arrives by a decision, never unannounced."""
     for requirement in declared_requirements():
