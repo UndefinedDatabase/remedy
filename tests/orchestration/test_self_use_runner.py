@@ -453,3 +453,65 @@ class TestTheSelfUseRoleAndItsBudget:
             assert captured["builder_model"] == "muse-glimmer:latest"
         finally:
             reset_config()
+
+
+# ---------------------------------------------------------------------------
+# amendment amend0923-selfuse-write — R-1043 and R-1044: the run can DELIVER
+# ---------------------------------------------------------------------------
+
+
+class TestTheBuilderCanWriteAndHasTimeToAnswer:
+    """R-1043 and R-1044, registered 2026-09-23.
+
+    Three consecutive closures recorded `claude_cli_write_mode: none` with
+    source `default`, so their builder had no write tool and no self-use run
+    could change a file; and every one of those runs spent three 120-second
+    provider timeouts before giving up. The runner therefore asks for a write
+    tool and for ten minutes per call, and a caller's own value still wins.
+    """
+
+    def _captured(self, tmp_path, demo_repo, monkeypatch, **kwargs):
+        queue_path = _write_queue(tmp_path, [dict(_PENDING_ITEM)])
+        captured: dict = {}
+
+        def _stub_run_job(job_id, **run_kwargs):
+            captured.update(run_kwargs)
+            return "STUB_RESULT"
+
+        monkeypatch.setattr(self_use_runner, "run_job", _stub_run_job)
+        run_next_self_use_item(
+            tmp_path / "jobs", str(demo_repo), queue_path=queue_path, **kwargs
+        )
+        return captured
+
+    def test_an_unflagged_run_gives_the_builder_a_write_tool(
+        self, tmp_path, isolate_data_root, demo_repo, monkeypatch
+    ):
+        captured = self._captured(tmp_path, demo_repo, monkeypatch)
+        assert captured["claude_cli_write_mode"] == "allowed-tools", (
+            "R-1043: a builder with no write tool returns an empty diff by "
+            "construction, which is the whole purpose of the self-use track"
+        )
+
+    def test_the_caller_still_chooses_the_write_mode(
+        self, tmp_path, isolate_data_root, demo_repo, monkeypatch
+    ):
+        captured = self._captured(
+            tmp_path, demo_repo, monkeypatch, claude_cli_write_mode="none"
+        )
+        assert captured["claude_cli_write_mode"] == "none"
+
+    def test_an_unflagged_run_waits_ten_minutes_for_a_call(
+        self, tmp_path, isolate_data_root, demo_repo, monkeypatch
+    ):
+        captured = self._captured(tmp_path, demo_repo, monkeypatch)
+        assert captured["timeout_sec"] == 600, (
+            "R-1044: three closures burned 3 x 120 s of timeout and delivered "
+            "nothing; the self-use path waits long enough for one real answer"
+        )
+
+    def test_the_caller_still_chooses_the_timeout(
+        self, tmp_path, isolate_data_root, demo_repo, monkeypatch
+    ):
+        captured = self._captured(tmp_path, demo_repo, monkeypatch, timeout_sec=45)
+        assert captured["timeout_sec"] == 45

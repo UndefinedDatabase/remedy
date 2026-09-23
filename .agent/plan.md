@@ -12,10 +12,12 @@ neither sit there nor be packaged.
 
 ## Current Step
 
-Part 1 is done: R-1043, R-1044 and R-1045 are registered in
-`.agent/live_review.md`, and R-1016, R-1035 and R-0829 carry one new
-measured evidence sentence each. Next is Part 2A/B, the runner's write
-mode and timeout, each with its own red proof.
+Part 1 and Part 2A/B are done: R-1043, R-1044 and R-1045 are registered
+and three older findings carry a new measured sentence; the self-use
+runner now asks `run_job` for a write tool and for a ten-minute per-call
+timeout. Next is Part 2C, `parse_order_budget`, so an order file may
+declare the budget it needs and the runner refuses loudly when it cannot
+fit the order.
 
 ## Next Steps
 

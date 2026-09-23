@@ -17,6 +17,8 @@ Public API::
     run_next_self_use_item(dest_dir, repo_path=".", queue_path=None, *,
         max_provider_calls=8, max_cost_usd=1.00, max_tasks=1, **run_job_kwargs)
         -> tuple[SelfUseQueueEntry, Path, JobPlan]
+        (an unflagged run asks run_job for claude_cli_write_mode
+        "allowed-tools" and timeout_sec 600; a caller's own value wins)
 
 Deliberate absences:
   * REMEDY DELIBERATELY DOES NOT APPLY THE RUN'S RESULT. Applying stays
@@ -96,6 +98,17 @@ SELF_USE_ROLE = "self_use"
 _MAX_PROVIDER_CALLS = 8
 _MAX_COST_USD = 1.00
 
+#: The self-use path's own per-provider-call timeout, in seconds (R-1044).
+#: run_job's product default is 120 seconds, and three consecutive closures —
+#: F277's job 86f628f5e4fb4e0c, F283's 129b3ad7206d4f8d and F278's
+#: e7268925db3a4831 — each spent THREE builder attempts of exactly that length
+#: and delivered nothing: 3 x 120 seconds of timeout plus the [30, 120] backoff
+#: schedule in packages/orchestration/provider_timeouts.py is the 510 seconds
+#: each of those runs measured. A self-use call reads this repository's own
+#: review discipline and answers against it, which is the longest work the
+#: product asks of a provider, so it gets ten minutes rather than two.
+_SELF_USE_TIMEOUT_SEC = 600
+
 
 def resolve_self_use_role_config():
     """The ``self_use`` role, with `self_use.provider` / `self_use.model` read.
@@ -159,6 +172,10 @@ def run_next_self_use_item(
     frontier provider rather than :func:`run_job`'s own raw ``"fake"``
     fallback — and never the local model by accident. Each role also gets
     that config's model and effort unless the caller passed them (R-0890).
+    An unflagged run also asks for ``claude_cli_write_mode="allowed-tools"``,
+    so the builder can actually change a file (R-1043), and for a
+    ``timeout_sec`` of :data:`_SELF_USE_TIMEOUT_SEC`, so one real call has
+    time to answer (R-1044); a caller that passes either keyword keeps it.
 
     Answers ``(entry, job_file_path, result)`` — the queue entry that was
     run, the job file :func:`plan_next_self_use_item` rendered it to, and
@@ -206,6 +223,19 @@ def run_next_self_use_item(
         for field in ("model", "effort"):
             if run_job_kwargs.get(f"{role}_{field}") is None:
                 run_job_kwargs[f"{role}_{field}"] = getattr(role_cfg, field)
+    # R-1043: a builder with NO WRITE TOOL cannot land a repair, and three
+    # consecutive closures recorded `claude_cli_write_mode: none` with source
+    # `default` because nothing on this path ever chose one. The builder works
+    # in an isolated worktree and its output still passes the human approval
+    # gate in packages/orchestration/job_apply.py, so a write tool here widens
+    # nothing that was not already gated. The REVIEWER is untouched: its
+    # "none" is hard-coded in pingpong_loop._build_provider_evidence.
+    if run_job_kwargs.get("claude_cli_write_mode") is None:
+        run_job_kwargs["claude_cli_write_mode"] = "allowed-tools"
+    # R-1044: two minutes is not enough for one real self-use call — see
+    # _SELF_USE_TIMEOUT_SEC above for the three runs that measured it.
+    if run_job_kwargs.get("timeout_sec") is None:
+        run_job_kwargs["timeout_sec"] = _SELF_USE_TIMEOUT_SEC
     budgets = JobBudgets(
         max_provider_calls=max_provider_calls, max_cost_usd=max_cost_usd
     ).model_dump(mode="json")
