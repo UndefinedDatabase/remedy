@@ -1,0 +1,69 @@
+diff --git a/packages/orchestration/block_lint.py b/packages/orchestration/block_lint.py
+index 60c4624d..f355d479 100644
+--- a/packages/orchestration/block_lint.py
++++ b/packages/orchestration/block_lint.py
+@@ -28,6 +28,8 @@ _FENCE = re.compile(r"^```[^\n]*\n(.*?)^```", re.M | re.S)
+ _REPO_PATH = re.compile(r"(?<![\w./-])((?:packages|apps|tests|scripts|docs)/[\w./-]*[\w/])")
+ _NEW_FILE = re.compile(r"NEW FILE at\s+`([^`]+)`")
+ _REGISTRATION = re.compile(r"^- (R-\d{4}) — ", re.M)
++_RESOLUTION = re.compile(r"^Done: (R-\d{4}) — ", re.M)
++_PAYLOAD_DIR = re.compile(r"`(\.remedy-wt/[\w.-]+-payloads)/`")
+ _GATES_BEFORE = re.compile(r"\bG(\d+) to G(\d+) run before (C\w+) is written")
+ _GATE_HEADER = re.compile(r"^G(\d+) ", re.M)
+ 
+@@ -91,15 +93,51 @@ def _ledger_reader():
+     return _load_ledger_reader()
+ 
+ 
++def _lines_a_diff_adds_to_the_ledger(diff: str) -> str:
++    added, in_ledger = [], False
++    for line in diff.splitlines():
++        if line.startswith("+++ "):
++            in_ledger = line[4:].strip() == f"b/{LEDGER_PATH}"
++        elif in_ledger and line.startswith("+"):
++            added.append(line[1:])
++    return "\n".join(added)
++
++
++def _ledger_payload_ids(ctx: BlockContext) -> tuple[set[str], set[str]]:
++    """The ids the block's own text and its ledger payloads register and resolve.
++
++    A payload is a file the block's payload table names, read from the payload directory
++    the block names. A `.diff` payload contributes the lines it ADDS to the ledger and
++    nothing else; any other payload counts only when its name begins `ledger`, the name
++    this workflow gives a slice appended to the ledger whole. A plan or a decision that
++    quotes a registration therefore registers nothing.
++    """
++    texts = [ctx.text]
++    for directory in sorted(set(_PAYLOAD_DIR.findall(ctx.text))):
++        for name in sorted({row[0].strip() for row in _PAYLOAD_ROW.findall(ctx.text)}):
++            if name.endswith(".diff"):
++                texts.append(_lines_a_diff_adds_to_the_ledger(ctx.read(f"{directory}/{name}")))
++            elif name.startswith("ledger"):
++                texts.append(ctx.read(f"{directory}/{name}"))
++    joined = "\n".join(texts)
++    return set(_REGISTRATION.findall(joined)), set(_RESOLUTION.findall(joined))
++
++
+ def check_open_set(ctx: BlockContext) -> tuple[bool, str]:
++    """R-1041: a stated count is the open set AFTER the round, as every handback states it."""
+     stated = sorted({int(n) for n in _OPEN_COUNT.findall(ctx.text)})
+     if not stated:
+         return True, "the block states no open-findings count"
+-    measured = len(_ledger_reader().open_finding_ids(ctx.read(LEDGER_PATH)))
+-    wrong = [n for n in stated if n != measured]
++    before = set(_ledger_reader().open_finding_ids(ctx.read(LEDGER_PATH)))
++    registered, resolved = _ledger_payload_ids(ctx)
++    after = len((before | registered) - resolved)
++    change = (f"{LEDGER_PATH} holds {len(before)} open by distinct id, and the block registers "
++              f"{len(registered - before)} and resolves {len(resolved & (before | registered))}, "
++              f"leaving {after}")
++    wrong = [n for n in stated if n != after]
+     if wrong:
+-        return False, f"states {', '.join(map(str, wrong))}; {LEDGER_PATH} holds {measured} open by distinct id"
+-    return True, f"states {measured}, and {LEDGER_PATH} holds {measured}"
++        return False, f"states {', '.join(map(str, wrong))}; {change}"
++    return True, f"states {after}; {change}"
+ 
+ 
+ def check_gate_paths(ctx: BlockContext) -> tuple[bool, str]:
