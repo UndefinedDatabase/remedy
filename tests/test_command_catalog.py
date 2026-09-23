@@ -571,3 +571,12 @@ class TestDeletedFlags:
             ["job", "run", "J", "--builder-provider", "fake", "--reviewer-provider", "claude-cli"])
         assert (args._command_id, args.builder_provider, args.reviewer_provider) == (
             "job.run", "fake", "claude-cli")
+
+
+def test_ui_stop_is_classified_as_the_local_state_change_it_makes():
+    """R-1034: `ui stop` stops every running UI server, so no sweep may run it as read-only."""
+    from apps.cli.command_catalog import get_command
+
+    entry = get_command("ui.stop")
+    assert entry.action_class == "local_state_change"
+    assert (entry.may_mutate_repo, entry.may_execute_commands) == (False, False)

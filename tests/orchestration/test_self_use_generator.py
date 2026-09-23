@@ -108,6 +108,24 @@ class TestLedgerTierPicksTheOldestEligibleFinding:
         assert "R-0050" in entry.title
         assert entry.why.startswith("- R-0050 — Medium,")
 
+    def test_a_paragraph_quoting_a_retired_word_is_walked_past(self, tmp_path: Path):
+        """R-1015: the paragraph lands in a tracked file the retired-word guard reads.
+
+        The word is built from two literals because this file is held to that guard too.
+        """
+        retired = "pro" "motion"
+        ledger = _write_ledger(tmp_path, [
+            _finding("R-0050", "Medium", f"It lists a {retired} result among the types."),
+            _finding("R-0100", "Low", "A clean defect."),
+        ])
+        entry = generate_self_use_item(
+            queue_path=_write_queue(tmp_path, [_queue_item(consumed_by="F001")]),
+            ledger_path=ledger,
+        )
+        assert entry is not None
+        assert "R-0100" in entry.title
+        assert retired not in entry.why and retired not in entry.job_markdown
+
     def test_high_and_critical_are_never_picked(self, tmp_path: Path):
         ledger = _write_ledger(tmp_path, [
             _finding("R-0010", "Critical", "Would be oldest by id."),
