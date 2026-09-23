@@ -1,0 +1,96 @@
+diff --git a/tests/orchestration/test_self_use_generator.py b/tests/orchestration/test_self_use_generator.py
+index f74b658b..328bf8e6 100644
+--- a/tests/orchestration/test_self_use_generator.py
++++ b/tests/orchestration/test_self_use_generator.py
+@@ -23,6 +23,18 @@ from packages.orchestration.self_use_generator import (
+ )
+ from packages.orchestration.self_use_queue import load_self_use_queue, next_self_use_item
+ 
++
++@pytest.fixture(autouse=True)
++def _no_standing_order(monkeypatch, tmp_path):
++    """The order tier reads the repository's real order file by default (DECISION F279 D7).
++
++    These tests exercise the other tiers against a fixture queue, so the order is pointed at
++    a file that does not exist; a test of the order tier names its own order file.
++    """
++    from packages.orchestration import self_use_generator
++
++    monkeypatch.setattr(self_use_generator, "default_order_path", lambda: tmp_path / "no-order.md")
++
+ _QUEUE_ITEM = {
+     "id": "SU-001",
+     "title": "A curated item",
+@@ -476,3 +488,72 @@ class TestOnlyARepairableFindingIsOffered:
+         entry = generate_self_use_item(queue_path=queue, ledger_path=ledger)
+         assert entry is not None
+         assert "R-0030" in entry.title
++
++
++class TestOrderTier:
++    """T2_F279 T004: the toolchain refresh order, queued verbatim, once every fourteen days."""
++
++    DAY = __import__("datetime").date(2026, 9, 23)
++
++    def _order(self, tmp_path: Path) -> Path:
++        from packages.orchestration.self_use_generator import default_order_path
++
++        order = tmp_path / "order.md"
++        order.write_text(
++            "# Job: Refresh the pinned toolchain\n\nWhy it runs.\n\n## Task 1 — Look\nLook.\n\n"
++            "Acceptance:\n- looked\n", encoding="utf-8")
++        assert default_order_path() != order
++        return order
++
++    def _order_item(self, day: str) -> dict:
++        return _queue_item(id="SU-001", consumed_by="F999", provenance=(
++            f"generated (self-use-generator order tier, docs/orders/toolchain-refresh.md, {day})"))
++
++    def test_the_real_order_file_is_a_job_the_tier_accepts(self, tmp_path):
++        from packages.orchestration.self_use_generator import ORDER_RELATIVE_PATH
++
++        real = Path(__file__).resolve().parents[2] / ORDER_RELATIVE_PATH
++        queue_path = _write_queue(tmp_path, [])
++        entry = generate_self_use_item(queue_path=queue_path, ledger_path=tmp_path / "none.md",
++                                       order_path=real, today=self.DAY)
++        assert entry is not None and entry.job_markdown == real.read_text(encoding="utf-8")
++        assert entry.title == "Refresh the pinned toolchain"
++
++    def test_an_order_never_queued_comes_before_the_ledger(self, tmp_path):
++        queue_path = _write_queue(tmp_path, [])
++        ledger = _write_ledger(tmp_path, [f"- R-0001 — Low, a finding. {_FIX_SENTENCE}"])
++        order = self._order(tmp_path)
++        entry = generate_self_use_item(queue_path=queue_path, ledger_path=ledger, order_path=order,
++                                       today=self.DAY)
++        assert entry.job_markdown == order.read_text(encoding="utf-8")
++        assert entry.why == "Why it runs."
++        assert entry.provenance == ("generated (self-use-generator order tier, "
++                                    "docs/orders/toolchain-refresh.md, 2026-09-23)")
++
++    def test_within_fourteen_days_the_ledger_tier_answers_instead(self, tmp_path):
++        queue_path = _write_queue(tmp_path, [self._order_item("2026-09-10")])
++        ledger = _write_ledger(tmp_path, [f"- R-0001 — Low, a finding. {_FIX_SENTENCE}"])
++        entry = generate_self_use_item(queue_path=queue_path, ledger_path=ledger,
++                                       order_path=self._order(tmp_path), today=self.DAY)
++        assert entry.provenance.startswith("generated (self-use-generator tier 1")
++
++    def test_after_fourteen_days_the_order_is_due_again(self, tmp_path):
++        queue_path = _write_queue(tmp_path, [self._order_item("2026-09-09")])
++        ledger = _write_ledger(tmp_path, [f"- R-0001 — Low, a finding. {_FIX_SENTENCE}"])
++        entry = generate_self_use_item(queue_path=queue_path, ledger_path=ledger,
++                                       order_path=self._order(tmp_path), today=self.DAY)
++        assert entry.id == "SU-002" and "order tier" in entry.provenance
++
++    def test_an_absent_order_file_leaves_the_ledger_tier_in_charge(self, tmp_path):
++        queue_path = _write_queue(tmp_path, [])
++        ledger = _write_ledger(tmp_path, [f"- R-0001 — Low, a finding. {_FIX_SENTENCE}"])
++        entry = generate_self_use_item(queue_path=queue_path, ledger_path=ledger,
++                                       order_path=tmp_path / "absent.md", today=self.DAY)
++        assert entry.provenance.startswith("generated (self-use-generator tier 1")
++
++    def test_an_order_file_that_is_not_a_job_is_refused(self, tmp_path):
++        order = tmp_path / "order.md"
++        order.write_text("Just prose, no job title.\n", encoding="utf-8")
++        with pytest.raises(SelfUseGenerationError, match="not a job file"):
++            generate_self_use_item(queue_path=_write_queue(tmp_path, []), ledger_path=tmp_path / "none.md",
++                                   order_path=order, today=self.DAY)
