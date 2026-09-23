@@ -1,0 +1,66 @@
+diff --git a/apps/cli/commands/job.py b/apps/cli/commands/job.py
+index 5421e50f..6ef2d6d2 100644
+--- a/apps/cli/commands/job.py
++++ b/apps/cli/commands/job.py
+@@ -1949,8 +1949,8 @@ def _cmd_job_budget(
+     # money its run's last safe point read, but that figure is as old as that
+     # safe point and the F103 ledger is where a real provider cost lives, so a
+     # money-limited job still reads it here, exactly as run_job's safe point does,
+-    # and the persisted figure stands only when the read fails or no ledger
+-    # project resolves.
++    # and the persisted figure stands when the read fails, no ledger project
++    # resolves, or the ledger names no call for this job (R-1040).
+     # READ-ONLY: `query_cost` never creates a ledger and never writes one, which
+     # is what keeps the show form of `remedy job budget` writing nothing. Any failure
+     # leaves the cost UNMEASURED (None, never 0.0 — P6) and every other limit
+@@ -1974,13 +1974,17 @@ def _cmd_job_budget(
+             if _ledger_project is not None:
+                 _cost, _priced, _unpriced = collect_ledger_cost_for_job(
+                     job_id=_job_display_id, project_id=_ledger_project)
+-                counters = _replace(
+-                    counters,
+-                    measured_cost_usd=_cost,
+-                    priced_call_count=_priced,
+-                    unpriced_call_count=_unpriced,
+-                )
+-                evaluation = evaluate_budget(_budgets, counters)
++                # R-1040: an answer naming no call at all is a ledger holding no row
++                # for this job, not a measurement, so the figure the job persisted at
++                # its last safe point stands; one call named is a reading and wins.
++                if _priced or _unpriced:
++                    counters = _replace(
++                        counters,
++                        measured_cost_usd=_cost,
++                        priced_call_count=_priced,
++                        unpriced_call_count=_unpriced,
++                    )
++                    evaluation = evaluate_budget(_budgets, counters)
+         except Exception as _cost_exc:  # noqa: BLE001 — a broken cost ledger read must not crash budget display
+             # Recorded BEFORE the log call, so a logging subsystem that is itself
+             # broken cannot cost the operator the diagnosis. The displayed cost is
+diff --git a/packages/orchestration/run_manifest.py b/packages/orchestration/run_manifest.py
+index cbb16498..268bee02 100644
+--- a/packages/orchestration/run_manifest.py
++++ b/packages/orchestration/run_manifest.py
+@@ -3572,7 +3572,9 @@ def _decode_budgets_field(raw: Any) -> dict[str, Any] | None:
+         from datetime import datetime as _dt
+         from datetime import timezone as _tz
+         try:
+-            parsed = _dt.fromisoformat(dl)
++            # R-1005: the canonical form below ends in `Z`, which `fromisoformat` reads
++            # only from Python 3.11 on; spelled out here, this decoder reads its own output.
++            parsed = _dt.fromisoformat(dl[:-1] + "+00:00" if dl.endswith("Z") else dl)
+         except (ValueError, TypeError):
+             raise ManifestError(f"manifest.budgets.deadline is not valid ISO-8601: {dl!r}")
+         if parsed.tzinfo is None:
+@@ -4409,6 +4411,10 @@ def build_run_manifest(job: Any, *, status: str, episode_id: str, created_at: st
+             budgets_snapshot = job_budgets.model_dump(mode="json")
+         elif isinstance(job_budgets, dict):
+             budgets_snapshot = dict(job_budgets)
++        # R-1005: bind the budgets in the form the strict decoder returns them in — a
++        # deadline in canonical UTC, an all-null object as null — so the pre-publication
++        # round-trip compares like with like and a deadline stop can finalize.
++        budgets_snapshot = _decode_budgets_field(budgets_snapshot)
+     return RunManifestV1(
+         job_id=str(getattr(job, "job_id", "")),
+         episode_id=episode_id,

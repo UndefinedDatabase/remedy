@@ -1,0 +1,65 @@
+diff --git a/tests/orchestration/test_job_budgets.py b/tests/orchestration/test_job_budgets.py
+index 5f1e6e06..19bee97e 100644
+--- a/tests/orchestration/test_job_budgets.py
++++ b/tests/orchestration/test_job_budgets.py
+@@ -1240,6 +1240,33 @@ class TestJobBudgetCliRendersPredictions:
+         assert _line_value(lines, "remaining") is None
+         assert _line_value(lines, "next_task_expected") is None
+ 
++    # -- R-1040: an EMPTY ledger answer does not replace a recorded cost ---
++    def test_an_empty_ledger_leaves_the_persisted_overspend_standing(
++            self, budget_cli_repo, capsys, monkeypatch):
++        # The ledger resolves but holds no row for this job; the job itself recorded
++        # $1.3733 over three priced calls and one unpriced against a $1.00 limit.
++        _cli_arm_ledger(monkeypatch)
++        job = _save_budget_job(budget_cli_repo, budgets={"max_cost_usd": 1.0},
++                               money=(1.373349, 3, 1))
++        lines = self._text(job.job_id, capsys).splitlines()
++        assert _line_value(lines, "spent").startswith(">= $1.3733")
++        assert _line_value(lines, "exhausted") == "True"
++        data = self._json(job.job_id, capsys)
++        assert data["counters"]["measured_cost_usd"] == 1.373349
++        assert data["counters"]["priced_call_count"] == 3
++        assert data["counters"]["unpriced_call_count"] == 1
++
++    def test_a_ledger_naming_a_call_still_replaces_the_persisted_cost(
++            self, budget_cli_repo, capsys, monkeypatch):
++        _cli_arm_ledger(monkeypatch)
++        job = _save_budget_job(budget_cli_repo, budgets={"max_cost_usd": 1.0},
++                               money=(1.373349, 3, 1))
++        _cli_record_call(job.job_id, call_id=f"{job.job_id}-a", cost=0.25)
++        data = self._json(job.job_id, capsys)
++        assert data["counters"]["measured_cost_usd"] == 0.25
++        assert data["counters"]["priced_call_count"] == 1
++        assert data["counters"]["unpriced_call_count"] == 0
++
+     # -- R-0227: a BROKEN ledger read is not the same as an unpriced job ---
+     def _break_the_ledger_read(self, monkeypatch):
+         """Make the production ledger read raise, leaving everything else real."""
+diff --git a/tests/orchestration/test_predictive_budget.py b/tests/orchestration/test_predictive_budget.py
+index e005152e..e58952c0 100644
+--- a/tests/orchestration/test_predictive_budget.py
++++ b/tests/orchestration/test_predictive_budget.py
+@@ -799,6 +799,22 @@ class TestPredictiveStopAtTheLiveDispatchSafePoint:
+         assert on_disk.stop_source == "budget"
+         assert on_disk.finished_at.strip()
+ 
++    @pytest.mark.parametrize("deadline", [
++        "2020-01-01T00:00:00+00:00", "2020-01-01T00:00:00.250000+00:00", "2020-01-01T00:00:00Z"])
++    def test_a_deadline_stop_persists_stopped(self, isolate_data_root, demo_repo, monkeypatch, deadline):
++        # R-1005: a past deadline is the one limit whose exhaustion is certain, and its
++        # stop must write its run manifest and finalize like every other budget stop.
++        from packages.orchestration.pingpong_job import JOB_STOPPED, load_job_plan
++        done, builder, _r = self._run(monkeypatch, demo_repo, budgets={"deadline": deadline},
++                                      arm_ledger=False)
++        assert done.run_manifest_error == ""
++        assert done.stop_error == ""
++        on_disk = load_job_plan(done.job_id)
++        assert on_disk.state == JOB_STOPPED
++        assert on_disk.stop_reason == "budget_exhausted:deadline"
++        assert on_disk.finished_at.strip()
++        assert builder.build_calls == 0
++
+     # -- REGRESSION: the inert paths --------------------------------------
+     def test_without_a_cost_limit_nothing_is_predicted(
+             self, isolate_data_root, demo_repo, monkeypatch):
