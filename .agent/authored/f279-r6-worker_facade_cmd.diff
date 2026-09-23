@@ -1,0 +1,40 @@
+diff --git a/apps/cli/commands/worker_facade_cmd.py b/apps/cli/commands/worker_facade_cmd.py
+index a58cf39c..73e5021a 100644
+--- a/apps/cli/commands/worker_facade_cmd.py
++++ b/apps/cli/commands/worker_facade_cmd.py
+@@ -404,6 +404,29 @@ def _cmd_doctor_core(ns: argparse.Namespace) -> None:
+         print("    (none)")
+ 
+ 
++def _cmd_doctor_toolchain(ns: argparse.Namespace) -> None:
++    """F279 T004: each pinned tool's installed, pinned and newest version.
++
++    The newest version is fetched from the package index; `--offline` skips the fetch, and a
++    fetch that fails reads "unknown" rather than a guessed number (DECISION F279 D6).
++    """
++    from packages.orchestration.toolchain import offline, pypi_newest, toolchain_rows
++
++    no_network = bool(getattr(ns, "offline", False))
++    rows = toolchain_rows(fetch_newest=offline if no_network else pypi_newest)
++    if getattr(ns, "json", False):
++        emit_ok(tools=[row.as_dict() for row in rows], offline=no_network)
++        return
++    print("Toolchain: the version installed here, the version constraints.txt pins, and the "
++          "newest version the package index knows.")
++    if no_network:
++        print("The package index was not asked (--offline), so every newest version reads unknown.")
++    width = max(len(row.name) for row in rows)
++    print(f"  {'tool'.ljust(width)}  {'installed':<14}  {'pinned':<14}  newest")
++    for row in rows:
++        print(f"  {row.name.ljust(width)}  {row.installed:<14}  {row.pinned:<14}  {row.newest}")
++
++
+ # ---------------------------------------------------------------------------
+ # Handler registry
+ # ---------------------------------------------------------------------------
+@@ -412,4 +435,5 @@ def _cmd_doctor_core(ns: argparse.Namespace) -> None:
+ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
+     "mission.run": _cmd_mission_run,
+     "doctor.core": _cmd_doctor_core,
++    "doctor.toolchain": _cmd_doctor_toolchain,
+ }
