@@ -1165,6 +1165,22 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         supports_json=True,
         related=("mission.report",),
     ),
+    CommandEntry(
+        command_id="doctor.toolchain",
+        group_id="doctor",
+        subcommand="toolchain",
+        description=("Each pinned tool's installed, pinned and newest version; the newest needs the "
+                     "network and reads unknown without it (read-only)."),
+        action_class="read_only",
+        args=(
+            # is_flag: `--offline` takes no value, and only `--json` is special-cased by name.
+            ArgDef("--offline", "Do not ask the package index; newest reads unknown",
+                   required=False, is_option=True, is_flag=True),
+            _JSON_OPT,
+        ),
+        supports_json=True,
+        related=("doctor.core",),
+    ),
 
     # ── memory ───────────────────────────────────────────────────────────
     CommandEntry(
@@ -2176,6 +2192,20 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
             ArgDef("--collect-only", "Also execute pytest collect-only", required=False, is_option=True, default="false"),
         ),
         supports_json=True,
+    ),
+    CommandEntry(
+        command_id="integrity.block",
+        group_id="integrity",
+        subcommand="block",
+        description=("Lint a reviewer step block against the checkable items of the pre-emission "
+                     "checklist; exit 1 on any violation (read-only)."),
+        action_class="read_only",
+        args=(
+            ArgDef("path", "Path to the step block"),
+            _JSON_OPT,
+        ),
+        supports_json=True,
+        related=("integrity.check",),
     ),
 
     # ── snapshot ─────────────────────────────────────────────────────────

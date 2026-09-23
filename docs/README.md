@@ -17,6 +17,7 @@
 | split workflow | [split_workflow.md](agents/split_workflow.md) | agents |
 | self-drive | [self_drive_protocol.md](agents/self_drive_protocol.md) | agents |
 | self-use track | [self-use-track-v1.md](system/self-use-track-v1.md) | system |
+| toolchain refresh order | [toolchain-refresh.md](orders/toolchain-refresh.md) | orders |
 | architecture | [architecture.md](system/architecture.md) | system |
 | autocoder | [autocoder-usage.md](guides/autocoder-usage.md) | guide |
 | brain | [orchestrator-brain-v0.md](system/orchestrator-brain-v0.md) | system |
@@ -31,6 +32,7 @@
 | diff-only repair | [diff-only-repair-v1.md](system/diff-only-repair-v1.md) | system |
 | continuation cycle (deleted) | [do-continue-v1.md](guides/do-continue-v1.md) | guide |
 | do run | [do-run-v1.md](guides/do-run-v1.md) | guide |
+| environment variable | [environment.md](guides/environment.md) | guide |
 | exec guard | [exec-guard-limitations-v0.md](system/exec-guard-limitations-v0.md) | system |
 | exit code | [exit-codes.md](guides/exit-codes.md) | guide |
 | hunk approval | [hunk-approval-user-guide-v1.md](guides/hunk-approval-user-guide-v1.md) | guide |
@@ -125,6 +127,7 @@ User-facing guides, quickstarts, and usage documentation.
 | [cost-report-user-guide-v0.md](guides/cost-report-user-guide-v0.md) | Reading `remedy stats report` |
 | [do-continue-v1.md](guides/do-continue-v1.md) | The one-cycle apply flow F261 round 21 deleted |
 | [do-run-v1.md](guides/do-run-v1.md) | `remedy do` cohesive flow |
+| [environment.md](guides/environment.md) | Every environment variable Remedy reads, generated from the key registry |
 | [exit-codes.md](guides/exit-codes.md) | Every CLI exit code's meaning, asserted from the command catalog |
 | [hunk-approval-user-guide-v1.md](guides/hunk-approval-user-guide-v1.md) | Recording a hunk-level approve and reject decision over a job's diff |
 | [job-context-view-user-guide-v0.md](guides/job-context-view-user-guide-v0.md) | What one task's compiled context carries and what was omitted |
@@ -191,6 +194,15 @@ proposed from the order or forced with `remedy do --contract <name>`, and carrie
 | [api-service.md](contracts/api-service.md) | The contract floor for an order that builds an HTTP API service |
 | [cli-tool.md](contracts/cli-tool.md) | The contract floor for an order that builds a command-line tool |
 | [python-library.md](contracts/python-library.md) | The contract floor for an order that builds a Python library |
+
+## Maintenance Orders (`docs/orders/`)
+
+Standing orders written as job files, which the self-use track queues verbatim on a cadence
+(DECISION F279 D7).
+
+| File | Description |
+|------|-------------|
+| [toolchain-refresh.md](orders/toolchain-refresh.md) | Raise the pinned toolchain, read the release notes first, run the suite once, open a pull request; at most every fourteen days |
 
 ## Roadmap (`docs/roadmap/`)
 

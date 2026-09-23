@@ -1,0 +1,38 @@
+diff --git a/.agent/decisions.md b/.agent/decisions.md
+index 6e422359..aaab5dcb 100644
+--- a/.agent/decisions.md
++++ b/.agent/decisions.md
+@@ -18510,3 +18510,33 @@ in step, and the universal resolution already carries the markers.
+ REVERSE by deleting this paragraph, restoring the two acceptance lines and T002's text in
+ `docs/roadmap/features/T2_F279.md` from git history at `c9bc5c20`, and restoring the install
+ step in `.github/workflows/ci.yml` from the same commit.
++
++DECISION F279 D2 (2026-09-23, round 2) — THE ENVIRONMENT REGISTRY IS THE CONFIG KEY REGISTRY THAT
++ALREADY EXISTS, AND THE GUARD HOLDS EVERY `REMEDY_` NAME PRODUCTION CODE SPELLS.
++
++CONTEXT. T001 asks for a new `packages/orchestration/env_registry.py` holding, per variable, a
++name, a type, a default and a description. `packages/orchestration/config.py` already holds
++exactly that: `_CONFIG_KEY_SPECS`, one `ConfigKeySpec` per key with its `env_var`, `value_type`,
++`default`, `description` and an `env_only` flag, read by `remedy config`, by the run manifest's
++configuration snapshot and by `remedy doctor core`. Measured by the reviewer at `62c689e1`: 64
++specs, and 79 distinct whole `REMEDY_*` string literals under `packages/`, `apps/` and
++`scripts/`, of which 15 name no spec. Twenty names are read with a literal key, at 28 sites.
++
++CHOSEN. (1) The registry is `_CONFIG_KEY_SPECS`; no second module is added, because two
++registries of the same variables are two places to forget one (AGENTS.md, "Replacing is
++deleting"). (2) The 15 unregistered names are registered as `env_only` specs with the type and
++default their readers use at `62c689e1`. (3) `tests/orchestration/test_env_registry.py` holds
++two guards: T001's own — every `os.environ[...]`, `.get`, `.pop`, `.setdefault` and
++`os.getenv` whose first argument is a `REMEDY_` literal names a spec — and a wider one, every
++whole `REMEDY_*` string literal names a spec, which also reaches a name kept in a constant and
++read through it. (4) T001's remaining parts follow in their own rounds: `remedy doctor`
++reporting unknown and unparsable variables with the generated guide and its drift test, then
++the direct reads moved onto one registry reader, so the type and the default each reader
++repeats lives in the spec alone.
++
++ALTERNATIVES. A new `env_registry.py` as registered — rejected for (1). Guard only the literal
++reads — rejected as the only guard: four of the fifteen are read only through a constant or
++a variable, which a read-site scan cannot see.
++
++REVERSE by deleting this paragraph, the fifteen specs under the F279 T001 comment in
++`packages/orchestration/config.py`, and `tests/orchestration/test_env_registry.py`.

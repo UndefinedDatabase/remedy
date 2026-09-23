@@ -1,0 +1,48 @@
+diff --git a/.agent/decisions.md b/.agent/decisions.md
+index 4d77f2f6..6e422359 100644
+--- a/.agent/decisions.md
++++ b/.agent/decisions.md
+@@ -18470,3 +18470,43 @@ mark is added back.
+ 
+ REVERSE by deleting this paragraph, removing `BLE001` from `select` and from the `tests/**` line,
+ and deleting `tests/test_ble001_ratchet.py`; the marks are inert without the rule.
++
++DECISION F279 D1 (2026-09-23, round 1) — T002 IS RE-STATED AGAINST THE TREE: THE HASHED FILE IS
++INSTALLED BY ITSELF, AND THE RUFF PIN IS HELD AGAINST THE PYPROJECT PIN THE LINT GATE RUNS.
++
++CONTEXT. T2_F279.md was measured at `a5bf8949`. At `c9bc5c20` three of its T002 premises no
++longer hold. `LINT_ERROR_CEILING` is gone: DECISION amend0911-feedback D7 replaced the ceiling
++with zero findings, and `tests/orchestration/test_ci_budgets.py` asserts the name is absent.
++`ruff` is already pinned, as `ruff==0.15.17` in the `dev` extra of `pyproject.toml`. The CI
++matrix already runs Python 3.10 and 3.12. And the ordered install shape cannot work: measured by
++the reviewer with pip 26.2.1 on Python 3.10, `pip install -e ".[dev,ollama]" -c <hashed file>`
++exits 1 with "The editable requirement ... cannot be installed when requiring hashes, because
++there is no single file to hash", because one hash in a constraints file puts pip into
++hash-checking mode for the whole install.
++
++CHOSEN. (1) `constraints.txt` at the repository root is GENERATED, never hand-edited, by
++`uv pip compile` over `pyproject.toml` with the `dev` and `ollama` extras, `--universal`,
++`--python-version 3.10` (the floor `requires-python` promises), `--generate-hashes` and an
++`--exclude-newer` cut-off, so the same command gives the same bytes on any day; the file's own
++header records that command. `--universal` gives one file for both CI columns, with markers for
++the packages only one of them needs. (2) CI installs in two steps: `python3 -m pip install
++--require-hashes -r constraints.txt`, which installs every pinned package and refuses any whose
++hash differs, then `python3 -m pip install --no-deps -e .`, which installs Remedy itself and
++resolves nothing, then `python3 -m pip check`, which fails the job if the pinned set does not
++cover what `pyproject.toml` declares. The acceptance line naming `-c` is amended to this shape.
++(3) The acceptance line tying the ruff pin to `LINT_ERROR_CEILING` is amended: the version
++`constraints.txt` pins equals the `ruff==` pin in `pyproject.toml`, the linter CI's `budgets`
++stage runs at zero findings. (4) `pydantic` and `psutil` gain an upper bound below their next
++major version. (5) The developer's own environment is not touched: the README names the pinned
++install for anyone who wants CI's toolchain, and T004's `remedy doctor toolchain` is the slice
++that reports drift.
++
++ALTERNATIVES. Keep `-c` and drop the hashes — rejected: the slice asks for hash pinning, and a
++version-only file does not stop a replaced artifact. Install Remedy non-editable in CI —
++rejected: a local directory has no single file to hash either, so it fails the same way. A
++constraints file per Python version — rejected: two files for two columns is two files to keep
++in step, and the universal resolution already carries the markers.
++
++REVERSE by deleting this paragraph, restoring the two acceptance lines and T002's text in
++`docs/roadmap/features/T2_F279.md` from git history at `c9bc5c20`, and restoring the install
++step in `.github/workflows/ci.yml` from the same commit.

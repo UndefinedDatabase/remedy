@@ -1,0 +1,43 @@
+diff --git a/.agent/decisions.md b/.agent/decisions.md
+index 0e4b00c9..dc5a6107 100644
+--- a/.agent/decisions.md
++++ b/.agent/decisions.md
+@@ -18577,3 +18577,38 @@ the F279 T001 section of `_cmd_doctor_core`, `docs/guides/environment.md` with i
+ lines, its entry in `tests/docs/test_retired_promote_word.py` and
+ `tests/docs/test_environment_guide.py`, and the shell-script guard and the environment
+ tests added to `tests/orchestration/test_env_registry.py` and `tests/cli/test_worker_facade_cmd.py`.
++
++DECISION F279 D4 (2026-09-23, round 4) — EVERY TYPED `REMEDY_` READ GOES THROUGH ONE REGISTRY
++READER, `env_value`; TEXT READS, THE STANDALONE SCRIPTS AND THE TWO PORT READS KEEP THEIR OWN.
++
++CONTEXT. Measured by the reviewer at `0a529d69`: production code reads `REMEDY_` variables
++directly at 29 sites, through a literal or a module constant. Eleven of them parse a whole number, a number or a yes-or-no flag and each
++repeats its own parsing, error wording and default: the four Ollama temperature and token-limit
++reads, the Claude planner timeout with a second copy of its default, the four UI flags and the
++strict event-name flag, each honouring only the value "1", and the runtime log cap. Five sites are
++in `scripts/`, whose modules run with `scripts/` rather than the repository on `sys.path` and so
++cannot import the registry. The rest read text whose empty-value policy is the caller's own.
++
++CHOSEN. (1) `env_value(name)` in `packages/orchestration/config.py` reads the LIVE environment,
++never the cached configuration, because every caller reads a value a process or a test may set
++after the configuration was loaded. Unset, an env-only variable answers its spec's default and
++any other answers None, so a caller whose setting `remedy.toml` may carry goes on to it. A
++boolean reads as yes for 1, true or yes, the words `_coerce_value` honours, so the UI flags and
++the strict flag now also accept true and yes. A whole number or number that does not parse
++raises ValueError naming the variable and the type, EMPTY INCLUDED: an empty
++`REMEDY_RUNTIME_LOG_MAX`, which read as no cap, now fails the supervisor's log pump loudly, which
++`remedy doctor core` also reports. An unregistered name raises KeyError. (2) The eleven typed
++sites move onto it, and the Claude planner's private default constant is deleted. (3)
++`tests/orchestration/test_env_registry.py` holds the line: a typed variable read straight off the
++environment under `packages/` or `apps/`, through a literal or a module constant, is a failure
++unless it is one of the two named port reads, which raise their own `RuntimeConfigError` and
++check the port's range.
++
++ALTERNATIVES. Read through the cached `get_config()` — rejected for (1). Move every read,
++text and scripts included — rejected: the scripts cannot import the registry, and a text read's
++empty-value policy differs per caller. Keep "1" as the only yes for the UI flags — rejected: one
++variable would then mean different things to `remedy doctor core` and to its reader.
++
++REVERSE by deleting this paragraph and `env_value`, restoring the eleven reads and the Claude
++planner's `_DEFAULT_TIMEOUT_SEC` from git history at `0a529d69`, and deleting the reader tests
++and the typed-read guard from `tests/orchestration/test_env_registry.py`.

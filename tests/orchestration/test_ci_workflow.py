@@ -66,9 +66,44 @@ def test_hosted_workflow_runs_the_floor_and_a_current_interpreter():
     assert "fail-fast: false" in text
 
 
+def test_hosted_workflow_matrix_names_exactly_the_floor_and_one_current_python():
+    """T2_F279 T004: the matrix runs the oldest supported Python and one newer one, no more,
+    and its first entry is the floor `requires-python` promises."""
+    import re
+
+    matrix = re.search(r"python-version: \[([^\]]*)\]", workflow_text())
+    assert matrix is not None
+    versions = [v.strip().strip("'\"") for v in matrix.group(1).split(",")]
+    assert len(versions) == 2, versions
+    floor = re.search(r'requires-python = ">=([0-9.]+)"',
+                      (REPO_ROOT / "pyproject.toml").read_text(encoding="utf-8"))
+    assert floor is not None and versions[0] == floor.group(1)
+    assert tuple(map(int, versions[1].split("."))) > tuple(map(int, versions[0].split(".")))
+
+
 def test_hosted_workflow_checks_out_the_full_history():
     """A shallow clone hides the deleted modules the event-name coupling ratchet reads (R-0889)."""
     text = workflow_text()
     assert text.count("fetch-depth: 0") == 1
     checkout = text.index("actions/checkout@v4")
     assert checkout < text.index("fetch-depth: 0") < text.index("actions/setup-python@v5")
+
+
+def test_hosted_workflow_installs_the_hash_pinned_toolchain_before_remedy():
+    """DECISION F279 D1: the hashed set installs alone, then Remedy resolving nothing, then a check
+    that the pinned set covers the declaration — and no step installs anything unpinned."""
+    text = workflow_text()
+    pinned = "python3 -m pip install --require-hashes -r constraints.txt"
+    remedy = "python3 -m pip install --no-deps -e ."
+    check = "python3 -m pip check"
+    for step in (pinned, remedy, check):
+        assert text.count(step) == 1, step
+    assert text.index(pinned) < text.index(remedy) < text.index(check) < text.index("remedy ci run")
+    installs = [line.strip() for line in text.splitlines()
+                if "pip install" in line and line.strip()[:1] != "#"]
+    assert installs == [f"run: {pinned}", f"run: {remedy}"]
+
+
+def test_hosted_workflow_keys_its_pip_cache_on_the_pinned_set():
+    """A cache keyed on anything else would survive a change of the pins it serves."""
+    assert workflow_text().count("cache-dependency-path: constraints.txt") == 1

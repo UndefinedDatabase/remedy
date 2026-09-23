@@ -322,6 +322,41 @@ def _cmd_doctor_core(ns: argparse.Namespace) -> None:
         disk["error"] = _safe_err(exc)
         _check("disk_floor", False, _safe_err(exc))
 
+    # -----------------------------------------------------------------
+    # F279 T001 — the environment against the variable registry: ADVISORY.
+    #
+    # A `REMEDY_` name no spec registers is read by nothing, so a typo in it
+    # changes nothing and says nothing: the default silently wins. A registered
+    # name whose value does not read as its declared type is read as the raw
+    # text or as "no". Both are warnings and never blockers, because another
+    # tool may share the prefix and READY must not depend on the operator's
+    # shell. No value is ever printed: a variable may carry a secret.
+    # -----------------------------------------------------------------
+    import os
+
+    from packages.orchestration.config import (
+        ENVIRONMENT_GUIDE_PATH,
+        type_words,
+        unknown_env_variables,
+        unparsable_env_variables,
+    )
+    for name, closest in unknown_env_variables(os.environ):
+        guess = f"closest registered: {closest}" if closest else "no registered name is close"
+        meant = (f"If you meant {closest}, rename it." if closest
+                 else "No registered variable has a similar name.")
+        _warn("unknown_env_variable",
+              f"{name} — not a Remedy variable; {guess}",
+              f"{name} is set in the environment, but no Remedy setting reads it, so it "
+              f"changes nothing. {meant} Every variable Remedy reads is listed in "
+              f"{ENVIRONMENT_GUIDE_PATH}.")
+    for name, spec in unparsable_env_variables(os.environ):
+        _warn("unparsable_env_variable",
+              f"{name} — its value is not {type_words(spec)}",
+              f"{name} is registered as {type_words(spec)}, and its value in the "
+              f"environment does not read as one, so Remedy does not use it the way it "
+              f"was meant. The value is not shown, because a variable may carry a "
+              f"secret. {ENVIRONMENT_GUIDE_PATH} lists what each variable accepts.")
+
     blockers: list[str] = [str(c["check"]) for c in checks if not c["ok"]]
     ready = len(blockers) == 0
 
@@ -369,6 +404,29 @@ def _cmd_doctor_core(ns: argparse.Namespace) -> None:
         print("    (none)")
 
 
+def _cmd_doctor_toolchain(ns: argparse.Namespace) -> None:
+    """F279 T004: each pinned tool's installed, pinned and newest version.
+
+    The newest version is fetched from the package index; `--offline` skips the fetch, and a
+    fetch that fails reads "unknown" rather than a guessed number (DECISION F279 D6).
+    """
+    from packages.orchestration.toolchain import offline, pypi_newest, toolchain_rows
+
+    no_network = bool(getattr(ns, "offline", False))
+    rows = toolchain_rows(fetch_newest=offline if no_network else pypi_newest)
+    if getattr(ns, "json", False):
+        emit_ok(tools=[row.as_dict() for row in rows], offline=no_network)
+        return
+    print("Toolchain: the version installed here, the version constraints.txt pins, and the "
+          "newest version the package index knows.")
+    if no_network:
+        print("The package index was not asked (--offline), so every newest version reads unknown.")
+    width = max(len(row.name) for row in rows)
+    print(f"  {'tool'.ljust(width)}  {'installed':<14}  {'pinned':<14}  newest")
+    for row in rows:
+        print(f"  {row.name.ljust(width)}  {row.installed:<14}  {row.pinned:<14}  {row.newest}")
+
+
 # ---------------------------------------------------------------------------
 # Handler registry
 # ---------------------------------------------------------------------------
@@ -377,4 +435,5 @@ def _cmd_doctor_core(ns: argparse.Namespace) -> None:
 COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
     "mission.run": _cmd_mission_run,
     "doctor.core": _cmd_doctor_core,
+    "doctor.toolchain": _cmd_doctor_toolchain,
 }

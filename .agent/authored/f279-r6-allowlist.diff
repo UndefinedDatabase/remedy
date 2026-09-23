@@ -1,0 +1,12 @@
+diff --git a/tests/orchestration/import_reachability_allowlist.txt b/tests/orchestration/import_reachability_allowlist.txt
+index 1a8ba723..7381a0b2 100644
+--- a/tests/orchestration/import_reachability_allowlist.txt
++++ b/tests/orchestration/import_reachability_allowlist.txt
+@@ -249,6 +249,7 @@ packages.orchestration.token_ledger
+ packages.orchestration.token_measurement
+ packages.orchestration.token_policy
+ packages.orchestration.token_truth
++packages.orchestration.toolchain
+ packages.orchestration.trust_report
+ packages.orchestration.ui_app_shell
+ packages.orchestration.ui_copy

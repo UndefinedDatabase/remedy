@@ -26,13 +26,13 @@ verification commands. If something is unproven, Remedy says so instead of guess
 
 ## Status
 
-90 of 283 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
+91 of 283 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
 
 | Tier | Name | Done | Total |
 |------|------|-----:|------:|
 | 0 | Foundation & Trust Core | 16 | 16 |
 | 1 | Self-Build Bootstrap | 22 | 22 |
-| 2 | Minimal Self-Build Runtime | 32 | 36 |
+| 2 | Minimal Self-Build Runtime | 33 | 36 |
 | 3 | Full Token Economy & Autonomy | 6 | 26 |
 | 4 | Memory & Learning | 1 | 17 |
 | 5 | Operator Cockpit | 13 | 34 |
@@ -208,7 +208,15 @@ place, and the folder flushed too — and every private copy of that routine is
 deleted, with a test that refuses a new one; and no failure is swallowed in
 silence any more: the lint rule against catching every error is on, each of the
 290 places that still must do so says why, the raw stream record names the step
-that failed, and four places that hid a failure behind a success now report it).
+that failed, and four places that hid a failure behind a success now report it),
+F279 configuration & toolchain truth (every environment variable Remedy reads is
+now listed in one registry, with a test that refuses an unlisted one, a doctor
+check that names a mistyped variable together with its closest correct spelling,
+and a guide generated from the list; continuous integration installs one exact,
+hash-checked set of tool versions; a command checks the review loop's step
+instructions against seven rules of its own checklist; and a doctor report shows
+each pinned tool beside its newest release, with a standing order that raises the
+pins no more than once every fourteen days and never merges on its own).
 
 Accepted in Tier 3 so far:
 F106 session resume instead of rebuild (repair rounds resume the original
@@ -341,6 +349,14 @@ Full per-feature state: [`docs/roadmap/STATUS.md`](docs/roadmap/STATUS.md)
 git clone git@github.com:UndefinedDatabase/remedy.git
 cd remedy
 pip install -e ".[dev]"          # add ,ollama for the local planner provider
+```
+
+CI installs an exact, hash-checked toolchain instead. To reproduce it, install the
+pinned set first and then Remedy without resolving anything:
+
+```bash
+pip install --require-hashes -r constraints.txt
+pip install --no-deps -e .
 ```
 
 ## Quickstart

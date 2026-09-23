@@ -218,7 +218,19 @@ class TestProductionIsTheOnlyImplementation:
         for p in list((root / "packages").rglob("*.py")) + list((root / "apps").rglob("*.py")):
             if REVIEW_BASE_ENV in p.read_text(encoding="utf-8", errors="replace"):
                 hits.append(p.name)
-        assert hits == ["review_subject.py"], hits
+        # The environment registry names every `REMEDY_` variable production code spells
+        # (DECISION F279 D2), so `config.py` holds this one as a key spec, exactly once. The
+        # config loader reads it into the key `review.base`, and no module asks for that key:
+        # the resolver stays the only module that turns the variable into a base.
+        assert sorted(hits) == ["config.py", "review_subject.py"], hits
+        config_src = (root / "packages" / "orchestration" / "config.py").read_text(encoding="utf-8")
+        assert config_src.count(REVIEW_BASE_ENV) == 1
+        assert f'env_var="{REVIEW_BASE_ENV}"' in config_src
+        askers = [p.name for p in list((root / "packages").rglob("*.py"))
+                  + list((root / "apps").rglob("*.py"))
+                  if p.name != "config.py"
+                  and '"review.base"' in p.read_text(encoding="utf-8", errors="replace")]
+        assert askers == [], askers
 
 
 class TestAnAmbientDeclarationBelongsToOneRepository:

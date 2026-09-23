@@ -880,7 +880,9 @@ def _build_dashboard(job: Any) -> dict[str, Any]:
     has_real_events = len(events) > 0
     has_real_tasks = task_count > 0
     # Demo mode only with explicit flag — normal empty jobs are NOT demo
-    demo_mode = os.environ.get("REMEDY_UI_DEMO_MODE") == "1"
+    from packages.orchestration.config import env_value
+
+    demo_mode = env_value("REMEDY_UI_DEMO_MODE")
     synthetic_count = 0
     missing_sources: list[str] = []
     if not has_real_events:
@@ -1601,6 +1603,8 @@ def _build_live_state_json(job: Any) -> dict[str, Any]:
     """Build live state for polling — lightweight check for UI updates."""
     import hashlib as _hl
 
+    from packages.orchestration.config import env_value
+
     events = _load_events(job)
     state = job.state.value if hasattr(job.state, "value") else str(job.state)
 
@@ -1715,7 +1719,7 @@ def _build_live_state_json(job: Any) -> dict[str, Any]:
         "stop_reason": bridge_stop_reason,
         "memory_used_count": memory_used_count,
         # Truth contract
-        "demo_mode": os.environ.get("REMEDY_UI_DEMO_MODE") == "1",
+        "demo_mode": env_value("REMEDY_UI_DEMO_MODE"),
         "idle": not has_real_events or stage == "idle",
         "stale": not has_real_events,
     }
@@ -2057,8 +2061,9 @@ def _auto_build_frontend(reason: str = "missing") -> Path | None:
     import subprocess
 
     from packages.orchestration import exec_guard
+    from packages.orchestration.config import env_value
 
-    if os.environ.get("REMEDY_UI_NO_AUTO_BUILD") == "1":
+    if env_value("REMEDY_UI_NO_AUTO_BUILD"):
         return None
 
     ui_root = Path(__file__).resolve().parent.parent.parent / "apps" / "ui"
@@ -2126,7 +2131,9 @@ def _load_frontend(job_id: str, token: str) -> str:
         return html
 
     # Legacy fallback — only if explicitly allowed
-    if os.environ.get("REMEDY_UI_ALLOW_LEGACY_FALLBACK") == "1":
+    from packages.orchestration.config import env_value
+
+    if env_value("REMEDY_UI_ALLOW_LEGACY_FALLBACK"):
         print("[remedy-ui] WARNING: serving legacy fallback (REMEDY_UI_ALLOW_LEGACY_FALLBACK=1)",
               file=sys.stderr)
         from packages.orchestration.ui_app_shell import build_app_shell

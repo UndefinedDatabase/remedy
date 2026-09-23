@@ -1,0 +1,15 @@
+diff --git a/docs/roadmap/features/T2_F279.md b/docs/roadmap/features/T2_F279.md
+index d5de6183..b9ff23ba 100644
+--- a/docs/roadmap/features/T2_F279.md
++++ b/docs/roadmap/features/T2_F279.md
+@@ -47,6 +47,10 @@ key registry `_CONFIG_KEY_SPECS` in `packages/orchestration/config.py`, which al
+ name, type, default and description per variable, so no `env_registry.py` is added. The guard
+ is `tests/orchestration/test_env_registry.py`, over every literal environment read and over
+ every whole `REMEDY_*` string literal in `packages/`, `apps/` and `scripts/`.
++AMENDED 2026-09-23 by DECISION F279 D4, measured at `0a529d69`: the typed reads go through
++`env_value` in `packages/orchestration/config.py`, which parses each variable as its spec
++declares; text reads, the standalone scripts under `scripts/` and the two runtime port reads keep
++their own, the last two named in the guard with their reason.
+ 
+ ## T002 — A pinned toolchain
+ A committed, hash-pinned constraints file for the `dev` extra on the Python version

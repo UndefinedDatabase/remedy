@@ -1,0 +1,45 @@
+diff --git a/packages/providers/ollama_planner/provider.py b/packages/providers/ollama_planner/provider.py
+index 23f46262..f25229c7 100644
+--- a/packages/providers/ollama_planner/provider.py
++++ b/packages/providers/ollama_planner/provider.py
+@@ -95,35 +95,25 @@ class OllamaPlanner:
+     ) -> None:
+         import os
+ 
+-        from packages.orchestration.config import get_config
++        from packages.orchestration.config import env_value, get_config
+ 
+         cfg = get_config()
+         self.model = _resolve_model(model)
+         self.host = host or os.environ.get("REMEDY_OLLAMA_HOST") or cfg.get("ollama.host") or _DEFAULT_HOST
+ 
+-        env_temp = os.environ.get("REMEDY_OLLAMA_PLANNER_TEMPERATURE")
++        env_temp = env_value("REMEDY_OLLAMA_PLANNER_TEMPERATURE")
+         if temperature is not None:
+             self.temperature: float | None = temperature
+         elif env_temp is not None:
+-            try:
+-                self.temperature = float(env_temp)
+-            except ValueError:
+-                raise ValueError(
+-                    f"Environment variable REMEDY_OLLAMA_PLANNER_TEMPERATURE must be a float (got {env_temp!r})"
+-                )
++            self.temperature = env_temp
+         else:
+             self.temperature = cfg.get("ollama.planner.temperature")
+ 
+-        env_num = os.environ.get("REMEDY_OLLAMA_PLANNER_NUM_PREDICT")
++        env_num = env_value("REMEDY_OLLAMA_PLANNER_NUM_PREDICT")
+         if num_predict is not None:
+             self.num_predict: int | None = num_predict
+         elif env_num is not None:
+-            try:
+-                self.num_predict = int(env_num)
+-            except ValueError:
+-                raise ValueError(
+-                    f"Environment variable REMEDY_OLLAMA_PLANNER_NUM_PREDICT must be an integer (got {env_num!r})"
+-                )
++            self.num_predict = env_num
+         else:
+             self.num_predict = cfg.get("ollama.planner.num_predict")
+ 

@@ -1,0 +1,42 @@
+diff --git a/.agent/decisions.md b/.agent/decisions.md
+index bbac9e84..7c34f71e 100644
+--- a/.agent/decisions.md
++++ b/.agent/decisions.md
+@@ -18677,3 +18677,37 @@ REVERSE by deleting this paragraph, `packages/orchestration/toolchain.py`,
+ `tests/orchestration/test_toolchain.py`, the `doctor.toolchain` catalog entry and handler, the
+ module's allowlist line, its name in the handler-set test of `tests/cli/test_worker_facade_cmd.py`,
+ and the matrix test in `tests/orchestration/test_ci_workflow.py`.
++
++DECISION F279 D7 (2026-09-23, round 7) — THE TOOLCHAIN REFRESH ORDER IS A JOB FILE, AND THE
++SELF-USE GENERATOR QUEUES IT VERBATIM, FIRST, AT MOST EVERY FOURTEEN DAYS.
++
++CONTEXT. T004 orders `docs/orders/toolchain-refresh.md`, a recurring self-use order the
++generator may mint an item from no more than once every fourteen days. Measured by the reviewer
++at `564b54e3`: a self-use item is a job file (`# Job:` title, `## Task N` sections, an
++`Acceptance:` list each), a queue entry carries no date, and the generator's ledger tier always
++has an eligible finding, so a tier placed after it is never reached. The queue holds no pending
++item, so F279's own closure will be the first to call the generator after this lands.
++
++CHOSEN. (1) The order file IS a job file of five tasks — find what can move, read the release
++notes first, raise the pins and regenerate `constraints.txt` with its header command, repair and
++run the whole suite once, open a pull request only on a green suite and never merge — and the
++generator queues it byte for byte. (2) The order tier comes before the ledger tier and answers
++only when no queue entry from the order is younger than fourteen days; the day an item was
++queued is stamped into its `provenance` and read back from it. (3) An order file that is not a
++job raises rather than queues. (4) The tier reads the repository's own order file by default;
++`tests/orchestration/test_self_use_generator.py` points that default at a missing file for the
++tests of the other tiers, and the one end-to-end runner test names a missing order file, because
++both exercise the ledger tier against a fixture queue. (5) `docs/README.md` gains a Maintenance
++Orders section and a quick-find row, and `tests/docs/test_toolchain_refresh_order.py` pins the
++file's headings, the acceptance list under each task and the promises T004 makes. (6) The
++consequence is deliberate: F279's closure queues the order as its self-use item, and its run
++stops at the approval gate like every self-use run, with nothing merged.
++
++ALTERNATIVES. Put the order after the ledger tier — rejected: it would never be reached. A date
++field in the queue schema — rejected: a schema change for one tier, when the provenance string
++already records where an item came from.
++
++REVERSE by deleting this paragraph, `docs/orders/toolchain-refresh.md` with its index rows and
++its docs test, the order tier and its tests in `packages/orchestration/self_use_generator.py`
++and `tests/orchestration/test_self_use_generator.py`, and the `order_path` argument in
++`tests/orchestration/test_self_use_runner.py`.

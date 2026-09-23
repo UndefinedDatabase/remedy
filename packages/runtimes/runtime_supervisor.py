@@ -266,11 +266,13 @@ class Supervisor:
         # 3. the pump, whose thread lives as long as WE do
         try:
             # An operator (or a test) may cap the log lower than the default.
-            cap = os.environ.get("REMEDY_RUNTIME_LOG_MAX")
+            from packages.orchestration.config import env_value
+
+            cap = env_value("REMEDY_RUNTIME_LOG_MAX")
             self.pump = LogPump(
                 self.proc.stdout, handle, log_file,
-                max_bytes=int(cap) if cap else None,
-                keep_bytes=int(cap) // 2 if cap else None,
+                max_bytes=cap if cap else None,
+                keep_bytes=cap // 2 if cap else None,
             )
             self.pump.start()
         except Exception as exc:  # noqa: BLE001 — a pump that won't start must still be reported, not lost

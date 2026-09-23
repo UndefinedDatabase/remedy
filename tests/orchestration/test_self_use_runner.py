@@ -315,7 +315,10 @@ class TestGenerateThenRunEndToEnd:
             "described here.\n",
             encoding="utf-8",
         )
-        generated = generate_and_append_if_empty(queue_path=queue_path, ledger_path=ledger_path)
+        # The standing order (DECISION F279 D7) is pointed at a missing file: this test is the
+        # ledger tier's generate-to-run cycle, and the order tier would answer first.
+        generated = generate_and_append_if_empty(queue_path=queue_path, ledger_path=ledger_path,
+                                                 order_path=tmp_path / "no-order.md")
         assert generated is not None
         assert generated.provenance.startswith("generated (self-use-generator tier 1")
 

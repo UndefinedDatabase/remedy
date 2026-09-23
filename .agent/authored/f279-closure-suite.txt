@@ -1,0 +1,51 @@
+F279 R9 C4 — the feature's ONE full suite, `python3 -m pytest -n auto -q` in the primary
+checkout, run 2026-09-23, on the repaired tree at C3 (`6bbf6895`). Real exit code: 1.
+
+Summary line:
+1 failed, 18633 passed, 20 skipped, 1 warning, 1 error in 229.00s (0:03:48)
+
+Bad node ids (2):
+tests/orchestration/test_run_manifest_logical_identity.py::TestTwoRealRunsShareLogicalIdentity::test_different_execution_identities_same_logical_hash
+tests/runtimes/test_supervisor_portability.py::TestEmergencyNoteLifecycle::test_the_note_lives_with_its_survivor_and_dies_with_the_record
+
+Shrinking comparison against round 8's bad set (`.agent/authored/f279-closure-suite.txt` at
+`2ecc2a90`, 2 node ids: test_development_artifact_boundary.py::TestWhitelistBoundary::
+test_no_new_product_dependency and test_review_subject_resolution.py::
+TestProductionIsTheOnlyImplementation::test_the_env_var_is_read_in_exactly_one_module):
+NEITHER of round 8's two bad node ids appears in this round's bad set — both are repaired.
+This round's bad set holds two DIFFERENT node ids, in files round 8's suite did not name.
+Per block constraint 4, a suite that lists ANY bad node is committed exactly as measured,
+with every bad node id reported, and handed back; nothing was weakened, deleted or marked
+xfail to reach this reading.
+
+closure precondition 7 (import reachability / no orphan modules): neither
+`tests/orchestration/test_import_reachability.py` nor `tests/test_no_orphan_modules.py`
+appears among the bad node ids above.
+
+Failure detail, quoted from the run:
+
+FAILED tests/orchestration/test_run_manifest_logical_identity.py::TestTwoRealRunsShareLogicalIdentity::test_different_execution_identities_same_logical_hash
+  AssertionError: assert '1d95b98e840f...47be02ce65f2b' == 'cec29c0ebdad...d6e620817eee7'
+    - cec29c0ebdadd4d18e07d0b0acba3c67c7505b5dbebf60e6c9dd6e620817eee7
+    + 1d95b98e840f82e28013bad49b7227f9c46bcab33ee8f7812ce47be02ce65f2b
+
+ERROR at teardown of TestEmergencyNoteLifecycle::test_the_note_lives_with_its_survivor_and_dies_with_the_record
+  AssertionError: runtime processes survived the file: ['1575044 /usr/bin/python3 -m packages.runtimes.runtime_supervisor --repo /tmp/pytest-of-decodeux/py']
+    Left contains one more item: '1575044 /usr/bin/python3 -m packages.runtimes.runtime_supervisor --repo /tmp/pytest-of-decodeux/py'
+
+One warning, not a failure:
+tests/orchestration/test_model_routing.py::TestTheUndeclaredRolePathWarnsAndAnswersConservatively::test_it_matches_role_configs_own_unknown_role_behaviour
+  packages/orchestration/model_routing.py:1393: UserWarning: Role 'a_role_nobody_declared_a_class_for' declares no task class; routing conservatively as 'undeclared_role'. Declared roles: builder, design_worker, final_verifier, orchestrator, planner, reviewer, self_use, study, summary, teacher, test_worker; inheriting roles: repair.
+
+Full log: /home/decodeux/Repos/remedy/.remedy-wt/f279-r9-scratch/f279-r9-full-suite.log
+(DEVIATION: the block named `~/remedy-gate-scratch/` as the outside-repository log location;
+this worker's sandbox permission system blocked `mkdir`/`ls` there with "Claude Code may only
+create/list files in the allowed working directories for this session:
+'/home/decodeux/Repos/remedy'", so the log was written under the gitignored `.remedy-wt/`
+scratch tree inside the repository checkout instead. `.remedy-wt/` is excluded by
+`.gitignore:235`, so the log stays untracked exactly as the outside-repository log would have.)
+
+Per block constraint 4 (amend0917-throughput rule 2), a RED suite is this feature's own
+work and not a reason to stop: the transcript above is committed exactly as measured, every
+bad node id is reported, and the next repair round is the reviewer's to order. No test was
+weakened, deleted or marked xfail to reach this reading.

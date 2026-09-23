@@ -18470,3 +18470,244 @@ mark is added back.
 
 REVERSE by deleting this paragraph, removing `BLE001` from `select` and from the `tests/**` line,
 and deleting `tests/test_ble001_ratchet.py`; the marks are inert without the rule.
+
+DECISION F279 D1 (2026-09-23, round 1) — T002 IS RE-STATED AGAINST THE TREE: THE HASHED FILE IS
+INSTALLED BY ITSELF, AND THE RUFF PIN IS HELD AGAINST THE PYPROJECT PIN THE LINT GATE RUNS.
+
+CONTEXT. T2_F279.md was measured at `a5bf8949`. At `c9bc5c20` three of its T002 premises no
+longer hold. `LINT_ERROR_CEILING` is gone: DECISION amend0911-feedback D7 replaced the ceiling
+with zero findings, and `tests/orchestration/test_ci_budgets.py` asserts the name is absent.
+`ruff` is already pinned, as `ruff==0.15.17` in the `dev` extra of `pyproject.toml`. The CI
+matrix already runs Python 3.10 and 3.12. And the ordered install shape cannot work: measured by
+the reviewer with pip 26.2.1 on Python 3.10, `pip install -e ".[dev,ollama]" -c <hashed file>`
+exits 1 with "The editable requirement ... cannot be installed when requiring hashes, because
+there is no single file to hash", because one hash in a constraints file puts pip into
+hash-checking mode for the whole install.
+
+CHOSEN. (1) `constraints.txt` at the repository root is GENERATED, never hand-edited, by
+`uv pip compile` over `pyproject.toml` with the `dev` and `ollama` extras, `--universal`,
+`--python-version 3.10` (the floor `requires-python` promises), `--generate-hashes` and an
+`--exclude-newer` cut-off, so the same command gives the same bytes on any day; the file's own
+header records that command. `--universal` gives one file for both CI columns, with markers for
+the packages only one of them needs. (2) CI installs in two steps: `python3 -m pip install
+--require-hashes -r constraints.txt`, which installs every pinned package and refuses any whose
+hash differs, then `python3 -m pip install --no-deps -e .`, which installs Remedy itself and
+resolves nothing, then `python3 -m pip check`, which fails the job if the pinned set does not
+cover what `pyproject.toml` declares. The acceptance line naming `-c` is amended to this shape.
+(3) The acceptance line tying the ruff pin to `LINT_ERROR_CEILING` is amended: the version
+`constraints.txt` pins equals the `ruff==` pin in `pyproject.toml`, the linter CI's `budgets`
+stage runs at zero findings. (4) `pydantic` and `psutil` gain an upper bound below their next
+major version. (5) The developer's own environment is not touched: the README names the pinned
+install for anyone who wants CI's toolchain, and T004's `remedy doctor toolchain` is the slice
+that reports drift.
+
+ALTERNATIVES. Keep `-c` and drop the hashes — rejected: the slice asks for hash pinning, and a
+version-only file does not stop a replaced artifact. Install Remedy non-editable in CI —
+rejected: a local directory has no single file to hash either, so it fails the same way. A
+constraints file per Python version — rejected: two files for two columns is two files to keep
+in step, and the universal resolution already carries the markers.
+
+REVERSE by deleting this paragraph, restoring the two acceptance lines and T002's text in
+`docs/roadmap/features/T2_F279.md` from git history at `c9bc5c20`, and restoring the install
+step in `.github/workflows/ci.yml` from the same commit.
+
+DECISION F279 D2 (2026-09-23, round 2) — THE ENVIRONMENT REGISTRY IS THE CONFIG KEY REGISTRY THAT
+ALREADY EXISTS, AND THE GUARD HOLDS EVERY `REMEDY_` NAME PRODUCTION CODE SPELLS.
+
+CONTEXT. T001 asks for a new `packages/orchestration/env_registry.py` holding, per variable, a
+name, a type, a default and a description. `packages/orchestration/config.py` already holds
+exactly that: `_CONFIG_KEY_SPECS`, one `ConfigKeySpec` per key with its `env_var`, `value_type`,
+`default`, `description` and an `env_only` flag, read by `remedy config`, by the run manifest's
+configuration snapshot and by `remedy doctor core`. Measured by the reviewer at `62c689e1`: 64
+specs, and 79 distinct whole `REMEDY_*` string literals under `packages/`, `apps/` and
+`scripts/`, of which 15 name no spec. Twenty names are read with a literal key, at 28 sites.
+
+CHOSEN. (1) The registry is `_CONFIG_KEY_SPECS`; no second module is added, because two
+registries of the same variables are two places to forget one (AGENTS.md, "Replacing is
+deleting"). (2) The 15 unregistered names are registered as `env_only` specs with the type and
+default their readers use at `62c689e1`. (3) `tests/orchestration/test_env_registry.py` holds
+two guards: T001's own — every `os.environ[...]`, `.get`, `.pop`, `.setdefault` and
+`os.getenv` whose first argument is a `REMEDY_` literal names a spec — and a wider one, every
+whole `REMEDY_*` string literal names a spec, which also reaches a name kept in a constant and
+read through it. (4) T001's remaining parts follow in their own rounds: `remedy doctor`
+reporting unknown and unparsable variables with the generated guide and its drift test, then
+the direct reads moved onto one registry reader, so the type and the default each reader
+repeats lives in the spec alone.
+
+ALTERNATIVES. A new `env_registry.py` as registered — rejected for (1). Guard only the literal
+reads — rejected as the only guard: four of the fifteen are read only through a constant or
+a variable, which a read-site scan cannot see.
+
+REVERSE by deleting this paragraph, the fifteen specs under the F279 T001 comment in
+`packages/orchestration/config.py`, and `tests/orchestration/test_env_registry.py`.
+
+DECISION F279 D3 (2026-09-23, round 3) — `remedy doctor core` READS THE ENVIRONMENT AGAINST THE
+REGISTRY AS ADVISORIES, THE SHELL SCRIPTS' NAMES ARE REGISTERED, AND THE GUIDE IS RENDERED FROM
+THE REGISTRY BY A FUNCTION, NOT A SCRIPT.
+
+CONTEXT. Measured by the reviewer at `cec312cb`: the shell scripts under `scripts/` expand seven
+`REMEDY_` names that no spec registers, `REMEDY_REVIEW_DIR` among them, which `tests/conftest.py`
+sets for every test run; the tests read two operator opt-ins for the real-Ollama tests; and the
+reviewer's own shell carries four `REMEDY_` names that belong to another tool. `remedy doctor
+core` already separates blocking checks from advisory warnings.
+
+CHOSEN. (1) The seven shell-script names and the two opt-ins are registered as env-only specs,
+and the guard in `tests/orchestration/test_env_registry.py` also holds every `$REMEDY_` and
+`${REMEDY_` expansion in the shell scripts under `scripts/` and at the root. (2) An unknown
+`REMEDY_` variable, named with its closest registered name compared after the shared prefix,
+and a registered variable whose value does not read as its type are ADVISORY warnings, never
+blockers: another tool may share the prefix, and READY must not depend on the operator's shell.
+No value is ever printed, because a variable may carry a secret. (3) A boolean variable reads as
+yes for 1, true or yes and as no for 0, false, no or empty — the words `_coerce_value` already
+honours — and any other value is reported, because `_coerce_value` would read it as no without a
+word. (4) `docs/guides/environment.md` is rendered by `render_environment_guide()` in
+`packages/orchestration/config.py` and written by `write_environment_guide()`; a separate script
+would be an orphan module under `tests/test_no_orphan_modules.py`, and the guide names the
+one-line command that regenerates it. (5) `tests/cli/test_worker_facade_cmd.py` removes foreign
+and unparsable `REMEDY_` variables from the environment for its own tests, so a test that
+asserts which warnings appear does not depend on the shell it runs in.
+
+ALTERNATIVES. Make an unknown variable a blocker — rejected for (2). Print the value of an
+unparsable variable — rejected: a doctor report is pasted into issues. A new
+`scripts/render_environment_guide.py` — rejected for (4).
+
+REVERSE by deleting this paragraph, the nine specs under the DECISION F279 D3 comment and the
+functions under "The environment against the registry" in `packages/orchestration/config.py`,
+the F279 T001 section of `_cmd_doctor_core`, `docs/guides/environment.md` with its two index
+lines, its entry in `tests/docs/test_retired_promote_word.py` and
+`tests/docs/test_environment_guide.py`, and the shell-script guard and the environment
+tests added to `tests/orchestration/test_env_registry.py` and `tests/cli/test_worker_facade_cmd.py`.
+
+DECISION F279 D4 (2026-09-23, round 4) — EVERY TYPED `REMEDY_` READ GOES THROUGH ONE REGISTRY
+READER, `env_value`; TEXT READS, THE STANDALONE SCRIPTS AND THE TWO PORT READS KEEP THEIR OWN.
+
+CONTEXT. Measured by the reviewer at `0a529d69`: production code reads `REMEDY_` variables
+directly at 29 sites, through a literal or a module constant. Eleven of them parse a whole number, a number or a yes-or-no flag and each
+repeats its own parsing, error wording and default: the four Ollama temperature and token-limit
+reads, the Claude planner timeout with a second copy of its default, the four UI flags and the
+strict event-name flag, each honouring only the value "1", and the runtime log cap. Five sites are
+in `scripts/`, whose modules run with `scripts/` rather than the repository on `sys.path` and so
+cannot import the registry. The rest read text whose empty-value policy is the caller's own.
+
+CHOSEN. (1) `env_value(name)` in `packages/orchestration/config.py` reads the LIVE environment,
+never the cached configuration, because every caller reads a value a process or a test may set
+after the configuration was loaded. Unset, an env-only variable answers its spec's default and
+any other answers None, so a caller whose setting `remedy.toml` may carry goes on to it. A
+boolean reads as yes for 1, true or yes, the words `_coerce_value` honours, so the UI flags and
+the strict flag now also accept true and yes. A whole number or number that does not parse
+raises ValueError naming the variable and the type, EMPTY INCLUDED: an empty
+`REMEDY_RUNTIME_LOG_MAX`, which read as no cap, now fails the supervisor's log pump loudly, which
+`remedy doctor core` also reports. An unregistered name raises KeyError. (2) The eleven typed
+sites move onto it, and the Claude planner's private default constant is deleted. (3)
+`tests/orchestration/test_env_registry.py` holds the line: a typed variable read straight off the
+environment under `packages/` or `apps/`, through a literal or a module constant, is a failure
+unless it is one of the two named port reads, which raise their own `RuntimeConfigError` and
+check the port's range.
+
+ALTERNATIVES. Read through the cached `get_config()` — rejected for (1). Move every read,
+text and scripts included — rejected: the scripts cannot import the registry, and a text read's
+empty-value policy differs per caller. Keep "1" as the only yes for the UI flags — rejected: one
+variable would then mean different things to `remedy doctor core` and to its reader.
+
+REVERSE by deleting this paragraph and `env_value`, restoring the eleven reads and the Claude
+planner's `_DEFAULT_TIMEOUT_SEC` from git history at `0a529d69`, and deleting the reader tests
+and the typed-read guard from `tests/orchestration/test_env_registry.py`.
+
+DECISION F279 D5 (2026-09-23, round 5) — THE BLOCK LINTER IS `remedy integrity block <path>`,
+SEVEN RULES OVER SEVEN LIVE ITEMS, EACH HELD TO ITS ITEM BY THE CHECKLIST'S OWN TEXT.
+
+CONTEXT. T003 names the command `remedy block lint <path>`. A `block` group would be the
+catalog's thirty-second, and `tests/cli/test_cli_ux.py` pins the group partition DECISION
+amend0905-vocab D4 ruled; the `integrity` group already holds the self-build pre-handoff check,
+which is what a lint of a block before a worker sees it is. Measured by the reviewer at
+`182e7ea0`: the checklist's live items run 1 to 16, 18, 20 to 31 and 33 to 37, and the same file
+numbers a second list, the verification tiers, with the same leading shape; the ledger and its
+archive already register four ids twice, `R-0809`, `R-0958`, `R-0959` and `R-0960`.
+
+CHOSEN. (1) The command is `remedy integrity block <path>`, read-only, `--json`, exit 1 on any
+violation, one result per rule naming the item number and the checklist sentence it enforces.
+(2) The rules are the ones T003 lists, mapped to the items that state them: item 1, the block's
+line count against 400; item 3, a `plan.md` payload in the block's payload table under 50 lines;
+item 10, a stated open-findings count against the open set recomputed from the ledger; item 24,
+every repository path a fenced command names resolves on disk unless the block declares it a
+NEW FILE; item 30, every id the linted text registers is new to the ledger and the archive,
+which is the part of "no duplicate R-ids" a block can still prevent, the four existing
+duplicates being history; item 31, a gate the block orders before the handback commit does not
+itself run after it; and item 37, no line is a run of one repeated character, a bare code fence
+excepted because its length is Markdown syntax. (3) `tests/orchestration/test_block_lint.py`
+reads the live item numbers from the checklist's own region, and holds every rule to a live
+number and to a sentence that item really contains, so pointing a rule at a retired number, or
+a rule whose item is reworded, fails the guard. (4) The rules read the reviewer's current block
+shape, the payload table and the "G1 to G5 run before C7 is written" sentence; a block written
+otherwise answers "nothing to check" for those items, never a false failure.
+
+ALTERNATIVES. A new `block` group — rejected for the D4 partition. A rule over the whole
+ledger for duplicate ids — rejected: it fails on four landed duplicates no block can repair,
+and a lint that always fails is read by nobody.
+
+REVERSE by deleting this paragraph, `packages/orchestration/block_lint.py`,
+`tests/orchestration/test_block_lint.py`, the `integrity.block` catalog entry and handler, and the
+module's line in `tests/orchestration/import_reachability_allowlist.txt`, and by restoring T003's
+acceptance line in `docs/roadmap/features/T2_F279.md` from git history at `182e7ea0`.
+
+DECISION F279 D6 (2026-09-23, round 6) — `remedy doctor toolchain` REPORTS THE RUNTIME
+DEPENDENCIES AND THE `dev` EXTRA, ASKS THE PACKAGE INDEX ONLY WHEN ALLOWED, AND NEVER GUESSES.
+
+CONTEXT. T004 orders a report of each pinned tool's installed, pinned and newest version, the
+newest "network permitting; unknown offline, never 0". `remedy doctor core` promises no network.
+Measured by the reviewer at `86e12317` in its own shell: installed `psutil` 5.9.0 against a pin of
+7.2.2, `pytest` 9.0.3 against 9.1.1 and `mypy` 2.1.0 against 2.3.1, while the package index names
+`ruff` 0.16.8 against the pinned 0.15.17 — the drift the report exists to show.
+
+CHOSEN. (1) The tools reported are Remedy's own dependencies and its `dev` extra as
+`pyproject.toml` declares them, the set T004's refresh order raises; the `ollama` client extra is
+pinned for CI but is not a tool the refresh order moves. (2) `remedy doctor toolchain` is a new
+command beside `doctor core`, which keeps its no-network promise; `--offline` skips the index,
+and any fetch that fails, times out after five seconds or answers nothing reads "unknown". (3)
+The report is advisory and always exits 0: a drifted developer environment is information, not
+a failure. (4) `packages/orchestration/toolchain.py` holds the report and joins the entry points'
+import closure, so its line is added to `tests/orchestration/import_reachability_allowlist.txt`.
+(5) `tests/orchestration/test_ci_workflow.py` asserts the matrix names exactly two versions, the
+first being the floor `requires-python` promises.
+
+ALTERNATIVES. Fold the report into `doctor core` — rejected: that command's description promises
+no network. Report "0" or leave the column out when offline — rejected: T004 says unknown.
+
+REVERSE by deleting this paragraph, `packages/orchestration/toolchain.py`,
+`tests/orchestration/test_toolchain.py`, the `doctor.toolchain` catalog entry and handler, the
+module's allowlist line, its name in the handler-set test of `tests/cli/test_worker_facade_cmd.py`,
+and the matrix test in `tests/orchestration/test_ci_workflow.py`.
+
+DECISION F279 D7 (2026-09-23, round 7) — THE TOOLCHAIN REFRESH ORDER IS A JOB FILE, AND THE
+SELF-USE GENERATOR QUEUES IT VERBATIM, FIRST, AT MOST EVERY FOURTEEN DAYS.
+
+CONTEXT. T004 orders `docs/orders/toolchain-refresh.md`, a recurring self-use order the
+generator may mint an item from no more than once every fourteen days. Measured by the reviewer
+at `564b54e3`: a self-use item is a job file (`# Job:` title, `## Task N` sections, an
+`Acceptance:` list each), a queue entry carries no date, and the generator's ledger tier always
+has an eligible finding, so a tier placed after it is never reached. The queue holds no pending
+item, so F279's own closure will be the first to call the generator after this lands.
+
+CHOSEN. (1) The order file IS a job file of five tasks — find what can move, read the release
+notes first, raise the pins and regenerate `constraints.txt` with its header command, repair and
+run the whole suite once, open a pull request only on a green suite and never merge — and the
+generator queues it byte for byte. (2) The order tier comes before the ledger tier and answers
+only when no queue entry from the order is younger than fourteen days; the day an item was
+queued is stamped into its `provenance` and read back from it. (3) An order file that is not a
+job raises rather than queues. (4) The tier reads the repository's own order file by default;
+`tests/orchestration/test_self_use_generator.py` points that default at a missing file for the
+tests of the other tiers, and the one end-to-end runner test names a missing order file, because
+both exercise the ledger tier against a fixture queue. (5) `docs/README.md` gains a Maintenance
+Orders section and a quick-find row, and `tests/docs/test_toolchain_refresh_order.py` pins the
+file's headings, the acceptance list under each task and the promises T004 makes. (6) The
+consequence is deliberate: F279's closure queues the order as its self-use item, and its run
+stops at the approval gate like every self-use run, with nothing merged.
+
+ALTERNATIVES. Put the order after the ledger tier — rejected: it would never be reached. A date
+field in the queue schema — rejected: a schema change for one tier, when the provenance string
+already records where an item came from.
+
+REVERSE by deleting this paragraph, `docs/orders/toolchain-refresh.md` with its index rows and
+its docs test, the order tier and its tests in `packages/orchestration/self_use_generator.py`
+and `tests/orchestration/test_self_use_generator.py`, and the `order_path` argument in
+`tests/orchestration/test_self_use_runner.py`.

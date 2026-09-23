@@ -13,11 +13,17 @@ PENDING item when the queue is empty. Consumption stays the closure round's
 own edit (DECISION F257 D2, unchanged), so a generated item still needs a
 human's — or the closure round's own — decision before it is ever run.
 
-Three sources are tried in order, exactly the priority
-``docs/roadmap/features/T5_F258.md`` T001 specifies. Only the first is real
-today; DECISION F258 D2 records why the other two are honest ``None``
-placeholders rather than half-built guesses:
+A standing maintenance ORDER is tried first, then the three sources
+``docs/roadmap/features/T5_F258.md`` T001 specifies, in that order. Of those three
+only the first is real today; DECISION F258 D2 records why the other two are
+honest ``None`` placeholders rather than half-built guesses:
 
+  0. THE TOOLCHAIN REFRESH ORDER (T2_F279 T004, DECISION F279 D7).
+     ``docs/orders/toolchain-refresh.md`` is itself a job file, queued VERBATIM,
+     and no more than once every fourteen days: the date it was last queued is
+     read back out of the provenance this tier stamps on its item. It comes
+     first because the ledger tier always has an eligible finding to offer, so
+     an order placed after it would never be reached.
   1. THE FINDING LEDGER. The oldest OPEN (no ``Done:`` line) Low or Medium
      finding in ``.agent/live_review.md`` that no existing queue entry already
      targets (R-0838), rendered as a job whose one task quotes the finding
@@ -67,6 +73,7 @@ from __future__ import annotations
 
 import json
 import re
+from datetime import date, timedelta
 from pathlib import Path
 
 from packages.orchestration.self_use_queue import (
@@ -91,6 +98,15 @@ _QUEUE_ID_RE = re.compile(r"^SU-(\d{3})$")
 _LEDGER_PROVENANCE = "generated (self-use-generator tier 1, ledger scan, {r_id})"
 _LEDGER_PROVENANCE_RE = re.compile(
     r"^generated \(self-use-generator tier 1, ledger scan, (R-\d+)\)$"
+)
+
+#: THE ORDER TIER. The order file, how often it may be queued, and the provenance
+#: that records the day it was, which is how the next call knows whether it is due.
+ORDER_RELATIVE_PATH = "docs/orders/toolchain-refresh.md"
+ORDER_CADENCE_DAYS = 14
+_ORDER_PROVENANCE = "generated (self-use-generator order tier, {path}, {day})"
+_ORDER_PROVENANCE_RE = re.compile(
+    r"^generated \(self-use-generator order tier, (?P<path>[^,]+), (?P<day>\d{4}-\d{2}-\d{2})\)$"
 )
 
 #: Severities this generator's Tier 1 will pick from — never High or Critical,
@@ -158,6 +174,49 @@ def default_ledger_path() -> Path:
     """Where the finding ledger lives, resolved the same way the queue is."""
     root = Path(__file__).resolve().parents[2]
     return root / ".agent" / "live_review.md"
+
+
+def default_order_path() -> Path:
+    """Where the toolchain refresh order lives, resolved the same way the queue is."""
+    return Path(__file__).resolve().parents[2] / ORDER_RELATIVE_PATH
+
+
+def _last_order_day(queue_path: Path | None) -> date | None:
+    """The most recent day an item from the order was queued, consumed or not."""
+    days = [
+        date.fromisoformat(match.group("day"))
+        for match in (_ORDER_PROVENANCE_RE.match(entry.provenance)
+                      for entry in load_self_use_queue(queue_path))
+        if match is not None and match.group("path") == ORDER_RELATIVE_PATH
+    ]
+    return max(days) if days else None
+
+
+def _order_tier(queue_path: Path | None, order_path: Path, today: date) -> SelfUseQueueEntry | None:
+    """Tier 0: the toolchain refresh order, verbatim, when fourteen days have passed."""
+    if not order_path.is_file():
+        return None
+    last = _last_order_day(queue_path)
+    if last is not None and today - last < timedelta(days=ORDER_CADENCE_DAYS):
+        return None
+    try:
+        text = order_path.read_text(encoding="utf-8")
+    except OSError as exc:
+        raise SelfUseGenerationError(f"{order_path}: unreadable ({exc})") from exc
+    title = next((line[len("# Job:"):].strip() for line in text.splitlines()
+                  if line.startswith("# Job:")), "")
+    if not title or not re.search(r"^## Task 1\b", text, re.M):
+        raise SelfUseGenerationError(
+            f"{order_path}: not a job file — it needs a `# Job:` title and a `## Task 1` heading")
+    intro = text.split("\n## ", 1)[0].split("\n", 1)[1].strip()
+    return SelfUseQueueEntry(
+        id=_next_queue_id(queue_path),
+        title=title,
+        why=intro,
+        job_markdown=text,
+        consumed_by="",
+        provenance=_ORDER_PROVENANCE.format(path=ORDER_RELATIVE_PATH, day=today.isoformat()),
+    )
 
 
 def _targeted_findings(queue_path: Path | None) -> frozenset[str]:
@@ -293,7 +352,11 @@ def _doctor_warning_tier(_queue_path: Path | None) -> SelfUseQueueEntry | None:
 
 
 def generate_self_use_item(
-    queue_path: Path | None = None, ledger_path: Path | None = None
+    queue_path: Path | None = None,
+    ledger_path: Path | None = None,
+    *,
+    order_path: Path | None = None,
+    today: date | None = None,
 ) -> SelfUseQueueEntry | None:
     """The next item to append, from the first tier that has one, or ``None``.
 
@@ -303,6 +366,10 @@ def generate_self_use_item(
     behind the "only when the queue is empty" rule.
     """
     ledger = ledger_path or default_ledger_path()
+
+    order_result = _order_tier(queue_path, order_path or default_order_path(), today or date.today())
+    if order_result is not None:
+        return order_result
 
     ledger_result = _ledger_tier(queue_path, ledger)
     if ledger_result is not None:
@@ -341,7 +408,11 @@ def append_generated_item(entry: SelfUseQueueEntry, queue_path: Path | None = No
 
 
 def generate_and_append_if_empty(
-    queue_path: Path | None = None, ledger_path: Path | None = None
+    queue_path: Path | None = None,
+    ledger_path: Path | None = None,
+    *,
+    order_path: Path | None = None,
+    today: date | None = None,
 ) -> SelfUseQueueEntry | None:
     """The seam a closure round calls: generate and append, but ONLY when empty.
 
@@ -352,7 +423,7 @@ def generate_and_append_if_empty(
     """
     if pending_self_use_items(queue_path):
         return None
-    entry = generate_self_use_item(queue_path, ledger_path)
+    entry = generate_self_use_item(queue_path, ledger_path, order_path=order_path, today=today)
     if entry is None:
         return None
     append_generated_item(entry, queue_path)

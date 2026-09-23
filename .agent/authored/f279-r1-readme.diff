@@ -1,0 +1,19 @@
+diff --git a/README.md b/README.md
+index 5d8605d5..667a384c 100644
+--- a/README.md
++++ b/README.md
+@@ -343,6 +343,14 @@ cd remedy
+ pip install -e ".[dev]"          # add ,ollama for the local planner provider
+ ```
+ 
++CI installs an exact, hash-checked toolchain instead. To reproduce it, install the
++pinned set first and then Remedy without resolving anything:
++
++```bash
++pip install --require-hashes -r constraints.txt
++pip install --no-deps -e .
++```
++
+ ## Quickstart
+ 
+ ```bash

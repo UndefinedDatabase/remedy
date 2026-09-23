@@ -66,6 +66,7 @@ packages.orchestration.artifact_index
 packages.orchestration.artifact_summary
 packages.orchestration.autonomy_readiness
 packages.orchestration.bench_history
+packages.orchestration.block_lint
 packages.orchestration.brain_detail
 packages.orchestration.brain_viewer
 packages.orchestration.brain_viewer_theme
@@ -248,6 +249,7 @@ packages.orchestration.token_ledger
 packages.orchestration.token_measurement
 packages.orchestration.token_policy
 packages.orchestration.token_truth
+packages.orchestration.toolchain
 packages.orchestration.trust_report
 packages.orchestration.ui_app_shell
 packages.orchestration.ui_copy
