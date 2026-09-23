@@ -17,7 +17,7 @@ and three older findings carry a new measured sentence; the self-use
 runner now asks `run_job` for a write tool and for a ten-minute per-call
 timeout, and `parse_order_budget` lets an order file declare the budget it
 needs while the runner refuses loudly when it cannot fit the order. Next
-is Part 2D, the `Budget:` line in `docs/orders/toolchain-refresh.md`.
+is Part 2E, the product default for `--claude-cli-write-mode`.
 
 ## Next Steps
 

@@ -18984,3 +18984,37 @@ contradicts, which is the class of defect R-0533 exists to punish. THE RULING: b
 receive the MEASURED decomposition instead of the hypothesis, and Part 3's own sentence on R-1035
 is that measurement rather than a second one. REVERSE by deleting this paragraph; the ledger text
 is append-only and is corrected by dating, never by editing.
+
+## DECISION amend0923-selfuse-write D1 — `docs/orders/toolchain-refresh.md` declares five tasks, forty calls, ten dollars and fifteen minutes per call (2026-09-23)
+
+The order file now carries one line, `Budget: max_tasks=5, max_provider_calls=40,
+max_cost_usd=10.00, timeout_sec=900`, directly under its opening paragraph and above the first
+`## Task` heading, where `packages.orchestration.self_use_runner.parse_order_budget` reads it and
+`packages.orchestration.pingpong_job.parse_job_file` does not. EACH NUMBER HAS A REASON.
+`max_tasks=5` is the order's own task count, five, measured by counting its `## Task` headings;
+anything smaller makes the runner refuse the order it was written to execute.
+`max_provider_calls=40` is eight per task, which is the per-item allowance
+`_MAX_PROVIDER_CALLS` already grants a single-finding repair — a build round, a review round, two
+repair rounds and room for a retry — carried across all five tasks rather than shared between
+them. `max_cost_usd=10.00` is ten times the one-dollar bound written for a one-task item, which is
+the same proportion; the run this replaces spent $1.37 on a single task before stopping, so a
+five-task order that reads release notes from the network and runs the whole suite is not going to
+fit in one dollar. `timeout_sec=900` is fifteen minutes, chosen because Task 4 runs the WHOLE
+pytest suite in one call: that suite alone takes over two minutes of wall clock in this repository,
+and the provider must read its output and repair against it inside the same call, so the 600-second
+self-use default is too tight here even though it is right in general. REVERSIBLE: delete the
+`Budget:` line and the order falls back to the runner's own defaults, which is exactly the state
+this amendment found — a run that refuses before spending, rather than one that spends and
+delivers nothing, because `run_next_self_use_item` now checks the task count first.
+
+## DECISION amend0923-selfuse-write D2 — `scripts/self_use_queue.json` is NOT edited by hand, so SU-028 keeps the text it was queued with (2026-09-23)
+
+`scripts/self_use_queue.json` holds the self-use queue, and its entry `SU-028` carries a VERBATIM
+copy of `docs/orders/toolchain-refresh.md` as it stood when the generator queued it on 2026-09-23,
+before the `Budget:` line of DECISION D1 existed. That entry is already consumed by F279's
+closure. Editing the queued copy by hand would rewrite an item's recorded text after the run that
+consumed it, which is falsifying a record rather than fixing a defect, and the queue is generated
+rather than authored. THE RULING: the queue file is left exactly as it is. The next order-tier item
+the generator appends copies the order file as it then stands and therefore carries the `Budget:`
+line automatically, with no hand edit anywhere. REVERSE by deleting this paragraph; nothing on disk
+changes either way.
