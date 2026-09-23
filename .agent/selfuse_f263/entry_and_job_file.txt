@@ -1,0 +1,5 @@
+Entry ID: SU-029
+Entry Title: Address ledger finding R-1000
+Entry Provenance: generated (self-use-generator tier 1, ledger scan, R-1000)
+Entry Consumed By: 
+Job File Path: .remedy-wt/f263-r7-selfuse/SU-029.md
