@@ -1949,8 +1949,8 @@ def _cmd_job_budget(
     # money its run's last safe point read, but that figure is as old as that
     # safe point and the F103 ledger is where a real provider cost lives, so a
     # money-limited job still reads it here, exactly as run_job's safe point does,
-    # and the persisted figure stands only when the read fails or no ledger
-    # project resolves.
+    # and the persisted figure stands when the read fails, no ledger project
+    # resolves, or the ledger names no call for this job (R-1040).
     # READ-ONLY: `query_cost` never creates a ledger and never writes one, which
     # is what keeps the show form of `remedy job budget` writing nothing. Any failure
     # leaves the cost UNMEASURED (None, never 0.0 — P6) and every other limit
@@ -1974,13 +1974,17 @@ def _cmd_job_budget(
             if _ledger_project is not None:
                 _cost, _priced, _unpriced = collect_ledger_cost_for_job(
                     job_id=_job_display_id, project_id=_ledger_project)
-                counters = _replace(
-                    counters,
-                    measured_cost_usd=_cost,
-                    priced_call_count=_priced,
-                    unpriced_call_count=_unpriced,
-                )
-                evaluation = evaluate_budget(_budgets, counters)
+                # R-1040: an answer naming no call at all is a ledger holding no row
+                # for this job, not a measurement, so the figure the job persisted at
+                # its last safe point stands; one call named is a reading and wins.
+                if _priced or _unpriced:
+                    counters = _replace(
+                        counters,
+                        measured_cost_usd=_cost,
+                        priced_call_count=_priced,
+                        unpriced_call_count=_unpriced,
+                    )
+                    evaluation = evaluate_budget(_budgets, counters)
         except Exception as _cost_exc:  # noqa: BLE001 — a broken cost ledger read must not crash budget display
             # Recorded BEFORE the log call, so a logging subsystem that is itself
             # broken cannot cost the operator the diagnosis. The displayed cost is

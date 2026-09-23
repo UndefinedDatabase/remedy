@@ -3572,7 +3572,9 @@ def _decode_budgets_field(raw: Any) -> dict[str, Any] | None:
         from datetime import datetime as _dt
         from datetime import timezone as _tz
         try:
-            parsed = _dt.fromisoformat(dl)
+            # R-1005: the canonical form below ends in `Z`, which `fromisoformat` reads
+            # only from Python 3.11 on; spelled out here, this decoder reads its own output.
+            parsed = _dt.fromisoformat(dl[:-1] + "+00:00" if dl.endswith("Z") else dl)
         except (ValueError, TypeError):
             raise ManifestError(f"manifest.budgets.deadline is not valid ISO-8601: {dl!r}")
         if parsed.tzinfo is None:
@@ -4409,6 +4411,10 @@ def build_run_manifest(job: Any, *, status: str, episode_id: str, created_at: st
             budgets_snapshot = job_budgets.model_dump(mode="json")
         elif isinstance(job_budgets, dict):
             budgets_snapshot = dict(job_budgets)
+        # R-1005: bind the budgets in the form the strict decoder returns them in — a
+        # deadline in canonical UTC, an all-null object as null — so the pre-publication
+        # round-trip compares like with like and a deadline stop can finalize.
+        budgets_snapshot = _decode_budgets_field(budgets_snapshot)
     return RunManifestV1(
         job_id=str(getattr(job, "job_id", "")),
         episode_id=episode_id,
