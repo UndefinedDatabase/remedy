@@ -434,6 +434,105 @@ _CONFIG_KEY_SPECS: tuple[ConfigKeySpec, ...] = (
         default=False,
         env_only=True,
     ),
+    # F279 T001 (DECISION F279 D3): the names the shell scripts under scripts/ read, and the two
+    # opt-ins an operator sets to run the real-Ollama tests, so `remedy doctor core` never calls a
+    # variable Remedy itself reads unknown.
+    ConfigKeySpec(
+        key="tests.runtime_node_timeout_seconds",
+        env_var="REMEDY_NODE_TIMEOUT_SEC",
+        description=(
+            "Outer wall timeout of each node scripts/remedy_test_runtime.sh runs, in "
+            "seconds (env-only)"
+        ),
+        value_type=int,
+        default=90,
+        env_only=True,
+    ),
+    ConfigKeySpec(
+        key="tests.pytest_lock_file",
+        env_var="REMEDY_PYTEST_LOCK",
+        description=(
+            "Lock file scripts/remedy_pytest.sh and scripts/remedy_coverage.sh hold so two "
+            "suite runs never overlap (env-only)"
+        ),
+        value_type=str,
+        default="/tmp/remedy-pytest.lock",
+        env_only=True,
+    ),
+    ConfigKeySpec(
+        key="tests.pytest_lock_wait_seconds",
+        env_var="REMEDY_PYTEST_LOCK_WAIT",
+        description=(
+            "Seconds scripts/remedy_pytest.sh waits for that lock; 0 refuses at once "
+            "(env-only)"
+        ),
+        value_type=int,
+        default=0,
+        env_only=True,
+    ),
+    ConfigKeySpec(
+        key="review.package_dir",
+        env_var="REMEDY_REVIEW_DIR",
+        description=(
+            "Directory scripts/make_review_zip.sh writes review packages to; a relative "
+            "path is read from the repository root, and $HOME/Repos/remedy-history/zips is "
+            "used when unset (env-only)"
+        ),
+        value_type=str,
+        default=None,
+        env_only=True,
+    ),
+    ConfigKeySpec(
+        key="tests.run_real_ollama",
+        env_var="REMEDY_RUN_REAL_OLLAMA",
+        description=(
+            "Run scripts/remedy_test_real_providers.sh against a real Ollama server instead "
+            "of skipping (env-only flag)"
+        ),
+        value_type=bool,
+        default=False,
+        env_only=True,
+    ),
+    ConfigKeySpec(
+        key="tests.smoke_repo",
+        env_var="REMEDY_SMOKE_REPO",
+        description=(
+            "Scratch repository scripts/remedy_smoke.sh builds and drives (env-only)"
+        ),
+        value_type=str,
+        default="/tmp/remedy-target-repo",
+        env_only=True,
+    ),
+    ConfigKeySpec(
+        key="tests.smoke_unload_models",
+        env_var="REMEDY_SMOKE_UNLOAD_MODELS",
+        description=(
+            "Unload the Ollama models scripts/remedy_smoke.sh loaded when it ends (env-only "
+            "flag)"
+        ),
+        value_type=bool,
+        default=False,
+        env_only=True,
+    ),
+    ConfigKeySpec(
+        key="tests.real_ollama_smoke",
+        env_var="REMEDY_REAL_OLLAMA_SMOKE",
+        description=(
+            "Opt in to the real-Ollama smoke tests, which need a running Ollama server with "
+            "a model (env-only flag)"
+        ),
+        value_type=bool,
+        default=False,
+        env_only=True,
+    ),
+    ConfigKeySpec(
+        key="tests.smoke_ollama",
+        env_var="REMEDY_SMOKE_OLLAMA",
+        description="Opt in to the real-Ollama builder bridge smoke test (env-only flag)",
+        value_type=bool,
+        default=False,
+        env_only=True,
+    ),
     ConfigKeySpec(
         key="scope.allow",
         env_var="REMEDY_SCOPE_ALLOW",
@@ -971,6 +1070,126 @@ def all_key_specs() -> tuple[ConfigKeySpec, ...]:
 
 
 # ---------------------------------------------------------------------------
+# The environment against the registry (F279 T001, DECISION F279 D3)
+# ---------------------------------------------------------------------------
+
+#: The values a boolean variable reads as True. :func:`_coerce_value` reads every other value as
+#: False, so only the words below say what they mean; anything else is reported unparsable.
+BOOL_TRUE_WORDS: tuple[str, ...] = ("1", "true", "yes")
+BOOL_FALSE_WORDS: tuple[str, ...] = ("0", "false", "no", "")
+ENV_PREFIX = "REMEDY_"
+
+#: How each declared type is named to a person, in the guide and in `remedy doctor core`.
+_TYPE_WORDS: dict[type, str] = {
+    int: "a whole number",
+    float: "a number",
+    bool: "yes or no (1, true, yes / 0, false, no)",
+    list: "a comma-separated list",
+    dict: "a table, which only remedy.toml can carry",
+    str: "text",
+}
+
+
+def type_words(spec: ConfigKeySpec) -> str:
+    return _TYPE_WORDS[spec.value_type]
+
+
+def env_value_parses(raw: str, spec: ConfigKeySpec) -> bool:
+    """Whether `raw` reads as `spec`'s declared type the way :func:`_coerce_value` reads it."""
+    if spec.value_type is int:
+        try:
+            int(raw)
+        except ValueError:
+            return False
+        return True
+    if spec.value_type is float:
+        try:
+            float(raw)
+        except ValueError:
+            return False
+        return True
+    if spec.value_type is bool:
+        return raw.lower() in BOOL_TRUE_WORDS + BOOL_FALSE_WORDS
+    if spec.value_type is dict:
+        return False
+    return True
+
+
+def unknown_env_variables(environ: Mapping[str, str]) -> list[tuple[str, str | None]]:
+    """Every `REMEDY_` name set in `environ` that no spec registers, with its closest registered name.
+
+    Names are compared after the shared prefix, which every candidate carries and which would
+    otherwise make every name look close to every other.
+    """
+    import difflib
+
+    registered = {spec.env_var for spec in _CONFIG_KEY_SPECS}
+    suffixes = {name[len(ENV_PREFIX):]: name for name in registered}
+    found: list[tuple[str, str | None]] = []
+    for name in sorted(environ):
+        if not name.startswith(ENV_PREFIX) or name in registered:
+            continue
+        close = difflib.get_close_matches(name[len(ENV_PREFIX):], sorted(suffixes), n=1, cutoff=0.6)
+        found.append((name, suffixes[close[0]] if close else None))
+    return found
+
+
+def unparsable_env_variables(environ: Mapping[str, str]) -> list[tuple[str, ConfigKeySpec]]:
+    """Every registered variable set in `environ` whose value does not read as its declared type."""
+    return [(spec.env_var, spec) for spec in sorted(_CONFIG_KEY_SPECS, key=lambda s: s.env_var)
+            if spec.env_var in environ and not env_value_parses(environ[spec.env_var], spec)]
+
+
+ENVIRONMENT_GUIDE_PATH = "docs/guides/environment.md"
+
+
+def _guide_default(spec: ConfigKeySpec) -> str:
+    if spec.default is None:
+        return "none"
+    if spec.value_type is bool:
+        return "yes" if spec.default else "no"
+    return f"`{spec.default}`"
+
+
+def render_environment_guide() -> str:
+    """`docs/guides/environment.md`, rendered from the registry; the committed file must equal it."""
+    lines = [
+        "# Environment Variables",
+        "",
+        "> GENERATED from the key registry in `packages/orchestration/config.py` by",
+        "> `render_environment_guide()`. Do not edit it by hand:",
+        "> `tests/docs/test_environment_guide.py` fails whenever the registry and this file differ.",
+        "> Regenerate it from the repository root with",
+        "> `python3 -c \"from packages.orchestration.config import write_environment_guide; "
+        "write_environment_guide()\"`.",
+        "",
+        "Every environment variable Remedy reads is listed here, once. A variable set in the",
+        "environment wins over the same setting in `remedy.toml`, and `remedy.toml` wins over the",
+        "built-in default. A variable marked env-only has no `remedy.toml` key and can only be set",
+        "in the environment. `remedy doctor core` warns about a `REMEDY_` variable that is not in",
+        "this list, naming the closest one that is, and about a listed variable whose value does",
+        "not read as its type; neither warning stops Remedy from running.",
+        "",
+        "| Variable | Type | Default | remedy.toml key | Description |",
+        "|---|---|---|---|---|",
+    ]
+    for spec in sorted(_CONFIG_KEY_SPECS, key=lambda s: s.env_var):
+        key = "env-only" if spec.env_only else f"`{spec.key}`"
+        description = " ".join(spec.description.split()).replace("|", "\\|")
+        lines.append(f"| `{spec.env_var}` | {type_words(spec)} | {_guide_default(spec)} | {key} "
+                     f"| {description} |")
+    return "\n".join(lines) + "\n"
+
+
+def write_environment_guide(root: Path | None = None) -> Path:
+    """Write the rendered guide under `root` (the repository root by default) and return its path."""
+    base = root if root is not None else Path(__file__).resolve().parents[2]
+    path = base / ENVIRONMENT_GUIDE_PATH
+    path.write_text(render_environment_guide(), encoding="utf-8")
+    return path
+
+
+# ---------------------------------------------------------------------------
 # TOML loading
 # ---------------------------------------------------------------------------
 
@@ -1051,7 +1270,7 @@ def _coerce_value(raw: str, spec: ConfigKeySpec) -> Any:
     if spec.value_type is int:
         return int(raw)
     if spec.value_type is bool:
-        return raw.lower() in ("1", "true", "yes")
+        return raw.lower() in BOOL_TRUE_WORDS
     if spec.value_type is list:
         return [s.strip() for s in raw.split(",") if s.strip()]
     return raw
