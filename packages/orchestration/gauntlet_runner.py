@@ -559,7 +559,7 @@ def run_order(order: GauntletOrder, *, campaign_root: Path, real_data_root: Path
                                   entries, mission, injectors, before,
                                   data_root, models, template_dir)
             gate = latest_gate_result(mission)
-    except Exception as exc:  # a crashed run is a FAILED run, with evidence
+    except Exception as exc:  # noqa: BLE001 — a crashed run becomes a failed run, with evidence
         crashed = f"{type(exc).__name__}: {exc}"
         terminal = terminal or TERMINAL_RUNNER_CRASHED
         gate = None
@@ -572,7 +572,7 @@ def run_order(order: GauntletOrder, *, campaign_root: Path, real_data_root: Path
                                       time.monotonic() - started,
                                       entries, mission, injectors, before,
                                       data_root, models, template_dir)
-        except Exception as collect_exc:  # R-0180: the fallback keeps the run
+        except Exception as collect_exc:  # noqa: BLE001 — collector failure falls back to a minimal evidence body
             body = _minimal_body(order, before)
             body["terminal_status"] = terminal
             body["postmortems"] = [{
@@ -698,7 +698,7 @@ def run_campaign(orders: tuple[GauntletOrder, ...], campaign_root: Path, *,
         try:
             outcome = run_order(order, campaign_root=campaign_root,
                                 real_data_root=real_root, deps=deps, index=index)
-        except Exception as exc:  # R-0180: the order dies, the campaign does not
+        except Exception as exc:  # noqa: BLE001 — one order's crash must not stop the whole campaign
             outcome = OrderOutcome(
                 order_id=order.id,
                 run_dir=campaign_root / f"run-{index:02d}-{order.id}",

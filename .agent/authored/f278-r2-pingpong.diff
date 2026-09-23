@@ -1,0 +1,186 @@
+diff --git a/packages/orchestration/checkpoints.py b/packages/orchestration/checkpoints.py
+index 2042d9d8..485c7cd9 100644
+--- a/packages/orchestration/checkpoints.py
++++ b/packages/orchestration/checkpoints.py
+@@ -51,7 +51,7 @@ from datetime import datetime, timezone
+ from pathlib import Path
+ from typing import Any
+ 
+-from packages.orchestration.pingpong_job import atomic_write_text as _atomic_write
++from packages.common.secure_fs import durable_write
+ 
+ _log = logging.getLogger("remedy.checkpoints")
+ 
+@@ -337,7 +337,7 @@ def write_checkpoint(job_id: str, checkpoint: Checkpoint,
+     directory = checkpoint_dir(job_id)
+     directory.mkdir(parents=True, exist_ok=True)
+     path = directory / CHECKPOINT_FILENAME.format(index=checkpoint.cycle_index)
+-    _atomic_write(path, json.dumps(checkpoint.to_json(), indent=2, sort_keys=True))
++    durable_write(path, json.dumps(checkpoint.to_json(), indent=2, sort_keys=True))
+     apply_retention(job_id, retention)
+     return path
+ 
+diff --git a/packages/orchestration/mission_compiler.py b/packages/orchestration/mission_compiler.py
+index 9246de2e..8a5a83aa 100644
+--- a/packages/orchestration/mission_compiler.py
++++ b/packages/orchestration/mission_compiler.py
+@@ -41,6 +41,7 @@ from typing import Any
+ 
+ from pydantic import model_validator
+ 
++from packages.common.secure_fs import durable_write
+ from packages.orchestration.dod_compiler import DoDCompileResult, compile_dod
+ from packages.orchestration.mission_plan_schema import (
+     MAX_MILESTONE_DRAFT_JOBS,
+@@ -51,7 +52,6 @@ from packages.orchestration.mission_plan_schema import (
+     MissionPlan,
+     MissionPlanDraft,
+ )
+-from packages.orchestration.pingpong_job import atomic_write_text as _atomic_write
+ from packages.orchestration.prompt_facts import repo_facts_block
+ from packages.orchestration.prompt_segments import (
+     ComposedPrompt,
+@@ -558,7 +558,7 @@ def attach_milestone_dods(
+     for ms in plan.milestones:
+         result = compile_milestone_dod(goal, ms, call_fn)
+         filename = milestone_dod_filename(ms.id)
+-        _atomic_write(
++        durable_write(
+             evidence_dir / filename,
+             json.dumps(result.dod.model_dump(), indent=2, sort_keys=True))
+         milestones.append(ms.model_copy(update={"dod_ref": filename}))
+diff --git a/packages/orchestration/mission_state.py b/packages/orchestration/mission_state.py
+index 0f03b729..24aa39cd 100644
+--- a/packages/orchestration/mission_state.py
++++ b/packages/orchestration/mission_state.py
+@@ -55,9 +55,9 @@ from pathlib import Path
+ from typing import Any
+ from uuid import uuid4
+ 
++from packages.common.secure_fs import durable_write
+ from packages.orchestration.data_paths import missions_dir, normalize_job_id
+ from packages.orchestration.exec_guard import run_guarded_test_command
+-from packages.orchestration.pingpong_job import atomic_write_text as _atomic_write
+ 
+ #: Bumped whenever the record body changes shape.  A reader meeting a version
+ #: it does not know refuses that record rather than guessing at its meaning.
+@@ -396,7 +396,7 @@ def save_mission(mission: Mission, root: Path | None = None) -> Path:
+                 f"mission {mission.id} already exists with a different goal — "
+                 f"a changed goal is a new mission (remedy mission start)")
+     path.parent.mkdir(parents=True, exist_ok=True)
+-    _atomic_write(path, json.dumps(mission.to_json(), indent=2, sort_keys=True))
++    durable_write(path, json.dumps(mission.to_json(), indent=2, sort_keys=True))
+     return path
+ 
+ 
+@@ -974,7 +974,7 @@ def write_mission_verify_record(run: MissionFollowupRun) -> Path:
+     """Persist the follow-up run record atomically, next to the job's evidence."""
+     path = mission_verify_record_path(run.job_id)
+     path.parent.mkdir(parents=True, exist_ok=True)
+-    _atomic_write(path, json.dumps(run.to_json(), indent=2, sort_keys=True))
++    durable_write(path, json.dumps(run.to_json(), indent=2, sort_keys=True))
+     return path
+ 
+ 
+diff --git a/packages/orchestration/pingpong_job.py b/packages/orchestration/pingpong_job.py
+index dd8c9e4e..d9c9777a 100644
+--- a/packages/orchestration/pingpong_job.py
++++ b/packages/orchestration/pingpong_job.py
+@@ -22,7 +22,6 @@ import json as _json
+ import os
+ import re
+ import shutil
+-import tempfile
+ from dataclasses import dataclass, field, replace
+ from datetime import datetime, timezone
+ from pathlib import Path
+@@ -31,6 +30,7 @@ from typing import TYPE_CHECKING, Any
+ # F272 T002: the closed types JobPlan's administrative fields carry. Imported at
+ # module level and not under TYPE_CHECKING because `_import_job` reconstructs
+ # them at runtime from the job record's plain JSON.
++from packages.common.secure_fs import durable_write
+ from packages.core.models import Artifact, Budget, JobFences, RunState
+ 
+ # F260 D2: one minting function per KIND of id. This module names JOBs, TASKs and
+@@ -498,30 +498,6 @@ class JobStoreError(Exception):
+     """Raised when a job record exists and cannot be read."""
+ 
+ 
+-# The one atomic text writer: the job record below and the checkpoint, mission and
+-# compiled-mission records each write through it rather than carrying their own.
+-def atomic_write_text(path: Path, data: str) -> None:
+-    """Write ``data`` to ``path`` as UTF-8 by an fsynced replace, creating the parent.
+-
+-    An interrupted write leaves the previous file or the new one, never a torn file,
+-    and removes its temporary file.
+-    """
+-    path.parent.mkdir(parents=True, exist_ok=True)
+-    fd, tmp = tempfile.mkstemp(dir=str(path.parent), suffix=".tmp")
+-    try:
+-        with os.fdopen(fd, "wb") as fh:
+-            fh.write(data.encode("utf-8"))
+-            fh.flush()
+-            os.fsync(fh.fileno())
+-        os.replace(tmp, path)
+-    except BaseException:
+-        try:
+-            os.unlink(tmp)
+-        except OSError:
+-            pass
+-        raise
+-
+-
+ # ``root`` overrides the store's base directory for ONE call, which is how a caller
+ # reads or writes a job record outside the process data root (DECISION F275 D23).
+ # ``data_paths.job_record_path`` always accepted it; these three never passed it on.
+@@ -533,7 +509,8 @@ def _persist_job(job: JobPlan, root: Path | None = None) -> Path:
+     from packages.orchestration.data_paths import job_record_path
+ 
+     out = job_record_path(job.job_id, root)
+-    atomic_write_text(out, _json.dumps(_export_job(job), indent=2) + "\n")
++    out.parent.mkdir(parents=True, exist_ok=True)
++    durable_write(out, _json.dumps(_export_job(job), indent=2) + "\n")
+     return out
+ 
+ 
+diff --git a/tests/orchestration/test_checkpoints.py b/tests/orchestration/test_checkpoints.py
+index 1e05504a..dc7f88eb 100644
+--- a/tests/orchestration/test_checkpoints.py
++++ b/tests/orchestration/test_checkpoints.py
+@@ -291,13 +291,13 @@ class TestWriteFailureIsContained:
+         def boom(*_a, **_kw):
+             raise OSError("disk full")
+ 
+-        monkeypatch.setattr(cp, "_atomic_write", boom)
++        monkeypatch.setattr(cp, "durable_write", boom)
+         path, reason = record_cycle_checkpoint(JOB_ID, 1)
+         assert path is None
+         assert "disk full" in reason
+ 
+     def test_the_failure_is_logged_loudly(self, monkeypatch, caplog):
+-        monkeypatch.setattr(cp, "_atomic_write", lambda *_a, **_k: (_ for _ in ()).throw(
++        monkeypatch.setattr(cp, "durable_write", lambda *_a, **_k: (_ for _ in ()).throw(
+             OSError("disk full")))
+         with caplog.at_level("WARNING"):
+             record_cycle_checkpoint(JOB_ID, 1)
+@@ -368,7 +368,7 @@ class TestCycleBoundaryWiring:
+         assert loaded.job_snapshot_sha256.startswith("sha256:")
+ 
+     def test_a_failed_checkpoint_write_does_not_break_the_cycle(self, monkeypatch):
+-        monkeypatch.setattr(cp, "_atomic_write", lambda *_a, **_k: (_ for _ in ()).throw(
++        monkeypatch.setattr(cp, "durable_write", lambda *_a, **_k: (_ for _ in ()).throw(
+             OSError("disk full")))
+         job = _job()
+         result = _run_one_cycle(job)
+diff --git a/tests/orchestration/test_durable_write_guard.py b/tests/orchestration/test_durable_write_guard.py
+index b897bc44..b511d3a0 100644
+--- a/tests/orchestration/test_durable_write_guard.py
++++ b/tests/orchestration/test_durable_write_guard.py
+@@ -23,7 +23,6 @@ HELPER_NAME = re.compile(r"_?atomic_(private_)?write")
+ 
+ #: (module path, function name) — the copies not yet migrated. Only ever shrinks.
+ STILL_TO_MIGRATE = frozenset({
+-    ("packages/orchestration/pingpong_job.py", "atomic_write_text"),
+     ("packages/orchestration/proposed_tasks.py", "_atomic_write"),
+     ("packages/orchestration/real_test_execution.py", "_atomic_write"),
+     ("packages/orchestration/self_dogfood_execution.py", "_atomic_write"),

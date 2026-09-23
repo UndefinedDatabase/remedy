@@ -361,7 +361,7 @@ def apply_structured_patch(
                 "files_created": result.files_created,
                 "error_count": len(result.errors),
             })
-        except Exception:
+        except Exception:  # noqa: BLE001 — recording this event is best-effort; must not break the apply
             pass
 
     return result

@@ -862,7 +862,7 @@ def enforce_change_set(
             effective=effective,
         )
         persistence_status = "persisted"
-    except Exception as persist_exc:
+    except Exception as persist_exc:  # noqa: BLE001 — recording evidence is best effort; the violation still raises
         persistence_status = "failed"
         secondary_diagnostic = _sanitize_diagnostic(str(persist_exc))
         logger.error(

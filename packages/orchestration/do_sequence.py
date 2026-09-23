@@ -287,6 +287,32 @@ class OrderJobPlanError(Exception):
     """The task plan for an order could not be generated; the job is left unplanned."""
 
 
+# A plan's limits either hold or refuse the order. A budget or fence set that does not
+# validate is never dropped, because a job without it runs unbounded or unfenced (R-1037).
+def order_job_limits(merged_budgets: dict[str, Any] | None,
+                     merged_fences: dict[str, Any] | None) -> tuple[Any, Any]:
+    """The job's ``JobBudgets`` and ``JobFences`` from the merged plan values, or None for each.
+
+    Raises :class:`OrderJobPlanError` naming the set that failed to validate.
+    """
+    from packages.core.models import JobBudgets, JobFences
+
+    job_budgets = job_fences = None
+    if merged_budgets:
+        try:
+            job_budgets = JobBudgets(**{
+                k: v for k, v in merged_budgets.items() if k in JobBudgets.model_fields})
+        except (TypeError, ValueError) as exc:
+            raise OrderJobPlanError(f"job budgets rejected: {exc}") from exc
+    if merged_fences:
+        try:
+            job_fences = JobFences(**{
+                k: v for k, v in merged_fences.items() if k in JobFences.model_fields})
+        except (TypeError, ValueError) as exc:
+            raise OrderJobPlanError(f"job fences rejected: {exc}") from exc
+    return job_budgets, job_fences
+
+
 @dataclass
 class OrderJobPlan:
     """The one job planned for an order, and how its intake and plan were made."""
@@ -476,28 +502,12 @@ def plan_order_job(
                 validate_deliverable_plan(tasks)
             except DeliverablePlanError as exc:
                 raise OrderJobPlanError(f"task plan rejected: {exc}") from exc
-            from packages.core.models import JobBudgets, JobFences
             from packages.orchestration.budget_resolution import resolve_job_budgets
             config_budgets = resolve_job_budgets(project_root=repo)
             config_budgets_dict = config_budgets.model_dump(exclude_none=True) if config_budgets else None
             merged_budgets = apply_plan_budgets(config_budgets_dict, fp_result.plan.budgets)
             merged_fences = apply_plan_fences(None, fp_result.plan.fences)
-            job_budgets = None
-            if merged_budgets:
-                try:
-                    job_budgets = JobBudgets(**{
-                        k: v for k, v in merged_budgets.items()
-                        if k in JobBudgets.model_fields})
-                except Exception:
-                    pass
-            job_fences = None
-            if merged_fences:
-                try:
-                    job_fences = JobFences(**{
-                        k: v for k, v in merged_fences.items()
-                        if k in JobFences.model_fields})
-                except Exception:
-                    pass
+            job_budgets, job_fences = order_job_limits(merged_budgets, merged_fences)
             job = JobPlan(
                 job_title=mission[:80], mission=mission, user_prompt=mission,
                 project_id=str(project.id),
@@ -556,7 +566,7 @@ def plan_order_job(
             ev_dir.mkdir(parents=True, exist_ok=True)
             try:
                 write_postmortem(ev_dir, pm, root=ev_dir)
-            except Exception as exc:
+            except Exception as exc:  # noqa: BLE001 — postmortem write failure is only warned about, not fatal
                 print(f"Warning: postmortem write failed: {exc}", file=sys.stderr)
             raise OrderJobPlanError(
                 f"task plan generation failed: "

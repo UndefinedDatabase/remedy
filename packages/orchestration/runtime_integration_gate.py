@@ -136,7 +136,7 @@ INTEGRATION_CHECKS: tuple[dict[str, str], ...] = (
         "check_id": "f146_registry_atomic_save",
         "source_file": _F146_REGISTRY,
         "check_type": "call_exists",
-        "pattern": "os.replace",
+        "pattern": "durable_write(",
     },
     {
         "check_id": "f146_registry_read_only_resolution",

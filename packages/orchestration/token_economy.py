@@ -46,7 +46,6 @@ from __future__ import annotations
 
 import json
 import math
-import os
 import re
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -55,6 +54,7 @@ from typing import Any
 from uuid import uuid4
 
 from packages.common.public_text_redaction import _safe_path_label, _scrub_public
+from packages.common.secure_fs import durable_write
 from packages.orchestration.data_paths import normalize_job_id
 
 # ---------------------------------------------------------------------------
@@ -242,29 +242,6 @@ def _profile_path(job_id: str, data_dir: Path) -> Path:
     return _te_root(job_id, data_dir) / "budget_profile.json"
 
 
-def _atomic_write(path: Path, data: bytes, mode: int = 0o600) -> bool:
-    try:
-        path.parent.mkdir(parents=True, exist_ok=True)
-        try:
-            os.chmod(path.parent, 0o700)
-        except OSError:
-            pass
-        tmp = path.with_suffix(path.suffix + ".tmp")
-        tmp.write_bytes(data)
-        try:
-            os.chmod(tmp, mode)
-        except OSError:
-            pass
-        os.replace(tmp, path)
-        try:
-            os.chmod(path, mode)
-        except OSError:
-            pass
-        return True
-    except OSError:
-        return False
-
-
 def load_token_budget_profile(job_id: str, data_dir: Path | None = None) -> TokenBudgetProfile:
     """Load a job's budget profile, or a safe default if absent/corrupt. Never raises."""
     from packages.orchestration.data_paths import resolve_data_root
@@ -294,8 +271,13 @@ def save_token_budget_profile(profile: TokenBudgetProfile, data_dir: Path | None
     profile.max_total_estimated_tokens = max(1, int(profile.max_total_estimated_tokens))
     profile.prefer_local_under_tokens = max(1, int(profile.prefer_local_under_tokens))
     profile.require_human_approval_over_tokens = max(1, int(profile.require_human_approval_over_tokens))
-    return _atomic_write(_profile_path(profile.job_id, ddir),
-                         json.dumps(profile.to_dict(), indent=2).encode("utf-8"))
+    path = _profile_path(profile.job_id, ddir)
+    try:
+        path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+        durable_write(path, json.dumps(profile.to_dict(), indent=2).encode("utf-8"))
+    except OSError:
+        return False
+    return True
 
 
 # ---------------------------------------------------------------------------
@@ -341,7 +323,7 @@ def _inspect(job_id: str, task_id: str, data_dir: Path) -> Any:
         job = load_job_plan(normalize_job_id(job_id), data_dir)
         events = load_run_events(data_dir, job.job_id)
         return inspect_context(job, events, task_id=task_id or None)
-    except Exception:
+    except Exception:  # noqa: BLE001 — context inspection is best effort; any failure means no inspection
         # Best-effort read-only helper — any failure (missing job, import, parse) → no inspection.
         return None
 
@@ -667,7 +649,7 @@ def routing_token_hint(job_id: str, *, task_type: str = "repair",
             "next_safe_action": d.next_safe_action,
             "estimated": True,
         }
-    except Exception:
+    except Exception:  # noqa: BLE001 — on any failure returns a safe unknown hint, never a cheap one
         return {"estimated_token_band": TokenBand.UNKNOWN, "estimated_cost_band": TokenBand.UNKNOWN,
                 "budget_status": BudgetStatus.UNKNOWN, "context_pack_kind": "",
                 "requires_human_approval": True, "token_budget_warning": "",

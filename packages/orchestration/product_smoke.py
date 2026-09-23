@@ -205,13 +205,13 @@ def smoke_config() -> dict[str, Any]:
     try:
         from packages.orchestration.config import get_config
         cfg = get_config()
-    except Exception:  # noqa: BLE001 - config unavailable = documented defaults
+    except Exception:  # noqa: BLE001 — config unavailable = documented defaults
         return out
 
     def _get(key: str, default: Any) -> Any:
         try:
             value = cfg.get(f"smoke.{key}")
-        except Exception:  # noqa: BLE001
+        except Exception:  # noqa: BLE001 — config value unreadable; use the caller's default
             return default
         return default if value is None else value
 

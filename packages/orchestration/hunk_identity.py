@@ -53,10 +53,10 @@ def _total_text(value: object) -> str:
     functions lean on. A value whose ``__str__`` is broken contributes its ``repr()``."""
     try:
         return str(value)
-    except Exception:
+    except Exception:  # noqa: BLE001 — str() failed; fall back to repr()
         try:
             return repr(value)
-        except Exception:
+        except Exception:  # noqa: BLE001 — repr() failed too; fall back to the unoverridable object repr
             return object.__repr__(value)
 
 
@@ -66,7 +66,7 @@ def _occurrence_text(occurrence: Any) -> str:
     for a caller that passes a string, ``None`` or an object by mistake."""
     try:
         return str(int(occurrence))
-    except Exception:
+    except Exception:  # noqa: BLE001 — value isn't a number; fall back to its text form
         return _total_text(occurrence)
 
 
@@ -90,7 +90,7 @@ def normalise_old_side(lines: Iterable[str]) -> str:
     items: list[Any]
     try:
         items = list(lines)
-    except Exception:
+    except Exception:  # noqa: BLE001 — value isn't iterable; treat it as a single line
         # Not iterable at all. Treat the argument as a single line rather than raising:
         # a wrong-typed call must still get a usable id back.
         items = [lines]

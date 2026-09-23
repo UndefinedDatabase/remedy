@@ -1,0 +1,1 @@
+2026-09-22, F278 round 1 — the block's WHAT TO REPORT listed the handback's sections without the item-status table AGENTS.md requires of every completion report over an ordered bundle, and the handback, written to the block, carried none; nothing on disk outside `.agent/handoff.md` was affected.

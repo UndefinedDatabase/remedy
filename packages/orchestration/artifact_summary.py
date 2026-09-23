@@ -315,7 +315,7 @@ def generate_artifact_summary(
             on_call=on_call,
             allow_parse_retry=True,
         )
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001 — generation failure becomes a fallback summary, not a crash
         classification = classify(FailureSignals(exception=exc))
         return _fallback_summary(
             sections, full_ref, artifact_hash, reason=classification.failure_class.value)

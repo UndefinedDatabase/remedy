@@ -1,0 +1,392 @@
+diff --git a/packages/orchestration/job_apply.py b/packages/orchestration/job_apply.py
+index 6936bab2..fbd37f3d 100644
+--- a/packages/orchestration/job_apply.py
++++ b/packages/orchestration/job_apply.py
+@@ -727,7 +727,7 @@ def _mission_goal(job: Any) -> str:
+ 
+     try:
+         mission = mission_for_job(str(job.job_id))
+-    except Exception:
++    except Exception:  # noqa: BLE001 — a commit subject must not depend on the mission store
+         return ""
+     return " ".join(str(getattr(mission, "goal", "") or "").split()) if mission else ""
+ 
+@@ -843,7 +843,7 @@ def mission_push_refusals(read_mission: Callable[[], Any]) -> tuple[list[str], l
+     try:
+         mission = read_mission()
+         contract = read_mission_contract(mission) if mission else None
+-    except Exception as exc:
++    except Exception as exc:  # noqa: BLE001 — an unreadable contract must refuse the push, not allow it
+         return [f"The mission's contract cannot be read "
+                 f"({type(exc).__name__}: {str(exc)[:120]}), so no push can be "
+                 f"shown safe."], []
+@@ -1231,7 +1231,7 @@ def _materialize_apply_source_owned(job: Any) -> tuple[ApplySource | None, str]:
+         )
+         if applied.returncode != 0:
+             return source, f"job_diff_apply_failed: {applied.stderr.strip()[:200]}"
+-    except Exception as exc:
++    except Exception as exc:  # noqa: BLE001 — a failed materialization still returns the source to clean
+         return source, f"apply_materialization_error: {type(exc).__name__}: {exc}"
+ 
+     return source, ""
+@@ -1254,7 +1254,7 @@ def _run_cleanup_git(argv: list[str], *, cwd: str, timeout: int) -> tuple[bool,
+         return False, f"{' '.join(argv[:3])} could not run: FileNotFoundError: {exc}"
+     except OSError as exc:
+         return False, f"{' '.join(argv[:3])} failed: {type(exc).__name__}: {exc}"
+-    except Exception as exc:                      # last resort: still no raise
++    except Exception as exc:  # noqa: BLE001 — a cleanup git step must record its failure, never raise
+         return False, f"{' '.join(argv[:3])} failed: {type(exc).__name__}: {exc}"
+     if proc.returncode != 0:
+         return False, f"{' '.join(argv[:3])} failed: {proc.stderr.strip()[:150]}"
+@@ -1310,14 +1310,14 @@ def _cleanup_apply_source(source: ApplySource | None) -> dict[str, Any]:
+         try:
+             if source.temp_root.exists():
+                 shutil.rmtree(source.temp_root)
+-        except Exception as exc:
++        except Exception as exc:  # noqa: BLE001 — best-effort cleanup must record a failure, never raise
+             errors.append(
+                 f"temporary directory not deleted: {type(exc).__name__}: {exc}")
+ 
+         try:
+             from packages.orchestration import worktrees as W
+             registered = W._worktree_registered(source.repo, source.path)
+-        except Exception as exc:
++        except Exception as exc:  # noqa: BLE001 — an inventory failure assumes the worktree is registered
+             registered = True
+             errors.append(f"worktree inventory failed: {type(exc).__name__}: {exc}")
+         out["temporary_registration_removed"] = not registered
+@@ -1326,14 +1326,14 @@ def _cleanup_apply_source(source: ApplySource | None) -> dict[str, Any]:
+ 
+         try:
+             still_there = source.path.exists()
+-        except Exception as exc:
++        except Exception as exc:  # noqa: BLE001 — a path check failure assumes the worktree still exists
+             still_there = True
+             errors.append(f"path check failed: {type(exc).__name__}: {exc}")
+         out["temporary_worktree_removed"] = not still_there
+         if still_there:
+             errors.append(
+                 f"temporary worktree directory {source.path.name} still exists")
+-    except Exception as exc:                      # belt and braces: never raise
++    except Exception as exc:  # noqa: BLE001 — cleanup as a whole must report failure, never raise
+         errors.append(f"cleanup aborted: {type(exc).__name__}: {exc}")
+ 
+     if errors:
+@@ -1520,7 +1520,7 @@ def apply_job(
+         if apply_source is not None:
+             try:
+                 cleanup = _cleanup_apply_source(apply_source)
+-            except Exception as exc:
++            except Exception as exc:  # noqa: BLE001 — a cleanup bug must not destroy the apply outcome or record
+                 # _cleanup_apply_source is total, but a cleanup bug must still
+                 # never destroy the apply outcome or the durable record.
+                 cleanup = _failed_cleanup(
+diff --git a/packages/orchestration/pingpong_job.py b/packages/orchestration/pingpong_job.py
+index b4873924..0c7b7f3d 100644
+--- a/packages/orchestration/pingpong_job.py
++++ b/packages/orchestration/pingpong_job.py
+@@ -1459,7 +1459,7 @@ def _finalize_job_workspace(job: JobPlan, handle: Any) -> None:
+     if job.state == JOB_COMPLETED:
+         try:
+             coverage_error = _check_handoff_coverage(job, handle)
+-        except Exception as exc:
++        except Exception as exc:  # noqa: BLE001 — a coverage failure blocks the job, never crashes it
+             coverage_error = f"job_handoff_coverage_failed: {type(exc).__name__}: {exc}"
+         if coverage_error:
+             # Block BEFORE the worktree may be removed and before any root hand-off
+@@ -1487,7 +1487,7 @@ def _finalize_job_workspace(job: JobPlan, handle: Any) -> None:
+             job.result_diff_sha256 = info["sha256"]
+             job.result_diff_size_bytes = info["size_bytes"]
+             job.result_diff_error = ""
+-    except Exception as exc:
++    except Exception as exc:  # noqa: BLE001 — a diff-capture failure is recorded, never silent
+         job.result_diff_error = f"{type(exc).__name__}: {exc}"
+ 
+     if job.state == JOB_COMPLETED and not job.result_diff_error:
+@@ -1495,7 +1495,7 @@ def _finalize_job_workspace(job: JobPlan, handle: Any) -> None:
+             res = W.remove(handle, keep_branch=True)      # never a merge
+             job.worktree_cleanup_status = res["cleanup_status"]
+             job.worktree_cleanup_error = res.get("cleanup_error", "")
+-        except Exception as exc:
++        except Exception as exc:  # noqa: BLE001 — worktree cleanup failure is recorded, never dropped
+             job.worktree_cleanup_status = "failed_recoverable"
+             job.worktree_cleanup_error = f"{type(exc).__name__}: {exc}"
+         if job.worktree_cleanup_status == "clean":
+@@ -2021,7 +2021,7 @@ def select_next_predictable_task(job) -> tuple[object | None, list]:
+                 next_task = task
+             break
+         return next_task, summaries
+-    except Exception:
++    except Exception:  # noqa: BLE001 — a status inspection degrades instead of crashing
+         return None, []
+ 
+ 
+@@ -2069,7 +2069,7 @@ def _recorded_hunk_ledger_for_task(job: Any, task: Any):
+             job.metadata,
+             task_id=task.task_id,
+         )
+-    except Exception:
++    except Exception:  # noqa: BLE001 — an unreadable hunk record is no decision, not an error
+         return HunkDecisionLedger(())
+ 
+ 
+@@ -2276,7 +2276,7 @@ def run_job(
+                 try:
+                     _ack_guard(job.job_id, _pending_guard,
+                                control_root_path=_cr_guard())
+-                except Exception:
++                except Exception:  # noqa: BLE001 — a stop-ack failure must not error an already-stopped job
+                     pass
+             else:
+                 job.error = (
+@@ -2472,7 +2472,7 @@ def run_job(
+         from packages.core.models import JobBudgets as _JobBudgets
+         try:
+             _job_budgets = _JobBudgets.model_validate(job.budgets)
+-        except Exception as _budget_exc:
++        except Exception as _budget_exc:  # noqa: BLE001 — corrupt budget state blocks the job, not runs unlimited
+             job.state = JOB_BLOCKED
+             job.error = f"corrupt_budget_state: {_budget_exc}"
+             _write_job_postmortem_record(job, _budget_exc)
+@@ -2775,7 +2775,7 @@ def run_job(
+     job_handle = None
+     try:
+         job.job_workspace_path, job_handle = _acquire_job_workspace(job)
+-    except Exception as exc:
++    except Exception as exc:  # noqa: BLE001 — a workspace that can't be acquired blocks the job first
+         # F010: the job died before ANY task could own the failure. A worktree lock is not
+         # a pending task's fault, so it gets a JOB-scope post-mortem — with the typed
+         # exception reaching the classifier intact, not stringified into anonymity.
+@@ -2800,7 +2800,7 @@ def run_job(
+             try:
+                 from packages.orchestration import worktrees as _W
+                 job.episode_start_workspace_tree = _W.write_tree(job_handle)
+-            except Exception as exc:
++            except Exception as exc:  # noqa: BLE001 — a tree-capture failure feeds the snapshot gate
+                 from packages.orchestration.failure_postmortem import safe_text
+                 job.episode_start_workspace_tree = ""
+                 _ws_tree_problems = (safe_text(
+@@ -3008,7 +3008,7 @@ def run_job(
+                     compiled_context_candidates=compiled_context_candidates,
+                     compiled_context_token_budget=compiled_context_token_budget,
+                 )
+-            except Exception as exc:
++            except Exception as exc:  # noqa: BLE001 — a task that dies mid-call blocks the job with its error
+                 task.status = TASK_FAILED
+                 task.error = f"pingpong_exception: {exc}"
+                 job.state = JOB_BLOCKED
+@@ -3140,7 +3140,7 @@ def run_job(
+                     and not task.worktree_commit):
+                 try:
+                     _commit_applied_task(job, task, job_handle)
+-                except Exception as exc:
++                except Exception as exc:  # noqa: BLE001 — a failed task commit blocks the job, not a silent retry
+                     # D1 (5): a failed commit blocks the job; nothing is retried silently.
+                     task.status = TASK_BLOCKED
+                     task.error = f"worktree_commit_failed: {type(exc).__name__}: {exc}"
+@@ -3690,7 +3690,7 @@ def _write_job_postmortem_record(job: JobPlan, exc: BaseException) -> None:
+         directory.mkdir(parents=True, exist_ok=True)
+         write_postmortem(directory, record, root=directory)
+         job.postmortem_path = POSTMORTEM_FILENAME
+-    except Exception as write_exc:                # never mask the original failure
++    except Exception as write_exc:  # noqa: BLE001 — a postmortem write failure is recorded, not hidden
+         from packages.orchestration.failure_postmortem import safe_text
+         job.postmortem_error = safe_text(
+             f"{type(write_exc).__name__}: {write_exc}")[:500]
+@@ -3759,7 +3759,7 @@ def _write_stop_postmortem(job: JobPlan, signal: Any, task_id: str) -> None:
+         write_postmortem(directory, record, root=job_evidence_dir(job.job_id))
+         job.stop_postmortem_path = (
+             f"{STOP_POSTMORTEM_SUBDIR}/{signal.request_id}/{POSTMORTEM_FILENAME}")
+-    except Exception as write_exc:
++    except Exception as write_exc:  # noqa: BLE001 — a stop postmortem write failure is recorded, not hidden
+         from packages.orchestration.failure_postmortem import safe_text
+         job.stop_error = safe_text(
+             f"stop_postmortem_write_failed: {type(write_exc).__name__}: {write_exc}")[:500]
+@@ -3842,7 +3842,7 @@ def _append_job_stopped_event(job: JobPlan, signal: Any, task_id: str) -> None:
+             pending_task_count=pending,
+             postmortem_ref=job.stop_postmortem_path,
+         )
+-    except Exception as exc:
++    except Exception as exc:  # noqa: BLE001 — a stop-ledger write failure is recorded, never silent
+         job.stop_event_error = safe_text(
+             f"job_stopped_event_failed: {type(exc).__name__}: {exc}")[:500]
+ 
+@@ -3993,7 +3993,7 @@ def _stop_job(job: JobPlan, signal: Any, *, task: TaskEntry | None,
+     if not _is_budget_stop:
+         try:
+             acknowledge_stop(job.job_id, signal, control_root_path=control_root_path)
+-        except Exception as exc:
++        except Exception as exc:  # noqa: BLE001 — a late ack failure is recorded after the stop is durable
+             job.stop_error = safe_text(
+                 f"stop_acknowledge_failed: {type(exc).__name__}: {exc}")[:500]
+             _persist_job(job)
+@@ -4056,7 +4056,7 @@ def _episode_snapshot_bound_ok(job: JobPlan) -> bool:
+         # F5: the persisted JobPlan snapshot is UNTRUSTED disk state — strict-decode it. A
+         # malformed record never returns ok and is never reused.
+         w = decode_episode_snapshot_v1(job.input_snapshot)
+-    except Exception:
++    except Exception:  # noqa: BLE001 — a snapshot that fails to decode is never reused
+         return False
+     return w.is_ok() and w.episode_id == job.active_episode_id
+ 
+@@ -4217,7 +4217,7 @@ def _write_run_manifest_record(job: JobPlan, *, status: str, episode_id: str,
+         job.run_manifest_episodes = _episodes_from_canonical(
+             read_canonical_episode_order(ev, job_id=job.job_id))
+         return True
+-    except Exception as exc:                       # never mask the primary job outcome
++    except Exception as exc:  # noqa: BLE001 — a manifest write failure is recorded, not hidden
+         from packages.orchestration.failure_postmortem import safe_text
+         job.run_manifest_error = safe_text(
+             f"run_manifest_write_failed: {type(exc).__name__}: {exc}")[:500]
+diff --git a/packages/orchestration/pingpong_loop.py b/packages/orchestration/pingpong_loop.py
+index 0e4b7cdd..808a9cec 100644
+--- a/packages/orchestration/pingpong_loop.py
++++ b/packages/orchestration/pingpong_loop.py
+@@ -1288,7 +1288,7 @@ def _build_runtime_scope_packet(
+             repair_rounds=repair_rounds,
+             cross_file=cross_file,
+         )
+-    except Exception:
++    except Exception:  # noqa: BLE001 — a missing scope summary falls back to the full diff
+         return None
+ 
+     return {
+@@ -1925,7 +1925,7 @@ def _finalize_workspace(
+             result.result_diff_sha256 = info["sha256"]
+             result.result_diff_size_bytes = info["size_bytes"]
+             result.result_diff_error = ""
+-        except Exception as exc:
++        except Exception as exc:  # noqa: BLE001 — a job-owned worktree's diff failure is recorded, not fatal
+             result.result_diff_error = f"{type(exc).__name__}: {exc}"
+         return
+     try:
+@@ -1936,7 +1936,7 @@ def _finalize_workspace(
+         result.result_diff_sha256 = info["sha256"]
+         result.result_diff_size_bytes = info["size_bytes"]
+         result.result_diff_error = ""
+-    except Exception as exc:
++    except Exception as exc:  # noqa: BLE001 — an uncommitted worktree is kept, not destroyed, on failure
+         # The run's changes are UNCOMMITTED: the branch alone does not contain
+         # them, so the worktree is the only copy. Without a persisted diff there
+         # is no hand-off — keep the worktree (and the work) for recovery instead
+@@ -1965,7 +1965,7 @@ def _finalize_workspace(
+         res = _wt.remove(worktree, keep_branch=True)
+         result.worktree_cleanup_status = res["cleanup_status"]
+         result.worktree_cleanup_error = res.get("cleanup_error", "")
+-    except Exception as exc:
++    except Exception as exc:  # noqa: BLE001 — a failed cleanup must still be recorded for recovery
+         # The worktree may still be registered and the lock may still be held:
+         # say so, so recovery can find it, instead of claiming a clean run.
+         result.worktree_cleanup_status = "failed"
+@@ -2429,7 +2429,7 @@ def _begin_stream_call(provider: Any, round_no: int, kind: str = "attempt") -> N
+     if callable(fn):
+         try:
+             fn(round_no, kind)
+-        except Exception:
++        except Exception:  # noqa: BLE001 — a stream hint is optional; the call must not fail on it
+             pass
+ 
+ 
+@@ -2443,7 +2443,7 @@ def _offer_stable_prefix(provider: Any, composed: Any) -> None:
+     if callable(fn):
+         try:
+             fn(composed.stable_prefix())
+-        except Exception:
++        except Exception:  # noqa: BLE001 — prefix caching is optional; the call must not fail on it
+             pass
+ 
+ 
+@@ -2783,7 +2783,7 @@ def _record_call_failure(
+     )
+     try:
+         written = write_postmortem(directory, record, root=root)
+-    except Exception as exc:
++    except Exception as exc:  # noqa: BLE001 — the original failure must outlive a failed write
+         # NEVER replace the provider failure with a new one: `result.error` keeps saying
+         # what really went wrong. But a post-mortem that could not be written is itself a
+         # fact, and it is now durable — it travels in the exported run JSON, and the job
+@@ -4058,7 +4058,7 @@ def run_pingpong(
+             result.builder_provider,
+             result.reviewer_provider,
+         ).value
+-    except Exception:
++    except Exception:  # noqa: BLE001 — an unclassifiable run is recorded as unknown, not a crash
+         result.execution_mode = "unknown"
+ 
+     # Record task actor binding
+@@ -4075,7 +4075,7 @@ def run_pingpong(
+             same_builder_repairs=True,
+             same_reviewer_re_review=True,
+         )
+-    except Exception:
++    except Exception:  # noqa: BLE001 — a missing actor binding must not crash run finalization
+         result.task_actor_binding = None
+ 
+     # Persist durable run record (outside target repo)
+diff --git a/packages/orchestration/pingpong_provider.py b/packages/orchestration/pingpong_provider.py
+index dc402a63..1990633c 100644
+--- a/packages/orchestration/pingpong_provider.py
++++ b/packages/orchestration/pingpong_provider.py
+@@ -628,7 +628,7 @@ class ClaudeProvider:
+                 actual_missing_reason=missing,
+                 prepared_input=_pi,
+             )
+-        except Exception as exc:
++        except Exception as exc:  # noqa: BLE001 — a provider failure becomes a typed error, not a crash
+             return BuilderOutput(
+                 error=_api_error_text(exc),
+                 provider="claude",
+@@ -667,7 +667,7 @@ class ClaudeProvider:
+             out.actual_missing_reason = missing
+             out.prepared_input = _pi
+             return out
+-        except Exception as exc:
++        except Exception as exc:  # noqa: BLE001 — a provider failure becomes a typed error, not a crash
+             return ReviewerOutput(
+                 error=_api_error_text(exc),
+                 provider="claude",
+@@ -1272,7 +1272,7 @@ class ClaudeCliProvider:
+             )
+             if proc.returncode == 0 and proc.stdout and proc.stdout.strip():
+                 self._cli_version = proc.stdout.strip()
+-        except Exception:
++        except Exception:  # noqa: BLE001 — the CLI version is cosmetic and must never fail the call
+             pass
+         return self._cli_version
+ 
+@@ -1622,7 +1622,7 @@ class ClaudeCliProvider:
+                 stream_artifact_refs=self.last_stream_artifact_refs,
+                 stream_call_id=self._last_stream_call_id,
+             )
+-        except Exception as exc:
++        except Exception as exc:  # noqa: BLE001 — a provider failure becomes a typed error, not a crash
+             return BuilderOutput(
+                 error=f"provider_error: {type(exc).__name__}: {exc}",
+                 provider="claude-cli",
+@@ -1739,7 +1739,7 @@ class ClaudeCliProvider:
+                 stream_artifact_refs=self.last_stream_artifact_refs,
+                 stream_call_id=self._last_stream_call_id,
+             )
+-        except Exception as exc:
++        except Exception as exc:  # noqa: BLE001 — a provider failure becomes a typed error, not a crash
+             return ReviewerOutput(
+                 error=f"provider_error: {type(exc).__name__}: {exc}",
+                 provider="claude-cli",
+@@ -1888,7 +1888,7 @@ class OllamaPingPongProvider:
+                 actual_missing_reason="provider_actuals_unavailable",
+                 prepared_input=_pi,
+             )
+-        except Exception as exc:
++        except Exception as exc:  # noqa: BLE001 — a provider failure becomes a typed error, not a crash
+             return BuilderOutput(
+                 error=f"provider_error: {type(exc).__name__}: {exc}",
+                 provider="ollama",
+@@ -1934,7 +1934,7 @@ class OllamaPingPongProvider:
+             out.actual_missing_reason = "provider_actuals_unavailable"
+             out.prepared_input = _pi
+             return out
+-        except Exception as exc:
++        except Exception as exc:  # noqa: BLE001 — a provider failure becomes a typed error, not a crash
+             return ReviewerOutput(
+                 error=f"provider_error: {type(exc).__name__}: {exc}",
+                 error_class="provider_error",

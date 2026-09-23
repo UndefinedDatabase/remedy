@@ -1,0 +1,6 @@
+Started: 2026-09-23T00:02:33.305888+00:00
+Finished: 2026-09-23T00:11:07.288130+00:00
+Elapsed Seconds: 513.982
+Job Created: 2026-09-23T00:02:33.306502+00:00
+Job First Running: 2026-09-23T00:02:33.363338+00:00
+Job Stopped: 

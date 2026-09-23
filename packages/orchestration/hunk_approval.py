@@ -108,10 +108,10 @@ def _total_text(value: object) -> str:
     ``repr()`` is broken too contributes the unoverridable ``object.__repr__``."""
     try:
         return str(value)
-    except Exception:
+    except Exception:  # noqa: BLE001 — str() failed; fall back to repr()
         try:
             return repr(value)
-        except Exception:
+        except Exception:  # noqa: BLE001 — repr() failed too; fall back to the unoverridable object repr
             return object.__repr__(value)
 
 
@@ -126,7 +126,7 @@ def _entries(value: Any) -> list[Any]:
         return [value]
     try:
         return list(value)
-    except Exception:
+    except Exception:  # noqa: BLE001 — value isn't iterable; treat it as a single entry
         return [value]
 
 
@@ -159,7 +159,7 @@ def _mapping_value(entry: Mapping, keys: tuple[str, ...]) -> Any:
         try:
             if key in entry:
                 return entry[key]
-        except Exception:
+        except Exception:  # noqa: BLE001 — a broken mapping access contributes nothing for this key
             continue
     return None
 
@@ -191,7 +191,7 @@ def _normalise_rejection(entry: Any) -> HunkRejection:
     if isinstance(entry, Sequence) and not isinstance(entry, (str, bytes, bytearray)):
         try:
             parts = list(entry)
-        except Exception:
+        except Exception:  # noqa: BLE001 — entry claims to be a sequence but isn't; treat it as empty
             parts = []
         return HunkRejection(
             _total_text(parts[0]) if parts else "",

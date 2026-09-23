@@ -40,6 +40,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from packages.common.secure_fs import durable_write
 from packages.runtimes.dev_server import (
     GRACE_SECONDS,
     LOG_TAIL_BYTES,
@@ -56,7 +57,6 @@ from packages.runtimes.dev_server import (
     RuntimeSpec,
     RuntimeState,
     _process_create_time,
-    atomic_write_text,
     clear_state,
     ensure_runtime_dir,
     http_probe,
@@ -83,7 +83,8 @@ HANDSHAKE_TIMEOUT_S = 90.0
 def write_handshake(path: Path, payload: dict[str, Any]) -> None:
     """Atomic PRIVATE handshake write: the reader never sees a half-written result,
     and no other user ever sees the result at all."""
-    atomic_write_text(path, json.dumps(payload, indent=2) + "\n")
+    path.parent.mkdir(parents=True, exist_ok=True)
+    durable_write(path, json.dumps(payload, indent=2) + "\n")
 
 
 def read_handshake(path: Path) -> dict[str, Any] | None:
@@ -272,7 +273,7 @@ class Supervisor:
                 keep_bytes=int(cap) // 2 if cap else None,
             )
             self.pump.start()
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 — a pump that won't start must still be reported, not lost
             cleanup = self._stop_app()
             return self._finalize_failure(f"log pump failed to start: {exc}", "start")
 
@@ -313,7 +314,7 @@ class Supervisor:
                 instance_id=self.instance_id,
             )
             save_state(self.state)
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 — an unpersisted starting state must be reported as failed
             return self._finalize_failure(
                 f"starting state could not be persisted: {exc}", "state")
 
@@ -328,7 +329,7 @@ class Supervisor:
             self.state.status = STATUS_RUNNING
             self.state.log_error = self.pump.error if self.pump else ""
             save_state(self.state)
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 — a status that can't be saved must still fail loudly
             return self._finalize_failure(
                 f"running state could not be persisted: {exc}", "state")
 
@@ -343,7 +344,7 @@ class Supervisor:
                 "status_code": ready["status_code"],
                 "instance_id": self.instance_id,
             })
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 — a handshake write failure must reach the operator
             return self._finalize_failure(
                 f"handshake could not be written: {exc}", "state")
 
@@ -403,8 +404,8 @@ class Supervisor:
     def _quarantine(self, stop_file: Path, reason: str) -> None:
         """Set an invalid stop request aside; never act on it, never loop on it."""
         with contextlib.suppress(OSError):
-            atomic_write_text(stop_file.with_name(stop_file.name + ".invalid"),
-                              f"{reason}\n")
+            durable_write(stop_file.with_name(stop_file.name + ".invalid"),
+                          f"{reason}\n")
         with contextlib.suppress(OSError):
             stop_file.unlink()
 
@@ -462,7 +463,7 @@ class Supervisor:
         updated.stop_error = detail
         try:
             save_state(updated)
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 — a write failure must not erase a survivor's only record
             if survivors:
                 # NEVER clear here. The pre-existing record — pid, creation time, pgid,
                 # sid, instance id — is the only thing that lets a later probe or stop
@@ -484,7 +485,7 @@ class Supervisor:
         durable runtime.json — untouched — remains the only identity a command may act on.
         """
         with contextlib.suppress(Exception):
-            atomic_write_text(
+            durable_write(
                 log_failure_note_path(self.project_root),
                 json.dumps({
                     "status": status,
@@ -579,7 +580,7 @@ def main(argv: list[str] | None = None) -> int:
                      handshake=Path(args.handshake), instance_id=args.instance)
     try:
         return sup.run()
-    except Exception as exc:                      # never a raw traceback on disk
+    except Exception as exc:  # noqa: BLE001 — a supervisor crash must never leave a raw traceback
         return sup._finalize_failure(
             f"supervisor failed: {type(exc).__name__}: {exc}", "state")
 

@@ -887,7 +887,7 @@ def _evidence_sources(job: Any) -> dict[str, Any]:
             )
             for d in still_open
         )
-    except Exception:  # noqa: BLE001
+    except Exception:  # noqa: BLE001 — an unreadable decision queue is not recorded
         pass
 
     return extra

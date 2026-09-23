@@ -46,6 +46,7 @@ from typing import Any
 from uuid import uuid4
 
 from packages.common.public_text_redaction import _safe_path_label, _scrub_public
+from packages.common.secure_fs import durable_write
 from packages.orchestration.data_paths import normalize_job_id
 
 SCHEMA_VERSION = "real-test-execution-v1"
@@ -200,14 +201,14 @@ def resolve_allowed_command(
         from packages.orchestration.command_discovery import discover_commands
         from packages.orchestration.pingpong_job import require_job_plan
         job = require_job_plan(normalize_job_id(job_id), ddir)
-    except Exception:
+    except Exception:  # noqa: BLE001 — a bad or missing job must block the command, not crash
         return False, None, "job not found or unloadable"
     repo = (job.metadata or {}).get("target_repo", "")
     if not repo:
         return False, None, "job has no target repo"
     try:
         candidates = discover_commands(job, Path(repo))
-    except Exception:
+    except Exception:  # noqa: BLE001 — discovery failing blocks the command like any refusal
         return False, None, "command discovery failed"
     if not command_id:
         # No explicit id → the safe runner will select the best test candidate itself.
@@ -262,7 +263,7 @@ def run_allowed_test(
             job_id=job_id, source="real_test_execution_v1",
             command_id=command_id,
             requested_timeout_seconds=float(timeout_seconds) if timeout_seconds else None))
-    except Exception as exc:  # the runner is the only execution path; failures stay safe metadata
+    except Exception as exc:  # noqa: BLE001 — failures on the only execution path become safe metadata
         res.status = TestRunStatus.ERROR
         res.stop_reason = "runner_error"
         res.safe_summary = _scrub_public(f"Test runner error: {type(exc).__name__}")[:200]
@@ -295,7 +296,7 @@ def list_test_runs(job_id: str, data_dir: Path | None = None) -> list[dict]:
     try:
         from packages.orchestration.pingpong_job import require_job_plan
         job = require_job_plan(normalize_job_id(job_id), ddir)
-    except Exception:
+    except Exception:  # noqa: BLE001 — an unreadable job means no tests to list, not a crash
         return []
     runs = (job.metadata or {}).get("test_runs", [])
     return list(runs) if isinstance(runs, list) else []
@@ -312,12 +313,12 @@ def get_test_run(test_run_id: str, data_dir: Path | None = None) -> dict | None:
                 continue
             try:
                 job = require_job_plan(normalize_job_id(str(jid)), ddir)
-            except Exception:
+            except Exception:  # noqa: BLE001 — one bad job must not stop the scan for the test run
                 continue
             for r in (job.metadata or {}).get("test_runs", []):
                 if r.get("test_run_id") == test_run_id:
                     return r
-    except Exception:
+    except Exception:  # noqa: BLE001 — a scan failure means the run was not found, not a crash
         return None
     return None
 
@@ -334,29 +335,6 @@ def _rte_root(job_id: str, data_dir: Path) -> Path:
 
 def _snap_path(job_id: str, snapshot_id: str, data_dir: Path) -> Path:
     return _rte_root(job_id, data_dir) / "snapshots" / f"{snapshot_id}.json"
-
-
-def _atomic_write(path: Path, data: bytes, mode: int = 0o600) -> bool:
-    try:
-        path.parent.mkdir(parents=True, exist_ok=True)
-        try:
-            os.chmod(path.parent, 0o700)
-        except OSError:
-            pass
-        tmp = path.with_suffix(path.suffix + ".tmp")
-        tmp.write_bytes(data)
-        try:
-            os.chmod(tmp, mode)
-        except OSError:
-            pass
-        os.replace(tmp, path)
-        try:
-            os.chmod(path, mode)
-        except OSError:
-            pass
-        return True
-    except OSError:
-        return False
 
 
 def _inventory_hash(repo_root: Path) -> tuple[str, int]:
@@ -397,14 +375,15 @@ def create_snapshot_proof(job_id: str, *, data_dir: Path | None = None) -> Snaps
         from packages.orchestration.pingpong_job import load_job_plan
         job = load_job_plan(normalize_job_id(job_id), ddir)
         repo = (job.metadata or {}).get("target_repo", "")
-    except Exception:
+    except Exception:  # noqa: BLE001 — no readable job means the snapshot is unavailable
         repo = ""
     if not repo or not Path(repo).is_dir():
         proof.strategy = "unavailable"
         proof.safe_summary = "No repo available — snapshot proof unavailable."
         proof.restore_available = False
-        _atomic_write(_snap_path(job_id, proof.snapshot_id, ddir),
-                      json.dumps(proof.to_dict(), indent=2).encode("utf-8"))
+        snap = _snap_path(job_id, proof.snapshot_id, ddir)
+        snap.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+        durable_write(snap, json.dumps(proof.to_dict(), indent=2).encode("utf-8"))
         return proof
     proof.repo_path = repo
     h, n = _inventory_hash(Path(repo))
@@ -413,8 +392,9 @@ def create_snapshot_proof(job_id: str, *, data_dir: Path | None = None) -> Snaps
     proof.restore_available = False   # metadata-only — never claims restore
     proof.safe_summary = (f"Metadata snapshot recorded over {n} file(s). This is a snapshot POINT "
                           "(inventory hash) only — it does NOT provide rollback restore.")
-    _atomic_write(_snap_path(job_id, proof.snapshot_id, ddir),
-                  json.dumps(proof.to_dict(), indent=2).encode("utf-8"))
+    snap = _snap_path(job_id, proof.snapshot_id, ddir)
+    snap.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+    durable_write(snap, json.dumps(proof.to_dict(), indent=2).encode("utf-8"))
     return proof
 
 

@@ -122,7 +122,7 @@ def parse_builder_patch(output: BuilderOutput) -> BuilderPatchResult:
 
     try:
         patch = parse_structured_patch(text)
-    except Exception:
+    except Exception:  # noqa: BLE001 — a malformed patch is reported as a parse failure, not a crash
         return BuilderPatchResult(
             parse_success=False,
             error_kind="parse_exception",

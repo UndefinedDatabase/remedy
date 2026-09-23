@@ -82,10 +82,10 @@ def _total_text(value: object) -> str:
     be would put words in an operator's mouth."""
     try:
         return str(value)
-    except Exception:
+    except Exception:  # noqa: BLE001 — str() failed; fall back to repr()
         try:
             return repr(value)
-        except Exception:
+        except Exception:  # noqa: BLE001 — repr() failed too; fall back to the unoverridable object repr
             return object.__repr__(value)
 
 
@@ -128,5 +128,5 @@ def render_rejection_findings(ledger: Any) -> str:
         if not rendered:
             return ""
         return "\n".join([REJECTION_FINDINGS_HEADING, ""] + rendered)
-    except Exception:
+    except Exception:  # noqa: BLE001 — unreadable ledger yields an empty block, never a partial one
         return ""

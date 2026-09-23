@@ -1,0 +1,167 @@
+diff --git a/apps/cli/commands/brain.py b/apps/cli/commands/brain.py
+index f4f0ef46..f7c3578d 100644
+--- a/apps/cli/commands/brain.py
++++ b/apps/cli/commands/brain.py
+@@ -129,7 +129,7 @@ def _cmd_brain_view(job_id_str: str, *, json_output: bool = False) -> None:
+                 print("Warning: project constitution unavailable for viewer.", file=sys.stderr)
+             else:
+                 constitution = load_project_constitution(repo_path)
+-        except Exception:
++        except Exception:  # noqa: BLE001 — constitution is optional; warn and continue without it
+             print("Warning: project constitution unavailable for viewer.", file=sys.stderr)
+ 
+     graph = build_project_brain(job, events, constitution=constitution)
+@@ -179,7 +179,7 @@ def _prepare_viewer(job_id_str: str, *, json_output: bool = False):
+             repo_path = Path(target_repo_str)
+             if repo_path.exists() and repo_path.is_dir():
+                 constitution = load_project_constitution(repo_path)
+-        except Exception:
++        except Exception:  # noqa: BLE001 — constitution is optional; treat load failure as absent
+             pass
+ 
+     graph = build_project_brain(job, events, constitution=constitution)
+@@ -304,7 +304,7 @@ def _cmd_context(job_id_str: str, *, json_output: bool = False) -> None:
+                 print("Warning: project constitution unavailable for context coverage.", file=sys.stderr)
+             else:
+                 constitution = load_project_constitution(repo_path)
+-        except Exception:
++        except Exception:  # noqa: BLE001 — constitution is optional; warn and continue without it
+             print("Warning: project constitution unavailable for context coverage.", file=sys.stderr)
+ 
+     snapshot = derive_context_coverage(job, events, constitution=constitution)
+diff --git a/apps/cli/commands/do_cmd.py b/apps/cli/commands/do_cmd.py
+index 9acbc23f..439ef6d5 100644
+--- a/apps/cli/commands/do_cmd.py
++++ b/apps/cli/commands/do_cmd.py
+@@ -181,7 +181,7 @@ def _resolve_do_commit_flags(
+         top = None                     # not a repository: the init step fails and says so
+     try:
+         key = push_after_mission_enabled(load_config(Path(top or repo) / "remedy.toml"))
+-    except Exception:
++    except Exception:  # noqa: BLE001 — never pushes based on a config value it cannot read
+         key = False                    # Remedy never pushes on a value it cannot read
+     source = "--push" if push else ("apply.push_after_mission" if key and mode else "")
+     if key and not mode:
+@@ -896,7 +896,7 @@ def _index_job_evidence(job_id: str, evidence_out: str, source_command: str) ->
+         try:
+             from packages.orchestration.job_evidence import _read_changed_files_for_index
+             changed = _read_changed_files_for_index(evidence_out)
+-        except Exception:
++        except Exception:  # noqa: BLE001 — index evidence is optional; fall back to another changed-file source
+             changed = []
+         if not changed:
+             changed = dirty_source_test_files(repo)
+@@ -904,7 +904,7 @@ def _index_job_evidence(job_id: str, evidence_out: str, source_command: str) ->
+             job_id, evidence_out, repo_path=repo, job_status=status,
+             changed_files=changed, source_command=source_command,
+         )
+-    except Exception:
++    except Exception:  # noqa: BLE001 — evidence indexing is best effort; must not break the export
+         pass
+ 
+ 
+diff --git a/apps/cli/commands/project.py b/apps/cli/commands/project.py
+index d363af2d..d54c7079 100644
+--- a/apps/cli/commands/project.py
++++ b/apps/cli/commands/project.py
+@@ -250,7 +250,7 @@ def _cmd_project_brain(project_id_str: str, *, json_output: bool = False) -> Non
+         if target_repo:
+             try:
+                 consts[jid] = load_project_constitution(Path(target_repo))
+-            except Exception:
++            except Exception:  # noqa: BLE001 — constitution is optional; treat load failure as absent
+                 consts[jid] = None
+ 
+     agg = build_project_brain_aggregate(
+diff --git a/apps/cli/commands/status_cmd.py b/apps/cli/commands/status_cmd.py
+index e9f9cbab..f998231c 100644
+--- a/apps/cli/commands/status_cmd.py
++++ b/apps/cli/commands/status_cmd.py
+@@ -48,7 +48,7 @@ def _cmd_status(
+         from packages.orchestration.project_registry import load_project
+         try:
+             project_slug = load_project(UUID(scope.project_id)).slug
+-        except Exception:
++        except Exception:  # noqa: BLE001 — slug lookup failure falls back to a truncated id
+             project_slug = scope.project_id[:8]
+ 
+     jobs, degraded, skipped_files = scoped_jobs(scope)
+@@ -73,7 +73,7 @@ def _cmd_status(
+             events = load_run_events(resolve_data_root(), j.job_id)
+             decs = list_decisions(j, events)
+             decisions_open += sum(1 for d in decs if d.status == "open")
+-        except Exception:
++        except Exception:  # noqa: BLE001 — decision-count failure must not break the status overview
+             pass
+ 
+     # F276 T002: the same three states this block used to spell for itself, now read
+@@ -88,7 +88,7 @@ def _cmd_status(
+             from packages.orchestration.safe_points import stop_requested
+             if stop_requested(str(j.job_id)) is not None:
+                 stops_pending += 1
+-        except Exception:
++        except Exception:  # noqa: BLE001 — stop-check failure must not break the status overview
+             pass
+ 
+     runtime_status = "unknown"
+@@ -107,7 +107,7 @@ def _cmd_status(
+         else:
+             runtime_status = "unknown"
+             runtime_warning = f"runtime state unreadable: {load.error or load.kind}"
+-    except Exception:
++    except Exception:  # noqa: BLE001 — runtime-state read failure leaves status as unknown
+         pass
+ 
+     first_active_short = None
+diff --git a/apps/cli/commands/test_cmds.py b/apps/cli/commands/test_cmds.py
+index 14e18ebd..3ff8393e 100644
+--- a/apps/cli/commands/test_cmds.py
++++ b/apps/cli/commands/test_cmds.py
+@@ -105,7 +105,7 @@ def _cmd_discover_commands(job_id_str: str, *, as_json: bool) -> None:
+     try:
+         from packages.orchestration.pingpong_job import require_job_plan
+         job = require_job_plan(job_id)
+-    except Exception as exc:
++    except Exception as exc:  # noqa: BLE001 — job lookup failure is reported, not raised, from a read command
+         fail("job_store_error", str(exc), json_output=as_json)
+ 
+     target_repo_str = job.metadata.get("target_repo")
+diff --git a/apps/cli/grouped.py b/apps/cli/grouped.py
+index d043fc98..c81b18b3 100644
+--- a/apps/cli/grouped.py
++++ b/apps/cli/grouped.py
+@@ -583,7 +583,7 @@ def _dispatch(
+         handler(args)
+     except (SystemExit, KeyboardInterrupt):
+         raise
+-    except Exception as exc:  # noqa: BLE001 - the whole point is the catch-all
++    except Exception as exc:  # noqa: BLE001 — the whole point is the catch-all
+         message = f"{type(exc).__name__}: {exc}"
+         if _wants_json(raw):
+             emit_error(
+diff --git a/scripts/build_review_zip.py b/scripts/build_review_zip.py
+index 250b3347..2ce3be42 100644
+--- a/scripts/build_review_zip.py
++++ b/scripts/build_review_zip.py
+@@ -599,7 +599,7 @@ def main() -> int:
+     except (ReviewZipError, ArchivePlanError) as exc:
+         print(f"REVIEW_ZIP_ERROR: {exc}", file=sys.stderr)
+         return 2
+-    except Exception as exc:                         # a ReviewSubjectError/ContentProofError/etc.
++    except Exception as exc:  # noqa: BLE001 — any other packaging error exits 2 with its name
+         print(f"REVIEW_ZIP_ERROR: {type(exc).__name__}: {exc}", file=sys.stderr)
+         return 2
+ 
+diff --git a/scripts/refresh_review_evidence.py b/scripts/refresh_review_evidence.py
+index 05e1235e..09842915 100644
+--- a/scripts/refresh_review_evidence.py
++++ b/scripts/refresh_review_evidence.py
+@@ -98,7 +98,7 @@ def refresh_staged_evidence(staged_dir: str, repo_root: str) -> dict:
+                 "new_checks_passed": new_gate.get("checks_passed"),
+                 "new_verdict": new_gate.get("verdict"),
+             })
+-    except Exception as exc:
++    except Exception as exc:  # noqa: BLE001 — gate regeneration failure is recorded in the report, not raised
+         report["issues"].append(
+             f"failed to regenerate runtime_integration_gate: "
+             f"{type(exc).__name__}: {exc}")

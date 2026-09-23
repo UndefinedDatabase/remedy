@@ -634,8 +634,8 @@ def _metadata_is_safe(v: Any) -> bool:
         )
         if _contains_secret(v) or _contains_local_path(v):
             return False
-    except Exception:
-        pass
+    except Exception:  # noqa: BLE001 — a scanner that raised cannot clear the value (R-1038)
+        return False
     return not any(ord(c) < 32 and c not in "\t\n" for c in v)
 
 

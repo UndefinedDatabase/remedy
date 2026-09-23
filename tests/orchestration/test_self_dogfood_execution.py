@@ -267,3 +267,37 @@ class TestCurrentBranchRepoForms:
     def test_no_repo_unknown(self, tmp_path, monkeypatch):
         monkeypatch.chdir(tmp_path)
         assert SE.current_branch() == ""
+
+
+class TestAttemptRecordsAreDurable:
+    """F278 T002: the attempt record and the request go through `durable_write`; a failed
+    attempt write answers False, and a failed request write raises (DECISION F278 D2)."""
+
+    def test_both_records_are_written_through_durable_write(self, env, monkeypatch):
+        seen: list[str] = []
+        real = SE.durable_write
+
+        def recording(path, data, **kw):
+            seen.append(Path(path).name)
+            real(path, data, **kw)
+
+        monkeypatch.setattr(SE, "durable_write", recording)
+        job, pt = _approved_task(env)
+        SE.start_self_execution(pt.id, str(job.job_id), env)
+        assert "request.md" in seen and "attempt.json" in seen
+
+    def test_a_failed_attempt_write_answers_false(self, env, monkeypatch):
+        def failing(path, data, **kw):
+            raise OSError("disk full")
+
+        monkeypatch.setattr(SE, "durable_write", failing)
+        attempt = SE.SelfImprovementAttempt(attempt_id="a1", state=SE.AttemptState.PROPOSED)
+        assert SE.save_attempt(attempt, env) is False
+
+    def test_a_failed_request_write_raises(self, env, monkeypatch):
+        def failing(path, data, **kw):
+            raise OSError("disk full")
+
+        monkeypatch.setattr(SE, "durable_write", failing)
+        with pytest.raises(OSError, match="disk full"):
+            SE._store_request("a1", env, "request text")

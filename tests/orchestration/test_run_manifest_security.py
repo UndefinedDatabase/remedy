@@ -196,3 +196,21 @@ class TestAnchoredExportReader:
         (ev / MANIFESTS_SUBDIR / "ep1" / MANIFEST_FILENAME).unlink()
         files, problems = read_manifest_tree_bytes_anchored(ev)
         assert any("no manifest" in p for p in problems), problems
+
+
+class TestSecretDetectorFailsClosed:
+    """F278 T003: when the redactor the detector reuses raises, the value is NOT cleared."""
+
+    def test_a_failing_redactor_reports_a_secret(self, monkeypatch):
+        from packages.orchestration import run_manifest as rm
+        from packages.orchestration import stream_evidence
+
+        def broken(text):
+            raise RuntimeError("redactor unavailable")
+
+        monkeypatch.setattr(stream_evidence, "redact_text", broken)
+        assert rm._contains_secret("an ordinary value") is True
+
+    def test_an_ordinary_value_is_still_clear(self):
+        from packages.orchestration import run_manifest as rm
+        assert rm._contains_secret("an ordinary value") is False

@@ -119,7 +119,7 @@ def _cmd_doctor_core(ns: argparse.Namespace) -> None:
                 _check(name, False, f"{attr} not found in {module}")
             else:
                 _check(name, True, f"{attr} available")
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 — an import probe failure is that check's own result
             _check(name, False, _safe_err(exc))
 
     _try_import("worker_facade", "apps.cli.commands.worker_facade_cmd", "COMMAND_HANDLERS")
@@ -128,7 +128,7 @@ def _cmd_doctor_core(ns: argparse.Namespace) -> None:
         cat = importlib.import_module("apps.cli.command_catalog")
         _check("command_catalog", True,
                f"{len(cat.CATALOG)} commands, {len(cat.GROUPS)} groups")
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001 — a catalog import failure is that check's own result
         _check("command_catalog", False, _safe_err(exc))
 
     _try_import("run_contract", "packages.orchestration.run_contract", "ContractAction")
@@ -171,7 +171,7 @@ def _cmd_doctor_core(ns: argparse.Namespace) -> None:
                f"{len(shipped_entries)} shipped + "
                f"{len(dead_ids) - len(shipped_entries)} config-only dead ids "
                f"({len(dead_ids)} total)")
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001 — a dead-model-list read failure is its own check result
         _check("dead_model_list", False, _safe_err(exc))
 
     if dead_ids:
@@ -264,7 +264,7 @@ def _cmd_doctor_core(ns: argparse.Namespace) -> None:
                       f"{value} is the resolved value of config key {spec.key} "
                       f"(env {spec.env_var}). Fix: change {spec.key} to a live "
                       f"id. {_dead_provenance(value)}")
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 — a dead-model mismatch becomes an advisory, not a blocker
             # Already compact, and there is no fuller record to hold back:
             # both renderings are the same sentence.
             comparison_failed = ("the known-dead ids could not be compared "
@@ -288,7 +288,7 @@ def _cmd_doctor_core(ns: argparse.Namespace) -> None:
         )
         _check("dead_command_scan", True,
                f"{len(dead_commands)} dead of {len(cat_mod.CATALOG)} commands")
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001 — a dead-command scan failure is that check's own result
         dead_commands = []
         _check("dead_command_scan", False, _safe_err(exc))
 
@@ -318,7 +318,7 @@ def _cmd_doctor_core(ns: argparse.Namespace) -> None:
         _check("disk_floor", floor_met,
                f"{free_bytes} bytes free, floor "
                f"{'not configured' if floor_bytes is None else floor_bytes}")
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001 — a disk-floor read failure is that check's own result
         disk["error"] = _safe_err(exc)
         _check("disk_floor", False, _safe_err(exc))
 

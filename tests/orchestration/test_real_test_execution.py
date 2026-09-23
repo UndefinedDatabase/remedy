@@ -236,3 +236,31 @@ class TestArchitectureGuards:
         src = self._src()
         for bad in ("do_continue(", "apply_patch(", ".approve(", "eval(", "exec(", "os.fork"):
             assert bad not in src, bad
+
+
+class TestSnapshotRecordIsDurableAndLoud:
+    """F278 T002: the snapshot record goes through `durable_write`, and a write that fails
+    raises instead of returning a proof whose record is not on disk (DECISION F278 D2)."""
+
+    @pytest.mark.parametrize("repo", [True, False])
+    def test_the_record_is_written_through_durable_write(self, env, monkeypatch, repo):
+        seen: list[str] = []
+        real = rte.durable_write
+
+        def recording(path, data, **kw):
+            seen.append(Path(path).name)
+            real(path, data, **kw)
+
+        monkeypatch.setattr(rte, "durable_write", recording)
+        sp = rte.create_snapshot_proof(_job(env, repo=repo), data_dir=env)
+        assert seen == [f"{sp.snapshot_id}.json"]
+        assert rte.get_snapshot_proof(sp.snapshot_id, data_dir=env) is not None
+
+    @pytest.mark.parametrize("repo", [True, False])
+    def test_a_failed_write_raises(self, env, monkeypatch, repo):
+        def failing(path, data, **kw):
+            raise OSError("disk full")
+
+        monkeypatch.setattr(rte, "durable_write", failing)
+        with pytest.raises(OSError, match="disk full"):
+            rte.create_snapshot_proof(_job(env, repo=repo), data_dir=env)

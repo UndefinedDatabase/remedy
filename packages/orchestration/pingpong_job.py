@@ -22,7 +22,6 @@ import json as _json
 import os
 import re
 import shutil
-import tempfile
 from dataclasses import dataclass, field, replace
 from datetime import datetime, timezone
 from pathlib import Path
@@ -31,6 +30,7 @@ from typing import TYPE_CHECKING, Any
 # F272 T002: the closed types JobPlan's administrative fields carry. Imported at
 # module level and not under TYPE_CHECKING because `_import_job` reconstructs
 # them at runtime from the job record's plain JSON.
+from packages.common.secure_fs import durable_write
 from packages.core.models import Artifact, Budget, JobFences, RunState
 
 # F260 D2: one minting function per KIND of id. This module names JOBs, TASKs and
@@ -498,30 +498,6 @@ class JobStoreError(Exception):
     """Raised when a job record exists and cannot be read."""
 
 
-# The one atomic text writer: the job record below and the checkpoint, mission and
-# compiled-mission records each write through it rather than carrying their own.
-def atomic_write_text(path: Path, data: str) -> None:
-    """Write ``data`` to ``path`` as UTF-8 by an fsynced replace, creating the parent.
-
-    An interrupted write leaves the previous file or the new one, never a torn file,
-    and removes its temporary file.
-    """
-    path.parent.mkdir(parents=True, exist_ok=True)
-    fd, tmp = tempfile.mkstemp(dir=str(path.parent), suffix=".tmp")
-    try:
-        with os.fdopen(fd, "wb") as fh:
-            fh.write(data.encode("utf-8"))
-            fh.flush()
-            os.fsync(fh.fileno())
-        os.replace(tmp, path)
-    except BaseException:
-        try:
-            os.unlink(tmp)
-        except OSError:
-            pass
-        raise
-
-
 # ``root`` overrides the store's base directory for ONE call, which is how a caller
 # reads or writes a job record outside the process data root (DECISION F275 D23).
 # ``data_paths.job_record_path`` always accepted it; these three never passed it on.
@@ -533,7 +509,8 @@ def _persist_job(job: JobPlan, root: Path | None = None) -> Path:
     from packages.orchestration.data_paths import job_record_path
 
     out = job_record_path(job.job_id, root)
-    atomic_write_text(out, _json.dumps(_export_job(job), indent=2) + "\n")
+    out.parent.mkdir(parents=True, exist_ok=True)
+    durable_write(out, _json.dumps(_export_job(job), indent=2) + "\n")
     return out
 
 
@@ -1482,7 +1459,7 @@ def _finalize_job_workspace(job: JobPlan, handle: Any) -> None:
     if job.state == JOB_COMPLETED:
         try:
             coverage_error = _check_handoff_coverage(job, handle)
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 — a coverage failure blocks the job, never crashes it
             coverage_error = f"job_handoff_coverage_failed: {type(exc).__name__}: {exc}"
         if coverage_error:
             # Block BEFORE the worktree may be removed and before any root hand-off
@@ -1510,7 +1487,7 @@ def _finalize_job_workspace(job: JobPlan, handle: Any) -> None:
             job.result_diff_sha256 = info["sha256"]
             job.result_diff_size_bytes = info["size_bytes"]
             job.result_diff_error = ""
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001 — a diff-capture failure is recorded, never silent
         job.result_diff_error = f"{type(exc).__name__}: {exc}"
 
     if job.state == JOB_COMPLETED and not job.result_diff_error:
@@ -1518,7 +1495,7 @@ def _finalize_job_workspace(job: JobPlan, handle: Any) -> None:
             res = W.remove(handle, keep_branch=True)      # never a merge
             job.worktree_cleanup_status = res["cleanup_status"]
             job.worktree_cleanup_error = res.get("cleanup_error", "")
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 — worktree cleanup failure is recorded, never dropped
             job.worktree_cleanup_status = "failed_recoverable"
             job.worktree_cleanup_error = f"{type(exc).__name__}: {exc}"
         if job.worktree_cleanup_status == "clean":
@@ -2044,7 +2021,7 @@ def select_next_predictable_task(job) -> tuple[object | None, list]:
                 next_task = task
             break
         return next_task, summaries
-    except Exception:
+    except Exception:  # noqa: BLE001 — a status inspection degrades instead of crashing
         return None, []
 
 
@@ -2092,7 +2069,7 @@ def _recorded_hunk_ledger_for_task(job: Any, task: Any):
             job.metadata,
             task_id=task.task_id,
         )
-    except Exception:
+    except Exception:  # noqa: BLE001 — an unreadable hunk record is no decision, not an error
         return HunkDecisionLedger(())
 
 
@@ -2299,7 +2276,7 @@ def run_job(
                 try:
                     _ack_guard(job.job_id, _pending_guard,
                                control_root_path=_cr_guard())
-                except Exception:
+                except Exception:  # noqa: BLE001 — a stop-ack failure must not error an already-stopped job
                     pass
             else:
                 job.error = (
@@ -2495,7 +2472,7 @@ def run_job(
         from packages.core.models import JobBudgets as _JobBudgets
         try:
             _job_budgets = _JobBudgets.model_validate(job.budgets)
-        except Exception as _budget_exc:
+        except Exception as _budget_exc:  # noqa: BLE001 — corrupt budget state blocks the job, not runs unlimited
             job.state = JOB_BLOCKED
             job.error = f"corrupt_budget_state: {_budget_exc}"
             _write_job_postmortem_record(job, _budget_exc)
@@ -2798,7 +2775,7 @@ def run_job(
     job_handle = None
     try:
         job.job_workspace_path, job_handle = _acquire_job_workspace(job)
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001 — a workspace that can't be acquired blocks the job first
         # F010: the job died before ANY task could own the failure. A worktree lock is not
         # a pending task's fault, so it gets a JOB-scope post-mortem — with the typed
         # exception reaching the classifier intact, not stringified into anonymity.
@@ -2823,7 +2800,7 @@ def run_job(
             try:
                 from packages.orchestration import worktrees as _W
                 job.episode_start_workspace_tree = _W.write_tree(job_handle)
-            except Exception as exc:
+            except Exception as exc:  # noqa: BLE001 — a tree-capture failure feeds the snapshot gate
                 from packages.orchestration.failure_postmortem import safe_text
                 job.episode_start_workspace_tree = ""
                 _ws_tree_problems = (safe_text(
@@ -3031,7 +3008,7 @@ def run_job(
                     compiled_context_candidates=compiled_context_candidates,
                     compiled_context_token_budget=compiled_context_token_budget,
                 )
-            except Exception as exc:
+            except Exception as exc:  # noqa: BLE001 — a task that dies mid-call blocks the job with its error
                 task.status = TASK_FAILED
                 task.error = f"pingpong_exception: {exc}"
                 job.state = JOB_BLOCKED
@@ -3163,7 +3140,7 @@ def run_job(
                     and not task.worktree_commit):
                 try:
                     _commit_applied_task(job, task, job_handle)
-                except Exception as exc:
+                except Exception as exc:  # noqa: BLE001 — a failed task commit blocks the job, not a silent retry
                     # D1 (5): a failed commit blocks the job; nothing is retried silently.
                     task.status = TASK_BLOCKED
                     task.error = f"worktree_commit_failed: {type(exc).__name__}: {exc}"
@@ -3253,8 +3230,18 @@ def run_job(
                     (_fjr_dir / "final_job_repair_loop.json").write_text(
                         _json.dumps(_repair_loop, indent=2) + "\n"
                     )
-            except Exception:
-                pass  # Best-effort; do not block job completion
+            except Exception as exc:  # noqa: BLE001 — a lost review is recorded as a blocking one
+                # The job stays complete, but a review that could not be written must not read as
+                # "no review", which the final verifier passes: write one that blocks instead.
+                job.metadata["final_job_review_error"] = type(exc).__name__
+                from packages.orchestration.data_paths import job_dir as _fjr_job_dir
+                _fjr_path = _fjr_job_dir(job.job_id) / "final_job_review.json"
+                if not _fjr_path.exists():
+                    _fjr_path.parent.mkdir(parents=True, exist_ok=True)
+                    _fjr_path.write_text(_json.dumps({
+                        "job_id": job.job_id, "verdict": "BLOCKED", "findings": [],
+                        "review_error": type(exc).__name__,
+                    }, indent=2) + "\n")
 
         elif has_pending and max_tasks > 0 and tasks_run >= max_tasks:
             job.state = JOB_PAUSED
@@ -3703,7 +3690,7 @@ def _write_job_postmortem_record(job: JobPlan, exc: BaseException) -> None:
         directory.mkdir(parents=True, exist_ok=True)
         write_postmortem(directory, record, root=directory)
         job.postmortem_path = POSTMORTEM_FILENAME
-    except Exception as write_exc:                # never mask the original failure
+    except Exception as write_exc:  # noqa: BLE001 — a postmortem write failure is recorded, not hidden
         from packages.orchestration.failure_postmortem import safe_text
         job.postmortem_error = safe_text(
             f"{type(write_exc).__name__}: {write_exc}")[:500]
@@ -3772,7 +3759,7 @@ def _write_stop_postmortem(job: JobPlan, signal: Any, task_id: str) -> None:
         write_postmortem(directory, record, root=job_evidence_dir(job.job_id))
         job.stop_postmortem_path = (
             f"{STOP_POSTMORTEM_SUBDIR}/{signal.request_id}/{POSTMORTEM_FILENAME}")
-    except Exception as write_exc:
+    except Exception as write_exc:  # noqa: BLE001 — a stop postmortem write failure is recorded, not hidden
         from packages.orchestration.failure_postmortem import safe_text
         job.stop_error = safe_text(
             f"stop_postmortem_write_failed: {type(write_exc).__name__}: {write_exc}")[:500]
@@ -3855,7 +3842,7 @@ def _append_job_stopped_event(job: JobPlan, signal: Any, task_id: str) -> None:
             pending_task_count=pending,
             postmortem_ref=job.stop_postmortem_path,
         )
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001 — a stop-ledger write failure is recorded, never silent
         job.stop_event_error = safe_text(
             f"job_stopped_event_failed: {type(exc).__name__}: {exc}")[:500]
 
@@ -4006,7 +3993,7 @@ def _stop_job(job: JobPlan, signal: Any, *, task: TaskEntry | None,
     if not _is_budget_stop:
         try:
             acknowledge_stop(job.job_id, signal, control_root_path=control_root_path)
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 — a late ack failure is recorded after the stop is durable
             job.stop_error = safe_text(
                 f"stop_acknowledge_failed: {type(exc).__name__}: {exc}")[:500]
             _persist_job(job)
@@ -4069,7 +4056,7 @@ def _episode_snapshot_bound_ok(job: JobPlan) -> bool:
         # F5: the persisted JobPlan snapshot is UNTRUSTED disk state — strict-decode it. A
         # malformed record never returns ok and is never reused.
         w = decode_episode_snapshot_v1(job.input_snapshot)
-    except Exception:
+    except Exception:  # noqa: BLE001 — a snapshot that fails to decode is never reused
         return False
     return w.is_ok() and w.episode_id == job.active_episode_id
 
@@ -4230,7 +4217,7 @@ def _write_run_manifest_record(job: JobPlan, *, status: str, episode_id: str,
         job.run_manifest_episodes = _episodes_from_canonical(
             read_canonical_episode_order(ev, job_id=job.job_id))
         return True
-    except Exception as exc:                       # never mask the primary job outcome
+    except Exception as exc:  # noqa: BLE001 — a manifest write failure is recorded, not hidden
         from packages.orchestration.failure_postmortem import safe_text
         job.run_manifest_error = safe_text(
             f"run_manifest_write_failed: {type(exc).__name__}: {exc}")[:500]

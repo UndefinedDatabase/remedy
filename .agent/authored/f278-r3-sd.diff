@@ -1,0 +1,121 @@
+diff --git a/packages/orchestration/self_dogfood_execution.py b/packages/orchestration/self_dogfood_execution.py
+index c9c526a8..3a1c4503 100644
+--- a/packages/orchestration/self_dogfood_execution.py
++++ b/packages/orchestration/self_dogfood_execution.py
+@@ -36,13 +36,13 @@ Public API::
+ from __future__ import annotations
+ 
+ import json
+-import os
+ from dataclasses import dataclass, field
+ from datetime import datetime, timezone
+ from pathlib import Path
+ from typing import Any
+ from uuid import uuid4
+ 
++from packages.common.secure_fs import durable_write
+ from packages.orchestration.data_paths import normalize_job_id
+ 
+ # ---------------------------------------------------------------------------
+@@ -333,30 +333,16 @@ def _attempt_dir(attempt_id: str, data_dir: Path) -> Path:
+     return _attempts_root(data_dir) / attempt_id
+ 
+ 
+-def _atomic_write(path: Path, data: bytes, mode: int = 0o600) -> bool:
+-    try:
+-        path.parent.mkdir(parents=True, exist_ok=True)
+-        tmp = path.with_suffix(path.suffix + ".tmp")
+-        tmp.write_bytes(data)
+-        try:
+-            os.chmod(tmp, mode)
+-        except OSError:
+-            pass
+-        os.replace(tmp, path)
+-        try:
+-            os.chmod(path, mode)
+-        except OSError:
+-            pass
+-        return True
+-    except OSError:
+-        return False
+-
+-
+ def save_attempt(attempt: SelfImprovementAttempt, data_dir: Path) -> bool:
+     attempt.updated_at = _now()
+     adir = _attempt_dir(attempt.attempt_id, data_dir)
+-    return _atomic_write(adir / "attempt.json",
+-                         json.dumps(attempt.to_dict(), indent=2, sort_keys=True).encode("utf-8"))
++    try:
++        adir.mkdir(parents=True, exist_ok=True)
++        durable_write(adir / "attempt.json",
++                      json.dumps(attempt.to_dict(), indent=2, sort_keys=True).encode("utf-8"))
++    except OSError:
++        return False
++    return True
+ 
+ 
+ def get_attempt(attempt_id: str, data_dir: Path | None = None) -> dict | None:
+@@ -564,7 +550,8 @@ def _build_self_request_text(item: Any, job_id: str) -> str:
+ def _store_request(attempt_id: str, data_dir: Path, text: str) -> str:
+     rpid = uuid4().hex[:16]
+     rdir = _attempt_dir(attempt_id, data_dir)
+-    _atomic_write(rdir / "request.md", text.encode("utf-8", errors="replace"))
++    rdir.mkdir(parents=True, exist_ok=True)
++    durable_write(rdir / "request.md", text.encode("utf-8", errors="replace"))
+     return rpid
+ 
+ 
+diff --git a/tests/orchestration/test_durable_write_guard.py b/tests/orchestration/test_durable_write_guard.py
+index cb6482e4..bfabb99e 100644
+--- a/tests/orchestration/test_durable_write_guard.py
++++ b/tests/orchestration/test_durable_write_guard.py
+@@ -23,7 +23,6 @@ HELPER_NAME = re.compile(r"_?atomic_(private_)?write")
+ 
+ #: (module path, function name) — the copies not yet migrated. Only ever shrinks.
+ STILL_TO_MIGRATE = frozenset({
+-    ("packages/orchestration/self_dogfood_execution.py", "_atomic_write"),
+     ("packages/orchestration/token_economy.py", "_atomic_write"),
+     ("packages/runtimes/dev_server.py", "_atomic_write"),
+     ("packages/runtimes/dev_server.py", "atomic_write_bytes"),
+diff --git a/tests/orchestration/test_self_dogfood_execution.py b/tests/orchestration/test_self_dogfood_execution.py
+index 7bfd414f..02f7e087 100644
+--- a/tests/orchestration/test_self_dogfood_execution.py
++++ b/tests/orchestration/test_self_dogfood_execution.py
+@@ -267,3 +267,37 @@ class TestCurrentBranchRepoForms:
+     def test_no_repo_unknown(self, tmp_path, monkeypatch):
+         monkeypatch.chdir(tmp_path)
+         assert SE.current_branch() == ""
++
++
++class TestAttemptRecordsAreDurable:
++    """F278 T002: the attempt record and the request go through `durable_write`; a failed
++    attempt write answers False, and a failed request write raises (DECISION F278 D2)."""
++
++    def test_both_records_are_written_through_durable_write(self, env, monkeypatch):
++        seen: list[str] = []
++        real = SE.durable_write
++
++        def recording(path, data, **kw):
++            seen.append(Path(path).name)
++            real(path, data, **kw)
++
++        monkeypatch.setattr(SE, "durable_write", recording)
++        job, pt = _approved_task(env)
++        SE.start_self_execution(pt.id, str(job.job_id), env)
++        assert "request.md" in seen and "attempt.json" in seen
++
++    def test_a_failed_attempt_write_answers_false(self, env, monkeypatch):
++        def failing(path, data, **kw):
++            raise OSError("disk full")
++
++        monkeypatch.setattr(SE, "durable_write", failing)
++        attempt = SE.SelfImprovementAttempt(attempt_id="a1", state=SE.AttemptState.PROPOSED)
++        assert SE.save_attempt(attempt, env) is False
++
++    def test_a_failed_request_write_raises(self, env, monkeypatch):
++        def failing(path, data, **kw):
++            raise OSError("disk full")
++
++        monkeypatch.setattr(SE, "durable_write", failing)
++        with pytest.raises(OSError, match="disk full"):
++            SE._store_request("a1", env, "request text")

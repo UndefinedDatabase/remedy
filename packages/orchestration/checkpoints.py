@@ -51,7 +51,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from packages.orchestration.pingpong_job import atomic_write_text as _atomic_write
+from packages.common.secure_fs import durable_write
 
 _log = logging.getLogger("remedy.checkpoints")
 
@@ -337,7 +337,7 @@ def write_checkpoint(job_id: str, checkpoint: Checkpoint,
     directory = checkpoint_dir(job_id)
     directory.mkdir(parents=True, exist_ok=True)
     path = directory / CHECKPOINT_FILENAME.format(index=checkpoint.cycle_index)
-    _atomic_write(path, json.dumps(checkpoint.to_json(), indent=2, sort_keys=True))
+    durable_write(path, json.dumps(checkpoint.to_json(), indent=2, sort_keys=True))
     apply_retention(job_id, retention)
     return path
 
@@ -525,7 +525,7 @@ def resolve_retention(config: Any = None) -> int:
             return DEFAULT_RETENTION
     try:
         value = config.get(CONFIG_KEY_RETENTION)
-    except Exception:  # noqa: BLE001
+    except Exception:  # noqa: BLE001 — retention must never break a write
         return DEFAULT_RETENTION
     if value is None:
         return DEFAULT_RETENTION

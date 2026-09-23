@@ -279,7 +279,7 @@ def _parsed_decision_stamp(value: Any) -> datetime | None:
     no time to order it by."""
     try:
         return datetime.fromisoformat(value)
-    except Exception:
+    except (TypeError, ValueError):
         return None
 
 
@@ -351,5 +351,5 @@ def load_latest_hunk_ledger_from_metadata(
         if winner is None:
             return HunkDecisionLedger(())
         return import_hunk_ledger(winner)
-    except Exception:
+    except Exception:  # noqa: BLE001 — malformed metadata yields an empty ledger, never a partial one
         return HunkDecisionLedger(())

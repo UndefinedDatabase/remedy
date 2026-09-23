@@ -1,0 +1,61 @@
+diff --git a/packages/orchestration/pingpong_job.py b/packages/orchestration/pingpong_job.py
+index d9c9777a..b4873924 100644
+--- a/packages/orchestration/pingpong_job.py
++++ b/packages/orchestration/pingpong_job.py
+@@ -3230,8 +3230,18 @@ def run_job(
+                     (_fjr_dir / "final_job_repair_loop.json").write_text(
+                         _json.dumps(_repair_loop, indent=2) + "\n"
+                     )
+-            except Exception:
+-                pass  # Best-effort; do not block job completion
++            except Exception as exc:  # noqa: BLE001 — a lost review is recorded as a blocking one
++                # The job stays complete, but a review that could not be written must not read as
++                # "no review", which the final verifier passes: write one that blocks instead.
++                job.metadata["final_job_review_error"] = type(exc).__name__
++                from packages.orchestration.data_paths import job_dir as _fjr_job_dir
++                _fjr_path = _fjr_job_dir(job.job_id) / "final_job_review.json"
++                if not _fjr_path.exists():
++                    _fjr_path.parent.mkdir(parents=True, exist_ok=True)
++                    _fjr_path.write_text(_json.dumps({
++                        "job_id": job.job_id, "verdict": "BLOCKED", "findings": [],
++                        "review_error": type(exc).__name__,
++                    }, indent=2) + "\n")
+ 
+         elif has_pending and max_tasks > 0 and tasks_run >= max_tasks:
+             job.state = JOB_PAUSED
+diff --git a/tests/orchestration/test_pingpong_integration.py b/tests/orchestration/test_pingpong_integration.py
+index 54a2f40f..c2716cf5 100644
+--- a/tests/orchestration/test_pingpong_integration.py
++++ b/tests/orchestration/test_pingpong_integration.py
+@@ -214,3 +214,31 @@ class TestExportPingpongJsonIntegration:
+         exported = export_pingpong_json(result)
+         assert "task_actor_binding" in exported
+         assert exported["task_actor_binding"] is not None
++
++
++class TestRunJobFinalReviewFailure:
++    """F278 T003: a final review that cannot be built is recorded as BLOCKING, never lost."""
++
++    def test_a_review_that_cannot_be_built_blocks_the_apply(
++            self, isolate_data_root, demo_repo, monkeypatch):
++        from packages.orchestration import final_job_review as fjr_mod
++        from packages.orchestration.final_verifier import _final_job_review_check
++
++        def boom(**_kw):
++            raise RuntimeError("review builder exploded")
++
++        monkeypatch.setattr(fjr_mod, "build_final_job_review", boom)
++        job = parse_job_file(_TWO_TASK_JOB, str(demo_repo))
++        completed_job = run_job(
++            job.job_id,
++            builder_provider=_pass_provider(),
++            reviewer_provider=_pass_provider(),
++            repair_rounds=0,
++        )
++        assert completed_job.state == JOB_COMPLETED
++        assert completed_job.metadata["final_job_review_error"] == "RuntimeError"
++        data = json.loads((job_dir(completed_job.job_id) / "final_job_review.json").read_text())
++        assert data["verdict"] == "BLOCKED"
++        assert data["review_error"] == "RuntimeError"
++        assert "exploded" not in json.dumps(data)
++        assert _final_job_review_check(job_dir(completed_job.job_id))["blocked"] is True

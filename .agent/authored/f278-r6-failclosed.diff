@@ -1,0 +1,41 @@
+diff --git a/packages/orchestration/run_manifest.py b/packages/orchestration/run_manifest.py
+index d5b823a0..9bbd7d86 100644
+--- a/packages/orchestration/run_manifest.py
++++ b/packages/orchestration/run_manifest.py
+@@ -3710,8 +3710,8 @@ def _contains_secret(value: str) -> bool:
+         from packages.orchestration.stream_evidence import redact_text
+         probe = _probe_text(value)
+         return redact_text(probe) != probe
+-    except Exception:
+-        return False
++    except Exception:  # noqa: BLE001 — a detector that failed cannot clear the value
++        return True
+ 
+ 
+ _SLASH_CMD_RE = re.compile(
+diff --git a/tests/orchestration/test_run_manifest_security.py b/tests/orchestration/test_run_manifest_security.py
+index f3cee803..3991f10e 100644
+--- a/tests/orchestration/test_run_manifest_security.py
++++ b/tests/orchestration/test_run_manifest_security.py
+@@ -196,3 +196,21 @@ class TestAnchoredExportReader:
+         (ev / MANIFESTS_SUBDIR / "ep1" / MANIFEST_FILENAME).unlink()
+         files, problems = read_manifest_tree_bytes_anchored(ev)
+         assert any("no manifest" in p for p in problems), problems
++
++
++class TestSecretDetectorFailsClosed:
++    """F278 T003: when the redactor the detector reuses raises, the value is NOT cleared."""
++
++    def test_a_failing_redactor_reports_a_secret(self, monkeypatch):
++        from packages.orchestration import run_manifest as rm
++        from packages.orchestration import stream_evidence
++
++        def broken(text):
++            raise RuntimeError("redactor unavailable")
++
++        monkeypatch.setattr(stream_evidence, "redact_text", broken)
++        assert rm._contains_secret("an ordinary value") is True
++
++    def test_an_ordinary_value_is_still_clear(self):
++        from packages.orchestration import run_manifest as rm
++        assert rm._contains_secret("an ordinary value") is False

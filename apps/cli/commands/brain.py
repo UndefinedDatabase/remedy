@@ -129,7 +129,7 @@ def _cmd_brain_view(job_id_str: str, *, json_output: bool = False) -> None:
                 print("Warning: project constitution unavailable for viewer.", file=sys.stderr)
             else:
                 constitution = load_project_constitution(repo_path)
-        except Exception:
+        except Exception:  # noqa: BLE001 — constitution is optional; warn and continue without it
             print("Warning: project constitution unavailable for viewer.", file=sys.stderr)
 
     graph = build_project_brain(job, events, constitution=constitution)
@@ -179,7 +179,7 @@ def _prepare_viewer(job_id_str: str, *, json_output: bool = False):
             repo_path = Path(target_repo_str)
             if repo_path.exists() and repo_path.is_dir():
                 constitution = load_project_constitution(repo_path)
-        except Exception:
+        except Exception:  # noqa: BLE001 — constitution is optional; treat load failure as absent
             pass
 
     graph = build_project_brain(job, events, constitution=constitution)
@@ -304,7 +304,7 @@ def _cmd_context(job_id_str: str, *, json_output: bool = False) -> None:
                 print("Warning: project constitution unavailable for context coverage.", file=sys.stderr)
             else:
                 constitution = load_project_constitution(repo_path)
-        except Exception:
+        except Exception:  # noqa: BLE001 — constitution is optional; warn and continue without it
             print("Warning: project constitution unavailable for context coverage.", file=sys.stderr)
 
     snapshot = derive_context_coverage(job, events, constitution=constitution)

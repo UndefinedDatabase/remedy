@@ -1288,7 +1288,7 @@ def _build_runtime_scope_packet(
             repair_rounds=repair_rounds,
             cross_file=cross_file,
         )
-    except Exception:
+    except Exception:  # noqa: BLE001 — a missing scope summary falls back to the full diff
         return None
 
     return {
@@ -1925,7 +1925,7 @@ def _finalize_workspace(
             result.result_diff_sha256 = info["sha256"]
             result.result_diff_size_bytes = info["size_bytes"]
             result.result_diff_error = ""
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 — a job-owned worktree's diff failure is recorded, not fatal
             result.result_diff_error = f"{type(exc).__name__}: {exc}"
         return
     try:
@@ -1936,7 +1936,7 @@ def _finalize_workspace(
         result.result_diff_sha256 = info["sha256"]
         result.result_diff_size_bytes = info["size_bytes"]
         result.result_diff_error = ""
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001 — an uncommitted worktree is kept, not destroyed, on failure
         # The run's changes are UNCOMMITTED: the branch alone does not contain
         # them, so the worktree is the only copy. Without a persisted diff there
         # is no hand-off — keep the worktree (and the work) for recovery instead
@@ -1965,7 +1965,7 @@ def _finalize_workspace(
         res = _wt.remove(worktree, keep_branch=True)
         result.worktree_cleanup_status = res["cleanup_status"]
         result.worktree_cleanup_error = res.get("cleanup_error", "")
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001 — a failed cleanup must still be recorded for recovery
         # The worktree may still be registered and the lock may still be held:
         # say so, so recovery can find it, instead of claiming a clean run.
         result.worktree_cleanup_status = "failed"
@@ -2429,7 +2429,7 @@ def _begin_stream_call(provider: Any, round_no: int, kind: str = "attempt") -> N
     if callable(fn):
         try:
             fn(round_no, kind)
-        except Exception:
+        except Exception:  # noqa: BLE001 — a stream hint is optional; the call must not fail on it
             pass
 
 
@@ -2443,7 +2443,7 @@ def _offer_stable_prefix(provider: Any, composed: Any) -> None:
     if callable(fn):
         try:
             fn(composed.stable_prefix())
-        except Exception:
+        except Exception:  # noqa: BLE001 — prefix caching is optional; the call must not fail on it
             pass
 
 
@@ -2783,7 +2783,7 @@ def _record_call_failure(
     )
     try:
         written = write_postmortem(directory, record, root=root)
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001 — the original failure must outlive a failed write
         # NEVER replace the provider failure with a new one: `result.error` keeps saying
         # what really went wrong. But a post-mortem that could not be written is itself a
         # fact, and it is now durable — it travels in the exported run JSON, and the job
@@ -4058,7 +4058,7 @@ def run_pingpong(
             result.builder_provider,
             result.reviewer_provider,
         ).value
-    except Exception:
+    except Exception:  # noqa: BLE001 — an unclassifiable run is recorded as unknown, not a crash
         result.execution_mode = "unknown"
 
     # Record task actor binding
@@ -4075,7 +4075,7 @@ def run_pingpong(
             same_builder_repairs=True,
             same_reviewer_re_review=True,
         )
-    except Exception:
+    except Exception:  # noqa: BLE001 — a missing actor binding must not crash run finalization
         result.task_actor_binding = None
 
     # Persist durable run record (outside target repo)

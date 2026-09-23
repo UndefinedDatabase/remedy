@@ -287,7 +287,7 @@ def run_study(
                 narrated = call_fn(prompt, 300)
                 if narrated and narrated.strip():
                     category_values[category] = narrated.strip()
-            except Exception:
+            except Exception:  # noqa: BLE001 — narration call failure keeps the heuristic value instead
                 pass  # Fall back to heuristic on any exception
 
             # Increment counter for next check

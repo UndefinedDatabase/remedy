@@ -1,0 +1,275 @@
+diff --git a/packages/orchestration/stream_evidence.py b/packages/orchestration/stream_evidence.py
+index 4ece6f8c..cf0e2761 100644
+--- a/packages/orchestration/stream_evidence.py
++++ b/packages/orchestration/stream_evidence.py
+@@ -26,6 +26,7 @@ No provider is invoked by this module: it consumes an iterable of lines.
+ """
+ from __future__ import annotations
+ 
++import contextlib
+ import hashlib
+ import json
+ import re
+@@ -67,6 +68,8 @@ EVENT_RESULT = "result"
+ EVENT_PROVIDER_ERROR = "provider_error"
+ EVENT_MALFORMED = "malformed"
+ EVENT_CAP_REACHED = "stream_cap_reached"
++#: A step of the capture failed and the artifact is incomplete in the way the event names.
++EVENT_DEGRADED = "stream_degraded"
+ 
+ 
+ @dataclass
+@@ -83,6 +86,9 @@ class StreamCaptureResult:
+     remaining_lines_unknown: bool = False
+     max_bytes: int = DEFAULT_MAX_BYTES
+     event_counts: dict[str, int] = field(default_factory=dict)
++    #: One ``{"step", "error_type"}`` entry per capture step that failed. Empty means no
++    #: step failed; it never means "not checked".
++    degradations: list[dict[str, str]] = field(default_factory=list)
+ 
+     def to_dict(self) -> dict[str, Any]:
+         return {
+@@ -98,6 +104,7 @@ class StreamCaptureResult:
+             "remaining_lines_unknown": self.remaining_lines_unknown,
+             "max_bytes": self.max_bytes,
+             "event_counts": dict(self.event_counts),
++            "degradations": [dict(d) for d in self.degradations],
+         }
+ 
+ 
+@@ -439,8 +446,10 @@ def capture_stream_evidence(
+                     if callable(on_cap):
+                         try:
+                             on_cap()
+-                        except Exception:
+-                            pass
++                        except Exception as exc:  # noqa: BLE001 — recorded as a degradation below
++                            failed = _degradation("on_cap", exc)
++                            result.degradations.append(failed)
++                            _emit(ev_fh, {"event_type": EVENT_DEGRADED, **failed})
+                 cap_ev: dict[str, Any] = {
+                     "event_type": EVENT_CAP_REACHED,
+                     "raw_line_number": line_no,
+@@ -493,6 +502,34 @@ def capture_stream_evidence(
+     return result
+ 
+ 
++def _degradation(step: str, exc: BaseException) -> dict[str, str]:
++    """One degradation entry: the step that failed and the exception's TYPE.
++
++    Remedy deliberately does not keep the exception's message here: an OS error message can
++    carry an absolute path, and this entry is written into evidence that is packaged.
++    """
++    return {"step": step, "error_type": type(exc).__name__}
++
++
++def _append_degradation_events(
++    result: StreamCaptureResult, entries: list[dict[str, str]],
++) -> None:
++    """Record failures that happened after the capture closed its files.
++
++    Each entry joins ``result.degradations`` and is appended to the events file as a
++    ``stream_degraded`` event, continuing its ``seq``, so neither the returned object nor
++    the persisted artifact claims a clean run it did not have.
++    """
++    with open(result.events_path, "a", encoding="utf-8") as fh:
++        for entry in entries:
++            result.degradations.append(entry)
++            result.events_written += 1
++            result.event_counts[EVENT_DEGRADED] = result.event_counts.get(EVENT_DEGRADED, 0) + 1
++            fh.write(json.dumps({"event_type": EVENT_DEGRADED, **entry,
++                                 "schema_version": SCHEMA_VERSION,
++                                 "seq": result.events_written}) + "\n")
++
++
+ def iter_process_lines(stdout: Iterable[str]) -> Iterator[str]:
+     """Yield lines from a subprocess stdout without buffering the whole stream."""
+     yield from stdout
+@@ -549,35 +586,33 @@ def _stop_process_tree(proc: Any) -> None:
+     """
+     import os
+     import signal
++    import subprocess
+ 
++    # Each handler names the one exception its call raises for an expected reason — a
++    # process or group that is already gone, or one still alive after the grace period —
++    # so anything else propagates instead of being taken for "already stopped".
+     def _signal_group(sig: int) -> bool:
+         try:
+             os.killpg(os.getpgid(proc.pid), sig)
+             return True
+-        except Exception:
++        except OSError:
+             return False
+ 
+     if proc.poll() is not None:
+         return
+     if not _signal_group(signal.SIGTERM):
+-        try:
++        with contextlib.suppress(OSError):
+             proc.terminate()
+-        except Exception:
+-            pass
+     try:
+         proc.wait(timeout=_TERM_GRACE_SEC)
+         return
+-    except Exception:
++    except subprocess.TimeoutExpired:
+         pass
+     if not _signal_group(signal.SIGKILL):
+-        try:
++        with contextlib.suppress(OSError):
+             proc.kill()
+-        except Exception:
+-            pass
+-    try:
++    with contextlib.suppress(subprocess.TimeoutExpired):
+         proc.wait(timeout=_TERM_GRACE_SEC)
+-    except Exception:
+-        pass
+ 
+ 
+ def run_streamed_command(
+@@ -649,6 +684,8 @@ def run_streamed_command(
+ 
+     stderr_chunks: list[str] = []
+     stderr_bytes = {"n": 0}
++    # Steps that fail around the capture; appended to its artifact once the capture is done.
++    run_degradations: list[dict[str, str]] = []
+ 
+     def _drain_stderr() -> None:
+         if proc.stderr is None:
+@@ -664,8 +701,8 @@ def run_streamed_command(
+                     len(c) for c in stderr_chunks
+                 ) > STDERR_TAIL_BYTES * 2:
+                     stderr_chunks.pop(0)
+-        except Exception:
+-            pass
++        except (OSError, ValueError) as exc:
++            run_degradations.append(_degradation("stderr_drain", exc))
+ 
+     watchdog = threading.Thread(target=_watchdog, daemon=True)
+     stderr_thread = threading.Thread(target=_drain_stderr, daemon=True)
+@@ -681,27 +718,29 @@ def run_streamed_command(
+         if proc.stdout is not None:
+             try:
+                 proc.stdout.close()
+-            except Exception:
+-                pass
++            except OSError as exc:
++                run_degradations.append(_degradation("stdout_close", exc))
+         # stdout is exhausted (or the tree was stopped); reap without hanging.
+         try:
+             proc.wait(timeout=max(0.0, timeout_sec - (time.monotonic() - start)) + _TERM_GRACE_SEC)
+-        except Exception:
++        except subprocess.TimeoutExpired:
+             timed_out.set()
+             _stop_process_tree(proc)
+             try:
+                 proc.wait(timeout=_TERM_GRACE_SEC)
+-            except Exception:
+-                pass
++            except subprocess.TimeoutExpired as exc:
++                run_degradations.append(_degradation("process_reap", exc))
+         finished.set()          # release the watchdog immediately
+         watchdog.join(timeout=_TERM_GRACE_SEC + 1.0)
+         stderr_thread.join(timeout=_TERM_GRACE_SEC + 1.0)
+         if proc.stderr is not None:
+             try:
+                 proc.stderr.close()
+-            except Exception:
+-                pass
++            except OSError as exc:
++                run_degradations.append(_degradation("stderr_close", exc))
+ 
++    if run_degradations:
++        _append_degradation_events(capture, run_degradations)
+     tail = "".join(stderr_chunks)[-STDERR_TAIL_BYTES:]
+ 
+     return StreamRunResult(
+diff --git a/tests/orchestration/test_stream_evidence.py b/tests/orchestration/test_stream_evidence.py
+index 304dcbe6..7eec97a5 100644
+--- a/tests/orchestration/test_stream_evidence.py
++++ b/tests/orchestration/test_stream_evidence.py
+@@ -377,3 +377,81 @@ class TestStructuralRedaction:
+         assert "CANARYFB" not in raw
+         assert "[REDACTED]" in raw
+         assert res.malformed_lines == 1
++
++
++# ---------------------------------------------------------------------------
++# Degradations (F278 T003) — a failed capture step is recorded, never swallowed
++# ---------------------------------------------------------------------------
++
++
++class TestDegradations:
++    def test_a_clean_capture_records_no_degradation(self, tmp_path):
++        res = _capture("basic_session.jsonl", tmp_path)
++        assert res.degradations == []
++        assert res.to_dict()["degradations"] == []
++
++    def test_a_failing_cap_callback_is_recorded_in_the_result_and_the_events(self, tmp_path):
++        def boom():
++            raise RuntimeError("callback exploded")
++
++        res = capture_stream_evidence(
++            _fixture_lines("basic_session.jsonl"), tmp_path, max_bytes=10,
++            drain_on_cap=False, on_cap=boom)
++
++        assert res.cap_reached is True
++        assert res.degradations == [{"step": "on_cap", "error_type": "RuntimeError"}]
++        assert res.to_dict()["degradations"] == res.degradations
++        events = read_run_events(res.events_path)
++        degraded = [e for e in events if e["event_type"] == "stream_degraded"]
++        assert [(e["step"], e["error_type"]) for e in degraded] == [("on_cap", "RuntimeError")]
++        assert any(e["event_type"] == EVENT_CAP_REACHED for e in events)
++        assert "callback exploded" not in Path(res.events_path).read_text(encoding="utf-8")
++
++    def test_a_step_failing_after_the_capture_is_appended_with_the_next_seq(self, tmp_path):
++        from packages.orchestration.stream_evidence import _append_degradation_events
++
++        res = _capture("basic_session.jsonl", tmp_path)
++        before = res.events_written
++        _append_degradation_events(res, [{"step": "stderr_close", "error_type": "OSError"}])
++
++        events = read_run_events(res.events_path)
++        assert events[-1]["event_type"] == "stream_degraded"
++        assert events[-1]["step"] == "stderr_close"
++        assert events[-1]["seq"] == before + 1
++        assert res.events_written == before + 1
++        assert res.degradations == [{"step": "stderr_close", "error_type": "OSError"}]
++
++    def test_a_failing_stderr_close_reaches_the_run_artifact(self, tmp_path, monkeypatch):
++        import subprocess
++        import sys
++
++        from packages.orchestration.stream_evidence import run_streamed_command
++
++        real_popen = subprocess.Popen
++        opened = []
++
++        class _CloseFails:
++            def __init__(self, inner):
++                self._inner = inner
++
++            def read(self, n=-1):
++                return self._inner.read(n)
++
++            def close(self):
++                raise OSError("simulated close failure")
++
++        def popen(*args, **kw):
++            proc = real_popen(*args, **kw)
++            opened.append(proc.stderr)
++            proc.stderr = _CloseFails(proc.stderr)
++            return proc
++
++        monkeypatch.setattr(subprocess, "Popen", popen)
++        run = run_streamed_command(
++            [sys.executable, "-c", "print(1)"], tmp_path / "out")
++        for stream in opened:
++            stream.close()
++
++        assert run.returncode == 0
++        assert run.capture.degradations == [{"step": "stderr_close", "error_type": "OSError"}]
++        assert run.events[-1]["event_type"] == "stream_degraded"

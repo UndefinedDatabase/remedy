@@ -18231,3 +18231,242 @@ only that the output parses — rejected: the exit-code agreement in (2) is the 
 consumer actually depends on.
 
 REVERSE by deleting this paragraph and `tests/cli/test_json_contract.py`.
+
+DECISION F278 D1 (2026-09-22, round 2) — WHAT T002 MIGRATES, IN WHAT ORDER, AND HOW EACH DELETION
+STAYS DELETED.
+
+CONTEXT. T2_F278.md orders the survivor list re-derived from the tree when T002 is taken, never
+carried from its 2026-09-08 counts. Measured by the reviewer at `41254292` by AST over `packages/`,
+`apps/`, `tests/` and `scripts/`: eight private helper definitions matching `_?atomic_(private_)?write`
+outside `packages/common/`, in six modules — `pingpong_job.atomic_write_text` (imported by
+`checkpoints`, `mission_compiler` and `mission_state`), `proposed_tasks._atomic_write`,
+`real_test_execution._atomic_write`, `self_dogfood_execution._atomic_write`,
+`token_economy._atomic_write`, and `dev_server`'s `atomic_write_bytes`, `atomic_write_text` and
+`_atomic_write` (the second imported by `runtime_supervisor` and `apps/cli/commands/runtime_cmd.py`).
+F275's deletion took the rest of the 26 the feature file counted.
+
+CHOSEN. (1) THE GUARD LANDS FIRST, AS A RATCHET. `tests/orchestration/test_durable_write_guard.py`
+reads every definition under `packages/`, `apps/` and `scripts/` and fails on any helper outside
+`packages/common/` that its `STILL_TO_MIGRATE` set does not name, and on any entry of that set that
+no longer exists. The commit that deletes a copy removes its entry in the same commit, so each
+deletion is pinned the moment it lands and a revert of it turns the guard red — which is the red
+proof a migration otherwise lacks, because the copy it deletes worked. The set is empty when T002
+ends. (2) ONE MODULE GROUP PER COMMIT: a helper and every importer it forces. (3) EACH CALL SITE
+KEEPS ITS BYTES AND ITS CONTRACT. The payload is written exactly as before (no switch to
+`durable_write_json`, whose sorted keys and trailing newline would change checkpoint digests); a
+helper that created the parent directory is replaced by the caller's own `mkdir` where the caller
+did not already make it; a helper that returned a boolean keeps that boolean at its call site.
+(4) ORDER: the `pingpong_job` group and `proposed_tasks` in round 2; the three boolean helpers in
+round 3; `dev_server` and its importers in round 4, together with the two INLINE temporary-file
+writers the survey found, `repository_snapshot` (a fixed `.json.tmp` sibling) and
+`project_registry` (no fsync at all), which define no helper and are therefore invisible to the
+guard but are exactly the defect T2_F278.md's "Why this exists" measures.
+
+NOT MIGRATED, BY NAME. `safe_publish.publish_atomically` publishes a finished review archive
+through an anonymous `O_TMPFILE` inode with no-replace `linkat` and an inode-and-digest check after
+publication; that is a different contract from a replace-write and its name does not match the
+guard. `secure_fs.write_file_atomically`, `append_line_at` and `publish_dir_atomically` hold a
+directory descriptor and live in `packages/common/`. `storage.py`'s `mkstemp` placement is on the
+feature file's Do-not-touch list.
+
+ALTERNATIVES. Land the guard last, as the feature file sketches — rejected: every migration commit
+before it would have no red proof. Give `durable_write` a `make_parents` flag — rejected for now:
+of the call sites measured, only `pingpong_job._persist_job` relied on the helper to create the
+directory, and one explicit `mkdir` is smaller than a new parameter.
+
+REVERSE by deleting this paragraph and `tests/orchestration/test_durable_write_guard.py`.
+
+DECISION F278 D2 (2026-09-22, round 3) — THE BOOLEAN HELPERS: WHICH CALLERS KEEP A BOOLEAN AND
+WHICH NOW RAISE.
+
+CONTEXT. `real_test_execution`, `self_dogfood_execution` and `token_economy` each carried an
+`_atomic_write` that caught every `OSError` and returned False, wrote a FIXED sibling
+`<name>.tmp` without any fsync, and, in two of the three, chmodded the parent directory to 0o700.
+Measured at `b449d7b2`, five call sites: two in `create_snapshot_proof` and one in
+`_store_request` IGNORED the boolean, so a failed write returned a snapshot proof or a request id
+for a record that was never on disk; `save_attempt` and `save_token_budget_profile` RETURN it.
+
+CHOSEN. (1) A function whose own return value is the boolean keeps it: `save_attempt` and
+`save_token_budget_profile` answer False on an `OSError` from making the directory or from
+`durable_write`, exactly as before. (2) A call site that ignored the boolean now lets the error
+propagate: `create_snapshot_proof` and `_store_request` raise instead of returning an artifact
+whose record is not on disk. That is T2_F278.md's own reason for existing — an artifact that is
+silently incomplete is indistinguishable from a complete one — and no caller measured relied on
+the silence. (3) The private parent directory is kept by `mkdir(mode=0o700, ...)` in the two
+modules that chmodded it. That mode applies when the directory is CREATED; a directory that
+already exists is no longer re-chmodded on every write, which is the one behaviour this drops,
+and no test in the repository pinned it. (4) Each module's test file gains a class that patches
+`durable_write` to record and to fail, so reverting the module turns those tests red beside the
+guard.
+
+ALTERNATIVES. Keep the silence with `contextlib.suppress(OSError)` at the ignoring sites —
+rejected under (2). Add a boolean-returning variant to `secure_fs` — rejected: two call sites
+return the boolean, and a second shared helper is the shape T002 exists to remove. Keep an
+explicit `os.chmod` of the parent at every write — rejected: it re-adds a suppressed
+`except OSError: pass` per site for a property nothing asserts.
+
+REVERSE by deleting this paragraph and restoring the three `_atomic_write` definitions from git
+history at `b449d7b2`.
+
+DECISION F278 D3 (2026-09-22, round 4) — THE RUNTIME GROUP AND THE INLINE WRITERS END T002, AND
+WHAT T002 DELIBERATELY LEAVES.
+
+CONTEXT. `packages/runtimes/dev_server.py` carried `atomic_write_bytes`, `atomic_write_text` and
+`_atomic_write`, used by `runtime_supervisor`, by `apps/cli/commands/runtime_cmd.py` and by one
+test. Measured at `ce53bd0c`: its temporary name was `.<name>.<pid>.tmp`, unique per PROCESS but
+shared by two threads of one process, and its file fsync sat inside `contextlib.suppress(OSError)`.
+DECISION F278 D1 also put here the two inline writers the guard cannot see:
+`repository_snapshot.update_apply_record_state`, which wrote a fixed `.json.tmp` sibling with no
+fsync, and `project_registry.save_project`, which used `mkstemp` correctly but never fsynced.
+
+CHOSEN. (1) All three runtime helpers are deleted and every caller imports `durable_write`; the
+file mode stays 0o600, the default of both. A caller the old helper silently gave a directory
+gets its own `mkdir` where no `ensure_runtime_dir` or `mkdir` already precedes it — the
+supervisor's handshake and the command's stop request. (2) A failed fsync now RAISES where the
+old runtime helper suppressed it. A runtime record whose data may not be on disk is the silent
+incompleteness T2_F278.md exists to remove, and every runtime call site that must not raise
+already wraps its write in its own `suppress`, which this round leaves as it found it.
+(3) `update_apply_record_state` keeps its boolean and its "record unchanged on failure"
+promise; `save_project` keeps raising, as it did. (4) The guard's `STILL_TO_MIGRATE` is EMPTY
+from this round: any function matching `_?atomic_(private_)?write` outside `packages/common/` is
+now a failure.
+
+WHAT T002 DELIBERATELY LEAVES. Plain writers that never claimed atomicity — `write_text`,
+`write_bytes`, and small wrappers such as `repository_snapshot._write_private` — are outside
+T2_F278.md's T002, whose subject is the private ATOMIC-write copies and the temporary-file race.
+They are not measured here and no claim is made about them. `safe_publish.publish_atomically` and
+the descriptor-anchored writers in `secure_fs` stay, as DECISION F278 D1 states.
+
+ALTERNATIVES. Keep `atomic_write_text` in `dev_server` as a one-line alias of `durable_write` so
+the importers need no edit — rejected: AGENTS.md "Replacing is deleting" forbids the alias, and
+the guard would have to allow it by name. Keep the suppressed fsync for runtime records —
+rejected under (2).
+
+REVERSE by deleting this paragraph and restoring the three runtime helpers and the two inline
+writers from git history at `ce53bd0c`.
+
+DECISION F278 D4 (2026-09-23, round 5) — T003's SHAPE: NARROW WHAT CAN BE NARROWED, RECORD WHAT
+IS LOST, EXCUSE THE REST BY NAME, AND TURN THE RULE ON ONLY WHEN THE COUNT IS ZERO.
+
+CONTEXT. Measured at `924f7dd6` with `ruff check --select BLE001` over `packages/`, `apps/` and
+`scripts/`: 268 unmarked blind-exception handlers in 55 files, and 35 already carrying
+`# noqa: BLE001`, three of those with no reason. `stream_evidence.py` holds 11 of the 268, not the
+nine T2_F278.md counted on 2026-09-08. DECISION amend0911-feedback D7 rules that `ruff check .`
+reports ZERO findings and that there is no lint baseline and no lint ceiling; the CI `budgets`
+stage fails on any finding.
+
+CHOSEN. (1) STREAM EVIDENCE FIRST, this round. A handler whose call raises one known exception for
+an expected reason is NARROWED to it — `OSError` for signalling or closing a process that is
+already gone, `subprocess.TimeoutExpired` for a wait — so anything unexpected propagates. A step
+whose failure makes the evidence incomplete is RECORDED: `StreamCaptureResult` gains
+`degradations`, a list of `{"step", "error_type"}` entries, in `to_dict` and as `stream_degraded`
+events in `run_events.jsonl`, continuing its `seq`. The exception's message is not kept, because an
+OS error can carry an absolute path into packaged evidence. The one handler around an arbitrary
+callback keeps `except Exception` with a noqa reason. (2) THE REST, module group by module group,
+in the rounds that follow: each handler is read and either narrowed or marked
+`# noqa: BLE001 — <reason>`, the reason saying why swallowing or converting is correct there.
+Marking before the rule is on changes no behaviour and no lint result. (3) THE RULE GOES ON LAST.
+`BLE001` joins `select` in `pyproject.toml` only in the commit whose tree has zero unmarked sites,
+so `ruff check .` never reports a finding and D7 holds at every commit. (4) THE RATCHET lands with
+it: a test that counts every `noqa: BLE001` under `packages/`, `apps/` and `scripts/`, requires a
+reason after a dash on each, and fails if the count exceeds the number measured in that commit. It
+is a ceiling on EXCUSED handlers, not a lint baseline: ruff's own finding count stays zero, which
+is the only count D7 speaks about.
+
+ALTERNATIVES. Turn the rule on now with a per-file ignore list — rejected: a per-file ignore
+silences every future handler in those files too, which is the opposite of a ratchet. Turn it on
+with 268 findings — rejected by D7. A generic reason pasted onto every site — rejected: a reason
+nobody checked is a label, and T2_F278.md asks for the reason.
+
+REVERSE by deleting this paragraph; `stream_evidence.py`'s change reverses from git history at
+`924f7dd6`.
+
+DECISION F278 D5 (2026-09-23, round 6) — THE FIRST MARKING ROUND: HOW A REASON IS WRITTEN AND
+CHECKED, AND THE ONE HANDLER THAT CHANGES BEHAVIOUR.
+
+CONTEXT. DECISION F278 D4 orders the remaining blind handlers read and either narrowed or marked.
+This round takes the three files with the most: `job_evidence.py` 29, `run_manifest.py` 23 and
+`scripts/build_review_manifest.py` 27, measured at `4353fb9e` with `ruff check --select BLE001`.
+
+CHOSEN. (1) A research agent read every one of the 79 handlers, without writing to the tree, and
+proposed a reason per site with one sentence of evidence. It proposed no narrowing; for the
+subprocess probes, the closest candidates, it reported that they run with `text=True`, whose
+decoding failure is a `ValueError` the obvious narrowing would miss. The
+reviewer read the proposals, checked the handlers whose reasons could hide a defect against the
+code, and changed three: two lines that carried `# pragma: no cover` keep it after the noqa, and
+one reason that quoted a round label is reworded. (2) A marking commit changes COMMENTS only.
+`marking_check.py`, shipped with this round, proves it per commit: every changed line keeps its
+code text up to the comment, gains `# noqa: BLE001 — ` and a reason, and the commit removes as
+many lines as it adds; the fail-closed commit below is its negative control. (3) ONE HANDLER
+CHANGES BEHAVIOUR. `run_manifest._contains_secret` asks the stream redactor whether a value
+carries a secret, and on ANY exception answered False, so a detector that could not run cleared
+the value it was asked about. Every caller refuses or flags a value when it answers True, so it
+now answers True: a detector that failed cannot clear anything. A test pins it, and its red proof
+restores the old answer.
+
+ALTERNATIVES. Register the fail-open answer as a finding for the paydown feature — rejected: the
+repair is one line inside a handler this round must read and mark anyway, and marking it with a
+reason that describes a fail-open would put the defect into the record as a justification.
+Narrow the subprocess probes to `(OSError, subprocess.TimeoutExpired)` — rejected for the
+decoding case above.
+
+REVERSE by deleting this paragraph and restoring `_contains_secret`'s `return False` from git
+history at `4353fb9e`.
+
+DECISION F278 D6 (2026-09-23, round 7) — A HANDLER THAT FAILS OPEN IS REPAIRED, NEVER EXCUSED,
+AND THE THREE THE MARKING FOUND ARE REGISTERED AND TAKEN IN THIS ROUND AND THE NEXT.
+
+CONTEXT. The research for the second and third marking groups read 178 handlers and flagged four
+where catching everything hides a defect; the reviewer confirmed each against the code at
+`ead4ec77`. One, in `pingpong_job.run_job`, drops a failed final job review in silence and the
+final verifier reads the missing file as not blocked. Two, in `do_sequence`, drop a job's budgets
+or fences when they fail to validate. One, in `review_subject._metadata_is_safe`, clears a value
+when its scanners raise. A noqa reason on any of them would write the defect into the source as
+its justification.
+
+CHOSEN. (1) Each is registered with Owner F278 — R-1036, R-1037 and R-1038 — in this round's
+booking commit, before any repair. (2) R-1036 is repaired in this round, in its own commit ahead
+of the marking group that holds its file; the marking skips that line. (3) R-1037 and R-1038 sit
+in the third marking group's files and are repaired in the next round, ahead of that group's
+marking, which is the round that turns BLE001 on. (4) Every other handler the research read is
+marked with the reason it proposed, which the reviewer read in full for this group; its two
+handlers that assume a state on failure, in `job_apply`'s cleanup, were checked against the code
+and fail toward the conservative answer.
+
+ALTERNATIVES. Repair all three here — rejected: R-1037 and R-1038 live in files the next round
+marks, and repairing them there keeps each file's change in one round. Register them for the
+findings paydown feature — rejected: each is inside T003's own subject, a failure that must be
+loud, and the feature that found them is the one reading the handlers.
+
+REVERSE by deleting this paragraph; the R-1036 repair reverses from git history at `ead4ec77`.
+
+DECISION F278 D7 (2026-09-23, round 8) — BLE001 IS ON: WHAT IT COVERS, WHAT IT EXCUSES, AND THE
+RATCHET THAT HOLDS THE EXCUSES.
+
+CONTEXT. After rounds 5 to 7, 82 blind handlers remained under `packages/`, `apps/` and
+`scripts/`, measured at `2537a4ae` with `ruff check --select BLE001`, and `tests/` held 13 more.
+DECISION amend0911-feedback D7 requires `ruff check .` to report zero findings at every commit.
+
+CHOSEN. (1) R-1037 and R-1038 are repaired first, each in its own commit with its test: a
+plan's budgets or fences that fail to validate now refuse the order through a new
+`do_sequence.order_job_limits`, and `review_subject._metadata_is_safe` answers False when its
+scanners raise. (2) One handler is NARROWED rather than excused:
+`hunk_decision_record._parsed_decision_stamp` wraps `datetime.fromisoformat` alone, and its own
+docstring names `TypeError` and `ValueError` as the two failures it means. (3) The rest are
+marked in two comment-only commits; the three marks that carried no reason gain one, and two
+older marks that wrote their reason after a hyphen are rewritten with the em dash the ratchet
+reads. (4) THE ENABLEMENT COMMIT adds `BLE001` to `select` in `pyproject.toml` and to the
+`tests/**` per-file ignores — a test may catch anything in order to assert on it — and adds
+`tests/test_ble001_ratchet.py`, which requires a reason after ` — ` on every
+`noqa: BLE001` under `packages/`, `apps/` and `scripts/`, requires `BLE001` to stay selected, and
+holds the count of excused handlers EQUAL to `MAX_EXCUSED`, 290 at this commit: a new excuse fails
+it, and so does a removed one until the number is lowered in the same commit. With the rule on,
+`ruff check .` over the whole tree reports zero, which CI's budgets stage and D7 require.
+
+ALTERNATIVES. Turn the rule on for `tests/` too — rejected: a test that catches everything to
+assert on the exception is the one place a blind handler is the point. Hold the count with `<=`
+only — rejected: a count that may silently fall is a ceiling that drifts upward the next time a
+mark is added back.
+
+REVERSE by deleting this paragraph, removing `BLE001` from `select` and from the `tests/**` line,
+and deleting `tests/test_ble001_ratchet.py`; the marks are inert without the rule.

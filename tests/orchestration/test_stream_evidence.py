@@ -377,3 +377,81 @@ class TestStructuralRedaction:
         assert "CANARYFB" not in raw
         assert "[REDACTED]" in raw
         assert res.malformed_lines == 1
+
+
+# ---------------------------------------------------------------------------
+# Degradations (F278 T003) — a failed capture step is recorded, never swallowed
+# ---------------------------------------------------------------------------
+
+
+class TestDegradations:
+    def test_a_clean_capture_records_no_degradation(self, tmp_path):
+        res = _capture("basic_session.jsonl", tmp_path)
+        assert res.degradations == []
+        assert res.to_dict()["degradations"] == []
+
+    def test_a_failing_cap_callback_is_recorded_in_the_result_and_the_events(self, tmp_path):
+        def boom():
+            raise RuntimeError("callback exploded")
+
+        res = capture_stream_evidence(
+            _fixture_lines("basic_session.jsonl"), tmp_path, max_bytes=10,
+            drain_on_cap=False, on_cap=boom)
+
+        assert res.cap_reached is True
+        assert res.degradations == [{"step": "on_cap", "error_type": "RuntimeError"}]
+        assert res.to_dict()["degradations"] == res.degradations
+        events = read_run_events(res.events_path)
+        degraded = [e for e in events if e["event_type"] == "stream_degraded"]
+        assert [(e["step"], e["error_type"]) for e in degraded] == [("on_cap", "RuntimeError")]
+        assert any(e["event_type"] == EVENT_CAP_REACHED for e in events)
+        assert "callback exploded" not in Path(res.events_path).read_text(encoding="utf-8")
+
+    def test_a_step_failing_after_the_capture_is_appended_with_the_next_seq(self, tmp_path):
+        from packages.orchestration.stream_evidence import _append_degradation_events
+
+        res = _capture("basic_session.jsonl", tmp_path)
+        before = res.events_written
+        _append_degradation_events(res, [{"step": "stderr_close", "error_type": "OSError"}])
+
+        events = read_run_events(res.events_path)
+        assert events[-1]["event_type"] == "stream_degraded"
+        assert events[-1]["step"] == "stderr_close"
+        assert events[-1]["seq"] == before + 1
+        assert res.events_written == before + 1
+        assert res.degradations == [{"step": "stderr_close", "error_type": "OSError"}]
+
+    def test_a_failing_stderr_close_reaches_the_run_artifact(self, tmp_path, monkeypatch):
+        import subprocess
+        import sys
+
+        from packages.orchestration.stream_evidence import run_streamed_command
+
+        real_popen = subprocess.Popen
+        opened = []
+
+        class _CloseFails:
+            def __init__(self, inner):
+                self._inner = inner
+
+            def read(self, n=-1):
+                return self._inner.read(n)
+
+            def close(self):
+                raise OSError("simulated close failure")
+
+        def popen(*args, **kw):
+            proc = real_popen(*args, **kw)
+            opened.append(proc.stderr)
+            proc.stderr = _CloseFails(proc.stderr)
+            return proc
+
+        monkeypatch.setattr(subprocess, "Popen", popen)
+        run = run_streamed_command(
+            [sys.executable, "-c", "print(1)"], tmp_path / "out")
+        for stream in opened:
+            stream.close()
+
+        assert run.returncode == 0
+        assert run.capture.degradations == [{"step": "stderr_close", "error_type": "OSError"}]
+        assert run.events[-1]["event_type"] == "stream_degraded"

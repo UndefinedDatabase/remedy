@@ -1,0 +1,79 @@
+diff --git a/packages/orchestration/proposed_tasks.py b/packages/orchestration/proposed_tasks.py
+index f4519c8f..4d3b7307 100644
+--- a/packages/orchestration/proposed_tasks.py
++++ b/packages/orchestration/proposed_tasks.py
+@@ -21,7 +21,6 @@ from __future__ import annotations
+ import fcntl
+ import json
+ import os
+-import tempfile
+ from collections.abc import Iterator
+ from contextlib import contextmanager
+ from datetime import datetime, timezone
+@@ -32,6 +31,7 @@ from uuid import uuid4
+ 
+ from pydantic import BaseModel, Field
+ 
++from packages.common.secure_fs import durable_write
+ from packages.orchestration.data_paths import normalize_job_id, proposed_tasks_dir
+ 
+ 
+@@ -216,35 +216,12 @@ def _file_lock(job_id: str, root: Path | None = None) -> Iterator[None]:
+             pass
+ 
+ 
+-def _atomic_write(path: Path, data: str) -> None:
+-    path.parent.mkdir(parents=True, exist_ok=True)
+-    fd, tmp = tempfile.mkstemp(dir=str(path.parent), suffix=".tmp")
+-    closed = False
+-    try:
+-        os.write(fd, data.encode("utf-8"))
+-        os.fsync(fd)
+-        os.close(fd)
+-        closed = True
+-        os.replace(tmp, str(path))
+-    except BaseException:
+-        if not closed:
+-            try:
+-                os.close(fd)
+-            except OSError:
+-                pass
+-        try:
+-            os.unlink(tmp)
+-        except OSError:
+-            pass
+-        raise
+-
+-
+ def save_proposed_tasks(job_id: str, tasks: list[ProposedTask], root: Path | None = None) -> None:
+     store = _resolve_store_dir(root)
+     store.mkdir(parents=True, exist_ok=True)
+     path = _job_path(job_id, root)
+     data = [t.model_dump(mode="json") for t in tasks]
+-    _atomic_write(path, json.dumps(data, indent=2, default=str))
++    durable_write(path, json.dumps(data, indent=2, default=str))
+ 
+ 
+ def load_proposed_tasks(job_id: str, root: Path | None = None) -> list[ProposedTask]:
+diff --git a/tests/orchestration/test_durable_write_guard.py b/tests/orchestration/test_durable_write_guard.py
+index b511d3a0..92e04ce5 100644
+--- a/tests/orchestration/test_durable_write_guard.py
++++ b/tests/orchestration/test_durable_write_guard.py
+@@ -23,7 +23,6 @@ HELPER_NAME = re.compile(r"_?atomic_(private_)?write")
+ 
+ #: (module path, function name) — the copies not yet migrated. Only ever shrinks.
+ STILL_TO_MIGRATE = frozenset({
+-    ("packages/orchestration/proposed_tasks.py", "_atomic_write"),
+     ("packages/orchestration/real_test_execution.py", "_atomic_write"),
+     ("packages/orchestration/self_dogfood_execution.py", "_atomic_write"),
+     ("packages/orchestration/token_economy.py", "_atomic_write"),
+diff --git a/tests/orchestration/test_task_execution.py b/tests/orchestration/test_task_execution.py
+index e73d8a88..bb307338 100644
+--- a/tests/orchestration/test_task_execution.py
++++ b/tests/orchestration/test_task_execution.py
+@@ -17,4 +17,4 @@ class TestModularArchitectureGuards:
+ 
+     def test_storage_access_through_helpers(self):
+         src = Path("packages/orchestration/proposed_tasks.py").read_text()
+-        assert "open(" not in src or "_atomic_write" in src
++        assert "open(" not in src or "durable_write" in src

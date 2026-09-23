@@ -815,7 +815,7 @@ def _cmd_plan_job_local(job_id_str: str, *, json_output: bool = False) -> None:
         log.log("planning_failed", provider="ollama", role="planner", model=planner.model,
                 outcome="error", message="planning failed", error_category=type(exc).__name__)
         fail("missing_dependency", str(exc), json_output=json_output)
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001 — any planner failure is reported, never crashes the CLI
         _persist_plan_traces()
         log.log("planning_failed", provider="ollama", role="planner", model=planner.model,
                 outcome="error", message="planning failed", error_category=type(exc).__name__)
@@ -942,7 +942,7 @@ def _cmd_run_next_task_local(job_id_str: str, *, json_output: bool = False) -> N
     except ValueError as exc:
         _fail("configuration_error", error_category="ValueError")
         fail("configuration_error", f'configuration — {exc}', json_output=json_output)
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001 — any builder failure is reported, never crashes the CLI
         _fail("builder_error", error_category=type(exc).__name__)
         fail("builder_error", f'builder execution failed — {exc}', json_output=json_output)
     elapsed_ms = (time.monotonic() - start) * 1000
@@ -1238,7 +1238,7 @@ def _cmd_job_run_cycles(
     log = RunLogWriter(job_id=job.job_id)
     try:
         builder = OllamaBuilder()
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001 — builder construction failure is reported, not a crash
         fail("builder_unavailable", f'builder unavailable — {exc}', json_output=json_output)
 
     limits = replace(limits, budgets=job.budgets)
@@ -1620,7 +1620,7 @@ def _cmd_resume(
         for s in sessions:
             try:
                 _wtr.retain_worktree_resume(s, reason)
-            except Exception:                     # one failure must not leak the rest
+            except Exception:  # noqa: BLE001 — one session's retain failure must not skip the rest
                 _wtr.W.release_lock(s.handle)
 
     if len(sessions) > 1:
@@ -1677,7 +1677,7 @@ def _cmd_resume(
                 else:
                     out = _wtr.retain_worktree_resume(s, reason)
                     event = "worktree_retained"
-            except Exception as exc:
+            except Exception as exc:  # noqa: BLE001 — a session's cleanup failure must not strand its lock
                 _wtr.W.release_lock(s.handle)      # never strand the lock
                 append_run_event(data_dir, job_id, event="worktree_retained", metadata={
                     "run_id": s.run_id,
@@ -1894,7 +1894,7 @@ def _cmd_job_budget(
             try:
                 _budgets = JobBudgets.model_validate(job_plan.budgets)
                 _budgets_dict = job_plan.budgets
-            except Exception:
+            except Exception:  # noqa: BLE001 — an unparseable budget still shows its raw stored values
                 _budgets_dict = job_plan.budgets
 
         if getattr(job_plan, "budget_actuals", None) is not None:
@@ -1911,7 +1911,7 @@ def _cmd_job_budget(
                 if _budgets is not None:
                     evaluation = evaluate_budget(_budgets, counters)
                 _counter_status = "evaluated"
-            except (BudgetCounterError, Exception) as _budget_exc:
+            except (BudgetCounterError, Exception) as _budget_exc:  # noqa: BLE001 — corrupted budgets must not crash
                 _counter_status = "corrupt"
                 _counter_diagnostic = str(_budget_exc)
                 counters = None
@@ -1981,7 +1981,7 @@ def _cmd_job_budget(
                     unpriced_call_count=_unpriced,
                 )
                 evaluation = evaluate_budget(_budgets, counters)
-        except Exception as _cost_exc:
+        except Exception as _cost_exc:  # noqa: BLE001 — a broken cost ledger read must not crash budget display
             # Recorded BEFORE the log call, so a logging subsystem that is itself
             # broken cannot cost the operator the diagnosis. The displayed cost is
             # unchanged — still not-measured, never 0.0 (P6).
@@ -1994,7 +1994,7 @@ def _cmd_job_budget(
                     "(the evidence files remain the source of truth)",
                     _job_display_id, exc_info=True,
                 )
-            except Exception:
+            except Exception:  # noqa: BLE001 — a broken log handler must not crash the inspector
                 # An inspection command never dies because a log handler died.
                 pass
 
@@ -2033,7 +2033,7 @@ def _cmd_job_budget(
                         config=resolve_predictive_budget_config(
                             project_root=(getattr(_plan, "repo_path", "") or None)),
                     )
-        except Exception as _pred_exc:
+        except Exception as _pred_exc:  # noqa: BLE001 — a broken cost estimate must not break the rest of the view
             _prediction = None
             _prediction_note = (
                 f"unavailable ({type(_pred_exc).__name__}: {_pred_exc})"[:160])

@@ -632,7 +632,7 @@ def compress_dossier(dossier: MissionDossier,
             call_fn,
             on_call=on_call,
             allow_parse_retry=False)
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001 — a failed compression call returns the dossier unchanged
         return CompressionResult(
             ok=False, dossier=dossier, status=COMPRESSION_PROVIDER_ERROR,
             detail=f"the compression call raised: {exc}")

@@ -727,7 +727,7 @@ def _mission_goal(job: Any) -> str:
 
     try:
         mission = mission_for_job(str(job.job_id))
-    except Exception:
+    except Exception:  # noqa: BLE001 — a commit subject must not depend on the mission store
         return ""
     return " ".join(str(getattr(mission, "goal", "") or "").split()) if mission else ""
 
@@ -843,7 +843,7 @@ def mission_push_refusals(read_mission: Callable[[], Any]) -> tuple[list[str], l
     try:
         mission = read_mission()
         contract = read_mission_contract(mission) if mission else None
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001 — an unreadable contract must refuse the push, not allow it
         return [f"The mission's contract cannot be read "
                 f"({type(exc).__name__}: {str(exc)[:120]}), so no push can be "
                 f"shown safe."], []
@@ -1231,7 +1231,7 @@ def _materialize_apply_source_owned(job: Any) -> tuple[ApplySource | None, str]:
         )
         if applied.returncode != 0:
             return source, f"job_diff_apply_failed: {applied.stderr.strip()[:200]}"
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001 — a failed materialization still returns the source to clean
         return source, f"apply_materialization_error: {type(exc).__name__}: {exc}"
 
     return source, ""
@@ -1254,7 +1254,7 @@ def _run_cleanup_git(argv: list[str], *, cwd: str, timeout: int) -> tuple[bool, 
         return False, f"{' '.join(argv[:3])} could not run: FileNotFoundError: {exc}"
     except OSError as exc:
         return False, f"{' '.join(argv[:3])} failed: {type(exc).__name__}: {exc}"
-    except Exception as exc:                      # last resort: still no raise
+    except Exception as exc:  # noqa: BLE001 — a cleanup git step must record its failure, never raise
         return False, f"{' '.join(argv[:3])} failed: {type(exc).__name__}: {exc}"
     if proc.returncode != 0:
         return False, f"{' '.join(argv[:3])} failed: {proc.stderr.strip()[:150]}"
@@ -1310,14 +1310,14 @@ def _cleanup_apply_source(source: ApplySource | None) -> dict[str, Any]:
         try:
             if source.temp_root.exists():
                 shutil.rmtree(source.temp_root)
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 — best-effort cleanup must record a failure, never raise
             errors.append(
                 f"temporary directory not deleted: {type(exc).__name__}: {exc}")
 
         try:
             from packages.orchestration import worktrees as W
             registered = W._worktree_registered(source.repo, source.path)
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 — an inventory failure assumes the worktree is registered
             registered = True
             errors.append(f"worktree inventory failed: {type(exc).__name__}: {exc}")
         out["temporary_registration_removed"] = not registered
@@ -1326,14 +1326,14 @@ def _cleanup_apply_source(source: ApplySource | None) -> dict[str, Any]:
 
         try:
             still_there = source.path.exists()
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 — a path check failure assumes the worktree still exists
             still_there = True
             errors.append(f"path check failed: {type(exc).__name__}: {exc}")
         out["temporary_worktree_removed"] = not still_there
         if still_there:
             errors.append(
                 f"temporary worktree directory {source.path.name} still exists")
-    except Exception as exc:                      # belt and braces: never raise
+    except Exception as exc:  # noqa: BLE001 — cleanup as a whole must report failure, never raise
         errors.append(f"cleanup aborted: {type(exc).__name__}: {exc}")
 
     if errors:
@@ -1520,7 +1520,7 @@ def apply_job(
         if apply_source is not None:
             try:
                 cleanup = _cleanup_apply_source(apply_source)
-            except Exception as exc:
+            except Exception as exc:  # noqa: BLE001 — a cleanup bug must not destroy the apply outcome or record
                 # _cleanup_apply_source is total, but a cleanup bug must still
                 # never destroy the apply outcome or the durable record.
                 cleanup = _failed_cleanup(

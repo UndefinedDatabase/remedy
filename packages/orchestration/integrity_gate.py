@@ -102,7 +102,7 @@ def _check_handler_import() -> IntegrityCheck:
         if not isinstance(handlers, dict):
             return IntegrityCheck("handler_import", IntegrityStatus.FAIL, "collect_all_handlers did not return dict")
         return IntegrityCheck("handler_import", IntegrityStatus.PASS, f"handlers={len(handlers)}")
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001 — an unimportable handler set is reported as a FAIL, not a crash
         return IntegrityCheck("handler_import", IntegrityStatus.FAIL, f"import failed: {type(exc).__name__}: {exc}"[:200])
 
 
@@ -211,7 +211,7 @@ def _check_relevant_untracked() -> IntegrityCheck:
                                   f"{len(relevant)} relevant untracked: {', '.join(relevant[:5])}"[:200])
 
         return IntegrityCheck("relevant_untracked", IntegrityStatus.PASS, f"untracked={len(untracked)}, relevant=0")
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001 — a git failure skips this check rather than failing the gate
         return IntegrityCheck("relevant_untracked", IntegrityStatus.SKIP, f"error: {exc}"[:200])
 
 
@@ -247,7 +247,7 @@ def _check_high_blockers_open() -> IntegrityCheck:
     text = live_review.read_text(encoding="utf-8", errors="replace")
     try:
         severities = _load_ledger_reader().open_finding_severities(text)
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001 — an unreadable ledger reader fails the check, never passes it
         # An unreadable ledger reader is a FAIL, never a PASS: a check that cannot
         # read the ledger has not established that nothing severe is open.
         return IntegrityCheck("high_blockers_open", IntegrityStatus.FAIL,
@@ -304,7 +304,7 @@ def _check_collect_only() -> IntegrityCheck:
         return IntegrityCheck("collect_only", IntegrityStatus.FAIL,
                               "collect-only failed: "
                               + (result.stderr or b"").decode("utf-8", "replace")[:200])
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001 — a broken test harness skips this check rather than failing the gate
         return IntegrityCheck("collect_only", IntegrityStatus.SKIP, f"error: {exc}"[:200])
 
 

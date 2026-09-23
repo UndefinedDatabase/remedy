@@ -374,7 +374,7 @@ def open_mission_decisions(mission: Any) -> list[dict[str, Any]]:
     for link in getattr(mission, "job_links", ()) or ():
         try:
             job = require_job_plan(normalize_job_id(link.job_id))
-        except Exception:
+        except Exception:  # noqa: BLE001 — an unreadable job's decisions are dropped, not the whole mission
             # A job that cannot be read cannot be asked about its decisions.
             # Recorded as absent rather than raised: one unreadable job must
             # not make the whole mission undecidable.
@@ -1313,7 +1313,7 @@ def run_mission(
             elif blocker == "" and _was_dispatch(move):
                 # A released (or un-run) gate ends the streak.
                 blocked_milestone, blocked_blockers = "", []
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 — an iteration failure is classified and recorded, not left to crash
             failure_class, detail = record_iteration_failure(
                 pid, mission_id, exc, root=root, iteration=iteration)
             result.iterations = step
@@ -1909,7 +1909,7 @@ def collect_milestone_evidence(project_id: str, mission_id: str,
     handback: Any = None
     try:
         job = require_job_plan(normalize_job_id(job_id))
-    except Exception:
+    except Exception:  # noqa: BLE001 — an unreadable job's evidence is absent, never reported as passing
         # An unreadable job is an ABSENT observation, never a passing one.
         return MilestoneEvidence(job_id=job_id)
     state = str(getattr(getattr(job, "state", ""), "value", getattr(job, "state", "")))
@@ -2151,7 +2151,7 @@ def escalate_repeated_refusal(project_id: str, mission_id: str, reason: str, *,
                 "attached to a decision — a human has to look at the mission")
     try:
         job = require_job_plan(normalize_job_id(link.job_id))
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001 — an unreadable job is reported as an escalation failure message
         return f"the mission's latest job could not be read to escalate: {exc}"
     tasks = list(getattr(job, "tasks", ()) or ())
     if not tasks:
@@ -2287,7 +2287,7 @@ def record_iteration_failure(project_id: str, mission_id: str,
             raw_reason=f"iteration {iteration}: {text}",
             terminal_status=TERMINAL_ITERATION_FAILED,
         ), root=evidence)
-    except Exception as write_exc:  # honest, never fatal
+    except Exception as write_exc:  # noqa: BLE001 — postmortem write failure is noted in the detail text, never fatal
         detail += (f"; the post-mortem could not be written "
                    f"({type(write_exc).__name__}: {write_exc})")
     return verdict.failure_class, detail

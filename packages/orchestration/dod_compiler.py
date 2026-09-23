@@ -404,7 +404,7 @@ def compile_dod(
             on_call=on_call,
             allow_parse_retry=True,
         )
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001 — provider failure falls back to a deterministic DoD
         return _fallback(
             plan, intake, default_selector, hint=f"provider error: {exc}",
             worktree_root=worktree_root)

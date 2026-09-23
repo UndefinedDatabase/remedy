@@ -1,0 +1,5 @@
+Entry ID: SU-027
+Entry Title: Address ledger finding R-0998
+Entry Provenance: generated (self-use-generator tier 1, ledger scan, R-0998)
+Entry Consumed By: 
+Job File Path: .agent/selfuse_f278/SU-027.md

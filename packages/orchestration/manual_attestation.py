@@ -182,7 +182,7 @@ def _read_verdict(path: str, default: str = "BLOCKED") -> str:
     try:
         with open(path, encoding="utf-8") as fh:
             return str(json.load(fh).get("verdict") or default)
-    except Exception:
+    except Exception:  # noqa: BLE001 — unreadable gate file defaults to the safe BLOCKED verdict
         return default
 
 

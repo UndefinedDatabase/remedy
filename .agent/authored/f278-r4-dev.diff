@@ -1,0 +1,222 @@
+diff --git a/apps/cli/commands/runtime_cmd.py b/apps/cli/commands/runtime_cmd.py
+index cbcb6255..79263490 100644
+--- a/apps/cli/commands/runtime_cmd.py
++++ b/apps/cli/commands/runtime_cmd.py
+@@ -125,6 +125,7 @@ def _serve_supervisor(root, spec, json_output: bool):
+     import sys as _sys
+     import time
+ 
++    from packages.common.secure_fs import durable_write
+     from packages.runtimes import runtime_supervisor as SUP
+     from packages.runtimes.dev_server import (
+         LOG_FAILURE_STATUSES,
+@@ -132,7 +133,6 @@ def _serve_supervisor(root, spec, json_output: bool):
+         STATUS_EXITED,
+         STATUS_RUNNING,
+         _pid_alive,
+-        atomic_write_text,
+         choose_port,
+         classify_runtime,
+         clear_state,
+@@ -162,8 +162,8 @@ def _serve_supervisor(root, spec, json_output: bool):
+     # The spec carries the runtime ENV, so it is written 0600 and the supervisor
+     # deletes it the moment it has read it.
+     spec_file = spec_file_path(root)
+-    atomic_write_text(spec_file,
+-                      json.dumps({**spec.to_json(), "env": dict(spec.env)}, indent=2))
++    durable_write(spec_file,
++                  json.dumps({**spec.to_json(), "env": dict(spec.env)}, indent=2))
+ 
+     env = dict(os.environ)
+     env["REMEDY_RUNTIME_PORT"] = str(port)
+@@ -346,9 +346,9 @@ def _retire_own_supervisor(root, proc, instance_id: str) -> dict:
+     """
+     import time
+ 
++    from packages.common.secure_fs import durable_write
+     from packages.runtimes.dev_server import (
+         _pid_alive,
+-        atomic_write_text,
+         load_state,
+         stop_process_tree,
+         stop_request_path,
+@@ -359,7 +359,8 @@ def _retire_own_supervisor(root, proc, instance_id: str) -> dict:
+     # 1. ask our own supervisor to stop its runtime, bound to our instance id
+     req = stop_request_path(root)
+     with contextlib.suppress(OSError):
+-        atomic_write_text(req, f"{instance_id}\n")
++        req.parent.mkdir(parents=True, exist_ok=True)
++        durable_write(req, f"{instance_id}\n")
+ 
+     # 2. wait for it to go
+     deadline = time.monotonic() + 15.0
+diff --git a/packages/runtimes/dev_server.py b/packages/runtimes/dev_server.py
+index 8def88af..ffa98989 100644
+--- a/packages/runtimes/dev_server.py
++++ b/packages/runtimes/dev_server.py
+@@ -39,6 +39,8 @@ from dataclasses import dataclass, field
+ from pathlib import Path
+ from typing import Any
+ 
++from packages.common.secure_fs import durable_write
++
+ #: How much of a log file is ever read back into memory or evidence.
+ LOG_TAIL_BYTES = 64 * 1024
+ 
+@@ -319,35 +321,6 @@ def ensure_runtime_dir(project_root: str | Path) -> Path:
+     return rdir
+ 
+ 
+-def atomic_write_bytes(path: str | Path, data: bytes) -> None:
+-    """Write a PRIVATE file atomically: 0600 temp file, fsync, os.replace.
+-
+-    The temp file is created with the final mode, so the replaced file is never even
+-    briefly world-readable, and a failed write never leaves its temp file behind.
+-    """
+-    target = Path(path)
+-    target.parent.mkdir(parents=True, exist_ok=True)
+-    tmp = target.with_name(f".{target.name}.{os.getpid()}.tmp")
+-    try:
+-        fd = os.open(str(tmp), os.O_WRONLY | os.O_CREAT | os.O_TRUNC,
+-                     RUNTIME_FILE_MODE)
+-        try:
+-            os.write(fd, data)
+-            with contextlib.suppress(OSError):
+-                os.fsync(fd)
+-        finally:
+-            os.close(fd)
+-        os.replace(tmp, target)
+-    except Exception:
+-        with contextlib.suppress(OSError):
+-            tmp.unlink()
+-        raise
+-
+-
+-def atomic_write_text(path: str | Path, text: str) -> None:
+-    atomic_write_bytes(path, text.encode("utf-8"))
+-
+-
+ def open_private_file(path: str | Path):
+     """Open a runtime file for writing with owner-only permissions."""
+     p = Path(path)
+@@ -651,7 +624,7 @@ def save_state(state: RuntimeState) -> Path:
+             "refusing to persist a live state without a process creation time")
+     ensure_runtime_dir(state.project_root)
+     path = state_path(state.project_root)
+-    atomic_write_text(path, json.dumps(state.to_json(), indent=2) + "\n")
++    durable_write(path, json.dumps(state.to_json(), indent=2) + "\n")
+     return path
+ 
+ 
+@@ -1955,7 +1928,7 @@ def stop_recorded_runtime(project_root: str | Path) -> dict[str, Any]:
+             req = stop_request_path(project_root)
+             with contextlib.suppress(OSError):
+                 req.parent.mkdir(parents=True, exist_ok=True)
+-                _atomic_write(req, f"{state.instance_id}\n")
++                durable_write(req, f"{state.instance_id}\n")
+             deadline = time.monotonic() + STOP_REQUEST_TIMEOUT_S
+             while time.monotonic() < deadline:
+                 if not _pid_alive(state.supervisor_pid):
+@@ -2050,11 +2023,6 @@ def stop_recorded_runtime(project_root: str | Path) -> dict[str, Any]:
+         }
+ 
+ 
+-def _atomic_write(path: Path, text: str) -> None:
+-    """Create a private control file atomically (owner-only). Kept for callers."""
+-    atomic_write_text(path, text)
+-
+-
+ def _pid_alive(pid: int) -> bool:
+     import psutil
+ 
+diff --git a/packages/runtimes/runtime_supervisor.py b/packages/runtimes/runtime_supervisor.py
+index f0d889d5..c15477b1 100644
+--- a/packages/runtimes/runtime_supervisor.py
++++ b/packages/runtimes/runtime_supervisor.py
+@@ -40,6 +40,7 @@ from dataclasses import dataclass
+ from pathlib import Path
+ from typing import Any
+ 
++from packages.common.secure_fs import durable_write
+ from packages.runtimes.dev_server import (
+     GRACE_SECONDS,
+     LOG_TAIL_BYTES,
+@@ -56,7 +57,6 @@ from packages.runtimes.dev_server import (
+     RuntimeSpec,
+     RuntimeState,
+     _process_create_time,
+-    atomic_write_text,
+     clear_state,
+     ensure_runtime_dir,
+     http_probe,
+@@ -83,7 +83,8 @@ HANDSHAKE_TIMEOUT_S = 90.0
+ def write_handshake(path: Path, payload: dict[str, Any]) -> None:
+     """Atomic PRIVATE handshake write: the reader never sees a half-written result,
+     and no other user ever sees the result at all."""
+-    atomic_write_text(path, json.dumps(payload, indent=2) + "\n")
++    path.parent.mkdir(parents=True, exist_ok=True)
++    durable_write(path, json.dumps(payload, indent=2) + "\n")
+ 
+ 
+ def read_handshake(path: Path) -> dict[str, Any] | None:
+@@ -403,8 +404,8 @@ class Supervisor:
+     def _quarantine(self, stop_file: Path, reason: str) -> None:
+         """Set an invalid stop request aside; never act on it, never loop on it."""
+         with contextlib.suppress(OSError):
+-            atomic_write_text(stop_file.with_name(stop_file.name + ".invalid"),
+-                              f"{reason}\n")
++            durable_write(stop_file.with_name(stop_file.name + ".invalid"),
++                          f"{reason}\n")
+         with contextlib.suppress(OSError):
+             stop_file.unlink()
+ 
+@@ -484,7 +485,7 @@ class Supervisor:
+         durable runtime.json — untouched — remains the only identity a command may act on.
+         """
+         with contextlib.suppress(Exception):
+-            atomic_write_text(
++            durable_write(
+                 log_failure_note_path(self.project_root),
+                 json.dumps({
+                     "status": status,
+diff --git a/tests/orchestration/test_durable_write_guard.py b/tests/orchestration/test_durable_write_guard.py
+index b493ee53..0682149c 100644
+--- a/tests/orchestration/test_durable_write_guard.py
++++ b/tests/orchestration/test_durable_write_guard.py
+@@ -21,12 +21,9 @@ SCANNED_ROOTS = ("packages", "apps", "scripts")
+ ALLOWED_ROOT = "packages/common/"
+ HELPER_NAME = re.compile(r"_?atomic_(private_)?write")
+ 
+-#: (module path, function name) — the copies not yet migrated. Only ever shrinks.
+-STILL_TO_MIGRATE = frozenset({
+-    ("packages/runtimes/dev_server.py", "_atomic_write"),
+-    ("packages/runtimes/dev_server.py", "atomic_write_bytes"),
+-    ("packages/runtimes/dev_server.py", "atomic_write_text"),
+-})
++#: (module path, function name) — the copies not yet migrated. Only ever shrinks, and
++#: T002 of F278 emptied it: a new entry here is a new copy, which the guard forbids.
++STILL_TO_MIGRATE: frozenset[tuple[str, str]] = frozenset()
+ 
+ 
+ def _private_helper_definitions(root: Path) -> set[tuple[str, str]]:
+diff --git a/tests/runtimes/test_supervisor_portability.py b/tests/runtimes/test_supervisor_portability.py
+index 049e29f8..546ebb0e 100644
+--- a/tests/runtimes/test_supervisor_portability.py
++++ b/tests/runtimes/test_supervisor_portability.py
+@@ -27,6 +27,7 @@ from apps.cli.commands import runtime_cmd
+ # imported from its owning module rather than through dev_server's private
+ # alias, which no longer exists.
+ from packages.common.path_redaction import ABS_PATH_RE
++from packages.common.secure_fs import durable_write
+ from packages.runtimes import dev_server as DS
+ from packages.runtimes import runtime_supervisor as SUP
+ from packages.runtimes.dev_server import (
+@@ -1003,7 +1004,7 @@ class TestRuntimeArtifactsArePrivate:
+         # file as soon as it has read it, so it cannot be inspected afterwards.
+         rdir = _with_data_root(data_root, DS.ensure_runtime_dir, secret_project)
+         spec = rdir / "runtime.spec.json"
+-        DS.atomic_write_text(spec, json.dumps({"env": {"API_TOKEN": SECRET}}))
++        durable_write(spec, json.dumps({"env": {"API_TOKEN": SECRET}}))
+         try:
+             assert _mode(spec) == 0o600
+         finally:

@@ -17,4 +17,4 @@ class TestModularArchitectureGuards:
 
     def test_storage_access_through_helpers(self):
         src = Path("packages/orchestration/proposed_tasks.py").read_text()
-        assert "open(" not in src or "_atomic_write" in src
+        assert "open(" not in src or "durable_write" in src

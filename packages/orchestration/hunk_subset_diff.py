@@ -128,10 +128,10 @@ def _total_text(value: object) -> str:
     name is private there."""
     try:
         return str(value)
-    except Exception:
+    except Exception:  # noqa: BLE001 — str() failed; fall back to repr()
         try:
             return repr(value)
-        except Exception:
+        except Exception:  # noqa: BLE001 — repr() failed too; fall back to the unoverridable object repr
             return object.__repr__(value)
 
 
@@ -145,7 +145,7 @@ def _entries(value: Any) -> list[Any]:
         return [value]
     try:
         return list(value)
-    except Exception:
+    except Exception:  # noqa: BLE001 — value isn't iterable; treat it as a single entry
         return [value]
 
 

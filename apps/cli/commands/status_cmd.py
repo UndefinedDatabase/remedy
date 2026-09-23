@@ -48,7 +48,7 @@ def _cmd_status(
         from packages.orchestration.project_registry import load_project
         try:
             project_slug = load_project(UUID(scope.project_id)).slug
-        except Exception:
+        except Exception:  # noqa: BLE001 — slug lookup failure falls back to a truncated id
             project_slug = scope.project_id[:8]
 
     jobs, degraded, skipped_files = scoped_jobs(scope)
@@ -73,7 +73,7 @@ def _cmd_status(
             events = load_run_events(resolve_data_root(), j.job_id)
             decs = list_decisions(j, events)
             decisions_open += sum(1 for d in decs if d.status == "open")
-        except Exception:
+        except Exception:  # noqa: BLE001 — decision-count failure must not break the status overview
             pass
 
     # F276 T002: the same three states this block used to spell for itself, now read
@@ -88,7 +88,7 @@ def _cmd_status(
             from packages.orchestration.safe_points import stop_requested
             if stop_requested(str(j.job_id)) is not None:
                 stops_pending += 1
-        except Exception:
+        except Exception:  # noqa: BLE001 — stop-check failure must not break the status overview
             pass
 
     runtime_status = "unknown"
@@ -107,7 +107,7 @@ def _cmd_status(
         else:
             runtime_status = "unknown"
             runtime_warning = f"runtime state unreadable: {load.error or load.kind}"
-    except Exception:
+    except Exception:  # noqa: BLE001 — runtime-state read failure leaves status as unknown
         pass
 
     first_active_short = None

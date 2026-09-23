@@ -1,0 +1,239 @@
+diff --git a/scripts/build_review_manifest.py b/scripts/build_review_manifest.py
+index c8080765..111b6b74 100644
+--- a/scripts/build_review_manifest.py
++++ b/scripts/build_review_manifest.py
+@@ -37,7 +37,7 @@ try:
+         sha256_text as _canon_sha256_text,
+     )
+     _CANON_AVAILABLE = True
+-except Exception:  # pragma: no cover - defensive; canonical impl must exist
++except Exception:  # noqa: BLE001 — defensive import; the canonical helper may be absent  # pragma: no cover
+     _CANON_AVAILABLE = False
+ 
+ 
+@@ -142,7 +142,7 @@ class _EvidenceView:
+             return {}
+         try:
+             data = _strict_json_loads(b)                # F5 (round 25): duplicate keys rejected
+-        except Exception:
++        except Exception:  # noqa: BLE001 — malformed evidence JSON treated as absent, not fatal
+             return {}
+         return data if isinstance(data, dict) else {}
+ 
+@@ -182,7 +182,7 @@ def _view_from_dir(evidence_dir: str) -> _EvidenceView:
+     budget = AcquisitionBudget()
+     try:
+         root_fd = secure_fs.anchor_root(evidence_dir, noun="evidence dir", create=False)
+-    except Exception:
++    except Exception:  # noqa: BLE001 — unreadable evidence dir yields an empty view, not a crash
+         return _EvidenceView({})
+ 
+     def _collect(dir_fd: int, relbase: str) -> None:
+@@ -197,7 +197,7 @@ def _view_from_dir(evidence_dir: str) -> _EvidenceView:
+             if _stat.S_ISDIR(st.st_mode):
+                 try:
+                     sub = secure_fs.open_verified_dir(name, dir_fd=dir_fd, noun="evidence dir")
+-                except Exception:
++                except Exception:  # noqa: BLE001 — unreadable subdirectory is skipped, not fatal
+                     continue
+                 try:
+                     _collect(sub, rel)
+@@ -211,7 +211,7 @@ def _view_from_dir(evidence_dir: str) -> _EvidenceView:
+                     vf = secure_fs.read_verified_file_at(
+                         dir_fd, name, expected_kind="regular",
+                         max_bytes=st.st_size + 1, noun="evidence file")
+-                except Exception:
++                except Exception:  # noqa: BLE001 — symlink swap or torn file is refused, never read
+                     continue                            # symlink swap / torn — refuse, never read
+                 files[rel] = vf.data
+                 mtimes[rel] = datetime.fromtimestamp(
+@@ -277,7 +277,7 @@ def _probe_publication_capability(source_root: str) -> dict:
+     try:
+         from packages.orchestration.safe_publish import probe_anonymous_publication_capability
+         status = probe_anonymous_publication_capability(source_root)
+-    except Exception:
++    except Exception:  # noqa: BLE001 — publication probe failure recorded as PROBE_ERROR status
+         status = "PROBE_ERROR"
+     return {
+         "status": status,
+@@ -335,7 +335,7 @@ def _git_status_snapshot() -> dict:
+         return {"status": "UNAVAILABLE", "records": [], "diagnostic": "git executable not found"}
+     except subprocess.TimeoutExpired:
+         return {"status": "TIMED_OUT", "records": [], "diagnostic": "git status timed out"}
+-    except Exception as exc:                               # pragma: no cover - defensive
++    except Exception as exc:  # noqa: BLE001 — any other subprocess failure recorded as a FAILED status
+         return {"status": "FAILED", "records": [], "diagnostic": f"{type(exc).__name__}: {str(exc)[:120]}"}
+     if r.returncode != 0:
+         return {"status": "FAILED", "records": [],
+@@ -801,7 +801,7 @@ def _verify_review_subject_records(ev: _EvidenceView, subject: dict, base: str)
+             validate_review_subject_schema,
+             validate_subject_path_kinds,
+         )
+-    except Exception as exc:
++    except Exception as exc:  # noqa: BLE001 — import failure becomes a verification finding, not silent
+         return [f"cannot recompute the review subject: {str(exc)[:120]}"]
+ 
+     # F7 (round 17): the artifact must be an EXACT schema before it is trusted — unknown top-level
+@@ -823,7 +823,7 @@ def _verify_review_subject_records(ev: _EvidenceView, subject: dict, base: str)
+         # The base is the one the package DECLARES; passing it explicitly is the whole point of
+         # F6 — the packager may run from anywhere.
+         recomputed = resolve_review_subject(".", base)
+-    except Exception as exc:
++    except Exception as exc:  # noqa: BLE001 — recompute failure becomes a verification finding, not silent
+         return [f"cannot recompute the review subject: {str(exc)[:160]}"]
+ 
+     errors.extend(validate_subject_path_kinds(recomputed, "."))
+@@ -891,7 +891,7 @@ def _verify_commit_patches(ev: _EvidenceView, actual: list) -> list:
+             commit_patch_bytes,
+             commit_patch_filename,
+         )
+-    except Exception as exc:
++    except Exception as exc:  # noqa: BLE001 — import failure becomes a verification finding, not silent
+         return [f"cannot verify commit patches: {str(exc)[:120]}"]
+ 
+     if not actual:
+@@ -958,7 +958,7 @@ def _verify_commit_chain(ev: _EvidenceView, per_task_union: set) -> list:
+     try:
+         from packages.orchestration.review_subject import resolve_commit_chain
+         actual = resolve_commit_chain(".", base, head)
+-    except Exception as exc:                       # unreadable repo/base: say so, never assume
++    except Exception as exc:  # noqa: BLE001 — unreadable repo/base is reported, never assumed
+         errors.append(f"cannot recompute the commit chain: {str(exc)[:160]}")
+         return errors
+ 
+@@ -1329,7 +1329,7 @@ def validate_manual_completion(ev) -> list[str]:
+         try:
+             from packages.orchestration.token_authority import validate_token_truth
+             tt_raw = ev.read_json_strict("token_truth.json")
+-        except Exception as exc:
++        except Exception as exc:  # noqa: BLE001 — malformed token_truth.json reported as an invalid-JSON finding
+             errors.append(f"token_truth.json is not valid strict JSON: {str(exc)[:120]}")
+         else:
+             errors.extend(validate_token_truth(tt_raw))
+@@ -1627,7 +1627,7 @@ def _token_producer_problems(name: str, gate: dict) -> list[str]:
+         return []                                          # a non-object is caught by the schema
+     try:
+         from packages.orchestration.token_measurement import token_measurement_summary
+-    except Exception as exc:                               # pragma: no cover - import guard
++    except Exception as exc:  # noqa: BLE001 — import failure becomes a verification finding, not silent
+         return [f"{name}: cannot reconstruct token_measurement: {str(exc)[:120]}"]
+     expected = token_measurement_summary(ts)
+     problems: list[str] = []
+@@ -2360,7 +2360,7 @@ def _safe_gate_semantics(name: str, gate, verdicts: dict, ctx: dict) -> list[str
+     can never raise out of ``evaluate_ready_gate_matrix`` and hide the other gates' failures."""
+     try:
+         return _gate_semantic_problems(name, gate, verdicts, ctx)
+-    except Exception as exc:                               # pragma: no cover - defensive
++    except Exception as exc:  # noqa: BLE001 — any evaluation error blocks  # pragma: no cover
+         return [f"{name} could not be evaluated ({type(exc).__name__}); it is malformed and blocks"]
+ 
+ 
+@@ -2377,7 +2377,7 @@ def evaluate_ready_gate_matrix(load_json) -> dict:
+     def _load(name):
+         try:
+             return load_json(name)
+-        except Exception as exc:                       # invalid JSON / unreadable
++        except Exception as exc:  # noqa: BLE001 — invalid JSON or unreadable gate becomes a blocking reason
+             reasons.append(f"{name} is not valid JSON: {exc}")
+             return _MISSING
+ 
+@@ -2419,27 +2419,27 @@ def evaluate_ready_gate_matrix(load_json) -> dict:
+             # attested by the proof itself and bound to the subject by the coordinator.
+             ctx["proof_authority"] = set(fh)
+             ctx["proof_hashes"] = dict(fh)
+-    except Exception:
++    except Exception:  # noqa: BLE001 — corrupt content proof is skipped; the coordinator blocks on it separately
+         pass                                           # a corrupt proof blocks in the coordinator
+     try:
+         _rs = load_json("review_subject.json")
+         if isinstance(_rs, dict) and isinstance(_rs.get("head_commit"), str):
+             ctx["review_subject_head"] = _rs["head_commit"]
+-    except Exception:
++    except Exception:  # noqa: BLE001 — corrupt review_subject.json is skipped; other checks still run
+         pass
+     # F3 (round 26): the VerificationTests are STRICTLY validated, fail-closed. A present-but-invalid
+     # record blocks here; a valid record's ``passed`` is the authoritative total the FV must equal.
+     vt_problems: list[str] = []
+     try:
+         vt_raw = load_json(_VT_NAME)
+-    except Exception as exc:
++    except Exception as exc:  # noqa: BLE001 — invalid verification-tests JSON becomes a blocking reason
+         vt_problems = [f"{_VT_NAME} is not valid JSON: {exc}"]
+     else:
+         # F6 (round 31): the strict VT validator runs on an untrusted value — a malformed record must
+         # block, never raise out of the matrix.
+         try:
+             vt_problems, ctx["vt_passed"] = validate_verification_tests(vt_raw)
+-        except Exception as exc:                           # pragma: no cover - defensive
++        except Exception as exc:  # noqa: BLE001 — malformed verification tests become a blocking reason, never raise
+             vt_problems = [f"{_VT_NAME} could not be validated ({type(exc).__name__}); it is malformed"]
+     ctx["vt_present"] = ctx.get("vt_passed") is not None
+ 
+@@ -2482,7 +2482,7 @@ def evaluate_ready_gate_matrix(load_json) -> dict:
+     elif cg is not _MISSING:
+         try:
+             reasons.extend(_validate_commit_gate(cg, verdicts))
+-        except Exception as exc:                           # F6: never raise out of the matrix
++        except Exception as exc:  # noqa: BLE001 — never raise out of the matrix; a malformed gate blocks
+             reasons.append(f"{_COMMIT_GATE} could not be evaluated ({type(exc).__name__}); it is "
+                            f"malformed and blocks")
+ 
+@@ -2533,7 +2533,7 @@ def regenerate_final_verifier(evidence_view) -> tuple[dict | None, str | None]:
+         from packages.orchestration.final_verifier import build_final_verifier_report
+     except ImportError as exc:
+         return None, f"the final-verifier producer is unavailable: {str(exc)[:120]}"
+-    except Exception as exc:                               # any other import-time failure blocks
++    except Exception as exc:  # noqa: BLE001 — any other import-time failure blocks
+         return None, f"the final-verifier producer failed to import: {str(exc)[:120]}"
+     if not callable(build_final_verifier_report):
+         return None, "the final-verifier producer entry point is missing"
+@@ -2545,13 +2545,13 @@ def regenerate_final_verifier(evidence_view) -> tuple[dict | None, str | None]:
+             os.makedirs(os.path.dirname(p) or tmp, exist_ok=True)
+             with open(p, "wb") as fh:
+                 fh.write(data)
+-    except Exception as exc:
++    except Exception as exc:  # noqa: BLE001 — materialization failure is reported, never a false success
+         if tmp:
+             _shutil.rmtree(tmp, ignore_errors=True)
+         return None, f"could not materialize the Evidence snapshot: {str(exc)[:120]}"
+     try:
+         report = build_final_verifier_report(tmp)
+-    except Exception as exc:
++    except Exception as exc:  # noqa: BLE001 — producer failure is reported, never translated into success
+         return None, f"the final-verifier producer raised {type(exc).__name__}: {str(exc)[:120]}"
+     finally:
+         _shutil.rmtree(tmp, ignore_errors=True)
+@@ -2604,7 +2604,7 @@ def regenerate_token_truth(evidence_view) -> tuple[dict | None, str | None]:
+         return None, "the Evidence snapshot is empty"
+     try:
+         from packages.orchestration.token_truth import build_token_truth
+-    except Exception as exc:
++    except Exception as exc:  # noqa: BLE001 — import failure is reported, never a false success
+         return None, f"the token-truth producer is unavailable: {str(exc)[:120]}"
+     tmp = None
+     try:
+@@ -2614,13 +2614,13 @@ def regenerate_token_truth(evidence_view) -> tuple[dict | None, str | None]:
+             os.makedirs(os.path.dirname(p) or tmp, exist_ok=True)
+             with open(p, "wb") as fh:
+                 fh.write(data)
+-    except Exception as exc:
++    except Exception as exc:  # noqa: BLE001 — materialization failure is reported, never a false success
+         if tmp:
+             _shutil.rmtree(tmp, ignore_errors=True)
+         return None, f"could not materialize the Evidence snapshot: {str(exc)[:120]}"
+     try:
+         truth = build_token_truth(tmp)
+-    except Exception as exc:
++    except Exception as exc:  # noqa: BLE001 — producer failure is reported, never translated into success
+         return None, f"the token-truth producer raised {type(exc).__name__}: {str(exc)[:120]}"
+     finally:
+         _shutil.rmtree(tmp, ignore_errors=True)
+@@ -2649,7 +2649,7 @@ def _token_truth_authority(evidence_view) -> dict:
+     try:
+         from packages.orchestration.token_authority import validate_token_truth
+         canonical_problems = validate_token_truth(canonical)
+-    except Exception as exc:
++    except Exception as exc:  # noqa: BLE001 — canonical validation failure is reported as PRODUCER_ERROR
+         return {"checked": True, "equal": False, "status": "PRODUCER_ERROR",
+                 "problems": [f"canonical token_truth validation failed: {str(exc)[:120]}"]}
+     if canonical_problems:
