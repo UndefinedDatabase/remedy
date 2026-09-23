@@ -1,0 +1,27 @@
+diff --git a/.agent/decisions.md b/.agent/decisions.md
+index bf4199db..4cf08c9a 100644
+--- a/.agent/decisions.md
++++ b/.agent/decisions.md
+@@ -19205,3 +19205,22 @@ failures are caught by name — `OSError`, `ImportError`, `SyntaxError`, `Attrib
+ by `except Exception`, because `tests/test_ble001_ratchet.py` holds the excused blind handlers at
+ their frozen ceiling. HOW TO REVERSE: restore `_check_live_review_verdict` from `b8fa02ba`; the
+ tests under `TestLiveReviewVerdictReadsTheLastGateRecord` then go red, which is their job.
++
++## DECISION F282 D2 — `integrity block` counts the open set after the round from the block's ledger payloads, and only from them (2026-09-23)
++
++R-1041's FIX clause asks the open-set rule to take into account the ids a block registers and
++resolves, "for example by reading the `- R-` and `Done: R-` paragraphs of the ledger payloads the
++block names", and leaves open which payloads those are. CHOSEN: the rule reads the payload
++directory the block names in a backticked `.remedy-wt/<name>-payloads/` span and, from the files
++its payload table lists, takes (a) every line a `.diff` payload ADDS inside the section whose
++`+++` path is `b/.agent/live_review.md`, and (b) the whole of any other payload whose name begins
++`ledger`, the name this workflow gives a slice appended to the ledger whole; the block's own text
++counts too, as it always did for `- R-` lines. The stated count must equal the open set before
++the round, plus the ids registered, less the ids resolved, and the detail line prints all four
++numbers so a refusal says which half is wrong. A line a diff REMOVES resolves nothing, and a plan,
++a decision or a feature file that quotes a registration registers nothing, because neither
++writes the ledger. ALTERNATIVES CONSIDERED: accept any stated number between the before and
++after counts — which is a gate that cannot fail; or require blocks to state the count BEFORE the
++round — which reverses the convention every handback of this workflow uses. HOW TO REVERSE:
++restore `check_open_set` in `packages/orchestration/block_lint.py` from `5f9e4725`; the two new
++tests in `tests/orchestration/test_block_lint.py` then go red.
