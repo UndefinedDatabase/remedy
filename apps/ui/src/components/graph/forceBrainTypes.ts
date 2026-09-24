@@ -1,56 +1,14 @@
 import type { NodeKind, NodeState } from "./brainOntology";
 
-export type BrainNodeKind = "root" | "cluster" | "task" | "proof" | "review" | "memory" | "particle";
-export type BrainNodeState = "done" | "current" | "planned" | "blocked" | "suggested" | "idle";
-export type BrainSourceKind = "real_brain" | "layout_only" | "demo_fixture";
+// --- the graph module's own shapes -------------------------------------------
+// These paint the reducer's REAL model 1:1 (graph_spec §8 truth: every
+// rendered node maps 1:1 to a view-model entity, no decor node counted as
+// one; DECISION F019 D1). They live in this file because they are "the types
+// the graph module hands its renderer."
 
-export interface ForceBrainNode {
-  id: string;
-  nodeId?: string;
-  kind: BrainNodeKind;
-  state: BrainNodeState;
-  label: string;
-  sourceKind: BrainSourceKind;
-  clusterId?: string;
-  depth: number;
-  value: number;
-  fx?: number | null;
-  fy?: number | null;
-  x?: number;
-  y?: number;
-  vx?: number;
-  vy?: number;
-  clickable: boolean;
-  visibleLabel: boolean;
-  alpha: number;
-  color: string;
-}
-
-export interface ForceBrainLink {
-  source: string | ForceBrainNode;
-  target: string | ForceBrainNode;
-  clusterId?: string;
-  strength: number;
-  curvature: number;
-  alpha: number;
-  width: number;
-}
-
-export interface ForceBrainGraphData {
-  nodes: ForceBrainNode[];
-  links: ForceBrainLink[];
-}
-
-// --- buildBrainLayout's own shapes -------------------------------------------
-// ForceBrainNode/Link above paint the polled-dashboard decorative graph;
-// these paint the reducer's REAL model 1:1 (graph_spec §8 truth: every
-// rendered real node maps 1:1 to a view-model entity, no decor node counted
-// as one; DECISION F019 D1). Both live in this file because both are "the
-// types the graph module hands its renderer."
-
-/** One positioned real node — WHY a separate shape from ForceBrainNode: this
- *  one is a 1:1 projection of a BrainNode (graph_spec §4 sizes, §6 layout),
- *  never a decorative dot, so it carries no sourceKind/alpha/color at all. */
+/** One positioned real node — a 1:1 projection of a BrainNode (graph_spec §4
+ *  sizes, §6 layout); never a decorative dot, so it carries no color/alpha
+ *  or any other paint-only field. */
 export interface BrainLayoutNode {
   id: string;
   kind: NodeKind;
