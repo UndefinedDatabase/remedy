@@ -36,7 +36,9 @@ from packages.common.secure_fs import durable_write_json
 from packages.core.models import RunState
 from packages.orchestration.data_paths import job_dir, job_evidence_export_dir
 from packages.orchestration.job_plan import (
+    APPROVED_PLAN_HASH_KEY,
     map_task_plan_to_tasks,
+    plan_content_hash,
     resolve_task_plan_approval,
     write_plan_md,
 )
@@ -280,6 +282,15 @@ def revalidate(plan: TaskPlan, tasks: list[dict[str, Any]]) -> TaskPlan:
         new_plan = TaskPlan.model_validate(data)
     except ValidationError as exc:
         raise PlanEditRefused("invalid_plan", _reasons(exc)) from exc
+    # DECISION F015 D4: a job runs its tasks in plan order and never reads `depends_on`,
+    # so an edited plan may not put a task before one it waits for.
+    position = {task.id: n for n, task in enumerate(new_plan.tasks)}
+    for task in new_plan.tasks:
+        later = [dep for dep in task.depends_on if position[dep] > position[task.id]]
+        if later:
+            raise PlanEditRefused(
+                "invalid_plan", f"task {task.id!r} comes before {later[0]!r}, which it waits "
+                "for; a job runs its tasks in plan order")
     try:
         validate_deliverable_plan(_mapped_tasks(new_plan))
     except DeliverablePlanError as exc:
@@ -407,7 +418,8 @@ def edit_plan(
         save_job_plan(job, root)
     evidence = job_evidence_export_dir(job_id, root)
     plan_md = write_plan_md(new_plan, evidence, version=version + 1,
-                            transformations=body.get("_normalization"))
+                            transformations=body.get("_normalization"),
+                            edits=new_body[EDIT_LOG_KEY])
     durable_write_json(evidence / EDIT_LOG_EVIDENCE, {
         "schema_v": EDIT_LOG_SCHEMA_V,
         "job_id": job_id,
@@ -451,6 +463,9 @@ def consume_plan_approval(
                 "approval to answer")
         job.task_plan = body
         job.tasks = stored.tasks
+        if reason == "approve":
+            # DECISION F015 D4: the approval records exactly what it covers.
+            body[APPROVED_PLAN_HASH_KEY] = plan_content_hash(body)
         return resolve_task_plan_approval(
             job, reason=reason, answers=answers, questions=questions)
 

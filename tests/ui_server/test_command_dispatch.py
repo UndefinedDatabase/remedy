@@ -633,7 +633,8 @@ class TestPlanEditDispatchEffects:
         plan = TaskPlan.model_validate({"schema_v": "task_plan_v1", "tasks": [
             _plan_task("T1", []),
             _plan_task("T2", ["T1"], ["parser reads", "parser reports", "parser is fast"]),
-            _plan_task("T3", ["T2"]),
+            # T3 waits for T1 alone, so a new sequence with T3 before T2 is one a job can run.
+            _plan_task("T3", ["T1"]),
         ]})
         body = plan.model_dump()
         body["_approval"] = "pending"
@@ -744,11 +745,12 @@ class TestPlanEditDispatchEffects:
     def test_an_edit_the_planners_checks_refuse_is_409_with_the_violation(self):
         before = self._record_bytes()
         port, token = _start_ui_server_for_job(self.job_id, self.tmp_path)
-        status, body = self._post(port, token, "nonce-invalid", "job.plan-merge-tasks",
-                                  {"task_ids": ["T1", "T3"], "expected_version": 1})
+        status, body = self._post(port, token, "nonce-invalid", "job.plan-edit-acceptance",
+                                  {"task_id": "T1", "op": "remove", "index": 0,
+                                   "expected_version": 1})
         assert status == 409, body
         assert body["error"] == "the edited plan fails the planner's checks"
-        assert "cycle" in body["detail"]
+        assert "at least 1 item" in body["detail"]
         assert self._record_bytes() == before
         assert self._audit_outcomes() == ["rejected_state"]
 

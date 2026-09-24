@@ -2512,6 +2512,17 @@ def run_job(
             _persist_job(job)
             return job
 
+    # F015 T003, DECISION F015 D4: a job runs exactly the plan its approval covered. Checked
+    # before any workspace exists, and at every start, because every door that starts a job
+    # reaches this function and not every one of them reads the approval gate first.
+    from packages.orchestration.job_plan import approved_plan_mismatch
+    _plan_mismatch = approved_plan_mismatch(job)
+    if _plan_mismatch is not None:
+        job.state = JOB_BLOCKED
+        job.error = f"plan_changed_since_approval: {_plan_mismatch}"
+        _persist_job(job)
+        return job
+
     # F104: the predictive inputs (price basis + class defaults) are OPERATOR
     # config, so they are read once per run, not once per safe point. Resolved
     # only when a money limit exists — with no `max_cost_usd` there is nothing
