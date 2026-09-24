@@ -1,36 +1,37 @@
-# Live Review — F265 Teacher learning UI v1 (post-task lessons)
+# Live Review — F267 List commands v2 completion
 
-> Round-by-round review record, re-headed at the F265 claim per
-> docs/agents/planner_reviewer_prompt.md §1. The heading this replaces named F264, whose STATUS
-> line went `[x]` at `32aab561` and whose pull request 271 merged into `main` at the reviewer's
-> Open PR Gate under docs/agents/self_drive_protocol.md, as `0236e3c3`, after both hosted CI jobs
-> of run 35956557182 ended `success`. F264's round 10 — its closure round — has no gate entry,
-> by construction (§4 item 13 of docs/agents/planner_reviewer_prompt.md); the planner and
-> reviewer of F265's first session read it at this claim, over `0eb5b2d6`..`32aab561`: VERDICT
-> PASS. Its four commits carry 373, 8, 24 and 140 insertions by `git show --numstat`, the last of
-> them 13 outside `.agent/handoff.md`, each under the 500-line cap; the round's block and its five
-> payloads read out of `32aab561` equal the reviewer's originals under `.remedy-wt/` byte for
-> byte; `.agent/live_review.md` at `b0adb863` and at `8bc1ebb0`, its archive at `8bc1ebb0`, and
-> `docs/roadmap/STATUS.md` and `README.md` at `32aab561` carry exactly the sha256 that round's
-> block ordered; and `32aab561` is the second parent of `0236e3c3`. Only the heading, this
-> paragraph and the `## Steps` section below are rewritten, and one finding is appended at the
-> end. Everything from the `## Findings` line to the end of the file as it stood at `0236e3c3` is
-> carried forward BYTE-IDENTICAL, and finding ids continue the monotonic R-XXXX series across the
-> re-head. The open set at `0236e3c3`, computed with `open_finding_ids` from
-> `scripts/rotate_live_review.py`, is 3 by distinct id — R-0499, R-0950 and R-1008 — and F284
-> owns all of them; this claim registers R-1046, which F284 owns as well, and F265 owns whatever
-> it registers for its own scope.
+> Round-by-round review record, re-headed at the F267 claim per
+> docs/agents/planner_reviewer_prompt.md §1. The heading this replaces named F265, whose STATUS
+> line went `[x]` at `fbc92122` and whose pull request 272 merged into `main` at the reviewer's
+> Open PR Gate under docs/agents/self_drive_protocol.md, as `9f06c509`, after both hosted CI jobs
+> of run 35970704954 ended `success`. F265's round 7 — its closure round — has no gate entry, by
+> construction (§4 item 13 of docs/agents/planner_reviewer_prompt.md); the planner and reviewer
+> of F267's first session read it at this claim, over `8b4a1071`..`fbc92122`: VERDICT PASS. Its
+> four commits carry 341, 8, 18 and 157 insertions by `git show --numstat`, the last of them 12
+> outside `.agent/handoff.md`, each under the 500-line cap, each single-parent and each carrying
+> the ordered trailer; the round's block and its five payloads read out of `fbc92122` equal the
+> reviewer's originals under `.remedy-wt/` byte for byte; `.agent/live_review.md` and
+> `.agent/plan.md` at `0476450b`, the ledger and its archive at `cc258078`, and
+> `docs/roadmap/STATUS.md` and `README.md` at `fbc92122` carry exactly the sha256 that round's
+> block ordered; and `fbc92122` is the second parent of `9f06c509`. ONE NOTE, which is not a
+> finding: the closure handback at `fbc92122` names none of the five values its block's C4
+> ordered it to name — the package, its SHA-256, its directory, the evidence job and the accepted
+> head — and no gate of that block read the handback for them. The same values stand in F265's
+> STATUS line and in the `Gate: F265 R6` entry, so nothing is lost and nothing under `packages/`,
+> `apps/`, `tests/` or `docs/` is wrong. Only the heading, this paragraph and the `## Steps`
+> section below are rewritten. Everything from the `## Findings` line to the end of the file as it
+> stood at `9f06c509` is carried forward BYTE-IDENTICAL, and finding ids continue the monotonic
+> R-XXXX series across the re-head. The open set at `9f06c509`, computed with `open_finding_ids`
+> from `scripts/rotate_live_review.py`, is 4 by distinct id — R-0499, R-0950, R-1008 and R-1046
+> — and F284 owns all of them; F267 owns whatever it registers for its own scope.
 
 ## Steps
 
-THE ORDER BELOW IS T5_F265.md's Orchestrator brief. R1 claims F265, re-heads this record and
-lands T001's substance: `packages/orchestration/lessons.py`, one sealed lesson per completed Run
-built from that Run's own `result.diff`, billed as role `teacher` inside the teacher's own budget
-pot per job, and the hook that writes one after every applied task while `teacher.lessons` is
-on, with DECISION F265 D1 fixing the record's shape. The lesson's reach — the job's event stream,
-a read-only route and `remedy do`'s mission path — comes next; T002, the overlay over stored
-lessons, and T003, the Commands mode, follow. Every round's handback states the open set by
-distinct id.
+THE ORDER BELOW IS T2_F267.md's Orchestrator brief, less what F273 already landed: T001, the
+wirings, landed in F273's round 9 (DECISION F273 D9). R1 claims F267, re-heads this record and
+lands T002 and T003 as one new test file, `tests/cli/test_list_commands_everywhere.py`, with
+DECISION F267 D1 fixing the in-scope set that file derives from the catalog. The closure sequence
+follows. Every round's handback states the open set by distinct id.
 ## Findings
 
 - R-0499 — Low, THE EIGHT-FILE STRUCTURAL SWEEP GOES RED ABOUT ONCE IN TWENTY RUNS INSIDE A FRESH GIT WORKTREE, AND THE FAILING NODE ID HAS NEVER BEEN CAPTURED. Raised by the reviewer at the R8 authoring dry run. Two observations exist and both are inside a disposable worktree, never in the primary checkout: the F085 R7 worker saw one red in 22 runs on a scratch worktree carrying a larger draft change and did not capture the node id, and the reviewer saw one red in 14 runs on the R8 dry-run worktree and did not capture it either, because the run that produced it was not the run that carried `-rf` output to the log. The red reading is `1 failed, 348 passed, 7 skipped` against the green `350 passed, 6 skipped`, so a test that normally PASSES was SKIPPED in the same run that another test failed — which is the signature of an environment-conditional skip rather than of a logic defect. The sweep's only environment-conditional member is `test_typescript_compiles` in `tests/ui_server/test_dashboard_contract.py`, which resolves `apps/ui/node_modules/.bin/tsc` relative to the file's own tree, skips with "UI toolchain absent" when that path is missing, and otherwise shells out to a REAL `tsc --noEmit` under `timeout=30` — the one member of the eight-file sweep that depends on a heavy external toolchain and on wall-clock. `node_modules` is gitignored, so a fresh worktree's copy of it is populated out of band and its state at the worktree's FIRST sweep run is not something the sweep controls. Nothing in the F085 change set reaches any of the eight files, so this is a pre-existing property of the gate and not of the guard. Counter-measure, already applied in the block that registers this finding: the sweep is ordered as a PROBE carrying `-rf`, never as an expected COLOUR, and a red run reports its FAILED node id verbatim and hands back rather than re-running until green — which is the only way the id gets captured. The finding resolves when a red run finally names the test. Whether `test_typescript_compiles` belongs in a structural sweep at all is a question for the F252 flake work and is NOT claimed here. OPEN.
