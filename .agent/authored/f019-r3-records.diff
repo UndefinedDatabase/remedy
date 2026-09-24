@@ -1,0 +1,106 @@
+diff --git a/.agent/decisions.md b/.agent/decisions.md
+index de3d2872a..d44b67121 100644
+--- a/.agent/decisions.md
++++ b/.agent/decisions.md
+@@ -20218,3 +20218,58 @@ screenshots stay stable per job.
+ HOW TO REVERSE: remove `buildBrainLayout` and its constants from `buildForceBrainModel.ts`, the
+ three layout shapes from `forceBrainTypes.ts`, `brainMotion.ts` and its test, the two tokens,
+ `tests/ui_contracts/test_brain_motion_tokens.py`, the `buildBrainLayout` tests, and this paragraph.
++
++## DECISION F019 D3 — the stage paints the reducer's model on the force renderer by default, and the SVG picture stays as the simple view, which keeps the prompt dots (2026-09-24)
++
++CONTEXT: DECISION F019 D2 (1) gives round 3 the painted half of T002. Measured at `fd976586`:
++`BrainGraphStage.tsx` mounts `BrainGraphCanvas.tsx`, an SVG picture that draws the dashboard's
++tasks and, beside each task, one dot per captured prompt from `dashboard.promptTrace`, whose click
++`RemedyShell.tsx` resolves to the owning task's popover with that prompt highlighted; the same file
++carries keyboard focus, a hover tooltip and the empty and filter-empty texts, and source guards in
++`tests/ui_contracts/test_design_drift.py` and `tests/ui_server/test_dashboard_contract.py` pin
++those strings in it. `docs/ui/design_reference/component_spec.md` and
++`graph_tech_recommendation.md` keep `BrainGraphCanvas.tsx` as the simple fallback beside the force
++renderer, and graph_spec §14 makes the canvas hidden from assistive technology, with the task
++checklist and the popover as the accessible surface. The ontology has no prompt kind: `synapse` is
++named for the lifecycle feature (DECISION F019 D1 (3)). The shell's selection id is a bare task id
++when the SVG picture sets it and a dashboard `nodeId` when jump-to sets it. A dashboard task's
++`state` is one of `done`, `current`, `pending`, `blocked` and `suggested`, and
++`SEED_STATUS_STATE_TABLE` has rows for `pending` and `blocked` only. `ForceBrainGraph.tsx`, mounted
++nowhere, replaced d3's charge and link forces with plain objects that d3 cannot call.
++
++CHOSEN: (1) THE STAGE builds `buildBrainLayout(seedBrainModel(jobId, dashboardBrainSeeds(tasks)))`,
++narrows it by the filter chips, and mounts the rewritten `ForceBrainGraph.tsx` on it; it mounts
++`BrainGraphCanvas.tsx`, unchanged, whenever no task is visible, since that file owns the empty
++texts, and whenever the operator presses the new "Simple view" button, which reads "Live view"
++while the simple view shows. (2) THE PROMPT DOTS are drawn in the simple view only, until the
++lifecycle feature draws them as `synapse` nodes; operator note Q3 says so in plain words. (3)
++SELECTION: a click on a task, or on a run or a cluster under it, selects that task's dashboard
++`nodeId`, which is the key `RemedyShell.tsx` finds the popover's node by, and falls back to the
++bare task id only for a task the dashboard does not list; the core selects nothing; and the
++highlight resolves the shell's id against each task's id or `nodeId` (`selectedBrainNodeId`). (4) THE SEED WORDS: the new
++`apps/ui/src/components/graph/brainView.ts` maps `done` to `completed`, `current` to `running`, and
++`pending`, `blocked` and `suggested` to themselves, so `suggested` falls back to `planned` with the
++raw word kept, which is D1's own table rule; a task's rank is its list index and its title its
++label. (5) THE FILTER keeps the core always, under "Needs work" the tasks `in_progress`, `blocked`
++or `fail`, under "Planned" the `planned` tasks and under "Done" the `pass` tasks, and a run or a
++link follows its task. (6) THE RENDERER paints through `NODE_PAINTERS`, one slot per node kind for
++the lifecycle feature to fill; records each birth `scheduleBrainBirths` returns in a layout effect
++and paints it as a scale-in, or as a fade under reduced motion, keeping the canvas repainting while
++births run; shows one particle on each active link and none under reduced motion; configures d3's
++own charge and link forces at −60 and −12, 150 and 34; keeps a surviving node's simulated position
++across a new layout (`carryBrainPositions`); and hides its container from assistive technology. (7)
++THE NEXT ROUND, which takes both under operator amendment amend0917-throughput rule 3, replaces the
++old decorative `buildForceBrainModel()` with its types and source pins, and commits the demo
++recording.
++
++ALTERNATIVES: deleting `BrainGraphCanvas.tsx`, rejected because the design reference keeps it as the
++fallback and it is the only view whose nodes take keyboard focus; drawing the prompt dots on the
++live canvas as a layer beside the model, rejected because graph_spec §8 draws only what the model
++holds and the lifecycle feature owns `synapse`; new rows in `SEED_STATUS_STATE_TABLE` for the
++dashboard's words, rejected because that table is the reducer's contract with its goldens while the
++dashboard's words are an edge the adapter can own.
++
++HOW TO REVERSE: restore `BrainGraphStage.tsx`, `BrainGraphStage.module.css`, `ForceBrainGraph.tsx`,
++`buildForceBrainModel.ts` and `apps/ui/src/types/react-force-graph-2d.d.ts` from `fd976586`, delete
++`brainView.ts`, `brainView.test.ts` and `tests/ui_contracts/test_brain_stage_mount.py`, and delete
++this paragraph and operator note Q3.
+diff --git a/.agent/live_review.md b/.agent/live_review.md
+index 1a79cf0eb..c59cd03ee 100644
+--- a/.agent/live_review.md
++++ b/.agent/live_review.md
+@@ -452,3 +452,5 @@ Gate: F015 R10 — the F015 round 10 entry, the CI repair of pull request 274 un
+ Done: R-1047 — RESOLVED at F015 R10 by `b2a6beed`. `_mark` in the supervisor prelude of `tests/runtimes/test_supervisor_portability.py` now writes the marker's text to a private name, `<marker>.<thread id>.tmp`, and renames it into place with `os.replace`, so the marker exists only once its text is there and a test that reads it the moment it exists can no longer read it empty. MEASURED BY THE REVIEWER in a disposable worktree at `b2a6beed`: with the error marker paused one second between its creation and its write, the old helper turns `test_a_broken_helper_thread_fails_the_regression` red with the hosted run's own assertion, and the new helper, paused the same second before its rename, keeps both marker-reading nodes green. The hosted run on `739994f1` passed on both Python versions.
+ 
+ Gate: F019 R1 — the F019 round 1 entry: the claim, the re-head with F015's round 10 verdict and R-1047's resolution, DECISION F019 D1 and operator note Q2, and T001, the brain graph's pure reducer with its goldens. VERDICT PASS ON ALL SIX GATES, NO DEVIATION DECLARED. Re-derived over `92b7f5f1`..`b6cc2690` by the planner and reviewer of F019's first session, whose own runs produced every reading below. THE RANGE IS 9 COMMITS in the block's order C1a, C1b, C1c, C1d, C1e, C2, C3, C4 and C5, at `d9f7aa49` 312, `ddbe0ed1` 195, `5b1f6ee2` 364, `11ee0a85` 472, `aa94c5c1` 473, `48e721ae` 167, `32c02b05` 472, `4481f844` 473 and `b6cc2690` 235 insertions by `git show --numstat`, each under the 500-line cap, each single-parent and each carrying the ordered trailer. THE TRANSPORT PROOF IS FILE IDENTITY: the ledger, STATUS, the decisions, the operator questions, the plan and the context at `48e721ae`, and the four `.ts` files at `4481f844`, read byte-equal to the reviewer's simulated tree rebuilt at `92b7f5f1`, and the block copy and the eight payload copies under `.agent/authored/` equal the reviewer's originals byte for byte. THE CLAIM: F019's STATUS line reads `- [~] F019 — Live node materialization` at `48e721ae`, and the open set by distinct id reads R-0499, R-0950, R-1008, R-1046 and R-1047 at `92b7f5f1` and the same less R-1047 at `48e721ae`. THE PRODUCT: `apps/ui/src/components/graph/brainReducer.ts` folds the stream's frames into the ontology of `brainOntology.ts` as DECISION F019 D1 rules, a replayed seq returning the identical model and a run keyed by the seq that birthed it; the reviewer's run of the round's G4 selection in the primary checkout at `b6cc2690` read `1393 passed, 5 skipped` at exit 0, the five skips being the standing D3 and D12 quarantines, so the eslint, tsc and vitest nodes ran and passed, and all six `integrity check` checks `pass` at `fail_count` 0. THE RED PROOFS: the round's mutation tool, run by the reviewer over its simulated tree, whose four `.ts` files are byte-equal to `4481f844`'s, turned all thirteen mutations red at exit 1 between two unmutated controls of `36 passed` at exit 0, every file restored byte-identical, and the worker's own run in a disposable worktree at `4481f844` read the same counts. `git worktree list` after the round shows no worktree the round added, and the tree is clean.
++
++Gate: F019 R2 — the F019 round 2 entry: the booking of round 1, DECISION F019 D2, and T002's pure half, the layout of the reducer's model, the birth schedule and its two motion tokens. VERDICT PASS ON ALL SIX GATES, NO DEVIATION DECLARED. Re-derived over `b6cc2690`..`fd976586` by the planner and reviewer of F019's second session, whose own runs produced every reading below. THE RANGE IS 8 COMMITS in the block's order C1a, C1b, C1c, C1d, C2, C3, C4 and C5, at `a0a3dc26` 209, `32547eeb` 389, `f4483d6d` 367, `42f64dd6` 346, `c8e43121` 57, `0b471282` 282, `50035799` 340 and `fd976586` 181 insertions by `git log --numstat`, each under the 500-line cap, each single-parent and each carrying the ordered trailer. THE TRANSPORT PROOF IS FILE IDENTITY: the block copy and the five payload copies under `.agent/authored/f019-r2-*` equal the reviewer's originals under `.remedy-wt/f019-r2/` and `.remedy-wt/f019-r2-payloads/` byte for byte, the plan at `fd976586` equals its payload, and the ledger, the decisions and the seven product and test files at `fd976586` equal the reviewer's simulated tree `.remedy-wt/f019-r2-sim`. THE OPEN SET at `fd976586` reads R-0499, R-0950, R-1008 and R-1046. THE TESTS: the reviewer's run of the round's G4 selection in the primary checkout at `fd976586` read `1398 passed, 5 skipped` at exit 0, the five skips being the standing D3 and D12 quarantines, so the eslint, tsc and vitest nodes ran and passed. THE RED PROOFS: the round's mutation tool, run by the reviewer in a disposable worktree at `fd976586`, turned all fifteen mutations red at exit 1 with the block's own failed counts, between unmutated controls of `64 passed` for vitest and `5 passed` for pytest at exit 0 first and last, every file restored byte-identical; the worktree was removed, and `git worktree list` shows no worktree the round added.
+diff --git a/.agent/operator_questions.md b/.agent/operator_questions.md
+index 31565ea67..ab67173d1 100644
+--- a/.agent/operator_questions.md
++++ b/.agent/operator_questions.md
+@@ -56,3 +56,28 @@ which the graph can draw those nodes with a small change.
+ **What happens if you say nothing.** The recommendation is already executed and stands until you
+ say otherwise. The graph grows from the messages that exist today, and the test and repair nodes
+ stay out until the messages carry what they need.
++
++### Q3 — Prompt dots move to simple view (2026-09-24, F019, round 3)
++
++**What needs deciding.** The job graph in the browser now has two pictures. The new live picture
++is the default: it draws the job in the middle, its tasks around it and a small node for each
++attempt, review and check, and it is the picture that will grow on its own while a job runs. The
++older, simpler picture is one click away behind a new button named "Simple view". Only the simple
++picture shows the small dots beside each task that stand for the prompts Remedy sent to the model,
++the ones you can click to read a prompt. I have not put those prompt dots into the live picture.
++You can tell me to add them there now.
++
++**Why it matters.** The live picture only draws things its data model knows about, and that model
++has no kind of node for a prompt yet. A later feature, the one that gives every kind of node its
++own look, is planned to add prompts as their own nodes. Until then, a person who wants the prompt
++dots has to press "Simple view". Reading a prompt from a task's detail card works in both pictures,
++and so do the task list and the keyboard, because the simple picture is also the one whose nodes
++can be reached with the keyboard.
++
++**My recommendation.** Keep the prompt dots in the simple picture for now. Adding them to the live
++picture today would draw nodes the data model does not hold, which the design rules for the graph
++forbid, and the later feature adds them properly.
++
++**What happens if you say nothing.** The recommendation is already executed and stands until you
++say otherwise. The live picture is the default and the prompt dots stay one click away in the
++simple picture.
