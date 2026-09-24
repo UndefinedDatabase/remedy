@@ -12,17 +12,16 @@ was understood and from which round it applies
 
 ## Current Step
 
-ROUND 4: book round 3's PASS, record DECISION F264 D4, and land T002 — the
-ping-pong loop consumes pending messages at the top of each round, exactly
-once, records the consumption round, and carries every consumed message in
-the builder prompt, with the with-and-without fixture and red proofs.
+ROUND 5: book round 4's PASS, record DECISION F264 D5, and land T002's
+mission half — a consumed message of a job that belongs to a mission
+amends the mission's contract once, before its consumption marker is
+published, and the marker and the event name the amendment.
 
 ## Next Steps
 
-1. T002's mission half: a message consumed for a job that belongs to a
-   mission also amends the mission's contract.
-2. T003: the acknowledgement event, in the cockpit and in `remedy chat`.
-3. The closure sequence.
+1. T003: the acknowledgement event — what was understood and from which
+   round — in the cockpit and in `remedy chat`.
+2. The closure sequence.
 
 ## Risks
 

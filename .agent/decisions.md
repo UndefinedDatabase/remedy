@@ -19591,3 +19591,31 @@ in the next round only, rejected because the job would forget the correction a r
 reading after the tiered-diff summary, rejected because that summary may itself be a model call.
 HOW TO REVERSE: delete the consumption functions from `steering.py`, the read and the segment
 from `pingpong_loop.py`, the event name and its humanize line, their tests, and this paragraph.
+
+## DECISION F264 D5 — a consumed steering message of a mission's job amends the mission's contract once, before its marker is published (2026-09-24)
+
+CONTEXT: DECISION amend0905-vocab D9 makes every operator message an amendment to the mission's
+contract, "recorded on the mission, DoD recompiled, acknowledged with what was understood and
+from which round it applies", and DECISION F264 D1 left the mission side to T002. Measured at
+`68f4273b`: `mission_contract.amend_mission_contract` adds one blocking criterion compiled from
+the message and an entry applying from the mission's next loop round, which `run_mission`
+acknowledges in that round (DECISION F269 D8), and its docstring still read "No command calls
+this"; `mission_state.mission_for_job` answers the mission a job belongs to, or None; and a job
+runs under its own lock, so one runner consumes its messages. CHOSEN: (1) WHEN. At consumption
+(DECISION F264 D4), for each message not yet consumed, and never at receipt, because D1 keeps
+receipt free of consumption and the mission's round of effect is fixed when the amendment is
+written. (2) ONCE. The consumption loop skips a message whose marker exists before it amends,
+then amends, then publishes the marker create-once naming the mission and the amendment id; the
+job's lock is what makes that check-then-act order safe. (3) ONLY FOR A MISSION'S JOB. The
+mission is looked up once per call and only when a message is pending; a job with no mission
+records an empty mission id and amendment id. (4) LOUD. An amendment that fails raises before
+the marker exists, so the message stays pending and the run stops rather than carrying a
+correction its mission never recorded. (5) The event `steering_message_consumed` also names the
+amendment id, and `amend_mission_contract`'s docstring names this caller. ALTERNATIVES: amending
+at receipt, rejected because it is consumption and D1 keeps receipt free of it; publishing the
+marker first, rejected because a failed amendment would then leave a consumed message the
+mission never saw; a non-blocking criterion, rejected because D9 makes the message part of the
+contract, and F269's default is blocking. HOW TO REVERSE: delete the lookup and the amendment
+call from `consume_pending_steering`, the two marker fields and the event field, restore the
+docstring from `68f4273b`, delete `tests/orchestration/test_steering_mission.py` and this
+paragraph.
