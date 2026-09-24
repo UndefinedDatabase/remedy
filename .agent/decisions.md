@@ -20172,3 +20172,49 @@ without one would be the fake progress graph_spec §8 forbids.
 
 HOW TO REVERSE: delete the four files under `apps/ui/src/components/graph/` whose names begin
 with `brainOntology` or `brainReducer`, and this paragraph.
+
+## DECISION F019 D2 — T002 lands in two rounds, its pure half first: a deterministic layout of the reducer's model beside the dashboard builder, and a birth schedule read from the design reference's motion tokens (2026-09-24)
+
+CONTEXT: T5_F019.md's T002 renders the reducer's model on react-force-graph-2d with the canvas
+glyph slots, the layout and the motion tokens, and renders the demo recording. Measured at
+`b6cc2690`: vitest runs in the node environment and cannot render React, so only the pure
+parts of that slice are testable there; `buildForceBrainModel.ts` builds the force-graph data
+from the polled dashboard, with decorative branches, and is by
+`docs/ui/design_reference/graph_tech_recommendation.md` the single data-to-graph builder;
+`ForceBrainGraph.tsx`, which paints it, is mounted nowhere; `apps/ui/src/styles/tokens.css`
+carries `--remedy-dur-pulse` and neither `--remedy-dur-birth` nor `--remedy-ease-soft`, which
+`docs/ui/design_reference/tokens.css` defines as `420ms` and `cubic-bezier(0.22, 1, 0.36, 1)`.
+
+CHOSEN: (1) THE SPLIT: round 2 lands T002's pure half, round 3 its painted half — the renderer
+that paints the layout on the canvas, its mount in `BrainGraphStage.tsx` fed by the reducer's
+model seeded from the dashboard, the replacement of the dashboard builder it supersedes, and the
+demo recording. (2) THE LAYOUT is `buildBrainLayout(model)` in `buildForceBrainModel.ts`, with
+its shapes `BrainLayoutNode`, `BrainLayoutLink` and `BrainLayoutData` in `forceBrainTypes.ts`.
+It lays out `clusterBrainModel(model)` and nothing else, node for node and link for link in
+the model's order (graph_spec §8). The core is pinned at the origin with radius 26; the tasks
+sit on a ring of radius 150 in rank order, each a golden angle, π·(3 − √5), past the one before,
+starting from an angle the file's existing `seededRng` draws from the job id; a task's runs and
+cluster fan out around the task's own angle in seq order, 0.35 radians apart, 34 from the task,
+with radius 4.5, or 9 for a cluster; a task is labelled with its title or else its id; a
+core-to-task link is 2.2 wide and a task-to-run link 1.4; and a link is `active` when its target
+is in progress or is a task with a child in progress (graph_spec §4, §6 and §7). (3) THE BIRTH
+SCHEDULE is `scheduleBrainBirths(previous, next, reducedMotion)` in the new
+`apps/ui/src/components/graph/brainMotion.ts`: a first paint births nothing, and otherwise the
+nodes new to `next`, in its order, each start at the later of their 90-millisecond stagger slot
+and the end of the birth three places before them, so at most three animate at once; a birth
+lasts 420 milliseconds, or 180 as a plain fade under reduced motion (graph_spec §11 and §12).
+(4) THE TOKENS `--remedy-dur-birth` and `--remedy-ease-soft` are transcribed into the app's
+sheet with the design reference's values, and `tests/ui_contracts/test_brain_motion_tokens.py`
+pins both against the reference and `BRAIN_BIRTH_MS` against the first.
+
+ALTERNATIVES: the whole of T002 in one round, rejected because the renderer can only be checked
+by source guards and a reading in the browser, while the layout and the schedule can be pinned by
+vitest, and one round carrying both would review the untestable half under the testable half's
+gates; a mode flag on `buildForceBrainModel`, rejected because that function's decorative
+branches break the one-to-one truth rule the new layout keeps; positions left to the force
+simulation alone, rejected because graph_spec §6 asks for deterministic initial positions so that
+screenshots stay stable per job.
+
+HOW TO REVERSE: remove `buildBrainLayout` and its constants from `buildForceBrainModel.ts`, the
+three layout shapes from `forceBrainTypes.ts`, `brainMotion.ts` and its test, the two tokens,
+`tests/ui_contracts/test_brain_motion_tokens.py`, the `buildBrainLayout` tests, and this paragraph.

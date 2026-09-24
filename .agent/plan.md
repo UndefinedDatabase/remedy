@@ -13,17 +13,17 @@ the snapshot path without ghosts (`docs/roadmap/features/T5_F019.md`).
 
 ## Current Step
 
-ROUND 1: claim F019, re-head the live review record with F015's round 10
-verdict and R-1047's resolution, record DECISION F019 D1 and the operator
-note it implies, and land T001 — `brainOntology.ts` and `brainReducer.ts`
-under `apps/ui/src/components/graph/`, with the fixture streams, the
-goldens, idempotence per seq, the snapshot rebuild and the cluster view.
+ROUND 2: book round 1's PASS, record DECISION F019 D2, and land T002's pure
+half — `buildBrainLayout` in `buildForceBrainModel.ts`, the birth schedule
+in `brainMotion.ts`, the two birth-motion tokens and their guard. T001 is
+built.
 
 ## Next Steps
 
-1. T002: render the reducer's model on react-force-graph-2d, extending
-   `buildForceBrainModel.ts` to read it — layout, glyph slots for the
-   lifecycle feature, the motion tokens, and the demo recording.
+1. T002's painted half: the renderer that paints the layout, its mount in
+   `BrainGraphStage.tsx` fed by the reducer's model seeded from the
+   dashboard, the replacement of the dashboard builder it supersedes, and
+   the demo recording (DECISION F019 D2).
 2. T003: the live wiring from the stream hook through the reducer to the
    renderer, gap and snapshot recovery by paging `events-since`, the
    performance fixture and the end-to-end run on a live fake job.
@@ -33,4 +33,4 @@ goldens, idempotence per seq, the snapshot rebuild and the cluster view.
 
 The stream carries no run id and no outcome for test and repair runs, so
 those draw no node yet (DECISION F019 D1, operator note Q2). Open
-findings after this round: 4, all owned by F284.
+findings: 4, all owned by F284.
