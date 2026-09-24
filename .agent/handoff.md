@@ -1,212 +1,267 @@
-# Handback — F284 Findings paydown v3 · Round 4 (CLOSING ROUND)
+# Handback — F020 Node lifecycle & glyph language · Round 1
 
 ## Session
 
-SESSION 1 of feature F284 · round 4 · rounds so far 4
+SESSION 1 of feature F020 · round 1 · rounds so far 1
 
-This round books round 3's PASS with DECISION F284 D3 (R-1008's `Owner:` line moved to F285),
-rotates the finding ledger into its archive, registers F285 — Findings paydown v4 under operator
-amendment amend0911-feedback rule B, flips F284's STATUS line to `[x]` with the README's accepted
-count, Tier 2 Done cell and Tier 2 prose, and (after this commit) pushes and opens the pull request
-into `main`. This closes F284. I had ample context remaining throughout this round; no
-session-limit pressure at any point.
+This round cut `feature/f020-node-lifecycle-glyph-language` from `main` at `955a6240` (the F284
+merge), claimed F020, re-headed `.agent/live_review.md` with F284's round 4 PASS, recorded
+DECISION F020 D1, flipped F020's STATUS line to `[~]`, and landed T001: `glyphPaths.ts` (every
+node kind's glyph as SVG path strings) and `nodeStates.ts` (every state's treatment naming design
+tokens only) under the new directory `apps/ui/src/components/graph/renderers/`, their vitest
+tests, the two new design tokens (`--remedy-state-vetoed`, `--remedy-graph-node-ring`), and the
+token guard `tests/ui_contracts/test_node_glyph_tokens.py`, with 16 red proofs all caught and
+restored cleanly. I had ample context remaining throughout this round; no session-limit pressure
+at any point.
 
 ## Range
 
-Review of b6bdea3b..HEAD
+Review of 955a6240d..HEAD
 
 ## Commits
 
-### 2283e9bd0 F284 R4 C1: copy round 4 block and payloads into .agent/authored/
+### 572c8aecb F020 R1 C1a: copy round 1 block and state payloads into .agent/authored/
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f284-r4-block.md | +174/-0 | copy of this round's block, verbatim |
-| .agent/authored/f284-r4-book.diff | +53/-0 | copy of the book.diff payload |
-| .agent/authored/f284-r4-plan.md | +29/-0 | copy of the plan.md payload |
-| .agent/authored/f284-r4-register.diff | +99/-0 | copy of the register.diff payload |
-| .agent/authored/f284-r4-status_line.txt | +1/-0 | copy of the status_line.txt payload |
-| .agent/authored/f284-r4-closure.diff | +49/-0 | copy of the closure.diff payload |
-| .agent/authored/f284-r4-pr_body.md | +57/-0 | copy of the pr_body.md payload |
+| .agent/authored/f020-r1-block.md | +263/-0 | copy of this round's block, verbatim |
+| .agent/authored/f020-r1-context.md | +38/-0 | copy of the context.md payload |
+| .agent/authored/f020-r1-plan.md | +33/-0 | copy of the plan.md payload |
 
-462 insertions by `git show --numstat` (block's 174 lines + 288 for the six payloads); matches the
-block's expectation exactly; under the 500-insertion cap.
+334 insertions by `git show --numstat` (block's 263 lines + 71); matches the block's expectation
+exactly; under the 500-insertion cap.
 
-### 92d04ac74 F284 R4 C2: book round 3's PASS, carry R-1008 to F285, record D3
+### b569b45ac F020 R1 C1b: copy round 1 claim and token diffs into .agent/authored/
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/decisions.md | +27/-0 | DECISION F284 D3 appended (book.diff) |
-| .agent/live_review.md | +3/-0 | `Owner: F285 — ` line and F284 R3 `Gate:` entry appended (book.diff) |
-| .agent/plan.md | +10/-10 | rewritten to the plan.md payload (round 4 closing-round scope) |
+| .agent/authored/f020-r1-claim.diff | +127/-0 | copy of the claim.diff payload |
+| .agent/authored/f020-r1-tokens.diff | +41/-0 | copy of the tokens.diff payload |
 
-`git apply --check` on book.diff: exit 0. `git apply`: exit 0. Insertions/deletions by
-`git show --numstat`: 27/0 `.agent/decisions.md`, 3/0 `.agent/live_review.md`, 10/10
-`.agent/plan.md` — matches the block's expectation exactly.
+168 insertions by `git show --numstat`; matches the block's expectation of 168 exactly.
 
-### 34d631331 F284 R4 C3: rotate the finding ledger into its archive
+### 06bc60417 F020 R1 C1c: copy round 1 mutation tool into .agent/authored/
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/live_review.md | +0/-33 | rotated out by `scripts/rotate_live_review.py` |
-| .agent/live_review_archive.md | +33/-0 | rotated in by `scripts/rotate_live_review.py` |
+| .agent/authored/f020-r1-mutations.py | +182/-0 | copy of the mutations.py payload (G5 tool) |
 
-Script output (printed in full, per the block):
-```
-gate records moved: 9
-finding pairs moved: 3 (6 records)
-old ledger size: 313847 bytes
-new ledger size: 286104 bytes
-old archive size: 4940878 bytes
-new archive size: 4968621 bytes
-open findings before: 1
-open findings after: 1
-```
-Matches the reviewer's simulated-tree reading exactly. Insertions/deletions by
-`git show --numstat`: 0/33 `.agent/live_review.md`, 33/0 `.agent/live_review_archive.md` — matches
-the block's expectation exactly.
+182 insertions by `git show --numstat`; matches the block's expectation of 182 exactly.
 
-### e083c633c F284 R4 C4: register F285 — Findings paydown v4 under amend0911-feedback rule B: feature file, STATUS line, pin 285, README counters
+### 7222cfb3e F020 R1 C1d: copy round 1 product modules into .agent/authored/
 | Path | +/- | Reason |
 |---|---|---|
-| README.md | +2/-2 | `TOTAL_FEATURES` count and Tier 2 Done/Total cells updated to 285/38 |
-| docs/roadmap/STATUS.md | +7/-0 | F285 STATUS line added under its own Tier 2 heading, Tier 5 re-opened after it |
-| docs/roadmap/features/T2_F285.md | +38/-0 | new feature file, registered thin, carrying R-1008 from F284 |
-| tests/docs/test_docs_consistency.py | +5/-1 | `TOTAL_FEATURES` pinned to 285 with the dated comment |
+| .agent/authored/f020-r1-glyphPaths.ts | +181/-0 | copy of the glyphPaths.ts payload |
+| .agent/authored/f020-r1-nodeStates.ts | +156/-0 | copy of the nodeStates.ts payload |
 
-`git apply --check` on register.diff: exit 0. `git apply`: exit 0. Insertions/deletions by
-`git show --numstat`: 2/2 README.md, 7/0 STATUS.md, 38/0 T2_F285.md, 5/1
-test_docs_consistency.py — matches the block's expectation exactly.
+337 insertions by `git show --numstat`; matches the block's expectation of 337 exactly.
 
-### (this commit) F284 R4 C5: accept F284 in STATUS with its README pins
+### 07247b313 F020 R1 C1e: copy round 1 test payloads into .agent/authored/
+| Path | +/- | Reason |
+|---|---|---|
+| .agent/authored/f020-r1-glyphPaths.test.ts | +225/-0 | copy of the glyphPaths.test.ts payload |
+| .agent/authored/f020-r1-nodeStates.test.ts | +129/-0 | copy of the nodeStates.test.ts payload |
+| .agent/authored/f020-r1-test_node_glyph_tokens.py | +110/-0 | copy of the test_node_glyph_tokens.py payload |
+
+464 insertions by `git show --numstat`; matches the block's expectation of 464 exactly.
+
+### e1a069478 F020 R1 C2: claim F020, re-head the live review record, book F284 R4, record D1
+| Path | +/- | Reason |
+|---|---|---|
+| .agent/context.md | +13/-11 | rewritten to the context.md payload |
+| .agent/decisions.md | +56/-0 | DECISION F020 D1 appended (claim.diff) |
+| .agent/live_review.md | +28/-9 | re-head plus F284 R4 Gate entry appended (claim.diff) |
+| .agent/plan.md | +20/-16 | rewritten to the plan.md payload |
+| docs/roadmap/STATUS.md | +1/-1 | F020's line `[ ]` → `[~]` (claim.diff) |
+
+`git apply --check` on claim.diff: exit 0. `git apply`: exit 0. Insertions/deletions by
+`git show --numstat`: 13/11 context.md, 56/0 decisions.md, 28/9 live_review.md, 20/16 plan.md, 1/1
+STATUS.md — matches the block's expectation exactly.
+
+### d9f585b23 F020 R1 C3: draw every node kind from one glyph source and every state from tokens
+| Path | +/- | Reason |
+|---|---|---|
+| apps/ui/src/components/graph/renderers/glyphPaths.ts | +181/-0 | new file: every node kind's glyph as SVG path strings |
+| apps/ui/src/components/graph/renderers/nodeStates.ts | +156/-0 | new file: every state's treatment naming design tokens only |
+| apps/ui/src/styles/tokens.css | +5/-0 | tokens.diff: `--remedy-state-vetoed`, `--remedy-graph-node-ring` |
+| docs/ui/design_reference/tokens.css | +1/-0 | tokens.diff: `--remedy-state-vetoed` mirrored into the reference sheet |
+| docs/ui/design_reference/tokens_rules.md | +2/-0 | tokens.diff: the two new tokens' rule lines |
+
+`git apply --check` on tokens.diff: exit 0. `git apply`: exit 0. Insertions by `git show
+--numstat`: 181 glyphPaths.ts, 156 nodeStates.ts, 5 tokens.css, 1 docs tokens.css, 2
+tokens_rules.md — matches the block's expectation exactly.
+
+### bef276a78 F020 R1 C4: pin the glyph goldens, the state language and the token guard
+| Path | +/- | Reason |
+|---|---|---|
+| apps/ui/src/components/graph/renderers/glyphPaths.test.ts | +225/-0 | vitest goldens for glyphPaths.ts |
+| apps/ui/src/components/graph/renderers/nodeStates.test.ts | +129/-0 | vitest goldens for nodeStates.ts |
+| tests/ui_contracts/test_node_glyph_tokens.py | +110/-0 | token guard: state module names tokens only |
+
+Insertions by `git show --numstat`: 225 glyphPaths.test.ts, 129 nodeStates.test.ts, 110
+test_node_glyph_tokens.py — matches the block's expectation exactly.
+
+### (this commit) F020 R1 C5: rewrite handoff for round 1
 Self-reference exception per the handback template (a handback cannot table the commit that
 writes it).
 | Path | +/- | Reason |
 |---|---|---|
-| README.md | rewritten section | F284's Tier 2 accepted prose and counters (closure.diff) |
-| docs/roadmap/STATUS.md | rewritten line | F284's STATUS line flipped `[~]` → `[x]` with acceptance detail (closure.diff) |
 | .agent/handoff.md | rewritten | this handback |
-
-`git apply --check` on closure.diff: exit 0. `git apply`: exit 0. Working-tree measurement before
-this commit (per the block, "measured before the handback joins the commit"): 10/3 README.md, 1/1
-docs/roadmap/STATUS.md — matches the block's expectation exactly (confirmed via `git diff` byte
-count/sha256 against G2's C5 table below; the commit's own `git show --numstat` reading goes in the
-reply per the block's own instruction, since it is measured only after this commit lands).
 
 ## External actions
 
-- None yet inside this commit sequence. Per the block, the push and the pull-request creation
-  happen AFTER C5 lands: `git push origin feature/f284-findings-paydown-v3`, then `gh pr create
-  --base main --head feature/f284-findings-paydown-v3 --title "F284 — Findings paydown v3"
-  --body-file .remedy-wt/f284-r4-payloads/pr_body.md`. Both real outcomes, the PR number and its
-  URL, go in the reply per constraint 7 ("Your handback names no pull request number, which does
-  not exist when it is written").
+- `git worktree add --detach .remedy-wt/f020-r1-mut bef276a78` — outcome: success, detached HEAD
+  at `bef276a78`.
+- `git worktree remove --force .remedy-wt/f020-r1-mut` — outcome: success.
+- `git worktree prune` — outcome: success, no output.
+- `git push -u origin feature/f020-node-lifecycle-glyph-language` — runs AFTER this commit lands;
+  its real outcome is reported in the reply, since this handback cannot contain an outcome that
+  happens after it. No `gh pr create` this round: the block orders the branch to open its PR at
+  F020's closure, not here.
 
 ## Verification
 
 ```
 $ ls .agent/STOP
-ls: cannot access '.agent/STOP': No such file or directory (exit 2 — absent, as required)
+ls: cannot access '.agent/STOP': No such file or directory (absent, as required)
 
 $ pwd
 /home/decodeux/Repos/remedy
 $ git status --porcelain
 (empty)
 $ git branch --show-current
-feature/f284-findings-paydown-v3
+main
 $ git log --oneline -1
-b6bdea3bf F284 R3 C3: rewrite handoff for round 3 with the evidence and package readings
+955a6240d Merge pull request #276 from UndefinedDatabase/feature/f284-findings-paydown-v3
 ```
-All BEFORE ANYTHING ELSE checks passed.
+All BEFORE ANYTHING ELSE checks passed at round start, before the branch was cut.
 
 ```
-$ wc -l / sha256sum .remedy-wt/f284-r4/block.md
-174 lines, sha256=04f4ba6ceb8674be055cd04594f789f48cd08ef207b44c746bb7e0b52af99656
+$ git checkout -b feature/f020-node-lifecycle-glyph-language
+Switched to a new branch 'feature/f020-node-lifecycle-glyph-language'
+```
+
+```
+$ wc -l / sha256sum .remedy-wt/f020-r1/block.md
+263 lines, sha256=530439682c480004ac7e2062c24a75af42e229bb541b7199b0eee9f372179e19
 ```
 Matches both readings given in the delegation message exactly (R-0954).
 
 ```
-$ wc -lc / sha256sum over .remedy-wt/f284-r4-payloads/*
-book.diff       lines=53 bytes=8866 sha256=f2a08514f6f4cac7b592f469cd335846d7cb5a6ddc8e26e3c1107ece60d1dea5
-plan.md         lines=29 bytes=957  sha256=73a718b3b590420436648a5db3a3cd35c3560c68fa1da1aeddf6581e9b184c60
-register.diff   lines=99 bytes=4848 sha256=23cc562a764835f56010e29d6959f0ff9779dab58d2c36d72980ffca61dc1867
-status_line.txt lines=1  bytes=426  sha256=761589baa99cd8e4a8685506dcdc032abab820887ca151c358f0285819574fc0
-closure.diff    lines=49 bytes=2722 sha256=7304cd9a38871b952aabf90c51afa92ffa68b591a3d96f860c7877f5b0d87ae4
-pr_body.md      lines=57 bytes=3435 sha256=87018ffca2064a618f48e41af5b1eda47d2ea606a7fba223ffb7b6721642f892
+$ wc -lc / sha256sum over .remedy-wt/f020-r1-payloads/*
+claim.diff                 lines=127 bytes=15248 sha256=9597baf5746e1586792d9c69a2f72c7d8b9e8ad3ec7845af805dd416faf7fd46
+context.md                 lines=38  bytes=1676  sha256=cb92943f462e868eb1dbc33943d594536b30a16bf48248ae5a396c0f3e7c7b4a
+glyphPaths.test.ts         lines=225 bytes=8816  sha256=b60ecd4aecba5d2a840bf07ed368d99b2d8fa7e35e739ccb4056aa9250968699
+glyphPaths.ts               lines=181 bytes=6541  sha256=4c440b9217718edff780fddac75e8a413fd86bdf52104ad4c2e74dc8a348c8e2
+mutations.py                lines=182 bytes=9233  sha256=ddb9db2dc73e2165913b7d861e2696a3bd30fd836629c75ca127b2094456e5a4
+nodeStates.test.ts          lines=129 bytes=5165  sha256=34063c8af201ff4f7832d81a439abab0ebf1364bc2edbdfb3688a8b34ab3c885
+nodeStates.ts                lines=156 bytes=5831  sha256=74b81d8f8d4cec4be3e6e375d96fb2fa4bb12813a04e48942eab82a9c5e21316
+plan.md                      lines=33  bytes=1317  sha256=5e20ffbf9c71497548e91949ee7a739ae15db35a153cbc25a7897a712debc386
+test_node_glyph_tokens.py    lines=110 bytes=4719  sha256=e7daf334a6d45461a6646f1cf62a65794362a8bc60a24f071b1c83e9f215e5db
+tokens.diff                  lines=41  bytes=2186  sha256=13160072813b7ca734b3eb98f7c3426749b45cd792d3eb123b3d2e46239d8f1e
 ```
-All 6 match the PAYLOADS table exactly (G1).
+All 10 match the PAYLOADS table exactly (G1).
 
 ```
-$ (compare each committed .agent/authored/f284-r4-* blob, read with `git show 2283e9bd0:<path>`,
+$ (compare each committed .agent/authored/f020-r1-* blob, read with `git show <commit>:<path>`,
    against its source)
-f284-r4-block.md        @ 2283e9bd0: match=True sha256=04f4ba6ceb8674be055cd04594f789f48cd08ef207b44c746bb7e0b52af99656
-f284-r4-book.diff       @ 2283e9bd0: match=True sha256=f2a08514f6f4cac7b592f469cd335846d7cb5a6ddc8e26e3c1107ece60d1dea5
-f284-r4-plan.md         @ 2283e9bd0: match=True sha256=73a718b3b590420436648a5db3a3cd35c3560c68fa1da1aeddf6581e9b184c60
-f284-r4-register.diff   @ 2283e9bd0: match=True sha256=23cc562a764835f56010e29d6959f0ff9779dab58d2c36d72980ffca61dc1867
-f284-r4-status_line.txt @ 2283e9bd0: match=True sha256=761589baa99cd8e4a8685506dcdc032abab820887ca151c358f0285819574fc0
-f284-r4-closure.diff    @ 2283e9bd0: match=True sha256=7304cd9a38871b952aabf90c51afa92ffa68b591a3d96f860c7877f5b0d87ae4
-f284-r4-pr_body.md      @ 2283e9bd0: match=True sha256=87018ffca2064a618f48e41af5b1eda47d2ea606a7fba223ffb7b6721642f892
+f020-r1-block.md                  @ 572c8aecb: match=True
+f020-r1-plan.md                   @ 572c8aecb: match=True
+f020-r1-context.md                @ 572c8aecb: match=True
+f020-r1-claim.diff                @ b569b45ac: match=True
+f020-r1-tokens.diff               @ b569b45ac: match=True
+f020-r1-mutations.py              @ 06bc60417: match=True
+f020-r1-glyphPaths.ts             @ 7222cfb3e: match=True
+f020-r1-nodeStates.ts             @ 7222cfb3e: match=True
+f020-r1-glyphPaths.test.ts        @ 07247b313: match=True
+f020-r1-nodeStates.test.ts        @ 07247b313: match=True
+f020-r1-test_node_glyph_tokens.py @ 07247b313: match=True
 ```
-All 7 BYTE-IDENTICAL against their sources (G1).
+All 11 BYTE-IDENTICAL against their sources (G1).
 
 ```
-$ (sha256/bytes of C2/C3/C4's files, read with `git show <commit>:<path>`, against the block's G2 table)
-C2 .agent/decisions.md:         bytes=2024746 sha256=782c10b3f412d3b37105b4260d782f349af0fde6697ef71282854df20583b53c match=True
-C2 .agent/live_review.md:       bytes=313847  sha256=4c102a3956082e0355bae721353d2740f43683d905ddc8d7854fa7372bbed3a2 match=True
-C2 .agent/plan.md:               bytes=957     sha256=73a718b3b590420436648a5db3a3cd35c3560c68fa1da1aeddf6581e9b184c60 match=True
-C3 .agent/live_review.md:       bytes=286104  sha256=cd4468d74dd0b9033b63a2dabba574bceabfa34f58dc43316b85ff8ee960c516 match=True
-C3 .agent/live_review_archive.md: bytes=4968621 sha256=12d2ed99739cbae2e8d3d69bbdb270d4e81bb9a2f4866e64cc6c2563fe4b775b match=True
-C4 README.md:                    bytes=28679  sha256=1e1009a855b6c2893d8699b3fbd94489207a2f6f5e3c3b0184130a2957416817 match=True
-C4 docs/roadmap/STATUS.md:       bytes=50642  sha256=b33d5c3118fba723444d1ee11dcf8be546cae4cbfc815ce5606e1e53bcdd992c match=True
-C4 docs/roadmap/features/T2_F285.md: bytes=2246 sha256=107bde79ad79fa89710788007e22a6ad584dfddf31d36fa6f486acf74e9f5165 match=True
-C4 tests/docs/test_docs_consistency.py: bytes=95239 sha256=66dc35c0e8a5a8343e46210ed0529bb4486c40429d4b3e272b2c6fe776216fef match=True
+$ (sha256/bytes of C2's five files, read with `git show e1a069478:<path>`, against the block's G2 table)
+.agent/live_review.md:  bytes=288899  sha256=2a3e1c928766677821aff55f37cefaf6128dccda1672a51b0be86c4743b9cecb match=True
+docs/roadmap/STATUS.md: bytes=51033   sha256=def827f05e4cf8a0d569a793db20324df78e293ce539b890677777cd1d541e6c match=True
+.agent/decisions.md:    bytes=2029556 sha256=774b744d0a0007770aedc48fcef3f0856440f9a7879a565245aa0d08161a5e12 match=True
+.agent/plan.md:         bytes=1317    sha256=5e20ffbf9c71497548e91949ee7a739ae15db35a153cbc25a7897a712debc386 match=True
+.agent/context.md:      bytes=1676    sha256=cb92943f462e868eb1dbc33943d594536b30a16bf48248ae5a396c0f3e7c7b4a match=True
 ```
-All 9 match the block's G2 table exactly.
-
-```
-$ (C5 rows, read from the working tree BEFORE the handback joins the commit, per the block)
-README.md:              bytes=29228 sha256=5c871d3fbd99729a520d0ba0384c8511bd4b97f970c848bc8a1d228f6ac300f5 match=True
-docs/roadmap/STATUS.md: bytes=51033 sha256=6302d2d31fe1b8c247ca3f6b08b88df7eef2b06b58400cd14634ac44a2e65708 match=True
-```
-Both match the block's G2 table exactly.
-
-```
-$ grep -c '^+Owner: F285 — ' / '^+Gate: F284 R3 — ' over C2's diff of .agent/live_review.md
-Owner: F285 — : 1
-Gate: F284 R3 — : 1
-```
-Both counts read 1, matching the block's stated reviewer reading (G2).
-
-```
-$ git show --name-only --format= 34d631331
-.agent/live_review.md
-.agent/live_review_archive.md
-```
-Exactly the two ledger files, matching the block's stated C3 path set (G2).
+All 5 match the block's G2 table exactly.
 
 ```
 $ open_finding_ids(text) from scripts/rotate_live_review.py, over .agent/live_review.md's TEXT
-b6bdea3b open ids: ['R-1008']
-92d04ac74 (C2) open ids: ['R-1008']
-34d631331 (C3) open ids: ['R-1008']
-working tree (C5) open ids: ['R-1008']
+955a6240d open ids: ['R-1008']
+e1a069478 (C2) open ids: ['R-1008']
 ```
-All four read R-1008 alone, matching the reviewer's simulation exactly (G2).
+Both read R-1008 alone, matching the reviewer's stated reading exactly (G2).
 
 ```
-$ (status_line.txt content, trailing newline stripped, counted in docs/roadmap/STATUS.md)
-occurrences=1
-$ grep -n '^- \[~\]' docs/roadmap/STATUS.md
-(no match, exit 1)
+$ git show e1a069478:docs/roadmap/STATUS.md | grep F020
+- [~] F020 — Node lifecycle & glyph language
 ```
-The status line occurs exactly once; no STATUS line begins `- [~]` (G3).
+Matches the required reading exactly (G2).
 
 ```
-$ bash -c 'python3 -m pytest -q -p no:cacheprovider tests/docs/ tests/cli/test_advertised_commands.py
-  tests/orchestration/test_live_review_rotation.py tests/orchestration/test_integrity_gate.py
-  tests/test_agent_tooling.py tests/cli/test_golden_path.py 2>&1 | tail -2; echo "REAL_EXIT=${PIPESTATUS[0]}"'
-......                                                                   [100%]
-437 passed, 1 skipped in 42.77s
+$ git diff --name-only 07247b313 e1a069478
+.agent/context.md
+.agent/decisions.md
+.agent/live_review.md
+.agent/plan.md
+docs/roadmap/STATUS.md
+```
+Exactly the five paths the block's G2 table names (G2).
+
+```
+$ (sha256/bytes of C3/C4 files, read with `git show <commit>:<path>`, against the block's G3 table)
+C3 apps/ui/src/styles/tokens.css:                                bytes=4224 sha256=58c22798a2a1f12ba65d08986349d96b0e43f330479e5749ff138490d4e7bbf9 match=True
+C3 docs/ui/design_reference/tokens.css:                          bytes=7109 sha256=912c39cb4d7e8a11e9bc2819a0f0dac09294ae89741d2c6417de5b37302d52a5 match=True
+C3 docs/ui/design_reference/tokens_rules.md:                     bytes=3158 sha256=d0ef701deb923f1c74ef7e4cf9daa5a3b8f9a9b1b676e8fda7d14c0ef00962b5 match=True
+C3 apps/ui/src/components/graph/renderers/glyphPaths.ts:         bytes=6541 sha256=4c440b9217718edff780fddac75e8a413fd86bdf52104ad4c2e74dc8a348c8e2 match=True
+C3 apps/ui/src/components/graph/renderers/nodeStates.ts:         bytes=5831 sha256=74b81d8f8d4cec4be3e6e375d96fb2fa4bb12813a04e48942eab82a9c5e21316 match=True
+C4 apps/ui/src/components/graph/renderers/glyphPaths.test.ts:    bytes=8816 sha256=b60ecd4aecba5d2a840bf07ed368d99b2d8fa7e35e739ccb4056aa9250968699 match=True
+C4 apps/ui/src/components/graph/renderers/nodeStates.test.ts:    bytes=5165 sha256=34063c8af201ff4f7832d81a439abab0ebf1364bc2edbdfb3688a8b34ab3c885 match=True
+C4 tests/ui_contracts/test_node_glyph_tokens.py:                 bytes=4719 sha256=e7daf334a6d45461a6646f1cf62a65794362a8bc60a24f071b1c83e9f215e5db match=True
+```
+All 8 match the block's G3 table exactly.
+
+```
+$ git diff --name-only e1a069478 d9f585b23
+apps/ui/src/components/graph/renderers/glyphPaths.ts
+apps/ui/src/components/graph/renderers/nodeStates.ts
+apps/ui/src/styles/tokens.css
+docs/ui/design_reference/tokens.css
+docs/ui/design_reference/tokens_rules.md
+$ git diff --name-only d9f585b23 bef276a78
+apps/ui/src/components/graph/renderers/glyphPaths.test.ts
+apps/ui/src/components/graph/renderers/nodeStates.test.ts
+tests/ui_contracts/test_node_glyph_tokens.py
+```
+Both name exactly the paths C3 and C4 list (G3).
+
+```
+$ python3 -m ruff check tests/ui_contracts/test_node_glyph_tokens.py
+All checks passed!
 REAL_EXIT=0
 ```
-Matches the reviewer's simulated-tree reading exactly: `437 passed, 1 skipped` at real exit 0 (G4).
+
+```
+$ bash -c 'python3 -m pytest -q -p no:cacheprovider -rs tests/ui_contracts tests/ui_server/test_dashboard_contract.py
+  tests/orchestration/test_test_runner.py tests/orchestration/test_live_review_rotation.py
+  tests/orchestration/test_integrity_gate.py tests/orchestration/test_roadmap_index.py
+  tests/orchestration/test_block_lint.py tests/test_agent_tooling.py tests/regression/test_resource_safety.py
+  tests/docs tests/cli/test_golden_path.py 2>&1 | tail -15; echo "REAL_EXIT=${PIPESTATUS[0]}"'
+SKIPPED [1] tests/ui_contracts/test_graph_architecture.py:441: D3 quarantine (F252) ...
+SKIPPED [1] tests/ui_contracts/test_graph_architecture.py:484: D3 quarantine (F252) ...
+SKIPPED [1] tests/ui_contracts/test_ux_quality.py:507: D3 quarantine (F252) ...
+SKIPPED [1] tests/ui_contracts/test_ux_quality.py:543: D3 quarantine (F252) ...
+SKIPPED [1] tests/test_agent_tooling.py:43: D12 quarantine (F252) ...
+1482 passed, 5 skipped in 83.19s (0:01:23)
+REAL_EXIT=0
+```
+None of the 5 SKIPPED lines are the four toolchain nodes the block names (the two
+`tests/ui_contracts/test_ui_lint.py` eslint checks, the tsc node in
+`tests/ui_server/test_dashboard_contract.py`, the vitest node in
+`tests/orchestration/test_test_runner.py`) — all four ran and PASSED in the primary checkout, not
+skipped, as required. The 5 remaining skips are pre-existing D3/D12 quarantines unrelated to this
+round's paths (G4).
 
 ```
 $ python3 -m apps.cli.main integrity check --json
@@ -218,121 +273,100 @@ $ python3 -m apps.cli.main integrity check --json
   {"name": "repo_root_hygiene", "status": "pass", "message": "no reviewer scratch, evidence dir or archive at the root"},
   {"name": "high_blockers_open", "status": "pass", "message": "no open blocker/high findings"}
 ], "fail_count": 0, "ok": true, "passed": true, "schema_version": 1, "version": 1}
+REAL_EXIT=0
 ```
 All six checks `pass`, `fail_count` 0 (G4).
 
 ```
-$ python3 -m apps.cli.main integrity block .remedy-wt/f284-r4/block.md
-[OK] item 1 (size): 174 lines, limit 400
-[OK] item 3 (cap-bounded replacements): plan.md at 29 lines
-[OK] item 10 (open set recomputed): states 1; .agent/live_review.md holds 1 open by distinct id, and the block registers 0 and resolves 0, leaving 1
-[OK] item 24 (gate paths resolve): 6 paths named in the block's commands, every one resolves
-[OK] item 30 (new ids searched first): the block registers no finding id
-[OK] item 31 (gates before the text): the block orders no gates before a commit
-[OK] item 37 (no unmeasured runs): no line is a run of one repeated character
-All 7 checkable items pass.
+$ git worktree add --detach .remedy-wt/f020-r1-mut bef276a78
+Preparing worktree (detached HEAD bef276a78)
+REAL_EXIT=0
+
+$ python3 -B .remedy-wt/f020-r1-payloads/mutations.py /home/decodeux/Repos/remedy/.remedy-wt/f020-r1-mut
+worktree: /home/decodeux/Repos/remedy/.remedy-wt/f020-r1-mut
+CONTROL FIRST: vitest exit=0 failed=0 passed=31 | guard exit=0 failed=0 passed=6
+m1 (the builder glyph's geometry drifts): v exit=1 failed=1 | g exit=0 failed=0 | caught=True restored=True
+m2 (the flask's declared bounds stop short of its base): v exit=1 failed=1 | g exit=0 failed=0 | caught=True restored=True
+m3 (glyphPath2D rebuilds its paths on every call): v exit=1 failed=1 | g exit=0 failed=0 | caught=True restored=True
+m4 (the canvas stroke is built from the fill string): v exit=1 failed=1 | g exit=0 failed=0 | caught=True restored=True
+m5 (run glyphs show from a lower zoom than L1): v exit=1 failed=1 | g exit=0 failed=0 | caught=True restored=True
+m6 (glyphTransform scales the box to the radius, not the diameter): v exit=1 failed=1 | g exit=0 failed=0 | caught=True restored=True
+m7 (a failed node loses its status dot): v exit=1 failed=3 | g exit=0 failed=0 | caught=True restored=True
+m8 (a veto no longer dims what hangs below it): v exit=1 failed=1 | g exit=0 failed=0 | caught=True restored=True
+m9 (a planned node is drawn full size): v exit=1 failed=2 | g exit=0 failed=0 | caught=True restored=True
+m10 (reduced motion still pulses): v exit=1 failed=1 | g exit=0 failed=0 | caught=True restored=True
+m11 (the in-progress state is painted with the open token): v exit=1 failed=1 | g exit=1 failed=1 | caught=True restored=True
+m12 (the vetoed state names a token the sheet never declares): v exit=1 failed=2 | g exit=1 failed=1 | caught=True restored=True
+m13 (the pulse constant drifts from --remedy-dur-pulse): v exit=1 failed=1 | g exit=1 failed=1 | caught=True restored=True
+m14 (a raw colour literal enters the state module): v exit=0 failed=0 | g exit=1 failed=1 | caught=True restored=True
+m15 (the app sheet's vetoed grey drifts from the reference): v exit=0 failed=0 | g exit=1 failed=1 | caught=True restored=True
+m16 (the glyph module's header misquotes the precedence rule): v exit=0 failed=0 | g exit=1 failed=1 | caught=True restored=True
+CONTROL LAST: vitest exit=0 failed=0 passed=31 | guard exit=0 failed=0 passed=6
+ALL MUTATIONS CAUGHT AND RESTORED CLEANLY: True
 REAL_EXIT=0
 ```
-Every item `[OK]`, real exit code 0 (G4).
+Every (v, g) pair matches the block's stated reading exactly: control 31v/6g both exit 0; m1-m10
+v1g0; m7 v3g0; m9 v2g0; m11-m13 v1g1; m12 v2g1; m14-m16 v0g1; control last equals control first;
+every `restored` True; final line `ALL MUTATIONS CAUGHT AND RESTORED CLEANLY: True` (G5).
 
 ```
-$ git diff --name-only b6bdea3b   (measured before this commit joins the handback)
-.agent/authored/f284-r4-block.md
-.agent/authored/f284-r4-book.diff
-.agent/authored/f284-r4-closure.diff
-.agent/authored/f284-r4-plan.md
-.agent/authored/f284-r4-pr_body.md
-.agent/authored/f284-r4-register.diff
-.agent/authored/f284-r4-status_line.txt
-.agent/decisions.md
-.agent/live_review.md
-.agent/live_review_archive.md
-.agent/plan.md
-README.md
-docs/roadmap/STATUS.md
-docs/roadmap/features/T2_F285.md
-tests/docs/test_docs_consistency.py
-```
-Exactly the set constraint 3 names, minus `.agent/handoff.md` which joins with this write — matches
-exactly.
-
-G5 (per-commit `--numstat --format=` for C1 to C4) is tabled below in its own section, per the
-block. G6 (tree, push, PR) runs after this commit lands and is reported in the reply, since this
-commit cannot contain outcomes that happen after it.
-
-## G5 — commit sizes (`git show --numstat --format=`, C1 to C4)
-
-### 2283e9bd0
-```
-174	0	.agent/authored/f284-r4-block.md
-53	0	.agent/authored/f284-r4-book.diff
-49	0	.agent/authored/f284-r4-closure.diff
-29	0	.agent/authored/f284-r4-plan.md
-57	0	.agent/authored/f284-r4-pr_body.md
-99	0	.agent/authored/f284-r4-register.diff
-1	0	.agent/authored/f284-r4-status_line.txt
-```
-### 92d04ac74
-```
-27	0	.agent/decisions.md
-3	0	.agent/live_review.md
-10	10	.agent/plan.md
-```
-### 34d631331
-```
-0	33	.agent/live_review.md
-33	0	.agent/live_review_archive.md
-```
-### e083c633c
-```
-2	2	README.md
-7	0	docs/roadmap/STATUS.md
-38	0	docs/roadmap/features/T2_F285.md
-5	1	tests/docs/test_docs_consistency.py
+$ git worktree remove --force .remedy-wt/f020-r1-mut
+REAL_EXIT=0
+$ git worktree prune
+REAL_EXIT=0
 ```
 
 ## Authored-text proofs
 
-All 7 authored copies under `.agent/authored/f284-r4-*` (the block copy plus the six payload
+All 11 authored copies under `.agent/authored/f020-r1-*` (the block copy plus the ten payload
 copies) were built by `shutil.copyfile` from source to destination — never retyped, never edited.
-Each was read back with `git show 2283e9bd0:<path>` and compared byte for byte against its source:
-all 7 BYTE-IDENTICAL (G1 above). `book.diff`, `register.diff` and `closure.diff` were each applied
-with `git apply` after `git apply --check` passed (exit 0 both, every time), never retyped or
-edited; the resulting files were verified by byte count and sha256 against the block's G2 table —
-all MATCH. `.agent/plan.md` was rewritten whole via `shutil.copyfile`'s source content, run through
-a Python script (not the Write tool, so no retyping occurred), and confirmed MATCH against the
-PAYLOADS table and the G2 table. `scripts/rotate_live_review.py` was run unmodified in place; its
-printed output was reported verbatim and matches the reviewer's simulated-tree reading exactly.
+Each was read back with `git show <commit>:<path>` and compared byte for byte against its source:
+all 11 BYTE-IDENTICAL (G1 above). `claim.diff` and `tokens.diff` were each applied with `git apply`
+after `git apply --check` passed (exit 0 both, every time), never retyped or edited; the resulting
+files were verified by byte count and sha256 against the block's G2/G3 tables — all MATCH.
+`.agent/plan.md` and `.agent/context.md` were rewritten whole via `shutil.copyfile` from the
+payload sources — never retyped — and confirmed MATCH against the PAYLOADS table and the G2 table.
+`glyphPaths.ts`, `nodeStates.ts`, `glyphPaths.test.ts`, `nodeStates.test.ts` and
+`test_node_glyph_tokens.py` were each copied whole via `shutil.copyfile` into their product/test
+locations and confirmed MATCH against the block's G3 table. `mutations.py` was run unmodified from
+its payload path against the fresh `.remedy-wt/f020-r1-mut` worktree; its printed output was
+reported verbatim and matches the block's stated G5 reading exactly.
 
 ## Deviations & assumptions
 
-None in the commit sequence: every commit landed in the block's stated order C1, C2, C3, C4, C5,
-exactly as ordered. G1 through G4 ran before this handback was written, as the block orders; G5 and
-G6, and the push and pull-request creation, run after this commit lands and are reported in the
-reply per constraint 7. No payload was edited, retyped or repaired. The round's tracked path set
-matches constraint 3 exactly (verified above). Nothing was merged this round: no `gh pr merge`, no
-checkout of `main`, no branch deletion, no force-push — per constraint 5.
+None. Every commit landed in the block's stated order C1a, C1b, C1c, C1d, C1e, C2, C3, C4, C5,
+exactly as ordered. G1 through G5 ran before this handback was written, as the block orders. No
+payload was edited, retyped or repaired. The round's tracked path set matches constraint 3 (full
+list reported in the reply via `git diff --name-only 955a6240 HEAD` after this commit, since that
+reading is taken after C5 lands). Nothing was merged this round: no `gh pr merge`, no `gh pr
+create`, no checkout of `main` after the branch was cut, no branch deletion, no force-push, no
+`git stash` — per constraint 5. The reviewer's worktrees, the `f015-r*`/`f284-r*` worktrees and the
+`job-*` worktrees/branches were left untouched — per constraint 6.
 
 ## Item-status table
 
 | Item | Status | Reason |
 |---|---|---|
-| C1 | done | 462 insertions, matches block's expectation exactly; under the 500-insertion cap |
-| C2 | done | book.diff apply --check and apply both exit 0; 27/0, 3/0, 10/10 insertions, matches; D3 recorded |
-| C3 | done | rotate_live_review.py output matches reviewer's simulation exactly; 0/33, 33/0 insertions, matches |
-| C4 | done | register.diff apply --check and apply both exit 0; 2/2, 7/0, 38/0, 5/1 insertions, matches |
-| C5 | done | closure.diff apply --check and apply both exit 0; G4 run before this handback; committing now with this handback |
-| G1 | done | all 6 payload digests and 7 authored-copy comparisons matched |
-| G2 | done | all 9 named file digests matched; Owner/Gate line counts 1/1; C3 path set exact; open set R-1008 at all 4 points |
-| G3 | done | status line occurs exactly once; no `- [~]` line remains |
-| G4 | done | 437 passed, 1 skipped at exit 0; integrity check 6/6 pass; integrity block all items [OK] at exit 0 |
-| G5 | done | tabled above from `git show --numstat --format=` for C1-C4; C5's own numbers go in the reply |
-| G6 | pending | runs after this commit (push, PR, `gh pr list`); reported in the reply |
-| PUSH | pending | `git push origin feature/f284-findings-paydown-v3`, reported in the reply |
-| PR | pending | `gh pr create` into `main`; number and URL reported in the reply |
+| C1a | done | 334 insertions, matches block's expectation exactly; under the 500-insertion cap |
+| C1b | done | 168 insertions, matches block's expectation exactly |
+| C1c | done | 182 insertions, matches block's expectation exactly |
+| C1d | done | 337 insertions, matches block's expectation exactly |
+| C1e | done | 464 insertions, matches block's expectation exactly |
+| C2 | done | claim.diff apply --check and apply both exit 0; 13/11, 56/0, 28/9, 20/16, 1/1 insertions/deletions, matches; D1 recorded |
+| C3 | done | tokens.diff apply --check and apply both exit 0; 181/156/5/1/2 insertions, matches |
+| C4 | done | 225/129/110 insertions, matches |
+| C5 | done | committing now with this handback |
+| G1 | done | all 10 payload digests and 11 authored-copy comparisons matched |
+| G2 | done | all 5 named file digests matched; STATUS line text exact; open set R-1008 at both points; C1e..C2 path set exact |
+| G3 | done | all 8 named file digests matched; C2..C3 and C3..C4 path sets exact; ruff clean |
+| G4 | done | 1482 passed, 5 skipped at exit 0; all 4 named toolchain nodes ran and passed (not skipped); integrity check 6/6 pass |
+| G5 | done | 16 mutations + 2 controls all matched the block's stated (v,g) readings exactly; ALL MUTATIONS CAUGHT AND RESTORED CLEANLY: True |
+| G6 | pending | runs after this commit (tree/log check, worktree list, push, `gh pr list`); reported in the reply |
+| PUSH | pending | `git push -u origin feature/f020-node-lifecycle-glyph-language`, reported in the reply |
 
 ## Next
 
-Phase 1 rule 1: read `.agent/STOP` from disk. Then the Open PR Gate, which merges this feature's
-pull request in the NEXT feature's session and never in this one. Then Rule A5, the first unchecked
-feature in `docs/roadmap/STATUS.md`. Open findings: 1. Operator questions open: 3.
+Phase 1 rule 1: read `.agent/STOP` from disk. Then the review of round 1. Then T002 — the canvas
+painter reading both modules in place of F019's glyph slots through the palette bridge
+`renderers/palette.ts`, the legend generated from the same source, and the kind-by-state matrix
+fixture. Open findings: 1. Operator questions open: 3.
