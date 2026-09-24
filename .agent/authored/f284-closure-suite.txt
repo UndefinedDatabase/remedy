@@ -1,0 +1,7 @@
+F284 R2 C6 — the closure's one full suite run
+
+command: python3 -m pytest -n auto -q
+real exit code: 0
+wall time: 165 seconds (pytest-reported: 164.74s, 0:02:44)
+summary line: 19094 passed, 20 skipped, 1 warning in 164.74s (0:02:44)
+bad node ids (failed plus errors): NONE
