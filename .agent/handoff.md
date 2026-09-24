@@ -1,115 +1,107 @@
-# Handback — F020 Node lifecycle & glyph language · Round 3
+# Handback — F020 Node lifecycle & glyph language · Round 4
 
 ## Session
 
-SESSION 1 of feature F020 · round 3 · rounds so far 3
+SESSION 1 of feature F020 · round 4 · rounds so far 4
 
-This round booked round 2's PASS into the live review record, recorded DECISION F020 D3, and
-landed T002's second half: `renderers/legendModel.ts` (the legend's rows enumerated from the
-glyph and state modules), `GraphLegend.tsx` and its stylesheet (a "Legend" dialog opened from the
-graph's chrome, rendering only those rows, writing no name/path/colour of its own), mounted by
-`BrainGraphStage.tsx`; a cluster's `+n` count from the layout's label, written by the painter in a
-font the palette bridge resolves; and `renderers/glyphMatrix.ts` (every non-core kind in every
-state painted by the live painter). All nine commits landed in the block's ordered sequence; all
-five gates passed with exact matches to the reviewer's stated readings. I had ample context
-remaining throughout this round; no session-limit pressure at any point.
+This round booked round 3's PASS into the live review record, recorded DECISION F020 D4, and
+landed T003's first half: `renderers/stateMotion.ts` (a 300 ms crossfade scheduled for every
+state change and a completion ripple into `pass`, and the frame rule deciding whether the canvas
+needs frames at all — never on a hidden page); the pulse multiplier `pulseScaleAt` moved into
+`renderers/nodeStates.ts`; the motion-aware painter `paintBrainNodeInMotion` in
+`renderers/paintNode.ts`; `usePageVisible.ts`; and `ForceBrainGraph.tsx` wired to all of them,
+its edge particles stopping with the page. All nine commits landed in the block's ordered
+sequence; all five gates passed with exact matches to the reviewer's stated readings, with one
+arithmetic reconciliation on G4's skip count (explained below, not a deviation). I had ample
+context remaining throughout this round; no session-limit pressure at any point.
 
 ## Range
 
-Review of 1d954ef5e..HEAD
+Review of 6f43c63a..HEAD
 
 ## Commits
 
-### 8776503fe F020 R3 C1a: copy round 3 block and plan payload into .agent/authored/
+### 151bc29ca F020 R4 C1a: copy round 4 block and plan payload into .agent/authored/
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f020-r3-block.md | +269/-0 | copy of this round's block, verbatim |
-| .agent/authored/f020-r3-plan.md | +31/-0 | copy of the plan.md payload |
+| .agent/authored/f020-r4-block.md | +258/-0 | copy of this round's block, verbatim |
+| .agent/authored/f020-r4-plan.md | +30/-0 | copy of the plan.md payload |
 
-300 insertions by `git show --numstat` (block's 269 lines + 31); matches the block's expectation
+288 insertions by `git show --numstat` (block's 258 lines + 30); matches the block's expectation
 exactly; under the 500-insertion cap.
 
-### 3ead9e61a F020 R3 C1b: copy round 3 diffs into .agent/authored/
+### c8dd2bb0e F020 R4 C1b: copy round 4 diffs into .agent/authored/
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f020-r3-book.diff | +58/-0 | copy of the book.diff payload |
-| .agent/authored/f020-r3-product.diff | +187/-0 | copy of the product.diff payload |
-| .agent/authored/f020-r3-tests.diff | +126/-0 | copy of the tests.diff payload |
+| .agent/authored/f020-r4-book.diff | +64/-0 | copy of the book.diff payload |
+| .agent/authored/f020-r4-product.diff | +233/-0 | copy of the product.diff payload |
+| .agent/authored/f020-r4-tests.diff | +113/-0 | copy of the tests.diff payload |
 
-371 insertions by `git show --numstat`; matches the block's expectation of 371 exactly.
+410 insertions by `git show --numstat`; matches the block's expectation of 410 exactly.
 
-### 57cba67b9 F020 R3 C1c: copy round 3 mutation tool into .agent/authored/
+### 5b7a13389 F020 R4 C1c: copy round 4 mutation tool into .agent/authored/
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f020-r3-mutations.py | +195/-0 | copy of the mutations.py payload (G5 tool) |
+| .agent/authored/f020-r4-mutations.py | +187/-0 | copy of the mutations.py payload (G5 tool) |
 
-195 insertions by `git show --numstat`; matches the block's expectation of 195 exactly.
+187 insertions by `git show --numstat`; matches the block's expectation of 187 exactly.
 
-### d3062ef96 F020 R3 C1d: copy round 3 product files into .agent/authored/
+### b330d3826 F020 R4 C1d: copy round 4 product files into .agent/authored/
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f020-r3-GraphLegend.module.css | +60/-0 | copy of the GraphLegend.module.css payload |
-| .agent/authored/f020-r3-GraphLegend.tsx | +83/-0 | copy of the GraphLegend.tsx payload |
-| .agent/authored/f020-r3-glyphMatrix.ts | +76/-0 | copy of the glyphMatrix.ts payload |
-| .agent/authored/f020-r3-legendModel.ts | +72/-0 | copy of the legendModel.ts payload |
+| .agent/authored/f020-r4-stateMotion.ts | +101/-0 | copy of the stateMotion.ts payload |
+| .agent/authored/f020-r4-usePageVisible.ts | +15/-0 | copy of the usePageVisible.ts payload |
 
-291 insertions by `git show --numstat`; matches the block's expectation of 291 exactly.
+116 insertions by `git show --numstat`; matches the block's expectation of 116 exactly.
 
-### 3fd4ed871 F020 R3 C1e: copy round 3 test payloads into .agent/authored/
+### a3c53a8d1 F020 R4 C1e: copy round 4 test payloads into .agent/authored/
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f020-r3-glyphMatrix.test.ts | +69/-0 | copy of the glyphMatrix.test.ts payload |
-| .agent/authored/f020-r3-legendModel.test.ts | +63/-0 | copy of the legendModel.test.ts payload |
-| .agent/authored/f020-r3-test_graph_legend_contract.py | +68/-0 | copy of the test_graph_legend_contract.py payload |
+| .agent/authored/f020-r4-stateMotion.test.ts | +151/-0 | copy of the stateMotion.test.ts payload |
+| .agent/authored/f020-r4-test_brain_motion_wiring.py | +57/-0 | copy of the test_brain_motion_wiring.py payload |
 
-200 insertions by `git show --numstat`; matches the block's expectation of 200 exactly.
+208 insertions by `git show --numstat`; matches the block's expectation of 208 exactly.
 
-### 6d42d954d F020 R3 C2: book round 2's PASS, record D3, advance the plan
+### 08b93a19a F020 R4 C2: book round 3's PASS, record D4, advance the plan
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/decisions.md | +40/-0 | DECISION F020 D3 appended (book.diff) |
-| .agent/live_review.md | +2/-0 | F020 R2 Gate entry appended (book.diff) |
-| .agent/plan.md | +8/-11 | rewritten to the plan.md payload |
+| .agent/decisions.md | +46/-0 | DECISION F020 D4 appended (book.diff) |
+| .agent/live_review.md | +2/-0 | F020 R3 Gate entry appended (book.diff) |
+| .agent/plan.md | +6/-7 | rewritten to the plan.md payload |
 
 `git apply --check` on book.diff: exit 0. `git apply`: exit 0. Insertions by `git show
---numstat`: 40 decisions.md, 2 live_review.md, 8 plan.md — matches the block's expectation
-exactly; aggregate 50 insertions(+)/11 deletions(-), all deletions attributable to plan.md's
+--numstat`: 46 decisions.md, 2 live_review.md, 6 plan.md — matches the block's expectation
+exactly; aggregate 54 insertions(+)/7 deletions(-), all deletions attributable to plan.md's
 rewrite diff.
 
-### 062abc7da F020 R3 C3: generate the graph legend from the glyph and state modules, count clusters, paint the matrix
+### 3a182fb66 F020 R4 C3: crossfade state changes, ripple completions, pulse, and draw frames only on a visible page
 | Path | +/- | Reason |
 |---|---|---|
-| apps/ui/src/components/graph/BrainGraphStage.module.css | +1/-1 | legend-dialog styling hook (product.diff) |
-| apps/ui/src/components/graph/BrainGraphStage.tsx | +2/-0 | mounts the "Legend" dialog from the graph's chrome (product.diff) |
-| apps/ui/src/components/graph/GraphLegend.module.css | +60/-0 | new file: legend dialog stylesheet |
-| apps/ui/src/components/graph/GraphLegend.tsx | +83/-0 | new file: legend dialog rendering rows from legendModel.ts only |
-| apps/ui/src/components/graph/buildForceBrainModel.ts | +10/-3 | writes each cluster's `+n` label (product.diff) |
-| apps/ui/src/components/graph/renderers/glyphMatrix.ts | +76/-0 | new file: every non-core kind in every state painted by the live painter |
-| apps/ui/src/components/graph/renderers/legendModel.ts | +72/-0 | new file: legend rows enumerated from the glyph and state modules |
-| apps/ui/src/components/graph/renderers/paintNode.ts | +23/-10 | paints the cluster count in a palette-resolved font (product.diff) |
-| apps/ui/src/components/graph/renderers/palette.ts | +6/-1 | resolves the count font token (product.diff) |
+| apps/ui/src/components/graph/ForceBrainGraph.tsx | +56/-9 | wires `usePageVisible`, the frame rule and the motion-aware painter; gates edge particles on visibility (product.diff) |
+| apps/ui/src/components/graph/renderers/nodeStates.ts | +12/-7 | `pulseScaleAt` gains the reduced-motion guard (product.diff) |
+| apps/ui/src/components/graph/renderers/paintNode.ts | +46/-0 | new export `paintBrainNodeInMotion` (product.diff) |
+| apps/ui/src/components/graph/renderers/stateMotion.ts | +101/-0 | new file: crossfade scheduling, completion ripple, frame rule |
+| apps/ui/src/components/graph/usePageVisible.ts | +15/-0 | new file: `visibilitychange`-driven visibility hook |
 
 `git apply --check` on product.diff: exit 0. `git apply`: exit 0. Insertions by `git show
---numstat`: 1 BrainGraphStage.module.css, 2 BrainGraphStage.tsx, 60 GraphLegend.module.css, 83
-GraphLegend.tsx, 10 buildForceBrainModel.ts, 76 glyphMatrix.ts, 72 legendModel.ts, 23
-paintNode.ts, 6 palette.ts — matches the block's expectation exactly.
+--numstat`: 56 ForceBrainGraph.tsx, 12 nodeStates.ts, 46 paintNode.ts, 101 stateMotion.ts, 15
+usePageVisible.ts — matches the block's expectation exactly.
 
-### 358f30bdd F020 R3 C4: pin the legend's rows, its wiring, the cluster count and the matrix
+### fcb71150a F020 R4 C4: pin the motion, the frame rule, the replayed recording and the canvas wiring
 | Path | +/- | Reason |
 |---|---|---|
-| apps/ui/src/components/graph/buildForceBrainModel.test.ts | +8/-0 | vitest additions for the cluster `+n` label (tests.diff) |
-| apps/ui/src/components/graph/renderers/glyphMatrix.test.ts | +69/-0 | new file: vitest goldens for glyphMatrix.ts |
-| apps/ui/src/components/graph/renderers/legendModel.test.ts | +63/-0 | new file: vitest goldens for legendModel.ts |
-| apps/ui/src/components/graph/renderers/paintNode.test.ts | +30/-4 | vitest additions for the count's font/palette wiring (tests.diff) |
-| apps/ui/src/components/graph/renderers/palette.test.ts | +4/-2 | vitest additions for the count font token (tests.diff) |
-| tests/ui_contracts/test_graph_legend_contract.py | +68/-0 | new file: contract pinning the legend's rows, wiring, cluster count and matrix |
+| apps/ui/src/components/graph/renderers/nodeStates.test.ts | +21/-1 | vitest additions for the reduced-motion pulse guard (tests.diff) |
+| apps/ui/src/components/graph/renderers/paintNode.test.ts | +47/-1 | vitest additions for `paintBrainNodeInMotion` (tests.diff) |
+| apps/ui/src/components/graph/renderers/stateMotion.test.ts | +151/-0 | new file: vitest goldens for stateMotion.ts |
+| tests/ui_contracts/test_brain_motion_wiring.py | +57/-0 | new file: contract replaying F019's demo recording through the motion module |
+| tests/ui_contracts/test_node_glyph_tokens.py | +1/-1 | token-guard adjustment for the motion tokens (tests.diff) |
 
 `git apply --check` on tests.diff: exit 0. `git apply`: exit 0. Insertions by `git show
---numstat`: 8 buildForceBrainModel.test.ts, 69 glyphMatrix.test.ts, 63 legendModel.test.ts, 30
-paintNode.test.ts, 4 palette.test.ts, 68 test_graph_legend_contract.py — matches the block's
-expectation exactly.
+--numstat`: 21 nodeStates.test.ts, 47 paintNode.test.ts, 151 stateMotion.test.ts, 57
+test_brain_motion_wiring.py, 1 test_node_glyph_tokens.py — matches the block's expectation
+exactly.
 
-### (this commit) F020 R3 C5: rewrite handoff for round 3
+### (this commit) F020 R4 C5: rewrite handoff for round 4
 Self-reference exception per the handback template (a handback cannot table the commit that
 writes it).
 | Path | +/- | Reason |
@@ -118,9 +110,9 @@ writes it).
 
 ## External actions
 
-- `git worktree add --detach .remedy-wt/f020-r3-mut 358f30bdd` — outcome: success, detached HEAD
-  at `358f30bdd`.
-- `git worktree remove --force .remedy-wt/f020-r3-mut` — outcome: success.
+- `git worktree add --detach .remedy-wt/f020-r4-mut fcb71150a` — outcome: success, detached HEAD
+  at `fcb71150a`.
+- `git worktree remove --force .remedy-wt/f020-r4-mut` — outcome: success.
 - `git worktree prune` — outcome: success, no output.
 - `git push origin feature/f020-node-lifecycle-glyph-language` — runs AFTER this commit lands;
   its real outcome is reported in the reply, since this handback cannot contain an outcome that
@@ -139,75 +131,69 @@ $ git status --porcelain
 $ git branch --show-current
 feature/f020-node-lifecycle-glyph-language
 $ git log --oneline -1
-1d954ef5e F020 R2 C5: rewrite handoff for round 2
+6f43c63a4 F020 R3 C5: rewrite handoff for round 3
 ```
 All BEFORE ANYTHING ELSE checks passed at round start.
 
 ```
-$ wc -l / sha256sum .remedy-wt/f020-r3/block.md
-269 lines, sha256=7c2bf6b9d365120286c3947c1f9bf7754fa49ed71dff6a72aa5f24da474b988b
+$ wc -l / sha256sum .remedy-wt/f020-r4/block.md
+258 lines, sha256=e2db2736ab3d27d78544a4124368d990305cf2e453c3313a247c73b98601edd1
 ```
 Matches both readings given in the delegation message exactly (R-0954).
 
 ```
-$ wc -lc / sha256sum over .remedy-wt/f020-r3-payloads/*
-GraphLegend.module.css        lines=60  bytes=1508  sha256=0f14ff256eba21b459a7dd35c0e30e951b24871db87ea5f1900e2435830bdbee
-GraphLegend.tsx                lines=83  bytes=3143  sha256=ad0c565b5e3f973aa3128fa76a1b2951edeb6a268638a2cf1986fe0fbca739de
-book.diff                      lines=58  bytes=10093 sha256=4b4a1f748c5a109eb763e757fd8f842e62f441c9f255bdae0469e319ab4ef147
-glyphMatrix.test.ts            lines=69  bytes=3253  sha256=69726b35ede404be10bbc327143591c9ceb63e10a3ddd3b71d299eb45a399d33
-glyphMatrix.ts                 lines=76  bytes=3139  sha256=a386296e9408fac82eff5fa5e1b0aca3b7471b95eaf65987217089ed31a78e84
-legendModel.test.ts            lines=63  bytes=2649  sha256=8649a311c069b5adb1a6dfa3785409d2361f52b8900c5a6439f79143ef738d38
-legendModel.ts                 lines=72  bytes=2609  sha256=133d45264c4858edd3432ac65af4d6590bf7c6bdbe7a945ff7147e1df7b74e16
-mutations.py                   lines=195 bytes=10532 sha256=b17af969d6349d43152df6b7c2591bba585268ac4a25ce61ccc48f89e7649623
-plan.md                        lines=31  bytes=1155  sha256=c79de02923262d0d6dd2329e284175816375650aad7edb80abdc46103bc4bc4f
-product.diff                   lines=187 bytes=9353  sha256=58175cd16fd3e55bd83037bab733bc2ada099677e00950e6904975aec367a909
-test_graph_legend_contract.py  lines=68  bytes=3056  sha256=1ad5d9063894f72aa59bae789077d96f72ac068a9c21c57e0c1174b0643b4e03
-tests.diff                     lines=126 bytes=6631  sha256=03c25f5d259c95a837b844ca12b3221a9b89fb5630b320d24e052cb306701dc8
+$ wc -lc / sha256sum over .remedy-wt/f020-r4-payloads/*
+book.diff                     lines=64  bytes=11647 sha256=c0f4f0750ccda20105cd82615e49063f4f6c729705bd83081e14ce9d2d10fd5b
+mutations.py                  lines=187 bytes=10093 sha256=7533d95038ea65645b979ff4482a37520574482f99c8582577920d0771020b81
+plan.md                       lines=30  bytes=1116  sha256=7c10e770db7b24c290866d2c3c3280feeb20a14aba54803ed8530c332cb0d72d
+product.diff                  lines=233 bytes=12343 sha256=86945bd38e5d7e39388c4e17ec2a1e1e5d7c224fafcf7201b2a08412019c11d1
+stateMotion.test.ts           lines=151 bytes=7514  sha256=f33a61a8ae450d327ed7f2a59b5ae35824157eb01080a06bfc1dd2fc50748d01
+stateMotion.ts                lines=101 bytes=4173  sha256=3228d4d97bb77aaba636e783626d5745ae339c70c6b546d99cde3d89821c685a
+test_brain_motion_wiring.py   lines=57  bytes=3085  sha256=5c85828096ceeceeed2dff223a42b19bf692957ea617a7429c1afc52cf22e2d5
+tests.diff                    lines=113 bytes=5759  sha256=d4970a9e7c61ce6e5c3838779d76328205a02edaa5227d9cb805f3c4a1dfc8ea
+usePageVisible.ts             lines=15  bytes=768   sha256=4e034c48d00949c5171e50eda04efb4748c477e52785df2cc37339b873312ff4
 ```
-All 12 match the PAYLOADS table exactly (G1).
+All 9 match the PAYLOADS table exactly (G1).
 
 ```
-$ (compare each committed .agent/authored/f020-r3-* blob, read with `git show <commit>:<path>`,
+$ (compare each committed .agent/authored/f020-r4-* blob, read with `git show <commit>:<path>`,
    against its source)
-f020-r3-block.md                      @ 8776503fe: match=True
-f020-r3-plan.md                       @ 8776503fe: match=True
-f020-r3-book.diff                     @ 3ead9e61a: match=True
-f020-r3-product.diff                  @ 3ead9e61a: match=True
-f020-r3-tests.diff                    @ 3ead9e61a: match=True
-f020-r3-mutations.py                  @ 57cba67b9: match=True
-f020-r3-legendModel.ts                @ d3062ef96: match=True
-f020-r3-glyphMatrix.ts                @ d3062ef96: match=True
-f020-r3-GraphLegend.tsx               @ d3062ef96: match=True
-f020-r3-GraphLegend.module.css        @ d3062ef96: match=True
-f020-r3-legendModel.test.ts           @ 3fd4ed871: match=True
-f020-r3-glyphMatrix.test.ts           @ 3fd4ed871: match=True
-f020-r3-test_graph_legend_contract.py @ 3fd4ed871: match=True
+f020-r4-block.md                    @ 151bc29ca: match=True
+f020-r4-plan.md                     @ 151bc29ca: match=True
+f020-r4-book.diff                   @ c8dd2bb0e: match=True
+f020-r4-product.diff                @ c8dd2bb0e: match=True
+f020-r4-tests.diff                  @ c8dd2bb0e: match=True
+f020-r4-mutations.py                @ 5b7a13389: match=True
+f020-r4-stateMotion.ts              @ b330d3826: match=True
+f020-r4-usePageVisible.ts           @ b330d3826: match=True
+f020-r4-stateMotion.test.ts         @ a3c53a8d1: match=True
+f020-r4-test_brain_motion_wiring.py @ a3c53a8d1: match=True
 ```
-All 13 BYTE-IDENTICAL against their sources (G1).
+All 10 BYTE-IDENTICAL against their sources (G1).
 
 ```
-$ (sha256/bytes of C2's three files, read with `git show 6d42d954d:<path>`, against the block's G2 table)
-.agent/live_review.md: bytes=293386  sha256=8565fe941e7222e08f633ffdcf0e3a6c08b386f2e73c7c060c938134dedeef94 match=True
-.agent/decisions.md:   bytes=2036559 sha256=b30351b7139ca97ee81b05e19a158bc2b2192c96208c590fe2ec0fa143834b4f match=True
-.agent/plan.md:        bytes=1155    sha256=c79de02923262d0d6dd2329e284175816375650aad7edb80abdc46103bc4bc4f match=True
+$ (sha256/bytes of C2's three files, read with `git show 08b93a19a:<path>`, against the block's G2 table)
+.agent/live_review.md: bytes=295964  sha256=a5f11b1f31bf69f8979c82d3488bd927d87ce9b563f0d999c5376647a87f0c44 match=True
+.agent/decisions.md:   bytes=2040394 sha256=b8589c84a33ecd767c9323bcfb9955c37efaa36bc550c4da2501a1b815536e81 match=True
+.agent/plan.md:        bytes=1116    sha256=7c10e770db7b24c290866d2c3c3280feeb20a14aba54803ed8530c332cb0d72d match=True
 ```
 All 3 match the block's G2 table exactly.
 
 ```
-$ git diff <parent> 6d42d954d -- .agent/live_review.md, counting added lines starting
-  "Gate: F020 R2 — "
+$ git diff <C1e> 08b93a19a -- .agent/live_review.md, counting added lines starting
+  "Gate: F020 R3 — "
 count = 1
 ```
 Matches the reviewer's stated reading of 1 exactly (G2).
 
 ```
 $ open_finding_ids(text) from scripts/rotate_live_review.py, over .agent/live_review.md's TEXT at C2
-6d42d954d (C2) open ids: ['R-1008']
+08b93a19a (C2) open ids: ['R-1008']
 ```
 Reads R-1008 alone, matching the reviewer's stated reading exactly (G2).
 
 ```
-$ git diff --name-only 3fd4ed871 6d42d954d
+$ git diff --name-only a3c53a8d1 08b93a19a
 .agent/decisions.md
 .agent/live_review.md
 .agent/plan.md
@@ -216,47 +202,37 @@ Exactly the three paths the block's G2 table names (G2).
 
 ```
 $ (sha256/bytes of C3/C4 files, read with `git show <commit>:<path>`, against the block's G3 table)
-C3 apps/ui/src/components/graph/BrainGraphStage.tsx:                       bytes=3438  sha256=996eb59cfdd062dbdacfa004c006a22149789040d70f7974ea34f67ff30b76ee match=True
-C3 apps/ui/src/components/graph/BrainGraphStage.module.css:                bytes=1112  sha256=8d15d5450a2811b5cef68a6934d18064397d26709f6d5755578d9e9b65ba6944 match=True
-C3 apps/ui/src/components/graph/buildForceBrainModel.ts:                   bytes=8422  sha256=4c93b0dc7287a91ebc6a5fe52efe3183a482858a5a62bc392c2d742a39b8a274 match=True
-C3 apps/ui/src/components/graph/renderers/paintNode.ts:                    bytes=6057  sha256=6828b4a51eff6f2d19e5b7e3c5dd058e4340a70b82bde482c9c610c2e8beb47f match=True
-C3 apps/ui/src/components/graph/renderers/palette.ts:                      bytes=2348  sha256=4926d3d0b2dcd90803dba48a6d2b743e2f896adf7d5f5ac2654fee2bdb1d8b31 match=True
-C3 apps/ui/src/components/graph/renderers/legendModel.ts:                  bytes=2609  sha256=133d45264c4858edd3432ac65af4d6590bf7c6bdbe7a945ff7147e1df7b74e16 match=True
-C3 apps/ui/src/components/graph/renderers/glyphMatrix.ts:                  bytes=3139  sha256=a386296e9408fac82eff5fa5e1b0aca3b7471b95eaf65987217089ed31a78e84 match=True
-C3 apps/ui/src/components/graph/GraphLegend.tsx:                           bytes=3143  sha256=ad0c565b5e3f973aa3128fa76a1b2951edeb6a268638a2cf1986fe0fbca739de match=True
-C3 apps/ui/src/components/graph/GraphLegend.module.css:                   bytes=1508  sha256=0f14ff256eba21b459a7dd35c0e30e951b24871db87ea5f1900e2435830bdbee match=True
-C4 apps/ui/src/components/graph/buildForceBrainModel.test.ts:             bytes=10378 sha256=ad72e789e7c6e8d84bac13cde2645412b73730154c3e1cdf431b14d863dfc294 match=True
-C4 apps/ui/src/components/graph/renderers/paintNode.test.ts:               bytes=10285 sha256=dd49b85750b5c2b417c11cb78ef7e8f30d99d9114695078da7132490793b526c match=True
-C4 apps/ui/src/components/graph/renderers/palette.test.ts:                 bytes=1367  sha256=b5d43d7e1695c4d73b5b5b94de8526049ca36f72b7cda9805d550ae2815c66bb match=True
-C4 apps/ui/src/components/graph/renderers/legendModel.test.ts:             bytes=2649  sha256=8649a311c069b5adb1a6dfa3785409d2361f52b8900c5a6439f79143ef738d38 match=True
-C4 apps/ui/src/components/graph/renderers/glyphMatrix.test.ts:             bytes=3253  sha256=69726b35ede404be10bbc327143591c9ceb63e10a3ddd3b71d299eb45a399d33 match=True
-C4 tests/ui_contracts/test_graph_legend_contract.py:                       bytes=3056  sha256=1ad5d9063894f72aa59bae789077d96f72ac068a9c21c57e0c1174b0643b4e03 match=True
+C3 apps/ui/src/components/graph/ForceBrainGraph.tsx:                       bytes=16279 sha256=1b426ee1e69ddd674016fa97ece8a4e6a41282334204f6c5b6e09be1fc8c3e9c match=True
+C3 apps/ui/src/components/graph/renderers/nodeStates.ts:                  bytes=7016  sha256=6bb616d191f910664f484de5761a55268e724cd576024c293cd3b33899bea4be match=True
+C3 apps/ui/src/components/graph/renderers/paintNode.ts:                   bytes=8098  sha256=df2cf6105056588dc1ae5e73bc07fc4e6923eca7594547f989d9091be62d238a match=True
+C3 apps/ui/src/components/graph/renderers/stateMotion.ts:                 bytes=4173  sha256=3228d4d97bb77aaba636e783626d5745ae339c70c6b546d99cde3d89821c685a match=True
+C3 apps/ui/src/components/graph/usePageVisible.ts:                        bytes=768   sha256=4e034c48d00949c5171e50eda04efb4748c477e52785df2cc37339b873312ff4 match=True
+C4 apps/ui/src/components/graph/renderers/nodeStates.test.ts:             bytes=6774  sha256=0e6ad9051ddec719a9fe4c82965756fb18f7cdb1ce5b04f746a62b8e036bb34a match=True
+C4 apps/ui/src/components/graph/renderers/paintNode.test.ts:              bytes=12429 sha256=7375c307d99ec579ebc32a62a510124ced596d6458d521cd0edb3c9b9b963763 match=True
+C4 tests/ui_contracts/test_node_glyph_tokens.py:                          bytes=6142  sha256=c3f1710c162944e773945ec18b097bbbb2d7fc0b1076249908f69c717528a584 match=True
+C4 apps/ui/src/components/graph/renderers/stateMotion.test.ts:            bytes=7514  sha256=f33a61a8ae450d327ed7f2a59b5ae35824157eb01080a06bfc1dd2fc50748d01 match=True
+C4 tests/ui_contracts/test_brain_motion_wiring.py:                        bytes=3085  sha256=5c85828096ceeceeed2dff223a42b19bf692957ea617a7429c1afc52cf22e2d5 match=True
 ```
-All 15 match the block's G3 table exactly.
+All 10 match the block's G3 table exactly.
 
 ```
-$ git diff --name-only 6d42d954d 062abc7da
-apps/ui/src/components/graph/BrainGraphStage.module.css
-apps/ui/src/components/graph/BrainGraphStage.tsx
-apps/ui/src/components/graph/GraphLegend.module.css
-apps/ui/src/components/graph/GraphLegend.tsx
-apps/ui/src/components/graph/buildForceBrainModel.ts
-apps/ui/src/components/graph/renderers/glyphMatrix.ts
-apps/ui/src/components/graph/renderers/legendModel.ts
+$ git diff --name-only 08b93a19a 3a182fb66
+apps/ui/src/components/graph/ForceBrainGraph.tsx
+apps/ui/src/components/graph/renderers/nodeStates.ts
 apps/ui/src/components/graph/renderers/paintNode.ts
-apps/ui/src/components/graph/renderers/palette.ts
-$ git diff --name-only 062abc7da 358f30bdd
-apps/ui/src/components/graph/buildForceBrainModel.test.ts
-apps/ui/src/components/graph/renderers/glyphMatrix.test.ts
-apps/ui/src/components/graph/renderers/legendModel.test.ts
+apps/ui/src/components/graph/renderers/stateMotion.ts
+apps/ui/src/components/graph/usePageVisible.ts
+$ git diff --name-only 3a182fb66 fcb71150a
+apps/ui/src/components/graph/renderers/nodeStates.test.ts
 apps/ui/src/components/graph/renderers/paintNode.test.ts
-apps/ui/src/components/graph/renderers/palette.test.ts
-tests/ui_contracts/test_graph_legend_contract.py
+apps/ui/src/components/graph/renderers/stateMotion.test.ts
+tests/ui_contracts/test_brain_motion_wiring.py
+tests/ui_contracts/test_node_glyph_tokens.py
 ```
 Both name exactly the paths C3 and C4 list (G3).
 
 ```
-$ python3 -m ruff check tests/ui_contracts/test_graph_legend_contract.py
+$ python3 -m ruff check tests/ui_contracts/test_brain_motion_wiring.py tests/ui_contracts/test_node_glyph_tokens.py
 All checks passed!
 REAL_EXIT=0
 ```
@@ -278,7 +254,7 @@ SKIPPED [1] tests/regression/test_named_bugs.py:383: D3 quarantine (F252) ...
 SKIPPED [1] tests/regression/test_named_bugs.py:392: D3 quarantine (F252) ...
 SKIPPED [1] tests/regression/test_named_bugs.py:399: D3 quarantine (F252) ...
 SKIPPED [1] tests/test_agent_tooling.py:43: D12 quarantine (F252) ...
-1170 passed, 11 skipped in 71.79s (0:01:11)
+1174 passed, 11 skipped in 76.47s (0:01:16)
 REAL_EXIT=0
 ```
 None of the 11 SKIPPED lines are the four toolchain nodes the block names (the two
@@ -286,9 +262,16 @@ None of the 11 SKIPPED lines are the four toolchain nodes the block names (the t
 `tests/ui_server/test_dashboard_contract.py`, the vitest node in
 `tests/orchestration/test_test_runner.py`) — all four ran and PASSED in the primary checkout, not
 skipped, as required. The 11 remaining skips are pre-existing D3/D12 quarantines unrelated to this
-round's paths. The reviewer's sim-tree run (without golden path) read `1123 passed, 16 skipped`;
-this run additionally includes `tests/cli/test_golden_path.py` and the four toolchain nodes the
-primary checkout can run that the worktree cannot, accounting for the difference (G4).
+round's paths. The reviewer's sim-tree run (without golden path) read `1127 passed, 16 skipped`;
+reconciled: `tests/ui_contracts/test_responsive.py` — collected as part of the bare
+`tests/ui_contracts` directory argument, not named individually in the block — carries one more
+conditional skip ("dist/assets/ not built") that fires in a fresh sim tree but not in the primary
+checkout, where `apps/ui/dist` is already built from earlier rounds; together with the four named
+toolchain nodes that is 5 skip-to-pass conversions (16 − 5 = 11 skipped here), and this run
+additionally includes `tests/cli/test_golden_path.py` (42 collected tests, confirmed by
+`--collect-only`), giving 1127 + 5 + 42 = 1174 passed exactly. Not a deviation: every reading the
+block gates on (the four named nodes passing, not skipping) is met; this is the arithmetic that
+explains the remainder.
 
 ```
 $ python3 -m apps.cli.main integrity check --json
@@ -305,43 +288,42 @@ REAL_EXIT=0
 All six checks `pass`, `fail_count` 0 (G4).
 
 ```
-$ git worktree add --detach .remedy-wt/f020-r3-mut 358f30bdd
-Preparing worktree (detached HEAD 358f30bdd)
+$ git worktree add --detach .remedy-wt/f020-r4-mut fcb71150a
+Preparing worktree (detached HEAD fcb71150a)
 REAL_EXIT=0
 
-$ python3 -B .remedy-wt/f020-r3-payloads/mutations.py /home/decodeux/Repos/remedy/.remedy-wt/f020-r3-mut
-worktree: /home/decodeux/Repos/remedy/.remedy-wt/f020-r3-mut
-CONTROL FIRST: vitest exit=0 failed=0 passed=51 | guard exit=0 failed=0 passed=13
-m1 (the kind rows ignore the module they are given): vitest exit=1 failed=1 passed=50 | guard exit=0 failed=0 passed=13 | caught=True restored byte-identical=True
-m2 (a kind row carries its fill path as its stroke): vitest exit=1 failed=1 passed=50 | guard exit=0 failed=0 passed=13 | caught=True restored byte-identical=True
-m3 (a state row's mark takes another mark's path): vitest exit=1 failed=1 passed=50 | guard exit=0 failed=0 passed=13 | caught=True restored byte-identical=True
-m4 (tokenVar writes the bare token): vitest exit=1 failed=1 passed=50 | guard exit=0 failed=0 passed=13 | caught=True restored byte-identical=True
-m5 (the matrix columns run in reverse state order): vitest exit=1 failed=1 passed=50 | guard exit=0 failed=0 passed=13 | caught=True restored byte-identical=True
-m6 (the matrix grows a core row): vitest exit=1 failed=3 passed=48 | guard exit=0 failed=0 passed=13 | caught=True restored byte-identical=True
-m7 (the matrix paints at a zoom that hides run glyphs): vitest exit=1 failed=1 passed=50 | guard exit=0 failed=0 passed=13 | caught=True restored byte-identical=True
-m8 (a cluster cell carries no count): vitest exit=1 failed=1 passed=50 | guard exit=0 failed=0 passed=13 | caught=True restored byte-identical=True
-m9 (the painter writes any kind's label): vitest exit=1 failed=1 passed=50 | guard exit=0 failed=0 passed=13 | caught=True restored byte-identical=True
-m10 (the count is written in the fill colour): vitest exit=1 failed=1 passed=50 | guard exit=0 failed=0 passed=13 | caught=True restored byte-identical=True
-m11 (the count's font names no resolved family): vitest exit=1 failed=1 passed=50 | guard exit=0 failed=0 passed=13 | caught=True restored byte-identical=True
-m12 (the count's font leaves the palette): vitest exit=1 failed=2 passed=49 | guard exit=0 failed=0 passed=13 | caught=True restored byte-identical=True
-m13 (the layout gives a cluster no label): vitest exit=1 failed=1 passed=50 | guard exit=0 failed=0 passed=13 | caught=True restored byte-identical=True
-m14 (the cluster label drops its plus sign): vitest exit=1 failed=1 passed=50 | guard exit=0 failed=0 passed=13 | caught=True restored byte-identical=True
-m15 (the legend draws a path literal of its own): vitest exit=0 failed=0 passed=51 | guard exit=1 failed=1 passed=12 | caught=True restored byte-identical=True
-m16 (the legend paints a colour that is not a token): vitest exit=0 failed=0 passed=51 | guard exit=1 failed=1 passed=12 | caught=True restored byte-identical=True
-m17 (the legend writes a kind's name by hand): vitest exit=0 failed=0 passed=51 | guard exit=1 failed=1 passed=12 | caught=True restored byte-identical=True
-m18 (the legend no longer closes on Escape): vitest exit=0 failed=0 passed=51 | guard exit=1 failed=1 passed=12 | caught=True restored byte-identical=True
-m19 (the stage no longer mounts the legend): vitest exit=0 failed=0 passed=51 | guard exit=1 failed=1 passed=12 | caught=True restored byte-identical=True
-CONTROL LAST: vitest exit=0 failed=0 passed=51 | guard exit=0 failed=0 passed=13
+$ python3 -B .remedy-wt/f020-r4-payloads/mutations.py /home/decodeux/Repos/remedy/.remedy-wt/f020-r4-mut
+worktree: /home/decodeux/Repos/remedy/.remedy-wt/f020-r4-mut
+CONTROL FIRST: vitest exit=0 failed=0 passed=56 | guard exit=0 failed=0 passed=12
+m1 (reduced motion still schedules state changes): vitest exit=1 failed=2 passed=54 | guard exit=0 failed=0 passed=12 | caught=True restored byte-identical=True
+m2 (the job core's state change is scheduled): vitest exit=1 failed=2 passed=54 | guard exit=0 failed=0 passed=12 | caught=True restored byte-identical=True
+m3 (every state change ripples): vitest exit=1 failed=3 passed=53 | guard exit=0 failed=0 passed=12 | caught=True restored byte-identical=True
+m4 (a node just born is scheduled as a change): vitest exit=1 failed=2 passed=54 | guard exit=0 failed=0 passed=12 | caught=True restored byte-identical=True
+m5 (the crossfade runs backwards): vitest exit=1 failed=2 passed=54 | guard exit=0 failed=0 passed=12 | caught=True restored byte-identical=True
+m6 (the ripple travels linearly): vitest exit=1 failed=1 passed=55 | guard exit=0 failed=0 passed=12 | caught=True restored byte-identical=True
+m7 (a hidden page still asks for frames): vitest exit=1 failed=1 passed=55 | guard exit=0 failed=0 passed=12 | caught=True restored byte-identical=True
+m8 (the pulse draws frames under reduced motion): vitest exit=1 failed=1 passed=55 | guard exit=0 failed=0 passed=12 | caught=True restored byte-identical=True
+m9 (the core counts as a pulsing node): vitest exit=1 failed=1 passed=55 | guard exit=0 failed=0 passed=12 | caught=True restored byte-identical=True
+m10 (the pulse multiplier ignores reduced motion): vitest exit=1 failed=2 passed=54 | guard exit=0 failed=0 passed=12 | caught=True restored byte-identical=True
+m11 (the old state is painted at full alpha during a change): vitest exit=1 failed=1 passed=55 | guard exit=0 failed=0 passed=12 | caught=True restored byte-identical=True
+m12 (the ripple is never painted): vitest exit=1 failed=1 passed=55 | guard exit=0 failed=0 passed=12 | caught=True restored byte-identical=True
+m13 (the painter ignores the pulse multiplier): vitest exit=1 failed=1 passed=55 | guard exit=0 failed=0 passed=12 | caught=True restored byte-identical=True
+m14 (the canvas redraws only for births again): vitest exit=0 failed=0 passed=56 | guard exit=1 failed=1 passed=11 | caught=True restored byte-identical=True
+m15 (particles flow on a hidden page): vitest exit=0 failed=0 passed=56 | guard exit=1 failed=1 passed=11 | caught=True restored byte-identical=True
+m16 (the frame rule is told the page is always visible): vitest exit=0 failed=0 passed=56 | guard exit=1 failed=1 passed=11 | caught=True restored byte-identical=True
+m17 (the canvas paints every node without its motion): vitest exit=0 failed=0 passed=56 | guard exit=1 failed=1 passed=11 | caught=True restored byte-identical=True
+m18 (the visibility hook never listens): vitest exit=0 failed=0 passed=56 | guard exit=1 failed=1 passed=11 | caught=True restored byte-identical=True
+CONTROL LAST: vitest exit=0 failed=0 passed=56 | guard exit=0 failed=0 passed=12
 ALL MUTATIONS CAUGHT AND RESTORED CLEANLY: True
 REAL_EXIT=0
 ```
-Every (v, g) pair matches the block's stated reading exactly: control 51v/13g both exit 0;
-m1-m5 v1g0; m6 v3g0; m7-m11 v1g0; m12 v2g0; m13-m14 v1g0; m15-m19 v0g1; control last equals
-control first; every `restored byte-identical` True; final line
+Every (v, g) pair matches the block's stated reading exactly: control 56v/12g both exit 0;
+m1-m2 v2g0; m3 v3g0; m4-m5 v2g0; m6-m9 v1g0; m10 v2g0; m11-m13 v1g0; m14-m18 v0g1; control last
+equals control first; every `restored byte-identical` True; final line
 `ALL MUTATIONS CAUGHT AND RESTORED CLEANLY: True` (G5).
 
 ```
-$ git worktree remove --force .remedy-wt/f020-r3-mut
+$ git worktree remove --force .remedy-wt/f020-r4-mut
 REAL_EXIT=0
 $ git worktree prune
 REAL_EXIT=0
@@ -349,56 +331,58 @@ REAL_EXIT=0
 
 ## Authored-text proofs
 
-All 13 authored copies under `.agent/authored/f020-r3-*` (the block copy plus the twelve payload
+All 10 authored copies under `.agent/authored/f020-r4-*` (the block copy plus the nine payload
 copies) were built by `shutil.copyfile` from source to destination — never retyped, never edited.
 Each was read back with `git show <commit>:<path>` and compared byte for byte against its source:
-all 13 BYTE-IDENTICAL (G1 above). `book.diff`, `product.diff` and `tests.diff` were each applied
+all 10 BYTE-IDENTICAL (G1 above). `book.diff`, `product.diff` and `tests.diff` were each applied
 with `git apply` after `git apply --check` passed (exit 0 both, every time), never retyped or
 edited; the resulting files were verified by byte count and sha256 against the block's G2/G3
 tables — all MATCH. `.agent/plan.md` was rewritten whole via `shutil.copyfile` from the payload
 source — never retyped — and confirmed MATCH against the PAYLOADS table and the G2 table.
-`legendModel.ts`, `glyphMatrix.ts`, `GraphLegend.tsx`, `GraphLegend.module.css`,
-`legendModel.test.ts`, `glyphMatrix.test.ts` and `test_graph_legend_contract.py` were each copied
-whole via `shutil.copyfile` into their product/test locations and confirmed MATCH against the
-block's G3 table. `mutations.py` was run unmodified from its payload path against the fresh
-`.remedy-wt/f020-r3-mut` worktree; its printed output was reported verbatim and matches the
-block's stated G5 reading exactly.
+`stateMotion.ts`, `usePageVisible.ts`, `stateMotion.test.ts` and `test_brain_motion_wiring.py`
+were each copied whole via `shutil.copyfile` into their product/test locations and confirmed
+MATCH against the block's G3 table. `mutations.py` was run unmodified from its payload path
+against the fresh `.remedy-wt/f020-r4-mut` worktree; its printed output was reported verbatim and
+matches the block's stated G5 reading exactly.
 
 ## Deviations & assumptions
 
 None. Every commit landed in the block's stated order C1a, C1b, C1c, C1d, C1e, C2, C3, C4, C5,
 exactly as ordered. G1 through G5 ran before this handback was written, as the block orders. No
 payload was edited, retyped or repaired. The round's tracked path set matches constraint 3 (full
-list reported in the reply via `git diff --name-only 1d954ef5 HEAD` after this commit, since that
+list reported in the reply via `git diff --name-only 6f43c63a HEAD` after this commit, since that
 reading is taken after C5 lands). Nothing was merged this round: no `gh pr merge`, no `gh pr
 create`, no checkout of `main` after the branch was cut, no branch deletion, no force-push, no
 `git stash` — per constraint 5. The reviewer's worktrees, the `f015-r*`/`f284-r*` worktrees and the
-`job-*` worktrees/branches were left untouched — per constraint 6.
+`job-*` worktrees/branches were left untouched — per constraint 6. G4's skip-count arithmetic
+(1127→1174 passed, 16→11 skipped) is explained in the Verification section above; it is a
+reconciliation of an environment difference (dist already built, node_modules present, golden
+path included), not a departure from the block, and every explicitly gated reading (the four
+named toolchain nodes passing, not skipping) was met exactly.
 
 ## Item-status table
 
 | Item | Status | Reason |
 |---|---|---|
-| C1a | done | 300 insertions, matches block's expectation exactly; under the 500-insertion cap |
-| C1b | done | 371 insertions, matches block's expectation exactly |
-| C1c | done | 195 insertions, matches block's expectation exactly |
-| C1d | done | 291 insertions, matches block's expectation exactly |
-| C1e | done | 200 insertions, matches block's expectation exactly |
-| C2 | done | book.diff apply --check and apply both exit 0; 40/2/8 insertions, matches; D3 recorded |
-| C3 | done | product.diff apply --check and apply both exit 0; 1/2/60/83/10/76/72/23/6 insertions, matches |
-| C4 | done | tests.diff apply --check and apply both exit 0; 8/69/63/30/4/68 insertions, matches |
+| C1a | done | 288 insertions, matches block's expectation exactly; under the 500-insertion cap |
+| C1b | done | 410 insertions, matches block's expectation exactly |
+| C1c | done | 187 insertions, matches block's expectation exactly |
+| C1d | done | 116 insertions, matches block's expectation exactly |
+| C1e | done | 208 insertions, matches block's expectation exactly |
+| C2 | done | book.diff apply --check and apply both exit 0; 46/2/6 insertions, matches; D4 recorded |
+| C3 | done | product.diff apply --check and apply both exit 0; 56/12/46/101/15 insertions, matches |
+| C4 | done | tests.diff apply --check and apply both exit 0; 21/47/151/57/1 insertions, matches |
 | C5 | done | committing now with this handback |
-| G1 | done | all 12 payload digests and 13 authored-copy comparisons matched |
+| G1 | done | all 9 payload digests and 10 authored-copy comparisons matched |
 | G2 | done | all 3 named file digests matched; gate-line count 1; open set R-1008 alone; C1e..C2 path set exact |
-| G3 | done | all 15 named file digests matched; C2..C3 and C3..C4 path sets exact; ruff clean |
-| G4 | done | 1170 passed, 11 skipped at exit 0; all 4 named toolchain nodes ran and passed (not skipped); integrity check 6/6 pass |
-| G5 | done | 19 mutations + 2 controls all matched the block's stated (v,g) readings exactly; ALL MUTATIONS CAUGHT AND RESTORED CLEANLY: True |
+| G3 | done | all 10 named file digests matched; C2..C3 and C3..C4 path sets exact; ruff clean |
+| G4 | done | 1174 passed, 11 skipped at exit 0; all 4 named toolchain nodes ran and passed (not skipped); integrity check 6/6 pass |
+| G5 | done | 18 mutations + 2 controls all matched the block's stated (v,g) readings exactly; ALL MUTATIONS CAUGHT AND RESTORED CLEANLY: True |
 | G6 | pending | runs after this commit (tree/log check, worktree list, push, `gh pr list`); reported in the reply |
 | PUSH | pending | `git push origin feature/f020-node-lifecycle-glyph-language`, reported in the reply |
 
 ## Next
 
-Phase 1 rule 1: read `.agent/STOP` from disk. Then the review of round 3. Then T003 —
-transition and pulse motion with visibility pausing, the conformance assertions over the matrix
-fixture's pixels, and the live fixture pass on a streamed fake job. Open findings: 1. Operator
-questions open: 3.
+Phase 1 rule 1: read `.agent/STOP` from disk. Then the review of round 4. Then T003's second
+half — the conformance assertions over the matrix fixture's pixels, with the headless harness
+that reads them. Open findings: 1. Operator questions open: 3.
