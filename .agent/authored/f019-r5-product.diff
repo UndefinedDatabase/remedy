@@ -1,0 +1,375 @@
+diff --git a/apps/ui/src/api/brainStreamDeps.ts b/apps/ui/src/api/brainStreamDeps.ts
+index 3fe527993..98fca9973 100644
+--- a/apps/ui/src/api/brainStreamDeps.ts
++++ b/apps/ui/src/api/brainStreamDeps.ts
+@@ -73,6 +73,14 @@ export function framesOf(payload: unknown): BrainStreamFrame[] {
+   return frames;
+ }
+ 
++/** The ONE place the events-since path is built, shared by the stream's own
++ *  snapshot/tail below and the graph's ledger reader (`brainLedger.ts`, via
++ *  `useBrainLedger.ts`), which RemedyShell.tsx wires to this same function
++ *  rather than building the path a second time. */
++export function eventsSincePath(jobId: string, cursor: number): string {
++  return `/api/jobs/${encodeURIComponent(jobId)}/events-since?cursor=${cursor}`;
++}
++
+ /** Build the four functions `createBrainStreamHost` needs, for ONE job.
+  *
+  *  The two paths are the two transports of one envelope:
+@@ -80,7 +88,7 @@ export function framesOf(payload: unknown): BrainStreamFrame[] {
+  *  answers the snapshot and the polling tail out of the same ledger. */
+ export function createBrainStreamHostDeps(jobId: string, env: BrainStreamEnv): BrainStreamHostDeps {
+   const job = encodeURIComponent(jobId);
+-  const since = (cursor: number): string => `/api/jobs/${job}/events-since?cursor=${cursor}`;
++  const since = (cursor: number): string => eventsSincePath(jobId, cursor);
+   return {
+     openSource(lastEventId: string | null): BrainStreamSource | null {
+       const make = env.makeSource;
+diff --git a/apps/ui/src/components/graph/BrainGraphStage.tsx b/apps/ui/src/components/graph/BrainGraphStage.tsx
+index 1f0f974b8..0b689b4b8 100644
+--- a/apps/ui/src/components/graph/BrainGraphStage.tsx
++++ b/apps/ui/src/components/graph/BrainGraphStage.tsx
+@@ -1,6 +1,9 @@
+ import { useMemo, useState } from "react";
+ import type { RemedyDashboard } from "../../api/types";
+-import { seedBrainModel } from "./brainReducer";
++import { rebuildBrainModel } from "./brainReducer";
++import type { BrainEventRow } from "./brainOntology";
++import { brainLedgerPrefix } from "./brainLedger";
++import { useBrainLedger } from "./useBrainLedger";
+ import { buildBrainLayout } from "./buildForceBrainModel";
+ import { brainTaskCount, dashboardBrainSeeds, filterBrainLayout, selectedBrainNodeId, shellSelectionIdOf } from "./brainView";
+ import { ForceBrainGraph } from "./ForceBrainGraph";
+@@ -8,7 +11,19 @@ import { GraphFilterChips, type GraphFilter } from "./GraphFilterChips";
+ import { BrainGraphCanvas } from "./BrainGraphCanvas";
+ import styles from "./BrainGraphStage.module.css";
+ 
+-export function BrainGraphStage({ dashboard, selectedNodeId, onSelectNode }: { dashboard: RemedyDashboard; selectedNodeId?: string | null; onSelectNode: (nodeId: string | null) => void }) {
++export function BrainGraphStage({
++  dashboard,
++  selectedNodeId,
++  onSelectNode,
++  recent,
++  readEventsPage,
++}: {
++  dashboard: RemedyDashboard;
++  selectedNodeId?: string | null;
++  onSelectNode: (nodeId: string | null) => void;
++  recent: readonly BrainEventRow[];
++  readEventsPage: (cursor: number) => Promise<unknown>;
++}) {
+   const [filter, setFilter] = useState<GraphFilter>("all");
+   // Live is the default renderer (this round); Simple is the SVG picture
+   // with prompt dots and keyboard focus (graph_spec.md §14; DECISION F019
+@@ -16,9 +31,15 @@ export function BrainGraphStage({ dashboard, selectedNodeId, onSelectNode }: { d
+   // whenever no task is visible.
+   const [view, setView] = useState<"live" | "simple">("live");
+ 
++  const seeds = useMemo(() => dashboardBrainSeeds(dashboard.tasks), [dashboard.tasks]);
++  const ledger = useBrainLedger(dashboard.jobId, recent, readEventsPage);
++  // The graph folds only the COMPLETE, CONTIGUOUS prefix of the ledger: a
++  // hole from a live gap, a mid-ledger join, or a sleeping tab holds the
++  // model at the state before it, never a ghost past it (DECISION F019 D5).
++  const rows = useMemo(() => brainLedgerPrefix(ledger), [ledger]);
+   const layout = useMemo(
+-    () => buildBrainLayout(seedBrainModel(dashboard.jobId, dashboardBrainSeeds(dashboard.tasks))),
+-    [dashboard.jobId, dashboard.tasks],
++    () => buildBrainLayout(rebuildBrainModel(dashboard.jobId, seeds, rows)),
++    [dashboard.jobId, seeds, rows],
+   );
+   const visible = useMemo(() => filterBrainLayout(layout, filter), [layout, filter]);
+   const selectedId = selectedBrainNodeId(dashboard.tasks, selectedNodeId ?? null);
+diff --git a/apps/ui/src/components/graph/brainLedger.ts b/apps/ui/src/components/graph/brainLedger.ts
+new file mode 100644
+index 000000000..32b27ebe6
+--- /dev/null
++++ b/apps/ui/src/components/graph/brainLedger.ts
+@@ -0,0 +1,165 @@
++// The job's own event LEDGER, merged from two sources into one: pages of
++// `events-since` read from the server and the live stream's ring. No React,
++// no DOM, no URL — `useBrainLedger.ts` is the thin binding that calls this
++// from a component; every rule that decides what the graph is ALLOWED to
++// draw lives here, where the node-environment vitest can reach it.
++//
++// DECISION F019 D5: the graph folds only the CONTIGUOUS PREFIX the client
++// holds in full — every seq from 0 up to the first one it does not have —
++// never the rows past a hole. A hole is a live frame that skipped a seq, a
++// stream that joined mid-ledger, or a tab that slept through part of it; it
++// is filled by paging `events-since` from the first missing seq, and until
++// it is filled the graph shows the state before the hole rather than a state
++// the ledger has not fully told it (no ghost: graph_spec §8).
++import { framesOf } from "../../api/brainStreamDeps";
++import { feedRowOf } from "../../api/feedRow";
++import type { BrainEventRow } from "./brainOntology";
++
++/** The rows this client holds, one per seq, sorted by seq; `known` is the
++ *  ledger length the client knows exists — from a page's `cursor`, or from a
++ *  held row's own seq + 1 — and is `null` before anything has been read. */
++export interface BrainLedger {
++  rows: readonly BrainEventRow[];
++  known: number | null;
++}
++
++/** A client that has read nothing yet and knows nothing about the ledger's
++ *  length. */
++export function emptyBrainLedger(): BrainLedger {
++  return { rows: [], known: null };
++}
++
++/** The max of three optional numbers, `null` only while all three are
++ *  absent — the rule `known` follows below, named once so the three call
++ *  sites (old `known`, a page's `knownLength`, a held row's own length)
++ *  cannot drift apart. */
++function maxKnown(a: number | null, b: number | null, c: number | null): number | null {
++  let result: number | null = null;
++  for (const value of [a, b, c]) {
++    if (value === null) continue;
++    result = result === null ? value : Math.max(result, value);
++  }
++  return result;
++}
++
++/** Merge a page or a live batch into the ledger. Rows are unique by seq with
++ *  the ALREADY-HELD row winning — the same "first wins" rule
++ *  `rebuildBrainModel` applies to a set of rows with a duplicate seq — sorted
++ *  by seq afterward. `known` rises to the max of the ledger's own `known`,
++ *  the caller's `knownLength` and one past the highest seq now held. Returns
++ *  the SAME object when nothing changed (no new seq, same `known`), which is
++ *  what lets a reader compare the ledger by reference. */
++export function mergeBrainRows(
++  ledger: BrainLedger,
++  rows: readonly BrainEventRow[],
++  knownLength: number | null,
++): BrainLedger {
++  const bySeq = new Map<number, BrainEventRow>();
++  for (const row of ledger.rows) bySeq.set(row.seq, row);
++  let added = false;
++  for (const row of rows) {
++    if (bySeq.has(row.seq)) continue;
++    bySeq.set(row.seq, row);
++    added = true;
++  }
++  let maxHeldSeq = -1;
++  for (const seq of bySeq.keys()) maxHeldSeq = Math.max(maxHeldSeq, seq);
++  const fromHeld = maxHeldSeq >= 0 ? maxHeldSeq + 1 : null;
++  const known = maxKnown(ledger.known, knownLength, fromHeld);
++  if (!added && known === ledger.known) return ledger;
++  const nextRows = [...bySeq.values()].sort((a, b) => a.seq - b.seq);
++  return { rows: nextRows, known };
++}
++
++/** The rows whose seqs run 0, 1, 2, … without a hole, stopping at the first
++ *  missing one — empty when seq 0 itself is missing. `ledger.rows` is always
++ *  sorted and unique by seq (an invariant `mergeBrainRows` keeps), so a
++ *  single ascending walk finds the break. */
++export function brainLedgerPrefix(ledger: BrainLedger): BrainEventRow[] {
++  const prefix: BrainEventRow[] = [];
++  let next = 0;
++  for (const row of ledger.rows) {
++    if (row.seq !== next) break;
++    prefix.push(row);
++    next += 1;
++  }
++  return prefix;
++}
++
++/** The next `events-since` cursor to read: `0` before anything is known;
++ *  else the smallest seq in `[0, known)` not yet held; `null` once every seq
++ *  the client knows about is held. */
++export function nextBrainLedgerCursor(ledger: BrainLedger): number | null {
++  if (ledger.known === null) return 0;
++  const held = new Set(ledger.rows.map((row) => row.seq));
++  for (let seq = 0; seq < ledger.known; seq += 1) {
++    if (!held.has(seq)) return seq;
++  }
++  return null;
++}
++
++/** The events-since envelope's `cursor`, read as a finite length ≥ 0 — the
++ *  ledger's own length, unlike `snapshotSeqOf` (brainStreamDeps.ts), which
++ *  turns that same field into a POSITION and refuses an empty ledger. A
++ *  malformed or missing cursor yields `null` rather than a guessed length. */
++function knownLengthOf(payload: unknown): number | null {
++  if (payload === null || typeof payload !== "object") return null;
++  const cursor = (payload as { cursor?: unknown }).cursor;
++  const length = typeof cursor === "string" ? Number(cursor) : cursor;
++  return typeof length === "number" && Number.isFinite(length) && length >= 0 ? length : null;
++}
++
++/** One `events-since` page, turned into ledger rows through the one frame
++ *  parser (`feedRowOf`, DECISION F019 D1 (2)) and the ledger length its
++ *  `cursor` carries. */
++export function brainLedgerPage(payload: unknown): { rows: BrainEventRow[]; known: number | null } {
++  const rows = framesOf(payload).map((frame) => feedRowOf(frame, 0));
++  return { rows, known: knownLengthOf(payload) };
++}
++
++/** The loader's own pure state: the ledger merged so far, and the cursor a
++ *  read has already come back empty or failed for (`stalled`) — the request
++ *  rule below refuses to re-issue that SAME cursor until a live frame proves
++ *  the ledger has moved. */
++export interface BrainLedgerLoad {
++  ledger: BrainLedger;
++  stalled: number | null;
++}
++
++export function initialBrainLedgerLoad(): BrainLedgerLoad {
++  return { ledger: emptyBrainLedger(), stalled: null };
++}
++
++/** The next cursor a caller should read, or `null` when the ledger is
++ *  complete OR when that cursor is the one already known to answer empty
++ *  (`stalled`) — asking it again would only stall a second time. */
++export function brainLedgerRequest(load: BrainLedgerLoad): number | null {
++  const cursor = nextBrainLedgerCursor(load.ledger);
++  if (cursor === null || cursor === load.stalled) return null;
++  return cursor;
++}
++
++/** Apply the response to a read issued for `cursor`. `payload === null`
++ *  means the read failed and merges nothing; either way, an unchanged ledger
++ *  stalls this cursor and a changed one clears the stall (a fresh cursor is
++ *  free to be requested again next time). */
++export function brainLedgerReceived(
++  load: BrainLedgerLoad,
++  cursor: number,
++  payload: unknown | null,
++): BrainLedgerLoad {
++  const page = payload === null ? { rows: [], known: null } : brainLedgerPage(payload);
++  const ledger = mergeBrainRows(load.ledger, page.rows, page.known);
++  const stalled = ledger === load.ledger ? cursor : null;
++  if (ledger === load.ledger && stalled === load.stalled) return load;
++  return { ledger, stalled };
++}
++
++/** Fold the live ring's rows into the ledger. A new frame is the retry
++ *  signal after a failed or empty read, so a ledger the live rows actually
++ *  changed clears any stall; one they did not leaves it exactly as it was. */
++export function brainLedgerLive(load: BrainLedgerLoad, rows: readonly BrainEventRow[]): BrainLedgerLoad {
++  const ledger = mergeBrainRows(load.ledger, rows, null);
++  if (ledger === load.ledger) return load;
++  return { ledger, stalled: null };
++}
+diff --git a/apps/ui/src/components/graph/useBrainLedger.ts b/apps/ui/src/components/graph/useBrainLedger.ts
+new file mode 100644
+index 000000000..bbbf979bf
+--- /dev/null
++++ b/apps/ui/src/components/graph/useBrainLedger.ts
+@@ -0,0 +1,72 @@
++// The React half of the ledger, deliberately thin: every rule — merge,
++// prefix, cursor arithmetic, stall and retry — lives in brainLedger.ts,
++// where the node-environment vitest can reach it. What is left here is
++// state, two effects and the one path builder both transports share:
++// `readPage` is built from `eventsSincePath` (brainStreamDeps.ts) by
++// RemedyShell.tsx and handed down through BrainGraphStage.tsx.
++import { useEffect, useRef, useState } from "react";
++import {
++  brainLedgerLive,
++  brainLedgerReceived,
++  brainLedgerRequest,
++  initialBrainLedgerLoad,
++} from "./brainLedger";
++import type { BrainLedger, BrainLedgerLoad } from "./brainLedger";
++import type { BrainEventRow } from "./brainOntology";
++
++export function useBrainLedger(
++  jobId: string,
++  liveRows: readonly BrainEventRow[],
++  readPage: (cursor: number) => Promise<unknown>,
++): BrainLedger {
++  // Guards a read in flight, and dropping a response whose job has moved on.
++  // Both live in a REF rather than state: a state flip would change the
++  // request effect's own key below and cancel the read it is meant to guard.
++  const inFlightCursorRef = useRef<number | null>(null);
++  const currentJobRef = useRef(jobId);
++
++  const [held, setHeld] = useState<{ jobId: string; load: BrainLedgerLoad }>(
++    () => ({ jobId, load: initialBrainLedgerLoad() }),
++  );
++  // A different job starts over: the previous job's rows, cursor and
++  // in-flight guard all belong to a ledger this render has already left
++  // behind. Adjusting state WHILE RENDERING (React's own escape hatch for a
++  // key change) bails this render out before the effects below can act on
++  // the stale load against the new job.
++  let state = held;
++  if (held.jobId !== jobId) {
++    state = { jobId, load: initialBrainLedgerLoad() };
++    inFlightCursorRef.current = null;
++    setHeld(state);
++  }
++
++  useEffect(() => { currentJobRef.current = jobId; }, [jobId]);
++
++  useEffect(() => {
++    setHeld((current) => {
++      const next = brainLedgerLive(current.load, liveRows);
++      return next === current.load ? current : { jobId: current.jobId, load: next };
++    });
++  }, [liveRows]);
++
++  const cursor = brainLedgerRequest(state.load);
++  useEffect(() => {
++    if (cursor === null || inFlightCursorRef.current === cursor) return;
++    inFlightCursorRef.current = cursor;
++    const requestedJob = jobId;
++    readPage(cursor).then(
++      (payload) => {
++        inFlightCursorRef.current = null;
++        if (currentJobRef.current !== requestedJob) return;
++        setHeld((current) => ({ jobId: current.jobId, load: brainLedgerReceived(current.load, cursor, payload) }));
++      },
++      () => {
++        inFlightCursorRef.current = null;
++        if (currentJobRef.current !== requestedJob) return;
++        setHeld((current) => ({ jobId: current.jobId, load: brainLedgerReceived(current.load, cursor, null) }));
++      },
++    );
++  }, [cursor, jobId, readPage]);
++
++  return state.load.ledger;
++}
+diff --git a/apps/ui/src/components/shell/RemedyShell.tsx b/apps/ui/src/components/shell/RemedyShell.tsx
+index 04dad49d4..419b5ea0a 100644
+--- a/apps/ui/src/components/shell/RemedyShell.tsx
++++ b/apps/ui/src/components/shell/RemedyShell.tsx
+@@ -1,4 +1,4 @@
+-import { useEffect, useMemo, useState } from "react";
++import { useCallback, useEffect, useMemo, useState } from "react";
+ import type { RemedyDashboard } from "../../api/types";
+ import type { DiffEnvelope } from "../../api/diffViewModel";
+ import type { JobDigest } from "../../api/jobDigest";
+@@ -21,7 +21,7 @@ import { LessonsOverlay } from "../lessons/LessonsOverlay";
+ import { lessonsRefreshKey } from "../../api/lessons";
+ import { DegradedBanner } from "./DegradedBanner";
+ import styles from "./RemedyShell.module.css";
+-import { browserBrainStreamEnv, createBrainStreamHostDeps } from "../../api/brainStreamDeps";
++import { browserBrainStreamEnv, createBrainStreamHostDeps, eventsSincePath } from "../../api/brainStreamDeps";
+ import { useBrainStream } from "../../api/useBrainStream";
+ import { metricsWithCostTicker } from "../../api/costTicker";
+ import { metricsWithCostReconciliation } from "../../api/costReconciliation";
+@@ -44,6 +44,15 @@ export function RemedyShell({ dashboard, serverToken, selectedNodeId, onSelectNo
+   // every URL that carries none (DECISION F008 D3).
+   const stream = useBrainStream(dashboard.jobId, (jobId) =>
+     createBrainStreamHostDeps(jobId, browserBrainStreamEnv(window)));
++  // The graph's ledger reader shares the same real environment and the same
++  // path builder the stream above uses, built once so the callback handed to
++  // the stage stays referentially stable across a render the stream itself
++  // did not cause (DECISION F019 D5).
++  const brainStreamEnv = useMemo(() => browserBrainStreamEnv(window), []);
++  const readEventsPage = useCallback(
++    (cursor: number) => brainStreamEnv.fetchJson(eventsSincePath(dashboard.jobId, cursor)),
++    [brainStreamEnv, dashboard.jobId],
++  );
+   let selectedNode = selectedNodeId ? (dashboard.graph.nodes.find(n => n.nodeId === selectedNodeId || n.id === selectedNodeId) ?? null) : null;
+   // Prompt satellite nodes carry the prompt item id as their node id. Resolve
+   // such a selection to its owning task node so the popover (and its Prompt
+@@ -186,7 +195,7 @@ export function RemedyShell({ dashboard, serverToken, selectedNodeId, onSelectNo
+             )}
+           />
+           <CommandBar nextAction={dashboard.nextAction} onJump={handleJump} />
+-          <BrainGraphStage dashboard={dashboard} selectedNodeId={selectedNodeId} onSelectNode={onSelectNode} />
++          <BrainGraphStage dashboard={dashboard} selectedNodeId={selectedNodeId} onSelectNode={onSelectNode} recent={stream.recent} readEventsPage={readEventsPage} />
+           <PhaseTimeline phases={dashboard.phases} timelineEvents={dashboard.timelineEvents} />
+         </main>
+         <RightLivePanel dashboard={dashboard} serverToken={serverToken} onSelectNode={onSelectNode} streamStatus={stream.status} recent={stream.recent} recentDropped={stream.recentDropped} onOpenLessons={() => setLessonsOpen(true)} />
