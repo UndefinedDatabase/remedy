@@ -257,6 +257,10 @@ end the response with:
   12's working-directory clause, and a DECISION ordered as a commit of its own is operator
   amendment amend0917-throughput rule 4, which lands it with the round's bookkeeping. The list
   stays at 34 items.
+  Consolidated a sixth time at F265's closure on 2026-09-24: nothing joined and no two items
+  were merged, because F265 wrote no line to `.agent/prose_slips.md`: its four rounds' blocks
+  were generated from simulated trees and every worker reading matched them. The list stays at
+  34 items.
   The next consolidation measures against 34.
   Reverse by deleting this paragraph.
   1. **Size.** Count the block's lines. Over 400 (DECISION F105 D5) → split or
