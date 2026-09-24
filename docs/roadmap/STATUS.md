@@ -139,6 +139,13 @@ Milestone R1 — Remedy as the daily tool: Tier 2 complete (F086 as the self-ins
 - [x] F258 — Self-use track v2 (T001–T003 complete; accepted 2026-08-30 · live review PASS_WITH_RISKS — ACCEPTED · Evidence job f258-closure · package remedy-review-20260830-084541-READY_FOR_REVIEW.zip · SHA-256 4b4153ad33f01e4d7014e853663f76ac1f36f61ba06687ed0b3c9c5411f12c50 · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD 49fcc2c645601936d8c426b1eb09523b9b3c7f6f)
 - [ ] F015 — Interactive plan editing
 - [ ] F019 — Live node materialization
+
+## Tier 2 — Findings paydown (rolling, operator rule amend0911-feedback)
+
+- [ ] F284 — Findings paydown v3
+
+## Tier 5 — Operator Cockpit (parallel human track, continued)
+
 - [ ] F020 — Node lifecycle & glyph language
 - [ ] F023 — Semantic zoom L0–L3
 - [ ] F024 — Phase timeline with scrubber

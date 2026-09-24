@@ -87,7 +87,11 @@ TIER_HEADING_RE = re.compile(r"^#+\s*Tier\s*(\d{1,2})", re.IGNORECASE)
 #: split-and-close under operator amendment amend0905-throughput and placed
 #: directly after F277 under amend0906-split-placement; see T2_F283.md and
 #: DECISION F277 D10.
-TOTAL_FEATURES = 283
+#: One more, F284 (findings paydown v3), was registered on 2026-09-24 by
+#: F282's closure under operator amendment amend0911-feedback rule B and
+#: placed after F019, the fifth unaccepted line below F282, under its own
+#: Tier 2 heading with the Tier 5 list re-opened after it; see T2_F284.md.
+TOTAL_FEATURES = 284
 
 #: Documents that must never contain a stale claim.
 PRIMARY_DOCS = [
