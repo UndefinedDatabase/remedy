@@ -427,7 +427,9 @@ class TestCommandChannelDoor:
         DECISION F009 D21's 409, whose body carries `error` and not `command`
         because every refusal on this door goes out through the same safe-error
         shape. The two 409s carry DIFFERENT messages on purpose — the decision
-        one's wording names decisions — and this is where that is pinned.
+        one's wording names decisions — and this is where that is pinned. A
+        `chat.send` built the same way carries no message, which is a shape error
+        on field `message` refused before the job is read (DECISION F264 D2).
         """
         from apps.cli.command_catalog import UI_EXPOSED_COMMANDS
 
@@ -443,6 +445,9 @@ class TestCommandChannelDoor:
             if command_id == "job.stop":
                 assert status == 200, command_id
                 assert body["command"] == command_id
+            elif command_id == "chat.send":
+                assert status == 400, command_id
+                assert body["field"] == "message", command_id
             else:
                 assert status == 409, command_id
                 assert body["error"] == declined[command_id], command_id
@@ -1515,6 +1520,7 @@ class TestCommandDoorImportGuard:
         "_dispatch_job_stop",
         "_dispatch_decision_resolve",
         "_dispatch_approve_hunks",
+        "_dispatch_chat_send",
         "_publish_command_result",
         "_emit_command_accepted_event",
         "_audit_attempt",
@@ -1556,6 +1562,12 @@ class TestCommandDoorImportGuard:
         ("packages.orchestration.hunk_ledger", "HUNK_STATE_PENDING"),   # F033 D4
         ("packages.orchestration.hunk_ledger", "HUNK_STATE_REJECTED"),  # F033 D4
         ("packages.orchestration.safe_points", "request_stop"),            # D5
+        ("packages.orchestration.steering", "SteeringError"),        # F264 D2
+        ("packages.orchestration.steering", "SteeringWriteError"),   # F264 D2
+        ("packages.orchestration.steering",
+         "normalize_steering_text"),                                # F264 D2
+        ("packages.orchestration.steering",
+         "record_steering_message"),                                # F264 D2
         ("packages.orchestration.pingpong_job", "save_job_plan"),          # D21
         ("packages.orchestration.timeline", "append_run_event"),           # D23
     })
@@ -1758,7 +1770,7 @@ class TestUiExposedCommands:
         a name that must be re-read every time the set widens is the half nobody re-reads."""
         from apps.cli.command_catalog import UI_EXPOSED_COMMANDS
         assert sorted(UI_EXPOSED_COMMANDS) == [
-            "decision.resolve", "job.stop", "patch.approve-hunks"]
+            "chat.send", "decision.resolve", "job.stop", "patch.approve-hunks"]
 
     def test_the_set_is_a_frozenset(self):
         from apps.cli.command_catalog import UI_EXPOSED_COMMANDS

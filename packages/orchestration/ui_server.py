@@ -2227,11 +2227,17 @@ COMMAND_ACCEPTED_EVENT = "command.accepted"
 #: operator who needs the detail has the CLI door, which is not a network boundary.
 COMMAND_HUNK_DECISION_STATE_MESSAGE = "hunk decision was refused"
 
-#: The three ids this door dispatches. Named rather than inlined so that each
-#: second call site greps to this line.
+#: What a `chat.send` for a job that has ended returns (DECISION F264 D2). The effect
+#: RAN and DECLINED — no run will ever read the message — so it is the same 409 the
+#: other declining effects give, and nothing was written.
+COMMAND_CHAT_STATE_MESSAGE = "job has ended and takes no message"
+
+#: The ids this door dispatches. Named rather than inlined so that each second call
+#: site greps to this line.
 JOB_STOP_COMMAND_ID = "job.stop"
 DECISION_RESOLVE_COMMAND_ID = "decision.resolve"
 HUNK_APPROVE_COMMAND_ID = "patch.approve-hunks"
+CHAT_SEND_COMMAND_ID = "chat.send"
 
 _COMMAND_RATE_LOCK = threading.Lock()
 #: (token fingerprint, job id) -> (window start, commands accepted in it).
@@ -2710,9 +2716,39 @@ class _RemedyHandler(BaseHTTPRequestHandler):
             self._emit_command_accepted_event(str(job.job_id), accepted_body)
             self._send_json(200, accepted_body)
             return
+        # DECISION F264 D2 maps `chat.send` to `steering.record_steering_message`, the
+        # one place a steering message is accepted, and it RECORDS: the run reads the
+        # message at its next safe point, never inside a call. D18's write order above
+        # is unchanged.
+        if payload["command"] == CHAT_SEND_COMMAND_ID:
+            try:
+                accepted_body = self._dispatch_chat_send(job, payload)
+            except (OSError, RuntimeError, ValueError, TypeError):
+                # D18, clause four: an effect that RAISED is neither `accepted`,
+                # which would be false, nor unaudited, which would break D6.
+                self._audit_attempt(str(job.job_id), "rejected_effect", create=True,
+                                    payload=payload)
+                self._send_json(*_safe_error(500, COMMAND_EFFECT_FAILED_MESSAGE))
+                return
+            if accepted_body is None:
+                # D21, clause three, applied unchanged: the effect RAN and DECLINED,
+                # because the job has ended, and nothing was written.
+                self._audit_attempt(str(job.job_id), "rejected_state", create=True,
+                                    payload=payload)
+                self._send_json(*_safe_error(409, COMMAND_CHAT_STATE_MESSAGE))
+                return
+            # D18, clause three: both writes below fail SOFT. The message is already
+            # sealed on disk, so refusing after the fact would report a message that
+            # really was recorded as one that was not.
+            self._audit_attempt(str(job.job_id), "accepted", create=True, payload=payload)
+            self._publish_command_result(str(job.job_id), payload["client_nonce"],
+                                         accepted_body)
+            self._emit_command_accepted_event(str(job.job_id), accepted_body)
+            self._send_json(200, accepted_body)
+            return
         # An id `_command_is_ui_exposed` admitted that no clause above dispatches.
         # DECISION F009 D22: this is a GUARD, not a placeholder — unreachable
-        # while the exposed subset holds exactly the three ids named above, and the
+        # while every id in the exposed subset has a clause above, and the
         # alternative is a request that gets no response at all.
         self._audit_attempt(str(job.job_id), "not_implemented", create=True, payload=payload)
         self._send_json(*_safe_error(501, COMMAND_NOT_DISPATCHED_MESSAGE))
@@ -2732,6 +2768,33 @@ class _RemedyHandler(BaseHTTPRequestHandler):
             source=COMMAND_EFFECT_SOURCE)
         return {"command": payload["command"], "outcome": "accepted",
                 "request_id": signal.request_id}
+
+    def _dispatch_chat_send(self, job: Any, payload: Any) -> dict[str, Any] | None:
+        """Record one steering message for the job. None means the job has ended.
+
+        DECISION F264 D2: the message was already checked by `_read_command_payload`,
+        so the only refusal left is the job's state, which the caller answers 409.
+        A record that could not be WRITTEN raises `SteeringWriteError`, a
+        `ValueError`, which is D18 clause four's `rejected_effect`. The channel is
+        `cockpit`, so the record says which door a message came through.
+        """
+        from packages.orchestration.steering import (
+            SteeringError,
+            SteeringWriteError,
+            record_steering_message,
+        )
+        args = payload.get("args")
+        message = args.get("message") if isinstance(args, dict) else None
+        state = job.state.value if hasattr(job.state, "value") else str(job.state)
+        try:
+            record = record_steering_message(
+                str(job.job_id), message, job_state=state, channel="cockpit")
+        except SteeringWriteError:
+            raise
+        except SteeringError:
+            return None
+        return {"command": payload["command"], "outcome": "accepted",
+                "request_id": record["message_id"], "message_id": record["message_id"]}
 
     def _dispatch_decision_resolve(self, job: Any,
                                    payload: Any) -> dict[str, Any] | None:
@@ -3113,6 +3176,14 @@ class _RemedyHandler(BaseHTTPRequestHandler):
         if (command == DECISION_RESOLVE_COMMAND_ID and isinstance(answer, str)
                 and not answer.strip()):
             return None, _command_field_error("answer", COMMAND_BLANK_ANSWER_MESSAGE)
+        # DECISION F264 D2: an unusable steering message is a SHAPE error on field
+        # `message`, refused before the job's state is read, for R-0685's reason.
+        if command == CHAT_SEND_COMMAND_ID:
+            from packages.orchestration.steering import SteeringError, normalize_steering_text
+            try:
+                normalize_steering_text(args.get("message"))
+            except SteeringError as exc:
+                return None, _command_field_error("message", str(exc))
         return {"command": command, "client_nonce": client_nonce, "args": args}, None
 
     def do_PUT(self) -> None:  # noqa: N802
