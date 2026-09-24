@@ -13,22 +13,21 @@ the snapshot path without ghosts (`docs/roadmap/features/T5_F019.md`).
 
 ## Current Step
 
-ROUND 6: book round 5's PASS, record DECISION F019 D6, and finish T003: a
-live fake job checked against the demo recording in the suite, the
-committed performance fixture at exactly 200 and 500 nodes, and the
-stage-1 frame budget measured on it in headless Chrome. T001, T002 and
-T003 are then built.
+ROUND 7, THE CLOSURE SEQUENCE'S FIRST HALF: book round 6's PASS, write the
+Built State, consolidate the checklist, record the self-use track's answer,
+and run this feature's one full suite. T001, T002 and T003 are built.
 
 ## Next Steps
 
-1. The closure sequence (`docs/roadmap/STATUS_closure_protocol.md`): the
-   verdict booking, the ledger rotation, the one full-suite run, the
-   evidence package and review zip, the STATUS flip and the pull request.
+1. Any repair the full suite requires, under operator amendment
+   amend0917-throughput rule 2.
+2. The evidence job and the review package.
+3. The closing round: the ledger rotation, the STATUS line, the README
+   counters and the pull request.
 
 ## Risks
 
 The stream carries no run id and no outcome for test and repair runs, so
 those draw no node yet (DECISION F019 D1, operator note Q2). Prompt dots
-show only in the simple view (DECISION F019 D3, operator note Q3). The
-frame reading shows no dropped frame at 60 Hz, not the headroom beyond it
-(DECISION F019 D6). Open findings: 4, all owned by F284.
+show only in the simple view (DECISION F019 D3, operator note Q3). Open
+findings: 4, all owned by F284.
