@@ -288,6 +288,21 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         related=("job.show", "job.stop"),
         exit_codes=(0, 1, 2, 3),
     ),
+    CommandEntry(
+        command_id="chat.show",
+        group_id="chat",
+        subcommand="show",
+        description="List a job's steering messages and, for each, the build round of its task's "
+                    "run that took it in and what was understood, or that it is still waiting.",
+        action_class="read_only",
+        args=(
+            ArgDef("job_id", "The job whose tasks were steered (its ID, or a unique prefix of it)"),
+            _JSON_OPT,
+        ),
+        supports_json=True,
+        related=("chat.send", "job.show"),
+        exit_codes=(0, 1, 2, 3),
+    ),
 
     # ── status ──────────────────────────────────────────────────────────
     CommandEntry(

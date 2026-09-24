@@ -12,7 +12,9 @@ A message is CONSUMED at the run's next safe point (T002, DECISION F264 D4): the
 loop calls `consume_pending_steering` at the top of every round, before anything of that round
 is composed or sent, and folds every consumed message into the builder prompt. A sealed record
 never changes after it is written, so the round a message took effect in is its own sealed
-consumption marker rather than an edit to the record. The acknowledgement is T003.
+consumption marker rather than an edit to the record. The consumption event is also the
+ACKNOWLEDGEMENT (T003, DECISION F264 D6): it restates what was taken in and from which round,
+and `remedy chat show` and the cockpit both read it back from the run log.
 
 Remedy deliberately does not accept a message for a job that has ended: no run will ever
 read it, and a steering message the run silently ignores is worse than no channel at all
@@ -234,7 +236,7 @@ def consume_pending_steering(
                 continue
             if mission is _UNRESOLVED:
                 mission = _mission_of(job_id, root)
-            amendment_id = _amend_mission(mission, record["text"], root, now) if mission else ""
+            amendment = _amend_mission(mission, record["text"], root, now) if mission else None
             marker: dict[str, Any] = {
                 "schema": CONSUMPTION_SCHEMA,
                 "message_id": record["message_id"],
@@ -244,7 +246,8 @@ def consume_pending_steering(
                 "round_number": int(round_number),
                 "consumed_at": (now or datetime.now(timezone.utc)).isoformat(),
                 "mission_id": mission.id if mission else "",
-                "amendment_id": amendment_id,
+                "amendment_id": str(amendment["id"]) if amendment else "",
+                "understood": steering_understood(record["text"], task_id, round_number, amendment),
             }
             marker["record_sha256"] = _seal(marker)
             try:
@@ -272,9 +275,26 @@ def consume_pending_steering(
                 metadata={"message_id": marker["message_id"], "task_id": marker["task_id"],
                           "round_number": marker["round_number"],
                           "record_sha256": marker["message_sha256"],
-                          "amendment_id": marker["amendment_id"]},
+                          "amendment_id": marker["amendment_id"],
+                          "understood": marker["understood"]},
             )
     return records
+
+
+def steering_understood(text: str, task_id: str, round_number: int,
+                        amendment: dict[str, Any] | None) -> str:
+    """The acknowledgement's restatement: what was taken in, and from which round (T003).
+
+    It quotes the message verbatim and says where it now lives — the builder prompt from this
+    task round on and, for a mission's job, the contract criterion F269's amendment compiled
+    from it with the mission round it applies from (DECISION F264 D6). It is never a model's
+    paraphrase: a paraphrase is the one form an operator cannot check against their own words.
+    """
+    said = f"the builder follows “{text}” from round {round_number} of task {task_id} on"
+    if amendment:
+        said += (f"; the mission contract {amendment['understood']}, "
+                 f"from mission round {amendment['applies_from']}")
+    return said
 
 
 #: "Not looked up yet", as distinct from a job that belongs to no mission.
@@ -288,8 +308,9 @@ def _mission_of(job_id: str, root: Path | None) -> Any:
     return mission_for_job(str(job_id), root)
 
 
-def _amend_mission(mission: Any, text: str, root: Path | None, now: datetime | None) -> str:
-    """Amend ``mission``'s contract with one steering message and return the amendment's id.
+def _amend_mission(mission: Any, text: str, root: Path | None,
+                   now: datetime | None) -> dict[str, Any]:
+    """Amend ``mission``'s contract with one steering message and return the amendment entry.
 
     F269's `amend_mission_contract` adds one blocking criterion compiled from the message and
     an entry that applies from the mission's next loop round, where the loop acknowledges it
@@ -299,7 +320,7 @@ def _amend_mission(mission: Any, text: str, root: Path | None, now: datetime | N
     from packages.orchestration.mission_contract import amend_mission_contract
 
     contract = amend_mission_contract(mission.project_id, mission.id, text, root=root, now=now)
-    return str(contract.amendments[-1]["id"])
+    return dict(contract.amendments[-1])
 
 
 def list_steering_consumptions(job_id: str, root: Path | None = None) -> dict[str, dict[str, Any]]:
@@ -337,3 +358,60 @@ def render_steering_segment(records: list[dict[str, Any]]) -> str:
     for record in records:
         lines.append("- " + str(record["text"]).replace("\n", "\n  "))
     return "\n".join(lines) + "\n"
+
+
+# --- T003: the acknowledgement, read back (DECISION F264 D6) ----------------------------------
+
+#: A message the job has taken in; its acknowledgement names the task round and the restatement.
+STATUS_ACKNOWLEDGED = "acknowledged"
+#: A message recorded for a job that can still run, which no safe point has reached yet.
+STATUS_WAITING = "waiting"
+#: A message the job ended without taking in: no run will ever read it, and the listing says so.
+STATUS_NOT_TAKEN_IN = "not_taken_in"
+
+
+def steering_acknowledgements(job_id: str, root: Path | None = None) -> dict[str, dict[str, Any]]:
+    """The job's acknowledgements by message id, read from the RUN LOG.
+
+    These are the `steering_message_consumed` events the cockpit's stream carries, so
+    `remedy chat show` and the cockpit render one fact from one source and cannot disagree.
+    """
+    from packages.orchestration.data_paths import resolve_data_root
+    from packages.orchestration.timeline import load_run_events
+
+    acks: dict[str, dict[str, Any]] = {}
+    for event in load_run_events(root if root is not None else resolve_data_root(), job_id):
+        if event.get("event") != "steering_message_consumed":
+            continue
+        meta = event.get("metadata") or {}
+        message_id = meta.get("message_id")
+        if isinstance(message_id, str) and message_id not in acks:
+            # The run-log writer lifts `task_id` to the event's top level; read both places,
+            # as the stream's own summary does (DECISION F021 D2).
+            acks[message_id] = {
+                "task_id": str(event.get("task_id") or meta.get("task_id", "")),
+                "round_number": meta.get("round_number"),
+                "understood": str(meta.get("understood", "")),
+                "amendment_id": str(meta.get("amendment_id", "")),
+            }
+    return acks
+
+
+def steering_overview(job_id: str, job_state: str,
+                      root: Path | None = None) -> list[dict[str, Any]]:
+    """Every message of the job, oldest first, with its status and acknowledgement."""
+    from packages.orchestration.pingpong_job import job_is_terminal
+
+    acks = steering_acknowledgements(job_id, root)
+    ended = job_is_terminal(job_state)
+    rows = []
+    for record in list_steering_messages(job_id, root):
+        ack = acks.get(record["message_id"])
+        status = STATUS_ACKNOWLEDGED if ack else (STATUS_NOT_TAKEN_IN if ended else STATUS_WAITING)
+        rows.append({
+            "message_id": record["message_id"], "text": record["text"],
+            "channel": record["channel"], "received_at": record["received_at"],
+            "status": status, **(ack or {"task_id": "", "round_number": None,
+                                         "understood": "", "amendment_id": ""}),
+        })
+    return rows

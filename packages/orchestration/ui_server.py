@@ -1885,7 +1885,26 @@ def _safe_event_summary(seq: int, event: dict[str, Any]) -> dict[str, Any]:
     }
     if kind == BUDGET_TICK_EVENT:
         summary["budget"] = _budget_tick_summary_payload(metadata)
+    if kind == "steering_message_consumed":
+        summary["steering"] = _steering_ack_summary_payload(metadata)
     return summary
+
+
+def _steering_ack_summary_payload(metadata: Any) -> dict[str, Any]:
+    """A steering acknowledgement's fields for the stream (F264 T003, DECISION F264 D6).
+
+    CONDITIONAL on the event kind for the reason `budget` is: every other frame stays
+    byte-identical. It carries exactly what the acknowledgement must name — which message, the
+    round it took effect from, and the restatement — and nothing else from the metadata, so a
+    field added to the run-log event later does not reach the browser by accident.
+    """
+    meta = metadata if isinstance(metadata, dict) else {}
+    round_number = meta.get("round_number")
+    return {
+        "message_id": str(meta.get("message_id", "")),
+        "round_number": round_number if isinstance(round_number, int) else None,
+        "understood": str(meta.get("understood", "")),
+    }
 
 
 def sse_event_frame(seq: int, payload: dict[str, Any]) -> bytes:
