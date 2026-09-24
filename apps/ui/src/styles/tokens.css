@@ -41,6 +41,11 @@
      not a drift this file introduced. */
   --remedy-live: #34c27e;
   --remedy-dur-pulse: 1600ms;
+  /* Brain graph birth motion (graph_spec §12), transcribed byte-exact from
+     docs/ui/design_reference/tokens.css so brainMotion.ts's BRAIN_BIRTH_MS
+     and the renderer's spring-in both read a token that resolves. */
+  --remedy-dur-birth: 420ms;
+  --remedy-ease-soft: cubic-bezier(0.22, 1, 0.36, 1);
 
   --remedy-line: rgba(44, 82, 150, 0.14);
   --remedy-line-strong: rgba(44, 82, 150, 0.26);
