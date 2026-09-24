@@ -20449,3 +20449,41 @@ HOW TO REVERSE: restore `packages/orchestration/teacher_model.py`,
 `packages/orchestration/lessons.py`, `packages/orchestration/pingpong_job.py`,
 `packages/orchestration/config.py`, `docs/guides/environment.md` and the touched tests from
 `a36a8759`, and delete this paragraph.
+
+## DECISION F284 D2 — the smoke tests judge teardown by the harness's own sweep and read an open fallback port by the process that holds it, at all five teardown sites (2026-09-24)
+
+CONTEXT: R-0950 stays open for
+`tests/orchestration/test_product_smoke.py::test_no_zombie_processes_after_every_outcome` alone
+(DECISION F282 D9), a node red in whole-suite `-n auto` runs and green alone. The claiming
+session's research helper found that the node checks no process at all: it parses each run's
+port from the harness log and asserts nothing listens there. The preferred port is
+`worker_port(2)`, this worker's own, but `choose_port` in `packages/runtimes/dev_server.py`
+falls back to `pick_free_port`, a port from the machine's shared pool, whenever that one is busy,
+and nothing reserves the number once the app releases it, so another test's server may bind it
+before the probe runs. The helper reproduced that shape by forcing the fallback while other
+threads cycled binds over the same small port range. Four other nodes in the same file probe the
+parsed port the same way, so the defect is the file's, not the one node's.
+
+CHOSEN: one helper in the test file, `assert_the_app_left_nothing_behind`, used at all five
+teardown sites. It requires the harness's own line `the application family was stopped` and no
+`processes survived the cleanup`, which is the sweep `_stop_app` runs over the app's session. It
+requires this worker's own port to be closed, as before. An open FALLBACK port fails only when a
+process listening on it has its working directory inside the test's project, read with
+`psutil`, which is already a dependency. The reviewer's probe plugin measured the difference at
+this round's base and at this round's file: with every port a fallback that an unrelated
+listener binds after the stop, the base file read 5 failed and this round's 5 passed; with a
+stop that kills nothing and reports nothing, this round's file read 5 failed; with a sweep that
+reports a survivor, the base file read 3 failed and this round's 5 failed; and with the owner
+check removed, the lying stop is caught by 1 node of 5 instead of all five. The organic trigger,
+why the preferred port was busy in the recorded runs, was not observed; the repair does not
+depend on it, because every way a port can be open is now attributed to its holder.
+
+ALTERNATIVES: drawing fallback ports from a private band, the helper's proposal, rejected
+because every caller of the same function draws from that band too, so it narrows the pool
+without removing the collision; skipping the probe for a fallback port, rejected because a stop
+that lies would then be caught only while the app still held this worker's own port, 1 node of
+5 in the probe run; changing `choose_port` itself, rejected because the product's fallback is
+correct and the defect is the test's reading of it.
+
+HOW TO REVERSE: restore `tests/orchestration/test_product_smoke.py` and
+`docs/roadmap/features/T2_F284.md` from `60c658d2`, and delete this paragraph.
