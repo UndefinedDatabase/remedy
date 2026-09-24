@@ -13,16 +13,15 @@ over the whole kind-by-state matrix (`docs/roadmap/features/T5_F020.md`).
 
 ## Current Step
 
-ROUND 3, T002's second half: book round 2's PASS, record DECISION F020
-D3, and land the legend popover from the graph's chrome, generated from
-the glyph and state modules, the cluster's count, and the kind-by-state
-matrix fixture painted by the live painter.
+ROUND 4, T003's first half: book round 3's PASS, record DECISION F020 D4,
+and land the state crossfade and completion ripple, the pulse, the frame
+rule that stops drawing on a hidden page, the canvas wired to them, and
+the replay of the demo recording's state changes.
 
 ## Next Steps
 
-1. T003: transition and pulse motion with visibility pausing, the
-   conformance assertions over the matrix fixture's pixels, and the live
-   fixture pass on a streamed fake job.
+1. T003's second half: the conformance assertions over the matrix
+   fixture's pixels, with the headless harness that reads them.
 2. The closure sequence.
 
 ## Risks

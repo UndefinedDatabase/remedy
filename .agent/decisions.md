@@ -20653,3 +20653,49 @@ HOW TO REVERSE: delete `GraphLegend.tsx`, `GraphLegend.module.css`, `renderers/l
 restore `BrainGraphStage.tsx`, `BrainGraphStage.module.css`, `buildForceBrainModel.ts`,
 `renderers/paintNode.ts`, `renderers/palette.ts` and their tests from `1d954ef5`, and delete this
 paragraph.
+
+## DECISION F020 D4 — a state change crossfades for 300 ms and ripples into pass, the canvas draws frames only on a visible page, and T003 lands in two rounds (2026-09-25)
+
+CONTEXT: T5_F020.md orders T003, the transition and pulse motion with visibility pausing, the
+conformance assertions and a live fixture pass. Measured at `6f43c63a`: `graph_spec.md` §12 asks
+for "300ms white ring ripple r→r+14 fade; state color crossfade" on completion and an in-progress
+pulse of ±8% over `--remedy-dur-pulse`, and for reduced motion "no pulse ... ripple = none";
+`motion_spec.md` rules that "pulses pause when tab hidden (rAF naturally stops — do not
+setInterval)"; `ForceBrainGraph.tsx` redraws continuously only while a birth is in flight
+(`autoPauseRedraw={!birthsInFlight}`), and draws a particle on every active edge; the job core has
+its own painter, outside the state language; and F019's demo recording, which
+`tests/ui_server/test_brain_demo_recording_live.py` keeps equal to a live fake job's model, is the
+committed stream of a real job's state changes.
+
+CHOSEN: (1) THE MOTION MODULE is `renderers/stateMotion.ts`, pure like `brainMotion.ts`:
+`scheduleStateTransitions` records one crossfade of `STATE_TRANSITION_MS`, 300 ms, per node whose
+state differs between two layouts, in the next layout's order, with a completion ripple exactly
+when the new state is `pass`; nothing on a first paint, for a node just born, for the core, or under
+reduced motion, so there a change is simply drawn in its new state. `transitionFrameAt` gives the
+frame's weights, linear for the crossfade and eased out for the ripple, which travels 14 units while
+it fades. (2) THE PULSE is `pulseScaleAt` in the state module, the multiplier alone, and
+`nodeScaleAt` is now the size factor times it. (3) THE PAINTER gains `paintBrainNodeInMotion`: the
+node at its pulse, and while a change runs the old state fading out under the new one, then the
+ripple ring in the highlight token. (4) THE FRAME RULE is `brainNeedsAnimationFrames`: never on a
+hidden page, always while a birth or a change is in flight, and for a pulse only when motion is not
+reduced; `usePageVisible` follows `visibilitychange`, and `autoPauseRedraw` is its negation. (5)
+THE PARTICLES stop with the page too: the reviewer's headless-Chrome measurement of this round's
+authoring tree counted 61 canvas frames in one second with the page reported hidden and a run in
+progress, because a particle keeps force-graph drawing whatever `autoPauseRedraw` says; with the
+particle gated on visibility the same measurement read 62 frames visible, 0 hidden, 61 visible
+again, and 0 once the change had settled. (6) THE LIVE FIXTURE PASS replays the demo recording
+frame by frame through the reducer and the layout and checks, against a golden derived by hand
+from DECISION F019 D1's mapping, that every state change the recorded job made is scheduled once,
+with a ripple on each completion, and that none is under reduced motion. (7) THE SPLIT: the
+conformance assertions over the matrix fixture's pixels land in the next round, with the headless
+harness that reads them.
+
+ALTERNATIVES: a crossfade length from `--remedy-dur-base`, rejected because graph_spec §12 ties the
+crossfade to the 300 ms completion; a timer that stops the pulse when hidden, rejected because
+motion_spec forbids `setInterval` and the rule only has to stop asking for frames; animating the
+core's state, rejected because the core keeps its own painter and its breath is its own motion.
+
+HOW TO REVERSE: delete `renderers/stateMotion.ts`, its test, `usePageVisible.ts` and
+`tests/ui_contracts/test_brain_motion_wiring.py`, restore `ForceBrainGraph.tsx`,
+`renderers/nodeStates.ts`, `renderers/paintNode.ts`, their tests and
+`tests/ui_contracts/test_node_glyph_tokens.py` from `6f43c63a`, and delete this paragraph.
