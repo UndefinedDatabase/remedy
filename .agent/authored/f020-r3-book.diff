@@ -1,0 +1,58 @@
+diff --git a/.agent/decisions.md b/.agent/decisions.md
+index 62a657517..92a71205e 100644
+--- a/.agent/decisions.md
++++ b/.agent/decisions.md
+@@ -20613,3 +20613,43 @@ because the legend is a new surface with its own tests and the painter is enough
+ HOW TO REVERSE: delete `renderers/palette.ts`, `renderers/paintNode.ts` and their tests, restore
+ `ForceBrainGraph.tsx` and `tests/ui_contracts/test_node_glyph_tokens.py` from `06d185c6`, and delete
+ this paragraph.
++
++## DECISION F020 D3 — the legend renders rows enumerated from the glyph and state modules, a cluster carries its count, and the matrix fixture paints every kind in every state with the live painter (2026-09-25)
++
++CONTEXT: T002's second half, per DECISION F020 D2 (5): the legend, the cluster's count and the
++matrix fixture. Measured at `1d954ef5`: `clusterBrainModel` gives a cluster node `meta.count`, the
++number of runs it stands for, and `buildBrainLayout` gives every non-task node the label `""`;
++`graph_spec.md` §4 draws a cluster as "r 9 + count" and §10 names its chip "+n"; the graph's chrome
++is the filter chips at the bottom left and the view toggle at the bottom right; a DOM legend can
++paint through `var()`, which the canvas cannot; the vitest environment renders no `.tsx`; and the
++canvas `font` cannot read `var()` either, so a family must be resolved like a colour.
++
++CHOSEN: (1) THE ROW MODEL is `renderers/legendModel.ts`: `legendKindRows` and `legendStateRows`
++read `GLYPHS`, `NODE_STATE_TREATMENTS` and `STATE_MARK_PATHS` and carry their very strings and
++tokens; each takes its source as a parameter defaulting to the module, so a test proves that a kind
++or a state removed from its module leaves the legend. (2) THE LEGEND is `GraphLegend.tsx`, a
++"Legend" button beside the view toggle opening a dialog of two lists, kinds and states, in the
++modules' order: each kind's 24-unit glyph as SVG from its row's paths, and each state's swatch — a
++disc in its fill and line at its size factor carrying its marks — painted through `var()` of the
++row's tokens. It writes no name, no path and no colour of its own, closes on Escape, and is pinned
++from source by `tests/ui_contracts/test_graph_legend_contract.py`. (3) THE COUNT: a cluster's layout
++label is `+<count>`, and the painter writes it at the cluster's centre in the state's line colour,
++at three quarters of its radius, in the family `--remedy-font-ui` resolves to, which the palette
++bridge now resolves beside the colours; no other kind's label is painted by the node painter. (4)
++THE MATRIX FIXTURE is `renderers/glyphMatrix.ts`: every non-core kind as a row and every state as a
++column, in the modules' orders, each cell at the layout's own radius for its kind and a cluster
++carrying `+3`, painted at rest at the L1 zoom by the same `paintBrainNode` the canvas uses. The
++core is not a row, because it keeps its own painter. T003's conformance assertions read the pixels
++of this fixture.
++
++ALTERNATIVES: a legend hand-written in the component, rejected because it is the drift the feature
++exists to remove; drawing the legend on a second canvas, rejected because a DOM legend is readable
++by assistive technology and resolves tokens with no bridge; a cluster count from the node's id or a
++separate field, rejected because `meta.count` is the reducer's own figure and the label is how the
++layout already hands text to the painter.
++
++HOW TO REVERSE: delete `GraphLegend.tsx`, `GraphLegend.module.css`, `renderers/legendModel.ts`,
++`renderers/glyphMatrix.ts`, their tests and `tests/ui_contracts/test_graph_legend_contract.py`,
++restore `BrainGraphStage.tsx`, `BrainGraphStage.module.css`, `buildForceBrainModel.ts`,
++`renderers/paintNode.ts`, `renderers/palette.ts` and their tests from `1d954ef5`, and delete this
++paragraph.
+diff --git a/.agent/live_review.md b/.agent/live_review.md
+index 0ac3931d5..ebeba7f2e 100644
+--- a/.agent/live_review.md
++++ b/.agent/live_review.md
+@@ -457,3 +457,5 @@ Gate: F284 R3 — the F284 round 3 entry: the closure sequence's evidence half,
+ Gate: F284 R4 — the F284 round 4 entry, THE CLOSING ROUND: the booking of round 3, the ledger rotation, the registration of F285, the STATUS flip with its README pins, and the pull request. VERDICT PASS, NO DEVIATION DECLARED. Re-derived over `b6bdea3b`..`c9e50fac` by the planner and reviewer of F284's first session, whose own runs produced every reading below, posted as a comment on pull request 276, and booked by F020's claim. THE RANGE IS 5 COMMITS in the block's order C1 to C5, at `2283e9bd` 462, `92d04ac7` 40, `34d63133` 33, `e083c633` 52 and `c9e50fac` 260 insertions by `git show --numstat`, each under the 500-line cap, each single-parent and each carrying the ordered trailer, as F020's claim reviewer re-measured. THE TRANSPORT PROOF IS FILE IDENTITY: every file the round changed apart from the handback reads byte-equal to the reviewer's simulated tree or to its original payload. THE ROTATION moved 9 gate records and 3 finding pairs, the ledger going from 313847 to 286104 bytes and the archive from 4940878 to 4968621, and the open set by distinct id reads R-1008 alone before and after, owned by F285. THE CLOSURE: F284's STATUS line occurs once and no line reads `[~]`; README reads 99 of 285 accepted and Tier 2 at 37 of 38; the reviewer's run of the closing selection read `437 passed, 1 skipped` at exit 0 and `integrity check --json` read all six checks `pass` at `fail_count` 0. AFTER THE ROUND: hosted run `36059158820` on `c9e50fac` ended `success` on Python 3.10 and 3.12, and pull request 276 merged as `955a6240`.
+ 
+ Gate: F020 R1 — the F020 round 1 entry: the claim, the booking of F284's round 4, DECISION F020 D1, and T001. VERDICT PASS, NO DEVIATION DECLARED. Re-derived over `955a6240`..`06d185c6` by the planner and reviewer of F020's first session, whose own runs produced every reading below, and booked by round 2's first commit. THE RANGE IS 9 COMMITS in the block's order C1a to C5, at `572c8aec` 334, `b569b45a` 168, `06bc6041` 182, `7222cfb3` 337, `07247b31` 464, `e1a06947` 118, `d9f585b2` 345, `bef276a7` 464 and `06d185c6` 257 insertions by `git show --numstat`, each under the 500-line cap, each single-parent and each ending in the ordered trailer. THE TRANSPORT PROOF IS FILE IDENTITY: every one of the 24 paths the round changed apart from the handback reads byte-equal at `06d185c6` to the reviewer's simulated tree `.remedy-wt/f020-r1-sim`, the block copy to the reviewer's original, whose sha256 is `530439682c480004ac7e2062c24a75af42e229bb541b7199b0eee9f372179e19`. THE OPEN SET by distinct id reads R-1008 alone at `955a6240` and at `e1a06947`. THE TESTS: the reviewer's own run in the primary checkout at `06d185c6` of `tests/ui_contracts/test_node_glyph_tokens.py`, `test_ui_lint.py`, `test_raw_colour_ratchet.py`, `test_brain_motion_tokens.py`, `tests/ui_server/test_dashboard_contract.py`, `tests/orchestration/test_test_runner.py`, `tests/docs` and `tests/cli/test_golden_path.py` read `498 passed` at exit 0 with no skip, so eslint, `tsc --noEmit` and the UI's whole vitest suite ran; ruff over the guard read `All checks passed!`; and `integrity check --json` read `fail_count` 0. THE RED PROOFS: the round's mutation tool, run by the reviewer over its simulated tree and by the worker in a disposable worktree at `bef276a7`, read the same: all 16 mutations caught, 10 by vitest alone, 3 by the token guard alone and 3 by both, with unmutated controls of 31 vitest and 6 guard passes first and last and every file restored byte-identical. The worktree was removed and the primary checkout is clean.
++
++Gate: F020 R2 — the F020 round 2 entry: the booking of round 1, DECISION F020 D2, and T002's first half, the palette bridge, the node painter and the canvas wired to it. VERDICT PASS, NO DEVIATION DECLARED. Re-derived over `06d185c6`..`1d954ef5` by the planner and reviewer of F020's first session, whose own runs produced every reading below, and booked by round 3's first commit. THE RANGE IS 9 COMMITS in the block's order C1a to C5, at `0342dc16` 283, `20864b9e` 417, `3cbc555e` 181, `43ad8359` 177, `6264e9fe` 232, `fa259367` 53, `06308114` 240, `632034b1` 277 and `1d954ef5` 191 insertions by `git show --numstat`, each under the 500-line cap, each single-parent and each ending in the ordered trailer. THE TRANSPORT PROOF IS FILE IDENTITY: every one of the 21 paths the round changed apart from the handback reads byte-equal at `1d954ef5` to the reviewer's simulated tree `.remedy-wt/f020-r2-sim`, the block copy to the reviewer's original, whose sha256 is `68b3eb845088cc55bc536be1dcc3c2dfcb99c3e40db4a2e0dbd9739b1967e062`. THE OPEN SET by distinct id reads R-1008 alone at `fa259367`. THE TESTS: the reviewer's own run in the primary checkout at `1d954ef5` of `tests/ui_contracts/test_node_glyph_tokens.py`, `test_ui_lint.py`, `test_raw_colour_ratchet.py`, `test_brain_stage_mount.py`, `test_graph_architecture.py`, `tests/ui_server/test_dashboard_contract.py`, `tests/orchestration/test_test_runner.py` and `tests/cli/test_golden_path.py` read `267 passed, 2 skipped` at exit 0, both skips F252 quarantines, so eslint, `tsc --noEmit` and the UI's whole vitest suite ran; ruff over the guard read `All checks passed!`; and `integrity check --json` read `fail_count` 0. THE RED PROOFS: the round's mutation tool, run by the reviewer over its simulated tree and by the worker in a disposable worktree at `632034b1`, read the same: all 17 mutations caught, 12 by vitest alone and 5 by the token guard alone, with unmutated controls of 50 vitest and 8 guard passes first and last and every file restored byte-identical; the worktree was removed. THE RENDER: before emitting the block, the reviewer built its authoring tree, whose product files are byte-equal to `06308114`'s, in headless Chrome and painted every kind in every state and a live graph; the page threw no exception, `data-palette-missing` was absent and every palette token resolved, and that render is where the planned glyph's white ink was found and replaced before the block left the reviewer.
