@@ -1,0 +1,6 @@
+F264 R8 C5 — closure suite transcript
+
+Command: python3 -m pytest -n auto -q
+Summary line: 18852 passed, 20 skipped, 1 warning in 174.72s (0:02:54)
+Real exit code: 0
+Bad node ids (failed plus errors): NONE
