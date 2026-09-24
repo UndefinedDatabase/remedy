@@ -19676,3 +19676,58 @@ the catalog is keyed by kind alone and a frame from an older server without the 
 render honestly. HOW TO REVERSE: delete `steeringAck.ts` and its
 test, restore `feedRow.ts`, its test and the contract test from `e420be13`, and delete this
 paragraph.
+
+## DECISION F265 D1 — a lesson is a sealed record per Run beside that Run's diff, written only while `teacher.lessons` is on, inside a per-job teacher pot read from the ledger (2026-09-24)
+
+CONTEXT: T5_F265.md T001 orders a lesson per completed task, generated from the task's REAL diff
+under the `teacher` role's own harness, model and budget pot, stored as an artifact keyed on the
+Run and its Mission (DECISION amend0905-vocab D1), re-opened without spending tokens, and replaced
+by an honest empty state when the budget is spent. Measured at `0236e3c3`: a task's Run writes its
+tree-to-tree diff to `runs/<run_id>/result.diff` in the ping-pong loop's job-owned hand-off, and
+the job records that Run as `task.run_id`; `pingpong_job.run_job` logs `task_run_completed` right
+after `_commit_applied_task`; the teacher's only transport is Ollama behind the injectable `call`
+seam (DECISION F255 D8), and `teacher_spend.record_teacher_question` builds its ledger rows with a
+NULL `task_id` (DECISION F255 D7); DECISION F255 D3 made the teacher's "own budget pool" a
+reporting column only and left a cap to be ruled when one was needed; `budget_guard` has no
+per-role cap, and `study` met its own pot with a local `JobBudgets` evaluated by `evaluate_budget`
+(DECISION amend0911-feedback D2).
+
+CHOSEN: (1) THE RECORD is `runs/<run_id>/lesson.json`, schema `remedy.lesson.v1`, sealed with the
+sha256 of its sorted JSON and published create-once beside the diff it was built from. It names
+the Run, the job, the task, the Mission (empty for a job that has none), the diff's sha256 and
+length, the model, the ledger call id, a `status` and a `reason`. A stored lesson is returned as
+it is, so reading one again is a file read and never a call. (2) THE REAL DIFF: the generator
+reads that Run's `result.diff` and nothing else and sends it WHOLE; a Run with no diff stores
+`no_diff`, and one longer than 60,000 characters stores `diff_too_large`, each with no call,
+because a lesson from part of a diff would present part of the change as all of it. (3)
+GROUNDING: the reply is one JSON object holding a summary and constructs; a construct is taught
+only when its name appears on a line the diff ADDS, and every other name the reply gives is kept
+in the record's `ungrounded` list, so a lesson names only what the change uses. (4) THE POT: per
+job, `teacher.lesson_max_calls` (default 30) and `teacher.lesson_max_tokens` (default 300,000),
+evaluated with `evaluate_budget` over the ledger's `teacher` rows for that job before the call; a
+spent pot stores `budget_exhausted` naming the limit it hit, with no call. A call that reported no
+tokens still counts as a call, which is why the pot carries both limits. This is the cap F255 D3
+left to be ruled, and it binds lesson generation only: `teacher ask` stays as F255 D3 left it.
+(5) BILLING: every call made is billed through `record_teacher_question` as role `teacher` with
+call id `teacher:lesson:<run_id>`, so a Run is billed at most once even when two writers race. A
+job whose repository resolves to no registered project has no ledger, so it stores `no_ledger`
+with no call, because spend that cannot be recorded cannot be capped; a ledger that cannot be
+read stores the same status for the same reason. (6) THE SWITCH: `teacher.lessons`, off by
+default, because each lesson is one model call per task and a run makes no call the operator did
+not switch on — the rule `postmortem.llm_summary` already follows; operator question Q1 carries
+this ruling for the operator to overturn. The hook runs after the task is applied and saved and
+before the safe point, catches the failures it expects, and never changes the job's outcome.
+(7) THE MODEL: `teacher.model`, when set, reaches the lesson's transport as the role's override.
+
+ALTERNATIVES: keying the lesson on the job's evidence folder, rejected because amend0905-vocab D1
+keys artifacts on the Run and its Mission; storing it under the Mission, rejected because a job
+may carry no mission and the Run is the unit a lesson explains; lessons on by default, rejected
+because every task of every run would spend before the operator knew the feature existed;
+truncating an oversize diff, rejected for the reason in (2); a new cap axis in `budget_guard`,
+rejected as larger than one role's pot needs.
+
+HOW TO REVERSE: delete `packages/orchestration/lessons.py` and `tests/orchestration/test_lessons.py`,
+remove `_teach_task_lesson` and its one call from `packages/orchestration/pingpong_job.py`, remove
+the three `teacher.lesson*` keys from `packages/orchestration/config.py` and regenerate
+`docs/guides/environment.md`, drop the module's line from
+`tests/orchestration/import_reachability_allowlist.txt`, and delete this paragraph.

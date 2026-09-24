@@ -1,33 +1,35 @@
-# Live Review — F264 Steering channel (remedy chat)
+# Live Review — F265 Teacher learning UI v1 (post-task lessons)
 
-> Round-by-round review record, re-headed at the F264 claim per
-> docs/agents/planner_reviewer_prompt.md §1. The heading this replaces named F282, whose STATUS
-> line went `[x]` at `9432afeb` and whose pull request 270 merged into `main` at the reviewer's
-> Open PR Gate under docs/agents/self_drive_protocol.md, as `ef4cb503`, after both hosted CI jobs
-> of run 35942106604 ended `success`. F282's round 13 — its closure round — has no gate entry,
+> Round-by-round review record, re-headed at the F265 claim per
+> docs/agents/planner_reviewer_prompt.md §1. The heading this replaces named F264, whose STATUS
+> line went `[x]` at `32aab561` and whose pull request 271 merged into `main` at the reviewer's
+> Open PR Gate under docs/agents/self_drive_protocol.md, as `0236e3c3`, after both hosted CI jobs
+> of run 35956557182 ended `success`. F264's round 10 — its closure round — has no gate entry,
 > by construction (§4 item 13 of docs/agents/planner_reviewer_prompt.md); the planner and
-> reviewer of F264's first session read it at this claim, over `f6fd80de`..`9432afeb`: VERDICT
-> PASS. Its five commits carry 414, 12, 214, 58 and 201 insertions by `git show --numstat`, the
-> last of them 12 outside `.agent/handoff.md`, each under the 500-line cap; the round's block and
-> its four payloads read out of `9432afeb` equal the reviewer's originals under `.remedy-wt/`
-> byte for byte; `docs/roadmap/STATUS.md` and `README.md` at `9432afeb`, and the ledger, its
-> archive, `docs/roadmap/features/T2_F284.md` and `tests/docs/test_docs_consistency.py` at the
-> commits that wrote them, carry exactly the sha256 that round's block ordered; and `9432afeb`
-> is the second parent of `ef4cb503`. Only the heading, this paragraph and the `## Steps`
-> section below are rewritten. Everything from the `## Findings` line to the end of the file is
-> carried forward BYTE-IDENTICAL, and finding ids continue the monotonic R-XXXX series across
-> the re-head. The open set at `ef4cb503`, computed with `open_finding_ids` from
+> reviewer of F265's first session read it at this claim, over `0eb5b2d6`..`32aab561`: VERDICT
+> PASS. Its four commits carry 373, 8, 24 and 140 insertions by `git show --numstat`, the last of
+> them 13 outside `.agent/handoff.md`, each under the 500-line cap; the round's block and its five
+> payloads read out of `32aab561` equal the reviewer's originals under `.remedy-wt/` byte for
+> byte; `.agent/live_review.md` at `b0adb863` and at `8bc1ebb0`, its archive at `8bc1ebb0`, and
+> `docs/roadmap/STATUS.md` and `README.md` at `32aab561` carry exactly the sha256 that round's
+> block ordered; and `32aab561` is the second parent of `0236e3c3`. Only the heading, this
+> paragraph and the `## Steps` section below are rewritten, and one finding is appended at the
+> end. Everything from the `## Findings` line to the end of the file as it stood at `0236e3c3` is
+> carried forward BYTE-IDENTICAL, and finding ids continue the monotonic R-XXXX series across the
+> re-head. The open set at `0236e3c3`, computed with `open_finding_ids` from
 > `scripts/rotate_live_review.py`, is 3 by distinct id — R-0499, R-0950 and R-1008 — and F284
-> owns all of them; F264 owns whatever it registers itself.
+> owns all of them; this claim registers R-1046, which F284 owns as well, and F265 owns whatever
+> it registers for its own scope.
 
 ## Steps
 
-THE ORDER BELOW IS T5_F264.md's Orchestrator brief. R1 claims F264, re-heads this record and
-lands T001's first half: the sealed steering record, certified into the run log, and
-`remedy chat`, its first caller, with DECISION F264 D1 fixing the record's shape. T001's second
-half, the cockpit's route over F009's write channel, comes next; T002, consumption at the
-run's safe point with a red proof that a mid-call message waits, and T003, the acknowledgement
-in the cockpit and in `remedy chat`, follow. Every round's handback states the open set by
+THE ORDER BELOW IS T5_F265.md's Orchestrator brief. R1 claims F265, re-heads this record and
+lands T001's substance: `packages/orchestration/lessons.py`, one sealed lesson per completed Run
+built from that Run's own `result.diff`, billed as role `teacher` inside the teacher's own budget
+pot per job, and the hook that writes one after every applied task while `teacher.lessons` is
+on, with DECISION F265 D1 fixing the record's shape. The lesson's reach — the job's event stream,
+a read-only route and `remedy do`'s mission path — comes next; T002, the overlay over stored
+lessons, and T003, the Commands mode, follow. Every round's handback states the open set by
 distinct id.
 ## Findings
 
@@ -441,3 +443,6 @@ Gate: F264 R7 — the F264 round 7 entry: the booking of round 6, DECISION F264 
 Gate: F264 R8 — the F264 round 8 entry: the booking of round 7 and the closure sequence's first half, the operator guide `docs/guides/steering-user-guide-v1.md` indexed in `docs/README.md`, the corrected sentence of `docs/system/operator-cockpit-v1.md`, the Built State of `docs/roadmap/features/T5_F264.md`, the checklist consolidation that joins nothing and keeps §3 at 34 items, the self-use track's answer NONE, and the feature's one full suite. VERDICT PASS ON ALL SIX GATES, NO DEVIATION DECLARED. Re-derived over `d9bea4ba`..`bb7fbb81` by the planner and reviewer of F264's second session, whose own runs produced every reading below. THE RANGE IS 5 COMMITS in the block's order C1, C2, C3, C4 and C5, at `797bc60f` 475, `30851fab` 10, `d9f6d8cd` 161, `167a3555` 6 and `bb7fbb81` 124 insertions by `git show --numstat`, each under the 500-line cap and each carrying the ordered trailer, and the path list of the range is exactly the block's constraint 3. THE TRANSPORT PROOF IS DISK TO DISK: the block and every `.agent/authored/f264-r8-*` blob read out of `bb7fbb81` equal the reviewer's originals under `.remedy-wt/` byte for byte. THE RECORDS, THE GUIDE AND THE BUILT STATE: the eight files the round writes through its payloads, read out of `167a3555`, equal byte for byte the tree the reviewer's simulation built by applying the same payloads at `d9bea4ba`; the open set reads 3 at both ends, R-0499, R-0950 and R-1008, none leaving and none arriving; and `live_checklist_items` reads the same 34 numbers at `d9bea4ba` and at `d9f6d8cd`. THE TESTS were re-run by the reviewer in the primary checkout at `bb7fbb81`: the block's G4 selection read `504 passed, 1 skipped` at exit 0, and `integrity check --json` read all six checks `pass` at `fail_count` 0; before emission the reviewer red-controlled `tests/cli/test_advertised_commands.py` over the guide, a subcommand that does not exist and a flag the command does not declare each reading `1 failed, 13 passed`. No production code changed, so no mutation proof is owed. THE ONE FULL SUITE, run by the worker in the primary checkout at `167a3555` after a fresh UI build, reads `18852 passed, 20 skipped, 1 warning` at exit 0 with no bad node id, as `.agent/authored/f264-closure-suite.txt` records and the worker's log beside it shows; neither `tests/orchestration/test_import_reachability.py` nor `tests/test_no_orphan_modules.py` holds a bad node (closure precondition 7).
 
 Gate: F264 R9 — the F264 round 9 entry: the booking of round 8 and the closure sequence's evidence half, the evidence bundle built against the fork point and the fresh review package. VERDICT PASS ON ALL SIX GATES, NO DEVIATION DECLARED. Re-derived over `bb7fbb81`..`0eb5b2d6` by the planner and reviewer of F264's second session, whose own runs produced every reading below. THE RANGE IS 3 COMMITS in the block's order C1, C2 and C3, at `cc5fc57a` 353, `2c917125` 7 and `0eb5b2d6` 117 insertions by `git show --numstat`, each under the 500-line cap and each carrying the ordered trailer, and the path list of the range is exactly the block's constraint 3. THE TRANSPORT PROOF IS DISK TO DISK: the block and every `.agent/authored/f264-r9-*` blob read out of `0eb5b2d6` equal the reviewer's originals under `.remedy-wt/` byte for byte. THE BOOKING: `.agent/live_review.md` and `.agent/plan.md` read out of `2c917125` equal the reviewer's simulation byte for byte, and the open set reads 3 at both ends, R-0499, R-0950 and R-1008. THE ACCEPTED COMMIT, the head the STATUS line will record, is `2c91712595e069f7f0c7781008d14f07693b8dd9`. THE BUNDLE, evidence job `f264r9e1001` under `.remedy-wt/f264-r9-evidence/`, was built against the fork point `ef4cb503fb785dbf8905f560201c3071de2ac10d` with ancestry and plain counts equal at 55; its one verification run `vr-1045` selected 885 node ids from `--collect-only` over 18 test files, none unsafe, and read 885 passed, 0 failed and 0 skipped at exit 0, with an empty `validate_verification_tests` problem list and `is_valid_current_run` True; `tests/ui_server/test_command_channel.py` was left out of the bundle because one of its parameter ids carries path-shaped text the package scan refuses, and the closure suite carries it. THE PACKAGE is `remedy-review-20260924-062629-READY_FOR_REVIEW.zip` in `/home/decodeux/Repos/remedy-history/zips`, whose SHA-256 the reviewer re-measured from the archived file as `7d07e5a59233f424dfe9cc60f9afbf7a1e1eb76d20906d111f8e1a619b43d47c`; `testzip` answers None, and the `.review_zip_manifest.json` the reviewer read out of it names `package_status` READY_FOR_REVIEW, the fork point as base and `2c91712595e069f7f0c7781008d14f07693b8dd9` as head over 55 commits. `integrity check --json` read all six checks `pass` at `fail_count` 0 after the build, with the tree clean.
+
+- R-1046 — Low, `teacher.model` DOES NOT REACH `remedy teacher ask`: THE KEY IS DECLARED AND DOCUMENTED, AND NOTHING ON THE QUESTION PATH READS IT. Raised by the planner and reviewer of F265's first session at the round 1 authoring read, after searching this record, its archive and `.agent/decisions.md` for `teacher.model` under §3 item 30: no finding names the defect. Measured at `0236e3c3`: `ask_teacher` in `packages/orchestration/teacher_model.py` resolves its transport with `resolve_teacher_transport()` and `resolve_role_config(TEACHER_ROLE)`, both called with no `config_file`, and `resolve_role_config` reads no configuration of its own, so a `teacher.model` set in `remedy.toml` or as `REMEDY_TEACHER_MODEL` changes nothing `teacher ask` sends. `tests/orchestration/test_teacher_model.py` pins resolution only for a `config_file` the test builds by hand, which is why nothing is red. DECISION F255 D8's CONSEQUENCE reads "`teacher.model` becomes load-bearing for the first time", and the key's own description in `packages/orchestration/config.py` still says nothing reads it until the Stage 2 question path exists, which it has since F255's T004. F265 reads the key for lessons through `lessons.lesson_role_overrides` (DECISION F265 D1) and does not touch `teacher ask`, which its feature file lists under Do not touch. The repair is the pattern `self_use_runner` uses for its own role at the one call site: read `teacher.model` and pass it as the role's override, with a test that sets the environment variable rather than a hand-built `config_file`, and the key's description corrected in the same commit so `docs/guides/environment.md` regenerates. OPEN.
+Owner: F284 — Findings paydown v3 (the default owner under amend0911-feedback rule A, assigned at F265's claim, 2026-09-24).
