@@ -13,21 +13,18 @@ the snapshot path without ghosts (`docs/roadmap/features/T5_F019.md`).
 
 ## Current Step
 
-ROUND 3: book round 2's PASS, record DECISION F019 D3 and operator note
-Q3, and mount the live renderer: the stage paints the reducer's model,
-seeded from the dashboard, with the rewritten `ForceBrainGraph.tsx`, and
-keeps `BrainGraphCanvas.tsx` as the simple view. T001 and T002's pure half
-are built.
+ROUND 4: book round 3's PASS, record DECISION F019 D4, and finish T002:
+remove the old decorative dashboard builder with its source pins, and
+commit the demo recording, a captured fake-provider job, with its
+hand-derived golden. T001 and T002 are then built.
 
 ## Next Steps
 
-1. The rest of T002: replace the old decorative dashboard builder and its
-   source pins, and commit the demo recording with its rendered golden
-   (DECISION F019 D3 (7)).
-2. T003: the live wiring from the stream hook through the reducer to the
+1. T003: the live wiring from the stream hook through the reducer to the
    renderer, gap and snapshot recovery by paging `events-since`, the
-   performance fixture and the end-to-end run on a live fake job.
-3. The closure sequence.
+   performance fixture and the end-to-end run on a live fake job compared
+   against the demo recording.
+2. The closure sequence.
 
 ## Risks
 

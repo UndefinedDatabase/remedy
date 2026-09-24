@@ -20273,3 +20273,48 @@ HOW TO REVERSE: restore `BrainGraphStage.tsx`, `BrainGraphStage.module.css`, `Fo
 `buildForceBrainModel.ts` and `apps/ui/src/types/react-force-graph-2d.d.ts` from `fd976586`, delete
 `brainView.ts`, `brainView.test.ts` and `tests/ui_contracts/test_brain_stage_mount.py`, and delete
 this paragraph and operator note Q3.
+
+## DECISION F019 D4 — the decorative dashboard builder and its six source kinds are removed with their pins, and the demo recording is a captured fake-provider job replayed through the reducer's own path (2026-09-24)
+
+CONTEXT: DECISION F019 D3 (7) gives this round the removal of the old decorative
+`buildForceBrainModel()` and the demo recording DECISION F019 D1 (10) names. Measured at
+`4b513511`: nothing in `apps/ui/src` outside the file itself and its own test calls
+`buildForceBrainModel(`, and the types `BrainNodeKind`, `BrainNodeState`, `BrainSourceKind`,
+`ForceBrainNode`, `ForceBrainLink` and `ForceBrainGraphData` in `forceBrainTypes.ts` are used by that
+builder alone; `tests/ui_server/test_dashboard_contract.py` class `TestRealGraphSourceKindContract`
+pins the source-kind strings in both files, and `test_force_brain_model` in
+`tests/ui_contracts/test_graph_architecture.py` pins `ForceBrainNode` in the builder's file.
+graph_spec §8 keeps the `layout_only` pattern for decorative dots, and no decorative dot is drawn
+any more: the layout holds only the model's nodes, which the vitest "no decor, no invented node"
+test in `buildForceBrainModel.test.ts` pins. A job planned with `python3 -m apps.cli.main do
+"<order>" --no-llm --plan-only --json` and run with `python3 -m apps.cli.main job run <job id>
+--builder-provider fake --reviewer-provider fake --json` runs two tasks through real builder,
+review and repair rounds with no network and no model within seconds, and its
+`events-since` cursor serves eight frames, every one carrying its task and six carrying an outcome.
+
+CHOSEN: (1) THE BUILDER: `buildForceBrainModel()`, its helpers and the six types go; the file keeps
+its name, `seededRng` and `buildBrainLayout`, and stays the single data-to-graph builder. (2) THE
+PINS: `TestRealGraphSourceKindContract` becomes `TestRealGraphTruthContract`, which pins
+`interface BrainLayoutNode` with no `sourceKind` in the types file, neither `sourceKind` nor
+`layout_only` in the builder's file, and keeps the `Math.random` pin as it was;
+`test_force_brain_model` pins `export function buildBrainLayout(` in place of `ForceBrainNode`. The
+`layout_only` pattern returns with the first decorative dot a later feature draws. (3) THE
+RECORDING is `apps/ui/src/components/graph/brainDemoRecording.ts`: the job id, the dashboard's task
+list as it stood after planning and before the run, and every frame `events-since` served after it,
+field values verbatim, with `brainDemoRows()` passing the frames through `feedRowOf`. (4) ITS
+GOLDEN is a hand-derived literal model in `brainDemoRecording.test.ts`, reached both by the snapshot
+path, `rebuildBrainModel`, and by folding the rows one at a time, unchanged by a second delivery, and
+laid out node for node by `buildBrainLayout`; T003's end-to-end compares a live fake job's model
+against it.
+
+ALTERNATIVES: keeping the decorative builder beside the new one until the lifecycle feature, rejected
+because D3 (7) orders it gone and a builder nothing mounts is code no test can hold to the screen;
+keeping the six source-kind pins by leaving the type declarations in place, rejected because a pin on
+a type no code uses guards nothing; a hand-written recording, rejected because D1 (10) asks for a
+captured one and a hand-written stream can only repeat what its author already believed about the
+server.
+
+HOW TO REVERSE: restore `buildForceBrainModel.ts`, `forceBrainTypes.ts`,
+`buildForceBrainModel.test.ts`, `tests/ui_server/test_dashboard_contract.py` and
+`tests/ui_contracts/test_graph_architecture.py` from `4b513511`, delete `brainDemoRecording.ts` and
+its test, and delete this paragraph.
