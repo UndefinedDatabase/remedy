@@ -20218,3 +20218,58 @@ screenshots stay stable per job.
 HOW TO REVERSE: remove `buildBrainLayout` and its constants from `buildForceBrainModel.ts`, the
 three layout shapes from `forceBrainTypes.ts`, `brainMotion.ts` and its test, the two tokens,
 `tests/ui_contracts/test_brain_motion_tokens.py`, the `buildBrainLayout` tests, and this paragraph.
+
+## DECISION F019 D3 — the stage paints the reducer's model on the force renderer by default, and the SVG picture stays as the simple view, which keeps the prompt dots (2026-09-24)
+
+CONTEXT: DECISION F019 D2 (1) gives round 3 the painted half of T002. Measured at `fd976586`:
+`BrainGraphStage.tsx` mounts `BrainGraphCanvas.tsx`, an SVG picture that draws the dashboard's
+tasks and, beside each task, one dot per captured prompt from `dashboard.promptTrace`, whose click
+`RemedyShell.tsx` resolves to the owning task's popover with that prompt highlighted; the same file
+carries keyboard focus, a hover tooltip and the empty and filter-empty texts, and source guards in
+`tests/ui_contracts/test_design_drift.py` and `tests/ui_server/test_dashboard_contract.py` pin
+those strings in it. `docs/ui/design_reference/component_spec.md` and
+`graph_tech_recommendation.md` keep `BrainGraphCanvas.tsx` as the simple fallback beside the force
+renderer, and graph_spec §14 makes the canvas hidden from assistive technology, with the task
+checklist and the popover as the accessible surface. The ontology has no prompt kind: `synapse` is
+named for the lifecycle feature (DECISION F019 D1 (3)). The shell's selection id is a bare task id
+when the SVG picture sets it and a dashboard `nodeId` when jump-to sets it. A dashboard task's
+`state` is one of `done`, `current`, `pending`, `blocked` and `suggested`, and
+`SEED_STATUS_STATE_TABLE` has rows for `pending` and `blocked` only. `ForceBrainGraph.tsx`, mounted
+nowhere, replaced d3's charge and link forces with plain objects that d3 cannot call.
+
+CHOSEN: (1) THE STAGE builds `buildBrainLayout(seedBrainModel(jobId, dashboardBrainSeeds(tasks)))`,
+narrows it by the filter chips, and mounts the rewritten `ForceBrainGraph.tsx` on it; it mounts
+`BrainGraphCanvas.tsx`, unchanged, whenever no task is visible, since that file owns the empty
+texts, and whenever the operator presses the new "Simple view" button, which reads "Live view"
+while the simple view shows. (2) THE PROMPT DOTS are drawn in the simple view only, until the
+lifecycle feature draws them as `synapse` nodes; operator note Q3 says so in plain words. (3)
+SELECTION: a click on a task, or on a run or a cluster under it, selects that task's dashboard
+`nodeId`, which is the key `RemedyShell.tsx` finds the popover's node by, and falls back to the
+bare task id only for a task the dashboard does not list; the core selects nothing; and the
+highlight resolves the shell's id against each task's id or `nodeId` (`selectedBrainNodeId`). (4) THE SEED WORDS: the new
+`apps/ui/src/components/graph/brainView.ts` maps `done` to `completed`, `current` to `running`, and
+`pending`, `blocked` and `suggested` to themselves, so `suggested` falls back to `planned` with the
+raw word kept, which is D1's own table rule; a task's rank is its list index and its title its
+label. (5) THE FILTER keeps the core always, under "Needs work" the tasks `in_progress`, `blocked`
+or `fail`, under "Planned" the `planned` tasks and under "Done" the `pass` tasks, and a run or a
+link follows its task. (6) THE RENDERER paints through `NODE_PAINTERS`, one slot per node kind for
+the lifecycle feature to fill; records each birth `scheduleBrainBirths` returns in a layout effect
+and paints it as a scale-in, or as a fade under reduced motion, keeping the canvas repainting while
+births run; shows one particle on each active link and none under reduced motion; configures d3's
+own charge and link forces at −60 and −12, 150 and 34; keeps a surviving node's simulated position
+across a new layout (`carryBrainPositions`); and hides its container from assistive technology. (7)
+THE NEXT ROUND, which takes both under operator amendment amend0917-throughput rule 3, replaces the
+old decorative `buildForceBrainModel()` with its types and source pins, and commits the demo
+recording.
+
+ALTERNATIVES: deleting `BrainGraphCanvas.tsx`, rejected because the design reference keeps it as the
+fallback and it is the only view whose nodes take keyboard focus; drawing the prompt dots on the
+live canvas as a layer beside the model, rejected because graph_spec §8 draws only what the model
+holds and the lifecycle feature owns `synapse`; new rows in `SEED_STATUS_STATE_TABLE` for the
+dashboard's words, rejected because that table is the reducer's contract with its goldens while the
+dashboard's words are an edge the adapter can own.
+
+HOW TO REVERSE: restore `BrainGraphStage.tsx`, `BrainGraphStage.module.css`, `ForceBrainGraph.tsx`,
+`buildForceBrainModel.ts` and `apps/ui/src/types/react-force-graph-2d.d.ts` from `fd976586`, delete
+`brainView.ts`, `brainView.test.ts` and `tests/ui_contracts/test_brain_stage_mount.py`, and delete
+this paragraph and operator note Q3.

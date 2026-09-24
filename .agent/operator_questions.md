@@ -56,3 +56,28 @@ which the graph can draw those nodes with a small change.
 **What happens if you say nothing.** The recommendation is already executed and stands until you
 say otherwise. The graph grows from the messages that exist today, and the test and repair nodes
 stay out until the messages carry what they need.
+
+### Q3 — Prompt dots move to simple view (2026-09-24, F019, round 3)
+
+**What needs deciding.** The job graph in the browser now has two pictures. The new live picture
+is the default: it draws the job in the middle, its tasks around it and a small node for each
+attempt, review and check, and it is the picture that will grow on its own while a job runs. The
+older, simpler picture is one click away behind a new button named "Simple view". Only the simple
+picture shows the small dots beside each task that stand for the prompts Remedy sent to the model,
+the ones you can click to read a prompt. I have not put those prompt dots into the live picture.
+You can tell me to add them there now.
+
+**Why it matters.** The live picture only draws things its data model knows about, and that model
+has no kind of node for a prompt yet. A later feature, the one that gives every kind of node its
+own look, is planned to add prompts as their own nodes. Until then, a person who wants the prompt
+dots has to press "Simple view". Reading a prompt from a task's detail card works in both pictures,
+and so do the task list and the keyboard, because the simple picture is also the one whose nodes
+can be reached with the keyboard.
+
+**My recommendation.** Keep the prompt dots in the simple picture for now. Adding them to the live
+picture today would draw nodes the data model does not hold, which the design rules for the graph
+forbid, and the later feature adds them properly.
+
+**What happens if you say nothing.** The recommendation is already executed and stands until you
+say otherwise. The live picture is the default and the prompt dots stay one click away in the
+simple picture.
