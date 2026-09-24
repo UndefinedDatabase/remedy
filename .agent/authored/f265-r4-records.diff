@@ -1,0 +1,55 @@
+diff --git a/.agent/decisions.md b/.agent/decisions.md
+index 92af2dd8..9d40f0e8 100644
+--- a/.agent/decisions.md
++++ b/.agent/decisions.md
+@@ -19816,3 +19816,40 @@ HOW TO REVERSE: delete `apps/ui/src/api/lessons.ts`, its test, the `components/l
+ folder and the contract test; remove the lessons door from `remedyApi.ts`, the overlay's state and
+ mount from `RemedyShell.tsx` and the button and its prop from `RightLivePanel.tsx`; delete the two
+ F265 rows of `docs/ui/design_reference/assumption_log.md`; and delete this paragraph.
++
++## DECISION F265 D4 — the Commands mode names the commands whose handler module or catalog line a task's diff changed, with the catalog's shipped description, computed from the stored diff whenever the index is read (2026-09-24)
++
++CONTEXT: T5_F265.md T003 orders a second mode that explains the CLI commands the task
++implemented or touched, and its Design says the mode reads the command catalog "so it explains
++the SHIPPED description, never a remembered one". Measured at `b8ecbb3b`: every command's
++handler lives in a module under `apps/cli/commands/` whose `COMMAND_HANDLERS` table
++`collect_all_handlers` merges, so a handler's `__module__` names the file that implements it;
++each command's description and spelling live once in `apps/cli/command_catalog.py`, one
++`command_id="..."` line per entry; a Run's diff is stored at `runs/<run_id>/result.diff` and
++never changes (DECISION F265 D1); and `packages/orchestration/integrity_gate.py` already imports
++`collect_all_handlers` lazily from the orchestration layer.
++
++CHOSEN: (1) A command is TOUCHED when the Run's diff changes the module whose handler serves it,
++or changes a line of the command catalog that names its id; a `command_id=` line in any other
++file, a test for instance, does not count. (2) Each touched command is shown as its invocation,
++`remedy <group> <subcommand>`, and its description read from the catalog as installed, sorted
++by id; an id the catalog no longer holds is left out rather than invented. (3) The list is
++computed by `lessons.lesson_commands` from the stored diff each time the lessons route is
++read, so it follows the shipped catalog, costs no model call and is carried on every row of the
++index, a task that has not run carrying none. It is never written into the sealed lesson, which
++keeps D1's record unchanged. (4) The overlay's header carries a Lesson and Commands switch, each
++button saying whether it is the one shown; Commands shows the chosen task's list, or one line
++saying its change touched no CLI command. (5) The contract test holds the keys the decoder reads
++for a command to the ones the server writes, and the switch to its pressed state.
++
++ALTERNATIVES: storing the commands in the lesson record, rejected because a stored description is
++exactly the remembered one the Design forbids; asking the teacher to explain the commands,
++rejected because it spends a model call on text the catalog already holds; matching command
++names in the diff's text, rejected because a mention is not a change and a rename would be
++missed.
++
++HOW TO REVERSE: remove `lesson_commands`, `diff_paths`, `CATALOG_PATH` and the row's `commands`
++field from `lessons.py`, the command reader, `LessonMode`, `lessonCommandsLine` and the row's
++`commands` from `apps/ui/src/api/lessons.ts`, the switch and `CommandsText` from
++`LessonsOverlay.tsx` with their styles, the round's tests and contract pins, and delete this
++paragraph.
+diff --git a/.agent/live_review.md b/.agent/live_review.md
+index 786fd348..7ba9e0fc 100644
+--- a/.agent/live_review.md
++++ b/.agent/live_review.md
+@@ -450,3 +450,5 @@ Owner: F284 — Findings paydown v3 (the default owner under amend0911-feedback
+ Gate: F265 R1 — the F265 round 1 entry: the claim, finding R-1046, DECISION F265 D1, operator question Q1, and T001's substance, the sealed lesson per Run and its hook. VERDICT PASS ON ALL SIX GATES; THE ONE DEVIATION DECLARED IS A SKIP COUNT THE BLOCK ANTICIPATED. Re-derived over `0236e3c3`..`e7d1e080` by the planner and reviewer of F265's first session, whose own runs produced every reading below. THE RANGE IS 8 COMMITS in the block's order C1a, C1b, C1c, C1d, C2, C3, C4 and C5, at `46c2e1da` 332, `85aa4a30` 399, `f4054c12` 360, `8b27700c` 391, `2a2aa42f` 154, `79c8be1d` 428, `79713a5e` 391 and `e7d1e080` 174 insertions by `git show --numstat`, each under the 500-line cap, each single-parent and each carrying the ordered trailer; the handback commit `e7d1e080` rewrote `.agent/handoff.md` alone at 174 insertions and 127 deletions. THE TRANSPORT PROOF IS TREE IDENTITY: the reviewer rebuilt C1a to C4 from its originals under `.remedy-wt/` in a fresh worktree at `0236e3c3`, and each of the seven worker commits has the same tree id as the reviewer's commit in the same position, so every committed byte, the block copy and its payloads included, equals what the reviewer authored and ran. THE CLAIM: at `2a2aa42f` F265's STATUS line reads `[~]`, and the open set by distinct id reads 3 at `0236e3c3` — R-0499, R-0950 and R-1008 — and 4 at `2a2aa42f`, the difference being R-1046 alone. THE TESTS: the round's selection, run by the reviewer in the primary checkout at `e7d1e080`, reads `994 passed, 1 skipped` at exit 0, ruff reads exit 0, and `integrity check --json` reads all six checks `pass` at `fail_count` 0; the reviewer's sim worktree read `992 passed, 3 skipped` over the same selection, the two further passes being the UI toolchain's, which a worktree lacks. THE RED PROOFS, run by the reviewer over a tree whose id equals the worker's C4: the unmutated control reads 29 passed at exit 0 before and after, and all twelve mutations of `packages/orchestration/lessons.py` and of the hook in `packages/orchestration/pingpong_job.py` go red at exit 1, among them the hook's one call deleted from `run_job`, which only the end-to-end job test sees; the worker's own run of the same script read the same twelve counts. `git worktree list` at the verdict shows the primary checkout, the four `.remedy-wt/job-*` worktrees and the reviewer's round 2 dry tree, and the primary checkout is clean.
+ 
+ Gate: F265 R2 — the F265 round 2 entry: the booking of round 1, DECISION F265 D2, and T001's reach, the stored lesson announced on the stream and served by the job's lessons route. VERDICT PASS ON ALL SIX GATES; THE ONE DEVIATION DECLARED IS A SKIP COUNT THE BLOCK ANTICIPATED. Re-derived over `e7d1e080`..`b09b36f4` by the planner and reviewer of F265's first session, whose own runs produced every reading below. THE RANGE IS 6 COMMITS in the block's order C1a, C1b, C2, C3, C4 and C5, at `20abe952` 316, `43008e15` 462, `a7b6a85d` 56, `ff7dc6be` 86, `5955f84e` 173 and `b09b36f4` 144 insertions by `git show --numstat`, each under the 500-line cap, each single-parent and each carrying the ordered trailer; the handback commit `b09b36f4` rewrote `.agent/handoff.md` alone at 144 insertions and 143 deletions, where the worker's reply said 225 and 224, a slip of the reply that left nothing wrong on disk. THE TRANSPORT PROOF IS TREE IDENTITY: each of the five worker commits before the handback has the same tree id as the reviewer's commit in the same position, rebuilt from its originals under `.remedy-wt/` in a fresh worktree at `e7d1e080`. THE RECORDS: the open set by distinct id reads 4 at `e7d1e080` and at `a7b6a85d` — R-0499, R-0950, R-1008 and R-1046 — and `a7b6a85d` adds exactly one line beginning `Gate: F265 R1 — `. THE TESTS: the round's selection, run by the reviewer in the primary checkout at `b09b36f4`, reads `941 passed, 1 skipped` at exit 0, ruff reads exit 0, and `integrity check --json` reads all six checks `pass` at `fail_count` 0; that selection includes `tests/ui_server/test_dashboard_contract.py`, whose `tsc` compile of `apps/ui` ran and passed there, and `tests/ui_contracts/test_humanize_catalog.py`, which holds the catalog's new line equal to the new event name. THE RED PROOFS, run by the reviewer over a tree whose C4 equals the worker's: the unmutated control reads 36 passed at exit 0 before and after, and all nine mutations of the announcement, the stream field, the route and the overview go red at exit 1; the worker's own run of the same script read the same nine counts. The primary checkout is clean at the verdict.
++
++Gate: F265 R3 — the F265 round 3 entry: the booking of round 2, DECISION F265 D3, and T002, the learning overlay over the stored lessons. VERDICT PASS ON ALL SIX GATES; THE DEVIATIONS DECLARED ARE A SKIP COUNT THE BLOCK ANTICIPATED AND A `git commit` SUMMARY LINE THAT DIFFERS FROM `--numstat`, NEITHER LEAVING ANYTHING WRONG ON DISK. Re-derived over `b09b36f4`..`b8ecbb3b` by the planner and reviewer of F265's first session, whose own runs produced every reading below. THE RANGE IS 7 COMMITS in the block's order C1a, C1b, C1c, C2, C3, C4 and C5, at `9b1550a9` 344, `45ca8fd0` 374, `09c87a6b` 464, `5e271a40` 57, `d668e4cf` 449, `b705f55f` 230 and `b8ecbb3b` 158 insertions by `git show --numstat`, each under the 500-line cap, each single-parent and each carrying the ordered trailer; the handback commit `b8ecbb3b` rewrote `.agent/handoff.md` alone at 158 insertions and 124 deletions. THE TRANSPORT PROOF IS TREE IDENTITY: each of the six worker commits before the handback has the same tree id as the reviewer's commit in the same position, rebuilt from its originals under `.remedy-wt/` in a fresh worktree at `b09b36f4`. THE RECORDS: the open set by distinct id reads 4 at `b09b36f4` and at `5e271a40` — R-0499, R-0950, R-1008 and R-1046 — and `5e271a40` adds exactly one line beginning `Gate: F265 R2 — `. THE TESTS: the round's selection, run by the reviewer in the primary checkout at `b8ecbb3b`, reads `1476 passed, 5 skipped` at exit 0, the five skips being the standing F252 quarantines, so `tests/ui_contracts/test_ui_lint.py`'s eslint run, the typescript compile in `tests/ui_server/test_dashboard_contract.py` and the vitest suite in `tests/orchestration/test_test_runner.py` all ran and passed there; ruff reads exit 0, and `integrity check --json` reads all six checks `pass` at `fail_count` 0. THE RED PROOFS, run by the reviewer over a tree whose C4 equals the worker's: the unmutated control reads vitest 19 passed and the contract test 8 passed, both at exit 0, before and after, and all nine mutations go red in the half that reaches them — six of the pure module and its door in vitest, two of the sheet's stale-answer guard and Escape in the contract test, and one of a decoder key in both; the worker's own run of the same script read the same counts. The primary checkout is clean at the verdict.

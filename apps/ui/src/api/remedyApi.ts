@@ -4,6 +4,8 @@ import { readDiffEnvelope } from "./diffViewModel";
 import type { DiffEnvelope } from "./diffViewModel";
 import { decodeJobDigest, jobDigestPath } from "./jobDigest";
 import type { JobDigest } from "./jobDigest";
+import { decodeLessonsIndex, lessonsIndexPath } from "./lessons";
+import type { LessonsIndex } from "./lessons";
 import type { PipelineStep, PipelineStepState, RemedyActivityItem, RemedyContinuationSummary, RemedyDashboard, RemedyGraphEdge, RemedyGraphNode, RemedyJourneyItem, RemedyMetric, RemedyNextAction, RemedyPhase, RemedyPipeline, RemedyPromptKind, RemedyPromptRole, RemedyPromptTraceItem, RemedyPromptTraceSummary, RemedySnapshotSummary, RemedyState, RemedyTaskItem, RemedyTimelineEvent, RemedyTimelineEventKind, RemedyTimelinePhase } from "./types";
 
 interface ApiClientOptions { jobId: string; token: string; baseUrl?: string; }
@@ -770,6 +772,28 @@ export async function loadJobDigest(
   try {
     const payload = await fetchPayload(jobDigestPath(request));
     return decodeJobDigest(payload);
+  } catch {
+    return null;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// The lessons door (F265 T002, DECISION F265 D3), shaped exactly like the digest
+// door above: one injected fetcher, one decoder, and no throw.
+// ---------------------------------------------------------------------------
+
+/** How the lessons door reaches the network; a test hands `loadLessonsIndex` a fake. */
+export type LessonsFetcher = (path: string) => Promise<unknown>;
+
+/** Read one job's lessons index through the single door. NEVER THROWS: a failed read and an
+ *  envelope the decoder refuses both answer `null`, which the overlay renders as "could not
+ *  be read" and never as an empty index. */
+export async function loadLessonsIndex(
+  request: { jobId: string; token: string; baseUrl?: string },
+  fetchPayload: LessonsFetcher = fetchJson,
+): Promise<LessonsIndex | null> {
+  try {
+    return decodeLessonsIndex(await fetchPayload(lessonsIndexPath(request)));
   } catch {
     return null;
   }

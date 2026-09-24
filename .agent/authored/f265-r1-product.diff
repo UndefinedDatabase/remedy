@@ -1,0 +1,119 @@
+diff --git a/docs/guides/environment.md b/docs/guides/environment.md
+index b5e6f906..86fad20e 100644
+--- a/docs/guides/environment.md
++++ b/docs/guides/environment.md
+@@ -92,6 +92,9 @@ not read as its type; neither warning stops Remedy from running.
+ | `REMEDY_SMOKE_REPO` | text | `/tmp/remedy-target-repo` | env-only | Scratch repository scripts/remedy_smoke.sh builds and drives (env-only) |
+ | `REMEDY_SMOKE_UNLOAD_MODELS` | yes or no (1, true, yes / 0, false, no) | no | env-only | Unload the Ollama models scripts/remedy_smoke.sh loaded when it ends (env-only flag) |
+ | `REMEDY_STRICT_EVENT_NAMES` | yes or no (1, true, yes / 0, false, no) | no | env-only | Refuse a run-log event whose name is not declared; tests only, a job never fails a ledger write on it (env-only flag) |
++| `REMEDY_TEACHER_LESSONS` | yes or no (1, true, yes / 0, false, no) | no | `teacher.lessons` | Write a lesson from the real diff after every completed task (F265). Off by default: each lesson is one teacher model call, and a run makes no call the operator did not switch on. |
++| `REMEDY_TEACHER_LESSON_MAX_CALLS` | a whole number | `30` | `teacher.lesson_max_calls` | The teacher's budget pot per job, in calls (F265): once the job's teacher calls reach it, a completed task gets an empty lesson that says the pot is spent. |
++| `REMEDY_TEACHER_LESSON_MAX_TOKENS` | a whole number | `300000` | `teacher.lesson_max_tokens` | The teacher's budget pot per job, in the tokens its calls reported (F265); a call that reports none still counts against the call limit. |
+ | `REMEDY_TEACHER_MODEL` | text | none | `teacher.model` | Model for the teacher role (F255). The teacher reads and explains and never writes, so this key buys explanation quality and nothing else. Unset means the role resolves exactly like every other one. Stage 1 narration is deterministic and spends nothing, so nothing reads this key until the Stage 2 question path exists (T004) — a declared key with no reader yet, not a forgotten wiring. |
+ | `REMEDY_UI_ALLOW_LEGACY_FALLBACK` | yes or no (1, true, yes / 0, false, no) | no | env-only | Serve the legacy app shell when the built UI is missing, with a warning (env-only flag) |
+ | `REMEDY_UI_COMMAND_RATE_LIMIT_PER_MINUTE` | a whole number | `30` | `ui.command_rate_limit_per_minute` | Commands the UI write door accepts for one token fingerprint and one job per minute (DECISION F009 D9). The excess is refused with 429 rather than made to wait, because an inbound request is holding a connection. 30 is the default because a human cockpit stays an order of magnitude below it — an operator clicking a control manages a few commands a minute — while a client stuck in a retry loop is stopped inside two seconds of real traffic. |
+diff --git a/packages/orchestration/config.py b/packages/orchestration/config.py
+index f4defff7..62c13733 100644
+--- a/packages/orchestration/config.py
++++ b/packages/orchestration/config.py
+@@ -872,6 +872,38 @@ _CONFIG_KEY_SPECS: tuple[ConfigKeySpec, ...] = (
+         value_type=str,
+         default=None,
+     ),
++    ConfigKeySpec(
++        key="teacher.lessons",
++        env_var="REMEDY_TEACHER_LESSONS",
++        description=(
++            "Write a lesson from the real diff after every completed task (F265). "
++            "Off by default: each lesson is one teacher model call, and a run makes "
++            "no call the operator did not switch on."
++        ),
++        value_type=bool,
++        default=False,
++    ),
++    ConfigKeySpec(
++        key="teacher.lesson_max_calls",
++        env_var="REMEDY_TEACHER_LESSON_MAX_CALLS",
++        description=(
++            "The teacher's budget pot per job, in calls (F265): once the job's "
++            "teacher calls reach it, a completed task gets an empty lesson that "
++            "says the pot is spent."
++        ),
++        value_type=int,
++        default=30,
++    ),
++    ConfigKeySpec(
++        key="teacher.lesson_max_tokens",
++        env_var="REMEDY_TEACHER_LESSON_MAX_TOKENS",
++        description=(
++            "The teacher's budget pot per job, in the tokens its calls reported "
++            "(F265); a call that reports none still counts against the call limit."
++        ),
++        value_type=int,
++        default=300000,
++    ),
+     ConfigKeySpec(
+         key="watchdog.no_progress_repeats",
+         env_var="REMEDY_WATCHDOG_NO_PROGRESS_REPEATS",
+diff --git a/packages/orchestration/pingpong_job.py b/packages/orchestration/pingpong_job.py
+index a851f0ba..e5b5e65f 100644
+--- a/packages/orchestration/pingpong_job.py
++++ b/packages/orchestration/pingpong_job.py
+@@ -3238,6 +3238,7 @@ def run_job(
+             _log_task_ended(task_log, task, "pass")
+             tasks_run += 1
+             _persist_job(job)
++            _teach_task_lesson(job, task)
+ 
+             _absorb_block = _absorb_here("after_task")
+             if _absorb_block:
+@@ -3921,6 +3922,37 @@ def _log_task_rounds(log: Any, task: TaskEntry, result: Any) -> None:
+         pass
+ 
+ 
++def _teach_task_lesson(job: JobPlan, task: TaskEntry) -> None:
++    """F265 T001: the completed task's lesson, when `teacher.lessons` is on (DECISION F265 D1).
++
++    Called once the task is applied and saved and before the safe point, so a stop waits for
++    at most one teacher call. It never decides the job's outcome: a failure it expects — a
++    file, a record or a transport that will not cooperate — is logged and swallowed, because
++    a teacher that could break a run would not be the passive role F255 specifies.
++    """
++    if not task.run_id:
++        return
++    try:
++        from packages.orchestration import lessons
++
++        if not lessons.lessons_enabled():
++            return
++        from packages.orchestration.job_evidence import _resolve_job_ledger_project_id
++        from packages.orchestration.mission_state import mission_for_job
++
++        mission = mission_for_job(str(job.job_id))
++        lessons.generate_lesson(
++            run_id=task.run_id, job_id=str(job.job_id), task_id=task.task_id,
++            task_title=task.title, mission_id=mission.id if mission is not None else "",
++            budgets=lessons.lesson_budgets(), config_file=lessons.lesson_role_overrides(),
++            project_id=_resolve_job_ledger_project_id(job))
++    except (OSError, RuntimeError, ValueError):
++        import logging as _logging
++        _logging.getLogger(__name__).error(
++            "lesson generation FAILED for task %r of job %r; the job continues",
++            task.task_id, job.job_id, exc_info=True)
++
++
+ def _log_task_ended(log: Any, task: TaskEntry, outcome: str) -> None:
+     """``task_run_completed`` for ``pass``, else ``task_run_failed`` naming the block."""
+     try:
+diff --git a/tests/orchestration/import_reachability_allowlist.txt b/tests/orchestration/import_reachability_allowlist.txt
+index 323ba33c..8c2089df 100644
+--- a/tests/orchestration/import_reachability_allowlist.txt
++++ b/tests/orchestration/import_reachability_allowlist.txt
+@@ -148,6 +148,7 @@ packages.orchestration.job_digest
+ packages.orchestration.job_evidence
+ packages.orchestration.job_plan
+ packages.orchestration.job_runner
++packages.orchestration.lessons
+ packages.orchestration.list_options
+ packages.orchestration.llm_planner
+ packages.orchestration.long_run_executor

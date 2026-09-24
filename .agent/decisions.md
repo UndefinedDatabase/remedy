@@ -19676,3 +19676,180 @@ the catalog is keyed by kind alone and a frame from an older server without the 
 render honestly. HOW TO REVERSE: delete `steeringAck.ts` and its
 test, restore `feedRow.ts`, its test and the contract test from `e420be13`, and delete this
 paragraph.
+
+## DECISION F265 D1 — a lesson is a sealed record per Run beside that Run's diff, written only while `teacher.lessons` is on, inside a per-job teacher pot read from the ledger (2026-09-24)
+
+CONTEXT: T5_F265.md T001 orders a lesson per completed task, generated from the task's REAL diff
+under the `teacher` role's own harness, model and budget pot, stored as an artifact keyed on the
+Run and its Mission (DECISION amend0905-vocab D1), re-opened without spending tokens, and replaced
+by an honest empty state when the budget is spent. Measured at `0236e3c3`: a task's Run writes its
+tree-to-tree diff to `runs/<run_id>/result.diff` in the ping-pong loop's job-owned hand-off, and
+the job records that Run as `task.run_id`; `pingpong_job.run_job` logs `task_run_completed` right
+after `_commit_applied_task`; the teacher's only transport is Ollama behind the injectable `call`
+seam (DECISION F255 D8), and `teacher_spend.record_teacher_question` builds its ledger rows with a
+NULL `task_id` (DECISION F255 D7); DECISION F255 D3 made the teacher's "own budget pool" a
+reporting column only and left a cap to be ruled when one was needed; `budget_guard` has no
+per-role cap, and `study` met its own pot with a local `JobBudgets` evaluated by `evaluate_budget`
+(DECISION amend0911-feedback D2).
+
+CHOSEN: (1) THE RECORD is `runs/<run_id>/lesson.json`, schema `remedy.lesson.v1`, sealed with the
+sha256 of its sorted JSON and published create-once beside the diff it was built from. It names
+the Run, the job, the task, the Mission (empty for a job that has none), the diff's sha256 and
+length, the model, the ledger call id, a `status` and a `reason`. A stored lesson is returned as
+it is, so reading one again is a file read and never a call. (2) THE REAL DIFF: the generator
+reads that Run's `result.diff` and nothing else and sends it WHOLE; a Run with no diff stores
+`no_diff`, and one longer than 60,000 characters stores `diff_too_large`, each with no call,
+because a lesson from part of a diff would present part of the change as all of it. (3)
+GROUNDING: the reply is one JSON object holding a summary and constructs; a construct is taught
+only when its name appears on a line the diff ADDS, and every other name the reply gives is kept
+in the record's `ungrounded` list, so a lesson names only what the change uses. (4) THE POT: per
+job, `teacher.lesson_max_calls` (default 30) and `teacher.lesson_max_tokens` (default 300,000),
+evaluated with `evaluate_budget` over the ledger's `teacher` rows for that job before the call; a
+spent pot stores `budget_exhausted` naming the limit it hit, with no call. A call that reported no
+tokens still counts as a call, which is why the pot carries both limits. This is the cap F255 D3
+left to be ruled, and it binds lesson generation only: `teacher ask` stays as F255 D3 left it.
+(5) BILLING: every call made is billed through `record_teacher_question` as role `teacher` with
+call id `teacher:lesson:<run_id>`, so a Run is billed at most once even when two writers race. A
+job whose repository resolves to no registered project has no ledger, so it stores `no_ledger`
+with no call, because spend that cannot be recorded cannot be capped; a ledger that cannot be
+read stores the same status for the same reason. (6) THE SWITCH: `teacher.lessons`, off by
+default, because each lesson is one model call per task and a run makes no call the operator did
+not switch on — the rule `postmortem.llm_summary` already follows; operator question Q1 carries
+this ruling for the operator to overturn. The hook runs after the task is applied and saved and
+before the safe point, catches the failures it expects, and never changes the job's outcome.
+(7) THE MODEL: `teacher.model`, when set, reaches the lesson's transport as the role's override.
+
+ALTERNATIVES: keying the lesson on the job's evidence folder, rejected because amend0905-vocab D1
+keys artifacts on the Run and its Mission; storing it under the Mission, rejected because a job
+may carry no mission and the Run is the unit a lesson explains; lessons on by default, rejected
+because every task of every run would spend before the operator knew the feature existed;
+truncating an oversize diff, rejected for the reason in (2); a new cap axis in `budget_guard`,
+rejected as larger than one role's pot needs.
+
+HOW TO REVERSE: delete `packages/orchestration/lessons.py` and `tests/orchestration/test_lessons.py`,
+remove `_teach_task_lesson` and its one call from `packages/orchestration/pingpong_job.py`, remove
+the three `teacher.lesson*` keys from `packages/orchestration/config.py` and regenerate
+`docs/guides/environment.md`, drop the module's line from
+`tests/orchestration/import_reachability_allowlist.txt`, and delete this paragraph.
+
+## DECISION F265 D2 — a stored lesson is announced on the job's run log, the stream carries its Run and status only, and `/api/jobs/<job_id>/lessons` lists the job's lessons as stored (2026-09-24)
+
+CONTEXT: T5_F265.md's Design says the overlay "takes its data from the existing event stream
+(F008/F021), not from a second polling path", and that "the index is a list of artifacts and
+navigation is not re-generation". Measured at `e7d1e080`: DECISION F265 D1 stores a lesson per Run
+beside its diff and nothing announces it; `_safe_event_summary` in
+`packages/orchestration/ui_server.py` carries kind-conditional fields (`budget`, DECISION F022 D3;
+`steering`, DECISION F264 D6) while `tests/ui_server/test_sse_stream.py` pins every other kind's
+envelope; each cockpit route `/api/jobs/<job_id>/<endpoint>` is one entry of `do_GET`'s
+`handlers` table, walked for a 200 by `tests/ui_server/test_handler_table_walk.py` and for a
+refused POST by `tests/ui_server/test_command_channel.py`; and `generate_lesson` returns a stored
+lesson unchanged, so it cannot tell its caller whether it stored one.
+
+CHOSEN: (1) THE EVENT: the hook reads whether the Run already has a lesson before it generates,
+and only a lesson that call stored is announced, as `task_lesson_written` on the job's run log,
+with the task id at the event's top level and `run_id` and `lesson_status` in its metadata. An
+empty lesson is announced too, because the index must be able to say why a task has none. (2)
+THE STREAM: a frame of that kind gains a `lesson` field holding exactly `run_id` and `status`,
+the status passed only when it is a lesson status; a lesson's text never travels in a frame. (3)
+THE ROUTE: `GET /api/jobs/<job_id>/lessons` answers `job_id`, `lessons_enabled` and one row per
+task in task order, built by `lessons.job_lessons_overview`: a stored lesson's fields as stored;
+or status `none` with the reason — the task has not run, lessons are switched off, or none was
+stored; or status `not_intact`, its text withheld, when a lesson fails its seal. It reads and
+never writes, which a test proves by hashing the data root around two reads. (4) THE MISSION:
+the hook names the job's mission through `mission_for_job`, pinned by a test with a mission
+linked to the job; `do_sequence._run_the_walks_jobs` builds `remedy do`'s jobs through `run_job`,
+so their tasks reach the same hook.
+
+ALTERNATIVES: carrying the lesson in the frame, rejected because the stream is a summary
+envelope and a lesson is a page; a mission-keyed route, rejected for now because every cockpit
+route is job-keyed and the overlay opens over a job, so a mission-wide index is the overlay's to
+ask for if it needs one; announcing from `generate_lesson` itself, rejected because that module
+has no job run log in scope and every one of its tests would then write one.
+
+HOW TO REVERSE: remove the announcement from `_teach_task_lesson`, the `lesson` field and
+`_lesson_summary_payload` from `ui_server.py`, the `lessons` handler entry and
+`_build_lessons_json`, `job_lessons_overview` and its two statuses from `lessons.py`, the event
+name from `event_names.py` and its line from `apps/ui/src/api/humanizeCatalog.ts`; delete
+`tests/ui_server/test_lessons_route.py` and the round's two hook tests; and delete this
+paragraph.
+
+## DECISION F265 D3 — the learning overlay is a right-anchored dialog sheet the right panel opens, reading the lessons route through one pure module and reading it again only when the stream announces a lesson (2026-09-24)
+
+CONTEXT: T5_F265.md T002 orders an index of lessons on the left and a main area with next and
+previous, rendering stored lessons and generating nothing, and its Design says the overlay takes
+its data from the event stream rather than a second polling path. Measured at `b09b36f4`: the
+lessons route and the stream's `task_lesson_written` frames exist (DECISION F265 D2); the
+design reference names no lessons surface, and its only overlay rulings are the reference token
+sheet's overlay layer for sheets and dialogs (80) and `component_spec.md`'s dialog role and Esc
+for the detail popover; the shipped `apps/ui/src/styles/tokens.css` defines no z-layer token;
+the cockpit has no overlay, no focus trap and no DOM harness (DECISION F031 D5); the main column
+is held to four children by `tests/ui_contracts/test_main_layout_guard.py`, which is why the diff
+panel is mounted as a sibling after it; and every cockpit read goes through one injected-fetcher
+door in `apps/ui/src/api/remedyApi.ts` over a pure decoder, as the job digest's does.
+
+CHOSEN: (1) THE PURE HALF is `apps/ui/src/api/lessons.ts`: the decoder, which refuses the WHOLE
+index when any row or construct cannot be read, because an index that quietly drops a task is a
+thin lesson presenting itself as complete; the route's path; and every rule the overlay applies —
+it opens on the first stored lesson, keeps the operator's choice while it names a row, stops
+previous and next at the ends, says why a task has no lesson in the server's own reason, names
+the model and what the teacher named that the change does not contain, and gives an index with
+nothing to read one honest line that says whether lessons are off. (2) THE DOOR is
+`loadLessonsIndex` in `remedyApi.ts`, which never throws. (3) THE SHEET is
+`components/lessons/LessonsOverlay.tsx`: a glass sheet anchored right, with a dialog role, a
+Close button and Esc to close, on the overlay layer written as the number 80 because the shipped
+sheet has no token for it; it is mounted by `RemedyShell` as a sibling after the diff panel, and
+the right panel's quiet "Lessons" button opens it. (4) THE REFRESH: the shell passes the newest
+stream position of a `task_lesson_written` frame as the overlay's refresh key, so an open
+overlay reads its index again when the stream announces a lesson and never on a timer. (5) THE
+PINS: `tests/ui_contracts/test_lessons_overlay_contract.py` holds every key the decoder reads to
+one the server writes, the event name and the ready status to the server's, the pure module free
+of sockets, clocks and storage, the sheet's stale-answer guard and Esc, and its mount outside the
+main column. Two assumption-log rows record the sheet and its entry point.
+
+ALTERNATIVES: a tab inside the right panel, rejected because a lesson is a page and the panel is a
+350px column of live cards; wiring the rail's inert "Docs" button, rejected because the rail's
+icon dock has no handlers at all and giving one a meaning is a rail design the reference has not
+made; polling the route while the overlay is open, rejected by the feature file's own Design; a
+focus trap, deferred because nothing in the cockpit has one and no test here could prove it.
+
+HOW TO REVERSE: delete `apps/ui/src/api/lessons.ts`, its test, the `components/lessons/`
+folder and the contract test; remove the lessons door from `remedyApi.ts`, the overlay's state and
+mount from `RemedyShell.tsx` and the button and its prop from `RightLivePanel.tsx`; delete the two
+F265 rows of `docs/ui/design_reference/assumption_log.md`; and delete this paragraph.
+
+## DECISION F265 D4 — the Commands mode names the commands whose handler module or catalog line a task's diff changed, with the catalog's shipped description, computed from the stored diff whenever the index is read (2026-09-24)
+
+CONTEXT: T5_F265.md T003 orders a second mode that explains the CLI commands the task
+implemented or touched, and its Design says the mode reads the command catalog "so it explains
+the SHIPPED description, never a remembered one". Measured at `b8ecbb3b`: every command's
+handler lives in a module under `apps/cli/commands/` whose `COMMAND_HANDLERS` table
+`collect_all_handlers` merges, so a handler's `__module__` names the file that implements it;
+each command's description and spelling live once in `apps/cli/command_catalog.py`, one
+`command_id="..."` line per entry; a Run's diff is stored at `runs/<run_id>/result.diff` and
+never changes (DECISION F265 D1); and `packages/orchestration/integrity_gate.py` already imports
+`collect_all_handlers` lazily from the orchestration layer.
+
+CHOSEN: (1) A command is TOUCHED when the Run's diff changes the module whose handler serves it,
+or changes a line of the command catalog that names its id; a `command_id=` line in any other
+file, a test for instance, does not count. (2) Each touched command is shown as its invocation,
+`remedy <group> <subcommand>`, and its description read from the catalog as installed, sorted
+by id; an id the catalog no longer holds is left out rather than invented. (3) The list is
+computed by `lessons.lesson_commands` from the stored diff each time the lessons route is
+read, so it follows the shipped catalog, costs no model call and is carried on every row of the
+index, a task that has not run carrying none. It is never written into the sealed lesson, which
+keeps D1's record unchanged. (4) The overlay's header carries a Lesson and Commands switch, each
+button saying whether it is the one shown; Commands shows the chosen task's list, or one line
+saying its change touched no CLI command. (5) The contract test holds the keys the decoder reads
+for a command to the ones the server writes, and the switch to its pressed state.
+
+ALTERNATIVES: storing the commands in the lesson record, rejected because a stored description is
+exactly the remembered one the Design forbids; asking the teacher to explain the commands,
+rejected because it spends a model call on text the catalog already holds; matching command
+names in the diff's text, rejected because a mention is not a change and a rename would be
+missed.
+
+HOW TO REVERSE: remove `lesson_commands`, `diff_paths`, `CATALOG_PATH` and the row's `commands`
+field from `lessons.py`, the command reader, `LessonMode`, `lessonCommandsLine` and the row's
+`commands` from `apps/ui/src/api/lessons.ts`, the switch and `CommandsText` from
+`LessonsOverlay.tsx` with their styles, the round's tests and contract pins, and delete this
+paragraph.

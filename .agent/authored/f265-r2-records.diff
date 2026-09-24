@@ -1,0 +1,59 @@
+diff --git a/.agent/decisions.md b/.agent/decisions.md
+index 315ec1eb..0962c5bb 100644
+--- a/.agent/decisions.md
++++ b/.agent/decisions.md
+@@ -19731,3 +19731,44 @@ remove `_teach_task_lesson` and its one call from `packages/orchestration/pingpo
+ the three `teacher.lesson*` keys from `packages/orchestration/config.py` and regenerate
+ `docs/guides/environment.md`, drop the module's line from
+ `tests/orchestration/import_reachability_allowlist.txt`, and delete this paragraph.
++
++## DECISION F265 D2 — a stored lesson is announced on the job's run log, the stream carries its Run and status only, and `/api/jobs/<job_id>/lessons` lists the job's lessons as stored (2026-09-24)
++
++CONTEXT: T5_F265.md's Design says the overlay "takes its data from the existing event stream
++(F008/F021), not from a second polling path", and that "the index is a list of artifacts and
++navigation is not re-generation". Measured at `e7d1e080`: DECISION F265 D1 stores a lesson per Run
++beside its diff and nothing announces it; `_safe_event_summary` in
++`packages/orchestration/ui_server.py` carries kind-conditional fields (`budget`, DECISION F022 D3;
++`steering`, DECISION F264 D6) while `tests/ui_server/test_sse_stream.py` pins every other kind's
++envelope; each cockpit route `/api/jobs/<job_id>/<endpoint>` is one entry of `do_GET`'s
++`handlers` table, walked for a 200 by `tests/ui_server/test_handler_table_walk.py` and for a
++refused POST by `tests/ui_server/test_command_channel.py`; and `generate_lesson` returns a stored
++lesson unchanged, so it cannot tell its caller whether it stored one.
++
++CHOSEN: (1) THE EVENT: the hook reads whether the Run already has a lesson before it generates,
++and only a lesson that call stored is announced, as `task_lesson_written` on the job's run log,
++with the task id at the event's top level and `run_id` and `lesson_status` in its metadata. An
++empty lesson is announced too, because the index must be able to say why a task has none. (2)
++THE STREAM: a frame of that kind gains a `lesson` field holding exactly `run_id` and `status`,
++the status passed only when it is a lesson status; a lesson's text never travels in a frame. (3)
++THE ROUTE: `GET /api/jobs/<job_id>/lessons` answers `job_id`, `lessons_enabled` and one row per
++task in task order, built by `lessons.job_lessons_overview`: a stored lesson's fields as stored;
++or status `none` with the reason — the task has not run, lessons are switched off, or none was
++stored; or status `not_intact`, its text withheld, when a lesson fails its seal. It reads and
++never writes, which a test proves by hashing the data root around two reads. (4) THE MISSION:
++the hook names the job's mission through `mission_for_job`, pinned by a test with a mission
++linked to the job; `do_sequence._run_the_walks_jobs` builds `remedy do`'s jobs through `run_job`,
++so their tasks reach the same hook.
++
++ALTERNATIVES: carrying the lesson in the frame, rejected because the stream is a summary
++envelope and a lesson is a page; a mission-keyed route, rejected for now because every cockpit
++route is job-keyed and the overlay opens over a job, so a mission-wide index is the overlay's to
++ask for if it needs one; announcing from `generate_lesson` itself, rejected because that module
++has no job run log in scope and every one of its tests would then write one.
++
++HOW TO REVERSE: remove the announcement from `_teach_task_lesson`, the `lesson` field and
++`_lesson_summary_payload` from `ui_server.py`, the `lessons` handler entry and
++`_build_lessons_json`, `job_lessons_overview` and its two statuses from `lessons.py`, the event
++name from `event_names.py` and its line from `apps/ui/src/api/humanizeCatalog.ts`; delete
++`tests/ui_server/test_lessons_route.py` and the round's two hook tests; and delete this
++paragraph.
+diff --git a/.agent/live_review.md b/.agent/live_review.md
+index 5f3f0853..36b414b7 100644
+--- a/.agent/live_review.md
++++ b/.agent/live_review.md
+@@ -446,3 +446,5 @@ Gate: F264 R9 — the F264 round 9 entry: the booking of round 8 and the closure
+ 
+ - R-1046 — Low, `teacher.model` DOES NOT REACH `remedy teacher ask`: THE KEY IS DECLARED AND DOCUMENTED, AND NOTHING ON THE QUESTION PATH READS IT. Raised by the planner and reviewer of F265's first session at the round 1 authoring read, after searching this record, its archive and `.agent/decisions.md` for `teacher.model` under §3 item 30: no finding names the defect. Measured at `0236e3c3`: `ask_teacher` in `packages/orchestration/teacher_model.py` resolves its transport with `resolve_teacher_transport()` and `resolve_role_config(TEACHER_ROLE)`, both called with no `config_file`, and `resolve_role_config` reads no configuration of its own, so a `teacher.model` set in `remedy.toml` or as `REMEDY_TEACHER_MODEL` changes nothing `teacher ask` sends. `tests/orchestration/test_teacher_model.py` pins resolution only for a `config_file` the test builds by hand, which is why nothing is red. DECISION F255 D8's CONSEQUENCE reads "`teacher.model` becomes load-bearing for the first time", and the key's own description in `packages/orchestration/config.py` still says nothing reads it until the Stage 2 question path exists, which it has since F255's T004. F265 reads the key for lessons through `lessons.lesson_role_overrides` (DECISION F265 D1) and does not touch `teacher ask`, which its feature file lists under Do not touch. The repair is the pattern `self_use_runner` uses for its own role at the one call site: read `teacher.model` and pass it as the role's override, with a test that sets the environment variable rather than a hand-built `config_file`, and the key's description corrected in the same commit so `docs/guides/environment.md` regenerates. OPEN.
+ Owner: F284 — Findings paydown v3 (the default owner under amend0911-feedback rule A, assigned at F265's claim, 2026-09-24).
++
++Gate: F265 R1 — the F265 round 1 entry: the claim, finding R-1046, DECISION F265 D1, operator question Q1, and T001's substance, the sealed lesson per Run and its hook. VERDICT PASS ON ALL SIX GATES; THE ONE DEVIATION DECLARED IS A SKIP COUNT THE BLOCK ANTICIPATED. Re-derived over `0236e3c3`..`e7d1e080` by the planner and reviewer of F265's first session, whose own runs produced every reading below. THE RANGE IS 8 COMMITS in the block's order C1a, C1b, C1c, C1d, C2, C3, C4 and C5, at `46c2e1da` 332, `85aa4a30` 399, `f4054c12` 360, `8b27700c` 391, `2a2aa42f` 154, `79c8be1d` 428, `79713a5e` 391 and `e7d1e080` 174 insertions by `git show --numstat`, each under the 500-line cap, each single-parent and each carrying the ordered trailer; the handback commit `e7d1e080` rewrote `.agent/handoff.md` alone at 174 insertions and 127 deletions. THE TRANSPORT PROOF IS TREE IDENTITY: the reviewer rebuilt C1a to C4 from its originals under `.remedy-wt/` in a fresh worktree at `0236e3c3`, and each of the seven worker commits has the same tree id as the reviewer's commit in the same position, so every committed byte, the block copy and its payloads included, equals what the reviewer authored and ran. THE CLAIM: at `2a2aa42f` F265's STATUS line reads `[~]`, and the open set by distinct id reads 3 at `0236e3c3` — R-0499, R-0950 and R-1008 — and 4 at `2a2aa42f`, the difference being R-1046 alone. THE TESTS: the round's selection, run by the reviewer in the primary checkout at `e7d1e080`, reads `994 passed, 1 skipped` at exit 0, ruff reads exit 0, and `integrity check --json` reads all six checks `pass` at `fail_count` 0; the reviewer's sim worktree read `992 passed, 3 skipped` over the same selection, the two further passes being the UI toolchain's, which a worktree lacks. THE RED PROOFS, run by the reviewer over a tree whose id equals the worker's C4: the unmutated control reads 29 passed at exit 0 before and after, and all twelve mutations of `packages/orchestration/lessons.py` and of the hook in `packages/orchestration/pingpong_job.py` go red at exit 1, among them the hook's one call deleted from `run_job`, which only the end-to-end job test sees; the worker's own run of the same script read the same twelve counts. `git worktree list` at the verdict shows the primary checkout, the four `.remedy-wt/job-*` worktrees and the reviewer's round 2 dry tree, and the primary checkout is clean.

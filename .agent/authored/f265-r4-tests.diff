@@ -1,0 +1,136 @@
+diff --git a/apps/ui/src/api/lessons.test.ts b/apps/ui/src/api/lessons.test.ts
+index e0e8ac7d..c2f44e31 100644
+--- a/apps/ui/src/api/lessons.test.ts
++++ b/apps/ui/src/api/lessons.test.ts
+@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
+ import {
+   LESSON_WRITTEN_EVENT,
+   currentLessonIndex,
++  lessonCommandsLine,
+   decodeLessonsIndex,
+   firstLessonIndex,
+   lessonIndexTag,
+@@ -23,6 +24,8 @@ const READY = {
+   constructs: [{ name: "functools.lru_cache", what: "memoises", why_here: "repeat reads",
+     judgement: "sound here" }],
+   ungrounded: ["asyncio.gather"],
++  commands: [{ command_id: "teacher.ask", invocation: "remedy teacher ask",
++    description: "Ask the teacher." }],
+ };
+ const NONE = { task_id: "T002", title: "Not run", run_id: "", status: "none",
+   reason: "this task has not run yet" };
+@@ -42,7 +45,10 @@ describe("decodeLessonsIndex", () => {
+     expect(index?.rows[1].constructs).toEqual([
+       { name: "functools.lru_cache", what: "memoises", whyHere: "repeat reads", judgement: "sound here" }]);
+     expect(index?.rows[0]).toEqual({ taskId: "T002", title: "Not run", runId: "", status: "none",
+-      reason: "this task has not run yet", summary: "", model: "", constructs: [], ungrounded: [] });
++      reason: "this task has not run yet", summary: "", model: "", constructs: [], ungrounded: [],
++      commands: [] });
++    expect(index?.rows[1].commands).toEqual([
++      { commandId: "teacher.ask", invocation: "remedy teacher ask", description: "Ask the teacher." }]);
+   });
+ 
+   it.each([
+@@ -55,6 +61,8 @@ describe("decodeLessonsIndex", () => {
+     ["a construct with no judgement", { ...ENVELOPE, lessons: [{ ...READY,
+       constructs: [{ name: "x", what: "y", why_here: "z" }] }] }],
+     ["an ungrounded name that is not text", { ...ENVELOPE, lessons: [{ ...READY, ungrounded: [3] }] }],
++    ["a command with no description", { ...ENVELOPE, lessons: [{ ...READY,
++      commands: [{ command_id: "a.b", invocation: "remedy a b" }] }] }],
+   ])("refuses the whole index for %s", (_label, raw) => {
+     expect(decodeLessonsIndex(raw)).toBeNull();
+   });
+@@ -115,6 +123,14 @@ describe("the overlay's rules", () => {
+   });
+ });
+ 
++describe("the Commands mode", () => {
++  it("says so when a task's change touched no command", () => {
++    const [none, ready] = rowsOf(ENVELOPE);
++    expect(lessonCommandsLine(none)).toBe("This task's change touched no CLI command.");
++    expect(lessonCommandsLine(ready)).toBeNull();
++  });
++});
++
+ describe("loadLessonsIndex", () => {
+   it("reads the route through the injected fetcher", async () => {
+     const asked: string[] = [];
+diff --git a/tests/orchestration/test_lessons.py b/tests/orchestration/test_lessons.py
+index 10927f05..20ac80d9 100644
+--- a/tests/orchestration/test_lessons.py
++++ b/tests/orchestration/test_lessons.py
+@@ -438,3 +438,41 @@ def test_a_mission_jobs_lesson_names_its_mission(tmp_path, monkeypatch):
+     pingpong_job._teach_task_lesson(job, SimpleNamespace(run_id="run-1", task_id="T001",
+                                                          title="cache loads"))
+     assert [kw["mission_id"] for kw in called] == [mission.id]
++
++
++COMMAND_DIFF = (
++    "--- a/apps/cli/commands/teacher_cmd.py\n+++ b/apps/cli/commands/teacher_cmd.py\n"
++    "@@ -1 +1 @@\n+x = 1\n"
++    "--- a/apps/cli/command_catalog.py\n+++ b/apps/cli/command_catalog.py\n@@ -1 +1 @@\n"
++    '-        command_id="chat.send",\n+        command_id="chat.send",\n'
++    "--- a/tests/x.py\n+++ b/tests/x.py\n@@ -0,0 +1 @@\n"
++    '+    command_id="do.run"\n'
++)
++
++
++def test_the_commands_a_diff_touched_are_read_from_the_shipped_catalog():
++    from apps.cli.command_catalog import get_command
++
++    commands = lessons.lesson_commands(COMMAND_DIFF)
++    assert [c["command_id"] for c in commands] == ["chat.send", "teacher.ask", "teacher.narrate"]
++    ask = get_command("teacher.ask")
++    assert commands[1] == {"command_id": "teacher.ask",
++                           "invocation": f"remedy {ask.group_id} {ask.subcommand}",
++                           "description": ask.description}
++
++
++def test_a_diff_that_touches_no_command_names_none():
++    assert lessons.lesson_commands(DIFF) == []
++    assert lessons.lesson_commands("") == []
++
++
++def test_every_overview_row_names_the_commands_its_runs_diff_touched(tmp_path):
++    from apps.cli.commands import chat_cmd
++
++    _run(tmp_path, "--- a/apps/cli/commands/chat_cmd.py\n+++ b/apps/cli/commands/chat_cmd.py\n"
++                   "@@ -1 +1 @@\n+x = 1\n")
++    rows = lessons.job_lessons_overview(
++        [SimpleNamespace(task_id="T001", title="t", run_id="run-1"),
++         SimpleNamespace(task_id="T002", title="u", run_id="")], enabled=False, root=tmp_path)
++    assert [c["command_id"] for c in rows[0]["commands"]] == sorted(chat_cmd.COMMAND_HANDLERS)
++    assert rows[1]["commands"] == []
+diff --git a/tests/ui_contracts/test_lessons_overlay_contract.py b/tests/ui_contracts/test_lessons_overlay_contract.py
+index 7e4f14e9..a7786d3b 100644
+--- a/tests/ui_contracts/test_lessons_overlay_contract.py
++++ b/tests/ui_contracts/test_lessons_overlay_contract.py
+@@ -55,6 +55,14 @@ def test_the_construct_keys_are_the_generators():
+     assert _reads(r'construct\["([a-z_]+)"\]') == set(_CONSTRUCT_FIELDS)
+ 
+ 
++def test_the_command_keys_are_the_servers():
++    from packages.orchestration.lessons import lesson_commands
++
++    [served] = lesson_commands("--- a/apps/cli/commands/chat_cmd.py\n"
++                               "+++ b/apps/cli/commands/chat_cmd.py\n")[:1]
++    assert _reads(r'command\["([a-z_]+)"\]') == set(served)
++
++
+ def test_the_event_and_the_ready_status_are_the_servers():
+     from packages.orchestration.event_names import EVENT_NAMES
+     from packages.orchestration.lessons import STATUS_READY
+@@ -88,6 +96,13 @@ def test_the_overlay_is_a_dialog_that_escape_closes():
+     assert 'if (event.key === "Escape") onClose();' in source
+ 
+ 
++def test_the_modes_say_which_one_is_shown():
++    source = _source(OVERLAY)
++    assert 'aria-pressed={mode === "lesson"}' in source
++    assert 'aria-pressed={mode === "commands"}' in source
++    assert 'mode === "commands"\n          ? <CommandsText row={row} />' in source
++
++
+ def test_the_shell_mounts_the_overlay_outside_the_main_column():
+     source = _source(SHELL)
+     assert source.index("</main>") < source.index("<LessonsOverlay")

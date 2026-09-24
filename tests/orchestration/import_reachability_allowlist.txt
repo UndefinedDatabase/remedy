@@ -148,6 +148,7 @@ packages.orchestration.job_digest
 packages.orchestration.job_evidence
 packages.orchestration.job_plan
 packages.orchestration.job_runner
+packages.orchestration.lessons
 packages.orchestration.list_options
 packages.orchestration.llm_planner
 packages.orchestration.long_run_executor

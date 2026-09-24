@@ -1,0 +1,186 @@
+diff --git a/apps/ui/src/api/humanizeCatalog.ts b/apps/ui/src/api/humanizeCatalog.ts
+index 9c7ba4f9..515c7c82 100644
+--- a/apps/ui/src/api/humanizeCatalog.ts
++++ b/apps/ui/src/api/humanizeCatalog.ts
+@@ -80,6 +80,7 @@ export const STREAM_EVENT_CATALOG: Readonly<Record<string, string>> = {
+   "steering_message_received": "Your steering message was recorded for the job's next safe point.",
+   "stream_cap_reached": "The stream hit its size cap and stopped recording.",
+   "task_gate_evaluated": "The task's gate was evaluated.",
++  "task_lesson_written": "The teacher stored a lesson, or the reason there is none, for a finished task.",
+   "task_round_completed": "A review round of a task finished.",
+   "task_run_completed": "A task finished.",
+   "task_run_failed": "A task failed.",
+diff --git a/packages/orchestration/event_names.py b/packages/orchestration/event_names.py
+index 42952243..ff958757 100644
+--- a/packages/orchestration/event_names.py
++++ b/packages/orchestration/event_names.py
+@@ -122,6 +122,7 @@ EVENT_NAMES: frozenset[str] = frozenset(
+         "steering_message_received",
+         "task_completed",
+         "task_decision_answered",
++        "task_lesson_written",
+         "task_needs_decision",
+         "task_round_completed",
+         "task_run_completed",
+diff --git a/packages/orchestration/lessons.py b/packages/orchestration/lessons.py
+index 7a42f7f1..bd245588 100644
+--- a/packages/orchestration/lessons.py
++++ b/packages/orchestration/lessons.py
+@@ -18,6 +18,9 @@ a diff too large to send whole, a spent pot, an unusable transport or an unreada
+ produce a record whose status says which, and none of them carries a summary. A lesson built
+ from part of a diff while presenting itself as complete would teach the plan, not what
+ shipped (T5_F265.md, "Design").
++
++The read side is `job_lessons_overview`, which the cockpit's `/api/jobs/<job_id>/lessons` route
++serves: one row per task, the stored lesson or the reason there is none (DECISION F265 D2).
+ """
+ from __future__ import annotations
+ 
+@@ -26,7 +29,7 @@ import hashlib
+ import json
+ import os
+ import sqlite3
+-from collections.abc import Callable, Mapping
++from collections.abc import Callable, Mapping, Sequence
+ from datetime import datetime, timezone
+ from pathlib import Path
+ from typing import Any
+@@ -335,6 +338,46 @@ def _publish(body: dict[str, Any], root: Path | None) -> dict[str, Any]:
+     return body
+ 
+ 
++#: A task with no stored lesson; the row's reason says whether it has not run, lessons were
++#: off, or none was written.
++STATUS_NONE = "none"
++#: A stored lesson that failed verification; its content is never shown.
++STATUS_NOT_INTACT = "not_intact"
++_OVERVIEW_FIELDS = ("lesson_id", "status", "reason", "mission_id", "model", "generated_at",
++                    "diff_sha256", "summary", "constructs", "ungrounded")
++
++
++def job_lessons_overview(tasks: Sequence[Any], *, enabled: bool,
++                         root: Path | None = None) -> list[dict[str, Any]]:
++    """One row per task, in task order: its stored lesson, or why it has none. READ-ONLY.
++
++    This is the index the learning overlay renders (DECISION F265 D2). Nothing here generates:
++    a lesson is shown as it was stored, and a task without one says why, so an empty index is
++    never silent. A lesson that fails verification is named as such and its text withheld.
++    """
++    rows: list[dict[str, Any]] = []
++    for task in tasks:
++        run_id = str(getattr(task, "run_id", "") or "")
++        row: dict[str, Any] = {"task_id": str(getattr(task, "task_id", "")),
++                               "title": str(getattr(task, "title", "") or ""), "run_id": run_id}
++        if not run_id:
++            rows.append({**row, "status": STATUS_NONE, "reason": "this task has not run yet"})
++            continue
++        try:
++            lesson = load_lesson(run_id, root)
++        except LessonError:
++            rows.append({**row, "status": STATUS_NOT_INTACT,
++                         "reason": "the stored lesson failed its integrity check"})
++            continue
++        if lesson is None:
++            reason = ("no lesson was stored for this run" if enabled else
++                      "lessons are switched off; the teacher.lessons setting turns them on")
++            rows.append({**row, "status": STATUS_NONE, "reason": reason})
++            continue
++        rows.append({**row, **{field: lesson[field] for field in _OVERVIEW_FIELDS}})
++    return rows
++
++
+ def lessons_enabled() -> bool:
+     """Whether a completed task gets a lesson: the `teacher.lessons` key, off by default."""
+     from packages.orchestration.config import get_config
+diff --git a/packages/orchestration/pingpong_job.py b/packages/orchestration/pingpong_job.py
+index e5b5e65f..545b21a0 100644
+--- a/packages/orchestration/pingpong_job.py
++++ b/packages/orchestration/pingpong_job.py
+@@ -3926,7 +3926,8 @@ def _teach_task_lesson(job: JobPlan, task: TaskEntry) -> None:
+     """F265 T001: the completed task's lesson, when `teacher.lessons` is on (DECISION F265 D1).
+ 
+     Called once the task is applied and saved and before the safe point, so a stop waits for
+-    at most one teacher call. It never decides the job's outcome: a failure it expects — a
++    at most one teacher call. A lesson this call stores is announced on the job's run log as
++    `task_lesson_written`; a Run that already had one is not announced twice. It never decides the job's outcome: a failure it expects — a
+     file, a record or a transport that will not cooperate — is logged and swallowed, because
+     a teacher that could break a run would not be the passive role F255 specifies.
+     """
+@@ -3941,11 +3942,21 @@ def _teach_task_lesson(job: JobPlan, task: TaskEntry) -> None:
+         from packages.orchestration.mission_state import mission_for_job
+ 
+         mission = mission_for_job(str(job.job_id))
+-        lessons.generate_lesson(
++        stored = lessons.load_lesson(task.run_id) is not None
++        lesson = lessons.generate_lesson(
+             run_id=task.run_id, job_id=str(job.job_id), task_id=task.task_id,
+             task_title=task.title, mission_id=mission.id if mission is not None else "",
+             budgets=lessons.lesson_budgets(), config_file=lessons.lesson_role_overrides(),
+             project_id=_resolve_job_ledger_project_id(job))
++        if not stored:
++            # The stream's announcement (DECISION F265 D2): the overlay reads the lesson itself
++            # from the job's lessons route, so the event names the Run and the status only.
++            from packages.orchestration.data_paths import resolve_data_root
++            from packages.orchestration.timeline import append_run_event
++
++            append_run_event(resolve_data_root(), job.job_id, event="task_lesson_written",
++                             metadata={"task_id": task.task_id, "run_id": task.run_id,
++                                       "lesson_status": lesson["status"]})
+     except (OSError, RuntimeError, ValueError):
+         import logging as _logging
+         _logging.getLogger(__name__).error(
+diff --git a/packages/orchestration/ui_server.py b/packages/orchestration/ui_server.py
+index 11893cfa..b95f76b9 100644
+--- a/packages/orchestration/ui_server.py
++++ b/packages/orchestration/ui_server.py
+@@ -1746,6 +1746,15 @@ def _build_digest_json(job: Any) -> dict[str, Any]:
+     return build_job_digest(job, events)
+ 
+ 
++def _build_lessons_json(job: Any) -> dict[str, Any]:
++    """The job's lessons, one row per task, as stored (F265, DECISION F265 D2). READ-ONLY."""
++    from packages.orchestration.lessons import job_lessons_overview, lessons_enabled
++
++    enabled = lessons_enabled()
++    return {"job_id": str(job.job_id), "lessons_enabled": enabled,
++            "lessons": job_lessons_overview(job.tasks, enabled=enabled)}
++
++
+ def _build_next_action_json(job: Any) -> dict[str, Any]:
+     """Build next-action suggestion."""
+     from packages.orchestration.ui_view_model import build_next_action
+@@ -1887,9 +1896,26 @@ def _safe_event_summary(seq: int, event: dict[str, Any]) -> dict[str, Any]:
+         summary["budget"] = _budget_tick_summary_payload(metadata)
+     if kind == "steering_message_consumed":
+         summary["steering"] = _steering_ack_summary_payload(metadata)
++    if kind == "task_lesson_written":
++        summary["lesson"] = _lesson_summary_payload(metadata)
+     return summary
+ 
+ 
++def _lesson_summary_payload(metadata: Any) -> dict[str, str]:
++    """A stored lesson's announcement for the stream (F265, DECISION F265 D2).
++
++    CONDITIONAL on the event kind for the reason `budget` is. It names the Run whose lesson the
++    overlay can now read and the lesson's status, and nothing else: the lesson itself is read
++    from `/api/jobs/<job_id>/lessons` and never travels in a frame.
++    """
++    from packages.orchestration.lessons import LESSON_STATUSES
++
++    meta = metadata if isinstance(metadata, dict) else {}
++    status = meta.get("lesson_status")
++    return {"run_id": str(meta.get("run_id", "")),
++            "status": status if status in LESSON_STATUSES else ""}
++
++
+ def _steering_ack_summary_payload(metadata: Any) -> dict[str, Any]:
+     """A steering acknowledgement's fields for the stream (F264 T003, DECISION F264 D6).
+ 
+@@ -2445,6 +2471,7 @@ class _RemedyHandler(BaseHTTPRequestHandler):
+                 "diagnostics": _build_diagnostics_json,
+                 "diff": _build_diff_json,
+                 "digest": _build_digest_json,
++                "lessons": _build_lessons_json,
+             }
+             handler = handlers.get(endpoint)
+             if handler:

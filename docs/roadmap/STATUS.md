@@ -56,7 +56,7 @@ The tier-block order below is the operator-decided Self-Use sequence of 2026-08-
 ## Tier 5 — Steering & Learning Surfaces (operator order amend0831)
 
 - [x] F264 — Steering channel (remedy chat) (T001-T003 complete; accepted 2026-09-24 · live review PASS — ACCEPTED · Evidence job f264r9e1001 · package remedy-review-20260924-062629-READY_FOR_REVIEW.zip · SHA-256 7d07e5a59233f424dfe9cc60f9afbf7a1e1eb76d20906d111f8e1a619b43d47c · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD 2c91712595e069f7f0c7781008d14f07693b8dd9)
-- [ ] F265 — Teacher learning UI v1 (post-task lessons)
+- [x] F265 — Teacher learning UI v1 (post-task lessons) (T001-T003 complete; accepted 2026-09-24 · live review PASS — ACCEPTED · Evidence job f265r6e1001 · package remedy-review-20260924-092513-READY_FOR_REVIEW.zip · SHA-256 e6d848bab17468e2ccf6cad002b0612534d3337d826961cd6deb0e8fededb813 · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD 4ee73bf6fc60fdffa56aff630c56b455acfa12f1)
 
 ## Tier 0 — Foundation & Trust Core
 

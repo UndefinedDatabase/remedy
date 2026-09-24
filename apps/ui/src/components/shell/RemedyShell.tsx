@@ -17,6 +17,8 @@ import { BrainGraphStage } from "../graph/BrainGraphStage";
 import { RightLivePanel } from "../panels/RightLivePanel";
 import { PhaseTimeline } from "../timeline/PhaseTimeline";
 import { DetailPopover } from "../detail/DetailPopover";
+import { LessonsOverlay } from "../lessons/LessonsOverlay";
+import { lessonsRefreshKey } from "../../api/lessons";
 import { DegradedBanner } from "./DegradedBanner";
 import styles from "./RemedyShell.module.css";
 import { browserBrainStreamEnv, createBrainStreamHostDeps } from "../../api/brainStreamDeps";
@@ -146,6 +148,12 @@ export function RemedyShell({ dashboard, serverToken, selectedNodeId, onSelectNo
     nowMs: Date.now(),
   });
 
+  // THE LEARNING OVERLAY (T5_F265 T002, DECISION F265 D3): open or closed, and the newest
+  // stream position that announced a stored lesson, which is what makes an open overlay read
+  // its index again. No timer: the stream is the only trigger.
+  const [lessonsOpen, setLessonsOpen] = useState(false);
+  const lessonsKey = lessonsRefreshKey(stream.recent ?? []);
+
   // Jump-to: case-insensitive match over real task labels; focus the first match's node.
   const handleJump = (query: string) => {
     const q = query.toLowerCase();
@@ -181,7 +189,7 @@ export function RemedyShell({ dashboard, serverToken, selectedNodeId, onSelectNo
           <BrainGraphStage dashboard={dashboard} selectedNodeId={selectedNodeId} onSelectNode={onSelectNode} />
           <PhaseTimeline phases={dashboard.phases} timelineEvents={dashboard.timelineEvents} />
         </main>
-        <RightLivePanel dashboard={dashboard} serverToken={serverToken} onSelectNode={onSelectNode} streamStatus={stream.status} recent={stream.recent} recentDropped={stream.recentDropped} />
+        <RightLivePanel dashboard={dashboard} serverToken={serverToken} onSelectNode={onSelectNode} streamStatus={stream.status} recent={stream.recent} recentDropped={stream.recentDropped} onOpenLessons={() => setLessonsOpen(true)} />
       </div>
       {selectedNode && <DetailPopover dashboard={dashboard} selectedNode={selectedNode} selectedPromptId={selectedPromptId} onClose={() => onSelectNode(null)} onOpenDiff={setOpenDiffTaskId} />}
       {/* THE DIFF PANEL. A sibling of the popover rather than a child of
@@ -210,6 +218,15 @@ export function RemedyShell({ dashboard, serverToken, selectedNodeId, onSelectNo
             <p>{diffEnvelope.reason === null ? DIFF_UNAVAILABLE_TEXT : `${DIFF_UNAVAILABLE_TEXT} ${diffEnvelope.reason}`}</p>
           )}
         </section>
+      )}
+      {/* THE LEARNING OVERLAY, a sibling outside <main> for the reason the diff panel is. */}
+      {lessonsOpen && (
+        <LessonsOverlay
+          jobId={dashboard.jobId}
+          serverToken={serverToken}
+          refreshKey={lessonsKey}
+          onClose={() => setLessonsOpen(false)}
+        />
       )}
     </div>
   );

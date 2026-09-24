@@ -12,7 +12,7 @@ import { LiveStatusPill } from "./LiveStatusPill";
 import { TaskChecklistCard } from "./TaskChecklistCard";
 import styles from "./RightLivePanel.module.css";
 
-export function RightLivePanel({ dashboard, serverToken, onSelectNode, streamStatus, recent, recentDropped }: { dashboard: RemedyDashboard; serverToken: string; onSelectNode: (nodeId: string | null) => void; streamStatus?: BrainStreamStatus | null; recent?: readonly FeedRow[]; recentDropped?: number }) {
+export function RightLivePanel({ dashboard, serverToken, onSelectNode, streamStatus, recent, recentDropped, onOpenLessons }: { dashboard: RemedyDashboard; serverToken: string; onSelectNode: (nodeId: string | null) => void; streamStatus?: BrainStreamStatus | null; recent?: readonly FeedRow[]; recentDropped?: number; onOpenLessons?: () => void }) {
   const [showAdvanced, setShowAdvanced] = useState(false);
 
   return (
@@ -26,6 +26,13 @@ export function RightLivePanel({ dashboard, serverToken, onSelectNode, streamSta
       <DecisionInboxCard decisions={orderDecisionInbox(dashboard.decisionInbox)} tasks={dashboard.tasks} jobId={dashboard.jobId} serverToken={serverToken} onSelectNode={onSelectNode} />
       <ActivityFeedCard activity={dashboard.activity} recent={recent} recentDropped={recentDropped} tasks={dashboard.tasks} onSelectNode={onSelectNode} jobId={dashboard.jobId} serverToken={serverToken} stage={dashboard.live.stage} />
       <TaskChecklistCard tasks={dashboard.tasks} jobId={dashboard.jobId} onSelectNode={onSelectNode} />
+      {/* The learning overlay's entry point (T5_F265 T002, DECISION F265 D3), in the quiet style
+          of the toggle below; the shell owns whether the overlay is open. */}
+      {onOpenLessons && (
+        <button type="button" className={styles.advancedToggle} onClick={onOpenLessons}>
+          Lessons
+        </button>
+      )}
       <button
         type="button"
         className={styles.advancedToggle}

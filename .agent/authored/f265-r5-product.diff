@@ -1,0 +1,189 @@
+diff --git a/docs/README.md b/docs/README.md
+index a7e77961..7aa7e4ac 100644
+--- a/docs/README.md
++++ b/docs/README.md
+@@ -58,6 +58,7 @@
+ | session resume | [session-resume-v1.md](system/session-resume-v1.md) | system |
+ | snapshot | [snapshot-rollback-v1.md](system/snapshot-rollback-v1.md) | system |
+ | steering | [steering-user-guide-v1.md](guides/steering-user-guide-v1.md) | guide |
++| teacher lessons | [teacher-lessons-user-guide-v1.md](guides/teacher-lessons-user-guide-v1.md) | guide |
+ | test execution | [real-test-execution-v1.md](system/real-test-execution-v1.md) | system |
+ | test lanes | [test-lanes-v0.md](system/test-lanes-v0.md) | system |
+ | token economy | [token-economy-context-budget-optimizer-v0.md](system/token-economy-context-budget-optimizer-v0.md) | system |
+@@ -137,6 +138,7 @@ User-facing guides, quickstarts, and usage documentation.
+ | [resume.md](guides/resume.md) | Resuming interrupted jobs |
+ | [simple-operator-quickstart-v0.md](guides/simple-operator-quickstart-v0.md) | Quickstart for new operators |
+ | [steering-user-guide-v1.md](guides/steering-user-guide-v1.md) | Steering a running job with `remedy chat` or the cockpit input, and reading what it understood |
++| [teacher-lessons-user-guide-v1.md](guides/teacher-lessons-user-guide-v1.md) | Post-task lessons from the teacher: switching them on, what they may spend, and reading them in the cockpit |
+ | [token-economy-user-guide-v0.md](guides/token-economy-user-guide-v0.md) | Token budgets and context packs |
+ 
+ ## Archive (`docs/archive/`)
+diff --git a/docs/agents/planner_reviewer_prompt.md b/docs/agents/planner_reviewer_prompt.md
+index 186ab9a1..aecc8ecc 100644
+--- a/docs/agents/planner_reviewer_prompt.md
++++ b/docs/agents/planner_reviewer_prompt.md
+@@ -257,6 +257,10 @@ end the response with:
+   12's working-directory clause, and a DECISION ordered as a commit of its own is operator
+   amendment amend0917-throughput rule 4, which lands it with the round's bookkeeping. The list
+   stays at 34 items.
++  Consolidated a sixth time at F265's closure on 2026-09-24: nothing joined and no two items
++  were merged, because F265 wrote no line to `.agent/prose_slips.md`: its four rounds' blocks
++  were generated from simulated trees and every worker reading matched them. The list stays at
++  34 items.
+   The next consolidation measures against 34.
+   Reverse by deleting this paragraph.
+   1. **Size.** Count the block's lines. Over 400 (DECISION F105 D5) → split or
+diff --git a/docs/guides/teacher-lessons-user-guide-v1.md b/docs/guides/teacher-lessons-user-guide-v1.md
+new file mode 100644
+index 00000000..6e6026ef
+--- /dev/null
++++ b/docs/guides/teacher-lessons-user-guide-v1.md
+@@ -0,0 +1,73 @@
++# Post-task lessons from the teacher (v1)
++
++After each task of a job finishes, Remedy's teacher can write a short lesson about the change
++that task really made. The lesson says what was built, which functions and language features the
++change uses, what each one does, why it fits there, and whether that is good practice, with that
++last part stated as the teacher's opinion. You read the lessons in the cockpit, in a learning
++sheet you open over the job's dashboard.
++
++A lesson is written from the task's recorded change and from nothing else. It is never written
++from the plan, because the plan is what was intended and the change is what shipped.
++
++## Switching lessons on
++
++Lessons are off until you switch them on, because each lesson costs one call to the teacher's
++model for every task that finishes. Switch them on in your project's `remedy.toml`:
++
++```toml
++[remedy.teacher]
++lessons = true
++```
++
++or set the environment variable `REMEDY_TEACHER_LESSONS` to `1` for the run. The teacher uses its
++own model. Set it with `model` under the same `[remedy.teacher]` table, or with
++`REMEDY_TEACHER_MODEL`. Today the teacher can call a local Ollama model only.
++
++## What a lesson may spend
++
++Each job has its own spending limit for lessons. By default a job may make at most thirty teacher
++calls, and those calls may use at most three hundred thousand tokens (the units a model counts
++its reading and writing in). Change the limits with `lesson_max_calls` and `lesson_max_tokens`
++under `[remedy.teacher]`. Every call is recorded in the cost ledger under the role `teacher`, so
++spend grouped by role shows the teacher apart from the builder.
++
++When a job reaches either limit, the tasks after that get an empty lesson that says so. You never
++get a shortened lesson that looks complete.
++
++## When there is no lesson
++
++The index always says why a task has no lesson, in one of these ways:
++
++- the task has not run yet;
++- lessons are switched off;
++- the task recorded no change, so there is nothing to teach;
++- the change is too large to send whole, and a lesson about part of it would mislead;
++- the job belongs to no registered project, so the teacher's spend could not be recorded;
++- the spending limit is reached;
++- the teacher's model could not be reached;
++- the teacher's answer could not be read.
++
++## Reading the lessons
++
++Open a job's dashboard from its own link and press **Lessons** in the right-hand panel. The index
++of the job's tasks is on the left, and the chosen task's lesson is on the right. **Previous** and
++**Next** move between tasks, and the Escape key or **Close lessons** closes the sheet. While the
++sheet is open, it reads the index again whenever the job announces a new lesson, so a lesson
++appears as soon as its task finishes.
++
++A lesson lists only the functions and features that actually appear in the lines the change adds.
++If the teacher named something the change does not contain, it is left out, and the lesson says
++how many names were left out.
++
++## The Commands mode
++
++Press **Commands** at the top of the sheet to see, for the chosen task, the Remedy commands its
++change touched: every command whose code the change edited, and every command whose catalog entry
++it edited. Each one is shown with the description Remedy ships today, read from the command
++catalog when you open the sheet and never from a copy saved earlier. Press **Lesson** to go back.
++
++## Where lessons are kept
++
++Each lesson is stored once, beside the task's recorded change, and it is sealed so that any later
++edit to it is noticed. Opening a lesson again reads the stored file and costs nothing. A lesson
++that fails its seal is named as damaged in the index, and its text is not shown.
+diff --git a/docs/roadmap/features/T5_F265.md b/docs/roadmap/features/T5_F265.md
+index 3859ea16..f7c73ef5 100644
+--- a/docs/roadmap/features/T5_F265.md
++++ b/docs/roadmap/features/T5_F265.md
+@@ -98,3 +98,70 @@ T001 is the substance and the budget risk; settle the lesson artifact's shape
+ before any UI exists. T002 is pure rendering over stored artifacts and is safe
+ to build second. T003 is small and independent of T002. The v2 live mode is NOT
+ in this feature — a slice that starts generating during the build has drifted.
++
++## Built State (F265, 2026-09-24)
++
++What exists on disk at the close of F265, built in four rounds of one session on
++`feature/f265-teacher-learning-ui`, cut from `main` at `0236e3c3`. Every DECISION named lives in
++`.agent/decisions.md`; every round's verdict in `.agent/live_review.md` or, once rotated, its
++archive. The operator-facing description is `docs/guides/teacher-lessons-user-guide-v1.md`.
++
++**T001 — lesson generation from the real diff.** `packages/orchestration/lessons.py` writes one
++lesson per completed Run: it reads that Run's `runs/<run_id>/result.diff` and nothing else, sends
++it whole under the `teacher` role's own transport and model, and stores the result create-once as
++a sealed `runs/<run_id>/lesson.json` naming the Run, the job, the task, the Mission, the diff's
++sha256 and the model (DECISION F265 D1). A construct is kept only when its name appears on a line
++the diff adds; every other name the reply gives is listed as ungrounded. Every call is billed once
++through `teacher_spend.record_teacher_question` as role `teacher`, call id
++`teacher:lesson:<run_id>`, inside a per-job pot of `teacher.lesson_max_calls` (30) and
++`teacher.lesson_max_tokens` (300,000) read from the ledger's `teacher` rows before the call. A Run
++with no diff, a diff over 60,000 characters, no ledger, a spent pot, an unusable transport or an
++unreadable reply stores an honest empty lesson whose status and reason say which, with no call
++where none was made. `_teach_task_lesson` in `packages/orchestration/pingpong_job.py` writes the
++lesson after every applied task while `teacher.lessons` is on — off by default, operator question
++Q1 — and never changes the job's outcome. A lesson it stores is announced on the job's run log as
++`task_lesson_written`, which the stream carries as a `lesson` field naming only the Run and the
++status (D2).
++
++**T002 — the overlay.** `GET /api/jobs/<job_id>/lessons` serves one row per task, the stored
++lesson or the reason there is none, reading and never writing (D2). The cockpit's right panel
++opens `apps/ui/src/components/lessons/LessonsOverlay.tsx`, a right-anchored dialog sheet with the
++index on the left and the lesson with previous and next on the right, closed by Escape; every rule
++it applies lives in the pure `apps/ui/src/api/lessons.ts`, whose decoder refuses a whole index it
++cannot read rather than showing it shorter, and it reads the route again only when the stream
++announces a lesson (D3). Two rows of `docs/ui/design_reference/assumption_log.md` record the
++sheet's layer and missing focus trap and its entry point.
++
++**T003 — the Commands mode.** `lessons.lesson_commands` names the commands whose handler module or
++catalog line a Run's diff changed, each with its invocation and the description the command
++catalog ships, computed from the stored diff whenever the route is read and never stored; the
++overlay's Lesson and Commands switch shows them (D4).
++
++**Acceptance, by the test that proves it.** A lesson from the real diff after a task completes:
++`tests/orchestration/test_lessons.py::test_a_real_job_teaches_its_completed_task_from_the_runs_own_diff`,
++which runs a job and compares the lesson's diff digest and prompt with the Run's own diff; the
++overlay reads the stored lesson through `tests/ui_server/test_lessons_route.py`. The lesson names
++constructs that appear in the diff: `test_only_constructs_on_an_added_line_are_taught` and
++`test_a_completed_run_gets_a_sealed_lesson_billed_to_the_teacher`. The teacher's spend under its
++own role and pot: the same test's ledger row and `test_a_spent_pot_is_an_honest_empty_lesson_and_no_call`.
++The read path writes nothing: `test_reading_a_lesson_writes_nothing` and
++`tests/ui_server/test_lessons_route.py::test_reading_the_route_writes_nothing`. Budget exhaustion
++is an honest empty state: the spent-pot test, and `apps/ui/src/api/lessons.test.ts` for the line
++the overlay shows. `remedy do` reaches the same hook because `do_sequence` runs its jobs through
++`run_job`, and a mission's job names its mission:
++`test_a_mission_jobs_lesson_names_its_mission`.
++
++**Modules and lists (closure precondition 7).** F265 added one Python module,
++`packages/orchestration/lessons.py`, imported from `packages/orchestration/pingpong_job.py` and
++`packages/orchestration/ui_server.py`, and one line to
++`tests/orchestration/import_reachability_allowlist.txt` for it: `packages.orchestration.lessons`.
++It added nothing to `ALLOWED_UNWIRED` or `RESERVED_NAMESPACES` in `tests/test_no_orphan_modules.py`.
++
++**Findings.** F265 registered one finding, R-1046: `teacher.model` does not reach
++`remedy teacher ask`, which F265's Do-not-touch list kept it from repairing; it is owned by F284.
++The three open findings at its claim, R-0499, R-0950 and R-1008, are owned by F284 and were neither
++touched nor re-assigned.
++
++**Not built, by design.** The v2 live mode, which teaches during the build, is a separate future
++feature. The sheet has no focus trap, because nothing in the cockpit has one and no test here
++could prove it; the assumption log records it.

@@ -26,7 +26,7 @@ verification commands. If something is unproven, Remedy says so instead of guess
 
 ## Status
 
-94 of 284 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
+95 of 284 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
 
 | Tier | Name | Done | Total |
 |------|------|-----:|------:|
@@ -35,7 +35,7 @@ verification commands. If something is unproven, Remedy says so instead of guess
 | 2 | Minimal Self-Build Runtime | 35 | 37 |
 | 3 | Full Token Economy & Autonomy | 6 | 26 |
 | 4 | Memory & Learning | 1 | 17 |
-| 5 | Operator Cockpit | 14 | 34 |
+| 5 | Operator Cockpit | 15 | 34 |
 | 6 | Design-to-Code | 0 | 16 |
 | 7 | Quality & Trust | 0 | 15 |
 | 8 | Worker Ecosystem & Neutrality | 0 | 12 |
@@ -365,6 +365,15 @@ answers with what it understood and from which round, which `remedy chat show
 <job_id>` lists and the cockpit's activity feed shows as its own line, both read
 from the one event the job writes; a mission's job also adds the message to the
 mission's contract).
+
+F265 post-task lessons (after each task of a job finishes, Remedy's teacher can
+write a short lesson from the change that task really made: what was built,
+which functions and features it uses, what they do, why they fit, and whether
+that is good practice, stated as the teacher's opinion; lessons are off until
+switched on, each job has its own spending limit for them, and a task without a
+lesson says why; the cockpit's right panel opens a learning sheet with the
+lessons on the left, previous and next, and a Commands mode listing the Remedy
+commands the change touched with the descriptions Remedy ships today).
 
 Full per-feature state: [`docs/roadmap/STATUS.md`](docs/roadmap/STATUS.md)
 
