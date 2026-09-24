@@ -77,3 +77,25 @@ describe("feedRowOf on envelopes the client does not control", () => {
     expect(row.receivedAtMs).toBe(1717);
   });
 });
+
+
+describe("feedRowOf on a steering acknowledgement", () => {
+  const understood = "the builder follows “Use pnpm.” from round 2 of task task-1 on";
+
+  it("shows the round and the restatement instead of the catalog line", () => {
+    const row = feedRowOf(frameOf(9, {
+      event: "steering_message_consumed", task_id: "task-1",
+      steering: { message_id: "sm-0001", round_number: 2, understood },
+    }));
+    expect(row.line).toBe(`Steering taken in at round 2: ${understood}.`);
+    expect(row.known).toBe(true);
+    expect(row.taskId).toBe("task-1");
+  });
+
+  it("keeps the catalog line when the acknowledgement field is malformed", () => {
+    const row = feedRowOf(frameOf(10, {
+      event: "steering_message_consumed", steering: { message_id: "sm-0001" },
+    }));
+    expect(row.line).toBe(STREAM_EVENT_CATALOG["steering_message_consumed"]);
+  });
+});

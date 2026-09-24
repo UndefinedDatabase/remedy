@@ -62,3 +62,15 @@ def test_a_refused_message_keeps_the_operators_text():
     # The text is cleared only on acceptance: a refused message is never lost.
     assert chat.count('setText("")') == 1
     assert 'if (answer.tone === "ok") {\n      setText("");' in chat
+
+
+def test_the_cockpit_reads_exactly_the_fields_the_stream_carries():
+    """T003 (DECISION F264 D7): the feed's acknowledgement reader and the server's stream
+    field name the same keys and the same event kind, so neither can drift alone."""
+    from packages.orchestration.ui_server import _steering_ack_summary_payload
+
+    ack = strip_ts_comments((UI_SRC / "api" / "steeringAck.ts").read_text(encoding="utf-8"))
+    assert set(re.findall(r'steering\["([a-z_]+)"\]', ack)) == set(_steering_ack_summary_payload({}))
+    assert 'export const STEERING_ACK_EVENT = "steering_message_consumed";' in ack
+    feed = strip_ts_comments((UI_SRC / "api" / "feedRow.ts").read_text(encoding="utf-8"))
+    assert "const ack = readSteeringAck(envelope);" in feed
