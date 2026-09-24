@@ -1630,9 +1630,16 @@ SUP.Supervisor._supervise = _supervise
 def _mark(name, text="ok"):
     """Leave an observable trace of an injected action. A daemon thread that dies
     invisibly (the packaged race test raised NameError into DEVNULL and nobody noticed)
-    must never be able to satisfy a regression."""
-    with open(RELEASE + "." + name, "w") as fh:
+    must never be able to satisfy a regression.
+
+    The trace is written under a private name and renamed into place, because the
+    tests poll for the marker's existence and read it at once: opened in place, the
+    marker exists empty until its text is written, and a slow host reads it empty."""
+    path = RELEASE + "." + name
+    scratch = "%s.%d.tmp" % (path, threading.get_ident())
+    with open(scratch, "w") as fh:
         fh.write(str(text))
+    os.replace(scratch, path)
 
 def _guard(name, body):
     """Run an injected action; record that it ran, or record why it did not."""
