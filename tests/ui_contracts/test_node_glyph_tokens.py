@@ -4,7 +4,7 @@
 never colour values, and `glyphPaths.ts` names no colour at all (T5_F020.md,
 Design; `docs/ui/design_reference/tokens_rules.md`, Forbidden). The raw-colour
 ratchet in `test_raw_colour_ratchet.py` reads `.css` and `.tsx` files only, so
-these two `.ts` modules are guarded here. Every value below is parsed from the
+the `.ts` modules of `renderers/` are guarded here, every one of them. Every value below is parsed from the
 files, never copied into this test, except the state colours T5_F020.md fixes,
 which are the binding spec this guard exists to hold the tokens to.
 """
@@ -20,6 +20,7 @@ GLYPH_PATHS = RENDERERS / "glyphPaths.ts"
 APP_TOKENS = ROOT / "apps" / "ui" / "src" / "styles" / "tokens.css"
 REFERENCE_TOKENS = ROOT / "docs" / "ui" / "design_reference" / "tokens.css"
 ASSETS_SPEC = ROOT / "docs" / "ui" / "design_reference" / "assets_spec.md"
+CANVAS = ROOT / "apps" / "ui" / "src" / "components" / "graph" / "ForceBrainGraph.tsx"
 
 #: T5_F020.md, "How it fits (binding visual spec, restated)": the colour each
 #: of these node states is drawn in.
@@ -94,8 +95,10 @@ def test_the_pulse_constant_is_the_pulse_tokens_millisecond_value():
     assert int(constant.group(1)) == int(token[:-2])
 
 
-def test_neither_module_holds_a_raw_colour_literal():
-    for path in (NODE_STATES, GLYPH_PATHS):
+def test_no_renderer_module_holds_a_raw_colour_literal():
+    modules = sorted(p for p in RENDERERS.glob("*.ts") if not p.name.endswith(".test.ts"))
+    assert NODE_STATES in modules and GLYPH_PATHS in modules
+    for path in modules:
         found = _LITERAL.findall(path.read_text(encoding="utf-8"))
         assert not found, f"{path.name} holds raw colour literals {found}; name a token instead"
 
@@ -108,3 +111,25 @@ def test_both_module_headers_quote_the_precedence_rule_verbatim():
         assert match.group(0) in _header(path.read_text(encoding="utf-8")), (
             f"{path.name}'s header does not quote assets_spec.md §4's precedence rule verbatim"
         )
+
+
+def test_the_canvas_paints_every_non_core_kind_through_the_glyph_painter():
+    src = CANVAS.read_text(encoding="utf-8")
+    table = re.search(r"const NODE_PAINTERS: Record<NodeKind, NodePainter> = \{\n(.*?)\n\};", src, flags=re.S)
+    assert table, "ForceBrainGraph.tsx no longer declares NODE_PAINTERS"
+    entries = dict(re.findall(r"^  (\w+): (\w+),$", table.group(1), flags=re.M))
+    assert entries.pop("job_core") == "paintCoreNode"
+    assert set(entries.values()) == {"paintGlyphNode"}, entries
+    assert "paintBrainNode(ctx, node, { palette, zoom: globalScale" in src
+    assert "useMemo(() => readDocumentPalette(), [])" in src
+
+
+def test_the_canvas_holds_no_state_colour_of_its_own():
+    src = CANVAS.read_text(encoding="utf-8").lower()
+    for name in ("STATE_FILL", "STATE_RING"):
+        assert name.lower() not in src, f"ForceBrainGraph.tsx still declares {name}"
+    app = APP_TOKENS.read_text(encoding="utf-8")
+    for state in BINDING_STATE_COLOURS:
+        value = _declared(app, _fill_token(state))
+        if value != "#ffffff":
+            assert value.lower() not in src, f"ForceBrainGraph.tsx paints {state}'s colour {value} itself"

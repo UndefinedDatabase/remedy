@@ -65,6 +65,23 @@ describe("NODE_STATE_TREATMENTS", () => {
   });
 });
 
+describe("glyph ink and body lines", () => {
+  it("strokes a glyph on every state's sphere in a colour other than its fill", () => {
+    for (const state of ALL_STATES) {
+      expect(treatment(state).inkToken, state).not.toBe(treatment(state).fillToken);
+    }
+  });
+
+  it("inks a planned node's glyph and lines in its ring colour, and every other state's glyph in white", () => {
+    expect(treatment("planned").inkToken).toBe("--remedy-state-planned-ring");
+    expect(treatment("planned").lineToken).toBe("--remedy-state-planned-ring");
+    for (const state of ALL_STATES.filter((s) => s !== "planned")) {
+      expect(treatment(state).inkToken, state).toBe("--remedy-graph-node-ring");
+      expect(treatment(state).lineToken, state).toBe(FILL_TOKENS[state]);
+    }
+  });
+});
+
 describe("state is never colour alone", () => {
   it("marks a failed and a blocked node with the status dot", () => {
     expect(marksOf("fail")).toEqual(["status_dot"]);
