@@ -2601,6 +2601,13 @@ UI_EXPOSED_COMMANDS: frozenset[str] = frozenset({
     "decision.resolve",
     "patch.approve-hunks",
     "chat.send",
+    # F015 T002, DECISION F015 D3: the job plan edits, each through `plan_editing.edit_plan`.
+    "job.plan-edit-task",
+    "job.plan-delete-task",
+    "job.plan-reorder",
+    "job.plan-merge-tasks",
+    "job.plan-split-task",
+    "job.plan-edit-acceptance",
 })
 
 

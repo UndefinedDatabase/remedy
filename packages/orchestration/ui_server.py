@@ -2283,6 +2283,30 @@ JOB_STOP_COMMAND_ID = "job.stop"
 DECISION_RESOLVE_COMMAND_ID = "decision.resolve"
 HUNK_APPROVE_COMMAND_ID = "patch.approve-hunks"
 CHAT_SEND_COMMAND_ID = "chat.send"
+#: DECISION F015 D3: each exposed job plan edit, mapped to the `plan_editing` command it runs.
+#: The id is the catalog's; the backend's name is the same words with underscores.
+PLAN_EDIT_COMMAND_IDS: dict[str, str] = {
+    "job.plan-edit-task": "plan_edit_task",
+    "job.plan-delete-task": "plan_delete_task",
+    "job.plan-reorder": "plan_reorder",
+    "job.plan-merge-tasks": "plan_merge_tasks",
+    "job.plan-split-task": "plan_split_task",
+    "job.plan-edit-acceptance": "plan_edit_acceptance",
+}
+
+#: What a plan edit missing a usable `args.expected_version` returns: a 400 on that field,
+#: refused before the plan is read. Every edit names the version it was made against.
+COMMAND_PLAN_VERSION_MESSAGE = "expected_version must be the plan version the edit was made against"
+
+#: DECISION F015 D3: the plan edit refusals, each with its status, its audit outcome and its
+#: message. The edit RAN and DECLINED for all but the argument refusals, which are shape
+#: errors on field `args`. A version conflict carries the current version, and every other
+#: refusal but a lock timeout carries the backend's `detail`, because it names nothing but
+#: the plan's own content and the rule the edit broke — a UI must show the human why.
+COMMAND_PLAN_CONFLICT_MESSAGE = "the plan changed since this edit was made"
+COMMAND_PLAN_STATE_MESSAGE = "the plan is not open for editing"
+COMMAND_PLAN_INVALID_MESSAGE = "the edited plan fails the planner's checks"
+COMMAND_PLAN_ARGS_MESSAGE = "the plan edit's arguments were refused"
 
 _COMMAND_RATE_LOCK = threading.Lock()
 #: (token fingerprint, job id) -> (window start, commands accepted in it).
@@ -2306,6 +2330,23 @@ def server_token_matches(supplied_token: Any, expected_token: Any) -> bool:
 # A shape error names the offending field so a client can repair its own request.
 def _command_field_error(field: str, message: str) -> tuple[int, dict[str, Any]]:
     return 400, {"error": message, "field": field}
+
+
+def plan_edit_refusal(code: str, detail: str,
+                      current_version: int | None) -> tuple[int, str, dict[str, Any]]:
+    """The status, audit outcome and body DECISION F015 D3 rules for one refused plan edit."""
+    if code == "version_conflict":
+        return 409, "rejected_state", {"error": COMMAND_PLAN_CONFLICT_MESSAGE,
+                                       "current_version": current_version}
+    if code in ("invalid_args", "unknown_task", "unknown_command"):
+        return 400, "rejected_shape", {"error": COMMAND_PLAN_ARGS_MESSAGE, "field": "args",
+                                       "detail": detail}
+    if code == "invalid_plan":
+        return 409, "rejected_state", {"error": COMMAND_PLAN_INVALID_MESSAGE, "detail": detail,
+                                       "current_version": current_version}
+    if code in ("plan_not_editable", "no_task_plan"):
+        return 409, "rejected_state", {"error": COMMAND_PLAN_STATE_MESSAGE, "detail": detail}
+    return 500, "rejected_effect", {"error": COMMAND_EFFECT_FAILED_MESSAGE}
 
 
 # The rate limiter has to name the client it counts, and the only name a request
@@ -2792,6 +2833,37 @@ class _RemedyHandler(BaseHTTPRequestHandler):
             self._emit_command_accepted_event(str(job.job_id), accepted_body)
             self._send_json(200, accepted_body)
             return
+        # DECISION F015 D3 maps each `job.plan-*` edit to `plan_editing.edit_plan`, one
+        # transaction on the stored plan, and D18's write order above is unchanged. A refusal
+        # takes the status and outcome `plan_edit_refusal` rules for its code, and nothing was
+        # written, so nothing is published. `PlanEditRefused` is caught BEFORE the generic
+        # clause, of whose `ValueError` it is a kind.
+        if payload["command"] in PLAN_EDIT_COMMAND_IDS:
+            from packages.orchestration.plan_editing import PlanEditRefused
+            try:
+                accepted_body = self._dispatch_plan_edit(job, payload)
+            except PlanEditRefused as exc:
+                status, outcome, body = plan_edit_refusal(
+                    exc.code, exc.detail, exc.current_version)
+                self._audit_attempt(str(job.job_id), outcome, create=True, payload=payload)
+                self._send_json(status, body)
+                return
+            except (OSError, RuntimeError, ValueError, TypeError):
+                # D18, clause four: an effect that RAISED is neither `accepted`,
+                # which would be false, nor unaudited, which would break D6.
+                self._audit_attempt(str(job.job_id), "rejected_effect", create=True,
+                                    payload=payload)
+                self._send_json(*_safe_error(500, COMMAND_EFFECT_FAILED_MESSAGE))
+                return
+            # D18, clause three: both writes below fail SOFT. The edit is already
+            # persisted, so refusing after the fact would report an edit that really
+            # was written as one that was not.
+            self._audit_attempt(str(job.job_id), "accepted", create=True, payload=payload)
+            self._publish_command_result(str(job.job_id), payload["client_nonce"],
+                                         accepted_body)
+            self._emit_command_accepted_event(str(job.job_id), accepted_body)
+            self._send_json(200, accepted_body)
+            return
         # An id `_command_is_ui_exposed` admitted that no clause above dispatches.
         # DECISION F009 D22: this is a GUARD, not a placeholder — unreachable
         # while every id in the exposed subset has a clause above, and the
@@ -2961,6 +3033,24 @@ class _RemedyHandler(BaseHTTPRequestHandler):
         if follow_up is not None:
             body["follow_up_mission_id"] = follow_up
         return body
+
+    def _dispatch_plan_edit(self, job: Any, payload: Any) -> dict[str, Any]:
+        """Apply one job plan edit through `plan_editing.edit_plan` and build its body.
+
+        DECISION F015 D3: `args` less `expected_version` is the backend's own argument
+        object, which the backend validates, and a refusal RAISES `PlanEditRefused` for
+        the caller to map. The edit log names the editor by this request's token
+        fingerprint, the same handle `commands_audit.jsonl` records (DECISION F009 D7).
+        """
+        from packages.orchestration.plan_editing import edit_plan
+        args = dict(payload["args"])
+        expected_version = args.pop("expected_version")
+        result = edit_plan(
+            str(job.job_id), PLAN_EDIT_COMMAND_IDS[payload["command"]], args,
+            expected_version=expected_version,
+            actor=token_fingerprint(self._supplied_bearer_token()))
+        return {"command": payload["command"], "outcome": "accepted",
+                "version": result.version, "tasks": [t.id for t in result.plan.tasks]}
 
     def _dispatch_approve_hunks(self, job: Any,
                                 payload: Any) -> dict[str, Any] | None:
@@ -3241,6 +3331,12 @@ class _RemedyHandler(BaseHTTPRequestHandler):
                 normalize_steering_text(args.get("message"))
             except SteeringError as exc:
                 return None, _command_field_error("message", str(exc))
+        # DECISION F015 D3: a plan edit names the version it was made against, as a whole
+        # number, or it is a shape error refused before the plan is read.
+        version = args.get("expected_version")
+        if command in PLAN_EDIT_COMMAND_IDS and (
+                not isinstance(version, int) or isinstance(version, bool) or version < 1):
+            return None, _command_field_error("expected_version", COMMAND_PLAN_VERSION_MESSAGE)
         return {"command": command, "client_nonce": client_nonce, "args": args}, None
 
     def do_PUT(self) -> None:  # noqa: N802
