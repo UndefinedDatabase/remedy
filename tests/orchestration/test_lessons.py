@@ -297,7 +297,8 @@ def test_a_completed_task_gets_its_lesson_when_lessons_are_on(monkeypatch):
 
     reset_config()
     called = []
-    monkeypatch.setattr(lessons, "generate_lesson", lambda **kw: called.append(kw))
+    monkeypatch.setattr(lessons, "generate_lesson",
+                        lambda **kw: called.append(kw) or {"status": lessons.STATUS_READY})
     pingpong_job._teach_task_lesson(*_job_and_task())
     assert [(kw["run_id"], kw["task_id"], kw["task_title"], kw["mission_id"]) for kw in called] == [
         ("run-1", "T001", "cache loads", "")]
@@ -389,3 +390,51 @@ def test_the_lesson_keys_default_to_off_and_to_a_bounded_pot():
     config = get_config()
     assert config.get("teacher.lessons") is False
     assert lessons.lesson_budgets() == JobBudgets(max_provider_calls=30, max_total_tokens=300000)
+
+
+def _lessons_on(monkeypatch, tmp_path):
+    from packages.orchestration.config import reset_config
+
+    monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
+    monkeypatch.setenv("REMEDY_TEACHER_LESSONS", "1")
+    reset_config()
+
+
+def test_a_stored_lesson_is_announced_once_on_the_jobs_run_log(tmp_path, monkeypatch, transport):
+    from packages.orchestration import job_evidence
+    from packages.orchestration.data_paths import resolve_data_root
+    from packages.orchestration.timeline import load_run_events
+
+    _lessons_on(monkeypatch, tmp_path)
+    monkeypatch.setattr(job_evidence, "_resolve_job_ledger_project_id", lambda job: "proj-1")
+    monkeypatch.setattr(teacher_model, "ollama_teacher_call", _Call())
+    _run(resolve_data_root())
+    job = SimpleNamespace(job_id="0a1b2c3d4e5f6a7b", repo_path="")
+    task = SimpleNamespace(run_id="run-1", task_id="T001", title="cache loads")
+    pingpong_job._teach_task_lesson(job, task)
+    pingpong_job._teach_task_lesson(job, task)
+    written = [e for e in load_run_events(resolve_data_root(), job.job_id)
+               if e.get("event") == "task_lesson_written"]
+    assert [(e.get("task_id"), e["metadata"]) for e in written] == [
+        ("T001", {"run_id": "run-1", "lesson_status": lessons.STATUS_READY})]
+
+
+def test_a_mission_jobs_lesson_names_its_mission(tmp_path, monkeypatch):
+    from packages.orchestration.data_paths import resolve_data_root
+    from packages.orchestration.mission_state import (
+        MISSION_ROLE_INITIAL,
+        create_mission,
+        link_job_to_mission,
+    )
+
+    _lessons_on(monkeypatch, tmp_path)
+    mission = create_mission("p-f265", "Teach the change", root=resolve_data_root())
+    link_job_to_mission("p-f265", mission.id, "0a1b2c3d4e5f6a7b", MISSION_ROLE_INITIAL,
+                        root=resolve_data_root())
+    called = []
+    monkeypatch.setattr(lessons, "generate_lesson",
+                        lambda **kw: called.append(kw) or {"status": lessons.STATUS_READY})
+    job = SimpleNamespace(job_id="0a1b2c3d4e5f6a7b", repo_path="")
+    pingpong_job._teach_task_lesson(job, SimpleNamespace(run_id="run-1", task_id="T001",
+                                                         title="cache loads"))
+    assert [kw["mission_id"] for kw in called] == [mission.id]
