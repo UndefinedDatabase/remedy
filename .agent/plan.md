@@ -1,33 +1,36 @@
-# Plan — F015 Interactive plan editing
+# Plan — F019 Live node materialization
 
-Branch: feature/f015-interactive-plan-editing, cut from `main` at
-`fce49ce0`, the merge commit of pull request 273 (F267 List commands v2
-completion). Pull request 274 into `main` is open.
+Branch: feature/f019-live-node-materialization, cut from `main` at
+`92b7f5f1`, the merge commit of pull request 274 (F015 Interactive plan
+editing).
 
 ## Goal
 
-The human reshapes a job's task plan before approving it: six edit
-commands, valid only while the plan's approval is open, each revalidated
-and logged, reachable through the write channel and `remedy job plan-*`,
-and execution follows the edited plan exactly, proven by hash
-(`docs/roadmap/features/T5_F015.md`). F015 is accepted in STATUS.
+The brain graph comes alive: the stream's frames materialize nodes and
+links as a job runs, through a pure reducer whose goldens are the contract,
+rendered on the committed stage-1 stack, and recovered from gaps through
+the snapshot path without ghosts (`docs/roadmap/features/T5_F019.md`).
 
 ## Current Step
 
-ROUND 10, a repair of pull request 274's hosted CI under the Open PR
-Gate: the supervisor tests' `_mark` helper writes its marker under a
-private name and renames it into place, so a test never reads a marker
-before its text is there (R-1047). Test code only; no production file.
+ROUND 1: claim F019, re-head the live review record with F015's round 10
+verdict and R-1047's resolution, record DECISION F019 D1 and the operator
+note it implies, and land T001 — `brainOntology.ts` and `brainReducer.ts`
+under `apps/ui/src/components/graph/`, with the fixture streams, the
+goldens, idempotence per seq, the snapshot rebuild and the cluster view.
 
 ## Next Steps
 
-1. The reviewer gates this round, waits for the pull request's hosted CI
-   on the pushed commit, and merges pull request 274 at the Open PR Gate
-   when it is green.
-2. The next feature's first commit books this round's verdict and
-   resolves R-1047, then Rule A5 claims the next feature.
+1. T002: render the reducer's model on react-force-graph-2d, extending
+   `buildForceBrainModel.ts` to read it — layout, glyph slots for the
+   lifecycle feature, the motion tokens, and the demo recording.
+2. T003: the live wiring from the stream hook through the reducer to the
+   renderer, gap and snapshot recovery by paging `events-since`, the
+   performance fixture and the end-to-end run on a live fake job.
+3. The closure sequence.
 
 ## Risks
 
-Open findings: 5 — R-0499, R-0950, R-1008 and R-1046, owned by F284, and
-R-1047, owned by F015 and repaired by this round.
+The stream carries no run id and no outcome for test and repair runs, so
+those draw no node yet (DECISION F019 D1, operator note Q2). Open
+findings after this round: 4, all owned by F284.

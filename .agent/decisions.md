@@ -20110,3 +20110,65 @@ its transcript replaces `.agent/authored/f015-closure-suite.txt` at the same pat
 
 HOW TO REVERSE: restore `packages/runtimes/dev_server.py`, `tests/cli/runtime_helpers.py` and
 `tests/runtimes/test_supervisor_portability.py` from `11eb90c9`, and delete this paragraph.
+
+## DECISION F019 D1 — the brain graph's reducer reads the event envelope the server really writes, a run node is keyed by the frame that birthed it, and the task ring is born from the dashboard's task list (2026-09-24)
+
+CONTEXT: T5_F019.md orders T001, a pure reducer from stream events to the brain graph's
+ontology with goldens, and names the roadmap's Part E envelope types (`plan.task_created`,
+`run.started` and the rest) and "plan approval births the task ring". Measured at `92b7f5f1`: no
+writer emits any Part E type name except `budget.tick`; the frame both transports carry is
+`_safe_event_summary`'s `{seq, event, timestamp, outcome, task_id}` with three conditional keys,
+and it carries no run id and no payload; `feedRowOf` in `apps/ui/src/api/feedRow.ts` already
+projects each frame to `{seq, kind, outcome, taskId}`; F015's plan approval writes no run-log
+event; `task_run_started`, `task_round_completed`, `task_run_completed`, `task_run_failed`,
+`task_run_noop`, `verification_passed`, `verification_failed`, `task_needs_decision`,
+`task_decision_answered` and `job_stopped` carry their task as the top-level `task_id` where
+they carry one, while the `test_run_*` frames carry no outcome and `test_run_started` and every
+`repair_*` frame carry no task; one task may see several `task_run_started`; the gap path's
+snapshot reads a sequence number only, and `events-since` returns at most 50 events a page; no
+demo recording exists and F084 Demo mode is unchecked; `buildForceBrainModel.ts` is, by
+`docs/ui/design_reference/graph_tech_recommendation.md`, the single data-to-force-graph
+builder; and the event schema is on the feature's Do-not-touch list.
+
+CHOSEN: (1) THE MODULES are `apps/ui/src/components/graph/brainOntology.ts`, the ontology's
+types and its two status tables, and `brainReducer.ts`, the pure functions, beside
+`buildForceBrainModel.ts`, which stays the single builder of force-graph data and which T002
+extends to read the reducer's model. (2) THE INPUT is `BrainEventRow {seq, kind, outcome,
+taskId}`, to which `FeedRow` is structurally assignable, so `feedRowOf` stays the one frame
+parser. (3) THE MAPPING dispatches on the measured run-log names: `task_run_started` births a
+`builder_run`, first closing the task's still-open runs as `blocked`; `task_round_completed`
+births a `review_run` from the reviewer's verdict, `needs_repair` reading `fail` and
+`no_review` birthing nothing; `verification_passed` and `verification_failed` birth a
+`test_run`; `task_run_completed`, `task_run_failed` and `task_run_noop` close the open builder
+run; `task_needs_decision` blocks the task and `task_decision_answered` reopens it; `job_stopped`
+blocks every open run and returns its task to `planned`; `builder_started` and
+`builder_completed` are absorbed; every other kind, and every task-bound kind whose frame names
+no task, is counted in `ignored` and draws nothing. The `test_run_*` and `repair_*` frames
+therefore draw no node until the stream carries their task and their outcome, and `repair_run`,
+`synapse` and `artifact` are named for the lifecycle feature and never born here. (4) THE IDS
+are `job:<job>`, `task:<task>`, `run:<task>:<seq>` and `cluster:<task>`: a run is keyed by the
+ledger position of the frame that birthed it, because a per-task counter hands a dropped run's
+number to the next run after a gap, which is the ghost the snapshot path exists to prevent. (5)
+THE TASK RING is born from the dashboard's task list by `seedBrainModel`, since no plan-approval
+event exists; a frame naming a task the seed lacks births it at the ring's end. (6) IDEMPOTENCE:
+a row at or behind `lastSeq` returns the identical model object. (7) THE SNAPSHOT PATH is
+`rebuildBrainModel(job, tasks, rows)`: the seed, then the rows in seq order with the first row
+of a repeated seq kept, and its result replaces live state; T003 supplies the rows by paging
+`events-since` by seq, because one page holds at most 50. (8) THE CORE's state is derived from
+the tasks and runs on every return and never stored from a frame. (9) CLUSTERING is
+`clusterBrainModel(model, 8)`, a pure view that keeps every open run and the most recent runs up
+to eight and collapses the rest into one `cluster` node; the model itself keeps every run. (10)
+THE DEMO RECORDING T002 renders is a fixture stream committed beside the reducer's fixtures,
+captured from a real fake job's `events-since` output; the product's demo mode stays F084's.
+
+ALTERNATIVES: widening the envelope with a run id and the Part E type names, rejected because
+the event schema is on the Do-not-touch list and `tests/ui_server/test_sse_stream.py` pins the
+envelope's key set; a run id from a per-task counter, rejected for the reason (4) gives; the
+reducer inside `buildForceBrainModel.ts`, rejected because that builder reads the polled
+dashboard and the stage decision keeps it the renderer's input builder, while existence and
+state belong in a headless module where the goldens live; a `test_run` state read from
+`test_run_completed`, rejected because that frame carries no outcome, and a node drawn `pass`
+without one would be the fake progress graph_spec §8 forbids.
+
+HOW TO REVERSE: delete the four files under `apps/ui/src/components/graph/` whose names begin
+with `brainOntology` or `brainReducer`, and this paragraph.

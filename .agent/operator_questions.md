@@ -30,3 +30,29 @@ run already follows that same rule. Switching lessons on is a single setting.
 **What happens if you say nothing.** The recommendation is already executed and stands until you
 say otherwise. Lessons stay off until you switch them on, and the spending limit for each job
 applies from the first lesson.
+
+### Q2 — Live graph reads today's event stream (2026-09-24, F019, round 1)
+
+**What needs deciding.** The next feature makes the job graph in the browser grow while a job
+runs: the job in the middle, its tasks around it, and a small node for each attempt, review and
+check as it happens. The plan for this feature expected the server to send richer event messages
+than it really sends. Today each message names what happened and which task it belongs to, but not
+which attempt, and some kinds of message name no task or no result at all. I have built the graph
+from the messages as they really are, without changing what the server sends, because the plan
+lists the message format as something this feature must not change. You can tell me to widen the
+messages instead.
+
+**Why it matters.** Two things follow. First, the tasks appear when the task list appears on the
+dashboard, not at the moment the plan is approved, because approving a plan sends no message.
+Second, runs of the test command and the automatic repair loop do not show up as their own nodes
+yet, because their messages do not say which task they belong to or whether they passed. The
+graph never shows a result it was not told, so it leaves those nodes out rather than guess.
+Builder attempts, reviews and checks do appear, each with its real result.
+
+**My recommendation.** Keep the message format as it is for now. Changing it touches every
+consumer of the stream at once, and a later feature can add the missing fields on purpose, after
+which the graph can draw those nodes with a small change.
+
+**What happens if you say nothing.** The recommendation is already executed and stands until you
+say otherwise. The graph grows from the messages that exist today, and the test and repair nodes
+stay out until the messages carry what they need.

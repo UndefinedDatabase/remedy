@@ -1,37 +1,34 @@
-# Live Review — F015 Interactive plan editing
+# Live Review — F019 Live node materialization
 
-> Round-by-round review record, re-headed at the F015 claim per
-> docs/agents/planner_reviewer_prompt.md §1. The heading this replaces named F267, whose STATUS
-> line went `[x]` at `2e1ebf1a` and whose pull request 273 merged into `main` at the reviewer's
-> Open PR Gate under docs/agents/self_drive_protocol.md, as `fce49ce0`, after both hosted CI jobs
-> of run 35979651340 ended `success`. F267's round 4 — its closure round — has no gate entry, by
-> construction (§4 item 13 of docs/agents/planner_reviewer_prompt.md); the planner and reviewer
-> of F015's first session read it at this claim, over `74346eb2`..`2e1ebf1a`: VERDICT PASS. Its
-> four commits carry 320, 8, 12 and 183 insertions by `git show --numstat`, the last of them 10
-> outside `.agent/handoff.md`, each under the 500-line cap, each single-parent and each carrying
-> the ordered trailer; the round's block and its five payloads read out of `9c4de402` equal the
-> reviewer's originals under `.remedy-wt/` byte for byte; `.agent/live_review.md` and
-> `.agent/plan.md` at `c1fd192b`, the ledger and its archive at `1faaac3a`, and
-> `docs/roadmap/STATUS.md` and `README.md` at `2e1ebf1a` carry exactly the sha256 that round's
-> block ordered; the handback at `2e1ebf1a` names each of the five closure pins once — the
-> package, its SHA-256, its directory, the evidence job and the accepted head; and `2e1ebf1a` is
-> the second parent of `fce49ce0`. Only the heading, this paragraph and the `## Steps` section
-> below are rewritten. Everything from the `## Findings` line to the end of the file as it stood
-> at `fce49ce0` is carried forward BYTE-IDENTICAL, and finding ids continue the monotonic R-XXXX
-> series across the re-head. The open set at `fce49ce0`, computed with `open_finding_ids` from
-> `scripts/rotate_live_review.py`, is 4 by distinct id — R-0499, R-0950, R-1008 and R-1046 — and
-> F284 owns all of them; F015 owns whatever it registers for its own scope.
+> Round-by-round review record, re-headed at the F019 claim per
+> docs/agents/planner_reviewer_prompt.md §1. The heading this replaces named F015, whose STATUS
+> line went `[x]` at `0cac897c` and whose pull request 274 merged into `main` at the reviewer's
+> Open PR Gate under docs/agents/self_drive_protocol.md, as `92b7f5f1`, after both hosted CI jobs
+> of run 36011044909 ended `success`. That merge came one round after F015's closure: the hosted
+> run on `0cac897c` failed one test-harness node, finding R-1047 records it, and F015's round 10
+> repaired it on the pull request's branch under AGENTS.md's Open PR Gate exception. Round 9's
+> gate entry was booked by round 10's first commit, and round 10's gate entry and R-1047's
+> resolution are appended at the end of this record by F019's claim, because round 10 was
+> reviewed after its own handback. `739994f1` is the second parent of `92b7f5f1`. Only the
+> heading, this paragraph and the `## Steps` section below are rewritten. Everything from the
+> `## Findings` line to the end of the file as it stood at `92b7f5f1` is carried forward
+> BYTE-IDENTICAL, and finding ids continue the monotonic R-XXXX series across the re-head. The
+> open set at `92b7f5f1`, computed with `open_finding_ids` from `scripts/rotate_live_review.py`,
+> is 5 by distinct id — R-0499, R-0950, R-1008 and R-1046, which F284 owns, and R-1047, which
+> F015 owns and the `Done:` line appended by this claim resolves, leaving 4; F019 owns whatever it
+> registers for its own scope.
 
 ## Steps
 
-THE ORDER BELOW IS T5_F015.md's Orchestrator brief. R1 claims F015, re-heads this record and
-lands T001: `packages/orchestration/plan_editing.py`, one transaction per edit on the stored task
-plan — the six edit kinds, revalidation by the planner's own schema, DAG check and deliverable
-check, the version counter, the edit log with its replay, and the delete-rewiring rule — with
-DECISION F015 D1 fixing where the version and the log live. T002 follows: the write-channel door,
-the edit-window rule under the approval race, and `remedy plan edit`. T003 then lands the
-execution-fidelity hash, the `plan.md` revision goldens and the end-to-end run. Every round's
-handback states the open set by distinct id.
+THE ORDER BELOW IS T5_F019.md's Orchestrator brief, headless first. R1 claims F019, re-heads
+this record and lands T001: `apps/ui/src/components/graph/brainOntology.ts` and
+`brainReducer.ts`, the pure reducer from the stream's frames to the graph's nodes and links, with
+its goldens, its idempotence per seq, its snapshot rebuild and its cluster view, and DECISION
+F019 D1 grounding the mapping in the envelope the server really writes. T002 follows: rendering
+on react-force-graph-2d from the reducer's model, the layout, the motion tokens and the demo
+recording. T003 then lands the live wiring from the stream hook through the reducer to the
+renderer, the gap and snapshot recovery, the performance fixture and the end-to-end run on a live
+fake job. Every round's handback states the open set by distinct id.
 ## Findings
 
 - R-0499 — Low, THE EIGHT-FILE STRUCTURAL SWEEP GOES RED ABOUT ONCE IN TWENTY RUNS INSIDE A FRESH GIT WORKTREE, AND THE FAILING NODE ID HAS NEVER BEEN CAPTURED. Raised by the reviewer at the R8 authoring dry run. Two observations exist and both are inside a disposable worktree, never in the primary checkout: the F085 R7 worker saw one red in 22 runs on a scratch worktree carrying a larger draft change and did not capture the node id, and the reviewer saw one red in 14 runs on the R8 dry-run worktree and did not capture it either, because the run that produced it was not the run that carried `-rf` output to the log. The red reading is `1 failed, 348 passed, 7 skipped` against the green `350 passed, 6 skipped`, so a test that normally PASSES was SKIPPED in the same run that another test failed — which is the signature of an environment-conditional skip rather than of a logic defect. The sweep's only environment-conditional member is `test_typescript_compiles` in `tests/ui_server/test_dashboard_contract.py`, which resolves `apps/ui/node_modules/.bin/tsc` relative to the file's own tree, skips with "UI toolchain absent" when that path is missing, and otherwise shells out to a REAL `tsc --noEmit` under `timeout=30` — the one member of the eight-file sweep that depends on a heavy external toolchain and on wall-clock. `node_modules` is gitignored, so a fresh worktree's copy of it is populated out of band and its state at the worktree's FIRST sweep run is not something the sweep controls. Nothing in the F085 change set reaches any of the eight files, so this is a pre-existing property of the gate and not of the guard. Counter-measure, already applied in the block that registers this finding: the sweep is ordered as a PROBE carrying `-rf`, never as an expected COLOUR, and a red run reports its FAILED node id verbatim and hands back rather than re-running until green — which is the only way the id gets captured. The finding resolves when a red run finally names the test. Whether `test_typescript_compiles` belongs in a structural sweep at all is a question for the F252 flake work and is NOT claimed here. OPEN.
@@ -449,3 +446,7 @@ Gate: F015 R8 — the F015 round 8 entry: the booking of round 7 and the closure
 Gate: F015 R9 — the F015 round 9 entry, THE CLOSING ROUND: the booking of round 8, the ledger rotation, the STATUS flip with its README pins, and the pull request. VERDICT PASS, NO DEVIATION DECLARED. Re-derived over `2cdf826f`..`0cac897c` by the planner and reviewer of F015's first and second sessions, whose own runs produced every reading below, and booked by round 10's first commit. THE RANGE IS 4 COMMITS in the block's order C1 to C4, at `93047c37` 325, `4a02a310` 8, `184ceaba` 6 and `0cac897c` 181 insertions by `git show --numstat`, each under the 500-line cap and each single-parent. THE TRANSPORT PROOF IS FILE IDENTITY: the ledger and the plan at `4a02a310`, and the ledger and its archive at `184ceaba`, read byte-equal to the reviewer's simulation rebuilt at `2cdf826f`. THE BOOKING: `4a02a310` adds exactly one line beginning `Gate: F015 R8 — `. THE ROTATION moved 3 gate records and 0 finding pairs, the ledger going from 307764 to 301103 bytes, and the open set by distinct id reads R-0499, R-0950, R-1008 and R-1046 at `2cdf826f`, at `4a02a310` and at `0cac897c`. THE CLOSURE: at `0cac897c` F015's STATUS line reads `[x]`, `docs/roadmap/STATUS.md` holds 97 accepted lines as the README says, and `integrity check --json` reads all six checks `pass` at `fail_count` 0. THE PULL REQUEST is 274, from `feature/f015-interactive-plan-editing` into `main`, open and not a draft. AFTER THE ROUND: hosted run `36005167608` on `0cac897c` passed on Python 3.12 and failed on Python 3.10 in its `standard` stage at 1 failed and 13604 passed, the failure being `tests/runtimes/test_supervisor_portability.py::TestPersistentLogPumpHealth::test_a_broken_helper_thread_fails_the_regression`; R-1047 below records it, and round 10 repairs it on the pull request's branch.
 
 - R-1047 — Low, THE SUPERVISOR TESTS' `_mark` HELPER CREATES ITS MARKER EMPTY AND WRITES THE TEXT AFTERWARDS, SO A TEST THAT READS THE MARKER THE MOMENT IT EXISTS CAN READ IT EMPTY, AND PULL REQUEST 274's HOSTED CI FAILS ON IT. Raised by the planner and reviewer of F015's second session after the closure pull request's hosted run, having searched this record and its archive for `_mark` and `broken_helper_thread` and found nothing. THE DEFECT, at `0cac897c`: `_mark` in the supervisor prelude of `tests/runtimes/test_supervisor_portability.py` opens `RELEASE + "." + name` with mode `"w"` and only then writes, while `test_a_broken_helper_thread_fails_the_regression` polls `error_mark.exists()` and asserts `"NameError" in error_mark.read_text()` as soon as it does, and `test_a_pump_failure_racing_the_application_exit_is_recorded_honestly` reads the same marker in its failure message. MEASURED: hosted run `36005167608` failed the node with `assert 'NameError' in ''`; in a disposable worktree at `0cac897c`, a one-second pause added between that open and that write turns the node red with the same assertion, every time. WHY LOW: no product code is involved and the runtime behaves correctly, but the hosted gate over pull request 274 cannot pass while it reads red. NOT F015's CODE: `_mark` and the test date from `cfdf71e7`, and F015's commits to that file add a different test. FIX: `_mark` writes to a private name holding the thread id and renames it into place with `os.replace`, so the marker exists only once its text is there; the same one-second pause placed before the rename leaves both nodes green. Owner: F015.
+
+Gate: F015 R10 — the F015 round 10 entry, the CI repair of pull request 274 under AGENTS.md's Open PR Gate exception. VERDICT PASS. Written by the planner and reviewer of F015's second session after reading the committed range `0cac897c`..`739994f1` bottom-up and re-deriving every reading below, and booked by F019's claim. THE RANGE IS 3 COMMITS in the block's order C1 to C3, at `5d18d5aa` 201, `b2a6beed` 9 and `739994f1` 114 insertions by `git show --numstat`, each under the 500-line cap, each single-parent and each carrying the ordered trailer. THE TRANSPORT PROOF IS FILE IDENTITY: at `5d18d5aa` the ledger equals its `0cac897c` bytes plus the round's ledger payload, the plan equals its payload, and the six `.agent/authored/f015-r10-*` copies equal the reviewer's originals under `.remedy-wt/f015-r10/`, the block's sha256 being `f54f2fa0cb562e4027c3506ce0af1699fa2c08eeae399f6004cb392fc3a3ba25`; at `b2a6beed` `tests/runtimes/test_supervisor_portability.py` equals its `0cac897c` bytes with the pair's FROM replaced by its TO, and nothing else. THE OPEN SET at `5d18d5aa` reads R-0499, R-0950, R-1008, R-1046 and R-1047. THE TESTS: the reviewer's own run of `tests/runtimes/test_supervisor_portability.py` and `tests/cli/test_golden_path.py` in the primary checkout at `739994f1` read `142 passed`, and ruff over the test file read `All checks passed!`. THE PROOF, run by the reviewer in a disposable worktree at `b2a6beed` with the round's probe: the unmutated control read 2 passed at exit 0; the old `_mark` with the error marker paused one second before its write read 1 failed at exit 1, the failing node being `test_a_broken_helper_thread_fails_the_regression`, the same assertion the hosted run failed on; the new `_mark` with the same pause before its rename read 2 passed at exit 0; and the file was restored byte-identical. The worktree was removed and the tree is clean. AFTER THE ROUND: hosted run `36011044909` on `739994f1` ended `success` on Python 3.10 and 3.12, and pull request 274 merged as `92b7f5f1`. ONE NOTE, which is not a finding: the handback's Session section omits the one sentence of context self-assessment the block ordered, and every other mandated section is present.
+
+Done: R-1047 — RESOLVED at F015 R10 by `b2a6beed`. `_mark` in the supervisor prelude of `tests/runtimes/test_supervisor_portability.py` now writes the marker's text to a private name, `<marker>.<thread id>.tmp`, and renames it into place with `os.replace`, so the marker exists only once its text is there and a test that reads it the moment it exists can no longer read it empty. MEASURED BY THE REVIEWER in a disposable worktree at `b2a6beed`: with the error marker paused one second between its creation and its write, the old helper turns `test_a_broken_helper_thread_fails_the_regression` red with the hosted run's own assertion, and the new helper, paused the same second before its rename, keeps both marker-reading nodes green. The hosted run on `739994f1` passed on both Python versions.
