@@ -93,3 +93,12 @@ def test_a_failed_amendment_is_loud_and_consumes_nothing(root, mission, monkeypa
         _consume(root)
     assert ST.list_steering_consumptions(JOB, root) == {}
     assert _contract(root, mission) is None
+
+
+def test_the_acknowledgement_also_names_the_mission_criterion_and_its_round(root, mission):
+    _send(root, "Use pnpm, never npm.")
+    _consume(root)
+    understood = ST.list_steering_consumptions(JOB, root)["sm-0001"]["understood"]
+    assert understood == (
+        "the builder follows “Use pnpm, never npm.” from round 2 of task task-1 on; the mission "
+        "contract adds blocking criterion C001: Use pnpm, never npm., from mission round 1")

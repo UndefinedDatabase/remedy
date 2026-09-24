@@ -200,3 +200,28 @@ class TestRender:
         text = ST.render_steering_segment([{"text": "Use pnpm."}, {"text": "Keep\nit small."}])
         assert text.startswith("OPERATOR STEERING")
         assert text.endswith("- Use pnpm.\n- Keep\n  it small.\n")
+
+
+class TestAcknowledgement:
+    def test_the_consumption_event_restates_the_message_and_its_round(self, root):
+        _send(root, "Use pnpm.")
+        ST.consume_pending_steering(JOB, task_id="task-1", round_number=2, root=root, now=NOW)
+        understood = "the builder follows “Use pnpm.” from round 2 of task task-1 on"
+        assert ST.list_steering_consumptions(JOB, root)["sm-0001"]["understood"] == understood
+        assert ST.steering_acknowledgements(JOB, root) == {"sm-0001": {
+            "task_id": "task-1", "round_number": 2, "understood": understood,
+            "amendment_id": ""}}
+
+    def test_the_overview_names_each_status(self, root):
+        _send(root, "one")
+        ST.consume_pending_steering(JOB, task_id="task-1", round_number=1, root=root, now=NOW)
+        _send(root, "two")
+        running = ST.steering_overview(JOB, "running", root)
+        assert [(r["message_id"], r["status"]) for r in running] == [
+            ("sm-0001", "acknowledged"), ("sm-0002", "waiting")]
+        assert running[0]["round_number"] == 1 and running[1]["round_number"] is None
+        ended = ST.steering_overview(JOB, "completed", root)
+        assert [r["status"] for r in ended] == ["acknowledged", "not_taken_in"]
+
+    def test_a_job_with_no_message_has_an_empty_overview(self, root):
+        assert ST.steering_overview(JOB, "running", root) == []

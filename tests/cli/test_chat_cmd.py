@@ -76,3 +76,39 @@ class TestChatSend:
         out = json.loads(capsys.readouterr().out)
         assert out["error"] == "invalid_message"
         assert ST.list_steering_messages(job.job_id) == []
+
+
+class TestChatShow:
+    def test_it_lists_each_message_with_its_acknowledgement(self, tmp_path, capsys):
+        job = _job(tmp_path)
+        ST.record_steering_message(job.job_id, "Use pnpm.", job_state="running", channel="cli")
+        ST.consume_pending_steering(job.job_id, task_id="task-1", round_number=2)
+        ST.record_steering_message(job.job_id, "Keep it small.", job_state="running",
+                                   channel="cockpit")
+        assert _run(["chat", "show", job.job_id, "--json"]) == 0
+        out = json.loads(capsys.readouterr().out)
+        assert [(m["message_id"], m["status"]) for m in out["messages"]] == [
+            ("sm-0001", "acknowledged"), ("sm-0002", "waiting")]
+        assert out["messages"][0]["understood"].startswith("the builder follows “Use pnpm.”")
+        assert _run(["chat", "show", job.job_id]) == 0
+        text = capsys.readouterr().out
+        assert "taken in at round 2 of task task-1: the builder follows “Use pnpm.”" in text
+        assert "waiting — the job has not reached a safe point since it arrived" in text
+
+    def test_an_ended_job_says_which_messages_it_never_took_in(self, tmp_path, capsys):
+        job = _job(tmp_path)
+        ST.record_steering_message(job.job_id, "Too late.", job_state="running", channel="cli")
+        job.state = RunState.COMPLETED
+        PJ.save_job_plan(job)
+        assert _run(["chat", "show", job.job_id]) == 0
+        assert "not taken in — the job ended before it reached another round" in (
+            capsys.readouterr().out)
+
+    def test_a_job_with_no_message_says_so(self, tmp_path, capsys):
+        job = _job(tmp_path)
+        assert _run(["chat", "show", job.job_id]) == 0
+        assert f"Job {job.job_id} has no steering messages." in capsys.readouterr().out
+
+    def test_an_unknown_job_exits_1(self, tmp_path, capsys):
+        assert _run(["chat", "show", "feedfacefeedface", "--json"]) == 1
+        assert json.loads(capsys.readouterr().out)["error"] == "invalid_job_id"
