@@ -13,15 +13,15 @@ the snapshot path without ghosts (`docs/roadmap/features/T5_F019.md`).
 
 ## Current Step
 
-ROUND 8, THE CLOSURE SEQUENCE'S EVIDENCE HALF: book round 7's PASS, whose
-one full suite is green, then build the evidence bundle against the fork
-point and the fresh review package. T001, T002 and T003 are built.
+ROUND 9, THE CLOSING ROUND: book round 8's PASS, rotate the ledger, accept
+F019 in STATUS with its README pins, and open the pull request. T001, T002
+and T003 are built; the package is READY_FOR_REVIEW.
 
 ## Next Steps
 
-1. The closing round: the booking of round 8, the ledger rotation, the
-   STATUS line with the README counters in the same commit, and the pull
-   request.
+1. The next session's Open PR Gate merges this feature's pull request.
+2. Rule A5 then claims the first unchecked feature in
+   `docs/roadmap/STATUS.md`.
 
 ## Risks
 
