@@ -1,0 +1,99 @@
+diff --git a/README.md b/README.md
+index 5e20bf81d..19e48cc7c 100644
+--- a/README.md
++++ b/README.md
+@@ -26,13 +26,13 @@ verification commands. If something is unproven, Remedy says so instead of guess
+ 
+ ## Status
+ 
+-98 of 284 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
++98 of 285 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
+ 
+ | Tier | Name | Done | Total |
+ |------|------|-----:|------:|
+ | 0 | Foundation & Trust Core | 16 | 16 |
+ | 1 | Self-Build Bootstrap | 22 | 22 |
+-| 2 | Minimal Self-Build Runtime | 36 | 37 |
++| 2 | Minimal Self-Build Runtime | 36 | 38 |
+ | 3 | Full Token Economy & Autonomy | 6 | 26 |
+ | 4 | Memory & Learning | 1 | 17 |
+ | 5 | Operator Cockpit | 17 | 34 |
+diff --git a/docs/roadmap/STATUS.md b/docs/roadmap/STATUS.md
+index e6b9a8836..937194069 100644
+--- a/docs/roadmap/STATUS.md
++++ b/docs/roadmap/STATUS.md
+@@ -151,6 +151,13 @@ Milestone R1 — Remedy as the daily tool: Tier 2 complete (F086 as the self-ins
+ - [ ] F024 — Phase timeline with scrubber
+ - [ ] F025 — Pause/resume (global & per node)
+ - [ ] F026 — Task edit at runtime
++
++## Tier 2 — Findings paydown (rolling, operator rule amend0911-feedback)
++
++- [ ] F285 — Findings paydown v4
++
++## Tier 5 — Operator Cockpit (parallel human track, continued)
++
+ - [ ] F027 — Task veto
+ - [ ] F028 — Task injection
+ - [ ] F029 — Subtree rerun
+diff --git a/docs/roadmap/features/T2_F285.md b/docs/roadmap/features/T2_F285.md
+new file mode 100644
+index 000000000..6ff9dd40e
+--- /dev/null
++++ b/docs/roadmap/features/T2_F285.md
+@@ -0,0 +1,38 @@
++# T2_F285 — Findings paydown v4
++**Tier 2 · Depends on: nothing new — every id below is a finding already registered in `.agent/live_review.md` · Blocks/used by: every later closure, whose integrity precondition reads the open set this feature pays down**
++
++> Registered 2026-09-24 by F284's closure, under operator amendment amend0911-feedback rule B
++> (the rolling findings paydown, one per five features), and placed directly after F026, the fifth
++> unaccepted STATUS line below the position F284 held (DECISION F284 D3).
++> REGISTERED THIN: nothing in this file has been implemented. Its first round reads the open set
++> and writes the slice list, one slice per module, from every open finding registered before the
++> claim date whose repair fits one round; the finding text is the spec.
++
++## Goal & Done
++Pay down the open findings that describe a real defect, each by the repair its own text names,
++with the evidence that discharged it. DONE when every id this feature owns carries a resolution
++line with its evidence in `.agent/live_review.md`, or is carried by name to the next paydown
++feature in this feature's closure. The soft limit is 8 sessions (amend0911-feedback rule B); at the
++limit the feature closes with what it resolved and carries the rest, which is not a split.
++
++## Why this exists
++Because the ledger only stays readable while it also shrinks. F284, the third paydown, read 4
++open findings at its claim and closed with the id below open; the `Owner:` line F284's closing
++round added to its paragraph in `.agent/live_review.md` moved it here, and DECISION F284 D3 gives
++the reason it was carried.
++
++## Carried from F284
++R-1008. It resolves only by a closure self-use run whose diff its reviewer passes, and F284's
++closure found no eligible self-use item.
++
++## Acceptance
++- R-1008 carries a resolution line naming a self-use run whose diff its reviewer passed, or is
++  carried by name to the next paydown feature at this closure.
++
++## Do not touch
++The resolutions F284 landed; the record is append-only.
++
++## Orchestrator brief
++At claim, the first round reads the open set with `open_finding_ids` of
++`scripts/rotate_live_review.py`, writes the slice list into this file and adds one Acceptance line
++for every other id it takes.
+diff --git a/tests/docs/test_docs_consistency.py b/tests/docs/test_docs_consistency.py
+index 60c587e07..3927573dc 100644
+--- a/tests/docs/test_docs_consistency.py
++++ b/tests/docs/test_docs_consistency.py
+@@ -91,7 +91,11 @@ TIER_HEADING_RE = re.compile(r"^#+\s*Tier\s*(\d{1,2})", re.IGNORECASE)
+ #: F282's closure under operator amendment amend0911-feedback rule B and
+ #: placed after F019, the fifth unaccepted line below F282, under its own
+ #: Tier 2 heading with the Tier 5 list re-opened after it; see T2_F284.md.
+-TOTAL_FEATURES = 284
++#: One more, F285 (findings paydown v4), was registered on 2026-09-24 by
++#: F284's closure under operator amendment amend0911-feedback rule B and
++#: placed after F026, the fifth unaccepted line below F284, under its own
++#: Tier 2 heading with the Tier 5 list re-opened after it; see T2_F285.md.
++TOTAL_FEATURES = 285
+ 
+ #: Documents that must never contain a stale claim.
+ PRIMARY_DOCS = [
