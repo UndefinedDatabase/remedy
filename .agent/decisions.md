@@ -20570,3 +20570,46 @@ HOW TO REVERSE: delete `apps/ui/src/components/graph/renderers/`,
 `tests/ui_contracts/test_node_glyph_tokens.py`, the two tokens and their comment from
 `apps/ui/src/styles/tokens.css`, `--remedy-state-vetoed` from
 `docs/ui/design_reference/tokens.css`, its two lines in `tokens_rules.md`, and this paragraph.
+
+## DECISION F020 D2 — the canvas paints every non-core node through one painter that reads the glyph and state modules in a palette resolved once per mount, and T002 lands in two rounds (2026-09-25)
+
+CONTEXT: T5_F020.md orders T002, the canvas integration replacing F019's glyph slots, the legend
+generated from the same source, and the matrix fixture. Measured at `06d185c6`: `ForceBrainGraph.tsx`
+routes every non-core kind to one `paintSphereNode` through `NODE_PAINTERS`, with the state colours
+as raw literals in `STATE_FILL` and `STATE_RING`; `tokens_rules.md` names `renderers/palette.ts` as
+the bridge that resolves tokens for a canvas once per mount; no `.tsx` render test exists, because
+the vitest environment is `node` and its `include` reads `.test.ts` only; the layout gives a cluster
+node the label `""`, so it carries no count to draw; and the graph's chrome holds only the filter
+chips and the view toggle.
+
+CHOSEN: (1) THE PALETTE BRIDGE is `renderers/palette.ts`: the token list is the state table's
+tokens plus the sphere highlight `--remedy-graph-node-ring`, resolved through
+`getComputedStyle(document.documentElement)` in one `useMemo` per mount; a token that resolves to
+nothing paints nothing and is named on the container's `data-palette-missing` attribute, never
+replaced by a guessed colour. (2) THE PAINTER is `renderers/paintNode.ts`, `paintBrainNode`, holding
+no colour, shape or state rule of its own: the task and the four run kinds are a glossy sphere with
+the state's halo, gradient and size factor, and a run's glyph stroked in the highlight from the L1
+zoom; the artifact, synapse and cluster are their glyph drawn in the state's colour; every state mark
+is drawn over the body, its outline first where it names one. The birth's alpha and scale apply as
+before. (2a) THE INK: the state table gains `inkToken`, the colour a glyph is stroked in on the
+state's sphere, and `lineToken`, the colour of the lines of a kind whose glyph is its body. Both are
+the planned ring's colour for a planned node and white ink and the state's own fill for every other
+state, because the reviewer's headless-Chrome render of the kind-by-state matrix at `06d185c6` plus
+this round's modules showed a planned run's white glyph vanishing on its white sphere and a planned
+artifact's white outline vanishing on the stage. (3) `ForceBrainGraph.tsx` keeps `NODE_PAINTERS` and the core's own painter, maps every other
+kind to `paintGlyphNode`, and drops `STATE_FILL`, `STATE_RING` and `paintSphereNode`; the selection
+ring, the labels and the links keep their literals under the canvas carve-out, because this slice
+is the node's glyph and state. (4) THE WIRING is pinned from source, as the stage mount already is:
+the token guard now also checks that every non-core kind maps to the glyph painter and that the
+canvas holds no state colour of its own, and its raw-colour check reads every module in
+`renderers/`. (5) THE SPLIT: this round lands the painter; the next lands the legend popover from
+the graph's chrome, enumerated from the two modules, the cluster's count, and the matrix fixture.
+
+ALTERNATIVES: resolving tokens on every frame, rejected because `getComputedStyle` per node per
+frame is the cost the bridge exists to avoid; a fallback colour for a missing token, rejected
+because a guessed colour is a state the data never said; one round for all of T002, rejected
+because the legend is a new surface with its own tests and the painter is enough for a round.
+
+HOW TO REVERSE: delete `renderers/palette.ts`, `renderers/paintNode.ts` and their tests, restore
+`ForceBrainGraph.tsx` and `tests/ui_contracts/test_node_glyph_tokens.py` from `06d185c6`, and delete
+this paragraph.

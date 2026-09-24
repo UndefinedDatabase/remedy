@@ -13,16 +13,17 @@ over the whole kind-by-state matrix (`docs/roadmap/features/T5_F020.md`).
 
 ## Current Step
 
-ROUND 1: claim F020, re-head the live review record with F284's round 4
-verdict, record DECISION F020 D1, and land T001 — `glyphPaths.ts` and
-`nodeStates.ts` under `apps/ui/src/components/graph/renderers/`, their
-vitest tests, the two tokens they need, and the token guard.
+ROUND 2, T002's first half: book round 1's PASS, record DECISION F020 D2,
+and land the palette bridge `renderers/palette.ts` and the node painter
+`renderers/paintNode.ts`, with `ForceBrainGraph.tsx` painting every
+non-core kind through them, the state table's glyph ink, and the token
+guard pinning that wiring.
 
 ## Next Steps
 
-1. T002: the canvas painter reads both modules in place of F019's glyph
-   slots through the palette bridge `renderers/palette.ts`, the legend is
-   generated from the same source, and the matrix fixture.
+1. T002's second half: the legend popover from the graph's chrome,
+   enumerated from the glyph and state modules, the cluster's count, and
+   the kind-by-state matrix fixture.
 2. T003: transition and pulse motion with visibility pausing, the
    conformance assertions and the live fixture pass.
 3. The closure sequence.
