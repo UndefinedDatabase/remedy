@@ -9,21 +9,19 @@ UI v1).
 Every list command's handler honours `--sort`, `--desc`, `--since`,
 `--until` and `--limit`, proved over the whole catalog rather than a
 sample, and the ten-second demo is a test
-(`docs/roadmap/features/T2_F267.md`). T001, the wirings, landed in F273.
-Open findings: 4, all owned by F284.
+(`docs/roadmap/features/T2_F267.md`). T001, the wirings, landed in F273;
+T002 and T003 landed in round 1. Open findings: 4, all owned by F284.
 
 ## Current Step
 
-ROUND 1: claim F267, re-head the live review record with F265's closing
-verdict, record DECISION F267 D1, and land T002 and T003 as
-`tests/cli/test_list_commands_everywhere.py`.
+ROUND 2, the closure sequence's first half: book round 1's PASS, write
+the Built State, run the checklist consolidation, record the self-use
+track and run the feature's one full suite.
 
 ## Next Steps
 
-1. The closure sequence's first half: the Built State, the checklist
-   consolidation, the self-use track and the one full suite.
-2. The evidence bundle and the fresh review package.
-3. The closing round: the verdict bookings, the ledger rotation, the
+1. The evidence bundle and the fresh review package.
+2. The closing round: the verdict bookings, the ledger rotation, the
    STATUS flip and the pull request.
 
 ## Risks
