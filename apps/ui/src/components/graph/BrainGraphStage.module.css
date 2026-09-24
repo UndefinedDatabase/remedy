@@ -13,3 +13,19 @@
 }
 
 .chipsDock { position: absolute; left: 18px; bottom: 16px; z-index: 5; }
+
+.viewDock { position: absolute; right: 18px; bottom: 16px; z-index: 5; }
+
+.viewToggle {
+  height: 30px;
+  padding: 0 14px;
+  border-radius: var(--remedy-radius-pill);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--remedy-ink);
+  background: var(--remedy-glass-bg-strong);
+  border: 1px solid var(--remedy-glass-border);
+  box-shadow: var(--remedy-shadow-soft);
+}
+.viewToggle:hover { background: var(--remedy-blue-50); }
+.viewToggle[aria-pressed="true"] { border-color: var(--remedy-blue-strong); }

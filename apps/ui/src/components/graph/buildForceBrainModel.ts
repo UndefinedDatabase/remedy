@@ -9,7 +9,7 @@ import type { BrainModel, BrainNode, NodeKind } from "./brainOntology";
 type SizeClass = "small" | "medium" | "large";
 type FilterMode = "all" | "open" | "planned" | "done";
 
-function seededRng(seed: string) {
+export function seededRng(seed: string) {
   let h = 0;
   for (let i = 0; i < seed.length; i++) { h = ((h << 5) - h + seed.charCodeAt(i)) | 0; }
   let s = h >>> 0;

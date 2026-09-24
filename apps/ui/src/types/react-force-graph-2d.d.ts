@@ -42,6 +42,10 @@ declare module "react-force-graph-2d" {
     minZoom?: number;
     maxZoom?: number;
     onEngineStop?: () => void;
+    // Skips the post-cooldown "redraw only on change" optimization while a
+    // birth animation is in flight (force-graph 1.51.4) — otherwise a settled
+    // simulation never repaints the growing/fading node on its own.
+    autoPauseRedraw?: boolean;
     ref?: RefObject<ForceGraph2DInstance | null>;
   }
 
