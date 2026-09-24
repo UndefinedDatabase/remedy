@@ -1,17 +1,29 @@
-# Live Review — F019 Live node materialization
+# Live Review — F284 Findings paydown v3
 
-> Round-by-round review record, re-headed at the F019 claim per
-> docs/agents/planner_reviewer_prompt.md §1. The heading this replaces named F015, whose STATUS
-> line went `[x]` at `0cac897c` and whose pull request 274 merged into `main` at the reviewer's
-> Open PR Gate under docs/agents/self_drive_protocol.md, as `92b7f5f1`, after both hosted CI jobs
-> of run 36011044909 ended `success`. That merge came one round after F015's closure: the hosted
-> run on `0cac897c` failed one test-harness node, finding R-1047 records it, and F015's round 10
-> repaired it on the pull request's branch under AGENTS.md's Open PR Gate exception. Round 9's
-> gate entry was booked by round 10's first commit, and round 10's gate entry and R-1047's
-> resolution are appended at the end of this record by F019's claim, because round 10 was
-> reviewed after its own handback. `739994f1` is the second parent of `92b7f5f1`. Only the
-> heading, this paragraph and the `## Steps` section below are rewritten. Everything from the
-> `## Findings` line to the end of the file as it stood at `92b7f5f1` is carried forward
+> Round-by-round review record, re-headed at the F284 claim per
+> docs/agents/planner_reviewer_prompt.md §1. The heading this replaces named F019, whose STATUS
+> line went `[x]` at `08b19fb5` and whose pull request 275 merged into `main` at the reviewer's
+> Open PR Gate under docs/agents/self_drive_protocol.md, as `a36a8759`, after both hosted CI jobs
+> of run 36044974141 ended `success`. `08b19fb5` is the second parent of `a36a8759`. F019's round
+> 9, its closing round, was reviewed after its own handback, so its gate entry is appended at the
+> end of this record by F284's claim. Only the heading, this paragraph and the `## Steps` section
+> below are rewritten. Everything from the `## Findings` line to the end of the file as it stood at
+> `a36a8759` is carried forward BYTE-IDENTICAL, and finding ids continue the monotonic R-XXXX
+> series across the re-head. The open set at `a36a8759`, computed with `open_finding_ids` from
+> `scripts/rotate_live_review.py`, is 4 by distinct id — R-0499, R-0950, R-1008 and R-1046 — and
+> F284 owns all four.
+
+## Steps
+
+THE ORDER BELOW IS T2_F284.md's slice list, written by this claim. R1 claims F284, re-heads this
+record, books F019's round 9, and lands T001, R-1046's repair, in which `teacher.model` reaches
+`remedy teacher ask` through one helper the lessons path reads too, and T002, R-0499's repair, in
+which the vitest node's skip gate reads the same installed toolchain the typescript node reads.
+T003 follows, R-0950's zombie-process node: the test judges its own application family by the
+harness's scoped survivor check and stops reading a port it did not own as its own. The closure
+sequence then runs the one full suite, the self-use track that alone can resolve R-1008, the
+evidence package and the STATUS flip. Every round's handback states the open set by distinct id.
+## Findings` line to the end of the file as it stood at `92b7f5f1` is carried forward
 > BYTE-IDENTICAL, and finding ids continue the monotonic R-XXXX series across the re-head. The
 > open set at `92b7f5f1`, computed with `open_finding_ids` from `scripts/rotate_live_review.py`,
 > is 5 by distinct id — R-0499, R-0950, R-1008 and R-1046, which F284 owns, and R-1047, which
@@ -442,3 +454,5 @@ Gate: F019 R6 — the F019 round 6 entry: the booking of round 5, DECISION F019 
 Gate: F019 R7 — the F019 round 7 entry: the closure sequence's first half, the booking of round 6, the Built State, the checklist's consolidation pass, the self-use track's answer and the feature's one full suite. VERDICT PASS ON ALL SIX GATES, NO DEVIATION DECLARED. Re-derived over `25d36194`..`38c988ba` by the planner and reviewer of F019's second session, whose own runs produced every reading below except the full suite, which operator amendment amend0917-throughput gives the worker alone and which the reviewer read from its transcript. THE RANGE IS 5 COMMITS in the block's order C1 to C5, at `393b43bc` 361, `71161a01` 12, `b5830f7b` 80, `a3d0fe45` 6 and `38c988ba` 184 insertions by `git show --numstat`, each under the 500-line cap, each single-parent and each carrying the ordered trailer. THE TRANSPORT PROOF IS FILE IDENTITY: the block copy and the five payload copies under `.agent/authored/f019-r7-*` equal the reviewer's originals under `.remedy-wt/f019-r7/` and `.remedy-wt/f019-r7-payloads/` byte for byte, and the ledger, the plan, the checklist, the feature file and `.agent/selfuse_f019/result.txt` at `38c988ba` equal the reviewer's simulated tree `.remedy-wt/f019-r7-sim`. THE OPEN SET at `38c988ba` reads R-0499, R-0950, R-1008 and R-1046. THE SELF-USE TRACK read `None` before, `None` from the generator and `None` after, with the queue file unchanged, in the reviewer's simulated tree and in the worker's primary checkout alike, so this closure consumes no item: self-use NONE (queue exhausted). THE TESTS: the reviewer's run of the round's G4 selection in the primary checkout at `38c988ba` read `534 passed, 1 skipped` at exit 0, and all six `integrity check` checks `pass` at `fail_count` 0. THE FULL SUITE: `.agent/authored/f019-closure-suite.txt` records `python3 -m pytest -n auto -q` at exit 0 in 186 seconds with `19092 passed, 20 skipped, 1 warning` and no bad node, and the raw log it was written from, read by the reviewer, ends with that summary line and holds no line beginning `FAILED` or `ERROR`; neither reachability guard of closure precondition 7 holds a bad node.
 
 Gate: F019 R8 — the F019 round 8 entry: the closure sequence's evidence half, the booking of round 7, the evidence bundle and the review package. VERDICT PASS ON ALL SIX GATES, NO DEVIATION DECLARED. Re-derived over `38c988ba`..`787759d9` by the planner and reviewer of F019's second session, whose own reads produced every reading below. THE RANGE IS 3 COMMITS in the block's order C1, C2 and C3, at `0c5b54fd` 365, `d581b666` 8 and `787759d9` 163 insertions by `git show --numstat`, each under the 500-line cap, each single-parent and each carrying the ordered trailer; `d581b6667a9e29a1d276a39555b9038adb82a92b` is the accepted HEAD. THE TRANSPORT PROOF IS FILE IDENTITY: the block copy and the three payload copies under `.agent/authored/f019-r8-*` equal the reviewer's originals under `.remedy-wt/f019-r8/` and `.remedy-wt/f019-r8-payloads/` byte for byte, and the ledger and the plan at `787759d9` equal the reviewer's simulated tree `.remedy-wt/f019-r8-sim`. THE OPEN SET at `787759d9` reads R-0499, R-0950, R-1008 and R-1046. THE BUNDLE: the worker's evidence log, read by the reviewer, records head `d581b666`, ancestry and plain counts equal at 57, 718 node ids collected with 4 deselected, none unsafe and the planted id answering `a local absolute path`, pytest exit 0 with 718 passed and 0 skipped, an empty `validate_verification_tests` problem list, `is_valid_current_run` True with no validation error, and the five gates and the final verifier report written, under evidence job `f019r8e1001`. THE PACKAGE: `remedy-review-20260924-204836-READY_FOR_REVIEW.zip` in `/home/decodeux/Repos/remedy-history/zips`, whose bytes the reviewer hashed to SHA-256 `d0340a1a2ed77a6472e2d3f3469a4e5bf590674fd21e4d229b9c4d52d01263ff`, whose `.review_zip_manifest.json`, read out of the package, names base `92b7f5f18943ba7a22b748687d1c565bec7e752a`, head `d581b6667a9e29a1d276a39555b9038adb82a92b` and 57 commits with `package_status` READY_FOR_REVIEW and authoritative evidence, and whose `testzip()` answers None. All six `integrity check` checks `pass` at `fail_count` 0, and the tree is clean.
+
+Gate: F019 R9 — the F019 round 9 entry: the closing round, booking round 8's PASS, rotating this record into its archive, accepting F019 in STATUS with its README pins and opening pull request 275. VERDICT PASS, NO DEVIATION DECLARED. Re-derived over `787759d9`..`08b19fb5` by the planner and reviewer of F019's second session, and booked here by F284's claim, because a closing round is reviewed after its own handback. THE RANGE IS 4 COMMITS in the block's order C1, C2, C3 and C4, at `76a970f1` 339, `d3221664` 8, `8263d1f5` 24 and `08b19fb5` 183 insertions by `git show --numstat`, each under the 500-line cap, re-measured by F284's reviewer at `a36a8759`. THE TRANSPORT PROOF IS FILE IDENTITY: every file the round applied equals the reviewer's simulated tree. THE ROTATION moved 10 gate records and 1 finding pair, the ledger going from 324355 to 302065 bytes and the archive from 4918588 to 4940878, with the open set at 4 before and after. THE CLOSURE EDITS: F019's STATUS line occurs once and no STATUS line reads `[~]` at `08b19fb5`; the README counts 98 of 284 features accepted and Tier 5 at 17 of 34. THE TESTS: the reviewer's closing selection read `437 passed, 1 skipped` at exit 0, and `integrity check` reported 0 failures. THE MERGE: both hosted CI jobs of run 36044974141 on `08b19fb5` ended `success`, and F284's session merged pull request 275 at its Open PR Gate as `a36a8759`.

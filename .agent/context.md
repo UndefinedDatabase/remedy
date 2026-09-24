@@ -1,27 +1,23 @@
-# Context — F019 Live node materialization
+# Context — F284 Findings paydown v3
 
 ## Active Branch
-feature/f019-live-node-materialization, cut from `main` at `92b7f5f1`
-(the merge commit of pull request 274, F015 Interactive plan editing).
+feature/f284-findings-paydown-v3, cut from `main` at `a36a8759`
+(the merge commit of pull request 275, F019 Live node materialization).
 
 ## Scope
-F019 (Tier 5): the brain graph materializes live — a pure reducer from the
-stream's frames to the graph ontology (T001), rendering on
-react-force-graph-2d at the design reference's bar (T002), and the live
-wiring with gap and snapshot recovery and the performance fixture (T003),
-as `docs/roadmap/features/T5_F019.md` specifies, with
-`docs/ui/design_reference/graph_spec.md` and `graph_tech_recommendation.md`
-authoritative on conflict.
+F284 (Tier 2): the rolling findings paydown, v3. The four open findings it
+owns — R-0499, R-0950, R-1008 and R-1046 — are repaired by the slices
+`docs/roadmap/features/T2_F284.md` lists, each finding's text being its
+spec (DECISION F284 D1).
 
 ## Do not touch
-The glyph and state visual language (the next feature), zoom mechanics,
-and the event schema. No renderer dependency is added (stage decision).
+The resolutions earlier paydowns landed; the record is append-only.
 
 ## Active assumptions
-- The reducer reads the envelope the server really writes, a run node is
-  keyed by the frame that birthed it, and the task ring is born from the
-  dashboard's task list (DECISION F019 D1).
-- `buildForceBrainModel.ts` stays the single builder of force-graph data.
+- One helper, `teacher_role_overrides`, reads `teacher.model` for every
+  teacher call (DECISION F284 D1).
+- R-0499's node is the one a controlled reproduction named (DECISION F284
+  D1).
 
 ## Constraints
 - UI checks run through the pytest nodes that wrap the toolchain in the

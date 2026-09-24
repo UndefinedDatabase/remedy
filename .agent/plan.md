@@ -1,31 +1,30 @@
-# Plan — F019 Live node materialization
+# Plan — F284 Findings paydown v3
 
-Branch: feature/f019-live-node-materialization, cut from `main` at
-`92b7f5f1`, the merge commit of pull request 274 (F015 Interactive plan
-editing).
+Branch: feature/f284-findings-paydown-v3, cut from `main` at
+`a36a8759`, the merge commit of pull request 275 (F019 Live node
+materialization).
 
 ## Goal
 
-The brain graph comes alive: the stream's frames materialize nodes and
-links as a job runs, through a pure reducer whose goldens are the contract,
-rendered on the committed stage-1 stack, and recovered from gaps through
-the snapshot path without ghosts (`docs/roadmap/features/T5_F019.md`).
+Pay down the four open findings F284 owns, each by the repair its own text
+names, with the evidence that discharged it
+(`docs/roadmap/features/T2_F284.md`, DECISION F284 D1).
 
 ## Current Step
 
-ROUND 9, THE CLOSING ROUND: book round 8's PASS, rotate the ledger, accept
-F019 in STATUS with its README pins, and open the pull request. T001, T002
-and T003 are built; the package is READY_FOR_REVIEW.
+ROUND 1: claim F284, re-head the live review record, book F019's round 9,
+write the slice list, and land T001 (R-1046, `teacher.model` reaches
+`remedy teacher ask`) and T002 (R-0499, the vitest node's skip gate).
 
 ## Next Steps
 
-1. The next session's Open PR Gate merges this feature's pull request.
-2. Rule A5 then claims the first unchecked feature in
-   `docs/roadmap/STATUS.md`.
+1. T003: R-0950's zombie-process node in
+   `tests/orchestration/test_product_smoke.py`.
+2. The closure sequence: the one full suite, the self-use run that alone
+   can resolve R-1008, the evidence package, the STATUS flip.
 
 ## Risks
 
-The stream carries no run id and no outcome for test and repair runs, so
-those draw no node yet (DECISION F019 D1, operator note Q2). Prompt dots
-show only in the simple view (DECISION F019 D3, operator note Q3). Open
-findings: 4, all owned by F284.
+R-1008 resolves only if the closure's self-use run lands a diff its
+reviewer passes; otherwise it is carried by name to the next paydown.
+Open findings at the claim: 4.

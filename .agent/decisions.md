@@ -20400,3 +20400,52 @@ and the model's inputs can be compared on the Python side without a second runti
 HOW TO REVERSE: delete `brainPerfFixture.ts`, its test and
 `tests/ui_server/test_brain_demo_recording_live.py`, remove the bullet naming the fixture from
 `docs/roadmap/features/T5_F044.md`, and delete this paragraph.
+
+## DECISION F284 D1 — the claim writes F284's slice list from the four ids it owns, `teacher.model` reaches `teacher ask` through one helper, and R-0499's node is named by a controlled reproduction (2026-09-24)
+
+CONTEXT: `docs/roadmap/features/T2_F284.md` was registered thin by F282's closure and orders its
+first round to read the open set and write one slice per module from every open finding whose
+repair fits one round. At `a36a8759` the open set, read with `open_finding_ids` of
+`scripts/rotate_live_review.py`, is R-0499, R-0950, R-1008 and R-1046, and F284 owns all four.
+Two research helpers of the claiming session diagnosed R-0499 and R-0950 in disposable worktrees
+at `a36a8759`, and the reviewer re-ran the reproduction each one rests on before this text was
+written.
+
+CHOSEN: (1) THE SLICE LIST, in this order: T001 repairs R-1046 in
+`packages/orchestration/teacher_model.py`; T002 repairs R-0499 in
+`tests/orchestration/test_test_runner.py`; T003 repairs R-0950's zombie-process node in
+`tests/orchestration/test_product_smoke.py`; and R-1008 stays with the closure, because its own
+text says only a closure self-use run whose diff a reviewer passes can resolve it. Every one of
+the four fits one round, so none is carried at claim. (2) T001: the configured teacher model is
+read by ONE helper, `teacher_role_overrides` in `teacher_model.py`, which `ask_teacher` passes to
+both `resolve_role_config` and `resolve_teacher_transport`, and which the lessons path reads in
+place of `lessons.lesson_role_overrides`. That older helper read the same key for lessons alone
+and is deleted in the same commit, because two spellings of one concept is what AGENTS.md's
+discoverability rules forbid. The key's description in `packages/orchestration/config.py` stops
+saying that nothing reads it, and `docs/guides/environment.md` is rendered again from it. (3)
+T002: R-0499 says it resolves when a red run names its test, and the two historical red runs
+cannot be re-read. The helper found the sweep's eight files in the F085 round 8 block and read
+that sweep's only two toolchain-gated nodes: `test_vitest_passes` skips only when
+`apps/ui/node_modules` is not a directory, while `test_typescript_compiles` skips when
+`apps/ui/node_modules/.bin/tsc` is not a file. A worktree whose `node_modules` directory exists
+but is not yet populated is therefore run by the first and skipped by the second. The reviewer
+reproduced that state at `a36a8759`: the two nodes read `1 failed, 1 skipped`, the failure being
+`tests/orchestration/test_test_runner.py::TestVitestFrontendTestFoundation::test_vitest_passes`,
+and the helper's run of the whole eight-file sweep in that state read `1 failed, 357 passed, 7
+skipped` against `359 passed, 6 skipped` with the toolchain present, which is the recorded
+signature of one pass turned into a skip and another into a failure. This controlled red run is
+taken as the one that names the test. The repair gates the vitest node on
+`apps/ui/node_modules/.bin/vitest` being a file, the same kind of installed artefact the
+typescript node already reads.
+
+ALTERNATIVES: carrying R-0499 again until an organic red run is captured, rejected because
+DECISION F282 D9 already ruled that re-running a sweep until it fails is the pattern the finding
+forbids, and a named mechanism is stronger evidence than one more captured id; gating both nodes
+on a shared helper, rejected because the two tests live in different files and the one-line gate
+is what each test's reader looks at; keeping `lesson_role_overrides` beside the new helper,
+rejected by the rule that replacing is deleting.
+
+HOW TO REVERSE: restore `packages/orchestration/teacher_model.py`,
+`packages/orchestration/lessons.py`, `packages/orchestration/pingpong_job.py`,
+`packages/orchestration/config.py`, `docs/guides/environment.md` and the touched tests from
+`a36a8759`, and delete this paragraph.
