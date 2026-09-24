@@ -13,22 +13,22 @@ the snapshot path without ghosts (`docs/roadmap/features/T5_F019.md`).
 
 ## Current Step
 
-ROUND 4: book round 3's PASS, record DECISION F019 D4, and finish T002:
-remove the old decorative dashboard builder with its source pins, and
-commit the demo recording, a captured fake-provider job, with its
-hand-derived golden. T001 and T002 are then built.
+ROUND 5: book round 4's PASS, record DECISION F019 D5, and land T003's
+first half: the stage folds the complete prefix of a ledger merged from
+`events-since` pages and the live stream's ring, and fills a hole by paging
+from its first missing seq. T001 and T002 are built.
 
 ## Next Steps
 
-1. T003: the live wiring from the stream hook through the reducer to the
-   renderer, gap and snapshot recovery by paging `events-since`, the
-   performance fixture and the end-to-end run on a live fake job compared
-   against the demo recording.
+1. The rest of T003 (DECISION F019 D5 (1)): the end-to-end run of a live
+   fake job compared against the demo recording, and the performance
+   fixture's measurement against the stage-1 budget.
 2. The closure sequence.
 
 ## Risks
 
 The stream carries no run id and no outcome for test and repair runs, so
 those draw no node yet (DECISION F019 D1, operator note Q2). Prompt dots
-show only in the simple view (DECISION F019 D3, operator note Q3). Open
-findings: 4, all owned by F284.
+show only in the simple view (DECISION F019 D3, operator note Q3). The
+performance budget is measured in a browser, which the next round must
+reach. Open findings: 4, all owned by F284.

@@ -20318,3 +20318,42 @@ HOW TO REVERSE: restore `buildForceBrainModel.ts`, `forceBrainTypes.ts`,
 `buildForceBrainModel.test.ts`, `tests/ui_server/test_dashboard_contract.py` and
 `tests/ui_contracts/test_graph_architecture.py` from `4b513511`, delete `brainDemoRecording.ts` and
 its test, and delete this paragraph.
+
+## DECISION F019 D5 — the graph folds the complete prefix of a ledger merged from `events-since` pages and the live ring, a hole is filled by paging from its first missing seq, and T003 lands in two rounds (2026-09-24)
+
+CONTEXT: T5_F019.md's T003 is the live wiring from the stream hook through the reducer to the
+renderer, gap and snapshot recovery, the performance fixture and an end-to-end run on a live fake
+job. Measured at `238f2aa5`: the stage builds its model from the dashboard seed alone; the stream
+hook's view carries `recent`, a ring of at most 500 feed rows kept unique by seq and oldest first,
+and `gapDetected`; on a hole the stream reads the ledger's current position and jumps its held seq
+there (`repairBrainGap`), so the frames it skipped never enter the ring; `events-since` answers at
+most 50 events a page, with `cursor` set to the ledger's length; the stream opens at cursor 0 when
+it holds nothing; the one builder of the `events-since` path is a closure inside
+`createBrainStreamHostDeps`; and the shell's one `<BrainGraphStage` line is pinned by
+`tests/ui_contracts/test_brain_stream_ring.py`.
+
+CHOSEN: (1) THE SPLIT: this round lands the live wiring and the gap recovery; the next round, which
+takes both under operator amendment amend0917-throughput rule 3, lands the end-to-end run of a live
+fake job compared against the demo recording and the performance fixture's measurement. (2) THE
+LEDGER: the new `apps/ui/src/components/graph/brainLedger.ts` merges `events-since` pages and the
+live ring into one ledger, one row per seq with the row already held winning, and knows the
+ledger's length from a page's `cursor` or from the highest held seq plus one. (3) THE PREFIX RULE:
+the graph folds only the rows that run from seq 0 without a hole; a hole, whether a live frame that
+skipped seqs, a stream that joined mid-ledger or a tab that slept, is filled by paging
+`events-since` from its first missing seq, and a read that comes back empty or fails stalls that
+cursor until a live frame changes the ledger. (4) THE MODEL is `rebuildBrainModel` over that prefix,
+rebuilt on every change, so the snapshot path and the live path are one path. (5) THE WIRING: the
+shell hands the stage `stream.recent` and a page reader built on `eventsSincePath`, now exported
+from `brainStreamDeps.ts` as the one place that path is built, and the new `useBrainLedger.ts`
+holds only state, two effects and the in-flight guard.
+
+ALTERNATIVES: folding live rows into a held model and rebuilding only when the stream reports a gap,
+rejected because the stream clears its gap flag once it has re-positioned while the frames it skipped
+never arrive, so the model would miss them without knowing; drawing the rows past a hole, rejected
+because a run whose closing frame sits in the hole would be drawn in progress, which is the ghost
+the feature forbids; building the path a second time in the graph, rejected because two builders
+of one path can drift.
+
+HOW TO REVERSE: restore `BrainGraphStage.tsx`, `RemedyShell.tsx`, `brainStreamDeps.ts`, its test and
+`tests/ui_contracts/test_brain_stage_mount.py` from `238f2aa5`, delete `brainLedger.ts`, its test,
+`useBrainLedger.ts` and `tests/ui_contracts/test_brain_live_wiring.py`, and delete this paragraph.
