@@ -7,7 +7,14 @@ import { scheduleBrainBirths } from "./brainMotion";
 import type { NodeKind } from "./brainOntology";
 import type { BrainLayoutData, BrainLayoutLink, BrainLayoutNode } from "./forceBrainTypes";
 import { useGraphSize } from "./useGraphSize";
-import { paintBrainNode } from "./renderers/paintNode";
+import { paintBrainNodeInMotion } from "./renderers/paintNode";
+import type { NodeMotion } from "./renderers/paintNode";
+import { pulseScaleAt } from "./renderers/nodeStates";
+import {
+  STATE_TRANSITION_MS, brainNeedsAnimationFrames, layoutHasPulse, scheduleStateTransitions, transitionFrameAt,
+} from "./renderers/stateMotion";
+import type { StateTransition } from "./renderers/stateMotion";
+import { usePageVisible } from "./usePageVisible";
 import { readDocumentPalette } from "./renderers/palette";
 import type { BrainPalette } from "./renderers/palette";
 import styles from "./ForceBrainGraph.module.css";
@@ -48,6 +55,7 @@ function paintOf(progress: BirthProgress | null): BrainNodePaint {
 
 type NodePainter = (
   node: BrainLayoutNode, ctx: CanvasRenderingContext2D, globalScale: number, paint: BrainNodePaint, palette: BrainPalette,
+  motion: NodeMotion,
 ) => void;
 
 /** The core: existing halo (r64 radial gradient) + core sphere (r26 gradient)
@@ -76,13 +84,15 @@ function paintCoreNode(node: BrainLayoutNode, ctx: CanvasRenderingContext2D, _gl
 }
 
 /** Every non-core node, drawn from its kind's glyph and its state's
- *  treatment in the resolved palette (renderers/paintNode.ts; DECISION F020
- *  D2). `buildBrainLayout` already resolved the node's radius per kind
- *  (graph_spec §4); the zoom decides whether a run shows its glyph. */
+ *  treatment in the resolved palette, with its pulse and any state change in
+ *  flight (renderers/paintNode.ts; DECISIONS F020 D2 and D4).
+ *  `buildBrainLayout` already resolved the node's radius per kind (graph_spec
+ *  §4); the zoom decides whether a run shows its glyph. */
 function paintGlyphNode(
   node: BrainLayoutNode, ctx: CanvasRenderingContext2D, globalScale: number, paint: BrainNodePaint, palette: BrainPalette,
+  motion: NodeMotion,
 ): void {
-  paintBrainNode(ctx, node, { palette, zoom: globalScale, alpha: paint.alpha, scale: paint.scale });
+  paintBrainNodeInMotion(ctx, node, { palette, zoom: globalScale, alpha: paint.alpha, scale: paint.scale }, motion);
 }
 
 // One painter per NodeKind: the core keeps its own, and every other kind is
@@ -122,6 +132,7 @@ export function ForceBrainGraph({ layout, selectedId, onSelectNode }: {
   onSelectNode: (nodeId: string | null) => void;
 }) {
   const { containerRef, size } = useGraphSize();
+  const pageVisible = usePageVisible();
   // Every token the node painter reads, resolved once per mount: a 2D
   // canvas cannot read var() (tokens_rules.md, the palette bridge).
   const resolvedPalette = useMemo(() => readDocumentPalette(), []);
@@ -175,6 +186,40 @@ export function ForceBrainGraph({ layout, selectedId, onSelectNode }: {
     };
   }, [layout]);
 
+  // State changes: what changed state since the last layout, recorded the
+  // same way as births, so the painter can crossfade and ripple it
+  // (graph_spec §12; DECISION F020 D4).
+  const transitionsPreviousLayoutRef = useRef<BrainLayoutData | null>(null);
+  const transitionRecordsRef = useRef<Map<string, StateTransition>>(new Map());
+  const [transitionsInFlight, setTransitionsInFlight] = useState(false);
+
+  useLayoutEffect(() => {
+    const now = performance.now();
+    scheduleStateTransitions(transitionsPreviousLayoutRef.current, layout, now, reducedMotion)
+      .forEach((t) => transitionRecordsRef.current.set(t.id, t));
+    transitionsPreviousLayoutRef.current = layout;
+    transitionRecordsRef.current.forEach((t, id) => {
+      if (now >= t.startMs + t.durationMs) transitionRecordsRef.current.delete(id);
+    });
+    if (transitionRecordsRef.current.size === 0) { setTransitionsInFlight(false); return; }
+    setTransitionsInFlight(true);
+    const timer = setTimeout(() => setTransitionsInFlight(false), STATE_TRANSITION_MS + 50);
+    return () => clearTimeout(timer);
+  }, [layout]);
+
+  const pulsing = useMemo(() => layoutHasPulse(layout), [layout]);
+  const animating = brainNeedsAnimationFrames({ pageVisible, reducedMotion, birthsInFlight, transitionsInFlight, pulsing });
+
+  const motionOf = useCallback((n: BrainLayoutNode): NodeMotion => {
+    const now = performance.now();
+    const record = transitionRecordsRef.current.get(n.id);
+    return {
+      fromState: record ? record.from : null,
+      transition: record ? transitionFrameAt(record, now) : null,
+      pulseScale: pulseScaleAt(n.state, now, reducedMotion),
+    };
+  }, []);
+
   const birthProgressOf = useCallback((id: string): BirthProgress | null => {
     const record = birthRecordsRef.current.get(id);
     if (!record) return null;
@@ -185,7 +230,7 @@ export function ForceBrainGraph({ layout, selectedId, onSelectNode }: {
   const handleNodeCanvasObject = useCallback((node: object, ctx: CanvasRenderingContext2D, globalScale: number) => {
     const n = node as BrainLayoutNode;
     const paint = paintOf(birthProgressOf(n.id));
-    NODE_PAINTERS[n.kind](n, ctx, globalScale, paint, resolvedPalette.palette);
+    NODE_PAINTERS[n.kind](n, ctx, globalScale, paint, resolvedPalette.palette, motionOf(n));
 
     if (n.id === selectedId) {
       ctx.save();
@@ -203,7 +248,7 @@ export function ForceBrainGraph({ layout, selectedId, onSelectNode }: {
       ctx.fillText(n.label, n.x, n.y + n.radius + 4);
       ctx.restore();
     }
-  }, [selectedId, birthProgressOf, resolvedPalette]);
+  }, [selectedId, birthProgressOf, resolvedPalette, motionOf]);
 
   const handleLinkCanvasObject = useCallback((link: object, ctx: CanvasRenderingContext2D) => {
     // force-graph rewrites source/target from ids into node refs in place
@@ -297,7 +342,7 @@ export function ForceBrainGraph({ layout, selectedId, onSelectNode }: {
           cooldownTicks={reducedMotion ? 20 : 80}
           d3AlphaDecay={0.045}
           d3VelocityDecay={0.28}
-          autoPauseRedraw={!birthsInFlight}
+          autoPauseRedraw={!animating}
           enableNodeDrag
           enableZoomInteraction
           enablePanInteraction
@@ -310,7 +355,9 @@ export function ForceBrainGraph({ layout, selectedId, onSelectNode }: {
           nodePointerAreaPaint={brainPointerAreaPaint}
           linkCanvasObject={handleLinkCanvasObject}
           linkCanvasObjectMode={() => "replace"}
-          linkDirectionalParticles={(l) => ((l as BrainLayoutLink).active && !reducedMotion ? 1 : 0)}
+          // A particle keeps the canvas drawing whatever autoPauseRedraw says, so
+          // it flows only on an active edge, with motion, on a visible page.
+          linkDirectionalParticles={(l) => ((l as BrainLayoutLink).active && !reducedMotion && pageVisible ? 1 : 0)}
           linkDirectionalParticleWidth={2}
           onEngineStop={() => { /* simulation settled */ }}
         />

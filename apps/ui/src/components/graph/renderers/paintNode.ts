@@ -9,6 +9,7 @@ import { GLYPHS, STATE_MARK_PATHS, glyphDrawnAt, glyphPath2D, glyphTransform } f
 import type { GlyphPath2D } from "./glyphPaths";
 import { NODE_STATE_TREATMENTS } from "./nodeStates";
 import type { RemedyToken, StateMarkPaint } from "./nodeStates";
+import type { TransitionFrame } from "./stateMotion";
 import { BRAIN_HIGHLIGHT_TOKEN, BRAIN_LABEL_FONT_TOKEN } from "./palette";
 import type { BrainPalette } from "./palette";
 
@@ -41,6 +42,9 @@ export interface PaintableNode {
 
 /** A cluster's count is written at this share of the node's radius. */
 export const CLUSTER_COUNT_SIZE = 0.75;
+
+/** The completion ripple's ring width, in world units. */
+export const RIPPLE_WIDTH = 1.5;
 
 /** What the frame contributes: the resolved palette, the canvas zoom, and a
  *  birth's alpha and scale (1 and 1 at rest). */
@@ -142,4 +146,46 @@ export function paintBrainNode(ctx: CanvasRenderingContext2D, node: PaintableNod
   }
   for (const mark of treatment.marks) drawMark(ctx, mark, node, radius, frame.palette);
   ctx.restore();
+}
+
+/** What motion contributes to one node's frame: the state it is leaving and
+ *  how far the change has run (both null when no change is in flight), and
+ *  the pulse multiplier (1 when still). */
+export interface NodeMotion {
+  fromState: NodeState | null;
+  transition: TransitionFrame | null;
+  pulseScale: number;
+}
+
+/** The completion ripple: a white ring leaving the node's edge as it fades
+ *  (graph_spec §12: "300ms white ring ripple r→r+14 fade"). */
+function paintCompletionRipple(
+  ctx: CanvasRenderingContext2D, node: PaintableNode, frame: NodePaintFrame, ripple: { spread: number; alpha: number },
+): void {
+  const radius = node.radius * NODE_STATE_TREATMENTS[node.state].sizeFactor * frame.scale;
+  ctx.save();
+  ctx.globalAlpha = frame.alpha * ripple.alpha;
+  ctx.strokeStyle = tokenValue(frame.palette, BRAIN_HIGHLIGHT_TOKEN);
+  ctx.lineWidth = RIPPLE_WIDTH;
+  ctx.beginPath();
+  ctx.arc(node.x, node.y, radius + ripple.spread, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.restore();
+}
+
+/** Paint one non-core node with its motion: pulsing at its multiplier, and,
+ *  while a state change runs, the old state fading out under the new one
+ *  fading in, then the ripple when the new state is `pass`. */
+export function paintBrainNodeInMotion(
+  ctx: CanvasRenderingContext2D, node: PaintableNode, frame: NodePaintFrame, motion: NodeMotion,
+): void {
+  const pulsed: NodePaintFrame = { ...frame, scale: frame.scale * motion.pulseScale };
+  const t = motion.transition;
+  if (t === null || motion.fromState === null || t.done) {
+    paintBrainNode(ctx, node, pulsed);
+    return;
+  }
+  if (t.fromAlpha > 0) paintBrainNode(ctx, { ...node, state: motion.fromState }, { ...pulsed, alpha: frame.alpha * t.fromAlpha });
+  if (t.toAlpha > 0) paintBrainNode(ctx, node, { ...pulsed, alpha: frame.alpha * t.toAlpha });
+  if (t.ripple) paintCompletionRipple(ctx, node, pulsed, t.ripple);
 }

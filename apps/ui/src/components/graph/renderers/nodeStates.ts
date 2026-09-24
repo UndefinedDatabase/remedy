@@ -165,13 +165,18 @@ export function nodeStateTokens(): RemedyToken[] {
   return [...seen];
 }
 
-/** The scale factor a node of `state` is drawn at, `elapsedMs` into its
- *  pulse: the state's size factor, times a sine of ±NODE_PULSE_AMPLITUDE over
- *  NODE_PULSE_MS for a pulsing state. Reduced motion holds every node still
- *  at its size factor (graph_spec §12: "no pulse"). */
-export function nodeScaleAt(state: NodeState, elapsedMs: number, reducedMotion: boolean): number {
-  const treatment = NODE_STATE_TREATMENTS[state];
-  if (!treatment.pulse || reducedMotion) return treatment.sizeFactor;
+/** The pulse's own multiplier for a node of `state`, `elapsedMs` into its
+ *  pulse: a sine of ±NODE_PULSE_AMPLITUDE over NODE_PULSE_MS for a pulsing
+ *  state, and 1 for every other state. Reduced motion holds every node still
+ *  (graph_spec §12: "no pulse"). */
+export function pulseScaleAt(state: NodeState, elapsedMs: number, reducedMotion: boolean): number {
+  if (!NODE_STATE_TREATMENTS[state].pulse || reducedMotion) return 1;
   const phase = (2 * Math.PI * elapsedMs) / NODE_PULSE_MS;
-  return treatment.sizeFactor * (1 + NODE_PULSE_AMPLITUDE * Math.sin(phase));
+  return 1 + NODE_PULSE_AMPLITUDE * Math.sin(phase);
+}
+
+/** The scale factor a node of `state` is drawn at, `elapsedMs` into its
+ *  pulse: the state's size factor times its pulse multiplier. */
+export function nodeScaleAt(state: NodeState, elapsedMs: number, reducedMotion: boolean): number {
+  return NODE_STATE_TREATMENTS[state].sizeFactor * pulseScaleAt(state, elapsedMs, reducedMotion);
 }
