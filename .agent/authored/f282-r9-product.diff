@@ -1,0 +1,100 @@
+diff --git a/tests/orchestration/test_run_manifest_logical_identity.py b/tests/orchestration/test_run_manifest_logical_identity.py
+index 89229ab4..752d2ed8 100644
+--- a/tests/orchestration/test_run_manifest_logical_identity.py
++++ b/tests/orchestration/test_run_manifest_logical_identity.py
+@@ -51,7 +51,40 @@ def _run_once(repo):
+     return load_latest_manifest_verified(job_evidence_dir(job.job_id), job_id=job.job_id)
+ 
+ 
++@pytest.fixture
++def frozen_remedy_identity(monkeypatch):
++    """Pin Remedy's own checkout identity to its value at test start (R-0950).
++
++    Each run's manifest records the identity of the Remedy checkout, whose digest covers
++    every untracked file, and it feeds the logical input hash. Under `pytest -n auto` all
++    workers share this checkout, and `tests/regression/test_resource_safety.py` writes and
++    removes files in it, so a neighbour could change the digest between the two runs and
++    the hashes differed. The real identity is kept; only the race is removed, exactly as
++    `tests/cli/test_job_rerun_manifest.py` does for the same class (R-0645).
++    """
++    from packages.orchestration import run_manifest as RM
++    snapshot = RM.remedy_worktree_identity()
++    monkeypatch.setattr(RM, "remedy_worktree_identity", lambda: snapshot)
++
++
++@pytest.mark.usefixtures("frozen_remedy_identity")
+ class TestTwoRealRunsShareLogicalIdentity:
++    def test_a_checkout_that_changes_between_the_runs_does_not_reach_the_comparison(
++            self, data_root, repo, monkeypatch):
++        """A neighbour rewriting the shared checkout between the two runs changes nothing here."""
++        from packages.orchestration import run_manifest as RM
++        real, remedy_root = RM.worktree_identity, str(RM._remedy_repo_root())
++        calls = iter(range(1000))
++
++        def a_checkout_a_neighbour_keeps_changing(path, **kwargs):
++            if str(path) != remedy_root:
++                return real(path, **kwargs)
++            return dataclasses.replace(real(path, **kwargs), digest=f"{next(calls):064x}")
++
++        monkeypatch.setattr(RM, "worktree_identity", a_checkout_a_neighbour_keeps_changing)
++        a, b = _run_once(repo), _run_once(repo)
++        assert a.logical_input_sha256() == b.logical_input_sha256()
++
+     def test_different_execution_identities_same_logical_hash(self, data_root, repo):
+         a, b = _run_once(repo), _run_once(repo)
+         # provenance genuinely differs
+diff --git a/tests/runtimes/runtime_cleanup.py b/tests/runtimes/runtime_cleanup.py
+index d87000ad..c60e948b 100644
+--- a/tests/runtimes/runtime_cleanup.py
++++ b/tests/runtimes/runtime_cleanup.py
+@@ -27,6 +27,7 @@ from __future__ import annotations
+ 
+ import contextlib
+ import os
++import re
+ from pathlib import Path
+ 
+ import psutil
+@@ -56,6 +57,19 @@ def alive(pid: int) -> bool:
+         return True
+ 
+ 
++def names_path(text: str, root: str) -> bool:
++    """Whether ``text`` names ``root`` itself or a path under it — never a sibling.
++
++    A substring test is not enough: under `pytest -n auto` worker gw1's basetemp
++    `.../popen-gw1` is a string prefix of gw10's to gw19's, so a scan for gw1's
++    processes also found the live runtimes of those ten workers and failed gw1's file
++    for them (R-1028). The same holds for a test's tmp_path `.../test_x1` and
++    `.../test_x10`. ``root`` counts only when a path separator, whitespace or the end
++    of the text follows it.
++    """
++    return re.search(re.escape(root.rstrip(os.sep)) + r"(?=[/\s]|$)", text) is not None
++
++
+ def _describe(pid: int) -> str:
+     with contextlib.suppress(psutil.Error):
+         proc = psutil.Process(pid)
+@@ -181,7 +195,7 @@ class RuntimeRegistry:
+                 continue
+             with contextlib.suppress(psutil.Error):
+                 cmdline = " ".join(proc.info["cmdline"] or [])
+-                if root in cmdline:
++                if names_path(cmdline, root):
+                     found.append(f"{proc.pid} {cmdline[:90]}")
+         for pid in sorted(self.pids):
+             if alive(pid):
+@@ -205,11 +219,11 @@ def basetemp_survivors(basetemp: Path) -> list[str]:
+             cmdline = " ".join(proc.info["cmdline"] or [])
+             if not cmdline:
+                 continue
+-            if root in cmdline:
++            if names_path(cmdline, root):
+                 found.append(f"{proc.pid} {cmdline[:90]}")
+                 continue
+             if "server.py" in cmdline or "runtime_supervisor" in cmdline:
+                 with contextlib.suppress(psutil.Error):
+-                    if root in proc.cwd():
++                    if names_path(proc.cwd(), root):
+                         found.append(f"{proc.pid} {cmdline[:90]}")
+     return sorted(set(found))
