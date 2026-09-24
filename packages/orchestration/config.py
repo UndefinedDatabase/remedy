@@ -873,6 +873,38 @@ _CONFIG_KEY_SPECS: tuple[ConfigKeySpec, ...] = (
         default=None,
     ),
     ConfigKeySpec(
+        key="teacher.lessons",
+        env_var="REMEDY_TEACHER_LESSONS",
+        description=(
+            "Write a lesson from the real diff after every completed task (F265). "
+            "Off by default: each lesson is one teacher model call, and a run makes "
+            "no call the operator did not switch on."
+        ),
+        value_type=bool,
+        default=False,
+    ),
+    ConfigKeySpec(
+        key="teacher.lesson_max_calls",
+        env_var="REMEDY_TEACHER_LESSON_MAX_CALLS",
+        description=(
+            "The teacher's budget pot per job, in calls (F265): once the job's "
+            "teacher calls reach it, a completed task gets an empty lesson that "
+            "says the pot is spent."
+        ),
+        value_type=int,
+        default=30,
+    ),
+    ConfigKeySpec(
+        key="teacher.lesson_max_tokens",
+        env_var="REMEDY_TEACHER_LESSON_MAX_TOKENS",
+        description=(
+            "The teacher's budget pot per job, in the tokens its calls reported "
+            "(F265); a call that reports none still counts against the call limit."
+        ),
+        value_type=int,
+        default=300000,
+    ),
+    ConfigKeySpec(
         key="watchdog.no_progress_repeats",
         env_var="REMEDY_WATCHDOG_NO_PROGRESS_REPEATS",
         description=(
