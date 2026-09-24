@@ -12,20 +12,18 @@ names, with the evidence that discharged it
 
 ## Current Step
 
-ROUND 2: book round 1's PASS with the resolutions of R-1046 and R-0499,
-record DECISION F284 D2, and land T003 (R-0950): the smoke tests judge
-teardown by the harness's own sweep and read an open fallback port by the
-process that holds it.
+ROUND 3, THE CLOSURE'S EVIDENCE HALF: book round 2's PASS with R-0950's
+resolution, then build the evidence bundle against the fork point and the
+fresh review package. T001, T002 and T003 are built; the one full suite
+is green; the self-use track answered NONE.
 
 ## Next Steps
 
-1. The closure sequence: the one full suite in the integration-gate round,
-   the checklist consolidation, the Built State, and the self-use run that
-   alone can resolve R-1008.
-2. The evidence package and the STATUS flip.
+1. The closing round: the booking of round 3, R-1008 carried to the next
+   findings paydown, the ledger rotation, that paydown's registration,
+   the STATUS line with the README counters, and the pull request.
 
 ## Risks
 
-R-1008 resolves only if the closure's self-use run lands a diff its
-reviewer passes; otherwise it is carried by name to the next paydown.
-Open findings after round 2's booking: 2.
+R-1008 is carried by name, because the closure's self-use track found no
+eligible item. Open findings after round 3's booking: 1.
