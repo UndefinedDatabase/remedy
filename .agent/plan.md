@@ -13,15 +13,15 @@ previous navigation and a Commands mode
 
 ## Current Step
 
-ROUND 6, the closure's evidence half: book round 5's PASS, whose one full
-suite is green, then build the evidence bundle against the fork point
-and the fresh review package.
+ROUND 7, the closing round: book round 6's PASS, rotate the ledger, flip
+F265's STATUS line to accepted with its README pins in the same commit,
+and open the pull request. T001 to T003 are built and the package is
+READY_FOR_REVIEW.
 
 ## Next Steps
 
-1. The closing round: book round 6, rotate the ledger, flip the STATUS
-   line with its README pins in the same commit, and open the pull
-   request.
+1. The next session merges this feature's pull request at the Open PR
+   Gate, then claims the next feature under Rule A5.
 
 ## Risks
 
