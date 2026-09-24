@@ -2,7 +2,10 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import type { NodeKind, NodeState } from "../brainOntology";
 import { GLYPHS, GLYPH_MIN_ZOOM_RUN, STATE_MARK_PATHS } from "./glyphPaths";
 import { NODE_STATE_TREATMENTS } from "./nodeStates";
-import { CLUSTER_COUNT_SIZE, GLYPH_STROKE_WIDTH, HALO_SPREAD, SPHERE_KINDS, paintBrainNode } from "./paintNode";
+import {
+  CLUSTER_COUNT_SIZE, GLYPH_STROKE_WIDTH, HALO_SPREAD, RIPPLE_WIDTH, SPHERE_KINDS, paintBrainNode, paintBrainNodeInMotion,
+} from "./paintNode";
+import type { NodeMotion } from "./paintNode";
 import type { PaintableNode } from "./paintNode";
 import { brainPaletteTokens } from "./palette";
 import type { BrainPalette } from "./palette";
@@ -228,5 +231,48 @@ describe("paintBrainNode — the cluster's count", () => {
   it("writes nothing for a cluster with no count, or for a label on any other kind", () => {
     expect(paint("cluster", "pass", 1, { label: "" }).filter((o) => o.op === "text")).toEqual([]);
     expect(paint("task", "pass", 1, { label: "Fix the flaky test" }).filter((o) => o.op === "text")).toEqual([]);
+  });
+});
+
+describe("paintBrainNodeInMotion", () => {
+  function paintMoving(state: NodeState, motion: NodeMotion): Op[] {
+    const ctx = new RecordingContext();
+    paintBrainNodeInMotion(ctx as unknown as CanvasRenderingContext2D, { kind: "task", state, x: 10, y: 20, radius: 4.5 }, {
+      palette: PALETTE, zoom: 1, alpha: 1, scale: 1,
+    }, motion);
+    return ctx.ops;
+  }
+  const spheres = (ops: Op[]) => ops.filter((o) => o.op === "fill" && typeof o.fillStyle === "object");
+  const stopOf = (o: Op) => (o.fillStyle as { stops: [number, string][] }).stops[1][1];
+
+  it("paints a node at rest once, at its pulse multiplier", () => {
+    const ops = paintMoving("in_progress", { fromState: null, transition: null, pulseScale: 1.08 });
+    expect(spheres(ops).map((o) => [o.radius, o.globalAlpha])).toEqual([[4.5 * 1.08, 1]]);
+  });
+
+  it("crossfades the old state out under the new one while a change runs", () => {
+    const ops = paintMoving("pass", {
+      fromState: "in_progress", transition: { fromAlpha: 0.25, toAlpha: 0.75, ripple: null, done: false }, pulseScale: 1,
+    });
+    expect(spheres(ops).map((o) => [stopOf(o), o.globalAlpha])).toEqual([
+      [c("--remedy-state-current"), 0.25],
+      [c("--remedy-state-done"), 0.75],
+    ]);
+  });
+
+  it("rings the node in the highlight as the ripple leaves its edge", () => {
+    const ops = paintMoving("pass", {
+      fromState: "in_progress", transition: { fromAlpha: 0.5, toAlpha: 0.5, ripple: { spread: 7, alpha: 0.5 }, done: false },
+      pulseScale: 1,
+    });
+    const ring = ops.filter((o) => o.op === "stroke" && o.radius === 4.5 + 7);
+    expect(ring.map((o) => [o.strokeStyle, o.lineWidth, o.globalAlpha])).toEqual([[c("--remedy-graph-node-ring"), RIPPLE_WIDTH, 0.5]]);
+  });
+
+  it("paints a finished change once, in its new state", () => {
+    const ops = paintMoving("pass", {
+      fromState: "in_progress", transition: { fromAlpha: 0, toAlpha: 1, ripple: null, done: true }, pulseScale: 1,
+    });
+    expect(spheres(ops).map(stopOf)).toEqual([c("--remedy-state-done")]);
   });
 });

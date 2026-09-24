@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { STATE_MARK_PATHS } from "./glyphPaths";
 import {
   NODE_PULSE_AMPLITUDE, NODE_PULSE_MS, NODE_STATE_TREATMENTS,
-  nodeScaleAt, nodeStateOrder, nodeStateTokens,
+  nodeScaleAt, nodeStateOrder, nodeStateTokens, pulseScaleAt,
 } from "./nodeStates";
 
 /** Every NodeState brainOntology.ts declares, in the legend order the module
@@ -142,5 +142,25 @@ describe("nodeScaleAt", () => {
   it("draws a still state at its size factor whatever the time", () => {
     expect(nodeScaleAt("planned", NODE_PULSE_MS / 4, false)).toBe(0.9);
     expect(nodeScaleAt("pass", 123, false)).toBe(1);
+  });
+});
+
+describe("pulseScaleAt", () => {
+  it("is the pulse alone, apart from the size factor", () => {
+    expect(pulseScaleAt("in_progress", NODE_PULSE_MS / 4, false)).toBeCloseTo(1.08, 10);
+    for (const state of ALL_STATES.filter((s) => s !== "in_progress")) {
+      expect(pulseScaleAt(state as keyof typeof NODE_STATE_TREATMENTS, NODE_PULSE_MS / 4, false), state).toBe(1);
+    }
+  });
+
+  it("holds still under reduced motion", () => {
+    expect(pulseScaleAt("in_progress", NODE_PULSE_MS / 4, true)).toBe(1);
+  });
+
+  it("times the size factor to give nodeScaleAt", () => {
+    for (const state of ALL_STATES) {
+      const s = state as keyof typeof NODE_STATE_TREATMENTS;
+      expect(nodeScaleAt(s, 123, false), state).toBeCloseTo(treatment(state).sizeFactor * pulseScaleAt(s, 123, false), 10);
+    }
   });
 });

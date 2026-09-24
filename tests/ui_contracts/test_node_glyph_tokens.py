@@ -120,7 +120,7 @@ def test_the_canvas_paints_every_non_core_kind_through_the_glyph_painter():
     entries = dict(re.findall(r"^  (\w+): (\w+),$", table.group(1), flags=re.M))
     assert entries.pop("job_core") == "paintCoreNode"
     assert set(entries.values()) == {"paintGlyphNode"}, entries
-    assert "paintBrainNode(ctx, node, { palette, zoom: globalScale" in src
+    assert "paintBrainNodeInMotion(ctx, node, { palette, zoom: globalScale" in src
     assert "useMemo(() => readDocumentPalette(), [])" in src
 
 
