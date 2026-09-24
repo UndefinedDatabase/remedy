@@ -1,0 +1,254 @@
+diff --git a/apps/ui/src/components/graph/brainDemoRecording.test.ts b/apps/ui/src/components/graph/brainDemoRecording.test.ts
+new file mode 100644
+index 000000000..bae059d6b
+--- /dev/null
++++ b/apps/ui/src/components/graph/brainDemoRecording.test.ts
+@@ -0,0 +1,116 @@
++import { describe, expect, it } from "vitest";
++import { dashboardBrainSeeds } from "./brainView";
++import { rebuildBrainModel, reduceBrainEvent, seedBrainModel } from "./brainReducer";
++import { buildBrainLayout } from "./buildForceBrainModel";
++import { BRAIN_DEMO_FRAMES, BRAIN_DEMO_JOB_ID, BRAIN_DEMO_TASKS, brainDemoRows } from "./brainDemoRecording";
++import type { BrainEventRow, BrainModel } from "./brainOntology";
++
++// The golden below is HAND-DERIVED from DECISION F019 D1's Tables 1 and 2,
++// the same way brainReducer.fixtures.ts's goldens are — never printed from
++// the reducer, or a bug in the reducer could never show up here. Task A is
++// "a7a8f67f1b9a4814" (rank 0), task B is "1965fb3f26b64fe7" (rank 1); both
++// seed as "pending" -> "planned" (Table 1). The recorded frames: task A gets
++// a builder run at seq 0 (run:...4814:0), a needs_repair review at seq 1
++// (fail, Table 2), a pass review at seq 2, then task_run_completed(pass) at
++// seq 3 closes the builder run to pass and the task to pass. Task B repeats
++// the same shape at seq 4-7 (its builder run keyed by seq 4). Both tasks end
++// "pass", so the core (which is never stored, only derived) ends "pass" too.
++const DEMO_GOLDEN_MODEL: BrainModel = {
++  jobId: BRAIN_DEMO_JOB_ID,
++  lastSeq: 7,
++  nodes: [
++    { id: "job:9f932a4f6afc4ded", kind: "job_core", state: "pass", seq: 0, meta: {} },
++    {
++      id: "task:a7a8f67f1b9a4814", kind: "task", state: "pass", parentId: "job:9f932a4f6afc4ded", seq: 0,
++      meta: { rank: 0, title: "Deliver src/main.py", status: "pending" },
++    },
++    {
++      id: "task:1965fb3f26b64fe7", kind: "task", state: "pass", parentId: "job:9f932a4f6afc4ded", seq: 0,
++      meta: { rank: 1, title: "Deliver README.md", status: "pending" },
++    },
++    {
++      id: "run:a7a8f67f1b9a4814:0", kind: "builder_run", state: "pass",
++      parentId: "task:a7a8f67f1b9a4814", seq: 0, meta: { outcome: "pass" },
++    },
++    {
++      id: "run:a7a8f67f1b9a4814:1", kind: "review_run", state: "fail",
++      parentId: "task:a7a8f67f1b9a4814", seq: 1, meta: { outcome: "needs_repair" },
++    },
++    {
++      id: "run:a7a8f67f1b9a4814:2", kind: "review_run", state: "pass",
++      parentId: "task:a7a8f67f1b9a4814", seq: 2, meta: { outcome: "pass" },
++    },
++    {
++      id: "run:1965fb3f26b64fe7:4", kind: "builder_run", state: "pass",
++      parentId: "task:1965fb3f26b64fe7", seq: 4, meta: { outcome: "pass" },
++    },
++    {
++      id: "run:1965fb3f26b64fe7:5", kind: "review_run", state: "fail",
++      parentId: "task:1965fb3f26b64fe7", seq: 5, meta: { outcome: "needs_repair" },
++    },
++    {
++      id: "run:1965fb3f26b64fe7:6", kind: "review_run", state: "pass",
++      parentId: "task:1965fb3f26b64fe7", seq: 6, meta: { outcome: "pass" },
++    },
++  ],
++  links: [
++    { id: "job:9f932a4f6afc4ded->task:a7a8f67f1b9a4814", source: "job:9f932a4f6afc4ded", target: "task:a7a8f67f1b9a4814" },
++    { id: "job:9f932a4f6afc4ded->task:1965fb3f26b64fe7", source: "job:9f932a4f6afc4ded", target: "task:1965fb3f26b64fe7" },
++    { id: "task:a7a8f67f1b9a4814->run:a7a8f67f1b9a4814:0", source: "task:a7a8f67f1b9a4814", target: "run:a7a8f67f1b9a4814:0" },
++    { id: "task:a7a8f67f1b9a4814->run:a7a8f67f1b9a4814:1", source: "task:a7a8f67f1b9a4814", target: "run:a7a8f67f1b9a4814:1" },
++    { id: "task:a7a8f67f1b9a4814->run:a7a8f67f1b9a4814:2", source: "task:a7a8f67f1b9a4814", target: "run:a7a8f67f1b9a4814:2" },
++    { id: "task:1965fb3f26b64fe7->run:1965fb3f26b64fe7:4", source: "task:1965fb3f26b64fe7", target: "run:1965fb3f26b64fe7:4" },
++    { id: "task:1965fb3f26b64fe7->run:1965fb3f26b64fe7:5", source: "task:1965fb3f26b64fe7", target: "run:1965fb3f26b64fe7:5" },
++    { id: "task:1965fb3f26b64fe7->run:1965fb3f26b64fe7:6", source: "task:1965fb3f26b64fe7", target: "run:1965fb3f26b64fe7:6" },
++  ],
++  ignored: {},
++};
++
++/** Fold a row stream through the live-reduce path, the way a stream client
++ *  actually consumes frames one at a time (brainReducer.test.ts's own helper). */
++function fold(seed: BrainModel, rows: readonly BrainEventRow[]): BrainModel {
++  return rows.reduce((model, r) => reduceBrainEvent(model, r), seed);
++}
++
++describe("the F019 D1(10) demo recording", () => {
++  it("the snapshot path matches the hand-derived golden", () => {
++    const result = rebuildBrainModel(BRAIN_DEMO_JOB_ID, dashboardBrainSeeds(BRAIN_DEMO_TASKS), brainDemoRows());
++    expect(result).toEqual(DEMO_GOLDEN_MODEL);
++  });
++
++  it("the live path (fold, one frame at a time) matches it too", () => {
++    const seeded = seedBrainModel(BRAIN_DEMO_JOB_ID, dashboardBrainSeeds(BRAIN_DEMO_TASKS));
++    const result = fold(seeded, brainDemoRows());
++    expect(result).toEqual(DEMO_GOLDEN_MODEL);
++  });
++
++  it("double delivery is harmless: folding the rows twice gives the identical object", () => {
++    const seeded = seedBrainModel(BRAIN_DEMO_JOB_ID, dashboardBrainSeeds(BRAIN_DEMO_TASKS));
++    const rows = brainDemoRows();
++    const once = fold(seeded, rows);
++    const twice = fold(once, rows);
++    expect(twice).toBe(once);
++  });
++
++  it("the recording renders: one layout node/link per model node/link, finite positions", () => {
++    const layout = buildBrainLayout(DEMO_GOLDEN_MODEL);
++    expect(layout.nodes.map((n) => n.id)).toEqual(DEMO_GOLDEN_MODEL.nodes.map((n) => n.id));
++    expect(layout.links).toHaveLength(DEMO_GOLDEN_MODEL.links.length);
++    for (const n of layout.nodes) {
++      expect(Number.isFinite(n.x)).toBe(true);
++      expect(Number.isFinite(n.y)).toBe(true);
++    }
++  });
++
++  it("is self-consistent: the frames' task ids equal the tasks' ids, and every task has a clickable nodeId", () => {
++    const frameTaskIds = new Set(
++      BRAIN_DEMO_FRAMES.map((f) => (f.event as { task_id: string }).task_id),
++    );
++    const taskIds = new Set(BRAIN_DEMO_TASKS.map((t) => t.id));
++    expect(frameTaskIds).toEqual(taskIds);
++    for (const t of BRAIN_DEMO_TASKS) {
++      expect(typeof t.nodeId).toBe("string");
++      expect(t.nodeId.length).toBeGreaterThan(0);
++    }
++  });
++});
+diff --git a/apps/ui/src/components/graph/buildForceBrainModel.test.ts b/apps/ui/src/components/graph/buildForceBrainModel.test.ts
+index d54e88fa6..a8405b581 100644
+--- a/apps/ui/src/components/graph/buildForceBrainModel.test.ts
++++ b/apps/ui/src/components/graph/buildForceBrainModel.test.ts
+@@ -1,58 +1,14 @@
+ import { describe, it, expect } from "vitest";
+-import { normalizeDashboardPayload } from "../../api/remedyApi";
+ import { seedBrainModel } from "./brainReducer";
+ import {
+   CLUSTER_EXPECTED_MODEL, CLUSTER_INPUT_MODEL, GOLDEN_A_MODEL, GOLDEN_B_MODEL,
+ } from "./brainReducer.fixtures";
+ import {
+-  BRAIN_CORE_RADIUS, BRAIN_GOLDEN_ANGLE, BRAIN_RUN_DISTANCE, buildBrainLayout, buildForceBrainModel,
++  BRAIN_CORE_RADIUS, BRAIN_GOLDEN_ANGLE, BRAIN_RUN_DISTANCE, buildBrainLayout,
+ } from "./buildForceBrainModel";
+ import type { BrainModel } from "./brainOntology";
+ import type { BrainLayoutData } from "./forceBrainTypes";
+ 
+-function dashboardWithTasks(n: number) {
+-  const tasks = Array.from({ length: n }, (_, i) => ({
+-    id: `t${i}`, title: `Task number ${i}`, status: i % 2 === 0 ? "completed" : "pending",
+-    source: "real", related_node_id: `t${i}`,
+-  }));
+-  return normalizeDashboardPayload("job-1", { tasks, metrics: {} });
+-}
+-
+-describe("buildForceBrainModel decorative-dot invariants", () => {
+-  it("decorative layout_only dots are never clickable", () => {
+-    const model = buildForceBrainModel(dashboardWithTasks(6), "large", "all");
+-    const decorative = model.nodes.filter(n => n.sourceKind === "layout_only" && n.kind !== "root");
+-    expect(decorative.length).toBeGreaterThan(0);
+-    expect(decorative.every(n => n.clickable === false)).toBe(true);
+-  });
+-
+-  it("the root node is not clickable", () => {
+-    const model = buildForceBrainModel(dashboardWithTasks(4), "medium", "all");
+-    const root = model.nodes.find(n => n.kind === "root");
+-    expect(root?.clickable).toBe(false);
+-  });
+-
+-  it("real clickable nodes equal the real graph node count (4 tasks -> 4 nodes)", () => {
+-    const dash = dashboardWithTasks(4);
+-    const model = buildForceBrainModel(dash, "large", "all");
+-    const clickable = model.nodes.filter(n => n.clickable && n.sourceKind === "real_brain");
+-    expect(clickable).toHaveLength(dash.graph.nodes.length);
+-    expect(clickable).toHaveLength(4);
+-  });
+-
+-  it("decorative dots never exceed the cap of 90", () => {
+-    const model = buildForceBrainModel(dashboardWithTasks(60), "large", "all");
+-    const layoutOnly = model.nodes.filter(n => n.sourceKind === "layout_only");
+-    expect(layoutOnly.length).toBeLessThanOrEqual(90);
+-  });
+-
+-  it("clickable count ignores decorative dots entirely", () => {
+-    const model = buildForceBrainModel(dashboardWithTasks(8), "large", "all");
+-    const clickableLayoutOnly = model.nodes.filter(n => n.clickable && n.sourceKind === "layout_only");
+-    expect(clickableLayoutOnly).toHaveLength(0);
+-  });
+-});
+-
+ /** Recursively freezes a value so a mutating write throws in strict mode
+  *  (vitest's ESM test files run strict) — the no-mutation proof for
+  *  buildBrainLayout below. */
+diff --git a/tests/ui_contracts/test_graph_architecture.py b/tests/ui_contracts/test_graph_architecture.py
+index 7fb38f1d1..79558e364 100644
+--- a/tests/ui_contracts/test_graph_architecture.py
++++ b/tests/ui_contracts/test_graph_architecture.py
+@@ -770,7 +770,7 @@ class TestForceGraphComponentIntegrity:
+         assert f.is_file()
+         content = f.read_text(encoding="utf-8")
+         assert "seededRng" in content
+-        assert "ForceBrainNode" in content
++        assert "export function buildBrainLayout(" in content
+ 
+     def test_force_brain_types(self):
+         assert (UI_SRC / "components" / "graph" / "forceBrainTypes.ts").is_file()
+diff --git a/tests/ui_server/test_dashboard_contract.py b/tests/ui_server/test_dashboard_contract.py
+index ec4b206c3..dfbe4537c 100644
+--- a/tests/ui_server/test_dashboard_contract.py
++++ b/tests/ui_server/test_dashboard_contract.py
+@@ -280,40 +280,19 @@ class TestNoFakeUiStateInComponents:
+ 
+ 
+ 
+-class TestRealGraphSourceKindContract:
+-    def test_brain_source_kind_type_exists(self):
++class TestRealGraphTruthContract:
++    def test_brain_layout_node_type_exists(self):
+         src = (UI_SRC / "components" / "graph" / "forceBrainTypes.ts").read_text()
+-        assert "BrainSourceKind" in src
+-        assert "real_brain" in src
+-        assert "layout_only" in src
+-        assert "demo_fixture" in src
++        assert "interface BrainLayoutNode" in src
++        assert "sourceKind" not in src
+ 
+-    def test_force_brain_node_has_source_kind(self):
+-        src = (UI_SRC / "components" / "graph" / "forceBrainTypes.ts").read_text()
+-        assert "sourceKind: BrainSourceKind" in src
+-
+-    def test_build_model_assigns_source_kind_to_root(self):
+-        src = (UI_SRC / "components" / "graph" / "buildForceBrainModel.ts").read_text()
+-        # Root should be layout_only
+-        assert 'sourceKind: "layout_only"' in src
+-
+-    def test_build_model_assigns_source_kind_to_real_nodes(self):
+-        src = (UI_SRC / "components" / "graph" / "buildForceBrainModel.ts").read_text()
+-        assert 'sourceKind: "real_brain"' in src
+-
+-    def test_particles_marked_layout_only(self):
++    def test_build_model_has_no_source_kind(self):
++        # The graph lays out only real nodes (graph_spec §8); the "no decor,
++        # no invented node" behaviour is pinned on the vitest side by
++        # buildForceBrainModel.test.ts's "truth rule" describe block.
+         src = (UI_SRC / "components" / "graph" / "buildForceBrainModel.ts").read_text()
+-        # Particle nodes should be layout_only
+-        lines = src.split("\n")
+-        in_particle = False
+-        particle_has_layout = False
+-        for line in lines:
+-            if "kind: \"particle\"" in line:
+-                in_particle = True
+-            if in_particle and "sourceKind" in line:
+-                particle_has_layout = "layout_only" in line
+-                break
+-        assert particle_has_layout
++        assert "sourceKind" not in src
++        assert "layout_only" not in src
+ 
+     def test_no_math_random_in_graph_model(self):
+         src = (UI_SRC / "components" / "graph" / "buildForceBrainModel.ts").read_text()
