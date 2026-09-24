@@ -20357,3 +20357,46 @@ of one path can drift.
 HOW TO REVERSE: restore `BrainGraphStage.tsx`, `RemedyShell.tsx`, `brainStreamDeps.ts`, its test and
 `tests/ui_contracts/test_brain_stage_mount.py` from `238f2aa5`, delete `brainLedger.ts`, its test,
 `useBrainLedger.ts` and `tests/ui_contracts/test_brain_live_wiring.py`, and delete this paragraph.
+
+## DECISION F019 D6 — a live fake job is checked against the demo recording on every run of the suite, and the stage-1 frame budget is measured on a committed fixture in headless Chrome, with F044's trace stage named as its CI home (2026-09-24)
+
+CONTEXT: DECISION F019 D5 (1) leaves T003's end-to-end run and its performance measurement to this
+round. T5_F019.md's acceptance asks that "the demo recording and a live fake job render identically
+per model" and that the "perf fixture meets budget on stage 1 (numbers recorded)". Its Design line
+names "60 fps at 500 nodes"; `docs/ui/design_reference/acceptance_criteria.md` §5, where the budgets
+are defined once, reads 60 fps at the 95th percentile at 200 nodes for stage 1 and at 500 nodes as
+the stage-6 gate, and `docs/roadmap/features/T5_F044.md` T003 owns the CI stages that enforce them
+with a frame-rate trace on the 200-node fixture. Measured at `22f3fe99`: a fake-provider job
+planned with `do --plan-only` and run with `job run` finishes in seconds with no network and no
+model; the reducer's model is a pure function of the seeds' rank, status and title and of the
+rows' seq, kind, outcome and task; and headless Google Chrome on this machine paces
+`requestAnimationFrame` at 60 Hz, so a frame-rate reading there shows whether a frame was dropped
+and not how much time a frame had left.
+
+CHOSEN: (1) THE END-TO-END: `tests/ui_server/test_brain_demo_recording_live.py` plans and runs a
+fresh fake job in a scratch repository, reads its task list before the run and its `events-since`
+frames after it, and asserts that both, projected to what the model depends on, equal the committed
+recording `brainDemoRecording.ts`; equal projections give equal models up to ids, and the test goes
+red the day the server's stream stops matching the recording. (2) THE FIXTURE:
+`apps/ui/src/components/graph/brainPerfFixture.ts` builds, through `seedBrainModel` and
+`reduceBrainEvent`, models whose layouts hold exactly 200 and exactly 500 nodes, with every fifth
+task's builder run left in progress so particles flow. (3) THE MEASUREMENT is a reviewer tool, kept
+as evidence under `.agent/authored/f019-r6-perf-*` and not shipped: it builds a harness page around
+`ForceBrainGraph.tsx` and the fixture, serves it on 127.0.0.1, drives headless Chrome over its
+debugging protocol, and samples frames for eight seconds after a two-second warm-up. The reviewer's
+readings at the prototype whose fixture and renderer equal the files this round lands: three runs
+at 200 nodes and three at 500 nodes, every run 481 frames, 60 frames per second on average, a median
+frame of 16.7 ms and a 95th-percentile frame of at most 16.8 ms, so the stage-1 budget holds and so
+does the stage-6 figure, with the headroom question left open for the reason above. (4) F044's file
+gains one line naming this fixture as the input its T003 trace stage re-measures in CI; F019 adds no
+CI stage of its own.
+
+ALTERNATIVES: timing the paint functions in the node-environment vitest, rejected because a stub
+canvas measures the JavaScript and not the frame; committing the harness as a product script,
+rejected because the CI budget stages are T5_F044.md's slice and a second harness would compete
+with it; comparing a live job's models inside vitest, rejected because the fake job runs in Python
+and the model's inputs can be compared on the Python side without a second runtime.
+
+HOW TO REVERSE: delete `brainPerfFixture.ts`, its test and
+`tests/ui_server/test_brain_demo_recording_live.py`, remove the bullet naming the fixture from
+`docs/roadmap/features/T5_F044.md`, and delete this paragraph.

@@ -13,22 +13,22 @@ the snapshot path without ghosts (`docs/roadmap/features/T5_F019.md`).
 
 ## Current Step
 
-ROUND 5: book round 4's PASS, record DECISION F019 D5, and land T003's
-first half: the stage folds the complete prefix of a ledger merged from
-`events-since` pages and the live stream's ring, and fills a hole by paging
-from its first missing seq. T001 and T002 are built.
+ROUND 6: book round 5's PASS, record DECISION F019 D6, and finish T003: a
+live fake job checked against the demo recording in the suite, the
+committed performance fixture at exactly 200 and 500 nodes, and the
+stage-1 frame budget measured on it in headless Chrome. T001, T002 and
+T003 are then built.
 
 ## Next Steps
 
-1. The rest of T003 (DECISION F019 D5 (1)): the end-to-end run of a live
-   fake job compared against the demo recording, and the performance
-   fixture's measurement against the stage-1 budget.
-2. The closure sequence.
+1. The closure sequence (`docs/roadmap/STATUS_closure_protocol.md`): the
+   verdict booking, the ledger rotation, the one full-suite run, the
+   evidence package and review zip, the STATUS flip and the pull request.
 
 ## Risks
 
 The stream carries no run id and no outcome for test and repair runs, so
 those draw no node yet (DECISION F019 D1, operator note Q2). Prompt dots
 show only in the simple view (DECISION F019 D3, operator note Q3). The
-performance budget is measured in a browser, which the next round must
-reach. Open findings: 4, all owned by F284.
+frame reading shows no dropped frame at 60 Hz, not the headroom beyond it
+(DECISION F019 D6). Open findings: 4, all owned by F284.
