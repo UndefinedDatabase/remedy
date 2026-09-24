@@ -1,68 +1,66 @@
-# Handback — F264 Steering channel · Round 6 · THE ACKNOWLEDGEMENT, ON THE STREAM AND IN `remedy chat show`
+# Handback — F264 Steering channel · Round 7 · THE COCKPIT'S ACTIVITY FEED SHOWS EACH STEERING ACKNOWLEDGEMENT
 
 ## Session
 
-SESSION 1 of feature F264 · round 6 · rounds so far 6
+SESSION 1 of feature F264 · round 7 · rounds so far 7
 
-This round booked round 5's PASS into `.agent/live_review.md`, recorded
-DECISION F264 D6, and landed T003's first half: the consumption event
-becomes the acknowledgement, carrying `understood` — a restatement that
-quotes the message verbatim with the task round it took effect from,
-and for a mission's job also the contract criterion and mission round.
-The SSE stream carries exactly that on that event kind alone, and
-`remedy chat show <job_id>` lists every message as acknowledged, waiting
-or not taken in, read from the same run-log events the stream carries.
+This round booked round 6's PASS into `.agent/live_review.md`, recorded
+DECISION F264 D7, and landed T003's second half: a new pure module
+`apps/ui/src/api/steeringAck.ts` reads the stream's `steering` field on a
+`steering_message_consumed` frame, checking every value, and
+`feedRowOf` shows that row as "Steering taken in at round <n>:
+<restatement>." in the activity feed directly above the steering input.
+A Python guard pins the reader's keys and event kind to the server's
+stream field. With this round T001 to T003 are built.
 A large majority of this session's working-context budget remained at
 handback.
 
 ## Range
 
-Review of 70664b29..0c57bc87
+Review of e420be13..87b0ea1f
 
 ## Commits
 
-### dddc2268 F264 R6 C1a: copy round 6 block and bookkeeping payloads into .agent/authored/
+### 13319f60 F264 R7 C1a: copy round 7 block and bookkeeping payloads into .agent/authored/
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f264-r6-block.md | +222/-0 | copy of this round's block, verbatim |
-| .agent/authored/f264-r6-plan.md | +28/-0 | copy of the plan.md payload |
-| .agent/authored/f264-r6-records.diff | +49/-0 | copy of the records.diff payload |
+| .agent/authored/f264-r7-block.md | +229/-0 | copy of this round's block, verbatim |
+| .agent/authored/f264-r7-plan.md | +31/-0 | copy of the plan.md payload |
+| .agent/authored/f264-r7-records.diff | +44/-0 | copy of the records.diff payload |
 
-### ac89b98d F264 R6 C1b: copy round 6 product and test payloads into .agent/authored/
+### 09bcab4c F264 R7 C1b: copy round 7 product and test payloads into .agent/authored/
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f264-r6-mutations.py | +71/-0 | copy of the mutations.py payload |
-| .agent/authored/f264-r6-product.diff | +287/-0 | copy of the product.diff payload |
-| .agent/authored/f264-r6-tests.diff | +119/-0 | copy of the tests.diff payload |
+| .agent/authored/f264-r7-mutations.py | +81/-0 | copy of the mutations.py payload |
+| .agent/authored/f264-r7-product.diff | +29/-0 | copy of the product.diff payload |
+| .agent/authored/f264-r7-steeringAck.test.ts | +41/-0 | copy of the steeringAck.test.ts payload |
+| .agent/authored/f264-r7-steeringAck.ts | +50/-0 | copy of the steeringAck.ts payload |
+| .agent/authored/f264-r7-tests.diff | +50/-0 | copy of the tests.diff payload |
 
-### e340f38b F264 R6 C2: book round 5's PASS, record DECISION F264 D6 and advance the plan
+### 41bc6c4f F264 R7 C2: book round 6's PASS, record DECISION F264 D7 and advance the plan
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/decisions.md | +31/-0 | DECISION F264 D6 |
-| .agent/live_review.md | +2/-0 | `Gate: F264 R5 —` PASS entry |
-| .agent/plan.md | +7/-9 | rewritten to plan.md payload, advancing to T003's first half |
+| .agent/decisions.md | +26/-0 | DECISION F264 D7 |
+| .agent/live_review.md | +2/-0 | `Gate: F264 R6 —` PASS entry |
+| .agent/plan.md | +11/-8 | rewritten to plan.md payload, advancing to T003's second half |
 
-### 4e27aeda F264 R6 C3: acknowledge a steering message with its restatement and round
+### a23e3d93 F264 R7 C3: show each steering acknowledgement in the cockpit's activity feed
 | Path | +/- | Reason |
 |---|---|---|
-| apps/cli/command_catalog.py | +15/-0 | catalog entry for the acknowledgement surface |
-| apps/cli/commands/chat_cmd.py | +49/-1 | `remedy chat show` lists each message acknowledged, waiting or not taken in, from the run-log events |
-| docs/guides/exit-codes.md | +1/-0 | doc update for the new/changed surface |
-| packages/orchestration/steering.py | +85/-7 | the consumption event gains `understood`: verbatim restatement, task round, and for a mission's job the contract criterion and mission round |
-| packages/orchestration/ui_server.py | +19/-0 | SSE stream carries the acknowledgement fields on that event kind alone |
+| apps/ui/src/api/feedRow.ts | +6/-1 | `feedRowOf` renders the acknowledgement row: "Steering taken in at round <n>: <restatement>." directly above the steering input |
+| apps/ui/src/api/steeringAck.ts | +50/-0 | new pure module reading the stream's `steering` field on a `steering_message_consumed` frame, checking every value |
 
-### 0c57bc87 F264 R6 C4: test the acknowledgement on the stream and in remedy chat show
+### 87b0ea1f F264 R7 C4: test the acknowledgement reader, the feed line and the stream pin
 | Path | +/- | Reason |
 |---|---|---|
-| tests/cli/test_chat_cmd.py | +36/-0 | `remedy chat show` acknowledgement listing, incl. ended-job-never-took-in case |
-| tests/orchestration/test_steering.py | +25/-0 | consumption event restates message + round; overview names each status |
-| tests/orchestration/test_steering_mission.py | +9/-0 | acknowledgement also names the mission criterion and its round |
-| tests/ui_server/test_sse_stream.py | +14/-0 | stream carries the acknowledgement's three fields and no other |
+| apps/ui/src/api/feedRow.test.ts | +22/-0 | acknowledgement row rendering, incl. catalog line retained |
+| apps/ui/src/api/steeringAck.test.ts | +41/-0 | reader tests: every value checked, round-left-unchecked and wrong-kind rejected |
+| tests/ui_contracts/test_steering_send_contract.py | +12/-0 | Python guard pinning the reader's keys and event kind to the server's stream field |
 
 ## External actions
 
-- `git worktree add --detach .remedy-wt/f264-r6-mut 0c57bc87` — succeeded, real exit 0
-- `git worktree remove --force .remedy-wt/f264-r6-mut` — succeeded, real exit 0
+- `git worktree add --detach .remedy-wt/f264-r7-mut 87b0ea1f` — succeeded, real exit 0
+- `git worktree remove --force .remedy-wt/f264-r7-mut` — succeeded, real exit 0
 - `git worktree prune` — succeeded, real exit 0
 - `git push origin feature/f264-steering-channel` — reported in the reply (run after this commit; cannot be in this table per the self-reference exception)
 
@@ -70,54 +68,61 @@ No PR created or merged this round (per block constraint 5). `gh pr list` report
 
 ## Verification
 
-G1 TRANSPORT — all 5 payloads (records.diff, plan.md, product.diff,
-mutations.py, tests.diff) measured line count, byte count and sha256
-against the PAYLOADS table: all matched exactly. All 6
-`.agent/authored/f264-r6-*` copies (block + 5 payloads) read back with
-`git show <commit>:<path>` matched their sources byte for byte.
+G1 TRANSPORT — all 7 payloads (records.diff, plan.md, product.diff,
+steeringAck.ts, mutations.py, tests.diff, steeringAck.test.ts) measured
+line count, byte count and sha256 against the PAYLOADS table: all
+matched exactly. All 8 `.agent/authored/f264-r7-*` copies (block + 7
+payloads) read back with `git show <commit>:<path>` matched their
+sources byte for byte.
 
-G2 THE RECORDS — at C2 (e340f38b): `git show e340f38b:.agent/live_review.md`
-= 320467 bytes, sha256 38cee9eec59dc84c44e8d084d94b2810ebad7131212b2ffecc9d97f4691bfe50
-(match); `.agent/decisions.md` = 1953336 bytes, sha256
-a35641fe23260ab419be247da1444fc3257440aab05e570361d292403bd6d8c7 (match);
-`.agent/plan.md` = 980 bytes, sha256
-98a6d8e4b283d42a6a2e06038d0baa54037aa6390f9f179278b676366658885a (match).
-Lines added to live_review.md beginning `Gate: F264 R5 — `: 1 (matches
+G2 THE RECORDS — at C2 (41bc6c4f): `git show 41bc6c4f:.agent/live_review.md`
+= 322329 bytes, sha256 5cb85dd31b1011c14bbe2eefc562ae9dad08e677e0d7b04c8ce2c854d25ee075
+(match); `.agent/decisions.md` = 1955579 bytes, sha256
+0d33643528359dc3417f5a77548e5d9356fbee0aa938ddd35b8a54f730004b4e (match);
+`.agent/plan.md` = 1118 bytes, sha256
+a16f75fcefaaaaffc52222695f4794ad923ac2b1ced0b8dc68036adcb11d39f3 (match).
+Lines added to live_review.md beginning `Gate: F264 R6 — `: 1 (matches
 reviewer's reading of 1). `open_finding_ids` (scripts/rotate_live_review.py)
-at 70664b29 and at e340f38b: both `{R-0499, R-0950, R-1008}`, set
+at e420be13 and at 41bc6c4f: both `{R-0499, R-0950, R-1008}`, set
 difference empty both directions (matches reviewer's 3 and 3).
-`git diff --name-only ac89b98d e340f38b`: `.agent/decisions.md`,
+`git diff --name-only 09bcab4c 41bc6c4f`: `.agent/decisions.md`,
 `.agent/live_review.md`, `.agent/plan.md` — exactly the three record
 paths.
 
-G3 THE PRODUCT — at C4 (0c57bc87), all nine files read back with
-`git show 0c57bc87:<path>` matched the reviewer's simulated readings
-byte for byte: `apps/cli/command_catalog.py` (113604 bytes),
-`apps/cli/commands/chat_cmd.py` (5462 bytes), `docs/guides/exit-codes.md`
-(3983 bytes), `packages/orchestration/steering.py` (19122 bytes),
-`packages/orchestration/ui_server.py` (152364 bytes),
-`tests/cli/test_chat_cmd.py` (5003 bytes),
-`tests/orchestration/test_steering.py` (10360 bytes),
-`tests/orchestration/test_steering_mission.py` (3982 bytes),
-`tests/ui_server/test_sse_stream.py` (28427 bytes) — all sha256 matched.
-`git diff --name-only e340f38b 4e27aeda`: command_catalog.py,
-chat_cmd.py, exit-codes.md, steering.py, ui_server.py (matches C3's
-five paths). `git diff --name-only 4e27aeda 0c57bc87`: test_chat_cmd.py,
-test_steering.py, test_steering_mission.py, test_sse_stream.py
-(matches C4's four paths).
+G3 THE PRODUCT — at C4 (87b0ea1f), all five files read back with
+`git show 87b0ea1f:<path>` matched the reviewer's simulated readings
+byte for byte: `apps/ui/src/api/steeringAck.ts` (2431 bytes),
+`apps/ui/src/api/feedRow.ts` (3281 bytes),
+`apps/ui/src/api/steeringAck.test.ts` (1829 bytes),
+`apps/ui/src/api/feedRow.test.ts` (3962 bytes),
+`tests/ui_contracts/test_steering_send_contract.py` (3531 bytes) — all
+sha256 matched. `git diff --name-only 41bc6c4f a23e3d93`: feedRow.ts,
+steeringAck.ts (matches C3's two paths). `git diff --name-only a23e3d93
+87b0ea1f`: feedRow.test.ts, steeringAck.test.ts,
+test_steering_send_contract.py (matches C4's three paths).
 
 G4 THE TESTS — serial pytest run (real exit code):
 ```
-1286 passed in 99.39s (0:01:39)
+1104 passed, 4 skipped in 81.65s (0:01:21)
 REAL_EXIT=0
 ```
-The reviewer's sim (without `tests/cli/test_golden_path.py`) read
-`1243 passed, 1 skipped` at exit 0. This primary checkout carries the
-UI toolchain a worktree lacks, so the one skip passed here; the
-difference (1286 vs 1243+1) is consistent with the block's own note
-that a skip may pass in the primary checkout.
+SKIPPED lines (all four, pre-existing D3 quarantine skips, none of them
+the four toolchain nodes this round required to pass):
 ```
-python3 -m ruff check packages/orchestration/steering.py packages/orchestration/ui_server.py apps/cli/commands/chat_cmd.py apps/cli/command_catalog.py tests/orchestration/test_steering.py tests/orchestration/test_steering_mission.py tests/cli/test_chat_cmd.py tests/ui_server/test_sse_stream.py
+tests/ui_contracts/test_graph_architecture.py:441: D3 quarantine (F252)
+tests/ui_contracts/test_graph_architecture.py:484: D3 quarantine (F252)
+tests/ui_contracts/test_ux_quality.py:507: D3 quarantine (F252)
+tests/ui_contracts/test_ux_quality.py:543: D3 quarantine (F252)
+```
+The reviewer's sim (without `tests/cli/test_golden_path.py`, serially in
+its own worktree) read `1057 passed, 9 skipped` at exit 0. This primary
+checkout carries the UI toolchain a worktree lacks and also ran the
+golden path the sim selection excluded; the required four toolchain
+nodes — the two `test_ui_lint.py` eslint nodes, the `test_dashboard_contract.py`
+typescript node, and the `test_test_runner.py` vitest node — all PASSED
+here (none appear in the SKIPPED summary above).
+```
+python3 -m ruff check tests/ui_contracts/test_steering_send_contract.py
 All checks passed!
 REAL_EXIT=0
 ```
@@ -127,33 +132,34 @@ python3 -m apps.cli.main integrity check --json
 REAL_EXIT=0
 ```
 
-G5 THE RED PROOFS — `.remedy-wt/f264-r6-payloads/mutations.py` against
-`.remedy-wt/f264-r6-mut` (detached at 0c57bc87):
+G5 THE RED PROOFS — `.remedy-wt/f264-r7-payloads/mutations.py` against
+`.remedy-wt/f264-r7-mut` (detached at 87b0ea1f):
 ```
-control_before: 114 passed, REAL_EXIT=0
-m1_event_carries_no_restatement: FROM count 1; 2 failed, 112 passed; REAL_EXIT=1; restored byte-identical: True
-m2_restatement_names_no_round: FROM count 1; 2 failed, 112 passed; REAL_EXIT=1; restored byte-identical: True
-m3_mission_half_unnamed: FROM count 1; 1 failed, 113 passed; REAL_EXIT=1; restored byte-identical: True
-m4_ended_job_shown_as_waiting: FROM count 1; 2 failed, 112 passed; REAL_EXIT=1; restored byte-identical: True
-m5_stream_drops_the_acknowledgement: FROM count 1; 1 failed, 113 passed; REAL_EXIT=1; restored byte-identical: True
-m6_task_read_from_metadata_only: FROM count 1; 2 failed, 112 passed; REAL_EXIT=1; restored byte-identical: True
-control_after: 114 passed, REAL_EXIT=0
+control_before: vitest 15 passed, REAL_EXIT=0; pytest 6 passed, REAL_EXIT=0
+u1_feed_keeps_the_catalog_line: FROM count 1; vitest 1 failed, 14 passed, REAL_EXIT=1; pytest 6 passed, REAL_EXIT=0; restored byte-identical: True
+u2_round_left_unchecked: FROM count 1; vitest 1 failed, 14 passed, REAL_EXIT=1; pytest 6 passed, REAL_EXIT=0; restored byte-identical: True
+u3_any_kind_read_as_an_ack: FROM count 1; vitest 1 failed, 14 passed, REAL_EXIT=1; pytest 6 passed, REAL_EXIT=0; restored byte-identical: True
+u4_restatement_dropped_from_the_line: FROM count 1; vitest 2 failed, 13 passed, REAL_EXIT=1; pytest 6 passed, REAL_EXIT=0; restored byte-identical: True
+p1_reader_key_drifts_from_the_stream: FROM count 1; vitest 2 failed, 13 passed, REAL_EXIT=1; pytest 1 failed, 5 passed, REAL_EXIT=1; restored byte-identical: True
+control_after: vitest 15 passed, REAL_EXIT=0; pytest 6 passed, REAL_EXIT=0
 ```
-Exact match to the reviewer's expected readings for all eight lines.
-Worktree removed and pruned; `git worktree list` afterward showed only
-the primary checkout, the reviewer's `f264-r6-dry`/`f264-r6-sim`, and the
-four `job-*` worktrees — nothing else.
+Exact match to the reviewer's expected readings for all seven mutation
+lines. Worktree removed and pruned; `git worktree list` afterward showed
+only the primary checkout, the reviewer's `f264-r7-dry`/`f264-r7-sim`,
+and the four `job-*` worktrees — nothing else.
 
 ## Authored-text proofs
 
-Block (`.agent/authored/f264-r6-block.md`), records.diff, plan.md,
-product.diff, mutations.py and tests.diff copies at dddc2268/ac89b98d:
-each read back with `git show <commit>:<path>` and compared against the
-payload table / this block's own reading — all 6 matched byte for byte.
-records.diff, product.diff and tests.diff were applied with `git apply`
-(never retyped), each preceded by a real `git apply --check` at exit 0
-and followed by the real `git apply` at exit 0. plan.md was copied whole
-with `shutil.copyfile`, never retyped.
+Block (`.agent/authored/f264-r7-block.md`), records.diff, plan.md,
+product.diff, steeringAck.ts, mutations.py, tests.diff and
+steeringAck.test.ts copies at 13319f60/09bcab4c: each read back with
+`git show <commit>:<path>` and compared against the payload table /
+this block's own reading — all 8 matched byte for byte. records.diff,
+product.diff and tests.diff were applied with `git apply` (never
+retyped), each preceded by a real `git apply --check` at exit 0 and
+followed by the real `git apply` at exit 0. plan.md, steeringAck.ts and
+steeringAck.test.ts were copied whole with `shutil.copyfile`, never
+retyped.
 
 ## Deviations & assumptions
 
@@ -162,7 +168,8 @@ C4, C5) with no extra, dropped or reordered commits.
 
 ## Next
 
-Phase 1 rule 1: read `.agent/STOP` from disk. Then the review of round 6.
-Then T003's second half — the cockpit renders the acknowledgement from
-the stream, under the steering input. Open findings: 3. Operator
-questions: 0.
+Phase 1 rule 1: read `.agent/STOP` from disk. Then the review of round 7.
+Then the closure sequence's first half — the user-facing docs for
+`remedy chat`, the feature file's Built State, the checklist
+consolidation, the self-use track and the feature's one full suite.
+Open findings: 3. Operator questions: 0.
