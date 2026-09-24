@@ -19772,3 +19772,47 @@ HOW TO REVERSE: remove the announcement from `_teach_task_lesson`, the `lesson` 
 name from `event_names.py` and its line from `apps/ui/src/api/humanizeCatalog.ts`; delete
 `tests/ui_server/test_lessons_route.py` and the round's two hook tests; and delete this
 paragraph.
+
+## DECISION F265 D3 — the learning overlay is a right-anchored dialog sheet the right panel opens, reading the lessons route through one pure module and reading it again only when the stream announces a lesson (2026-09-24)
+
+CONTEXT: T5_F265.md T002 orders an index of lessons on the left and a main area with next and
+previous, rendering stored lessons and generating nothing, and its Design says the overlay takes
+its data from the event stream rather than a second polling path. Measured at `b09b36f4`: the
+lessons route and the stream's `task_lesson_written` frames exist (DECISION F265 D2); the
+design reference names no lessons surface, and its only overlay rulings are the reference token
+sheet's overlay layer for sheets and dialogs (80) and `component_spec.md`'s dialog role and Esc
+for the detail popover; the shipped `apps/ui/src/styles/tokens.css` defines no z-layer token;
+the cockpit has no overlay, no focus trap and no DOM harness (DECISION F031 D5); the main column
+is held to four children by `tests/ui_contracts/test_main_layout_guard.py`, which is why the diff
+panel is mounted as a sibling after it; and every cockpit read goes through one injected-fetcher
+door in `apps/ui/src/api/remedyApi.ts` over a pure decoder, as the job digest's does.
+
+CHOSEN: (1) THE PURE HALF is `apps/ui/src/api/lessons.ts`: the decoder, which refuses the WHOLE
+index when any row or construct cannot be read, because an index that quietly drops a task is a
+thin lesson presenting itself as complete; the route's path; and every rule the overlay applies —
+it opens on the first stored lesson, keeps the operator's choice while it names a row, stops
+previous and next at the ends, says why a task has no lesson in the server's own reason, names
+the model and what the teacher named that the change does not contain, and gives an index with
+nothing to read one honest line that says whether lessons are off. (2) THE DOOR is
+`loadLessonsIndex` in `remedyApi.ts`, which never throws. (3) THE SHEET is
+`components/lessons/LessonsOverlay.tsx`: a glass sheet anchored right, with a dialog role, a
+Close button and Esc to close, on the overlay layer written as the number 80 because the shipped
+sheet has no token for it; it is mounted by `RemedyShell` as a sibling after the diff panel, and
+the right panel's quiet "Lessons" button opens it. (4) THE REFRESH: the shell passes the newest
+stream position of a `task_lesson_written` frame as the overlay's refresh key, so an open
+overlay reads its index again when the stream announces a lesson and never on a timer. (5) THE
+PINS: `tests/ui_contracts/test_lessons_overlay_contract.py` holds every key the decoder reads to
+one the server writes, the event name and the ready status to the server's, the pure module free
+of sockets, clocks and storage, the sheet's stale-answer guard and Esc, and its mount outside the
+main column. Two assumption-log rows record the sheet and its entry point.
+
+ALTERNATIVES: a tab inside the right panel, rejected because a lesson is a page and the panel is a
+350px column of live cards; wiring the rail's inert "Docs" button, rejected because the rail's
+icon dock has no handlers at all and giving one a meaning is a rail design the reference has not
+made; polling the route while the overlay is open, rejected by the feature file's own Design; a
+focus trap, deferred because nothing in the cockpit has one and no test here could prove it.
+
+HOW TO REVERSE: delete `apps/ui/src/api/lessons.ts`, its test, the `components/lessons/`
+folder and the contract test; remove the lessons door from `remedyApi.ts`, the overlay's state and
+mount from `RemedyShell.tsx` and the button and its prop from `RightLivePanel.tsx`; delete the two
+F265 rows of `docs/ui/design_reference/assumption_log.md`; and delete this paragraph.

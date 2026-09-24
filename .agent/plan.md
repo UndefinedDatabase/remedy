@@ -13,22 +13,21 @@ previous navigation and a Commands mode
 
 ## Current Step
 
-ROUND 2: book round 1's PASS, record DECISION F265 D2, and land T001's
-reach: a stored lesson announced on the job's run log as
-`task_lesson_written`, the stream's `lesson` field naming its Run and
-status, `GET /api/jobs/<job_id>/lessons` listing every task's lesson or
-the reason it has none, and the hook naming the job's mission, with tests
-and red proofs.
+ROUND 3: book round 2's PASS, record DECISION F265 D3, and land T002: the
+learning overlay, a right-anchored dialog sheet the right panel's
+"Lessons" button opens, with the index on the left and the lesson with
+previous and next, reading the lessons route through `api/lessons.ts` and
+reading it again when the stream announces a lesson, with vitest, a
+contract test, two assumption-log rows and red proofs.
 
 ## Next Steps
 
-1. T002: the overlay, an index on the left and the lesson with next and
-   previous, reading the lessons route when the stream announces one.
-2. T003: the Commands mode over the catalog entries the diff touched.
-3. The closure sequence.
+1. T003: the Commands mode, the catalog entries of the commands the
+   task's diff touched, as a second mode of the overlay.
+2. The closure sequence.
 
 ## Risks
 
 A lesson spends one model call per task; the off switch and the pot are
-the controls, and a test pins each. The overlay binds
-`docs/ui/design_reference`, which T002 reads before it builds.
+the controls, and a test pins each. The overlay has no focus trap, which
+the assumption log records.
