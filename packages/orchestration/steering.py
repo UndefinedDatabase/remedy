@@ -211,6 +211,11 @@ def consume_pending_steering(
     once this call returns and a correction holds for the rest of the job, not for one round.
     A tampered record raises `SteeringError` from `list_steering_messages`, so a run never
     folds in text it cannot prove the operator sent. A job with no message writes nothing.
+
+    For a job that belongs to a mission, consuming a message also AMENDS the mission's
+    contract with it (DECISION F264 D5, DECISION amend0905-vocab D9), before the marker is
+    published, and the marker names the amendment. The job's own lock keeps one runner per
+    job, which is what makes checking for the marker and then amending safe.
     """
     records = list_steering_messages(job_id, root)
     if not records:
@@ -222,8 +227,14 @@ def consume_pending_steering(
     except OSError as exc:
         raise SteeringWriteError(f"the consumption folder cannot be opened: {exc}") from exc
     consumed_now: list[dict[str, Any]] = []
+    mission: Any = _UNRESOLVED
     try:
         for record in records:
+            if (folder / f"{record['message_id']}.json").exists():
+                continue
+            if mission is _UNRESOLVED:
+                mission = _mission_of(job_id, root)
+            amendment_id = _amend_mission(mission, record["text"], root, now) if mission else ""
             marker: dict[str, Any] = {
                 "schema": CONSUMPTION_SCHEMA,
                 "message_id": record["message_id"],
@@ -232,6 +243,8 @@ def consume_pending_steering(
                 "task_id": str(task_id),
                 "round_number": int(round_number),
                 "consumed_at": (now or datetime.now(timezone.utc)).isoformat(),
+                "mission_id": mission.id if mission else "",
+                "amendment_id": amendment_id,
             }
             marker["record_sha256"] = _seal(marker)
             try:
@@ -258,9 +271,35 @@ def consume_pending_steering(
                 event="steering_message_consumed",
                 metadata={"message_id": marker["message_id"], "task_id": marker["task_id"],
                           "round_number": marker["round_number"],
-                          "record_sha256": marker["message_sha256"]},
+                          "record_sha256": marker["message_sha256"],
+                          "amendment_id": marker["amendment_id"]},
             )
     return records
+
+
+#: "Not looked up yet", as distinct from a job that belongs to no mission.
+_UNRESOLVED = object()
+
+
+def _mission_of(job_id: str, root: Path | None) -> Any:
+    """The mission the job belongs to, or None; looked up only when a message is pending."""
+    from packages.orchestration.mission_state import mission_for_job
+
+    return mission_for_job(str(job_id), root)
+
+
+def _amend_mission(mission: Any, text: str, root: Path | None, now: datetime | None) -> str:
+    """Amend ``mission``'s contract with one steering message and return the amendment's id.
+
+    F269's `amend_mission_contract` adds one blocking criterion compiled from the message and
+    an entry that applies from the mission's next loop round, where the loop acknowledges it
+    (DECISION F269 D8). A failure raises: a message the mission silently lost is the ignored
+    steering this feature exists to prevent.
+    """
+    from packages.orchestration.mission_contract import amend_mission_contract
+
+    contract = amend_mission_contract(mission.project_id, mission.id, text, root=root, now=now)
+    return str(contract.amendments[-1]["id"])
 
 
 def list_steering_consumptions(job_id: str, root: Path | None = None) -> dict[str, dict[str, Any]]:
