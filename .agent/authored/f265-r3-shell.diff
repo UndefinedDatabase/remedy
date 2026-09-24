@@ -1,0 +1,88 @@
+diff --git a/apps/ui/src/components/panels/RightLivePanel.tsx b/apps/ui/src/components/panels/RightLivePanel.tsx
+index 9a5f4288..d6ed4e8d 100644
+--- a/apps/ui/src/components/panels/RightLivePanel.tsx
++++ b/apps/ui/src/components/panels/RightLivePanel.tsx
+@@ -12,7 +12,7 @@ import { LiveStatusPill } from "./LiveStatusPill";
+ import { TaskChecklistCard } from "./TaskChecklistCard";
+ import styles from "./RightLivePanel.module.css";
+ 
+-export function RightLivePanel({ dashboard, serverToken, onSelectNode, streamStatus, recent, recentDropped }: { dashboard: RemedyDashboard; serverToken: string; onSelectNode: (nodeId: string | null) => void; streamStatus?: BrainStreamStatus | null; recent?: readonly FeedRow[]; recentDropped?: number }) {
++export function RightLivePanel({ dashboard, serverToken, onSelectNode, streamStatus, recent, recentDropped, onOpenLessons }: { dashboard: RemedyDashboard; serverToken: string; onSelectNode: (nodeId: string | null) => void; streamStatus?: BrainStreamStatus | null; recent?: readonly FeedRow[]; recentDropped?: number; onOpenLessons?: () => void }) {
+   const [showAdvanced, setShowAdvanced] = useState(false);
+ 
+   return (
+@@ -26,6 +26,13 @@ export function RightLivePanel({ dashboard, serverToken, onSelectNode, streamSta
+       <DecisionInboxCard decisions={orderDecisionInbox(dashboard.decisionInbox)} tasks={dashboard.tasks} jobId={dashboard.jobId} serverToken={serverToken} onSelectNode={onSelectNode} />
+       <ActivityFeedCard activity={dashboard.activity} recent={recent} recentDropped={recentDropped} tasks={dashboard.tasks} onSelectNode={onSelectNode} jobId={dashboard.jobId} serverToken={serverToken} stage={dashboard.live.stage} />
+       <TaskChecklistCard tasks={dashboard.tasks} jobId={dashboard.jobId} onSelectNode={onSelectNode} />
++      {/* The learning overlay's entry point (T5_F265 T002, DECISION F265 D3), in the quiet style
++          of the toggle below; the shell owns whether the overlay is open. */}
++      {onOpenLessons && (
++        <button type="button" className={styles.advancedToggle} onClick={onOpenLessons}>
++          Lessons
++        </button>
++      )}
+       <button
+         type="button"
+         className={styles.advancedToggle}
+diff --git a/apps/ui/src/components/shell/RemedyShell.tsx b/apps/ui/src/components/shell/RemedyShell.tsx
+index 60a37986..04dad49d 100644
+--- a/apps/ui/src/components/shell/RemedyShell.tsx
++++ b/apps/ui/src/components/shell/RemedyShell.tsx
+@@ -17,6 +17,8 @@ import { BrainGraphStage } from "../graph/BrainGraphStage";
+ import { RightLivePanel } from "../panels/RightLivePanel";
+ import { PhaseTimeline } from "../timeline/PhaseTimeline";
+ import { DetailPopover } from "../detail/DetailPopover";
++import { LessonsOverlay } from "../lessons/LessonsOverlay";
++import { lessonsRefreshKey } from "../../api/lessons";
+ import { DegradedBanner } from "./DegradedBanner";
+ import styles from "./RemedyShell.module.css";
+ import { browserBrainStreamEnv, createBrainStreamHostDeps } from "../../api/brainStreamDeps";
+@@ -146,6 +148,12 @@ export function RemedyShell({ dashboard, serverToken, selectedNodeId, onSelectNo
+     nowMs: Date.now(),
+   });
+ 
++  // THE LEARNING OVERLAY (T5_F265 T002, DECISION F265 D3): open or closed, and the newest
++  // stream position that announced a stored lesson, which is what makes an open overlay read
++  // its index again. No timer: the stream is the only trigger.
++  const [lessonsOpen, setLessonsOpen] = useState(false);
++  const lessonsKey = lessonsRefreshKey(stream.recent ?? []);
++
+   // Jump-to: case-insensitive match over real task labels; focus the first match's node.
+   const handleJump = (query: string) => {
+     const q = query.toLowerCase();
+@@ -181,7 +189,7 @@ export function RemedyShell({ dashboard, serverToken, selectedNodeId, onSelectNo
+           <BrainGraphStage dashboard={dashboard} selectedNodeId={selectedNodeId} onSelectNode={onSelectNode} />
+           <PhaseTimeline phases={dashboard.phases} timelineEvents={dashboard.timelineEvents} />
+         </main>
+-        <RightLivePanel dashboard={dashboard} serverToken={serverToken} onSelectNode={onSelectNode} streamStatus={stream.status} recent={stream.recent} recentDropped={stream.recentDropped} />
++        <RightLivePanel dashboard={dashboard} serverToken={serverToken} onSelectNode={onSelectNode} streamStatus={stream.status} recent={stream.recent} recentDropped={stream.recentDropped} onOpenLessons={() => setLessonsOpen(true)} />
+       </div>
+       {selectedNode && <DetailPopover dashboard={dashboard} selectedNode={selectedNode} selectedPromptId={selectedPromptId} onClose={() => onSelectNode(null)} onOpenDiff={setOpenDiffTaskId} />}
+       {/* THE DIFF PANEL. A sibling of the popover rather than a child of
+@@ -211,6 +219,15 @@ export function RemedyShell({ dashboard, serverToken, selectedNodeId, onSelectNo
+           )}
+         </section>
+       )}
++      {/* THE LEARNING OVERLAY, a sibling outside <main> for the reason the diff panel is. */}
++      {lessonsOpen && (
++        <LessonsOverlay
++          jobId={dashboard.jobId}
++          serverToken={serverToken}
++          refreshKey={lessonsKey}
++          onClose={() => setLessonsOpen(false)}
++        />
++      )}
+     </div>
+   );
+ }
+diff --git a/docs/ui/design_reference/assumption_log.md b/docs/ui/design_reference/assumption_log.md
+index 90bb00d3..f5ab280e 100644
+--- a/docs/ui/design_reference/assumption_log.md
++++ b/docs/ui/design_reference/assumption_log.md
+@@ -32,3 +32,5 @@ Column rules:
+ | 2026-09-24 | F264 | `ActivityFeedCard.tsx` | `ux_spec.md` §11.3: the input is disabled until steering exists, with the tooltip "Steering arrives with a later feature — watching only for now." | The input is live for a job that can still run. It stays disabled, with a visible reason, in two cases: no job link ("Open a job's dashboard from its own link to steer it.") and an ended job ("This job has ended, so it takes no more steering."). | Steering exists from F264 on, so the reference's sentence became false. The reference gives no wording for the two cases where the input must still be disabled. | DECISION F264 D3 |
+ | 2026-09-24 | F264 | `ChatInput.tsx` | `ux_spec.md` §11.3 and `component_spec.md` "SteeringInput / ChatInput" do not say what the operator sees after sending. | One line under the input, announced to screen readers, saying what happened to the message. It uses the decision inbox's outcome colours. The typed text is cleared only after the job accepts it. | Without feedback, an operator cannot tell whether the job recorded the message, and is likely to send it again. The reference does not cover this state. | DECISION F264 D3 |
+ | 2026-09-24 | F264 | `RightLivePanel.module.css` | `ux_spec.md` §14: a 2px `--remedy-focus` outer ring. | A 2px ring in `--remedy-blue-strong`, the colour the other focus rings in this stylesheet already use. | `--remedy-focus` is not defined in the shipped tokens sheet. The guard `TestEveryCustomPropertyResolves` fails on any custom property that is not defined. | DECISION F264 D3 |
++| 2026-09-24 | F265 | `LessonsOverlay.tsx` | The reference has no lessons surface. For sheets and dialogs, `tokens.css` puts them on the `--remedy-z-overlay` layer (80), and `component_spec.md` "DetailPopover" asks for a dialog role, a focus trap and Esc to close. | A glass sheet anchored to the right, with a dialog role, a Close button and Esc to close, on z-index 80 written as a number. There is no focus trap. | The shipped tokens sheet defines no z-layer tokens, and an undefined custom property drops the whole declaration. No component in the cockpit traps focus, and with no DOM harness a focus trap could not be proved by a test. | DECISION F265 D3 |
++| 2026-09-24 | F265 | `RightLivePanel.tsx` | `ux_spec.md` §11 gives the right panel's order ending with the tasks card and the add-task row. It has no entry point for lessons. | A quiet "Lessons" button above the "System details" toggle, styled like that toggle, opens the overlay. | The learning surface came after the reference and the reference names no place to open it. The right panel is where the rest of the job's live reading happens. | DECISION F265 D3 |
