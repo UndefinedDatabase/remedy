@@ -5,6 +5,8 @@
   fills, chip dots, timeline event tints, status text. NOTHING else may define
   a status color. Bridge to api types: `suggested`→open, `pending`→planned,
   `current`→in-progress (documented in `forceBrainTypes.ts` comments — keep).
+  `--remedy-state-vetoed` is the grey of graph_spec §7's struck style, added
+  by F020 with its one usage in `renderers/nodeStates.ts`.
 - **Graph tokens** (`--remedy-graph-*`): the ONLY colors a graph renderer may
   paint. Canvas renderers read them once per mount via
   `getComputedStyle(document.documentElement)` into a palette object (pattern

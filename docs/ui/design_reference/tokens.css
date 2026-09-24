@@ -55,6 +55,7 @@
   --remedy-state-planned: #ffffff;      /* aka "pending" */
   --remedy-state-planned-ring: #9db9ee;
   --remedy-state-blocked: #ef6363;
+  --remedy-state-vetoed: #9aa9c5;      /* struck style, graph_spec §7 (F020) */
   --remedy-live: #34c27e;
 
   /* ---- Graph tokens (NEW — previously hardcoded in ForceBrainGraph.tsx) ---- */
