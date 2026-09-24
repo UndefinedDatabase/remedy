@@ -1,0 +1,57 @@
+diff --git a/.agent/decisions.md b/.agent/decisions.md
+index e4121050..5b6dd42b 100644
+--- a/.agent/decisions.md
++++ b/.agent/decisions.md
+@@ -20071,3 +20071,42 @@ the stamp in `auto_approve_task_plan` and in `consume_plan_approval`, the start
+ `run_job`, the order check in `revalidate`, the `edits` parameter of `render_plan_md` and
+ `write_plan_md` with the conditional sentence, `tests/orchestration/test_plan_edit_execution.py`
+ with its goldens, the order case in `tests/orchestration/test_plan_editing.py`, and this paragraph.
++
++## DECISION F015 D5 — the closure suite's two bad nodes: `runtime stop` waits out a supervisor that has already recorded its application's exit, and the CLI subprocess hang guard is 30 seconds (2026-09-24)
++
++CONTEXT: F015's one full suite at `19d490b8` read two bad nodes; each passes alone, and the
++hosted CI run 35983227109 of the merge base `fce49ce0` is green, so both are this feature's to
++repair under operator amendment amend0917-throughput rule 2. Diagnosed by two research agents in
++their own worktrees and reproduced by the reviewer at `11eb90c9`.
++
++(1) `TestPostHandshakeTerminalState::test_an_application_exit_right_after_the_handshake_is_reported_exactly`
++is a PRODUCT race. The supervisor writes the record `exited` just before it returns, so for a
++moment after the write the supervisor is still alive. A `remedy runtime stop` landing in that
++window finds a verified supervisor beside an application the record already calls gone;
++`classify_runtime` answers `untrusted`, and `stop_recorded_runtime` overwrites the good record
++with `identity_mismatch` and exits 5, a false failure a user on a loaded machine can meet. Holding
++the supervisor alive for three seconds after that write reproduces it on every run.
++CHOSEN: in `stop_recorded_runtime`, and only when the answer is `untrusted`, the supervisor is
++verified and the record reads `exited`, stop waits for the supervisor pid to go, bounded by the
++existing `STOP_REQUEST_TIMEOUT_S`, then classifies again; a supervisor that goes leaves the
++existing `gone` path to clear the record, and one that lingers past the bound gets the old
++conservative answer. A new test holds the window open and requires stop to exit 0 and clear the
++record. REJECTED: answering `gone` from `classify_runtime` whenever the record is non-live,
++because it would clear the only record of a supervisor that is still alive.
++
++(2) `test_json_purity` asserts that JSON output carries no secret or path; the 10 seconds of
++`run_grouped_cli` in `tests/cli/runtime_helpers.py` is a HANG GUARD around a cold CLI start, not a
++performance assertion, and under the full suite's parallel load that start outran it. A zero
++guard reproduces the suite's exact message. CHOSEN: the helper's default becomes 30 seconds, the
++value this repository's CLI subprocess tests already use and several callers of this same helper
++already pass, and nothing the test asserts changes. This is not the budget amend0820-gate-autonomy
++forbids raising by hand: that rule governs CI stage budgets, which are re-derived from measured
++maxima, while this guard's only verdict is "hung", and a start that finishes in eleven seconds is
++not hung. REJECTED: making the test in-process, which would stop it testing the subprocess's own
++stdout.
++
++The suite runs again in round 6, the first of the at most three repair rounds rule 2 allows, and
++its transcript replaces `.agent/authored/f015-closure-suite.txt` at the same path.
++
++HOW TO REVERSE: restore `packages/runtimes/dev_server.py`, `tests/cli/runtime_helpers.py` and
++`tests/runtimes/test_supervisor_portability.py` from `11eb90c9`, and delete this paragraph.
+diff --git a/.agent/live_review.md b/.agent/live_review.md
+index 055b51a8..0ff78116 100644
+--- a/.agent/live_review.md
++++ b/.agent/live_review.md
+@@ -443,3 +443,5 @@ Gate: F015 R2 — the F015 round 2 entry: the booking of round 1, DECISION F015
+ Gate: F015 R3 — the F015 round 3 entry: the booking of round 2, DECISION F015 D3, and T002's second half, the six `job.plan-*` edits exposed through the write door. VERDICT PASS ON ALL SIX GATES, NO DEVIATION DECLARED. Re-derived over `1a95e306`..`e48fa989` by the planner and reviewer of F015's first session, whose own runs produced every reading below. THE RANGE IS 6 COMMITS in the block's order C1a, C1b, C2, C3, C4 and C5, at `6ca8a5b8` 335, `eee76c36` 428, `6c8e549d` 46, `154ca02c` 112, `09eb2f0e` 170 and `e48fa989` 136 insertions by `git show --numstat`, each under the 500-line cap, each single-parent and each carrying the ordered trailer; the worker's reply gave the handback commit as 253 insertions where `git show --numstat` reads 136 and 188 deletions, a slip of the reply that left nothing wrong on disk. THE TRANSPORT PROOF IS FILE IDENTITY: every path the range touches other than the handback and the block copy reads byte-equal at `e48fa989` to the reviewer's simulated C4, rebuilt from its originals under `.remedy-wt/` at `1a95e306`, and the block copy and the five payload copies under `.agent/authored/` equal those originals byte for byte. THE BOOKING: the open set by distinct id reads 4 at `1a95e306` and at `6c8e549d`, R-0499, R-0950, R-1008 and R-1046, and `6c8e549d` adds exactly one line beginning `Gate: F015 R2 — `. THE PRODUCT: the write door admits the six edit ids, refuses a missing or unusable `args.expected_version` on that field, runs each edit through `edit_plan` under the request's token fingerprint, and answers each refusal as DECISION F015 D3 rules; the reviewer's run of the round's G4 script in the primary checkout at `e48fa989` read `2185 passed, 5 skipped` at exit 0, ruff at exit 0, and all six `integrity check` checks `pass` at `fail_count` 0 with `handlers=157`. THE RED PROOFS: the round's mutation tool, run by the reviewer over its simulated C4, turned all ten mutations red at exit 1 between two unmutated controls of `141 passed` at exit 0, every file restored byte-identical; the worker's own run in a disposable worktree at `09eb2f0e` read the same counts. `git worktree list` after the round shows no worktree the round added, and the tree is clean.
+ 
+ Gate: F015 R4 — the F015 round 4 entry: the booking of round 3, DECISION F015 D4, and T003, the approved plan's content hash checked at every job start, the order rule, the `## Edits` section with its goldens and the end-to-end run of an edited plan. VERDICT PASS ON ALL SIX GATES, NO DEVIATION DECLARED. Re-derived over `e48fa989`..`4f010387` by the planner and reviewer of F015's first session, whose own runs produced every reading below. THE RANGE IS 7 COMMITS in the block's order C1a, C1b, C1c, C2, C3, C4 and C5, at `f6567dd0` 361, `7dba3c71` 301, `52d0e568` 389, `aceefef3` 56, `71302f22` 96, `c828a202` 392 and `4f010387` 173 insertions by `git show --numstat`, each under the 500-line cap, each single-parent and each carrying the ordered trailer. THE TRANSPORT PROOF IS FILE IDENTITY: every path the range touches other than the handback and the block copy reads byte-equal at `4f010387` to the reviewer's simulated C4, rebuilt from its originals under `.remedy-wt/` at `e48fa989`, and the block copy and the nine payload copies under `.agent/authored/` equal those originals byte for byte. THE BOOKING: the open set by distinct id reads 4 at `e48fa989` and at `aceefef3`, R-0499, R-0950, R-1008 and R-1046, and `aceefef3` adds exactly one line beginning `Gate: F015 R3 — `. THE PRODUCT: an approval records `_approved_plan_sha256`, `run_job` blocks a job whose plan or task list is not the one its approval covered, an edit may not put a task before a task it waits for, and an edited revision names its edits; the reviewer's run of the round's G4 script in the primary checkout at `4f010387` read `1283 passed, 1 skipped` at exit 0, ruff at exit 0, and all six `integrity check` checks `pass` at `fail_count` 0 with `handlers=157`. THE RED PROOFS: the round's mutation tool, run by the reviewer over its simulated C4, turned all ten mutations red at exit 1 between two unmutated controls of `80 passed` at exit 0, every file restored byte-identical; the worker's own run in a disposable worktree at `c828a202` read the same counts. `git worktree list` after the round shows no worktree the round added, and the tree is clean.
++
++Gate: F015 R5 — the F015 round 5 entry: the booking of round 4 and the closure sequence's first half, the Built State of `docs/roadmap/features/T5_F015.md`, the checklist consolidation, the self-use track and the one full suite. VERDICT PASS ON ALL SIX GATES; THE FULL SUITE IS RED AND IS THIS FEATURE'S WORK, AS THE BLOCK'S CONSTRAINT 4 RULES. Re-derived over `4f010387`..`11eb90c9` by the planner and reviewer of F015's first session, whose own runs produced every reading below. THE RANGE IS 5 COMMITS in the block's order C1 to C5, at `d9cd9f4a` 347, `da077cbf` 9, `a64b3f50` 82, `19d490b8` 6 and `11eb90c9` 187 insertions by `git show --numstat`, each under the 500-line cap, each single-parent and each carrying the ordered trailer. THE TRANSPORT PROOF IS FILE IDENTITY: every path the range touches other than the handback, the block copy and the suite transcript reads byte-equal at `11eb90c9` to the reviewer's simulated C4, rebuilt from its originals under `.remedy-wt/` at `4f010387`. THE BOOKING: `da077cbf` adds exactly one line beginning `Gate: F015 R4 — `, and the open set reads 4 at both ends, R-0499, R-0950, R-1008 and R-1046. THE CHECKLIST keeps the same 34 item numbers at `4f010387` and at `a64b3f50`. THE SELF-USE TRACK read `None`, `None`, `None` and a clean tree, recorded as NONE in `.agent/selfuse_f015/result.txt`. THE SUITE at `19d490b8`, recorded in `.agent/authored/f015-closure-suite.txt`, read `2 failed, 19054 passed, 20 skipped` at exit 1, the bad nodes being `tests/cli/test_real_test_execution_cli.py::test_json_purity`, a CLI subprocess that outran its 10-second hang guard, and `tests/runtimes/test_supervisor_portability.py::TestPostHandshakeTerminalState::test_an_application_exit_right_after_the_handshake_is_reported_exactly`, a `runtime stop` that exited 5; neither reachability test holds a bad node, so closure precondition 7 holds. Both nodes passed when the reviewer re-ran them alone at `11eb90c9`, and the hosted CI run 35983227109 of the merge base `fce49ce0` on `main` is green, so both are this feature's to repair under operator amendment amend0917-throughput rule 2, which round 6 does under DECISION F015 D5.
