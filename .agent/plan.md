@@ -13,16 +13,14 @@ over the whole kind-by-state matrix (`docs/roadmap/features/T5_F020.md`).
 
 ## Current Step
 
-ROUND 6, the closure sequence's first half: book round 5's PASS, write
-the Built State and the design-pack assumption rows, consolidate the
-checklist, record the self-use track, and run the one full suite.
+ROUND 7, the closure sequence's evidence half: book round 6's PASS, whose
+one full suite is green, then build the evidence bundle against the fork
+point and the fresh review package.
 
 ## Next Steps
 
-1. The evidence bundle and the review package, after any repair the
-   suite requires.
-2. The closing round: the ledger rotation, the STATUS flip and the pull
-   request.
+1. The closing round: the ledger rotation, the STATUS flip with the
+   README counters, and the pull request.
 
 ## Risks
 
