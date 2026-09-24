@@ -1,0 +1,6 @@
+Command: python3 -m pytest -n auto -q
+Real exit code: 1
+Summary line: 2 failed, 19054 passed, 20 skipped, 1 warning in 199.57s (0:03:19)
+Bad node ids (failed + errors):
+tests/cli/test_real_test_execution_cli.py::test_json_purity
+tests/runtimes/test_supervisor_portability.py::TestPostHandshakeTerminalState::test_an_application_exit_right_after_the_handshake_is_reported_exactly
