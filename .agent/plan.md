@@ -14,19 +14,16 @@ and execution follows the edited plan exactly, proven by hash
 
 ## Current Step
 
-ROUND 2: book round 1's PASS and land T002's first half under DECISION
-F015 D2 — the approval consumed under the plan-edit lock at both doors,
-and `remedy job plan-show` with the six `job plan-*` edit commands.
+ROUND 3: book round 2's PASS and land T002's second half under DECISION
+F015 D3 — the write door exposes the six `job.plan-*` edits, each run
+through `edit_plan` with a required `expected_version`.
 
 ## Next Steps
 
-1. T002's second half: the write door's six plan-edit commands with
-   their argument checks, exposed and dispatched through
-   `edit_plan`, with their refusals and stale-version conflicts.
-2. T003: the plan's content hash recorded at approval and asserted when
-   the job starts, `plan.md` revision goldens, and the end-to-end run of
-   an edited plan.
-3. The closure sequence.
+1. T003: the plan's content hash recorded when the approval is consumed
+   and asserted when the job starts, the `plan.md` revision goldens, and
+   the end-to-end run of an edited plan.
+2. The closure sequence.
 
 ## Risks
 

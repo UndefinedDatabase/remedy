@@ -19989,3 +19989,40 @@ another name.
 HOW TO REVERSE: delete `apps/cli/commands/job_plan_cmd.py`, its catalog entries, its guide rows,
 allowlist line and registration, and `tests/cli/test_job_plan_cmd.py`; point both approval doors
 back at `resolve_task_plan_approval`; delete `consume_plan_approval`, its tests and this paragraph.
+
+## DECISION F015 D3 — the write door exposes the six `job.plan-*` edits, each run through `edit_plan` with a required `expected_version`, and answers a refused edit with its reason (2026-09-24)
+
+CONTEXT: T5_F015.md orders T002's channel wiring: each edit command reachable through the
+single write channel with its arguments checked, an approved or running plan refused with the
+state named, and a stale edit given a conflict with the current revision. Measured at
+`1a95e306`: the write door `_handle_command_submission` in `packages/orchestration/ui_server.py`
+admits only `UI_EXPOSED_COMMANDS`, checks argument shapes by hand in `_read_command_payload`,
+dispatches by an if-chain, answers a declined effect 409 with a fixed message and no detail
+(DECISION F009 D22), and pins its imports and methods in `TestCommandDoorImportGuard`. The six
+catalog ids `job.plan-edit-task` to `job.plan-edit-acceptance` exist since DECISION F015 D2.
+
+CHOSEN: (1) The six ids join `UI_EXPOSED_COMMANDS`; `PLAN_EDIT_COMMAND_IDS` in `ui_server.py`
+maps each to its backend command, and `_dispatch_plan_edit` calls `edit_plan` with `args` less
+`expected_version`, the backend's own argument object, and the request's token fingerprint as
+the editor, the handle `commands_audit.jsonl` already records. (2) `args.expected_version` must
+be a whole number of at least 1, or the request is a 400 on field `expected_version`, audited
+`rejected_shape`, before the plan is read. (3) `plan_edit_refusal` maps each refusal code:
+`version_conflict` is 409 `rejected_state` carrying `current_version`; `invalid_args`,
+`unknown_task` and `unknown_command` are 400 on field `args`, audited `rejected_shape`, carrying
+the backend's `detail`; `invalid_plan` is 409 `rejected_state` carrying `detail` and
+`current_version`; `plan_not_editable` and `no_task_plan` are 409 `rejected_state` carrying
+`detail`; anything else, a lock timeout included, is D18 clause four's 500 `rejected_effect`
+with no detail. (4) An accepted edit answers 200 with the command, `accepted`, the new version
+and the task ids, and runs D18's audit, nonce publication and event writes unchanged, so a
+retried nonce replays the edit and never applies it twice.
+
+ALTERNATIVES: withholding the refusal `detail` as D22 does for the other effects, rejected
+because a person editing a plan cannot repair an edit whose reason is withheld, and the detail
+names only the plan's own content and the rule broken, never a path or a control file; letting
+`expected_version` default to the stored version, rejected for DECISION F015 D2's reason, which
+is last-write-wins by another name; a 422 for an edit the planner's checks refuse, rejected
+because the door's closed vocabulary answers every declined effect 409.
+
+HOW TO REVERSE: delete the six ids from `UI_EXPOSED_COMMANDS`, `PLAN_EDIT_COMMAND_IDS`, the
+four plan messages, `plan_edit_refusal`, the `expected_version` shape check, the dispatch
+branch and `_dispatch_plan_edit`, their guard entries and tests, and this paragraph.
