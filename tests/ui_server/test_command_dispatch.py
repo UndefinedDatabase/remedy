@@ -243,6 +243,72 @@ class TestTaskPlanApprovalDispatchEffects:
         assert status == 200, body
         assert saves == [self.job_id], saves
 
+    def _save_a_real_plan(self):
+        """A plan the edit backend can edit: two tasks, the second waiting for the first."""
+        from packages.orchestration.job_plan import map_task_plan_to_tasks
+        from packages.orchestration.pingpong_job import save_job_plan
+        from packages.orchestration.schemas.models import TaskPlan
+
+        plan = TaskPlan.model_validate({"schema_v": "task_plan_v1", "tasks": [
+            {"id": "T1", "title": "Build parser", "goal": "g", "acceptance": ["parses"],
+             "depends_on": [], "est_tokens_band": "S", "files_hint": ["src/p.py"]},
+            {"id": "T2", "title": "Build report", "goal": "g", "acceptance": ["reports"],
+             "depends_on": ["T1"], "est_tokens_band": "S", "files_hint": ["src/r.py"]},
+        ]})
+        body = plan.model_dump()
+        body["_approval"] = "pending"
+        self.job.task_plan = body
+        self.job.tasks = map_task_plan_to_tasks(plan)
+        save_job_plan(self.job)
+
+    def test_an_edit_landing_after_the_door_loaded_the_job_is_approved_not_lost(
+            self, monkeypatch):
+        """DECISION F015 D2: the door consumes the approval against the record as it is NOW."""
+        from packages.orchestration import job_plan
+        from packages.orchestration.pingpong_job import load_job_plan
+        from packages.orchestration.plan_editing import edit_plan
+
+        self._save_a_real_plan()
+        real_questions = job_plan.open_clarification_questions
+
+        def questions_after_a_concurrent_edit(clarifications):
+            edit_plan(self.job_id, "plan_delete_task", {"task_id": "T2"}, expected_version=1,
+                      actor="cli")
+            return real_questions(clarifications)
+
+        port, token = _start_ui_server_for_job(self.job_id, self.tmp_path)
+        monkeypatch.setattr(job_plan, "open_clarification_questions",
+                            questions_after_a_concurrent_edit)
+        status, body = self._approve(port, token, "nonce-fp-race")
+
+        assert status == 200, body
+        stored = load_job_plan(self.job.job_id).task_plan
+        assert stored["_approval"] == "approved", stored
+        assert [t["id"] for t in stored["tasks"]] == ["T1"], stored
+        assert stored["_version"] == 2, stored
+
+    def test_an_approval_closed_after_the_door_loaded_the_job_declines_409(self, monkeypatch):
+        """The door read `pending`, then another door approved: nothing is approved twice."""
+        from packages.orchestration import job_plan
+        from packages.orchestration.pingpong_job import load_job_plan
+        from packages.orchestration.plan_editing import consume_plan_approval
+
+        self._save_a_real_plan()
+        real_questions = job_plan.open_clarification_questions
+
+        def questions_after_a_concurrent_approval(clarifications):
+            consume_plan_approval(load_job_plan(self.job.job_id), reason="reject", answers={},
+                                  questions=[])
+            return real_questions(clarifications)
+
+        port, token = _start_ui_server_for_job(self.job_id, self.tmp_path)
+        monkeypatch.setattr(job_plan, "open_clarification_questions",
+                            questions_after_a_concurrent_approval)
+        status, body = self._approve(port, token, "nonce-fp-closed")
+
+        assert status == 409, body
+        assert load_job_plan(self.job.job_id).task_plan["_approval"] == "rejected"
+
 
 #: A three-hunk diff, built with the `difflib` recipe `tests/cli/test_patch_cmd.py` and
 #: `tests/orchestration/test_hunk_decision_record.py` both use. The three edits are spaced
@@ -540,3 +606,175 @@ class TestChatSendDispatchEffects:
         assert "secret" not in json.dumps(body), "the exception text reached the wire"
         assert self._steering_events() == []
         assert self._audit_outcomes() == ["rejected_effect"]
+
+
+def _plan_task(tid: str, deps: list[str], acceptance: list[str] | None = None) -> dict:
+    return {"id": tid, "title": f"Build {tid}", "goal": f"goal of {tid}",
+            "acceptance": acceptance or [f"{tid} works"], "depends_on": deps,
+            "est_tokens_band": "S", "files_hint": [f"src/{tid.lower()}.py"]}
+
+
+class TestPlanEditDispatchEffects:
+    """What an accepted `job.plan-*` edit DID, read off disk (DECISION F015 D3).
+
+    The door maps each edit to `plan_editing.edit_plan`, so these tests prove the mapping —
+    the argument object, the version, the editor's fingerprint, the refusal statuses and the
+    replay — and leave the edits' own rules to `tests/orchestration/test_plan_editing.py`.
+    """
+
+    @pytest.fixture(autouse=True)
+    def _setup_plan(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        from packages.core.models import RunState
+        from packages.orchestration.job_plan import map_task_plan_to_tasks
+        from packages.orchestration.pingpong_job import save_job_plan
+        from packages.orchestration.schemas.models import TaskPlan
+
+        plan = TaskPlan.model_validate({"schema_v": "task_plan_v1", "tasks": [
+            _plan_task("T1", []),
+            _plan_task("T2", ["T1"], ["parser reads", "parser reports", "parser is fast"]),
+            # T3 waits for T1 alone, so a new sequence with T3 before T2 is one a job can run.
+            _plan_task("T3", ["T1"]),
+        ]})
+        body = plan.model_dump()
+        body["_approval"] = "pending"
+        self.job = _make_job()
+        self.job.task_plan = body
+        self.job.tasks = map_task_plan_to_tasks(plan)
+        self.job.state = RunState.PLANNED
+        save_job_plan(self.job)
+        self.job_id = str(self.job.job_id)
+        self.tmp_path = tmp_path
+        self.control = tmp_path / "control"
+
+    def _post(self, port, token, nonce, command, args):
+        payload = {"command": command, "client_nonce": nonce, "args": args}
+        conn = HTTPConnection("127.0.0.1", port, timeout=10)
+        try:
+            conn.request("POST", f"/api/jobs/{self.job_id}/commands",
+                         body=json.dumps(payload),
+                         headers={"Authorization": f"Bearer {token}",
+                                  CSRF_HEADER: token,
+                                  "Content-Type": "application/json"})
+            resp = conn.getresponse()
+            return resp.status, json.loads(resp.read())
+        finally:
+            conn.close()
+
+    def _audit_outcomes(self):
+        from packages.orchestration.command_audit import AUDIT_FILENAME
+        path = self.control / "jobs" / self.job_id / AUDIT_FILENAME
+        return [json.loads(line)["outcome"] for line in path.read_bytes().splitlines()]
+
+    def _stored(self):
+        from packages.orchestration.pingpong_job import load_job_plan
+        return load_job_plan(self.job_id).task_plan
+
+    def _record_bytes(self):
+        from packages.orchestration.data_paths import job_record_path
+        return job_record_path(self.job_id).read_bytes()
+
+    @pytest.mark.parametrize(("command", "args", "expected_ids"), [
+        ("job.plan-edit-task", {"task_id": "T3", "fields": {"title": "Wire T3"}},
+         ["T1", "T2", "T3"]),
+        ("job.plan-delete-task", {"task_id": "T2"}, ["T1", "T3"]),
+        ("job.plan-reorder", {"order": ["T1", "T3", "T2"]}, ["T1", "T3", "T2"]),
+        ("job.plan-merge-tasks", {"task_ids": ["T2", "T3"]}, ["T1", "T2"]),
+        ("job.plan-split-task", {"task_id": "T2", "partition": [[0], [1, 2]]},
+         ["T1", "T2a", "T2b", "T3"]),
+        ("job.plan-edit-acceptance", {"task_id": "T2", "op": "remove", "index": 1},
+         ["T1", "T2", "T3"]),
+    ])
+    def test_each_edit_is_applied_versioned_and_attributed_to_the_token(
+            self, command, args, expected_ids):
+        from packages.orchestration.ui_server import token_fingerprint
+
+        port, token = _start_ui_server_for_job(self.job_id, self.tmp_path)
+        status, body = self._post(port, token, "nonce-" + command.replace(".", "-"), command,
+                                  {**args, "expected_version": 1})
+
+        assert status == 200, body
+        assert (body["outcome"], body["version"], body["tasks"]) == ("accepted", 2, expected_ids)
+        stored = self._stored()
+        assert [t["id"] for t in stored["tasks"]] == expected_ids
+        [entry] = stored["_edits"]
+        assert entry["actor"] == token_fingerprint(token)
+        assert "expected_version" not in entry["args"]
+        assert self._audit_outcomes() == ["accepted"]
+
+    def test_an_edit_naming_no_version_is_a_shape_error_on_that_field(self):
+        before = self._record_bytes()
+        port, token = _start_ui_server_for_job(self.job_id, self.tmp_path)
+        for nonce, version in (("nonce-none", None), ("nonce-bool", True), ("nonce-zero", 0)):
+            args = {"task_id": "T3"}
+            if version is not None:
+                args["expected_version"] = version
+            status, body = self._post(port, token, nonce, "job.plan-delete-task", args)
+            assert (status, body["field"]) == (400, "expected_version"), body
+        assert self._record_bytes() == before
+        assert self._audit_outcomes() == ["rejected_shape"] * 3
+
+    def test_a_stale_version_is_a_conflict_naming_the_current_one(self):
+        port, token = _start_ui_server_for_job(self.job_id, self.tmp_path)
+        self._post(port, token, "nonce-first", "job.plan-delete-task",
+                   {"task_id": "T3", "expected_version": 1})
+        before = self._record_bytes()
+        status, body = self._post(port, token, "nonce-stale", "job.plan-delete-task",
+                                  {"task_id": "T2", "expected_version": 1})
+
+        assert status == 409, body
+        assert body == {"error": "the plan changed since this edit was made", "current_version": 2}
+        assert self._record_bytes() == before
+        assert self._audit_outcomes() == ["accepted", "rejected_state"]
+
+    @pytest.mark.parametrize(("args", "status", "says", "outcome"), [
+        ({"task_id": "T9"}, 400, "T9", "rejected_shape"),
+        ({}, 400, "task_id", "rejected_shape"),
+    ])
+    def test_refused_arguments_are_a_shape_error_on_args_with_the_reason(
+            self, args, status, says, outcome):
+        before = self._record_bytes()
+        port, token = _start_ui_server_for_job(self.job_id, self.tmp_path)
+        code, body = self._post(port, token, "nonce-args", "job.plan-delete-task",
+                                {**args, "expected_version": 1})
+        assert (code, body["field"]) == (status, "args"), body
+        assert says in body["detail"]
+        assert self._record_bytes() == before
+        assert self._audit_outcomes() == [outcome]
+
+    def test_an_edit_the_planners_checks_refuse_is_409_with_the_violation(self):
+        before = self._record_bytes()
+        port, token = _start_ui_server_for_job(self.job_id, self.tmp_path)
+        status, body = self._post(port, token, "nonce-invalid", "job.plan-edit-acceptance",
+                                  {"task_id": "T1", "op": "remove", "index": 0,
+                                   "expected_version": 1})
+        assert status == 409, body
+        assert body["error"] == "the edited plan fails the planner's checks"
+        assert "at least 1 item" in body["detail"]
+        assert self._record_bytes() == before
+        assert self._audit_outcomes() == ["rejected_state"]
+
+    def test_an_approved_plan_refuses_an_edit_with_its_state(self):
+        from packages.orchestration.pingpong_job import load_job_plan, save_job_plan
+
+        job = load_job_plan(self.job_id)
+        job.task_plan["_approval"] = "approved"
+        save_job_plan(job)
+        before = self._record_bytes()
+        port, token = _start_ui_server_for_job(self.job_id, self.tmp_path)
+        status, body = self._post(port, token, "nonce-closed", "job.plan-delete-task",
+                                  {"task_id": "T3", "expected_version": 1})
+        assert status == 409, body
+        assert body["error"] == "the plan is not open for editing"
+        assert "the plan is approved" in body["detail"]
+        assert self._record_bytes() == before
+
+    def test_a_retried_nonce_replays_the_edit_and_never_applies_it_twice(self):
+        port, token = _start_ui_server_for_job(self.job_id, self.tmp_path)
+        args = {"task_id": "T3", "expected_version": 1}
+        first = self._post(port, token, "nonce-retry", "job.plan-delete-task", args)
+        second = self._post(port, token, "nonce-retry", "job.plan-delete-task", args)
+
+        assert first == second and first[0] == 200
+        assert self._stored()["_version"] == 2 and len(self._stored()["_edits"]) == 1
+        assert self._audit_outcomes() == ["accepted", "replayed"]

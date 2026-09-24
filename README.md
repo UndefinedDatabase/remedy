@@ -26,7 +26,7 @@ verification commands. If something is unproven, Remedy says so instead of guess
 
 ## Status
 
-96 of 284 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
+97 of 284 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
 
 | Tier | Name | Done | Total |
 |------|------|-----:|------:|
@@ -35,7 +35,7 @@ verification commands. If something is unproven, Remedy says so instead of guess
 | 2 | Minimal Self-Build Runtime | 36 | 37 |
 | 3 | Full Token Economy & Autonomy | 6 | 26 |
 | 4 | Memory & Learning | 1 | 17 |
-| 5 | Operator Cockpit | 15 | 34 |
+| 5 | Operator Cockpit | 16 | 34 |
 | 6 | Design-to-Code | 0 | 16 |
 | 7 | Quality & Trust | 0 | 15 |
 | 8 | Worker Ecosystem & Neutrality | 0 | 12 |
@@ -380,6 +380,17 @@ switched on, each job has its own spending limit for them, and a task without a
 lesson says why; the cockpit's right panel opens a learning sheet with the
 lessons on the left, previous and next, and a Commands mode listing the Remedy
 commands the change touched with the descriptions Remedy ships today).
+
+F015 interactive plan editing (before approving a job's plan, the human can now
+reshape it: change a task's title, goal, criteria, size or file hints, delete a
+task, put the tasks in a new order, merge tasks or split one by its criteria,
+and add, change or remove a single criterion, with `remedy job plan-show` and the
+`remedy job plan-*` commands or through the cockpit's write door; every edit is
+checked by the same rules the planner's own plans must pass, changes nothing
+when it is refused and says why, names the plan version it was made against so
+an edit made on an older reading is refused, and is logged so the plan's history
+can be replayed; approving the plan records exactly which plan was approved, and
+a job refuses to start if its plan changed after that).
 
 Full per-feature state: [`docs/roadmap/STATUS.md`](docs/roadmap/STATUS.md)
 

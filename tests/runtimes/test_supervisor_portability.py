@@ -1630,9 +1630,16 @@ SUP.Supervisor._supervise = _supervise
 def _mark(name, text="ok"):
     """Leave an observable trace of an injected action. A daemon thread that dies
     invisibly (the packaged race test raised NameError into DEVNULL and nobody noticed)
-    must never be able to satisfy a regression."""
-    with open(RELEASE + "." + name, "w") as fh:
+    must never be able to satisfy a regression.
+
+    The trace is written under a private name and renamed into place, because the
+    tests poll for the marker's existence and read it at once: opened in place, the
+    marker exists empty until its text is written, and a slow host reads it empty."""
+    path = RELEASE + "." + name
+    scratch = "%s.%d.tmp" % (path, threading.get_ident())
+    with open(scratch, "w") as fh:
         fh.write(str(text))
+    os.replace(scratch, path)
 
 def _guard(name, body):
     """Run an injected action; record that it ran, or record why it did not."""
@@ -1791,6 +1798,34 @@ def _killing_supervise(self):
     return _supervise_with_event(self)
 
 SUP.Supervisor._supervise = _killing_supervise
+'''
+
+#: Same race as APP_EXITS_IMMEDIATELY, but the supervisor is held alive for a few
+#: seconds AFTER it has durably written STATUS_EXITED -- reproducing the window where
+#: `stop` can observe a fully verified supervisor that is still alive for a moment
+#: right after its own record already says the application is gone.
+APP_EXITS_THEN_SUPERVISOR_LINGERS = '''
+import signal
+
+_supervise_with_event = SUP.Supervisor._supervise
+
+def _killing_supervise(self):
+    def kill_app():
+        _await_handshake()
+        os.killpg(os.getpgid(self.proc.pid), signal.SIGKILL)
+    threading.Thread(target=_guard("app", kill_app), daemon=True).start()
+    return _supervise_with_event(self)
+
+SUP.Supervisor._supervise = _killing_supervise
+
+_real_save_state = SUP.save_state
+
+def _lingering_save_state(state):
+    _real_save_state(state)
+    if state.status == DS.STATUS_EXITED:
+        time.sleep(3)
+
+SUP.save_state = _lingering_save_state
 '''
 
 #: The pump fails after the handshake and the cleanup cannot get rid of the application.
@@ -2410,6 +2445,34 @@ class TestPostHandshakeTerminalState:
 
         assert _cli(project, data_root, "stop")[0] == 0
         assert _with_data_root(data_root, load_state, project) is None
+
+    def test_a_stop_that_lands_while_the_supervisor_is_still_exiting_still_succeeds(
+        self, project, data_root, release,
+    ):
+        """Regression: the supervisor writes `exited` and THEN lingers for a few
+        seconds before its own process actually goes away -- the exact window in
+        which `stop` used to observe a fully verified supervisor sitting beside an
+        already-`exited` record, classify that as `untrusted`, overwrite the record
+        with `identity_mismatch`, and exit 5 even though nothing was actually wrong.
+        `stop` must wait the lingering supervisor out and answer honestly.
+        """
+        code, out, err = _serve_with_broken_pump(
+            project, data_root, APP_EXITS_THEN_SUPERVISOR_LINGERS, release,
+            parent=PARENT_WAITS_FOR_A_TERMINAL_STATE)
+        assert code == 5, (out, err)
+        assert out["runtime_status"] == DS.STATUS_EXITED, out
+
+        state = _with_data_root(data_root, load_state, project)
+        assert state is not None and state.status == DS.STATUS_EXITED
+        # Prove the window is actually open: the supervisor really is still alive,
+        # right now, beside its own already-`exited` record.
+        assert _alive(state.supervisor_pid), "the reproduction missed its window"
+
+        stop_code, stopped, stop_err = _cli(project, data_root, "stop")
+        assert stop_code == 0, (stopped, stop_err)
+        assert _with_data_root(data_root, load_state, project) is None
+        assert not _alive(state.pid)
+        assert not _alive(state.supervisor_pid)
 
 
 # ---------------------------------------------------------------------------

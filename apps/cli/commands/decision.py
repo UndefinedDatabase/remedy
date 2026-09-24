@@ -157,6 +157,27 @@ def parse_answer_options(
     return answers
 
 
+def _consume_plan_approval(job: Any, reason: str, answers: dict[str, str],
+                           questions: list[dict[str, Any]], *, json_output: bool) -> Any:
+    """Consume the job's plan approval, or refuse and exit 1.
+
+    DECISION F015 D2: the approval is consumed under the plan-edit lock against the
+    record as it stands then, so a plan edit accepted after this command loaded the
+    job is approved rather than written over, and an approval that closed meanwhile
+    is named as having none pending.
+    """
+    from packages.orchestration.plan_editing import PlanEditRefused, consume_plan_approval
+
+    try:
+        return consume_plan_approval(job, reason=reason, answers=answers, questions=questions)
+    except PlanEditRefused as exc:
+        if exc.code == "approval_closed":
+            fail("no_pending_plan_approval", "no pending task plan approval for this job.",
+                 json_output=json_output)
+        fail(exc.code, f"The plan approval was not recorded: {exc.detail}.",
+             json_output=json_output)
+
+
 def _create_mission_for_job(job: Any, *, json_output: bool = False) -> str:
     """F056: the plan-approval opt-in, taken.  Only ever reached via --as-mission.
 
@@ -347,7 +368,6 @@ def _cmd_decision_resolve(
             REJECTED_PLAN_NEXT_STEP,
             clarifications_already_resolved,
             open_clarification_questions,
-            resolve_task_plan_approval,
         )
 
         fp = getattr(job, "task_plan", None)
@@ -387,8 +407,8 @@ def _cmd_decision_resolve(
             fail("answer_parse_error", str(exc), json_output=json_output)
 
         if reason == "approve":
-            log_path = resolve_task_plan_approval(
-                job, reason="approve", answers=answers, questions=questions)
+            log_path = _consume_plan_approval(job, "approve", answers, questions,
+                                              json_output=json_output)
             answer_records = [
                 {
                     "id": q["id"],
@@ -413,8 +433,7 @@ def _cmd_decision_resolve(
                     answers=answer_records, assumption_log=log_path, mission_id=mission_id,
                 )
         else:
-            resolve_task_plan_approval(
-                job, reason="reject", answers=answers, questions=questions)
+            _consume_plan_approval(job, "reject", answers, questions, json_output=json_output)
             if not json_output:
                 print(f"Task plan rejected for job {job_id_str}.")
                 print(f"  {REJECTED_PLAN_NEXT_STEP}")

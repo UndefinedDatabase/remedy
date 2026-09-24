@@ -587,12 +587,15 @@ def apply_plan_fences(
 def render_plan_md(
     plan: TaskPlan,
     transformations: list[dict[str, Any]] | None = None,
+    edits: list[dict[str, Any]] | None = None,
 ) -> str:
     """Render a TaskPlan to deterministic, stably ordered markdown.
 
     *transformations* is the F016 granularity record. The section is always
     rendered so the approving human sees either what was changed or an
-    explicit statement that nothing was.
+    explicit statement that nothing was. *edits* is the F015 edit log; an
+    edited plan names each edit that made it, and an unedited plan renders
+    exactly as before.
     """
     lines: list[str] = []
     lines.append("# Task Plan")
@@ -631,7 +634,9 @@ def render_plan_md(
     lines.append("## Normalization")
     lines.append("")
     if not transformations:
-        lines.append("No transformations — the plan is used as generated.")
+        # An edited plan is not "used as generated"; its edits are listed below.
+        lines.append("Normalization changed nothing." if edits
+                     else "No transformations — the plan is used as generated.")
         lines.append("")
     else:
         for entry in transformations:
@@ -640,6 +645,19 @@ def render_plan_md(
             lines.append(
                 f"- **{entry.get('kind', 'unknown')}** {sources} → {results}")
             lines.append(f"  - {entry.get('reason', '')}")
+        lines.append("")
+
+    if edits:
+        # F015 T003: the version, the command and the editor; the time stays in the log
+        # itself, so a revision renders the same bytes however often it is rendered.
+        lines.append("## Edits")
+        lines.append("")
+        lines.append(f"This plan was edited {len(edits)} time(s) before approval; the log is "
+                     "`user_edited_plan.json`.")
+        lines.append("")
+        for entry in edits:
+            lines.append(f"- version {entry.get('version')}: `{entry.get('command')}` by "
+                         f"`{entry.get('actor')}`")
         lines.append("")
 
     if plan.risks:
@@ -683,12 +701,13 @@ def write_plan_md(
     evidence_dir: Path,
     version: int = 1,
     transformations: list[dict[str, Any]] | None = None,
+    edits: list[dict[str, Any]] | None = None,
 ) -> Path:
     """Write rendered plan to evidence dir. Returns the written path."""
     evidence_dir.mkdir(parents=True, exist_ok=True)
     filename = "plan.md" if version == 1 else f"plan_v{version}.md"
     path = evidence_dir / filename
-    path.write_text(render_plan_md(plan, transformations), encoding="utf-8")
+    path.write_text(render_plan_md(plan, transformations, edits), encoding="utf-8")
     return path
 
 
@@ -721,6 +740,46 @@ def task_plan_blocks_execution(job: Any) -> str | None:
 def task_plan_approval_open(job: Any) -> bool:
     """Return True if the job has a pending task plan approval gate."""
     return task_plan_blocks_execution(job) is not None
+
+
+#: DECISION F015 D4: the persisted plan body's record of exactly what its approval covered.
+APPROVED_PLAN_HASH_KEY = "_approved_plan_sha256"
+
+
+def plan_content_hash(body: dict[str, Any]) -> str:
+    """The content hash of a stored plan: its own fields, never the `_`-prefixed bookkeeping.
+
+    The approval, the edit log, the version and this hash itself sit beside the plan in the
+    same body and change without the plan changing, so none of them is hashed.
+    """
+    from packages.orchestration.checkpoints import compute_content_hash
+    return compute_content_hash({k: v for k, v in body.items() if not k.startswith("_")})
+
+
+def approved_plan_mismatch(job: Any) -> str | None:
+    """Why *job* is not about to run the plan its approval covered, or None when it is.
+
+    DECISION F015 D4, the executor's belt to the edit transaction's suspenders: the stored
+    plan must still hash to what the approval recorded, and the job's plan-derived tasks
+    must be that plan's tasks in that plan's order, because a job runs its tasks in list
+    order. A task a run split off at run time carries no plan id and is not counted. A plan
+    approved before the hash was recorded has nothing to compare, and passes.
+    """
+    body = getattr(job, "task_plan", None)
+    if not isinstance(body, dict) or body.get("_approval") != "approved":
+        return None
+    recorded = body.get(APPROVED_PLAN_HASH_KEY)
+    if not recorded:
+        return None
+    actual = plan_content_hash(body)
+    if actual != recorded:
+        return f"the plan hashes to {actual}, not the {recorded} its approval recorded"
+    planned = [task.inputs["plan"].get("planned_id") for task in getattr(job, "tasks", [])
+               if isinstance(task.inputs.get("plan"), dict)]
+    ids = [task.get("id") for task in body.get("tasks") or []]
+    if planned != ids:
+        return f"the job's tasks run as {planned}, not as the approved plan's {ids}"
+    return None
 
 
 #: What ``_approval_audit.mode`` records for an unattended approval. One
@@ -756,6 +815,7 @@ def auto_approve_task_plan(
             body.get("clarifications_resolved"), None)
     body["_approval"] = "approved"
     body["_approval_audit"] = {"mode": AUTO_APPROVAL_MODE, "reason": reason}
+    body[APPROVED_PLAN_HASH_KEY] = plan_content_hash(body)
     write_assumptions_md(body.get("clarifications_resolved"), evidence_dir)
     return body
 

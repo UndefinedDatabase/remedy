@@ -265,6 +265,11 @@ end the response with:
   were merged, because F267's one line in `.agent/prose_slips.md` names no lesson the list lacks: a
   local branch left behind by a reviewer's simulation script is a matter for guardrails G2 and G5
   of docs/agents/self_drive_protocol.md, not for the text of a block. The list stays at 34 items.
+  Consolidated an eighth time at F015's closure on 2026-09-24: nothing joined and no two items
+  were merged, because F015's one line in `.agent/prose_slips.md` names no lesson the list lacks: a
+  reviewer dry run wider than a targeted selection is governed by operator amendment
+  amend0917-throughput rule 1, which already states it, and not by the text of a block. The list
+  stays at 34 items.
   The next consolidation measures against 34.
   Reverse by deleting this paragraph.
   1. **Size.** Count the block's lines. Over 400 (DECISION F105 D5) → split or

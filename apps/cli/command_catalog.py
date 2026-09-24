@@ -196,6 +196,12 @@ _TASK_OPT = ArgDef(
     "--task", "Task to select from the job plan: planned id (T001) or task-id prefix",
     required=False, is_option=True)
 _REASON_OPT = ArgDef("--reason", "Reason text", required=False, is_option=True)
+#: F015 T002: every job plan edit names the version it was made against, as
+#: `remedy job plan-show` prints it, so an edit made on an older reading is refused.
+_PLAN_VERSION_OPT = ArgDef(
+    "--plan-version", "The version `remedy job plan-show` prints for the job plan and its tasks; "
+    "an edit made against an older one is refused (required)", required=False, is_option=True)
+_PLAN_TASK_ID = ArgDef("task_id", "The task's id, as `remedy job plan-show` prints it")
 _ANSWER_OPT = ArgDef(
     "--answer",
     'Answer one bundled clarification: --answer q1="use PostgreSQL" (repeatable)',
@@ -472,6 +478,125 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         args=(_JOB_ID, _JSON_OPT),
         supports_json=True,
         related=("job.show", "mission.contract"),
+    ),
+
+    # ── job plan editing (F015 T002, DECISION F015 D2) ──────────────────
+    CommandEntry(
+        command_id="job.plan-show",
+        group_id="job",
+        subcommand="plan-show",
+        description="Show a job plan: its version, whether its approval is open, and each task "
+                    "with the tasks it waits for and its indexed acceptance criteria.",
+        action_class="read_only",
+        args=(_JOB_ID, _JSON_OPT),
+        supports_json=True,
+        related=("job.plan-edit-task", "decision.resolve"),
+        exit_codes=(0, 1, 2, 3),
+    ),
+    CommandEntry(
+        command_id="job.plan-edit-task",
+        group_id="job",
+        subcommand="plan-edit-task",
+        description="Change one task of a job plan — its title, goal, acceptance criteria, size "
+                    "band or file hints — while the plan's approval is open.",
+        action_class="write_metadata",
+        args=(
+            _JOB_ID, _PLAN_TASK_ID, _PLAN_VERSION_OPT,
+            ArgDef("--title", "The new title", required=False, is_option=True),
+            ArgDef("--goal", "The new goal", required=False, is_option=True),
+            ArgDef("--acceptance", "One acceptance criterion; repeat it to give the whole new list",
+                   required=False, is_option=True, is_repeatable=True),
+            ArgDef("--band", "The new size band: S, M, L or XL", required=False, is_option=True),
+            ArgDef("--files-hint", "One file the work is expected to touch; repeat it to give the "
+                   "whole new list", required=False, is_option=True, is_repeatable=True),
+            _JSON_OPT,
+        ),
+        supports_json=True,
+        related=("job.plan-show", "job.plan-edit-acceptance"),
+        exit_codes=(0, 1, 2, 3),
+    ),
+    CommandEntry(
+        command_id="job.plan-delete-task",
+        group_id="job",
+        subcommand="plan-delete-task",
+        description="Delete one task of a job plan while its approval is open; the tasks that "
+                    "waited for it wait for what it waited for instead.",
+        action_class="write_metadata",
+        args=(_JOB_ID, _PLAN_TASK_ID, _PLAN_VERSION_OPT, _JSON_OPT),
+        supports_json=True,
+        related=("job.plan-show",),
+        exit_codes=(0, 1, 2, 3),
+    ),
+    CommandEntry(
+        command_id="job.plan-reorder",
+        group_id="job",
+        subcommand="plan-reorder",
+        description="Put the tasks of a job plan in a new sequence while its approval is open.",
+        action_class="write_metadata",
+        args=(
+            _JOB_ID,
+            ArgDef("sequence", "Every task id of the job plan in its new sequence, separated by "
+                   "commas: T2,T1,T3"),
+            _PLAN_VERSION_OPT, _JSON_OPT,
+        ),
+        supports_json=True,
+        related=("job.plan-show",),
+        exit_codes=(0, 1, 2, 3),
+    ),
+    CommandEntry(
+        command_id="job.plan-merge-tasks",
+        group_id="job",
+        subcommand="plan-merge-tasks",
+        description="Merge two or more tasks of a job plan into one, which keeps the id that comes "
+                    "first, while the plan's approval is open.",
+        action_class="write_metadata",
+        args=(
+            _JOB_ID,
+            ArgDef("task_ids", "The job plan's task ids to merge, separated by commas: T2,T3"),
+            _PLAN_VERSION_OPT, _JSON_OPT,
+        ),
+        supports_json=True,
+        related=("job.plan-show", "job.plan-split-task"),
+        exit_codes=(0, 1, 2, 3),
+    ),
+    CommandEntry(
+        command_id="job.plan-split-task",
+        group_id="job",
+        subcommand="plan-split-task",
+        description="Split one task of a job plan into a chain of tasks, one per group of its "
+                    "acceptance criteria, while the plan's approval is open.",
+        action_class="write_metadata",
+        args=(
+            _JOB_ID, _PLAN_TASK_ID,
+            ArgDef("--group", "One new task's criteria, as the indexes `remedy job plan-show` "
+                   "prints, separated by commas: 0,2 (repeat it; each criterion in exactly one "
+                   "group)", required=False, is_option=True, is_repeatable=True),
+            _PLAN_VERSION_OPT, _JSON_OPT,
+        ),
+        supports_json=True,
+        related=("job.plan-show", "job.plan-merge-tasks"),
+        exit_codes=(0, 1, 2, 3),
+    ),
+    CommandEntry(
+        command_id="job.plan-edit-acceptance",
+        group_id="job",
+        subcommand="plan-edit-acceptance",
+        description="Add, change or remove one acceptance criterion of a task in a job plan while "
+                    "its approval is open; a task keeps at least one.",
+        action_class="write_metadata",
+        args=(
+            _JOB_ID, _PLAN_TASK_ID,
+            ArgDef("op", "What to do with the criterion: add, edit or remove"),
+            ArgDef("--index", "The criterion's index among the task's criteria, as `remedy job "
+                   "plan-show` prints it; the first is 0 (add appends when it is left out)",
+                   required=False, is_option=True),
+            ArgDef("--text", "The criterion's words, for add and edit", required=False,
+                   is_option=True),
+            _PLAN_VERSION_OPT, _JSON_OPT,
+        ),
+        supports_json=True,
+        related=("job.plan-show", "job.plan-edit-task"),
+        exit_codes=(0, 1, 2, 3),
     ),
 
     # ── project ──────────────────────────────────────────────────────────
@@ -2476,6 +2601,13 @@ UI_EXPOSED_COMMANDS: frozenset[str] = frozenset({
     "decision.resolve",
     "patch.approve-hunks",
     "chat.send",
+    # F015 T002, DECISION F015 D3: the job plan edits, each through `plan_editing.edit_plan`.
+    "job.plan-edit-task",
+    "job.plan-delete-task",
+    "job.plan-reorder",
+    "job.plan-merge-tasks",
+    "job.plan-split-task",
+    "job.plan-edit-acceptance",
 })
 
 

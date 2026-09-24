@@ -1,0 +1,67 @@
+diff --git a/packages/runtimes/dev_server.py b/packages/runtimes/dev_server.py
+index f9d0bd8c..62bdbfb0 100644
+--- a/packages/runtimes/dev_server.py
++++ b/packages/runtimes/dev_server.py
+@@ -1864,6 +1864,21 @@ def stop_recorded_runtime(project_root: str | Path) -> dict[str, Any]:
+         sup, check = ident.supervisor, ident.app
+         supervisor_verified = sup.verified
+ 
++        if (ident.ownership == OWNER_UNTRUSTED and ident.supervisor.verified
++                and state.status == STATUS_EXITED):
++            # The supervisor writes this very `exited` record right before it
++            # returns from `_supervise()` and exits, so it can still be alive, for a
++            # moment, immediately after recording that its application is already
++            # gone. That is not an untrusted mismatch to distrust -- give the
++            # supervisor the same bounded window a stop request would, then
++            # re-classify once it has actually gone.
++            deadline = time.monotonic() + STOP_REQUEST_TIMEOUT_S
++            while time.monotonic() < deadline and _pid_alive(state.supervisor_pid):
++                time.sleep(0.1)
++            ident = classify_runtime(state, project_root)
++            sup, check = ident.supervisor, ident.app
++            supervisor_verified = sup.verified
++
+         if ident.ownership == OWNER_GONE:
+             clear_state(project_root)
+             return {
+diff --git a/tests/cli/runtime_helpers.py b/tests/cli/runtime_helpers.py
+index 137238be..436db315 100644
+--- a/tests/cli/runtime_helpers.py
++++ b/tests/cli/runtime_helpers.py
+@@ -161,11 +161,26 @@ def run_grouped_cli(
+     args: list[str],
+     root: Path,
+     *,
+-    timeout: int = 10,
++    timeout: int = 30,
+     cwd: Path | str | None = None,
+ ) -> subprocess.CompletedProcess:
+     """Run python -m apps.cli.grouped with REMEDY_DATA_DIR set.
+ 
++    HANG GUARD, not a performance assertion: 30s is 2x+ the worst wall time this
++    helper's own subprocess pattern was measured at under genuine full-suite
++    `-n auto` contention (tests/cli/test_pytest_runner.py::test_runner_failing_pytest,
++    which launches a nested pytest subprocess through this same interpreter,
++    took 8.82s of its 15s budget in a clean full-suite run on a 24-core box;
++    several in-process CLI tests with no subprocess at all — e.g.
++    tests/cli/test_worker_facade_cmd.py's doctor.core cases — stretched to
++    3-9s under the same contention). A cold interpreter start plus the
++    `apps.cli.grouped` import chain, scheduled among ~20+ other pytest workers,
++    can cost several seconds before any of the command's own (sub-millisecond)
++    work runs; 10s left too little headroom, and this is the value several
++    call sites in this same file's sibling `tests/cli/test_test_run_runtime.py`
++    already raise to (15-30s) for the identical helper. Nothing here asserts a
++    performance ceiling — only that the process is not hung.
++
+     Uses Popen with temp files for stdout/stderr (no pipe inheritance),
+     start_new_session=True for process group isolation, and killpg for
+     cleanup on timeout or after normal exit.
+@@ -261,7 +276,7 @@ def run_grouped_cli(
+     )
+ 
+ 
+-def run_json(args: list[str], root: Path, *, timeout: int = 10) -> dict:
++def run_json(args: list[str], root: Path, *, timeout: int = 30) -> dict:
+     """Run CLI, parse JSON stdout, fail on non-zero or parse error."""
+     r = run_grouped_cli(args, root, timeout=timeout)
+     assert r.returncode == 0, f"CLI failed (rc={r.returncode}): {r.stderr[:200]}"
