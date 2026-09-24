@@ -1,0 +1,53 @@
+diff --git a/README.md b/README.md
+index 7f1810ee..129670a1 100644
+--- a/README.md
++++ b/README.md
+@@ -26,7 +26,7 @@ verification commands. If something is unproven, Remedy says so instead of guess
+ 
+ ## Status
+ 
+-96 of 284 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
++97 of 284 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
+ 
+ | Tier | Name | Done | Total |
+ |------|------|-----:|------:|
+@@ -35,7 +35,7 @@ verification commands. If something is unproven, Remedy says so instead of guess
+ | 2 | Minimal Self-Build Runtime | 36 | 37 |
+ | 3 | Full Token Economy & Autonomy | 6 | 26 |
+ | 4 | Memory & Learning | 1 | 17 |
+-| 5 | Operator Cockpit | 15 | 34 |
++| 5 | Operator Cockpit | 16 | 34 |
+ | 6 | Design-to-Code | 0 | 16 |
+ | 7 | Quality & Trust | 0 | 15 |
+ | 8 | Worker Ecosystem & Neutrality | 0 | 12 |
+@@ -381,6 +381,17 @@ lesson says why; the cockpit's right panel opens a learning sheet with the
+ lessons on the left, previous and next, and a Commands mode listing the Remedy
+ commands the change touched with the descriptions Remedy ships today).
+ 
++F015 interactive plan editing (before approving a job's plan, the human can now
++reshape it: change a task's title, goal, criteria, size or file hints, delete a
++task, put the tasks in a new order, merge tasks or split one by its criteria,
++and add, change or remove a single criterion, with `remedy job plan-show` and the
++`remedy job plan-*` commands or through the cockpit's write door; every edit is
++checked by the same rules the planner's own plans must pass, changes nothing
++when it is refused and says why, names the plan version it was made against so
++an edit made on an older reading is refused, and is logged so the plan's history
++can be replayed; approving the plan records exactly which plan was approved, and
++a job refuses to start if its plan changed after that).
++
+ Full per-feature state: [`docs/roadmap/STATUS.md`](docs/roadmap/STATUS.md)
+ 
+ ## Install
+diff --git a/docs/roadmap/STATUS.md b/docs/roadmap/STATUS.md
+index a5182acf..7e968359 100644
+--- a/docs/roadmap/STATUS.md
++++ b/docs/roadmap/STATUS.md
+@@ -137,7 +137,7 @@ Milestone R1 — Remedy as the daily tool: Tier 2 complete (F086 as the self-ins
+ - [x] F033 — Hunk-level diff approval (T001–T003 complete; accepted 2026-08-29 · live review PASS_WITH_RISKS — ACCEPTED · Evidence job f033-closure · package remedy-review-20260829-154912-READY_FOR_REVIEW.zip · SHA-256 3b646ca5a18f10ae21f3218a753be00970762ba0fe4513ef53a3f60a9f711ccc · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD 8738c5f1643b2bd667bc796257a4ddc502f36191)
+ - [x] F040 — Completion/return digest (T001–T003 complete; accepted 2026-08-30 · live review PASS_WITH_RISKS — ACCEPTED · Evidence job f040-closure · package remedy-review-20260830-033225-READY_FOR_REVIEW.zip · SHA-256 26bacc72356bea20d765736996cb353033d087c328e7af0156548a533d164be1 · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD 5281987a142b97f222256c987d36c009ae7ab3ae)
+ - [x] F258 — Self-use track v2 (T001–T003 complete; accepted 2026-08-30 · live review PASS_WITH_RISKS — ACCEPTED · Evidence job f258-closure · package remedy-review-20260830-084541-READY_FOR_REVIEW.zip · SHA-256 4b4153ad33f01e4d7014e853663f76ac1f36f61ba06687ed0b3c9c5411f12c50 · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD 49fcc2c645601936d8c426b1eb09523b9b3c7f6f)
+-- [~] F015 — Interactive plan editing
++- [x] F015 — Interactive plan editing (T001–T003 complete; accepted 2026-09-24 · live review PASS — ACCEPTED · Evidence job f015r8e1001 · package remedy-review-20260924-151010-READY_FOR_REVIEW.zip · SHA-256 920b9e1c3763632b86e97cb9724831e9c9e58378bbc71bac4532638e976da840 · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD 15aec1449745c1843ad4096e44974b8710b0756c)
+ - [ ] F019 — Live node materialization
+ 
+ ## Tier 2 — Findings paydown (rolling, operator rule amend0911-feedback)
