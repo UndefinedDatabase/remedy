@@ -19378,3 +19378,39 @@ R-0892 needs no code. Its package half landed in F268's round 6 (DECISION F268 D
 the amendment's partial-resolution paragraph kept the id open only because the amendment itself did
 not touch the package half. HOW TO REVERSE: restore `packages/orchestration/self_dogfood_execution.py`,
 `docs/system/self-dogfood-execution-v0.md` and the two self-execution test files from `7932b7c1`.
+
+## DECISION F282 D9 — the cleanup scans match a temporary path as a path, the real-run identity test freezes Remedy's own checkout, and R-0499 is carried (2026-09-24)
+
+R-1028, CAUSE MEASURED. At `5c43004f` the two-file selection its recurrence paragraph names,
+`tests/orchestration/test_run_manifest_logical_identity.py` with
+`tests/runtimes/test_supervisor_portability.py` under `-n auto`, read `109 passed, 1 error` in four
+runs of four, each time at a different node and, in three runs read with `-v`, always on worker
+gw1. `basetemp_survivors` in `tests/runtimes/runtime_cleanup.py` asked whether a process's command
+line or working directory CONTAINS the worker's basetemp, and gw1's `.../popen-gw1` is a string
+prefix of gw10's to gw19's on a machine with 24 workers. When gw1 left the portability file for
+the other one, its file-level scan counted the live runtimes of those ten workers as its own
+survivors. The per-test scan had the same shape one level down, a tmp_path `.../test_x1` being a
+prefix of `.../test_x10`. CHOSEN: one helper, `names_path`, matches the root only when a path
+separator, whitespace or the end of the text follows it, and all three matching sites use it.
+With it, the same selection plus the new test file read `118 passed` at exit 0 in five runs of
+five. The finding's FIX clause offered unique temporary paths and ports per worker; the paths
+already were unique, and the ports are per worker since R-0569, so the repair is the comparison.
+
+R-0950 IS THREE GROUPS, ruled one by one on the reviewer's research helper's measurements.
+(1) `TestTwoRealRunsShareLogicalIdentity`: each run's manifest records the Remedy checkout's
+identity, whose digest covers every untracked file and feeds the logical input hash, while
+`tests/regression/test_resource_safety.py` writes and removes files in that shared checkout
+(R-0645's class). A deterministic reproduction that changed the checkout between the two runs
+made the hashes differ. CHOSEN: the class freezes Remedy's identity at test start, as
+`tests/cli/test_job_rerun_manifest.py` already does for the same class, and a new test proves
+that a checkout changing between the runs no longer reaches the comparison. (2)
+`TestNoFalseWorkspaceDrift` in `tests/cli/test_job_rerun_workspace_identity.py` no longer exists:
+`3be6ce11`, F273 round 15, deleted it with the drift diff it ran, so there is nothing to repair.
+(3) `test_no_zombie_processes_after_every_outcome` in `tests/orchestration/test_product_smoke.py`,
+named by a recurrence paragraph, was not reproduced in eight loaded targeted runs; it gets no
+speculative change, and R-0950 stays open for it alone when this round is booked, to be carried
+by name at the closure. R-0499 is carried too: its fix clause resolves it only when a red run
+names the test, no run in this feature has, and a round spent re-running a sweep until it fails
+is the pattern that finding forbids. HOW TO REVERSE: restore `tests/runtimes/runtime_cleanup.py`
+and `tests/orchestration/test_run_manifest_logical_identity.py` from `5c43004f` and delete
+`tests/runtimes/test_runtime_cleanup_scope.py`.
