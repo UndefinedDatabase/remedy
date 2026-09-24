@@ -14,32 +14,19 @@ and execution follows the edited plan exactly, proven by hash
 
 ## Current Step
 
-ROUND 6 BLOCKED at G3. C1-C4 committed (book round 5's PASS, repair the
-two bad nodes — `runtime stop` waits out a supervisor that has recorded
-its application's exit, and the CLI subprocess hang guard is 30 seconds).
-G3's serial selection came back `2 failed, 833 passed, 1 skipped` at exit
-1, not the reviewer's `833 passed, 3 skipped` at exit 0: `doctor.main()`'s
-secrets scan (`tests/test_agent_tooling.py`) walks into two unrelated live
-worktrees, `.claude/worktrees/agent-a31862c9188a3670b` and
-`.claude/worktrees/agent-af90a3c16d4bb4c65`, and flags ordinary source
-text there as possible secrets. Per the block's constraint 4 this STOPS
-the round before G4/C5; those worktrees are explicitly protected
-(constraint 6) and are not this round's to repair.
+ROUND 7: book round 6's FAIL, whose cause was the reviewer's leftover
+research worktrees, and finish the first repair round of DECISION F015
+D5 — its tests, its red proofs and the full suite again over the two
+repairs round 6 landed.
 
 ## Next Steps
 
-1. The review of round 6's blocked state; a fix or an accepted-cause
-   ruling for the `.claude/worktrees/*` false-positive is needed before
-   G3 can pass again.
-2. Once G3 is green: G4, then C5 (UI build + full suite + handback).
-3. The closure sequence's evidence half: the evidence job built against
+1. The closure sequence's evidence half: the evidence job built against
    the fork point, and the fresh review package.
-4. The closing round: book the evidence round, rotate the ledger, flip
+2. The closing round: book the evidence round, rotate the ledger, flip
    F015's STATUS line with its README pins, and open the pull request.
 
 ## Risks
 
 - A bad node the re-run still lists takes another repair round, at most
   two more, under operator amendment amend0917-throughput rule 2.
-- The `.claude/worktrees/*` secrets-scan false positive may recur on the
-  next attempt if those worktrees are still present.
