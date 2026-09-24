@@ -19650,3 +19650,29 @@ rejected for the reason in (2); widening the stream summary for every kind, reje
 stream's golden byte test pins every other frame. HOW TO REVERSE: delete `understood` from the
 marker and the event, the stream field, `chat.show` with its catalog entry and guide row, the
 readers in `steering.py`, their tests, and this paragraph.
+
+## DECISION F264 D7 — the cockpit shows a steering acknowledgement as its own line in the activity feed, read from the stream's field by one checked reader (2026-09-24)
+
+CONTEXT: T5_F264.md's Done wants the acknowledgement to appear "both in the cockpit and in the
+CLI", and T003 wants both rendered "from the same SSE event". Measured at `e420be13`: the stream
+frame of a `steering_message_consumed` event carries `steering` with exactly `message_id`,
+`round_number` and `understood` (DECISION F264 D6); `api/feedRow.ts`'s `feedRowOf` turns every
+frame into the activity feed's row, whose line comes from the humanize catalog by kind alone; the
+activity feed is the card whose bottom holds the steering input (DECISION F264 D3); and no DOM
+harness exists, so every rule lives in a pure `api/*.ts` module (DECISION F031 D5). CHOSEN: (1)
+ONE READER, `apps/ui/src/api/steeringAck.ts`, reads the field only on that event kind and checks
+every value, answering nothing for a malformed field rather than inventing a round. (2) THE LINE
+is "Steering taken in at round <n>: <restatement>." — the round first, the server's restatement
+whole and never shortened — and `feedRowOf` shows it in place of the catalog's generic line for
+that row; a malformed field keeps the catalog line. (3) WHERE: the activity feed, directly above
+the steering input, so the operator reads the answer to a message where they sent it, with no
+new component and no new layout for the design reference to settle. (4) THE PIN:
+`tests/ui_contracts/test_steering_send_contract.py` holds the reader's keys equal to the server's
+stream field and its event kind equal to the server's, so neither side can drift alone.
+ALTERNATIVES: a separate acknowledgement panel, rejected because the feed already carries every
+event of the run in order and a second list would need design-reference layout the reference does
+not settle; rewording the catalog's own entry for the kind to carry the round, rejected because
+the catalog is keyed by kind alone and a frame from an older server without the field must still
+render honestly. HOW TO REVERSE: delete `steeringAck.ts` and its
+test, restore `feedRow.ts`, its test and the contract test from `e420be13`, and delete this
+paragraph.
