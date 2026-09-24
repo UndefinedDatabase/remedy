@@ -13,18 +13,20 @@ over the whole kind-by-state matrix (`docs/roadmap/features/T5_F020.md`).
 
 ## Current Step
 
-ROUND 4, T003's first half: book round 3's PASS, record DECISION F020 D4,
-and land the state crossfade and completion ripple, the pulse, the frame
-rule that stops drawing on a hidden page, the canvas wired to them, and
-the replay of the demo recording's state changes.
+ROUND 5, T003's second half: book round 4's PASS, record DECISION F020
+D5, and land the conformance probes over the matrix fixture's pixels, the
+headless harness that reads them, and its transcript as evidence.
 
 ## Next Steps
 
-1. T003's second half: the conformance assertions over the matrix
-   fixture's pixels, with the headless harness that reads them.
-2. The closure sequence.
+1. The closure sequence: the Built State, the checklist consolidation,
+   the self-use track and the one full suite.
+2. The evidence bundle and the review package.
+3. The closing round: the ledger rotation, the STATUS flip and the pull
+   request.
 
 ## Risks
 
-The veto is drawn by no reducer yet, so its treatment is proved by the
-matrix fixture alone. Open findings after this round: 1, owned by F285.
+The harness needs Chrome and the UI toolchain, so it runs as a tool, not
+in the suite; F044 owns its CI stage. Open findings after this round: 1,
+owned by F285.

@@ -20699,3 +20699,43 @@ HOW TO REVERSE: delete `renderers/stateMotion.ts`, its test, `usePageVisible.ts`
 `tests/ui_contracts/test_brain_motion_wiring.py`, restore `ForceBrainGraph.tsx`,
 `renderers/nodeStates.ts`, `renderers/paintNode.ts`, their tests and
 `tests/ui_contracts/test_node_glyph_tokens.py` from `6f43c63a`, and delete this paragraph.
+
+## DECISION F020 D5 — the conformance assertions judge real pixels of the matrix fixture against the binding spec, in a committed headless harness whose transcript is the evidence (2026-09-25)
+
+CONTEXT: T003's second half, per DECISION F020 D4 (7): "a conformance fixture walks the full
+matrix against reference renders ... pixel-region assertions on the discriminating details (the
+dot, the ring, the strike)", and state "never color-alone (assert on the fail/vetoed cases)".
+Measured at `106df185`: the vitest environment is `node` and has no canvas; F019's perf tool,
+`.agent/authored/f019-r6-perf-measure.py`, already builds a page with the primary's `vite`, serves it
+and drives `/usr/bin/google-chrome --headless=new` over CDP; DECISION F019 D6 names F044's trace
+stage as the CI home of that kind of measurement; and the matrix fixture of DECISION F020 D3 paints
+every non-core kind in every state with the live painter.
+
+CHOSEN: (1) THE PROBES are `renderers/glyphConformance.ts`, pure: for every matrix cell, a pixel at
+the centre of the status dot and in the middle of its white outline band, on the strike's line and
+in its outline band, and at the top of the ring, each placed through the cell's own glyph
+transform at its state's size, in device pixels at `CONFORMANCE_SCALE` 8. A cell is probed for the
+PRESENCE of each mark its state carries and for the ABSENCE of the dot and the strike otherwise;
+the ring is probed where present only, because an in-progress halo seen through a planned ring's
+position is too close in colour to tell apart. (2) THE REFERENCE is the binding spec written out in
+that module, `BINDING_STATE_MARKS` and `BINDING_MARK_TOKENS`, and not the state table the painter
+reads: the reviewer's first harness took its expectations from `nodeStates.ts`, and its red
+control showed the flaw — giving the open state a strike left all 152 probes green, because the
+render and the expectation moved together. Bound to the spec, the same mutation fails 8 probes. A
+unit test pins that the spec and the table agree today, so a table change is caught at both levels.
+(3) THE JUDGE, `judgeProbe`, counts a pixel as a colour when its alpha is at least 180 and every
+channel lies within 24 of the resolved token; the closest pair a probe must tell apart, the planned
+ring's blue and the veto's grey, differ by 41. (4) THE HARNESS is committed as a tool, as F019's
+perf tool is: `.agent/authored/f020-r5-conformance_*`, a page that paints the matrix with the live
+painter, reads each probe's pixel and applies `judgeProbe`, and a runner that builds, serves,
+drives Chrome and stops it by pid. Its transcript, committed with the round, is the evidence the
+Acceptance asks for, and a red-proof tool turns it red four ways. Its CI home is F044's trace stage,
+as DECISION F019 D6 names for the frame budget.
+
+ALTERNATIVES: goldens of whole-cell pixel hashes, rejected because anti-aliasing differs across
+Chrome builds and a hash names no detail; expectations read from `nodeStates.ts`, rejected for the
+reason (2) measures; a harness run inside the pytest suite, rejected because a fresh runner has no
+guaranteed Chrome and F044 owns the browser stage.
+
+HOW TO REVERSE: delete `renderers/glyphConformance.ts`, its test, the `.agent/authored/f020-r5-*`
+harness files and this paragraph.
