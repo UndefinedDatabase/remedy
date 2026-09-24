@@ -8,22 +8,22 @@ materialization).
 
 Pay down the four open findings F284 owns, each by the repair its own text
 names, with the evidence that discharged it
-(`docs/roadmap/features/T2_F284.md`, DECISIONS F284 D1 and D2).
+(`docs/roadmap/features/T2_F284.md`, DECISIONS F284 D1 to D3).
 
 ## Current Step
 
-ROUND 3, THE CLOSURE'S EVIDENCE HALF: book round 2's PASS with R-0950's
-resolution, then build the evidence bundle against the fork point and the
-fresh review package. T001, T002 and T003 are built; the one full suite
-is green; the self-use track answered NONE.
+ROUND 4, THE CLOSING ROUND: book round 3's PASS, carry R-1008 to F285,
+rotate the ledger, register F285 — Findings paydown v4, accept F284 in
+STATUS with its README pins, and open the pull request. T001, T002 and
+T003 are built; the package is READY_FOR_REVIEW.
 
 ## Next Steps
 
-1. The closing round: the booking of round 3, R-1008 carried to the next
-   findings paydown, the ledger rotation, that paydown's registration,
-   the STATUS line with the README counters, and the pull request.
+1. The next session's Open PR Gate merges this feature's pull request.
+2. Rule A5 then claims the first unchecked feature in
+   `docs/roadmap/STATUS.md`.
 
 ## Risks
 
-R-1008 is carried by name, because the closure's self-use track found no
-eligible item. Open findings after round 3's booking: 1.
+R-1008 is carried to F285, because the closure's self-use track found no
+eligible item. Open findings: 1, owned by F285.

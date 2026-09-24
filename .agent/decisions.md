@@ -20487,3 +20487,30 @@ correct and the defect is the test's reading of it.
 
 HOW TO REVERSE: restore `tests/orchestration/test_product_smoke.py` and
 `docs/roadmap/features/T2_F284.md` from `60c658d2`, and delete this paragraph.
+
+## DECISION F284 D3 — the closure carries R-1008 to F285, registers F285 after F026 under its own Tier 2 heading, and closes F284 PASS_WITH_RISKS (2026-09-24)
+
+CONTEXT: F284 resolved R-1046, R-0499 and R-0950 with evidence (DECISIONS F284 D1 and D2). R-1008
+resolves only when a closure's self-use run lands a repair its reviewer passes, and F284's
+self-use track answered `None` three times with the queue unchanged, recorded at `ddcb0c33` as
+`self-use NONE (queue exhausted)`: every finding still open names no repair a self-use job could
+make. Operator amendment amend0911-feedback rule B orders a closing findings paydown to register
+the next one exactly five unchecked STATUS lines below the position it held, under a Tier 2
+heading. The five unchecked lines after F284's are F020, F023, F024, F025 and F026, all under
+the Tier 5 heading that re-opens the cockpit list.
+
+CHOSEN: (1) R-1008 is carried by name to F285 — Findings paydown v4, with an `Owner:` line
+appended to its paragraph in the same commit as this decision. (2) F285 is registered thin in
+`docs/roadmap/features/T2_F285.md`, its STATUS line placed directly after F026 under a
+`## Tier 2 — Findings paydown (rolling, operator rule amend0911-feedback)` heading, with a
+`## Tier 5 — Operator Cockpit (parallel human track, continued)` heading re-opening the list
+after it, exactly as F282's closure placed F284; `TOTAL_FEATURES` and the README counters move
+in the same commit. (3) F284 closes `PASS_WITH_RISKS`, the risk being the carried Medium R-1008,
+and its STATUS line names the carry.
+
+ALTERNATIVES: placing F285 directly after F284, rejected because rule B fixes the fifth slot;
+closing `PASS`, rejected because a Medium finding this feature owned leaves open.
+
+HOW TO REVERSE: delete `docs/roadmap/features/T2_F285.md`, its STATUS line and the two headings
+around it, restore `TOTAL_FEATURES` to 284 and the README counters, delete the `Owner: F285`
+line from R-1008's paragraph, and delete this paragraph.
