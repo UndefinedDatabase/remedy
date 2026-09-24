@@ -1,249 +1,157 @@
-# Handback — F264 Steering channel · Round 4 · A STEERING MESSAGE IS CONSUMED AT THE NEXT ROUND'S SAFE POINT, EXACTLY ONCE
+# Handback — F264 Steering channel · Round 5 · A CONSUMED STEERING MESSAGE AMENDS ITS MISSION'S CONTRACT
 
 ## Session
 
-SESSION 1 of feature F264 · round 4 · rounds so far 4
+SESSION 1 of feature F264 · round 5 · rounds so far 5
 
-This round booked round 3's PASS into `.agent/live_review.md`, recorded
-DECISION F264 D4 (the consumption point, marker, event and prompt
-segment), and landed T002: `run_pingpong` now reads pending steering
-messages as its own step directly after each round's first safe point —
-never through `stop_check`, which also fires inside a call — consumes
-each exactly once through a sealed, create-once marker naming its task
-and round, writes a `steering_message_consumed` event, and carries every
-consumed message verbatim in the builder prompt's new `builder_steering`
-segment. `tests/orchestration/test_steering.py` gained two new test
-classes and `tests/orchestration/test_steering_consumption.py` is a new
-acceptance file comparing round 2's prompt with and without a message
-sent while round 1's call was in flight. A large majority of this
-session's working-context budget remained at handback.
+This round booked round 4's PASS into `.agent/live_review.md`, recorded
+DECISION F264 D5 (when, how often, and what happens on failure when a
+consumed steering message amends a mission's contract), and landed
+T002's mission half: `consume_pending_steering` now amends the job's
+mission's contract through F269's `amend_mission_contract` exactly once
+per message, before the consumption marker is published, and both the
+marker and the `steering_message_consumed` event name the amendment. A
+job with no mission amends nothing; a failed amendment is loud and
+leaves the message pending. `tests/orchestration/test_steering_mission.py`
+is a new acceptance file covering all four cases. A large majority of
+this session's working-context budget remained at handback.
 
 ## Range
 
-Review of `889c556b`..`HEAD`.
+Review of 68f4273b..ef7dc806
 
 ## Commits
 
-### 4fcaf619 F264 R4 C1a: copy round 4 block and bookkeeping payloads into .agent/authored/
-
+### d0e573ba F264 R5 C1a: copy round 5 block and bookkeeping payloads into .agent/authored/
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f264-r4-block.md | +226/-0 | Bookkeeping copy of this round's step block (R-0954 transport) |
-| .agent/authored/f264-r4-plan.md | +31/-0 | Payload copy |
-| .agent/authored/f264-r4-records.diff | +51/-0 | Payload copy |
+| .agent/authored/f264-r5-block.md | +212/-0 | copy of this round's block, verbatim |
+| .agent/authored/f264-r5-plan.md | +30/-0 | copy of the plan.md payload |
+| .agent/authored/f264-r5-records.diff | +46/-0 | copy of the records.diff payload |
 
-Measured insertions by `git show --numstat`: 308 (226+82), matching the
-block's stated formula "this block's line count plus 82" exactly. Under
-the 500 cap.
-
-### 3fc2fd96 F264 R4 C1b: copy round 4 product diff and mutation tool into .agent/authored/
-
+### a852e03d F264 R5 C1b: copy round 5 product and test payloads into .agent/authored/
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f264-r4-mutations.py | +73/-0 | Payload copy (G5 red-proof tool) |
-| .agent/authored/f264-r4-product.diff | +235/-0 | Payload copy |
+| .agent/authored/f264-r5-mutations.py | +64/-0 | copy of the mutations.py payload |
+| .agent/authored/f264-r5-product.diff | +96/-0 | copy of the product.diff payload |
+| .agent/authored/f264-r5-test_steering_mission.py | +95/-0 | copy of the test_steering_mission.py payload |
 
-Measured insertions: 308, matching the block's expected number exactly.
-Under the 500 cap.
-
-### be313874 F264 R4 C1c: copy round 4 test payloads into .agent/authored/
-
+### a71e8f74 F264 R5 C2: book round 4's PASS, record DECISION F264 D5 and advance the plan
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f264-r4-test_steering_consumption.py | +121/-0 | Payload copy |
-| .agent/authored/f264-r4-tests.diff | +77/-0 | Payload copy |
+| .agent/decisions.md | +28/-0 | DECISION F264 D5 |
+| .agent/live_review.md | +2/-0 | `Gate: F264 R4 —` PASS entry |
+| .agent/plan.md | +7/-8 | rewritten to plan.md payload, advancing to T002's mission half |
 
-Measured insertions: 198, matching the block's expected number exactly.
-Under the 500 cap.
-
-### 50ef5486 F264 R4 C2: book round 3's PASS, record DECISION F264 D4 and advance the plan
-
+### f9a04aed F264 R5 C3: amend a mission's contract when its job consumes a steering message
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/decisions.md | +33/-0 | `records.diff` applied — DECISION F264 D4 |
-| .agent/live_review.md | +2/-0 | `records.diff` applied — the `Gate: F264 R3 —` entry |
-| .agent/plan.md | +9/-8 | Rewritten to round 4's `plan.md` payload (via `shutil.copyfile`) |
+| packages/orchestration/mission_contract.py | +4/-2 | docstring update for the amendment path |
+| packages/orchestration/steering.py | +40/-1 | `consume_pending_steering` amends the mission contract via `amend_mission_contract`, once per message, before the marker; failure is loud and leaves the message pending; marker and event name the amendment |
 
-Measured insertions by `git show --numstat`: 33 decisions.md, 2
-live_review.md, 9 plan.md — matching the block's expected numbers
-exactly. Under the 500 cap.
-
-### be8454f5 F264 R4 C3: consume steering at the top of each round and carry it in the prompt
-
+### ef7dc806 F264 R5 C4: test that a consumed message amends its mission once, and loudly
 | Path | +/- | Reason |
 |---|---|---|
-| apps/ui/src/api/humanizeCatalog.ts | +1/-0 | `product.diff` applied |
-| packages/orchestration/event_names.py | +1/-0 | `product.diff` applied — `steering_message_consumed` event name |
-| packages/orchestration/pingpong_loop.py | +32/-0 | `product.diff` applied — consumption at the round's first safe point |
-| packages/orchestration/steering.py | +118/-4 | `product.diff` applied — marker, consumption and `builder_steering` segment |
-
-Measured insertions by `git show --numstat`: 1 humanizeCatalog.ts, 1
-event_names.py, 32 pingpong_loop.py, 118 steering.py — matching the
-block's expected numbers exactly. Under the 500 cap.
-
-### 5c173e7f F264 R4 C4: prove a mid-call message waits for the next round and steers it
-
-| Path | +/- | Reason |
-|---|---|---|
-| tests/orchestration/test_steering.py | +69/-0 | `tests.diff` applied — two new test classes |
-| tests/orchestration/test_steering_consumption.py | +121/-0 | New file, payload copy — the acceptance fixture |
-
-Measured insertions: 69 test_steering.py, 121
-test_steering_consumption.py — matching the block's expected numbers
-exactly. Under the 500 cap.
-
-### (uncommitted at handback time) F264 R4 C5: rewrite handoff for round 4
-
-| Path | +/- | Reason |
-|---|---|---|
-| .agent/handoff.md | rewritten | This handback, per `docs/agents/handback_template.md` — a handback cannot table the commit that writes it (R-0149 self-reference exception) |
+| tests/orchestration/test_steering_mission.py | +95/-0 | new file: covers amend-once, no-mission, failed-amendment-loud, and marker/event naming the amendment |
 
 ## External actions
 
-- `git worktree add --detach .remedy-wt/f264-r4-mut 5c173e7f` for G5 —
-  real exit 0; removed afterward with `git worktree remove --force
-  .remedy-wt/f264-r4-mut` — real exit 0 — and `git worktree prune` — real
-  exit 0. `git worktree list` afterward: primary checkout plus the
-  reviewer's `.remedy-wt/f264-r4-dry`, `.remedy-wt/f264-r4-sim`, and the
-  four pre-existing `.remedy-wt/job-*` worktrees — nothing else, matching
-  constraint 6.
-- No `gh pr merge`, no `gh pr create`, no checkout of `main`, no branch
-  deletion, no force-push, no `git stash` in any form.
-- `git push origin feature/f264-steering-channel` — ordered after C5; its
-  real outcome is reported in the worker's final reply, not in this
-  committed file (it has not run yet when this file is written and
-  committed as part of C5).
+- `git worktree add --detach .remedy-wt/f264-r5-mut ef7dc806` — succeeded, real exit 0
+- `git worktree remove --force .remedy-wt/f264-r5-mut` — succeeded, real exit 0
+- `git worktree prune` — succeeded, real exit 0
+- `git push origin feature/f264-steering-channel` — reported in the reply (run after this commit; cannot be in this table per the self-reference exception)
+
+No PR created or merged this round (per block constraint 5). `gh pr list` reported in the reply.
 
 ## Verification
 
-**G1 — transport**: each of the six payloads' lines/bytes/sha256 measured
-against the block's PAYLOADS table — all six rows matched exactly. The
-block itself: 226 lines (newline count), 15774 bytes, sha256
-`039ca2b52bc1c111a2c110df3067bfb5bb872b8cb5d0bf7cea926d85733c979f`,
-matching the delegation message's two stated readings exactly (R-0954).
-Every committed `.agent/authored/f264-r4-*` blob read with `git show
-<commit>:<path>` compared byte-for-byte against its
-`.remedy-wt/f264-r4-payloads/` (or block) source: all seven pairs
-byte-identical = True.
+G1 TRANSPORT — all 5 payloads (records.diff, plan.md, product.diff,
+mutations.py, test_steering_mission.py) measured line count, byte count
+and sha256 against the PAYLOADS table: all matched exactly. All 6
+`.agent/authored/f264-r5-*` copies (block + 5 payloads) read back with
+`git show <commit>:<path> | sha256sum` matched their sources byte for
+byte.
 
-**G2 — the records**: at C2 (`50ef5486`), `.agent/live_review.md` 316339
-bytes, sha256
-`02e44b2e6f79bc99cedf4a794361b26a56dfa5f1ead9063a79b8c7101aae6f95`;
-`.agent/decisions.md` 1948088 bytes, sha256
-`c8b9d4ce7da60338e385c206fd5fc66b3bd1b163f57de56b2f54fe853ce1b7f8`;
-`.agent/plan.md` 1238 bytes, sha256
-`08b916e270dc80ba485c3eb59b77c95a7a641bf94dae556c127b9faacd079833` — all
-three equal to the block's table exactly. Among the lines C2's diff adds
-to `.agent/live_review.md`, exactly 1 begins `Gate: F264 R3 — `, matching
-the reviewer's reading. Open finding ids via
-`scripts/rotate_live_review.py`'s `open_finding_ids(text)`: 3 at
-`889c556b` (`R-0499`, `R-0950`, `R-1008`), 3 at C2 (`50ef5486`), same
-three ids; both set differences (`base - head`, `head - base`) empty —
-matching the block's reading of 3 and 3 exactly. `git diff --name-only
-be313874 50ef5486`: exactly `.agent/decisions.md`, `.agent/live_review.md`,
-`.agent/plan.md` — the three record paths C2 writes.
+G2 THE RECORDS — at C2 (a71e8f74): `git show a71e8f74:.agent/live_review.md`
+= 318623 bytes, sha256 1a9c1dc89473e849dafc8eacc8753230574adc70b99e1f3d958cfecb94107ce0
+(match); `.agent/decisions.md` = 1950501 bytes, sha256
+39e5c8d66ade329cd9f9e293bfe73208bbfd96e759bb5e12e2a3eee2a2d85b03 (match);
+`.agent/plan.md` = 1145 bytes, sha256
+a9bf00c3da4eb744e39d2cf80030a755c9721b57c5df747c3a3d4780e9c7dc98 (match).
+Lines added to live_review.md beginning `Gate: F264 R4 — `: 1 (matches
+reviewer's reading of 1). `open_finding_ids` (scripts/rotate_live_review.py)
+at 68f4273b and at a71e8f74: both `{R-0499, R-0950, R-1008}`, set
+difference empty both directions (matches reviewer's 3 and 3).
+`git diff --name-only a852e03d a71e8f74`: `.agent/decisions.md`,
+`.agent/live_review.md`, `.agent/plan.md` — exactly the three record
+paths.
 
-**G3 — the product**: at C4 (`5c173e7f`), each of the six files read with
-`git show 5c173e7f:<path>` equal to the reviewer's simulated reading —
-all six byte counts and sha256 digests matched exactly
-(`humanizeCatalog.ts`, `event_names.py`, `pingpong_loop.py`,
-`steering.py`, `test_steering.py`, `test_steering_consumption.py`). `git
-diff --name-only 50ef5486 be8454f5`: exactly the four paths C3 lists.
-`git diff --name-only be8454f5 5c173e7f`: exactly the two paths C4 lists.
+G3 THE PRODUCT — at C4 (ef7dc806): `packages/orchestration/mission_contract.py`
+= 43776 bytes, sha256 a1b9fae672eb2bc3fff08ec4b05791c2b7eda69e30915814287edbadf5564d23
+(match); `packages/orchestration/steering.py` = 15065 bytes, sha256
+25f070898ff5a65fba97917ad961c9b04c7ef81bf3e41aac54ff9f993813135a (match);
+`tests/orchestration/test_steering_mission.py` = 3524 bytes, sha256
+019243c0417b070db0071caedcc5ba9ed33019ff718be58cfcfffe92cbffb44d
+(match). `git diff --name-only a71e8f74 f9a04aed`: mission_contract.py,
+steering.py (matches C3's paths). `git diff --name-only f9a04aed ef7dc806`:
+test_steering_mission.py (matches C4's path).
 
-**G4 — the tests**: in the primary checkout at C4, the ordered pytest
-selection: `770 passed in 102.99s`, real exit 0. The reviewer's sim (no
-golden path, serially, inside a worktree lacking the UI toolchain) read
-`726 passed, 2 skipped`; the primary checkout's run here includes the
-golden-path file the reviewer's selection excluded and carries the UI
-toolchain a worktree lacks, exactly as the block anticipates, so the
-higher pass count and zero skips here are consistent with that note.
-`python3 -m ruff check` over the five named product/test files: `All
-checks passed!`, real exit 0. `python3 -m apps.cli.main integrity check
---json`, real exit 0:
+G4 THE TESTS — serial pytest run (real exit code):
 ```
-{"check_count": 6, "checks": [{"message": "handlers=149", "name": "handler_import", "status": "pass"}, {"message": "last Gate verdict PASS", "name": "live_review_verdict", "status": "pass"}, {"message": "unchecked=0, context_complete=False", "name": "plan_consistency", "status": "pass"}, {"message": "untracked=0, relevant=0", "name": "relevant_untracked", "status": "pass"}, {"message": "no reviewer scratch, evidence dir or archive at the root", "name": "repo_root_hygiene", "status": "pass"}, {"message": "no open blocker/high findings", "name": "high_blockers_open", "status": "pass"}], "fail_count": 0, "ok": true, "passed": true, "schema_version": 1, "version": 1}
+719 passed in 84.75s (0:01:24)
+REAL_EXIT=0
+```
+The reviewer's sim (without `tests/cli/test_golden_path.py`) read
+`675 passed, 2 skipped` at exit 0. This primary checkout includes
+`test_golden_path.py` (42 tests) and carries the UI toolchain the
+worktree lacks, so its 2 skips became passes: 675 + 2 + 42 = 719,
+consistent with the reviewer's baseline.
+```
+python3 -m ruff check packages/orchestration/steering.py packages/orchestration/mission_contract.py tests/orchestration/test_steering_mission.py
+All checks passed!
+REAL_EXIT=0
+```
+```
+python3 -m apps.cli.main integrity check --json
+{"check_count": 6, "checks": [...all "pass"...], "fail_count": 0, "ok": true, "passed": true}
+REAL_EXIT=0
 ```
 
-**G5 — the red proofs**: `python3 -B .remedy-wt/f264-r4-payloads/mutations.py
-.remedy-wt/f264-r4-mut` against the detached worktree at C4, real exit 0
-overall, matching the reviewer's readings on every mutation exactly:
-control_before `37 passed` exit 0; m1 (the loop never reads steering) `4
-failed` exit 1; m2 (the steering segment never registered) `3 failed`
-exit 1; m3 (a message consumed again every round) `2 failed` exit 1; m4
-(the consumption round recorded one early) `4 failed` exit 1; m5 (a
-consumption marker's seal never checked) `1 failed` exit 1; m6 (only
-newly consumed messages carried, so a correction is forgotten) `2 failed`
-exit 1; control_after `37 passed` exit 0; every `restored byte-identical`
-line True.
-
-**G6**: reported in the worker's final reply only, per the block (not in
-this committed handback).
+G5 THE RED PROOFS — `.remedy-wt/f264-r5-payloads/mutations.py` against
+`.remedy-wt/f264-r5-mut` (detached at ef7dc806):
+```
+control_before: 41 passed, REAL_EXIT=0
+m1_mission_never_amended: FROM count 1; 3 failed, 38 passed; REAL_EXIT=1; restored byte-identical: True
+m2_consumed_message_amended_again: FROM count 1; 1 failed, 40 passed; REAL_EXIT=1; restored byte-identical: True
+m3_marker_names_no_amendment: FROM count 1; 2 failed, 39 passed; REAL_EXIT=1; restored byte-identical: True
+m4_failed_amendment_swallowed: FROM count 1; 1 failed, 40 passed; REAL_EXIT=1; restored byte-identical: True
+control_after: 41 passed, REAL_EXIT=0
+```
+Exact match to the reviewer's expected readings for all six lines.
+Worktree removed and pruned; `git worktree list` afterward showed only
+the primary checkout, the reviewer's `f264-r5-dry`/`f264-r5-sim`, and the
+four `job-*` worktrees — nothing else.
 
 ## Authored-text proofs
 
-- `.agent/authored/f264-r4-block.md` (C1a) ==
-  `.remedy-wt/f264-r4-block.md`: byte-identical True (15774 bytes, 226
-  lines, sha256
-  `039ca2b52bc1c111a2c110df3067bfb5bb872b8cb5d0bf7cea926d85733c979f`).
-- `.agent/authored/f264-r4-plan.md`, `-records.diff` (C1a) == their
-  `.remedy-wt/f264-r4-payloads/` sources: byte-identical True, both.
-- `.agent/authored/f264-r4-product.diff`, `-mutations.py` (C1b) == their
-  payload sources: byte-identical True, both.
-- `.agent/authored/f264-r4-tests.diff`,
-  `-test_steering_consumption.py` (C1c) == their payload sources:
-  byte-identical True, both.
-- `records.diff` was applied at C2 with `git apply --check` then `git
-  apply` directly from the payload's own bytes — never retyped, both real
-  exit 0.
-- `.agent/plan.md` at C2 == its payload source verbatim (rewrite by
-  `shutil.copyfile`): byte-identical True (confirmed by the G2 sha256
-  reading above and the payload table).
-- `product.diff` was applied at C3 with `git apply --check` then `git
-  apply` directly from the payload's own bytes — never retyped, both real
-  exit 0.
-- `tests.diff` was applied at C4 with `git apply --check` then `git
-  apply` directly from the payload's own bytes — never retyped, both real
-  exit 0.
-- `test_steering_consumption.py` was copied at C4 via `shutil.copyfile`
-  — byte-identical to its payload source (confirmed by the G3 sha256
-  reading above).
-- No payload was edited or retyped anywhere this round; every copy used
-  `shutil.copyfile` and every diff was applied via `git apply` reading
-  the payload file directly.
+Block (`.agent/authored/f264-r5-block.md`), records.diff, plan.md,
+product.diff, mutations.py and test_steering_mission.py copies at
+d0e573ba/a852e03d: each read back with `git show <commit>:<path> | sha256sum`
+and compared against the payload table / this block's own reading —
+all 6 matched byte for byte. records.diff and product.diff were applied
+with `git apply` (never retyped), each preceded by a real
+`git apply --check` at exit 0 and followed by the real `git apply` at
+exit 0. plan.md and test_steering_mission.py were copied whole with
+`shutil.copyfile`, never retyped.
 
 ## Deviations & assumptions
 
-None. Every measured number matched the block's stated expectation
-exactly, and the commit sequence landed in the block's exact order
-C1a-C1b-C1c-C2-C3-C4-C5. No gate went red. No payload was edited or
-retyped; every copy used `shutil.copyfile` and every diff was applied via
-`git apply` reading the payload file directly. This round is SESSION 1 of
-F264, its fourth round. No pull request is opened this round (constraint
-5): the branch opens one at F264's closure.
-
-## Item-status table
-
-| Item | Status | Reason |
-|---|---|---|
-| C1a | done | 308 insertions, matches block formula (226+82) exactly |
-| C1b | done | 308 insertions, matches block exactly |
-| C1c | done | 198 insertions, matches block exactly |
-| C2 | done | 33/2/9 insertions by `git show --numstat`, matches block exactly |
-| C3 | done | 1/1/32/118 insertions, matches block exactly |
-| C4 | done | 69/121 insertions, matches block exactly |
-| C5 | done | this handback commits with it |
-| Push | done | ordered after C5; real outcome in the final reply |
-| G1 | done | all six payload readings match; all seven authored copies byte-identical |
-| G2 | done | all three sha256/byte readings match; 1 `Gate: F264 R3 — ` line added; open-set 3 at both 889c556b and C2, both differences empty; name-only diff matches |
-| G3 | done | all six C4 files byte/sha match; both name-only diffs (C2..C3, C3..C4) match |
-| G4 | done | 770 passed, exit 0; ruff all checks passed exit 0; integrity check all six pass, fail_count 0, handlers=149 |
-| G5 | done | control_before/after plus m1-m6 all match the reviewer's readings exactly; every restore byte-identical |
-| G6 | done | readings reported in the final reply only, per the block |
+None. The bundle ran in the block's declared order (C1a, C1b, C2, C3,
+C4, C5) with no extra, dropped or reordered commits.
 
 ## Next
 
-Phase 1 rule 1 (read `.agent/STOP` from disk), then the review of round
-4, then T002's mission half — a consumed message for a job that belongs
-to a mission also amends the mission's contract. Open findings count: 3.
-Operator-questions count: 0.
+Phase 1 rule 1: read `.agent/STOP` from disk. Then the review of round 5.
+Then T003 — the acknowledgement event, what was understood and from
+which round, in the cockpit and in `remedy chat`. Open findings: 3.
+Operator questions: 0.
