@@ -12,19 +12,17 @@ was understood and from which round it applies
 
 ## Current Step
 
-ROUND 5: book round 4's PASS, record DECISION F264 D5, and land T002's
-mission half — a consumed message of a job that belongs to a mission
-amends the mission's contract once, before its consumption marker is
-published, and the marker and the event name the amendment.
+ROUND 6: book round 5's PASS, record DECISION F264 D6, and land T003's
+first half — the consumption event restates the message with its round,
+the stream carries that acknowledgement, and `remedy chat show` lists each
+message as acknowledged, waiting or not taken in.
 
 ## Next Steps
 
-1. T003: the acknowledgement event — what was understood and from which
-   round — in the cockpit and in `remedy chat`.
+1. T003's second half: the cockpit renders the acknowledgement from the
+   stream, under the steering input.
 2. The closure sequence.
 
 ## Risks
 
-A message that arrives during a task's last round waits for the next
-task's first round; one that arrives during the job's last round is never
-consumed, and T003's acknowledgement must say so rather than stay silent.
+None open inside this feature; its closure runs the one full suite.

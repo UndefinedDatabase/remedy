@@ -19619,3 +19619,34 @@ contract, and F269's default is blocking. HOW TO REVERSE: delete the lookup and 
 call from `consume_pending_steering`, the two marker fields and the event field, restore the
 docstring from `68f4273b`, delete `tests/orchestration/test_steering_mission.py` and this
 paragraph.
+
+## DECISION F264 D6 — the consumption event is the acknowledgement: it restates the message verbatim with the round it took effect from, the stream carries it, and `remedy chat show` reads it back (2026-09-24)
+
+CONTEXT: T5_F264.md T003 wants "the restatement-plus-round event, rendered in both the cockpit
+and `remedy chat`, from the same SSE event", and its Design says an acknowledgement is useless
+without either half: "the run's own restatement of what it understood, and the round number from
+which it applies. A bare 'received' is not an acknowledgement." Measured at `70664b29`: every
+consumed message already writes `steering_message_consumed` with its task and round (DECISION
+F264 D4) and, for a mission's job, its amendment id (DECISION F264 D5), whose F269 entry carries
+its own `understood` sentence and `applies_from` round; the stream's per-event summary in
+`ui_server._safe_event_summary` gains a field only conditionally on the event kind, as `budget`
+does for `budget.tick`; and the run-log writer lifts `task_id` to an event's top level. CHOSEN:
+(1) ONE EVENT. The consumption event IS the acknowledgement: it gains `understood`, the
+restatement, and no second event is written. (2) THE RESTATEMENT quotes the message verbatim and
+says where it now lives — "the builder follows “<message>” from round <n> of task <task> on" —
+and, for a mission's job, adds F269's own sentence and the mission round it applies from. It is
+deterministic, never a model's paraphrase, because a paraphrase is the one form the operator
+cannot check against their own words, and the builder's free-form output is not parsed anywhere.
+The same sentence is sealed into the consumption marker. (3) THE STREAM carries a `steering`
+field of exactly `message_id`, `round_number` and `understood` on that event kind alone, so every
+other frame stays byte-identical. (4) `remedy chat show <job_id>` (catalog `chat.show`,
+read-only, `--json`) lists every message oldest first with one of three statuses read from the
+run log, the stream's own source: acknowledged, with its task round and restatement; waiting, for
+a job that can still run; and not taken in, for a message whose job ended first, which says so
+rather than staying silent. The cockpit's rendering of the same field is the next round's.
+ALTERNATIVES: a second `steering_message_acknowledged` event, rejected because it would repeat
+the consumption event's facts under a second name; a restatement written by the builder model,
+rejected for the reason in (2); widening the stream summary for every kind, rejected because the
+stream's golden byte test pins every other frame. HOW TO REVERSE: delete `understood` from the
+marker and the event, the stream field, `chat.show` with its catalog entry and guide row, the
+readers in `steering.py`, their tests, and this paragraph.
