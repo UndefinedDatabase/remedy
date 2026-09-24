@@ -1,105 +1,110 @@
-# Handback — F019 Live node materialization · Round 4 (book round 3 + finish T002)
+# Handback — F019 Live node materialization · Round 5 (book round 4 + T003 first half: the ledger)
 
 ## Session
 
-SESSION 2 of feature F019 · round 4 · rounds so far 4
+SESSION 2 of feature F019 · round 5 · rounds so far 5
 
-This round books round 3's PASS, records DECISION F019 D4, removes the old
-decorative `buildForceBrainModel()` builder with its six source-pin types
-(`ForceBrainNode`, `ForceBrainLink`, `ForceBrainGraphData`, `BrainSourceKind`,
-`BrainNodeKind`, `BrainNodeState`), and adds the demo recording
-`brainDemoRecording.ts` (a captured fake-provider job) with its hand-derived
-golden test `brainDemoRecording.test.ts`, plus red proofs. I had ample
-context remaining throughout this round; no session-limit pressure at any
-point.
+This round books round 4's PASS, records DECISION F019 D5, and lands
+T003's first half: the new pure module `brainLedger.ts` (merges
+`events-since` pages and the live ring into one ledger, one row per seq,
+folds only the contiguous prefix from seq 0, fills a hole by paging from
+its first missing seq), its thin hook `useBrainLedger.ts`, the exported
+path builder `eventsSincePath` in `brainStreamDeps.ts`, the shell handing
+the stage the live ring and a page reader, and the stage rebuilding its
+model from the ledger's prefix via `rebuildBrainModel` — with vitest
+tests, a source guard and red proofs. I had ample context remaining
+throughout this round; no session-limit pressure at any point.
 
 ## Range
 
-Review of 4b513511..HEAD
+Review of 238f2aa5..HEAD
 
 ## Commits
 
-### 2975cf430 F019 R4 C1a: copy round 4 block and plan into .agent/authored/
+### c191e2de1 F019 R5 C1a: copy round 5 block and plan into .agent/authored/
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f019-r4-block.md | +185/-0 | copy of this round's block, verbatim |
-| .agent/authored/f019-r4-plan.md | +34/-0 | copy of the plan.md payload |
+| .agent/authored/f019-r5-block.md | +184/-0 | copy of this round's block, verbatim |
+| .agent/authored/f019-r5-plan.md | +34/-0 | copy of the plan.md payload |
 
-219 insertions by `git show --numstat` (block's 185 lines + 34); matches
+218 insertions by `git show --numstat` (block's 184 lines + 34); matches
 the block's expectation exactly; under the 500-insertion cap.
 
-### 859c44261 F019 R4 C1b: copy round 4 records and product diffs into .agent/authored/
+### 3f3ff9a6d F019 R5 C1b: copy round 5 records and product diffs into .agent/authored/
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f019-r4-product.diff | +319/-0 | copy of the product.diff payload |
-| .agent/authored/f019-r4-records.diff | +63/-0 | copy of the records.diff payload |
+| .agent/authored/f019-r5-product.diff | +375/-0 | copy of the product.diff payload |
+| .agent/authored/f019-r5-records.diff | +57/-0 | copy of the records.diff payload |
 
-382 insertions by `git show --numstat`; matches the block's expectation
-(382) exactly.
+432 insertions by `git show --numstat`; matches the block's expectation
+(432) exactly.
 
-### 6c974124e F019 R4 C1c: copy round 4 tests diff into .agent/authored/
+### 06b25ea37 F019 R5 C1c: copy round 5 tests diff into .agent/authored/
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f019-r4-tests.diff | +254/-0 | copy of the tests.diff payload |
+| .agent/authored/f019-r5-tests.diff | +365/-0 | copy of the tests.diff payload |
 
-254 insertions by `git show --numstat`; matches the block's expectation
+365 insertions by `git show --numstat`; matches the block's expectation
 exactly.
 
-### c2dcb8900 F019 R4 C1d: copy round 4 mutation tool into .agent/authored/
+### d16b99358 F019 R5 C1d: copy round 5 mutation tool into .agent/authored/
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f019-r4-mutations.py | +307/-0 | copy of the mutations.py payload |
+| .agent/authored/f019-r5-mutations.py | +351/-0 | copy of the mutations.py payload |
 
-307 insertions by `git show --numstat`; matches the block's expectation
+351 insertions by `git show --numstat`; matches the block's expectation
 exactly.
 
-### 1fecf4293 F019 R4 C2: book round 3's PASS, record DECISION F019 D4
+### 2f6d68081 F019 R5 C2: book round 4's PASS, record DECISION F019 D5
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/decisions.md | +45/-0 | DECISION F019 D4 appended |
-| .agent/live_review.md | +2/-0 | `Gate: F019 R3 —` entry appended |
-| .agent/plan.md | +8/-11 | rewritten to the plan.md payload (round 4 scope) |
+| .agent/decisions.md | +39/-0 | DECISION F019 D5 appended |
+| .agent/live_review.md | +2/-0 | `Gate: F019 R4 —` entry appended |
+| .agent/plan.md | +10/-10 | rewritten to the plan.md payload (round 5 scope) |
 
 `git apply --check` on records.diff: exit 0. `git apply`: exit 0.
-Insertions/deletions by `git show --numstat`: 45/0 decisions.md, 2/0
-live_review.md, 8/11 plan.md — matches the block's expectation exactly on
-every file.
+Insertions/deletions by `git show --numstat`: 39/0 decisions.md, 2/0
+live_review.md, 10/10 plan.md — matches the block's expectation exactly
+on every file.
 
-### d9872e697 F019 R4 C3: remove the decorative dashboard builder, add the demo recording
+### 50790f63f F019 R5 C3: fold the ledger's complete prefix into the live graph
 | Path | +/- | Reason |
 |---|---|---|
-| apps/ui/src/components/graph/buildForceBrainModel.ts | +8/-143 | decorative `buildForceBrainModel()` removed |
-| apps/ui/src/components/graph/forceBrainTypes.ts | +9/-51 | the six decorative source-pin types removed |
-| apps/ui/src/components/graph/brainDemoRecording.ts | +72/-0 | new file, the captured fake-provider demo recording |
+| apps/ui/src/api/brainStreamDeps.ts | +9/-1 | exports `eventsSincePath`, reuses it in the stream's own `since` closure |
+| apps/ui/src/components/graph/BrainGraphStage.tsx | +25/-4 | rebuilds from the ledger's prefix via `rebuildBrainModel` instead of seeding once |
+| apps/ui/src/components/graph/brainLedger.ts | +165/-0 | new file, the merged ledger and prefix/hole logic |
+| apps/ui/src/components/graph/useBrainLedger.ts | +72/-0 | new file, the thin hook holding ledger state and the in-flight guard |
+| apps/ui/src/components/shell/RemedyShell.tsx | +12/-3 | hands the stage the live ring and a page reader built on `eventsSincePath` |
 
-8/143, 9/51, 72/0 insertions/deletions by `git show --numstat`; matches
-the block's expectation exactly on every file. `git apply --check` then
-`git apply` on product.diff: exit 0 both. `brainDemoRecording.ts` was
-`git add`ed before commit (no untracked product file at commit time).
-
-### e96fc8e87 F019 R4 C4: pin the recording's golden and the graph's truth contract
-| Path | +/- | Reason |
-|---|---|---|
-| apps/ui/src/components/graph/brainDemoRecording.test.ts | +116/-0 | new file, hand-derived golden for the recording |
-| apps/ui/src/components/graph/buildForceBrainModel.test.ts | +1/-45 | trimmed to match the removed builder |
-| tests/ui_server/test_dashboard_contract.py | +10/-31 | truth-contract updated for the removed types |
-| tests/ui_contracts/test_graph_architecture.py | +1/-1 | source-pin assertion re-pointed at `buildBrainLayout` |
-
-116/0, 1/45, 10/31, 1/1 insertions/deletions by `git show --numstat`;
+9/1, 25/4, 165/0, 72/0, 12/3 insertions/deletions by `git show --numstat`;
 matches the block's expectation exactly on every file. `git apply --check`
-then `git apply` on tests.diff: exit 0 both. `brainDemoRecording.test.ts`
-was `git add`ed before commit.
+then `git apply` on product.diff: exit 0 both. `brainLedger.ts` and
+`useBrainLedger.ts` were `git add`ed before commit (no untracked product
+file at commit time).
 
-### (this commit) F019 R4 C5: rewrite handoff for round 4
+### f21e7a10c F019 R5 C4: pin the ledger, the gap fill and the live wiring
+| Path | +/- | Reason |
+|---|---|---|
+| apps/ui/src/api/brainStreamDeps.test.ts | +7/-1 | pins `eventsSincePath` |
+| apps/ui/src/components/graph/brainLedger.test.ts | +196/-0 | new file, pins the merge, prefix and hole-fill logic |
+| tests/ui_contracts/test_brain_live_wiring.py | +114/-0 | new file, pins the stage/shell/hook wiring |
+| tests/ui_contracts/test_brain_stage_mount.py | +5/-2 | re-pointed at `rebuildBrainModel(` |
+
+7/1, 196/0, 114/0, 5/2 insertions/deletions by `git show --numstat`;
+matches the block's expectation exactly on every file. `git apply --check`
+then `git apply` on tests.diff: exit 0 both. `brainLedger.test.ts` and
+`test_brain_live_wiring.py` were `git add`ed before commit.
+
+### (this commit) F019 R5 C5: rewrite handoff for round 5
 This file, rewritten, its own commit — self-reference exception per the
 handback template (a handback cannot table the commit that writes it).
 
 ## External actions
 
-- `git worktree add --detach .remedy-wt/f019-r4-mut e96fc8e87` (G5) — real
-  outcome: `Preparing worktree (detached HEAD e96fc8e87)`, `HEAD is now at
-  e96fc8e87`.
-- `git worktree remove --force .remedy-wt/f019-r4-mut` (G5, after the
+- `git worktree add --detach .remedy-wt/f019-r5-mut f21e7a10c` (G5) — real
+  outcome: `Preparing worktree (detached HEAD f21e7a10c)`, `HEAD is now at
+  f21e7a10c`.
+- `git worktree remove --force .remedy-wt/f019-r5-mut` (G5, after the
   mutation sweep) — real outcome: exit 0, no output.
 - `git worktree prune` (G5) — real outcome: exit 0, no output.
 - `git push origin feature/f019-live-node-materialization` runs after
@@ -113,45 +118,47 @@ handback template (a handback cannot table the commit that writes it).
 G1 TRANSPORT — all 5 payloads measured against the block's PAYLOADS table,
 all matched (line count, byte count, sha256):
 ```
-records.diff    lines=63  bytes=10710 sha256=0a309187242068ace3d01a9498dfc6d44b2e186cca600b705335c818d05f30ce
-plan.md         lines=34  bytes=1319  sha256=00a4280d10c26e8b39bb1e3749af15c345b2499798f9f99174c07fbf96648132
-product.diff    lines=319 bytes=14553 sha256=a8eb07d3e66f84add33e3a8519e9a382bc0b6ae503b2a9f377e17aefcbea7fed
-tests.diff      lines=254 bytes=12612 sha256=1d45048824625bed1d2baa9cd64560dbeb619e4d329e53c706547da964456a60
-mutations.py    lines=307 bytes=12712 sha256=d3a2bbff5a7628f3baa5dd47dcdd05cc991f338346c9acb6eb85b1c9eedc6be6
+records.diff    lines=57  bytes=10140 sha256=1900ffc087f94bc6e789b8f380ce0eaf4c1141fa030f406e7de5bf2bc802ae09
+plan.md         lines=34  bytes=1362  sha256=bc1babf1c5bca2ddf7bf73bf9c24906da2dafbf3d63148c3e41ecac179377e77
+product.diff    lines=375 bytes=18748 sha256=27b555cfab0fb4b94efff4808d84e9ee7be214c61f5dfcfecfc61cea131aab8d
+tests.diff      lines=365 bytes=15972 sha256=9da3e999e72390047363a72d0bcc074ecb44d35b1c5ecc4d02143ea92b675e43
+mutations.py    lines=351 bytes=14009 sha256=923127841b30d778a59403d84c35bf3bc665ffbb843f2d7c4550902a4e512864
 ALL PAYLOAD DIGESTS MATCH: True
 ```
-Each `.agent/authored/f019-r4-*` copy, read back with `git show
+Each `.agent/authored/f019-r5-*` copy, read back with `git show
 <commit>:<path>` from the commit that added it, matched its source byte
 for byte (6 comparisons: the block copy against
-`.remedy-wt/f019-r4/block.md`, plus the 5 payload copies) — `ALL_TRANSPORT_OK: True`.
+`.remedy-wt/f019-r5/block.md`, plus the 5 payload copies) — `ALL_TRANSPORT_OK: True`.
 
-G2 THE BOOKING — at C2 (`1fecf4293`), `.agent/decisions.md` read 2008978
-bytes, sha256 `5b3ef727c084fdde10ea377df14d38ee8cf8b43ea16b94af4dc6147ebcf00b22`
-(MATCH); `.agent/live_review.md` read 313478 bytes, sha256
-`7cd05b719fd2f803a3f8b4faf40803892c11b8194c855af3ccafe266c1ada853` (MATCH);
-`.agent/plan.md` at C2 read 1319 bytes, sha256
-`00a4280d10c26e8b39bb1e3749af15c345b2499798f9f99174c07fbf96648132` (MATCH,
+G2 THE BOOKING — at C2 (`2f6d68081`), `.agent/decisions.md` read 2012239
+bytes, sha256 `d489e9b2c5f8f2478723cff983b3e4f13f2d764cf2483f34f9b33b5f6f1517e2`
+(MATCH); `.agent/live_review.md` read 315698 bytes, sha256
+`06b91d40088f7bee6702f8b62c8facac9791251a46d0cf53ca5a2eb0a3fe75be` (MATCH);
+`.agent/plan.md` at C2 read 1362 bytes, sha256
+`bc1babf1c5bca2ddf7bf73bf9c24906da2dafbf3d63148c3e41ecac179377e77` (MATCH,
 equal to the plan.md payload). The count of lines C2 adds to the ledger
-beginning `Gate: F019 R3 — ` is 1 (measured: `grep -c` over C2's
+beginning `Gate: F019 R4 — ` is 1 (measured: `grep -c` over C2's
 `.agent/live_review.md`). `open_finding_ids` (`scripts/rotate_live_review.py`)
-over `.agent/live_review.md`: at `4b513511` → `['R-0499', 'R-0950',
-'R-1008', 'R-1046']`; at C2 (`1fecf4293`) → the same four — matches the
+over `.agent/live_review.md`: at `238f2aa5` → `['R-0499', 'R-0950',
+'R-1008', 'R-1046']`; at C2 (`2f6d68081`) → the same four — matches the
 reviewer's reading exactly at both.
 
-G3 THE PRODUCT AND TESTS — at C4 (`e96fc8e87`), the byte count and sha256
-of all 7 named files, read with `git show e96fc8e87:<path>`, matched the
+G3 THE PRODUCT AND TESTS — at C4 (`f21e7a10c`), the byte count and sha256
+of all 9 named files, read with `git show f21e7a10c:<path>`, matched the
 reviewer's simulated reading exactly:
 ```
-buildForceBrainModel.ts          8068 bytes  MATCH
-forceBrainTypes.ts                1469 bytes  MATCH
-brainDemoRecording.ts             4021 bytes  MATCH
-buildForceBrainModel.test.ts      9929 bytes  MATCH
-brainDemoRecording.test.ts        5938 bytes  MATCH
-test_dashboard_contract.py       28533 bytes  MATCH
-test_graph_architecture.py       36438 bytes  MATCH
+apps/ui/src/api/brainStreamDeps.ts                 7546 bytes  MATCH
+apps/ui/src/components/graph/brainLedger.ts         7527 bytes  MATCH
+apps/ui/src/components/graph/useBrainLedger.ts      2927 bytes  MATCH
+apps/ui/src/components/graph/BrainGraphStage.tsx    3369 bytes  MATCH
+apps/ui/src/components/shell/RemedyShell.tsx       13113 bytes  MATCH
+apps/ui/src/api/brainStreamDeps.test.ts             7110 bytes  MATCH
+apps/ui/src/components/graph/brainLedger.test.ts    8214 bytes  MATCH
+tests/ui_contracts/test_brain_live_wiring.py        4805 bytes  MATCH
+tests/ui_contracts/test_brain_stage_mount.py        4582 bytes  MATCH
 ```
 
-G4 THE TESTS AND THE REMOVAL — real transcript, primary checkout, at C4:
+G4 THE TESTS — real transcript, primary checkout, at C4:
 ```
 $ python3 -m pytest -q -p no:cacheprovider -rs tests/ui_contracts tests/ui_server/test_dashboard_contract.py tests/orchestration/test_test_runner.py tests/orchestration/test_live_review_rotation.py tests/orchestration/test_integrity_gate.py tests/orchestration/test_roadmap_index.py tests/test_agent_tooling.py tests/docs tests/cli/test_golden_path.py
 SKIPPED [1] tests/ui_contracts/test_graph_architecture.py:441: D3 quarantine (F252): pre-rebuild legacy sources not in tree
@@ -159,7 +166,7 @@ SKIPPED [1] tests/ui_contracts/test_graph_architecture.py:484: D3 quarantine (F2
 SKIPPED [1] tests/ui_contracts/test_ux_quality.py:507: D3 quarantine (F252): pre-rebuild legacy sources not in tree
 SKIPPED [1] tests/ui_contracts/test_ux_quality.py:543: D3 quarantine (F252): pre-rebuild legacy sources not in tree
 SKIPPED [1] tests/test_agent_tooling.py:43: D12 quarantine (F252): .claude/agents/remedy-reviewer.md deleted deliberately
-1414 passed, 5 skipped in 71.77s (0:01:11)
+1427 passed, 5 skipped in 72.03s (0:01:12)
 REAL_EXIT=0
 ```
 All 5 SKIPPED lines are pre-existing D3/D12 quarantine skips, unrelated to
@@ -167,11 +174,11 @@ the toolchain. The two eslint nodes of `test_ui_lint.py`, the tsc node of
 `test_dashboard_contract.py`, and the vitest node of `test_test_runner.py`
 do not appear in the skip list — each ran and PASSED, as the block
 requires for the primary checkout. (The reviewer's sim-tree run, without
-the golden path, read `1367 passed, 10 skipped`; the primary-checkout
+the golden path, read `1380 passed, 10 skipped`; the primary-checkout
 difference — 47 more passed, 5 fewer skipped — is the golden-path suite
 plus those toolchain nodes running here instead of skipping.)
 ```
-$ python3 -m ruff check tests/ui_server/test_dashboard_contract.py tests/ui_contracts/test_graph_architecture.py
+$ python3 -m ruff check tests/ui_contracts/test_brain_live_wiring.py tests/ui_contracts/test_brain_stage_mount.py
 All checks passed!
 REAL_EXIT=0
 ```
@@ -181,28 +188,26 @@ $ python3 -m apps.cli.main integrity check --json
 REAL_EXIT=0
 ```
 All six checks `pass`, `fail_count` 0.
-```
-$ git grep -n -E "buildForceBrainModel\(|ForceBrainNode|ForceBrainLink|ForceBrainGraphData|BrainSourceKind|BrainNodeKind|BrainNodeState" -- apps packages tests scripts docs
-GREP_EXIT=1
-```
-No matches — the six decorative types and the decorative call are fully
-removed, as required.
 
-G5 THE RED PROOFS — worktree `.remedy-wt/f019-r4-mut` added detached at
-C4 (`e96fc8e87`), then `python3 -B .remedy-wt/f019-r4-payloads/mutations.py
-/home/decodeux/Repos/remedy/.remedy-wt/f019-r4-mut`:
+G5 THE RED PROOFS — worktree `.remedy-wt/f019-r5-mut` added detached at
+C4 (`f21e7a10c`), then `python3 -B .remedy-wt/f019-r5-payloads/mutations.py
+/home/decodeux/Repos/remedy/.remedy-wt/f019-r5-mut`:
 ```
-VITEST CONTROL RUN #1 (unmutated, before any mutation): exit_code=0 failed=0 passed=89
-PYTEST CONTROL RUN #1 (unmutated, before any mutation): exit_code=0 failed=0 passed=11
-D1  REVIEW_OUTCOME_STATE_TABLE maps needs_repair to pass: exit=1 failed=8 restored byte-identical: True
-D2  one frame (seq 5) dropped from BRAIN_DEMO_FRAMES: exit=1 failed=2 restored byte-identical: True
-D3  task A's nodeId set to empty string: exit=1 failed=1 restored byte-identical: True
-D4  brainDemoRows hand-builds rows and drops outcome instead of using feedRowOf: exit=1 failed=2 restored byte-identical: True
-P1  re-add sourceKind? to interface BrainLayoutNode: exit=1 failed=1 restored byte-identical: True
-P2  a comment naming "layout_only" added to buildForceBrainModel.ts: exit=1 failed=1 restored byte-identical: True
-P3  buildBrainLayout renamed to buildBrainLayoutX in its declaration line only: exit=1 failed=1 restored byte-identical: True
-VITEST CONTROL RUN #2 (unmutated, after the full sweep): exit_code=0 failed=0 passed=89
-PYTEST CONTROL RUN #2 (unmutated, after the full sweep): exit_code=0 failed=0 passed=11
+VITEST CONTROL RUN #1 (unmutated, before any mutation): exit_code=0 failed=0 passed=124
+PYTEST CONTROL RUN #1 (unmutated, before any mutation): exit_code=0 failed=0 passed=32
+L1  merge lets the incoming duplicate win instead of the already-held row: exit=1 failed=2 restored byte-identical: True
+L2  prefix returns every held row, ignoring a hole: exit=1 failed=4 restored byte-identical: True
+L3  next cursor returns null before any read instead of 0: exit=1 failed=2 restored byte-identical: True
+L4  next cursor returns known instead of the first hole: exit=1 failed=7 restored byte-identical: True
+L5  an unchanged read does not stall: exit=1 failed=1 restored byte-identical: True
+L6  a live change does not clear the stall: exit=1 failed=1 restored byte-identical: True
+L7  brainLedgerPage ignores the payload's cursor: exit=1 failed=1 restored byte-identical: True
+L8  known is not raised by held rows past the declared length: exit=1 failed=5 restored byte-identical: True
+W1  the stage builds from seedBrainModel again instead of rebuildBrainModel: exit=1 failed=3 restored byte-identical: True
+W2  the shell's stage line loses recent=: exit=1 failed=1 restored byte-identical: True
+W3  useBrainLedger.ts stops holding the in-flight cursor in a useRef: exit=1 failed=1 restored byte-identical: True
+VITEST CONTROL RUN #2 (unmutated, after the full sweep): exit_code=0 failed=0 passed=124
+PYTEST CONTROL RUN #2 (unmutated, after the full sweep): exit_code=0 failed=0 passed=32
 vitest control #1 green: True
 vitest control #2 green: True
 pytest control #1 green: True
@@ -210,24 +215,25 @@ pytest control #2 green: True
 ALL MUTATIONS CAUGHT AND RESTORED CLEANLY: True
 REAL_EXIT=0
 ```
-Every one of the 7 mutation failed-counts matches the reviewer's
-prototype-tree reading exactly (D1=8, D2=2, D3=1, D4=2, P1=1, P2=1, P3=1),
-both vitest controls read `89 passed` at exit 0, both pytest controls read
-`11 passed` at exit 0, every restore read byte-identical True, and the
-final line reads `ALL MUTATIONS CAUGHT AND RESTORED CLEANLY: True`. `git
-worktree remove --force .remedy-wt/f019-r4-mut` and `git worktree prune`
-both exit 0; `git worktree list` afterward shows no `f019-r4-mut` entry,
-only the primary checkout, the pre-existing `f015-r*` worktrees,
-`f019-r2-sim`, `f019-r3-proto`, `f019-r3-sim`, `f019-r4-proto`,
-`f019-r4-sim` and the four `job-*` worktrees — all named by the block's
-constraint 6, nothing else.
+Every one of the 11 mutation failed-counts matches the reviewer's
+prototype-tree reading exactly (L1=2, L2=4, L3=2, L4=7, L5=1, L6=1, L7=1,
+L8=5, W1=3, W2=1, W3=1), both vitest controls read `124 passed` at exit 0,
+both pytest controls read `32 passed` at exit 0, every restore read
+byte-identical True, and the final line reads `ALL MUTATIONS CAUGHT AND
+RESTORED CLEANLY: True`. `git worktree remove --force .remedy-wt/f019-r5-mut`
+and `git worktree prune` both exit 0; `git worktree list` afterward shows
+no `f019-r5-mut` entry, only the primary checkout, the pre-existing
+`f015-r*` worktrees, `f019-r2-sim`, `f019-r3-proto`, `f019-r3-sim`,
+`f019-r4-proto`, `f019-r4-sim`, `f019-r5-proto`, `f019-r5-sim` and the
+four `job-*` worktrees — all named by the block's constraint 6, nothing
+else.
 
 G6 — reported in the reply per the block's own instruction (measured
 after this handback is written, committed and pushed).
 
 ## Authored-text proofs
 
-All 6 authored copies under `.agent/authored/f019-r4-*` (the block copy
+All 6 authored copies under `.agent/authored/f019-r5-*` (the block copy
 plus the 5 payload copies) were built by reading each source's bytes with
 `shutil.copyfile` and writing them unedited — never retyped, never
 edited. Each was read back from the commit that added it with `git show
@@ -240,7 +246,7 @@ readings at C2 (G2 above) — both `MATCH`; `.agent/plan.md` was separately
 rewritten whole via `shutil.copyfile` from its payload and also confirmed
 `MATCH`. `product.diff` was applied the same way (`git apply --check`
 then `git apply`, both exit 0), never retyped or edited; `tests.diff`
-likewise. The seven resulting product/test files' C4 contents were
+likewise. The nine resulting product/test files' C4 contents were
 confirmed `MATCH` against the reviewer's simulated reading in G3 above.
 `mutations.py` was copied into `.agent/authored/` (G1, matched) and run
 unedited from its payload location in G5; it was never applied to a
@@ -251,10 +257,10 @@ tracked file, per the block's instruction that it is a TOOL only.
 None. Every commit landed in the block's stated order (C1a, C1b, C1c,
 C1d, C2, C3, C4, then this handback as C5), all gates G1–G5 ran before C5
 as ordered, and no payload was edited, retyped or repaired. The round's
-tracked path set matches constraint 3: `git diff --name-only 4b513511 HEAD`
+tracked path set matches constraint 3: `git diff --name-only 238f2aa5 HEAD`
 (measured just before writing this handback, i.e. through C4) names the
-six `.agent/authored/f019-r4-*` copies, `.agent/live_review.md`,
-`.agent/decisions.md`, `.agent/plan.md`, and the seven files the
+six `.agent/authored/f019-r5-*` copies, `.agent/live_review.md`,
+`.agent/decisions.md`, `.agent/plan.md`, and the nine files the
 product/test diffs name — this handoff's own path is added by C5 itself.
 No full-suite run was made (amend0917 rule 1; F019's belongs to its
 closure). No `.agent/context.md`, `.agent/prose_slips.md`,
@@ -266,25 +272,25 @@ touched, matching this round's scope.
 
 | Item | Status | Reason |
 |---|---|---|
-| C1a | done | 219 insertions, matches (185 block + 34 plan.md) |
-| C1b | done | 382 insertions, matches |
-| C1c | done | 254 insertions, matches |
-| C1d | done | 307 insertions, matches |
-| C2 | done | git apply --check and apply both exit 0; 45/2/8-11 insertions/deletions, matches every file |
-| C3 | done | 8/143, 9/51, 72/0 insertions/deletions, matches; diff applied clean; brainDemoRecording.ts tracked before commit |
-| C4 | done | 116/0, 1/45, 10/31, 1/1 insertions/deletions, matches; tests.diff applied clean; brainDemoRecording.test.ts tracked before commit |
+| C1a | done | 218 insertions, matches (184 block + 34 plan.md) |
+| C1b | done | 432 insertions, matches |
+| C1c | done | 365 insertions, matches |
+| C1d | done | 351 insertions, matches |
+| C2 | done | git apply --check and apply both exit 0; 39/2/10-10 insertions/deletions, matches every file |
+| C3 | done | 9/1, 25/4, 165/0, 72/0, 12/3 insertions/deletions, matches; diff applied clean; brainLedger.ts and useBrainLedger.ts tracked before commit |
+| C4 | done | 7/1, 196/0, 114/0, 5/2 insertions/deletions, matches; tests.diff applied clean; brainLedger.test.ts and test_brain_live_wiring.py tracked before commit |
 | C5 | done | this handback, rewritten per docs/agents/handback_template.md |
 | G1 | done | all 5 payload digests and 6 authored-copy comparisons matched |
 | G2 | done | decisions.md/live_review.md/plan.md byte counts and sha256 matched; 1 new Gate line; open_finding_ids correct at both commits |
-| G3 | done | all 7 product/test file digests matched at C4 |
-| G4 | done | 1414 passed, 5 skipped (all pre-existing quarantine, none toolchain), exit 0; ruff clean; integrity check all 6 pass, fail_count 0; removal grep GREP_EXIT=1, no matches |
-| G5 | done | all 7 mutations caught, both vitest and pytest controls green, all restores byte-identical, final line True; worktree removed and pruned |
+| G3 | done | all 9 product/test file digests matched at C4 |
+| G4 | done | 1427 passed, 5 skipped (all pre-existing quarantine, none toolchain), exit 0; ruff clean; integrity check all 6 pass, fail_count 0 |
+| G5 | done | all 11 mutations caught, both vitest and pytest controls green, all restores byte-identical, final line True; worktree removed and pruned |
 | G6 | pending | reported in the reply, measured after this handback and the push |
 
 ## Next
 
-Phase 1 rule 1: read `.agent/STOP` from disk. Then the review of round 4.
-Then T003: the live wiring from the stream hook through the reducer to
-the renderer, gap and snapshot recovery by paging `events-since`, the
-performance fixture, and the end-to-end run on a live fake job compared
-against the demo recording. Open findings: 4. Operator questions open: 3.
+Phase 1 rule 1: read `.agent/STOP` from disk. Then the review of round 5.
+Then the rest of T003 as DECISION F019 D5 (1) names it: the end-to-end run
+of a live fake job compared against the demo recording, and the
+performance fixture's measurement. Open findings: 4. Operator questions
+open: 3.
