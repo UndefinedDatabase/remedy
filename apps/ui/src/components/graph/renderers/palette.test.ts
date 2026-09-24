@@ -1,13 +1,15 @@
 import { describe, expect, it } from "vitest";
 import { nodeStateTokens } from "./nodeStates";
-import { BRAIN_HIGHLIGHT_TOKEN, brainPaletteTokens, resolveBrainPalette } from "./palette";
+import { BRAIN_HIGHLIGHT_TOKEN, BRAIN_LABEL_FONT_TOKEN, brainPaletteTokens, resolveBrainPalette } from "./palette";
 
 describe("brainPaletteTokens", () => {
-  it("covers every token the state table names, plus the highlight, each once", () => {
+  it("covers every token the state table names, plus the highlight and the count's font, each once", () => {
     const tokens = brainPaletteTokens();
     expect(new Set(tokens).size).toBe(tokens.length);
     for (const token of nodeStateTokens()) expect(tokens).toContain(token);
     expect(tokens).toContain(BRAIN_HIGHLIGHT_TOKEN);
+    expect(tokens).toContain(BRAIN_LABEL_FONT_TOKEN);
+    expect(BRAIN_LABEL_FONT_TOKEN).toBe("--remedy-font-ui");
   });
 });
 
