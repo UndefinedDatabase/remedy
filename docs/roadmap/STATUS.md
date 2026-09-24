@@ -142,7 +142,7 @@ Milestone R1 — Remedy as the daily tool: Tier 2 complete (F086 as the self-ins
 
 ## Tier 2 — Findings paydown (rolling, operator rule amend0911-feedback)
 
-- [~] F284 — Findings paydown v3
+- [x] F284 — Findings paydown v3 (T001-T003 complete, R-1008 carried to F285; accepted 2026-09-24 · live review PASS_WITH_RISKS — ACCEPTED · Evidence job f284r3e1001 · package remedy-review-20260924-224939-READY_FOR_REVIEW.zip · SHA-256 bd37ef4ace2f086aef2813a61fdb8d58eed56ff10cffa6b9ffead7da64eb91cc · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD 0bf2591365ad8c58533b62313acaac0cb90d9345)
 
 ## Tier 5 — Operator Cockpit (parallel human track, continued)
 

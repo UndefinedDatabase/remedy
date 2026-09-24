@@ -26,13 +26,13 @@ verification commands. If something is unproven, Remedy says so instead of guess
 
 ## Status
 
-98 of 285 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
+99 of 285 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
 
 | Tier | Name | Done | Total |
 |------|------|-----:|------:|
 | 0 | Foundation & Trust Core | 16 | 16 |
 | 1 | Self-Build Bootstrap | 22 | 22 |
-| 2 | Minimal Self-Build Runtime | 36 | 38 |
+| 2 | Minimal Self-Build Runtime | 37 | 38 |
 | 3 | Full Token Economy & Autonomy | 6 | 26 |
 | 4 | Memory & Learning | 1 | 17 |
 | 5 | Operator Cockpit | 17 | 34 |
@@ -237,7 +237,14 @@ command now honours the shared sort, filter and limit options in its own code,
 and one test proves it for every list command the command catalog holds, so a
 list command added later is checked with no change to the test; a second test
 runs the ten-second demo, finding a run from two days ago with the one command
-`remedy run list --since 3d --until 1d`).
+`remedy run list --since 3d --until 1d`),
+F284 findings paydown v3 (three of the four review findings that were open when
+it began were repaired with evidence, and none was added: the model an operator
+chooses for the teacher now answers the questions they ask it, a check on the
+interface's own tests no longer fails where its neighbour skips while those
+tools are only half installed, and the tests that check an application was
+stopped no longer mistake an unrelated program reusing the same port number for
+a leftover of their own; the one finding still open moves to the next paydown).
 
 Accepted in Tier 3 so far:
 F106 session resume instead of rebuild (repair rounds resume the original
