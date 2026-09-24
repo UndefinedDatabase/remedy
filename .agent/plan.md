@@ -14,18 +14,16 @@ and execution follows the edited plan exactly, proven by hash
 
 ## Current Step
 
-ROUND 4: book round 3's PASS and land T003 under DECISION F015 D4 — the
-approval's plan hash and its check at every job start, edits that keep
-each task after the tasks it waits for, the `## Edits` section of an
-edited revision with its goldens, and the end-to-end run of an edited
-plan.
+ROUND 5, the closure sequence's first half: book round 4's PASS, write
+the Built State, run the checklist consolidation, record the self-use
+track, and run this feature's one full suite. T001 to T003 are built.
 
 ## Next Steps
 
-1. The closure sequence's first half: the feature file's Built State,
-   the checklist consolidation, the self-use track and the one full
-   suite.
-2. The closure sequence's evidence half and its closing round.
+1. The closure sequence's evidence half: the evidence job built against
+   the fork point, and the fresh review package.
+2. The closing round: book the evidence round, rotate the ledger, flip
+   F015's STATUS line with its README pins, and open the pull request.
 
 ## Risks
 
