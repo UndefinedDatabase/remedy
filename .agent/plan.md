@@ -14,14 +14,15 @@ and execution follows the edited plan exactly, proven by hash
 
 ## Current Step
 
-ROUND 8, the closure sequence's evidence half: book round 7's PASS, whose
-full suite is green, then build the evidence bundle against the fork
-point and the fresh review package.
+ROUND 9, the closing round: book round 8's PASS, rotate the ledger, flip
+F015's STATUS line to accepted with the README's counts and Tier 5 prose
+in the same commit, and open the pull request. T001 to T003 are built and
+the package is READY_FOR_REVIEW.
 
 ## Next Steps
 
-1. The closing round: book the evidence round, rotate the ledger, flip
-   F015's STATUS line with its README pins, and open the pull request.
+1. The next session merges this feature's pull request at the Open PR
+   Gate, then claims the next feature under Rule A5.
 
 ## Risks
 
