@@ -19463,3 +19463,38 @@ the packer inside one second is refused honestly, not harmed. The suite runs aga
 the first of the at most three repair rounds rule 2 allows, and its transcript replaces
 `.agent/authored/f282-closure-suite.txt` at the same path. HOW TO REVERSE: restore the test file
 from `720e15e6`.
+
+## DECISION F264 D1 — a steering message is a sealed, job-keyed record certified into the run log, and `remedy chat` is its first route (2026-09-24)
+
+CONTEXT: T5_F264.md T001 orders a steering message accepted, persisted and certified with no
+consumer yet, and DECISION amend0905-vocab D9 makes every later operator message an amendment to
+the mission's contract. Measured at `ef4cb503`: F269 already built the mission side —
+`mission_contract.amend_mission_contract`, whose docstring leaves the route to F264, the round of
+effect `applies_from`, and the acknowledgement in the mission ledger (DECISION F269 D8) — while
+`remedy do` can start a job with no mission at all, for which `mission_state.mission_for_job`
+answers None; the run log (`run_log.RunLogWriter`) has no seal, and the one certified record in
+the tree is F263's human change record, sealed by a sha256 over its own sorted JSON.
+CHOSEN: (1) HOME. The message is keyed to the JOB, because the channel must serve a job with no
+mission: one record per message at `jobs/<id>/evidence/steering/sm-<nnnn>.json`, numbered per
+job and published create-once, so two senders at once get two records and neither overwrites
+the other. (2) SHAPE. `schema` `remedy.steering_message.v1`, `message_id`, `job_id`, `text` (the
+message stripped, non-empty, no NUL, at most 2000 characters), `channel` (`cli` or `cockpit`),
+`received_at`, and `record_sha256`, the seal over the rest. A record never changes after it is
+written; the round a message is consumed in is recorded by T002 as its own fact, and a mission
+job's contract amendment is T002's to write when it consumes the message. (3) CERTIFICATION.
+Only after the record is on disk is one run-log event written, `steering_message_received`,
+carrying the message id, the channel, the text and the record's seal, so an event never names a
+record that does not exist and a later reader can prove which text the run was given. (4)
+REFUSAL. A job whose state is terminal refuses the message and nothing is written: no run will
+read it, and a message the run silently ignores is worse than no channel. (5) ROUTE. `remedy chat
+<job_id> "<message>"` (catalog `chat.send`, the bare group form routed to `send`) fills the
+second reserved help slot of DECISION amend0911-feedback D1; the cockpit's route over F009's
+write channel follows as T001's second half, as a new exposed catalog id, which is the extension
+point DECISION F009 D4 built and leaves the channel's route, payload, authentication, nonce and
+rate limit unchanged. ALTERNATIVES: a mission-only channel, rejected because it refuses every
+single-job `remedy do`; calling `amend_mission_contract` at receipt, rejected for T001 because it
+is consumption, which the Orchestrator brief keeps out of the first slice; a mutable record with
+a `consumed_in` field, rejected because a seal that must be rewritten certifies nothing. HOW TO
+REVERSE: delete `packages/orchestration/steering.py`, `apps/cli/commands/chat_cmd.py`, the `chat`
+group and its catalog entry, the event name and its humanize line, their tests, and this
+paragraph.
