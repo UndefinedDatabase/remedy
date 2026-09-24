@@ -26,13 +26,13 @@ verification commands. If something is unproven, Remedy says so instead of guess
 
 ## Status
 
-95 of 284 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
+96 of 284 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
 
 | Tier | Name | Done | Total |
 |------|------|-----:|------:|
 | 0 | Foundation & Trust Core | 16 | 16 |
 | 1 | Self-Build Bootstrap | 22 | 22 |
-| 2 | Minimal Self-Build Runtime | 35 | 37 |
+| 2 | Minimal Self-Build Runtime | 36 | 37 |
 | 3 | Full Token Economy & Autonomy | 6 | 26 |
 | 4 | Memory & Learning | 1 | 17 |
 | 5 | Operator Cockpit | 15 | 34 |
@@ -231,7 +231,13 @@ lint really reads its TypeScript and now runs as a test, a self-improvement
 attempt that can no longer receive an outside proposal ends with its reason
 instead of waiting forever, two tests that failed only when many ran at once are
 reliable, and the review checklist took in three lessons without growing; the
-three findings still open move to the next paydown).
+three findings still open move to the next paydown),
+F267 list commands v2 completion (the follow-up that finished F262: every list
+command now honours the shared sort, filter and limit options in its own code,
+and one test proves it for every list command the command catalog holds, so a
+list command added later is checked with no change to the test; a second test
+runs the ten-second demo, finding a run from two days ago with the one command
+`remedy run list --since 3d --until 1d`).
 
 Accepted in Tier 3 so far:
 F106 session resume instead of rebuild (repair rounds resume the original

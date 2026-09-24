@@ -19853,3 +19853,41 @@ field from `lessons.py`, the command reader, `LessonMode`, `lessonCommandsLine` 
 `commands` from `apps/ui/src/api/lessons.ts`, the switch and `CommandsText` from
 `LessonsOverlay.tsx` with their styles, the round's tests and contract pins, and delete this
 paragraph.
+
+## DECISION F267 D1 — the handler test takes its commands from the catalog's own list predicate, excludes none, and the ten-second demo seeds `run list`'s store directly (2026-09-24)
+
+CONTEXT: T2_F267.md orders T002, one test that derives the list-command set from
+`apps/cli/command_catalog.py` and invokes every in-scope handler with `--sort bogus`, naming the
+DECISION F262 D4 exclusions by id and reason for as many as still exist, re-measured before the
+test is written; and T003, the ten-second demo as a test. Measured at `9f06c509`:
+`_is_list_command` selects 13 catalog entries — `blocker.list`, `change.list`, `config.list`,
+`decision.list`, `event.list`, `job.list`, `memory.list`, `mission.list`, `patch.list`,
+`project.list`, `run.list`, `test.list` and `worker.list`; none of the four D4 exclusions is in
+the catalog; the only required positional any of them declares is `job_id`; and through the
+grouped CLI, in a data root holding one registered project selected by `REMEDY_PROJECT` and one
+saved empty job, every one of the 13 exits 1 on `--sort bogus` naming its valid fields, in text
+and under `--json`. With no project selected, `mission list` refuses with `no_project` before it
+reads `--sort`, and with an unknown job id `patch list`, `change list`, `event list` and
+`decision list` refuse before it too, which is why the test seeds both.
+
+CHOSEN: (1) THE SET is `_is_list_command` over `CATALOG`, the predicate the catalog itself uses to
+attach the five flags, so a list command added later joins the test with no edit to it. (2) NO
+EXCLUSION: all 13 refuse an unknown field, so the test excludes none. It names the four D4 ids
+with their reasons and fails if any of them returns to the catalog, and it fails naming the
+command if a list command ever requires a positional other than `job_id`, rather than skipping
+it. (3) THE INVOCATION is `apps.cli.grouped.main` in process, once in text and once under
+`--json`, and the assertion is a non-zero exit plus the refusal's exact shape, `unknown --sort
+field 'bogus'; valid fields: ` followed by the field names, so a handler that refuses for another
+reason does not pass. (4) THE DEMO seeds three `result.json` records in `run list`'s store,
+finished five days, two days and one hour ago, and runs the one command `remedy run list --since
+3d --until 1d` in a child process, in JSON and in text; only the run from two days ago may come
+back. `run list` is chosen because a Run is the unit T003 names, and its store takes a dated
+record without a model call.
+
+ALTERNATIVES: a hand-written list of the 13 ids, rejected because T002 orders derivation from the
+catalog; excluding `worker.list` and `config.list`, whose rows carry no date, rejected because
+both already refuse an unknown field and the test proves only that; seeding the demo through
+`run_pingpong`, rejected because a real run is dated at the moment it finishes and cannot be
+dated two days back.
+
+HOW TO REVERSE: delete `tests/cli/test_list_commands_everywhere.py` and this paragraph.

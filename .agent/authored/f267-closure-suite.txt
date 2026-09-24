@@ -1,0 +1,6 @@
+F267 R2 C5 — closure suite transcript
+
+Command: python3 -m pytest -n auto -q
+Real exit code: 0
+Summary line: 18945 passed, 20 skipped, 1 warning in 224.69s (0:03:44)
+Bad node ids (failed + errors): NONE

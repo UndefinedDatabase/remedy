@@ -14,15 +14,14 @@ T002 and T003 landed in round 1. Open findings: 4, all owned by F284.
 
 ## Current Step
 
-ROUND 4, the closing round: book round 3's PASS, rotate the ledger, flip
-F267's STATUS line to accepted with its README pins in the same commit,
-and open the pull request. T001 to T003 are built and the package is
-READY_FOR_REVIEW.
+ROUND 3, the closure sequence's evidence half: book round 2's PASS, whose
+one full suite is green, then build the evidence bundle against the fork
+point and the fresh review package.
 
 ## Next Steps
 
-1. The next session merges this feature's pull request at the Open PR
-   Gate, then claims the next feature under Rule A5.
+1. The closing round: the verdict bookings, the ledger rotation, the
+   STATUS flip and the pull request.
 
 ## Risks
 
