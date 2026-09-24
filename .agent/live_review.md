@@ -1,31 +1,34 @@
-# Live Review — F282 Findings paydown v2
+# Live Review — F264 Steering channel (remedy chat)
 
-> Round-by-round review record, re-headed at the F282 claim per
-> docs/agents/planner_reviewer_prompt.md §1. The heading this replaces named F263, whose STATUS
-> line went `[x]` at `52c66a68` and whose pull request 268 the operator merged into `main` as
-> `64cffc44`, with both hosted CI columns of that pull request ending `pass`. F263's round 9 —
-> its closure round — has no gate entry, by construction (§4 item 13 of
-> docs/agents/planner_reviewer_prompt.md), and no reviewer read it before the merge; the
-> planner and reviewer of F282's first session read it at this claim, over `872b4c23`..`52c66a68`:
-> VERDICT PASS. Its four commits carry 241, 10, 24 and 205 insertions by `git show --numstat`,
-> each under the 500-line cap; the round's block and its ten payloads read out of `52c66a68`
-> equal the reviewer's originals under `.remedy-wt/` byte for byte; `docs/roadmap/STATUS.md`,
-> `README.md` and `scripts/self_use_queue.json` at `52c66a68` carry exactly the sha256 that
-> round's block ordered; and `52c66a68` is the second parent of `64cffc44`. Operator amendment
-> amend0923-selfuse-write then merged as `b8fa02ba`, this branch's fork point, resolving R-0829
-> and registering R-1043, R-1044 and R-1045. Only the heading, this paragraph and the `## Steps`
+> Round-by-round review record, re-headed at the F264 claim per
+> docs/agents/planner_reviewer_prompt.md §1. The heading this replaces named F282, whose STATUS
+> line went `[x]` at `9432afeb` and whose pull request 270 merged into `main` at the reviewer's
+> Open PR Gate under docs/agents/self_drive_protocol.md, as `ef4cb503`, after both hosted CI jobs
+> of run 35942106604 ended `success`. F282's round 13 — its closure round — has no gate entry,
+> by construction (§4 item 13 of docs/agents/planner_reviewer_prompt.md); the planner and
+> reviewer of F264's first session read it at this claim, over `f6fd80de`..`9432afeb`: VERDICT
+> PASS. Its five commits carry 414, 12, 214, 58 and 201 insertions by `git show --numstat`, the
+> last of them 12 outside `.agent/handoff.md`, each under the 500-line cap; the round's block and
+> its four payloads read out of `9432afeb` equal the reviewer's originals under `.remedy-wt/`
+> byte for byte; `docs/roadmap/STATUS.md` and `README.md` at `9432afeb`, and the ledger, its
+> archive, `docs/roadmap/features/T2_F284.md` and `tests/docs/test_docs_consistency.py` at the
+> commits that wrote them, carry exactly the sha256 that round's block ordered; and `9432afeb`
+> is the second parent of `ef4cb503`. Only the heading, this paragraph and the `## Steps`
 > section below are rewritten. Everything from the `## Findings` line to the end of the file is
 > carried forward BYTE-IDENTICAL, and finding ids continue the monotonic R-XXXX series across
-> the re-head. The open set at `b8fa02ba`, computed with `open_finding_ids` from
-> `scripts/rotate_live_review.py`, is 30 by distinct id, and F282 owns all of them: its feature
-> file lists each under a slice.
+> the re-head. The open set at `ef4cb503`, computed with `open_finding_ids` from
+> `scripts/rotate_live_review.py`, is 3 by distinct id — R-0499, R-0950 and R-1008 — and F284
+> owns all of them; F264 owns whatever it registers itself.
 
 ## Steps
 
-THE ORDER BELOW IS T2_F282.md's Task slicing, written at the claim. R1 claims F282, re-heads
-this record, resolves R-0984 by its hosted reading and lands T001, R-0998's verdict reader.
-Later rounds take the slices in the file's order, several to a round where they are small,
-and every round's handback states the open set by distinct id.
+THE ORDER BELOW IS T5_F264.md's Orchestrator brief. R1 claims F264, re-heads this record and
+lands T001's first half: the sealed steering record, certified into the run log, and
+`remedy chat`, its first caller, with DECISION F264 D1 fixing the record's shape. T001's second
+half, the cockpit's route over F009's write channel, comes next; T002, consumption at the
+run's safe point with a red proof that a mid-call message waits, and T003, the acknowledgement
+in the cockpit and in `remedy chat`, follow. Every round's handback states the open set by
+distinct id.
 ## Findings
 
 - R-0499 — Low, THE EIGHT-FILE STRUCTURAL SWEEP GOES RED ABOUT ONCE IN TWENTY RUNS INSIDE A FRESH GIT WORKTREE, AND THE FAILING NODE ID HAS NEVER BEEN CAPTURED. Raised by the reviewer at the R8 authoring dry run. Two observations exist and both are inside a disposable worktree, never in the primary checkout: the F085 R7 worker saw one red in 22 runs on a scratch worktree carrying a larger draft change and did not capture the node id, and the reviewer saw one red in 14 runs on the R8 dry-run worktree and did not capture it either, because the run that produced it was not the run that carried `-rf` output to the log. The red reading is `1 failed, 348 passed, 7 skipped` against the green `350 passed, 6 skipped`, so a test that normally PASSES was SKIPPED in the same run that another test failed — which is the signature of an environment-conditional skip rather than of a logic defect. The sweep's only environment-conditional member is `test_typescript_compiles` in `tests/ui_server/test_dashboard_contract.py`, which resolves `apps/ui/node_modules/.bin/tsc` relative to the file's own tree, skips with "UI toolchain absent" when that path is missing, and otherwise shells out to a REAL `tsc --noEmit` under `timeout=30` — the one member of the eight-file sweep that depends on a heavy external toolchain and on wall-clock. `node_modules` is gitignored, so a fresh worktree's copy of it is populated out of band and its state at the worktree's FIRST sweep run is not something the sweep controls. Nothing in the F085 change set reaches any of the eight files, so this is a pre-existing property of the gate and not of the guard. Counter-measure, already applied in the block that registers this finding: the sweep is ordered as a PROBE carrying `-rf`, never as an expected COLOUR, and a red run reports its FAILED node id verbatim and hands back rather than re-running until green — which is the only way the id gets captured. The finding resolves when a red run finally names the test. Whether `test_typescript_compiles` belongs in a structural sweep at all is a question for the F252 flake work and is NOT claimed here. OPEN.

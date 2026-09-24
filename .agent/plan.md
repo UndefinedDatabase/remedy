@@ -1,27 +1,33 @@
-# Plan — F282 Findings paydown v2
+# Plan — F264 Steering channel (remedy chat)
 
-Branch: feature/f282-findings-paydown-v2, cut from `main` at
-`b8fa02ba`, the merge commit of pull request 269 (amend0923-selfuse-write).
+Branch: feature/f264-steering-channel, cut from `main` at `ef4cb503`,
+the merge commit of pull request 270 (F282 Findings paydown v2).
 
 ## Goal
 
-Pay down the open findings that describe a real defect, each by the repair
-its own text names, with the evidence that discharged it
-(`docs/roadmap/features/T2_F282.md`). The open set at the claim is 30 by
-distinct id, and the feature file lists every one under a slice.
+A free-form steering message to a running job, accepted over the CLI and
+the cockpit, read at the run's next safe point, and acknowledged with what
+was understood and from which round it applies
+(`docs/roadmap/features/T5_F264.md`). Open findings at the claim: 3, all
+owned by F284.
 
 ## Current Step
 
-ROUND 13, the closing round: book round 12, move R-0499, R-0950 and
-R-1008 to F284, rotate the ledger, register F284 — Findings paydown v3,
-flip F282's STATUS line with the README counters, and open the pull
-request, which the next feature's session merges.
+ROUND 1: claim F264, re-head the live review record, record DECISION F264
+D1, and land T001's first half — `packages/orchestration/steering.py`, the
+sealed record certified into the run log, and `remedy chat`, its first
+caller, with their tests and red proofs.
 
 ## Next Steps
 
-1. The next session: the Open PR Gate for this feature's pull request,
-   then Rule A5.
+1. T001's second half: the cockpit's route, `chat.send` exposed on F009's
+   write channel.
+2. T002: consumption at the run's next safe point, with a red proof that a
+   mid-call message waits.
+3. T003: the acknowledgement event, in the cockpit and in `remedy chat`.
+4. The closure sequence.
 
 ## Risks
 
-None open inside this feature; its three carried ids belong to F284.
+T002's safe-point boundary is the property most likely to be quietly
+violated; its red proof is not optional.

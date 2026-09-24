@@ -55,7 +55,7 @@ The tier-block order below is the operator-decided Self-Use sequence of 2026-08-
 
 ## Tier 5 — Steering & Learning Surfaces (operator order amend0831)
 
-- [ ] F264 — Steering channel (remedy chat)
+- [~] F264 — Steering channel (remedy chat)
 - [ ] F265 — Teacher learning UI v1 (post-task lessons)
 
 ## Tier 0 — Foundation & Trust Core

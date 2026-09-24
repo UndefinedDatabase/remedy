@@ -1,32 +1,39 @@
-# Context — F282 Findings paydown v2
+# Context — F264 Steering channel (remedy chat)
 
 ## Active Branch
-feature/f282-findings-paydown-v2, cut from `main` at `b8fa02ba`
-(the merge commit of pull request 269, amend0923-selfuse-write).
+feature/f264-steering-channel, cut from `main` at `ef4cb503`
+(the merge commit of pull request 270, F282 Findings paydown v2).
 
 ## Scope
-F282 (Tier 2), registered 2026-09-19 by F273's closure under operator
-amendment amend0911-feedback rule B, the rolling findings paydown. It
-repairs the open findings each by the fix its own text names, one slice
-per module, as `docs/roadmap/features/T2_F282.md` lists them; its soft
-limit is 8 sessions, after which it closes and carries the rest.
+F264 (Tier 5), registered 2026-08-31 by operator order
+amend0831-vocab-registrations. It builds the steering channel: a free-form
+message to a running job, persisted and certified (T001), folded into the
+next prompt at the run's next safe point (T002), and acknowledged with what
+was understood and from which round (T003), in `remedy chat` and in the
+cockpit, as `docs/roadmap/features/T5_F264.md` specifies. F269 already built
+the mission side: `mission_contract.amend_mission_contract`, the round of
+effect and the ledger acknowledgement; F264 owns the route a message
+arrives by (DECISION F269 D8).
 
 ## Do not touch
-The resolutions earlier features landed: the record is append-only. The
-approval gate, and the reviewer's write mode in
-`packages/orchestration/pingpong_loop.py`.
+F009's write-channel contract — its route, payload shape, authentication,
+nonce and rate limit; a new exposed catalog id is the extension point F009
+D4 built, not a widening. The approval gate. The model call itself: nothing
+here reaches into a call in flight. Co-editing a job's worktree is a non-goal
+(DECISION amend0921-operator-feedback D5).
 
 ## Active assumptions
-- A finding's own FIX clause is its spec; a repair that needs a ruling the
-  clause does not give is recorded as a dated DECISION F282 D<n>.
-- A resolution by evidence alone names the commit or hosted run it read.
+- A steering message is job-keyed: `remedy do` can make a job with no
+  mission, and the channel must serve it (DECISION F264 D1).
+- A sealed record never changes; the round a message is consumed in is
+  recorded by T002 as a fact of its own.
 
 ## Constraints
 - `python3 -m ruff check <path>` is the spelling every gate orders.
 - A round touching `docs/roadmap/**` also gates `tests/docs/` and
   `tests/orchestration/test_roadmap_index.py`.
-- A new `# noqa: BLE001` handler is never added: `tests/test_ble001_ratchet.py`
-  holds the count at its frozen ceiling, so a handler names what it catches.
+- A new module under `apps/` or `packages/` joins
+  `tests/orchestration/import_reachability_allowlist.txt` in the same round.
 - Destructive verification runs only inside a disposable git worktree under
   `.remedy-wt/`, never in the primary checkout, which satisfies
   `git status --porcelain` empty at every verdict.
@@ -34,10 +41,9 @@ approval gate, and the reviewer's write mode in
   suite runs exactly once per feature, in the closure sequence's
   integration-gate round; a round runs targeted pytest files, the golden
   path, `tests/docs/` when `docs/roadmap/**` changed, and ruff.
-- No finding is resolved by deleting a test, weakening an assertion or
-  raising a ceiling.
 
-This feature is NOT UI work — no design-reference binding applies.
+The cockpit half (T001's route and T003's rendering) is UI work and binds
+`docs/ui/design_reference`; round 1 touches no UI component.
 
 ## Steps
 The item-status table for each round lives in that round's handback,
