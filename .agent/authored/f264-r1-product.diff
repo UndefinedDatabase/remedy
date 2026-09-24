@@ -1,0 +1,213 @@
+diff --git a/apps/cli/command_catalog.py b/apps/cli/command_catalog.py
+index 72d4d499..40530855 100644
+--- a/apps/cli/command_catalog.py
++++ b/apps/cli/command_catalog.py
+@@ -146,6 +146,7 @@ GROUPS: dict[str, GroupDef] = {
+     "runtime": GroupDef("runtime", "Runtime", "Start, probe and stop the project's repo dev server.", feature="F007", reach="job-path"),
+     "stats": GroupDef("stats", "Stats", "Honest counts from the run evidence on disk.", feature="F010", reach="job-path"),
+     "absorb": GroupDef("absorb", "Absorb", "Absorb hand edits into this repo's unfinished jobs and their tasks.", feature="F263", reach="job-path"),
++    "chat": GroupDef("chat", "Chat", "Steer a running job and its tasks with a message read at the job's next safe point.", feature="F264", reach="job-path"),
+     # -- Advanced / internal commands (callable but hidden from default help) --
+     "patch": GroupDef("patch", "Patch", "Review and apply patch intents.", user_facing=False, feature="F033", reach="job-path"),
+     "test": GroupDef("test", "Test", "Discover and execute tests in the project's repo.", user_facing=False, feature="F261", reach="job-path"),
+@@ -168,8 +169,8 @@ GROUPS: dict[str, GroupDef] = {
+ 
+ #: The default `remedy --help` order (DECISION amend0905-vocab D4, clarified by
+ #: amend0911-feedback D1): the sixteen visible groups in this fixed order, then
+-#: `absorb` (F263, shipped) and `chat` (F264) once it ships — the reserved slot is
+-#: not registered as an empty group (D1). `_print_root_help` iterates this tuple, never
++#: the two reserved slots, `absorb` (F263) and `chat` (F264), both shipped; neither
++#: slot was ever registered as an empty group (D1). `_print_root_help` iterates this tuple, never
+ #: `GROUPS`' own dict order, so a new visible group added elsewhere in `GROUPS`
+ #: cannot silently reorder the help output; `TestVisibleGroupOrder` in
+ #: `tests/test_command_catalog.py` pins both the tuple's own content and its
+@@ -177,7 +178,7 @@ GROUPS: dict[str, GroupDef] = {
+ VISIBLE_GROUP_ORDER: tuple[str, ...] = (
+     "do", "mission", "job", "run", "decision", "status", "stats", "teacher",
+     "memory", "ui", "config", "doctor", "project", "init", "worker", "runtime",
+-    "absorb",
++    "absorb", "chat",
+ )
+ 
+ 
+@@ -268,6 +269,26 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
+         supports_json=True,
+     ),
+ 
++    # ── chat (F264 T001, DECISION F264 D1) ──────────────────────────────
++    CommandEntry(
++        command_id="chat.send",
++        group_id="chat",
++        subcommand="send",
++        description="Send a running job a steering message for its tasks; it is recorded as "
++                    "evidence and read at the job's next safe point, never inside a model call.",
++        action_class="write_metadata",
++        args=(
++            ArgDef("job_id", "The job whose tasks to steer (its ID, or a unique prefix of it)"),
++            ArgDef("message", "The message, quoted as one argument"),
++            _JSON_OPT,
++        ),
++        supports_json=True,
++        may_mutate_repo=False,
++        may_execute_commands=False,
++        related=("job.show", "job.stop"),
++        exit_codes=(0, 1, 2, 3),
++    ),
++
+     # ── status ──────────────────────────────────────────────────────────
+     CommandEntry(
+         command_id="status.run",
+diff --git a/apps/cli/commands/__init__.py b/apps/cli/commands/__init__.py
+index 0d887f5e..35e2dc33 100644
+--- a/apps/cli/commands/__init__.py
++++ b/apps/cli/commands/__init__.py
+@@ -31,6 +31,7 @@ def collect_all_handlers() -> dict[str, Callable[[argparse.Namespace], None]]:
+         blocker,
+         brain,
+         change,
++        chat_cmd,
+         ci_cmd,
+         config_cmd,
+         contract_cmd,
+@@ -66,6 +67,6 @@ def collect_all_handlers() -> dict[str, Callable[[argparse.Namespace], None]]:
+     )
+ 
+     table: dict[str, Callable[[argparse.Namespace], None]] = {}
+-    for mod in (init_cmd, job, project, patch, test_cmds, brain, worker, memory, file, change, event, blocker, decision, ui, do_cmd, self_cmd, real_test_execution_cmd, dev, roadmap_cmd, integrity_cmd, snapshot_cmds, config_cmd, worker_facade_cmd, runtime_cmd, failure_stats_cmd, stats_ledger_cmd, job_stop_cmd, job_context_cmd, status_cmd, mission_cmd, bench_cmd, ci_cmd, teacher_cmd, study_cmd, contract_cmd, data_cmd, absorb_cmd):
++    for mod in (init_cmd, job, project, patch, test_cmds, brain, worker, memory, file, change, event, blocker, decision, ui, do_cmd, self_cmd, real_test_execution_cmd, dev, roadmap_cmd, integrity_cmd, snapshot_cmds, config_cmd, worker_facade_cmd, runtime_cmd, failure_stats_cmd, stats_ledger_cmd, job_stop_cmd, job_context_cmd, status_cmd, mission_cmd, bench_cmd, ci_cmd, teacher_cmd, study_cmd, contract_cmd, data_cmd, absorb_cmd, chat_cmd):
+         table.update(mod.COMMAND_HANDLERS)
+     return table
+diff --git a/apps/cli/grouped.py b/apps/cli/grouped.py
+index a5f870f5..2e2d8c13 100644
+--- a/apps/cli/grouped.py
++++ b/apps/cli/grouped.py
+@@ -290,7 +290,8 @@ class _SilentParser(argparse.ArgumentParser):
+ 
+ 
+ _DEFAULT_COMMAND: dict[str, str] = {
+-    "ui": "start", "do": "run", "init": "run", "status": "run", "absorb": "run"}
++    "ui": "start", "do": "run", "init": "run", "status": "run", "absorb": "run",
++    "chat": "send"}
+ _ALWAYS_INJECT: set[str] = {"init", "status", "absorb"}
+ 
+ 
+diff --git a/apps/ui/src/api/humanizeCatalog.ts b/apps/ui/src/api/humanizeCatalog.ts
+index 40dafed0..10395a80 100644
+--- a/apps/ui/src/api/humanizeCatalog.ts
++++ b/apps/ui/src/api/humanizeCatalog.ts
+@@ -76,6 +76,7 @@ export const STREAM_EVENT_CATALOG: Readonly<Record<string, string>> = {
+   "snapshot_create_completed": "The repository snapshot was created.",
+   "snapshot_verified": "The repository snapshot was verified.",
+   "source_patch_applied": "A source patch was applied.",
++  "steering_message_received": "Your steering message was recorded for the job's next safe point.",
+   "stream_cap_reached": "The stream hit its size cap and stopped recording.",
+   "task_gate_evaluated": "The task's gate was evaluated.",
+   "task_round_completed": "A review round of a task finished.",
+diff --git a/docs/guides/exit-codes.md b/docs/guides/exit-codes.md
+index 50540b36..db471902 100644
+--- a/docs/guides/exit-codes.md
++++ b/docs/guides/exit-codes.md
+@@ -69,6 +69,7 @@ Every command not listed here exits only `0`, `1` or `2`.
+ | `remedy mission pause` | 3 |
+ | `remedy mission resume` | 3 |
+ | `remedy job resume` | 3 |
++| `remedy chat send` | 3 |
+ | `remedy runtime serve` | 3, 4, 5 |
+ | `remedy runtime probe` | 3, 4, 5 |
+ | `remedy runtime stop` | 5 |
+diff --git a/packages/orchestration/event_names.py b/packages/orchestration/event_names.py
+index 511041c4..33597dc1 100644
+--- a/packages/orchestration/event_names.py
++++ b/packages/orchestration/event_names.py
+@@ -118,6 +118,7 @@ EVENT_NAMES: frozenset[str] = frozenset(
+         "snapshot_create_completed",
+         "snapshot_verified",
+         "source_patch_applied",
++        "steering_message_received",
+         "task_completed",
+         "task_decision_answered",
+         "task_needs_decision",
+diff --git a/tests/cli/test_cli_ux.py b/tests/cli/test_cli_ux.py
+index 8a95ce59..811a5e62 100644
+--- a/tests/cli/test_cli_ux.py
++++ b/tests/cli/test_cli_ux.py
+@@ -16,7 +16,7 @@ from apps.cli.grouped import main as grouped_main
+ _USER_FACING_GROUPS = {
+     "do", "mission", "job", "run", "decision", "status", "stats",
+     "teacher", "memory", "ui", "config", "doctor", "project", "init", "worker", "runtime",
+-    "absorb",
++    "absorb", "chat",
+ }
+ 
+ # Internal groups that MUST NOT appear in default help
+@@ -756,12 +756,13 @@ class TestGroupDefIntegrity:
+         assert sorted(kept - set(GROUPS)) == []
+ 
+     def test_catalog_partition_matches_d4(self):
+-        """The catalog carries exactly 32 groups partitioned as DECISION amend0905-vocab D4 names them.
++        """The catalog carries exactly 33 groups partitioned as DECISION amend0905-vocab D4 names them.
+ 
+         The 31st is F276's advanced `data` group, added after D4 was ruled; the 32nd is F263's
+-        visible `absorb`, the first reserved slot D4 named.
++        visible `absorb`, the first reserved slot D4 named, and the 33rd is F264's visible `chat`,
++        the second.
+         """
+-        assert len(GROUPS) == 32
++        assert len(GROUPS) == 33
+ 
+         # Only roadmap should be hidden
+         hidden_groups = {gid for gid, g in GROUPS.items() if g.hidden}
+diff --git a/tests/cli/test_golden_path.py b/tests/cli/test_golden_path.py
+index 0d88e97c..aa37066f 100644
+--- a/tests/cli/test_golden_path.py
++++ b/tests/cli/test_golden_path.py
+@@ -704,7 +704,7 @@ class TestStatus:
+ class TestHelpPinning:
+     def test_visible_groups_in_d4_order(self, tmp_path):
+         """DECISION amend0905-vocab D4 (binding, complete): the sixteen visible
+-        groups, then F263's `absorb`, appear in `remedy --help` in this fixed order,
++        groups, then F263's `absorb` and F264's `chat`, appear in `remedy --help` in this fixed order,
+         `do` pinned first."""
+         from apps.cli.command_catalog import VISIBLE_GROUP_ORDER
+ 
+diff --git a/tests/orchestration/import_reachability_allowlist.txt b/tests/orchestration/import_reachability_allowlist.txt
+index 8d71cde3..323ba33c 100644
+--- a/tests/orchestration/import_reachability_allowlist.txt
++++ b/tests/orchestration/import_reachability_allowlist.txt
+@@ -10,6 +10,7 @@ apps.cli.commands.bench_cmd
+ apps.cli.commands.blocker
+ apps.cli.commands.brain
+ apps.cli.commands.change
++apps.cli.commands.chat_cmd
+ apps.cli.commands.ci_cmd
+ apps.cli.commands.config_cmd
+ apps.cli.commands.contract_cmd
+@@ -223,6 +224,7 @@ packages.orchestration.source_apply
+ packages.orchestration.spec_compliance
+ packages.orchestration.staging_workspace
+ packages.orchestration.status_mirror
++packages.orchestration.steering
+ packages.orchestration.stop_reasons
+ packages.orchestration.stream_evidence
+ packages.orchestration.structured_base
+diff --git a/tests/test_command_catalog.py b/tests/test_command_catalog.py
+index 068ff8f7..81a1c2c1 100644
+--- a/tests/test_command_catalog.py
++++ b/tests/test_command_catalog.py
+@@ -324,14 +324,14 @@ class TestCatalogLookups:
+ class TestVisibleGroupOrder:
+     """DECISION amend0905-vocab D4, clarified by amend0911-feedback D1: the
+     default `remedy --help` order is these sixteen groups in this fixed order, then
+-    `absorb`, the first of the two reserved slots, filled by F263."""
++    the two reserved slots, `absorb` filled by F263 and `chat` filled by F264."""
+ 
+     def test_visible_group_order_matches_d4(self) -> None:
+         from apps.cli.command_catalog import VISIBLE_GROUP_ORDER
+         assert VISIBLE_GROUP_ORDER == (
+             "do", "mission", "job", "run", "decision", "status", "stats", "teacher",
+             "memory", "ui", "config", "doctor", "project", "init", "worker", "runtime",
+-            "absorb",
++            "absorb", "chat",
+         )
+ 
+     def test_visible_group_order_is_exactly_the_visible_groups(self) -> None:
