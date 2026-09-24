@@ -20514,3 +20514,59 @@ closing `PASS`, rejected because a Medium finding this feature owned leaves open
 HOW TO REVERSE: delete `docs/roadmap/features/T2_F285.md`, its STATUS line and the two headings
 around it, restore `TOTAL_FEATURES` to 284 and the README counters, delete the `Owner: F285`
 line from R-1008's paragraph, and delete this paragraph.
+
+## DECISION F020 D1 — one geometry source of SVG path strings the canvas builds its Path2D from, one state table that names tokens only, and a grey state token for the veto (2026-09-24)
+
+CONTEXT: T5_F020.md orders T001, `glyphPaths.ts` and `nodeStates.ts` as pure modules with
+svg-string unit tests and a token guard. Measured at `955a6240`: `assets_spec.md` §4 names the
+glyph module's path, `apps/ui/src/components/graph/renderers/glyphPaths.ts`, a 24×24 box, and the
+shapes per kind; `graph_spec.md` §5 draws run glyphs only from the L1 zoom, which §10 enters above
+1.6; `ForceBrainGraph.tsx` paints every non-core kind as the same sphere through `NODE_PAINTERS`,
+F019's glyph slots, with its state colours as raw literals under the canvas carve-out;
+`tests/ui_contracts/test_raw_colour_ratchet.py` reads `.css` and `.tsx` files only, so a `.ts`
+module is outside every colour gate; no `--remedy-state-*` token exists for `vetoed`, which the
+painter fills with `#9aa9c5`, the value of `--remedy-faint`; the app token sheet lacks the
+reference's `--remedy-graph-node-ring`; `tokens_rules.md` lets a graph renderer paint only state
+and graph tokens, and adds a token only with the sheet, that file and one usage; and the vitest
+environment is `node`, which has no `Path2D`.
+
+CHOSEN: (1) THE MODULES live in `apps/ui/src/components/graph/renderers/`, the path
+`assets_spec.md` §4 names. (2) THE ONE SOURCE is SVG path data: each glyph is a stroke string and a
+fill string in the 24×24 box, the canvas builds its Path2D with `new Path2D(<the same string>)`,
+cached per geometry, and the legend renders the strings as SVG, so the two cannot drift. Paths use
+absolute M, L, H, V, A and Z only, so a test reads every coordinate without a path library, and
+each glyph's declared bounds are checked against the extent its path really reaches. (3) THE
+SHAPES follow `assets_spec.md` §4: the core's `</>` mark on its sphere, the task circle, the
+builder's drawn `</>`, the reviewer's head and shoulders, the repair `</>` inside a three-quarter
+ring with its arrow, the flask, the synapse dot, the document with its folded corner filled, and
+the cluster ring, whose count the painter writes as text. The core's painter may keep its `</>` as
+text, as `graph_spec.md` §5 allows; its geometry is here for the legend. No `decision` glyph is
+drawn, because the ontology has no decision kind. (4) THE STATE MARKS — the status dot, the 45°
+strike and the planned ring — are geometry too and live in `glyphPaths.ts`; `nodeStates.ts`
+chooses which state carries which. (5) THE STATE TABLE names tokens and never values: fills from
+`--remedy-state-*`, a soft halo at 40% (35% for a pass), none for a planned node, which is drawn at
+90% with its ring; failed and blocked carry the status dot and are drawn alike, as `graph_spec.md`
+§5's one blocked/failed row does; the veto carries the strike and dims what hangs below it to 40%;
+the dot and the strike are outlined in `--remedy-graph-node-ring` so each stands off the node
+beneath it; only the in-progress state pulses, ±8% over `--remedy-dur-pulse`, and reduced motion
+holds every node still. (6) THE VETO'S GREY becomes `--remedy-state-vetoed: #9aa9c5`, the value the
+painter already draws, added to both token sheets with its line in `tokens_rules.md`, and
+`--remedy-graph-node-ring` is transcribed byte-exact into the app sheet. (7) THE TOKEN GUARD is
+`tests/ui_contracts/test_node_glyph_tokens.py`, beside `test_brain_motion_tokens.py`: every token
+the state module names resolves in the app sheet with the reference's value, the colours T5_F020.md
+fixes are the values of the tokens that paint them, the pulse constant is the token's value,
+neither module holds a raw colour, and both headers quote `assets_spec.md` §4's precedence rule
+verbatim. (8) T002 resolves the tokens once per mount in `renderers/palette.ts`, the palette bridge
+`tokens_rules.md` names, and swaps F019's glyph slots for these modules.
+
+ALTERNATIVES: separate canvas and SVG geometry kept equal by a test, rejected because two copies
+are exactly the drift the feature exists to remove; colour values in the state module, rejected
+because `tokens_rules.md` forbids them outside the token sheet and the canvas carve-out; the veto
+painted with `--remedy-faint`, rejected because only a `--remedy-state-*` token may carry a
+status colour; the guard as a vitest test, rejected because the `node` environment reads no CSS
+and the motion guard's Python form is the precedent.
+
+HOW TO REVERSE: delete `apps/ui/src/components/graph/renderers/`,
+`tests/ui_contracts/test_node_glyph_tokens.py`, the two tokens and their comment from
+`apps/ui/src/styles/tokens.css`, `--remedy-state-vetoed` from
+`docs/ui/design_reference/tokens.css`, its two lines in `tokens_rules.md`, and this paragraph.

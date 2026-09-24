@@ -146,7 +146,7 @@ Milestone R1 — Remedy as the daily tool: Tier 2 complete (F086 as the self-ins
 
 ## Tier 5 — Operator Cockpit (parallel human track, continued)
 
-- [ ] F020 — Node lifecycle & glyph language
+- [~] F020 — Node lifecycle & glyph language
 - [ ] F023 — Semantic zoom L0–L3
 - [ ] F024 — Phase timeline with scrubber
 - [ ] F025 — Pause/resume (global & per node)

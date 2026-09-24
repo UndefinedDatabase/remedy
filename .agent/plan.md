@@ -1,29 +1,33 @@
-# Plan — F284 Findings paydown v3
+# Plan — F020 Node lifecycle & glyph language
 
-Branch: feature/f284-findings-paydown-v3, cut from `main` at
-`a36a8759`, the merge commit of pull request 275 (F019 Live node
-materialization).
+Branch: feature/f020-node-lifecycle-glyph-language, cut from `main` at
+`955a6240`, the merge commit of pull request 276 (F284 Findings paydown
+v3).
 
 ## Goal
 
-Pay down the four open findings F284 owns, each by the repair its own text
-names, with the evidence that discharged it
-(`docs/roadmap/features/T2_F284.md`, DECISIONS F284 D1 to D3).
+Every node tells its truth at a glance: one glyph per kind and one state
+language, drawn on the canvas and in the legend from a single source, with
+state transitions animated per the motion tokens and a conformance fixture
+over the whole kind-by-state matrix (`docs/roadmap/features/T5_F020.md`).
 
 ## Current Step
 
-ROUND 4, THE CLOSING ROUND: book round 3's PASS, carry R-1008 to F285,
-rotate the ledger, register F285 — Findings paydown v4, accept F284 in
-STATUS with its README pins, and open the pull request. T001, T002 and
-T003 are built; the package is READY_FOR_REVIEW.
+ROUND 1: claim F020, re-head the live review record with F284's round 4
+verdict, record DECISION F020 D1, and land T001 — `glyphPaths.ts` and
+`nodeStates.ts` under `apps/ui/src/components/graph/renderers/`, their
+vitest tests, the two tokens they need, and the token guard.
 
 ## Next Steps
 
-1. The next session's Open PR Gate merges this feature's pull request.
-2. Rule A5 then claims the first unchecked feature in
-   `docs/roadmap/STATUS.md`.
+1. T002: the canvas painter reads both modules in place of F019's glyph
+   slots through the palette bridge `renderers/palette.ts`, the legend is
+   generated from the same source, and the matrix fixture.
+2. T003: transition and pulse motion with visibility pausing, the
+   conformance assertions and the live fixture pass.
+3. The closure sequence.
 
 ## Risks
 
-R-1008 is carried to F285, because the closure's self-use track found no
-eligible item. Open findings: 1, owned by F285.
+The veto is drawn by no reducer yet, so its treatment is proved by the
+matrix fixture alone. Open findings after this round: 1, owned by F285.
