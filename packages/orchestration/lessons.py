@@ -18,6 +18,9 @@ a diff too large to send whole, a spent pot, an unusable transport or an unreada
 produce a record whose status says which, and none of them carries a summary. A lesson built
 from part of a diff while presenting itself as complete would teach the plan, not what
 shipped (T5_F265.md, "Design").
+
+The read side is `job_lessons_overview`, which the cockpit's `/api/jobs/<job_id>/lessons` route
+serves: one row per task, the stored lesson or the reason there is none (DECISION F265 D2).
 """
 from __future__ import annotations
 
@@ -26,7 +29,7 @@ import hashlib
 import json
 import os
 import sqlite3
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Mapping, Sequence
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -333,6 +336,46 @@ def _publish(body: dict[str, Any], root: Path | None) -> dict[str, Any]:
     if not published:
         return load_lesson(body["run_id"], root) or body
     return body
+
+
+#: A task with no stored lesson; the row's reason says whether it has not run, lessons were
+#: off, or none was written.
+STATUS_NONE = "none"
+#: A stored lesson that failed verification; its content is never shown.
+STATUS_NOT_INTACT = "not_intact"
+_OVERVIEW_FIELDS = ("lesson_id", "status", "reason", "mission_id", "model", "generated_at",
+                    "diff_sha256", "summary", "constructs", "ungrounded")
+
+
+def job_lessons_overview(tasks: Sequence[Any], *, enabled: bool,
+                         root: Path | None = None) -> list[dict[str, Any]]:
+    """One row per task, in task order: its stored lesson, or why it has none. READ-ONLY.
+
+    This is the index the learning overlay renders (DECISION F265 D2). Nothing here generates:
+    a lesson is shown as it was stored, and a task without one says why, so an empty index is
+    never silent. A lesson that fails verification is named as such and its text withheld.
+    """
+    rows: list[dict[str, Any]] = []
+    for task in tasks:
+        run_id = str(getattr(task, "run_id", "") or "")
+        row: dict[str, Any] = {"task_id": str(getattr(task, "task_id", "")),
+                               "title": str(getattr(task, "title", "") or ""), "run_id": run_id}
+        if not run_id:
+            rows.append({**row, "status": STATUS_NONE, "reason": "this task has not run yet"})
+            continue
+        try:
+            lesson = load_lesson(run_id, root)
+        except LessonError:
+            rows.append({**row, "status": STATUS_NOT_INTACT,
+                         "reason": "the stored lesson failed its integrity check"})
+            continue
+        if lesson is None:
+            reason = ("no lesson was stored for this run" if enabled else
+                      "lessons are switched off; the teacher.lessons setting turns them on")
+            rows.append({**row, "status": STATUS_NONE, "reason": reason})
+            continue
+        rows.append({**row, **{field: lesson[field] for field in _OVERVIEW_FIELDS}})
+    return rows
 
 
 def lessons_enabled() -> bool:

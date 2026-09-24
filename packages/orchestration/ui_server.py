@@ -1746,6 +1746,15 @@ def _build_digest_json(job: Any) -> dict[str, Any]:
     return build_job_digest(job, events)
 
 
+def _build_lessons_json(job: Any) -> dict[str, Any]:
+    """The job's lessons, one row per task, as stored (F265, DECISION F265 D2). READ-ONLY."""
+    from packages.orchestration.lessons import job_lessons_overview, lessons_enabled
+
+    enabled = lessons_enabled()
+    return {"job_id": str(job.job_id), "lessons_enabled": enabled,
+            "lessons": job_lessons_overview(job.tasks, enabled=enabled)}
+
+
 def _build_next_action_json(job: Any) -> dict[str, Any]:
     """Build next-action suggestion."""
     from packages.orchestration.ui_view_model import build_next_action
@@ -1887,7 +1896,24 @@ def _safe_event_summary(seq: int, event: dict[str, Any]) -> dict[str, Any]:
         summary["budget"] = _budget_tick_summary_payload(metadata)
     if kind == "steering_message_consumed":
         summary["steering"] = _steering_ack_summary_payload(metadata)
+    if kind == "task_lesson_written":
+        summary["lesson"] = _lesson_summary_payload(metadata)
     return summary
+
+
+def _lesson_summary_payload(metadata: Any) -> dict[str, str]:
+    """A stored lesson's announcement for the stream (F265, DECISION F265 D2).
+
+    CONDITIONAL on the event kind for the reason `budget` is. It names the Run whose lesson the
+    overlay can now read and the lesson's status, and nothing else: the lesson itself is read
+    from `/api/jobs/<job_id>/lessons` and never travels in a frame.
+    """
+    from packages.orchestration.lessons import LESSON_STATUSES
+
+    meta = metadata if isinstance(metadata, dict) else {}
+    status = meta.get("lesson_status")
+    return {"run_id": str(meta.get("run_id", "")),
+            "status": status if status in LESSON_STATUSES else ""}
 
 
 def _steering_ack_summary_payload(metadata: Any) -> dict[str, Any]:
@@ -2445,6 +2471,7 @@ class _RemedyHandler(BaseHTTPRequestHandler):
                 "diagnostics": _build_diagnostics_json,
                 "diff": _build_diff_json,
                 "digest": _build_digest_json,
+                "lessons": _build_lessons_json,
             }
             handler = handlers.get(endpoint)
             if handler:

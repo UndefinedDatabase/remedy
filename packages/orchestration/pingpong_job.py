@@ -3926,7 +3926,8 @@ def _teach_task_lesson(job: JobPlan, task: TaskEntry) -> None:
     """F265 T001: the completed task's lesson, when `teacher.lessons` is on (DECISION F265 D1).
 
     Called once the task is applied and saved and before the safe point, so a stop waits for
-    at most one teacher call. It never decides the job's outcome: a failure it expects — a
+    at most one teacher call. A lesson this call stores is announced on the job's run log as
+    `task_lesson_written`; a Run that already had one is not announced twice. It never decides the job's outcome: a failure it expects — a
     file, a record or a transport that will not cooperate — is logged and swallowed, because
     a teacher that could break a run would not be the passive role F255 specifies.
     """
@@ -3941,11 +3942,21 @@ def _teach_task_lesson(job: JobPlan, task: TaskEntry) -> None:
         from packages.orchestration.mission_state import mission_for_job
 
         mission = mission_for_job(str(job.job_id))
-        lessons.generate_lesson(
+        stored = lessons.load_lesson(task.run_id) is not None
+        lesson = lessons.generate_lesson(
             run_id=task.run_id, job_id=str(job.job_id), task_id=task.task_id,
             task_title=task.title, mission_id=mission.id if mission is not None else "",
             budgets=lessons.lesson_budgets(), config_file=lessons.lesson_role_overrides(),
             project_id=_resolve_job_ledger_project_id(job))
+        if not stored:
+            # The stream's announcement (DECISION F265 D2): the overlay reads the lesson itself
+            # from the job's lessons route, so the event names the Run and the status only.
+            from packages.orchestration.data_paths import resolve_data_root
+            from packages.orchestration.timeline import append_run_event
+
+            append_run_event(resolve_data_root(), job.job_id, event="task_lesson_written",
+                             metadata={"task_id": task.task_id, "run_id": task.run_id,
+                                       "lesson_status": lesson["status"]})
     except (OSError, RuntimeError, ValueError):
         import logging as _logging
         _logging.getLogger(__name__).error(
