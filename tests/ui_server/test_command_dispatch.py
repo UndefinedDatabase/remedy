@@ -243,6 +243,72 @@ class TestTaskPlanApprovalDispatchEffects:
         assert status == 200, body
         assert saves == [self.job_id], saves
 
+    def _save_a_real_plan(self):
+        """A plan the edit backend can edit: two tasks, the second waiting for the first."""
+        from packages.orchestration.job_plan import map_task_plan_to_tasks
+        from packages.orchestration.pingpong_job import save_job_plan
+        from packages.orchestration.schemas.models import TaskPlan
+
+        plan = TaskPlan.model_validate({"schema_v": "task_plan_v1", "tasks": [
+            {"id": "T1", "title": "Build parser", "goal": "g", "acceptance": ["parses"],
+             "depends_on": [], "est_tokens_band": "S", "files_hint": ["src/p.py"]},
+            {"id": "T2", "title": "Build report", "goal": "g", "acceptance": ["reports"],
+             "depends_on": ["T1"], "est_tokens_band": "S", "files_hint": ["src/r.py"]},
+        ]})
+        body = plan.model_dump()
+        body["_approval"] = "pending"
+        self.job.task_plan = body
+        self.job.tasks = map_task_plan_to_tasks(plan)
+        save_job_plan(self.job)
+
+    def test_an_edit_landing_after_the_door_loaded_the_job_is_approved_not_lost(
+            self, monkeypatch):
+        """DECISION F015 D2: the door consumes the approval against the record as it is NOW."""
+        from packages.orchestration import job_plan
+        from packages.orchestration.pingpong_job import load_job_plan
+        from packages.orchestration.plan_editing import edit_plan
+
+        self._save_a_real_plan()
+        real_questions = job_plan.open_clarification_questions
+
+        def questions_after_a_concurrent_edit(clarifications):
+            edit_plan(self.job_id, "plan_delete_task", {"task_id": "T2"}, expected_version=1,
+                      actor="cli")
+            return real_questions(clarifications)
+
+        port, token = _start_ui_server_for_job(self.job_id, self.tmp_path)
+        monkeypatch.setattr(job_plan, "open_clarification_questions",
+                            questions_after_a_concurrent_edit)
+        status, body = self._approve(port, token, "nonce-fp-race")
+
+        assert status == 200, body
+        stored = load_job_plan(self.job.job_id).task_plan
+        assert stored["_approval"] == "approved", stored
+        assert [t["id"] for t in stored["tasks"]] == ["T1"], stored
+        assert stored["_version"] == 2, stored
+
+    def test_an_approval_closed_after_the_door_loaded_the_job_declines_409(self, monkeypatch):
+        """The door read `pending`, then another door approved: nothing is approved twice."""
+        from packages.orchestration import job_plan
+        from packages.orchestration.pingpong_job import load_job_plan
+        from packages.orchestration.plan_editing import consume_plan_approval
+
+        self._save_a_real_plan()
+        real_questions = job_plan.open_clarification_questions
+
+        def questions_after_a_concurrent_approval(clarifications):
+            consume_plan_approval(load_job_plan(self.job.job_id), reason="reject", answers={},
+                                  questions=[])
+            return real_questions(clarifications)
+
+        port, token = _start_ui_server_for_job(self.job_id, self.tmp_path)
+        monkeypatch.setattr(job_plan, "open_clarification_questions",
+                            questions_after_a_concurrent_approval)
+        status, body = self._approve(port, token, "nonce-fp-closed")
+
+        assert status == 409, body
+        assert load_job_plan(self.job.job_id).task_plan["_approval"] == "rejected"
+
 
 #: A three-hunk diff, built with the `difflib` recipe `tests/cli/test_patch_cmd.py` and
 #: `tests/orchestration/test_hunk_decision_record.py` both use. The three edits are spaced

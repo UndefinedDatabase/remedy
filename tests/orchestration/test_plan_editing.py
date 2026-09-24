@@ -21,6 +21,7 @@ from packages.orchestration.plan_editing import (
     EDIT_LOG_EVIDENCE,
     PLAN_EDIT_COMMANDS,
     PlanEditRefused,
+    consume_plan_approval,
     edit_plan,
     plan_edit_lock,
     replay_edits,
@@ -281,3 +282,48 @@ def test_the_six_commands_are_the_feature_files_six():
     assert PLAN_EDIT_COMMANDS == (
         "plan_edit_task", "plan_delete_task", "plan_reorder", "plan_merge_tasks",
         "plan_split_task", "plan_edit_acceptance")
+
+
+class TestTheApprovalClosesTheWindow:
+    """DECISION F015 D2: the approval is consumed under the plan-edit lock against the record."""
+
+    def _approve(self, job, root):
+        return consume_plan_approval(job, reason="approve", answers={}, questions=[], root=root)
+
+    def test_an_edit_accepted_after_the_door_loaded_the_job_is_approved_not_lost(self, root):
+        job_id = _save_job(root, _TASKS)
+        stale = load_job_plan(job_id, root)
+        _edit(root, job_id, "plan_delete_task", {"task_id": "T4"})
+        self._approve(stale, root)
+        stored = load_job_plan(job_id, root)
+        assert stored.task_plan["_approval"] == "approved"
+        assert [t["id"] for t in stored.task_plan["tasks"]] == ["T1", "T2", "T3"]
+        assert stored.task_plan["_version"] == 2 and len(stored.task_plan["_edits"]) == 1
+        assert [t.inputs["plan"]["planned_id"] for t in stored.tasks] == ["T1", "T2", "T3"]
+
+    def test_a_second_approval_finds_the_approval_closed_and_writes_nothing(self, root):
+        job_id = _save_job(root, _TASKS)
+        self._approve(load_job_plan(job_id, root), root)
+        record = job_record_path(job_id, root)
+        before = record.read_bytes()
+        with pytest.raises(PlanEditRefused) as caught:
+            self._approve(load_job_plan(job_id, root), root)
+        assert caught.value.code == "approval_closed"
+        assert "the plan is approved" in caught.value.detail
+        assert record.read_bytes() == before
+
+    def test_an_edit_after_the_approval_is_refused_with_the_state(self, root):
+        job_id = _save_job(root, _TASKS)
+        self._approve(load_job_plan(job_id, root), root)
+        _assert_refused_unchanged(root, job_id, "plan_delete_task", {"task_id": "T4"},
+                                  "plan_not_editable", says="the plan is approved")
+
+    def test_the_approval_waits_for_an_edit_in_progress(self, root, monkeypatch):
+        monkeypatch.setattr(plan_editing, "_LOCK_TIMEOUT_SEC", 0.2)
+        job_id = _save_job(root, _TASKS)
+        record = job_record_path(job_id, root)
+        before = record.read_bytes()
+        with plan_edit_lock(job_id, root), pytest.raises(PlanEditRefused) as caught:
+            self._approve(load_job_plan(job_id, root), root)
+        assert caught.value.code == "lock_timeout"
+        assert record.read_bytes() == before
