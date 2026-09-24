@@ -13,14 +13,15 @@ over the whole kind-by-state matrix (`docs/roadmap/features/T5_F020.md`).
 
 ## Current Step
 
-ROUND 7, the closure sequence's evidence half: book round 6's PASS, whose
-one full suite is green, then build the evidence bundle against the fork
-point and the fresh review package.
+ROUND 8, THE CLOSING ROUND: book round 7's PASS, rotate the ledger,
+accept F020 in STATUS with its README pins, and open the pull request.
+T001, T002 and T003 are built; the package is READY_FOR_REVIEW.
 
 ## Next Steps
 
-1. The closing round: the ledger rotation, the STATUS flip with the
-   README counters, and the pull request.
+1. The next session's Open PR Gate merges this feature's pull request.
+2. Rule A5 then claims the first unchecked feature in
+   `docs/roadmap/STATUS.md`.
 
 ## Risks
 
