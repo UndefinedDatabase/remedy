@@ -14,19 +14,15 @@ and execution follows the edited plan exactly, proven by hash
 
 ## Current Step
 
-ROUND 7: book round 6's FAIL, whose cause was the reviewer's leftover
-research worktrees, and finish the first repair round of DECISION F015
-D5 — its tests, its red proofs and the full suite again over the two
-repairs round 6 landed.
+ROUND 8, the closure sequence's evidence half: book round 7's PASS, whose
+full suite is green, then build the evidence bundle against the fork
+point and the fresh review package.
 
 ## Next Steps
 
-1. The closure sequence's evidence half: the evidence job built against
-   the fork point, and the fresh review package.
-2. The closing round: book the evidence round, rotate the ledger, flip
+1. The closing round: book the evidence round, rotate the ledger, flip
    F015's STATUS line with its README pins, and open the pull request.
 
 ## Risks
 
-- A bad node the re-run still lists takes another repair round, at most
-  two more, under operator amendment amend0917-throughput rule 2.
+None open inside this feature.
