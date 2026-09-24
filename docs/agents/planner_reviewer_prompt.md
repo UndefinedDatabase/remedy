@@ -39,7 +39,9 @@ Read, in order, and nothing more unless a step below demands it:
    (STATUS_closure_protocol.md, "Closure-candidate findings").
 5. Only on demand: AGENTS.md sections, docs/agents/* conventions,
    ROADMAP.md tier context, design_reference (mandatory for UI features),
-   specific source files the current review requires.
+   specific source files the current review requires. `.agent/decisions.md`
+   is never read whole: its last five `## DECISION` entries and the ones the
+   feature file or the handoff names, by heading (R-1029).
 Fresh feature → first paste block includes: Open PR Gate (merges the
 previous feature's PR — the operator had their manual-review window), the
 authored `[ ]`→`[~]` STATUS claim, live_review.md reset, branch creation,
@@ -246,6 +248,9 @@ end the response with:
   pass measured the same way and found no such free number left: at `8da83220` `item 17`
   had ONE landed reference and `item 15` eleven, so 17 is the number that strands the
   fewest rather than none, and this paragraph says so instead of implying a zero.
+  Consolidated a fourth time at F282's closure on 2026-09-24: no two items were merged;
+  the counter-measures of findings R-0819 and R-0662 joined item 8 and that of R-0820
+  joined item 12, so the list stays at 34 items.
   The next consolidation measures against 34.
   Reverse by deleting this paragraph.
   1. **Size.** Count the block's lines. Over 400 (DECISION F105 D5) → split or
@@ -319,6 +324,18 @@ end the response with:
      gate has either fabricated the number or changed the code to suit it;
      both are worse outcomes than the declared deviation an honest worker is
      forced into, and the round pays for the reviewer's arithmetic either way.
+     Findings R-0819 and R-0662 reach this item from two further sides, and F282's
+     closure consolidated both here. R-0819: a zero-gate over production code is RUN
+     AT ITS BASE before it is ordered, and one that already reads non-zero there is
+     restated as the property it meant. F272's round 6 ordered zero function scopes
+     that bind and call `run_dir`, which read 16 at its base and 31 after the round's
+     correct change, while the property it meant — no such call before the scope's
+     first binding of the name — read 0 at both commits. R-0662: in a repository with
+     two runners, a gate that orders test node ids names BOTH enumeration mechanisms,
+     `pytest --collect-only -q` for the Python suites and
+     `npm run test:unit -- --reporter=json` for vitest, and the prefix that marks each,
+     because a gate that names one runner's mechanism leaves no route for the tests the
+     other owns.
   9. **Citations re-measured against this branch's own edits (finding R-0353).**
      Every `file:line` a block cites for a file the CURRENT feature branch has
      already modified is re-grepped at emission, because this branch's own
@@ -403,6 +420,15 @@ end the response with:
       mapping was rotated by one row, and no gate the block ordered could see it
       because every value in the table was real. The red control above proves a
       command can fail; this clause removes the step between the command and the page.
+      Finding R-0820, consolidated here at F282's closure, names the gate a red control
+      cannot rescue, because the gate and the edit share one predicate. When a block
+      defines a mechanical change set by a rule of its own — a name set, a pattern — no
+      gate is computed from that same rule, or the block says so and orders beside it an
+      independent gate that can see what the rule misses, run no later than the gate
+      that shares the rule. F272's round 9 selected rename sites by the receiver's NAME
+      and counted the survivors by the same names, so its counts read fully green over a
+      tree with 152 failing tests, while the one instrument that could fail, the suites,
+      was ordered at a commit the round never reached.
   13. **An ordering constraint is checked against the block's OWN commit sequence.**
       Finding R-0483. A constraint of the form "take reading X before any pytest
       command runs this round" is read back against the commits the SAME block

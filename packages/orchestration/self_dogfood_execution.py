@@ -8,12 +8,15 @@ bypasses a gate, never edits code, never applies, never approves:
     approved ProposedTask (origin self_dogfood)
       → SelfImprovementAttempt
       → safe request package (no FailureArtifact required)
-      → awaiting_external_candidate  [the rail ENDS here]
+      → blocked, stop reason `external_candidate_route_removed`  [the rail ENDS here]
 
-Remedy deliberately has NO import step after `awaiting_external_candidate`: F275 T001
-deleted the Provider Trust Gate and its `provider intake-repair` command with it, and
-DECISION F260 D3 maps the external builder to "none, deliberately". R-0866 records the
-loss. The states beyond `awaiting_external_candidate` — candidate_imported,
+Remedy deliberately has NO import step after the request: F275 T001 deleted the Provider
+Trust Gate and its `provider intake-repair` command with it, and DECISION F260 D3 maps the
+external builder to "none, deliberately". So an attempt never waits for a candidate that
+cannot arrive: it stops `blocked` and says why (R-0866, DECISION F282 D8), and the request
+package it prepared stays on disk for a human to carry out by hand. An attempt an older
+Remedy parked at `awaiting_external_candidate` is moved to the same stop by `reconcile`.
+The states beyond `awaiting_external_candidate` — candidate_imported,
 intent_pending_approval, intent_approved, proof_verified, completed — are KEPT and still
 run for an attempt whose `patch_intent_id` is already on disk, but no NEW attempt can
 acquire one.
@@ -121,6 +124,9 @@ _TRANSITIONS: dict[str, frozenset[str]] = {
 class StopReason:
     OK = "ok"
     AWAITING_EXTERNAL_CANDIDATE = "awaiting_external_candidate"
+    # R-0866: the one route a candidate took into an attempt is deleted, so an attempt
+    # that has prepared its request ends here instead of waiting for nothing.
+    EXTERNAL_CANDIDATE_ROUTE_REMOVED = "external_candidate_route_removed"
     PROPOSED_TASK_NOT_FOUND = "proposed_task_not_found"
     NOT_SELF_DOGFOOD = "not_self_dogfood"
     NOT_APPROVED = "not_approved"
@@ -489,9 +495,11 @@ def evaluate_self_execution_eligibility(
 
     # No active unresolved attempt for the same fingerprint (unless resuming it).
     existing = _find_attempt_by_fingerprint(fp, ddir) if fp else None
-    if existing and existing.get("state") in _ACTIVE:
+    if existing and (existing.get("state") in _ACTIVE or existing.get("stop_reason")
+                     == StopReason.EXTERNAL_CANDIDATE_ROUTE_REMOVED):
         elig.existing_attempt_id = existing.get("attempt_id", "")
-        # Resuming is allowed; signal it (not a blocker).
+        # Resuming is allowed; signal it (not a blocker). An attempt stopped at the removed
+        # candidate route is answered as it stands rather than prepared a second time.
     elig.eligible = True
     elig.safe_summary = "Eligible for self execution preparation."
     return elig
@@ -573,7 +581,7 @@ def start_self_execution(
     proposed_task_id: str, job_id: str | None = None, data_dir: Path | None = None,
 ) -> SelfImprovementAttemptResult:
     """Create or resume a SelfImprovementAttempt and prepare a request package.
-    Stops at awaiting_external_candidate. No apply, no provider, no approval."""
+    Stops blocked at the removed candidate route (R-0866). No apply, no provider, no approval."""
     from packages.orchestration import self_dogfood as SD
     from packages.orchestration.data_paths import resolve_data_root
     from packages.orchestration.proposed_tasks import get_proposed_task
@@ -616,11 +624,19 @@ def start_self_execution(
     text = _build_self_request_text(item if item is not None else task, jid)
     attempt.request_package_id = _store_request(attempt.attempt_id, ddir, text)
     _transition(attempt, AttemptState.REQUEST_PREPARED)
-    _transition(attempt, AttemptState.AWAITING_EXTERNAL_CANDIDATE)
-    attempt.stop_reason = StopReason.AWAITING_EXTERNAL_CANDIDATE
-    attempt.next_safe_action = "remedy self status --json"
+    _stop_at_removed_candidate_route(attempt)
     save_attempt(attempt, ddir)
     return _result_from_attempt(attempt)
+
+
+def _stop_at_removed_candidate_route(attempt: SelfImprovementAttempt) -> None:
+    """End an attempt whose next step would be a candidate nothing can import (R-0866).
+
+    `blocked` is the one state that says nothing further happens; the stop reason names
+    why, and the next action reads this attempt, whose request package stays on disk."""
+    _transition(attempt, AttemptState.BLOCKED)
+    attempt.stop_reason = StopReason.EXTERNAL_CANDIDATE_ROUTE_REMOVED
+    attempt.next_safe_action = _next_action_for(attempt)
 
 
 # ---------------------------------------------------------------------------
@@ -660,9 +676,14 @@ def reconcile_self_attempt(
     # "self_dogfood:<attempt_id>" (R-0084's deterministic, mislink-proof rule), reading the
     # trust reports of `packages.orchestration.provider_trust`. That module, its Trust Gate
     # and its `provider intake-repair` command are deleted, so no candidate can enter and
-    # is left to link. An attempt that reaches `awaiting_external_candidate` stays there.
-    # R-0866 records the loss; DECISION F260 D3 maps the external builder to "none,
-    # deliberately", so there is no inheriting feature to point at.
+    # is left to link. DECISION F260 D3 maps the external builder to "none, deliberately",
+    # so there is no inheriting feature to point at. An attempt parked at
+    # `awaiting_external_candidate` without an intent therefore ends as a new attempt does
+    # (R-0866, DECISION F282 D8); one whose intent is already on disk runs on below.
+    if a.state == AttemptState.AWAITING_EXTERNAL_CANDIDATE and not a.patch_intent_id:
+        _stop_at_removed_candidate_route(a)
+        save_attempt(a, ddir)
+        return _result_from_attempt(a)
 
     if a.patch_intent_id:
         intent = get_patch_intent(job, a.patch_intent_id)
@@ -705,6 +726,8 @@ def _intent_proof_status(job: Any, intent_id: str, data_dir: Path) -> str:
 
 def _next_action_for(a: SelfImprovementAttempt) -> str:
     s = a.state
+    if a.stop_reason == StopReason.EXTERNAL_CANDIDATE_ROUTE_REMOVED:
+        return f"remedy self status --attempt-id {a.attempt_id} --json"
     if s == AttemptState.AWAITING_EXTERNAL_CANDIDATE:
         return "remedy self status --json"
     if s == AttemptState.INTENT_PENDING_APPROVAL and a.patch_intent_id:

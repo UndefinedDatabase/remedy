@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { RemedyDashboard } from "../../api/types";
 import type { DiffEnvelope } from "../../api/diffViewModel";
 import type { JobDigest } from "../../api/jobDigest";
@@ -113,7 +113,10 @@ export function RemedyShell({ dashboard, serverToken, selectedNodeId, onSelectNo
   // DECLARES `DigestVisibilityPort` and implements nothing, exactly as
   // `browserBrainStreamEnv(window)` above binds the stream's own globals at
   // this same mount. `window.localStorage` occurs nowhere else in this file.
-  const digestPort = browserDigestVisibilityPort(window.localStorage);
+  // Built ONCE per mount (R-0622's first real lint finding): a port rebuilt every
+  // render would have to stay out of the effect's dependencies below, or rewrite
+  // "last seen" on every render.
+  const digestPort = useMemo(() => browserDigestVisibilityPort(window.localStorage), []);
 
   // Read once, before the write below ever runs, so the digest visibility
   // rule sees the instant the operator was last here rather than the one
@@ -121,7 +124,7 @@ export function RemedyShell({ dashboard, serverToken, selectedNodeId, onSelectNo
   const [lastSeenMs] = useState<number | null>(() => digestPort.readLastSeen(dashboard.jobId));
   useEffect(() => {
     digestPort.writeLastSeen(dashboard.jobId, Date.now());
-  }, [dashboard.jobId]);
+  }, [digestPort, dashboard.jobId]);
 
   const [dismissedAtMs, setDismissedAtMs] = useState<DigestDismissal>(
     () => digestPort.readDismissal(dashboard.jobId),

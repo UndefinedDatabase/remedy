@@ -290,8 +290,10 @@ def run_next_self_use_item(
     THE BUDGET IS RESOLVED IN THREE LAYERS, strongest first (R-1044): a
     keyword this caller passed explicitly, then the ``Budget:`` line the order
     file declares for itself (see :func:`parse_order_budget`), then this
-    module's own defaults — ``max_provider_calls`` 8, ``max_cost_usd`` 1.00,
-    ``max_tasks`` 1 and ``timeout_sec`` 600. When the planned job holds MORE
+    module's own defaults — ``max_provider_calls`` 8, raised to one more than the
+    loop itself can spend when ``repair_rounds`` or ``max_tasks`` would make 8 a tie
+    (R-1007), ``max_cost_usd`` 1.00, ``max_tasks`` 1 and ``timeout_sec`` 600. When
+    the planned job holds MORE
     tasks than the effective ``max_tasks``, this function refuses BEFORE any
     provider call rather than spend a budget it already knows cannot finish
     the order.
@@ -332,10 +334,21 @@ def run_next_self_use_item(
             return declared[name]
         return default
 
+    calls_defaulted = isinstance(max_provider_calls, _Unset) and "max_provider_calls" not in declared
     max_provider_calls = _resolve(
         "max_provider_calls", max_provider_calls, _MAX_PROVIDER_CALLS)
     max_cost_usd = _resolve("max_cost_usd", max_cost_usd, _MAX_COST_USD)
     max_tasks = _resolve("max_tasks", max_tasks, 1)
+    # R-1007: the default call ceiling is a BACKSTOP, never a tie with the loop. A
+    # task spends two calls a round over at most `1 + repair_rounds` rounds, so a
+    # default at or below that stops a task at its last reviewer call and records a
+    # budget where the reviewer's verdict belongs. A passed or declared ceiling is
+    # the caller's own and stands as given.
+    if calls_defaulted:
+        repair_rounds = run_job_kwargs.get("repair_rounds")
+        repair_rounds = 2 if repair_rounds is None else int(repair_rounds)
+        loop_calls = 2 * (1 + repair_rounds) * (max_tasks or 1)
+        max_provider_calls = max(_MAX_PROVIDER_CALLS, loop_calls + 1)
     # R-1044: an order the run cannot finish is refused before it costs
     # anything. `.agent/selfuse_f279/result_state.txt` is what this prevents:
     # a five-task standing order stopped at `budget_exhausted:max_cost_usd`

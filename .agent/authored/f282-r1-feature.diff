@@ -1,0 +1,58 @@
+diff --git a/docs/roadmap/features/T2_F282.md b/docs/roadmap/features/T2_F282.md
+index f7417f28..fe554dd3 100644
+--- a/docs/roadmap/features/T2_F282.md
++++ b/docs/roadmap/features/T2_F282.md
+@@ -25,6 +25,41 @@ be repaired inside F273; the paragraph `OWNERSHIP AT CLOSE` that F273's round 25
+ R-0499, R-0622, R-0662, R-0819, R-0820, R-0829, R-0866, R-0880, R-0892, R-0950, R-0984, R-0998,
+ R-0999 and R-1000. The reason each was carried is in that ownership paragraph.
+ 
++## Task slicing (written at the claim, 2026-09-23)
++Read from `open_finding_ids` over `.agent/live_review.md` at `b8fa02ba`: every id below is open
++there, and together they are the whole open set. One slice per module; each finding's own text is
++its spec, and a slice's ids resolve only by a `Done:` line carrying the evidence its FIX names.
++R-0829 left the list before the claim: operator amendment amend0923-selfuse-write resolved it.
++R-1034, R-1035, R-1043 and R-1044 carry no F282 owner line in the ledger — the first two name
++"the next findings-paydown feature", the last two the amendment that closed without resolving
++them — and this feature takes all four by this claim (DECISION F282 D1).
++
++- T001 — `packages/orchestration/integrity_gate.py`: R-0998, the verdict reader.
++- T002 — resolutions by evidence, no code: R-0984 (the hosted 3.12 column), R-1009 (main's
++  hosted CI), R-1043 and R-1044 (landed by amend0923-selfuse-write, read at its commits) and
++  R-0880 (the flip's over-selection, read on disk against the records it names).
++- T003 — `packages/orchestration/block_lint.py`: R-1041, the open count a block states.
++- T004 — `remedy job budget`: R-1040, an empty ledger answer replacing the recorded cost.
++- T005 — the run manifest's budget round-trip: R-1005, a deadline stop that cannot finalize.
++- T006 — `packages/orchestration/self_use_runner.py`: R-1007, the call budget tied to the loop.
++- T007 — the claude-cli failure's recorded cause: R-1016, R-1027 and R-1035, one defect at
++  three depths — a timed-out call recorded as `provider_unavailable`.
++- T008 — the review loop: R-0999, a `fail` without findings over an empty diff.
++- T009 — `packages/orchestration/self_use_generator.py`: R-1015, the retired-vocabulary screen.
++- T010 — the command catalog: R-1034, `ui stop` classified `read_only`.
++- T011 — closure precondition 7: R-1000, `RESERVED_NAMESPACES` named and pinned by a test.
++- T012 — `tests/conftest.py`: R-1004, the data-root walk paid twice per session.
++- T013 — the toolchain pins: R-1045, `uv` pinned and listed by `remedy doctor toolchain`.
++- T014 — the evidence package: R-0892, a `job run` package that passes the manifest check.
++- T015 — `apps/ui` lint: R-0622, a lint configuration that parses TypeScript.
++- T016 — the session bootstrap: R-1029, reading the decisions a session needs, not all.
++- T017 — `packages/orchestration/self_dogfood_execution.py`: R-0866, the parked rail.
++- T018 — parallel-run flakes: R-0950, R-1028 and R-0499, the failing node captured first.
++- T019 — gates over production code: R-0662, R-0819 and R-0820, settled in the closure's one
++  checklist consolidation pass, which may not lengthen the list.
++- Closure — R-1008 resolves only when the closure's own self-use run lands a repair its
++  reviewer passes; otherwise it is carried by name.
++
+ ## Acceptance
+ - R-0499 carries a resolution line with the evidence that discharged it.
+ - R-0622 carries a resolution line with the evidence that discharged it.
+@@ -46,6 +81,11 @@ R-0999 and R-1000. The reason each was carried is in that ownership paragraph.
+ - R-1000 carries a resolution line naming the commit that makes closure precondition 7 name
+   `RESERVED_NAMESPACES`, with the test that holds every entry to a tree nothing in production
+   imports.
++- R-1004, R-1005, R-1007, R-1009, R-1015, R-1016, R-1027, R-1028, R-1029, R-1034, R-1035,
++  R-1040, R-1041, R-1043, R-1044 and R-1045 each carry a resolution line with the evidence
++  that discharged it, or are carried by name to the next paydown feature at this closure.
++- R-1008 carries a resolution line naming a self-use run whose diff its reviewer passed, or is
++  carried by name to the next paydown feature at this closure.
+ 
+ ## Do not touch
+ The resolutions F273 landed; the record is append-only.

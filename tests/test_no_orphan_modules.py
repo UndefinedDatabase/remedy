@@ -46,6 +46,8 @@ import os
 import re
 from pathlib import Path
 
+import pytest
+
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
 #: The trees whose modules must be reached.
@@ -251,6 +253,33 @@ def test_every_allowed_unwired_entry_is_a_live_orphan():
     assert not stale, (
         "These ALLOWED_UNWIRED entries name a module that is missing or now "
         "reached; remove them:\n" + "\n".join(stale))
+
+
+def reserved_tree_importers(root: Path, prefix: str) -> list[str]:
+    """Scanned files OUTSIDE the tree at ``prefix`` that import a module inside it."""
+    inside = {_dotted(p) for rel in SCANNED_ROOTS for p in _walk_py(root, rel) if p.startswith(prefix)}
+    inside.add(prefix.rstrip("/").replace("/", "."))
+    importers = []
+    for rel in SCANNED_ROOTS:
+        for path in _walk_py(root, rel):
+            if path.startswith(prefix):
+                continue
+            source = (root / path).read_text(encoding="utf-8", errors="replace")
+            try:
+                tree = ast.parse(source, filename=path)
+            except SyntaxError:
+                continue
+            if _import_names(path, tree) & inside:
+                importers.append(path)
+    return importers
+
+
+@pytest.mark.parametrize("prefix", RESERVED_NAMESPACES)
+def test_every_reserved_namespace_is_a_tree_nothing_in_production_imports(prefix):
+    """R-1000: the exemption covers a fixture project, never a product module."""
+    assert prefix.endswith("/") and (REPO_ROOT / prefix).is_dir(), prefix
+    assert any(p.startswith(prefix) for rel in SCANNED_ROOTS for p in _walk_py(REPO_ROOT, rel)), prefix
+    assert reserved_tree_importers(REPO_ROOT, prefix) == []
 
 
 def test_every_allowed_unwired_entry_carries_a_reason():

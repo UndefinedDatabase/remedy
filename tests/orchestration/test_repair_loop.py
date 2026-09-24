@@ -711,6 +711,41 @@ class TestSmartStopContinueE2E:
         )
         assert result.final_status == "review_inconsistent"
 
+    def test_fail_over_an_empty_diff_runs_the_repair_loop(self, demo_repo: Path):
+        """R-0999: a builder that changes nothing, a reviewer that fails it without a finding."""
+        from packages.orchestration.pingpong_provider import BuilderOutput
+
+        class NoChangeBuilder:
+            name = "nochange_builder"
+            calls = 0
+
+            def build(self, prompt, **kw):
+                NoChangeBuilder.calls += 1
+                return BuilderOutput(summary="a plan and a command it never ran",
+                                     provider="nochange")
+
+        class FailNothingReviewer:
+            name = "failnothing_reviewer"
+            def review(self, prompt, *, timeout_sec=120, max_output_chars=50000, resume: str | None = None):
+                return ReviewerOutput(
+                    verdict="fail", findings=[], summary="the staged diff shows no changes",
+                    provider="failnothing",
+                )
+        result = run_pingpong(
+            "Fix README", str(demo_repo),
+            builder_provider=NoChangeBuilder(),
+            reviewer_provider=FailNothingReviewer(),
+            max_rounds=3, repair_rounds=2,
+        )
+        assert result.final_status == "repair_exhausted"
+        assert result.repair_rounds_used == 2
+        assert NoChangeBuilder.calls == 3
+        assert [d["reason"] for d in result.repair_decisions][:2] == [
+            "reviewer_findings_present", "reviewer_findings_present"]
+        finding = result.rounds[0].reviewer_output.findings[0]
+        assert finding.id == "EMPTY-change"
+        assert finding.details == "the staged diff shows no changes"
+
     def test_test_fail_with_repair_continues(self, demo_repo: Path, tmp_path: Path):
         """6. Test failure with repair enabled triggers repair/review path."""
         test_script = tmp_path / "fail_test.sh"

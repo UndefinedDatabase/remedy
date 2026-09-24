@@ -393,6 +393,21 @@ class TestTheSelfUseRoleAndItsBudget:
         assert captured["budgets"]["max_provider_calls"] == 2
         assert captured["budgets"]["max_cost_usd"] == 0.10
 
+    def test_the_default_call_cap_stays_above_what_the_loop_can_spend(
+        self, tmp_path, isolate_data_root, demo_repo, monkeypatch
+    ):
+        """R-1007: four repair rounds spend 2 x (1 + 4) = 10 calls, so 8 would stop the loop."""
+        captured = self._captured_run_kwargs(tmp_path, demo_repo, monkeypatch, repair_rounds=4)
+        assert captured["repair_rounds"] == 4
+        assert captured["budgets"]["max_provider_calls"] == 11
+
+    def test_a_passed_call_cap_is_never_raised(
+        self, tmp_path, isolate_data_root, demo_repo, monkeypatch
+    ):
+        captured = self._captured_run_kwargs(
+            tmp_path, demo_repo, monkeypatch, repair_rounds=4, max_provider_calls=8)
+        assert captured["budgets"]["max_provider_calls"] == 8
+
     def test_both_sides_come_from_ONE_role_and_cannot_drift_apart(
         self, tmp_path, isolate_data_root, demo_repo, monkeypatch
     ):

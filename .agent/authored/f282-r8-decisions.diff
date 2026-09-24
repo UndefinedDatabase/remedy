@@ -1,0 +1,36 @@
+diff --git a/.agent/decisions.md b/.agent/decisions.md
+index a265757f..6491a24d 100644
+--- a/.agent/decisions.md
++++ b/.agent/decisions.md
+@@ -19350,3 +19350,31 @@ next round must honour. The rule is written where each bootstrap is defined —
+ `docs/agents/self_drive_protocol.md` and §1 of `docs/agents/planner_reviewer_prompt.md`, outside
+ its frozen §3 checklist — and `tests/docs/test_bootstrap_reads_decisions_by_part.py` pins both.
+ HOW TO REVERSE: restore the touched files from `2a8186c4` and run `npm ci --prefix apps/ui`.
++
++## DECISION F282 D8 — a self-improvement attempt stops `blocked` at the removed candidate route instead of waiting for nothing; R-0892 resolves by the evidence already landed (2026-09-24)
++
++R-0866 names a residue, not the loss itself: DECISION F260 D3 already maps the external builder to
++"none, deliberately", and DECISION F275 D12 (a) kept `AttemptState`'s members beyond
++`awaiting_external_candidate`. The residue is that a surviving, CLI-reachable state machine parks
++every new attempt in a state its own vocabulary calls transitional, whose next action,
++`remedy self status --json`, sends the operator to watch for a candidate no command can bring. D12 (a)
++said the id stays open until a feature reopens the external-candidate route; no feature on the
++roadmap does, so that condition would carry it forever. CHOSEN: repair the residue and leave the
++route closed. `start_self_execution` still prepares and stores the request package, then moves
++`request_prepared → blocked` with the new stop reason `external_candidate_route_removed`, a legal
++transition the table already held, and its next action reads that one attempt
++(`remedy self status --attempt-id <id> --json`). `reconcile_self_attempt` moves an attempt an older
++Remedy parked at `awaiting_external_candidate` WITHOUT a patch intent to the same stop; one WITH an
++intent runs on as before, which is exactly the degraded rail D12 (a) kept. Eligibility resumes an
++attempt stopped at that reason, so a second `self execute` of the same task answers the same attempt
++rather than preparing a duplicate. No member of `AttemptState` is removed and D12 (a) stands; only
++its condition for resolving R-0866 is replaced by this repair. `docs/system/self-dogfood-execution-v0.md`
++describes the new stop. ALTERNATIVES CONSIDERED: stop at `request_prepared` — rejected, because that
++state is as transitional as the one it replaces; retire the states past the parked one — rejected,
++for D12 (a)'s reason, since they still run for an intent already on disk.
++
++R-0892 needs no code. Its package half landed in F268's round 6 (DECISION F268 D13, test
++`tests/cli/test_do_evidence_package.py`) and its skill half at amend0920-selfuse-real Part C, and
++the amendment's partial-resolution paragraph kept the id open only because the amendment itself did
++not touch the package half. HOW TO REVERSE: restore `packages/orchestration/self_dogfood_execution.py`,
++`docs/system/self-dogfood-execution-v0.md` and the two self-execution test files from `7932b7c1`.

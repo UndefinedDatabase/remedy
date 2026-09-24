@@ -26,13 +26,13 @@ verification commands. If something is unproven, Remedy says so instead of guess
 
 ## Status
 
-92 of 283 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
+93 of 284 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
 
 | Tier | Name | Done | Total |
 |------|------|-----:|------:|
 | 0 | Foundation & Trust Core | 16 | 16 |
 | 1 | Self-Build Bootstrap | 22 | 22 |
-| 2 | Minimal Self-Build Runtime | 34 | 36 |
+| 2 | Minimal Self-Build Runtime | 35 | 37 |
 | 3 | Full Token Economy & Autonomy | 6 | 26 |
 | 4 | Memory & Learning | 1 | 17 |
 | 5 | Operator Cockpit | 13 | 34 |
@@ -223,7 +223,15 @@ safe stopping point, recorded with its exact changes as sealed evidence in the
 job's review package, and taken as the job's new starting point instead of
 failing the job; applying the job never overwrites or throws away such an edit,
 and when the job changed the same file it stops and names that file; a new
-command, remedy absorb, runs the same single path by hand).
+command, remedy absorb, runs the same single path by hand),
+F282 findings paydown v2 (twenty-seven of the thirty review findings that were
+open when it began were repaired or settled with evidence, and none was added:
+among them, a model call that timed out is recorded as a timeout, the interface's
+lint really reads its TypeScript and now runs as a test, a self-improvement
+attempt that can no longer receive an outside proposal ends with its reason
+instead of waiting forever, two tests that failed only when many ran at once are
+reliable, and the review checklist took in three lessons without growing; the
+three findings still open move to the next paydown).
 
 Accepted in Tier 3 so far:
 F106 session resume instead of rebuild (repair rounds resume the original

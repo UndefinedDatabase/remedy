@@ -1,0 +1,184 @@
+diff --git a/tests/docs/test_retired_promote_word.py b/tests/docs/test_retired_promote_word.py
+index dc8a0e8e..ed366b8b 100644
+--- a/tests/docs/test_retired_promote_word.py
++++ b/tests/docs/test_retired_promote_word.py
+@@ -122,6 +122,11 @@ KEPT_BY_SENSE: dict[str, tuple[str, frozenset[str]]] = {
+         "promotion_evidence_config_key", "promotion_evidence_from_mapping", "promotion_without_evidence",
+         "promotionevidence", "resolve_promotion_evidence", "rule_promotion_without_evidence",
+     })),
++    # R-1015: the generator screens every ledger paragraph it would copy against this
++    # guard's own pattern, which it therefore spells, with this file's name beside it.
++    "packages/orchestration/self_use_generator.py": (H, frozenset({
++        "promot", "test_retired_promote_word",
++    })),
+     "packages/runtimes/dev_server.py": (K5_RUNTIME, frozenset({
+         "promote", "promotes",
+     })),
+@@ -134,12 +139,11 @@ KEPT_BY_SENSE: dict[str, tuple[str, frozenset[str]]] = {
+     # The self-use queue carries, verbatim, the ledger paragraph the generator
+     # (packages/orchestration/self_use_generator.py) copied into the pending item's
+     # `why` and `job_markdown`.  That is a QUOTATION of an append-only record, not a
+-    # use of the retired verb, which is sense H.  The token below tracks the CURRENT
+-    # pending item and changes when the queue does: F277's closure generated SU-025
+-    # from R-0820, whose text says "a promotion result".  Registered as R-1015 —
+-    # the generator screens that paragraph for markdown headings and `Acceptance:`
+-    # markers and not for retired vocabulary, so this entry is the stopgap and the
+-    # screen is the fix.
++    # use of the retired verb, which is sense H.  F277's closure generated SU-025
++    # from R-0820, whose text says "a promotion result", and that entry stays in the
++    # queue as its record.  R-1015's screen, landed at F282, walks the generator past
++    # any paragraph carrying the word, so no NEW entry can add a token here; the
++    # entry goes when SU-025's text leaves the file.
+     "scripts/self_use_queue.json": (H, frozenset({
+         "promotion",
+     })),
+@@ -311,3 +315,10 @@ def test_every_token_listed_for_a_file_still_occurs_in_it():
+ 
+ def test_every_sense_label_is_one_of_the_named_senses():
+     assert sorted({sense for sense, _ in KEPT_BY_SENSE.values()} - SENSES) == []
++
++
++def test_the_self_use_generator_screens_with_this_guards_own_pattern():
++    """R-1015: a ledger paragraph this guard would reject is never copied into the queue."""
++    from packages.orchestration.self_use_generator import RETIRED_WORD
++
++    assert (RETIRED_WORD.pattern, RETIRED_WORD.flags) == (WORD.pattern, WORD.flags)
+diff --git a/tests/orchestration/test_repair_loop.py b/tests/orchestration/test_repair_loop.py
+index 1134ffcb..6c75a9c3 100644
+--- a/tests/orchestration/test_repair_loop.py
++++ b/tests/orchestration/test_repair_loop.py
+@@ -711,6 +711,41 @@ class TestSmartStopContinueE2E:
+         )
+         assert result.final_status == "review_inconsistent"
+ 
++    def test_fail_over_an_empty_diff_runs_the_repair_loop(self, demo_repo: Path):
++        """R-0999: a builder that changes nothing, a reviewer that fails it without a finding."""
++        from packages.orchestration.pingpong_provider import BuilderOutput
++
++        class NoChangeBuilder:
++            name = "nochange_builder"
++            calls = 0
++
++            def build(self, prompt, **kw):
++                NoChangeBuilder.calls += 1
++                return BuilderOutput(summary="a plan and a command it never ran",
++                                     provider="nochange")
++
++        class FailNothingReviewer:
++            name = "failnothing_reviewer"
++            def review(self, prompt, *, timeout_sec=120, max_output_chars=50000, resume: str | None = None):
++                return ReviewerOutput(
++                    verdict="fail", findings=[], summary="the staged diff shows no changes",
++                    provider="failnothing",
++                )
++        result = run_pingpong(
++            "Fix README", str(demo_repo),
++            builder_provider=NoChangeBuilder(),
++            reviewer_provider=FailNothingReviewer(),
++            max_rounds=3, repair_rounds=2,
++        )
++        assert result.final_status == "repair_exhausted"
++        assert result.repair_rounds_used == 2
++        assert NoChangeBuilder.calls == 3
++        assert [d["reason"] for d in result.repair_decisions][:2] == [
++            "reviewer_findings_present", "reviewer_findings_present"]
++        finding = result.rounds[0].reviewer_output.findings[0]
++        assert finding.id == "EMPTY-change"
++        assert finding.details == "the staged diff shows no changes"
++
+     def test_test_fail_with_repair_continues(self, demo_repo: Path, tmp_path: Path):
+         """6. Test failure with repair enabled triggers repair/review path."""
+         test_script = tmp_path / "fail_test.sh"
+diff --git a/tests/orchestration/test_self_use_generator.py b/tests/orchestration/test_self_use_generator.py
+index 328bf8e6..c379a8bd 100644
+--- a/tests/orchestration/test_self_use_generator.py
++++ b/tests/orchestration/test_self_use_generator.py
+@@ -108,6 +108,24 @@ class TestLedgerTierPicksTheOldestEligibleFinding:
+         assert "R-0050" in entry.title
+         assert entry.why.startswith("- R-0050 — Medium,")
+ 
++    def test_a_paragraph_quoting_a_retired_word_is_walked_past(self, tmp_path: Path):
++        """R-1015: the paragraph lands in a tracked file the retired-word guard reads.
++
++        The word is built from two literals because this file is held to that guard too.
++        """
++        retired = "pro" "motion"
++        ledger = _write_ledger(tmp_path, [
++            _finding("R-0050", "Medium", f"It lists a {retired} result among the types."),
++            _finding("R-0100", "Low", "A clean defect."),
++        ])
++        entry = generate_self_use_item(
++            queue_path=_write_queue(tmp_path, [_queue_item(consumed_by="F001")]),
++            ledger_path=ledger,
++        )
++        assert entry is not None
++        assert "R-0100" in entry.title
++        assert retired not in entry.why and retired not in entry.job_markdown
++
+     def test_high_and_critical_are_never_picked(self, tmp_path: Path):
+         ledger = _write_ledger(tmp_path, [
+             _finding("R-0010", "Critical", "Would be oldest by id."),
+diff --git a/tests/test_command_catalog.py b/tests/test_command_catalog.py
+index 8f9cd576..068ff8f7 100644
+--- a/tests/test_command_catalog.py
++++ b/tests/test_command_catalog.py
+@@ -571,3 +571,12 @@ class TestDeletedFlags:
+             ["job", "run", "J", "--builder-provider", "fake", "--reviewer-provider", "claude-cli"])
+         assert (args._command_id, args.builder_provider, args.reviewer_provider) == (
+             "job.run", "fake", "claude-cli")
++
++
++def test_ui_stop_is_classified_as_the_local_state_change_it_makes():
++    """R-1034: `ui stop` stops every running UI server, so no sweep may run it as read-only."""
++    from apps.cli.command_catalog import get_command
++
++    entry = get_command("ui.stop")
++    assert entry.action_class == "local_state_change"
++    assert (entry.may_mutate_repo, entry.may_execute_commands) == (False, False)
+diff --git a/tests/test_no_orphan_modules.py b/tests/test_no_orphan_modules.py
+index 43138450..1ba49085 100644
+--- a/tests/test_no_orphan_modules.py
++++ b/tests/test_no_orphan_modules.py
+@@ -46,6 +46,8 @@ import os
+ import re
+ from pathlib import Path
+ 
++import pytest
++
+ REPO_ROOT = Path(__file__).resolve().parents[1]
+ 
+ #: The trees whose modules must be reached.
+@@ -253,6 +255,33 @@ def test_every_allowed_unwired_entry_is_a_live_orphan():
+         "reached; remove them:\n" + "\n".join(stale))
+ 
+ 
++def reserved_tree_importers(root: Path, prefix: str) -> list[str]:
++    """Scanned files OUTSIDE the tree at ``prefix`` that import a module inside it."""
++    inside = {_dotted(p) for rel in SCANNED_ROOTS for p in _walk_py(root, rel) if p.startswith(prefix)}
++    inside.add(prefix.rstrip("/").replace("/", "."))
++    importers = []
++    for rel in SCANNED_ROOTS:
++        for path in _walk_py(root, rel):
++            if path.startswith(prefix):
++                continue
++            source = (root / path).read_text(encoding="utf-8", errors="replace")
++            try:
++                tree = ast.parse(source, filename=path)
++            except SyntaxError:
++                continue
++            if _import_names(path, tree) & inside:
++                importers.append(path)
++    return importers
++
++
++@pytest.mark.parametrize("prefix", RESERVED_NAMESPACES)
++def test_every_reserved_namespace_is_a_tree_nothing_in_production_imports(prefix):
++    """R-1000: the exemption covers a fixture project, never a product module."""
++    assert prefix.endswith("/") and (REPO_ROOT / prefix).is_dir(), prefix
++    assert any(p.startswith(prefix) for rel in SCANNED_ROOTS for p in _walk_py(REPO_ROOT, rel)), prefix
++    assert reserved_tree_importers(REPO_ROOT, prefix) == []
++
++
+ def test_every_allowed_unwired_entry_carries_a_reason():
+     paths = [p for p, _ in ALLOWED_UNWIRED]
+     assert len(paths) == len(set(paths)), "duplicate ALLOWED_UNWIRED entry"

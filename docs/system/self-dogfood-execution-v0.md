@@ -22,9 +22,9 @@ nothing, approves nothing.
 
     approved ProposedTask (origin self_dogfood, status approved_for_build)
       → SelfImprovementAttempt + safe request package
-      → state: awaiting_external_candidate    ← THE RAIL ENDS HERE
-      → [human relays request to any external actor; saves the response]
-      → (nothing: Remedy has no command that imports the answer)
+      → state: blocked, stop reason external_candidate_route_removed    ← THE RAIL ENDS HERE
+      → [a human may carry out the stored request by hand]
+      → (nothing: Remedy has no command that imports an answer)
 
 **Remedy deliberately has no import step here.** F275 T001 deleted the Provider Trust
 Gate and its `provider intake-repair` command, which was the one command that read an
@@ -63,10 +63,14 @@ candidate_imported → (trust_rejected | trust_needs_review | intent_pending_app
 → intent_approved → apply_started → applied → tested_passed/tested_failed →
 proof_verified → completed`; plus `blocked` / `evidence_incomplete`.
 
-An attempt that reaches `awaiting_external_candidate` STAYS there: the members after it
-are reachable only for an attempt whose patch intent already exists. They are kept
-rather than retired because retiring a surviving module's vocabulary is a product
-change; R-0866's fix clause routes that question to the DECISION F260 D3 round.
+A new attempt never enters `awaiting_external_candidate`: once its request is prepared
+it stops `blocked` with the stop reason `external_candidate_route_removed`, and its next
+action reads that one attempt, because nothing can arrive to move it on (R-0866,
+DECISION F282 D8). Starting it again answers the same attempt. An attempt an older
+Remedy parked at `awaiting_external_candidate` without a patch intent is moved to the
+same stop by `reconcile`. The members after it are reachable only for an attempt whose
+patch intent already exists; they are kept rather than retired, as DECISION F275 D12
+ruled, because retiring a surviving module's vocabulary is a product change.
 
 `reconcile` advances state from durable truth only (ProposedTask, patch-intent
 approval, proof chain) — never applies, never approves, never runs tests, never calls a

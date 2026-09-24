@@ -1205,24 +1205,34 @@ class TestThePackerRefusesRootLeftovers:
         """REMEDY_REVIEW_DIR="." is what tests/conftest.py sets, so a build
         that writes its archive INTO the repository root must not then refuse
         the archive it just wrote. Only the configured output directory is
-        spared, and only for the `*.zip` shape."""
+        spared, and only for the `*.zip` shape.
+
+        Each run gets its own archive stamp. The packer names its archive by the
+        wall-clock second its `date` call reads and never replaces a published
+        archive, so two runs starting inside one second collided and the second
+        exited 3 — which the F282 closure suite caught. A `date` on PATH that
+        prints the run's own stamp keeps the two names apart on any clock."""
         repo = self._repo(tmp_path)
+        shim = tmp_path / "stamp_bin"
+        shim.mkdir()
+        (shim / "date").write_text('#!/bin/sh\nprintf "%s\\n" "$REMEDY_TEST_STAMP"\n')
+        (shim / "date").chmod(0o755)
 
-        first = subprocess.run(
-            ["bash", "scripts/make_review_zip.sh",
-             "--evidence-dir", str(repo / "remedy-job-evidence-test")],
-            cwd=repo, capture_output=True, text=True, timeout=60,
-            env={**os.environ, "REMEDY_REVIEW_DIR": "."},
-        )
+        def package(stamp: str) -> subprocess.CompletedProcess:
+            return subprocess.run(
+                ["bash", "scripts/make_review_zip.sh",
+                 "--evidence-dir", str(repo / "remedy-job-evidence-test")],
+                cwd=repo, capture_output=True, text=True, timeout=60,
+                env={**os.environ, "REMEDY_REVIEW_DIR": ".", "REMEDY_TEST_STAMP": stamp,
+                     "PATH": f"{shim}{os.pathsep}{os.environ['PATH']}"},
+            )
+
+        first = package("20260924-000001")
         assert first.returncode == 0, f"{first.stdout}\n{first.stderr}"
-        assert list(repo.glob("*.zip")), "the archive must land in the root"
+        assert list(repo.glob("remedy-review-20260924-000001-*.zip")), (
+            "the archive must land in the root")
 
-        second = subprocess.run(
-            ["bash", "scripts/make_review_zip.sh",
-             "--evidence-dir", str(repo / "remedy-job-evidence-test")],
-            cwd=repo, capture_output=True, text=True, timeout=60,
-            env={**os.environ, "REMEDY_REVIEW_DIR": "."},
-        )
+        second = package("20260924-000002")
         assert second.returncode == 0, (
             "the packer's own output must not be read as detritus\n"
             f"{second.stdout}\n{second.stderr}"

@@ -51,7 +51,40 @@ def _run_once(repo):
     return load_latest_manifest_verified(job_evidence_dir(job.job_id), job_id=job.job_id)
 
 
+@pytest.fixture
+def frozen_remedy_identity(monkeypatch):
+    """Pin Remedy's own checkout identity to its value at test start (R-0950).
+
+    Each run's manifest records the identity of the Remedy checkout, whose digest covers
+    every untracked file, and it feeds the logical input hash. Under `pytest -n auto` all
+    workers share this checkout, and `tests/regression/test_resource_safety.py` writes and
+    removes files in it, so a neighbour could change the digest between the two runs and
+    the hashes differed. The real identity is kept; only the race is removed, exactly as
+    `tests/cli/test_job_rerun_manifest.py` does for the same class (R-0645).
+    """
+    from packages.orchestration import run_manifest as RM
+    snapshot = RM.remedy_worktree_identity()
+    monkeypatch.setattr(RM, "remedy_worktree_identity", lambda: snapshot)
+
+
+@pytest.mark.usefixtures("frozen_remedy_identity")
 class TestTwoRealRunsShareLogicalIdentity:
+    def test_a_checkout_that_changes_between_the_runs_does_not_reach_the_comparison(
+            self, data_root, repo, monkeypatch):
+        """A neighbour rewriting the shared checkout between the two runs changes nothing here."""
+        from packages.orchestration import run_manifest as RM
+        real, remedy_root = RM.worktree_identity, str(RM._remedy_repo_root())
+        calls = iter(range(1000))
+
+        def a_checkout_a_neighbour_keeps_changing(path, **kwargs):
+            if str(path) != remedy_root:
+                return real(path, **kwargs)
+            return dataclasses.replace(real(path, **kwargs), digest=f"{next(calls):064x}")
+
+        monkeypatch.setattr(RM, "worktree_identity", a_checkout_a_neighbour_keeps_changing)
+        a, b = _run_once(repo), _run_once(repo)
+        assert a.logical_input_sha256() == b.logical_input_sha256()
+
     def test_different_execution_identities_same_logical_hash(self, data_root, repo):
         a, b = _run_once(repo), _run_once(repo)
         # provenance genuinely differs

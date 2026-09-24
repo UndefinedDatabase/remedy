@@ -1,0 +1,35 @@
+diff --git a/.agent/decisions.md b/.agent/decisions.md
+index 9a23a2a3..4fb49d3e 100644
+--- a/.agent/decisions.md
++++ b/.agent/decisions.md
+@@ -19414,3 +19414,30 @@ names the test, no run in this feature has, and a round spent re-running a sweep
+ is the pattern that finding forbids. HOW TO REVERSE: restore `tests/runtimes/runtime_cleanup.py`
+ and `tests/orchestration/test_run_manifest_logical_identity.py` from `5c43004f` and delete
+ `tests/runtimes/test_runtime_cleanup_scope.py`.
++
++## DECISION F282 D10 — the closure consolidation keeps the checklist at 34 items, the self-use track answers NONE, and three ids are carried (2026-09-24)
++
++T019, THE ONE CONSOLIDATION PASS operator amendment amend0827-process-diet rule 4 allows a feature,
++inside a closure round that runs anyway. R-0662, R-0819 and R-0820 each name a counter-measure the
++§3 checklist of `docs/agents/planner_reviewer_prompt.md` lacks, and the pass may not lengthen the
++list. CHOSEN: no new item and no merge. R-0819's counter-measure — a zero-gate over production code
++is run at its base before it is ordered, and one already non-zero there is restated as the property
++it meant — and R-0662's — a gate ordering node ids in a two-runner repository names both
++enumeration mechanisms and their prefixes — join item 8, whose class, a gate's expected value read
++against what can produce it, both findings name as theirs. R-0820's — no gate is computed from the
++predicate that defines the change set it gates, or an independent gate runs beside it no later —
++joins item 12, the item that pairs every dry run with a control that can fail. The consolidation
++paragraph records the pass, and the list stays at 34 items, measured by `live_checklist_items`
++before and after. ALTERNATIVE CONSIDERED: merge two items to make room for a new one — rejected,
++because no pair of the present items shares a rule, and a merge made only to free a number would
++hide one rule inside another's heading.
++
++THE SELF-USE TRACK, closure precondition 6: at `ef2edb49` `next_self_use_item` answered `None` and
++`generate_and_append_if_empty` answered `None` without writing, because every open finding either
++names no repair or says its repair is held by an operator ruling or by a failure that does not
++reproduce on demand, and Tier 0's refresh order is inside its cadence. The closure therefore records
++`self-use NONE (queue exhausted)`, edits no `consumed_by` field, and R-1008, which only a closure
++self-use run whose diff a reviewer passes can resolve, is carried. CARRIED BY NAME to the next
++findings-paydown feature at this closure's ownership step: R-0499, R-0950 for its zombie-process node
++alone (DECISION F282 D9), and R-1008. HOW TO REVERSE: restore
++`docs/agents/planner_reviewer_prompt.md` and `docs/roadmap/features/T2_F282.md` from `ef2edb49`.

@@ -48,6 +48,11 @@ Then read from disk, never from session memory: `.agent/handoff.md`,
 `.agent/plan.md`, `.agent/live_review.md`, `.agent/candidates.md`, and
 the active feature file under `docs/roadmap/features/`.
 
+`.agent/decisions.md` is NEVER read whole at session start: it holds hundreds
+of entries and no longer fits a session's context (finding R-1029). Read its
+last five `## DECISION` entries, and every DECISION the active feature file or
+the handoff names, found by searching for its heading.
+
 ## Phase 1 — decide
 1. `.agent/STOP` exists → write the handoff, end the session, do nothing else.
 2. Open PR from a `feature/*` branch into `main`, not a draft, exactly one

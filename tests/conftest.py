@@ -64,17 +64,34 @@ def _isolated_data_root(tmp_path_factory):
     os.environ.pop("REMEDY_DATA_DIR", None)
 
 
+#: How deep the data-root guard reads: the root's own children and theirs (R-1004).
+DATA_ROOT_GUARD_DEPTH = 2
+
+
 def _data_root_fingerprint(root):
-    """Every entry below ``root`` as (relative path, kind, size, mtime_ns), sorted."""
+    """Every entry at most ``DATA_ROOT_GUARD_DEPTH`` below ``root``, as (path, kind, size, mtime_ns).
+
+    R-1004: the guard once walked the WHOLE root, eight million entries on the operator's
+    machine and about two minutes per pytest session, twice. A record Remedy writes lives in
+    a directory one or two levels down (``jobs/<id>/``, ``runs/<id>/``), and creating,
+    deleting or atomically replacing anything inside such a directory changes that
+    directory's own mtime, which this reading carries. WHAT IT CANNOT SEE: a file rewritten
+    in place below that depth, and an entry added three or more levels down, which moves
+    only a directory the reading does not reach. Every durable write in this repository is
+    an atomic replace, so the pollution R-0803 exists for still shows.
+    """
     import os
     if not os.path.lexists(root):
         return None
     entries = []
     for dirpath, dirnames, filenames in os.walk(root):
+        depth = 0 if dirpath == root else os.path.relpath(dirpath, root).count(os.sep) + 1
         for name in dirnames + filenames:
             path = os.path.join(dirpath, name)
             st = os.lstat(path)
             entries.append((os.path.relpath(path, root), st.st_mode >> 12, st.st_size, st.st_mtime_ns))
+        if depth + 1 >= DATA_ROOT_GUARD_DEPTH:
+            dirnames[:] = []
     return sorted(entries)
 
 

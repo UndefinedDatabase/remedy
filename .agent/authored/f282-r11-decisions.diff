@@ -1,0 +1,30 @@
+diff --git a/.agent/decisions.md b/.agent/decisions.md
+index 4fb49d3e..64f4c2f8 100644
+--- a/.agent/decisions.md
++++ b/.agent/decisions.md
+@@ -19441,3 +19441,25 @@ self-use run whose diff a reviewer passes can resolve, is carried. CARRIED BY NA
+ findings-paydown feature at this closure's ownership step: R-0499, R-0950 for its zombie-process node
+ alone (DECISION F282 D9), and R-1008. HOW TO REVERSE: restore
+ `docs/agents/planner_reviewer_prompt.md` and `docs/roadmap/features/T2_F282.md` from `ef2edb49`.
++
++## DECISION F282 D11 — the closure suite's one bad node is a one-second archive-name collision, repaired in its test, and the suite runs again (2026-09-24)
++
++THE NODE, `tests/orchestration/test_review_zip_hygiene.py::TestThePackerRefusesRootLeftovers::test_the_packages_own_output_directory_is_not_its_own_detritus`,
++read red in the closure suite at `720e15e6` with `REVIEW_ZIP_ERROR: another invocation already
++published '<repo>/./remedy-review-20260924-022736-BLOCKED_EVIDENCE.zip'; this one loses the race`,
++exit 3, on the test's SECOND packer run. OWNERSHIP, amend0917-throughput rule 2: the hosted CI
++record of the merge base on main, run 35902025271 at `b8fa02ba`, is green, so the node is this
++feature's to repair. CAUSE, measured by the reviewer: `scripts/make_review_zip.sh` stamps its
++archive name with the wall-clock second of its one `date` call, and its coordinator publishes with
++a no-replace link, so when the first run finishes inside the second it started in, the second run
++derives the same name and refuses to replace the first archive. The refusal is the packer's
++deliberate safety and stays. Six serial runs of the node alone passed; a mutation giving both runs
++one stamp reproduces the closure suite's failure on every run. CHOSEN: the test gives each run its
++own stamp through a `date` on PATH that prints it, so the two names differ on any clock and the
++property under test — the packer's own output in the root is not detritus — is unchanged.
++ALTERNATIVE CONSIDERED: a sub-second stamp in the product — rejected, because the archive name's
++shape is read by the closure's STATUS lines and by the packer's own parsers, and a user re-running
++the packer inside one second is refused honestly, not harmed. The suite runs again in this round,
++the first of the at most three repair rounds rule 2 allows, and its transcript replaces
++`.agent/authored/f282-closure-suite.txt` at the same path. HOW TO REVERSE: restore the test file
++from `720e15e6`.

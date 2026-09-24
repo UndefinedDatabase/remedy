@@ -27,6 +27,7 @@ from __future__ import annotations
 
 import contextlib
 import os
+import re
 from pathlib import Path
 
 import psutil
@@ -54,6 +55,19 @@ def alive(pid: int) -> bool:
         return False
     except psutil.Error:
         return True
+
+
+def names_path(text: str, root: str) -> bool:
+    """Whether ``text`` names ``root`` itself or a path under it — never a sibling.
+
+    A substring test is not enough: under `pytest -n auto` worker gw1's basetemp
+    `.../popen-gw1` is a string prefix of gw10's to gw19's, so a scan for gw1's
+    processes also found the live runtimes of those ten workers and failed gw1's file
+    for them (R-1028). The same holds for a test's tmp_path `.../test_x1` and
+    `.../test_x10`. ``root`` counts only when a path separator, whitespace or the end
+    of the text follows it.
+    """
+    return re.search(re.escape(root.rstrip(os.sep)) + r"(?=[/\s]|$)", text) is not None
 
 
 def _describe(pid: int) -> str:
@@ -181,7 +195,7 @@ class RuntimeRegistry:
                 continue
             with contextlib.suppress(psutil.Error):
                 cmdline = " ".join(proc.info["cmdline"] or [])
-                if root in cmdline:
+                if names_path(cmdline, root):
                     found.append(f"{proc.pid} {cmdline[:90]}")
         for pid in sorted(self.pids):
             if alive(pid):
@@ -205,11 +219,11 @@ def basetemp_survivors(basetemp: Path) -> list[str]:
             cmdline = " ".join(proc.info["cmdline"] or [])
             if not cmdline:
                 continue
-            if root in cmdline:
+            if names_path(cmdline, root):
                 found.append(f"{proc.pid} {cmdline[:90]}")
                 continue
             if "server.py" in cmdline or "runtime_supervisor" in cmdline:
                 with contextlib.suppress(psutil.Error):
-                    if root in proc.cwd():
+                    if names_path(proc.cwd(), root):
                         found.append(f"{proc.pid} {cmdline[:90]}")
     return sorted(set(found))

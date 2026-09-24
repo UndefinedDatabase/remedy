@@ -19175,3 +19175,291 @@ not evidence about a file it does not collect. After the repair the same sweep r
 `4642 passed, 13 skipped` at exit 0 and `tests/orchestration/test_integrity_gate.py` reads
 `25 passed`. REVERSE by restoring the blind handler and raising `MAX_EXCUSED` to 291 — which is
 precisely what the ratchet exists to prevent, so do not.
+
+## DECISION F282 D1 — the paydown takes the whole open set, one slice per module, and R-0998's check fails a complete context on anything but a pass (2026-09-23)
+
+THE SLICE LIST. `open_finding_ids` over `.agent/live_review.md` at `b8fa02ba`, F282's fork point,
+reads 30 ids, and `docs/roadmap/features/T2_F282.md` now lists every one of them under a slice,
+one slice per module, in the order the rounds take them. Four of the 30 carry no F282 owner line:
+R-1034 and R-1035 name "the next findings-paydown feature", which is F282, and R-1043 and R-1044
+name operator amendment amend0923-selfuse-write, which merged as `b8fa02ba` without a `Done:` line
+for either. Rule A of amend0911-feedback says a finding whose owner closes without it goes to the
+next paydown feature, and that closure did not write the line, so THIS CLAIM TAKES ALL FOUR and
+says so in the feature file rather than editing four landed paragraphs. The paydown rule reads
+"registered before the claim date"; R-1043, R-1044 and R-1045 were registered ON the claim date,
+and they are taken anyway, because R-1045 names F282 as its owner by its own text and the other
+two are resolutions of work already landed, not repairs this feature must build. ALTERNATIVES
+CONSIDERED: leave the four ownerless and let the closure's ownership paragraph sweep them — which
+is the carry-forward rule A forbids; or take only the ids the old Acceptance list named — which
+leaves every id registered after F273's closure outside the plan of the feature that owns it.
+
+R-0998's READING. The finding's FIX clause fixes the reader (`latest_gate_verdict`, loaded by path
+as the high-blocker check loads it) and two tests; it does not say what the check answers when
+the ledger holds no `Gate:` record, or one whose verdict does not parse, under a context that says
+complete. CHOSEN: FAIL for both, because a check that exists to stop a completion claim over a
+verdict that is not a pass has, in either case, no pass to point at; WARN for both when context
+does not say complete, which keeps the check's old visible-but-harmless answer for a record in
+progress; a FAIL, a repair or a block mid-feature is reported as PASS with the verdict in the
+message, because a repair round following a FAIL is the normal shape of a feature. The loader's
+failures are caught by name — `OSError`, `ImportError`, `SyntaxError`, `AttributeError` — and not
+by `except Exception`, because `tests/test_ble001_ratchet.py` holds the excused blind handlers at
+their frozen ceiling. HOW TO REVERSE: restore `_check_live_review_verdict` from `b8fa02ba`; the
+tests under `TestLiveReviewVerdictReadsTheLastGateRecord` then go red, which is their job.
+
+## DECISION F282 D2 — `integrity block` counts the open set after the round from the block's ledger payloads, and only from them (2026-09-23)
+
+R-1041's FIX clause asks the open-set rule to take into account the ids a block registers and
+resolves, "for example by reading the `- R-` and `Done: R-` paragraphs of the ledger payloads the
+block names", and leaves open which payloads those are. CHOSEN: the rule reads the payload
+directory the block names in a backticked `.remedy-wt/<name>-payloads/` span and, from the files
+its payload table lists, takes (a) every line a `.diff` payload ADDS inside the section whose
+`+++` path is `b/.agent/live_review.md`, and (b) the whole of any other payload whose name begins
+`ledger`, the name this workflow gives a slice appended to the ledger whole; the block's own text
+counts too, as it always did for `- R-` lines. The stated count must equal the open set before
+the round, plus the ids registered, less the ids resolved, and the detail line prints all four
+numbers so a refusal says which half is wrong. A line a diff REMOVES resolves nothing, and a plan,
+a decision or a feature file that quotes a registration registers nothing, because neither
+writes the ledger. ALTERNATIVES CONSIDERED: accept any stated number between the before and
+after counts — which is a gate that cannot fail; or require blocks to state the count BEFORE the
+round — which reverses the convention every handback of this workflow uses. HOW TO REVERSE:
+restore `check_open_set` in `packages/orchestration/block_lint.py` from `5f9e4725`; the two new
+tests in `tests/orchestration/test_block_lint.py` then go red.
+
+## DECISION F282 D3 — R-1005 is two defects, both repaired; R-1040 keeps a ledger reading only when it names a call (2026-09-23)
+
+R-1005's reproduction splits in two when it is run on this repository's own Python, 3.10. A
+deadline written `+00:00` fails the pre-publication round-trip because the manifest builder binds
+the job's budgets dict as it stands while the strict decoder returns the deadline in canonical
+UTC ending `Z`, so the two records never compare equal; and a deadline written `Z` — the form
+`JobBudgets.model_dump(mode="json")` itself produces — fails outright, because `fromisoformat`
+reads a trailing `Z` only from Python 3.11 on, so the decoder cannot read its own output. CHOSEN:
+repair both, in `packages/orchestration/run_manifest.py` — the decoder spells a trailing `Z` as
+`+00:00` before parsing, and the builder binds the budgets through `_decode_budgets_field`, the
+same function the reader applies, so the bound record is already in the form the round-trip
+returns. ALTERNATIVE CONSIDERED: stop normalizing in the decoder — rejected, because the
+canonical form is what makes two manifests of the same budgets hash alike, and it is the reader's
+contract, not the writer's. The test is parametrized over all three spellings the finding and
+this reading name, and each drives the real `run_job` to a persisted STOPPED state.
+
+R-1040's FIX clause is followed as written: a ledger answer that names no priced and no unpriced
+call leaves the persisted figures standing, and one that names at least one call replaces them,
+as before. HOW TO REVERSE either: restore the file from `59fa1bd8`; the new tests go red.
+
+## DECISION F282 D4 — a timed-out provider call ends `provider_timeout`, a stopped task keeps its last verdict, and the self-use call ceiling clears the loop (2026-09-24)
+
+R-1016's FIX clause asks that the job-level status say timeout, with its limit, instead of
+`provider_unavailable`; R-1035's narrowed clause says the distinguishing text is already persisted
+on the task and only the status word hides it. CHOSEN: `run_pingpong` ends a run whose builder
+call failed for good at `provider_timeout` when `is_timeout_error` — the one predicate the retry
+path and the post-mortem classifier already share — recognises the error, and at
+`provider_unavailable` otherwise. The new status joins the two CLOSED maps that must know it
+(`RUN_FINAL_STATUS_TO_LEDGER_STATE`, as `failed`; `TERMINAL_STATUS_CLASSES`, as the existing
+`provider_timeout` class) and `final_status_detail_of`, so the task keeps the error text, which
+names the limit (`claude CLI timed out after 120s`). The job's gate string and every defect string
+`describe_self_use_run_defects` returns then read `final_status=provider_timeout` with no code of
+their own. The per-call seconds ARE the limit for a timeout, so no second elapsed figure is added;
+the run record's round wall clock keeps the total. NOT CHANGED: `_fail_early`, which fires when a
+provider cannot even be constructed and is therefore a genuinely unavailable one, the orchestrator's
+retryable classes, whose caught exceptions were already classed by the same predicate, and the
+patch pipeline's separate `stop_reason` vocabulary in `builder_bridge.py` and `ui_server.py`.
+R-1027's own remaining clause — that the next such run name its cause on disk — was met by F263's
+job `6a38b3203cca4928`, whose task detail reads the 120-second timeout.
+
+R-1007, both halves. The stop path now records on the task the verdict of the LAST round the
+reviewer reached, not only of the last round, because a budget stop lands between a builder call
+and its review. And `run_next_self_use_item` raises its DEFAULT call ceiling to one more than
+`2 x (1 + repair_rounds) x max_tasks` whenever 8 would tie or undercut what the loop can spend; a
+ceiling the caller passes or the order file declares is never raised. ALTERNATIVE CONSIDERED: record
+the verdict on every outcome, not only a stop — rejected, because other outcomes already take it
+from their last round and widening it changes what finished tasks report. HOW TO REVERSE: restore
+the five product files from `a5715ae8`; the new tests go red.
+
+## DECISION F282 D5 — an empty diff is the evidence a failing review needs; the generator skips a retired word; `ui stop` changes local state; a reserved tree is held to its promise (2026-09-24)
+
+R-0999's FIX clause offers two rulings and leaves the choice to the owning round. CHOSEN: the
+empty staged diff counts as the evidence a `fail` or `needs_repair` needs. When the builder
+staged nothing and the reviewer fails it with no finding, `run_pingpong` adds one finding,
+`EMPTY-change`, carrying the reviewer's summary as its details, exactly as round hygiene already
+adds its findings to the reviewer's list, and the repair loop runs; the builder gets its second
+try with a finding that says what is missing. ALTERNATIVE CONSIDERED: block with a reason naming
+the builder — rejected, because it gives up the repair round the finding says was lost, and it
+would need a new terminal status every reader of the closed status map must learn. A `fail`
+without a finding over a NON-empty diff is still the reviewer's incoherence, unchanged.
+
+R-1015: the generator's Tier 1 walks past a paragraph carrying the retired job-result word the
+way it walks past an unrepairable one, never raising. Its pattern mirrors the one guard that
+reads every tracked file, `tests/docs/test_retired_promote_word.py`, and a test there pins the two
+equal. The guard's entry for `scripts/self_use_queue.json` stays, because SU-025's recorded text
+still carries the word and the guard requires every listed token to occur; its comment now says
+the screen is in place and the entry goes when that text does. The generator itself gains an
+entry of sense H, because it spells the pattern it screens for.
+
+R-1034: `ui.stop` is `local_state_change`, the class `data reclaim` already uses for a command
+that changes local state without touching the repository. R-1000: precondition 7 names
+`RESERVED_NAMESPACES`, and `tests/test_no_orphan_modules.py` holds every entry to an existing
+tree that holds modules and that no scanned file outside it imports. HOW TO REVERSE: restore the
+touched files from `17caab1d`; the new tests go red.
+
+## DECISION F282 D6 — the data-root guard reads two levels; `uv` is pinned like the linter (2026-09-24)
+
+R-1004's FIX clause offers three shapes: the top-level children with their own `lstat`, a
+bounded hash, or a full walk armed only when a cheap reading differs. CHOSEN: a reading of the
+root's children and grandchildren, each with its `lstat`, as `DATA_ROOT_GUARD_DEPTH = 2` in
+`tests/conftest.py`. Measured by the reviewer on the operator's root: the whole-root reading
+held 8,684,466 entries and took 81.04 seconds; the two-level reading holds 194,295 and takes
+1.54, and it is taken twice a session. WHY TWO AND NOT ONE: Remedy's records live one or two
+levels down (`jobs/<id>/`, `runs/<id>/`), and a write that creates, deletes or atomically
+replaces anything inside a record directory changes that directory's mtime, which a two-level
+reading carries and a one-level reading does not. WHAT IT CANNOT SEE, stated in the guard's
+docstring and pinned by a test: a file rewritten in place below that depth, and an entry added
+three or more levels down. Every durable write in this repository is an atomic replace (F278),
+so that gap does not reach the pollution R-0803 exists for. ALTERNATIVE CONSIDERED: the armed
+full walk — rejected, because a cheap reading that differs is the pollution itself, so the walk
+would only ever serve the error message.
+
+R-1045: `uv==0.12.18` joins the `dev` extra, exactly pinned as `ruff` is, and `constraints.txt`
+is regenerated by the command its own header records, unchanged, cutoff date included; the one
+difference is `uv`'s entry and its hashes, and the same command at `62c02240` reproduces that
+commit's file byte for byte. `remedy doctor toolchain` lists it because its table IS the `dev`
+extra. HOW TO REVERSE either: restore the three files from `62c02240`.
+
+## DECISION F282 D7 — the UI lint parses TypeScript, gates at zero problems, and bootstrap reads decisions by part (2026-09-24)
+
+R-0622's FIX clause: add `typescript-eslint`, give the TypeScript block its parser, re-measure,
+and fix or scope what appears. DONE IN THAT ORDER, measured in a scratch tree with a clean
+`npm ci`. Before: 118 problems, every error a parse error. With the parser: 60 — 57 `no-undef` on
+browser globals and TypeScript type names, two `@typescript-eslint/no-explicit-any` disable
+comments naming a plugin the config never registered, and ONE real finding, a
+`react-hooks/exhaustive-deps` warning in `RemedyShell.tsx`, where the digest port was rebuilt on
+every render and so could not be listed as a dependency. RULINGS: `no-undef` is off for the
+TypeScript block, which is typescript-eslint's own guidance, because `tsc` resolves those names and
+`npm run typecheck` is gated; the plugin is registered and `@typescript-eslint/no-explicit-any` is
+ON, so the source's existing region opt-out in `src/api/remedyApi.ts` means what it says (nothing
+outside that region trips it, measured); the port is built once per mount with `useMemo` and listed,
+which keeps the write effect running once per job. `tests/ui_contracts/test_digest_mount.py`
+pinned the old dependency list `[dashboard.jobId]`; that is the decision changing, not the
+assertion weakening, and the guard now also requires the `useMemo` that makes the new list safe.
+THE LINT IS NOW A GATE: `tests/ui_contracts/test_ui_lint.py` runs the app's own eslint at
+`--max-warnings 0`, and proves the parser reaches the hook rules on a probe fed on stdin, so the
+checkout is never written. It carries the `ui_contract` marker by directory, so CI's `ui` stage,
+which installs the UI toolchain first, runs it.
+
+R-1029's FIX clause: bootstrap reads the last N decisions and those the open feature file names.
+N IS FIVE, and the handoff's named decisions count too, because a handoff names the decisions its
+next round must honour. The rule is written where each bootstrap is defined — Phase 0 of
+`docs/agents/self_drive_protocol.md` and §1 of `docs/agents/planner_reviewer_prompt.md`, outside
+its frozen §3 checklist — and `tests/docs/test_bootstrap_reads_decisions_by_part.py` pins both.
+HOW TO REVERSE: restore the touched files from `2a8186c4` and run `npm ci --prefix apps/ui`.
+
+## DECISION F282 D8 — a self-improvement attempt stops `blocked` at the removed candidate route instead of waiting for nothing; R-0892 resolves by the evidence already landed (2026-09-24)
+
+R-0866 names a residue, not the loss itself: DECISION F260 D3 already maps the external builder to
+"none, deliberately", and DECISION F275 D12 (a) kept `AttemptState`'s members beyond
+`awaiting_external_candidate`. The residue is that a surviving, CLI-reachable state machine parks
+every new attempt in a state its own vocabulary calls transitional, whose next action,
+`remedy self status --json`, sends the operator to watch for a candidate no command can bring. D12 (a)
+said the id stays open until a feature reopens the external-candidate route; no feature on the
+roadmap does, so that condition would carry it forever. CHOSEN: repair the residue and leave the
+route closed. `start_self_execution` still prepares and stores the request package, then moves
+`request_prepared → blocked` with the new stop reason `external_candidate_route_removed`, a legal
+transition the table already held, and its next action reads that one attempt
+(`remedy self status --attempt-id <id> --json`). `reconcile_self_attempt` moves an attempt an older
+Remedy parked at `awaiting_external_candidate` WITHOUT a patch intent to the same stop; one WITH an
+intent runs on as before, which is exactly the degraded rail D12 (a) kept. Eligibility resumes an
+attempt stopped at that reason, so a second `self execute` of the same task answers the same attempt
+rather than preparing a duplicate. No member of `AttemptState` is removed and D12 (a) stands; only
+its condition for resolving R-0866 is replaced by this repair. `docs/system/self-dogfood-execution-v0.md`
+describes the new stop. ALTERNATIVES CONSIDERED: stop at `request_prepared` — rejected, because that
+state is as transitional as the one it replaces; retire the states past the parked one — rejected,
+for D12 (a)'s reason, since they still run for an intent already on disk.
+
+R-0892 needs no code. Its package half landed in F268's round 6 (DECISION F268 D13, test
+`tests/cli/test_do_evidence_package.py`) and its skill half at amend0920-selfuse-real Part C, and
+the amendment's partial-resolution paragraph kept the id open only because the amendment itself did
+not touch the package half. HOW TO REVERSE: restore `packages/orchestration/self_dogfood_execution.py`,
+`docs/system/self-dogfood-execution-v0.md` and the two self-execution test files from `7932b7c1`.
+
+## DECISION F282 D9 — the cleanup scans match a temporary path as a path, the real-run identity test freezes Remedy's own checkout, and R-0499 is carried (2026-09-24)
+
+R-1028, CAUSE MEASURED. At `5c43004f` the two-file selection its recurrence paragraph names,
+`tests/orchestration/test_run_manifest_logical_identity.py` with
+`tests/runtimes/test_supervisor_portability.py` under `-n auto`, read `109 passed, 1 error` in four
+runs of four, each time at a different node and, in three runs read with `-v`, always on worker
+gw1. `basetemp_survivors` in `tests/runtimes/runtime_cleanup.py` asked whether a process's command
+line or working directory CONTAINS the worker's basetemp, and gw1's `.../popen-gw1` is a string
+prefix of gw10's to gw19's on a machine with 24 workers. When gw1 left the portability file for
+the other one, its file-level scan counted the live runtimes of those ten workers as its own
+survivors. The per-test scan had the same shape one level down, a tmp_path `.../test_x1` being a
+prefix of `.../test_x10`. CHOSEN: one helper, `names_path`, matches the root only when a path
+separator, whitespace or the end of the text follows it, and all three matching sites use it.
+With it, the same selection plus the new test file read `118 passed` at exit 0 in five runs of
+five. The finding's FIX clause offered unique temporary paths and ports per worker; the paths
+already were unique, and the ports are per worker since R-0569, so the repair is the comparison.
+
+R-0950 IS THREE GROUPS, ruled one by one on the reviewer's research helper's measurements.
+(1) `TestTwoRealRunsShareLogicalIdentity`: each run's manifest records the Remedy checkout's
+identity, whose digest covers every untracked file and feeds the logical input hash, while
+`tests/regression/test_resource_safety.py` writes and removes files in that shared checkout
+(R-0645's class). A deterministic reproduction that changed the checkout between the two runs
+made the hashes differ. CHOSEN: the class freezes Remedy's identity at test start, as
+`tests/cli/test_job_rerun_manifest.py` already does for the same class, and a new test proves
+that a checkout changing between the runs no longer reaches the comparison. (2)
+`TestNoFalseWorkspaceDrift` in `tests/cli/test_job_rerun_workspace_identity.py` no longer exists:
+`3be6ce11`, F273 round 15, deleted it with the drift diff it ran, so there is nothing to repair.
+(3) `test_no_zombie_processes_after_every_outcome` in `tests/orchestration/test_product_smoke.py`,
+named by a recurrence paragraph, was not reproduced in eight loaded targeted runs; it gets no
+speculative change, and R-0950 stays open for it alone when this round is booked, to be carried
+by name at the closure. R-0499 is carried too: its fix clause resolves it only when a red run
+names the test, no run in this feature has, and a round spent re-running a sweep until it fails
+is the pattern that finding forbids. HOW TO REVERSE: restore `tests/runtimes/runtime_cleanup.py`
+and `tests/orchestration/test_run_manifest_logical_identity.py` from `5c43004f` and delete
+`tests/runtimes/test_runtime_cleanup_scope.py`.
+
+## DECISION F282 D10 — the closure consolidation keeps the checklist at 34 items, the self-use track answers NONE, and three ids are carried (2026-09-24)
+
+T019, THE ONE CONSOLIDATION PASS operator amendment amend0827-process-diet rule 4 allows a feature,
+inside a closure round that runs anyway. R-0662, R-0819 and R-0820 each name a counter-measure the
+§3 checklist of `docs/agents/planner_reviewer_prompt.md` lacks, and the pass may not lengthen the
+list. CHOSEN: no new item and no merge. R-0819's counter-measure — a zero-gate over production code
+is run at its base before it is ordered, and one already non-zero there is restated as the property
+it meant — and R-0662's — a gate ordering node ids in a two-runner repository names both
+enumeration mechanisms and their prefixes — join item 8, whose class, a gate's expected value read
+against what can produce it, both findings name as theirs. R-0820's — no gate is computed from the
+predicate that defines the change set it gates, or an independent gate runs beside it no later —
+joins item 12, the item that pairs every dry run with a control that can fail. The consolidation
+paragraph records the pass, and the list stays at 34 items, measured by `live_checklist_items`
+before and after. ALTERNATIVE CONSIDERED: merge two items to make room for a new one — rejected,
+because no pair of the present items shares a rule, and a merge made only to free a number would
+hide one rule inside another's heading.
+
+THE SELF-USE TRACK, closure precondition 6: at `ef2edb49` `next_self_use_item` answered `None` and
+`generate_and_append_if_empty` answered `None` without writing, because every open finding either
+names no repair or says its repair is held by an operator ruling or by a failure that does not
+reproduce on demand, and Tier 0's refresh order is inside its cadence. The closure therefore records
+`self-use NONE (queue exhausted)`, edits no `consumed_by` field, and R-1008, which only a closure
+self-use run whose diff a reviewer passes can resolve, is carried. CARRIED BY NAME to the next
+findings-paydown feature at this closure's ownership step: R-0499, R-0950 for its zombie-process node
+alone (DECISION F282 D9), and R-1008. HOW TO REVERSE: restore
+`docs/agents/planner_reviewer_prompt.md` and `docs/roadmap/features/T2_F282.md` from `ef2edb49`.
+
+## DECISION F282 D11 — the closure suite's one bad node is a one-second archive-name collision, repaired in its test, and the suite runs again (2026-09-24)
+
+THE NODE, `tests/orchestration/test_review_zip_hygiene.py::TestThePackerRefusesRootLeftovers::test_the_packages_own_output_directory_is_not_its_own_detritus`,
+read red in the closure suite at `720e15e6` with `REVIEW_ZIP_ERROR: another invocation already
+published '<repo>/./remedy-review-20260924-022736-BLOCKED_EVIDENCE.zip'; this one loses the race`,
+exit 3, on the test's SECOND packer run. OWNERSHIP, amend0917-throughput rule 2: the hosted CI
+record of the merge base on main, run 35902025271 at `b8fa02ba`, is green, so the node is this
+feature's to repair. CAUSE, measured by the reviewer: `scripts/make_review_zip.sh` stamps its
+archive name with the wall-clock second of its one `date` call, and its coordinator publishes with
+a no-replace link, so when the first run finishes inside the second it started in, the second run
+derives the same name and refuses to replace the first archive. The refusal is the packer's
+deliberate safety and stays. Six serial runs of the node alone passed; a mutation giving both runs
+one stamp reproduces the closure suite's failure on every run. CHOSEN: the test gives each run its
+own stamp through a `date` on PATH that prints it, so the two names differ on any clock and the
+property under test — the packer's own output in the root is not detritus — is unchanged.
+ALTERNATIVE CONSIDERED: a sub-second stamp in the product — rejected, because the archive name's
+shape is read by the closure's STATUS lines and by the packer's own parsers, and a user re-running
+the packer inside one second is refused honestly, not harmed. The suite runs again in this round,
+the first of the at most three repair rounds rule 2 allows, and its transcript replaces
+`.agent/authored/f282-closure-suite.txt` at the same path. HOW TO REVERSE: restore the test file
+from `720e15e6`.

@@ -1,0 +1,91 @@
+diff --git a/apps/cli/command_catalog.py b/apps/cli/command_catalog.py
+index 4ffd1877..72d4d499 100644
+--- a/apps/cli/command_catalog.py
++++ b/apps/cli/command_catalog.py
+@@ -1631,7 +1631,8 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
+         group_id="ui",
+         subcommand="stop",
+         description="Stop all running UI sessions.",
+-        action_class="read_only",
++        # R-1034: it stops every running UI server, so it changes local state.
++        action_class="local_state_change",
+         args=(_JSON_OPT,),
+         supports_json=True,
+     ),
+diff --git a/docs/roadmap/STATUS_closure_protocol.md b/docs/roadmap/STATUS_closure_protocol.md
+index a2cea4f6..327df3a5 100644
+--- a/docs/roadmap/STATUS_closure_protocol.md
++++ b/docs/roadmap/STATUS_closure_protocol.md
+@@ -55,7 +55,9 @@
+    is reachable from the entry points) and `tests/test_no_orphan_modules.py`
+    (no module under `packages/`, `apps/` or `scripts/` lacks a non-test
+    importer unless `ALLOWED_UNWIRED` lists it with its reason). A line this
+-   feature adds to either list is named in its feature file. AGENTS.md's
++   feature adds to either list, or to `RESERVED_NAMESPACES` in that same test
++   file — which exempts a whole tree, and must name a fixture project nothing
++   in production imports — is named in its feature file. AGENTS.md's
+    Scope Control rule "Replacing is deleting" binds this closure; it is
+    cited here, not restated.
+ 
+diff --git a/packages/orchestration/pingpong_loop.py b/packages/orchestration/pingpong_loop.py
+index 34d184ce..6451c22c 100644
+--- a/packages/orchestration/pingpong_loop.py
++++ b/packages/orchestration/pingpong_loop.py
+@@ -2388,6 +2388,15 @@ def round_hygiene_findings(
+             for finding in run_hygiene_rule(rule, changes)]
+ 
+ 
++def empty_change_finding(reviewer_summary: str) -> ReviewFinding:
++    """The finding an empty staged diff stands for when the reviewer fails it (R-0999)."""
++    return ReviewFinding(
++        id="EMPTY-change", severity="high",
++        summary="the builder staged no change, so nothing the task asks for was done",
++        details=reviewer_summary,
++        required_fix="make the change the task asks for; a plan or a command not run is no change")
++
++
+ # ---------------------------------------------------------------------------
+ # F001: Retry wrapper for provider calls
+ # ---------------------------------------------------------------------------
+@@ -3923,6 +3932,13 @@ def run_pingpong(
+                 reviewer_out.findings = list(reviewer_out.findings) + hygiene_findings
+                 if reviewer_out.verdict == "pass":
+                     reviewer_out.verdict = "needs_repair"
++            # R-0999: a builder that staged nothing gives a failing reviewer nothing to
++            # point at, and a `fail` without a finding would block the task as the
++            # REVIEWER's incoherence. The empty diff is the evidence, so it becomes the
++            # finding and the repair loop gets its second try.
++            if (not result.staged_files and not reviewer_out.findings
++                    and reviewer_out.verdict in ("needs_repair", "fail")):
++                reviewer_out.findings = [empty_change_finding(reviewer_out.summary)]
+ 
+             # --- Reviewer output coherence validation ---
+             coherence_error = validate_reviewer_output(reviewer_out, test_passed=rd.test_passed)
+diff --git a/packages/orchestration/self_use_generator.py b/packages/orchestration/self_use_generator.py
+index c5449662..ebabbee1 100644
+--- a/packages/orchestration/self_use_generator.py
++++ b/packages/orchestration/self_use_generator.py
+@@ -120,6 +120,11 @@ _ELIGIBLE_SEVERITIES = ("Low", "Medium")
+ #: amend0920-selfuse-real, DECISION D2).
+ _FIX_SENTENCE_RE = re.compile(r"\bFIX\b\s*(?:,[^.]*?)?:", re.I)
+ 
++#: The retired job-result verb `tests/docs/test_retired_promote_word.py` holds every
++#: tracked file to (DECISION amend0905-vocab D5); a test there pins the two patterns
++#: equal, so this copy cannot drift from the guard it screens for (R-1015).
++RETIRED_WORD = re.compile(r"promot", re.IGNORECASE)
++
+ #: WORDS THAT SAY THE FIX IS NOT THIS RUN'S TO MAKE. Each one was read off the
+ #: five hollow runs rather than guessed: `flaky` and `once in` mark a finding
+ #: whose defect does not reproduce on demand, `never captured` marks one whose
+@@ -264,7 +269,10 @@ def _oldest_open_low_or_medium_finding(
+     # the loop walks on when it is not repairable (amend0920-selfuse-real D2).
+     for _, candidate_id in candidates:
+         paragraph = _finding_paragraph(text, candidate_id, ledger_path)
+-        if _is_repairable(paragraph):
++        # R-1015: the paragraph is copied verbatim into a tracked file, which the
++        # retired-word guard reads, so a paragraph quoting a retired word is walked
++        # past exactly like an unrepairable one — skipped, never raised over.
++        if _is_repairable(paragraph) and not RETIRED_WORD.search(paragraph):
+             return candidate_id, paragraph
+     return None
+ 

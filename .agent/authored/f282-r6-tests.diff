@@ -1,0 +1,97 @@
+diff --git a/tests/orchestration/test_toolchain.py b/tests/orchestration/test_toolchain.py
+index 0c1fdc86..d34adc81 100644
+--- a/tests/orchestration/test_toolchain.py
++++ b/tests/orchestration/test_toolchain.py
+@@ -23,7 +23,8 @@ from packages.orchestration.toolchain import (
+     toolchain_rows,
+ )
+ 
+-DECLARED = ["pydantic", "psutil", "pytest", "pytest-xdist", "ruff", "mypy", "pytest-cov", "coverage"]
++# R-1045: `uv`, the generator `constraints.txt` names, is part of the `dev` extra and so of the report.
++DECLARED = ["pydantic", "psutil", "pytest", "pytest-xdist", "ruff", "mypy", "pytest-cov", "coverage", "uv"]
+ 
+ 
+ def test_the_report_covers_the_runtime_dependencies_and_the_dev_extra():
+diff --git a/tests/orchestration/test_toolchain_pins.py b/tests/orchestration/test_toolchain_pins.py
+index 3db069bd..c7bc6695 100644
+--- a/tests/orchestration/test_toolchain_pins.py
++++ b/tests/orchestration/test_toolchain_pins.py
+@@ -90,6 +90,17 @@ def test_the_pinned_ruff_is_the_ruff_the_lint_gate_is_pinned_to():
+     assert pinned_versions()["ruff"] == specifiers[0].version
+ 
+ 
++def test_the_generator_the_header_names_is_pinned_like_the_linter():
++    """R-1045: the header's own command runs `uv`, so `dev` pins it with `==` and CI installs it."""
++    dev = [Requirement(text) for text in project_table()["optional-dependencies"]["dev"]]
++    uv = [requirement for requirement in dev if canonicalize_name(requirement.name) == "uv"]
++    assert len(uv) == 1
++    specifiers = list(uv[0].specifier)
++    assert len(specifiers) == 1 and specifiers[0].operator == "==", uv[0]
++    assert pinned_versions()["uv"] == specifiers[0].version
++    assert constraints_text().splitlines()[1].removeprefix("#    ").split()[0] == "uv"
++
++
+ def test_the_runtime_dependencies_carry_an_upper_bound():
+     """A new major version of `pydantic` or `psutil` arrives by a decision, never unannounced."""
+     for requirement in declared_requirements():
+diff --git a/tests/regression/test_data_root_guard.py b/tests/regression/test_data_root_guard.py
+new file mode 100644
+index 00000000..8a0a9c6c
+--- /dev/null
++++ b/tests/regression/test_data_root_guard.py
+@@ -0,0 +1,55 @@
++"""The R-0803 data-root guard reads two levels, and what it sees there (R-1004)."""
++from __future__ import annotations
++
++import os
++
++from tests.conftest import DATA_ROOT_GUARD_DEPTH, _data_root_fingerprint
++
++PAST_NS = 1_000_000_000_000_000_000
++
++
++def _record_root(tmp_path):
++    root = tmp_path / "data"
++    record = root / "jobs" / "job-1"
++    record.mkdir(parents=True)
++    (record / "job.json").write_text("{}", encoding="utf-8")
++    (record / "deep").mkdir()
++    (record / "deep" / "leaf.json").write_text("{}", encoding="utf-8")
++    for path in (record / "deep", record, root / "jobs"):
++        os.utime(path, ns=(PAST_NS, PAST_NS))
++    return root, record
++
++
++def test_it_reads_two_levels_and_no_deeper(tmp_path):
++    root, _ = _record_root(tmp_path)
++    paths = [entry[0] for entry in _data_root_fingerprint(str(root))]
++    assert DATA_ROOT_GUARD_DEPTH == 2
++    assert paths == ["jobs", os.path.join("jobs", "job-1")]
++
++
++def test_a_new_record_changes_the_reading(tmp_path):
++    root, _ = _record_root(tmp_path)
++    before = _data_root_fingerprint(str(root))
++    (root / "jobs" / "job-2").mkdir()
++    assert _data_root_fingerprint(str(root)) != before
++
++
++def test_an_atomic_replace_inside_a_record_changes_the_reading(tmp_path):
++    root, record = _record_root(tmp_path)
++    before = _data_root_fingerprint(str(root))
++    (record / "job.json.tmp").write_text('{"state": "done"}', encoding="utf-8")
++    os.replace(record / "job.json.tmp", record / "job.json")
++    assert _data_root_fingerprint(str(root)) != before
++
++
++def test_a_rewrite_in_place_below_the_depth_is_not_seen(tmp_path):
++    """The limit the docstring states, pinned so it cannot quietly change."""
++    root, record = _record_root(tmp_path)
++    before = _data_root_fingerprint(str(root))
++    with open(record / "deep" / "leaf.json", "w", encoding="utf-8") as handle:
++        handle.write('{"changed": true}')
++    assert _data_root_fingerprint(str(root)) == before
++
++
++def test_an_absent_root_reads_none(tmp_path):
++    assert _data_root_fingerprint(str(tmp_path / "absent")) is None

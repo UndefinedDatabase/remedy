@@ -108,8 +108,21 @@ def _check_handler_import() -> IntegrityCheck:
         return IntegrityCheck("handler_import", IntegrityStatus.FAIL, f"import failed: {type(exc).__name__}: {exc}"[:200])
 
 
+_PASSING_GATE_VERDICTS = frozenset({"PASS", "PASS_WITH_RISKS"})
+
+
 def _check_live_review_verdict() -> IntegrityCheck:
-    """Check live_review latest verdict is not PENDING/FAIL when context says complete."""
+    """Check the ledger's last ``Gate:`` verdict is a pass when context says complete.
+
+    R-0998: the verdict is read through ``latest_gate_verdict`` of the ledger's one
+    canonical reader, the same module the high-blocker check loads. The reader it
+    replaced took the line after the first ``## Verdict`` it met, a heading the ledger
+    stopped carrying when its ``Gate:`` records began, so it read whatever followed a
+    finding that QUOTED that heading and could never see a FAIL. With context saying
+    complete, anything but a passing verdict fails — a FAIL, a repair or a block, and
+    also no ``Gate:`` record or one whose verdict does not parse, because neither
+    establishes that the work passed.
+    """
     agent_dir = Path(".agent")
     live_review = agent_dir / "live_review.md"
     context = agent_dir / "context.md"
@@ -118,41 +131,28 @@ def _check_live_review_verdict() -> IntegrityCheck:
         return IntegrityCheck("live_review_verdict", IntegrityStatus.SKIP, "no .agent/live_review.md")
 
     lr_text = live_review.read_text(encoding="utf-8", errors="replace")
-    verdict = ""
-    for line in lr_text.splitlines():
-        if line.strip().startswith("## Verdict"):
-            continue
-        if verdict == "" and line.strip() and not line.startswith("#"):
-            verdict = line.strip()
-            break
-
-    # Parse more carefully
-    lines = lr_text.splitlines()
-    for i, line in enumerate(lines):
-        if "## Verdict" in line and i + 1 < len(lines):
-            verdict = lines[i + 1].strip()
-            break
-
-    if not verdict:
-        return IntegrityCheck("live_review_verdict", IntegrityStatus.WARN, "no verdict found")
-
-    verdict_lower = verdict.lower()
+    try:
+        verdict = _load_ledger_reader().latest_gate_verdict(lr_text)
+    except (OSError, ImportError, SyntaxError, AttributeError) as exc:
+        # Everything loading a module by path can raise — the file absent or unreadable, it
+        # or an import of its own failing, or the reader missing — and each is a FAIL: a
+        # check that cannot read the ledger has not established what its last verdict is.
+        return IntegrityCheck("live_review_verdict", IntegrityStatus.FAIL,
+                              f"ledger reader failed: {type(exc).__name__}: {exc}"[:200])
 
     # Check if context explicitly declares current scope complete (R-0017 fix)
     ctx_text = ""
     if context.exists():
         ctx_text = context.read_text(encoding="utf-8", errors="replace")
 
-    ctx_complete = _ctx_says_complete(ctx_text)
-
-    if ctx_complete and "pending" in verdict_lower:
+    if _ctx_says_complete(ctx_text) and verdict not in _PASSING_GATE_VERDICTS:
         return IntegrityCheck("live_review_verdict", IntegrityStatus.FAIL,
-                              f"Context says complete but verdict is PENDING: {verdict[:100]}")
-    if ctx_complete and "fail" in verdict_lower and "pass" not in verdict_lower:
-        return IntegrityCheck("live_review_verdict", IntegrityStatus.FAIL,
-                              f"Context says complete but verdict is FAIL: {verdict[:100]}")
+                              f"Context says complete but the last Gate verdict is {verdict}")
+    if verdict in ("absent", "unparsed"):
+        return IntegrityCheck("live_review_verdict", IntegrityStatus.WARN,
+                              f"no verdict found: last Gate record {verdict}")
 
-    return IntegrityCheck("live_review_verdict", IntegrityStatus.PASS, verdict[:100])
+    return IntegrityCheck("live_review_verdict", IntegrityStatus.PASS, f"last Gate verdict {verdict}")
 
 
 def _check_plan_consistency() -> IntegrityCheck:

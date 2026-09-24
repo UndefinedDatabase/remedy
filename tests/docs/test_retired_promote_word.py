@@ -122,6 +122,11 @@ KEPT_BY_SENSE: dict[str, tuple[str, frozenset[str]]] = {
         "promotion_evidence_config_key", "promotion_evidence_from_mapping", "promotion_without_evidence",
         "promotionevidence", "resolve_promotion_evidence", "rule_promotion_without_evidence",
     })),
+    # R-1015: the generator screens every ledger paragraph it would copy against this
+    # guard's own pattern, which it therefore spells, with this file's name beside it.
+    "packages/orchestration/self_use_generator.py": (H, frozenset({
+        "promot", "test_retired_promote_word",
+    })),
     "packages/runtimes/dev_server.py": (K5_RUNTIME, frozenset({
         "promote", "promotes",
     })),
@@ -134,12 +139,11 @@ KEPT_BY_SENSE: dict[str, tuple[str, frozenset[str]]] = {
     # The self-use queue carries, verbatim, the ledger paragraph the generator
     # (packages/orchestration/self_use_generator.py) copied into the pending item's
     # `why` and `job_markdown`.  That is a QUOTATION of an append-only record, not a
-    # use of the retired verb, which is sense H.  The token below tracks the CURRENT
-    # pending item and changes when the queue does: F277's closure generated SU-025
-    # from R-0820, whose text says "a promotion result".  Registered as R-1015 —
-    # the generator screens that paragraph for markdown headings and `Acceptance:`
-    # markers and not for retired vocabulary, so this entry is the stopgap and the
-    # screen is the fix.
+    # use of the retired verb, which is sense H.  F277's closure generated SU-025
+    # from R-0820, whose text says "a promotion result", and that entry stays in the
+    # queue as its record.  R-1015's screen, landed at F282, walks the generator past
+    # any paragraph carrying the word, so no NEW entry can add a token here; the
+    # entry goes when SU-025's text leaves the file.
     "scripts/self_use_queue.json": (H, frozenset({
         "promotion",
     })),
@@ -311,3 +315,10 @@ def test_every_token_listed_for_a_file_still_occurs_in_it():
 
 def test_every_sense_label_is_one_of_the_named_senses():
     assert sorted({sense for sense, _ in KEPT_BY_SENSE.values()} - SENSES) == []
+
+
+def test_the_self_use_generator_screens_with_this_guards_own_pattern():
+    """R-1015: a ledger paragraph this guard would reject is never copied into the queue."""
+    from packages.orchestration.self_use_generator import RETIRED_WORD
+
+    assert (RETIRED_WORD.pattern, RETIRED_WORD.flags) == (WORD.pattern, WORD.flags)

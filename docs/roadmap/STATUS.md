@@ -51,7 +51,7 @@ The tier-block order below is the operator-decided Self-Use sequence of 2026-08-
 ## Tier 2 — Human-change absorption (operator order amend0831)
 
 - [x] F263 — Human-change absorption (absorb) (T001-T003 complete, the one suite node that fails only under parallel runs recorded against R-0950 and the self-use run's provider timeout against R-1035; accepted 2026-09-23 · live review PASS_WITH_RISKS — ACCEPTED · Evidence job f263r8e1001 · package remedy-review-20260923-143535-READY_FOR_REVIEW.zip · SHA-256 b25a25aeb9eae8ef717b4793555b3862463bc80f3060f6b1e38f6af9756c735b · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD 5c98b36411337d932733b441203a7b10f1fa2336)
-- [ ] F282 — Findings paydown v2
+- [x] F282 — Findings paydown v2 (T001-T019 complete, R-0499, R-0950's zombie-process node and R-1008 carried to F284; accepted 2026-09-24 · live review PASS_WITH_RISKS — ACCEPTED · Evidence job f282r12e1001 · package remedy-review-20260924-025907-READY_FOR_REVIEW.zip · SHA-256 87eccda52d816efd0f352f40decbb30139a11fdb1eb9554d80a5c1489faa2c44 · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD 3d7afae1a51b89fc039d44801991ce6390347402)
 
 ## Tier 5 — Steering & Learning Surfaces (operator order amend0831)
 
@@ -139,6 +139,13 @@ Milestone R1 — Remedy as the daily tool: Tier 2 complete (F086 as the self-ins
 - [x] F258 — Self-use track v2 (T001–T003 complete; accepted 2026-08-30 · live review PASS_WITH_RISKS — ACCEPTED · Evidence job f258-closure · package remedy-review-20260830-084541-READY_FOR_REVIEW.zip · SHA-256 4b4153ad33f01e4d7014e853663f76ac1f36f61ba06687ed0b3c9c5411f12c50 · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD 49fcc2c645601936d8c426b1eb09523b9b3c7f6f)
 - [ ] F015 — Interactive plan editing
 - [ ] F019 — Live node materialization
+
+## Tier 2 — Findings paydown (rolling, operator rule amend0911-feedback)
+
+- [ ] F284 — Findings paydown v3
+
+## Tier 5 — Operator Cockpit (parallel human track, continued)
+
 - [ ] F020 — Node lifecycle & glyph language
 - [ ] F023 — Semantic zoom L0–L3
 - [ ] F024 — Phase timeline with scrubber

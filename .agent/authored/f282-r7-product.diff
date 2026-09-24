@@ -1,0 +1,470 @@
+diff --git a/apps/ui/eslint.config.js b/apps/ui/eslint.config.js
+index 8a9e31ad..46bba482 100644
+--- a/apps/ui/eslint.config.js
++++ b/apps/ui/eslint.config.js
+@@ -1,14 +1,25 @@
+ import js from "@eslint/js";
+ import reactHooks from "eslint-plugin-react-hooks";
++import tseslint from "typescript-eslint";
+ 
+ export default [
+   js.configs.recommended,
+   {
+     files: ["src/**/*.{ts,tsx}"],
+-    plugins: { "react-hooks": reactHooks },
++    // R-0622: without the TypeScript parser every file stopped at its first type
++    // annotation, so no rule below ever evaluated.
++    languageOptions: { parser: tseslint.parser },
++    // Registered so a `@typescript-eslint/...` disable comment names a rule that exists.
++    plugins: { "react-hooks": reactHooks, "@typescript-eslint": tseslint.plugin },
+     rules: {
+       ...reactHooks.configs.recommended.rules,
+       "no-unused-vars": "off",
++      // typescript-eslint's own guidance: `tsc` resolves names, including the DOM
++      // globals and type names this rule cannot see, and `npm run typecheck` is gated.
++      "no-undef": "off",
++      // The one typescript-eslint rule this source already opts out of by region
++      // (`src/api/remedyApi.ts`), so the opt-out means what it says.
++      "@typescript-eslint/no-explicit-any": "error",
+     },
+   },
+   {
+diff --git a/apps/ui/package-lock.json b/apps/ui/package-lock.json
+index 14eb491c..41a0a76b 100644
+--- a/apps/ui/package-lock.json
++++ b/apps/ui/package-lock.json
+@@ -24,6 +24,7 @@
+         "eslint": "^9.18.0",
+         "eslint-plugin-react-hooks": "^5.1.0",
+         "typescript": "^5.7.3",
++        "typescript-eslint": "^8.70.1",
+         "vite": "^6.0.7",
+         "vitest": "^2.1.8"
+       }
+@@ -1862,6 +1863,301 @@
+         "@types/react": "*"
+       }
+     },
++    "node_modules/@typescript-eslint/eslint-plugin": {
++      "version": "8.70.1",
++      "resolved": "https://registry.npmjs.org/@typescript-eslint/eslint-plugin/-/eslint-plugin-8.70.1.tgz",
++      "integrity": "sha512-nDNrUQ/4ruSNYbu749TRY7cfrzPtoLHEXSNBI8aaNY32LlZCajixqRf3FqcKC4p5Cam4VOHYx/t+i5+nKXvrqA==",
++      "dev": true,
++      "license": "MIT",
++      "dependencies": {
++        "@eslint-community/regexpp": "^4.12.2",
++        "@typescript-eslint/scope-manager": "8.70.1",
++        "@typescript-eslint/type-utils": "8.70.1",
++        "@typescript-eslint/utils": "8.70.1",
++        "@typescript-eslint/visitor-keys": "8.70.1",
++        "ignore": "^7.0.5",
++        "natural-compare": "^1.4.0",
++        "ts-api-utils": "^2.5.0"
++      },
++      "engines": {
++        "node": "^18.18.0 || ^20.9.0 || >=21.1.0"
++      },
++      "funding": {
++        "type": "opencollective",
++        "url": "https://opencollective.com/typescript-eslint"
++      },
++      "peerDependencies": {
++        "@typescript-eslint/parser": "^8.70.1",
++        "eslint": "^8.57.0 || ^9.0.0 || ^10.0.0",
++        "typescript": ">=4.8.4 <6.1.0"
++      }
++    },
++    "node_modules/@typescript-eslint/eslint-plugin/node_modules/ignore": {
++      "version": "7.0.10",
++      "resolved": "https://registry.npmjs.org/ignore/-/ignore-7.0.10.tgz",
++      "integrity": "sha512-HpbUakT7xp5miBUywCHf36ZEuAJNklBJDDsGpUIjMzOSmM8ELSfA9Sa/QDPeNeqeoN31u+UTCkL4klCOVvRm4Q==",
++      "dev": true,
++      "license": "MIT",
++      "engines": {
++        "node": ">= 4"
++      }
++    },
++    "node_modules/@typescript-eslint/parser": {
++      "version": "8.70.1",
++      "resolved": "https://registry.npmjs.org/@typescript-eslint/parser/-/parser-8.70.1.tgz",
++      "integrity": "sha512-nO974WLllwhSFWQXnMLj6nDGa8f0khKEz1JzpPJ1u7Vm/4X1X6ZHajpoknU4bb41vJyMB0HHVyS2GqdhWfIXZw==",
++      "dev": true,
++      "license": "MIT",
++      "dependencies": {
++        "@typescript-eslint/scope-manager": "8.70.1",
++        "@typescript-eslint/types": "8.70.1",
++        "@typescript-eslint/typescript-estree": "8.70.1",
++        "@typescript-eslint/visitor-keys": "8.70.1",
++        "debug": "^4.4.3"
++      },
++      "engines": {
++        "node": "^18.18.0 || ^20.9.0 || >=21.1.0"
++      },
++      "funding": {
++        "type": "opencollective",
++        "url": "https://opencollective.com/typescript-eslint"
++      },
++      "peerDependencies": {
++        "eslint": "^8.57.0 || ^9.0.0 || ^10.0.0",
++        "typescript": ">=4.8.4 <6.1.0"
++      }
++    },
++    "node_modules/@typescript-eslint/project-service": {
++      "version": "8.70.1",
++      "resolved": "https://registry.npmjs.org/@typescript-eslint/project-service/-/project-service-8.70.1.tgz",
++      "integrity": "sha512-62xOgboPfwc3/IgPSX/W6oQR3ZbF04194FPGUGH8HL8iLFHbt/456/8Ph1wLNUgVF+s94FlHoipBsz+v7+LMnA==",
++      "dev": true,
++      "license": "MIT",
++      "dependencies": {
++        "@typescript-eslint/tsconfig-utils": "^8.70.1",
++        "@typescript-eslint/types": "^8.70.1",
++        "debug": "^4.4.3"
++      },
++      "engines": {
++        "node": "^18.18.0 || ^20.9.0 || >=21.1.0"
++      },
++      "funding": {
++        "type": "opencollective",
++        "url": "https://opencollective.com/typescript-eslint"
++      },
++      "peerDependencies": {
++        "typescript": ">=4.8.4 <6.1.0"
++      }
++    },
++    "node_modules/@typescript-eslint/scope-manager": {
++      "version": "8.70.1",
++      "resolved": "https://registry.npmjs.org/@typescript-eslint/scope-manager/-/scope-manager-8.70.1.tgz",
++      "integrity": "sha512-Pa0EeSeAusQc1WbjQMac+YfenewYTBu0KjgYvkUKwhXaHUKbFog23Dm/rp0DX/6tyYOQ3Xl1a+3EcFNZynGHCw==",
++      "dev": true,
++      "license": "MIT",
++      "dependencies": {
++        "@typescript-eslint/types": "8.70.1",
++        "@typescript-eslint/visitor-keys": "8.70.1"
++      },
++      "engines": {
++        "node": "^18.18.0 || ^20.9.0 || >=21.1.0"
++      },
++      "funding": {
++        "type": "opencollective",
++        "url": "https://opencollective.com/typescript-eslint"
++      }
++    },
++    "node_modules/@typescript-eslint/tsconfig-utils": {
++      "version": "8.70.1",
++      "resolved": "https://registry.npmjs.org/@typescript-eslint/tsconfig-utils/-/tsconfig-utils-8.70.1.tgz",
++      "integrity": "sha512-jumze1fPI+sDOaM2TWGQdn39PDxTr7TZGeuyLkAbNyx2vtMT3uRnVKChN0hfht5V2TugphJzF6bYXvBcE09qqg==",
++      "dev": true,
++      "license": "MIT",
++      "engines": {
++        "node": "^18.18.0 || ^20.9.0 || >=21.1.0"
++      },
++      "funding": {
++        "type": "opencollective",
++        "url": "https://opencollective.com/typescript-eslint"
++      },
++      "peerDependencies": {
++        "typescript": ">=4.8.4 <6.1.0"
++      }
++    },
++    "node_modules/@typescript-eslint/type-utils": {
++      "version": "8.70.1",
++      "resolved": "https://registry.npmjs.org/@typescript-eslint/type-utils/-/type-utils-8.70.1.tgz",
++      "integrity": "sha512-7zKTnyvaVWqzLZHPFQtX1hVHqgkMC+WebPWakNCSyrQVbIP1AM0L0TlBZtACldIRb6PptI8Odk+jyZ5kP3B1VA==",
++      "dev": true,
++      "license": "MIT",
++      "dependencies": {
++        "@typescript-eslint/types": "8.70.1",
++        "@typescript-eslint/typescript-estree": "8.70.1",
++        "@typescript-eslint/utils": "8.70.1",
++        "debug": "^4.4.3",
++        "ts-api-utils": "^2.5.0"
++      },
++      "engines": {
++        "node": "^18.18.0 || ^20.9.0 || >=21.1.0"
++      },
++      "funding": {
++        "type": "opencollective",
++        "url": "https://opencollective.com/typescript-eslint"
++      },
++      "peerDependencies": {
++        "eslint": "^8.57.0 || ^9.0.0 || ^10.0.0",
++        "typescript": ">=4.8.4 <6.1.0"
++      }
++    },
++    "node_modules/@typescript-eslint/types": {
++      "version": "8.70.1",
++      "resolved": "https://registry.npmjs.org/@typescript-eslint/types/-/types-8.70.1.tgz",
++      "integrity": "sha512-Dm1ypdhhrGCTyyehxElhgJ6kgk8MVCv5qXdoOVqPr1uqk42jX8KjrZqhROvdShczA8qrDoYiOWn1ykWlx2k81Q==",
++      "dev": true,
++      "license": "MIT",
++      "engines": {
++        "node": "^18.18.0 || ^20.9.0 || >=21.1.0"
++      },
++      "funding": {
++        "type": "opencollective",
++        "url": "https://opencollective.com/typescript-eslint"
++      }
++    },
++    "node_modules/@typescript-eslint/typescript-estree": {
++      "version": "8.70.1",
++      "resolved": "https://registry.npmjs.org/@typescript-eslint/typescript-estree/-/typescript-estree-8.70.1.tgz",
++      "integrity": "sha512-TU8PwyGN0PQJUcE96mw8eCQ44SmxGdQlJmlWakHaHQ15eIuuvye5yNtmh/i6oS88jzXVQB71xdNkbkB/fMwL0g==",
++      "dev": true,
++      "license": "MIT",
++      "dependencies": {
++        "@typescript-eslint/project-service": "8.70.1",
++        "@typescript-eslint/tsconfig-utils": "8.70.1",
++        "@typescript-eslint/types": "8.70.1",
++        "@typescript-eslint/visitor-keys": "8.70.1",
++        "debug": "^4.4.3",
++        "minimatch": "^10.2.2",
++        "semver": "^7.7.3",
++        "tinyglobby": "^0.2.15",
++        "ts-api-utils": "^2.5.0"
++      },
++      "engines": {
++        "node": "^18.18.0 || ^20.9.0 || >=21.1.0"
++      },
++      "funding": {
++        "type": "opencollective",
++        "url": "https://opencollective.com/typescript-eslint"
++      },
++      "peerDependencies": {
++        "typescript": ">=4.8.4 <6.1.0"
++      }
++    },
++    "node_modules/@typescript-eslint/typescript-estree/node_modules/balanced-match": {
++      "version": "4.0.4",
++      "resolved": "https://registry.npmjs.org/balanced-match/-/balanced-match-4.0.4.tgz",
++      "integrity": "sha512-BLrgEcRTwX2o6gGxGOCNyMvGSp35YofuYzw9h1IMTRmKqttAZZVU67bdb9Pr2vUHA8+j3i2tJfjO6C6+4myGTA==",
++      "dev": true,
++      "license": "MIT",
++      "engines": {
++        "node": "18 || 20 || >=22"
++      }
++    },
++    "node_modules/@typescript-eslint/typescript-estree/node_modules/brace-expansion": {
++      "version": "5.0.12",
++      "resolved": "https://registry.npmjs.org/brace-expansion/-/brace-expansion-5.0.12.tgz",
++      "integrity": "sha512-YovQ3rzhaLMIrDjNDMkNS01tea93qhEhG5xy8f6+R0l+dw3Ki+5sCoIoI942iuLZTHWogWktgwVDhU09iNEimQ==",
++      "dev": true,
++      "license": "MIT",
++      "dependencies": {
++        "balanced-match": "^4.0.2"
++      },
++      "engines": {
++        "node": "20 || >=22"
++      }
++    },
++    "node_modules/@typescript-eslint/typescript-estree/node_modules/minimatch": {
++      "version": "10.2.6",
++      "resolved": "https://registry.npmjs.org/minimatch/-/minimatch-10.2.6.tgz",
++      "integrity": "sha512-vpLQEs+VLCr1nU0BXS07maYoFwlDAH0gngQuuttxIwutDFEMHq2blX+8vpgxDdK3J1PwjCJiep77OitTZ4Ll1A==",
++      "dev": true,
++      "license": "BlueOak-1.0.0",
++      "dependencies": {
++        "brace-expansion": "^5.0.8"
++      },
++      "engines": {
++        "node": "18 || 20 || >=22"
++      },
++      "funding": {
++        "url": "https://github.com/sponsors/isaacs"
++      }
++    },
++    "node_modules/@typescript-eslint/typescript-estree/node_modules/semver": {
++      "version": "7.8.5",
++      "resolved": "https://registry.npmjs.org/semver/-/semver-7.8.5.tgz",
++      "integrity": "sha512-Y7/KDsb8LjooZpwaqGyulO6DQlksgCncchHGk+sZIY4SBvUocMBEFH5Ur1fI4dV+Jvl0w6cjvucaIi40puRioA==",
++      "dev": true,
++      "license": "ISC",
++      "bin": {
++        "semver": "bin/semver.js"
++      },
++      "engines": {
++        "node": ">=10"
++      }
++    },
++    "node_modules/@typescript-eslint/utils": {
++      "version": "8.70.1",
++      "resolved": "https://registry.npmjs.org/@typescript-eslint/utils/-/utils-8.70.1.tgz",
++      "integrity": "sha512-Esgul8MsnKnRLdYU2Eb2cRV9bS5HJYtKj1ByJnOzzG2M58DGdSUQ1jUuILxipqcpB2h9WLrbD5GijIWUjX/Tqw==",
++      "dev": true,
++      "license": "MIT",
++      "dependencies": {
++        "@eslint-community/eslint-utils": "^4.9.1",
++        "@typescript-eslint/scope-manager": "8.70.1",
++        "@typescript-eslint/types": "8.70.1",
++        "@typescript-eslint/typescript-estree": "8.70.1"
++      },
++      "engines": {
++        "node": "^18.18.0 || ^20.9.0 || >=21.1.0"
++      },
++      "funding": {
++        "type": "opencollective",
++        "url": "https://opencollective.com/typescript-eslint"
++      },
++      "peerDependencies": {
++        "eslint": "^8.57.0 || ^9.0.0 || ^10.0.0",
++        "typescript": ">=4.8.4 <6.1.0"
++      }
++    },
++    "node_modules/@typescript-eslint/visitor-keys": {
++      "version": "8.70.1",
++      "resolved": "https://registry.npmjs.org/@typescript-eslint/visitor-keys/-/visitor-keys-8.70.1.tgz",
++      "integrity": "sha512-Vwj9lUIW5Xq3wQ9w6gv3R86g1hMK8f2zNOdGTAgeXUMMXFK78G9ruCjjqutHMNJc0+CH7LYRnHeUB9IT8wFmcw==",
++      "dev": true,
++      "license": "MIT",
++      "dependencies": {
++        "@typescript-eslint/types": "8.70.1",
++        "eslint-visitor-keys": "^5.0.0"
++      },
++      "engines": {
++        "node": "^18.18.0 || ^20.9.0 || >=21.1.0"
++      },
++      "funding": {
++        "type": "opencollective",
++        "url": "https://opencollective.com/typescript-eslint"
++      }
++    },
++    "node_modules/@typescript-eslint/visitor-keys/node_modules/eslint-visitor-keys": {
++      "version": "5.0.1",
++      "resolved": "https://registry.npmjs.org/eslint-visitor-keys/-/eslint-visitor-keys-5.0.1.tgz",
++      "integrity": "sha512-tD40eHxA35h0PEIZNeIjkHoDR4YjjJp34biM0mDvplBe//mB+IHCqHDGV7pxF+7MklTvighcCPPZC7ynWyjdTA==",
++      "dev": true,
++      "license": "Apache-2.0",
++      "engines": {
++        "node": "^20.19.0 || ^22.13.0 || >=24"
++      },
++      "funding": {
++        "url": "https://opencollective.com/eslint"
++      }
++    },
+     "node_modules/@vitejs/plugin-react": {
+       "version": "4.7.0",
+       "resolved": "https://registry.npmjs.org/@vitejs/plugin-react/-/plugin-react-4.7.0.tgz",
+@@ -4051,6 +4347,19 @@
+         "node": ">=14.0.0"
+       }
+     },
++    "node_modules/ts-api-utils": {
++      "version": "2.5.0",
++      "resolved": "https://registry.npmjs.org/ts-api-utils/-/ts-api-utils-2.5.0.tgz",
++      "integrity": "sha512-OJ/ibxhPlqrMM0UiNHJ/0CKQkoKF243/AEmplt3qpRgkW8VG7IfOS41h7V8TjITqdByHzrjcS/2si+y4lIh8NA==",
++      "dev": true,
++      "license": "MIT",
++      "engines": {
++        "node": ">=18.12"
++      },
++      "peerDependencies": {
++        "typescript": ">=4.8.4"
++      }
++    },
+     "node_modules/type-check": {
+       "version": "0.4.0",
+       "resolved": "https://registry.npmjs.org/type-check/-/type-check-0.4.0.tgz",
+@@ -4078,6 +4387,30 @@
+         "node": ">=14.17"
+       }
+     },
++    "node_modules/typescript-eslint": {
++      "version": "8.70.1",
++      "resolved": "https://registry.npmjs.org/typescript-eslint/-/typescript-eslint-8.70.1.tgz",
++      "integrity": "sha512-AcWG7KDjZ2THNXsgwttMaGmzVi0VFRlFYfqFHYQRbDpF3owuYbuiL8c7UUrd2k8s3PoSfIQrWfrGXfcElrWLYA==",
++      "dev": true,
++      "license": "MIT",
++      "dependencies": {
++        "@typescript-eslint/eslint-plugin": "8.70.1",
++        "@typescript-eslint/parser": "8.70.1",
++        "@typescript-eslint/typescript-estree": "8.70.1",
++        "@typescript-eslint/utils": "8.70.1"
++      },
++      "engines": {
++        "node": "^18.18.0 || ^20.9.0 || >=21.1.0"
++      },
++      "funding": {
++        "type": "opencollective",
++        "url": "https://opencollective.com/typescript-eslint"
++      },
++      "peerDependencies": {
++        "eslint": "^8.57.0 || ^9.0.0 || ^10.0.0",
++        "typescript": ">=4.8.4 <6.1.0"
++      }
++    },
+     "node_modules/update-browserslist-db": {
+       "version": "1.2.3",
+       "resolved": "https://registry.npmjs.org/update-browserslist-db/-/update-browserslist-db-1.2.3.tgz",
+diff --git a/apps/ui/package.json b/apps/ui/package.json
+index 22ef73c9..7ba76117 100644
+--- a/apps/ui/package.json
++++ b/apps/ui/package.json
+@@ -28,6 +28,7 @@
+     "eslint": "^9.18.0",
+     "eslint-plugin-react-hooks": "^5.1.0",
+     "typescript": "^5.7.3",
++    "typescript-eslint": "^8.70.1",
+     "vite": "^6.0.7",
+     "vitest": "^2.1.8"
+   }
+diff --git a/apps/ui/src/components/shell/RemedyShell.tsx b/apps/ui/src/components/shell/RemedyShell.tsx
+index c9b39d1f..60a37986 100644
+--- a/apps/ui/src/components/shell/RemedyShell.tsx
++++ b/apps/ui/src/components/shell/RemedyShell.tsx
+@@ -1,4 +1,4 @@
+-import { useEffect, useState } from "react";
++import { useEffect, useMemo, useState } from "react";
+ import type { RemedyDashboard } from "../../api/types";
+ import type { DiffEnvelope } from "../../api/diffViewModel";
+ import type { JobDigest } from "../../api/jobDigest";
+@@ -113,7 +113,10 @@ export function RemedyShell({ dashboard, serverToken, selectedNodeId, onSelectNo
+   // DECLARES `DigestVisibilityPort` and implements nothing, exactly as
+   // `browserBrainStreamEnv(window)` above binds the stream's own globals at
+   // this same mount. `window.localStorage` occurs nowhere else in this file.
+-  const digestPort = browserDigestVisibilityPort(window.localStorage);
++  // Built ONCE per mount (R-0622's first real lint finding): a port rebuilt every
++  // render would have to stay out of the effect's dependencies below, or rewrite
++  // "last seen" on every render.
++  const digestPort = useMemo(() => browserDigestVisibilityPort(window.localStorage), []);
+ 
+   // Read once, before the write below ever runs, so the digest visibility
+   // rule sees the instant the operator was last here rather than the one
+@@ -121,7 +124,7 @@ export function RemedyShell({ dashboard, serverToken, selectedNodeId, onSelectNo
+   const [lastSeenMs] = useState<number | null>(() => digestPort.readLastSeen(dashboard.jobId));
+   useEffect(() => {
+     digestPort.writeLastSeen(dashboard.jobId, Date.now());
+-  }, [dashboard.jobId]);
++  }, [digestPort, dashboard.jobId]);
+ 
+   const [dismissedAtMs, setDismissedAtMs] = useState<DigestDismissal>(
+     () => digestPort.readDismissal(dashboard.jobId),
+diff --git a/docs/agents/planner_reviewer_prompt.md b/docs/agents/planner_reviewer_prompt.md
+index abc5042a..3f782a23 100644
+--- a/docs/agents/planner_reviewer_prompt.md
++++ b/docs/agents/planner_reviewer_prompt.md
+@@ -39,7 +39,9 @@ Read, in order, and nothing more unless a step below demands it:
+    (STATUS_closure_protocol.md, "Closure-candidate findings").
+ 5. Only on demand: AGENTS.md sections, docs/agents/* conventions,
+    ROADMAP.md tier context, design_reference (mandatory for UI features),
+-   specific source files the current review requires.
++   specific source files the current review requires. `.agent/decisions.md`
++   is never read whole: its last five `## DECISION` entries and the ones the
++   feature file or the handoff names, by heading (R-1029).
+ Fresh feature → first paste block includes: Open PR Gate (merges the
+ previous feature's PR — the operator had their manual-review window), the
+ authored `[ ]`→`[~]` STATUS claim, live_review.md reset, branch creation,
+diff --git a/docs/agents/self_drive_protocol.md b/docs/agents/self_drive_protocol.md
+index cad8c8b3..2b8297a2 100644
+--- a/docs/agents/self_drive_protocol.md
++++ b/docs/agents/self_drive_protocol.md
+@@ -48,6 +48,11 @@ Then read from disk, never from session memory: `.agent/handoff.md`,
+ `.agent/plan.md`, `.agent/live_review.md`, `.agent/candidates.md`, and
+ the active feature file under `docs/roadmap/features/`.
+ 
++`.agent/decisions.md` is NEVER read whole at session start: it holds hundreds
++of entries and no longer fits a session's context (finding R-1029). Read its
++last five `## DECISION` entries, and every DECISION the active feature file or
++the handoff names, found by searching for its heading.
++
+ ## Phase 1 — decide
+ 1. `.agent/STOP` exists → write the handoff, end the session, do nothing else.
+ 2. Open PR from a `feature/*` branch into `main`, not a draft, exactly one

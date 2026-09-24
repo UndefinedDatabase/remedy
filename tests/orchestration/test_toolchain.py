@@ -23,7 +23,8 @@ from packages.orchestration.toolchain import (
     toolchain_rows,
 )
 
-DECLARED = ["pydantic", "psutil", "pytest", "pytest-xdist", "ruff", "mypy", "pytest-cov", "coverage"]
+# R-1045: `uv`, the generator `constraints.txt` names, is part of the `dev` extra and so of the report.
+DECLARED = ["pydantic", "psutil", "pytest", "pytest-xdist", "ruff", "mypy", "pytest-cov", "coverage", "uv"]
 
 
 def test_the_report_covers_the_runtime_dependencies_and_the_dev_extra():

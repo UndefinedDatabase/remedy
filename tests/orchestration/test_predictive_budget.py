@@ -799,6 +799,75 @@ class TestPredictiveStopAtTheLiveDispatchSafePoint:
         assert on_disk.stop_source == "budget"
         assert on_disk.finished_at.strip()
 
+    @pytest.mark.parametrize("deadline", [
+        "2020-01-01T00:00:00+00:00", "2020-01-01T00:00:00.250000+00:00", "2020-01-01T00:00:00Z"])
+    def test_a_deadline_stop_persists_stopped(self, isolate_data_root, demo_repo, monkeypatch, deadline):
+        # R-1005: a past deadline is the one limit whose exhaustion is certain, and its
+        # stop must write its run manifest and finalize like every other budget stop.
+        from packages.orchestration.pingpong_job import JOB_STOPPED, load_job_plan
+        done, builder, _r = self._run(monkeypatch, demo_repo, budgets={"deadline": deadline},
+                                      arm_ledger=False)
+        assert done.run_manifest_error == ""
+        assert done.stop_error == ""
+        on_disk = load_job_plan(done.job_id)
+        assert on_disk.state == JOB_STOPPED
+        assert on_disk.stop_reason == "budget_exhausted:deadline"
+        assert on_disk.finished_at.strip()
+        assert builder.build_calls == 0
+
+    def test_a_call_budget_stop_keeps_the_verdict_the_reviewer_last_reached(
+            self, isolate_data_root, demo_repo):
+        # R-1007: two rounds reviewed and failed, the third round's builder call is the
+        # fifth and last the budget allows, so the stop lands before its reviewer call.
+        from packages.orchestration.pingpong_job import JOB_STOPPED, load_job_plan, parse_job_file, run_job
+        from packages.orchestration.pingpong_provider import FakeProvider
+
+        class _Counted(FakeProvider):
+            @property
+            def name(self) -> str:
+                return "counted-stub"
+
+        job = parse_job_file(_TWO_TASK_JOB, str(demo_repo))
+        run_job(job.job_id, builder_provider=_Counted(fail_on_round=1, pass_on_round=99),
+                reviewer_provider=_Counted(fail_on_round=1, pass_on_round=99),
+                repair_rounds=2, budgets={"max_provider_calls": 5})
+        on_disk = load_job_plan(job.job_id)
+        assert on_disk.state == JOB_STOPPED
+        assert on_disk.stop_reason == "budget_exhausted:max_provider_calls"
+        task = on_disk.tasks[0]
+        assert task.final_status == "stopped"
+        assert task.reviewer_verdict not in ("", "pass")
+
+    def test_a_timed_out_builder_call_is_recorded_as_a_timeout(
+            self, isolate_data_root, demo_repo, monkeypatch):
+        # R-1016, R-1027 and R-1035: the provider was there and the call ran out of time.
+        from packages.orchestration import pingpong_loop
+        from packages.orchestration.pingpong_job import load_job_plan, parse_job_file, run_job
+        from packages.orchestration.pingpong_provider import FakeProvider
+        from packages.orchestration.self_use_findings import describe_self_use_run_defects
+
+        monkeypatch.setattr(pingpong_loop._time, "sleep", lambda _s: None)
+        error = "provider_error: RuntimeError: claude CLI timed out after 120s"
+        job = parse_job_file(_TWO_TASK_JOB, str(demo_repo))
+        run_job(job.job_id, builder_provider=FakeProvider(builder_error=error),
+                reviewer_provider=FakeProvider(), repair_rounds=0)
+        on_disk = load_job_plan(job.job_id)
+        task = on_disk.tasks[0]
+        assert task.final_status == "provider_timeout"
+        assert task.final_status_detail == error
+        defects = describe_self_use_run_defects(on_disk)
+        assert any("final_status=provider_timeout" in d for d in defects), defects
+        assert not any("provider_unavailable" in d for d in defects), defects
+
+    def test_a_missing_provider_still_reads_unavailable(self, isolate_data_root, demo_repo):
+        from packages.orchestration.pingpong_job import load_job_plan, parse_job_file, run_job
+        from packages.orchestration.pingpong_provider import FakeProvider
+
+        job = parse_job_file(_TWO_TASK_JOB, str(demo_repo))
+        run_job(job.job_id, builder_provider=FakeProvider(builder_error="claude: command not found"),
+                reviewer_provider=FakeProvider(), repair_rounds=0)
+        assert load_job_plan(job.job_id).tasks[0].final_status == "provider_unavailable"
+
     # -- REGRESSION: the inert paths --------------------------------------
     def test_without_a_cost_limit_nothing_is_predicted(
             self, isolate_data_root, demo_repo, monkeypatch):
