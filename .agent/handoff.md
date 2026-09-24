@@ -1,242 +1,341 @@
-# Handback — F019 Live node materialization · Round 9 (the closing round)
+# Handback — F284 Findings paydown v3 · Round 1
 
 ## Session
 
-SESSION 2 of feature F019 · round 9 · rounds so far 9
+SESSION 1 of feature F284 · round 1 · rounds so far 1
 
-This round books round 8's PASS, rotates the finding ledger into its
-archive, flips F019's STATUS line to `[x]` with the README's accepted
-count, Tier 5 Done cell and Tier 5 prose in the same commit, and opens the
-pull request into `main`. This closes F019. I had ample context remaining
-throughout this round; no session-limit pressure at any point.
+This round claims F284, re-heads the live review record, books F019's round 9 gate entry,
+records DECISION F284 D1, writes F284's slice list, and lands T001 (R-1046: `teacher.model`
+reaches `teacher ask` and the lessons path through one helper) and T002 (R-0499: the vitest
+node's skip gate reads the installed runner, not the directory), with red proofs for both. I had
+ample context remaining throughout this round; no session-limit pressure at any point.
 
 ## Range
 
-Review of 787759d9..HEAD
+Review of a36a8759..HEAD
 
 ## Commits
 
-### 76a970f1f F019 R9 C1: copy round 9 block and payloads into .agent/authored/
+### 283362dd9 F284 R1 C1a: copy round 1 block and claim payloads into .agent/authored/
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f019-r9-block.md | +178/-0 | copy of this round's block, verbatim |
-| .agent/authored/f019-r9-ledger.diff | +10/-0 | copy of the ledger.diff payload |
-| .agent/authored/f019-r9-plan.md | +31/-0 | copy of the plan.md payload |
-| .agent/authored/f019-r9-closure.diff | +54/-0 | copy of the closure.diff payload |
-| .agent/authored/f019-r9-pr_body.md | +65/-0 | copy of the pr_body.md payload |
-| .agent/authored/f019-r9-status_line.txt | +1/-0 | copy of the status_line.txt payload |
+| .agent/authored/f284-r1-block.md | +226/-0 | copy of this round's block, verbatim |
+| .agent/authored/f284-r1-plan.md | +30/-0 | copy of the plan.md payload |
+| .agent/authored/f284-r1-context.md | +36/-0 | copy of the context.md payload |
+| .agent/authored/f284-r1-claim.diff | +161/-0 | copy of the claim.diff payload |
 
-339 insertions by `git show --numstat` (block's 178 lines + 161); matches
+453 insertions by `git show --numstat` (block's 226 lines + 227 for the three payloads); matches
 the block's expectation exactly; under the 500-insertion cap.
 
-### d3221664b F019 R9 C2: book round 8's PASS, the package READY_FOR_REVIEW
+### 213ee4138 F284 R1 C1b: copy round 1 code payloads and mutation tool into .agent/authored/
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/live_review.md | +2/-0 | `Gate: F019 R8 —` entry appended |
-| .agent/plan.md | +6/-6 | rewritten to the plan.md payload (round 9 scope) |
+| .agent/authored/f284-r1-r1046.diff | +166/-0 | copy of the r1046.diff payload |
+| .agent/authored/f284-r1-r0499.diff | +22/-0 | copy of the r0499.diff payload |
+| .agent/authored/f284-r1-mutations.py | +85/-0 | copy of the mutations.py tool |
 
-`git apply --check` on ledger.diff: exit 0. `git apply`: exit 0.
-Insertions/deletions by `git show --numstat`: 2/0 live_review.md, 6/6
-plan.md — matches the block's expectation exactly.
+273 insertions by `git show --numstat`; matches the block's expectation exactly.
 
-### 8263d1f57 F019 R9 C3: rotate the finding ledger into its archive
+### 038035cf7 F284 R1 C2: claim F284, re-head the live review record, book F019 R9, record D1
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/live_review.md | +0/-24 | `scripts/rotate_live_review.py` moved 10 gate records and 1 finding pair out |
-| .agent/live_review_archive.md | +24/-0 | the same records appended to the archive |
+| .agent/context.md | +12/-16 | rewritten to the context.md payload (F284 scope) |
+| .agent/decisions.md | +49/-0 | DECISION F284 D1 appended (claim.diff) |
+| .agent/live_review.md | +28/-14 | re-headed to F284; F019 round 9 gate entry appended (claim.diff) |
+| .agent/plan.md | +17/-18 | rewritten to the plan.md payload (F284 round 1 scope) |
+| docs/roadmap/STATUS.md | +1/-1 | F284's line `[ ]` → `[~]` (claim.diff) |
+| docs/roadmap/features/T2_F284.md | +19/-0 | slice list and R-1046 Acceptance line (claim.diff) |
 
-`python3 scripts/rotate_live_review.py` real exit 0. Printed output:
-```
-gate records moved: 10
-finding pairs moved: 1 (2 records)
-old ledger size: 324355 bytes
-new ledger size: 302065 bytes
-old archive size: 4918588 bytes
-new archive size: 4940878 bytes
-open findings before: 4
-open findings after: 4
-written: /home/decodeux/Repos/remedy/.agent/live_review.md and /home/decodeux/Repos/remedy/.agent/live_review_archive.md
-```
-Insertions/deletions by `git show --numstat`: 0/24 live_review.md, 24/0
-live_review_archive.md — matches the block's expectation exactly. Path
-set: exactly the two ledger files, nothing else.
+`git apply --check` on claim.diff: exit 0. `git apply`: exit 0. Insertions by `git show
+--numstat`: 12/49/28/17/1/19 across the six paths — matches the block's expectation exactly.
 
-### (this commit) F019 R9 C4: accept F019 in STATUS with its README pins
-Self-reference exception per the handback template (a handback cannot
-table the commit that writes it).
+### ca04d1aff F284 R1 C3: read teacher.model for teacher ask and lessons through one helper
 | Path | +/- | Reason |
 |---|---|---|
-| docs/roadmap/STATUS.md | +1/-1 | F019's STATUS line flipped `[~]` → `[x]` with round 8's evidence job, package, sha256, path and accepted head |
-| README.md | +14/-2 | accepted count 97→98, Tier 5 Done cell 16→17, Tier 5 F019 prose paragraph added |
+| docs/guides/environment.md | +1/-1 | `REMEDY_TEACHER_MODEL` row no longer says nothing reads the key |
+| packages/orchestration/config.py | +2/-3 | key description says who reads `teacher.model` now |
+| packages/orchestration/lessons.py | +0/-8 | `lesson_role_overrides` deleted (replacing is deleting) |
+| packages/orchestration/pingpong_job.py | +2/-1 | lessons path imports and calls `teacher_role_overrides` |
+| packages/orchestration/teacher_model.py | +13/-2 | new helper `teacher_role_overrides`; `ask_teacher` passes it to both `resolve_role_config` and `resolve_teacher_transport` |
+| tests/orchestration/test_lessons.py | +3/-1 | test updated to the new helper; asserts the override reaches `config_file` |
+| tests/orchestration/test_teacher_model.py | +28/-0 | new `TestTheConfiguredModelReachesTheQuestion` class |
+
+`git apply --check` on r1046.diff: exit 0. `git apply`: exit 0. Insertions by `git show
+--numstat`: 1/2/0/2/13/3/28 across the seven paths — matches the block's expectation exactly.
+
+### 73d7f809b F284 R1 C4: gate the vitest node on the installed runner, as the tsc node is gated
+| Path | +/- | Reason |
+|---|---|---|
+| tests/orchestration/test_test_runner.py | +6/-3 | `test_vitest_passes` skip condition reads `apps/ui/node_modules/.bin/vitest` (a file), not the directory |
+
+`git apply --check` on r0499.diff: exit 0. `git apply`: exit 0. Insertions by `git show
+--numstat`: 6 — matches the block's expectation exactly.
+
+### (this commit) F284 R1 C5: rewrite handoff for round 1
+Self-reference exception per the handback template (a handback cannot table the commit that
+writes it).
+| Path | +/- | Reason |
+|---|---|---|
 | .agent/handoff.md | rewritten | this handback |
-
-`git apply --check` on closure.diff: exit 0. `git apply`: exit 0.
-Insertions/deletions by `git show --numstat` (README.md, STATUS.md only,
-measured before this handback was added to the commit): 14/2 README.md,
-1/1 STATUS.md — matches the block's expectation exactly.
 
 ## External actions
 
-- No `git push` yet at the time this handback is written; the block orders
-  the push after C4 is committed. Its real outcome is reported in the
-  reply only, per G6.
-- No `gh pr create` yet at the time this handback is written; the block
-  orders it after the push. Its real outcome (number and URL) is reported
-  in the reply only, per G6.
-- No checkout of `main`, no branch deletion, no force-push, no `git
-  stash`, no worktree add/remove this round (constraint 7 leaves every
-  existing worktree alone).
+- `git worktree add --detach .remedy-wt/f284-r1-mut 73d7f809b` — exit 0, created for G4's red
+  proofs.
+- `git worktree remove --force .remedy-wt/f284-r1-mut` — exit 0, removed as G4's last action.
+- `git worktree prune` — exit 0.
+- No `git push` yet at the time this handback is written; the block orders it after this commit.
+  Its real outcome is reported in the reply per the block's own instruction (G6 cannot be inside
+  C5).
+- No `gh pr create`: the block forbids it this round; the branch opens a pull request at F284's
+  closure.
 
 ## Verification
 
-G1 TRANSPORT — all 5 payloads (ledger.diff, plan.md, closure.diff,
-pr_body.md, status_line.txt) measured against the block's PAYLOADS table,
-all matched (line count, byte count, sha256):
 ```
-ledger.diff       lines=10 bytes=6871 sha256=9cec48a06f5de527e90f4bfea483e21d440a9a74f777df6ff794a9b0d8eb0ad6
-plan.md           lines=31 bytes=1145 sha256=80c2b1052740038402c711e5d8fa71fc616f38dd0dcc7d6186ed14aa2bb9a51d
-closure.diff      lines=54 bytes=4064 sha256=e83081a1928fdae5b2c1258d4c051f37c0db3f4436d4320e9e3930f6a17a8a49
-pr_body.md        lines=65 bytes=3708 sha256=ae0e1ca738825b3d86a0ea0f32911a95d19a734e332eeb913873804d1b62e5ab
-status_line.txt   lines=1  bytes=399  sha256=9c71595a139f7cfc2fa7fd5d5a04bd5545edc9a0c899efcd0002a791b2cf400b
-ALL PAYLOAD DIGESTS MATCH: True
-```
-Each `.agent/authored/f019-r9-*` copy, read back with `git show
-76a970f1f:<path>` from C1, matched its source byte for byte (6
-comparisons: the block copy against `.remedy-wt/f019-r9/block.md`, plus
-the 5 payload copies) — `ALL_TRANSPORT_OK: True`.
-
-G2 THE BOOKING — at C2 (`d3221664b`), `.agent/live_review.md` read 324355
-bytes, sha256
-`40b7bfe950628223f8686781c475de55355f4de8434b5c55932e5cf01e8be183`
-(MATCH); `.agent/plan.md` read 1145 bytes, sha256
-`80c2b1052740038402c711e5d8fa71fc616f38dd0dcc7d6186ed14aa2bb9a51d`
-(MATCH, equal to the plan.md payload). The count of lines C2's diff adds
-to the ledger beginning `Gate: F019 R8 — ` is 1. `open_finding_ids`
-(`scripts/rotate_live_review.py`) over `.agent/live_review.md`: at
-`787759d9` → `['R-0499', 'R-0950', 'R-1008', 'R-1046']`; at C2
-(`d3221664b`) → the same four — matches the reviewer's simulated reading
-exactly at both.
-
-G3 THE ROTATION — at C3 (`8263d1f57`): `scripts/rotate_live_review.py`
-printed exactly the reviewer's simulated readings (10 gate records moved,
-1 finding pair / 2 records moved, ledger 324355→302065 bytes, archive
-4918588→4940878 bytes, open findings 4 before and 4 after). Resulting
-`.agent/live_review.md`: 302065 bytes, sha256
-`36a4838a7b111078b6ab3de8b8f7972d74ab0d7088fd95e519161f0a1ce9fd84`
-(MATCH). Resulting `.agent/live_review_archive.md`: 4940878 bytes, sha256
-`2dd64ce58680344f26521a9e065d7c60afe0cf0f2e476c98922d257ec6d49435`
-(MATCH). C3's path set: exactly `.agent/live_review.md` and
-`.agent/live_review_archive.md`, nothing else.
-
-G4 THE CLOSURE EDITS AND THE TREE — with closure.diff applied, before
-this handback was written: `docs/roadmap/STATUS.md` 50463 bytes, sha256
-`72f0e4ba7a869890f68aaaf15dc67237db2b020b07360163bad931de10def118`
-(MATCH); `README.md` 28679 bytes, sha256
-`7619b1cdc92751479441d62b764fe6ea7f5ec863fc1887a83012cb692a4c6a9b`
-(MATCH). The status_line.txt content (with its trailing newline stripped)
-occurs exactly 1 time in `docs/roadmap/STATUS.md` (MATCH, must be 1).
-Serially:
-```
-$ python3 -m pytest -q -p no:cacheprovider tests/docs/ tests/cli/test_advertised_commands.py tests/orchestration/test_live_review_rotation.py tests/orchestration/test_integrity_gate.py tests/test_agent_tooling.py tests/cli/test_golden_path.py 2>&1 | tail -2; echo "REAL_EXIT=${PIPESTATUS[0]}"
-......                                                                   [100%]
-437 passed, 1 skipped in 35.44s
+$ python3 - (line/byte/sha256 of each payload under .remedy-wt/f284-r1-payloads/)
+claim.diff lines 161 bytes 16484 sha256 b3081565b0b236688352e8caaa116278daec6680219b95fa992bada889577204
+plan.md lines 30 bytes 1017 sha256 3d1d514742beb4849b92ce114e0096b44587189aa9985c2eed0963ae48d6234b
+context.md lines 36 bytes 1469 sha256 082b2105331af24ae6894c2addf00ddc8cb7b5c322c10a41d8788d4f1357db92
+r1046.diff lines 166 bytes 10481 sha256 fbe2063fd3a547820acfb470b03155c520059f395972cfc604e180b9b9a3fe76
+r0499.diff lines 22 bytes 1325 sha256 85e6bf172fe437cf01a88f4d8664b8cd8382dfb5b44eaca5a6d7c0d988119d96
+mutations.py lines 85 bytes 3686 sha256 d3caa395f704dc5d83e4f72a4133c078364d2cc3948d3f584e873f9d4a141b6f
 REAL_EXIT=0
 ```
-Matches the reviewer's dry run exactly (`437 passed, 1 skipped` at exit
-0).
+All six match the PAYLOADS table exactly.
+
+```
+$ (compare each .agent/authored/f284-r1-* copy against its source, read back with git show)
+.agent/authored/f284-r1-block.md @ 283362dd9: bytes=16374 sha256=c62e5fb5...267a308 matches_source=True
+.agent/authored/f284-r1-plan.md @ 283362dd9: bytes=1017 sha256=3d1d5147...48c234b matches_source=True
+.agent/authored/f284-r1-context.md @ 283362dd9: bytes=1469 sha256=082b2105...357db92 matches_source=True
+.agent/authored/f284-r1-claim.diff @ 283362dd9: bytes=16484 sha256=b3081565...889577204 matches_source=True
+.agent/authored/f284-r1-r1046.diff @ 213ee4138: bytes=10481 sha256=fbe2063fd3...180b9b9a3fe76 matches_source=True
+.agent/authored/f284-r1-r0499.diff @ 213ee4138: bytes=1325 sha256=85e6bf17...988119d96 matches_source=True
+.agent/authored/f284-r1-mutations.py @ 213ee4138: bytes=3686 sha256=d3caa395...a4141b6f matches_source=True
+REAL_EXIT=0
+```
+All 7 (the block copy plus the six payload copies) BYTE-IDENTICAL against their sources (G1).
+
+```
+$ (sha256 of each C2/C3/C4 file, read with git show <commit>:<path>, against the reviewer's table)
+038035cf7 .agent/context.md: bytes=1469 match=True
+038035cf7 .agent/decisions.md: bytes=2019743 match=True
+038035cf7 .agent/live_review.md: bytes=304288 match=True
+038035cf7 .agent/plan.md: bytes=1017 match=True
+038035cf7 docs/roadmap/STATUS.md: bytes=50463 match=True
+038035cf7 docs/roadmap/features/T2_F284.md: bytes=4015 match=True
+ca04d1aff docs/guides/environment.md: bytes=21268 match=True
+ca04d1aff packages/orchestration/config.py: bytes=63251 match=True
+ca04d1aff packages/orchestration/lessons.py: bytes=21150 match=True
+ca04d1aff packages/orchestration/pingpong_job.py: bytes=204054 match=True
+ca04d1aff packages/orchestration/teacher_model.py: bytes=10626 match=True
+ca04d1aff tests/orchestration/test_lessons.py: bytes=20517 match=True
+ca04d1aff tests/orchestration/test_teacher_model.py: bytes=12399 match=True
+73d7f809b tests/orchestration/test_test_runner.py: bytes=37844 match=True
+ALL_MATCH: True
+REAL_EXIT=0
+```
+All 14 sha256 readings match the reviewer's simulated-tree table exactly (G2).
+
+```
+$ open_finding_ids(text) from scripts/rotate_live_review.py, over .agent/live_review.md's TEXT
+a36a8759 open ids: ['R-0499', 'R-0950', 'R-1008', 'R-1046'] count: 4
+038035cf7 open ids: ['R-0499', 'R-0950', 'R-1008', 'R-1046'] count: 4
+```
+Open set is 4 by distinct id at both commits, identical set, matching the reviewer's reading
+(G2).
+
+```
+STATUS line: '- [~] F284 — Findings paydown v3'
+```
+F284's STATUS line at C2 reads exactly `- [~] F284 — Findings paydown v3` (G2).
+
+```
+$ git diff --name-only 283362dd9 213ee4138   (C1a..C1b)
+.agent/authored/f284-r1-mutations.py
+.agent/authored/f284-r1-r0499.diff
+.agent/authored/f284-r1-r1046.diff
+
+$ git diff --name-only 213ee4138 038035cf7   (C1b..C2)
+.agent/context.md
+.agent/decisions.md
+.agent/live_review.md
+.agent/plan.md
+docs/roadmap/STATUS.md
+docs/roadmap/features/T2_F284.md
+
+$ git diff --name-only 038035cf7 ca04d1aff   (C2..C3)
+docs/guides/environment.md
+packages/orchestration/config.py
+packages/orchestration/lessons.py
+packages/orchestration/pingpong_job.py
+packages/orchestration/teacher_model.py
+tests/orchestration/test_lessons.py
+tests/orchestration/test_teacher_model.py
+
+$ git diff --name-only ca04d1aff 73d7f809b   (C3..C4)
+tests/orchestration/test_test_runner.py
+```
+Each consecutive-commit diff names exactly the paths that commit's entry in the block lists (G2).
+
+```
+$ bash -c 'python3 -m pytest -q -p no:cacheprovider -rs tests/orchestration/test_teacher_model.py
+tests/orchestration/test_lessons.py tests/orchestration/test_test_runner.py
+tests/cli/test_teacher_cmd.py tests/ui_server/test_lessons_route.py
+tests/cli/test_study_teacher_e2e.py tests/ui_server/test_dashboard_contract.py
+tests/orchestration/test_live_review_rotation.py tests/orchestration/test_integrity_gate.py
+tests/test_agent_tooling.py tests/docs tests/cli/test_golden_path.py 2>&1 | tail -30;
+echo "REAL_EXIT=${PIPESTATUS[0]}"'
+SKIPPED [1] tests/test_agent_tooling.py:43: D12 quarantine (F252): .claude/agents/remedy-reviewer.md
+  was deleted deliberately in 219dd32 (finding R-0074 — superseded by the split workflow's Window 1,
+  docs/agents/planner_reviewer_prompt.md). ...
+627 passed, 1 skipped in 65.19s (0:01:05)
+REAL_EXIT=0
+```
+The reviewer's sim read `625 passed, 3 skipped`; my run in the primary checkout read `627 passed,
+1 skipped` — exactly +2 passed / -2 skipped, because `test_vitest_passes` and
+`test_typescript_compiles` PASS here instead of skip, as required. The one remaining skip is the
+unrelated D12-quarantine node, not a toolchain node.
+
+```
+$ python3 -m ruff check packages/orchestration/config.py packages/orchestration/teacher_model.py
+packages/orchestration/lessons.py packages/orchestration/pingpong_job.py
+tests/orchestration/test_teacher_model.py tests/orchestration/test_lessons.py
+tests/orchestration/test_test_runner.py
+All checks passed!
+REAL_EXIT=0
+```
+
 ```
 $ python3 -m apps.cli.main integrity check --json
-{"check_count": 6, "checks": [{"message": "handlers=157", "name": "handler_import", "status": "pass"}, {"message": "last Gate verdict PASS", "name": "live_review_verdict", "status": "pass"}, {"message": "unchecked=0, context_complete=False", "name": "plan_consistency", "status": "pass"}, {"message": "untracked=0, relevant=0", "name": "relevant_untracked", "status": "pass"}, {"message": "no reviewer scratch, evidence dir or archive at the root", "name": "repo_root_hygiene", "status": "pass"}, {"message": "no open blocker/high findings", "name": "high_blockers_open", "status": "pass"}], "fail_count": 0, "ok": true, "passed": true, "schema_version": 1, "version": 1}
+{"check_count": 6, "checks": [{"message": "handlers=157", "name": "handler_import", "status":
+"pass"}, {"message": "last Gate verdict PASS", "name": "live_review_verdict", "status": "pass"},
+{"message": "unchecked=0, context_complete=False", "name": "plan_consistency", "status": "pass"},
+{"message": "untracked=0, relevant=0", "name": "relevant_untracked", "status": "pass"}, {"message":
+"no reviewer scratch, evidence dir or archive at the root", "name": "repo_root_hygiene", "status":
+"pass"}, {"message": "no open blocker/high findings", "name": "high_blockers_open", "status":
+"pass"}], "fail_count": 0, "ok": true, "passed": true, "schema_version": 1, "version": 1}
 REAL_EXIT=0
 ```
-All six checks `pass`, `fail_count` 0.
+All six checks `pass`, `fail_count` 0 (G3).
+
 ```
-$ python3 -m apps.cli.main integrity block .remedy-wt/f019-r9/block.md
-  [OK] item 1 (size): 178 lines, limit 400
-  [OK] item 3 (cap-bounded replacements): plan.md at 31 lines
-  [OK] item 10 (open set recomputed): states 4; .agent/live_review.md holds 4 open by distinct id, and the block registers 0 and resolves 0, leaving 4
-  [OK] item 24 (gate paths resolve): 0 paths named in the block's commands, every one resolves
-  [OK] item 30 (new ids searched first): the block registers no finding id
-  [OK] item 31 (gates before the text): the block orders no gates before a commit
-  [OK] item 37 (no unmeasured runs): no line is a run of one repeated character
-All 7 checkable items pass.
+$ git worktree add --detach .remedy-wt/f284-r1-mut 73d7f809b
+Preparing worktree (detached HEAD 73d7f809b)
+REAL_EXIT=0
+
+$ python3 -B .remedy-wt/f284-r1-payloads/mutations.py /home/decodeux/Repos/remedy/.remedy-wt/f284-r1-mut
+control first R-1046 tests: exit 0: 55 passed in 1.97s
+control first vitest node over an empty node_modules: exit 0: 1 skipped in 0.14s
+m1 (ask_teacher reads no override): FROM occurs 1x in packages/orchestration/teacher_model.py
+m1: exit 1: 1 failed, 54 passed in 1.96s; restored byte-identical: True
+m2 (the transport ignores the override): FROM occurs 1x in packages/orchestration/teacher_model.py
+m2: exit 1: 1 failed, 54 passed in 2.41s; restored byte-identical: True
+m3 (the lessons path hands in no override): FROM occurs 1x in packages/orchestration/pingpong_job.py
+m3: exit 1: 1 failed, 54 passed in 2.12s; restored byte-identical: True
+m4 (the helper never reads the key): FROM occurs 1x in packages/orchestration/teacher_model.py
+m4: exit 1: 3 failed, 52 passed in 1.86s; restored byte-identical: True
+m5 (the vitest gate reads the directory again): FROM occurs 1x in tests/orchestration/test_test_runner.py
+m5: exit 1: 1 failed in 0.80s; restored byte-identical: True
+control last R-1046 tests: exit 0: 55 passed in 1.94s
+control last vitest node over an empty node_modules: exit 0: 1 skipped in 0.14s
+ALL MUTATIONS CAUGHT AND RESTORED CLEANLY: True
+REAL_EXIT=0
+
+$ git worktree remove --force .remedy-wt/f284-r1-mut
+REAL_EXIT=0
+$ git worktree prune
 REAL_EXIT=0
 ```
-Every item `[OK]`, real exit code 0.
+Matches the reviewer's own simulated-tree reading exactly, mutation-for-mutation (G4). Worktree
+cleanly removed; every pre-existing worktree and branch under `.remedy-wt/` left untouched.
 
-G5 — reported in the reply per the block's own instruction (measured
-after this handback is written, before C4 is committed).
+```
+$ git show --numstat --format= 283362dd9   (C1a)
+226	0	.agent/authored/f284-r1-block.md
+161	0	.agent/authored/f284-r1-claim.diff
+36	0	.agent/authored/f284-r1-context.md
+30	0	.agent/authored/f284-r1-plan.md
 
-G6 — reported in the reply per the block's own instruction (measured
-after C4, after the push and the pull request).
+$ git show --numstat --format= 213ee4138   (C1b)
+85	0	.agent/authored/f284-r1-mutations.py
+22	0	.agent/authored/f284-r1-r0499.diff
+166	0	.agent/authored/f284-r1-r1046.diff
+
+$ git show --numstat --format= 038035cf7   (C2)
+12	16	.agent/context.md
+49	0	.agent/decisions.md
+28	14	.agent/live_review.md
+17	18	.agent/plan.md
+1	1	docs/roadmap/STATUS.md
+19	0	docs/roadmap/features/T2_F284.md
+
+$ git show --numstat --format= ca04d1aff   (C3)
+1	1	docs/guides/environment.md
+2	3	packages/orchestration/config.py
+0	8	packages/orchestration/lessons.py
+2	1	packages/orchestration/pingpong_job.py
+13	2	packages/orchestration/teacher_model.py
+3	1	tests/orchestration/test_lessons.py
+28	0	tests/orchestration/test_teacher_model.py
+
+$ git show --numstat --format= 73d7f809b   (C4)
+6	3	tests/orchestration/test_test_runner.py
+```
+C1a total 453 (expected 453). C1b total 273 (expected 273). C2 insertions 12/49/28/17/1/19
+(expected same, sum 126). C3 insertions 1/2/0/2/13/3/28 (expected same, sum 49). C4 insertion 6
+(expected 6). All five commits match their block entries exactly and stay under the 500-insertion
+cap (G5).
+
+G6 — reported in the reply per the block's own instruction (measured after C5, after the push).
 
 ## Authored-text proofs
 
-All 6 authored copies under `.agent/authored/f019-r9-*` (the block copy
-plus the 5 payload copies) were built by reading each source's bytes with
-`shutil.copyfile` and writing them unedited — never retyped, never
-edited. Each was read back from C1 (`76a970f1f`) with `git show
-76a970f1f:<path>` and compared byte for byte against its source: all 6
-`BYTE-IDENTICAL` (G1 above). `ledger.diff` was applied with `git apply`
-after `git apply --check` passed (exit 0 both), never retyped or edited;
-its resulting file contents (`.agent/live_review.md`) were verified by
-byte count and sha256 against the reviewer's own simulated reading at C2
-(G2 above) — `MATCH`; `.agent/plan.md` was separately rewritten whole via
-`shutil.copyfile` from its payload and also confirmed `MATCH`.
-`closure.diff` was applied the same way (`git apply --check` then `git
-apply`, exit 0 both), never retyped or edited; its resulting file
-contents (`docs/roadmap/STATUS.md`, `README.md`) were verified by byte
-count and sha256 against the reviewer's own simulated reading (G4 above)
-— `MATCH` on both.
+All 7 authored copies under `.agent/authored/f284-r1-*` (the block copy plus the six payload
+copies) were built by reading each source's bytes with `shutil.copyfile` and writing them
+unedited — never retyped, never edited. Each was read back with `git show <commit>:<path>` from
+the commit that added it (283362dd9 for the block/plan/context/claim.diff copies, 213ee4138 for
+the r1046.diff/r0499.diff/mutations.py copies) and compared byte for byte against its source: all
+7 BYTE-IDENTICAL (G1 above). `claim.diff`, `r1046.diff` and `r0499.diff` were each applied with
+`git apply` after `git apply --check` passed (exit 0 both, all three), never retyped or edited;
+the resulting file contents were verified by byte count and sha256 against the reviewer's own
+simulated-tree table at G2 above — all 14 named files MATCH. `.agent/plan.md` and
+`.agent/context.md` were separately rewritten whole via `shutil.copyfile` from their payloads and
+also confirmed MATCH against the PAYLOADS table and the G2 table.
 
 ## Deviations & assumptions
 
-None. Every commit landed in the block's stated order C1, C2, C3, then
-this closure commit C4, exactly as ordered. G1–G4 ran before this
-handback was written, as ordered; G5 runs after this handback is written
-and before C4 is committed. No payload was edited, retyped or repaired.
-The round's whole tracked path set matches constraint 3 exactly: `git
-diff --name-only 787759d9` over C1 through C3 named exactly the six
-`.agent/authored/f019-r9-*` copies, `.agent/live_review.md`,
-`.agent/live_review_archive.md` and `.agent/plan.md`; C4 adds exactly
-`docs/roadmap/STATUS.md`, `README.md` and `.agent/handoff.md`, matching
-the closure commit's stated path set exactly. There is no
-`scripts/self_use_queue.json` edit: F019 is not a findings-paydown
-feature and registers nothing, and the closure's self-use track answered
-NONE (`.agent/selfuse_f019/result.txt`), unchanged this round. C4 is the
-LAST commit on this branch per Rule A4; nothing follows it except, if the
-reviewer's closure gate asks for one, a commit whose path set is exactly
-`.agent/candidates.md`, which this block does not order and which I do
-not write on my own initiative. Nothing is merged: no `gh pr merge`, no
-checkout of `main`, no branch deletion, no force-push. The evidence
-package, its SHA-256, its directory, the evidence job and the accepted
-head this handback names are all from round 8, exactly as the block
-orders: package `remedy-review-20260924-204836-READY_FOR_REVIEW.zip`, its
-SHA-256 `d0340a1a2ed77a6472e2d3f3469a4e5bf590674fd21e4d229b9c4d52d01263ff`,
-its directory `/home/decodeux/Repos/remedy-history/zips`, the evidence
-job `f019r8e1001` and the accepted head
-`d581b6667a9e29a1d276a39555b9038adb82a92b`. This handback does not name a
-pull request number, which does not exist when it is written, and carries
-no partial GitHub URL path of that kind anywhere above.
+None. Every commit landed in the block's stated order C1a, C1b, C2, C3, C4, then this handback
+commit C5, exactly as ordered. G1 through G5 ran before this handback was written, as the block
+orders; G6 runs after C5 and is reported in the reply, since C5 cannot contain it. No payload was
+edited, retyped or repaired. The round wrote no `Done:` line and no `Landed:` line for R-1046 or
+R-0499 — those resolutions belong to the reviewer at the next gate, per constraint 4. Nothing is
+merged: no `gh pr merge`, no `gh pr create`, no checkout of `main` after the branch was cut, no
+branch deletion, no force-push, no `git stash`. The full suite was not run: amend0917 rule 1 gives
+F284 exactly one full-suite run, reserved for its closure.
 
 ## Item-status table
 
 | Item | Status | Reason |
 |---|---|---|
-| C1 | done | 339 insertions, matches (178 block + 161) |
-| C2 | done | git apply --check and apply both exit 0; 2/0, 6/6 insertions, matches both files |
-| C3 | done | rotation script exit 0; printed output matches the reviewer's simulated reading exactly; 0/24, 24/0 insertions, matches |
-| C4 | done | closure.diff apply --check and apply both exit 0; 14/2 README.md, 1/1 STATUS.md, matches |
-| G1 | done | all 5 payload digests and 6 authored-copy comparisons matched |
-| G2 | done | both named file digests matched at C2; 1 new Gate line; open_finding_ids correct at both commits |
-| G3 | done | rotation output, byte counts and sha256 of both ledger files matched the reviewer's simulation exactly |
-| G4 | done | STATUS.md and README.md digests matched; status line occurs once; serial pytest 437 passed/1 skipped exit 0; integrity check all 6 pass fail_count 0; integrity block all 7 items OK exit 0 |
-| G5 | done | reported in the reply (measured after this handback, before C4 commits) |
-| G6 | done | reported in the reply (push, PR number/URL, tree/PR state after C4) |
+| C1a | done | 453 insertions, matches block + 3 payloads exactly |
+| C1b | done | 273 insertions, matches exactly |
+| C2 | done | claim.diff apply --check and apply both exit 0; 12/49/28/17/1/19 insertions, matches |
+| C3 | done | r1046.diff apply --check and apply both exit 0; 1/2/0/2/13/3/28 insertions, matches |
+| C4 | done | r0499.diff apply --check and apply both exit 0; 6 insertions, matches |
+| C5 | done | this handback, self-reference exception |
+| T001 (R-1046) | done | landed in C3; red-proved by m1-m4, all caught and restored (G4) |
+| T002 (R-0499) | done | landed in C4; red-proved by m5, caught and restored (G4) |
+| G1 | done | all 6 payload digests and 7 authored-copy comparisons matched |
+| G2 | done | all 14 named file digests matched; open set 4 at both commits; STATUS line exact; 4 consecutive-commit path sets exact |
+| G3 | done | 627 passed/1 skipped exit 0 (both toolchain nodes PASS, not skip); ruff All checks passed; integrity check all 6 pass, fail_count 0 |
+| G4 | done | all 5 mutations + 2 controls caught/restored exactly as the reviewer's own reading; worktree removed, pruned |
+| G5 | done | all 5 commits' numstat matches their block entries exactly |
+| G6 | done | reported in the reply (measured after C5, after the push) |
 
 ## Next
 
-Phase 1 rule 1: read `.agent/STOP` from disk. Then the Open PR Gate — the
-pull request this round opens is merged by the NEXT feature's session,
-never by this one. Then Rule A5, the first unchecked feature in
-`docs/roadmap/STATUS.md`. Open findings: 4. Operator questions open: 3.
+Phase 1 rule 1: read `.agent/STOP` from disk. Then the review of round 1. Then T003 — R-0950's
+zombie-process node in `tests/orchestration/test_product_smoke.py`. Open findings: 4.
+Operator questions open: 3.
