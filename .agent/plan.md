@@ -12,18 +12,16 @@ distinct id, and the feature file lists every one under a slice.
 
 ## Current Step
 
-ROUND 12, the closure's evidence half: book round 11, whose repaired
-suite is green, then build the evidence bundle against the fork point
-and the fresh review package, recording its name, its SHA-256 and the
-directory it ends up in.
+ROUND 13, the closing round: book round 12, move R-0499, R-0950 and
+R-1008 to F284, rotate the ledger, register F284 — Findings paydown v3,
+flip F282's STATUS line with the README counters, and open the pull
+request, which the next feature's session merges.
 
 ## Next Steps
 
-1. The closing round: the ledger rotation, the ownership step for
-   R-0499, R-0950 and R-1008, the next paydown's registration, the
-   STATUS line with the README counters, and the pull request.
+1. The next session: the Open PR Gate for this feature's pull request,
+   then Rule A5.
 
 ## Risks
 
-A package that does not read READY_FOR_REVIEW blocks the closure until
-its cause is repaired.
+None open inside this feature; its three carried ids belong to F284.
