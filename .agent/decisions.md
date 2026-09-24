@@ -20613,3 +20613,43 @@ because the legend is a new surface with its own tests and the painter is enough
 HOW TO REVERSE: delete `renderers/palette.ts`, `renderers/paintNode.ts` and their tests, restore
 `ForceBrainGraph.tsx` and `tests/ui_contracts/test_node_glyph_tokens.py` from `06d185c6`, and delete
 this paragraph.
+
+## DECISION F020 D3 — the legend renders rows enumerated from the glyph and state modules, a cluster carries its count, and the matrix fixture paints every kind in every state with the live painter (2026-09-25)
+
+CONTEXT: T002's second half, per DECISION F020 D2 (5): the legend, the cluster's count and the
+matrix fixture. Measured at `1d954ef5`: `clusterBrainModel` gives a cluster node `meta.count`, the
+number of runs it stands for, and `buildBrainLayout` gives every non-task node the label `""`;
+`graph_spec.md` §4 draws a cluster as "r 9 + count" and §10 names its chip "+n"; the graph's chrome
+is the filter chips at the bottom left and the view toggle at the bottom right; a DOM legend can
+paint through `var()`, which the canvas cannot; the vitest environment renders no `.tsx`; and the
+canvas `font` cannot read `var()` either, so a family must be resolved like a colour.
+
+CHOSEN: (1) THE ROW MODEL is `renderers/legendModel.ts`: `legendKindRows` and `legendStateRows`
+read `GLYPHS`, `NODE_STATE_TREATMENTS` and `STATE_MARK_PATHS` and carry their very strings and
+tokens; each takes its source as a parameter defaulting to the module, so a test proves that a kind
+or a state removed from its module leaves the legend. (2) THE LEGEND is `GraphLegend.tsx`, a
+"Legend" button beside the view toggle opening a dialog of two lists, kinds and states, in the
+modules' order: each kind's 24-unit glyph as SVG from its row's paths, and each state's swatch — a
+disc in its fill and line at its size factor carrying its marks — painted through `var()` of the
+row's tokens. It writes no name, no path and no colour of its own, closes on Escape, and is pinned
+from source by `tests/ui_contracts/test_graph_legend_contract.py`. (3) THE COUNT: a cluster's layout
+label is `+<count>`, and the painter writes it at the cluster's centre in the state's line colour,
+at three quarters of its radius, in the family `--remedy-font-ui` resolves to, which the palette
+bridge now resolves beside the colours; no other kind's label is painted by the node painter. (4)
+THE MATRIX FIXTURE is `renderers/glyphMatrix.ts`: every non-core kind as a row and every state as a
+column, in the modules' orders, each cell at the layout's own radius for its kind and a cluster
+carrying `+3`, painted at rest at the L1 zoom by the same `paintBrainNode` the canvas uses. The
+core is not a row, because it keeps its own painter. T003's conformance assertions read the pixels
+of this fixture.
+
+ALTERNATIVES: a legend hand-written in the component, rejected because it is the drift the feature
+exists to remove; drawing the legend on a second canvas, rejected because a DOM legend is readable
+by assistive technology and resolves tokens with no bridge; a cluster count from the node's id or a
+separate field, rejected because `meta.count` is the reducer's own figure and the label is how the
+layout already hands text to the painter.
+
+HOW TO REVERSE: delete `GraphLegend.tsx`, `GraphLegend.module.css`, `renderers/legendModel.ts`,
+`renderers/glyphMatrix.ts`, their tests and `tests/ui_contracts/test_graph_legend_contract.py`,
+restore `BrainGraphStage.tsx`, `BrainGraphStage.module.css`, `buildForceBrainModel.ts`,
+`renderers/paintNode.ts`, `renderers/palette.ts` and their tests from `1d954ef5`, and delete this
+paragraph.
