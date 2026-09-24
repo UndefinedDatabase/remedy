@@ -8,10 +8,11 @@ log as a `steering_message_received` event (declared in `event_names.py`) carryi
 record's seal, so a later reader can
 prove which text the run was given and when (DECISION F264 D1).
 
-Remedy deliberately does not consume a message here. Folding it into the next prompt at the
-run's next safe point is T002, and the acknowledgement is T003; a sealed record never changes
-after it is written, so the round a message is consumed in is recorded by T002 as its own
-fact rather than by rewriting this one.
+A message is CONSUMED at the run's next safe point (T002, DECISION F264 D4): the ping-pong
+loop calls `consume_pending_steering` at the top of every round, before anything of that round
+is composed or sent, and folds every consumed message into the builder prompt. A sealed record
+never changes after it is written, so the round a message took effect in is its own sealed
+consumption marker rather than an edit to the record. The acknowledgement is T003.
 
 Remedy deliberately does not accept a message for a job that has ended: no run will ever
 read it, and a steering message the run silently ignores is worse than no channel at all
@@ -184,3 +185,116 @@ def list_steering_messages(job_id: str, root: Path | None = None) -> list[dict[s
             raise SteeringError(f"steering record {path.name} is not intact: {'; '.join(problems)}")
         records.append(json.loads(path.read_text(encoding="utf-8")))
     return records
+
+
+# --- T002: consumption at the run's safe point (DECISION F264 D4) -----------------------------
+
+CONSUMPTION_SCHEMA = "remedy.steering_consumption.v1"
+CONSUMED_DIRNAME = "consumed"
+
+
+def consumption_dir(job_id: str, root: Path | None = None) -> Path:
+    """The folder holding one create-once consumption marker per consumed message."""
+    return steering_dir(job_id, root) / CONSUMED_DIRNAME
+
+
+def consume_pending_steering(
+    job_id: str, *, task_id: str, round_number: int,
+    root: Path | None = None, now: datetime | None = None,
+) -> list[dict[str, Any]]:
+    """At a run's safe point: consume every pending message, and return every consumed one.
+
+    A message is consumed EXACTLY ONCE, by publishing a sealed marker under
+    `consumed/<message_id>.json` create-once, naming the task and round it took effect in;
+    only the call that publishes the marker writes the `steering_message_consumed` event. The
+    return value is EVERY message of the job, oldest first, because every message is consumed
+    once this call returns and a correction holds for the rest of the job, not for one round.
+    A tampered record raises `SteeringError` from `list_steering_messages`, so a run never
+    folds in text it cannot prove the operator sent. A job with no message writes nothing.
+    """
+    records = list_steering_messages(job_id, root)
+    if not records:
+        return []
+    folder = consumption_dir(job_id, root)
+    try:
+        folder.mkdir(parents=True, exist_ok=True)
+        dir_fd = os.open(folder, os.O_RDONLY | getattr(os, "O_DIRECTORY", 0))
+    except OSError as exc:
+        raise SteeringWriteError(f"the consumption folder cannot be opened: {exc}") from exc
+    consumed_now: list[dict[str, Any]] = []
+    try:
+        for record in records:
+            marker: dict[str, Any] = {
+                "schema": CONSUMPTION_SCHEMA,
+                "message_id": record["message_id"],
+                "message_sha256": record["record_sha256"],
+                "job_id": str(job_id),
+                "task_id": str(task_id),
+                "round_number": int(round_number),
+                "consumed_at": (now or datetime.now(timezone.utc)).isoformat(),
+            }
+            marker["record_sha256"] = _seal(marker)
+            try:
+                published = write_file_atomically(
+                    dir_fd, f"{record['message_id']}.json", json_bytes(marker), create_only=True,
+                    noun="steering consumption marker")
+            except SecureFsError as exc:
+                raise SteeringWriteError(str(exc)) from exc
+            if published:
+                consumed_now.append(marker)
+        if consumed_now:
+            with contextlib.suppress(OSError):
+                os.fsync(dir_fd)
+    finally:
+        os.close(dir_fd)
+
+    if consumed_now:
+        from packages.orchestration.data_paths import resolve_data_root
+        from packages.orchestration.timeline import append_run_event
+
+        for marker in consumed_now:
+            append_run_event(
+                root if root is not None else resolve_data_root(), job_id,
+                event="steering_message_consumed",
+                metadata={"message_id": marker["message_id"], "task_id": marker["task_id"],
+                          "round_number": marker["round_number"],
+                          "record_sha256": marker["message_sha256"]},
+            )
+    return records
+
+
+def list_steering_consumptions(job_id: str, root: Path | None = None) -> dict[str, dict[str, Any]]:
+    """The job's consumption markers by message id; a marker that fails its seal raises."""
+    folder = consumption_dir(job_id, root)
+    if not folder.is_dir():
+        return {}
+    markers: dict[str, dict[str, Any]] = {}
+    for path in sorted(folder.glob("sm-*.json")):
+        try:
+            body = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, ValueError) as exc:
+            raise SteeringError(f"consumption marker {path.name} is unreadable: {exc}") from exc
+        if (not isinstance(body, dict) or body.get("schema") != CONSUMPTION_SCHEMA
+                or body.get("record_sha256") != _seal(body)
+                or body.get("message_id") != path.stem):
+            raise SteeringError(f"consumption marker {path.name} is not intact")
+        markers[path.stem] = body
+    return markers
+
+
+def render_steering_segment(records: list[dict[str, Any]]) -> str:
+    """The builder prompt's steering segment for ``records``, or "" when there are none.
+
+    Each message is carried VERBATIM, one bullet each, oldest first; a message's own line
+    breaks are kept and indented under its bullet, never joined or cut, for the reason F033
+    gives for an operator's rejection reason: text that is half-quoted has been rewritten.
+    """
+    if not records:
+        return ""
+    lines = [
+        "OPERATOR STEERING — messages the operator sent to this job while it ran, oldest first.",
+        "Follow them. Where one conflicts with an earlier instruction, the later message wins.",
+    ]
+    for record in records:
+        lines.append("- " + str(record["text"]).replace("\n", "\n  "))
+    return "\n".join(lines) + "\n"

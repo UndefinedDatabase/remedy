@@ -118,6 +118,7 @@ EVENT_NAMES: frozenset[str] = frozenset(
         "snapshot_create_completed",
         "snapshot_verified",
         "source_patch_applied",
+        "steering_message_consumed",
         "steering_message_received",
         "task_completed",
         "task_decision_answered",
