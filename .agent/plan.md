@@ -12,18 +12,14 @@ was understood and from which round it applies
 
 ## Current Step
 
-ROUND 8, the closure sequence's first half: book round 7's PASS, write the
-operator guide for steering and correct the cockpit page that said the
-cockpit has no text input, append the feature file's Built State, run the
-checklist consolidation pass, record the self-use track, and run the
-feature's one full suite. T001 to T003 are built.
+ROUND 9, the closure sequence's evidence half: book round 8's PASS, whose
+one full suite is green, then build the evidence bundle against the fork
+point and the fresh review package. T001 to T003 are built.
 
 ## Next Steps
 
-1. Any repair the full suite requires, under the shrinking rule.
-2. The evidence bundle and the review package.
-3. The closing round: the ledger rotation, the STATUS flip with its README
-   pins, and the pull request.
+1. The closing round: the booking of round 9, the ledger rotation, the
+   STATUS flip with its README pins, and the pull request.
 
 ## Risks
 
