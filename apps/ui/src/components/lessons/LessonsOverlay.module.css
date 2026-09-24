@@ -95,3 +95,23 @@
 .entry:focus-visible,
 .entryOn:focus-visible,
 .pager button:focus-visible { outline: 2px solid var(--remedy-blue-strong); outline-offset: 2px; }
+/* The mode switch (T003, DECISION F265 D4) takes the index entries' scale; the chosen mode gains
+   weight and a border as well as a tint, for the reason .entryOn records. */
+.modes { display: flex; gap: 6px; margin-left: auto; margin-right: 10px; }
+.mode,
+.modeOn {
+  padding: 3px 10px;
+  border: 1px solid var(--remedy-line);
+  border-radius: var(--remedy-radius-pill);
+  background: var(--remedy-bg-2);
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--remedy-muted);
+  cursor: pointer;
+}
+.modeOn { background: var(--remedy-blue-50); border-color: var(--remedy-blue-strong); font-weight: 700; color: var(--remedy-blue-strong); }
+.mode:focus-visible,
+.modeOn:focus-visible { outline: 2px solid var(--remedy-blue-strong); outline-offset: 2px; }
+.commands { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.commands code { font-family: var(--remedy-font-mono); font-size: 13px; color: var(--remedy-ink-strong); }
+.commands p { margin: 4px 0 0; font-size: 13px; line-height: 1.45; color: var(--remedy-muted); }

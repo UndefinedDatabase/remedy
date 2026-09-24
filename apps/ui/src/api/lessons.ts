@@ -5,7 +5,9 @@
  * lessons route serves them (`GET /api/jobs/<job_id>/lessons`, DECISION F265 D2). This module
  * decodes that envelope, builds its path, and holds every rule the overlay applies: which
  * lesson opens first, which neighbours next and previous reach, what a task without a lesson
- * says, and when a stream frame means the index is worth reading again.
+ * says, and when a stream frame means the index is worth reading again. Each row also carries
+ * the CLI commands its task's diff touched, with the catalog's shipped description, which the
+ * overlay's Commands mode shows (T003, DECISION F265 D4).
  *
  * IT OPENS NO SOCKET, READS NO CLOCK AND KEEPS NO STORAGE: the one read goes through
  * `loadLessonsIndex` in `remedyApi.ts`, and the component owns nothing but its selection.
@@ -24,6 +26,11 @@ export const LESSON_STATUS_READY = "ready";
 
 export interface LessonConstruct { name: string; what: string; whyHere: string; judgement: string }
 
+export interface LessonCommand { commandId: string; invocation: string; description: string }
+
+/** What the overlay shows for the chosen task: its lesson, or the commands its change touched. */
+export type LessonMode = "lesson" | "commands";
+
 export interface LessonRow {
   taskId: string;
   title: string;
@@ -34,6 +41,7 @@ export interface LessonRow {
   constructs: LessonConstruct[];
   ungrounded: string[];
   model: string;
+  commands: LessonCommand[];
 }
 
 export interface LessonsIndex { jobId: string; lessonsEnabled: boolean; rows: LessonRow[] }
@@ -58,6 +66,16 @@ function constructOf(value: unknown): LessonConstruct | null {
   return { name, what, whyHere, judgement };
 }
 
+function commandOf(value: unknown): LessonCommand | null {
+  const command = recordOf(value);
+  if (command === null) return null;
+  const commandId = textOf(command["command_id"]);
+  const invocation = textOf(command["invocation"]);
+  const description = textOf(command["description"]);
+  if (commandId === null || invocation === null || description === null) return null;
+  return { commandId, invocation, description };
+}
+
 function rowOf(value: unknown): LessonRow | null {
   const row = recordOf(value);
   if (row === null) return null;
@@ -74,16 +92,22 @@ function rowOf(value: unknown): LessonRow | null {
   const model = row["model"] === undefined ? "" : textOf(row["model"]);
   const rawConstructs = row["constructs"] === undefined ? [] : row["constructs"];
   const rawUngrounded = row["ungrounded"] === undefined ? [] : row["ungrounded"];
+  const rawCommands = row["commands"] === undefined ? [] : row["commands"];
   if (summary === null || model === null || !Array.isArray(rawConstructs)
-      || !Array.isArray(rawUngrounded)) {
+      || !Array.isArray(rawUngrounded) || !Array.isArray(rawCommands)) {
     return null;
   }
   const constructs = rawConstructs.map(constructOf);
   const ungrounded = rawUngrounded.map(textOf);
-  if (constructs.some((c) => c === null) || ungrounded.some((u) => u === null)) return null;
+  const commands = rawCommands.map(commandOf);
+  if (constructs.some((c) => c === null) || ungrounded.some((u) => u === null)
+      || commands.some((c) => c === null)) {
+    return null;
+  }
   return {
     taskId, title, runId, status, reason, summary, model,
     constructs: constructs as LessonConstruct[], ungrounded: ungrounded as string[],
+    commands: commands as LessonCommand[],
   };
 }
 
@@ -160,4 +184,9 @@ export function lessonsEmptyLine(index: LessonsIndex): string | null {
   return index.lessonsEnabled
     ? "No lesson has been stored yet; one appears after each task finishes."
     : "Lessons are switched off; the teacher.lessons setting turns them on.";
+}
+
+/** What the Commands mode says for a task whose change touched no CLI command, or `null`. */
+export function lessonCommandsLine(row: LessonRow): string | null {
+  return row.commands.length === 0 ? "This task's change touched no CLI command." : null;
 }

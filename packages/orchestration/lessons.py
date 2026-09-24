@@ -20,7 +20,9 @@ from part of a diff while presenting itself as complete would teach the plan, no
 shipped (T5_F265.md, "Design").
 
 The read side is `job_lessons_overview`, which the cockpit's `/api/jobs/<job_id>/lessons` route
-serves: one row per task, the stored lesson or the reason there is none (DECISION F265 D2).
+serves: one row per task, the stored lesson or the reason there is none (DECISION F265 D2), and
+the CLI commands that task's diff touched, each with its shipped catalog entry (T003, DECISION
+F265 D4).
 """
 from __future__ import annotations
 
@@ -28,6 +30,7 @@ import contextlib
 import hashlib
 import json
 import os
+import re
 import sqlite3
 from collections.abc import Callable, Mapping, Sequence
 from datetime import datetime, timezone
@@ -358,8 +361,10 @@ def job_lessons_overview(tasks: Sequence[Any], *, enabled: bool,
     rows: list[dict[str, Any]] = []
     for task in tasks:
         run_id = str(getattr(task, "run_id", "") or "")
-        row: dict[str, Any] = {"task_id": str(getattr(task, "task_id", "")),
-                               "title": str(getattr(task, "title", "") or ""), "run_id": run_id}
+        row: dict[str, Any] = {
+            "task_id": str(getattr(task, "task_id", "")),
+            "title": str(getattr(task, "title", "") or ""), "run_id": run_id,
+            "commands": lesson_commands(read_run_diff(run_id, root) or "") if run_id else []}
         if not run_id:
             rows.append({**row, "status": STATUS_NONE, "reason": "this task has not run yet"})
             continue
@@ -376,6 +381,51 @@ def job_lessons_overview(tasks: Sequence[Any], *, enabled: bool,
             continue
         rows.append({**row, **{field: lesson[field] for field in _OVERVIEW_FIELDS}})
     return rows
+
+
+#: The one file whose changed lines can name a command by its id.
+CATALOG_PATH = "apps/cli/command_catalog.py"
+_CATALOG_ID = re.compile(r'command_id="([a-z0-9_.-]+)"')
+
+
+def diff_paths(diff_text: str) -> set[str]:
+    """Every repository path the diff names on either side; `/dev/null` is not a path."""
+    return {line[6:].strip() for line in diff_text.splitlines()
+            if line.startswith(("--- a/", "+++ b/"))}
+
+
+def lesson_commands(diff_text: str) -> list[dict[str, str]]:
+    """The CLI commands a Run's diff touched, each with its SHIPPED catalog entry. READ-ONLY.
+
+    A command is touched when the diff changes the module whose handler serves it, or changes a
+    line of the command catalog naming its id (T003, DECISION F265 D4). The description is read
+    from the catalog as installed, so the Commands mode explains what ships and never a
+    description remembered from the time the lesson was written.
+    """
+    from apps.cli.command_catalog import get_command
+    from apps.cli.commands import collect_all_handlers
+
+    if not diff_text:
+        return []
+    paths = diff_paths(diff_text)
+    touched = {command_id for command_id, handler in collect_all_handlers().items()
+               if str(getattr(handler, "__module__", "")).replace(".", "/") + ".py" in paths}
+    current = ""
+    for line in diff_text.splitlines():
+        if line.startswith("+++ "):
+            current = line[6:].strip() if line.startswith("+++ b/") else ""
+        elif current == CATALOG_PATH and line[:1] in "+-" and not line.startswith("---"):
+            touched.update(_CATALOG_ID.findall(line))
+    commands: list[dict[str, str]] = []
+    for command_id in sorted(touched):
+        try:
+            entry = get_command(command_id)
+        except KeyError:
+            continue
+        commands.append({"command_id": entry.command_id,
+                         "invocation": f"remedy {entry.group_id} {entry.subcommand}",
+                         "description": entry.description})
+    return commands
 
 
 def lessons_enabled() -> bool:
