@@ -1551,8 +1551,10 @@ class TestCommandDoorImportGuard:
          "resolve_job_evidence_dir"),                               # F033 D4
         ("packages.orchestration.job_plan",
          "open_clarification_questions"),                           # F031 D24
-        ("packages.orchestration.job_plan",
-         "resolve_task_plan_approval"),                             # F031 D24
+        ("packages.orchestration.plan_editing",
+         "PlanEditRefused"),                                        # F015 D2
+        ("packages.orchestration.plan_editing",
+         "consume_plan_approval"),                                  # F015 D2
         ("packages.orchestration.mission_contract",
          "start_remainder_follow_up_mission"),                      # F269 D9
         ("packages.orchestration.hunk_approval", "HunkApprovalRefusal"),  # F033 D4

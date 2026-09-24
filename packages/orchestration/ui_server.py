@@ -2871,7 +2871,8 @@ class _RemedyHandler(BaseHTTPRequestHandler):
 
         DECISION F031 D24 rules what a `plan:`-prefixed id means here: the door
         approves or rejects the job's PENDING task plan through
-        `job_plan.resolve_task_plan_approval`, and it accepts exactly
+        `job_plan.resolve_task_plan_approval`, which DECISION F015 D2 runs inside
+        `plan_editing.consume_plan_approval`, and it accepts exactly
         `approve` and `reject` by strict equality — the CLI's own vocabulary at
         `apps/cli/commands/decision.py` — refusing every other answer, and every
         plan that is not pending, with the same None the task-decision path
@@ -2906,9 +2907,10 @@ class _RemedyHandler(BaseHTTPRequestHandler):
         # one. This closes the half of DECISION F009 D5 that shipped the
         # extraction without the dispatch (finding R-0693).
         if isinstance(decision_id, str) and decision_id.startswith("plan:"):
-            from packages.orchestration.job_plan import (
-                open_clarification_questions,
-                resolve_task_plan_approval,
+            from packages.orchestration.job_plan import open_clarification_questions
+            from packages.orchestration.plan_editing import (
+                PlanEditRefused,
+                consume_plan_approval,
             )
             fp = getattr(job, "task_plan", None)
             if not isinstance(fp, dict) or fp.get("_approval") != "pending":
@@ -2920,11 +2922,20 @@ class _RemedyHandler(BaseHTTPRequestHandler):
             answers = _validated_clarification_answers(args, questions)
             if answers is None:
                 return None
-            resolve_task_plan_approval(
-                job, reason=answer, answers=answers, questions=questions)
+            # DECISION F015 D2: the approval is consumed under the plan-edit lock
+            # against the record as it stands NOW, so a plan edit accepted after
+            # `_load_job` read this job is approved, never written over. A record
+            # that no longer awaits approval declines like any closed decision.
+            try:
+                consume_plan_approval(
+                    job, reason=answer, answers=answers, questions=questions)
+            except PlanEditRefused as exc:
+                if exc.code != "approval_closed":
+                    raise
+                return None
             # `save_job` is deliberately NOT called here, and a reader who came
-            # looking for it should stop here: `resolve_task_plan_approval`
-            # saves on BOTH of its arms, at job_plan.py:822 and :829, so a
+            # looking for it should stop here: `resolve_task_plan_approval`,
+            # which `consume_plan_approval` runs, saves on BOTH of its arms, so a
             # second save would write the same object twice. The task-decision
             # path just below DOES call it, because `answer_task_decision` saves
             # nothing itself, and the difference reads as a bug without this.

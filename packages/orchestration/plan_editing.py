@@ -35,7 +35,11 @@ from pydantic import ValidationError
 from packages.common.secure_fs import durable_write_json
 from packages.core.models import RunState
 from packages.orchestration.data_paths import job_dir, job_evidence_export_dir
-from packages.orchestration.job_plan import map_task_plan_to_tasks, write_plan_md
+from packages.orchestration.job_plan import (
+    map_task_plan_to_tasks,
+    resolve_task_plan_approval,
+    write_plan_md,
+)
 from packages.orchestration.mission_compiler import PLAN_VERSION_KEY
 from packages.orchestration.pingpong_job import require_job_plan, save_job_plan
 from packages.orchestration.schemas.models import PlannedTask, TaskPlan
@@ -68,13 +72,14 @@ _LOCK_NAME = "plan_edit.lock"
 _LOCK_TIMEOUT_SEC = 5.0
 
 
-class PlanEditRefused(Exception):
-    """An edit the backend refused. Nothing was written.
+class PlanEditRefused(ValueError):
+    """An edit or approval the backend refused. Nothing was written.
 
     ``code`` is one of ``no_task_plan``, ``plan_not_editable``, ``version_conflict``,
-    ``unknown_command``, ``invalid_args``, ``unknown_task``, ``invalid_plan`` and
-    ``lock_timeout``; ``current_version`` is the stored plan's version whenever one
-    was read.
+    ``unknown_command``, ``invalid_args``, ``unknown_task``, ``invalid_plan``,
+    ``lock_timeout`` and ``approval_closed``; ``current_version`` is the stored plan's
+    version whenever one was read. A ``ValueError``, so the write door's own
+    ``rejected_effect`` clause answers any code the door does not handle itself.
     """
 
     def __init__(self, code: str, detail: str, *, current_version: int | None = None) -> None:
@@ -302,7 +307,8 @@ def apply_edit(plan: TaskPlan, command: str, args: dict[str, Any]) -> TaskPlan:
     return revalidate(plan, after)
 
 
-def _edit_window_refusal(job: Any, body: dict[str, Any]) -> PlanEditRefused | None:
+def edit_window_refusal(job: Any, body: dict[str, Any]) -> PlanEditRefused | None:
+    """Why *job*'s stored plan *body* cannot be edited now, or None while it can."""
     approval = body.get("_approval")
     if approval != "pending":
         return PlanEditRefused(
@@ -368,7 +374,7 @@ def edit_plan(
         body = job.task_plan
         if not isinstance(body, dict) or not body.get("tasks"):
             raise PlanEditRefused("no_task_plan", f"job {job_id} has no task plan to edit")
-        refusal = _edit_window_refusal(job, body)
+        refusal = edit_window_refusal(job, body)
         if refusal is not None:
             raise refusal
         version = plan_version(body)
@@ -409,6 +415,44 @@ def edit_plan(
         "edits": new_body[EDIT_LOG_KEY],
     })
     return PlanEditResult(version=version + 1, plan=new_plan, entry=entry, plan_md=plan_md)
+
+
+def consume_plan_approval(
+    job: Any,
+    *,
+    reason: str,
+    answers: dict[str, str],
+    questions: list[dict[str, Any]],
+    root: Path | None = None,
+) -> Path | None:
+    """Approve or reject the job's pending plan, closing the edit window atomically.
+
+    Both approval doors load the job before they consume its approval, so an edit
+    accepted in between would be written over by the door's older copy, and the
+    approval would name a plan the record no longer holds. Here the record is read
+    again under the plan-edit lock: the approval is refused ``approval_closed`` when
+    the record no longer awaits one, and otherwise the plan and task list the record
+    holds NOW are carried into *job* and ``resolve_task_plan_approval`` runs
+    unchanged, so the approval covers exactly the stored plan. An edit that arrives
+    afterwards finds the approval closed and is refused ``plan_not_editable``.
+
+    Returns what ``resolve_task_plan_approval`` returns: the assumption-log path on
+    an approval, None on a rejection.
+    """
+    job_id = str(job.job_id)
+    with plan_edit_lock(job_id, root):
+        stored = require_job_plan(job_id, root)
+        body = stored.task_plan
+        if not isinstance(body, dict) or body.get("_approval") != "pending":
+            approval = body.get("_approval") if isinstance(body, dict) else None
+            raise PlanEditRefused(
+                "approval_closed",
+                f"the plan is {approval or 'not awaiting approval'}; there is no open "
+                "approval to answer")
+        job.task_plan = body
+        job.tasks = stored.tasks
+        return resolve_task_plan_approval(
+            job, reason=reason, answers=answers, questions=questions)
 
 
 def replay_edits(original: TaskPlan, edits: list[dict[str, Any]]) -> TaskPlan:
