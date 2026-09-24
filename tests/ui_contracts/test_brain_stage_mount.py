@@ -44,9 +44,12 @@ class TestStageBuildsTheRealLayout:
         src = STAGE_TSX.read_text()
         assert "dashboardBrainSeeds(" in src
 
-    def test_stage_seeds_the_reducer_model(self):
+    def test_stage_folds_the_ledgers_prefix_into_the_reducer_model(self):
+        """R5 T003: the stage now REBUILDS from the ledger's contiguous prefix
+        rather than seeding once from the dashboard alone (DECISION F019 D5) —
+        `test_brain_live_wiring.py` pins the rest of the wiring."""
         src = STAGE_TSX.read_text()
-        assert "seedBrainModel(" in src
+        assert "rebuildBrainModel(" in src
 
     def test_stage_lays_out_the_model(self):
         src = STAGE_TSX.read_text()
