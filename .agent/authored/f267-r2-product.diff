@@ -1,0 +1,68 @@
+diff --git a/docs/agents/planner_reviewer_prompt.md b/docs/agents/planner_reviewer_prompt.md
+index aecc8ecc..aefda155 100644
+--- a/docs/agents/planner_reviewer_prompt.md
++++ b/docs/agents/planner_reviewer_prompt.md
+@@ -261,6 +261,10 @@ end the response with:
+   were merged, because F265 wrote no line to `.agent/prose_slips.md`: its four rounds' blocks
+   were generated from simulated trees and every worker reading matched them. The list stays at
+   34 items.
++  Consolidated a seventh time at F267's closure on 2026-09-24: nothing joined and no two items
++  were merged, because F267's one line in `.agent/prose_slips.md` names no lesson the list lacks: a
++  local branch left behind by a reviewer's simulation script is a matter for guardrails G2 and G5
++  of docs/agents/self_drive_protocol.md, not for the text of a block. The list stays at 34 items.
+   The next consolidation measures against 34.
+   Reverse by deleting this paragraph.
+   1. **Size.** Count the block's lines. Over 400 (DECISION F105 D5) → split or
+diff --git a/docs/roadmap/features/T2_F267.md b/docs/roadmap/features/T2_F267.md
+index 7a801c07..4db17ce4 100644
+--- a/docs/roadmap/features/T2_F267.md
++++ b/docs/roadmap/features/T2_F267.md
+@@ -113,3 +113,48 @@ production code emits. change.list's CREATED date (DECISION F262 D1,
+ Alternative section) depends on settling which event name is real; wiring a
+ sort over a date that is never populated would be the R-0795 class again.
+ Then T001 in batches, T002, T003. Findings carried: none — R-0796 was resolved by F273 (DECISION F273 D9).
++
++## Built State (F267, 2026-09-24)
++
++What exists on disk at the close of F267, built in one round of one session on
++`feature/f267-list-commands-v2-completion`, cut from `main` at `9f06c509`. Every DECISION named lives
++in `.agent/decisions.md`; every round's verdict in `.agent/live_review.md` or, once rotated, its
++archive.
++
++**T001 — the wirings.** Landed in F273's round 9 (DECISION F273 D9), before this feature was
++claimed: `test.list`, `mission.list`, `change.list` and `event.list` call `apply_list_options`, each
++with its own tests. F267 changed no production file.
++
++**T002 — the catalog-driven handler test.** `tests/cli/test_list_commands_everywhere.py` takes its
++commands from `_is_list_command` over `CATALOG`, the predicate the catalog itself uses to attach
++the shared flags, so a list command added later joins the test with no edit to it (DECISION F267
++D1). At the claim that predicate selected 13 commands: `blocker.list`, `change.list`,
++`config.list`, `decision.list`, `event.list`, `job.list`, `memory.list`, `mission.list`,
++`patch.list`, `project.list`, `run.list`, `test.list` and `worker.list`. Each one runs through
++`apps.cli.grouped.main`, in a data root holding one registered project and one saved empty job,
++once in text and once under `--json`, and must exit non-zero with the refusal
++`unknown --sort field 'bogus'; valid fields: ` followed by its field names. No command is excluded.
++The four DECISION F262 D4 exclusions are named in the test with their reasons, and the test fails
++if any of them returns to the catalog; it also fails, naming the command, if a list command ever
++requires a positional other than `job_id`.
++
++**T003 — the ten-second demo.** The same file seeds three runs in `run list`'s store, finished five
++days, two days and one hour ago, and runs `remedy run list --since 3d --until 1d` in a child
++process, in JSON and in text: only the run from two days ago comes back.
++
++**Acceptance, by the test that proves it.** `--sort bogus` exits non-zero and names the valid
++fields, for every command in scope: `TestEveryHandlerRefusesAnUnknownSortField`, whose text and
++JSON cases are parametrized over the derived set. `--limit 1` and the time window filtering each
++command's real rows: the per-command tests F262 and F273 landed beside each wiring, for example
++`tests/cli/test_event_list_cmd.py`, `tests/cli/test_change_proof_cli.py` and
++`tests/cli/test_mission_cmd.py`. The catalog-driven set: `TestTheInScopeSet`. The ten-second demo:
++`TestTheTenSecondDemo`. Round 1's mutation proofs turned the handler cases of `change.list`,
++`decision.list`, `mission.list` and `config.list` red when each dropped `--sort`, and the demo red
++when `run list` lost its date or a relative bound pointed forward in time.
++
++**Modules and lists (closure precondition 7).** F267 added no module under `apps/` or `packages/`,
++no line to `tests/orchestration/import_reachability_allowlist.txt`, and nothing to
++`ALLOWED_UNWIRED` or `RESERVED_NAMESPACES` in `tests/test_no_orphan_modules.py`.
++
++**Findings.** F267 registered none. The four open findings at its claim, R-0499, R-0950, R-1008 and
++R-1046, are owned by F284 and were neither touched nor re-assigned.
