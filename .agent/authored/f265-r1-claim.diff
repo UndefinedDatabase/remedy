@@ -1,0 +1,179 @@
+diff --git a/.agent/decisions.md b/.agent/decisions.md
+index 962df875..315ec1eb 100644
+--- a/.agent/decisions.md
++++ b/.agent/decisions.md
+@@ -19676,3 +19676,58 @@ the catalog is keyed by kind alone and a frame from an older server without the
+ render honestly. HOW TO REVERSE: delete `steeringAck.ts` and its
+ test, restore `feedRow.ts`, its test and the contract test from `e420be13`, and delete this
+ paragraph.
++
++## DECISION F265 D1 — a lesson is a sealed record per Run beside that Run's diff, written only while `teacher.lessons` is on, inside a per-job teacher pot read from the ledger (2026-09-24)
++
++CONTEXT: T5_F265.md T001 orders a lesson per completed task, generated from the task's REAL diff
++under the `teacher` role's own harness, model and budget pot, stored as an artifact keyed on the
++Run and its Mission (DECISION amend0905-vocab D1), re-opened without spending tokens, and replaced
++by an honest empty state when the budget is spent. Measured at `0236e3c3`: a task's Run writes its
++tree-to-tree diff to `runs/<run_id>/result.diff` in the ping-pong loop's job-owned hand-off, and
++the job records that Run as `task.run_id`; `pingpong_job.run_job` logs `task_run_completed` right
++after `_commit_applied_task`; the teacher's only transport is Ollama behind the injectable `call`
++seam (DECISION F255 D8), and `teacher_spend.record_teacher_question` builds its ledger rows with a
++NULL `task_id` (DECISION F255 D7); DECISION F255 D3 made the teacher's "own budget pool" a
++reporting column only and left a cap to be ruled when one was needed; `budget_guard` has no
++per-role cap, and `study` met its own pot with a local `JobBudgets` evaluated by `evaluate_budget`
++(DECISION amend0911-feedback D2).
++
++CHOSEN: (1) THE RECORD is `runs/<run_id>/lesson.json`, schema `remedy.lesson.v1`, sealed with the
++sha256 of its sorted JSON and published create-once beside the diff it was built from. It names
++the Run, the job, the task, the Mission (empty for a job that has none), the diff's sha256 and
++length, the model, the ledger call id, a `status` and a `reason`. A stored lesson is returned as
++it is, so reading one again is a file read and never a call. (2) THE REAL DIFF: the generator
++reads that Run's `result.diff` and nothing else and sends it WHOLE; a Run with no diff stores
++`no_diff`, and one longer than 60,000 characters stores `diff_too_large`, each with no call,
++because a lesson from part of a diff would present part of the change as all of it. (3)
++GROUNDING: the reply is one JSON object holding a summary and constructs; a construct is taught
++only when its name appears on a line the diff ADDS, and every other name the reply gives is kept
++in the record's `ungrounded` list, so a lesson names only what the change uses. (4) THE POT: per
++job, `teacher.lesson_max_calls` (default 30) and `teacher.lesson_max_tokens` (default 300,000),
++evaluated with `evaluate_budget` over the ledger's `teacher` rows for that job before the call; a
++spent pot stores `budget_exhausted` naming the limit it hit, with no call. A call that reported no
++tokens still counts as a call, which is why the pot carries both limits. This is the cap F255 D3
++left to be ruled, and it binds lesson generation only: `teacher ask` stays as F255 D3 left it.
++(5) BILLING: every call made is billed through `record_teacher_question` as role `teacher` with
++call id `teacher:lesson:<run_id>`, so a Run is billed at most once even when two writers race. A
++job whose repository resolves to no registered project has no ledger, so it stores `no_ledger`
++with no call, because spend that cannot be recorded cannot be capped; a ledger that cannot be
++read stores the same status for the same reason. (6) THE SWITCH: `teacher.lessons`, off by
++default, because each lesson is one model call per task and a run makes no call the operator did
++not switch on — the rule `postmortem.llm_summary` already follows; operator question Q1 carries
++this ruling for the operator to overturn. The hook runs after the task is applied and saved and
++before the safe point, catches the failures it expects, and never changes the job's outcome.
++(7) THE MODEL: `teacher.model`, when set, reaches the lesson's transport as the role's override.
++
++ALTERNATIVES: keying the lesson on the job's evidence folder, rejected because amend0905-vocab D1
++keys artifacts on the Run and its Mission; storing it under the Mission, rejected because a job
++may carry no mission and the Run is the unit a lesson explains; lessons on by default, rejected
++because every task of every run would spend before the operator knew the feature existed;
++truncating an oversize diff, rejected for the reason in (2); a new cap axis in `budget_guard`,
++rejected as larger than one role's pot needs.
++
++HOW TO REVERSE: delete `packages/orchestration/lessons.py` and `tests/orchestration/test_lessons.py`,
++remove `_teach_task_lesson` and its one call from `packages/orchestration/pingpong_job.py`, remove
++the three `teacher.lesson*` keys from `packages/orchestration/config.py` and regenerate
++`docs/guides/environment.md`, drop the module's line from
++`tests/orchestration/import_reachability_allowlist.txt`, and delete this paragraph.
+diff --git a/.agent/live_review.md b/.agent/live_review.md
+index fb13be84..5f3f0853 100644
+--- a/.agent/live_review.md
++++ b/.agent/live_review.md
+@@ -1,33 +1,35 @@
+-# Live Review — F264 Steering channel (remedy chat)
++# Live Review — F265 Teacher learning UI v1 (post-task lessons)
+ 
+-> Round-by-round review record, re-headed at the F264 claim per
+-> docs/agents/planner_reviewer_prompt.md §1. The heading this replaces named F282, whose STATUS
+-> line went `[x]` at `9432afeb` and whose pull request 270 merged into `main` at the reviewer's
+-> Open PR Gate under docs/agents/self_drive_protocol.md, as `ef4cb503`, after both hosted CI jobs
+-> of run 35942106604 ended `success`. F282's round 13 — its closure round — has no gate entry,
++> Round-by-round review record, re-headed at the F265 claim per
++> docs/agents/planner_reviewer_prompt.md §1. The heading this replaces named F264, whose STATUS
++> line went `[x]` at `32aab561` and whose pull request 271 merged into `main` at the reviewer's
++> Open PR Gate under docs/agents/self_drive_protocol.md, as `0236e3c3`, after both hosted CI jobs
++> of run 35956557182 ended `success`. F264's round 10 — its closure round — has no gate entry,
+ > by construction (§4 item 13 of docs/agents/planner_reviewer_prompt.md); the planner and
+-> reviewer of F264's first session read it at this claim, over `f6fd80de`..`9432afeb`: VERDICT
+-> PASS. Its five commits carry 414, 12, 214, 58 and 201 insertions by `git show --numstat`, the
+-> last of them 12 outside `.agent/handoff.md`, each under the 500-line cap; the round's block and
+-> its four payloads read out of `9432afeb` equal the reviewer's originals under `.remedy-wt/`
+-> byte for byte; `docs/roadmap/STATUS.md` and `README.md` at `9432afeb`, and the ledger, its
+-> archive, `docs/roadmap/features/T2_F284.md` and `tests/docs/test_docs_consistency.py` at the
+-> commits that wrote them, carry exactly the sha256 that round's block ordered; and `9432afeb`
+-> is the second parent of `ef4cb503`. Only the heading, this paragraph and the `## Steps`
+-> section below are rewritten. Everything from the `## Findings` line to the end of the file is
+-> carried forward BYTE-IDENTICAL, and finding ids continue the monotonic R-XXXX series across
+-> the re-head. The open set at `ef4cb503`, computed with `open_finding_ids` from
++> reviewer of F265's first session read it at this claim, over `0eb5b2d6`..`32aab561`: VERDICT
++> PASS. Its four commits carry 373, 8, 24 and 140 insertions by `git show --numstat`, the last of
++> them 13 outside `.agent/handoff.md`, each under the 500-line cap; the round's block and its five
++> payloads read out of `32aab561` equal the reviewer's originals under `.remedy-wt/` byte for
++> byte; `.agent/live_review.md` at `b0adb863` and at `8bc1ebb0`, its archive at `8bc1ebb0`, and
++> `docs/roadmap/STATUS.md` and `README.md` at `32aab561` carry exactly the sha256 that round's
++> block ordered; and `32aab561` is the second parent of `0236e3c3`. Only the heading, this
++> paragraph and the `## Steps` section below are rewritten, and one finding is appended at the
++> end. Everything from the `## Findings` line to the end of the file as it stood at `0236e3c3` is
++> carried forward BYTE-IDENTICAL, and finding ids continue the monotonic R-XXXX series across the
++> re-head. The open set at `0236e3c3`, computed with `open_finding_ids` from
+ > `scripts/rotate_live_review.py`, is 3 by distinct id — R-0499, R-0950 and R-1008 — and F284
+-> owns all of them; F264 owns whatever it registers itself.
++> owns all of them; this claim registers R-1046, which F284 owns as well, and F265 owns whatever
++> it registers for its own scope.
+ 
+ ## Steps
+ 
+-THE ORDER BELOW IS T5_F264.md's Orchestrator brief. R1 claims F264, re-heads this record and
+-lands T001's first half: the sealed steering record, certified into the run log, and
+-`remedy chat`, its first caller, with DECISION F264 D1 fixing the record's shape. T001's second
+-half, the cockpit's route over F009's write channel, comes next; T002, consumption at the
+-run's safe point with a red proof that a mid-call message waits, and T003, the acknowledgement
+-in the cockpit and in `remedy chat`, follow. Every round's handback states the open set by
++THE ORDER BELOW IS T5_F265.md's Orchestrator brief. R1 claims F265, re-heads this record and
++lands T001's substance: `packages/orchestration/lessons.py`, one sealed lesson per completed Run
++built from that Run's own `result.diff`, billed as role `teacher` inside the teacher's own budget
++pot per job, and the hook that writes one after every applied task while `teacher.lessons` is
++on, with DECISION F265 D1 fixing the record's shape. The lesson's reach — the job's event stream,
++a read-only route and `remedy do`'s mission path — comes next; T002, the overlay over stored
++lessons, and T003, the Commands mode, follow. Every round's handback states the open set by
+ distinct id.
+ ## Findings
+ 
+@@ -441,3 +443,6 @@ Gate: F264 R7 — the F264 round 7 entry: the booking of round 6, DECISION F264
+ Gate: F264 R8 — the F264 round 8 entry: the booking of round 7 and the closure sequence's first half, the operator guide `docs/guides/steering-user-guide-v1.md` indexed in `docs/README.md`, the corrected sentence of `docs/system/operator-cockpit-v1.md`, the Built State of `docs/roadmap/features/T5_F264.md`, the checklist consolidation that joins nothing and keeps §3 at 34 items, the self-use track's answer NONE, and the feature's one full suite. VERDICT PASS ON ALL SIX GATES, NO DEVIATION DECLARED. Re-derived over `d9bea4ba`..`bb7fbb81` by the planner and reviewer of F264's second session, whose own runs produced every reading below. THE RANGE IS 5 COMMITS in the block's order C1, C2, C3, C4 and C5, at `797bc60f` 475, `30851fab` 10, `d9f6d8cd` 161, `167a3555` 6 and `bb7fbb81` 124 insertions by `git show --numstat`, each under the 500-line cap and each carrying the ordered trailer, and the path list of the range is exactly the block's constraint 3. THE TRANSPORT PROOF IS DISK TO DISK: the block and every `.agent/authored/f264-r8-*` blob read out of `bb7fbb81` equal the reviewer's originals under `.remedy-wt/` byte for byte. THE RECORDS, THE GUIDE AND THE BUILT STATE: the eight files the round writes through its payloads, read out of `167a3555`, equal byte for byte the tree the reviewer's simulation built by applying the same payloads at `d9bea4ba`; the open set reads 3 at both ends, R-0499, R-0950 and R-1008, none leaving and none arriving; and `live_checklist_items` reads the same 34 numbers at `d9bea4ba` and at `d9f6d8cd`. THE TESTS were re-run by the reviewer in the primary checkout at `bb7fbb81`: the block's G4 selection read `504 passed, 1 skipped` at exit 0, and `integrity check --json` read all six checks `pass` at `fail_count` 0; before emission the reviewer red-controlled `tests/cli/test_advertised_commands.py` over the guide, a subcommand that does not exist and a flag the command does not declare each reading `1 failed, 13 passed`. No production code changed, so no mutation proof is owed. THE ONE FULL SUITE, run by the worker in the primary checkout at `167a3555` after a fresh UI build, reads `18852 passed, 20 skipped, 1 warning` at exit 0 with no bad node id, as `.agent/authored/f264-closure-suite.txt` records and the worker's log beside it shows; neither `tests/orchestration/test_import_reachability.py` nor `tests/test_no_orphan_modules.py` holds a bad node (closure precondition 7).
+ 
+ Gate: F264 R9 — the F264 round 9 entry: the booking of round 8 and the closure sequence's evidence half, the evidence bundle built against the fork point and the fresh review package. VERDICT PASS ON ALL SIX GATES, NO DEVIATION DECLARED. Re-derived over `bb7fbb81`..`0eb5b2d6` by the planner and reviewer of F264's second session, whose own runs produced every reading below. THE RANGE IS 3 COMMITS in the block's order C1, C2 and C3, at `cc5fc57a` 353, `2c917125` 7 and `0eb5b2d6` 117 insertions by `git show --numstat`, each under the 500-line cap and each carrying the ordered trailer, and the path list of the range is exactly the block's constraint 3. THE TRANSPORT PROOF IS DISK TO DISK: the block and every `.agent/authored/f264-r9-*` blob read out of `0eb5b2d6` equal the reviewer's originals under `.remedy-wt/` byte for byte. THE BOOKING: `.agent/live_review.md` and `.agent/plan.md` read out of `2c917125` equal the reviewer's simulation byte for byte, and the open set reads 3 at both ends, R-0499, R-0950 and R-1008. THE ACCEPTED COMMIT, the head the STATUS line will record, is `2c91712595e069f7f0c7781008d14f07693b8dd9`. THE BUNDLE, evidence job `f264r9e1001` under `.remedy-wt/f264-r9-evidence/`, was built against the fork point `ef4cb503fb785dbf8905f560201c3071de2ac10d` with ancestry and plain counts equal at 55; its one verification run `vr-1045` selected 885 node ids from `--collect-only` over 18 test files, none unsafe, and read 885 passed, 0 failed and 0 skipped at exit 0, with an empty `validate_verification_tests` problem list and `is_valid_current_run` True; `tests/ui_server/test_command_channel.py` was left out of the bundle because one of its parameter ids carries path-shaped text the package scan refuses, and the closure suite carries it. THE PACKAGE is `remedy-review-20260924-062629-READY_FOR_REVIEW.zip` in `/home/decodeux/Repos/remedy-history/zips`, whose SHA-256 the reviewer re-measured from the archived file as `7d07e5a59233f424dfe9cc60f9afbf7a1e1eb76d20906d111f8e1a619b43d47c`; `testzip` answers None, and the `.review_zip_manifest.json` the reviewer read out of it names `package_status` READY_FOR_REVIEW, the fork point as base and `2c91712595e069f7f0c7781008d14f07693b8dd9` as head over 55 commits. `integrity check --json` read all six checks `pass` at `fail_count` 0 after the build, with the tree clean.
++
++- R-1046 — Low, `teacher.model` DOES NOT REACH `remedy teacher ask`: THE KEY IS DECLARED AND DOCUMENTED, AND NOTHING ON THE QUESTION PATH READS IT. Raised by the planner and reviewer of F265's first session at the round 1 authoring read, after searching this record, its archive and `.agent/decisions.md` for `teacher.model` under §3 item 30: no finding names the defect. Measured at `0236e3c3`: `ask_teacher` in `packages/orchestration/teacher_model.py` resolves its transport with `resolve_teacher_transport()` and `resolve_role_config(TEACHER_ROLE)`, both called with no `config_file`, and `resolve_role_config` reads no configuration of its own, so a `teacher.model` set in `remedy.toml` or as `REMEDY_TEACHER_MODEL` changes nothing `teacher ask` sends. `tests/orchestration/test_teacher_model.py` pins resolution only for a `config_file` the test builds by hand, which is why nothing is red. DECISION F255 D8's CONSEQUENCE reads "`teacher.model` becomes load-bearing for the first time", and the key's own description in `packages/orchestration/config.py` still says nothing reads it until the Stage 2 question path exists, which it has since F255's T004. F265 reads the key for lessons through `lessons.lesson_role_overrides` (DECISION F265 D1) and does not touch `teacher ask`, which its feature file lists under Do not touch. The repair is the pattern `self_use_runner` uses for its own role at the one call site: read `teacher.model` and pass it as the role's override, with a test that sets the environment variable rather than a hand-built `config_file`, and the key's description corrected in the same commit so `docs/guides/environment.md` regenerates. OPEN.
++Owner: F284 — Findings paydown v3 (the default owner under amend0911-feedback rule A, assigned at F265's claim, 2026-09-24).
+diff --git a/.agent/operator_questions.md b/.agent/operator_questions.md
+index 33079078..79dbdb6d 100644
+--- a/.agent/operator_questions.md
++++ b/.agent/operator_questions.md
+@@ -7,4 +7,26 @@
+ > Soft cap five; entries leave only by the operator's answer, recorded as a dated
+ > DECISION by the operator's next amendment, which deletes the entry.
+ 
+-EMPTY — nothing is waiting on the operator.
++### Q1 — Post-task lessons start switched off (2026-09-24, F265, round 1)
++
++**What needs deciding.** Remedy can now write a short lesson after each finished task of a
++job. The lesson explains the change that task really made to the code: what was built, which
++functions and language features it uses, what they do, why they fit there, and whether that is
++good practice, stated as the teacher's opinion. Writing one lesson costs one call to the
++teacher's model for every finished task. I have made lessons switched off unless you turn them
++on, with the setting named `teacher.lessons` in your project's settings file or the environment
++variable named `REMEDY_TEACHER_LESSONS`. You can tell me they should be on unless switched off.
++
++**Why it matters.** With lessons on, every finished task makes one extra model call, and a large
++job has many tasks. I also set a spending limit for these calls in each job: at most thirty
++calls, and at most three hundred thousand tokens, which are the units a model counts its reading
++and writing in. When a job reaches either limit, the tasks after it get an empty lesson that says
++the limit was reached, never a shortened one.
++
++**My recommendation.** Keep lessons off until you switch them on. A run should never spend money
++on something the person running it did not ask for, and the optional written summary of a failed
++run already follows that same rule. Switching lessons on is a single setting.
++
++**What happens if you say nothing.** The recommendation is already executed and stands until you
++say otherwise. Lessons stay off until you switch them on, and the spending limit for each job
++applies from the first lesson.
+diff --git a/docs/roadmap/STATUS.md b/docs/roadmap/STATUS.md
+index e01878f2..26eee8ae 100644
+--- a/docs/roadmap/STATUS.md
++++ b/docs/roadmap/STATUS.md
+@@ -56,7 +56,7 @@ The tier-block order below is the operator-decided Self-Use sequence of 2026-08-
+ ## Tier 5 — Steering & Learning Surfaces (operator order amend0831)
+ 
+ - [x] F264 — Steering channel (remedy chat) (T001-T003 complete; accepted 2026-09-24 · live review PASS — ACCEPTED · Evidence job f264r9e1001 · package remedy-review-20260924-062629-READY_FOR_REVIEW.zip · SHA-256 7d07e5a59233f424dfe9cc60f9afbf7a1e1eb76d20906d111f8e1a619b43d47c · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD 2c91712595e069f7f0c7781008d14f07693b8dd9)
+-- [ ] F265 — Teacher learning UI v1 (post-task lessons)
++- [~] F265 — Teacher learning UI v1 (post-task lessons)
+ 
+ ## Tier 0 — Foundation & Trust Core
+ 
