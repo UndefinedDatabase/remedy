@@ -19731,3 +19731,44 @@ remove `_teach_task_lesson` and its one call from `packages/orchestration/pingpo
 the three `teacher.lesson*` keys from `packages/orchestration/config.py` and regenerate
 `docs/guides/environment.md`, drop the module's line from
 `tests/orchestration/import_reachability_allowlist.txt`, and delete this paragraph.
+
+## DECISION F265 D2 — a stored lesson is announced on the job's run log, the stream carries its Run and status only, and `/api/jobs/<job_id>/lessons` lists the job's lessons as stored (2026-09-24)
+
+CONTEXT: T5_F265.md's Design says the overlay "takes its data from the existing event stream
+(F008/F021), not from a second polling path", and that "the index is a list of artifacts and
+navigation is not re-generation". Measured at `e7d1e080`: DECISION F265 D1 stores a lesson per Run
+beside its diff and nothing announces it; `_safe_event_summary` in
+`packages/orchestration/ui_server.py` carries kind-conditional fields (`budget`, DECISION F022 D3;
+`steering`, DECISION F264 D6) while `tests/ui_server/test_sse_stream.py` pins every other kind's
+envelope; each cockpit route `/api/jobs/<job_id>/<endpoint>` is one entry of `do_GET`'s
+`handlers` table, walked for a 200 by `tests/ui_server/test_handler_table_walk.py` and for a
+refused POST by `tests/ui_server/test_command_channel.py`; and `generate_lesson` returns a stored
+lesson unchanged, so it cannot tell its caller whether it stored one.
+
+CHOSEN: (1) THE EVENT: the hook reads whether the Run already has a lesson before it generates,
+and only a lesson that call stored is announced, as `task_lesson_written` on the job's run log,
+with the task id at the event's top level and `run_id` and `lesson_status` in its metadata. An
+empty lesson is announced too, because the index must be able to say why a task has none. (2)
+THE STREAM: a frame of that kind gains a `lesson` field holding exactly `run_id` and `status`,
+the status passed only when it is a lesson status; a lesson's text never travels in a frame. (3)
+THE ROUTE: `GET /api/jobs/<job_id>/lessons` answers `job_id`, `lessons_enabled` and one row per
+task in task order, built by `lessons.job_lessons_overview`: a stored lesson's fields as stored;
+or status `none` with the reason — the task has not run, lessons are switched off, or none was
+stored; or status `not_intact`, its text withheld, when a lesson fails its seal. It reads and
+never writes, which a test proves by hashing the data root around two reads. (4) THE MISSION:
+the hook names the job's mission through `mission_for_job`, pinned by a test with a mission
+linked to the job; `do_sequence._run_the_walks_jobs` builds `remedy do`'s jobs through `run_job`,
+so their tasks reach the same hook.
+
+ALTERNATIVES: carrying the lesson in the frame, rejected because the stream is a summary
+envelope and a lesson is a page; a mission-keyed route, rejected for now because every cockpit
+route is job-keyed and the overlay opens over a job, so a mission-wide index is the overlay's to
+ask for if it needs one; announcing from `generate_lesson` itself, rejected because that module
+has no job run log in scope and every one of its tests would then write one.
+
+HOW TO REVERSE: remove the announcement from `_teach_task_lesson`, the `lesson` field and
+`_lesson_summary_payload` from `ui_server.py`, the `lessons` handler entry and
+`_build_lessons_json`, `job_lessons_overview` and its two statuses from `lessons.py`, the event
+name from `event_names.py` and its line from `apps/ui/src/api/humanizeCatalog.ts`; delete
+`tests/ui_server/test_lessons_route.py` and the round's two hook tests; and delete this
+paragraph.
