@@ -26,7 +26,7 @@ verification commands. If something is unproven, Remedy says so instead of guess
 
 ## Status
 
-93 of 284 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
+94 of 284 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
 
 | Tier | Name | Done | Total |
 |------|------|-----:|------:|
@@ -35,7 +35,7 @@ verification commands. If something is unproven, Remedy says so instead of guess
 | 2 | Minimal Self-Build Runtime | 35 | 37 |
 | 3 | Full Token Economy & Autonomy | 6 | 26 |
 | 4 | Memory & Learning | 1 | 17 |
-| 5 | Operator Cockpit | 13 | 34 |
+| 5 | Operator Cockpit | 14 | 34 |
 | 6 | Design-to-Code | 0 | 16 |
 | 7 | Quality & Trust | 0 | 15 |
 | 8 | Worker Ecosystem & Neutrality | 0 | 12 |
@@ -355,6 +355,16 @@ from the oldest self-contained open finding in the reviewer's own ledger; the
 consumed item is RUN through the real job path to the normal approval gate,
 not merely planned; and any defect the run surfaces flows back into that same
 ledger as a normal finding).
+
+F264 steering channel (a job that is going the wrong way can now be corrected
+without stopping it: `remedy chat <job_id> "<message>"`, or the input at the
+bottom of the cockpit's activity card, records one message as sealed evidence;
+the job reads it at the start of its next round and never inside a model call
+already running, carries it word for word in every later builder prompt, and
+answers with what it understood and from which round, which `remedy chat show
+<job_id>` lists and the cockpit's activity feed shows as its own line, both read
+from the one event the job writes; a mission's job also adds the message to the
+mission's contract).
 
 Full per-feature state: [`docs/roadmap/STATUS.md`](docs/roadmap/STATUS.md)
 
