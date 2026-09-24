@@ -1,0 +1,5 @@
+F265 R5 C5 — the full suite (python3 -m pytest -n auto -q)
+
+Summary line: 18901 passed, 20 skipped, 1 warning in 229.73s (0:03:49)
+Real exit code: 0
+Bad node ids (failed plus errors): NONE
