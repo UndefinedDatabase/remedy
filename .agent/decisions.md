@@ -19816,3 +19816,40 @@ HOW TO REVERSE: delete `apps/ui/src/api/lessons.ts`, its test, the `components/l
 folder and the contract test; remove the lessons door from `remedyApi.ts`, the overlay's state and
 mount from `RemedyShell.tsx` and the button and its prop from `RightLivePanel.tsx`; delete the two
 F265 rows of `docs/ui/design_reference/assumption_log.md`; and delete this paragraph.
+
+## DECISION F265 D4 — the Commands mode names the commands whose handler module or catalog line a task's diff changed, with the catalog's shipped description, computed from the stored diff whenever the index is read (2026-09-24)
+
+CONTEXT: T5_F265.md T003 orders a second mode that explains the CLI commands the task
+implemented or touched, and its Design says the mode reads the command catalog "so it explains
+the SHIPPED description, never a remembered one". Measured at `b8ecbb3b`: every command's
+handler lives in a module under `apps/cli/commands/` whose `COMMAND_HANDLERS` table
+`collect_all_handlers` merges, so a handler's `__module__` names the file that implements it;
+each command's description and spelling live once in `apps/cli/command_catalog.py`, one
+`command_id="..."` line per entry; a Run's diff is stored at `runs/<run_id>/result.diff` and
+never changes (DECISION F265 D1); and `packages/orchestration/integrity_gate.py` already imports
+`collect_all_handlers` lazily from the orchestration layer.
+
+CHOSEN: (1) A command is TOUCHED when the Run's diff changes the module whose handler serves it,
+or changes a line of the command catalog that names its id; a `command_id=` line in any other
+file, a test for instance, does not count. (2) Each touched command is shown as its invocation,
+`remedy <group> <subcommand>`, and its description read from the catalog as installed, sorted
+by id; an id the catalog no longer holds is left out rather than invented. (3) The list is
+computed by `lessons.lesson_commands` from the stored diff each time the lessons route is
+read, so it follows the shipped catalog, costs no model call and is carried on every row of the
+index, a task that has not run carrying none. It is never written into the sealed lesson, which
+keeps D1's record unchanged. (4) The overlay's header carries a Lesson and Commands switch, each
+button saying whether it is the one shown; Commands shows the chosen task's list, or one line
+saying its change touched no CLI command. (5) The contract test holds the keys the decoder reads
+for a command to the ones the server writes, and the switch to its pressed state.
+
+ALTERNATIVES: storing the commands in the lesson record, rejected because a stored description is
+exactly the remembered one the Design forbids; asking the teacher to explain the commands,
+rejected because it spends a model call on text the catalog already holds; matching command
+names in the diff's text, rejected because a mention is not a change and a rename would be
+missed.
+
+HOW TO REVERSE: remove `lesson_commands`, `diff_paths`, `CATALOG_PATH` and the row's `commands`
+field from `lessons.py`, the command reader, `LessonMode`, `lessonCommandsLine` and the row's
+`commands` from `apps/ui/src/api/lessons.ts`, the switch and `CommandsText` from
+`LessonsOverlay.tsx` with their styles, the round's tests and contract pins, and delete this
+paragraph.

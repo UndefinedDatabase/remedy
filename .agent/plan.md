@@ -13,18 +13,18 @@ previous navigation and a Commands mode
 
 ## Current Step
 
-ROUND 3: book round 2's PASS, record DECISION F265 D3, and land T002: the
-learning overlay, a right-anchored dialog sheet the right panel's
-"Lessons" button opens, with the index on the left and the lesson with
-previous and next, reading the lessons route through `api/lessons.ts` and
-reading it again when the stream announces a lesson, with vitest, a
-contract test, two assumption-log rows and red proofs.
+ROUND 4: book round 3's PASS, record DECISION F265 D4, and land T003: the
+overlay's Commands mode, the commands whose handler module or catalog
+line the task's diff changed, each with the catalog's shipped
+description, computed from the stored diff whenever the lessons route is
+read, with tests, contract pins and red proofs. T001 to T003 are then
+built.
 
 ## Next Steps
 
-1. T003: the Commands mode, the catalog entries of the commands the
-   task's diff touched, as a second mode of the overlay.
-2. The closure sequence.
+1. The closure sequence: Built State and the user guide, the checklist
+   consolidation, self-use, the one full suite, the evidence package, the
+   bookings, the ledger rotation, the STATUS flip and the pull request.
 
 ## Risks
 
