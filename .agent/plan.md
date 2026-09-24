@@ -12,14 +12,15 @@ was understood and from which round it applies
 
 ## Current Step
 
-ROUND 9, the closure sequence's evidence half: book round 8's PASS, whose
-one full suite is green, then build the evidence bundle against the fork
-point and the fresh review package. T001 to T003 are built.
+ROUND 10, the closing round: book round 9's PASS, rotate the ledger, flip
+F264's STATUS line to accepted with its README pins in the same commit,
+and open the pull request. T001 to T003 are built and the package is
+READY_FOR_REVIEW.
 
 ## Next Steps
 
-1. The closing round: the booking of round 9, the ledger rotation, the
-   STATUS flip with its README pins, and the pull request.
+1. The next session merges this feature's pull request at the Open PR
+   Gate, then claims the next feature under Rule A5.
 
 ## Risks
 
