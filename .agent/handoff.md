@@ -1,100 +1,117 @@
-# Handback — F019 Live node materialization · Round 2 (book round 1 + T002's pure half)
+# Handback — F019 Live node materialization · Round 3 (book round 2 + mount the live renderer)
 
 ## Session
 
-SESSION 1 of feature F019 · round 2 · rounds so far 2
+SESSION 2 of feature F019 · round 3 · rounds so far 3
 
-This round books round 1's PASS, records DECISION F019 D2, and lands T002's
-pure half: `buildBrainLayout` in `buildForceBrainModel.ts` with its shapes
-in `forceBrainTypes.ts`, the birth schedule in the new `brainMotion.ts`,
-the two birth-motion tokens in `apps/ui/src/styles/tokens.css` and their
-guard `tests/ui_contracts/test_brain_motion_tokens.py`, with vitest tests
-and red proofs. I had ample context remaining throughout this round; no
-session-limit pressure at any point.
+This round books round 2's PASS, records DECISION F019 D3 and operator note
+Q3, and lands the first part of T002's painted half: the new pure module
+`brainView.ts`, the rewritten `ForceBrainGraph.tsx` that paints
+`buildBrainLayout`'s output, and `BrainGraphStage.tsx` mounting it by
+default while `BrainGraphCanvas.tsx` stays the simple view, with vitest
+tests, a source guard and red proofs. I had ample context remaining
+throughout this round; no session-limit pressure at any point.
 
 ## Range
 
-Review of b6cc2690a..HEAD
+Review of fd976586..HEAD
 
 ## Commits
 
-### a0a3dc267 F019 R2 C1a: copy round 2 block and plan into .agent/authored/
+### 834fa715c F019 R3 C1a: copy round 3 block and plan into .agent/authored/
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f019-r2-block.md | +173/-0 | copy of this round's block, verbatim |
-| .agent/authored/f019-r2-plan.md | +36/-0 | copy of the plan.md payload |
+| .agent/authored/f019-r3-block.md | +187/-0 | copy of this round's block, verbatim |
+| .agent/authored/f019-r3-plan.md | +37/-0 | copy of the plan.md payload |
 
-209 insertions by `git show --numstat` (block's 173 lines + 36); matches
+224 insertions by `git show --numstat` (block's 187 lines + 37); matches
 the block's expectation exactly; under the 500-insertion cap.
 
-### 32547eeb0 F019 R2 C1b: copy round 2 records and product diffs into .agent/authored/
+### de1b2df1c F019 R3 C1b: copy round 3 records and product diffs into .agent/authored/
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f019-r2-product.diff | +325/-0 | copy of the product.diff payload |
-| .agent/authored/f019-r2-records.diff | +64/-0 | copy of the records.diff payload |
+| .agent/authored/f019-r3-product.diff | +252/-0 | copy of the product.diff payload |
+| .agent/authored/f019-r3-records.diff | +106/-0 | copy of the records.diff payload |
 
-389 insertions by `git show --numstat`; matches the block's expectation exactly.
+358 insertions by `git show --numstat`; matches the block's expectation
+(358) exactly.
 
-### f4483d6da F019 R2 C1c: copy round 2 tests diff into .agent/authored/
+### 449613bdd F019 R3 C1c: copy round 3 renderer diff into .agent/authored/
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f019-r2-tests.diff | +367/-0 | copy of the tests.diff payload |
+| .agent/authored/f019-r3-renderer.diff | +467/-0 | copy of the renderer.diff payload |
 
-367 insertions by `git show --numstat`; matches the block's expectation exactly.
+467 insertions by `git show --numstat`; matches the block's expectation
+exactly.
 
-### 42f64dd68 F019 R2 C1d: copy round 2 mutation tool into .agent/authored/
+### ecddca9c5 F019 R3 C1d: copy round 3 tests diff into .agent/authored/
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f019-r2-mutations.py | +346/-0 | copy of the mutations.py payload |
+| .agent/authored/f019-r3-tests.diff | +350/-0 | copy of the tests.diff payload |
 
-346 insertions by `git show --numstat`; matches the block's expectation exactly.
+350 insertions by `git show --numstat`; matches the block's expectation
+exactly.
 
-### c8e43121f F019 R2 C2: book round 1's PASS, record DECISION F019 D2
+### 746adf306 F019 R3 C1e: copy round 3 mutation tool into .agent/authored/
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/decisions.md | +46/-0 | DECISION F019 D2 appended |
-| .agent/live_review.md | +2/-0 | `Gate: F019 R1 —` entry appended |
-| .agent/plan.md | +9/-9 | rewritten to the plan.md payload (round 2 scope) |
+| .agent/authored/f019-r3-mutations.py | +331/-0 | copy of the mutations.py payload |
+
+331 insertions by `git show --numstat`; matches the block's expectation
+exactly.
+
+### 78a869440 F019 R3 C2: book round 2's PASS, record DECISION F019 D3 and operator note Q3
+| Path | +/- | Reason |
+|---|---|---|
+| .agent/decisions.md | +55/-0 | DECISION F019 D3 appended |
+| .agent/live_review.md | +2/-0 | `Gate: F019 R2 —` entry appended |
+| .agent/operator_questions.md | +25/-0 | operator note Q3 appended |
+| .agent/plan.md | +10/-9 | rewritten to the plan.md payload (round 3 scope) |
 
 `git apply --check` on records.diff: exit 0. `git apply`: exit 0.
-Insertions by `git show --numstat`: 46 decisions.md, 2 live_review.md,
-9 plan.md — matches the block's expectation exactly on every file.
+Insertions by `git show --numstat`: 55 decisions.md, 2 live_review.md, 25
+operator_questions.md, 10 plan.md — matches the block's expectation
+exactly on every file.
 
-### 0b4712829 F019 R2 C3: lay out the reducer's model and schedule its births
+### 62cd77d48 F019 R3 C3: paint the reducer's model on the stage, keep the SVG picture as simple view
 | Path | +/- | Reason |
 |---|---|---|
-| apps/ui/src/components/graph/brainMotion.ts | +60/-0 | new file, the birth schedule |
-| apps/ui/src/components/graph/buildForceBrainModel.ts | +171/-1 | `buildBrainLayout` and its layout constants added |
-| apps/ui/src/components/graph/forceBrainTypes.ts | +46/-0 | `BrainLayoutNode`/`BrainLayoutLink`/`BrainLayoutData` added |
-| apps/ui/src/styles/tokens.css | +5/-0 | `--remedy-dur-birth` and `--remedy-ease-soft` added |
+| apps/ui/src/components/graph/ForceBrainGraph.tsx | +261/-134 | rewritten to paint `buildBrainLayout`'s model |
+| apps/ui/src/components/graph/brainView.ts | +132/-0 | new file, the pure stage-glue module |
+| apps/ui/src/components/graph/BrainGraphStage.tsx | +40/-2 | mounts the painted renderer by default |
+| apps/ui/src/components/graph/BrainGraphStage.module.css | +16/-0 | stage styling for the mounted renderer |
+| apps/ui/src/components/graph/buildForceBrainModel.ts | +1/-1 | `seededRng` exported |
+| apps/ui/src/types/react-force-graph-2d.d.ts | +4/-0 | `autoPauseRedraw` prop typed |
 
-60/171/46/5 insertions by `git show --numstat`; matches the block's
-expectation exactly. `brainMotion.ts` was `git add`ed before commit (no
-untracked product file at commit time).
+261/132/40/16/1/4 insertions by `git show --numstat`; matches the block's
+expectation exactly on every file. `git apply --check` then `git apply`
+on renderer.diff: exit 0 both. `git apply --check` then `git apply` on
+product.diff: exit 0 both. `brainView.ts` was `git add`ed before commit
+(no untracked product file at commit time).
 
-### 500357997 F019 R2 C4: pin the layout, the birth schedule and the motion tokens
+### febaac8e5 F019 R3 C4: pin the stage glue, the mount and the selection mapping
 | Path | +/- | Reason |
 |---|---|---|
-| apps/ui/src/components/graph/brainMotion.test.ts | +83/-0 | new file, vitest tests for `scheduleBrainBirths` |
-| apps/ui/src/components/graph/buildForceBrainModel.test.ts | +195/-1 | vitest tests for `buildBrainLayout` added |
-| tests/ui_contracts/test_brain_motion_tokens.py | +62/-0 | new file, the token/constant contract guard |
+| apps/ui/src/components/graph/brainView.test.ts | +223/-0 | new file, vitest tests for `brainView.ts` |
+| tests/ui_contracts/test_brain_stage_mount.py | +115/-0 | new file, the mount/source guard |
 
-83/195/62 insertions by `git show --numstat`; matches the block's
-expectation exactly. Both new files were `git add`ed before commit.
+223/115 insertions by `git show --numstat`; matches the block's
+expectation exactly. `git apply --check` then `git apply` on tests.diff:
+exit 0 both. Both new files were `git add`ed before commit.
 
-### (this commit) F019 R2 C5: rewrite handoff for round 2
+### (this commit) F019 R3 C5: rewrite handoff for round 3
 This file, rewritten, its own commit — self-reference exception per the
 handback template (a handback cannot table the commit that writes it).
 
 ## External actions
 
-- `git worktree add --detach .remedy-wt/f019-r2-mut 500357997` (G5) — real
-  outcome: `Preparing worktree (detached HEAD 500357997)`, `HEAD is now at
-  500357997`.
-- `git worktree remove --force .remedy-wt/f019-r2-mut` (G5, after the
+- `git worktree add --detach .remedy-wt/f019-r3-mut febaac8e5` (G5) — real
+  outcome: `Preparing worktree (detached HEAD febaac8e5)`, `HEAD is now at
+  febaac8e5`.
+- `git worktree remove --force .remedy-wt/f019-r3-mut` (G5, after the
   mutation sweep) — real outcome: exit 0, no output.
 - `git worktree prune` (G5) — real outcome: exit 0, no output.
-- `git push -u origin feature/f019-live-node-materialization` runs after
+- `git push origin feature/f019-live-node-materialization` runs after
   this handback is committed; its real outcome is reported in the reply
   only, per G6.
 - No `gh pr` command of any kind this round. No checkout of `main`, no
@@ -102,44 +119,49 @@ handback template (a handback cannot table the commit that writes it).
 
 ## Verification
 
-G1 TRANSPORT — all 5 payloads measured against the block's PAYLOADS table,
+G1 TRANSPORT — all 6 payloads measured against the block's PAYLOADS table,
 all matched (line count, byte count, sha256):
 ```
-records.diff    lines=64  bytes=9957  sha256=54c531862bf89959ec01655f127d3d6ce748779b8ffcceb0e93ce91c4fad1d1a
-plan.md         lines=36  bytes=1434  sha256=27b6456594fcfd7fc82af88d34c30f6da8c631ed1e85fd767910719d7b37d165
-product.diff    lines=325 bytes=14833 sha256=84ddd740553e117a298e7a3cc8a57399d0176aa91873e6fed5829c4bf15a8327
-tests.diff      lines=367 bytes=18134 sha256=4155efec6af89ab73ffb372b402c688d2f8e07d85d53a6afcb868ae4dfdb7db0
-mutations.py    lines=346 bytes=13825 sha256=5076fbef3eefdf16820ccc642a3d6c67c7346c21337826277b1ad2d36eef8c2e
+records.diff    lines=106 bytes=12760 sha256=268e5cdb6eca78f2e580ad53e6e101bbde81ba0d73abed4bf07a725150a3005a
+plan.md         lines=37  bytes=1495  sha256=80ac140ae3a98e9ed83530f313ea10639f9224906ce28d4106a7da9ad48facf7
+renderer.diff   lines=467 bytes=20766 sha256=2f63160e5083507d5233bab7ecbc274a9b2bbeddd1e45a659305cfc05fc0a207
+product.diff    lines=252 bytes=12490 sha256=ae15a39f9445ef74b31f5dbee0f57333010b114b89335ebbfac610c65441a98f
+tests.diff      lines=350 bytes=13864 sha256=706881818b66022c0347298113a374c5e5d79f4ee9c42914b05b7006031333fe
+mutations.py    lines=331 bytes=13896 sha256=cbc4242f3b7f83315efe2cc18dcee311b69f3402af78be6027ce5bd815dd76ad
 ALL PAYLOAD DIGESTS MATCH: True
 ```
-Each `.agent/authored/f019-r2-*` copy, read back with `git show
+Each `.agent/authored/f019-r3-*` copy, read back with `git show
 <commit>:<path>` from the commit that added it, matched its source byte
-for byte (6 comparisons: the block copy against
-`.remedy-wt/f019-r2/block.md`, plus the 5 payload copies) — `ALL MATCH`.
+for byte (7 comparisons: the block copy against
+`.remedy-wt/f019-r3/block.md`, plus the 6 payload copies) — `ALL MATCH`.
 
-G2 THE BOOKING — at C2 (`c8e43121f`), `.agent/live_review.md` read 309572
-bytes, sha256 `cf732f8ecb9c05e5ba1fd5a0af8cad22f658e3de198944c2db410058d0cd3553`
-(MATCH); `.agent/decisions.md` read 2000583 bytes, sha256
-`c7749033d278e777e12c9dfc5e6dcf6b5a5b463aff3832d8fe290f619c8513e6` (MATCH);
-`.agent/plan.md` at C2 equals the plan.md payload byte for byte (MATCH).
-The count of lines C2 adds to the ledger beginning `Gate: F019 R1 — ` is 1
-(measured: 2 lines total added to live_review.md, 1 of them starting that
-prefix). `open_finding_ids` (`scripts/rotate_live_review.py`) over
-`.agent/live_review.md`: at `b6cc2690` → `['R-0499', 'R-0950', 'R-1008',
-'R-1046']`; at C2 (`c8e43121f`) → the same four — matches the reviewer's
-reading exactly at both.
+G2 THE BOOKING — at C2 (`78a869440`), `.agent/decisions.md` read 2005325
+bytes, sha256 `a3b512551ff10e96413676aa3782f9a6f6db72d2ad7cda18cb028c8a3e4e9ffc`
+(MATCH); `.agent/live_review.md` read 311422 bytes, sha256
+`447a154146f1ce0fe2071d27b1e4eb26764f72aa0bfe72f7a5037d685b85838b` (MATCH);
+`.agent/operator_questions.md` read 5681 bytes, sha256
+`3c7f2c772af005e7bc961e6b086e73abf028da3e7603b817aaf0d119076b0aee` (MATCH);
+`.agent/plan.md` at C2 read 1495 bytes, sha256
+`80ac140ae3a98e9ed83530f313ea10639f9224906ce28d4106a7da9ad48facf7` (MATCH,
+equal to the plan.md payload). The count of lines C2 adds to the ledger
+beginning `Gate: F019 R2 — ` is 1 (measured: `grep -c` over C2's
+`.agent/live_review.md`). `open_finding_ids` (`scripts/rotate_live_review.py`)
+over `.agent/live_review.md`: at `fd976586` → `['R-0499', 'R-0950',
+'R-1008', 'R-1046']`; at C2 (`78a869440`) → the same four — matches the
+reviewer's reading exactly at both.
 
-G3 THE PRODUCT AND TESTS — at C4 (`500357997`), the byte count and sha256
-of all 7 named files, read with `git show 500357997:<path>`, matched the
+G3 THE PRODUCT AND TESTS — at C4 (`febaac8e5`), the byte count and sha256
+of all 8 named files, read with `git show febaac8e5:<path>`, matched the
 reviewer's simulated reading exactly:
 ```
-forceBrainTypes.ts               2571 bytes  MATCH
-buildForceBrainModel.ts         13454 bytes  MATCH
-brainMotion.ts                   2766 bytes  MATCH
-tokens.css                       3911 bytes  MATCH
-buildForceBrainModel.test.ts    11980 bytes  MATCH
-brainMotion.test.ts              3895 bytes  MATCH
-test_brain_motion_tokens.py      2770 bytes  MATCH
+ForceBrainGraph.tsx              14829 bytes  MATCH
+brainView.ts                      6725 bytes  MATCH
+BrainGraphStage.tsx               2647 bytes  MATCH
+BrainGraphStage.module.css        1087 bytes  MATCH
+buildForceBrainModel.ts          13461 bytes  MATCH
+react-force-graph-2d.d.ts         2767 bytes  MATCH
+brainView.test.ts                 8721 bytes  MATCH
+test_brain_stage_mount.py         4327 bytes  MATCH
 ```
 
 G4 THE TESTS — real transcript, primary checkout, at C4:
@@ -150,7 +172,7 @@ SKIPPED [1] tests/ui_contracts/test_graph_architecture.py:484: D3 quarantine (F2
 SKIPPED [1] tests/ui_contracts/test_ux_quality.py:507: D3 quarantine (F252): pre-rebuild legacy sources not in tree
 SKIPPED [1] tests/ui_contracts/test_ux_quality.py:543: D3 quarantine (F252): pre-rebuild legacy sources not in tree
 SKIPPED [1] tests/test_agent_tooling.py:43: D12 quarantine (F252): .claude/agents/remedy-reviewer.md deleted deliberately
-1398 passed, 5 skipped in 72.32s (0:01:12)
+1417 passed, 5 skipped in 71.51s (0:01:11)
 REAL_EXIT=0
 ```
 All 5 SKIPPED lines are pre-existing D3/D12 quarantine skips, unrelated to
@@ -159,12 +181,11 @@ checks in `test_ui_lint.py`, the `tsc --noEmit` node in
 `test_dashboard_contract.py`, the vitest node in `test_test_runner.py`)
 do not appear in the skip list — each ran and PASSED, as the block
 requires for the primary checkout. (The reviewer's sim-tree run, without
-the golden path and without a built toolchain, read `1351 passed, 10
-skipped`; the primary-checkout difference — 47 more passed, 5 fewer
-skipped — is exactly the golden-path suite plus those four toolchain
-nodes running here instead of skipping.)
+the golden path, read `1370 passed, 10 skipped`; the primary-checkout
+difference — 47 more passed, 5 fewer skipped — is exactly the golden-path
+suite plus those four toolchain nodes running here instead of skipping.)
 ```
-$ python3 -m ruff check tests/ui_contracts/test_brain_motion_tokens.py
+$ python3 -m ruff check tests/ui_contracts/test_brain_stage_mount.py
 All checks passed!
 REAL_EXIT=0
 ```
@@ -175,29 +196,28 @@ REAL_EXIT=0
 ```
 All six checks `pass`, `fail_count` 0.
 
-G5 THE RED PROOFS — worktree `.remedy-wt/f019-r2-mut` added detached at
-C4 (`500357997`), then `python3 -B .remedy-wt/f019-r2-payloads/mutations.py
-/home/decodeux/Repos/remedy/.remedy-wt/f019-r2-mut`:
+G5 THE RED PROOFS — worktree `.remedy-wt/f019-r3-mut` added detached at
+C4 (`febaac8e5`), then `python3 -B .remedy-wt/f019-r3-payloads/mutations.py
+/home/decodeux/Repos/remedy/.remedy-wt/f019-r3-mut`:
 ```
-VITEST CONTROL RUN #1 (unmutated, before any mutation): exit_code=0 failed=0 passed=64
-PYTEST CONTROL RUN #1 (unmutated, before any mutation): exit_code=0 failed=0 passed=5
-L1  builder skips clusterBrainModel: exit=1 failed=2 restored byte-identical: True
-L2  task ring radius 150 -> 151: exit=1 failed=1 restored byte-identical: True
-L3  golden angle replaced by a different constant: exit=1 failed=2 restored byte-identical: True
-L4  child distance measured from the core instead of the task: exit=1 failed=1 restored byte-identical: True
-L5  child fan not centred: exit=1 failed=1 restored byte-identical: True
-L6  core not pinned (fx/fy removed): exit=1 failed=1 restored byte-identical: True
-L7  a task label falls back to "" instead of the id: exit=1 failed=1 restored byte-identical: True
-L8  active ignores a task whose child is in_progress: exit=1 failed=1 restored byte-identical: True
-L9  link widths swapped: exit=1 failed=1 restored byte-identical: True
-B1  first paint schedules births (previous === null guard removed): exit=1 failed=1 restored byte-identical: True
-B2  no concurrency cap (delay = i * stagger): exit=1 failed=1 restored byte-identical: True
-B3  reduced-motion duration left at 420: exit=1 failed=1 restored byte-identical: True
-B4  an existing (surviving) node re-born: exit=1 failed=4 restored byte-identical: True
-P1  the app token --remedy-dur-birth changed to 400ms: exit=1 failed=2 restored byte-identical: True
-P2  BRAIN_BIRTH_MS changed to 400: exit=1 failed=1 restored byte-identical: True
-VITEST CONTROL RUN #2 (unmutated, after the full sweep): exit_code=0 failed=0 passed=64
-PYTEST CONTROL RUN #2 (unmutated, after the full sweep): exit_code=0 failed=0 passed=5
+VITEST CONTROL RUN #1 (unmutated, before any mutation): exit_code=0 failed=0 passed=89
+PYTEST CONTROL RUN #1 (unmutated, before any mutation): exit_code=0 failed=0 passed=19
+V1  the table maps done to running: exit=1 failed=1 restored byte-identical: True
+V2  rank is not the index (index + 1): exit=1 failed=1 restored byte-identical: True
+V3  filterBrainLayout keeps planned tasks under open: exit=1 failed=1 restored byte-identical: True
+V4  a depth-2 node kept regardless of its parent: exit=1 failed=1 restored byte-identical: True
+V5  a link kept when only its source is kept: exit=1 failed=1 restored byte-identical: True
+V6  "all" returns a copy instead of the same object: exit=1 failed=1 restored byte-identical: True
+V7  selectedBrainNodeId ignores nodeId: exit=1 failed=1 restored byte-identical: True
+V8  selectionTaskIdOf returns the run's own id for a run: exit=1 failed=2 restored byte-identical: True
+V9  carryBrainPositions copies fx/fy from previous: exit=1 failed=1 restored byte-identical: True
+V10 carryBrainPositions ignores previous x/y: exit=1 failed=1 restored byte-identical: True
+V11 shellSelectionIdOf returns the bare task id: exit=1 failed=1 restored byte-identical: True
+S1  the stage mounts BrainGraphCanvas only (ForceBrainGraph element deleted): exit=1 failed=2 restored byte-identical: True
+S2  the particle expression drops reducedMotion: exit=1 failed=1 restored byte-identical: True
+S3  the stage stops calling shellSelectionIdOf (mapped callback replaced by the raw onSelectNode): exit=1 failed=1 restored byte-identical: True
+VITEST CONTROL RUN #2 (unmutated, after the full sweep): exit_code=0 failed=0 passed=89
+PYTEST CONTROL RUN #2 (unmutated, after the full sweep): exit_code=0 failed=0 passed=19
 vitest control #1 green: True
 vitest control #2 green: True
 pytest control #1 green: True
@@ -205,82 +225,83 @@ pytest control #2 green: True
 ALL MUTATIONS CAUGHT AND RESTORED CLEANLY: True
 REAL_EXIT=0
 ```
-Every one of the 15 mutation counts matches the reviewer's sim-tree reading
-exactly (L1=2, L2=1, L3=2, L4=1, L5=1, L6=1, L7=1, L8=1, L9=1, B1=1, B2=1,
-B3=1, B4=4, P1=2, P2=1), both vitest controls read `64 passed` at exit 0,
-both pytest controls read `5 passed` at exit 0, every restore read
+Every one of the 14 mutation counts matches the reviewer's sim-tree reading
+exactly (V1=1, V2=1, V3=1, V4=1, V5=1, V6=1, V7=1, V8=2, V9=1, V10=1,
+V11=1, S1=2, S2=1, S3=1), both vitest controls read `89 passed` at exit 0,
+both pytest controls read `19 passed` at exit 0, every restore read
 byte-identical True, and the final line reads `ALL MUTATIONS CAUGHT AND
 RESTORED CLEANLY: True`. `git worktree remove --force
-.remedy-wt/f019-r2-mut` and `git worktree prune` both exit 0; `git
-worktree list` afterward shows no `f019-r2-mut` entry, only the primary
-checkout, the pre-existing `f015-r*` worktrees, `f019-r1-proto`,
-`f019-r1-sim`, `f019-r2-proto`, `f019-r2-sim` and the four `job-*`
-worktrees — all named by the block's constraint 6, nothing else.
+.remedy-wt/f019-r3-mut` and `git worktree prune` both exit 0; `git
+worktree list` afterward shows no `f019-r3-mut` entry, only the primary
+checkout, the pre-existing `f015-r*` worktrees, `f019-r2-sim`,
+`f019-r3-proto`, `f019-r3-sim` and the four `job-*` worktrees — all named
+by the block's constraint 6, nothing else.
 
 G6 — reported in the reply per the block's own instruction (measured
 after this handback is written, committed and pushed).
 
 ## Authored-text proofs
 
-All 6 authored copies under `.agent/authored/f019-r2-*` (the block copy
-plus the 5 payload copies) were built by reading each source's bytes with
+All 7 authored copies under `.agent/authored/f019-r3-*` (the block copy
+plus the 6 payload copies) were built by reading each source's bytes with
 `shutil.copyfile` and writing them unedited — never retyped, never
 edited. Each was read back from the commit that added it with `git show
-<commit>:<path>` and compared byte for byte against its source: all 6
+<commit>:<path>` and compared byte for byte against its source: all 7
 `MATCH` (G1 above). `records.diff` was applied with `git apply` after
 `git apply --check` passed (exit 0 both), never retyped or edited; its
-resulting file contents (`.agent/live_review.md`, `.agent/decisions.md`)
-were verified by byte count and sha256 against the reviewer's own readings
-at C2 (G2 above) — both `MATCH`; `.agent/plan.md` was separately rewritten
-whole via `shutil.copyfile` from its payload and also confirmed `MATCH`.
-`product.diff` and `tests.diff` were applied the same way (`git apply
---check` then `git apply`, both exit 0), never retyped or edited; the
-seven resulting product/test files' C4 contents were confirmed `MATCH`
-against the reviewer's simulated reading in G3 above. `mutations.py` was
-copied into `.agent/authored/` (G1, matched) and run unedited from its
-payload location in G5; it was never applied to a tracked file, per the
-block's instruction that it is a TOOL only.
+resulting file contents (`.agent/decisions.md`, `.agent/live_review.md`,
+`.agent/operator_questions.md`) were verified by byte count and sha256
+against the reviewer's own readings at C2 (G2 above) — all `MATCH`;
+`.agent/plan.md` was separately rewritten whole via `shutil.copyfile`
+from its payload and also confirmed `MATCH`. `renderer.diff` and
+`product.diff` were applied the same way (`git apply --check` then `git
+apply`, both exit 0 for each), never retyped or edited; `tests.diff`
+likewise. The eight resulting product/test files' C4 contents were
+confirmed `MATCH` against the reviewer's simulated reading in G3 above.
+`mutations.py` was copied into `.agent/authored/` (G1, matched) and run
+unedited from its payload location in G5; it was never applied to a
+tracked file, per the block's instruction that it is a TOOL only.
 
 ## Deviations & assumptions
 
 None. Every commit landed in the block's stated order (C1a, C1b, C1c,
-C1d, C2, C3, C4, then this handback as C5), all gates G1–G5 ran before
-C5 as ordered, and no payload was edited, retyped or repaired. The
-round's tracked path set matches constraint 3 exactly: `git diff
---name-only b6cc2690 HEAD` (measured just before writing this handback,
-i.e. through C4) names the six `.agent/authored/f019-r2-*` copies,
-`.agent/live_review.md`, `.agent/decisions.md`, `.agent/plan.md`, and the
-seven files the two product/test diffs name — this handoff's own path is
-added by C5 itself. No full-suite run was made (amend0917 rule 1; F019's
-belongs to its closure). No `.agent/context.md`, `.agent/prose_slips.md`,
+C1d, C1e, C2, C3, C4, then this handback as C5), all gates G1–G5 ran
+before C5 as ordered, and no payload was edited, retyped or repaired.
+The round's tracked path set matches constraint 3 exactly: `git diff
+--name-only fd976586 HEAD` (measured just before writing this handback,
+i.e. through C4) names the seven `.agent/authored/f019-r3-*` copies,
+`.agent/live_review.md`, `.agent/decisions.md`,
+`.agent/operator_questions.md`, `.agent/plan.md`, and the eight files the
+renderer/product/test diffs name — this handoff's own path is added by
+C5 itself. No full-suite run was made (amend0917 rule 1; F019's belongs
+to its closure). No `.agent/context.md`, `.agent/prose_slips.md`,
 `.agent/candidates.md`, `README.md`, `docs/roadmap/STATUS.md` or
 `docs/roadmap/features/T5_F019.md` was touched, matching this round's
-scope (round 1 already carried the STATUS/context edits at the claim).
+scope.
 
 ## Item-status table
 
 | Item | Status | Reason |
 |---|---|---|
-| C1a | done | 209 insertions, matches (173 block + 36 plan.md) |
-| C1b | done | 389 insertions, matches |
-| C1c | done | 367 insertions, matches |
-| C1d | done | 346 insertions, matches |
-| C2 | done | git apply --check and apply both exit 0; 46/2/9 insertions, matches every file |
-| C3 | done | 60/171/46/5 insertions, matches; brainMotion.ts tracked before commit |
-| C4 | done | 83/195/62 insertions, matches; both new files tracked before commit |
+| C1a | done | 224 insertions, matches (187 block + 37 plan.md) |
+| C1b | done | 358 insertions, matches |
+| C1c | done | 467 insertions, matches |
+| C1d | done | 350 insertions, matches |
+| C1e | done | 331 insertions, matches |
+| C2 | done | git apply --check and apply both exit 0; 55/2/25/10 insertions, matches every file |
+| C3 | done | 261/132/40/16/1/4 insertions, matches; both diffs applied clean; brainView.ts tracked before commit |
+| C4 | done | 223/115 insertions, matches; tests.diff applied clean; both new files tracked before commit |
 | C5 | done | this handback, rewritten per docs/agents/handback_template.md |
-| G1 | done | all 5 payload digests and 6 authored-copy comparisons matched |
-| G2 | done | live_review.md and decisions.md byte counts/sha256 matched; plan.md MATCH; 1 new Gate line; open_finding_ids correct at both commits |
-| G3 | done | all 7 product/test file digests matched at C4 |
-| G4 | done | 1398 passed, 5 skipped (all pre-existing quarantine, none toolchain), exit 0; ruff clean; integrity check all 6 pass, fail_count 0 |
-| G5 | done | all 15 mutations caught, both vitest and pytest controls green, all restores byte-identical, final line True; worktree removed and pruned |
+| G1 | done | all 6 payload digests and 7 authored-copy comparisons matched |
+| G2 | done | decisions.md/live_review.md/operator_questions.md/plan.md byte counts and sha256 matched; 1 new Gate line; open_finding_ids correct at both commits |
+| G3 | done | all 8 product/test file digests matched at C4 |
+| G4 | done | 1417 passed, 5 skipped (all pre-existing quarantine, none toolchain), exit 0; ruff clean; integrity check all 6 pass, fail_count 0 |
+| G5 | done | all 14 mutations caught, both vitest and pytest controls green, all restores byte-identical, final line True; worktree removed and pruned |
 | G6 | pending | reported in the reply, measured after this handback and the push |
 
 ## Next
 
-Phase 1 rule 1: read `.agent/STOP` from disk. Then the review of round 2.
-Then T002's painted half as DECISION F019 D2 (1) names it: the renderer
-that paints the layout on the canvas, its mount in `BrainGraphStage.tsx`
-fed by the reducer's model seeded from the dashboard, the replacement of
-the dashboard builder it supersedes, and the demo recording. Open
-findings: 4. Operator questions open: 2.
+Phase 1 rule 1: read `.agent/STOP` from disk. Then the review of round 3.
+Then the rest of T002 as DECISION F019 D3 (7) names it: the old
+decorative dashboard builder replaced with its source pins, and the demo
+recording. Open findings: 4. Operator questions open: 3.
