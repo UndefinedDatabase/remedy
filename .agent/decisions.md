@@ -19558,3 +19558,36 @@ because the server accepts messages for paused, stopped and planned jobs; cleari
 every send, rejected because a refused message would be lost. HOW TO REVERSE: restore the three
 components, the stylesheet, the assumption log and `tests/ui_contracts/test_brain_stream_ring.py`
 from `61e6dd70`, delete `steeringSend.ts`, its test and the contract test, and this paragraph.
+
+## DECISION F264 D4 — a steering message is consumed at the top of the next ping-pong round, exactly once, and stays in every later builder prompt of the job (2026-09-24)
+
+CONTEXT: T5_F264.md T002 orders pending messages picked up "at the next safe point" and folded
+into "the next prompt", with a red proof that a mid-call message waits; its Acceptance wants a
+message sent during round N to change round N+1, proved by comparing that prompt with and
+without it, and every message's consumption round in the event log. Measured at `889c556b`:
+`pingpong_loop.run_pingpong` opens each round with SAFE POINT 1, where "nothing is in flight";
+the loop's `stop_check` probe also runs between transport retries of ONE call and during
+rate-limit waits, both inside a call; the tiered-diff summary between that safe point and the
+builder prompt may make a model call of its own; `run_job` passes the job id and task id to
+every `run_pingpong`; and F033's `builder_hunk_rejections` segment is the precedent for carrying
+an operator's words verbatim at `SegmentStabilityRank.STEERING`, registered only when present so
+the golden shapes keep their manifest. CHOSEN: (1) THE POINT. The loop reads steering as its own
+explicit step directly after SAFE POINT 1, before anything else of the round, and never through
+`stop_check`; a message that arrives during any call of round N is therefore first read at round
+N+1, or at the next task's first round when round N was the task's last. A run with no job id
+reads nothing. (2) EXACTLY ONCE. Consuming a message publishes a sealed marker
+`jobs/<id>/evidence/steering/consumed/<message_id>.json`, create-once, naming the task and the
+round it took effect in, and only the call that publishes it writes the run-log event
+`steering_message_consumed` with the message id, task id, round and the message's seal. (3)
+EVERY LATER ROUND. The builder prompt carries every consumed message of the job, oldest first,
+verbatim and uncapped, as the `builder_steering` segment directly before the directive, because
+a correction such as "use pnpm" holds for the rest of the job and not for one round. (4) LOUD.
+A tampered message or marker raises `SteeringError` and stops the run; the job then stops
+blocked through `run_job`'s existing handler, rather than folding in text nobody can prove the
+operator sent. (5) The mission-contract amendment for a job that belongs to a mission is the
+next round's, over the same consumption. ALTERNATIVES: hooking the read into `stop_check` the
+way F263's absorb is hooked, rejected because that probe fires inside a call; carrying a message
+in the next round only, rejected because the job would forget the correction a round later;
+reading after the tiered-diff summary, rejected because that summary may itself be a model call.
+HOW TO REVERSE: delete the consumption functions from `steering.py`, the read and the segment
+from `pingpong_loop.py`, the event name and its humanize line, their tests, and this paragraph.
