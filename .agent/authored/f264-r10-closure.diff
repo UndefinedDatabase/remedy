@@ -1,0 +1,52 @@
+diff --git a/README.md b/README.md
+index ce0e2e4e..84ff80d6 100644
+--- a/README.md
++++ b/README.md
+@@ -26,7 +26,7 @@ verification commands. If something is unproven, Remedy says so instead of guess
+ 
+ ## Status
+ 
+-93 of 284 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
++94 of 284 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
+ 
+ | Tier | Name | Done | Total |
+ |------|------|-----:|------:|
+@@ -35,7 +35,7 @@ verification commands. If something is unproven, Remedy says so instead of guess
+ | 2 | Minimal Self-Build Runtime | 35 | 37 |
+ | 3 | Full Token Economy & Autonomy | 6 | 26 |
+ | 4 | Memory & Learning | 1 | 17 |
+-| 5 | Operator Cockpit | 13 | 34 |
++| 5 | Operator Cockpit | 14 | 34 |
+ | 6 | Design-to-Code | 0 | 16 |
+ | 7 | Quality & Trust | 0 | 15 |
+ | 8 | Worker Ecosystem & Neutrality | 0 | 12 |
+@@ -356,6 +356,16 @@ consumed item is RUN through the real job path to the normal approval gate,
+ not merely planned; and any defect the run surfaces flows back into that same
+ ledger as a normal finding).
+ 
++F264 steering channel (a job that is going the wrong way can now be corrected
++without stopping it: `remedy chat <job_id> "<message>"`, or the input at the
++bottom of the cockpit's activity card, records one message as sealed evidence;
++the job reads it at the start of its next round and never inside a model call
++already running, carries it word for word in every later builder prompt, and
++answers with what it understood and from which round, which `remedy chat show
++<job_id>` lists and the cockpit's activity feed shows as its own line, both read
++from the one event the job writes; a mission's job also adds the message to the
++mission's contract).
++
+ Full per-feature state: [`docs/roadmap/STATUS.md`](docs/roadmap/STATUS.md)
+ 
+ ## Install
+diff --git a/docs/roadmap/STATUS.md b/docs/roadmap/STATUS.md
+index e10fe274..e01878f2 100644
+--- a/docs/roadmap/STATUS.md
++++ b/docs/roadmap/STATUS.md
+@@ -55,7 +55,7 @@ The tier-block order below is the operator-decided Self-Use sequence of 2026-08-
+ 
+ ## Tier 5 — Steering & Learning Surfaces (operator order amend0831)
+ 
+-- [~] F264 — Steering channel (remedy chat)
++- [x] F264 — Steering channel (remedy chat) (T001-T003 complete; accepted 2026-09-24 · live review PASS — ACCEPTED · Evidence job f264r9e1001 · package remedy-review-20260924-062629-READY_FOR_REVIEW.zip · SHA-256 7d07e5a59233f424dfe9cc60f9afbf7a1e1eb76d20906d111f8e1a619b43d47c · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD 2c91712595e069f7f0c7781008d14f07693b8dd9)
+ - [ ] F265 — Teacher learning UI v1 (post-task lessons)
+ 
+ ## Tier 0 — Foundation & Trust Core
