@@ -1,177 +1,224 @@
-# Handback — F264 Steering channel · Round 10 · THE CLOSING ROUND
+# Handback — F265 Teacher learning UI v1 · Round 1
 
 ## Session
 
-SESSION 2 of feature F264 · round 10 · rounds so far 10
+SESSION 1 of feature F265 · round 1 · rounds so far 1
 
-This round booked round 9's PASS into `.agent/live_review.md`, rotated the
-finding ledger into its archive, applied the closure diff that flips F264's
-`docs/roadmap/STATUS.md` line to `[x]` with the README's accepted count,
-Tier 5 Done cell and Tier 5 prose, and opens the pull request into `main`.
-F264 owned no finding, so there was no ownership step; it is not a
-findings-paydown feature, so nothing was registered. Roughly half of this
-session's working-context budget remained at the point this handback was
-written.
+This round cut `feature/f265-teacher-learning-ui` from `main` at `0236e3c3`,
+claimed F265, re-headed the live review record, recorded DECISION F265 D1
+and operator question Q1, registered finding R-1046, and landed T001's
+substance: `packages/orchestration/lessons.py` (a sealed lesson per
+completed Run from that Run's own `result.diff`, billed to role `teacher`
+inside the teacher's per-job budget pot), the `run_job` hook that writes one
+after every applied task when `teacher.lessons` is on, and the module's
+tests and twelve red proofs. Roughly two-thirds of this session's working-
+context budget remained at the point this handback was written.
 
 ## Range
 
-Review of 0eb5b2d6..HEAD (C4 not yet made when this file was written; see
-the reply for C4's SHA, the push outcome and the pull request)
+Review of 0236e3c3..HEAD (C5 not yet made when this file was written; see
+the reply for C5's SHA and the push outcome)
 
 ## Commits
 
-### f875977e F264 R10 C1: copy round 10 block and payloads into .agent/authored/
+### 46c2e1da F265 R1 C1a: copy round 1 block and state payloads into .agent/authored/
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f264-r10-block.md | +167/-0 | copy of this round's block, verbatim |
-| .agent/authored/f264-r10-ledger.diff | +10/-0 | copy of the ledger.diff payload |
-| .agent/authored/f264-r10-plan.md | +27/-0 | copy of the plan.md payload |
-| .agent/authored/f264-r10-closure.diff | +52/-0 | copy of the closure.diff payload |
-| .agent/authored/f264-r10-pr_body.md | +116/-0 | copy of the pr_body.md payload |
-| .agent/authored/f264-r10-status_line.txt | +1/-0 | copy of the status_line.txt payload |
+| .agent/authored/f265-r1-block.md | +246/-0 | copy of this round's block, verbatim |
+| .agent/authored/f265-r1-context.md | +49/-0 | copy of the context.md payload |
+| .agent/authored/f265-r1-plan.md | +37/-0 | copy of the plan.md payload |
 
-### b0adb863 F264 R10 C2: book round 9's PASS, the package READY_FOR_REVIEW
+### 85aa4a30 F265 R1 C1b: copy round 1 diffs and mutation tool into .agent/authored/
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/live_review.md | +2/-0 | `Gate: F264 R9 —` PASS entry applied via ledger.diff |
-| .agent/plan.md | +6/-5 | rewritten to plan.md payload, advancing to round 10's closing step |
+| .agent/authored/f265-r1-claim.diff | +179/-0 | copy of the claim.diff payload |
+| .agent/authored/f265-r1-mutations.py | +101/-0 | copy of the mutations.py tool |
+| .agent/authored/f265-r1-product.diff | +119/-0 | copy of the product.diff payload |
 
-### 8bc1ebb0 F264 R10 C3: rotate the finding ledger into its archive
+### f4054c12 F265 R1 C1c: copy round 1 product module into .agent/authored/
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/live_review.md | +0/-24 | 12 gate records rotated out (0 finding pairs moved) |
-| .agent/live_review_archive.md | +24/-0 | the same 12 gate records appended to the archive |
+| .agent/authored/f265-r1-lessons.py | +360/-0 | copy of the lessons.py product module |
 
-### (C4, this commit) F264 R10 C4: accept F264 in STATUS with its README pins
+### 8b27700c F265 R1 C1d: copy round 1 test payload into .agent/authored/
 | Path | +/- | Reason |
 |---|---|---|
-| docs/roadmap/STATUS.md | +1/-1 | STATUS line flipped to `[x]` with the closure's readings |
-| README.md | +12/-2 | accepted count, Tier 5 Done cell and Tier 5 prose moved |
+| .agent/authored/f265-r1-test_lessons.py | +391/-0 | copy of the test_lessons.py payload |
+
+### 2a2aa42f F265 R1 C2: claim F265, re-head the live review record, record D1, Q1 and R-1046
+| Path | +/- | Reason |
+|---|---|---|
+| .agent/context.md | +22/-23 | rewritten to the context.md payload |
+| .agent/decisions.md | +55/-0 | DECISION F265 D1 appended, via claim.diff |
+| .agent/live_review.md | +29/-24 | re-headed; R-1046 appended, via claim.diff |
+| .agent/operator_questions.md | +23/-1 | Q1 recorded in place of the empty line, via claim.diff |
+| .agent/plan.md | +24/-14 | rewritten to the plan.md payload |
+| docs/roadmap/STATUS.md | +1/-1 | F265 line flipped to `[~]`, via claim.diff |
+
+### 79c8be1d F265 R1 C3: write a sealed lesson per completed Run from its real diff
+| Path | +/- | Reason |
+|---|---|---|
+| docs/guides/environment.md | +3/-0 | regenerated from the registry, via product.diff |
+| packages/orchestration/config.py | +32/-0 | `teacher.lessons` config key, via product.diff |
+| packages/orchestration/lessons.py | +360/-0 | new module: sealed lesson per Run, from its own diff, billed to `teacher` |
+| packages/orchestration/pingpong_job.py | +32/-0 | `run_job` hook wired in, via product.diff |
+| tests/orchestration/import_reachability_allowlist.txt | +1/-0 | allowlist entry for the new module, via product.diff |
+
+### 79713a5e F265 R1 C4: test the lesson generator, its pot and its hook
+| Path | +/- | Reason |
+|---|---|---|
+| tests/orchestration/test_lessons.py | +391/-0 | tests for the lesson generator, its pot and its hook |
+
+### (C5, this commit) F265 R1 C5: rewrite handoff for round 1
+| Path | +/- | Reason |
+|---|---|---|
 | .agent/handoff.md | rewrite | this handback |
 
 ## External actions
 
-- `git push origin feature/f264-steering-channel` after C4 — reported in the
-  reply (run after this commit; cannot be in this table per the self-reference
-  exception).
-- `gh pr create --base main --head feature/f264-steering-channel --title "F264
-  — Steering channel (remedy chat)" --body-file .remedy-wt/f264-r10-payloads/pr_body.md`
-  — reported in the reply, with the resulting PR number and URL.
-- No worktree add/remove this round. `gh pr list` reported in the reply.
+- `git worktree add --detach .remedy-wt/f265-r1-mut 79713a5e` — REAL_EXIT=0.
+- `git worktree remove --force .remedy-wt/f265-r1-mut` — REAL_EXIT=0.
+- `git worktree prune` — REAL_EXIT=0.
+- `git push -u origin feature/f265-teacher-learning-ui` — run after this
+  commit; reported in the reply with its real outcome.
+- No `gh pr create`: the block orders none this round (the branch opens one
+  at F265's closure). `gh pr list --state open ...` run at G6, reported in
+  the reply.
+- No other worktree add/remove this round; `.remedy-wt/f265-r1-dry`,
+  `.remedy-wt/f265-r1-sim` and the `.remedy-wt/job-*` worktrees were left
+  untouched.
 
 ## Verification
 
-G1 TRANSPORT — each payload's lines/bytes/sha256 measured against the
-PAYLOADS table, all matched exactly:
-```
-ledger.diff       lines=10  bytes=7278  sha256=189220a5... MATCH
-plan.md           lines=27  bytes=895   sha256=d4228171... MATCH
-closure.diff      lines=52  bytes=2720  sha256=5cc76025... MATCH
-pr_body.md        lines=116 bytes=6077  sha256=2b7b3870... MATCH
-status_line.txt   lines=1   bytes=402   sha256=a1135b53... MATCH
-```
-Each committed `.agent/authored/f264-r10-*` blob, read with
-`git show f875977e:<path>`, compared byte for byte with its source — all 6
-matched exactly (block.md, ledger.diff, plan.md, closure.diff, pr_body.md,
-status_line.txt all equal=True with identical sha256 on both sides).
+G1 TRANSPORT — each of the 7 payloads' lines/bytes/sha256 measured against
+the PAYLOADS table, all matched exactly (claim.diff, plan.md, context.md,
+product.diff, mutations.py, lessons.py, test_lessons.py). Each committed
+`.agent/authored/f265-r1-*` blob, read with `git show <commit>:<path>`,
+compared byte for byte against its source — all 8 copies (block.md,
+plan.md, context.md, claim.diff, product.diff, mutations.py, lessons.py,
+test_lessons.py) matched exactly, same sha256 on both sides.
 
-G2 THE BOOKING — read with `git show b0adb863:<path>`, both matched the
-reviewer's simulation exactly:
+G2 THE CLAIM — read with `git show 2a2aa42f:<path>`, all 6 files matched
+the reviewer's simulated reading exactly:
 ```
-.agent/live_review.md  329356 bytes  9cf16924c777dd483e94db1f9c31056664c7356d5a8de3785ac85164995d1ee8  MATCH
-.agent/plan.md             895 bytes  d4228171605278544097525691199fe0701077c6c63e35a3c9394a28d7a43d84  MATCH
+.agent/live_review.md         304905 bytes  05107e03...  MATCH
+docs/roadmap/STATUS.md         49035 bytes  d791bef9...  MATCH
+.agent/decisions.md          1960311 bytes  b5743b7a...  MATCH
+.agent/operator_questions.md    2192 bytes  3f283145...  MATCH
+.agent/plan.md                  1508 bytes  d3c22982...  MATCH
+.agent/context.md               2380 bytes  93335fab...  MATCH
 ```
-Lines C2's diff adds to `.agent/live_review.md` beginning `Gate: F264 R9 — `:
-1 (matches the reviewer's reading of 1). `open_finding_ids`
-(scripts/rotate_live_review.py) over the file's text at `0eb5b2d6` and at
-`b0adb863`: both `{R-0499, R-0950, R-1008}` (3 and 3), set differences empty
-both directions (matches the reviewer's reading of 3 at both ends).
+`open_finding_ids` (scripts/rotate_live_review.py) over the file's text:
+at `0236e3c3` → `{R-0499, R-0950, R-1008}` (3); at `2a2aa42f` → `{R-0499,
+R-0950, R-1008, R-1046}` (4); set difference C2-minus-base = `{R-1046}`,
+base-minus-C2 = `{}` — matches the reviewer's reading exactly. F265's
+STATUS line at C2 read back in full: `- [~] F265 — Teacher learning UI v1
+(post-task lessons)` — matches. `git diff --name-only 8b27700c 2a2aa42f`
+named exactly `.agent/context.md`, `.agent/decisions.md`,
+`.agent/live_review.md`, `.agent/operator_questions.md`, `.agent/plan.md`,
+`docs/roadmap/STATUS.md` — matches.
 
-G3 THE ROTATION — `python3 scripts/rotate_live_review.py`, REAL_EXIT=0:
+G3 THE PRODUCT — at C4 (`79713a5e`), read with `git show 79713a5e:<path>`,
+all 6 files matched the reviewer's simulated reading exactly:
 ```
-gate records moved: 12
-finding pairs moved: 0 (0 records)
-old ledger size: 329356 bytes
-new ledger size: 302891 bytes
-old archive size: 4852084 bytes
-new archive size: 4878549 bytes
-open findings before: 3
-open findings after: 3
+packages/orchestration/lessons.py                       17032 bytes  8a3c60e8...  MATCH
+packages/orchestration/pingpong_job.py                 202583 bytes  230ab34c...  MATCH
+packages/orchestration/config.py                        63325 bytes  6180ae0c...  MATCH
+docs/guides/environment.md                              21327 bytes  f8f13965...  MATCH
+tests/orchestration/import_reachability_allowlist.txt   10022 bytes  d9ffe3df...  MATCH
+tests/orchestration/test_lessons.py                     16372 bytes  ad4fca0c...  MATCH
 ```
-All figures matched the reviewer's simulation exactly. After C3
-(`8bc1ebb0`): `.agent/live_review.md` sha256
-`4314376b2d9bae9f128545dadf29ae90d4a8844418467a6d06049d90e5731941`,
-`.agent/live_review_archive.md` sha256
-`b60110ea5f4ccce65563aac3a695588c6b3801a1dd30ce477b39f4cb9dfd218f` — both
-matched. C3's path set: `.agent/live_review.md` and
-`.agent/live_review_archive.md` only, confirmed by `git show --numstat`
-(0/24 and 24/0).
+`git diff --name-only 2a2aa42f 79c8be1d` named exactly the 5 paths C3
+edits (docs/guides/environment.md, packages/orchestration/config.py,
+packages/orchestration/lessons.py, packages/orchestration/pingpong_job.py,
+tests/orchestration/import_reachability_allowlist.txt). `git diff
+--name-only 79c8be1d 79713a5e` named exactly
+tests/orchestration/test_lessons.py. Both match.
 
-G4 THE CLOSURE EDITS — with closure.diff applied, before C4 committed:
+G4 THE TESTS — `bash .remedy-wt/f265-r1-scratch/g4.sh
+/home/decodeux/Repos/remedy`:
 ```
-docs/roadmap/STATUS.md  49035 bytes  6a886c8514bc26063ae9e5a5a3c535ed0737447c1d60ff1cbd92d10eaa7d09ab  MATCH
-README.md               26011 bytes  9396a700454779e8c2e00d916809b8573fc387d3f75c0dee433034e8604979ed  MATCH
-```
-`status_line.txt`'s one line found exactly once in `docs/roadmap/STATUS.md`
-(line 57), byte for byte equal after stripping the payload's trailing
-newline — count = 1, matching the required `1`.
-```
-bash -c 'python3 -m pytest -q -p no:cacheprovider tests/docs/ tests/cli/test_advertised_commands.py tests/orchestration/test_live_review_rotation.py tests/orchestration/test_integrity_gate.py tests/test_agent_tooling.py tests/cli/test_golden_path.py 2>&1 | tail -2; echo "REAL_EXIT=${PIPESTATUS[0]}"'
-......                                                                   [100%]
-437 passed, 1 skipped in 56.93s
+994 passed, 1 skipped in 106.42s (0:01:46)
+REAL_EXIT=0
+All checks passed!
+RUFF_EXIT=0
+{"check_count": 6, "checks": [{"message": "handlers=150", "name":
+"handler_import", "status": "pass"}, {"message": "last Gate verdict PASS",
+"name": "live_review_verdict", "status": "pass"}, {"message":
+"unchecked=0, context_complete=False", "name": "plan_consistency",
+"status": "pass"}, {"message": "untracked=0, relevant=0", "name":
+"relevant_untracked", "status": "pass"}, {"message": "no reviewer scratch,
+evidence dir or archive at the root", "name": "repo_root_hygiene",
+"status": "pass"}, {"message": "no open blocker/high findings", "name":
+"high_blockers_open", "status": "pass"}], "fail_count": 0, "ok": true,
+"passed": true, "schema_version": 1, "version": 1}
+INTEGRITY_EXIT=0
 REAL_EXIT=0
 ```
-Matches the reviewer's dry-run reading of `437 passed, 1 skipped` at exit 0
-exactly.
+Pytest read `994 passed, 1 skipped` at exit 0, differing from the
+reviewer's sim reading of `992 passed, 3 skipped` — total outcomes equal
+(995 both ways). The block itself anticipates this: "the primary checkout
+carries the UI toolchain a worktree lacks, so a skip may pass there" —
+2 tests that skip in the reviewer's sim worktree ran and passed here. Ruff
+exit 0, matching. All six integrity checks read `pass` at `fail_count` 0
+with `handlers=150`, matching exactly.
 
-G5 THE TREE — with closure.diff applied, before C4:
+G5 THE RED PROOFS — `git worktree add --detach .remedy-wt/f265-r1-mut
+79713a5e` REAL_EXIT=0, then `python3 -B
+.remedy-wt/f265-r1-payloads/mutations.py .remedy-wt/f265-r1-mut`:
 ```
-python3 -m apps.cli.main integrity check --json
-{"check_count": 6, "checks": [{"message": "handlers=150", "name": "handler_import", "status": "pass"}, {"message": "last Gate verdict PASS", "name": "live_review_verdict", "status": "pass"}, {"message": "unchecked=0, context_complete=False", "name": "plan_consistency", "status": "pass"}, {"message": "untracked=0, relevant=0", "name": "relevant_untracked", "status": "pass"}, {"message": "no reviewer scratch, evidence dir or archive at the root", "name": "repo_root_hygiene", "status": "pass"}, {"message": "no open blocker/high findings", "name": "high_blockers_open", "status": "pass"}], "fail_count": 0, "ok": true, "passed": true, "schema_version": 1, "version": 1}
+control_before: 29 passed, REAL_EXIT=0
+m1 (ungrounded constructs taught): 2 failed, REAL_EXIT=1, restored byte-identical: True
+m2 (removed lines count as added): 2 failed, REAL_EXIT=1, restored byte-identical: True
+m3 (a stored lesson is regenerated): 1 failed, REAL_EXIT=1, restored byte-identical: True
+m4 (a spent pot still calls): 2 failed, REAL_EXIT=1, restored byte-identical: True
+m5 (the pot counts every role): 1 failed, REAL_EXIT=1, restored byte-identical: True
+m6 (an oversize diff is sent): 1 failed, REAL_EXIT=1, restored byte-identical: True
+m7 (no ledger still calls): 1 failed, REAL_EXIT=1, restored byte-identical: True
+m8 (the seal is unchecked): 1 failed, REAL_EXIT=1, restored byte-identical: True
+m9 (the row is not keyed on the Run): 1 failed, REAL_EXIT=1, restored byte-identical: True
+m10 (the hook ignores the switch): 1 failed, REAL_EXIT=1, restored byte-identical: True
+m11 (the hook is never called): 1 failed, REAL_EXIT=1, restored byte-identical: True
+m12 (the hook names the task as the Run): 2 failed, REAL_EXIT=1, restored byte-identical: True
+control_after: 29 passed, REAL_EXIT=0
 REAL_EXIT=0
 ```
-```
-python3 -m apps.cli.main integrity block .remedy-wt/f264-r10-block.md
-  [OK] item 1 (size): 167 lines, limit 400
-  [OK] item 3 (cap-bounded replacements): plan.md at 27 lines
-  [OK] item 10 (open set recomputed): states 3; .agent/live_review.md holds 3 open by distinct id, and the block registers 0 and resolves 0, leaving 3
-  [OK] item 24 (gate paths resolve): 0 paths named in the block's commands, every one resolves
-  [OK] item 30 (new ids searched first): the block registers no finding id
-  [OK] item 31 (gates before the text): G1 to G5 before C4
-  [OK] item 37 (no unmeasured runs): no line is a run of one repeated character
-All 7 checkable items pass.
-REAL_EXIT=0
-```
-Both real exit 0, every item `[OK]`, all six integrity checks `pass` at
-`fail_count` 0.
+Every reading matches the reviewer's sim reading exactly (control 29
+passed at both ends, m1-m12 failure counts and exit codes all matching,
+every restore byte-identical True). Then `git worktree remove --force
+.remedy-wt/f265-r1-mut` REAL_EXIT=0, `git worktree prune` REAL_EXIT=0;
+`git worktree list` afterward showed the primary checkout, the 4
+`.remedy-wt/job-*` worktrees and the reviewer's `.remedy-wt/f265-r1-dry`
+and `.remedy-wt/f265-r1-sim` — nothing else.
 
 ## Authored-text proofs
 
-Block (`.agent/authored/f264-r10-block.md`), ledger.diff, plan.md,
-closure.diff, pr_body.md and status_line.txt copies at C1 (`f875977e`): each
-read back with `git show f875977e:<path>` and compared against the payload
-table's / this block's own reading — all 6 matched byte for byte (see G1
-above). `ledger.diff` and `closure.diff` were applied with `git apply`
+Block (`.agent/authored/f265-r1-block.md`), plan.md, context.md,
+claim.diff, product.diff, mutations.py, lessons.py and test_lessons.py
+copies: each read back with `git show <commit>:<path>` and compared
+against the payload table's own reading — all 8 matched byte for byte (see
+G1 above). `claim.diff` and `product.diff` were applied with `git apply`
 (never retyped), each preceded by a real `git apply --check` at exit 0 and
-followed by the real `git apply` at exit 0. `plan.md` was copied whole with
+followed by the real `git apply` at exit 0. `plan.md`, `context.md`,
+`lessons.py` and `test_lessons.py` were copied whole with
 `shutil.copyfile`, never retyped.
 
 ## Deviations & assumptions
 
-None. The bundle ran in the block's declared order (C1, C2, C3, closure.diff
-apply, G4, G5, C4) with no extra, dropped or reordered commits or actions.
+1. G4's pytest summary read `994 passed, 1 skipped` rather than the
+   reviewer's sim reading of `992 passed, 3 skipped`. Total outcomes are
+   identical (995) and the block's own G4 text anticipates exactly this:
+   the primary checkout carries the UI toolchain a worktree lacks, so up
+   to some tests that skip in the sim may pass here. Not treated as a
+   gate failure; no repair made.
+
+No other deviation. The bundle ran in the block's declared commit order
+(C1a, C1b, C1c, C1d, C2, C3, C4, then G1-G5, then C5) with no extra,
+dropped or reordered commits or actions.
 
 ## Next
 
-Phase 1 rule 1: read `.agent/STOP` from disk. Then the Open PR Gate — the
-pull request this round opens is merged by the NEXT feature's session, never
-by this one. Then Rule A5, the first unchecked feature in
-`docs/roadmap/STATUS.md`. Open findings: 3. Operator questions: 0.
-
-## Closure package (this feature's accepted evidence, round 9)
-
-Package `remedy-review-20260924-062629-READY_FOR_REVIEW.zip`, SHA-256
-`7d07e5a59233f424dfe9cc60f9afbf7a1e1eb76d20906d111f8e1a619b43d47c`, directory
-`/home/decodeux/Repos/remedy-history/zips`, evidence job `f264r9e1001`,
-accepted head `2c91712595e069f7f0c7781008d14f07693b8dd9`. No pull request
-number is named here: none exists yet when this handback is written.
+Phase 1 rule 1: read `.agent/STOP` from disk. Then the review of round 1.
+Then T001's reach: the lesson on the job's event stream, a read-only route
+listing a job's lessons, and `remedy do`'s mission path proved end to end.
+Open findings: 4. Operator questions: 1.
