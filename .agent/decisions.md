@@ -19944,3 +19944,48 @@ merge allows, and a merge that closes a cycle is refused by the DAG check anyway
 
 HOW TO REVERSE: delete `packages/orchestration/plan_editing.py`,
 `tests/orchestration/test_plan_editing.py`, its `ALLOWED_UNWIRED` line and this paragraph.
+
+## DECISION F015 D2 — the approval is consumed under the plan-edit lock against the stored record, and the CLI's plan edits are `job plan-*` subcommands of the `job` group (2026-09-24)
+
+CONTEXT: T5_F015.md orders T002: the edit window closed atomically by consuming the approval,
+an edit racing an approval losing cleanly with a truthful answer, and CLI parity through the
+same backend. Measured at `9bad6428`: both approval doors — `apps/cli/commands/decision.py` and
+the write door's `_dispatch_decision_resolve` in `packages/orchestration/ui_server.py` — load the
+job, check `_approval`, and hand that loaded object to `resolve_task_plan_approval`, which saves
+it whole; an edit accepted between the load and the save would be written over and the approval
+would name a plan the record no longer holds. The word `plan` is the retired name of the
+roadmap group: DECISION D-B of T2_F261.md deleted it without an alias, and
+`tests/cli/test_plan_cli.py` pins `remedy plan status` as an unknown command. The Plan row of
+`docs/system/vocabulary.md` places plan commands under `job` and `mission`, and a catalog
+description that uses a binding word must carry that word's meaning fragments.
+
+CHOSEN: (1) `plan_editing.consume_plan_approval(job, *, reason, answers, questions)` holds the
+plan-edit lock, reads the record again, refuses `approval_closed` when it no longer awaits
+approval, and otherwise carries the stored plan and task list into the door's job object and
+runs `resolve_task_plan_approval` unchanged; approval semantics are untouched. Both doors call
+it: the CLI answers `approval_closed` with its existing `no_pending_plan_approval` refusal, and
+the write door with its existing 409 `decision is not open`. `PlanEditRefused` becomes a
+`ValueError`, so any other refusal reaching the write door is its `rejected_effect` 500. (2) The
+CLI commands are `remedy job plan-show` and `remedy job plan-edit-task`, `plan-delete-task`,
+`plan-reorder`, `plan-merge-tasks`, `plan-split-task` and `plan-edit-acceptance` in the `job`
+group — the backend's command names with hyphens — handled by `apps/cli/commands/job_plan_cmd.py`.
+Every edit requires `--plan-version`; a criterion is named by the 0-based index `job plan-show`
+prints, the index the backend and the write door take; the edit log names the CLI's edits
+`cli`. (3) Exit codes: 2 for `invalid_args`, `unknown_task`, `unknown_command` and a missing or
+malformed option; 3 for `no_task_plan`, `plan_not_editable`, `version_conflict`,
+`lock_timeout` and an unreadable job; 1 for `invalid_plan`. (4) The Plan row's CLI cell of the
+vocabulary page names the new commands, and the backend's `ALLOWED_UNWIRED` line goes now that
+the CLI imports it. (5) The write door's own plan-edit commands follow in the next round, the
+rest of T002, on this backend and these command ids.
+
+ALTERNATIVES: a new top-level `plan` group, rejected because it revives the retired roadmap word
+DECISION D-B deleted and would add a slot to the operator-decided help order; one `job
+plan-edit <kind>` command, rejected because T5_F015.md schemas each edit command in the catalog;
+1-based criterion numbers at the CLI, rejected because the write door and the backend count
+from 0 and two numberings for one list is how a wrong criterion gets removed; passing
+`--plan-version` implicitly as the stored version, rejected because it is last-write-wins by
+another name.
+
+HOW TO REVERSE: delete `apps/cli/commands/job_plan_cmd.py`, its catalog entries, its guide rows,
+allowlist line and registration, and `tests/cli/test_job_plan_cmd.py`; point both approval doors
+back at `resolve_task_plan_approval`; delete `consume_plan_approval`, its tests and this paragraph.

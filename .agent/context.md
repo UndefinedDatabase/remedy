@@ -8,7 +8,7 @@ feature/f015-interactive-plan-editing, cut from `main` at `fce49ce0`
 F015 (Tier 5): the human edits a job's task plan while its approval is
 open — edit, delete, reorder, merge and split tasks and edit acceptance
 criteria — each edit revalidated, versioned and logged, through the write
-channel and `remedy plan edit`, and the executed task set hash-matches the
+channel and `remedy job plan-*`, and the executed task set hash-matches the
 edited plan, as `docs/roadmap/features/T5_F015.md` specifies. T001 is the
 backend, T002 the door and the edit window, T003 execution fidelity.
 
@@ -20,6 +20,8 @@ pass and executor scheduling (the feature file's Do-not-touch list).
 - One edit is one locked transaction on the job record's stored plan,
   revalidated by the planner's own checks, with `_version` and the
   whole-list `_edits` log in the same write (DECISION F015 D1).
+- The approval is consumed under the plan-edit lock against the stored
+  record, and the CLI's edits are `job plan-*` subcommands (DECISION F015 D2).
 
 ## Constraints
 - `python3 -m ruff check <path>` is the spelling every gate orders.

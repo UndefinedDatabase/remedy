@@ -8,22 +8,21 @@ completion).
 
 The human reshapes a job's task plan before approving it: six edit
 commands, valid only while the plan's approval is open, each revalidated
-and logged, reachable through the write channel and `remedy plan edit`,
+and logged, reachable through the write channel and `remedy job plan-*`,
 and execution follows the edited plan exactly, proven by hash
 (`docs/roadmap/features/T5_F015.md`). Open findings: 4, all owned by F284.
 
 ## Current Step
 
-ROUND 1: claim F015 and land T001, the editing backend
-`packages/orchestration/plan_editing.py` with its tests, under DECISION
-F015 D1.
+ROUND 2: book round 1's PASS and land T002's first half under DECISION
+F015 D2 — the approval consumed under the plan-edit lock at both doors,
+and `remedy job plan-show` with the six `job plan-*` edit commands.
 
 ## Next Steps
 
-1. T002: the write-channel door for the six commands with their argument
-   checks, the edit window closed atomically by the approval under the
-   plan-edit lock, the approval race and stale-version tests, and
-   `remedy plan edit` wrappers; the backend's `ALLOWED_UNWIRED` line goes.
+1. T002's second half: the write door's six plan-edit commands with
+   their argument checks, exposed and dispatched through
+   `edit_plan`, with their refusals and stale-version conflicts.
 2. T003: the plan's content hash recorded at approval and asserted when
    the job starts, `plan.md` revision goldens, and the end-to-end run of
    an edited plan.
@@ -31,5 +30,4 @@ F015 D1.
 
 ## Risks
 
-- The approval door and the edit backend must share one lock, or an edit
-  can land after an approval read the plan (T002).
+None open inside this feature.
