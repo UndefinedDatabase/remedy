@@ -14,9 +14,10 @@ and execution follows the edited plan exactly, proven by hash
 
 ## Current Step
 
-ROUND 5, the closure sequence's first half: book round 4's PASS, write
-the Built State, run the checklist consolidation, record the self-use
-track, and run this feature's one full suite. T001 to T003 are built.
+ROUND 6, the closure's first repair round under DECISION F015 D5: book
+round 5's PASS, repair the closure suite's two bad nodes — `runtime stop`
+waits out a supervisor that has recorded its application's exit, and the
+CLI subprocess hang guard is 30 seconds — and run the full suite again.
 
 ## Next Steps
 
@@ -27,4 +28,5 @@ track, and run this feature's one full suite. T001 to T003 are built.
 
 ## Risks
 
-None open inside this feature.
+- A bad node the re-run still lists takes another repair round, at most
+  two more, under operator amendment amend0917-throughput rule 2.

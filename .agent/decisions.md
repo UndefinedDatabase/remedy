@@ -20071,3 +20071,42 @@ the stamp in `auto_approve_task_plan` and in `consume_plan_approval`, the start 
 `run_job`, the order check in `revalidate`, the `edits` parameter of `render_plan_md` and
 `write_plan_md` with the conditional sentence, `tests/orchestration/test_plan_edit_execution.py`
 with its goldens, the order case in `tests/orchestration/test_plan_editing.py`, and this paragraph.
+
+## DECISION F015 D5 — the closure suite's two bad nodes: `runtime stop` waits out a supervisor that has already recorded its application's exit, and the CLI subprocess hang guard is 30 seconds (2026-09-24)
+
+CONTEXT: F015's one full suite at `19d490b8` read two bad nodes; each passes alone, and the
+hosted CI run 35983227109 of the merge base `fce49ce0` is green, so both are this feature's to
+repair under operator amendment amend0917-throughput rule 2. Diagnosed by two research agents in
+their own worktrees and reproduced by the reviewer at `11eb90c9`.
+
+(1) `TestPostHandshakeTerminalState::test_an_application_exit_right_after_the_handshake_is_reported_exactly`
+is a PRODUCT race. The supervisor writes the record `exited` just before it returns, so for a
+moment after the write the supervisor is still alive. A `remedy runtime stop` landing in that
+window finds a verified supervisor beside an application the record already calls gone;
+`classify_runtime` answers `untrusted`, and `stop_recorded_runtime` overwrites the good record
+with `identity_mismatch` and exits 5, a false failure a user on a loaded machine can meet. Holding
+the supervisor alive for three seconds after that write reproduces it on every run.
+CHOSEN: in `stop_recorded_runtime`, and only when the answer is `untrusted`, the supervisor is
+verified and the record reads `exited`, stop waits for the supervisor pid to go, bounded by the
+existing `STOP_REQUEST_TIMEOUT_S`, then classifies again; a supervisor that goes leaves the
+existing `gone` path to clear the record, and one that lingers past the bound gets the old
+conservative answer. A new test holds the window open and requires stop to exit 0 and clear the
+record. REJECTED: answering `gone` from `classify_runtime` whenever the record is non-live,
+because it would clear the only record of a supervisor that is still alive.
+
+(2) `test_json_purity` asserts that JSON output carries no secret or path; the 10 seconds of
+`run_grouped_cli` in `tests/cli/runtime_helpers.py` is a HANG GUARD around a cold CLI start, not a
+performance assertion, and under the full suite's parallel load that start outran it. A zero
+guard reproduces the suite's exact message. CHOSEN: the helper's default becomes 30 seconds, the
+value this repository's CLI subprocess tests already use and several callers of this same helper
+already pass, and nothing the test asserts changes. This is not the budget amend0820-gate-autonomy
+forbids raising by hand: that rule governs CI stage budgets, which are re-derived from measured
+maxima, while this guard's only verdict is "hung", and a start that finishes in eleven seconds is
+not hung. REJECTED: making the test in-process, which would stop it testing the subprocess's own
+stdout.
+
+The suite runs again in round 6, the first of the at most three repair rounds rule 2 allows, and
+its transcript replaces `.agent/authored/f015-closure-suite.txt` at the same path.
+
+HOW TO REVERSE: restore `packages/runtimes/dev_server.py`, `tests/cli/runtime_helpers.py` and
+`tests/runtimes/test_supervisor_portability.py` from `11eb90c9`, and delete this paragraph.
