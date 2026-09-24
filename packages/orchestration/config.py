@@ -865,9 +865,8 @@ _CONFIG_KEY_SPECS: tuple[ConfigKeySpec, ...] = (
             "Model for the teacher role (F255). The teacher reads and explains "
             "and never writes, so this key buys explanation quality and nothing "
             "else. Unset means the role resolves exactly like every other one. "
-            "Stage 1 narration is deterministic and spends nothing, so nothing "
-            "reads this key until the Stage 2 question path exists (T004) — a "
-            "declared key with no reader yet, not a forgotten wiring."
+            "`remedy teacher ask` and the lessons written after each task (F265) "
+            "read it; Stage 1 narration is deterministic and reads nothing."
         ),
         value_type=str,
         default=None,

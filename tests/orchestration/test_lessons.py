@@ -273,7 +273,7 @@ def test_the_configured_teacher_model_reaches_the_transport(tmp_path, monkeypatc
 
     reset_config()
     call = _Call()
-    lesson = _generate(tmp_path, call, config_file=lessons.lesson_role_overrides())
+    lesson = _generate(tmp_path, call, config_file=teacher_model.teacher_role_overrides())
     assert lesson["model"] == "lesson-model"
     assert call.prompts[0][1] == "lesson-model"
 
@@ -293,6 +293,7 @@ def test_a_completed_task_gets_no_lesson_while_lessons_are_off(monkeypatch):
 def test_a_completed_task_gets_its_lesson_when_lessons_are_on(monkeypatch):
     monkeypatch.setenv("REMEDY_TEACHER_LESSONS", "1")
     monkeypatch.setenv("REMEDY_TEACHER_LESSON_MAX_CALLS", "5")
+    monkeypatch.setenv("REMEDY_TEACHER_MODEL", "lesson-model")
     from packages.orchestration.config import reset_config
 
     reset_config()
@@ -303,6 +304,7 @@ def test_a_completed_task_gets_its_lesson_when_lessons_are_on(monkeypatch):
     assert [(kw["run_id"], kw["task_id"], kw["task_title"], kw["mission_id"]) for kw in called] == [
         ("run-1", "T001", "cache loads", "")]
     assert called[0]["budgets"] == JobBudgets(max_provider_calls=5, max_total_tokens=300000)
+    assert called[0]["config_file"] == {"model": "lesson-model"}
 
 
 def test_a_failing_lesson_never_fails_the_task(monkeypatch):
