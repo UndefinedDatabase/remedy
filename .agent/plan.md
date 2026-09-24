@@ -12,21 +12,19 @@ distinct id, and the feature file lists every one under a slice.
 
 ## Current Step
 
-ROUND 10, the closure sequence's first half: book round 9, R-1028's
-resolution and R-0950's partial one; land T019, the checklist
-consolidation for R-0662, R-0819 and R-0820 at 34 items; write the Built
-State; record the self-use track's answer, NONE; and run the feature's
-one full suite. DECISION F282 D10.
+ROUND 11, the closure suite's first repair round: book round 10 and the
+resolutions of R-0662, R-0819 and R-0820; give each packer run of the
+one red node its own archive stamp, DECISION F282 D11; and run the full
+suite again, replacing the closure transcript.
 
 ## Next Steps
 
-1. The closure's second half: book round 10 and T019's resolutions,
-   repair any node the closure suite lists, run the evidence job and
-   build the review package.
+1. The evidence job and the review package over the repaired tree.
 2. The closing round: the ledger rotation, the ownership step for
    R-0499, R-0950 and R-1008, the next paydown's registration, the
    STATUS line with the README counters, and the pull request.
 
 ## Risks
 
-The closure suite may list bad nodes this feature must repair first.
+A second full suite may list a node the first did not; the repair rule
+allows two more repair rounds before the xfail route.
