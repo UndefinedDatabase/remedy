@@ -13,19 +13,16 @@ previous navigation and a Commands mode
 
 ## Current Step
 
-ROUND 5, the closure sequence's first half: book round 4's PASS, add the
-lessons guide and index it, write the Built State, run the checklist
-consolidation pass, record the self-use track's answer, NONE, and run the
-feature's one full suite with its transcript committed.
+ROUND 6, the closure's evidence half: book round 5's PASS, whose one full
+suite is green, then build the evidence bundle against the fork point
+and the fresh review package.
 
 ## Next Steps
 
-1. The closure's second half: book round 5, any repair the suite
-   requires, the evidence job and the review package.
-2. The closing round: bookings, the ledger rotation, the STATUS flip with
-   its README pins, and the pull request.
+1. The closing round: book round 6, rotate the ledger, flip the STATUS
+   line with its README pins in the same commit, and open the pull
+   request.
 
 ## Risks
 
-A lesson spends one model call per task; the off switch and the pot are
-the controls, and a test pins each.
+None open inside this feature.
