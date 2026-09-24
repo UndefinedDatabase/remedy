@@ -12,19 +12,18 @@ was understood and from which round it applies
 
 ## Current Step
 
-ROUND 7: book round 6's PASS, record DECISION F264 D7, and land T003's
-second half — the cockpit's activity feed shows each acknowledgement as
-the round and the restatement, read from the stream by one checked reader.
-With it T001 to T003 are built.
+ROUND 8, the closure sequence's first half: book round 7's PASS, write the
+operator guide for steering and correct the cockpit page that said the
+cockpit has no text input, append the feature file's Built State, run the
+checklist consolidation pass, record the self-use track, and run the
+feature's one full suite. T001 to T003 are built.
 
 ## Next Steps
 
-1. The closure sequence's first half: the user-facing docs for `remedy
-   chat`, the feature file's Built State, the checklist consolidation, the
-   self-use track, and the feature's one full suite.
+1. Any repair the full suite requires, under the shrinking rule.
 2. The evidence bundle and the review package.
-3. The closing round: STATUS flip with its README pins, and the pull
-   request.
+3. The closing round: the ledger rotation, the STATUS flip with its README
+   pins, and the pull request.
 
 ## Risks
 
