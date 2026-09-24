@@ -1,26 +1,25 @@
-# Context — F267 List commands v2 completion
+# Context — F015 Interactive plan editing
 
 ## Active Branch
-feature/f267-list-commands-v2-completion, cut from `main` at `9f06c509`
-(the merge commit of pull request 272, F265 Teacher learning UI v1).
+feature/f015-interactive-plan-editing, cut from `main` at `fce49ce0`
+(the merge commit of pull request 273, F267 List commands v2 completion).
 
 ## Scope
-F267 (Tier 2), registered 2026-09-05 by operator ruling amend0905-throughput
-(DECISION F262 D5), splitting the remaining scope off F262. T001, wiring the
-last list commands to `apply_list_options`, landed in F273 (DECISION F273
-D9). What remains is T002, one test proving every list command's HANDLER
-refuses an unknown `--sort` field, over the set the catalog itself derives,
-and T003, the ten-second demo as a test, as
-`docs/roadmap/features/T2_F267.md` specifies.
+F015 (Tier 5): the human edits a job's task plan while its approval is
+open — edit, delete, reorder, merge and split tasks and edit acceptance
+criteria — each edit revalidated, versioned and logged, through the write
+channel and `remedy plan edit`, and the executed task set hash-matches the
+edited plan, as `docs/roadmap/features/T5_F015.md` specifies. T001 is the
+backend, T002 the door and the edit window, T003 execution fidelity.
 
 ## Do not touch
-The stores' own schemas and the `--json` contract's existing keys. The
-list handlers themselves: every one of them already honours the flags,
-so this feature adds tests and no production code.
+Approval semantics, clarification immutability, granularity's automatic
+pass and executor scheduling (the feature file's Do-not-touch list).
 
 ## Active assumptions
-- The in-scope set is `_is_list_command` over the catalog, with no
-  exclusion, and the demo seeds `run list`'s store (DECISION F267 D1).
+- One edit is one locked transaction on the job record's stored plan,
+  revalidated by the planner's own checks, with `_version` and the
+  whole-list `_edits` log in the same write (DECISION F015 D1).
 
 ## Constraints
 - `python3 -m ruff check <path>` is the spelling every gate orders.

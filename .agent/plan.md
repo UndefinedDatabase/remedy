@@ -1,29 +1,35 @@
-# Plan — F267 List commands v2 completion
+# Plan — F015 Interactive plan editing
 
-Branch: feature/f267-list-commands-v2-completion, cut from `main` at
-`9f06c509`, the merge commit of pull request 272 (F265 Teacher learning
-UI v1).
+Branch: feature/f015-interactive-plan-editing, cut from `main` at
+`fce49ce0`, the merge commit of pull request 273 (F267 List commands v2
+completion).
 
 ## Goal
 
-Every list command's handler honours `--sort`, `--desc`, `--since`,
-`--until` and `--limit`, proved over the whole catalog rather than a
-sample, and the ten-second demo is a test
-(`docs/roadmap/features/T2_F267.md`). T001, the wirings, landed in F273;
-T002 and T003 landed in round 1. Open findings: 4, all owned by F284.
+The human reshapes a job's task plan before approving it: six edit
+commands, valid only while the plan's approval is open, each revalidated
+and logged, reachable through the write channel and `remedy plan edit`,
+and execution follows the edited plan exactly, proven by hash
+(`docs/roadmap/features/T5_F015.md`). Open findings: 4, all owned by F284.
 
 ## Current Step
 
-ROUND 4, the closing round: book round 3's PASS, rotate the ledger, flip
-F267's STATUS line to accepted with its README pins in the same commit,
-and open the pull request. T001 to T003 are built and the package is
-READY_FOR_REVIEW.
+ROUND 1: claim F015 and land T001, the editing backend
+`packages/orchestration/plan_editing.py` with its tests, under DECISION
+F015 D1.
 
 ## Next Steps
 
-1. The next session merges this feature's pull request at the Open PR
-   Gate, then claims the next feature under Rule A5.
+1. T002: the write-channel door for the six commands with their argument
+   checks, the edit window closed atomically by the approval under the
+   plan-edit lock, the approval race and stale-version tests, and
+   `remedy plan edit` wrappers; the backend's `ALLOWED_UNWIRED` line goes.
+2. T003: the plan's content hash recorded at approval and asserted when
+   the job starts, `plan.md` revision goldens, and the end-to-end run of
+   an edited plan.
+3. The closure sequence.
 
 ## Risks
 
-None open inside this feature.
+- The approval door and the edit backend must share one lock, or an edit
+  can land after an approval read the plan (T002).
