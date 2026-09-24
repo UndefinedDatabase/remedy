@@ -1,107 +1,100 @@
-# Handback — F020 Node lifecycle & glyph language · Round 4
+# Handback — F020 Node lifecycle & glyph language · Round 5
 
 ## Session
 
-SESSION 1 of feature F020 · round 4 · rounds so far 4
+SESSION 1 of feature F020 · round 5 · rounds so far 5
 
-This round booked round 3's PASS into the live review record, recorded DECISION F020 D4, and
-landed T003's first half: `renderers/stateMotion.ts` (a 300 ms crossfade scheduled for every
-state change and a completion ripple into `pass`, and the frame rule deciding whether the canvas
-needs frames at all — never on a hidden page); the pulse multiplier `pulseScaleAt` moved into
-`renderers/nodeStates.ts`; the motion-aware painter `paintBrainNodeInMotion` in
-`renderers/paintNode.ts`; `usePageVisible.ts`; and `ForceBrainGraph.tsx` wired to all of them,
-its edge particles stopping with the page. All nine commits landed in the block's ordered
-sequence; all five gates passed with exact matches to the reviewer's stated readings, with one
-arithmetic reconciliation on G4's skip count (explained below, not a deviation). I had ample
-context remaining throughout this round; no session-limit pressure at any point.
+This round booked round 4's PASS into the live review record, recorded DECISION F020 D5, and
+landed T003's second half: `renderers/glyphConformance.ts`, which places a pixel probe on every
+discriminating detail of every matrix cell (the status dot and its outline, the strike and its
+outline, the planned ring) and on every place the dot and strike must NOT be, with the binding
+spec it judges against and the pixel judge; its vitest tests; and the committed headless harness
+`.agent/authored/f020-r5-conformance_*` that paints the matrix with the live painter, reads each
+probe's pixel and applies the judge. All nine commits landed in the block's ordered sequence; all
+five gates passed with exact matches to the reviewer's stated readings, with no deviations. I had
+ample context remaining throughout this round; no session-limit pressure at any point.
 
 ## Range
 
-Review of 6f43c63a..HEAD
+Review of 106df185..HEAD
 
 ## Commits
 
-### 151bc29ca F020 R4 C1a: copy round 4 block and plan payload into .agent/authored/
+### 78036fca3 F020 R5 C1a: copy round 5 block and plan payload into .agent/authored/
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f020-r4-block.md | +258/-0 | copy of this round's block, verbatim |
-| .agent/authored/f020-r4-plan.md | +30/-0 | copy of the plan.md payload |
+| .agent/authored/f020-r5-block.md | +257/-0 | copy of this round's block, verbatim |
+| .agent/authored/f020-r5-plan.md | +32/-0 | copy of the plan.md payload |
 
-288 insertions by `git show --numstat` (block's 258 lines + 30); matches the block's expectation
+289 insertions by `git show --numstat` (block's 257 lines + 32); matches the block's expectation
 exactly; under the 500-insertion cap.
 
-### c8dd2bb0e F020 R4 C1b: copy round 4 diffs into .agent/authored/
+### 932000751 F020 R5 C1b: copy round 5 diff and red-proof tools into .agent/authored/
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f020-r4-book.diff | +64/-0 | copy of the book.diff payload |
-| .agent/authored/f020-r4-product.diff | +233/-0 | copy of the product.diff payload |
-| .agent/authored/f020-r4-tests.diff | +113/-0 | copy of the tests.diff payload |
+| .agent/authored/f020-r5-book.diff | +58/-0 | copy of the book.diff payload |
+| .agent/authored/f020-r5-harness_redproof.py | +70/-0 | copy of the harness_redproof.py payload (G5 tool) |
+| .agent/authored/f020-r5-mutations.py | +163/-0 | copy of the mutations.py payload (G5 tool) |
 
-410 insertions by `git show --numstat`; matches the block's expectation of 410 exactly.
+291 insertions by `git show --numstat`; matches the block's expectation of 291 exactly.
 
-### 5b7a13389 F020 R4 C1c: copy round 4 mutation tool into .agent/authored/
+### 692d159a7 F020 R5 C1c: commit the glyph conformance harness into .agent/authored/
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f020-r4-mutations.py | +187/-0 | copy of the mutations.py payload (G5 tool) |
+| .agent/authored/f020-r5-conformance_drive.mjs | +79/-0 | copy of the conformance_drive.mjs payload |
+| .agent/authored/f020-r5-conformance_index.html | +10/-0 | copy of the conformance_index.html payload |
+| .agent/authored/f020-r5-conformance_main.tsx | +46/-0 | copy of the conformance_main.tsx payload |
+| .agent/authored/f020-r5-conformance_measure.py | +190/-0 | copy of the conformance_measure.py payload (the harness entry point) |
+| .agent/authored/f020-r5-conformance_vite.config.mjs | +28/-0 | copy of the conformance_vite.config.mjs payload |
 
-187 insertions by `git show --numstat`; matches the block's expectation of 187 exactly.
+353 insertions by `git show --numstat`; matches the block's expectation of 353 exactly.
 
-### b330d3826 F020 R4 C1d: copy round 4 product files into .agent/authored/
+### dfa991abe F020 R5 C1d: copy round 5 conformance module and its tests into .agent/authored/
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f020-r4-stateMotion.ts | +101/-0 | copy of the stateMotion.ts payload |
-| .agent/authored/f020-r4-usePageVisible.ts | +15/-0 | copy of the usePageVisible.ts payload |
+| .agent/authored/f020-r5-glyphConformance.ts | +146/-0 | copy of the glyphConformance.ts payload |
+| .agent/authored/f020-r5-glyphConformance.test.ts | +130/-0 | copy of the glyphConformance.test.ts payload |
 
-116 insertions by `git show --numstat`; matches the block's expectation of 116 exactly.
+276 insertions by `git show --numstat`; matches the block's expectation of 276 exactly.
 
-### a3c53a8d1 F020 R4 C1e: copy round 4 test payloads into .agent/authored/
+### 92a9f9a69 F020 R5 C2: book round 4's PASS, record D5, advance the plan
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f020-r4-stateMotion.test.ts | +151/-0 | copy of the stateMotion.test.ts payload |
-| .agent/authored/f020-r4-test_brain_motion_wiring.py | +57/-0 | copy of the test_brain_motion_wiring.py payload |
-
-208 insertions by `git show --numstat`; matches the block's expectation of 208 exactly.
-
-### 08b93a19a F020 R4 C2: book round 3's PASS, record D4, advance the plan
-| Path | +/- | Reason |
-|---|---|---|
-| .agent/decisions.md | +46/-0 | DECISION F020 D4 appended (book.diff) |
-| .agent/live_review.md | +2/-0 | F020 R3 Gate entry appended (book.diff) |
-| .agent/plan.md | +6/-7 | rewritten to the plan.md payload |
+| .agent/decisions.md | +40/-0 | DECISION F020 D5 appended (book.diff) |
+| .agent/live_review.md | +2/-0 | F020 R4 Gate entry appended (book.diff) |
+| .agent/plan.md | +11/-9 | rewritten to the plan.md payload |
 
 `git apply --check` on book.diff: exit 0. `git apply`: exit 0. Insertions by `git show
---numstat`: 46 decisions.md, 2 live_review.md, 6 plan.md — matches the block's expectation
-exactly; aggregate 54 insertions(+)/7 deletions(-), all deletions attributable to plan.md's
+--numstat`: 40 decisions.md, 2 live_review.md, 11 plan.md — matches the block's expectation
+exactly; aggregate 53 insertions(+)/9 deletions(-), all deletions attributable to plan.md's
 rewrite diff.
 
-### 3a182fb66 F020 R4 C3: crossfade state changes, ripple completions, pulse, and draw frames only on a visible page
+### 7ad336105 F020 R5 C3: probe every discriminating detail of the matrix fixture against the binding spec
 | Path | +/- | Reason |
 |---|---|---|
-| apps/ui/src/components/graph/ForceBrainGraph.tsx | +56/-9 | wires `usePageVisible`, the frame rule and the motion-aware painter; gates edge particles on visibility (product.diff) |
-| apps/ui/src/components/graph/renderers/nodeStates.ts | +12/-7 | `pulseScaleAt` gains the reduced-motion guard (product.diff) |
-| apps/ui/src/components/graph/renderers/paintNode.ts | +46/-0 | new export `paintBrainNodeInMotion` (product.diff) |
-| apps/ui/src/components/graph/renderers/stateMotion.ts | +101/-0 | new file: crossfade scheduling, completion ripple, frame rule |
-| apps/ui/src/components/graph/usePageVisible.ts | +15/-0 | new file: `visibilitychange`-driven visibility hook |
+| apps/ui/src/components/graph/renderers/glyphConformance.ts | +146/-0 | new file: the pixel probe placement over every matrix cell, the binding spec and the pixel judge |
 
-`git apply --check` on product.diff: exit 0. `git apply`: exit 0. Insertions by `git show
---numstat`: 56 ForceBrainGraph.tsx, 12 nodeStates.ts, 46 paintNode.ts, 101 stateMotion.ts, 15
-usePageVisible.ts — matches the block's expectation exactly.
-
-### fcb71150a F020 R4 C4: pin the motion, the frame rule, the replayed recording and the canvas wiring
-| Path | +/- | Reason |
-|---|---|---|
-| apps/ui/src/components/graph/renderers/nodeStates.test.ts | +21/-1 | vitest additions for the reduced-motion pulse guard (tests.diff) |
-| apps/ui/src/components/graph/renderers/paintNode.test.ts | +47/-1 | vitest additions for `paintBrainNodeInMotion` (tests.diff) |
-| apps/ui/src/components/graph/renderers/stateMotion.test.ts | +151/-0 | new file: vitest goldens for stateMotion.ts |
-| tests/ui_contracts/test_brain_motion_wiring.py | +57/-0 | new file: contract replaying F019's demo recording through the motion module |
-| tests/ui_contracts/test_node_glyph_tokens.py | +1/-1 | token-guard adjustment for the motion tokens (tests.diff) |
-
-`git apply --check` on tests.diff: exit 0. `git apply`: exit 0. Insertions by `git show
---numstat`: 21 nodeStates.test.ts, 47 paintNode.test.ts, 151 stateMotion.test.ts, 57
-test_brain_motion_wiring.py, 1 test_node_glyph_tokens.py — matches the block's expectation
+`git add` fires per the block's instruction (an untracked module fails integrity check's
+`relevant_untracked`). Insertions by `git show --numstat`: 146 — matches the block's expectation
 exactly.
 
-### (this commit) F020 R4 C5: rewrite handoff for round 4
+### 59ada189e F020 R5 C4: pin the probes, the binding spec and the pixel judge
+| Path | +/- | Reason |
+|---|---|---|
+| apps/ui/src/components/graph/renderers/glyphConformance.test.ts | +130/-0 | new file: vitest goldens for glyphConformance.ts |
+
+`git add` fires per the block's instruction. Insertions by `git show --numstat`: 130 — matches
+the block's expectation exactly.
+
+### c04efc17e F020 R5 C4e: commit the glyph conformance transcript
+| Path | +/- | Reason |
+|---|---|---|
+| .agent/authored/f020-r5-conformance.txt | +28/-0 | G4's harness-run transcript, stdout then stderr, saved whole |
+
+28 insertions by `git show --numstat`; the block does not predict this count (the transcript
+carries process ids), and it is reported here as measured.
+
+### (this commit) F020 R5 C5: rewrite handoff for round 5
 Self-reference exception per the handback template (a handback cannot table the commit that
 writes it).
 | Path | +/- | Reason |
@@ -110,9 +103,9 @@ writes it).
 
 ## External actions
 
-- `git worktree add --detach .remedy-wt/f020-r4-mut fcb71150a` — outcome: success, detached HEAD
-  at `fcb71150a`.
-- `git worktree remove --force .remedy-wt/f020-r4-mut` — outcome: success.
+- `git worktree add --detach .remedy-wt/f020-r5-mut 59ada189e` — outcome: success, detached HEAD
+  at `59ada189e`.
+- `git worktree remove --force .remedy-wt/f020-r5-mut` — outcome: success.
 - `git worktree prune` — outcome: success, no output.
 - `git push origin feature/f020-node-lifecycle-glyph-language` — runs AFTER this commit lands;
   its real outcome is reported in the reply, since this handback cannot contain an outcome that
@@ -122,7 +115,7 @@ writes it).
 
 ```
 $ ls .agent/STOP
-ls: cannot access '.agent/STOP': No such file or directory (absent, as required)
+ls: cannot access '/home/decodeux/Repos/remedy/.agent/STOP': No such file or directory (absent, as required)
 
 $ pwd
 /home/decodeux/Repos/remedy
@@ -131,69 +124,73 @@ $ git status --porcelain
 $ git branch --show-current
 feature/f020-node-lifecycle-glyph-language
 $ git log --oneline -1
-6f43c63a4 F020 R3 C5: rewrite handoff for round 3
+106df1853 F020 R4 C5: rewrite handoff for round 4
 ```
 All BEFORE ANYTHING ELSE checks passed at round start.
 
 ```
-$ wc -l / sha256sum .remedy-wt/f020-r4/block.md
-258 lines, sha256=e2db2736ab3d27d78544a4124368d990305cf2e453c3313a247c73b98601edd1
+$ wc -l / sha256sum .remedy-wt/f020-r5/block.md
+257 lines, sha256=c21f1840acc68d546a76c66749d7631ef8f11f68c3c6c5e96520b88da3047288
 ```
 Matches both readings given in the delegation message exactly (R-0954).
 
 ```
-$ wc -lc / sha256sum over .remedy-wt/f020-r4-payloads/*
-book.diff                     lines=64  bytes=11647 sha256=c0f4f0750ccda20105cd82615e49063f4f6c729705bd83081e14ce9d2d10fd5b
-mutations.py                  lines=187 bytes=10093 sha256=7533d95038ea65645b979ff4482a37520574482f99c8582577920d0771020b81
-plan.md                       lines=30  bytes=1116  sha256=7c10e770db7b24c290866d2c3c3280feeb20a14aba54803ed8530c332cb0d72d
-product.diff                  lines=233 bytes=12343 sha256=86945bd38e5d7e39388c4e17ec2a1e1e5d7c224fafcf7201b2a08412019c11d1
-stateMotion.test.ts           lines=151 bytes=7514  sha256=f33a61a8ae450d327ed7f2a59b5ae35824157eb01080a06bfc1dd2fc50748d01
-stateMotion.ts                lines=101 bytes=4173  sha256=3228d4d97bb77aaba636e783626d5745ae339c70c6b546d99cde3d89821c685a
-test_brain_motion_wiring.py   lines=57  bytes=3085  sha256=5c85828096ceeceeed2dff223a42b19bf692957ea617a7429c1afc52cf22e2d5
-tests.diff                    lines=113 bytes=5759  sha256=d4970a9e7c61ce6e5c3838779d76328205a02edaa5227d9cb805f3c4a1dfc8ea
-usePageVisible.ts             lines=15  bytes=768   sha256=4e034c48d00949c5171e50eda04efb4748c477e52785df2cc37339b873312ff4
+$ line count / byte count / sha256 over .remedy-wt/f020-r5-payloads/*
+book.diff                     lines=58  bytes=11570 sha256=651525a6621e886722910faf98992ddc49fd9aaf4661c19696a721120d552959
+conformance_drive.mjs         lines=79  bytes=3145  sha256=71bfca163f677088315a623242874588666ceb049da55d6760dadf4986981e74
+conformance_index.html        lines=10  bytes=202   sha256=941439e425ecc1554e6ca5daadd5b47476ae85eba1d7c5c6b821b62cd3e104a6
+conformance_main.tsx          lines=46  bytes=2186  sha256=d287fefb13acb92c1d8a3a999d472780b16ecbb34475ccb08ad1333dda017a7b
+conformance_measure.py        lines=190 bytes=6529  sha256=34b1e5c3cfffb16d657f2e7e7fa8224f86afcc8f87705bc1345e2a0bc96f4d34
+conformance_vite.config.mjs   lines=28  bytes=775   sha256=e072fd9ed0ee4eb0efc58a396c8c2149ae64f9235313f28543081897de8f09f8
+glyphConformance.test.ts      lines=130 bytes=6597  sha256=844d757a1398b77ff7bd1674a2be65ec06087d61ec15a429d575b5aae3bf280d
+glyphConformance.ts           lines=146 bytes=7207  sha256=bb9731ebce8b857cbef6198fca8189277e5a5880352aff1f6e08879ad5903436
+harness_redproof.py           lines=70  bytes=3651  sha256=4169214620acf737c668d4b90d8f6dbdef70af9364eb7175980f787222215e43
+mutations.py                  lines=163 bytes=7894  sha256=a24543f8bf80ea3c3a6c2b70058392524beeb0655ec0c0f0625d3f88748e66ea
+plan.md                       lines=32  bytes=1169  sha256=e4bc66c01f99a95f829b9e0a8dd581471cccb42de7b246df8c2e9d720e193448
 ```
-All 9 match the PAYLOADS table exactly (G1).
+All 11 match the PAYLOADS table exactly (G1).
 
 ```
-$ (compare each committed .agent/authored/f020-r4-* blob, read with `git show <commit>:<path>`,
+$ (compare each committed .agent/authored/f020-r5-* blob, read with `git show <commit>:<path>`,
    against its source)
-f020-r4-block.md                    @ 151bc29ca: match=True
-f020-r4-plan.md                     @ 151bc29ca: match=True
-f020-r4-book.diff                   @ c8dd2bb0e: match=True
-f020-r4-product.diff                @ c8dd2bb0e: match=True
-f020-r4-tests.diff                  @ c8dd2bb0e: match=True
-f020-r4-mutations.py                @ 5b7a13389: match=True
-f020-r4-stateMotion.ts              @ b330d3826: match=True
-f020-r4-usePageVisible.ts           @ b330d3826: match=True
-f020-r4-stateMotion.test.ts         @ a3c53a8d1: match=True
-f020-r4-test_brain_motion_wiring.py @ a3c53a8d1: match=True
+f020-r5-block.md                    @ 78036fca3: match=True
+f020-r5-plan.md                     @ 78036fca3: match=True
+f020-r5-book.diff                   @ 932000751: match=True
+f020-r5-mutations.py                @ 932000751: match=True
+f020-r5-harness_redproof.py         @ 932000751: match=True
+f020-r5-conformance_drive.mjs       @ 692d159a7: match=True
+f020-r5-conformance_index.html      @ 692d159a7: match=True
+f020-r5-conformance_main.tsx        @ 692d159a7: match=True
+f020-r5-conformance_measure.py      @ 692d159a7: match=True
+f020-r5-conformance_vite.config.mjs @ 692d159a7: match=True
+f020-r5-glyphConformance.ts         @ dfa991abe: match=True
+f020-r5-glyphConformance.test.ts    @ dfa991abe: match=True
 ```
-All 10 BYTE-IDENTICAL against their sources (G1).
+All 12 BYTE-IDENTICAL against their sources (G1).
 
 ```
-$ (sha256/bytes of C2's three files, read with `git show 08b93a19a:<path>`, against the block's G2 table)
-.agent/live_review.md: bytes=295964  sha256=a5f11b1f31bf69f8979c82d3488bd927d87ce9b563f0d999c5376647a87f0c44 match=True
-.agent/decisions.md:   bytes=2040394 sha256=b8589c84a33ecd767c9323bcfb9955c37efaa36bc550c4da2501a1b815536e81 match=True
-.agent/plan.md:        bytes=1116    sha256=7c10e770db7b24c290866d2c3c3280feeb20a14aba54803ed8530c332cb0d72d match=True
+$ (sha256/bytes of C2's three files, read with `git show 92a9f9a69:<path>`, against the block's G2 table)
+.agent/live_review.md: bytes=298389  sha256=4e85f5dd1850b7c234aa36835532ec3197d0bb2e015433f2cf63ec5e60f5d18c match=True
+.agent/decisions.md:   bytes=2043706 sha256=22db38d10317587eff5f2230e11788eaad340b8d2ae777eac92e946e536d2221 match=True
+.agent/plan.md:        bytes=1169    sha256=e4bc66c01f99a95f829b9e0a8dd581471cccb42de7b246df8c2e9d720e193448 match=True
 ```
 All 3 match the block's G2 table exactly.
 
 ```
-$ git diff <C1e> 08b93a19a -- .agent/live_review.md, counting added lines starting
-  "Gate: F020 R3 — "
+$ git diff 92a9f9a69^ 92a9f9a69 -- .agent/live_review.md, counting added lines starting
+  "Gate: F020 R4 — "
 count = 1
 ```
 Matches the reviewer's stated reading of 1 exactly (G2).
 
 ```
 $ open_finding_ids(text) from scripts/rotate_live_review.py, over .agent/live_review.md's TEXT at C2
-08b93a19a (C2) open ids: ['R-1008']
+92a9f9a69 (C2) open ids: ['R-1008']
 ```
 Reads R-1008 alone, matching the reviewer's stated reading exactly (G2).
 
 ```
-$ git diff --name-only a3c53a8d1 08b93a19a
+$ git diff --name-only dfa991abe 92a9f9a69
 .agent/decisions.md
 .agent/live_review.md
 .agent/plan.md
@@ -202,37 +199,22 @@ Exactly the three paths the block's G2 table names (G2).
 
 ```
 $ (sha256/bytes of C3/C4 files, read with `git show <commit>:<path>`, against the block's G3 table)
-C3 apps/ui/src/components/graph/ForceBrainGraph.tsx:                       bytes=16279 sha256=1b426ee1e69ddd674016fa97ece8a4e6a41282334204f6c5b6e09be1fc8c3e9c match=True
-C3 apps/ui/src/components/graph/renderers/nodeStates.ts:                  bytes=7016  sha256=6bb616d191f910664f484de5761a55268e724cd576024c293cd3b33899bea4be match=True
-C3 apps/ui/src/components/graph/renderers/paintNode.ts:                   bytes=8098  sha256=df2cf6105056588dc1ae5e73bc07fc4e6923eca7594547f989d9091be62d238a match=True
-C3 apps/ui/src/components/graph/renderers/stateMotion.ts:                 bytes=4173  sha256=3228d4d97bb77aaba636e783626d5745ae339c70c6b546d99cde3d89821c685a match=True
-C3 apps/ui/src/components/graph/usePageVisible.ts:                        bytes=768   sha256=4e034c48d00949c5171e50eda04efb4748c477e52785df2cc37339b873312ff4 match=True
-C4 apps/ui/src/components/graph/renderers/nodeStates.test.ts:             bytes=6774  sha256=0e6ad9051ddec719a9fe4c82965756fb18f7cdb1ce5b04f746a62b8e036bb34a match=True
-C4 apps/ui/src/components/graph/renderers/paintNode.test.ts:              bytes=12429 sha256=7375c307d99ec579ebc32a62a510124ced596d6458d521cd0edb3c9b9b963763 match=True
-C4 tests/ui_contracts/test_node_glyph_tokens.py:                          bytes=6142  sha256=c3f1710c162944e773945ec18b097bbbb2d7fc0b1076249908f69c717528a584 match=True
-C4 apps/ui/src/components/graph/renderers/stateMotion.test.ts:            bytes=7514  sha256=f33a61a8ae450d327ed7f2a59b5ae35824157eb01080a06bfc1dd2fc50748d01 match=True
-C4 tests/ui_contracts/test_brain_motion_wiring.py:                        bytes=3085  sha256=5c85828096ceeceeed2dff223a42b19bf692957ea617a7429c1afc52cf22e2d5 match=True
+C3 apps/ui/src/components/graph/renderers/glyphConformance.ts:      bytes=7207 sha256=bb9731ebce8b857cbef6198fca8189277e5a5880352aff1f6e08879ad5903436 match=True
+C4 apps/ui/src/components/graph/renderers/glyphConformance.test.ts: bytes=6597 sha256=844d757a1398b77ff7bd1674a2be65ec06087d61ec15a429d575b5aae3bf280d match=True
 ```
-All 10 match the block's G3 table exactly.
+Both match the block's G3 table exactly.
 
 ```
-$ git diff --name-only 08b93a19a 3a182fb66
-apps/ui/src/components/graph/ForceBrainGraph.tsx
-apps/ui/src/components/graph/renderers/nodeStates.ts
-apps/ui/src/components/graph/renderers/paintNode.ts
-apps/ui/src/components/graph/renderers/stateMotion.ts
-apps/ui/src/components/graph/usePageVisible.ts
-$ git diff --name-only 3a182fb66 fcb71150a
-apps/ui/src/components/graph/renderers/nodeStates.test.ts
-apps/ui/src/components/graph/renderers/paintNode.test.ts
-apps/ui/src/components/graph/renderers/stateMotion.test.ts
-tests/ui_contracts/test_brain_motion_wiring.py
-tests/ui_contracts/test_node_glyph_tokens.py
+$ git diff --name-only 92a9f9a69 7ad336105
+apps/ui/src/components/graph/renderers/glyphConformance.ts
+$ git diff --name-only 7ad336105 59ada189e
+apps/ui/src/components/graph/renderers/glyphConformance.test.ts
 ```
-Both name exactly the paths C3 and C4 list (G3).
+Both name exactly the one path each of C3 and C4 (G3).
 
 ```
-$ python3 -m ruff check tests/ui_contracts/test_brain_motion_wiring.py tests/ui_contracts/test_node_glyph_tokens.py
+$ python3 -m ruff check .agent/authored/f020-r5-conformance_measure.py
+  .agent/authored/f020-r5-harness_redproof.py .agent/authored/f020-r5-mutations.py
 All checks passed!
 REAL_EXIT=0
 ```
@@ -242,7 +224,7 @@ $ bash -c 'python3 -m pytest -q -p no:cacheprovider -rs tests/ui_contracts
   tests/ui_server/test_dashboard_contract.py tests/orchestration/test_test_runner.py
   tests/orchestration/test_live_review_rotation.py tests/orchestration/test_integrity_gate.py
   tests/orchestration/test_block_lint.py tests/regression/test_named_bugs.py
-  tests/test_agent_tooling.py tests/cli/test_golden_path.py 2>&1 | tail -20; echo "REAL_EXIT=${PIPESTATUS[0]}"'
+  tests/test_agent_tooling.py tests/cli/test_golden_path.py 2>&1 | tail -60; echo "REAL_EXIT=${PIPESTATUS[0]}"'
 SKIPPED [1] tests/ui_contracts/test_graph_architecture.py:441: D3 quarantine (F252) ...
 SKIPPED [1] tests/ui_contracts/test_graph_architecture.py:484: D3 quarantine (F252) ...
 SKIPPED [1] tests/ui_contracts/test_ux_quality.py:507: D3 quarantine (F252) ...
@@ -254,24 +236,16 @@ SKIPPED [1] tests/regression/test_named_bugs.py:383: D3 quarantine (F252) ...
 SKIPPED [1] tests/regression/test_named_bugs.py:392: D3 quarantine (F252) ...
 SKIPPED [1] tests/regression/test_named_bugs.py:399: D3 quarantine (F252) ...
 SKIPPED [1] tests/test_agent_tooling.py:43: D12 quarantine (F252) ...
-1174 passed, 11 skipped in 76.47s (0:01:16)
+1174 passed, 11 skipped in 73.51s (0:01:13)
 REAL_EXIT=0
 ```
 None of the 11 SKIPPED lines are the four toolchain nodes the block names (the two
 `tests/ui_contracts/test_ui_lint.py` eslint checks, the tsc node in
 `tests/ui_server/test_dashboard_contract.py`, the vitest node in
-`tests/orchestration/test_test_runner.py`) — all four ran and PASSED in the primary checkout, not
-skipped, as required. The 11 remaining skips are pre-existing D3/D12 quarantines unrelated to this
-round's paths. The reviewer's sim-tree run (without golden path) read `1127 passed, 16 skipped`;
-reconciled: `tests/ui_contracts/test_responsive.py` — collected as part of the bare
-`tests/ui_contracts` directory argument, not named individually in the block — carries one more
-conditional skip ("dist/assets/ not built") that fires in a fresh sim tree but not in the primary
-checkout, where `apps/ui/dist` is already built from earlier rounds; together with the four named
-toolchain nodes that is 5 skip-to-pass conversions (16 − 5 = 11 skipped here), and this run
-additionally includes `tests/cli/test_golden_path.py` (42 collected tests, confirmed by
-`--collect-only`), giving 1127 + 5 + 42 = 1174 passed exactly. Not a deviation: every reading the
-block gates on (the four named nodes passing, not skipping) is met; this is the arithmetic that
-explains the remainder.
+`tests/orchestration/test_test_runner.py`, which runs the UI's whole unit suite including this
+round's new `glyphConformance.test.ts`) — all four ran and PASSED in the primary checkout, not
+skipped, as required. The 11 remaining skips are pre-existing D3/D12 quarantines unrelated to
+this round's paths, consistent with round 4's same reading at the same commit count.
 
 ```
 $ python3 -m apps.cli.main integrity check --json
@@ -288,42 +262,95 @@ REAL_EXIT=0
 All six checks `pass`, `fail_count` 0 (G4).
 
 ```
-$ git worktree add --detach .remedy-wt/f020-r4-mut fcb71150a
-Preparing worktree (detached HEAD fcb71150a)
+$ python3 .agent/authored/f020-r5-conformance_measure.py /home/decodeux/Repos/remedy
+repo root: /home/decodeux/Repos/remedy
+work dir: /home/decodeux/Repos/remedy/.remedy-wt/f020-conformance-run
++ vite build
+vite v6.4.2 building for production...
+transforming...
+✓ 13 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                 0.30 kB │ gzip: 0.22 kB
+dist/assets/index-DFNYlH4h.css  2.39 kB │ gzip: 0.84 kB
+dist/assets/index-D18QW5Bv.js   9.99 kB │ gzip: 3.66 kB
+✓ built in 99ms
+
+server pid: 4067204
+chrome pid: 4067216
++ node drive.mjs
+MISSING TOKENS: none
+PASSED ring/mark: 8 present, 0 absent
+PASSED status_dot/mark: 16 present, 40 absent
+PASSED status_dot/outline: 16 present, 0 absent
+PASSED strike/mark: 8 present, 48 absent
+PASSED strike/outline: 8 present, 0 absent
+CONFORMANCE: 144 of 144 probes pass
+
+chrome pid 4067216 stopped (SIGTERM)
+server pid 4067204 stopped (SIGTERM)
+removed work dir: /home/decodeux/Repos/remedy/.remedy-wt/f020-conformance-run
+drive.mjs exit code: 0
+REAL_EXIT=0
+```
+stderr: empty. Every line the block quoted (`MISSING TOKENS: none`, all five `PASSED` lines,
+`CONFORMANCE: 144 of 144 probes pass`, `drive.mjs exit code: 0`) matches verbatim; no `FAILED` or
+`EXCEPTION` line printed, matching the reviewer's reading of none (G4). This stdout+stderr
+transcript is committed whole at C4e as `.agent/authored/f020-r5-conformance.txt` (28 insertions).
+
+```
+$ git worktree add --detach .remedy-wt/f020-r5-mut 59ada189e
+Preparing worktree (detached HEAD 59ada189e)
 REAL_EXIT=0
 
-$ python3 -B .remedy-wt/f020-r4-payloads/mutations.py /home/decodeux/Repos/remedy/.remedy-wt/f020-r4-mut
-worktree: /home/decodeux/Repos/remedy/.remedy-wt/f020-r4-mut
-CONTROL FIRST: vitest exit=0 failed=0 passed=56 | guard exit=0 failed=0 passed=12
-m1 (reduced motion still schedules state changes): vitest exit=1 failed=2 passed=54 | guard exit=0 failed=0 passed=12 | caught=True restored byte-identical=True
-m2 (the job core's state change is scheduled): vitest exit=1 failed=2 passed=54 | guard exit=0 failed=0 passed=12 | caught=True restored byte-identical=True
-m3 (every state change ripples): vitest exit=1 failed=3 passed=53 | guard exit=0 failed=0 passed=12 | caught=True restored byte-identical=True
-m4 (a node just born is scheduled as a change): vitest exit=1 failed=2 passed=54 | guard exit=0 failed=0 passed=12 | caught=True restored byte-identical=True
-m5 (the crossfade runs backwards): vitest exit=1 failed=2 passed=54 | guard exit=0 failed=0 passed=12 | caught=True restored byte-identical=True
-m6 (the ripple travels linearly): vitest exit=1 failed=1 passed=55 | guard exit=0 failed=0 passed=12 | caught=True restored byte-identical=True
-m7 (a hidden page still asks for frames): vitest exit=1 failed=1 passed=55 | guard exit=0 failed=0 passed=12 | caught=True restored byte-identical=True
-m8 (the pulse draws frames under reduced motion): vitest exit=1 failed=1 passed=55 | guard exit=0 failed=0 passed=12 | caught=True restored byte-identical=True
-m9 (the core counts as a pulsing node): vitest exit=1 failed=1 passed=55 | guard exit=0 failed=0 passed=12 | caught=True restored byte-identical=True
-m10 (the pulse multiplier ignores reduced motion): vitest exit=1 failed=2 passed=54 | guard exit=0 failed=0 passed=12 | caught=True restored byte-identical=True
-m11 (the old state is painted at full alpha during a change): vitest exit=1 failed=1 passed=55 | guard exit=0 failed=0 passed=12 | caught=True restored byte-identical=True
-m12 (the ripple is never painted): vitest exit=1 failed=1 passed=55 | guard exit=0 failed=0 passed=12 | caught=True restored byte-identical=True
-m13 (the painter ignores the pulse multiplier): vitest exit=1 failed=1 passed=55 | guard exit=0 failed=0 passed=12 | caught=True restored byte-identical=True
-m14 (the canvas redraws only for births again): vitest exit=0 failed=0 passed=56 | guard exit=1 failed=1 passed=11 | caught=True restored byte-identical=True
-m15 (particles flow on a hidden page): vitest exit=0 failed=0 passed=56 | guard exit=1 failed=1 passed=11 | caught=True restored byte-identical=True
-m16 (the frame rule is told the page is always visible): vitest exit=0 failed=0 passed=56 | guard exit=1 failed=1 passed=11 | caught=True restored byte-identical=True
-m17 (the canvas paints every node without its motion): vitest exit=0 failed=0 passed=56 | guard exit=1 failed=1 passed=11 | caught=True restored byte-identical=True
-m18 (the visibility hook never listens): vitest exit=0 failed=0 passed=56 | guard exit=1 failed=1 passed=11 | caught=True restored byte-identical=True
-CONTROL LAST: vitest exit=0 failed=0 passed=56 | guard exit=0 failed=0 passed=12
+$ python3 -B .agent/authored/f020-r5-mutations.py /home/decodeux/Repos/remedy/.remedy-wt/f020-r5-mut
+worktree: /home/decodeux/Repos/remedy/.remedy-wt/f020-r5-mut
+CONTROL FIRST: vitest exit=0 failed=0 passed=12 | guard exit=0 failed=0 passed=8
+m1 (the spec drops the failed state's dot): vitest exit=1 failed=2 passed=10 | guard exit=0 failed=0 passed=8 | caught=True restored byte-identical=True
+m2 (the dot is probed off its centre): vitest exit=1 failed=2 passed=10 | guard exit=0 failed=0 passed=8 | caught=True restored byte-identical=True
+m3 (the strike's outline is probed on the strike itself): vitest exit=1 failed=1 passed=11 | guard exit=0 failed=0 passed=8 | caught=True restored byte-identical=True
+m4 (a missing ring is probed too): vitest exit=1 failed=2 passed=10 | guard exit=0 failed=0 passed=8 | caught=True restored byte-identical=True
+m5 (the probes ignore the state's size factor): vitest exit=1 failed=1 passed=11 | guard exit=0 failed=0 passed=8 | caught=True restored byte-identical=True
+m6 (a function colour's alpha is read unscaled): vitest exit=1 failed=1 passed=11 | guard exit=0 failed=0 passed=8 | caught=True restored byte-identical=True
+m7 (the tolerance excludes its own bound): vitest exit=1 failed=1 passed=11 | guard exit=0 failed=0 passed=8 | caught=True restored byte-identical=True
+m8 (an unpainted pixel counts as a colour): vitest exit=1 failed=1 passed=11 | guard exit=0 failed=0 passed=8 | caught=True restored byte-identical=True
+m9 (an absent probe passes when the colour shows): vitest exit=1 failed=1 passed=11 | guard exit=0 failed=0 passed=8 | caught=True restored byte-identical=True
+m10 (an unresolved token passes): vitest exit=1 failed=1 passed=11 | guard exit=0 failed=0 passed=8 | caught=True restored byte-identical=True
+m11 (the strike is judged in the failure red): vitest exit=1 failed=1 passed=11 | guard exit=0 failed=0 passed=8 | caught=True restored byte-identical=True
+m12 (a raw colour literal enters the conformance module): vitest exit=0 failed=0 passed=12 | guard exit=1 failed=1 passed=7 | caught=True restored byte-identical=True
+CONTROL LAST: vitest exit=0 failed=0 passed=12 | guard exit=0 failed=0 passed=8
 ALL MUTATIONS CAUGHT AND RESTORED CLEANLY: True
 REAL_EXIT=0
 ```
-Every (v, g) pair matches the block's stated reading exactly: control 56v/12g both exit 0;
-m1-m2 v2g0; m3 v3g0; m4-m5 v2g0; m6-m9 v1g0; m10 v2g0; m11-m13 v1g0; m14-m18 v0g1; control last
-equals control first; every `restored byte-identical` True; final line
-`ALL MUTATIONS CAUGHT AND RESTORED CLEANLY: True` (G5).
+Every (v, g) pair matches the block's stated reading exactly: control 12v/8g both exit 0; m1 v2g0;
+m2 v2g0; m3 v1g0; m4 v2g0; m5-m11 v1g0; m12 v0g1; control last equals control first; every
+`restored byte-identical` True; final line `ALL MUTATIONS CAUGHT AND RESTORED CLEANLY: True`
+(G5a).
 
 ```
-$ git worktree remove --force .remedy-wt/f020-r4-mut
+$ python3 -B .agent/authored/f020-r5-harness_redproof.py
+  /home/decodeux/Repos/remedy/.remedy-wt/f020-r5-mut
+  /home/decodeux/Repos/remedy/.agent/authored/f020-r5-conformance_measure.py
+control first: exit 0, CONFORMANCE: 144 of 144 probes pass, FAILED lines 0
+h1 (a failed node loses its status dot): exit 1, CONFORMANCE: 133 of 144 probes pass, FAILED lines 11
+h1: red=True restored byte-identical=True
+h2 (the painter draws marks without their outline): exit 1, CONFORMANCE: 120 of 144 probes pass, FAILED lines 24
+h2: red=True restored byte-identical=True
+h3 (the open state carries the strike too): exit 1, CONFORMANCE: 136 of 144 probes pass, FAILED lines 8
+h3: red=True restored byte-identical=True
+h4 (the status dot is drawn at the top left): exit 1, CONFORMANCE: 122 of 144 probes pass, FAILED lines 22
+h4: red=True restored byte-identical=True
+control last: exit 0, CONFORMANCE: 144 of 144 probes pass, FAILED lines 0
+ALL HARNESS MUTATIONS CAUGHT AND RESTORED CLEANLY: True
+REAL_EXIT=0
+```
+Every reading matches the block's stated reading exactly: control first/last both 144 of 144 at
+exit 0; h1 133/144 exit 1; h2 120/144 exit 1; h3 136/144 exit 1; h4 122/144 exit 1; every
+`restored byte-identical` True; final line `ALL HARNESS MUTATIONS CAUGHT AND RESTORED CLEANLY:
+True` (G5b).
+
+```
+$ git worktree remove --force .remedy-wt/f020-r5-mut
 REAL_EXIT=0
 $ git worktree prune
 REAL_EXIT=0
@@ -331,58 +358,58 @@ REAL_EXIT=0
 
 ## Authored-text proofs
 
-All 10 authored copies under `.agent/authored/f020-r4-*` (the block copy plus the nine payload
+All 12 authored copies under `.agent/authored/f020-r5-*` (the block copy plus the eleven payload
 copies) were built by `shutil.copyfile` from source to destination — never retyped, never edited.
 Each was read back with `git show <commit>:<path>` and compared byte for byte against its source:
-all 10 BYTE-IDENTICAL (G1 above). `book.diff`, `product.diff` and `tests.diff` were each applied
-with `git apply` after `git apply --check` passed (exit 0 both, every time), never retyped or
-edited; the resulting files were verified by byte count and sha256 against the block's G2/G3
-tables — all MATCH. `.agent/plan.md` was rewritten whole via `shutil.copyfile` from the payload
-source — never retyped — and confirmed MATCH against the PAYLOADS table and the G2 table.
-`stateMotion.ts`, `usePageVisible.ts`, `stateMotion.test.ts` and `test_brain_motion_wiring.py`
-were each copied whole via `shutil.copyfile` into their product/test locations and confirmed
-MATCH against the block's G3 table. `mutations.py` was run unmodified from its payload path
-against the fresh `.remedy-wt/f020-r4-mut` worktree; its printed output was reported verbatim and
-matches the block's stated G5 reading exactly.
+all 12 BYTE-IDENTICAL (G1 above). `book.diff` was applied with `git apply` after `git apply
+--check` passed (exit 0 both), never retyped or edited; the resulting files were verified by byte
+count and sha256 against the block's G2 table — all MATCH. `.agent/plan.md` was rewritten whole
+via `shutil.copyfile` from the payload source — never retyped — and confirmed MATCH against the
+PAYLOADS table and the G2 table. `glyphConformance.ts` and `glyphConformance.test.ts` were each
+copied whole via `shutil.copyfile` into their product/test locations and confirmed MATCH against
+the block's G3 table. `mutations.py` and `harness_redproof.py` were run unmodified from their
+`.agent/authored/f020-r5-*` paths against the fresh `.remedy-wt/f020-r5-mut` worktree; their
+printed output was reported verbatim and matches the block's stated G5 readings exactly. The
+harness run's stdout and stderr (captured to scratch files under
+`.remedy-wt/f020-r5-worker/`, never edited) were concatenated stdout-then-stderr into
+`.agent/authored/f020-r5-conformance.txt` at C4e via direct byte writes from the captured files
+— never retyped.
 
 ## Deviations & assumptions
 
-None. Every commit landed in the block's stated order C1a, C1b, C1c, C1d, C1e, C2, C3, C4, C5,
-exactly as ordered. G1 through G5 ran before this handback was written, as the block orders. No
-payload was edited, retyped or repaired. The round's tracked path set matches constraint 3 (full
-list reported in the reply via `git diff --name-only 6f43c63a HEAD` after this commit, since that
-reading is taken after C5 lands). Nothing was merged this round: no `gh pr merge`, no `gh pr
-create`, no checkout of `main` after the branch was cut, no branch deletion, no force-push, no
-`git stash` — per constraint 5. The reviewer's worktrees, the `f015-r*`/`f284-r*` worktrees and the
-`job-*` worktrees/branches were left untouched — per constraint 6. G4's skip-count arithmetic
-(1127→1174 passed, 16→11 skipped) is explained in the Verification section above; it is a
-reconciliation of an environment difference (dist already built, node_modules present, golden
-path included), not a departure from the block, and every explicitly gated reading (the four
-named toolchain nodes passing, not skipping) was met exactly.
+None. Every commit landed in the block's stated order C1a, C1b, C1c, C1d, C2, C3, C4, C4e, C5,
+exactly as ordered. G1 through G5 ran before this handback was written, as the block orders (G4
+at C4, before C4e, as required). No payload was edited, retyped or repaired. The round's tracked
+path set matches constraint 3 (full list reported in the reply via `git diff --name-only 106df185
+HEAD` after this commit, since that reading is taken after C5 lands). Nothing was merged this
+round: no `gh pr merge`, no `gh pr create`, no checkout of `main` after the branch was cut, no
+branch deletion, no force-push, no `git stash` — per constraint 5. The reviewer's worktrees, the
+`f015-r*`/`f284-r*` worktrees and the `job-*` worktrees/branches were left untouched — per
+constraint 6. The full test suite was not run — per constraint 7.
 
 ## Item-status table
 
 | Item | Status | Reason |
 |---|---|---|
-| C1a | done | 288 insertions, matches block's expectation exactly; under the 500-insertion cap |
-| C1b | done | 410 insertions, matches block's expectation exactly |
-| C1c | done | 187 insertions, matches block's expectation exactly |
-| C1d | done | 116 insertions, matches block's expectation exactly |
-| C1e | done | 208 insertions, matches block's expectation exactly |
-| C2 | done | book.diff apply --check and apply both exit 0; 46/2/6 insertions, matches; D4 recorded |
-| C3 | done | product.diff apply --check and apply both exit 0; 56/12/46/101/15 insertions, matches |
-| C4 | done | tests.diff apply --check and apply both exit 0; 21/47/151/57/1 insertions, matches |
+| C1a | done | 289 insertions, matches block's expectation exactly; under the 500-insertion cap |
+| C1b | done | 291 insertions, matches block's expectation exactly |
+| C1c | done | 353 insertions, matches block's expectation exactly |
+| C1d | done | 276 insertions, matches block's expectation exactly |
+| C2 | done | book.diff apply --check and apply both exit 0; 40/2/11 insertions, matches; D5 recorded |
+| C3 | done | 146 insertions, matches block's expectation exactly; module added under relevant_untracked |
+| C4 | done | 130 insertions, matches block's expectation exactly |
+| C4e | done | 28 insertions as measured (transcript carries process ids, not predicted by the block) |
 | C5 | done | committing now with this handback |
-| G1 | done | all 9 payload digests and 10 authored-copy comparisons matched |
-| G2 | done | all 3 named file digests matched; gate-line count 1; open set R-1008 alone; C1e..C2 path set exact |
-| G3 | done | all 10 named file digests matched; C2..C3 and C3..C4 path sets exact; ruff clean |
-| G4 | done | 1174 passed, 11 skipped at exit 0; all 4 named toolchain nodes ran and passed (not skipped); integrity check 6/6 pass |
-| G5 | done | 18 mutations + 2 controls all matched the block's stated (v,g) readings exactly; ALL MUTATIONS CAUGHT AND RESTORED CLEANLY: True |
+| G1 | done | all 11 payload digests and 12 authored-copy comparisons matched |
+| G2 | done | all 3 named file digests matched; gate-line count 1; open set R-1008 alone; C1d..C2 path set exact |
+| G3 | done | both named file digests matched; C2..C3 and C3..C4 path sets exact; ruff clean |
+| G4 | done | 1174 passed, 11 skipped at exit 0; all 4 named toolchain nodes ran and passed (not skipped); integrity check 6/6 pass; harness exit 0, all 7 quoted lines matched verbatim, no FAILED/EXCEPTION |
+| G5 | done | 12 mutations + 2 controls (mutations.py) and 4 harness mutations + 2 controls (harness_redproof.py) all matched the block's stated readings exactly; both final lines True |
 | G6 | pending | runs after this commit (tree/log check, worktree list, push, `gh pr list`); reported in the reply |
 | PUSH | pending | `git push origin feature/f020-node-lifecycle-glyph-language`, reported in the reply |
 
 ## Next
 
-Phase 1 rule 1: read `.agent/STOP` from disk. Then the review of round 4. Then T003's second
-half — the conformance assertions over the matrix fixture's pixels, with the headless harness
-that reads them. Open findings: 1. Operator questions open: 3.
+Phase 1 rule 1: read `.agent/STOP` from disk. Then the review of round 5. Then the closure
+sequence's first round — the Built State, the checklist consolidation, the self-use track and
+the one full suite. Open findings: 1. Operator questions open: 3.
