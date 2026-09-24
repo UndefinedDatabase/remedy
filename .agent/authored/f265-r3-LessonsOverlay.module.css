@@ -1,0 +1,97 @@
+/* The learning overlay (T5_F265 T002, DECISION F265 D3): a right-anchored glass sheet over the
+   cockpit, the index on the left and the lesson on the right. The glass, radius, line and ink
+   values are the right panel's card values, so the sheet reads as the same surface. z-index 80
+   is the reference sheet's --remedy-z-overlay written as a number, because
+   apps/ui/src/styles/tokens.css does not define that token and an unresolved custom property
+   drops the whole declaration (R-0661); the assumption log records it. The focus ring names
+   --remedy-blue-strong for the reason RightLivePanel.module.css records: the shipped sheet has
+   never adopted --remedy-focus. */
+.overlay {
+  position: fixed;
+  top: 24px;
+  right: 24px;
+  bottom: 24px;
+  width: min(880px, calc(100vw - 48px));
+  z-index: 80;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 18px 20px;
+  background: var(--remedy-glass-bg-strong);
+  border: 1px solid var(--remedy-glass-border);
+  border-radius: var(--remedy-radius-xl);
+  box-shadow: var(--remedy-shadow-card);
+  backdrop-filter: blur(14px);
+}
+.header { display: flex; align-items: center; justify-content: space-between; }
+.header h2 {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--remedy-ink);
+}
+.close { font-size: 12px; color: var(--remedy-muted); padding: 4px 8px; }
+.quiet { margin: 0; font-size: 12px; line-height: 1.45; color: var(--remedy-muted); }
+.body { display: flex; gap: 18px; flex: 1; min-height: 0; }
+.index { width: 240px; flex: none; overflow-y: auto; }
+.index ol { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.entry,
+.entryOn {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 10px;
+  border: 1px solid transparent;
+  border-radius: var(--remedy-radius-sm);
+  background: none;
+  font: inherit;
+  text-align: left;
+  color: var(--remedy-ink);
+  cursor: pointer;
+}
+.entry:hover { background: var(--remedy-bg-2); }
+/* The chosen entry gains weight and a border as well as a tint, so it stays legible without
+   colour perception (ux_spec.md §14). */
+.entryOn { background: var(--remedy-blue-50); border-color: var(--remedy-blue-strong); font-weight: 600; }
+.entryTitle { font-size: 13px; }
+.entryTag { font-size: 11px; color: var(--remedy-muted); }
+.lesson { flex: 1; min-width: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
+.lesson h3 { margin: 0; font-size: 15px; color: var(--remedy-ink-strong); }
+.summary { margin: 0; font-size: 14px; line-height: 1.55; color: var(--remedy-ink); }
+.constructs { margin: 0; display: flex; flex-direction: column; gap: 10px; }
+.construct {
+  padding: 10px 12px;
+  border: 1px solid var(--remedy-line);
+  border-radius: var(--remedy-radius-md);
+  background: var(--remedy-bg-2);
+}
+.construct dt code { font-family: var(--remedy-font-mono); font-size: 13px; color: var(--remedy-ink-strong); }
+.construct dd { margin: 4px 0 0; font-size: 13px; line-height: 1.45; color: var(--remedy-muted); }
+.pager {
+  margin-top: auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 12px;
+  color: var(--remedy-muted);
+}
+.pager button {
+  height: 32px;
+  padding: 0 14px;
+  border-radius: var(--remedy-radius-sm);
+  border: 1px solid var(--remedy-line-strong);
+  background: var(--remedy-blue-50);
+  color: var(--remedy-blue-strong);
+  font-size: 12px;
+  font-weight: 600;
+}
+/* ux_spec.md §14: disabled is 45% opacity with an honest tooltip, which the button's title carries. */
+.pager button:disabled { cursor: not-allowed; opacity: 0.45; }
+.close:focus-visible,
+.entry:focus-visible,
+.entryOn:focus-visible,
+.pager button:focus-visible { outline: 2px solid var(--remedy-blue-strong); outline-offset: 2px; }
