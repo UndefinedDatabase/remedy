@@ -1,0 +1,268 @@
+diff --git a/apps/ui/src/components/graph/ForceBrainGraph.tsx b/apps/ui/src/components/graph/ForceBrainGraph.tsx
+index 2675c6b4a..fffcedd8b 100644
+--- a/apps/ui/src/components/graph/ForceBrainGraph.tsx
++++ b/apps/ui/src/components/graph/ForceBrainGraph.tsx
+@@ -4,9 +4,12 @@ import type { ForceGraph2DInstance } from "react-force-graph-2d";
+ import { seededRng } from "./buildForceBrainModel";
+ import { carryBrainPositions, selectionTaskIdOf } from "./brainView";
+ import { scheduleBrainBirths } from "./brainMotion";
+-import type { NodeKind, NodeState } from "./brainOntology";
++import type { NodeKind } from "./brainOntology";
+ import type { BrainLayoutData, BrainLayoutLink, BrainLayoutNode } from "./forceBrainTypes";
+ import { useGraphSize } from "./useGraphSize";
++import { paintBrainNode } from "./renderers/paintNode";
++import { readDocumentPalette } from "./renderers/palette";
++import type { BrainPalette } from "./renderers/palette";
+ import styles from "./ForceBrainGraph.module.css";
+ 
+ const reducedMotion = typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+@@ -22,31 +25,6 @@ function easeOutApprox(p: number): number {
+   return 1 - Math.pow(1 - p, 3);
+ }
+ 
+-// Status palette — mirrors tokens.css status palette (single source of truth
+-// for the real colour values; this file is on the raw-colour carve-out list,
+-// tests/ui_contracts/test_raw_colour_ratchet.py, because a 2D canvas context
+-// never resolves var()). Keys are the ontology's real NodeState values.
+-const STATE_FILL: Record<NodeState, string> = {
+-  open: "#a78bfa",
+-  planned: "#ffffff",
+-  in_progress: "#4c83ff",
+-  pass: "#34c27e",
+-  fail: "#ef6363",
+-  blocked: "#ef6363",
+-  // Reserved for the future struck-slash treatment (graph_spec §7); this
+-  // reducer never assigns `vetoed` yet, so the value is a placeholder grey.
+-  vetoed: "#9aa9c5",
+-};
+-const STATE_RING: Record<NodeState, string> = {
+-  open: "rgba(167,139,250,.4)",
+-  planned: "#9db9ee",
+-  in_progress: "rgba(76,131,255,.4)",
+-  pass: "rgba(52,194,126,.35)",
+-  fail: "rgba(239,99,99,.4)",
+-  blocked: "rgba(239,99,99,.4)",
+-  vetoed: "rgba(154,169,197,.4)",
+-};
+-
+ /** How far into its birth a node is right now: `p` (0..1, clamped), and
+  *  whether this birth is a plain fade (reduced motion) rather than a scale-in
+  *  spring. `null` when the node carries no in-flight birth (paints at rest). */
+@@ -68,7 +46,9 @@ function paintOf(progress: BirthProgress | null): BrainNodePaint {
+   return progress.fade ? { alpha: progress.p, scale: 1 } : { alpha: 1, scale: easeOutApprox(progress.p) };
+ }
+ 
+-type NodePainter = (node: BrainLayoutNode, ctx: CanvasRenderingContext2D, globalScale: number, paint: BrainNodePaint) => void;
++type NodePainter = (
++  node: BrainLayoutNode, ctx: CanvasRenderingContext2D, globalScale: number, paint: BrainNodePaint, palette: BrainPalette,
++) => void;
+ 
+ /** The core: existing halo (r64 radial gradient) + core sphere (r26 gradient)
+  *  + white ring + `</>` glyph — geometry unchanged from the previous painter. */
+@@ -95,44 +75,29 @@ function paintCoreNode(node: BrainLayoutNode, ctx: CanvasRenderingContext2D, _gl
+   ctx.restore();
+ }
+ 
+-/** Every non-core node: a glossy sphere (radial gradient white-highlight →
+- *  state fill) with a soft outer ring, at the node's OWN `radius` —
+- *  `buildBrainLayout` already resolved that to 7 for a task, 4.5 for a run
+- *  kind/synapse/artifact, 9 for a cluster (graph_spec §4), so one painter
+- *  covers all of them; the glyph-per-kind lifecycle feature swaps entries in
+- *  `NODE_PAINTERS` later without touching this function's shape. */
+-function paintSphereNode(node: BrainLayoutNode, ctx: CanvasRenderingContext2D, _globalScale: number, paint: BrainNodePaint): void {
+-  const { x, y } = node;
+-  const r = node.radius * paint.scale;
+-  const fill = STATE_FILL[node.state];
+-  const ring = STATE_RING[node.state];
+-  ctx.save();
+-  ctx.globalAlpha = paint.alpha;
+-  ctx.fillStyle = ring;
+-  ctx.beginPath(); ctx.arc(x, y, r + 2.5, 0, Math.PI * 2); ctx.fill();
+-  const gradient = ctx.createRadialGradient(x - r * 0.4, y - r * 0.5, r * 0.2, x, y, r);
+-  gradient.addColorStop(0, "rgba(255,255,255,0.9)");
+-  gradient.addColorStop(0.35, fill);
+-  gradient.addColorStop(1, fill);
+-  ctx.fillStyle = gradient;
+-  ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
+-  if (node.state === "planned") { ctx.strokeStyle = STATE_RING.planned; ctx.lineWidth = 1.2; ctx.stroke(); }
+-  ctx.restore();
++/** Every non-core node, drawn from its kind's glyph and its state's
++ *  treatment in the resolved palette (renderers/paintNode.ts; DECISION F020
++ *  D2). `buildBrainLayout` already resolved the node's radius per kind
++ *  (graph_spec §4); the zoom decides whether a run shows its glyph. */
++function paintGlyphNode(
++  node: BrainLayoutNode, ctx: CanvasRenderingContext2D, globalScale: number, paint: BrainNodePaint, palette: BrainPalette,
++): void {
++  paintBrainNode(ctx, node, { palette, zoom: globalScale, alpha: paint.alpha, scale: paint.scale });
+ }
+ 
+-// The glyph slots the lifecycle feature fills later (one entry per NodeKind
+-// so a future round can give a run kind its own Path2D glyph without
+-// touching the paint call sites).
++// One painter per NodeKind: the core keeps its own, and every other kind is
++// drawn from the glyph and state modules (T5_F020.md T002, which replaces
++// F019's placeholder slots here).
+ const NODE_PAINTERS: Record<NodeKind, NodePainter> = {
+   job_core: paintCoreNode,
+-  task: paintSphereNode,
+-  builder_run: paintSphereNode,
+-  review_run: paintSphereNode,
+-  repair_run: paintSphereNode,
+-  test_run: paintSphereNode,
+-  synapse: paintSphereNode,
+-  artifact: paintSphereNode,
+-  cluster: paintSphereNode,
++  task: paintGlyphNode,
++  builder_run: paintGlyphNode,
++  review_run: paintGlyphNode,
++  repair_run: paintGlyphNode,
++  test_run: paintGlyphNode,
++  synapse: paintGlyphNode,
++  artifact: paintGlyphNode,
++  cluster: paintGlyphNode,
+ };
+ 
+ function brainPointerAreaPaint(node: object, color: string, ctx: CanvasRenderingContext2D) {
+@@ -157,6 +122,9 @@ export function ForceBrainGraph({ layout, selectedId, onSelectNode }: {
+   onSelectNode: (nodeId: string | null) => void;
+ }) {
+   const { containerRef, size } = useGraphSize();
++  // Every token the node painter reads, resolved once per mount: a 2D
++  // canvas cannot read var() (tokens_rules.md, the palette bridge).
++  const resolvedPalette = useMemo(() => readDocumentPalette(), []);
+   const graphRef = useRef<ForceGraph2DInstance>(null);
+ 
+   // The nodes of the graphData LAST PASSED TO THE GRAPH (not the previous
+@@ -217,7 +185,7 @@ export function ForceBrainGraph({ layout, selectedId, onSelectNode }: {
+   const handleNodeCanvasObject = useCallback((node: object, ctx: CanvasRenderingContext2D, globalScale: number) => {
+     const n = node as BrainLayoutNode;
+     const paint = paintOf(birthProgressOf(n.id));
+-    NODE_PAINTERS[n.kind](n, ctx, globalScale, paint);
++    NODE_PAINTERS[n.kind](n, ctx, globalScale, paint, resolvedPalette.palette);
+ 
+     if (n.id === selectedId) {
+       ctx.save();
+@@ -235,7 +203,7 @@ export function ForceBrainGraph({ layout, selectedId, onSelectNode }: {
+       ctx.fillText(n.label, n.x, n.y + n.radius + 4);
+       ctx.restore();
+     }
+-  }, [selectedId, birthProgressOf]);
++  }, [selectedId, birthProgressOf, resolvedPalette]);
+ 
+   const handleLinkCanvasObject = useCallback((link: object, ctx: CanvasRenderingContext2D) => {
+     // force-graph rewrites source/target from ids into node refs in place
+@@ -308,7 +276,15 @@ export function ForceBrainGraph({ layout, selectedId, onSelectNode }: {
+   return (
+     // graph_spec §14: the canvas is not the accessible surface — the task
+     // checklist, the popover and the stage's Simple view are.
+-    <div ref={containerRef} className={styles.container} data-ui="force-brain-graph" aria-hidden="true">
++    <div
++      ref={containerRef}
++      className={styles.container}
++      data-ui="force-brain-graph"
++      // A token the stylesheet does not declare paints nothing; its name
++      // is left here for a test or a reviewer to find, never guessed.
++      data-palette-missing={resolvedPalette.missing.length ? resolvedPalette.missing.join(" ") : undefined}
++      aria-hidden="true"
++    >
+       {size.width > 0 && (
+         <ForceGraph2D
+           ref={graphRef}
+diff --git a/apps/ui/src/components/graph/renderers/nodeStates.ts b/apps/ui/src/components/graph/renderers/nodeStates.ts
+index b19a47c76..f1c303442 100644
+--- a/apps/ui/src/components/graph/renderers/nodeStates.ts
++++ b/apps/ui/src/components/graph/renderers/nodeStates.ts
+@@ -33,14 +33,19 @@ export interface StateMarkPaint {
+   outlineToken: RemedyToken | null;
+ }
+ 
+-/** How one state is drawn. `halo` is the soft ring at 35–40% alpha behind the
+- *  node (graph_spec §5), or null where the state has none. `branchGlowAlpha`
++/** How one state is drawn. `inkToken` is the colour a glyph is stroked in
++ *  on the state's sphere, and `lineToken` the colour of the lines of a kind
++ *  whose glyph is its body; both differ from the fill, so a planned node's
++ *  white never hides its own glyph. `halo` is the soft ring at 35–40% alpha
++ *  behind the node (graph_spec §5), or null where the state has none. `branchGlowAlpha`
+  *  is the edge glow this state asks of its branch (graph_spec §7: on while
+  *  active, 25% once done, off for planned and failed). `downstreamAlpha` dims
+  *  what hangs below the node (graph_spec §7: 40% below a veto). */
+ export interface NodeStateTreatment {
+   name: string;
+   fillToken: RemedyToken;
++  inkToken: RemedyToken;
++  lineToken: RemedyToken;
+   halo: { token: RemedyToken; alpha: number } | null;
+   sizeFactor: number;
+   marks: readonly StateMarkPaint[];
+@@ -54,6 +59,8 @@ export const NODE_STATE_TREATMENTS: Readonly<Record<NodeState, NodeStateTreatmen
+   open: {
+     name: "Suggested",
+     fillToken: "--remedy-state-open",
++    inkToken: "--remedy-graph-node-ring",
++    lineToken: "--remedy-state-open",
+     halo: { token: "--remedy-state-open", alpha: 0.4 },
+     sizeFactor: 1,
+     marks: [],
+@@ -64,6 +71,8 @@ export const NODE_STATE_TREATMENTS: Readonly<Record<NodeState, NodeStateTreatmen
+   planned: {
+     name: "Planned",
+     fillToken: "--remedy-state-planned",
++    inkToken: "--remedy-state-planned-ring",
++    lineToken: "--remedy-state-planned-ring",
+     halo: null,
+     sizeFactor: 0.9,
+     marks: [{ mark: "ring", token: "--remedy-state-planned-ring", outlineToken: null }],
+@@ -74,6 +83,8 @@ export const NODE_STATE_TREATMENTS: Readonly<Record<NodeState, NodeStateTreatmen
+   in_progress: {
+     name: "In progress",
+     fillToken: "--remedy-state-current",
++    inkToken: "--remedy-graph-node-ring",
++    lineToken: "--remedy-state-current",
+     halo: { token: "--remedy-state-current", alpha: 0.4 },
+     sizeFactor: 1,
+     marks: [],
+@@ -84,6 +95,8 @@ export const NODE_STATE_TREATMENTS: Readonly<Record<NodeState, NodeStateTreatmen
+   pass: {
+     name: "Passed",
+     fillToken: "--remedy-state-done",
++    inkToken: "--remedy-graph-node-ring",
++    lineToken: "--remedy-state-done",
+     halo: { token: "--remedy-state-done", alpha: 0.35 },
+     sizeFactor: 1,
+     marks: [],
+@@ -94,6 +107,8 @@ export const NODE_STATE_TREATMENTS: Readonly<Record<NodeState, NodeStateTreatmen
+   fail: {
+     name: "Failed",
+     fillToken: "--remedy-state-blocked",
++    inkToken: "--remedy-graph-node-ring",
++    lineToken: "--remedy-state-blocked",
+     halo: { token: "--remedy-state-blocked", alpha: 0.4 },
+     sizeFactor: 1,
+     marks: [{ mark: "status_dot", token: "--remedy-state-blocked", outlineToken: "--remedy-graph-node-ring" }],
+@@ -104,6 +119,8 @@ export const NODE_STATE_TREATMENTS: Readonly<Record<NodeState, NodeStateTreatmen
+   blocked: {
+     name: "Blocked",
+     fillToken: "--remedy-state-blocked",
++    inkToken: "--remedy-graph-node-ring",
++    lineToken: "--remedy-state-blocked",
+     halo: { token: "--remedy-state-blocked", alpha: 0.4 },
+     sizeFactor: 1,
+     marks: [{ mark: "status_dot", token: "--remedy-state-blocked", outlineToken: "--remedy-graph-node-ring" }],
+@@ -114,6 +131,8 @@ export const NODE_STATE_TREATMENTS: Readonly<Record<NodeState, NodeStateTreatmen
+   vetoed: {
+     name: "Vetoed",
+     fillToken: "--remedy-state-vetoed",
++    inkToken: "--remedy-graph-node-ring",
++    lineToken: "--remedy-state-vetoed",
+     halo: { token: "--remedy-state-vetoed", alpha: 0.4 },
+     sizeFactor: 1,
+     marks: [{ mark: "strike", token: "--remedy-state-vetoed", outlineToken: "--remedy-graph-node-ring" }],
+@@ -135,6 +154,8 @@ export function nodeStateTokens(): RemedyToken[] {
+   const seen = new Set<RemedyToken>();
+   for (const treatment of Object.values(NODE_STATE_TREATMENTS)) {
+     seen.add(treatment.fillToken);
++    seen.add(treatment.inkToken);
++    seen.add(treatment.lineToken);
+     if (treatment.halo) seen.add(treatment.halo.token);
+     for (const paint of treatment.marks) {
+       seen.add(paint.token);
