@@ -55,6 +55,14 @@ def test_the_construct_keys_are_the_generators():
     assert _reads(r'construct\["([a-z_]+)"\]') == set(_CONSTRUCT_FIELDS)
 
 
+def test_the_command_keys_are_the_servers():
+    from packages.orchestration.lessons import lesson_commands
+
+    [served] = lesson_commands("--- a/apps/cli/commands/chat_cmd.py\n"
+                               "+++ b/apps/cli/commands/chat_cmd.py\n")[:1]
+    assert _reads(r'command\["([a-z_]+)"\]') == set(served)
+
+
 def test_the_event_and_the_ready_status_are_the_servers():
     from packages.orchestration.event_names import EVENT_NAMES
     from packages.orchestration.lessons import STATUS_READY
@@ -86,6 +94,13 @@ def test_the_overlay_is_a_dialog_that_escape_closes():
     source = _source(OVERLAY)
     assert 'role="dialog"' in source and 'aria-label="Lessons"' in source
     assert 'if (event.key === "Escape") onClose();' in source
+
+
+def test_the_modes_say_which_one_is_shown():
+    source = _source(OVERLAY)
+    assert 'aria-pressed={mode === "lesson"}' in source
+    assert 'aria-pressed={mode === "commands"}' in source
+    assert 'mode === "commands"\n          ? <CommandsText row={row} />' in source
 
 
 def test_the_shell_mounts_the_overlay_outside_the_main_column():

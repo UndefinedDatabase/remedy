@@ -438,3 +438,41 @@ def test_a_mission_jobs_lesson_names_its_mission(tmp_path, monkeypatch):
     pingpong_job._teach_task_lesson(job, SimpleNamespace(run_id="run-1", task_id="T001",
                                                          title="cache loads"))
     assert [kw["mission_id"] for kw in called] == [mission.id]
+
+
+COMMAND_DIFF = (
+    "--- a/apps/cli/commands/teacher_cmd.py\n+++ b/apps/cli/commands/teacher_cmd.py\n"
+    "@@ -1 +1 @@\n+x = 1\n"
+    "--- a/apps/cli/command_catalog.py\n+++ b/apps/cli/command_catalog.py\n@@ -1 +1 @@\n"
+    '-        command_id="chat.send",\n+        command_id="chat.send",\n'
+    "--- a/tests/x.py\n+++ b/tests/x.py\n@@ -0,0 +1 @@\n"
+    '+    command_id="do.run"\n'
+)
+
+
+def test_the_commands_a_diff_touched_are_read_from_the_shipped_catalog():
+    from apps.cli.command_catalog import get_command
+
+    commands = lessons.lesson_commands(COMMAND_DIFF)
+    assert [c["command_id"] for c in commands] == ["chat.send", "teacher.ask", "teacher.narrate"]
+    ask = get_command("teacher.ask")
+    assert commands[1] == {"command_id": "teacher.ask",
+                           "invocation": f"remedy {ask.group_id} {ask.subcommand}",
+                           "description": ask.description}
+
+
+def test_a_diff_that_touches_no_command_names_none():
+    assert lessons.lesson_commands(DIFF) == []
+    assert lessons.lesson_commands("") == []
+
+
+def test_every_overview_row_names_the_commands_its_runs_diff_touched(tmp_path):
+    from apps.cli.commands import chat_cmd
+
+    _run(tmp_path, "--- a/apps/cli/commands/chat_cmd.py\n+++ b/apps/cli/commands/chat_cmd.py\n"
+                   "@@ -1 +1 @@\n+x = 1\n")
+    rows = lessons.job_lessons_overview(
+        [SimpleNamespace(task_id="T001", title="t", run_id="run-1"),
+         SimpleNamespace(task_id="T002", title="u", run_id="")], enabled=False, root=tmp_path)
+    assert [c["command_id"] for c in rows[0]["commands"]] == sorted(chat_cmd.COMMAND_HANDLERS)
+    assert rows[1]["commands"] == []

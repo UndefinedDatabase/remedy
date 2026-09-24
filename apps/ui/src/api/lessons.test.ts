@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   LESSON_WRITTEN_EVENT,
   currentLessonIndex,
+  lessonCommandsLine,
   decodeLessonsIndex,
   firstLessonIndex,
   lessonIndexTag,
@@ -23,6 +24,8 @@ const READY = {
   constructs: [{ name: "functools.lru_cache", what: "memoises", why_here: "repeat reads",
     judgement: "sound here" }],
   ungrounded: ["asyncio.gather"],
+  commands: [{ command_id: "teacher.ask", invocation: "remedy teacher ask",
+    description: "Ask the teacher." }],
 };
 const NONE = { task_id: "T002", title: "Not run", run_id: "", status: "none",
   reason: "this task has not run yet" };
@@ -42,7 +45,10 @@ describe("decodeLessonsIndex", () => {
     expect(index?.rows[1].constructs).toEqual([
       { name: "functools.lru_cache", what: "memoises", whyHere: "repeat reads", judgement: "sound here" }]);
     expect(index?.rows[0]).toEqual({ taskId: "T002", title: "Not run", runId: "", status: "none",
-      reason: "this task has not run yet", summary: "", model: "", constructs: [], ungrounded: [] });
+      reason: "this task has not run yet", summary: "", model: "", constructs: [], ungrounded: [],
+      commands: [] });
+    expect(index?.rows[1].commands).toEqual([
+      { commandId: "teacher.ask", invocation: "remedy teacher ask", description: "Ask the teacher." }]);
   });
 
   it.each([
@@ -55,6 +61,8 @@ describe("decodeLessonsIndex", () => {
     ["a construct with no judgement", { ...ENVELOPE, lessons: [{ ...READY,
       constructs: [{ name: "x", what: "y", why_here: "z" }] }] }],
     ["an ungrounded name that is not text", { ...ENVELOPE, lessons: [{ ...READY, ungrounded: [3] }] }],
+    ["a command with no description", { ...ENVELOPE, lessons: [{ ...READY,
+      commands: [{ command_id: "a.b", invocation: "remedy a b" }] }] }],
   ])("refuses the whole index for %s", (_label, raw) => {
     expect(decodeLessonsIndex(raw)).toBeNull();
   });
@@ -112,6 +120,14 @@ describe("the overlay's rules", () => {
       .toBe("No lesson has been stored yet; one appears after each task finishes.");
     expect(lessonsEmptyLine(decodeLessonsIndex({ ...ENVELOPE, lessons_enabled: false, lessons: [NONE] })!))
       .toBe("Lessons are switched off; the teacher.lessons setting turns them on.");
+  });
+});
+
+describe("the Commands mode", () => {
+  it("says so when a task's change touched no command", () => {
+    const [none, ready] = rowsOf(ENVELOPE);
+    expect(lessonCommandsLine(none)).toBe("This task's change touched no CLI command.");
+    expect(lessonCommandsLine(ready)).toBeNull();
   });
 });
 
