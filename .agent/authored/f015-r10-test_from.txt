@@ -1,0 +1,6 @@
+def _mark(name, text="ok"):
+    """Leave an observable trace of an injected action. A daemon thread that dies
+    invisibly (the packaged race test raised NameError into DEVNULL and nobody noticed)
+    must never be able to satisfy a regression."""
+    with open(RELEASE + "." + name, "w") as fh:
+        fh.write(str(text))
