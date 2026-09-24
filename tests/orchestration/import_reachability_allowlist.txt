@@ -10,6 +10,7 @@ apps.cli.commands.bench_cmd
 apps.cli.commands.blocker
 apps.cli.commands.brain
 apps.cli.commands.change
+apps.cli.commands.chat_cmd
 apps.cli.commands.ci_cmd
 apps.cli.commands.config_cmd
 apps.cli.commands.contract_cmd
@@ -223,6 +224,7 @@ packages.orchestration.source_apply
 packages.orchestration.spec_compliance
 packages.orchestration.staging_workspace
 packages.orchestration.status_mirror
+packages.orchestration.steering
 packages.orchestration.stop_reasons
 packages.orchestration.stream_evidence
 packages.orchestration.structured_base
