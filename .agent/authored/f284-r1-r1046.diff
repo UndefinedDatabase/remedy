@@ -1,0 +1,166 @@
+diff --git a/docs/guides/environment.md b/docs/guides/environment.md
+index 86fad20ed..a9492f07d 100644
+--- a/docs/guides/environment.md
++++ b/docs/guides/environment.md
+@@ -95,7 +95,7 @@ not read as its type; neither warning stops Remedy from running.
+ | `REMEDY_TEACHER_LESSONS` | yes or no (1, true, yes / 0, false, no) | no | `teacher.lessons` | Write a lesson from the real diff after every completed task (F265). Off by default: each lesson is one teacher model call, and a run makes no call the operator did not switch on. |
+ | `REMEDY_TEACHER_LESSON_MAX_CALLS` | a whole number | `30` | `teacher.lesson_max_calls` | The teacher's budget pot per job, in calls (F265): once the job's teacher calls reach it, a completed task gets an empty lesson that says the pot is spent. |
+ | `REMEDY_TEACHER_LESSON_MAX_TOKENS` | a whole number | `300000` | `teacher.lesson_max_tokens` | The teacher's budget pot per job, in the tokens its calls reported (F265); a call that reports none still counts against the call limit. |
+-| `REMEDY_TEACHER_MODEL` | text | none | `teacher.model` | Model for the teacher role (F255). The teacher reads and explains and never writes, so this key buys explanation quality and nothing else. Unset means the role resolves exactly like every other one. Stage 1 narration is deterministic and spends nothing, so nothing reads this key until the Stage 2 question path exists (T004) — a declared key with no reader yet, not a forgotten wiring. |
++| `REMEDY_TEACHER_MODEL` | text | none | `teacher.model` | Model for the teacher role (F255). The teacher reads and explains and never writes, so this key buys explanation quality and nothing else. Unset means the role resolves exactly like every other one. `remedy teacher ask` and the lessons written after each task (F265) read it; Stage 1 narration is deterministic and reads nothing. |
+ | `REMEDY_UI_ALLOW_LEGACY_FALLBACK` | yes or no (1, true, yes / 0, false, no) | no | env-only | Serve the legacy app shell when the built UI is missing, with a warning (env-only flag) |
+ | `REMEDY_UI_COMMAND_RATE_LIMIT_PER_MINUTE` | a whole number | `30` | `ui.command_rate_limit_per_minute` | Commands the UI write door accepts for one token fingerprint and one job per minute (DECISION F009 D9). The excess is refused with 429 rather than made to wait, because an inbound request is holding a connection. 30 is the default because a human cockpit stays an order of magnitude below it — an operator clicking a control manages a few commands a minute — while a client stuck in a retry loop is stopped inside two seconds of real traffic. |
+ | `REMEDY_UI_DEMO_MODE` | yes or no (1, true, yes / 0, false, no) | no | env-only | Label the cockpit's synthetic placeholder data as demo data (env-only flag) |
+diff --git a/packages/orchestration/config.py b/packages/orchestration/config.py
+index 62c13733b..8deb4ec0c 100644
+--- a/packages/orchestration/config.py
++++ b/packages/orchestration/config.py
+@@ -865,9 +865,8 @@ _CONFIG_KEY_SPECS: tuple[ConfigKeySpec, ...] = (
+             "Model for the teacher role (F255). The teacher reads and explains "
+             "and never writes, so this key buys explanation quality and nothing "
+             "else. Unset means the role resolves exactly like every other one. "
+-            "Stage 1 narration is deterministic and spends nothing, so nothing "
+-            "reads this key until the Stage 2 question path exists (T004) — a "
+-            "declared key with no reader yet, not a forgotten wiring."
++            "`remedy teacher ask` and the lessons written after each task (F265) "
++            "read it; Stage 1 narration is deterministic and reads nothing."
+         ),
+         value_type=str,
+         default=None,
+diff --git a/packages/orchestration/lessons.py b/packages/orchestration/lessons.py
+index 300078623..e41c04c34 100644
+--- a/packages/orchestration/lessons.py
++++ b/packages/orchestration/lessons.py
+@@ -443,11 +443,3 @@ def lesson_budgets() -> Any:
+     config = get_config()
+     return JobBudgets(max_provider_calls=config.get("teacher.lesson_max_calls"),
+                       max_total_tokens=config.get("teacher.lesson_max_tokens"))
+-
+-
+-def lesson_role_overrides() -> dict[str, str] | None:
+-    """The teacher's configured model as a role override, or None when `teacher.model` is unset."""
+-    from packages.orchestration.config import get_config
+-
+-    model = get_config().get("teacher.model")
+-    return {"model": str(model)} if model else None
+diff --git a/packages/orchestration/pingpong_job.py b/packages/orchestration/pingpong_job.py
+index 369547a41..2497a771c 100644
+--- a/packages/orchestration/pingpong_job.py
++++ b/packages/orchestration/pingpong_job.py
+@@ -3951,13 +3951,14 @@ def _teach_task_lesson(job: JobPlan, task: TaskEntry) -> None:
+             return
+         from packages.orchestration.job_evidence import _resolve_job_ledger_project_id
+         from packages.orchestration.mission_state import mission_for_job
++        from packages.orchestration.teacher_model import teacher_role_overrides
+ 
+         mission = mission_for_job(str(job.job_id))
+         stored = lessons.load_lesson(task.run_id) is not None
+         lesson = lessons.generate_lesson(
+             run_id=task.run_id, job_id=str(job.job_id), task_id=task.task_id,
+             task_title=task.title, mission_id=mission.id if mission is not None else "",
+-            budgets=lessons.lesson_budgets(), config_file=lessons.lesson_role_overrides(),
++            budgets=lessons.lesson_budgets(), config_file=teacher_role_overrides(),
+             project_id=_resolve_job_ledger_project_id(job))
+         if not stored:
+             # The stream's announcement (DECISION F265 D2): the overlay reads the lesson itself
+diff --git a/packages/orchestration/teacher_model.py b/packages/orchestration/teacher_model.py
+index 758101101..8c3cdb8c9 100644
+--- a/packages/orchestration/teacher_model.py
++++ b/packages/orchestration/teacher_model.py
+@@ -185,6 +185,16 @@ def resolve_teacher_transport(config_file: object | None = None) -> tuple[str, s
+     return config.provider, config.model
+ 
+ 
++# R-1046: `resolve_role_config` reads no configuration of its own, so every teacher call reads
++# `teacher.model` here and hands it in as the config-file layer.
++def teacher_role_overrides() -> dict[str, str] | None:
++    """The configured `teacher.model` as a role override, or None when the key is unset."""
++    from packages.orchestration.config import get_config
++
++    model = get_config().get("teacher.model")
++    return {"model": str(model)} if model else None
++
++
+ def _refusal(provider: str, model: str, *, because: str) -> TeacherAnswer:
+     """An honest refusal NAMING the provider and model, billed to nobody."""
+     return TeacherAnswer(
+@@ -226,8 +236,9 @@ def ask_teacher(
+     context = build_teacher_context(
+         question, events=events, code=code, code_path=code_path, study_cards=study_cards, level=level
+     )
+-    configured = resolve_role_config(TEACHER_ROLE)
+-    transport = resolve_teacher_transport()
++    overrides = teacher_role_overrides()
++    configured = resolve_role_config(TEACHER_ROLE, config_file=overrides)
++    transport = resolve_teacher_transport(overrides)
+     if transport is None:
+         return _refusal(
+             configured.provider,
+diff --git a/tests/orchestration/test_lessons.py b/tests/orchestration/test_lessons.py
+index 20ac80d98..6d8a1b13d 100644
+--- a/tests/orchestration/test_lessons.py
++++ b/tests/orchestration/test_lessons.py
+@@ -273,7 +273,7 @@ def test_the_configured_teacher_model_reaches_the_transport(tmp_path, monkeypatc
+ 
+     reset_config()
+     call = _Call()
+-    lesson = _generate(tmp_path, call, config_file=lessons.lesson_role_overrides())
++    lesson = _generate(tmp_path, call, config_file=teacher_model.teacher_role_overrides())
+     assert lesson["model"] == "lesson-model"
+     assert call.prompts[0][1] == "lesson-model"
+ 
+@@ -293,6 +293,7 @@ def test_a_completed_task_gets_no_lesson_while_lessons_are_off(monkeypatch):
+ def test_a_completed_task_gets_its_lesson_when_lessons_are_on(monkeypatch):
+     monkeypatch.setenv("REMEDY_TEACHER_LESSONS", "1")
+     monkeypatch.setenv("REMEDY_TEACHER_LESSON_MAX_CALLS", "5")
++    monkeypatch.setenv("REMEDY_TEACHER_MODEL", "lesson-model")
+     from packages.orchestration.config import reset_config
+ 
+     reset_config()
+@@ -303,6 +304,7 @@ def test_a_completed_task_gets_its_lesson_when_lessons_are_on(monkeypatch):
+     assert [(kw["run_id"], kw["task_id"], kw["task_title"], kw["mission_id"]) for kw in called] == [
+         ("run-1", "T001", "cache loads", "")]
+     assert called[0]["budgets"] == JobBudgets(max_provider_calls=5, max_total_tokens=300000)
++    assert called[0]["config_file"] == {"model": "lesson-model"}
+ 
+ 
+ def test_a_failing_lesson_never_fails_the_task(monkeypatch):
+diff --git a/tests/orchestration/test_teacher_model.py b/tests/orchestration/test_teacher_model.py
+index cb559c1c0..5c0b104f3 100644
+--- a/tests/orchestration/test_teacher_model.py
++++ b/tests/orchestration/test_teacher_model.py
+@@ -99,6 +99,34 @@ class TestTheTransportSet:
+         assert resolved == ("ollama", "tutor-model")
+ 
+ 
++class TestTheConfiguredModelReachesTheQuestion:
++    """R-1046: `teacher.model`, set the way an operator sets it, is the model a question is sent to."""
++
++    def test_the_environment_variable_names_the_model_a_question_is_sent_to(self, tmp_path, monkeypatch):
++        from packages.orchestration.config import reset_config
++
++        monkeypatch.setenv("REMEDY_TEACHER_MODEL", "question-model")
++        reset_config()
++        transport = _RecordingTransport()
++        try:
++            answer = ask_teacher("q", call=transport, ledger_path=tmp_path / "ledger.sqlite")
++        finally:
++            reset_config()
++
++        assert transport.models == ["question-model"]
++        assert answer.model == "question-model"
++
++    def test_an_unset_key_hands_in_no_override(self, monkeypatch):
++        from packages.orchestration.config import reset_config
++
++        monkeypatch.delenv("REMEDY_TEACHER_MODEL", raising=False)
++        reset_config()
++        try:
++            assert teacher_model.teacher_role_overrides() is None
++        finally:
++            reset_config()
++
++
+ class TestTheInjectedSeam:
+     def test_the_default_transport_is_ollama_teacher_call_by_identity(self, tmp_path, monkeypatch):
+         """The seam's default IS the module's own transport — and it is never called.

@@ -3951,13 +3951,14 @@ def _teach_task_lesson(job: JobPlan, task: TaskEntry) -> None:
             return
         from packages.orchestration.job_evidence import _resolve_job_ledger_project_id
         from packages.orchestration.mission_state import mission_for_job
+        from packages.orchestration.teacher_model import teacher_role_overrides
 
         mission = mission_for_job(str(job.job_id))
         stored = lessons.load_lesson(task.run_id) is not None
         lesson = lessons.generate_lesson(
             run_id=task.run_id, job_id=str(job.job_id), task_id=task.task_id,
             task_title=task.title, mission_id=mission.id if mission is not None else "",
-            budgets=lessons.lesson_budgets(), config_file=lessons.lesson_role_overrides(),
+            budgets=lessons.lesson_budgets(), config_file=teacher_role_overrides(),
             project_id=_resolve_job_ledger_project_id(job))
         if not stored:
             # The stream's announcement (DECISION F265 D2): the overlay reads the lesson itself

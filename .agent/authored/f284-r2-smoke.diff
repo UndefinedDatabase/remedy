@@ -1,0 +1,154 @@
+diff --git a/tests/orchestration/test_product_smoke.py b/tests/orchestration/test_product_smoke.py
+index 9419593ba..143f36811 100644
+--- a/tests/orchestration/test_product_smoke.py
++++ b/tests/orchestration/test_product_smoke.py
+@@ -30,6 +30,7 @@ import sys
+ import time
+ from pathlib import Path
+ 
++import psutil
+ import pytest
+ 
+ from packages.orchestration.dod_compiler import (
+@@ -81,7 +82,9 @@ from tests.ports import worker_port
+ #: This file's offset into the per-worker port range of ``tests/ports.py``.
+ #: A literal default (it was 5273) is shared by every xdist worker, so the
+ #: stopped-port assertions below could reach a port ANOTHER worker had just
+-#: bound (R-0569); a per-worker port can only ever be bound by this worker.
++#: bound (R-0569); a per-worker port can only ever be bound by this worker,
++#: and `assert_the_app_left_nothing_behind` reads any other port by its owner
++#: (R-0950).
+ _SMOKE_PORT_OFFSET = 2
+ 
+ FIXTURES = Path(__file__).parent / "fixtures" / "smoke"
+@@ -124,6 +127,44 @@ def project(root: Path, app: Path, **kw) -> Path:
+     return root
+ 
+ 
++def listeners_inside(port: int, root: Path) -> list[int]:
++    """The pids listening on ``port`` whose working directory is inside ``root``."""
++    inside = []
++    for conn in psutil.net_connections(kind="tcp"):
++        if conn.status != psutil.CONN_LISTEN or not conn.laddr or conn.laddr.port != port:
++            continue
++        try:
++            cwd = Path(psutil.Process(conn.pid).cwd()).resolve() if conn.pid else None
++        except (psutil.NoSuchProcess, psutil.AccessDenied):
++            cwd = None
++        if cwd is not None and cwd.is_relative_to(root.resolve()):
++            inside.append(conn.pid)
++    return inside
++
++
++def assert_the_app_left_nothing_behind(ev, root: Path) -> None:
++    """Teardown judged by the harness's own sweep and by every port the run used.
++
++    R-0950: this worker's own port must be closed. A port `choose_port` fell back to comes from
++    the machine's shared pool, and another process may bind that number the moment this app
++    releases it, which is not a zombie of this test; so an open fallback port fails only when
++    the process listening on it runs inside this test's project.
++    """
++    tail = ev.output_tail
++    assert "the application family was stopped" in tail, tail
++    assert "processes survived the cleanup" not in tail, tail
++    own_port = worker_port(_SMOKE_PORT_OFFSET)
++    for part in tail.split("port=")[1:]:
++        port = int(part.split(")")[0])
++        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
++            sock.settimeout(2.0)
++            is_open = sock.connect_ex(("127.0.0.1", port)) == 0
++        if port == own_port:
++            assert not is_open, f"port {port} still open"
++        elif is_open:
++            assert listeners_inside(port, root) == [], f"port {port} still held by this app"
++
++
+ def smoke_check(*, blocking: bool = True, retry: bool = False) -> DoDCheck:
+     spec: dict = {"smoke": SMOKE_APP_STARTS}
+     if not retry:
+@@ -302,12 +343,7 @@ class TestAppStartsGreen:
+         root = project(tmp_path / "app", GOOD_APP)
+         ev = run_check(smoke_check(), root, timeout_sec=60)
+         assert ev.status == STATUS_PASSED, ev.output_tail
+-        assert "the application family was stopped" in ev.output_tail
+-
+-        port = int(ev.output_tail.split("port=")[1].split(")")[0])
+-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+-            sock.settimeout(2.0)
+-            assert sock.connect_ex(("127.0.0.1", port)) != 0, "app still listening"
++        assert_the_app_left_nothing_behind(ev, root)
+ 
+     def test_nothing_is_written_into_the_project(self, tmp_path):
+         root = project(tmp_path / "app", GOOD_APP)
+@@ -511,17 +547,11 @@ def test_no_zombie_processes_after_the_suite(tmp_path):
+     good = project(tmp_path / "good", GOOD_APP)
+     broken = project(tmp_path / "broken", BROKEN_APP, ready_timeout_s=6.0)
+ 
+-    ports = []
+-    for root in (good, broken):
+-        ev = run_check(smoke_check(), root, timeout_sec=90)
+-        if "port=" in ev.output_tail:
+-            ports.append(int(ev.output_tail.split("port=")[1].split(")")[0]))
++    evidence = [(run_check(smoke_check(), root, timeout_sec=90), root) for root in (good, broken)]
+ 
+     time.sleep(0.2)
+-    for port in ports:
+-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+-            sock.settimeout(2.0)
+-            assert sock.connect_ex(("127.0.0.1", port)) != 0, f"port {port} still open"
++    for ev, root in evidence:
++        assert_the_app_left_nothing_behind(ev, root)
+ 
+ 
+ # ---------------------------------------------------------------------------
+@@ -697,12 +727,7 @@ class TestCorePathsRun:
+     def test_the_app_is_stopped_after_a_path_failure(self, tmp_path):
+         root = project(tmp_path / "app", PATHS_APP)
+         ev = run_check(paths_check({"path": "/broken"}), root, timeout_sec=60)
+-        assert "the application family was stopped" in ev.output_tail
+-
+-        port = int(ev.output_tail.split("port=")[1].split(")")[0])
+-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+-            sock.settimeout(2.0)
+-            assert sock.connect_ex(("127.0.0.1", port)) != 0
++        assert_the_app_left_nothing_behind(ev, root)
+ 
+     def test_a_project_without_a_runtime_is_not_applicable(self, tmp_path):
+         bare = tmp_path / "bare"
+@@ -831,12 +856,7 @@ class TestCleanConsoleRun:
+         root = project(tmp_path / "noisy", NOISY_APP)
+         ev = run_check(console_check(), root, timeout_sec=60)
+         assert ev.status == STATUS_FAILED
+-        assert "the application family was stopped" in ev.output_tail
+-
+-        port = int(ev.output_tail.split("port=")[1].split(")")[0])
+-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+-            sock.settimeout(2.0)
+-            assert sock.connect_ex(("127.0.0.1", port)) != 0
++        assert_the_app_left_nothing_behind(ev, root)
+ 
+     def test_it_holds_a_job_open_when_blocking(self, tmp_path):
+         dod = DoD(schema_v=DOD_SCHEMA_V, compiled=False, origin="deterministic",
+@@ -887,18 +907,12 @@ def test_no_zombie_processes_after_every_outcome(tmp_path):
+         (project(tmp_path / "pathred", PATHS_APP), paths_check({"path": "/broken"})),
+         (project(tmp_path / "noisered", NOISY_APP), console_check()),
+     ]
+-    ports = []
+-    for root, check in cases:
+-        ev = run_check(check, root, timeout_sec=90)
+-        if "port=" in ev.output_tail:
+-            ports.append(int(ev.output_tail.split("port=")[1].split(")")[0]))
++    evidence = [(run_check(check, root, timeout_sec=90), root) for root, check in cases]
+ 
+-    assert len(ports) == 3
++    assert all("port=" in ev.output_tail for ev, _root in evidence)
+     time.sleep(0.2)
+-    for port in ports:
+-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+-            sock.settimeout(2.0)
+-            assert sock.connect_ex(("127.0.0.1", port)) != 0, f"port {port} open"
++    for ev, root in evidence:
++        assert_the_app_left_nothing_behind(ev, root)
+ 
+ 
+ # ---------------------------------------------------------------------------

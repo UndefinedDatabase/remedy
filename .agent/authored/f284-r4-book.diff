@@ -1,0 +1,53 @@
+diff --git a/.agent/decisions.md b/.agent/decisions.md
+index 62019ad13..852b66ad2 100644
+--- a/.agent/decisions.md
++++ b/.agent/decisions.md
+@@ -20487,3 +20487,30 @@ correct and the defect is the test's reading of it.
+ 
+ HOW TO REVERSE: restore `tests/orchestration/test_product_smoke.py` and
+ `docs/roadmap/features/T2_F284.md` from `60c658d2`, and delete this paragraph.
++
++## DECISION F284 D3 — the closure carries R-1008 to F285, registers F285 after F026 under its own Tier 2 heading, and closes F284 PASS_WITH_RISKS (2026-09-24)
++
++CONTEXT: F284 resolved R-1046, R-0499 and R-0950 with evidence (DECISIONS F284 D1 and D2). R-1008
++resolves only when a closure's self-use run lands a repair its reviewer passes, and F284's
++self-use track answered `None` three times with the queue unchanged, recorded at `ddcb0c33` as
++`self-use NONE (queue exhausted)`: every finding still open names no repair a self-use job could
++make. Operator amendment amend0911-feedback rule B orders a closing findings paydown to register
++the next one exactly five unchecked STATUS lines below the position it held, under a Tier 2
++heading. The five unchecked lines after F284's are F020, F023, F024, F025 and F026, all under
++the Tier 5 heading that re-opens the cockpit list.
++
++CHOSEN: (1) R-1008 is carried by name to F285 — Findings paydown v4, with an `Owner:` line
++appended to its paragraph in the same commit as this decision. (2) F285 is registered thin in
++`docs/roadmap/features/T2_F285.md`, its STATUS line placed directly after F026 under a
++`## Tier 2 — Findings paydown (rolling, operator rule amend0911-feedback)` heading, with a
++`## Tier 5 — Operator Cockpit (parallel human track, continued)` heading re-opening the list
++after it, exactly as F282's closure placed F284; `TOTAL_FEATURES` and the README counters move
++in the same commit. (3) F284 closes `PASS_WITH_RISKS`, the risk being the carried Medium R-1008,
++and its STATUS line names the carry.
++
++ALTERNATIVES: placing F285 directly after F284, rejected because rule B fixes the fifth slot;
++closing `PASS`, rejected because a Medium finding this feature owned leaves open.
++
++HOW TO REVERSE: delete `docs/roadmap/features/T2_F285.md`, its STATUS line and the two headings
++around it, restore `TOTAL_FEATURES` to 284 and the README counters, delete the `Owner: F285`
++line from R-1008's paragraph, and delete this paragraph.
+diff --git a/.agent/live_review.md b/.agent/live_review.md
+index b46cabea6..6605faa47 100644
+--- a/.agent/live_review.md
++++ b/.agent/live_review.md
+@@ -414,6 +414,7 @@ owed by the first closure whose self-use run produces a diff its reviewer passes
+ one. Until then it stays open however green the new tests are, because tests prove the wiring and
+ only a run proves the track. Owner: F282.
+ Owner: F284 — Findings paydown v3 (re-assigned at F282's closure, 2026-09-24; this line supersedes any earlier Owner line in this paragraph).
++Owner: F285 — Findings paydown v4 (re-assigned at F284's closure, 2026-09-24; this line supersedes any earlier Owner line in this paragraph).
+ 
+ Landed: R-1006 — the `remedy job budget` limits listing now names `min_free_disk_bytes`, guarded over `JobBudgets.model_fields`; landed at this round's C2.
+ 
+@@ -466,3 +467,5 @@ Done: R-0499 — RESOLVED at `73d7f809`, F284 round 1's C4, with the red run tha
+ Gate: F284 R2 — the F284 round 2 entry: the booking of round 1 with the resolutions of R-1046 and R-0499, DECISION F284 D2, T003, R-0950's repair, the Built State and the checklist consolidation, the closure's self-use track, and the feature's one full suite. VERDICT PASS ON ALL SIX GATES, NO DEVIATION DECLARED. Re-derived over `60c658d2`..`812a23ad` by the planner and reviewer of F284's first session, whose own runs produced every reading below. THE RANGE IS 7 COMMITS in the block's order C1a, C1b, C2, C3, C4, C5 and C6, at `96bc396e` 397, `292d13cb` 308, `5e164dea` 54, `7afbe57c` 52, `2278d71a` 20, `ddcb0c33` 6 and `812a23ad` 229 insertions by `git show --numstat`, each under the 500-line cap, each single-parent and each carrying the ordered trailer. THE TRANSPORT PROOF IS FILE IDENTITY: every file the range changes up to `ddcb0c33` equals, byte for byte, the reviewer's original for the `.agent/authored/f284-r2-*` copies and the reviewer's simulated tree `.remedy-wt/f284-r2-sim` for the rest. THE OPEN SET by distinct id reads R-0499, R-0950, R-1008 and R-1046 at `60c658d2` and R-0950 and R-1008 at `5e164dea`, and the checklist's item numbers read by `live_checklist_items` are the same 34 at `60c658d2` and at `2278d71a`. THE TESTS: the reviewer's run of the round's G4 selection in the primary checkout at `812a23ad` read `615 passed, 1 skipped` at exit 0, the one skip being the standing D12 quarantine, and all six `integrity check` checks `pass` at `fail_count` 0. THE RED PROOFS: the round's probe tool, run by the worker in a disposable worktree at `7afbe57c` and by the reviewer over its simulated tree, byte-equal there, read the same: with every port a fallback that an unrelated listener binds after the stop, the base file 5 failed and this round's 5 passed; with a stop that kills nothing, this round's 5 failed; with a sweep reporting a survivor, the base file 3 failed and this round's 5 failed; with the owner check removed, 1 failed of 5; unmutated controls 5 passed first and last, the file restored byte-identical. THE SELF-USE TRACK read `None` three times with the queue unchanged, so the closure records `self-use NONE (queue exhausted)`. THE ONE FULL SUITE, `.agent/authored/f284-closure-suite.txt` at `812a23ad`, read `19094 passed, 20 skipped` at exit 0 with no bad node. AN OBSERVATION, NOT A FINDING: while measuring the probe tool's process count the reviewer found one orphaned `flow_app.py`, started at 14:09 on 2026-09-24 by `tests/orchestration/test_dod_runners.py::TestRuntimeFlowRunner::test_app_that_never_becomes_ready_is_red` under an earlier `-n auto` run on worker gw10 and re-parented to the user session. Six serial runs of that node, over a test file and a harness equal to `60c658d2`'s, left no orphan, and the run that left it is not known, so no id is spent; a later zombie hunt starts from this paragraph.
+ 
+ Done: R-0950 — RESOLVED at `7afbe57c`, F284 round 2's C3, for its one remaining node, `tests/orchestration/test_product_smoke.py::test_no_zombie_processes_after_every_outcome` (DECISION F282 D9). The node checked no process at all: it parsed each run's port from the harness log and asserted nothing listened there, while `choose_port` falls back to a port from the machine's shared pool whenever this worker's own is busy and nothing reserves that number once the app releases it. `assert_the_app_left_nothing_behind` now judges teardown at all five teardown sites of the file by the harness's own sweep, requires this worker's own port closed, and fails an open fallback port only when the process holding it runs inside the test's project (DECISION F284 D2). The probe runs recorded in the round 2 gate entry above show the base file reading a foreign listener as a zombie and this round's file not, while this round's file still catches a stop that leaves the app running at all five sites. The organic trigger was not observed; the repair does not depend on it.
++
++Gate: F284 R3 — the F284 round 3 entry: the closure sequence's evidence half, the booking of round 2 with R-0950's resolution, the evidence bundle and the review package. VERDICT PASS ON ALL SIX GATES, NO DEVIATION DECLARED. Re-derived over `812a23ad`..`b6bdea3b` by the planner and reviewer of F284's first session, whose own runs produced every reading below. THE RANGE IS 3 COMMITS in the block's order C1, C2 and C3, at `88c4ae6c` 360, `0bf25913` 13 and `b6bdea3b` 204 insertions by `git show --numstat`, each under the 500-line cap. THE TRANSPORT PROOF IS FILE IDENTITY: the four `.agent/authored/f284-r3-*` copies equal the reviewer's originals, and `.agent/live_review.md` and `.agent/plan.md` at `0bf25913` equal the reviewer's simulated tree `.remedy-wt/f284-r3-sim`. THE OPEN SET by distinct id reads R-0950 and R-1008 at `812a23ad` and R-1008 alone at `0bf25913`. THE BUNDLE: evidence job `f284r3e1001` against the fork point `a36a87595529a7d0104e272ebf968b106009d58a`, ancestry and plain counts equal at 15, 681 node ids collected and 681 passed, an empty `validate_verification_tests` problem list and `is_valid_current_run` True. THE PACKAGE: `remedy-review-20260924-224939-READY_FOR_REVIEW.zip` in `/home/decodeux/Repos/remedy-history/zips`, whose SHA-256 the reviewer read as `bd37ef4ace2f086aef2813a61fdb8d58eed56ff10cffa6b9ffead7da64eb91cc`, `testzip()` None, and whose manifest names the fork point as base and `0bf2591365ad8c58533b62313acaac0cb90d9345`, the ACCEPTED HEAD, as head; all six `integrity check` checks `pass` at `fail_count` 0 at `b6bdea3b`.

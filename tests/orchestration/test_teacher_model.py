@@ -99,6 +99,34 @@ class TestTheTransportSet:
         assert resolved == ("ollama", "tutor-model")
 
 
+class TestTheConfiguredModelReachesTheQuestion:
+    """R-1046: `teacher.model`, set the way an operator sets it, is the model a question is sent to."""
+
+    def test_the_environment_variable_names_the_model_a_question_is_sent_to(self, tmp_path, monkeypatch):
+        from packages.orchestration.config import reset_config
+
+        monkeypatch.setenv("REMEDY_TEACHER_MODEL", "question-model")
+        reset_config()
+        transport = _RecordingTransport()
+        try:
+            answer = ask_teacher("q", call=transport, ledger_path=tmp_path / "ledger.sqlite")
+        finally:
+            reset_config()
+
+        assert transport.models == ["question-model"]
+        assert answer.model == "question-model"
+
+    def test_an_unset_key_hands_in_no_override(self, monkeypatch):
+        from packages.orchestration.config import reset_config
+
+        monkeypatch.delenv("REMEDY_TEACHER_MODEL", raising=False)
+        reset_config()
+        try:
+            assert teacher_model.teacher_role_overrides() is None
+        finally:
+            reset_config()
+
+
 class TestTheInjectedSeam:
     def test_the_default_transport_is_ollama_teacher_call_by_identity(self, tmp_path, monkeypatch):
         """The seam's default IS the module's own transport — and it is never called.

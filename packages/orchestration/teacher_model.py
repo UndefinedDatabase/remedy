@@ -185,6 +185,16 @@ def resolve_teacher_transport(config_file: object | None = None) -> tuple[str, s
     return config.provider, config.model
 
 
+# R-1046: `resolve_role_config` reads no configuration of its own, so every teacher call reads
+# `teacher.model` here and hands it in as the config-file layer.
+def teacher_role_overrides() -> dict[str, str] | None:
+    """The configured `teacher.model` as a role override, or None when the key is unset."""
+    from packages.orchestration.config import get_config
+
+    model = get_config().get("teacher.model")
+    return {"model": str(model)} if model else None
+
+
 def _refusal(provider: str, model: str, *, because: str) -> TeacherAnswer:
     """An honest refusal NAMING the provider and model, billed to nobody."""
     return TeacherAnswer(
@@ -226,8 +236,9 @@ def ask_teacher(
     context = build_teacher_context(
         question, events=events, code=code, code_path=code_path, study_cards=study_cards, level=level
     )
-    configured = resolve_role_config(TEACHER_ROLE)
-    transport = resolve_teacher_transport()
+    overrides = teacher_role_overrides()
+    configured = resolve_role_config(TEACHER_ROLE, config_file=overrides)
+    transport = resolve_teacher_transport(overrides)
     if transport is None:
         return _refusal(
             configured.provider,

@@ -408,11 +408,14 @@ class TestVitestFrontendTestFoundation:
     # apps/ui/node_modules is gitignored, so a fresh `git worktree` never carries
     # it and vitest cannot resolve `vitest/config` there (R-0518). An absent
     # install is a missing precondition, not a failing frontend: skip, naming it.
+    # R-0499: the gate reads the installed runner, not the directory, because a
+    # `node_modules` that exists but is not yet populated failed this node while
+    # `test_typescript_compiles`, which reads `.bin/tsc`, skipped.
     @pytest.mark.skipif(
-        not (_ROOT / "apps" / "ui" / "node_modules").is_dir(),
+        not (_ROOT / "apps" / "ui" / "node_modules" / ".bin" / "vitest").is_file(),
         reason=(
-            "apps/ui/node_modules is absent (gitignored, never in a fresh "
-            "worktree); install it outside the test run to run vitest here"
+            "apps/ui/node_modules/.bin/vitest is absent (gitignored, never in a "
+            "fresh worktree); install it outside the test run to run vitest here"
         ),
     )
     def test_vitest_passes(self):

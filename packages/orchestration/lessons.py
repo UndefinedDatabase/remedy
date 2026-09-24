@@ -443,11 +443,3 @@ def lesson_budgets() -> Any:
     config = get_config()
     return JobBudgets(max_provider_calls=config.get("teacher.lesson_max_calls"),
                       max_total_tokens=config.get("teacher.lesson_max_tokens"))
-
-
-def lesson_role_overrides() -> dict[str, str] | None:
-    """The teacher's configured model as a role override, or None when `teacher.model` is unset."""
-    from packages.orchestration.config import get_config
-
-    model = get_config().get("teacher.model")
-    return {"model": str(model)} if model else None

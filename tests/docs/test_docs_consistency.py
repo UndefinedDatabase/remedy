@@ -91,7 +91,11 @@ TIER_HEADING_RE = re.compile(r"^#+\s*Tier\s*(\d{1,2})", re.IGNORECASE)
 #: F282's closure under operator amendment amend0911-feedback rule B and
 #: placed after F019, the fifth unaccepted line below F282, under its own
 #: Tier 2 heading with the Tier 5 list re-opened after it; see T2_F284.md.
-TOTAL_FEATURES = 284
+#: One more, F285 (findings paydown v4), was registered on 2026-09-24 by
+#: F284's closure under operator amendment amend0911-feedback rule B and
+#: placed after F026, the fifth unaccepted line below F284, under its own
+#: Tier 2 heading with the Tier 5 list re-opened after it; see T2_F285.md.
+TOTAL_FEATURES = 285
 
 #: Documents that must never contain a stale claim.
 PRIMARY_DOCS = [
