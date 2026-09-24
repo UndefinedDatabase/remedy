@@ -12,19 +12,17 @@ was understood and from which round it applies
 
 ## Current Step
 
-ROUND 2: book round 1's PASS, record DECISION F264 D2, and land T001's
-second half — `chat.send` exposed on F009's write door, recorded through
-`steering.record_steering_message` with channel `cockpit`, with its
-effect tests and red proofs.
+ROUND 3: book round 2's PASS, record DECISION F264 D3, and put the
+cockpit's steering input live — `api/steeringSend.ts`, the input and its
+card wiring, the design reference's assumption-log entries, and the
+Python guards that pin the browser's rules to the server's.
 
 ## Next Steps
 
-1. The cockpit's input field: the request builder, the send flow and the
-   component, under `docs/ui/design_reference`.
-2. T002: consumption at the run's next safe point, with a red proof that a
+1. T002: consumption at the run's next safe point, with a red proof that a
    mid-call message waits.
-3. T003: the acknowledgement event, in the cockpit and in `remedy chat`.
-4. The closure sequence.
+2. T003: the acknowledgement event, in the cockpit and in `remedy chat`.
+3. The closure sequence.
 
 ## Risks
 

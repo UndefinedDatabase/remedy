@@ -19529,3 +19529,32 @@ a second mutating route; a 409 for a blank message, rejected because the effect 
 retry with text would succeed, which is the shape error R-0685 already ruled on. HOW TO REVERSE:
 remove `chat.send` from `UI_EXPOSED_COMMANDS`, the clause, `_dispatch_chat_send`, the payload
 check, the four guard entries and their tests, and this paragraph.
+
+## DECISION F264 D3 — the cockpit's steering input goes live in the activity card, sends only through one pure module, and says what became of each message (2026-09-24)
+
+CONTEXT: T5_F264.md's Goal wants `remedy chat` "and the same thing as a cockpit input field".
+Measured at `61e6dd70`: `components/panels/ChatInput.tsx` already ships where ux_spec.md §11.3
+places it, rendered twice in `ActivityFeedCard.tsx` as a disabled field whose reason reads
+"Steering arrives with a later feature — watching only for now."; the only browser code that
+reaches the commands door is the decision inbox's chain, whose path, nonce minter and single
+network call (`decisionAnswer.ts`, `decisionNonce.ts`, `decisionSubmit.ts`) know nothing about
+decisions; DECISION F031 D5 rules every rule into a pure `api/*.ts` module because no DOM harness
+exists; and the dashboard carries the job's raw state as `live.stage`. CHOSEN: (1) ONE MODULE,
+`apps/ui/src/api/steeringSend.ts`, holds the request builder, the refusals, the sentences and the
+send sequence, composing the three decision-chain modules above rather than copying them, and
+mirroring three server facts — the message limit, the ended states and the command id — which
+`tests/ui_contracts/test_steering_send_contract.py` pins to their Python originals. (2) THE INPUT
+is live for an addressed job that can still run; it stays visible and disabled, with a visible
+reason, when the dashboard names no job or token and when the job has ended. An unknown state
+stays open, because the server's 409 is the final word. (3) ONE COMPOSER element serves both of
+the card's branches, so the live feed and the fallback cannot disagree. (4) AFTER A SEND one line
+under the input, announced to screen readers, says what happened in the decision inbox's outcome
+colours, and the typed text is cleared only when the job accepted it. (5) The pre-F264 reason
+sentence is retired, the guard class that pinned it is rewritten for the live input, and the
+design reference's assumption log records the two new reasons, the outcome line and the focus
+ring's token. ALTERNATIVES: a second request helper beside the decision chain's, rejected because
+the three modules are already command-generic; gating the input on `live.running`, rejected
+because the server accepts messages for paused, stopped and planned jobs; clearing the text on
+every send, rejected because a refused message would be lost. HOW TO REVERSE: restore the three
+components, the stylesheet, the assumption log and `tests/ui_contracts/test_brain_stream_ring.py`
+from `61e6dd70`, delete `steeringSend.ts`, its test and the contract test, and this paragraph.
