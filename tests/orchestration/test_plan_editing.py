@@ -184,6 +184,9 @@ class TestInvalidEditsChangeNothing:
          "invalid_args", "changes nothing"),
         ("plan_reorder", {"order": ["T1", "T2", "T3"]}, "invalid_args", "missing: ['T4']"),
         ("plan_reorder", {"order": ["T1", "T2", "T3", "T3"]}, "invalid_args", "exactly once"),
+        # DECISION F015 D4: a job runs its tasks in plan order, so none may precede its own.
+        ("plan_reorder", {"order": ["T2", "T1", "T3", "T4"]}, "invalid_plan",
+         "task 'T2' comes before 'T1', which it waits for"),
         ("plan_merge_tasks", {"task_ids": ["T1"]}, "invalid_args", "at least two"),
         ("plan_merge_tasks", {"task_ids": ["T1", "T3"]}, "invalid_plan", "cycle"),
         ("plan_split_task", {"task_id": "T2", "partition": [[0, 1, 2]]}, "invalid_args", "two"),
