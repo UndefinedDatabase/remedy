@@ -1,0 +1,195 @@
+diff --git a/.agent/decisions.md b/.agent/decisions.md
+index 5b6dd42b2..76436ee68 100644
+--- a/.agent/decisions.md
++++ b/.agent/decisions.md
+@@ -20110,3 +20110,65 @@ its transcript replaces `.agent/authored/f015-closure-suite.txt` at the same pat
+ 
+ HOW TO REVERSE: restore `packages/runtimes/dev_server.py`, `tests/cli/runtime_helpers.py` and
+ `tests/runtimes/test_supervisor_portability.py` from `11eb90c9`, and delete this paragraph.
++
++## DECISION F019 D1 — the brain graph's reducer reads the event envelope the server really writes, a run node is keyed by the frame that birthed it, and the task ring is born from the dashboard's task list (2026-09-24)
++
++CONTEXT: T5_F019.md orders T001, a pure reducer from stream events to the brain graph's
++ontology with goldens, and names the roadmap's Part E envelope types (`plan.task_created`,
++`run.started` and the rest) and "plan approval births the task ring". Measured at `92b7f5f1`: no
++writer emits any Part E type name except `budget.tick`; the frame both transports carry is
++`_safe_event_summary`'s `{seq, event, timestamp, outcome, task_id}` with three conditional keys,
++and it carries no run id and no payload; `feedRowOf` in `apps/ui/src/api/feedRow.ts` already
++projects each frame to `{seq, kind, outcome, taskId}`; F015's plan approval writes no run-log
++event; `task_run_started`, `task_round_completed`, `task_run_completed`, `task_run_failed`,
++`task_run_noop`, `verification_passed`, `verification_failed`, `task_needs_decision`,
++`task_decision_answered` and `job_stopped` carry their task as the top-level `task_id` where
++they carry one, while the `test_run_*` frames carry no outcome and `test_run_started` and every
++`repair_*` frame carry no task; one task may see several `task_run_started`; the gap path's
++snapshot reads a sequence number only, and `events-since` returns at most 50 events a page; no
++demo recording exists and F084 Demo mode is unchecked; `buildForceBrainModel.ts` is, by
++`docs/ui/design_reference/graph_tech_recommendation.md`, the single data-to-force-graph
++builder; and the event schema is on the feature's Do-not-touch list.
++
++CHOSEN: (1) THE MODULES are `apps/ui/src/components/graph/brainOntology.ts`, the ontology's
++types and its two status tables, and `brainReducer.ts`, the pure functions, beside
++`buildForceBrainModel.ts`, which stays the single builder of force-graph data and which T002
++extends to read the reducer's model. (2) THE INPUT is `BrainEventRow {seq, kind, outcome,
++taskId}`, to which `FeedRow` is structurally assignable, so `feedRowOf` stays the one frame
++parser. (3) THE MAPPING dispatches on the measured run-log names: `task_run_started` births a
++`builder_run`, first closing the task's still-open runs as `blocked`; `task_round_completed`
++births a `review_run` from the reviewer's verdict, `needs_repair` reading `fail` and
++`no_review` birthing nothing; `verification_passed` and `verification_failed` birth a
++`test_run`; `task_run_completed`, `task_run_failed` and `task_run_noop` close the open builder
++run; `task_needs_decision` blocks the task and `task_decision_answered` reopens it; `job_stopped`
++blocks every open run and returns its task to `planned`; `builder_started` and
++`builder_completed` are absorbed; every other kind, and every task-bound kind whose frame names
++no task, is counted in `ignored` and draws nothing. The `test_run_*` and `repair_*` frames
++therefore draw no node until the stream carries their task and their outcome, and `repair_run`,
++`synapse` and `artifact` are named for the lifecycle feature and never born here. (4) THE IDS
++are `job:<job>`, `task:<task>`, `run:<task>:<seq>` and `cluster:<task>`: a run is keyed by the
++ledger position of the frame that birthed it, because a per-task counter hands a dropped run's
++number to the next run after a gap, which is the ghost the snapshot path exists to prevent. (5)
++THE TASK RING is born from the dashboard's task list by `seedBrainModel`, since no plan-approval
++event exists; a frame naming a task the seed lacks births it at the ring's end. (6) IDEMPOTENCE:
++a row at or behind `lastSeq` returns the identical model object. (7) THE SNAPSHOT PATH is
++`rebuildBrainModel(job, tasks, rows)`: the seed, then the rows in seq order with the first row
++of a repeated seq kept, and its result replaces live state; T003 supplies the rows by paging
++`events-since` by seq, because one page holds at most 50. (8) THE CORE's state is derived from
++the tasks and runs on every return and never stored from a frame. (9) CLUSTERING is
++`clusterBrainModel(model, 8)`, a pure view that keeps every open run and the most recent runs up
++to eight and collapses the rest into one `cluster` node; the model itself keeps every run. (10)
++THE DEMO RECORDING T002 renders is a fixture stream committed beside the reducer's fixtures,
++captured from a real fake job's `events-since` output; the product's demo mode stays F084's.
++
++ALTERNATIVES: widening the envelope with a run id and the Part E type names, rejected because
++the event schema is on the Do-not-touch list and `tests/ui_server/test_sse_stream.py` pins the
++envelope's key set; a run id from a per-task counter, rejected for the reason (4) gives; the
++reducer inside `buildForceBrainModel.ts`, rejected because that builder reads the polled
++dashboard and the stage decision keeps it the renderer's input builder, while existence and
++state belong in a headless module where the goldens live; a `test_run` state read from
++`test_run_completed`, rejected because that frame carries no outcome, and a node drawn `pass`
++without one would be the fake progress graph_spec §8 forbids.
++
++HOW TO REVERSE: delete the four files under `apps/ui/src/components/graph/` whose names begin
++with `brainOntology` or `brainReducer`, and this paragraph.
+diff --git a/.agent/live_review.md b/.agent/live_review.md
+index 0d21852e4..70aaf083a 100644
+--- a/.agent/live_review.md
++++ b/.agent/live_review.md
+@@ -1,37 +1,34 @@
+-# Live Review — F015 Interactive plan editing
+-
+-> Round-by-round review record, re-headed at the F015 claim per
+-> docs/agents/planner_reviewer_prompt.md §1. The heading this replaces named F267, whose STATUS
+-> line went `[x]` at `2e1ebf1a` and whose pull request 273 merged into `main` at the reviewer's
+-> Open PR Gate under docs/agents/self_drive_protocol.md, as `fce49ce0`, after both hosted CI jobs
+-> of run 35979651340 ended `success`. F267's round 4 — its closure round — has no gate entry, by
+-> construction (§4 item 13 of docs/agents/planner_reviewer_prompt.md); the planner and reviewer
+-> of F015's first session read it at this claim, over `74346eb2`..`2e1ebf1a`: VERDICT PASS. Its
+-> four commits carry 320, 8, 12 and 183 insertions by `git show --numstat`, the last of them 10
+-> outside `.agent/handoff.md`, each under the 500-line cap, each single-parent and each carrying
+-> the ordered trailer; the round's block and its five payloads read out of `9c4de402` equal the
+-> reviewer's originals under `.remedy-wt/` byte for byte; `.agent/live_review.md` and
+-> `.agent/plan.md` at `c1fd192b`, the ledger and its archive at `1faaac3a`, and
+-> `docs/roadmap/STATUS.md` and `README.md` at `2e1ebf1a` carry exactly the sha256 that round's
+-> block ordered; the handback at `2e1ebf1a` names each of the five closure pins once — the
+-> package, its SHA-256, its directory, the evidence job and the accepted head; and `2e1ebf1a` is
+-> the second parent of `fce49ce0`. Only the heading, this paragraph and the `## Steps` section
+-> below are rewritten. Everything from the `## Findings` line to the end of the file as it stood
+-> at `fce49ce0` is carried forward BYTE-IDENTICAL, and finding ids continue the monotonic R-XXXX
+-> series across the re-head. The open set at `fce49ce0`, computed with `open_finding_ids` from
+-> `scripts/rotate_live_review.py`, is 4 by distinct id — R-0499, R-0950, R-1008 and R-1046 — and
+-> F284 owns all of them; F015 owns whatever it registers for its own scope.
++# Live Review — F019 Live node materialization
++
++> Round-by-round review record, re-headed at the F019 claim per
++> docs/agents/planner_reviewer_prompt.md §1. The heading this replaces named F015, whose STATUS
++> line went `[x]` at `0cac897c` and whose pull request 274 merged into `main` at the reviewer's
++> Open PR Gate under docs/agents/self_drive_protocol.md, as `92b7f5f1`, after both hosted CI jobs
++> of run 36011044909 ended `success`. That merge came one round after F015's closure: the hosted
++> run on `0cac897c` failed one test-harness node, finding R-1047 records it, and F015's round 10
++> repaired it on the pull request's branch under AGENTS.md's Open PR Gate exception. Round 9's
++> gate entry was booked by round 10's first commit, and round 10's gate entry and R-1047's
++> resolution are appended at the end of this record by F019's claim, because round 10 was
++> reviewed after its own handback. `739994f1` is the second parent of `92b7f5f1`. Only the
++> heading, this paragraph and the `## Steps` section below are rewritten. Everything from the
++> `## Findings` line to the end of the file as it stood at `92b7f5f1` is carried forward
++> BYTE-IDENTICAL, and finding ids continue the monotonic R-XXXX series across the re-head. The
++> open set at `92b7f5f1`, computed with `open_finding_ids` from `scripts/rotate_live_review.py`,
++> is 5 by distinct id — R-0499, R-0950, R-1008 and R-1046, which F284 owns, and R-1047, which
++> F015 owns and the `Done:` line appended by this claim resolves, leaving 4; F019 owns whatever it
++> registers for its own scope.
+ 
+ ## Steps
+ 
+-THE ORDER BELOW IS T5_F015.md's Orchestrator brief. R1 claims F015, re-heads this record and
+-lands T001: `packages/orchestration/plan_editing.py`, one transaction per edit on the stored task
+-plan — the six edit kinds, revalidation by the planner's own schema, DAG check and deliverable
+-check, the version counter, the edit log with its replay, and the delete-rewiring rule — with
+-DECISION F015 D1 fixing where the version and the log live. T002 follows: the write-channel door,
+-the edit-window rule under the approval race, and `remedy plan edit`. T003 then lands the
+-execution-fidelity hash, the `plan.md` revision goldens and the end-to-end run. Every round's
+-handback states the open set by distinct id.
++THE ORDER BELOW IS T5_F019.md's Orchestrator brief, headless first. R1 claims F019, re-heads
++this record and lands T001: `apps/ui/src/components/graph/brainOntology.ts` and
++`brainReducer.ts`, the pure reducer from the stream's frames to the graph's nodes and links, with
++its goldens, its idempotence per seq, its snapshot rebuild and its cluster view, and DECISION
++F019 D1 grounding the mapping in the envelope the server really writes. T002 follows: rendering
++on react-force-graph-2d from the reducer's model, the layout, the motion tokens and the demo
++recording. T003 then lands the live wiring from the stream hook through the reducer to the
++renderer, the gap and snapshot recovery, the performance fixture and the end-to-end run on a live
++fake job. Every round's handback states the open set by distinct id.
+ ## Findings
+ 
+ - R-0499 — Low, THE EIGHT-FILE STRUCTURAL SWEEP GOES RED ABOUT ONCE IN TWENTY RUNS INSIDE A FRESH GIT WORKTREE, AND THE FAILING NODE ID HAS NEVER BEEN CAPTURED. Raised by the reviewer at the R8 authoring dry run. Two observations exist and both are inside a disposable worktree, never in the primary checkout: the F085 R7 worker saw one red in 22 runs on a scratch worktree carrying a larger draft change and did not capture the node id, and the reviewer saw one red in 14 runs on the R8 dry-run worktree and did not capture it either, because the run that produced it was not the run that carried `-rf` output to the log. The red reading is `1 failed, 348 passed, 7 skipped` against the green `350 passed, 6 skipped`, so a test that normally PASSES was SKIPPED in the same run that another test failed — which is the signature of an environment-conditional skip rather than of a logic defect. The sweep's only environment-conditional member is `test_typescript_compiles` in `tests/ui_server/test_dashboard_contract.py`, which resolves `apps/ui/node_modules/.bin/tsc` relative to the file's own tree, skips with "UI toolchain absent" when that path is missing, and otherwise shells out to a REAL `tsc --noEmit` under `timeout=30` — the one member of the eight-file sweep that depends on a heavy external toolchain and on wall-clock. `node_modules` is gitignored, so a fresh worktree's copy of it is populated out of band and its state at the worktree's FIRST sweep run is not something the sweep controls. Nothing in the F085 change set reaches any of the eight files, so this is a pre-existing property of the gate and not of the guard. Counter-measure, already applied in the block that registers this finding: the sweep is ordered as a PROBE carrying `-rf`, never as an expected COLOUR, and a red run reports its FAILED node id verbatim and hands back rather than re-running until green — which is the only way the id gets captured. The finding resolves when a red run finally names the test. Whether `test_typescript_compiles` belongs in a structural sweep at all is a question for the F252 flake work and is NOT claimed here. OPEN.
+@@ -449,3 +446,7 @@ Gate: F015 R8 — the F015 round 8 entry: the booking of round 7 and the closure
+ Gate: F015 R9 — the F015 round 9 entry, THE CLOSING ROUND: the booking of round 8, the ledger rotation, the STATUS flip with its README pins, and the pull request. VERDICT PASS, NO DEVIATION DECLARED. Re-derived over `2cdf826f`..`0cac897c` by the planner and reviewer of F015's first and second sessions, whose own runs produced every reading below, and booked by round 10's first commit. THE RANGE IS 4 COMMITS in the block's order C1 to C4, at `93047c37` 325, `4a02a310` 8, `184ceaba` 6 and `0cac897c` 181 insertions by `git show --numstat`, each under the 500-line cap and each single-parent. THE TRANSPORT PROOF IS FILE IDENTITY: the ledger and the plan at `4a02a310`, and the ledger and its archive at `184ceaba`, read byte-equal to the reviewer's simulation rebuilt at `2cdf826f`. THE BOOKING: `4a02a310` adds exactly one line beginning `Gate: F015 R8 — `. THE ROTATION moved 3 gate records and 0 finding pairs, the ledger going from 307764 to 301103 bytes, and the open set by distinct id reads R-0499, R-0950, R-1008 and R-1046 at `2cdf826f`, at `4a02a310` and at `0cac897c`. THE CLOSURE: at `0cac897c` F015's STATUS line reads `[x]`, `docs/roadmap/STATUS.md` holds 97 accepted lines as the README says, and `integrity check --json` reads all six checks `pass` at `fail_count` 0. THE PULL REQUEST is 274, from `feature/f015-interactive-plan-editing` into `main`, open and not a draft. AFTER THE ROUND: hosted run `36005167608` on `0cac897c` passed on Python 3.12 and failed on Python 3.10 in its `standard` stage at 1 failed and 13604 passed, the failure being `tests/runtimes/test_supervisor_portability.py::TestPersistentLogPumpHealth::test_a_broken_helper_thread_fails_the_regression`; R-1047 below records it, and round 10 repairs it on the pull request's branch.
+ 
+ - R-1047 — Low, THE SUPERVISOR TESTS' `_mark` HELPER CREATES ITS MARKER EMPTY AND WRITES THE TEXT AFTERWARDS, SO A TEST THAT READS THE MARKER THE MOMENT IT EXISTS CAN READ IT EMPTY, AND PULL REQUEST 274's HOSTED CI FAILS ON IT. Raised by the planner and reviewer of F015's second session after the closure pull request's hosted run, having searched this record and its archive for `_mark` and `broken_helper_thread` and found nothing. THE DEFECT, at `0cac897c`: `_mark` in the supervisor prelude of `tests/runtimes/test_supervisor_portability.py` opens `RELEASE + "." + name` with mode `"w"` and only then writes, while `test_a_broken_helper_thread_fails_the_regression` polls `error_mark.exists()` and asserts `"NameError" in error_mark.read_text()` as soon as it does, and `test_a_pump_failure_racing_the_application_exit_is_recorded_honestly` reads the same marker in its failure message. MEASURED: hosted run `36005167608` failed the node with `assert 'NameError' in ''`; in a disposable worktree at `0cac897c`, a one-second pause added between that open and that write turns the node red with the same assertion, every time. WHY LOW: no product code is involved and the runtime behaves correctly, but the hosted gate over pull request 274 cannot pass while it reads red. NOT F015's CODE: `_mark` and the test date from `cfdf71e7`, and F015's commits to that file add a different test. FIX: `_mark` writes to a private name holding the thread id and renames it into place with `os.replace`, so the marker exists only once its text is there; the same one-second pause placed before the rename leaves both nodes green. Owner: F015.
++
++Gate: F015 R10 — the F015 round 10 entry, the CI repair of pull request 274 under AGENTS.md's Open PR Gate exception. VERDICT PASS. Written by the planner and reviewer of F015's second session after reading the committed range `0cac897c`..`739994f1` bottom-up and re-deriving every reading below, and booked by F019's claim. THE RANGE IS 3 COMMITS in the block's order C1 to C3, at `5d18d5aa` 201, `b2a6beed` 9 and `739994f1` 114 insertions by `git show --numstat`, each under the 500-line cap, each single-parent and each carrying the ordered trailer. THE TRANSPORT PROOF IS FILE IDENTITY: at `5d18d5aa` the ledger equals its `0cac897c` bytes plus the round's ledger payload, the plan equals its payload, and the six `.agent/authored/f015-r10-*` copies equal the reviewer's originals under `.remedy-wt/f015-r10/`, the block's sha256 being `f54f2fa0cb562e4027c3506ce0af1699fa2c08eeae399f6004cb392fc3a3ba25`; at `b2a6beed` `tests/runtimes/test_supervisor_portability.py` equals its `0cac897c` bytes with the pair's FROM replaced by its TO, and nothing else. THE OPEN SET at `5d18d5aa` reads R-0499, R-0950, R-1008, R-1046 and R-1047. THE TESTS: the reviewer's own run of `tests/runtimes/test_supervisor_portability.py` and `tests/cli/test_golden_path.py` in the primary checkout at `739994f1` read `142 passed`, and ruff over the test file read `All checks passed!`. THE PROOF, run by the reviewer in a disposable worktree at `b2a6beed` with the round's probe: the unmutated control read 2 passed at exit 0; the old `_mark` with the error marker paused one second before its write read 1 failed at exit 1, the failing node being `test_a_broken_helper_thread_fails_the_regression`, the same assertion the hosted run failed on; the new `_mark` with the same pause before its rename read 2 passed at exit 0; and the file was restored byte-identical. The worktree was removed and the tree is clean. AFTER THE ROUND: hosted run `36011044909` on `739994f1` ended `success` on Python 3.10 and 3.12, and pull request 274 merged as `92b7f5f1`. ONE NOTE, which is not a finding: the handback's Session section omits the one sentence of context self-assessment the block ordered, and every other mandated section is present.
++
++Done: R-1047 — RESOLVED at F015 R10 by `b2a6beed`. `_mark` in the supervisor prelude of `tests/runtimes/test_supervisor_portability.py` now writes the marker's text to a private name, `<marker>.<thread id>.tmp`, and renames it into place with `os.replace`, so the marker exists only once its text is there and a test that reads it the moment it exists can no longer read it empty. MEASURED BY THE REVIEWER in a disposable worktree at `b2a6beed`: with the error marker paused one second between its creation and its write, the old helper turns `test_a_broken_helper_thread_fails_the_regression` red with the hosted run's own assertion, and the new helper, paused the same second before its rename, keeps both marker-reading nodes green. The hosted run on `739994f1` passed on both Python versions.
+diff --git a/.agent/operator_questions.md b/.agent/operator_questions.md
+index 79dbdb6d7..31565ea67 100644
+--- a/.agent/operator_questions.md
++++ b/.agent/operator_questions.md
+@@ -30,3 +30,29 @@ run already follows that same rule. Switching lessons on is a single setting.
+ **What happens if you say nothing.** The recommendation is already executed and stands until you
+ say otherwise. Lessons stay off until you switch them on, and the spending limit for each job
+ applies from the first lesson.
++
++### Q2 — Live graph reads today's event stream (2026-09-24, F019, round 1)
++
++**What needs deciding.** The next feature makes the job graph in the browser grow while a job
++runs: the job in the middle, its tasks around it, and a small node for each attempt, review and
++check as it happens. The plan for this feature expected the server to send richer event messages
++than it really sends. Today each message names what happened and which task it belongs to, but not
++which attempt, and some kinds of message name no task or no result at all. I have built the graph
++from the messages as they really are, without changing what the server sends, because the plan
++lists the message format as something this feature must not change. You can tell me to widen the
++messages instead.
++
++**Why it matters.** Two things follow. First, the tasks appear when the task list appears on the
++dashboard, not at the moment the plan is approved, because approving a plan sends no message.
++Second, runs of the test command and the automatic repair loop do not show up as their own nodes
++yet, because their messages do not say which task they belong to or whether they passed. The
++graph never shows a result it was not told, so it leaves those nodes out rather than guess.
++Builder attempts, reviews and checks do appear, each with its real result.
++
++**My recommendation.** Keep the message format as it is for now. Changing it touches every
++consumer of the stream at once, and a later feature can add the missing fields on purpose, after
++which the graph can draw those nodes with a small change.
++
++**What happens if you say nothing.** The recommendation is already executed and stands until you
++say otherwise. The graph grows from the messages that exist today, and the test and repair nodes
++stay out until the messages carry what they need.
+diff --git a/docs/roadmap/STATUS.md b/docs/roadmap/STATUS.md
+index 7e968359d..30ef70ec1 100644
+--- a/docs/roadmap/STATUS.md
++++ b/docs/roadmap/STATUS.md
+@@ -138,7 +138,7 @@ Milestone R1 — Remedy as the daily tool: Tier 2 complete (F086 as the self-ins
+ - [x] F040 — Completion/return digest (T001–T003 complete; accepted 2026-08-30 · live review PASS_WITH_RISKS — ACCEPTED · Evidence job f040-closure · package remedy-review-20260830-033225-READY_FOR_REVIEW.zip · SHA-256 26bacc72356bea20d765736996cb353033d087c328e7af0156548a533d164be1 · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD 5281987a142b97f222256c987d36c009ae7ab3ae)
+ - [x] F258 — Self-use track v2 (T001–T003 complete; accepted 2026-08-30 · live review PASS_WITH_RISKS — ACCEPTED · Evidence job f258-closure · package remedy-review-20260830-084541-READY_FOR_REVIEW.zip · SHA-256 4b4153ad33f01e4d7014e853663f76ac1f36f61ba06687ed0b3c9c5411f12c50 · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD 49fcc2c645601936d8c426b1eb09523b9b3c7f6f)
+ - [x] F015 — Interactive plan editing (T001–T003 complete; accepted 2026-09-24 · live review PASS — ACCEPTED · Evidence job f015r8e1001 · package remedy-review-20260924-151010-READY_FOR_REVIEW.zip · SHA-256 920b9e1c3763632b86e97cb9724831e9c9e58378bbc71bac4532638e976da840 · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD 15aec1449745c1843ad4096e44974b8710b0756c)
+-- [ ] F019 — Live node materialization
++- [~] F019 — Live node materialization
+ 
+ ## Tier 2 — Findings paydown (rolling, operator rule amend0911-feedback)
+ 
