@@ -1864,6 +1864,21 @@ def stop_recorded_runtime(project_root: str | Path) -> dict[str, Any]:
         sup, check = ident.supervisor, ident.app
         supervisor_verified = sup.verified
 
+        if (ident.ownership == OWNER_UNTRUSTED and ident.supervisor.verified
+                and state.status == STATUS_EXITED):
+            # The supervisor writes this very `exited` record right before it
+            # returns from `_supervise()` and exits, so it can still be alive, for a
+            # moment, immediately after recording that its application is already
+            # gone. That is not an untrusted mismatch to distrust -- give the
+            # supervisor the same bounded window a stop request would, then
+            # re-classify once it has actually gone.
+            deadline = time.monotonic() + STOP_REQUEST_TIMEOUT_S
+            while time.monotonic() < deadline and _pid_alive(state.supervisor_pid):
+                time.sleep(0.1)
+            ident = classify_runtime(state, project_root)
+            sup, check = ident.supervisor, ident.app
+            supervisor_verified = sup.verified
+
         if ident.ownership == OWNER_GONE:
             clear_state(project_root)
             return {
