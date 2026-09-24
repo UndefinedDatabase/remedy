@@ -9,7 +9,7 @@ import { GLYPHS, STATE_MARK_PATHS, glyphDrawnAt, glyphPath2D, glyphTransform } f
 import type { GlyphPath2D } from "./glyphPaths";
 import { NODE_STATE_TREATMENTS } from "./nodeStates";
 import type { RemedyToken, StateMarkPaint } from "./nodeStates";
-import { BRAIN_HIGHLIGHT_TOKEN } from "./palette";
+import { BRAIN_HIGHLIGHT_TOKEN, BRAIN_LABEL_FONT_TOKEN } from "./palette";
 import type { BrainPalette } from "./palette";
 
 /** Glyph stroke width in the 24-unit box, the value of `--remedy-icon-stroke`
@@ -27,14 +27,20 @@ export const SPHERE_KINDS: ReadonlySet<NodeKind> = new Set<NodeKind>([
   "task", "builder_run", "review_run", "repair_run", "test_run",
 ]);
 
-/** The fields of a positioned node this painter reads. */
+/** The fields of a positioned node this painter reads. `label` is written
+ *  inside a cluster as its count (graph_spec §4: "cluster: r 9 + count") and
+ *  is not painted for any other kind here. */
 export interface PaintableNode {
   kind: NodeKind;
   state: NodeState;
   x: number;
   y: number;
   radius: number;
+  label?: string;
 }
+
+/** A cluster's count is written at this share of the node's radius. */
+export const CLUSTER_COUNT_SIZE = 0.75;
 
 /** What the frame contributes: the resolved palette, the canvas zoom, and a
  *  birth's alpha and scale (1 and 1 at rest). */
@@ -45,7 +51,7 @@ export interface NodePaintFrame {
   scale: number;
 }
 
-function colourOf(palette: BrainPalette, token: RemedyToken): string {
+function tokenValue(palette: BrainPalette, token: RemedyToken): string {
   return palette[token] ?? "";
 }
 
@@ -79,11 +85,11 @@ function drawPaths(ctx: CanvasRenderingContext2D, paths: GlyphPath2D, fill: stri
  *  stroked twice as wide in that colour, so it stands off the node beneath. */
 function drawMark(ctx: CanvasRenderingContext2D, mark: StateMarkPaint, node: PaintableNode, radius: number, palette: BrainPalette): void {
   const paths = glyphPath2D(STATE_MARK_PATHS[mark.mark]);
-  const colour = colourOf(palette, mark.token);
+  const colour = tokenValue(palette, mark.token);
   inGlyphBox(ctx, node, radius, () => {
     const shape = paths.stroke ?? paths.fill;
     if (mark.outlineToken && shape) {
-      ctx.strokeStyle = colourOf(palette, mark.outlineToken);
+      ctx.strokeStyle = tokenValue(palette, mark.outlineToken);
       ctx.lineWidth = GLYPH_STROKE_WIDTH * 2;
       ctx.stroke(shape);
     }
@@ -96,10 +102,10 @@ function drawMark(ctx: CanvasRenderingContext2D, mark: StateMarkPaint, node: Pai
 export function paintBrainNode(ctx: CanvasRenderingContext2D, node: PaintableNode, frame: NodePaintFrame): void {
   const treatment = NODE_STATE_TREATMENTS[node.state];
   const radius = node.radius * treatment.sizeFactor * frame.scale;
-  const fill = colourOf(frame.palette, treatment.fillToken);
-  const highlight = colourOf(frame.palette, BRAIN_HIGHLIGHT_TOKEN);
-  const ink = colourOf(frame.palette, treatment.inkToken);
-  const line = colourOf(frame.palette, treatment.lineToken);
+  const fill = tokenValue(frame.palette, treatment.fillToken);
+  const highlight = tokenValue(frame.palette, BRAIN_HIGHLIGHT_TOKEN);
+  const ink = tokenValue(frame.palette, treatment.inkToken);
+  const line = tokenValue(frame.palette, treatment.lineToken);
   const glyph = GLYPHS[node.kind];
   const paths = glyphPath2D(glyph);
   ctx.save();
@@ -107,7 +113,7 @@ export function paintBrainNode(ctx: CanvasRenderingContext2D, node: PaintableNod
   if (SPHERE_KINDS.has(node.kind)) {
     if (treatment.halo) {
       ctx.globalAlpha = frame.alpha * treatment.halo.alpha;
-      ctx.fillStyle = colourOf(frame.palette, treatment.halo.token);
+      ctx.fillStyle = tokenValue(frame.palette, treatment.halo.token);
       ctx.beginPath();
       ctx.arc(node.x, node.y, radius + HALO_SPREAD, 0, Math.PI * 2);
       ctx.fill();
@@ -126,6 +132,13 @@ export function paintBrainNode(ctx: CanvasRenderingContext2D, node: PaintableNod
     }
   } else {
     inGlyphBox(ctx, node, radius, () => drawPaths(ctx, paths, fill, line));
+  }
+  if (node.kind === "cluster" && node.label) {
+    ctx.fillStyle = line;
+    ctx.font = `600 ${radius * CLUSTER_COUNT_SIZE}px ${tokenValue(frame.palette, BRAIN_LABEL_FONT_TOKEN)}`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(node.label, node.x, node.y);
   }
   for (const mark of treatment.marks) drawMark(ctx, mark, node, radius, frame.palette);
   ctx.restore();

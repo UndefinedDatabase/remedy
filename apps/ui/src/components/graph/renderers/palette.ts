@@ -9,9 +9,14 @@ import type { RemedyToken } from "./nodeStates";
  *  (graph_spec §5: "radial gradient white-highlight → state fill"). */
 export const BRAIN_HIGHLIGHT_TOKEN: RemedyToken = "--remedy-graph-node-ring";
 
+/** The font family a count is written in on the canvas (assets_spec.md §4:
+ *  "cluster | circle + centered count text"), resolved like a colour because a
+ *  canvas `font` cannot read var() either. */
+export const BRAIN_LABEL_FONT_TOKEN: RemedyToken = "--remedy-font-ui";
+
 /** Every token the brain graph's node painter reads, each once. */
 export function brainPaletteTokens(): RemedyToken[] {
-  return [...new Set<RemedyToken>([...nodeStateTokens(), BRAIN_HIGHLIGHT_TOKEN])];
+  return [...new Set<RemedyToken>([...nodeStateTokens(), BRAIN_HIGHLIGHT_TOKEN, BRAIN_LABEL_FONT_TOKEN])];
 }
 
 /** Resolved token values, keyed by token name. */

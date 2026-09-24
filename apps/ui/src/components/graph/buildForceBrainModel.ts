@@ -54,12 +54,19 @@ function isLayoutChildKind(kind: NodeKind): boolean {
 }
 
 /** A task's label is its seed title when one was given, else its bare id
- *  with the `task:` prefix stripped; every other node paints no label, so
- *  only a task node ever calls this. */
+ *  with the `task:` prefix stripped; a cluster's is its count, and every
+ *  other node carries no label. */
 function taskLabelOf(task: BrainNode): string {
   const title = task.meta.title;
   if (typeof title === "string" && title.length > 0) return title;
   return task.id.slice("task:".length);
+}
+
+/** A cluster's label is the count of runs it stands for, as `+n` (graph_spec
+ *  §10: 'cluster chip "+n"'); a cluster that carries no count gets none. */
+function clusterLabelOf(cluster: BrainNode): string {
+  const count = cluster.meta.count;
+  return typeof count === "number" && count > 0 ? `+${count}` : "";
 }
 
 /** Task ordering for golden-angle assignment (graph_spec §6: "Seeded initial
@@ -157,7 +164,7 @@ export function buildBrainLayout(model: BrainModel): BrainLayoutData {
     const radius = n.kind === "cluster" ? BRAIN_CLUSTER_RADIUS : BRAIN_RUN_RADIUS;
     return {
       id: n.id, kind: n.kind, state: n.state, parentId: n.parentId, seq: n.seq,
-      depth: 2, radius, x: p.x, y: p.y, label: "",
+      depth: 2, radius, x: p.x, y: p.y, label: n.kind === "cluster" ? clusterLabelOf(n) : "",
     };
   });
 
