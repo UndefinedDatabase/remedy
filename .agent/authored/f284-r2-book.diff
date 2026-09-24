@@ -1,0 +1,60 @@
+diff --git a/.agent/decisions.md b/.agent/decisions.md
+index f975aa3ef..62019ad13 100644
+--- a/.agent/decisions.md
++++ b/.agent/decisions.md
+@@ -20449,3 +20449,41 @@ HOW TO REVERSE: restore `packages/orchestration/teacher_model.py`,
+ `packages/orchestration/lessons.py`, `packages/orchestration/pingpong_job.py`,
+ `packages/orchestration/config.py`, `docs/guides/environment.md` and the touched tests from
+ `a36a8759`, and delete this paragraph.
++
++## DECISION F284 D2 — the smoke tests judge teardown by the harness's own sweep and read an open fallback port by the process that holds it, at all five teardown sites (2026-09-24)
++
++CONTEXT: R-0950 stays open for
++`tests/orchestration/test_product_smoke.py::test_no_zombie_processes_after_every_outcome` alone
++(DECISION F282 D9), a node red in whole-suite `-n auto` runs and green alone. The claiming
++session's research helper found that the node checks no process at all: it parses each run's
++port from the harness log and asserts nothing listens there. The preferred port is
++`worker_port(2)`, this worker's own, but `choose_port` in `packages/runtimes/dev_server.py`
++falls back to `pick_free_port`, a port from the machine's shared pool, whenever that one is busy,
++and nothing reserves the number once the app releases it, so another test's server may bind it
++before the probe runs. The helper reproduced that shape by forcing the fallback while other
++threads cycled binds over the same small port range. Four other nodes in the same file probe the
++parsed port the same way, so the defect is the file's, not the one node's.
++
++CHOSEN: one helper in the test file, `assert_the_app_left_nothing_behind`, used at all five
++teardown sites. It requires the harness's own line `the application family was stopped` and no
++`processes survived the cleanup`, which is the sweep `_stop_app` runs over the app's session. It
++requires this worker's own port to be closed, as before. An open FALLBACK port fails only when a
++process listening on it has its working directory inside the test's project, read with
++`psutil`, which is already a dependency. The reviewer's probe plugin measured the difference at
++this round's base and at this round's file: with every port a fallback that an unrelated
++listener binds after the stop, the base file read 5 failed and this round's 5 passed; with a
++stop that kills nothing and reports nothing, this round's file read 5 failed; with a sweep that
++reports a survivor, the base file read 3 failed and this round's 5 failed; and with the owner
++check removed, the lying stop is caught by 1 node of 5 instead of all five. The organic trigger,
++why the preferred port was busy in the recorded runs, was not observed; the repair does not
++depend on it, because every way a port can be open is now attributed to its holder.
++
++ALTERNATIVES: drawing fallback ports from a private band, the helper's proposal, rejected
++because every caller of the same function draws from that band too, so it narrows the pool
++without removing the collision; skipping the probe for a fallback port, rejected because a stop
++that lies would then be caught only while the app still held this worker's own port, 1 node of
++5 in the probe run; changing `choose_port` itself, rejected because the product's fallback is
++correct and the defect is the test's reading of it.
++
++HOW TO REVERSE: restore `tests/orchestration/test_product_smoke.py` and
++`docs/roadmap/features/T2_F284.md` from `60c658d2`, and delete this paragraph.
+diff --git a/.agent/live_review.md b/.agent/live_review.md
+index 0d8b32502..874629877 100644
+--- a/.agent/live_review.md
++++ b/.agent/live_review.md
+@@ -456,3 +456,9 @@ Gate: F019 R7 — the F019 round 7 entry: the closure sequence's first half, the
+ Gate: F019 R8 — the F019 round 8 entry: the closure sequence's evidence half, the booking of round 7, the evidence bundle and the review package. VERDICT PASS ON ALL SIX GATES, NO DEVIATION DECLARED. Re-derived over `38c988ba`..`787759d9` by the planner and reviewer of F019's second session, whose own reads produced every reading below. THE RANGE IS 3 COMMITS in the block's order C1, C2 and C3, at `0c5b54fd` 365, `d581b666` 8 and `787759d9` 163 insertions by `git show --numstat`, each under the 500-line cap, each single-parent and each carrying the ordered trailer; `d581b6667a9e29a1d276a39555b9038adb82a92b` is the accepted HEAD. THE TRANSPORT PROOF IS FILE IDENTITY: the block copy and the three payload copies under `.agent/authored/f019-r8-*` equal the reviewer's originals under `.remedy-wt/f019-r8/` and `.remedy-wt/f019-r8-payloads/` byte for byte, and the ledger and the plan at `787759d9` equal the reviewer's simulated tree `.remedy-wt/f019-r8-sim`. THE OPEN SET at `787759d9` reads R-0499, R-0950, R-1008 and R-1046. THE BUNDLE: the worker's evidence log, read by the reviewer, records head `d581b666`, ancestry and plain counts equal at 57, 718 node ids collected with 4 deselected, none unsafe and the planted id answering `a local absolute path`, pytest exit 0 with 718 passed and 0 skipped, an empty `validate_verification_tests` problem list, `is_valid_current_run` True with no validation error, and the five gates and the final verifier report written, under evidence job `f019r8e1001`. THE PACKAGE: `remedy-review-20260924-204836-READY_FOR_REVIEW.zip` in `/home/decodeux/Repos/remedy-history/zips`, whose bytes the reviewer hashed to SHA-256 `d0340a1a2ed77a6472e2d3f3469a4e5bf590674fd21e4d229b9c4d52d01263ff`, whose `.review_zip_manifest.json`, read out of the package, names base `92b7f5f18943ba7a22b748687d1c565bec7e752a`, head `d581b6667a9e29a1d276a39555b9038adb82a92b` and 57 commits with `package_status` READY_FOR_REVIEW and authoritative evidence, and whose `testzip()` answers None. All six `integrity check` checks `pass` at `fail_count` 0, and the tree is clean.
+ 
+ Gate: F019 R9 — the F019 round 9 entry: the closing round, booking round 8's PASS, rotating this record into its archive, accepting F019 in STATUS with its README pins and opening pull request 275. VERDICT PASS, NO DEVIATION DECLARED. Re-derived over `787759d9`..`08b19fb5` by the planner and reviewer of F019's second session, and booked here by F284's claim, because a closing round is reviewed after its own handback. THE RANGE IS 4 COMMITS in the block's order C1, C2, C3 and C4, at `76a970f1` 339, `d3221664` 8, `8263d1f5` 24 and `08b19fb5` 183 insertions by `git show --numstat`, each under the 500-line cap, re-measured by F284's reviewer at `a36a8759`. THE TRANSPORT PROOF IS FILE IDENTITY: every file the round applied equals the reviewer's simulated tree. THE ROTATION moved 10 gate records and 1 finding pair, the ledger going from 324355 to 302065 bytes and the archive from 4918588 to 4940878, with the open set at 4 before and after. THE CLOSURE EDITS: F019's STATUS line occurs once and no STATUS line reads `[~]` at `08b19fb5`; the README counts 98 of 284 features accepted and Tier 5 at 17 of 34. THE TESTS: the reviewer's closing selection read `437 passed, 1 skipped` at exit 0, and `integrity check` reported 0 failures. THE MERGE: both hosted CI jobs of run 36044974141 on `08b19fb5` ended `success`, and F284's session merged pull request 275 at its Open PR Gate as `a36a8759`.
++
++Gate: F284 R1 — the F284 round 1 entry: the claim, the re-head with F019's round 9 verdict, DECISION F284 D1 and the slice list, T001, R-1046's repair, and T002, R-0499's repair. VERDICT PASS ON ALL SIX GATES, NO DEVIATION DECLARED. Re-derived over `a36a8759`..`60c658d2` by the planner and reviewer of F284's first session, whose own runs produced every reading below. THE RANGE IS 6 COMMITS in the block's order C1a, C1b, C2, C3, C4 and C5, at `283362dd` 453, `213ee413` 273, `038035cf` 126, `ca04d1af` 49, `73d7f809` 6 and `60c658d2` 288 insertions by `git show --numstat`, each under the 500-line cap, each single-parent and each carrying the ordered trailer. THE TRANSPORT PROOF IS FILE IDENTITY: the 21 files the range changes up to `73d7f809` equal, byte for byte, the reviewer's originals for the seven `.agent/authored/f284-r1-*` copies and the reviewer's simulated tree `.remedy-wt/f284-r1-sim` for the other fourteen. THE CLAIM: F284's STATUS line reads `- [~] F284 — Findings paydown v3` at `038035cf`, and the open set by distinct id reads R-0499, R-0950, R-1008 and R-1046 at `a36a8759` and at `60c658d2`. THE TESTS: the reviewer's run of the round's G3 selection in the primary checkout at `60c658d2` read `627 passed, 1 skipped` at exit 0, the one skip being the standing D12 quarantine, so `test_vitest_passes` and `test_typescript_compiles` ran and passed; all six `integrity check` checks `pass` at `fail_count` 0. THE RED PROOFS: the worker's run of the round's mutation tool in a disposable worktree at `73d7f809` and the reviewer's run over its simulated tree, byte-equal to `73d7f809`, read the same: all five mutations red at exit 1 between unmutated controls of `55 passed` and of the vitest node skipped over an empty `node_modules`, every file restored byte-identical; `git worktree list` after the round shows no worktree the round added.
++
++Done: R-1046 — RESOLVED at `ca04d1af`, F284 round 1's C3. `teacher_role_overrides` in `packages/orchestration/teacher_model.py` reads `teacher.model` and hands it in as the role's config-file layer, and `ask_teacher` passes it to both `resolve_role_config` and `resolve_teacher_transport`; the lessons path reads the same helper, and `lessons.lesson_role_overrides`, which read the key for lessons alone, is deleted (DECISION F284 D1). The test the fix clause asks for is `tests/orchestration/test_teacher_model.py::TestTheConfiguredModelReachesTheQuestion::test_the_environment_variable_names_the_model_a_question_is_sent_to`, which sets `REMEDY_TEACHER_MODEL` and reads the model the transport was called with; `tests/orchestration/test_lessons.py::test_a_completed_task_gets_its_lesson_when_lessons_are_on` now also reads the override the lessons path hands in. Mutations m1, m2, m3 and m4 of `.agent/authored/f284-r1-mutations.py` turn them red. The key's description in `packages/orchestration/config.py` names both readers, and `docs/guides/environment.md` was rendered again from it in the same commit.
++
++Done: R-0499 — RESOLVED at `73d7f809`, F284 round 1's C4, with the red run that names the test taken from a controlled reproduction (DECISION F284 D1). The eight-file sweep is the one F085 round 8 ordered; its two toolchain-gated nodes disagreed on what an installed UI toolchain is, `test_vitest_passes` reading the `apps/ui/node_modules` directory and `test_typescript_compiles` reading `apps/ui/node_modules/.bin/tsc`. With the directory present and unpopulated, the reviewer's run at `a36a8759` read `1 failed, 1 skipped`, the failure being `tests/orchestration/test_test_runner.py::TestVitestFrontendTestFoundation::test_vitest_passes`, which is the recorded signature of one pass turned into a skip and another into a failure. The vitest node now skips unless `apps/ui/node_modules/.bin/vitest` is a file, and mutation m5, the old directory gate restored over an empty `node_modules`, turns it red.
