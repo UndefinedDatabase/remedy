@@ -1,0 +1,29 @@
+diff --git a/apps/ui/src/api/feedRow.ts b/apps/ui/src/api/feedRow.ts
+index 4840bb8a..dc341e9b 100644
+--- a/apps/ui/src/api/feedRow.ts
++++ b/apps/ui/src/api/feedRow.ts
+@@ -3,6 +3,7 @@
+ // once here instead of in every component that reads a stream event.
+ import { humanizeStreamEvent } from "./humanize";
+ import type { BrainStreamFrame } from "./brainStream";
++import { readSteeringAck, steeringAckLine } from "./steeringAck";
+ 
+ /** What one activity-feed row shows. `seq` is the ledger position the row
+  *  carries and jumps to; `known` is what a dev console note counts.
+@@ -54,11 +55,15 @@ export function feedRowOf(
+   const envelope = envelopeOf(frame);
+   const kind = stringField(envelope, "event");
+   const humanized = humanizeStreamEvent(kind);
++  // F264 T003: a steering acknowledgement shows WHAT was understood and FROM WHICH ROUND,
++  // the two halves an acknowledgement is useless without, rather than the catalog's
++  // generic line; a frame whose field is malformed keeps the catalog line.
++  const ack = readSteeringAck(envelope);
+   return {
+     seq: frame.seq,
+     receivedAtMs,
+     kind,
+-    line: humanized.line,
++    line: ack ? steeringAckLine(ack) : humanized.line,
+     known: humanized.known,
+     timestamp: stringField(envelope, "timestamp"),
+     outcome: stringField(envelope, "outcome"),
