@@ -57,6 +57,7 @@
 | semantic dedupe | [semantic-dedupe-v1.md](system/semantic-dedupe-v1.md) | system |
 | session resume | [session-resume-v1.md](system/session-resume-v1.md) | system |
 | snapshot | [snapshot-rollback-v1.md](system/snapshot-rollback-v1.md) | system |
+| steering | [steering-user-guide-v1.md](guides/steering-user-guide-v1.md) | guide |
 | test execution | [real-test-execution-v1.md](system/real-test-execution-v1.md) | system |
 | test lanes | [test-lanes-v0.md](system/test-lanes-v0.md) | system |
 | token economy | [token-economy-context-budget-optimizer-v0.md](system/token-economy-context-budget-optimizer-v0.md) | system |
@@ -135,6 +136,7 @@ User-facing guides, quickstarts, and usage documentation.
 | [remedy-toml-user-guide.md](guides/remedy-toml-user-guide.md) | remedy.toml configuration guide |
 | [resume.md](guides/resume.md) | Resuming interrupted jobs |
 | [simple-operator-quickstart-v0.md](guides/simple-operator-quickstart-v0.md) | Quickstart for new operators |
+| [steering-user-guide-v1.md](guides/steering-user-guide-v1.md) | Steering a running job with `remedy chat` or the cockpit input, and reading what it understood |
 | [token-economy-user-guide-v0.md](guides/token-economy-user-guide-v0.md) | Token budgets and context packs |
 
 ## Archive (`docs/archive/`)

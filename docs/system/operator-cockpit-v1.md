@@ -61,8 +61,11 @@ faked to stand in for unknown data.
 
 - No approve/reject/apply/revert/run controls — those remain CLI + central
   services, gated by permission/contract/snapshot/test policy.
-- No chat or "ask" input, no "+ Add Task" creator. The command bar is a local
-  jump-to filter only.
+- No "ask" input that puts a question to a model, no "+ Add Task" creator. The
+  command bar is a local jump-to filter only. The one text input is the steering
+  input at the bottom of the activity card, which records a steering message for
+  the running job and never reaches a model call in flight; see
+  [steering-user-guide-v1.md](../guides/steering-user-guide-v1.md).
 - No demo/synthetic data path in normal operation.
 
 ## See also
