@@ -1,252 +1,220 @@
-# Handback — F267 List commands v2 completion · Round 1
+# Handback — F267 List commands v2 completion · Round 2
 
 ## Session
 
-SESSION 1 of feature F267 · round 1 · rounds so far 1
+SESSION 1 of feature F267 · round 2 · rounds so far 2
 
-This round cuts F267's branch, claims F267, re-heads the live review
-record with F265's closing verdict, records DECISION F267 D1, and lands
-T002 and T003 as one new test file. A large majority of this session's
-working-context budget remained at the point this handback was written.
+This round books round 1's PASS and one prose-slip line, writes the Built
+State to `docs/roadmap/features/T2_F267.md`, runs the checklist
+consolidation pass (joins nothing, keeps 34 items), records the closure's
+self-use track as NONE, and runs the feature's one full suite. The large
+majority of this session's working-context budget remained at the point
+this handback was written.
 
 ## Range
 
-Review of 9f06c509..HEAD (C4 is this commit, being written now; the push
+Review of 0bef1987..HEAD (C5 is this commit, being written now; the push
 happens after it and is reported in the reply, not here, per the block's
 own G6 instruction)
 
 ## Commits
 
-### 01c66ed2 F267 R1 C1a: copy round 1 block and state payloads into .agent/authored/
+### 7c5dade3 F267 R2 C1: copy round 2 block and payloads into .agent/authored/
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f267-r1-block.md | +206/-0 | copy of this round's block, verbatim |
-| .agent/authored/f267-r1-claim.diff | +131/-0 | copy of the claim.diff payload |
-| .agent/authored/f267-r1-context.md | +39/-0 | copy of the context.md payload |
-| .agent/authored/f267-r1-plan.md | +31/-0 | copy of the plan.md payload |
+| .agent/authored/f267-r2-block.md | +202/-0 | copy of this round's block, verbatim |
+| .agent/authored/f267-r2-plan.md | +29/-0 | copy of the plan.md payload |
+| .agent/authored/f267-r2-product.diff | +68/-0 | copy of the product.diff payload |
+| .agent/authored/f267-r2-records.diff | +19/-0 | copy of the records.diff payload |
+| .agent/authored/f267-r2-selfuse_result.txt | +6/-0 | copy of the selfuse_result.txt payload |
 
-Total 407 insertions, matching the block's own formula (block line count
-206 plus 201 = 407) exactly; well under the 500-insertion cap and under
+Total 324 insertions, matching the block's own formula (block line count
+202 plus 122 = 324) exactly; well under the 500-insertion cap and under
 the 500-or-more STOP threshold the block names.
 
-### 3d9ef9ff F267 R1 C1b: copy round 1 mutation tool and test payload into .agent/authored/
+### e7063127 F267 R2 C2: book round 1's PASS and advance the plan to the closure
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f267-r1-mutations.py | +59/-0 | copy of the mutations.py payload |
-| .agent/authored/f267-r1-test_list_commands_everywhere.py | +164/-0 | copy of the test payload |
+| .agent/live_review.md | +2/-0 | Gate: F267 R1 entry appended, via records.diff |
+| .agent/plan.md | +7/-9 | rewritten to the plan.md payload |
+| .agent/prose_slips.md | +1/-0 | one dated line appended, via records.diff |
 
-Total 223 insertions, matching the block's expected 223 exactly.
+Matches the block's expected 2 live_review.md, 7 plan.md, 1 prose_slips.md
+exactly.
 
-### 7705b3a0 F267 R1 C2: claim F267, re-head the live review record, record D1
+### 158553d6 F267 R2 C3: write the Built State and consolidate the checklist
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/context.md | +15/-25 | rewritten to the context.md payload |
-| .agent/decisions.md | +38/-0 | DECISION F267 D1 appended, via claim.diff |
-| .agent/live_review.md | +31/-30 | re-headed with F265's closing verdict, via claim.diff |
-| .agent/plan.md | +17/-14 | rewritten to the plan.md payload |
-| docs/roadmap/STATUS.md | +1/-1 | F267's line flipped `[ ]` -> `[~]`, via claim.diff |
+| docs/agents/planner_reviewer_prompt.md | +4/-0 | consolidation paragraph, via product.diff |
+| docs/roadmap/features/T2_F267.md | +45/-0 | Built State appended, via product.diff |
 
-Matches the block's expected 15 context.md, 38 decisions.md, 31
-live_review.md, 17 plan.md, 1 STATUS.md exactly.
+Matches the block's expected 4 planner_reviewer_prompt.md, 45
+T2_F267.md exactly.
 
-### 632e9f49 F267 R1 C3: prove every list handler and the ten-second demo
+### b9af341b F267 R2 C4: record the closure's self-use track, NONE
 | Path | +/- | Reason |
 |---|---|---|
-| tests/cli/test_list_commands_everywhere.py | +164/-0 | new test file, copied whole from the payload |
+| .agent/selfuse_f267/result.txt | +6/-0 | new file, copied whole from the selfuse_result.txt payload |
 
-Matches the block's expected 164 exactly.
+Matches the block's expected 6 exactly.
 
-### (C4, this commit) F267 R1 C4: rewrite handoff for round 1
+### (C5, this commit) F267 R2 C5: record the closure suite transcript and rewrite handoff for round 2
 | Path | +/- | Reason |
 |---|---|---|
+| .agent/authored/f267-closure-suite.txt | new | the full suite's summary line, real exit code and bad-node-id list (NONE) |
 | .agent/handoff.md | rewrite | this handback |
 
 ## External actions
 
-- `git checkout -b feature/f267-list-commands-v2-completion` (BEFORE
-  ANYTHING ELSE, step 2) — succeeded, branch cut from `9f06c509`.
-- `git worktree add --detach .remedy-wt/f267-r1-mut 632e9f49` (for G5) —
-  succeeded.
-- `git worktree remove --force .remedy-wt/f267-r1-mut` and
-  `git worktree prune` (after G5) — both succeeded.
-- `.remedy-wt/f267-r1-worker/` was created with `mkdir -p` (absent on
-  disk, as the block anticipates) to hold the copy and verification
-  scripts. `.remedy-wt/f267-r1-dry`, `.remedy-wt/f267-r1-sim`,
-  `.remedy-wt/f267-r1-payloads`, `.remedy-wt/f267-r1-scratch` and the
-  four `.remedy-wt/job-*` worktrees were left untouched.
-- `git push -u origin feature/f267-list-commands-v2-completion` (after
-  C4) runs after this handback is written; its real outcome is reported
-  in the reply per G6, not here. No pull request is created this round —
-  the branch opens one at F267's closure.
+- `npm --prefix apps/ui run build` (C5a, before the full suite) —
+  succeeded, real exit code 0, last line `✓ built in 1.44s`.
+- `.remedy-wt/f267-r2-worker/` was created with `mkdir -p` (absent on
+  disk, as the block anticipates) to hold copy/verify scripts and
+  `full-suite.log`. `.remedy-wt/f267-r2-dry`, `.remedy-wt/f267-r2-sim`,
+  `.remedy-wt/f267-r2-payloads`, `.remedy-wt/f267-r2-scratch`, the two
+  round-1 worktrees, and the four `.remedy-wt/job-*` worktrees were left
+  untouched.
+- `git push origin feature/f267-list-commands-v2-completion` (after C5)
+  runs after this handback is written; its real outcome is reported in
+  the reply per G6, not here. No pull request is created this round.
 
 ## Verification
 
-G1 TRANSPORT — each of the 5 payloads' lines/bytes/sha256 measured
+G1 TRANSPORT — each of the 4 payloads' lines/bytes/sha256 measured
 against the PAYLOADS table — all matched exactly:
 ```
-claim.diff                          lines=131 bytes=12916 sha256=cd8874f2e4661cfa0c21408d79b89a317a2c526e150f2763f752dc3827c99adb
-context.md                          lines=39  bytes=1820  sha256=884f577e6f16f42ead9a69d8ab0a2b7ab4a47c315bd0a072519ab4496970cfb1
-mutations.py                        lines=59  bytes=2645  sha256=308498a53f4d3e2874e6e402342dda628db5a396d6f09241e82e2645346d67c9
-plan.md                             lines=31  bytes=1036  sha256=f953dc1eac281536142c677d03a19baf389f860e5828608731b410664b7024be
-test_list_commands_everywhere.py    lines=164 bytes=7077  sha256=e7e0677af6469ae62495dc844da95a8637b90ed6d1718607f093134eb9fa6e32
+records.diff         lines=19 bytes=8751 sha256=7cf81d26dd23569eb54956622d60ecbd1862617518110d275ff052da3a54f5c0
+plan.md               lines=29 bytes=946  sha256=81741bb4532f7165071ad249b07714307f684a418e4cbf2c594aefbcbcbc7743
+product.diff          lines=68 bytes=4794 sha256=81859437ef308ec4d85ace55c5c9507586f7ac8b70a2ad3fd2635a94c7753f6c
+selfuse_result.txt    lines=6  bytes=274  sha256=8bc6b06e499229bc6aaca61d2658d6424abaa894841318da0bf9fd3730bf73b6
 ```
-The block file itself measured 206 lines, sha256
-`31ed0267317ce9cf3ab989287aa0dbba2a521e12645689d52b1a0cb9e86cb4fd` —
-equal to the delegation message's two readings.
-Each committed `.agent/authored/f267-r1-*` blob, read with `git show
-<commit>:<path>` from the commit that added it (block/plan/context/claim
-at `01c66ed2`, mutations/test at `3d9ef9ff`), compared byte for byte
-(sha256) against its source — all 6 copies matched exactly.
+The block file itself measured 202 lines, sha256
+`1aa368134fe5589fe1a25b0be8ad9197eed149462ce54a247764a4a0420a909b` — equal
+to the delegation message's two readings.
+Each committed `.agent/authored/f267-r2-*` blob, read with `git show
+7c5dade3:<path>`, compared byte for byte (sha256) against its source —
+all 5 copies matched exactly.
 
-G2 THE CLAIM — read with `git show 7705b3a0:<path>`, each equal to the
-reviewer's simulation:
+G2 THE RECORDS, THE BUILT STATE AND THE CONSOLIDATION — read with `git
+show <commit>:<path>`, each equal to the reviewer's simulation:
 ```
-.agent/live_review.md    298850 bytes  efac3d878218f508cc4839a3530768df3db611e03459fd2bd31c62939e1bc659  MATCH
-docs/roadmap/STATUS.md    49391 bytes  3edb355e785edfcaa5f8f28d99a3ecc9156d1ee60389bb7bb0526e1baecf8088  MATCH
-.agent/decisions.md     1973311 bytes  37396126bb4586394beb38842a81ff7ed62368ab23b6765ae5b68169cf5b31c1  MATCH
-.agent/plan.md              1036 bytes f953dc1eac281536142c677d03a19baf389f860e5828608731b410664b7024be  MATCH
-.agent/context.md           1820 bytes 884f577e6f16f42ead9a69d8ab0a2b7ab4a47c315bd0a072519ab4496970cfb1  MATCH
+C2 .agent/live_review.md               301033 bytes  15b7f900357f4671f692ee50635dff8f1d384abba33ceefaeca0ea2e51203dca  MATCH
+C2 .agent/prose_slips.md               366215 bytes  f6bfb33a2e617108cb382fc296efaad6d377b30922263aad4e2e38d70633e269  MATCH
+C2 .agent/plan.md                          946 bytes  81741bb4532f7165071ad249b07714307f684a418e4cbf2c594aefbcbcbc7743  MATCH
+C3 docs/agents/planner_reviewer_prompt.md 100146 bytes  b6453671c3546020fe125eca8a6d5706e690ac8af954d76fe98483fcb8737367  MATCH
+C3 docs/roadmap/features/T2_F267.md         9962 bytes  8dee510f919cfc1cdab98453e51e1c2b00f0c045f6a4da19d4631db06f876768  MATCH
+C4 .agent/selfuse_f267/result.txt            274 bytes  8bc6b06e499229bc6aaca61d2658d6424abaa894841318da0bf9fd3730bf73b6  MATCH
 ```
+Among the lines C2's diff adds to `.agent/live_review.md`, the count of
+those beginning `Gate: F267 R1 — `: 1 — matches the reviewer's reading.
 `open_finding_ids` (scripts/rotate_live_review.py) over
-`.agent/live_review.md`'s text: at `9f06c509` -> `{R-0499, R-0950,
-R-1008, R-1046}` (4); at `7705b3a0` (C2) -> `{R-0499, R-0950, R-1008,
-R-1046}` (4); set difference in both directions = `{}` — matches the
-reviewer's reading of 4 and 4, both differences empty. F267's STATUS
-line at C2, read back in full: `- [~] F267 — List commands v2 completion
-— sort/filter/limit for the remaining nine commands` — matches exactly.
-`git diff --name-only 3d9ef9ff 7705b3a0`: `.agent/context.md`,
-`.agent/decisions.md`, `.agent/live_review.md`, `.agent/plan.md`,
-`docs/roadmap/STATUS.md` — exactly the five named paths, nothing else.
+`.agent/live_review.md`'s text: at `0bef1987` -> `{R-0499, R-0950,
+R-1008, R-1046}` (4); at `e7063127` (C2) -> the same 4; set difference in
+both directions = `{}` — matches the reviewer's reading of 4 and 4, both
+differences empty. `live_checklist_items`
+(packages/orchestration/block_lint.py) over
+`docs/agents/planner_reviewer_prompt.md`: 34 item numbers at `0bef1987`,
+the same 34 numbers at `158553d6` (C3) — matches the reviewer's reading.
+`git diff --name-only` between consecutive commits from C1 to C4 named
+exactly the paths each commit lists (verified per commit; see Commits
+table above).
 
-G3 THE TESTS ON DISK — at C3 (`632e9f49`),
-`tests/cli/test_list_commands_everywhere.py` read with `git show
-632e9f49:<path>`: 7077 bytes, sha256
-`e7e0677af6469ae62495dc844da95a8637b90ed6d1718607f093134eb9fa6e32` —
-matches. `git diff --name-only 7705b3a0 632e9f49`: exactly
-`tests/cli/test_list_commands_everywhere.py`, nothing else.
-
-G4 THE SELECTION — `bash .remedy-wt/f267-r1-scratch/g4.sh
-/home/decodeux/Repos/remedy`, serially, in the primary checkout at C3:
+G3 THE LINTER ON THIS BLOCK — at C4, in the primary checkout:
+`python3 -m apps.cli.main integrity block .remedy-wt/f267-r2-block.md`:
 ```
-1028 passed, 1 skipped in 134.08s (0:02:14)
-REAL_EXIT=0
-All checks passed!
-RUFF_EXIT=0
-{"check_count": 6, "checks": [{"message": "handlers=150", "name": "handler_import", "status": "pass"}, {"message": "last Gate verdict PASS", "name": "live_review_verdict", "status": "pass"}, {"message": "unchecked=0, context_complete=False", "name": "plan_consistency", "status": "pass"}, {"message": "untracked=0, relevant=0", "name": "relevant_untracked", "status": "pass"}, {"message": "no reviewer scratch, evidence dir or archive at the root", "name": "repo_root_hygiene", "status": "pass"}, {"message": "no open blocker/high findings", "name": "high_blockers_open", "status": "pass"}], "fail_count": 0, "ok": true, "passed": true, "schema_version": 1, "version": 1}
-INTEGRITY_EXIT=0
-```
-pytest read `1028 passed, 1 skipped` at exit 0 (reviewer's sim read
-`1026 passed, 3 skipped`; totals agree at 1029 both ways — the block's
-own caveat anticipates this exact split: the primary checkout carries
-the UI toolchain a worktree lacks, and this tree carries the block copy
-the sim lacked). Ruff at exit 0. All six integrity checks `pass` at
-`fail_count` 0 with `handlers=150` — matches the reviewer's reading in
-full.
-
-G5 THE RED PROOFS — `git worktree add --detach .remedy-wt/f267-r1-mut
-632e9f49` then `python3 -B .remedy-wt/f267-r1-payloads/mutations.py
-.remedy-wt/f267-r1-mut`:
-```
-control_before REAL_EXIT=0
-44 passed in 1.70s
-m1_change_list_ignores_sort FROM count in apps/cli/commands/change.py: 1
-m1_change_list_ignores_sort REAL_EXIT=1
-2 failed, 42 passed in 1.48s
-m1_change_list_ignores_sort restored byte-identical: True
-m2_decision_list_ignores_sort FROM count in apps/cli/commands/decision.py: 1
-m2_decision_list_ignores_sort REAL_EXIT=1
-2 failed, 42 passed in 1.49s
-m2_decision_list_ignores_sort restored byte-identical: True
-m3_mission_list_ignores_sort FROM count in apps/cli/commands/mission_cmd.py: 1
-m3_mission_list_ignores_sort REAL_EXIT=1
-2 failed, 42 passed in 1.49s
-m3_mission_list_ignores_sort restored byte-identical: True
-m4_config_list_ignores_sort FROM count in apps/cli/commands/config_cmd.py: 1
-m4_config_list_ignores_sort REAL_EXIT=1
-2 failed, 42 passed in 1.49s
-m4_config_list_ignores_sort restored byte-identical: True
-m5_run_list_has_no_date FROM count in apps/cli/commands/do_cmd.py: 1
-m5_run_list_has_no_date REAL_EXIT=1
-2 failed, 42 passed in 1.49s
-m5_run_list_has_no_date restored byte-identical: True
-m6_a_relative_bound_points_forward FROM count in packages/orchestration/list_options.py: 1
-m6_a_relative_bound_points_forward REAL_EXIT=1
-2 failed, 42 passed in 1.49s
-m6_a_relative_bound_points_forward restored byte-identical: True
-control_after REAL_EXIT=0
-44 passed in 1.47s
+[OK] item 1 (size): 202 lines, limit 400
+[OK] item 3 (cap-bounded replacements): plan.md at 29 lines
+[OK] item 10 (open set recomputed): the block states no open-findings count
+[OK] item 24 (gate paths resolve): 9 paths named in the block's commands, every one resolves
+[OK] item 30 (new ids searched first): the block registers no finding id
+[OK] item 31 (gates before the text): G1 to G4 before C5
+[OK] item 37 (no unmeasured runs): no line is a run of one repeated character
+All 7 checkable items pass.
 REAL_EXIT=0
 ```
-Matches the reviewer's reading exactly: control_before `44 passed` at
-exit 0; m1-m6 each `2 failed` at exit 1; control_after `44 passed` at
-exit 0; every `restored byte-identical` line True. Then
-`git worktree remove --force .remedy-wt/f267-r1-mut` (exit 0),
-`git worktree prune` (exit 0); `git worktree list` back to the 6
-expected names (primary checkout, `f267-r1-dry`, `f267-r1-sim`, four
-`job-*` worktrees).
+
+G4 THE TESTS AND THE TREE — at C4, in the primary checkout, serially:
+```
+534 passed, 1 skipped in 56.43s
+REAL_EXIT=0
+```
+Matches the reviewer's reading exactly (the block's own caveat about a
+possible extra count from the block-copy parametrization did not
+materialize). Then C4's four self-use readings (see below). Then
+`python3 -m apps.cli.main integrity check --json`: all six checks
+`pass` at `fail_count` 0, `handlers=150`. Then `git status --porcelain`:
+empty, no untracked file.
+
+C4 self-use readings (`python3 .remedy-wt/f267-r2-scratch/selfuse.py
+/home/decodeux/Repos/remedy`):
+```
+next_self_use_item() before: None
+generate_and_append_if_empty(): None
+next_self_use_item() after: None
+git status --porcelain: ''
+```
+All four match the reviewer's reading (`None`, `None`, `None`, `''`)
+exactly, so `.agent/selfuse_f267/result.txt` was copied and committed per
+the block's instruction.
+
+G5 THE INTEGRATION GATE — UI build's last line `✓ built in 1.44s`, real
+exit code 0; `git status --porcelain` after it: empty. Full suite
+(`python3 -m pytest -n auto -q`, log at
+`.remedy-wt/f267-r2-worker/full-suite.log`): real exit code 0, summary
+line `18945 passed, 20 skipped, 1 warning in 224.69s (0:03:44)`, zero
+`FAILED`/`ERROR` lines in the log — bad node ids: NONE. Neither
+`tests/orchestration/test_import_reachability.py` nor
+`tests/test_no_orphan_modules.py` holds a bad node (closure precondition
+7 satisfied); both ran clean inside the all-green suite.
 
 (G6 — the push and the final `git log`/status/worktree/PR-list readings
 — is reported in the reply, not here, per the block's own instruction.)
 
 ## Authored-text proofs
 
-Block (`.agent/authored/f267-r1-block.md`), `f267-r1-claim.diff`,
-`f267-r1-context.md`, `f267-r1-plan.md`, `f267-r1-mutations.py` and
-`f267-r1-test_list_commands_everywhere.py` copies: each read back with
-`git show <commit>:<path>` and compared against the payload table's own
-reading — all 6 matched byte for byte (see G1 above). `claim.diff` was
-applied with `git apply` (never retyped), preceded by a real
-`git apply --check` at exit 0 and followed by the real `git apply` at
-exit 0. `plan.md` and `context.md` were each copied whole with
-`shutil.copyfile` into `.agent/plan.md` and `.agent/context.md`, never
-retyped, never edited. `test_list_commands_everywhere.py` was copied
-whole with `shutil.copyfile` into
-`tests/cli/test_list_commands_everywhere.py`, never retyped, never
-edited. `mutations.py` is a TOOL run for G5 directly from
-`.remedy-wt/f267-r1-payloads/` against the C3 worktree, never applied to
-any tracked file; its `.agent/authored/` copy is a record only.
+`f267-r2-block.md`, `f267-r2-records.diff`, `f267-r2-plan.md`,
+`f267-r2-product.diff` and `f267-r2-selfuse_result.txt` copies: each read
+back with `git show 7c5dade3:<path>` and compared against the payload
+table's own reading — all 5 matched byte for byte (see G1 above).
+`records.diff` and `product.diff` were each applied with `git apply`
+(never retyped), preceded by a real `git apply --check` at exit 0 and
+followed by the real `git apply` at exit 0. `plan.md` was copied whole
+with `shutil.copyfile` into `.agent/plan.md`, never retyped, never
+edited. `selfuse_result.txt` was copied whole with `shutil.copyfile` into
+the new `.agent/selfuse_f267/result.txt`, never retyped, never edited,
+and only after C4's four readings were confirmed to equal the block's
+stated ones.
 
 ## Deviations & assumptions
 
-1. `.remedy-wt/f267-r1-worker/` did not exist on disk when it was first
-   needed (for the C1a copy script); created it with `mkdir -p` before
-   use, exactly as the block's own directory list anticipates ("create
-   it if absent"). Gitignored, untracked, no effect on the tracked path
-   set.
-2. G4's pytest summary (`1028 passed, 1 skipped`) differs from the
-   reviewer's sim reading (`1026 passed, 3 skipped`) in the split between
-   passed and skipped, though both total 1029. This is not an
-   unanticipated deviation: the block's own G4 text names both causes in
-   advance — the primary checkout carries the UI toolchain a worktree
-   lacks (a skip may pass there), and this tree carries the block copy
-   the sim lacked (a test parametrized over saved blocks may count once
-   more). Ruff and the integrity checks matched the reviewer's reading
-   exactly.
-
-No other deviation. The bundle ran in the block's declared order: BEFORE
-ANYTHING ELSE, C1a, C1b, C2, C3, G1 through G5, then this handback and
-C4 — with no extra, dropped or reordered commit or action.
+None. The bundle ran in the block's declared order: BEFORE ANYTHING
+ELSE, C1, C2, C3, C4, G1 through G4, then C5 (UI build, full suite,
+transcript, this handback) — with no extra, dropped or reordered commit
+or action. The full suite's possible extra-count caveat the block names
+for G4 did not occur (534 passed, 1 skipped matched exactly), and the
+full suite in C5 came back fully green rather than red, so constraint 4's
+one exception (commit a red suite's transcript) did not apply.
 
 ## Item-status table
 
 | Item | Status | Reason |
 |---|---|---|
-| C1a | done | |
-| C1b | done | |
+| C1 | done | |
 | C2 | done | |
 | C3 | done | |
-| C4 | done | this commit |
+| C4 | done | |
+| C5 | done | this commit |
 | G1 | done | |
 | G2 | done | |
 | G3 | done | |
 | G4 | done | |
-| G5 | done | |
+| G5 | done | full suite green, transcript committed in C5 |
 | G6 | done | reported in the reply, not the handback, per the block's own instruction |
 | Push | done | reported in the reply, not the handback, per the block's own G6 instruction |
 
 ## Next
 
 Phase 1 rule 1: read `.agent/STOP` from disk. Then the review of round
-1. Then the closure sequence's first half — the Built State, the
-checklist consolidation, the self-use track and the one full suite.
-Open findings: 4. Operator questions: 1.
+2. Then the closure's second half — the booking of round 2, any repair
+the suite requires, the evidence job and the review package. Then the
+closing round. Open findings: 4. Operator questions: 1.
