@@ -1,0 +1,319 @@
+diff --git a/apps/ui/src/components/panels/ActivityFeedCard.tsx b/apps/ui/src/components/panels/ActivityFeedCard.tsx
+index 83bce4b2..87162c8a 100644
+--- a/apps/ui/src/components/panels/ActivityFeedCard.tsx
++++ b/apps/ui/src/components/panels/ActivityFeedCard.tsx
+@@ -4,6 +4,7 @@ import type { FeedRow } from "../../api/feedRow";
+ import type { FocusableTask } from "../../api/feedFocus";
+ import { nodeIdForFeedRow } from "../../api/feedFocus";
+ import { FEED_SCROLL_START, nextFeedScroll, shouldFollowNewest, shouldShowNewRowsPill } from "../../api/feedScroll";
++import { STEERING_ENDED_REASON, sendSteeringMessage, steeringIsOpen } from "../../api/steeringSend";
+ import { BuilderGlyph, ReviewerGlyph, PersonGlyph, GearGlyph } from "../icons/RemedyGlyphs";
+ import { ChatInput } from "./ChatInput";
+ import styles from "./RightLivePanel.module.css";
+@@ -26,11 +27,12 @@ function formatTokenEstimate(tokens: number): string {
+  *  ring still holds BRAIN_RECENT_LIMIT and the timeline is still the archive. */
+ const LIVE_ROWS_SHOWN = 40;
+ 
+-/** The disabled steering input's honest reason, quoted from ux_spec.md
+- *  §11.3, which is binding for this surface. DECISION F021 D11 records why
+- *  this wording rather than the feature file's shorter paraphrase. */
+-const STEERING_DISABLED_REASON =
+-  "Steering arrives with a later feature — watching only for now.";
++/** The steering input's honest reason when the dashboard names no job or carries no
++ *  token: there is nothing to address a message to. DECISION F264 D3 retires the
++ *  ux_spec.md §11.3 sentence this replaced, because steering has now arrived, and the
++ *  design reference's assumption log records the new wording. */
++const STEERING_UNADDRESSED_REASON =
++  "Open a job's dashboard from its own link to steer it.";
+ 
+ /** The live half of the card: rows projected from the SSE stream, NEWEST
+  *  FIRST. Remedy deliberately does not merge these with the dashboard's REST
+@@ -131,16 +133,33 @@ function LiveFeed({ recent, recentDropped, tasks, onSelectNode }: {
+   );
+ }
+ 
+-export function ActivityFeedCard({ activity, recent, recentDropped, tasks, onSelectNode }: {
++export function ActivityFeedCard({ activity, recent, recentDropped, tasks, onSelectNode, jobId, serverToken, stage }: {
+   activity: RemedyActivityItem[];
+   recent?: readonly FeedRow[];
+   recentDropped?: number;
+   tasks?: readonly FocusableTask[];
+   onSelectNode?: (nodeId: string | null) => void;
++  jobId?: string;
++  serverToken?: string;
++  stage?: string;
+ }) {
+   const hasActivity = activity.length > 0;
+   const live = recent ?? [];
+ 
++  // ONE composer for both branches below, so the live feed and the pre-stream
++  // fallback can never disagree about whether this job can be steered. It sends
++  // only through `sendSteeringMessage`, the one sequence that reaches the door.
++  const target = { jobId: jobId ?? "", serverToken: serverToken ?? "" };
++  const addressed = target.jobId !== "" && target.serverToken !== "";
++  const open = steeringIsOpen(stage ?? "");
++  const composer = (
++    <ChatInput
++      disabled={!addressed || !open}
++      reason={addressed ? STEERING_ENDED_REASON : STEERING_UNADDRESSED_REASON}
++      onSend={(text) => sendSteeringMessage(target, text)}
++    />
++  );
++
+   // The live path wins whenever the stream has produced a row. The dashboard
+   // list below is the pre-stream fallback, not a second source of truth.
+   if (live.length > 0) {
+@@ -149,7 +168,7 @@ export function ActivityFeedCard({ activity, recent, recentDropped, tasks, onSel
+         <header className={styles.cardHeader}><h2>Activity</h2></header>
+         <LiveFeed recent={live} recentDropped={recentDropped ?? 0}
+           tasks={tasks ?? []} onSelectNode={onSelectNode ?? (() => {})} />
+-        <ChatInput disabled reason={STEERING_DISABLED_REASON} />
++        {composer}
+       </section>
+     );
+   }
+@@ -178,7 +197,7 @@ export function ActivityFeedCard({ activity, recent, recentDropped, tasks, onSel
+           <p className={styles.emptyState}>No activity yet. Events will appear here as the agent works.</p>
+         )}
+       </div>
+-      <ChatInput disabled reason={STEERING_DISABLED_REASON} />
++      {composer}
+     </section>
+   );
+ }
+diff --git a/apps/ui/src/components/panels/ChatInput.tsx b/apps/ui/src/components/panels/ChatInput.tsx
+index bcca1544..2e7695dd 100644
+--- a/apps/ui/src/components/panels/ChatInput.tsx
++++ b/apps/ui/src/components/panels/ChatInput.tsx
+@@ -1,47 +1,83 @@
++import { useState } from "react";
++import type { DecisionOutcomeMessage, DecisionOutcomeTone } from "../../api/decisionOutcome";
+ import styles from "./RightLivePanel.module.css";
+ 
+-/** The steering input, rendered but DISABLED until its backing feature exists.
+- *
+- *  Remedy deliberately ships this VISIBLE AND INERT rather than hiding it.
+- *  ux_spec.md §11.3 places it at the bottom of the activity card, and the
+- *  design reference's rule for a not-yet feature is visible honesty over
+- *  hidden UI: a reader who can see the box and read why it is off learns
+- *  something a missing box would have hidden.
++/** The tone of the last send, as the class the outcome line wears. */
++const OUTCOME_CLASS: Record<DecisionOutcomeTone, string> = {
++  ok: styles.chatOutcomeOk,
++  warn: styles.chatOutcomeWarn,
++  error: styles.chatOutcomeError,
++};
++
++/** The steering input (T5_F264, DECISION F264 D3), where ux_spec.md §11.3 places it:
++ *  the bottom of the activity card.
+  *
+- *  `onSend` is declared and deliberately NOT destructured. component_spec.md
+- *  ("SteeringInput / ChatInput") fixes the props so that enabling this later
+- *  is a change here and not at every call site, but this component cannot
+- *  honestly call a handler while it has no text to send — it holds no state,
+- *  because a disabled input has nothing to hold. F030 adds the state and the
+- *  call together; `noUnusedLocals` is why the binding is absent rather than
+- *  unused. */
+-export function ChatInput({ disabled, reason }: {
++ *  It is LIVE only when the card hands it an `onSend` and does not disable it; a
++ *  disabled input stays visible with its honest reason, because the design
++ *  reference's rule is visible honesty over hidden UI. Every rule about what may be
++ *  sent and what a reply means lives in `api/steeringSend.ts`; this component holds
++ *  only what the operator typed, whether a send is in flight, and the last sentence.
++ *  The text is cleared only after the job ACCEPTED it, so a refused message is
++ *  never lost. */
++export function ChatInput({ disabled, reason, onSend }: {
+   disabled: boolean;
+   reason: string;
+-  onSend?: (text: string) => void;
++  onSend?: (text: string) => Promise<DecisionOutcomeMessage>;
+ }) {
++  const [text, setText] = useState("");
++  const [sending, setSending] = useState(false);
++  const [outcome, setOutcome] = useState<DecisionOutcomeMessage | null>(null);
++  const inert = disabled || onSend === undefined;
++  const busy = inert || sending;
++
++  const send = async () => {
++    if (busy || onSend === undefined || text.trim() === "") {
++      return;
++    }
++    setSending(true);
++    const answer = await onSend(text);
++    setSending(false);
++    setOutcome(answer);
++    if (answer.tone === "ok") {
++      setText("");
++    }
++  };
++
+   return (
+     <div className={styles.chatInputRow}>
+       <input
+         className={styles.chatInput}
+         type="text"
+         placeholder="Ask something…"
+-        disabled={disabled}
+-        title={disabled ? reason : undefined}
+-        aria-describedby={disabled ? "remedy-chat-input-reason" : undefined}
++        value={text}
++        onChange={(event) => setText(event.target.value)}
++        onKeyDown={(event) => {
++          if (event.key === "Enter") {
++            void send();
++          }
++        }}
++        disabled={inert}
++        title={inert ? reason : undefined}
++        aria-describedby={inert ? "remedy-chat-input-reason" : undefined}
+       />
+       <button
+         type="button"
+         className={styles.chatSend}
+-        disabled={disabled}
+-        title={disabled ? reason : undefined}
++        disabled={busy}
++        title={inert ? reason : undefined}
+         aria-label="Send"
++        onClick={() => void send()}
+       >
+         ↑
+       </button>
+-      {disabled ? (
++      {inert ? (
+         <p id="remedy-chat-input-reason" className={styles.chatInputReason}>{reason}</p>
+-      ) : null}
++      ) : (
++        <p className={outcome ? `${styles.chatOutcome} ${OUTCOME_CLASS[outcome.tone]}` : styles.chatOutcome}
++          aria-live="polite">
++          {outcome ? outcome.sentence : ""}
++        </p>
++      )}
+     </div>
+   );
+ }
+diff --git a/apps/ui/src/components/panels/RightLivePanel.module.css b/apps/ui/src/components/panels/RightLivePanel.module.css
+index f7c606ea..59c4ce29 100644
+--- a/apps/ui/src/components/panels/RightLivePanel.module.css
++++ b/apps/ui/src/components/panels/RightLivePanel.module.css
+@@ -121,7 +121,19 @@
+ .chatSend { width: 36px; height: 36px; border-radius: 12px; border: 0;
+   background: var(--remedy-blue); color: #fff; font-size: 15px; cursor: pointer; }
+ .chatSend:disabled { cursor: not-allowed; opacity: 0.5; }
++/* Live since F264 (DECISION F264 D3): ux_spec.md §8's primary-pill states. The focus
++   ring takes --remedy-blue-strong because the spec's --remedy-focus is not in the
++   shipped tokens sheet; the assumption log records the substitution. */
++.chatSend:not(:disabled):hover { background: var(--remedy-blue-strong); }
++.chatSend:not(:disabled):active { transform: translateY(1px); }
++.chatSend:focus-visible, .chatInput:focus-visible {
++  outline: 2px solid var(--remedy-blue-strong); outline-offset: 2px; }
+ .chatInputReason { flex-basis: 100%; margin: 0; font-size: 11px; color: var(--remedy-ink-soft); }
++/* What became of the last message, in the decision inbox's outcome colours. */
++.chatOutcome { flex-basis: 100%; margin: 0; font-size: 12px; line-height: 1.45; }
++.chatOutcomeOk { color: var(--remedy-green-500); }
++.chatOutcomeWarn { color: var(--remedy-orange-400); }
++.chatOutcomeError { color: var(--remedy-red-500); }
+ .activityItem .actorIcon { width: 30px; height: 30px; }
+ .activityMeta { display: flex; align-items: baseline; gap: 8px; }
+ .activityMeta strong { font-size: 13px; color: var(--remedy-ink-strong); }
+diff --git a/apps/ui/src/components/panels/RightLivePanel.tsx b/apps/ui/src/components/panels/RightLivePanel.tsx
+index a0a583ad..9a5f4288 100644
+--- a/apps/ui/src/components/panels/RightLivePanel.tsx
++++ b/apps/ui/src/components/panels/RightLivePanel.tsx
+@@ -24,7 +24,7 @@ export function RightLivePanel({ dashboard, serverToken, onSelectNode, streamSta
+           stream is opened against (DECISION F008 D3), never one re-read from
+           the URL beside it. */}
+       <DecisionInboxCard decisions={orderDecisionInbox(dashboard.decisionInbox)} tasks={dashboard.tasks} jobId={dashboard.jobId} serverToken={serverToken} onSelectNode={onSelectNode} />
+-      <ActivityFeedCard activity={dashboard.activity} recent={recent} recentDropped={recentDropped} tasks={dashboard.tasks} onSelectNode={onSelectNode} />
++      <ActivityFeedCard activity={dashboard.activity} recent={recent} recentDropped={recentDropped} tasks={dashboard.tasks} onSelectNode={onSelectNode} jobId={dashboard.jobId} serverToken={serverToken} stage={dashboard.live.stage} />
+       <TaskChecklistCard tasks={dashboard.tasks} jobId={dashboard.jobId} onSelectNode={onSelectNode} />
+       <button
+         type="button"
+diff --git a/docs/ui/design_reference/assumption_log.md b/docs/ui/design_reference/assumption_log.md
+index 8ef64569..90bb00d3 100644
+--- a/docs/ui/design_reference/assumption_log.md
++++ b/docs/ui/design_reference/assumption_log.md
+@@ -27,4 +27,8 @@ Column rules:
+ 
+ ## Entries
+ 
+-None yet.
++| Date | Feature | Surface | Reference says | Shipped instead | Technical reason | Review record |
++|------|---------|---------|----------------|-----------------|------------------|---------------|
++| 2026-09-24 | F264 | `ActivityFeedCard.tsx` | `ux_spec.md` §11.3: the input is disabled until steering exists, with the tooltip "Steering arrives with a later feature — watching only for now." | The input is live for a job that can still run. It stays disabled, with a visible reason, in two cases: no job link ("Open a job's dashboard from its own link to steer it.") and an ended job ("This job has ended, so it takes no more steering."). | Steering exists from F264 on, so the reference's sentence became false. The reference gives no wording for the two cases where the input must still be disabled. | DECISION F264 D3 |
++| 2026-09-24 | F264 | `ChatInput.tsx` | `ux_spec.md` §11.3 and `component_spec.md` "SteeringInput / ChatInput" do not say what the operator sees after sending. | One line under the input, announced to screen readers, saying what happened to the message. It uses the decision inbox's outcome colours. The typed text is cleared only after the job accepts it. | Without feedback, an operator cannot tell whether the job recorded the message, and is likely to send it again. The reference does not cover this state. | DECISION F264 D3 |
++| 2026-09-24 | F264 | `RightLivePanel.module.css` | `ux_spec.md` §14: a 2px `--remedy-focus` outer ring. | A 2px ring in `--remedy-blue-strong`, the colour the other focus rings in this stylesheet already use. | `--remedy-focus` is not defined in the shipped tokens sheet. The guard `TestEveryCustomPropertyResolves` fails on any custom property that is not defined. | DECISION F264 D3 |
+diff --git a/tests/ui_contracts/test_brain_stream_ring.py b/tests/ui_contracts/test_brain_stream_ring.py
+index bb3e9f7e..b17c9d7b 100644
+--- a/tests/ui_contracts/test_brain_stream_ring.py
++++ b/tests/ui_contracts/test_brain_stream_ring.py
+@@ -626,34 +626,34 @@ class TestAFeedRowJumpsToItsNode:
+         )
+ 
+ 
+-class TestTheSteeringInputIsHonestlyDisabled:
+-    """The steering input ships VISIBLE and INERT until F030 gives it a back
+-    end. ux_spec.md §11.3 is binding for this surface and fixes both the
+-    placement and the sentence; DECISION F021 D11 records why that wording
+-    rather than the feature file's shorter paraphrase."""
++class TestTheSteeringInputIsHonest:
++    """The steering input is LIVE since F264 and HONEST in every state
++    (DECISION F264 D3). ux_spec.md §11.3 fixes its placement; the assumption log
++    records the two disabled reasons that replaced the pre-F264 sentence."""
+ 
+-    REASON = "Steering arrives with a later feature — watching only for now."
++    RETIRED_REASON = "Steering arrives with a later feature — watching only for now."
++    UNADDRESSED_REASON = "Open a job's dashboard from its own link to steer it."
+ 
+     def test_the_component_exists_where_the_spec_puts_it(self):
+         assert CHAT_INPUT.exists(), (
+             "component_spec.md names components/panels/ChatInput.tsx so that "
+-            "enabling steering later is a change in one file"
++            "enabling steering is a change in one file"
+         )
+ 
+-    def test_the_input_and_its_button_are_both_disabled(self):
++    def test_the_field_and_the_button_share_one_inert_rule(self):
+         code = strip_ts_comments(CHAT_INPUT.read_text())
+-        # Two controls, so two disabled attributes: an enabled send button
++        # The field is inert when the card disables it or hands it no sender, and
++        # the button is additionally held while a send is in flight: a live button
+         # beside a dead field would still promise something it cannot do.
+-        assert code.count("disabled={disabled}") == 2, (
+-            "the field and the send button are both inert until F030"
+-        )
++        assert "const inert = disabled || onSend === undefined;" in code
++        assert "disabled={inert}" in code
++        assert "disabled={busy}" in code
+ 
+-    def test_the_reason_is_the_binding_sentence(self):
++    def test_the_retired_sentence_is_gone_and_the_new_reasons_are_shown(self):
+         card = strip_ts_comments(CARD.read_text())
+-        assert self.REASON in card, (
+-            "ux_spec.md §11.3 fixes this sentence; a paraphrase would make the "
+-            "design reference and the shipped surface disagree"
+-        )
++        assert self.RETIRED_REASON not in card, "steering has arrived; the old sentence lies"
++        assert self.UNADDRESSED_REASON in card
++        assert "STEERING_ENDED_REASON" in card
+ 
+     def test_the_reason_reaches_the_reader_and_not_only_the_tooltip(self):
+         code = strip_ts_comments(CHAT_INPUT.read_text())
+@@ -662,11 +662,13 @@ class TestTheSteeringInputIsHonestlyDisabled:
+         assert "aria-describedby" in code, (
+             "the honest reason is announced, not only hovered"
+         )
++        assert 'aria-live="polite"' in code, "what became of a message is announced"
+ 
+-    def test_the_card_renders_it(self):
++    def test_the_card_renders_one_composer_in_both_branches(self):
+         card = strip_ts_comments(CARD.read_text())
+-        # Both branches: the live feed and the pre-stream fallback. A reader
+-        # who has not started a job must see the same honest surface.
+-        assert card.count("<ChatInput disabled") == 2, (
++        # Both branches: the live feed and the pre-stream fallback. One composer
++        # element, rendered in each, so the two can never disagree.
++        assert card.count("<ChatInput") == 1, "one composer, not one per branch"
++        assert card.count("{composer}") == 2, (
+             "the input belongs to the card, not to one of its two branches"
+         )
