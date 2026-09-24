@@ -13,17 +13,15 @@ the snapshot path without ghosts (`docs/roadmap/features/T5_F019.md`).
 
 ## Current Step
 
-ROUND 7, THE CLOSURE SEQUENCE'S FIRST HALF: book round 6's PASS, write the
-Built State, consolidate the checklist, record the self-use track's answer,
-and run this feature's one full suite. T001, T002 and T003 are built.
+ROUND 8, THE CLOSURE SEQUENCE'S EVIDENCE HALF: book round 7's PASS, whose
+one full suite is green, then build the evidence bundle against the fork
+point and the fresh review package. T001, T002 and T003 are built.
 
 ## Next Steps
 
-1. Any repair the full suite requires, under operator amendment
-   amend0917-throughput rule 2.
-2. The evidence job and the review package.
-3. The closing round: the ledger rotation, the STATUS line, the README
-   counters and the pull request.
+1. The closing round: the booking of round 8, the ledger rotation, the
+   STATUS line with the README counters in the same commit, and the pull
+   request.
 
 ## Risks
 
