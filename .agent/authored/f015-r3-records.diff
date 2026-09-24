@@ -1,0 +1,55 @@
+diff --git a/.agent/decisions.md b/.agent/decisions.md
+index b2c1c061..ab70a4cb 100644
+--- a/.agent/decisions.md
++++ b/.agent/decisions.md
+@@ -19989,3 +19989,40 @@ another name.
+ HOW TO REVERSE: delete `apps/cli/commands/job_plan_cmd.py`, its catalog entries, its guide rows,
+ allowlist line and registration, and `tests/cli/test_job_plan_cmd.py`; point both approval doors
+ back at `resolve_task_plan_approval`; delete `consume_plan_approval`, its tests and this paragraph.
++
++## DECISION F015 D3 — the write door exposes the six `job.plan-*` edits, each run through `edit_plan` with a required `expected_version`, and answers a refused edit with its reason (2026-09-24)
++
++CONTEXT: T5_F015.md orders T002's channel wiring: each edit command reachable through the
++single write channel with its arguments checked, an approved or running plan refused with the
++state named, and a stale edit given a conflict with the current revision. Measured at
++`1a95e306`: the write door `_handle_command_submission` in `packages/orchestration/ui_server.py`
++admits only `UI_EXPOSED_COMMANDS`, checks argument shapes by hand in `_read_command_payload`,
++dispatches by an if-chain, answers a declined effect 409 with a fixed message and no detail
++(DECISION F009 D22), and pins its imports and methods in `TestCommandDoorImportGuard`. The six
++catalog ids `job.plan-edit-task` to `job.plan-edit-acceptance` exist since DECISION F015 D2.
++
++CHOSEN: (1) The six ids join `UI_EXPOSED_COMMANDS`; `PLAN_EDIT_COMMAND_IDS` in `ui_server.py`
++maps each to its backend command, and `_dispatch_plan_edit` calls `edit_plan` with `args` less
++`expected_version`, the backend's own argument object, and the request's token fingerprint as
++the editor, the handle `commands_audit.jsonl` already records. (2) `args.expected_version` must
++be a whole number of at least 1, or the request is a 400 on field `expected_version`, audited
++`rejected_shape`, before the plan is read. (3) `plan_edit_refusal` maps each refusal code:
++`version_conflict` is 409 `rejected_state` carrying `current_version`; `invalid_args`,
++`unknown_task` and `unknown_command` are 400 on field `args`, audited `rejected_shape`, carrying
++the backend's `detail`; `invalid_plan` is 409 `rejected_state` carrying `detail` and
++`current_version`; `plan_not_editable` and `no_task_plan` are 409 `rejected_state` carrying
++`detail`; anything else, a lock timeout included, is D18 clause four's 500 `rejected_effect`
++with no detail. (4) An accepted edit answers 200 with the command, `accepted`, the new version
++and the task ids, and runs D18's audit, nonce publication and event writes unchanged, so a
++retried nonce replays the edit and never applies it twice.
++
++ALTERNATIVES: withholding the refusal `detail` as D22 does for the other effects, rejected
++because a person editing a plan cannot repair an edit whose reason is withheld, and the detail
++names only the plan's own content and the rule broken, never a path or a control file; letting
++`expected_version` default to the stored version, rejected for DECISION F015 D2's reason, which
++is last-write-wins by another name; a 422 for an edit the planner's checks refuse, rejected
++because the door's closed vocabulary answers every declined effect 409.
++
++HOW TO REVERSE: delete the six ids from `UI_EXPOSED_COMMANDS`, `PLAN_EDIT_COMMAND_IDS`, the
++four plan messages, `plan_edit_refusal`, the `expected_version` shape check, the dispatch
++branch and `_dispatch_plan_edit`, their guard entries and tests, and this paragraph.
+diff --git a/.agent/live_review.md b/.agent/live_review.md
+index cd15248a..ab1068ed 100644
+--- a/.agent/live_review.md
++++ b/.agent/live_review.md
+@@ -437,3 +437,5 @@ Gate: F267 R2 — the F267 round 2 entry: the booking of round 1 and the closure
+ Gate: F267 R3 — the F267 round 3 entry: the booking of round 2 and the closure sequence's evidence half, the evidence bundle built against the fork point and the fresh review package. VERDICT PASS ON ALL SIX GATES, NO DEVIATION DECLARED. Re-derived over `37febd3a`..`74346eb2` by the planner and reviewer of F267's first session, whose own runs produced every reading below. THE RANGE IS 3 COMMITS in the block's order C1, C2 and C3, at `4c7f2cce` 347, `8042aa50` 6 and `74346eb2` 172 insertions by `git show --numstat`, each under the 500-line cap, each single-parent and each carrying the ordered trailer; the handback commit `74346eb2` rewrote `.agent/handoff.md` alone at 172 insertions and 153 deletions, where the worker's reply said 239 and 220, a slip of the reply that left nothing wrong on disk. THE TRANSPORT PROOF IS TREE IDENTITY: `4c7f2cce` and `8042aa50` have the same tree ids as the reviewer's simulated C1 and C2, rebuilt from its originals under `.remedy-wt/` at `37febd3a`. THE BOOKING: the open set by distinct id reads 4 at `37febd3a` and at `8042aa50`, R-0499, R-0950, R-1008 and R-1046, and `8042aa50` adds exactly one line beginning `Gate: F267 R2 — `. THE ACCEPTED COMMIT, the one the STATUS line records, is `8042aa506c55b9ee7a2f3ed6d28a0d9f2b86dbbf`. THE BUNDLE, evidence job `f267r3e1001` under `.remedy-wt/f267-r3-evidence/`, was built against the fork point `9f06c5093ad487a7914dff3993f096e79a6492d7` with ancestry and plain counts equal at 12; its one verification run `vr-1047` selected 773 node ids from `--collect-only` over 16 test files, none unsafe, and read 773 passed, 0 failed and 0 skipped at exit 0 in the primary checkout, with an empty `validate_verification_tests` problem list and `is_valid_current_run` True. THE PACKAGE is `remedy-review-20260924-110023-READY_FOR_REVIEW.zip` in `/home/decodeux/Repos/remedy-history/zips`, whose SHA-256 the reviewer re-measured from the archived file as `66aa577c32cf0650a2fb42815ee20d58a78ac6f97ba836fa5536d345b11c42b7`; `testzip` answers None, and the `.review_zip_manifest.json` the reviewer read out of it names `package_status` READY_FOR_REVIEW, the fork point as base and `8042aa506c55b9ee7a2f3ed6d28a0d9f2b86dbbf` as head over 12 commits. `integrity check --json` reads all six checks `pass` at `fail_count` 0 at `74346eb2`, with the tree clean.
+ 
+ Gate: F015 R1 — the F015 round 1 entry: the claim, the re-head, DECISION F015 D1, and T001, the plan-editing backend with its tests. VERDICT PASS ON ALL SIX GATES, NO DEVIATION DECLARED. Re-derived over `fce49ce0`..`9bad6428` by the planner and reviewer of F015's first session, whose own runs produced every reading below. THE RANGE IS 8 COMMITS in the block's order C1a, C1b, C1c, C1d, C2, C3, C4 and C5, at `0bff88d7` 319, `95cf7044` 271, `0bb8dea2` 430, `eba11c78` 283, `864bdcef` 117, `ac02c6fc` 432, `9f711b94` 283 and `9bad6428` 217 insertions by `git show --numstat`, each under the 500-line cap, each single-parent and each carrying the ordered trailer. THE TRANSPORT PROOF IS FILE IDENTITY: every path the range touches other than the handback and the block copy reads byte-equal at `9bad6428` to the reviewer's simulated C4, rebuilt from its originals under `.remedy-wt/` at `fce49ce0`, and the block copy and the seven payload copies under `.agent/authored/` equal those originals byte for byte. THE CLAIM: F015's STATUS line reads `- [~] F015 — Interactive plan editing` at `864bdcef`, and the open set by distinct id reads 4 at `fce49ce0` and at `864bdcef`, R-0499, R-0950, R-1008 and R-1046. THE PRODUCT: `packages/orchestration/plan_editing.py` applies each of the six edit kinds to the stored plan as one locked transaction, revalidated by `TaskPlan` and `validate_deliverable_plan`, and the reviewer's run of the round's G4 script in the primary checkout at `9bad6428` read `990 passed, 1 skipped` at exit 0, ruff at exit 0, and all six `integrity check` checks `pass` at `fail_count` 0. THE RED PROOFS: the round's mutation tool, run by the reviewer over its simulated C4, whose production and test files are byte-equal to `9f711b94`'s, turned all fifteen mutations red at exit 1 between two unmutated controls of `36 passed` at exit 0, every file restored byte-identical; the worker's own run in a disposable worktree at `9f711b94` read the same counts. `git worktree list` after the round shows no worktree the round added, and the tree is clean.
++
++Gate: F015 R2 — the F015 round 2 entry: the booking of round 1, DECISION F015 D2, and T002's first half, the plan approval consumed under the plan-edit lock at both approval doors and the `job plan-*` commands. VERDICT PASS ON ALL SIX GATES, NO DEVIATION DECLARED. Re-derived over `9bad6428`..`1a95e306` by the planner and reviewer of F015's first session, whose own runs produced every reading below. THE RANGE IS 8 COMMITS in the block's order C1a, C1b, C1c, C1d, C2, C3, C4 and C5, at `e36cf77e` 321, `aee6d540` 313, `7aac886c` 459, `47acabe2` 395, `618998b8` 59, `716e31ab` 427, `88b8ec6a` 316 and `1a95e306` 187 insertions by `git show --numstat`, each under the 500-line cap, each single-parent and each carrying the ordered trailer. THE TRANSPORT PROOF IS FILE IDENTITY: every path the range touches other than the handback and the block copy reads byte-equal at `1a95e306` to the reviewer's simulated C4, rebuilt from its originals under `.remedy-wt/` at `9bad6428`, and the block copy and the eight payload copies under `.agent/authored/` equal those originals byte for byte. THE BOOKING: the open set by distinct id reads 4 at `9bad6428` and at `618998b8`, R-0499, R-0950, R-1008 and R-1046, and `618998b8` adds exactly one line beginning `Gate: F015 R1 — `. THE PRODUCT: both approval doors call `plan_editing.consume_plan_approval`, and `remedy job plan-show` and the six `job plan-*` edit commands wrap `edit_plan`; the reviewer's run of the round's G4 script in the primary checkout at `1a95e306` read `1484 passed, 1 skipped` at exit 0, ruff at exit 0, and all six `integrity check` checks `pass` at `fail_count` 0 with `handlers=157`. THE RED PROOFS: the round's mutation tool, run by the reviewer over its simulated C4, whose production and test files are byte-equal to `88b8ec6a`'s, turned all eleven mutations red at exit 1 between two unmutated controls of `81 passed` at exit 0, every file restored byte-identical; the worker's own run in a disposable worktree at `88b8ec6a` read the same counts. `git worktree list` after the round shows no worktree the round added, and the tree is clean.
