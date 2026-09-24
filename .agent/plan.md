@@ -12,19 +12,18 @@ distinct id, and the feature file lists every one under a slice.
 
 ## Current Step
 
-ROUND 11, the closure suite's first repair round: book round 10 and the
-resolutions of R-0662, R-0819 and R-0820; give each packer run of the
-one red node its own archive stamp, DECISION F282 D11; and run the full
-suite again, replacing the closure transcript.
+ROUND 12, the closure's evidence half: book round 11, whose repaired
+suite is green, then build the evidence bundle against the fork point
+and the fresh review package, recording its name, its SHA-256 and the
+directory it ends up in.
 
 ## Next Steps
 
-1. The evidence job and the review package over the repaired tree.
-2. The closing round: the ledger rotation, the ownership step for
+1. The closing round: the ledger rotation, the ownership step for
    R-0499, R-0950 and R-1008, the next paydown's registration, the
    STATUS line with the README counters, and the pull request.
 
 ## Risks
 
-A second full suite may list a node the first did not; the repair rule
-allows two more repair rounds before the xfail route.
+A package that does not read READY_FOR_REVIEW blocks the closure until
+its cause is repaired.
