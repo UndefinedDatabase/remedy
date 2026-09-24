@@ -20026,3 +20026,48 @@ because the door's closed vocabulary answers every declined effect 409.
 HOW TO REVERSE: delete the six ids from `UI_EXPOSED_COMMANDS`, `PLAN_EDIT_COMMAND_IDS`, the
 four plan messages, `plan_edit_refusal`, the `expected_version` shape check, the dispatch
 branch and `_dispatch_plan_edit`, their guard entries and tests, and this paragraph.
+
+## DECISION F015 D4 — an approval records the plan's content hash, a job refuses to start on any other plan, an edit keeps every task after the tasks it waits for, and an edited revision names its edits (2026-09-24)
+
+CONTEXT: T5_F015.md orders T003: the plan's content hash recorded at approval consumption and
+asserted by the executor at start, `plan.md` regeneration goldens, and an end-to-end run proving
+the executed task set is the edited plan. Measured at `e48fa989`: a plan becomes approved through
+`resolve_task_plan_approval`, which `consume_plan_approval` runs for both approval doors, and
+through the pure `auto_approve_task_plan`, which `do_sequence` and the orchestrator loop run
+unattended; `pingpong_job.run_job` refuses to start by setting `JOB_BLOCKED` and an `error`,
+persisting and returning, and it never checks the approval itself, which `remedy job run`
+does not check either; `run_job` runs `job.tasks` in list order and reads no `depends_on`, which
+only the mission executor's `dag_schedule` honours; `checkpoints.compute_content_hash` is the
+house sha256 over canonical JSON; and `render_plan_md` of an edited plan still says "the plan is
+used as generated".
+
+CHOSEN: (1) `job_plan.plan_content_hash(body)` is `compute_content_hash` over the stored plan's
+own fields, never its `_`-prefixed bookkeeping, and `_approved_plan_sha256` records it when
+`consume_plan_approval` approves and when `auto_approve_task_plan` approves; a rejection records
+nothing. (2) `job_plan.approved_plan_mismatch(job)` names why a job is not about to run the plan
+its approval covered: the stored plan no longer hashes to the record, or the job's plan-derived
+tasks are not that plan's tasks in its order; a task a run split off at run time has no plan id
+and is not counted, and a plan approved before the hash existed has nothing to compare and
+passes. `run_job` checks it at every start, before any workspace exists, and a mismatch blocks
+the job with `plan_changed_since_approval: <why>`, because every door that starts a job reaches
+`run_job`. (3) Because a job runs its tasks in plan order, `revalidate` refuses an edit that puts
+a task before a task it waits for, naming both; the scheduler is not touched. (4) An edited
+revision gains an `## Edits` section naming each edit's version, command and editor, and says
+"Normalization changed nothing." where an unedited plan says the plan is used as generated; an
+unedited plan renders byte for byte as before. The three revisions of the end-to-end edits are
+frozen as goldens under `tests/orchestration/fixtures/plan_editing/golden/`, with no regenerate
+switch.
+
+ALTERNATIVES: checking only the approval gate at start, rejected because the gate says a plan
+was approved and not which one; hashing `job.tasks`, rejected because a run-time split changes
+the list without changing the plan; letting the scheduler follow `depends_on` for jobs, rejected
+because executor scheduling is on the feature's Do-not-touch list; placing a merged task where
+its dependencies allow, rejected as a second rule the human cannot see, where a refusal names
+the conflict and a reorder resolves it; timestamps in the `## Edits` section, rejected because a
+golden of a revision must render the same bytes every time.
+
+HOW TO REVERSE: delete `APPROVED_PLAN_HASH_KEY`, `plan_content_hash`, `approved_plan_mismatch`,
+the stamp in `auto_approve_task_plan` and in `consume_plan_approval`, the start check in
+`run_job`, the order check in `revalidate`, the `edits` parameter of `render_plan_md` and
+`write_plan_md` with the conditional sentence, `tests/orchestration/test_plan_edit_execution.py`
+with its goldens, the order case in `tests/orchestration/test_plan_editing.py`, and this paragraph.

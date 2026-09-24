@@ -14,16 +14,18 @@ and execution follows the edited plan exactly, proven by hash
 
 ## Current Step
 
-ROUND 3: book round 2's PASS and land T002's second half under DECISION
-F015 D3 — the write door exposes the six `job.plan-*` edits, each run
-through `edit_plan` with a required `expected_version`.
+ROUND 4: book round 3's PASS and land T003 under DECISION F015 D4 — the
+approval's plan hash and its check at every job start, edits that keep
+each task after the tasks it waits for, the `## Edits` section of an
+edited revision with its goldens, and the end-to-end run of an edited
+plan.
 
 ## Next Steps
 
-1. T003: the plan's content hash recorded when the approval is consumed
-   and asserted when the job starts, the `plan.md` revision goldens, and
-   the end-to-end run of an edited plan.
-2. The closure sequence.
+1. The closure sequence's first half: the feature file's Built State,
+   the checklist consolidation, the self-use track and the one full
+   suite.
+2. The closure sequence's evidence half and its closing round.
 
 ## Risks
 
