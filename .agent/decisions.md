@@ -19498,3 +19498,34 @@ a `consumed_in` field, rejected because a seal that must be rewritten certifies 
 REVERSE: delete `packages/orchestration/steering.py`, `apps/cli/commands/chat_cmd.py`, the `chat`
 group and its catalog entry, the event name and its humanize line, their tests, and this
 paragraph.
+
+## DECISION F264 D2 — the cockpit's steering route is `chat.send` on F009's write door, it records and never reaches a call, and an unusable message is a shape error (2026-09-24)
+
+CONTEXT: T5_F264.md's Design routes a cockpit message over F009's single write channel —
+"no second mutating route is created; a steering message is a command like any other" — and its
+Do-not-touch keeps that channel's contract unwidened. Measured at `f3d0a4bf`: the door is
+`_RemedyHandler._handle_command_submission` in `packages/orchestration/ui_server.py`, one POST
+route whose checks run token, CSRF, job, payload shape, exposure, nonce replay and rate limit
+before a per-command clause; the exposed subset is `UI_EXPOSED_COMMANDS` beside the catalog
+(DECISION F009 D4); and `TestCommandDoorImportGuard` pins every import a door method makes,
+which DECISION F009 D5 made the P3 contract. CHOSEN: (1) EXPOSURE. `chat.send`, the catalog id
+DECISION F264 D1 registered, joins `UI_EXPOSED_COMMANDS`. The route, the payload, the
+authentication, the nonce, the rate limit and the closed outcome vocabulary are unchanged: a new
+exposed id is the extension point D4 built, which is why the feature file's "does not widen it"
+holds. (2) THE EFFECT. The clause calls `steering.record_steering_message` with channel
+`cockpit`, the same function `remedy chat` calls, and D18's write order is unchanged: the effect,
+then the `accepted` audit line, then the nonce publication, then the `command.accepted` event.
+The accepted body is `command`, `outcome`, `request_id` and `message_id`, the request id being
+the message id. (3) THE REFUSALS. An absent, non-text, blank, NUL-carrying or over-long message
+is a 400 on field `message`, audited `rejected_shape`, refused in `_read_command_payload` before
+the job's state is read, for R-0685's reason; a job that has ended is D21's 409, audited
+`rejected_state`, with nothing written; a record that could not be written is D18 clause four's
+500, audited `rejected_effect`, with no run-log event. (4) THE IMPORT GUARD gains exactly the
+four `packages.orchestration.steering` names the door imports, in the same commit, as its own
+docstring requires of a widening; `steering` imports nothing at module level beyond the standard
+library and `packages.common.secure_fs`, which the guard's accepted transitive set already holds.
+ALTERNATIVES: a dedicated `/api/jobs/<id>/chat` route, rejected because the feature file forbids
+a second mutating route; a 409 for a blank message, rejected because the effect never ran and a
+retry with text would succeed, which is the shape error R-0685 already ruled on. HOW TO REVERSE:
+remove `chat.send` from `UI_EXPOSED_COMMANDS`, the clause, `_dispatch_chat_send`, the payload
+check, the four guard entries and their tests, and this paragraph.
