@@ -1,0 +1,28 @@
+repo root: /home/decodeux/Repos/remedy
+work dir: /home/decodeux/Repos/remedy/.remedy-wt/f020-conformance-run
++ vite build
+vite v6.4.2 building for production...
+transforming...
+✓ 13 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                 0.30 kB │ gzip: 0.22 kB
+dist/assets/index-DFNYlH4h.css  2.39 kB │ gzip: 0.84 kB
+dist/assets/index-D18QW5Bv.js   9.99 kB │ gzip: 3.66 kB
+✓ built in 99ms
+
+server pid: 4067204
+chrome pid: 4067216
++ node drive.mjs
+MISSING TOKENS: none
+PASSED ring/mark: 8 present, 0 absent
+PASSED status_dot/mark: 16 present, 40 absent
+PASSED status_dot/outline: 16 present, 0 absent
+PASSED strike/mark: 8 present, 48 absent
+PASSED strike/outline: 8 present, 0 absent
+CONFORMANCE: 144 of 144 probes pass
+
+chrome pid 4067216 stopped (SIGTERM)
+server pid 4067204 stopped (SIGTERM)
+removed work dir: /home/decodeux/Repos/remedy/.remedy-wt/f020-conformance-run
+drive.mjs exit code: 0
