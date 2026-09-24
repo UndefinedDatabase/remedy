@@ -1,0 +1,131 @@
+diff --git a/.agent/decisions.md b/.agent/decisions.md
+index 9d40f0e8..1f06e103 100644
+--- a/.agent/decisions.md
++++ b/.agent/decisions.md
+@@ -19853,3 +19853,41 @@ field from `lessons.py`, the command reader, `LessonMode`, `lessonCommandsLine`
+ `commands` from `apps/ui/src/api/lessons.ts`, the switch and `CommandsText` from
+ `LessonsOverlay.tsx` with their styles, the round's tests and contract pins, and delete this
+ paragraph.
++
++## DECISION F267 D1 — the handler test takes its commands from the catalog's own list predicate, excludes none, and the ten-second demo seeds `run list`'s store directly (2026-09-24)
++
++CONTEXT: T2_F267.md orders T002, one test that derives the list-command set from
++`apps/cli/command_catalog.py` and invokes every in-scope handler with `--sort bogus`, naming the
++DECISION F262 D4 exclusions by id and reason for as many as still exist, re-measured before the
++test is written; and T003, the ten-second demo as a test. Measured at `9f06c509`:
++`_is_list_command` selects 13 catalog entries — `blocker.list`, `change.list`, `config.list`,
++`decision.list`, `event.list`, `job.list`, `memory.list`, `mission.list`, `patch.list`,
++`project.list`, `run.list`, `test.list` and `worker.list`; none of the four D4 exclusions is in
++the catalog; the only required positional any of them declares is `job_id`; and through the
++grouped CLI, in a data root holding one registered project selected by `REMEDY_PROJECT` and one
++saved empty job, every one of the 13 exits 1 on `--sort bogus` naming its valid fields, in text
++and under `--json`. With no project selected, `mission list` refuses with `no_project` before it
++reads `--sort`, and with an unknown job id `patch list`, `change list`, `event list` and
++`decision list` refuse before it too, which is why the test seeds both.
++
++CHOSEN: (1) THE SET is `_is_list_command` over `CATALOG`, the predicate the catalog itself uses to
++attach the five flags, so a list command added later joins the test with no edit to it. (2) NO
++EXCLUSION: all 13 refuse an unknown field, so the test excludes none. It names the four D4 ids
++with their reasons and fails if any of them returns to the catalog, and it fails naming the
++command if a list command ever requires a positional other than `job_id`, rather than skipping
++it. (3) THE INVOCATION is `apps.cli.grouped.main` in process, once in text and once under
++`--json`, and the assertion is a non-zero exit plus the refusal's exact shape, `unknown --sort
++field 'bogus'; valid fields: ` followed by the field names, so a handler that refuses for another
++reason does not pass. (4) THE DEMO seeds three `result.json` records in `run list`'s store,
++finished five days, two days and one hour ago, and runs the one command `remedy run list --since
++3d --until 1d` in a child process, in JSON and in text; only the run from two days ago may come
++back. `run list` is chosen because a Run is the unit T003 names, and its store takes a dated
++record without a model call.
++
++ALTERNATIVES: a hand-written list of the 13 ids, rejected because T002 orders derivation from the
++catalog; excluding `worker.list` and `config.list`, whose rows carry no date, rejected because
++both already refuse an unknown field and the test proves only that; seeding the demo through
++`run_pingpong`, rejected because a real run is dated at the moment it finishes and cannot be
++dated two days back.
++
++HOW TO REVERSE: delete `tests/cli/test_list_commands_everywhere.py` and this paragraph.
+diff --git a/.agent/live_review.md b/.agent/live_review.md
+index 85acedc3..b59b33e6 100644
+--- a/.agent/live_review.md
++++ b/.agent/live_review.md
+@@ -1,36 +1,37 @@
+-# Live Review — F265 Teacher learning UI v1 (post-task lessons)
+-
+-> Round-by-round review record, re-headed at the F265 claim per
+-> docs/agents/planner_reviewer_prompt.md §1. The heading this replaces named F264, whose STATUS
+-> line went `[x]` at `32aab561` and whose pull request 271 merged into `main` at the reviewer's
+-> Open PR Gate under docs/agents/self_drive_protocol.md, as `0236e3c3`, after both hosted CI jobs
+-> of run 35956557182 ended `success`. F264's round 10 — its closure round — has no gate entry,
+-> by construction (§4 item 13 of docs/agents/planner_reviewer_prompt.md); the planner and
+-> reviewer of F265's first session read it at this claim, over `0eb5b2d6`..`32aab561`: VERDICT
+-> PASS. Its four commits carry 373, 8, 24 and 140 insertions by `git show --numstat`, the last of
+-> them 13 outside `.agent/handoff.md`, each under the 500-line cap; the round's block and its five
+-> payloads read out of `32aab561` equal the reviewer's originals under `.remedy-wt/` byte for
+-> byte; `.agent/live_review.md` at `b0adb863` and at `8bc1ebb0`, its archive at `8bc1ebb0`, and
+-> `docs/roadmap/STATUS.md` and `README.md` at `32aab561` carry exactly the sha256 that round's
+-> block ordered; and `32aab561` is the second parent of `0236e3c3`. Only the heading, this
+-> paragraph and the `## Steps` section below are rewritten, and one finding is appended at the
+-> end. Everything from the `## Findings` line to the end of the file as it stood at `0236e3c3` is
+-> carried forward BYTE-IDENTICAL, and finding ids continue the monotonic R-XXXX series across the
+-> re-head. The open set at `0236e3c3`, computed with `open_finding_ids` from
+-> `scripts/rotate_live_review.py`, is 3 by distinct id — R-0499, R-0950 and R-1008 — and F284
+-> owns all of them; this claim registers R-1046, which F284 owns as well, and F265 owns whatever
+-> it registers for its own scope.
++# Live Review — F267 List commands v2 completion
++
++> Round-by-round review record, re-headed at the F267 claim per
++> docs/agents/planner_reviewer_prompt.md §1. The heading this replaces named F265, whose STATUS
++> line went `[x]` at `fbc92122` and whose pull request 272 merged into `main` at the reviewer's
++> Open PR Gate under docs/agents/self_drive_protocol.md, as `9f06c509`, after both hosted CI jobs
++> of run 35970704954 ended `success`. F265's round 7 — its closure round — has no gate entry, by
++> construction (§4 item 13 of docs/agents/planner_reviewer_prompt.md); the planner and reviewer
++> of F267's first session read it at this claim, over `8b4a1071`..`fbc92122`: VERDICT PASS. Its
++> four commits carry 341, 8, 18 and 157 insertions by `git show --numstat`, the last of them 12
++> outside `.agent/handoff.md`, each under the 500-line cap, each single-parent and each carrying
++> the ordered trailer; the round's block and its five payloads read out of `fbc92122` equal the
++> reviewer's originals under `.remedy-wt/` byte for byte; `.agent/live_review.md` and
++> `.agent/plan.md` at `0476450b`, the ledger and its archive at `cc258078`, and
++> `docs/roadmap/STATUS.md` and `README.md` at `fbc92122` carry exactly the sha256 that round's
++> block ordered; and `fbc92122` is the second parent of `9f06c509`. ONE NOTE, which is not a
++> finding: the closure handback at `fbc92122` names none of the five values its block's C4
++> ordered it to name — the package, its SHA-256, its directory, the evidence job and the accepted
++> head — and no gate of that block read the handback for them. The same values stand in F265's
++> STATUS line and in the `Gate: F265 R6` entry, so nothing is lost and nothing under `packages/`,
++> `apps/`, `tests/` or `docs/` is wrong. Only the heading, this paragraph and the `## Steps`
++> section below are rewritten. Everything from the `## Findings` line to the end of the file as it
++> stood at `9f06c509` is carried forward BYTE-IDENTICAL, and finding ids continue the monotonic
++> R-XXXX series across the re-head. The open set at `9f06c509`, computed with `open_finding_ids`
++> from `scripts/rotate_live_review.py`, is 4 by distinct id — R-0499, R-0950, R-1008 and R-1046
++> — and F284 owns all of them; F267 owns whatever it registers for its own scope.
+ 
+ ## Steps
+ 
+-THE ORDER BELOW IS T5_F265.md's Orchestrator brief. R1 claims F265, re-heads this record and
+-lands T001's substance: `packages/orchestration/lessons.py`, one sealed lesson per completed Run
+-built from that Run's own `result.diff`, billed as role `teacher` inside the teacher's own budget
+-pot per job, and the hook that writes one after every applied task while `teacher.lessons` is
+-on, with DECISION F265 D1 fixing the record's shape. The lesson's reach — the job's event stream,
+-a read-only route and `remedy do`'s mission path — comes next; T002, the overlay over stored
+-lessons, and T003, the Commands mode, follow. Every round's handback states the open set by
+-distinct id.
++THE ORDER BELOW IS T2_F267.md's Orchestrator brief, less what F273 already landed: T001, the
++wirings, landed in F273's round 9 (DECISION F273 D9). R1 claims F267, re-heads this record and
++lands T002 and T003 as one new test file, `tests/cli/test_list_commands_everywhere.py`, with
++DECISION F267 D1 fixing the in-scope set that file derives from the catalog. The closure sequence
++follows. Every round's handback states the open set by distinct id.
+ ## Findings
+ 
+ - R-0499 — Low, THE EIGHT-FILE STRUCTURAL SWEEP GOES RED ABOUT ONCE IN TWENTY RUNS INSIDE A FRESH GIT WORKTREE, AND THE FAILING NODE ID HAS NEVER BEEN CAPTURED. Raised by the reviewer at the R8 authoring dry run. Two observations exist and both are inside a disposable worktree, never in the primary checkout: the F085 R7 worker saw one red in 22 runs on a scratch worktree carrying a larger draft change and did not capture the node id, and the reviewer saw one red in 14 runs on the R8 dry-run worktree and did not capture it either, because the run that produced it was not the run that carried `-rf` output to the log. The red reading is `1 failed, 348 passed, 7 skipped` against the green `350 passed, 6 skipped`, so a test that normally PASSES was SKIPPED in the same run that another test failed — which is the signature of an environment-conditional skip rather than of a logic defect. The sweep's only environment-conditional member is `test_typescript_compiles` in `tests/ui_server/test_dashboard_contract.py`, which resolves `apps/ui/node_modules/.bin/tsc` relative to the file's own tree, skips with "UI toolchain absent" when that path is missing, and otherwise shells out to a REAL `tsc --noEmit` under `timeout=30` — the one member of the eight-file sweep that depends on a heavy external toolchain and on wall-clock. `node_modules` is gitignored, so a fresh worktree's copy of it is populated out of band and its state at the worktree's FIRST sweep run is not something the sweep controls. Nothing in the F085 change set reaches any of the eight files, so this is a pre-existing property of the gate and not of the guard. Counter-measure, already applied in the block that registers this finding: the sweep is ordered as a PROBE carrying `-rf`, never as an expected COLOUR, and a red run reports its FAILED node id verbatim and hands back rather than re-running until green — which is the only way the id gets captured. The finding resolves when a red run finally names the test. Whether `test_typescript_compiles` belongs in a structural sweep at all is a question for the F252 flake work and is NOT claimed here. OPEN.
+diff --git a/docs/roadmap/STATUS.md b/docs/roadmap/STATUS.md
+index a88ab33d..62d39908 100644
+--- a/docs/roadmap/STATUS.md
++++ b/docs/roadmap/STATUS.md
+@@ -118,7 +118,7 @@ The tier-block order below is the operator-decided Self-Use sequence of 2026-08-
+ - [x] F085 — Sandbox hardening (stage 1) (T001–T003 complete; accepted 2026-08-19 · live review PASS_WITH_RISKS — ACCEPTED · Evidence job f085-closure · package remedy-review-20260819-203439-READY_FOR_REVIEW.zip · SHA-256 951d05c41f7c9ab5ee4dc0428b8be17e981b09738c20587f5c6c31b020296ad6 · accepted HEAD 617ef70a3d566abed1ca68a034570636636edad5)
+ - [x] F254 — Model alias table & dead-model doctor check (R1–R12 complete; accepted 2026-08-07 · live review PASS — ACCEPTED · Evidence job f254-closure · package remedy-review-20260807-204305-READY_FOR_REVIEW.zip · SHA-256 1b4995fa9e3ab76f7be8398be66ed69ec47e99f6e825d16cc97aa826a95a05c0 · accepted HEAD b71c9bdd93cbeb21d4b98842cdf6baa998c3ac26)
+ - [x] F086 — Release capability (T001–T003 complete; accepted 2026-08-20 · live review PASS_WITH_RISKS — ACCEPTED · Evidence job f086-closure · package remedy-review-20260820-200318-READY_FOR_REVIEW.zip · SHA-256 bc140179628e8698ef2bd7354cfb30187554f277312f524c9d6ab0324b500855 · accepted HEAD f5fa19c368ed15d14ee6067fc69fde4fbc7863a6)
+-- [ ] F267 — List commands v2 completion — sort/filter/limit for the remaining nine commands
++- [~] F267 — List commands v2 completion — sort/filter/limit for the remaining nine commands
+ 
+ Milestone R1 — Remedy as the daily tool: Tier 2 complete (F086 as the self-install/update vehicle). Build-first ends here; use-first begins — from here the order follows the Self-Use sequence below.
+ 
