@@ -1,0 +1,14 @@
+F020 R6 C5 — closure integration gate, full suite transcript
+
+COMMAND:
+python3 -m pytest -n auto -q > /home/decodeux/remedy-gate-scratch/f020-full-suite.txt 2>&1
+
+REAL EXIT CODE: 0
+
+WALL TIME: 176 seconds (measured by the runner), pytest's own reported duration 175.07s (0:02:55)
+
+SUMMARY LINE:
+19111 passed, 20 skipped, 1 warning in 175.07s (0:02:55)
+
+BAD NODE IDS (failed plus errors):
+NONE
