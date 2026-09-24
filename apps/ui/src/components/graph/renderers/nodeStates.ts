@@ -33,14 +33,19 @@ export interface StateMarkPaint {
   outlineToken: RemedyToken | null;
 }
 
-/** How one state is drawn. `halo` is the soft ring at 35–40% alpha behind the
- *  node (graph_spec §5), or null where the state has none. `branchGlowAlpha`
+/** How one state is drawn. `inkToken` is the colour a glyph is stroked in
+ *  on the state's sphere, and `lineToken` the colour of the lines of a kind
+ *  whose glyph is its body; both differ from the fill, so a planned node's
+ *  white never hides its own glyph. `halo` is the soft ring at 35–40% alpha
+ *  behind the node (graph_spec §5), or null where the state has none. `branchGlowAlpha`
  *  is the edge glow this state asks of its branch (graph_spec §7: on while
  *  active, 25% once done, off for planned and failed). `downstreamAlpha` dims
  *  what hangs below the node (graph_spec §7: 40% below a veto). */
 export interface NodeStateTreatment {
   name: string;
   fillToken: RemedyToken;
+  inkToken: RemedyToken;
+  lineToken: RemedyToken;
   halo: { token: RemedyToken; alpha: number } | null;
   sizeFactor: number;
   marks: readonly StateMarkPaint[];
@@ -54,6 +59,8 @@ export const NODE_STATE_TREATMENTS: Readonly<Record<NodeState, NodeStateTreatmen
   open: {
     name: "Suggested",
     fillToken: "--remedy-state-open",
+    inkToken: "--remedy-graph-node-ring",
+    lineToken: "--remedy-state-open",
     halo: { token: "--remedy-state-open", alpha: 0.4 },
     sizeFactor: 1,
     marks: [],
@@ -64,6 +71,8 @@ export const NODE_STATE_TREATMENTS: Readonly<Record<NodeState, NodeStateTreatmen
   planned: {
     name: "Planned",
     fillToken: "--remedy-state-planned",
+    inkToken: "--remedy-state-planned-ring",
+    lineToken: "--remedy-state-planned-ring",
     halo: null,
     sizeFactor: 0.9,
     marks: [{ mark: "ring", token: "--remedy-state-planned-ring", outlineToken: null }],
@@ -74,6 +83,8 @@ export const NODE_STATE_TREATMENTS: Readonly<Record<NodeState, NodeStateTreatmen
   in_progress: {
     name: "In progress",
     fillToken: "--remedy-state-current",
+    inkToken: "--remedy-graph-node-ring",
+    lineToken: "--remedy-state-current",
     halo: { token: "--remedy-state-current", alpha: 0.4 },
     sizeFactor: 1,
     marks: [],
@@ -84,6 +95,8 @@ export const NODE_STATE_TREATMENTS: Readonly<Record<NodeState, NodeStateTreatmen
   pass: {
     name: "Passed",
     fillToken: "--remedy-state-done",
+    inkToken: "--remedy-graph-node-ring",
+    lineToken: "--remedy-state-done",
     halo: { token: "--remedy-state-done", alpha: 0.35 },
     sizeFactor: 1,
     marks: [],
@@ -94,6 +107,8 @@ export const NODE_STATE_TREATMENTS: Readonly<Record<NodeState, NodeStateTreatmen
   fail: {
     name: "Failed",
     fillToken: "--remedy-state-blocked",
+    inkToken: "--remedy-graph-node-ring",
+    lineToken: "--remedy-state-blocked",
     halo: { token: "--remedy-state-blocked", alpha: 0.4 },
     sizeFactor: 1,
     marks: [{ mark: "status_dot", token: "--remedy-state-blocked", outlineToken: "--remedy-graph-node-ring" }],
@@ -104,6 +119,8 @@ export const NODE_STATE_TREATMENTS: Readonly<Record<NodeState, NodeStateTreatmen
   blocked: {
     name: "Blocked",
     fillToken: "--remedy-state-blocked",
+    inkToken: "--remedy-graph-node-ring",
+    lineToken: "--remedy-state-blocked",
     halo: { token: "--remedy-state-blocked", alpha: 0.4 },
     sizeFactor: 1,
     marks: [{ mark: "status_dot", token: "--remedy-state-blocked", outlineToken: "--remedy-graph-node-ring" }],
@@ -114,6 +131,8 @@ export const NODE_STATE_TREATMENTS: Readonly<Record<NodeState, NodeStateTreatmen
   vetoed: {
     name: "Vetoed",
     fillToken: "--remedy-state-vetoed",
+    inkToken: "--remedy-graph-node-ring",
+    lineToken: "--remedy-state-vetoed",
     halo: { token: "--remedy-state-vetoed", alpha: 0.4 },
     sizeFactor: 1,
     marks: [{ mark: "strike", token: "--remedy-state-vetoed", outlineToken: "--remedy-graph-node-ring" }],
@@ -135,6 +154,8 @@ export function nodeStateTokens(): RemedyToken[] {
   const seen = new Set<RemedyToken>();
   for (const treatment of Object.values(NODE_STATE_TREATMENTS)) {
     seen.add(treatment.fillToken);
+    seen.add(treatment.inkToken);
+    seen.add(treatment.lineToken);
     if (treatment.halo) seen.add(treatment.halo.token);
     for (const paint of treatment.marks) {
       seen.add(paint.token);
