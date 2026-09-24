@@ -1,0 +1,325 @@
+diff --git a/apps/ui/src/components/graph/brainMotion.ts b/apps/ui/src/components/graph/brainMotion.ts
+new file mode 100644
+index 000000000..f41722c00
+--- /dev/null
++++ b/apps/ui/src/components/graph/brainMotion.ts
+@@ -0,0 +1,60 @@
++// This module owns WHEN a node appears — the stagger and order a birth
++// animates in — and nothing about HOW it is painted (scale-in spring, edge
++// draw-in, the glow pulse): that stays the renderer's job (graph_spec §11-
++// §12; motion_spec.md "node birth"; DECISION F019 D1). Pure and total: no
++// DOM, no random draws, no Date — scheduleBrainBirths is a function of its
++// two layouts and a boolean.
++import type { BrainLayoutData } from "./forceBrainTypes";
++
++/** Birth spring duration, `--remedy-dur-birth` (graph_spec §12; tests/
++ *  ui_contracts/test_brain_motion_tokens.py pins this against the token). */
++export const BRAIN_BIRTH_MS = 420;
++/** Birth duration under reduced motion — a plain fade, no spring (graph_spec
++ *  §12: "Reduced motion: births = 180ms fade"). */
++export const BRAIN_BIRTH_REDUCED_MS = 180;
++/** Gap between the start of consecutive births in the same wave (graph_spec
++ *  §11: "max 3 concurrent staggered 90ms"). */
++export const BRAIN_BIRTH_STAGGER_MS = 90;
++/** How many births may be in flight at once before the next one waits for an
++ *  earlier one to finish (graph_spec §11, the "calm rule"). */
++export const BRAIN_BIRTH_MAX_CONCURRENT = 3;
++
++/** One node's entrance: when it starts, how long it takes, and whether it is
++ *  a plain fade (reduced motion) instead of the spring scale-in. */
++export interface BrainBirth {
++  id: string;
++  delayMs: number;
++  durationMs: number;
++  fade: boolean;
++}
++
++/** The births between two layouts, in the order they should animate
++ *  (graph_spec §11: "births animate in data order"). A first paint
++ *  (`previous === null`) renders at rest — no births — so a fresh screenshot
++ *  is stable; a node present in both layouts is never re-born; a node that
++ *  disappeared births nothing. Birth i's delay is the LATER of its own
++ *  stagger slot and the moment the birth `BRAIN_BIRTH_MAX_CONCURRENT` before
++ *  it finishes, which is what keeps at most that many animating at once. */
++export function scheduleBrainBirths(
++  previous: BrainLayoutData | null,
++  next: BrainLayoutData,
++  reducedMotion: boolean,
++): BrainBirth[] {
++  if (previous === null) return [];
++  const previousIds = new Set(previous.nodes.map((n) => n.id));
++  const born = next.nodes.filter((n) => !previousIds.has(n.id));
++  const durationMs = reducedMotion ? BRAIN_BIRTH_REDUCED_MS : BRAIN_BIRTH_MS;
++
++  const delays: number[] = [];
++  born.forEach((_, i) => {
++    const staggerSlot = i * BRAIN_BIRTH_STAGGER_MS;
++    const concurrencyFloor = i >= BRAIN_BIRTH_MAX_CONCURRENT
++      ? delays[i - BRAIN_BIRTH_MAX_CONCURRENT] + durationMs
++      : 0;
++    delays.push(Math.max(staggerSlot, concurrencyFloor));
++  });
++
++  return born.map((n, i) => ({
++    id: n.id, delayMs: delays[i], durationMs, fade: reducedMotion,
++  }));
++}
+diff --git a/apps/ui/src/components/graph/buildForceBrainModel.ts b/apps/ui/src/components/graph/buildForceBrainModel.ts
+index cae2bfc3b..1b1099bac 100644
+--- a/apps/ui/src/components/graph/buildForceBrainModel.ts
++++ b/apps/ui/src/components/graph/buildForceBrainModel.ts
+@@ -1,5 +1,10 @@
+ import type { RemedyDashboard } from "../../api/types";
+-import type { BrainNodeKind, BrainNodeState, ForceBrainGraphData, ForceBrainLink, ForceBrainNode } from "./forceBrainTypes";
++import type {
++  BrainLayoutData, BrainLayoutLink, BrainLayoutNode, BrainNodeKind, BrainNodeState,
++  ForceBrainGraphData, ForceBrainLink, ForceBrainNode,
++} from "./forceBrainTypes";
++import { clusterBrainModel } from "./brainReducer";
++import type { BrainModel, BrainNode, NodeKind } from "./brainOntology";
+ 
+ type SizeClass = "small" | "medium" | "large";
+ type FilterMode = "all" | "open" | "planned" | "done";
+@@ -140,3 +145,168 @@ export function buildForceBrainModel(
+ 
+   return { nodes, links };
+ }
++
++// --- buildBrainLayout: positions the reducer's real model -------------------
++// WHY this is a second, separate builder rather than a mode of the one above:
++// buildForceBrainModel paints the polled-dashboard demo graph (decorative
++// branches, ambient particles); this one lays out the reducer's real model
++// 1:1, no decor, no invented node (graph_spec §8 truth; DECISION F019 D1).
++// Its one caller is the brain renderer; the dashboard builder above paints
++// the older decorative graph and is replaced when the renderer mounts.
++
++/** Core sphere radius, graph_spec §4 ("core: r 26 sphere"). */
++export const BRAIN_CORE_RADIUS = 26;
++/** Task node radius, graph_spec §4 ("task: r 7 (major)"). */
++export const BRAIN_TASK_RADIUS = 7;
++/** Run node radius, graph_spec §4 ("run: r 4.5"). */
++export const BRAIN_RUN_RADIUS = 4.5;
++/** Cluster node radius, graph_spec §4 ("cluster: r 9 + count") — bigger than a
++ *  run so a collapsed history still reads as "more than one thing". */
++export const BRAIN_CLUSTER_RADIUS = 9;
++/** Distance from the core to the task ring, graph_spec §6 ("core-task
++ *  120-170"); this design fixes one value inside that band. */
++export const BRAIN_TASK_RING_RADIUS = 150;
++/** Distance from a task to its run/cluster children, graph_spec §6
++ *  ("task-run 34"). */
++export const BRAIN_RUN_DISTANCE = 34;
++/** The golden angle in radians, π·(3−√5): spaces tasks stably around the core
++ *  regardless of how many exist, graph_spec §6 ("Seeded initial angles =
++ *  golden-angle around the core so layouts are stable per job"). */
++export const BRAIN_GOLDEN_ANGLE = Math.PI * (3 - Math.sqrt(5));
++/** Angular step between a task's fanned-out children, graph_spec §6. */
++export const BRAIN_RUN_FAN_STEP = 0.35;
++/** Core→task link width — trunk thickness decays with depth (graph_spec §6,
++ *  "core→task 2.2 → run 1.4"). */
++export const BRAIN_CORE_LINK_WIDTH = 2.2;
++/** Task→child link width, the next step of the same decay. */
++export const BRAIN_RUN_LINK_WIDTH = 1.4;
++
++/** Every non-core, non-task node buildBrainLayout treats as a task's depth-2
++ *  child: the run kinds and the cluster node clusterBrainModel may leave
++ *  behind (graph_spec §3 hierarchy). */
++function isLayoutChildKind(kind: NodeKind): boolean {
++  return kind !== "job_core" && kind !== "task";
++}
++
++/** A task's label is its seed title when one was given, else its bare id
++ *  with the `task:` prefix stripped; every other node paints no label, so
++ *  only a task node ever calls this. */
++function taskLabelOf(task: BrainNode): string {
++  const title = task.meta.title;
++  if (typeof title === "string" && title.length > 0) return title;
++  return task.id.slice("task:".length);
++}
++
++/** Task ordering for golden-angle assignment (graph_spec §6: "Seeded initial
++ *  angles = golden-angle around the core"): by seed rank (a rank-less task
++ *  sorts last), then id. This is the order angles are HANDED OUT in, not the
++ *  output node order — §8 truth keeps that as the clustered model's own
++ *  order, which this function never touches. */
++function orderTasksForAngle(tasks: readonly BrainNode[]): BrainNode[] {
++  return [...tasks].sort((a, b) => {
++    const rankA = typeof a.meta.rank === "number" ? a.meta.rank : Number.POSITIVE_INFINITY;
++    const rankB = typeof b.meta.rank === "number" ? b.meta.rank : Number.POSITIVE_INFINITY;
++    if (rankA !== rankB) return rankA - rankB;
++    return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
++  });
++}
++
++/** Child ordering for the fan (graph_spec §3: "run (1:n per task,
++ *  chronological fan)"): by seq then id — the order the symmetric offset
++ *  (k − (n − 1) / 2) is indexed by. */
++function orderChildrenForFan(children: readonly BrainNode[]): BrainNode[] {
++  return [...children].sort((a, b) => a.seq - b.seq || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
++}
++
++/** A link is "active" — particles flow on it — when its own target run is
++ *  in_progress, or its target task has any in_progress child (graph_spec §7:
++ *  "particles on (one white particle per active run edge)"; §8: "particles
++ *  flow only while a run is actually active per data"). */
++function isLinkActive(nodes: readonly BrainNode[], target: BrainNode | undefined): boolean {
++  if (!target) return false;
++  if (target.state === "in_progress") return true;
++  if (target.kind !== "task") return false;
++  return nodes.some((n) => n.parentId === target.id && n.state === "in_progress");
++}
++
++/** Positions `clusterBrainModel(model)`'s nodes and links with no decor and
++ *  no invented node (DECISION F019 D1; graph_spec §4 sizes, §6 layout, §8
++ *  truth). Deterministic and total — no random draws, no Date — and the
++ *  input model is never mutated. */
++export function buildBrainLayout(model: BrainModel): BrainLayoutData {
++  const clustered = clusterBrainModel(model);
++  const rng = seededRng(clustered.jobId || "default");
++  const seedAngle = rng() * 2 * Math.PI;
++
++  const tasks = clustered.nodes.filter((n) => n.kind === "task");
++  const taskAngle = new Map<string, number>();
++  orderTasksForAngle(tasks).forEach((task, i) => {
++    taskAngle.set(task.id, seedAngle + i * BRAIN_GOLDEN_ANGLE);
++  });
++  const taskPosition = new Map<string, { x: number; y: number }>();
++  taskAngle.forEach((angle, id) => {
++    taskPosition.set(id, {
++      x: Math.cos(angle) * BRAIN_TASK_RING_RADIUS,
++      y: Math.sin(angle) * BRAIN_TASK_RING_RADIUS,
++    });
++  });
++
++  const childrenByTask = new Map<string, BrainNode[]>();
++  for (const n of clustered.nodes) {
++    if (!isLayoutChildKind(n.kind) || !n.parentId) continue;
++    const list = childrenByTask.get(n.parentId) ?? [];
++    list.push(n);
++    childrenByTask.set(n.parentId, list);
++  }
++  const childPosition = new Map<string, { x: number; y: number }>();
++  childrenByTask.forEach((children, taskId) => {
++    const anchorAngle = taskAngle.get(taskId);
++    const anchor = taskPosition.get(taskId);
++    if (anchorAngle === undefined || !anchor) return;
++    const ordered = orderChildrenForFan(children);
++    const n = ordered.length;
++    ordered.forEach((child, k) => {
++      const angle = anchorAngle + (k - (n - 1) / 2) * BRAIN_RUN_FAN_STEP;
++      childPosition.set(child.id, {
++        x: anchor.x + Math.cos(angle) * BRAIN_RUN_DISTANCE,
++        y: anchor.y + Math.sin(angle) * BRAIN_RUN_DISTANCE,
++      });
++    });
++  });
++
++  const nodes: BrainLayoutNode[] = clustered.nodes.map((n) => {
++    if (n.kind === "job_core") {
++      return {
++        id: n.id, kind: n.kind, state: n.state, seq: n.seq,
++        depth: 0, radius: BRAIN_CORE_RADIUS, x: 0, y: 0, fx: 0, fy: 0, label: "",
++      };
++    }
++    if (n.kind === "task") {
++      const p = taskPosition.get(n.id) ?? { x: 0, y: 0 };
++      return {
++        id: n.id, kind: n.kind, state: n.state, parentId: n.parentId, seq: n.seq,
++        depth: 1, radius: BRAIN_TASK_RADIUS, x: p.x, y: p.y, label: taskLabelOf(n),
++      };
++    }
++    const p = childPosition.get(n.id) ?? { x: 0, y: 0 };
++    const radius = n.kind === "cluster" ? BRAIN_CLUSTER_RADIUS : BRAIN_RUN_RADIUS;
++    return {
++      id: n.id, kind: n.kind, state: n.state, parentId: n.parentId, seq: n.seq,
++      depth: 2, radius, x: p.x, y: p.y, label: "",
++    };
++  });
++
++  const byId = new Map(clustered.nodes.map((n) => [n.id, n]));
++  const links: BrainLayoutLink[] = clustered.links.map((l) => {
++    const target = byId.get(l.target);
++    const isTaskLink = target?.kind === "task";
++    return {
++      id: l.id, source: l.source, target: l.target,
++      depth: isTaskLink ? 1 : 2,
++      width: isTaskLink ? BRAIN_CORE_LINK_WIDTH : BRAIN_RUN_LINK_WIDTH,
++      active: isLinkActive(clustered.nodes, target),
++    };
++  });
++
++  return { nodes, links };
++}
+diff --git a/apps/ui/src/components/graph/forceBrainTypes.ts b/apps/ui/src/components/graph/forceBrainTypes.ts
+index 1c15c7807..08dc16948 100644
+--- a/apps/ui/src/components/graph/forceBrainTypes.ts
++++ b/apps/ui/src/components/graph/forceBrainTypes.ts
+@@ -1,3 +1,5 @@
++import type { NodeKind, NodeState } from "./brainOntology";
++
+ export type BrainNodeKind = "root" | "cluster" | "task" | "proof" | "review" | "memory" | "particle";
+ export type BrainNodeState = "done" | "current" | "planned" | "blocked" | "suggested" | "idle";
+ export type BrainSourceKind = "real_brain" | "layout_only" | "demo_fixture";
+@@ -38,3 +40,47 @@ export interface ForceBrainGraphData {
+   nodes: ForceBrainNode[];
+   links: ForceBrainLink[];
+ }
++
++// --- buildBrainLayout's own shapes -------------------------------------------
++// ForceBrainNode/Link above paint the polled-dashboard decorative graph;
++// these paint the reducer's REAL model 1:1 (graph_spec §8 truth: every
++// rendered real node maps 1:1 to a view-model entity, no decor node counted
++// as one; DECISION F019 D1). Both live in this file because both are "the
++// types the graph module hands its renderer."
++
++/** One positioned real node — WHY a separate shape from ForceBrainNode: this
++ *  one is a 1:1 projection of a BrainNode (graph_spec §4 sizes, §6 layout),
++ *  never a decorative dot, so it carries no sourceKind/alpha/color at all. */
++export interface BrainLayoutNode {
++  id: string;
++  kind: NodeKind;
++  state: NodeState;
++  parentId?: string;
++  seq: number;
++  depth: 0 | 1 | 2;
++  radius: number;
++  x: number;
++  y: number;
++  fx?: number;
++  fy?: number;
++  label: string;
++}
++
++/** One positioned parent edge — WHY it carries `depth`/`width`/`active`
++ *  already resolved: the renderer paints trunk decay (§6) and particle flow
++ *  (§7, §8) without re-deriving either from the node list on every frame. */
++export interface BrainLayoutLink {
++  id: string;
++  source: string;
++  target: string;
++  depth: 1 | 2;
++  width: number;
++  active: boolean;
++}
++
++/** The whole positioned graph one buildBrainLayout call returns — WHY one
++ *  value: brainMotion.ts diffs two of these, previous vs next, to find births. */
++export interface BrainLayoutData {
++  nodes: BrainLayoutNode[];
++  links: BrainLayoutLink[];
++}
+diff --git a/apps/ui/src/styles/tokens.css b/apps/ui/src/styles/tokens.css
+index 10768dcc8..af6f9395c 100644
+--- a/apps/ui/src/styles/tokens.css
++++ b/apps/ui/src/styles/tokens.css
+@@ -41,6 +41,11 @@
+      not a drift this file introduced. */
+   --remedy-live: #34c27e;
+   --remedy-dur-pulse: 1600ms;
++  /* Brain graph birth motion (graph_spec §12), transcribed byte-exact from
++     docs/ui/design_reference/tokens.css so brainMotion.ts's BRAIN_BIRTH_MS
++     and the renderer's spring-in both read a token that resolves. */
++  --remedy-dur-birth: 420ms;
++  --remedy-ease-soft: cubic-bezier(0.22, 1, 0.36, 1);
+ 
+   --remedy-line: rgba(44, 82, 150, 0.14);
+   --remedy-line-strong: rgba(44, 82, 150, 0.26);

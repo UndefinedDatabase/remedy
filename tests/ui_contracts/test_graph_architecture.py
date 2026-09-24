@@ -770,7 +770,7 @@ class TestForceGraphComponentIntegrity:
         assert f.is_file()
         content = f.read_text(encoding="utf-8")
         assert "seededRng" in content
-        assert "ForceBrainNode" in content
+        assert "export function buildBrainLayout(" in content
 
     def test_force_brain_types(self):
         assert (UI_SRC / "components" / "graph" / "forceBrainTypes.ts").is_file()

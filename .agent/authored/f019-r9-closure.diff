@@ -1,0 +1,54 @@
+diff --git a/README.md b/README.md
+index 129670a1d..5e20bf81d 100644
+--- a/README.md
++++ b/README.md
+@@ -26,7 +26,7 @@ verification commands. If something is unproven, Remedy says so instead of guess
+ 
+ ## Status
+ 
+-97 of 284 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
++98 of 284 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
+ 
+ | Tier | Name | Done | Total |
+ |------|------|-----:|------:|
+@@ -35,7 +35,7 @@ verification commands. If something is unproven, Remedy says so instead of guess
+ | 2 | Minimal Self-Build Runtime | 36 | 37 |
+ | 3 | Full Token Economy & Autonomy | 6 | 26 |
+ | 4 | Memory & Learning | 1 | 17 |
+-| 5 | Operator Cockpit | 16 | 34 |
++| 5 | Operator Cockpit | 17 | 34 |
+ | 6 | Design-to-Code | 0 | 16 |
+ | 7 | Quality & Trust | 0 | 15 |
+ | 8 | Worker Ecosystem & Neutrality | 0 | 12 |
+@@ -392,6 +392,18 @@ an edit made on an older reading is refused, and is logged so the plan's history
+ can be replayed; approving the plan records exactly which plan was approved, and
+ a job refuses to start if its plan changed after that).
+ 
++F019 live node materialization (the job graph in the browser cockpit now grows
++while a job runs: the job sits in the middle, its tasks around it, and a small
++node appears for each builder attempt, review and check as it happens, with a
++short grow-in animation, a moving dot on each link whose work is running right
++now, and colours for passed, failed and blocked; the graph is built only from
++the job's own event stream, so it never shows a result it was not told, and when
++the browser misses events, for example after a laptop slept, it reads the
++missing ones back from the server before it draws anything past the gap; a
++Simple view button shows the older, plainer picture, which keeps the small
++prompt dots and can be used with the keyboard; in a check in a headless browser
++the graph held sixty frames a second at five hundred nodes).
++
+ Full per-feature state: [`docs/roadmap/STATUS.md`](docs/roadmap/STATUS.md)
+ 
+ ## Install
+diff --git a/docs/roadmap/STATUS.md b/docs/roadmap/STATUS.md
+index 30ef70ec1..b2a7bc1c8 100644
+--- a/docs/roadmap/STATUS.md
++++ b/docs/roadmap/STATUS.md
+@@ -138,7 +138,7 @@ Milestone R1 — Remedy as the daily tool: Tier 2 complete (F086 as the self-ins
+ - [x] F040 — Completion/return digest (T001–T003 complete; accepted 2026-08-30 · live review PASS_WITH_RISKS — ACCEPTED · Evidence job f040-closure · package remedy-review-20260830-033225-READY_FOR_REVIEW.zip · SHA-256 26bacc72356bea20d765736996cb353033d087c328e7af0156548a533d164be1 · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD 5281987a142b97f222256c987d36c009ae7ab3ae)
+ - [x] F258 — Self-use track v2 (T001–T003 complete; accepted 2026-08-30 · live review PASS_WITH_RISKS — ACCEPTED · Evidence job f258-closure · package remedy-review-20260830-084541-READY_FOR_REVIEW.zip · SHA-256 4b4153ad33f01e4d7014e853663f76ac1f36f61ba06687ed0b3c9c5411f12c50 · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD 49fcc2c645601936d8c426b1eb09523b9b3c7f6f)
+ - [x] F015 — Interactive plan editing (T001–T003 complete; accepted 2026-09-24 · live review PASS — ACCEPTED · Evidence job f015r8e1001 · package remedy-review-20260924-151010-READY_FOR_REVIEW.zip · SHA-256 920b9e1c3763632b86e97cb9724831e9c9e58378bbc71bac4532638e976da840 · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD 15aec1449745c1843ad4096e44974b8710b0756c)
+-- [~] F019 — Live node materialization
++- [x] F019 — Live node materialization (T001–T003 complete; accepted 2026-09-24 · live review PASS — ACCEPTED · Evidence job f019r8e1001 · package remedy-review-20260924-204836-READY_FOR_REVIEW.zip · SHA-256 d0340a1a2ed77a6472e2d3f3469a4e5bf590674fd21e4d229b9c4d52d01263ff · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD d581b6667a9e29a1d276a39555b9038adb82a92b)
+ 
+ ## Tier 2 — Findings paydown (rolling, operator rule amend0911-feedback)
+ 

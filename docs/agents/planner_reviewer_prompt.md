@@ -270,6 +270,9 @@ end the response with:
   reviewer dry run wider than a targeted selection is governed by operator amendment
   amend0917-throughput rule 1, which already states it, and not by the text of a block. The list
   stays at 34 items.
+  Consolidated a ninth time at F019's closure on 2026-09-24: nothing joined and no two items were
+  merged, because F019 wrote no line to `.agent/prose_slips.md`: its six rounds' blocks were
+  generated from simulated trees and every worker reading matched them. The list stays at 34 items.
   The next consolidation measures against 34.
   Reverse by deleting this paragraph.
   1. **Size.** Count the block's lines. Over 400 (DECISION F105 D5) → split or

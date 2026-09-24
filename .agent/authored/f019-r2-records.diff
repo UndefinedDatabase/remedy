@@ -1,0 +1,64 @@
+diff --git a/.agent/decisions.md b/.agent/decisions.md
+index 76436ee68..de3d2872a 100644
+--- a/.agent/decisions.md
++++ b/.agent/decisions.md
+@@ -20172,3 +20172,49 @@ without one would be the fake progress graph_spec §8 forbids.
+ 
+ HOW TO REVERSE: delete the four files under `apps/ui/src/components/graph/` whose names begin
+ with `brainOntology` or `brainReducer`, and this paragraph.
++
++## DECISION F019 D2 — T002 lands in two rounds, its pure half first: a deterministic layout of the reducer's model beside the dashboard builder, and a birth schedule read from the design reference's motion tokens (2026-09-24)
++
++CONTEXT: T5_F019.md's T002 renders the reducer's model on react-force-graph-2d with the canvas
++glyph slots, the layout and the motion tokens, and renders the demo recording. Measured at
++`b6cc2690`: vitest runs in the node environment and cannot render React, so only the pure
++parts of that slice are testable there; `buildForceBrainModel.ts` builds the force-graph data
++from the polled dashboard, with decorative branches, and is by
++`docs/ui/design_reference/graph_tech_recommendation.md` the single data-to-graph builder;
++`ForceBrainGraph.tsx`, which paints it, is mounted nowhere; `apps/ui/src/styles/tokens.css`
++carries `--remedy-dur-pulse` and neither `--remedy-dur-birth` nor `--remedy-ease-soft`, which
++`docs/ui/design_reference/tokens.css` defines as `420ms` and `cubic-bezier(0.22, 1, 0.36, 1)`.
++
++CHOSEN: (1) THE SPLIT: round 2 lands T002's pure half, round 3 its painted half — the renderer
++that paints the layout on the canvas, its mount in `BrainGraphStage.tsx` fed by the reducer's
++model seeded from the dashboard, the replacement of the dashboard builder it supersedes, and the
++demo recording. (2) THE LAYOUT is `buildBrainLayout(model)` in `buildForceBrainModel.ts`, with
++its shapes `BrainLayoutNode`, `BrainLayoutLink` and `BrainLayoutData` in `forceBrainTypes.ts`.
++It lays out `clusterBrainModel(model)` and nothing else, node for node and link for link in
++the model's order (graph_spec §8). The core is pinned at the origin with radius 26; the tasks
++sit on a ring of radius 150 in rank order, each a golden angle, π·(3 − √5), past the one before,
++starting from an angle the file's existing `seededRng` draws from the job id; a task's runs and
++cluster fan out around the task's own angle in seq order, 0.35 radians apart, 34 from the task,
++with radius 4.5, or 9 for a cluster; a task is labelled with its title or else its id; a
++core-to-task link is 2.2 wide and a task-to-run link 1.4; and a link is `active` when its target
++is in progress or is a task with a child in progress (graph_spec §4, §6 and §7). (3) THE BIRTH
++SCHEDULE is `scheduleBrainBirths(previous, next, reducedMotion)` in the new
++`apps/ui/src/components/graph/brainMotion.ts`: a first paint births nothing, and otherwise the
++nodes new to `next`, in its order, each start at the later of their 90-millisecond stagger slot
++and the end of the birth three places before them, so at most three animate at once; a birth
++lasts 420 milliseconds, or 180 as a plain fade under reduced motion (graph_spec §11 and §12).
++(4) THE TOKENS `--remedy-dur-birth` and `--remedy-ease-soft` are transcribed into the app's
++sheet with the design reference's values, and `tests/ui_contracts/test_brain_motion_tokens.py`
++pins both against the reference and `BRAIN_BIRTH_MS` against the first.
++
++ALTERNATIVES: the whole of T002 in one round, rejected because the renderer can only be checked
++by source guards and a reading in the browser, while the layout and the schedule can be pinned by
++vitest, and one round carrying both would review the untestable half under the testable half's
++gates; a mode flag on `buildForceBrainModel`, rejected because that function's decorative
++branches break the one-to-one truth rule the new layout keeps; positions left to the force
++simulation alone, rejected because graph_spec §6 asks for deterministic initial positions so that
++screenshots stay stable per job.
++
++HOW TO REVERSE: remove `buildBrainLayout` and its constants from `buildForceBrainModel.ts`, the
++three layout shapes from `forceBrainTypes.ts`, `brainMotion.ts` and its test, the two tokens,
++`tests/ui_contracts/test_brain_motion_tokens.py`, the `buildBrainLayout` tests, and this paragraph.
+diff --git a/.agent/live_review.md b/.agent/live_review.md
+index 70aaf083a..1a79cf0eb 100644
+--- a/.agent/live_review.md
++++ b/.agent/live_review.md
+@@ -450,3 +450,5 @@ Gate: F015 R9 — the F015 round 9 entry, THE CLOSING ROUND: the booking of roun
+ Gate: F015 R10 — the F015 round 10 entry, the CI repair of pull request 274 under AGENTS.md's Open PR Gate exception. VERDICT PASS. Written by the planner and reviewer of F015's second session after reading the committed range `0cac897c`..`739994f1` bottom-up and re-deriving every reading below, and booked by F019's claim. THE RANGE IS 3 COMMITS in the block's order C1 to C3, at `5d18d5aa` 201, `b2a6beed` 9 and `739994f1` 114 insertions by `git show --numstat`, each under the 500-line cap, each single-parent and each carrying the ordered trailer. THE TRANSPORT PROOF IS FILE IDENTITY: at `5d18d5aa` the ledger equals its `0cac897c` bytes plus the round's ledger payload, the plan equals its payload, and the six `.agent/authored/f015-r10-*` copies equal the reviewer's originals under `.remedy-wt/f015-r10/`, the block's sha256 being `f54f2fa0cb562e4027c3506ce0af1699fa2c08eeae399f6004cb392fc3a3ba25`; at `b2a6beed` `tests/runtimes/test_supervisor_portability.py` equals its `0cac897c` bytes with the pair's FROM replaced by its TO, and nothing else. THE OPEN SET at `5d18d5aa` reads R-0499, R-0950, R-1008, R-1046 and R-1047. THE TESTS: the reviewer's own run of `tests/runtimes/test_supervisor_portability.py` and `tests/cli/test_golden_path.py` in the primary checkout at `739994f1` read `142 passed`, and ruff over the test file read `All checks passed!`. THE PROOF, run by the reviewer in a disposable worktree at `b2a6beed` with the round's probe: the unmutated control read 2 passed at exit 0; the old `_mark` with the error marker paused one second before its write read 1 failed at exit 1, the failing node being `test_a_broken_helper_thread_fails_the_regression`, the same assertion the hosted run failed on; the new `_mark` with the same pause before its rename read 2 passed at exit 0; and the file was restored byte-identical. The worktree was removed and the tree is clean. AFTER THE ROUND: hosted run `36011044909` on `739994f1` ended `success` on Python 3.10 and 3.12, and pull request 274 merged as `92b7f5f1`. ONE NOTE, which is not a finding: the handback's Session section omits the one sentence of context self-assessment the block ordered, and every other mandated section is present.
+ 
+ Done: R-1047 — RESOLVED at F015 R10 by `b2a6beed`. `_mark` in the supervisor prelude of `tests/runtimes/test_supervisor_portability.py` now writes the marker's text to a private name, `<marker>.<thread id>.tmp`, and renames it into place with `os.replace`, so the marker exists only once its text is there and a test that reads it the moment it exists can no longer read it empty. MEASURED BY THE REVIEWER in a disposable worktree at `b2a6beed`: with the error marker paused one second between its creation and its write, the old helper turns `test_a_broken_helper_thread_fails_the_regression` red with the hosted run's own assertion, and the new helper, paused the same second before its rename, keeps both marker-reading nodes green. The hosted run on `739994f1` passed on both Python versions.
++
++Gate: F019 R1 — the F019 round 1 entry: the claim, the re-head with F015's round 10 verdict and R-1047's resolution, DECISION F019 D1 and operator note Q2, and T001, the brain graph's pure reducer with its goldens. VERDICT PASS ON ALL SIX GATES, NO DEVIATION DECLARED. Re-derived over `92b7f5f1`..`b6cc2690` by the planner and reviewer of F019's first session, whose own runs produced every reading below. THE RANGE IS 9 COMMITS in the block's order C1a, C1b, C1c, C1d, C1e, C2, C3, C4 and C5, at `d9f7aa49` 312, `ddbe0ed1` 195, `5b1f6ee2` 364, `11ee0a85` 472, `aa94c5c1` 473, `48e721ae` 167, `32c02b05` 472, `4481f844` 473 and `b6cc2690` 235 insertions by `git show --numstat`, each under the 500-line cap, each single-parent and each carrying the ordered trailer. THE TRANSPORT PROOF IS FILE IDENTITY: the ledger, STATUS, the decisions, the operator questions, the plan and the context at `48e721ae`, and the four `.ts` files at `4481f844`, read byte-equal to the reviewer's simulated tree rebuilt at `92b7f5f1`, and the block copy and the eight payload copies under `.agent/authored/` equal the reviewer's originals byte for byte. THE CLAIM: F019's STATUS line reads `- [~] F019 — Live node materialization` at `48e721ae`, and the open set by distinct id reads R-0499, R-0950, R-1008, R-1046 and R-1047 at `92b7f5f1` and the same less R-1047 at `48e721ae`. THE PRODUCT: `apps/ui/src/components/graph/brainReducer.ts` folds the stream's frames into the ontology of `brainOntology.ts` as DECISION F019 D1 rules, a replayed seq returning the identical model and a run keyed by the seq that birthed it; the reviewer's run of the round's G4 selection in the primary checkout at `b6cc2690` read `1393 passed, 5 skipped` at exit 0, the five skips being the standing D3 and D12 quarantines, so the eslint, tsc and vitest nodes ran and passed, and all six `integrity check` checks `pass` at `fail_count` 0. THE RED PROOFS: the round's mutation tool, run by the reviewer over its simulated tree, whose four `.ts` files are byte-equal to `4481f844`'s, turned all thirteen mutations red at exit 1 between two unmutated controls of `36 passed` at exit 0, every file restored byte-identical, and the worker's own run in a disposable worktree at `4481f844` read the same counts. `git worktree list` after the round shows no worktree the round added, and the tree is clean.

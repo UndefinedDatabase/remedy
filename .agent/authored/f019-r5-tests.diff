@@ -1,0 +1,365 @@
+diff --git a/apps/ui/src/api/brainStreamDeps.test.ts b/apps/ui/src/api/brainStreamDeps.test.ts
+index 46ae4f424..f5c5f6bda 100644
+--- a/apps/ui/src/api/brainStreamDeps.test.ts
++++ b/apps/ui/src/api/brainStreamDeps.test.ts
+@@ -1,5 +1,5 @@
+ import { describe, it, expect } from "vitest";
+-import { browserBrainStreamEnv, createBrainStreamHostDeps, cursorAfter, framesOf, snapshotSeqOf } from "./brainStreamDeps";
++import { browserBrainStreamEnv, createBrainStreamHostDeps, cursorAfter, eventsSincePath, framesOf, snapshotSeqOf } from "./brainStreamDeps";
+ import type { BrainStreamEnv, BrainStreamGlobals } from "./brainStreamDeps";
+ import type { BrainStreamMessage, BrainStreamSource } from "./brainStreamHost";
+ 
+@@ -57,6 +57,12 @@ describe("the cursor arithmetic", () => {
+   });
+ });
+ 
++describe("the events-since path", () => {
++  it("is the one place the path is built, and escapes the job id", () => {
++    expect(eventsSincePath("job/1", 7)).toBe("/api/jobs/job%2F1/events-since?cursor=7");
++  });
++});
++
+ describe("reading the events-since envelope", () => {
+   it("reads the last position out of the ledger length the server sends as a string", () => {
+     expect(snapshotSeqOf({ cursor: "3" })).toBe(2);
+diff --git a/apps/ui/src/components/graph/brainLedger.test.ts b/apps/ui/src/components/graph/brainLedger.test.ts
+new file mode 100644
+index 000000000..f0993e65d
+--- /dev/null
++++ b/apps/ui/src/components/graph/brainLedger.test.ts
+@@ -0,0 +1,196 @@
++import { describe, expect, it } from "vitest";
++import {
++  brainLedgerLive,
++  brainLedgerPage,
++  brainLedgerPrefix,
++  brainLedgerReceived,
++  brainLedgerRequest,
++  emptyBrainLedger,
++  initialBrainLedgerLoad,
++  mergeBrainRows,
++  nextBrainLedgerCursor,
++} from "./brainLedger";
++import type { BrainLedger, BrainLedgerLoad } from "./brainLedger";
++import { rebuildBrainModel } from "./brainReducer";
++import { dashboardBrainSeeds } from "./brainView";
++import { row } from "./brainReducer.fixtures";
++import { BRAIN_DEMO_FRAMES, BRAIN_DEMO_JOB_ID, BRAIN_DEMO_TASKS, brainDemoRows } from "./brainDemoRecording";
++
++/** `BrainEventRow` fields alone, so a `toEqual` against `row(...)` is not
++ *  defeated by the extra fields `feedRowOf` puts on a real `FeedRow`. */
++function eventFields(rows: readonly { seq: number; kind: string; outcome: string; taskId: string }[]) {
++  return rows.map(({ seq, kind, outcome, taskId }) => ({ seq, kind, outcome, taskId }));
++}
++
++describe("mergeBrainRows", () => {
++  it("sorts the merged rows by seq", () => {
++    const merged = mergeBrainRows(emptyBrainLedger(), [row(2, "task_run_started", "t1"), row(0, "task_run_started", "t1"), row(1, "task_run_started", "t1")], null);
++    expect(merged.rows.map((r) => r.seq)).toEqual([0, 1, 2]);
++  });
++
++  it("dedupes by seq with the already-held row winning", () => {
++    const held = row(0, "task_run_started", "t1");
++    const ledger: BrainLedger = { rows: [held], known: 1 };
++    const merged = mergeBrainRows(ledger, [row(0, "task_run_started", "t2")], null);
++    expect(merged.rows).toEqual([held]);
++    expect(merged.rows[0]).toBe(held);
++  });
++
++  it("raises known to one past the highest seq now held", () => {
++    const merged = mergeBrainRows(emptyBrainLedger(), [row(4, "task_run_started", "t1")], null);
++    expect(merged.known).toBe(5);
++  });
++
++  it("raises known to the caller's knownLength when that is higher", () => {
++    const merged = mergeBrainRows(emptyBrainLedger(), [row(0, "task_run_started", "t1")], 10);
++    expect(merged.known).toBe(10);
++  });
++
++  it("returns the SAME object when nothing changed", () => {
++    const ledger = mergeBrainRows(emptyBrainLedger(), [row(0, "task_run_started", "t1")], null);
++    expect(mergeBrainRows(ledger, [row(0, "task_run_started", "t1")], null)).toBe(ledger);
++    expect(mergeBrainRows(ledger, [], null)).toBe(ledger);
++    expect(mergeBrainRows(ledger, [], 1)).toBe(ledger);
++  });
++});
++
++describe("brainLedgerPrefix", () => {
++  it("stops at the first hole", () => {
++    const ledger: BrainLedger = { rows: [row(0, "a"), row(1, "a"), row(3, "a")], known: 4 };
++    expect(brainLedgerPrefix(ledger).map((r) => r.seq)).toEqual([0, 1]);
++  });
++
++  it("is empty when seq 0 itself is missing", () => {
++    const ledger: BrainLedger = { rows: [row(1, "a"), row(2, "a")], known: 3 };
++    expect(brainLedgerPrefix(ledger)).toEqual([]);
++  });
++});
++
++describe("nextBrainLedgerCursor", () => {
++  it("is 0 before any read", () => {
++    expect(nextBrainLedgerCursor(emptyBrainLedger())).toBe(0);
++  });
++
++  it("is the first missing seq inside [0, known)", () => {
++    const ledger: BrainLedger = { rows: [row(0, "a"), row(1, "a"), row(3, "a"), row(4, "a")], known: 5 };
++    expect(nextBrainLedgerCursor(ledger)).toBe(2);
++  });
++
++  it("is null once every seq the client knows about is held", () => {
++    const ledger: BrainLedger = { rows: [row(0, "a"), row(1, "a"), row(2, "a")], known: 3 };
++    expect(nextBrainLedgerCursor(ledger)).toBeNull();
++  });
++});
++
++describe("brainLedgerPage", () => {
++  it("reads rows and cursor from a payload shaped like _build_events_since_json's", () => {
++    const payload = {
++      version: 1,
++      job_id: "job-x",
++      cursor: "3",
++      events: [
++        { seq: 0, event: "task_run_started", timestamp: "t0", outcome: "", task_id: "t1" },
++        { seq: 1, event: "task_round_completed", timestamp: "t1", outcome: "pass", task_id: "t1" },
++      ],
++    };
++    const page = brainLedgerPage(payload);
++    expect(eventFields(page.rows)).toEqual([
++      row(0, "task_run_started", "t1"),
++      row(1, "task_round_completed", "t1", "pass"),
++    ]);
++    expect(page.known).toBe(3);
++  });
++
++  it("reads null known for a malformed, missing or absent cursor", () => {
++    expect(brainLedgerPage({ cursor: "not a number", events: [] }).known).toBeNull();
++    expect(brainLedgerPage({ events: [] }).known).toBeNull();
++    expect(brainLedgerPage(null)).toEqual({ rows: [], known: null });
++  });
++});
++
++describe("the loader", () => {
++  it("request, then received fills it, then request is null", () => {
++    const load = initialBrainLedgerLoad();
++    const cursor = brainLedgerRequest(load);
++    expect(cursor).toBe(0);
++    const payload = {
++      cursor: "3",
++      events: [
++        { seq: 0, event: "task_run_started", timestamp: "", outcome: "", task_id: "t1" },
++        { seq: 1, event: "task_round_completed", timestamp: "", outcome: "pass", task_id: "t1" },
++        { seq: 2, event: "task_run_completed", timestamp: "", outcome: "pass", task_id: "t1" },
++      ],
++    };
++    const filled = brainLedgerReceived(load, cursor as number, payload);
++    expect(brainLedgerPrefix(filled.ledger)).toHaveLength(3);
++    expect(brainLedgerRequest(filled)).toBeNull();
++  });
++
++  it("an empty or failed read at cursor c stalls c", () => {
++    const afterGap = mergeBrainRows(
++      emptyBrainLedger(),
++      [row(0, "a"), row(1, "a"), row(5, "a"), row(6, "a"), row(7, "a")],
++      null,
++    );
++    const load: BrainLedgerLoad = { ledger: afterGap, stalled: null };
++    const cursor = brainLedgerRequest(load);
++    expect(cursor).toBe(2);
++
++    const stalledByEmpty = brainLedgerReceived(load, cursor as number, { cursor: "8", events: [] });
++    expect(stalledByEmpty.stalled).toBe(2);
++    expect(brainLedgerRequest(stalledByEmpty)).toBeNull();
++
++    const stalledByFailure = brainLedgerReceived(load, cursor as number, null);
++    expect(stalledByFailure.stalled).toBe(2);
++    expect(brainLedgerRequest(stalledByFailure)).toBeNull();
++  });
++
++  it("a live row that changes the ledger clears the stall", () => {
++    const afterGap = mergeBrainRows(
++      emptyBrainLedger(),
++      [row(0, "a"), row(1, "a"), row(5, "a"), row(6, "a"), row(7, "a")],
++      null,
++    );
++    const stalled: BrainLedgerLoad = { ledger: afterGap, stalled: 2 };
++    const cleared = brainLedgerLive(stalled, [row(2, "a")]);
++    expect(cleared.stalled).toBeNull();
++    expect(brainLedgerRequest(cleared)).toBe(3);
++  });
++});
++
++describe("THE GAP SCENARIO (brainDemoRecording)", () => {
++  it("holds the prefix at the state before the hole, then matches the whole model once it is filled", () => {
++    const demoRows = brainDemoRows();
++    const seeds = dashboardBrainSeeds(BRAIN_DEMO_TASKS);
++
++    let load = brainLedgerLive(initialBrainLedgerLoad(), [...demoRows.slice(0, 2), ...demoRows.slice(5, 8)]);
++    expect(eventFields(brainLedgerPrefix(load.ledger))).toEqual(eventFields(demoRows.slice(0, 2)));
++    expect(brainLedgerRequest(load)).toBe(2);
++
++    // While the hole is open the model holds nothing born at seq 5 or later.
++    const modelWhileOpen = rebuildBrainModel(BRAIN_DEMO_JOB_ID, seeds, brainLedgerPrefix(load.ledger));
++    expect(modelWhileOpen.nodes.some((n) => n.seq >= 5)).toBe(false);
++
++    const page = { cursor: "8", events: BRAIN_DEMO_FRAMES.slice(2, 5).map((f) => f.event) };
++    load = brainLedgerReceived(load, 2, page);
++
++    const filledPrefix = brainLedgerPrefix(load.ledger);
++    expect(filledPrefix).toHaveLength(8);
++    const filledModel = rebuildBrainModel(BRAIN_DEMO_JOB_ID, seeds, filledPrefix);
++    const wholeModel = rebuildBrainModel(BRAIN_DEMO_JOB_ID, seeds, demoRows);
++    expect(filledModel).toEqual(wholeModel);
++  });
++});
++
++describe("THE MID-LEDGER JOIN (brainDemoRecording)", () => {
++  it("requests from the start and holds no prefix until a page from cursor 0 fills it", () => {
++    const demoRows = brainDemoRows();
++    let load = brainLedgerLive(initialBrainLedgerLoad(), demoRows.slice(4, 8));
++    expect(brainLedgerRequest(load)).toBe(0);
++    expect(brainLedgerPrefix(load.ledger)).toEqual([]);
++
++    const page = { cursor: "8", events: BRAIN_DEMO_FRAMES.slice(0, 4).map((f) => f.event) };
++    load = brainLedgerReceived(load, 0, page);
++    expect(brainLedgerPrefix(load.ledger)).toHaveLength(8);
++  });
++});
+diff --git a/tests/ui_contracts/test_brain_live_wiring.py b/tests/ui_contracts/test_brain_live_wiring.py
+new file mode 100644
+index 000000000..1e168fea3
+--- /dev/null
++++ b/tests/ui_contracts/test_brain_live_wiring.py
+@@ -0,0 +1,114 @@
++"""Contract tests for T003 part one: the live wiring (DECISION F019 D5).
++
++The stage now draws `rebuildBrainModel(jobId, seeds, rows)` where `rows` is the
++ledger's contiguous prefix, merged from `events-since` pages and the live
++stream's ring by `useBrainLedger.ts`. Behaviour is pinned by vitest in
++brainLedger.test.ts; this suite pins what no vitest run can see because this
++repository has no DOM environment: that the SHELL actually hands the stage its
++ring and a page reader, that the STAGE actually reads through the ledger hook
++rather than seeding once from the dashboard, and that the hook holds its
++in-flight guard in a ref rather than in state. Every assertion runs against
++COMMENT-STRIPPED source, imported from test_brain_stream_ring.py (this
++repository's own precedent — test_lessons_overlay_contract.py and
++test_steering_send_contract.py both import it the same way) rather than
++copied, so a prose description above a definition cannot satisfy a guard
++meant for the code (finding R-0584).
++"""
++from __future__ import annotations
++
++from pathlib import Path
++
++from tests.ui_contracts.test_brain_stream_ring import strip_ts_comments
++
++REPO_ROOT = Path(__file__).resolve().parent.parent.parent
++UI_SRC = REPO_ROOT / "apps" / "ui" / "src"
++SHELL = UI_SRC / "components" / "shell" / "RemedyShell.tsx"
++STAGE = UI_SRC / "components" / "graph" / "BrainGraphStage.tsx"
++DEPS = UI_SRC / "api" / "brainStreamDeps.ts"
++HOOK = UI_SRC / "components" / "graph" / "useBrainLedger.ts"
++
++
++def _source(path: Path) -> str:
++    return strip_ts_comments(path.read_text(encoding="utf-8"))
++
++
++class TestTheShellWiresTheLedgerReader:
++    def test_the_stage_line_carries_the_ring_and_the_page_reader(self):
++        shell = _source(SHELL)
++        element = [line for line in shell.splitlines() if "<BrainGraphStage" in line]
++        assert len(element) == 1, "expected exactly one <BrainGraphStage element"
++        assert "recent={" in element[0], (
++            "the stage cannot fold live rows it is never handed"
++        )
++        assert "readEventsPage={readEventsPage}" in element[0], (
++            "the stage cannot page a hole shut without a reader"
++        )
++        assert "onSelectNode={onSelectNode}" in element[0], (
++            "R-0664's one shared callback must survive this round's edit"
++        )
++
++    def test_the_shell_builds_its_page_reader_through_the_one_path_builder(self):
++        shell = _source(SHELL)
++        assert "eventsSincePath(" in shell, (
++            "a page reader that built its own path would disagree with "
++            "brainStreamDeps.ts's `since` about escaping the job id"
++        )
++
++
++class TestThePathIsBuiltInOnePlace:
++    def test_events_since_path_is_exported(self):
++        deps = _source(DEPS)
++        assert "export function eventsSincePath(" in deps
++
++    def test_the_streams_own_since_reads_through_it(self):
++        deps = _source(DEPS)
++        start = deps.index("export function createBrainStreamHostDeps(")
++        end = deps.index("\nexport ", start + 1)
++        body = deps[start:end]
++        assert "eventsSincePath(jobId, cursor)" in body, (
++            "the stream's own snapshot/tail must share the graph's path builder"
++        )
++
++
++class TestTheStageReadsThroughTheLedger:
++    def test_the_stage_calls_use_brain_ledger(self):
++        assert "useBrainLedger(" in _source(STAGE)
++
++    def test_the_stage_calls_brain_ledger_prefix(self):
++        assert "brainLedgerPrefix(" in _source(STAGE)
++
++    def test_the_stage_calls_rebuild_brain_model(self):
++        assert "rebuildBrainModel(" in _source(STAGE)
++
++    def test_the_stage_no_longer_seeds_once_and_stops(self):
++        assert "seedBrainModel(" not in _source(STAGE), (
++            "a stage that still calls seedBrainModel( draws the dashboard seed "
++            "forever and never folds a stream frame"
++        )
++
++
++class TestTheHookIsThinAndHasNoTransportOfItsOwn:
++    def test_the_hook_calls_brain_ledger_request(self):
++        assert "brainLedgerRequest(" in _source(HOOK)
++
++    def test_the_hook_calls_brain_ledger_received(self):
++        assert "brainLedgerReceived(" in _source(HOOK)
++
++    def test_the_hook_calls_brain_ledger_live(self):
++        assert "brainLedgerLive(" in _source(HOOK)
++
++    def test_the_in_flight_cursor_is_held_in_a_ref(self):
++        code = _source(HOOK)
++        assert "useRef<number | null>(null)" in code, (
++            "a state flip here would change the request effect's own key and "
++            "cancel the read it exists to guard"
++        )
++
++    def test_the_hook_opens_no_transport_of_its_own(self):
++        code = _source(HOOK)
++        assert "EventSource" not in code, (
++            "only brainStreamDeps.ts may construct the transport"
++        )
++        assert "fetch(" not in code, (
++            "the hook reads through the injected `readPage`, never `fetch` directly"
++        )
+diff --git a/tests/ui_contracts/test_brain_stage_mount.py b/tests/ui_contracts/test_brain_stage_mount.py
+index 681e6c7d6..9a598057d 100644
+--- a/tests/ui_contracts/test_brain_stage_mount.py
++++ b/tests/ui_contracts/test_brain_stage_mount.py
+@@ -44,9 +44,12 @@ class TestStageBuildsTheRealLayout:
+         src = STAGE_TSX.read_text()
+         assert "dashboardBrainSeeds(" in src
+ 
+-    def test_stage_seeds_the_reducer_model(self):
++    def test_stage_folds_the_ledgers_prefix_into_the_reducer_model(self):
++        """R5 T003: the stage now REBUILDS from the ledger's contiguous prefix
++        rather than seeding once from the dashboard alone (DECISION F019 D5) —
++        `test_brain_live_wiring.py` pins the rest of the wiring."""
+         src = STAGE_TSX.read_text()
+-        assert "seedBrainModel(" in src
++        assert "rebuildBrainModel(" in src
+ 
+     def test_stage_lays_out_the_model(self):
+         src = STAGE_TSX.read_text()

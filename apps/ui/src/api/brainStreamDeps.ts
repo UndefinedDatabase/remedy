@@ -73,6 +73,14 @@ export function framesOf(payload: unknown): BrainStreamFrame[] {
   return frames;
 }
 
+/** The ONE place the events-since path is built, shared by the stream's own
+ *  snapshot/tail below and the graph's ledger reader (`brainLedger.ts`, via
+ *  `useBrainLedger.ts`), which RemedyShell.tsx wires to this same function
+ *  rather than building the path a second time. */
+export function eventsSincePath(jobId: string, cursor: number): string {
+  return `/api/jobs/${encodeURIComponent(jobId)}/events-since?cursor=${cursor}`;
+}
+
 /** Build the four functions `createBrainStreamHost` needs, for ONE job.
  *
  *  The two paths are the two transports of one envelope:
@@ -80,7 +88,7 @@ export function framesOf(payload: unknown): BrainStreamFrame[] {
  *  answers the snapshot and the polling tail out of the same ledger. */
 export function createBrainStreamHostDeps(jobId: string, env: BrainStreamEnv): BrainStreamHostDeps {
   const job = encodeURIComponent(jobId);
-  const since = (cursor: number): string => `/api/jobs/${job}/events-since?cursor=${cursor}`;
+  const since = (cursor: number): string => eventsSincePath(jobId, cursor);
   return {
     openSource(lastEventId: string | null): BrainStreamSource | null {
       const make = env.makeSource;

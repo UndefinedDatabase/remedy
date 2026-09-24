@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { RemedyDashboard } from "../../api/types";
 import type { DiffEnvelope } from "../../api/diffViewModel";
 import type { JobDigest } from "../../api/jobDigest";
@@ -21,7 +21,7 @@ import { LessonsOverlay } from "../lessons/LessonsOverlay";
 import { lessonsRefreshKey } from "../../api/lessons";
 import { DegradedBanner } from "./DegradedBanner";
 import styles from "./RemedyShell.module.css";
-import { browserBrainStreamEnv, createBrainStreamHostDeps } from "../../api/brainStreamDeps";
+import { browserBrainStreamEnv, createBrainStreamHostDeps, eventsSincePath } from "../../api/brainStreamDeps";
 import { useBrainStream } from "../../api/useBrainStream";
 import { metricsWithCostTicker } from "../../api/costTicker";
 import { metricsWithCostReconciliation } from "../../api/costReconciliation";
@@ -44,6 +44,15 @@ export function RemedyShell({ dashboard, serverToken, selectedNodeId, onSelectNo
   // every URL that carries none (DECISION F008 D3).
   const stream = useBrainStream(dashboard.jobId, (jobId) =>
     createBrainStreamHostDeps(jobId, browserBrainStreamEnv(window)));
+  // The graph's ledger reader shares the same real environment and the same
+  // path builder the stream above uses, built once so the callback handed to
+  // the stage stays referentially stable across a render the stream itself
+  // did not cause (DECISION F019 D5).
+  const brainStreamEnv = useMemo(() => browserBrainStreamEnv(window), []);
+  const readEventsPage = useCallback(
+    (cursor: number) => brainStreamEnv.fetchJson(eventsSincePath(dashboard.jobId, cursor)),
+    [brainStreamEnv, dashboard.jobId],
+  );
   let selectedNode = selectedNodeId ? (dashboard.graph.nodes.find(n => n.nodeId === selectedNodeId || n.id === selectedNodeId) ?? null) : null;
   // Prompt satellite nodes carry the prompt item id as their node id. Resolve
   // such a selection to its owning task node so the popover (and its Prompt
@@ -186,7 +195,7 @@ export function RemedyShell({ dashboard, serverToken, selectedNodeId, onSelectNo
             )}
           />
           <CommandBar nextAction={dashboard.nextAction} onJump={handleJump} />
-          <BrainGraphStage dashboard={dashboard} selectedNodeId={selectedNodeId} onSelectNode={onSelectNode} />
+          <BrainGraphStage dashboard={dashboard} selectedNodeId={selectedNodeId} onSelectNode={onSelectNode} recent={stream.recent} readEventsPage={readEventsPage} />
           <PhaseTimeline phases={dashboard.phases} timelineEvents={dashboard.timelineEvents} />
         </main>
         <RightLivePanel dashboard={dashboard} serverToken={serverToken} onSelectNode={onSelectNode} streamStatus={stream.status} recent={stream.recent} recentDropped={stream.recentDropped} onOpenLessons={() => setLessonsOpen(true)} />

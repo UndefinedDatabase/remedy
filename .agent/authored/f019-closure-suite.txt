@@ -1,0 +1,7 @@
+F019 R7 C5 — the closure's one full suite run
+
+Command: python3 -m pytest -n auto -q
+Real exit code: 0
+Wall time: 186 s (measured externally via `date +%s` before/after); pytest's own report reads 185.67s (0:03:05)
+Summary line: 19092 passed, 20 skipped, 1 warning in 185.67s (0:03:05)
+Bad node ids (failed + errors): NONE

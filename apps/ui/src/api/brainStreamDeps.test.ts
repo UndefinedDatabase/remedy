@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { browserBrainStreamEnv, createBrainStreamHostDeps, cursorAfter, framesOf, snapshotSeqOf } from "./brainStreamDeps";
+import { browserBrainStreamEnv, createBrainStreamHostDeps, cursorAfter, eventsSincePath, framesOf, snapshotSeqOf } from "./brainStreamDeps";
 import type { BrainStreamEnv, BrainStreamGlobals } from "./brainStreamDeps";
 import type { BrainStreamMessage, BrainStreamSource } from "./brainStreamHost";
 
@@ -54,6 +54,12 @@ describe("the cursor arithmetic", () => {
 
   it("asks from the start when it holds nothing", () => {
     expect(cursorAfter(null)).toBe(0);
+  });
+});
+
+describe("the events-since path", () => {
+  it("is the one place the path is built, and escapes the job id", () => {
+    expect(eventsSincePath("job/1", 7)).toBe("/api/jobs/job%2F1/events-since?cursor=7");
   });
 });
 

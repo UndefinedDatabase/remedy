@@ -26,7 +26,7 @@ verification commands. If something is unproven, Remedy says so instead of guess
 
 ## Status
 
-97 of 284 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
+98 of 284 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
 
 | Tier | Name | Done | Total |
 |------|------|-----:|------:|
@@ -35,7 +35,7 @@ verification commands. If something is unproven, Remedy says so instead of guess
 | 2 | Minimal Self-Build Runtime | 36 | 37 |
 | 3 | Full Token Economy & Autonomy | 6 | 26 |
 | 4 | Memory & Learning | 1 | 17 |
-| 5 | Operator Cockpit | 16 | 34 |
+| 5 | Operator Cockpit | 17 | 34 |
 | 6 | Design-to-Code | 0 | 16 |
 | 7 | Quality & Trust | 0 | 15 |
 | 8 | Worker Ecosystem & Neutrality | 0 | 12 |
@@ -391,6 +391,18 @@ when it is refused and says why, names the plan version it was made against so
 an edit made on an older reading is refused, and is logged so the plan's history
 can be replayed; approving the plan records exactly which plan was approved, and
 a job refuses to start if its plan changed after that).
+
+F019 live node materialization (the job graph in the browser cockpit now grows
+while a job runs: the job sits in the middle, its tasks around it, and a small
+node appears for each builder attempt, review and check as it happens, with a
+short grow-in animation, a moving dot on each link whose work is running right
+now, and colours for passed, failed and blocked; the graph is built only from
+the job's own event stream, so it never shows a result it was not told, and when
+the browser misses events, for example after a laptop slept, it reads the
+missing ones back from the server before it draws anything past the gap; a
+Simple view button shows the older, plainer picture, which keeps the small
+prompt dots and can be used with the keyboard; in a check in a headless browser
+the graph held sixty frames a second at five hundred nodes).
 
 Full per-feature state: [`docs/roadmap/STATUS.md`](docs/roadmap/STATUS.md)
 

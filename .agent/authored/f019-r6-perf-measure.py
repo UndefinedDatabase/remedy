@@ -1,0 +1,191 @@
+#!/usr/bin/env python3
+"""F019 R6 Part C — the performance measurement tool (evidence, not product).
+
+One self-contained entry, `measure.py <repo root>`, that does everything: it
+copies this directory's flat harness files (index.html, main.tsx,
+vite.config.mjs, drive_chrome.mjs — none of them mutated, just placed) into a
+fresh work dir under `<repo root>/.remedy-wt/f019-perf-run`, symlinks that
+work dir's `node_modules` to the PRIMARY checkout's `apps/ui/node_modules`,
+builds the harness with the primary's `vite` binary, serves `dist/` with
+`python3 -m http.server` on 127.0.0.1, launches `/usr/bin/google-chrome
+--headless=new` with a private `--user-data-dir`, runs `drive_chrome.mjs`
+(node's global WebSocket driving the page over CDP) to measure 3 runs x 2
+sizes, stops Chrome and the server by their OWN recorded pids (never
+`pkill -f`), removes the work dir, and exits 0 only when drive_chrome.mjs's
+own stage-1 budget verdict was PASS.
+
+`main.tsx` imports `brainPerfModel` and the two node-count constants straight
+from `<repo root>/apps/ui/src/components/graph/brainPerfFixture.ts` (a
+relative import, since the work dir always sits two levels under
+`<repo root>`) — this tool invents no fixture of its own.
+
+Usage: python3 measure.py <repo root>
+  <repo root> e.g. /home/decodeux/Repos/remedy/.remedy-wt/f019-r6-proto
+"""
+from __future__ import annotations
+
+import os
+import shutil
+import signal
+import subprocess
+import sys
+import time
+import urllib.request
+from pathlib import Path
+
+TOOL_DIR = Path(__file__).resolve().parent
+TEMPLATE_FILES = ["index.html", "main.tsx", "vite.config.mjs", "drive_chrome.mjs"]
+
+PRIMARY_UI = Path("/home/decodeux/Repos/remedy/apps/ui")
+PRIMARY_NODE_MODULES = PRIMARY_UI / "node_modules"
+PRIMARY_VITE_BIN = PRIMARY_NODE_MODULES / ".bin" / "vite"
+CHROME_BIN = "/usr/bin/google-chrome"
+
+CDP_PORT = 9333
+SERVER_PORT = 8971
+
+
+def _work_dir(repo_root: Path) -> Path:
+    return repo_root / ".remedy-wt" / "f019-perf-run"
+
+
+def fresh_work_dir(repo_root: Path) -> Path:
+    work_dir = _work_dir(repo_root)
+    if work_dir.exists():
+        shutil.rmtree(work_dir)
+    work_dir.mkdir(parents=True)
+    for name in TEMPLATE_FILES:
+        shutil.copy(TOOL_DIR / name, work_dir / name)
+    os.symlink(PRIMARY_NODE_MODULES, work_dir / "node_modules", target_is_directory=True)
+    return work_dir
+
+
+def run_build(work_dir: Path) -> None:
+    print("+ vite build", flush=True)
+    proc = subprocess.run(
+        [str(PRIMARY_VITE_BIN), "build", "--config", str(work_dir / "vite.config.mjs")],
+        cwd=str(work_dir), capture_output=True, text=True, timeout=120,
+    )
+    print(proc.stdout)
+    if proc.returncode != 0:
+        print(proc.stderr, file=sys.stderr)
+        raise SystemExit(f"vite build failed: exit {proc.returncode}")
+
+
+def start_server(work_dir: Path) -> tuple[subprocess.Popen, "object"]:
+    log = open(work_dir / "server.log", "w")
+    proc = subprocess.Popen(
+        [sys.executable, "-m", "http.server", str(SERVER_PORT),
+         "--bind", "127.0.0.1", "--directory", str(work_dir / "dist")],
+        stdout=log, stderr=subprocess.STDOUT,
+    )
+    time.sleep(1.0)
+    return proc, log
+
+
+def start_chrome(work_dir: Path) -> tuple[subprocess.Popen, "object"]:
+    profile = work_dir / "chrome-profile"
+    profile.mkdir(parents=True, exist_ok=True)
+    log = open(work_dir / "chrome.log", "w")
+    proc = subprocess.Popen(
+        [
+            CHROME_BIN,
+            "--headless=new",
+            f"--remote-debugging-port={CDP_PORT}",
+            "--remote-debugging-address=127.0.0.1",
+            f"--user-data-dir={profile}",
+            "--window-size=1280,800",
+            "--no-first-run",
+            "--no-default-browser-check",
+            "about:blank",
+        ],
+        stdout=log, stderr=subprocess.STDOUT,
+    )
+    _wait_for_cdp(timeout=15.0)
+    return proc, log
+
+
+def _wait_for_cdp(timeout: float) -> None:
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        try:
+            with urllib.request.urlopen(f"http://127.0.0.1:{CDP_PORT}/json/version", timeout=1.0) as r:
+                if r.status == 200:
+                    return
+        except OSError:
+            pass
+        time.sleep(0.3)
+    raise SystemExit("chrome CDP endpoint never came up")
+
+
+def run_drive(work_dir: Path) -> int:
+    print("+ node drive_chrome.mjs", flush=True)
+    proc = subprocess.run(
+        ["node", str(work_dir / "drive_chrome.mjs")],
+        cwd=str(work_dir), capture_output=True, text=True, timeout=180,
+    )
+    print(proc.stdout)
+    if proc.stderr:
+        print(proc.stderr, file=sys.stderr)
+    return proc.returncode
+
+
+def stop_by_pid(proc: subprocess.Popen, name: str) -> None:
+    pid = proc.pid
+    try:
+        os.kill(pid, signal.SIGTERM)
+    except ProcessLookupError:
+        print(f"{name} pid {pid} already gone")
+        return
+    for _ in range(20):
+        if proc.poll() is not None:
+            print(f"{name} pid {pid} stopped (SIGTERM)")
+            return
+        time.sleep(0.2)
+    try:
+        os.kill(pid, signal.SIGKILL)
+        print(f"{name} pid {pid} stopped (SIGKILL, SIGTERM did not land in time)")
+    except ProcessLookupError:
+        print(f"{name} pid {pid} stopped (SIGTERM, race with the poll above)")
+
+
+def main() -> int:
+    if len(sys.argv) != 2:
+        print("usage: measure.py <repo root>", file=sys.stderr)
+        return 2
+    repo_root = Path(sys.argv[1]).resolve()
+    print(f"repo root: {repo_root}")
+
+    work_dir = fresh_work_dir(repo_root)
+    print(f"work dir: {work_dir}")
+
+    server_proc = None
+    chrome_proc = None
+    server_log = None
+    chrome_log = None
+    drive_exit = 1
+    try:
+        run_build(work_dir)
+        server_proc, server_log = start_server(work_dir)
+        print(f"server pid: {server_proc.pid}")
+        chrome_proc, chrome_log = start_chrome(work_dir)
+        print(f"chrome pid: {chrome_proc.pid}")
+        drive_exit = run_drive(work_dir)
+    finally:
+        if chrome_proc is not None:
+            stop_by_pid(chrome_proc, "chrome")
+        if server_proc is not None:
+            stop_by_pid(server_proc, "server")
+        if chrome_log is not None:
+            chrome_log.close()
+        if server_log is not None:
+            server_log.close()
+        shutil.rmtree(work_dir, ignore_errors=True)
+        print(f"removed work dir: {work_dir}")
+
+    print(f"drive_chrome.mjs exit code: {drive_exit}")
+    return 0 if drive_exit == 0 else 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

@@ -280,40 +280,19 @@ class TestNoFakeUiStateInComponents:
 
 
 
-class TestRealGraphSourceKindContract:
-    def test_brain_source_kind_type_exists(self):
+class TestRealGraphTruthContract:
+    def test_brain_layout_node_type_exists(self):
         src = (UI_SRC / "components" / "graph" / "forceBrainTypes.ts").read_text()
-        assert "BrainSourceKind" in src
-        assert "real_brain" in src
-        assert "layout_only" in src
-        assert "demo_fixture" in src
+        assert "interface BrainLayoutNode" in src
+        assert "sourceKind" not in src
 
-    def test_force_brain_node_has_source_kind(self):
-        src = (UI_SRC / "components" / "graph" / "forceBrainTypes.ts").read_text()
-        assert "sourceKind: BrainSourceKind" in src
-
-    def test_build_model_assigns_source_kind_to_root(self):
+    def test_build_model_has_no_source_kind(self):
+        # The graph lays out only real nodes (graph_spec §8); the "no decor,
+        # no invented node" behaviour is pinned on the vitest side by
+        # buildForceBrainModel.test.ts's "truth rule" describe block.
         src = (UI_SRC / "components" / "graph" / "buildForceBrainModel.ts").read_text()
-        # Root should be layout_only
-        assert 'sourceKind: "layout_only"' in src
-
-    def test_build_model_assigns_source_kind_to_real_nodes(self):
-        src = (UI_SRC / "components" / "graph" / "buildForceBrainModel.ts").read_text()
-        assert 'sourceKind: "real_brain"' in src
-
-    def test_particles_marked_layout_only(self):
-        src = (UI_SRC / "components" / "graph" / "buildForceBrainModel.ts").read_text()
-        # Particle nodes should be layout_only
-        lines = src.split("\n")
-        in_particle = False
-        particle_has_layout = False
-        for line in lines:
-            if "kind: \"particle\"" in line:
-                in_particle = True
-            if in_particle and "sourceKind" in line:
-                particle_has_layout = "layout_only" in line
-                break
-        assert particle_has_layout
+        assert "sourceKind" not in src
+        assert "layout_only" not in src
 
     def test_no_math_random_in_graph_model(self):
         src = (UI_SRC / "components" / "graph" / "buildForceBrainModel.ts").read_text()
