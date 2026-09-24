@@ -1,0 +1,13 @@
+diff --git a/docs/roadmap/STATUS.md b/docs/roadmap/STATUS.md
+index cb352e30..e10fe274 100644
+--- a/docs/roadmap/STATUS.md
++++ b/docs/roadmap/STATUS.md
+@@ -55,7 +55,7 @@ The tier-block order below is the operator-decided Self-Use sequence of 2026-08-
+ 
+ ## Tier 5 — Steering & Learning Surfaces (operator order amend0831)
+ 
+-- [ ] F264 — Steering channel (remedy chat)
++- [~] F264 — Steering channel (remedy chat)
+ - [ ] F265 — Teacher learning UI v1 (post-task lessons)
+ 
+ ## Tier 0 — Foundation & Trust Core

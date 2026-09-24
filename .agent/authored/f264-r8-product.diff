@@ -1,0 +1,217 @@
+diff --git a/docs/README.md b/docs/README.md
+index aacbe5ca..a7e77961 100644
+--- a/docs/README.md
++++ b/docs/README.md
+@@ -57,6 +57,7 @@
+ | semantic dedupe | [semantic-dedupe-v1.md](system/semantic-dedupe-v1.md) | system |
+ | session resume | [session-resume-v1.md](system/session-resume-v1.md) | system |
+ | snapshot | [snapshot-rollback-v1.md](system/snapshot-rollback-v1.md) | system |
++| steering | [steering-user-guide-v1.md](guides/steering-user-guide-v1.md) | guide |
+ | test execution | [real-test-execution-v1.md](system/real-test-execution-v1.md) | system |
+ | test lanes | [test-lanes-v0.md](system/test-lanes-v0.md) | system |
+ | token economy | [token-economy-context-budget-optimizer-v0.md](system/token-economy-context-budget-optimizer-v0.md) | system |
+@@ -135,6 +136,7 @@ User-facing guides, quickstarts, and usage documentation.
+ | [remedy-toml-user-guide.md](guides/remedy-toml-user-guide.md) | remedy.toml configuration guide |
+ | [resume.md](guides/resume.md) | Resuming interrupted jobs |
+ | [simple-operator-quickstart-v0.md](guides/simple-operator-quickstart-v0.md) | Quickstart for new operators |
++| [steering-user-guide-v1.md](guides/steering-user-guide-v1.md) | Steering a running job with `remedy chat` or the cockpit input, and reading what it understood |
+ | [token-economy-user-guide-v0.md](guides/token-economy-user-guide-v0.md) | Token budgets and context packs |
+ 
+ ## Archive (`docs/archive/`)
+diff --git a/docs/agents/planner_reviewer_prompt.md b/docs/agents/planner_reviewer_prompt.md
+index 297d2500..186ab9a1 100644
+--- a/docs/agents/planner_reviewer_prompt.md
++++ b/docs/agents/planner_reviewer_prompt.md
+@@ -251,6 +251,12 @@ end the response with:
+   Consolidated a fourth time at F282's closure on 2026-09-24: no two items were merged;
+   the counter-measures of findings R-0819 and R-0662 joined item 8 and that of R-0820
+   joined item 12, so the list stays at 34 items.
++  Consolidated a fifth time at F264's closure on 2026-09-24: nothing joined and no two items
++  were merged, because neither of F264's two lines in `.agent/prose_slips.md` names a lesson
++  the list lacks. A delegation issued from a shell that had moved into a dry worktree is item
++  12's working-directory clause, and a DECISION ordered as a commit of its own is operator
++  amendment amend0917-throughput rule 4, which lands it with the round's bookkeeping. The list
++  stays at 34 items.
+   The next consolidation measures against 34.
+   Reverse by deleting this paragraph.
+   1. **Size.** Count the block's lines. Over 400 (DECISION F105 D5) → split or
+diff --git a/docs/guides/steering-user-guide-v1.md b/docs/guides/steering-user-guide-v1.md
+new file mode 100644
+index 00000000..f1a0389f
+--- /dev/null
++++ b/docs/guides/steering-user-guide-v1.md
+@@ -0,0 +1,91 @@
++# Steering a running job (user guide, v1)
++
++A job that is heading the wrong way used to leave you one choice: stop it. Steering gives
++you a cheaper one. You send the running job a short message in your own words, the job
++reads it at its next safe point, and it tells you what it understood and from which round
++it applies. The job keeps the rounds that were already fine.
++
++Steering was built by feature F264. The design is in
++[T5_F264.md](../roadmap/features/T5_F264.md), and the decisions behind it are the
++`DECISION F264 D1` to `D7` entries in `.agent/decisions.md`.
++
++## Send a message
++
++From a terminal:
++
++    remedy chat send <job_id> "Keep the public function names; rename only the private helpers."
++
++The short form does the same thing:
++
++    remedy chat <job_id> "Keep the public function names; rename only the private helpers."
++
++The job id may be the full id or any prefix of it that names one job. Quote the message so
++that it arrives as one argument. The command prints the message's id, for example
++`sm-0001`, and says that the job reads it at its next safe point. Add `--json` to get the
++message id, the time it was received and the seal of its record as JSON instead.
++
++From the cockpit (`remedy ui start <job_id>`), type the message into the input at the
++bottom of the activity card and press Enter or the arrow button. The sentence under the
++input says what happened: the message was recorded, or it was refused and why. A refused
++message stays in the input so that you can correct it and send it again.
++
++A message must not be empty and may be at most 2000 characters long. A job that has
++already ended takes no message, because no run would ever read it: the command exits with
++code 3 and the cockpit input is shown disabled with that reason.
++
++## When the job reads it
++
++A job does its work as tasks, and each task runs in rounds: the builder model writes a
++change, a reviewer checks it, and the next round repairs what the review found. The SAFE
++POINT is the start of a round, before anything of that round is sent to a model.
++
++- A message never reaches a model call that is already running. A message you send while
++  round 2 is being built waits, and round 3 is the first round that sees it.
++- Once a round has taken a message in, every later round of the job carries it too, in
++  every task, in the order the messages were sent, and the builder is told that where two
++  messages disagree, the later one wins.
++- The message goes into the builder's prompt word for word, never shortened and never
++  paraphrased.
++- If the job belongs to a mission, taking the message in also adds it to the mission's
++  contract as a new requirement, once, from the mission's next round.
++
++A message that arrives during the job's very last round is never taken in, because no
++later round exists to read it. `remedy chat show` then says so plainly, rather than leaving
++you to assume the job followed it.
++
++## See what the job understood
++
++    remedy chat show <job_id>
++
++This lists every message of the job, oldest first, with the channel it came through. Under
++each one it prints one of three answers:
++
++- `taken in at round 3 of task <task_id>: ...` followed by the job's restatement, which
++  quotes your message and names the round it applies from, and for a mission's job also the
++  contract requirement it became;
++- `waiting`, when the job has not reached a safe point since the message arrived;
++- `not taken in`, when the job ended before it reached another round.
++
++Add `--json` for the same list as JSON.
++
++The cockpit shows the same acknowledgement as its own line in the activity feed, directly
++above the input: "Steering taken in at round 3: ..." followed by the same restatement.
++Both views read the one event the job writes when it takes a message in, so they cannot
++disagree.
++
++## What is kept as evidence
++
++Every message is written as a sealed record in the job's evidence folder, under
++`steering/`, before the job is told about it, and a `steering_message_received` event in
++the job's run log carries the record's seal. When a round takes the message in, a sealed
++marker under `steering/consumed/` names the task and the round, and a
++`steering_message_consumed` event records the restatement. A record whose seal no longer
++matches its text stops the job loudly instead of feeding it text nobody can prove you
++sent.
++
++## Exit codes
++
++`remedy chat send` exits 0 when the message was recorded, 2 when the message itself is
++unusable (empty, too long, or containing a NUL character), and 3 when the job has ended or
++its record cannot be read. `remedy chat show` exits 3 when the job's record cannot be read.
++An unknown job id exits 1. The full list is in [exit-codes.md](exit-codes.md).
+diff --git a/docs/roadmap/features/T5_F264.md b/docs/roadmap/features/T5_F264.md
+index 0f617a51..c086d8e5 100644
+--- a/docs/roadmap/features/T5_F264.md
++++ b/docs/roadmap/features/T5_F264.md
+@@ -82,3 +82,60 @@ complete, testable thing. T002 is the risky slice — the safe-point boundary is
+ the property most likely to be quietly violated, so it needs a red proof that a
+ mid-call message WAITS. T003 is small but is the acceptance-visible half; it
+ cannot be dropped for budget without dropping the feature's point.
++
++## Built State (F264, 2026-09-24)
++
++What exists on disk at the close of F264, built in seven rounds of one session on
++`feature/f264-steering-channel`, cut from `main` at `ef4cb503`. Every DECISION named lives in
++`.agent/decisions.md`; every round's verdict in `.agent/live_review.md` or, once rotated, its
++archive. The operator-facing description is `docs/guides/steering-user-guide-v1.md`.
++
++**T001 — the message channel.** `packages/orchestration/steering.py` is the one place a message
++is accepted. `record_steering_message` refuses an ended job, an empty message, a NUL character
++and anything over `STEERING_MAX_CHARS` (2000), then writes the message create-once as a sealed
++record `steering/sm-<nnnn>.json` under the job's evidence folder and only then certifies it into
++the run log as a `steering_message_received` event carrying the record's seal (DECISION F264 D1).
++`remedy chat send <job_id> "<message>"`, and the bare `remedy chat <job_id> "<message>"`, are its
++CLI route in `apps/cli/commands/chat_cmd.py`, exiting 2 on an unusable message and 3 on an ended
++or unreadable job. The cockpit's route is the catalog command `chat.send` on F009's write door,
++which records and never reaches a call (D2), sent only through `apps/ui/src/api/steeringSend.ts`
++from the live input at the bottom of the activity card, which answers every send with one
++sentence and keeps a refused message in the field (D3).
++
++**T002 — consumption at the safe point.** `run_pingpong` calls `consume_pending_steering` at the
++top of every round, before anything of that round is composed or sent, and never from the stop
++probe that also runs between retries of one call. A message is consumed exactly once, by a sealed
++create-once marker `steering/consumed/<message_id>.json` naming the task and round, and every
++consumed message rides in the builder prompt's `builder_steering` segment, verbatim, in every
++later round of the job (D4). For a mission's job, consuming a message also amends the mission's
++contract once through F269's `amend_mission_contract`, before its marker is published, and a
++failed amendment stops the run loudly (D5).
++
++**T003 — the acknowledgement.** The `steering_message_consumed` event is the acknowledgement: its
++`understood` field quotes the message verbatim with the task round it applies from, and for a
++mission's job the contract criterion and mission round (D6). The stream carries it as the frame's
++`steering` field; `remedy chat show <job_id>` reads the same events and lists every message as
++taken in, waiting, or not taken in; and the cockpit's activity feed shows it as the line
++"Steering taken in at round <n>: <restatement>." through the checked reader
++`apps/ui/src/api/steeringAck.ts` (D7). A message that arrives during a job's very last round is
++never consumed, and `remedy chat show` says so.
++
++**Acceptance, by the test that proves it.** Round N+1 changes and round N does not:
++`tests/orchestration/test_steering_consumption.py::test_a_message_sent_during_round_one_changes_round_two_and_only_round_two`,
++which compares the builder prompts with and without the message. A message sent mid-call waits
++for the next safe point: `test_the_consumption_round_is_the_round_after_the_call_it_arrived_in`
++in the same file. The acknowledgement names what was understood and the effective round:
++`tests/orchestration/test_steering.py`, `tests/cli/test_chat_cmd.py`,
++`tests/ui_server/test_sse_stream.py::TestFrameShape::test_a_steering_acknowledgement_carries_its_three_fields_and_no_other`
++and `apps/ui/src/api/steeringAck.test.ts`. Every message appears in the event log with its
++consumption round: the received and consumed events asserted in `tests/orchestration/test_steering.py`.
++
++**Modules and lists (closure precondition 7).** F264 added two Python modules,
++`packages/orchestration/steering.py` and `apps/cli/commands/chat_cmd.py`, both imported from the
++entry points, and two lines to `tests/orchestration/import_reachability_allowlist.txt` for them:
++`apps.cli.commands.chat_cmd` and `packages.orchestration.steering`. It added nothing to
++`ALLOWED_UNWIRED` or `RESERVED_NAMESPACES` in `tests/test_no_orphan_modules.py`. The `chat` group
++fills the second reserved slot of the visible group order, after `absorb`.
++
++**Findings.** No finding was registered against F264. The three open findings at its claim,
++R-0499, R-0950 and R-1008, are owned by F284 and were neither touched nor re-assigned.
+diff --git a/docs/system/operator-cockpit-v1.md b/docs/system/operator-cockpit-v1.md
+index 891fae7c..bb1955ed 100644
+--- a/docs/system/operator-cockpit-v1.md
++++ b/docs/system/operator-cockpit-v1.md
+@@ -61,8 +61,11 @@ faked to stand in for unknown data.
+ 
+ - No approve/reject/apply/revert/run controls — those remain CLI + central
+   services, gated by permission/contract/snapshot/test policy.
+-- No chat or "ask" input, no "+ Add Task" creator. The command bar is a local
+-  jump-to filter only.
++- No "ask" input that puts a question to a model, no "+ Add Task" creator. The
++  command bar is a local jump-to filter only. The one text input is the steering
++  input at the bottom of the activity card, which records a steering message for
++  the running job and never reaches a model call in flight; see
++  [steering-user-guide-v1.md](../guides/steering-user-guide-v1.md).
+ - No demo/synthetic data path in normal operation.
+ 
+ ## See also

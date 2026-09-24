@@ -76,6 +76,8 @@ export const STREAM_EVENT_CATALOG: Readonly<Record<string, string>> = {
   "snapshot_create_completed": "The repository snapshot was created.",
   "snapshot_verified": "The repository snapshot was verified.",
   "source_patch_applied": "A source patch was applied.",
+  "steering_message_consumed": "The job took in your steering message for its next round.",
+  "steering_message_received": "Your steering message was recorded for the job's next safe point.",
   "stream_cap_reached": "The stream hit its size cap and stopped recording.",
   "task_gate_evaluated": "The task's gate was evaluated.",
   "task_round_completed": "A review round of a task finished.",

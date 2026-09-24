@@ -877,8 +877,13 @@ def compose_builder_prompt(
     tiered_diff_text: str = "",
     dedupe_sent_hashes: Container[str] | None = None,
     dedupe_enabled: bool = True,
+    steering_text: str = "",
 ) -> ComposedPrompt:
     """Compose the builder prompt from registered segments, with its manifest.
+
+    ``steering_text`` is the operator's steering messages, already rendered by
+    ``steering.render_steering_segment`` (F264 T002, DECISION F264 D4); it becomes the
+    ``builder_steering`` segment, directly before the directive, and is absent when empty.
 
     Every optional segment keeps EXACTLY the pre-migration condition, including
     the two gated on ``findings`` as well as their own value — a repair-only
@@ -1028,6 +1033,10 @@ def compose_builder_prompt(
             "builder_hunk_rejections", SegmentStabilityRank.STEERING,
             [rejection_text],
         ))
+    # F264 T002: the operator's steering messages, VERBATIM and uncapped for the reason
+    # above, registered only when there are any so the golden shapes keep their manifest.
+    if steering_text:
+        specs.append(("builder_steering", SegmentStabilityRank.STEERING, [steering_text]))
     specs.append((
         "builder_directive", SegmentStabilityRank.STEERING,
         ["\nProvide your changes and a summary of what you did."],
@@ -1052,6 +1061,21 @@ def compose_builder_prompt(
             segments, dedupe_sent_hashes, enabled=dedupe_enabled
         )
     return replace(compose_prompt_segments(segments), deduped_names=deduped_names)
+
+
+def _steering_text_for_round(job_id: str, task_id: str, round_number: int) -> str:
+    """Consume the job's pending steering messages and render every consumed one (F264 T002).
+
+    A run with no job — every caller outside `run_job` — reads nothing, and a job with no
+    message writes nothing. A tampered or unwritable record RAISES: the run stops loudly
+    rather than folding in text it cannot prove the operator sent, or dropping text it can.
+    """
+    if not job_id:
+        return ""
+    from packages.orchestration.steering import consume_pending_steering, render_steering_segment
+
+    return render_steering_segment(consume_pending_steering(
+        job_id, task_id=task_id, round_number=round_number))
 
 
 def _builder_tiered_diff_text(
@@ -3225,6 +3249,13 @@ def run_pingpong(
             if _stop is not None:
                 _record_stop(_stop)
                 break
+            # F264 T002 (DECISION F264 D4): THE STEERING READ, at this safe point and at no
+            # other. It is an explicit step rather than a ride on `stop_check`, because that
+            # probe also runs between transport retries of one call and during rate-limit
+            # waits, which are inside a call. It comes before anything of this round —
+            # including the tiered-diff summary, which may make a model call of its own — so a
+            # message that arrives during any call of this round waits for the next one.
+            steering_text = _steering_text_for_round(job_id, task_id, round_num)
 
             is_repair = round_num > 1 and (bool(findings) or repair_triggered)
             rd = PingPongRound(
@@ -3312,6 +3343,7 @@ def run_pingpong(
                 hunk_ledger=hunk_ledger,
                 resume_hunks_text=builder_resume_hunks_text,
                 tiered_diff_text=builder_tiered_diff_text,
+                steering_text=steering_text,
             )
             builder_composed = compose_builder_prompt(
                 effective_goal, context, **builder_compose_args,

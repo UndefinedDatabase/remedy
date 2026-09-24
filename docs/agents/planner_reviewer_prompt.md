@@ -251,6 +251,12 @@ end the response with:
   Consolidated a fourth time at F282's closure on 2026-09-24: no two items were merged;
   the counter-measures of findings R-0819 and R-0662 joined item 8 and that of R-0820
   joined item 12, so the list stays at 34 items.
+  Consolidated a fifth time at F264's closure on 2026-09-24: nothing joined and no two items
+  were merged, because neither of F264's two lines in `.agent/prose_slips.md` names a lesson
+  the list lacks. A delegation issued from a shell that had moved into a dry worktree is item
+  12's working-directory clause, and a DECISION ordered as a commit of its own is operator
+  amendment amend0917-throughput rule 4, which lands it with the round's bookkeeping. The list
+  stays at 34 items.
   The next consolidation measures against 34.
   Reverse by deleting this paragraph.
   1. **Size.** Count the block's lines. Over 400 (DECISION F105 D5) → split or

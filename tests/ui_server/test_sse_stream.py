@@ -85,6 +85,20 @@ class TestFrameShape:
         for field in (b"data:", b"id:", b"event:"):
             assert field not in frame
 
+    def test_a_steering_acknowledgement_carries_its_three_fields_and_no_other(self):
+        """F264 T003: the acknowledgement names the message, its round and the restatement,
+        CONDITIONAL on its kind like `budget`, and never the rest of the metadata."""
+        summary = mod._safe_event_summary(4, {
+            "event": "steering_message_consumed", "task_id": "task-1",
+            "metadata": {"message_id": "sm-0001", "round_number": 2, "understood": "follows X",
+                         "record_sha256": "abc", "amendment_id": "A001"}})
+        assert set(summary) == {"seq", "event", "timestamp", "outcome", "task_id", "steering"}
+        assert summary["steering"] == {"message_id": "sm-0001", "round_number": 2,
+                                       "understood": "follows X"}
+        other = mod._safe_event_summary(5, {"event": "steering_message_received",
+                                            "metadata": {"message_id": "sm-0001"}})
+        assert "steering" not in other
+
     def test_the_envelope_carries_the_safe_fields_only(self):
         summary = mod._safe_event_summary(2, {"event": "x", "timestamp": "t", "outcome": "ok"})
         assert set(summary) == {"seq", "event", "timestamp", "outcome", "task_id"}

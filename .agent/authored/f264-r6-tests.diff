@@ -1,0 +1,119 @@
+diff --git a/tests/cli/test_chat_cmd.py b/tests/cli/test_chat_cmd.py
+index f5aa50c8..9cc225ea 100644
+--- a/tests/cli/test_chat_cmd.py
++++ b/tests/cli/test_chat_cmd.py
+@@ -76,3 +76,39 @@ class TestChatSend:
+         out = json.loads(capsys.readouterr().out)
+         assert out["error"] == "invalid_message"
+         assert ST.list_steering_messages(job.job_id) == []
++
++
++class TestChatShow:
++    def test_it_lists_each_message_with_its_acknowledgement(self, tmp_path, capsys):
++        job = _job(tmp_path)
++        ST.record_steering_message(job.job_id, "Use pnpm.", job_state="running", channel="cli")
++        ST.consume_pending_steering(job.job_id, task_id="task-1", round_number=2)
++        ST.record_steering_message(job.job_id, "Keep it small.", job_state="running",
++                                   channel="cockpit")
++        assert _run(["chat", "show", job.job_id, "--json"]) == 0
++        out = json.loads(capsys.readouterr().out)
++        assert [(m["message_id"], m["status"]) for m in out["messages"]] == [
++            ("sm-0001", "acknowledged"), ("sm-0002", "waiting")]
++        assert out["messages"][0]["understood"].startswith("the builder follows “Use pnpm.”")
++        assert _run(["chat", "show", job.job_id]) == 0
++        text = capsys.readouterr().out
++        assert "taken in at round 2 of task task-1: the builder follows “Use pnpm.”" in text
++        assert "waiting — the job has not reached a safe point since it arrived" in text
++
++    def test_an_ended_job_says_which_messages_it_never_took_in(self, tmp_path, capsys):
++        job = _job(tmp_path)
++        ST.record_steering_message(job.job_id, "Too late.", job_state="running", channel="cli")
++        job.state = RunState.COMPLETED
++        PJ.save_job_plan(job)
++        assert _run(["chat", "show", job.job_id]) == 0
++        assert "not taken in — the job ended before it reached another round" in (
++            capsys.readouterr().out)
++
++    def test_a_job_with_no_message_says_so(self, tmp_path, capsys):
++        job = _job(tmp_path)
++        assert _run(["chat", "show", job.job_id]) == 0
++        assert f"Job {job.job_id} has no steering messages." in capsys.readouterr().out
++
++    def test_an_unknown_job_exits_1(self, tmp_path, capsys):
++        assert _run(["chat", "show", "feedfacefeedface", "--json"]) == 1
++        assert json.loads(capsys.readouterr().out)["error"] == "invalid_job_id"
+diff --git a/tests/orchestration/test_steering.py b/tests/orchestration/test_steering.py
+index f957d5a2..498eb5d2 100644
+--- a/tests/orchestration/test_steering.py
++++ b/tests/orchestration/test_steering.py
+@@ -200,3 +200,28 @@ class TestRender:
+         text = ST.render_steering_segment([{"text": "Use pnpm."}, {"text": "Keep\nit small."}])
+         assert text.startswith("OPERATOR STEERING")
+         assert text.endswith("- Use pnpm.\n- Keep\n  it small.\n")
++
++
++class TestAcknowledgement:
++    def test_the_consumption_event_restates_the_message_and_its_round(self, root):
++        _send(root, "Use pnpm.")
++        ST.consume_pending_steering(JOB, task_id="task-1", round_number=2, root=root, now=NOW)
++        understood = "the builder follows “Use pnpm.” from round 2 of task task-1 on"
++        assert ST.list_steering_consumptions(JOB, root)["sm-0001"]["understood"] == understood
++        assert ST.steering_acknowledgements(JOB, root) == {"sm-0001": {
++            "task_id": "task-1", "round_number": 2, "understood": understood,
++            "amendment_id": ""}}
++
++    def test_the_overview_names_each_status(self, root):
++        _send(root, "one")
++        ST.consume_pending_steering(JOB, task_id="task-1", round_number=1, root=root, now=NOW)
++        _send(root, "two")
++        running = ST.steering_overview(JOB, "running", root)
++        assert [(r["message_id"], r["status"]) for r in running] == [
++            ("sm-0001", "acknowledged"), ("sm-0002", "waiting")]
++        assert running[0]["round_number"] == 1 and running[1]["round_number"] is None
++        ended = ST.steering_overview(JOB, "completed", root)
++        assert [r["status"] for r in ended] == ["acknowledged", "not_taken_in"]
++
++    def test_a_job_with_no_message_has_an_empty_overview(self, root):
++        assert ST.steering_overview(JOB, "running", root) == []
+diff --git a/tests/orchestration/test_steering_mission.py b/tests/orchestration/test_steering_mission.py
+index 1b41d710..fe04c17d 100644
+--- a/tests/orchestration/test_steering_mission.py
++++ b/tests/orchestration/test_steering_mission.py
+@@ -93,3 +93,12 @@ def test_a_failed_amendment_is_loud_and_consumes_nothing(root, mission, monkeypa
+         _consume(root)
+     assert ST.list_steering_consumptions(JOB, root) == {}
+     assert _contract(root, mission) is None
++
++
++def test_the_acknowledgement_also_names_the_mission_criterion_and_its_round(root, mission):
++    _send(root, "Use pnpm, never npm.")
++    _consume(root)
++    understood = ST.list_steering_consumptions(JOB, root)["sm-0001"]["understood"]
++    assert understood == (
++        "the builder follows “Use pnpm, never npm.” from round 2 of task task-1 on; the mission "
++        "contract adds blocking criterion C001: Use pnpm, never npm., from mission round 1")
+diff --git a/tests/ui_server/test_sse_stream.py b/tests/ui_server/test_sse_stream.py
+index 4f36b8fb..723c48e6 100644
+--- a/tests/ui_server/test_sse_stream.py
++++ b/tests/ui_server/test_sse_stream.py
+@@ -85,6 +85,20 @@ class TestFrameShape:
+         for field in (b"data:", b"id:", b"event:"):
+             assert field not in frame
+ 
++    def test_a_steering_acknowledgement_carries_its_three_fields_and_no_other(self):
++        """F264 T003: the acknowledgement names the message, its round and the restatement,
++        CONDITIONAL on its kind like `budget`, and never the rest of the metadata."""
++        summary = mod._safe_event_summary(4, {
++            "event": "steering_message_consumed", "task_id": "task-1",
++            "metadata": {"message_id": "sm-0001", "round_number": 2, "understood": "follows X",
++                         "record_sha256": "abc", "amendment_id": "A001"}})
++        assert set(summary) == {"seq", "event", "timestamp", "outcome", "task_id", "steering"}
++        assert summary["steering"] == {"message_id": "sm-0001", "round_number": 2,
++                                       "understood": "follows X"}
++        other = mod._safe_event_summary(5, {"event": "steering_message_received",
++                                            "metadata": {"message_id": "sm-0001"}})
++        assert "steering" not in other
++
+     def test_the_envelope_carries_the_safe_fields_only(self):
+         summary = mod._safe_event_summary(2, {"event": "x", "timestamp": "t", "outcome": "ok"})
+         assert set(summary) == {"seq", "event", "timestamp", "outcome", "task_id"}

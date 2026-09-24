@@ -1,0 +1,287 @@
+diff --git a/apps/cli/command_catalog.py b/apps/cli/command_catalog.py
+index ae95af3e..b445003a 100644
+--- a/apps/cli/command_catalog.py
++++ b/apps/cli/command_catalog.py
+@@ -288,6 +288,21 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
+         related=("job.show", "job.stop"),
+         exit_codes=(0, 1, 2, 3),
+     ),
++    CommandEntry(
++        command_id="chat.show",
++        group_id="chat",
++        subcommand="show",
++        description="List a job's steering messages and, for each, the build round of its task's "
++                    "run that took it in and what was understood, or that it is still waiting.",
++        action_class="read_only",
++        args=(
++            ArgDef("job_id", "The job whose tasks were steered (its ID, or a unique prefix of it)"),
++            _JSON_OPT,
++        ),
++        supports_json=True,
++        related=("chat.send", "job.show"),
++        exit_codes=(0, 1, 2, 3),
++    ),
+ 
+     # ── status ──────────────────────────────────────────────────────────
+     CommandEntry(
+diff --git a/apps/cli/commands/chat_cmd.py b/apps/cli/commands/chat_cmd.py
+index a172916f..ceeb5b4c 100644
+--- a/apps/cli/commands/chat_cmd.py
++++ b/apps/cli/commands/chat_cmd.py
+@@ -4,7 +4,11 @@
+ into a model call in flight: the message is written as a sealed record under the job's
+ evidence and certified into its run log, and the run reads it at its next safe point (T002).
+ The command goes through `steering.record_steering_message`, the one place a message is
+-accepted, which the cockpit's input field will use too. It writes no file in the repository.
++accepted, which the cockpit's input field uses too. It writes no file in the repository.
++
++`remedy chat show <job_id>` (T003) lists the job's messages with each acknowledgement — the task
++round that took it in and what was understood — read from the same run-log events the cockpit's
++stream carries, and says plainly when a message is still waiting or was never taken in.
+ """
+ from __future__ import annotations
+ 
+@@ -61,8 +65,52 @@ def _cmd_chat_send(job_id: str, message: str, *, json_output: bool = False) -> N
+     print("The job reads it at its next safe point; nothing interrupts a model call in flight.")
+ 
+ 
++#: What each status says to the operator, in plain words (T003, DECISION F264 D6).
++_STATUS_WORDS = {
++    "waiting": "waiting — the job has not reached a safe point since it arrived",
++    "not_taken_in": "not taken in — the job ended before it reached another round",
++}
++
++
++def _cmd_chat_show(job_id: str, *, json_output: bool = False) -> None:
++    """List the job's steering messages with each acknowledgement. Exits 3 on an unreadable job."""
++    from apps.cli.job_id_arg import resolve_job_id_or_fail
++    from packages.orchestration.pingpong_job import load_job_plan
++    from packages.orchestration.steering import SteeringError, steering_overview
++
++    full_id = resolve_job_id_or_fail((job_id or "").strip(), json_output=json_output,
++                                     job_id=job_id)
++    job = load_job_plan(full_id)
++    if job is None:
++        fail("job_not_found", f"The record of job {full_id} cannot be read.",
++             json_output=json_output, exit_code=EXIT_NOT_READY, job_id=full_id)
++    state = job.state.value if hasattr(job.state, "value") else str(job.state)
++    try:
++        rows = steering_overview(job.job_id, state)
++    except SteeringError as exc:
++        fail("steering_record_damaged", f"The job's steering records cannot be trusted: {exc}.",
++             json_output=json_output, job_id=job.job_id)
++
++    if json_output:
++        emit_ok(job_id=job.job_id, job_status=state, messages=rows)
++        return
++    if not rows:
++        print(f"Job {job.job_id} has no steering messages.")
++        return
++    print(f"Job {job.job_id} — {state}")
++    for row in rows:
++        print(f"{row['message_id']}  {row['received_at']}  via {row['channel']}: {row['text']}")
++        if row["status"] == "acknowledged":
++            print(f"  taken in at round {row['round_number']} of task {row['task_id']}: "
++                  f"{row['understood']}")
++        else:
++            print(f"  {_STATUS_WORDS[row['status']]}")
++
++
+ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
+     "chat.send": lambda args: _cmd_chat_send(
+         getattr(args, "job_id", ""), getattr(args, "message", ""),
+         json_output=getattr(args, "json", False)),
++    "chat.show": lambda args: _cmd_chat_show(
++        getattr(args, "job_id", ""), json_output=getattr(args, "json", False)),
+ }
+diff --git a/docs/guides/exit-codes.md b/docs/guides/exit-codes.md
+index db471902..8f798cc3 100644
+--- a/docs/guides/exit-codes.md
++++ b/docs/guides/exit-codes.md
+@@ -70,6 +70,7 @@ Every command not listed here exits only `0`, `1` or `2`.
+ | `remedy mission resume` | 3 |
+ | `remedy job resume` | 3 |
+ | `remedy chat send` | 3 |
++| `remedy chat show` | 3 |
+ | `remedy runtime serve` | 3, 4, 5 |
+ | `remedy runtime probe` | 3, 4, 5 |
+ | `remedy runtime stop` | 5 |
+diff --git a/packages/orchestration/steering.py b/packages/orchestration/steering.py
+index 0e00d455..91aaca5d 100644
+--- a/packages/orchestration/steering.py
++++ b/packages/orchestration/steering.py
+@@ -12,7 +12,9 @@ A message is CONSUMED at the run's next safe point (T002, DECISION F264 D4): the
+ loop calls `consume_pending_steering` at the top of every round, before anything of that round
+ is composed or sent, and folds every consumed message into the builder prompt. A sealed record
+ never changes after it is written, so the round a message took effect in is its own sealed
+-consumption marker rather than an edit to the record. The acknowledgement is T003.
++consumption marker rather than an edit to the record. The consumption event is also the
++ACKNOWLEDGEMENT (T003, DECISION F264 D6): it restates what was taken in and from which round,
++and `remedy chat show` and the cockpit both read it back from the run log.
+ 
+ Remedy deliberately does not accept a message for a job that has ended: no run will ever
+ read it, and a steering message the run silently ignores is worse than no channel at all
+@@ -234,7 +236,7 @@ def consume_pending_steering(
+                 continue
+             if mission is _UNRESOLVED:
+                 mission = _mission_of(job_id, root)
+-            amendment_id = _amend_mission(mission, record["text"], root, now) if mission else ""
++            amendment = _amend_mission(mission, record["text"], root, now) if mission else None
+             marker: dict[str, Any] = {
+                 "schema": CONSUMPTION_SCHEMA,
+                 "message_id": record["message_id"],
+@@ -244,7 +246,8 @@ def consume_pending_steering(
+                 "round_number": int(round_number),
+                 "consumed_at": (now or datetime.now(timezone.utc)).isoformat(),
+                 "mission_id": mission.id if mission else "",
+-                "amendment_id": amendment_id,
++                "amendment_id": str(amendment["id"]) if amendment else "",
++                "understood": steering_understood(record["text"], task_id, round_number, amendment),
+             }
+             marker["record_sha256"] = _seal(marker)
+             try:
+@@ -272,11 +275,28 @@ def consume_pending_steering(
+                 metadata={"message_id": marker["message_id"], "task_id": marker["task_id"],
+                           "round_number": marker["round_number"],
+                           "record_sha256": marker["message_sha256"],
+-                          "amendment_id": marker["amendment_id"]},
++                          "amendment_id": marker["amendment_id"],
++                          "understood": marker["understood"]},
+             )
+     return records
+ 
+ 
++def steering_understood(text: str, task_id: str, round_number: int,
++                        amendment: dict[str, Any] | None) -> str:
++    """The acknowledgement's restatement: what was taken in, and from which round (T003).
++
++    It quotes the message verbatim and says where it now lives — the builder prompt from this
++    task round on and, for a mission's job, the contract criterion F269's amendment compiled
++    from it with the mission round it applies from (DECISION F264 D6). It is never a model's
++    paraphrase: a paraphrase is the one form an operator cannot check against their own words.
++    """
++    said = f"the builder follows “{text}” from round {round_number} of task {task_id} on"
++    if amendment:
++        said += (f"; the mission contract {amendment['understood']}, "
++                 f"from mission round {amendment['applies_from']}")
++    return said
++
++
+ #: "Not looked up yet", as distinct from a job that belongs to no mission.
+ _UNRESOLVED = object()
+ 
+@@ -288,8 +308,9 @@ def _mission_of(job_id: str, root: Path | None) -> Any:
+     return mission_for_job(str(job_id), root)
+ 
+ 
+-def _amend_mission(mission: Any, text: str, root: Path | None, now: datetime | None) -> str:
+-    """Amend ``mission``'s contract with one steering message and return the amendment's id.
++def _amend_mission(mission: Any, text: str, root: Path | None,
++                   now: datetime | None) -> dict[str, Any]:
++    """Amend ``mission``'s contract with one steering message and return the amendment entry.
+ 
+     F269's `amend_mission_contract` adds one blocking criterion compiled from the message and
+     an entry that applies from the mission's next loop round, where the loop acknowledges it
+@@ -299,7 +320,7 @@ def _amend_mission(mission: Any, text: str, root: Path | None, now: datetime | N
+     from packages.orchestration.mission_contract import amend_mission_contract
+ 
+     contract = amend_mission_contract(mission.project_id, mission.id, text, root=root, now=now)
+-    return str(contract.amendments[-1]["id"])
++    return dict(contract.amendments[-1])
+ 
+ 
+ def list_steering_consumptions(job_id: str, root: Path | None = None) -> dict[str, dict[str, Any]]:
+@@ -337,3 +358,60 @@ def render_steering_segment(records: list[dict[str, Any]]) -> str:
+     for record in records:
+         lines.append("- " + str(record["text"]).replace("\n", "\n  "))
+     return "\n".join(lines) + "\n"
++
++
++# --- T003: the acknowledgement, read back (DECISION F264 D6) ----------------------------------
++
++#: A message the job has taken in; its acknowledgement names the task round and the restatement.
++STATUS_ACKNOWLEDGED = "acknowledged"
++#: A message recorded for a job that can still run, which no safe point has reached yet.
++STATUS_WAITING = "waiting"
++#: A message the job ended without taking in: no run will ever read it, and the listing says so.
++STATUS_NOT_TAKEN_IN = "not_taken_in"
++
++
++def steering_acknowledgements(job_id: str, root: Path | None = None) -> dict[str, dict[str, Any]]:
++    """The job's acknowledgements by message id, read from the RUN LOG.
++
++    These are the `steering_message_consumed` events the cockpit's stream carries, so
++    `remedy chat show` and the cockpit render one fact from one source and cannot disagree.
++    """
++    from packages.orchestration.data_paths import resolve_data_root
++    from packages.orchestration.timeline import load_run_events
++
++    acks: dict[str, dict[str, Any]] = {}
++    for event in load_run_events(root if root is not None else resolve_data_root(), job_id):
++        if event.get("event") != "steering_message_consumed":
++            continue
++        meta = event.get("metadata") or {}
++        message_id = meta.get("message_id")
++        if isinstance(message_id, str) and message_id not in acks:
++            # The run-log writer lifts `task_id` to the event's top level; read both places,
++            # as the stream's own summary does (DECISION F021 D2).
++            acks[message_id] = {
++                "task_id": str(event.get("task_id") or meta.get("task_id", "")),
++                "round_number": meta.get("round_number"),
++                "understood": str(meta.get("understood", "")),
++                "amendment_id": str(meta.get("amendment_id", "")),
++            }
++    return acks
++
++
++def steering_overview(job_id: str, job_state: str,
++                      root: Path | None = None) -> list[dict[str, Any]]:
++    """Every message of the job, oldest first, with its status and acknowledgement."""
++    from packages.orchestration.pingpong_job import job_is_terminal
++
++    acks = steering_acknowledgements(job_id, root)
++    ended = job_is_terminal(job_state)
++    rows = []
++    for record in list_steering_messages(job_id, root):
++        ack = acks.get(record["message_id"])
++        status = STATUS_ACKNOWLEDGED if ack else (STATUS_NOT_TAKEN_IN if ended else STATUS_WAITING)
++        rows.append({
++            "message_id": record["message_id"], "text": record["text"],
++            "channel": record["channel"], "received_at": record["received_at"],
++            "status": status, **(ack or {"task_id": "", "round_number": None,
++                                         "understood": "", "amendment_id": ""}),
++        })
++    return rows
+diff --git a/packages/orchestration/ui_server.py b/packages/orchestration/ui_server.py
+index 31f2cf98..11893cfa 100644
+--- a/packages/orchestration/ui_server.py
++++ b/packages/orchestration/ui_server.py
+@@ -1885,9 +1885,28 @@ def _safe_event_summary(seq: int, event: dict[str, Any]) -> dict[str, Any]:
+     }
+     if kind == BUDGET_TICK_EVENT:
+         summary["budget"] = _budget_tick_summary_payload(metadata)
++    if kind == "steering_message_consumed":
++        summary["steering"] = _steering_ack_summary_payload(metadata)
+     return summary
+ 
+ 
++def _steering_ack_summary_payload(metadata: Any) -> dict[str, Any]:
++    """A steering acknowledgement's fields for the stream (F264 T003, DECISION F264 D6).
++
++    CONDITIONAL on the event kind for the reason `budget` is: every other frame stays
++    byte-identical. It carries exactly what the acknowledgement must name — which message, the
++    round it took effect from, and the restatement — and nothing else from the metadata, so a
++    field added to the run-log event later does not reach the browser by accident.
++    """
++    meta = metadata if isinstance(metadata, dict) else {}
++    round_number = meta.get("round_number")
++    return {
++        "message_id": str(meta.get("message_id", "")),
++        "round_number": round_number if isinstance(round_number, int) else None,
++        "understood": str(meta.get("understood", "")),
++    }
++
++
+ def sse_event_frame(seq: int, payload: dict[str, Any]) -> bytes:
+     """One SSE event frame whose id is the ledger position it carries."""
+     return f"id: {seq}\ndata: {json.dumps(payload, default=str)}\n\n".encode()

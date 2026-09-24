@@ -19463,3 +19463,216 @@ the packer inside one second is refused honestly, not harmed. The suite runs aga
 the first of the at most three repair rounds rule 2 allows, and its transcript replaces
 `.agent/authored/f282-closure-suite.txt` at the same path. HOW TO REVERSE: restore the test file
 from `720e15e6`.
+
+## DECISION F264 D1 — a steering message is a sealed, job-keyed record certified into the run log, and `remedy chat` is its first route (2026-09-24)
+
+CONTEXT: T5_F264.md T001 orders a steering message accepted, persisted and certified with no
+consumer yet, and DECISION amend0905-vocab D9 makes every later operator message an amendment to
+the mission's contract. Measured at `ef4cb503`: F269 already built the mission side —
+`mission_contract.amend_mission_contract`, whose docstring leaves the route to F264, the round of
+effect `applies_from`, and the acknowledgement in the mission ledger (DECISION F269 D8) — while
+`remedy do` can start a job with no mission at all, for which `mission_state.mission_for_job`
+answers None; the run log (`run_log.RunLogWriter`) has no seal, and the one certified record in
+the tree is F263's human change record, sealed by a sha256 over its own sorted JSON.
+CHOSEN: (1) HOME. The message is keyed to the JOB, because the channel must serve a job with no
+mission: one record per message at `jobs/<id>/evidence/steering/sm-<nnnn>.json`, numbered per
+job and published create-once, so two senders at once get two records and neither overwrites
+the other. (2) SHAPE. `schema` `remedy.steering_message.v1`, `message_id`, `job_id`, `text` (the
+message stripped, non-empty, no NUL, at most 2000 characters), `channel` (`cli` or `cockpit`),
+`received_at`, and `record_sha256`, the seal over the rest. A record never changes after it is
+written; the round a message is consumed in is recorded by T002 as its own fact, and a mission
+job's contract amendment is T002's to write when it consumes the message. (3) CERTIFICATION.
+Only after the record is on disk is one run-log event written, `steering_message_received`,
+carrying the message id, the channel, the text and the record's seal, so an event never names a
+record that does not exist and a later reader can prove which text the run was given. (4)
+REFUSAL. A job whose state is terminal refuses the message and nothing is written: no run will
+read it, and a message the run silently ignores is worse than no channel. (5) ROUTE. `remedy chat
+<job_id> "<message>"` (catalog `chat.send`, the bare group form routed to `send`) fills the
+second reserved help slot of DECISION amend0911-feedback D1; the cockpit's route over F009's
+write channel follows as T001's second half, as a new exposed catalog id, which is the extension
+point DECISION F009 D4 built and leaves the channel's route, payload, authentication, nonce and
+rate limit unchanged. ALTERNATIVES: a mission-only channel, rejected because it refuses every
+single-job `remedy do`; calling `amend_mission_contract` at receipt, rejected for T001 because it
+is consumption, which the Orchestrator brief keeps out of the first slice; a mutable record with
+a `consumed_in` field, rejected because a seal that must be rewritten certifies nothing. HOW TO
+REVERSE: delete `packages/orchestration/steering.py`, `apps/cli/commands/chat_cmd.py`, the `chat`
+group and its catalog entry, the event name and its humanize line, their tests, and this
+paragraph.
+
+## DECISION F264 D2 — the cockpit's steering route is `chat.send` on F009's write door, it records and never reaches a call, and an unusable message is a shape error (2026-09-24)
+
+CONTEXT: T5_F264.md's Design routes a cockpit message over F009's single write channel —
+"no second mutating route is created; a steering message is a command like any other" — and its
+Do-not-touch keeps that channel's contract unwidened. Measured at `f3d0a4bf`: the door is
+`_RemedyHandler._handle_command_submission` in `packages/orchestration/ui_server.py`, one POST
+route whose checks run token, CSRF, job, payload shape, exposure, nonce replay and rate limit
+before a per-command clause; the exposed subset is `UI_EXPOSED_COMMANDS` beside the catalog
+(DECISION F009 D4); and `TestCommandDoorImportGuard` pins every import a door method makes,
+which DECISION F009 D5 made the P3 contract. CHOSEN: (1) EXPOSURE. `chat.send`, the catalog id
+DECISION F264 D1 registered, joins `UI_EXPOSED_COMMANDS`. The route, the payload, the
+authentication, the nonce, the rate limit and the closed outcome vocabulary are unchanged: a new
+exposed id is the extension point D4 built, which is why the feature file's "does not widen it"
+holds. (2) THE EFFECT. The clause calls `steering.record_steering_message` with channel
+`cockpit`, the same function `remedy chat` calls, and D18's write order is unchanged: the effect,
+then the `accepted` audit line, then the nonce publication, then the `command.accepted` event.
+The accepted body is `command`, `outcome`, `request_id` and `message_id`, the request id being
+the message id. (3) THE REFUSALS. An absent, non-text, blank, NUL-carrying or over-long message
+is a 400 on field `message`, audited `rejected_shape`, refused in `_read_command_payload` before
+the job's state is read, for R-0685's reason; a job that has ended is D21's 409, audited
+`rejected_state`, with nothing written; a record that could not be written is D18 clause four's
+500, audited `rejected_effect`, with no run-log event. (4) THE IMPORT GUARD gains exactly the
+four `packages.orchestration.steering` names the door imports, in the same commit, as its own
+docstring requires of a widening; `steering` imports nothing at module level beyond the standard
+library and `packages.common.secure_fs`, which the guard's accepted transitive set already holds.
+ALTERNATIVES: a dedicated `/api/jobs/<id>/chat` route, rejected because the feature file forbids
+a second mutating route; a 409 for a blank message, rejected because the effect never ran and a
+retry with text would succeed, which is the shape error R-0685 already ruled on. HOW TO REVERSE:
+remove `chat.send` from `UI_EXPOSED_COMMANDS`, the clause, `_dispatch_chat_send`, the payload
+check, the four guard entries and their tests, and this paragraph.
+
+## DECISION F264 D3 — the cockpit's steering input goes live in the activity card, sends only through one pure module, and says what became of each message (2026-09-24)
+
+CONTEXT: T5_F264.md's Goal wants `remedy chat` "and the same thing as a cockpit input field".
+Measured at `61e6dd70`: `components/panels/ChatInput.tsx` already ships where ux_spec.md §11.3
+places it, rendered twice in `ActivityFeedCard.tsx` as a disabled field whose reason reads
+"Steering arrives with a later feature — watching only for now."; the only browser code that
+reaches the commands door is the decision inbox's chain, whose path, nonce minter and single
+network call (`decisionAnswer.ts`, `decisionNonce.ts`, `decisionSubmit.ts`) know nothing about
+decisions; DECISION F031 D5 rules every rule into a pure `api/*.ts` module because no DOM harness
+exists; and the dashboard carries the job's raw state as `live.stage`. CHOSEN: (1) ONE MODULE,
+`apps/ui/src/api/steeringSend.ts`, holds the request builder, the refusals, the sentences and the
+send sequence, composing the three decision-chain modules above rather than copying them, and
+mirroring three server facts — the message limit, the ended states and the command id — which
+`tests/ui_contracts/test_steering_send_contract.py` pins to their Python originals. (2) THE INPUT
+is live for an addressed job that can still run; it stays visible and disabled, with a visible
+reason, when the dashboard names no job or token and when the job has ended. An unknown state
+stays open, because the server's 409 is the final word. (3) ONE COMPOSER element serves both of
+the card's branches, so the live feed and the fallback cannot disagree. (4) AFTER A SEND one line
+under the input, announced to screen readers, says what happened in the decision inbox's outcome
+colours, and the typed text is cleared only when the job accepted it. (5) The pre-F264 reason
+sentence is retired, the guard class that pinned it is rewritten for the live input, and the
+design reference's assumption log records the two new reasons, the outcome line and the focus
+ring's token. ALTERNATIVES: a second request helper beside the decision chain's, rejected because
+the three modules are already command-generic; gating the input on `live.running`, rejected
+because the server accepts messages for paused, stopped and planned jobs; clearing the text on
+every send, rejected because a refused message would be lost. HOW TO REVERSE: restore the three
+components, the stylesheet, the assumption log and `tests/ui_contracts/test_brain_stream_ring.py`
+from `61e6dd70`, delete `steeringSend.ts`, its test and the contract test, and this paragraph.
+
+## DECISION F264 D4 — a steering message is consumed at the top of the next ping-pong round, exactly once, and stays in every later builder prompt of the job (2026-09-24)
+
+CONTEXT: T5_F264.md T002 orders pending messages picked up "at the next safe point" and folded
+into "the next prompt", with a red proof that a mid-call message waits; its Acceptance wants a
+message sent during round N to change round N+1, proved by comparing that prompt with and
+without it, and every message's consumption round in the event log. Measured at `889c556b`:
+`pingpong_loop.run_pingpong` opens each round with SAFE POINT 1, where "nothing is in flight";
+the loop's `stop_check` probe also runs between transport retries of ONE call and during
+rate-limit waits, both inside a call; the tiered-diff summary between that safe point and the
+builder prompt may make a model call of its own; `run_job` passes the job id and task id to
+every `run_pingpong`; and F033's `builder_hunk_rejections` segment is the precedent for carrying
+an operator's words verbatim at `SegmentStabilityRank.STEERING`, registered only when present so
+the golden shapes keep their manifest. CHOSEN: (1) THE POINT. The loop reads steering as its own
+explicit step directly after SAFE POINT 1, before anything else of the round, and never through
+`stop_check`; a message that arrives during any call of round N is therefore first read at round
+N+1, or at the next task's first round when round N was the task's last. A run with no job id
+reads nothing. (2) EXACTLY ONCE. Consuming a message publishes a sealed marker
+`jobs/<id>/evidence/steering/consumed/<message_id>.json`, create-once, naming the task and the
+round it took effect in, and only the call that publishes it writes the run-log event
+`steering_message_consumed` with the message id, task id, round and the message's seal. (3)
+EVERY LATER ROUND. The builder prompt carries every consumed message of the job, oldest first,
+verbatim and uncapped, as the `builder_steering` segment directly before the directive, because
+a correction such as "use pnpm" holds for the rest of the job and not for one round. (4) LOUD.
+A tampered message or marker raises `SteeringError` and stops the run; the job then stops
+blocked through `run_job`'s existing handler, rather than folding in text nobody can prove the
+operator sent. (5) The mission-contract amendment for a job that belongs to a mission is the
+next round's, over the same consumption. ALTERNATIVES: hooking the read into `stop_check` the
+way F263's absorb is hooked, rejected because that probe fires inside a call; carrying a message
+in the next round only, rejected because the job would forget the correction a round later;
+reading after the tiered-diff summary, rejected because that summary may itself be a model call.
+HOW TO REVERSE: delete the consumption functions from `steering.py`, the read and the segment
+from `pingpong_loop.py`, the event name and its humanize line, their tests, and this paragraph.
+
+## DECISION F264 D5 — a consumed steering message of a mission's job amends the mission's contract once, before its marker is published (2026-09-24)
+
+CONTEXT: DECISION amend0905-vocab D9 makes every operator message an amendment to the mission's
+contract, "recorded on the mission, DoD recompiled, acknowledged with what was understood and
+from which round it applies", and DECISION F264 D1 left the mission side to T002. Measured at
+`68f4273b`: `mission_contract.amend_mission_contract` adds one blocking criterion compiled from
+the message and an entry applying from the mission's next loop round, which `run_mission`
+acknowledges in that round (DECISION F269 D8), and its docstring still read "No command calls
+this"; `mission_state.mission_for_job` answers the mission a job belongs to, or None; and a job
+runs under its own lock, so one runner consumes its messages. CHOSEN: (1) WHEN. At consumption
+(DECISION F264 D4), for each message not yet consumed, and never at receipt, because D1 keeps
+receipt free of consumption and the mission's round of effect is fixed when the amendment is
+written. (2) ONCE. The consumption loop skips a message whose marker exists before it amends,
+then amends, then publishes the marker create-once naming the mission and the amendment id; the
+job's lock is what makes that check-then-act order safe. (3) ONLY FOR A MISSION'S JOB. The
+mission is looked up once per call and only when a message is pending; a job with no mission
+records an empty mission id and amendment id. (4) LOUD. An amendment that fails raises before
+the marker exists, so the message stays pending and the run stops rather than carrying a
+correction its mission never recorded. (5) The event `steering_message_consumed` also names the
+amendment id, and `amend_mission_contract`'s docstring names this caller. ALTERNATIVES: amending
+at receipt, rejected because it is consumption and D1 keeps receipt free of it; publishing the
+marker first, rejected because a failed amendment would then leave a consumed message the
+mission never saw; a non-blocking criterion, rejected because D9 makes the message part of the
+contract, and F269's default is blocking. HOW TO REVERSE: delete the lookup and the amendment
+call from `consume_pending_steering`, the two marker fields and the event field, restore the
+docstring from `68f4273b`, delete `tests/orchestration/test_steering_mission.py` and this
+paragraph.
+
+## DECISION F264 D6 — the consumption event is the acknowledgement: it restates the message verbatim with the round it took effect from, the stream carries it, and `remedy chat show` reads it back (2026-09-24)
+
+CONTEXT: T5_F264.md T003 wants "the restatement-plus-round event, rendered in both the cockpit
+and `remedy chat`, from the same SSE event", and its Design says an acknowledgement is useless
+without either half: "the run's own restatement of what it understood, and the round number from
+which it applies. A bare 'received' is not an acknowledgement." Measured at `70664b29`: every
+consumed message already writes `steering_message_consumed` with its task and round (DECISION
+F264 D4) and, for a mission's job, its amendment id (DECISION F264 D5), whose F269 entry carries
+its own `understood` sentence and `applies_from` round; the stream's per-event summary in
+`ui_server._safe_event_summary` gains a field only conditionally on the event kind, as `budget`
+does for `budget.tick`; and the run-log writer lifts `task_id` to an event's top level. CHOSEN:
+(1) ONE EVENT. The consumption event IS the acknowledgement: it gains `understood`, the
+restatement, and no second event is written. (2) THE RESTATEMENT quotes the message verbatim and
+says where it now lives — "the builder follows “<message>” from round <n> of task <task> on" —
+and, for a mission's job, adds F269's own sentence and the mission round it applies from. It is
+deterministic, never a model's paraphrase, because a paraphrase is the one form the operator
+cannot check against their own words, and the builder's free-form output is not parsed anywhere.
+The same sentence is sealed into the consumption marker. (3) THE STREAM carries a `steering`
+field of exactly `message_id`, `round_number` and `understood` on that event kind alone, so every
+other frame stays byte-identical. (4) `remedy chat show <job_id>` (catalog `chat.show`,
+read-only, `--json`) lists every message oldest first with one of three statuses read from the
+run log, the stream's own source: acknowledged, with its task round and restatement; waiting, for
+a job that can still run; and not taken in, for a message whose job ended first, which says so
+rather than staying silent. The cockpit's rendering of the same field is the next round's.
+ALTERNATIVES: a second `steering_message_acknowledged` event, rejected because it would repeat
+the consumption event's facts under a second name; a restatement written by the builder model,
+rejected for the reason in (2); widening the stream summary for every kind, rejected because the
+stream's golden byte test pins every other frame. HOW TO REVERSE: delete `understood` from the
+marker and the event, the stream field, `chat.show` with its catalog entry and guide row, the
+readers in `steering.py`, their tests, and this paragraph.
+
+## DECISION F264 D7 — the cockpit shows a steering acknowledgement as its own line in the activity feed, read from the stream's field by one checked reader (2026-09-24)
+
+CONTEXT: T5_F264.md's Done wants the acknowledgement to appear "both in the cockpit and in the
+CLI", and T003 wants both rendered "from the same SSE event". Measured at `e420be13`: the stream
+frame of a `steering_message_consumed` event carries `steering` with exactly `message_id`,
+`round_number` and `understood` (DECISION F264 D6); `api/feedRow.ts`'s `feedRowOf` turns every
+frame into the activity feed's row, whose line comes from the humanize catalog by kind alone; the
+activity feed is the card whose bottom holds the steering input (DECISION F264 D3); and no DOM
+harness exists, so every rule lives in a pure `api/*.ts` module (DECISION F031 D5). CHOSEN: (1)
+ONE READER, `apps/ui/src/api/steeringAck.ts`, reads the field only on that event kind and checks
+every value, answering nothing for a malformed field rather than inventing a round. (2) THE LINE
+is "Steering taken in at round <n>: <restatement>." — the round first, the server's restatement
+whole and never shortened — and `feedRowOf` shows it in place of the catalog's generic line for
+that row; a malformed field keeps the catalog line. (3) WHERE: the activity feed, directly above
+the steering input, so the operator reads the answer to a message where they sent it, with no
+new component and no new layout for the design reference to settle. (4) THE PIN:
+`tests/ui_contracts/test_steering_send_contract.py` holds the reader's keys equal to the server's
+stream field and its event kind equal to the server's, so neither side can drift alone.
+ALTERNATIVES: a separate acknowledgement panel, rejected because the feed already carries every
+event of the run in order and a second list would need design-reference layout the reference does
+not settle; rewording the catalog's own entry for the kind to carry the round, rejected because
+the catalog is keyed by kind alone and a frame from an older server without the field must still
+render honestly. HOW TO REVERSE: delete `steeringAck.ts` and its
+test, restore `feedRow.ts`, its test and the contract test from `e420be13`, and delete this
+paragraph.

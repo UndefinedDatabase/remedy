@@ -16,7 +16,7 @@ from apps.cli.grouped import main as grouped_main
 _USER_FACING_GROUPS = {
     "do", "mission", "job", "run", "decision", "status", "stats",
     "teacher", "memory", "ui", "config", "doctor", "project", "init", "worker", "runtime",
-    "absorb",
+    "absorb", "chat",
 }
 
 # Internal groups that MUST NOT appear in default help
@@ -756,12 +756,13 @@ class TestGroupDefIntegrity:
         assert sorted(kept - set(GROUPS)) == []
 
     def test_catalog_partition_matches_d4(self):
-        """The catalog carries exactly 32 groups partitioned as DECISION amend0905-vocab D4 names them.
+        """The catalog carries exactly 33 groups partitioned as DECISION amend0905-vocab D4 names them.
 
         The 31st is F276's advanced `data` group, added after D4 was ruled; the 32nd is F263's
-        visible `absorb`, the first reserved slot D4 named.
+        visible `absorb`, the first reserved slot D4 named, and the 33rd is F264's visible `chat`,
+        the second.
         """
-        assert len(GROUPS) == 32
+        assert len(GROUPS) == 33
 
         # Only roadmap should be hidden
         hidden_groups = {gid for gid, g in GROUPS.items() if g.hidden}

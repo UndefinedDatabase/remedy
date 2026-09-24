@@ -414,8 +414,10 @@ def amend_mission_contract(project_id: str, mission_id: str, text: str, *,
     mission's next loop round (``orchestrator_loop.next_iteration_index``).
     Every job dispatched from that round on takes the new check in its DoD at
     dispatch (D8 (3)); the loop acknowledges the entry in that round (D8 (4)).
-    No existing criterion or entry is edited.  No command calls this: F264
-    owns the route an amendment arrives by.
+    No existing criterion or entry is edited.  F264's steering channel is
+    the route an amendment arrives by: `steering.consume_pending_steering`
+    calls this once per consumed message of a job that belongs to a mission
+    (DECISION F264 D5).
     """
     from packages.orchestration.mission_state import load_mission
     from packages.orchestration.orchestrator_loop import next_iteration_index

@@ -1,0 +1,117 @@
+diff --git a/tests/ui_server/test_command_dispatch.py b/tests/ui_server/test_command_dispatch.py
+index 18d7b694..76dcdfbb 100644
+--- a/tests/ui_server/test_command_dispatch.py
++++ b/tests/ui_server/test_command_dispatch.py
+@@ -431,3 +431,112 @@ class TestApproveHunksDispatchEffects:
+         assert body["error"] == "hunk decision was refused", body
+         assert self._recorded() is None
+         assert self._audit_outcomes() == ["rejected_state"]
++
++
++class TestChatSendDispatchEffects:
++    """DECISION F264 D2: what an accepted `chat.send` wrote — the sealed steering record, the
++    run-log event that certifies it, the audit line and the nonce publication — and that a
++    refused or failed one wrote no record at all."""
++
++    @pytest.fixture(autouse=True)
++    def _setup_job(self, tmp_path, monkeypatch):
++        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
++        from packages.orchestration.pingpong_job import save_job_plan
++        self.job = _make_job()
++        save_job_plan(self.job)
++        self.job_id = str(self.job.job_id)
++        self.tmp_path = tmp_path
++        self.control = tmp_path / "control"
++
++    def _send(self, port, token, nonce, **args):
++        payload = {"command": "chat.send", "client_nonce": nonce, "args": args}
++        conn = HTTPConnection("127.0.0.1", port, timeout=10)
++        try:
++            conn.request("POST", f"/api/jobs/{self.job_id}/commands",
++                         body=json.dumps(payload),
++                         headers={"Authorization": f"Bearer {token}",
++                                  CSRF_HEADER: token,
++                                  "Content-Type": "application/json"})
++            resp = conn.getresponse()
++            return resp.status, json.loads(resp.read())
++        finally:
++            conn.close()
++
++    def _audit_outcomes(self):
++        from packages.orchestration.command_audit import AUDIT_FILENAME
++        path = self.control / "jobs" / self.job_id / AUDIT_FILENAME
++        return [json.loads(line)["outcome"] for line in path.read_bytes().splitlines()]
++
++    def _records(self):
++        from packages.orchestration.steering import list_steering_messages
++        return list_steering_messages(self.job_id, self.tmp_path)
++
++    def _steering_events(self):
++        from packages.orchestration.timeline import load_run_events
++        return [e for e in load_run_events(self.tmp_path, self.job_id)
++                if e.get("event") == "steering_message_received"]
++
++    def test_an_accepted_message_is_sealed_certified_and_published(self):
++        from packages.orchestration.command_nonce import lookup_nonce_result
++
++        port, token = _start_ui_server_for_job(self.job_id, self.tmp_path)
++        status, body = self._send(port, token, "nonce-chat", message="  Keep it small.  ")
++
++        assert status == 200, body
++        assert body == {"command": "chat.send", "outcome": "accepted",
++                        "request_id": "sm-0001", "message_id": "sm-0001"}
++        [record] = self._records()
++        assert record["text"] == "Keep it small."
++        assert record["channel"] == "cockpit"
++        [event] = self._steering_events()
++        assert (event.get("metadata") or {})["record_sha256"] == record["record_sha256"]
++        assert self._audit_outcomes() == ["accepted"]
++        assert lookup_nonce_result(self.job_id, "nonce-chat",
++                                   control_root_path=self.control) == {"status": 200, "body": body}
++
++    def test_a_retry_of_the_same_nonce_records_the_message_once(self):
++        port, token = _start_ui_server_for_job(self.job_id, self.tmp_path)
++        first = self._send(port, token, "nonce-chat-twice", message="Once.")
++        second = self._send(port, token, "nonce-chat-twice", message="Once.")
++
++        assert first == second
++        assert [r["message_id"] for r in self._records()] == ["sm-0001"]
++        assert self._audit_outcomes() == ["accepted", "replayed"]
++
++    def test_a_blank_message_is_400_on_its_field_and_writes_nothing(self):
++        port, token = _start_ui_server_for_job(self.job_id, self.tmp_path)
++        status, body = self._send(port, token, "nonce-chat-blank", message="   ")
++
++        assert status == 400, body
++        assert body == {"error": "the message is empty", "field": "message"}
++        assert self._records() == []
++        assert self._audit_outcomes() == ["rejected_shape"]
++
++    def test_an_ended_job_is_409_audited_rejected_state_and_writes_nothing(self):
++        from packages.core.models import RunState
++        from packages.orchestration.pingpong_job import save_job_plan
++
++        self.job.state = RunState.COMPLETED
++        save_job_plan(self.job)
++        port, token = _start_ui_server_for_job(self.job_id, self.tmp_path)
++        status, body = self._send(port, token, "nonce-chat-ended", message="Too late.")
++
++        assert status == 409, body
++        assert body["error"] == "job has ended and takes no message", body
++        assert self._records() == []
++        assert self._audit_outcomes() == ["rejected_state"]
++
++    def test_a_record_that_cannot_be_written_is_500_and_certifies_nothing(self, monkeypatch):
++        from packages.orchestration import steering
++
++        def refuse(*_args, **_kwargs):
++            raise steering.SecureFsError("disk full at /secret/path")
++
++        port, token = _start_ui_server_for_job(self.job_id, self.tmp_path)
++        monkeypatch.setattr(steering, "write_file_atomically", refuse)
++        status, body = self._send(port, token, "nonce-chat-fails", message="Hello.")
++
++        assert status == 500, body
++        assert "secret" not in json.dumps(body), "the exception text reached the wire"
++        assert self._steering_events() == []
++        assert self._audit_outcomes() == ["rejected_effect"]

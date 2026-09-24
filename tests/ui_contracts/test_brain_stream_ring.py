@@ -626,34 +626,34 @@ class TestAFeedRowJumpsToItsNode:
         )
 
 
-class TestTheSteeringInputIsHonestlyDisabled:
-    """The steering input ships VISIBLE and INERT until F030 gives it a back
-    end. ux_spec.md §11.3 is binding for this surface and fixes both the
-    placement and the sentence; DECISION F021 D11 records why that wording
-    rather than the feature file's shorter paraphrase."""
+class TestTheSteeringInputIsHonest:
+    """The steering input is LIVE since F264 and HONEST in every state
+    (DECISION F264 D3). ux_spec.md §11.3 fixes its placement; the assumption log
+    records the two disabled reasons that replaced the pre-F264 sentence."""
 
-    REASON = "Steering arrives with a later feature — watching only for now."
+    RETIRED_REASON = "Steering arrives with a later feature — watching only for now."
+    UNADDRESSED_REASON = "Open a job's dashboard from its own link to steer it."
 
     def test_the_component_exists_where_the_spec_puts_it(self):
         assert CHAT_INPUT.exists(), (
             "component_spec.md names components/panels/ChatInput.tsx so that "
-            "enabling steering later is a change in one file"
+            "enabling steering is a change in one file"
         )
 
-    def test_the_input_and_its_button_are_both_disabled(self):
+    def test_the_field_and_the_button_share_one_inert_rule(self):
         code = strip_ts_comments(CHAT_INPUT.read_text())
-        # Two controls, so two disabled attributes: an enabled send button
+        # The field is inert when the card disables it or hands it no sender, and
+        # the button is additionally held while a send is in flight: a live button
         # beside a dead field would still promise something it cannot do.
-        assert code.count("disabled={disabled}") == 2, (
-            "the field and the send button are both inert until F030"
-        )
+        assert "const inert = disabled || onSend === undefined;" in code
+        assert "disabled={inert}" in code
+        assert "disabled={busy}" in code
 
-    def test_the_reason_is_the_binding_sentence(self):
+    def test_the_retired_sentence_is_gone_and_the_new_reasons_are_shown(self):
         card = strip_ts_comments(CARD.read_text())
-        assert self.REASON in card, (
-            "ux_spec.md §11.3 fixes this sentence; a paraphrase would make the "
-            "design reference and the shipped surface disagree"
-        )
+        assert self.RETIRED_REASON not in card, "steering has arrived; the old sentence lies"
+        assert self.UNADDRESSED_REASON in card
+        assert "STEERING_ENDED_REASON" in card
 
     def test_the_reason_reaches_the_reader_and_not_only_the_tooltip(self):
         code = strip_ts_comments(CHAT_INPUT.read_text())
@@ -662,11 +662,13 @@ class TestTheSteeringInputIsHonestlyDisabled:
         assert "aria-describedby" in code, (
             "the honest reason is announced, not only hovered"
         )
+        assert 'aria-live="polite"' in code, "what became of a message is announced"
 
-    def test_the_card_renders_it(self):
+    def test_the_card_renders_one_composer_in_both_branches(self):
         card = strip_ts_comments(CARD.read_text())
-        # Both branches: the live feed and the pre-stream fallback. A reader
-        # who has not started a job must see the same honest surface.
-        assert card.count("<ChatInput disabled") == 2, (
+        # Both branches: the live feed and the pre-stream fallback. One composer
+        # element, rendered in each, so the two can never disagree.
+        assert card.count("<ChatInput") == 1, "one composer, not one per branch"
+        assert card.count("{composer}") == 2, (
             "the input belongs to the card, not to one of its two branches"
         )

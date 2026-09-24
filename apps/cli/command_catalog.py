@@ -146,6 +146,7 @@ GROUPS: dict[str, GroupDef] = {
     "runtime": GroupDef("runtime", "Runtime", "Start, probe and stop the project's repo dev server.", feature="F007", reach="job-path"),
     "stats": GroupDef("stats", "Stats", "Honest counts from the run evidence on disk.", feature="F010", reach="job-path"),
     "absorb": GroupDef("absorb", "Absorb", "Absorb hand edits into this repo's unfinished jobs and their tasks.", feature="F263", reach="job-path"),
+    "chat": GroupDef("chat", "Chat", "Steer a running job and its tasks with a message read at the job's next safe point.", feature="F264", reach="job-path"),
     # -- Advanced / internal commands (callable but hidden from default help) --
     "patch": GroupDef("patch", "Patch", "Review and apply patch intents.", user_facing=False, feature="F033", reach="job-path"),
     "test": GroupDef("test", "Test", "Discover and execute tests in the project's repo.", user_facing=False, feature="F261", reach="job-path"),
@@ -168,8 +169,8 @@ GROUPS: dict[str, GroupDef] = {
 
 #: The default `remedy --help` order (DECISION amend0905-vocab D4, clarified by
 #: amend0911-feedback D1): the sixteen visible groups in this fixed order, then
-#: `absorb` (F263, shipped) and `chat` (F264) once it ships — the reserved slot is
-#: not registered as an empty group (D1). `_print_root_help` iterates this tuple, never
+#: the two reserved slots, `absorb` (F263) and `chat` (F264), both shipped; neither
+#: slot was ever registered as an empty group (D1). `_print_root_help` iterates this tuple, never
 #: `GROUPS`' own dict order, so a new visible group added elsewhere in `GROUPS`
 #: cannot silently reorder the help output; `TestVisibleGroupOrder` in
 #: `tests/test_command_catalog.py` pins both the tuple's own content and its
@@ -177,7 +178,7 @@ GROUPS: dict[str, GroupDef] = {
 VISIBLE_GROUP_ORDER: tuple[str, ...] = (
     "do", "mission", "job", "run", "decision", "status", "stats", "teacher",
     "memory", "ui", "config", "doctor", "project", "init", "worker", "runtime",
-    "absorb",
+    "absorb", "chat",
 )
 
 
@@ -266,6 +267,41 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
             _JSON_OPT,
         ),
         supports_json=True,
+    ),
+
+    # ── chat (F264 T001, DECISION F264 D1) ──────────────────────────────
+    CommandEntry(
+        command_id="chat.send",
+        group_id="chat",
+        subcommand="send",
+        description="Send a running job a steering message for its tasks; it is recorded as "
+                    "evidence and read at the job's next safe point, never inside a model call.",
+        action_class="write_metadata",
+        args=(
+            ArgDef("job_id", "The job whose tasks to steer (its ID, or a unique prefix of it)"),
+            ArgDef("message", "The message, quoted as one argument"),
+            _JSON_OPT,
+        ),
+        supports_json=True,
+        may_mutate_repo=False,
+        may_execute_commands=False,
+        related=("job.show", "job.stop"),
+        exit_codes=(0, 1, 2, 3),
+    ),
+    CommandEntry(
+        command_id="chat.show",
+        group_id="chat",
+        subcommand="show",
+        description="List a job's steering messages and, for each, the build round of its task's "
+                    "run that took it in and what was understood, or that it is still waiting.",
+        action_class="read_only",
+        args=(
+            ArgDef("job_id", "The job whose tasks were steered (its ID, or a unique prefix of it)"),
+            _JSON_OPT,
+        ),
+        supports_json=True,
+        related=("chat.send", "job.show"),
+        exit_codes=(0, 1, 2, 3),
     ),
 
     # ── status ──────────────────────────────────────────────────────────
@@ -2434,11 +2470,12 @@ CATALOG: tuple[CommandEntry, ...] = tuple(_with_list_options(c) for c in _BASE_C
 # The whole surface of the UI write door: no other `command_id` above is
 # reachable from a browser, and plan approval arrives here as `decision.resolve`
 # carrying a `plan:`-prefixed decision id rather than as a command of its own
-# (DECISION F009 D4).
+# (DECISION F009 D4). `chat.send` is the cockpit's steering route (DECISION F264 D2).
 UI_EXPOSED_COMMANDS: frozenset[str] = frozenset({
     "job.stop",
     "decision.resolve",
     "patch.approve-hunks",
+    "chat.send",
 })
 
 

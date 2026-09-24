@@ -4,6 +4,7 @@ import type { FeedRow } from "../../api/feedRow";
 import type { FocusableTask } from "../../api/feedFocus";
 import { nodeIdForFeedRow } from "../../api/feedFocus";
 import { FEED_SCROLL_START, nextFeedScroll, shouldFollowNewest, shouldShowNewRowsPill } from "../../api/feedScroll";
+import { STEERING_ENDED_REASON, sendSteeringMessage, steeringIsOpen } from "../../api/steeringSend";
 import { BuilderGlyph, ReviewerGlyph, PersonGlyph, GearGlyph } from "../icons/RemedyGlyphs";
 import { ChatInput } from "./ChatInput";
 import styles from "./RightLivePanel.module.css";
@@ -26,11 +27,12 @@ function formatTokenEstimate(tokens: number): string {
  *  ring still holds BRAIN_RECENT_LIMIT and the timeline is still the archive. */
 const LIVE_ROWS_SHOWN = 40;
 
-/** The disabled steering input's honest reason, quoted from ux_spec.md
- *  §11.3, which is binding for this surface. DECISION F021 D11 records why
- *  this wording rather than the feature file's shorter paraphrase. */
-const STEERING_DISABLED_REASON =
-  "Steering arrives with a later feature — watching only for now.";
+/** The steering input's honest reason when the dashboard names no job or carries no
+ *  token: there is nothing to address a message to. DECISION F264 D3 retires the
+ *  ux_spec.md §11.3 sentence this replaced, because steering has now arrived, and the
+ *  design reference's assumption log records the new wording. */
+const STEERING_UNADDRESSED_REASON =
+  "Open a job's dashboard from its own link to steer it.";
 
 /** The live half of the card: rows projected from the SSE stream, NEWEST
  *  FIRST. Remedy deliberately does not merge these with the dashboard's REST
@@ -131,15 +133,32 @@ function LiveFeed({ recent, recentDropped, tasks, onSelectNode }: {
   );
 }
 
-export function ActivityFeedCard({ activity, recent, recentDropped, tasks, onSelectNode }: {
+export function ActivityFeedCard({ activity, recent, recentDropped, tasks, onSelectNode, jobId, serverToken, stage }: {
   activity: RemedyActivityItem[];
   recent?: readonly FeedRow[];
   recentDropped?: number;
   tasks?: readonly FocusableTask[];
   onSelectNode?: (nodeId: string | null) => void;
+  jobId?: string;
+  serverToken?: string;
+  stage?: string;
 }) {
   const hasActivity = activity.length > 0;
   const live = recent ?? [];
+
+  // ONE composer for both branches below, so the live feed and the pre-stream
+  // fallback can never disagree about whether this job can be steered. It sends
+  // only through `sendSteeringMessage`, the one sequence that reaches the door.
+  const target = { jobId: jobId ?? "", serverToken: serverToken ?? "" };
+  const addressed = target.jobId !== "" && target.serverToken !== "";
+  const open = steeringIsOpen(stage ?? "");
+  const composer = (
+    <ChatInput
+      disabled={!addressed || !open}
+      reason={addressed ? STEERING_ENDED_REASON : STEERING_UNADDRESSED_REASON}
+      onSend={(text) => sendSteeringMessage(target, text)}
+    />
+  );
 
   // The live path wins whenever the stream has produced a row. The dashboard
   // list below is the pre-stream fallback, not a second source of truth.
@@ -149,7 +168,7 @@ export function ActivityFeedCard({ activity, recent, recentDropped, tasks, onSel
         <header className={styles.cardHeader}><h2>Activity</h2></header>
         <LiveFeed recent={live} recentDropped={recentDropped ?? 0}
           tasks={tasks ?? []} onSelectNode={onSelectNode ?? (() => {})} />
-        <ChatInput disabled reason={STEERING_DISABLED_REASON} />
+        {composer}
       </section>
     );
   }
@@ -178,7 +197,7 @@ export function ActivityFeedCard({ activity, recent, recentDropped, tasks, onSel
           <p className={styles.emptyState}>No activity yet. Events will appear here as the agent works.</p>
         )}
       </div>
-      <ChatInput disabled reason={STEERING_DISABLED_REASON} />
+      {composer}
     </section>
   );
 }
