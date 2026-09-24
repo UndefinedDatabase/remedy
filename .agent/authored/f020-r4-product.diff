@@ -1,0 +1,233 @@
+diff --git a/apps/ui/src/components/graph/ForceBrainGraph.tsx b/apps/ui/src/components/graph/ForceBrainGraph.tsx
+index fffcedd8b..8a174b6b5 100644
+--- a/apps/ui/src/components/graph/ForceBrainGraph.tsx
++++ b/apps/ui/src/components/graph/ForceBrainGraph.tsx
+@@ -7,7 +7,14 @@ import { scheduleBrainBirths } from "./brainMotion";
+ import type { NodeKind } from "./brainOntology";
+ import type { BrainLayoutData, BrainLayoutLink, BrainLayoutNode } from "./forceBrainTypes";
+ import { useGraphSize } from "./useGraphSize";
+-import { paintBrainNode } from "./renderers/paintNode";
++import { paintBrainNodeInMotion } from "./renderers/paintNode";
++import type { NodeMotion } from "./renderers/paintNode";
++import { pulseScaleAt } from "./renderers/nodeStates";
++import {
++  STATE_TRANSITION_MS, brainNeedsAnimationFrames, layoutHasPulse, scheduleStateTransitions, transitionFrameAt,
++} from "./renderers/stateMotion";
++import type { StateTransition } from "./renderers/stateMotion";
++import { usePageVisible } from "./usePageVisible";
+ import { readDocumentPalette } from "./renderers/palette";
+ import type { BrainPalette } from "./renderers/palette";
+ import styles from "./ForceBrainGraph.module.css";
+@@ -48,6 +55,7 @@ function paintOf(progress: BirthProgress | null): BrainNodePaint {
+ 
+ type NodePainter = (
+   node: BrainLayoutNode, ctx: CanvasRenderingContext2D, globalScale: number, paint: BrainNodePaint, palette: BrainPalette,
++  motion: NodeMotion,
+ ) => void;
+ 
+ /** The core: existing halo (r64 radial gradient) + core sphere (r26 gradient)
+@@ -76,13 +84,15 @@ function paintCoreNode(node: BrainLayoutNode, ctx: CanvasRenderingContext2D, _gl
+ }
+ 
+ /** Every non-core node, drawn from its kind's glyph and its state's
+- *  treatment in the resolved palette (renderers/paintNode.ts; DECISION F020
+- *  D2). `buildBrainLayout` already resolved the node's radius per kind
+- *  (graph_spec §4); the zoom decides whether a run shows its glyph. */
++ *  treatment in the resolved palette, with its pulse and any state change in
++ *  flight (renderers/paintNode.ts; DECISIONS F020 D2 and D4).
++ *  `buildBrainLayout` already resolved the node's radius per kind (graph_spec
++ *  §4); the zoom decides whether a run shows its glyph. */
+ function paintGlyphNode(
+   node: BrainLayoutNode, ctx: CanvasRenderingContext2D, globalScale: number, paint: BrainNodePaint, palette: BrainPalette,
++  motion: NodeMotion,
+ ): void {
+-  paintBrainNode(ctx, node, { palette, zoom: globalScale, alpha: paint.alpha, scale: paint.scale });
++  paintBrainNodeInMotion(ctx, node, { palette, zoom: globalScale, alpha: paint.alpha, scale: paint.scale }, motion);
+ }
+ 
+ // One painter per NodeKind: the core keeps its own, and every other kind is
+@@ -122,6 +132,7 @@ export function ForceBrainGraph({ layout, selectedId, onSelectNode }: {
+   onSelectNode: (nodeId: string | null) => void;
+ }) {
+   const { containerRef, size } = useGraphSize();
++  const pageVisible = usePageVisible();
+   // Every token the node painter reads, resolved once per mount: a 2D
+   // canvas cannot read var() (tokens_rules.md, the palette bridge).
+   const resolvedPalette = useMemo(() => readDocumentPalette(), []);
+@@ -175,6 +186,40 @@ export function ForceBrainGraph({ layout, selectedId, onSelectNode }: {
+     };
+   }, [layout]);
+ 
++  // State changes: what changed state since the last layout, recorded the
++  // same way as births, so the painter can crossfade and ripple it
++  // (graph_spec §12; DECISION F020 D4).
++  const transitionsPreviousLayoutRef = useRef<BrainLayoutData | null>(null);
++  const transitionRecordsRef = useRef<Map<string, StateTransition>>(new Map());
++  const [transitionsInFlight, setTransitionsInFlight] = useState(false);
++
++  useLayoutEffect(() => {
++    const now = performance.now();
++    scheduleStateTransitions(transitionsPreviousLayoutRef.current, layout, now, reducedMotion)
++      .forEach((t) => transitionRecordsRef.current.set(t.id, t));
++    transitionsPreviousLayoutRef.current = layout;
++    transitionRecordsRef.current.forEach((t, id) => {
++      if (now >= t.startMs + t.durationMs) transitionRecordsRef.current.delete(id);
++    });
++    if (transitionRecordsRef.current.size === 0) { setTransitionsInFlight(false); return; }
++    setTransitionsInFlight(true);
++    const timer = setTimeout(() => setTransitionsInFlight(false), STATE_TRANSITION_MS + 50);
++    return () => clearTimeout(timer);
++  }, [layout]);
++
++  const pulsing = useMemo(() => layoutHasPulse(layout), [layout]);
++  const animating = brainNeedsAnimationFrames({ pageVisible, reducedMotion, birthsInFlight, transitionsInFlight, pulsing });
++
++  const motionOf = useCallback((n: BrainLayoutNode): NodeMotion => {
++    const now = performance.now();
++    const record = transitionRecordsRef.current.get(n.id);
++    return {
++      fromState: record ? record.from : null,
++      transition: record ? transitionFrameAt(record, now) : null,
++      pulseScale: pulseScaleAt(n.state, now, reducedMotion),
++    };
++  }, []);
++
+   const birthProgressOf = useCallback((id: string): BirthProgress | null => {
+     const record = birthRecordsRef.current.get(id);
+     if (!record) return null;
+@@ -185,7 +230,7 @@ export function ForceBrainGraph({ layout, selectedId, onSelectNode }: {
+   const handleNodeCanvasObject = useCallback((node: object, ctx: CanvasRenderingContext2D, globalScale: number) => {
+     const n = node as BrainLayoutNode;
+     const paint = paintOf(birthProgressOf(n.id));
+-    NODE_PAINTERS[n.kind](n, ctx, globalScale, paint, resolvedPalette.palette);
++    NODE_PAINTERS[n.kind](n, ctx, globalScale, paint, resolvedPalette.palette, motionOf(n));
+ 
+     if (n.id === selectedId) {
+       ctx.save();
+@@ -203,7 +248,7 @@ export function ForceBrainGraph({ layout, selectedId, onSelectNode }: {
+       ctx.fillText(n.label, n.x, n.y + n.radius + 4);
+       ctx.restore();
+     }
+-  }, [selectedId, birthProgressOf, resolvedPalette]);
++  }, [selectedId, birthProgressOf, resolvedPalette, motionOf]);
+ 
+   const handleLinkCanvasObject = useCallback((link: object, ctx: CanvasRenderingContext2D) => {
+     // force-graph rewrites source/target from ids into node refs in place
+@@ -297,7 +342,7 @@ export function ForceBrainGraph({ layout, selectedId, onSelectNode }: {
+           cooldownTicks={reducedMotion ? 20 : 80}
+           d3AlphaDecay={0.045}
+           d3VelocityDecay={0.28}
+-          autoPauseRedraw={!birthsInFlight}
++          autoPauseRedraw={!animating}
+           enableNodeDrag
+           enableZoomInteraction
+           enablePanInteraction
+@@ -310,7 +355,9 @@ export function ForceBrainGraph({ layout, selectedId, onSelectNode }: {
+           nodePointerAreaPaint={brainPointerAreaPaint}
+           linkCanvasObject={handleLinkCanvasObject}
+           linkCanvasObjectMode={() => "replace"}
+-          linkDirectionalParticles={(l) => ((l as BrainLayoutLink).active && !reducedMotion ? 1 : 0)}
++          // A particle keeps the canvas drawing whatever autoPauseRedraw says, so
++          // it flows only on an active edge, with motion, on a visible page.
++          linkDirectionalParticles={(l) => ((l as BrainLayoutLink).active && !reducedMotion && pageVisible ? 1 : 0)}
+           linkDirectionalParticleWidth={2}
+           onEngineStop={() => { /* simulation settled */ }}
+         />
+diff --git a/apps/ui/src/components/graph/renderers/nodeStates.ts b/apps/ui/src/components/graph/renderers/nodeStates.ts
+index f1c303442..7395ad878 100644
+--- a/apps/ui/src/components/graph/renderers/nodeStates.ts
++++ b/apps/ui/src/components/graph/renderers/nodeStates.ts
+@@ -165,13 +165,18 @@ export function nodeStateTokens(): RemedyToken[] {
+   return [...seen];
+ }
+ 
++/** The pulse's own multiplier for a node of `state`, `elapsedMs` into its
++ *  pulse: a sine of ±NODE_PULSE_AMPLITUDE over NODE_PULSE_MS for a pulsing
++ *  state, and 1 for every other state. Reduced motion holds every node still
++ *  (graph_spec §12: "no pulse"). */
++export function pulseScaleAt(state: NodeState, elapsedMs: number, reducedMotion: boolean): number {
++  if (!NODE_STATE_TREATMENTS[state].pulse || reducedMotion) return 1;
++  const phase = (2 * Math.PI * elapsedMs) / NODE_PULSE_MS;
++  return 1 + NODE_PULSE_AMPLITUDE * Math.sin(phase);
++}
++
+ /** The scale factor a node of `state` is drawn at, `elapsedMs` into its
+- *  pulse: the state's size factor, times a sine of ±NODE_PULSE_AMPLITUDE over
+- *  NODE_PULSE_MS for a pulsing state. Reduced motion holds every node still
+- *  at its size factor (graph_spec §12: "no pulse"). */
++ *  pulse: the state's size factor times its pulse multiplier. */
+ export function nodeScaleAt(state: NodeState, elapsedMs: number, reducedMotion: boolean): number {
+-  const treatment = NODE_STATE_TREATMENTS[state];
+-  if (!treatment.pulse || reducedMotion) return treatment.sizeFactor;
+-  const phase = (2 * Math.PI * elapsedMs) / NODE_PULSE_MS;
+-  return treatment.sizeFactor * (1 + NODE_PULSE_AMPLITUDE * Math.sin(phase));
++  return NODE_STATE_TREATMENTS[state].sizeFactor * pulseScaleAt(state, elapsedMs, reducedMotion);
+ }
+diff --git a/apps/ui/src/components/graph/renderers/paintNode.ts b/apps/ui/src/components/graph/renderers/paintNode.ts
+index 3fc19fbe3..be9d1eabe 100644
+--- a/apps/ui/src/components/graph/renderers/paintNode.ts
++++ b/apps/ui/src/components/graph/renderers/paintNode.ts
+@@ -9,6 +9,7 @@ import { GLYPHS, STATE_MARK_PATHS, glyphDrawnAt, glyphPath2D, glyphTransform } f
+ import type { GlyphPath2D } from "./glyphPaths";
+ import { NODE_STATE_TREATMENTS } from "./nodeStates";
+ import type { RemedyToken, StateMarkPaint } from "./nodeStates";
++import type { TransitionFrame } from "./stateMotion";
+ import { BRAIN_HIGHLIGHT_TOKEN, BRAIN_LABEL_FONT_TOKEN } from "./palette";
+ import type { BrainPalette } from "./palette";
+ 
+@@ -42,6 +43,9 @@ export interface PaintableNode {
+ /** A cluster's count is written at this share of the node's radius. */
+ export const CLUSTER_COUNT_SIZE = 0.75;
+ 
++/** The completion ripple's ring width, in world units. */
++export const RIPPLE_WIDTH = 1.5;
++
+ /** What the frame contributes: the resolved palette, the canvas zoom, and a
+  *  birth's alpha and scale (1 and 1 at rest). */
+ export interface NodePaintFrame {
+@@ -143,3 +147,45 @@ export function paintBrainNode(ctx: CanvasRenderingContext2D, node: PaintableNod
+   for (const mark of treatment.marks) drawMark(ctx, mark, node, radius, frame.palette);
+   ctx.restore();
+ }
++
++/** What motion contributes to one node's frame: the state it is leaving and
++ *  how far the change has run (both null when no change is in flight), and
++ *  the pulse multiplier (1 when still). */
++export interface NodeMotion {
++  fromState: NodeState | null;
++  transition: TransitionFrame | null;
++  pulseScale: number;
++}
++
++/** The completion ripple: a white ring leaving the node's edge as it fades
++ *  (graph_spec §12: "300ms white ring ripple r→r+14 fade"). */
++function paintCompletionRipple(
++  ctx: CanvasRenderingContext2D, node: PaintableNode, frame: NodePaintFrame, ripple: { spread: number; alpha: number },
++): void {
++  const radius = node.radius * NODE_STATE_TREATMENTS[node.state].sizeFactor * frame.scale;
++  ctx.save();
++  ctx.globalAlpha = frame.alpha * ripple.alpha;
++  ctx.strokeStyle = tokenValue(frame.palette, BRAIN_HIGHLIGHT_TOKEN);
++  ctx.lineWidth = RIPPLE_WIDTH;
++  ctx.beginPath();
++  ctx.arc(node.x, node.y, radius + ripple.spread, 0, Math.PI * 2);
++  ctx.stroke();
++  ctx.restore();
++}
++
++/** Paint one non-core node with its motion: pulsing at its multiplier, and,
++ *  while a state change runs, the old state fading out under the new one
++ *  fading in, then the ripple when the new state is `pass`. */
++export function paintBrainNodeInMotion(
++  ctx: CanvasRenderingContext2D, node: PaintableNode, frame: NodePaintFrame, motion: NodeMotion,
++): void {
++  const pulsed: NodePaintFrame = { ...frame, scale: frame.scale * motion.pulseScale };
++  const t = motion.transition;
++  if (t === null || motion.fromState === null || t.done) {
++    paintBrainNode(ctx, node, pulsed);
++    return;
++  }
++  if (t.fromAlpha > 0) paintBrainNode(ctx, { ...node, state: motion.fromState }, { ...pulsed, alpha: frame.alpha * t.fromAlpha });
++  if (t.toAlpha > 0) paintBrainNode(ctx, node, { ...pulsed, alpha: frame.alpha * t.toAlpha });
++  if (t.ripple) paintCompletionRipple(ctx, node, pulsed, t.ripple);
++}
