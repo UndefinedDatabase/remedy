@@ -121,7 +121,19 @@
 .chatSend { width: 36px; height: 36px; border-radius: 12px; border: 0;
   background: var(--remedy-blue); color: #fff; font-size: 15px; cursor: pointer; }
 .chatSend:disabled { cursor: not-allowed; opacity: 0.5; }
+/* Live since F264 (DECISION F264 D3): ux_spec.md §8's primary-pill states. The focus
+   ring takes --remedy-blue-strong because the spec's --remedy-focus is not in the
+   shipped tokens sheet; the assumption log records the substitution. */
+.chatSend:not(:disabled):hover { background: var(--remedy-blue-strong); }
+.chatSend:not(:disabled):active { transform: translateY(1px); }
+.chatSend:focus-visible, .chatInput:focus-visible {
+  outline: 2px solid var(--remedy-blue-strong); outline-offset: 2px; }
 .chatInputReason { flex-basis: 100%; margin: 0; font-size: 11px; color: var(--remedy-ink-soft); }
+/* What became of the last message, in the decision inbox's outcome colours. */
+.chatOutcome { flex-basis: 100%; margin: 0; font-size: 12px; line-height: 1.45; }
+.chatOutcomeOk { color: var(--remedy-green-500); }
+.chatOutcomeWarn { color: var(--remedy-orange-400); }
+.chatOutcomeError { color: var(--remedy-red-500); }
 .activityItem .actorIcon { width: 30px; height: 30px; }
 .activityMeta { display: flex; align-items: baseline; gap: 8px; }
 .activityMeta strong { font-size: 13px; color: var(--remedy-ink-strong); }
