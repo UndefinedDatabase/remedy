@@ -10,6 +10,10 @@ import { ForceBrainGraph } from "./ForceBrainGraph";
 import { GraphFilterChips, type GraphFilter } from "./GraphFilterChips";
 import { GraphLegend } from "./GraphLegend";
 import { BrainGraphCanvas } from "./BrainGraphCanvas";
+import { zoomBreadcrumbs, zoomGraphOf } from "./semanticZoom";
+import { useSemanticZoom } from "./useSemanticZoom";
+import { ZoomBreadcrumbs } from "./ZoomBreadcrumbs";
+import { zoomCrumbLabel, zoomEmphasis } from "./zoomView";
 import styles from "./BrainGraphStage.module.css";
 
 export function BrainGraphStage({
@@ -38,22 +42,42 @@ export function BrainGraphStage({
   // hole from a live gap, a mid-ledger join, or a sleeping tab holds the
   // model at the state before it, never a ghost past it (DECISION F019 D5).
   const rows = useMemo(() => brainLedgerPrefix(ledger), [ledger]);
-  const layout = useMemo(
-    () => buildBrainLayout(rebuildBrainModel(dashboard.jobId, seeds, rows)),
-    [dashboard.jobId, seeds, rows],
-  );
+  const model = useMemo(() => rebuildBrainModel(dashboard.jobId, seeds, rows), [dashboard.jobId, seeds, rows]);
+  const layout = useMemo(() => buildBrainLayout(model), [model]);
   const visible = useMemo(() => filterBrainLayout(layout, filter), [layout, filter]);
   const selectedId = selectedBrainNodeId(dashboard.tasks, selectedNodeId ?? null);
   const showLiveGraph = view === "live" && brainTaskCount(visible) > 0;
 
+  // Semantic zoom (graph_spec §10): focus is checked against the model, which
+  // keeps every run, and the laid-out view, which adds the clusters
+  // (DECISION F023 D1); what the state means on the canvas is zoomView.ts's.
+  const zoomGraph = useMemo(() => zoomGraphOf(model.nodes, layout.nodes), [model, layout]);
+  const zoom = useSemanticZoom(zoomGraph);
+  const emphasis = useMemo(() => zoomEmphasis(visible, zoom.state), [visible, zoom.state]);
+  const crumbs = zoomBreadcrumbs(zoomGraph, zoom.state).map((c) => ({
+    level: c.level, current: c.current, label: zoomCrumbLabel(c, layout),
+  }));
+
   return (
-    <section className={styles.stage} aria-label="Task brain graph" data-ui="brain-graph-stage">
+    <section
+      className={styles.stage}
+      aria-label="Task brain graph"
+      data-ui="brain-graph-stage"
+      data-zoom-level={zoom.state.level}
+      data-zoom-note={zoom.note ?? undefined}
+    >
       {showLiveGraph ? (
-        <ForceBrainGraph
-          layout={visible}
-          selectedId={selectedId}
-          onSelectNode={(taskId) => onSelectNode(shellSelectionIdOf(dashboard.tasks, taskId))}
-        />
+        <>
+          <ForceBrainGraph
+            layout={visible}
+            selectedId={selectedId}
+            onSelectNode={(taskId) => onSelectNode(shellSelectionIdOf(dashboard.tasks, taskId))}
+            zoom={zoom.state}
+            emphasis={emphasis}
+            onZoomEvent={zoom.dispatch}
+          />
+          <ZoomBreadcrumbs items={crumbs} onJump={(level) => zoom.dispatch({ type: "crumb", level })} />
+        </>
       ) : (
         // No tasks, an empty filter, or the operator pressed "Simple view":
         // BrainGraphCanvas owns its own empty and filter-empty messages.
