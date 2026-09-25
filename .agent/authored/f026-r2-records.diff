@@ -1,0 +1,69 @@
+diff --git a/.agent/decisions.md b/.agent/decisions.md
+index 5662e1d40..3a9ce5267 100644
+--- a/.agent/decisions.md
++++ b/.agent/decisions.md
+@@ -21708,3 +21708,52 @@ either; each is a future feature, not a widening of this one.
+ 
+ HOW TO REVERSE: delete `packages/orchestration/task_edit_runtime.py` and its tests, the
+ `spec_version` field with its export and import lines, and this paragraph.
++
++## DECISION F026 D2 — the runtime edit reaches the operator as `job.edit-task` in the catalog, the CLI and the write door, names the task by its id in the job or in the plan, carries the task's spec version as the conflict check, shows that version in `job plan-show`, and is proved by a fake run whose next trace carries the edit and no remnant of the old spec (2026-09-25)
++
++CONTEXT: T5_F026.md's T002 asks for the channel command, its audit, the failed-to-pending semantics
++and the trace proof on a fake run, and its Orchestrator brief puts the trace proof in T002's order
++verbatim. Measured at `ee874cb2`: `job.plan-edit-task` in `apps/cli/command_catalog.py` is the
++pre-approval edit, handled in `apps/cli/commands/job_plan_cmd.py` against the plan's version and the
++plan's task id; the write door in `packages/orchestration/ui_server.py` maps every `job.plan-*` id to
++`edit_plan`, checks `args.expected_version` as a shape before the plan is read, and maps a
++`PlanEditRefused` code to a status with `plan_edit_refusal`; `job plan-show` prints the plan's
++version and the plan's task ids but no task entry's id and no spec version. In the reviewer's scratch
++tree at `ee874cb2`, a fake run whose providers never pass blocks the first task of an approved plan
++and skips the second; `edit_task_at_runtime` resets both; a second `run_job` completes both; the new
++run's `prompt_trace.jsonl` carries the edited goal and not the old one, and so does the copy
++`export_job_evidence` writes under `task_runs/`; and the job keeps the first run's `error`, which is
++finding R-1059.
++
++CHOSEN: (1) ONE NEW CATALOG ID, `job.edit-task`, `write_metadata`, exposed to the UI, with the job,
++the task, `--spec-version` (required by the handler, as `--plan-version` is for the plan edits) and
++the plan editor's field options, exit codes 0, 1, 2 and 3 as the plan edits have them. The runtime
++refusal codes join the classes the plan edits use: `not_a_plan_task` is a usage refusal (2);
++`job_not_editable`, `task_not_editable` and `spec_archive_conflict` are not-ready refusals (3).
++(2) THE TASK IS NAMED BY ITS ID IN THE JOB OR BY ITS ID IN THE PLAN: the CLI resolves an argument
++that matches no task entry's id but exactly one entry's planned id to that entry, and passes any
++other argument through for the backend to refuse; the door takes `args.task_id` as the entry's id,
++which is the id the dashboard and the pause use. (3) THE DOOR adds one clause for `job.edit-task`
++beside the plan edits' clause, the same write order and the same audit, with `args.expected_version`
++the task's spec version, checked as a whole number of at least 1 before the job is read, and a new
++`task_edit_refusal` that answers the four runtime codes 409 `rejected_state` with the backend's
++detail and hands every other code to `plan_edit_refusal`. The edit log names the editor by the
++request's token fingerprint, as the plan edits do. (4) `job plan-show` names, for every plan task,
++the matching task entry's id, status and spec version, in the JSON as `job_task_id`, `status` and
++`spec_version` and in the text as one line under the goal, so an operator can take the version the
++edit must name from the command the plan edits already point at. (5) THE TRACE PROOF is a test that
++runs an approved plan with the fake provider until its first task blocks, edits that task's goal and
++acceptance through `edit_task_at_runtime`, relaunches with `run_job`, and reads the NEW run's
++`prompt_trace.jsonl` and the evidence export's copy: the edited text must be in the builder's
++prompt, the old text must be absent, the second task must have run, and the job must read
++`completed` with an empty `error`.
++
++ALTERNATIVES: widening `job.plan-edit-task` to runtime, rejected because the two edits refuse
++different states and name different versions, and one command answering two version schemes would
++make a stale version ambiguous; taking the plan's version as the conflict check, rejected because
++two operators editing two different tasks would then conflict for no reason; a separate `job
++task-show` for the version, rejected because `job plan-show` is already where the plan edits send
++the operator.
++
++HOW TO REVERSE: delete the catalog entry, its handler, the door clause with `task_edit_refusal`,
++the three `job plan-show` keys and their text line, the tests this round adds, and this paragraph.
+diff --git a/.agent/live_review.md b/.agent/live_review.md
+index f56057616..2492cb47b 100644
+--- a/.agent/live_review.md
++++ b/.agent/live_review.md
+@@ -441,3 +441,7 @@ Gate: F025 R9 — the F025 round 9 entry: the closure sequence's first half, the
+ Gate: F025 R10 — the F025 round 10 entry: the closure sequence's evidence half, the booking of round 9, the registration of R-1057 and R-1058 for F285, the evidence bundle and the review package. VERDICT PASS, NO DEVIATION DECLARED. Re-derived over `9cceb4cd`..`21aa3097` by the planner and reviewer of F025's second session, whose own runs produced every reading below. THE RANGE IS 3 COMMITS, at `75da467b` 349, `f7b127bd` 20 and `21aa3097` 179 insertions by `git show --numstat`, each under the 500-line cap, each single-parent and each carrying the ordered trailer. THE TRANSPORT PROOF: the block copy and the five payload copies under `.agent/authored/` equal the reviewer's originals, and at `f7b127bd` the ledger equals its `9cceb4cd` bytes plus its payload, the plan equals its payload, and `docs/roadmap/features/T2_F285.md` equals its `9cceb4cd` bytes with the FROM text replaced by the TO text. THE OPEN SET by distinct id reads R-1008 and R-1055 at `9cceb4cd`, and R-1008, R-1055, R-1057 and R-1058 at `f7b127bd` and at `21aa3097`, all four owned by F285. THE BUNDLE: evidence job `f025r10e1001`, built by the committed `.agent/authored/f025-r10-create_f025_evidence.py` at the accepted head `f7b127bde0e2d705f0a8da49b1d9404d983048d4` against the fork point `49624d5c8def4b270697a8c0025e2ab3efc197a7`, read ancestry and plain counts equal at 74, 1033 node ids with 4 deselected and none unsafe, pytest exit 0 with 1033 passed, an empty `validate_verification_tests` problem list and `is_valid_current_run` True. THE PACKAGE: `remedy-review-20260925-174026-READY_FOR_REVIEW.zip` in `/home/decodeux/Repos/remedy-history/zips`, whose SHA-256 the reviewer measured as `5202e21aed884f7ae6a8b79a852d2c4683436f2220d1a910d072cec01ac38e6f`, whose `testzip()` answers None, and whose `.review_zip_manifest.json` reads status `READY_FOR_REVIEW`, base the fork point and head the accepted head. THE TREE: the reviewer's serial run of `tests/docs/` and the golden path at `21aa3097` read `369 passed`, and all six `integrity check` checks read `pass`.
+ 
+ Gate: F025 R11 — the F025 round 11 entry: the closing round, the booking of round 10, the ledger rotation, the STATUS acceptance with its README pins and the self-use item's `consumed_by`, and the pull request. VERDICT PASS, NO DEVIATION DECLARED. Re-derived over `21aa3097`..`4cb6b970` by the planner and reviewer of F026's first session, whose own runs produced every reading below. THE RANGE IS 4 COMMITS, at `be6f39bb` 436, `7652281e` 8, `2815e8ae` 50 and `4cb6b970` 216 insertions by `git show --numstat`, each under the 500-line cap, each single-parent and each carrying the ordered trailer. THE TRANSPORT PROOF: the block copy and the seven payload copies under `.agent/authored/`, read at `be6f39bb`, equal the reviewer's originals byte for byte, and at `4cb6b970` `docs/roadmap/STATUS.md`, `README.md` and `scripts/self_use_queue.json` hash to the three sha256 readings the block's G4 table states. THE OPEN SET by distinct id reads R-1008, R-1055, R-1057 and R-1058 at `4cb6b970`, all four owned by F285. THE ROTATION moved 9 gate records and 8 finding pairs and left the open count at 4. THE TREE: the reviewer's serial run at `4cb6b970` of `tests/docs/`, `tests/cli/test_advertised_commands.py`, `tests/orchestration/test_live_review_rotation.py`, `tests/orchestration/test_integrity_gate.py` and `tests/orchestration/test_self_use_generator.py` read `424 passed`, and all six `integrity check` checks read `pass`. THE MERGE: pull request 280's hosted CI run 36157351708 ended `success` on both jobs, and the reviewer merged it at F026's Open PR Gate as `90555849`.
++
++Gate: F026 R1 — the F026 round 1 entry: the claim, the re-head with F025's round 11 verdict, DECISION F026 D1, and T001, the runtime task edit with its state gate, versioned in-place apply, spec archive, approval seal and failed-to-pending reset. VERDICT PASS, ONE DEVIATION DECLARED AND ACCEPTED. Re-derived over `90555849`..`ee874cb2` by the planner and reviewer of F026's first session, whose own runs produced every reading below. THE RANGE IS 8 COMMITS, at `61782a84` 413, `9efdac16` 162, `243fd992` 141, `410abd72` 7, `71a56ba0` 385, `4624532f` 378, `71ffbfdb` 395 and `ee874cb2` 292 insertions by `git show --numstat`, each under the 500-line cap, each single-parent and each carrying the ordered trailer. THE DEVIATION: the block ordered the tests and the mutation tool as one commit C4, which would have held 773 insertions, and the worker split it at a class boundary into `4624532f` and `71ffbfdb` under constraint 2, which permits exactly that. THE TRANSPORT PROOF: the block copy and the three payload copies under `.agent/authored/`, read at `61782a84` and `9efdac16`, equal the reviewer's originals byte for byte, and at `243fd992` the five files the claim writes hash to the reviewer's authoring tree. THE OPEN SET by distinct id reads R-1008, R-1055, R-1057 and R-1058 at `90555849` and at `ee874cb2`, all four owned by F285. THE CODE: `python3 -m ruff check` over the five touched code and test files reads `All checks passed!`; `TaskEntry.spec_version`, its export and its import are the only change to `packages/orchestration/pingpong_job.py`, and `PlanEditRefused`'s docstring is the only change to `packages/orchestration/plan_editing.py`. THE TESTS: the reviewer's serial run in the primary checkout at `ee874cb2` of the round's selection with `tests/cli/test_golden_path.py` read `933 passed, 1 skipped` at exit 0, the skip being the D12 quarantine, and all six `integrity check` checks read `pass`. THE RED PROOFS: the reviewer ran the committed `.agent/authored/f026-r1-mutations.py` itself in a disposable worktree at `ee874cb2`: both unmutated controls exit 0, all nineteen mutations exit 1 with at least one failing node, both mutated files are restored byte-identical, and the tool's last line reads `ALL MUTATIONS CAUGHT AND RESTORED CLEANLY: True`. ONE ORDERED TEST OBLIGATION IS UNMET, found by the reviewer's read and not declared: the block ordered the refusal tests to show the export directory unchanged, and `_assert_refused` in `tests/orchestration/test_task_edit_runtime.py` compares the record's bytes and `task_specs/` but not the export directory's `plan_v*.md` and edit-log export; round 2 adds the comparison.
++
++- R-1059 — Medium, A BLOCKED JOB THAT IS RELAUNCHED AND COMPLETES KEEPS THE ERROR OF THE FAILURE IT RECOVERED FROM, SO ITS RECORD READS `completed` BESIDE A FAILURE THAT NO LONGER HOLDS. Raised by the planner and reviewer of F026's first session while dry-running T002's trace proof. SEARCHED BEFORE MINTING (checklist item 30): `stale error`, `keeps its error` and `job.error` beside `relaunch` in this record and its archive find no finding describing it. MEASURED at `ee874cb2` in a scratch tree: an approved two-task plan run with the fake provider set never to pass ends `blocked`, its first task `blocked` and its second `skipped`, with the job's `error` reading `task_<id>_gate_failed: final_status=repair_exhausted; reviewer_verdict=needs_repair`; after `edit_task_at_runtime` resets the first task, a second `run_job` completes both tasks and the job reads `completed` with that same `error`. In `run_job` in `packages/orchestration/pingpong_job.py` the move to `JOB_RUNNING` before the dispatch loop persists the state and leaves `error` as the last run wrote it, and nothing on the completion path clears it; `_stop_job` clears it only for a stop. The cycle executor `run_cycles` was not measured. WHY MEDIUM: wrong state on disk, read by `remedy job show`, the dashboard and the evidence bundle, on the one path F026 makes routine. FIX: `run_job` clears the job's `error` when it moves the job to `JOB_RUNNING`, so any failure of the new run writes its own; a test runs the blocked, edited and relaunched job and reads `""`. Owner: F026.
