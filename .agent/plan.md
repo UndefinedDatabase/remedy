@@ -13,18 +13,17 @@ things stood, with no process left waiting
 
 ## Current Step
 
-ROUND 9, the closure sequence's first half: book round 8, write the
-Built State, consolidate the checklist, generate and run the closure's
-self-use item, and run this feature's one full suite.
+ROUND 10, the closure sequence's evidence half: book round 9, register
+R-1057 and R-1058 for F285, build the evidence bundle against the fork
+point and the fresh review package.
 
 ## Next Steps
 
-1. The closure's second half: book round 9, register what the self-use
-   run and the suite ask for, the evidence bundle and the review package.
-2. The closing round: the ledger rotation, the STATUS flip with its
-   README pins, and the pull request.
+1. The closing round: the ledger rotation, the STATUS flip with its
+   README pins and the self-use item's `consumed_by`, and the pull
+   request.
 
 ## Risks
 
-A pause must never strand a job it cannot resume. Open findings: 2 —
-R-1008 and R-1055, both owned by F285.
+A pause must never strand a job it cannot resume. Open findings: 4 —
+R-1008, R-1055, R-1057 and R-1058, all owned by F285.
