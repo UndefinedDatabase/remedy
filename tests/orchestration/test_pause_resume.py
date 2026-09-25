@@ -419,3 +419,106 @@ class TestParkNeverSettlesBeforeItIsDurable:
             pj._park_job(job, signal, task=None)
 
         assert pc.pause_requested(job.job_id) is not None
+
+
+class TestR1049APauseSettleFailureInsideAServedStopStillStops:
+    """R-1049's FIX clause: `_stop_job`'s pause-settle-on-stop catch now names
+    only the two errors that settle can raise (`pause_control.PauseControlError`
+    and `safe_points.StopControlError`) instead of a blind `except Exception`,
+    and logs rather than passes — but the stop it guards must still finish
+    exactly as it did before, never mind what the settle did."""
+
+    def test_a_pause_control_error_from_the_settle_does_not_block_the_stop(
+            self, isolate_data_root, demo_repo, monkeypatch):
+        job = parse_job_file(_TWO_TASK_JOB, str(demo_repo))
+        request_stop(job.job_id, "operator stop", "cli")
+        pc.request_pause(job.job_id, "operator pause", "cli")
+
+        def raising_settle(*args, **kwargs):
+            raise pc.PauseControlError("simulated settle failure")
+
+        monkeypatch.setattr(pc, "settle_pause", raising_settle)
+
+        done = run_job(job.job_id, builder_provider=_pass_provider(),
+                       reviewer_provider=_pass_provider(), repair_rounds=0)
+
+        assert done.state == JOB_STOPPED
+        # the settle never landed: the pause request is still pending.
+        assert pc.pause_requested(job.job_id) is not None
+
+
+class TestR1050AFailedPausedEventReparksAndClearsTheError:
+    """R-1050's FIX clause, `job_paused` half: a write that raises is recorded
+    on the pause record as `event_error` rather than vanishing, and a
+    job-scope request stays pending until the event actually lands — the next
+    run re-parks on the SAME request, writes exactly one `job_paused`, settles
+    the request, and clears `event_error` (because `park_job_pause` always
+    rebuilds `job.pause` fresh from the signal)."""
+
+    def test_the_next_run_writes_one_job_paused_and_clears_event_error(
+            self, isolate_data_root, demo_repo, monkeypatch):
+        job = parse_job_file(_TWO_TASK_JOB, str(demo_repo))
+        pc.request_pause(job.job_id, "operator pause", "cli")
+
+        from packages.orchestration.run_log import RunLogWriter
+
+        real_log = RunLogWriter.log
+        calls = {"n": 0}
+
+        def flaky_log(self, event, **kwargs):
+            if event == "job_paused":
+                calls["n"] += 1
+                if calls["n"] == 1:
+                    raise RuntimeError("simulated ledger failure")
+            return real_log(self, event, **kwargs)
+
+        monkeypatch.setattr(RunLogWriter, "log", flaky_log)
+
+        parked = run_job(job.job_id, builder_provider=_pass_provider(),
+                         reviewer_provider=_pass_provider(), repair_rounds=0)
+        assert parked.state == JOB_PAUSED
+        assert parked.pause.get("event_error", "").startswith(
+            "job_paused_event_failed:")
+        assert pc.pause_requested(job.job_id) is not None   # NOT settled
+        assert len(_events(isolate_data_root, job.job_id, "job_paused")) == 0
+
+        again = run_job(job.job_id, builder_provider=_pass_provider(),
+                        reviewer_provider=_pass_provider(), repair_rounds=0)
+        assert again.state == JOB_PAUSED
+        assert "event_error" not in again.pause
+        assert pc.pause_requested(job.job_id) is None       # now settled
+        assert len(_events(isolate_data_root, job.job_id, "job_paused")) == 1
+        assert calls["n"] == 2
+
+
+class TestR1050AFailedResumedEventStillCompletesTheRun:
+    """R-1050's FIX clause, `job_resumed` half: a write that raises is recorded
+    as `job.metadata["pause_event_error"]` and the resume PROCEEDS regardless
+    — the run is not held hostage by a ledger that cannot be written."""
+
+    def test_the_run_completes_with_pause_event_error_recorded(
+            self, isolate_data_root, demo_repo, monkeypatch):
+        job = parse_job_file(_TWO_TASK_JOB, str(demo_repo))
+        pc.request_pause(job.job_id, "operator pause", "cli")
+        parked = run_job(job.job_id, builder_provider=_pass_provider(),
+                         reviewer_provider=_pass_provider(), repair_rounds=0)
+        assert parked.state == JOB_PAUSED
+
+        from packages.orchestration.run_log import RunLogWriter
+
+        real_log = RunLogWriter.log
+
+        def flaky_log(self, event, **kwargs):
+            if event == "job_resumed":
+                raise RuntimeError("simulated ledger failure")
+            return real_log(self, event, **kwargs)
+
+        monkeypatch.setattr(RunLogWriter, "log", flaky_log)
+
+        resumed = run_job(job.job_id, builder_provider=_pass_provider(),
+                          reviewer_provider=_pass_provider(), repair_rounds=0)
+        assert resumed.state == JOB_COMPLETED
+        assert resumed.pause == {}
+        assert resumed.metadata.get("pause_event_error", "").startswith(
+            "job_resumed_event_failed:")
+        assert len(_events(isolate_data_root, job.job_id, "job_resumed")) == 0

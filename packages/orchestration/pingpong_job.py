@@ -22,6 +22,7 @@ import json as _json
 import os
 import re
 import shutil
+from collections.abc import Callable
 from dataclasses import dataclass, field, replace
 from datetime import datetime, timezone
 from pathlib import Path
@@ -2967,7 +2968,7 @@ def run_job(
             # Still pending (job scope) or still withheld (task scope): STAYS
             # parked — no event, no state change, no provider call.
             return job
-        _lift_job_pause(job)
+        lift_job_pause(job)
         _persist_job(job)
 
     # F018 Scope 7: all pre-work validation passed (budget decoded, no pending stop).
@@ -4272,11 +4273,13 @@ def _job_stopped_event_exists(job_id: str, request_id: str) -> bool | None:
 
 
 def _append_job_paused_event(job: JobPlan, signal: _PauseSignal, *,
-                             pending_count: int) -> None:
+                             pending_count: int) -> bool:
     """Exactly one ``job_paused`` ledger event per CONSUMED request (S3 clause 4),
-    through the same writer ``job_stopped`` uses. FAILS SOFT, like
-    ``_emit_budget_tick``: a ledger write must never strand a job that is already
-    durably parked (persisted before this ever runs — see ``_park_job``)."""
+    through the same writer ``job_stopped`` uses. Returns whether the write
+    landed. R-1050: a failure is no longer silent — it is recorded on
+    ``job.pause["event_error"]`` so the caller (``park_job_pause``) can persist
+    it and refuse to settle a job-scope request over a park that never made it
+    into the ledger."""
     reason = signal.reason
     if _reason_is_pause(reason):
         reason = reason[len(_PAUSE_REASON_PREFIX):]
@@ -4294,8 +4297,13 @@ def _append_job_paused_event(job: JobPlan, signal: _PauseSignal, *,
             withheld_task_ids=list(signal.withheld_task_ids),
             pending_task_count=pending_count,
         )
-    except (OSError, RuntimeError, ValueError, TypeError):
-        return
+        return True
+    except (OSError, RuntimeError, ValueError, TypeError) as exc:
+        from packages.orchestration.failure_postmortem import safe_text
+
+        job.pause["event_error"] = safe_text(
+            f"job_paused_event_failed: {type(exc).__name__}: {exc}")[:500]
+        return False
 
 
 def _job_paused_event_exists(job_id: str, request_id: str) -> bool | None:
@@ -4325,10 +4333,13 @@ def _job_paused_event_exists(job_id: str, request_id: str) -> bool | None:
         return None
 
 
-def _append_job_resumed_event(job: JobPlan, pause_record: dict, resumed_at: str) -> None:
+def _append_job_resumed_event(job: JobPlan, pause_record: dict, resumed_at: str) -> bool:
     """One ``job_resumed`` event per lifted request id (S5), carrying the lifted
-    record and ``resumed_at``. FAILS SOFT — a ledger write must never block a
-    resume that already cleared ``job.pause`` and is about to run real work."""
+    record and ``resumed_at``. Returns whether the write landed. R-1050: a
+    failure no longer vanishes — it is recorded as
+    ``job.metadata["pause_event_error"]`` — but it never blocks the resume:
+    ``job.pause`` is already about to be cleared and the run is about to do
+    real work, exactly as the docstring this replaces promised."""
     try:
         from packages.orchestration.run_log import RunLogWriter
 
@@ -4346,14 +4357,26 @@ def _append_job_resumed_event(job: JobPlan, pause_record: dict, resumed_at: str)
             withheld_task_ids=list(pause_record.get("withheld_task_ids") or []),
             resumed_at=resumed_at,
         )
-    except (OSError, RuntimeError, ValueError, TypeError):
-        return
+        return True
+    except (OSError, RuntimeError, ValueError, TypeError) as exc:
+        from packages.orchestration.failure_postmortem import safe_text
+
+        job.metadata["pause_event_error"] = safe_text(
+            f"job_resumed_event_failed: {type(exc).__name__}: {exc}")[:500]
+        return False
 
 
-def _lift_job_pause(job: JobPlan) -> None:
-    """S5: lift a resumed job's pause — one ``job_resumed`` event, then empty the
-    record (S1: "when the job leaves paused... the record is emptied"). A no-op on
-    a job with no pause to lift."""
+def lift_job_pause(job: JobPlan) -> None:
+    """S5/E1: lift a resumed job's pause — one ``job_resumed`` event, then empty
+    the record (S1: "when the job leaves paused... the record is emptied"). A
+    no-op on a job with no pause to lift.
+
+    Shared by the linear runner (``run_job``, which persists right after
+    calling this, exactly as it always has) and the cycle executor
+    (``run_cycles``, E4), which persists through its own ``save`` seam
+    immediately after — neither runner's persistence path lives HERE, so
+    lifting never depends on which one called it.
+    """
     if not job.pause:
         return
     resumed_at = datetime.now(timezone.utc).isoformat()
@@ -4361,32 +4384,42 @@ def _lift_job_pause(job: JobPlan) -> None:
     job.pause = {}
 
 
-def _park_job(job: JobPlan, signal: _PauseSignal, *, task: TaskEntry | None,
-             control_root_path: Any = None) -> JobPlan:
-    """S3: turn an observed pause into a durable, resumable PAUSED job — structured
-    exactly like ``_stop_job``, but nothing of the stop runs: no stop archive, no
-    post-mortem, no ``job_stopped``, no stopped manifest, no stop field.
+def park_job_pause(job: JobPlan, signal: _PauseSignal, *,
+                   persist: Callable[[JobPlan], None],
+                   control_root_path: Any = None) -> JobPlan:
+    """S3/E1: turn an observed pause into a durable, resumable PAUSED job —
+    structured exactly like ``_stop_job``, but nothing of the stop runs: no
+    stop archive, no post-mortem, no ``job_stopped``, no stopped manifest, no
+    stop field.
 
-    1. the in-flight task, if any and not yet applied, goes back to `pending`,
-       exactly as `_stop_job` does;
-    2. the state becomes `JOB_PAUSED` and `pause` records the episode;
-    3. the job is persisted (the caller already persisted the budget actuals,
-       mirroring every `_stop_job` call site);
-    4. one `job_paused` event, checking the ledger first so a re-park (after a
-       failed settle below) never writes a second one;
-    5. for scope `job` only, the pause_control request is settled `served` — a
-       failure here leaves the request pending and the job parked; the next run
-       re-parks on the SAME request, finds the event already written, and tries
-       the settle again.
+    Shared by the linear runner's ``_park_job`` (which rolls an in-flight task
+    back to ``pending`` FIRST, then calls this) and the cycle executor's
+    ``run_cycles`` (E1), which has no in-flight task to roll back — its batch
+    loop already stops cleanly at a boundary before this is ever reached.
+    ``persist`` is the caller's own persistence seam (``_persist_job`` for the
+    linear runner, ``run_cycles``'s injected ``save`` for the cycle executor),
+    so both runners write one park record through one writer:
+
+    1. the state becomes `JOB_PAUSED` and `pause` records the episode;
+    2. the job is persisted through ``persist`` (the caller already persisted
+       the budget actuals, mirroring every `_stop_job` call site);
+    3. one `job_paused` event, checking the ledger first so a re-park (after a
+       failed write or a failed settle below) never writes a second one.
+       R-1050: a write that FAILS is recorded on the pause record itself as
+       `event_error` and re-persisted — durable proof the ledger is short one
+       event — and a job-scope request is then NOT settled, so the next run
+       re-parks on the SAME request, tries the write again, and only settles
+       once it lands (which also clears `event_error`, because this function
+       always rebuilds `job.pause` fresh from `signal` rather than patching
+       the previous attempt's dict);
+    4. for scope `job` only, once the event is durably written, the
+       pause_control request is settled `served` — a failure here leaves the
+       request pending and the job parked; the next run re-parks on the SAME
+       request, finds the event already written, and tries the settle again.
     """
     from packages.orchestration import pause_control as _pc
 
-    # --- 1. the in-flight task goes back to pending ------------------------------
-    if task is not None and task.status not in (TASK_APPLIED, TASK_PASSED, TASK_SKIPPED):
-        task.status = TASK_PENDING
-        task.task_attempt_state = "active"
-
-    # --- 2. the state and the pause record ----------------------------------------
+    # --- 1. the state and the pause record ----------------------------------------
     reason = signal.reason
     if _reason_is_pause(reason):
         reason = reason[len(_PAUSE_REASON_PREFIX):]
@@ -4402,30 +4435,47 @@ def _park_job(job: JobPlan, signal: _PauseSignal, *, task: TaskEntry | None,
         "withheld_task_ids": list(signal.withheld_task_ids),
     }
 
-    # --- 3. the durable checkpoint --------------------------------------------
-    _persist_job(job)
+    # --- 2. the durable checkpoint --------------------------------------------
+    persist(job)
 
-    # --- 4. the event, exactly once per request id ----------------------------
+    # --- 3. the event, exactly once per request id, recorded if it fails -----
     already = _job_paused_event_exists(job.job_id, signal.request_id)
     _ledger_readable = already is not None
+    event_written = bool(already)
     if _ledger_readable and not already:
         pending_count = sum(1 for t in job.tasks if t.status == TASK_PENDING)
-        _append_job_paused_event(job, signal, pending_count=pending_count)
+        event_written = _append_job_paused_event(job, signal, pending_count=pending_count)
+        if not event_written:
+            persist(job)          # R-1050: `event_error` must be durable too
 
-    # --- 5. scope `job` only: settle the request as served ---------------------
-    if signal.scope == "job" and _ledger_readable:
+    # --- 4. scope `job` only: settle the request as served, event permitting --
+    if signal.scope == "job" and _ledger_readable and event_written:
         try:
             pending = _pc.pause_requested(job.job_id, control_root_path=control_root_path)
             if pending is not None and pending.request_id == signal.request_id:
                 _pc.settle_pause(job.job_id, pending, "served",
                                  control_root_path=control_root_path)
         except _pc.PauseControlError:
-            # S3: "a failure at (5) leaves the request pending and the job
+            # S3: "a failure at (4) leaves the request pending and the job
             # parked; the next run re-parks on the same request without a
             # second event and settles it."
             pass
 
     return job
+
+
+def _park_job(job: JobPlan, signal: _PauseSignal, *, task: TaskEntry | None,
+             control_root_path: Any = None) -> JobPlan:
+    """The linear runner's own park: roll the in-flight task back to `pending`
+    (exactly as `_stop_job` does), then park through the shared `park_job_pause`
+    (E1), persisting via the module's own `_persist_job` — referenced by NAME
+    here, not captured as a default argument, so a test that monkeypatches
+    `_persist_job` on this module still reaches its replacement."""
+    if task is not None and task.status not in (TASK_APPLIED, TASK_PASSED, TASK_SKIPPED):
+        task.status = TASK_PENDING
+        task.task_attempt_state = "active"
+    return park_job_pause(job, signal, persist=_persist_job,
+                          control_root_path=control_root_path)
 
 
 def _stop_job(job: JobPlan, signal: Any, *, task: TaskEntry | None,
