@@ -1,0 +1,1 @@
+2026-09-25, F025 round 1 — the block ordered the new tests and the mutation tool into one commit C4 without sizing them; together they came to 579 insertions, over the 500-line cap, so the worker split them into C4a and C4b and declared it, and nothing on disk is wrong.
