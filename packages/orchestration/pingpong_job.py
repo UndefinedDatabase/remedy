@@ -3553,9 +3553,15 @@ def run_job(
         _persist_budget_actuals()
 
         # F012: a completed job records its episode's manifest, after every call input is
-        # known. A paused/partial job is not a finished run and gets none yet.
+        # known. DECISION F025 D6 (round 8): a task-cap pause records its own episode the
+        # same way, under status `paused` — it is a park (E1's shared route never runs here,
+        # since a max-tasks boundary carries no pause record), but it still ends the episode
+        # before completion, so the manifest chain must know it happened.
         if job.state == JOB_COMPLETED:
             _write_run_manifest_record(job, status="completed",
+                                       episode_id=job.active_episode_id)
+        elif job.state == JOB_PAUSED:
+            _write_run_manifest_record(job, status="paused",
                                        episode_id=job.active_episode_id)
 
         _persist_job(job)
@@ -4467,13 +4473,29 @@ def park_job_pause(job: JobPlan, signal: _PauseSignal, *,
 def _park_job(job: JobPlan, signal: _PauseSignal, *, task: TaskEntry | None,
              control_root_path: Any = None) -> JobPlan:
     """The linear runner's own park: roll the in-flight task back to `pending`
-    (exactly as `_stop_job` does), then park through the shared `park_job_pause`
-    (E1), persisting via the module's own `_persist_job` — referenced by NAME
-    here, not captured as a default argument, so a test that monkeypatches
-    `_persist_job` on this module still reaches its replacement."""
+    (exactly as `_stop_job` does), record the parked episode's run manifest
+    under status `paused` (DECISION F025 D6), then park through the shared
+    `park_job_pause` (E1), persisting via the module's own `_persist_job` —
+    referenced by NAME here, not captured as a default argument, so a test
+    that monkeypatches `_persist_job` on this module still reaches its
+    replacement.
+
+    F025 D6: a park is not a stop, but it ends the episode the same way a
+    stop does, so the manifest chain must know it happened — a relaunch's
+    fresh episode excludes a call as prior history only against episodes its
+    canonical chain knows. A park reached before any task in this episode
+    ran (the pre-work pause) has no episode-start snapshot bound yet, so it
+    is captured here at `_PHASE_PRE_WORK_STOP`, exactly as `run_job`'s own
+    pre-work stop branch captures it; a park reached mid-build or in-flight
+    finds the episode-start snapshot already bound and captures nothing new.
+    A failed write is kept in `job.run_manifest_error`, mirroring how a
+    stop's recording failure is kept — the park proceeds either way."""
     if task is not None and task.status not in (TASK_APPLIED, TASK_PASSED, TASK_SKIPPED):
         task.status = TASK_PENDING
         task.task_attempt_state = "active"
+    if not _episode_snapshot_bound_ok(job):
+        _capture_input_snapshot(job, phase=_PHASE_PRE_WORK_STOP)
+    _write_run_manifest_record(job, status="paused", episode_id=job.active_episode_id)
     return park_job_pause(job, signal, persist=_persist_job,
                           control_root_path=control_root_path)
 
