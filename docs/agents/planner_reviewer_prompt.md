@@ -287,6 +287,13 @@ end the response with:
   were merged, because F024 wrote no line to `.agent/prose_slips.md`: its five building rounds'
   blocks were generated from simulated trees and every worker reading matched them. The list stays
   at 34 items.
+  Consolidated a fourteenth time at F025's closure on 2026-09-25: nothing joined and no two items
+  were merged, because none of F025's three lines in `.agent/prose_slips.md` names a lesson the list
+  lacks. A block that ordered two changes into one commit without sizing them is met by the clause
+  every block of the feature carried from its second round on, that the worker splits a commit that
+  would reach 500 insertions and says so; a neighbour selection that left out the repository-wide
+  guards under `tests/test_*.py`, and a verb whose word an earlier feature had retired in a test,
+  are both item 34's reading of the tests that already guard a path. The list stays at 34 items.
   The next consolidation measures against 34.
   Reverse by deleting this paragraph.
   1. **Size.** Count the block's lines. Over 400 (DECISION F105 D5) → split or

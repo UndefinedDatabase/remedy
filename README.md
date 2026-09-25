@@ -26,7 +26,7 @@ verification commands. If something is unproven, Remedy says so instead of guess
 
 ## Status
 
-102 of 285 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
+103 of 285 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
 
 | Tier | Name | Done | Total |
 |------|------|-----:|------:|
@@ -35,7 +35,7 @@ verification commands. If something is unproven, Remedy says so instead of guess
 | 2 | Minimal Self-Build Runtime | 37 | 38 |
 | 3 | Full Token Economy & Autonomy | 6 | 26 |
 | 4 | Memory & Learning | 1 | 17 |
-| 5 | Operator Cockpit | 20 | 34 |
+| 5 | Operator Cockpit | 21 | 34 |
 | 6 | Design-to-Code | 0 | 16 |
 | 7 | Quality & Trust | 0 | 15 |
 | 8 | Worker Ecosystem & Neutrality | 0 | 12 |
@@ -453,6 +453,22 @@ new events keep arriving underneath; the LIVE button returns to the present
 with a short fast-forward of under a second, or, after a very long look back,
 by reloading the view and saying so; and in a headless browser, dragging the
 handle across a job of five hundred nodes held sixty frames a second).
+
+F025 pause and resume (a running job can now be paused as a whole, or one of
+its tasks can be paused, from the command line with `remedy job pause` or from
+the browser; the step that is already running finishes and nothing new starts,
+and the job saves where it stood and its program ends instead of waiting in the
+background; the browser shows an orange PAUSED banner above the graph, says
+"Paused by you" where it tells you what the agent is doing, marks a paused task
+with two small orange bars, and offers pause and resume buttons for the job and
+for each task that has not started yet; a paused task waits together with the
+tasks after it in an ordinary job, and in a job whose tasks form a graph only
+the tasks that depend on it wait while the rest keeps going; to continue a paused
+job you start it again with `remedy job run` and the job's id, which the page
+also shows, and it carries on from exactly where it stopped without redoing
+finished tasks; a stop always wins over a pause, and the job's time limit keeps
+counting while it is paused; one thing is not done yet: the AI conversation of
+a task that a pause interrupted starts afresh when the job continues).
 
 Full per-feature state: [`docs/roadmap/STATUS.md`](docs/roadmap/STATUS.md)
 

@@ -424,6 +424,45 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         related=("job.run", "job.show"),
         exit_codes=(0, 1, 2, 3),
     ),
+
+    # ── job pause / unpause (F025 T002, DECISION F025 D2) ────────────────
+    CommandEntry(
+        command_id="job.pause",
+        group_id="job",
+        subcommand="pause",
+        description="Request a pause of a running job, or of one of its tasks, under its mission (F025).",
+        action_class="write_metadata",
+        supports_json=True,
+        args=(
+            ArgDef("job_id", "Job ID to pause (under its mission)"),
+            ArgDef("--task", "Task to pause instead of the whole job, by its id as `remedy job plan-show` prints it", required=False, is_option=True),
+            ArgDef("--reason", "Why the job, under its mission, is being paused (recorded in the run's evidence)", required=False, is_option=True, default=""),
+            ArgDef("--source", "Who requested the pause (default: cli)", required=False, is_option=True, default="cli"),
+            _JSON_OPT,
+        ),
+        may_mutate_repo=False,
+        may_execute_commands=False,
+        related=("job.unpause", "job.stop", "job.show"),
+        exit_codes=(0, 1, 2, 3),
+    ),
+    CommandEntry(
+        command_id="job.unpause",
+        group_id="job",
+        subcommand="unpause",
+        description="Release a pause on a running job, or on one of its tasks, under its mission (F025).",
+        action_class="write_metadata",
+        supports_json=True,
+        args=(
+            ArgDef("job_id", "Job ID to unpause (under its mission)"),
+            ArgDef("--task", "Task to release instead of the whole job, by its id as `remedy job plan-show` prints it", required=False, is_option=True),
+            ArgDef("--source", "Who requested the unpause (default: cli)", required=False, is_option=True, default="cli"),
+            _JSON_OPT,
+        ),
+        may_mutate_repo=False,
+        may_execute_commands=False,
+        related=("job.pause", "job.run", "job.show"),
+        exit_codes=(0, 1, 2, 3),
+    ),
     CommandEntry(
         command_id="job.budget",
         group_id="job",
@@ -2596,8 +2635,11 @@ CATALOG: tuple[CommandEntry, ...] = tuple(_with_list_options(c) for c in _BASE_C
 # reachable from a browser, and plan approval arrives here as `decision.resolve`
 # carrying a `plan:`-prefixed decision id rather than as a command of its own
 # (DECISION F009 D4). `chat.send` is the cockpit's steering route (DECISION F264 D2).
+# `job.pause` and `job.unpause` are DECISION F025 D2's pause/unpause pair.
 UI_EXPOSED_COMMANDS: frozenset[str] = frozenset({
     "job.stop",
+    "job.pause",
+    "job.unpause",
     "decision.resolve",
     "patch.approve-hunks",
     "chat.send",

@@ -1,6 +1,8 @@
 import type { RemedyDashboard, RemedyGraphNode, RemedyTaskItem } from "../../api/types";
+import { taskPauseAction } from "../../api/pauseView";
 import { TaskDoneGlyph, TaskCurrentGlyph, TaskPlannedGlyph } from "../icons/RemedyGlyphs";
 import { PromptTracePanel } from "../prompt/PromptTracePanel";
+import { PauseControl } from "../panels/PauseControl";
 import styles from "./DetailPopover.module.css";
 
 const STATE_LABELS: Record<string, string> = {
@@ -66,8 +68,10 @@ function Field({ label, value }: { label: string; value: string }) {
 // `onOpenDiff` is OPTIONAL because this popover predates the viewer by many
 // features and is mounted from more than one place. A caller that passes no
 // handler keeps exactly the popover it had, and the entry point below is simply
-// absent — never a dead control that answers a click with nothing.
-export function DetailPopover({ dashboard, selectedNode, selectedPromptId, onClose, onOpenDiff }: { dashboard: RemedyDashboard; selectedNode: RemedyGraphNode; selectedPromptId?: string | null; onClose: () => void; onOpenDiff?: (taskId: string) => void }) {
+// absent — never a dead control that answers a click with nothing. `serverToken`
+// (DECISION F025 D4) is OPTIONAL for the same reason: the pause/resume control
+// it gates needs a credential this popover otherwise never carries.
+export function DetailPopover({ dashboard, selectedNode, selectedPromptId, onClose, onOpenDiff, serverToken }: { dashboard: RemedyDashboard; selectedNode: RemedyGraphNode; selectedPromptId?: string | null; onClose: () => void; onOpenDiff?: (taskId: string) => void; serverToken?: string }) {
   const task = dashboard.tasks.find(i => i.nodeId === selectedNode.nodeId);
   // Prompt-trace items for the selected task (prompt item taskId === task id).
   const prompts = task
@@ -147,6 +151,19 @@ export function DetailPopover({ dashboard, selectedNode, selectedPromptId, onClo
 
       {/* Prompt trace — compact, redacted-only evidence */}
       <PromptTracePanel prompts={prompts} selectedPromptId={selectedPromptId} />
+
+      {/* THE TASK'S PAUSE/RESUME CONTROL (DECISION F025 D4), gated on the
+          credential `serverToken` carries — the popover renders nothing here
+          when no caller passes one, the same absence `onOpenDiff` below
+          practices. */}
+      {task && serverToken && (
+        <PauseControl
+          key={task.id}
+          target={{ jobId: dashboard.jobId, serverToken }}
+          scope={task.id}
+          action={taskPauseAction(dashboard, task.id, task.state)}
+        />
+      )}
 
       {/* THE DIFF VIEWER'S ENTRY POINT, at POPOVER LEVEL rather than inside the
           "Changed files" section. That placement is the repair of finding

@@ -56,8 +56,10 @@ def _incomplete(status="completed", problems=("prompt not reconstructable",)):
 
 
 class TestPublishedTerminalReferenceNeedsCompleteCoverage:
-    @pytest.mark.parametrize("status", ["completed", "stopped"])
+    @pytest.mark.parametrize("status", ["completed", "stopped", "paused"])
     def test_incomplete_terminal_reference_is_rejected(self, status):
+        # DECISION F025 D6 (round 8): a paused reference is held to the same rule — a park
+        # records its episode exactly as a stop does, minus the request id.
         m = _incomplete(status=status)
         if status == "stopped":
             m = dataclasses.replace(m, stop_request_id="stop-1")

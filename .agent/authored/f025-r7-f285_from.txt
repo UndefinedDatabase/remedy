@@ -1,0 +1,2 @@
+- R-1008 carries a resolution line naming a self-use run whose diff its reviewer passed, or is
+  carried by name to the next paydown feature at this closure.

@@ -32,9 +32,11 @@ _EXITING_RESOLVER_REMAINING: dict[str, int] = {}
 #: to `job_id_arg.py` and `job_stop_cmd.py` alone once the sweep is done — the two
 #: callers that handle `JobIdAmbiguous` themselves and so keep talking to
 #: `lookup_job_id` directly instead of through `resolve_job_id_or_fail`. Measured at
-#: `63141657`.
+#: `63141657`. F025 R4 C3 adds `job_pause_cmd.py`, modelled on `job_stop_cmd.py` for
+#: the same reason: its own `_resolve_job_id` handles `JobIdAmbiguous` itself.
 _LOOKUP_CALLERS: dict[str, int] = {
     "job_id_arg.py": 1,
+    "job_pause_cmd.py": 1,
     "job_stop_cmd.py": 1,
 }
 

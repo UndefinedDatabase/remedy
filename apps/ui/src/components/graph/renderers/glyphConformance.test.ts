@@ -53,6 +53,18 @@ describe("PROBE_POINTS", () => {
     expect(dist(PROBE_POINTS.ring.mark, [12, 12])).toBe(11);
     expect(PROBE_POINTS.ring.outline).toBeNull();
   });
+
+  it("probes the left pause bar's centre and a point on its outline band, outside the fill", () => {
+    expect(STATE_MARK_PATHS.pause.fillPath).toBe("M17 1.5H19V7.5H17ZM21 1.5H23V7.5H21Z");
+    const [x, y] = PROBE_POINTS.pause.mark;
+    expect(x).toBeGreaterThanOrEqual(17);
+    expect(x).toBeLessThanOrEqual(19);
+    expect(y).toBeGreaterThanOrEqual(1.5);
+    expect(y).toBeLessThanOrEqual(7.5);
+    const [ox] = PROBE_POINTS.pause.outline as [number, number];
+    expect(ox).toBeLessThan(17);
+    expect(ox).toBeGreaterThan(17 - 1.5);
+  });
 });
 
 describe("conformanceProbes", () => {
@@ -60,17 +72,28 @@ describe("conformanceProbes", () => {
   const tally = (mark: StateMark, part: string, expectation: string) =>
     probes.filter((p) => p.mark === mark && p.part === part && p.expect === expectation).length;
 
-  it("probes every mark the spec gives, with its outline, and the absence of the dot and the strike everywhere else", () => {
-    // 8 kinds by 7 states. Present: the dot on 2 states, the strike on 1, the ring on 1,
-    // each dot and strike also on its outline. Absent: the dot on 5 states, the strike on 6.
+  it("probes every mark the spec gives, with its outline, and the absence of the dot, the strike and the pause mark everywhere else", () => {
+    // 8 kinds by 8 states (DECISION F025 D3 clause 3 adds `paused`). Present: the dot on 2
+    // states, the strike on 1, the ring on 2 (planned, paused), the pause mark on 1 —
+    // each dot, strike and pause mark also on its outline (the ring has none). Absent:
+    // the dot on 6 states, the strike on 7, the pause mark on 7.
     expect(tally("status_dot", "mark", "present")).toBe(16);
     expect(tally("status_dot", "outline", "present")).toBe(16);
-    expect(tally("status_dot", "mark", "absent")).toBe(40);
+    expect(tally("status_dot", "mark", "absent")).toBe(48);
     expect(tally("strike", "mark", "present")).toBe(8);
     expect(tally("strike", "outline", "present")).toBe(8);
-    expect(tally("strike", "mark", "absent")).toBe(48);
-    expect(tally("ring", "mark", "present")).toBe(8);
-    expect(probes).toHaveLength(144);
+    expect(tally("strike", "mark", "absent")).toBe(56);
+    expect(tally("ring", "mark", "present")).toBe(16);
+    expect(tally("pause", "mark", "present")).toBe(8);
+    expect(tally("pause", "outline", "present")).toBe(8);
+    expect(tally("pause", "mark", "absent")).toBe(56);
+    expect(probes).toHaveLength(240);
+  });
+
+  it("marks a paused task present, with the pause mark's own token", () => {
+    const mark = probes.find((p) => p.kind === "task" && p.state === "paused" && p.mark === "pause" && p.part === "mark");
+    expect(mark?.expect).toBe("present");
+    expect(mark?.token).toBe("--remedy-orange-400");
   });
 
   it("never probes for a missing ring", () => {
@@ -78,10 +101,12 @@ describe("conformanceProbes", () => {
   });
 
   it("places a probe in device pixels on the cell the painter drew, at its state's size", () => {
-    // The failed task: row 0, column 4, centred at (108, 12), radius 7, size factor 1,
-    // so its glyph box starts at (101, 5) at 14/24 of a unit per box unit.
+    // The failed task: row 0, column 5 (open, planned, paused, in_progress, pass, FAIL, ...
+    // — `paused` shifted every later state's column by one), centred at (132, 12),
+    // radius 7, size factor 1, so its glyph box starts at (125, 5) at 14/24 of a unit
+    // per box unit.
     const dot = probes.find((p) => p.kind === "task" && p.state === "fail" && p.mark === "status_dot" && p.part === "mark");
-    expect(dot?.x).toBeCloseTo((101 + 20 * (14 / 24)) * CONFORMANCE_SCALE, 9);
+    expect(dot?.x).toBeCloseTo((125 + 20 * (14 / 24)) * CONFORMANCE_SCALE, 9);
     expect(dot?.y).toBeCloseTo((5 + 4.5 * (14 / 24)) * CONFORMANCE_SCALE, 9);
     // The planned task, column 1, at 90% of radius 7.
     const ring = probes.find((p) => p.kind === "task" && p.state === "planned" && p.mark === "ring");

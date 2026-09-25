@@ -7,13 +7,15 @@ import {
 
 /** Every NodeState brainOntology.ts declares, in the legend order the module
  *  must keep. Written out here so a state dropped from the table fails. */
-const ALL_STATES = ["open", "planned", "in_progress", "pass", "fail", "blocked", "vetoed"];
+const ALL_STATES = ["open", "planned", "paused", "in_progress", "pass", "fail", "blocked", "vetoed"];
 
 /** The fill token each state is painted with (T5_F020.md's binding spec, as
- *  token names; the Python guard checks the values those tokens carry). */
+ *  token names; the Python guard checks the values those tokens carry).
+ *  `paused` shares `planned`'s (DECISION F025 D3 clause 3). */
 const FILL_TOKENS: Record<string, string> = {
   open: "--remedy-state-open",
   planned: "--remedy-state-planned",
+  paused: "--remedy-state-planned",
   in_progress: "--remedy-state-current",
   pass: "--remedy-state-done",
   fail: "--remedy-state-blocked",
@@ -42,6 +44,7 @@ describe("NODE_STATE_TREATMENTS", () => {
     expect(new Set(tokens).size).toBe(tokens.length);
     expect([...tokens].sort()).toEqual([
       "--remedy-graph-node-ring",
+      "--remedy-orange-400",
       "--remedy-state-blocked",
       "--remedy-state-current",
       "--remedy-state-done",
@@ -72,10 +75,12 @@ describe("glyph ink and body lines", () => {
     }
   });
 
-  it("inks a planned node's glyph and lines in its ring colour, and every other state's glyph in white", () => {
-    expect(treatment("planned").inkToken).toBe("--remedy-state-planned-ring");
-    expect(treatment("planned").lineToken).toBe("--remedy-state-planned-ring");
-    for (const state of ALL_STATES.filter((s) => s !== "planned")) {
+  it("inks a planned or paused node's glyph and lines in the planned ring colour, and every other state's glyph in white", () => {
+    for (const state of ["planned", "paused"]) {
+      expect(treatment(state).inkToken, state).toBe("--remedy-state-planned-ring");
+      expect(treatment(state).lineToken, state).toBe("--remedy-state-planned-ring");
+    }
+    for (const state of ALL_STATES.filter((s) => s !== "planned" && s !== "paused")) {
       expect(treatment(state).inkToken, state).toBe("--remedy-graph-node-ring");
       expect(treatment(state).lineToken, state).toBe(FILL_TOKENS[state]);
     }
@@ -96,6 +101,15 @@ describe("state is never colour alone", () => {
   it("draws a planned node at 90% size with its ring", () => {
     expect(treatment("planned").sizeFactor).toBe(0.9);
     expect(marksOf("planned")).toEqual(["ring"]);
+  });
+
+  it("draws a paused node at 90% size with the planned ring plus the pause mark, outlined (DECISION F025 D3 clause 3)", () => {
+    expect(treatment("paused").sizeFactor).toBe(0.9);
+    const marks = treatment("paused").marks;
+    expect(marks.map((m) => m.mark)).toEqual(["ring", "pause"]);
+    expect(marks[0].outlineToken).toBeNull();
+    expect(marks[1].token).toBe("--remedy-orange-400");
+    expect(marks[1].outlineToken).toBe("--remedy-graph-node-ring");
   });
 
   it("outlines the status dot and the strike, so each stands off the node beneath it", () => {
@@ -121,7 +135,9 @@ describe("branch glow and pulse", () => {
 
   it("asks full glow of an active branch, 25% of a done one, and none of the rest", () => {
     const glow = Object.fromEntries(ALL_STATES.map((s) => [s, treatment(s).branchGlowAlpha]));
-    expect(glow).toEqual({ open: 0, planned: 0, in_progress: 1, pass: 0.25, fail: 0, blocked: 0, vetoed: 0 });
+    expect(glow).toEqual({
+      open: 0, planned: 0, paused: 0, in_progress: 1, pass: 0.25, fail: 0, blocked: 0, vetoed: 0,
+    });
   });
 });
 

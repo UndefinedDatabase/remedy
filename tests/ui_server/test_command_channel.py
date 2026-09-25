@@ -430,6 +430,12 @@ class TestCommandChannelDoor:
         one's wording names decisions — and this is where that is pinned. A
         `chat.send` built the same way carries no message, which is a shape error
         on field `message` refused before the job is read (DECISION F264 D2).
+        `job.pause` and `job.unpause`, built with no `args` at all, name no task: a
+        fresh, non-terminal, unparked job answers `requested` (DECISION F025 D2) —
+        200, since it is not a refusal — and because `sorted()` puts `job.pause`
+        before `job.unpause` in this SAME loop over this SAME job, the pause it
+        just requested is still pending when `job.unpause` runs, so THAT answers
+        `withdrawn` rather than `not_paused`.
         """
         from apps.cli.command_catalog import UI_EXPOSED_COMMANDS
 
@@ -445,6 +451,12 @@ class TestCommandChannelDoor:
             if command_id == "job.stop":
                 assert status == 200, command_id
                 assert body["command"] == command_id
+            elif command_id == "job.pause":
+                assert status == 200, command_id
+                assert (body["command"], body["outcome"]) == (command_id, "requested"), body
+            elif command_id == "job.unpause":
+                assert status == 200, command_id
+                assert (body["command"], body["outcome"]) == (command_id, "withdrawn"), body
             elif command_id == "chat.send":
                 assert status == 400, command_id
                 assert body["field"] == "message", command_id
@@ -1523,6 +1535,8 @@ class TestCommandDoorImportGuard:
     DOOR_METHODS = (
         "_handle_command_submission",
         "_dispatch_job_stop",
+        "_dispatch_job_pause",
+        "_dispatch_job_unpause",
         "_dispatch_decision_resolve",
         "_dispatch_approve_hunks",
         "_dispatch_chat_send",
@@ -1564,6 +1578,8 @@ class TestCommandDoorImportGuard:
         ("packages.orchestration.plan_editing", "edit_plan"),      # F015 D3
         ("packages.orchestration.mission_contract",
          "start_remainder_follow_up_mission"),                      # F269 D9
+        ("packages.orchestration.pause_control", "pause_job_command"),    # F025 D2
+        ("packages.orchestration.pause_control", "unpause_job_command"),  # F025 D2
         ("packages.orchestration.hunk_approval", "HunkApprovalRefusal"),  # F033 D4
         ("packages.orchestration.hunk_decision_record",
          "record_hunk_decision_from_view"),                         # F033 D4
@@ -1779,9 +1795,10 @@ class TestUiExposedCommands:
         a name that must be re-read every time the set widens is the half nobody re-reads."""
         from apps.cli.command_catalog import UI_EXPOSED_COMMANDS
         assert sorted(UI_EXPOSED_COMMANDS) == [
-            "chat.send", "decision.resolve", "job.plan-delete-task", "job.plan-edit-acceptance",
-            "job.plan-edit-task", "job.plan-merge-tasks", "job.plan-reorder",
-            "job.plan-split-task", "job.stop", "patch.approve-hunks"]
+            "chat.send", "decision.resolve", "job.pause", "job.plan-delete-task",
+            "job.plan-edit-acceptance", "job.plan-edit-task", "job.plan-merge-tasks",
+            "job.plan-reorder", "job.plan-split-task", "job.stop", "job.unpause",
+            "patch.approve-hunks"]
 
     def test_the_set_is_a_frozenset(self):
         from apps.cli.command_catalog import UI_EXPOSED_COMMANDS

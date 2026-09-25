@@ -15,6 +15,7 @@ import { ZoomBreadcrumbs } from "./ZoomBreadcrumbs";
 import { RunDetailPopover } from "./RunDetailPopover";
 import { EvidencePanel } from "./EvidencePanel";
 import { zoomCrumbLabel, zoomEmphasis } from "./zoomView";
+import { pauseBanner } from "../../api/pauseView";
 import type { TimelineScrub } from "../timeline/useTimelineScrub";
 import styles from "./BrainGraphStage.module.css";
 
@@ -40,7 +41,10 @@ export function BrainGraphStage({
   // whenever no task is visible.
   const [view, setView] = useState<"live" | "simple">("live");
 
-  const seeds = useMemo(() => dashboardBrainSeeds(dashboard.tasks), [dashboard.tasks]);
+  const seeds = useMemo(
+    () => dashboardBrainSeeds(dashboard.tasks, dashboard.pause.pausedTaskIds),
+    [dashboard.tasks, dashboard.pause.pausedTaskIds],
+  );
   // `rows` is the ledger's COMPLETE, CONTIGUOUS prefix, read once by the shell for
   // the graph and the timeline alike: a hole holds the model at the state before
   // it, never a ghost past it (DECISIONS F019 D5 and F024 D4).
@@ -77,6 +81,9 @@ export function BrainGraphStage({
   // L2's run detail and L3's evidence panel, for the focused run read from the
   // model, which keeps a run a cluster hides (DECISIONS F023 D4 and D5).
   const focusedRun = zoom.state.level >= 2 ? model.nodes.find((n) => n.id === zoom.state.focusId) ?? null : null;
+  // The pause banner (DECISION F025 D4), a pure read of the dashboard's own
+  // pause state — no seam of its own, unlike the scrub banner above it.
+  const banner = pauseBanner(dashboard);
 
   return (
     <section
@@ -131,6 +138,13 @@ export function BrainGraphStage({
           <span className={styles.scrubBadge}>SCRUBBED</span>
           <span>{scrub.view.readout} · live updates wait behind LIVE</span>
           <button type="button" className={styles.scrubLive} onClick={scrub.goLive}>Back to LIVE</button>
+        </div>
+      )}
+      {banner && (
+        <div className={styles.pauseBanner} role="status" data-ui="pause-banner">
+          <span className={styles.pauseBadge}>{banner.badge}</span>
+          <span>{banner.text}</span>
+          {banner.command !== "" && <code>{banner.command}</code>}
         </div>
       )}
       <div className={styles.chipsDock}>

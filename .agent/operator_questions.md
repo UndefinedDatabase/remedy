@@ -81,3 +81,28 @@ forbid, and the later feature adds them properly.
 **What happens if you say nothing.** The recommendation is already executed and stands until you
 say otherwise. The live picture is the default and the prompt dots stay one click away in the
 simple picture.
+
+### Q4 — Browser resume points at relaunch (2026-09-25, F025, round 4)
+
+**What needs deciding.** You can now pause a running job, either the whole job or one of its
+tasks, from the browser or from the command line. A paused job does not keep a program running
+while it waits: it saves where it stood and the program ends. To continue, the job has to be
+started again with the command `remedy job run` followed by the job's name, and it then carries on
+from exactly where it stopped. The browser page cannot start a program, because the part of Remedy
+that takes commands from the browser is deliberately not allowed to launch anything. So when you
+press resume in the browser on a job that is already paused and saved, the page will tell you that
+the job is paused and show you the command that continues it, instead of continuing it by itself.
+You can tell me to give the browser a way to start the job again.
+
+**Why it matters.** A resume that only shows a command is one extra step for you. The alternative
+is a small helper that is allowed to start jobs on your behalf, which widens what a click in the
+browser can do on your machine. Resuming a single paused task inside a job that is still running
+needs no extra step: the running job picks the task up again at its next safe moment. Taking back
+a pause that the job has not reached yet also needs no extra step.
+
+**My recommendation.** Keep the browser from starting programs. Showing the exact command is
+honest and safe, and a later feature can add a launcher on purpose, with its own safety rules.
+
+**What happens if you say nothing.** The recommendation is already executed and stands until you
+say otherwise. Resume in the browser takes back a waiting pause or releases a paused task at once,
+and for a job that is already paused and saved it shows the command that continues it.

@@ -223,6 +223,33 @@
 }
 .proposeBtn:hover { color: var(--remedy-blue-strong); border-color: rgba(76,131,255,.4); }
 
+/* THE PAUSE/RESUME CONTROL (DECISION F025 D4), directly under the NowCard for
+   the job and inside DetailPopover for a task. The button takes
+   .decisionAnswer above as its model — this panel's own existing command
+   button — and the outcome line takes .chatOutcome's three tones, the same
+   ones ChatInput.tsx's outcome line wears. The same R-0661 rule as the blocks
+   above applies: every value resolves to a custom property
+   apps/ui/src/styles/tokens.css already defines. */
+.pauseControl { display: flex; flex-direction: column; gap: 6px; margin-top: 12px; }
+.pauseButton {
+  align-self: flex-start;
+  height: 32px;
+  padding: 0 14px;
+  border-radius: var(--remedy-radius-sm);
+  border: 1px solid var(--remedy-line-strong);
+  background: var(--remedy-blue-50);
+  color: var(--remedy-blue-strong);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.pauseButton:disabled { cursor: not-allowed; opacity: 0.55; }
+.pauseButton:focus-visible { outline: 2px solid var(--remedy-blue-strong); outline-offset: 2px; }
+.pauseOutcome { margin: 0; font-size: 12px; line-height: 1.45; }
+.pauseOutcomeOk { color: var(--remedy-green-500); }
+.pauseOutcomeWarn { color: var(--remedy-orange-400); }
+.pauseOutcomeError { color: var(--remedy-red-500); }
+
 .advancedToggle { font-size: 12px; color: var(--remedy-faint); align-self: center; padding: 4px 8px; }
 .advancedSection { display: flex; flex-direction: column; gap: 6px; font-size: 12px; color: var(--remedy-muted); padding: 0 6px 8px; }
 .advancedItem strong { color: var(--remedy-ink); }

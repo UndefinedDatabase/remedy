@@ -187,6 +187,20 @@ export interface RemedyResume {
   blocked_reason: string;
 }
 
+/** DECISION F025 D3 clause 1 — `record` is the job's own pause record (its
+ *  raw shape, opaque to this mapper) while its state is `paused`, else `{}`;
+ *  `requested` is a job-scope pause pending, no safe point has served yet;
+ *  `pausedTaskIds` is the paused tasks that are still pending, in plan
+ *  order; `error` is `""`, or the text of a control-root error met while
+ *  reading, in which case the other three read empty. A payload with no
+ *  `pause` section normalizes to this same "not paused" shape. */
+export interface RemedyPause {
+  record: Record<string, unknown>;
+  requested: boolean;
+  pausedTaskIds: string[];
+  error: string;
+}
+
 export interface RemedyProjectSummary {
   project_id: string;
   job_count: number;
@@ -215,4 +229,4 @@ export interface RemedyProjectSummary {
  *  answer, `undefined` would not be. Remedy deliberately does NOT order,
  *  filter or count the cards here; that rule is T002b's subject and lives in
  *  `decisionCard.ts` when it lands. */
-export interface RemedyDashboard { jobId: string; title: string; description: string; conceptLabel: string; metrics: RemedyMetric[]; budgetFinal: BudgetTickFigures | null; phases: RemedyPhase[]; tasks: RemedyTaskItem[]; activity: RemedyActivityItem[]; graph: { nodes: RemedyGraphNode[]; edges: RemedyGraphEdge[]; }; nextAction: RemedyNextAction; live: RemedyLiveState; apiHealth: RemedyApiHealth; pipeline: RemedyPipeline | null; resume: RemedyResume | null; projectSummary: RemedyProjectSummary | null; timelineEvents?: RemedyTimelineEvent[]; snapshot: RemedySnapshotSummary | null; continuation: RemedyContinuationSummary | null; promptTrace?: RemedyPromptTraceSummary | null; decisionInbox: DecisionCardModel[]; }
+export interface RemedyDashboard { jobId: string; title: string; description: string; conceptLabel: string; metrics: RemedyMetric[]; budgetFinal: BudgetTickFigures | null; phases: RemedyPhase[]; tasks: RemedyTaskItem[]; activity: RemedyActivityItem[]; graph: { nodes: RemedyGraphNode[]; edges: RemedyGraphEdge[]; }; nextAction: RemedyNextAction; live: RemedyLiveState; apiHealth: RemedyApiHealth; pipeline: RemedyPipeline | null; resume: RemedyResume | null; pause: RemedyPause; projectSummary: RemedyProjectSummary | null; timelineEvents?: RemedyTimelineEvent[]; snapshot: RemedySnapshotSummary | null; continuation: RemedyContinuationSummary | null; promptTrace?: RemedyPromptTraceSummary | null; decisionInbox: DecisionCardModel[]; }

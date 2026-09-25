@@ -1,0 +1,9 @@
+Job State: stopped
+Stop Reason: budget_exhausted:max_cost_usd
+Stop Source: budget
+Stop Request ID: budget_4fae00a9df113748
+Error: 
+Run Manifest Error: 
+
+Task States:
+  T001: applied_to_job_workspace (verdict: pass, final_status: staged_review_passed)

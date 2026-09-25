@@ -210,6 +210,17 @@ describe("paintBrainNode — state is never colour alone", () => {
     expect(ring.map((o) => o.strokeStyle)).toEqual([c("--remedy-state-planned-ring")]);
   });
 
+  it("puts an outlined pause mark, in its orange, on a paused node (DECISION F025 D3 clause 3)", () => {
+    const ops = paint("task", "paused");
+    const ring = pathOps(ops, STATE_MARK_PATHS.ring.strokePath);
+    expect(ring.map((o) => o.strokeStyle)).toEqual([c("--remedy-state-planned-ring")]);
+    const bars = pathOps(ops, STATE_MARK_PATHS.pause.fillPath);
+    expect(bars.map((o) => [o.op, o.op === "fill" ? o.fillStyle : o.strokeStyle])).toEqual([
+      ["stroke", c("--remedy-graph-node-ring")],
+      ["fill", c("--remedy-orange-400")],
+    ]);
+  });
+
   it("draws no mark on a state that carries none", () => {
     const markPaths = Object.values(STATE_MARK_PATHS).flatMap((g) => [g.fillPath, g.strokePath]).filter(Boolean);
     for (const state of ["open", "in_progress", "pass"] as NodeState[]) {

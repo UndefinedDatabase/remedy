@@ -212,6 +212,49 @@ function onJobStopped(model: BrainModel): BrainModel {
   return { ...model, nodes };
 }
 
+// --- F025 (DECISION F025 D3 clause 2) ----------------------------------------
+
+/** `task_paused`: the task's node goes to `paused`, unless it already passed
+ *  or failed — a pause request that lands after the task's own outcome is
+ *  already known must never paint over that outcome. Births the task like
+ *  `task_needs_decision` does, so a pause naming a task nobody has seen yet
+ *  still draws it. */
+function onTaskPaused(model: BrainModel, row: BrainEventRow): BrainModel {
+  const born = birthTask(model.nodes, model.links, row.taskId, row.seq);
+  const id = taskNodeId(row.taskId);
+  const current = born.nodes.find((n) => n.id === id);
+  const state: NodeState = current && (current.state === "pass" || current.state === "fail")
+    ? current.state
+    : "paused";
+  const nodes = setTaskState(born.nodes, row.taskId, state);
+  return { ...model, nodes, links: born.links };
+}
+
+/** `task_resumed`: a paused task returns to `planned`. No birth (like
+ *  `task_decision_answered`): a resume presumes the pause, and the task,
+ *  already exist — and only a task actually reading `paused` is touched, so
+ *  a stray or duplicate resume can never downgrade a task's real outcome. */
+function onTaskResumed(model: BrainModel, row: BrainEventRow): BrainModel {
+  const id = taskNodeId(row.taskId);
+  const current = model.nodes.find((n) => n.id === id);
+  if (!current || current.state !== "paused") return { ...model };
+  const nodes = setTaskState(model.nodes, row.taskId, "planned");
+  return { ...model, nodes };
+}
+
+/** `job_paused`: an in-progress task goes back to `planned`, exactly as a
+ *  stop does — but an in-progress RUN goes to `paused`, not `blocked`,
+ *  because nothing failed: the attempt was halted by the pause, and a later
+ *  attempt is a new run. */
+function onJobPaused(model: BrainModel): BrainModel {
+  const nodes = model.nodes.map((n) => {
+    if (isRunKind(n.kind) && n.state === "in_progress") return { ...n, state: "paused" as NodeState };
+    if (n.kind === "task" && n.state === "in_progress") return { ...n, state: "planned" as NodeState };
+    return n;
+  });
+  return { ...model, nodes };
+}
+
 function applyBrainEvent(model: BrainModel, row: BrainEventRow): BrainModel {
   switch (row.kind) {
     case "task_run_started":
@@ -236,6 +279,17 @@ function applyBrainEvent(model: BrainModel, row: BrainEventRow): BrainModel {
       return row.taskId === "" ? ignoreRow(model, row) : onTaskDecisionAnswered(model, row);
     case "job_stopped":
       return onJobStopped(model);
+    case "task_paused":
+      return row.taskId === "" ? ignoreRow(model, row) : onTaskPaused(model, row);
+    case "task_resumed":
+      return row.taskId === "" ? ignoreRow(model, row) : onTaskResumed(model, row);
+    case "job_paused":
+      return onJobPaused(model);
+    case "job_resumed":
+      // F025 D3 clause 2: changes no node — the job's own state carries the
+      // resume, and unlike an unhandled kind this IS a handled case, so it is
+      // NOT counted in `ignored`.
+      return model;
     case "builder_started":
     case "builder_completed":
       // Measured writer, deliberately silent: the builder_run node is born

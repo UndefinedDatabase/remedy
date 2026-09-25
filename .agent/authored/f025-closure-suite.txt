@@ -1,0 +1,10 @@
+F025 R9 C5 — the closure's one full suite.
+
+Command: python3 -m pytest -n auto -q
+Log: .remedy-wt/f025-r9-worker/gate-scratch/f025-full-suite.txt (sandbox refused
+  /home/decodeux/remedy-gate-scratch/, so the log was written under
+  .remedy-wt/f025-r9-worker/ instead, per the block's fallback clause)
+Real exit code: 0
+Wall time: 136.59s (0:02:16)
+Summary line: 19312 passed, 20 skipped, 1 warning in 136.59s (0:02:16)
+Bad node ids (failed plus errors): NONE

@@ -3,12 +3,14 @@ import type { RemedyDashboard } from "../../api/types";
 import type { BrainStreamStatus } from "../../api/brainStream";
 import type { FeedRow } from "../../api/feedRow";
 import { orderDecisionInbox } from "../../api/decisionOrder";
+import { jobPauseAction } from "../../api/pauseView";
 import { liveIsActive } from "../../cockpitLogic";
 import { NeedsAttentionCard } from "./NeedsAttentionCard";
 import { DecisionInboxCard } from "./DecisionInboxCard";
 import { ActivityFeedCard } from "./ActivityFeedCard";
 import { AgentNowCard } from "./AgentNowCard";
 import { LiveStatusPill } from "./LiveStatusPill";
+import { PauseControl } from "./PauseControl";
 import { TaskChecklistCard } from "./TaskChecklistCard";
 import styles from "./RightLivePanel.module.css";
 
@@ -19,6 +21,7 @@ export function RightLivePanel({ dashboard, serverToken, onSelectNode, streamSta
     <aside className={styles.panel} data-ui="right-live-panel">
       <LiveStatusPill live={liveIsActive(dashboard)} streamStatus={streamStatus} replay={replay} />
       <AgentNowCard dashboard={dashboard} recent={recent} />
+      <PauseControl target={{ jobId: dashboard.jobId, serverToken }} scope="job" action={jobPauseAction(dashboard)} />
       <NeedsAttentionCard dashboard={dashboard} />
       {/* The inbox addresses the job the DASHBOARD names, the same value the
           stream is opened against (DECISION F008 D3), never one re-read from

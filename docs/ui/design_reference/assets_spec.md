@@ -174,6 +174,7 @@ technical reason. Audit basis: review bundle 2026-07-04 (paths verified).
 | decision | human gate | rounded diamond + dot | r 5 | stroke; dot = state | soft warn glow while open |
 | blocked/failed | failure | node + small status dot; edge tint | r as kind | state blocked fill | NO glow (graph_spec §7) |
 | vetoed | forbidden | node grayed + 45° strike slash | r as kind | gray stroke | downstream 40% alpha |
+| pause mark | operator-paused task/run (DECISION F025 D3) | two upright bars, status-dot corner (x17–23, y1.5–7.5) | 6×6 in 24-box | fill `--remedy-orange-400`, outline `--remedy-graph-node-ring` | none (calm) |
 | cluster | collapsed n | circle + centered count text | r 9 | ring stroke, count ink | expands on click |
 | live activity | now | plain dot | 8px (DOM) | `--remedy-live` | 1.6s pulse; static reduced-motion |
 | budget/cost | spend (chips/L2 only) | coin: circle + inner ¢-bar | 16 DOM | stroke | warn tint ≥85% budget |

@@ -1914,12 +1914,14 @@ def _crosscheck_job_episodes_vs_index(job: Any, index: dict[str, Any]) -> list[s
 
     Beyond status + ordinal, this checks: no duplicate JobPlan episode ids; the EXACT episode-id
     set on both sides; per-episode created_at and previous_episode_id; that the job's latest
-    episode equals the index's maximum-ordinal / latest episode; and that a terminal job's active
-    episode is itself a recorded episode. A divergence is a BLOCKING integrity failure — the
-    durable index and the job's view of its own history have drifted apart, and that is never
-    silently reconciled."""
+    episode equals the index's maximum-ordinal / latest episode; and that a terminal-or-paused
+    job's active episode is itself a recorded episode — DECISION F025 D6 (round 8): a park now
+    records the episode it ends, exactly as a stop does. A divergence is a BLOCKING integrity
+    failure — the durable index and the job's view of its own history have drifted apart, and
+    that is never silently reconciled."""
     from packages.orchestration.pingpong_job import (
         JOB_COMPLETED,
+        JOB_PAUSED,
         JOB_STOPPED,
     )
 
@@ -1974,8 +1976,8 @@ def _crosscheck_job_episodes_vs_index(job: Any, index: dict[str, Any]) -> list[s
                 problems.append(f"JobPlan latest episode {job_latest!r} != index latest "
                                 f"{idx_latest!r}")
 
-    # A terminal job's active episode must be one of the recorded episodes.
-    if getattr(job, "state", "") in (JOB_COMPLETED, JOB_STOPPED):
+    # A terminal-or-paused job's active episode must be one of the recorded episodes.
+    if getattr(job, "state", "") in (JOB_COMPLETED, JOB_STOPPED, JOB_PAUSED):
         active = str(getattr(job, "active_episode_id", "") or "")
         if active and active not in idx_eps:
             problems.append(f"terminal job's active episode {active!r} is not in the index")
@@ -1984,14 +1986,16 @@ def _crosscheck_job_episodes_vs_index(job: Any, index: dict[str, Any]) -> list[s
 
 def _crosscheck_terminal_jobplan_manifest(job: Any, latest: Any, index: dict[str, Any]
                                           ) -> list[str]:
-    """F8: for a TERMINAL job, the JobPlan, the index's latest and the latest manifest must
-    agree on every field. A mismatch is a BLOCKING integrity failure."""
-    from packages.orchestration.pingpong_job import JOB_COMPLETED, JOB_STOPPED
+    """F8: for a TERMINAL-OR-PAUSED job, the JobPlan, the index's latest and the latest manifest
+    must agree on every field. DECISION F025 D6 (round 8): a paused job joins completed/stopped
+    here — a park records its episode's manifest exactly as a stop does, so the same agreement
+    must hold. A mismatch is a BLOCKING integrity failure."""
+    from packages.orchestration.pingpong_job import JOB_COMPLETED, JOB_PAUSED, JOB_STOPPED
 
     problems: list[str] = []
     _state = getattr(job, "state", "")
     status = str(getattr(_state, "value", _state) or "")
-    if status not in (JOB_COMPLETED, JOB_STOPPED):
+    if status not in (JOB_COMPLETED, JOB_STOPPED, JOB_PAUSED):
         return problems
 
     active = str(getattr(job, "active_episode_id", "") or "")
@@ -2034,8 +2038,8 @@ def _crosscheck_terminal_jobplan_manifest(job: Any, latest: Any, index: dict[str
             problems.append(f"JobPlan stop_request_id {j_req!r} != latest stop_request_id "
                             f"{latest.stop_request_id!r}")
     elif latest.stop_request_id:
-        problems.append("a completed job's latest manifest carries stopped-only "
-                        "stop_request_id metadata")
+        problems.append(f"a {status} job's latest manifest carries stopped-only "
+                        f"stop_request_id metadata")
     # The latest snapshot + calls all belong to the latest episode.
     if latest.episode_snapshot.episode_id != latest.episode_id:
         problems.append("latest snapshot episode != latest episode")
@@ -2053,15 +2057,17 @@ def _write_run_manifest_export(
 ) -> None:
     """Copy the job's manifest episodes into the bundle and verify their integrity.
 
-    A completed/stopped job MARKED under F012 (``run_manifest_required_v``) MUST have a
-    manifest whose calls have complete coverage and whose call-input artifacts resolve and
-    hash-match. A recording error, a missing marked manifest, incomplete coverage, or a
-    call artifact that is missing / mis-hashed is BLOCKING. A pre-F012 UNMARKED job with no
+    A completed/stopped/paused job MARKED under F012 (``run_manifest_required_v``) MUST have
+    a manifest whose calls have complete coverage and whose call-input artifacts resolve and
+    hash-match — DECISION F025 D6 (round 8) adds paused: a park records its episode's manifest
+    exactly as a stop does. A recording error, a missing marked manifest, incomplete coverage,
+    or a call artifact that is missing / mis-hashed is BLOCKING. A pre-F012 UNMARKED job with no
     manifest is legacy/uncovered — readable, not corrupt.
     """
     from packages.orchestration.failure_postmortem import safe_text
     from packages.orchestration.pingpong_job import (
         JOB_COMPLETED,
+        JOB_PAUSED,
         JOB_STOPPED,
         job_evidence_dir,
     )
@@ -2078,7 +2084,7 @@ def _write_run_manifest_export(
         validate_index_and_tree,
     )
 
-    terminal = getattr(job, "state", "") in (JOB_COMPLETED, JOB_STOPPED)
+    terminal = getattr(job, "state", "") in (JOB_COMPLETED, JOB_STOPPED, JOB_PAUSED)
     marked = int(getattr(job, "run_manifest_required_v", 0) or 0) > 0
     mandatory = terminal and marked
 

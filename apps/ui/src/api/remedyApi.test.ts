@@ -77,6 +77,41 @@ describe("normalizeDashboardPayload", () => {
     expect(result.apiHealth.degraded).toBe(false);
     expect(result.apiHealth.failedEndpoints).toHaveLength(0);
   });
+
+  // DECISION F025 D3 clause 1 (U2): a payload without a `pause` section
+  // normalizes to the "not paused" shape, and one WITH it is read through.
+  it("a payload without a pause section reads as not paused", () => {
+    const result = normalizeDashboardPayload("abc-123", makeDashboardPayload());
+    expect(result.pause).toEqual({ record: {}, requested: false, pausedTaskIds: [], error: "" });
+  });
+
+  it("reads the pause section's four fields, snake_case task ids to camelCase", () => {
+    const payload = makeDashboardPayload({
+      pause: {
+        record: { scope: "job", request_id: "req-1" },
+        requested: true,
+        paused_task_ids: ["t1", "t2"],
+        error: "",
+      },
+    });
+    const result = normalizeDashboardPayload("abc-123", payload);
+    expect(result.pause).toEqual({
+      record: { scope: "job", request_id: "req-1" },
+      requested: true,
+      pausedTaskIds: ["t1", "t2"],
+      error: "",
+    });
+  });
+
+  it("reads a pause-read error and keeps the other three fields empty", () => {
+    const payload = makeDashboardPayload({
+      pause: { record: {}, requested: false, paused_task_ids: [], error: "control root unreadable" },
+    });
+    const result = normalizeDashboardPayload("abc-123", payload);
+    expect(result.pause).toEqual({
+      record: {}, requested: false, pausedTaskIds: [], error: "control root unreadable",
+    });
+  });
 });
 
 // ---------------------------------------------------------------------------

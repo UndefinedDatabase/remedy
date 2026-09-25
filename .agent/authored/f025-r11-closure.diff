@@ -1,0 +1,71 @@
+diff --git a/README.md b/README.md
+index 79b853a01..f49514970 100644
+--- a/README.md
++++ b/README.md
+@@ -26,7 +26,7 @@ verification commands. If something is unproven, Remedy says so instead of guess
+ 
+ ## Status
+ 
+-102 of 285 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
++103 of 285 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
+ 
+ | Tier | Name | Done | Total |
+ |------|------|-----:|------:|
+@@ -35,7 +35,7 @@ verification commands. If something is unproven, Remedy says so instead of guess
+ | 2 | Minimal Self-Build Runtime | 37 | 38 |
+ | 3 | Full Token Economy & Autonomy | 6 | 26 |
+ | 4 | Memory & Learning | 1 | 17 |
+-| 5 | Operator Cockpit | 20 | 34 |
++| 5 | Operator Cockpit | 21 | 34 |
+ | 6 | Design-to-Code | 0 | 16 |
+ | 7 | Quality & Trust | 0 | 15 |
+ | 8 | Worker Ecosystem & Neutrality | 0 | 12 |
+@@ -454,6 +454,22 @@ with a short fast-forward of under a second, or, after a very long look back,
+ by reloading the view and saying so; and in a headless browser, dragging the
+ handle across a job of five hundred nodes held sixty frames a second).
+ 
++F025 pause and resume (a running job can now be paused as a whole, or one of
++its tasks can be paused, from the command line with `remedy job pause` or from
++the browser; the step that is already running finishes and nothing new starts,
++and the job saves where it stood and its program ends instead of waiting in the
++background; the browser shows an orange PAUSED banner above the graph, says
++"Paused by you" where it tells you what the agent is doing, marks a paused task
++with two small orange bars, and offers pause and resume buttons for the job and
++for each task that has not started yet; a paused task waits together with the
++tasks after it in an ordinary job, and in a job whose tasks form a graph only
++the tasks that depend on it wait while the rest keeps going; to continue a paused
++job you start it again with `remedy job run` and the job's id, which the page
++also shows, and it carries on from exactly where it stopped without redoing
++finished tasks; a stop always wins over a pause, and the job's time limit keeps
++counting while it is paused; one thing is not done yet: the AI conversation of
++a task that a pause interrupted starts afresh when the job continues).
++
+ Full per-feature state: [`docs/roadmap/STATUS.md`](docs/roadmap/STATUS.md)
+ 
+ ## Install
+diff --git a/docs/roadmap/STATUS.md b/docs/roadmap/STATUS.md
+index 62b21321b..5470389ea 100644
+--- a/docs/roadmap/STATUS.md
++++ b/docs/roadmap/STATUS.md
+@@ -149,7 +149,7 @@ Milestone R1 — Remedy as the daily tool: Tier 2 complete (F086 as the self-ins
+ - [x] F020 — Node lifecycle & glyph language (T001–T003 complete; accepted 2026-09-25 · live review PASS — ACCEPTED · Evidence job f020r7e1001 · package remedy-review-20260925-013441-READY_FOR_REVIEW.zip · SHA-256 a069e502d3956af33f4e7dde2ece1dfd47355c68030181dbd5764af6d026d1e0 · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD ac75d5d4ebe6f7aa908ccdfd1dfa504582b2fb5e)
+ - [x] F023 — Semantic zoom L0–L3 (T001–T003 complete; accepted 2026-09-25 · live review PASS — ACCEPTED · Evidence job f023r9e1001 · package remedy-review-20260925-052148-READY_FOR_REVIEW.zip · SHA-256 6e041624017f41e1644f71f3d8c18ae8dd4d677b1d8df4fe6206f89b6f76b4bb · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD 54e5ffd2485bf90c405f5ad662b7d86be8dd3eb9)
+ - [x] F024 — Phase timeline with scrubber (T001–T003 complete; accepted 2026-09-25 · live review PASS — ACCEPTED · Evidence job f024r7e1001 · package remedy-review-20260925-082755-READY_FOR_REVIEW.zip · SHA-256 1c4b4b358b97b54252a665e60acd3eaaedb134b8b3b0cbbe5ee36d80e60289e6 · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD b650ced4b1d0fef4c9156de0b217cbad7a76bef7)
+-- [~] F025 — Pause/resume (global & per node)
++- [x] F025 — Pause/resume (global & per node) (T001–T003 complete, R-1055 carried to F285; accepted 2026-09-25 · live review PASS_WITH_RISKS — ACCEPTED · Evidence job f025r10e1001 · package remedy-review-20260925-174026-READY_FOR_REVIEW.zip · SHA-256 5202e21aed884f7ae6a8b79a852d2c4683436f2220d1a910d072cec01ac38e6f · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD f7b127bde0e2d705f0a8da49b1d9404d983048d4)
+ - [ ] F026 — Task edit at runtime
+ 
+ ## Tier 2 — Findings paydown (rolling, operator rule amend0911-feedback)
+diff --git a/scripts/self_use_queue.json b/scripts/self_use_queue.json
+index ffba296dd..ab8763de3 100644
+--- a/scripts/self_use_queue.json
++++ b/scripts/self_use_queue.json
+@@ -239,7 +239,7 @@
+       "title": "Address ledger finding R-1055",
+       "why": "- R-1055 — Low, A RELAUNCH AFTER A PARK NEVER RESUMES A PROVIDER SESSION, SO T5_F025.md's DONE CLAUSE \"THE RESUMED RUN PROVABLY REUSES ITS PROVIDER SESSIONS WHERE SUPPORTED\" IS NOT MET. Raised by the planner and reviewer of F025's second session at round 6's gate, having searched this record and its archive for `resume_used` and `session continuity` and found nothing. MEASURED at `218eaabd`: `resume_used` exists only on `BuilderOutput` and `ReviewerOutput` in `packages/orchestration/pingpong_provider.py` and is never written to disk; `run_pingpong` in `packages/orchestration/pingpong_loop.py` resumes a session only between the repair rounds of one task run, from the rounds it holds in memory; and a park returns the interrupted task to `pending`, so its relaunch starts a new run with a new session. Remedy's resume contract carries no provider session across processes, and T5_F025.md forbids F025 to touch session mechanics. WHY LOW: the relaunch is correct and the finished tasks are never run again; only the interrupted task's work since its last round is spent twice. DECISION F025 D5 records the scope. FIX: persist each round's provider session reference with the run, and let the relaunch of an interrupted task resume that session when its provider supports resume, with `resume_used` recorded in the run's evidence. Owner: F285.",
+       "job_markdown": "# Job: Address ledger finding R-1055\n\n## Task 1\n- R-1055 — Low, A RELAUNCH AFTER A PARK NEVER RESUMES A PROVIDER SESSION, SO T5_F025.md's DONE CLAUSE \"THE RESUMED RUN PROVABLY REUSES ITS PROVIDER SESSIONS WHERE SUPPORTED\" IS NOT MET. Raised by the planner and reviewer of F025's second session at round 6's gate, having searched this record and its archive for `resume_used` and `session continuity` and found nothing. MEASURED at `218eaabd`: `resume_used` exists only on `BuilderOutput` and `ReviewerOutput` in `packages/orchestration/pingpong_provider.py` and is never written to disk; `run_pingpong` in `packages/orchestration/pingpong_loop.py` resumes a session only between the repair rounds of one task run, from the rounds it holds in memory; and a park returns the interrupted task to `pending`, so its relaunch starts a new run with a new session. Remedy's resume contract carries no provider session across processes, and T5_F025.md forbids F025 to touch session mechanics. WHY LOW: the relaunch is correct and the finished tasks are never run again; only the interrupted task's work since its last round is spent twice. DECISION F025 D5 records the scope. FIX: persist each round's provider session reference with the run, and let the relaunch of an interrupted task resume that session when its provider supports resume, with `resume_used` recorded in the run's evidence. Owner: F285.\n\nAcceptance:\n- R-1055 is repaired with a red-to-green proof, or the reviewer records in `.agent/live_review.md` why it cannot be — either way the ledger gains a `Done: R-1055` line.\n",
+-      "consumed_by": "",
++      "consumed_by": "F025",
+       "provenance": "generated (self-use-generator tier 1, ledger scan, R-1055)"
+     }
+   ]

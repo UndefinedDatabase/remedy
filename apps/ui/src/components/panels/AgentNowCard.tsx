@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import type { RemedyDashboard } from "../../api/types";
 import type { FeedRow } from "../../api/feedRow";
 import { newestActionRow } from "../../api/actionClass";
+import { nowCardPause } from "../../api/pauseView";
 import { recencyLevel, isLiveByRecency } from "../../api/recency";
 import { deriveAgentStatus } from "../../cockpitLogic";
 import { SparkGlyph, TaskCurrentGlyph } from "../icons/RemedyGlyphs";
@@ -27,6 +28,10 @@ function useRecencyNowMs(): number {
 
 export function AgentNowCard({ dashboard, recent }: { dashboard: RemedyDashboard; recent?: readonly FeedRow[] }) {
   const { status: statusText, detail, isRunning } = deriveAgentStatus(dashboard);
+  // DECISION F025 D4: a parked job or paused tasks say so here in place of the
+  // ordinary status and line, while `isRunning` below still comes from
+  // `deriveAgentStatus` unchanged — the pause never counts as running work.
+  const pause = nowCardPause(dashboard);
   // The newest ACTION the stream has produced, which is what this card is FOR.
   // Bookkeeping is excluded on purpose (actionClass.ts): a card that narrated
   // the agent reading files would report motion where there was none.
@@ -57,8 +62,8 @@ export function AgentNowCard({ dashboard, recent }: { dashboard: RemedyDashboard
           {isRunning ? <TaskCurrentGlyph style={{ width: 16, height: 16, color: "white" }} /> : <SparkGlyph style={{ width: 16, height: 16, color: "white" }} />}
         </div>
         <div>
-          <strong>{statusText}</strong>
-          <p>{liveAction ? liveAction.line : detail}</p>
+          <strong>{pause ? pause.status : statusText}</strong>
+          <p>{pause ? pause.detail : liveAction ? liveAction.line : detail}</p>
         </div>
         <span className={styles.activityDot} data-recency={level} aria-hidden="true" />
       </div>

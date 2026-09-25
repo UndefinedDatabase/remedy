@@ -2208,7 +2208,7 @@ class RunManifestV1:
     job_id: str
     episode_id: str
     created_at: str
-    status: str                          # completed | stopped | planned
+    status: str                          # completed | stopped | paused | planned
     # F4: the FULL typed episode snapshot wrapper is embedded — version, owning episode id,
     # captured-at, capture phase, capture status and problems — so the manifest is
     # self-contained and does not depend on mutable JobPlan state to know its own snapshot's
@@ -2418,19 +2418,21 @@ def _safe_component(value: str) -> bool:
     return bool(_ID_OK.match(v)) and ".." not in v and "/" not in v and "\\" not in v
 
 
-_VALID_STATUS = frozenset({"completed", "stopped", "planned"})
+_VALID_STATUS = frozenset({"completed", "stopped", "paused", "planned"})
 
 
 #: F7 (round 11): THE lifecycle matrix, derived from the committed JobPlan/F011/F012 contract.
 #:
 #: `run_job` sets `completed` only when EVERY task is applied-or-skipped (a max-tasks boundary
-#: PAUSES the job instead, and a paused job is not a finished run and gets no manifest). So a
-#: completed episode cannot contain a task that was never dispatched, or one that was dispatched
-#: and never reached a call — those states describe a job that did not complete.
+#: PAUSES the job instead — DECISION F025 D6 (round 8): a park records the episode it ends as
+#: `paused`, so a relaunch's episode can find the parked episode's calls in its canonical
+#: chain). So a completed episode cannot contain a task that was never dispatched, or one that
+#: was dispatched and never reached a call — those states describe a job that did not complete.
 #:
 #: A stop (F011) is different by design: "the call in flight finishes, nothing new starts", so a
 #: stopped episode legitimately carries undispatched tasks, and a task that died before its first
-#: finalized call.
+#: finalized call. A park (F025) is the same shape minus the stop request: nothing new starts,
+#: but the interrupted task returns to `pending` for the relaunch rather than for a resume.
 _LIFECYCLE_MATRIX: dict[tuple[str, str], dict[str, Any]] = {
     ("planned", PHASE_PLANNING_ONLY): {
         "capture": PHASE_PLANNING_ONLY,
@@ -2448,6 +2450,14 @@ _LIFECYCLE_MATRIX: dict[tuple[str, str], dict[str, Any]] = {
         "zero_calls": True,
         "stop_request": True,
     },
+    ("paused", PHASE_PRE_WORK_STOP): {
+        # DECISION F025 D6 (round 8): equal to the stopped row above except the request id —
+        # a park is not a stop, so it carries none.
+        "capture": PHASE_PRE_WORK_STOP,
+        "expectations": {EXPECT_NOT_DISPATCHED, EXPECT_PRIOR_EPISODE},
+        "zero_calls": True,
+        "stop_request": False,
+    },
     ("completed", PHASE_WORKED): {
         "capture": PHASE_EPISODE_START,
         # No `not_dispatched` and no `dispatched_no_calls`: a completed job has every task
@@ -2463,6 +2473,16 @@ _LIFECYCLE_MATRIX: dict[tuple[str, str], dict[str, Any]] = {
                          EXPECT_FAILED_PRE_DISPATCH},
         "zero_calls": None,
         "stop_request": True,
+    },
+    ("paused", PHASE_WORKED): {
+        # DECISION F025 D6 (round 8): equal to the stopped row above except the request id —
+        # a park is not a stop, so it carries none.
+        "capture": PHASE_EPISODE_START,
+        "expectations": {EXPECT_EXECUTED, EXPECT_PRIOR_EPISODE, EXPECT_SKIPPED,
+                         EXPECT_NOT_DISPATCHED, EXPECT_DISPATCHED_NO_CALLS,
+                         EXPECT_FAILED_PRE_DISPATCH},
+        "zero_calls": None,
+        "stop_request": False,
     },
 }
 
@@ -3060,7 +3080,7 @@ def validate_run_manifest(manifest: RunManifestV1, *, published: bool = True,
         calls=calls, declared_task_ids=declared_task_ids,
         require_exact_tasks=(mode == MODE_PUBLISHED_REFERENCE)))
 
-    if mode == MODE_PUBLISHED_REFERENCE and manifest.status in ("completed", "stopped"):
+    if mode == MODE_PUBLISHED_REFERENCE and manifest.status in ("completed", "stopped", "paused"):
         # F6: zero calls is a CLAIM, and a published reference has to prove it. The proof is the
         # embedded expectation record — never the mutable JobPlan, which may have moved on.
         if not calls and not exp.expects_zero_calls():
@@ -3113,7 +3133,7 @@ def validate_run_manifest(manifest: RunManifestV1, *, published: bool = True,
     for p in validate_episode_input_snapshot(manifest.episode_snapshot,
                                              expected_episode_id=manifest.episode_id):
         problems.append(f"episode_snapshot: {p}")
-    if manifest.status in ("completed", "stopped") and not manifest.episode_snapshot.is_ok():
+    if manifest.status in ("completed", "stopped", "paused") and not manifest.episode_snapshot.is_ok():
         problems.append(f"a {manifest.status} manifest requires a valid ok episode snapshot")
     # F5/F7: the InputSnapshot payload itself is strictly validated (required worktree fields,
     # redundant-fact agreement, unique config/env keys, REMEDY_* only, no absolute paths or raw

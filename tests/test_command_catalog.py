@@ -412,6 +412,12 @@ class TestDeletedCommands:
 
     A deleted id must be absent from the catalog AND from the dispatch table, because either half
     alone makes the word reachable again, and nothing else in the suite reds when one comes back.
+
+    `job.pause` is DELIBERATELY ABSENT from this tuple, not merely omitted: DECISION F025 D2
+    reallocates that exact word to the F025 pause/unpause pair (`pause_control.pause_job_command`),
+    unrelated to whatever F261 deleted it for, and nothing else in the repository still expects the
+    old meaning (searched at F025 R4 C3). A word leaving this list is as deliberate as one entering
+    it — the decision above is that record.
     """
 
     DELETED = (
@@ -442,7 +448,6 @@ class TestDeletedCommands:
         "job.enqueue",
         "job.fences",
         "job.fulfill",
-        "job.pause",
         "job.permissions",
         "job.permit",
         "job.report",

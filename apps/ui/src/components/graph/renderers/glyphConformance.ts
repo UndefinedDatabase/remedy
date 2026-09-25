@@ -34,6 +34,10 @@ export const PROBE_POINTS: Readonly<Record<StateMark, { mark: [number, number]; 
   status_dot: { mark: [20, 4.5], outline: [20, 8.25] },
   strike: { mark: [6, 18], outline: [6.8, 18.8] },
   ring: { mark: [12, 1], outline: null },
+  // The centre of the left bar (fill x 17-19, y 1.5-7.5), and a point on its
+  // left edge's outline band (stroke centred at x 17, half-width 1.5) that
+  // falls outside the fill.
+  pause: { mark: [18, 4.5], outline: [16.3, 4.5] },
 };
 
 /** One pixel to read and what it must show. */
@@ -56,6 +60,9 @@ export interface ConformanceProbe {
 export const BINDING_STATE_MARKS: Readonly<Record<NodeState, readonly StateMark[]>> = {
   open: [],
   planned: ["ring"],
+  // DECISION F025 D3 clause 3: the planned ring PLUS the new pause mark. Keyed
+  // here right after `planned`, matching `nodeStateOrder()`'s own order.
+  paused: ["ring", "pause"],
   in_progress: [],
   pass: [],
   fail: ["status_dot"],
@@ -65,11 +72,14 @@ export const BINDING_STATE_MARKS: Readonly<Record<NodeState, readonly StateMark[
 
 /** The binding spec's colour for each mark and its outline: the dot in the
  *  failure red, the strike in the veto's grey, each outlined in the white node
- *  ring, and the ring in the planned ring's blue (DECISION F020 D1). */
+ *  ring, and the ring in the planned ring's blue (DECISION F020 D1); the
+ *  pause mark in the same orange the treatment paints it, also outlined in
+ *  the white node ring (DECISION F025 D3 clause 3). */
 export const BINDING_MARK_TOKENS: Readonly<Record<StateMark, { mark: RemedyToken; outline: RemedyToken | null }>> = {
   status_dot: { mark: "--remedy-state-blocked", outline: "--remedy-graph-node-ring" },
   strike: { mark: "--remedy-state-vetoed", outline: "--remedy-graph-node-ring" },
   ring: { mark: "--remedy-state-planned-ring", outline: null },
+  pause: { mark: "--remedy-orange-400", outline: "--remedy-graph-node-ring" },
 };
 
 /** Every probe over the matrix, in device pixels at `scale`. A cell whose

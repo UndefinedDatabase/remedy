@@ -1,0 +1,3 @@
+- R-1055, assigned by F025's round 7 (DECISION F025 D5), carries a resolution line naming the
+  relaunch that resumed an interrupted task's provider session with `resume_used` in its evidence,
+  or is carried by name to the next paydown feature at this closure.
