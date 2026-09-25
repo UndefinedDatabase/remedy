@@ -1,28 +1,22 @@
-# Context — F026 Task edit at runtime
+# Context — F285 Findings paydown v4
 
 ## Active Branch
-feature/f026-task-edit-runtime, cut from `main` at `90555849`
-(the merge commit of pull request 280, F025 Pause/resume).
+feature/f285-findings-paydown-v4, cut from `main` at `83d3bb95`
+(the merge commit of pull request 281, F026 Task edit at runtime).
 
 ## Scope
-F026 (Tier 5): editing a task at runtime — the state gate, the versioned
-apply, the spec archive and the revalidation (T001), the write-channel
-command with its audit, the failed-to-pending semantics and the
-prompt-trace proof on a fake run (T002), and the version chip, the
-popover's version list, the edit affordance and the end-to-end (T003), as
-`docs/roadmap/features/T5_F026.md` specifies, with
-`docs/ui/design_reference/` authoritative on the visuals.
+F285 (Tier 2, the rolling findings paydown): R-1058's Acceptance and
+defect check (T001), R-1057's derived self-use cost cap (T002), R-1055's
+provider-session resume across a relaunch (T003), R-1064 as the
+closure's self-use item, and R-1008 through that run, as
+`docs/roadmap/features/T2_F285.md` and DECISION F285 D1 specify.
 
 ## Do not touch
-Clarification immutability, attempt semantics beyond the reset, and
-subtree rerun mechanics.
+The resolutions F284 landed; the record is append-only.
 
 ## Active assumptions
-- A runtime edit is the plan editor's `plan_edit_task` on one task of an
-  approved plan while no run holds the record; the task entry is updated
-  in place with a spec version, the prior spec is archived, the approval
-  seal follows the edit, and a failed task returns to pending with the
-  tasks its block skipped (DECISION F026 D1).
+- The self-use track is repaired before the closure uses it, and the
+  closure's self-use run is aimed at R-1064 (DECISION F285 D1).
 
 ## Constraints
 - Every pytest run in a round is targeted and serial; the resource and

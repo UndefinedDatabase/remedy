@@ -21847,3 +21847,61 @@ fields as edits; relaunching from the page, rejected because a pause's resume is
 
 HOW TO REVERSE: delete `taskEditSend.ts`, the form component, `taskEditAction`, the popover's scroll
 rule, the live test, the assumption-log row, and this paragraph; R-1060's repair stands on its own.
+
+## DECISION F285 D1 — the claim writes F285's slice list from the five ids it owns, the self-use track is repaired before it is used, the closure's self-use run is aimed at R-1064, and the self-use cost cap is derived from the dearest measured call (2026-09-25)
+
+CONTEXT: `docs/roadmap/features/T2_F285.md` was registered thin by F284's closure and orders its
+first round to read the open set and write one slice per module from every open finding whose
+repair fits one round. At `83d3bb95` the open set, read with `open_finding_ids` of
+`scripts/rotate_live_review.py`, is R-1008, R-1055, R-1057, R-1058 and R-1064, and F285 owns all
+five. Four of the five are about the self-use track: R-1008 resolves only when a closure's self-use
+run produces a diff its reviewer passes, R-1057 is the cost cap that stopped the last two such runs
+before their jobs could complete, R-1058 is the Acceptance line that let the last one pass a ledger
+note, and R-1055 is the relaunch that never resumes a provider session. Measured by the reviewer at
+`83d3bb95` with `load_job_plan`: job fd57a5d1dfe245b0, F026's closure run, spent 1.4023008 USD on its
+one builder call and stopped at `budget_exhausted:max_cost_usd` against a cap of 1.00; job
+d0f70d9d45dd4363, F025's, spent 1.1403048 on two calls, its task T001 reads `staged_review_passed`,
+and the one path its apply manifest names is `.agent/live_review.md`, while
+`describe_self_use_run_defects` named only the budget stop. The generator's Tier 1, run against the
+ledger at `83d3bb95` with the ids existing queue entries target excluded, offers R-1058 today; with
+R-1055, R-1057 and R-1058 resolved it would offer R-1064, whose paragraph names its repair and no
+hold.
+
+CHOSEN: (1) THE SLICE LIST, in this order: T001 repairs R-1058 in
+`packages/orchestration/self_use_generator.py` and `packages/orchestration/self_use_findings.py`;
+T002 repairs R-1057 in `packages/orchestration/self_use_runner.py`; T003 repairs R-1055 in the
+provider-session path its own text names. T001 and T002 land in the claiming round, because the
+track must be sound before the closure uses it. (2) R-1064 IS THE CLOSURE'S SELF-USE ITEM, not a
+worker slice. It is a Low finding with one module, a named repair and a named test, which is the
+item the track has never yet been given, and a run on it is the first that can resolve R-1008
+honestly. When that run's reviewer passes a diff outside `.agent/` that the reviewer of this feature
+also passes, the diff is landed on the branch as R-1064's repair and both ids resolve; when it does
+not, a worker round repairs R-1064 before the closure's evidence round and R-1008 is carried by name
+to the next paydown feature. (3) T001: the generated job asks for the repair its finding's FIX names,
+with a test that fails without it and passes with it, and for no file under `.agent/` to change; its
+body tells the builder that `.agent/live_review.md` is the reviewer's record. The offer of a ledger
+note as an alternative outcome is removed. The "self-use reviewer" that fails a diff confined to
+`.agent/` is the closure's reading of the run, `describe_self_use_run_defects`, which gains one
+string naming a run in which a task passed review while no path its reviewed work changed lies
+outside `.agent/`; the paths are read from the job's hand-off and from every applied task manifest,
+because a job stopped before its hand-off has none of the first. The provider reviewer's own verdict
+is not rewritten after the fact. (4) T002: the cost cap covers one build, one review and one repair
+round of one build and one review — four calls, the job's own completion making none — at the
+dearest single call measured, 1.4023008 USD rounded up to 1.41: 5.64, rounded up to 6.00. The price
+and the call count are named constants beside the cap, and a test turns red when the cap stops
+covering them. The eight-call cap is unchanged. Because this raises what one closure may spend, it is
+also written as an entry in `.agent/operator_questions.md` under operator amendment
+amend0911-feedback rule C, with the recommendation already executed.
+
+ALTERNATIVES: refusing before any provider call when a cost prediction exceeds the cap, the second
+remedy R-1057 names, rejected because the cap would then refuse every run at the measured prices and
+the track would still never complete; failing the task's review verdict itself inside the ping-pong
+loop, rejected because that loop serves every job and a self-use rule does not belong in it; letting
+the claiming round repair R-1064 directly, rejected because it would leave the closure's self-use run
+no repairable item and R-1008 unresolved for a fourth paydown running.
+
+HOW TO REVERSE: restore `packages/orchestration/self_use_generator.py`,
+`packages/orchestration/self_use_findings.py`, `packages/orchestration/self_use_runner.py`,
+`packages/orchestration/config.py`, `docs/guides/environment.md`,
+`docs/system/self-use-track-v1.md` and the three touched test files from `83d3bb95`, delete the
+operator-questions entry, and delete this paragraph.

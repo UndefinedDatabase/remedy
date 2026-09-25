@@ -154,7 +154,7 @@ Milestone R1 — Remedy as the daily tool: Tier 2 complete (F086 as the self-ins
 
 ## Tier 2 — Findings paydown (rolling, operator rule amend0911-feedback)
 
-- [ ] F285 — Findings paydown v4
+- [~] F285 — Findings paydown v4
 
 ## Tier 5 — Operator Cockpit (parallel human track, continued)
 
