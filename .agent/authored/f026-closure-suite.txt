@@ -1,11 +1,12 @@
-F026 R5 C6 — the closure's one full suite.
+F026 R6 C5 — the closure's one full suite, repaired.
 
 Command: python3 -m pytest -n auto -q
-Log: .remedy-wt/f026-r5-worker/f026-full-suite.txt (sandbox refused
-  /home/decodeux/remedy-gate-scratch/, so the log was written under
-  .remedy-wt/f026-r5-worker/ instead, per the block's fallback clause)
-Real exit code: 1
-Wall time: 231.32s (0:03:51)
-Summary line: 1 failed, 19408 passed, 20 skipped, 1 warning in 231.32s (0:03:51)
+Log: .remedy-wt/f026-r6-worker/full_suite.log
+Real exit code: 0
+Wall time: 193.86s (0:03:13)
+Summary line: 19411 passed, 20 skipped, 1 warning in 193.86s (0:03:13)
 Bad node ids (failed plus errors):
-  tests/ui_server/test_command_channel.py::TestCommandDoorImportGuard::test_the_door_reaches_only_the_accepted_forbidden_modules_transitively
+  NONE
+Ran on the tree at `64e7f761e` (this round's C4); replaces round 5's run at
+  `40b94e02` under amend0921-operator-feedback rule 1 — the one run belongs to
+  the tree that ships.
