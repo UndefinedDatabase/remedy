@@ -12,20 +12,20 @@ its prompt trace (`docs/roadmap/features/T5_F026.md`).
 
 ## Current Step
 
-ROUND 2: book round 1, register R-1059, record DECISION F026 D2, repair
-R-1059, close round 1's unmet test obligation, and land T002 —
-`job.edit-task` in the catalog, the CLI and the write door with its
-audit, the spec version in `job plan-show`, and the trace proof on a
-fake run.
+ROUND 3: book round 2 and resolve R-1059, record DECISION F026 D3,
+reword `job.edit-task`'s help text, and land T003's first half — the
+dashboard's `task_specs` section, the version chip on the node and in
+the popover, and the popover's Versions list.
 
 ## Next Steps
 
-1. T003: the version chip, the popover's version list, the edit
-   affordance on eligible nodes only, and the end-to-end.
+1. T003's second half: the edit affordance on eligible nodes only,
+   sent through the write door, and the end-to-end — fail, edit through
+   the door, relaunch, the new trace carrying the edit, the fan visible.
 2. The closure sequence.
 
 ## Risks
 
-An edit must never be lost to a running job's save; it is refused while
-the job runs. Open findings: 5 — R-1008, R-1055, R-1057 and R-1058, owned
-by F285, and R-1059, owned by F026.
+A chip must not read as a state; it is text in the state's own line
+colour and never a mark. Open findings: 4 — R-1008, R-1055, R-1057 and
+R-1058, all owned by F285.

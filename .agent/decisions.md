@@ -21757,3 +21757,46 @@ the operator.
 
 HOW TO REVERSE: delete the catalog entry, its handler, the door clause with `task_edit_refusal`,
 the three `job plan-show` keys and their text line, the tests this round adds, and this paragraph.
+
+## DECISION F026 D3 — the version chain reaches the page as the dashboard's `task_specs` section, a text chip `v<n>` beside an edited task's node and in the detail popover's status row, and a Versions list in the popover whose rows open the changed fields; nothing new is animated and no new colour token is added (2026-09-25)
+
+CONTEXT: T5_F026.md's T003 asks for a version chip on the graph node "per the design reference" and
+an L2 popover listing the versions with their diffs on click. Measured at `10ec2512`: the dashboard
+built by `_build_dashboard` in `packages/orchestration/ui_server.py` carries no spec version, no goal,
+no acceptance list and no planned id; `docs/ui/design_reference/` designs no version chip and no
+version list; the only text the node painter `paintBrainNode` writes is a cluster's count, in the
+node state's line colour and the label font; `docs/ui/design_reference/graph_spec.md` §10 places
+the DetailPopover at L2 and §14 names a per-task list in it as the accessible surface; and
+`tests/ui_contracts/test_design_drift.py` refuses any custom property the app's stylesheet does not
+define, which excludes the reference's size, spacing and fast-duration tokens. In the reviewer's
+scratch tree at `10ec2512`, a headless-Chrome render of the prototype showed the chip legible beside
+planned, failed, blocked, passed and paused nodes without touching their status marks, and the
+popover's list opening the changed acceptance criteria.
+
+CHOSEN: (1) THE DATA: the dashboard gains `task_specs`, keyed by task entry id, for every task of a
+stored plan that maps to a plan task: its planned id, its spec version, the runtime edit state
+`runtime_edit_state` gives now (or `""` with the refusal's detail), the plan task's current fields,
+and its archived versions from `task_spec_versions`; the section never raises, reporting a read
+error as `error` as the pause section does. (2) THE CHIP: a task whose spec version is 2 or more
+carries the text `v<n>`: on the canvas, painted after the node's body and before its marks, at the
+node's lower right, in the node state's line colour and the label font, as the cluster count is;
+and in the detail popover, as a small outlined pill at the end of the status row. A task never
+edited shows no chip. (3) THE LIST: the popover gains a Versions section, shown only for an edited
+task, one row per version in order — `v<n> · replaced while <state>` for an archived version and
+`v<n> · current` for the current one — each row a button that opens the fields that changed from the
+version before it, old value struck and new value marked; the first row changed nothing and cannot
+open. (4) NO MOTION AND NO NEW TOKEN: the chip does not animate, sizes are plain pixels as the
+popover's own stylesheet writes them, and every colour is an existing token. (5) The ledger stays the
+graph's only source of run and task state: an edit writes no event, so a failed task's node keeps its
+failed run's state until the relaunch starts a new run, while the chip and the popover, read from the
+dashboard, show the new version at once. (6) `assumption_log.md` gains one row for the chip and one
+for the list.
+
+ALTERNATIVES: a new node state or mark for "edited", rejected because an edit is not a state of the
+run and the reference rules that marks carry state; a new colour token for the chip, rejected because
+the drift guard and the tokens rule both point at the existing palette; an edit event that re-seeds
+the node to planned at once, deferred to the edit affordance's round, where the page itself makes the
+edit and can refresh.
+
+HOW TO REVERSE: delete the `task_specs` section and its builder, the chip in the painter and the
+popover, the Versions list, the two assumption-log rows, and this paragraph.
