@@ -25,6 +25,7 @@ apps.cli.commands.init_cmd
 apps.cli.commands.integrity_cmd
 apps.cli.commands.job
 apps.cli.commands.job_context_cmd
+apps.cli.commands.job_pause_cmd
 apps.cli.commands.job_plan_cmd
 apps.cli.commands.job_stop_cmd
 apps.cli.commands.memory

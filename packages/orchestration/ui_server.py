@@ -2285,9 +2285,19 @@ COMMAND_HUNK_DECISION_STATE_MESSAGE = "hunk decision was refused"
 #: other declining effects give, and nothing was written.
 COMMAND_CHAT_STATE_MESSAGE = "job has ended and takes no message"
 
+#: What a `job.pause` or `job.unpause` the effect REFUSED returns (DECISION F025 D2).
+#: `pause_job_command`/`unpause_job_command` never raise for a refusal — a terminal
+#: job state or an unknown task — so this is the 409 sibling of the other declining
+#: effects, and the refusal's own `reason` text is deliberately not on the wire, the
+#: same restraint `COMMAND_HUNK_DECISION_STATE_MESSAGE` already keeps.
+COMMAND_PAUSE_STATE_MESSAGE = "pause or unpause was refused"
+
 #: The ids this door dispatches. Named rather than inlined so that each second call
 #: site greps to this line.
 JOB_STOP_COMMAND_ID = "job.stop"
+#: DECISION F025 D2's pause/unpause pair.
+JOB_PAUSE_COMMAND_ID = "job.pause"
+JOB_UNPAUSE_COMMAND_ID = "job.unpause"
 DECISION_RESOLVE_COMMAND_ID = "decision.resolve"
 HUNK_APPROVE_COMMAND_ID = "patch.approve-hunks"
 CHAT_SEND_COMMAND_ID = "chat.send"
@@ -2758,6 +2768,61 @@ class _RemedyHandler(BaseHTTPRequestHandler):
             self._emit_command_accepted_event(str(job.job_id), accepted_body)
             self._send_json(200, accepted_body)
             return
+        # DECISION F025 D2 maps `job.pause` to `pause_control.pause_job_command`, run
+        # with the door's own source. D18's order is unchanged: effect, then the audit
+        # line, then the publication. Unlike `job.stop`, the effect itself can DECLINE
+        # (a terminal job state, or a task id the plan does not hold) without raising —
+        # D2 rules that outcome `refused`, answered 409 and audited `rejected_state`,
+        # the same shape `decision.resolve`'s None return already takes.
+        if payload["command"] == JOB_PAUSE_COMMAND_ID:
+            try:
+                accepted_body = self._dispatch_job_pause(job, payload)
+            except (OSError, RuntimeError, ValueError, TypeError):
+                # D18, clause four: an effect that RAISED is neither `accepted`,
+                # which would be false, nor unaudited, which would break D6.
+                self._audit_attempt(str(job.job_id), "rejected_effect", create=True,
+                                    payload=payload)
+                self._send_json(*_safe_error(500, COMMAND_EFFECT_FAILED_MESSAGE))
+                return
+            if accepted_body.get("outcome") == "refused":
+                self._audit_attempt(str(job.job_id), "rejected_state", create=True,
+                                    payload=payload)
+                self._send_json(*_safe_error(409, COMMAND_PAUSE_STATE_MESSAGE))
+                return
+            # D18, clause three: both writes below fail SOFT. The pause is already
+            # durable, so refusing after the fact would report a pause that really
+            # was requested as one that was not.
+            self._audit_attempt(str(job.job_id), "accepted", create=True, payload=payload)
+            self._publish_command_result(str(job.job_id), payload["client_nonce"],
+                                         accepted_body)
+            self._emit_command_accepted_event(str(job.job_id), accepted_body)
+            self._send_json(200, accepted_body)
+            return
+        # DECISION F025 D2 maps `job.unpause` to `pause_control.unpause_job_command`,
+        # the reverse of the clause above, under the same rules.
+        if payload["command"] == JOB_UNPAUSE_COMMAND_ID:
+            try:
+                accepted_body = self._dispatch_job_unpause(job, payload)
+            except (OSError, RuntimeError, ValueError, TypeError):
+                # D18, clause four: an effect that RAISED is neither `accepted`,
+                # which would be false, nor unaudited, which would break D6.
+                self._audit_attempt(str(job.job_id), "rejected_effect", create=True,
+                                    payload=payload)
+                self._send_json(*_safe_error(500, COMMAND_EFFECT_FAILED_MESSAGE))
+                return
+            if accepted_body.get("outcome") == "refused":
+                self._audit_attempt(str(job.job_id), "rejected_state", create=True,
+                                    payload=payload)
+                self._send_json(*_safe_error(409, COMMAND_PAUSE_STATE_MESSAGE))
+                return
+            # D18, clause three: both writes below fail SOFT, for the same reason
+            # the pause clause above states.
+            self._audit_attempt(str(job.job_id), "accepted", create=True, payload=payload)
+            self._publish_command_result(str(job.job_id), payload["client_nonce"],
+                                         accepted_body)
+            self._emit_command_accepted_event(str(job.job_id), accepted_body)
+            self._send_json(200, accepted_body)
+            return
         # D5 maps `decision.resolve` to `answer_task_decision` followed by
         # `save_job`; DECISION F009 D21 rules that BOTH are the effect, because
         # the answer is durable only once `save_job` returns. D18's write order
@@ -2907,6 +2972,41 @@ class _RemedyHandler(BaseHTTPRequestHandler):
             source=COMMAND_EFFECT_SOURCE)
         return {"command": payload["command"], "outcome": "accepted",
                 "request_id": signal.request_id}
+
+    def _dispatch_job_pause(self, job: Any, payload: Any) -> dict[str, Any]:
+        """Run `job.pause`'s effect and build the body DECISION F025 D2 rules for it.
+
+        `task` is `args.task` when it is a non-empty string, `reason` is `args.reason`
+        likewise, and both degrade to their absence rather than raising — the same
+        rule DECISION F009 D20 gives `job.stop`'s `reason`, because `args` is
+        client-supplied and this door does not know any command's argument schema.
+        Unlike `job.stop`'s body, `outcome` here is NOT the literal `"accepted"`:
+        it is the closed-set token `pause_job_command` itself produced — `requested`
+        or `paused` — because that is what a caller needs to act on.
+        """
+        from packages.orchestration.pause_control import pause_job_command
+        args = payload.get("args")
+        task = args.get("task") if isinstance(args, dict) else None
+        reason = args.get("reason") if isinstance(args, dict) else ""
+        result = pause_job_command(
+            job, task_id=task if isinstance(task, str) and task else None,
+            reason=reason if isinstance(reason, str) else "",
+            source=COMMAND_EFFECT_SOURCE)
+        return {"command": payload["command"], **result}
+
+    def _dispatch_job_unpause(self, job: Any, payload: Any) -> dict[str, Any]:
+        """Run `job.unpause`'s effect and build the body DECISION F025 D2 rules for
+        it. `task` degrades the same way `_dispatch_job_pause`'s does. `outcome`
+        here is one of `released`, `withdrawn`, `parked` or `not_paused` —
+        `unpause_job_command`'s own token, not the literal `"accepted"`.
+        """
+        from packages.orchestration.pause_control import unpause_job_command
+        args = payload.get("args")
+        task = args.get("task") if isinstance(args, dict) else None
+        result = unpause_job_command(
+            job, task_id=task if isinstance(task, str) and task else None,
+            source=COMMAND_EFFECT_SOURCE)
+        return {"command": payload["command"], **result}
 
     def _dispatch_chat_send(self, job: Any, payload: Any) -> dict[str, Any] | None:
         """Record one steering message for the job. None means the job has ended.
