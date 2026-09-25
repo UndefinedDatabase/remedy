@@ -6,6 +6,8 @@ import { decodeJobDigest, jobDigestPath } from "./jobDigest";
 import type { JobDigest } from "./jobDigest";
 import { decodeLessonsIndex, lessonsIndexPath } from "./lessons";
 import type { LessonsIndex } from "./lessons";
+import { decodeTaskRunRounds, taskRunRoundsPath } from "./taskRunRounds";
+import type { TaskRunRounds } from "./taskRunRounds";
 import type { PipelineStep, PipelineStepState, RemedyActivityItem, RemedyContinuationSummary, RemedyDashboard, RemedyGraphEdge, RemedyGraphNode, RemedyJourneyItem, RemedyMetric, RemedyNextAction, RemedyPhase, RemedyPipeline, RemedyPromptKind, RemedyPromptRole, RemedyPromptTraceItem, RemedyPromptTraceSummary, RemedySnapshotSummary, RemedyState, RemedyTaskItem, RemedyTimelineEvent, RemedyTimelineEventKind, RemedyTimelinePhase } from "./types";
 
 interface ApiClientOptions { jobId: string; token: string; baseUrl?: string; }
@@ -774,6 +776,28 @@ export async function loadJobDigest(
     return decodeJobDigest(payload);
   } catch {
     return null;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// The per-round facts door (F023 T002, DECISION F023 D3), shaped like the digest
+// door above: one injected fetcher, one decoder, and no throw.
+// ---------------------------------------------------------------------------
+
+/** How the rounds door reaches the network; a test hands `loadTaskRunRounds` a fake. */
+export type TaskRunRoundsFetcher = (path: string) => Promise<unknown>;
+
+/** Read one task's per-round facts through the single door. NEVER THROWS: a failed
+ *  read answers the same total, unavailable shape a refused payload does, so the
+ *  run detail renders "not recorded" rather than branching on an error. */
+export async function loadTaskRunRounds(
+  request: { jobId: string; taskId: string; token: string; baseUrl?: string },
+  fetchPayload: TaskRunRoundsFetcher = fetchJson,
+): Promise<TaskRunRounds> {
+  try {
+    return decodeTaskRunRounds(await fetchPayload(taskRunRoundsPath(request)), request.taskId);
+  } catch {
+    return decodeTaskRunRounds(null, request.taskId);
   }
 }
 

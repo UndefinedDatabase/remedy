@@ -210,6 +210,7 @@ packages.orchestration.run_contract
 packages.orchestration.run_log
 packages.orchestration.run_manifest
 packages.orchestration.run_report
+packages.orchestration.run_rounds_view
 packages.orchestration.runtime_integration_gate
 packages.orchestration.safe_points
 packages.orchestration.schemas
