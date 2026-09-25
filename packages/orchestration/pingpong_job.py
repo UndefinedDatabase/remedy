@@ -4456,6 +4456,7 @@ def _stop_job(job: JobPlan, signal: Any, *, task: TaskEntry | None,
     """
     from packages.orchestration.failure_postmortem import safe_text
     from packages.orchestration.safe_points import (
+        StopControlError,
         acknowledge_stop,
         archive_stop,
     )
@@ -4473,10 +4474,14 @@ def _stop_job(job: JobPlan, signal: Any, *, task: TaskEntry | None,
     # F025 S4: a stop always wins. If a job-scope pause is PENDING — not yet
     # parked, because THIS SAME stop won the race at the safe point that would
     # otherwise have read it (S2's order) — it is settled `superseded_by_stop`
-    # here and no `job_paused` is ever written for it. Swallowed on purpose: a
-    # pause-settle failure must never block a stop already under way, the same
-    # reason the top of `run_job` swallows a failed stop-acknowledge on an
-    # already-stopped job.
+    # here and no `job_paused` is ever written for it. A pause-settle failure
+    # must never block a stop already under way, the same reason the top of
+    # `run_job` swallows a failed stop-acknowledge on an already-stopped job —
+    # but it is not silent (R-1049): only the two errors this settle can raise
+    # are caught, `pause_control` raises its own `PauseControlError`, and the
+    # control root it shares with the kill switch (`open_job_control_fd`) can
+    # raise `safe_points.StopControlError` — and the failure is logged rather
+    # than passed over.
     from packages.orchestration import pause_control as _pc
     try:
         _pending_job_pause = _pc.pause_requested(
@@ -4484,8 +4489,12 @@ def _stop_job(job: JobPlan, signal: Any, *, task: TaskEntry | None,
         if _pending_job_pause is not None:
             _pc.settle_pause(job.job_id, _pending_job_pause, "superseded_by_stop",
                              control_root_path=control_root_path)
-    except Exception:  # noqa: BLE001 — a pause-settle failure must never block a stop
-        pass
+    except (_pc.PauseControlError, StopControlError) as exc:
+        import logging as _logging
+        _logging.getLogger(__name__).warning(
+            "pause settle failed while finalizing a stop for job %r: %s: %s",
+            job.job_id, type(exc).__name__, exc,
+        )
     # S1: the job leaves `paused` for `stopped` here (whether it was already
     # parked, or a pause was merely pending) — the record is emptied.
     job.pause = {}
