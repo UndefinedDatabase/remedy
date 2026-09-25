@@ -163,9 +163,14 @@ class TestTaskScopePause:
         assert second == first
 
     def test_releasing_an_unpaused_task_returns_none_and_writes_nothing(self, control):
+        # A different task IS paused, so paused_tasks/ exists: this must reach the "no entry
+        # for T404" branch, not short-circuit on a wholly missing paused_tasks/ directory.
+        pc.request_task_pause(JOB, "T001", control_root_path=control)
         assert pc.release_task_pause(JOB, "T404", control_root_path=control) is None
         archive_dir = control / "jobs" / JOB / "pause_archive"
         assert not archive_dir.exists()
+        still = [p.task_id for p in pc.paused_tasks(JOB, control_root_path=control)]
+        assert still == ["T001"]
 
     def test_release_archives_under_pause_archive_tasks_and_removes_the_entry(self, control):
         paused = pc.request_task_pause(JOB, "T001", "x", control_root_path=control)
