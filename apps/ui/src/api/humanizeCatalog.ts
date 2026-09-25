@@ -83,6 +83,8 @@ export const STREAM_EVENT_CATALOG: Readonly<Record<string, string>> = {
   "stream_cap_reached": "The stream hit its size cap and stopped recording.",
   "task_gate_evaluated": "The task's gate was evaluated.",
   "task_lesson_written": "The teacher stored a lesson, or the reason there is none, for a finished task.",
+  "task_paused": "A task was paused.",
+  "task_resumed": "A task was resumed.",
   "task_round_completed": "A review round of a task finished.",
   "task_run_completed": "A task finished.",
   "task_run_failed": "A task failed.",

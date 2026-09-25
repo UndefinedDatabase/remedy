@@ -45,6 +45,8 @@ __all__ = [
     "release_task_pause",
     "paused_tasks",
     "withheld_task_ids",
+    "pause_job_command",
+    "unpause_job_command",
 ]
 
 PAUSE_SIGNAL_VERSION = 1
@@ -542,3 +544,158 @@ def withheld_task_ids(order: Iterable[str], pending: Iterable[str], paused: Iter
 
     return WithheldTasks(withheld=withheld_field, paused=paused_field,
                          downstream=downstream_field, inert=inert_field)
+
+
+# ---------------------------------------------------------------------------
+# S6 — the shared effects (DECISION F025 D2): the CLI and the door call these
+# two functions, and nothing else, to pause or unpause a job or one of its
+# tasks. Each takes a loaded ``JobPlan`` and never raises for a refusal —
+# a job whose state is terminal or a task id the plan does not hold answers
+# outcome ``refused`` instead, naming the state or the task.
+# ---------------------------------------------------------------------------
+
+#: The states D2 refuses a pause or an unpause over. Mirrors
+#: ``job_stop_cmd._FINISHED_STATES``, widened to the three names D2 rules —
+#: that set answers a different question ("can a stop still be requested")
+#: and is untouched by this feature.
+_TERMINAL_STATES = frozenset({"completed", "failed", "cancelled"})
+
+#: The state a job carries while parked by an operator pause — ``RunState.PAUSED``'s
+#: own value, read as a bare string so this module need not import the enum
+#: (it already avoids importing ``pingpong_job``; see the module docstring).
+_PARKED_STATE = "paused"
+
+
+def _job_state_str(job: Any) -> str:
+    """``job.state`` as a bare string, whether it is a ``RunState`` or already one."""
+    state = getattr(job, "state", "")
+    return state.value if hasattr(state, "value") else str(state)
+
+
+def _job_task_ids(job: Any) -> frozenset[str]:
+    """Every task id ``job``'s own plan holds."""
+    return frozenset(str(getattr(t, "task_id", "")) for t in getattr(job, "tasks", ()))
+
+
+def _refuse_unknown_task(task_id: str, job: Any) -> dict[str, Any] | None:
+    """None when ``task_id`` is one of ``job``'s own; D2's ``refused`` body otherwise."""
+    if task_id in _job_task_ids(job):
+        return None
+    return {"outcome": "refused", "reason": f"unknown task {task_id!r}",
+           "scope": "task", "task_id": task_id}
+
+
+def _write_task_paused_event(job: Any, pause: TaskPause) -> None:
+    """One ``task_paused`` ledger event, an inline literal through ``RunLogWriter``
+    (DECISION F025 D2 clause 3) — the caller writes this only when ITS OWN call
+    created the paused-task entry, never on a repeat of an already-paused task."""
+    from packages.orchestration.run_log import RunLogWriter
+
+    writer = RunLogWriter(job.job_id)
+    writer.log(
+        "task_paused",
+        outcome="paused",
+        scope="task",
+        task_id=pause.task_id,
+        request_id=pause.request_id,
+        reason=pause.reason,
+        source=pause.source,
+        requested_at=pause.requested_at,
+    )
+
+
+def _write_task_resumed_event(job: Any, pause: TaskPause) -> None:
+    """One ``task_resumed`` ledger event, an inline literal through ``RunLogWriter``
+    (DECISION F025 D2 clause 3) — the caller writes this only when ITS OWN call
+    released a real paused-task entry, never when nothing was paused."""
+    from packages.orchestration.run_log import RunLogWriter
+
+    writer = RunLogWriter(job.job_id)
+    writer.log(
+        "task_resumed",
+        outcome="resumed",
+        scope="task",
+        task_id=pause.task_id,
+        request_id=pause.request_id,
+        reason=pause.reason,
+        source=pause.source,
+        requested_at=pause.requested_at,
+    )
+
+
+def pause_job_command(job: Any, *, task_id: str | None = None, reason: str = "",
+                      source: str, control_root_path: Path | None = None
+                      ) -> dict[str, Any]:
+    """Pause ``job`` as a whole, or one of its tasks — the effect the CLI and
+    the door share (DECISION F025 D2 clause 2). ``job`` is a loaded ``JobPlan``.
+
+    Never raises for a refusal: a job whose state is completed, failed or
+    cancelled, or a task id the plan does not hold, answers outcome
+    ``refused`` with a ``reason`` naming the state or the task. Otherwise
+    answers ``requested`` (job scope) or ``paused`` (task scope), each with
+    the request id.
+    """
+    state = _job_state_str(job)
+    if state in _TERMINAL_STATES:
+        body: dict[str, Any] = {"outcome": "refused", "reason": state,
+                                "scope": "task" if task_id else "job"}
+        if task_id:
+            body["task_id"] = task_id
+        return body
+
+    if task_id:
+        refusal = _refuse_unknown_task(task_id, job)
+        if refusal is not None:
+            return refusal
+        already = any(
+            p.task_id == task_id
+            for p in paused_tasks(job.job_id, control_root_path=control_root_path))
+        pause = request_task_pause(job.job_id, task_id, reason, source,
+                                   control_root_path=control_root_path)
+        if not already:
+            _write_task_paused_event(job, pause)
+        return {"outcome": "paused", "request_id": pause.request_id, "scope": "task",
+                "task_id": task_id}
+
+    signal = request_pause(job.job_id, reason, source, control_root_path=control_root_path)
+    return {"outcome": "requested", "request_id": signal.request_id, "scope": "job"}
+
+
+def unpause_job_command(job: Any, *, task_id: str | None = None, source: str,
+                        control_root_path: Path | None = None) -> dict[str, Any]:
+    """Release a pause on ``job``, or on one of its tasks — ``pause_job_command``'s
+    reverse (DECISION F025 D2 clause 2). ``job`` is a loaded ``JobPlan``.
+
+    Never raises for a refusal: the same terminal-state and unknown-task
+    checks ``pause_job_command`` applies. With a task, answers ``released``
+    or ``not_paused``. Without one: ``parked`` with the relaunch command for
+    a job an operator pause has already saved to disk, ``withdrawn`` for a
+    pending request no safe point has served yet, or ``not_paused``.
+    """
+    state = _job_state_str(job)
+    if state in _TERMINAL_STATES:
+        body: dict[str, Any] = {"outcome": "refused", "reason": state,
+                                "scope": "task" if task_id else "job"}
+        if task_id:
+            body["task_id"] = task_id
+        return body
+
+    if task_id:
+        refusal = _refuse_unknown_task(task_id, job)
+        if refusal is not None:
+            return refusal
+        pause = release_task_pause(job.job_id, task_id, control_root_path=control_root_path)
+        if pause is None:
+            return {"outcome": "not_paused", "scope": "task", "task_id": task_id}
+        _write_task_resumed_event(job, pause)
+        return {"outcome": "released", "request_id": pause.request_id, "scope": "task",
+                "task_id": task_id}
+
+    if state == _PARKED_STATE:
+        return {"outcome": "parked", "scope": "job",
+                "next": f"remedy job run {job.job_id}"}
+
+    pending = withdraw_pause(job.job_id, control_root_path=control_root_path)
+    if pending is None:
+        return {"outcome": "not_paused", "scope": "job"}
+    return {"outcome": "withdrawn", "request_id": pending.request_id, "scope": "job"}
