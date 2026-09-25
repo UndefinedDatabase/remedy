@@ -158,6 +158,7 @@ export function DetailPopover({ dashboard, selectedNode, selectedPromptId, onClo
           practices. */}
       {task && serverToken && (
         <PauseControl
+          key={task.id}
           target={{ jobId: dashboard.jobId, serverToken }}
           scope={task.id}
           action={taskPauseAction(dashboard, task.id, task.state)}

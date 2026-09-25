@@ -75,6 +75,16 @@ def test_the_popovers_control_is_passed_the_tasks_id():
     assert "taskPauseAction(dashboard, task.id, task.state)" in src
 
 
+def test_the_popovers_control_is_keyed_by_the_tasks_id():
+    """R-1054: without a key, React keeps the control's state across a selection
+    change, so one task's answer sentence is shown under another task's button."""
+    src = _source(POPOVER)
+    assert "key={task.id}" in src, (
+        "the popover's PauseControl must be keyed by the task id, so React "
+        "remounts it (and drops its last answer) when the selection changes"
+    )
+
+
 def test_the_stage_renders_the_pause_banner_under_its_own_data_ui():
     src = _source(STAGE)
     assert "const banner = pauseBanner(dashboard);" in src
