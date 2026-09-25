@@ -21176,3 +21176,55 @@ rejected because none is installed and a seeded generator replays a red run exac
 
 HOW TO REVERSE: delete `apps/ui/src/components/timeline/scrubSnapshots.ts`, its `.test.ts`,
 `tests/ui_contracts/test_scrub_snapshots.py`, and this paragraph.
+
+## DECISION F024 D3 — T003 lands in three rounds, its pure half first: an index that reads every prefix's phases from one fold, a scrubber machine with its keyboard and a capped fast-forward, and a view model of six equal segments (2026-09-25)
+
+CONTEXT: T5_F024.md's T003 orders the bar, the scrubber and the LIVE toggle with the SCRUBBED
+banner, the catch-up and the keyboard, and the end-to-end on live fake jobs and the demo
+recording. Measured at `81a92d9b`: vitest runs in the `node` environment and cannot render React;
+`readPhases` in `components/timeline/phaseMapping.ts` folds the whole prefix through the reducer
+on every call; the binding CSS lays out six `.phase{flex:1}` segments; `ux_spec.md` §12 asks for
+a draggable handle that enters replay and §16 for progress that jumps under reduced motion;
+`motion_spec.md` defines `--remedy-dur-fast` as 120ms and names no catch-up treatment;
+`component_spec.md` asks for a slider role whose value is the seq; `RemedyShell.tsx` mounts
+`BrainGraphStage` and `PhaseTimeline` side by side in a main column a guard holds to four
+children; and the dashboard's `phases` carry the titles Job, Planning, Build, Test, Review and
+Finalized.
+
+CHOSEN: (1) THE SPLIT: round 3 lands T003's pure half, round 4 the components and their wiring,
+round 5 the end-to-end on a live fake job and the demo recording with the 500-node budget. (2)
+THE INDEX is `timelineIndex.ts`: one fold records, per row, the furthest phase marked so far and
+the row since which every task has passed, and each marked phase's start, which is fixed once
+set; `phasesAt(index, s)` then reads any prefix's phases without a reduction, and a property test
+holds it equal to `readPhases` over the prefix at every position of fuzzed ledgers, the plain fold
+staying the reference. `phaseStops` lists the distinct phase starts Shift+arrows step between. (3)
+THE MACHINE is `scrubState.ts`: `{mode, position, head, queued}`, where position is the seq whose
+prefix the graph shows and -1 is before the first event; ingesting moves a live view with the head
+and counts the rows behind a scrubbed one; scrubbing and stepping clamp to [-1, head]; an event
+that changes nothing returns the same object; LIVE resets to the head. (4) THE KEYBOARD: arrows
+step one event, Shift+arrows one phase stop, Home goes before the first event and End returns to
+LIVE. (5) THE CATCH-UP fast-forwards in at most 8 frames 120ms apart, `--remedy-dur-fast` each,
+evenly spread and ending exactly at the head, so it never runs past 960ms; under reduced motion it
+jumps; and when more than 5000 rows arrived behind the view LIVE refetches instead and says so.
+(6) THE VIEW MODEL is `timelineView.ts`: six equal segments whose seq ranges come from the WHOLE
+ledger, so the ruler holds still, and whose states come from the prefix at the handle, so the bar
+says what that prefix says; a phase the whole ledger passed with a zero span is compact; the
+current segment fills by the handle's place in its range; sub-glyphs sit at their seq in the
+segment whose range holds it; and the readout reads "Event s of head" with the time since the
+first event's timestamp, parsed from the ledger rather than a clock. (7) THE GUARD is
+`tests/ui_contracts/test_timeline_scrub_contract.py`: the frame length equals the design
+reference's `--remedy-dur-fast`, the keyboard names the four slider keys, the six labels equal the
+dashboard's phase titles, and the three modules import only each other, the reducer and its
+ontology, and touch no DOM, timer, clock or React state.
+
+ALTERNATIVES: the whole of T003 in one round, rejected because the components can only be checked
+by guards and a browser render while this half can be pinned by vitest, and one round would review
+the untestable half under the testable half's gates; `readPhases` on every handle move, rejected
+because it folds the whole prefix through the reducer each time; segments sized by their seq span,
+rejected because the binding CSS gives each phase `flex:1`; a catch-up that replays every queued
+event, rejected because the feature file caps its duration; End scrubbing to the head without
+returning to LIVE, rejected because the head of a scrubbed view is not the live view.
+
+HOW TO REVERSE: delete `timelineIndex.ts`, `scrubState.ts`, `timelineView.ts` and their three
+`.test.ts` files under `apps/ui/src/components/timeline/`,
+`tests/ui_contracts/test_timeline_scrub_contract.py`, and this paragraph.
