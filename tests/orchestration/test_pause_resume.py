@@ -165,6 +165,10 @@ class TestRow4AMidPlanTaskPause:
         assert parked.pause.get("paused_task_ids") == [task2_id]
         assert parked.pause.get("withheld_task_ids") == [task2_id, task3_id]
         assert builder.build_calls == 1        # only task 1's Builder ran
+        # The PRE-TASK safe point blocks task 2 before it is EVER dispatched —
+        # never mind halted after starting — so it never earns a run id.
+        assert parked.tasks[1].run_id == ""
+        assert parked.tasks[2].run_id == ""
 
 
 class TestRow5AnInFlightTaskPause:
