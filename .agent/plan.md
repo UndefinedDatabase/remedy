@@ -1,33 +1,36 @@
-# Plan — F024 Phase timeline with scrubber
+# Plan — F025 Pause/resume (global & per node)
 
-Branch: feature/f024-phase-timeline-scrubber, cut from `main` at
-`1bb3a35d`, the merge commit of pull request 278 (F023 Semantic zoom
-L0–L3). Pull request 279 into `main` is open.
+Branch: feature/f025-pause-resume, cut from `main` at `49624d5c`, the
+merge commit of pull request 279 (F024 Phase timeline with scrubber).
 
 ## Goal
 
-Time becomes navigable: a phase bar derived from the ledger's own
-events, sub-glyphs at their seq, and a scrubber that renders exactly the
-reducer state of any prefix from memoized snapshots, with a LIVE toggle
-that returns to the present (`docs/roadmap/features/T5_F024.md`). F024
-is accepted in STATUS.
+Calm control over a running job: a job pause halts the whole run and a
+task pause halts one branch, each taking effect before the next provider
+call while running calls finish, and the relaunch resumes exactly where
+things stood, with no process left waiting
+(`docs/roadmap/features/T5_F025.md`).
 
 ## Current Step
 
-ROUND 9, a repair of pull request 279's hosted CI under the Open PR
-Gate: the live scrub test removes vitest's colour escapes before it
-reads the summary, so it passes where `CI` is set (R-1048). Test code
-only; no production file.
+ROUND 1: claim F025, re-head the live review record, book F024's round
+9 and R-1048's resolution, record DECISION F025 D1, and land the first
+half of T001 — `packages/orchestration/pause_control.py`, the job and
+task pause control files and the mask arithmetic, with unit tests.
 
 ## Next Steps
 
-1. The reviewer gates this round, waits for the pull request's hosted CI
-   on the pushed commit, and merges pull request 279 at the Open PR Gate
-   when it is green.
-2. The next feature's first commit books this round's verdict and
-   resolves R-1048, then Rule A5 claims the next feature.
+1. T001's second half: the pause at the linear runner's and the cycle
+   executor's safe points and ready sets — park, relaunch, stop beats
+   pause, the deadline counting through a pause.
+2. T002: the channel commands with their audit, the CLI verbs, and live
+   fake-job tests of both scopes.
+3. T003: the paused states, the banner, the NowCard line, and the
+   end-to-end against an unpaused control run.
+4. The closure sequence.
 
 ## Risks
 
-Open findings: 2 — R-1008, owned by F285, and R-1048, owned by F024 and
-repaired by this round.
+A pause must never strand a job it cannot resume; the park writes the
+state before it archives the request. Open findings: 1 — R-1008, owned
+by F285.

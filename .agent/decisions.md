@@ -21326,3 +21326,85 @@ while the deterministic reduction counts are already pinned by `scrubSnapshots.t
 
 HOW TO REVERSE: delete `scrubLive.test.ts`, `tests/ui_server/test_timeline_scrub_live.py`,
 `brainPerfLedger` and its test, the `.agent/authored/f024-r5-perf*` files, and this paragraph.
+
+## DECISION F025 D1 — a pause is a control fact beside the stop, read at the stop's own safe points: a job pause parks the run as `paused` with a pause record and the process exits, a task pause is a mask of per-task control files that withholds the task and what depends on it, a stop beats a pause, and the relaunch is the resume (2026-09-25)
+
+CONTEXT: T5_F025.md asks for pause_job and pause_task with their resumes, taking effect before
+the next provider call while running calls finish, the process exiting after it persists the
+paused state and a relaunch resuming it, and forbids touching the kill switch's terminals, the
+checkpoint format and session mechanics. Measured at `49624d5c`: the kill switch
+(`packages/orchestration/safe_points.py`, F011) is a create-only `stop.json` under
+`control/jobs/<job_id>/`, reached only through `open_job_control_fd` and the `secure_fs`
+primitives, read by `should_stop` at the linear runner's safe points (before the episode, before
+each task, inside a task before each provider call through `run_pingpong`'s `stop_check`, and after
+each apply) and finished by `_stop_job` in `packages/orchestration/pingpong_job.py`, which puts the
+in-flight task back to `pending` with its recorded start tree; `stop_status` and `archived_signals`
+read every file of the job's `archive/` directory as a stop. `RunState.PAUSED` already exists and
+means a resumable halt: `run_job` sets it when `max_tasks` is reached with work pending, and
+`long_run_executor.TERMINAL_RUN_STATE` maps the operator-stop, budget, deadline and blocked
+terminals to it. `remedy job run`, `remedy do` and the UI's live fake job all run `run_job`, whose
+loop walks `job.tasks` in list order and whose `TaskEntry` has no dependency field; only
+`long_run_executor.run_cycles`, reached from `remedy job resume` with more than one cycle and from
+the mission loop, honours dependencies, through `ready_tasks`, which withholds the blocked and the
+awaiting seeds with `dag_schedule.blocked_downstream`. The deadline budget counts from the job's
+persisted `first_running_at`, which a relaunch restores and never re-stamps. A provider session
+lives inside one repair loop (docs/system/session-resume-v1.md), no production adapter reports
+`supports_resume`, and nothing resumes one across processes. The write door may not import
+`subprocess` (`TestCommandDoorImportGuard`), and the catalog id `job.resume` is taken by the
+checkpoint resume.
+
+CHOSEN: (1) THE MODULE is `packages/orchestration/pause_control.py`, beside the kill switch and
+through its anchored control-directory handle and the same `secure_fs` primitives, so a symlinked
+control area is refused and nothing is written outside it; `safe_points.py` is not edited. (2) THE
+JOB SCOPE is one create-only `pause.json` in the job's control directory, carrying a request id, a
+bounded reason and source and its time: a second pause returns the pending request unchanged, a
+pending pause can be withdrawn before a runner serves it, and a served or withdrawn request is
+archived under `pause_archive/` by its request id, never under the stop's `archive/`, whose reader
+would take it for a stop. (3) THE TASK SCOPE is one create-only control file per paused task under
+`paused_tasks/`, named by a digest of the task id and holding the id: publication cannot lose a
+concurrent writer's update the way a rewritten set could, pausing a paused task returns its
+existing entry, releasing a task that is not paused changes nothing and says so, and the mask is
+these files and is never copied into `job.json`, which a live runner rewrites. (4) THE MASK is one
+pure function over a plan and the paused ids: on the linear runner, which knows no dependency but
+list order, the first paused PENDING task and every pending task after it are withheld, so the
+tasks before it still run; on the cycle executor the paused pending tasks and their transitive
+dependents are withheld, which is the escalation's branch semantics; a paused id naming no pending
+task withholds nothing and is reported as inert. (5) THE SEMANTICS TABLE, one test per row once
+its round lands: a provider call already running finishes and the pause takes effect at the next
+safe point, the in-flight task going back to `pending` with its start tree as a stopped task does;
+nothing withheld is dispatched while everything not withheld runs on; a run whose next work is all
+withheld PARKS — the existing `paused` state, a `pause` record on the job naming the scope, the
+request, its reason and source and the withheld tasks, one `job_paused` event, the request
+archived, and the process exits with nothing left waiting; wall clock keeps counting, so a
+deadline that passes during a pause is spent and the first safe point after the relaunch stops on
+it with the budget's own reason; a stop beats a pause at every safe point, a stop requested on a
+parked job ends it as `stopped` at the relaunch instead of resuming it, and the superseded job
+pause is archived as such; the relaunch is the resume — `remedy job run` on a parked job passes
+every gate a run already has, so a pause never bypasses an approval or a pending decision, then
+lifts the pause record, writes one `job_resumed`, recomputes the mask and continues from the first
+pending task; releasing a task lets a live runner dispatch it at its next ready-set computation
+and a parked job at its relaunch; pausing a job whose state is completed, failed or cancelled is
+refused naming that state, and pausing a task the plan does not hold is refused naming it. (6) A
+PAUSE BY THE OPERATOR is told apart from the task cap's pause by the `pause` record, not by a new
+state, and the words the UI shows are read from that record's source. (7) THE EVENTS `job_paused`,
+`job_resumed`, `task_paused` and `task_resumed` join `EVENT_NAMES` in the rounds whose writers emit
+them: the job pair by the runner, the task pair by the commands that change the mask. (8)
+SESSIONS: a task a pause sent back to `pending` starts a fresh provider session at the relaunch,
+because a session ends with its repair loop and nothing carries one across processes; the F106
+evidence fields record that as they already do, and nothing about sessions is rebuilt. (9) THE
+ROUNDS: this round lands (1) to (4) with their unit tests; the runners' safe points and ready sets
+follow; the channel commands, whose share of a job-scope resume a later decision rules because the
+door starts no process, come with the CLI verbs in T002.
+
+ALTERNATIVES: a new job state for an operator pause, rejected because every reader of `RunState`
+and the job digest goldens would change for a distinction the pause record carries; a paused
+process that waits for its resume, rejected by the orchestrator brief; the mask as a field of
+`job.json`, rejected because a live runner rewrites that file and a command writing it would race
+it; one `paused_tasks.json` set, rejected because two concurrent writers of a rewritten set lose an
+update; running the linear plan's later tasks past a paused one, rejected because that plan
+declares no dependency and a later task may be built on an earlier one's work; widening
+`should_stop` to read the pause, rejected because it is the kill switch's own check and T5_F025.md
+forbids touching it.
+
+HOW TO REVERSE: delete `packages/orchestration/pause_control.py`, its tests, the wiring later rounds
+add to the runners and the door, and this paragraph.

@@ -1,30 +1,28 @@
-# Context — F024 Phase timeline with scrubber
+# Context — F025 Pause/resume (global & per node)
 
 ## Active Branch
-feature/f024-phase-timeline-scrubber, cut from `main` at `1bb3a35d`
-(the merge commit of pull request 278, F023 Semantic zoom L0–L3).
+feature/f025-pause-resume, cut from `main` at `49624d5c`
+(the merge commit of pull request 279, F024 Phase timeline with scrubber).
 
 ## Scope
-F024 (Tier 5): the phase timeline with its scrubber — the phase mapping
-table, boundary goldens and sub-glyph extraction (T001), snapshot
-memoization with the prefix-equality property test (T002), and the bar,
-scrubber, LIVE toggle, banner, catch-up, keyboard and end-to-end (T003),
-as `docs/roadmap/features/T5_F024.md` specifies, with
-`docs/ui/design_reference/ux_spec.md` §12 authoritative on the visuals.
+F025 (Tier 5): pause and resume at two scopes — the control kinds, the
+paused states and the safe-point and ready-set integration (T001), the
+write-channel commands with their audit, the CLI verbs and live fake-job
+tests (T002), and the UI states, banner, NowCard line and the end-to-end
+(T003), as `docs/roadmap/features/T5_F025.md` specifies, with
+`docs/ui/design_reference/` authoritative on the visuals.
 
 ## Do not touch
-The reducer, the event schema, and story-replay narration (F039).
+The kill switch's terminals, the checkpoint format, and session mechanics.
 
 ## Active assumptions
-- Phases begin at their first marker and only move forward; Finalized
-  is derived from the reducer's task states because no completion event
-  exists (DECISION F024 D1).
+- A pause is a control fact beside the stop, read at the stop's safe
+  points; a parked job is `paused` with a pause record and its process
+  exits; the relaunch is the resume (DECISION F025 D1).
 
 ## Constraints
-- UI checks run through the pytest nodes that wrap the toolchain in the
-  primary checkout: eslint in `tests/ui_contracts/test_ui_lint.py`, tsc in
-  `tests/ui_server/test_dashboard_contract.py`, and vitest in
-  `tests/orchestration/test_test_runner.py`.
+- Every pytest run in a round is targeted and serial; the resource and
+  pytest budgets of `tests/regression/test_resource_safety.py` apply.
 - A round touching `docs/roadmap/**` also gates `tests/docs/`.
 - Destructive verification runs only inside a disposable git worktree under
   `.remedy-wt/`, never in the primary checkout.

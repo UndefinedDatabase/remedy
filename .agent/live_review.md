@@ -1,30 +1,31 @@
-# Live Review — F024 Phase timeline with scrubber
+# Live Review — F025 Pause/resume (global & per node)
 
-> Round-by-round review record, re-headed at the F024 claim per
-> docs/agents/planner_reviewer_prompt.md §1. The heading this replaces named F023, whose STATUS
-> line went `[x]` at `ebccd40c` and whose pull request 278 merged into `main` at the reviewer's
-> Open PR Gate under docs/agents/self_drive_protocol.md, as `1bb3a35d`, after both hosted CI jobs
-> of run 36091023382 ended `success`. `ebccd40c` is the second parent of `1bb3a35d`. F023's round
-> 10, its closing round, was reviewed after its own handback, so its gate entry is appended at the
-> end of this record by F024's claim. Only the heading, this paragraph and the Steps section below
-> are rewritten; everything from the Findings heading to the end of the file as it stood at
-> `1bb3a35d` is carried forward BYTE-IDENTICAL, and finding ids continue the monotonic R-XXXX
-> series across the re-head. The open set at `1bb3a35d`, computed with `open_finding_ids` from
-> `scripts/rotate_live_review.py`, is 1 by distinct id — R-1008 — and F285 owns it; F024 owns
-> whatever it registers for its own scope.
+> Round-by-round review record, re-headed at the F025 claim per
+> docs/agents/planner_reviewer_prompt.md §1. The heading this replaces named F024, whose STATUS
+> line went `[x]` at `953d5715` and whose pull request 279 merged into `main` at the reviewer's
+> Open PR Gate under docs/agents/self_drive_protocol.md, as `49624d5c`, after a CI repair round
+> (F024's round 9, finding R-1048) and after both hosted CI jobs of run 36107489474 ended
+> `success`. `7317555a` is the second parent of `49624d5c`. F024's round 9 was reviewed after its
+> own handback, so its gate entry and R-1048's resolution are appended at the end of this record
+> by F025's claim. Only the heading, this paragraph and the Steps section below are rewritten;
+> everything from the Findings heading to the end of the file as it stood at `49624d5c` is
+> carried forward BYTE-IDENTICAL, and finding ids continue the monotonic R-XXXX series across the
+> re-head. The open set at `49624d5c`, computed with `open_finding_ids` from
+> `scripts/rotate_live_review.py`, is R-1008, which F285 owns, and R-1048, which F024 owns and
+> which the resolution appended by this claim closes; F025 owns whatever it registers for its own
+> scope.
 
 ## Steps
 
-THE ORDER BELOW IS T5_F024.md's Task slicing, pure modules first. R1 claims F024, re-heads this
-record, books F023's round 10, and lands T001: `phaseMapping.ts` under
-`apps/ui/src/components/timeline/`, the phase mapping table over the measured ledger writers, the
-phase boundaries of any prefix and the sub-glyph extraction, with its vitest goldens on fixture
-ledgers and the demo recording, the guard `tests/ui_contracts/test_phase_mapping.py`, and DECISION
-F024 D1. T002 follows: snapshot memoization every 200 seq with its memory cap, and the property
-test that the state at any fuzzed position equals a fresh reduction of that prefix. T003 then
-lands the bar, the scrubber, the LIVE toggle with its SCRUBBED banner and capped catch-up, the
-keyboard, and the end-to-end on a live fake job and the demo recording. Every round's handback
-states the open set by distinct id.
+THE ORDER BELOW IS T5_F025.md's Task slicing, the control protocol first. R1 claims F025,
+re-heads this record, books F024's round 9 with R-1048's resolution, records DECISION F025 D1, and
+lands the first half of T001: `packages/orchestration/pause_control.py`, the pause control files
+of both scopes and the mask arithmetic, with its unit tests. T001's second half wires the pause
+into the linear runner's and the cycle executor's safe points and ready sets, with a stop beating
+a pause and the deadline counting through one. T002 adds the channel commands, their audit and
+the CLI verbs, with live fake-job tests of both scopes. T003 draws the paused states, the banner
+and the NowCard line, and ends with the end-to-end whose final state equals an unpaused control
+run's. Every round's handback states the open set by distinct id.
 
 ## Findings
 DECISION F085 D5, applied at da47ee40, closes "The R44 block is the first measured under this
@@ -433,3 +434,7 @@ Gate: F024 R7 — the F024 round 7 entry: the closure sequence's evidence half, 
 Gate: F024 R8 — the F024 round 8 entry, THE CLOSING ROUND: the booking of round 7, the ledger rotation, the STATUS flip with its README pins, and the pull request. VERDICT PASS, NO DEVIATION DECLARED. Re-derived over `59ee84e4`..`953d5715` by the planner and reviewer of F024's first and second sessions, whose own runs produced every reading below, and booked by round 9's first commit. THE RANGE IS 4 COMMITS in the block's order C1 to C4, at `f5d5e214` 354, `19ef0f7d` 9, `e069725f` 20 and `953d5715` 222 insertions by `git show --numstat`, each under the 500-line cap, each single-parent and each carrying the ordered trailer. THE TRANSPORT PROOF IS FILE IDENTITY: at `953d5715` the ledger, its archive, the plan, `README.md` and `docs/roadmap/STATUS.md` read byte-equal to the reviewer's simulated tree `.remedy-wt/f024-r8-sim`, and the six `.agent/authored/f024-r8-*` copies equal the reviewer's block and payloads byte for byte, the block's sha256 beginning `5b07351a`. THE ROTATION moved 10 gate records, F023's rounds 1 to 10, and 0 finding pairs, the ledger going from 311161 to 292216 bytes and the archive from 4993265 to 5012210, and the open set by distinct id reads R-1008 alone at `59ee84e4` and at `953d5715`. THE CLOSURE: at `953d5715` F024's STATUS line reads `[x]` once, no line reads `[~]`, `docs/roadmap/STATUS.md` holds 102 accepted lines as the README says, and the first session's own run of `tests/docs/`, the rotation and integrity tests and the golden path read `413 passed` with `integrity check --json` at `fail_count` 0. THE PULL REQUEST is 279, from `feature/f024-phase-timeline-scrubber` into `main`, open and not a draft. AFTER THE ROUND: hosted run `36103781836` on `953d5715` failed on Python 3.10 and on Python 3.12 in its `standard` stage at 1 failed and 13620 passed, the failure on both being `tests/ui_server/test_timeline_scrub_live.py::test_a_live_jobs_ledger_scrubs_to_exactly_each_prefix`; R-1048 below records it, and round 9 repairs it on the pull request's branch.
 
 - R-1048 — Low, THE LIVE SCRUB TEST READS VITEST'S SUMMARY WITH A PLAIN PATTERN, BUT VITEST COLOURS THAT SUMMARY WHEREVER THE `CI` VARIABLE IS SET, SO PULL REQUEST 279's HOSTED CI FAILS ON IT ON BOTH PYTHON VERSIONS. Raised by the planner and reviewer of F024's second session after the closure pull request's hosted run, having searched this record and its archive for `test_timeline_scrub_live` and `NO_COLOR` and found nothing. THE DEFECT, at `953d5715`: `test_a_live_jobs_ledger_scrubs_to_exactly_each_prefix` in `tests/ui_server/test_timeline_scrub_live.py` searches the vitest output for `Tests\s+(\d+) passed \((\d+)\)`, while vitest writes colour escapes between those words whenever the `CI` environment variable is set, as the hosted runner sets it. MEASURED: hosted run `36103781836` failed the node on both Python versions with `assert None` over output whose own summary reads 5 tests passed of 5; in the primary checkout at `953d5715` the node passes with `CI` unset and fails with `CI=true`, whose output then carries escape sequences. WHY LOW: the five live checks ran and passed and no product code is involved, but the hosted gate over pull request 279 cannot pass while it reads red. F024's OWN CODE: the test was added by `62f2330a`, F024's round 5. FIX: the test removes the colour escapes, each an escape byte, a bracket, digits and semicolons and a final `m`, from the output before it searches; with `CI=true` the node then passes, and the old line under `CI=true` fails with the hosted run's own assertion. Owner: F024.
+
+Gate: F024 R9 — the F024 round 9 entry, the CI repair of pull request 279 under AGENTS.md's Open PR Gate exception. VERDICT PASS, NO DEVIATION DECLARED. Written by the planner and reviewer of F024's second session after reading the committed range `953d5715`..`7317555a` bottom-up and re-deriving every reading below, and booked by F025's claim. THE RANGE IS 3 COMMITS in the block's order C1 to C3, at `48282621` 207, `7a3948e1` 2 and `7317555a` 125 insertions by `git show --numstat`, each under the 500-line cap, each single-parent and each carrying the ordered trailer. THE TRANSPORT PROOF IS FILE IDENTITY: every path the range changed up to `7a3948e1` reads there byte-equal to the reviewer's simulated tree `.remedy-wt/f024-r9-sim`, and the block copy equals the reviewer's block, whose sha256 the delegation named, `b0ee9700`; at `7a3948e1` `tests/ui_server/test_timeline_scrub_live.py` equals its `953d5715` bytes with the pair's FROM replaced by its TO, and nothing else. THE OPEN SET by distinct id reads R-1008 at `953d5715`, and R-1008 and R-1048 at `48282621`. THE TESTS: the reviewer's own run of the live scrub node and `tests/cli/test_golden_path.py` in the primary checkout at `7317555a`, with `CI=true` as the hosted runner sets it, read `43 passed` at exit 0; ruff over the test file read `All checks passed!`, and `integrity check --json` read all six checks `pass`. THE PROOF, run by the reviewer in a disposable worktree at `7a3948e1` with the round's probe: the unmutated file with `CI` unset read 1 passed at exit 0; the old line under `CI=true` read 1 failed at exit 1, the failing node being the one the hosted run failed; the new line under `CI=true` read 1 passed at exit 0; the file was restored byte-identical and the worktree removed. AFTER THE ROUND: hosted run `36107489474` on `7317555a` ended `success` on Python 3.10 and 3.12, and pull request 279 merged as `49624d5c`.
+
+Done: R-1048 — RESOLVED at F024 R9 by `7a3948e1`. `test_a_live_jobs_ledger_scrubs_to_exactly_each_prefix` in `tests/ui_server/test_timeline_scrub_live.py` now removes vitest's colour escapes from the output before it searches for the summary, so it reads the same counts whether or not `CI` is set. MEASURED BY THE REVIEWER in a disposable worktree at `7a3948e1`: under `CI=true` the old line fails with the hosted run's own assertion and the new line passes, and with `CI` unset the new line passes. The hosted run on `7317555a` passed on both Python versions.
