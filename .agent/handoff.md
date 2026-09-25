@@ -1,135 +1,130 @@
-# Handback — F025 Pause/resume (global & per node) · Round 4
+# Handback — F025 Pause/resume (global & per node) · Round 5
 
 ## Session
 
-SESSION 1 of feature F025 · round 4 · rounds so far 4
+SESSION 1 of feature F025 · round 5 · rounds so far 5
 
 Roughly a third of the context budget remained at the point this handback was written; the round
-booked round 3's PASS and resolutions, then landed T002 whole — the catalog, the CLI, the shared
-effects, the door and its audit, the docs, a 39-test CLI file, a 6-test live-door file and an
-8-mutation red-proof tool. One real conflict surfaced and was resolved: the catalog id `job.pause`
-collided with a word `tests/test_command_catalog.py`'s `TestDeletedCommands.DELETED` pinned as
-never-to-return from an unrelated F261 cleanup; removed with a docstring recording why (Deviations
-#2). One environment hazard was found and closed before it could run npm from inside this session:
-G5's fresh worktree makes `apps/ui/src/*` look newer than the primary checkout's already-built
-`dist/`, which the write door's own auto-build check reads as "stale" and tries to rebuild — the
-mutation tool now copies (not symlinks) a fresh `dist/` and sets `REMEDY_UI_NO_AUTO_BUILD=1` so
-that never fires (Deviations #6).
+booked round 4's PASS, repaired R-1051 and R-1052 against their own FIX clauses, then landed
+DECISION F025 D3 whole: the dashboard's `pause` object (U1), the client type and its normalization
+(U2), the graph's new `paused` node state with its treatment, mark, reducer cases and seed (U3-U6),
+and the two design-reference rows (U7). No conflict surfaced against the record; two existing,
+unlisted files needed touching to make D3 clause 2's own stated purpose true or to support a
+widened existing test — both are named in Deviations #1 and #2, with reasons.
 
 ## Range
 
-Review of 62e43ee88..HEAD
+Review of db496696..HEAD
 
 ## Commits
 
-### bb522981e F025 R4 C1a: copy round 4 block and payloads
+### b6bce17fa F025 R5 C1a: copy round 5 block and payloads
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f025-r4-block.md | +208/-0 | copy of this round's block, verbatim (`shutil.copyfile`) |
-| .agent/authored/f025-r4-d2.md | +49/-0 | copy of the d2.md payload (DECISION F025 D2) |
-| .agent/authored/f025-r4-ledger.md | +6/-0 | copy of the ledger.md payload |
-| .agent/authored/f025-r4-plan.md | +33/-0 | copy of the plan.md payload |
-| .agent/authored/f025-r4-q4.md | +25/-0 | copy of the q4.md payload (operator question Q4) |
+| .agent/authored/f025-r5-block.md | +192/-0 | copy of this round's block, verbatim (`shutil.copyfile`) |
+| .agent/authored/f025-r5-d3.md | +47/-0 | copy of the d3.md payload (DECISION F025 D3) |
+| .agent/authored/f025-r5-ledger.md | +6/-0 | copy of the ledger.md payload (R-1051, R-1052) |
+| .agent/authored/f025-r5-plan.md | +34/-0 | copy of the plan.md payload |
+| .agent/authored/f025-r5-slip.txt | +1/-0 | copy of the slip.txt payload |
 
-321 insertions by `git show --numstat` — the block's stated expectation (this block's own line
-count, 208, plus 113: 49+6+33+25 = 113) — matches exactly.
+280 insertions by `git show --numstat` — the block's stated expectation (this block's own line
+count, 192, plus 88: 47+6+34+1 = 88) — matches exactly.
 
-### c99a9a5bc F025 R4 C1b: book round 3, resolve R-1049 and R-1050, record D2 and operator question Q4
+### bc50b0a8b F025 R5 C1b: book round 4, register R-1051 and R-1052, record D3
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/decisions.md | +49/-0 | d2.md appended (bytes to bytes) |
+| .agent/decisions.md | +47/-0 | d3.md appended (bytes to bytes) |
 | .agent/live_review.md | +6/-0 | ledger.md appended (bytes to bytes) |
-| .agent/operator_questions.md | +25/-0 | q4.md appended (bytes to bytes) |
-| .agent/plan.md | +11/-13 | rewritten whole to the plan.md payload |
+| .agent/plan.md | +13/-12 | rewritten whole to the plan.md payload |
+| .agent/prose_slips.md | +1/-0 | slip.txt appended (bytes to bytes) |
 
-49/0, 6/0, 25/0, 11/13 — matches the block's stated expectation exactly.
+47/0, 6/0, 13/12, 1/0 — matches the block's stated expectation exactly. `open_finding_ids` over
+`.agent/live_review.md` at this commit reads `['R-1008', 'R-1051', 'R-1052']`, the reviewer's own
+simulated reading.
 
-### 9c8aea963 F025 R4 C2: the shared pause/unpause effects and the task-pause event registries
+### 510c5f01f F025 R5 C2: R-1051's FIX — withdraw a pending pause before answering parked
 | Path | +/- | Reason |
 |---|---|---|
-| packages/orchestration/pause_control.py | +157/-0 | new S6 section (P2): `pause_job_command`/`unpause_job_command`, `_refuse_unknown_task`, `_write_task_paused_event`/`_write_task_resumed_event` (each an inline literal `RunLogWriter.log(...)` call, D2 clause 3), `_job_state_str`/`_job_task_ids` helpers, `_TERMINAL_STATES`/`_PARKED_STATE`; both new functions and `PauseControlError` etc. added to `__all__` |
-| packages/orchestration/event_names.py | +2/-0 | `task_paused`/`task_resumed` join `EVENT_NAMES` (P5), same commit as their writer so no declared name is ever unused |
-| apps/ui/src/api/humanizeCatalog.ts | +2/-0 | `task_paused`/`task_resumed` entries (P5), alphabetically placed |
+| packages/orchestration/pause_control.py | +18/-8 | `unpause_job_command`'s job-scope branch reordered: a pending job pause is withdrawn FIRST, whatever the state; only once nothing is pending does state `paused` WITH a non-empty `job.pause` answer `parked`; docstring rewritten to match |
+| tests/cli/test_job_pause.py | +38/-0 | NEW `TestR1051WithdrawBeforeParked`: a new pause on an already-parked job now answers `withdrawn` with nothing left pending; a job the task cap parked (`job.pause` empty) answers `not_paused` |
 
-161 insertions, under the cap. Ordered ahead of C3 (the catalog and CLI): job_pause_cmd.py imports
-`pause_job_command`/`unpause_job_command` from this commit — see Deviations #1.
+56 insertions, under the cap. 41/41 tests pass in this file after the change (39 existing + 2 new).
 
-### 706f66aff F025 R4 C3: job.pause and job.unpause in the catalog and the CLI
+### 58ddd1838 F025 R5 C3: R-1052's FIX — task_paused and task_resumed exactly once by the ledger
 | Path | +/- | Reason |
 |---|---|---|
-| apps/cli/command_catalog.py | +42/-0 | two `CommandEntry` rows (P1): `job.pause` (job_id, --task, --reason, --source, --json) and `job.unpause` (job_id, --task, --source, --json), both `write_metadata`, exit_codes (0,1,2,3); both added to `UI_EXPOSED_COMMANDS` with a comment citing DECISION F025 D2 |
-| apps/cli/commands/job_pause_cmd.py | +160/-0 | NEW FILE (P3), modelled on `job_stop_cmd.py`: `_resolve_job_id` (validate + prefix lookup, mirrors job_stop's inline logic), `_cmd_job_pause`/`_cmd_job_unpause` calling the C2 effects, `COMMAND_HANDLERS` for both ids |
-| apps/cli/commands/__init__.py | +2/-1 | `job_pause_cmd` imported and folded into `collect_all_handlers`'s module tuple |
-| tests/test_command_catalog.py | +6/-1 | `TestDeletedCommands.DELETED` drops `"job.pause"`, with a docstring paragraph recording why (Deviations #2) |
-| tests/cli/test_job_refusal_envelope.py | +3/-1 | `_LOOKUP_CALLERS` gains `"job_pause_cmd.py": 1`, for its own `lookup_job_id` call site |
-| tests/ui_server/test_command_channel.py | +4/-3 | `TestUiExposedCommands`'s exact-set assertion gains `job.pause`/`job.unpause` |
+| packages/orchestration/pause_control.py | +48/-10 | new `_task_pause_event_exists` (mirrors `pingpong_job._job_paused_event_exists` exactly, True/False/None); `pause_job_command`'s task branch checks the LEDGER by request id, not the control-file entry; `unpause_job_command`'s task branch peeks the entry via `paused_tasks`, writes the event BEFORE releasing it, then releases; both `_write_task_*_event` docstrings rewritten |
+| tests/cli/test_job_pause.py | +69/-0 | NEW `TestR1052EventsAreExactlyOnceByTheLedger`: a `task_paused` write that fails once is written by the retry, exactly once; a `task_resumed` write that fails leaves the task paused, the retry writes it once and releases |
 
-217 insertions, under the cap. Two tests stay red until their own commits land (see the commit
-message, quoted in Verification): the exit-codes guide (C5) and the door's per-command dispatch
-loop (C4).
+117 insertions, under the cap. 43/43 tests pass in this file after the change (41 + 2 new).
 
-### ce55bb347 F025 R4 C4: the door dispatches job.pause and job.unpause
+### 18111e396 F025 R5 C4: U1 — the dashboard's pause object (DECISION F025 D3 clause 1)
 | Path | +/- | Reason |
 |---|---|---|
-| packages/orchestration/ui_server.py | +100/-0 | a clause each for `job.pause`/`job.unpause` in `_handle_command_submission`, in D18's write order (effect, audit, publication); `_dispatch_job_pause`/`_dispatch_job_unpause` (P4); `JOB_PAUSE_COMMAND_ID`/`JOB_UNPAUSE_COMMAND_ID`/`COMMAND_PAUSE_STATE_MESSAGE` constants; a `refused` outcome takes 409/`rejected_state`, a raised effect keeps 500/`rejected_effect` |
-| tests/ui_server/test_command_channel.py | +16/-0 | `DOOR_METHODS` gains the two dispatch methods, `ALLOWED_IMPORTS` gains the two `pause_control` names (each commented `# F025 D2`); the per-command dispatch-answer loop gains `job.pause`/`job.unpause` branches |
-| tests/orchestration/import_reachability_allowlist.txt | +1/-0 | `apps.cli.commands.job_pause_cmd`, reachable from the job path entry point since C3 registered it — see Deviations #5 |
+| packages/orchestration/ui_server.py | +37/-0 | new `_build_pause_section(job)`: `record` (job's own pause record while `paused`, else `{}`), `requested` (`pause_control.pause_requested` is not None), `paused_task_ids` (paused AND `status == "pending"` tasks, in plan order — a done task's pause omitted), `error` (`""`, or a caught `PauseControlError`/`StopControlError`'s text, the other three then empty); wired into `_build_dashboard`'s return dict as `"pause"` |
+| tests/ui_server/test_dashboard_pause.py | +135/-0 | NEW FILE (T2): `record` while parked / empty otherwise; `requested` true/false against a real control root; `paused_task_ids` omits a done task and keeps plan order; both control-error paths report `error` without raising, the other three fields empty |
 
-117 insertions, under the cap.
+172 insertions, under the cap. 8/8 tests pass, all new.
 
-### f85426246 F025 R4 C5: job pause/unpause in the exit-codes guide
+### b24ca9ae0 F025 R5 C5: U2 to U6 — the client pause type, the paused node state, its treatment, mark, reducer cases and seed
 | Path | +/- | Reason |
 |---|---|---|
-| docs/guides/exit-codes.md | +2/-0 | two rows in the per-command table (P6): `remedy job pause` and `remedy job unpause`, both exit codes 3 (above the floor), beside `remedy job stop` |
+| apps/ui/src/api/types.ts | +15/-1 | new `RemedyPause` interface (`record`, `requested`, `pausedTaskIds`, `error`); `RemedyDashboard` gains `pause: RemedyPause` (non-optional) |
+| apps/ui/src/api/remedyApi.ts | +19/-1 | new `normalizePause(raw)`, a payload without `pause` normalizes to the "not paused" shape; wired into both `RemedyDashboard` builders (`normalizeDashboardPayload` and `normalizeApiFailure`) |
+| apps/ui/src/api/remedyApi.test.ts | +35/-0 | three new tests: without a `pause` section, with all four fields read (snake→camel `pausedTaskIds`), and an error read with the other three kept empty |
+| apps/ui/src/components/graph/brainOntology.ts | +16/-2 | `NodeState` gains `"paused"`; `SEED_STATUS_STATE_TABLE` gains `paused: "paused"` |
+| apps/ui/src/components/graph/brainReducer.ts | +54/-0 | `onTaskPaused` (births like `task_needs_decision`, skips a task already `pass`/`fail`), `onTaskResumed` (paused→planned, no birth, touches only a currently-`paused` node), `onJobPaused` (in-progress task→planned as a stop does; in-progress RUN→`paused`, not `blocked`); four new `applyBrainEvent` cases, none counted in `ignored` |
+| apps/ui/src/components/graph/brainReducer.test.ts | +58/-0 | new `describe` block: the four cases, never-overwrite-pass, no-op on a non-paused resume, not-ignored, and a replayed `task_paused` seq stays identical (===) |
+| apps/ui/src/components/graph/brainReducer.fixtures.ts | +3/-0 | `SEED_STATUS_CASES` (Table 1's own fixture) gains `["paused", "paused"]` — see Deviations #2 |
+| apps/ui/src/components/graph/brainView.ts | +17/-5 | `dashboardBrainSeeds` gains an optional `pausedTaskIds` parameter (default `[]`, every existing call site unchanged); `BRAIN_FILTER_STATES.planned` gains `"paused"` |
+| apps/ui/src/components/graph/brainView.test.ts | +17/-0 | new tests: a named task seeds `paused` regardless of its dashboard status word; no second argument seeds exactly as before; `BRAIN_FILTER_STATES.planned` groups `paused` with `planned` |
+| apps/ui/src/components/graph/BrainGraphStage.tsx | +4/-1 | the seed call now passes `dashboard.pause.pausedTaskIds` — see Deviations #1 |
+| apps/ui/src/components/graph/renderers/glyphPaths.ts | +14/-2 | `StateMark` gains `"pause"`; `STATE_MARK_PATHS.pause` — two rectangles, x 17-19 and 21-23, y 1.5-7.5 (the status dot's own box), a visible 2-unit gap |
+| apps/ui/src/components/graph/renderers/nodeStates.ts | +19/-0 | `NODE_STATE_TREATMENTS.paused` — the planned node's own fill/ink/line/size/no-halo/no-pulse/no-branch-glow, plus `marks: [ring, pause]`; legend name "Paused", placed right after `planned` |
+| apps/ui/src/components/graph/renderers/nodeStates.test.ts | +23/-7 | `ALL_STATES`/`FILL_TOKENS` widened; the ink/line test widened to name `paused` alongside `planned`; the token list gains `--remedy-orange-400`; the branch-glow object literal widened; a new dedicated `paused` treatment/mark test |
+| apps/ui/src/components/graph/renderers/glyphConformance.ts | +11/-1 | `BINDING_STATE_MARKS.paused = ["ring", "pause"]` (keyed right after `planned`, matching `nodeStateOrder()`); `BINDING_MARK_TOKENS.pause` |
+| apps/ui/src/components/graph/renderers/glyphConformance.test.ts | +35/-10 | new pause-mark probe-point test; the conformance-probe tally test's counts widened for 8 states/4 marks (240 probes, was 144); a new "paused task present" probe test; the device-pixel placement test's `fail` column corrected (shifted from 4 to 5 by `paused`'s insertion) |
+| apps/ui/src/components/graph/renderers/paintNode.test.ts | +11/-0 | new test: an outlined pause mark, in its orange, painted on a `paused` node, alongside its ring |
+| apps/ui/src/components/graph/runDetailModel.ts | +1/-0 | `STATE_WORDS.paused = "Paused"` |
+
+352 insertions, under the cap. `tsc --noEmit`, `eslint` over every touched file, and a vitest sweep
+of 66 test files / 1226 tests (1 pre-existing unrelated skip file) all passed clean before this
+commit.
+
+### e07ebddd9 F025 R5 C6: U7 — the pause mark's row and the assumption-log entry (DECISION F025 D3)
+| Path | +/- | Reason |
+|---|---|---|
+| docs/ui/design_reference/assets_spec.md | +1/-0 | §4's table gains the pause mark's row, in its existing 6-column shape, beside `vetoed` |
+| docs/ui/design_reference/assumption_log.md | +1/-0 | one row, last, in its 7-column shape, citing DECISION F025 D3 — the reference names no paused state, token or icon |
 
 2 insertions, under the cap.
 
-### 520643eb8 F025 R4 C6: test job.pause and job.unpause through the CLI (T1)
+### fe08bb772 F025 R5 C7: the round's red-proof mutation tool
 | Path | +/- | Reason |
 |---|---|---|
-| tests/cli/test_job_pause.py | +407/-0 | NEW FILE (T1), modelled on `test_job_stop.py`: every P2 outcome through the handlers with `--json`, idempotence, the task-pause/task-release events written exactly once (and not at all on a repeat), exit 2/3, exit 1 with the named state/task, the parked-job relaunch line, and catalog/handler/parser wiring |
+| .agent/authored/f025-r5-mutations.py | +308/-0 | m1-m2 (R-1051, `pause_control.py`), m3-m4 (R-1052, `pause_control.py`), m5-m6 (U1, `ui_server.py`) run `python3 -B -m pytest` over T1+T2 from the worktree root; m7-m9 (the reducer, `brainReducer.ts`), m10 (the treatment/mark, `nodeStates.ts`), m11 (the seed, `brainView.ts`) run vitest over the round's six changed `.test.ts` files by the f024-r1-mutations.py route; each FROM verified single-occurrence before commit and re-verified in a disposable pre-commit worktree (see External actions) |
 
-407 insertions, under the cap. 39 tests collected (confirmed under G3).
+308 insertions, under the cap.
 
-### 1c38cb643 F025 R4 C7: test job.pause and job.unpause through the real door, live (T2)
-| Path | +/- | Reason |
-|---|---|---|
-| tests/ui_server/test_pause_door_live.py | +499/-0 | NEW FILE (T2): `TestJobScopeLiveDoor` (L1) and `TestTaskScopeLiveDoor` (L2) run a fake-provider job in its own process (the `test_job_stop_integration.py` live-runner pattern) with an in-process UI server sharing `REMEDY_DATA_DIR`, driven through real HTTP; `TestRefusalsLiveDoor` (L3) and `TestWithdrawLiveDoor` (L4) need no live runner |
-
-499 insertions — under the 500 cap by one line; the module docstring was rewrapped tighter to fit
-after an initial draft measured 501 (caught before committing, not a deviation). 6 tests collected
-(confirmed under G3).
-
-### 882154601 F025 R4 C8: the round's red-proof mutation tool
-| Path | +/- | Reason |
-|---|---|---|
-| .agent/authored/f025-r4-mutations.py | +307/-0 | the G5 tool: m1 (ui_server.py), m2–m6 (pause_control.py), m7 (ui_server.py), m8 (job_pause_cmd.py), each a single-occurrence FROM/TO pair verified before this commit; symlinks `apps/ui/node_modules` and COPIES (not symlinks) a freshly-mtimed `apps/ui/dist` into the worktree, and sets `REMEDY_UI_NO_AUTO_BUILD=1` for every test run, so the live-runner tests' `start_ui_server` never has a reason to attempt an npm build (Deviations #6) |
-
-307 insertions, under the cap.
-
-### (this commit) F025 R4 C9: rewrite handoff for round 4
+### (this commit) F025 R5 C8: rewrite handoff for round 5
 | Path | +/- | Reason |
 |---|---|---|
 | .agent/handoff.md | measured after this commit exists, in the final reply | this handback |
 
 ## External actions
 
-- `git worktree add --detach .remedy-wt/f025-r4-mut-dryrun HEAD` (at C7's HEAD `1c38cb643`, before
-  the mutation tool was committed) — succeeded; a pre-commit dry run of the DRAFT tool
-  (`.remedy-wt/f025-r4-worker/mutations_draft.py`, never committed under that name) to prove it
-  before C8. Its FIRST dry run built a real `apps/ui/dist` via npm inside the worktree — the
-  environment hazard Deviations #6 describes — caught here, before any committed artifact existed.
-- `git worktree remove --force .remedy-wt/f025-r4-mut-dryrun` — succeeded, after that first dry run.
-- `git worktree add --detach .remedy-wt/f025-r4-mut-dryrun HEAD` — succeeded, a second dry run
-  after the fix (symlinked node_modules, copied+bumped dist, `REMEDY_UI_NO_AUTO_BUILD=1`): clean,
-  no npm invoked, all mutations caught.
-- `git worktree remove --force .remedy-wt/f025-r4-mut-dryrun` — succeeded.
-- `git worktree add --detach .remedy-wt/f025-r4-mut 882154601` (C8's HEAD) — succeeded, for G5's
-  one official run against the committed tool.
-- `git worktree remove --force .remedy-wt/f025-r4-mut` — succeeded; `git worktree prune` —
+- `git worktree add --detach .remedy-wt/f025-r5-mutdraft HEAD` (at C6's HEAD `e07ebddd9`, before the
+  mutation tool was committed) — succeeded; a pre-commit dry run of the DRAFT tool
+  (`.remedy-wt/f025-r5-worker/f025-r5-mutations.py`, copied to `.agent/authored/` only after this
+  proved clean) — all 11 mutations caught, all restores byte-identical, both controls green.
+- `git worktree remove --force .remedy-wt/f025-r5-mutdraft` — succeeded.
+- `git worktree prune` — succeeded (no-op).
+- `git worktree add --detach .remedy-wt/f025-r5-mut fe08bb772` (C7's HEAD) — succeeded, for G5's one
+  official run against the committed tool.
+- `git worktree remove --force .remedy-wt/f025-r5-mut` — succeeded; `git worktree prune` —
   succeeded (no-op); `git worktree list` afterward shows only the primary checkout and the
   pre-existing worktrees named in constraint 5 — nothing new left behind.
-- `git push origin feature/f025-pause-resume` — runs immediately after this commit (C9); its real
+- `git push origin feature/f025-pause-resume` — runs immediately after this commit (C8); its real
   outcome is reported in the final reply, since the handoff commit precedes the push.
 
 No `gh pr create`, no `gh pr merge`, no other `gh` command this round (constraint 4: nothing is
@@ -152,142 +147,166 @@ $ git status --porcelain
 $ git branch --show-current
 feature/f025-pause-resume
 $ git log --oneline -1
-62e43ee88 F025 R3 C7: rewrite handoff for round 3
+db4966962 F025 R4 C9: rewrite handoff for round 4
 ```
 
 ```
-$ (line count and sha256 of .remedy-wt/f025-r4/block.md, measured)
-line_count: 208
-sha256: 6040a772849c474245d517ffdb821f602a855fccb94fb939c4d8b0052c5fff07
+$ (line count and sha256 of .remedy-wt/f025-r5/block.md, measured)
+line_count: 192
+sha256: 20583aa153e709d677a87f571b18874ce40c7e5fc98a079db1349f3a60120d3c
 ```
 Matches both readings the delegation message gave exactly.
 
 ```
 $ git worktree list   (as found, before this round touched anything)
 ```
-Listed the primary checkout at `feature/f025-pause-resume`/`62e43ee88`, every `f015-*`/`f020-*`/
+Listed the primary checkout at `feature/f025-pause-resume`/`db4966962`, every `f015-*`/`f020-*`/
 `f023-*`/`f024-*`/`f025-*`/`f284-*` round worktree already on disk (including `f025-r1-dry`,
-`f025-r2-sim`, `f025-r3-sim`, `f025-r4-sim`), and four `job-*` worktrees — all left untouched all
-round.
+`f025-r2-sim`, `f025-r3-sim`, `f025-r4-sim`, `f025-r5-sim`), and four `job-*` worktrees plus ten
+`prunable` job worktrees under `/tmp` from a previous pytest run — all left untouched all round.
 
 ### PAYLOADS table
 ```
 $ (python: newline count, byte count, sha256 of each payload)
-d2.md     lines=49 bytes=4324 sha256=2a4cb7e224ede77e05fef88b9b4b990974724dc08ff1d3f38813c48c6758eca3
-ledger.md lines=6  bytes=4199 sha256=b906f739fdf6eb9ea9c96bfa4ee2f3e18848551d28ce606063a777eb2518879a
-plan.md   lines=33 bytes=1155 sha256=7f428ae0fb39c8e2c58850c33eabc559c653a91cf1f3321892c51de2f77d4061
-q4.md     lines=25 bytes=1845 sha256=ce9bf59e31b6ee4333d67336949806fd8a98793c44f080079c72ff948b090275
+d3.md     lines=47 bytes=4039 sha256=84e4d79e839c373c26d6c4e1552789afa14b65394a342569b6e628d5a47230e7
+ledger.md lines=6  bytes=6480 sha256=393efd0aae8dc5ad5867249528fc5d85c922639103bdc861f365881bc38294a2
+plan.md   lines=34 bytes=1236 sha256=b8918a99b856da122f1e8fdce542d554bb64ff7f83f4cddfd5f4ee445b451174
+slip.txt  lines=1  bytes=342  sha256=b606248040beff21fd81b78a8c1ca4726e7488c0a6b407f628533702d82274f1
 ```
 All 4 match the PAYLOADS table exactly (G1).
 
 ### G1 — transport
 ```
-$ (python: each committed .agent/authored/f025-r4-* copy, read via `git show bb522981e:<path>`,
+$ (python: each committed .agent/authored/f025-r5-* copy, read via `git show b6bce17fa:<path>`,
    compared byte for byte against its source)
-.agent/authored/f025-r4-block.md  == .remedy-wt/f025-r4/block.md  : True
-.agent/authored/f025-r4-d2.md     == .remedy-wt/f025-r4/d2.md     : True
-.agent/authored/f025-r4-ledger.md == .remedy-wt/f025-r4/ledger.md : True
-.agent/authored/f025-r4-plan.md   == .remedy-wt/f025-r4/plan.md   : True
-.agent/authored/f025-r4-q4.md     == .remedy-wt/f025-r4/q4.md     : True
+.agent/authored/f025-r5-block.md  == .remedy-wt/f025-r5/block.md  : True
+.agent/authored/f025-r5-d3.md     == .remedy-wt/f025-r5/d3.md     : True
+.agent/authored/f025-r5-ledger.md == .remedy-wt/f025-r5/ledger.md : True
+.agent/authored/f025-r5-plan.md   == .remedy-wt/f025-r5/plan.md   : True
+.agent/authored/f025-r5-slip.txt  == .remedy-wt/f025-r5/slip.txt  : True
 ```
 ```
-$ (bytes comparison: C1b's .agent/decisions.md vs 62e43ee8's bytes + d2.md)
-decisions match:  True
-$ (bytes comparison: C1b's .agent/live_review.md vs 62e43ee8's bytes + ledger.md)
-live_review match:  True
-$ (bytes comparison: C1b's .agent/operator_questions.md vs 62e43ee8's bytes + q4.md)
-operator_questions match:  True
-$ (bytes comparison: C1b's .agent/plan.md vs plan.md payload)
-plan match:  True
+$ (numstat comparison against the block's C1b table: decisions.md 47/0, live_review.md 6/0,
+   plan.md 13/12, prose_slips.md 1/0)
+all four match exactly
 ```
 ```
 $ open_finding_ids(text) from scripts/rotate_live_review.py, over C1b's .agent/live_review.md
-['R-1008']
+['R-1008', 'R-1051', 'R-1052']
 ```
 Matches the block's stated reading exactly.
 
 ### G2 — the code
 ```
-$ python3 -m ruff check .agent/authored/f025-r4-mutations.py apps/cli/command_catalog.py \
-  apps/cli/commands/__init__.py apps/cli/commands/job_pause_cmd.py \
-  packages/orchestration/event_names.py packages/orchestration/pause_control.py \
-  packages/orchestration/ui_server.py tests/cli/test_job_pause.py \
-  tests/cli/test_job_refusal_envelope.py tests/test_command_catalog.py \
-  tests/ui_server/test_command_channel.py tests/ui_server/test_pause_door_live.py
+$ python3 -m ruff check packages/orchestration/pause_control.py packages/orchestration/ui_server.py \
+  .agent/authored/f025-r5-mutations.py
 All checks passed!
 ```
 ```
-$ git diff --stat 62e43ee8 882154601 -- packages/orchestration/safe_points.py \
+$ git diff --stat db496696 fe08bb772 -- packages/orchestration/safe_points.py \
   packages/orchestration/pingpong_job.py packages/orchestration/pingpong_loop.py \
-  packages/orchestration/long_run_executor.py packages/common/secure_fs.py
+  packages/orchestration/long_run_executor.py apps/ui/src/styles/tokens.css \
+  docs/ui/design_reference/tokens.css docs/ui/design_reference/graph_spec.md
 (empty)
 ```
-Confirmed empty — none of the five forbidden files touched.
+Confirmed empty — none of the seven forbidden files/paths touched.
 ```
-$ git diff 62e43ee8 882154601 -- packages apps scripts | grep "^+" | grep -c "noqa: BLE001"
-0
+$ (python: count of lines added under packages/apps/scripts containing "noqa: BLE001")
+noqa BLE001 additions: 0
 ```
 ```
-$ git diff --name-only c99a9a5bc 882154601
-.agent/authored/f025-r4-mutations.py
-apps/cli/command_catalog.py
-apps/cli/commands/__init__.py
-apps/cli/commands/job_pause_cmd.py
-apps/ui/src/api/humanizeCatalog.ts
-docs/guides/exit-codes.md
-packages/orchestration/event_names.py
+$ git diff --name-only bc50b0a8b fe08bb772
+.agent/authored/f025-r5-mutations.py
+apps/ui/src/api/remedyApi.test.ts
+apps/ui/src/api/remedyApi.ts
+apps/ui/src/api/types.ts
+apps/ui/src/components/graph/BrainGraphStage.tsx
+apps/ui/src/components/graph/brainOntology.ts
+apps/ui/src/components/graph/brainReducer.fixtures.ts
+apps/ui/src/components/graph/brainReducer.test.ts
+apps/ui/src/components/graph/brainReducer.ts
+apps/ui/src/components/graph/brainView.test.ts
+apps/ui/src/components/graph/brainView.ts
+apps/ui/src/components/graph/renderers/glyphConformance.test.ts
+apps/ui/src/components/graph/renderers/glyphConformance.ts
+apps/ui/src/components/graph/renderers/glyphPaths.ts
+apps/ui/src/components/graph/renderers/nodeStates.test.ts
+apps/ui/src/components/graph/renderers/nodeStates.ts
+apps/ui/src/components/graph/renderers/paintNode.test.ts
+apps/ui/src/components/graph/runDetailModel.ts
+docs/ui/design_reference/assets_spec.md
+docs/ui/design_reference/assumption_log.md
 packages/orchestration/pause_control.py
 packages/orchestration/ui_server.py
 tests/cli/test_job_pause.py
-tests/cli/test_job_refusal_envelope.py
-tests/orchestration/import_reachability_allowlist.txt
-tests/test_command_catalog.py
-tests/ui_server/test_command_channel.py
-tests/ui_server/test_pause_door_live.py
+tests/ui_server/test_dashboard_pause.py
 ```
-Every path is inside constraint 3's set — the four widened existing files
-(`tests/test_command_catalog.py`, `tests/cli/test_job_refusal_envelope.py`,
-`tests/ui_server/test_command_channel.py`, `tests/orchestration/import_reachability_allowlist.txt`)
-are each named above with what they widened.
+Every path is inside constraint 3's set — the two files outside U2-U6's literal name list
+(`apps/ui/src/components/graph/BrainGraphStage.tsx`,
+`apps/ui/src/components/graph/brainReducer.fixtures.ts`) are each named above and in Deviations
+#1/#2 with what they widened and why.
 
-### G3 — the new tests, serially
+### G3 — the tests nearest the change, serially
 ```
 $ python3 -m pytest -q -p no:cacheprovider tests/cli/test_job_pause.py \
-  tests/ui_server/test_pause_door_live.py tests/ui_server/test_command_channel.py \
-  tests/ui_server/test_command_dispatch.py
-........................................................................ [ 38%]
-........................................................................ [ 77%]
-..........................................                               [100%]
-186 passed in 17.26s
+  tests/ui_server/test_dashboard_contract.py tests/ui_server/test_dashboard_pause.py \
+  tests/ui_contracts/test_node_glyph_tokens.py tests/ui_contracts/test_graph_legend_contract.py \
+  tests/ui_contracts/test_ui_lint.py tests/orchestration/test_test_runner.py
+........................................................................ [ 40%]
+........................................................................ [ 80%]
+...................................                                      [100%]
+179 passed in 10.26s
 REAL_EXIT=0
 ```
+No `SKIPPED` line in this run. The three named nodes confirmed PASSED (not skipped), individually:
 ```
-$ python3 -m pytest --collect-only -q tests/cli/test_job_pause.py
-39 tests collected
-$ python3 -m pytest --collect-only -q tests/ui_server/test_pause_door_live.py
-6 tests collected
+$ python3 -m pytest -q -p no:cacheprovider -rA \
+  "tests/ui_server/test_dashboard_contract.py::TestJobSummaryCommandContract::test_typescript_compiles" \
+  "tests/ui_contracts/test_ui_lint.py::test_the_ui_lint_passes_with_no_problem" \
+  "tests/orchestration/test_test_runner.py::TestVitestFrontendTestFoundation::test_vitest_passes"
+PASSED tests/ui_server/test_dashboard_contract.py::TestJobSummaryCommandContract::test_typescript_compiles
+PASSED tests/ui_contracts/test_ui_lint.py::test_the_ui_lint_passes_with_no_problem
+PASSED tests/orchestration/test_test_runner.py::TestVitestFrontendTestFoundation::test_vitest_passes
+3 passed in 5.70s
 ```
+(the tsc node, the eslint node and the vitest node respectively — PASSING, not skipped)
 
 ### G4 — the neighbours
 ```
-$ python3 .remedy-wt/f025-r4/run_sel.py /home/decodeux/Repos/remedy 8
-files 144 exit 0 wall 188 s
-SKIPPED [1] tests/regression/test_named_bugs.py:383: D3 quarantine (F252) ...
-SKIPPED [1] tests/regression/test_named_bugs.py:392: D3 quarantine (F252) ...
-SKIPPED [1] tests/regression/test_named_bugs.py:399: D3 quarantine (F252) ...
-SKIPPED [1] tests/test_agent_tooling.py:43: D12 quarantine (F252) ...
-SKIPPED [1] tests/test_install_smoke.py:175: install smoke is opt-in ...
-SKIPPED [1] tests/test_repair_context_reviewer_memory.py:257: UI source not found
-SKIPPED [1] tests/regression/test_named_bugs.py:295: D3 quarantine (F252) ...
-SKIPPED [1] tests/regression/test_named_bugs.py:312: D3 quarantine (F252) ...
-SKIPPED [1] tests/regression/test_named_bugs.py:321: D3 quarantine (F252) ...
-8766 passed, 9 skipped in 187.97s (0:03:07)
+$ python3 .remedy-wt/f025-r5/run_sel.py /home/decodeux/Repos/remedy 8
+files 143 exit 1 wall 196 s
+ERROR: React UI not built.  (×3, unrelated pre-existing fixture noise, see below)
+FAILED tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_a_refused_command_announces_nothing
+FAILED tests/ui_server/test_decisions_endpoint.py::TestDecisionsEndpoint::test_decisions_endpoint_returns_the_inbox_document
+FAILED tests/ui_server/test_command_dispatch.py::TestTaskPlanApprovalDispatchEffects::test_a_supplied_clarification_answer_is_recorded_as_human
+FAILED tests/ui_server/test_pause_door_live.py::TestTaskScopeLiveDoor::test_pause_withholds_one_task_and_unpause_releases_it
+SKIPPED [1] tests/regression/test_named_bugs.py:295 ... (×6, D3 quarantine F252)
+SKIPPED [1] tests/test_agent_tooling.py:43 ... (D12 quarantine F252)
+SKIPPED [1] tests/test_install_smoke.py:175 ... (opt-in)
+SKIPPED [1] tests/test_repair_context_reviewer_memory.py:257 ... (UI source not found)
+SKIPPED [1] tests/ui_contracts/test_graph_architecture.py:441/484 ... (×2, D3 quarantine F252)
+SKIPPED [1] tests/ui_contracts/test_ux_quality.py:507/543 ... (×2, D3 quarantine F252)
+4 failed, 9687 passed, 13 skipped, 1 warning in 196.03s (0:03:16)
 ```
-Exit 0, 0 failed. The block's own baseline named 6 `tests/cli/test_study_cmd.py` nodes as flaky
-under this specific combined-worker ordering at `62e43ee8`/`49624d5c8`; THIS run shows zero
-failures — an ordering-luck outcome of xdist's own work distribution, not a regression either way.
-Since nothing failed, the "re-run every failing node's FILE alone, serially" step has nothing to
-do: no bad node exists to re-run.
+Re-ran each failing node's FILE alone, serially, per the block's instruction:
+```
+$ python3 -m pytest -q -p no:cacheprovider -rfE tests/ui_server/test_pause_door_live.py
+......                                                                   [100%]
+6 passed in 7.48s
+$ python3 -m pytest -q -p no:cacheprovider -rfE tests/ui_server/test_command_channel.py
+........................................................................ [ 66%]
+.....................................                                    [100%]
+109 passed in 8.20s
+$ python3 -m pytest -q -p no:cacheprovider -rfE tests/ui_server/test_decisions_endpoint.py
+....                                                                     [100%]
+4 passed in 1.72s
+$ python3 -m pytest -q -p no:cacheprovider -rfE tests/ui_server/test_command_dispatch.py
+................................                                         [100%]
+32 passed in 2.46s
+```
+All four pass alone, serially — an xdist-worker-ordering flake class (the same category the block's
+own baseline names for six `tests/cli/test_study_cmd.py` nodes, just a different set of files this
+round), not a regression. See Deviations #3.
 ```
 $ python3 -m apps.cli.main integrity check --json
 {"check_count": 6, "checks": [
@@ -304,175 +323,145 @@ All six checks `pass`, `fail_count` 0.
 
 ### G5 — the red proofs
 ```
-$ git worktree add --detach .remedy-wt/f025-r4-mut 882154601
-$ python3 -B .agent/authored/f025-r4-mutations.py .../f025-r4-mut
-/.../apps/ui/node_modules: symlinked from the primary checkout
-/.../apps/ui/dist: copied from the primary checkout, mtimes bumped +60s
-control (before): unmutated control run -- exit=0 failed=0 failing_node_ids=[(none)]
-m1: the door's pause ignores args.task and always pauses the job -- exit=1 failed=2 failing_node_ids=[tests/ui_server/test_pause_door_live.py::TestTaskScopeLiveDoor::test_pause_withholds_one_task_and_unpause_releases_it, tests/ui_server/test_pause_door_live.py::TestRefusalsLiveDoor::test_an_unknown_task_is_409_and_audited_rejected_state]
-m1: restored byte-identical: True (packages/orchestration/ui_server.py)
-m2: the terminal-state refusal is removed from pause_job_command -- exit=1 failed=3 failing_node_ids=[tests/cli/test_job_pause.py::TestJobScopePause::test_a_completed_job_is_refused_with_its_state_named, tests/cli/test_job_pause.py::TestJobScopePause::test_a_completed_job_says_so_in_json_too, tests/ui_server/test_pause_door_live.py::TestRefusalsLiveDoor::test_a_completed_job_is_409_and_audited_rejected_state]
-m2: restored byte-identical: True (packages/orchestration/pause_control.py)
-m3: a task id the plan does not hold is accepted -- exit=1 failed=4 failing_node_ids=[tests/cli/test_job_pause.py::TestTaskScopePause::test_an_unknown_task_is_refused_with_the_task_named, tests/cli/test_job_pause.py::TestTaskScopePause::test_an_unknown_task_is_refused_without_json_too, tests/cli/test_job_pause.py::TestTaskScopeUnpause::test_an_unknown_task_is_refused_with_the_task_named, tests/ui_server/test_pause_door_live.py::TestRefusalsLiveDoor::test_an_unknown_task_is_409_and_audited_rejected_state]
-m3: restored byte-identical: True (packages/orchestration/pause_control.py)
-m4: unpause_job_command on a parked job answers not_paused -- exit=1 failed=2 failing_node_ids=[tests/cli/test_job_pause.py::TestJobScopeUnpause::test_a_parked_job_answers_parked_with_the_relaunch_command, tests/ui_server/test_pause_door_live.py::TestJobScopeLiveDoor::test_pause_parks_the_job_and_unpause_names_the_relaunch]
-m4: restored byte-identical: True (packages/orchestration/pause_control.py)
-m5: task_paused is written on every call, not only when the entry is created -- exit=1 failed=1 failing_node_ids=[tests/cli/test_job_pause.py::TestTaskScopePause::test_pausing_the_same_task_twice_writes_the_event_exactly_once]
-m5: restored byte-identical: True (packages/orchestration/pause_control.py)
-m6: task_resumed is never written -- exit=1 failed=3 failing_node_ids=[tests/cli/test_job_pause.py::TestTaskScopeUnpause::test_releasing_a_paused_task_writes_one_task_resumed_event, tests/cli/test_job_pause.py::TestTaskScopeUnpause::test_releasing_twice_writes_the_event_exactly_once, tests/ui_server/test_pause_door_live.py::TestTaskScopeLiveDoor::test_pause_withholds_one_task_and_unpause_releases_it]
-m6: restored byte-identical: True (packages/orchestration/pause_control.py)
-m7: the door answers a refused outcome 500 rejected_effect instead of 409 rejected_state -- exit=1 failed=2 failing_node_ids=[tests/ui_server/test_pause_door_live.py::TestRefusalsLiveDoor::test_an_unknown_task_is_409_and_audited_rejected_state, tests/ui_server/test_pause_door_live.py::TestRefusalsLiveDoor::test_a_completed_job_is_409_and_audited_rejected_state]
-m7: restored byte-identical: True (packages/orchestration/ui_server.py)
-m8: the CLI exits 0 on a refused outcome -- exit=1 failed=4 failing_node_ids=[tests/cli/test_job_pause.py::TestJobScopePause::test_a_completed_job_is_refused_with_its_state_named, tests/cli/test_job_pause.py::TestJobScopePause::test_a_completed_job_says_so_in_json_too, tests/cli/test_job_pause.py::TestTaskScopePause::test_an_unknown_task_is_refused_with_the_task_named, tests/cli/test_job_pause.py::TestTaskScopePause::test_an_unknown_task_is_refused_without_json_too]
-m8: restored byte-identical: True (apps/cli/commands/job_pause_cmd.py)
-control (after): unmutated control run -- exit=0 failed=0 failing_node_ids=[(none)]
-packages/orchestration/pause_control.py: restored byte-identical: True
-packages/orchestration/ui_server.py: restored byte-identical: True
-apps/cli/commands/job_pause_cmd.py: restored byte-identical: True
-/.../apps/ui/node_modules: removed
+$ git worktree add --detach .remedy-wt/f025-r5-mut fe08bb772
+$ python3 -B .agent/authored/f025-r5-mutations.py .../f025-r5-mut
+worktree: /home/decodeux/Repos/remedy/.remedy-wt/f025-r5-mut
+CONTROL FIRST: pytest exit=0 failed=0 | vitest exit=0 failed=0
+m1 (unpause_job_command answers parked before it looks for a pending pause) [py]: exit=1 failed=2
+  failing=[...TestR1051WithdrawBeforeParked::test_a_new_pause_on_a_parked_job_can_be_withdrawn,
+  ...TestR1051WithdrawBeforeParked::test_a_job_paused_by_the_task_cap_answers_not_paused]
+  caught=True restored byte-identical=True
+m2 (a job in state paused with an EMPTY pause record answers parked) [py]: exit=1 failed=1
+  failing=[...TestR1051WithdrawBeforeParked::test_a_job_paused_by_the_task_cap_answers_not_paused]
+  caught=True restored byte-identical=True
+m3 (task_paused is written only when the call created the entry) [py]: exit=1 failed=1
+  failing=[...TestR1052EventsAreExactlyOnceByTheLedger::test_a_failed_task_paused_write_is_written_by_the_retry]
+  caught=True restored byte-identical=True
+m4 (a release removes the entry before it writes task_resumed) [py]: exit=1 failed=1
+  failing=[...TestR1052EventsAreExactlyOnceByTheLedger::test_a_failed_task_resumed_write_leaves_the_task_paused]
+  caught=True restored byte-identical=True
+m5 (the dashboard's paused_task_ids keeps a paused task that is done) [py]: exit=1 failed=1
+  failing=[...TestPausedTaskIds::test_omits_a_done_task_and_keeps_plan_order]
+  caught=True restored byte-identical=True
+m6 (the dashboard raises on a PauseControlError instead of reporting error) [py]: exit=1 failed=2
+  failing=[...TestError::test_a_pause_control_error_is_reported_without_raising,
+  ...TestError::test_a_stop_control_error_is_reported_without_raising]
+  caught=True restored byte-identical=True
+m7 (the reducer ignores task_paused) [ts]: exit=1 failed=1
+  failing=[F025 pause/resume events ... > task_paused births an unseen task paused, and is not counted in ignored]
+  caught=True restored byte-identical=True
+m8 (task_resumed leaves the node paused) [ts]: exit=1 failed=1
+  failing=[F025 pause/resume events ... > task_resumed returns a paused task to planned, and is not counted in ignored]
+  caught=True restored byte-identical=True
+m9 (job_paused leaves in-progress run nodes in_progress) [ts]: exit=1 failed=1
+  failing=[F025 pause/resume events ... > job_paused returns an in-progress task to planned and its open run to paused, and is not counted in ignored]
+  caught=True restored byte-identical=True
+m10 (the paused treatment drops the pause mark) [ts]: exit=1 failed=5
+  failing=[NODE_STATE_TREATMENTS > names only design tokens..., state is never colour alone > draws a
+  paused node..., state is never colour alone > draws only failed and blocked alike...,
+  paintBrainNode — state is never colour alone > puts an outlined pause mark...,
+  the binding spec the harness judges against > names a mark list for every state...]
+  caught=True restored byte-identical=True
+m11 (the seed ignores pausedTaskIds) [ts]: exit=1 failed=1
+  failing=[dashboardBrainSeeds > seeds a task named in pausedTaskIds as paused...]
+  caught=True restored byte-identical=True
+CONTROL LAST: pytest exit=0 failed=0 | vitest exit=0 failed=0
 ALL MUTATIONS CAUGHT AND RESTORED CLEANLY: True
-$ git worktree remove --force .remedy-wt/f025-r4-mut
+$ git worktree remove --force .remedy-wt/f025-r5-mut
 $ git worktree prune
 $ git worktree list
-(primary + the pre-existing set only; f025-r4-mut gone)
+(primary + the pre-existing set only; f025-r5-mut gone)
 ```
-Every one of the 8 mutations is red with at least one failing node id; every restore is
-byte-identical for all three target files; no npm process ever ran (Deviations #6); the tool's own
-final line reads `True`.
+Every one of the 11 mutations is red with at least one failing node; every restore is
+byte-identical; both the first and last unmutated controls (pytest AND vitest together) are green;
+the tool's own final line reads `True`.
 
-### G6 — tree and push (readings go in the final reply, after C9)
+### G6 — tree and push (readings go in the final reply, after C8)
 
 ## Authored-text proofs
 
-`.agent/authored/f025-r4-block.md`, `f025-r4-d2.md`, `f025-r4-ledger.md`, `f025-r4-plan.md` and
-`f025-r4-q4.md` were built with `shutil.copyfile` from the reviewer's payload files — never
+`.agent/authored/f025-r5-block.md`, `f025-r5-d3.md`, `f025-r5-ledger.md`, `f025-r5-plan.md` and
+`f025-r5-slip.txt` were built with `shutil.copyfile` from the reviewer's payload files — never
 retyped, never edited — and G1 compared every one byte for byte, read back with `git show
-bb522981e:<path>`, against its source: all five BYTE-IDENTICAL. `.agent/decisions.md`,
-`.agent/live_review.md` and `.agent/operator_questions.md` were appended with raw bytes read from
-`d2.md`/`ledger.md`/`q4.md` (`Path.write_bytes(before + payload)`), never retyped;
-`.agent/plan.md` was rewritten whole from `plan.md`'s bytes. G1's byte-comparisons confirm all four
-match the payloads exactly. `packages/orchestration/pause_control.py`,
-`packages/orchestration/ui_server.py`, `apps/cli/command_catalog.py`,
-`apps/cli/commands/job_pause_cmd.py`, `apps/cli/commands/__init__.py`,
-`packages/orchestration/event_names.py`, `apps/ui/src/api/humanizeCatalog.ts`,
-`docs/guides/exit-codes.md`, `tests/cli/test_job_pause.py`,
-`tests/ui_server/test_pause_door_live.py`, `.agent/authored/f025-r4-mutations.py` and the four
-widened existing test/generated-list files are WORKER-authored production code, tests, docs and the
-G5 tool per the block's P1–P7/T1–T2 specification — not reviewer payloads — so no authored-text
-proof applies to them.
+b6bce17fa:<path>`, against its source: all five BYTE-IDENTICAL. `.agent/decisions.md`,
+`.agent/live_review.md` and `.agent/prose_slips.md` were appended with raw bytes read from
+`d3.md`/`ledger.md`/`slip.txt` (`open(..., "ab").write(payload)`), never retyped; `.agent/plan.md`
+was rewritten whole from `plan.md`'s bytes via `shutil.copyfile`. G1's numstat comparisons confirm
+all four match the payloads' expected insertion counts exactly. `packages/orchestration/
+pause_control.py`, `packages/orchestration/ui_server.py`, `tests/cli/test_job_pause.py`,
+`tests/ui_server/test_dashboard_pause.py`, every `apps/ui/src/` file U2-U6 name plus
+`BrainGraphStage.tsx` and `brainReducer.fixtures.ts`, both design-reference doc rows, and
+`.agent/authored/f025-r5-mutations.py` are WORKER-authored production code, tests, docs and the G5
+tool against the FIX clauses and U1-U7's own specification — not reviewer payloads — so no
+authored-text proof applies to them.
 
 ## Deviations & assumptions
 
-1. **C2/C3 reordered from the block's own labels.** The block names "C2 THE CATALOG AND THE CLI
-   (P1, P3)" before "C3 THE EFFECTS AND THE REGISTRIES (P2, P5)" but explicitly says "Order C2 and
-   C3 as your imports require" — `job_pause_cmd.py` (P3) imports `pause_job_command`/
-   `unpause_job_command` (P2), so committing the catalog/CLI content before the effects existed
-   would leave that commit's own imports unresolved. This handback keeps the block's C2/C3 LABELS
-   attached to their CONTENT (catalog/CLI is still called C2 in the block's own vocabulary) but
-   commits the effects content FIRST in the actual sequence — the commit table and the item-status
-   table both name what each commit really contains, so nothing here is hidden, only the two
-   labels' relative position, which the block itself authorized swapping.
-2. **`tests/test_command_catalog.py`'s `DELETED` tuple loses `"job.pause"`.** F261 deleted a
-   command by that id for reasons unrelated to F025; DECISION F025 D2 explicitly re-mints the exact
-   word `job.pause` for this feature's job-scope/task-scope pause. Searched the repository
-   (`grep -rn '"job\.pause"'`) before removing it: no other file still expects the old meaning. A
-   docstring paragraph was added to `TestDeletedCommands` recording why the word is deliberately
-   absent rather than merely omitted, and citing this decision as the record a later reader can
-   check the removal against — the same rigor constraint 3 asks of an ADDITION to a pinned set,
-   applied to a removal from one.
-3. **Three more existing tests widened, each narrowly, named per constraint 3:**
-   `tests/cli/test_job_refusal_envelope.py`'s `_LOOKUP_CALLERS` gains `"job_pause_cmd.py": 1`;
-   `tests/ui_server/test_command_channel.py` widened TWICE — in C3 (`TestUiExposedCommands`'s
-   exact-set list) and again in C4 (`DOOR_METHODS`, `ALLOWED_IMPORTS`, and the per-command
-   dispatch-answer loop, which also needed a docstring note: `job.pause` and `job.unpause` share
-   ONE test job and ONE loop iteration order, so the pause requested by the `job.pause` iteration is
-   still pending by the time `job.unpause`'s turn comes, and that iteration answers `withdrawn`
-   rather than `not_paused` — caught by running the test rather than assumed).
-4. **`tests/orchestration/import_reachability_allowlist.txt` widened, folded into C4 rather than
-   C3.** `apps.cli.commands.job_pause_cmd` became reachable from the job-path entry point the
-   moment C3 registered it in `collect_all_handlers`, but the fuller sweep that catches this
-   (`tests/orchestration/test_import_reachability.py`) only ran once, ahead of C4's own broader test
-   pass — so the fix travels with C4's commit rather than amending C3. Named here per the "an extra
-   [or relocated] finding-fix is a deviation even when correct" rule.
-5. **The accepted body's `outcome` field is not the literal `"accepted"` D18's other clauses
-   share.** DECISION F009 D18's FIRST clause states the general shape `{"command": <id>, "outcome":
-   "accepted", ...}`; DECISION F025 D2 clause 2 rules a CLOSED, more specific outcome vocabulary
-   for `job.pause`/`job.unpause` themselves — `requested`, `paused`, `released`, `withdrawn`,
-   `parked`, `not_paused` — and P4 does not say to wrap that in a second, generic `"accepted"`
-   token. The dispatch methods return `{"command": payload["command"], **result}`, so the wire
-   `outcome` is whichever of D2's own tokens the effect produced; a client reading the body sees
-   what actually happened rather than the word "accepted" beside a `next` field or a `task_id` it
-   would then have to interpret anyway. `_handle_command_submission`'s own audit line still writes
-   the literal `accepted`/`rejected_state` tokens D6 requires, unchanged from every other clause.
-6. **G5's mutation tool copies `apps/ui/dist` and disables UI auto-build — an environment fix, not
-   a product one.** `start_ui_server` (`_load_frontend`) pre-renders the React shell at STARTUP and
-   auto-builds it via npm when `apps/ui/dist/` is missing or STALE relative to `apps/ui/src/`. A
-   fresh `git worktree add` checkout gives every `apps/ui/src/*` file a "now" mtime, always newer
-   than the primary checkout's already-built `dist/index.html`, so the staleness check fires even
-   though nothing in `apps/ui/src` actually changed — discovered when the FIRST dry run of the
-   draft tool (before C8 was committed, see External actions) genuinely built a fresh `dist/` via
-   npm inside a throwaway worktree. Symlinking `apps/ui/node_modules` alone (G5's own literal
-   instruction) does not prevent this, because the staleness check never gets far enough to need
-   `node_modules` — it decides to rebuild before `npm install` ever runs. The tool now ALSO copies
-   (not symlinks — a symlink's `stat()` would report the PRIMARY's older build time) `apps/ui/dist`
-   into the worktree and bumps its files' mtimes 60 seconds into the future, and sets
-   `REMEDY_UI_NO_AUTO_BUILD=1` for every pytest invocation as a third, independent guard. Re-run
-   confirmed clean: no npm process started, all 8 mutations caught. This is scoped to the mutation
-   tool alone; neither live-door test file needed any change, since the primary checkout (where G3
-   and G4 run) already carries a fresh, non-stale `dist/`.
-7. **`--task`'s resolution is exact match, not the planned-id-or-prefix `_TASK_OPT` promises
-   elsewhere.** `job.context`'s `--task` (and its catalog shorthand `_TASK_OPT`) resolves a planned
-   id (`T001`) or a task-id prefix via `resolve_task_for_context`. D2 does not ask for that, and the
-   door cannot perform it without importing a CLI-only resolver its guard forbids — parity between
-   the CLI and the door (both call the SAME `pause_control` functions) would break if only the CLI
-   resolved prefixes. `pause_job_command`/`unpause_job_command` instead match `task_id` EXACTLY
-   against `job.tasks[i].task_id` — the same internal id `remedy job plan-show` prints and T2's live
-   tests pass straight through (`job.tasks[2].task_id`) — and the catalog's own `--task` help text
-   for these two commands says so ("by its id as `remedy job plan-show` prints it") rather than
-   reusing `_TASK_OPT`'s "planned id (T001) or task-id prefix" wording, which would promise
-   resolution this feature does not perform.
-8. **G4 found 0 failed, not the block's own named 6.** The block's baseline reading at `62e43ee8`/
-   `49624d5c8` names 6 `tests/cli/test_study_cmd.py` nodes as flaky under this specific
-   xdist-worker ordering. This round's run shows `8766 passed, 9 skipped`, zero failed — an
-   ordering-luck artifact of how 8 workers happened to distribute 144 files' worth of tests this
-   time, not a fix and not a regression. Since nothing failed, no serial per-file re-run was
-   needed or performed.
-9. **No full-suite run.** Per constraint 6 (amend0917-throughput), only G4's targeted selection
-   ran; the one full-suite run per feature belongs to F025's closure, not this round.
+1. **`apps/ui/src/components/graph/BrainGraphStage.tsx` touched, though U2-U6 do not name it.**
+   `dashboardBrainSeeds` gained an optional `pausedTaskIds` parameter (U6) so it CAN seed a paused
+   task, but DECISION F025 D3 clause 2's own text states the purpose plainly: "The dashboard's
+   `paused_task_ids` seed their tasks as `paused`, so a page opened on a parked job shows them" —
+   a live-page guarantee, not merely a function capability. `BrainGraphStage.tsx` is the ONE call
+   site in the tree that holds both `dashboard.tasks` and `dashboard.pause` in scope (confirmed by
+   searching every `dashboardBrainSeeds(` call site); without wiring it, the clause's stated
+   guarantee would be false in the running app. `useTimelineScrub.ts`'s separate call site (only
+   `tasks`, no `dashboard`) was deliberately left untouched — it is not named by U2-U6 either, and
+   D3 clause 5 defers "the rest of the UI" (the banner, the NowCard's line, the buttons) to next
+   round; the scrubber's own pause-seeding is not named by clause 2's literal text and stays out of
+   scope. The edit itself is a two-line call-site change plus its `useMemo` dependency array.
+2. **`apps/ui/src/components/graph/brainReducer.fixtures.ts` touched, though it is not a `.test.ts`
+   file.** `SEED_STATUS_CASES` is Table 1's own fixture — "every listed seed status, plus one
+   unknown" — consumed ONLY by `brainReducer.test.ts`'s `it.each(SEED_STATUS_CASES)` (the "Seed
+   status table (Table 1)" describe block, one of the five vitest files T3 names as widened). Adding
+   `SEED_STATUS_STATE_TABLE.paused` (brainOntology.ts, named by U3/U6) without adding `["paused",
+   "paused"]` here would leave that widened test's own table incomplete — the fixture is the widened
+   test's data, inseparable from the widening constraint 3 already authorizes for
+   `nodeStates.test.ts`/`glyphConformance.test.ts`/`paintNode.test.ts`.
+3. **G4 found 4 failed on the combined 8-worker run, all four passing alone, serially.** An
+   xdist-worker-ordering flake class, the same category the block's own baseline names for six
+   `tests/cli/test_study_cmd.py` nodes (a different file set this round) — not a regression. Every
+   failing file was re-run alone per the block's instruction; all pass (readings in Verification).
+4. **`legendModel.test.ts` and `glyphMatrix.test.ts`, named by T3's widened-test list, needed no
+   edit.** Both files derive their state list ENTIRELY from `nodeStateOrder()`
+   (`Object.keys(NODE_STATE_TREATMENTS)`) with no hardcoded state array of their own — adding
+   `paused` to `NODE_STATE_TREATMENTS` (nodeStates.ts) already widens what they exercise; running
+   both unmodified confirmed 8/8 passing before and after. No change was made to either file.
+5. **No full-suite run.** Per constraint 6 (amend0917-throughput), only G4's targeted selection ran;
+   the one full-suite run per feature belongs to F025's closure, not this round.
 
 No payload was edited or retyped. No production file outside `packages/orchestration/pause_control.py`,
-`packages/orchestration/ui_server.py`, `packages/orchestration/event_names.py`,
-`apps/cli/command_catalog.py`, `apps/cli/commands/job_pause_cmd.py`, `apps/cli/commands/__init__.py`,
-`apps/ui/src/api/humanizeCatalog.ts` and `docs/guides/exit-codes.md` was touched;
-`safe_points.py`, `pingpong_job.py`, `pingpong_loop.py`, `long_run_executor.py` and `secure_fs.py`
-are confirmed untouched by G2's `git diff --stat`. The worktrees this round created
-(`.remedy-wt/f025-r4-mut-dryrun` twice, `.remedy-wt/f025-r4-mut` once) were each removed the same
-round, per constraint 5; every pre-existing worktree and stash was left alone.
+`packages/orchestration/ui_server.py`, and the `apps/ui/src/` files named above (U2-U6 plus
+Deviations #1/#2) was touched; `safe_points.py`, `pingpong_job.py`, `pingpong_loop.py`,
+`long_run_executor.py`, `_safe_event_summary`, both `tokens.css` files, `graph_spec.md` and
+`docs/roadmap/` are confirmed untouched by G2's `git diff --stat`. The worktrees this round created
+(`.remedy-wt/f025-r5-mutdraft` once, `.remedy-wt/f025-r5-mut` once) were each removed the same
+round, per constraint 5; every pre-existing worktree was left alone.
 
 ## Item-status table
 
 | Item | Status | Reason |
 |---|---|---|
-| C1a | done | 321 insertions, matches the block's expectation (208+113) exactly |
-| C1b | done | 49/0, 6/0, 25/0, 11/13 insertions, matches the block's expectation exactly; `open_finding_ids` reads `['R-1008']` |
-| C2 | done | 161 insertions; P2's shared effects and P5's event registries landed together; committed ahead of C3 per Deviations #1 |
-| C3 | done | 217 insertions; P1's catalog rows and P3's new CLI file landed, plus three narrow existing-test widenings (Deviations #2, #3) |
-| C4 | done | 117 insertions; P4's door clauses and dispatch methods landed, plus the import-guard/allowlist widenings (Deviations #3, #4) |
-| C5 | done | 2 insertions; P6's two guide rows landed |
-| C6 | done | 407 insertions; T1's 39-test CLI file landed |
-| C7 | done | 499 insertions; T2's 6-test live-door file landed |
-| C8 | done | 307 insertions; the G5 tool landed, with the npm-avoidance guards Deviations #6 describes |
-| C9 | done | this handback |
+| C1a | done | 280 insertions, matches the block's expectation (192+88) exactly |
+| C1b | done | 47/0, 6/0, 13/12, 1/0 insertions, matches the block's expectation exactly; `open_finding_ids` reads `['R-1008', 'R-1051', 'R-1052']` |
+| C2 | done | 56 insertions; R-1051's FIX and its two new tests landed; 41/41 pass |
+| C3 | done | 117 insertions; R-1052's FIX and its two new tests landed; 43/43 pass |
+| C4 | done | 172 insertions; U1's dashboard section and T2's 8-test file landed |
+| C5 | done | 352 insertions; U2-U6 landed whole, plus the two named widenings (Deviations #1, #2); tsc/eslint/vitest clean before commit |
+| C6 | done | 2 insertions; U7's two rows landed |
+| C7 | done | 308 insertions; the G5 tool landed, validated in a pre-commit dry-run worktree first |
+| C8 | done | this handback |
 | G1 | done | all payload and copy identity checks byte-identical; open-finding set matched |
-| G2 | done | ruff clean over every changed .py file; forbidden files untouched; noqa:BLE001 added = 0; name-only diff exactly inside constraint 3 |
-| G3 | done | 186 passed (39+6+…), exit 0; collect-only counts 39 and 6 for the two new files |
-| G4 | done | 8766 passed, 9 skipped, exit 0, 0 failed (see Deviations #8); integrity check 6/6 pass |
-| G5 | done | all 8 mutations caught, all restores byte-identical, `True`; two pre-commit dry runs closed an environment hazard first (Deviations #6) |
-| G6 | done | reported in the final reply, after C9 and the push |
+| G2 | done | ruff clean over every changed .py file; forbidden files/paths untouched; noqa:BLE001 added = 0; name-only diff exactly inside constraint 3 |
+| G3 | done | 179 passed, exit 0, no SKIPPED; the tsc node, the eslint node and the vitest node each confirmed PASSED individually |
+| G4 | done | 4 failed on the combined run, all four pass alone/serially (Deviations #3); integrity check 6/6 pass |
+| G5 | done | all 11 mutations caught, all restores byte-identical, `True`; validated once pre-commit in a disposable worktree, then officially at C7's HEAD |
+| G6 | done | reported in the final reply, after C8 and the push |
 
 ## Next
 
-Phase 1 rule 1: read `.agent/STOP` from disk. Then the review of round 4. Then T003 — the paused
-states, the banner, the NowCard line, the browser's pause and resume, and the end-to-end against an
-unpaused control run. Open findings: 1 (`R-1008`, owned by F285) — the count `open_finding_ids`
-reads at C1b. Operator questions open: 4.
+Phase 1 rule 1: read `.agent/STOP` from disk. Then the review of round 5. Then T003's second part —
+the door client, the stage banner, the NowCard's line and the pause and resume buttons (job and
+task scope), per DECISION F025 D3 clause 5's own deferral. Open findings: 3 — `R-1008` (owned by
+F285), `R-1051` and `R-1052` (owned by F025, repaired this round pending the reviewer's own
+verdict) — the count `open_finding_ids` reads at C1b. Operator questions open: 4 — the count of
+`### Q` headings in `.agent/operator_questions.md` at C1b (unchanged this round).
