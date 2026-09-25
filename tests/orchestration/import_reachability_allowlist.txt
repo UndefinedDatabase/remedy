@@ -240,6 +240,7 @@ packages.orchestration.structured_planner
 packages.orchestration.study
 packages.orchestration.task_actor_binding
 packages.orchestration.task_deliverables
+packages.orchestration.task_edit_runtime
 packages.orchestration.task_granularity
 packages.orchestration.task_registry
 packages.orchestration.task_runner
