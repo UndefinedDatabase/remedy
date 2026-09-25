@@ -1068,6 +1068,7 @@ def _build_dashboard(job: Any) -> dict[str, Any]:
         "proposed_tasks": _build_proposed_tasks_section(str(job.job_id)),
         "pipeline": _build_pipeline_section(job, events),
         "resume": _build_resume_section(job, events),
+        "pause": _build_pause_section(job),
         "project_summary": _build_project_summary_section(job),
         "redaction": {
             "policy": "safe_summaries_only",
@@ -1182,6 +1183,42 @@ def _build_resume_section(job: Any, events: list[dict[str, Any]]) -> dict[str, A
             "blocked_reason": "replay_error",
             "last_event_at": "",
         }
+
+
+def _build_pause_section(job: Any) -> dict[str, Any]:
+    """Build the operator's pause visibility for dashboard (DECISION F025 D3
+    clause 1): the job's own pause record while it is parked, whether a
+    job-scope pause is pending, and the paused tasks that are still pending,
+    in plan order — a done task's pause is omitted. Never raises: a
+    `PauseControlError` or `StopControlError` met while reading the control
+    files is reported as `error`, and the other three keep their empty
+    values."""
+    from packages.orchestration.pause_control import (
+        PauseControlError,
+        pause_requested,
+        paused_tasks,
+    )
+    from packages.orchestration.safe_points import StopControlError
+
+    try:
+        state = job.state.value if hasattr(job.state, "value") else str(job.state)
+        record = dict(job.pause) if state == "paused" and job.pause else {}
+        requested = pause_requested(str(job.job_id)) is not None
+        pending_ids = {
+            str(t.task_id) for t in job.tasks
+            if (t.status.value if hasattr(t.status, "value") else str(t.status)) == "pending"
+        }
+        order = [str(t.task_id) for t in job.tasks]
+        paused_ids = {p.task_id for p in paused_tasks(str(job.job_id))}
+        paused_task_ids = [tid for tid in order if tid in paused_ids and tid in pending_ids]
+        return {
+            "record": record,
+            "requested": requested,
+            "paused_task_ids": paused_task_ids,
+            "error": "",
+        }
+    except (PauseControlError, StopControlError) as exc:
+        return {"record": {}, "requested": False, "paused_task_ids": [], "error": str(exc)}
 
 
 def _build_project_summary_section(job: Any) -> dict[str, Any] | None:
