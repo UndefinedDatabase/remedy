@@ -50,16 +50,22 @@ M1_TO = """        from packages.orchestration import pause_control as _pc_m1  #
 M2_FROM = """    withheld_seeds = set(blocked_ids) | set(awaiting_ids) | paused_pending"""
 M2_TO = """    withheld_seeds = set(blocked_ids) | set(awaiting_ids)  # MUTATED m2: paused_ids ignored"""
 
-# m3 — `ready_tasks` withholds the paused seeds but not their dependents.
-M3_FROM = """    if withheld_seeds:
-        withheld = withheld_seeds | blocked_downstream(job.tasks, withheld_seeds)
-        ready = [task_id for task_id in ready if task_id not in withheld]
-    return ready[:batch_size]"""
-M3_TO = """    if withheld_seeds:
-        _downstream_seeds = set(blocked_ids) | set(awaiting_ids)  # MUTATED m3: paused excluded
-        withheld = withheld_seeds | blocked_downstream(job.tasks, _downstream_seeds)
-        ready = [task_id for task_id in ready if task_id not in withheld]
-    return ready[:batch_size]"""
+# m3 — the paused seeds are withheld (named) but their transitive dependents
+# are not: `blocked_downstream(job.tasks, {A_DAG_dependent...})` genuinely
+# cannot be observed through `ready_tasks`'s OWN dispatch decision — a true
+# DAG dependent of a still-pending (never-completed) seed is ALREADY excluded
+# from `dag_ready_set` by the dependency-completion check alone, seed or no
+# seed, so the ONLY place "withheld seeds but not their dependents" is
+# observable at all is the shared reporting/park-record function both the
+# CycleRecord and the E1 park's `withheld_task_ids` read from.
+M3_FROM = """def paused_downstream_tasks(job: JobPlan, paused_ids: Collection[str]) -> list[str]:
+    \"\"\"Ids withheld only because something upstream is a paused PENDING task, in
+    plan order — the paused counterpart of ``skipped_blocked_tasks``.\"\"\"
+    return skipped_blocked_tasks(job, paused_task_ids_for(job, paused_ids))"""
+M3_TO = """def paused_downstream_tasks(job: JobPlan, paused_ids: Collection[str]) -> list[str]:
+    \"\"\"Ids withheld only because something upstream is a paused PENDING task, in
+    plan order — the paused counterpart of ``skipped_blocked_tasks``.\"\"\"
+    return []  # MUTATED m3: paused seeds' dependents never withheld/reported"""
 
 # m4 — `paused_by_operator` is added to `REPORTED_TERMINALS`.
 M4_FROM = """REPORTED_TERMINALS: frozenset[str] = frozenset({
