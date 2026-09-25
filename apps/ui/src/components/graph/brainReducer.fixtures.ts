@@ -223,5 +223,8 @@ export const SEED_STATUS_CASES: readonly (readonly [string, NodeState])[] = [
   ["applied_to_job_workspace", "pass"],
   ["failed", "fail"],
   ["blocked", "blocked"],
+  // F025 (DECISION F025 D3 clause 2): `dashboardBrainSeeds` writes this word
+  // for a task named in `pause.pausedTaskIds` — not the dashboard itself.
+  ["paused", "paused"],
   ["totally_unheard_of_status", "planned"],
 ];

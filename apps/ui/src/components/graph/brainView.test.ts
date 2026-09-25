@@ -62,6 +62,19 @@ describe("dashboardBrainSeeds", () => {
     expect(seeds.map((s) => s.title)).toEqual(["Alpha", "Beta", "Gamma"]);
     expect(seeds.map((s) => s.id)).toEqual(["a", "b", "c"]);
   });
+
+  it("seeds a task named in pausedTaskIds as paused, whatever its dashboard status word (DECISION F025 D3 clause 2)", () => {
+    const tasks = [task("a", "current", "Alpha"), task("b", "pending", "Beta"), task("c", "done", "Gamma")];
+    const seeds = dashboardBrainSeeds(tasks, ["b"]);
+    expect(seeds.map((s) => s.status)).toEqual(["running", "paused", "completed"]);
+    const model = seedBrainModel("job-paused-seed", seeds);
+    expect(model.nodes.find((n) => n.id === "task:b")?.state).toBe("paused");
+  });
+
+  it("with no second argument, seeds exactly as before — no call site is disturbed", () => {
+    const tasks = [task("a", "pending", "Alpha")];
+    expect(dashboardBrainSeeds(tasks)).toEqual(dashboardBrainSeeds(tasks, []));
+  });
 });
 
 describe("filterBrainLayout", () => {
@@ -76,6 +89,10 @@ describe("filterBrainLayout", () => {
     const taskIds = visible.nodes.filter((n) => n.kind === "task").map((n) => n.id).sort();
     expect(taskIds).toEqual(["task:blocked", "task:prog"]);
     expect(BRAIN_FILTER_STATES.open).toEqual(["in_progress", "blocked", "fail"]);
+  });
+
+  it("groups paused with planned (DECISION F025 D3 clause 2)", () => {
+    expect(BRAIN_FILTER_STATES.planned).toEqual(["planned", "paused"]);
   });
 
   it("a run follows its task in and out", () => {

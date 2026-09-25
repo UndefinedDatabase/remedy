@@ -8,7 +8,7 @@ import { decodeLessonsIndex, lessonsIndexPath } from "./lessons";
 import type { LessonsIndex } from "./lessons";
 import { decodeTaskRunRounds, taskRunRoundsPath } from "./taskRunRounds";
 import type { TaskRunRounds } from "./taskRunRounds";
-import type { PipelineStep, PipelineStepState, RemedyActivityItem, RemedyContinuationSummary, RemedyDashboard, RemedyGraphEdge, RemedyGraphNode, RemedyJourneyItem, RemedyMetric, RemedyNextAction, RemedyPhase, RemedyPipeline, RemedyPromptKind, RemedyPromptRole, RemedyPromptTraceItem, RemedyPromptTraceSummary, RemedySnapshotSummary, RemedyState, RemedyTaskItem, RemedyTimelineEvent, RemedyTimelineEventKind, RemedyTimelinePhase } from "./types";
+import type { PipelineStep, PipelineStepState, RemedyActivityItem, RemedyContinuationSummary, RemedyDashboard, RemedyGraphEdge, RemedyGraphNode, RemedyJourneyItem, RemedyMetric, RemedyNextAction, RemedyPause, RemedyPhase, RemedyPipeline, RemedyPromptKind, RemedyPromptRole, RemedyPromptTraceItem, RemedyPromptTraceSummary, RemedySnapshotSummary, RemedyState, RemedyTaskItem, RemedyTimelineEvent, RemedyTimelineEventKind, RemedyTimelinePhase } from "./types";
 
 interface ApiClientOptions { jobId: string; token: string; baseUrl?: string; }
 
@@ -192,6 +192,7 @@ export function normalizeDashboardPayload(
     apiHealth: { degraded: false, failedEndpoints: [] },
     pipeline: normalizePipeline(dashboard.pipeline),
     resume: dashboard.resume ?? null,
+    pause: normalizePause(dashboard.pause),
     projectSummary: dashboard.project_summary ?? null,
     timelineEvents: normalizeTimelineEvents(dashboard.timeline_events),
     snapshot: normalizeSnapshotSummary(dashboard.snapshot),
@@ -244,6 +245,22 @@ function normalizeContinuationSummary(raw: any): RemedyContinuationSummary | nul
   if (!raw || typeof raw !== "object") return null;
   return {
     available: typeof raw.available === "boolean" ? raw.available : "unknown",
+  };
+}
+
+/** DECISION F025 D3 clause 1: a payload with no `pause` section — or a raw
+ *  value that is not an object — normalizes to the same "not paused" shape
+ *  a real one reads when nothing is going on: an empty record, nothing
+ *  requested, no paused tasks, no error. `record` is passed through opaque;
+ *  this mapper decides nothing about its fields. */
+function normalizePause(raw: any): RemedyPause {
+  const p = raw && typeof raw === "object" ? raw : {};
+  const record = p.record && typeof p.record === "object" ? p.record : {};
+  return {
+    record,
+    requested: Boolean(p.requested),
+    pausedTaskIds: Array.isArray(p.paused_task_ids) ? p.paused_task_ids.map(String) : [],
+    error: typeof p.error === "string" ? p.error : "",
   };
 }
 
@@ -354,6 +371,7 @@ export function normalizeApiFailure(jobId: string, failedEndpoints: string[]): R
     apiHealth: { degraded: true, failedEndpoints },
     pipeline: null,
     resume: null,
+    pause: normalizePause(undefined),
     projectSummary: null,
     snapshot: null,
     continuation: null,

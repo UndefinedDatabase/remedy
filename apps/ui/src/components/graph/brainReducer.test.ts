@@ -201,6 +201,64 @@ describe("job_stopped blocks every in_progress run directly", () => {
   });
 });
 
+describe("F025 pause/resume events (DECISION F025 D3 clause 2)", () => {
+  it("task_paused births an unseen task paused, and is not counted in ignored", () => {
+    const seeded = seedBrainModel("job-p", []);
+    const paused = reduceBrainEvent(seeded, row(1, "task_paused", "t1"));
+    expect(paused.nodes.find((n) => n.id === "task:t1")?.state).toBe("paused");
+    expect(paused.ignored).not.toHaveProperty("task_paused");
+  });
+
+  it("task_paused never overwrites a task that already passed", () => {
+    const seeded = seedBrainModel("job-p", [{ id: "t1", status: "pending", rank: 0 }]);
+    const passed = fold(seeded, [
+      row(1, "task_run_started", "t1"),
+      row(2, "task_run_completed", "t1", "pass"),
+    ]);
+    const paused = reduceBrainEvent(passed, row(3, "task_paused", "t1"));
+    expect(paused.nodes.find((n) => n.id === "task:t1")?.state).toBe("pass");
+  });
+
+  it("task_resumed returns a paused task to planned, and is not counted in ignored", () => {
+    const seeded = seedBrainModel("job-p", [{ id: "t1", status: "pending", rank: 0 }]);
+    const paused = reduceBrainEvent(seeded, row(1, "task_paused", "t1"));
+    const resumed = reduceBrainEvent(paused, row(2, "task_resumed", "t1"));
+    expect(resumed.nodes.find((n) => n.id === "task:t1")?.state).toBe("planned");
+    expect(resumed.ignored).not.toHaveProperty("task_resumed");
+  });
+
+  it("task_resumed on a task that is not paused changes nothing", () => {
+    const seeded = seedBrainModel("job-p", [{ id: "t1", status: "pending", rank: 0 }]);
+    const resumed = reduceBrainEvent(seeded, row(1, "task_resumed", "t1"));
+    expect(resumed.nodes.find((n) => n.id === "task:t1")?.state).toBe("planned");
+  });
+
+  it("job_paused returns an in-progress task to planned and its open run to paused, and is not counted in ignored", () => {
+    const seeded = seedBrainModel("job-p", [{ id: "t1", status: "pending", rank: 0 }]);
+    const started = reduceBrainEvent(seeded, row(1, "task_run_started", "t1"));
+    const paused = reduceBrainEvent(started, row(2, "job_paused"));
+    expect(paused.nodes.find((n) => n.id === "run:t1:1")?.state).toBe("paused");
+    expect(paused.nodes.find((n) => n.id === "task:t1")?.state).toBe("planned");
+    expect(paused.ignored).not.toHaveProperty("job_paused");
+  });
+
+  it("job_resumed changes no node, and is not counted in ignored", () => {
+    const seeded = seedBrainModel("job-p", [{ id: "t1", status: "pending", rank: 0 }]);
+    const started = reduceBrainEvent(seeded, row(1, "task_run_started", "t1"));
+    const resumed = reduceBrainEvent(started, row(2, "job_resumed"));
+    expect(resumed.nodes).toBe(started.nodes);
+    expect(resumed.links).toBe(started.links);
+    expect(resumed.ignored).not.toHaveProperty("job_resumed");
+  });
+
+  it("replaying an already-seen task_paused row returns the IDENTICAL object", () => {
+    const seeded = seedBrainModel("job-p", [{ id: "t1", status: "pending", rank: 0 }]);
+    const paused = reduceBrainEvent(seeded, row(1, "task_paused", "t1"));
+    const replayed = reduceBrainEvent(paused, row(1, "task_paused", "t1"));
+    expect(replayed).toBe(paused);
+  });
+});
+
 describe("Core derivation", () => {
   it("planned when there are no tasks", () => {
     expect(emptyBrainModel("job-x").nodes[0].state).toBe("planned");

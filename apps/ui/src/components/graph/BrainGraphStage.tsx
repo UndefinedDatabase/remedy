@@ -40,7 +40,10 @@ export function BrainGraphStage({
   // whenever no task is visible.
   const [view, setView] = useState<"live" | "simple">("live");
 
-  const seeds = useMemo(() => dashboardBrainSeeds(dashboard.tasks), [dashboard.tasks]);
+  const seeds = useMemo(
+    () => dashboardBrainSeeds(dashboard.tasks, dashboard.pause.pausedTaskIds),
+    [dashboard.tasks, dashboard.pause.pausedTaskIds],
+  );
   // `rows` is the ledger's COMPLETE, CONTIGUOUS prefix, read once by the shell for
   // the graph and the timeline alike: a hole holds the model at the state before
   // it, never a ghost past it (DECISIONS F019 D5 and F024 D4).

@@ -54,6 +54,7 @@ const STATE_WORDS: Readonly<Record<BrainNode["state"], string>> = {
   fail: "Failed",
   blocked: "Stopped before it finished",
   vetoed: "Vetoed",
+  paused: "Paused",
 };
 
 /** A duration in words: "850 ms", "4.2 s", "38 s", "2 min 5 s". */

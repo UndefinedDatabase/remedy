@@ -80,6 +80,25 @@ export const NODE_STATE_TREATMENTS: Readonly<Record<NodeState, NodeStateTreatmen
     branchGlowAlpha: 0,
     downstreamAlpha: 1,
   },
+  // F025 (DECISION F025 D3 clause 3): the planned node's own fill, ink, line,
+  // size, ring and absence of halo/pulse/branch glow — "the shape carries the
+  // state, the colour only repeats it" — plus the new `pause` mark, an
+  // existing palette token outlined in the node ring.
+  paused: {
+    name: "Paused",
+    fillToken: "--remedy-state-planned",
+    inkToken: "--remedy-state-planned-ring",
+    lineToken: "--remedy-state-planned-ring",
+    halo: null,
+    sizeFactor: 0.9,
+    marks: [
+      { mark: "ring", token: "--remedy-state-planned-ring", outlineToken: null },
+      { mark: "pause", token: "--remedy-orange-400", outlineToken: "--remedy-graph-node-ring" },
+    ],
+    pulse: false,
+    branchGlowAlpha: 0,
+    downstreamAlpha: 1,
+  },
   in_progress: {
     name: "In progress",
     fillToken: "--remedy-state-current",

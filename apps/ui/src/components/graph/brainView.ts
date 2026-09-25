@@ -22,11 +22,20 @@ export const DASHBOARD_STATE_STATUS: Readonly<Record<RemedyState, string>> = {
 
 /** One seed per dashboard task, in list order — `seedBrainModel`'s own input
  *  shape. `rank` is the task's index in the list (job.tasks order); `title`
- *  carries the dashboard's label through to the layout's task label. */
-export function dashboardBrainSeeds(tasks: readonly RemedyTaskItem[]): BrainTaskSeed[] {
+ *  carries the dashboard's label through to the layout's task label.
+ *  `pausedTaskIds` is the dashboard's own `pause.pausedTaskIds` (DECISION
+ *  F025 D3 clause 2): a task named there seeds as `paused` regardless of its
+ *  dashboard status word, so a page opened on a parked job draws it paused
+ *  from the first paint — defaults to none, so every existing call site
+ *  (none of which knows about a pause) keeps its exact prior seed. */
+export function dashboardBrainSeeds(
+  tasks: readonly RemedyTaskItem[],
+  pausedTaskIds: readonly string[] = [],
+): BrainTaskSeed[] {
+  const paused = new Set(pausedTaskIds);
   return tasks.map((t, index) => ({
     id: t.id,
-    status: DASHBOARD_STATE_STATUS[t.state] ?? t.state,
+    status: paused.has(t.id) ? "paused" : (DASHBOARD_STATE_STATUS[t.state] ?? t.state),
     rank: index,
     title: t.label,
   }));
@@ -35,10 +44,13 @@ export function dashboardBrainSeeds(tasks: readonly RemedyTaskItem[]): BrainTask
 /** The same open/planned/done split `BrainGraphCanvas` applies to the
  *  dashboard's words (open = current or blocked, planned = planned, done =
  *  done), restated in the ontology's own `NodeState` vocabulary so
- *  `filterBrainLayout` can read a layout node's state directly. */
+ *  `filterBrainLayout` can read a layout node's state directly. `paused`
+ *  groups with `planned` (DECISION F025 D3 clause 2): a paused node is not
+ *  in progress and nothing has failed — it is waiting, exactly like a
+ *  planned one, until the operator resumes it. */
 export const BRAIN_FILTER_STATES: Readonly<Record<"open" | "planned" | "done", readonly NodeState[]>> = {
   open: ["in_progress", "blocked", "fail"],
-  planned: ["planned"],
+  planned: ["planned", "paused"],
   done: ["pass"],
 };
 

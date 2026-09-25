@@ -109,8 +109,10 @@ export const GLYPHS: Readonly<Record<NodeKind, GlyphGeometry>> = {
 
 /** The marks a state adds on top of a glyph (nodeStates.ts decides which
  *  state carries which): a small status dot at the top right, a 45° strike
- *  slash, and a crisp outer ring. Same box, same rules as GLYPHS. */
-export type StateMark = "status_dot" | "strike" | "ring";
+ *  slash, a crisp outer ring, and (DECISION F025 D3 clause 3) `pause`'s two
+ *  upright bars in that same status-dot corner. Same box, same rules as
+ *  GLYPHS. */
+export type StateMark = "status_dot" | "strike" | "ring" | "pause";
 
 export const STATE_MARK_PATHS: Readonly<Record<StateMark, GlyphGeometry>> = {
   status_dot: {
@@ -132,6 +134,16 @@ export const STATE_MARK_PATHS: Readonly<Record<StateMark, GlyphGeometry>> = {
     strokePath: "M23 12A11 11 0 1 1 1 12A11 11 0 1 1 23 12Z",
     fillPath: "",
     bounds: { minX: 1, minY: 1, maxX: 23, maxY: 23 },
+    minZoom: 0,
+  },
+  // Two upright bars in the status dot's own box (U5): a fill path of two
+  // rectangles, x 17-19 and 21-23, with a visible 2-unit gap between them,
+  // both spanning the full y 1.5-7.5 — the box's own bounds, unchanged.
+  pause: {
+    name: "Pause",
+    strokePath: "",
+    fillPath: "M17 1.5H19V7.5H17ZM21 1.5H23V7.5H21Z",
+    bounds: { minX: 17, minY: 1.5, maxX: 23, maxY: 7.5 },
     minZoom: 0,
   },
 };

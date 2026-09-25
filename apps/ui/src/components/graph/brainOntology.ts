@@ -23,8 +23,18 @@ export type NodeKind =
 
 /** The states a node can be drawn in. `open` and `vetoed` are named for the
  *  same forward reason as the unused NodeKind values above — this reducer
- *  never assigns them, a later feature will. */
-export type NodeState = "open" | "planned" | "in_progress" | "pass" | "fail" | "blocked" | "vetoed";
+ *  never assigns them, a later feature will. `paused` is F025's (DECISION
+ *  F025 D3 clause 2): a task `task_paused` halts, or an in-progress run a
+ *  `job_paused` cuts short. */
+export type NodeState =
+  | "open"
+  | "planned"
+  | "in_progress"
+  | "pass"
+  | "fail"
+  | "blocked"
+  | "vetoed"
+  | "paused";
 
 /** One graph node. `seq` is the frame that birthed it, or 0 for a node the
  *  dashboard seed already knew about — the ordinal a client did not have to
@@ -94,6 +104,10 @@ export const SEED_STATUS_STATE_TABLE: Readonly<Record<string, NodeState>> = {
   applied_to_job_workspace: "pass",
   failed: "fail",
   blocked: "blocked",
+  // F025 (DECISION F025 D3 clause 2): `dashboardBrainSeeds` writes this word,
+  // never the dashboard itself — a task named in `pause.pausedTaskIds` seeds
+  // paused regardless of its own status word.
+  paused: "paused",
 };
 
 /** The review-outcome half of Table 2 (DECISION F019 D1): `task_round_completed`'s
