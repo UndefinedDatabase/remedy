@@ -1,94 +1,79 @@
-# Handback — F025 Pause/resume (global & per node) · Round 7
+# Handback — F025 Pause/resume (global & per node) · Round 8
 
 ## Session
 
-SESSION 2 of feature F025 · round 7 · rounds so far 7
+SESSION 2 of feature F025 · round 8 · rounds so far 8
 
-Roughly a third of the context budget remained at the point this handback was written; the round
-booked round 6's PASS with its three deviations, repaired R-1053 and R-1054 in the task popover's
-control, registered R-1055 to F285, then landed DECISION F025 D5 whole: the live end-to-end test of
-both scopes — a job paused mid-build through the real door, parked, relaunched through the real
-`remedy job run`, and compared with an unpaused control run of the same job file by its normalized
-export, its workspace bytes and its ordered task-level events. One nontrivial discovery drove most
-of the round's iteration (see Deviations & assumptions #1-#3): the control run's own "first runner"
-had to be rebuilt to resolve providers BY NAME through a monkeypatched `create_provider`, exactly as
-the CLI does, rather than by an injected object — an injected object is reused across every task in
-one process, which silently changes which tasks need a repair round and broke the comparison the
-decision needs.
+The large majority of the session's context budget remained at the point this handback was
+written. The round booked round 7's FAIL verdict (the ledger payload also carries round 7's
+already-fixed R-1053/R-1054 Done lines), registered R-1056, then landed DECISION F025 D6 whole:
+`paused` joins the manifest's status vocabulary
+with its own lifecycle rows, `_park_job` and the task cap's own pause each record the parked
+episode's manifest, three evidence-side readers found by M3's grep were widened to hold a paused
+job to the same rule as a terminal one, and the end-to-end test now compares the manifest error
+too instead of exempting it. No spec-impossibility was hit; constraint 4 was not invoked.
 
 ## Range
 
-Review of 218eaabd6..HEAD
+Review of 3f36bd811..HEAD
 
 ## Commits
 
-### 8b3f652d6 F025 R7 C1a: copy round 7 block and payloads
+### fe4c76932 F025 R8 C1a: copy round 8 block and payloads
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f025-r7-block.md | +177/-0 | copy of this round's block, verbatim (`shutil.copyfile`) |
-| .agent/authored/f025-r7-d5.md | +40/-0 | copy of the d5.md payload (DECISION F025 D5) |
-| .agent/authored/f025-r7-f285_from.txt | +2/-0 | copy of the f285_from.txt payload |
-| .agent/authored/f025-r7-f285_to.txt | +5/-0 | copy of the f285_to.txt payload |
-| .agent/authored/f025-r7-ledger.md | +8/-0 | copy of the ledger.md payload (round 6's PASS, R-1053, R-1054, R-1055) |
-| .agent/authored/f025-r7-plan.md | +29/-0 | copy of the plan.md payload |
+| .agent/authored/f025-r8-block.md | +176/-0 | copy of this round's block, verbatim (`shutil.copyfile`) |
+| .agent/authored/f025-r8-d6.md | +42/-0 | copy of the d6.md payload (DECISION F025 D6) |
+| .agent/authored/f025-r8-ledger.md | +8/-0 | copy of the ledger.md payload (round 7's FAIL, R-1056) |
+| .agent/authored/f025-r8-plan.md | +29/-0 | copy of the plan.md payload |
 
-261 insertions by `git show --numstat` — the block's stated expectation (this block's own line
-count, 177, plus 84: 40+2+5+8+29 = 84) — matches exactly.
+255 insertions by `git show --numstat` — the block's stated expectation (this block's own line
+count, 176, plus 79: 42+8+29 = 79) — matches exactly.
 
-### a2de57b52 F025 R7 C1b: book round 6, register R-1053 to R-1055, record D5
+### a7945b5a1 F025 R8 C1b: book round 7's FAIL, register R-1056, record D6
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/decisions.md | +40/-0 | d5.md appended (bytes to bytes) |
+| .agent/decisions.md | +42/-0 | d6.md appended (bytes to bytes) |
 | .agent/live_review.md | +8/-0 | ledger.md appended (bytes to bytes) |
-| .agent/plan.md | +8/-9 | rewritten whole to the plan.md payload |
-| docs/roadmap/features/T2_F285.md | +3/-0 | f285_from.txt replaced by f285_to.txt (an APPEND: FROM once before, TO once after) |
+| .agent/plan.md | +7/-7 | rewritten whole to the plan.md payload |
 
-40/0, 8/0, 8/9, 3/0 — matches the block's stated expectation exactly. `open_finding_ids` over
-`.agent/live_review.md` at this commit reads `['R-1008', 'R-1053', 'R-1054', 'R-1055']`, the
-reviewer's own simulated reading.
+42/0, 8/0, 7/7 — matches the block's stated expectation exactly. `open_finding_ids` over
+`.agent/live_review.md` at this commit reads `['R-1008', 'R-1055', 'R-1056']`, the reviewer's own
+simulated reading.
 
-### 434cae84e F025 R7 C2: R-1053's fix — a task pause offers only while pending
+### 09ebd31db F025 R8 C2: DECISION F025 D6 M1 — the paused status joins the manifest lifecycle
 | Path | +/- | Reason |
 |---|---|---|
-| apps/ui/src/api/pauseView.ts | +7/-2 | R-1053's FIX: `taskPauseAction` answers `pause` only for state `pending` (was: every state but `done`), `resume` for a paused task as before, `null` otherwise |
-| apps/ui/src/api/pauseView.test.ts | +14/-2 | one test per FIX-named state: `current`, `blocked` and `suggested` each now assert `null`; the old "not done" test is rebased onto `pending` |
+| packages/orchestration/run_manifest.py | +28/-8 | M1: `paused` joins `_VALID_STATUS`; two new `_LIFECYCLE_MATRIX` rows (`pre_work_stop`, `worked`), each equal to the `stopped` row for that phase except `stop_request: False`; the comment above the matrix corrected; the two other `("completed", "stopped")` branches that are about an episode ending before completion (the published-reference zero-calls/coverage-completeness gate, and the terminal-snapshot-must-be-ok gate) widened to include `paused`; the `stop_request_id` rule (only a stopped manifest carries one) is untouched, as M1 orders |
+| tests/orchestration/test_run_manifest_reference_coverage.py | +3/-1 | T2: `TestPublishedTerminalReferenceNeedsCompleteCoverage.test_incomplete_terminal_reference_is_rejected`'s `@pytest.mark.parametrize("status", ...)` widened from `["completed", "stopped"]` to add `"paused"` — the coverage-completeness gate M1 widened is now exercised for a paused reference too |
+| tests/orchestration/test_run_manifest_writer_postconditions.py | +3/-1 | T2: `assert_canonically_readable`'s `if latest.status in ("completed", "stopped"):` gate (coverage-completeness + reference-validation postcondition, shared by every writer/recovery test in the file) widened to add `"paused"` |
 
-21 insertions, under the cap. `python3 -m ruff check` clean; the touched vitest tests were re-run as
-part of every later gate in this handback (never in isolation as a standalone claim).
+34 insertions, under the cap. `python3 -m ruff check` clean.
 
-### 1a8b1cab7 F025 R7 C3: R-1054's fix — key the popover's control by the task id
+### 16cca2693 F025 R8 C3: DECISION F025 D6 M2/M3 — parks write a paused manifest, evidence readers widened, T1
 | Path | +/- | Reason |
 |---|---|---|
-| apps/ui/src/components/detail/DetailPopover.tsx | +1/-0 | R-1054's FIX: `<PauseControl key={task.id} ...>` — React now remounts the control (dropping its last answer) when the selection changes |
-| tests/ui_contracts/test_pause_controls_contract.py | +10/-0 | `test_the_popovers_control_is_keyed_by_the_tasks_id`, the test R-1054's FIX clause names |
+| packages/orchestration/pingpong_job.py | +27/-5 | M2: `_park_job` now captures the episode-start snapshot at `_PHASE_PRE_WORK_STOP` when not yet bound (mirroring `run_job`'s own pre-work-stop branch) and writes the parked episode's manifest under status `paused` through `_write_run_manifest_record`, before calling `park_job_pause` — a failed write is kept in `run_manifest_error`, the park proceeds regardless; the task cap's own pause (`run_job`'s `elif job.state == JOB_PAUSED`) now writes its own `paused` manifest exactly where the completion writes `completed`, since a max-tasks boundary carries no `job.pause` record and so has no other route to the manifest chain |
+| packages/orchestration/job_evidence.py | +23/-17 | M3: the three readers found by grepping `packages/`, `apps/`, `scripts/` and `docs/` for a closed manifest-status set that actually branches on `RunManifestV1.status`/`JobPlan.state` and describes an episode ending before completion — `_crosscheck_job_episodes_vs_index`'s "terminal job's active episode is recorded" gate, `_crosscheck_terminal_jobplan_manifest`'s whole-field agreement gate (plus its now-generalized "carries stopped-only stop_request_id" message), and `_write_run_manifest_export`'s `mandatory`-manifest gate — each widened from `(JOB_COMPLETED, JOB_STOPPED)` to add `JOB_PAUSED`; full reader list and dispositions below |
+| tests/orchestration/test_pause_manifest.py | +174/-0 | T1, NEW FILE: five scenarios reusing `test_pause_resume.py`'s fixtures by import — job-scope park mid-build, task-scope park in-flight, a job-scope pause requested before any work, the task-cap pause, and a paused manifest forged with a `stop_request_id` refused by the validator; each park scenario also proves the relaunch's completed manifest over two episodes (`paused` then `completed`) with an empty `run_manifest_error` |
 
-11 insertions, under the cap.
+224 insertions, under the cap.
 
-### c1de616fd F025 R7 C4a: DECISION F025 D5's end-to-end live test, helpers and E4's normalization (part 1/2, split for size)
+### 66eaea5c5 F025 R8 C4: DECISION F025 D6 M4 — the end-to-end test compares the manifest error too
 | Path | +/- | Reason |
 |---|---|---|
-| tests/ui_server/test_pause_e2e_live.py | +419/-0 | NEW FILE, first half: module docstring, `test_pause_door_live.py`'s own helpers copied verbatim (E1), the CLI-faithful `_RUNNER` (E2), `_run_control`, `E4_REMOVED_FIELDS` with its reasons, `_normalized_export`, `_workspace_bytes` and `_task_level_event_names` (E4) |
+| tests/ui_server/test_pause_e2e_live.py | +16/-6 | M4: `run_manifest.error`'s entry (and its reason paragraph) removed from `E4_REMOVED_FIELDS`, and `"error"` removed from `_normalized_export`'s hardcoded pop list, so it is now compared for real (both sides read empty); both `TestJobScopeE2ELive` and `TestTaskScopeE2ELive` gain an explicit assertion that the relaunched job's `run_manifest.error` is `""` and that `run_manifest.episodes` names exactly two episodes, `["paused", "completed"]` |
 
-### 117bc440f F025 R7 C4b: DECISION F025 D5's end-to-end live test, JOB and TASK scope (part 2/2)
+16 insertions, under the cap.
+
+### 8556b9bb5 F025 R8 C5: the round's red-proof mutation tool
 | Path | +/- | Reason |
 |---|---|---|
-| tests/ui_server/test_pause_e2e_live.py | +206/-0 | second half: `TestJobScopeE2ELive` and `TestTaskScopeE2ELive` (E3) |
+| .agent/authored/f025-r8-mutations.py | +243/-0 | the five named mutations (m1-m5), each FROM verified single-occurrence against the primary checkout before commit (see External actions) and re-verified live in a disposable worktree after; reuses `f025-r7-mutations.py`'s live-worktree-prep route (symlink `apps/ui/node_modules`, copy `apps/ui/dist` with mtimes bumped, never npm) since the e2e file it runs starts a real UI server |
 
-Constraint 2 declared split: the whole new file is 625 lines, over the 500-insertion cap in one
-commit, so it is committed in two parts at the file's own natural seam (immediately before the
-first test class) — the only oversize content this round produced, and it is split rather than
-accepted whole, so DECISION F104 D1's oversize-commit exception is not invoked. `python3 -m ruff
-check` on the file after C4a alone reports two unused imports (`time`, `pytest`, both first used in
-part 2) — an artifact of the split, not of the finished file, which is clean after C4b (see G2).
+243 insertions, under the cap.
 
-### eed6ff30b F025 R7 C5: the round's red-proof mutation tool
-| Path | +/- | Reason |
-|---|---|---|
-| .agent/authored/f025-r7-mutations.py | +281/-0 | m1 (vitest, R-1053's fix) and m2 (pytest, R-1054's fix), reusing `f025-r6-mutations.py`'s vitest route; m3-m5 (pytest, the e2e), reusing `f025-r4-mutations.py`'s live-worktree-prep route; each FROM verified single-occurrence read-only against the primary checkout before commit (see External actions) and re-verified live in a disposable worktree after |
-
-281 insertions, under the cap.
-
-### (this commit) F025 R7 C6: rewrite handoff for round 7
+### (this commit) F025 R8 C6: rewrite handoff for round 8
 | Path | +/- | Reason |
 |---|---|---|
 | .agent/handoff.md | measured after this commit exists, in the final reply | this handback |
@@ -96,14 +81,16 @@ part 2) — an artifact of the split, not of the finished file, which is clean a
 ## External actions
 
 - Read-only check of the mutation tool's five FROM patterns against the primary checkout's real
-  files (`apps/ui/src/api/pauseView.ts`, `DetailPopover.tsx`, `pingpong_job.py` twice,
-  `pause_control.py`) before it was committed: each occurs exactly once. No primary file was
-  mutated by this check.
-- `git worktree add --detach .remedy-wt/f025-r7-mut eed6ff30b` (C5's HEAD) — succeeded, for G5's one
-  official run against the committed tool.
-- `python3 -B .agent/authored/f025-r7-mutations.py .../f025-r7-mut` — all 5 mutations caught, all
-  restores byte-identical, both controls (pytest + vitest) green first and last, final line `True`.
-- `git worktree remove --force .remedy-wt/f025-r7-mut` — succeeded; `git worktree prune` —
+  files (m1, m4, m5 against `packages/orchestration/pingpong_job.py`; m2, m3 against
+  `packages/orchestration/run_manifest.py`) before it was committed: each occurs exactly once, and
+  each mutated form still parses as valid Python (`ast.parse`). No primary file was mutated by
+  this check — the scratch check scripts lived under `.remedy-wt/f025-r8-worker/` (gitignored, per
+  the block's own directory rule).
+- `git worktree add --detach .remedy-wt/f025-r8-mut 8556b9bb5` (C5's HEAD) — succeeded, for G5's
+  one official run against the committed tool.
+- `python3 -B .agent/authored/f025-r8-mutations.py .../f025-r8-mut` — all 5 mutations caught, all
+  restores byte-identical, both controls green first and last, final line `True`.
+- `git worktree remove --force .remedy-wt/f025-r8-mut` — succeeded; `git worktree prune` —
   succeeded (no-op); `git worktree list` afterward shows only the primary checkout and the
   pre-existing worktrees found at session start — nothing new left behind.
 - `git push origin feature/f025-pause-resume` — runs immediately after this commit (C6); its real
@@ -129,62 +116,86 @@ $ git status --porcelain
 $ git branch --show-current
 feature/f025-pause-resume
 $ git log --oneline -1
-218eaabd6 F025 R6 C7: rewrite handoff for round 6
+3f36bd811 F025 R7 C6: rewrite handoff for round 7
 ```
 
 ```
-$ (line count and sha256 of .remedy-wt/f025-r7/block.md, measured)
-line_count: 177
-sha256: e2241811c146aa6d69caf709a23c73b7912bcbf46b53b3ce4f4988522de16b82
+$ (line count and sha256 of .remedy-wt/f025-r8/block.md, measured)
+line_count: 176
+sha256: 18dc08e38f59ad25e613b9608e5b1f078de6a046397b2de48be4ba07f569adf8
 ```
 Matches both readings the delegation message gave exactly.
 
 ```
 $ git worktree list
-(reported: primary checkout + the pre-existing F015/F020/F023/F024/F025/F284 dry/sim worktrees and
-four remedy/job-* worktrees already present at session start — left alone throughout, per constraint 5)
+(reported: primary checkout + the pre-existing F015/F020/F023/F024/F025/F284 dry/sim worktrees
+and several remedy/job-* worktrees already present at session start — left alone throughout, per
+constraint 5)
 ```
 
-### G1 — transport
+### Payload transport (G1)
 
-Every payload's measured lines/bytes/sha256 matched the block's table exactly (d5.md 40/3598/
-ed1e3cbe…, f285_from.txt 2/158/6a0b143f…, f285_to.txt 5/420/00426287…, ledger.md 8/6832/8ad8cf41…,
-plan.md 29/994/f8850294…). Each `.agent/authored/f025-r7-*` copy, read back with
-`git show 8b3f652d6:<path>`, is byte-identical (both raw-bytes `==` and sha256 match) to its
-`.remedy-wt/f025-r7/` source, block copy included. At C1b: `.agent/decisions.md` and
-`.agent/live_review.md` equal their `218eaabd` bytes plus their payloads (verified by the exact
-append operation, python `bytes + bytes`, plus the numstat match); `.agent/plan.md` equals
-`plan.md`'s bytes exactly (`==` check, True); the T2_F285.md pair holds — FROM occurred once before
-the edit, TO occurs once after, and the file equals its `218eaabd` bytes with FROM replaced by TO
-(diff shown above under C1b). `open_finding_ids` over `.agent/live_review.md` at C1b reads
-`['R-1008', 'R-1053', 'R-1054', 'R-1055']`, matching the block's stated reviewer reading exactly.
+```
+$ wc -l / sha256sum .remedy-wt/f025-r8/{d6.md,ledger.md,plan.md}
+d6.md:     42 lines, 3553 bytes, e13bf1650d7984ace350cf6a0f011bc0b1980db6e44849e3ac32a50d0b345105
+ledger.md:  8 lines, 6383 bytes, 7795684e9664648d965784c736e125e9f50384d12285b6ca7b5d7d3622a83fec
+plan.md:   29 lines,  953 bytes, c957d58d7f273b049f2d855d5813db791ccce861a09ee0e92321ab042a6a37c8
+```
+Every payload's measured lines/bytes/sha256 matched the block's table exactly.
+
+```
+$ python3 -c "committed = git show HEAD:<path>; source = open(<src>, 'rb').read(); committed == source"
+f025-r8-block.md  True (13542 bytes both sides)
+f025-r8-d6.md     True (3553 bytes both sides)
+f025-r8-ledger.md True (6383 bytes both sides)
+f025-r8-plan.md   True (953 bytes both sides)
+```
+Each `.agent/authored/f025-r8-*` copy, read back with `git show fe4c76932:<path>`, is byte-identical
+to its `.remedy-wt/f025-r8/` source (block copy included).
+
+```
+$ git diff --numstat -- .agent/plan.md .agent/decisions.md .agent/live_review.md   # staged, pre-C1b
+42	0	.agent/decisions.md
+8	0	.agent/live_review.md
+7	7	.agent/plan.md
+```
+At C1b: `.agent/decisions.md` and `.agent/live_review.md` equal their `3f36bd81` bytes plus their
+payloads (python `bytes + bytes`, confirmed by the exact numstat match); `.agent/plan.md` equals
+`plan.md`'s bytes exactly (`shutil.copyfile`, confirmed by the 7/7 diff matching the two changed
+paragraphs by hand-inspection above).
+
+```
+$ python3 -c "from scripts.rotate_live_review import open_finding_ids; print(open_finding_ids(open('.agent/live_review.md').read()))"
+['R-1008', 'R-1055', 'R-1056']
+```
+Matches the block's stated reviewer reading exactly.
 
 ### G2 — the code
 
 ```
-$ python3 -m ruff check tests/ui_contracts/test_pause_controls_contract.py tests/ui_server/test_pause_e2e_live.py .agent/authored/f025-r7-mutations.py apps/ui/src/api/pauseView.ts
+$ python3 -m ruff check packages/orchestration/run_manifest.py packages/orchestration/pingpong_job.py packages/orchestration/job_evidence.py tests/orchestration/test_pause_manifest.py tests/ui_server/test_pause_e2e_live.py tests/orchestration/test_run_manifest_reference_coverage.py tests/orchestration/test_run_manifest_writer_postconditions.py .agent/authored/f025-r8-mutations.py
 All checks passed!
 ```
-(pauseView.ts and pauseView.test.ts are TypeScript, not ruff's domain, and are covered instead by
-G3's vitest node.)
 
 ```
-$ git diff --stat 218eaabd HEAD -- packages apps/cli
+$ git diff --stat 3f36bd81 8556b9bb5 -- packages/orchestration/long_run_executor.py packages/orchestration/safe_points.py packages/orchestration/pingpong_loop.py packages/orchestration/checkpoints.py apps/ui docs/roadmap
 (empty)
 ```
 
 ```
-$ git diff 218eaabd HEAD -- packages apps scripts | grep -c "noqa: BLE001"
+$ git diff 3f36bd81 8556b9bb5 -- packages apps scripts | grep -c "noqa: BLE001"
 0
 ```
 
 ```
-$ git diff --name-only a2de57b52 eed6ff30b
-.agent/authored/f025-r7-mutations.py
-apps/ui/src/api/pauseView.test.ts
-apps/ui/src/api/pauseView.ts
-apps/ui/src/components/detail/DetailPopover.tsx
-tests/ui_contracts/test_pause_controls_contract.py
+$ git diff --name-only a7945b5a1 8556b9bb5
+.agent/authored/f025-r8-mutations.py
+packages/orchestration/job_evidence.py
+packages/orchestration/pingpong_job.py
+packages/orchestration/run_manifest.py
+tests/orchestration/test_pause_manifest.py
+tests/orchestration/test_run_manifest_reference_coverage.py
+tests/orchestration/test_run_manifest_writer_postconditions.py
 tests/ui_server/test_pause_e2e_live.py
 ```
 Every path is inside constraint 3's tracked set.
@@ -192,18 +203,16 @@ Every path is inside constraint 3's tracked set.
 ### G3 — the tests nearest the change
 
 ```
-$ python3 -m pytest -q -p no:cacheprovider tests/ui_server/test_pause_e2e_live.py tests/ui_server/test_pause_door_live.py tests/orchestration/test_pause_resume.py tests/ui_contracts/test_pause_controls_contract.py tests/ui_contracts/test_ui_lint.py tests/ui_server/test_dashboard_contract.py tests/orchestration/test_test_runner.py tests/cli/test_golden_path.py tests/docs/
-517 passed in 91.67s (0:01:31)
+$ python3 -m pytest -q -p no:cacheprovider -rfEs tests/orchestration/test_pause_manifest.py tests/orchestration/test_pause_resume.py tests/orchestration/test_pause_resume_cycles.py tests/orchestration/test_job_stop_integration.py tests/orchestration/test_run_manifest.py tests/orchestration/test_run_manifest_prework_resume.py tests/orchestration/test_run_manifest_call_expectation_lifecycle.py tests/orchestration/test_run_manifest_reference_coverage.py tests/orchestration/test_run_manifest_terminal_consistency.py tests/orchestration/test_run_manifest_writer_postconditions.py tests/ui_server/test_pause_e2e_live.py tests/ui_server/test_pause_door_live.py tests/test_ble001_ratchet.py tests/cli/test_golden_path.py
+235 passed in 128.46s (0:02:08)
 ```
-Exit 0, zero SKIPPED lines. `test_dashboard_contract.py::test_typescript_compiles` (tsc),
-`test_ui_lint.py`'s eslint tests and `test_test_runner.py`'s vitest tests are all inside this run and
-all passed — none skipped.
+Exit 0, zero SKIPPED lines.
 
 ```
 $ python3 -m pytest -q -p no:cacheprovider tests/ui_server/test_pause_e2e_live.py
-2 passed in 14.73s
+2 passed in 15.30s
 $ python3 -m pytest -q -p no:cacheprovider tests/ui_server/test_pause_e2e_live.py
-2 passed in 14.65s
+2 passed in 15.28s
 ```
 The e2e file alone, twice more, serially, as ordered.
 
@@ -211,194 +220,212 @@ The e2e file alone, twice more, serially, as ordered.
 
 ```
 $ python3 -m pytest -q -p no:cacheprovider tests/ui_server/test_command_channel.py
-109 passed in 7.48s
+109 passed in 7.38s
 ```
 
 ```
-$ python3 <equivalent of run_sel.py, round 6's selection.txt files + tests/ui_server/test_pause_e2e_live.py, -n 8>
-files 146 exit 0 wall 190 s
-SKIPPED [1] tests/regression/test_named_bugs.py:295 ... (D3 quarantine, F252)
-SKIPPED [1] tests/regression/test_named_bugs.py:312 ... (D3 quarantine, F252)
-SKIPPED [1] tests/regression/test_named_bugs.py:321 ... (D3 quarantine, F252)
+$ python3 .remedy-wt/f025-r8/run_sel.py /home/decodeux/Repos/remedy 8
+files 182 exit 1 wall 151 s
+FAILED tests/cli/test_study_cmd.py::TestStudyRunWritesCards::test_study_run_writes_cards_for_a_fixture_repo
+FAILED tests/cli/test_study_cmd.py::TestStudyRunWritesCards::test_study_run_defaults_path_to_cwd
+FAILED tests/cli/test_study_cmd.py::TestStudyRunWritesCards::test_study_run_resolves_same_project_as_teacher_ask_via_registered_project
+FAILED tests/cli/test_study_cmd.py::TestStudyRunWritesCards::test_study_run_warns_and_falls_back_when_no_project_registered
+FAILED tests/cli/test_study_cmd.py::TestStudyRunRecordsStudyOnce::test_a_registered_project_gets_studied_at_and_studied_head
+FAILED tests/cli/test_study_cmd.py::TestStudyRunRecordsStudyOnce::test_an_unscoped_study_writes_no_project_record
 SKIPPED [1] tests/regression/test_named_bugs.py:383 ... (D3 quarantine, F252)
 SKIPPED [1] tests/regression/test_named_bugs.py:392 ... (D3 quarantine, F252)
 SKIPPED [1] tests/regression/test_named_bugs.py:399 ... (D3 quarantine, F252)
+SKIPPED [1] tests/regression/test_named_bugs.py:295 ... (D3 quarantine, F252)
+SKIPPED [1] tests/regression/test_named_bugs.py:312 ... (D3 quarantine, F252)
+SKIPPED [1] tests/regression/test_named_bugs.py:321 ... (D3 quarantine, F252)
 SKIPPED [1] tests/test_agent_tooling.py:43 ... (D12 quarantine, F252)
-SKIPPED [1] tests/test_install_smoke.py:175 ... (install smoke opt-in)
 SKIPPED [1] tests/test_repair_context_reviewer_memory.py:257 ... (UI source not found)
+SKIPPED [1] tests/test_install_smoke.py:175 ... (install smoke opt-in)
 SKIPPED [1] tests/ui_contracts/test_graph_architecture.py:441 ... (D3 quarantine, F252)
 SKIPPED [1] tests/ui_contracts/test_graph_architecture.py:484 ... (D3 quarantine, F252)
 SKIPPED [1] tests/ui_contracts/test_ux_quality.py:507 ... (D3 quarantine, F252)
 SKIPPED [1] tests/ui_contracts/test_ux_quality.py:543 ... (D3 quarantine, F252)
-9700 passed, 13 skipped in 189.19s (0:03:09)
+6 failed, 10364 passed, 13 skipped in 150.60s (0:02:30)
 ```
-Exit 0. 13 skipped — the same standing set `218eaabd` carried. 9700 passed against `218eaabd`'s 9697
-over round 6's 144 files (the e2e file not yet existing): +3, exactly the two new e2e tests plus the
-one new contract test C3 added; no failing node, so nothing needed a serial re-run.
-`.remedy-wt/f025-r7/run_sel.py` itself reads a fixed `selection.txt` with no room for an extra file
-argument, so its exact command was replicated inline with the e2e file appended to the same file
-list, `-n 8`, otherwise identical (same flags, same cwd).
+Exit 1, over 182 files (round 7's 181 plus T1). Matches the reviewer's `3f36bd81` reading exactly
+except `+6 passed` (10358 → 10364): T1's 5 new tests plus the one new `paused` parametrize case in
+`test_run_manifest_reference_coverage.py` (T2). The same six failures, all in
+`tests/cli/test_study_cmd.py`, the known ordering class; the same 13 skipped.
+
+```
+$ python3 -m pytest -q -p no:cacheprovider tests/cli/test_study_cmd.py
+12 passed in 0.63s
+```
+The failing file alone: `12 passed`, matching the reviewer's own stated reading of this known,
+unrelated flake class exactly.
 
 ```
 $ python3 -m apps.cli.main integrity check --json
-{"check_count": 6, ... "fail_count": 0, "ok": true, "passed": true, ...}
+{"check_count": 6, "checks": [{"name": "handler_import", "status": "pass"}, {"name": "live_review_verdict", "status": "pass"}, {"name": "plan_consistency", "status": "pass"}, {"name": "relevant_untracked", "status": "pass"}, {"name": "repo_root_hygiene", "status": "pass"}, {"name": "high_blockers_open", "status": "pass"}], "fail_count": 0, "ok": true, "passed": true}
 ```
 Six `pass`, `fail_count` 0.
 
 ### G5 — the red proofs
 
 ```
-$ python3 -B .agent/authored/f025-r7-mutations.py /home/decodeux/Repos/remedy/.remedy-wt/f025-r7-mut
-worktree: /home/decodeux/Repos/remedy/.remedy-wt/f025-r7-mut
+$ git worktree add --detach .remedy-wt/f025-r8-mut 8556b9bb5
+Preparing worktree (detached HEAD 8556b9bb5)
+$ python3 -B .agent/authored/f025-r8-mutations.py /home/decodeux/Repos/remedy/.remedy-wt/f025-r8-mut
+worktree: /home/decodeux/Repos/remedy/.remedy-wt/f025-r8-mut
 .../apps/ui/node_modules: symlinked from the primary checkout
 .../apps/ui/dist: copied from the primary checkout, mtimes bumped +60s
-CONTROL FIRST: pytest exit=0 failed=0 | vitest exit=0 failed=0
-m1 (taskPauseAction answers pause for a task in state current) [vitest]: exit=1 failed=1
-  failing=[taskPauseAction > answers null for a task that is already current (R-1053)]
+CONTROL FIRST: control: exit=0 failed=0 failing=[(none parsed)]
+m1 (_park_job writes no manifest): exit=1 failed=6
+  failing=[test_pause_manifest.py::TestJobScopeParkMidBuild..., ::TestTaskScopeParkInFlight...,
+  ::TestJobScopePauseBeforeAnyWork..., ::TestAPausedManifestRefusesAStopRequestId...,
+  test_pause_e2e_live.py::TestJobScopeE2ELive..., ::TestTaskScopeE2ELive...]
   caught=True restored byte-identical=True
-m2 (the popover's key={task.id} is deleted) [pytest]: exit=1 failed=1
-  failing=[tests/ui_contracts/test_pause_controls_contract.py::test_the_popovers_control_is_keyed_by_the_tasks_id]
+m2 (paused is removed from _VALID_STATUS): exit=1 failed=7
+  failing=[...TestJobScopeParkMidBuild, ...TestTaskScopeParkInFlight, ...TestJobScopePauseBeforeAnyWork,
+  ...TestTaskCapPause, ...TestAPausedManifestRefusesAStopRequestId, e2e::TestJobScopeE2ELive,
+  e2e::TestTaskScopeE2ELive]
   caught=True restored byte-identical=True
-m3 (lift_job_pause's body is replaced by raise RuntimeError("m3 probe")) [pytest]: exit=1 failed=2
-  failing=[...TestJobScopeE2ELive..., ...TestTaskScopeE2ELive...]
+m3 (the worked-phase paused row loses EXPECT_NOT_DISPATCHED): exit=1 failed=3
+  failing=[...TestTaskCapPause, e2e::TestJobScopeE2ELive, e2e::TestTaskScopeE2ELive]
   caught=True restored byte-identical=True
-m4 (unpause_job_command answers not_paused where it answers parked) [pytest]: exit=1 failed=1
-  failing=[...TestJobScopeE2ELive...]
+m4 (the task cap's pause writes no manifest): exit=1 failed=1
+  failing=[...TestTaskCapPause]
   caught=True restored byte-identical=True
-m5 (the park leaves job.pause empty) [pytest]: exit=1 failed=2
-  failing=[...TestJobScopeE2ELive..., ...TestTaskScopeE2ELive...]
+m5 (_park_job's manifest write passes the pause request id as stop_request_id): exit=1 failed=6
+  failing=[...TestJobScopeParkMidBuild, ...TestTaskScopeParkInFlight, ...TestJobScopePauseBeforeAnyWork,
+  ...TestAPausedManifestRefusesAStopRequestId, e2e::TestJobScopeE2ELive, e2e::TestTaskScopeE2ELive]
   caught=True restored byte-identical=True
-CONTROL LAST: pytest exit=0 failed=0 | vitest exit=0 failed=0
-apps/ui/src/api/pauseView.ts: restored byte-identical: True
-apps/ui/src/components/detail/DetailPopover.tsx: restored byte-identical: True
+CONTROL LAST: control: exit=0 failed=0 failing=[(none parsed)]
 packages/orchestration/pingpong_job.py: restored byte-identical: True
-packages/orchestration/pause_control.py: restored byte-identical: True
+packages/orchestration/run_manifest.py: restored byte-identical: True
 .../apps/ui/node_modules: removed
 ALL MUTATIONS CAUGHT AND RESTORED CLEANLY: True
 ```
 
 ```
-$ git worktree remove --force .remedy-wt/f025-r7-mut
+$ git worktree remove --force .remedy-wt/f025-r8-mut
 $ git worktree prune
 $ git worktree list
-(no f025-r7-mut entry; every pre-existing worktree still present, untouched)
+(no f025-r8-mut entry; every pre-existing worktree still present, untouched)
 ```
 
 ## Authored-text proofs
 
-`.agent/authored/f025-r7-block.md`, `f025-r7-d5.md`, `f025-r7-f285_from.txt`, `f025-r7-f285_to.txt`,
-`f025-r7-ledger.md` and `f025-r7-plan.md` were built with `shutil.copyfile` from the reviewer's
-payload files — never retyped, never edited — and G1 compared every one byte for byte, read back
-with `git show 8b3f652d6:<path>`, against its source: all six BYTE-IDENTICAL.
-`.agent/decisions.md` and `.agent/live_review.md` were appended with raw bytes read from
-`d5.md`/`ledger.md` (python `Path.write_bytes(old_bytes + payload_bytes)`), never retyped;
-`.agent/plan.md` was rewritten whole from `plan.md`'s bytes via `shutil.copyfile`;
-`docs/roadmap/features/T2_F285.md` had `f285_from.txt`'s bytes replaced by `f285_to.txt`'s bytes via
-one `bytes.replace(from_bytes, to_bytes, 1)` call, asserted single-occurrence before and after. G1's
-numstat comparisons confirm all four match the payloads' expected insertion counts exactly.
-`apps/ui/src/api/pauseView.ts`/`.test.ts`, `DetailPopover.tsx`,
-`tests/ui_contracts/test_pause_controls_contract.py`, `tests/ui_server/test_pause_e2e_live.py` and
-`.agent/authored/f025-r7-mutations.py` are WORKER-authored production code, tests and the G5 tool
-against R-1053's and R-1054's FIX clauses and DECISION F025 D5's own specification — not reviewer
-payloads — so no authored-text proof applies to them.
+`.agent/authored/f025-r8-block.md`, `f025-r8-d6.md`, `f025-r8-ledger.md` and `f025-r8-plan.md` were
+built with `shutil.copyfile` from the reviewer's payload files — never retyped, never edited — and
+G1 compared every one byte for byte, read back with `git show fe4c76932:<path>`, against its
+source: all four BYTE-IDENTICAL. `.agent/decisions.md` and `.agent/live_review.md` were appended
+with raw bytes read from `d6.md`/`ledger.md` (python `open(..., 'ab').write(payload_bytes)`), never
+retyped; `.agent/plan.md` was rewritten whole from `plan.md`'s bytes via `shutil.copyfile`. G1's
+numstat comparisons confirm all three match the payloads' expected insertion counts exactly.
+`packages/orchestration/run_manifest.py`, `packages/orchestration/pingpong_job.py`,
+`packages/orchestration/job_evidence.py`, `tests/orchestration/test_pause_manifest.py`,
+`tests/ui_server/test_pause_e2e_live.py`, the two T2-widened test files and
+`.agent/authored/f025-r8-mutations.py` are WORKER-authored production code, tests and the G5 tool
+against DECISION F025 D6's own specification — not reviewer payloads — so no authored-text proof
+applies to them.
+
+## M3 — readers of a closed manifest-status set
+
+Searched `packages/`, `apps/`, `scripts/` and `docs/` (excluding `docs/roadmap/`, `apps/ui/` and
+build artifacts under `apps/ui/dist`) for `run_manifest`/`RunManifestV1`/`manifest.status`
+references, then for each hit, whether it actually branches on a CLOSED set of manifest statuses
+describing an episode's lifecycle (as opposed to importing a decoder, a redaction helper, or
+referencing an unrelated field/vocabulary that happens to share a word like "completed").
+
+**Widened** (all in `packages/orchestration/job_evidence.py`, landed in C3):
+- `_crosscheck_job_episodes_vs_index`'s "a terminal job's active episode must be recorded" gate —
+  `(JOB_COMPLETED, JOB_STOPPED)` → add `JOB_PAUSED`.
+- `_crosscheck_terminal_jobplan_manifest`'s whole-field JobPlan/index/manifest agreement gate —
+  same widening; its "carries stopped-only stop_request_id" message generalized to name the
+  actual status rather than hardcoding "completed".
+- `_write_run_manifest_export`'s `mandatory = terminal and marked` gate (the evidence export named
+  by DECISION F025 D6 clause 4) — same widening.
+
+**Read and left alone, with why:**
+- `packages/orchestration/proof_chain.py` `_VALID_STATUSES` — a different vocabulary entirely
+  (`verified`/`failed`/`incomplete`/`unverified`/`not_applicable`, the Proof Chain's own
+  `proof_status`), not the manifest's lifecycle status.
+- `packages/orchestration/runtime_integration_gate.py` — references `run_manifest.py` only as a
+  file-path string for a static call-existence check (`f018_run_manifest_decode_budgets`); no
+  status enumeration.
+- `packages/orchestration/self_use_findings.py` — reads `run_manifest_error` as a non-blank string
+  only; no status set.
+- `packages/orchestration/rate_governor.py` — a comment naming a line number in `run_manifest.py`;
+  no status set.
+- `packages/orchestration/job_apply.py` — `apply_manifest.status` is `ApplyManifest`'s own field
+  (`applied`/`blocked`), a different type from `RunManifestV1.status`.
+- `packages/orchestration/pingpong_loop.py` — imports `FinalizedCallContext`/`on_call_finalized`
+  for call finalization, not status; also out of scope by constraint 3 regardless.
+- `packages/orchestration/call_identity.py`, `handoff.py`, `review_subject.py`, `run_report.py`,
+  `manifest_schema.py`, `ci_stages.py`, `scripts/build_review_manifest.py` — each references
+  `run_manifest.py` only for a decoder, a redaction helper, or a doc comment; no closed status set.
+- `docs/system/vocabulary.md`, `docs/system/self-use-track-v1.md`,
+  `docs/system/job-budget-enforcement-v0.md` — mention `run_manifest` fields but carry no closed
+  status enumeration.
+- `docs/roadmap/features/T0_F012.md` — DOES enumerate the closed set (`status (completed | stopped
+  | planned)`, and again at lines ~706/773/1108/1324) and is now stale. Left alone: constraint 3
+  forbids touching `docs/roadmap/`. Flagged below under Deviations as a known gap for the
+  reviewer/closure sequence.
+- The `apps/ui/*.ts`/`*.test.ts` files an early broad grep matched on the bare word "completed"
+  (`brainView.ts`, `digestCardCopy.ts`, `jobDigest.test.ts`, etc.) — none of them import or read
+  Python's `run_manifest` module (impossible across the language boundary); their "completed"
+  refers to the UI's own job/task display state. Also out of scope by constraint 3 regardless.
+
+## T2 — existing tests widened
+
+- `tests/orchestration/test_run_manifest_reference_coverage.py::TestPublishedTerminalReferenceNeedsCompleteCoverage::test_incomplete_terminal_reference_is_rejected`
+  — `@pytest.mark.parametrize("status", ["completed", "stopped"])` → add `"paused"`.
+- `tests/orchestration/test_run_manifest_writer_postconditions.py::assert_canonically_readable` —
+  `if latest.status in ("completed", "stopped"):` → add `"paused"`.
 
 ## Deviations & assumptions
 
-1. **The first runner resolves providers BY NAME, monkeypatching `create_provider`, not by an
-   injected provider object (E2).** The door test's own `_RUNNER` passes `builder_provider=`/
-   `reviewer_provider=` OBJECTS, which `run_job` then reuses UNCHANGED across every task in that one
-   process — `FakeProvider`'s pass/fail rounds are counted on that one instance's cumulative
-   `_build_count`/`_review_count`, so after task 1 spends two review calls to pass, tasks 2 and 3
-   inherit a counter already past the pass threshold and need no repair round at all. The real CLI
-   relaunch never injects an object (`builder_provider`/`reviewer_provider` stay their `None`
-   default), so `run_pingpong` calls `create_provider(name)` FRESH for every task — every task gets
-   its own round 1. Object injection therefore made a single continuous control run and a
-   two-episode relaunch produce different `repair_rounds_used` per task by construction, nothing to
-   do with the pause itself; the runner now calls `run_job(job.job_id, builder_name="fake",
-   reviewer_name="fake")` with `packages.orchestration.pingpong_loop.create_provider` monkeypatched
-   to add the sleep while returning a fresh instance every call, exactly matching what the CLI
-   relaunch already does unmonkeypatched. This is why D5's own text was followed literally ("read
-   `_cmd_job_run` and `create_provider` for those values; never assume them") rather than copying the
-   door test's shortcut.
-2. **`_task_level_event_names` sorts by each event's own `timestamp` field, not by run-log filename.**
-   `new_run_id()` is a random UUID4 (confirmed by reading `run_log.py`), not a chronological one, so
-   sorting the job's several run-log files (one per process/episode) by NAME — safe for `_events`
-   above, which only ever counts a named event — would silently interleave a relaunch's episode
-   ahead of the run it resumed. Not stated in the block; discovered by reproducing the scenario
-   outside pytest first (see below) and confirmed necessary before the job-scope comparison could
-   ever pass regardless of the other fixes.
-3. **A job-scope park's own interrupted task-attempt events are trimmed to their final attempt
-   before the ordered comparison.** A JOB-SCOPE pause lands mid-call on the task after the one just
-   applied (S1: "every call already in flight finishes"); that task's `task_run_started` (and
-   sometimes one `task_round_completed`, depending on exactly which call was in flight) is written
-   before the roll-back to `pending`, then the task runs again in full once relaunched. Neither the
-   final export nor the final workspace bytes reflect the abandoned attempt — `_normalized_export`
-   and `_workspace_bytes` only ever see the task's FINAL, committed run — so `_task_level_event_names`
-   applies the same "final state only" principle: per task id, only the events from its LAST
-   `task_run_started` onward are kept. This is not one of D5's four named pause/resume event
-   exclusions (`job_paused`/`job_resumed`/`task_paused`/`task_resumed`); it is a consequence of the
-   SAME park mechanic those four exclusions exist for, expressed through ordinary task-lifecycle
-   events rather than a dedicated one, and a control task (started exactly once) is untouched by the
-   filter. Recorded here per constraint 3's own rule ("A field you find differing that is not in
-   that class is a FINDING for the handback, never a new entry in the list") — this is reported as a
-   deviation with its reasoning rather than silently folded into `E4_REMOVED_FIELDS`, which names
-   only fields inside `_export_job`'s own shape.
-4. **Every `*_source` provenance field inside `execution_config` (and the job's own
-   `repair_rounds_source`) is treated as a "run reference" for E4 and stripped.** A relaunch always
-   re-resolves its config from the job's OWN persisted `execution_config`, so every provenance label
-   reads `persisted` after a relaunch and `default` for a single control run, for a value that is
-   otherwise byte-identical — discovered the same way as #1, by running the comparison and reading
-   the actual diff rather than predicting it. Listed once in `E4_REMOVED_FIELDS` as `*_source` with
-   its reason, applied by a key-suffix rule in `_strip_generic_keys`.
-5. **`run_manifest.error` is treated as a run-manifest episode field and stripped.** The manifest's
-   per-episode call-expectation check reports a relaunch's SECOND episode short for a task that made
-   its calls in the FIRST one — a real, deterministic manifest-validation message, not a fake
-   provider artifact — while a single-episode control never triggers it. Classified under "the run
-   manifest's episodes and episode fields" per D5's own class list; also fixed a bug in the first
-   attempt at this normalization, which named `run_manifest.path` in `E4_REMOVED_FIELDS`'s prose but
-   never actually popped it in `_normalized_export` — corrected before this handback, not left for a
-   finding.
-6. **The C4 commit is split across C4a/C4b (constraint 2).** The whole new test file is 625 lines,
-   over the 500-insertion cap as one commit; split at the file's own natural seam, immediately before
-   `TestJobScopeE2ELive`. Declared here per the block's own instruction ("split any that would reach
-   500 insertions and say so"), not treated as DECISION F104 D1's oversize-commit exception (nothing
-   here is accepted whole over the cap).
-7. **No production file under `packages/` or `apps/cli/` needed changing.** E3 and E4 both pass
-   against the code exactly as `218eaabd` left it — `run_job`, `park_job_pause`, `lift_job_pause`,
-   `unpause_job_command` and `_export_job` needed no widening, only a test-side normalization of
-   what a relaunch legitimately changes. Constraint 4's stop-and-report clause is therefore not
-   invoked.
-8. **No full-suite run.** Per constraint 6 (amend0917 rule 1), only G3's and G4's targeted selections
-   ran; the one full-suite run per feature belongs to F025's closure, not this round.
+1. **`docs/roadmap/features/T0_F012.md`'s closed status enumeration is now stale and was left
+   untouched.** M3's own instruction is to widen every reader of a closed manifest-status set, and
+   this doc names one (`status (completed | stopped | planned)`) several times; constraint 3
+   explicitly forbids touching `docs/roadmap/`, so the two orders conflict for this one file.
+   Resolved in constraint 3's favor (the narrower, explicitly-named prohibition), per AGENTS.md's
+   "preserve scope discipline" tie-break rule. Not treated as constraint 4's "impossible as
+   written" clause, because M1-M4 and the tests are all fully satisfiable without touching this
+   doc — only M3's doc-reading half has one file it cannot act on. Flagged here for the reviewer;
+   the fix (adding `paused` to this doc's own status list) belongs to a normal PR against
+   `docs/roadmap/features/T0_F012.md`, not this round.
+2. **Two existing tests widened beyond the block's literally-named files (T2).** T1 names only the
+   new file; T2 orders "any existing test whose only edit widens a status set it pins to paused",
+   found by inspecting the G3 test list for the same `("completed", "stopped")` shape M1 widened in
+   production. Both are single-line-plus-comment edits (see the T2 section above and C2's table),
+   verified passing before and after.
+3. **No production file outside `run_manifest.py`, `pingpong_job.py` and `job_evidence.py` needed
+   changing.** `long_run_executor.py`, `safe_points.py`, `pingpong_loop.py`, `checkpoints.py`,
+   `apps/ui/` and `docs/roadmap/` are confirmed untouched by G2's `git diff --stat` (constraint 3).
+4. **No full-suite run.** Per constraint 6 (amend0917 rule 1), only G3's and G4's targeted
+   selections ran; the one full-suite run per feature belongs to F025's closure, not this round.
 
-No payload was edited or retyped. `packages/`, `apps/cli/`, `cockpitLogic.ts`, `decisionSubmit.ts`,
-`steeringSend.ts`, both `tokens.css` files, `graph_spec.md` and `docs/roadmap/ROADMAP.md` are
-confirmed untouched by G2's `git diff --stat` (only `docs/roadmap/features/T2_F285.md` changed,
-exactly as PAYLOADS orders). The one worktree this round created (`.remedy-wt/f025-r7-mut`) was
-removed the same round, per constraint 5; every pre-existing worktree was left alone.
+No payload was edited or retyped. The one worktree this round created (`.remedy-wt/f025-r8-mut`)
+was removed the same round, per constraint 5; every pre-existing worktree was left alone.
 
 ## Item-status table
 
 | Item | Status | Reason |
 |---|---|---|
-| C1a | done | 261 insertions, matches the block's expectation (177+84) exactly |
-| C1b | done | 40/0, 8/0, 8/9, 3/0 insertions, matches the block's expectation exactly; `open_finding_ids` reads `['R-1008', 'R-1053', 'R-1054', 'R-1055']` |
-| C2 | done | 21 insertions; R-1053's FIX landed with its three new state-specific tests |
-| C3 | done | 11 insertions; R-1054's FIX landed with its named test |
-| C4 | done | 625 insertions total, split C4a (419) + C4b (206) per constraint 2; E1-E4 landed whole |
-| C5 | done | 281 insertions; the G5 tool landed, its FROM patterns pre-checked against the primary checkout |
+| C1a | done | 255 insertions, matches the block's expectation (176+79) exactly |
+| C1b | done | 42/0, 8/0, 7/7 insertions, matches the block's expectation exactly; `open_finding_ids` reads `['R-1008', 'R-1055', 'R-1056']` |
+| C2 | done | M1 landed (paused status + lifecycle rows + two widened validator gates) with T2's two widened tests; 34 insertions |
+| C3 | done | M2 (`_park_job` + task-cap pause write `paused` manifests) and M3 (three `job_evidence.py` readers widened) landed with T1's five new tests; 224 insertions |
+| C4 | done | M4 landed: `run_manifest.error` leaves `E4_REMOVED_FIELDS`, both scopes assert two episodes `["paused","completed"]` and an empty error; 16 insertions |
+| C5 | done | 243 insertions; the G5 tool landed, its FROM patterns pre-checked against the primary checkout and against `ast.parse` |
 | C6 | done | this handback |
 | G1 | done | all payload and copy identity checks byte-identical; open-finding set matched at C1b |
-| G2 | done | ruff clean over every changed .py file; packages/apps-cli untouched; no new noqa: BLE001; name-only diff exactly inside constraint 3 |
-| G3 | done | 517 passed, exit 0, no SKIPPED; tsc/eslint/vitest nodes each confirmed PASSED; e2e file alone green twice more |
-| G4 | done | 109 passed (neighbour); 9700 passed, 13 skipped, exit 0 (selection + e2e, 8 workers); integrity check 6/6 pass |
-| G5 | done | all 5 mutations caught, all restores byte-identical, `True`; pre-checked read-only against the primary, then officially at C5's HEAD in a disposable worktree |
+| G2 | done | ruff clean over every changed .py file; the four do-not-touch files/dirs untouched; no new noqa: BLE001; name-only diff exactly inside constraint 3 |
+| G3 | done | 235 passed, exit 0, no SKIPPED; e2e file alone green twice more |
+| G4 | done | 109 passed (neighbour); 10364 passed / 6 failed (known flake, unrelated) / 13 skipped, exit 1 (selection + T1, 8 workers), matching the reviewer's baseline plus the round's own new tests exactly; the failing file alone reads 12 passed, matching the reviewer's own known reading; integrity check 6/6 pass |
+| G5 | done | all 5 mutations caught, all restores byte-identical, `True`; officially run at C5's HEAD in a disposable worktree, which was then removed |
 | G6 | done | reported in the final reply, after C6 and the push |
 
 ## Next
 
-Phase 1 rule 1: read `.agent/STOP` from disk. Then the review of round 7. Then F025's closure
-sequence. Open findings: 4 — `R-1008` and `R-1055`, owned by F285, and `R-1053` and `R-1054`, owned
-by F025 and repaired this round — the count `open_finding_ids` reads at C1b. Operator questions
-open: 4 — the count of `### Q` headings in `.agent/operator_questions.md` at C1b (unchanged this
-round).
+Phase 1 rule 1: read `.agent/STOP` from disk. Then the review of round 8. Then F025's closure
+sequence. Open findings: 3 — `R-1008` and `R-1055`, owned by F285, and `R-1056`, owned by F025 and
+repaired this round — the count `open_finding_ids` reads at C1b. Operator questions open: 4 — the
+count of `### Q` headings in `.agent/operator_questions.md` at C1b (unchanged this round).
