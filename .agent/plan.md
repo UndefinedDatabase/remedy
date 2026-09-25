@@ -13,17 +13,15 @@ things stood, with no process left waiting
 
 ## Current Step
 
-ROUND 10, the closure sequence's evidence half: book round 9, register
-R-1057 and R-1058 for F285, build the evidence bundle against the fork
-point and the fresh review package.
+ROUND 11, the closing round: book round 10, rotate the ledger, accept
+F025 in STATUS with its README pins and the self-use item's
+`consumed_by`, and open the pull request.
 
 ## Next Steps
 
-1. The closing round: the ledger rotation, the STATUS flip with its
-   README pins and the self-use item's `consumed_by`, and the pull
-   request.
+1. The next feature's session merges this pull request at the Open PR
+   Gate, then claims the first unchecked feature in STATUS.
 
 ## Risks
 
-A pause must never strand a job it cannot resume. Open findings: 4 —
-R-1008, R-1055, R-1057 and R-1058, all owned by F285.
+Open findings: 4 — R-1008, R-1055, R-1057 and R-1058, all owned by F285.
