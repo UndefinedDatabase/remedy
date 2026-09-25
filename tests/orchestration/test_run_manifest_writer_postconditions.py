@@ -124,7 +124,9 @@ def assert_canonically_readable(ev, *, job_id="j", expect_latest=None):
             == c.canonical_artifact_bytes()
 
     # 6. a published terminal reference has COMPLETE coverage and passes reference validation
-    if latest.status in ("completed", "stopped"):
+    # DECISION F025 D6 (round 8): a paused reference is held to the same rule — a park records
+    # its episode exactly as a stop does.
+    if latest.status in ("completed", "stopped", "paused"):
         assert latest.coverage.status == COVERAGE_COMPLETE
         # F6 (round 10): zero calls is only ever complete when the record PROVES zero expected.
         if not latest.calls:
