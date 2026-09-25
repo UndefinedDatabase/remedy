@@ -86,6 +86,35 @@ class TestRedaction:
     def test_secret_shapes_redacted(self, secret):
         assert secret not in redact_stream_line(json.dumps({"v": secret}))
 
+    # R-1064: sk- patterns must only match at a token start, not inside a word
+    # (e.g. "plan_edit_task-…" embeds "sk-" inside a word and must not be redacted).
+    @pytest.mark.parametrize("node_id", [
+        # parametrized pytest node ids from TestInvalidEditsChangeNothing
+        "plan_edit_task-task_id-T1-fields-id-X-invalid_args-not_editable",
+        "plan_edit_task-task_id-T1-fields-est_tokens_band-XXL-band_too_large",
+        "plan_edit_task-task_id-T1-fields-title-Inspect_the_code-title_frozen",
+        "plan_edit_task-task_id-T9-fields-title-x-unknown_task-T9",
+    ])
+    def test_node_ids_with_embedded_sk_not_redacted(self, node_id):
+        line = json.dumps({"node_id": node_id})
+        assert node_id in redact_stream_line(line), (
+            f"node id incorrectly redacted: {node_id!r}"
+        )
+
+    @pytest.mark.parametrize("ctx,key", [
+        # key at a token start: after space, =, quote, /, -
+        (" sk-abcdefghijklmnopqrstuvwxyz12345", "sk-abcdefghijklmnopqrstuvwxyz12345"),
+        ("=sk-abcdefghijklmnopqrstuvwxyz12345", "sk-abcdefghijklmnopqrstuvwxyz12345"),
+        ('"sk-abcdefghijklmnopqrstuvwxyz12345"', "sk-abcdefghijklmnopqrstuvwxyz12345"),
+        ("/sk-abcdefghijklmnopqrstuvwxyz12345", "sk-abcdefghijklmnopqrstuvwxyz12345"),
+        ("-sk-abcdefghijklmnopqrstuvwxyz12345", "sk-abcdefghijklmnopqrstuvwxyz12345"),
+    ])
+    def test_sk_key_at_token_boundary_redacted(self, ctx, key):
+        line = json.dumps({"v": ctx})
+        assert key not in redact_stream_line(line), (
+            f"key at boundary not redacted: {ctx!r}"
+        )
+
 
 # ---------------------------------------------------------------------------
 # Tool input safety
