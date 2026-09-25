@@ -21130,3 +21130,49 @@ for the reason (5) gives.
 
 HOW TO REVERSE: delete `apps/ui/src/components/timeline/phaseMapping.ts`, its `.test.ts`,
 `tests/ui_contracts/test_phase_mapping.py`, and this paragraph.
+
+## DECISION F024 D2 — the scrubber serves the reducer state at any seq from a memo of snapshots every 200 seq, capped at 64 and dropped farthest-first, invalidated by the rows they should have held, and held to a fresh fold at fuzzed positions (2026-09-25)
+
+CONTEXT: T5_F024.md orders T002 as snapshot memoization every 200 seq, the prefix-equality
+property test at fuzzed positions, and the memory cap: drop distant snapshots beyond it, rebuild
+on demand, invalidate only on snapshot-refetch resets and rebuild lazily. Measured at `78d60af2`:
+`rebuildBrainModel` in `apps/ui/src/components/graph/brainReducer.ts` seeds and folds a ledger
+with a repeated seq kept once, the first winning; `reduceBrainEvent` returns the same object for
+a row at or below the model's last seq; the ledger's seq is its own position and may arrive with
+gaps, which the stream's gap path refetches; DECISION F024 D1's timeline seed resets every task
+status to pending; and the vitest environment is `node`, with no fuzzing library installed.
+
+CHOSEN: (1) THE MODULE is `apps/ui/src/components/timeline/scrubSnapshots.ts`, a factory
+`createScrubMemo(job, tasks, {every, cap})` whose memo keeps the ledger sorted by seq and a map of
+snapshots, with no React, DOM or clock; T003's hook wraps it. (2) A SNAPSHOT at boundary b is the
+state after every row whose seq is below b, for b a positive multiple of `every`, 200 by default
+(`SNAPSHOT_EVERY`); the state at s is the snapshot at the largest boundary not above s + 1, or the
+timeline seed, folded forward over the rows from that boundary to s — at most `every` − 1
+reductions once the snapshot exists. (3) A MISSING snapshot is built from the nearest lower one
+the memo kept, or from the seed, and every boundary on the way is stored. (4) THE CAP is 64
+snapshots (`SNAPSHOT_CAP`), 12 800 seq of ledger at the default spacing; beyond it the snapshot
+farthest from the position being served is dropped, the lower of two equally far, and rebuilt
+from the nearest lower one if a later position needs it. (5) INVALIDATION: a row whose seq the
+memo already holds is dropped, the first winning as in `rebuildBrainModel`; any new row drops
+every snapshot above its seq, which for a row at the head is none and after a gap, or after a
+query past the head, is every one that should have held it; `reset(rows)`, the snapshot-refetch
+of gap recovery, replaces the ledger and drops every snapshot. (6) THE PROPERTY TEST draws
+ledgers from a seeded linear congruential generator — seqs with gaps, repeated seqs, every
+reducer kind, seeded and unseeded tasks, shuffled — and compares the memo's state at fuzzed
+positions, before the first row and past the last, with `rebuildBrainModel` over the timeline
+seed and the prefix, at the default spacing, at a spacing of 5 with a cap of 3 queried in random
+order, while the ledger grows page by page, and over the demo recording. (7) THE GUARD is
+`tests/ui_contracts/test_scrub_snapshots.py`: the spacing equals the figure T5_F024.md and the
+roadmap state, the memo imports only the reducer, its ontology and the timeline seed and touches
+no DOM, clock or React state, and the property test's oracle is `rebuildBrainModel` imported from
+the reducer.
+
+ALTERNATIVES: snapshots keyed by ledger index rather than seq, rejected because the scrubber's
+position is a seq and a gap would shift every index after it; dropping snapshots only on a reset,
+as the feature file words it, rejected because a gap filled by live ingestion would otherwise
+leave snapshots that silently lack a row; least-recently-used eviction, rejected because the
+scrubber's next position is near its last one, which distance serves directly; a fuzzing library,
+rejected because none is installed and a seeded generator replays a red run exactly.
+
+HOW TO REVERSE: delete `apps/ui/src/components/timeline/scrubSnapshots.ts`, its `.test.ts`,
+`tests/ui_contracts/test_scrub_snapshots.py`, and this paragraph.

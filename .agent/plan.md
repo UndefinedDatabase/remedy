@@ -13,21 +13,19 @@ that returns to the present (`docs/roadmap/features/T5_F024.md`).
 
 ## Current Step
 
-ROUND 1: claim F024, re-head the live review record, book F023's round
-10, record DECISION F024 D1, and land T001: `phaseMapping.ts`, the phase
-mapping table over the measured writers, the boundaries of any prefix
-and the sub-glyph extraction, goldened on fixture ledgers and the demo
-recording, with the guard `tests/ui_contracts/test_phase_mapping.py`.
+ROUND 2: book round 1's PASS, record DECISION F024 D2, and land T002:
+`scrubSnapshots.ts`, the memo that serves the reducer state at any seq
+from snapshots every 200 seq under a cap of 64, with the property test
+that its state at fuzzed positions equals a fresh reduction of the
+prefix, and the guard `tests/ui_contracts/test_scrub_snapshots.py`.
 
 ## Next Steps
 
-1. T002: snapshot memoization every 200 seq with its memory cap and
-   lazy rebuild, and the property test that the state at any fuzzed
-   position equals a fresh reduction of that prefix.
-2. T003: the bar, scrubber, LIVE toggle, SCRUBBED banner, capped
-   catch-up and keyboard, and the end-to-end on a live fake job and the
-   demo recording.
-3. The closure sequence: the one full suite, the evidence package and
+1. T003: the bar reading the phase mapping and the memo, the scrubber
+   with its keyboard, the LIVE toggle with the SCRUBBED banner and the
+   capped catch-up, and the end-to-end on a live fake job and the demo
+   recording.
+2. The closure sequence: the one full suite, the evidence package and
    the STATUS flip.
 
 ## Risks
