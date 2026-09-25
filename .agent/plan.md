@@ -13,17 +13,16 @@ the stage-1 performance budget (`docs/roadmap/features/T5_F023.md`).
 
 ## Current Step
 
-ROUND 9, THE CLOSURE SEQUENCE'S EVIDENCE HALF: book round 8's PASS,
-whose one full suite is green, then build the evidence bundle against
-the fork point and the fresh review package.
+ROUND 10, THE CLOSING ROUND: book round 9's PASS, rotate the ledger,
+accept F023 in STATUS with its README pins, and open the pull request.
+T001, T002 and T003 are built; the package is READY_FOR_REVIEW.
 
 ## Next Steps
 
-1. The closing round: the booking of round 9, the ledger rotation, the
-   STATUS flip with its README pins, and the pull request.
-2. The next session's Open PR Gate merges the pull request.
+1. The next session's Open PR Gate merges this feature's pull request.
+2. Rule A5 then claims the first unchecked feature in
+   `docs/roadmap/STATUS.md`.
 
 ## Risks
 
-A package that does not read READY_FOR_REVIEW blocks the closure. Open
-findings: 1, owned by F285.
+None left in this feature. Open findings: 1, owned by F285.
