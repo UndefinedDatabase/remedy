@@ -26,7 +26,7 @@ verification commands. If something is unproven, Remedy says so instead of guess
 
 ## Status
 
-100 of 285 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
+101 of 285 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
 
 | Tier | Name | Done | Total |
 |------|------|-----:|------:|
@@ -35,7 +35,7 @@ verification commands. If something is unproven, Remedy says so instead of guess
 | 2 | Minimal Self-Build Runtime | 37 | 38 |
 | 3 | Full Token Economy & Autonomy | 6 | 26 |
 | 4 | Memory & Learning | 1 | 17 |
-| 5 | Operator Cockpit | 18 | 34 |
+| 5 | Operator Cockpit | 19 | 34 |
 | 6 | Design-to-Code | 0 | 16 |
 | 7 | Quality & Trust | 0 | 15 |
 | 8 | Worker Ecosystem & Neutrality | 0 | 12 |
@@ -423,6 +423,21 @@ look to the new one, a finished node sends out a short ring, a running node
 gently pulses, and the graph stops drawing while the browser tab is hidden; a
 check in a headless browser read 144 of 144 points of a picture of every kind in
 every state as the design requires).
+
+F023 semantic zoom (the job graph now reads at four depths: the whole job,
+one task, one attempt and its evidence; clicking a task, or turning the mouse
+wheel in over it, dims the other tasks to a quarter and shows every attempt of
+that task, and turning the wheel back out returns to the whole job, with a
+wide band between the two points so the picture never flickers; clicking an
+attempt opens a small card beside it with its verdict, how long it took, the
+tokens the builder used and whether a reply had to be asked for again, and
+where a fact was not recorded the card says so in words instead of showing a
+number; the card's Open diff and Why buttons open a side panel with the change
+and the prompts that were sent, and its Rerun button is greyed out with the
+reason written under it; the Escape key and a small trail of names in the top
+left corner walk back one step at a time; the page address remembers where
+you are, so a link opens the same view; and in a headless browser the graph
+held sixty frames a second at five hundred nodes at every depth).
 
 Full per-feature state: [`docs/roadmap/STATUS.md`](docs/roadmap/STATUS.md)
 
