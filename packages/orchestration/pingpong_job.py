@@ -2332,6 +2332,8 @@ def run_job(
     """
     from packages.orchestration.pingpong_loop import (
         TaskInput,
+        load_run,
+        parked_session_refs,
         run_pingpong,
     )
 
@@ -3237,6 +3239,12 @@ def run_job(
             if task_log is None:
                 task_log = _open_task_log(job)
             _log_task_started(task_log, task)
+            # R-1055: a task a park or a stop interrupted still names its parked
+            # run, and the relaunch offers that run's provider sessions to its
+            # first calls; a provider without resume ignores the offer.
+            resume_sessions: dict[str, str] = {}
+            if task.run_id and task.final_status == "stopped":
+                resume_sessions = parked_session_refs(load_run(task.run_id))
             try:
                 result = run_pingpong(
                     task.title,
@@ -3275,6 +3283,8 @@ def run_job(
                     compiled_context_paths=compiled_context_paths,
                     compiled_context_candidates=compiled_context_candidates,
                     compiled_context_token_budget=compiled_context_token_budget,
+                    resume_sessions=resume_sessions,
+                    resumed_from_run_id=task.run_id if resume_sessions else "",
                 )
             except Exception as exc:  # noqa: BLE001 — a task that dies mid-call blocks the job with its error
                 task.status = TASK_FAILED

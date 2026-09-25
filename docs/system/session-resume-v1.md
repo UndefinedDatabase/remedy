@@ -86,6 +86,23 @@ fixture's own size. The comparison exists to prove the DIRECTION is real and
 measured, per the feature's own acceptance criterion, not to claim a
 production magnitude.
 
+## Resume across a relaunch (R-1055, F285 T003)
+
+A park or a stop returns the interrupted task to `pending`, and its relaunch
+starts a new run. Every round's `builder` and `reviewer` blocks in a run's
+`result.json` now carry `session_id` (the session the call reported),
+`resume_used`, `resume_session_ref` and `resume_fallback`. When `run_job`
+reaches a task whose `final_status` is `stopped` and whose `run_id` still
+names the parked run, it reads that record with `parked_session_refs` in
+`packages/orchestration/pingpong_loop.py` and passes the result to
+`run_pingpong` as `resume_sessions`. Round 1's call of each role then resumes
+the parked session when its provider supports resume, with the fallback-once
+rule unchanged, and the new run's record names the parked run as
+`resumed_from_run_id`. The prompt of that call stays full-context: the parked
+session never saw the new run's staging, so no prompt shrink is gated on it.
+`tests/orchestration/test_relaunch_session_resume.py` parks a job mid-build
+and relaunches it through `run_job`.
+
 ## What this does NOT do
 
 - No adapter's `supports_resume` returns `True` in production yet — only

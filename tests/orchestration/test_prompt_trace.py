@@ -407,7 +407,9 @@ class TestSegmentManifest:
 
         source = inspect.getsource(pingpong_loop)
         assert source.count("builder_composed = compose_builder_prompt(") == 2
-        fallback = source.split("if builder_resume_ref and builder_out.error:")[1]
+        # R-1055: the fallback fires on the resume the call really passed, which a
+        # relaunch can set on round 1 without the prompt gate `builder_resume_ref`.
+        fallback = source.split("if builder_call_resume and builder_out.error:")[1]
         assert "builder_composed = compose_builder_prompt(" in fallback
         assert "builder_prompt = builder_composed.text" in source
         sites = [
@@ -496,7 +498,9 @@ class TestSegmentManifest:
 
         source = inspect.getsource(pingpong_loop)
         assert source.count("reviewer_composed = compose_reviewer_prompt(") == 2
-        fallback = source.split("if reviewer_resume_ref and reviewer_out.error:")[1]
+        # R-1055: the fallback fires on the resume the call really passed, which a
+        # relaunch can set on round 1 without the prompt gate `reviewer_resume_ref`.
+        fallback = source.split("if reviewer_call_resume and reviewer_out.error:")[1]
         assert "reviewer_composed = compose_reviewer_prompt(" in fallback
         assert "reviewer_prompt = reviewer_composed.text" in source
         sites = [
