@@ -267,11 +267,6 @@ E4_REMOVED_FIELDS: list[tuple[str, str]] = [
     ("run_manifest.input_snapshot", "a run manifest episode field"),
     ("run_manifest.input_snapshot_error", "a run manifest episode field"),
     ("run_manifest.episodes", "the run manifest's episodes"),
-    ("run_manifest.error", "a run manifest episode field: the manifest's "
-                           "per-episode call-expectation check reads a "
-                           "relaunch's second episode against a task that "
-                           "made its calls in the FIRST one and reports it "
-                           "short, which a single-episode control never does"),
     ("tasks[].run_id", "a run id"),
     ("tasks[].task_start_tree_ref", "a run reference"),
     ("tasks[].task_start_recorded_at", "a timestamp"),
@@ -328,9 +323,12 @@ def _normalized_export(job_id: str, data_dir: Path) -> dict:
     _strip_generic_keys(payload, generic_keys)
 
     # `created_at` is already gone via `generic_keys` above (it recurses).
+    # F025 D6 (round 8): `error` stays IN the comparison now — a relaunch's
+    # `run_manifest_error` reads empty exactly as a single control run's
+    # does, once the parked episode is itself recorded in the manifest chain.
     run_manifest = payload.get("run_manifest") or {}
     for key in ("path", "active_episode_id", "episode_start_workspace_tree",
-                "input_snapshot", "input_snapshot_error", "episodes", "error"):
+                "input_snapshot", "input_snapshot_error", "episodes"):
         run_manifest.pop(key, None)
 
     for artifact in payload.get("artifacts") or []:
@@ -526,6 +524,12 @@ class TestJobScopeE2ELive:
         assert len(_events(data_dir, job_id, "job_resumed")) == 1
         # The task finished before the park keeps its run id — never run again.
         assert resumed["tasks"][0]["run_id"] == task1_run_id
+        # DECISION F025 D6 (round 8): the park recorded episode 1 as `paused`
+        # before relaunch, so the relaunch's fresh episode 2 finds it in the
+        # canonical chain — no manifest error, two episodes, first parked.
+        assert resumed["run_manifest"]["error"] == ""
+        episodes = resumed["run_manifest"]["episodes"]
+        assert [e["status"] for e in episodes] == ["paused", "completed"]
         assert _test_owned_children(baseline, tmp_path) == []
 
         control_id = _run_control(repo_root, target, data_dir, tmp_path, "job_scope_control")
@@ -620,6 +624,12 @@ class TestTaskScopeE2ELive:
         resumed = _job_data(data_dir, job_id)
         assert resumed["status"] == "completed"
         assert all(t["status"] == "applied_to_job_workspace" for t in resumed["tasks"])
+        # DECISION F025 D6 (round 8): the park recorded episode 1 as `paused`
+        # before relaunch, so the relaunch's fresh episode 2 finds it in the
+        # canonical chain — no manifest error, two episodes, first parked.
+        assert resumed["run_manifest"]["error"] == ""
+        episodes = resumed["run_manifest"]["episodes"]
+        assert [e["status"] for e in episodes] == ["paused", "completed"]
 
         control_id = _run_control(repo_root, target, data_dir, tmp_path, "task_scope_control")
         _assert_matches_control(data_dir, job_id, control_id)
