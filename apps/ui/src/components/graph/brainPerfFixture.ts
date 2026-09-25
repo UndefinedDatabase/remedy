@@ -130,6 +130,17 @@ function buildRowsAndSeeds(
  *  silently returning an off-target model a CI budget stage could
  *  misinterpret. */
 export function brainPerfModel(nodeTarget: number): BrainModel {
+  const { seeds, rows } = brainPerfLedger(nodeTarget);
+  let model = seedBrainModel(`perf-${nodeTarget}`, seeds);
+  for (const r of rows) model = reduceBrainEvent(model, r);
+  return model;
+}
+
+/** The seeds and the ledger `brainPerfModel` folds, for a reader that needs
+ *  the events rather than their end state: the phase timeline's scrub budget
+ *  replays this ledger at every position (DECISION F024 D5). Throws for an
+ *  unsupported target exactly as `brainPerfModel` does. */
+export function brainPerfLedger(nodeTarget: number): { seeds: BrainTaskSeed[]; rows: BrainEventRow[] } {
   const config = STAGE_CONFIG[nodeTarget];
   if (!config) {
     throw new Error(
@@ -137,8 +148,5 @@ export function brainPerfModel(nodeTarget: number): BrainModel {
         `(only ${BRAIN_PERF_STAGE1_NODES} and ${BRAIN_PERF_STAGE6_NODES} are supported)`,
     );
   }
-  const { seeds, rows } = buildRowsAndSeeds(config.normalCount, config.bareCount, ROUNDS_PER_TASK);
-  let model = seedBrainModel(`perf-${nodeTarget}`, seeds);
-  for (const r of rows) model = reduceBrainEvent(model, r);
-  return model;
+  return buildRowsAndSeeds(config.normalCount, config.bareCount, ROUNDS_PER_TASK);
 }
