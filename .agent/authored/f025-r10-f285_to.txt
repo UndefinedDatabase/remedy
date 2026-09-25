@@ -1,0 +1,9 @@
+- R-1055, assigned by F025's round 7 (DECISION F025 D5), carries a resolution line naming the
+  relaunch that resumed an interrupted task's provider session with `resume_used` in its evidence,
+  or is carried by name to the next paydown feature at this closure.
+- R-1057, assigned by F025's round 10, carries a resolution line naming the self-use run whose
+  one-task item completed inside the path's cost cap, or the runner's refusal before any provider
+  call, or is carried by name to the next paydown feature at this closure.
+- R-1058, assigned by F025's round 10, carries a resolution line naming the generated Acceptance
+  that asks for the repair alone and the self-use reviewer's failure of a diff confined to
+  `.agent/`, or is carried by name to the next paydown feature at this closure.
