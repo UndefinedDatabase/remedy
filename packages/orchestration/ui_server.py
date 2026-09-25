@@ -1069,6 +1069,7 @@ def _build_dashboard(job: Any) -> dict[str, Any]:
         "pipeline": _build_pipeline_section(job, events),
         "resume": _build_resume_section(job, events),
         "pause": _build_pause_section(job),
+        "task_specs": _build_task_spec_section(job),
         "project_summary": _build_project_summary_section(job),
         "redaction": {
             "policy": "safe_summaries_only",
@@ -1219,6 +1220,81 @@ def _build_pause_section(job: Any) -> dict[str, Any]:
         }
     except (PauseControlError, StopControlError) as exc:
         return {"record": {}, "requested": False, "paused_task_ids": [], "error": str(exc)}
+
+
+def _build_task_spec_section(job: Any) -> dict[str, Any]:
+    """Build the dashboard's `task_specs` section (DECISION F026 D3 clause 1): for every
+    task entry mapped from the job's stored plan, its planned id, its spec version, the
+    runtime edit state (or `""` with the refusal's detail), the plan task's current fields,
+    and its archived versions. Returns `{"tasks": {}, "error": ""}` for a job with no stored
+    plan with tasks. Never raises: a `PauseControlError`, `StopControlError`, `OSError` or
+    `ValueError` met while reading is reported as `error`, with `tasks` empty."""
+    from packages.orchestration.pause_control import PauseControlError, paused_tasks
+    from packages.orchestration.plan_editing import PlanEditRefused
+    from packages.orchestration.safe_points import StopControlError
+    from packages.orchestration.task_edit_runtime import runtime_edit_state, task_spec_versions
+
+    def _fields(source: dict[str, Any]) -> dict[str, Any]:
+        return {
+            "title": source.get("title", ""),
+            "goal": source.get("goal", ""),
+            "acceptance": list(source.get("acceptance", [])),
+            "est_tokens_band": source.get("est_tokens_band", ""),
+            "files_hint": list(source.get("files_hint", [])),
+        }
+
+    try:
+        body = job.task_plan
+        if not isinstance(body, dict) or not body.get("tasks"):
+            return {"tasks": {}, "error": ""}
+
+        plan_tasks = {
+            t["id"]: t for t in body["tasks"] if isinstance(t, dict) and t.get("id")
+        }
+        approval = body.get("_approval")
+        job_id = str(job.job_id)
+        job_paused = (
+            job.state.value if hasattr(job.state, "value") else str(job.state)
+        ) == "paused"
+        paused_ids = {p.task_id for p in paused_tasks(job_id)}
+
+        tasks: dict[str, Any] = {}
+        for entry in job.tasks:
+            plan_info = entry.inputs.get("plan") if isinstance(entry.inputs, dict) else None
+            planned_id = plan_info.get("planned_id") if isinstance(plan_info, dict) else None
+            if not planned_id or planned_id not in plan_tasks:
+                continue
+
+            task_paused = job_paused or entry.task_id in paused_ids
+            try:
+                edit_state = runtime_edit_state(
+                    job.state, approval, entry.status, task_paused=task_paused)
+                not_editable_because = ""
+            except PlanEditRefused as exc:
+                edit_state = ""
+                not_editable_because = exc.detail
+
+            versions = []
+            for version in task_spec_versions(job_id, planned_id):
+                versions.append({
+                    **_fields(version.get("plan_task", {}) or {}),
+                    "spec_version": version.get("spec_version", 1),
+                    "state": version.get("state", ""),
+                    "archived_at": version.get("archived_at", ""),
+                })
+
+            tasks[str(entry.task_id)] = {
+                "planned_id": planned_id,
+                "spec_version": entry.spec_version,
+                "edit_state": edit_state,
+                "not_editable_because": not_editable_because,
+                "current": _fields(plan_tasks[planned_id]),
+                "versions": versions,
+            }
+
+        return {"tasks": tasks, "error": ""}
+    except (PauseControlError, StopControlError, OSError, ValueError) as exc:
+        return {"tasks": {}, "error": str(exc)}
 
 
 def _build_project_summary_section(job: Any) -> dict[str, Any] | None:
