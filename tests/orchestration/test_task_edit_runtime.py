@@ -376,3 +376,174 @@ class TestArchive:
         expected = job_evidence_export_dir(job_id, root) / "task_specs" / f"{digest}.v1.json"
         assert result.archive_path == expected
         assert expected.is_file()
+
+
+# ---------------------------------------------------------------------------
+# S6 — the in-place update and its log entry
+# ---------------------------------------------------------------------------
+
+class TestInPlaceUpdateAndTheLog:
+
+    def test_keeps_identity_fields_and_updates_the_prompt_fields(self, root):
+        job_id = _save_job(root, _TASKS)
+        _mutate(root, job_id, "T1", run_id="run-abc", repair_rounds_used=3)
+        job = load_job_plan(job_id, root)
+        _, entry = _by_planned(job, "T1")
+        entry.inputs["foreign"] = "keep-me"
+        save_job_plan(job, root)
+        task_id = entry.task_id
+
+        result = _edit(root, job_id, task_id, {
+            "title": "New Title", "goal": "new goal",
+            "acceptance": ["criterion a", "criterion b"],
+        })
+        assert result.spec_version == 2
+
+        job = load_job_plan(job_id, root)
+        _, entry = _by_planned(job, "T1")
+        assert entry.task_id == task_id
+        assert entry.run_id == "run-abc"
+        assert entry.repair_rounds_used == 3
+        assert entry.inputs["foreign"] == "keep-me"
+        assert entry.title == "New Title: new goal"
+        assert entry.acceptance == "criterion a\ncriterion b"
+        assert entry.spec_version == 2
+        assert job.task_plan["_version"] == 2
+
+        result2 = _edit(root, job_id, task_id, {"title": "Newer", "goal": "newer goal"},
+                        version=2)
+        assert result2.spec_version == 3
+        job = load_job_plan(job_id, root)
+        assert job.task_plan["_version"] == 3
+        assert _by_planned(job, "T1")[1].spec_version == 3
+
+    def test_runtime_object_carries_every_key(self, root):
+        job_id = _save_job(root, _TASKS)
+        task_id = _task_id_of(root, job_id, "T1")
+        result = _edit(root, job_id, task_id, {"title": "x", "goal": "y"})
+        runtime = result.entry["runtime"]
+        assert set(runtime) == {
+            "task_id", "planned_id", "state", "spec_version", "status_before",
+            "status_after", "restored", "approved_plan_sha256_before",
+            "approved_plan_sha256_after", "archive",
+        }
+        assert runtime["task_id"] == task_id
+        assert runtime["planned_id"] == "T1"
+        assert runtime["state"] == "waiting"
+        assert runtime["spec_version"] == 2
+        assert runtime["status_before"] == ppj.TASK_PENDING
+        assert runtime["status_after"] == ppj.TASK_PENDING
+        assert runtime["restored"] == []
+        assert result.entry["command"] == "plan_edit_task"
+
+    def test_replay_edits_reconstructs_the_stored_plan(self, root):
+        job_id = _save_job(root, _TASKS)
+        task_id = _task_id_of(root, job_id, "T1")
+        _edit(root, job_id, task_id, {"title": "x1", "goal": "y1"})
+        _edit(root, job_id, task_id, {"title": "x2", "goal": "y2"}, version=2)
+
+        job = load_job_plan(job_id, root)
+        body = job.task_plan
+        original = TaskPlan.model_validate({"schema_v": "task_plan_v1", "tasks": _TASKS})
+        rebuilt = replay_edits(original, body[EDIT_LOG_KEY])
+        assert [t.model_dump() for t in rebuilt.tasks] == body["tasks"]
+
+    def test_approval_hash_reseals_and_mismatch_reads_none(self, root):
+        job_id = _save_job(root, _TASKS)
+        task_id = _task_id_of(root, job_id, "T1")
+        _edit(root, job_id, task_id, {"title": "x", "goal": "y"})
+        job = load_job_plan(job_id, root)
+        assert approved_plan_mismatch(job) is None
+
+
+# ---------------------------------------------------------------------------
+# S7 — the reset
+# ---------------------------------------------------------------------------
+
+class TestReset:
+
+    @pytest.mark.parametrize("failing_status", [ppj.TASK_FAILED, ppj.TASK_BLOCKED])
+    def test_reset_restores_skipped_tasks_after_it_not_before(self, root, failing_status):
+        job_id = _save_job(root, _TASKS)
+        _mutate(root, job_id, "T1", status=ppj.TASK_SKIPPED)                     # before
+        _mutate(root, job_id, "T2", status=failing_status, error="boom")         # the edit
+        _mutate(root, job_id, "T3", status=ppj.TASK_SKIPPED)                     # after
+        _mutate(root, job_id, "T4", status=ppj.TASK_SKIPPED)                     # after
+        _mutate(root, job_id, "T5", status=ppj.TASK_PASSED)                      # after, not skipped
+
+        task_id = _task_id_of(root, job_id, "T2")
+        result = _edit(root, job_id, task_id, {"title": "Fixed", "goal": "fixed"})
+        assert result.state == "failed"
+
+        job = load_job_plan(job_id, root)
+        statuses = {pid: _by_planned(job, pid)[1].status
+                   for pid in ("T1", "T2", "T3", "T4", "T5")}
+        assert statuses["T1"] == ppj.TASK_SKIPPED
+        assert statuses["T2"] == ppj.TASK_PENDING
+        assert statuses["T3"] == ppj.TASK_PENDING
+        assert statuses["T4"] == ppj.TASK_PENDING
+        assert statuses["T5"] == ppj.TASK_PASSED
+        assert _by_planned(job, "T2")[1].error == ""
+
+        t3_id = _by_planned(job, "T3")[1].task_id
+        t4_id = _by_planned(job, "T4")[1].task_id
+        assert result.restored == (t3_id, t4_id)
+
+
+# ---------------------------------------------------------------------------
+# S8 — the derived evidence
+# ---------------------------------------------------------------------------
+
+class TestEvidenceWritten:
+
+    def test_plan_md_and_edit_log_export_written(self, root):
+        job_id = _save_job(root, _TASKS)
+        task_id = _task_id_of(root, job_id, "T1")
+        result = _edit(root, job_id, task_id, {"title": "x", "goal": "y"})
+
+        evidence = job_evidence_export_dir(job_id, root)
+        assert (evidence / f"plan_v{result.plan_version}.md").is_file()
+        exported = json.loads((evidence / EDIT_LOG_EVIDENCE).read_text(encoding="utf-8"))
+        assert exported["version"] == result.plan_version
+        job = load_job_plan(job_id, root)
+        assert exported["edits"] == job.task_plan[EDIT_LOG_KEY]
+
+    def test_task_spec_versions_ascending(self, root):
+        job_id = _save_job(root, _TASKS)
+        task_id = _task_id_of(root, job_id, "T1")
+        assert ter.task_spec_versions(job_id, "T1", root=root) == ()
+
+        _edit(root, job_id, task_id, {"title": "x1", "goal": "y1"})
+        _edit(root, job_id, task_id, {"title": "x2", "goal": "y2"}, version=2)
+
+        versions = ter.task_spec_versions(job_id, "T1", root=root)
+        assert [v["spec_version"] for v in versions] == [1, 2]
+
+
+# ---------------------------------------------------------------------------
+# S1 — the field's own round trip
+# ---------------------------------------------------------------------------
+
+class TestSpecVersionRoundTrip:
+
+    def test_round_trip_through_save_and_load(self, root):
+        job_id = _save_job(root, _TASKS)
+        job = load_job_plan(job_id, root)
+        _, entry = _by_planned(job, "T1")
+        entry.spec_version = 5
+        save_job_plan(job, root)
+
+        reloaded = load_job_plan(job_id, root)
+        assert _by_planned(reloaded, "T1")[1].spec_version == 5
+
+    def test_record_with_no_spec_version_key_loads_at_one(self, root):
+        job_id = _save_job(root, _TASKS)
+        record = job_record_path(job_id, root)
+        data = json.loads(record.read_text(encoding="utf-8"))
+        for t in data["tasks"]:
+            t.pop("spec_version", None)
+        record.write_text(json.dumps(data), encoding="utf-8")
+
+        reloaded = load_job_plan(job_id, root)
+        for t in reloaded.tasks:
+            assert t.spec_version == 1
