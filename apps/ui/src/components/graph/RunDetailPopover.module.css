@@ -2,7 +2,7 @@
   position: absolute;
   left: calc(50% + 28px);
   top: calc(50% - 72px);
-  z-index: 6;
+  z-index: var(--remedy-z-popover);
   width: min(300px, calc(50% - 46px));
   padding: 14px 16px;
   border-radius: var(--remedy-radius-lg);

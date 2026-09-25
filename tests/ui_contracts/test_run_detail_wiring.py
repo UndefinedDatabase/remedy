@@ -1,10 +1,10 @@
-"""F023 T002 — the L2 run detail is mounted, fed and wired as DECISION F023 D4 rules.
+"""F023 T002 — the L2 run detail is mounted, fed and wired as DECISIONS F023 D4 and D5 rule.
 
 `RunDetailPopover.tsx` shows the words `runDetailModel.ts` computes for the focused run
 and reads the task's per-round facts through the rounds door; `BrainGraphStage.tsx`
-mounts it for the focused run at L2 and L3; `RemedyShell.tsx` hands the stage the token
-and the diff panel's opener; `ForceBrainGraph.tsx` stops a run click from opening the
-task's popover as well. The vitest environment renders no `.tsx`, so the wiring is pinned
+mounts it for the focused run at L2, and its Open diff and Why open the L3 evidence panel;
+`RemedyShell.tsx` hands the stage the token; `ForceBrainGraph.tsx` stops a run click from
+opening the task's popover as well. The vitest environment renders no `.tsx`, so the wiring is pinned
 from source here; the words are goldened by `runDetailModel.test.ts`.
 """
 from __future__ import annotations
@@ -28,19 +28,20 @@ def test_the_stage_mounts_the_detail_for_the_focused_run_from_the_model():
     src = _src(STAGE)
     assert ("const focusedRun = zoom.state.level >= 2 ? model.nodes.find((n) => n.id === zoom.state.focusId)"
             " ?? null : null;") in src
+    assert "{focusedRun && zoom.state.level === 2 && (" in src
     mount = src[src.index("<RunDetailPopover"):]
     mount = mount[:mount.index("/>")]
     for prop in ("node={focusedRun}", "rows={rows}", "promptItems={dashboard.promptTrace?.items ?? []}",
-                 "jobId={dashboard.jobId}", "token={serverToken}", "onOpenDiff={onOpenDiff}",
-                 "onOpenPrompt={onSelectNode}", 'onClose={() => zoom.dispatch({ type: "escape" })}'):
+                 "jobId={dashboard.jobId}", "token={serverToken}",
+                 'onOpenEvidence={(tab) => zoom.dispatch({ type: "open_evidence", tab })}',
+                 'onClose={() => zoom.dispatch({ type: "escape" })}'):
         assert prop in mount, f"<RunDetailPopover> lacks {prop}"
 
 
-def test_the_shell_hands_the_stage_the_token_and_the_diff_opener():
+def test_the_shell_hands_the_stage_the_token():
     element = [line for line in _src(SHELL).splitlines() if "<BrainGraphStage" in line]
     assert len(element) == 1
     assert "serverToken={serverToken}" in element[0]
-    assert "onOpenDiff={setOpenDiffTaskId}" in element[0]
 
 
 def test_the_detail_reads_its_facts_through_the_door_and_never_shows_another_tasks():

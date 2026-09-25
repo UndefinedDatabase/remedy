@@ -76,6 +76,7 @@
   --remedy-shadow-card: 0 14px 40px rgba(55, 86, 138, 0.10);
   --remedy-shadow-soft: 0 8px 24px rgba(55, 86, 138, 0.08);
   --remedy-shadow: 0 24px 70px rgba(55, 86, 138, 0.14);
+  --remedy-shadow-panel: -18px 0 40px rgba(37, 50, 79, 0.08); /* evidence side panel (F023) */
   --remedy-glow: 0 0 44px rgba(76, 131, 255, 0.36);
   --remedy-glow-strong: 0 0 90px rgba(76, 131, 255, 0.55);
   --remedy-focus: #2f6fff;                                /* focus ring color */

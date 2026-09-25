@@ -1,5 +1,6 @@
 // The L2 run detail graph_spec.md §10 anchors to its node: the run's verdict,
-// round, tokens, duration and retries, and the Diff, Why and Rerun buttons.
+// round, tokens, duration and retries, and the Diff, Why and Rerun buttons —
+// Diff and Why open the L3 evidence panel on their tab (DECISION F023 D5).
 // The words come from runDetailModel.ts; this file only loads the task's
 // per-round facts through the rounds door and lays the detail out. It sits
 // beside the stage's centre, where the L2 camera has just placed the run
@@ -12,6 +13,7 @@ import type { RemedyPromptTraceItem } from "../../api/types";
 import type { BrainEventRow, BrainNode } from "./brainOntology";
 import { runDetailOf } from "./runDetailModel";
 import type { RunFact } from "./runDetailModel";
+import type { EvidenceTab } from "./semanticZoom";
 import styles from "./RunDetailPopover.module.css";
 
 /** Why Rerun is disabled: no command the dashboard may send re-runs one step. */
@@ -26,14 +28,13 @@ function Fact({ label, fact }: { label: string; fact: RunFact }) {
   );
 }
 
-export function RunDetailPopover({ node, rows, promptItems, jobId, token, onOpenDiff, onOpenPrompt, onClose }: {
+export function RunDetailPopover({ node, rows, promptItems, jobId, token, onOpenEvidence, onClose }: {
   node: Pick<BrainNode, "id" | "kind" | "state" | "parentId" | "seq" | "meta">;
   rows: readonly BrainEventRow[];
   promptItems: readonly RemedyPromptTraceItem[];
   jobId: string;
   token: string;
-  onOpenDiff: (taskId: string) => void;
-  onOpenPrompt: (promptItemId: string) => void;
+  onOpenEvidence: (tab: EvidenceTab) => void;
   onClose: () => void;
 }) {
   const taskId = (node.parentId ?? "").replace(/^task:/, "");
@@ -69,13 +70,13 @@ export function RunDetailPopover({ node, rows, promptItems, jobId, token, onOpen
         <Fact label="Retries" fact={detail.retries} />
       </dl>
       <div className={styles.actions}>
-        <button type="button" className={styles.action} onClick={() => onOpenDiff(detail.taskId)}>Open diff</button>
+        <button type="button" className={styles.action} onClick={() => onOpenEvidence("diff")}>Open diff</button>
         <button
           type="button"
           className={styles.action}
           disabled={detail.promptItemId === null}
           title={detail.promptItemId === null ? "No prompt was recorded for this run." : undefined}
-          onClick={() => { if (detail.promptItemId !== null) onOpenPrompt(detail.promptItemId); }}
+          onClick={() => { if (detail.promptItemId !== null) onOpenEvidence("prompt"); }}
         >
           Why
         </button>
