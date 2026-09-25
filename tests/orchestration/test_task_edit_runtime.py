@@ -19,14 +19,16 @@ from packages.core.models import RunState
 from packages.orchestration import pause_control, safe_points
 from packages.orchestration import pingpong_job as ppj
 from packages.orchestration import task_edit_runtime as ter
-from packages.orchestration.data_paths import job_evidence_export_dir, job_record_path
+from packages.orchestration.data_paths import job_evidence_export_dir, job_record_path, run_dir
+from packages.orchestration.job_evidence import export_job_evidence
 from packages.orchestration.job_plan import (
     APPROVED_PLAN_HASH_KEY,
     approved_plan_mismatch,
     map_task_plan_to_tasks,
     plan_content_hash,
 )
-from packages.orchestration.pingpong_job import JobPlan, load_job_plan, save_job_plan
+from packages.orchestration.pingpong_job import JobPlan, load_job_plan, run_job, save_job_plan
+from packages.orchestration.pingpong_provider import FakeProvider
 from packages.orchestration.plan_editing import (
     EDIT_LOG_EVIDENCE,
     EDIT_LOG_KEY,
@@ -56,7 +58,7 @@ def root(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
 
 
 def _save_job(root: Path, tasks: list[dict], *, state: RunState = RunState.PLANNED,
-              approval: str = "approved") -> str:
+              approval: str = "approved", repo_path: str = "") -> str:
     plan = TaskPlan.model_validate({"schema_v": "task_plan_v1", "tasks": tasks})
     body = plan.model_dump()
     body["_approval"] = approval
@@ -65,7 +67,7 @@ def _save_job(root: Path, tasks: list[dict], *, state: RunState = RunState.PLANN
         body[APPROVED_PLAN_HASH_KEY] = plan_content_hash(body)
     mapped = map_task_plan_to_tasks(plan)
     record_llm_task_deliverables(mapped)
-    job = JobPlan(job_title="t", task_plan=body, tasks=mapped, state=state)
+    job = JobPlan(job_title="t", task_plan=body, tasks=mapped, state=state, repo_path=repo_path)
     save_job_plan(job, root)
     return job.job_id
 
@@ -558,3 +560,93 @@ class TestSpecVersionRoundTrip:
         reloaded = load_job_plan(job_id, root)
         for t in reloaded.tasks:
             assert t.spec_version == 1
+
+
+# ---------------------------------------------------------------------------
+# S8 — the trace proof: a fake run's next trace carries the edit, not the old spec
+# (T5_F026.md T002: "the next run's evidence must contain the v2 content ... a v1
+# remnant in the new trace fails the test.")
+# ---------------------------------------------------------------------------
+
+_OLD_MARKER = "OLDSPECMARKERF026"
+_NEW_MARKER = "NEWSPECMARKERF026"
+
+
+def _trace_task(tid: str, deps: list[str], goal: str, acceptance: list[str]) -> dict:
+    # Mirrors tests/orchestration/test_plan_edit_execution.py's own `_task`/`repo`:
+    # `files_hint` names "docs/README.md", the file that fixture holds and the one
+    # `FakeProvider`'s own default `builder_files` writes.
+    return {
+        "id": tid, "title": f"Build {tid}", "goal": goal, "acceptance": acceptance,
+        "depends_on": deps, "est_tokens_band": "S", "files_hint": ["docs/README.md"],
+    }
+
+
+class TestTracePreservesTheEdit:
+
+    def _repo(self, tmp_path: Path) -> Path:
+        repo = tmp_path / "repo"
+        (repo / "docs").mkdir(parents=True)
+        (repo / "README.md").write_text("# Demo\n")
+        (repo / "docs" / "README.md").write_text("# Docs\n")
+        return repo
+
+    def test_the_new_runs_trace_carries_the_edit_and_the_old_run_keeps_the_old_spec(
+            self, root, tmp_path):
+        repo = self._repo(tmp_path)
+        tasks = [
+            _trace_task("T1", [], f"{_OLD_MARKER} goal", [f"{_OLD_MARKER} acceptance"]),
+            _trace_task("T2", ["T1"], "goal of T2", ["T2 works"]),
+        ]
+        job_id = _save_job(root, tasks, repo_path=str(repo))
+        task_id = _task_id_of(root, job_id, "T1")
+
+        blocked = run_job(job_id, builder_provider=FakeProvider(pass_on_round=99),
+                          reviewer_provider=FakeProvider(pass_on_round=99),
+                          max_rounds=1, repair_rounds=0)
+        assert blocked.state == ppj.JOB_BLOCKED, blocked.error
+        _, t1_blocked = _by_planned(blocked, "T1")
+        _, t2_blocked = _by_planned(blocked, "T2")
+        assert t1_blocked.status == ppj.TASK_BLOCKED
+        assert t2_blocked.status == ppj.TASK_SKIPPED
+        old_run_id = t1_blocked.run_id
+        assert old_run_id
+
+        _edit(root, job_id, task_id, {
+            "goal": f"{_NEW_MARKER} goal", "acceptance": [f"{_NEW_MARKER} acceptance"],
+        })
+
+        done = run_job(job_id, builder_provider=FakeProvider(pass_on_round=1, fail_on_round=99),
+                       reviewer_provider=FakeProvider(pass_on_round=1, fail_on_round=99),
+                       max_rounds=3, repair_rounds=0)
+        assert done.state == ppj.JOB_COMPLETED, done.error
+        assert done.error == ""
+        _, t1_done = _by_planned(done, "T1")
+        _, t2_done = _by_planned(done, "T2")
+        assert t1_done.status == ppj.TASK_APPLIED
+        assert t2_done.status == ppj.TASK_APPLIED
+        new_run_id = t1_done.run_id
+        assert new_run_id and new_run_id != old_run_id
+
+        new_entries = [
+            json.loads(line) for line in
+            (run_dir(new_run_id, root) / "prompt_trace.jsonl").read_text(
+                encoding="utf-8").splitlines()
+        ]
+        new_builder_entries = [e for e in new_entries if e.get("role") == "builder"]
+        assert new_builder_entries
+        for entry in new_builder_entries:
+            assert _NEW_MARKER in entry["prompt_text_redacted"]
+            assert _OLD_MARKER not in entry["prompt_text_redacted"]
+
+        old_trace_text = (run_dir(old_run_id, root) / "prompt_trace.jsonl").read_text(
+            encoding="utf-8")
+        assert _OLD_MARKER in old_trace_text
+
+        export_dir = tmp_path / "export"
+        export_job_evidence(job_id, str(export_dir))
+        exported_trace = (
+            export_dir / "task_runs" / t1_done.task_id / "prompt_trace.jsonl"
+        ).read_text(encoding="utf-8")
+        assert _NEW_MARKER in exported_trace
+        assert _OLD_MARKER not in exported_trace
