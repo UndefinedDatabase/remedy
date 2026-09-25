@@ -13,18 +13,18 @@ the stage-1 performance budget (`docs/roadmap/features/T5_F023.md`).
 
 ## Current Step
 
-ROUND 2: book round 1's PASS, record DECISION F023 D2, and land T002's
-first half: `zoomView.ts`, the render effects as data, the
-`useSemanticZoom.ts` hook with Escape and reconcile, the
-`ZoomBreadcrumbs.tsx` chip, the live canvas painting the effects and
-moving its camera per level, and the guard
-`tests/ui_contracts/test_semantic_zoom_wiring.py`.
+ROUND 3, THE NAMED PREREQUISITE OF THE L2 RUN DETAIL: book round 2's
+PASS, record DECISION F023 D3, and land the read route
+`/api/jobs/<job>/task-runs/<task_id>/rounds` with its builder
+`packages/orchestration/run_rounds_view.py`, the client path and decoder
+`apps/ui/src/api/taskRunRounds.ts`, the `loadTaskRunRounds` door, and
+their guards.
 
 ## Next Steps
 
-1. T002's second half: the L2 run popover anchored to its node, its
-   buttons wired to real endpoints or honestly marked not yet, after an
-   inventory of the evidence endpoints.
+1. T002's second half: the L2 run popover anchored to its node, reading
+   the rounds door, with diff, why and rerun buttons that work or say
+   honestly when they will.
 2. T003: the L3 evidence panel with lazy tabs, deep links, cluster
    expansion, the 500-node performance fixture and the live end-to-end.
 3. The closure sequence: the one full suite, the evidence package and
@@ -32,6 +32,6 @@ moving its camera per level, and the guard
 
 ## Risks
 
-Per-run tokens and duration have no read route yet; the popover round
-orders any thin route as a named prerequisite. Open findings: 1, owned
-by F285.
+A task that ran twice shows its latest run's rounds only, and the
+reviewer's tokens are not recorded by the run report. Open findings: 1,
+owned by F285.

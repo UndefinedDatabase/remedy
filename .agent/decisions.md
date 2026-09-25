@@ -20840,3 +20840,47 @@ HOW TO REVERSE: delete `zoomView.ts`, `zoomView.test.ts`, `useSemanticZoom.ts`,
 `ZoomBreadcrumbs.tsx`, `ZoomBreadcrumbs.module.css` and
 `tests/ui_contracts/test_semantic_zoom_wiring.py`, restore `ForceBrainGraph.tsx`,
 `BrainGraphStage.tsx` and the type shim from `835930ee`, and delete this paragraph.
+
+## DECISION F023 D3 — the run detail's missing facts are a named prerequisite: one read route serving each round of a task's latest run from the report the job already keeps (2026-09-25)
+
+CONTEXT: T5_F023.md asks the L2 run popover for a verdict, tokens, a duration and retries, and
+its Orchestrator brief orders every endpoint gap T002 finds as a named prerequisite rather than
+an inline detour. Measured at `90669900`: the event envelope `ui_server._safe_event_summary`
+serves carries only `seq`, `event`, `timestamp`, `outcome` and `task_id`, and
+`tests/ui_server/test_sse_stream.py` pins that key set exactly; `task_round_completed` keeps
+its round number in metadata the envelope drops; every round's event is logged in one batch
+after the ping-pong loop returns, so the envelope's timestamps cannot time a round; the run
+report `pingpong_loop.export_pingpong_json` persists at `data_paths.run_dir(run_id)/result.json`
+holds, per round, the round number and kind, `started_at` and `finished_at`, the builder's
+`duration_ms` and `tokens_used`, the reviewer's `verdict`, `duration_ms` and `parse_retried`,
+and the run's `retries_used`, but not the reviewer's tokens; `TaskEntry.run_id` keeps the
+task's latest run id; and no HTTP route serves any of it.
+
+CHOSEN: (1) THE ROUTE is `GET /api/jobs/<job>/task-runs/<task_id>/rounds`, structural beside
+the diff route and listed by hand in `_walkable_paths` for the same reason, answering 200 with
+a named `reason` for an unknown task, a task with no run, and a report that is missing or
+unreadable. (2) THE BUILDER is `packages/orchestration/run_rounds_view.py`: it reads the one
+report `TaskEntry.run_id` names, after refusing any run id that is not eight to thirty-two
+lowercase hex digits, and keeps only numbers, short vocabulary words and timestamps, so no
+summary, finding text, file name or provider name is served; a malformed value becomes null,
+and the builder never raises. A round's duration is its `finished_at` minus its `started_at`.
+(3) THE CLIENT is `apps/ui/src/api/taskRunRounds.ts`, the path and a total decoder, with the
+door `loadTaskRunRounds` in `remedyApi.ts` beside the digest and lessons doors, never throwing.
+(4) THE GUARDS are `tests/ui_server/test_task_run_rounds.py`, over the builder and a real
+server, and `tests/ui_contracts/test_task_run_rounds_door.py`, which checks that the client
+builds the path the server routes and reads every key the server's envelope carries. (5) The
+new module joins the measured import closure, so `import_reachability_allowlist.txt` gains its
+line. (6) The popover itself lands next round, reading this door; a task that ran twice shows
+its latest run's rounds only, and the reviewer's tokens stay "not recorded" because the report
+does not keep them.
+
+ALTERNATIVES: widening the event envelope with the round, rejected because that changes a
+contract every stream consumer reads and a test pins byte for byte; timing a round from event
+timestamps, rejected because the batch write makes them near-identical; serving the whole run
+report, rejected because it carries prose and paths the popover never shows; reading
+`provider_evidence.json` from the evidence export, rejected because an export exists only after
+`job evidence` has run, while the run report exists as soon as the run ends.
+
+HOW TO REVERSE: delete `packages/orchestration/run_rounds_view.py`, its route and thin builder in
+`ui_server.py`, its `_walkable_paths` line and allowlist line, `apps/ui/src/api/taskRunRounds.ts`
+with its test, the `loadTaskRunRounds` door, the two guards, and this paragraph.
