@@ -106,3 +106,28 @@ honest and safe, and a later feature can add a launcher on purpose, with its own
 **What happens if you say nothing.** The recommendation is already executed and stands until you
 say otherwise. Resume in the browser takes back a waiting pause or releases a paused task at once,
 and for a job that is already paused and saved it shows the command that continues it.
+
+### Q5 — Self-repair runs may cost six dollars (2026-09-25, F285, round 1)
+
+**What needs deciding.** At the end of every feature, Remedy tries to repair one small known
+defect in its own code by itself, using the paid model it calls through Claude's command-line
+program. That run had a spending limit of one dollar. The last two runs each hit that limit
+before they could finish: a single call to the model cost about one dollar and forty cents, so
+the limit stopped the work before the second check could even complete. I have raised the
+limit to six dollars. That covers four calls at the most expensive price measured so far: one
+attempt at the repair, one review of it, one second attempt after the review, and one second
+review. The limit of eight calls in total is unchanged. You can tell me to set a different
+amount.
+
+**Why it matters.** This money is spent at the end of every feature, whether or not the repair
+succeeds. With one dollar, every run was stopped early and never produced a finished result,
+so the money was spent for no result at all. With six dollars a run can finish, and a finished
+run is the only way to show that Remedy can repair itself.
+
+**My recommendation.** Keep six dollars. The amount is worked out from the most expensive call
+measured, not guessed, and it is written down beside the limit in the code, so a later, more
+expensive call leads to a new measured amount rather than a higher guess.
+
+**What happens if you say nothing.** The recommendation is already executed and stands until you
+say otherwise. Each end-of-feature self-repair run may spend up to six dollars and at most
+eight model calls.

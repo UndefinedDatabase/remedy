@@ -826,7 +826,7 @@ _CONFIG_KEY_SPECS: tuple[ConfigKeySpec, ...] = (
             "Model for both roles of a self-use run (operator amendment "
             "amend0920-selfuse-real, DECISION D2). Unset means the alias "
             "table's Sonnet alias, which the run's cost bound of at most 8 "
-            "provider calls and 1.00 USD per closure is written for."
+            "provider calls and 6.00 USD per closure is written for."
         ),
         value_type=str,
         default=None,

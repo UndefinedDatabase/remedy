@@ -112,7 +112,7 @@ class TestRunNextSelfUseItem:
         # amend0920-selfuse-real D2 raised this path's own bound: six stopped a
         # run mid-loop where the repair round was the point.
         assert result.budgets["max_provider_calls"] == 8
-        assert result.budgets["max_cost_usd"] == 1.00
+        assert result.budgets["max_cost_usd"] == 6.00
 
     def test_it_never_mutates_the_target_repo(self, tmp_path, isolate_data_root, demo_repo):
         queue_path = _write_queue(tmp_path, [dict(_PENDING_ITEM)])
@@ -345,7 +345,8 @@ class TestTheSelfUseRoleAndItsBudget:
 
     SU-019 to SU-023 each ran on the local model and landed no repair. The run
     now resolves the configured frontier provider, with a budget written for a
-    run that has to finish: at most 8 provider calls and 1.00 USD per closure.
+    run that has to finish: at most 8 provider calls and, since R-1057, 6.00 USD
+    per closure.
     """
 
     def _captured_run_kwargs(self, tmp_path, demo_repo, monkeypatch, **kwargs):
@@ -374,7 +375,7 @@ class TestTheSelfUseRoleAndItsBudget:
         assert captured["builder_model"] == sonnet
         assert captured["reviewer_model"] == sonnet
 
-    def test_the_call_cap_is_eight_and_the_cost_bound_one_dollar(
+    def test_the_call_cap_is_eight_and_the_cost_bound_six_dollars(
         self, tmp_path, isolate_data_root, demo_repo, monkeypatch
     ):
         captured = self._captured_run_kwargs(tmp_path, demo_repo, monkeypatch)
@@ -382,7 +383,22 @@ class TestTheSelfUseRoleAndItsBudget:
         assert budgets["max_provider_calls"] == 8, (
             "six stopped a run mid-loop; DECISION D2 buys the repair round"
         )
-        assert budgets["max_cost_usd"] == 1.00
+        assert budgets["max_cost_usd"] == 6.00
+
+    def test_the_cost_cap_covers_a_build_a_review_and_one_repair_round(self):
+        """R-1057: the cap was one dollar and one measured call cost 1.40.
+
+        Job fd57a5d1dfe245b0 spent 1.4023008 USD on its one builder call and
+        job d0f70d9d45dd4363 1.1403048 on two, so the old cap stopped every
+        closure's run before its job could complete. The cap is derived from the
+        measured price, and a cap that no longer covers one build, one review
+        and one repair round at that price turns this red.
+        """
+        assert self_use_runner._MEASURED_MAX_CALL_USD >= 1.4023008
+        assert self_use_runner._COST_CAP_CALLS == 4
+        assert self_use_runner._MAX_COST_USD >= (
+            self_use_runner._COST_CAP_CALLS * self_use_runner._MEASURED_MAX_CALL_USD
+        )
 
     def test_the_caller_still_overrides_the_budget(
         self, tmp_path, isolate_data_root, demo_repo, monkeypatch
