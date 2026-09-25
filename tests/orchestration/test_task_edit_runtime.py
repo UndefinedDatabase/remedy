@@ -101,11 +101,21 @@ def _edit(root: Path, job_id: str, task_id: str, fields: dict, *, version: int =
         job_id, task_id, fields, expected_spec_version=version, actor=actor, root=root)
 
 
+def _evidence_file_names(root: Path, job_id: str) -> list[str]:
+    # S2: the export directory's OWN files (`plan_v<n>.md`, the edit-log export) —
+    # not `task_specs/`, which `_assert_refused` already compares separately.
+    evidence_dir = job_evidence_export_dir(job_id, root)
+    if not evidence_dir.exists():
+        return []
+    return sorted(p.name for p in evidence_dir.iterdir() if p.is_file())
+
+
 def _assert_refused(root: Path, job_id: str, task_id: str, fields: dict, code: str, *,
                     version: int = 1, says: str = "") -> PlanEditRefused:
     before = job_record_path(job_id, root).read_bytes()
     specs_dir = job_evidence_export_dir(job_id, root) / "task_specs"
     before_specs = sorted(specs_dir.glob("*")) if specs_dir.exists() else []
+    before_evidence_names = _evidence_file_names(root, job_id)
     with pytest.raises(PlanEditRefused) as caught:
         _edit(root, job_id, task_id, fields, version=version)
     assert caught.value.code == code, caught.value
@@ -113,6 +123,7 @@ def _assert_refused(root: Path, job_id: str, task_id: str, fields: dict, code: s
     assert job_record_path(job_id, root).read_bytes() == before
     after_specs = sorted(specs_dir.glob("*")) if specs_dir.exists() else []
     assert after_specs == before_specs
+    assert _evidence_file_names(root, job_id) == before_evidence_names
     return caught.value
 
 
