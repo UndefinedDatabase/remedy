@@ -241,6 +241,9 @@ class TaskEntry:
     # that run did not pass; "" otherwise. The task post-mortem classifies it as
     # `resource_limit` and names the limit.
     tripped_limit: str = ""
+    # DECISION F026 D1: the task's own edit version, raised by one on every accepted
+    # runtime edit; a record written before F026 carries no key and loads at 1.
+    spec_version: int = 1
 
 
 # F112 T003b2a: translates a live TaskEntry into the granularity machinery's
@@ -952,6 +955,8 @@ def _export_job(job: JobPlan) -> dict[str, Any]:
                 "budget": t.budget,
                 "worktree_commit": t.worktree_commit,
                 "tripped_limit": t.tripped_limit,
+                # DECISION F026 D1.
+                "spec_version": t.spec_version,
             }
             for t in job.tasks
         ],
@@ -1068,6 +1073,8 @@ def _import_job(data: dict[str, Any]) -> JobPlan:
             worktree_commit=str(t.get("worktree_commit", "") or ""),
             # A record written before R-0568 carries no key: no trip was recorded.
             tripped_limit=str(t.get("tripped_limit", "") or ""),
+            # DECISION F026 D1: a record written before F026 carries no key and loads at 1.
+            spec_version=int(t.get("spec_version", 1) or 1),
         ))
     return job
 
