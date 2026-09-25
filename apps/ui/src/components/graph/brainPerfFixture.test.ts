@@ -3,8 +3,10 @@ import { buildBrainLayout } from "./buildForceBrainModel";
 import {
   BRAIN_PERF_STAGE1_NODES,
   BRAIN_PERF_STAGE6_NODES,
+  brainPerfLedger,
   brainPerfModel,
 } from "./brainPerfFixture";
+import { rebuildBrainModel } from "./brainReducer";
 
 // Row counts, independently derived from brainPerfFixture.ts's own arithmetic
 // comment (not read off a run): a non-leaveOpen normal task emits 8 rows
@@ -61,5 +63,12 @@ describe("brainPerfFixture", () => {
   it("stage 6's lastSeq equals its generated row count minus one", () => {
     const model = brainPerfModel(BRAIN_PERF_STAGE6_NODES);
     expect(model.lastSeq).toBe(STAGE6_ROW_COUNT - 1);
+  });
+
+  it("stage 6's ledger runs from seq 0 without a hole and folds to exactly its model", () => {
+    const { seeds, rows } = brainPerfLedger(BRAIN_PERF_STAGE6_NODES);
+    expect(rows.map((r) => r.seq)).toEqual(Array.from({ length: STAGE6_ROW_COUNT }, (_, seq) => seq));
+    expect(rebuildBrainModel(`perf-${BRAIN_PERF_STAGE6_NODES}`, seeds, rows)).toEqual(brainPerfModel(BRAIN_PERF_STAGE6_NODES));
+    expect(() => brainPerfLedger(199)).toThrow();
   });
 });

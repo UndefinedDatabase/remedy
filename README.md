@@ -26,7 +26,7 @@ verification commands. If something is unproven, Remedy says so instead of guess
 
 ## Status
 
-101 of 285 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
+102 of 285 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
 
 | Tier | Name | Done | Total |
 |------|------|-----:|------:|
@@ -35,7 +35,7 @@ verification commands. If something is unproven, Remedy says so instead of guess
 | 2 | Minimal Self-Build Runtime | 37 | 38 |
 | 3 | Full Token Economy & Autonomy | 6 | 26 |
 | 4 | Memory & Learning | 1 | 17 |
-| 5 | Operator Cockpit | 19 | 34 |
+| 5 | Operator Cockpit | 20 | 34 |
 | 6 | Design-to-Code | 0 | 16 |
 | 7 | Quality & Trust | 0 | 15 |
 | 8 | Worker Ecosystem & Neutrality | 0 | 12 |
@@ -438,6 +438,21 @@ reason written under it; the Escape key and a small trail of names in the top
 left corner walk back one step at a time; the page address remembers where
 you are, so a link opens the same view; and in a headless browser the graph
 held sixty frames a second at five hundred nodes at every depth).
+
+F024 phase timeline with scrubber (the bar under the job graph now shows the
+job's six phases — Job, Planning, Build, Test, Review and Finalized — worked
+out from the job's own event record rather than from a guess about the clock,
+with small marks on the bar where a task failed, was repaired, asked a
+question or where the job was stopped, each saying in words what happened when
+the pointer rests on it; dragging the handle along the bar, clicking a mark,
+or pressing the arrow keys shows the graph exactly as it stood at that moment
+of the job, with the arrow keys moving one event at a time and the arrow keys
+with Shift held moving one phase at a time; while looking back, a violet
+banner on the graph says so, the live light in the corner reads REPLAY, and
+new events keep arriving underneath; the LIVE button returns to the present
+with a short fast-forward of under a second, or, after a very long look back,
+by reloading the view and saying so; and in a headless browser, dragging the
+handle across a job of five hundred nodes held sixty frames a second).
 
 Full per-feature state: [`docs/roadmap/STATUS.md`](docs/roadmap/STATUS.md)
 

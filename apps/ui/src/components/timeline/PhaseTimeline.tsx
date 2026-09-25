@@ -1,13 +1,15 @@
-import type {
-  RemedyPhase,
-  RemedyTimelineEvent,
-  RemedyTimelinePhase,
-  RemedyState,
-} from "../../api/types";
-import { CodeOrbGlyph, FlaskGlyph, PersonGlyph, TaskDoneGlyph } from "../icons/RemedyGlyphs";
+import { useRef } from "react";
+import type { PointerEvent } from "react";
+import { CodeOrbGlyph, FlaskGlyph, PersonGlyph, TaskDoneGlyph, TaskPlannedGlyph } from "../icons/RemedyGlyphs";
+import type { SubGlyphKind, TimelinePhase } from "./phaseMapping";
+import type { SegmentState, GlyphView } from "./timelineView";
+import { fractionOfSeq, seqAtFraction } from "./timelineView";
+import type { TimelineScrub } from "./useTimelineScrub";
 import styles from "./PhaseTimeline.module.css";
 
-const CANONICAL_PHASES: RemedyTimelinePhase[] = [
+// The bar's six stops in order; phaseMapping.ts's TIMELINE_PHASES is the same
+// list, which tests/ui_contracts/test_phase_mapping.py holds equal.
+const CANONICAL_PHASES: readonly TimelinePhase[] = [
   "job",
   "planning",
   "build",
@@ -16,154 +18,170 @@ const CANONICAL_PHASES: RemedyTimelinePhase[] = [
   "finalized",
 ];
 
-const PHASE_LABELS: Record<RemedyTimelinePhase, string> = {
-  job: "Job",
-  planning: "Planning",
-  build: "Build",
-  test: "Test",
-  review: "Review",
-  finalized: "Finalized",
+// What begins each phase, on the label's hover (DECISION F024 D1).
+const PHASE_HINTS: Record<TimelinePhase, string> = {
+  job: "The job's first event",
+  planning: "Planning started",
+  build: "The first task run started",
+  test: "The first test or verification ran",
+  review: "The first review verdict arrived",
+  finalized: "Every task has passed",
 };
 
-const MAX_EVENT_CHIPS = 18;
+// The sub-glyphs' names, as the legend and a screen reader say them.
+const GLYPH_NAMES: Record<SubGlyphKind, string> = {
+  decision: "Decision",
+  failure: "Failure",
+  heal: "Heal",
+  stop: "Stop",
+};
 
-function phasePercent(index: number): number {
-  return (index / (CANONICAL_PHASES.length - 1)) * 100;
-}
+const SEGMENT = 100 / CANONICAL_PHASES.length;
 
-function stateClass(state: RemedyState) {
+function stateClass(state: SegmentState) {
   if (state === "done") return styles.isDone;
   if (state === "current") return styles.isCurrent;
-  if (state === "blocked") return styles.isBlocked;
   return styles.isPending;
 }
 
-function eventChipClass(event: RemedyTimelineEvent) {
-  return [
-    styles.eventChip,
-    event.kind === "llm_action" ? styles.eventLlm : "",
-    event.kind === "test" ? styles.eventTest : "",
-    event.kind === "review" ? styles.eventReview : "",
-    event.state === "current" ? styles.eventCurrent : "",
-    event.state === "blocked" ? styles.eventBlocked : "",
-  ].filter(Boolean).join(" ");
+function chipClass(glyph: SubGlyphKind) {
+  if (glyph === "failure") return [styles.eventChip, styles.eventBlocked].join(" ");
+  if (glyph === "heal") return [styles.eventChip, styles.eventLlm].join(" ");
+  if (glyph === "decision") return [styles.eventChip, styles.eventReview].join(" ");
+  return [styles.eventChip, styles.eventStop].join(" ");
 }
 
-function EventGlyph({ kind }: { kind: RemedyTimelineEvent["kind"] }) {
-  if (kind === "test") return <FlaskGlyph />;
-  if (kind === "review") return <PersonGlyph />;
-  return <CodeOrbGlyph />;
+function GlyphIcon({ glyph }: { glyph: SubGlyphKind }) {
+  if (glyph === "failure") return <FlaskGlyph />;
+  if (glyph === "heal") return <CodeOrbGlyph />;
+  if (glyph === "decision") return <PersonGlyph />;
+  return <TaskPlannedGlyph />;
 }
 
-export function PhaseTimeline({
-  phases,
-  timelineEvents = [],
-}: {
-  phases: RemedyPhase[];
-  timelineEvents?: RemedyTimelineEvent[];
-}) {
-  const phaseMap = Object.fromEntries(phases.map((phase) => [phase.id, phase]));
+function glyphLeft(g: GlyphView): number {
+  return (g.segment + g.offset) * SEGMENT;
+}
 
-  const canonical = CANONICAL_PHASES.map((id) => {
-    const real = phaseMap[id];
-    return {
-      id,
-      label: real?.label || PHASE_LABELS[id],
-      state: real?.state || ("pending" as RemedyState),
-    };
-  });
+export function PhaseTimeline({ scrub }: { scrub: TimelineScrub }) {
+  const railRef = useRef<HTMLDivElement>(null);
+  const { view, state, whole } = scrub;
+  const live = state.mode === "live";
 
-  const currentIndex = canonical.findIndex((phase) => phase.state === "current");
-  const lastDoneIndex = canonical.reduce(
-    (latest, phase, index) => (phase.state === "done" ? index : latest),
-    -1,
-  );
-  const activeIndex = currentIndex >= 0 ? currentIndex : Math.max(0, lastDoneIndex);
-  const progressPct = canonical.length > 1
-    ? (activeIndex / (canonical.length - 1)) * 100
-    : 0;
-
-  // Keep the most recent MAX_EVENT_CHIPS events (oldest trimmed first), then
-  // group by phase so chips cluster under their phase segment.
-  const trimmed = timelineEvents.slice(-MAX_EVENT_CHIPS);
-  const phaseIndex = Object.fromEntries(CANONICAL_PHASES.map((id, i) => [id, i]));
-  const segmentWidth = 100 / (CANONICAL_PHASES.length - 1);
-  const byPhase = new Map<string, RemedyTimelineEvent[]>();
-  for (const e of trimmed) {
-    const list = byPhase.get(e.phase) || [];
-    list.push(e);
-    byPhase.set(e.phase, list);
-  }
-
-  const positioned: { event: RemedyTimelineEvent; left: number }[] = [];
-  for (const [phase, list] of byPhase) {
-    const start = phasePercent(phaseIndex[phase] ?? 0);
-    list.forEach((event, slot) => {
-      const left = start + ((slot + 1) / (list.length + 1)) * segmentWidth;
-      positioned.push({ event, left: Math.max(0, Math.min(left, 100)) });
-    });
-  }
+  // Drag or click on the track sets the position (T5_F024.md Design).
+  const scrubFromPointer = (event: PointerEvent<HTMLDivElement>) => {
+    const rail = railRef.current;
+    if (!rail || state.head < 0) return;
+    const rect = rail.getBoundingClientRect();
+    if (rect.width <= 0) return;
+    scrub.scrubTo(seqAtFraction(whole, (event.clientX - rect.left) / rect.width));
+  };
 
   return (
-    <section className={styles.timeline} aria-label="Project process timeline" data-ui="phase-timeline">
+    <section
+      className={styles.timeline}
+      aria-label="Project process timeline"
+      data-ui="phase-timeline"
+      data-mode={state.mode}
+    >
       <div className={styles.phaseHeader}>
-        {canonical.map((phase, index) => (
+        {view.segments.map((phase) => (
           <div
-            key={`phase-${phase.id}`}
+            key={`phase-${phase.phase}`}
             className={[styles.phaseItem, stateClass(phase.state)].join(" ")}
-            style={{ left: `${phasePercent(index)}%` }}
-            data-phase={phase.id}
+            style={{ left: `${(CANONICAL_PHASES.indexOf(phase.phase) + 0.5) * SEGMENT}%` }}
+            data-phase={phase.phase}
             data-state={phase.state}
+            title={PHASE_HINTS[phase.phase]}
           >
             <span className={styles.phaseLabel}>{phase.label}</span>
           </div>
         ))}
       </div>
 
-      <div className={styles.rail} aria-hidden="true">
-        <span className={styles.railBase} />
-        <span className={styles.railFill} style={{ width: `${progressPct}%` }} />
-        {canonical.map((phase, index) => (
+      <div
+        ref={railRef}
+        className={styles.rail}
+        onPointerDown={(event) => {
+          event.currentTarget.setPointerCapture(event.pointerId);
+          scrubFromPointer(event);
+        }}
+        onPointerMove={(event) => {
+          if (event.currentTarget.hasPointerCapture(event.pointerId)) scrubFromPointer(event);
+        }}
+      >
+        <span className={styles.railBase} aria-hidden="true" />
+        {view.segments.map((phase, index) => (
           <span
-            key={`marker-${phase.id}`}
-            className={[styles.phaseMarker, stateClass(phase.state)].join(" ")}
-            style={{ left: `${phasePercent(index)}%` }}
+            key={`segment-${phase.phase}`}
+            className={styles.phaseSegment}
+            style={{ left: `calc(${index * SEGMENT}% + 3px)`, width: `calc(${SEGMENT}% - 6px)` }}
+            aria-hidden="true"
           >
-            {phase.state === "done" && <TaskDoneGlyph className={styles.markerCheck} />}
+            <span className={styles.railFill} style={{ width: `${phase.fill * 100}%` }} />
           </span>
         ))}
+        {view.segments.map((phase, index) => (
+          <span
+            key={`marker-${phase.phase}`}
+            className={[styles.phaseMarker, stateClass(phase.state), phase.compact ? styles.isCompact : ""].join(" ")}
+            style={{ left: `${(index + 0.5) * SEGMENT}%` }}
+            aria-hidden="true"
+          >
+            {phase.state === "done" && !phase.compact && <TaskDoneGlyph className={styles.markerCheck} />}
+          </span>
+        ))}
+        <div
+          role="slider"
+          tabIndex={0}
+          className={styles.scrubHandle}
+          style={{ left: `${fractionOfSeq(whole, state.position) * 100}%` }}
+          aria-label="Timeline position"
+          aria-valuemin={-1}
+          aria-valuemax={Math.max(state.head, -1)}
+          aria-valuenow={state.position}
+          aria-valuetext={view.readout}
+          onKeyDown={(event) => {
+            if (scrub.onKey(event.key, event.shiftKey)) event.preventDefault();
+          }}
+        />
       </div>
 
-      <div className={styles.eventRail} aria-label="Real work event rail">
-        {positioned.map(({ event, left }) => (
-          <span
-            key={event.id}
-            className={styles.eventItem}
-            style={{ left: `${left}%` }}
-            title={event.title}
-            aria-label={`${event.title}, ${event.kind.replace("_", " ")}`}
+      <div className={styles.eventRail} aria-label="Decisions, failures, heals and stops">
+        {view.glyphs.map((g) => (
+          <button
+            type="button"
+            key={`glyph-${g.seq}`}
+            className={[styles.eventItem, g.reached ? "" : styles.isAhead].join(" ")}
+            style={{ left: `${glyphLeft(g)}%` }}
+            title={g.line}
+            aria-label={`${GLYPH_NAMES[g.glyph]} at event ${g.seq}: ${g.line}`}
+            onClick={() => scrub.scrubTo(g.seq)}
           >
             <span className={styles.eventTick} aria-hidden="true" />
-            <span className={eventChipClass(event)} aria-hidden="true">
-              <EventGlyph kind={event.kind} />
+            <span className={chipClass(g.glyph)} aria-hidden="true">
+              <GlyphIcon glyph={g.glyph} />
             </span>
-          </span>
+          </button>
         ))}
       </div>
 
       <div className={styles.legend} aria-label="Timeline legend">
-        <span className={styles.legendItem}>
-          <span className={[styles.eventChip, styles.eventLlm].join(" ")}><CodeOrbGlyph /></span>
-          <span>LLM Action</span>
-        </span>
-        <span className={styles.legendItem}>
-          <span className={[styles.eventChip, styles.eventTest].join(" ")}><FlaskGlyph /></span>
-          <span>Test</span>
-        </span>
-        <span className={styles.legendItem}>
-          <span className={[styles.eventChip, styles.eventReview].join(" ")}><PersonGlyph /></span>
-          <span>Review</span>
-        </span>
+        {(["decision", "failure", "heal", "stop"] as const).map((glyph) => (
+          <span key={`legend-${glyph}`} className={styles.legendItem}>
+            <span className={chipClass(glyph)}><GlyphIcon glyph={glyph} /></span>
+            <span>{GLYPH_NAMES[glyph]}</span>
+          </span>
+        ))}
+        <span className={styles.readout} aria-live="polite">{scrub.notice ?? view.readout}</span>
+        <button
+          type="button"
+          className={styles.liveToggle}
+          aria-pressed={live}
+          disabled={live}
+          onClick={scrub.goLive}
+        >
+          LIVE
+        </button>
       </div>
     </section>
   );

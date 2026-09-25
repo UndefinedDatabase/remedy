@@ -1,0 +1,6 @@
+F024 closure — self-use track, closure precondition 6 of docs/roadmap/STATUS_closure_protocol.md
+next_self_use_item() before: None
+generate_and_append_if_empty(): None
+next_self_use_item() after: None
+scripts/self_use_queue.json: unchanged
+self-use NONE (queue exhausted)

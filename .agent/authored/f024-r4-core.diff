@@ -1,0 +1,45 @@
+diff --git a/apps/ui/src/components/timeline/timelineView.ts b/apps/ui/src/components/timeline/timelineView.ts
+index 1dd03fc70..534cf7bfb 100644
+--- a/apps/ui/src/components/timeline/timelineView.ts
++++ b/apps/ui/src/components/timeline/timelineView.ts
+@@ -106,6 +106,40 @@ export function buildTimelineView(args: {
+   return { segments, glyphs, readout };
+ }
+ 
++/** Where the handle sits for `seq`, as a fraction of the track from 0 to 1: at
++ *  the end of that event's slot inside its segment, which is where the fill of
++ *  the current segment ends too. Before the first event it sits at 0, past the
++ *  head at the end of the head's slot. */
++export function fractionOfSeq(whole: PhaseReading, seq: number): number {
++  if (whole.lastSeq === null || seq < 0) return 0;
++  const ranges = rangesOf(whole);
++  const at = Math.min(seq, whole.lastSeq);
++  const p = ranges.findIndex((r) => r !== null && r[0] < r[1] && at >= r[0] && at < r[1]);
++  if (p < 0) return 0;
++  const [from, to] = ranges[p] as [number, number];
++  return (p + (at + 1 - from) / (to - from)) / TIMELINE_PHASES.length;
++}
++
++/** The seq a point on the track means, the inverse of `fractionOfSeq`: the
++ *  event whose slot the point closes, the start of a compact phase, the head for
++ *  a phase the ledger has not reached, and -1 at the very start. */
++export function seqAtFraction(whole: PhaseReading, fraction: number): number {
++  if (whole.lastSeq === null || fraction <= 0) return -1;
++  const ranges = rangesOf(whole);
++  const x = Math.min(fraction, 1) * TIMELINE_PHASES.length;
++  // A segment owns its right edge, where its last slot ends; EPSILON absorbs the
++  // float error of dividing by the segment count and multiplying back.
++  const p = Math.max(0, Math.min(TIMELINE_PHASES.length - 1, Math.ceil(x - EPSILON) - 1));
++  const range = ranges[p];
++  if (range === null) return whole.lastSeq;
++  const [from, to] = range;
++  if (from === to) return from;
++  const slot = Math.ceil((x - p) * (to - from) - EPSILON);
++  return Math.max(from, Math.min(to - 1, from + slot - 1));
++}
++
++const EPSILON = 1e-9;
++
+ // An ISO timestamp as milliseconds, or null. Parsing a value the ledger carries
+ // is not reading a clock: the same string always gives the same number.
+ function parseStamp(stamp: string): number | null {

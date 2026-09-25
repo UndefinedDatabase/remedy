@@ -4,10 +4,12 @@ The stage now draws `rebuildBrainModel(jobId, seeds, rows)` where `rows` is the
 ledger's contiguous prefix, merged from `events-since` pages and the live
 stream's ring by `useBrainLedger.ts`. Behaviour is pinned by vitest in
 brainLedger.test.ts; this suite pins what no vitest run can see because this
-repository has no DOM environment: that the SHELL actually hands the stage its
-ring and a page reader, that the STAGE actually reads through the ledger hook
-rather than seeding once from the dashboard, and that the hook holds its
-in-flight guard in a ref rather than in state. Every assertion runs against
+repository has no DOM environment: that the SHELL reads the one ledger from its
+ring and a page reader and hands its contiguous prefix to the stage — moved up
+from the stage by DECISION F024 D4, so the phase timeline folds the same rows —
+that the STAGE folds those rows rather than seeding once from the dashboard and
+reads no ledger of its own, and that the hook holds its in-flight guard in a ref
+rather than in state. Every assertion runs against
 COMMENT-STRIPPED source, imported from test_brain_stream_ring.py (this
 repository's own precedent — test_lessons_overlay_contract.py and
 test_steering_send_contract.py both import it the same way) rather than
@@ -33,15 +35,22 @@ def _source(path: Path) -> str:
 
 
 class TestTheShellWiresTheLedgerReader:
-    def test_the_stage_line_carries_the_ring_and_the_page_reader(self):
+    def test_the_shell_reads_the_ledger_from_the_ring_and_the_page_reader(self):
+        shell = _source(SHELL)
+        assert "useBrainLedger(dashboard.jobId, stream.recent, readEventsPage)" in shell, (
+            "the ledger cannot fold live rows it is never handed, nor page a hole "
+            "shut without a reader"
+        )
+        assert "const ledgerRows = useMemo(() => brainLedgerPrefix(ledger), [ledger]);" in shell, (
+            "only the complete, contiguous prefix may reach the graph (DECISION F019 D5)"
+        )
+
+    def test_the_stage_line_carries_the_prefix(self):
         shell = _source(SHELL)
         element = [line for line in shell.splitlines() if "<BrainGraphStage" in line]
         assert len(element) == 1, "expected exactly one <BrainGraphStage element"
-        assert "recent={" in element[0], (
-            "the stage cannot fold live rows it is never handed"
-        )
-        assert "readEventsPage={readEventsPage}" in element[0], (
-            "the stage cannot page a hole shut without a reader"
+        assert "rows={ledgerRows}" in element[0], (
+            "the stage cannot fold rows it is never handed"
         )
         assert "onSelectNode={onSelectNode}" in element[0], (
             "R-0664's one shared callback must survive this round's edit"
@@ -71,11 +80,12 @@ class TestThePathIsBuiltInOnePlace:
 
 
 class TestTheStageReadsThroughTheLedger:
-    def test_the_stage_calls_use_brain_ledger(self):
-        assert "useBrainLedger(" in _source(STAGE)
-
-    def test_the_stage_calls_brain_ledger_prefix(self):
-        assert "brainLedgerPrefix(" in _source(STAGE)
+    def test_the_stage_reads_no_ledger_of_its_own(self):
+        stage = _source(STAGE)
+        assert "useBrainLedger(" not in stage and "brainLedgerPrefix(" not in stage, (
+            "a second ledger would page the same job twice and could fold a "
+            "different prefix from the timeline's"
+        )
 
     def test_the_stage_calls_rebuild_brain_model(self):
         assert "rebuildBrainModel(" in _source(STAGE)

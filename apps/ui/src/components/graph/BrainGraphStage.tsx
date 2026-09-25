@@ -2,8 +2,6 @@ import { useMemo, useState } from "react";
 import type { RemedyDashboard } from "../../api/types";
 import { rebuildBrainModel } from "./brainReducer";
 import type { BrainEventRow } from "./brainOntology";
-import { brainLedgerPrefix } from "./brainLedger";
-import { useBrainLedger } from "./useBrainLedger";
 import { buildBrainLayout } from "./buildForceBrainModel";
 import { brainTaskCount, dashboardBrainSeeds, filterBrainLayout, selectedBrainNodeId, shellSelectionIdOf } from "./brainView";
 import { ForceBrainGraph } from "./ForceBrainGraph";
@@ -17,21 +15,22 @@ import { ZoomBreadcrumbs } from "./ZoomBreadcrumbs";
 import { RunDetailPopover } from "./RunDetailPopover";
 import { EvidencePanel } from "./EvidencePanel";
 import { zoomCrumbLabel, zoomEmphasis } from "./zoomView";
+import type { TimelineScrub } from "../timeline/useTimelineScrub";
 import styles from "./BrainGraphStage.module.css";
 
 export function BrainGraphStage({
   dashboard,
   selectedNodeId,
   onSelectNode,
-  recent,
-  readEventsPage,
+  rows,
+  scrub,
   serverToken,
 }: {
   dashboard: RemedyDashboard;
   selectedNodeId?: string | null;
   onSelectNode: (nodeId: string | null) => void;
-  recent: readonly BrainEventRow[];
-  readEventsPage: (cursor: number) => Promise<unknown>;
+  rows: readonly BrainEventRow[];
+  scrub: TimelineScrub;
   serverToken: string;
 }) {
   const [filter, setFilter] = useState<GraphFilter>("all");
@@ -42,12 +41,13 @@ export function BrainGraphStage({
   const [view, setView] = useState<"live" | "simple">("live");
 
   const seeds = useMemo(() => dashboardBrainSeeds(dashboard.tasks), [dashboard.tasks]);
-  const ledger = useBrainLedger(dashboard.jobId, recent, readEventsPage);
-  // The graph folds only the COMPLETE, CONTIGUOUS prefix of the ledger: a
-  // hole from a live gap, a mid-ledger join, or a sleeping tab holds the
-  // model at the state before it, never a ghost past it (DECISION F019 D5).
-  const rows = useMemo(() => brainLedgerPrefix(ledger), [ledger]);
-  const model = useMemo(() => rebuildBrainModel(dashboard.jobId, seeds, rows), [dashboard.jobId, seeds, rows]);
+  // `rows` is the ledger's COMPLETE, CONTIGUOUS prefix, read once by the shell for
+  // the graph and the timeline alike: a hole holds the model at the state before
+  // it, never a ghost past it (DECISIONS F019 D5 and F024 D4).
+  const liveModel = useMemo(() => rebuildBrainModel(dashboard.jobId, seeds, rows), [dashboard.jobId, seeds, rows]);
+  // While the timeline is scrubbed the stage draws the reducer state of the
+  // prefix at the handle, and the live model waits behind LIVE (DECISION F024 D4).
+  const model = scrub.scrubbedModel ?? liveModel;
   // Every cluster chip in place, whatever the focus: the graph the zoom checks
   // its focus against, so moving the focus never moves that graph.
   const baseLayout = useMemo(() => buildBrainLayout(model), [model]);
@@ -125,6 +125,13 @@ export function BrainGraphStage({
         // No tasks, an empty filter, or the operator pressed "Simple view":
         // BrainGraphCanvas owns its own empty and filter-empty messages.
         <BrainGraphCanvas dashboard={dashboard} filter={filter} selectedNodeId={selectedNodeId} onSelectNode={onSelectNode} />
+      )}
+      {scrub.state.mode === "scrubbed" && (
+        <div className={styles.scrubBanner} role="status" data-ui="scrub-banner">
+          <span className={styles.scrubBadge}>SCRUBBED</span>
+          <span>{scrub.view.readout} · live updates wait behind LIVE</span>
+          <button type="button" className={styles.scrubLive} onClick={scrub.goLive}>Back to LIVE</button>
+        </div>
       )}
       <div className={styles.chipsDock}>
         <GraphFilterChips value={filter} onChange={setFilter} />

@@ -24,7 +24,7 @@
 .phaseIconShell { display: none; } /* Labels pur wie im Referenzdesign */
 .phaseLabel {}
 
-.rail { position: relative; height: 24px; margin: 0 0 8px; }
+.rail { position: relative; height: 24px; margin: 0 0 8px; cursor: pointer; touch-action: none; }
 .railBase, .railFill {
   position: absolute;
   top: 50%;
@@ -33,7 +33,16 @@
   transform: translateY(-50%);
 }
 .railBase { left: 0; right: 0; background: rgba(110, 127, 163, 0.22); }
-.railFill { left: 0; background: linear-gradient(90deg, var(--remedy-blue-strong), var(--remedy-blue-500)); transition: width 600ms ease; }
+.railFill { left: 0; background: linear-gradient(90deg, var(--remedy-blue-strong), var(--remedy-blue-500)); transition: width var(--remedy-dur-base) var(--remedy-ease-soft); }
+.phaseSegment {
+  position: absolute;
+  top: 50%;
+  height: 4px;
+  border-radius: 2px;
+  transform: translateY(-50%);
+  background: var(--remedy-blue-100);
+}
+.timeline[data-mode="scrubbed"] .railFill { background: var(--remedy-purple); }
 
 .phaseMarker {
   position: absolute;
@@ -57,10 +66,42 @@
   background: var(--remedy-blue-strong);
 }
 .phaseMarker.isBlocked { border-color: var(--remedy-state-blocked); }
+.phaseMarker.isCompact { width: 8px; height: 14px; border-radius: 3px; border-width: 2px; }
+.phaseMarker.isCompact.isCurrent::after { width: 4px; height: 4px; }
+
+.scrubHandle {
+  position: absolute;
+  top: 50%;
+  z-index: 2;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  background: var(--remedy-card);
+  border: 3px solid var(--remedy-blue-strong);
+  box-shadow: var(--remedy-shadow-soft);
+  cursor: grab;
+}
+.scrubHandle:active { cursor: grabbing; }
+.scrubHandle:focus-visible { outline: 2px solid var(--remedy-blue-strong); outline-offset: 2px; }
+.timeline[data-mode="scrubbed"] .scrubHandle { border-color: var(--remedy-purple); }
 
 .eventRail { position: relative; height: 34px; margin: 2px 6px 4px; }
 .eventRailLine { display: none; }
-.eventItem { position: absolute; top: 0; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; }
+.eventItem {
+  position: absolute;
+  top: 0;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+.eventItem.isAhead { opacity: 0.45; }
+.eventItem:focus-visible { outline: 2px solid var(--remedy-blue-strong); outline-offset: 2px; border-radius: var(--remedy-radius-sm); }
 .eventTick { width: 1px; height: 7px; background: rgba(110, 127, 163, 0.4); }
 
 .eventChip {
@@ -79,6 +120,7 @@
 .eventLlm { color: var(--remedy-blue-strong); background: var(--remedy-blue-50); border-color: rgba(76,131,255,.25); }
 .eventTest { color: var(--remedy-ink-soft); }
 .eventReview { color: var(--remedy-ink-soft); }
+.eventStop { color: var(--remedy-state-blocked); }
 .eventCurrent { box-shadow: 0 0 0 3px rgba(76, 131, 255, 0.2); }
 .eventBlocked { color: var(--remedy-state-blocked); border-color: rgba(239,99,99,.35); }
 
@@ -91,5 +133,21 @@
   font-size: 12px;
   color: var(--remedy-muted);
 }
+/* Auto margins either side keep the glyph legend centred with the readout at the right. */
+.legend::before { content: ""; margin-right: auto; }
 .legendItem { display: inline-flex; align-items: center; gap: 7px; }
 .legendItem .eventChip { width: 20px; height: 20px; margin: 0; }
+.readout { margin-left: auto; font-variant-numeric: tabular-nums; color: var(--remedy-ink-soft); }
+.liveToggle {
+  padding: 2px 12px;
+  border-radius: var(--remedy-radius-pill);
+  border: 1px solid var(--remedy-purple);
+  background: var(--remedy-card);
+  color: var(--remedy-purple);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+}
+.liveToggle:disabled { border-color: var(--remedy-line); color: var(--remedy-green); cursor: default; }
+.liveToggle:focus-visible { outline: 2px solid var(--remedy-blue-strong); outline-offset: 2px; }

@@ -1,0 +1,2 @@
+    # vitest colours its summary wherever `CI` is set, as on the hosted runner (R-1048).
+    counts = re.search(r"Tests\s+(\d+) passed \((\d+)\)", re.sub(r"\x1b\[[0-9;]*m", "", out))

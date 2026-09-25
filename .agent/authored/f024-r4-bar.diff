@@ -1,0 +1,412 @@
+diff --git a/apps/ui/src/components/timeline/PhaseTimeline.module.css b/apps/ui/src/components/timeline/PhaseTimeline.module.css
+index 8d3efee12..ef20f01c8 100644
+--- a/apps/ui/src/components/timeline/PhaseTimeline.module.css
++++ b/apps/ui/src/components/timeline/PhaseTimeline.module.css
+@@ -24,7 +24,7 @@
+ .phaseIconShell { display: none; } /* Labels pur wie im Referenzdesign */
+ .phaseLabel {}
+ 
+-.rail { position: relative; height: 24px; margin: 0 0 8px; }
++.rail { position: relative; height: 24px; margin: 0 0 8px; cursor: pointer; touch-action: none; }
+ .railBase, .railFill {
+   position: absolute;
+   top: 50%;
+@@ -33,7 +33,16 @@
+   transform: translateY(-50%);
+ }
+ .railBase { left: 0; right: 0; background: rgba(110, 127, 163, 0.22); }
+-.railFill { left: 0; background: linear-gradient(90deg, var(--remedy-blue-strong), var(--remedy-blue-500)); transition: width 600ms ease; }
++.railFill { left: 0; background: linear-gradient(90deg, var(--remedy-blue-strong), var(--remedy-blue-500)); transition: width var(--remedy-dur-base) var(--remedy-ease-soft); }
++.phaseSegment {
++  position: absolute;
++  top: 50%;
++  height: 4px;
++  border-radius: 2px;
++  transform: translateY(-50%);
++  background: var(--remedy-blue-100);
++}
++.timeline[data-mode="scrubbed"] .railFill { background: var(--remedy-purple); }
+ 
+ .phaseMarker {
+   position: absolute;
+@@ -57,10 +66,42 @@
+   background: var(--remedy-blue-strong);
+ }
+ .phaseMarker.isBlocked { border-color: var(--remedy-state-blocked); }
++.phaseMarker.isCompact { width: 8px; height: 14px; border-radius: 3px; border-width: 2px; }
++.phaseMarker.isCompact.isCurrent::after { width: 4px; height: 4px; }
++
++.scrubHandle {
++  position: absolute;
++  top: 50%;
++  z-index: 2;
++  width: 16px;
++  height: 16px;
++  border-radius: 50%;
++  transform: translate(-50%, -50%);
++  background: var(--remedy-card);
++  border: 3px solid var(--remedy-blue-strong);
++  box-shadow: var(--remedy-shadow-soft);
++  cursor: grab;
++}
++.scrubHandle:active { cursor: grabbing; }
++.scrubHandle:focus-visible { outline: 2px solid var(--remedy-blue-strong); outline-offset: 2px; }
++.timeline[data-mode="scrubbed"] .scrubHandle { border-color: var(--remedy-purple); }
+ 
+ .eventRail { position: relative; height: 34px; margin: 2px 6px 4px; }
+ .eventRailLine { display: none; }
+-.eventItem { position: absolute; top: 0; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; }
++.eventItem {
++  position: absolute;
++  top: 0;
++  transform: translateX(-50%);
++  display: flex;
++  flex-direction: column;
++  align-items: center;
++  padding: 0;
++  border: 0;
++  background: none;
++  cursor: pointer;
++}
++.eventItem.isAhead { opacity: 0.45; }
++.eventItem:focus-visible { outline: 2px solid var(--remedy-blue-strong); outline-offset: 2px; border-radius: var(--remedy-radius-sm); }
+ .eventTick { width: 1px; height: 7px; background: rgba(110, 127, 163, 0.4); }
+ 
+ .eventChip {
+@@ -79,6 +120,7 @@
+ .eventLlm { color: var(--remedy-blue-strong); background: var(--remedy-blue-50); border-color: rgba(76,131,255,.25); }
+ .eventTest { color: var(--remedy-ink-soft); }
+ .eventReview { color: var(--remedy-ink-soft); }
++.eventStop { color: var(--remedy-state-blocked); }
+ .eventCurrent { box-shadow: 0 0 0 3px rgba(76, 131, 255, 0.2); }
+ .eventBlocked { color: var(--remedy-state-blocked); border-color: rgba(239,99,99,.35); }
+ 
+@@ -91,5 +133,21 @@
+   font-size: 12px;
+   color: var(--remedy-muted);
+ }
++/* Auto margins either side keep the glyph legend centred with the readout at the right. */
++.legend::before { content: ""; margin-right: auto; }
+ .legendItem { display: inline-flex; align-items: center; gap: 7px; }
+ .legendItem .eventChip { width: 20px; height: 20px; margin: 0; }
++.readout { margin-left: auto; font-variant-numeric: tabular-nums; color: var(--remedy-ink-soft); }
++.liveToggle {
++  padding: 2px 12px;
++  border-radius: var(--remedy-radius-pill);
++  border: 1px solid var(--remedy-purple);
++  background: var(--remedy-card);
++  color: var(--remedy-purple);
++  font-size: 11px;
++  font-weight: 700;
++  letter-spacing: 0.06em;
++  cursor: pointer;
++}
++.liveToggle:disabled { border-color: var(--remedy-line); color: var(--remedy-green); cursor: default; }
++.liveToggle:focus-visible { outline: 2px solid var(--remedy-blue-strong); outline-offset: 2px; }
+diff --git a/apps/ui/src/components/timeline/PhaseTimeline.tsx b/apps/ui/src/components/timeline/PhaseTimeline.tsx
+index d6f2109b2..4a7b5a8dc 100644
+--- a/apps/ui/src/components/timeline/PhaseTimeline.tsx
++++ b/apps/ui/src/components/timeline/PhaseTimeline.tsx
+@@ -1,13 +1,15 @@
+-import type {
+-  RemedyPhase,
+-  RemedyTimelineEvent,
+-  RemedyTimelinePhase,
+-  RemedyState,
+-} from "../../api/types";
+-import { CodeOrbGlyph, FlaskGlyph, PersonGlyph, TaskDoneGlyph } from "../icons/RemedyGlyphs";
++import { useRef } from "react";
++import type { PointerEvent } from "react";
++import { CodeOrbGlyph, FlaskGlyph, PersonGlyph, TaskDoneGlyph, TaskPlannedGlyph } from "../icons/RemedyGlyphs";
++import type { SubGlyphKind, TimelinePhase } from "./phaseMapping";
++import type { SegmentState, GlyphView } from "./timelineView";
++import { fractionOfSeq, seqAtFraction } from "./timelineView";
++import type { TimelineScrub } from "./useTimelineScrub";
+ import styles from "./PhaseTimeline.module.css";
+ 
+-const CANONICAL_PHASES: RemedyTimelinePhase[] = [
++// The bar's six stops in order; phaseMapping.ts's TIMELINE_PHASES is the same
++// list, which tests/ui_contracts/test_phase_mapping.py holds equal.
++const CANONICAL_PHASES: readonly TimelinePhase[] = [
+   "job",
+   "planning",
+   "build",
+@@ -16,154 +18,170 @@ const CANONICAL_PHASES: RemedyTimelinePhase[] = [
+   "finalized",
+ ];
+ 
+-const PHASE_LABELS: Record<RemedyTimelinePhase, string> = {
+-  job: "Job",
+-  planning: "Planning",
+-  build: "Build",
+-  test: "Test",
+-  review: "Review",
+-  finalized: "Finalized",
++// What begins each phase, on the label's hover (DECISION F024 D1).
++const PHASE_HINTS: Record<TimelinePhase, string> = {
++  job: "The job's first event",
++  planning: "Planning started",
++  build: "The first task run started",
++  test: "The first test or verification ran",
++  review: "The first review verdict arrived",
++  finalized: "Every task has passed",
+ };
+ 
+-const MAX_EVENT_CHIPS = 18;
++// The sub-glyphs' names, as the legend and a screen reader say them.
++const GLYPH_NAMES: Record<SubGlyphKind, string> = {
++  decision: "Decision",
++  failure: "Failure",
++  heal: "Heal",
++  stop: "Stop",
++};
+ 
+-function phasePercent(index: number): number {
+-  return (index / (CANONICAL_PHASES.length - 1)) * 100;
+-}
++const SEGMENT = 100 / CANONICAL_PHASES.length;
+ 
+-function stateClass(state: RemedyState) {
++function stateClass(state: SegmentState) {
+   if (state === "done") return styles.isDone;
+   if (state === "current") return styles.isCurrent;
+-  if (state === "blocked") return styles.isBlocked;
+   return styles.isPending;
+ }
+ 
+-function eventChipClass(event: RemedyTimelineEvent) {
+-  return [
+-    styles.eventChip,
+-    event.kind === "llm_action" ? styles.eventLlm : "",
+-    event.kind === "test" ? styles.eventTest : "",
+-    event.kind === "review" ? styles.eventReview : "",
+-    event.state === "current" ? styles.eventCurrent : "",
+-    event.state === "blocked" ? styles.eventBlocked : "",
+-  ].filter(Boolean).join(" ");
++function chipClass(glyph: SubGlyphKind) {
++  if (glyph === "failure") return [styles.eventChip, styles.eventBlocked].join(" ");
++  if (glyph === "heal") return [styles.eventChip, styles.eventLlm].join(" ");
++  if (glyph === "decision") return [styles.eventChip, styles.eventReview].join(" ");
++  return [styles.eventChip, styles.eventStop].join(" ");
+ }
+ 
+-function EventGlyph({ kind }: { kind: RemedyTimelineEvent["kind"] }) {
+-  if (kind === "test") return <FlaskGlyph />;
+-  if (kind === "review") return <PersonGlyph />;
+-  return <CodeOrbGlyph />;
++function GlyphIcon({ glyph }: { glyph: SubGlyphKind }) {
++  if (glyph === "failure") return <FlaskGlyph />;
++  if (glyph === "heal") return <CodeOrbGlyph />;
++  if (glyph === "decision") return <PersonGlyph />;
++  return <TaskPlannedGlyph />;
+ }
+ 
+-export function PhaseTimeline({
+-  phases,
+-  timelineEvents = [],
+-}: {
+-  phases: RemedyPhase[];
+-  timelineEvents?: RemedyTimelineEvent[];
+-}) {
+-  const phaseMap = Object.fromEntries(phases.map((phase) => [phase.id, phase]));
+-
+-  const canonical = CANONICAL_PHASES.map((id) => {
+-    const real = phaseMap[id];
+-    return {
+-      id,
+-      label: real?.label || PHASE_LABELS[id],
+-      state: real?.state || ("pending" as RemedyState),
+-    };
+-  });
+-
+-  const currentIndex = canonical.findIndex((phase) => phase.state === "current");
+-  const lastDoneIndex = canonical.reduce(
+-    (latest, phase, index) => (phase.state === "done" ? index : latest),
+-    -1,
+-  );
+-  const activeIndex = currentIndex >= 0 ? currentIndex : Math.max(0, lastDoneIndex);
+-  const progressPct = canonical.length > 1
+-    ? (activeIndex / (canonical.length - 1)) * 100
+-    : 0;
++function glyphLeft(g: GlyphView): number {
++  return (g.segment + g.offset) * SEGMENT;
++}
+ 
+-  // Keep the most recent MAX_EVENT_CHIPS events (oldest trimmed first), then
+-  // group by phase so chips cluster under their phase segment.
+-  const trimmed = timelineEvents.slice(-MAX_EVENT_CHIPS);
+-  const phaseIndex = Object.fromEntries(CANONICAL_PHASES.map((id, i) => [id, i]));
+-  const segmentWidth = 100 / (CANONICAL_PHASES.length - 1);
+-  const byPhase = new Map<string, RemedyTimelineEvent[]>();
+-  for (const e of trimmed) {
+-    const list = byPhase.get(e.phase) || [];
+-    list.push(e);
+-    byPhase.set(e.phase, list);
+-  }
++export function PhaseTimeline({ scrub }: { scrub: TimelineScrub }) {
++  const railRef = useRef<HTMLDivElement>(null);
++  const { view, state, whole } = scrub;
++  const live = state.mode === "live";
+ 
+-  const positioned: { event: RemedyTimelineEvent; left: number }[] = [];
+-  for (const [phase, list] of byPhase) {
+-    const start = phasePercent(phaseIndex[phase] ?? 0);
+-    list.forEach((event, slot) => {
+-      const left = start + ((slot + 1) / (list.length + 1)) * segmentWidth;
+-      positioned.push({ event, left: Math.max(0, Math.min(left, 100)) });
+-    });
+-  }
++  // Drag or click on the track sets the position (T5_F024.md Design).
++  const scrubFromPointer = (event: PointerEvent<HTMLDivElement>) => {
++    const rail = railRef.current;
++    if (!rail || state.head < 0) return;
++    const rect = rail.getBoundingClientRect();
++    if (rect.width <= 0) return;
++    scrub.scrubTo(seqAtFraction(whole, (event.clientX - rect.left) / rect.width));
++  };
+ 
+   return (
+-    <section className={styles.timeline} aria-label="Project process timeline" data-ui="phase-timeline">
++    <section
++      className={styles.timeline}
++      aria-label="Project process timeline"
++      data-ui="phase-timeline"
++      data-mode={state.mode}
++    >
+       <div className={styles.phaseHeader}>
+-        {canonical.map((phase, index) => (
++        {view.segments.map((phase) => (
+           <div
+-            key={`phase-${phase.id}`}
++            key={`phase-${phase.phase}`}
+             className={[styles.phaseItem, stateClass(phase.state)].join(" ")}
+-            style={{ left: `${phasePercent(index)}%` }}
+-            data-phase={phase.id}
++            style={{ left: `${(CANONICAL_PHASES.indexOf(phase.phase) + 0.5) * SEGMENT}%` }}
++            data-phase={phase.phase}
+             data-state={phase.state}
++            title={PHASE_HINTS[phase.phase]}
+           >
+             <span className={styles.phaseLabel}>{phase.label}</span>
+           </div>
+         ))}
+       </div>
+ 
+-      <div className={styles.rail} aria-hidden="true">
+-        <span className={styles.railBase} />
+-        <span className={styles.railFill} style={{ width: `${progressPct}%` }} />
+-        {canonical.map((phase, index) => (
++      <div
++        ref={railRef}
++        className={styles.rail}
++        onPointerDown={(event) => {
++          event.currentTarget.setPointerCapture(event.pointerId);
++          scrubFromPointer(event);
++        }}
++        onPointerMove={(event) => {
++          if (event.currentTarget.hasPointerCapture(event.pointerId)) scrubFromPointer(event);
++        }}
++      >
++        <span className={styles.railBase} aria-hidden="true" />
++        {view.segments.map((phase, index) => (
++          <span
++            key={`segment-${phase.phase}`}
++            className={styles.phaseSegment}
++            style={{ left: `calc(${index * SEGMENT}% + 3px)`, width: `calc(${SEGMENT}% - 6px)` }}
++            aria-hidden="true"
++          >
++            <span className={styles.railFill} style={{ width: `${phase.fill * 100}%` }} />
++          </span>
++        ))}
++        {view.segments.map((phase, index) => (
+           <span
+-            key={`marker-${phase.id}`}
+-            className={[styles.phaseMarker, stateClass(phase.state)].join(" ")}
+-            style={{ left: `${phasePercent(index)}%` }}
++            key={`marker-${phase.phase}`}
++            className={[styles.phaseMarker, stateClass(phase.state), phase.compact ? styles.isCompact : ""].join(" ")}
++            style={{ left: `${(index + 0.5) * SEGMENT}%` }}
++            aria-hidden="true"
+           >
+-            {phase.state === "done" && <TaskDoneGlyph className={styles.markerCheck} />}
++            {phase.state === "done" && !phase.compact && <TaskDoneGlyph className={styles.markerCheck} />}
+           </span>
+         ))}
++        <div
++          role="slider"
++          tabIndex={0}
++          className={styles.scrubHandle}
++          style={{ left: `${fractionOfSeq(whole, state.position) * 100}%` }}
++          aria-label="Timeline position"
++          aria-valuemin={-1}
++          aria-valuemax={Math.max(state.head, -1)}
++          aria-valuenow={state.position}
++          aria-valuetext={view.readout}
++          onKeyDown={(event) => {
++            if (scrub.onKey(event.key, event.shiftKey)) event.preventDefault();
++          }}
++        />
+       </div>
+ 
+-      <div className={styles.eventRail} aria-label="Real work event rail">
+-        {positioned.map(({ event, left }) => (
+-          <span
+-            key={event.id}
+-            className={styles.eventItem}
+-            style={{ left: `${left}%` }}
+-            title={event.title}
+-            aria-label={`${event.title}, ${event.kind.replace("_", " ")}`}
++      <div className={styles.eventRail} aria-label="Decisions, failures, heals and stops">
++        {view.glyphs.map((g) => (
++          <button
++            type="button"
++            key={`glyph-${g.seq}`}
++            className={[styles.eventItem, g.reached ? "" : styles.isAhead].join(" ")}
++            style={{ left: `${glyphLeft(g)}%` }}
++            title={g.line}
++            aria-label={`${GLYPH_NAMES[g.glyph]} at event ${g.seq}: ${g.line}`}
++            onClick={() => scrub.scrubTo(g.seq)}
+           >
+             <span className={styles.eventTick} aria-hidden="true" />
+-            <span className={eventChipClass(event)} aria-hidden="true">
+-              <EventGlyph kind={event.kind} />
++            <span className={chipClass(g.glyph)} aria-hidden="true">
++              <GlyphIcon glyph={g.glyph} />
+             </span>
+-          </span>
++          </button>
+         ))}
+       </div>
+ 
+       <div className={styles.legend} aria-label="Timeline legend">
+-        <span className={styles.legendItem}>
+-          <span className={[styles.eventChip, styles.eventLlm].join(" ")}><CodeOrbGlyph /></span>
+-          <span>LLM Action</span>
+-        </span>
+-        <span className={styles.legendItem}>
+-          <span className={[styles.eventChip, styles.eventTest].join(" ")}><FlaskGlyph /></span>
+-          <span>Test</span>
+-        </span>
+-        <span className={styles.legendItem}>
+-          <span className={[styles.eventChip, styles.eventReview].join(" ")}><PersonGlyph /></span>
+-          <span>Review</span>
+-        </span>
++        {(["decision", "failure", "heal", "stop"] as const).map((glyph) => (
++          <span key={`legend-${glyph}`} className={styles.legendItem}>
++            <span className={chipClass(glyph)}><GlyphIcon glyph={glyph} /></span>
++            <span>{GLYPH_NAMES[glyph]}</span>
++          </span>
++        ))}
++        <span className={styles.readout} aria-live="polite">{scrub.notice ?? view.readout}</span>
++        <button
++          type="button"
++          className={styles.liveToggle}
++          aria-pressed={live}
++          disabled={live}
++          onClick={scrub.goLive}
++        >
++          LIVE
++        </button>
+       </div>
+     </section>
+   );

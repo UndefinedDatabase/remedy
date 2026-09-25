@@ -1,0 +1,89 @@
+diff --git a/docs/agents/planner_reviewer_prompt.md b/docs/agents/planner_reviewer_prompt.md
+index 272a9f5b5..5e0dcf59e 100644
+--- a/docs/agents/planner_reviewer_prompt.md
++++ b/docs/agents/planner_reviewer_prompt.md
+@@ -283,6 +283,10 @@ end the response with:
+   Consolidated a twelfth time at F023's closure on 2026-09-25: nothing joined and no two items were
+   merged, because F023 wrote no line to `.agent/prose_slips.md`: its seven rounds' blocks were
+   generated from simulated trees and every worker reading matched them. The list stays at 34 items.
++  Consolidated a thirteenth time at F024's closure on 2026-09-25: nothing joined and no two items
++  were merged, because F024 wrote no line to `.agent/prose_slips.md`: its five building rounds'
++  blocks were generated from simulated trees and every worker reading matched them. The list stays
++  at 34 items.
+   The next consolidation measures against 34.
+   Reverse by deleting this paragraph.
+   1. **Size.** Count the block's lines. Over 400 (DECISION F105 D5) → split or
+diff --git a/docs/roadmap/features/T5_F024.md b/docs/roadmap/features/T5_F024.md
+index dcdfb5e02..f01c980d6 100644
+--- a/docs/roadmap/features/T5_F024.md
++++ b/docs/roadmap/features/T5_F024.md
+@@ -93,3 +93,69 @@ mapping table is a contract deliverable reviewed against Part E.
+ The reducer, event schema, story-replay narration (F039 builds
+ on this). Suggested tests: timeline property tests +
+ tests/ui_contracts/test_phase_mapping.py.
++
++## Built State (F024, 2026-09-25)
++
++What exists on disk at the close of F024, built in five rounds in one session on
++`feature/f024-phase-timeline-scrubber`, cut from `main` at `1bb3a35d`. Every DECISION named lives
++in `.agent/decisions.md`; every round's verdict in `.agent/live_review.md` or, once rotated, its
++archive.
++
++**T001 — the phase mapping, the boundaries and the sub-glyphs.** `apps/ui/src/components/timeline/phaseMapping.ts`
++reads the event ledger the server really writes. Its phase mapping table sends the three
++`planning_*` kinds to Planning, `task_run_started` and the two `builder_*` kinds to Build, the
++`test_run_*` and `verification_*` kinds to Test, and a `task_round_completed` carrying a reviewer's
++verdict to Review; Job begins at the ledger's first row. `readPhases` gives any prefix's phases:
++each begins at the first row that marks it or a later one, so the bar only moves forward, and a
++skipped phase has a zero span. No completion event exists, so Finalized is derived from the
++reducer's own task states and holds only while every task has passed. The sub-glyphs — decision,
++failure, heal, stop — come from a second table and the review verdict, each with the humanize
++catalog's line. `tests/ui_contracts/test_phase_mapping.py` holds both tables to
++`packages/orchestration/event_names.py` and the six phases to the bar's and the dashboard's
++(DECISION F024 D1).
++
++**T002 — the snapshots.** `scrubSnapshots.ts` serves the reducer state at any seq from snapshots
++every 200 seq, capped at 64 and dropped farthest-first, built lazily from the nearest lower one,
++invalidated by the rows they should have held and forgotten on a snapshot-refetch reset. Its
++property test holds the state at fuzzed positions of seeded ledgers equal to `rebuildBrainModel`
++over the prefix, and `tests/ui_contracts/test_scrub_snapshots.py` binds the spacing to this file's
++and the roadmap's figure (DECISION F024 D2).
++
++**T003 — the bar, the scrubber, LIVE and the end-to-end.** `timelineIndex.ts` reads every prefix's
++phases from one fold and is held equal to `readPhases` at every position; `scrubState.ts` is the
++machine with its keyboard and LIVE's capped fast-forward; `timelineView.ts` is the bar's view model
++of six equal segments with the track's geometry (DECISION F024 D3). The shell reads the one ledger
++and builds the one scrubber in `useTimelineScrub.ts`; `PhaseTimeline.tsx` is a slider over the six
++segments, moved by pointer, keyboard and sub-glyph clicks, with a readout and a LIVE button; the
++stage draws the scrubbed prefix under a SCRUBBED banner and the pill says REPLAY
++(DECISION F024 D4). `tests/ui_server/test_timeline_scrub_live.py` scrubs a real fake job's ledger at
++every position with these modules, and the scrub budget on the 500-node fixture is measured with a
++red control that fails (DECISION F024 D5).
++
++**Acceptance, by the test that proves it.** Prefix equality at fuzzed positions:
++`scrubSnapshots.test.ts`, and on a real ledger `scrubLive.test.ts` through its pytest driver.
++Phase boundaries golden per fixture: `phaseMapping.test.ts` over the reducer's goldens, a planned
++job, a sparse ledger, a withdrawn Finalized and the demo recording. Sub-glyphs at the correct seq
++with humanized hovers: the same file, and `timelineView.test.ts` for their place on the track.
++Scrub interaction under the budget on the 500-node fixture with the snapshot arithmetic shown:
++`.agent/authored/f024-r5-perf.txt`, from the tool kept as `.agent/authored/f024-r5-perf-*`, and
++the reduction counts pinned in `scrubSnapshots.test.ts`. SCRUBBED against LIVE unmistakable, and
++the catch-up capped: `scrubState.test.ts` and `tests/ui_contracts/test_timeline_scrub_wiring.py`,
++with the reviewer's headless render of every step. The demo recording scrubs cleanly:
++`timelineIndex.test.ts`, `scrubSnapshots.test.ts` and the render. Each round's mutation proofs are
++its `.agent/authored/f024-r<n>-mutations.py`.
++
++**Modules and lists (closure precondition 7).** F024 added no module under `packages/`, `apps/cli/`
++or `scripts/`, and nothing to `tests/orchestration/import_reachability_allowlist.txt`, to
++`ALLOWED_UNWIRED` or to `RESERVED_NAMESPACES` in `tests/test_no_orphan_modules.py`. Its new
++modules are TypeScript under `apps/ui/src/components/timeline/`.
++
++**Beyond the code.** Four rows of `docs/ui/design_reference/assumption_log.md` record where the
++bar, the legend, the banner and the catch-up depart from or go beyond the design reference. The
++shell now owns the one ledger the stage used to read, and `test_brain_live_wiring.py` was
++re-pointed with it. The dashboard's server-derived `phases` and `timeline_events` no longer feed
++the bar and stay in the payload untouched. The reducer, the event schema and story-replay
++narration are untouched.
++
++**Findings.** F024 registered none. The one open finding at its claim, R-1008, is owned by F285
++and was neither touched nor re-assigned.

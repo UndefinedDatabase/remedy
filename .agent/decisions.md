@@ -21071,3 +21071,258 @@ and the part only a real run can prove is where the stream and the report meet.
 
 HOW TO REVERSE: delete `tests/ui_server/test_semantic_zoom_live.py`, the
 `.agent/authored/f023-r7-perf-*` copies and `.agent/authored/f023-r7-perf.txt`, and this paragraph.
+
+## DECISION F024 D1 — the phase timeline reads the measured ledger writers: phases begin at their first marker and only move forward, a skipped phase is a zero span, Finalized is derived from the reducer's task states, and sub-glyphs come from two tables and a review verdict (2026-09-25)
+
+CONTEXT: T5_F024.md orders T001 as the phase mapping table, boundary goldens and sub-glyph
+extraction, pure, on fixture ledgers, with phase boundaries derived from marker events (plan
+approved, first build call, verify start, review start, terminal) mapped onto "the actual Part E
+kinds". Measured at `1bb3a35d`: `_build_events_since_json` in `packages/orchestration/ui_server.py`
+serves every `*.jsonl` row under the job's log directory through `_safe_event_summary`, whose
+envelope carries a kind, an outcome and a task id and nothing else; no writer emits a Part E name
+or a plan-approval event (DECISION F019 D1); a `job run` writes `task_run_started`, one
+`task_round_completed` per round after the task's rounds finish, `task_run_completed` or
+`task_run_failed`, and `job_stopped` on a stop, writes no event for the tests a round runs, and
+writes NOTHING when the job completes; `job plan` writes `planning_started`,
+`planning_completed` and `planning_failed`, with no task; the older single-cycle path writes
+`builder_started`, `builder_completed`, `verification_passed` and `verification_failed`; `remedy
+test` writes the `test_run_*` kinds with no outcome; the cycle loop in
+`packages/orchestration/long_run_executor.py` writes `task_needs_decision`,
+`task_decision_answered`, `cycle_repair_round`, `cycle_healed` and `cycle_loop_terminal`, the last
+with its terminal status in metadata the envelope drops; `packages/orchestration/event_names.py`
+declares every written name; the bar in `components/timeline/PhaseTimeline.tsx` and the
+dashboard's `phases` both name the six stops job, planning, build, test, review, finalized; and
+the demo recording's eight frames begin at seq 0 and end with both tasks passed.
+
+CHOSEN: (1) THE MODULE is `apps/ui/src/components/timeline/phaseMapping.ts`, pure, beside the bar
+it will feed, importing only the reducer, its ontology and the humanize catalog. (2) THE PHASE
+MAPPING TABLE maps the measured writers: the three `planning_*` kinds to Planning;
+`task_run_started`, `builder_started` and `builder_completed` to Build; the five `test_run_*`
+kinds and the two `verification_*` kinds to Test; and `task_round_completed` to Review, but only
+when its outcome is a reviewer's verdict from `REVIEW_OUTCOME_STATE_TABLE`, because `no_review`
+and an empty outcome mean no reviewer ran. Job begins at the ledger's first row whatever its kind.
+(3) THE BOUNDARIES of a prefix: a phase begins at the first row that marks it or any later phase,
+so the bar only moves forward; a phase the ledger skipped begins where the next one did and has a
+zero span, which the bar draws as a compact tick; a row marking an earlier phase than the one
+reached moves nothing. (4) FINALIZED has no marker, since no completion event exists: the prefix
+is folded through `reduceBrainEvent` from the timeline seed, and Finalized begins at the row after
+which the reducer's derived core state reads `pass` — every task passed — or at the latest phase
+start if that is later, and is reached only while that still holds at the prefix's last row, so a
+task that starts again withdraws it. (5) THE TIMELINE SEED is the dashboard's task list with every
+status reset to `pending`, because today's statuses would show the job's end at its start. (6)
+THE SUB-GLYPHS are decision (`task_needs_decision`, `task_decision_answered`), failure
+(`task_run_failed`, `verification_failed`, `planning_failed`, `test_run_timed_out`), heal
+(`cycle_healed`) and stop (`job_stopped`), plus the review verdict: a round that reads `fail` or
+`needs_repair` is a failure and the next passing round of the SAME task is a heal. Each carries its
+seq, kind, task and the humanize catalog's line, which for the kinds the catalog does not name is
+its honest generic line. (7) THE GUARD is `tests/ui_contracts/test_phase_mapping.py`: every kind
+both tables name is in `EVENT_NAMES`, Job and Finalized are never a table's value, the six phases
+equal the bar's and the dashboard's in order, and the module imports nothing else and touches no
+DOM, clock or React state.
+
+ALTERNATIVES: the current phase as the phase of the LATEST marker, rejected because two tasks
+interleave Build and Review and the bar would oscillate; Finalized from `cycle_loop_terminal` or
+`job_stopped`, rejected because the first's status never reaches the envelope and a stop can be
+resumed; a sticky Finalized, rejected because a withdrawn pass shown as done is the fake progress
+graph_spec §8 forbids; prompt-trace rows, whose kind reaches a client empty, taken as Planning,
+rejected because an empty kind is not a marker; seeding with the dashboard's own statuses, rejected
+for the reason (5) gives.
+
+HOW TO REVERSE: delete `apps/ui/src/components/timeline/phaseMapping.ts`, its `.test.ts`,
+`tests/ui_contracts/test_phase_mapping.py`, and this paragraph.
+
+## DECISION F024 D2 — the scrubber serves the reducer state at any seq from a memo of snapshots every 200 seq, capped at 64 and dropped farthest-first, invalidated by the rows they should have held, and held to a fresh fold at fuzzed positions (2026-09-25)
+
+CONTEXT: T5_F024.md orders T002 as snapshot memoization every 200 seq, the prefix-equality
+property test at fuzzed positions, and the memory cap: drop distant snapshots beyond it, rebuild
+on demand, invalidate only on snapshot-refetch resets and rebuild lazily. Measured at `78d60af2`:
+`rebuildBrainModel` in `apps/ui/src/components/graph/brainReducer.ts` seeds and folds a ledger
+with a repeated seq kept once, the first winning; `reduceBrainEvent` returns the same object for
+a row at or below the model's last seq; the ledger's seq is its own position and may arrive with
+gaps, which the stream's gap path refetches; DECISION F024 D1's timeline seed resets every task
+status to pending; and the vitest environment is `node`, with no fuzzing library installed.
+
+CHOSEN: (1) THE MODULE is `apps/ui/src/components/timeline/scrubSnapshots.ts`, a factory
+`createScrubMemo(job, tasks, {every, cap})` whose memo keeps the ledger sorted by seq and a map of
+snapshots, with no React, DOM or clock; T003's hook wraps it. (2) A SNAPSHOT at boundary b is the
+state after every row whose seq is below b, for b a positive multiple of `every`, 200 by default
+(`SNAPSHOT_EVERY`); the state at s is the snapshot at the largest boundary not above s + 1, or the
+timeline seed, folded forward over the rows from that boundary to s — at most `every` − 1
+reductions once the snapshot exists. (3) A MISSING snapshot is built from the nearest lower one
+the memo kept, or from the seed, and every boundary on the way is stored. (4) THE CAP is 64
+snapshots (`SNAPSHOT_CAP`), 12 800 seq of ledger at the default spacing; beyond it the snapshot
+farthest from the position being served is dropped, the lower of two equally far, and rebuilt
+from the nearest lower one if a later position needs it. (5) INVALIDATION: a row whose seq the
+memo already holds is dropped, the first winning as in `rebuildBrainModel`; any new row drops
+every snapshot above its seq, which for a row at the head is none and after a gap, or after a
+query past the head, is every one that should have held it; `reset(rows)`, the snapshot-refetch
+of gap recovery, replaces the ledger and drops every snapshot. (6) THE PROPERTY TEST draws
+ledgers from a seeded linear congruential generator — seqs with gaps, repeated seqs, every
+reducer kind, seeded and unseeded tasks, shuffled — and compares the memo's state at fuzzed
+positions, before the first row and past the last, with `rebuildBrainModel` over the timeline
+seed and the prefix, at the default spacing, at a spacing of 5 with a cap of 3 queried in random
+order, while the ledger grows page by page, and over the demo recording. (7) THE GUARD is
+`tests/ui_contracts/test_scrub_snapshots.py`: the spacing equals the figure T5_F024.md and the
+roadmap state, the memo imports only the reducer, its ontology and the timeline seed and touches
+no DOM, clock or React state, and the property test's oracle is `rebuildBrainModel` imported from
+the reducer.
+
+ALTERNATIVES: snapshots keyed by ledger index rather than seq, rejected because the scrubber's
+position is a seq and a gap would shift every index after it; dropping snapshots only on a reset,
+as the feature file words it, rejected because a gap filled by live ingestion would otherwise
+leave snapshots that silently lack a row; least-recently-used eviction, rejected because the
+scrubber's next position is near its last one, which distance serves directly; a fuzzing library,
+rejected because none is installed and a seeded generator replays a red run exactly.
+
+HOW TO REVERSE: delete `apps/ui/src/components/timeline/scrubSnapshots.ts`, its `.test.ts`,
+`tests/ui_contracts/test_scrub_snapshots.py`, and this paragraph.
+
+## DECISION F024 D3 — T003 lands in three rounds, its pure half first: an index that reads every prefix's phases from one fold, a scrubber machine with its keyboard and a capped fast-forward, and a view model of six equal segments (2026-09-25)
+
+CONTEXT: T5_F024.md's T003 orders the bar, the scrubber and the LIVE toggle with the SCRUBBED
+banner, the catch-up and the keyboard, and the end-to-end on live fake jobs and the demo
+recording. Measured at `81a92d9b`: vitest runs in the `node` environment and cannot render React;
+`readPhases` in `components/timeline/phaseMapping.ts` folds the whole prefix through the reducer
+on every call; the binding CSS lays out six `.phase{flex:1}` segments; `ux_spec.md` §12 asks for
+a draggable handle that enters replay and §16 for progress that jumps under reduced motion;
+`motion_spec.md` defines `--remedy-dur-fast` as 120ms and names no catch-up treatment;
+`component_spec.md` asks for a slider role whose value is the seq; `RemedyShell.tsx` mounts
+`BrainGraphStage` and `PhaseTimeline` side by side in a main column a guard holds to four
+children; and the dashboard's `phases` carry the titles Job, Planning, Build, Test, Review and
+Finalized.
+
+CHOSEN: (1) THE SPLIT: round 3 lands T003's pure half, round 4 the components and their wiring,
+round 5 the end-to-end on a live fake job and the demo recording with the 500-node budget. (2)
+THE INDEX is `timelineIndex.ts`: one fold records, per row, the furthest phase marked so far and
+the row since which every task has passed, and each marked phase's start, which is fixed once
+set; `phasesAt(index, s)` then reads any prefix's phases without a reduction, and a property test
+holds it equal to `readPhases` over the prefix at every position of fuzzed ledgers, the plain fold
+staying the reference. `phaseStops` lists the distinct phase starts Shift+arrows step between. (3)
+THE MACHINE is `scrubState.ts`: `{mode, position, head, queued}`, where position is the seq whose
+prefix the graph shows and -1 is before the first event; ingesting moves a live view with the head
+and counts the rows behind a scrubbed one; scrubbing and stepping clamp to [-1, head]; an event
+that changes nothing returns the same object; LIVE resets to the head. (4) THE KEYBOARD: arrows
+step one event, Shift+arrows one phase stop, Home goes before the first event and End returns to
+LIVE. (5) THE CATCH-UP fast-forwards in at most 8 frames 120ms apart, `--remedy-dur-fast` each,
+evenly spread and ending exactly at the head, so it never runs past 960ms; under reduced motion it
+jumps; and when more than 5000 rows arrived behind the view LIVE refetches instead and says so.
+(6) THE VIEW MODEL is `timelineView.ts`: six equal segments whose seq ranges come from the WHOLE
+ledger, so the ruler holds still, and whose states come from the prefix at the handle, so the bar
+says what that prefix says; a phase the whole ledger passed with a zero span is compact; the
+current segment fills by the handle's place in its range; sub-glyphs sit at their seq in the
+segment whose range holds it; and the readout reads "Event s of head" with the time since the
+first event's timestamp, parsed from the ledger rather than a clock. (7) THE GUARD is
+`tests/ui_contracts/test_timeline_scrub_contract.py`: the frame length equals the design
+reference's `--remedy-dur-fast`, the keyboard names the four slider keys, the six labels equal the
+dashboard's phase titles, and the three modules import only each other, the reducer and its
+ontology, and touch no DOM, timer, clock or React state.
+
+ALTERNATIVES: the whole of T003 in one round, rejected because the components can only be checked
+by guards and a browser render while this half can be pinned by vitest, and one round would review
+the untestable half under the testable half's gates; `readPhases` on every handle move, rejected
+because it folds the whole prefix through the reducer each time; segments sized by their seq span,
+rejected because the binding CSS gives each phase `flex:1`; a catch-up that replays every queued
+event, rejected because the feature file caps its duration; End scrubbing to the head without
+returning to LIVE, rejected because the head of a scrubbed view is not the live view.
+
+HOW TO REVERSE: delete `timelineIndex.ts`, `scrubState.ts`, `timelineView.ts` and their three
+`.test.ts` files under `apps/ui/src/components/timeline/`,
+`tests/ui_contracts/test_timeline_scrub_contract.py`, and this paragraph.
+
+## DECISION F024 D4 — the shell reads the one ledger and builds one scrubber; the bar is a slider over six segments, the stage draws the scrubbed prefix under a SCRUBBED banner, the pill says REPLAY, and LIVE fast-forwards from the hook (2026-09-25)
+
+CONTEXT: T5_F024.md's T003 orders the bar, the scrubber, the LIVE toggle with the SCRUBBED banner
+and the catch-up, and the keyboard; DECISION F024 D3 landed their pure half. Measured at
+`b1cfedbe`: `BrainGraphStage.tsx` calls `useBrainLedger` and `brainLedgerPrefix` itself, and
+`tests/ui_contracts/test_brain_live_wiring.py` pins both calls there and the stage line's `recent`
+and `readEventsPage` props; `RemedyShell.tsx` mounts the stage and `PhaseTimeline` side by side in a
+main column that `test_main_layout_guard.py` holds to four components, and passes the timeline the
+dashboard's server-derived `phases` and `timelineEvents`; `test_timeline_guard.py`,
+`test_design_drift.py` and `test_ux_quality.py` pin the bar's header, rail markers with their check,
+event rail, legend, literal `CANONICAL_PHASES` array and its three glyph components, and
+`test_raw_colour_ratchet.py` pins its stylesheet at ten raw colours; `LiveStatusPill.tsx` has no
+REPLAY state; `ReducedMotionProvider.tsx` exposes `useReducedMotion`; no DEMO banner exists; and
+`--remedy-purple` is a defined token.
+
+CHOSEN: (1) ONE LEDGER: the shell calls `useBrainLedger` with the stream's ring and the page reader
+and folds its contiguous prefix once, `ledgerRows`, for the stage and the timeline alike; the stage
+reads no ledger of its own, and `test_brain_live_wiring.py`'s two stage asserts move to the shell
+with the same strength, plus one that the stage keeps none. (2) ONE SCRUBBER: `useTimelineScrub`
+in `components/timeline/` binds the index, the memo, the machine and the view model to React, owns
+LIVE's timers, and is built once by the shell and handed to the bar, the stage and the pill. (3)
+THE BAR keeps every structure the guards pin and draws the D3 view: six equal segments filling to
+the handle, the stop discs at the segment centres with a small tick for a phase the ledger skipped,
+the handle a `role="slider"` disc whose value is the seq, moved by pointer drag and click on the
+track, by the arrows, Shift+arrows, Home and End, and by clicking a sub-glyph chip; sub-glyphs
+not yet reached are faded; the legend shows the four sub-glyph kinds with the existing glyph
+exports; the readout and a LIVE button close the legend row; the dashboard's server-derived phases
+no longer feed it. (4) THE STAGE draws `scrub.scrubbedModel ?? liveModel`, so the graph, the zoom and
+the run it focuses read the scrubbed prefix, while the run detail and the evidence panel still read
+the ledger's rows for the run they show; it shows a SCRUBBED banner with the readout and a Back to
+LIVE button; the live model keeps the dashboard's seed and waits behind LIVE. (5) THE
+PILL says REPLAY in violet before any transport state while scrubbed. (6) LIVE: with at most 5000
+rows behind the view it fast-forwards through `catchUpPlan`'s frames and then returns to LIVE; past
+that it rebuilds the memo from the ledger and says so in the readout; any new move cancels a
+fast-forward in flight. (7) THE GUARD is `tests/ui_contracts/test_timeline_scrub_wiring.py`, over
+comment-stripped source. (8) THE VISUAL DEVIATIONS are four `assumption_log.md` rows.
+
+ALTERNATIVES: the stage handing its ledger up to the shell, rejected because the ledger is the
+shell's to share and a child that feeds its parent inverts the data flow; a second ledger for the
+timeline, rejected because it pages the same job twice and could fold a different prefix; a
+scrubber living in the stage, rejected because the bar sits beside the stage in the main column;
+the handle fixed to the current stop as `ux_spec.md` §12 draws it, rejected because it cannot show
+a position inside a phase.
+
+HOW TO REVERSE: restore `BrainGraphStage.tsx`, `RemedyShell.tsx`, `PhaseTimeline.tsx`, their
+stylesheets, `LiveStatusPill.tsx`, `RightLivePanel.tsx`, its stylesheet and
+`test_brain_live_wiring.py` from `b1cfedbe`, delete `useTimelineScrub.ts`, the two geometry
+functions of `timelineView.ts` and their tests, `tests/ui_contracts/test_timeline_scrub_wiring.py`,
+the four F024 rows of `assumption_log.md`, and this paragraph.
+
+## DECISION F024 D5 — a real fake job's ledger is scrubbed by the real modules at every position, and the scrub budget is measured on the 500-node fixture's ledger with the snapshot arithmetic shown and a red control that fails (2026-09-25)
+
+CONTEXT: T5_F024.md's T003 asks for the end-to-end on live fake jobs and the demo recording, and
+its Acceptance for "scrub interaction under the budget on the 500-node fixture (snapshot math
+shown)". Measured at `a46facfa`: `tests/ui_server/test_brain_demo_recording_live.py` plans and
+runs a fake-provider job with no network and no model and pages its frames as the UI does, and
+`tests/ui_server/test_semantic_zoom_live.py` reuses its helpers; the timeline's modules are
+TypeScript and run only under vitest, which a vitest config's `define` can hand a value;
+`brainPerfFixture.ts` folds a 481-row ledger to its 500-node model but exports only the model;
+F023's frame budget at 500 nodes is a 95th-percentile frame of at most 17.0 ms and at least 59
+frames a second, measured in headless Chrome by `.agent/authored/f023-r7-perf-*`, which paces
+frames at 60 Hz; and the demo recording's every position is already held to a fresh fold by the
+memo's and the index's vitest tests.
+
+CHOSEN: (1) THE LIVE END-TO-END is `tests/ui_server/test_timeline_scrub_live.py`: it plans and runs
+a fake job, pages its frames, and runs `apps/ui/src/components/timeline/scrubLive.test.ts` through
+a scratch vitest config whose `define` carries the job's ledger and its tasks; that file checks,
+at every position of the real ledger, that the memo's state equals a fresh fold of the prefix, that
+the index's phases equal the plain fold's and end Finalized with Build at seq 0, that every
+sub-glyph lands on the track and every position round-trips through it, and that the keyboard
+walks to before the first event and End returns to LIVE; the pytest node requires all five to run
+and pass, skips where vitest is absent, and in the ordinary unit run the vitest file skips. (2) THE
+FIXTURE exports `brainPerfLedger(n)`, the seeds and rows `brainPerfModel(n)` folds, with a test
+that its 481 rows run from seq 0 without a hole and fold to exactly the model. (3) THE BUDGET TOOL
+is F023's re-pointed at the scrubber and kept as evidence under `.agent/authored/f024-r5-perf-*`:
+its harness mounts the fixture's ledger as the shell does, times every position through the memo,
+the index and the view, cold and then warm in reverse, and sweeps the handle one event per frame
+for eight seconds, three runs. The budget: the stage-1 frame budget during the sweep; a warm
+position at most a quarter frame, 4.0 ms, at the 95th percentile; and no position, even cold, more
+than one frame, 16.7 ms. (4) THE READINGS, the reviewer's own on a tree equal to this round's: 481
+frames at 60 frames a second with a 16.7 ms 95th-percentile frame in every run, a warm
+95th-percentile position of 1.4 ms and a worst cold position of 2.1 ms, and snapshots at 200 and
+400; the two passes over 482 positions performed 86 642 reductions, which is the arithmetic
+exactly — each position folds its distance past the last multiple of 200 below it, 43 121 per pass,
+plus 400 to build the two snapshots once. The worker's run in the primary checkout is committed as
+`.agent/authored/f024-r5-perf.txt`. (5) THE RED CONTROL: the same harness with a 25 ms busy-wait in
+every scrub step read 30.56 frames a second and a 33.4 ms 95th-percentile frame, which the tool
+reported as FAIL.
+
+ALTERNATIVES: porting the scrub modules to Python for the live test, rejected because a second
+implementation would be checked instead of the one the bar runs; a vitest file reading the ledger
+from a path in the checkout, rejected because the test would write into the repository; timing
+assertions inside the unit suite, rejected because a machine-speed number in a unit test flakes,
+while the deterministic reduction counts are already pinned by `scrubSnapshots.test.ts`.
+
+HOW TO REVERSE: delete `scrubLive.test.ts`, `tests/ui_server/test_timeline_scrub_live.py`,
+`brainPerfLedger` and its test, the `.agent/authored/f024-r5-perf*` files, and this paragraph.

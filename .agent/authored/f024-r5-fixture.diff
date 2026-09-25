@@ -1,0 +1,59 @@
+diff --git a/apps/ui/src/components/graph/brainPerfFixture.test.ts b/apps/ui/src/components/graph/brainPerfFixture.test.ts
+index 11290a5f8..1e5eb5cbf 100644
+--- a/apps/ui/src/components/graph/brainPerfFixture.test.ts
++++ b/apps/ui/src/components/graph/brainPerfFixture.test.ts
+@@ -3,8 +3,10 @@ import { buildBrainLayout } from "./buildForceBrainModel";
+ import {
+   BRAIN_PERF_STAGE1_NODES,
+   BRAIN_PERF_STAGE6_NODES,
++  brainPerfLedger,
+   brainPerfModel,
+ } from "./brainPerfFixture";
++import { rebuildBrainModel } from "./brainReducer";
+ 
+ // Row counts, independently derived from brainPerfFixture.ts's own arithmetic
+ // comment (not read off a run): a non-leaveOpen normal task emits 8 rows
+@@ -62,4 +64,11 @@ describe("brainPerfFixture", () => {
+     const model = brainPerfModel(BRAIN_PERF_STAGE6_NODES);
+     expect(model.lastSeq).toBe(STAGE6_ROW_COUNT - 1);
+   });
++
++  it("stage 6's ledger runs from seq 0 without a hole and folds to exactly its model", () => {
++    const { seeds, rows } = brainPerfLedger(BRAIN_PERF_STAGE6_NODES);
++    expect(rows.map((r) => r.seq)).toEqual(Array.from({ length: STAGE6_ROW_COUNT }, (_, seq) => seq));
++    expect(rebuildBrainModel(`perf-${BRAIN_PERF_STAGE6_NODES}`, seeds, rows)).toEqual(brainPerfModel(BRAIN_PERF_STAGE6_NODES));
++    expect(() => brainPerfLedger(199)).toThrow();
++  });
+ });
+diff --git a/apps/ui/src/components/graph/brainPerfFixture.ts b/apps/ui/src/components/graph/brainPerfFixture.ts
+index cbd9e46d0..c861df8bc 100644
+--- a/apps/ui/src/components/graph/brainPerfFixture.ts
++++ b/apps/ui/src/components/graph/brainPerfFixture.ts
+@@ -130,6 +130,17 @@ function buildRowsAndSeeds(
+  *  silently returning an off-target model a CI budget stage could
+  *  misinterpret. */
+ export function brainPerfModel(nodeTarget: number): BrainModel {
++  const { seeds, rows } = brainPerfLedger(nodeTarget);
++  let model = seedBrainModel(`perf-${nodeTarget}`, seeds);
++  for (const r of rows) model = reduceBrainEvent(model, r);
++  return model;
++}
++
++/** The seeds and the ledger `brainPerfModel` folds, for a reader that needs
++ *  the events rather than their end state: the phase timeline's scrub budget
++ *  replays this ledger at every position (DECISION F024 D5). Throws for an
++ *  unsupported target exactly as `brainPerfModel` does. */
++export function brainPerfLedger(nodeTarget: number): { seeds: BrainTaskSeed[]; rows: BrainEventRow[] } {
+   const config = STAGE_CONFIG[nodeTarget];
+   if (!config) {
+     throw new Error(
+@@ -137,8 +148,5 @@ export function brainPerfModel(nodeTarget: number): BrainModel {
+         `(only ${BRAIN_PERF_STAGE1_NODES} and ${BRAIN_PERF_STAGE6_NODES} are supported)`,
+     );
+   }
+-  const { seeds, rows } = buildRowsAndSeeds(config.normalCount, config.bareCount, ROUNDS_PER_TASK);
+-  let model = seedBrainModel(`perf-${nodeTarget}`, seeds);
+-  for (const r of rows) model = reduceBrainEvent(model, r);
+-  return model;
++  return buildRowsAndSeeds(config.normalCount, config.bareCount, ROUNDS_PER_TASK);
+ }
