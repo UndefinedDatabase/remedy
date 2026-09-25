@@ -1,0 +1,3 @@
+From describe_self_use_run_defects():
+
+1. job d0f70d9d45dd4363 (stopped): stop_reason=budget_exhausted:max_cost_usd; stop_source=budget
