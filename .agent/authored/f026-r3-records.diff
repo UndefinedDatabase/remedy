@@ -1,0 +1,63 @@
+diff --git a/.agent/decisions.md b/.agent/decisions.md
+index 3a9ce5267..538f68cd6 100644
+--- a/.agent/decisions.md
++++ b/.agent/decisions.md
+@@ -21757,3 +21757,46 @@ the operator.
+ 
+ HOW TO REVERSE: delete the catalog entry, its handler, the door clause with `task_edit_refusal`,
+ the three `job plan-show` keys and their text line, the tests this round adds, and this paragraph.
++
++## DECISION F026 D3 — the version chain reaches the page as the dashboard's `task_specs` section, a text chip `v<n>` beside an edited task's node and in the detail popover's status row, and a Versions list in the popover whose rows open the changed fields; nothing new is animated and no new colour token is added (2026-09-25)
++
++CONTEXT: T5_F026.md's T003 asks for a version chip on the graph node "per the design reference" and
++an L2 popover listing the versions with their diffs on click. Measured at `10ec2512`: the dashboard
++built by `_build_dashboard` in `packages/orchestration/ui_server.py` carries no spec version, no goal,
++no acceptance list and no planned id; `docs/ui/design_reference/` designs no version chip and no
++version list; the only text the node painter `paintBrainNode` writes is a cluster's count, in the
++node state's line colour and the label font; `docs/ui/design_reference/graph_spec.md` §10 places
++the DetailPopover at L2 and §14 names a per-task list in it as the accessible surface; and
++`tests/ui_contracts/test_design_drift.py` refuses any custom property the app's stylesheet does not
++define, which excludes the reference's size, spacing and fast-duration tokens. In the reviewer's
++scratch tree at `10ec2512`, a headless-Chrome render of the prototype showed the chip legible beside
++planned, failed, blocked, passed and paused nodes without touching their status marks, and the
++popover's list opening the changed acceptance criteria.
++
++CHOSEN: (1) THE DATA: the dashboard gains `task_specs`, keyed by task entry id, for every task of a
++stored plan that maps to a plan task: its planned id, its spec version, the runtime edit state
++`runtime_edit_state` gives now (or `""` with the refusal's detail), the plan task's current fields,
++and its archived versions from `task_spec_versions`; the section never raises, reporting a read
++error as `error` as the pause section does. (2) THE CHIP: a task whose spec version is 2 or more
++carries the text `v<n>`: on the canvas, painted after the node's body and before its marks, at the
++node's lower right, in the node state's line colour and the label font, as the cluster count is;
++and in the detail popover, as a small outlined pill at the end of the status row. A task never
++edited shows no chip. (3) THE LIST: the popover gains a Versions section, shown only for an edited
++task, one row per version in order — `v<n> · replaced while <state>` for an archived version and
++`v<n> · current` for the current one — each row a button that opens the fields that changed from the
++version before it, old value struck and new value marked; the first row changed nothing and cannot
++open. (4) NO MOTION AND NO NEW TOKEN: the chip does not animate, sizes are plain pixels as the
++popover's own stylesheet writes them, and every colour is an existing token. (5) The ledger stays the
++graph's only source of run and task state: an edit writes no event, so a failed task's node keeps its
++failed run's state until the relaunch starts a new run, while the chip and the popover, read from the
++dashboard, show the new version at once. (6) `assumption_log.md` gains one row for the chip and one
++for the list.
++
++ALTERNATIVES: a new node state or mark for "edited", rejected because an edit is not a state of the
++run and the reference rules that marks carry state; a new colour token for the chip, rejected because
++the drift guard and the tokens rule both point at the existing palette; an edit event that re-seeds
++the node to planned at once, deferred to the edit affordance's round, where the page itself makes the
++edit and can refresh.
++
++HOW TO REVERSE: delete the `task_specs` section and its builder, the chip in the painter and the
++popover, the Versions list, the two assumption-log rows, and this paragraph.
+diff --git a/.agent/live_review.md b/.agent/live_review.md
+index 745d8116e..d4eccb080 100644
+--- a/.agent/live_review.md
++++ b/.agent/live_review.md
+@@ -447,3 +447,7 @@ Gate: F026 R1 — the F026 round 1 entry: the claim, the re-head with F025's rou
+ - R-1059 — Medium, A BLOCKED JOB THAT IS RELAUNCHED AND COMPLETES KEEPS THE ERROR OF THE FAILURE IT RECOVERED FROM, SO ITS RECORD READS `completed` BESIDE A FAILURE THAT NO LONGER HOLDS. Raised by the planner and reviewer of F026's first session while dry-running T002's trace proof. SEARCHED BEFORE MINTING (checklist item 30): `stale error`, `keeps its error` and `job.error` beside `relaunch` in this record and its archive find no finding describing it. MEASURED at `ee874cb2` in a scratch tree: an approved two-task plan run with the fake provider set never to pass ends `blocked`, its first task `blocked` and its second `skipped`, with the job's `error` reading `task_<id>_gate_failed: final_status=repair_exhausted; reviewer_verdict=needs_repair`; after `edit_task_at_runtime` resets the first task, a second `run_job` completes both tasks and the job reads `completed` with that same `error`. In `run_job` in `packages/orchestration/pingpong_job.py` the move to `JOB_RUNNING` before the dispatch loop persists the state and leaves `error` as the last run wrote it, and nothing on the completion path clears it; `_stop_job` clears it only for a stop. The cycle executor `run_cycles` was not measured. WHY MEDIUM: wrong state on disk, read by `remedy job show`, the dashboard and the evidence bundle, on the one path F026 makes routine. FIX: `run_job` clears the job's `error` when it moves the job to `JOB_RUNNING`, so any failure of the new run writes its own; a test runs the blocked, edited and relaunched job and reads `""`. Owner: F026.
+ 
+ Landed: R-1059 — `run_job` in `packages/orchestration/pingpong_job.py` now clears `job.error` to `""` in the same persist that moves the job to `JOB_RUNNING` before the dispatch loop; landed at this round's C2.
++
++Gate: F026 R2 — the F026 round 2 entry: the booking of round 1, the registration of R-1059, DECISION F026 D2, the repair of R-1059, round 1's unmet test obligation, and T002, `job.edit-task` in the catalog, the CLI and the write door, the spec version in `job plan-show`, and the trace proof on a fake run. VERDICT PASS, ONE DEVIATION DECLARED AND ACCEPTED. Re-derived over `ee874cb2`..`10ec2512` by the planner and reviewer of F026's first session, whose own runs produced every reading below. THE RANGE IS 9 COMMITS, at `af785519` 380, `ebeb3eaa` 62, `772ae942` 3, `52b7adea` 11, `912b20ee` 130, `83f6c254` 85, `37dddbcf` 398, `cf0476dc` 198 and `10ec2512` 220 insertions by `git show --numstat`, each under the 500-line cap, each single-parent and each carrying the ordered trailer. THE DEVIATION: the ordered `git worktree prune` after G5 also cleared one stale, already-prunable worktree entry under the system's temporary directory that an earlier test run had left, which is harmless metadata and not a worktree the block protected. THE TRANSPORT PROOF: the block copy and the two payload copies under `.agent/authored/`, read at `af785519`, equal the reviewer's originals byte for byte, and at `ebeb3eaa` the ledger, the decision record and the plan equal the reviewer's simulation tree. THE PATH SET named by `git diff --name-only ee874cb2 10ec2512` is exactly the block's constraint 2 list, and `packages/orchestration/task_edit_runtime.py` is not in it. THE OPEN SET by distinct id reads R-1008, R-1055, R-1057, R-1058 and R-1059 at `10ec2512`. THE CODE: `python3 -m ruff check` over the round's Python paths reads `All checks passed!`, and the one change to `packages/orchestration/pingpong_job.py` is the line that clears `error` beside `JOB_RUNNING`. THE TESTS: the reviewer's serial run in the primary checkout at `10ec2512` of the round's selection with `tests/cli/test_golden_path.py` read `1580 passed, 1 skipped` at exit 0, the skip being the D12 quarantine, and all six `integrity check` checks read `pass`. THE RED PROOFS: the reviewer ran the committed `.agent/authored/f026-r2-mutations.py` itself in a disposable worktree at `10ec2512`: both unmutated controls exit 0, all ten mutations exit 1, the four mutated files are restored byte-identical, and m2, the edit that leaves the entry's title as it was, is caught by the trace proof itself, which is T5_F026.md's "a v1 remnant in the new trace fails the test". ONE PRODUCT-TEXT NIT, recorded without an id: the catalog description of `job.edit-task` ends "while the run holding it is not running", which reads badly in the help text; round 3 rewords it.
++
++Done: R-1059 — RESOLVED at F026 R2 by `772ae942`. `run_job` in `packages/orchestration/pingpong_job.py` now clears the job's `error` in the same persist that moves the job to `JOB_RUNNING`, so a relaunch writes only its own failure. MEASURED BY THE REVIEWER at `10ec2512`: `TestTracePreservesTheEdit` in `tests/orchestration/test_task_edit_runtime.py` runs an approved plan until its first task blocks, edits it, relaunches, and reads the job `completed` with an `error` of `""`; mutation m1 of the committed `.agent/authored/f026-r2-mutations.py`, which removes the clearing line, turns exactly that test red; and the 1878 orchestration and CLI tests and 10 UI-server tests that call `run_job`, run by the reviewer in a scratch tree carrying the same change, read green. The cycle executor `run_cycles` was not measured and is not claimed.
