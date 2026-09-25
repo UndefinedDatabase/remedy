@@ -1,0 +1,39 @@
+repo root: /home/decodeux/Repos/remedy
+work dir: /home/decodeux/Repos/remedy/.remedy-wt/f023-perf-run
++ vite build
+vite v6.4.2 building for production...
+transforming...
+✓ 1101 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                                  0.45 kB │ gzip:   0.30 kB
+dist/assets/index-AslF_AL3.css                  11.20 kB │ gzip:   3.15 kB
+dist/assets/diffHighlightGrammars-o9XqnLhb.js    1.70 kB │ gzip:   0.79 kB
+dist/assets/index-D-fRrLrn.js                  440.88 kB │ gzip: 142.82 kB
+✓ built in 1.32s
+
+server pid: 713383
+chrome pid: 713385
++ node drive_chrome.mjs
+{"level":0,"run":1,"result":{"level":0,"reachedLevel":0,"nodeCount":500,"frames":481,"meanFps":60,"p50Ms":16.7,"p95Ms":16.8,"done":true}}
+{"level":0,"run":2,"result":{"level":0,"reachedLevel":0,"nodeCount":500,"frames":481,"meanFps":60,"p50Ms":16.7,"p95Ms":16.8,"done":true}}
+{"level":0,"run":3,"result":{"level":0,"reachedLevel":0,"nodeCount":500,"frames":481,"meanFps":60,"p50Ms":16.7,"p95Ms":16.8,"done":true}}
+{"level":1,"run":1,"result":{"level":1,"reachedLevel":1,"nodeCount":500,"frames":480,"meanFps":59.88,"p50Ms":16.7,"p95Ms":16.7,"done":true}}
+{"level":1,"run":2,"result":{"level":1,"reachedLevel":1,"nodeCount":500,"frames":481,"meanFps":60,"p50Ms":16.7,"p95Ms":16.7,"done":true}}
+{"level":1,"run":3,"result":{"level":1,"reachedLevel":1,"nodeCount":500,"frames":481,"meanFps":60,"p50Ms":16.7,"p95Ms":16.7,"done":true}}
+{"level":2,"run":1,"result":{"level":2,"reachedLevel":2,"nodeCount":500,"frames":481,"meanFps":60,"p50Ms":16.7,"p95Ms":16.7,"done":true}}
+{"level":2,"run":2,"result":{"level":2,"reachedLevel":2,"nodeCount":500,"frames":481,"meanFps":60,"p50Ms":16.7,"p95Ms":16.7,"done":true}}
+{"level":2,"run":3,"result":{"level":2,"reachedLevel":2,"nodeCount":500,"frames":481,"meanFps":60,"p50Ms":16.7,"p95Ms":16.7,"done":true}}
+{"level":3,"run":1,"result":{"level":3,"reachedLevel":3,"nodeCount":500,"frames":481,"meanFps":60,"p50Ms":16.7,"p95Ms":16.7,"done":true}}
+{"level":3,"run":2,"result":{"level":3,"reachedLevel":3,"nodeCount":500,"frames":481,"meanFps":60,"p50Ms":16.7,"p95Ms":16.8,"done":true}}
+{"level":3,"run":3,"result":{"level":3,"reachedLevel":3,"nodeCount":500,"frames":481,"meanFps":60,"p50Ms":16.7,"p95Ms":16.8,"done":true}}
+LEVEL L0: worst p95 16.8 ms, worst mean 60 fps, PASS
+LEVEL L1: worst p95 16.7 ms, worst mean 59.88 fps, PASS
+LEVEL L2: worst p95 16.7 ms, worst mean 60 fps, PASS
+LEVEL L3: worst p95 16.8 ms, worst mean 60 fps, PASS
+BUDGET 500 nodes, every zoom level: PASS
+
+chrome pid 713385 stopped (SIGTERM)
+server pid 713383 stopped (SIGTERM)
+removed work dir: /home/decodeux/Repos/remedy/.remedy-wt/f023-perf-run
+drive_chrome.mjs exit code: 0
