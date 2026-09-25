@@ -1,8 +1,10 @@
 import type { RemedyDashboard, RemedyGraphNode, RemedyTaskItem } from "../../api/types";
 import { taskPauseAction } from "../../api/pauseView";
+import { specVersionRows, taskSpecOf, versionChipLabel } from "../../api/taskSpecView";
 import { TaskDoneGlyph, TaskCurrentGlyph, TaskPlannedGlyph } from "../icons/RemedyGlyphs";
 import { PromptTracePanel } from "../prompt/PromptTracePanel";
 import { PauseControl } from "../panels/PauseControl";
+import { TaskVersionList } from "./TaskVersionList";
 import styles from "./DetailPopover.module.css";
 
 const STATE_LABELS: Record<string, string> = {
@@ -77,6 +79,10 @@ export function DetailPopover({ dashboard, selectedNode, selectedPromptId, onClo
   const prompts = task
     ? (dashboard.promptTrace?.items ?? []).filter(p => p.taskId === task.id)
     : [];
+  // DECISION F026 D3 clause 2 — the task's spec and version chain, read
+  // through the pure view so the popover decides nothing about them itself.
+  const spec = taskSpecOf(dashboard, task?.id ?? "");
+  const chipLabel = versionChipLabel(spec);
   const title = task?.label || selectedNode.label || "Task";
   const state = task?.state || selectedNode.state;
   const stateLabel = STATE_LABELS[state] || state;
@@ -104,6 +110,9 @@ export function DetailPopover({ dashboard, selectedNode, selectedPromptId, onClo
         <StateIcon state={state} />
         <span className={styles.statusLabel}>{stateLabel}</span>
         {completedAt && <span className={styles.timeLabel}>{completedAt}</span>}
+        {chipLabel && (
+          <span className={styles.versionChip} title="Edited at runtime">{chipLabel}</span>
+        )}
       </div>
 
       {/* Result (Ergebnis) */}
@@ -151,6 +160,11 @@ export function DetailPopover({ dashboard, selectedNode, selectedPromptId, onClo
 
       {/* Prompt trace — compact, redacted-only evidence */}
       <PromptTracePanel prompts={prompts} selectedPromptId={selectedPromptId} />
+
+      {/* DECISION F026 D3 clause 3 — the Versions list, one row per spec
+          version, each opening the fields that changed. Renders nothing for
+          a task never edited at runtime (`specVersionRows` returns `[]`). */}
+      <TaskVersionList key={task?.id ?? ""} rows={specVersionRows(spec)} />
 
       {/* THE TASK'S PAUSE/RESUME CONTROL (DECISION F025 D4), gated on the
           credential `serverToken` carries — the popover renders nothing here

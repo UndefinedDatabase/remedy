@@ -27,3 +27,18 @@
 .fieldKey { font-size: 12px; color: var(--remedy-muted); }
 .fieldVal { font-size: 12px; font-weight: 600; color: var(--remedy-ink-strong, #0a1c48); }
 .fieldUnknown { font-size: 12px; font-weight: 500; color: var(--remedy-faint, #9aa9c5); font-style: italic; }
+
+/* DECISION F026 D3 clauses 2 and 3 — the version chip and the Versions
+   list. No animation; every colour an existing token, every size a plain
+   pixel value as the rules above already write them. */
+.versionChip { margin-left: auto; padding: 2px 8px; border: 1px solid var(--remedy-line); border-radius: var(--remedy-radius-pill); color: var(--remedy-ink-soft); font: 600 11px var(--remedy-font-ui); }
+.timeLabel + .versionChip { margin-left: 6px; }
+
+.versionList { margin: 4px 0 0; padding: 0; list-style: none; }
+.versionRow { padding: 2px 0; }
+.versionRow button { font-size: 12.5px; background: none; border: none; padding: 0; color: var(--remedy-ink-strong); cursor: pointer; text-align: left; }
+.versionRow button:disabled { color: var(--remedy-faint); cursor: default; }
+
+.versionDiff { margin: 4px 0 0; }
+.versionDiff dt { font-size: 11px; text-transform: uppercase; color: var(--remedy-muted); letter-spacing: .04em; margin: 4px 0 0; }
+.versionDiff dd { margin: 0; font-size: 12px; font-family: var(--remedy-font-mono); }
