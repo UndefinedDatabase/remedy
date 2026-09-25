@@ -1,63 +1,34 @@
-# Live Review — F020 Node lifecycle & glyph language
+# Live Review — F023 Semantic zoom L0–L3
 
-> Round-by-round review record, re-headed at the F020 claim per
-> docs/agents/planner_reviewer_prompt.md §1. The heading this replaces named F284, whose STATUS
-> line went `[x]` at `c9e50fac` and whose pull request 276 merged into `main` at the reviewer's
-> Open PR Gate under docs/agents/self_drive_protocol.md, as `955a6240`, after both hosted CI jobs
-> of run 36059158820 ended `success`. `c9e50fac` is the second parent of `955a6240`. F284's round
-> 4, its closing round, was reviewed after its own handback, so its gate entry is appended at the
-> end of this record by F020's claim. Only the heading, this paragraph and the `## Steps` section
-> below are rewritten. Everything from the `## Findings` line to the end of the file as it stood at
-> `955a6240` is carried forward BYTE-IDENTICAL, and finding ids continue the monotonic R-XXXX
-> series across the re-head. The open set at `955a6240`, computed with `open_finding_ids` from
-> `scripts/rotate_live_review.py`, is 1 by distinct id — R-1008 — and F285 owns it; F020 owns
+> Round-by-round review record, re-headed at the F023 claim per
+> docs/agents/planner_reviewer_prompt.md §1. The heading this replaces named F020, whose STATUS
+> line went `[x]` at `0036e78e` and whose pull request 277 merged into `main` at the reviewer's
+> Open PR Gate under docs/agents/self_drive_protocol.md, as `441f4e8e`, after both hosted CI jobs
+> of run 36074214533 ended `success`. `0036e78e` is the second parent of `441f4e8e`. F020's round
+> 8, its closing round, was reviewed after its own handback, so its gate entry is appended at the
+> end of this record by F023's claim. Only the heading, this paragraph and the Steps section below
+> are rewritten, and this time everything above the Findings heading is replaced: the F284 and
+> F020 re-heads each cut at the first occurrence of that heading's text, which the paragraph they
+> replaced quoted at the start of a line, so lines 27 to 60 at `441f4e8e` held the tails of the
+> F284 and F019 paragraphs with their Steps sections; they are dropped here and stand unchanged in
+> git history. Everything from the Findings heading to the end of the file as it stood at `441f4e8e`
+> is carried forward BYTE-IDENTICAL, and finding ids continue the monotonic R-XXXX series across
+> the re-head. The open set at `441f4e8e`, computed with `open_finding_ids` from
+> `scripts/rotate_live_review.py`, is 1 by distinct id — R-1008 — and F285 owns it; F023 owns
 > whatever it registers for its own scope.
 
 ## Steps
 
-THE ORDER BELOW IS T5_F020.md's Task slicing, pure modules first. R1 claims F020, re-heads this
-record, books F284's round 4, and lands T001: `glyphPaths.ts` and `nodeStates.ts` under
-`apps/ui/src/components/graph/renderers/`, one geometry source per node kind as SVG path strings
-from which the canvas builds its Path2D, one treatment per node state naming tokens only, their
-vitest tests, and the token guard `tests/ui_contracts/test_node_glyph_tokens.py`, with DECISION
-F020 D1. T002 follows: the canvas painter reads both modules in place of F019's glyph slots, the
-legend is generated from the same source, and the kind-by-state matrix fixture. T003 then lands
-the transition and pulse motion with visibility pausing, the conformance assertions and the live
-fixture pass. Every round's handback states the open set by distinct id.
-## Findings` line to the end of the file as it stood at
-> `a36a8759` is carried forward BYTE-IDENTICAL, and finding ids continue the monotonic R-XXXX
-> series across the re-head. The open set at `a36a8759`, computed with `open_finding_ids` from
-> `scripts/rotate_live_review.py`, is 4 by distinct id — R-0499, R-0950, R-1008 and R-1046 — and
-> F284 owns all four.
+THE ORDER BELOW IS T5_F023.md's Task slicing, headless goldens first. R1 claims F023, re-heads
+this record, books F020's round 8, and lands T001: `semanticZoom.ts`, the pure state machine
+{level, focusId} with its whole transition matrix goldened, and `zoomWheel.ts`, the wheel adapter
+that holds the hysteresis, with the guard `tests/ui_contracts/test_semantic_zoom_contract.py` and
+DECISION F023 D1. T002 follows: the hook that drives the canvas from the machine, the render
+effects (sibling dimming, branch glow, run fan-out), the breadcrumbs and Escape, and the L2 run
+popover whose buttons reach real endpoints or say honestly when they will. T003 then lands the
+L3 evidence panel with its lazy tabs, the deep links, cluster expansion, the performance fixture
+at 500 nodes and the live end-to-end. Every round's handback states the open set by distinct id.
 
-## Steps
-
-THE ORDER BELOW IS T2_F284.md's slice list, written by this claim. R1 claims F284, re-heads this
-record, books F019's round 9, and lands T001, R-1046's repair, in which `teacher.model` reaches
-`remedy teacher ask` through one helper the lessons path reads too, and T002, R-0499's repair, in
-which the vitest node's skip gate reads the same installed toolchain the typescript node reads.
-T003 follows, R-0950's zombie-process node: the test judges its own application family by the
-harness's scoped survivor check and stops reading a port it did not own as its own. The closure
-sequence then runs the one full suite, the self-use track that alone can resolve R-1008, the
-evidence package and the STATUS flip. Every round's handback states the open set by distinct id.
-## Findings` line to the end of the file as it stood at `92b7f5f1` is carried forward
-> BYTE-IDENTICAL, and finding ids continue the monotonic R-XXXX series across the re-head. The
-> open set at `92b7f5f1`, computed with `open_finding_ids` from `scripts/rotate_live_review.py`,
-> is 5 by distinct id — R-0499, R-0950, R-1008 and R-1046, which F284 owns, and R-1047, which
-> F015 owns and the `Done:` line appended by this claim resolves, leaving 4; F019 owns whatever it
-> registers for its own scope.
-
-## Steps
-
-THE ORDER BELOW IS T5_F019.md's Orchestrator brief, headless first. R1 claims F019, re-heads
-this record and lands T001: `apps/ui/src/components/graph/brainOntology.ts` and
-`brainReducer.ts`, the pure reducer from the stream's frames to the graph's nodes and links, with
-its goldens, its idempotence per seq, its snapshot rebuild and its cluster view, and DECISION
-F019 D1 grounding the mapping in the envelope the server really writes. T002 follows: rendering
-on react-force-graph-2d from the reducer's model, the layout, the motion tokens and the demo
-recording. T003 then lands the live wiring from the stream hook through the reducer to the
-renderer, the gap and snapshot recovery, the performance fixture and the end-to-end run on a live
-fake job. Every round's handback states the open set by distinct id.
 ## Findings
 DECISION F085 D5, applied at da47ee40, closes "The R44 block is the first measured under this
 counting and declares both of its numbers in its own constraints". Measured at 981d08d0 against
@@ -461,3 +432,5 @@ Gate: F020 R5 — the F020 round 5 entry: the booking of round 4, DECISION F020 
 Gate: F020 R6 — the F020 round 6 entry: the closure sequence's first half, the booking of round 5, the Built State, the design-pack assumption rows, the checklist consolidation, the self-use track and the one full suite. VERDICT PASS, NO DEVIATION DECLARED. Re-derived over `3b4dba98`..`649661cd` by the planner and reviewer of F020's first session, whose own runs produced every reading below, and booked by round 7's first commit. THE RANGE IS 5 COMMITS in the block's order C1 to C5, at `b24d4088` 368, `24da87f3` 10, `5c6019bd` 75, `80f6ecc0` 6 and `649661cd` 187 insertions by `git show --numstat`, each under the 500-line cap, each single-parent and each ending in the ordered trailer. THE TRANSPORT PROOF IS FILE IDENTITY: every one of the 12 paths the round changed apart from the handback and the suite transcript reads byte-equal at `649661cd` to the reviewer's simulated tree `.remedy-wt/f020-r6-sim`, the block copy to the reviewer's original, whose sha256 is `a5a20925d06685dfc18ec135010542c11ac862aa84db4708f3930e16d6d0b01f`. THE CHECKLIST keeps the same 34 item numbers at `3b4dba98` and at `5c6019bd`. THE SELF-USE TRACK read `None` three times with the queue unchanged, so the closure records `self-use NONE (queue exhausted)`. THE ONE FULL SUITE, `.agent/authored/f020-closure-suite.txt` at `649661cd`, read `19111 passed, 20 skipped` at exit 0 with no bad node, after a UI build that left the tree clean; the reviewer read the raw log outside the repository and found no `FAILED` or `ERROR` line, and `integrity check --json` read `fail_count` 0 at `649661cd`.
 
 Gate: F020 R7 — the F020 round 7 entry: the closure sequence's evidence half, the booking of round 6, the evidence bundle and the review package. VERDICT PASS, NO DEVIATION DECLARED. Re-derived over `649661cd`..`9949031e` by the planner and reviewer of F020's first session, whose own runs produced every reading below. THE RANGE IS 3 COMMITS in the block's order C1, C2 and C3, at `09861d08` 365, `ac75d5d4` 7 and `9949031e` 179 insertions by `git show --numstat`, each under the 500-line cap and each single-parent. THE TRANSPORT PROOF IS FILE IDENTITY: the four `.agent/authored/f020-r7-*` copies equal the reviewer's originals, and `.agent/live_review.md` and `.agent/plan.md` at `ac75d5d4` equal the reviewer's simulated tree `.remedy-wt/f020-r7-sim`. THE OPEN SET by distinct id reads R-1008 alone at `649661cd` and at `ac75d5d4`. THE BUNDLE: evidence job `f020r7e1001` against the fork point `955a6240d53fcc88f4480e57a89c0ef702f7c6b9`, ancestry and plain counts equal at 52, 810 node ids collected and 807 passed with 3 skipped at exit 0, an empty `validate_verification_tests` problem list and `is_valid_current_run` True. THE PACKAGE: `remedy-review-20260925-013441-READY_FOR_REVIEW.zip` in `/home/decodeux/Repos/remedy-history/zips`, whose SHA-256 the reviewer read as `a069e502d3956af33f4e7dde2ece1dfd47355c68030181dbd5764af6d026d1e0`, `testzip()` None, and whose manifest names the fork point as base and `ac75d5d4ebe6f7aa908ccdfd1dfa504582b2fb5e`, the ACCEPTED HEAD, as head over 52 commits; all six `integrity check` checks `pass` at `fail_count` 0 at `9949031e`.
+
+Gate: F020 R8 — the F020 round 8 entry, THE CLOSING ROUND: the booking of round 7, the ledger rotation, the STATUS flip with its README pins, and the pull request. VERDICT PASS, NO DEVIATION DECLARED. Reviewed over `9949031e`..`0036e78e` by the planner and reviewer of F020's first session, posted as a comment on pull request 277, and re-measured and booked by F023's claim reviewer, whose own runs produced every reading below. THE RANGE IS 4 COMMITS in the block's order C1 to C4, at `553fd20c` 339, `1b7905f6` 8, `fe22c9f2` 8 and `0036e78e` 194 insertions by `git show --numstat`, each under the 500-line cap and each single-parent. THE TRANSPORT PROOF IS FILE IDENTITY: the six `.agent/authored/f020-r8-*` copies at `553fd20c` equal the reviewer's block and its five payloads under `.remedy-wt/f020-r8-payloads/`. THE ROTATION at `fe22c9f2` took the ledger from 304153 to 296279 bytes and the archive from 4968621 to 4976495, and the open set by distinct id reads R-1008 alone at `9949031e` and at `0036e78e`, owned by F285. THE CLOSURE: at `0036e78e` F020's STATUS line occurs once, equals the authored `f020-r8-status_line.txt` byte for byte, and no line reads `[~]`. AFTER THE ROUND: hosted run `36074214533` on `0036e78e` ended `success` on Python 3.10 and 3.12, pull request 277 merged as `441f4e8e`, whose tree equals `0036e78e`'s, and there the reviewer's run of `tests/docs/` with the golden path read `369 passed` at exit 0 and `integrity check --json` read all six checks `pass` at `fail_count` 0.

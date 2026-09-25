@@ -1,25 +1,26 @@
-# Context — F020 Node lifecycle & glyph language
+# Context — F023 Semantic zoom L0–L3
 
 ## Active Branch
-feature/f020-node-lifecycle-glyph-language, cut from `main` at `955a6240`
-(the merge commit of pull request 276, F284 Findings paydown v3).
+feature/f023-semantic-zoom-l0-l3, cut from `main` at `441f4e8e`
+(the merge commit of pull request 277, F020 Node lifecycle & glyph
+language).
 
 ## Scope
-F020 (Tier 5): the brain graph's glyph and state language — pure glyph
-and state modules (T001), the canvas and the generated legend reading them
-with the matrix fixture (T002), and the transition and pulse motion with
-the conformance assertions (T003), as `docs/roadmap/features/T5_F020.md`
-specifies, with `docs/ui/design_reference/graph_spec.md` §5 and
-`assets_spec.md` §4 authoritative on conflict.
+F023 (Tier 5): semantic zoom over the brain graph — the pure state
+machine and its wheel adapter with goldens (T001), the render effects,
+breadcrumbs and the L2 run popover (T002), and the L3 evidence panel,
+deep links, cluster expansion and the performance fixture (T003), as
+`docs/roadmap/features/T5_F023.md` specifies, with
+`docs/ui/design_reference/graph_spec.md` §10 authoritative on conflict.
 
 ## Do not touch
-The ontology and the reducer, zoom, and layout physics.
+The stage decision, the reducer and ontology, the glyph language, and
+the chat backend.
 
 ## Active assumptions
-- Glyph geometry is stored once as SVG path strings and the canvas builds
-  its Path2D from them; the state module names tokens only (DECISION F020
-  D1).
-- The veto's grey is the token `--remedy-state-vetoed` (DECISION F020 D1).
+- The machine is pure in `semanticZoom.ts` and the hysteresis lives in
+  `zoomWheel.ts`; focus is validated against the reducer's model plus
+  its cluster view (DECISION F023 D1).
 
 ## Constraints
 - UI checks run through the pytest nodes that wrap the toolchain in the

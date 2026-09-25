@@ -20739,3 +20739,54 @@ guaranteed Chrome and F044 owns the browser stage.
 
 HOW TO REVERSE: delete `renderers/glyphConformance.ts`, its test, the `.agent/authored/f020-r5-*`
 harness files and this paragraph.
+
+## DECISION F023 D1 — a pure machine {level, focusId, tab} goldened over its whole matrix, a wheel adapter that holds the hysteresis, and focus validated against the model plus its cluster view (2026-09-25)
+
+CONTEXT: T5_F023.md orders T001 as the state machine and its transition goldens, the machine a
+pure store module with the hysteresis in the wheel adapter. Measured at `441f4e8e`:
+`graph_spec.md` §10 names the four levels, the wheel thresholds "in >1.6 on node, out <0.8",
+click as the same transitions, Escape walking back and a breadcrumb chip, and asks for the
+machine in `useSemanticZoom.ts`, renderer-agnostic, while its own L1 line reads "zoom ≥1.6";
+`ForceBrainGraph.tsx` leaves zoom to `react-force-graph-2d` between 0.3 and 4 with no zoom
+handler; `renderers/glyphPaths.ts` draws run glyphs from `GLYPH_MIN_ZOOM_RUN = 1.6`;
+`brainView.ts`'s `selectionTaskIdOf` resolves a run click to its task because "run detail is the
+zoom feature's L2"; `clusterBrainModel` is a view that folds a task's oldest finished runs
+beyond eight into `cluster:<taskId>` and keeps no list of them; the vitest environment is `node`
+and reads `.ts` files only; and no module reads or writes the URL beyond the job id and token.
+
+CHOSEN: (1) THE MACHINE is `apps/ui/src/components/graph/semanticZoom.ts`, pure, and the
+`useSemanticZoom.ts` hook that `graph_spec.md` §10 names wraps it in T002, so the file the spec
+names exists and the transitions stay goldenable headless. (2) THE STATE is {level, focusId,
+tab}: focus is null at L0, a task at L1 and a run at L2 and L3, and the tab of the evidence panel
+is part of L3's address, because the L2 buttons land on different tabs of one run and a deep link
+must restore the tab. (3) THE EVENTS are click, zoom_in, zoom_out, escape, crumb, open_evidence
+and reconcile, and a refused or empty transition hands back the same state object, with a debug
+note when the refusal names a cause. A click on the core goes to L0, on a task to L1, on a run to
+L2, and on a cluster, artifact or synapse to L1 on its task. The wheel enters L1 on the task under
+the pointer and never opens L2, which §10 reaches by clicking a run, and it does nothing at L2 or
+L3; a wheel crossing out goes to L0 from any level, because below 0.8 the camera shows the whole
+organism, which is what L0 is. Escape walks one level up, a breadcrumb walks to any shallower
+level and never deeper, and open_evidence opens or switches a tab from L2 or L3 only. (4) THE
+WHEEL ADAPTER is `zoomWheel.ts`: an event fires only when the camera factor CROSSES a threshold,
+strictly above 1.6 or strictly below 0.8, as §10's Transitions line and T5_F023.md both write it,
+so every factor between them is a dead band and a zoom wobbling around a threshold never
+flickers the level; `ZOOM_IN_ABOVE` equals `GLYPH_MIN_ZOOM_RUN`, so L1 begins where run glyphs
+appear. (5) FOCUS is validated against the reducer's model, which keeps every run, together with
+the clustered view's nodes, so a cluster can be clicked and a run a cluster hides can still hold
+the focus; T003 expands the focused task's cluster in the view. reconcile walks a vanished run up
+to its task, found through the run id scheme of DECISION F019 D1, and anything else to L0, each
+with a note, so the focus never dangles. (6) THE BREADCRUMBS are computed here, Job then Task
+then Run, and at L3 no crumb is current, because the run crumb closes the panel. (7) THE GUARD is
+`tests/ui_contracts/test_semantic_zoom_contract.py`: the adapter's constants are the numbers §10
+states, both crossings are strict, both modules import nothing outside the graph directory and
+touch no DOM or React state, and the machine names the four levels.
+
+ALTERNATIVES: a hysteresis latch inside the machine, rejected because T5_F023.md puts it in the
+adapter; the tab kept outside the state, rejected because two L2 buttons and the deep links need
+it; the wheel opening L2 over a run, rejected because §10 names a click; a wheel crossing out
+walking back one level, rejected because the camera below 0.8 already shows L0; validating focus
+against the clustered view alone, rejected because a focused run would then dangle whenever a
+new run pushed it into its task's cluster.
+
+HOW TO REVERSE: delete `apps/ui/src/components/graph/semanticZoom.ts`, `zoomWheel.ts`, their two
+`.test.ts` files, `tests/ui_contracts/test_semantic_zoom_contract.py`, and this paragraph.
