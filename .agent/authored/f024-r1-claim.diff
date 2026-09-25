@@ -1,0 +1,147 @@
+diff --git a/.agent/decisions.md b/.agent/decisions.md
+index 68496b94f..8248ab228 100644
+--- a/.agent/decisions.md
++++ b/.agent/decisions.md
+@@ -21071,3 +21071,62 @@ and the part only a real run can prove is where the stream and the report meet.
+ 
+ HOW TO REVERSE: delete `tests/ui_server/test_semantic_zoom_live.py`, the
+ `.agent/authored/f023-r7-perf-*` copies and `.agent/authored/f023-r7-perf.txt`, and this paragraph.
++
++## DECISION F024 D1 — the phase timeline reads the measured ledger writers: phases begin at their first marker and only move forward, a skipped phase is a zero span, Finalized is derived from the reducer's task states, and sub-glyphs come from two tables and a review verdict (2026-09-25)
++
++CONTEXT: T5_F024.md orders T001 as the phase mapping table, boundary goldens and sub-glyph
++extraction, pure, on fixture ledgers, with phase boundaries derived from marker events (plan
++approved, first build call, verify start, review start, terminal) mapped onto "the actual Part E
++kinds". Measured at `1bb3a35d`: `_build_events_since_json` in `packages/orchestration/ui_server.py`
++serves every `*.jsonl` row under the job's log directory through `_safe_event_summary`, whose
++envelope carries a kind, an outcome and a task id and nothing else; no writer emits a Part E name
++or a plan-approval event (DECISION F019 D1); a `job run` writes `task_run_started`, one
++`task_round_completed` per round after the task's rounds finish, `task_run_completed` or
++`task_run_failed`, and `job_stopped` on a stop, writes no event for the tests a round runs, and
++writes NOTHING when the job completes; `job plan` writes `planning_started`,
++`planning_completed` and `planning_failed`, with no task; the older single-cycle path writes
++`builder_started`, `builder_completed`, `verification_passed` and `verification_failed`; `remedy
++test` writes the `test_run_*` kinds with no outcome; the cycle loop in
++`packages/orchestration/long_run_executor.py` writes `task_needs_decision`,
++`task_decision_answered`, `cycle_repair_round`, `cycle_healed` and `cycle_loop_terminal`, the last
++with its terminal status in metadata the envelope drops; `packages/orchestration/event_names.py`
++declares every written name; the bar in `components/timeline/PhaseTimeline.tsx` and the
++dashboard's `phases` both name the six stops job, planning, build, test, review, finalized; and
++the demo recording's eight frames begin at seq 0 and end with both tasks passed.
++
++CHOSEN: (1) THE MODULE is `apps/ui/src/components/timeline/phaseMapping.ts`, pure, beside the bar
++it will feed, importing only the reducer, its ontology and the humanize catalog. (2) THE PHASE
++MAPPING TABLE maps the measured writers: the three `planning_*` kinds to Planning;
++`task_run_started`, `builder_started` and `builder_completed` to Build; the five `test_run_*`
++kinds and the two `verification_*` kinds to Test; and `task_round_completed` to Review, but only
++when its outcome is a reviewer's verdict from `REVIEW_OUTCOME_STATE_TABLE`, because `no_review`
++and an empty outcome mean no reviewer ran. Job begins at the ledger's first row whatever its kind.
++(3) THE BOUNDARIES of a prefix: a phase begins at the first row that marks it or any later phase,
++so the bar only moves forward; a phase the ledger skipped begins where the next one did and has a
++zero span, which the bar draws as a compact tick; a row marking an earlier phase than the one
++reached moves nothing. (4) FINALIZED has no marker, since no completion event exists: the prefix
++is folded through `reduceBrainEvent` from the timeline seed, and Finalized begins at the row after
++which the reducer's derived core state reads `pass` — every task passed — or at the latest phase
++start if that is later, and is reached only while that still holds at the prefix's last row, so a
++task that starts again withdraws it. (5) THE TIMELINE SEED is the dashboard's task list with every
++status reset to `pending`, because today's statuses would show the job's end at its start. (6)
++THE SUB-GLYPHS are decision (`task_needs_decision`, `task_decision_answered`), failure
++(`task_run_failed`, `verification_failed`, `planning_failed`, `test_run_timed_out`), heal
++(`cycle_healed`) and stop (`job_stopped`), plus the review verdict: a round that reads `fail` or
++`needs_repair` is a failure and the next passing round of the SAME task is a heal. Each carries its
++seq, kind, task and the humanize catalog's line, which for the kinds the catalog does not name is
++its honest generic line. (7) THE GUARD is `tests/ui_contracts/test_phase_mapping.py`: every kind
++both tables name is in `EVENT_NAMES`, Job and Finalized are never a table's value, the six phases
++equal the bar's and the dashboard's in order, and the module imports nothing else and touches no
++DOM, clock or React state.
++
++ALTERNATIVES: the current phase as the phase of the LATEST marker, rejected because two tasks
++interleave Build and Review and the bar would oscillate; Finalized from `cycle_loop_terminal` or
++`job_stopped`, rejected because the first's status never reaches the envelope and a stop can be
++resumed; a sticky Finalized, rejected because a withdrawn pass shown as done is the fake progress
++graph_spec §8 forbids; prompt-trace rows, whose kind reaches a client empty, taken as Planning,
++rejected because an empty kind is not a marker; seeding with the dashboard's own statuses, rejected
++for the reason (5) gives.
++
++HOW TO REVERSE: delete `apps/ui/src/components/timeline/phaseMapping.ts`, its `.test.ts`,
++`tests/ui_contracts/test_phase_mapping.py`, and this paragraph.
+diff --git a/.agent/live_review.md b/.agent/live_review.md
+index 29c452eb1..ff46ac5cc 100644
+--- a/.agent/live_review.md
++++ b/.agent/live_review.md
+@@ -1,33 +1,30 @@
+-# Live Review — F023 Semantic zoom L0–L3
+-
+-> Round-by-round review record, re-headed at the F023 claim per
+-> docs/agents/planner_reviewer_prompt.md §1. The heading this replaces named F020, whose STATUS
+-> line went `[x]` at `0036e78e` and whose pull request 277 merged into `main` at the reviewer's
+-> Open PR Gate under docs/agents/self_drive_protocol.md, as `441f4e8e`, after both hosted CI jobs
+-> of run 36074214533 ended `success`. `0036e78e` is the second parent of `441f4e8e`. F020's round
+-> 8, its closing round, was reviewed after its own handback, so its gate entry is appended at the
+-> end of this record by F023's claim. Only the heading, this paragraph and the Steps section below
+-> are rewritten, and this time everything above the Findings heading is replaced: the F284 and
+-> F020 re-heads each cut at the first occurrence of that heading's text, which the paragraph they
+-> replaced quoted at the start of a line, so lines 27 to 60 at `441f4e8e` held the tails of the
+-> F284 and F019 paragraphs with their Steps sections; they are dropped here and stand unchanged in
+-> git history. Everything from the Findings heading to the end of the file as it stood at `441f4e8e`
+-> is carried forward BYTE-IDENTICAL, and finding ids continue the monotonic R-XXXX series across
+-> the re-head. The open set at `441f4e8e`, computed with `open_finding_ids` from
+-> `scripts/rotate_live_review.py`, is 1 by distinct id — R-1008 — and F285 owns it; F023 owns
++# Live Review — F024 Phase timeline with scrubber
++
++> Round-by-round review record, re-headed at the F024 claim per
++> docs/agents/planner_reviewer_prompt.md §1. The heading this replaces named F023, whose STATUS
++> line went `[x]` at `ebccd40c` and whose pull request 278 merged into `main` at the reviewer's
++> Open PR Gate under docs/agents/self_drive_protocol.md, as `1bb3a35d`, after both hosted CI jobs
++> of run 36091023382 ended `success`. `ebccd40c` is the second parent of `1bb3a35d`. F023's round
++> 10, its closing round, was reviewed after its own handback, so its gate entry is appended at the
++> end of this record by F024's claim. Only the heading, this paragraph and the Steps section below
++> are rewritten; everything from the Findings heading to the end of the file as it stood at
++> `1bb3a35d` is carried forward BYTE-IDENTICAL, and finding ids continue the monotonic R-XXXX
++> series across the re-head. The open set at `1bb3a35d`, computed with `open_finding_ids` from
++> `scripts/rotate_live_review.py`, is 1 by distinct id — R-1008 — and F285 owns it; F024 owns
+ > whatever it registers for its own scope.
+ 
+ ## Steps
+ 
+-THE ORDER BELOW IS T5_F023.md's Task slicing, headless goldens first. R1 claims F023, re-heads
+-this record, books F020's round 8, and lands T001: `semanticZoom.ts`, the pure state machine
+-{level, focusId} with its whole transition matrix goldened, and `zoomWheel.ts`, the wheel adapter
+-that holds the hysteresis, with the guard `tests/ui_contracts/test_semantic_zoom_contract.py` and
+-DECISION F023 D1. T002 follows: the hook that drives the canvas from the machine, the render
+-effects (sibling dimming, branch glow, run fan-out), the breadcrumbs and Escape, and the L2 run
+-popover whose buttons reach real endpoints or say honestly when they will. T003 then lands the
+-L3 evidence panel with its lazy tabs, the deep links, cluster expansion, the performance fixture
+-at 500 nodes and the live end-to-end. Every round's handback states the open set by distinct id.
++THE ORDER BELOW IS T5_F024.md's Task slicing, pure modules first. R1 claims F024, re-heads this
++record, books F023's round 10, and lands T001: `phaseMapping.ts` under
++`apps/ui/src/components/timeline/`, the phase mapping table over the measured ledger writers, the
++phase boundaries of any prefix and the sub-glyph extraction, with its vitest goldens on fixture
++ledgers and the demo recording, the guard `tests/ui_contracts/test_phase_mapping.py`, and DECISION
++F024 D1. T002 follows: snapshot memoization every 200 seq with its memory cap, and the property
++test that the state at any fuzzed position equals a fresh reduction of that prefix. T003 then
++lands the bar, the scrubber, the LIVE toggle with its SCRUBBED banner and capped catch-up, the
++keyboard, and the end-to-end on a live fake job and the demo recording. Every round's handback
++states the open set by distinct id.
+ 
+ ## Findings
+ DECISION F085 D5, applied at da47ee40, closes "The R44 block is the first measured under this
+@@ -436,3 +433,5 @@ Gate: F023 R7 — the F023 round 7 entry: the booking of round 6, DECISION F023
+ Gate: F023 R8 — the F023 round 8 entry: the closure sequence's first half, the booking of round 7, the Built State, the last assumption row, the checklist consolidation, the self-use track and the one full suite. VERDICT PASS, NO DEVIATION DECLARED. Re-derived over `967fc710`..`fecd022a` by the planner and reviewer of F023's first session, whose own runs produced every reading below, and booked by round 9's first commit. THE RANGE IS 5 COMMITS in the block's order C1 to C5, at `86eb6ab7` 372, `c7678989` 11, `d7c13ea3` 78, `d9b93573` 6 and `fecd022a` 201 insertions by `git show --numstat`, each under the 500-line cap, each single-parent and each carrying the ordered trailer. THE TRANSPORT PROOF IS FILE IDENTITY: every path the range changed apart from the handback, the block copy and the suite transcript reads byte-equal at `fecd022a` to the reviewer's simulated tree `.remedy-wt/f023-r8-sim`, and the block copy's sha256 equals the digest the delegation named, `13483352`. THE OPEN SET by distinct id reads R-1008 alone at `967fc710` and at `fecd022a`, and the checklist of `docs/agents/planner_reviewer_prompt.md` §3 holds the same 34 items at both. THE SELF-USE TRACK read `None`, `None`, `None` and an empty status, recorded as `self-use NONE (queue exhausted)` in `.agent/selfuse_f023/result.txt`. THE ONE FULL SUITE, `.agent/authored/f023-closure-suite.txt` at `fecd022a`, reads `python3 -m pytest -n auto -q` at real exit code 0, `19158 passed, 20 skipped, 1 warning in 132.46s`, and no bad node, so neither reachability guard of closure precondition 7 holds one. THE TESTS: the worker's serial selection read `1444 passed, 5 skipped` at exit 0; the reviewer's own run at `fecd022a` of `tests/docs/`, the block linter's tests and the golden path read `397 passed` at exit 0, and `integrity check --json` read all six checks `pass` at `fail_count` 0.
+ 
+ Gate: F023 R9 — the F023 round 9 entry: the closure sequence's evidence half, the booking of round 8, the evidence bundle and the review package. VERDICT PASS, NO DEVIATION DECLARED. Re-derived over `fecd022a`..`940d8174` by the planner and reviewer of F023's first session, whose own runs produced every reading below, and booked by round 10's first commit. THE RANGE IS 3 COMMITS in the block's order C1, C2 and C3, at `28be0df0` 376, `54e5ffd2` 10 and `940d8174` 214 insertions by `git show --numstat`, each under the 500-line cap, each single-parent and each carrying the ordered trailer. THE TRANSPORT PROOF IS FILE IDENTITY: the three `.agent/authored/f023-r9-*` payload copies, `.agent/live_review.md` and `.agent/plan.md` read byte-equal at `940d8174` to the reviewer's simulated tree `.remedy-wt/f023-r9-sim`, and the block copy's sha256 equals the digest the delegation named, `c911b8db`. THE OPEN SET by distinct id reads R-1008 alone at `fecd022a` and at `54e5ffd2`. THE BUNDLE: evidence job `f023r9e1001` against the fork point `441f4e8e3a041ed7db42043ef112176d573c816c`, ancestry and plain counts equal at 69, 706 node ids collected and 706 passed at exit 0, an empty `validate_verification_tests` problem list and `is_valid_current_run` True. THE PACKAGE: `remedy-review-20260925-052148-READY_FOR_REVIEW.zip` in `/home/decodeux/Repos/remedy-history/zips`, whose SHA-256 the reviewer read as `6e041624017f41e1644f71f3d8c18ae8dd4d677b1d8df4fe6206f89b6f76b4bb`, `testzip()` None, and whose manifest names the fork point as base and `54e5ffd2485bf90c405f5ad662b7d86be8dd3eb9`, the ACCEPTED HEAD, as head over 69 commits; all six `integrity check` checks `pass` at `fail_count` 0 at `940d8174`.
++
++Gate: F023 R10 — the F023 round 10 entry, THE CLOSING ROUND: the booking of round 9, the ledger rotation, the STATUS flip with its README pins, and the pull request. VERDICT PASS, NO DEVIATION DECLARED. Reviewed over `940d8174`..`ebccd40c` by the planner and reviewer of F023's first session, posted as a comment on pull request 278, and re-measured and booked by F024's claim reviewer, whose own runs produced every reading below. THE RANGE IS 4 COMMITS in the block's order C1 to C4, at `61b86dcc` 356, `87c662e8` 9, `cca261ec` 16 and `ebccd40c` 196 insertions by `git show --numstat`, each under the 500-line cap and each single-parent. THE TRANSPORT PROOF IS FILE IDENTITY: the six `.agent/authored/f023-r10-*` copies at `61b86dcc` equal the reviewer's block and its five payloads under `.remedy-wt/f023-r10-payloads/`. THE ROTATION at `cca261ec` took the ledger from 313141 to 296371 bytes and the archive from 4976495 to 4993265, and the open set by distinct id reads R-1008 alone at `940d8174` and at `ebccd40c`, owned by F285. THE CLOSURE: at `ebccd40c` F023's STATUS line occurs once, equals the authored `f023-r10-status_line.txt` byte for byte, and no line reads `[~]`. AFTER THE ROUND: hosted run `36091023382` on `ebccd40c` ended `success` on Python 3.10 and 3.12, pull request 278 merged as `1bb3a35d`, whose tree equals `ebccd40c`'s, and there the reviewer's run of `tests/docs/` with the golden path read `369 passed` at exit 0 and `integrity check --json` read all six checks `pass` at `fail_count` 0.
+diff --git a/docs/roadmap/STATUS.md b/docs/roadmap/STATUS.md
+index 145f3f7d6..31bd8cee4 100644
+--- a/docs/roadmap/STATUS.md
++++ b/docs/roadmap/STATUS.md
+@@ -148,7 +148,7 @@ Milestone R1 — Remedy as the daily tool: Tier 2 complete (F086 as the self-ins
+ 
+ - [x] F020 — Node lifecycle & glyph language (T001–T003 complete; accepted 2026-09-25 · live review PASS — ACCEPTED · Evidence job f020r7e1001 · package remedy-review-20260925-013441-READY_FOR_REVIEW.zip · SHA-256 a069e502d3956af33f4e7dde2ece1dfd47355c68030181dbd5764af6d026d1e0 · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD ac75d5d4ebe6f7aa908ccdfd1dfa504582b2fb5e)
+ - [x] F023 — Semantic zoom L0–L3 (T001–T003 complete; accepted 2026-09-25 · live review PASS — ACCEPTED · Evidence job f023r9e1001 · package remedy-review-20260925-052148-READY_FOR_REVIEW.zip · SHA-256 6e041624017f41e1644f71f3d8c18ae8dd4d677b1d8df4fe6206f89b6f76b4bb · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD 54e5ffd2485bf90c405f5ad662b7d86be8dd3eb9)
+-- [ ] F024 — Phase timeline with scrubber
++- [~] F024 — Phase timeline with scrubber
+ - [ ] F025 — Pause/resume (global & per node)
+ - [ ] F026 — Task edit at runtime
+ 
