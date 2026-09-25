@@ -44,12 +44,22 @@ Terminal statuses and how they map onto job state:
     | budget_exhausted    | stopped             | PAUSED        |
     | deadline_reached    | stopped             | PAUSED        |
     | blocked             | blocked             | PAUSED        |
+    | paused_by_operator  | paused              | PAUSED        |
     | max_cycles_reached  | running             | RUNNING       |
 
 ``blocked`` maps to PAUSED rather than FAILED because "no ready task and not
 green" also covers a job awaiting a decision — nothing has failed, so the job
 must stay resumable.  ``RunState`` has no BLOCKED member; the exact status
 lives in ``job.metadata["cycle_terminal_status"]`` and in the ledger event.
+
+``paused_by_operator`` (F025 E2/E3) is DECISION F025 D1's pause brought to this
+executor: a job-scope pause read at the loop's own safe point, or a task-scope
+pause withholding every task the ready batch would otherwise pick, park the
+job through the SAME writer the linear runner uses (``pingpong_job.
+park_job_pause``) — one ``job_paused`` event, the request settled ``served``
+only once that event is durable. It is deliberately ABSENT from
+``REPORTED_TERMINALS``: a paused run is not over, so no final report is
+written for it, exactly as none is written for ``max_cycles_reached``.
 
 ``max_cycles_reached`` is not a stop CAUSE — it is the loop honoring its cycle
 budget with work still pending.  It leaves job state untouched, which is what
@@ -79,10 +89,14 @@ from packages.orchestration.escalation import awaiting_decision_task_ids
 from packages.orchestration.pingpong_job import (
     JOB_BLOCKED,
     JOB_COMPLETED,
+    JOB_PAUSED,
     JOB_RUNNING,
     JOB_STOPPED,
     JobPlan,
 )
+from packages.orchestration.pingpong_job import _PauseSignal as _PauseParkSignal
+from packages.orchestration.pingpong_job import lift_job_pause as _lift_job_pause
+from packages.orchestration.pingpong_job import park_job_pause as _park_job_pause
 from packages.orchestration.pingpong_job import save_job_plan as _save_job
 from packages.orchestration.safe_points import should_stop as _should_stop
 from packages.orchestration.task_runner import (
@@ -101,6 +115,10 @@ TERMINAL_STOPPED_BY_OPERATOR = "stopped_by_operator"
 TERMINAL_BUDGET_EXHAUSTED = "budget_exhausted"
 TERMINAL_DEADLINE_REACHED = "deadline_reached"
 TERMINAL_BLOCKED = "blocked"
+#: F025 E2/E3: a job-scope operator pause read at the loop's own safe point, or
+#: a task-scope pause withholding every task the ready batch would otherwise
+#: pick.  See the module docstring's mapping table.
+TERMINAL_PAUSED_BY_OPERATOR = "paused_by_operator"
 TERMINAL_MAX_CYCLES_REACHED = "max_cycles_reached"
 
 #: terminal status -> pingpong_job job status constant.
@@ -110,6 +128,7 @@ TERMINAL_JOB_STATUS: dict[str, str] = {
     TERMINAL_BUDGET_EXHAUSTED: JOB_STOPPED,
     TERMINAL_DEADLINE_REACHED: JOB_STOPPED,
     TERMINAL_BLOCKED: JOB_BLOCKED,
+    TERMINAL_PAUSED_BY_OPERATOR: JOB_PAUSED,
     TERMINAL_MAX_CYCLES_REACHED: JOB_RUNNING,
 }
 
@@ -121,6 +140,7 @@ TERMINAL_RUN_STATE: dict[str, RunState | None] = {
     TERMINAL_BUDGET_EXHAUSTED: RunState.PAUSED,
     TERMINAL_DEADLINE_REACHED: RunState.PAUSED,
     TERMINAL_BLOCKED: RunState.PAUSED,
+    TERMINAL_PAUSED_BY_OPERATOR: RunState.PAUSED,
     TERMINAL_MAX_CYCLES_REACHED: None,
 }
 
@@ -329,6 +349,14 @@ class CycleRecord:
     #: F051: ids withheld only because something upstream of them awaits a
     #: decision — the awaiting counterpart of ``skipped_blocked_task_ids``.
     awaiting_downstream_task_ids: tuple[str, ...] = ()
+    #: F025 E3: tasks a pause withholds — the mask's own paused PENDING seeds,
+    #: in plan order.  Named on every cycle the pause is live for, not only the
+    #: one that ends the loop, exactly like ``awaiting_task_ids``.
+    paused_task_ids: tuple[str, ...] = ()
+    #: F025 E3: ids withheld only because something upstream of them is a
+    #: paused PENDING task — the paused counterpart of
+    #: ``skipped_blocked_task_ids`` / ``awaiting_downstream_task_ids``.
+    paused_downstream_task_ids: tuple[str, ...] = ()
     #: F051: the decisions this cycle raised, in the order they were raised.
     open_decision_ids: tuple[str, ...] = ()
     #: F052: the failure class of a verify that did not pass, from the EXISTING
@@ -364,6 +392,8 @@ class CycleRecord:
             "skipped_blocked_task_ids": list(self.skipped_blocked_task_ids),
             "awaiting_task_ids": list(self.awaiting_task_ids),
             "awaiting_downstream_task_ids": list(self.awaiting_downstream_task_ids),
+            "paused_task_ids": list(self.paused_task_ids),
+            "paused_downstream_task_ids": list(self.paused_downstream_task_ids),
             "open_decision_ids": list(self.open_decision_ids),
             "verify_failure_class": self.verify_failure_class,
             "repair_rounds_used": self.repair_rounds_used,
@@ -630,7 +660,8 @@ def limits_from_config(config: Any = None, *, cycles_flag: int | None = None,
 
 def ready_tasks(job: JobPlan, batch_size: int, *,
                 blocked_ids: Collection[str] = (),
-                awaiting_ids: Collection[str] = ()) -> list[str]:
+                awaiting_ids: Collection[str] = (),
+                paused_ids: Collection[str] = ()) -> list[str]:
     """The ready batch: the DAG ready set in plan order, capped at batch_size.
 
     F050: a task is ready when every dependency it declares in its Task Plan
@@ -647,13 +678,40 @@ def ready_tasks(job: JobPlan, batch_size: int, *,
     withheld exactly like blocked ids — same branch-local effect — but they are
     a separate argument because they mean something entirely different: nothing
     failed, and the moment the decision is answered they become ready again.
+
+    *paused_ids* (F025 E3) are every task id ``pause_control.paused_tasks``
+    currently names, withheld exactly like the blocked and awaiting seeds, with
+    their transitive dependents — EXCEPT a paused id naming a task that is not
+    currently PENDING is INERT (DECISION F025 D1 clause 4: a task already done,
+    still running, or not yet reached propagates nothing) and is filtered out
+    here before it ever becomes a seed, so it can never wrongly withhold a
+    downstream task the way a genuinely pending paused seed does.
     """
     ready = dag_ready_set(job.tasks)
-    withheld_seeds = set(blocked_ids) | set(awaiting_ids)
+    pending_ids = {task.task_id for task in job.tasks if task.status == RunState.PENDING}
+    paused_pending = set(paused_ids) & pending_ids
+    withheld_seeds = set(blocked_ids) | set(awaiting_ids) | paused_pending
     if withheld_seeds:
         withheld = withheld_seeds | blocked_downstream(job.tasks, withheld_seeds)
         ready = [task_id for task_id in ready if task_id not in withheld]
     return ready[:batch_size]
+
+
+def paused_task_ids_for(job: JobPlan, paused_ids: Collection[str]) -> list[str]:
+    """Ids from *paused_ids* naming a currently PENDING task, in plan order —
+    the mask's own paused seeds. A paused id naming no pending task is INERT
+    (DECISION F025 D1 clause 4) and never appears here."""
+    if not paused_ids:
+        return []
+    paused_set = set(paused_ids)
+    return [task.task_id for task in job.tasks
+            if task.task_id in paused_set and task.status == RunState.PENDING]
+
+
+def paused_downstream_tasks(job: JobPlan, paused_ids: Collection[str]) -> list[str]:
+    """Ids withheld only because something upstream is a paused PENDING task, in
+    plan order — the paused counterpart of ``skipped_blocked_tasks``."""
+    return skipped_blocked_tasks(job, paused_task_ids_for(job, paused_ids))
 
 
 def skipped_blocked_tasks(job: JobPlan,
@@ -1137,6 +1195,79 @@ def _run_repair_rounds(job: JobPlan, cycle_index: int, outcome: VerifyOutcome, *
 
 
 # ---------------------------------------------------------------------------
+# F025 E2/E3/E5 — the pause, brought to the cycle executor
+# ---------------------------------------------------------------------------
+
+
+class _PauseControlErrorObserved(Exception):
+    """Internal only: unwinds a `pause_control.PauseControlError` hit at ANY of
+    the reads E2/E3 name straight out to the loop's own terminal handling (E5),
+    skipping whatever cycle work was in progress — never a partial verify, never
+    a partial cycle record for work this read never let happen."""
+
+    def __init__(self, detail: str) -> None:
+        super().__init__(detail)
+        self.detail = detail
+
+
+def _job_pause_or_raise(job: JobPlan, control_root_path: Any) -> Any:
+    """``pause_control.pause_requested``, or the E5 unwind on a control error."""
+    from packages.orchestration import pause_control as _pc
+
+    try:
+        return _pc.pause_requested(str(job.job_id), control_root_path=control_root_path)
+    except _pc.PauseControlError as exc:
+        raise _PauseControlErrorObserved(str(exc)) from exc
+
+
+def _paused_entries_or_raise(job: JobPlan, control_root_path: Any) -> tuple[Any, ...]:
+    """``pause_control.paused_tasks``, or the E5 unwind on a control error."""
+    from packages.orchestration import pause_control as _pc
+
+    try:
+        return _pc.paused_tasks(str(job.job_id), control_root_path=control_root_path)
+    except _pc.PauseControlError as exc:
+        raise _PauseControlErrorObserved(str(exc)) from exc
+
+
+def _park_job_scope_pause(job: JobPlan, signal: Any, *,
+                          save_fn: Callable[[JobPlan], None],
+                          control_root_path: Any) -> None:
+    """E1/E2: durably park a JOB-scope operator pause read at the executor's own
+    safe point, through the SAME writer (``pingpong_job.park_job_pause``) the
+    linear runner uses."""
+    park_signal = _PauseParkSignal(
+        job_id=str(job.job_id), request_id=signal.request_id, reason=signal.reason,
+        source=signal.source, requested_at=signal.requested_at, scope="job")
+    _park_job_pause(job, park_signal, persist=save_fn, control_root_path=control_root_path)
+
+
+def _park_task_scope_pause(job: JobPlan, paused_entries: Collection[Any], *,
+                           save_fn: Callable[[JobPlan], None],
+                           control_root_path: Any) -> tuple[str, ...]:
+    """E1/E3: durably park a TASK-scope pause. ``paused_entries`` is every
+    currently paused task, unfiltered; the trigger named on the park record is
+    the earliest paused PENDING seed in plan order, mirroring the linear
+    runner's own choice when more than one task is paused at once."""
+    paused_ids = tuple(entry.task_id for entry in paused_entries)
+    seeds = tuple(paused_task_ids_for(job, paused_ids))
+    downstream = tuple(paused_downstream_tasks(job, paused_ids))
+    withheld_set = set(seeds) | set(downstream)
+    withheld = tuple(task.task_id for task in job.tasks if task.task_id in withheld_set)
+    by_id = {entry.task_id: entry for entry in paused_entries}
+    trigger = by_id.get(seeds[0]) if seeds else None
+    park_signal = _PauseParkSignal(
+        job_id=str(job.job_id),
+        request_id=trigger.request_id if trigger is not None else "",
+        reason=trigger.reason if trigger is not None else "",
+        source=trigger.source if trigger is not None else "",
+        requested_at=trigger.requested_at if trigger is not None else "",
+        scope="task", paused_task_ids=seeds, withheld_task_ids=withheld)
+    _park_job_pause(job, park_signal, persist=save_fn, control_root_path=control_root_path)
+    return seeds
+
+
+# ---------------------------------------------------------------------------
 # The loop
 # ---------------------------------------------------------------------------
 
@@ -1256,6 +1387,39 @@ process left (F047).  ``max_cycles`` still bounds this invocation only.
             control_root_path=control_root_path,
         )
 
+    # F025 E4: THE RELAUNCH IS THE RESUME (DECISION F025 D1 clause 5), brought
+    # to the cycle executor. A job already `paused` with a non-empty `pause`
+    # record decides HERE whether it stays parked or is resumed — before the
+    # first cycle, and before any of the loop's own safe points run. Every
+    # gate a fresh dispatch already passed (the caller's own checkpoint/plan
+    # gates) ran unchanged before `run_cycles` was ever called, exactly as the
+    # linear runner's equivalent check assumes.
+    if job.state == RunState.PAUSED and job.pause:
+        try:
+            _relaunch_pause = _job_pause_or_raise(job, control_root_path)
+            _relaunch_withheld = False
+            if _relaunch_pause is None:
+                _relaunch_entries = _paused_entries_or_raise(job, control_root_path)
+                _relaunch_paused_ids = tuple(e.task_id for e in _relaunch_entries)
+                _unmasked = ready_tasks(job, limits.batch_size)
+                _masked = ready_tasks(job, limits.batch_size,
+                                      paused_ids=_relaunch_paused_ids)
+                _relaunch_withheld = bool(_unmasked) and not _masked
+        except _PauseControlErrorObserved as exc:
+            _detail = f"pause_control_error: {exc.detail}"
+            job_status = _apply_terminal(job, TERMINAL_BLOCKED, _detail)
+            save_fn(job)
+            return CycleLoopResult(job=job, terminal_status=TERMINAL_BLOCKED,
+                                   job_status=job_status, stop_reason=_detail)
+        if _relaunch_pause is not None or _relaunch_withheld:
+            # Still pending (job scope) or still withheld (task scope): STAYS
+            # parked — no event, no save, zero task steps (E4).
+            return CycleLoopResult(
+                job=job, terminal_status=TERMINAL_PAUSED_BY_OPERATOR,
+                job_status=TERMINAL_JOB_STATUS[TERMINAL_PAUSED_BY_OPERATOR])
+        _lift_job_pause(job)
+        save_fn(job)
+
     while True:
         now = now_fn()
 
@@ -1274,165 +1438,214 @@ process left (F047).  ``max_cycles`` still bounds this invocation only.
             stop_reason = stop.reason
             break
 
-        # 2. Batch boundary (F051): re-check which branches still await a
-        #    decision.  An answered decision has disappeared from the job's open
-        #    records, so its branch becomes ready again right here — exactly one
-        #    check per boundary, no sleeping and no polling loop anywhere.
-        awaiting_checks += 1
-        awaiting_ids = awaiting_decision_task_ids(job)
+        try:
+            # F025 E2: the job pause is read ONLY once the stop above did not
+            # fire — a stop always wins (DECISION F025 D1). A pending request
+            # ends the loop right here, parked through the SAME writer the
+            # linear runner uses (E1), settled `served` only once the job is
+            # durably saved.
+            job_pause = _job_pause_or_raise(job, control_root_path)
+            if job_pause is not None:
+                _park_job_scope_pause(job, job_pause, save_fn=save_fn,
+                                      control_root_path=control_root_path)
+                terminal = TERMINAL_PAUSED_BY_OPERATOR
+                stop_reason = f"operator_pause: {job_pause.reason}"
+                break
 
-        # 3. Terminal by job shape: green, or nothing ready and not green.
-        batch = ready_tasks(job, limits.batch_size, blocked_ids=blocked_ids,
-                            awaiting_ids=awaiting_ids)
-        if not batch:
-            if _is_green(job, last_verify):
-                terminal, stop_reason = TERMINAL_ALL_GREEN, ""
-            elif awaiting_ids:
-                # Nothing has failed — the run needs an answer.  ``blocked``
-                # maps to PAUSED, so answering and resuming finishes the rest.
-                terminal = TERMINAL_BLOCKED
-                stop_reason = (
-                    "awaiting_decision; open_decisions="
-                    + ",".join(_open_decision_ids(job))
-                )
-            else:
-                terminal = TERMINAL_BLOCKED
-                stop_reason = (
-                    "no_tasks" if not job.tasks
-                    else f"no_ready_tasks; last_verify={last_verify}"
-                )
-            break
+            # 2. Batch boundary (F051/F025 E3): re-check which branches still
+            #    await a decision AND which tasks a pause withholds — exactly
+            #    one check per boundary, no sleeping and no polling loop
+            #    anywhere. An answered decision has disappeared from the job's
+            #    open records, so its branch becomes ready again right here.
+            awaiting_checks += 1
+            awaiting_ids = awaiting_decision_task_ids(job)
+            paused_entries = _paused_entries_or_raise(job, control_root_path)
+            paused_ids = tuple(e.task_id for e in paused_entries)
 
-        # 4. Cycle budget.  Not a stop cause — pending work simply remains.
-        if len(cycles) >= limits.max_cycles:
-            terminal, stop_reason = TERMINAL_MAX_CYCLES_REACHED, ""
-            break
+            # 3. Terminal by job shape: green, or nothing ready and not green.
+            batch = ready_tasks(job, limits.batch_size, blocked_ids=blocked_ids,
+                                awaiting_ids=awaiting_ids, paused_ids=paused_ids)
+            if not batch:
+                if _is_green(job, last_verify):
+                    terminal, stop_reason = TERMINAL_ALL_GREEN, ""
+                elif awaiting_ids:
+                    # Nothing has failed — the run needs an answer.  ``blocked``
+                    # maps to PAUSED, so answering and resuming finishes the rest.
+                    terminal = TERMINAL_BLOCKED
+                    stop_reason = (
+                        "awaiting_decision; open_decisions="
+                        + ",".join(_open_decision_ids(job))
+                    )
+                elif paused_task_ids_for(job, paused_ids):
+                    # F025 E3: the paused ids withhold at least one pending
+                    # task and nothing awaits a decision — park through E1
+                    # with scope `task`, naming the paused and withheld ids.
+                    seeds = _park_task_scope_pause(
+                        job, paused_entries, save_fn=save_fn,
+                        control_root_path=control_root_path)
+                    terminal = TERMINAL_PAUSED_BY_OPERATOR
+                    stop_reason = "paused_tasks=" + ",".join(seeds)
+                else:
+                    terminal = TERMINAL_BLOCKED
+                    stop_reason = (
+                        "no_tasks" if not job.tasks
+                        else f"no_ready_tasks; last_verify={last_verify}"
+                    )
+                break
 
-        # 5. Run the cycle.
-        cycle_index = base_index + len(cycles)
-        started_at = now
-        attempted = completed = failed = escalated = 0
-        errors: list[str] = []
-        executed_ids: list[str] = []
-        raised_decision_ids: list[str] = []
+            # 4. Cycle budget.  Not a stop cause — pending work simply remains.
+            if len(cycles) >= limits.max_cycles:
+                terminal, stop_reason = TERMINAL_MAX_CYCLES_REACHED, ""
+                break
 
-        # The ready set is recomputed after EVERY task end (F050), so a task
-        # that completes mid-cycle can release its dependents immediately and a
-        # task that fails withholds its downstream from the rest of this cycle.
-        # The batch is a CAP on how many tasks this cycle may run, unchanged.
-        for _ in range(limits.batch_size):
-            ready_now = ready_tasks(job, limits.batch_size,
-                                    blocked_ids=blocked_ids,
-                                    awaiting_ids=awaiting_ids)
-            if not ready_now:
-                break                      # nothing ready any more
-            target = ready_now[0]
-            attempt = (step(job, counted_provider_call, target)
-                       if step_takes_target else step(job, counted_provider_call))
-            # F051: a question, not a failure.  One decision is enqueued for
-            # this task, its branch pauses, and the loop carries straight on to
-            # whatever else is ready — including tasks on disjoint branches of
-            # this very cycle.
-            if attempt.needs_decision:
+            # 5. Run the cycle.
+            cycle_index = base_index + len(cycles)
+            started_at = now
+            attempted = completed = failed = escalated = 0
+            errors: list[str] = []
+            executed_ids: list[str] = []
+            raised_decision_ids: list[str] = []
+
+            # The ready set is recomputed after EVERY task end (F050), so a task
+            # that completes mid-cycle can release its dependents immediately and a
+            # task that fails withholds its downstream from the rest of this cycle.
+            # The batch is a CAP on how many tasks this cycle may run, unchanged.
+            for _ in range(limits.batch_size):
+                # F025 E2/E3: read the job pause and the task mask fresh
+                # before EVERY pick inside the cycle, not only at the
+                # boundary above. A pending job pause ends the batch here —
+                # a task step already running finishes first — and the next
+                # safe point (the top of the outer loop) parks it.
+                job_pause = _job_pause_or_raise(job, control_root_path)
+                if job_pause is not None:
+                    break                  # E2: end the batch; the next safe point parks
+                paused_entries = _paused_entries_or_raise(job, control_root_path)
+                paused_ids = tuple(e.task_id for e in paused_entries)
+                ready_now = ready_tasks(job, limits.batch_size,
+                                        blocked_ids=blocked_ids,
+                                        awaiting_ids=awaiting_ids,
+                                        paused_ids=paused_ids)
+                if not ready_now:
+                    break                      # nothing ready any more
+                target = ready_now[0]
+                attempt = (step(job, counted_provider_call, target)
+                           if step_takes_target else step(job, counted_provider_call))
+                # F051: a question, not a failure.  One decision is enqueued for
+                # this task, its branch pauses, and the loop carries straight on to
+                # whatever else is ready — including tasks on disjoint branches of
+                # this very cycle.
+                if attempt.needs_decision:
+                    attempted += 1
+                    escalated += 1
+                    record = _escalate_task(
+                        job, attempt, target,
+                        now=now_fn(), unattended=unattended, log=log)
+                    raised_decision_ids.append(str(record.get("decision_id", "")))
+                    awaiting_ids = awaiting_decision_task_ids(job)
+                    continue
+                if not attempt.executed and not attempt.error:
+                    break                      # nothing ready any more; not an attempt
                 attempted += 1
-                escalated += 1
-                record = _escalate_task(
-                    job, attempt, target,
-                    now=now_fn(), unattended=unattended, log=log)
-                raised_decision_ids.append(str(record.get("decision_id", "")))
-                awaiting_ids = awaiting_decision_task_ids(job)
-                continue
-            if not attempt.executed and not attempt.error:
-                break                      # nothing ready any more; not an attempt
-            attempted += 1
-            if attempt.executed and attempt.task_id is not None:
-                executed_ids.append(str(attempt.task_id))
-            if attempt.verified:
-                completed += 1
-                continue
-            # A failed task step or a failed verification ends the cycle with
-            # the failure recorded.  The task runner already rolled the task
-            # back to PENDING; retrying it inside the same cycle would be a
-            # retry policy, which is not this module's concern.
-            failed += 1
-            if attempt.error:
-                errors.append(attempt.error)
-            # F050: this attempt executed and lost, so it blocks its own
-            # transitive downstream for the rest of the run — and nothing else.
-            blocked_ids.add(attempt.task_id if attempt.task_id is not None
-                            else target)
-            break
+                if attempt.executed and attempt.task_id is not None:
+                    executed_ids.append(str(attempt.task_id))
+                if attempt.verified:
+                    completed += 1
+                    continue
+                # A failed task step or a failed verification ends the cycle with
+                # the failure recorded.  The task runner already rolled the task
+                # back to PENDING; retrying it inside the same cycle would be a
+                # retry policy, which is not this module's concern.
+                failed += 1
+                if attempt.error:
+                    errors.append(attempt.error)
+                # F050: this attempt executed and lost, so it blocks its own
+                # transitive downstream for the rest of the run — and nothing else.
+                blocked_ids.add(attempt.task_id if attempt.task_id is not None
+                                else target)
+                break
 
-        verify_outcome = as_verify_outcome(
-            verify_step(job, cycle_index, limits.verify_command))
+            verify_outcome = as_verify_outcome(
+                verify_step(job, cycle_index, limits.verify_command))
 
-        # F052 self-healing.  Only a FAILED verify is repairable; everything else
-        # that denies green is classified and kept.  The phase re-runs the verify
-        # step itself, so the outcome it returns is always the LAST real one.
-        phase = _run_repair_rounds(
-            job, cycle_index, verify_outcome,
-            limits=limits, verify_step=verify_step, repair_step=repair_step,
-            stop_probe=repair_stop_probe,
-            executed_ids=executed_ids, log=log)
-        verify_outcome = phase.outcome
-        last_verify = verify_outcome.result
-        if last_verify == VERIFY_FAILED:
-            errors.append("verify_failed")
-        errors.extend(phase.errors)
+            # F052 self-healing.  Only a FAILED verify is repairable; everything else
+            # that denies green is classified and kept.  The phase re-runs the verify
+            # step itself, so the outcome it returns is always the LAST real one.
+            phase = _run_repair_rounds(
+                job, cycle_index, verify_outcome,
+                limits=limits, verify_step=verify_step, repair_step=repair_step,
+                stop_probe=repair_stop_probe,
+                executed_ids=executed_ids, log=log)
+            verify_outcome = phase.outcome
+            last_verify = verify_outcome.result
+            if last_verify == VERIFY_FAILED:
+                errors.append("verify_failed")
+            errors.extend(phase.errors)
 
-        ended_at = now_fn()
-        counters = _default_counters(
-            job, now=ended_at, started_at=loop_started_at,
-            provider_calls=provider_calls)
-        record = CycleRecord(
-            cycle_index=cycle_index,
-            tasks_attempted=attempted,
-            tasks_completed=completed,
-            tasks_failed=failed,
-            tasks_escalated=escalated,
-            verify_result=last_verify,
-            tokens_so_far=counters.measured_token_total,
-            started_at=started_at.isoformat(),
-            ended_at=ended_at.isoformat(),
-            verify_command=limits.verify_command,
-            errors=tuple(errors),
-            executed_task_ids=tuple(executed_ids),
-            skipped_blocked_task_ids=tuple(
-                str(task_id) for task_id in skipped_blocked_tasks(job, blocked_ids)),
-            awaiting_task_ids=tuple(
-                str(task.task_id) for task in job.tasks if task.task_id in awaiting_ids),
-            awaiting_downstream_task_ids=tuple(
-                str(task_id)
-                for task_id in awaiting_downstream_tasks(job, awaiting_ids)),
-            open_decision_ids=tuple(raised_decision_ids),
-            verify_failure_class=cycle_verify_failure_class(last_verify),
-            repair_rounds_used=phase.rounds_used,
-            healed_after_repair=phase.healed,
-            healed_without_changes=phase.healed_without_changes,
-            repair_summary=phase.summary,
-        )
-        cycles.append(record)
+            ended_at = now_fn()
+            counters = _default_counters(
+                job, now=ended_at, started_at=loop_started_at,
+                provider_calls=provider_calls)
+            record = CycleRecord(
+                cycle_index=cycle_index,
+                tasks_attempted=attempted,
+                tasks_completed=completed,
+                tasks_failed=failed,
+                tasks_escalated=escalated,
+                verify_result=last_verify,
+                tokens_so_far=counters.measured_token_total,
+                started_at=started_at.isoformat(),
+                ended_at=ended_at.isoformat(),
+                verify_command=limits.verify_command,
+                errors=tuple(errors),
+                executed_task_ids=tuple(executed_ids),
+                skipped_blocked_task_ids=tuple(
+                    str(task_id) for task_id in skipped_blocked_tasks(job, blocked_ids)),
+                awaiting_task_ids=tuple(
+                    str(task.task_id) for task in job.tasks if task.task_id in awaiting_ids),
+                awaiting_downstream_task_ids=tuple(
+                    str(task_id)
+                    for task_id in awaiting_downstream_tasks(job, awaiting_ids)),
+                paused_task_ids=tuple(
+                    str(task_id) for task_id in paused_task_ids_for(job, paused_ids)),
+                paused_downstream_task_ids=tuple(
+                    str(task_id)
+                    for task_id in paused_downstream_tasks(job, paused_ids)),
+                open_decision_ids=tuple(raised_decision_ids),
+                verify_failure_class=cycle_verify_failure_class(last_verify),
+                repair_rounds_used=phase.rounds_used,
+                healed_after_repair=phase.healed,
+                healed_without_changes=phase.healed_without_changes,
+                repair_summary=phase.summary,
+            )
+            cycles.append(record)
 
-        # 6. Persist the job, then the cycle's own evidence record, then the
-        #    checkpoint (F047).  Order matters: a checkpoint references the
-        #    persisted snapshot, so the snapshot must already be on disk.
-        save_fn(job)
-        if record_evidence:
-            try:
-                write_cycle_record(str(job.job_id), record)
-            except (OSError, ValueError) as exc:
-                job.metadata["cycle_evidence_error"] = f"{type(exc).__name__}: {exc}"
-        if record_checkpoint:
-            _write_cycle_checkpoint(job, record, limits, blocked_ids=blocked_ids,
-                                    awaiting_ids=awaiting_ids)
-        _emit(log, LEDGER_EVENT_CYCLE_COMPLETED, **record.to_json())
+            # 6. Persist the job, then the cycle's own evidence record, then the
+            #    checkpoint (F047).  Order matters: a checkpoint references the
+            #    persisted snapshot, so the snapshot must already be on disk.
+            save_fn(job)
+            if record_evidence:
+                try:
+                    write_cycle_record(str(job.job_id), record)
+                except (OSError, ValueError) as exc:
+                    job.metadata["cycle_evidence_error"] = f"{type(exc).__name__}: {exc}"
+            if record_checkpoint:
+                _write_cycle_checkpoint(job, record, limits, blocked_ids=blocked_ids,
+                                        awaiting_ids=awaiting_ids)
+            _emit(log, LEDGER_EVENT_CYCLE_COMPLETED, **record.to_json())
 
-        # F052: a stop observed BETWEEN two repair rounds ends the run — but only
-        # after this cycle's evidence is on disk.  The rounds already spent are
-        # part of that record, so a returning human can see what the stop cut off.
-        if phase.stop is not None:
-            terminal = _terminal_from_stop(phase.stop.reason, phase.stop.source)
-            stop_reason = phase.stop.reason
+            # F052: a stop observed BETWEEN two repair rounds ends the run — but only
+            # after this cycle's evidence is on disk.  The rounds already spent are
+            # part of that record, so a returning human can see what the stop cut off.
+            if phase.stop is not None:
+                terminal = _terminal_from_stop(phase.stop.reason, phase.stop.source)
+                stop_reason = phase.stop.reason
+                break
+        except _PauseControlErrorObserved as exc:
+            # F025 E5: a PauseControlError at ANY of the reads above blocks the
+            # job right here — no further task step, no verify, no cycle record
+            # for work a bad read never let happen.
+            terminal = TERMINAL_BLOCKED
+            stop_reason = f"pause_control_error: {exc.detail}"
             break
 
     job_status = _apply_terminal(job, terminal, stop_reason)

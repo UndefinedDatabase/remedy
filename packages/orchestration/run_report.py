@@ -394,7 +394,10 @@ def recommended_next_action(sources: ReportSources) -> NextAction:
         return NextAction("open-decision", action)
 
     terminal = (sources.terminal_status or "").strip().lower()
-    if terminal == "stopped_by_operator":
+    # F025 E6: `paused_by_operator` (long_run_executor's cycle-executor pause)
+    # is treated exactly like `stopped_by_operator` here — both are a halt the
+    # operator asked for, nothing broken, and the run resumes on request.
+    if terminal in {"stopped_by_operator", "paused_by_operator"}:
         return NextAction(
             "stopped-by-operator",
             "Resume the run (or close it) — it stopped on request, "
