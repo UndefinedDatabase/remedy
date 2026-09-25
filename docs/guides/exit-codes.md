@@ -52,6 +52,8 @@ Every command not listed here exits only `0`, `1` or `2`.
 |---|---|
 | `remedy init run` | 4 |
 | `remedy job stop` | 3 |
+| `remedy job pause` | 3 |
+| `remedy job unpause` | 3 |
 | `remedy job context` | 3 |
 | `remedy job plan-show` | 3 |
 | `remedy job plan-edit-task` | 3 |
