@@ -1,0 +1,235 @@
+diff --git a/packages/orchestration/self_use_findings.py b/packages/orchestration/self_use_findings.py
+index 1f056563f..5e51d4a05 100644
+--- a/packages/orchestration/self_use_findings.py
++++ b/packages/orchestration/self_use_findings.py
+@@ -30,12 +30,37 @@ Deliberate absences:
+     picks the severity the normal finding-ledger rules already use; this
+     module answers only WHETHER something went wrong and WHAT the job itself
+     said about it.
++  * ONE STRING IS A CHECK RATHER THAN A QUOTATION, and it names the paths it
++    read (R-1058): a run whose reviewer passed a task although no path the
++    reviewed work changed lies outside ``.agent/``. SU-030's reviewer passed
++    exactly that — a `Done:` paragraph its builder wrote into
++    ``.agent/live_review.md`` and nothing else — and a closure must not book
++    such a pass as a landed repair.
+ """
+ 
+ from __future__ import annotations
+ 
+ from packages.orchestration.pingpong_job import JOB_STOPPED, JobPlan
+ 
++#: The directory that holds the loop's own records, which a repair never
++#: consists of (R-1058).
++_RECORD_DIR = ".agent/"
++
++
++def _paths_the_reviewed_work_changed(result: JobPlan) -> list[str]:
++    """Every path the job's hand-off or an applied task manifest names, sorted.
++
++    A job stopped before its hand-off has no ``root_changed_files``, so the
++    applied task manifests are read as well: SU-030 stopped at its budget with
++    its one task already applied.
++    """
++    paths = set(result.root_changed_files)
++    for task in result.tasks:
++        manifest = task.apply_manifest
++        if manifest is not None and manifest.status == "applied":
++            paths.update(proof.path for proof in manifest.applied_file_proofs)
++    return sorted(paths)
++
+ 
+ def describe_self_use_run_defects(result: JobPlan) -> tuple[str, ...]:
+     """Plain-text defects ``result`` surfaced, quoting its own fields verbatim.
+@@ -58,6 +83,11 @@ def describe_self_use_run_defects(result: JobPlan) -> tuple[str, ...]:
+     only in ``final_status``. An empty tuple means the run surfaced nothing
+     to register — not that nothing was checked; a job that completed with
+     every task's `error` blank answers ``()``.
++
++    Last, when any task's ``final_status`` is ``staged_review_passed`` and no
++    path the reviewed work changed lies outside ``.agent/``, one string names
++    that pass and every such path (``"job {job_id} ({status}): a task passed
++    review but no path outside .agent/ changed: {paths}"``, R-1058).
+     """
+     defects: list[str] = []
+     if result.error:
+@@ -77,4 +107,11 @@ def describe_self_use_run_defects(result: JobPlan) -> tuple[str, ...]:
+             defects.append(f"{task.task_id} ({task.status}): {task.error}")
+         elif task.final_status and task.final_status != "staged_review_passed":
+             defects.append(f"{task.task_id} ({task.status}): final_status={task.final_status}")
++    if any(task.final_status == "staged_review_passed" for task in result.tasks):
++        changed = _paths_the_reviewed_work_changed(result)
++        if not any(not path.startswith(_RECORD_DIR) for path in changed):
++            defects.append(
++                f"job {result.job_id} ({result.state}): a task passed review but no "
++                f"path outside {_RECORD_DIR} changed: {', '.join(changed) or '(none)'}"
++            )
+     return tuple(defects)
+diff --git a/packages/orchestration/self_use_generator.py b/packages/orchestration/self_use_generator.py
+index ebabbee19..1c110337f 100644
+--- a/packages/orchestration/self_use_generator.py
++++ b/packages/orchestration/self_use_generator.py
+@@ -328,16 +328,27 @@ def _ledger_tier(queue_path: Path | None, ledger_path: Path) -> SelfUseQueueEntr
+ 
+     new_id = _next_queue_id(queue_path)
+     title = f"Address ledger finding {r_id}"
++    # R-1058: the Acceptance asks for the REPAIR and nothing else. It once also
++    # offered "the reviewer records why it cannot be — either way the ledger
++    # gains a `Done:` line", and SU-030's builder met that with a ledger note
++    # and no repair. The ledger is the reviewer's record, so the builder is told
++    # to leave `.agent/` alone; describe_self_use_run_defects in
++    # packages/orchestration/self_use_findings.py names a pass that did not.
+     job_markdown = (
+         f"# Job: Address ledger finding {r_id}\n"
+         "\n"
+         "## Task 1\n"
+         f"{paragraph}\n"
+         "\n"
++        f"Make the repair {r_id}'s FIX names, in the code and tests it points "
++        "at. Do not edit any file under `.agent/`: `.agent/live_review.md` is "
++        "the reviewer's record, and a finding is resolved there by the "
++        "reviewer, never by this task.\n"
++        "\n"
+         "Acceptance:\n"
+-        f"- {r_id} is repaired with a red-to-green proof, or the reviewer "
+-        "records in `.agent/live_review.md` why it cannot be — either way "
+-        f"the ledger gains a `Done: {r_id}` line.\n"
++        f"- the repair {r_id}'s FIX names is made, outside `.agent/`, with a "
++        "test that fails without it and passes with it.\n"
++        "- no file under `.agent/` changes.\n"
+     )
+     return SelfUseQueueEntry(
+         id=new_id,
+diff --git a/tests/orchestration/test_self_use_findings.py b/tests/orchestration/test_self_use_findings.py
+index 6d41ef61b..622d9824b 100644
+--- a/tests/orchestration/test_self_use_findings.py
++++ b/tests/orchestration/test_self_use_findings.py
+@@ -15,6 +15,8 @@ from packages.core.models import RunState
+ from packages.orchestration.pingpong_job import (
+     JOB_STOPPED,
+     TASK_PENDING,
++    AppliedFileProof,
++    ApplyManifest,
+     JobPlan,
+     TaskEntry,
+     parse_job_file,
+@@ -133,6 +135,7 @@ class TestDescribeSelfUseRunDefects:
+         result = JobPlan(
+             job_id="aaaabbbbccccdddd",
+             state=RunState.COMPLETED,
++            root_changed_files=["packages/demo.py"],
+             tasks=[
+                 TaskEntry(task_id="T001", status=RunState.COMPLETED,
+                           final_status="staged_review_passed"),
+@@ -144,3 +147,63 @@ class TestDescribeSelfUseRunDefects:
+         assert describe_self_use_run_defects(result) == (
+             "T002 (completed): final_status=review_failed",
+         )
++
++
++class TestAPassConfinedToTheRecordIsNamed:
++    """R-1058: SU-030's reviewer passed a diff that only added a `Done:` paragraph.
++
++    Job d0f70d9d45dd4363 stopped at its budget with task T001 applied and
++    ``staged_review_passed``, and the one path its manifest named was
++    ``.agent/live_review.md``. A closure must not book such a pass as a repair,
++    so the run's defects name it.
++    """
++
++    @staticmethod
++    def _job(paths: list[str], *, root: list[str] | None = None) -> JobPlan:
++        manifest = ApplyManifest(
++            task_id="T001",
++            status="applied",
++            applied_files=list(paths),
++            applied_file_proofs=[AppliedFileProof(path=p, task_id="T001") for p in paths],
++        )
++        return JobPlan(
++            job_id="d0f70d9d45dd4363",
++            state=JOB_STOPPED,
++            stop_reason="budget_exhausted:max_cost_usd",
++            stop_source="budget",
++            root_changed_files=list(root or []),
++            tasks=[TaskEntry(task_id="T001", status="applied_to_job_workspace",
++                             final_status="staged_review_passed", apply_manifest=manifest)],
++        )
++
++    def test_the_su_030_shape_is_named_with_its_path(self):
++        defects = describe_self_use_run_defects(self._job([".agent/live_review.md"]))
++        assert defects == (
++            "job d0f70d9d45dd4363 (stopped): stop_reason=budget_exhausted:max_cost_usd; "
++            "stop_source=budget",
++            "job d0f70d9d45dd4363 (stopped): a task passed review but no path outside "
++            ".agent/ changed: .agent/live_review.md",
++        )
++
++    def test_a_pass_that_changed_nothing_is_named(self):
++        defects = describe_self_use_run_defects(self._job([]))
++        assert defects[-1] == (
++            "job d0f70d9d45dd4363 (stopped): a task passed review but no path outside "
++            ".agent/ changed: (none)"
++        )
++
++    def test_one_path_outside_the_record_is_a_repair(self):
++        defects = describe_self_use_run_defects(
++            self._job([".agent/live_review.md", "packages/orchestration/stream_evidence.py"]))
++        assert len(defects) == 1
++        assert "passed review" not in defects[0]
++
++    def test_the_hand_off_paths_are_read_too(self):
++        defects = describe_self_use_run_defects(
++            self._job([".agent/plan.md"], root=["tests/orchestration/test_demo.py"]))
++        assert all("passed review" not in d for d in defects)
++
++    def test_a_run_whose_task_did_not_pass_is_not_named_for_it(self):
++        job = self._job([".agent/live_review.md"])
++        job.tasks[0].final_status = "review_failed"
++        assert all("passed review" not in d for d in describe_self_use_run_defects(job))
+diff --git a/tests/orchestration/test_self_use_generator.py b/tests/orchestration/test_self_use_generator.py
+index c379a8bdb..3e22bceb4 100644
+--- a/tests/orchestration/test_self_use_generator.py
++++ b/tests/orchestration/test_self_use_generator.py
+@@ -575,3 +575,44 @@ class TestOrderTier:
+         with pytest.raises(SelfUseGenerationError, match="not a job file"):
+             generate_self_use_item(queue_path=_write_queue(tmp_path, []), ledger_path=tmp_path / "none.md",
+                                    order_path=order, today=self.DAY)
++
++
++class TestTheAcceptanceAsksForTheRepairAlone:
++    """R-1058: SU-030's builder met the old Acceptance with a ledger note.
++
++    That Acceptance also accepted "the reviewer records in `.agent/live_review.md`
++    why it cannot be — either way the ledger gains a `Done:` line", and the
++    builder wrote exactly that paragraph and nothing else. The generated job now
++    asks for the repair its finding names, with a red-to-green test, and tells
++    the builder to leave `.agent/` alone.
++    """
++
++    def _job_markdown(self, tmp_path: Path) -> str:
++        ledger = _write_ledger(tmp_path, [_finding("R-0010", "Low", "A clean defect.")])
++        entry = generate_self_use_item(
++            queue_path=_write_queue(tmp_path, [_queue_item(consumed_by="F001")]),
++            ledger_path=ledger,
++        )
++        assert entry is not None
++        return entry.job_markdown
++
++    def test_no_outcome_other_than_the_repair_is_offered(self, tmp_path: Path):
++        text = self._job_markdown(tmp_path)
++        assert "either way" not in text
++        assert "why it cannot be" not in text
++        assert "`Done:" not in text
++
++    def test_the_acceptance_asks_for_the_named_repair_with_a_red_to_green_test(
++        self, tmp_path: Path
++    ):
++        acceptance = self._job_markdown(tmp_path).split("\nAcceptance:\n", 1)[1]
++        assert acceptance == (
++            "- the repair R-0010's FIX names is made, outside `.agent/`, with a test "
++            "that fails without it and passes with it.\n"
++            "- no file under `.agent/` changes.\n"
++        )
++
++    def test_the_builder_is_told_to_leave_the_record_alone(self, tmp_path: Path):
++        body = self._job_markdown(tmp_path).split("\nAcceptance:\n", 1)[0]
++        assert "Do not edit any file under `.agent/`" in body
++        assert "`.agent/live_review.md` is the reviewer's record" in body
