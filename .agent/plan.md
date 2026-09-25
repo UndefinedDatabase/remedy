@@ -13,20 +13,19 @@ that returns to the present (`docs/roadmap/features/T5_F024.md`).
 
 ## Current Step
 
-ROUND 3: book round 2's PASS, record DECISION F024 D3, and land T003's
-pure half: `timelineIndex.ts`, every prefix's phases from one fold;
-`scrubState.ts`, the scrubber machine with its keyboard and LIVE's
-capped catch-up; `timelineView.ts`, the bar's view model; and the guard
-`tests/ui_contracts/test_timeline_scrub_contract.py`.
+ROUND 4: book round 3's PASS, record DECISION F024 D4, and land T003's
+components: the one ledger and one scrubber in the shell, the bar as a
+slider in `PhaseTimeline.tsx`, the stage drawing the scrubbed prefix
+under a SCRUBBED banner, the REPLAY pill, LIVE's fast-forward in
+`useTimelineScrub.ts`, and the guard
+`tests/ui_contracts/test_timeline_scrub_wiring.py`.
 
 ## Next Steps
 
-1. T003's components: the bar and scrubber in `PhaseTimeline.tsx`, the
-   ledger and scrub state lifted into the shell, the graph rendering the
-   scrubbed prefix, the SCRUBBED banner and the REPLAY pill.
-2. T003's end-to-end on a live fake job and the demo recording, with
-   the scrub budget on the 500-node fixture.
-3. The closure sequence: the one full suite, the evidence package and
+1. T003's end-to-end: a live fake job scrubbed to every position against
+   a fresh fold, the demo recording as a scrubbable story, and the scrub
+   budget on the 500-node fixture with its snapshot arithmetic.
+2. The closure sequence: the one full suite, the evidence package and
    the STATUS flip.
 
 ## Risks

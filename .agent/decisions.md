@@ -21228,3 +21228,53 @@ returning to LIVE, rejected because the head of a scrubbed view is not the live 
 HOW TO REVERSE: delete `timelineIndex.ts`, `scrubState.ts`, `timelineView.ts` and their three
 `.test.ts` files under `apps/ui/src/components/timeline/`,
 `tests/ui_contracts/test_timeline_scrub_contract.py`, and this paragraph.
+
+## DECISION F024 D4 — the shell reads the one ledger and builds one scrubber; the bar is a slider over six segments, the stage draws the scrubbed prefix under a SCRUBBED banner, the pill says REPLAY, and LIVE fast-forwards from the hook (2026-09-25)
+
+CONTEXT: T5_F024.md's T003 orders the bar, the scrubber, the LIVE toggle with the SCRUBBED banner
+and the catch-up, and the keyboard; DECISION F024 D3 landed their pure half. Measured at
+`b1cfedbe`: `BrainGraphStage.tsx` calls `useBrainLedger` and `brainLedgerPrefix` itself, and
+`tests/ui_contracts/test_brain_live_wiring.py` pins both calls there and the stage line's `recent`
+and `readEventsPage` props; `RemedyShell.tsx` mounts the stage and `PhaseTimeline` side by side in a
+main column that `test_main_layout_guard.py` holds to four components, and passes the timeline the
+dashboard's server-derived `phases` and `timelineEvents`; `test_timeline_guard.py`,
+`test_design_drift.py` and `test_ux_quality.py` pin the bar's header, rail markers with their check,
+event rail, legend, literal `CANONICAL_PHASES` array and its three glyph components, and
+`test_raw_colour_ratchet.py` pins its stylesheet at ten raw colours; `LiveStatusPill.tsx` has no
+REPLAY state; `ReducedMotionProvider.tsx` exposes `useReducedMotion`; no DEMO banner exists; and
+`--remedy-purple` is a defined token.
+
+CHOSEN: (1) ONE LEDGER: the shell calls `useBrainLedger` with the stream's ring and the page reader
+and folds its contiguous prefix once, `ledgerRows`, for the stage and the timeline alike; the stage
+reads no ledger of its own, and `test_brain_live_wiring.py`'s two stage asserts move to the shell
+with the same strength, plus one that the stage keeps none. (2) ONE SCRUBBER: `useTimelineScrub`
+in `components/timeline/` binds the index, the memo, the machine and the view model to React, owns
+LIVE's timers, and is built once by the shell and handed to the bar, the stage and the pill. (3)
+THE BAR keeps every structure the guards pin and draws the D3 view: six equal segments filling to
+the handle, the stop discs at the segment centres with a small tick for a phase the ledger skipped,
+the handle a `role="slider"` disc whose value is the seq, moved by pointer drag and click on the
+track, by the arrows, Shift+arrows, Home and End, and by clicking a sub-glyph chip; sub-glyphs
+not yet reached are faded; the legend shows the four sub-glyph kinds with the existing glyph
+exports; the readout and a LIVE button close the legend row; the dashboard's server-derived phases
+no longer feed it. (4) THE STAGE draws `scrub.scrubbedModel ?? liveModel`, so the graph, the zoom and
+the run it focuses read the scrubbed prefix, while the run detail and the evidence panel still read
+the ledger's rows for the run they show; it shows a SCRUBBED banner with the readout and a Back to
+LIVE button; the live model keeps the dashboard's seed and waits behind LIVE. (5) THE
+PILL says REPLAY in violet before any transport state while scrubbed. (6) LIVE: with at most 5000
+rows behind the view it fast-forwards through `catchUpPlan`'s frames and then returns to LIVE; past
+that it rebuilds the memo from the ledger and says so in the readout; any new move cancels a
+fast-forward in flight. (7) THE GUARD is `tests/ui_contracts/test_timeline_scrub_wiring.py`, over
+comment-stripped source. (8) THE VISUAL DEVIATIONS are four `assumption_log.md` rows.
+
+ALTERNATIVES: the stage handing its ledger up to the shell, rejected because the ledger is the
+shell's to share and a child that feeds its parent inverts the data flow; a second ledger for the
+timeline, rejected because it pages the same job twice and could fold a different prefix; a
+scrubber living in the stage, rejected because the bar sits beside the stage in the main column;
+the handle fixed to the current stop as `ux_spec.md` §12 draws it, rejected because it cannot show
+a position inside a phase.
+
+HOW TO REVERSE: restore `BrainGraphStage.tsx`, `RemedyShell.tsx`, `PhaseTimeline.tsx`, their
+stylesheets, `LiveStatusPill.tsx`, `RightLivePanel.tsx`, its stylesheet and
+`test_brain_live_wiring.py` from `b1cfedbe`, delete `useTimelineScrub.ts`, the two geometry
+functions of `timelineView.ts` and their tests, `tests/ui_contracts/test_timeline_scrub_wiring.py`,
+the four F024 rows of `assumption_log.md`, and this paragraph.
