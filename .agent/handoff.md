@@ -1,111 +1,121 @@
-# Handback — F023 Semantic zoom L0–L3 · Round 4
+# Handback — F023 Semantic zoom L0–L3 · Round 5
 
 ## Session
 
-SESSION 1 of feature F023 · round 4 · rounds so far 4
+SESSION 1 of feature F023 · round 5 · rounds so far 5
 
-This round booked round 3's PASS, recorded DECISION F023 D4, and landed T002's second half, the
-L2 run detail: `runDetailModel.ts`, pure words for a run's verdict, round, tokens, duration and
-retries, each a real value or a plain sentence saying why it is missing; `RunDetailPopover.tsx`
-and its stylesheet, reading the rounds door, placed beside the L2 camera's centred run, with Open
-diff, Why and a disabled Rerun whose reason is visible; `BrainGraphStage.tsx` mounting it for the
-focused run and handing it the server token and the diff panel's opener; `RemedyShell.tsx` handing
-the stage both; and `ForceBrainGraph.tsx` no longer opening the task's popover on a run click. All
-five red-proof-verified with vitest goldens and the guard `tests/ui_contracts/test_run_detail_wiring.py`.
-Ample context remained throughout this round; no session-limit pressure at any point.
+This round booked round 4's PASS, recorded DECISION F023 D5, and landed T003's first part, the
+L3 evidence panel: `EvidencePanel.tsx` with its binding CSS whose raw shadow becomes the token
+`--remedy-shadow-panel`; its tabs from `evidencePanel.ts`, only the open one loading; the run
+detail's Open diff and Why re-pointed at the panel's tabs; `--remedy-dur-base` and three
+`--remedy-z-*` layers transcribed into the app sheet, with the breadcrumbs and the run detail
+moved onto them; two rows of `assumption_log.md`; vitest goldens, the guard
+`tests/ui_contracts/test_evidence_panel_contract.py` and the updated `test_run_detail_wiring.py`,
+all red-proof-verified. Ample context remained throughout this round; no session-limit pressure
+at any point.
 
 ## Range
 
-Review of 12275971..HEAD
+Review of 089551624..HEAD
 
 ## Commits
 
-### 8c48da408 F023 R4 C1a: copy round 4 block and plan payload into .agent/authored/
+### eb1b6e502 F023 R5 C1a: copy round 5 block and plan payload into .agent/authored/
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f023-r4-block.md | +249/-0 | copy of this round's block, verbatim |
-| .agent/authored/f023-r4-plan.md | +36/-0 | copy of the plan.md payload |
+| .agent/authored/f023-r5-block.md | +263/-0 | copy of this round's block, verbatim |
+| .agent/authored/f023-r5-plan.md | +35/-0 | copy of the plan.md payload |
 
-285 insertions by `git show --numstat` — matches the block's expectation exactly; well under the
+298 insertions by `git show --numstat` — matches the block's expectation exactly; well under the
 500-insertion STOP threshold and the 500-line commit cap.
 
-### 8f7b2ce76 F023 R4 C1b: copy round 4 ledger and canvas diffs into .agent/authored/
+### 6d43af1e8 F023 R5 C1b: copy round 5 ledger, token and product diffs into .agent/authored/
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f023-r4-ledger.diff | +66/-0 | copy of the ledger.diff payload |
-| .agent/authored/f023-r4-canvas.diff | +92/-0 | copy of the canvas.diff payload |
+| .agent/authored/f023-r5-ledger.diff | +67/-0 | copy of the ledger.diff payload |
+| .agent/authored/f023-r5-product.diff | +205/-0 | copy of the product.diff payload |
+| .agent/authored/f023-r5-tokens.diff | +56/-0 | copy of the tokens.diff payload |
 
-158 insertions — matches the block's expectation exactly.
+328 insertions — matches the block's expectation exactly.
 
-### fd7ef1a6f F023 R4 C1c: copy round 4 mutation tool into .agent/authored/
+### 031b0f4bb F023 R5 C1c: copy round 5 mutation tool into .agent/authored/
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f023-r4-mutations.py | +178/-0 | copy of the mutations.py payload |
+| .agent/authored/f023-r5-mutations.py | +180/-0 | copy of the mutations.py payload |
 
-178 insertions — matches the block's expectation exactly.
+180 insertions — matches the block's expectation exactly.
 
-### 062177e54 F023 R4 C1d: copy round 4 product modules into .agent/authored/
+### c180f2743 F023 R5 C1d: copy round 5 product modules into .agent/authored/
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f023-r4-runDetailModel.ts | +170/-0 | copy of the runDetailModel.ts payload |
-| .agent/authored/f023-r4-RunDetailPopover.tsx | +89/-0 | copy of the RunDetailPopover.tsx payload |
-| .agent/authored/f023-r4-RunDetailPopover.module.css | +98/-0 | copy of the RunDetailPopover.module.css payload |
+| .agent/authored/f023-r5-EvidencePanel.module.css | +94/-0 | copy of the EvidencePanel.module.css payload |
+| .agent/authored/f023-r5-EvidencePanel.tsx | +100/-0 | copy of the EvidencePanel.tsx payload |
+| .agent/authored/f023-r5-evidencePanel.ts | +27/-0 | copy of the evidencePanel.ts payload |
 
-357 insertions — matches the block's expectation exactly.
+221 insertions — matches the block's expectation exactly.
 
-### 28df59608 F023 R4 C1e: copy round 4 test payloads into .agent/authored/
+### b8eeea430 F023 R5 C1e: copy round 5 test payloads into .agent/authored/
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f023-r4-runDetailModel.test.ts | +161/-0 | copy of the runDetailModel.test.ts payload |
-| .agent/authored/f023-r4-test_run_detail_wiring.py | +68/-0 | copy of the test_run_detail_wiring.py payload |
+| .agent/authored/f023-r5-evidencePanel.test.ts | +51/-0 | copy of the evidencePanel.test.ts payload |
+| .agent/authored/f023-r5-test_evidence_panel_contract.py | +105/-0 | copy of the test_evidence_panel_contract.py payload |
 
-229 insertions — matches the block's expectation exactly.
+156 insertions — matches the block's expectation exactly.
 
-### 4c3845203 F023 R4 C2: book round 3's PASS, record D4, advance the plan
+### 8dc1a16b5 F023 R5 C2: book round 4's PASS, record D5, advance the plan
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/decisions.md | +48/-0 | DECISION F023 D4 appended |
-| .agent/live_review.md | +2/-0 | Gate: F023 R3 entry appended |
-| .agent/plan.md | +13/-14 | rewritten to the plan.md payload |
+| .agent/decisions.md | +49/-0 | DECISION F023 D5 appended |
+| .agent/live_review.md | +2/-0 | Gate: F023 R4 entry appended |
+| .agent/plan.md | +12/-13 | rewritten to the plan.md payload |
 
 `git apply --check` on ledger.diff: exit 0. `git apply`: exit 0. Insertions/deletions by `git show
---numstat`: 48/0 decisions.md, 2/0 live_review.md, 13/14 plan.md — matches the block's expectation
+--numstat`: 49/0 decisions.md, 2/0 live_review.md, 12/13 plan.md — matches the block's expectation
 exactly.
 
-### 1a5117b47 F023 R4 C3: show the L2 run detail beside the run the camera centred
+### 057da273b F023 R5 C3: open the L3 evidence panel with its lazy tabs on layer tokens
 | Path | +/- | Reason |
 |---|---|---|
-| apps/ui/src/components/graph/BrainGraphStage.tsx | +20/-0 | mounts `RunDetailPopover` for the focused L2/L3 run, computed from the model, and takes `serverToken`/`onOpenDiff` props |
-| apps/ui/src/components/graph/ForceBrainGraph.tsx | +3/-0 | a run click no longer also selects its task, via `isZoomRunKind` guard |
-| apps/ui/src/components/graph/RunDetailPopover.module.css | +98/-0 | new file — the popover's stylesheet |
-| apps/ui/src/components/graph/RunDetailPopover.tsx | +89/-0 | new file — the popover reading the rounds door, with Open diff, Why and disabled Rerun |
-| apps/ui/src/components/graph/runDetailModel.ts | +170/-0 | new file — pure words for a run's verdict, round, tokens, duration and retries |
-| apps/ui/src/components/shell/RemedyShell.tsx | +1/-1 | hands the stage `serverToken` and `setOpenDiffTaskId` as `onOpenDiff` |
+| apps/ui/src/components/graph/BrainGraphStage.tsx | +17/-7 | mounts `EvidencePanel`, wires its tabs, re-points Open diff/Why at it |
+| apps/ui/src/components/graph/EvidencePanel.module.css | +94/-0 | new file — the panel's binding CSS, raw shadow becomes `--remedy-shadow-panel` |
+| apps/ui/src/components/graph/EvidencePanel.tsx | +100/-0 | new file — the L3 evidence panel with lazy tabs, only the open one loading |
+| apps/ui/src/components/graph/RunDetailPopover.module.css | +1/-1 | moved onto the transcribed layer tokens |
+| apps/ui/src/components/graph/RunDetailPopover.tsx | +7/-6 | Open diff and Why re-pointed at the panel's tabs |
+| apps/ui/src/components/graph/ZoomBreadcrumbs.module.css | +1/-1 | moved onto the transcribed layer tokens |
+| apps/ui/src/components/graph/evidencePanel.ts | +27/-0 | new file — the panel's tabs |
+| apps/ui/src/components/shell/RemedyShell.tsx | +1/-1 | wiring for the panel |
+| apps/ui/src/styles/tokens.css | +9/-0 | `--remedy-dur-base` and three `--remedy-z-*` layers transcribed |
+| docs/ui/design_reference/assumption_log.md | +2/-0 | two rows recording the transcription assumptions |
+| docs/ui/design_reference/tokens.css | +1/-0 | reference token addition |
+| docs/ui/design_reference/tokens_rules.md | +3/-0 | rule addition for the new tokens |
+| tests/ui_contracts/test_run_detail_wiring.py | +9/-8 | updated for the panel wiring, landed with the product change it follows |
 
-`git apply --check` on canvas.diff: exit 0. `git apply`: exit 0. Insertions by `git show
---numstat`: 20/0, 3/0, 98/0, 89/0, 170/0, 1/1 — matches the block's expectation exactly. All three
-new files `git add`-ed (integrity's `relevant_untracked` check would otherwise fail).
+`git apply --check` on tokens.diff: exit 0. `git apply`: exit 0. `git apply --check` on
+product.diff: exit 0. `git apply`: exit 0. Insertions/deletions by `git show --numstat`: 17/7,
+94/0, 100/0, 1/1, 7/6, 1/1, 27/0, 1/1, 9/0, 2/0, 1/0, 3/0, 9/8 — matches the block's expectation
+exactly. All three new files (`EvidencePanel.tsx`, `EvidencePanel.module.css`, `evidencePanel.ts`)
+`git add`-ed (integrity's `relevant_untracked` check would otherwise fail).
 
-### b7f54134a F023 R4 C4: golden the run detail's words and pin its wiring
+### ad356341d F023 R5 C4: golden the evidence tabs and pin the panel's binding CSS
 | Path | +/- | Reason |
 |---|---|---|
-| apps/ui/src/components/graph/runDetailModel.test.ts | +161/-0 | new file — vitest goldens over the words |
-| tests/ui_contracts/test_run_detail_wiring.py | +68/-0 | new file — Python contract guard for the popover's wiring |
+| apps/ui/src/components/graph/evidencePanel.test.ts | +51/-0 | new file — vitest goldens over the tabs |
+| tests/ui_contracts/test_evidence_panel_contract.py | +105/-0 | new file — Python contract guard for the panel's binding CSS |
 
-Insertions by `git show --numstat`: 161/0, 68/0 — matches the block's expectation exactly. Both
+Insertions by `git show --numstat`: 51/0, 105/0 — matches the block's expectation exactly. Both
 new files `git add`-ed.
 
-### (this commit) F023 R4 C5: rewrite handoff for round 4
+### (this commit) F023 R5 C5: rewrite handoff for round 5
 Self-reference exception per the handback template (a handback cannot table the commit that
 writes it).
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/handoff.md | rewritten | this round-4 handback |
+| .agent/handoff.md | rewritten | this round-5 handback |
 
 ## External actions
 
-- `git worktree add --detach .remedy-wt/f023-r4-mut b7f54134a` — succeeded, exit 0.
-- `git worktree remove --force .remedy-wt/f023-r4-mut` — succeeded, exit 0 (after G5's mutation
+- `git worktree add --detach .remedy-wt/f023-r5-mut ad356341d` — succeeded, exit 0.
+- `git worktree remove --force .remedy-wt/f023-r5-mut` — succeeded, exit 0 (after G5's mutation
   tool completed and restored every file byte-identical).
 - `git worktree prune` — succeeded, exit 0.
 - `git push origin feature/f023-semantic-zoom-l0-l3` — runs AFTER this commit lands; its real
@@ -131,87 +141,91 @@ $ git status --porcelain
 $ git branch --show-current
 feature/f023-semantic-zoom-l0-l3
 $ git log --oneline -1
-122759717 F023 R3 C5: rewrite handoff for round 3
+089551624 F023 R4 C5: rewrite handoff for round 4
 ```
 All BEFORE ANYTHING ELSE checks passed at round start.
 
 ```
-$ (line count via newline-count, byte count, sha256 of .remedy-wt/f023-r4/block.md)
-lines(newlines)=249 bytes=17064 sha256=34b526ac2c2cab2d766569614048726e9a335eeaae47c1d18b0997c54096c46b
+$ wc -l .remedy-wt/f023-r5/block.md
+263
+$ sha256sum .remedy-wt/f023-r5/block.md
+5665e763d89a41bace97b95d07424da63126448d9a26f9473dcd25f58daf8705
 ```
-Matches both readings given in the delegation message exactly (249 lines,
-34b526ac2c2cab2d766569614048726e9a335eeaae47c1d18b0997c54096c46b) — R-0954.
+Matches both readings given in the delegation message exactly (263 lines,
+5665e763d89a41bace97b95d07424da63126448d9a26f9473dcd25f58daf8705) — R-0954.
 
 ```
 $ git worktree list
 (primary + 15 f015-*-dry/sim r1-r6, 5 f015-*-sim r7-r9, 16 f020-*-dry/sim r1-r8,
  f023-r1-dry, f023-r1-sim, f023-r2-dry, f023-r2-sim, f023-r3-dry, f023-r3-sim,
- f023-r4-dry, f023-r4-sim, 8 f284-*-dry/sim r1-r4, 4 job-* worktrees)
+ f023-r4-dry, f023-r4-sim, f023-r5-dry, f023-r5-sim, 8 f284-*-dry/sim r1-r4, 4 job-* worktrees)
 ```
 
 ```
-$ (line count, byte count, sha256 of each payload under .remedy-wt/f023-r4-payloads/)
-RunDetailPopover.module.css   lines=98  bytes=2008  sha256=f74ec09058c7982e7ee511ca23a63419f3fe13ea384b9291fd008735f69bcf84
-RunDetailPopover.tsx          lines=89  bytes=4111  sha256=a5519df21bcbe2660d0ab340fb5ea40d5f1b56bfffb799b79f51ef55d4df424a
-canvas.diff                   lines=92  bytes=4934  sha256=f3fc5fdfacdf955ac4e6f9c2dbe7e876ef89aa2a11abfcdd3831b3eb947f7f17
-ledger.diff                   lines=66  bytes=10297 sha256=c349bd0042f9ec35d524b6eefb6f8de51e17eb0159b70ec8da8cfbb91c9289e7
-mutations.py                  lines=178 bytes=9141  sha256=4bc82dd21deeadcbef4474eca81670a6102cb880cd07a9f4e56c84a5266c6e9f
-plan.md                       lines=36  bytes=1332  sha256=cc718e99296a0210193f4de7526ace6695b8c68c7dcc8522e3e0038c134f8da1
-runDetailModel.test.ts        lines=161 bytes=7826  sha256=46a97e1e1279681bc3823aa42ca5d739627d58c60d15c4482897dafde7bebe3a
-runDetailModel.ts             lines=170 bytes=8019  sha256=a0f3e15c091ca07bd03fe43e803224154b7c051456fbe093e2ede3c737ad127f
-test_run_detail_wiring.py     lines=68  bytes=3505  sha256=6c48ca4ba0739e49f712f548fc49e426242476d0a3f342f8221329860f65d34a
+$ (line count, byte count, sha256 of each payload under .remedy-wt/f023-r5-payloads/)
+EvidencePanel.module.css        lines=94  bytes=2229  sha256=2b3809057a94cb1306238240c27e049347e0001496ef20e61c3c34e6efe04aa0
+EvidencePanel.tsx               lines=100 bytes=4534  sha256=840048b2d56e3d84a7b5c5ec05bfe682566dcb9faac691791c4623022d0ad076
+evidencePanel.test.ts           lines=51  bytes=2114  sha256=59bb66c45e47d8f907fc7c83893e3a48a7c2ba12a2ff3c00b0f24e49ddf035d6
+evidencePanel.ts                lines=27  bytes=1499  sha256=c8b6c24d221c917b42974942c2386dbc40c12e296087b97716323ad2091190a1
+ledger.diff                     lines=67  bytes=10586 sha256=ec5b4c8ea90f81b64e2bc58c7a0e6d94102214bdffa0f21166f6dc15c4179b1b
+mutations.py                    lines=180 bytes=8869  sha256=b7a5d91a160cec5065a3293e59ae1c03b939ab933bd8efa18cea99efbcf82844
+plan.md                         lines=35  bytes=1328  sha256=4ecf52754521e2d2d582372c80078a5ece01b2041fd9a32154a04faf05ce9202
+product.diff                    lines=205 bytes=11102 sha256=4d63a3e91f668cb26ecffd67deed3c0e7f419e4c4c1c7cd13d36799428dffdce
+test_evidence_panel_contract.py lines=105 bytes=5170  sha256=9a8a79fe545a4a9853575d2a677d95d3009b5ff43f006d0d5d393ab36eafe5cd
+tokens.diff                     lines=56  bytes=5624  sha256=336fa418a5ca5eef859370ff9a039a12ec9441f6e1f075fa446706ae30b67f27
 ```
-All 9 match the PAYLOADS table exactly (G1).
+All 10 match the PAYLOADS table exactly (G1).
 
 ```
-$ (compare each committed .agent/authored/f023-r4-* blob, read with `git show <commit>:<path>`,
+$ (compare each committed .agent/authored/f023-r5-* blob, read with `git show <commit>:<path>`,
    against its source, plus the block copy)
-f023-r4-block.md                       @ 8c48da408: IDENTICAL (sha 34b526ac...)
-f023-r4-plan.md                        @ 8c48da408: IDENTICAL (sha cc718e99...)
-f023-r4-ledger.diff                    @ 8f7b2ce76: IDENTICAL (sha c349bd00...)
-f023-r4-canvas.diff                    @ 8f7b2ce76: IDENTICAL (sha f3fc5fdf...)
-f023-r4-mutations.py                   @ fd7ef1a6f: IDENTICAL (sha 4bc82dd2...)
-f023-r4-runDetailModel.ts              @ 062177e54: IDENTICAL (sha a0f3e15c...)
-f023-r4-RunDetailPopover.tsx           @ 062177e54: IDENTICAL (sha a5519df2...)
-f023-r4-RunDetailPopover.module.css    @ 062177e54: IDENTICAL (sha f74ec090...)
-f023-r4-runDetailModel.test.ts         @ 28df59608: IDENTICAL (sha 46a97e1e...)
-f023-r4-test_run_detail_wiring.py      @ 28df59608: IDENTICAL (sha 6c48ca4b...)
+f023-r5-block.md                       @ eb1b6e502: IDENTICAL (sha 5665e763...)
+f023-r5-plan.md                        @ eb1b6e502: IDENTICAL (sha 4ecf5275...)
+f023-r5-ledger.diff                    @ 6d43af1e8: IDENTICAL (sha ec5b4c8e...)
+f023-r5-tokens.diff                    @ 6d43af1e8: IDENTICAL (sha 336fa418...)
+f023-r5-product.diff                   @ 6d43af1e8: IDENTICAL (sha 4d63a3e9...)
+f023-r5-mutations.py                   @ 031b0f4bb: IDENTICAL (sha b7a5d91a...)
+f023-r5-EvidencePanel.tsx              @ c180f2743: IDENTICAL (sha 840048b2...)
+f023-r5-EvidencePanel.module.css       @ c180f2743: IDENTICAL (sha 2b380905...)
+f023-r5-evidencePanel.ts               @ c180f2743: IDENTICAL (sha c8b6c24d...)
+f023-r5-evidencePanel.test.ts          @ b8eeea430: IDENTICAL (sha 59bb66c4...)
+f023-r5-test_evidence_panel_contract.py @ b8eeea430: IDENTICAL (sha 9a8a79fe...)
 ```
-All 10 BYTE-IDENTICAL against their sources (G1).
+All 11 BYTE-IDENTICAL against their sources (G1).
 
 ```
-$ git apply --check .remedy-wt/f023-r4-payloads/ledger.diff; echo $?
+$ git apply --check .remedy-wt/f023-r5-payloads/ledger.diff; echo $?
 0
-$ git apply .remedy-wt/f023-r4-payloads/ledger.diff; echo $?
+$ git apply .remedy-wt/f023-r5-payloads/ledger.diff; echo $?
 0
 ```
 
 ```
-$ (bytes/sha256 of the 3 ledger-touched files, read with `git show 4c3845203:<path>`)
-.agent/live_review.md: bytes=301099  sha256=63485c3552ff84f3c79668d68aae45cdbdc1cd748011d92e26a69cd37c5c46d3 match=True
-.agent/decisions.md:   bytes=2059971 sha256=6801f73ecbee7fbf09d10b12597f0f8a2f4ad9dbef7a21a282cd8f60e8c90d2c match=True
-.agent/plan.md:        bytes=1332    sha256=cc718e99296a0210193f4de7526ace6695b8c68c7dcc8522e3e0038c134f8da1 match=True
+$ (bytes/sha256 of the 3 ledger-touched files, read with `git show 8dc1a16b5:<path>`)
+.agent/live_review.md: bytes=303052  sha256=81b99e003ec27f6bd4bfe185b7561951200d88e205bc23d8d4aa12a699b1ed46 match=True
+.agent/decisions.md:   bytes=2064050 sha256=d0db445b0605efc2a90ea347593f7119a4c9d7890d79b3667de058e417c83cea match=True
+.agent/plan.md:        bytes=1328    sha256=4ecf52754521e2d2d582372c80078a5ece01b2041fd9a32154a04faf05ce9202 match=True
 ```
 All 3 match the block's G2 table exactly.
 
 ```
 $ open_finding_ids(text) from scripts/rotate_live_review.py, over .agent/live_review.md's TEXT
-  at 12275971 and at 4c3845203 (C2)
-12275971 open ids: ['R-1008']
-4c3845203 (C2) open ids: ['R-1008']
+  at 089551624 and at 8dc1a16b5 (C2)
+089551624 open ids: ['R-1008']
+8dc1a16b5 (C2) open ids: ['R-1008']
 ```
 Reads R-1008 alone at both, matching the block's stated reading exactly (G2).
 
 ```
 $ last non-empty line of .agent/live_review.md at C2:
-"Gate: F023 R3 — the F023 round 3 entry: the booking of round 2, DECISION F023 D3, and the named
-prerequisite of the L2 run detail, the read route serving each round of a task's latest run with
-its client door. VERDICT PASS, NO DEVIATION DECLARED. ..."
+"Gate: F023 R4 — the F023 round 4 entry: the booking of round 3, DECISION F023 D4, and T002's
+second half, the L2 run detail with its words, its popover reading the rounds door, and its
+buttons. VERDICT PASS, NO DEVIATION DECLARED. ..."
 ```
-Begins `Gate: F023 R3 — ` exactly, as required (G2).
+Begins `Gate: F023 R4 — ` exactly, as required (G2).
 
 ```
-$ git diff --name-only 28df59608 4c3845203
+$ git diff --name-only b8eeea430 8dc1a16b5
 .agent/decisions.md
 .agent/live_review.md
 .agent/plan.md
@@ -220,33 +234,47 @@ Names exactly the paths of the G2 table — matches exactly (G2).
 
 ```
 $ (bytes/sha256 of the product and test files, read with `git show <commit>:<path>`)
-1a5117b47 apps/ui/src/components/graph/BrainGraphStage.tsx:               bytes=5503  match=True
-1a5117b47 apps/ui/src/components/graph/ForceBrainGraph.tsx:               bytes=19621 match=True
-1a5117b47 apps/ui/src/components/shell/RemedyShell.tsx:                   bytes=13170 match=True
-1a5117b47 apps/ui/src/components/graph/runDetailModel.ts:                 bytes=8019  match=True
-1a5117b47 apps/ui/src/components/graph/RunDetailPopover.tsx:              bytes=4111  match=True
-1a5117b47 apps/ui/src/components/graph/RunDetailPopover.module.css:       bytes=2008  match=True
-b7f54134a apps/ui/src/components/graph/runDetailModel.test.ts:            bytes=7826  match=True
-b7f54134a tests/ui_contracts/test_run_detail_wiring.py:                   bytes=3505  match=True
+057da273b apps/ui/src/styles/tokens.css:                                  bytes=4700  match=True
+057da273b docs/ui/design_reference/tokens.css:                            bytes=7204  match=True
+057da273b docs/ui/design_reference/tokens_rules.md:                       bytes=3370  match=True
+057da273b docs/ui/design_reference/assumption_log.md:                     bytes=7911  match=True
+057da273b apps/ui/src/components/graph/BrainGraphStage.tsx:               bytes=6024  match=True
+057da273b apps/ui/src/components/graph/RunDetailPopover.tsx:              bytes=4177  match=True
+057da273b apps/ui/src/components/graph/RunDetailPopover.module.css:       bytes=2030  match=True
+057da273b apps/ui/src/components/graph/ZoomBreadcrumbs.module.css:        bytes=1098  match=True
+057da273b apps/ui/src/components/shell/RemedyShell.tsx:                   bytes=13139 match=True
+057da273b tests/ui_contracts/test_run_detail_wiring.py:                   bytes=3550  match=True
+057da273b apps/ui/src/components/graph/EvidencePanel.tsx:                 bytes=4534  match=True
+057da273b apps/ui/src/components/graph/EvidencePanel.module.css:          bytes=2229  match=True
+057da273b apps/ui/src/components/graph/evidencePanel.ts:                  bytes=1499  match=True
+ad356341d apps/ui/src/components/graph/evidencePanel.test.ts:             bytes=2114  match=True
+ad356341d tests/ui_contracts/test_evidence_panel_contract.py:             bytes=5170  match=True
 ```
-All 8 match the block's G3 table exactly.
+All 15 match the block's G3 table exactly.
 
 ```
-$ git diff --name-only 4c3845203 1a5117b47
+$ git diff --name-only 8dc1a16b5 057da273b
 apps/ui/src/components/graph/BrainGraphStage.tsx
-apps/ui/src/components/graph/ForceBrainGraph.tsx
+apps/ui/src/components/graph/EvidencePanel.module.css
+apps/ui/src/components/graph/EvidencePanel.tsx
 apps/ui/src/components/graph/RunDetailPopover.module.css
 apps/ui/src/components/graph/RunDetailPopover.tsx
-apps/ui/src/components/graph/runDetailModel.ts
+apps/ui/src/components/graph/ZoomBreadcrumbs.module.css
+apps/ui/src/components/graph/evidencePanel.ts
 apps/ui/src/components/shell/RemedyShell.tsx
-$ git diff --name-only 1a5117b47 b7f54134a
-apps/ui/src/components/graph/runDetailModel.test.ts
+apps/ui/src/styles/tokens.css
+docs/ui/design_reference/assumption_log.md
+docs/ui/design_reference/tokens.css
+docs/ui/design_reference/tokens_rules.md
 tests/ui_contracts/test_run_detail_wiring.py
+$ git diff --name-only 057da273b ad356341d
+apps/ui/src/components/graph/evidencePanel.test.ts
+tests/ui_contracts/test_evidence_panel_contract.py
 ```
 Both name exactly the paths C3 and C4 list — matches exactly (G3).
 
 ```
-$ python3 -m ruff check tests/ui_contracts/test_run_detail_wiring.py
+$ python3 -m ruff check tests/ui_contracts/test_evidence_panel_contract.py tests/ui_contracts/test_run_detail_wiring.py
 All checks passed!
 REAL_EXIT=0
 ```
@@ -264,14 +292,14 @@ SKIPPED [1] tests/ui_contracts/test_graph_architecture.py:484: D3 quarantine (F2
 SKIPPED [1] tests/ui_contracts/test_ux_quality.py:507: D3 quarantine (F252)
 SKIPPED [1] tests/ui_contracts/test_ux_quality.py:543: D3 quarantine (F252)
 SKIPPED [1] tests/test_agent_tooling.py:43: D12 quarantine (F252)
-1513 passed, 5 skipped in 85.45s (0:01:25)
+1520 passed, 5 skipped in 85.88s (0:01:25)
 REAL_EXIT=0
 ```
 Exit 0. All 5 skips are the pre-existing D3/D12 quarantine nodes; none of the four toolchain nodes
 the block names (the two eslint nodes in `test_ui_lint.py`, the `tsc --noEmit` node in
 `test_dashboard_contract.py`, the vitest node in `test_test_runner.py`) appear in the `-rs`
 summary, confirming each PASSED rather than skipped, as the block requires (G4). The count differs
-from the reviewer's sim reading (1466 passed, 10 skipped, golden path excluded) because this run,
+from the reviewer's sim reading (1473 passed, 10 skipped, golden path excluded) because this run,
 in the primary checkout, includes the golden path and runs the four toolchain nodes for real
 instead of skipping them, exactly as the block anticipates.
 
@@ -290,106 +318,111 @@ REAL_EXIT=0
 All six checks `pass`, `fail_count` 0 — matches exactly (G4).
 
 ```
-$ git worktree add --detach .remedy-wt/f023-r4-mut b7f54134a
-Preparing worktree (detached HEAD b7f54134a)
+$ git worktree add --detach .remedy-wt/f023-r5-mut ad356341d
+Preparing worktree (detached HEAD ad356341d)
 REAL_EXIT=0
-$ python3 -B .remedy-wt/f023-r4-payloads/mutations.py /home/decodeux/Repos/remedy/.remedy-wt/f023-r4-mut
-CONTROL FIRST: vitest exit=0 failed=0 passed=13 | guard exit=0 failed=0 passed=5
-m1  (a round the ledger logged without a review is not counted): v3 g0 caught=True restored=True
-m2  (an earlier run is taken for the latest): v2 g0 caught=True restored=True
-m3  (the reviewer's tokens are filled from the builder's): v2 g0 caught=True restored=True
-m4  (a running run is described from the report): v1 g0 caught=True restored=True
-m5  (needs repair reads as failed): v1 g0 caught=True restored=True
-m6  (a test run claims a timing): v1 g0 caught=True restored=True
-m7  (Why opens a reviewer prompt of another round): v1 g0 caught=True restored=True
-m8  (a long duration is written in seconds only): v2 g0 caught=True restored=True
-m9  (a task with no run reads as an unreadable report): v1 g0 caught=True restored=True
-m10 (the detail shows a report read for another task): v0 g1 caught=True restored=True
-m11 (Rerun is enabled): v0 g1 caught=True restored=True
-m12 (the detail becomes a dialog Escape skips): v0 g1 caught=True restored=True
-m13 (the stage looks the run up in the filtered view): v0 g1 caught=True restored=True
-m14 (a run click opens its task's popover too): v0 g1 caught=True restored=True
-m15 (the shell hands the stage no token): v0 g1 caught=True restored=True
-CONTROL LAST: vitest exit=0 failed=0 passed=13 | guard exit=0 failed=0 passed=5
+$ python3 -B .remedy-wt/f023-r5-payloads/mutations.py /home/decodeux/Repos/remedy/.remedy-wt/f023-r5-mut
+CONTROL FIRST: vitest exit=0 failed=0 passed=4 | guard exit=0 failed=0 passed=12
+m1  (the tabs lose the feature's order): v1 g0 caught=True restored=True
+m2  (the trace lists every task's prompts): v2 g0 caught=True restored=True
+m3  (the reviewer's prompt is listed before the builder's): v1 g0 caught=True restored=True
+m4  (the panel's shadow is a raw colour again): v0 g1 caught=True restored=True
+m5  (the panel's layer is a number): v0 g2 caught=True restored=True
+m6  (reduced motion still slides the panel in): v0 g1 caught=True restored=True
+m7  (the diff loads whichever tab is open): v0 g1 caught=True restored=True
+m8  (a diff read for another task is shown): v0 g1 caught=True restored=True
+m9  (the panel becomes a dialog Escape skips): v0 g1 caught=True restored=True
+m10 (the panel opens at L2): v0 g1 caught=True restored=True
+m11 (the run detail stays open at L3): v0 g2 caught=True restored=True
+m12 (Open diff opens the prompt tab): v0 g1 caught=True restored=True
+m13 (the app sheet's slide duration drifts from the reference): v0 g1 caught=True restored=True
+m14 (the reference's panel shadow drifts from the app sheet): v0 g1 caught=True restored=True
+m15 (the breadcrumbs' layer is a number again): v0 g1 caught=True restored=True
+CONTROL LAST: vitest exit=0 failed=0 passed=4 | guard exit=0 failed=0 passed=12
 ALL MUTATIONS CAUGHT AND RESTORED CLEANLY: True
 REAL_EXIT=0
 ```
 Every mutation's vitest-failed / guard-failed count matches the block's stated reading exactly
-(m1 v3g0 through m15 v0g1), both controls green as stated (control first/last), every `restored
+(m1 v1g0 through m15 v0g1), both controls green as stated (control first/last), every `restored
 byte-identical` reading True, and the final line reads exactly `ALL MUTATIONS CAUGHT AND RESTORED
 CLEANLY: True` — matches the block's G5 table exactly.
 
 ```
-$ git worktree remove --force .remedy-wt/f023-r4-mut; echo $?
+$ git worktree remove --force .remedy-wt/f023-r5-mut; echo $?
 0
 $ git worktree prune; echo $?
 0
 $ git worktree list
-(primary + the same 43 reviewer worktrees + 4 job-* worktrees as before; the mut worktree gone)
+(primary + the same 45 reviewer worktrees + 4 job-* worktrees as before; the mut worktree gone)
 ```
 
 ## Closure pins
 
-None — this round does not close F023 (T002's second half only, of a multi-slice feature). No
+None — this round does not close F023 (T003's first part only, of a multi-slice feature). No
 package, no evidence job, no accepted head at this round.
 
 ## Authored-text proofs
 
-All 10 authored copies under `.agent/authored/f023-r4-*` (the block copy plus the nine payload
+All 11 authored copies under `.agent/authored/f023-r5-*` (the block copy plus the ten payload
 copies) were built by `shutil.copyfile` from source to destination — never retyped, never edited.
 Each was read back with `git show <commit>:<path>` and compared byte for byte against its source:
-all 10 BYTE-IDENTICAL (G1 above). `ledger.diff` was applied with `git apply` after `git apply
+all 11 BYTE-IDENTICAL (G1 above). `ledger.diff` was applied with `git apply` after `git apply
 --check` passed (exit 0 both), never retyped or edited; the resulting 3 files were verified by
 byte count and sha256 against the block's G2 table — MATCH. `.agent/plan.md` was rewritten whole
 via `shutil.copyfile` from the payload source — never retyped — and confirmed MATCH against both
-the PAYLOADS table and the G2 table. `canvas.diff` was applied with `git apply` after `git apply
---check` passed (exit 0 both), never retyped or edited; the resulting edited files
-(`BrainGraphStage.tsx`, `ForceBrainGraph.tsx`, `RemedyShell.tsx`) plus `runDetailModel.ts`,
-`RunDetailPopover.tsx`, `RunDetailPopover.module.css`, `runDetailModel.test.ts` and
-`test_run_detail_wiring.py` (each copied whole via `shutil.copyfile`) were all confirmed MATCH
-against the PAYLOADS table and the G3 table.
+the PAYLOADS table and the G2 table. `tokens.diff` and `product.diff` were each applied with `git
+apply` after `git apply --check` passed (exit 0 both), never retyped or edited; the resulting
+edited files (`tokens.css` x2, `tokens_rules.md`, `assumption_log.md`, `BrainGraphStage.tsx`,
+`RunDetailPopover.tsx`, `RunDetailPopover.module.css`, `ZoomBreadcrumbs.module.css`,
+`RemedyShell.tsx`, `test_run_detail_wiring.py`) plus `EvidencePanel.tsx`,
+`EvidencePanel.module.css`, `evidencePanel.ts`, `evidencePanel.test.ts` and
+`test_evidence_panel_contract.py` (each copied whole via `shutil.copyfile`) were all confirmed
+MATCH against the PAYLOADS table and the G3 table.
 
 ## Deviations & assumptions
 
 None. Every commit landed in the block's stated order: C1a, C1b, C1c, C1d, C1e, C2, C3, C4, then
 C5 (this handback), exactly as ordered. No payload was edited, retyped or repaired. G1 through G5
 ran before C5 was written, as required. The round's tracked path set through C4 was exactly the
-ten `.agent/authored/f023-r4-*` copies, `.agent/live_review.md`, `.agent/decisions.md`,
-`.agent/plan.md`, the three paths `canvas.diff` edited (`BrainGraphStage.tsx`,
-`ForceBrainGraph.tsx`, `RemedyShell.tsx`), and the five new files the payloads name
-(`runDetailModel.ts`, `RunDetailPopover.tsx`, `RunDetailPopover.module.css`,
-`runDetailModel.test.ts`, `test_run_detail_wiring.py`) — confirmed by `git diff --name-only
-12275971 HEAD` before this commit; C5 adds exactly `.agent/handoff.md`. Nothing was merged this
-round: no `gh pr merge`, no `gh pr create`, no checkout of `main`, no branch deletion, no
-force-push, no `git stash` — per constraint 5. The worktree G5 added (`.remedy-wt/f023-r4-mut`)
-was removed as G5's last action; every other reviewer worktree (`f015-r*`, `f020-r*`,
-`f023-r1-sim`, `f023-r1-dry`, `f023-r2-sim`, `f023-r2-dry`, `f023-r3-sim`, `f023-r3-dry`,
-`f023-r4-sim`, `f023-r4-dry`, `f284-r*`) and every `job-*` worktree/branch were left untouched —
-per constraint 6. The full suite was not run — per constraint 7, this feature's one full-suite run
-belongs to its closure.
+eleven `.agent/authored/f023-r5-*` copies, `.agent/live_review.md`, `.agent/decisions.md`,
+`.agent/plan.md`, the four paths `tokens.diff` edited (`apps/ui/src/styles/tokens.css`,
+`docs/ui/design_reference/tokens.css`, `docs/ui/design_reference/tokens_rules.md`,
+`docs/ui/design_reference/assumption_log.md`), the six paths `product.diff` edited
+(`BrainGraphStage.tsx`, `RunDetailPopover.tsx`, `RunDetailPopover.module.css`,
+`ZoomBreadcrumbs.module.css`, `RemedyShell.tsx`, `test_run_detail_wiring.py`), and the five new
+files the payloads name (`EvidencePanel.tsx`, `EvidencePanel.module.css`, `evidencePanel.ts`,
+`evidencePanel.test.ts`, `test_evidence_panel_contract.py`) — confirmed by `git diff --name-only
+089551624 HEAD` before this commit, which read exactly those 28 distinct paths. C5 adds exactly
+`.agent/handoff.md`. Nothing was merged this round: no `gh pr merge`, no `gh pr create`, no
+checkout of `main`, no branch deletion, no force-push, no `git stash` — per constraint 5. The
+worktree G5 added (`.remedy-wt/f023-r5-mut`) was removed as G5's last action; every other reviewer
+worktree (`f015-r*`, `f020-r*`, `f023-r1-sim`, `f023-r1-dry`, `f023-r2-sim`, `f023-r2-dry`,
+`f023-r3-sim`, `f023-r3-dry`, `f023-r4-sim`, `f023-r4-dry`, `f023-r5-sim`, `f023-r5-dry`,
+`f284-r*`) and every `job-*` worktree/branch were left untouched — per constraint 6. The full
+suite was not run — per constraint 7, this feature's one full-suite run belongs to its closure.
 
 ## Item-status table
 
 | Item | Status | Reason |
 |---|---|---|
-| C1a | done | 285 insertions, matches block's expectation exactly; well under the 500-insertion STOP threshold and the 500-line cap |
-| C1b | done | 158 insertions, matches exactly |
-| C1c | done | 178 insertions, matches exactly |
-| C1d | done | 357 insertions, matches exactly |
-| C1e | done | 229 insertions, matches exactly |
-| C2 | done | ledger.diff apply --check and apply both exit 0; 48/0, 2/0, 13/14 insertions/deletions match exactly |
-| C3 | done | canvas.diff apply --check and apply both exit 0; 20/0, 3/0, 98/0, 89/0, 170/0, 1/1 insertions match exactly; all three new files `git add`-ed |
-| C4 | done | 161/0, 68/0 insertions match exactly; both new files `git add`-ed |
-| G1 | done | all 9 payload digests and 10 authored-copy comparisons matched |
+| C1a | done | 298 insertions, matches block's expectation exactly; well under the 500-insertion STOP threshold and the 500-line cap |
+| C1b | done | 328 insertions, matches exactly |
+| C1c | done | 180 insertions, matches exactly |
+| C1d | done | 221 insertions, matches exactly |
+| C1e | done | 156 insertions, matches exactly |
+| C2 | done | ledger.diff apply --check and apply both exit 0; 49/0, 2/0, 12/13 insertions/deletions match exactly |
+| C3 | done | tokens.diff and product.diff apply --check and apply all exit 0; 17/7, 94/0, 100/0, 1/1, 7/6, 1/1, 27/0, 1/1, 9/0, 2/0, 1/0, 3/0, 9/8 insertions match exactly; all three new files `git add`-ed |
+| C4 | done | 51/0, 105/0 insertions match exactly; both new files `git add`-ed |
+| G1 | done | all 10 payload digests and 11 authored-copy comparisons matched |
 | G2 | done | all 3 named file digests matched; open set R-1008 alone at both; last-line prefix matched; diff --name-only matched |
-| G3 | done | all 8 named file digests matched; both diff --name-only checks matched; ruff clean |
-| G4 | done | 1513 passed, 5 skipped (all pre-existing quarantine, none of the 4 named toolchain nodes), exit 0; integrity check 6/6 pass, fail_count 0 |
+| G3 | done | all 15 named file digests matched; both diff --name-only checks matched; ruff clean |
+| G4 | done | 1520 passed, 5 skipped (all pre-existing quarantine, none of the 4 named toolchain nodes), exit 0; integrity check 6/6 pass, fail_count 0 |
 | G5 | done | all 15 mutations caught with exact v/g-count matches to the block's table, both controls green, all restores byte-identical, final line matches exactly |
 | G6 | pending | runs after this commit (git status, git log, worktree list, push, gh pr list); reported in the reply |
 | PUSH | pending | `git push origin feature/f023-semantic-zoom-l0-l3`, reported in the reply |
 
 ## Next
 
-Phase 1 rule 1: read `.agent/STOP` from disk. Then the review of round 4. Then T003 — the L3
-evidence panel with its lazy tabs, Open diff and Why moved onto its tabs, and the deep links. Open
-findings: 1. Operator questions open: 3.
+Phase 1 rule 1: read `.agent/STOP` from disk. Then the review of round 5. Then T003's second
+part — deep links that restore the zoom state, and cluster expansion at the focused task with
+focus following into it. Open findings: 1. Operator questions open: 3.
