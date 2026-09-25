@@ -209,7 +209,7 @@ export function RemedyShell({ dashboard, serverToken, selectedNodeId, onSelectNo
         </main>
         <RightLivePanel dashboard={dashboard} serverToken={serverToken} onSelectNode={onSelectNode} streamStatus={stream.status} replay={scrub.state.mode === "scrubbed"} recent={stream.recent} recentDropped={stream.recentDropped} onOpenLessons={() => setLessonsOpen(true)} />
       </div>
-      {selectedNode && <DetailPopover dashboard={dashboard} selectedNode={selectedNode} selectedPromptId={selectedPromptId} onClose={() => onSelectNode(null)} onOpenDiff={setOpenDiffTaskId} />}
+      {selectedNode && <DetailPopover dashboard={dashboard} selectedNode={selectedNode} selectedPromptId={selectedPromptId} onClose={() => onSelectNode(null)} onOpenDiff={setOpenDiffTaskId} serverToken={serverToken} />}
       {/* THE DIFF PANEL. A sibling of the popover rather than a child of
           `<main>`, which the main-column guard holds to exactly four children.
           NO CLASS ON THE WRAPPER, for the same reason `DiffView`'s own root

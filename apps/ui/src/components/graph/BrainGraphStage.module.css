@@ -69,3 +69,43 @@
   cursor: pointer;
 }
 .scrubLive:focus-visible { outline: 2px solid var(--remedy-blue-strong); outline-offset: 2px; }
+
+/* The PAUSE banner (DECISION F025 D4): the scrub banner's calm cousin, offset
+   below it so the two can share the stage's top edge without overlapping when
+   a scrubbed view is also paused. Its badge takes --remedy-orange-400, the
+   pause mark's own colour (assumption_log.md), in place of the scrub banner's
+   replay violet. */
+.pauseBanner {
+  position: absolute;
+  top: 60px;
+  left: 50%;
+  z-index: var(--remedy-z-stage-ui);
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 8px 6px 6px;
+  border-radius: var(--remedy-radius-pill);
+  border: 1px solid var(--remedy-orange-400);
+  background: var(--remedy-glass-bg-strong);
+  box-shadow: var(--remedy-shadow-soft);
+  font-size: 13px;
+  color: var(--remedy-ink);
+}
+.pauseBadge {
+  padding: 2px 8px;
+  border-radius: var(--remedy-radius-pill);
+  background: var(--remedy-orange-400);
+  color: var(--remedy-card);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+.pauseBanner code {
+  padding: 2px 6px;
+  border-radius: var(--remedy-radius-sm);
+  background: var(--remedy-bg-2);
+  color: var(--remedy-ink);
+  font-family: var(--remedy-font-mono);
+  font-size: 12px;
+}
