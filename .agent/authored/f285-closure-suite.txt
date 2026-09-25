@@ -1,0 +1,13 @@
+F285 R4 C6 — the closure suite
+
+Command:
+bash -c 'python3 -m pytest -n auto -q 2>&1 | tee .remedy-wt/f285-r4-worker/full-suite.txt | tail -5; echo "REAL_EXIT=${PIPESTATUS[0]}"'
+
+Real exit code: 0
+
+Wall time: 183.68s (0:03:03), confirmed by date -u +%s before/after: ~184s.
+
+Summary line:
+19449 passed, 20 skipped, 1 warning in 183.68s (0:03:03)
+
+Bad node ids (failed plus errors): NONE
