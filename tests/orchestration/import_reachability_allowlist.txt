@@ -171,6 +171,7 @@ packages.orchestration.orchestrator_move_schema
 packages.orchestration.patch_apply
 packages.orchestration.patch_intent
 packages.orchestration.path_utils
+packages.orchestration.pause_control
 packages.orchestration.permissions
 packages.orchestration.pingpong_evidence
 packages.orchestration.pingpong_job

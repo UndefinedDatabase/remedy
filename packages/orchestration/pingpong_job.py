@@ -2237,6 +2237,50 @@ def _gate_job_definition_of_done(job: JobPlan) -> str:
 
 
 # ---------------------------------------------------------------------------
+# F025 S2 — the pause, read at the runner's own safe points beside the stop
+# ---------------------------------------------------------------------------
+
+#: S2: the marker `_stop_check`'s pause read stamps onto a signal's `reason`, so a
+#: park survives the round trip through `pingpong_loop`'s stop_check() interface,
+#: which copies only `request_id`/`reason`/`source`/`requested_at` — never the rich
+#: `_PauseSignal` object — into the run result. The IN-TASK safe point's caller
+#: recognises "this halt was a pause, not a stop" by this prefix alone, then
+#: RE-DERIVES the rich signal by asking `pause_control` again (cheap: one read).
+_PAUSE_REASON_PREFIX = "operator_pause: "
+#: Same trick for a `PauseControlError` surfaced at a safe point (S2's "any safe
+#: point... dispatches nothing").
+_PAUSE_ERROR_REASON_PREFIX = "pause_control_error: "
+
+
+@dataclass(frozen=True)
+class _PauseSignal:
+    """Duck-compatible with `safe_points.StopSignal` (job_id/request_id/reason/
+    source/requested_at) so `pingpong_loop`'s `stop_check()` consumer halts on it
+    exactly as it halts on a real stop — plus the park-specific fields S3 needs,
+    which that consumer simply never reads. `is_error` marks a `PauseControlError`
+    surfaced here rather than a pause to serve; every caller checks it FIRST.
+    """
+
+    job_id: str
+    request_id: str = ""
+    reason: str = ""
+    source: str = ""
+    requested_at: str = ""
+    scope: str = ""
+    paused_task_ids: tuple[str, ...] = ()
+    withheld_task_ids: tuple[str, ...] = ()
+    is_error: bool = False
+
+
+def _reason_is_pause(reason: str) -> bool:
+    return str(reason or "").startswith(_PAUSE_REASON_PREFIX)
+
+
+def _reason_is_pause_error(reason: str) -> bool:
+    return str(reason or "").startswith(_PAUSE_ERROR_REASON_PREFIX)
+
+
+# ---------------------------------------------------------------------------
 # Sequential job runner (Steps 4829-4830, 4837-4838, 4857-4869)
 # ---------------------------------------------------------------------------
 
@@ -2748,8 +2792,14 @@ def run_job(
                         "every configured limit",
                         job.job_id, exc_info=True,
                     )
-                    return None
-            return None
+                    # S2: the predictive check failing is not a stop and not a
+                    # reason to skip the pause read below it.
+                    return _pause_park_signal(next_task=next_task)
+            # F025 S2: no stop fired — operator, reactive or predictive. ONLY NOW
+            # does the safe point read the pause: the job pause first, then the
+            # task mask over `next_task` (None outside the pre-task safe point,
+            # so the mask is never consulted at pre-work).
+            return _pause_park_signal(next_task=next_task)
         if result.source == "operator":
             return result.operator_signal
         import hashlib as _hl
@@ -2762,6 +2812,81 @@ def run_job(
             reason=result.reason,
             source="budget",
         )
+
+    def _pause_park_signal(*, next_task: TaskEntry | None = None,
+                           in_flight_task: TaskEntry | None = None) -> _PauseSignal | None:
+        """F025 S2's pause read, run only once every stop check above has already
+        found nothing: the job pause first, then the task mask.
+
+        *next_task* is the PRE-TASK reading (the task about to be dispatched);
+        *in_flight_task* is the IN-TASK reading, where the running task counts as
+        PENDING for the mask even though its live status is `running`, because a
+        pause of it sends it back to pending (S2). At most one of the two is ever
+        given a task by its caller.
+
+        Never raises: a `PauseControlError` becomes an `is_error=True` signal, so
+        every safe point that calls this blocks the job the same way (S2: "at any
+        safe point... dispatches nothing").
+        """
+        from packages.orchestration import pause_control as _pc
+        try:
+            job_pause = _pc.pause_requested(job.job_id, control_root_path=_control)
+            if job_pause is not None:
+                return _PauseSignal(
+                    job_id=job.job_id, request_id=job_pause.request_id,
+                    reason=f"{_PAUSE_REASON_PREFIX}{job_pause.reason}",
+                    source=job_pause.source, requested_at=job_pause.requested_at,
+                    scope="job")
+
+            target = next_task if next_task is not None else in_flight_task
+            if target is None:
+                return None
+
+            order_ids = [t.task_id for t in job.tasks]
+            pending_ids = [t.task_id for t in job.tasks if t.status == TASK_PENDING]
+            if in_flight_task is not None and in_flight_task.task_id not in pending_ids:
+                # S2: "the in-flight task counts as pending for this reading,
+                # because it goes back to pending" — added, never replacing the
+                # genuinely pending set.
+                pending_ids = pending_ids + [in_flight_task.task_id]
+
+            paused = _pc.paused_tasks(job.job_id, control_root_path=_control)
+            mask = _pc.withheld_task_ids(
+                order_ids, pending_ids, [p.task_id for p in paused])
+            if target.task_id not in mask.withheld:
+                return None
+
+            # The linear mask withholds from the first paused PENDING id onward,
+            # so whichever task is about to be checked is either directly paused
+            # (the common case) or — in principle, with more than one task paused
+            # at once — downstream of the earliest paused id in plan order. Either
+            # way the trigger named on the park record is a real paused entry.
+            trigger = next((p for p in paused if p.task_id == target.task_id), None)
+            if trigger is None:
+                trigger = next((p for p in paused if p.task_id in mask.paused), None)
+            if trigger is None:
+                return None
+            return _PauseSignal(
+                job_id=job.job_id, request_id=trigger.request_id,
+                reason=f"{_PAUSE_REASON_PREFIX}{trigger.reason}",
+                source=trigger.source, requested_at=trigger.requested_at,
+                scope="task", paused_task_ids=mask.paused, withheld_task_ids=mask.withheld)
+        except _pc.PauseControlError as exc:
+            return _PauseSignal(job_id=job.job_id,
+                                reason=f"{_PAUSE_ERROR_REASON_PREFIX}{exc}",
+                                is_error=True)
+
+    def _block_for_pause_error(signal: _PauseSignal) -> JobPlan:
+        """S2: a `PauseControlError` at any safe point blocks the job right here —
+        dispatching nothing, exactly like a bad budget or a bad snapshot already do."""
+        detail = signal.reason
+        if _reason_is_pause_error(detail):
+            detail = detail[len(_PAUSE_ERROR_REASON_PREFIX):]
+        job.state = JOB_BLOCKED
+        job.error = f"pause_control_error: {detail}"
+        _persist_budget_actuals()
+        _persist_job(job)
+        return job
 
     def _persist_budget_actuals():
         """Persist live counters so they survive stop/resume.
@@ -2806,6 +2931,15 @@ def run_job(
     # and inventing one would predict against a task that may never be reached.
     _pre_stop = _stop_check()
     if _pre_stop is not None:
+        # F025 S2/S3: a PARK is not a stop — nothing of the stop machinery runs for
+        # it (S3). `isinstance` tells the two apart directly; only the IN-TASK safe
+        # point, whose result crosses `pingpong_loop`'s string-only interface, needs
+        # the `_PAUSE_REASON_PREFIX` marker instead (see `_pause_park_signal`).
+        if isinstance(_pre_stop, _PauseSignal):
+            if _pre_stop.is_error:
+                return _block_for_pause_error(_pre_stop)
+            _persist_budget_actuals()
+            return _park_job(job, _pre_stop, task=None, control_root_path=_control)
         if not _episode_snapshot_bound_ok(job):
             _capture_input_snapshot(job, phase=_PHASE_PRE_WORK_STOP)
         _persist_budget_actuals()
@@ -2814,6 +2948,27 @@ def run_job(
             return _stop_job(job, _pre_stop, task=None, control_root_path=_control)
         except StopFinalizationError:
             return job
+
+    # F025 S5: THE RELAUNCH IS THE RESUME. Beside the pre-work stop check above
+    # (which already re-parks a job-scope pause whose settle previously failed, or
+    # parks fresh): a job already `paused` with a non-empty `pause` record decides
+    # HERE whether it stays parked or is resumed. Every gate above this point (the
+    # STOPPED-job guard, the budget/plan/snapshot validation, the approval gate at
+    # `approved_plan_mismatch`) already ran unchanged, so a relaunch is refused
+    # exactly as an unpaused run is, and — because none of those gates touch
+    # `job.pause` — the pause record simply stays when one of them refuses.
+    if job.state == JOB_PAUSED and job.pause:
+        _first_pending = next(
+            (t for t in job.tasks if t.status == TASK_PENDING), None)
+        _relaunch_signal = _pause_park_signal(next_task=_first_pending)
+        if _relaunch_signal is not None and _relaunch_signal.is_error:
+            return _block_for_pause_error(_relaunch_signal)
+        if _relaunch_signal is not None:
+            # Still pending (job scope) or still withheld (task scope): STAYS
+            # parked — no event, no state change, no provider call.
+            return job
+        _lift_job_pause(job)
+        _persist_job(job)
 
     # F018 Scope 7: all pre-work validation passed (budget decoded, no pending stop).
     # NOW stamp first_running_at so it's never set on a job that blocked before running.
@@ -2866,7 +3021,14 @@ def run_job(
 
         def _run_stop_check(**kwargs):
             _absorb_here("run_safe_point")
-            return _stop_check(**kwargs)
+            _sig = _stop_check(**kwargs)
+            if _sig is not None:
+                return _sig
+            # F025 S2 IN-TASK reading: `pingpong_loop` calls this with no
+            # arguments, so `_stop_check` above only ever sees `next_task=None`
+            # (no mask read) — this is the ADDITIONAL check for `task`, the
+            # closure's own in-flight task, counted pending for the mask (S2).
+            return _pause_park_signal(in_flight_task=task)
 
         # F012 (F4): record the job-workspace tree at THIS episode's start. For a resume, it
         # already contains the work applied by earlier episodes, which is a material input.
@@ -2953,6 +3115,13 @@ def run_job(
             # its context are handed over here and nowhere else.
             _stop = _stop_check(next_task=task, previous_summaries=previous_summaries)
             if _stop is not None:
+                # F025 S2 PRE-TASK reading: `task` about to be dispatched is
+                # withheld — park with scope `task`, never dispatch it.
+                if isinstance(_stop, _PauseSignal):
+                    if _stop.is_error:
+                        return _block_for_pause_error(_stop)
+                    _persist_budget_actuals()
+                    return _park_job(job, _stop, task=None, control_root_path=_control)
                 _persist_budget_actuals()
                 _persist_job(job)
                 try:
@@ -3134,6 +3303,25 @@ def run_job(
             # NOT failed, and never dressed up as a provider or review failure.
             # R-0812: so it writes no task_run_* terminal; `job_stopped` closes the log.
             if result.final_status == "stopped":
+                # F025 S2 IN-TASK reading: `_run_stop_check` returned a `_PauseSignal`
+                # (a park or a `PauseControlError`), but `pingpong_loop` copied only
+                # its 4 duck-typed fields into `result.stop_*` — the rich object, and
+                # the scope/mask it carried, did not survive that round trip. The
+                # `_PAUSE_REASON_PREFIX`/`_PAUSE_ERROR_REASON_PREFIX` marker is what
+                # DID survive (S2), so it is re-derived fresh here, cheaply, rather
+                # than trusted stale.
+                _halt_reason = result.stop_reason or ""
+                if _reason_is_pause(_halt_reason) or _reason_is_pause_error(_halt_reason):
+                    _fresh = _pause_park_signal(in_flight_task=task)
+                    if _fresh is not None and _fresh.is_error:
+                        return _block_for_pause_error(_fresh)
+                    if _fresh is not None:
+                        _persist_budget_actuals()
+                        return _park_job(job, _fresh, task=task, control_root_path=_control)
+                    # The pause was lifted or released between the in-task halt and
+                    # now: nothing left to park for. Fall through and record the
+                    # halted round as an ordinary stop rather than silently
+                    # resuming it here, unobserved.
                 # R-1007: a budget stop can land after a round the reviewer never reached,
                 # and the verdict of the last round it DID reach is what tells a reader
                 # whether the model was failing or was cut short.
@@ -4078,6 +4266,168 @@ def _job_stopped_event_exists(job_id: str, request_id: str) -> bool | None:
         return None
 
 
+# ---------------------------------------------------------------------------
+# F025 S3 — the park
+# ---------------------------------------------------------------------------
+
+
+def _append_job_paused_event(job: JobPlan, signal: _PauseSignal, *,
+                             pending_count: int) -> None:
+    """Exactly one ``job_paused`` ledger event per CONSUMED request (S3 clause 4),
+    through the same writer ``job_stopped`` uses. FAILS SOFT, like
+    ``_emit_budget_tick``: a ledger write must never strand a job that is already
+    durably parked (persisted before this ever runs — see ``_park_job``)."""
+    reason = signal.reason
+    if _reason_is_pause(reason):
+        reason = reason[len(_PAUSE_REASON_PREFIX):]
+    try:
+        from packages.orchestration.run_log import RunLogWriter
+
+        writer = RunLogWriter(job.job_id)
+        writer.log(
+            "job_paused",
+            outcome="paused",
+            scope=signal.scope,
+            request_id=signal.request_id,
+            reason=reason,
+            source=signal.source,
+            withheld_task_ids=list(signal.withheld_task_ids),
+            pending_task_count=pending_count,
+        )
+    except (OSError, RuntimeError, ValueError, TypeError):
+        return
+
+
+def _job_paused_event_exists(job_id: str, request_id: str) -> bool | None:
+    """Has this exact request already produced a ``job_paused`` event? Mirrors
+    ``_job_stopped_event_exists`` exactly — True/False, or None when the ledger
+    could not be read at all, which must never be mistaken for "no event"."""
+    try:
+        from packages.orchestration.data_paths import run_log_dir
+
+        job_runs = run_log_dir(job_id)
+        if not job_runs.is_dir():
+            return False
+        for jsonl in sorted(job_runs.glob("*.jsonl")):
+            for line in jsonl.read_text(encoding="utf-8").splitlines():
+                if not line.strip():
+                    continue
+                try:
+                    raw = _json.loads(line)
+                except ValueError:
+                    continue
+                if (raw.get("event") == "job_paused"
+                        and str(raw.get("job_id")) == job_id
+                        and str((raw.get("metadata") or {}).get("request_id")) == request_id):
+                    return True
+        return False
+    except OSError:
+        return None
+
+
+def _append_job_resumed_event(job: JobPlan, pause_record: dict, resumed_at: str) -> None:
+    """One ``job_resumed`` event per lifted request id (S5), carrying the lifted
+    record and ``resumed_at``. FAILS SOFT — a ledger write must never block a
+    resume that already cleared ``job.pause`` and is about to run real work."""
+    try:
+        from packages.orchestration.run_log import RunLogWriter
+
+        writer = RunLogWriter(job.job_id)
+        writer.log(
+            "job_resumed",
+            outcome="resumed",
+            scope=pause_record.get("scope", ""),
+            request_id=pause_record.get("request_id", ""),
+            reason=pause_record.get("reason", ""),
+            source=pause_record.get("source", ""),
+            requested_at=pause_record.get("requested_at", ""),
+            paused_at=pause_record.get("paused_at", ""),
+            paused_task_ids=list(pause_record.get("paused_task_ids") or []),
+            withheld_task_ids=list(pause_record.get("withheld_task_ids") or []),
+            resumed_at=resumed_at,
+        )
+    except (OSError, RuntimeError, ValueError, TypeError):
+        return
+
+
+def _lift_job_pause(job: JobPlan) -> None:
+    """S5: lift a resumed job's pause — one ``job_resumed`` event, then empty the
+    record (S1: "when the job leaves paused... the record is emptied"). A no-op on
+    a job with no pause to lift."""
+    if not job.pause:
+        return
+    resumed_at = datetime.now(timezone.utc).isoformat()
+    _append_job_resumed_event(job, job.pause, resumed_at)
+    job.pause = {}
+
+
+def _park_job(job: JobPlan, signal: _PauseSignal, *, task: TaskEntry | None,
+             control_root_path: Any = None) -> JobPlan:
+    """S3: turn an observed pause into a durable, resumable PAUSED job — structured
+    exactly like ``_stop_job``, but nothing of the stop runs: no stop archive, no
+    post-mortem, no ``job_stopped``, no stopped manifest, no stop field.
+
+    1. the in-flight task, if any and not yet applied, goes back to `pending`,
+       exactly as `_stop_job` does;
+    2. the state becomes `JOB_PAUSED` and `pause` records the episode;
+    3. the job is persisted (the caller already persisted the budget actuals,
+       mirroring every `_stop_job` call site);
+    4. one `job_paused` event, checking the ledger first so a re-park (after a
+       failed settle below) never writes a second one;
+    5. for scope `job` only, the pause_control request is settled `served` — a
+       failure here leaves the request pending and the job parked; the next run
+       re-parks on the SAME request, finds the event already written, and tries
+       the settle again.
+    """
+    from packages.orchestration import pause_control as _pc
+
+    # --- 1. the in-flight task goes back to pending ------------------------------
+    if task is not None and task.status not in (TASK_APPLIED, TASK_PASSED, TASK_SKIPPED):
+        task.status = TASK_PENDING
+        task.task_attempt_state = "active"
+
+    # --- 2. the state and the pause record ----------------------------------------
+    reason = signal.reason
+    if _reason_is_pause(reason):
+        reason = reason[len(_PAUSE_REASON_PREFIX):]
+    job.state = JOB_PAUSED
+    job.pause = {
+        "scope": signal.scope,
+        "request_id": signal.request_id,
+        "reason": reason,
+        "source": signal.source,
+        "requested_at": signal.requested_at,
+        "paused_at": datetime.now(timezone.utc).isoformat(),
+        "paused_task_ids": list(signal.paused_task_ids),
+        "withheld_task_ids": list(signal.withheld_task_ids),
+    }
+
+    # --- 3. the durable checkpoint --------------------------------------------
+    _persist_job(job)
+
+    # --- 4. the event, exactly once per request id ----------------------------
+    already = _job_paused_event_exists(job.job_id, signal.request_id)
+    _ledger_readable = already is not None
+    if _ledger_readable and not already:
+        pending_count = sum(1 for t in job.tasks if t.status == TASK_PENDING)
+        _append_job_paused_event(job, signal, pending_count=pending_count)
+
+    # --- 5. scope `job` only: settle the request as served ---------------------
+    if signal.scope == "job" and _ledger_readable:
+        try:
+            pending = _pc.pause_requested(job.job_id, control_root_path=control_root_path)
+            if pending is not None and pending.request_id == signal.request_id:
+                _pc.settle_pause(job.job_id, pending, "served",
+                                 control_root_path=control_root_path)
+        except _pc.PauseControlError:
+            # S3: "a failure at (5) leaves the request pending and the job
+            # parked; the next run re-parks on the same request without a
+            # second event and settles it."
+            pass
+
+    return job
+
+
 def _stop_job(job: JobPlan, signal: Any, *, task: TaskEntry | None,
               control_root_path: Any = None) -> JobPlan:
     """Turn an observed stop signal into a durable, resumable STOPPED job.
@@ -4119,6 +4469,26 @@ def _stop_job(job: JobPlan, signal: Any, *, task: TaskEntry | None,
         task.task_attempt_state = "active"     # its start tree stays valid for the resume
 
     _is_budget_stop = getattr(signal, "source", "") == "budget"
+
+    # F025 S4: a stop always wins. If a job-scope pause is PENDING — not yet
+    # parked, because THIS SAME stop won the race at the safe point that would
+    # otherwise have read it (S2's order) — it is settled `superseded_by_stop`
+    # here and no `job_paused` is ever written for it. Swallowed on purpose: a
+    # pause-settle failure must never block a stop already under way, the same
+    # reason the top of `run_job` swallows a failed stop-acknowledge on an
+    # already-stopped job.
+    from packages.orchestration import pause_control as _pc
+    try:
+        _pending_job_pause = _pc.pause_requested(
+            job.job_id, control_root_path=control_root_path)
+        if _pending_job_pause is not None:
+            _pc.settle_pause(job.job_id, _pending_job_pause, "superseded_by_stop",
+                             control_root_path=control_root_path)
+    except Exception:  # noqa: BLE001 — a pause-settle failure must never block a stop
+        pass
+    # S1: the job leaves `paused` for `stopped` here (whether it was already
+    # parked, or a pause was merely pending) — the record is emptied.
+    job.pause = {}
 
     # --- 1. archive (no removal yet) --------------------------------------------------
     archive_ref = ""
