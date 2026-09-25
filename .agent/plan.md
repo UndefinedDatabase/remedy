@@ -11,18 +11,19 @@ repair (`docs/roadmap/features/T2_F285.md`).
 
 ## Current Step
 
-ROUND 2: book round 1 with the resolutions of R-1057 and R-1058, record
-DECISION F285 D2, and land T003 (R-1055): each round's provider session
-persisted in the run's record, and the relaunch of a task a park or a
-stop interrupted resuming the parked session on its first calls.
+ROUND 3, the closure sequence's first round: book round 2 with the
+resolution of R-1055, then generate the closure's self-use item, which
+DECISION F285 D1 expects to address R-1064, and run it to its approval
+gate on the `self_use` role, recording its readings and its defects.
 
 ## Next Steps
 
-1. The closure sequence: the self-use run on R-1064, its diff landed if
-   both reviews pass (or a worker repair if not), the integration gate,
-   the evidence and the close.
+1. The review of the self-use run's diff: landed on the branch as
+   R-1064's repair if both reviews pass, or a worker repair if not; the
+   Built State, the checklist consolidation and the one full suite.
+2. The evidence bundle and the review package, then the close.
 
 ## Risks
 
-A self-use run spends real money, up to six dollars. Open findings: 3 —
-R-1008, R-1055 and R-1064, all owned by F285.
+The self-use run spends real money, up to six dollars. Open findings:
+2 — R-1008 and R-1064, both owned by F285.
