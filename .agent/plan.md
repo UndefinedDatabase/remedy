@@ -12,20 +12,22 @@ its prompt trace (`docs/roadmap/features/T5_F026.md`).
 
 ## Current Step
 
-ROUND 4: book round 3, register R-1060, record DECISION F026 D4, repair
-R-1060, and land T003's second half — the edit affordance in the detail
-popover for eligible tasks only, its send module, and the end-to-end
-through the CLI and the real door.
+ROUND 5, the closure sequence's first half: book round 4, resolve
+R-1060, register and repair R-1061 and R-1062, write the Built State,
+consolidate the checklist, generate and run the closure's self-use
+item, and run the feature's one full suite.
 
 ## Next Steps
 
-1. The closure sequence: the Built State, the checklist consolidation,
-   the self-use item and the feature's one full suite; then the
-   evidence bundle and the review package; then the acceptance and the
-   pull request.
+1. The closure's second half: book round 5, register what the self-use
+   run's defects ask for, repair what the suite requires, build the
+   evidence bundle and the review package.
+2. The closing round: rotate the ledger, accept F026 in STATUS with its
+   README pins and the self-use item's `consumed_by`, open the pull
+   request.
 
 ## Risks
 
-The edit must reach the door only through its send module, and only for
-a task the dashboard marks editable. Open findings: 5 — R-1008, R-1055,
-R-1057 and R-1058, owned by F285, and R-1060, owned by F026.
+The one full suite must run on the tree that ships. Open findings: 6 —
+R-1008, R-1055, R-1057 and R-1058, owned by F285, and R-1061 and
+R-1062, owned by F026.
