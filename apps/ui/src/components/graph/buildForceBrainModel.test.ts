@@ -169,6 +169,24 @@ describe("buildBrainLayout", () => {
     expect(core.label).toBe("");
   });
 
+  // DECISION F026 D3 clause 2: a task node's `chip` is set from its seeded
+  // `meta.specVersion` ONLY when it is a number of at least 2, and the key
+  // is absent — not `undefined` on the object, ABSENT — otherwise.
+  it("chip: v<n> when a task's seeded specVersion is 2 or more, else no chip key at all", () => {
+    const seeded = seedBrainModel("job-chips", [
+      { id: "t1", status: "pending", rank: 0, specVersion: 2 },
+      { id: "t2", status: "pending", rank: 1, specVersion: 1 },
+      { id: "t3", status: "pending", rank: 2 },
+    ]);
+    const layout = buildBrainLayout(seeded);
+    const t1 = layout.nodes.find((n) => n.id === "task:t1")!;
+    const t2 = layout.nodes.find((n) => n.id === "task:t2")!;
+    const t3 = layout.nodes.find((n) => n.id === "task:t3")!;
+    expect(t1.chip).toBe("v2");
+    expect(t2).not.toHaveProperty("chip");
+    expect(t3).not.toHaveProperty("chip");
+  });
+
   it("link depth/width: depth 1 core->task width 2.2, depth 2 task->child width 1.4 (graph_spec §6 trunk decay)", () => {
     const layout = buildBrainLayout(GOLDEN_B_MODEL);
     const coreLinks = layout.links.filter((l) => l.depth === 1);

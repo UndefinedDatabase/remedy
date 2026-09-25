@@ -75,6 +75,21 @@ describe("dashboardBrainSeeds", () => {
     const tasks = [task("a", "pending", "Alpha")];
     expect(dashboardBrainSeeds(tasks)).toEqual(dashboardBrainSeeds(tasks, []));
   });
+
+  // DECISION F026 D3 clause 2: `specVersions` puts a seed's `specVersion` key
+  // ONLY when the map carries that task at all.
+  it("puts specVersion on a seed only when the map carries that task", () => {
+    const tasks = [task("a", "pending", "Alpha"), task("b", "pending", "Beta")];
+    const seeds = dashboardBrainSeeds(tasks, [], { a: 2 });
+    expect(seeds.find((s) => s.id === "a")?.specVersion).toBe(2);
+    expect(seeds.find((s) => s.id === "b")).not.toHaveProperty("specVersion");
+  });
+
+  it("with no third argument, no seed carries a specVersion", () => {
+    const tasks = [task("a", "pending", "Alpha")];
+    const seeds = dashboardBrainSeeds(tasks, []);
+    expect(seeds[0]).not.toHaveProperty("specVersion");
+  });
 });
 
 describe("filterBrainLayout", () => {

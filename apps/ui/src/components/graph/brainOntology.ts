@@ -75,6 +75,10 @@ export interface BrainTaskSeed {
   status: string;
   rank: number;
   title?: string;
+  /** DECISION F026 D3 clause 2 — the task's current spec version, when the
+   *  dashboard's `task_specs` section carries one, for the reducer to copy
+   *  into the task node's `meta.specVersion`. */
+  specVersion?: number;
 }
 
 /** The whole graph at one point in the ledger. `ignored` is a counted debug

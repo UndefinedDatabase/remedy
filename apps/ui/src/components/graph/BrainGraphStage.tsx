@@ -16,6 +16,7 @@ import { RunDetailPopover } from "./RunDetailPopover";
 import { EvidencePanel } from "./EvidencePanel";
 import { zoomCrumbLabel, zoomEmphasis } from "./zoomView";
 import { pauseBanner } from "../../api/pauseView";
+import { taskSpecVersions } from "../../api/taskSpecView";
 import type { TimelineScrub } from "../timeline/useTimelineScrub";
 import styles from "./BrainGraphStage.module.css";
 
@@ -42,8 +43,8 @@ export function BrainGraphStage({
   const [view, setView] = useState<"live" | "simple">("live");
 
   const seeds = useMemo(
-    () => dashboardBrainSeeds(dashboard.tasks, dashboard.pause.pausedTaskIds),
-    [dashboard.tasks, dashboard.pause.pausedTaskIds],
+    () => dashboardBrainSeeds(dashboard.tasks, dashboard.pause.pausedTaskIds, taskSpecVersions(dashboard)),
+    [dashboard],
   );
   // `rows` is the ledger's COMPLETE, CONTIGUOUS prefix, read once by the shell for
   // the graph and the timeline alike: a hole holds the model at the state before

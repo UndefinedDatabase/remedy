@@ -27,10 +27,17 @@ export const DASHBOARD_STATE_STATUS: Readonly<Record<RemedyState, string>> = {
  *  F025 D3 clause 2): a task named there seeds as `paused` regardless of its
  *  dashboard status word, so a page opened on a parked job draws it paused
  *  from the first paint — defaults to none, so every existing call site
- *  (none of which knows about a pause) keeps its exact prior seed. */
+ *  (none of which knows about a pause) keeps its exact prior seed.
+ *  `specVersions` (DECISION F026 D3 clause 2) is the task-id-to-spec-version
+ *  map `taskSpecView.ts`'s `taskSpecVersions` derives from the dashboard's
+ *  `task_specs` section — defaults to none, so a caller that has not read it
+ *  seeds no task with a version. A task's own id is put on the seed as
+ *  `specVersion` ONLY when the map carries that task at all, never a
+ *  fallback value. */
 export function dashboardBrainSeeds(
   tasks: readonly RemedyTaskItem[],
   pausedTaskIds: readonly string[] = [],
+  specVersions: Readonly<Record<string, number>> = {},
 ): BrainTaskSeed[] {
   const paused = new Set(pausedTaskIds);
   return tasks.map((t, index) => ({
@@ -38,6 +45,7 @@ export function dashboardBrainSeeds(
     status: paused.has(t.id) ? "paused" : (DASHBOARD_STATE_STATUS[t.state] ?? t.state),
     rank: index,
     title: t.label,
+    ...(Object.prototype.hasOwnProperty.call(specVersions, t.id) ? { specVersion: specVersions[t.id] } : {}),
   }));
 }
 
