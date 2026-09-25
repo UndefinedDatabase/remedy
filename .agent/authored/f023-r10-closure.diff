@@ -1,0 +1,57 @@
+diff --git a/README.md b/README.md
+index 0cf288131..6c4cdb8db 100644
+--- a/README.md
++++ b/README.md
+@@ -26,7 +26,7 @@ verification commands. If something is unproven, Remedy says so instead of guess
+ 
+ ## Status
+ 
+-100 of 285 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
++101 of 285 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
+ 
+ | Tier | Name | Done | Total |
+ |------|------|-----:|------:|
+@@ -35,7 +35,7 @@ verification commands. If something is unproven, Remedy says so instead of guess
+ | 2 | Minimal Self-Build Runtime | 37 | 38 |
+ | 3 | Full Token Economy & Autonomy | 6 | 26 |
+ | 4 | Memory & Learning | 1 | 17 |
+-| 5 | Operator Cockpit | 18 | 34 |
++| 5 | Operator Cockpit | 19 | 34 |
+ | 6 | Design-to-Code | 0 | 16 |
+ | 7 | Quality & Trust | 0 | 15 |
+ | 8 | Worker Ecosystem & Neutrality | 0 | 12 |
+@@ -424,6 +424,21 @@ gently pulses, and the graph stops drawing while the browser tab is hidden; a
+ check in a headless browser read 144 of 144 points of a picture of every kind in
+ every state as the design requires).
+ 
++F023 semantic zoom (the job graph now reads at four depths: the whole job,
++one task, one attempt and its evidence; clicking a task, or turning the mouse
++wheel in over it, dims the other tasks to a quarter and shows every attempt of
++that task, and turning the wheel back out returns to the whole job, with a
++wide band between the two points so the picture never flickers; clicking an
++attempt opens a small card beside it with its verdict, how long it took, the
++tokens the builder used and whether a reply had to be asked for again, and
++where a fact was not recorded the card says so in words instead of showing a
++number; the card's Open diff and Why buttons open a side panel with the change
++and the prompts that were sent, and its Rerun button is greyed out with the
++reason written under it; the Escape key and a small trail of names in the top
++left corner walk back one step at a time; the page address remembers where
++you are, so a link opens the same view; and in a headless browser the graph
++held sixty frames a second at five hundred nodes at every depth).
++
+ Full per-feature state: [`docs/roadmap/STATUS.md`](docs/roadmap/STATUS.md)
+ 
+ ## Install
+diff --git a/docs/roadmap/STATUS.md b/docs/roadmap/STATUS.md
+index 2fcd396a3..145f3f7d6 100644
+--- a/docs/roadmap/STATUS.md
++++ b/docs/roadmap/STATUS.md
+@@ -147,7 +147,7 @@ Milestone R1 — Remedy as the daily tool: Tier 2 complete (F086 as the self-ins
+ ## Tier 5 — Operator Cockpit (parallel human track, continued)
+ 
+ - [x] F020 — Node lifecycle & glyph language (T001–T003 complete; accepted 2026-09-25 · live review PASS — ACCEPTED · Evidence job f020r7e1001 · package remedy-review-20260925-013441-READY_FOR_REVIEW.zip · SHA-256 a069e502d3956af33f4e7dde2ece1dfd47355c68030181dbd5764af6d026d1e0 · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD ac75d5d4ebe6f7aa908ccdfd1dfa504582b2fb5e)
+-- [~] F023 — Semantic zoom L0–L3
++- [x] F023 — Semantic zoom L0–L3 (T001–T003 complete; accepted 2026-09-25 · live review PASS — ACCEPTED · Evidence job f023r9e1001 · package remedy-review-20260925-052148-READY_FOR_REVIEW.zip · SHA-256 6e041624017f41e1644f71f3d8c18ae8dd4d677b1d8df4fe6206f89b6f76b4bb · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD 54e5ffd2485bf90c405f5ad662b7d86be8dd3eb9)
+ - [ ] F024 — Phase timeline with scrubber
+ - [ ] F025 — Pause/resume (global & per node)
+ - [ ] F026 — Task edit at runtime
