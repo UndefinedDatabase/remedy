@@ -11,19 +11,20 @@ repair (`docs/roadmap/features/T2_F285.md`).
 
 ## Current Step
 
-ROUND 3, the closure sequence's first round: book round 2 with the
-resolution of R-1055, then generate the closure's self-use item, which
-DECISION F285 D1 expects to address R-1064, and run it to its approval
-gate on the `self_use` role, recording its readings and its defects.
+ROUND 4, the closure sequence's second round: book round 3 with the
+reviewer's pass of the self-use run's diff, land that diff verbatim as
+R-1064's repair, pin the seven real node ids, write the Built State,
+consolidate the checklist, and run the feature's one full suite.
 
 ## Next Steps
 
-1. The review of the self-use run's diff: landed on the branch as
-   R-1064's repair if both reviews pass, or a worker repair if not; the
-   Built State, the checklist consolidation and the one full suite.
-2. The evidence bundle and the review package, then the close.
+1. The resolutions of R-1064 and R-1008, the evidence bundle and the
+   review package.
+2. The closing round: the ledger's rotation, the STATUS line, the
+   README pins, the item's `consumed_by`, the next paydown's
+   registration and the pull request.
 
 ## Risks
 
-The self-use run spends real money, up to six dollars. Open findings:
-2 — R-1008 and R-1064, both owned by F285.
+Open findings: 2 — R-1008 and R-1064, both owned by F285; both resolve
+at the next gate if this round lands the diff.
