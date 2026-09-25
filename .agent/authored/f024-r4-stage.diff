@@ -1,0 +1,296 @@
+diff --git a/apps/ui/src/components/graph/BrainGraphStage.module.css b/apps/ui/src/components/graph/BrainGraphStage.module.css
+index d52056ea4..706e080e2 100644
+--- a/apps/ui/src/components/graph/BrainGraphStage.module.css
++++ b/apps/ui/src/components/graph/BrainGraphStage.module.css
+@@ -29,3 +29,43 @@
+ }
+ .viewToggle:hover { background: var(--remedy-blue-50); }
+ .viewToggle[aria-pressed="true"] { border-color: var(--remedy-blue-strong); }
++
++/* The SCRUBBED banner (DECISION F024 D4): the replay's violet, over the stage's top edge. */
++.scrubBanner {
++  position: absolute;
++  top: 14px;
++  left: 50%;
++  z-index: var(--remedy-z-stage-ui);
++  transform: translateX(-50%);
++  display: flex;
++  align-items: center;
++  gap: 10px;
++  padding: 6px 8px 6px 6px;
++  border-radius: var(--remedy-radius-pill);
++  border: 1px solid var(--remedy-purple);
++  background: var(--remedy-glass-bg-strong);
++  box-shadow: var(--remedy-shadow-soft);
++  font-size: 13px;
++  color: var(--remedy-ink);
++  white-space: nowrap;
++}
++.scrubBadge {
++  padding: 2px 8px;
++  border-radius: var(--remedy-radius-pill);
++  background: var(--remedy-purple);
++  color: var(--remedy-card);
++  font-size: 11px;
++  font-weight: 700;
++  letter-spacing: 0.06em;
++}
++.scrubLive {
++  padding: 2px 10px;
++  border-radius: var(--remedy-radius-pill);
++  border: 1px solid var(--remedy-purple);
++  background: var(--remedy-card);
++  color: var(--remedy-purple);
++  font-size: 12px;
++  font-weight: 600;
++  cursor: pointer;
++}
++.scrubLive:focus-visible { outline: 2px solid var(--remedy-blue-strong); outline-offset: 2px; }
+diff --git a/apps/ui/src/components/graph/BrainGraphStage.tsx b/apps/ui/src/components/graph/BrainGraphStage.tsx
+index 1fce72576..7fd74818f 100644
+--- a/apps/ui/src/components/graph/BrainGraphStage.tsx
++++ b/apps/ui/src/components/graph/BrainGraphStage.tsx
+@@ -2,8 +2,6 @@ import { useMemo, useState } from "react";
+ import type { RemedyDashboard } from "../../api/types";
+ import { rebuildBrainModel } from "./brainReducer";
+ import type { BrainEventRow } from "./brainOntology";
+-import { brainLedgerPrefix } from "./brainLedger";
+-import { useBrainLedger } from "./useBrainLedger";
+ import { buildBrainLayout } from "./buildForceBrainModel";
+ import { brainTaskCount, dashboardBrainSeeds, filterBrainLayout, selectedBrainNodeId, shellSelectionIdOf } from "./brainView";
+ import { ForceBrainGraph } from "./ForceBrainGraph";
+@@ -17,21 +15,22 @@ import { ZoomBreadcrumbs } from "./ZoomBreadcrumbs";
+ import { RunDetailPopover } from "./RunDetailPopover";
+ import { EvidencePanel } from "./EvidencePanel";
+ import { zoomCrumbLabel, zoomEmphasis } from "./zoomView";
++import type { TimelineScrub } from "../timeline/useTimelineScrub";
+ import styles from "./BrainGraphStage.module.css";
+ 
+ export function BrainGraphStage({
+   dashboard,
+   selectedNodeId,
+   onSelectNode,
+-  recent,
+-  readEventsPage,
++  rows,
++  scrub,
+   serverToken,
+ }: {
+   dashboard: RemedyDashboard;
+   selectedNodeId?: string | null;
+   onSelectNode: (nodeId: string | null) => void;
+-  recent: readonly BrainEventRow[];
+-  readEventsPage: (cursor: number) => Promise<unknown>;
++  rows: readonly BrainEventRow[];
++  scrub: TimelineScrub;
+   serverToken: string;
+ }) {
+   const [filter, setFilter] = useState<GraphFilter>("all");
+@@ -42,12 +41,13 @@ export function BrainGraphStage({
+   const [view, setView] = useState<"live" | "simple">("live");
+ 
+   const seeds = useMemo(() => dashboardBrainSeeds(dashboard.tasks), [dashboard.tasks]);
+-  const ledger = useBrainLedger(dashboard.jobId, recent, readEventsPage);
+-  // The graph folds only the COMPLETE, CONTIGUOUS prefix of the ledger: a
+-  // hole from a live gap, a mid-ledger join, or a sleeping tab holds the
+-  // model at the state before it, never a ghost past it (DECISION F019 D5).
+-  const rows = useMemo(() => brainLedgerPrefix(ledger), [ledger]);
+-  const model = useMemo(() => rebuildBrainModel(dashboard.jobId, seeds, rows), [dashboard.jobId, seeds, rows]);
++  // `rows` is the ledger's COMPLETE, CONTIGUOUS prefix, read once by the shell for
++  // the graph and the timeline alike: a hole holds the model at the state before
++  // it, never a ghost past it (DECISIONS F019 D5 and F024 D4).
++  const liveModel = useMemo(() => rebuildBrainModel(dashboard.jobId, seeds, rows), [dashboard.jobId, seeds, rows]);
++  // While the timeline is scrubbed the stage draws the reducer state of the
++  // prefix at the handle, and the live model waits behind LIVE (DECISION F024 D4).
++  const model = scrub.scrubbedModel ?? liveModel;
+   // Every cluster chip in place, whatever the focus: the graph the zoom checks
+   // its focus against, so moving the focus never moves that graph.
+   const baseLayout = useMemo(() => buildBrainLayout(model), [model]);
+@@ -126,6 +126,13 @@ export function BrainGraphStage({
+         // BrainGraphCanvas owns its own empty and filter-empty messages.
+         <BrainGraphCanvas dashboard={dashboard} filter={filter} selectedNodeId={selectedNodeId} onSelectNode={onSelectNode} />
+       )}
++      {scrub.state.mode === "scrubbed" && (
++        <div className={styles.scrubBanner} role="status" data-ui="scrub-banner">
++          <span className={styles.scrubBadge}>SCRUBBED</span>
++          <span>{scrub.view.readout} · live updates wait behind LIVE</span>
++          <button type="button" className={styles.scrubLive} onClick={scrub.goLive}>Back to LIVE</button>
++        </div>
++      )}
+       <div className={styles.chipsDock}>
+         <GraphFilterChips value={filter} onChange={setFilter} />
+       </div>
+diff --git a/apps/ui/src/components/panels/LiveStatusPill.tsx b/apps/ui/src/components/panels/LiveStatusPill.tsx
+index 123916d8f..4cc3af52e 100644
+--- a/apps/ui/src/components/panels/LiveStatusPill.tsx
++++ b/apps/ui/src/components/panels/LiveStatusPill.tsx
+@@ -13,7 +13,13 @@ import styles from "./RightLivePanel.module.css";
+  *  RemedyShell began passing a real status down the one chain that reaches
+  *  this pill — RemedyShell to RightLivePanel to here — and at `88c55f5d` that
+  *  was still the only chain either component had. */
+-export function LiveStatusPill({ live, streamStatus }: { live: boolean; streamStatus?: BrainStreamStatus | null }) {
++export function LiveStatusPill({ live, streamStatus, replay }: { live: boolean; streamStatus?: BrainStreamStatus | null; replay?: boolean }) {
++  // While the timeline is scrubbed the graph shows the past, so the pill says
++  // REPLAY in the scrubber's violet before anything about the transport
++  // (component_spec.md, LiveStatusPill; DECISION F024 D4).
++  if (replay) {
++    return <div className={styles.livePill} data-state="replay"><span className={styles.replayDot} />REPLAY</div>;
++  }
+   if (streamStatus === "delayed") {
+     return <div className={styles.livePill} data-state="delayed"><span className={styles.delayedDot} />DELAYED</div>;
+   }
+diff --git a/apps/ui/src/components/panels/RightLivePanel.module.css b/apps/ui/src/components/panels/RightLivePanel.module.css
+index 59c4ce296..b6eafb306 100644
+--- a/apps/ui/src/components/panels/RightLivePanel.module.css
++++ b/apps/ui/src/components/panels/RightLivePanel.module.css
+@@ -228,6 +228,8 @@
+ .advancedItem strong { color: var(--remedy-ink); }
+ .delayedDot { width: 9px; height: 9px; border-radius: 50%; background: var(--remedy-orange-400); box-shadow: 0 0 8px rgba(245,163,78,.6); }
+ .reconnectingDot { width: 9px; height: 9px; border-radius: 50%; background: var(--remedy-orange-400); opacity: .55; }
++.replayDot { width: 9px; height: 9px; border-radius: 50%; background: var(--remedy-purple); }
++.livePill[data-state="replay"] { color: var(--remedy-purple); border-color: var(--remedy-purple); }
+ 
+ /* The decision inbox's rows (T5_F031 T002a, DECISION F031 D4). The .card shell
+    above is reused unchanged: an inbox styled unlike the cards beside it would
+diff --git a/apps/ui/src/components/panels/RightLivePanel.tsx b/apps/ui/src/components/panels/RightLivePanel.tsx
+index d6ed4e8dd..28e7d6c1c 100644
+--- a/apps/ui/src/components/panels/RightLivePanel.tsx
++++ b/apps/ui/src/components/panels/RightLivePanel.tsx
+@@ -12,12 +12,12 @@ import { LiveStatusPill } from "./LiveStatusPill";
+ import { TaskChecklistCard } from "./TaskChecklistCard";
+ import styles from "./RightLivePanel.module.css";
+ 
+-export function RightLivePanel({ dashboard, serverToken, onSelectNode, streamStatus, recent, recentDropped, onOpenLessons }: { dashboard: RemedyDashboard; serverToken: string; onSelectNode: (nodeId: string | null) => void; streamStatus?: BrainStreamStatus | null; recent?: readonly FeedRow[]; recentDropped?: number; onOpenLessons?: () => void }) {
++export function RightLivePanel({ dashboard, serverToken, onSelectNode, streamStatus, replay, recent, recentDropped, onOpenLessons }: { dashboard: RemedyDashboard; serverToken: string; onSelectNode: (nodeId: string | null) => void; streamStatus?: BrainStreamStatus | null; replay?: boolean; recent?: readonly FeedRow[]; recentDropped?: number; onOpenLessons?: () => void }) {
+   const [showAdvanced, setShowAdvanced] = useState(false);
+ 
+   return (
+     <aside className={styles.panel} data-ui="right-live-panel">
+-      <LiveStatusPill live={liveIsActive(dashboard)} streamStatus={streamStatus} />
++      <LiveStatusPill live={liveIsActive(dashboard)} streamStatus={streamStatus} replay={replay} />
+       <AgentNowCard dashboard={dashboard} recent={recent} />
+       <NeedsAttentionCard dashboard={dashboard} />
+       {/* The inbox addresses the job the DASHBOARD names, the same value the
+diff --git a/apps/ui/src/components/shell/RemedyShell.tsx b/apps/ui/src/components/shell/RemedyShell.tsx
+index 6a0c72610..ef130e82d 100644
+--- a/apps/ui/src/components/shell/RemedyShell.tsx
++++ b/apps/ui/src/components/shell/RemedyShell.tsx
+@@ -14,8 +14,11 @@ import { LeftBrandRail } from "../rail/LeftBrandRail";
+ import { TopMetricsBar } from "../metrics/TopMetricsBar";
+ import { CommandBar } from "../command/CommandBar";
+ import { BrainGraphStage } from "../graph/BrainGraphStage";
++import { brainLedgerPrefix } from "../graph/brainLedger";
++import { useBrainLedger } from "../graph/useBrainLedger";
+ import { RightLivePanel } from "../panels/RightLivePanel";
+ import { PhaseTimeline } from "../timeline/PhaseTimeline";
++import { useTimelineScrub } from "../timeline/useTimelineScrub";
+ import { DetailPopover } from "../detail/DetailPopover";
+ import { LessonsOverlay } from "../lessons/LessonsOverlay";
+ import { lessonsRefreshKey } from "../../api/lessons";
+@@ -53,6 +56,12 @@ export function RemedyShell({ dashboard, serverToken, selectedNodeId, onSelectNo
+     (cursor: number) => brainStreamEnv.fetchJson(eventsSincePath(dashboard.jobId, cursor)),
+     [brainStreamEnv, dashboard.jobId],
+   );
++  // ONE ledger per job, read here so the graph and the timeline fold the same
++  // complete, contiguous prefix (DECISIONS F019 D5 and F024 D4), and the
++  // timeline's scrubber, whose position the graph draws while it is scrubbed.
++  const ledger = useBrainLedger(dashboard.jobId, stream.recent, readEventsPage);
++  const ledgerRows = useMemo(() => brainLedgerPrefix(ledger), [ledger]);
++  const scrub = useTimelineScrub(dashboard.jobId, dashboard.tasks, ledgerRows);
+   let selectedNode = selectedNodeId ? (dashboard.graph.nodes.find(n => n.nodeId === selectedNodeId || n.id === selectedNodeId) ?? null) : null;
+   // Prompt satellite nodes carry the prompt item id as their node id. Resolve
+   // such a selection to its owning task node so the popover (and its Prompt
+@@ -195,10 +204,10 @@ export function RemedyShell({ dashboard, serverToken, selectedNodeId, onSelectNo
+             )}
+           />
+           <CommandBar nextAction={dashboard.nextAction} onJump={handleJump} />
+-          <BrainGraphStage dashboard={dashboard} selectedNodeId={selectedNodeId} onSelectNode={onSelectNode} recent={stream.recent} readEventsPage={readEventsPage} serverToken={serverToken} />
+-          <PhaseTimeline phases={dashboard.phases} timelineEvents={dashboard.timelineEvents} />
++          <BrainGraphStage dashboard={dashboard} selectedNodeId={selectedNodeId} onSelectNode={onSelectNode} rows={ledgerRows} scrub={scrub} serverToken={serverToken} />
++          <PhaseTimeline scrub={scrub} />
+         </main>
+-        <RightLivePanel dashboard={dashboard} serverToken={serverToken} onSelectNode={onSelectNode} streamStatus={stream.status} recent={stream.recent} recentDropped={stream.recentDropped} onOpenLessons={() => setLessonsOpen(true)} />
++        <RightLivePanel dashboard={dashboard} serverToken={serverToken} onSelectNode={onSelectNode} streamStatus={stream.status} replay={scrub.state.mode === "scrubbed"} recent={stream.recent} recentDropped={stream.recentDropped} onOpenLessons={() => setLessonsOpen(true)} />
+       </div>
+       {selectedNode && <DetailPopover dashboard={dashboard} selectedNode={selectedNode} selectedPromptId={selectedPromptId} onClose={() => onSelectNode(null)} onOpenDiff={setOpenDiffTaskId} />}
+       {/* THE DIFF PANEL. A sibling of the popover rather than a child of
+diff --git a/docs/ui/design_reference/assumption_log.md b/docs/ui/design_reference/assumption_log.md
+index f6d5b8330..9d6b82c5d 100644
+--- a/docs/ui/design_reference/assumption_log.md
++++ b/docs/ui/design_reference/assumption_log.md
+@@ -42,3 +42,7 @@ Column rules:
+ | 2026-09-25 | F023 | `EvidencePanel.module.css`, `tokens.css` | T5_F023.md's binding CSS for the evidence panel casts its shadow with the raw colour `rgba(37,50,79,.08)` and slides in with `animation: slideIn .22s ease`. | The same shadow through a new token, `--remedy-shadow-panel`, added to both token sheets with its line in `tokens_rules.md`; the slide-in runs over `--remedy-dur-base` (220 ms) with `--remedy-ease-soft`, and not at all under reduced motion. | `tokens_rules.md` forbids raw colours in component CSS and takes every duration and easing from the `--remedy-dur-*` and `--remedy-ease-*` tokens; `ease` is not a token, and `motion_spec.md` gives surfaces the soft curve. | DECISION F023 D5 |
+ | 2026-09-25 | F023 | `RunDetailPopover.tsx`, `EvidencePanel.tsx` | `component_spec.md` "DetailPopover" asks for a dialog role, a focus trap and Esc to close; `graph_spec.md` §10 anchors the run popover to its node. | Neither the run detail nor the evidence panel is a dialog, and neither traps focus; Escape closes each by walking the zoom back one level. The run detail sits beside the stage's centre, where the L2 camera has just placed the run, and does not follow the run when the reader pans. | In the zoom's model Escape is the walk back (`graph_spec.md` §10), and the zoom's Escape handler steps aside while a dialog is open, so a dialog here would stop Escape from closing it. Following the node would re-render the stage at the canvas's frame rate. | DECISIONS F023 D4 and D5 |
+ | 2026-09-25 | F023 | `ZoomBreadcrumbs.tsx` | `graph_spec.md` §10: a breadcrumb chip top-left of the stage, Job > Task > Run. | The chip appears from L1 on and is hidden at L0, where its trail would be the single word "Job"; the run's crumb reads the run's kind as the legend names it, such as "Review run". | A chip with nothing to walk back to only covers the graph, and a run has no title of its own in the model, while its kind is the name the legend already teaches. | DECISION F023 D2 |
++| 2026-09-25 | F024 | `PhaseTimeline.tsx`, `PhaseTimeline.module.css` | `ux_spec.md` §12: six phase stops joined by connectors, the current stop's disc doubling as the drag handle; T5_F024.md's binding CSS gives each phase an equal `.phase{flex:1}` segment. | Six equal segments, each filling as the ledger's events in that phase pass the handle, with the stop's disc at the segment's centre; a phase the ledger skipped shows as a small tick; the handle is its own disc on the track, violet while scrubbed. | The feature file's CSS is the binding specific for this bar, and a handle fixed to the current stop could not show a position inside a phase, which the scrubber exists to reach. | DECISIONS F024 D3 and D4 |
++| 2026-09-25 | F024 | `PhaseTimeline.tsx` legend | `ux_spec.md` §12: the legend shows three pairs, LLM action, Test and Review. | Four pairs, Decision, Failure, Heal and Stop, the sub-glyphs T5_F024.md names, drawn with the existing glyph exports: the person, the flask on the blocked tint, the code orb on the action tint, and the planned disc on the blocked colour. | The events the ledger carries are not LLM actions, tests and reviews; they are the decisions, failures, heals and stops the feature file puts on the track, and no new glyph may be drawn without an asset change. | DECISION F024 D4 |
++| 2026-09-25 | F024 | `BrainGraphStage.tsx`, `BrainGraphStage.module.css` | T5_F024.md: a SCRUBBED banner, "the DEMO banner's visual cousin"; the design reference draws no DEMO banner. | A glass pill at the top centre of the stage, outlined in `--remedy-purple`, with a violet SCRUBBED badge, the position readout and a Back to LIVE button. | No DEMO banner exists to be a cousin of; the replay's violet is the colour `component_spec.md` gives the REPLAY pill, so the two read as one state. | DECISION F024 D4 |
++| 2026-09-25 | F024 | `useTimelineScrub.ts`, `scrubState.ts` | T5_F024.md: LIVE drains the queued ingestion "per the reference's catch-up treatment"; `motion_spec.md` names no catch-up. | A fast-forward of at most eight frames held `--remedy-dur-fast` (120 ms) each, ending at the head; a jump under reduced motion; and a rebuild with a plain sentence once more than 5000 events arrived behind the view. | The reference has no catch-up to follow, and a duration cap built from an existing token keeps the return inside the motion system. | DECISIONS F024 D3 and D4 |
+diff --git a/tests/ui_contracts/test_brain_live_wiring.py b/tests/ui_contracts/test_brain_live_wiring.py
+index 1e168fea3..f74fc28dd 100644
+--- a/tests/ui_contracts/test_brain_live_wiring.py
++++ b/tests/ui_contracts/test_brain_live_wiring.py
+@@ -4,10 +4,12 @@ The stage now draws `rebuildBrainModel(jobId, seeds, rows)` where `rows` is the
+ ledger's contiguous prefix, merged from `events-since` pages and the live
+ stream's ring by `useBrainLedger.ts`. Behaviour is pinned by vitest in
+ brainLedger.test.ts; this suite pins what no vitest run can see because this
+-repository has no DOM environment: that the SHELL actually hands the stage its
+-ring and a page reader, that the STAGE actually reads through the ledger hook
+-rather than seeding once from the dashboard, and that the hook holds its
+-in-flight guard in a ref rather than in state. Every assertion runs against
++repository has no DOM environment: that the SHELL reads the one ledger from its
++ring and a page reader and hands its contiguous prefix to the stage — moved up
++from the stage by DECISION F024 D4, so the phase timeline folds the same rows —
++that the STAGE folds those rows rather than seeding once from the dashboard and
++reads no ledger of its own, and that the hook holds its in-flight guard in a ref
++rather than in state. Every assertion runs against
+ COMMENT-STRIPPED source, imported from test_brain_stream_ring.py (this
+ repository's own precedent — test_lessons_overlay_contract.py and
+ test_steering_send_contract.py both import it the same way) rather than
+@@ -33,15 +35,22 @@ def _source(path: Path) -> str:
+ 
+ 
+ class TestTheShellWiresTheLedgerReader:
+-    def test_the_stage_line_carries_the_ring_and_the_page_reader(self):
++    def test_the_shell_reads_the_ledger_from_the_ring_and_the_page_reader(self):
++        shell = _source(SHELL)
++        assert "useBrainLedger(dashboard.jobId, stream.recent, readEventsPage)" in shell, (
++            "the ledger cannot fold live rows it is never handed, nor page a hole "
++            "shut without a reader"
++        )
++        assert "const ledgerRows = useMemo(() => brainLedgerPrefix(ledger), [ledger]);" in shell, (
++            "only the complete, contiguous prefix may reach the graph (DECISION F019 D5)"
++        )
++
++    def test_the_stage_line_carries_the_prefix(self):
+         shell = _source(SHELL)
+         element = [line for line in shell.splitlines() if "<BrainGraphStage" in line]
+         assert len(element) == 1, "expected exactly one <BrainGraphStage element"
+-        assert "recent={" in element[0], (
+-            "the stage cannot fold live rows it is never handed"
+-        )
+-        assert "readEventsPage={readEventsPage}" in element[0], (
+-            "the stage cannot page a hole shut without a reader"
++        assert "rows={ledgerRows}" in element[0], (
++            "the stage cannot fold rows it is never handed"
+         )
+         assert "onSelectNode={onSelectNode}" in element[0], (
+             "R-0664's one shared callback must survive this round's edit"
+@@ -71,11 +80,12 @@ class TestThePathIsBuiltInOnePlace:
+ 
+ 
+ class TestTheStageReadsThroughTheLedger:
+-    def test_the_stage_calls_use_brain_ledger(self):
+-        assert "useBrainLedger(" in _source(STAGE)
+-
+-    def test_the_stage_calls_brain_ledger_prefix(self):
+-        assert "brainLedgerPrefix(" in _source(STAGE)
++    def test_the_stage_reads_no_ledger_of_its_own(self):
++        stage = _source(STAGE)
++        assert "useBrainLedger(" not in stage and "brainLedgerPrefix(" not in stage, (
++            "a second ledger would page the same job twice and could fold a "
++            "different prefix from the timeline's"
++        )
+ 
+     def test_the_stage_calls_rebuild_brain_model(self):
+         assert "rebuildBrainModel(" in _source(STAGE)
