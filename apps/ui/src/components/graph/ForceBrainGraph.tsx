@@ -17,6 +17,7 @@ import type { StateTransition } from "./renderers/stateMotion";
 import { usePageVisible } from "./usePageVisible";
 import { readDocumentPalette } from "./renderers/palette";
 import type { BrainPalette } from "./renderers/palette";
+import { isZoomRunKind } from "./semanticZoom";
 import type { ZoomEvent, ZoomState } from "./semanticZoom";
 import { wheelZoomEvent } from "./zoomWheel";
 import { ZOOM_CAMERA_MS, ZOOM_DIM_ALPHA, ZOOM_HOME_CAMERA, zoomCamera } from "./zoomView";
@@ -314,6 +315,8 @@ export function ForceBrainGraph({ layout, selectedId, onSelectNode, zoom, emphas
   const handleNodeClick = useCallback((node: object) => {
     const n = node as BrainLayoutNode;
     onZoomEvent({ type: "click", nodeId: n.id });
+    // A run opens its own L2 detail, not its task's popover (DECISION F023 D4).
+    if (isZoomRunKind(n.kind)) return;
     const id = selectionTaskIdOf(n);
     if (id !== null) onSelectNode(id);
   }, [onSelectNode, onZoomEvent]);

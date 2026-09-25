@@ -13,6 +13,7 @@ import { BrainGraphCanvas } from "./BrainGraphCanvas";
 import { zoomBreadcrumbs, zoomGraphOf } from "./semanticZoom";
 import { useSemanticZoom } from "./useSemanticZoom";
 import { ZoomBreadcrumbs } from "./ZoomBreadcrumbs";
+import { RunDetailPopover } from "./RunDetailPopover";
 import { zoomCrumbLabel, zoomEmphasis } from "./zoomView";
 import styles from "./BrainGraphStage.module.css";
 
@@ -22,12 +23,16 @@ export function BrainGraphStage({
   onSelectNode,
   recent,
   readEventsPage,
+  serverToken,
+  onOpenDiff,
 }: {
   dashboard: RemedyDashboard;
   selectedNodeId?: string | null;
   onSelectNode: (nodeId: string | null) => void;
   recent: readonly BrainEventRow[];
   readEventsPage: (cursor: number) => Promise<unknown>;
+  serverToken: string;
+  onOpenDiff: (taskId: string) => void;
 }) {
   const [filter, setFilter] = useState<GraphFilter>("all");
   // Live is the default renderer (this round); Simple is the SVG picture
@@ -57,6 +62,9 @@ export function BrainGraphStage({
   const crumbs = zoomBreadcrumbs(zoomGraph, zoom.state).map((c) => ({
     level: c.level, current: c.current, label: zoomCrumbLabel(c, layout),
   }));
+  // L2 (and L3 until its evidence panel lands): the run detail of the focused
+  // run, read from the model, which keeps a run a cluster hides (DECISION F023 D4).
+  const focusedRun = zoom.state.level >= 2 ? model.nodes.find((n) => n.id === zoom.state.focusId) ?? null : null;
 
   return (
     <section
@@ -77,6 +85,18 @@ export function BrainGraphStage({
             onZoomEvent={zoom.dispatch}
           />
           <ZoomBreadcrumbs items={crumbs} onJump={(level) => zoom.dispatch({ type: "crumb", level })} />
+          {focusedRun && (
+            <RunDetailPopover
+              node={focusedRun}
+              rows={rows}
+              promptItems={dashboard.promptTrace?.items ?? []}
+              jobId={dashboard.jobId}
+              token={serverToken}
+              onOpenDiff={onOpenDiff}
+              onOpenPrompt={onSelectNode}
+              onClose={() => zoom.dispatch({ type: "escape" })}
+            />
+          )}
         </>
       ) : (
         // No tasks, an empty filter, or the operator pressed "Simple view":

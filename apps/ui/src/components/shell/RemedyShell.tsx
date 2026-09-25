@@ -195,7 +195,7 @@ export function RemedyShell({ dashboard, serverToken, selectedNodeId, onSelectNo
             )}
           />
           <CommandBar nextAction={dashboard.nextAction} onJump={handleJump} />
-          <BrainGraphStage dashboard={dashboard} selectedNodeId={selectedNodeId} onSelectNode={onSelectNode} recent={stream.recent} readEventsPage={readEventsPage} />
+          <BrainGraphStage dashboard={dashboard} selectedNodeId={selectedNodeId} onSelectNode={onSelectNode} recent={stream.recent} readEventsPage={readEventsPage} serverToken={serverToken} onOpenDiff={setOpenDiffTaskId} />
           <PhaseTimeline phases={dashboard.phases} timelineEvents={dashboard.timelineEvents} />
         </main>
         <RightLivePanel dashboard={dashboard} serverToken={serverToken} onSelectNode={onSelectNode} streamStatus={stream.status} recent={stream.recent} recentDropped={stream.recentDropped} onOpenLessons={() => setLessonsOpen(true)} />
