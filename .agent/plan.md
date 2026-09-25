@@ -13,16 +13,13 @@ that returns to the present (`docs/roadmap/features/T5_F024.md`).
 
 ## Current Step
 
-ROUND 6, THE CLOSURE SEQUENCE'S FIRST HALF: book round 5's PASS, write
-the Built State, consolidate the checklist, record the self-use track's
-answer and run this feature's one full suite. T001, T002 and T003 are
-built.
+ROUND 7, THE CLOSURE'S EVIDENCE HALF: book round 6's PASS, whose one
+full suite is green, then build the evidence bundle against the fork
+point and the fresh review package. T001, T002 and T003 are built.
 
 ## Next Steps
 
-1. The closure's evidence half: any repair the suite requires, the
-   evidence bundle and the review package.
-2. The closing round: the ledger rotation, the STATUS flip with its
+1. The closing round: the ledger rotation, the STATUS flip with its
    README pins, and the pull request.
 
 ## Risks
