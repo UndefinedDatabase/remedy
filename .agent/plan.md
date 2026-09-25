@@ -13,19 +13,17 @@ the stage-1 performance budget (`docs/roadmap/features/T5_F023.md`).
 
 ## Current Step
 
-ROUND 8, THE CLOSURE SEQUENCE'S FIRST HALF: book round 7's PASS, write
-the Built State and the last assumption row, consolidate the checklist,
-record the self-use track's answer, and run this feature's one full
-suite. T001, T002 and T003 are built.
+ROUND 9, THE CLOSURE SEQUENCE'S EVIDENCE HALF: book round 8's PASS,
+whose one full suite is green, then build the evidence bundle against
+the fork point and the fresh review package.
 
 ## Next Steps
 
-1. The closure's evidence half: the evidence bundle and the review
-   package, after any repair the full suite requires.
-2. The closing round: the ledger rotation, the STATUS flip with its
-   README pins, and the pull request.
+1. The closing round: the booking of round 9, the ledger rotation, the
+   STATUS flip with its README pins, and the pull request.
+2. The next session's Open PR Gate merges the pull request.
 
 ## Risks
 
-A red full suite is this feature's to repair under amend0917 rule 2.
-Open findings: 1, owned by F285.
+A package that does not read READY_FOR_REVIEW blocks the closure. Open
+findings: 1, owned by F285.
