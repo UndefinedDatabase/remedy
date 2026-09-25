@@ -13,23 +13,21 @@ the stage-1 performance budget (`docs/roadmap/features/T5_F023.md`).
 
 ## Current Step
 
-ROUND 5, T003's FIRST PART: book round 4's PASS, record DECISION F023
-D5, and land the L3 evidence panel: `EvidencePanel.tsx` with the
-binding CSS, its tabs from `evidencePanel.ts` loading only the open
-one, the run detail's Open diff and Why moved onto its tabs, the zoom
-surfaces on layer tokens, and the guard
-`tests/ui_contracts/test_evidence_panel_contract.py`.
+ROUND 6, T003's SECOND PART: book round 5's PASS, record DECISION F023
+D6, and land the deep link (`zoomDeepLink.ts`, `useZoomDeepLink.ts`),
+cluster expansion at the focused task (`clusterExpansion.ts` through
+`buildBrainLayout`), the camera that waits for the canvas, and the
+guard `tests/ui_contracts/test_zoom_deep_link_wiring.py`.
 
 ## Next Steps
 
-1. T003: deep links that restore the zoom state, and cluster expansion
-   at the focused task with focus following into it.
-2. T003: the 500-node performance fixture with its numbers recorded,
-   and the live end-to-end.
-3. The closure sequence: the one full suite, the evidence package and
+1. T003's last part: the 500-node performance fixture driven through
+   every zoom level with its numbers recorded, and the live end-to-end.
+2. The closure sequence: the one full suite, the evidence package and
    the STATUS flip.
 
 ## Risks
 
-The implementation plan says the app keeps no URL router; the deep
-links must restore state without one. Open findings: 1, owned by F285.
+The performance fixture runs in headless Chrome, which paces frames at
+60 Hz, so it shows no dropped frame rather than headroom. Open
+findings: 1, owned by F285.

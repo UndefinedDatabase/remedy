@@ -20981,3 +20981,48 @@ HOW TO REVERSE: delete `EvidencePanel.tsx`, its stylesheet, `evidencePanel.ts` w
 `BrainGraphStage.tsx`, `RemedyShell.tsx`, the two F023 stylesheets, both token sheets,
 `tokens_rules.md`, `assumption_log.md` and `test_run_detail_wiring.py` from `08955162`; and delete
 this paragraph.
+
+## DECISION F023 D6 — a deep link is read once, replayed as a click and a tab, and followed with history.replaceState; the focused task's cluster chip gives way to its runs; the camera waits for the canvas (2026-09-25)
+
+CONTEXT: T5_F023.md asks for deep-linkable state (`?focus=&level=`) for the timeline and feed
+jumps, and for '+N' clusters that expand into their children at L1 focus and collapse on
+unfocus, with a focus that clusters away following into the expansion rather than dangling.
+Measured at `950c4f14`: `docs/ui/design_reference/implementation_plan.md` Stage 4 says the
+URL/router assumptions must not change and that none exist; `RemedyApp.tsx` reads the job and
+token from the query once and nothing writes the URL; `clusterBrainModel` folds a task's oldest
+finished runs beyond eight into `cluster:<taskId>` and keeps no list of them, and
+`buildBrainLayout` always clusters; the stage's zoom graph read the laid-out view, so a layout
+that changed with the focus would move the graph the focus is checked against; and, rendered
+headless before this round, a deep link that restored L3 before the canvas had a size left the
+camera at the organism, because the camera effect found no graph and never ran again and the
+one-time fit then forced the home camera.
+
+CHOSEN: (1) THE LINK is `?focus=<node id>&level=<1-3>&tab=<tab>` on the page's own URL, parsed
+by `zoomDeepLink.ts`; a link needs a focus and a level, and its tab is read at level 3 only and
+defaults to the diff. (2) THE REPLAY is the machine's own events, a click on the focus and, at
+L3, the tab, so a link gets every check a click gets and a link to a node the graph does not
+hold leaves the zoom at home. `useZoomDeepLink.ts` reads the link once, keeps it pending until
+the graph holds its node, and cancels it when the reader moves first. (3) THE URL FOLLOWS the
+state through `history.replaceState`: the three zoom parameters are set, or removed at L0, and
+every other parameter, the job and the token included, stays as it was. No router is added and
+no history entry is made per step, which is the reading of the implementation plan's rule this
+decision takes: the rule forbids a router, and a query the page already reads once is not one.
+(4) EXPANSION is `clusterExpansion.ts`: the focused task's chip is replaced, in its place and in
+seq order, by the runs it stood for, each with its own link; `buildBrainLayout` takes the task as
+an optional second argument and is unchanged without it. The stage checks focus against the
+unexpanded layout and renders the expanded one, so moving the focus never moves the graph it is
+checked against, and the chip returns at L0. (5) THE CAMERA effect also runs once the canvas
+first has a size, and the post-settle fit re-applies the current level's camera rather than the
+organism's. (6) THE GUARDS are `tests/ui_contracts/test_zoom_deep_link_wiring.py` with the vitest
+goldens of both modules, and `test_semantic_zoom_wiring.py` follows the stage's graph onto the
+unexpanded layout; the reviewer rendered the whole path headless before this round.
+
+ALTERNATIVES: a router, rejected by the implementation plan; `pushState`, rejected because every
+Escape would add a Back step; expansion inside `clusterBrainModel`, rejected because the reducer
+is outside this feature's scope; the zoom graph read from the expanded layout, rejected because
+the focus would then change the graph it is validated against.
+
+HOW TO REVERSE: delete `zoomDeepLink.ts`, `useZoomDeepLink.ts`, `clusterExpansion.ts`, their
+tests and `tests/ui_contracts/test_zoom_deep_link_wiring.py`; restore `BrainGraphStage.tsx`,
+`ForceBrainGraph.tsx`, `buildForceBrainModel.ts` and `test_semantic_zoom_wiring.py` from
+`950c4f14`; and delete this paragraph.
