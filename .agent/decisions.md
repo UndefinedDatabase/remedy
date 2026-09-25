@@ -21026,3 +21026,48 @@ HOW TO REVERSE: delete `zoomDeepLink.ts`, `useZoomDeepLink.ts`, `clusterExpansio
 tests and `tests/ui_contracts/test_zoom_deep_link_wiring.py`; restore `BrainGraphStage.tsx`,
 `ForceBrainGraph.tsx`, `buildForceBrainModel.ts` and `test_semantic_zoom_wiring.py` from
 `950c4f14`; and delete this paragraph.
+
+## DECISION F023 D7 — the zoom's frame budget is measured at 500 nodes at every level with a tool that can fail, and a live fake job proves the run detail's round rule against real run reports (2026-09-25)
+
+CONTEXT: T5_F023.md's DONE asks that 60 fps hold at 500 nodes on the perf fixture, with the
+numbers recorded and a miss opening the stage-2 conversation rather than a silent degrade, and its
+T003 asks for the live end-to-end. Measured at `7405cf35`: DECISION F019 D6 built
+`brainPerfFixture.ts`, whose 500-node model runs through the real reducer, and measured it in
+headless Chrome with a reviewer tool kept under `.agent/authored/f019-r6-perf-*`, noting that
+headless Chrome paces frames at 60 Hz so a reading shows a dropped frame and not headroom;
+`tests/ui_server/test_brain_demo_recording_live.py` plans and runs a fake-provider job with no
+network and no model; the run detail tells a review run's round by counting its task's
+`task_round_completed` frames since the task's last start (DECISION F023 D4), and reads that
+round's facts from the rounds route (DECISION F023 D3); and nothing yet ran the two against each
+other on a real job.
+
+CHOSEN: (1) THE MEASUREMENT is F019's tool re-pointed at the zoom, kept as evidence under
+`.agent/authored/f023-r7-perf-*`: its harness wires the fixture exactly as the stage wires the
+zoom and drives it, through the machine's own events, to L0, to L1 on the first task with runs,
+to L2 on that task's first run and to L3 on its diff tab, then samples eight seconds of frames
+after three of settling, three runs per level. The budget is the stage-1 figure the feature
+applies at 500 nodes: a 95th-percentile frame of at most 17.0 ms and at least 59 frames a second
+in every run, with the level the run reached checked against the level it asked for. (2) THE
+READINGS, the reviewer's own on a tree equal to this round's: at every level every run drew 481
+frames at 60 frames a second, with a median frame of 16.7 ms and a worst 95th-percentile frame of
+16.8 ms, so the budget holds at every level; the worker's run in the primary checkout is
+committed as `.agent/authored/f023-r7-perf.txt`. (3) THE RED CONTROL: the same harness with a 25 ms
+busy-wait in every frame at L2 and L3 read 32.5 frames a second and a 33.4 ms 95th-percentile frame
+at those two levels, which the tool reported as FAIL, so the tool can fail. (4) THE LIVE
+END-TO-END is `tests/ui_server/test_semantic_zoom_live.py`: a fake job is planned and run, its
+frames are paged as the UI pages them, and for every task the rounds its stream logged since its
+last start are exactly the rounds its run report holds, numbered from one, each with the verdict
+the stream announced, a duration and the builder's token count. Its red proof found that no
+golden covered the other half of the rule, a review run after its task started again, so
+`runDetailModel.test.ts` gains that case, which counts from one again. (5) F044's trace stage, which
+DECISION F019 D6 names as the CI home of this fixture's budget, re-measures it; F023 adds no CI
+stage of its own.
+
+ALTERNATIVES: a new 500-node fixture of the zoom's own, rejected because the committed fixture
+already runs through the real reducer; measuring L0 alone, rejected because the dimming, the
+expansion and the two surfaces are exactly what the zoom adds; the end-to-end in a browser against
+a live server, rejected because the browser half is the reviewer's headless renders of every round
+and the part only a real run can prove is where the stream and the report meet.
+
+HOW TO REVERSE: delete `tests/ui_server/test_semantic_zoom_live.py`, the
+`.agent/authored/f023-r7-perf-*` copies and `.agent/authored/f023-r7-perf.txt`, and this paragraph.
