@@ -13,17 +13,18 @@ things stood, with no process left waiting
 
 ## Current Step
 
-ROUND 8, the repair of R-1056 (DECISION F025 D6): a park records the
-episode it ends under the new manifest status `paused`, so a relaunched
-job writes its run manifest; the end-to-end test then compares the
-manifest's error too.
+ROUND 9, the closure sequence's first half: book round 8, write the
+Built State, consolidate the checklist, generate and run the closure's
+self-use item, and run this feature's one full suite.
 
 ## Next Steps
 
-1. The closure sequence.
+1. The closure's second half: book round 9, register what the self-use
+   run and the suite ask for, the evidence bundle and the review package.
+2. The closing round: the ledger rotation, the STATUS flip with its
+   README pins, and the pull request.
 
 ## Risks
 
-A pause must never strand a job it cannot resume. Open findings: 3 —
-R-1008 and R-1055, owned by F285, and R-1056, owned by F025 and
-repaired this round.
+A pause must never strand a job it cannot resume. Open findings: 2 —
+R-1008 and R-1055, both owned by F285.
