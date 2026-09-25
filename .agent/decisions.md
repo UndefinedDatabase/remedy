@@ -21549,3 +21549,43 @@ a relaunch the page cannot see, while the CLI still offers it.
 HOW TO REVERSE: delete the two modules with their tests, `PauseControl`, the banner and its styles,
 the NowCard's pause branch, the popover's `serverToken` and control, the assumption-log row, the
 round's contract test, and this paragraph.
+
+## DECISION F025 D5 — the end-to-end proof: a live job paused mid-build through the door, parked, relaunched through the real `remedy job run`, and compared with an unpaused control run of the same job file by its normalized record and its workspace bytes; provider-session reuse across a park is out of F025's scope and is finding R-1055 (2026-09-25)
+
+CONTEXT: T5_F025.md's T003 asks for the end-to-end — pause mid-build, resume, and a final state
+byte-identical to an unpaused control run — and its Done clause adds that the resumed run provably
+reuses its provider sessions where supported. Measured at `218eaabd`:
+`tests/ui_server/test_pause_door_live.py` already runs a fake-provider job in its own process, pauses
+it through the real door and checks that no process outlives it, but relaunches in-process and
+compares nothing with a control; `test_writes_one_job_resumed_and_matches_an_unpaused_control_run` in
+`tests/orchestration/test_pause_resume.py` compares state and task statuses only;
+`_normalize` in `tests/orchestration/test_long_run_executor.py` compares a job's whole export with
+its random artifact ids renumbered; `parse_job_file` mints a new job id for every parse while task
+ids are stable; the CLI's `job run` calls `run_job` with the fake provider's defaults, round 1 failing
+and round 2 passing, whose outputs are fixed; and `resume_used` is set in memory between the repair
+rounds of one task run and written nowhere, while a park returns the interrupted task to `pending`.
+
+CHOSEN: (1) ONE NEW LIVE TEST FILE runs both scopes. JOB SCOPE: a three-task job runs in its own
+process under a fake provider with the CLI's defaults plus a per-call sleep; once the first task is
+applied the test sends `job.pause` through the real door; the process ends with the job `paused`
+and no process of the test's own left; `job.unpause` answers `parked` with the relaunch command;
+the relaunch is that command run as a subprocess, `python3 -m apps.cli.main job run <id>`, and the
+job completes with one `job_resumed`. TASK SCOPE: the third task is paused through the door before
+it starts, the job parks at it, `job.unpause` with the task answers `released`, and the same
+relaunch completes it. (2) THE CONTROL is the same job file run once unpaused by the same first
+runner. (3) EQUALITY is the job's export with the fields a second run legitimately changes removed
+or renumbered — the job id and every path or reference that carries it, the timestamps, the run
+ids and run references, the artifact ids, the run manifest's episodes, and the pause-event
+metadata — then compared whole, together with every workspace file's bytes and the ordered list of
+task-level event names with the pause and resume events removed; the removed field list is written
+once in the test and each entry carries its reason. (4) SESSIONS: F025 does not carry a provider
+session across a park, because Remedy's resume contract keeps none across processes and T5_F025.md
+forbids touching session mechanics; the test asserts instead that the tasks finished before the park
+are not run again, and R-1055, owned by F285, records the unmet clause.
+
+ALTERNATIVES: relaunching in-process as the door test does, rejected because the resume the operator
+is told to run is the CLI's; comparing statuses only, rejected because it cannot see a wrong file;
+building cross-process session resume inside F025, rejected by the feature's own do-not-touch list
+and because it would change what every runner persists.
+
+HOW TO REVERSE: delete the test file, R-1055's Acceptance line in T2_F285.md, and this paragraph.

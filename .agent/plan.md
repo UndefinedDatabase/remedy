@@ -13,18 +13,17 @@ things stood, with no process left waiting
 
 ## Current Step
 
-ROUND 6, T003's second part (DECISION F025 D4): the pause request
-module that reads the door's answer, the pure pause view, the pause
-banner in the graph's chrome, the NowCard's "Paused by you", and the
-pause and resume buttons for the job and for a task.
+ROUND 7: repair R-1053 and R-1054 in the task popover's control, then
+T003's end-to-end (DECISION F025 D5): both scopes paused through the
+door on a live job, relaunched through `remedy job run`, and compared
+with an unpaused control run; R-1055 goes to F285.
 
 ## Next Steps
 
-1. T003's end-to-end: pause mid-build, resume, and a final state equal
-   to an unpaused control run's, with the session evidence.
-2. The closure sequence.
+1. The closure sequence.
 
 ## Risks
 
-A pause must never strand a job it cannot resume. Open findings: 1 —
-R-1008, owned by F285.
+A pause must never strand a job it cannot resume. Open findings: 4 —
+R-1008 and R-1055, owned by F285, and R-1053 and R-1054, owned by F025
+and repaired this round.
