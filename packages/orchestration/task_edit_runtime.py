@@ -26,8 +26,8 @@ from typing import Any
 
 from packages.common.secure_fs import durable_write_json
 from packages.core.models import RunState
-from packages.orchestration import dod_gate, pause_control, safe_points
-from packages.orchestration.data_paths import job_evidence_dir, job_evidence_export_dir
+from packages.orchestration import pause_control, safe_points
+from packages.orchestration.data_paths import job_dod_path, job_evidence_export_dir
 from packages.orchestration.job_plan import (
     APPROVED_PLAN_HASH_KEY,
     map_task_plan_to_tasks,
@@ -272,6 +272,7 @@ def edit_task_at_runtime(
 
         status_before = _value(entry.status)
         approved_before = body.get(APPROVED_PLAN_HASH_KEY)
+        acceptance_before = entry.acceptance
 
         # S6: THE ENTRY IS UPDATED IN PLACE — only what the mapping wrote for this task.
         entry.title = fresh.title
@@ -324,9 +325,12 @@ def edit_task_at_runtime(
         # R-1062 / T5_F026.md "Edge cases & assumption defaults": editing acceptance
         # after a DoD was already compiled leaves that DoD's traceability rule stale
         # until the next compile re-syncs it, so the edit log notes the pending
-        # re-sync instead of staying silent about the drift.
-        has_stored_dod = (job_evidence_dir(job_id, root) / dod_gate.DOD_FILENAME).is_file()
-        dod_resync_pending = "acceptance" in fields and has_stored_dod
+        # re-sync instead of staying silent about the drift. R-1063 S2: the flag
+        # reads whether the acceptance VALUE actually changed, not merely that
+        # "acceptance" named a field in the edit — an edit that passes an unchanged
+        # acceptance beside another changed field must read false.
+        has_stored_dod = job_dod_path(job_id, root).is_file()
+        dod_resync_pending = entry.acceptance != acceptance_before and has_stored_dod
 
         log_entry["runtime"] = {
             "task_id": task_id,

@@ -602,6 +602,21 @@ class TestJobAndRunLayout:
         assert pingpong_job._task_stream_dir(jid, "t1") == \
             data_paths.job_evidence_dir(jid) / "task_runs" / "t1"
 
+    def test_job_dod_path_is_dod_json_under_job_evidence_dir(self, monkeypatch, tmp_path):
+        """R-1063: the DoD file's name is a layout fact data_paths owns, not dod_gate.
+
+        ``job_dod_path`` is ``dod.json`` inside ``job_evidence_dir`` under a given
+        root, and ``dod_gate.dod_path`` — which now imports its filename constant
+        from here — resolves to exactly the same path under the process data root.
+        """
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        from packages.orchestration import data_paths, dod_gate
+        jid = "0123456789abcdef"
+        arg_root = tmp_path / "arg"
+        assert data_paths.job_dod_path(jid, arg_root) == \
+            data_paths.job_evidence_dir(jid, arg_root) / "dod.json"
+        assert dod_gate.dod_path(jid) == data_paths.job_dod_path(jid)
+
     def test_a_persisted_pingpong_job_writes_its_record_under_its_own_job_dir(
         self, monkeypatch, tmp_path,
     ):

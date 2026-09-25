@@ -506,6 +506,18 @@ class TestDodResyncPending:
         result = _edit(root, job_id, task_id, {"acceptance": ["new criterion"]})
         assert result.entry["runtime"]["dod_resync_pending"] is False
 
+    def test_stored_dod_and_unchanged_acceptance_beside_another_field_reads_false(self, root):
+        """R-1063 S2: naming "acceptance" in the edit is not enough — the VALUE
+        must differ. T1's acceptance is ["T1 works"] (see `_task`'s default); passing
+        that same criterion back beside a title change must not raise the flag.
+        """
+        job_id = _save_job(root, _TASKS)
+        _store_dod(root, job_id)
+        task_id = _task_id_of(root, job_id, "T1")
+        result = _edit(
+            root, job_id, task_id, {"acceptance": ["T1 works"], "title": "Renamed"})
+        assert result.entry["runtime"]["dod_resync_pending"] is False
+
 
 # ---------------------------------------------------------------------------
 # S7 — the reset
