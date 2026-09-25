@@ -1,0 +1,98 @@
+.popover {
+  position: absolute;
+  left: calc(50% + 28px);
+  top: calc(50% - 72px);
+  z-index: var(--remedy-z-popover);
+  width: min(300px, calc(50% - 46px));
+  padding: 14px 16px;
+  border-radius: var(--remedy-radius-lg);
+  background: var(--remedy-glass-bg-strong);
+  border: 1px solid var(--remedy-glass-border);
+  box-shadow: var(--remedy-shadow-card);
+  backdrop-filter: blur(14px);
+  font-family: var(--remedy-font-ui);
+  color: var(--remedy-ink);
+}
+
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.subtitle {
+  margin: 2px 0 0;
+  font-size: 12px;
+  color: var(--remedy-muted);
+}
+
+.close {
+  width: 26px;
+  height: 26px;
+  border: 0;
+  border-radius: var(--remedy-radius-pill);
+  background: transparent;
+  color: var(--remedy-muted);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+}
+.close:hover { background: var(--remedy-blue-50); }
+.close:focus-visible { outline: 2px solid var(--remedy-blue-strong); outline-offset: 1px; }
+
+.verdict {
+  margin: 10px 0 8px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.facts {
+  display: grid;
+  gap: 6px;
+  margin: 0 0 12px;
+}
+
+.fact {
+  display: grid;
+  grid-template-columns: 72px 1fr;
+  gap: 8px;
+  font-size: 13px;
+}
+.fact dt { color: var(--remedy-muted); }
+.fact dd { margin: 0; }
+
+.missing { color: var(--remedy-faint); }
+
+.actions {
+  display: flex;
+  gap: 8px;
+}
+
+.action {
+  height: 28px;
+  padding: 0 12px;
+  border-radius: var(--remedy-radius-pill);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--remedy-ink);
+  background: var(--remedy-glass-bg-strong);
+  border: 1px solid var(--remedy-glass-border);
+  cursor: pointer;
+}
+.action:hover:not(:disabled) { background: var(--remedy-blue-50); }
+.action:focus-visible { outline: 2px solid var(--remedy-blue-strong); outline-offset: 1px; }
+.action:disabled { opacity: 0.45; cursor: not-allowed; }
+
+.reason {
+  margin: 8px 0 0;
+  font-size: 12px;
+  color: var(--remedy-muted);
+}

@@ -1572,6 +1572,14 @@ def _build_task_run_diff_json(job: Any, task_id: str) -> dict[str, Any]:
     return build_diff_view(_resolve_evidence_dir(str(job.job_id)), task_id=task_id)
 
 
+def _build_task_run_rounds_json(job: Any, task_id: str) -> dict[str, Any]:
+    """Build the F023 per-round facts of one task's latest run — a THIN caller for the
+    diff route's reason: `build_task_run_rounds` never raises and names every absence,
+    an unknown task included, in its own envelope (DECISION F023 D3)."""
+    from packages.orchestration.run_rounds_view import build_task_run_rounds
+    return build_task_run_rounds(job, task_id)
+
+
 def _build_layers_json() -> dict[str, Any]:
     """Build layer definitions — Step 167."""
     from packages.orchestration.ui_view_model import build_layers
@@ -2609,6 +2617,19 @@ class _RemedyHandler(BaseHTTPRequestHandler):
             # `available` False and `reason` `unknown_task_run`. A 404 would make a job with
             # no diff indistinguishable from a bad URL.
             self._send_json(200, _build_task_run_diff_json(job, parts[5]))
+            return
+
+        # /api/jobs/<job_id>/task-runs/<task_id>/rounds — the L2 run detail's facts
+        # (DECISION F023 D3). Structural for the diff route's reason above, and spelled out
+        # in `_walkable_paths` by hand for the same one. An unknown task, a task with no run
+        # and a missing report are DATA at 200, as they are for the diff.
+        if (len(parts) == 7 and parts[1] == "api" and parts[2] == "jobs"
+                and parts[4] == "task-runs" and parts[6] == "rounds"):
+            job, err = _load_job(parts[3])
+            if err:
+                self._send_json(*err)
+                return
+            self._send_json(200, _build_task_run_rounds_json(job, parts[5]))
             return
 
         self._send_json(*_safe_error(404, "not found"))

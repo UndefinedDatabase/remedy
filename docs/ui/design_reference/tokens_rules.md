@@ -11,6 +11,9 @@
   paint. Canvas renderers read them once per mount via
   `getComputedStyle(document.documentElement)` into a palette object (pattern
   already used implicitly; make it explicit in `renderers/palette.ts`).
+- **Shadows** (`--remedy-shadow-*`): `--remedy-shadow-panel` is the evidence
+  side panel's left-cast shadow from T5_F023.md's binding CSS, added by F023
+  with its one usage in `graph/EvidencePanel.module.css`.
 - **Spacing**: all padding/margin/gap use `--remedy-space-*` steps; odd values
   only inside glyph path math.
 - **Motion**: every transition/animation duration+easing reads

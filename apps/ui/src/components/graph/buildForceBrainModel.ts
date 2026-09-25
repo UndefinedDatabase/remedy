@@ -2,6 +2,7 @@ import type {
   BrainLayoutData, BrainLayoutLink, BrainLayoutNode,
 } from "./forceBrainTypes";
 import { clusterBrainModel } from "./brainReducer";
+import { expandClusterOf } from "./clusterExpansion";
 import type { BrainModel, BrainNode, NodeKind } from "./brainOntology";
 
 export function seededRng(seed: string) {
@@ -104,9 +105,13 @@ function isLinkActive(nodes: readonly BrainNode[], target: BrainNode | undefined
 /** Positions `clusterBrainModel(model)`'s nodes and links with no decor and
  *  no invented node (DECISION F019 D1; graph_spec §4 sizes, §6 layout, §8
  *  truth). Deterministic and total — no random draws, no Date — and the
- *  input model is never mutated. */
-export function buildBrainLayout(model: BrainModel): BrainLayoutData {
-  const clustered = clusterBrainModel(model);
+ *  input model is never mutated. `expandTaskId` names the task the semantic
+ *  zoom is focused on, whose cluster chip gives way to its runs
+ *  (clusterExpansion.ts, DECISION F023 D6); without it the layout is unchanged. */
+export function buildBrainLayout(model: BrainModel, expandTaskId: string | null = null): BrainLayoutData {
+  const clustered = expandTaskId === null
+    ? clusterBrainModel(model)
+    : expandClusterOf(clusterBrainModel(model), model, expandTaskId);
   const rng = seededRng(clustered.jobId || "default");
   const seedAngle = rng() * 2 * Math.PI;
 

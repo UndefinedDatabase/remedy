@@ -20739,3 +20739,335 @@ guaranteed Chrome and F044 owns the browser stage.
 
 HOW TO REVERSE: delete `renderers/glyphConformance.ts`, its test, the `.agent/authored/f020-r5-*`
 harness files and this paragraph.
+
+## DECISION F023 D1 — a pure machine {level, focusId, tab} goldened over its whole matrix, a wheel adapter that holds the hysteresis, and focus validated against the model plus its cluster view (2026-09-25)
+
+CONTEXT: T5_F023.md orders T001 as the state machine and its transition goldens, the machine a
+pure store module with the hysteresis in the wheel adapter. Measured at `441f4e8e`:
+`graph_spec.md` §10 names the four levels, the wheel thresholds "in >1.6 on node, out <0.8",
+click as the same transitions, Escape walking back and a breadcrumb chip, and asks for the
+machine in `useSemanticZoom.ts`, renderer-agnostic, while its own L1 line reads "zoom ≥1.6";
+`ForceBrainGraph.tsx` leaves zoom to `react-force-graph-2d` between 0.3 and 4 with no zoom
+handler; `renderers/glyphPaths.ts` draws run glyphs from `GLYPH_MIN_ZOOM_RUN = 1.6`;
+`brainView.ts`'s `selectionTaskIdOf` resolves a run click to its task because "run detail is the
+zoom feature's L2"; `clusterBrainModel` is a view that folds a task's oldest finished runs
+beyond eight into `cluster:<taskId>` and keeps no list of them; the vitest environment is `node`
+and reads `.ts` files only; and no module reads or writes the URL beyond the job id and token.
+
+CHOSEN: (1) THE MACHINE is `apps/ui/src/components/graph/semanticZoom.ts`, pure, and the
+`useSemanticZoom.ts` hook that `graph_spec.md` §10 names wraps it in T002, so the file the spec
+names exists and the transitions stay goldenable headless. (2) THE STATE is {level, focusId,
+tab}: focus is null at L0, a task at L1 and a run at L2 and L3, and the tab of the evidence panel
+is part of L3's address, because the L2 buttons land on different tabs of one run and a deep link
+must restore the tab. (3) THE EVENTS are click, zoom_in, zoom_out, escape, crumb, open_evidence
+and reconcile, and a refused or empty transition hands back the same state object, with a debug
+note when the refusal names a cause. A click on the core goes to L0, on a task to L1, on a run to
+L2, and on a cluster, artifact or synapse to L1 on its task. The wheel enters L1 on the task under
+the pointer and never opens L2, which §10 reaches by clicking a run, and it does nothing at L2 or
+L3; a wheel crossing out goes to L0 from any level, because below 0.8 the camera shows the whole
+organism, which is what L0 is. Escape walks one level up, a breadcrumb walks to any shallower
+level and never deeper, and open_evidence opens or switches a tab from L2 or L3 only. (4) THE
+WHEEL ADAPTER is `zoomWheel.ts`: an event fires only when the camera factor CROSSES a threshold,
+strictly above 1.6 or strictly below 0.8, as §10's Transitions line and T5_F023.md both write it,
+so every factor between them is a dead band and a zoom wobbling around a threshold never
+flickers the level; `ZOOM_IN_ABOVE` equals `GLYPH_MIN_ZOOM_RUN`, so L1 begins where run glyphs
+appear. (5) FOCUS is validated against the reducer's model, which keeps every run, together with
+the clustered view's nodes, so a cluster can be clicked and a run a cluster hides can still hold
+the focus; T003 expands the focused task's cluster in the view. reconcile walks a vanished run up
+to its task, found through the run id scheme of DECISION F019 D1, and anything else to L0, each
+with a note, so the focus never dangles. (6) THE BREADCRUMBS are computed here, Job then Task
+then Run, and at L3 no crumb is current, because the run crumb closes the panel. (7) THE GUARD is
+`tests/ui_contracts/test_semantic_zoom_contract.py`: the adapter's constants are the numbers §10
+states, both crossings are strict, both modules import nothing outside the graph directory and
+touch no DOM or React state, and the machine names the four levels.
+
+ALTERNATIVES: a hysteresis latch inside the machine, rejected because T5_F023.md puts it in the
+adapter; the tab kept outside the state, rejected because two L2 buttons and the deep links need
+it; the wheel opening L2 over a run, rejected because §10 names a click; a wheel crossing out
+walking back one level, rejected because the camera below 0.8 already shows L0; validating focus
+against the clustered view alone, rejected because a focused run would then dangle whenever a
+new run pushed it into its task's cluster.
+
+HOW TO REVERSE: delete `apps/ui/src/components/graph/semanticZoom.ts`, `zoomWheel.ts`, their two
+`.test.ts` files, `tests/ui_contracts/test_semantic_zoom_contract.py`, and this paragraph.
+
+## DECISION F023 D2 — the render effects are data computed from the zoom state, the canvas paints them and moves its camera per level under a lock, and the breadcrumbs sit top-left from L1 (2026-09-25)
+
+CONTEXT: T5_F023.md orders T002 as the render effects (dim, glow, expansion) and the L2
+popover, and its Design says L1 dimming and L0 branch glow are render-layer effects driven by
+{level, focusId}, with no model mutation. Measured at `835930ee`: `graph_spec.md` §10 dims L1's
+siblings to 25%, turns the focused task's label on, puts the breadcrumb chip top-left of the
+stage and names the hook `useSemanticZoom.ts`; `ForceBrainGraph.tsx` draws task labels only above
+a camera factor of 1.4, rings the shell's selection, marks a link `active` when its run is in
+flight, and fits the camera to 1.0 once after mount; the library reports every zoom frame through
+`onZoom`, a programmatic `zoom()` included, which the repository's type shim
+`apps/ui/src/types/react-force-graph-2d.d.ts` did not declare; `--remedy-dur-slow` is 350 ms in
+the reference token sheet and absent from the app sheet; `GraphLegend.tsx` is a `role="dialog"`
+closed by its own window-level Escape listener; and the run glyphs already hide below a factor of
+1.6, which is L0's "runs collapsed into branch beads".
+
+CHOSEN: (1) THE EFFECTS are `zoomView.ts`'s `zoomEmphasis`, plain data per state: at L1 and
+deeper every node outside the focused task's branch is dimmed to 25%, the core never, and so is
+every link into a dimmed node; the focused task is labelled at any camera factor, its label dimmed
+with it; the focus ring moves to the task at L1 and to the run at L2 and L3, beside the shell's
+selection ring; and a link glows while its run is in flight, every such link at L0 and only the
+focused branch's deeper, painted in `--remedy-state-current`, the token that paints an
+in-progress node. A focus that a filter chip hides dims nothing. (2) THE CAMERA follows the level
+through `zoomCamera`: the organism at factor 1 around the core, the task centred at 2 and the run
+at 2.4, each on the side of the wheel thresholds its level belongs to, moved over 350 ms, the
+reference `--remedy-dur-slow`, and at once under reduced motion. (3) THE LOCK: while the component
+moves its own camera, the zoom frames it causes update the recorded factor but are never read as
+wheel crossings, because a programmatic move from 1 to 2 crosses 1.6 and would otherwise refocus
+whatever lies under the pointer. (4) THE HOOK is `useSemanticZoom.ts`: it feeds every event
+through the machine, reconciles on every graph change, and walks back on Escape unless the key
+goes to a text field or a dialog is open, whose own Escape closes it first; it exposes the last
+note, which the stage writes as `data-zoom-note`. (5) THE BREADCRUMBS are `ZoomBreadcrumbs.tsx`,
+top-left, hidden at L0, where the trail would be "Job" alone; shallower crumbs are buttons, the
+current one text, the run named by its legend name. (6) A click still selects the task in the
+shell, which opens its task popover, until the L2 run popover lands in T002's second half; a
+background click only clears that selection. (7) THE GUARD is
+`tests/ui_contracts/test_semantic_zoom_wiring.py`, and the reviewer rendered the wiring headless
+before this round, clicking to L1 and L2, pressing Escape, jumping by the Job crumb and wheeling
+out, each landing the level the machine's goldens name, with no page error.
+
+ALTERNATIVES: filtering the layout per level, rejected because T5_F023.md forbids mutating the
+model for an effect and a filtered simulation would re-lay the graph at every step; no camera
+lock, rejected for the refocus above; `--remedy-dur-slow` added to the app sheet, rejected
+because a canvas cannot read it and the guard binds the constant to the reference value; the
+breadcrumbs shown at L0, rejected as a chip with nothing to walk back to.
+
+HOW TO REVERSE: delete `zoomView.ts`, `zoomView.test.ts`, `useSemanticZoom.ts`,
+`ZoomBreadcrumbs.tsx`, `ZoomBreadcrumbs.module.css` and
+`tests/ui_contracts/test_semantic_zoom_wiring.py`, restore `ForceBrainGraph.tsx`,
+`BrainGraphStage.tsx` and the type shim from `835930ee`, and delete this paragraph.
+
+## DECISION F023 D3 — the run detail's missing facts are a named prerequisite: one read route serving each round of a task's latest run from the report the job already keeps (2026-09-25)
+
+CONTEXT: T5_F023.md asks the L2 run popover for a verdict, tokens, a duration and retries, and
+its Orchestrator brief orders every endpoint gap T002 finds as a named prerequisite rather than
+an inline detour. Measured at `90669900`: the event envelope `ui_server._safe_event_summary`
+serves carries only `seq`, `event`, `timestamp`, `outcome` and `task_id`, and
+`tests/ui_server/test_sse_stream.py` pins that key set exactly; `task_round_completed` keeps
+its round number in metadata the envelope drops; every round's event is logged in one batch
+after the ping-pong loop returns, so the envelope's timestamps cannot time a round; the run
+report `pingpong_loop.export_pingpong_json` persists at `data_paths.run_dir(run_id)/result.json`
+holds, per round, the round number and kind, `started_at` and `finished_at`, the builder's
+`duration_ms` and `tokens_used`, the reviewer's `verdict`, `duration_ms` and `parse_retried`,
+and the run's `retries_used`, but not the reviewer's tokens; `TaskEntry.run_id` keeps the
+task's latest run id; and no HTTP route serves any of it.
+
+CHOSEN: (1) THE ROUTE is `GET /api/jobs/<job>/task-runs/<task_id>/rounds`, structural beside
+the diff route and listed by hand in `_walkable_paths` for the same reason, answering 200 with
+a named `reason` for an unknown task, a task with no run, and a report that is missing or
+unreadable. (2) THE BUILDER is `packages/orchestration/run_rounds_view.py`: it reads the one
+report `TaskEntry.run_id` names, after refusing any run id that is not eight to thirty-two
+lowercase hex digits, and keeps only numbers, short vocabulary words and timestamps, so no
+summary, finding text, file name or provider name is served; a malformed value becomes null,
+and the builder never raises. A round's duration is its `finished_at` minus its `started_at`.
+(3) THE CLIENT is `apps/ui/src/api/taskRunRounds.ts`, the path and a total decoder, with the
+door `loadTaskRunRounds` in `remedyApi.ts` beside the digest and lessons doors, never throwing.
+(4) THE GUARDS are `tests/ui_server/test_task_run_rounds.py`, over the builder and a real
+server, and `tests/ui_contracts/test_task_run_rounds_door.py`, which checks that the client
+builds the path the server routes and reads every key the server's envelope carries. (5) The
+new module joins the measured import closure, so `import_reachability_allowlist.txt` gains its
+line. (6) The popover itself lands next round, reading this door; a task that ran twice shows
+its latest run's rounds only, and the reviewer's tokens stay "not recorded" because the report
+does not keep them.
+
+ALTERNATIVES: widening the event envelope with the round, rejected because that changes a
+contract every stream consumer reads and a test pins byte for byte; timing a round from event
+timestamps, rejected because the batch write makes them near-identical; serving the whole run
+report, rejected because it carries prose and paths the popover never shows; reading
+`provider_evidence.json` from the evidence export, rejected because an export exists only after
+`job evidence` has run, while the run report exists as soon as the run ends.
+
+HOW TO REVERSE: delete `packages/orchestration/run_rounds_view.py`, its route and thin builder in
+`ui_server.py`, its `_walkable_paths` line and allowlist line, `apps/ui/src/api/taskRunRounds.ts`
+with its test, the `loadTaskRunRounds` door, the two guards, and this paragraph.
+
+## DECISION F023 D4 — the L2 run detail sits beside the run the camera centred, says each fact or why it is missing, and opens today's diff and prompt views until the L3 panel lands (2026-09-25)
+
+CONTEXT: T5_F023.md orders the L2 run popover with its verdict, tokens, duration and retries,
+and diff, why and rerun buttons that either work or say honestly when they will; `graph_spec.md`
+§10 anchors it to its node. Measured at `12275971`: the rounds door of DECISION F023 D3 serves
+each round of a task's LATEST run only, and records the builder's tokens but not the
+reviewer's; the ledger rows the stage folds carry every `task_round_completed`, the unreviewed
+ones included, which the reducer draws nothing for; a run click in `ForceBrainGraph.tsx`
+selected its parent task, so the shell's task popover opened beside any run detail;
+`RemedyShell.tsx` owns the diff panel's opener `setOpenDiffTaskId` and resolves a selected
+prompt-trace item id to its task's popover with that prompt highlighted; `UI_EXPOSED_COMMANDS`
+holds no rerun; `ChatInput.tsx` is the precedent for a disabled control whose reason is both its
+title and a visible sentence; and the L3 evidence panel is T003's.
+
+CHOSEN: (1) THE WORDS are `runDetailModel.ts`, pure: a review run's round is the number of
+rounds its builder run logged up to it, counted in the ledger rows, and a run belongs to the
+task's latest builder run when no later `task_run_started` exists for that task. (2) THE FACTS:
+a review run shows the reviewer's verdict, its time in the report's matching round, and whether
+its reply had to be asked again; a builder run shows the builder's tokens summed over the rounds
+that recorded them, the rounds' time summed, and its repair rounds and provider retries; a test
+run says it makes no model call and is not timed on its own. Every fact the evidence does not
+hold is a plain sentence instead — still loading, still running, an earlier run whose report the
+task no longer keeps, a task with no finished run, a report that could not be read, a round the
+report has no entry for, and the reviewer's tokens, which the report does not record. (3) THE
+POPOVER is `RunDetailPopover.tsx`, placed beside the stage's centre, where the L2 camera has
+just put the run; it is not a dialog, so Escape walks the zoom back and closes it with the level,
+and its close button sends the same Escape. It reads the rounds door once per task and never
+shows a report read for another task. (4) THE BUTTONS: Open diff opens the shell's existing diff
+panel for the run's task through the task-run diff route; Why opens the task's popover with the
+reviewer's prompt of that round highlighted, or the builder's first prompt, and is disabled with
+its reason when none was recorded; Rerun is disabled, its reason its title and a visible
+sentence, because the dashboard may send no rerun command. T003 re-points Open diff and Why at
+the L3 panel's tabs. (5) A run click no longer also selects its task in the shell. (6) THE GUARD
+is `tests/ui_contracts/test_run_detail_wiring.py`, and the reviewer rendered the popover headless
+before this round over a fetched rounds envelope, at L2 on a latest review run, a latest builder
+run and an earlier run, and its close button, with no page error.
+
+ALTERNATIVES: anchoring the popover to the node's screen position every frame, rejected because
+the L2 camera already centres the run and a per-frame position would re-render the stage at the
+canvas's frame rate; the reviewer's tokens estimated from the prompt trace, rejected because an
+estimate beside real counts would read as one; Why and Open diff held back until L3, rejected
+because both have real backends today; widening the write channel with a rerun, rejected as
+outside this feature, whose Design names the disabled pattern for exactly this case.
+
+HOW TO REVERSE: delete `runDetailModel.ts`, its test, `RunDetailPopover.tsx` and its stylesheet,
+and `tests/ui_contracts/test_run_detail_wiring.py`; restore `BrainGraphStage.tsx`,
+`ForceBrainGraph.tsx` and `RemedyShell.tsx` from `12275971`; and delete this paragraph.
+
+## DECISION F023 D5 — the L3 evidence panel keeps the binding CSS with its shadow, layer and motion as tokens, loads only the open tab, and takes over the run detail's Diff and Why (2026-09-25)
+
+CONTEXT: T5_F023.md orders the L3 EvidencePanel side panel with tabs diff, prompt trace and
+chat, the tabs lazy, the chat tab the not-yet pattern until its feature, and writes the panel's
+CSS core as binding, with a raw `rgba(37,50,79,.08)` shadow and `animation: slideIn .22s ease`.
+Measured at `08955162`: `tokens_rules.md` forbids raw colours in component CSS, takes every
+duration and easing from `--remedy-dur-*` and `--remedy-ease-*`, and forbids a literal z-index;
+`test_raw_colour_ratchet.py` holds a new file to zero raw colours; the reference sheet declares
+`--remedy-dur-base` and the `--remedy-z-*` layers and the app sheet declares none of them, while
+`test_design_drift.py` refuses any custom property the app sheets do not define; the breadcrumbs
+and the run detail of DECISIONS F023 D2 and D4 wrote their z-index as numbers, as the stage's
+docks and the task popover already do; `DiffView`, `DiffFileSidebar` and `PromptTracePanel` render
+a diff envelope and a prompt list, the prompt cards carrying `data-prompt-id`; and the run
+detail's Open diff and Why opened the shell's diff panel and task popover (DECISION F023 D4).
+
+CHOSEN: (1) THE PANEL is `EvidencePanel.tsx` and its stylesheet: the binding core ships as
+written except that its shadow reads a new token, `--remedy-shadow-panel`, holding the same
+value and added to both token sheets with its line in `tokens_rules.md`; its slide-in runs over
+`--remedy-dur-base` with `--remedy-ease-soft` and not at all under reduced motion; and it sits on
+`--remedy-z-overlay`. `--remedy-dur-base` and the `--remedy-z-stage-ui`, `--remedy-z-popover` and
+`--remedy-z-overlay` layers are transcribed byte-exact from the reference into the app sheet, and
+the breadcrumbs and the run detail move onto `--remedy-z-stage-ui` and `--remedy-z-popover`. Both
+deviations from the binding text are rows of `assumption_log.md`. (2) THE TABS are
+`evidencePanel.ts`'s: Diff, Prompt trace and Chat, in the feature's order. Only the open tab
+renders, so the diff is read through the task-run diff route when its tab opens and never shown
+under another task's name; the prompt trace lists the task's own prompts in the order they were
+sent, with the run's own prompt highlighted and scrolled into view; the chat tab says in plain
+words that talking about one run is not here yet and where steering already is. (3) THE RUN
+DETAIL shows at L2 only and the panel at L3 only; Open diff and Why now open the panel on their
+tab through the machine's `open_evidence`, so the stage no longer takes the shell's diff opener,
+and the panel's tabs switch through the same event. (4) Like the run detail, the panel is not a
+dialog: Escape walks back to L2. (5) THE GUARD is `tests/ui_contracts/test_evidence_panel_contract.py`,
+and `test_run_detail_wiring.py` follows the re-pointed buttons; the reviewer rendered the panel
+headless before this round, opening it from Open diff onto a real diff envelope, switching to the
+prompt trace and chat tabs, pressing Escape and pressing Why, with no page error and the diff
+read only when its tab opened.
+
+ALTERNATIVES: the binding shadow kept as a literal, rejected by the raw-colour rule and its
+ratchet; the task popover's diff panel kept behind Open diff, rejected because the feature routes
+it to L3 and keeping two diff surfaces would show one change in two places; every tab loaded on
+open, rejected by the feature's "tabs lazy-load their endpoint"; the panel as a dialog, rejected
+for the Escape reason D4 gives.
+
+HOW TO REVERSE: delete `EvidencePanel.tsx`, its stylesheet, `evidencePanel.ts` with its test and
+`tests/ui_contracts/test_evidence_panel_contract.py`; restore `RunDetailPopover.tsx`,
+`BrainGraphStage.tsx`, `RemedyShell.tsx`, the two F023 stylesheets, both token sheets,
+`tokens_rules.md`, `assumption_log.md` and `test_run_detail_wiring.py` from `08955162`; and delete
+this paragraph.
+
+## DECISION F023 D6 — a deep link is read once, replayed as a click and a tab, and followed with history.replaceState; the focused task's cluster chip gives way to its runs; the camera waits for the canvas (2026-09-25)
+
+CONTEXT: T5_F023.md asks for deep-linkable state (`?focus=&level=`) for the timeline and feed
+jumps, and for '+N' clusters that expand into their children at L1 focus and collapse on
+unfocus, with a focus that clusters away following into the expansion rather than dangling.
+Measured at `950c4f14`: `docs/ui/design_reference/implementation_plan.md` Stage 4 says the
+URL/router assumptions must not change and that none exist; `RemedyApp.tsx` reads the job and
+token from the query once and nothing writes the URL; `clusterBrainModel` folds a task's oldest
+finished runs beyond eight into `cluster:<taskId>` and keeps no list of them, and
+`buildBrainLayout` always clusters; the stage's zoom graph read the laid-out view, so a layout
+that changed with the focus would move the graph the focus is checked against; and, rendered
+headless before this round, a deep link that restored L3 before the canvas had a size left the
+camera at the organism, because the camera effect found no graph and never ran again and the
+one-time fit then forced the home camera.
+
+CHOSEN: (1) THE LINK is `?focus=<node id>&level=<1-3>&tab=<tab>` on the page's own URL, parsed
+by `zoomDeepLink.ts`; a link needs a focus and a level, and its tab is read at level 3 only and
+defaults to the diff. (2) THE REPLAY is the machine's own events, a click on the focus and, at
+L3, the tab, so a link gets every check a click gets and a link to a node the graph does not
+hold leaves the zoom at home. `useZoomDeepLink.ts` reads the link once, keeps it pending until
+the graph holds its node, and cancels it when the reader moves first. (3) THE URL FOLLOWS the
+state through `history.replaceState`: the three zoom parameters are set, or removed at L0, and
+every other parameter, the job and the token included, stays as it was. No router is added and
+no history entry is made per step, which is the reading of the implementation plan's rule this
+decision takes: the rule forbids a router, and a query the page already reads once is not one.
+(4) EXPANSION is `clusterExpansion.ts`: the focused task's chip is replaced, in its place and in
+seq order, by the runs it stood for, each with its own link; `buildBrainLayout` takes the task as
+an optional second argument and is unchanged without it. The stage checks focus against the
+unexpanded layout and renders the expanded one, so moving the focus never moves the graph it is
+checked against, and the chip returns at L0. (5) THE CAMERA effect also runs once the canvas
+first has a size, and the post-settle fit re-applies the current level's camera rather than the
+organism's. (6) THE GUARDS are `tests/ui_contracts/test_zoom_deep_link_wiring.py` with the vitest
+goldens of both modules, and `test_semantic_zoom_wiring.py` follows the stage's graph onto the
+unexpanded layout; the reviewer rendered the whole path headless before this round.
+
+ALTERNATIVES: a router, rejected by the implementation plan; `pushState`, rejected because every
+Escape would add a Back step; expansion inside `clusterBrainModel`, rejected because the reducer
+is outside this feature's scope; the zoom graph read from the expanded layout, rejected because
+the focus would then change the graph it is validated against.
+
+HOW TO REVERSE: delete `zoomDeepLink.ts`, `useZoomDeepLink.ts`, `clusterExpansion.ts`, their
+tests and `tests/ui_contracts/test_zoom_deep_link_wiring.py`; restore `BrainGraphStage.tsx`,
+`ForceBrainGraph.tsx`, `buildForceBrainModel.ts` and `test_semantic_zoom_wiring.py` from
+`950c4f14`; and delete this paragraph.
+
+## DECISION F023 D7 — the zoom's frame budget is measured at 500 nodes at every level with a tool that can fail, and a live fake job proves the run detail's round rule against real run reports (2026-09-25)
+
+CONTEXT: T5_F023.md's DONE asks that 60 fps hold at 500 nodes on the perf fixture, with the
+numbers recorded and a miss opening the stage-2 conversation rather than a silent degrade, and its
+T003 asks for the live end-to-end. Measured at `7405cf35`: DECISION F019 D6 built
+`brainPerfFixture.ts`, whose 500-node model runs through the real reducer, and measured it in
+headless Chrome with a reviewer tool kept under `.agent/authored/f019-r6-perf-*`, noting that
+headless Chrome paces frames at 60 Hz so a reading shows a dropped frame and not headroom;
+`tests/ui_server/test_brain_demo_recording_live.py` plans and runs a fake-provider job with no
+network and no model; the run detail tells a review run's round by counting its task's
+`task_round_completed` frames since the task's last start (DECISION F023 D4), and reads that
+round's facts from the rounds route (DECISION F023 D3); and nothing yet ran the two against each
+other on a real job.
+
+CHOSEN: (1) THE MEASUREMENT is F019's tool re-pointed at the zoom, kept as evidence under
+`.agent/authored/f023-r7-perf-*`: its harness wires the fixture exactly as the stage wires the
+zoom and drives it, through the machine's own events, to L0, to L1 on the first task with runs,
+to L2 on that task's first run and to L3 on its diff tab, then samples eight seconds of frames
+after three of settling, three runs per level. The budget is the stage-1 figure the feature
+applies at 500 nodes: a 95th-percentile frame of at most 17.0 ms and at least 59 frames a second
+in every run, with the level the run reached checked against the level it asked for. (2) THE
+READINGS, the reviewer's own on a tree equal to this round's: at every level every run drew 481
+frames at 60 frames a second, with a median frame of 16.7 ms and a worst 95th-percentile frame of
+16.8 ms, so the budget holds at every level; the worker's run in the primary checkout is
+committed as `.agent/authored/f023-r7-perf.txt`. (3) THE RED CONTROL: the same harness with a 25 ms
+busy-wait in every frame at L2 and L3 read 32.5 frames a second and a 33.4 ms 95th-percentile frame
+at those two levels, which the tool reported as FAIL, so the tool can fail. (4) THE LIVE
+END-TO-END is `tests/ui_server/test_semantic_zoom_live.py`: a fake job is planned and run, its
+frames are paged as the UI pages them, and for every task the rounds its stream logged since its
+last start are exactly the rounds its run report holds, numbered from one, each with the verdict
+the stream announced, a duration and the builder's token count. Its red proof found that no
+golden covered the other half of the rule, a review run after its task started again, so
+`runDetailModel.test.ts` gains that case, which counts from one again. (5) F044's trace stage, which
+DECISION F019 D6 names as the CI home of this fixture's budget, re-measures it; F023 adds no CI
+stage of its own.
+
+ALTERNATIVES: a new 500-node fixture of the zoom's own, rejected because the committed fixture
+already runs through the real reducer; measuring L0 alone, rejected because the dimming, the
+expansion and the two surfaces are exactly what the zoom adds; the end-to-end in a browser against
+a live server, rejected because the browser half is the reviewer's headless renders of every round
+and the part only a real run can prove is where the stream and the report meet.
+
+HOW TO REVERSE: delete `tests/ui_server/test_semantic_zoom_live.py`, the
+`.agent/authored/f023-r7-perf-*` copies and `.agent/authored/f023-r7-perf.txt`, and this paragraph.

@@ -1,0 +1,92 @@
+diff --git a/apps/ui/src/components/graph/BrainGraphStage.tsx b/apps/ui/src/components/graph/BrainGraphStage.tsx
+index f27824536..6081a9285 100644
+--- a/apps/ui/src/components/graph/BrainGraphStage.tsx
++++ b/apps/ui/src/components/graph/BrainGraphStage.tsx
+@@ -13,6 +13,7 @@ import { BrainGraphCanvas } from "./BrainGraphCanvas";
+ import { zoomBreadcrumbs, zoomGraphOf } from "./semanticZoom";
+ import { useSemanticZoom } from "./useSemanticZoom";
+ import { ZoomBreadcrumbs } from "./ZoomBreadcrumbs";
++import { RunDetailPopover } from "./RunDetailPopover";
+ import { zoomCrumbLabel, zoomEmphasis } from "./zoomView";
+ import styles from "./BrainGraphStage.module.css";
+ 
+@@ -22,12 +23,16 @@ export function BrainGraphStage({
+   onSelectNode,
+   recent,
+   readEventsPage,
++  serverToken,
++  onOpenDiff,
+ }: {
+   dashboard: RemedyDashboard;
+   selectedNodeId?: string | null;
+   onSelectNode: (nodeId: string | null) => void;
+   recent: readonly BrainEventRow[];
+   readEventsPage: (cursor: number) => Promise<unknown>;
++  serverToken: string;
++  onOpenDiff: (taskId: string) => void;
+ }) {
+   const [filter, setFilter] = useState<GraphFilter>("all");
+   // Live is the default renderer (this round); Simple is the SVG picture
+@@ -57,6 +62,9 @@ export function BrainGraphStage({
+   const crumbs = zoomBreadcrumbs(zoomGraph, zoom.state).map((c) => ({
+     level: c.level, current: c.current, label: zoomCrumbLabel(c, layout),
+   }));
++  // L2 (and L3 until its evidence panel lands): the run detail of the focused
++  // run, read from the model, which keeps a run a cluster hides (DECISION F023 D4).
++  const focusedRun = zoom.state.level >= 2 ? model.nodes.find((n) => n.id === zoom.state.focusId) ?? null : null;
+ 
+   return (
+     <section
+@@ -77,6 +85,18 @@ export function BrainGraphStage({
+             onZoomEvent={zoom.dispatch}
+           />
+           <ZoomBreadcrumbs items={crumbs} onJump={(level) => zoom.dispatch({ type: "crumb", level })} />
++          {focusedRun && (
++            <RunDetailPopover
++              node={focusedRun}
++              rows={rows}
++              promptItems={dashboard.promptTrace?.items ?? []}
++              jobId={dashboard.jobId}
++              token={serverToken}
++              onOpenDiff={onOpenDiff}
++              onOpenPrompt={onSelectNode}
++              onClose={() => zoom.dispatch({ type: "escape" })}
++            />
++          )}
+         </>
+       ) : (
+         // No tasks, an empty filter, or the operator pressed "Simple view":
+diff --git a/apps/ui/src/components/graph/ForceBrainGraph.tsx b/apps/ui/src/components/graph/ForceBrainGraph.tsx
+index 5f4736bd7..bd69d8193 100644
+--- a/apps/ui/src/components/graph/ForceBrainGraph.tsx
++++ b/apps/ui/src/components/graph/ForceBrainGraph.tsx
+@@ -17,6 +17,7 @@ import type { StateTransition } from "./renderers/stateMotion";
+ import { usePageVisible } from "./usePageVisible";
+ import { readDocumentPalette } from "./renderers/palette";
+ import type { BrainPalette } from "./renderers/palette";
++import { isZoomRunKind } from "./semanticZoom";
+ import type { ZoomEvent, ZoomState } from "./semanticZoom";
+ import { wheelZoomEvent } from "./zoomWheel";
+ import { ZOOM_CAMERA_MS, ZOOM_DIM_ALPHA, ZOOM_HOME_CAMERA, zoomCamera } from "./zoomView";
+@@ -314,6 +315,8 @@ export function ForceBrainGraph({ layout, selectedId, onSelectNode, zoom, emphas
+   const handleNodeClick = useCallback((node: object) => {
+     const n = node as BrainLayoutNode;
+     onZoomEvent({ type: "click", nodeId: n.id });
++    // A run opens its own L2 detail, not its task's popover (DECISION F023 D4).
++    if (isZoomRunKind(n.kind)) return;
+     const id = selectionTaskIdOf(n);
+     if (id !== null) onSelectNode(id);
+   }, [onSelectNode, onZoomEvent]);
+diff --git a/apps/ui/src/components/shell/RemedyShell.tsx b/apps/ui/src/components/shell/RemedyShell.tsx
+index 419b5ea0a..9b388e4e7 100644
+--- a/apps/ui/src/components/shell/RemedyShell.tsx
++++ b/apps/ui/src/components/shell/RemedyShell.tsx
+@@ -195,7 +195,7 @@ export function RemedyShell({ dashboard, serverToken, selectedNodeId, onSelectNo
+             )}
+           />
+           <CommandBar nextAction={dashboard.nextAction} onJump={handleJump} />
+-          <BrainGraphStage dashboard={dashboard} selectedNodeId={selectedNodeId} onSelectNode={onSelectNode} recent={stream.recent} readEventsPage={readEventsPage} />
++          <BrainGraphStage dashboard={dashboard} selectedNodeId={selectedNodeId} onSelectNode={onSelectNode} recent={stream.recent} readEventsPage={readEventsPage} serverToken={serverToken} onOpenDiff={setOpenDiffTaskId} />
+           <PhaseTimeline phases={dashboard.phases} timelineEvents={dashboard.timelineEvents} />
+         </main>
+         <RightLivePanel dashboard={dashboard} serverToken={serverToken} onSelectNode={onSelectNode} streamStatus={stream.status} recent={stream.recent} recentDropped={stream.recentDropped} onOpenLessons={() => setLessonsOpen(true)} />

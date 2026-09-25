@@ -1,0 +1,248 @@
+diff --git a/apps/ui/src/components/graph/BrainGraphStage.tsx b/apps/ui/src/components/graph/BrainGraphStage.tsx
+index 89af3f74e..f27824536 100644
+--- a/apps/ui/src/components/graph/BrainGraphStage.tsx
++++ b/apps/ui/src/components/graph/BrainGraphStage.tsx
+@@ -10,6 +10,10 @@ import { ForceBrainGraph } from "./ForceBrainGraph";
+ import { GraphFilterChips, type GraphFilter } from "./GraphFilterChips";
+ import { GraphLegend } from "./GraphLegend";
+ import { BrainGraphCanvas } from "./BrainGraphCanvas";
++import { zoomBreadcrumbs, zoomGraphOf } from "./semanticZoom";
++import { useSemanticZoom } from "./useSemanticZoom";
++import { ZoomBreadcrumbs } from "./ZoomBreadcrumbs";
++import { zoomCrumbLabel, zoomEmphasis } from "./zoomView";
+ import styles from "./BrainGraphStage.module.css";
+ 
+ export function BrainGraphStage({
+@@ -38,22 +42,42 @@ export function BrainGraphStage({
+   // hole from a live gap, a mid-ledger join, or a sleeping tab holds the
+   // model at the state before it, never a ghost past it (DECISION F019 D5).
+   const rows = useMemo(() => brainLedgerPrefix(ledger), [ledger]);
+-  const layout = useMemo(
+-    () => buildBrainLayout(rebuildBrainModel(dashboard.jobId, seeds, rows)),
+-    [dashboard.jobId, seeds, rows],
+-  );
++  const model = useMemo(() => rebuildBrainModel(dashboard.jobId, seeds, rows), [dashboard.jobId, seeds, rows]);
++  const layout = useMemo(() => buildBrainLayout(model), [model]);
+   const visible = useMemo(() => filterBrainLayout(layout, filter), [layout, filter]);
+   const selectedId = selectedBrainNodeId(dashboard.tasks, selectedNodeId ?? null);
+   const showLiveGraph = view === "live" && brainTaskCount(visible) > 0;
+ 
++  // Semantic zoom (graph_spec §10): focus is checked against the model, which
++  // keeps every run, and the laid-out view, which adds the clusters
++  // (DECISION F023 D1); what the state means on the canvas is zoomView.ts's.
++  const zoomGraph = useMemo(() => zoomGraphOf(model.nodes, layout.nodes), [model, layout]);
++  const zoom = useSemanticZoom(zoomGraph);
++  const emphasis = useMemo(() => zoomEmphasis(visible, zoom.state), [visible, zoom.state]);
++  const crumbs = zoomBreadcrumbs(zoomGraph, zoom.state).map((c) => ({
++    level: c.level, current: c.current, label: zoomCrumbLabel(c, layout),
++  }));
++
+   return (
+-    <section className={styles.stage} aria-label="Task brain graph" data-ui="brain-graph-stage">
++    <section
++      className={styles.stage}
++      aria-label="Task brain graph"
++      data-ui="brain-graph-stage"
++      data-zoom-level={zoom.state.level}
++      data-zoom-note={zoom.note ?? undefined}
++    >
+       {showLiveGraph ? (
+-        <ForceBrainGraph
+-          layout={visible}
+-          selectedId={selectedId}
+-          onSelectNode={(taskId) => onSelectNode(shellSelectionIdOf(dashboard.tasks, taskId))}
+-        />
++        <>
++          <ForceBrainGraph
++            layout={visible}
++            selectedId={selectedId}
++            onSelectNode={(taskId) => onSelectNode(shellSelectionIdOf(dashboard.tasks, taskId))}
++            zoom={zoom.state}
++            emphasis={emphasis}
++            onZoomEvent={zoom.dispatch}
++          />
++          <ZoomBreadcrumbs items={crumbs} onJump={(level) => zoom.dispatch({ type: "crumb", level })} />
++        </>
+       ) : (
+         // No tasks, an empty filter, or the operator pressed "Simple view":
+         // BrainGraphCanvas owns its own empty and filter-empty messages.
+diff --git a/apps/ui/src/components/graph/ForceBrainGraph.tsx b/apps/ui/src/components/graph/ForceBrainGraph.tsx
+index 8a174b6b5..5f4736bd7 100644
+--- a/apps/ui/src/components/graph/ForceBrainGraph.tsx
++++ b/apps/ui/src/components/graph/ForceBrainGraph.tsx
+@@ -17,6 +17,10 @@ import type { StateTransition } from "./renderers/stateMotion";
+ import { usePageVisible } from "./usePageVisible";
+ import { readDocumentPalette } from "./renderers/palette";
+ import type { BrainPalette } from "./renderers/palette";
++import type { ZoomEvent, ZoomState } from "./semanticZoom";
++import { wheelZoomEvent } from "./zoomWheel";
++import { ZOOM_CAMERA_MS, ZOOM_DIM_ALPHA, ZOOM_HOME_CAMERA, zoomCamera } from "./zoomView";
++import type { ZoomEmphasis } from "./zoomView";
+ import styles from "./ForceBrainGraph.module.css";
+ 
+ const reducedMotion = typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+@@ -126,10 +130,13 @@ function curvatureFor(linkId: string): number {
+ interface D3ForceStrength { strength: (fn: (node: object) => number) => unknown; }
+ interface D3ForceDistance { distance: (fn: (link: object) => number) => unknown; }
+ 
+-export function ForceBrainGraph({ layout, selectedId, onSelectNode }: {
++export function ForceBrainGraph({ layout, selectedId, onSelectNode, zoom, emphasis, onZoomEvent }: {
+   layout: BrainLayoutData;
+   selectedId: string | null;
+   onSelectNode: (nodeId: string | null) => void;
++  zoom: ZoomState;
++  emphasis: ZoomEmphasis;
++  onZoomEvent: (event: ZoomEvent) => void;
+ }) {
+   const { containerRef, size } = useGraphSize();
+   const pageVisible = usePageVisible();
+@@ -229,10 +236,13 @@ export function ForceBrainGraph({ layout, selectedId, onSelectNode }: {
+ 
+   const handleNodeCanvasObject = useCallback((node: object, ctx: CanvasRenderingContext2D, globalScale: number) => {
+     const n = node as BrainLayoutNode;
+-    const paint = paintOf(birthProgressOf(n.id));
++    const birth = paintOf(birthProgressOf(n.id));
++    // graph_spec §10: outside the focused branch, everything dims to 25%.
++    const dim = emphasis.dimmed.has(n.id) ? ZOOM_DIM_ALPHA : 1;
++    const paint = { alpha: birth.alpha * dim, scale: birth.scale };
+     NODE_PAINTERS[n.kind](n, ctx, globalScale, paint, resolvedPalette.palette, motionOf(n));
+ 
+-    if (n.id === selectedId) {
++    if (n.id === selectedId || n.id === emphasis.ringId) {
+       ctx.save();
+       ctx.strokeStyle = "#2f6fff";
+       ctx.lineWidth = 1.6;
+@@ -240,15 +250,17 @@ export function ForceBrainGraph({ layout, selectedId, onSelectNode }: {
+       ctx.restore();
+     }
+ 
+-    if (n.kind === "task" && n.label && globalScale > 1.4) {
++    // graph_spec §10, L1: the focused task's label is on at any camera factor.
++    if (n.kind === "task" && n.label && (globalScale > 1.4 || emphasis.labelled.has(n.id))) {
+       ctx.save();
++      ctx.globalAlpha = dim;
+       ctx.fillStyle = "#3a4f7e";
+       ctx.font = `500 ${11 / globalScale}px -apple-system, sans-serif`;
+       ctx.textAlign = "center"; ctx.textBaseline = "top";
+       ctx.fillText(n.label, n.x, n.y + n.radius + 4);
+       ctx.restore();
+     }
+-  }, [selectedId, birthProgressOf, resolvedPalette, motionOf]);
++  }, [selectedId, birthProgressOf, resolvedPalette, motionOf, emphasis]);
+ 
+   const handleLinkCanvasObject = useCallback((link: object, ctx: CanvasRenderingContext2D) => {
+     // force-graph rewrites source/target from ids into node refs in place
+@@ -262,7 +274,7 @@ export function ForceBrainGraph({ layout, selectedId, onSelectNode }: {
+     const target = typeof l.target === "string" ? null : l.target;
+     if (!source || !target) return;
+     const progress = birthProgressOf(target.id);
+-    const alpha = progress ? progress.p : 1;
++    const alpha = (progress ? progress.p : 1) * (emphasis.dimmed.has(target.id) ? ZOOM_DIM_ALPHA : 1);
+ 
+     const sx = source.x, sy = source.y;
+     const tx = target.x, ty = target.y;
+@@ -274,6 +286,19 @@ export function ForceBrainGraph({ layout, selectedId, onSelectNode }: {
+     const cy = my + (dx / len) * curvature * 80;
+ 
+     ctx.save();
++    // graph_spec §10, L0: a branch with a run in flight glows, in the token
++    // that paints an in-progress node (DECISION F023 D2).
++    const glow = resolvedPalette.palette["--remedy-state-current"];
++    if (emphasis.glowing.has(l.id) && glow) {
++      ctx.globalAlpha = alpha * 0.3;
++      ctx.strokeStyle = glow;
++      ctx.lineWidth = l.width + 6;
++      ctx.lineCap = "round";
++      ctx.beginPath();
++      ctx.moveTo(sx, sy);
++      ctx.quadraticCurveTo(cx, cy, tx, ty);
++      ctx.stroke();
++    }
+     ctx.globalAlpha = alpha;
+     ctx.strokeStyle = "rgba(190, 212, 248, 0.8)";
+     ctx.lineWidth = l.width;
+@@ -282,12 +307,49 @@ export function ForceBrainGraph({ layout, selectedId, onSelectNode }: {
+     ctx.quadraticCurveTo(cx, cy, tx, ty);
+     ctx.stroke();
+     ctx.restore();
+-  }, [birthProgressOf]);
++  }, [birthProgressOf, emphasis, resolvedPalette]);
+ 
++  // graph_spec §10: a click is the same transition the wheel and the
++  // breadcrumbs make; the shell's selection still opens the task's popover.
+   const handleNodeClick = useCallback((node: object) => {
+-    const id = selectionTaskIdOf(node as BrainLayoutNode);
++    const n = node as BrainLayoutNode;
++    onZoomEvent({ type: "click", nodeId: n.id });
++    const id = selectionTaskIdOf(n);
+     if (id !== null) onSelectNode(id);
+-  }, [onSelectNode]);
++  }, [onSelectNode, onZoomEvent]);
++
++  // The wheel adapter reads the camera factor on every zoom frame; a camera
++  // move this component makes itself is not a wheel and is ignored until it
++  // lands (zoomWheel.ts holds the hysteresis, DECISION F023 D1).
++  const hoveredIdRef = useRef<string | null>(null);
++  const lastZoomRef = useRef(ZOOM_HOME_CAMERA);
++  const cameraLockUntilRef = useRef(0);
++  const handleNodeHover = useCallback((node: object | null) => {
++    hoveredIdRef.current = node ? (node as BrainLayoutNode).id : null;
++  }, []);
++  const handleZoom = useCallback(({ k }: { k: number }) => {
++    const previous = lastZoomRef.current;
++    lastZoomRef.current = k;
++    if (performance.now() < cameraLockUntilRef.current) return;
++    const event = wheelZoomEvent(previous, k, hoveredIdRef.current);
++    if (event) onZoomEvent(event);
++  }, [onZoomEvent]);
++
++  // The camera follows the level: L0 fits the organism, L1 centres the task,
++  // L2 and L3 centre the run (zoomView.ts).
++  const layoutRef = useRef(layout);
++  useLayoutEffect(() => {
++    layoutRef.current = { nodes: graphData.nodes, links: layout.links };
++  }, [graphData, layout]);
++  useEffect(() => {
++    const fg = graphRef.current;
++    const camera = zoomCamera(layoutRef.current, zoom);
++    if (!fg || !camera) return;
++    const ms = reducedMotion ? 0 : ZOOM_CAMERA_MS;
++    cameraLockUntilRef.current = performance.now() + ms + 100;
++    fg.centerAt(camera.x, camera.y, ms);
++    fg.zoom(camera.k, ms);
++  }, [zoom]);
+ 
+   // Configure the EXISTING d3 forces (getter, then call its own setter) —
+   // replacing them with a plain object, as the old decorative renderer did,
+@@ -312,6 +374,7 @@ export function ForceBrainGraph({ layout, selectedId, onSelectNode }: {
+     const fg = graphRef.current;
+     if (!fg) return;
+     const timer = setTimeout(() => {
++      cameraLockUntilRef.current = performance.now() + (reducedMotion ? 0 : 600) + 100;
+       fg.zoom(1.0, reducedMotion ? 0 : 600);
+       fg.centerAt(0, 0, reducedMotion ? 0 : 600);
+     }, reducedMotion ? 100 : 800);
+@@ -349,6 +412,8 @@ export function ForceBrainGraph({ layout, selectedId, onSelectNode }: {
+           minZoom={0.3}
+           maxZoom={4}
+           onNodeClick={handleNodeClick}
++          onNodeHover={handleNodeHover}
++          onZoom={handleZoom}
+           onBackgroundClick={() => onSelectNode(null)}
+           nodeCanvasObject={handleNodeCanvasObject}
+           nodeCanvasObjectMode={() => "replace"}
+diff --git a/apps/ui/src/types/react-force-graph-2d.d.ts b/apps/ui/src/types/react-force-graph-2d.d.ts
+index 446f652dc..8b3cb636e 100644
+--- a/apps/ui/src/types/react-force-graph-2d.d.ts
++++ b/apps/ui/src/types/react-force-graph-2d.d.ts
+@@ -36,6 +36,10 @@ declare module "react-force-graph-2d" {
+     onNodeClick?: (node: object, event: MouseEvent) => void;
+     onNodeHover?: (node: object | null, prevNode: object | null) => void;
+     onBackgroundClick?: (event: MouseEvent) => void;
++    // Fires on every zoom or pan frame, the wheel's and a programmatic
++    // `zoom()`'s alike (force-graph 1.51.4); the semantic-zoom wheel adapter
++    // reads `k` from it (zoomWheel.ts).
++    onZoom?: (transform: { k: number; x: number; y: number }) => void;
+     enableNodeDrag?: boolean;
+     enableZoomInteraction?: boolean;
+     enablePanInteraction?: boolean;

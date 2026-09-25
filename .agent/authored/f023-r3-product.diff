@@ -1,0 +1,93 @@
+diff --git a/apps/ui/src/api/remedyApi.ts b/apps/ui/src/api/remedyApi.ts
+index 7db4f5c7e..ac775adff 100644
+--- a/apps/ui/src/api/remedyApi.ts
++++ b/apps/ui/src/api/remedyApi.ts
+@@ -6,6 +6,8 @@ import { decodeJobDigest, jobDigestPath } from "./jobDigest";
+ import type { JobDigest } from "./jobDigest";
+ import { decodeLessonsIndex, lessonsIndexPath } from "./lessons";
+ import type { LessonsIndex } from "./lessons";
++import { decodeTaskRunRounds, taskRunRoundsPath } from "./taskRunRounds";
++import type { TaskRunRounds } from "./taskRunRounds";
+ import type { PipelineStep, PipelineStepState, RemedyActivityItem, RemedyContinuationSummary, RemedyDashboard, RemedyGraphEdge, RemedyGraphNode, RemedyJourneyItem, RemedyMetric, RemedyNextAction, RemedyPhase, RemedyPipeline, RemedyPromptKind, RemedyPromptRole, RemedyPromptTraceItem, RemedyPromptTraceSummary, RemedySnapshotSummary, RemedyState, RemedyTaskItem, RemedyTimelineEvent, RemedyTimelineEventKind, RemedyTimelinePhase } from "./types";
+ 
+ interface ApiClientOptions { jobId: string; token: string; baseUrl?: string; }
+@@ -777,6 +779,28 @@ export async function loadJobDigest(
+   }
+ }
+ 
++// ---------------------------------------------------------------------------
++// The per-round facts door (F023 T002, DECISION F023 D3), shaped like the digest
++// door above: one injected fetcher, one decoder, and no throw.
++// ---------------------------------------------------------------------------
++
++/** How the rounds door reaches the network; a test hands `loadTaskRunRounds` a fake. */
++export type TaskRunRoundsFetcher = (path: string) => Promise<unknown>;
++
++/** Read one task's per-round facts through the single door. NEVER THROWS: a failed
++ *  read answers the same total, unavailable shape a refused payload does, so the
++ *  run detail renders "not recorded" rather than branching on an error. */
++export async function loadTaskRunRounds(
++  request: { jobId: string; taskId: string; token: string; baseUrl?: string },
++  fetchPayload: TaskRunRoundsFetcher = fetchJson,
++): Promise<TaskRunRounds> {
++  try {
++    return decodeTaskRunRounds(await fetchPayload(taskRunRoundsPath(request)), request.taskId);
++  } catch {
++    return decodeTaskRunRounds(null, request.taskId);
++  }
++}
++
+ // ---------------------------------------------------------------------------
+ // The lessons door (F265 T002, DECISION F265 D3), shaped exactly like the digest
+ // door above: one injected fetcher, one decoder, and no throw.
+diff --git a/packages/orchestration/ui_server.py b/packages/orchestration/ui_server.py
+index 49b988901..bfffa2e1e 100644
+--- a/packages/orchestration/ui_server.py
++++ b/packages/orchestration/ui_server.py
+@@ -1572,6 +1572,14 @@ def _build_task_run_diff_json(job: Any, task_id: str) -> dict[str, Any]:
+     return build_diff_view(_resolve_evidence_dir(str(job.job_id)), task_id=task_id)
+ 
+ 
++def _build_task_run_rounds_json(job: Any, task_id: str) -> dict[str, Any]:
++    """Build the F023 per-round facts of one task's latest run — a THIN caller for the
++    diff route's reason: `build_task_run_rounds` never raises and names every absence,
++    an unknown task included, in its own envelope (DECISION F023 D3)."""
++    from packages.orchestration.run_rounds_view import build_task_run_rounds
++    return build_task_run_rounds(job, task_id)
++
++
+ def _build_layers_json() -> dict[str, Any]:
+     """Build layer definitions — Step 167."""
+     from packages.orchestration.ui_view_model import build_layers
+@@ -2611,6 +2619,19 @@ class _RemedyHandler(BaseHTTPRequestHandler):
+             self._send_json(200, _build_task_run_diff_json(job, parts[5]))
+             return
+ 
++        # /api/jobs/<job_id>/task-runs/<task_id>/rounds — the L2 run detail's facts
++        # (DECISION F023 D3). Structural for the diff route's reason above, and spelled out
++        # in `_walkable_paths` by hand for the same one. An unknown task, a task with no run
++        # and a missing report are DATA at 200, as they are for the diff.
++        if (len(parts) == 7 and parts[1] == "api" and parts[2] == "jobs"
++                and parts[4] == "task-runs" and parts[6] == "rounds"):
++            job, err = _load_job(parts[3])
++            if err:
++                self._send_json(*err)
++                return
++            self._send_json(200, _build_task_run_rounds_json(job, parts[5]))
++            return
++
+         self._send_json(*_safe_error(404, "not found"))
+ 
+     def _send_sse_stream(self, job: Any, cursor: str, *,
+diff --git a/tests/orchestration/import_reachability_allowlist.txt b/tests/orchestration/import_reachability_allowlist.txt
+index fccf75217..2df944cde 100644
+--- a/tests/orchestration/import_reachability_allowlist.txt
++++ b/tests/orchestration/import_reachability_allowlist.txt
+@@ -210,6 +210,7 @@ packages.orchestration.run_contract
+ packages.orchestration.run_log
+ packages.orchestration.run_manifest
+ packages.orchestration.run_report
++packages.orchestration.run_rounds_view
+ packages.orchestration.runtime_integration_gate
+ packages.orchestration.safe_points
+ packages.orchestration.schemas

@@ -1,0 +1,53 @@
+.chip {
+  position: absolute;
+  left: 18px;
+  top: 16px;
+  z-index: var(--remedy-z-stage-ui);
+  max-width: calc(100% - 36px);
+  padding: 4px 12px;
+  border-radius: var(--remedy-radius-pill);
+  background: var(--remedy-glass-bg-strong);
+  border: 1px solid var(--remedy-glass-border);
+  box-shadow: var(--remedy-shadow-soft);
+  font-family: var(--remedy-font-ui);
+  font-size: 13px;
+}
+
+.trail {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  white-space: nowrap;
+}
+
+.crumb {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.separator { color: var(--remedy-muted); }
+
+.jump {
+  padding: 2px 4px;
+  border: 0;
+  border-radius: var(--remedy-radius-sm);
+  background: transparent;
+  color: var(--remedy-blue-strong);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+.jump:hover { background: var(--remedy-blue-50); }
+.jump:focus-visible { outline: 2px solid var(--remedy-blue-strong); outline-offset: 1px; }
+
+.current {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--remedy-ink);
+  font-weight: 600;
+}

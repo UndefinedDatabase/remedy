@@ -1,0 +1,94 @@
+/* T5_F023.md's binding EvidencePanel core, with its one raw colour moved into
+   the token `--remedy-shadow-panel`, its layer on `--remedy-z-overlay`, and its
+   slide-in on `--remedy-dur-base` and `--remedy-ease-soft` (DECISION F023 D5). */
+.panel {
+  position: fixed; right: 0; top: 0; bottom: 0; width: min(560px, 44vw);
+  background: var(--remedy-bg-2); border-left: 1px solid var(--remedy-line); box-shadow: var(--remedy-shadow-panel);
+  display: flex; flex-direction: column; animation: slideIn var(--remedy-dur-base) var(--remedy-ease-soft);
+  z-index: var(--remedy-z-overlay);
+  font-family: var(--remedy-font-ui);
+  color: var(--remedy-ink);
+}
+
+@keyframes slideIn {
+  from { transform: translateX(24px); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .panel { animation: none; }
+}
+
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 18px 20px 10px;
+}
+
+.title {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.subtitle {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: var(--remedy-muted);
+}
+
+.close {
+  width: 30px;
+  height: 30px;
+  border: 0;
+  border-radius: var(--remedy-radius-pill);
+  background: transparent;
+  color: var(--remedy-muted);
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+}
+.close:hover { background: var(--remedy-blue-50); }
+.close:focus-visible { outline: 2px solid var(--remedy-blue-strong); outline-offset: 1px; }
+
+.tabs {
+  display: flex;
+  gap: 4px;
+  padding: 0 20px;
+  border-bottom: 1px solid var(--remedy-line);
+}
+
+.tab {
+  padding: 8px 12px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--remedy-muted);
+  cursor: pointer;
+}
+.tab[aria-selected="true"] { color: var(--remedy-ink); border-bottom-color: var(--remedy-blue-strong); }
+.tab:focus-visible { outline: 2px solid var(--remedy-blue-strong); outline-offset: -2px; }
+
+.body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 14px 20px 20px;
+}
+
+.diff {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.note {
+  margin: 0;
+  font-size: 13px;
+  color: var(--remedy-muted);
+}

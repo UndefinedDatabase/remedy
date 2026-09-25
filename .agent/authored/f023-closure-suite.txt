@@ -1,0 +1,7 @@
+F023 R8 C5 — the closure's one full suite
+
+Command: python3 -m pytest -n auto -q
+Real exit code: 0
+Wall time: 132.46s (0:02:12), measured 133s by shell $SECONDS
+Summary line: 19158 passed, 20 skipped, 1 warning in 132.46s (0:02:12)
+Bad node ids (failed + errors): NONE

@@ -36,6 +36,10 @@ declare module "react-force-graph-2d" {
     onNodeClick?: (node: object, event: MouseEvent) => void;
     onNodeHover?: (node: object | null, prevNode: object | null) => void;
     onBackgroundClick?: (event: MouseEvent) => void;
+    // Fires on every zoom or pan frame, the wheel's and a programmatic
+    // `zoom()`'s alike (force-graph 1.51.4); the semantic-zoom wheel adapter
+    // reads `k` from it (zoomWheel.ts).
+    onZoom?: (transform: { k: number; x: number; y: number }) => void;
     enableNodeDrag?: boolean;
     enableZoomInteraction?: boolean;
     enablePanInteraction?: boolean;

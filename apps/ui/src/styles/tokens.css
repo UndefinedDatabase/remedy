@@ -46,6 +46,15 @@
      and the renderer's spring-in both read a token that resolves. */
   --remedy-dur-birth: 420ms;
   --remedy-ease-soft: cubic-bezier(0.22, 1, 0.36, 1);
+  /* Semantic zoom's surfaces (F023): the evidence panel's slide-in, and the
+     layers its breadcrumbs, run detail and panel sit on, transcribed
+     byte-exact from docs/ui/design_reference/tokens.css; the panel's shadow
+     is the one T5_F023.md's binding CSS writes, as a token (DECISION F023 D5). */
+  --remedy-dur-base: 220ms;
+  --remedy-z-stage-ui: 10;
+  --remedy-z-popover: 40;
+  --remedy-z-overlay: 80;
+  --remedy-shadow-panel: -18px 0 40px rgba(37, 50, 79, 0.08);
 
   --remedy-line: rgba(44, 82, 150, 0.14);
   --remedy-line-strong: rgba(44, 82, 150, 0.26);
