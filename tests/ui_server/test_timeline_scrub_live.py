@@ -68,6 +68,7 @@ def test_a_live_jobs_ledger_scrubs_to_exactly_each_prefix(tmp_path, monkeypatch)
                             capture_output=True, text=True, timeout=120)
     out = result.stdout + result.stderr
     assert result.returncode == 0, out
-    counts = re.search(r"Tests\s+(\d+) passed \((\d+)\)", out)
+    # vitest colours its summary wherever `CI` is set, as on the hosted runner (R-1048).
+    counts = re.search(r"Tests\s+(\d+) passed \((\d+)\)", re.sub(r"\x1b\[[0-9;]*m", "", out))
     assert counts, out
     assert counts.group(1) == counts.group(2) == "5", f"every live check must run and pass:\n{out}"
