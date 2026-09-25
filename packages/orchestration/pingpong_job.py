@@ -478,6 +478,11 @@ class JobPlan:
     # budget object would write a meaningless `{}` into every job record.
     budget: Budget | None = None
     fences: JobFences | None = None
+    # F025 S1: the current OPERATOR pause, empty when none holds the job. Told apart
+    # from the task cap's `paused` (`max_tasks`, above) by this record, not by a new
+    # state (DECISION F025 D1 clause 6) — `max_tasks` never writes it, and the record
+    # is emptied the moment the job leaves `paused` for any other state.
+    pause: dict = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         # One spelling per concept: however the field was set — a raw literal, a
@@ -906,6 +911,9 @@ def _export_job(job: JobPlan) -> dict[str, Any]:
         "budget_actuals": job.budget_actuals,
         "budget_prediction": job.budget_prediction,
         "metadata": job.metadata,
+        # F025 S1: wired explicitly, like every field above — a missing key (every
+        # job file written before this round) loads as `{}`, not as an error.
+        "pause": job.pause,
         "handoff_coverage": {
             "verdict": job.handoff_coverage_verdict,
             "root_changed_files": job.root_changed_files,
@@ -1022,6 +1030,9 @@ def _import_job(data: dict[str, Any]) -> JobPlan:
         # Absent in job files written before F104 — loads as None, unchanged.
         budget_prediction=data.get("budget_prediction"),
         metadata=dict(data.get("metadata") or {}),
+        # F025 S1: absent in every job file written before this round — loads as
+        # `{}`, meaning "no operator pause holds this job", not an error.
+        pause=dict(data.get("pause") or {}),
     )
     for t in data.get("tasks", []):
         job.tasks.append(TaskEntry(
@@ -3727,6 +3738,16 @@ def format_job_report_text(job: JobPlan) -> str:
     pending_count = sum(1 for t in job.tasks if t.status == TASK_PENDING)
     if job.state == JOB_PAUSED and pending_count > 0:
         lines.append(f"Paused: {pending_count} tasks pending")
+        # F025 S6: an OPERATOR pause says who paused it and why; a task-scope one
+        # also names what it withheld. A `max_tasks` pause carries no record (S1),
+        # so this block is silent for it, unchanged from before this round.
+        if job.pause:
+            lines.append(
+                f"Paused by {job.pause.get('source', '')}: {job.pause.get('reason', '')}"
+            )
+            if job.pause.get("scope") == "task":
+                withheld = job.pause.get("withheld_task_ids") or []
+                lines.append(f"Withheld tasks: {', '.join(withheld)}")
 
     ec = job.execution_config
     if ec:
