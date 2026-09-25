@@ -13,25 +13,24 @@ the stage-1 performance budget (`docs/roadmap/features/T5_F023.md`).
 
 ## Current Step
 
-ROUND 3, THE NAMED PREREQUISITE OF THE L2 RUN DETAIL: book round 2's
-PASS, record DECISION F023 D3, and land the read route
-`/api/jobs/<job>/task-runs/<task_id>/rounds` with its builder
-`packages/orchestration/run_rounds_view.py`, the client path and decoder
-`apps/ui/src/api/taskRunRounds.ts`, the `loadTaskRunRounds` door, and
-their guards.
+ROUND 4, T002's SECOND HALF: book round 3's PASS, record DECISION F023
+D4, and land the L2 run detail: `runDetailModel.ts`, the words for each
+run's verdict, round, tokens, duration and retries; `RunDetailPopover.tsx`
+reading the rounds door, with Open diff, Why and a disabled Rerun; the
+stage and shell wiring; and the guard
+`tests/ui_contracts/test_run_detail_wiring.py`.
 
 ## Next Steps
 
-1. T002's second half: the L2 run popover anchored to its node, reading
-   the rounds door, with diff, why and rerun buttons that work or say
-   honestly when they will.
-2. T003: the L3 evidence panel with lazy tabs, deep links, cluster
-   expansion, the 500-node performance fixture and the live end-to-end.
+1. T003: the L3 evidence panel with lazy tabs, Open diff and Why moved
+   onto its tabs, and the deep links.
+2. T003: cluster expansion at the focused task, the 500-node
+   performance fixture with its numbers recorded, and the live
+   end-to-end.
 3. The closure sequence: the one full suite, the evidence package and
    the STATUS flip.
 
 ## Risks
 
-A task that ran twice shows its latest run's rounds only, and the
-reviewer's tokens are not recorded by the run report. Open findings: 1,
-owned by F285.
+The run report keeps no reviewer tokens and only the latest run per
+task. Open findings: 1, owned by F285.

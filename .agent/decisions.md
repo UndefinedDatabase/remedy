@@ -20884,3 +20884,51 @@ report, rejected because it carries prose and paths the popover never shows; rea
 HOW TO REVERSE: delete `packages/orchestration/run_rounds_view.py`, its route and thin builder in
 `ui_server.py`, its `_walkable_paths` line and allowlist line, `apps/ui/src/api/taskRunRounds.ts`
 with its test, the `loadTaskRunRounds` door, the two guards, and this paragraph.
+
+## DECISION F023 D4 — the L2 run detail sits beside the run the camera centred, says each fact or why it is missing, and opens today's diff and prompt views until the L3 panel lands (2026-09-25)
+
+CONTEXT: T5_F023.md orders the L2 run popover with its verdict, tokens, duration and retries,
+and diff, why and rerun buttons that either work or say honestly when they will; `graph_spec.md`
+§10 anchors it to its node. Measured at `12275971`: the rounds door of DECISION F023 D3 serves
+each round of a task's LATEST run only, and records the builder's tokens but not the
+reviewer's; the ledger rows the stage folds carry every `task_round_completed`, the unreviewed
+ones included, which the reducer draws nothing for; a run click in `ForceBrainGraph.tsx`
+selected its parent task, so the shell's task popover opened beside any run detail;
+`RemedyShell.tsx` owns the diff panel's opener `setOpenDiffTaskId` and resolves a selected
+prompt-trace item id to its task's popover with that prompt highlighted; `UI_EXPOSED_COMMANDS`
+holds no rerun; `ChatInput.tsx` is the precedent for a disabled control whose reason is both its
+title and a visible sentence; and the L3 evidence panel is T003's.
+
+CHOSEN: (1) THE WORDS are `runDetailModel.ts`, pure: a review run's round is the number of
+rounds its builder run logged up to it, counted in the ledger rows, and a run belongs to the
+task's latest builder run when no later `task_run_started` exists for that task. (2) THE FACTS:
+a review run shows the reviewer's verdict, its time in the report's matching round, and whether
+its reply had to be asked again; a builder run shows the builder's tokens summed over the rounds
+that recorded them, the rounds' time summed, and its repair rounds and provider retries; a test
+run says it makes no model call and is not timed on its own. Every fact the evidence does not
+hold is a plain sentence instead — still loading, still running, an earlier run whose report the
+task no longer keeps, a task with no finished run, a report that could not be read, a round the
+report has no entry for, and the reviewer's tokens, which the report does not record. (3) THE
+POPOVER is `RunDetailPopover.tsx`, placed beside the stage's centre, where the L2 camera has
+just put the run; it is not a dialog, so Escape walks the zoom back and closes it with the level,
+and its close button sends the same Escape. It reads the rounds door once per task and never
+shows a report read for another task. (4) THE BUTTONS: Open diff opens the shell's existing diff
+panel for the run's task through the task-run diff route; Why opens the task's popover with the
+reviewer's prompt of that round highlighted, or the builder's first prompt, and is disabled with
+its reason when none was recorded; Rerun is disabled, its reason its title and a visible
+sentence, because the dashboard may send no rerun command. T003 re-points Open diff and Why at
+the L3 panel's tabs. (5) A run click no longer also selects its task in the shell. (6) THE GUARD
+is `tests/ui_contracts/test_run_detail_wiring.py`, and the reviewer rendered the popover headless
+before this round over a fetched rounds envelope, at L2 on a latest review run, a latest builder
+run and an earlier run, and its close button, with no page error.
+
+ALTERNATIVES: anchoring the popover to the node's screen position every frame, rejected because
+the L2 camera already centres the run and a per-frame position would re-render the stage at the
+canvas's frame rate; the reviewer's tokens estimated from the prompt trace, rejected because an
+estimate beside real counts would read as one; Why and Open diff held back until L3, rejected
+because both have real backends today; widening the write channel with a rerun, rejected as
+outside this feature, whose Design names the disabled pattern for exactly this case.
+
+HOW TO REVERSE: delete `runDetailModel.ts`, its test, `RunDetailPopover.tsx` and its stylesheet,
+and `tests/ui_contracts/test_run_detail_wiring.py`; restore `BrainGraphStage.tsx`,
+`ForceBrainGraph.tsx` and `RemedyShell.tsx` from `12275971`; and delete this paragraph.
