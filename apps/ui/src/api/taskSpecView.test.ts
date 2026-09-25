@@ -108,6 +108,22 @@ describe("specVersionRows", () => {
     expect(files.after).toBe("src/t1.py; src/t1_helpers.py");
   });
 
+  it("compares each row to the one before it, not to the first row", () => {
+    const s = spec({
+      specVersion: 3,
+      // Same title as v2 — differs from v1, so a "compare to the first row"
+      // bug would wrongly report a change here.
+      current: fields({ title: "Build T1, v2" }),
+      versions: [
+        { ...fields({ title: "Build T1, v1" }), specVersion: 1, state: "waiting", archivedAt: "2026-01-01T00:00:00Z" },
+        { ...fields({ title: "Build T1, v2" }), specVersion: 2, state: "waiting", archivedAt: "2026-01-02T00:00:00Z" },
+      ],
+    });
+    const rows = specVersionRows(s);
+    expect(rows[1].changes.map(c => c.field)).toEqual(["title"]);
+    expect(rows[2].changes).toEqual([]);
+  });
+
   it("reports no changes when nothing differs from the row before it", () => {
     const s = spec({
       specVersion: 2,
