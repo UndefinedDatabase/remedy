@@ -1,0 +1,63 @@
+diff --git a/.agent/decisions.md b/.agent/decisions.md
+index b1e2f4a26..68496b94f 100644
+--- a/.agent/decisions.md
++++ b/.agent/decisions.md
+@@ -21026,3 +21026,48 @@ HOW TO REVERSE: delete `zoomDeepLink.ts`, `useZoomDeepLink.ts`, `clusterExpansio
+ tests and `tests/ui_contracts/test_zoom_deep_link_wiring.py`; restore `BrainGraphStage.tsx`,
+ `ForceBrainGraph.tsx`, `buildForceBrainModel.ts` and `test_semantic_zoom_wiring.py` from
+ `950c4f14`; and delete this paragraph.
++
++## DECISION F023 D7 — the zoom's frame budget is measured at 500 nodes at every level with a tool that can fail, and a live fake job proves the run detail's round rule against real run reports (2026-09-25)
++
++CONTEXT: T5_F023.md's DONE asks that 60 fps hold at 500 nodes on the perf fixture, with the
++numbers recorded and a miss opening the stage-2 conversation rather than a silent degrade, and its
++T003 asks for the live end-to-end. Measured at `7405cf35`: DECISION F019 D6 built
++`brainPerfFixture.ts`, whose 500-node model runs through the real reducer, and measured it in
++headless Chrome with a reviewer tool kept under `.agent/authored/f019-r6-perf-*`, noting that
++headless Chrome paces frames at 60 Hz so a reading shows a dropped frame and not headroom;
++`tests/ui_server/test_brain_demo_recording_live.py` plans and runs a fake-provider job with no
++network and no model; the run detail tells a review run's round by counting its task's
++`task_round_completed` frames since the task's last start (DECISION F023 D4), and reads that
++round's facts from the rounds route (DECISION F023 D3); and nothing yet ran the two against each
++other on a real job.
++
++CHOSEN: (1) THE MEASUREMENT is F019's tool re-pointed at the zoom, kept as evidence under
++`.agent/authored/f023-r7-perf-*`: its harness wires the fixture exactly as the stage wires the
++zoom and drives it, through the machine's own events, to L0, to L1 on the first task with runs,
++to L2 on that task's first run and to L3 on its diff tab, then samples eight seconds of frames
++after three of settling, three runs per level. The budget is the stage-1 figure the feature
++applies at 500 nodes: a 95th-percentile frame of at most 17.0 ms and at least 59 frames a second
++in every run, with the level the run reached checked against the level it asked for. (2) THE
++READINGS, the reviewer's own on a tree equal to this round's: at every level every run drew 481
++frames at 60 frames a second, with a median frame of 16.7 ms and a worst 95th-percentile frame of
++16.8 ms, so the budget holds at every level; the worker's run in the primary checkout is
++committed as `.agent/authored/f023-r7-perf.txt`. (3) THE RED CONTROL: the same harness with a 25 ms
++busy-wait in every frame at L2 and L3 read 32.5 frames a second and a 33.4 ms 95th-percentile frame
++at those two levels, which the tool reported as FAIL, so the tool can fail. (4) THE LIVE
++END-TO-END is `tests/ui_server/test_semantic_zoom_live.py`: a fake job is planned and run, its
++frames are paged as the UI pages them, and for every task the rounds its stream logged since its
++last start are exactly the rounds its run report holds, numbered from one, each with the verdict
++the stream announced, a duration and the builder's token count. Its red proof found that no
++golden covered the other half of the rule, a review run after its task started again, so
++`runDetailModel.test.ts` gains that case, which counts from one again. (5) F044's trace stage, which
++DECISION F019 D6 names as the CI home of this fixture's budget, re-measures it; F023 adds no CI
++stage of its own.
++
++ALTERNATIVES: a new 500-node fixture of the zoom's own, rejected because the committed fixture
++already runs through the real reducer; measuring L0 alone, rejected because the dimming, the
++expansion and the two surfaces are exactly what the zoom adds; the end-to-end in a browser against
++a live server, rejected because the browser half is the reviewer's headless renders of every round
++and the part only a real run can prove is where the stream and the report meet.
++
++HOW TO REVERSE: delete `tests/ui_server/test_semantic_zoom_live.py`, the
++`.agent/authored/f023-r7-perf-*` copies and `.agent/authored/f023-r7-perf.txt`, and this paragraph.
+diff --git a/.agent/live_review.md b/.agent/live_review.md
+index d4d27464c..399e071d3 100644
+--- a/.agent/live_review.md
++++ b/.agent/live_review.md
+@@ -444,3 +444,5 @@ Gate: F023 R3 — the F023 round 3 entry: the booking of round 2, DECISION F023
+ Gate: F023 R4 — the F023 round 4 entry: the booking of round 3, DECISION F023 D4, and T002's second half, the L2 run detail with its words, its popover reading the rounds door, and its buttons. VERDICT PASS, NO DEVIATION DECLARED. Re-derived over `12275971`..`08955162` by the planner and reviewer of F023's first session, whose own runs produced every reading below, and booked by round 5's first commit. THE RANGE IS 9 COMMITS in the block's order C1a to C5, at `8c48da40` 285, `8f7b2ce7` 158, `fd7ef1a6` 178, `062177e5` 357, `28df5960` 229, `4c384520` 63, `1a5117b4` 381, `b7f54134` 229 and `08955162` 193 insertions by `git show --numstat`, each under the 500-line cap, each single-parent and each carrying the ordered trailer. THE TRANSPORT PROOF IS FILE IDENTITY: every path the range changed apart from the handback and the block copy reads byte-equal at `08955162` to the reviewer's simulated tree `.remedy-wt/f023-r4-sim`, and the block copy's sha256 equals the digest the delegation named, `34b526ac`. THE OPEN SET by distinct id reads R-1008 alone at `12275971` and at `08955162`. THE TESTS: the worker's serial selection read `1513 passed, 5 skipped` at exit 0 with the four toolchain nodes passing; the reviewer's own run at `08955162` of the run-detail, zoom, live-wiring, diff-mount, layout, raw-colour and lint guards, the dashboard contract, the vitest runner and the golden path read `205 passed` at exit 0. THE RENDER: before emitting, the reviewer drove the popover headless in Chrome through `.remedy-wt/f023-r4-shot/` over a fetched rounds envelope, at L2 on a latest review run, a latest builder run and an earlier run, and through its close button, with no page error and one read of the door per task. THE RED PROOFS: the round's tool caught all fifteen mutations of the words, the popover and the wiring, in the reviewer's sim tree and again in the worker's, with both controls green and every file restored byte-identical.
+ 
+ Gate: F023 R5 — the F023 round 5 entry: the booking of round 4, DECISION F023 D5, and T003's first part, the L3 evidence panel with its lazy tabs, the run detail's Diff and Why moved onto them, and the zoom's surfaces on layer tokens. VERDICT PASS, NO DEVIATION DECLARED. Re-derived over `08955162`..`950c4f14` by the planner and reviewer of F023's first session, whose own runs produced every reading below, and booked by round 6's first commit. THE RANGE IS 9 COMMITS in the block's order C1a to C5, at `eb1b6e50` 298, `6d43af1e` 328, `031b0f4b` 180, `c180f274` 221, `b8eeea43` 156, `8dc1a16b` 63, `057da273` 272, `ad356341` 156 and `950c4f14` 215 insertions by `git show --numstat`, each under the 500-line cap, each single-parent and each carrying the ordered trailer. THE TRANSPORT PROOF IS FILE IDENTITY: every path the range changed apart from the handback and the block copy reads byte-equal at `950c4f14` to the reviewer's simulated tree `.remedy-wt/f023-r5-sim`, and the block copy's sha256 equals the digest the delegation named, `5665e763`. THE OPEN SET by distinct id reads R-1008 alone at `08955162` and at `950c4f14`. THE TESTS: the worker's serial selection read `1520 passed, 5 skipped` at exit 0 with the four toolchain nodes passing; the reviewer's own run at `950c4f14` of the evidence-panel and run-detail guards, the design-drift, raw-colour, layout and lint guards, the dashboard contract, the vitest runner, `tests/docs` and the golden path read `555 passed` at exit 0. THE RENDER: before emitting, the reviewer drove the panel headless in Chrome through `.remedy-wt/f023-r5-shot/`, opening it from Open diff onto a real diff envelope, switching to the prompt trace and chat tabs, pressing Escape and pressing Why, with no page error and the diff read only when its tab opened. THE RED PROOFS: the round's tool caught all fifteen mutations of the tabs, the panel, its stylesheet, the tokens and the wiring, in the reviewer's sim tree and again in the worker's, with both controls green and every file restored byte-identical.
++
++Gate: F023 R6 — the F023 round 6 entry: the booking of round 5, DECISION F023 D6, and T003's second part, the deep link that restores and follows the zoom, cluster expansion at the focused task, and the camera that waits for the canvas. VERDICT PASS, NO DEVIATION DECLARED. Re-derived over `950c4f14`..`7405cf35` by the planner and reviewer of F023's first session, whose own runs produced every reading below, and booked by round 7's first commit. THE RANGE IS 9 COMMITS in the block's order C1a to C5, at `4c4bd964` 290, `b53f174e` 214, `c614ec14` 174, `708f035a` 114, `68c92065` 195, `e9d862cb` 58, `fb4cf950` 160, `97694f62` 195 and `7405cf35` 195 insertions by `git show --numstat`, each under the 500-line cap, each single-parent and each carrying the ordered trailer. THE TRANSPORT PROOF IS FILE IDENTITY: every path the range changed apart from the handback and the block copy reads byte-equal at `7405cf35` to the reviewer's simulated tree `.remedy-wt/f023-r6-sim`, and the block copy's sha256 equals the digest the delegation named, `aa85925c`. THE OPEN SET by distinct id reads R-1008 alone at `950c4f14` and at `7405cf35`. THE TESTS: the worker's serial selection read `1525 passed, 5 skipped` at exit 0 with the four toolchain nodes passing; the reviewer's own run at `7405cf35` of the deep-link and zoom wiring guards, the graph-architecture, stage-mount, motion and lint guards, the dashboard contract, the vitest runner and the golden path read `273 passed, 2 skipped` at exit 0, the two skips being the graph-architecture file's standing quarantines. THE RENDER: before emitting, the reviewer drove the wiring headless in Chrome through `.remedy-wt/f023-r6-shot/`, opening a deep link to L3 on a run hidden inside a cluster chip, pressing Escape three times and clicking the chip, and every step landed the level, the URL and the expansion the round's goldens name; that render found the camera defect the round repaired. THE RED PROOFS: the round's tool caught all fifteen mutations of the expansion, the link, the hook, the stage and the camera, in the reviewer's sim tree and again in the worker's, with both controls green and every file restored byte-identical.
