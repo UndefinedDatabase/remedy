@@ -1267,6 +1267,31 @@ def _park_task_scope_pause(job: JobPlan, paused_entries: Collection[Any], *,
     return seeds
 
 
+def _supersede_pending_job_pause_on_stop(job: JobPlan, control_root_path: Any) -> None:
+    """DECISION F025 D1: a stop always wins. If a job-scope pause is PENDING
+    when the loop's own safe point stops the job — for any of the reasons
+    ``_should_stop`` unifies into one evaluation: operator, budget or deadline
+    — it is settled ``superseded_by_stop`` here and no ``job_paused`` is ever
+    written for it, mirroring ``pingpong_job._stop_job``'s own handling of the
+    identical race. A settle failure must never block a stop already under
+    way; it is logged, not swallowed blind — this is R-1049's own fix, applied
+    here from the start rather than invented as a matching defect."""
+    from packages.orchestration import pause_control as _pc
+    from packages.orchestration.safe_points import StopControlError as _StopControlError
+
+    try:
+        pending = _pc.pause_requested(str(job.job_id), control_root_path=control_root_path)
+        if pending is not None:
+            _pc.settle_pause(str(job.job_id), pending, "superseded_by_stop",
+                             control_root_path=control_root_path)
+    except (_pc.PauseControlError, _StopControlError) as exc:
+        import logging as _logging
+        _logging.getLogger(__name__).warning(
+            "pause settle failed while finalizing a stop for job %r: %s: %s",
+            job.job_id, type(exc).__name__, exc,
+        )
+
+
 # ---------------------------------------------------------------------------
 # The loop
 # ---------------------------------------------------------------------------
@@ -1436,6 +1461,7 @@ process left (F047).  ``max_cycles`` still bounds this invocation only.
         if stop.should_stop:
             terminal = _terminal_from_stop(stop.reason, stop.source)
             stop_reason = stop.reason
+            _supersede_pending_job_pause_on_stop(job, control_root_path)
             break
 
         try:
@@ -1639,6 +1665,7 @@ process left (F047).  ``max_cycles`` still bounds this invocation only.
             if phase.stop is not None:
                 terminal = _terminal_from_stop(phase.stop.reason, phase.stop.source)
                 stop_reason = phase.stop.reason
+                _supersede_pending_job_pause_on_stop(job, control_root_path)
                 break
         except _PauseControlErrorObserved as exc:
             # F025 E5: a PauseControlError at ANY of the reads above blocks the
