@@ -1,28 +1,36 @@
-# Plan — F023 Semantic zoom L0–L3
+# Plan — F024 Phase timeline with scrubber
 
-Branch: feature/f023-semantic-zoom-l0-l3, cut from `main` at `441f4e8e`,
-the merge commit of pull request 277 (F020 Node lifecycle & glyph
-language).
+Branch: feature/f024-phase-timeline-scrubber, cut from `main` at
+`1bb3a35d`, the merge commit of pull request 278 (F023 Semantic zoom
+L0–L3).
 
 ## Goal
 
-One mental model from organism to evidence: a zoom state machine
-{level, focusId} drives L0 to L3 through wheel thresholds with
-hysteresis, clicks, breadcrumbs and Escape, with cluster expansion and
-the stage-1 performance budget (`docs/roadmap/features/T5_F023.md`).
+Time becomes navigable: a phase bar derived from the ledger's own
+events, sub-glyphs at their seq, and a scrubber that renders exactly the
+reducer state of any prefix from memoized snapshots, with a LIVE toggle
+that returns to the present (`docs/roadmap/features/T5_F024.md`).
 
 ## Current Step
 
-ROUND 10, THE CLOSING ROUND: book round 9's PASS, rotate the ledger,
-accept F023 in STATUS with its README pins, and open the pull request.
-T001, T002 and T003 are built; the package is READY_FOR_REVIEW.
+ROUND 1: claim F024, re-head the live review record, book F023's round
+10, record DECISION F024 D1, and land T001: `phaseMapping.ts`, the phase
+mapping table over the measured writers, the boundaries of any prefix
+and the sub-glyph extraction, goldened on fixture ledgers and the demo
+recording, with the guard `tests/ui_contracts/test_phase_mapping.py`.
 
 ## Next Steps
 
-1. The next session's Open PR Gate merges this feature's pull request.
-2. Rule A5 then claims the first unchecked feature in
-   `docs/roadmap/STATUS.md`.
+1. T002: snapshot memoization every 200 seq with its memory cap and
+   lazy rebuild, and the property test that the state at any fuzzed
+   position equals a fresh reduction of that prefix.
+2. T003: the bar, scrubber, LIVE toggle, SCRUBBED banner, capped
+   catch-up and keyboard, and the end-to-end on a live fake job and the
+   demo recording.
+3. The closure sequence: the one full suite, the evidence package and
+   the STATUS flip.
 
 ## Risks
 
-None left in this feature. Open findings: 1, owned by F285.
+No completion event exists, so Finalized is derived from the reducer's
+task states (DECISION F024 D1). Open findings: 1, owned by F285.

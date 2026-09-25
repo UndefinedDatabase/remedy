@@ -21071,3 +21071,62 @@ and the part only a real run can prove is where the stream and the report meet.
 
 HOW TO REVERSE: delete `tests/ui_server/test_semantic_zoom_live.py`, the
 `.agent/authored/f023-r7-perf-*` copies and `.agent/authored/f023-r7-perf.txt`, and this paragraph.
+
+## DECISION F024 D1 — the phase timeline reads the measured ledger writers: phases begin at their first marker and only move forward, a skipped phase is a zero span, Finalized is derived from the reducer's task states, and sub-glyphs come from two tables and a review verdict (2026-09-25)
+
+CONTEXT: T5_F024.md orders T001 as the phase mapping table, boundary goldens and sub-glyph
+extraction, pure, on fixture ledgers, with phase boundaries derived from marker events (plan
+approved, first build call, verify start, review start, terminal) mapped onto "the actual Part E
+kinds". Measured at `1bb3a35d`: `_build_events_since_json` in `packages/orchestration/ui_server.py`
+serves every `*.jsonl` row under the job's log directory through `_safe_event_summary`, whose
+envelope carries a kind, an outcome and a task id and nothing else; no writer emits a Part E name
+or a plan-approval event (DECISION F019 D1); a `job run` writes `task_run_started`, one
+`task_round_completed` per round after the task's rounds finish, `task_run_completed` or
+`task_run_failed`, and `job_stopped` on a stop, writes no event for the tests a round runs, and
+writes NOTHING when the job completes; `job plan` writes `planning_started`,
+`planning_completed` and `planning_failed`, with no task; the older single-cycle path writes
+`builder_started`, `builder_completed`, `verification_passed` and `verification_failed`; `remedy
+test` writes the `test_run_*` kinds with no outcome; the cycle loop in
+`packages/orchestration/long_run_executor.py` writes `task_needs_decision`,
+`task_decision_answered`, `cycle_repair_round`, `cycle_healed` and `cycle_loop_terminal`, the last
+with its terminal status in metadata the envelope drops; `packages/orchestration/event_names.py`
+declares every written name; the bar in `components/timeline/PhaseTimeline.tsx` and the
+dashboard's `phases` both name the six stops job, planning, build, test, review, finalized; and
+the demo recording's eight frames begin at seq 0 and end with both tasks passed.
+
+CHOSEN: (1) THE MODULE is `apps/ui/src/components/timeline/phaseMapping.ts`, pure, beside the bar
+it will feed, importing only the reducer, its ontology and the humanize catalog. (2) THE PHASE
+MAPPING TABLE maps the measured writers: the three `planning_*` kinds to Planning;
+`task_run_started`, `builder_started` and `builder_completed` to Build; the five `test_run_*`
+kinds and the two `verification_*` kinds to Test; and `task_round_completed` to Review, but only
+when its outcome is a reviewer's verdict from `REVIEW_OUTCOME_STATE_TABLE`, because `no_review`
+and an empty outcome mean no reviewer ran. Job begins at the ledger's first row whatever its kind.
+(3) THE BOUNDARIES of a prefix: a phase begins at the first row that marks it or any later phase,
+so the bar only moves forward; a phase the ledger skipped begins where the next one did and has a
+zero span, which the bar draws as a compact tick; a row marking an earlier phase than the one
+reached moves nothing. (4) FINALIZED has no marker, since no completion event exists: the prefix
+is folded through `reduceBrainEvent` from the timeline seed, and Finalized begins at the row after
+which the reducer's derived core state reads `pass` — every task passed — or at the latest phase
+start if that is later, and is reached only while that still holds at the prefix's last row, so a
+task that starts again withdraws it. (5) THE TIMELINE SEED is the dashboard's task list with every
+status reset to `pending`, because today's statuses would show the job's end at its start. (6)
+THE SUB-GLYPHS are decision (`task_needs_decision`, `task_decision_answered`), failure
+(`task_run_failed`, `verification_failed`, `planning_failed`, `test_run_timed_out`), heal
+(`cycle_healed`) and stop (`job_stopped`), plus the review verdict: a round that reads `fail` or
+`needs_repair` is a failure and the next passing round of the SAME task is a heal. Each carries its
+seq, kind, task and the humanize catalog's line, which for the kinds the catalog does not name is
+its honest generic line. (7) THE GUARD is `tests/ui_contracts/test_phase_mapping.py`: every kind
+both tables name is in `EVENT_NAMES`, Job and Finalized are never a table's value, the six phases
+equal the bar's and the dashboard's in order, and the module imports nothing else and touches no
+DOM, clock or React state.
+
+ALTERNATIVES: the current phase as the phase of the LATEST marker, rejected because two tasks
+interleave Build and Review and the bar would oscillate; Finalized from `cycle_loop_terminal` or
+`job_stopped`, rejected because the first's status never reaches the envelope and a stop can be
+resumed; a sticky Finalized, rejected because a withdrawn pass shown as done is the fake progress
+graph_spec §8 forbids; prompt-trace rows, whose kind reaches a client empty, taken as Planning,
+rejected because an empty kind is not a marker; seeding with the dashboard's own statuses, rejected
+for the reason (5) gives.
+
+HOW TO REVERSE: delete `apps/ui/src/components/timeline/phaseMapping.ts`, its `.test.ts`,
+`tests/ui_contracts/test_phase_mapping.py`, and this paragraph.

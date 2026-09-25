@@ -1,33 +1,30 @@
-# Live Review — F023 Semantic zoom L0–L3
+# Live Review — F024 Phase timeline with scrubber
 
-> Round-by-round review record, re-headed at the F023 claim per
-> docs/agents/planner_reviewer_prompt.md §1. The heading this replaces named F020, whose STATUS
-> line went `[x]` at `0036e78e` and whose pull request 277 merged into `main` at the reviewer's
-> Open PR Gate under docs/agents/self_drive_protocol.md, as `441f4e8e`, after both hosted CI jobs
-> of run 36074214533 ended `success`. `0036e78e` is the second parent of `441f4e8e`. F020's round
-> 8, its closing round, was reviewed after its own handback, so its gate entry is appended at the
-> end of this record by F023's claim. Only the heading, this paragraph and the Steps section below
-> are rewritten, and this time everything above the Findings heading is replaced: the F284 and
-> F020 re-heads each cut at the first occurrence of that heading's text, which the paragraph they
-> replaced quoted at the start of a line, so lines 27 to 60 at `441f4e8e` held the tails of the
-> F284 and F019 paragraphs with their Steps sections; they are dropped here and stand unchanged in
-> git history. Everything from the Findings heading to the end of the file as it stood at `441f4e8e`
-> is carried forward BYTE-IDENTICAL, and finding ids continue the monotonic R-XXXX series across
-> the re-head. The open set at `441f4e8e`, computed with `open_finding_ids` from
-> `scripts/rotate_live_review.py`, is 1 by distinct id — R-1008 — and F285 owns it; F023 owns
+> Round-by-round review record, re-headed at the F024 claim per
+> docs/agents/planner_reviewer_prompt.md §1. The heading this replaces named F023, whose STATUS
+> line went `[x]` at `ebccd40c` and whose pull request 278 merged into `main` at the reviewer's
+> Open PR Gate under docs/agents/self_drive_protocol.md, as `1bb3a35d`, after both hosted CI jobs
+> of run 36091023382 ended `success`. `ebccd40c` is the second parent of `1bb3a35d`. F023's round
+> 10, its closing round, was reviewed after its own handback, so its gate entry is appended at the
+> end of this record by F024's claim. Only the heading, this paragraph and the Steps section below
+> are rewritten; everything from the Findings heading to the end of the file as it stood at
+> `1bb3a35d` is carried forward BYTE-IDENTICAL, and finding ids continue the monotonic R-XXXX
+> series across the re-head. The open set at `1bb3a35d`, computed with `open_finding_ids` from
+> `scripts/rotate_live_review.py`, is 1 by distinct id — R-1008 — and F285 owns it; F024 owns
 > whatever it registers for its own scope.
 
 ## Steps
 
-THE ORDER BELOW IS T5_F023.md's Task slicing, headless goldens first. R1 claims F023, re-heads
-this record, books F020's round 8, and lands T001: `semanticZoom.ts`, the pure state machine
-{level, focusId} with its whole transition matrix goldened, and `zoomWheel.ts`, the wheel adapter
-that holds the hysteresis, with the guard `tests/ui_contracts/test_semantic_zoom_contract.py` and
-DECISION F023 D1. T002 follows: the hook that drives the canvas from the machine, the render
-effects (sibling dimming, branch glow, run fan-out), the breadcrumbs and Escape, and the L2 run
-popover whose buttons reach real endpoints or say honestly when they will. T003 then lands the
-L3 evidence panel with its lazy tabs, the deep links, cluster expansion, the performance fixture
-at 500 nodes and the live end-to-end. Every round's handback states the open set by distinct id.
+THE ORDER BELOW IS T5_F024.md's Task slicing, pure modules first. R1 claims F024, re-heads this
+record, books F023's round 10, and lands T001: `phaseMapping.ts` under
+`apps/ui/src/components/timeline/`, the phase mapping table over the measured ledger writers, the
+phase boundaries of any prefix and the sub-glyph extraction, with its vitest goldens on fixture
+ledgers and the demo recording, the guard `tests/ui_contracts/test_phase_mapping.py`, and DECISION
+F024 D1. T002 follows: snapshot memoization every 200 seq with its memory cap, and the property
+test that the state at any fuzzed position equals a fresh reduction of that prefix. T003 then
+lands the bar, the scrubber, the LIVE toggle with its SCRUBBED banner and capped catch-up, the
+keyboard, and the end-to-end on a live fake job and the demo recording. Every round's handback
+states the open set by distinct id.
 
 ## Findings
 DECISION F085 D5, applied at da47ee40, closes "The R44 block is the first measured under this
@@ -436,3 +433,5 @@ Gate: F023 R7 — the F023 round 7 entry: the booking of round 6, DECISION F023 
 Gate: F023 R8 — the F023 round 8 entry: the closure sequence's first half, the booking of round 7, the Built State, the last assumption row, the checklist consolidation, the self-use track and the one full suite. VERDICT PASS, NO DEVIATION DECLARED. Re-derived over `967fc710`..`fecd022a` by the planner and reviewer of F023's first session, whose own runs produced every reading below, and booked by round 9's first commit. THE RANGE IS 5 COMMITS in the block's order C1 to C5, at `86eb6ab7` 372, `c7678989` 11, `d7c13ea3` 78, `d9b93573` 6 and `fecd022a` 201 insertions by `git show --numstat`, each under the 500-line cap, each single-parent and each carrying the ordered trailer. THE TRANSPORT PROOF IS FILE IDENTITY: every path the range changed apart from the handback, the block copy and the suite transcript reads byte-equal at `fecd022a` to the reviewer's simulated tree `.remedy-wt/f023-r8-sim`, and the block copy's sha256 equals the digest the delegation named, `13483352`. THE OPEN SET by distinct id reads R-1008 alone at `967fc710` and at `fecd022a`, and the checklist of `docs/agents/planner_reviewer_prompt.md` §3 holds the same 34 items at both. THE SELF-USE TRACK read `None`, `None`, `None` and an empty status, recorded as `self-use NONE (queue exhausted)` in `.agent/selfuse_f023/result.txt`. THE ONE FULL SUITE, `.agent/authored/f023-closure-suite.txt` at `fecd022a`, reads `python3 -m pytest -n auto -q` at real exit code 0, `19158 passed, 20 skipped, 1 warning in 132.46s`, and no bad node, so neither reachability guard of closure precondition 7 holds one. THE TESTS: the worker's serial selection read `1444 passed, 5 skipped` at exit 0; the reviewer's own run at `fecd022a` of `tests/docs/`, the block linter's tests and the golden path read `397 passed` at exit 0, and `integrity check --json` read all six checks `pass` at `fail_count` 0.
 
 Gate: F023 R9 — the F023 round 9 entry: the closure sequence's evidence half, the booking of round 8, the evidence bundle and the review package. VERDICT PASS, NO DEVIATION DECLARED. Re-derived over `fecd022a`..`940d8174` by the planner and reviewer of F023's first session, whose own runs produced every reading below, and booked by round 10's first commit. THE RANGE IS 3 COMMITS in the block's order C1, C2 and C3, at `28be0df0` 376, `54e5ffd2` 10 and `940d8174` 214 insertions by `git show --numstat`, each under the 500-line cap, each single-parent and each carrying the ordered trailer. THE TRANSPORT PROOF IS FILE IDENTITY: the three `.agent/authored/f023-r9-*` payload copies, `.agent/live_review.md` and `.agent/plan.md` read byte-equal at `940d8174` to the reviewer's simulated tree `.remedy-wt/f023-r9-sim`, and the block copy's sha256 equals the digest the delegation named, `c911b8db`. THE OPEN SET by distinct id reads R-1008 alone at `fecd022a` and at `54e5ffd2`. THE BUNDLE: evidence job `f023r9e1001` against the fork point `441f4e8e3a041ed7db42043ef112176d573c816c`, ancestry and plain counts equal at 69, 706 node ids collected and 706 passed at exit 0, an empty `validate_verification_tests` problem list and `is_valid_current_run` True. THE PACKAGE: `remedy-review-20260925-052148-READY_FOR_REVIEW.zip` in `/home/decodeux/Repos/remedy-history/zips`, whose SHA-256 the reviewer read as `6e041624017f41e1644f71f3d8c18ae8dd4d677b1d8df4fe6206f89b6f76b4bb`, `testzip()` None, and whose manifest names the fork point as base and `54e5ffd2485bf90c405f5ad662b7d86be8dd3eb9`, the ACCEPTED HEAD, as head over 69 commits; all six `integrity check` checks `pass` at `fail_count` 0 at `940d8174`.
+
+Gate: F023 R10 — the F023 round 10 entry, THE CLOSING ROUND: the booking of round 9, the ledger rotation, the STATUS flip with its README pins, and the pull request. VERDICT PASS, NO DEVIATION DECLARED. Reviewed over `940d8174`..`ebccd40c` by the planner and reviewer of F023's first session, posted as a comment on pull request 278, and re-measured and booked by F024's claim reviewer, whose own runs produced every reading below. THE RANGE IS 4 COMMITS in the block's order C1 to C4, at `61b86dcc` 356, `87c662e8` 9, `cca261ec` 16 and `ebccd40c` 196 insertions by `git show --numstat`, each under the 500-line cap and each single-parent. THE TRANSPORT PROOF IS FILE IDENTITY: the six `.agent/authored/f023-r10-*` copies at `61b86dcc` equal the reviewer's block and its five payloads under `.remedy-wt/f023-r10-payloads/`. THE ROTATION at `cca261ec` took the ledger from 313141 to 296371 bytes and the archive from 4976495 to 4993265, and the open set by distinct id reads R-1008 alone at `940d8174` and at `ebccd40c`, owned by F285. THE CLOSURE: at `ebccd40c` F023's STATUS line occurs once, equals the authored `f023-r10-status_line.txt` byte for byte, and no line reads `[~]`. AFTER THE ROUND: hosted run `36091023382` on `ebccd40c` ended `success` on Python 3.10 and 3.12, pull request 278 merged as `1bb3a35d`, whose tree equals `ebccd40c`'s, and there the reviewer's run of `tests/docs/` with the golden path read `369 passed` at exit 0 and `integrity check --json` read all six checks `pass` at `fail_count` 0.

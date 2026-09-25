@@ -1,26 +1,24 @@
-# Context — F023 Semantic zoom L0–L3
+# Context — F024 Phase timeline with scrubber
 
 ## Active Branch
-feature/f023-semantic-zoom-l0-l3, cut from `main` at `441f4e8e`
-(the merge commit of pull request 277, F020 Node lifecycle & glyph
-language).
+feature/f024-phase-timeline-scrubber, cut from `main` at `1bb3a35d`
+(the merge commit of pull request 278, F023 Semantic zoom L0–L3).
 
 ## Scope
-F023 (Tier 5): semantic zoom over the brain graph — the pure state
-machine and its wheel adapter with goldens (T001), the render effects,
-breadcrumbs and the L2 run popover (T002), and the L3 evidence panel,
-deep links, cluster expansion and the performance fixture (T003), as
-`docs/roadmap/features/T5_F023.md` specifies, with
-`docs/ui/design_reference/graph_spec.md` §10 authoritative on conflict.
+F024 (Tier 5): the phase timeline with its scrubber — the phase mapping
+table, boundary goldens and sub-glyph extraction (T001), snapshot
+memoization with the prefix-equality property test (T002), and the bar,
+scrubber, LIVE toggle, banner, catch-up, keyboard and end-to-end (T003),
+as `docs/roadmap/features/T5_F024.md` specifies, with
+`docs/ui/design_reference/ux_spec.md` §12 authoritative on the visuals.
 
 ## Do not touch
-The stage decision, the reducer and ontology, the glyph language, and
-the chat backend.
+The reducer, the event schema, and story-replay narration (F039).
 
 ## Active assumptions
-- The machine is pure in `semanticZoom.ts` and the hysteresis lives in
-  `zoomWheel.ts`; focus is validated against the reducer's model plus
-  its cluster view (DECISION F023 D1).
+- Phases begin at their first marker and only move forward; Finalized
+  is derived from the reducer's task states because no completion event
+  exists (DECISION F024 D1).
 
 ## Constraints
 - UI checks run through the pytest nodes that wrap the toolchain in the
