@@ -1,0 +1,162 @@
+diff --git a/.agent/decisions.md b/.agent/decisions.md
+index 30615c5f4..5662e1d40 100644
+--- a/.agent/decisions.md
++++ b/.agent/decisions.md
+@@ -21631,3 +21631,80 @@ relaunched job, rejected because it hides exactly what the manifest exists to pr
+ 
+ HOW TO REVERSE: delete `paused` from `_VALID_STATUS` and its lifecycle rows, the park's manifest
+ write, the tests this decision's round adds, and this paragraph, and restore the comment.
++
++## DECISION F026 D1 — a runtime task edit is the plan editor's own `plan_edit_task` applied to one task of an approved plan while no run holds the record: the task must be waiting, paused or failed, the TaskEntry is updated in place with a per-task spec version, the prior spec is archived create-only, the approval seal follows the edit, and a failed task goes back to pending in the same write (2026-09-25)
++
++CONTEXT: T5_F026.md asks for `edit_task` on waiting, paused and failed tasks, a spec v2 with
++versioning, the prior spec archived in evidence, a failed task reset to pending, and the next run's
++prompt trace carrying the edit. Measured at `4cb6b970`: `edit_plan` in
++`packages/orchestration/plan_editing.py` is one locked transaction over the stored plan, but it
++regenerates `job.tasks` with `map_task_plan_to_tasks`, which mints new task ids and resets every
++status, and `edit_window_refusal` admits only a pending approval of a `planned` job;
++`approved_plan_mismatch` in `packages/orchestration/job_plan.py` blocks every start of a job whose
++stored plan no longer hashes to the approval's `_approved_plan_sha256`; `run_job` in
++`packages/orchestration/pingpong_job.py` stops its dispatch loop at a task whose status is `blocked`
++or `failed`, and a run that ends in a failed gate or review leaves the task `blocked` while only an
++exception leaves it `failed`, the job `blocked` in both cases; `TaskEntry` has no attempt counter and
++no spec version; `_build_task_prompt` reads the entry's `title`, which the mapping writes as
++`<title>: <goal>`, its `body` and its `acceptance`; `waiting` is no task status, and a task pause is
++a control file under `paused_tasks/` keyed by the entry's `task_id` (DECISION F025 D1); and
++`replay_edits` rebuilds a plan by re-applying every `_edits` entry through `apply_edit`.
++
++CHOSEN: (1) THE EDIT IS THE PLAN EDITOR'S. A runtime edit applies `apply_edit(plan,
++"plan_edit_task", {"task_id": <planned id>, "fields": <fields>})` to the stored plan, so the editable
++fields are exactly `EDITABLE_TASK_FIELDS`, `clarifications_resolved` stays immutable, and
++`revalidate` refuses exactly what it refuses before approval; it runs under `plan_edit_lock`, bumps
++the plan's `_version`, and appends ONE entry to the same `_edits` log carrying the command and args
++`replay_edits` needs plus a `runtime` object: the entry's task id, the planned id, the editable state
++it was edited in, the spec version it created, the status before and after, and the approval hashes
++before and after. `replay_edits` therefore still reconstructs the plan. (2) THE TASK ENTRY IS
++UPDATED IN PLACE, never regenerated: the one entry whose `inputs["plan"]["planned_id"]` names the
++task keeps its `task_id`, run id, repair counts, checkpoint fields and every `inputs` key the
++mapping does not write, and takes from the mapping of the edited plan only what the mapping writes
++for that task — `title`, `acceptance` and the mapping's `inputs` keys. A task a run split off, which
++carries no planned id, is refused `not_a_plan_task`; a job with no stored plan is refused
++`no_task_plan`. (3) THE STATE GATE is a pure function over the job's state, the plan's approval, the
++task's status and whether the task is paused, and the editable set is closed at three names:
++`waiting` is a `pending` task that is not paused; `paused` is a `pending` task with a task pause file
++or in a job whose state is `paused`; `failed` is a task whose status is `failed` or `blocked`, because
++both are how a run's failure lands on a task and both stop the dispatch loop. Every other task
++status is refused `task_not_editable` naming it. Before the task is read, the job is refused
++`job_not_editable` naming its state when it is `running`, because a run process holds the record
++and would write over the edit — the operator pauses first, and the relaunch is the resume (DECISION
++F025 D1) — or when it is terminal (`completed`, `failed`, `cancelled`); and `plan_not_editable` when
++the plan's approval is `pending`, which is the plan editor's window, or `rejected`. (4) ONE SPEC
++VERSION PER TASK: `TaskEntry` gains `spec_version`, default 1 and persisted, and every accepted edit
++raises it by one. Concurrent edits are told apart by it: an edit names the spec version it was made
++against, and a stale one is refused `version_conflict` with the current one. (5) THE PRIOR SPEC IS
++ARCHIVED before the record is written, create-only, at
++`task_specs/<planned id>.v<n>.json` in the job's evidence export directory, holding the plan task as
++it stood, the entry's `title` and `acceptance`, the version and the editable state; an existing
++archive of the same version with other content refuses `spec_archive_conflict`, and an equal one
++(a crash between the archive and the record write) is kept. An archived spec is never rewritten.
++(6) THE APPROVAL SEAL FOLLOWS THE EDIT: when the approval is `approved` and records a hash, the
++record write stores the edited plan's content hash, so the job starts again, and the log entry
++carries both hashes; the edit is authenticated by the door or the CLI and logged with its actor,
++which is what the seal existed to guarantee. (7) A FAILED TASK GOES BACK TO `pending` IN THE SAME
++WRITE, with its `error` cleared and every other field as the run left it, so the relaunch runs it
++as its next attempt; and every task after it in plan order whose status is `skipped` goes back to
++`pending` with it, because at `4cb6b970` `_block_job` is the only writer of `skipped` and it skips
++exactly the pending tasks after the blocked one, so without this the relaunch would run the edited
++task and finish with its successors never run. The log entry's `runtime` object names the tasks
++restored. A waiting or paused task keeps its status, and a paused task stays paused.
++(8) AFTER the record write, `plan_v<n>.md` and the edit log's evidence export are regenerated as
++`edit_plan` does.
++
++ALTERNATIVES: calling `edit_plan` with a widened window, rejected because it regenerates every task
++entry and would erase run history and orphan the pause files; a second edit log for runtime edits,
++rejected because `replay_edits` could then no longer reconstruct the plan; editing the entry alone
++and leaving the stored plan behind, rejected because the approval check would then compare a plan
++that no longer describes what runs; editing a task while its job runs, rejected because the runner
++holds the whole record in memory and saves it, so an edit would be lost at the next save; admitting
++only `failed`, rejected because a failed gate or review, the common failure, leaves `blocked`.
++
++DELIBERATE ABSENCES: no edit of a job built from a job file without a plan, no edit while the job
++runs, and no dependency edit, because `depends_on` is not an editable field of the plan editor
++either; each is a future feature, not a widening of this one.
++
++HOW TO REVERSE: delete `packages/orchestration/task_edit_runtime.py` and its tests, the
++`spec_version` field with its export and import lines, and this paragraph.
+diff --git a/.agent/live_review.md b/.agent/live_review.md
+index 415ee740d..f56057616 100644
+--- a/.agent/live_review.md
++++ b/.agent/live_review.md
+@@ -1,31 +1,28 @@
+-# Live Review — F025 Pause/resume (global & per node)
+-
+-> Round-by-round review record, re-headed at the F025 claim per
+-> docs/agents/planner_reviewer_prompt.md §1. The heading this replaces named F024, whose STATUS
+-> line went `[x]` at `953d5715` and whose pull request 279 merged into `main` at the reviewer's
+-> Open PR Gate under docs/agents/self_drive_protocol.md, as `49624d5c`, after a CI repair round
+-> (F024's round 9, finding R-1048) and after both hosted CI jobs of run 36107489474 ended
+-> `success`. `7317555a` is the second parent of `49624d5c`. F024's round 9 was reviewed after its
+-> own handback, so its gate entry and R-1048's resolution are appended at the end of this record
+-> by F025's claim. Only the heading, this paragraph and the Steps section below are rewritten;
+-> everything from the Findings heading to the end of the file as it stood at `49624d5c` is
+-> carried forward BYTE-IDENTICAL, and finding ids continue the monotonic R-XXXX series across the
+-> re-head. The open set at `49624d5c`, computed with `open_finding_ids` from
+-> `scripts/rotate_live_review.py`, is R-1008, which F285 owns, and R-1048, which F024 owns and
+-> which the resolution appended by this claim closes; F025 owns whatever it registers for its own
+-> scope.
++# Live Review — F026 Task edit at runtime
++
++> Round-by-round review record, re-headed at the F026 claim per
++> docs/agents/planner_reviewer_prompt.md §1. The heading this replaces named F025, whose STATUS
++> line went `[x]` at `4cb6b970` and whose pull request 280 merged into `main` at the reviewer's
++> Open PR Gate under docs/agents/self_drive_protocol.md, as `90555849`, after both hosted CI jobs
++> of run 36157351708 ended `success`. `4cb6b970` is the second parent of `90555849`. F025's round
++> 11, its closing round, was reviewed after its own handback, so its gate entry is appended at the
++> end of this record by F026's claim. Only the heading, this paragraph and the Steps section below
++> are rewritten; everything from the Findings heading to the end of the file as it stood at
++> `90555849` is carried forward BYTE-IDENTICAL, and finding ids continue the monotonic R-XXXX
++> series across the re-head. The open set at `90555849`, computed with `open_finding_ids` from
++> `scripts/rotate_live_review.py`, is R-1008, R-1055, R-1057 and R-1058, all four owned by F285;
++> F026 owns whatever it registers for its own scope.
+ 
+ ## Steps
+ 
+-THE ORDER BELOW IS T5_F025.md's Task slicing, the control protocol first. R1 claims F025,
+-re-heads this record, books F024's round 9 with R-1048's resolution, records DECISION F025 D1, and
+-lands the first half of T001: `packages/orchestration/pause_control.py`, the pause control files
+-of both scopes and the mask arithmetic, with its unit tests. T001's second half wires the pause
+-into the linear runner's and the cycle executor's safe points and ready sets, with a stop beating
+-a pause and the deadline counting through one. T002 adds the channel commands, their audit and
+-the CLI verbs, with live fake-job tests of both scopes. T003 draws the paused states, the banner
+-and the NowCard line, and ends with the end-to-end whose final state equals an unpaused control
+-run's. Every round's handback states the open set by distinct id.
++THE ORDER BELOW IS T5_F026.md's Task slicing, the backend first. R1 claims F026, re-heads this
++record, books F025's round 11, records DECISION F026 D1, and lands T001:
++`packages/orchestration/task_edit_runtime.py`, the state gate, the versioned in-place apply, the
++spec archive, the revalidation, the approval seal and the failed-to-pending reset, with the task's
++`spec_version` field and its unit tests. T002 adds `job.edit-task` to the catalog, the CLI and the
++write door with its audit, and the prompt-trace proof on a fake run. T003 draws the version chip,
++the popover's version list and the edit affordance, and ends with the end-to-end. Every round's
++handback states the open set by distinct id.
+ 
+ ## Findings
+ DECISION F085 D5, applied at da47ee40, closes "The R44 block is the first measured under this
+@@ -442,3 +439,5 @@ Gate: F025 R9 — the F025 round 9 entry: the closure sequence's first half, the
+ - R-1058 — Medium, THE SELF-USE GENERATOR'S ACCEPTANCE LINE LETS A BUILDER MEET IT WITH A LEDGER NOTE THAT REPAIRS NOTHING, AND SU-030'S REVIEWER PASSED EXACTLY THAT: A `Done:` PARAGRAPH AUTHORED BY THE BUILDER, "CARRIED TO F285". Raised by the planner and reviewer of F025's second session at round 9's gate, reading the diff of job `d0f70d9d45dd4363` because R-1008 resolves at the first closure whose self-use run produces a diff its reviewer passes. SEARCHED BEFORE MINTING (checklist item 30): `either way the ledger gains` and `ledger gains a` occur in no finding of the ledger or its archive, and R-0999, the nearest, is a reviewer FAILING an empty diff. THE DEFECT, at `9cceb4cd`: every Tier 1 item `packages/orchestration/self_use_generator.py` writes ends its Acceptance with "is repaired with a red-to-green proof, or the reviewer records in `.agent/live_review.md` why it cannot be — either way the ledger gains a `Done:` line", which hands the builder the ledger and an outcome that needs no repair. MEASURED: `git diff 300d8c2d e4fa7d06`, the job's own branch, adds two lines to `.agent/live_review.md` and nothing else — a `Done: R-1055 — CARRIED TO F285` paragraph — while task T001 reads verdict `pass`. Under docs/agents/planner_reviewer_prompt.md §4 item 4 only reviewer-authored text sets a finding resolved, and "carried" resolves nothing. WHY MEDIUM: it makes the one closure precondition that exercises the product on itself pass on a non-repair, which is the class R-1008 exists for, and a later closure could book such a run as R-1008's resolution. R-1008 is therefore NOT resolved by this run and stays open. FIX: the generated Acceptance asks for the repair its finding names with a red-to-green proof and nothing else, the builder is told not to write `.agent/live_review.md`, and the self-use reviewer fails a diff that touches no path outside `.agent/`. Owner: F285.
+ 
+ Gate: F025 R10 — the F025 round 10 entry: the closure sequence's evidence half, the booking of round 9, the registration of R-1057 and R-1058 for F285, the evidence bundle and the review package. VERDICT PASS, NO DEVIATION DECLARED. Re-derived over `9cceb4cd`..`21aa3097` by the planner and reviewer of F025's second session, whose own runs produced every reading below. THE RANGE IS 3 COMMITS, at `75da467b` 349, `f7b127bd` 20 and `21aa3097` 179 insertions by `git show --numstat`, each under the 500-line cap, each single-parent and each carrying the ordered trailer. THE TRANSPORT PROOF: the block copy and the five payload copies under `.agent/authored/` equal the reviewer's originals, and at `f7b127bd` the ledger equals its `9cceb4cd` bytes plus its payload, the plan equals its payload, and `docs/roadmap/features/T2_F285.md` equals its `9cceb4cd` bytes with the FROM text replaced by the TO text. THE OPEN SET by distinct id reads R-1008 and R-1055 at `9cceb4cd`, and R-1008, R-1055, R-1057 and R-1058 at `f7b127bd` and at `21aa3097`, all four owned by F285. THE BUNDLE: evidence job `f025r10e1001`, built by the committed `.agent/authored/f025-r10-create_f025_evidence.py` at the accepted head `f7b127bde0e2d705f0a8da49b1d9404d983048d4` against the fork point `49624d5c8def4b270697a8c0025e2ab3efc197a7`, read ancestry and plain counts equal at 74, 1033 node ids with 4 deselected and none unsafe, pytest exit 0 with 1033 passed, an empty `validate_verification_tests` problem list and `is_valid_current_run` True. THE PACKAGE: `remedy-review-20260925-174026-READY_FOR_REVIEW.zip` in `/home/decodeux/Repos/remedy-history/zips`, whose SHA-256 the reviewer measured as `5202e21aed884f7ae6a8b79a852d2c4683436f2220d1a910d072cec01ac38e6f`, whose `testzip()` answers None, and whose `.review_zip_manifest.json` reads status `READY_FOR_REVIEW`, base the fork point and head the accepted head. THE TREE: the reviewer's serial run of `tests/docs/` and the golden path at `21aa3097` read `369 passed`, and all six `integrity check` checks read `pass`.
++
++Gate: F025 R11 — the F025 round 11 entry: the closing round, the booking of round 10, the ledger rotation, the STATUS acceptance with its README pins and the self-use item's `consumed_by`, and the pull request. VERDICT PASS, NO DEVIATION DECLARED. Re-derived over `21aa3097`..`4cb6b970` by the planner and reviewer of F026's first session, whose own runs produced every reading below. THE RANGE IS 4 COMMITS, at `be6f39bb` 436, `7652281e` 8, `2815e8ae` 50 and `4cb6b970` 216 insertions by `git show --numstat`, each under the 500-line cap, each single-parent and each carrying the ordered trailer. THE TRANSPORT PROOF: the block copy and the seven payload copies under `.agent/authored/`, read at `be6f39bb`, equal the reviewer's originals byte for byte, and at `4cb6b970` `docs/roadmap/STATUS.md`, `README.md` and `scripts/self_use_queue.json` hash to the three sha256 readings the block's G4 table states. THE OPEN SET by distinct id reads R-1008, R-1055, R-1057 and R-1058 at `4cb6b970`, all four owned by F285. THE ROTATION moved 9 gate records and 8 finding pairs and left the open count at 4. THE TREE: the reviewer's serial run at `4cb6b970` of `tests/docs/`, `tests/cli/test_advertised_commands.py`, `tests/orchestration/test_live_review_rotation.py`, `tests/orchestration/test_integrity_gate.py` and `tests/orchestration/test_self_use_generator.py` read `424 passed`, and all six `integrity check` checks read `pass`. THE MERGE: pull request 280's hosted CI run 36157351708 ended `success` on both jobs, and the reviewer merged it at F026's Open PR Gate as `90555849`.
+diff --git a/docs/roadmap/STATUS.md b/docs/roadmap/STATUS.md
+index 5470389ea..478672995 100644
+--- a/docs/roadmap/STATUS.md
++++ b/docs/roadmap/STATUS.md
+@@ -150,7 +150,7 @@ Milestone R1 — Remedy as the daily tool: Tier 2 complete (F086 as the self-ins
+ - [x] F023 — Semantic zoom L0–L3 (T001–T003 complete; accepted 2026-09-25 · live review PASS — ACCEPTED · Evidence job f023r9e1001 · package remedy-review-20260925-052148-READY_FOR_REVIEW.zip · SHA-256 6e041624017f41e1644f71f3d8c18ae8dd4d677b1d8df4fe6206f89b6f76b4bb · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD 54e5ffd2485bf90c405f5ad662b7d86be8dd3eb9)
+ - [x] F024 — Phase timeline with scrubber (T001–T003 complete; accepted 2026-09-25 · live review PASS — ACCEPTED · Evidence job f024r7e1001 · package remedy-review-20260925-082755-READY_FOR_REVIEW.zip · SHA-256 1c4b4b358b97b54252a665e60acd3eaaedb134b8b3b0cbbe5ee36d80e60289e6 · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD b650ced4b1d0fef4c9156de0b217cbad7a76bef7)
+ - [x] F025 — Pause/resume (global & per node) (T001–T003 complete, R-1055 carried to F285; accepted 2026-09-25 · live review PASS_WITH_RISKS — ACCEPTED · Evidence job f025r10e1001 · package remedy-review-20260925-174026-READY_FOR_REVIEW.zip · SHA-256 5202e21aed884f7ae6a8b79a852d2c4683436f2220d1a910d072cec01ac38e6f · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD f7b127bde0e2d705f0a8da49b1d9404d983048d4)
+-- [ ] F026 — Task edit at runtime
++- [~] F026 — Task edit at runtime
+ 
+ ## Tier 2 — Findings paydown (rolling, operator rule amend0911-feedback)
+ 
