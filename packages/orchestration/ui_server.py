@@ -1069,6 +1069,7 @@ def _build_dashboard(job: Any) -> dict[str, Any]:
         "pipeline": _build_pipeline_section(job, events),
         "resume": _build_resume_section(job, events),
         "pause": _build_pause_section(job),
+        "task_specs": _build_task_spec_section(job),
         "project_summary": _build_project_summary_section(job),
         "redaction": {
             "policy": "safe_summaries_only",
@@ -1219,6 +1220,81 @@ def _build_pause_section(job: Any) -> dict[str, Any]:
         }
     except (PauseControlError, StopControlError) as exc:
         return {"record": {}, "requested": False, "paused_task_ids": [], "error": str(exc)}
+
+
+def _build_task_spec_section(job: Any) -> dict[str, Any]:
+    """Build the dashboard's `task_specs` section (DECISION F026 D3 clause 1): for every
+    task entry mapped from the job's stored plan, its planned id, its spec version, the
+    runtime edit state (or `""` with the refusal's detail), the plan task's current fields,
+    and its archived versions. Returns `{"tasks": {}, "error": ""}` for a job with no stored
+    plan with tasks. Never raises: a `PauseControlError`, `StopControlError`, `OSError` or
+    `ValueError` met while reading is reported as `error`, with `tasks` empty."""
+    from packages.orchestration.pause_control import PauseControlError, paused_tasks
+    from packages.orchestration.plan_editing import PlanEditRefused
+    from packages.orchestration.safe_points import StopControlError
+    from packages.orchestration.task_edit_runtime import runtime_edit_state, task_spec_versions
+
+    def _fields(source: dict[str, Any]) -> dict[str, Any]:
+        return {
+            "title": source.get("title", ""),
+            "goal": source.get("goal", ""),
+            "acceptance": list(source.get("acceptance", [])),
+            "est_tokens_band": source.get("est_tokens_band", ""),
+            "files_hint": list(source.get("files_hint", [])),
+        }
+
+    try:
+        body = job.task_plan
+        if not isinstance(body, dict) or not body.get("tasks"):
+            return {"tasks": {}, "error": ""}
+
+        plan_tasks = {
+            t["id"]: t for t in body["tasks"] if isinstance(t, dict) and t.get("id")
+        }
+        approval = body.get("_approval")
+        job_id = str(job.job_id)
+        job_paused = (
+            job.state.value if hasattr(job.state, "value") else str(job.state)
+        ) == "paused"
+        paused_ids = {p.task_id for p in paused_tasks(job_id)}
+
+        tasks: dict[str, Any] = {}
+        for entry in job.tasks:
+            plan_info = entry.inputs.get("plan") if isinstance(entry.inputs, dict) else None
+            planned_id = plan_info.get("planned_id") if isinstance(plan_info, dict) else None
+            if not planned_id or planned_id not in plan_tasks:
+                continue
+
+            task_paused = job_paused or entry.task_id in paused_ids
+            try:
+                edit_state = runtime_edit_state(
+                    job.state, approval, entry.status, task_paused=task_paused)
+                not_editable_because = ""
+            except PlanEditRefused as exc:
+                edit_state = ""
+                not_editable_because = exc.detail
+
+            versions = []
+            for version in task_spec_versions(job_id, planned_id):
+                versions.append({
+                    **_fields(version.get("plan_task", {}) or {}),
+                    "spec_version": version.get("spec_version", 1),
+                    "state": version.get("state", ""),
+                    "archived_at": version.get("archived_at", ""),
+                })
+
+            tasks[str(entry.task_id)] = {
+                "planned_id": planned_id,
+                "spec_version": entry.spec_version,
+                "edit_state": edit_state,
+                "not_editable_because": not_editable_because,
+                "current": _fields(plan_tasks[planned_id]),
+                "versions": versions,
+            }
+
+        return {"tasks": tasks, "error": ""}
+    except (PauseControlError, StopControlError, OSError, ValueError) as exc:
+        return {"tasks": {}, "error": str(exc)}
 
 
 def _build_project_summary_section(job: Any) -> dict[str, Any] | None:
@@ -2353,6 +2429,16 @@ PLAN_EDIT_COMMAND_IDS: dict[str, str] = {
 #: refused before the plan is read. Every edit names the version it was made against.
 COMMAND_PLAN_VERSION_MESSAGE = "expected_version must be the plan version the edit was made against"
 
+#: DECISION F026 D2: the runtime task edit, through `task_edit_runtime.edit_task_at_runtime`.
+JOB_EDIT_TASK_COMMAND_ID = "job.edit-task"
+
+#: What `job.edit-task` missing a usable `args.expected_version` returns: a 400 on that
+#: field, refused before the job is read. The edit names the task's own spec version, as
+#: `remedy job plan-show` prints it — a DIFFERENT version scheme than the plan edits'
+#: `COMMAND_PLAN_VERSION_MESSAGE` above, because the two edits refuse different states.
+COMMAND_TASK_VERSION_MESSAGE = (
+    "expected_version must be the task's spec version the edit was made against")
+
 #: DECISION F015 D3: the plan edit refusals, each with its status, its audit outcome and its
 #: message. The edit RAN and DECLINED for all but the argument refusals, which are shape
 #: errors on field `args`. A version conflict carries the current version, and every other
@@ -2402,6 +2488,24 @@ def plan_edit_refusal(code: str, detail: str,
     if code in ("plan_not_editable", "no_task_plan"):
         return 409, "rejected_state", {"error": COMMAND_PLAN_STATE_MESSAGE, "detail": detail}
     return 500, "rejected_effect", {"error": COMMAND_EFFECT_FAILED_MESSAGE}
+
+
+#: DECISION F026 D2: the four codes `task_edit_runtime.py` raises that the pre-approval
+#: plan editor never does — `task_edit_refusal` answers these itself and hands every
+#: other code to `plan_edit_refusal`, whose classes (a stale version, a bad shape, a
+#: closed plan) apply unchanged because the runtime edit is `plan_edit_task` underneath.
+COMMAND_TASK_STATE_MESSAGE = "the task is not open for a runtime edit"
+_TASK_RUNTIME_REFUSAL_CODES = frozenset({
+    "job_not_editable", "task_not_editable", "not_a_plan_task", "spec_archive_conflict",
+})
+
+
+def task_edit_refusal(code: str, detail: str,
+                      current_version: int | None) -> tuple[int, str, dict[str, Any]]:
+    """The status, audit outcome and body DECISION F026 D2 rules for one refused runtime edit."""
+    if code in _TASK_RUNTIME_REFUSAL_CODES:
+        return 409, "rejected_state", {"error": COMMAND_TASK_STATE_MESSAGE, "detail": detail}
+    return plan_edit_refusal(code, detail, current_version)
 
 
 # The rate limiter has to name the client it counts, and the only name a request
@@ -2987,6 +3091,31 @@ class _RemedyHandler(BaseHTTPRequestHandler):
             self._emit_command_accepted_event(str(job.job_id), accepted_body)
             self._send_json(200, accepted_body)
             return
+        # DECISION F026 D2: `job.edit-task` runs `task_edit_runtime.edit_task_at_runtime`,
+        # placed directly after the plan edits' clause above and following it exactly — same
+        # write order, same refusal handling, same audit calls — with `task_edit_refusal` in
+        # place of `plan_edit_refusal`, because the runtime edit is `plan_edit_task` underneath.
+        if payload["command"] == JOB_EDIT_TASK_COMMAND_ID:
+            from packages.orchestration.plan_editing import PlanEditRefused
+            try:
+                accepted_body = self._dispatch_edit_task(job, payload)
+            except PlanEditRefused as exc:
+                status, outcome, body = task_edit_refusal(
+                    exc.code, exc.detail, exc.current_version)
+                self._audit_attempt(str(job.job_id), outcome, create=True, payload=payload)
+                self._send_json(status, body)
+                return
+            except (OSError, RuntimeError, ValueError, TypeError):
+                self._audit_attempt(str(job.job_id), "rejected_effect", create=True,
+                                    payload=payload)
+                self._send_json(*_safe_error(500, COMMAND_EFFECT_FAILED_MESSAGE))
+                return
+            self._audit_attempt(str(job.job_id), "accepted", create=True, payload=payload)
+            self._publish_command_result(str(job.job_id), payload["client_nonce"],
+                                         accepted_body)
+            self._emit_command_accepted_event(str(job.job_id), accepted_body)
+            self._send_json(200, accepted_body)
+            return
         # An id `_command_is_ui_exposed` admitted that no clause above dispatches.
         # DECISION F009 D22: this is a GUARD, not a placeholder — unreachable
         # while every id in the exposed subset has a clause above, and the
@@ -3209,6 +3338,27 @@ class _RemedyHandler(BaseHTTPRequestHandler):
             actor=token_fingerprint(self._supplied_bearer_token()))
         return {"command": payload["command"], "outcome": "accepted",
                 "version": result.version, "tasks": [t.id for t in result.plan.tasks]}
+
+    def _dispatch_edit_task(self, job: Any, payload: Any) -> dict[str, Any]:
+        """Apply one runtime task edit through `edit_task_at_runtime` (DECISION F026 D2).
+
+        Mirrors `_dispatch_plan_edit` immediately above: `args["task_id"]` is the
+        `TaskEntry`'s own id — the id the dashboard and the pause already use, not its
+        planned id — and `args["expected_version"]` is the task's own spec version, which
+        `_read_command_payload` already checked is a whole number of at least 1. A refusal
+        RAISES `PlanEditRefused`, which `_handle_command_submission` maps through
+        `task_edit_refusal`. The edit log names the editor by this request's token
+        fingerprint, the same handle `commands_audit.jsonl` records (DECISION F009 D7).
+        """
+        from packages.orchestration.task_edit_runtime import edit_task_at_runtime
+        args = payload["args"]
+        result = edit_task_at_runtime(
+            str(job.job_id), args.get("task_id"), args.get("fields"),
+            expected_spec_version=args["expected_version"],
+            actor=token_fingerprint(self._supplied_bearer_token()))
+        return {"command": payload["command"], "outcome": "accepted", "task_id": result.task_id,
+                "state": result.state, "spec_version": result.spec_version,
+                "version": result.plan_version, "restored": list(result.restored)}
 
     def _dispatch_approve_hunks(self, job: Any,
                                 payload: Any) -> dict[str, Any] | None:
@@ -3495,6 +3645,12 @@ class _RemedyHandler(BaseHTTPRequestHandler):
         if command in PLAN_EDIT_COMMAND_IDS and (
                 not isinstance(version, int) or isinstance(version, bool) or version < 1):
             return None, _command_field_error("expected_version", COMMAND_PLAN_VERSION_MESSAGE)
+        # DECISION F026 D2: a runtime task edit names the task's own spec version, as a
+        # whole number, or it is a shape error refused before the job is read — the same
+        # check the plan edits run above, against the task's version scheme instead.
+        if command == JOB_EDIT_TASK_COMMAND_ID and (
+                not isinstance(version, int) or isinstance(version, bool) or version < 1):
+            return None, _command_field_error("expected_version", COMMAND_TASK_VERSION_MESSAGE)
         return {"command": command, "client_nonce": client_nonce, "args": args}, None
 
     def do_PUT(self) -> None:  # noqa: N802

@@ -294,6 +294,11 @@ end the response with:
   would reach 500 insertions and says so; a neighbour selection that left out the repository-wide
   guards under `tests/test_*.py`, and a verb whose word an earlier feature had retired in a test,
   are both item 34's reading of the tests that already guard a path. The list stays at 34 items.
+  Consolidated a fifteenth time at F026's closure on 2026-09-25: nothing joined and no two items
+  were merged, because F026's one line in `.agent/prose_slips.md` names no lesson the list lacks: a
+  block that quoted a sentence for the operator with an angle-bracket placeholder, which the worker
+  then shipped as literal text, is item 18's reading of an ordered recipe against the property it
+  must establish, here a command the operator can run as shown. The list stays at 34 items.
   The next consolidation measures against 34.
   Reverse by deleting this paragraph.
   1. **Size.** Count the block's lines. Over 400 (DECISION F105 D5) → split or

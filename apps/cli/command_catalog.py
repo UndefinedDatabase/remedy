@@ -555,6 +555,33 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         exit_codes=(0, 1, 2, 3),
     ),
     CommandEntry(
+        command_id="job.edit-task",
+        group_id="job",
+        subcommand="edit-task",
+        description="Change one task of an approved job plan at runtime — its title, goal, "
+                    "acceptance criteria, size band or file hints — while its job is not "
+                    "running.",
+        action_class="write_metadata",
+        args=(
+            _JOB_ID,
+            ArgDef("task_id", "The task: its id in the job, or its id in the job plan"),
+            ArgDef("--spec-version", "The spec version of the task that `remedy job plan-show` "
+                   "prints; an edit made against an older one is refused (required)",
+                   required=False, is_option=True),
+            ArgDef("--title", "The new title", required=False, is_option=True),
+            ArgDef("--goal", "The new goal", required=False, is_option=True),
+            ArgDef("--acceptance", "One acceptance criterion; repeat it to give the whole new list",
+                   required=False, is_option=True, is_repeatable=True),
+            ArgDef("--band", "The new size band: S, M, L or XL", required=False, is_option=True),
+            ArgDef("--files-hint", "One file the work is expected to touch; repeat it to give the "
+                   "whole new list", required=False, is_option=True, is_repeatable=True),
+            _JSON_OPT,
+        ),
+        supports_json=True,
+        related=("job.plan-show", "job.plan-edit-task"),
+        exit_codes=(0, 1, 2, 3),
+    ),
+    CommandEntry(
         command_id="job.plan-delete-task",
         group_id="job",
         subcommand="plan-delete-task",
@@ -2650,6 +2677,8 @@ UI_EXPOSED_COMMANDS: frozenset[str] = frozenset({
     "job.plan-merge-tasks",
     "job.plan-split-task",
     "job.plan-edit-acceptance",
+    # DECISION F026 D2: the runtime task edit, through `task_edit_runtime.edit_task_at_runtime`.
+    "job.edit-task",
 })
 
 

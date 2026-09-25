@@ -778,3 +778,149 @@ class TestPlanEditDispatchEffects:
         assert first == second and first[0] == 200
         assert self._stored()["_version"] == 2 and len(self._stored()["_edits"]) == 1
         assert self._audit_outcomes() == ["accepted", "replayed"]
+
+
+class TestEditTaskDispatchEffects:
+    """What an accepted `job.edit-task` DID, read off disk (DECISION F026 D2).
+
+    Mirrors `TestPlanEditDispatchEffects` immediately above: the door maps this command
+    to `task_edit_runtime.edit_task_at_runtime`, so these tests prove the mapping — the
+    body, the editor's fingerprint, the refusal statuses — and leave the edit's own
+    rules to `tests/orchestration/test_task_edit_runtime.py`.
+    """
+
+    @pytest.fixture(autouse=True)
+    def _setup_plan(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        from packages.core.models import RunState
+        from packages.orchestration.job_plan import map_task_plan_to_tasks
+        from packages.orchestration.pingpong_job import save_job_plan
+        from packages.orchestration.schemas.models import TaskPlan
+
+        plan = TaskPlan.model_validate({"schema_v": "task_plan_v1", "tasks": [
+            _plan_task("T1", []),
+            _plan_task("T2", ["T1"]),
+        ]})
+        body = plan.model_dump()
+        body["_approval"] = "approved"
+        self.job = _make_job()
+        self.job.task_plan = body
+        self.job.tasks = map_task_plan_to_tasks(plan)
+        self.job.state = RunState.PLANNED
+        save_job_plan(self.job)
+        self.job_id = str(self.job.job_id)
+        self.tmp_path = tmp_path
+        self.control = tmp_path / "control"
+
+    def _entry_for(self, planned_id: str):
+        from packages.orchestration.pingpong_job import load_job_plan
+        for t in load_job_plan(self.job_id).tasks:
+            if (t.inputs.get("plan") or {}).get("planned_id") == planned_id:
+                return t
+        raise AssertionError(f"no task for planned id {planned_id!r}")
+
+    def _post(self, port, token, nonce, command, args):
+        payload = {"command": command, "client_nonce": nonce, "args": args}
+        conn = HTTPConnection("127.0.0.1", port, timeout=10)
+        try:
+            conn.request("POST", f"/api/jobs/{self.job_id}/commands",
+                         body=json.dumps(payload),
+                         headers={"Authorization": f"Bearer {token}",
+                                  CSRF_HEADER: token,
+                                  "Content-Type": "application/json"})
+            resp = conn.getresponse()
+            return resp.status, json.loads(resp.read())
+        finally:
+            conn.close()
+
+    def _audit_outcomes(self):
+        from packages.orchestration.command_audit import AUDIT_FILENAME
+        path = self.control / "jobs" / self.job_id / AUDIT_FILENAME
+        return [json.loads(line)["outcome"] for line in path.read_bytes().splitlines()]
+
+    def _record_bytes(self):
+        from packages.orchestration.data_paths import job_record_path
+        return job_record_path(self.job_id).read_bytes()
+
+    def test_accepted_edit_updates_the_entry_and_audits_the_tokens_fingerprint(self):
+        from packages.orchestration.pingpong_job import load_job_plan
+        from packages.orchestration.ui_server import token_fingerprint
+
+        entry = self._entry_for("T1")
+        port, token = _start_ui_server_for_job(self.job_id, self.tmp_path)
+        status, body = self._post(port, token, "nonce-edit", "job.edit-task",
+                                  {"task_id": entry.task_id, "expected_version": 1,
+                                   "fields": {"title": "New T1", "goal": "new goal"}})
+
+        assert status == 200, body
+        assert (body["command"], body["outcome"]) == ("job.edit-task", "accepted")
+        assert (body["task_id"], body["state"], body["spec_version"], body["version"]) == (
+            entry.task_id, "waiting", 2, 2)
+        assert body["restored"] == []
+        updated = self._entry_for("T1")
+        assert (updated.spec_version, updated.title) == (2, "New T1: new goal")
+        [log_entry] = load_job_plan(self.job_id).task_plan["_edits"]
+        assert log_entry["actor"] == token_fingerprint(token)
+        assert self._audit_outcomes() == ["accepted"]
+
+    def test_a_missing_expected_version_is_a_shape_error_on_that_field(self):
+        entry = self._entry_for("T1")
+        before = self._record_bytes()
+        port, token = _start_ui_server_for_job(self.job_id, self.tmp_path)
+        status, body = self._post(port, token, "nonce-noversion", "job.edit-task",
+                                  {"task_id": entry.task_id, "fields": {"title": "x"}})
+        assert (status, body["field"]) == (400, "expected_version"), body
+        assert self._record_bytes() == before
+        assert self._audit_outcomes() == ["rejected_shape"]
+
+    def test_a_stale_version_is_409_with_the_current_one(self):
+        entry = self._entry_for("T1")
+        port, token = _start_ui_server_for_job(self.job_id, self.tmp_path)
+        self._post(port, token, "nonce-first", "job.edit-task",
+                  {"task_id": entry.task_id, "expected_version": 1,
+                   "fields": {"title": "x", "goal": "y"}})
+        before = self._record_bytes()
+        status, body = self._post(port, token, "nonce-stale", "job.edit-task",
+                                  {"task_id": entry.task_id, "expected_version": 1,
+                                   "fields": {"title": "z", "goal": "w"}})
+        assert status == 409, body
+        assert body["current_version"] == 2
+        assert self._record_bytes() == before
+        assert self._audit_outcomes() == ["accepted", "rejected_state"]
+
+    @pytest.mark.parametrize(("mutate", "says"), [
+        ("running", "the job is running"),
+        ("passed", "the task is passed"),
+        ("no_plan", "was not mapped from the stored plan"),
+    ])
+    def test_a_runtime_refusal_is_409_rejected_state_with_the_detail(self, mutate, says):
+        from packages.core.models import RunState
+        from packages.orchestration.pingpong_job import (
+            TASK_PASSED,
+            load_job_plan,
+            save_job_plan,
+        )
+
+        entry = self._entry_for("T1")
+        job = load_job_plan(self.job_id)
+        if mutate == "running":
+            job.state = RunState.RUNNING
+        elif mutate == "passed":
+            for t in job.tasks:
+                if t.task_id == entry.task_id:
+                    t.status = TASK_PASSED
+        else:
+            for t in job.tasks:
+                if t.task_id == entry.task_id:
+                    t.inputs = {}
+        save_job_plan(job)
+        before = self._record_bytes()
+        port, token = _start_ui_server_for_job(self.job_id, self.tmp_path)
+        status, body = self._post(port, token, "nonce-refuse", "job.edit-task",
+                                  {"task_id": entry.task_id, "expected_version": 1,
+                                   "fields": {"title": "x"}})
+        assert status == 409, body
+        assert body["error"] == "the task is not open for a runtime edit"
+        assert says in body["detail"]
+        assert self._record_bytes() == before
+        assert self._audit_outcomes() == ["rejected_state"]

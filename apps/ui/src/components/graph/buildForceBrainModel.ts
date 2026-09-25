@@ -70,6 +70,15 @@ function clusterLabelOf(cluster: BrainNode): string {
   return typeof count === "number" && count > 0 ? `+${count}` : "";
 }
 
+/** DECISION F026 D3 clause 2 — a task's version chip is `v<n>` when its
+ *  seeded `meta.specVersion` is a number of at least 2 (an edited task),
+ *  else `undefined` — never an empty string, so a task never edited carries
+ *  no `chip` key at all. */
+function taskChipOf(task: BrainNode): string | undefined {
+  const version = task.meta.specVersion;
+  return typeof version === "number" && version >= 2 ? `v${version}` : undefined;
+}
+
 /** Task ordering for golden-angle assignment (graph_spec §6: "Seeded initial
  *  angles = golden-angle around the core"): by seed rank (a rank-less task
  *  sorts last), then id. This is the order angles are HANDED OUT in, not the
@@ -160,9 +169,11 @@ export function buildBrainLayout(model: BrainModel, expandTaskId: string | null 
     }
     if (n.kind === "task") {
       const p = taskPosition.get(n.id) ?? { x: 0, y: 0 };
+      const chip = taskChipOf(n);
       return {
         id: n.id, kind: n.kind, state: n.state, parentId: n.parentId, seq: n.seq,
         depth: 1, radius: BRAIN_TASK_RADIUS, x: p.x, y: p.y, label: taskLabelOf(n),
+        ...(chip !== undefined ? { chip } : {}),
       };
     }
     const p = childPosition.get(n.id) ?? { x: 0, y: 0 };

@@ -38,10 +38,19 @@ export interface PaintableNode {
   y: number;
   radius: number;
   label?: string;
+  /** DECISION F026 D3 clause 2 — a task node's version chip text (`v<n>`),
+   *  present only when the task was edited at runtime. */
+  chip?: string;
 }
 
 /** A cluster's count is written at this share of the node's radius. */
 export const CLUSTER_COUNT_SIZE = 0.75;
+
+/** DECISION F026 D3 clause 2 — a task node's version chip: its font size as
+ *  a share of the node's radius, and its offset from the node's centre
+ *  (both axes), also as a share of the radius. */
+export const CHIP_FONT_SIZE = 0.6;
+export const CHIP_OFFSET = 0.8;
 
 /** The completion ripple's ring width, in world units. */
 export const RIPPLE_WIDTH = 1.5;
@@ -143,6 +152,13 @@ export function paintBrainNode(ctx: CanvasRenderingContext2D, node: PaintableNod
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     ctx.fillText(node.label, node.x, node.y);
+  }
+  if (node.kind === "task" && node.chip) {
+    ctx.fillStyle = line;
+    ctx.font = `600 ${radius * CHIP_FONT_SIZE}px ${tokenValue(frame.palette, BRAIN_LABEL_FONT_TOKEN)}`;
+    ctx.textAlign = "left";
+    ctx.textBaseline = "top";
+    ctx.fillText(node.chip, node.x + radius * CHIP_OFFSET, node.y + radius * CHIP_OFFSET);
   }
   for (const mark of treatment.marks) drawMark(ctx, mark, node, radius, frame.palette);
   ctx.restore();

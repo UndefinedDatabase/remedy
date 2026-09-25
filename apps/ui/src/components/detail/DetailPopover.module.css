@@ -1,4 +1,4 @@
-.popover { position: absolute; z-index: 6; right: calc(var(--remedy-right-width) + 54px); top: 90px; width: 340px; border-radius: 22px; padding: 22px; background: rgba(255,255,255,.78); border: 1px solid rgba(78,111,172,.14); box-shadow: var(--remedy-shadow); backdrop-filter: blur(22px); color: var(--remedy-text); }
+.popover { position: absolute; z-index: 6; right: calc(var(--remedy-right-width) + 54px); top: 90px; width: 340px; border-radius: 22px; padding: 22px; background: rgba(255,255,255,.78); border: 1px solid rgba(78,111,172,.14); box-shadow: var(--remedy-shadow); backdrop-filter: blur(22px); color: var(--remedy-text); max-height: calc(100vh - 120px); overflow-y: auto; }
 .close { position: absolute; right: 14px; top: 14px; width: 28px; height: 28px; border: 0; border-radius: 9px; background: rgba(225,233,246,.72); color: var(--remedy-muted); cursor: pointer; }
 .close:hover { background: rgba(210,220,240,.9); }
 .popover h2 { margin: 0 32px 5px 0; color: var(--remedy-text); font-size: 18px; font-weight: 800; }
@@ -27,3 +27,36 @@
 .fieldKey { font-size: 12px; color: var(--remedy-muted); }
 .fieldVal { font-size: 12px; font-weight: 600; color: var(--remedy-ink-strong, #0a1c48); }
 .fieldUnknown { font-size: 12px; font-weight: 500; color: var(--remedy-faint, #9aa9c5); font-style: italic; }
+
+/* DECISION F026 D3 clauses 2 and 3 — the version chip and the Versions
+   list. No animation; every colour an existing token, every size a plain
+   pixel value as the rules above already write them. */
+.versionChip { margin-left: auto; padding: 2px 8px; border: 1px solid var(--remedy-line); border-radius: var(--remedy-radius-pill); color: var(--remedy-ink-soft); font: 600 11px var(--remedy-font-ui); }
+.timeLabel + .versionChip { margin-left: 6px; }
+
+.versionList { margin: 4px 0 0; padding: 0; list-style: none; }
+.versionRow { padding: 2px 0; }
+.versionRow button { font-size: 12.5px; background: none; border: none; padding: 0; color: var(--remedy-ink-strong); cursor: pointer; text-align: left; }
+.versionRow button:disabled { color: var(--remedy-faint); cursor: default; }
+
+.versionDiff { margin: 4px 0 0; }
+.versionDiff dt { font-size: 11px; text-transform: uppercase; color: var(--remedy-muted); letter-spacing: .04em; margin: 4px 0 0; }
+.versionDiff dd { margin: 0; font-size: 12px; font-family: var(--remedy-font-mono); }
+
+/* DECISION F026 D4 — the "Edit task" form. Every colour and radius an
+   existing token (ux_spec.md §8's button rules); the only motion is the
+   ghost/pill colour transition over --remedy-dur-base. */
+.ghostButton { align-self: flex-start; height: 32px; padding: 0 14px; border: none; border-radius: var(--remedy-radius-pill); background: transparent; color: var(--remedy-ink-soft); font: 600 12px var(--remedy-font-ui); cursor: pointer; transition: background-color var(--remedy-dur-base); }
+.ghostButton:hover { background: var(--remedy-blue-50); }
+.ghostButton:disabled { opacity: .45; cursor: not-allowed; }
+
+.savePill { height: 32px; padding: 0 16px; border: none; border-radius: var(--remedy-radius-pill); background: var(--remedy-blue); color: var(--remedy-card); font: 700 12px var(--remedy-font-ui); cursor: pointer; transition: background-color var(--remedy-dur-base); }
+.savePill:disabled { opacity: .45; cursor: not-allowed; }
+
+.editForm { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
+.editField { display: flex; flex-direction: column; gap: 3px; font-size: 12px; color: var(--remedy-muted); }
+.editField input, .editField textarea, .editField select { border: 1px solid var(--remedy-line); border-radius: var(--remedy-radius-sm); background: var(--remedy-card); color: var(--remedy-ink-strong); font: 500 12.5px var(--remedy-font-ui); padding: 6px 8px; }
+.editField textarea { min-height: 48px; resize: vertical; }
+.editNote { font-size: 11.5px; color: var(--remedy-muted); margin: 0; }
+.editActions { display: flex; gap: 8px; margin-top: 2px; }
+.editResult { font-size: 12px; margin: 2px 0 0; color: var(--remedy-ink-soft); }

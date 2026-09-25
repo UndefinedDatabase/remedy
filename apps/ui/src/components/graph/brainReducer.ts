@@ -321,6 +321,7 @@ export function seedBrainModel(jobId: string, tasks: readonly BrainTaskSeed[]): 
     const id = taskNodeId(seed.id);
     const meta: Record<string, unknown> = { rank: seed.rank };
     if (seed.title !== undefined) meta.title = seed.title;
+    if (seed.specVersion !== undefined) meta.specVersion = seed.specVersion;
     meta.status = seed.status;
     const state = SEED_STATUS_STATE_TABLE[seed.status] ?? "planned";
     nodes.push({ id, kind: "task", state, parentId: core.id, seq: 0, meta });

@@ -22,6 +22,9 @@ export interface BrainLayoutNode {
   fx?: number;
   fy?: number;
   label: string;
+  /** DECISION F026 D3 clause 2 — a task node's version chip text (`v<n>`),
+   *  present ONLY when the task was edited at runtime. Absent otherwise. */
+  chip?: string;
 }
 
 /** One positioned parent edge — WHY it carries `depth`/`width`/`active`

@@ -16,7 +16,13 @@ import pytest
 from packages.core.models import RunState
 from packages.orchestration.data_paths import job_record_path
 from packages.orchestration.job_plan import map_task_plan_to_tasks
-from packages.orchestration.pingpong_job import JobPlan, load_job_plan, save_job_plan
+from packages.orchestration.pingpong_job import (
+    TASK_FAILED,
+    TASK_PASSED,
+    JobPlan,
+    load_job_plan,
+    save_job_plan,
+)
 from packages.orchestration.schemas.models import TaskPlan
 from packages.orchestration.task_deliverables import record_llm_task_deliverables
 
@@ -50,6 +56,30 @@ def job_id(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> str:
                   state=RunState.PLANNED)
     save_job_plan(job)
     return str(job.job_id)
+
+
+@pytest.fixture
+def approved_job_id(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> str:
+    """F026 T002: the same four tasks, already APPROVED — the runtime edit's own window."""
+    monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
+    plan = TaskPlan.model_validate({"schema_v": "task_plan_v1", "tasks": _TASKS})
+    body = plan.model_dump()
+    body["_approval"] = "approved"
+    body["_normalization"] = []
+    mapped = map_task_plan_to_tasks(plan)
+    record_llm_task_deliverables(mapped)
+    job = JobPlan(job_title="F026 CLI probe", task_plan=body, tasks=mapped,
+                  state=RunState.PLANNED)
+    save_job_plan(job)
+    return str(job.job_id)
+
+
+def _entry_for(job_id: str, planned_id: str):
+    """The ``TaskEntry`` of *job_id* whose plan mapping names *planned_id*."""
+    for t in load_job_plan(job_id).tasks:
+        if (t.inputs.get("plan") or {}).get("planned_id") == planned_id:
+            return t
+    raise AssertionError(f"no task for planned id {planned_id!r}")
 
 
 def _run(argv: list[str], capsys) -> tuple[int, str]:
@@ -97,6 +127,29 @@ class TestPlanShow:
         assert code == 0, body
         assert body["editable"] is False
         assert "the plan is approved" in body["not_editable_because"]
+
+    def test_json_names_each_tasks_own_id_status_and_spec_version(self, job_id, capsys):
+        entry = _entry_for(job_id, "T2")
+        code, body = _json(["job", "plan-show", job_id], capsys)
+        assert code == 0, body
+        t2 = body["tasks"][1]
+        assert (t2["job_task_id"], t2["status"], t2["spec_version"]) == (
+            entry.task_id, "pending", 1)
+
+    def test_text_prints_spec_version_and_status_under_the_goal_line(self, job_id, capsys):
+        code, out = _run(["job", "plan-show", job_id], capsys)
+        assert code == 0, out
+        assert "  spec version 1 · pending" in out
+
+    def test_after_a_runtime_edit_the_spec_version_advances(self, approved_job_id, capsys):
+        entry = _entry_for(approved_job_id, "T1")
+        _json(["job", "edit-task", approved_job_id, entry.task_id, "--spec-version", "1",
+              "--title", "x", "--goal", "y"], capsys)
+        code, body = _json(["job", "plan-show", approved_job_id], capsys)
+        assert code == 0, body
+        t1 = body["tasks"][0]
+        assert (t1["job_task_id"], t1["status"], t1["spec_version"]) == (
+            entry.task_id, "pending", 2)
 
 
 class TestEachEditCommand:
@@ -202,3 +255,105 @@ class TestTheCliApprovalDoor:
         assert stored.task_plan["_approval"] == "approved"
         assert _stored_ids(job_id) == ["T1", "T2", "T3"]
         assert stored.task_plan["_version"] == 2
+
+
+class TestEditTaskCommand:
+    """F026 T002, DECISION F026 D2: `job edit-task`, the runtime edit's own CLI door."""
+
+    def test_accepted_by_the_task_entrys_own_id(self, approved_job_id, capsys):
+        entry = _entry_for(approved_job_id, "T1")
+        code, body = _json(["job", "edit-task", approved_job_id, entry.task_id,
+                            "--spec-version", "1", "--title", "New T1", "--goal", "new goal"],
+                           capsys)
+        assert code == 0, body
+        assert (body["job_id"], body["task_id"], body["planned_id"]) == (
+            approved_job_id, entry.task_id, "T1")
+        assert (body["state"], body["spec_version"], body["plan_version"]) == (
+            "waiting", 2, 2)
+        assert body["restored"] == []
+        updated = _entry_for(approved_job_id, "T1")
+        assert updated.spec_version == 2
+        assert updated.title == "New T1: new goal"
+
+    def test_accepted_by_the_task_plans_own_id(self, approved_job_id, capsys):
+        code, body = _json(["job", "edit-task", approved_job_id, "T2",
+                            "--spec-version", "1", "--title", "New T2", "--goal", "new goal"],
+                           capsys)
+        assert code == 0, body
+        assert body["planned_id"] == "T2"
+        assert _entry_for(approved_job_id, "T2").spec_version == 2
+
+
+class TestEditTaskRefusals:
+
+    def test_missing_spec_version(self, approved_job_id, capsys):
+        entry = _entry_for(approved_job_id, "T1")
+        code, body = _json(
+            ["job", "edit-task", approved_job_id, entry.task_id, "--title", "x"], capsys)
+        assert (code, body["error"]) == (2, "missing_spec_version")
+
+    def test_invalid_spec_version(self, approved_job_id, capsys):
+        entry = _entry_for(approved_job_id, "T1")
+        code, body = _json(
+            ["job", "edit-task", approved_job_id, entry.task_id, "--spec-version", "abc",
+             "--title", "x"], capsys)
+        assert (code, body["error"]) == (2, "invalid_spec_version")
+
+    def test_a_stale_version_names_the_current_one(self, approved_job_id, capsys):
+        entry = _entry_for(approved_job_id, "T1")
+        _json(["job", "edit-task", approved_job_id, entry.task_id, "--spec-version", "1",
+              "--title", "x", "--goal", "y"], capsys)
+        code, body = _json(["job", "edit-task", approved_job_id, entry.task_id,
+                            "--spec-version", "1", "--title", "z", "--goal", "w"], capsys)
+        assert (code, body["error"], body["current_version"]) == (3, "version_conflict", 2)
+
+    def test_a_running_job_refuses_job_not_editable(self, approved_job_id, capsys):
+        job = load_job_plan(approved_job_id)
+        job.state = RunState.RUNNING
+        save_job_plan(job)
+        entry = _entry_for(approved_job_id, "T1")
+        code, body = _json(
+            ["job", "edit-task", approved_job_id, entry.task_id, "--spec-version", "1",
+             "--title", "x"], capsys)
+        assert (code, body["error"]) == (3, "job_not_editable")
+
+    def test_a_passed_task_refuses_task_not_editable(self, approved_job_id, capsys):
+        job = load_job_plan(approved_job_id)
+        entry = next(t for t in job.tasks
+                    if (t.inputs.get("plan") or {}).get("planned_id") == "T1")
+        entry.status = TASK_PASSED
+        save_job_plan(job)
+        code, body = _json(
+            ["job", "edit-task", approved_job_id, entry.task_id, "--spec-version", "1",
+             "--title", "x"], capsys)
+        assert (code, body["error"]) == (3, "task_not_editable")
+
+    def test_a_task_without_a_planned_id_refuses_not_a_plan_task(self, approved_job_id, capsys):
+        job = load_job_plan(approved_job_id)
+        entry = next(t for t in job.tasks
+                    if (t.inputs.get("plan") or {}).get("planned_id") == "T1")
+        entry.inputs = {}
+        save_job_plan(job)
+        code, body = _json(
+            ["job", "edit-task", approved_job_id, entry.task_id, "--spec-version", "1",
+             "--title", "x"], capsys)
+        assert (code, body["error"]) == (2, "not_a_plan_task")
+
+    def test_an_edit_naming_no_field_refuses_invalid_args(self, approved_job_id, capsys):
+        entry = _entry_for(approved_job_id, "T1")
+        code, body = _json(
+            ["job", "edit-task", approved_job_id, entry.task_id, "--spec-version", "1"], capsys)
+        assert (code, body["error"]) == (2, "invalid_args")
+
+    def test_the_failed_states_text_names_the_relaunch_command(self, approved_job_id, capsys):
+        job = load_job_plan(approved_job_id)
+        entry = next(t for t in job.tasks
+                    if (t.inputs.get("plan") or {}).get("planned_id") == "T1")
+        entry.status = TASK_FAILED
+        entry.error = "boom"
+        save_job_plan(job)
+        code, out = _run(
+            ["job", "edit-task", approved_job_id, entry.task_id, "--spec-version", "1",
+             "--title", "x", "--goal", "y"], capsys)
+        assert code == 0, out
+        assert f"remedy job run {approved_job_id}" in out

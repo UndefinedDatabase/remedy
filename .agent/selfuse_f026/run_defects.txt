@@ -1,0 +1,4 @@
+From describe_self_use_run_defects():
+
+1. job fd57a5d1dfe245b0 (stopped): stop_reason=budget_exhausted:max_cost_usd; stop_source=budget
+2. T001 (pending): final_status=stopped

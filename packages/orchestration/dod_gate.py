@@ -30,6 +30,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from packages.orchestration.data_paths import DOD_FILENAME
 from packages.orchestration.dod_runners import (
     CHECK_TIMEOUT_DEFAULT_SEC,
     STATUS_PASSED,
@@ -39,8 +40,9 @@ from packages.orchestration.dod_runners import (
 )
 from packages.orchestration.dod_schema import DoD
 
-#: Filenames inside the job's evidence area.
-DOD_FILENAME = "dod.json"
+#: Filenames inside the job's evidence area. DOD_FILENAME itself is owned by
+#: data_paths (R-1063, DECISION F260 D1) and imported above so every existing
+#: `dod_gate.DOD_FILENAME` caller keeps resolving.
 DOD_RESULT_FILENAME = "dod_result.json"
 
 #: The blocker string the gate contributes to a fulfillment record, so a reader

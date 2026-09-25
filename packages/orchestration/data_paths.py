@@ -26,6 +26,7 @@ Public API::
     job_record_path(job_id, root: Path | None = None) -> Path
     job_record_paths(root: Path | None = None) -> list[Path]
     job_evidence_dir(job_id, root: Path | None = None) -> Path
+    job_dod_path(job_id, root: Path | None = None) -> Path   # R-1063
     runs_dir(root: Path | None = None) -> Path               # keyed by RUN id
     run_dir(run_id, root: Path | None = None) -> Path
     job_logs_dir(root: Path | None = None) -> Path           # keyed by JOB id
@@ -349,6 +350,16 @@ def job_record_paths(root: Path | None = None) -> list[Path]:
 def job_evidence_dir(job_id: str, root: Path | None = None) -> Path:
     """The job's own evidence — artifacts, streams and post-mortems, beside its record."""
     return job_dir(job_id, root) / "evidence"
+
+
+# R-1063 / DECISION F260 D1: the DoD file's name is a job-layout fact, so it lives here.
+DOD_FILENAME = "dod.json"
+
+
+# R-1063 / DECISION F260 D1: one spelling of the stored-DoD path for every caller.
+def job_dod_path(job_id: str, root: Path | None = None) -> Path:
+    """The job's stored DoD file — ``<job_evidence_dir>/dod.json``."""
+    return job_evidence_dir(job_id, root) / DOD_FILENAME
 
 
 def run_dir(run_id: str, root: Path | None = None) -> Path:

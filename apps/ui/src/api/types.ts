@@ -201,6 +201,48 @@ export interface RemedyPause {
   error: string;
 }
 
+/** DECISION F026 D3 clause 1 — a plan task's own fields, read either as the
+ *  task's `current` spec or as one archived `versions` entry. */
+export interface RemedyTaskSpecFields {
+  title: string;
+  goal: string;
+  acceptance: string[];
+  estTokensBand: string;
+  filesHint: string[];
+}
+
+/** DECISION F026 D3 clause 1 — one archived spec of a task: its fields at
+ *  that version, the version number itself, the task's state when it was
+ *  archived, and when. */
+export interface RemedyTaskSpecVersion extends RemedyTaskSpecFields {
+  specVersion: number;
+  state: string;
+  archivedAt: string;
+}
+
+/** DECISION F026 D3 clause 1 — one task's spec and version chain: its
+ *  planned id, its current spec version, the runtime edit state this
+ *  reading finds it in (`""` when it cannot be edited right now),
+ *  why not when that is so, its current fields, and its archived versions
+ *  in ascending order. */
+export interface RemedyTaskSpec {
+  plannedId: string;
+  specVersion: number;
+  editState: "" | "waiting" | "paused" | "failed";
+  notEditableBecause: string;
+  current: RemedyTaskSpecFields;
+  versions: RemedyTaskSpecVersion[];
+}
+
+/** DECISION F026 D3 clause 1 — the dashboard's `task_specs` section: every
+ *  task entry mapped from the job's stored plan, keyed by its task id, and
+ *  `error` — `""` unless the section's own read failed, in which case
+ *  `tasks` is empty. */
+export interface RemedyTaskSpecs {
+  tasks: Readonly<Record<string, RemedyTaskSpec>>;
+  error: string;
+}
+
 export interface RemedyProjectSummary {
   project_id: string;
   job_count: number;
@@ -229,4 +271,4 @@ export interface RemedyProjectSummary {
  *  answer, `undefined` would not be. Remedy deliberately does NOT order,
  *  filter or count the cards here; that rule is T002b's subject and lives in
  *  `decisionCard.ts` when it lands. */
-export interface RemedyDashboard { jobId: string; title: string; description: string; conceptLabel: string; metrics: RemedyMetric[]; budgetFinal: BudgetTickFigures | null; phases: RemedyPhase[]; tasks: RemedyTaskItem[]; activity: RemedyActivityItem[]; graph: { nodes: RemedyGraphNode[]; edges: RemedyGraphEdge[]; }; nextAction: RemedyNextAction; live: RemedyLiveState; apiHealth: RemedyApiHealth; pipeline: RemedyPipeline | null; resume: RemedyResume | null; pause: RemedyPause; projectSummary: RemedyProjectSummary | null; timelineEvents?: RemedyTimelineEvent[]; snapshot: RemedySnapshotSummary | null; continuation: RemedyContinuationSummary | null; promptTrace?: RemedyPromptTraceSummary | null; decisionInbox: DecisionCardModel[]; }
+export interface RemedyDashboard { jobId: string; title: string; description: string; conceptLabel: string; metrics: RemedyMetric[]; budgetFinal: BudgetTickFigures | null; phases: RemedyPhase[]; tasks: RemedyTaskItem[]; activity: RemedyActivityItem[]; graph: { nodes: RemedyGraphNode[]; edges: RemedyGraphEdge[]; }; nextAction: RemedyNextAction; live: RemedyLiveState; apiHealth: RemedyApiHealth; pipeline: RemedyPipeline | null; resume: RemedyResume | null; pause: RemedyPause; taskSpecs: RemedyTaskSpecs; projectSummary: RemedyProjectSummary | null; timelineEvents?: RemedyTimelineEvent[]; snapshot: RemedySnapshotSummary | null; continuation: RemedyContinuationSummary | null; promptTrace?: RemedyPromptTraceSummary | null; decisionInbox: DecisionCardModel[]; }

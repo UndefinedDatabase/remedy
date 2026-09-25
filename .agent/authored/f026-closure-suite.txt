@@ -1,0 +1,12 @@
+F026 R6 C5 — the closure's one full suite, repaired.
+
+Command: python3 -m pytest -n auto -q
+Log: .remedy-wt/f026-r6-worker/full_suite.log
+Real exit code: 0
+Wall time: 193.86s (0:03:13)
+Summary line: 19411 passed, 20 skipped, 1 warning in 193.86s (0:03:13)
+Bad node ids (failed plus errors):
+  NONE
+Ran on the tree at `64e7f761e` (this round's C4); replaces round 5's run at
+  `40b94e02` under amend0921-operator-feedback rule 1 — the one run belongs to
+  the tree that ships.

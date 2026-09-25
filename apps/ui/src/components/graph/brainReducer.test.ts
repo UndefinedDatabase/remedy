@@ -284,6 +284,22 @@ describe("Core derivation", () => {
     expect(failed.nodes[0].state).toBe("fail");
   });
 
+  it("F026 D4: a start, a failed run and a second start leave two builder-run nodes, the first fail", () => {
+    // T5_F026's own fan: a task fails, is edited, and the relaunch starts it
+    // again — the fail attempt is never erased, and the reducer's own
+    // events-since proof (S6) reads exactly two task_run_started frames for
+    // it. This is that proof at the model layer.
+    const seeded = seedBrainModel("job-x", [{ id: "t1", status: "pending", rank: 0 }]);
+    const result = fold(seeded, [
+      row(1, "task_run_started", "t1"),
+      row(2, "task_run_failed", "t1", "boom"),
+      row(3, "task_run_started", "t1"),
+    ]);
+    const runNodes = result.nodes.filter((n) => n.parentId === "task:t1");
+    expect(runNodes).toHaveLength(2);
+    expect(runNodes[0].state).toBe("fail");
+  });
+
   it("pass only when there is at least one task and every task is pass", () => {
     const seeded = seedBrainModel("job-x", [
       { id: "t1", status: "pending", rank: 0 },

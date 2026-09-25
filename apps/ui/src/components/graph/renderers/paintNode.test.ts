@@ -3,7 +3,8 @@ import type { NodeKind, NodeState } from "../brainOntology";
 import { GLYPHS, GLYPH_MIN_ZOOM_RUN, STATE_MARK_PATHS } from "./glyphPaths";
 import { NODE_STATE_TREATMENTS } from "./nodeStates";
 import {
-  CLUSTER_COUNT_SIZE, GLYPH_STROKE_WIDTH, HALO_SPREAD, RIPPLE_WIDTH, SPHERE_KINDS, paintBrainNode, paintBrainNodeInMotion,
+  CHIP_FONT_SIZE, CHIP_OFFSET, CLUSTER_COUNT_SIZE, GLYPH_STROKE_WIDTH, HALO_SPREAD, RIPPLE_WIDTH, SPHERE_KINDS,
+  paintBrainNode, paintBrainNodeInMotion,
 } from "./paintNode";
 import type { NodeMotion } from "./paintNode";
 import type { PaintableNode } from "./paintNode";
@@ -83,10 +84,11 @@ const PALETTE: BrainPalette = Object.fromEntries(brainPaletteTokens().map((t) =>
 const c = (token: string) => `c(${token})`;
 
 function paint(
-  kind: NodeKind, state: NodeState, zoom = 1, extra: { alpha?: number; scale?: number; label?: string; radius?: number } = {},
+  kind: NodeKind, state: NodeState, zoom = 1,
+  extra: { alpha?: number; scale?: number; label?: string; radius?: number; chip?: string } = {},
 ): Op[] {
   const ctx = new RecordingContext();
-  const node: PaintableNode = { kind, state, x: 10, y: 20, radius: extra.radius ?? 4.5, label: extra.label };
+  const node: PaintableNode = { kind, state, x: 10, y: 20, radius: extra.radius ?? 4.5, label: extra.label, chip: extra.chip };
   paintBrainNode(ctx as unknown as CanvasRenderingContext2D, node, {
     palette: PALETTE, zoom, alpha: extra.alpha ?? 1, scale: extra.scale ?? 1,
   });
@@ -242,6 +244,21 @@ describe("paintBrainNode — the cluster's count", () => {
   it("writes nothing for a cluster with no count, or for a label on any other kind", () => {
     expect(paint("cluster", "pass", 1, { label: "" }).filter((o) => o.op === "text")).toEqual([]);
     expect(paint("task", "pass", 1, { label: "Fix the flaky test" }).filter((o) => o.op === "text")).toEqual([]);
+  });
+});
+
+describe("paintBrainNode — the task's version chip (DECISION F026 D3 clause 2)", () => {
+  it("writes a task's chip at the specified point, in the state's line colour and the resolved font", () => {
+    const text = paint("task", "planned", 1, { chip: "v2", radius: 9 }).filter((o) => o.op === "text");
+    expect(text.map((o) => [o.text, o.at, o.fillStyle, o.font])).toEqual([
+      ["v2", [10 + 9 * 0.9 * CHIP_OFFSET, 20 + 9 * 0.9 * CHIP_OFFSET], c("--remedy-state-planned-ring"),
+        `600 ${9 * 0.9 * CHIP_FONT_SIZE}px ${c("--remedy-font-ui")}|left|top`],
+    ]);
+  });
+
+  it("writes nothing for a task with no chip, or a chip on any other kind", () => {
+    expect(paint("task", "pass", 1, {}).filter((o) => o.op === "text")).toEqual([]);
+    expect(paint("cluster", "pass", 1, { chip: "v2", label: "" }).filter((o) => o.op === "text")).toEqual([]);
   });
 });
 

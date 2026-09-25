@@ -21631,3 +21631,219 @@ relaunched job, rejected because it hides exactly what the manifest exists to pr
 
 HOW TO REVERSE: delete `paused` from `_VALID_STATUS` and its lifecycle rows, the park's manifest
 write, the tests this decision's round adds, and this paragraph, and restore the comment.
+
+## DECISION F026 D1 — a runtime task edit is the plan editor's own `plan_edit_task` applied to one task of an approved plan while no run holds the record: the task must be waiting, paused or failed, the TaskEntry is updated in place with a per-task spec version, the prior spec is archived create-only, the approval seal follows the edit, and a failed task goes back to pending in the same write (2026-09-25)
+
+CONTEXT: T5_F026.md asks for `edit_task` on waiting, paused and failed tasks, a spec v2 with
+versioning, the prior spec archived in evidence, a failed task reset to pending, and the next run's
+prompt trace carrying the edit. Measured at `4cb6b970`: `edit_plan` in
+`packages/orchestration/plan_editing.py` is one locked transaction over the stored plan, but it
+regenerates `job.tasks` with `map_task_plan_to_tasks`, which mints new task ids and resets every
+status, and `edit_window_refusal` admits only a pending approval of a `planned` job;
+`approved_plan_mismatch` in `packages/orchestration/job_plan.py` blocks every start of a job whose
+stored plan no longer hashes to the approval's `_approved_plan_sha256`; `run_job` in
+`packages/orchestration/pingpong_job.py` stops its dispatch loop at a task whose status is `blocked`
+or `failed`, and a run that ends in a failed gate or review leaves the task `blocked` while only an
+exception leaves it `failed`, the job `blocked` in both cases; `TaskEntry` has no attempt counter and
+no spec version; `_build_task_prompt` reads the entry's `title`, which the mapping writes as
+`<title>: <goal>`, its `body` and its `acceptance`; `waiting` is no task status, and a task pause is
+a control file under `paused_tasks/` keyed by the entry's `task_id` (DECISION F025 D1); and
+`replay_edits` rebuilds a plan by re-applying every `_edits` entry through `apply_edit`.
+
+CHOSEN: (1) THE EDIT IS THE PLAN EDITOR'S. A runtime edit applies `apply_edit(plan,
+"plan_edit_task", {"task_id": <planned id>, "fields": <fields>})` to the stored plan, so the editable
+fields are exactly `EDITABLE_TASK_FIELDS`, `clarifications_resolved` stays immutable, and
+`revalidate` refuses exactly what it refuses before approval; it runs under `plan_edit_lock`, bumps
+the plan's `_version`, and appends ONE entry to the same `_edits` log carrying the command and args
+`replay_edits` needs plus a `runtime` object: the entry's task id, the planned id, the editable state
+it was edited in, the spec version it created, the status before and after, and the approval hashes
+before and after. `replay_edits` therefore still reconstructs the plan. (2) THE TASK ENTRY IS
+UPDATED IN PLACE, never regenerated: the one entry whose `inputs["plan"]["planned_id"]` names the
+task keeps its `task_id`, run id, repair counts, checkpoint fields and every `inputs` key the
+mapping does not write, and takes from the mapping of the edited plan only what the mapping writes
+for that task — `title`, `acceptance` and the mapping's `inputs` keys. A task a run split off, which
+carries no planned id, is refused `not_a_plan_task`; a job with no stored plan is refused
+`no_task_plan`. (3) THE STATE GATE is a pure function over the job's state, the plan's approval, the
+task's status and whether the task is paused, and the editable set is closed at three names:
+`waiting` is a `pending` task that is not paused; `paused` is a `pending` task with a task pause file
+or in a job whose state is `paused`; `failed` is a task whose status is `failed` or `blocked`, because
+both are how a run's failure lands on a task and both stop the dispatch loop. Every other task
+status is refused `task_not_editable` naming it. Before the task is read, the job is refused
+`job_not_editable` naming its state when it is `running`, because a run process holds the record
+and would write over the edit — the operator pauses first, and the relaunch is the resume (DECISION
+F025 D1) — or when it is terminal (`completed`, `failed`, `cancelled`); and `plan_not_editable` when
+the plan's approval is `pending`, which is the plan editor's window, or `rejected`. (4) ONE SPEC
+VERSION PER TASK: `TaskEntry` gains `spec_version`, default 1 and persisted, and every accepted edit
+raises it by one. Concurrent edits are told apart by it: an edit names the spec version it was made
+against, and a stale one is refused `version_conflict` with the current one. (5) THE PRIOR SPEC IS
+ARCHIVED before the record is written, create-only, at
+`task_specs/<planned id>.v<n>.json` in the job's evidence export directory, holding the plan task as
+it stood, the entry's `title` and `acceptance`, the version and the editable state; an existing
+archive of the same version with other content refuses `spec_archive_conflict`, and an equal one
+(a crash between the archive and the record write) is kept. An archived spec is never rewritten.
+(6) THE APPROVAL SEAL FOLLOWS THE EDIT: when the approval is `approved` and records a hash, the
+record write stores the edited plan's content hash, so the job starts again, and the log entry
+carries both hashes; the edit is authenticated by the door or the CLI and logged with its actor,
+which is what the seal existed to guarantee. (7) A FAILED TASK GOES BACK TO `pending` IN THE SAME
+WRITE, with its `error` cleared and every other field as the run left it, so the relaunch runs it
+as its next attempt; and every task after it in plan order whose status is `skipped` goes back to
+`pending` with it, because at `4cb6b970` `_block_job` is the only writer of `skipped` and it skips
+exactly the pending tasks after the blocked one, so without this the relaunch would run the edited
+task and finish with its successors never run. The log entry's `runtime` object names the tasks
+restored. A waiting or paused task keeps its status, and a paused task stays paused.
+(8) AFTER the record write, `plan_v<n>.md` and the edit log's evidence export are regenerated as
+`edit_plan` does.
+
+ALTERNATIVES: calling `edit_plan` with a widened window, rejected because it regenerates every task
+entry and would erase run history and orphan the pause files; a second edit log for runtime edits,
+rejected because `replay_edits` could then no longer reconstruct the plan; editing the entry alone
+and leaving the stored plan behind, rejected because the approval check would then compare a plan
+that no longer describes what runs; editing a task while its job runs, rejected because the runner
+holds the whole record in memory and saves it, so an edit would be lost at the next save; admitting
+only `failed`, rejected because a failed gate or review, the common failure, leaves `blocked`.
+
+DELIBERATE ABSENCES: no edit of a job built from a job file without a plan, no edit while the job
+runs, and no dependency edit, because `depends_on` is not an editable field of the plan editor
+either; each is a future feature, not a widening of this one.
+
+HOW TO REVERSE: delete `packages/orchestration/task_edit_runtime.py` and its tests, the
+`spec_version` field with its export and import lines, and this paragraph.
+
+## DECISION F026 D2 — the runtime edit reaches the operator as `job.edit-task` in the catalog, the CLI and the write door, names the task by its id in the job or in the plan, carries the task's spec version as the conflict check, shows that version in `job plan-show`, and is proved by a fake run whose next trace carries the edit and no remnant of the old spec (2026-09-25)
+
+CONTEXT: T5_F026.md's T002 asks for the channel command, its audit, the failed-to-pending semantics
+and the trace proof on a fake run, and its Orchestrator brief puts the trace proof in T002's order
+verbatim. Measured at `ee874cb2`: `job.plan-edit-task` in `apps/cli/command_catalog.py` is the
+pre-approval edit, handled in `apps/cli/commands/job_plan_cmd.py` against the plan's version and the
+plan's task id; the write door in `packages/orchestration/ui_server.py` maps every `job.plan-*` id to
+`edit_plan`, checks `args.expected_version` as a shape before the plan is read, and maps a
+`PlanEditRefused` code to a status with `plan_edit_refusal`; `job plan-show` prints the plan's
+version and the plan's task ids but no task entry's id and no spec version. In the reviewer's scratch
+tree at `ee874cb2`, a fake run whose providers never pass blocks the first task of an approved plan
+and skips the second; `edit_task_at_runtime` resets both; a second `run_job` completes both; the new
+run's `prompt_trace.jsonl` carries the edited goal and not the old one, and so does the copy
+`export_job_evidence` writes under `task_runs/`; and the job keeps the first run's `error`, which is
+finding R-1059.
+
+CHOSEN: (1) ONE NEW CATALOG ID, `job.edit-task`, `write_metadata`, exposed to the UI, with the job,
+the task, `--spec-version` (required by the handler, as `--plan-version` is for the plan edits) and
+the plan editor's field options, exit codes 0, 1, 2 and 3 as the plan edits have them. The runtime
+refusal codes join the classes the plan edits use: `not_a_plan_task` is a usage refusal (2);
+`job_not_editable`, `task_not_editable` and `spec_archive_conflict` are not-ready refusals (3).
+(2) THE TASK IS NAMED BY ITS ID IN THE JOB OR BY ITS ID IN THE PLAN: the CLI resolves an argument
+that matches no task entry's id but exactly one entry's planned id to that entry, and passes any
+other argument through for the backend to refuse; the door takes `args.task_id` as the entry's id,
+which is the id the dashboard and the pause use. (3) THE DOOR adds one clause for `job.edit-task`
+beside the plan edits' clause, the same write order and the same audit, with `args.expected_version`
+the task's spec version, checked as a whole number of at least 1 before the job is read, and a new
+`task_edit_refusal` that answers the four runtime codes 409 `rejected_state` with the backend's
+detail and hands every other code to `plan_edit_refusal`. The edit log names the editor by the
+request's token fingerprint, as the plan edits do. (4) `job plan-show` names, for every plan task,
+the matching task entry's id, status and spec version, in the JSON as `job_task_id`, `status` and
+`spec_version` and in the text as one line under the goal, so an operator can take the version the
+edit must name from the command the plan edits already point at. (5) THE TRACE PROOF is a test that
+runs an approved plan with the fake provider until its first task blocks, edits that task's goal and
+acceptance through `edit_task_at_runtime`, relaunches with `run_job`, and reads the NEW run's
+`prompt_trace.jsonl` and the evidence export's copy: the edited text must be in the builder's
+prompt, the old text must be absent, the second task must have run, and the job must read
+`completed` with an empty `error`.
+
+ALTERNATIVES: widening `job.plan-edit-task` to runtime, rejected because the two edits refuse
+different states and name different versions, and one command answering two version schemes would
+make a stale version ambiguous; taking the plan's version as the conflict check, rejected because
+two operators editing two different tasks would then conflict for no reason; a separate `job
+task-show` for the version, rejected because `job plan-show` is already where the plan edits send
+the operator.
+
+HOW TO REVERSE: delete the catalog entry, its handler, the door clause with `task_edit_refusal`,
+the three `job plan-show` keys and their text line, the tests this round adds, and this paragraph.
+
+## DECISION F026 D3 — the version chain reaches the page as the dashboard's `task_specs` section, a text chip `v<n>` beside an edited task's node and in the detail popover's status row, and a Versions list in the popover whose rows open the changed fields; nothing new is animated and no new colour token is added (2026-09-25)
+
+CONTEXT: T5_F026.md's T003 asks for a version chip on the graph node "per the design reference" and
+an L2 popover listing the versions with their diffs on click. Measured at `10ec2512`: the dashboard
+built by `_build_dashboard` in `packages/orchestration/ui_server.py` carries no spec version, no goal,
+no acceptance list and no planned id; `docs/ui/design_reference/` designs no version chip and no
+version list; the only text the node painter `paintBrainNode` writes is a cluster's count, in the
+node state's line colour and the label font; `docs/ui/design_reference/graph_spec.md` §10 places
+the DetailPopover at L2 and §14 names a per-task list in it as the accessible surface; and
+`tests/ui_contracts/test_design_drift.py` refuses any custom property the app's stylesheet does not
+define, which excludes the reference's size, spacing and fast-duration tokens. In the reviewer's
+scratch tree at `10ec2512`, a headless-Chrome render of the prototype showed the chip legible beside
+planned, failed, blocked, passed and paused nodes without touching their status marks, and the
+popover's list opening the changed acceptance criteria.
+
+CHOSEN: (1) THE DATA: the dashboard gains `task_specs`, keyed by task entry id, for every task of a
+stored plan that maps to a plan task: its planned id, its spec version, the runtime edit state
+`runtime_edit_state` gives now (or `""` with the refusal's detail), the plan task's current fields,
+and its archived versions from `task_spec_versions`; the section never raises, reporting a read
+error as `error` as the pause section does. (2) THE CHIP: a task whose spec version is 2 or more
+carries the text `v<n>`: on the canvas, painted after the node's body and before its marks, at the
+node's lower right, in the node state's line colour and the label font, as the cluster count is;
+and in the detail popover, as a small outlined pill at the end of the status row. A task never
+edited shows no chip. (3) THE LIST: the popover gains a Versions section, shown only for an edited
+task, one row per version in order — `v<n> · replaced while <state>` for an archived version and
+`v<n> · current` for the current one — each row a button that opens the fields that changed from the
+version before it, old value struck and new value marked; the first row changed nothing and cannot
+open. (4) NO MOTION AND NO NEW TOKEN: the chip does not animate, sizes are plain pixels as the
+popover's own stylesheet writes them, and every colour is an existing token. (5) The ledger stays the
+graph's only source of run and task state: an edit writes no event, so a failed task's node keeps its
+failed run's state until the relaunch starts a new run, while the chip and the popover, read from the
+dashboard, show the new version at once. (6) `assumption_log.md` gains one row for the chip and one
+for the list.
+
+ALTERNATIVES: a new node state or mark for "edited", rejected because an edit is not a state of the
+run and the reference rules that marks carry state; a new colour token for the chip, rejected because
+the drift guard and the tokens rule both point at the existing palette; an edit event that re-seeds
+the node to planned at once, deferred to the edit affordance's round, where the page itself makes the
+edit and can refresh.
+
+HOW TO REVERSE: delete the `task_specs` section and its builder, the chip in the painter and the
+popover, the Versions list, the two assumption-log rows, and this paragraph.
+
+## DECISION F026 D4 — the edit affordance is an "Edit task" button and form in the detail popover, offered only for a task the dashboard marks editable, sent through one new module to `job.edit-task` with only the fields that changed; the popover scrolls within the window; and the end-to-end fails a planned job through the CLI, edits it through the real door, relaunches it through the CLI and reads the new trace and the ledger's second run (2026-09-25)
+
+CONTEXT: T5_F026.md's T003 asks for the edit affordance on eligible nodes only and the end-to-end
+"fail → edit acceptance → rerun passes with v2 in trace, fan visible". Measured at `753f44bd`: the
+dashboard's `task_specs` section names each task's `edit_state` and current fields (DECISION F026
+D3); `apps/ui/src/api/pauseSend.ts` is the pattern for a popover control that reaches the write door
+— mint a nonce, build a request with the token and the CSRF header, submit with a deadline, and say
+what happened in one sentence — and `tests/ui_contracts/test_pause_controls_contract.py` pins that no
+component calls `fetch` itself; the detail popover's stylesheet sets no height limit, and in the
+reviewer's headless render of a prototype form the popover grew to about 990 pixels. In the
+reviewer's scratch tree at `753f44bd`, an approved two-task plan run through
+`python3 -m apps.cli.main job run <id> --builder-provider fake --reviewer-provider fake --max-rounds 1
+--repair-rounds 0` ends `blocked`, its first task `blocked` and its second `skipped`; a `job.edit-task`
+POST through a live UI server answers 200 with the second task restored; `job run <id> --max-rounds 3
+--repair-rounds 2` completes both tasks with an empty `error`; the new run's trace carries the edited
+text and not the old; and the job's ledger holds two `task_run_started` rows for the edited task.
+
+CHOSEN: (1) ELIGIBILITY IS THE DASHBOARD'S: `taskEditAction(dashboard, taskId)` in
+`apps/ui/src/api/taskSpecView.ts` answers `null` unless the task's `edit_state` is one of the three
+names, so the popover offers the control only for a waiting, paused or failed task of an approved
+plan whose job is not running, and a refused task shows nothing rather than a dead button. (2) THE
+FORM: a ghost "Edit task" button opens a form prefilled from the current spec — title, goal,
+acceptance one per line, the size band from S, M, L and XL, and files one per line — with a primary
+Save pill disabled until a field changes, a ghost Cancel, a note for a failed task that saving puts
+it back in the queue and the job must be relaunched, and one sentence saying what happened. Save
+sends only the changed fields, lines trimmed and blank lines dropped, with the spec version the form
+was opened at. (3) THE SEND: a new module `apps/ui/src/api/taskEditSend.ts` builds, submits and
+describes the request exactly as `pauseSend.ts` does, with its own sentences: an accepted edit names
+the new version, and for a failed task the relaunch command; a 409 shows the backend's own detail,
+or, for a stale version, asks the operator to reopen the task; the other statuses read as the pause
+control's do. (4) THE POPOVER scrolls within the window rather than growing past it. (5) THE
+END-TO-END is one live test: the first run and the relaunch through the real CLI in a subprocess, the
+edit through a real UI server's door, and the assertions of D2's trace proof plus the live server's
+`events-since` frames holding two `task_run_started` frames for the edited task, which is the fan the
+reducer draws; a reducer test pins that a failed run followed by a second start leaves two run nodes
+under the task. (6) R-1060's repair lands first: the `sk-` alternative of `_SECRET_RE` matches only at
+a token start.
+
+ALTERNATIVES: a disabled button with the refusal as its tooltip on every ineligible task, rejected
+because the feature file asks for the affordance on eligible nodes only and a closed set stays
+closed; sending every field on Save, rejected because the edit log would then record unchanged
+fields as edits; relaunching from the page, rejected because a pause's resume is already the CLI's
+`job run` (DECISION F025 D1) and one relaunch route is enough.
+
+HOW TO REVERSE: delete `taskEditSend.ts`, the form component, `taskEditAction`, the popover's scroll
+rule, the live test, the assumption-log row, and this paragraph; R-1060's repair stands on its own.

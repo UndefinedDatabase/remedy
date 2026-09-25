@@ -1,0 +1,67 @@
+diff --git a/.agent/decisions.md b/.agent/decisions.md
+index 538f68cd6..e8220346b 100644
+--- a/.agent/decisions.md
++++ b/.agent/decisions.md
+@@ -21800,3 +21800,50 @@ edit and can refresh.
+ 
+ HOW TO REVERSE: delete the `task_specs` section and its builder, the chip in the painter and the
+ popover, the Versions list, the two assumption-log rows, and this paragraph.
++
++## DECISION F026 D4 — the edit affordance is an "Edit task" button and form in the detail popover, offered only for a task the dashboard marks editable, sent through one new module to `job.edit-task` with only the fields that changed; the popover scrolls within the window; and the end-to-end fails a planned job through the CLI, edits it through the real door, relaunches it through the CLI and reads the new trace and the ledger's second run (2026-09-25)
++
++CONTEXT: T5_F026.md's T003 asks for the edit affordance on eligible nodes only and the end-to-end
++"fail → edit acceptance → rerun passes with v2 in trace, fan visible". Measured at `753f44bd`: the
++dashboard's `task_specs` section names each task's `edit_state` and current fields (DECISION F026
++D3); `apps/ui/src/api/pauseSend.ts` is the pattern for a popover control that reaches the write door
++— mint a nonce, build a request with the token and the CSRF header, submit with a deadline, and say
++what happened in one sentence — and `tests/ui_contracts/test_pause_controls_contract.py` pins that no
++component calls `fetch` itself; the detail popover's stylesheet sets no height limit, and in the
++reviewer's headless render of a prototype form the popover grew to about 990 pixels. In the
++reviewer's scratch tree at `753f44bd`, an approved two-task plan run through
++`python3 -m apps.cli.main job run <id> --builder-provider fake --reviewer-provider fake --max-rounds 1
++--repair-rounds 0` ends `blocked`, its first task `blocked` and its second `skipped`; a `job.edit-task`
++POST through a live UI server answers 200 with the second task restored; `job run <id> --max-rounds 3
++--repair-rounds 2` completes both tasks with an empty `error`; the new run's trace carries the edited
++text and not the old; and the job's ledger holds two `task_run_started` rows for the edited task.
++
++CHOSEN: (1) ELIGIBILITY IS THE DASHBOARD'S: `taskEditAction(dashboard, taskId)` in
++`apps/ui/src/api/taskSpecView.ts` answers `null` unless the task's `edit_state` is one of the three
++names, so the popover offers the control only for a waiting, paused or failed task of an approved
++plan whose job is not running, and a refused task shows nothing rather than a dead button. (2) THE
++FORM: a ghost "Edit task" button opens a form prefilled from the current spec — title, goal,
++acceptance one per line, the size band from S, M, L and XL, and files one per line — with a primary
++Save pill disabled until a field changes, a ghost Cancel, a note for a failed task that saving puts
++it back in the queue and the job must be relaunched, and one sentence saying what happened. Save
++sends only the changed fields, lines trimmed and blank lines dropped, with the spec version the form
++was opened at. (3) THE SEND: a new module `apps/ui/src/api/taskEditSend.ts` builds, submits and
++describes the request exactly as `pauseSend.ts` does, with its own sentences: an accepted edit names
++the new version, and for a failed task the relaunch command; a 409 shows the backend's own detail,
++or, for a stale version, asks the operator to reopen the task; the other statuses read as the pause
++control's do. (4) THE POPOVER scrolls within the window rather than growing past it. (5) THE
++END-TO-END is one live test: the first run and the relaunch through the real CLI in a subprocess, the
++edit through a real UI server's door, and the assertions of D2's trace proof plus the live server's
++`events-since` frames holding two `task_run_started` frames for the edited task, which is the fan the
++reducer draws; a reducer test pins that a failed run followed by a second start leaves two run nodes
++under the task. (6) R-1060's repair lands first: the `sk-` alternative of `_SECRET_RE` matches only at
++a token start.
++
++ALTERNATIVES: a disabled button with the refusal as its tooltip on every ineligible task, rejected
++because the feature file asks for the affordance on eligible nodes only and a closed set stays
++closed; sending every field on Save, rejected because the edit log would then record unchanged
++fields as edits; relaunching from the page, rejected because a pause's resume is already the CLI's
++`job run` (DECISION F025 D1) and one relaunch route is enough.
++
++HOW TO REVERSE: delete `taskEditSend.ts`, the form component, `taskEditAction`, the popover's scroll
++rule, the live test, the assumption-log row, and this paragraph; R-1060's repair stands on its own.
+diff --git a/.agent/live_review.md b/.agent/live_review.md
+index d4eccb080..deba44ea6 100644
+--- a/.agent/live_review.md
++++ b/.agent/live_review.md
+@@ -451,3 +451,7 @@ Landed: R-1059 — `run_job` in `packages/orchestration/pingpong_job.py` now cle
+ Gate: F026 R2 — the F026 round 2 entry: the booking of round 1, the registration of R-1059, DECISION F026 D2, the repair of R-1059, round 1's unmet test obligation, and T002, `job.edit-task` in the catalog, the CLI and the write door, the spec version in `job plan-show`, and the trace proof on a fake run. VERDICT PASS, ONE DEVIATION DECLARED AND ACCEPTED. Re-derived over `ee874cb2`..`10ec2512` by the planner and reviewer of F026's first session, whose own runs produced every reading below. THE RANGE IS 9 COMMITS, at `af785519` 380, `ebeb3eaa` 62, `772ae942` 3, `52b7adea` 11, `912b20ee` 130, `83f6c254` 85, `37dddbcf` 398, `cf0476dc` 198 and `10ec2512` 220 insertions by `git show --numstat`, each under the 500-line cap, each single-parent and each carrying the ordered trailer. THE DEVIATION: the ordered `git worktree prune` after G5 also cleared one stale, already-prunable worktree entry under the system's temporary directory that an earlier test run had left, which is harmless metadata and not a worktree the block protected. THE TRANSPORT PROOF: the block copy and the two payload copies under `.agent/authored/`, read at `af785519`, equal the reviewer's originals byte for byte, and at `ebeb3eaa` the ledger, the decision record and the plan equal the reviewer's simulation tree. THE PATH SET named by `git diff --name-only ee874cb2 10ec2512` is exactly the block's constraint 2 list, and `packages/orchestration/task_edit_runtime.py` is not in it. THE OPEN SET by distinct id reads R-1008, R-1055, R-1057, R-1058 and R-1059 at `10ec2512`. THE CODE: `python3 -m ruff check` over the round's Python paths reads `All checks passed!`, and the one change to `packages/orchestration/pingpong_job.py` is the line that clears `error` beside `JOB_RUNNING`. THE TESTS: the reviewer's serial run in the primary checkout at `10ec2512` of the round's selection with `tests/cli/test_golden_path.py` read `1580 passed, 1 skipped` at exit 0, the skip being the D12 quarantine, and all six `integrity check` checks read `pass`. THE RED PROOFS: the reviewer ran the committed `.agent/authored/f026-r2-mutations.py` itself in a disposable worktree at `10ec2512`: both unmutated controls exit 0, all ten mutations exit 1, the four mutated files are restored byte-identical, and m2, the edit that leaves the entry's title as it was, is caught by the trace proof itself, which is T5_F026.md's "a v1 remnant in the new trace fails the test". ONE PRODUCT-TEXT NIT, recorded without an id: the catalog description of `job.edit-task` ends "while the run holding it is not running", which reads badly in the help text; round 3 rewords it.
+ 
+ Done: R-1059 — RESOLVED at F026 R2 by `772ae942`. `run_job` in `packages/orchestration/pingpong_job.py` now clears the job's `error` in the same persist that moves the job to `JOB_RUNNING`, so a relaunch writes only its own failure. MEASURED BY THE REVIEWER at `10ec2512`: `TestTracePreservesTheEdit` in `tests/orchestration/test_task_edit_runtime.py` runs an approved plan until its first task blocks, edits it, relaunches, and reads the job `completed` with an `error` of `""`; mutation m1 of the committed `.agent/authored/f026-r2-mutations.py`, which removes the clearing line, turns exactly that test red; and the 1878 orchestration and CLI tests and 10 UI-server tests that call `run_job`, run by the reviewer in a scratch tree carrying the same change, read green. The cycle executor `run_cycles` was not measured and is not claimed.
++
++Gate: F026 R3 — the F026 round 3 entry: the booking of round 2, R-1059's resolution, DECISION F026 D3, the reworded help text of `job.edit-task`, and T003's first half, the dashboard's `task_specs` section, the version chip on the node and in the popover, and the popover's Versions list. VERDICT PASS, THREE DEVIATIONS DECLARED AND ACCEPTED. Re-derived over `10ec2512`..`753f44bd` by the planner and reviewer of F026's first session, whose own runs produced every reading below. THE RANGE IS 9 COMMITS, at `00f262da` 353, `ca8aea63` 57, `c48d2cb5` 2, `66893fee` 250, `a3ec3583` 435, `aa50254f` 100, `e9afd218` 144, `0c6dc30f` 290 and `753f44bd` 270 insertions by `git show --numstat`, each under the 500-line cap, each single-parent and each carrying the ordered trailer. THE DEVIATIONS: mutation m6 stayed green against the tests as first committed, and the worker added the test that catches it to `0c6dc30f` beside the tool, as G5 orders; a first draft of the stylesheet rules carried colour fallbacks the raw-colour ratchet refused and never reached a commit; and G4 read one failure, recorded below. THE TRANSPORT PROOF: the block copy and the two payload copies, read at `00f262da`, equal the reviewer's originals byte for byte, and at `ca8aea63` the ledger, the decision record and the plan hash to the reviewer's simulation tree. THE PATH SET named by `git diff --name-only 10ec2512 753f44bd` is exactly the block's constraint 2 list. THE OPEN SET by distinct id reads R-1008, R-1055, R-1057 and R-1058 at `ca8aea63` and at `753f44bd`. THE TESTS: the reviewer's serial run in the primary checkout at `753f44bd` of the round's selection with `tests/cli/test_golden_path.py` read `1 failed, 1684 passed, 5 skipped`, the skips being the four D3 quarantines and the D12 quarantine, the toolchain nodes having run and passed; the one failure is `tests/ui_contracts/test_graph_architecture.py::TestSpatialLayout::test_no_raw_leaks_in_viewer`, attributed by the reviewer's own demonstration to finding R-1060, registered below: `find_forbidden_surface_tokens` flags the text `feature/f026-task-edit-runtime` itself, which the viewer page carries as this branch's name, while the same test passes in a detached worktree of the same commit. All six `integrity check` checks read `pass`. THE RED PROOFS: the reviewer ran the committed `.agent/authored/f026-r3-mutations.py` itself in a disposable worktree at `753f44bd`: both controls green on pytest and vitest, all nine mutations red, and the tool's last line reads `ALL MUTATIONS CAUGHT AND RESTORED CLEANLY: True`. THE RENDER: the reviewer built a harness page over the committed sources at `753f44bd` with the primary checkout's vite and captured it in headless Chrome: the chip `v2` or `v3` stands legible at the lower right of planned, failed, blocked, passed and paused task nodes without touching their status marks, the popover's status row ends with the outlined `v3` pill, and the Versions list shows `v1` disabled, `v2` and `v3`, with `v3` opening the changed acceptance criteria struck and replaced.
++
++- R-1060 — Medium, THE SECRET DETECTOR `find_forbidden_surface_tokens` READS ANY WORD ENDING IN "sk" FOLLOWED BY A HYPHEN AS AN API KEY, SO THE GUARD TEST OVER THE VIEWER PAGE FAILS ON THIS BRANCH'S OWN NAME. Raised by the planner and reviewer of F026's first session at round 3's gate, from the one failure of that round's G4, which the worker reported and did not repair. SEARCHED BEFORE MINTING (checklist item 30): `sk-` beside `false positive`, `task-` and `word boundary` in this record and its archive find no finding describing it. MEASURED at `753f44bd`: the alternative `sk-[a-zA-Z0-9_-]{8,}` of `_SECRET_RE` in `packages/orchestration/redaction_patterns.py` carries no left boundary and the whole pattern is case-insensitive, so `find_forbidden_surface_tokens` returns a finding for `feature/f026-task-edit-runtime`, for `risk-assessment-notes` and for `a desk-organizer here`; the viewer page of `tests/ui_contracts/test_graph_architecture.py` embeds the current branch name seven times, so `test_no_raw_leaks_in_viewer` fails in any checkout of this branch, which is what hosted CI checks out; the five other `sk-` patterns under `packages/` and `scripts/` require 12 or more characters or a word boundary and were not measured further. WHY MEDIUM: a guard over production output is red on legitimate text, which blocks this branch's pull request and would redact ordinary words wherever the detector is used next. FIX: the `sk-` alternative matches only at a token start — not directly after a letter or a digit — so a key after a space, an equals sign, a quote, a slash or a hyphen, or at the start of the text, is still found; a test pins both the false positives gone and those true positives kept. Owner: F026.

@@ -112,6 +112,91 @@ describe("normalizeDashboardPayload", () => {
       record: {}, requested: false, pausedTaskIds: [], error: "control root unreadable",
     });
   });
+
+  // DECISION F026 D3 clause 1: the `task_specs` section's mapping to camelCase,
+  // its empty default, and its two clamped fields.
+  it("reads a task_specs section: the mapping", () => {
+    const payload = makeDashboardPayload({
+      task_specs: {
+        tasks: {
+          "task-1": {
+            planned_id: "T1",
+            spec_version: 2,
+            edit_state: "waiting",
+            not_editable_because: "",
+            current: {
+              title: "Build T1, renamed", goal: "goal of T1",
+              acceptance: ["T1 works"], est_tokens_band: "S", files_hint: ["src/t1.py"],
+            },
+            versions: [
+              {
+                title: "Build T1", goal: "goal of T1", acceptance: ["T1 works"],
+                est_tokens_band: "S", files_hint: ["src/t1.py"],
+                spec_version: 1, state: "waiting", archived_at: "2026-01-01T00:00:00Z",
+              },
+            ],
+          },
+        },
+        error: "",
+      },
+    });
+    const result = normalizeDashboardPayload("abc-123", payload);
+    expect(result.taskSpecs).toEqual({
+      tasks: {
+        "task-1": {
+          plannedId: "T1",
+          specVersion: 2,
+          editState: "waiting",
+          notEditableBecause: "",
+          current: {
+            title: "Build T1, renamed", goal: "goal of T1",
+            acceptance: ["T1 works"], estTokensBand: "S", filesHint: ["src/t1.py"],
+          },
+          versions: [
+            {
+              title: "Build T1", goal: "goal of T1", acceptance: ["T1 works"],
+              estTokensBand: "S", filesHint: ["src/t1.py"],
+              specVersion: 1, state: "waiting", archivedAt: "2026-01-01T00:00:00Z",
+            },
+          ],
+        },
+      },
+      error: "",
+    });
+  });
+
+  it("a payload without a task_specs section reads as the empty default", () => {
+    const result = normalizeDashboardPayload("abc-123", makeDashboardPayload());
+    expect(result.taskSpecs).toEqual({ tasks: {}, error: "" });
+  });
+
+  it("an edit_state outside the three names reads empty", () => {
+    const payload = makeDashboardPayload({
+      task_specs: {
+        tasks: { "task-1": { planned_id: "T1", edit_state: "bogus", current: {}, versions: [] } },
+        error: "",
+      },
+    });
+    const result = normalizeDashboardPayload("abc-123", payload);
+    expect(result.taskSpecs.tasks["task-1"].editState).toBe("");
+  });
+
+  it("a spec_version that is not a number of at least 1 reads 1", () => {
+    const payload = makeDashboardPayload({
+      task_specs: {
+        tasks: {
+          a: { planned_id: "T1", spec_version: 0, current: {}, versions: [] },
+          b: { planned_id: "T2", spec_version: "3", current: {}, versions: [] },
+          c: { planned_id: "T3", current: {}, versions: [] },
+        },
+        error: "",
+      },
+    });
+    const result = normalizeDashboardPayload("abc-123", payload);
+    expect(result.taskSpecs.tasks.a.specVersion).toBe(1);
+    expect(result.taskSpecs.tasks.b.specVersion).toBe(1);
+    expect(result.taskSpecs.tasks.c.specVersion).toBe(1);
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -143,6 +228,11 @@ describe("normalizeApiFailure", () => {
   it("returns empty activity", () => {
     const result = normalizeApiFailure("abc-123", ["dashboard"]);
     expect(result.activity).toHaveLength(0);
+  });
+
+  it("returns the empty task_specs shape", () => {
+    const result = normalizeApiFailure("abc-123", ["dashboard"]);
+    expect(result.taskSpecs).toEqual({ tasks: {}, error: "" });
   });
 });
 
