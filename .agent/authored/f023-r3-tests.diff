@@ -1,0 +1,12 @@
+diff --git a/tests/ui_server/test_command_channel.py b/tests/ui_server/test_command_channel.py
+index a1eaef938..fb0448518 100644
+--- a/tests/ui_server/test_command_channel.py
++++ b/tests/ui_server/test_command_channel.py
+@@ -1400,6 +1400,7 @@ class TestCommandChannelDoor:
+             f"/api/jobs/{self.job_id}/nodes/node-1/human-detail",
+             f"/api/jobs/{self.job_id}/nodes/node-1/debug-detail",
+             f"/api/jobs/{self.job_id}/task-runs/T001/diff",
++            f"/api/jobs/{self.job_id}/task-runs/T001/rounds",
+         ]
+         return paths
+ 
