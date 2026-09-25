@@ -339,11 +339,18 @@ export function ForceBrainGraph({ layout, selectedId, onSelectNode, zoom, emphas
   }, [onZoomEvent]);
 
   // The camera follows the level: L0 fits the organism, L1 centres the task,
-  // L2 and L3 centre the run (zoomView.ts).
+  // L2 and L3 centre the run (zoomView.ts). It also runs once the canvas
+  // first exists, so a level restored from a deep link before the canvas had
+  // a size still gets its camera (DECISION F023 D6).
   const layoutRef = useRef(layout);
   useLayoutEffect(() => {
     layoutRef.current = { nodes: graphData.nodes, links: layout.links };
   }, [graphData, layout]);
+  const zoomRef = useRef(zoom);
+  useLayoutEffect(() => {
+    zoomRef.current = zoom;
+  }, [zoom]);
+  const graphReady = size.width > 0;
   useEffect(() => {
     const fg = graphRef.current;
     const camera = zoomCamera(layoutRef.current, zoom);
@@ -352,7 +359,7 @@ export function ForceBrainGraph({ layout, selectedId, onSelectNode, zoom, emphas
     cameraLockUntilRef.current = performance.now() + ms + 100;
     fg.centerAt(camera.x, camera.y, ms);
     fg.zoom(camera.k, ms);
-  }, [zoom]);
+  }, [zoom, graphReady]);
 
   // Configure the EXISTING d3 forces (getter, then call its own setter) —
   // replacing them with a plain object, as the old decorative renderer did,
@@ -372,17 +379,20 @@ export function ForceBrainGraph({ layout, selectedId, onSelectNode, zoom, emphas
     } catch { /* force config may not be available immediately */ }
   }, [graphData]);
 
-  // Initial zoom fit
+  // Initial fit, once the simulation has had time to settle: the camera of the
+  // level the reader is at — the organism unless a deep link put the zoom
+  // somewhere else — at the positions the nodes settled into.
   useEffect(() => {
     const fg = graphRef.current;
     if (!fg) return;
     const timer = setTimeout(() => {
+      const camera = zoomCamera(layoutRef.current, zoomRef.current) ?? { x: 0, y: 0, k: ZOOM_HOME_CAMERA };
       cameraLockUntilRef.current = performance.now() + (reducedMotion ? 0 : 600) + 100;
-      fg.zoom(1.0, reducedMotion ? 0 : 600);
-      fg.centerAt(0, 0, reducedMotion ? 0 : 600);
+      fg.zoom(camera.k, reducedMotion ? 0 : 600);
+      fg.centerAt(camera.x, camera.y, reducedMotion ? 0 : 600);
     }, reducedMotion ? 100 : 800);
     return () => clearTimeout(timer);
-  }, []);
+  }, [graphReady]);
 
   return (
     // graph_spec §14: the canvas is not the accessible surface — the task

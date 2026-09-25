@@ -12,6 +12,7 @@ import { GraphLegend } from "./GraphLegend";
 import { BrainGraphCanvas } from "./BrainGraphCanvas";
 import { zoomBreadcrumbs, zoomGraphOf } from "./semanticZoom";
 import { useSemanticZoom } from "./useSemanticZoom";
+import { useZoomDeepLink } from "./useZoomDeepLink";
 import { ZoomBreadcrumbs } from "./ZoomBreadcrumbs";
 import { RunDetailPopover } from "./RunDetailPopover";
 import { EvidencePanel } from "./EvidencePanel";
@@ -47,18 +48,30 @@ export function BrainGraphStage({
   // model at the state before it, never a ghost past it (DECISION F019 D5).
   const rows = useMemo(() => brainLedgerPrefix(ledger), [ledger]);
   const model = useMemo(() => rebuildBrainModel(dashboard.jobId, seeds, rows), [dashboard.jobId, seeds, rows]);
-  const layout = useMemo(() => buildBrainLayout(model), [model]);
-  const visible = useMemo(() => filterBrainLayout(layout, filter), [layout, filter]);
-  const selectedId = selectedBrainNodeId(dashboard.tasks, selectedNodeId ?? null);
-  const showLiveGraph = view === "live" && brainTaskCount(visible) > 0;
+  // Every cluster chip in place, whatever the focus: the graph the zoom checks
+  // its focus against, so moving the focus never moves that graph.
+  const baseLayout = useMemo(() => buildBrainLayout(model), [model]);
 
   // Semantic zoom (graph_spec §10): focus is checked against the model, which
   // keeps every run, and the laid-out view, which adds the clusters
   // (DECISION F023 D1); what the state means on the canvas is zoomView.ts's.
-  const zoomGraph = useMemo(() => zoomGraphOf(model.nodes, layout.nodes), [model, layout]);
+  // The URL's deep link restores it and then follows it (DECISION F023 D6).
+  const zoomGraph = useMemo(() => zoomGraphOf(model.nodes, baseLayout.nodes), [model, baseLayout]);
   const zoom = useSemanticZoom(zoomGraph);
+  useZoomDeepLink(zoomGraph, zoom.state, zoom.dispatch);
+  const zoomCrumbs = zoomBreadcrumbs(zoomGraph, zoom.state);
+  // The focused task's cluster chip gives way to its runs; unfocused, the
+  // chip returns (DECISION F023 D6).
+  const expandTaskId = zoomCrumbs.find((c) => c.level === 1)?.nodeId ?? null;
+  const layout = useMemo(
+    () => (expandTaskId === null ? baseLayout : buildBrainLayout(model, expandTaskId)),
+    [baseLayout, model, expandTaskId],
+  );
+  const visible = useMemo(() => filterBrainLayout(layout, filter), [layout, filter]);
+  const selectedId = selectedBrainNodeId(dashboard.tasks, selectedNodeId ?? null);
+  const showLiveGraph = view === "live" && brainTaskCount(visible) > 0;
   const emphasis = useMemo(() => zoomEmphasis(visible, zoom.state), [visible, zoom.state]);
-  const crumbs = zoomBreadcrumbs(zoomGraph, zoom.state).map((c) => ({
+  const crumbs = zoomCrumbs.map((c) => ({
     level: c.level, current: c.current, label: zoomCrumbLabel(c, layout),
   }));
   // L2's run detail and L3's evidence panel, for the focused run read from the

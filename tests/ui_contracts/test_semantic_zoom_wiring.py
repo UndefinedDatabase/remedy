@@ -29,7 +29,9 @@ def _src(path: Path) -> str:
 
 def test_the_stage_checks_focus_against_the_model_and_its_clustered_view():
     src = _src(STAGE)
-    assert "const zoomGraph = useMemo(() => zoomGraphOf(model.nodes, layout.nodes), [model, layout]);" in src
+    # From F023 D6 the graph reads the UNEXPANDED layout, so an expanded chip never
+    # moves the graph the focus is checked against.
+    assert "const zoomGraph = useMemo(() => zoomGraphOf(model.nodes, baseLayout.nodes), [model, baseLayout]);" in src
     assert "const zoom = useSemanticZoom(zoomGraph);" in src
     assert "zoomEmphasis(visible, zoom.state)" in src
 
