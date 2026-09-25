@@ -228,6 +228,8 @@
 .advancedItem strong { color: var(--remedy-ink); }
 .delayedDot { width: 9px; height: 9px; border-radius: 50%; background: var(--remedy-orange-400); box-shadow: 0 0 8px rgba(245,163,78,.6); }
 .reconnectingDot { width: 9px; height: 9px; border-radius: 50%; background: var(--remedy-orange-400); opacity: .55; }
+.replayDot { width: 9px; height: 9px; border-radius: 50%; background: var(--remedy-purple); }
+.livePill[data-state="replay"] { color: var(--remedy-purple); border-color: var(--remedy-purple); }
 
 /* The decision inbox's rows (T5_F031 T002a, DECISION F031 D4). The .card shell
    above is reused unchanged: an inbox styled unlike the cards beside it would

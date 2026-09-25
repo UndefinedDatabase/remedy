@@ -12,12 +12,12 @@ import { LiveStatusPill } from "./LiveStatusPill";
 import { TaskChecklistCard } from "./TaskChecklistCard";
 import styles from "./RightLivePanel.module.css";
 
-export function RightLivePanel({ dashboard, serverToken, onSelectNode, streamStatus, recent, recentDropped, onOpenLessons }: { dashboard: RemedyDashboard; serverToken: string; onSelectNode: (nodeId: string | null) => void; streamStatus?: BrainStreamStatus | null; recent?: readonly FeedRow[]; recentDropped?: number; onOpenLessons?: () => void }) {
+export function RightLivePanel({ dashboard, serverToken, onSelectNode, streamStatus, replay, recent, recentDropped, onOpenLessons }: { dashboard: RemedyDashboard; serverToken: string; onSelectNode: (nodeId: string | null) => void; streamStatus?: BrainStreamStatus | null; replay?: boolean; recent?: readonly FeedRow[]; recentDropped?: number; onOpenLessons?: () => void }) {
   const [showAdvanced, setShowAdvanced] = useState(false);
 
   return (
     <aside className={styles.panel} data-ui="right-live-panel">
-      <LiveStatusPill live={liveIsActive(dashboard)} streamStatus={streamStatus} />
+      <LiveStatusPill live={liveIsActive(dashboard)} streamStatus={streamStatus} replay={replay} />
       <AgentNowCard dashboard={dashboard} recent={recent} />
       <NeedsAttentionCard dashboard={dashboard} />
       {/* The inbox addresses the job the DASHBOARD names, the same value the

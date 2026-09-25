@@ -14,8 +14,11 @@ import { LeftBrandRail } from "../rail/LeftBrandRail";
 import { TopMetricsBar } from "../metrics/TopMetricsBar";
 import { CommandBar } from "../command/CommandBar";
 import { BrainGraphStage } from "../graph/BrainGraphStage";
+import { brainLedgerPrefix } from "../graph/brainLedger";
+import { useBrainLedger } from "../graph/useBrainLedger";
 import { RightLivePanel } from "../panels/RightLivePanel";
 import { PhaseTimeline } from "../timeline/PhaseTimeline";
+import { useTimelineScrub } from "../timeline/useTimelineScrub";
 import { DetailPopover } from "../detail/DetailPopover";
 import { LessonsOverlay } from "../lessons/LessonsOverlay";
 import { lessonsRefreshKey } from "../../api/lessons";
@@ -53,6 +56,12 @@ export function RemedyShell({ dashboard, serverToken, selectedNodeId, onSelectNo
     (cursor: number) => brainStreamEnv.fetchJson(eventsSincePath(dashboard.jobId, cursor)),
     [brainStreamEnv, dashboard.jobId],
   );
+  // ONE ledger per job, read here so the graph and the timeline fold the same
+  // complete, contiguous prefix (DECISIONS F019 D5 and F024 D4), and the
+  // timeline's scrubber, whose position the graph draws while it is scrubbed.
+  const ledger = useBrainLedger(dashboard.jobId, stream.recent, readEventsPage);
+  const ledgerRows = useMemo(() => brainLedgerPrefix(ledger), [ledger]);
+  const scrub = useTimelineScrub(dashboard.jobId, dashboard.tasks, ledgerRows);
   let selectedNode = selectedNodeId ? (dashboard.graph.nodes.find(n => n.nodeId === selectedNodeId || n.id === selectedNodeId) ?? null) : null;
   // Prompt satellite nodes carry the prompt item id as their node id. Resolve
   // such a selection to its owning task node so the popover (and its Prompt
@@ -195,10 +204,10 @@ export function RemedyShell({ dashboard, serverToken, selectedNodeId, onSelectNo
             )}
           />
           <CommandBar nextAction={dashboard.nextAction} onJump={handleJump} />
-          <BrainGraphStage dashboard={dashboard} selectedNodeId={selectedNodeId} onSelectNode={onSelectNode} recent={stream.recent} readEventsPage={readEventsPage} serverToken={serverToken} />
-          <PhaseTimeline phases={dashboard.phases} timelineEvents={dashboard.timelineEvents} />
+          <BrainGraphStage dashboard={dashboard} selectedNodeId={selectedNodeId} onSelectNode={onSelectNode} rows={ledgerRows} scrub={scrub} serverToken={serverToken} />
+          <PhaseTimeline scrub={scrub} />
         </main>
-        <RightLivePanel dashboard={dashboard} serverToken={serverToken} onSelectNode={onSelectNode} streamStatus={stream.status} recent={stream.recent} recentDropped={stream.recentDropped} onOpenLessons={() => setLessonsOpen(true)} />
+        <RightLivePanel dashboard={dashboard} serverToken={serverToken} onSelectNode={onSelectNode} streamStatus={stream.status} replay={scrub.state.mode === "scrubbed"} recent={stream.recent} recentDropped={stream.recentDropped} onOpenLessons={() => setLessonsOpen(true)} />
       </div>
       {selectedNode && <DetailPopover dashboard={dashboard} selectedNode={selectedNode} selectedPromptId={selectedPromptId} onClose={() => onSelectNode(null)} onOpenDiff={setOpenDiffTaskId} />}
       {/* THE DIFF PANEL. A sibling of the popover rather than a child of

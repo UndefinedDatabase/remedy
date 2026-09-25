@@ -13,7 +13,13 @@ import styles from "./RightLivePanel.module.css";
  *  RemedyShell began passing a real status down the one chain that reaches
  *  this pill — RemedyShell to RightLivePanel to here — and at `88c55f5d` that
  *  was still the only chain either component had. */
-export function LiveStatusPill({ live, streamStatus }: { live: boolean; streamStatus?: BrainStreamStatus | null }) {
+export function LiveStatusPill({ live, streamStatus, replay }: { live: boolean; streamStatus?: BrainStreamStatus | null; replay?: boolean }) {
+  // While the timeline is scrubbed the graph shows the past, so the pill says
+  // REPLAY in the scrubber's violet before anything about the transport
+  // (component_spec.md, LiveStatusPill; DECISION F024 D4).
+  if (replay) {
+    return <div className={styles.livePill} data-state="replay"><span className={styles.replayDot} />REPLAY</div>;
+  }
   if (streamStatus === "delayed") {
     return <div className={styles.livePill} data-state="delayed"><span className={styles.delayedDot} />DELAYED</div>;
   }
