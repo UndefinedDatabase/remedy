@@ -1,10 +1,11 @@
 import type { RemedyDashboard, RemedyGraphNode, RemedyTaskItem } from "../../api/types";
 import { taskPauseAction } from "../../api/pauseView";
-import { specVersionRows, taskSpecOf, versionChipLabel } from "../../api/taskSpecView";
+import { specVersionRows, taskEditAction, taskSpecOf, versionChipLabel } from "../../api/taskSpecView";
 import { TaskDoneGlyph, TaskCurrentGlyph, TaskPlannedGlyph } from "../icons/RemedyGlyphs";
 import { PromptTracePanel } from "../prompt/PromptTracePanel";
 import { PauseControl } from "../panels/PauseControl";
 import { TaskVersionList } from "./TaskVersionList";
+import { TaskEditForm } from "./TaskEditForm";
 import styles from "./DetailPopover.module.css";
 
 const STATE_LABELS: Record<string, string> = {
@@ -83,6 +84,11 @@ export function DetailPopover({ dashboard, selectedNode, selectedPromptId, onClo
   // through the pure view so the popover decides nothing about them itself.
   const spec = taskSpecOf(dashboard, task?.id ?? "");
   const chipLabel = versionChipLabel(spec);
+  // DECISION F026 D4 clause 1 — the edit affordance's own eligibility,
+  // computed once and gated on below; `task` is undefined for a node this
+  // popover otherwise renders fine (a node never mapped to a task item), so
+  // the read only runs once a task is known to exist.
+  const editAction = task ? taskEditAction(dashboard, task.id) : null;
   const title = task?.label || selectedNode.label || "Task";
   const state = task?.state || selectedNode.state;
   const stateLabel = STATE_LABELS[state] || state;
@@ -165,6 +171,19 @@ export function DetailPopover({ dashboard, selectedNode, selectedPromptId, onClo
           version, each opening the fields that changed. Renders nothing for
           a task never edited at runtime (`specVersionRows` returns `[]`). */}
       <TaskVersionList key={task?.id ?? ""} rows={specVersionRows(spec)} />
+
+      {/* DECISION F026 D4 clauses 1 and 2 — the "Edit task" affordance,
+          offered only for a waiting, paused or failed task of an approved
+          plan (`taskEditAction`'s own reading), and only once this popover
+          already holds the credential the send spends. */}
+      {task && serverToken && editAction && (
+        <TaskEditForm
+          key={task.id}
+          target={{ jobId: dashboard.jobId, serverToken }}
+          jobId={dashboard.jobId}
+          action={editAction}
+        />
+      )}
 
       {/* THE TASK'S PAUSE/RESUME CONTROL (DECISION F025 D4), gated on the
           credential `serverToken` carries — the popover renders nothing here
