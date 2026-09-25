@@ -20932,3 +20932,52 @@ outside this feature, whose Design names the disabled pattern for exactly this c
 HOW TO REVERSE: delete `runDetailModel.ts`, its test, `RunDetailPopover.tsx` and its stylesheet,
 and `tests/ui_contracts/test_run_detail_wiring.py`; restore `BrainGraphStage.tsx`,
 `ForceBrainGraph.tsx` and `RemedyShell.tsx` from `12275971`; and delete this paragraph.
+
+## DECISION F023 D5 — the L3 evidence panel keeps the binding CSS with its shadow, layer and motion as tokens, loads only the open tab, and takes over the run detail's Diff and Why (2026-09-25)
+
+CONTEXT: T5_F023.md orders the L3 EvidencePanel side panel with tabs diff, prompt trace and
+chat, the tabs lazy, the chat tab the not-yet pattern until its feature, and writes the panel's
+CSS core as binding, with a raw `rgba(37,50,79,.08)` shadow and `animation: slideIn .22s ease`.
+Measured at `08955162`: `tokens_rules.md` forbids raw colours in component CSS, takes every
+duration and easing from `--remedy-dur-*` and `--remedy-ease-*`, and forbids a literal z-index;
+`test_raw_colour_ratchet.py` holds a new file to zero raw colours; the reference sheet declares
+`--remedy-dur-base` and the `--remedy-z-*` layers and the app sheet declares none of them, while
+`test_design_drift.py` refuses any custom property the app sheets do not define; the breadcrumbs
+and the run detail of DECISIONS F023 D2 and D4 wrote their z-index as numbers, as the stage's
+docks and the task popover already do; `DiffView`, `DiffFileSidebar` and `PromptTracePanel` render
+a diff envelope and a prompt list, the prompt cards carrying `data-prompt-id`; and the run
+detail's Open diff and Why opened the shell's diff panel and task popover (DECISION F023 D4).
+
+CHOSEN: (1) THE PANEL is `EvidencePanel.tsx` and its stylesheet: the binding core ships as
+written except that its shadow reads a new token, `--remedy-shadow-panel`, holding the same
+value and added to both token sheets with its line in `tokens_rules.md`; its slide-in runs over
+`--remedy-dur-base` with `--remedy-ease-soft` and not at all under reduced motion; and it sits on
+`--remedy-z-overlay`. `--remedy-dur-base` and the `--remedy-z-stage-ui`, `--remedy-z-popover` and
+`--remedy-z-overlay` layers are transcribed byte-exact from the reference into the app sheet, and
+the breadcrumbs and the run detail move onto `--remedy-z-stage-ui` and `--remedy-z-popover`. Both
+deviations from the binding text are rows of `assumption_log.md`. (2) THE TABS are
+`evidencePanel.ts`'s: Diff, Prompt trace and Chat, in the feature's order. Only the open tab
+renders, so the diff is read through the task-run diff route when its tab opens and never shown
+under another task's name; the prompt trace lists the task's own prompts in the order they were
+sent, with the run's own prompt highlighted and scrolled into view; the chat tab says in plain
+words that talking about one run is not here yet and where steering already is. (3) THE RUN
+DETAIL shows at L2 only and the panel at L3 only; Open diff and Why now open the panel on their
+tab through the machine's `open_evidence`, so the stage no longer takes the shell's diff opener,
+and the panel's tabs switch through the same event. (4) Like the run detail, the panel is not a
+dialog: Escape walks back to L2. (5) THE GUARD is `tests/ui_contracts/test_evidence_panel_contract.py`,
+and `test_run_detail_wiring.py` follows the re-pointed buttons; the reviewer rendered the panel
+headless before this round, opening it from Open diff onto a real diff envelope, switching to the
+prompt trace and chat tabs, pressing Escape and pressing Why, with no page error and the diff
+read only when its tab opened.
+
+ALTERNATIVES: the binding shadow kept as a literal, rejected by the raw-colour rule and its
+ratchet; the task popover's diff panel kept behind Open diff, rejected because the feature routes
+it to L3 and keeping two diff surfaces would show one change in two places; every tab loaded on
+open, rejected by the feature's "tabs lazy-load their endpoint"; the panel as a dialog, rejected
+for the Escape reason D4 gives.
+
+HOW TO REVERSE: delete `EvidencePanel.tsx`, its stylesheet, `evidencePanel.ts` with its test and
+`tests/ui_contracts/test_evidence_panel_contract.py`; restore `RunDetailPopover.tsx`,
+`BrainGraphStage.tsx`, `RemedyShell.tsx`, the two F023 stylesheets, both token sheets,
+`tokens_rules.md`, `assumption_log.md` and `test_run_detail_wiring.py` from `08955162`; and delete
+this paragraph.
