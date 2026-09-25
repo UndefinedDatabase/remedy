@@ -1,0 +1,5 @@
+Entry ID: SU-032
+Entry Title: Address ledger finding R-1064
+Entry Provenance: generated (self-use-generator tier 1, ledger scan, R-1064)
+Entry Consumed By: 
+Job File Path: /home/decodeux/Repos/remedy/.remedy-wt/f285-r3-selfuse/SU-032.md
