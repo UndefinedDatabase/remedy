@@ -1,96 +1,63 @@
-# Handback — F024 Phase timeline with scrubber · Round 5
+# Handback — F024 Phase timeline with scrubber · Round 6
 
 ## Session
 
-SESSION 1 of feature F024 · round 5 · rounds so far 5
+SESSION 1 of feature F024 · round 6 · rounds so far 6
 
 Ample context remained throughout this round; a large majority of the budget remained at the
 point this handback was written.
 
 ## Range
 
-Review of a46facfa6..HEAD
+Review of 701907c6..HEAD
 
 ## Commits
 
-### 1367f13f7 F024 R5 C1a: copy round 5 block and plan payload into .agent/authored/
+### 2e885bb95 F024 R6 C1: copy round 6 block and payloads into .agent/authored/
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f024-r5-block.md | +259/-0 | copy of this round's block, verbatim |
-| .agent/authored/f024-r5-plan.md | +33/-0 | copy of the plan.md payload |
+| .agent/authored/f024-r6-block.md | +203/-0 | copy of this round's block, verbatim |
+| .agent/authored/f024-r6-plan.md | +30/-0 | copy of the plan.md payload |
+| .agent/authored/f024-r6-product.diff | +89/-0 | copy of the product.diff payload |
+| .agent/authored/f024-r6-records.diff | +10/-0 | copy of the records.diff payload |
+| .agent/authored/f024-r6-selfuse.py | +16/-0 | copy of the selfuse.py payload |
+| .agent/authored/f024-r6-selfuse_result.txt | +6/-0 | copy of the selfuse_result.txt payload |
 
-292 insertions by `git show --numstat` (block's line count 259 + 33) — matches the block's
+354 insertions by `git show --numstat` (block's line count 203 + 151) — matches the block's
 expectation exactly; well under the 500-insertion STOP threshold.
 
-### a41e49f6a F024 R5 C1b: copy round 5 ledger diff and mutation tool into .agent/authored/
+### 5bda8164b F024 R6 C2: book round 5's PASS and advance the plan to the closure
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f024-r5-ledger.diff | +66/-0 | copy of the ledger.diff payload |
-| .agent/authored/f024-r5-mutations.py | +169/-0 | copy of the mutations.py payload |
+| .agent/live_review.md | +2/-0 | round 5's Gate entry appended, via records.diff |
+| .agent/plan.md | +9/-12 | rewritten to the plan.md payload |
 
-235 insertions by `git show --numstat` — matches the block's expected 235 exactly.
-
-### f52768685 F024 R5 C1c: copy round 5 fixture and live-test payloads into .agent/authored/
-| Path | +/- | Reason |
-|---|---|---|
-| .agent/authored/f024-r5-fixture.diff | +59/-0 | copy of the fixture.diff payload |
-| .agent/authored/f024-r5-scrubLive.test.ts | +74/-0 | copy of the scrubLive.test.ts payload |
-| .agent/authored/f024-r5-test_timeline_scrub_live.py | +73/-0 | copy of the test_timeline_scrub_live.py payload |
-
-206 insertions by `git show --numstat` — matches the block's expected 206 (59+74+73) exactly.
-
-### a0735936a F024 R5 C1d: add the scrub budget tool to .agent/authored/
-| Path | +/- | Reason |
-|---|---|---|
-| .agent/authored/f024-r5-perf-drive_chrome.mjs | +94/-0 | copy of the perf-drive_chrome.mjs payload |
-| .agent/authored/f024-r5-perf-index.html | +14/-0 | copy of the perf-index.html payload |
-| .agent/authored/f024-r5-perf-main.tsx | +142/-0 | copy of the perf-main.tsx payload |
-| .agent/authored/f024-r5-perf-measure.py | +191/-0 | copy of the perf-measure.py payload |
-| .agent/authored/f024-r5-perf-vite.config.mjs | +28/-0 | copy of the perf-vite.config.mjs payload |
-
-469 insertions by `git show --numstat` — matches the block's expected 469 exactly.
-
-### 986d8ccf7 F024 R5 C2: book round 4's PASS, record D5, advance the plan
-| Path | +/- | Reason |
-|---|---|---|
-| .agent/decisions.md | +48/-0 | DECISION F024 D5 appended, via ledger.diff |
-| .agent/live_review.md | +2/-0 | round 4's Gate entry appended, via ledger.diff |
-| .agent/plan.md | +10/-11 | rewritten to the plan.md payload |
-
-`git apply --check` on ledger.diff: exit 0. `git apply`: exit 0. Insertions/deletions by `git show
---numstat`: 48/0 decisions.md, 2/0 live_review.md, 10/11 plan.md — matches the block's expectation
+`git apply --check` on records.diff: exit 0. `git apply`: exit 0. Insertions/deletions by `git show
+--numstat`: 2/0 live_review.md, 9/12 plan.md — matches the block's expected insertions (2, 9)
 exactly.
 
-### 9cfdd8006 F024 R5 C3: export the 500-node fixture's ledger
+### 6d9139ad8 F024 R6 C3: write the Built State and consolidate the checklist
 | Path | +/- | Reason |
 |---|---|---|
-| apps/ui/src/components/graph/brainPerfFixture.test.ts | +9/-0 | `git apply` of fixture.diff: test additions |
-| apps/ui/src/components/graph/brainPerfFixture.ts | +12/-4 | `git apply` of fixture.diff: the 500-node fixture's exported ledger |
+| docs/agents/planner_reviewer_prompt.md | +4/-0 | `git apply` of product.diff: consolidation paragraph |
+| docs/roadmap/features/T5_F024.md | +66/-0 | `git apply` of product.diff: Built State appended |
 
-`git apply --check` on fixture.diff: exit 0. `git apply`: exit 0. 9/0 brainPerfFixture.test.ts,
-12/4 brainPerfFixture.ts insertions/deletions by `git show --numstat` — matches the block's
-expected counts exactly.
+`git apply --check` on product.diff: exit 0. `git apply`: exit 0. 4/0 planner_reviewer_prompt.md,
+66/0 T5_F024.md insertions/deletions by `git show --numstat` — matches the block's expected counts
+exactly.
 
-### 62f2330a5 F024 R5 C4: scrub a live fake job's ledger at every position with the real modules
+### f2f83fecc F024 R6 C4: record the closure's self-use track, NONE
 | Path | +/- | Reason |
 |---|---|---|
-| apps/ui/src/components/timeline/scrubLive.test.ts | +74/-0 | new file: vitest end-to-end reading a live ledger via scratch `define` |
-| tests/ui_server/test_timeline_scrub_live.py | +73/-0 | new file: driver that plans/runs a real fake-provider job and hands its ledger to scrubLive.test.ts |
+| .agent/selfuse_f024/result.txt | +6/-0 | new file: copy of selfuse_result.txt, applied because all four self-use readings matched the reviewer's stated NONE/NONE/NONE/'' |
 
-74 scrubLive.test.ts, 73 test_timeline_scrub_live.py insertions by `git show --numstat` — matches
-the block's expected counts exactly.
+6 insertions by `git show --numstat` — matches the block's expected 6 exactly.
 
-### 342fcf49b F024 R5 C5: record the scrub budget and its red control
+### (this commit) F024 R6 C5: record the closure suite transcript and rewrite handoff for round 6
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f024-r5-perf.txt | +59/-0 | new file: whole output of G5's budget run (PASS, exit 0), the exact separator line `--- red control: slow_ms 25 ---`, and the whole output of G5's red-control run (FAIL, exit 1) |
-
-59 insertions by `git show --numstat`.
-
-### (this commit) F024 R5 C6: rewrite handoff for round 5
-| Path | +/- | Reason |
-|---|---|---|
-| .agent/handoff.md | (self-reference) | this handback, rewritten for round 5 |
+| .agent/authored/f024-closure-suite.txt | (grouped) | command, real exit code, wall time, summary line, bad node ids (NONE) for the ONE full suite run |
+| .agent/handoff.md | (self-reference) | this handback, rewritten for round 6 |
 
 Per the handback template's self-reference exception: a handback cannot table the commit that
 writes it. Insertions reported in the final reply, as measured by `git show --numstat` after the
@@ -98,12 +65,10 @@ commit.
 
 ## External actions
 
-`git worktree add --detach .remedy-wt/f024-r5-mut 62f2330a5` for G5: success (exit 0).
-`git worktree remove --force .remedy-wt/f024-r5-mut`: success (exit 0). `git worktree prune`:
-success (exit 0). The push after this commit and its real outcome are reported in the final reply,
-per the block's ordering (G1–G5 run before this handback is written; this commit and the push
-follow). No `gh pr create` this round — the block orders none; `gh pr list` is reported in the
-final reply per G6.
+None this round — no worktree add/remove, no `gh pr create`. The push after this commit and its
+real outcome are reported in the final reply, per the block's ordering (G1–G4 run before C5 is
+written; C5 and the push follow). No pull request created this round (block constraint 5 forbids
+it); `gh pr list` is reported in the final reply per G6.
 
 ## Verification
 
@@ -120,167 +85,123 @@ $ git status --porcelain
 $ git branch --show-current
 feature/f024-phase-timeline-scrubber
 $ git log --oneline -1
-a46facfa6 F024 R4 C6: rewrite handoff for round 4
+701907c6e F024 R5 C6: rewrite handoff for round 5
 ```
 All BEFORE ANYTHING ELSE step 2 checks passed at round start.
 
 ```
-$ (line count and sha256 of .remedy-wt/f024-r5/block.md, measured)
-line_count: 259
-sha256: 1e53a9109f6bbcc2d0e4639e36fa526e53e8873e3f08d31b185af3c3fc8eb5ca
+$ (line count and sha256 of .remedy-wt/f024-r6/block.md, measured)
+line_count: 203
+sha256: 4119a0745b051048d1fd8c0bb5b93de9ef9294879243ced9f72df02b10610419
 ```
-Matches both readings given in the delegation message exactly (259 lines,
-1e53a9109f6bbcc2d0e4639e36fa526e53e8873e3f08d31b185af3c3fc8eb5ca) — R-0954.
+Matches both readings given in the delegation message exactly (203 lines,
+4119a0745b051048d1fd8c0bb5b93de9ef9294879243ced9f72df02b10610419) — R-0954.
 
 ```
 $ git worktree list
 (primary + 15 f015-*-dry/sim r1-r6, 5 f015-*-sim r7-r9, 16 f020-*-dry/sim r1-r8,
  20 f023-*-dry/sim r1-r9, f023-r10-dry, f023-r10-sim, f024-r1-dry, f024-r1-sim,
  f024-r2-dry, f024-r2-sim, f024-r3-dry, f024-r3-sim, f024-r4-dry, f024-r4-sim,
- f024-r5-dry, f024-r5-sim, 8 f284-*-dry/sim r1-r4, 4 job-* worktrees)
+ f024-r5-dry, f024-r5-sim, f024-r6-dry, f024-r6-sim, 8 f284-*-dry/sim r1-r4, 4 job-* worktrees)
 ```
 
 ```
-$ (lines/bytes/sha256 of each payload under .remedy-wt/f024-r5-payloads/)
-fixture.diff                     lines=59  bytes=3002  sha256=0bf580babb8530047ae342d1b7fc0006b95c7bd946577e7eeecab9e5828a042a
-ledger.diff                      lines=66  bytes=10900 sha256=2693eaedb3c1923ffdd5278f8237322d1644bab61611e7b655566cba1a684d07
-mutations.py                     lines=169 bytes=7453  sha256=59a644d671f7fbaa9706534fb523986858ae280d6fb26cab97fe515958e229ad
-perf-drive_chrome.mjs            lines=94  bytes=4142  sha256=98e525eacc755d764fee15b8157f527ee3aacb72b553f08032c3d9f04932db59
-perf-index.html                  lines=14  bytes=351   sha256=5cf33c51a0cda0d6f29f29947237ec63e64aa2bcabe172cdb548a2ecdb0e6194
-perf-main.tsx                    lines=142 bytes=6602  sha256=4de8b8389d3562c7073e502c718ca52d7d37da75f2ccd135a75f3628f89bca77
-perf-measure.py                  lines=191 bytes=6789  sha256=f3ccaff17821bf8940f5a7ca0386e82a4aaf2a6a47ed9a363e8d49976b2687f2
-perf-vite.config.mjs             lines=28  bytes=766   sha256=82b2d0f857c6821f6136d323d41d43ad94e6e4993ff192f17ee5425f9a74c6a9
-plan.md                          lines=33  bytes=1285  sha256=13d8f463503468a788922ddfb61aa2abfd61705d2704161ad7cfa9454fbab719
-scrubLive.test.ts                lines=74  bytes=3743  sha256=b0765be3bd127527c08e666b4ed839295906a66fc9bd6eeeabf2403d10a70ed1
-test_timeline_scrub_live.py      lines=73  bytes=3517  sha256=45f33a8693c23b7136c68991d61e69e6dea54f92c65376faa64996231d8487cb
+$ (lines/bytes/sha256 of each payload under .remedy-wt/f024-r6-payloads/)
+plan.md               lines=30 bytes=1015 sha256=a0e1e895000a1bfce28bcfe0189d8c155293129983ca652df227f228cb87d2b8
+product.diff           lines=89 bytes=6452 sha256=703f8b90d716cbd124d7664ce505100a3916a822d6a9f74587bd386cf65705a0
+records.diff           lines=10 bytes=6660 sha256=962fc3b019fdd8fcd994716c6f362032075e7da2246312d20c6bf4c67bd749a4
+selfuse.py             lines=16 bytes=755  sha256=abcec8f8aa1c9b2add1c379d7a60bd9b935e205587bf55328f38332a64b28245
+selfuse_result.txt     lines=6  bytes=274  sha256=479343075d83411de78d40164ac6a32f1a307d91bd0d485022644ffedec57998
 ```
-All 11 match the PAYLOADS table exactly (G1).
+All 5 match the PAYLOADS table exactly (G1).
 
 ```
-$ (compare each committed .agent/authored/f024-r5-* blob against its source, via `git show <commit>:<path>`)
-f024-r5-block.md                       @ 1367f13f7: IDENTICAL (sha 1e53a910...)
-f024-r5-plan.md                        @ 1367f13f7: IDENTICAL (sha 13d8f463...)
-f024-r5-ledger.diff                    @ a41e49f6a: IDENTICAL (sha 2693eaed...)
-f024-r5-mutations.py                   @ a41e49f6a: IDENTICAL (sha 59a644d6...)
-f024-r5-fixture.diff                   @ f52768685: IDENTICAL (sha 0bf580ba...)
-f024-r5-scrubLive.test.ts              @ f52768685: IDENTICAL (sha b0765be3...)
-f024-r5-test_timeline_scrub_live.py    @ f52768685: IDENTICAL (sha 45f33a86...)
-f024-r5-perf-drive_chrome.mjs          @ a0735936a: IDENTICAL (sha 98e525ea...)
-f024-r5-perf-index.html                @ a0735936a: IDENTICAL (sha 5cf33c51...)
-f024-r5-perf-main.tsx                  @ a0735936a: IDENTICAL (sha 4de8b838...)
-f024-r5-perf-measure.py                @ a0735936a: IDENTICAL (sha f3ccaff1...)
-f024-r5-perf-vite.config.mjs           @ a0735936a: IDENTICAL (sha 82b2d0f8...)
+$ (compare each committed .agent/authored/f024-r6-* blob against its source, via `git show <commit>:<path>`)
+f024-r6-block.md           @ 2e885bb95: IDENTICAL (sha 4119a074...)
+f024-r6-plan.md            @ 2e885bb95: IDENTICAL (sha a0e1e895...)
+f024-r6-product.diff       @ 2e885bb95: IDENTICAL (sha 703f8b90...)
+f024-r6-records.diff       @ 2e885bb95: IDENTICAL (sha 962fc3b0...)
+f024-r6-selfuse.py         @ 2e885bb95: IDENTICAL (sha abcec8f8...)
+f024-r6-selfuse_result.txt @ 2e885bb95: IDENTICAL (sha 47934307...)
 ```
-All 12 BYTE-IDENTICAL against their sources (G1).
+All 6 BYTE-IDENTICAL against their sources (G1).
 
 ```
-$ git apply --check .remedy-wt/f024-r5-payloads/ledger.diff; echo $?
+$ git apply --check .remedy-wt/f024-r6-payloads/records.diff; echo $?
 0
-$ git apply .remedy-wt/f024-r5-payloads/ledger.diff; echo $?
+$ git apply .remedy-wt/f024-r6-payloads/records.diff; echo $?
 0
-$ git apply --check .remedy-wt/f024-r5-payloads/fixture.diff; echo $?
+$ git apply --check .remedy-wt/f024-r6-payloads/product.diff; echo $?
 0
-$ git apply .remedy-wt/f024-r5-payloads/fixture.diff; echo $?
+$ git apply .remedy-wt/f024-r6-payloads/product.diff; echo $?
 0
 ```
 Both `git apply --check` calls ran and exited 0 immediately before the matching real `git apply`,
 which also exited 0 — two diffs, four calls, all clean.
 
 ```
-$ (bytes/sha256 of the files named in the block's G2 table, read at 986d8ccf7)
-.agent/live_review.md   bytes=305257   sha256=db2ad1e9d9e6a8d20496d2133176868180721339ee2ccf5212aa36d054fd0b80 match=True
-.agent/decisions.md     bytes=2093454  sha256=d2194596dd69a335dfcae8c585982ee2f0fe3d53630a57c0a07c9b30e2238af0 match=True
-.agent/plan.md          bytes=1285     sha256=13d8f463503468a788922ddfb61aa2abfd61705d2704161ad7cfa9454fbab719 match=True
+$ (bytes/sha256 of the files named in the block's G2 table, read at their commits)
+C2 .agent/live_review.md                          bytes=307543 sha256=cccf6d97c7f8d0552ffc5efefffe3433a9543ec2f05a13a63d83968e7b4137d6 match=True
+C2 .agent/plan.md                                 bytes=1015   sha256=a0e1e895000a1bfce28bcfe0189d8c155293129983ca652df227f228cb87d2b8 match=True
+C3 docs/agents/planner_reviewer_prompt.md         bytes=101989 sha256=cd677cb7022b6ae7ecbee96a500c9a6aa3a2db873ab277b875bb9506de0007fb match=True
+C3 docs/roadmap/features/T5_F024.md               bytes=10079  sha256=854c81ab1813db5068c9e4428318cc912340319021743504e5929796c1fba1df match=True
+C4 .agent/selfuse_f024/result.txt                 bytes=274    sha256=479343075d83411de78d40164ac6a32f1a307d91bd0d485022644ffedec57998 match=True
 ```
-All 3 match the block's G2 table exactly.
+All 5 match the block's G2 table exactly.
+
+```
+$ (lines C2's own diff adds to .agent/live_review.md beginning "Gate: F024 R5 — ",
+  via `git diff 701907c6e 5bda8164b -- .agent/live_review.md`)
+count=1
+```
+Matches the block's stated reading of 1 exactly (G2).
 
 ```
 $ open_finding_ids(text) from scripts/rotate_live_review.py, over .agent/live_review.md's TEXT
-  at a46facfa6 and at 986d8ccf7 (C2)
-a46facfa6 open ids: ['R-1008']
-986d8ccf7 (C2) open ids: ['R-1008']
+  at 701907c6e and at 5bda8164b (C2)
+701907c6e open ids: ['R-1008']
+5bda8164b (C2) open ids: ['R-1008']
 ```
 Reads R-1008 alone at both, matching the block's stated reading exactly (G2).
 
 ```
-$ (lines C2's own diff adds to .agent/live_review.md, via `git diff a0735936a 986d8ccf7 -- .agent/live_review.md`)
-+
-+Gate: F024 R4 — the F024 round 4 entry ... (full gate-entry line)
+$ live_checklist_items(text) from packages/orchestration/block_lint.py, over
+  docs/agents/planner_reviewer_prompt.md's TEXT at 701907c6e and at 6d9139ad8 (C3)
+701907c6e count=34 numbers=[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,18,20,21,22,23,24,25,26,27,28,29,30,31,33,34,35,36,37]
+6d9139ad8 (C3) count=34 numbers=[same list]
+same=True
 ```
-2 lines added, exactly one beginning "Gate: F024 R4 — ", matching the block's stated reading
-exactly (G2).
+The same 34 numbers at both, matching the block's stated reading exactly (G2).
 
 ```
-$ (ledger's last line at C2)
-Gate: F024 R4 — the F024 round 4 entry ...
-```
-Begins "Gate: F024 R4 — ", matching the block's requirement exactly (G2).
-
-```
-$ git diff --name-only a0735936a 986d8ccf7
-.agent/decisions.md
-.agent/live_review.md
-.agent/plan.md
-```
-Matches the G2 path table exactly.
-
-```
-$ (sha256 of the product and test files at their commits)
-C3 apps/ui/src/components/graph/brainPerfFixture.ts       bytes=7700 sha256=44efb6bf35d1fbd9243b0035b8c8028278855f11a97c06ce6558f2b03372cc90 match=True
-C3 apps/ui/src/components/graph/brainPerfFixture.test.ts  bytes=3215 sha256=567356998996f397d5c5bae1b7bef2008d8a07bffbbb6e607941fd86171ee8e7 match=True
-C4 apps/ui/src/components/timeline/scrubLive.test.ts      bytes=3743 sha256=b0765be3bd127527c08e666b4ed839295906a66fc9bd6eeeabf2403d10a70ed1 match=True
-C4 tests/ui_server/test_timeline_scrub_live.py            bytes=3517 sha256=45f33a8693c23b7136c68991d61e69e6dea54f92c65376faa64996231d8487cb match=True
-.agent/authored/f024-r5-perf-drive_chrome.mjs @ a0735936a bytes=4142 sha256=98e525eacc755d764fee15b8157f527ee3aacb72b553f08032c3d9f04932db59 match=True
-.agent/authored/f024-r5-perf-index.html       @ a0735936a bytes=351  sha256=5cf33c51a0cda0d6f29f29947237ec63e64aa2bcabe172cdb548a2ecdb0e6194 match=True
-.agent/authored/f024-r5-perf-main.tsx         @ a0735936a bytes=6602 sha256=4de8b8389d3562c7073e502c718ca52d7d37da75f2ccd135a75f3628f89bca77 match=True
-.agent/authored/f024-r5-perf-measure.py       @ a0735936a bytes=6789 sha256=f3ccaff17821bf8940f5a7ca0386e82a4aaf2a6a47ed9a363e8d49976b2687f2 match=True
-.agent/authored/f024-r5-perf-vite.config.mjs  @ a0735936a bytes=766  sha256=82b2d0f857c6821f6136d323d41d43ad94e6e4993ff192f17ee5425f9a74c6a9 match=True
-```
-All 9 match the block's G3 table exactly.
-
-```
-$ git diff --name-only 986d8ccf7 9cfdd8006
-apps/ui/src/components/graph/brainPerfFixture.test.ts
-apps/ui/src/components/graph/brainPerfFixture.ts
-$ git diff --name-only 9cfdd8006 62f2330a5
-apps/ui/src/components/timeline/scrubLive.test.ts
-tests/ui_server/test_timeline_scrub_live.py
-```
-Both match the block's G3 path lists exactly.
-
-```
-$ python3 -m ruff check tests/ui_server/test_timeline_scrub_live.py .agent/authored/f024-r5-perf-measure.py
-All checks passed!
+$ python3 -m apps.cli.main integrity block .remedy-wt/f024-r6/block.md; echo "REAL_EXIT=$?"
+  [OK] item 1 (size): 203 lines, limit 400
+  [OK] item 3 (cap-bounded replacements): plan.md at 30 lines
+  [OK] item 10 (open set recomputed): the block states no open-findings count
+  [OK] item 24 (gate paths resolve): 10 paths named in the block's commands, every one resolves
+  [OK] item 30 (new ids searched first): the block registers no finding id
+  [OK] item 31 (gates before the text): G1 to G4 before C5
+  [OK] item 37 (no unmeasured runs): no line is a run of one repeated character
+All 7 checkable items pass.
 REAL_EXIT=0
 ```
 
 ```
-$ bash -c 'python3 -m pytest -q -p no:cacheprovider -rs tests/ui_contracts tests/ui_server/test_dashboard_contract.py
-  tests/ui_server/test_timeline_scrub_live.py tests/ui_server/test_brain_demo_recording_live.py
-  tests/orchestration/test_test_runner.py tests/orchestration/test_live_review_rotation.py
-  tests/orchestration/test_integrity_gate.py tests/orchestration/test_block_lint.py
-  tests/test_agent_tooling.py tests/regression/test_resource_safety.py tests/docs
-  tests/cli/test_golden_path.py 2>&1 | tail -15; echo "REAL_EXIT=${PIPESTATUS[0]}"'
-SKIPPED [1] tests/ui_contracts/test_graph_architecture.py:441: D3 quarantine (F252) ...
-SKIPPED [1] tests/ui_contracts/test_graph_architecture.py:484: D3 quarantine (F252) ...
-SKIPPED [1] tests/ui_contracts/test_ux_quality.py:507: D3 quarantine (F252) ...
-SKIPPED [1] tests/ui_contracts/test_ux_quality.py:543: D3 quarantine (F252) ...
-SKIPPED [1] tests/test_agent_tooling.py:43: D12 quarantine (F252) ...
-1514 passed, 5 skipped in 91.71s (0:01:31)
+$ bash -c 'python3 -m pytest -q -p no:cacheprovider tests/docs/ tests/cli/test_advertised_commands.py
+  tests/orchestration/test_block_lint.py tests/orchestration/test_live_review_rotation.py
+  tests/orchestration/test_integrity_gate.py tests/test_agent_tooling.py
+  tests/orchestration/test_self_use_generator.py tests/orchestration/test_roadmap_index.py
+  tests/ui_contracts tests/cli/test_golden_path.py 2>&1 | tail -3; echo "REAL_EXIT=${PIPESTATUS[0]}"'
+1461 passed, 5 skipped in 65.60s (0:01:05)
 REAL_EXIT=0
 ```
-The reviewer's sim run WITHOUT the golden path read `1466 passed, 11 skipped` at exit 0; this
-worker's run, WITH the golden path file and inside the primary checkout (where the five toolchain
-nodes run instead of skip), reads `1514 passed, 5 skipped` at exit 0. None of the five SKIPPED
-lines are any of the five toolchain/live nodes the block names (`tests/ui_contracts/test_ui_lint.py`'s
-two eslint nodes, the `tsc --noEmit` node in `test_dashboard_contract.py`, the vitest node in
-`test_test_runner.py`, or the new `tests/ui_server/test_timeline_scrub_live.py`) — all five ran and
-PASSED. `test_timeline_scrub_live.py`'s own internal assertion (`counts.group(1) ==
-counts.group(2) == "5"`) requires vitest to report exactly "5 passed (5)" for the test to pass at
-all, so its PASS here confirms the five live checks ran and passed.
+The reviewer's sim run WITHOUT the golden path read `1416 passed, 8 skipped` at exit 0; this
+worker's run, WITH the golden path file and inside the primary checkout (where the two eslint
+nodes of `tests/ui_contracts/test_ui_lint.py` run instead of skip), reads `1461 passed, 5 skipped`
+at exit 0.
 
 ```
-$ python3 -m apps.cli.main integrity check --json
+$ python3 -m apps.cli.main integrity check --json; echo "REAL_EXIT=$?"
 {"check_count": 6, "checks": [
   {"name": "handler_import", "status": "pass", "message": "handlers=157"},
   {"name": "live_review_verdict", "status": "pass", "message": "last Gate verdict PASS"},
@@ -291,123 +212,82 @@ $ python3 -m apps.cli.main integrity check --json
 ], "fail_count": 0, "ok": true, "passed": true, "schema_version": 1, "version": 1}
 REAL_EXIT=0
 ```
-All six checks `pass`, `fail_count` 0 (G4).
+All six checks `pass`, `fail_count` 0 (G4). `git status --porcelain` empty, no untracked file,
+immediately after this run.
 
 ```
-$ git worktree add --detach .remedy-wt/f024-r5-mut 62f2330a5
-Preparing worktree (detached HEAD 62f2330a5)
+$ bash -c 'npm --prefix apps/ui run build 2>&1 | tail -2; echo "REAL_EXIT=${PIPESTATUS[0]}"'
+✓ built in 2.17s
 REAL_EXIT=0
+$ git status --porcelain
+(empty)
+```
 
-$ python3 -B .remedy-wt/f024-r5-payloads/mutations.py /home/decodeux/Repos/remedy/.remedy-wt/f024-r5-mut
-worktree: /home/decodeux/Repos/remedy/.remedy-wt/f024-r5-mut
-node_modules linked by this tool: True
-CONTROL FIRST: vitest exit=0 failed=0 passed=11 | guard exit=0 failed=0 passed=1
-m1 (a snapshot also holds the row at its boundary): vitest exit=0 failed=0 passed=11 | guard exit=1 failed=1 passed=4 | caught=True restored byte-identical=True
-m2 (the index reads a position without its own row): vitest exit=0 failed=0 passed=11 | guard exit=1 failed=2 passed=3 | caught=True restored byte-identical=True
-m3 (the handle sits at the start of its event's slot): vitest exit=0 failed=0 passed=11 | guard exit=1 failed=1 passed=4 | caught=True restored byte-identical=True
-m4 (End scrubs to the head instead of returning to LIVE): vitest exit=0 failed=0 passed=11 | guard exit=1 failed=1 passed=4 | caught=True restored byte-identical=True
-m5 (the fixture's ledger loses its first row): vitest exit=1 failed=3 passed=8 | guard exit=0 failed=0 passed=1 | caught=True restored byte-identical=True
-CONTROL LAST: vitest exit=0 failed=0 passed=11 | guard exit=0 failed=0 passed=1
-ALL MUTATIONS CAUGHT AND RESTORED CLEANLY: True
-node_modules link removed: True
+```
+$ python3 -m pytest -n auto -q   (output to /home/decodeux/remedy-gate-scratch/f024-full-suite.txt)
 REAL_EXIT=0
+Wall time: 216s measured (date +%s before/after); pytest's own reported time 213.02s (0:03:33)
+Summary line: 19176 passed, 20 skipped, 1 warning in 213.02s (0:03:33)
+Bad node ids (failed + errors): NONE
 ```
-Every count matches the reviewer's stated sim-tree reading exactly (control first v11/g1 exit 0;
-m1 v0g1, m2 v0g2, m3 v0g1, m4 v0g1, m5 v3g0; control last equal to control first; every `restored
-byte-identical` True; final line `ALL MUTATIONS CAUGHT AND RESTORED CLEANLY: True`; `node_modules
-link removed: True`).
-
-```
-$ git worktree remove --force .remedy-wt/f024-r5-mut; echo $?
-0
-$ git worktree prune; echo $?
-0
-$ git worktree list
-(primary + 15 f015-*-dry/sim r1-r6, 5 f015-*-sim r7-r9, 16 f020-*-dry/sim r1-r8,
- 20 f023-*-dry/sim r1-r9, f023-r10-dry, f023-r10-sim, f024-r1-dry, f024-r1-sim,
- f024-r2-dry, f024-r2-sim, f024-r3-dry, f024-r3-sim, f024-r4-dry, f024-r4-sim,
- f024-r5-dry, f024-r5-sim, 8 f284-*-dry/sim r1-r4, 4 job-* worktrees)
-```
-`f024-r5-mut` is gone; every worktree constraint 6 names remains.
-
-```
-$ bash -c 'python3 .agent/authored/f024-r5-perf-measure.py /home/decodeux/Repos/remedy; echo "REAL_EXIT=$?"'
-... (vite build, three JSON run lines) ...
-FRAMES: worst p95 16.8 ms, worst mean 60 fps
-SCRUB: worst warm p95 1.4 ms, worst cold max 2.4 ms
-BUDGET 500 nodes, scrubbed one event per frame: PASS
-REAL_EXIT=0
-
-$ bash -c 'python3 .agent/authored/f024-r5-perf-measure.py /home/decodeux/Repos/remedy 25; echo "REAL_EXIT=$?"'
-... (vite build, three JSON run lines) ...
-FRAMES: worst p95 50 ms, worst mean 30.13 fps
-SCRUB: worst warm p95 1.5 ms, worst cold max 2.3 ms
-BUDGET 500 nodes, scrubbed one event per frame: FAIL
-REAL_EXIT=1
-```
-First run ends PASS at exit 0 (worst mean 60 fps); second (slow_ms 25) ends FAIL at exit 1 (worst
-mean 30.13 fps, near the reviewer's stated "near 30 frames a second"). Both work dirs
-(`.remedy-wt/f024-perf-run`) confirmed removed after each run. Both whole outputs recorded in
-`.agent/authored/f024-r5-perf.txt` (C5), separated by the exact line `--- red control: slow_ms 25 ---`.
+`grep -c "^FAILED"` and `grep -c "^ERROR"` both found 0 matches in the transcript. Neither
+`tests/orchestration/test_import_reachability.py` nor `tests/test_no_orphan_modules.py` holds a
+bad node (closure precondition 7). Recorded verbatim in
+`.agent/authored/f024-closure-suite.txt`.
 
 ## Evidence and package summary
 
-Not applicable this round: T003's components land product code and their guard/wiring test under
-an open feature; no closure, no evidence job, no review package is produced at a T-slice round.
-This section is carried forward as N/A per the block's own scope (book round 4's PASS + D5 + T003's
-end-to-end, not closure).
+Not applicable this round: this is the closure sequence's FIRST half (booking round 5, the Built
+State, the checklist consolidation, the self-use track, and the one full suite) — no evidence job,
+no review package, no ledger rotation, no STATUS edit and no pull request are produced or ordered
+this round. That work belongs to the closure's second half in a later round.
 
 ## Authored-text proofs
 
-All 12 authored copies under `.agent/authored/f024-r5-*` (the block copy, plan.md, ledger.diff,
-mutations.py, fixture.diff, scrubLive.test.ts, test_timeline_scrub_live.py, and the five perf-*
-files) were built by `shutil.copyfile` from source to destination — never retyped, never edited.
-Each was read back with `git show <commit>:<path>` and compared byte for byte against its source:
-all 12 BYTE-IDENTICAL (G1 above). `ledger.diff` and `fixture.diff` were each applied with `git
-apply` after `git apply --check` passed (exit 0, both, twice each). `.agent/plan.md` was rewritten
-whole via `shutil.copyfile` from the payload source — never retyped — and confirmed MATCH against
-both the PAYLOADS table and the G2 table. `scrubLive.test.ts` was copied whole via
-`shutil.copyfile` into `apps/ui/src/components/timeline/` and `test_timeline_scrub_live.py` into
-`tests/ui_server/`, both confirmed MATCH against the G3 table.
+All 6 authored copies under `.agent/authored/f024-r6-*` (the block copy, plan.md, product.diff,
+records.diff, selfuse.py, selfuse_result.txt) were built by `shutil.copyfile` from source to
+destination — never retyped, never edited. Each was read back with `git show <commit>:<path>` and
+compared byte for byte against its source: all 6 BYTE-IDENTICAL (G1 above). `records.diff` and
+`product.diff` were each applied with `git apply` after `git apply --check` passed (exit 0, both).
+`.agent/plan.md` was rewritten whole via `shutil.copyfile` from the payload source — never
+retyped — and confirmed MATCH against both the PAYLOADS table and the G2 table.
+`.agent/selfuse_f024/result.txt` was copied whole via `shutil.copyfile`, applied only after all
+four self-use readings (`None`, `None`, `None`, `''`) matched the reviewer's stated readings
+exactly, and confirmed MATCH against the G2 table.
 
 ## Deviations & assumptions
 
-None. All nine commits landed in the block's stated order: C1a, C1b, C1c, C1d, C2, C3, C4, C5, C6,
-exactly as ordered. No payload was edited, retyped or repaired. G1 through G5 ran before this
-handback was written, per the block's instruction ("G1 to G5 run before C6 is written"), and G5's
-two budget runs ran before C5 was written, per the block's instruction. The
-`.remedy-wt/f024-r5-mut` worktree G5 required was added and removed within this round, as its last
-action, and `git worktree prune` was run after. The budget tool's own scratch work directory
-`.remedy-wt/f024-perf-run` was created and removed by the tool itself on both runs, confirmed gone
-after each. No other worktree was added or removed this round; every worktree named in constraint
-6 (`f015-r*`, `f020-r*`, `f023-r*`, `f284-r*`, `job-*`, and the reviewer's own
-`f024-r5-sim`/`f024-r5-dry`, plus rounds 1 through 4's `f024-r1-sim`/`f024-r1-dry`/
-`f024-r2-sim`/`f024-r2-dry`/`f024-r3-sim`/`f024-r3-dry`/`f024-r4-sim`/`f024-r4-dry`) was left
-untouched. No `git stash` was used, nothing was merged, no pull request was created, no force-push
-occurred.
+None. All five commits landed in the block's stated order: C1, C2, C3, C4, C5, exactly as
+ordered. No payload was edited, retyped or repaired. G1 through G4 ran before C5 was written, per
+the block's instruction ("G1 to G4 run before C5 is written"), and G5 is the suite C5 itself runs,
+per the block's own framing. The full suite ran exactly once, in C5, and nowhere else this round
+(amend0917 rule 1). No worktree was added or removed this round; every worktree named in
+constraint 6 (`f015-r*`, `f020-r*`, `f023-r*`, `f284-r*`, `job-*`, and the reviewer's own
+`f024-r6-sim`/`f024-r6-dry`, plus rounds 1 through 5's dry/sim worktrees) was left untouched. No
+`git stash` was used, nothing was merged, no pull request was created, no force-push occurred, no
+`STATUS.md` edit, no evidence job, no review package.
 
 ## Item-status table
 
 | Item | Status | Reason |
 |---|---|---|
-| C1a | done | 292 insertions, matches block's expectation exactly (259+33); well under the 500-insertion STOP threshold |
-| C1b | done | 235 insertions, matches block's expected 235 exactly |
-| C1c | done | 206 insertions, matches block's expected 206 exactly |
-| C1d | done | 469 insertions, matches block's expected 469 exactly |
-| C2 | done | ledger.diff apply --check and apply both exit 0; 48/0, 2/0, 10/11 insertions/deletions match exactly |
-| C3 | done | fixture.diff apply --check and apply both exit 0; 9/0, 12/4 insertions/deletions match exactly |
-| C4 | done | 74/73 insertions, matches block's expected counts exactly |
-| C5 | done | .agent/authored/f024-r5-perf.txt written: whole output of PASS run + separator + whole output of FAIL run |
-| G1 | done | all 11 payload digests and 12 authored-copy comparisons matched |
-| G2 | done | all 3 named file digests matched; open-id set, added-lines count/content, ledger last line, and path set all matched |
-| G3 | done | all 9 named digests matched; both path-name-only diffs matched; ruff clean |
-| G4 | done | 1514 passed, 5 skipped, exit 0; all five toolchain/live nodes ran and passed (none skipped); integrity check 6/6 pass |
-| G5 | done | control first/last and all 5 mutations matched the reviewer's stated readings exactly; all restored byte-identical; node_modules link removed; both budget runs (PASS/FAIL) matched expected verdicts and exit codes |
-| C6 | done | this handback |
+| C1 | done | 354 insertions, matches block's expectation exactly (203+151); well under the 500-insertion STOP threshold |
+| C2 | done | records.diff apply --check and apply both exit 0; 2/0, 9/12 insertions/deletions match exactly |
+| C3 | done | product.diff apply --check and apply both exit 0; 4/0, 66/0 insertions/deletions match exactly |
+| C4 | done | all four self-use readings matched the reviewer's stated NONE/NONE/NONE/''; 6 insertions matches block's expected 6 exactly |
+| G1 | done | all 5 payload digests and 6 authored-copy comparisons matched |
+| G2 | done | all 5 named file digests matched; Gate-line count, open-id set and checklist item-number set all matched |
+| G3 | done | integrity block linter: 7/7 checkable items [OK], real exit 0 |
+| G4 | done | 1461 passed, 5 skipped, exit 0; integrity check 6/6 pass; tree clean with no untracked file |
+| C5(a) | done | UI build `✓ built in 2.17s`, real exit 0; tree clean after |
+| C5(b) | done | full suite: 19176 passed, 20 skipped, 1 warning in 213.02s, real exit 0, wall time 216s, NO bad node ids |
+| C5(c) | done | this handback, written together with the closure-suite transcript |
+| G5 | done | the C5(b) suite itself: real exit 0, no bad node ids, neither import-reachability nor no-orphan-modules test held a bad node |
+| G6 | pending | reported in the final reply, since C5 cannot contain it |
 | PUSH | pending | `git push origin feature/f024-phase-timeline-scrubber` after this commit; reported in the final reply |
 
 ## Next
 
-Phase 1 rule 1: read `.agent/STOP` from disk. Then the review of round 5. Then the closure
-sequence's first half — the Built State, the one full suite, the self-use track and the checklist
-consolidation. Open findings: 1. Operator questions open: 3.
+Phase 1 rule 1: read `.agent/STOP` from disk. Then the review of round 6. Then the closure's
+second half — the booking of round 6, any repair the suite requires, the evidence job and the
+review package — and then the closing round. Open findings: 1. Operator questions open: 3.

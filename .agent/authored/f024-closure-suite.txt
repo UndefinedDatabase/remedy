@@ -1,0 +1,5 @@
+Command: python3 -m pytest -n auto -q
+Real exit code: 0
+Wall time: 216s (measured via date +%s before/after; pytest reported 213.02s / 0:03:33 internally)
+Summary line: 19176 passed, 20 skipped, 1 warning in 213.02s (0:03:33)
+Bad node ids (failed + errors): NONE
