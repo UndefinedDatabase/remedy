@@ -1779,9 +1779,10 @@ class TestUiExposedCommands:
         a name that must be re-read every time the set widens is the half nobody re-reads."""
         from apps.cli.command_catalog import UI_EXPOSED_COMMANDS
         assert sorted(UI_EXPOSED_COMMANDS) == [
-            "chat.send", "decision.resolve", "job.plan-delete-task", "job.plan-edit-acceptance",
-            "job.plan-edit-task", "job.plan-merge-tasks", "job.plan-reorder",
-            "job.plan-split-task", "job.stop", "patch.approve-hunks"]
+            "chat.send", "decision.resolve", "job.pause", "job.plan-delete-task",
+            "job.plan-edit-acceptance", "job.plan-edit-task", "job.plan-merge-tasks",
+            "job.plan-reorder", "job.plan-split-task", "job.stop", "job.unpause",
+            "patch.approve-hunks"]
 
     def test_the_set_is_a_frozenset(self):
         from apps.cli.command_catalog import UI_EXPOSED_COMMANDS
