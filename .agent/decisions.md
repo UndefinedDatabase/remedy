@@ -21504,3 +21504,48 @@ halted run `blocked` as a stop does, rejected because nothing failed.
 HOW TO REVERSE: delete `paused` from `NodeState` with its treatment, mark, reducer cases, seed and
 tests, the dashboard's `pause` object and its normalization, the two design-reference rows, and
 this paragraph.
+
+## DECISION F025 D4 — the rest of the pause on the page: a banner in the graph's chrome, the NowCard's "Paused by you", and pause and resume buttons for the job below the NowCard and for a task in its detail popover, sent through one new module that reads the door's answer (2026-09-25)
+
+CONTEXT: T5_F025.md's T003 asks for a global paused banner in the graph chrome, the NowCard saying
+"paused by you", and a resume; DECISION F025 D3 clause 5 left all three to this round. Measured at
+`0cd5e9f2`: the dashboard carries `pause` with `record`, `requested`, `pausedTaskIds` and `error`,
+and `record.source` reads `cli` for a pause the CLI asked for without `--source`, its default, and
+`ui` for one the door asked for, its `COMMAND_EFFECT_SOURCE`; the door answers `job.pause` and `job.unpause` with the effect's
+own outcome word — `requested`, `paused`, `released`, `withdrawn`, `parked` with `next`, the
+relaunch command, or `not_paused` — and 409 for a refusal; `decisionSubmit.ts`, which the steering
+input composes, returns the status alone and never a body; `tests/ui_contracts/
+test_brain_stream_ring.py` pins `<AgentNowCard dashboard={dashboard} recent={recent} />` verbatim in
+`RightLivePanel.tsx`, and `cockpitLogic.test.ts` pins `deriveAgentStatus`'s "Working" and "Idle";
+the stage already draws one banner, the scrub banner; and the design reference names no pause
+banner and no pause button.
+
+CHOSEN: (1) THE SEND, `apps/ui/src/api/pauseSend.ts`: it builds `job.pause` or `job.unpause` for
+the commands endpoint with the steering input's headers and a minted nonce, `args` holding `task`
+for a task and nothing for the job; its own submit reads the JSON body, because the outcome word
+decides the sentence, and it never throws and never retries; each answer maps to one sentence, a
+`parked` answer's sentence naming the command from `next`. `decisionSubmit.ts` is unchanged. (2)
+THE VIEW, `apps/ui/src/api/pauseView.ts`, pure functions of the dashboard: the job is parked when
+`record` is non-empty; "by you" when its source is `cli` or `ui`; the banner in the order error,
+parked, requested, paused tasks; the NowCard's status "Paused" with the line "Paused by you" while
+the job is parked, or is not running with paused tasks; the job's button — Resume when parked, Take
+back pause when requested, Pause job while running, none otherwise; and a task's — Resume task when
+it is paused, Pause task when it is not done. (3) THE COMPONENTS: `PauseControl`, one button and its
+sentence, reaching the network only through (1), placed in `RightLivePanel.tsx` directly below the
+NowCard for the job and in `DetailPopover.tsx` for the selected task, which gains an optional
+`serverToken`; the pause banner in `BrainGraphStage.tsx` after the scrub banner; the NowCard shows
+(2)'s status and line in place of `deriveAgentStatus`'s while they apply. Every colour is an
+existing token, the banner's badge `--remedy-orange-400`, the pause mark's colour. (4) THE RECORD:
+`assumption_log.md` gains one row naming this decision. (5) A PARKED JOB'S RESUME stays operator
+question Q4's ruling: the button sends `job.unpause` and shows the relaunch command it answers.
+
+ALTERNATIVES: widening `decisionSubmit.ts` to return a body, rejected because its own header rules
+that no caller reads one and other features compose it; computing the relaunch command in the
+browser, rejected because the door already answers it and a second author can drift; putting the
+job's button inside the NowCard, rejected because the card's mount is pinned verbatim and it holds
+no token; a button that pauses a job that is not running, rejected because a pause there waits for
+a relaunch the page cannot see, while the CLI still offers it.
+
+HOW TO REVERSE: delete the two modules with their tests, `PauseControl`, the banner and its styles,
+the NowCard's pause branch, the popover's `serverToken` and control, the assumption-log row, the
+round's contract test, and this paragraph.

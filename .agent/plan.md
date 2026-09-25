@@ -13,22 +13,18 @@ things stood, with no process left waiting
 
 ## Current Step
 
-ROUND 5, T003's first part: repair R-1051 and R-1052, then the pause on
-the page — the dashboard's `pause` object and the graph's `paused` node
-state with its treatment, mark, reducer cases and seed (DECISION F025
-D3).
+ROUND 6, T003's second part (DECISION F025 D4): the pause request
+module that reads the door's answer, the pure pause view, the pause
+banner in the graph's chrome, the NowCard's "Paused by you", and the
+pause and resume buttons for the job and for a task.
 
 ## Next Steps
 
-1. T003's second part: the door client, the stage banner, the NowCard's
-   "Paused by you" line, and the pause and resume buttons for the job
-   and for a task.
-2. T003's end-to-end: pause mid-build, resume, and a final state equal
+1. T003's end-to-end: pause mid-build, resume, and a final state equal
    to an unpaused control run's, with the session evidence.
-3. The closure sequence.
+2. The closure sequence.
 
 ## Risks
 
-A pause must never strand a job it cannot resume. Open findings: 3 —
-R-1008, owned by F285, and R-1051 and R-1052, owned by F025 and
-repaired this round.
+A pause must never strand a job it cannot resume. Open findings: 1 —
+R-1008, owned by F285.
