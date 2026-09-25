@@ -151,20 +151,33 @@ export async function submitTaskEditRequest(
            body: parsedObjectOrNull(parsed) };
 }
 
-const RELAUNCH_SENTENCE = "Relaunch the job to run it: remedy job run <job id>.";
 const STALE_VERSION_SENTENCE =
   "Not saved: this task changed since you opened it. Close it and edit again.";
+
+/** THE RELAUNCH SENTENCE (R-1061): names the job's real id, in the exact shape
+ *  the operator would type it at the command line, when a `jobId` is known;
+ *  with no `jobId` (the caller could not supply one) it drops the command
+ *  entirely rather than print a placeholder nobody could paste. */
+function relaunchSentence(jobId: string): string {
+  if (jobId === "") {
+    return "Relaunch the job to run it.";
+  }
+  return `Relaunch the job to run it: remedy job run ${jobId}.`;
+}
 
 /** What a 200 reply means: `_dispatch_edit_task`'s own fixed shape, never the
  *  pause door's `outcome` vocabulary. `spec_version` names the version the
  *  edit landed as, and a `state` of `failed` — the task was blocked or failed
  *  when the edit was made — earns the relaunch sentence, because saving alone
  *  never restarts the job. */
-function describeTaskEditAcceptance(body: Record<string, unknown> | null): DecisionOutcomeMessage {
+function describeTaskEditAcceptance(
+  body: Record<string, unknown> | null,
+  jobId: string,
+): DecisionOutcomeMessage {
   const version = body?.spec_version;
   const sentence = `Saved as v${typeof version === "number" ? version : "?"}.`;
   if (body?.state === "failed") {
-    return { tone: "ok", sentence: `${sentence} ${RELAUNCH_SENTENCE}` };
+    return { tone: "ok", sentence: `${sentence} ${relaunchSentence(jobId)}` };
   }
   return { tone: "ok", sentence };
 }
@@ -188,10 +201,16 @@ function describeTaskEditConflict(body: Record<string, unknown> | null): Decisio
 }
 
 /** THE MAPPING: one send's result becomes the one thing to say about it. A
- *  fresh object every call, `pauseSend.ts`'s own rule. */
-export function describeTaskEditResult(result: TaskEditSubmitResult): DecisionOutcomeMessage {
+ *  fresh object every call, `pauseSend.ts`'s own rule. `jobId` (R-1061) names
+ *  the job the relaunch sentence of an accepted, now-`failed`-state edit
+ *  offers to restart; it defaults to empty for a caller with no job id at
+ *  hand, which drops the command from that sentence rather than fake one. */
+export function describeTaskEditResult(
+  result: TaskEditSubmitResult,
+  jobId: string = "",
+): DecisionOutcomeMessage {
   if (result.outcome === "accepted") {
-    return describeTaskEditAcceptance(result.body);
+    return describeTaskEditAcceptance(result.body, jobId);
   }
   if (result.outcome === "refused" && result.status === 409) {
     return describeTaskEditConflict(result.body);
@@ -242,8 +261,12 @@ export async function sendTaskEdit(
   }
   try {
     const settled = await Promise.race([submit(request), deadline().then(() => null)]);
-    return describeTaskEditResult(settled ?? { outcome: "unreachable", status: NO_RESPONSE_STATUS, body: null });
+    return describeTaskEditResult(
+      settled ?? { outcome: "unreachable", status: NO_RESPONSE_STATUS, body: null },
+      target.jobId,
+    );
   } catch {
-    return describeTaskEditResult({ outcome: "unreachable", status: NO_RESPONSE_STATUS, body: null });
+    return describeTaskEditResult(
+      { outcome: "unreachable", status: NO_RESPONSE_STATUS, body: null }, target.jobId);
   }
 }

@@ -16,10 +16,15 @@ from pathlib import Path
 import pytest
 
 from packages.core.models import RunState
-from packages.orchestration import pause_control, safe_points
+from packages.orchestration import dod_gate, pause_control, safe_points
 from packages.orchestration import pingpong_job as ppj
 from packages.orchestration import task_edit_runtime as ter
-from packages.orchestration.data_paths import job_evidence_export_dir, job_record_path, run_dir
+from packages.orchestration.data_paths import (
+    job_evidence_dir,
+    job_evidence_export_dir,
+    job_record_path,
+    run_dir,
+)
 from packages.orchestration.job_evidence import export_job_evidence
 from packages.orchestration.job_plan import (
     APPROVED_PLAN_HASH_KEY,
@@ -438,7 +443,7 @@ class TestInPlaceUpdateAndTheLog:
         assert set(runtime) == {
             "task_id", "planned_id", "state", "spec_version", "status_before",
             "status_after", "restored", "approved_plan_sha256_before",
-            "approved_plan_sha256_after", "archive",
+            "approved_plan_sha256_after", "archive", "dod_resync_pending",
         }
         assert runtime["task_id"] == task_id
         assert runtime["planned_id"] == "T1"
@@ -467,6 +472,39 @@ class TestInPlaceUpdateAndTheLog:
         _edit(root, job_id, task_id, {"title": "x", "goal": "y"})
         job = load_job_plan(job_id, root)
         assert approved_plan_mismatch(job) is None
+
+
+# ---------------------------------------------------------------------------
+# R-1062 — the pending DoD re-sync note
+# ---------------------------------------------------------------------------
+
+def _store_dod(root: Path, job_id: str) -> None:
+    directory = job_evidence_dir(job_id, root)
+    directory.mkdir(parents=True, exist_ok=True)
+    (directory / dod_gate.DOD_FILENAME).write_text("{}", encoding="utf-8")
+
+
+class TestDodResyncPending:
+
+    def test_stored_dod_and_acceptance_edit_reads_true(self, root):
+        job_id = _save_job(root, _TASKS)
+        _store_dod(root, job_id)
+        task_id = _task_id_of(root, job_id, "T1")
+        result = _edit(root, job_id, task_id, {"acceptance": ["new criterion"]})
+        assert result.entry["runtime"]["dod_resync_pending"] is True
+
+    def test_stored_dod_and_title_only_edit_reads_false(self, root):
+        job_id = _save_job(root, _TASKS)
+        _store_dod(root, job_id)
+        task_id = _task_id_of(root, job_id, "T1")
+        result = _edit(root, job_id, task_id, {"title": "Renamed"})
+        assert result.entry["runtime"]["dod_resync_pending"] is False
+
+    def test_no_stored_dod_and_acceptance_edit_reads_false(self, root):
+        job_id = _save_job(root, _TASKS)
+        task_id = _task_id_of(root, job_id, "T1")
+        result = _edit(root, job_id, task_id, {"acceptance": ["new criterion"]})
+        assert result.entry["runtime"]["dod_resync_pending"] is False
 
 
 # ---------------------------------------------------------------------------

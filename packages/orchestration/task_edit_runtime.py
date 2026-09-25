@@ -26,8 +26,8 @@ from typing import Any
 
 from packages.common.secure_fs import durable_write_json
 from packages.core.models import RunState
-from packages.orchestration import pause_control, safe_points
-from packages.orchestration.data_paths import job_evidence_export_dir
+from packages.orchestration import dod_gate, pause_control, safe_points
+from packages.orchestration.data_paths import job_evidence_dir, job_evidence_export_dir
 from packages.orchestration.job_plan import (
     APPROVED_PLAN_HASH_KEY,
     map_task_plan_to_tasks,
@@ -321,6 +321,13 @@ def edit_task_at_runtime(
         except ValueError:
             archive_rel = str(archive_path)
 
+        # R-1062 / T5_F026.md "Edge cases & assumption defaults": editing acceptance
+        # after a DoD was already compiled leaves that DoD's traceability rule stale
+        # until the next compile re-syncs it, so the edit log notes the pending
+        # re-sync instead of staying silent about the drift.
+        has_stored_dod = (job_evidence_dir(job_id, root) / dod_gate.DOD_FILENAME).is_file()
+        dod_resync_pending = "acceptance" in fields and has_stored_dod
+
         log_entry["runtime"] = {
             "task_id": task_id,
             "planned_id": planned_id,
@@ -332,6 +339,7 @@ def edit_task_at_runtime(
             "approved_plan_sha256_before": approved_before,
             "approved_plan_sha256_after": approved_after,
             "archive": archive_rel,
+            "dod_resync_pending": dod_resync_pending,
         }
 
         new_body[EDIT_LOG_KEY] = [*body.get(EDIT_LOG_KEY, []), log_entry]

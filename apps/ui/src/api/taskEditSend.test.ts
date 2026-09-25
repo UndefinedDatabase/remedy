@@ -108,11 +108,20 @@ describe("describeTaskEditResult", () => {
     expect(message.tone).toBe("ok");
   });
 
-  it("adds the relaunch sentence when the body's state is failed", () => {
+  it("adds the relaunch sentence naming the job when the body's state is failed", () => {
+    const message = describeTaskEditResult(
+      { outcome: "accepted", status: 200, body: { spec_version: 2, state: "failed" } },
+      JOB_ID,
+    );
+    expect(message.sentence).toBe(
+      `Saved as v2. Relaunch the job to run it: remedy job run ${JOB_ID}.`);
+  });
+
+  it("drops the relaunch command when no jobId is given", () => {
     const message = describeTaskEditResult(
       { outcome: "accepted", status: 200, body: { spec_version: 2, state: "failed" } },
     );
-    expect(message.sentence).toBe("Saved as v2. Relaunch the job to run it: remedy job run <job id>.");
+    expect(message.sentence).toBe("Saved as v2. Relaunch the job to run it.");
   });
 
   it("does not add the relaunch sentence for a waiting or paused task", () => {
@@ -174,6 +183,16 @@ describe("sendTaskEdit", () => {
     });
     expect(sent).toHaveLength(1);
     expect(answer.sentence).toBe("Saved as v2.");
+  });
+
+  it("passes the target's job id into the relaunch sentence", async () => {
+    const submit = () => Promise.resolve(
+      { outcome: "accepted", status: 200, body: { spec_version: 2, state: "failed" } } as TaskEditSubmitResult);
+    const answer = await sendTaskEdit(TARGET, TASK_ID, FIELDS, 1, {
+      mintNonce: () => GOOD_NONCE, submit, deadline: () => new Promise(() => {}),
+    });
+    expect(answer.sentence).toBe(
+      `Saved as v2. Relaunch the job to run it: remedy job run ${JOB_ID}.`);
   });
 
   it("never reaches the network when no nonce can be minted", async () => {
