@@ -1,0 +1,1 @@
+2026-09-25, F025 round 4 — DECISION F025 D2 gave the word `job.pause` to the new verb without naming that F261 had retired it when it deleted the queue worker's pause, so the worker found the retirement in `tests/test_command_catalog.py` itself and declared the edit; nothing on disk is wrong, and the round 4 gate entry records the reuse.
