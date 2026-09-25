@@ -299,6 +299,12 @@ end the response with:
   block that quoted a sentence for the operator with an angle-bracket placeholder, which the worker
   then shipped as literal text, is item 18's reading of an ordered recipe against the property it
   must establish, here a command the operator can run as shown. The list stays at 34 items.
+  Consolidated a sixteenth time at F285's closure on 2026-09-26: nothing joined and no two items
+  were merged, because F285 wrote no line to `.agent/prose_slips.md`: its rounds' blocks were
+  generated from simulated trees and every worker reading matched them. The one environment lesson
+  its rounds met, a selection that starts a live UI server run before `apps/ui` was built, is
+  recorded in the round 2 gate entry and is item 12's reading of the environment a dry run must
+  share with the gate it proves. The list stays at 34 items.
   The next consolidation measures against 34.
   Reverse by deleting this paragraph.
   1. **Size.** Count the block's lines. Over 400 (DECISION F105 D5) → split or
