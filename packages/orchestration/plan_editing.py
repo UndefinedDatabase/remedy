@@ -82,6 +82,9 @@ class PlanEditRefused(ValueError):
     ``lock_timeout`` and ``approval_closed``; ``current_version`` is the stored plan's
     version whenever one was read. A ``ValueError``, so the write door's own
     ``rejected_effect`` clause answers any code the door does not handle itself.
+    ``packages/orchestration/task_edit_runtime.py`` (DECISION F026 D1) raises this same
+    class with four codes this list does not carry — ``job_not_editable``,
+    ``task_not_editable``, ``not_a_plan_task`` and ``spec_archive_conflict``.
     """
 
     def __init__(self, code: str, detail: str, *, current_version: int | None = None) -> None:
