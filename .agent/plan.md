@@ -13,23 +13,19 @@ the stage-1 performance budget (`docs/roadmap/features/T5_F023.md`).
 
 ## Current Step
 
-ROUND 7, T003's LAST PART: book round 6's PASS, record DECISION F023
-D7, and land the live end-to-end
-`tests/ui_server/test_semantic_zoom_live.py`, the zoom's performance
-tool kept as evidence under `.agent/authored/f023-r7-perf-*`, the
-worker's own run of it at 500 nodes over every zoom level, and the
-run detail's missing golden for a restarted task.
+ROUND 8, THE CLOSURE SEQUENCE'S FIRST HALF: book round 7's PASS, write
+the Built State and the last assumption row, consolidate the checklist,
+record the self-use track's answer, and run this feature's one full
+suite. T001, T002 and T003 are built.
 
 ## Next Steps
 
-1. The closure sequence's first half: the Built State, the checklist
-   consolidation, the self-use track and the one full suite.
-2. The closure sequence's evidence half: the evidence bundle and the
-   review package.
-3. The closing round: the ledger rotation, the STATUS flip with its
+1. The closure's evidence half: the evidence bundle and the review
+   package, after any repair the full suite requires.
+2. The closing round: the ledger rotation, the STATUS flip with its
    README pins, and the pull request.
 
 ## Risks
 
-Headless Chrome paces frames at 60 Hz, so the budget reading shows no
-dropped frame rather than headroom. Open findings: 1, owned by F285.
+A red full suite is this feature's to repair under amend0917 rule 2.
+Open findings: 1, owned by F285.
