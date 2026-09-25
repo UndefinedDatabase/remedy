@@ -12,20 +12,18 @@ its prompt trace (`docs/roadmap/features/T5_F026.md`).
 
 ## Current Step
 
-ROUND 6, the closure's repair round: book round 5, resolve R-1061,
-register and repair R-1063, make R-1062's flag read a CHANGED acceptance,
-and take the feature's one full suite again on the repaired tree.
+ROUND 7, the closure's evidence round: book round 6, resolve R-1062 and
+R-1063, build the evidence bundle against the fork point, and build the
+fresh review package.
 
 ## Next Steps
 
-1. The closure's evidence round: book round 6, build the evidence
-   bundle and the review package.
-2. The closing round: rotate the ledger, accept F026 in STATUS with its
-   README pins and the self-use item's `consumed_by`, open the pull
-   request.
+1. The closing round: book round 7, rotate the ledger, accept F026 in
+   STATUS with its README pins and the self-use item's `consumed_by`,
+   and open the pull request.
 
 ## Risks
 
-The suite must come back green on the tree that ships. Open findings:
-6 — R-1008, R-1055, R-1057 and R-1058, owned by F285, and R-1062 and
-R-1063, owned by F026.
+The accepted head is this round's records commit; nothing may land after
+it before the package. Open findings: 5 — R-1008, R-1055, R-1057,
+R-1058 and R-1064, all owned by F285.
