@@ -417,3 +417,209 @@ def _assert_matches_control(data_dir: Path, job_id: str, control_id: str) -> Non
         _task_level_event_names(data_dir, control_id)
 
 
+# ---------------------------------------------------------------------------
+# E3 JOB SCOPE
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.subprocess
+class TestJobScopeE2ELive:
+    def test_pause_relaunch_through_the_cli_matches_an_unpaused_control(self, tmp_path):
+        repo_root = Path(__file__).resolve().parents[2]
+        target = tmp_path / "repo"
+        target.mkdir()
+        (target / "README.md").write_text("# demo\n")
+        data_dir = tmp_path / "remedy_data"
+        data_dir.mkdir()
+
+        job_file = tmp_path / "job.md"
+        job_file.write_text(_THREE_TASK_JOB)
+        metafile = tmp_path / "meta.txt"
+        script = tmp_path / "runner.py"
+        script.write_text(textwrap.dedent(_RUNNER).format(
+            repo=str(repo_root), job_file=str(job_file), target=str(target),
+            metafile=str(metafile), sleep=_CALL_SLEEP_S))
+
+        env = dict(os.environ, REMEDY_DATA_DIR=str(data_dir), PYTHONPATH=str(repo_root))
+        baseline = {c.pid for c in psutil.Process().children(recursive=True)}
+        proc = subprocess.Popen([sys.executable, str(script)], env=env,
+                                stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                text=True)
+        try:
+            deadline = time.monotonic() + 60.0
+            while time.monotonic() < deadline:
+                if metafile.is_file() and metafile.read_text().strip():
+                    break
+                assert proc.poll() is None, "the runner exited before writing its metafile"
+                time.sleep(0.02)
+            else:
+                pytest.fail("the runner never wrote its metafile within 60s")
+            job_id = metafile.read_text().splitlines()[0]
+
+            # Wait for task 1 to complete (durably applied) before pausing, so
+            # the pause lands during task 2's own call — one already in flight.
+            deadline = time.monotonic() + 90.0
+            while time.monotonic() < deadline:
+                job_json = job_record_path(job_id, data_dir)
+                if job_json.is_file():
+                    statuses = [t["status"] for t in json.loads(job_json.read_text() or "{}")
+                               .get("tasks", [])]
+                    if statuses and statuses[0] == "applied_to_job_workspace":
+                        break
+                assert proc.poll() is None, "the runner exited before task 1 completed"
+                time.sleep(0.02)
+            else:
+                pytest.fail("task 1 never completed within 90s")
+
+            task1_run_id = _job_data(data_dir, job_id)["tasks"][0]["run_id"]
+
+            os.environ["REMEDY_DATA_DIR"] = str(data_dir)
+            try:
+                port, token = _start_ui_server_for_job(job_id, tmp_path)
+                status, body = _post(port, token, "job.pause", job_id=job_id,
+                                     nonce="n-pause")
+                assert status == 200, body
+                assert body["outcome"] == "requested", body
+            finally:
+                os.environ.pop("REMEDY_DATA_DIR", None)
+
+            out, err = proc.communicate(timeout=120)
+            assert proc.returncode == 0, f"runner exited {proc.returncode}: {err}"
+            assert "FINAL:paused" in out, out
+        finally:
+            if proc.poll() is None:
+                proc.kill()
+                proc.wait(timeout=30)
+
+        data = _job_data(data_dir, job_id)
+        assert data["status"] == "paused"
+        assert data["pause"]["scope"] == "job"
+        assert not psutil.pid_exists(proc.pid) or \
+            psutil.Process(proc.pid).status() == psutil.STATUS_ZOMBIE
+        assert _test_owned_children(baseline, tmp_path) == []
+
+        os.environ["REMEDY_DATA_DIR"] = str(data_dir)
+        try:
+            port, token = _start_ui_server_for_job(job_id, tmp_path)
+            status, body = _post(port, token, "job.unpause", job_id=job_id,
+                                 nonce="n-unpause")
+            assert status == 200, body
+            assert body["outcome"] == "parked", body
+            relaunch = body["next"]
+            assert relaunch == f"remedy job run {job_id}", body
+        finally:
+            os.environ.pop("REMEDY_DATA_DIR", None)
+
+        # "Running that command" — the real CLI, as a subprocess, exactly the
+        # way the operator would type it (DECISION F025 D5 clause 1).
+        relaunch_env = dict(os.environ, REMEDY_DATA_DIR=str(data_dir),
+                            PYTHONPATH=str(repo_root))
+        relaunch_proc = subprocess.run(
+            [sys.executable, "-m", "apps.cli.main", "job", "run", job_id],
+            cwd=str(repo_root), env=relaunch_env, capture_output=True, text=True,
+            timeout=120)
+        assert relaunch_proc.returncode == 0, (
+            f"relaunch exited {relaunch_proc.returncode}: {relaunch_proc.stderr}")
+
+        resumed = _job_data(data_dir, job_id)
+        assert resumed["status"] == "completed"
+        assert len(_events(data_dir, job_id, "job_resumed")) == 1
+        # The task finished before the park keeps its run id — never run again.
+        assert resumed["tasks"][0]["run_id"] == task1_run_id
+        assert _test_owned_children(baseline, tmp_path) == []
+
+        control_id = _run_control(repo_root, target, data_dir, tmp_path, "job_scope_control")
+        _assert_matches_control(data_dir, job_id, control_id)
+
+
+# ---------------------------------------------------------------------------
+# E3 TASK SCOPE
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.subprocess
+class TestTaskScopeE2ELive:
+    def test_pause_relaunch_through_the_cli_matches_an_unpaused_control(self, tmp_path):
+        repo_root = Path(__file__).resolve().parents[2]
+        target = tmp_path / "repo"
+        target.mkdir()
+        (target / "README.md").write_text("# demo\n")
+        data_dir = tmp_path / "remedy_data"
+        data_dir.mkdir()
+
+        job_file = tmp_path / "job.md"
+        job_file.write_text(_THREE_TASK_JOB)
+        metafile = tmp_path / "meta.txt"
+        script = tmp_path / "runner.py"
+        script.write_text(textwrap.dedent(_RUNNER).format(
+            repo=str(repo_root), job_file=str(job_file), target=str(target),
+            metafile=str(metafile), sleep=_CALL_SLEEP_S))
+
+        env = dict(os.environ, REMEDY_DATA_DIR=str(data_dir), PYTHONPATH=str(repo_root))
+        proc = subprocess.Popen([sys.executable, str(script)], env=env,
+                                stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                text=True)
+        try:
+            deadline = time.monotonic() + 60.0
+            while time.monotonic() < deadline:
+                if metafile.is_file() and len(metafile.read_text().splitlines()) >= 4:
+                    break
+                assert proc.poll() is None, "the runner exited before writing its metafile"
+                time.sleep(0.02)
+            else:
+                pytest.fail("the runner never wrote its metafile within 60s")
+            lines = metafile.read_text().splitlines()
+            job_id, task_ids = lines[0], lines[1:4]
+            third_task_id = task_ids[2]
+
+            os.environ["REMEDY_DATA_DIR"] = str(data_dir)
+            try:
+                port, token = _start_ui_server_for_job(job_id, tmp_path)
+                # Named WHILE task 1 runs — "before it starts": the third task
+                # is never dispatched at all.
+                status, body = _post(port, token, "job.pause", job_id=job_id,
+                                     nonce="n-pause-task", args={"task": third_task_id})
+                assert status == 200, body
+                assert (body["outcome"], body["task_id"]) == ("paused", third_task_id), body
+            finally:
+                os.environ.pop("REMEDY_DATA_DIR", None)
+
+            out, err = proc.communicate(timeout=120)
+            assert proc.returncode == 0, f"runner exited {proc.returncode}: {err}"
+            assert "FINAL:paused" in out, out
+        finally:
+            if proc.poll() is None:
+                proc.kill()
+                proc.wait(timeout=30)
+
+        data = _job_data(data_dir, job_id)
+        assert data["status"] == "paused"
+        assert data["pause"]["scope"] == "task"
+        statuses = [t["status"] for t in data["tasks"]]
+        assert statuses[2] == "pending"
+
+        os.environ["REMEDY_DATA_DIR"] = str(data_dir)
+        try:
+            port, token = _start_ui_server_for_job(job_id, tmp_path)
+            status, body = _post(port, token, "job.unpause", job_id=job_id,
+                                 nonce="n-unpause-task", args={"task": third_task_id})
+            assert status == 200, body
+            assert (body["outcome"], body["task_id"]) == ("released", third_task_id), body
+        finally:
+            os.environ.pop("REMEDY_DATA_DIR", None)
+
+        relaunch_env = dict(os.environ, REMEDY_DATA_DIR=str(data_dir),
+                            PYTHONPATH=str(repo_root))
+        relaunch_proc = subprocess.run(
+            [sys.executable, "-m", "apps.cli.main", "job", "run", job_id],
+            cwd=str(repo_root), env=relaunch_env, capture_output=True, text=True,
+            timeout=120)
+        assert relaunch_proc.returncode == 0, (
+            f"relaunch exited {relaunch_proc.returncode}: {relaunch_proc.stderr}")
+
+        resumed = _job_data(data_dir, job_id)
+        assert resumed["status"] == "completed"
+        assert all(t["status"] == "applied_to_job_workspace" for t in resumed["tasks"])
+
+        control_id = _run_control(repo_root, target, data_dir, tmp_path, "task_scope_control")
+        _assert_matches_control(data_dir, job_id, control_id)
