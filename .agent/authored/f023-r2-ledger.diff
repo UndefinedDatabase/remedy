@@ -1,0 +1,68 @@
+diff --git a/.agent/decisions.md b/.agent/decisions.md
+index 34b3aa7a5..196433e42 100644
+--- a/.agent/decisions.md
++++ b/.agent/decisions.md
+@@ -20790,3 +20790,53 @@ new run pushed it into its task's cluster.
+ 
+ HOW TO REVERSE: delete `apps/ui/src/components/graph/semanticZoom.ts`, `zoomWheel.ts`, their two
+ `.test.ts` files, `tests/ui_contracts/test_semantic_zoom_contract.py`, and this paragraph.
++
++## DECISION F023 D2 — the render effects are data computed from the zoom state, the canvas paints them and moves its camera per level under a lock, and the breadcrumbs sit top-left from L1 (2026-09-25)
++
++CONTEXT: T5_F023.md orders T002 as the render effects (dim, glow, expansion) and the L2
++popover, and its Design says L1 dimming and L0 branch glow are render-layer effects driven by
++{level, focusId}, with no model mutation. Measured at `835930ee`: `graph_spec.md` §10 dims L1's
++siblings to 25%, turns the focused task's label on, puts the breadcrumb chip top-left of the
++stage and names the hook `useSemanticZoom.ts`; `ForceBrainGraph.tsx` draws task labels only above
++a camera factor of 1.4, rings the shell's selection, marks a link `active` when its run is in
++flight, and fits the camera to 1.0 once after mount; the library reports every zoom frame through
++`onZoom`, a programmatic `zoom()` included, which the repository's type shim
++`apps/ui/src/types/react-force-graph-2d.d.ts` did not declare; `--remedy-dur-slow` is 350 ms in
++the reference token sheet and absent from the app sheet; `GraphLegend.tsx` is a `role="dialog"`
++closed by its own window-level Escape listener; and the run glyphs already hide below a factor of
++1.6, which is L0's "runs collapsed into branch beads".
++
++CHOSEN: (1) THE EFFECTS are `zoomView.ts`'s `zoomEmphasis`, plain data per state: at L1 and
++deeper every node outside the focused task's branch is dimmed to 25%, the core never, and so is
++every link into a dimmed node; the focused task is labelled at any camera factor, its label dimmed
++with it; the focus ring moves to the task at L1 and to the run at L2 and L3, beside the shell's
++selection ring; and a link glows while its run is in flight, every such link at L0 and only the
++focused branch's deeper, painted in `--remedy-state-current`, the token that paints an
++in-progress node. A focus that a filter chip hides dims nothing. (2) THE CAMERA follows the level
++through `zoomCamera`: the organism at factor 1 around the core, the task centred at 2 and the run
++at 2.4, each on the side of the wheel thresholds its level belongs to, moved over 350 ms, the
++reference `--remedy-dur-slow`, and at once under reduced motion. (3) THE LOCK: while the component
++moves its own camera, the zoom frames it causes update the recorded factor but are never read as
++wheel crossings, because a programmatic move from 1 to 2 crosses 1.6 and would otherwise refocus
++whatever lies under the pointer. (4) THE HOOK is `useSemanticZoom.ts`: it feeds every event
++through the machine, reconciles on every graph change, and walks back on Escape unless the key
++goes to a text field or a dialog is open, whose own Escape closes it first; it exposes the last
++note, which the stage writes as `data-zoom-note`. (5) THE BREADCRUMBS are `ZoomBreadcrumbs.tsx`,
++top-left, hidden at L0, where the trail would be "Job" alone; shallower crumbs are buttons, the
++current one text, the run named by its legend name. (6) A click still selects the task in the
++shell, which opens its task popover, until the L2 run popover lands in T002's second half; a
++background click only clears that selection. (7) THE GUARD is
++`tests/ui_contracts/test_semantic_zoom_wiring.py`, and the reviewer rendered the wiring headless
++before this round, clicking to L1 and L2, pressing Escape, jumping by the Job crumb and wheeling
++out, each landing the level the machine's goldens name, with no page error.
++
++ALTERNATIVES: filtering the layout per level, rejected because T5_F023.md forbids mutating the
++model for an effect and a filtered simulation would re-lay the graph at every step; no camera
++lock, rejected for the refocus above; `--remedy-dur-slow` added to the app sheet, rejected
++because a canvas cannot read it and the guard binds the constant to the reference value; the
++breadcrumbs shown at L0, rejected as a chip with nothing to walk back to.
++
++HOW TO REVERSE: delete `zoomView.ts`, `zoomView.test.ts`, `useSemanticZoom.ts`,
++`ZoomBreadcrumbs.tsx`, `ZoomBreadcrumbs.module.css` and
++`tests/ui_contracts/test_semantic_zoom_wiring.py`, restore `ForceBrainGraph.tsx`,
++`BrainGraphStage.tsx` and the type shim from `835930ee`, and delete this paragraph.
+diff --git a/.agent/live_review.md b/.agent/live_review.md
+index ca353424e..5a7699ac4 100644
+--- a/.agent/live_review.md
++++ b/.agent/live_review.md
+@@ -434,3 +434,5 @@ Gate: F020 R6 — the F020 round 6 entry: the closure sequence's first half, the
+ Gate: F020 R7 — the F020 round 7 entry: the closure sequence's evidence half, the booking of round 6, the evidence bundle and the review package. VERDICT PASS, NO DEVIATION DECLARED. Re-derived over `649661cd`..`9949031e` by the planner and reviewer of F020's first session, whose own runs produced every reading below. THE RANGE IS 3 COMMITS in the block's order C1, C2 and C3, at `09861d08` 365, `ac75d5d4` 7 and `9949031e` 179 insertions by `git show --numstat`, each under the 500-line cap and each single-parent. THE TRANSPORT PROOF IS FILE IDENTITY: the four `.agent/authored/f020-r7-*` copies equal the reviewer's originals, and `.agent/live_review.md` and `.agent/plan.md` at `ac75d5d4` equal the reviewer's simulated tree `.remedy-wt/f020-r7-sim`. THE OPEN SET by distinct id reads R-1008 alone at `649661cd` and at `ac75d5d4`. THE BUNDLE: evidence job `f020r7e1001` against the fork point `955a6240d53fcc88f4480e57a89c0ef702f7c6b9`, ancestry and plain counts equal at 52, 810 node ids collected and 807 passed with 3 skipped at exit 0, an empty `validate_verification_tests` problem list and `is_valid_current_run` True. THE PACKAGE: `remedy-review-20260925-013441-READY_FOR_REVIEW.zip` in `/home/decodeux/Repos/remedy-history/zips`, whose SHA-256 the reviewer read as `a069e502d3956af33f4e7dde2ece1dfd47355c68030181dbd5764af6d026d1e0`, `testzip()` None, and whose manifest names the fork point as base and `ac75d5d4ebe6f7aa908ccdfd1dfa504582b2fb5e`, the ACCEPTED HEAD, as head over 52 commits; all six `integrity check` checks `pass` at `fail_count` 0 at `9949031e`.
+ 
+ Gate: F020 R8 — the F020 round 8 entry, THE CLOSING ROUND: the booking of round 7, the ledger rotation, the STATUS flip with its README pins, and the pull request. VERDICT PASS, NO DEVIATION DECLARED. Reviewed over `9949031e`..`0036e78e` by the planner and reviewer of F020's first session, posted as a comment on pull request 277, and re-measured and booked by F023's claim reviewer, whose own runs produced every reading below. THE RANGE IS 4 COMMITS in the block's order C1 to C4, at `553fd20c` 339, `1b7905f6` 8, `fe22c9f2` 8 and `0036e78e` 194 insertions by `git show --numstat`, each under the 500-line cap and each single-parent. THE TRANSPORT PROOF IS FILE IDENTITY: the six `.agent/authored/f020-r8-*` copies at `553fd20c` equal the reviewer's block and its five payloads under `.remedy-wt/f020-r8-payloads/`. THE ROTATION at `fe22c9f2` took the ledger from 304153 to 296279 bytes and the archive from 4968621 to 4976495, and the open set by distinct id reads R-1008 alone at `9949031e` and at `0036e78e`, owned by F285. THE CLOSURE: at `0036e78e` F020's STATUS line occurs once, equals the authored `f020-r8-status_line.txt` byte for byte, and no line reads `[~]`. AFTER THE ROUND: hosted run `36074214533` on `0036e78e` ended `success` on Python 3.10 and 3.12, pull request 277 merged as `441f4e8e`, whose tree equals `0036e78e`'s, and there the reviewer's run of `tests/docs/` with the golden path read `369 passed` at exit 0 and `integrity check --json` read all six checks `pass` at `fail_count` 0.
++
++Gate: F023 R1 — the F023 round 1 entry: the claim, the re-head with F020's round 8 booked, DECISION F023 D1, and T001. VERDICT PASS, NO DEVIATION DECLARED. Re-derived over `441f4e8e`..`835930ee` by the planner and reviewer of F023's first session, whose own runs produced every reading below, and booked by round 2's first commit. THE RANGE IS 9 COMMITS in the block's order C1a to C5, at `c1fa71ce` 323, `582decb7` 172, `8087bda0` 175, `434da94d` 243, `01c04978` 397, `fc129552` 118, `269a5efe` 243, `a20c7cd2` 397 and `835930ee` 265 insertions by `git show --numstat`, each under the 500-line cap, each single-parent and each carrying the ordered trailer. THE TRANSPORT PROOF IS FILE IDENTITY: every path the range changed apart from the handback reads byte-equal at `835930ee` to the reviewer's simulated tree `.remedy-wt/f023-r1-sim`, the ten `.agent/authored/f023-r1-*` copies included. THE OPEN SET by distinct id reads R-1008 alone at `441f4e8e` and at `835930ee`, and F023's STATUS line is the one `[~]` line. THE TESTS: the worker's serial selection read `1497 passed, 5 skipped` at exit 0 with the four toolchain nodes passing; the reviewer's own run at `835930ee` of `tests/ui_contracts/test_semantic_zoom_contract.py`, `tests/ui_contracts/test_ui_lint.py`, `tests/ui_server/test_dashboard_contract.py`, `tests/orchestration/test_test_runner.py`, `tests/docs` and the golden path read `488 passed` at exit 0 with no skip. THE RED PROOFS: the round's tool caught all fifteen mutations of the machine and its adapter in the reviewer's sim tree and again in the worker's, with both controls green and every file restored byte-identical.
