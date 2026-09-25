@@ -1,0 +1,64 @@
+diff --git a/.agent/decisions.md b/.agent/decisions.md
+index 8248ab228..0c7bd8aa5 100644
+--- a/.agent/decisions.md
++++ b/.agent/decisions.md
+@@ -21130,3 +21130,49 @@ for the reason (5) gives.
+ 
+ HOW TO REVERSE: delete `apps/ui/src/components/timeline/phaseMapping.ts`, its `.test.ts`,
+ `tests/ui_contracts/test_phase_mapping.py`, and this paragraph.
++
++## DECISION F024 D2 — the scrubber serves the reducer state at any seq from a memo of snapshots every 200 seq, capped at 64 and dropped farthest-first, invalidated by the rows they should have held, and held to a fresh fold at fuzzed positions (2026-09-25)
++
++CONTEXT: T5_F024.md orders T002 as snapshot memoization every 200 seq, the prefix-equality
++property test at fuzzed positions, and the memory cap: drop distant snapshots beyond it, rebuild
++on demand, invalidate only on snapshot-refetch resets and rebuild lazily. Measured at `78d60af2`:
++`rebuildBrainModel` in `apps/ui/src/components/graph/brainReducer.ts` seeds and folds a ledger
++with a repeated seq kept once, the first winning; `reduceBrainEvent` returns the same object for
++a row at or below the model's last seq; the ledger's seq is its own position and may arrive with
++gaps, which the stream's gap path refetches; DECISION F024 D1's timeline seed resets every task
++status to pending; and the vitest environment is `node`, with no fuzzing library installed.
++
++CHOSEN: (1) THE MODULE is `apps/ui/src/components/timeline/scrubSnapshots.ts`, a factory
++`createScrubMemo(job, tasks, {every, cap})` whose memo keeps the ledger sorted by seq and a map of
++snapshots, with no React, DOM or clock; T003's hook wraps it. (2) A SNAPSHOT at boundary b is the
++state after every row whose seq is below b, for b a positive multiple of `every`, 200 by default
++(`SNAPSHOT_EVERY`); the state at s is the snapshot at the largest boundary not above s + 1, or the
++timeline seed, folded forward over the rows from that boundary to s — at most `every` − 1
++reductions once the snapshot exists. (3) A MISSING snapshot is built from the nearest lower one
++the memo kept, or from the seed, and every boundary on the way is stored. (4) THE CAP is 64
++snapshots (`SNAPSHOT_CAP`), 12 800 seq of ledger at the default spacing; beyond it the snapshot
++farthest from the position being served is dropped, the lower of two equally far, and rebuilt
++from the nearest lower one if a later position needs it. (5) INVALIDATION: a row whose seq the
++memo already holds is dropped, the first winning as in `rebuildBrainModel`; any new row drops
++every snapshot above its seq, which for a row at the head is none and after a gap, or after a
++query past the head, is every one that should have held it; `reset(rows)`, the snapshot-refetch
++of gap recovery, replaces the ledger and drops every snapshot. (6) THE PROPERTY TEST draws
++ledgers from a seeded linear congruential generator — seqs with gaps, repeated seqs, every
++reducer kind, seeded and unseeded tasks, shuffled — and compares the memo's state at fuzzed
++positions, before the first row and past the last, with `rebuildBrainModel` over the timeline
++seed and the prefix, at the default spacing, at a spacing of 5 with a cap of 3 queried in random
++order, while the ledger grows page by page, and over the demo recording. (7) THE GUARD is
++`tests/ui_contracts/test_scrub_snapshots.py`: the spacing equals the figure T5_F024.md and the
++roadmap state, the memo imports only the reducer, its ontology and the timeline seed and touches
++no DOM, clock or React state, and the property test's oracle is `rebuildBrainModel` imported from
++the reducer.
++
++ALTERNATIVES: snapshots keyed by ledger index rather than seq, rejected because the scrubber's
++position is a seq and a gap would shift every index after it; dropping snapshots only on a reset,
++as the feature file words it, rejected because a gap filled by live ingestion would otherwise
++leave snapshots that silently lack a row; least-recently-used eviction, rejected because the
++scrubber's next position is near its last one, which distance serves directly; a fuzzing library,
++rejected because none is installed and a seeded generator replays a red run exactly.
++
++HOW TO REVERSE: delete `apps/ui/src/components/timeline/scrubSnapshots.ts`, its `.test.ts`,
++`tests/ui_contracts/test_scrub_snapshots.py`, and this paragraph.
+diff --git a/.agent/live_review.md b/.agent/live_review.md
+index ff46ac5cc..98f2f9e96 100644
+--- a/.agent/live_review.md
++++ b/.agent/live_review.md
+@@ -435,3 +435,5 @@ Gate: F023 R8 — the F023 round 8 entry: the closure sequence's first half, the
+ Gate: F023 R9 — the F023 round 9 entry: the closure sequence's evidence half, the booking of round 8, the evidence bundle and the review package. VERDICT PASS, NO DEVIATION DECLARED. Re-derived over `fecd022a`..`940d8174` by the planner and reviewer of F023's first session, whose own runs produced every reading below, and booked by round 10's first commit. THE RANGE IS 3 COMMITS in the block's order C1, C2 and C3, at `28be0df0` 376, `54e5ffd2` 10 and `940d8174` 214 insertions by `git show --numstat`, each under the 500-line cap, each single-parent and each carrying the ordered trailer. THE TRANSPORT PROOF IS FILE IDENTITY: the three `.agent/authored/f023-r9-*` payload copies, `.agent/live_review.md` and `.agent/plan.md` read byte-equal at `940d8174` to the reviewer's simulated tree `.remedy-wt/f023-r9-sim`, and the block copy's sha256 equals the digest the delegation named, `c911b8db`. THE OPEN SET by distinct id reads R-1008 alone at `fecd022a` and at `54e5ffd2`. THE BUNDLE: evidence job `f023r9e1001` against the fork point `441f4e8e3a041ed7db42043ef112176d573c816c`, ancestry and plain counts equal at 69, 706 node ids collected and 706 passed at exit 0, an empty `validate_verification_tests` problem list and `is_valid_current_run` True. THE PACKAGE: `remedy-review-20260925-052148-READY_FOR_REVIEW.zip` in `/home/decodeux/Repos/remedy-history/zips`, whose SHA-256 the reviewer read as `6e041624017f41e1644f71f3d8c18ae8dd4d677b1d8df4fe6206f89b6f76b4bb`, `testzip()` None, and whose manifest names the fork point as base and `54e5ffd2485bf90c405f5ad662b7d86be8dd3eb9`, the ACCEPTED HEAD, as head over 69 commits; all six `integrity check` checks `pass` at `fail_count` 0 at `940d8174`.
+ 
+ Gate: F023 R10 — the F023 round 10 entry, THE CLOSING ROUND: the booking of round 9, the ledger rotation, the STATUS flip with its README pins, and the pull request. VERDICT PASS, NO DEVIATION DECLARED. Reviewed over `940d8174`..`ebccd40c` by the planner and reviewer of F023's first session, posted as a comment on pull request 278, and re-measured and booked by F024's claim reviewer, whose own runs produced every reading below. THE RANGE IS 4 COMMITS in the block's order C1 to C4, at `61b86dcc` 356, `87c662e8` 9, `cca261ec` 16 and `ebccd40c` 196 insertions by `git show --numstat`, each under the 500-line cap and each single-parent. THE TRANSPORT PROOF IS FILE IDENTITY: the six `.agent/authored/f023-r10-*` copies at `61b86dcc` equal the reviewer's block and its five payloads under `.remedy-wt/f023-r10-payloads/`. THE ROTATION at `cca261ec` took the ledger from 313141 to 296371 bytes and the archive from 4976495 to 4993265, and the open set by distinct id reads R-1008 alone at `940d8174` and at `ebccd40c`, owned by F285. THE CLOSURE: at `ebccd40c` F023's STATUS line occurs once, equals the authored `f023-r10-status_line.txt` byte for byte, and no line reads `[~]`. AFTER THE ROUND: hosted run `36091023382` on `ebccd40c` ended `success` on Python 3.10 and 3.12, pull request 278 merged as `1bb3a35d`, whose tree equals `ebccd40c`'s, and there the reviewer's run of `tests/docs/` with the golden path read `369 passed` at exit 0 and `integrity check --json` read all six checks `pass` at `fail_count` 0.
++
++Gate: F024 R1 — the F024 round 1 entry: the claim, the re-head with F023's round 10 booked, DECISION F024 D1, and T001, the phase mapping table, the phase boundaries of any prefix and the sub-glyph extraction. VERDICT PASS, NO DEVIATION DECLARED. Re-derived over `1bb3a35d`..`78d60af2` by the planner and reviewer of F024's first session, whose own runs produced every reading below, and booked by round 2's first commit. THE RANGE IS 9 COMMITS in the block's order C1a to C5, at `cf6406f0` 318, `d5cfbbe3` 147, `630df596` 170, `65a64a85` 213, `11a1b9a4` 395, `0788f61a` 121, `c9f83db5` 213, `cc4fd4e7` 395 and `78d60af2` 247 insertions by `git show --numstat`, each under the 500-line cap, each single-parent and each carrying the ordered trailer. THE TRANSPORT PROOF IS FILE IDENTITY: every path the range changed apart from the handback reads byte-equal at `78d60af2` to the reviewer's simulated tree `.remedy-wt/f024-r1-sim`, and the block copy's sha256 equals the digest the delegation named, `e3a55df5`. THE OPEN SET by distinct id reads R-1008 alone at `1bb3a35d` and at `78d60af2`. THE TESTS: the worker's serial selection read `1546 passed, 5 skipped` at exit 0 with the four toolchain nodes passing; the reviewer's own run at `78d60af2` of the phase-mapping and timeline guards, the event-name table, `tests/docs/` and the golden path read `424 passed` at exit 0, its vitest run of `src/components/timeline` read `24 passed` at exit 0, and `integrity check --json` read all six checks `pass` at `fail_count` 0. THE RED PROOFS: the round's tool caught all fifteen mutations of the mapping, the boundaries, the sub-glyphs and the guard, in the reviewer's sim tree and again in the worker's, with both controls green and every file restored byte-identical.
