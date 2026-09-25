@@ -19,8 +19,11 @@ ready sets that read them are a later round's work (D1, clause 9).
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import os
+import re
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -33,19 +36,32 @@ __all__ = [
     "PauseControlError",
     "PauseSignal",
     "TaskPause",
+    "WithheldTasks",
     "request_pause",
     "pause_requested",
     "settle_pause",
     "withdraw_pause",
+    "request_task_pause",
+    "release_task_pause",
+    "paused_tasks",
+    "withheld_task_ids",
 ]
 
 PAUSE_SIGNAL_VERSION = 1
 
 PAUSE_REQUEST_FILENAME = "pause.json"
 PAUSE_ARCHIVE_DIRNAME = "pause_archive"
+PAUSED_TASKS_DIRNAME = "paused_tasks"
+TASK_ARCHIVE_SUBDIR = "tasks"
 #: Mirrors ``safe_points.JOBS_DIRNAME`` — used only to compose the control-relative report
 #: path ``settle_pause`` returns; no file operation ever opens a path by this name.
 JOBS_DIRNAME = "jobs"
+
+#: A task id is operator/planner input that becomes a filename's SOURCE, not the filename
+#: itself (the file is named by its digest, never by the id) — so it is bounded and refused if
+#: it carries a control character, but never made "safe" by stripping anything out of it.
+MAX_TASK_ID_CHARS = 200
+_CONTROL_CHAR_RE = re.compile(r"[\x00-\x1f\x7f]")
 
 _VALID_SETTLE_OUTCOMES = frozenset({"served", "withdrawn", "superseded_by_stop"})
 
@@ -118,6 +134,23 @@ def _bounded(text: Any, limit: int, fallback: str) -> str:
     return cleaned[:limit]
 
 
+def _validate_task_id(task_id: Any) -> str:
+    if (not isinstance(task_id, str) or not task_id or len(task_id) > MAX_TASK_ID_CHARS
+            or _CONTROL_CHAR_RE.search(task_id)):
+        raise PauseControlError(
+            f"invalid task id {task_id!r}: a task id is 1-{MAX_TASK_ID_CHARS} characters "
+            f"with no control character")
+    return task_id
+
+
+def _task_pause_filename(task_id: str) -> str:
+    """The file is named by a digest of the id, never by the id itself (S4): an id holding
+    ``/``, ``..`` or any other path-shaped text can never become — or escape — a path
+    component."""
+    digest = hashlib.sha256(task_id.encode("utf-8")).hexdigest()[:32]
+    return f"{digest}.json"
+
+
 # ---------------------------------------------------------------------------
 # One verified subdirectory of the job's control directory — pause_archive/, paused_tasks/,
 # and pause_archive/tasks/ all go through this. Mirrors safe_points._open_archive_fd.
@@ -171,6 +204,29 @@ def _parse_pause_signal(job_id: str, raw: bytes) -> PauseSignal:
         source=_bounded(data.get("source"), _sp.MAX_SOURCE_CHARS, UNKNOWN_SOURCE),
         requested_at=str(data.get("requested_at") or ""),
         pause_signal_v=int(data.get("pause_signal_v") or PAUSE_SIGNAL_VERSION),
+    )
+
+
+def _parse_task_pause(job_id: str, raw: bytes) -> TaskPause:
+    try:
+        data = json.loads(raw.decode("utf-8"))
+    except (ValueError, UnicodeDecodeError) as exc:
+        raise PauseControlError(f"the task pause entry is not valid JSON: {exc}") from exc
+    if not isinstance(data, dict):
+        raise PauseControlError("the task pause entry is not a JSON object")
+    task_id = data.get("task_id")
+    request_id = data.get("request_id")
+    if not isinstance(task_id, str) or not task_id:
+        raise PauseControlError("the task pause entry carries no task id")
+    if not isinstance(request_id, str) or not request_id:
+        raise PauseControlError("the task pause entry carries no request id")
+    return TaskPause(
+        job_id=job_id,
+        task_id=task_id,
+        request_id=request_id,
+        reason=_bounded(data.get("reason"), _sp.MAX_REASON_CHARS, UNKNOWN_REASON),
+        source=_bounded(data.get("source"), _sp.MAX_SOURCE_CHARS, UNKNOWN_SOURCE),
+        requested_at=str(data.get("requested_at") or ""),
     )
 
 
@@ -289,3 +345,200 @@ def withdraw_pause(job_id: str, *,
         return None
     settle_pause(jid, pending, "withdrawn", control_root_path=control_root_path)
     return pending
+
+
+# ---------------------------------------------------------------------------
+# S4 — task scope
+# ---------------------------------------------------------------------------
+
+
+def request_task_pause(job_id: str, task_id: str, reason: str = "", source: str = "cli", *,
+                       control_root_path: Path | None = None) -> TaskPause:
+    """Pause one task. Create-only per task, named by digest. Pausing a paused task returns
+    its existing entry unchanged."""
+    jid = _sp.validate_job_id(job_id)
+    tid = _validate_task_id(task_id)
+    job_fd = _sp.open_job_control_fd(jid, control_root_path, create=True)
+    assert job_fd is not None
+    tasks_fd = None
+    try:
+        tasks_fd = _open_named_dir(job_fd, PAUSED_TASKS_DIRNAME, create=True)
+        assert tasks_fd is not None
+        name = _task_pause_filename(tid)
+        existing = _fs.read_verified_file(name, tasks_fd, max_bytes=_sp.MAX_CONTROL_BYTES,
+                                          error_cls=PauseControlError, noun="task pause")
+        if existing is not None:
+            return _parse_task_pause(jid, existing)
+
+        pause = TaskPause(
+            job_id=jid,
+            task_id=tid,
+            request_id=_sp.new_request_id(),
+            reason=_bounded(reason, _sp.MAX_REASON_CHARS, UNKNOWN_REASON),
+            source=_bounded(source, _sp.MAX_SOURCE_CHARS, UNKNOWN_SOURCE),
+            requested_at=_sp.utc_now_iso(),
+        )
+        published = _fs.write_file_atomically(
+            tasks_fd, name, _fs.json_bytes(pause.to_json()), create_only=True,
+            file_mode=_sp.CONTROL_FILE_MODE, error_cls=PauseControlError, noun="task pause")
+        if not published:
+            raw = _fs.read_verified_file(name, tasks_fd, max_bytes=_sp.MAX_CONTROL_BYTES,
+                                         error_cls=PauseControlError, noun="task pause")
+            if raw is None:
+                raise PauseControlError(
+                    "the task pause vanished during publication; no pause was requested")
+            return _parse_task_pause(jid, raw)
+        return pause
+    finally:
+        if tasks_fd is not None:
+            os.close(tasks_fd)
+        os.close(job_fd)
+
+
+def release_task_pause(job_id: str, task_id: str, *,
+                       control_root_path: Path | None = None) -> TaskPause | None:
+    """Archive the entry under ``pause_archive/tasks/`` as ``released``, then remove it.
+    None, and nothing written, when the task is not paused."""
+    jid = _sp.validate_job_id(job_id)
+    tid = _validate_task_id(task_id)
+    job_fd = _sp.open_job_control_fd(jid, control_root_path, create=False)
+    if job_fd is None:
+        return None
+    tasks_fd = None
+    archive_fd = None
+    archive_tasks_fd = None
+    try:
+        tasks_fd = _open_named_dir(job_fd, PAUSED_TASKS_DIRNAME, create=False)
+        if tasks_fd is None:
+            return None
+        name = _task_pause_filename(tid)
+        raw = _fs.read_verified_file(name, tasks_fd, max_bytes=_sp.MAX_CONTROL_BYTES,
+                                     error_cls=PauseControlError, noun="task pause")
+        if raw is None:
+            return None
+        pause = _parse_task_pause(jid, raw)
+
+        archive_fd = _open_named_dir(job_fd, PAUSE_ARCHIVE_DIRNAME, create=True)
+        assert archive_fd is not None
+        archive_tasks_fd = _open_named_dir(archive_fd, TASK_ARCHIVE_SUBDIR, create=True)
+        assert archive_tasks_fd is not None
+        payload = dict(pause.to_json())
+        payload["outcome"] = "released"
+        payload["settled_at"] = _sp.utc_now_iso()
+        _fs.write_file_atomically(archive_tasks_fd, name, _fs.json_bytes(payload),
+                                  create_only=True, file_mode=_sp.CONTROL_FILE_MODE,
+                                  error_cls=PauseControlError, noun="task pause archive")
+
+        _fs.require_writable_dir(tasks_fd, error_cls=PauseControlError, noun="pause-control",
+                                 label=name)
+        _fs.unlink_at(name, tasks_fd, error_cls=PauseControlError, noun="task pause")
+        return pause
+    finally:
+        if archive_tasks_fd is not None:
+            os.close(archive_tasks_fd)
+        if archive_fd is not None:
+            os.close(archive_fd)
+        if tasks_fd is not None:
+            os.close(tasks_fd)
+        os.close(job_fd)
+
+
+def paused_tasks(job_id: str, *,
+                 control_root_path: Path | None = None) -> tuple[TaskPause, ...]:
+    """Every paused task, ordered by ``requested_at`` then ``task_id``. An entry that cannot
+    be read or parsed RAISES — dropping it would dispatch a task the operator paused."""
+    jid = _sp.validate_job_id(job_id)
+    job_fd = _sp.open_job_control_fd(jid, control_root_path, create=False)
+    if job_fd is None:
+        return ()
+    tasks_fd = None
+    try:
+        tasks_fd = _open_named_dir(job_fd, PAUSED_TASKS_DIRNAME, create=False)
+        if tasks_fd is None:
+            return ()
+        names = _fs.list_dir_names(tasks_fd, error_cls=PauseControlError,
+                                   noun="paused tasks")
+        out: list[TaskPause] = []
+        for name in names:
+            raw = _fs.read_verified_file(name, tasks_fd, max_bytes=_sp.MAX_CONTROL_BYTES,
+                                         error_cls=PauseControlError, noun="task pause")
+            if raw is None:
+                continue
+            out.append(_parse_task_pause(jid, raw))
+        out.sort(key=lambda p: (p.requested_at, p.task_id))
+        return tuple(out)
+    finally:
+        if tasks_fd is not None:
+            os.close(tasks_fd)
+        os.close(job_fd)
+
+
+# ---------------------------------------------------------------------------
+# S5 — the mask, pure
+# ---------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class WithheldTasks:
+    """The pure mask's answer, all four tuples ordered per the module docstring's rules."""
+
+    withheld: tuple[str, ...]
+    paused: tuple[str, ...]
+    downstream: tuple[str, ...]
+    inert: tuple[str, ...]
+
+
+def withheld_task_ids(order: Iterable[str], pending: Iterable[str], paused: Iterable[str],
+                      *, depends_on: Mapping[str, Iterable[str]] | None = None
+                      ) -> WithheldTasks:
+    """Which of ``order``'s ids a pause withholds. Pure: no I/O, no clock.
+
+    LINEAR (``depends_on`` None): the first paused PENDING task in plan order and every
+    pending task after it are withheld; tasks before it are not. GRAPH: the paused pending
+    tasks and every pending task that transitively depends on one of them are withheld. A
+    task that is not pending is never withheld and never propagates, in either scope.
+    """
+    order_list = list(order)
+    pending_set = set(pending)
+
+    seen: set[str] = set()
+    paused_given_order: list[str] = []
+    for pid in paused:
+        if pid not in seen:
+            seen.add(pid)
+            paused_given_order.append(pid)
+    paused_set = set(paused_given_order)
+    paused_pending = {pid for pid in paused_set if pid in pending_set}
+
+    if depends_on is None:
+        withheld_set: set[str] = set()
+        idx_start = next(
+            (i for i, pid in enumerate(order_list) if pid in paused_pending), None)
+        if idx_start is not None:
+            for pid in order_list[idx_start:]:
+                if pid in pending_set:
+                    withheld_set.add(pid)
+    else:
+        dependents: dict[str, list[str]] = {}
+        for tid, deps in depends_on.items():
+            for dep in deps:
+                dependents.setdefault(dep, []).append(tid)
+        withheld_set = set(paused_pending)
+        queue: list[str] = list(paused_pending)
+        while queue:
+            current = queue.pop(0)
+            for dependent in dependents.get(current, ()):
+                if dependent in withheld_set:
+                    continue
+                if dependent not in pending_set:
+                    continue                       # not pending: never withheld, never spreads
+                withheld_set.add(dependent)
+                queue.append(dependent)
+
+    withheld_field = tuple(pid for pid in order_list if pid in withheld_set)
+    paused_field = tuple(pid for pid in order_list if pid in paused_pending)
+    downstream_field = tuple(pid for pid in withheld_field if pid not in paused_pending)
+    inert_field = tuple(pid for pid in paused_given_order if pid not in pending_set)
+
+    return WithheldTasks(withheld=withheld_field, paused=paused_field,
+                         downstream=downstream_field, inert=inert_field)
