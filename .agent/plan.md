@@ -12,20 +12,20 @@ its prompt trace (`docs/roadmap/features/T5_F026.md`).
 
 ## Current Step
 
-ROUND 3: book round 2 and resolve R-1059, record DECISION F026 D3,
-reword `job.edit-task`'s help text, and land T003's first half — the
-dashboard's `task_specs` section, the version chip on the node and in
-the popover, and the popover's Versions list.
+ROUND 4: book round 3, register R-1060, record DECISION F026 D4, repair
+R-1060, and land T003's second half — the edit affordance in the detail
+popover for eligible tasks only, its send module, and the end-to-end
+through the CLI and the real door.
 
 ## Next Steps
 
-1. T003's second half: the edit affordance on eligible nodes only,
-   sent through the write door, and the end-to-end — fail, edit through
-   the door, relaunch, the new trace carrying the edit, the fan visible.
-2. The closure sequence.
+1. The closure sequence: the Built State, the checklist consolidation,
+   the self-use item and the feature's one full suite; then the
+   evidence bundle and the review package; then the acceptance and the
+   pull request.
 
 ## Risks
 
-A chip must not read as a state; it is text in the state's own line
-colour and never a mark. Open findings: 4 — R-1008, R-1055, R-1057 and
-R-1058, all owned by F285.
+The edit must reach the door only through its send module, and only for
+a task the dashboard marks editable. Open findings: 5 — R-1008, R-1055,
+R-1057 and R-1058, owned by F285, and R-1060, owned by F026.

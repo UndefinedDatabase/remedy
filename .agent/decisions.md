@@ -21800,3 +21800,50 @@ edit and can refresh.
 
 HOW TO REVERSE: delete the `task_specs` section and its builder, the chip in the painter and the
 popover, the Versions list, the two assumption-log rows, and this paragraph.
+
+## DECISION F026 D4 — the edit affordance is an "Edit task" button and form in the detail popover, offered only for a task the dashboard marks editable, sent through one new module to `job.edit-task` with only the fields that changed; the popover scrolls within the window; and the end-to-end fails a planned job through the CLI, edits it through the real door, relaunches it through the CLI and reads the new trace and the ledger's second run (2026-09-25)
+
+CONTEXT: T5_F026.md's T003 asks for the edit affordance on eligible nodes only and the end-to-end
+"fail → edit acceptance → rerun passes with v2 in trace, fan visible". Measured at `753f44bd`: the
+dashboard's `task_specs` section names each task's `edit_state` and current fields (DECISION F026
+D3); `apps/ui/src/api/pauseSend.ts` is the pattern for a popover control that reaches the write door
+— mint a nonce, build a request with the token and the CSRF header, submit with a deadline, and say
+what happened in one sentence — and `tests/ui_contracts/test_pause_controls_contract.py` pins that no
+component calls `fetch` itself; the detail popover's stylesheet sets no height limit, and in the
+reviewer's headless render of a prototype form the popover grew to about 990 pixels. In the
+reviewer's scratch tree at `753f44bd`, an approved two-task plan run through
+`python3 -m apps.cli.main job run <id> --builder-provider fake --reviewer-provider fake --max-rounds 1
+--repair-rounds 0` ends `blocked`, its first task `blocked` and its second `skipped`; a `job.edit-task`
+POST through a live UI server answers 200 with the second task restored; `job run <id> --max-rounds 3
+--repair-rounds 2` completes both tasks with an empty `error`; the new run's trace carries the edited
+text and not the old; and the job's ledger holds two `task_run_started` rows for the edited task.
+
+CHOSEN: (1) ELIGIBILITY IS THE DASHBOARD'S: `taskEditAction(dashboard, taskId)` in
+`apps/ui/src/api/taskSpecView.ts` answers `null` unless the task's `edit_state` is one of the three
+names, so the popover offers the control only for a waiting, paused or failed task of an approved
+plan whose job is not running, and a refused task shows nothing rather than a dead button. (2) THE
+FORM: a ghost "Edit task" button opens a form prefilled from the current spec — title, goal,
+acceptance one per line, the size band from S, M, L and XL, and files one per line — with a primary
+Save pill disabled until a field changes, a ghost Cancel, a note for a failed task that saving puts
+it back in the queue and the job must be relaunched, and one sentence saying what happened. Save
+sends only the changed fields, lines trimmed and blank lines dropped, with the spec version the form
+was opened at. (3) THE SEND: a new module `apps/ui/src/api/taskEditSend.ts` builds, submits and
+describes the request exactly as `pauseSend.ts` does, with its own sentences: an accepted edit names
+the new version, and for a failed task the relaunch command; a 409 shows the backend's own detail,
+or, for a stale version, asks the operator to reopen the task; the other statuses read as the pause
+control's do. (4) THE POPOVER scrolls within the window rather than growing past it. (5) THE
+END-TO-END is one live test: the first run and the relaunch through the real CLI in a subprocess, the
+edit through a real UI server's door, and the assertions of D2's trace proof plus the live server's
+`events-since` frames holding two `task_run_started` frames for the edited task, which is the fan the
+reducer draws; a reducer test pins that a failed run followed by a second start leaves two run nodes
+under the task. (6) R-1060's repair lands first: the `sk-` alternative of `_SECRET_RE` matches only at
+a token start.
+
+ALTERNATIVES: a disabled button with the refusal as its tooltip on every ineligible task, rejected
+because the feature file asks for the affordance on eligible nodes only and a closed set stays
+closed; sending every field on Save, rejected because the edit log would then record unchanged
+fields as edits; relaunching from the page, rejected because a pause's resume is already the CLI's
+`job run` (DECISION F025 D1) and one relaunch route is enough.
+
+HOW TO REVERSE: delete `taskEditSend.ts`, the form component, `taskEditAction`, the popover's scroll
+rule, the live test, the assumption-log row, and this paragraph; R-1060's repair stands on its own.
