@@ -1,0 +1,151 @@
+diff --git a/apps/ui/src/components/graph/BrainGraphStage.tsx b/apps/ui/src/components/graph/BrainGraphStage.tsx
+index 654193d64..1fce72576 100644
+--- a/apps/ui/src/components/graph/BrainGraphStage.tsx
++++ b/apps/ui/src/components/graph/BrainGraphStage.tsx
+@@ -12,6 +12,7 @@ import { GraphLegend } from "./GraphLegend";
+ import { BrainGraphCanvas } from "./BrainGraphCanvas";
+ import { zoomBreadcrumbs, zoomGraphOf } from "./semanticZoom";
+ import { useSemanticZoom } from "./useSemanticZoom";
++import { useZoomDeepLink } from "./useZoomDeepLink";
+ import { ZoomBreadcrumbs } from "./ZoomBreadcrumbs";
+ import { RunDetailPopover } from "./RunDetailPopover";
+ import { EvidencePanel } from "./EvidencePanel";
+@@ -47,18 +48,30 @@ export function BrainGraphStage({
+   // model at the state before it, never a ghost past it (DECISION F019 D5).
+   const rows = useMemo(() => brainLedgerPrefix(ledger), [ledger]);
+   const model = useMemo(() => rebuildBrainModel(dashboard.jobId, seeds, rows), [dashboard.jobId, seeds, rows]);
+-  const layout = useMemo(() => buildBrainLayout(model), [model]);
+-  const visible = useMemo(() => filterBrainLayout(layout, filter), [layout, filter]);
+-  const selectedId = selectedBrainNodeId(dashboard.tasks, selectedNodeId ?? null);
+-  const showLiveGraph = view === "live" && brainTaskCount(visible) > 0;
++  // Every cluster chip in place, whatever the focus: the graph the zoom checks
++  // its focus against, so moving the focus never moves that graph.
++  const baseLayout = useMemo(() => buildBrainLayout(model), [model]);
+ 
+   // Semantic zoom (graph_spec §10): focus is checked against the model, which
+   // keeps every run, and the laid-out view, which adds the clusters
+   // (DECISION F023 D1); what the state means on the canvas is zoomView.ts's.
+-  const zoomGraph = useMemo(() => zoomGraphOf(model.nodes, layout.nodes), [model, layout]);
++  // The URL's deep link restores it and then follows it (DECISION F023 D6).
++  const zoomGraph = useMemo(() => zoomGraphOf(model.nodes, baseLayout.nodes), [model, baseLayout]);
+   const zoom = useSemanticZoom(zoomGraph);
++  useZoomDeepLink(zoomGraph, zoom.state, zoom.dispatch);
++  const zoomCrumbs = zoomBreadcrumbs(zoomGraph, zoom.state);
++  // The focused task's cluster chip gives way to its runs; unfocused, the
++  // chip returns (DECISION F023 D6).
++  const expandTaskId = zoomCrumbs.find((c) => c.level === 1)?.nodeId ?? null;
++  const layout = useMemo(
++    () => (expandTaskId === null ? baseLayout : buildBrainLayout(model, expandTaskId)),
++    [baseLayout, model, expandTaskId],
++  );
++  const visible = useMemo(() => filterBrainLayout(layout, filter), [layout, filter]);
++  const selectedId = selectedBrainNodeId(dashboard.tasks, selectedNodeId ?? null);
++  const showLiveGraph = view === "live" && brainTaskCount(visible) > 0;
+   const emphasis = useMemo(() => zoomEmphasis(visible, zoom.state), [visible, zoom.state]);
+-  const crumbs = zoomBreadcrumbs(zoomGraph, zoom.state).map((c) => ({
++  const crumbs = zoomCrumbs.map((c) => ({
+     level: c.level, current: c.current, label: zoomCrumbLabel(c, layout),
+   }));
+   // L2's run detail and L3's evidence panel, for the focused run read from the
+diff --git a/apps/ui/src/components/graph/ForceBrainGraph.tsx b/apps/ui/src/components/graph/ForceBrainGraph.tsx
+index bd69d8193..754fa4549 100644
+--- a/apps/ui/src/components/graph/ForceBrainGraph.tsx
++++ b/apps/ui/src/components/graph/ForceBrainGraph.tsx
+@@ -339,11 +339,18 @@ export function ForceBrainGraph({ layout, selectedId, onSelectNode, zoom, emphas
+   }, [onZoomEvent]);
+ 
+   // The camera follows the level: L0 fits the organism, L1 centres the task,
+-  // L2 and L3 centre the run (zoomView.ts).
++  // L2 and L3 centre the run (zoomView.ts). It also runs once the canvas
++  // first exists, so a level restored from a deep link before the canvas had
++  // a size still gets its camera (DECISION F023 D6).
+   const layoutRef = useRef(layout);
+   useLayoutEffect(() => {
+     layoutRef.current = { nodes: graphData.nodes, links: layout.links };
+   }, [graphData, layout]);
++  const zoomRef = useRef(zoom);
++  useLayoutEffect(() => {
++    zoomRef.current = zoom;
++  }, [zoom]);
++  const graphReady = size.width > 0;
+   useEffect(() => {
+     const fg = graphRef.current;
+     const camera = zoomCamera(layoutRef.current, zoom);
+@@ -352,7 +359,7 @@ export function ForceBrainGraph({ layout, selectedId, onSelectNode, zoom, emphas
+     cameraLockUntilRef.current = performance.now() + ms + 100;
+     fg.centerAt(camera.x, camera.y, ms);
+     fg.zoom(camera.k, ms);
+-  }, [zoom]);
++  }, [zoom, graphReady]);
+ 
+   // Configure the EXISTING d3 forces (getter, then call its own setter) —
+   // replacing them with a plain object, as the old decorative renderer did,
+@@ -372,17 +379,20 @@ export function ForceBrainGraph({ layout, selectedId, onSelectNode, zoom, emphas
+     } catch { /* force config may not be available immediately */ }
+   }, [graphData]);
+ 
+-  // Initial zoom fit
++  // Initial fit, once the simulation has had time to settle: the camera of the
++  // level the reader is at — the organism unless a deep link put the zoom
++  // somewhere else — at the positions the nodes settled into.
+   useEffect(() => {
+     const fg = graphRef.current;
+     if (!fg) return;
+     const timer = setTimeout(() => {
++      const camera = zoomCamera(layoutRef.current, zoomRef.current) ?? { x: 0, y: 0, k: ZOOM_HOME_CAMERA };
+       cameraLockUntilRef.current = performance.now() + (reducedMotion ? 0 : 600) + 100;
+-      fg.zoom(1.0, reducedMotion ? 0 : 600);
+-      fg.centerAt(0, 0, reducedMotion ? 0 : 600);
++      fg.zoom(camera.k, reducedMotion ? 0 : 600);
++      fg.centerAt(camera.x, camera.y, reducedMotion ? 0 : 600);
+     }, reducedMotion ? 100 : 800);
+     return () => clearTimeout(timer);
+-  }, []);
++  }, [graphReady]);
+ 
+   return (
+     // graph_spec §14: the canvas is not the accessible surface — the task
+diff --git a/apps/ui/src/components/graph/buildForceBrainModel.ts b/apps/ui/src/components/graph/buildForceBrainModel.ts
+index 247536b9f..72300e6ec 100644
+--- a/apps/ui/src/components/graph/buildForceBrainModel.ts
++++ b/apps/ui/src/components/graph/buildForceBrainModel.ts
+@@ -2,6 +2,7 @@ import type {
+   BrainLayoutData, BrainLayoutLink, BrainLayoutNode,
+ } from "./forceBrainTypes";
+ import { clusterBrainModel } from "./brainReducer";
++import { expandClusterOf } from "./clusterExpansion";
+ import type { BrainModel, BrainNode, NodeKind } from "./brainOntology";
+ 
+ export function seededRng(seed: string) {
+@@ -104,9 +105,13 @@ function isLinkActive(nodes: readonly BrainNode[], target: BrainNode | undefined
+ /** Positions `clusterBrainModel(model)`'s nodes and links with no decor and
+  *  no invented node (DECISION F019 D1; graph_spec §4 sizes, §6 layout, §8
+  *  truth). Deterministic and total — no random draws, no Date — and the
+- *  input model is never mutated. */
+-export function buildBrainLayout(model: BrainModel): BrainLayoutData {
+-  const clustered = clusterBrainModel(model);
++ *  input model is never mutated. `expandTaskId` names the task the semantic
++ *  zoom is focused on, whose cluster chip gives way to its runs
++ *  (clusterExpansion.ts, DECISION F023 D6); without it the layout is unchanged. */
++export function buildBrainLayout(model: BrainModel, expandTaskId: string | null = null): BrainLayoutData {
++  const clustered = expandTaskId === null
++    ? clusterBrainModel(model)
++    : expandClusterOf(clusterBrainModel(model), model, expandTaskId);
+   const rng = seededRng(clustered.jobId || "default");
+   const seedAngle = rng() * 2 * Math.PI;
+ 
+diff --git a/tests/ui_contracts/test_semantic_zoom_wiring.py b/tests/ui_contracts/test_semantic_zoom_wiring.py
+index 13be43803..6744093b2 100644
+--- a/tests/ui_contracts/test_semantic_zoom_wiring.py
++++ b/tests/ui_contracts/test_semantic_zoom_wiring.py
+@@ -29,7 +29,9 @@ def _src(path: Path) -> str:
+ 
+ def test_the_stage_checks_focus_against_the_model_and_its_clustered_view():
+     src = _src(STAGE)
+-    assert "const zoomGraph = useMemo(() => zoomGraphOf(model.nodes, layout.nodes), [model, layout]);" in src
++    # From F023 D6 the graph reads the UNEXPANDED layout, so an expanded chip never
++    # moves the graph the focus is checked against.
++    assert "const zoomGraph = useMemo(() => zoomGraphOf(model.nodes, baseLayout.nodes), [model, baseLayout]);" in src
+     assert "const zoom = useSemanticZoom(zoomGraph);" in src
+     assert "zoomEmphasis(visible, zoom.state)" in src
+ 

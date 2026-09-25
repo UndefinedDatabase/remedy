@@ -1,0 +1,63 @@
+diff --git a/.agent/decisions.md b/.agent/decisions.md
+index 9d2284623..b1e2f4a26 100644
+--- a/.agent/decisions.md
++++ b/.agent/decisions.md
+@@ -20981,3 +20981,48 @@ HOW TO REVERSE: delete `EvidencePanel.tsx`, its stylesheet, `evidencePanel.ts` w
+ `BrainGraphStage.tsx`, `RemedyShell.tsx`, the two F023 stylesheets, both token sheets,
+ `tokens_rules.md`, `assumption_log.md` and `test_run_detail_wiring.py` from `08955162`; and delete
+ this paragraph.
++
++## DECISION F023 D6 — a deep link is read once, replayed as a click and a tab, and followed with history.replaceState; the focused task's cluster chip gives way to its runs; the camera waits for the canvas (2026-09-25)
++
++CONTEXT: T5_F023.md asks for deep-linkable state (`?focus=&level=`) for the timeline and feed
++jumps, and for '+N' clusters that expand into their children at L1 focus and collapse on
++unfocus, with a focus that clusters away following into the expansion rather than dangling.
++Measured at `950c4f14`: `docs/ui/design_reference/implementation_plan.md` Stage 4 says the
++URL/router assumptions must not change and that none exist; `RemedyApp.tsx` reads the job and
++token from the query once and nothing writes the URL; `clusterBrainModel` folds a task's oldest
++finished runs beyond eight into `cluster:<taskId>` and keeps no list of them, and
++`buildBrainLayout` always clusters; the stage's zoom graph read the laid-out view, so a layout
++that changed with the focus would move the graph the focus is checked against; and, rendered
++headless before this round, a deep link that restored L3 before the canvas had a size left the
++camera at the organism, because the camera effect found no graph and never ran again and the
++one-time fit then forced the home camera.
++
++CHOSEN: (1) THE LINK is `?focus=<node id>&level=<1-3>&tab=<tab>` on the page's own URL, parsed
++by `zoomDeepLink.ts`; a link needs a focus and a level, and its tab is read at level 3 only and
++defaults to the diff. (2) THE REPLAY is the machine's own events, a click on the focus and, at
++L3, the tab, so a link gets every check a click gets and a link to a node the graph does not
++hold leaves the zoom at home. `useZoomDeepLink.ts` reads the link once, keeps it pending until
++the graph holds its node, and cancels it when the reader moves first. (3) THE URL FOLLOWS the
++state through `history.replaceState`: the three zoom parameters are set, or removed at L0, and
++every other parameter, the job and the token included, stays as it was. No router is added and
++no history entry is made per step, which is the reading of the implementation plan's rule this
++decision takes: the rule forbids a router, and a query the page already reads once is not one.
++(4) EXPANSION is `clusterExpansion.ts`: the focused task's chip is replaced, in its place and in
++seq order, by the runs it stood for, each with its own link; `buildBrainLayout` takes the task as
++an optional second argument and is unchanged without it. The stage checks focus against the
++unexpanded layout and renders the expanded one, so moving the focus never moves the graph it is
++checked against, and the chip returns at L0. (5) THE CAMERA effect also runs once the canvas
++first has a size, and the post-settle fit re-applies the current level's camera rather than the
++organism's. (6) THE GUARDS are `tests/ui_contracts/test_zoom_deep_link_wiring.py` with the vitest
++goldens of both modules, and `test_semantic_zoom_wiring.py` follows the stage's graph onto the
++unexpanded layout; the reviewer rendered the whole path headless before this round.
++
++ALTERNATIVES: a router, rejected by the implementation plan; `pushState`, rejected because every
++Escape would add a Back step; expansion inside `clusterBrainModel`, rejected because the reducer
++is outside this feature's scope; the zoom graph read from the expanded layout, rejected because
++the focus would then change the graph it is validated against.
++
++HOW TO REVERSE: delete `zoomDeepLink.ts`, `useZoomDeepLink.ts`, `clusterExpansion.ts`, their
++tests and `tests/ui_contracts/test_zoom_deep_link_wiring.py`; restore `BrainGraphStage.tsx`,
++`ForceBrainGraph.tsx`, `buildForceBrainModel.ts` and `test_semantic_zoom_wiring.py` from
++`950c4f14`; and delete this paragraph.
+diff --git a/.agent/live_review.md b/.agent/live_review.md
+index e6fbd5369..d4d27464c 100644
+--- a/.agent/live_review.md
++++ b/.agent/live_review.md
+@@ -442,3 +442,5 @@ Gate: F023 R2 — the F023 round 2 entry: the booking of round 1, DECISION F023
+ Gate: F023 R3 — the F023 round 3 entry: the booking of round 2, DECISION F023 D3, and the named prerequisite of the L2 run detail, the read route serving each round of a task's latest run with its client door. VERDICT PASS, NO DEVIATION DECLARED. Re-derived over `90669900`..`12275971` by the planner and reviewer of F023's first session, whose own runs produced every reading below, and booked by round 4's first commit. THE RANGE IS 9 COMMITS in the block's order C1a to C5, at `de0ccfad` 291, `f4527845` 167, `65b97f68` 175, `3d426536` 246, `4a5dbfca` 385, `55ff5c8c` 58, `b1681067` 292, `33871505` 386 and `12275971` 193 insertions by `git show --numstat`, each under the 500-line cap, each single-parent and each carrying the ordered trailer. THE TRANSPORT PROOF IS FILE IDENTITY: every path the range changed apart from the handback and the block copy reads byte-equal at `12275971` to the reviewer's simulated tree `.remedy-wt/f023-r3-sim`, and the block copy's sha256 equals the digest the delegation named, `1ee0ac2e`. THE OPEN SET by distinct id reads R-1008 alone at `90669900` and at `12275971`. THE TESTS: the worker's serial selection read `1709 passed, 5 skipped` at exit 0 with the four toolchain nodes passing; the reviewer's own run at `12275971` of the rounds route's tests, the command channel's route walk, the diff route's tests, the door guard, the import-reachability test, the vitest runner, the lint and dashboard contracts and the golden path read `294 passed` at exit 0. THE RED PROOFS: the round's tool caught all fourteen mutations of the builder, the route, the decoder and the door, in the reviewer's sim tree and again in the worker's, with both controls green and every file restored byte-identical.
+ 
+ Gate: F023 R4 — the F023 round 4 entry: the booking of round 3, DECISION F023 D4, and T002's second half, the L2 run detail with its words, its popover reading the rounds door, and its buttons. VERDICT PASS, NO DEVIATION DECLARED. Re-derived over `12275971`..`08955162` by the planner and reviewer of F023's first session, whose own runs produced every reading below, and booked by round 5's first commit. THE RANGE IS 9 COMMITS in the block's order C1a to C5, at `8c48da40` 285, `8f7b2ce7` 158, `fd7ef1a6` 178, `062177e5` 357, `28df5960` 229, `4c384520` 63, `1a5117b4` 381, `b7f54134` 229 and `08955162` 193 insertions by `git show --numstat`, each under the 500-line cap, each single-parent and each carrying the ordered trailer. THE TRANSPORT PROOF IS FILE IDENTITY: every path the range changed apart from the handback and the block copy reads byte-equal at `08955162` to the reviewer's simulated tree `.remedy-wt/f023-r4-sim`, and the block copy's sha256 equals the digest the delegation named, `34b526ac`. THE OPEN SET by distinct id reads R-1008 alone at `12275971` and at `08955162`. THE TESTS: the worker's serial selection read `1513 passed, 5 skipped` at exit 0 with the four toolchain nodes passing; the reviewer's own run at `08955162` of the run-detail, zoom, live-wiring, diff-mount, layout, raw-colour and lint guards, the dashboard contract, the vitest runner and the golden path read `205 passed` at exit 0. THE RENDER: before emitting, the reviewer drove the popover headless in Chrome through `.remedy-wt/f023-r4-shot/` over a fetched rounds envelope, at L2 on a latest review run, a latest builder run and an earlier run, and through its close button, with no page error and one read of the door per task. THE RED PROOFS: the round's tool caught all fifteen mutations of the words, the popover and the wiring, in the reviewer's sim tree and again in the worker's, with both controls green and every file restored byte-identical.
++
++Gate: F023 R5 — the F023 round 5 entry: the booking of round 4, DECISION F023 D5, and T003's first part, the L3 evidence panel with its lazy tabs, the run detail's Diff and Why moved onto them, and the zoom's surfaces on layer tokens. VERDICT PASS, NO DEVIATION DECLARED. Re-derived over `08955162`..`950c4f14` by the planner and reviewer of F023's first session, whose own runs produced every reading below, and booked by round 6's first commit. THE RANGE IS 9 COMMITS in the block's order C1a to C5, at `eb1b6e50` 298, `6d43af1e` 328, `031b0f4b` 180, `c180f274` 221, `b8eeea43` 156, `8dc1a16b` 63, `057da273` 272, `ad356341` 156 and `950c4f14` 215 insertions by `git show --numstat`, each under the 500-line cap, each single-parent and each carrying the ordered trailer. THE TRANSPORT PROOF IS FILE IDENTITY: every path the range changed apart from the handback and the block copy reads byte-equal at `950c4f14` to the reviewer's simulated tree `.remedy-wt/f023-r5-sim`, and the block copy's sha256 equals the digest the delegation named, `5665e763`. THE OPEN SET by distinct id reads R-1008 alone at `08955162` and at `950c4f14`. THE TESTS: the worker's serial selection read `1520 passed, 5 skipped` at exit 0 with the four toolchain nodes passing; the reviewer's own run at `950c4f14` of the evidence-panel and run-detail guards, the design-drift, raw-colour, layout and lint guards, the dashboard contract, the vitest runner, `tests/docs` and the golden path read `555 passed` at exit 0. THE RENDER: before emitting, the reviewer drove the panel headless in Chrome through `.remedy-wt/f023-r5-shot/`, opening it from Open diff onto a real diff envelope, switching to the prompt trace and chat tabs, pressing Escape and pressing Why, with no page error and the diff read only when its tab opened. THE RED PROOFS: the round's tool caught all fifteen mutations of the tabs, the panel, its stylesheet, the tokens and the wiring, in the reviewer's sim tree and again in the worker's, with both controls green and every file restored byte-identical.
