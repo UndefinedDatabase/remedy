@@ -8,7 +8,7 @@ import { decodeLessonsIndex, lessonsIndexPath } from "./lessons";
 import type { LessonsIndex } from "./lessons";
 import { decodeTaskRunRounds, taskRunRoundsPath } from "./taskRunRounds";
 import type { TaskRunRounds } from "./taskRunRounds";
-import type { PipelineStep, PipelineStepState, RemedyActivityItem, RemedyContinuationSummary, RemedyDashboard, RemedyGraphEdge, RemedyGraphNode, RemedyJourneyItem, RemedyMetric, RemedyNextAction, RemedyPause, RemedyPhase, RemedyPipeline, RemedyPromptKind, RemedyPromptRole, RemedyPromptTraceItem, RemedyPromptTraceSummary, RemedySnapshotSummary, RemedyState, RemedyTaskItem, RemedyTimelineEvent, RemedyTimelineEventKind, RemedyTimelinePhase } from "./types";
+import type { PipelineStep, PipelineStepState, RemedyActivityItem, RemedyContinuationSummary, RemedyDashboard, RemedyGraphEdge, RemedyGraphNode, RemedyJourneyItem, RemedyMetric, RemedyNextAction, RemedyPause, RemedyPhase, RemedyPipeline, RemedyPromptKind, RemedyPromptRole, RemedyPromptTraceItem, RemedyPromptTraceSummary, RemedySnapshotSummary, RemedyState, RemedyTaskItem, RemedyTaskSpec, RemedyTaskSpecFields, RemedyTaskSpecs, RemedyTaskSpecVersion, RemedyTimelineEvent, RemedyTimelineEventKind, RemedyTimelinePhase } from "./types";
 
 interface ApiClientOptions { jobId: string; token: string; baseUrl?: string; }
 
@@ -193,6 +193,7 @@ export function normalizeDashboardPayload(
     pipeline: normalizePipeline(dashboard.pipeline),
     resume: dashboard.resume ?? null,
     pause: normalizePause(dashboard.pause),
+    taskSpecs: normalizeTaskSpecs(dashboard.task_specs),
     projectSummary: dashboard.project_summary ?? null,
     timelineEvents: normalizeTimelineEvents(dashboard.timeline_events),
     snapshot: normalizeSnapshotSummary(dashboard.snapshot),
@@ -261,6 +262,74 @@ function normalizePause(raw: any): RemedyPause {
     requested: Boolean(p.requested),
     pausedTaskIds: Array.isArray(p.paused_task_ids) ? p.paused_task_ids.map(String) : [],
     error: typeof p.error === "string" ? p.error : "",
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Task spec normalization (DECISION F026 D3 clause 1)
+// ---------------------------------------------------------------------------
+
+const VALID_EDIT_STATES: ReadonlyArray<RemedyTaskSpec["editState"]> = ["waiting", "paused", "failed"];
+
+function toStringList(raw: unknown): string[] {
+  return Array.isArray(raw) ? raw.map(String) : [];
+}
+
+function normalizeSpecVersionNumber(raw: unknown): number {
+  return typeof raw === "number" && raw >= 1 ? raw : 1;
+}
+
+function normalizeTaskSpecFields(raw: any): RemedyTaskSpecFields {
+  const r = raw && typeof raw === "object" ? raw : {};
+  return {
+    title: typeof r.title === "string" ? r.title : "",
+    goal: typeof r.goal === "string" ? r.goal : "",
+    acceptance: toStringList(r.acceptance),
+    estTokensBand: typeof r.est_tokens_band === "string" ? r.est_tokens_band : "",
+    filesHint: toStringList(r.files_hint),
+  };
+}
+
+function normalizeTaskSpecVersion(raw: any): RemedyTaskSpecVersion {
+  const r = raw && typeof raw === "object" ? raw : {};
+  return {
+    ...normalizeTaskSpecFields(r),
+    specVersion: normalizeSpecVersionNumber(r.spec_version),
+    state: typeof r.state === "string" ? r.state : "",
+    archivedAt: typeof r.archived_at === "string" ? r.archived_at : "",
+  };
+}
+
+function normalizeEditState(raw: unknown): RemedyTaskSpec["editState"] {
+  return (VALID_EDIT_STATES as readonly unknown[]).includes(raw) ? (raw as RemedyTaskSpec["editState"]) : "";
+}
+
+function normalizeTaskSpec(raw: any): RemedyTaskSpec {
+  const r = raw && typeof raw === "object" ? raw : {};
+  return {
+    plannedId: typeof r.planned_id === "string" ? r.planned_id : "",
+    specVersion: normalizeSpecVersionNumber(r.spec_version),
+    editState: normalizeEditState(r.edit_state),
+    notEditableBecause: typeof r.not_editable_because === "string" ? r.not_editable_because : "",
+    current: normalizeTaskSpecFields(r.current),
+    versions: Array.isArray(r.versions) ? r.versions.map(normalizeTaskSpecVersion) : [],
+  };
+}
+
+/** DECISION F026 D3 clause 1: a payload with no `task_specs` section — or a
+ *  raw value that is not an object — normalizes to an empty task map with no
+ *  error, exactly as a real one reads when nothing failed and nothing was
+ *  ever mapped from a stored plan. */
+function normalizeTaskSpecs(raw: any): RemedyTaskSpecs {
+  const r = raw && typeof raw === "object" ? raw : {};
+  const tasksRaw = r.tasks && typeof r.tasks === "object" ? r.tasks : {};
+  const tasks: Record<string, RemedyTaskSpec> = {};
+  for (const [taskId, spec] of Object.entries(tasksRaw)) {
+    tasks[taskId] = normalizeTaskSpec(spec);
+  }
+  return {
+    tasks,
+    error: typeof r.error === "string" ? r.error : "",
   };
 }
 
@@ -372,6 +441,7 @@ export function normalizeApiFailure(jobId: string, failedEndpoints: string[]): R
     pipeline: null,
     resume: null,
     pause: normalizePause(undefined),
+    taskSpecs: normalizeTaskSpecs(undefined),
     projectSummary: null,
     snapshot: null,
     continuation: null,
