@@ -3075,6 +3075,7 @@ def run_job(
             return job
 
         job.state = JOB_RUNNING
+        job.error = ""  # R-1059: a relaunch clears a prior run's stale error.
         _persist_job(job)
 
         _absorb_block = _absorb_here("episode_start")
