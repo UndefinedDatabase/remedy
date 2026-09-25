@@ -13,21 +13,22 @@ things stood, with no process left waiting
 
 ## Current Step
 
-ROUND 4, T002: `job.pause` and `job.unpause` in the catalog, the CLI
-verbs and the write door, each with an optional task, the task pause
-events, the door's audit and import guard, and live fake-job tests of
-both scopes through the real door (DECISION F025 D2, operator question
-Q4).
+ROUND 5, T003's first part: repair R-1051 and R-1052, then the pause on
+the page — the dashboard's `pause` object and the graph's `paused` node
+state with its treatment, mark, reducer cases and seed (DECISION F025
+D3).
 
 ## Next Steps
 
-1. T003: the paused states, the banner, the NowCard line and the
-   browser's pause and resume, with the end-to-end against an unpaused
-   control run.
-2. The closure sequence.
+1. T003's second part: the door client, the stage banner, the NowCard's
+   "Paused by you" line, and the pause and resume buttons for the job
+   and for a task.
+2. T003's end-to-end: pause mid-build, resume, and a final state equal
+   to an unpaused control run's, with the session evidence.
+3. The closure sequence.
 
 ## Risks
 
-A pause must never strand a job it cannot resume; the park writes the
-state before it archives the request. Open findings: 1 — R-1008, owned
-by F285.
+A pause must never strand a job it cannot resume. Open findings: 3 —
+R-1008, owned by F285, and R-1051 and R-1052, owned by F025 and
+repaired this round.
