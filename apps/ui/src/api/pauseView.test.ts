@@ -152,12 +152,24 @@ describe("taskPauseAction", () => {
     expect(taskPauseAction(dashboard, "t1", "current")).toBe("resume");
   });
 
-  it("answers pause for a task that is not done and not paused", () => {
-    expect(taskPauseAction(dashboard, "t2", "current")).toBe("pause");
+  it("answers pause for a pending task that is not paused", () => {
+    expect(taskPauseAction(dashboard, "t2", "pending")).toBe("pause");
   });
 
   it("answers null for a done task", () => {
     expect(taskPauseAction(dashboard, "t2", "done")).toBeNull();
+  });
+
+  it("answers null for a task that is already current (R-1053)", () => {
+    expect(taskPauseAction(dashboard, "t2", "current")).toBeNull();
+  });
+
+  it("answers null for a blocked task (R-1053)", () => {
+    expect(taskPauseAction(dashboard, "t2", "blocked")).toBeNull();
+  });
+
+  it("answers null for a suggested task (R-1053)", () => {
+    expect(taskPauseAction(dashboard, "t2", "suggested")).toBeNull();
   });
 });
 

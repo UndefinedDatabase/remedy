@@ -120,7 +120,12 @@ export function jobPauseAction(dashboard: RemedyDashboard): PauseAction | null {
 }
 
 /** One task's own action: resume it while it is paused, else offer to pause it
- *  unless it is already done — a done task has nothing left to withhold. */
+ *  only while it is `pending` — a task that is already `current` or `blocked`
+ *  has started (or been dispatched) and DECISION F025 D1 makes a task pause a
+ *  mask over PENDING tasks only, so pausing it now would tell the operator
+ *  something untrue (R-1053); `done` and `suggested` likewise offer nothing,
+ *  a done task having nothing left to withhold and a suggested one not yet
+ *  part of the plan. */
 export function taskPauseAction(
   dashboard: RemedyDashboard,
   taskId: string,
@@ -129,7 +134,7 @@ export function taskPauseAction(
   if (dashboard.pause.pausedTaskIds.includes(taskId)) {
     return "resume";
   }
-  if (taskState !== "done") {
+  if (taskState === "pending") {
     return "pause";
   }
   return null;
