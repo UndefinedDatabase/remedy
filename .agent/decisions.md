@@ -21589,3 +21589,45 @@ building cross-process session resume inside F025, rejected by the feature's own
 and because it would change what every runner persists.
 
 HOW TO REVERSE: delete the test file, R-1055's Acceptance line in T2_F285.md, and this paragraph.
+
+## DECISION F025 D6 — a park records the episode it ends: the run manifest gains the status `paused`, validated as a stopped episode is but carrying no stop request id, and `run_job`'s parks write it, so the relaunch's episode finds the parked episode's calls in its canonical chain (2026-09-25)
+
+CONTEXT: finding R-1056. Measured at `3f36bd81`: `_write_run_manifest_record` in
+`packages/orchestration/pingpong_job.py` writes one immutable manifest per execution episode and is
+called by the completion, status `completed`, and by `_stop_job`, status `stopped`, with
+`run_job` capturing the episode snapshot under `_PHASE_PRE_WORK_STOP` before a pre-work stop; `_VALID_STATUS` in
+`packages/orchestration/run_manifest.py` is `completed`, `stopped` and `planned`, each allowed
+lifecycle a row of `_LIFECYCLE_MATRIX` keyed by status and capture phase, and the comment above that
+matrix states that a paused job is not a finished run and gets no manifest; the validator requires
+a stopped manifest to carry a safe `stop_request_id` and refuses one on any other status;
+`_park_job`, `run_job`'s own park, returns the interrupted task to `pending` and then parks
+through `park_job_pause`, which it shares with `run_cycles`, a runner that keeps no manifest at
+all; the task cap's pause at the end of `run_job` sets state `paused` beside the completion's
+manifest write and skips it, as its comment says, "a paused/partial job is not a finished run and
+gets none yet"; and a relaunch mints a
+new episode whose manifest excludes a call as prior history only when the call's episode is in the
+canonical chain.
+
+CHOSEN: (1) THE STATUS `paused` joins `_VALID_STATUS`, with lifecycle rows equal to `stopped`'s for
+the worked and the pre-work phase except that `stop_request` is False, and the comment above the
+matrix says that a park records its episode as `paused`; the validator's rule that only a stopped
+manifest carries a `stop_request_id` stands, so a paused manifest carries none. (2) THE PARKS OF
+`run_job`: `_park_job` writes the episode's manifest with status `paused` through
+`_write_run_manifest_record` after it returns the interrupted task to `pending` and before it
+parks through `park_job_pause`, first capturing the episode snapshot when it is not yet bound, as
+`run_job` does before a pre-work stop; the task cap's pause writes it where the completion writes
+`completed`; a failed write is kept in `run_manifest_error` and the park proceeds, as a stop's
+recording failure is kept. `park_job_pause` and `run_cycles` are unchanged. (3) THE
+RELAUNCH is unchanged: a job that stays parked writes nothing, and a lifted one mints its episode,
+which now lists the parked one among its priors. (4) Every other reader of the manifest's status —
+the evidence export, the integrity gate, the proof chain, any doc naming the status set — is read
+for a closed status set and widened where it has one.
+
+ALTERNATIVES: letting the relaunch's episode adopt the calls of an unrecorded episode, rejected
+because the manifest's own rule is that a call is excluded as prior history only against the
+canonical chain; publishing the park as `stopped`, rejected because a park is not a stop and the
+stop's request id would be a false record; writing no manifest and dropping the check for a
+relaunched job, rejected because it hides exactly what the manifest exists to prove.
+
+HOW TO REVERSE: delete `paused` from `_VALID_STATUS` and its lifecycle rows, the park's manifest
+write, the tests this decision's round adds, and this paragraph, and restore the comment.

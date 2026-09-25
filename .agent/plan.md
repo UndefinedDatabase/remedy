@@ -13,10 +13,10 @@ things stood, with no process left waiting
 
 ## Current Step
 
-ROUND 7: repair R-1053 and R-1054 in the task popover's control, then
-T003's end-to-end (DECISION F025 D5): both scopes paused through the
-door on a live job, relaunched through `remedy job run`, and compared
-with an unpaused control run; R-1055 goes to F285.
+ROUND 8, the repair of R-1056 (DECISION F025 D6): a park records the
+episode it ends under the new manifest status `paused`, so a relaunched
+job writes its run manifest; the end-to-end test then compares the
+manifest's error too.
 
 ## Next Steps
 
@@ -24,6 +24,6 @@ with an unpaused control run; R-1055 goes to F285.
 
 ## Risks
 
-A pause must never strand a job it cannot resume. Open findings: 4 —
-R-1008 and R-1055, owned by F285, and R-1053 and R-1054, owned by F025
-and repaired this round.
+A pause must never strand a job it cannot resume. Open findings: 3 —
+R-1008 and R-1055, owned by F285, and R-1056, owned by F025 and
+repaired this round.
