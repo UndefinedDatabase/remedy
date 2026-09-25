@@ -1,0 +1,126 @@
+diff --git a/apps/ui/src/components/graph/buildForceBrainModel.test.ts b/apps/ui/src/components/graph/buildForceBrainModel.test.ts
+index a8405b581..e61cffdc9 100644
+--- a/apps/ui/src/components/graph/buildForceBrainModel.test.ts
++++ b/apps/ui/src/components/graph/buildForceBrainModel.test.ts
+@@ -147,6 +147,14 @@ describe("buildBrainLayout", () => {
+     expect(Math.abs(sum)).toBeLessThan(1e-6);
+   });
+ 
++  it("labels a cluster with the count of runs it stands for, as +n", () => {
++    const layout = buildBrainLayout(CLUSTER_INPUT_MODEL);
++    const clusters = layout.nodes.filter((n) => n.kind === "cluster");
++    const expected = CLUSTER_EXPECTED_MODEL.nodes.filter((n) => n.kind === "cluster");
++    expect(clusters.length).toBeGreaterThan(0);
++    expect(clusters.map((n) => n.label)).toEqual(expected.map((n) => `+${n.meta.count as number}`));
++  });
++
+   it("labels: a seeded task's title when non-empty, else its bare id; every other node's label is empty", () => {
+     const seeded = seedBrainModel("job-labels", [
+       { id: "t1", status: "pending", rank: 0, title: "Fix the flaky test" },
+diff --git a/apps/ui/src/components/graph/renderers/paintNode.test.ts b/apps/ui/src/components/graph/renderers/paintNode.test.ts
+index 79ecfcec0..5e0c20566 100644
+--- a/apps/ui/src/components/graph/renderers/paintNode.test.ts
++++ b/apps/ui/src/components/graph/renderers/paintNode.test.ts
+@@ -2,7 +2,7 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+ import type { NodeKind, NodeState } from "../brainOntology";
+ import { GLYPHS, GLYPH_MIN_ZOOM_RUN, STATE_MARK_PATHS } from "./glyphPaths";
+ import { NODE_STATE_TREATMENTS } from "./nodeStates";
+-import { GLYPH_STROKE_WIDTH, HALO_SPREAD, SPHERE_KINDS, paintBrainNode } from "./paintNode";
++import { CLUSTER_COUNT_SIZE, GLYPH_STROKE_WIDTH, HALO_SPREAD, SPHERE_KINDS, paintBrainNode } from "./paintNode";
+ import type { PaintableNode } from "./paintNode";
+ import { brainPaletteTokens } from "./palette";
+ import type { BrainPalette } from "./palette";
+@@ -18,6 +18,9 @@ interface Op {
+   op: string;
+   d?: string;
+   radius?: number;
++  text?: string;
++  at?: [number, number];
++  font?: string;
+   fillStyle: unknown;
+   strokeStyle: unknown;
+   lineWidth: number;
+@@ -34,6 +37,9 @@ class RecordingContext {
+   globalAlpha = 1;
+   lineCap = "butt";
+   lineJoin = "miter";
++  font = "";
++  textAlign = "start";
++  textBaseline = "alphabetic";
+   private stack: [unknown, unknown, number, number][] = [];
+   private lastArc = 0;
+ 
+@@ -63,6 +69,9 @@ class RecordingContext {
+   stroke(path?: RecordingPath2D): void {
+     this.record("stroke", path ? { d: path.d } : { radius: this.lastArc });
+   }
++  fillText(text: string, x: number, y: number): void {
++    this.record("text", { text, at: [x, y], font: `${this.font}|${this.textAlign}|${this.textBaseline}` });
++  }
+ }
+ 
+ /** Each token resolves to its own name behind a marker, so every colour the
+@@ -70,9 +79,11 @@ class RecordingContext {
+ const PALETTE: BrainPalette = Object.fromEntries(brainPaletteTokens().map((t) => [t, `c(${t})`]));
+ const c = (token: string) => `c(${token})`;
+ 
+-function paint(kind: NodeKind, state: NodeState, zoom = 1, extra: { alpha?: number; scale?: number } = {}): Op[] {
++function paint(
++  kind: NodeKind, state: NodeState, zoom = 1, extra: { alpha?: number; scale?: number; label?: string; radius?: number } = {},
++): Op[] {
+   const ctx = new RecordingContext();
+-  const node: PaintableNode = { kind, state, x: 10, y: 20, radius: 4.5 };
++  const node: PaintableNode = { kind, state, x: 10, y: 20, radius: extra.radius ?? 4.5, label: extra.label };
+   paintBrainNode(ctx as unknown as CanvasRenderingContext2D, node, {
+     palette: PALETTE, zoom, alpha: extra.alpha ?? 1, scale: extra.scale ?? 1,
+   });
+@@ -94,7 +105,7 @@ describe("paintBrainNode — colours", () => {
+     for (const kind of Object.keys(GLYPHS).filter((k) => k !== "job_core") as NodeKind[]) {
+       for (const state of Object.keys(NODE_STATE_TREATMENTS) as NodeState[]) {
+         for (const op of paint(kind, state, 2)) {
+-          const colour = op.op === "fill" ? op.fillStyle : op.strokeStyle;
++          const colour = op.op === "stroke" ? op.strokeStyle : op.fillStyle;
+           const colours = typeof colour === "string" ? [colour]
+             : (colour as { stops: [number, string][] }).stops.map((s) => s[1]);
+           for (const value of colours) expect(allowed.has(value), `${kind}/${state}: ${value}`).toBe(true);
+@@ -204,3 +215,18 @@ describe("paintBrainNode — state is never colour alone", () => {
+     }
+   });
+ });
++
++describe("paintBrainNode — the cluster's count", () => {
++  it("writes a cluster's count at its centre, in the state's line colour and the resolved font", () => {
++    const text = paint("cluster", "planned", 1, { label: "+5", radius: 9 }).filter((o) => o.op === "text");
++    expect(text.map((o) => [o.text, o.at, o.fillStyle, o.font])).toEqual([
++      ["+5", [10, 20], c("--remedy-state-planned-ring"),
++        `600 ${9 * 0.9 * CLUSTER_COUNT_SIZE}px ${c("--remedy-font-ui")}|center|middle`],
++    ]);
++  });
++
++  it("writes nothing for a cluster with no count, or for a label on any other kind", () => {
++    expect(paint("cluster", "pass", 1, { label: "" }).filter((o) => o.op === "text")).toEqual([]);
++    expect(paint("task", "pass", 1, { label: "Fix the flaky test" }).filter((o) => o.op === "text")).toEqual([]);
++  });
++});
+diff --git a/apps/ui/src/components/graph/renderers/palette.test.ts b/apps/ui/src/components/graph/renderers/palette.test.ts
+index aec7395a7..586b00fc8 100644
+--- a/apps/ui/src/components/graph/renderers/palette.test.ts
++++ b/apps/ui/src/components/graph/renderers/palette.test.ts
+@@ -1,13 +1,15 @@
+ import { describe, expect, it } from "vitest";
+ import { nodeStateTokens } from "./nodeStates";
+-import { BRAIN_HIGHLIGHT_TOKEN, brainPaletteTokens, resolveBrainPalette } from "./palette";
++import { BRAIN_HIGHLIGHT_TOKEN, BRAIN_LABEL_FONT_TOKEN, brainPaletteTokens, resolveBrainPalette } from "./palette";
+ 
+ describe("brainPaletteTokens", () => {
+-  it("covers every token the state table names, plus the highlight, each once", () => {
++  it("covers every token the state table names, plus the highlight and the count's font, each once", () => {
+     const tokens = brainPaletteTokens();
+     expect(new Set(tokens).size).toBe(tokens.length);
+     for (const token of nodeStateTokens()) expect(tokens).toContain(token);
+     expect(tokens).toContain(BRAIN_HIGHLIGHT_TOKEN);
++    expect(tokens).toContain(BRAIN_LABEL_FONT_TOKEN);
++    expect(BRAIN_LABEL_FONT_TOKEN).toBe("--remedy-font-ui");
+   });
+ });
+ 

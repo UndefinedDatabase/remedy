@@ -1,0 +1,41 @@
+diff --git a/apps/ui/src/styles/tokens.css b/apps/ui/src/styles/tokens.css
+index af6f9395c..c2bbe4624 100644
+--- a/apps/ui/src/styles/tokens.css
++++ b/apps/ui/src/styles/tokens.css
+@@ -86,6 +86,11 @@
+   --remedy-state-planned: #ffffff;
+   --remedy-state-planned-ring: #9db9ee;
+   --remedy-state-blocked: #ef6363;
++  /* The vetoed state's grey and the white node ring, transcribed byte-exact
++     from docs/ui/design_reference/tokens.css so the graph's state module,
++     renderers/nodeStates.ts, names only tokens that resolve (F020). */
++  --remedy-state-vetoed: #9aa9c5;
++  --remedy-graph-node-ring: rgba(255, 255, 255, 0.85);
+ 
+   /* R-0661: the DegradedBanner's warn tint. The design reference defines no
+      warning token, and names the existing banner "canonical" and "unchanged"
+diff --git a/docs/ui/design_reference/tokens.css b/docs/ui/design_reference/tokens.css
+index 7fd192e86..7eb65362e 100644
+--- a/docs/ui/design_reference/tokens.css
++++ b/docs/ui/design_reference/tokens.css
+@@ -55,6 +55,7 @@
+   --remedy-state-planned: #ffffff;      /* aka "pending" */
+   --remedy-state-planned-ring: #9db9ee;
+   --remedy-state-blocked: #ef6363;
++  --remedy-state-vetoed: #9aa9c5;      /* struck style, graph_spec §7 (F020) */
+   --remedy-live: #34c27e;
+ 
+   /* ---- Graph tokens (NEW — previously hardcoded in ForceBrainGraph.tsx) ---- */
+diff --git a/docs/ui/design_reference/tokens_rules.md b/docs/ui/design_reference/tokens_rules.md
+index 9d5b1740e..90b89d3a4 100644
+--- a/docs/ui/design_reference/tokens_rules.md
++++ b/docs/ui/design_reference/tokens_rules.md
+@@ -5,6 +5,8 @@
+   fills, chip dots, timeline event tints, status text. NOTHING else may define
+   a status color. Bridge to api types: `suggested`→open, `pending`→planned,
+   `current`→in-progress (documented in `forceBrainTypes.ts` comments — keep).
++  `--remedy-state-vetoed` is the grey of graph_spec §7's struck style, added
++  by F020 with its one usage in `renderers/nodeStates.ts`.
+ - **Graph tokens** (`--remedy-graph-*`): the ONLY colors a graph renderer may
+   paint. Canvas renderers read them once per mount via
+   `getComputedStyle(document.documentElement)` into a palette object (pattern

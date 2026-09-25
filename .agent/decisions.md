@@ -20514,3 +20514,228 @@ closing `PASS`, rejected because a Medium finding this feature owned leaves open
 HOW TO REVERSE: delete `docs/roadmap/features/T2_F285.md`, its STATUS line and the two headings
 around it, restore `TOTAL_FEATURES` to 284 and the README counters, delete the `Owner: F285`
 line from R-1008's paragraph, and delete this paragraph.
+
+## DECISION F020 D1 — one geometry source of SVG path strings the canvas builds its Path2D from, one state table that names tokens only, and a grey state token for the veto (2026-09-24)
+
+CONTEXT: T5_F020.md orders T001, `glyphPaths.ts` and `nodeStates.ts` as pure modules with
+svg-string unit tests and a token guard. Measured at `955a6240`: `assets_spec.md` §4 names the
+glyph module's path, `apps/ui/src/components/graph/renderers/glyphPaths.ts`, a 24×24 box, and the
+shapes per kind; `graph_spec.md` §5 draws run glyphs only from the L1 zoom, which §10 enters above
+1.6; `ForceBrainGraph.tsx` paints every non-core kind as the same sphere through `NODE_PAINTERS`,
+F019's glyph slots, with its state colours as raw literals under the canvas carve-out;
+`tests/ui_contracts/test_raw_colour_ratchet.py` reads `.css` and `.tsx` files only, so a `.ts`
+module is outside every colour gate; no `--remedy-state-*` token exists for `vetoed`, which the
+painter fills with `#9aa9c5`, the value of `--remedy-faint`; the app token sheet lacks the
+reference's `--remedy-graph-node-ring`; `tokens_rules.md` lets a graph renderer paint only state
+and graph tokens, and adds a token only with the sheet, that file and one usage; and the vitest
+environment is `node`, which has no `Path2D`.
+
+CHOSEN: (1) THE MODULES live in `apps/ui/src/components/graph/renderers/`, the path
+`assets_spec.md` §4 names. (2) THE ONE SOURCE is SVG path data: each glyph is a stroke string and a
+fill string in the 24×24 box, the canvas builds its Path2D with `new Path2D(<the same string>)`,
+cached per geometry, and the legend renders the strings as SVG, so the two cannot drift. Paths use
+absolute M, L, H, V, A and Z only, so a test reads every coordinate without a path library, and
+each glyph's declared bounds are checked against the extent its path really reaches. (3) THE
+SHAPES follow `assets_spec.md` §4: the core's `</>` mark on its sphere, the task circle, the
+builder's drawn `</>`, the reviewer's head and shoulders, the repair `</>` inside a three-quarter
+ring with its arrow, the flask, the synapse dot, the document with its folded corner filled, and
+the cluster ring, whose count the painter writes as text. The core's painter may keep its `</>` as
+text, as `graph_spec.md` §5 allows; its geometry is here for the legend. No `decision` glyph is
+drawn, because the ontology has no decision kind. (4) THE STATE MARKS — the status dot, the 45°
+strike and the planned ring — are geometry too and live in `glyphPaths.ts`; `nodeStates.ts`
+chooses which state carries which. (5) THE STATE TABLE names tokens and never values: fills from
+`--remedy-state-*`, a soft halo at 40% (35% for a pass), none for a planned node, which is drawn at
+90% with its ring; failed and blocked carry the status dot and are drawn alike, as `graph_spec.md`
+§5's one blocked/failed row does; the veto carries the strike and dims what hangs below it to 40%;
+the dot and the strike are outlined in `--remedy-graph-node-ring` so each stands off the node
+beneath it; only the in-progress state pulses, ±8% over `--remedy-dur-pulse`, and reduced motion
+holds every node still. (6) THE VETO'S GREY becomes `--remedy-state-vetoed: #9aa9c5`, the value the
+painter already draws, added to both token sheets with its line in `tokens_rules.md`, and
+`--remedy-graph-node-ring` is transcribed byte-exact into the app sheet. (7) THE TOKEN GUARD is
+`tests/ui_contracts/test_node_glyph_tokens.py`, beside `test_brain_motion_tokens.py`: every token
+the state module names resolves in the app sheet with the reference's value, the colours T5_F020.md
+fixes are the values of the tokens that paint them, the pulse constant is the token's value,
+neither module holds a raw colour, and both headers quote `assets_spec.md` §4's precedence rule
+verbatim. (8) T002 resolves the tokens once per mount in `renderers/palette.ts`, the palette bridge
+`tokens_rules.md` names, and swaps F019's glyph slots for these modules.
+
+ALTERNATIVES: separate canvas and SVG geometry kept equal by a test, rejected because two copies
+are exactly the drift the feature exists to remove; colour values in the state module, rejected
+because `tokens_rules.md` forbids them outside the token sheet and the canvas carve-out; the veto
+painted with `--remedy-faint`, rejected because only a `--remedy-state-*` token may carry a
+status colour; the guard as a vitest test, rejected because the `node` environment reads no CSS
+and the motion guard's Python form is the precedent.
+
+HOW TO REVERSE: delete `apps/ui/src/components/graph/renderers/`,
+`tests/ui_contracts/test_node_glyph_tokens.py`, the two tokens and their comment from
+`apps/ui/src/styles/tokens.css`, `--remedy-state-vetoed` from
+`docs/ui/design_reference/tokens.css`, its two lines in `tokens_rules.md`, and this paragraph.
+
+## DECISION F020 D2 — the canvas paints every non-core node through one painter that reads the glyph and state modules in a palette resolved once per mount, and T002 lands in two rounds (2026-09-25)
+
+CONTEXT: T5_F020.md orders T002, the canvas integration replacing F019's glyph slots, the legend
+generated from the same source, and the matrix fixture. Measured at `06d185c6`: `ForceBrainGraph.tsx`
+routes every non-core kind to one `paintSphereNode` through `NODE_PAINTERS`, with the state colours
+as raw literals in `STATE_FILL` and `STATE_RING`; `tokens_rules.md` names `renderers/palette.ts` as
+the bridge that resolves tokens for a canvas once per mount; no `.tsx` render test exists, because
+the vitest environment is `node` and its `include` reads `.test.ts` only; the layout gives a cluster
+node the label `""`, so it carries no count to draw; and the graph's chrome holds only the filter
+chips and the view toggle.
+
+CHOSEN: (1) THE PALETTE BRIDGE is `renderers/palette.ts`: the token list is the state table's
+tokens plus the sphere highlight `--remedy-graph-node-ring`, resolved through
+`getComputedStyle(document.documentElement)` in one `useMemo` per mount; a token that resolves to
+nothing paints nothing and is named on the container's `data-palette-missing` attribute, never
+replaced by a guessed colour. (2) THE PAINTER is `renderers/paintNode.ts`, `paintBrainNode`, holding
+no colour, shape or state rule of its own: the task and the four run kinds are a glossy sphere with
+the state's halo, gradient and size factor, and a run's glyph stroked in the highlight from the L1
+zoom; the artifact, synapse and cluster are their glyph drawn in the state's colour; every state mark
+is drawn over the body, its outline first where it names one. The birth's alpha and scale apply as
+before. (2a) THE INK: the state table gains `inkToken`, the colour a glyph is stroked in on the
+state's sphere, and `lineToken`, the colour of the lines of a kind whose glyph is its body. Both are
+the planned ring's colour for a planned node and white ink and the state's own fill for every other
+state, because the reviewer's headless-Chrome render of the kind-by-state matrix at `06d185c6` plus
+this round's modules showed a planned run's white glyph vanishing on its white sphere and a planned
+artifact's white outline vanishing on the stage. (3) `ForceBrainGraph.tsx` keeps `NODE_PAINTERS` and the core's own painter, maps every other
+kind to `paintGlyphNode`, and drops `STATE_FILL`, `STATE_RING` and `paintSphereNode`; the selection
+ring, the labels and the links keep their literals under the canvas carve-out, because this slice
+is the node's glyph and state. (4) THE WIRING is pinned from source, as the stage mount already is:
+the token guard now also checks that every non-core kind maps to the glyph painter and that the
+canvas holds no state colour of its own, and its raw-colour check reads every module in
+`renderers/`. (5) THE SPLIT: this round lands the painter; the next lands the legend popover from
+the graph's chrome, enumerated from the two modules, the cluster's count, and the matrix fixture.
+
+ALTERNATIVES: resolving tokens on every frame, rejected because `getComputedStyle` per node per
+frame is the cost the bridge exists to avoid; a fallback colour for a missing token, rejected
+because a guessed colour is a state the data never said; one round for all of T002, rejected
+because the legend is a new surface with its own tests and the painter is enough for a round.
+
+HOW TO REVERSE: delete `renderers/palette.ts`, `renderers/paintNode.ts` and their tests, restore
+`ForceBrainGraph.tsx` and `tests/ui_contracts/test_node_glyph_tokens.py` from `06d185c6`, and delete
+this paragraph.
+
+## DECISION F020 D3 — the legend renders rows enumerated from the glyph and state modules, a cluster carries its count, and the matrix fixture paints every kind in every state with the live painter (2026-09-25)
+
+CONTEXT: T002's second half, per DECISION F020 D2 (5): the legend, the cluster's count and the
+matrix fixture. Measured at `1d954ef5`: `clusterBrainModel` gives a cluster node `meta.count`, the
+number of runs it stands for, and `buildBrainLayout` gives every non-task node the label `""`;
+`graph_spec.md` §4 draws a cluster as "r 9 + count" and §10 names its chip "+n"; the graph's chrome
+is the filter chips at the bottom left and the view toggle at the bottom right; a DOM legend can
+paint through `var()`, which the canvas cannot; the vitest environment renders no `.tsx`; and the
+canvas `font` cannot read `var()` either, so a family must be resolved like a colour.
+
+CHOSEN: (1) THE ROW MODEL is `renderers/legendModel.ts`: `legendKindRows` and `legendStateRows`
+read `GLYPHS`, `NODE_STATE_TREATMENTS` and `STATE_MARK_PATHS` and carry their very strings and
+tokens; each takes its source as a parameter defaulting to the module, so a test proves that a kind
+or a state removed from its module leaves the legend. (2) THE LEGEND is `GraphLegend.tsx`, a
+"Legend" button beside the view toggle opening a dialog of two lists, kinds and states, in the
+modules' order: each kind's 24-unit glyph as SVG from its row's paths, and each state's swatch — a
+disc in its fill and line at its size factor carrying its marks — painted through `var()` of the
+row's tokens. It writes no name, no path and no colour of its own, closes on Escape, and is pinned
+from source by `tests/ui_contracts/test_graph_legend_contract.py`. (3) THE COUNT: a cluster's layout
+label is `+<count>`, and the painter writes it at the cluster's centre in the state's line colour,
+at three quarters of its radius, in the family `--remedy-font-ui` resolves to, which the palette
+bridge now resolves beside the colours; no other kind's label is painted by the node painter. (4)
+THE MATRIX FIXTURE is `renderers/glyphMatrix.ts`: every non-core kind as a row and every state as a
+column, in the modules' orders, each cell at the layout's own radius for its kind and a cluster
+carrying `+3`, painted at rest at the L1 zoom by the same `paintBrainNode` the canvas uses. The
+core is not a row, because it keeps its own painter. T003's conformance assertions read the pixels
+of this fixture.
+
+ALTERNATIVES: a legend hand-written in the component, rejected because it is the drift the feature
+exists to remove; drawing the legend on a second canvas, rejected because a DOM legend is readable
+by assistive technology and resolves tokens with no bridge; a cluster count from the node's id or a
+separate field, rejected because `meta.count` is the reducer's own figure and the label is how the
+layout already hands text to the painter.
+
+HOW TO REVERSE: delete `GraphLegend.tsx`, `GraphLegend.module.css`, `renderers/legendModel.ts`,
+`renderers/glyphMatrix.ts`, their tests and `tests/ui_contracts/test_graph_legend_contract.py`,
+restore `BrainGraphStage.tsx`, `BrainGraphStage.module.css`, `buildForceBrainModel.ts`,
+`renderers/paintNode.ts`, `renderers/palette.ts` and their tests from `1d954ef5`, and delete this
+paragraph.
+
+## DECISION F020 D4 — a state change crossfades for 300 ms and ripples into pass, the canvas draws frames only on a visible page, and T003 lands in two rounds (2026-09-25)
+
+CONTEXT: T5_F020.md orders T003, the transition and pulse motion with visibility pausing, the
+conformance assertions and a live fixture pass. Measured at `6f43c63a`: `graph_spec.md` §12 asks
+for "300ms white ring ripple r→r+14 fade; state color crossfade" on completion and an in-progress
+pulse of ±8% over `--remedy-dur-pulse`, and for reduced motion "no pulse ... ripple = none";
+`motion_spec.md` rules that "pulses pause when tab hidden (rAF naturally stops — do not
+setInterval)"; `ForceBrainGraph.tsx` redraws continuously only while a birth is in flight
+(`autoPauseRedraw={!birthsInFlight}`), and draws a particle on every active edge; the job core has
+its own painter, outside the state language; and F019's demo recording, which
+`tests/ui_server/test_brain_demo_recording_live.py` keeps equal to a live fake job's model, is the
+committed stream of a real job's state changes.
+
+CHOSEN: (1) THE MOTION MODULE is `renderers/stateMotion.ts`, pure like `brainMotion.ts`:
+`scheduleStateTransitions` records one crossfade of `STATE_TRANSITION_MS`, 300 ms, per node whose
+state differs between two layouts, in the next layout's order, with a completion ripple exactly
+when the new state is `pass`; nothing on a first paint, for a node just born, for the core, or under
+reduced motion, so there a change is simply drawn in its new state. `transitionFrameAt` gives the
+frame's weights, linear for the crossfade and eased out for the ripple, which travels 14 units while
+it fades. (2) THE PULSE is `pulseScaleAt` in the state module, the multiplier alone, and
+`nodeScaleAt` is now the size factor times it. (3) THE PAINTER gains `paintBrainNodeInMotion`: the
+node at its pulse, and while a change runs the old state fading out under the new one, then the
+ripple ring in the highlight token. (4) THE FRAME RULE is `brainNeedsAnimationFrames`: never on a
+hidden page, always while a birth or a change is in flight, and for a pulse only when motion is not
+reduced; `usePageVisible` follows `visibilitychange`, and `autoPauseRedraw` is its negation. (5)
+THE PARTICLES stop with the page too: the reviewer's headless-Chrome measurement of this round's
+authoring tree counted 61 canvas frames in one second with the page reported hidden and a run in
+progress, because a particle keeps force-graph drawing whatever `autoPauseRedraw` says; with the
+particle gated on visibility the same measurement read 62 frames visible, 0 hidden, 61 visible
+again, and 0 once the change had settled. (6) THE LIVE FIXTURE PASS replays the demo recording
+frame by frame through the reducer and the layout and checks, against a golden derived by hand
+from DECISION F019 D1's mapping, that every state change the recorded job made is scheduled once,
+with a ripple on each completion, and that none is under reduced motion. (7) THE SPLIT: the
+conformance assertions over the matrix fixture's pixels land in the next round, with the headless
+harness that reads them.
+
+ALTERNATIVES: a crossfade length from `--remedy-dur-base`, rejected because graph_spec §12 ties the
+crossfade to the 300 ms completion; a timer that stops the pulse when hidden, rejected because
+motion_spec forbids `setInterval` and the rule only has to stop asking for frames; animating the
+core's state, rejected because the core keeps its own painter and its breath is its own motion.
+
+HOW TO REVERSE: delete `renderers/stateMotion.ts`, its test, `usePageVisible.ts` and
+`tests/ui_contracts/test_brain_motion_wiring.py`, restore `ForceBrainGraph.tsx`,
+`renderers/nodeStates.ts`, `renderers/paintNode.ts`, their tests and
+`tests/ui_contracts/test_node_glyph_tokens.py` from `6f43c63a`, and delete this paragraph.
+
+## DECISION F020 D5 — the conformance assertions judge real pixels of the matrix fixture against the binding spec, in a committed headless harness whose transcript is the evidence (2026-09-25)
+
+CONTEXT: T003's second half, per DECISION F020 D4 (7): "a conformance fixture walks the full
+matrix against reference renders ... pixel-region assertions on the discriminating details (the
+dot, the ring, the strike)", and state "never color-alone (assert on the fail/vetoed cases)".
+Measured at `106df185`: the vitest environment is `node` and has no canvas; F019's perf tool,
+`.agent/authored/f019-r6-perf-measure.py`, already builds a page with the primary's `vite`, serves it
+and drives `/usr/bin/google-chrome --headless=new` over CDP; DECISION F019 D6 names F044's trace
+stage as the CI home of that kind of measurement; and the matrix fixture of DECISION F020 D3 paints
+every non-core kind in every state with the live painter.
+
+CHOSEN: (1) THE PROBES are `renderers/glyphConformance.ts`, pure: for every matrix cell, a pixel at
+the centre of the status dot and in the middle of its white outline band, on the strike's line and
+in its outline band, and at the top of the ring, each placed through the cell's own glyph
+transform at its state's size, in device pixels at `CONFORMANCE_SCALE` 8. A cell is probed for the
+PRESENCE of each mark its state carries and for the ABSENCE of the dot and the strike otherwise;
+the ring is probed where present only, because an in-progress halo seen through a planned ring's
+position is too close in colour to tell apart. (2) THE REFERENCE is the binding spec written out in
+that module, `BINDING_STATE_MARKS` and `BINDING_MARK_TOKENS`, and not the state table the painter
+reads: the reviewer's first harness took its expectations from `nodeStates.ts`, and its red
+control showed the flaw — giving the open state a strike left all 152 probes green, because the
+render and the expectation moved together. Bound to the spec, the same mutation fails 8 probes. A
+unit test pins that the spec and the table agree today, so a table change is caught at both levels.
+(3) THE JUDGE, `judgeProbe`, counts a pixel as a colour when its alpha is at least 180 and every
+channel lies within 24 of the resolved token; the closest pair a probe must tell apart, the planned
+ring's blue and the veto's grey, differ by 41. (4) THE HARNESS is committed as a tool, as F019's
+perf tool is: `.agent/authored/f020-r5-conformance_*`, a page that paints the matrix with the live
+painter, reads each probe's pixel and applies `judgeProbe`, and a runner that builds, serves,
+drives Chrome and stops it by pid. Its transcript, committed with the round, is the evidence the
+Acceptance asks for, and a red-proof tool turns it red four ways. Its CI home is F044's trace stage,
+as DECISION F019 D6 names for the frame budget.
+
+ALTERNATIVES: goldens of whole-cell pixel hashes, rejected because anti-aliasing differs across
+Chrome builds and a hash names no detail; expectations read from `nodeStates.ts`, rejected for the
+reason (2) measures; a harness run inside the pytest suite, rejected because a fresh runner has no
+guaranteed Chrome and F044 owns the browser stage.
+
+HOW TO REVERSE: delete `renderers/glyphConformance.ts`, its test, the `.agent/authored/f020-r5-*`
+harness files and this paragraph.

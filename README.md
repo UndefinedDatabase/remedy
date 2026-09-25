@@ -26,7 +26,7 @@ verification commands. If something is unproven, Remedy says so instead of guess
 
 ## Status
 
-99 of 285 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
+100 of 285 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
 
 | Tier | Name | Done | Total |
 |------|------|-----:|------:|
@@ -35,7 +35,7 @@ verification commands. If something is unproven, Remedy says so instead of guess
 | 2 | Minimal Self-Build Runtime | 37 | 38 |
 | 3 | Full Token Economy & Autonomy | 6 | 26 |
 | 4 | Memory & Learning | 1 | 17 |
-| 5 | Operator Cockpit | 17 | 34 |
+| 5 | Operator Cockpit | 18 | 34 |
 | 6 | Design-to-Code | 0 | 16 |
 | 7 | Quality & Trust | 0 | 15 |
 | 8 | Worker Ecosystem & Neutrality | 0 | 12 |
@@ -410,6 +410,19 @@ missing ones back from the server before it draws anything past the gap; a
 Simple view button shows the older, plainer picture, which keeps the small
 prompt dots and can be used with the keyboard; in a check in a headless browser
 the graph held sixty frames a second at five hundred nodes).
+
+F020 node lifecycle and glyph language (every node in the job graph now shows
+what it is and how it stands at a glance: each kind of node has its own small
+drawing, such as a code sign for a builder attempt, a head and shoulders for a
+review and a flask for a check, and each state its own look, so a failed or
+blocked node carries a small outlined dot, a vetoed one a strike through it and
+a planned one a ring, which keeps them readable without colour; a Legend button
+beside the view toggle lists every kind and state drawn from the very same
+shapes and colours the graph uses; a node that changes state fades from the old
+look to the new one, a finished node sends out a short ring, a running node
+gently pulses, and the graph stops drawing while the browser tab is hidden; a
+check in a headless browser read 144 of 144 points of a picture of every kind in
+every state as the design requires).
 
 Full per-feature state: [`docs/roadmap/STATUS.md`](docs/roadmap/STATUS.md)
 

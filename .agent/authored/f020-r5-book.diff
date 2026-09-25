@@ -1,0 +1,58 @@
+diff --git a/.agent/decisions.md b/.agent/decisions.md
+index c8381549f..640fdc1bc 100644
+--- a/.agent/decisions.md
++++ b/.agent/decisions.md
+@@ -20699,3 +20699,43 @@ HOW TO REVERSE: delete `renderers/stateMotion.ts`, its test, `usePageVisible.ts`
+ `tests/ui_contracts/test_brain_motion_wiring.py`, restore `ForceBrainGraph.tsx`,
+ `renderers/nodeStates.ts`, `renderers/paintNode.ts`, their tests and
+ `tests/ui_contracts/test_node_glyph_tokens.py` from `6f43c63a`, and delete this paragraph.
++
++## DECISION F020 D5 — the conformance assertions judge real pixels of the matrix fixture against the binding spec, in a committed headless harness whose transcript is the evidence (2026-09-25)
++
++CONTEXT: T003's second half, per DECISION F020 D4 (7): "a conformance fixture walks the full
++matrix against reference renders ... pixel-region assertions on the discriminating details (the
++dot, the ring, the strike)", and state "never color-alone (assert on the fail/vetoed cases)".
++Measured at `106df185`: the vitest environment is `node` and has no canvas; F019's perf tool,
++`.agent/authored/f019-r6-perf-measure.py`, already builds a page with the primary's `vite`, serves it
++and drives `/usr/bin/google-chrome --headless=new` over CDP; DECISION F019 D6 names F044's trace
++stage as the CI home of that kind of measurement; and the matrix fixture of DECISION F020 D3 paints
++every non-core kind in every state with the live painter.
++
++CHOSEN: (1) THE PROBES are `renderers/glyphConformance.ts`, pure: for every matrix cell, a pixel at
++the centre of the status dot and in the middle of its white outline band, on the strike's line and
++in its outline band, and at the top of the ring, each placed through the cell's own glyph
++transform at its state's size, in device pixels at `CONFORMANCE_SCALE` 8. A cell is probed for the
++PRESENCE of each mark its state carries and for the ABSENCE of the dot and the strike otherwise;
++the ring is probed where present only, because an in-progress halo seen through a planned ring's
++position is too close in colour to tell apart. (2) THE REFERENCE is the binding spec written out in
++that module, `BINDING_STATE_MARKS` and `BINDING_MARK_TOKENS`, and not the state table the painter
++reads: the reviewer's first harness took its expectations from `nodeStates.ts`, and its red
++control showed the flaw — giving the open state a strike left all 152 probes green, because the
++render and the expectation moved together. Bound to the spec, the same mutation fails 8 probes. A
++unit test pins that the spec and the table agree today, so a table change is caught at both levels.
++(3) THE JUDGE, `judgeProbe`, counts a pixel as a colour when its alpha is at least 180 and every
++channel lies within 24 of the resolved token; the closest pair a probe must tell apart, the planned
++ring's blue and the veto's grey, differ by 41. (4) THE HARNESS is committed as a tool, as F019's
++perf tool is: `.agent/authored/f020-r5-conformance_*`, a page that paints the matrix with the live
++painter, reads each probe's pixel and applies `judgeProbe`, and a runner that builds, serves,
++drives Chrome and stops it by pid. Its transcript, committed with the round, is the evidence the
++Acceptance asks for, and a red-proof tool turns it red four ways. Its CI home is F044's trace stage,
++as DECISION F019 D6 names for the frame budget.
++
++ALTERNATIVES: goldens of whole-cell pixel hashes, rejected because anti-aliasing differs across
++Chrome builds and a hash names no detail; expectations read from `nodeStates.ts`, rejected for the
++reason (2) measures; a harness run inside the pytest suite, rejected because a fresh runner has no
++guaranteed Chrome and F044 owns the browser stage.
++
++HOW TO REVERSE: delete `renderers/glyphConformance.ts`, its test, the `.agent/authored/f020-r5-*`
++harness files and this paragraph.
+diff --git a/.agent/live_review.md b/.agent/live_review.md
+index 79dcd1b25..774980ff1 100644
+--- a/.agent/live_review.md
++++ b/.agent/live_review.md
+@@ -461,3 +461,5 @@ Gate: F020 R1 — the F020 round 1 entry: the claim, the booking of F284's round
+ Gate: F020 R2 — the F020 round 2 entry: the booking of round 1, DECISION F020 D2, and T002's first half, the palette bridge, the node painter and the canvas wired to it. VERDICT PASS, NO DEVIATION DECLARED. Re-derived over `06d185c6`..`1d954ef5` by the planner and reviewer of F020's first session, whose own runs produced every reading below, and booked by round 3's first commit. THE RANGE IS 9 COMMITS in the block's order C1a to C5, at `0342dc16` 283, `20864b9e` 417, `3cbc555e` 181, `43ad8359` 177, `6264e9fe` 232, `fa259367` 53, `06308114` 240, `632034b1` 277 and `1d954ef5` 191 insertions by `git show --numstat`, each under the 500-line cap, each single-parent and each ending in the ordered trailer. THE TRANSPORT PROOF IS FILE IDENTITY: every one of the 21 paths the round changed apart from the handback reads byte-equal at `1d954ef5` to the reviewer's simulated tree `.remedy-wt/f020-r2-sim`, the block copy to the reviewer's original, whose sha256 is `68b3eb845088cc55bc536be1dcc3c2dfcb99c3e40db4a2e0dbd9739b1967e062`. THE OPEN SET by distinct id reads R-1008 alone at `fa259367`. THE TESTS: the reviewer's own run in the primary checkout at `1d954ef5` of `tests/ui_contracts/test_node_glyph_tokens.py`, `test_ui_lint.py`, `test_raw_colour_ratchet.py`, `test_brain_stage_mount.py`, `test_graph_architecture.py`, `tests/ui_server/test_dashboard_contract.py`, `tests/orchestration/test_test_runner.py` and `tests/cli/test_golden_path.py` read `267 passed, 2 skipped` at exit 0, both skips F252 quarantines, so eslint, `tsc --noEmit` and the UI's whole vitest suite ran; ruff over the guard read `All checks passed!`; and `integrity check --json` read `fail_count` 0. THE RED PROOFS: the round's mutation tool, run by the reviewer over its simulated tree and by the worker in a disposable worktree at `632034b1`, read the same: all 17 mutations caught, 12 by vitest alone and 5 by the token guard alone, with unmutated controls of 50 vitest and 8 guard passes first and last and every file restored byte-identical; the worktree was removed. THE RENDER: before emitting the block, the reviewer built its authoring tree, whose product files are byte-equal to `06308114`'s, in headless Chrome and painted every kind in every state and a live graph; the page threw no exception, `data-palette-missing` was absent and every palette token resolved, and that render is where the planned glyph's white ink was found and replaced before the block left the reviewer.
+ 
+ Gate: F020 R3 — the F020 round 3 entry: the booking of round 2, DECISION F020 D3, and T002's second half, the legend generated from the glyph and state modules, the cluster's count and the matrix fixture. VERDICT PASS, NO DEVIATION DECLARED. Re-derived over `1d954ef5`..`6f43c63a` by the planner and reviewer of F020's first session, whose own runs produced every reading below, and booked by round 4's first commit. THE RANGE IS 9 COMMITS in the block's order C1a to C5, at `8776503f` 300, `3ead9e61` 371, `57cba67b` 195, `d3062ef9` 291, `3fd4ed87` 200, `6d42d954` 50, `062abc7d` 333, `358f30bd` 242 and `6f43c63a` 194 insertions by `git show --numstat`, each under the 500-line cap, each single-parent and each ending in the ordered trailer. THE TRANSPORT PROOF IS FILE IDENTITY: every one of the 31 paths the round changed apart from the handback reads byte-equal at `6f43c63a` to the reviewer's simulated tree `.remedy-wt/f020-r3-sim`, the block copy to the reviewer's original, whose sha256 is `7c2bf6b9d365120286c3947c1f9bf7754fa49ed71dff6a72aa5f24da474b988b`. THE OPEN SET by distinct id reads R-1008 alone at `6d42d954`. THE TESTS: the reviewer's own run in the primary checkout at `6f43c63a` of `tests/ui_contracts/test_graph_legend_contract.py`, `test_node_glyph_tokens.py`, `test_ui_lint.py`, `test_raw_colour_ratchet.py`, `test_brain_stage_mount.py`, `test_design_drift.py`, `test_graph_architecture.py`, `tests/ui_server/test_dashboard_contract.py`, `tests/orchestration/test_test_runner.py` and `tests/cli/test_golden_path.py` read `323 passed, 2 skipped` at exit 0, both skips F252 quarantines, so eslint, `tsc --noEmit` and the UI's whole vitest suite ran; ruff over the new contract read `All checks passed!`; and `integrity check --json` read `fail_count` 0. THE RED PROOFS: the round's mutation tool, run by the reviewer over its simulated tree and by the worker in a disposable worktree at `358f30bd`, read the same: all 19 mutations caught, 14 by vitest alone and 5 by the contract tests alone, with unmutated controls of 51 vitest and 13 contract passes first and last and every file restored byte-identical; the worktree was removed. THE RENDER: the reviewer built its authoring tree, whose product files are byte-equal to `062abc7d`'s, in headless Chrome, painted the matrix fixture and opened the legend; the page threw no exception and every palette token resolved, and that render is where the cluster's count was reduced to three quarters of its radius and the legend's kind discs lightened to `--remedy-faint` before the block left the reviewer.
++
++Gate: F020 R4 — the F020 round 4 entry: the booking of round 3, DECISION F020 D4, and T003's first half, the state crossfade and completion ripple, the pulse, the frame rule that draws nothing on a hidden page, the canvas wired to them and the replayed demo recording. VERDICT PASS, NO DEVIATION DECLARED. Re-derived over `6f43c63a`..`106df185` by the planner and reviewer of F020's first session, whose own runs produced every reading below, and booked by round 5's first commit. THE RANGE IS 9 COMMITS in the block's order C1a to C5, at `151bc29c` 288, `c8dd2bb0` 410, `5b7a1338` 187, `b330d382` 116, `a3c53a8d` 208, `08b93a19` 54, `3a182fb6` 230, `fcb71150` 277 and `106df185` 183 insertions by `git show --numstat`, each under the 500-line cap, each single-parent and each ending in the ordered trailer. THE TRANSPORT PROOF IS FILE IDENTITY: every one of the 23 paths the round changed apart from the handback reads byte-equal at `106df185` to the reviewer's simulated tree `.remedy-wt/f020-r4-sim`, the block copy to the reviewer's original, whose sha256 is `e2db2736ab3d27d78544a4124368d990305cf2e453c3313a247c73b98601edd1`. THE OPEN SET by distinct id reads R-1008 alone at `08b93a19`. THE TESTS: the reviewer's own run in the primary checkout at `106df185` of `tests/ui_contracts/test_brain_motion_wiring.py`, `test_node_glyph_tokens.py`, `test_brain_stage_mount.py`, `test_ui_lint.py`, `test_raw_colour_ratchet.py`, `tests/ui_server/test_dashboard_contract.py`, `tests/orchestration/test_test_runner.py` and `tests/cli/test_golden_path.py` read `191 passed` at exit 0 with no skip, so eslint, `tsc --noEmit` and the UI's whole vitest suite ran; and `integrity check --json` read `fail_count` 0. THE RED PROOFS: the round's mutation tool, run by the reviewer over its simulated tree and by the worker in a disposable worktree at `fcb71150`, read the same: all 18 mutations caught, 13 by vitest alone and 5 by the contract tests alone, with unmutated controls of 56 vitest and 12 contract passes first and last and every file restored byte-identical; the worktree was removed. THE MEASUREMENT behind DECISION F020 D4 (5), taken by the reviewer in headless Chrome over its authoring tree, whose product files are byte-equal to `3a182fb6`'s: 62 canvas frames in one second visible with a run in progress, 0 with the page reported hidden, 61 visible again, and 0 once the change had settled, with no exception thrown.

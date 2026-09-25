@@ -146,7 +146,7 @@ Milestone R1 — Remedy as the daily tool: Tier 2 complete (F086 as the self-ins
 
 ## Tier 5 — Operator Cockpit (parallel human track, continued)
 
-- [ ] F020 — Node lifecycle & glyph language
+- [x] F020 — Node lifecycle & glyph language (T001–T003 complete; accepted 2026-09-25 · live review PASS — ACCEPTED · Evidence job f020r7e1001 · package remedy-review-20260925-013441-READY_FOR_REVIEW.zip · SHA-256 a069e502d3956af33f4e7dde2ece1dfd47355c68030181dbd5764af6d026d1e0 · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD ac75d5d4ebe6f7aa908ccdfd1dfa504582b2fb5e)
 - [ ] F023 — Semantic zoom L0–L3
 - [ ] F024 — Phase timeline with scrubber
 - [ ] F025 — Pause/resume (global & per node)

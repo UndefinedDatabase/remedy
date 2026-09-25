@@ -147,6 +147,14 @@ describe("buildBrainLayout", () => {
     expect(Math.abs(sum)).toBeLessThan(1e-6);
   });
 
+  it("labels a cluster with the count of runs it stands for, as +n", () => {
+    const layout = buildBrainLayout(CLUSTER_INPUT_MODEL);
+    const clusters = layout.nodes.filter((n) => n.kind === "cluster");
+    const expected = CLUSTER_EXPECTED_MODEL.nodes.filter((n) => n.kind === "cluster");
+    expect(clusters.length).toBeGreaterThan(0);
+    expect(clusters.map((n) => n.label)).toEqual(expected.map((n) => `+${n.meta.count as number}`));
+  });
+
   it("labels: a seeded task's title when non-empty, else its bare id; every other node's label is empty", () => {
     const seeded = seedBrainModel("job-labels", [
       { id: "t1", status: "pending", rank: 0, title: "Fix the flaky test" },

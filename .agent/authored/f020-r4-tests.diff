@@ -1,0 +1,113 @@
+diff --git a/apps/ui/src/components/graph/renderers/nodeStates.test.ts b/apps/ui/src/components/graph/renderers/nodeStates.test.ts
+index aca495ebd..8390c3733 100644
+--- a/apps/ui/src/components/graph/renderers/nodeStates.test.ts
++++ b/apps/ui/src/components/graph/renderers/nodeStates.test.ts
+@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
+ import { STATE_MARK_PATHS } from "./glyphPaths";
+ import {
+   NODE_PULSE_AMPLITUDE, NODE_PULSE_MS, NODE_STATE_TREATMENTS,
+-  nodeScaleAt, nodeStateOrder, nodeStateTokens,
++  nodeScaleAt, nodeStateOrder, nodeStateTokens, pulseScaleAt,
+ } from "./nodeStates";
+ 
+ /** Every NodeState brainOntology.ts declares, in the legend order the module
+@@ -144,3 +144,23 @@ describe("nodeScaleAt", () => {
+     expect(nodeScaleAt("pass", 123, false)).toBe(1);
+   });
+ });
++
++describe("pulseScaleAt", () => {
++  it("is the pulse alone, apart from the size factor", () => {
++    expect(pulseScaleAt("in_progress", NODE_PULSE_MS / 4, false)).toBeCloseTo(1.08, 10);
++    for (const state of ALL_STATES.filter((s) => s !== "in_progress")) {
++      expect(pulseScaleAt(state as keyof typeof NODE_STATE_TREATMENTS, NODE_PULSE_MS / 4, false), state).toBe(1);
++    }
++  });
++
++  it("holds still under reduced motion", () => {
++    expect(pulseScaleAt("in_progress", NODE_PULSE_MS / 4, true)).toBe(1);
++  });
++
++  it("times the size factor to give nodeScaleAt", () => {
++    for (const state of ALL_STATES) {
++      const s = state as keyof typeof NODE_STATE_TREATMENTS;
++      expect(nodeScaleAt(s, 123, false), state).toBeCloseTo(treatment(state).sizeFactor * pulseScaleAt(s, 123, false), 10);
++    }
++  });
++});
+diff --git a/apps/ui/src/components/graph/renderers/paintNode.test.ts b/apps/ui/src/components/graph/renderers/paintNode.test.ts
+index 5e0c20566..c790d6fe9 100644
+--- a/apps/ui/src/components/graph/renderers/paintNode.test.ts
++++ b/apps/ui/src/components/graph/renderers/paintNode.test.ts
+@@ -2,7 +2,10 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+ import type { NodeKind, NodeState } from "../brainOntology";
+ import { GLYPHS, GLYPH_MIN_ZOOM_RUN, STATE_MARK_PATHS } from "./glyphPaths";
+ import { NODE_STATE_TREATMENTS } from "./nodeStates";
+-import { CLUSTER_COUNT_SIZE, GLYPH_STROKE_WIDTH, HALO_SPREAD, SPHERE_KINDS, paintBrainNode } from "./paintNode";
++import {
++  CLUSTER_COUNT_SIZE, GLYPH_STROKE_WIDTH, HALO_SPREAD, RIPPLE_WIDTH, SPHERE_KINDS, paintBrainNode, paintBrainNodeInMotion,
++} from "./paintNode";
++import type { NodeMotion } from "./paintNode";
+ import type { PaintableNode } from "./paintNode";
+ import { brainPaletteTokens } from "./palette";
+ import type { BrainPalette } from "./palette";
+@@ -230,3 +233,46 @@ describe("paintBrainNode — the cluster's count", () => {
+     expect(paint("task", "pass", 1, { label: "Fix the flaky test" }).filter((o) => o.op === "text")).toEqual([]);
+   });
+ });
++
++describe("paintBrainNodeInMotion", () => {
++  function paintMoving(state: NodeState, motion: NodeMotion): Op[] {
++    const ctx = new RecordingContext();
++    paintBrainNodeInMotion(ctx as unknown as CanvasRenderingContext2D, { kind: "task", state, x: 10, y: 20, radius: 4.5 }, {
++      palette: PALETTE, zoom: 1, alpha: 1, scale: 1,
++    }, motion);
++    return ctx.ops;
++  }
++  const spheres = (ops: Op[]) => ops.filter((o) => o.op === "fill" && typeof o.fillStyle === "object");
++  const stopOf = (o: Op) => (o.fillStyle as { stops: [number, string][] }).stops[1][1];
++
++  it("paints a node at rest once, at its pulse multiplier", () => {
++    const ops = paintMoving("in_progress", { fromState: null, transition: null, pulseScale: 1.08 });
++    expect(spheres(ops).map((o) => [o.radius, o.globalAlpha])).toEqual([[4.5 * 1.08, 1]]);
++  });
++
++  it("crossfades the old state out under the new one while a change runs", () => {
++    const ops = paintMoving("pass", {
++      fromState: "in_progress", transition: { fromAlpha: 0.25, toAlpha: 0.75, ripple: null, done: false }, pulseScale: 1,
++    });
++    expect(spheres(ops).map((o) => [stopOf(o), o.globalAlpha])).toEqual([
++      [c("--remedy-state-current"), 0.25],
++      [c("--remedy-state-done"), 0.75],
++    ]);
++  });
++
++  it("rings the node in the highlight as the ripple leaves its edge", () => {
++    const ops = paintMoving("pass", {
++      fromState: "in_progress", transition: { fromAlpha: 0.5, toAlpha: 0.5, ripple: { spread: 7, alpha: 0.5 }, done: false },
++      pulseScale: 1,
++    });
++    const ring = ops.filter((o) => o.op === "stroke" && o.radius === 4.5 + 7);
++    expect(ring.map((o) => [o.strokeStyle, o.lineWidth, o.globalAlpha])).toEqual([[c("--remedy-graph-node-ring"), RIPPLE_WIDTH, 0.5]]);
++  });
++
++  it("paints a finished change once, in its new state", () => {
++    const ops = paintMoving("pass", {
++      fromState: "in_progress", transition: { fromAlpha: 0, toAlpha: 1, ripple: null, done: true }, pulseScale: 1,
++    });
++    expect(spheres(ops).map(stopOf)).toEqual([c("--remedy-state-done")]);
++  });
++});
+diff --git a/tests/ui_contracts/test_node_glyph_tokens.py b/tests/ui_contracts/test_node_glyph_tokens.py
+index a67b6049b..8a1f82e42 100644
+--- a/tests/ui_contracts/test_node_glyph_tokens.py
++++ b/tests/ui_contracts/test_node_glyph_tokens.py
+@@ -120,7 +120,7 @@ def test_the_canvas_paints_every_non_core_kind_through_the_glyph_painter():
+     entries = dict(re.findall(r"^  (\w+): (\w+),$", table.group(1), flags=re.M))
+     assert entries.pop("job_core") == "paintCoreNode"
+     assert set(entries.values()) == {"paintGlyphNode"}, entries
+-    assert "paintBrainNode(ctx, node, { palette, zoom: globalScale" in src
++    assert "paintBrainNodeInMotion(ctx, node, { palette, zoom: globalScale" in src
+     assert "useMemo(() => readDocumentPalette(), [])" in src
+ 
+ 

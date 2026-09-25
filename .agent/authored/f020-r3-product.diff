@@ -1,0 +1,187 @@
+diff --git a/apps/ui/src/components/graph/BrainGraphStage.module.css b/apps/ui/src/components/graph/BrainGraphStage.module.css
+index bf798bcf6..d52056ea4 100644
+--- a/apps/ui/src/components/graph/BrainGraphStage.module.css
++++ b/apps/ui/src/components/graph/BrainGraphStage.module.css
+@@ -14,7 +14,7 @@
+ 
+ .chipsDock { position: absolute; left: 18px; bottom: 16px; z-index: 5; }
+ 
+-.viewDock { position: absolute; right: 18px; bottom: 16px; z-index: 5; }
++.viewDock { position: absolute; right: 18px; bottom: 16px; z-index: 5; display: flex; gap: 8px; }
+ 
+ .viewToggle {
+   height: 30px;
+diff --git a/apps/ui/src/components/graph/BrainGraphStage.tsx b/apps/ui/src/components/graph/BrainGraphStage.tsx
+index 0b689b4b8..89af3f74e 100644
+--- a/apps/ui/src/components/graph/BrainGraphStage.tsx
++++ b/apps/ui/src/components/graph/BrainGraphStage.tsx
+@@ -8,6 +8,7 @@ import { buildBrainLayout } from "./buildForceBrainModel";
+ import { brainTaskCount, dashboardBrainSeeds, filterBrainLayout, selectedBrainNodeId, shellSelectionIdOf } from "./brainView";
+ import { ForceBrainGraph } from "./ForceBrainGraph";
+ import { GraphFilterChips, type GraphFilter } from "./GraphFilterChips";
++import { GraphLegend } from "./GraphLegend";
+ import { BrainGraphCanvas } from "./BrainGraphCanvas";
+ import styles from "./BrainGraphStage.module.css";
+ 
+@@ -62,6 +63,7 @@ export function BrainGraphStage({
+         <GraphFilterChips value={filter} onChange={setFilter} />
+       </div>
+       <div className={styles.viewDock}>
++        <GraphLegend />
+         <button
+           type="button"
+           className={styles.viewToggle}
+diff --git a/apps/ui/src/components/graph/buildForceBrainModel.ts b/apps/ui/src/components/graph/buildForceBrainModel.ts
+index e175d9b76..247536b9f 100644
+--- a/apps/ui/src/components/graph/buildForceBrainModel.ts
++++ b/apps/ui/src/components/graph/buildForceBrainModel.ts
+@@ -54,14 +54,21 @@ function isLayoutChildKind(kind: NodeKind): boolean {
+ }
+ 
+ /** A task's label is its seed title when one was given, else its bare id
+- *  with the `task:` prefix stripped; every other node paints no label, so
+- *  only a task node ever calls this. */
++ *  with the `task:` prefix stripped; a cluster's is its count, and every
++ *  other node carries no label. */
+ function taskLabelOf(task: BrainNode): string {
+   const title = task.meta.title;
+   if (typeof title === "string" && title.length > 0) return title;
+   return task.id.slice("task:".length);
+ }
+ 
++/** A cluster's label is the count of runs it stands for, as `+n` (graph_spec
++ *  §10: 'cluster chip "+n"'); a cluster that carries no count gets none. */
++function clusterLabelOf(cluster: BrainNode): string {
++  const count = cluster.meta.count;
++  return typeof count === "number" && count > 0 ? `+${count}` : "";
++}
++
+ /** Task ordering for golden-angle assignment (graph_spec §6: "Seeded initial
+  *  angles = golden-angle around the core"): by seed rank (a rank-less task
+  *  sorts last), then id. This is the order angles are HANDED OUT in, not the
+@@ -157,7 +164,7 @@ export function buildBrainLayout(model: BrainModel): BrainLayoutData {
+     const radius = n.kind === "cluster" ? BRAIN_CLUSTER_RADIUS : BRAIN_RUN_RADIUS;
+     return {
+       id: n.id, kind: n.kind, state: n.state, parentId: n.parentId, seq: n.seq,
+-      depth: 2, radius, x: p.x, y: p.y, label: "",
++      depth: 2, radius, x: p.x, y: p.y, label: n.kind === "cluster" ? clusterLabelOf(n) : "",
+     };
+   });
+ 
+diff --git a/apps/ui/src/components/graph/renderers/paintNode.ts b/apps/ui/src/components/graph/renderers/paintNode.ts
+index e8e055f89..3fc19fbe3 100644
+--- a/apps/ui/src/components/graph/renderers/paintNode.ts
++++ b/apps/ui/src/components/graph/renderers/paintNode.ts
+@@ -9,7 +9,7 @@ import { GLYPHS, STATE_MARK_PATHS, glyphDrawnAt, glyphPath2D, glyphTransform } f
+ import type { GlyphPath2D } from "./glyphPaths";
+ import { NODE_STATE_TREATMENTS } from "./nodeStates";
+ import type { RemedyToken, StateMarkPaint } from "./nodeStates";
+-import { BRAIN_HIGHLIGHT_TOKEN } from "./palette";
++import { BRAIN_HIGHLIGHT_TOKEN, BRAIN_LABEL_FONT_TOKEN } from "./palette";
+ import type { BrainPalette } from "./palette";
+ 
+ /** Glyph stroke width in the 24-unit box, the value of `--remedy-icon-stroke`
+@@ -27,15 +27,21 @@ export const SPHERE_KINDS: ReadonlySet<NodeKind> = new Set<NodeKind>([
+   "task", "builder_run", "review_run", "repair_run", "test_run",
+ ]);
+ 
+-/** The fields of a positioned node this painter reads. */
++/** The fields of a positioned node this painter reads. `label` is written
++ *  inside a cluster as its count (graph_spec §4: "cluster: r 9 + count") and
++ *  is not painted for any other kind here. */
+ export interface PaintableNode {
+   kind: NodeKind;
+   state: NodeState;
+   x: number;
+   y: number;
+   radius: number;
++  label?: string;
+ }
+ 
++/** A cluster's count is written at this share of the node's radius. */
++export const CLUSTER_COUNT_SIZE = 0.75;
++
+ /** What the frame contributes: the resolved palette, the canvas zoom, and a
+  *  birth's alpha and scale (1 and 1 at rest). */
+ export interface NodePaintFrame {
+@@ -45,7 +51,7 @@ export interface NodePaintFrame {
+   scale: number;
+ }
+ 
+-function colourOf(palette: BrainPalette, token: RemedyToken): string {
++function tokenValue(palette: BrainPalette, token: RemedyToken): string {
+   return palette[token] ?? "";
+ }
+ 
+@@ -79,11 +85,11 @@ function drawPaths(ctx: CanvasRenderingContext2D, paths: GlyphPath2D, fill: stri
+  *  stroked twice as wide in that colour, so it stands off the node beneath. */
+ function drawMark(ctx: CanvasRenderingContext2D, mark: StateMarkPaint, node: PaintableNode, radius: number, palette: BrainPalette): void {
+   const paths = glyphPath2D(STATE_MARK_PATHS[mark.mark]);
+-  const colour = colourOf(palette, mark.token);
++  const colour = tokenValue(palette, mark.token);
+   inGlyphBox(ctx, node, radius, () => {
+     const shape = paths.stroke ?? paths.fill;
+     if (mark.outlineToken && shape) {
+-      ctx.strokeStyle = colourOf(palette, mark.outlineToken);
++      ctx.strokeStyle = tokenValue(palette, mark.outlineToken);
+       ctx.lineWidth = GLYPH_STROKE_WIDTH * 2;
+       ctx.stroke(shape);
+     }
+@@ -96,10 +102,10 @@ function drawMark(ctx: CanvasRenderingContext2D, mark: StateMarkPaint, node: Pai
+ export function paintBrainNode(ctx: CanvasRenderingContext2D, node: PaintableNode, frame: NodePaintFrame): void {
+   const treatment = NODE_STATE_TREATMENTS[node.state];
+   const radius = node.radius * treatment.sizeFactor * frame.scale;
+-  const fill = colourOf(frame.palette, treatment.fillToken);
+-  const highlight = colourOf(frame.palette, BRAIN_HIGHLIGHT_TOKEN);
+-  const ink = colourOf(frame.palette, treatment.inkToken);
+-  const line = colourOf(frame.palette, treatment.lineToken);
++  const fill = tokenValue(frame.palette, treatment.fillToken);
++  const highlight = tokenValue(frame.palette, BRAIN_HIGHLIGHT_TOKEN);
++  const ink = tokenValue(frame.palette, treatment.inkToken);
++  const line = tokenValue(frame.palette, treatment.lineToken);
+   const glyph = GLYPHS[node.kind];
+   const paths = glyphPath2D(glyph);
+   ctx.save();
+@@ -107,7 +113,7 @@ export function paintBrainNode(ctx: CanvasRenderingContext2D, node: PaintableNod
+   if (SPHERE_KINDS.has(node.kind)) {
+     if (treatment.halo) {
+       ctx.globalAlpha = frame.alpha * treatment.halo.alpha;
+-      ctx.fillStyle = colourOf(frame.palette, treatment.halo.token);
++      ctx.fillStyle = tokenValue(frame.palette, treatment.halo.token);
+       ctx.beginPath();
+       ctx.arc(node.x, node.y, radius + HALO_SPREAD, 0, Math.PI * 2);
+       ctx.fill();
+@@ -127,6 +133,13 @@ export function paintBrainNode(ctx: CanvasRenderingContext2D, node: PaintableNod
+   } else {
+     inGlyphBox(ctx, node, radius, () => drawPaths(ctx, paths, fill, line));
+   }
++  if (node.kind === "cluster" && node.label) {
++    ctx.fillStyle = line;
++    ctx.font = `600 ${radius * CLUSTER_COUNT_SIZE}px ${tokenValue(frame.palette, BRAIN_LABEL_FONT_TOKEN)}`;
++    ctx.textAlign = "center";
++    ctx.textBaseline = "middle";
++    ctx.fillText(node.label, node.x, node.y);
++  }
+   for (const mark of treatment.marks) drawMark(ctx, mark, node, radius, frame.palette);
+   ctx.restore();
+ }
+diff --git a/apps/ui/src/components/graph/renderers/palette.ts b/apps/ui/src/components/graph/renderers/palette.ts
+index ba8cbf37d..a72ab5324 100644
+--- a/apps/ui/src/components/graph/renderers/palette.ts
++++ b/apps/ui/src/components/graph/renderers/palette.ts
+@@ -9,9 +9,14 @@ import type { RemedyToken } from "./nodeStates";
+  *  (graph_spec §5: "radial gradient white-highlight → state fill"). */
+ export const BRAIN_HIGHLIGHT_TOKEN: RemedyToken = "--remedy-graph-node-ring";
+ 
++/** The font family a count is written in on the canvas (assets_spec.md §4:
++ *  "cluster | circle + centered count text"), resolved like a colour because a
++ *  canvas `font` cannot read var() either. */
++export const BRAIN_LABEL_FONT_TOKEN: RemedyToken = "--remedy-font-ui";
++
+ /** Every token the brain graph's node painter reads, each once. */
+ export function brainPaletteTokens(): RemedyToken[] {
+-  return [...new Set<RemedyToken>([...nodeStateTokens(), BRAIN_HIGHLIGHT_TOKEN])];
++  return [...new Set<RemedyToken>([...nodeStateTokens(), BRAIN_HIGHLIGHT_TOKEN, BRAIN_LABEL_FONT_TOKEN])];
+ }
+ 
+ /** Resolved token values, keyed by token name. */

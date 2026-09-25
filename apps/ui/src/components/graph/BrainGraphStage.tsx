@@ -8,6 +8,7 @@ import { buildBrainLayout } from "./buildForceBrainModel";
 import { brainTaskCount, dashboardBrainSeeds, filterBrainLayout, selectedBrainNodeId, shellSelectionIdOf } from "./brainView";
 import { ForceBrainGraph } from "./ForceBrainGraph";
 import { GraphFilterChips, type GraphFilter } from "./GraphFilterChips";
+import { GraphLegend } from "./GraphLegend";
 import { BrainGraphCanvas } from "./BrainGraphCanvas";
 import styles from "./BrainGraphStage.module.css";
 
@@ -62,6 +63,7 @@ export function BrainGraphStage({
         <GraphFilterChips value={filter} onChange={setFilter} />
       </div>
       <div className={styles.viewDock}>
+        <GraphLegend />
         <button
           type="button"
           className={styles.viewToggle}

@@ -4,9 +4,19 @@ import type { ForceGraph2DInstance } from "react-force-graph-2d";
 import { seededRng } from "./buildForceBrainModel";
 import { carryBrainPositions, selectionTaskIdOf } from "./brainView";
 import { scheduleBrainBirths } from "./brainMotion";
-import type { NodeKind, NodeState } from "./brainOntology";
+import type { NodeKind } from "./brainOntology";
 import type { BrainLayoutData, BrainLayoutLink, BrainLayoutNode } from "./forceBrainTypes";
 import { useGraphSize } from "./useGraphSize";
+import { paintBrainNodeInMotion } from "./renderers/paintNode";
+import type { NodeMotion } from "./renderers/paintNode";
+import { pulseScaleAt } from "./renderers/nodeStates";
+import {
+  STATE_TRANSITION_MS, brainNeedsAnimationFrames, layoutHasPulse, scheduleStateTransitions, transitionFrameAt,
+} from "./renderers/stateMotion";
+import type { StateTransition } from "./renderers/stateMotion";
+import { usePageVisible } from "./usePageVisible";
+import { readDocumentPalette } from "./renderers/palette";
+import type { BrainPalette } from "./renderers/palette";
 import styles from "./ForceBrainGraph.module.css";
 
 const reducedMotion = typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -21,31 +31,6 @@ function clamp(value: number, lo: number, hi: number): number {
 function easeOutApprox(p: number): number {
   return 1 - Math.pow(1 - p, 3);
 }
-
-// Status palette — mirrors tokens.css status palette (single source of truth
-// for the real colour values; this file is on the raw-colour carve-out list,
-// tests/ui_contracts/test_raw_colour_ratchet.py, because a 2D canvas context
-// never resolves var()). Keys are the ontology's real NodeState values.
-const STATE_FILL: Record<NodeState, string> = {
-  open: "#a78bfa",
-  planned: "#ffffff",
-  in_progress: "#4c83ff",
-  pass: "#34c27e",
-  fail: "#ef6363",
-  blocked: "#ef6363",
-  // Reserved for the future struck-slash treatment (graph_spec §7); this
-  // reducer never assigns `vetoed` yet, so the value is a placeholder grey.
-  vetoed: "#9aa9c5",
-};
-const STATE_RING: Record<NodeState, string> = {
-  open: "rgba(167,139,250,.4)",
-  planned: "#9db9ee",
-  in_progress: "rgba(76,131,255,.4)",
-  pass: "rgba(52,194,126,.35)",
-  fail: "rgba(239,99,99,.4)",
-  blocked: "rgba(239,99,99,.4)",
-  vetoed: "rgba(154,169,197,.4)",
-};
 
 /** How far into its birth a node is right now: `p` (0..1, clamped), and
  *  whether this birth is a plain fade (reduced motion) rather than a scale-in
@@ -68,7 +53,10 @@ function paintOf(progress: BirthProgress | null): BrainNodePaint {
   return progress.fade ? { alpha: progress.p, scale: 1 } : { alpha: 1, scale: easeOutApprox(progress.p) };
 }
 
-type NodePainter = (node: BrainLayoutNode, ctx: CanvasRenderingContext2D, globalScale: number, paint: BrainNodePaint) => void;
+type NodePainter = (
+  node: BrainLayoutNode, ctx: CanvasRenderingContext2D, globalScale: number, paint: BrainNodePaint, palette: BrainPalette,
+  motion: NodeMotion,
+) => void;
 
 /** The core: existing halo (r64 radial gradient) + core sphere (r26 gradient)
  *  + white ring + `</>` glyph — geometry unchanged from the previous painter. */
@@ -95,44 +83,31 @@ function paintCoreNode(node: BrainLayoutNode, ctx: CanvasRenderingContext2D, _gl
   ctx.restore();
 }
 
-/** Every non-core node: a glossy sphere (radial gradient white-highlight →
- *  state fill) with a soft outer ring, at the node's OWN `radius` —
- *  `buildBrainLayout` already resolved that to 7 for a task, 4.5 for a run
- *  kind/synapse/artifact, 9 for a cluster (graph_spec §4), so one painter
- *  covers all of them; the glyph-per-kind lifecycle feature swaps entries in
- *  `NODE_PAINTERS` later without touching this function's shape. */
-function paintSphereNode(node: BrainLayoutNode, ctx: CanvasRenderingContext2D, _globalScale: number, paint: BrainNodePaint): void {
-  const { x, y } = node;
-  const r = node.radius * paint.scale;
-  const fill = STATE_FILL[node.state];
-  const ring = STATE_RING[node.state];
-  ctx.save();
-  ctx.globalAlpha = paint.alpha;
-  ctx.fillStyle = ring;
-  ctx.beginPath(); ctx.arc(x, y, r + 2.5, 0, Math.PI * 2); ctx.fill();
-  const gradient = ctx.createRadialGradient(x - r * 0.4, y - r * 0.5, r * 0.2, x, y, r);
-  gradient.addColorStop(0, "rgba(255,255,255,0.9)");
-  gradient.addColorStop(0.35, fill);
-  gradient.addColorStop(1, fill);
-  ctx.fillStyle = gradient;
-  ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
-  if (node.state === "planned") { ctx.strokeStyle = STATE_RING.planned; ctx.lineWidth = 1.2; ctx.stroke(); }
-  ctx.restore();
+/** Every non-core node, drawn from its kind's glyph and its state's
+ *  treatment in the resolved palette, with its pulse and any state change in
+ *  flight (renderers/paintNode.ts; DECISIONS F020 D2 and D4).
+ *  `buildBrainLayout` already resolved the node's radius per kind (graph_spec
+ *  §4); the zoom decides whether a run shows its glyph. */
+function paintGlyphNode(
+  node: BrainLayoutNode, ctx: CanvasRenderingContext2D, globalScale: number, paint: BrainNodePaint, palette: BrainPalette,
+  motion: NodeMotion,
+): void {
+  paintBrainNodeInMotion(ctx, node, { palette, zoom: globalScale, alpha: paint.alpha, scale: paint.scale }, motion);
 }
 
-// The glyph slots the lifecycle feature fills later (one entry per NodeKind
-// so a future round can give a run kind its own Path2D glyph without
-// touching the paint call sites).
+// One painter per NodeKind: the core keeps its own, and every other kind is
+// drawn from the glyph and state modules (T5_F020.md T002, which replaces
+// F019's placeholder slots here).
 const NODE_PAINTERS: Record<NodeKind, NodePainter> = {
   job_core: paintCoreNode,
-  task: paintSphereNode,
-  builder_run: paintSphereNode,
-  review_run: paintSphereNode,
-  repair_run: paintSphereNode,
-  test_run: paintSphereNode,
-  synapse: paintSphereNode,
-  artifact: paintSphereNode,
-  cluster: paintSphereNode,
+  task: paintGlyphNode,
+  builder_run: paintGlyphNode,
+  review_run: paintGlyphNode,
+  repair_run: paintGlyphNode,
+  test_run: paintGlyphNode,
+  synapse: paintGlyphNode,
+  artifact: paintGlyphNode,
+  cluster: paintGlyphNode,
 };
 
 function brainPointerAreaPaint(node: object, color: string, ctx: CanvasRenderingContext2D) {
@@ -157,6 +132,10 @@ export function ForceBrainGraph({ layout, selectedId, onSelectNode }: {
   onSelectNode: (nodeId: string | null) => void;
 }) {
   const { containerRef, size } = useGraphSize();
+  const pageVisible = usePageVisible();
+  // Every token the node painter reads, resolved once per mount: a 2D
+  // canvas cannot read var() (tokens_rules.md, the palette bridge).
+  const resolvedPalette = useMemo(() => readDocumentPalette(), []);
   const graphRef = useRef<ForceGraph2DInstance>(null);
 
   // The nodes of the graphData LAST PASSED TO THE GRAPH (not the previous
@@ -207,6 +186,40 @@ export function ForceBrainGraph({ layout, selectedId, onSelectNode }: {
     };
   }, [layout]);
 
+  // State changes: what changed state since the last layout, recorded the
+  // same way as births, so the painter can crossfade and ripple it
+  // (graph_spec §12; DECISION F020 D4).
+  const transitionsPreviousLayoutRef = useRef<BrainLayoutData | null>(null);
+  const transitionRecordsRef = useRef<Map<string, StateTransition>>(new Map());
+  const [transitionsInFlight, setTransitionsInFlight] = useState(false);
+
+  useLayoutEffect(() => {
+    const now = performance.now();
+    scheduleStateTransitions(transitionsPreviousLayoutRef.current, layout, now, reducedMotion)
+      .forEach((t) => transitionRecordsRef.current.set(t.id, t));
+    transitionsPreviousLayoutRef.current = layout;
+    transitionRecordsRef.current.forEach((t, id) => {
+      if (now >= t.startMs + t.durationMs) transitionRecordsRef.current.delete(id);
+    });
+    if (transitionRecordsRef.current.size === 0) { setTransitionsInFlight(false); return; }
+    setTransitionsInFlight(true);
+    const timer = setTimeout(() => setTransitionsInFlight(false), STATE_TRANSITION_MS + 50);
+    return () => clearTimeout(timer);
+  }, [layout]);
+
+  const pulsing = useMemo(() => layoutHasPulse(layout), [layout]);
+  const animating = brainNeedsAnimationFrames({ pageVisible, reducedMotion, birthsInFlight, transitionsInFlight, pulsing });
+
+  const motionOf = useCallback((n: BrainLayoutNode): NodeMotion => {
+    const now = performance.now();
+    const record = transitionRecordsRef.current.get(n.id);
+    return {
+      fromState: record ? record.from : null,
+      transition: record ? transitionFrameAt(record, now) : null,
+      pulseScale: pulseScaleAt(n.state, now, reducedMotion),
+    };
+  }, []);
+
   const birthProgressOf = useCallback((id: string): BirthProgress | null => {
     const record = birthRecordsRef.current.get(id);
     if (!record) return null;
@@ -217,7 +230,7 @@ export function ForceBrainGraph({ layout, selectedId, onSelectNode }: {
   const handleNodeCanvasObject = useCallback((node: object, ctx: CanvasRenderingContext2D, globalScale: number) => {
     const n = node as BrainLayoutNode;
     const paint = paintOf(birthProgressOf(n.id));
-    NODE_PAINTERS[n.kind](n, ctx, globalScale, paint);
+    NODE_PAINTERS[n.kind](n, ctx, globalScale, paint, resolvedPalette.palette, motionOf(n));
 
     if (n.id === selectedId) {
       ctx.save();
@@ -235,7 +248,7 @@ export function ForceBrainGraph({ layout, selectedId, onSelectNode }: {
       ctx.fillText(n.label, n.x, n.y + n.radius + 4);
       ctx.restore();
     }
-  }, [selectedId, birthProgressOf]);
+  }, [selectedId, birthProgressOf, resolvedPalette, motionOf]);
 
   const handleLinkCanvasObject = useCallback((link: object, ctx: CanvasRenderingContext2D) => {
     // force-graph rewrites source/target from ids into node refs in place
@@ -308,7 +321,15 @@ export function ForceBrainGraph({ layout, selectedId, onSelectNode }: {
   return (
     // graph_spec §14: the canvas is not the accessible surface — the task
     // checklist, the popover and the stage's Simple view are.
-    <div ref={containerRef} className={styles.container} data-ui="force-brain-graph" aria-hidden="true">
+    <div
+      ref={containerRef}
+      className={styles.container}
+      data-ui="force-brain-graph"
+      // A token the stylesheet does not declare paints nothing; its name
+      // is left here for a test or a reviewer to find, never guessed.
+      data-palette-missing={resolvedPalette.missing.length ? resolvedPalette.missing.join(" ") : undefined}
+      aria-hidden="true"
+    >
       {size.width > 0 && (
         <ForceGraph2D
           ref={graphRef}
@@ -321,7 +342,7 @@ export function ForceBrainGraph({ layout, selectedId, onSelectNode }: {
           cooldownTicks={reducedMotion ? 20 : 80}
           d3AlphaDecay={0.045}
           d3VelocityDecay={0.28}
-          autoPauseRedraw={!birthsInFlight}
+          autoPauseRedraw={!animating}
           enableNodeDrag
           enableZoomInteraction
           enablePanInteraction
@@ -334,7 +355,9 @@ export function ForceBrainGraph({ layout, selectedId, onSelectNode }: {
           nodePointerAreaPaint={brainPointerAreaPaint}
           linkCanvasObject={handleLinkCanvasObject}
           linkCanvasObjectMode={() => "replace"}
-          linkDirectionalParticles={(l) => ((l as BrainLayoutLink).active && !reducedMotion ? 1 : 0)}
+          // A particle keeps the canvas drawing whatever autoPauseRedraw says, so
+          // it flows only on an active edge, with motion, on a visible page.
+          linkDirectionalParticles={(l) => ((l as BrainLayoutLink).active && !reducedMotion && pageVisible ? 1 : 0)}
           linkDirectionalParticleWidth={2}
           onEngineStop={() => { /* simulation settled */ }}
         />
