@@ -1,31 +1,28 @@
-# Live Review — F025 Pause/resume (global & per node)
+# Live Review — F026 Task edit at runtime
 
-> Round-by-round review record, re-headed at the F025 claim per
-> docs/agents/planner_reviewer_prompt.md §1. The heading this replaces named F024, whose STATUS
-> line went `[x]` at `953d5715` and whose pull request 279 merged into `main` at the reviewer's
-> Open PR Gate under docs/agents/self_drive_protocol.md, as `49624d5c`, after a CI repair round
-> (F024's round 9, finding R-1048) and after both hosted CI jobs of run 36107489474 ended
-> `success`. `7317555a` is the second parent of `49624d5c`. F024's round 9 was reviewed after its
-> own handback, so its gate entry and R-1048's resolution are appended at the end of this record
-> by F025's claim. Only the heading, this paragraph and the Steps section below are rewritten;
-> everything from the Findings heading to the end of the file as it stood at `49624d5c` is
-> carried forward BYTE-IDENTICAL, and finding ids continue the monotonic R-XXXX series across the
-> re-head. The open set at `49624d5c`, computed with `open_finding_ids` from
-> `scripts/rotate_live_review.py`, is R-1008, which F285 owns, and R-1048, which F024 owns and
-> which the resolution appended by this claim closes; F025 owns whatever it registers for its own
-> scope.
+> Round-by-round review record, re-headed at the F026 claim per
+> docs/agents/planner_reviewer_prompt.md §1. The heading this replaces named F025, whose STATUS
+> line went `[x]` at `4cb6b970` and whose pull request 280 merged into `main` at the reviewer's
+> Open PR Gate under docs/agents/self_drive_protocol.md, as `90555849`, after both hosted CI jobs
+> of run 36157351708 ended `success`. `4cb6b970` is the second parent of `90555849`. F025's round
+> 11, its closing round, was reviewed after its own handback, so its gate entry is appended at the
+> end of this record by F026's claim. Only the heading, this paragraph and the Steps section below
+> are rewritten; everything from the Findings heading to the end of the file as it stood at
+> `90555849` is carried forward BYTE-IDENTICAL, and finding ids continue the monotonic R-XXXX
+> series across the re-head. The open set at `90555849`, computed with `open_finding_ids` from
+> `scripts/rotate_live_review.py`, is R-1008, R-1055, R-1057 and R-1058, all four owned by F285;
+> F026 owns whatever it registers for its own scope.
 
 ## Steps
 
-THE ORDER BELOW IS T5_F025.md's Task slicing, the control protocol first. R1 claims F025,
-re-heads this record, books F024's round 9 with R-1048's resolution, records DECISION F025 D1, and
-lands the first half of T001: `packages/orchestration/pause_control.py`, the pause control files
-of both scopes and the mask arithmetic, with its unit tests. T001's second half wires the pause
-into the linear runner's and the cycle executor's safe points and ready sets, with a stop beating
-a pause and the deadline counting through one. T002 adds the channel commands, their audit and
-the CLI verbs, with live fake-job tests of both scopes. T003 draws the paused states, the banner
-and the NowCard line, and ends with the end-to-end whose final state equals an unpaused control
-run's. Every round's handback states the open set by distinct id.
+THE ORDER BELOW IS T5_F026.md's Task slicing, the backend first. R1 claims F026, re-heads this
+record, books F025's round 11, records DECISION F026 D1, and lands T001:
+`packages/orchestration/task_edit_runtime.py`, the state gate, the versioned in-place apply, the
+spec archive, the revalidation, the approval seal and the failed-to-pending reset, with the task's
+`spec_version` field and its unit tests. T002 adds `job.edit-task` to the catalog, the CLI and the
+write door with its audit, and the prompt-trace proof on a fake run. T003 draws the version chip,
+the popover's version list and the edit affordance, and ends with the end-to-end. Every round's
+handback states the open set by distinct id.
 
 ## Findings
 DECISION F085 D5, applied at da47ee40, closes "The R44 block is the first measured under this
@@ -442,3 +439,5 @@ Gate: F025 R9 — the F025 round 9 entry: the closure sequence's first half, the
 - R-1058 — Medium, THE SELF-USE GENERATOR'S ACCEPTANCE LINE LETS A BUILDER MEET IT WITH A LEDGER NOTE THAT REPAIRS NOTHING, AND SU-030'S REVIEWER PASSED EXACTLY THAT: A `Done:` PARAGRAPH AUTHORED BY THE BUILDER, "CARRIED TO F285". Raised by the planner and reviewer of F025's second session at round 9's gate, reading the diff of job `d0f70d9d45dd4363` because R-1008 resolves at the first closure whose self-use run produces a diff its reviewer passes. SEARCHED BEFORE MINTING (checklist item 30): `either way the ledger gains` and `ledger gains a` occur in no finding of the ledger or its archive, and R-0999, the nearest, is a reviewer FAILING an empty diff. THE DEFECT, at `9cceb4cd`: every Tier 1 item `packages/orchestration/self_use_generator.py` writes ends its Acceptance with "is repaired with a red-to-green proof, or the reviewer records in `.agent/live_review.md` why it cannot be — either way the ledger gains a `Done:` line", which hands the builder the ledger and an outcome that needs no repair. MEASURED: `git diff 300d8c2d e4fa7d06`, the job's own branch, adds two lines to `.agent/live_review.md` and nothing else — a `Done: R-1055 — CARRIED TO F285` paragraph — while task T001 reads verdict `pass`. Under docs/agents/planner_reviewer_prompt.md §4 item 4 only reviewer-authored text sets a finding resolved, and "carried" resolves nothing. WHY MEDIUM: it makes the one closure precondition that exercises the product on itself pass on a non-repair, which is the class R-1008 exists for, and a later closure could book such a run as R-1008's resolution. R-1008 is therefore NOT resolved by this run and stays open. FIX: the generated Acceptance asks for the repair its finding names with a red-to-green proof and nothing else, the builder is told not to write `.agent/live_review.md`, and the self-use reviewer fails a diff that touches no path outside `.agent/`. Owner: F285.
 
 Gate: F025 R10 — the F025 round 10 entry: the closure sequence's evidence half, the booking of round 9, the registration of R-1057 and R-1058 for F285, the evidence bundle and the review package. VERDICT PASS, NO DEVIATION DECLARED. Re-derived over `9cceb4cd`..`21aa3097` by the planner and reviewer of F025's second session, whose own runs produced every reading below. THE RANGE IS 3 COMMITS, at `75da467b` 349, `f7b127bd` 20 and `21aa3097` 179 insertions by `git show --numstat`, each under the 500-line cap, each single-parent and each carrying the ordered trailer. THE TRANSPORT PROOF: the block copy and the five payload copies under `.agent/authored/` equal the reviewer's originals, and at `f7b127bd` the ledger equals its `9cceb4cd` bytes plus its payload, the plan equals its payload, and `docs/roadmap/features/T2_F285.md` equals its `9cceb4cd` bytes with the FROM text replaced by the TO text. THE OPEN SET by distinct id reads R-1008 and R-1055 at `9cceb4cd`, and R-1008, R-1055, R-1057 and R-1058 at `f7b127bd` and at `21aa3097`, all four owned by F285. THE BUNDLE: evidence job `f025r10e1001`, built by the committed `.agent/authored/f025-r10-create_f025_evidence.py` at the accepted head `f7b127bde0e2d705f0a8da49b1d9404d983048d4` against the fork point `49624d5c8def4b270697a8c0025e2ab3efc197a7`, read ancestry and plain counts equal at 74, 1033 node ids with 4 deselected and none unsafe, pytest exit 0 with 1033 passed, an empty `validate_verification_tests` problem list and `is_valid_current_run` True. THE PACKAGE: `remedy-review-20260925-174026-READY_FOR_REVIEW.zip` in `/home/decodeux/Repos/remedy-history/zips`, whose SHA-256 the reviewer measured as `5202e21aed884f7ae6a8b79a852d2c4683436f2220d1a910d072cec01ac38e6f`, whose `testzip()` answers None, and whose `.review_zip_manifest.json` reads status `READY_FOR_REVIEW`, base the fork point and head the accepted head. THE TREE: the reviewer's serial run of `tests/docs/` and the golden path at `21aa3097` read `369 passed`, and all six `integrity check` checks read `pass`.
+
+Gate: F025 R11 — the F025 round 11 entry: the closing round, the booking of round 10, the ledger rotation, the STATUS acceptance with its README pins and the self-use item's `consumed_by`, and the pull request. VERDICT PASS, NO DEVIATION DECLARED. Re-derived over `21aa3097`..`4cb6b970` by the planner and reviewer of F026's first session, whose own runs produced every reading below. THE RANGE IS 4 COMMITS, at `be6f39bb` 436, `7652281e` 8, `2815e8ae` 50 and `4cb6b970` 216 insertions by `git show --numstat`, each under the 500-line cap, each single-parent and each carrying the ordered trailer. THE TRANSPORT PROOF: the block copy and the seven payload copies under `.agent/authored/`, read at `be6f39bb`, equal the reviewer's originals byte for byte, and at `4cb6b970` `docs/roadmap/STATUS.md`, `README.md` and `scripts/self_use_queue.json` hash to the three sha256 readings the block's G4 table states. THE OPEN SET by distinct id reads R-1008, R-1055, R-1057 and R-1058 at `4cb6b970`, all four owned by F285. THE ROTATION moved 9 gate records and 8 finding pairs and left the open count at 4. THE TREE: the reviewer's serial run at `4cb6b970` of `tests/docs/`, `tests/cli/test_advertised_commands.py`, `tests/orchestration/test_live_review_rotation.py`, `tests/orchestration/test_integrity_gate.py` and `tests/orchestration/test_self_use_generator.py` read `424 passed`, and all six `integrity check` checks read `pass`. THE MERGE: pull request 280's hosted CI run 36157351708 ended `success` on both jobs, and the reviewer merged it at F026's Open PR Gate as `90555849`.

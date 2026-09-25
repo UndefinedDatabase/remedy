@@ -1,24 +1,28 @@
-# Context — F025 Pause/resume (global & per node)
+# Context — F026 Task edit at runtime
 
 ## Active Branch
-feature/f025-pause-resume, cut from `main` at `49624d5c`
-(the merge commit of pull request 279, F024 Phase timeline with scrubber).
+feature/f026-task-edit-runtime, cut from `main` at `90555849`
+(the merge commit of pull request 280, F025 Pause/resume).
 
 ## Scope
-F025 (Tier 5): pause and resume at two scopes — the control kinds, the
-paused states and the safe-point and ready-set integration (T001), the
-write-channel commands with their audit, the CLI verbs and live fake-job
-tests (T002), and the UI states, banner, NowCard line and the end-to-end
-(T003), as `docs/roadmap/features/T5_F025.md` specifies, with
+F026 (Tier 5): editing a task at runtime — the state gate, the versioned
+apply, the spec archive and the revalidation (T001), the write-channel
+command with its audit, the failed-to-pending semantics and the
+prompt-trace proof on a fake run (T002), and the version chip, the
+popover's version list, the edit affordance and the end-to-end (T003), as
+`docs/roadmap/features/T5_F026.md` specifies, with
 `docs/ui/design_reference/` authoritative on the visuals.
 
 ## Do not touch
-The kill switch's terminals, the checkpoint format, and session mechanics.
+Clarification immutability, attempt semantics beyond the reset, and
+subtree rerun mechanics.
 
 ## Active assumptions
-- A pause is a control fact beside the stop, read at the stop's safe
-  points; a parked job is `paused` with a pause record and its process
-  exits; the relaunch is the resume (DECISION F025 D1).
+- A runtime edit is the plan editor's `plan_edit_task` on one task of an
+  approved plan while no run holds the record; the task entry is updated
+  in place with a spec version, the prior spec is archived, the approval
+  seal follows the edit, and a failed task returns to pending with the
+  tasks its block skipped (DECISION F026 D1).
 
 ## Constraints
 - Every pytest run in a round is targeted and serial; the resource and

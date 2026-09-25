@@ -21631,3 +21631,80 @@ relaunched job, rejected because it hides exactly what the manifest exists to pr
 
 HOW TO REVERSE: delete `paused` from `_VALID_STATUS` and its lifecycle rows, the park's manifest
 write, the tests this decision's round adds, and this paragraph, and restore the comment.
+
+## DECISION F026 D1 — a runtime task edit is the plan editor's own `plan_edit_task` applied to one task of an approved plan while no run holds the record: the task must be waiting, paused or failed, the TaskEntry is updated in place with a per-task spec version, the prior spec is archived create-only, the approval seal follows the edit, and a failed task goes back to pending in the same write (2026-09-25)
+
+CONTEXT: T5_F026.md asks for `edit_task` on waiting, paused and failed tasks, a spec v2 with
+versioning, the prior spec archived in evidence, a failed task reset to pending, and the next run's
+prompt trace carrying the edit. Measured at `4cb6b970`: `edit_plan` in
+`packages/orchestration/plan_editing.py` is one locked transaction over the stored plan, but it
+regenerates `job.tasks` with `map_task_plan_to_tasks`, which mints new task ids and resets every
+status, and `edit_window_refusal` admits only a pending approval of a `planned` job;
+`approved_plan_mismatch` in `packages/orchestration/job_plan.py` blocks every start of a job whose
+stored plan no longer hashes to the approval's `_approved_plan_sha256`; `run_job` in
+`packages/orchestration/pingpong_job.py` stops its dispatch loop at a task whose status is `blocked`
+or `failed`, and a run that ends in a failed gate or review leaves the task `blocked` while only an
+exception leaves it `failed`, the job `blocked` in both cases; `TaskEntry` has no attempt counter and
+no spec version; `_build_task_prompt` reads the entry's `title`, which the mapping writes as
+`<title>: <goal>`, its `body` and its `acceptance`; `waiting` is no task status, and a task pause is
+a control file under `paused_tasks/` keyed by the entry's `task_id` (DECISION F025 D1); and
+`replay_edits` rebuilds a plan by re-applying every `_edits` entry through `apply_edit`.
+
+CHOSEN: (1) THE EDIT IS THE PLAN EDITOR'S. A runtime edit applies `apply_edit(plan,
+"plan_edit_task", {"task_id": <planned id>, "fields": <fields>})` to the stored plan, so the editable
+fields are exactly `EDITABLE_TASK_FIELDS`, `clarifications_resolved` stays immutable, and
+`revalidate` refuses exactly what it refuses before approval; it runs under `plan_edit_lock`, bumps
+the plan's `_version`, and appends ONE entry to the same `_edits` log carrying the command and args
+`replay_edits` needs plus a `runtime` object: the entry's task id, the planned id, the editable state
+it was edited in, the spec version it created, the status before and after, and the approval hashes
+before and after. `replay_edits` therefore still reconstructs the plan. (2) THE TASK ENTRY IS
+UPDATED IN PLACE, never regenerated: the one entry whose `inputs["plan"]["planned_id"]` names the
+task keeps its `task_id`, run id, repair counts, checkpoint fields and every `inputs` key the
+mapping does not write, and takes from the mapping of the edited plan only what the mapping writes
+for that task — `title`, `acceptance` and the mapping's `inputs` keys. A task a run split off, which
+carries no planned id, is refused `not_a_plan_task`; a job with no stored plan is refused
+`no_task_plan`. (3) THE STATE GATE is a pure function over the job's state, the plan's approval, the
+task's status and whether the task is paused, and the editable set is closed at three names:
+`waiting` is a `pending` task that is not paused; `paused` is a `pending` task with a task pause file
+or in a job whose state is `paused`; `failed` is a task whose status is `failed` or `blocked`, because
+both are how a run's failure lands on a task and both stop the dispatch loop. Every other task
+status is refused `task_not_editable` naming it. Before the task is read, the job is refused
+`job_not_editable` naming its state when it is `running`, because a run process holds the record
+and would write over the edit — the operator pauses first, and the relaunch is the resume (DECISION
+F025 D1) — or when it is terminal (`completed`, `failed`, `cancelled`); and `plan_not_editable` when
+the plan's approval is `pending`, which is the plan editor's window, or `rejected`. (4) ONE SPEC
+VERSION PER TASK: `TaskEntry` gains `spec_version`, default 1 and persisted, and every accepted edit
+raises it by one. Concurrent edits are told apart by it: an edit names the spec version it was made
+against, and a stale one is refused `version_conflict` with the current one. (5) THE PRIOR SPEC IS
+ARCHIVED before the record is written, create-only, at
+`task_specs/<planned id>.v<n>.json` in the job's evidence export directory, holding the plan task as
+it stood, the entry's `title` and `acceptance`, the version and the editable state; an existing
+archive of the same version with other content refuses `spec_archive_conflict`, and an equal one
+(a crash between the archive and the record write) is kept. An archived spec is never rewritten.
+(6) THE APPROVAL SEAL FOLLOWS THE EDIT: when the approval is `approved` and records a hash, the
+record write stores the edited plan's content hash, so the job starts again, and the log entry
+carries both hashes; the edit is authenticated by the door or the CLI and logged with its actor,
+which is what the seal existed to guarantee. (7) A FAILED TASK GOES BACK TO `pending` IN THE SAME
+WRITE, with its `error` cleared and every other field as the run left it, so the relaunch runs it
+as its next attempt; and every task after it in plan order whose status is `skipped` goes back to
+`pending` with it, because at `4cb6b970` `_block_job` is the only writer of `skipped` and it skips
+exactly the pending tasks after the blocked one, so without this the relaunch would run the edited
+task and finish with its successors never run. The log entry's `runtime` object names the tasks
+restored. A waiting or paused task keeps its status, and a paused task stays paused.
+(8) AFTER the record write, `plan_v<n>.md` and the edit log's evidence export are regenerated as
+`edit_plan` does.
+
+ALTERNATIVES: calling `edit_plan` with a widened window, rejected because it regenerates every task
+entry and would erase run history and orphan the pause files; a second edit log for runtime edits,
+rejected because `replay_edits` could then no longer reconstruct the plan; editing the entry alone
+and leaving the stored plan behind, rejected because the approval check would then compare a plan
+that no longer describes what runs; editing a task while its job runs, rejected because the runner
+holds the whole record in memory and saves it, so an edit would be lost at the next save; admitting
+only `failed`, rejected because a failed gate or review, the common failure, leaves `blocked`.
+
+DELIBERATE ABSENCES: no edit of a job built from a job file without a plan, no edit while the job
+runs, and no dependency edit, because `depends_on` is not an editable field of the plan editor
+either; each is a future feature, not a widening of this one.
+
+HOW TO REVERSE: delete `packages/orchestration/task_edit_runtime.py` and its tests, the
+`spec_version` field with its export and import lines, and this paragraph.

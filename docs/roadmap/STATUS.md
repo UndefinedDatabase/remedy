@@ -150,7 +150,7 @@ Milestone R1 — Remedy as the daily tool: Tier 2 complete (F086 as the self-ins
 - [x] F023 — Semantic zoom L0–L3 (T001–T003 complete; accepted 2026-09-25 · live review PASS — ACCEPTED · Evidence job f023r9e1001 · package remedy-review-20260925-052148-READY_FOR_REVIEW.zip · SHA-256 6e041624017f41e1644f71f3d8c18ae8dd4d677b1d8df4fe6206f89b6f76b4bb · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD 54e5ffd2485bf90c405f5ad662b7d86be8dd3eb9)
 - [x] F024 — Phase timeline with scrubber (T001–T003 complete; accepted 2026-09-25 · live review PASS — ACCEPTED · Evidence job f024r7e1001 · package remedy-review-20260925-082755-READY_FOR_REVIEW.zip · SHA-256 1c4b4b358b97b54252a665e60acd3eaaedb134b8b3b0cbbe5ee36d80e60289e6 · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD b650ced4b1d0fef4c9156de0b217cbad7a76bef7)
 - [x] F025 — Pause/resume (global & per node) (T001–T003 complete, R-1055 carried to F285; accepted 2026-09-25 · live review PASS_WITH_RISKS — ACCEPTED · Evidence job f025r10e1001 · package remedy-review-20260925-174026-READY_FOR_REVIEW.zip · SHA-256 5202e21aed884f7ae6a8b79a852d2c4683436f2220d1a910d072cec01ac38e6f · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD f7b127bde0e2d705f0a8da49b1d9404d983048d4)
-- [ ] F026 — Task edit at runtime
+- [~] F026 — Task edit at runtime
 
 ## Tier 2 — Findings paydown (rolling, operator rule amend0911-feedback)
 
