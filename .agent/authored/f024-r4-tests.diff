@@ -1,0 +1,53 @@
+diff --git a/apps/ui/src/components/timeline/timelineView.test.ts b/apps/ui/src/components/timeline/timelineView.test.ts
+index b0db14cdf..1392e2f70 100644
+--- a/apps/ui/src/components/timeline/timelineView.test.ts
++++ b/apps/ui/src/components/timeline/timelineView.test.ts
+@@ -6,7 +6,7 @@ import { brainDemoRows, BRAIN_DEMO_JOB_ID } from "../graph/brainDemoRecording";
+ import type { BrainTaskSeed } from "../graph/brainOntology";
+ import { row } from "../graph/brainReducer.fixtures";
+ import { extractSubGlyphs, readPhases } from "./phaseMapping";
+-import { buildTimelineView, elapsedLabel, PHASE_LABELS } from "./timelineView";
++import { buildTimelineView, elapsedLabel, fractionOfSeq, PHASE_LABELS, seqAtFraction } from "./timelineView";
+ 
+ const DEMO_TASKS: readonly BrainTaskSeed[] = [
+   { id: "a7a8f67f1b9a4814", status: "pending", rank: 0 },
+@@ -109,6 +109,39 @@ describe("edges", () => {
+   });
+ });
+ 
++describe("the track's geometry", () => {
++  it("puts the handle at the end of its event's slot in its segment", () => {
++    const whole = demo(7);
++    expect(fractionOfSeq(whole, -1)).toBe(0);
++    expect(fractionOfSeq(whole, 0)).toBe(3 / 6);
++    expect(fractionOfSeq(whole, 1)).toBe((4 + 1 / 6) / 6);
++    expect(fractionOfSeq(whole, 6)).toBe(5 / 6);
++    expect(fractionOfSeq(whole, 7)).toBe(1);
++    expect(fractionOfSeq(whole, 99)).toBe(1);
++  });
++
++  it("reads a point on the track back as the event it closes, every seq round-tripping", () => {
++    const whole = demo(7);
++    for (let s = -1; s <= 7; s += 1) expect(seqAtFraction(whole, fractionOfSeq(whole, s))).toBe(s);
++    expect(seqAtFraction(whole, 0)).toBe(-1);
++    expect(seqAtFraction(whole, 0.1)).toBe(0);
++    expect(seqAtFraction(whole, 0.6)).toBe(1);
++    expect(seqAtFraction(whole, 0.7)).toBe(2);
++    expect(seqAtFraction(whole, 0.95)).toBe(7);
++    expect(seqAtFraction(whole, 4)).toBe(7);
++  });
++
++  it("sends a point in a phase the ledger has not reached to the head", () => {
++    const t1: BrainTaskSeed[] = [{ id: "t1", status: "pending", rank: 0 }];
++    const whole = readPhases("job-u", t1, [row(0, "task_run_started", "t1"), row(1, "task_run_started", "t1")]);
++    expect(seqAtFraction(whole, 0.99)).toBe(1);
++    expect(fractionOfSeq(whole, 1)).toBe(3 / 6);
++    const empty = readPhases("job-e", t1, []);
++    expect(seqAtFraction(empty, 0.5)).toBe(-1);
++    expect(fractionOfSeq(empty, 3)).toBe(0);
++  });
++});
++
+ describe("the readout's elapsed time", () => {
+   it("measures from the first event's timestamp", () => {
+     expect(elapsedLabel("2026-09-24T16:57:02.817154+00:00", "2026-09-24T16:57:03.864860+00:00")).toBe("+1s");
