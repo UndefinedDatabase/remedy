@@ -83,6 +83,11 @@ describe("runPlaceOf", () => {
     expect(runPlaceOf({ kind: "review_run", seq: 4 }, "t1", ROWS_AGAIN)).toEqual({ startSeq: 1, round: 3, latest: false });
     expect(runPlaceOf({ kind: "builder_run", seq: 7 }, "t1", ROWS_AGAIN)).toEqual({ startSeq: 7, round: null, latest: true });
   });
+
+  it("counts a restarted task's rounds from one again, since its latest start", () => {
+    const rows = [...ROWS_AGAIN, row(8, "task_round_completed", "t1", "pass")];
+    expect(runPlaceOf({ kind: "review_run", seq: 8 }, "t1", rows)).toEqual({ startSeq: 7, round: 1, latest: true });
+  });
 });
 
 describe("runDetailOf — the latest run's report is at hand", () => {
