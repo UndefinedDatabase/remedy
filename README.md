@@ -26,7 +26,7 @@ verification commands. If something is unproven, Remedy says so instead of guess
 
 ## Status
 
-103 of 285 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
+104 of 285 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
 
 | Tier | Name | Done | Total |
 |------|------|-----:|------:|
@@ -35,7 +35,7 @@ verification commands. If something is unproven, Remedy says so instead of guess
 | 2 | Minimal Self-Build Runtime | 37 | 38 |
 | 3 | Full Token Economy & Autonomy | 6 | 26 |
 | 4 | Memory & Learning | 1 | 17 |
-| 5 | Operator Cockpit | 21 | 34 |
+| 5 | Operator Cockpit | 22 | 34 |
 | 6 | Design-to-Code | 0 | 16 |
 | 7 | Quality & Trust | 0 | 15 |
 | 8 | Worker Ecosystem & Neutrality | 0 | 12 |
@@ -469,6 +469,20 @@ also shows, and it carries on from exactly where it stopped without redoing
 finished tasks; a stop always wins over a pause, and the job's time limit keeps
 counting while it is paused; one thing is not done yet: the AI conversation of
 a task that a pause interrupted starts afresh when the job continues).
+
+F026 task edit at runtime (a task of an approved plan can now be changed while its job
+is not running — its title, goal, acceptance criteria, size or file hints — when the
+task is still waiting, is paused, or has failed; you edit it from the command line with
+`remedy job edit-task`, naming the task and the version you are changing, or from the
+task's detail panel in the browser, which offers an "Edit task" form only for a task
+that can take an edit; every edit gives the task a new version number, keeps the old
+version on disk, and is recorded with who made it; a task that had failed goes back in
+the queue together with the tasks its failure had skipped, and you start the job again
+with `remedy job run` and the job's id; the next run uses the new text, which the
+record of what the agent was told shows; in the browser an edited task carries a small
+version label such as "v2" beside it on the graph and in its detail panel, which also
+lists every version and what changed; a running job, and a task that is running or
+already done, cannot be edited, and the reason is named).
 
 Full per-feature state: [`docs/roadmap/STATUS.md`](docs/roadmap/STATUS.md)
 
