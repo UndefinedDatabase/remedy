@@ -1,0 +1,46 @@
+diff --git a/docs/agents/planner_reviewer_prompt.md b/docs/agents/planner_reviewer_prompt.md
+index 49cacab7e..76faeabc1 100644
+--- a/docs/agents/planner_reviewer_prompt.md
++++ b/docs/agents/planner_reviewer_prompt.md
+@@ -299,6 +299,12 @@ end the response with:
+   block that quoted a sentence for the operator with an angle-bracket placeholder, which the worker
+   then shipped as literal text, is item 18's reading of an ordered recipe against the property it
+   must establish, here a command the operator can run as shown. The list stays at 34 items.
++  Consolidated a sixteenth time at F285's closure on 2026-09-26: nothing joined and no two items
++  were merged, because F285 wrote no line to `.agent/prose_slips.md`: its rounds' blocks were
++  generated from simulated trees and every worker reading matched them. The one environment lesson
++  its rounds met, a selection that starts a live UI server run before `apps/ui` was built, is
++  recorded in the round 2 gate entry and is item 12's reading of the environment a dry run must
++  share with the gate it proves. The list stays at 34 items.
+   The next consolidation measures against 34.
+   Reverse by deleting this paragraph.
+   1. **Size.** Count the block's lines. Over 400 (DECISION F105 D5) → split or
+diff --git a/docs/roadmap/features/T2_F285.md b/docs/roadmap/features/T2_F285.md
+index dbae93237..dd09beddb 100644
+--- a/docs/roadmap/features/T2_F285.md
++++ b/docs/roadmap/features/T2_F285.md
+@@ -65,3 +65,24 @@ The resolutions F284 landed; the record is append-only.
+ At claim, the first round reads the open set with `open_finding_ids` of
+ `scripts/rotate_live_review.py`, writes the slice list into this file and adds one Acceptance line
+ for every other id it takes.
++
++## Built State (F285, 2026-09-26)
++- T001 (R-1058), round 1: the self-use generator's Tier 1 job asks for the repair its finding's
++  FIX names, with a test that fails without it and passes with it, and tells the builder not to
++  edit any file under `.agent/`; `describe_self_use_run_defects` names a run in which a task
++  passed review while no path its reviewed work changed lies outside `.agent/` (DECISION F285
++  D1).
++- T002 (R-1057), round 1: the self-use cost cap is 6.00 USD, derived beside it in
++  `packages/orchestration/self_use_runner.py` from the dearest measured call and one build, one
++  review and one repair round; operator question Q5 records the raised spend (DECISION F285 D1).
++- T003 (R-1055), round 2: every round's builder and reviewer blocks in a run's `result.json`
++  carry the provider session and whether it was resumed, and the relaunch of a task a park or a
++  stop interrupted offers the parked run's sessions to its first calls, which resume them where
++  the provider supports resume (DECISION F285 D2).
++- The closure's self-use run, round 3: `SU-032` addressed R-1064, and its job
++  `78ecdc636060461c` completed on the `self_use` role's `claude-cli` at `claude-sonnet-4-6`,
++  both reviews passing, in two provider calls costing 0.85 USD, with no defect named. Round 4
++  landed its diff verbatim — the `sk-` patterns of `_STREAM_SECRET_PATTERNS` in
++  `packages/orchestration/stream_evidence.py` match only at a token start — and the reviewer
++  pinned the seven real `test_plan_editing.py` node ids clean beside the job's own tests. It is
++  the first self-use run in the track's history whose diff landed as a repair.
