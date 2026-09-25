@@ -1,0 +1,57 @@
+diff --git a/README.md b/README.md
+index 6c4cdb8db..79b853a01 100644
+--- a/README.md
++++ b/README.md
+@@ -26,7 +26,7 @@ verification commands. If something is unproven, Remedy says so instead of guess
+ 
+ ## Status
+ 
+-101 of 285 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
++102 of 285 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
+ 
+ | Tier | Name | Done | Total |
+ |------|------|-----:|------:|
+@@ -35,7 +35,7 @@ verification commands. If something is unproven, Remedy says so instead of guess
+ | 2 | Minimal Self-Build Runtime | 37 | 38 |
+ | 3 | Full Token Economy & Autonomy | 6 | 26 |
+ | 4 | Memory & Learning | 1 | 17 |
+-| 5 | Operator Cockpit | 19 | 34 |
++| 5 | Operator Cockpit | 20 | 34 |
+ | 6 | Design-to-Code | 0 | 16 |
+ | 7 | Quality & Trust | 0 | 15 |
+ | 8 | Worker Ecosystem & Neutrality | 0 | 12 |
+@@ -439,6 +439,21 @@ left corner walk back one step at a time; the page address remembers where
+ you are, so a link opens the same view; and in a headless browser the graph
+ held sixty frames a second at five hundred nodes at every depth).
+ 
++F024 phase timeline with scrubber (the bar under the job graph now shows the
++job's six phases — Job, Planning, Build, Test, Review and Finalized — worked
++out from the job's own event record rather than from a guess about the clock,
++with small marks on the bar where a task failed, was repaired, asked a
++question or where the job was stopped, each saying in words what happened when
++the pointer rests on it; dragging the handle along the bar, clicking a mark,
++or pressing the arrow keys shows the graph exactly as it stood at that moment
++of the job, with the arrow keys moving one event at a time and the arrow keys
++with Shift held moving one phase at a time; while looking back, a violet
++banner on the graph says so, the live light in the corner reads REPLAY, and
++new events keep arriving underneath; the LIVE button returns to the present
++with a short fast-forward of under a second, or, after a very long look back,
++by reloading the view and saying so; and in a headless browser, dragging the
++handle across a job of five hundred nodes held sixty frames a second).
++
+ Full per-feature state: [`docs/roadmap/STATUS.md`](docs/roadmap/STATUS.md)
+ 
+ ## Install
+diff --git a/docs/roadmap/STATUS.md b/docs/roadmap/STATUS.md
+index 31bd8cee4..8a22a94df 100644
+--- a/docs/roadmap/STATUS.md
++++ b/docs/roadmap/STATUS.md
+@@ -148,7 +148,7 @@ Milestone R1 — Remedy as the daily tool: Tier 2 complete (F086 as the self-ins
+ 
+ - [x] F020 — Node lifecycle & glyph language (T001–T003 complete; accepted 2026-09-25 · live review PASS — ACCEPTED · Evidence job f020r7e1001 · package remedy-review-20260925-013441-READY_FOR_REVIEW.zip · SHA-256 a069e502d3956af33f4e7dde2ece1dfd47355c68030181dbd5764af6d026d1e0 · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD ac75d5d4ebe6f7aa908ccdfd1dfa504582b2fb5e)
+ - [x] F023 — Semantic zoom L0–L3 (T001–T003 complete; accepted 2026-09-25 · live review PASS — ACCEPTED · Evidence job f023r9e1001 · package remedy-review-20260925-052148-READY_FOR_REVIEW.zip · SHA-256 6e041624017f41e1644f71f3d8c18ae8dd4d677b1d8df4fe6206f89b6f76b4bb · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD 54e5ffd2485bf90c405f5ad662b7d86be8dd3eb9)
+-- [~] F024 — Phase timeline with scrubber
++- [x] F024 — Phase timeline with scrubber (T001–T003 complete; accepted 2026-09-25 · live review PASS — ACCEPTED · Evidence job f024r7e1001 · package remedy-review-20260925-082755-READY_FOR_REVIEW.zip · SHA-256 1c4b4b358b97b54252a665e60acd3eaaedb134b8b3b0cbbe5ee36d80e60289e6 · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD b650ced4b1d0fef4c9156de0b217cbad7a76bef7)
+ - [ ] F025 — Pause/resume (global & per node)
+ - [ ] F026 — Task edit at runtime
+ 
