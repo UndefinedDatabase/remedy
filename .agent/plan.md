@@ -12,25 +12,20 @@ its prompt trace (`docs/roadmap/features/T5_F026.md`).
 
 ## Current Step
 
-ROUND 1: claim F026, re-head the live review record, book F025's round
-11, record DECISION F026 D1, and land T001 —
-`packages/orchestration/task_edit_runtime.py`, the state gate, the
-versioned in-place apply, the spec archive, the approval seal and the
-failed-to-pending reset, with the task's `spec_version` field and its
-unit tests.
+ROUND 2: book round 1, register R-1059, record DECISION F026 D2, repair
+R-1059, close round 1's unmet test obligation, and land T002 —
+`job.edit-task` in the catalog, the CLI and the write door with its
+audit, the spec version in `job plan-show`, and the trace proof on a
+fake run.
 
 ## Next Steps
 
-1. T002: `job.edit-task` in the catalog, the CLI and the write door with
-   its audit, and the trace-proof test on a fake run — a failed task
-   edited, relaunched, its trace carrying the new spec and no remnant of
-   the old one.
-2. T003: the version chip, the popover's version list, the edit
+1. T003: the version chip, the popover's version list, the edit
    affordance on eligible nodes only, and the end-to-end.
-3. The closure sequence.
+2. The closure sequence.
 
 ## Risks
 
 An edit must never be lost to a running job's save; it is refused while
-the job runs. Open findings: 4 — R-1008, R-1055, R-1057 and R-1058, all
-owned by F285.
+the job runs. Open findings: 5 — R-1008, R-1055, R-1057 and R-1058, owned
+by F285, and R-1059, owned by F026.

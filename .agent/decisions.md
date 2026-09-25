@@ -21708,3 +21708,52 @@ either; each is a future feature, not a widening of this one.
 
 HOW TO REVERSE: delete `packages/orchestration/task_edit_runtime.py` and its tests, the
 `spec_version` field with its export and import lines, and this paragraph.
+
+## DECISION F026 D2 — the runtime edit reaches the operator as `job.edit-task` in the catalog, the CLI and the write door, names the task by its id in the job or in the plan, carries the task's spec version as the conflict check, shows that version in `job plan-show`, and is proved by a fake run whose next trace carries the edit and no remnant of the old spec (2026-09-25)
+
+CONTEXT: T5_F026.md's T002 asks for the channel command, its audit, the failed-to-pending semantics
+and the trace proof on a fake run, and its Orchestrator brief puts the trace proof in T002's order
+verbatim. Measured at `ee874cb2`: `job.plan-edit-task` in `apps/cli/command_catalog.py` is the
+pre-approval edit, handled in `apps/cli/commands/job_plan_cmd.py` against the plan's version and the
+plan's task id; the write door in `packages/orchestration/ui_server.py` maps every `job.plan-*` id to
+`edit_plan`, checks `args.expected_version` as a shape before the plan is read, and maps a
+`PlanEditRefused` code to a status with `plan_edit_refusal`; `job plan-show` prints the plan's
+version and the plan's task ids but no task entry's id and no spec version. In the reviewer's scratch
+tree at `ee874cb2`, a fake run whose providers never pass blocks the first task of an approved plan
+and skips the second; `edit_task_at_runtime` resets both; a second `run_job` completes both; the new
+run's `prompt_trace.jsonl` carries the edited goal and not the old one, and so does the copy
+`export_job_evidence` writes under `task_runs/`; and the job keeps the first run's `error`, which is
+finding R-1059.
+
+CHOSEN: (1) ONE NEW CATALOG ID, `job.edit-task`, `write_metadata`, exposed to the UI, with the job,
+the task, `--spec-version` (required by the handler, as `--plan-version` is for the plan edits) and
+the plan editor's field options, exit codes 0, 1, 2 and 3 as the plan edits have them. The runtime
+refusal codes join the classes the plan edits use: `not_a_plan_task` is a usage refusal (2);
+`job_not_editable`, `task_not_editable` and `spec_archive_conflict` are not-ready refusals (3).
+(2) THE TASK IS NAMED BY ITS ID IN THE JOB OR BY ITS ID IN THE PLAN: the CLI resolves an argument
+that matches no task entry's id but exactly one entry's planned id to that entry, and passes any
+other argument through for the backend to refuse; the door takes `args.task_id` as the entry's id,
+which is the id the dashboard and the pause use. (3) THE DOOR adds one clause for `job.edit-task`
+beside the plan edits' clause, the same write order and the same audit, with `args.expected_version`
+the task's spec version, checked as a whole number of at least 1 before the job is read, and a new
+`task_edit_refusal` that answers the four runtime codes 409 `rejected_state` with the backend's
+detail and hands every other code to `plan_edit_refusal`. The edit log names the editor by the
+request's token fingerprint, as the plan edits do. (4) `job plan-show` names, for every plan task,
+the matching task entry's id, status and spec version, in the JSON as `job_task_id`, `status` and
+`spec_version` and in the text as one line under the goal, so an operator can take the version the
+edit must name from the command the plan edits already point at. (5) THE TRACE PROOF is a test that
+runs an approved plan with the fake provider until its first task blocks, edits that task's goal and
+acceptance through `edit_task_at_runtime`, relaunches with `run_job`, and reads the NEW run's
+`prompt_trace.jsonl` and the evidence export's copy: the edited text must be in the builder's
+prompt, the old text must be absent, the second task must have run, and the job must read
+`completed` with an empty `error`.
+
+ALTERNATIVES: widening `job.plan-edit-task` to runtime, rejected because the two edits refuse
+different states and name different versions, and one command answering two version schemes would
+make a stale version ambiguous; taking the plan's version as the conflict check, rejected because
+two operators editing two different tasks would then conflict for no reason; a separate `job
+task-show` for the version, rejected because `job plan-show` is already where the plan edits send
+the operator.
+
+HOW TO REVERSE: delete the catalog entry, its handler, the door clause with `task_edit_refusal`,
+the three `job plan-show` keys and their text line, the tests this round adds, and this paragraph.
