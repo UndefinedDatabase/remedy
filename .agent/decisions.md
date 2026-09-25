@@ -21278,3 +21278,51 @@ stylesheets, `LiveStatusPill.tsx`, `RightLivePanel.tsx`, its stylesheet and
 `test_brain_live_wiring.py` from `b1cfedbe`, delete `useTimelineScrub.ts`, the two geometry
 functions of `timelineView.ts` and their tests, `tests/ui_contracts/test_timeline_scrub_wiring.py`,
 the four F024 rows of `assumption_log.md`, and this paragraph.
+
+## DECISION F024 D5 — a real fake job's ledger is scrubbed by the real modules at every position, and the scrub budget is measured on the 500-node fixture's ledger with the snapshot arithmetic shown and a red control that fails (2026-09-25)
+
+CONTEXT: T5_F024.md's T003 asks for the end-to-end on live fake jobs and the demo recording, and
+its Acceptance for "scrub interaction under the budget on the 500-node fixture (snapshot math
+shown)". Measured at `a46facfa`: `tests/ui_server/test_brain_demo_recording_live.py` plans and
+runs a fake-provider job with no network and no model and pages its frames as the UI does, and
+`tests/ui_server/test_semantic_zoom_live.py` reuses its helpers; the timeline's modules are
+TypeScript and run only under vitest, which a vitest config's `define` can hand a value;
+`brainPerfFixture.ts` folds a 481-row ledger to its 500-node model but exports only the model;
+F023's frame budget at 500 nodes is a 95th-percentile frame of at most 17.0 ms and at least 59
+frames a second, measured in headless Chrome by `.agent/authored/f023-r7-perf-*`, which paces
+frames at 60 Hz; and the demo recording's every position is already held to a fresh fold by the
+memo's and the index's vitest tests.
+
+CHOSEN: (1) THE LIVE END-TO-END is `tests/ui_server/test_timeline_scrub_live.py`: it plans and runs
+a fake job, pages its frames, and runs `apps/ui/src/components/timeline/scrubLive.test.ts` through
+a scratch vitest config whose `define` carries the job's ledger and its tasks; that file checks,
+at every position of the real ledger, that the memo's state equals a fresh fold of the prefix, that
+the index's phases equal the plain fold's and end Finalized with Build at seq 0, that every
+sub-glyph lands on the track and every position round-trips through it, and that the keyboard
+walks to before the first event and End returns to LIVE; the pytest node requires all five to run
+and pass, skips where vitest is absent, and in the ordinary unit run the vitest file skips. (2) THE
+FIXTURE exports `brainPerfLedger(n)`, the seeds and rows `brainPerfModel(n)` folds, with a test
+that its 481 rows run from seq 0 without a hole and fold to exactly the model. (3) THE BUDGET TOOL
+is F023's re-pointed at the scrubber and kept as evidence under `.agent/authored/f024-r5-perf-*`:
+its harness mounts the fixture's ledger as the shell does, times every position through the memo,
+the index and the view, cold and then warm in reverse, and sweeps the handle one event per frame
+for eight seconds, three runs. The budget: the stage-1 frame budget during the sweep; a warm
+position at most a quarter frame, 4.0 ms, at the 95th percentile; and no position, even cold, more
+than one frame, 16.7 ms. (4) THE READINGS, the reviewer's own on a tree equal to this round's: 481
+frames at 60 frames a second with a 16.7 ms 95th-percentile frame in every run, a warm
+95th-percentile position of 1.4 ms and a worst cold position of 2.1 ms, and snapshots at 200 and
+400; the two passes over 482 positions performed 86 642 reductions, which is the arithmetic
+exactly — each position folds its distance past the last multiple of 200 below it, 43 121 per pass,
+plus 400 to build the two snapshots once. The worker's run in the primary checkout is committed as
+`.agent/authored/f024-r5-perf.txt`. (5) THE RED CONTROL: the same harness with a 25 ms busy-wait in
+every scrub step read 30.56 frames a second and a 33.4 ms 95th-percentile frame, which the tool
+reported as FAIL.
+
+ALTERNATIVES: porting the scrub modules to Python for the live test, rejected because a second
+implementation would be checked instead of the one the bar runs; a vitest file reading the ledger
+from a path in the checkout, rejected because the test would write into the repository; timing
+assertions inside the unit suite, rejected because a machine-speed number in a unit test flakes,
+while the deterministic reduction counts are already pinned by `scrubSnapshots.test.ts`.
+
+HOW TO REVERSE: delete `scrubLive.test.ts`, `tests/ui_server/test_timeline_scrub_live.py`,
+`brainPerfLedger` and its test, the `.agent/authored/f024-r5-perf*` files, and this paragraph.
