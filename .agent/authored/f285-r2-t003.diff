@@ -1,0 +1,451 @@
+diff --git a/docs/system/session-resume-v1.md b/docs/system/session-resume-v1.md
+index 93e742469..933935176 100644
+--- a/docs/system/session-resume-v1.md
++++ b/docs/system/session-resume-v1.md
+@@ -86,6 +86,23 @@ fixture's own size. The comparison exists to prove the DIRECTION is real and
+ measured, per the feature's own acceptance criterion, not to claim a
+ production magnitude.
+ 
++## Resume across a relaunch (R-1055, F285 T003)
++
++A park or a stop returns the interrupted task to `pending`, and its relaunch
++starts a new run. Every round's `builder` and `reviewer` blocks in a run's
++`result.json` now carry `session_id` (the session the call reported),
++`resume_used`, `resume_session_ref` and `resume_fallback`. When `run_job`
++reaches a task whose `final_status` is `stopped` and whose `run_id` still
++names the parked run, it reads that record with `parked_session_refs` in
++`packages/orchestration/pingpong_loop.py` and passes the result to
++`run_pingpong` as `resume_sessions`. Round 1's call of each role then resumes
++the parked session when its provider supports resume, with the fallback-once
++rule unchanged, and the new run's record names the parked run as
++`resumed_from_run_id`. The prompt of that call stays full-context: the parked
++session never saw the new run's staging, so no prompt shrink is gated on it.
++`tests/orchestration/test_relaunch_session_resume.py` parks a job mid-build
++and relaunches it through `run_job`.
++
+ ## What this does NOT do
+ 
+ - No adapter's `supports_resume` returns `True` in production yet — only
+diff --git a/packages/orchestration/pingpong_job.py b/packages/orchestration/pingpong_job.py
+index 3580aa8e0..7fca1ae4c 100644
+--- a/packages/orchestration/pingpong_job.py
++++ b/packages/orchestration/pingpong_job.py
+@@ -2332,6 +2332,8 @@ def run_job(
+     """
+     from packages.orchestration.pingpong_loop import (
+         TaskInput,
++        load_run,
++        parked_session_refs,
+         run_pingpong,
+     )
+ 
+@@ -3237,6 +3239,12 @@ def run_job(
+             if task_log is None:
+                 task_log = _open_task_log(job)
+             _log_task_started(task_log, task)
++            # R-1055: a task a park or a stop interrupted still names its parked
++            # run, and the relaunch offers that run's provider sessions to its
++            # first calls; a provider without resume ignores the offer.
++            resume_sessions: dict[str, str] = {}
++            if task.run_id and task.final_status == "stopped":
++                resume_sessions = parked_session_refs(load_run(task.run_id))
+             try:
+                 result = run_pingpong(
+                     task.title,
+@@ -3275,6 +3283,8 @@ def run_job(
+                     compiled_context_paths=compiled_context_paths,
+                     compiled_context_candidates=compiled_context_candidates,
+                     compiled_context_token_budget=compiled_context_token_budget,
++                    resume_sessions=resume_sessions,
++                    resumed_from_run_id=task.run_id if resume_sessions else "",
+                 )
+             except Exception as exc:  # noqa: BLE001 — a task that dies mid-call blocks the job with its error
+                 task.status = TASK_FAILED
+diff --git a/packages/orchestration/pingpong_loop.py b/packages/orchestration/pingpong_loop.py
+index 3c2e3c9c1..7c93df466 100644
+--- a/packages/orchestration/pingpong_loop.py
++++ b/packages/orchestration/pingpong_loop.py
+@@ -241,6 +241,10 @@ class PingPongResult:
+     #: hashes PROVEN delivered to it. Empty for every run that never
+     #: resumed and for every provider that reports no session id.
+     session_sent_evidence: list[dict] = field(default_factory=list)
++    #: R-1055: the parked run whose provider sessions this run was offered on
++    #: its first call, or "" when it is not the relaunch of an interrupted task.
++    #: Whether a session was really resumed is each round's ``resume_used``.
++    resumed_from_run_id: str = ""
+ 
+ 
+ # ---------------------------------------------------------------------------
+@@ -2908,6 +2912,8 @@ def run_pingpong(
+     on_provider_call: Callable[[ProviderAttempt], None] | None = None,
+     rate_governor: ProviderRateGovernor | None = None,
+     hunk_ledger: Any = None,
++    resume_sessions: dict[str, str] | None = None,
++    resumed_from_run_id: str = "",
+ ) -> PingPongResult:
+     """Run the Builder <> Reviewer ping-pong loop.
+ 
+@@ -2943,6 +2949,13 @@ def run_pingpong(
+     two primary compositions as ``dedupe_enabled`` and nowhere else: the
+     resume-fallback recompositions pass no dedupe arguments at all, so they send
+     full content at either value.
++
++    ``resume_sessions`` (R-1055) maps ``"builder"`` and ``"reviewer"`` to the
++    provider session each role last reported in ``resumed_from_run_id``, the
++    run a park or a stop interrupted. Round 1's call of each role resumes that
++    session when its provider supports resume, with the resume fallback
++    unchanged; the prompt stays full-context, because the parked session never
++    saw this run's staging, so no prompt shrink is gated on it.
+     """
+     # If task_input provided, use it to enrich the goal
+     effective_goal = goal
+@@ -2969,6 +2982,9 @@ def run_pingpong(
+         task_id=task_id,
+     )
+     result.episode_id = episode_id
++    resume_sessions = dict(resume_sessions or {})
++    if resume_sessions:
++        result.resumed_from_run_id = resumed_from_run_id
+ 
+     # F001: Compute adaptive timeouts from profile (if set), otherwise use raw timeout_sec
+     _allowed_files = 0
+@@ -3281,6 +3297,13 @@ def run_pingpong(
+                 prev_session_id = str(prev_actuals.get("session_id") or "")
+                 if prev_session_id:
+                     builder_resume_ref = prev_session_id
++            # R-1055: the first call of a relaunched task resumes its parked
++            # session. ``builder_resume_ref`` stays the prompt gate, so this call
++            # still sends the full context.
++            builder_call_resume = builder_resume_ref
++            if (round_num == 1 and resume_sessions.get("builder")
++                    and getattr(builder_provider, "supports_resume", False)):
++                builder_call_resume = resume_sessions["builder"]
+ 
+             # --- Builder phase ---
+             # Compute repair diff for builder (from previous round)
+@@ -3415,7 +3438,7 @@ def run_pingpong(
+                     builder_prompt,
+                     timeout_sec=ts,
+                     max_output_chars=max_output_chars,
+-                    resume=builder_resume_ref,
++                    resume=builder_call_resume,
+                 ),
+                 result=result,
+                 role="builder",
+@@ -3433,7 +3456,7 @@ def run_pingpong(
+             # (``builder_resume_ref`` set); a plain call failure with no
+             # resume in play is unaffected and falls straight through to the
+             # existing terminal-error handling below, unchanged.
+-            if builder_resume_ref and builder_out.error:
++            if builder_call_resume and builder_out.error:
+                 # F109 T002b, R-0771: A FALLBACK IS NOT A RESUMED SESSION, so the
+                 # feature's scope rule — "resumed session only, proven sends only"
+                 # — forbids dedupe here. The prompt is RECOMPOSED AT FULL CONTENT
+@@ -3500,7 +3523,7 @@ def run_pingpong(
+                 # session still holds. ``builder_out`` was just REPLACED by the resume=None
+                 # retry and reports no session, so the failed session's id survives only in
+                 # ``builder_resume_ref`` — which is why it is passed explicitly.
+-                invalidate_on_resume_fallback(session_sent_index, builder_out, builder_resume_ref or "")
++                invalidate_on_resume_fallback(session_sent_index, builder_out, builder_call_resume or "")
+             rd.builder_output = builder_out
+ 
+             # F012: the Builder call is finalized — record its input through the single seam.
+@@ -3633,6 +3656,12 @@ def run_pingpong(
+                 prev_session_id = str(prev_actuals.get("session_id") or "")
+                 if prev_session_id:
+                     reviewer_resume_ref = prev_session_id
++            # R-1055: the Builder's relaunch resume, mirrored; the prompt gate is
++            # still ``reviewer_resume_ref``.
++            reviewer_call_resume = reviewer_resume_ref
++            if (round_num == 1 and resume_sessions.get("reviewer")
++                    and getattr(reviewer_provider, "supports_resume", False)):
++                reviewer_call_resume = resume_sessions["reviewer"]
+ 
+             # F115 D1: compose instead of calling `_build_reviewer_prompt`, so the
+             # trace entries below carry a real segment manifest. The sent bytes are
+@@ -3761,7 +3790,7 @@ def run_pingpong(
+                     reviewer_effective,
+                     timeout_sec=ts,
+                     max_output_chars=max_output_chars,
+-                    resume=reviewer_resume_ref,
++                    resume=reviewer_call_resume,
+                 ),
+                 result=result,
+                 role="reviewer",
+@@ -3785,7 +3814,7 @@ def run_pingpong(
+             # resume in play is unaffected and falls straight through to the
+             # existing terminal-error / parse-retry handling below,
+             # unchanged.
+-            if reviewer_resume_ref and reviewer_out.error:
++            if reviewer_call_resume and reviewer_out.error:
+                 # F109 T002b, R-0771: the Builder fallback's repair, mirrored. A
+                 # fallback is not a resumed session, so the prompt is RECOMPOSED
+                 # AT FULL CONTENT for the fresh session the retry below opens, and
+@@ -3839,7 +3868,7 @@ def run_pingpong(
+                 reviewer_out.resume_fallback = True
+                 # F109 T001b-ii: mirrors the Builder fallback — the replaced output reports
+                 # no session, so the failed session's id comes from ``reviewer_resume_ref``.
+-                invalidate_on_resume_fallback(session_sent_index, reviewer_out, reviewer_resume_ref or "")
++                invalidate_on_resume_fallback(session_sent_index, reviewer_out, reviewer_call_resume or "")
+ 
+             # F012: the Reviewer attempt is finalized. Track the exact finalized context so a
+             # terminal reviewer failure records F010 against it (F10).
+@@ -5012,6 +5041,37 @@ def _add_exit_detail(block: dict[str, Any], out: Any) -> None:
+         block["stderr_tail"] = getattr(out, "stderr_tail", "")
+ 
+ 
++def _session_fields(out: Any) -> dict[str, Any]:
++    """R-1055: the provider session a call reported, and whether it resumed one.
++
++    Persisted so the relaunch of an interrupted task can find its parked session
++    (:func:`parked_session_refs`), and so the record shows whether it did.
++    """
++    actuals = getattr(out, "usage_actuals", None) or {}
++    return {
++        "session_id": str(actuals.get("session_id") or ""),
++        "resume_used": bool(getattr(out, "resume_used", False)),
++        "resume_session_ref": str(getattr(out, "resume_session_ref", "") or ""),
++        "resume_fallback": bool(getattr(out, "resume_fallback", False)),
++    }
++
++
++def parked_session_refs(run_record: dict[str, Any] | None) -> dict[str, str]:
++    """R-1055: the session each role last reported in a persisted run, by role.
++
++    Reads ``result.json`` as :func:`export_pingpong_json` writes it. A record
++    written before R-1055 carries no ``session_id`` and answers ``{}``, which
++    resumes nothing.
++    """
++    refs: dict[str, str] = {}
++    for round_data in (run_record or {}).get("rounds") or []:
++        for role in ("builder", "reviewer"):
++            session_id = str((round_data.get(role) or {}).get("session_id") or "")
++            if session_id:
++                refs[role] = session_id
++    return refs
++
++
+ def export_pingpong_json(result: PingPongResult) -> dict[str, Any]:
+     """Export result as safe JSON (no raw prompts, no secrets)."""
+     rounds = []
+@@ -5034,6 +5094,7 @@ def export_pingpong_json(result: PingPongResult) -> dict[str, Any]:
+                 "duration_ms": rd.builder_output.duration_ms,
+                 "tokens_used": rd.builder_output.tokens_used,
+                 "error": rd.builder_output.error,
++                **_session_fields(rd.builder_output),
+             }
+             _add_exit_detail(round_data["builder"], rd.builder_output)
+         round_data["test_passed"] = rd.test_passed
+@@ -5058,6 +5119,7 @@ def export_pingpong_json(result: PingPongResult) -> dict[str, Any]:
+                 "error": rd.reviewer_output.error,
+                 "parse_retried": rd.reviewer_output.parse_retried,
+                 "parse_retry_recovered": rd.reviewer_output.parse_retry_recovered,
++                **_session_fields(rd.reviewer_output),
+             }
+             _add_exit_detail(round_data["reviewer"], rd.reviewer_output)
+         rounds.append(round_data)
+@@ -5074,6 +5136,7 @@ def export_pingpong_json(result: PingPongResult) -> dict[str, Any]:
+         "reviewer_provider": result.reviewer_provider,
+         "max_rounds": result.max_rounds,
+         "total_rounds": len(result.rounds),
++        "resumed_from_run_id": result.resumed_from_run_id,
+         "final_status": result.final_status,
+         "staged_files": result.staged_files,
+         "changed_target_files": result.changed_target_files,
+diff --git a/tests/orchestration/test_prompt_trace.py b/tests/orchestration/test_prompt_trace.py
+index f0c61ccd9..427b8caa7 100644
+--- a/tests/orchestration/test_prompt_trace.py
++++ b/tests/orchestration/test_prompt_trace.py
+@@ -407,7 +407,9 @@ class TestSegmentManifest:
+ 
+         source = inspect.getsource(pingpong_loop)
+         assert source.count("builder_composed = compose_builder_prompt(") == 2
+-        fallback = source.split("if builder_resume_ref and builder_out.error:")[1]
++        # R-1055: the fallback fires on the resume the call really passed, which a
++        # relaunch can set on round 1 without the prompt gate `builder_resume_ref`.
++        fallback = source.split("if builder_call_resume and builder_out.error:")[1]
+         assert "builder_composed = compose_builder_prompt(" in fallback
+         assert "builder_prompt = builder_composed.text" in source
+         sites = [
+@@ -496,7 +498,9 @@ class TestSegmentManifest:
+ 
+         source = inspect.getsource(pingpong_loop)
+         assert source.count("reviewer_composed = compose_reviewer_prompt(") == 2
+-        fallback = source.split("if reviewer_resume_ref and reviewer_out.error:")[1]
++        # R-1055: the fallback fires on the resume the call really passed, which a
++        # relaunch can set on round 1 without the prompt gate `reviewer_resume_ref`.
++        fallback = source.split("if reviewer_call_resume and reviewer_out.error:")[1]
+         assert "reviewer_composed = compose_reviewer_prompt(" in fallback
+         assert "reviewer_prompt = reviewer_composed.text" in source
+         sites = [
+diff --git a/tests/orchestration/test_relaunch_session_resume.py b/tests/orchestration/test_relaunch_session_resume.py
+new file mode 100644
+index 000000000..64e4a5172
+--- /dev/null
++++ b/tests/orchestration/test_relaunch_session_resume.py
+@@ -0,0 +1,165 @@
++"""R-1055 — the relaunch of an interrupted task resumes its parked provider session.
++
++A park returns the interrupted task to `pending`, so its relaunch starts a new run.
++Before the repair nothing on disk named the session the parked run had used, and the
++new run's first calls could only start fresh, so T5_F025.md's "the resumed run provably
++reuses its provider sessions where supported" was not met. Now every round's builder
++and reviewer blocks in the run's `result.json` carry the session the call reported and
++whether it resumed one, and `run_job` hands the parked run's sessions to the relaunch's
++first calls. The load-bearing test is
++:meth:`TestAParkedTaskResumesOnRelaunch.test_the_relaunch_resumes_the_parked_builder_session`,
++which parks a real job mid-build and relaunches it through the real `run_job`.
++"""
++from __future__ import annotations
++
++import pytest
++
++from packages.orchestration import pause_control as pc
++from packages.orchestration.pingpong_job import (
++    JOB_COMPLETED,
++    JOB_PAUSED,
++    parse_job_file,
++    run_job,
++)
++from packages.orchestration.pingpong_loop import (
++    export_pingpong_json,
++    load_run,
++    parked_session_refs,
++    run_pingpong,
++)
++from packages.orchestration.pingpong_provider import FakeProvider
++from tests.orchestration.test_job_stop_integration import (  # noqa: F401
++    _ONE_TASK_JOB,
++    demo_repo,
++    isolate_data_root,
++)
++from tests.orchestration.test_pause_resume import PauseTriggerProvider
++
++
++def _resuming(session_id: str, **kwargs) -> FakeProvider:
++    return FakeProvider(pass_on_round=1, fail_on_round=99, supports_resume=True,
++                        fake_session_id=session_id, **kwargs)
++
++
++class TestParkedSessionRefs:
++    """The reader of a persisted run record, by role, last round winning."""
++
++    def test_the_last_round_that_reported_a_session_wins(self):
++        record = {"rounds": [
++            {"builder": {"session_id": "b-1"}, "reviewer": {"session_id": "r-1"}},
++            {"builder": {"session_id": "b-2"}},
++        ]}
++        assert parked_session_refs(record) == {"builder": "b-2", "reviewer": "r-1"}
++
++    @pytest.mark.parametrize("record", [
++        None,
++        {},
++        {"rounds": []},
++        {"rounds": [{"builder": {"summary": "a record written before R-1055"}}]},
++        {"rounds": [{"builder": {"session_id": ""}, "reviewer": {"session_id": ""}}]},
++    ])
++    def test_a_record_that_names_no_session_resumes_nothing(self, record):
++        assert parked_session_refs(record) == {}
++
++
++class TestTheRunRecordCarriesEachCallsSession:
++
++    def test_each_round_block_names_its_session_and_whether_it_resumed(
++            self, isolate_data_root, demo_repo):
++        provider = _resuming("sess-1")
++        result = run_pingpong("Fix README", str(demo_repo),
++                              builder_provider=provider, reviewer_provider=provider)
++        exported = export_pingpong_json(result)
++        builder = exported["rounds"][0]["builder"]
++        reviewer = exported["rounds"][0]["reviewer"]
++        for block in (builder, reviewer):
++            assert block["session_id"] == "sess-1"
++            assert block["resume_used"] is False
++            assert block["resume_session_ref"] == ""
++            assert block["resume_fallback"] is False
++        assert exported["resumed_from_run_id"] == ""
++        assert parked_session_refs(load_run(result.run_id)) == {
++            "builder": "sess-1", "reviewer": "sess-1"}
++
++
++class TestTheFirstCallsResumeTheOfferedSessions:
++
++    def test_both_roles_resume_on_round_one_when_supported(self, isolate_data_root, demo_repo):
++        provider = _resuming("sess-new")
++        result = run_pingpong(
++            "Fix README", str(demo_repo),
++            builder_provider=provider, reviewer_provider=provider,
++            resume_sessions={"builder": "sess-parked-b", "reviewer": "sess-parked-r"},
++            resumed_from_run_id="parked-run",
++        )
++        first = result.rounds[0]
++        assert first.builder_output.resume_used is True
++        assert first.builder_output.resume_session_ref == "sess-parked-b"
++        assert first.reviewer_output.resume_used is True
++        assert first.reviewer_output.resume_session_ref == "sess-parked-r"
++        exported = export_pingpong_json(result)
++        assert exported["resumed_from_run_id"] == "parked-run"
++        assert exported["rounds"][0]["builder"]["resume_used"] is True
++        assert exported["rounds"][0]["reviewer"]["resume_session_ref"] == "sess-parked-r"
++
++    def test_a_provider_without_resume_is_offered_nothing(self, isolate_data_root, demo_repo):
++        provider = FakeProvider(pass_on_round=1, fail_on_round=99, fake_session_id="sess-new")
++        result = run_pingpong(
++            "Fix README", str(demo_repo),
++            builder_provider=provider, reviewer_provider=provider,
++            resume_sessions={"builder": "sess-parked-b", "reviewer": "sess-parked-r"},
++            resumed_from_run_id="parked-run",
++        )
++        assert result.rounds[0].builder_output.resume_used is False
++        assert result.rounds[0].reviewer_output.resume_used is False
++
++    def test_a_lost_parked_session_falls_back_once_and_the_round_completes(
++            self, isolate_data_root, demo_repo):
++        provider = _resuming("sess-new", resume_fails=True)
++        result = run_pingpong(
++            "Fix README", str(demo_repo),
++            builder_provider=provider, reviewer_provider=provider,
++            resume_sessions={"builder": "sess-parked-b"},
++            resumed_from_run_id="parked-run",
++        )
++        assert result.rounds[0].builder_output.resume_fallback is True
++        assert result.rounds[0].builder_output.error == ""
++        assert result.final_status == "staged_review_passed"
++
++
++class TestAParkedTaskResumesOnRelaunch:
++
++    def test_the_relaunch_resumes_the_parked_builder_session(
++            self, isolate_data_root, demo_repo):
++        job = parse_job_file(_ONE_TASK_JOB, str(demo_repo))
++        builder = PauseTriggerProvider(
++            on_build=1,
++            trigger=lambda: pc.request_pause(job.job_id, "mid-build pause", "cli"),
++            pass_on_round=1, fail_on_round=99,
++            supports_resume=True, fake_session_id="sess-parked")
++        parked = run_job(job.job_id, builder_provider=builder,
++                         reviewer_provider=_resuming("sess-parked-review"), repair_rounds=0)
++        assert parked.state == JOB_PAUSED
++        parked_run_id = parked.tasks[0].run_id
++        assert parked_run_id
++        assert parked_session_refs(load_run(parked_run_id)) == {"builder": "sess-parked"}
++
++        resumed = run_job(job.job_id, builder_provider=_resuming("sess-relaunch"),
++                          reviewer_provider=_resuming("sess-relaunch-review"), repair_rounds=0)
++        assert resumed.state == JOB_COMPLETED
++        record = load_run(resumed.tasks[0].run_id)
++        assert resumed.tasks[0].run_id != parked_run_id
++        assert record["resumed_from_run_id"] == parked_run_id
++        assert record["rounds"][0]["builder"]["resume_used"] is True
++        assert record["rounds"][0]["builder"]["resume_session_ref"] == "sess-parked"
++        assert record["rounds"][0]["reviewer"]["resume_used"] is False
++
++    def test_a_task_that_was_never_interrupted_resumes_nothing(
++            self, isolate_data_root, demo_repo):
++        job = parse_job_file(_ONE_TASK_JOB, str(demo_repo))
++        done = run_job(job.job_id, builder_provider=_resuming("sess-1"),
++                       reviewer_provider=_resuming("sess-2"), repair_rounds=0)
++        assert done.state == JOB_COMPLETED
++        record = load_run(done.tasks[0].run_id)
++        assert record["resumed_from_run_id"] == ""
++        assert record["rounds"][0]["builder"]["resume_used"] is False
