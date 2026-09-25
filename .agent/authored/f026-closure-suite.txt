@@ -1,0 +1,11 @@
+F026 R5 C6 — the closure's one full suite.
+
+Command: python3 -m pytest -n auto -q
+Log: .remedy-wt/f026-r5-worker/f026-full-suite.txt (sandbox refused
+  /home/decodeux/remedy-gate-scratch/, so the log was written under
+  .remedy-wt/f026-r5-worker/ instead, per the block's fallback clause)
+Real exit code: 1
+Wall time: 231.32s (0:03:51)
+Summary line: 1 failed, 19408 passed, 20 skipped, 1 warning in 231.32s (0:03:51)
+Bad node ids (failed plus errors):
+  tests/ui_server/test_command_channel.py::TestCommandDoorImportGuard::test_the_door_reaches_only_the_accepted_forbidden_modules_transitively
