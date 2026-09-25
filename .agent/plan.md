@@ -12,18 +12,16 @@ its prompt trace (`docs/roadmap/features/T5_F026.md`).
 
 ## Current Step
 
-ROUND 7, the closure's evidence round: book round 6, resolve R-1062 and
-R-1063, build the evidence bundle against the fork point, and build the
-fresh review package.
+ROUND 8, the closing round: book round 7, rotate the ledger, accept
+F026 in STATUS with its README pins and the self-use item's
+`consumed_by`, and open the pull request.
 
 ## Next Steps
 
-1. The closing round: book round 7, rotate the ledger, accept F026 in
-   STATUS with its README pins and the self-use item's `consumed_by`,
-   and open the pull request.
+1. The next feature's session merges this pull request at the Open PR
+   Gate, then claims the first unchecked feature in STATUS.
 
 ## Risks
 
-The accepted head is this round's records commit; nothing may land after
-it before the package. Open findings: 5 — R-1008, R-1055, R-1057,
-R-1058 and R-1064, all owned by F285.
+Open findings: 5 — R-1008, R-1055, R-1057, R-1058 and R-1064, all owned
+by F285.
