@@ -1,0 +1,14 @@
+Job ID: fd57a5d1dfe245b0
+Job Title: Address ledger finding R-1057
+Job State: stopped
+Stop Reason: budget_exhausted:max_cost_usd
+Stop Source: budget
+Execution: {"builder": "claude-cli", "builder_source": "cli", "reviewer": "claude-cli", "reviewer_source": "cli", "builder_model": "claude-sonnet-4-6", "builder_model_source": "cli", "builder_effort": "medium", "builder_effort_source": "cli", "reviewer_model": "claude-sonnet-4-6", "reviewer_model_source": "cli", "reviewer_effort": "medium", "reviewer_effort_source": "cli", "repair_provider": "", "repair_provider_source": "default", "repair_model": "", "repair_model_source": "default", "repair_effort": "", "repair_effort_source": "default", "max_rounds": 3, "max_rounds_source": "default", "repair_rounds_allowed": 2, "repair_rounds_source": "default", "test_command": "", "test_command_source": "default", "claude_cli_write_mode": "allowed-tools", "claude_cli_write_mode_source": "cli", "context_strategy": "task_bounded_sequential_job", "timeout_sec": 600, "timeout_sec_source": "invocation", "timeout_profile": "", "timeout_profile_source": "default", "max_output_chars": 50000, "max_output_chars_source": "default", "stream_evidence": false, "stream_evidence_source": "default", "max_tasks": 1, "max_tasks_source": "invocation"}
+
+Task Summary:
+
+Task T001:
+- Status: pending
+- Reviewer Verdict: 
+- Final Status: stopped
+- Error: 
