@@ -168,6 +168,44 @@ class TestJobScopeUnpause:
         assert payload["reason"] == "completed"
 
 
+class TestR1051WithdrawBeforeParked:
+    """R-1051's FIX: without a task, a pending pause is withdrawn first,
+    whatever the job's state — a pause requested again on an already-parked
+    job must be answered `withdrawn`, not sent back to `parked` and told to
+    relaunch into the very park it just asked to leave. Only once nothing is
+    pending does a job in state `paused` WITH a non-empty pause record answer
+    `parked`; a job the task cap parked (pause record empty) falls through to
+    `not_paused`."""
+
+    def test_a_new_pause_on_a_parked_job_can_be_withdrawn(self, job, capsys):
+        from packages.orchestration import pause_control as pc
+        from packages.orchestration.pingpong_job import JOB_PAUSED
+
+        job.state = JOB_PAUSED
+        job.pause = {"scope": "job", "request_id": "req-parked"}
+        _persist_job(job)
+
+        CMD._cmd_job_pause(job.job_id, reason="again", json_output=True)
+        capsys.readouterr()
+
+        CMD._cmd_job_unpause(job.job_id, json_output=True)
+        payload = json.loads(capsys.readouterr().out)
+        assert payload["outcome"] == "withdrawn"
+        assert payload["request_id"]
+        assert pc.pause_requested(job.job_id) is None
+
+    def test_a_job_paused_by_the_task_cap_answers_not_paused(self, job, capsys):
+        from packages.orchestration.pingpong_job import JOB_PAUSED
+
+        job.state = JOB_PAUSED
+        job.pause = {}
+        _persist_job(job)
+
+        CMD._cmd_job_unpause(job.job_id, json_output=True)
+        payload = json.loads(capsys.readouterr().out)
+        assert payload["outcome"] == "not_paused"
+
+
 class TestTaskScopePause:
     def test_pausing_a_task_writes_one_task_paused_event(self, job, data_root, capsys):
         task_id = job.tasks[2].task_id

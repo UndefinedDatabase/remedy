@@ -668,9 +668,12 @@ def unpause_job_command(job: Any, *, task_id: str | None = None, source: str,
 
     Never raises for a refusal: the same terminal-state and unknown-task
     checks ``pause_job_command`` applies. With a task, answers ``released``
-    or ``not_paused``. Without one: ``parked`` with the relaunch command for
-    a job an operator pause has already saved to disk, ``withdrawn`` for a
-    pending request no safe point has served yet, or ``not_paused``.
+    or ``not_paused``. Without one (R-1051): a pending request is withdrawn
+    first — ``withdrawn`` — whatever the job's state; only once nothing is
+    pending does a job the last park left in state ``paused`` WITH a
+    non-empty pause record answer ``parked`` with the relaunch command; a
+    job the task cap parked, whose pause record is empty, falls through to
+    ``not_paused`` like any other job with nothing pending.
     """
     state = _job_state_str(job)
     if state in _TERMINAL_STATES:
@@ -691,11 +694,18 @@ def unpause_job_command(job: Any, *, task_id: str | None = None, source: str,
         return {"outcome": "released", "request_id": pause.request_id, "scope": "task",
                 "task_id": task_id}
 
-    if state == _PARKED_STATE:
+    # R-1051: a pending job pause is withdrawn first, whatever the job's state — a
+    # pause requested again on an already-parked job must be answered `withdrawn`,
+    # not `parked` (which would send the operator to relaunch straight back into
+    # the same park). Only once nothing is pending does a job the last park left
+    # in `paused` WITH a non-empty pause record answer `parked`; a job the task
+    # cap parked (state `paused`, `job.pause` empty) falls through to `not_paused`.
+    pending = withdraw_pause(job.job_id, control_root_path=control_root_path)
+    if pending is not None:
+        return {"outcome": "withdrawn", "request_id": pending.request_id, "scope": "job"}
+
+    if state == _PARKED_STATE and job.pause:
         return {"outcome": "parked", "scope": "job",
                 "next": f"remedy job run {job.job_id}"}
 
-    pending = withdraw_pause(job.job_id, control_root_path=control_root_path)
-    if pending is None:
-        return {"outcome": "not_paused", "scope": "job"}
-    return {"outcome": "withdrawn", "request_id": pending.request_id, "scope": "job"}
+    return {"outcome": "not_paused", "scope": "job"}
