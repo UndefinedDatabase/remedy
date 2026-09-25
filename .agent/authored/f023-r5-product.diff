@@ -1,0 +1,205 @@
+diff --git a/apps/ui/src/components/graph/BrainGraphStage.tsx b/apps/ui/src/components/graph/BrainGraphStage.tsx
+index 6081a9285..654193d64 100644
+--- a/apps/ui/src/components/graph/BrainGraphStage.tsx
++++ b/apps/ui/src/components/graph/BrainGraphStage.tsx
+@@ -14,6 +14,7 @@ import { zoomBreadcrumbs, zoomGraphOf } from "./semanticZoom";
+ import { useSemanticZoom } from "./useSemanticZoom";
+ import { ZoomBreadcrumbs } from "./ZoomBreadcrumbs";
+ import { RunDetailPopover } from "./RunDetailPopover";
++import { EvidencePanel } from "./EvidencePanel";
+ import { zoomCrumbLabel, zoomEmphasis } from "./zoomView";
+ import styles from "./BrainGraphStage.module.css";
+ 
+@@ -24,7 +25,6 @@ export function BrainGraphStage({
+   recent,
+   readEventsPage,
+   serverToken,
+-  onOpenDiff,
+ }: {
+   dashboard: RemedyDashboard;
+   selectedNodeId?: string | null;
+@@ -32,7 +32,6 @@ export function BrainGraphStage({
+   recent: readonly BrainEventRow[];
+   readEventsPage: (cursor: number) => Promise<unknown>;
+   serverToken: string;
+-  onOpenDiff: (taskId: string) => void;
+ }) {
+   const [filter, setFilter] = useState<GraphFilter>("all");
+   // Live is the default renderer (this round); Simple is the SVG picture
+@@ -62,8 +61,8 @@ export function BrainGraphStage({
+   const crumbs = zoomBreadcrumbs(zoomGraph, zoom.state).map((c) => ({
+     level: c.level, current: c.current, label: zoomCrumbLabel(c, layout),
+   }));
+-  // L2 (and L3 until its evidence panel lands): the run detail of the focused
+-  // run, read from the model, which keeps a run a cluster hides (DECISION F023 D4).
++  // L2's run detail and L3's evidence panel, for the focused run read from the
++  // model, which keeps a run a cluster hides (DECISIONS F023 D4 and D5).
+   const focusedRun = zoom.state.level >= 2 ? model.nodes.find((n) => n.id === zoom.state.focusId) ?? null : null;
+ 
+   return (
+@@ -85,15 +84,26 @@ export function BrainGraphStage({
+             onZoomEvent={zoom.dispatch}
+           />
+           <ZoomBreadcrumbs items={crumbs} onJump={(level) => zoom.dispatch({ type: "crumb", level })} />
+-          {focusedRun && (
++          {focusedRun && zoom.state.level === 2 && (
+             <RunDetailPopover
+               node={focusedRun}
+               rows={rows}
+               promptItems={dashboard.promptTrace?.items ?? []}
+               jobId={dashboard.jobId}
+               token={serverToken}
+-              onOpenDiff={onOpenDiff}
+-              onOpenPrompt={onSelectNode}
++              onOpenEvidence={(tab) => zoom.dispatch({ type: "open_evidence", tab })}
++              onClose={() => zoom.dispatch({ type: "escape" })}
++            />
++          )}
++          {focusedRun && zoom.state.level === 3 && zoom.state.tab !== null && (
++            <EvidencePanel
++              node={focusedRun}
++              tab={zoom.state.tab}
++              rows={rows}
++              promptItems={dashboard.promptTrace?.items ?? []}
++              jobId={dashboard.jobId}
++              token={serverToken}
++              onTab={(tab) => zoom.dispatch({ type: "open_evidence", tab })}
+               onClose={() => zoom.dispatch({ type: "escape" })}
+             />
+           )}
+diff --git a/apps/ui/src/components/graph/RunDetailPopover.module.css b/apps/ui/src/components/graph/RunDetailPopover.module.css
+index 8ad09363b..e0ea20f24 100644
+--- a/apps/ui/src/components/graph/RunDetailPopover.module.css
++++ b/apps/ui/src/components/graph/RunDetailPopover.module.css
+@@ -2,7 +2,7 @@
+   position: absolute;
+   left: calc(50% + 28px);
+   top: calc(50% - 72px);
+-  z-index: 6;
++  z-index: var(--remedy-z-popover);
+   width: min(300px, calc(50% - 46px));
+   padding: 14px 16px;
+   border-radius: var(--remedy-radius-lg);
+diff --git a/apps/ui/src/components/graph/RunDetailPopover.tsx b/apps/ui/src/components/graph/RunDetailPopover.tsx
+index 7c3102fa1..5f0cd97e1 100644
+--- a/apps/ui/src/components/graph/RunDetailPopover.tsx
++++ b/apps/ui/src/components/graph/RunDetailPopover.tsx
+@@ -1,5 +1,6 @@
+ // The L2 run detail graph_spec.md §10 anchors to its node: the run's verdict,
+-// round, tokens, duration and retries, and the Diff, Why and Rerun buttons.
++// round, tokens, duration and retries, and the Diff, Why and Rerun buttons —
++// Diff and Why open the L3 evidence panel on their tab (DECISION F023 D5).
+ // The words come from runDetailModel.ts; this file only loads the task's
+ // per-round facts through the rounds door and lays the detail out. It sits
+ // beside the stage's centre, where the L2 camera has just placed the run
+@@ -12,6 +13,7 @@ import type { RemedyPromptTraceItem } from "../../api/types";
+ import type { BrainEventRow, BrainNode } from "./brainOntology";
+ import { runDetailOf } from "./runDetailModel";
+ import type { RunFact } from "./runDetailModel";
++import type { EvidenceTab } from "./semanticZoom";
+ import styles from "./RunDetailPopover.module.css";
+ 
+ /** Why Rerun is disabled: no command the dashboard may send re-runs one step. */
+@@ -26,14 +28,13 @@ function Fact({ label, fact }: { label: string; fact: RunFact }) {
+   );
+ }
+ 
+-export function RunDetailPopover({ node, rows, promptItems, jobId, token, onOpenDiff, onOpenPrompt, onClose }: {
++export function RunDetailPopover({ node, rows, promptItems, jobId, token, onOpenEvidence, onClose }: {
+   node: Pick<BrainNode, "id" | "kind" | "state" | "parentId" | "seq" | "meta">;
+   rows: readonly BrainEventRow[];
+   promptItems: readonly RemedyPromptTraceItem[];
+   jobId: string;
+   token: string;
+-  onOpenDiff: (taskId: string) => void;
+-  onOpenPrompt: (promptItemId: string) => void;
++  onOpenEvidence: (tab: EvidenceTab) => void;
+   onClose: () => void;
+ }) {
+   const taskId = (node.parentId ?? "").replace(/^task:/, "");
+@@ -69,13 +70,13 @@ export function RunDetailPopover({ node, rows, promptItems, jobId, token, onOpen
+         <Fact label="Retries" fact={detail.retries} />
+       </dl>
+       <div className={styles.actions}>
+-        <button type="button" className={styles.action} onClick={() => onOpenDiff(detail.taskId)}>Open diff</button>
++        <button type="button" className={styles.action} onClick={() => onOpenEvidence("diff")}>Open diff</button>
+         <button
+           type="button"
+           className={styles.action}
+           disabled={detail.promptItemId === null}
+           title={detail.promptItemId === null ? "No prompt was recorded for this run." : undefined}
+-          onClick={() => { if (detail.promptItemId !== null) onOpenPrompt(detail.promptItemId); }}
++          onClick={() => { if (detail.promptItemId !== null) onOpenEvidence("prompt"); }}
+         >
+           Why
+         </button>
+diff --git a/apps/ui/src/components/graph/ZoomBreadcrumbs.module.css b/apps/ui/src/components/graph/ZoomBreadcrumbs.module.css
+index a6fa4ce1b..ab8f37246 100644
+--- a/apps/ui/src/components/graph/ZoomBreadcrumbs.module.css
++++ b/apps/ui/src/components/graph/ZoomBreadcrumbs.module.css
+@@ -2,7 +2,7 @@
+   position: absolute;
+   left: 18px;
+   top: 16px;
+-  z-index: 5;
++  z-index: var(--remedy-z-stage-ui);
+   max-width: calc(100% - 36px);
+   padding: 4px 12px;
+   border-radius: var(--remedy-radius-pill);
+diff --git a/apps/ui/src/components/shell/RemedyShell.tsx b/apps/ui/src/components/shell/RemedyShell.tsx
+index 9b388e4e7..6a0c72610 100644
+--- a/apps/ui/src/components/shell/RemedyShell.tsx
++++ b/apps/ui/src/components/shell/RemedyShell.tsx
+@@ -195,7 +195,7 @@ export function RemedyShell({ dashboard, serverToken, selectedNodeId, onSelectNo
+             )}
+           />
+           <CommandBar nextAction={dashboard.nextAction} onJump={handleJump} />
+-          <BrainGraphStage dashboard={dashboard} selectedNodeId={selectedNodeId} onSelectNode={onSelectNode} recent={stream.recent} readEventsPage={readEventsPage} serverToken={serverToken} onOpenDiff={setOpenDiffTaskId} />
++          <BrainGraphStage dashboard={dashboard} selectedNodeId={selectedNodeId} onSelectNode={onSelectNode} recent={stream.recent} readEventsPage={readEventsPage} serverToken={serverToken} />
+           <PhaseTimeline phases={dashboard.phases} timelineEvents={dashboard.timelineEvents} />
+         </main>
+         <RightLivePanel dashboard={dashboard} serverToken={serverToken} onSelectNode={onSelectNode} streamStatus={stream.status} recent={stream.recent} recentDropped={stream.recentDropped} onOpenLessons={() => setLessonsOpen(true)} />
+diff --git a/tests/ui_contracts/test_run_detail_wiring.py b/tests/ui_contracts/test_run_detail_wiring.py
+index a9820875d..6ddb584a1 100644
+--- a/tests/ui_contracts/test_run_detail_wiring.py
++++ b/tests/ui_contracts/test_run_detail_wiring.py
+@@ -1,10 +1,10 @@
+-"""F023 T002 — the L2 run detail is mounted, fed and wired as DECISION F023 D4 rules.
++"""F023 T002 — the L2 run detail is mounted, fed and wired as DECISIONS F023 D4 and D5 rule.
+ 
+ `RunDetailPopover.tsx` shows the words `runDetailModel.ts` computes for the focused run
+ and reads the task's per-round facts through the rounds door; `BrainGraphStage.tsx`
+-mounts it for the focused run at L2 and L3; `RemedyShell.tsx` hands the stage the token
+-and the diff panel's opener; `ForceBrainGraph.tsx` stops a run click from opening the
+-task's popover as well. The vitest environment renders no `.tsx`, so the wiring is pinned
++mounts it for the focused run at L2, and its Open diff and Why open the L3 evidence panel;
++`RemedyShell.tsx` hands the stage the token; `ForceBrainGraph.tsx` stops a run click from
++opening the task's popover as well. The vitest environment renders no `.tsx`, so the wiring is pinned
+ from source here; the words are goldened by `runDetailModel.test.ts`.
+ """
+ from __future__ import annotations
+@@ -28,19 +28,20 @@ def test_the_stage_mounts_the_detail_for_the_focused_run_from_the_model():
+     src = _src(STAGE)
+     assert ("const focusedRun = zoom.state.level >= 2 ? model.nodes.find((n) => n.id === zoom.state.focusId)"
+             " ?? null : null;") in src
++    assert "{focusedRun && zoom.state.level === 2 && (" in src
+     mount = src[src.index("<RunDetailPopover"):]
+     mount = mount[:mount.index("/>")]
+     for prop in ("node={focusedRun}", "rows={rows}", "promptItems={dashboard.promptTrace?.items ?? []}",
+-                 "jobId={dashboard.jobId}", "token={serverToken}", "onOpenDiff={onOpenDiff}",
+-                 "onOpenPrompt={onSelectNode}", 'onClose={() => zoom.dispatch({ type: "escape" })}'):
++                 "jobId={dashboard.jobId}", "token={serverToken}",
++                 'onOpenEvidence={(tab) => zoom.dispatch({ type: "open_evidence", tab })}',
++                 'onClose={() => zoom.dispatch({ type: "escape" })}'):
+         assert prop in mount, f"<RunDetailPopover> lacks {prop}"
+ 
+ 
+-def test_the_shell_hands_the_stage_the_token_and_the_diff_opener():
++def test_the_shell_hands_the_stage_the_token():
+     element = [line for line in _src(SHELL).splitlines() if "<BrainGraphStage" in line]
+     assert len(element) == 1
+     assert "serverToken={serverToken}" in element[0]
+-    assert "onOpenDiff={setOpenDiffTaskId}" in element[0]
+ 
+ 
+ def test_the_detail_reads_its_facts_through_the_door_and_never_shows_another_tasks():
