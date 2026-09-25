@@ -20790,3 +20790,53 @@ new run pushed it into its task's cluster.
 
 HOW TO REVERSE: delete `apps/ui/src/components/graph/semanticZoom.ts`, `zoomWheel.ts`, their two
 `.test.ts` files, `tests/ui_contracts/test_semantic_zoom_contract.py`, and this paragraph.
+
+## DECISION F023 D2 — the render effects are data computed from the zoom state, the canvas paints them and moves its camera per level under a lock, and the breadcrumbs sit top-left from L1 (2026-09-25)
+
+CONTEXT: T5_F023.md orders T002 as the render effects (dim, glow, expansion) and the L2
+popover, and its Design says L1 dimming and L0 branch glow are render-layer effects driven by
+{level, focusId}, with no model mutation. Measured at `835930ee`: `graph_spec.md` §10 dims L1's
+siblings to 25%, turns the focused task's label on, puts the breadcrumb chip top-left of the
+stage and names the hook `useSemanticZoom.ts`; `ForceBrainGraph.tsx` draws task labels only above
+a camera factor of 1.4, rings the shell's selection, marks a link `active` when its run is in
+flight, and fits the camera to 1.0 once after mount; the library reports every zoom frame through
+`onZoom`, a programmatic `zoom()` included, which the repository's type shim
+`apps/ui/src/types/react-force-graph-2d.d.ts` did not declare; `--remedy-dur-slow` is 350 ms in
+the reference token sheet and absent from the app sheet; `GraphLegend.tsx` is a `role="dialog"`
+closed by its own window-level Escape listener; and the run glyphs already hide below a factor of
+1.6, which is L0's "runs collapsed into branch beads".
+
+CHOSEN: (1) THE EFFECTS are `zoomView.ts`'s `zoomEmphasis`, plain data per state: at L1 and
+deeper every node outside the focused task's branch is dimmed to 25%, the core never, and so is
+every link into a dimmed node; the focused task is labelled at any camera factor, its label dimmed
+with it; the focus ring moves to the task at L1 and to the run at L2 and L3, beside the shell's
+selection ring; and a link glows while its run is in flight, every such link at L0 and only the
+focused branch's deeper, painted in `--remedy-state-current`, the token that paints an
+in-progress node. A focus that a filter chip hides dims nothing. (2) THE CAMERA follows the level
+through `zoomCamera`: the organism at factor 1 around the core, the task centred at 2 and the run
+at 2.4, each on the side of the wheel thresholds its level belongs to, moved over 350 ms, the
+reference `--remedy-dur-slow`, and at once under reduced motion. (3) THE LOCK: while the component
+moves its own camera, the zoom frames it causes update the recorded factor but are never read as
+wheel crossings, because a programmatic move from 1 to 2 crosses 1.6 and would otherwise refocus
+whatever lies under the pointer. (4) THE HOOK is `useSemanticZoom.ts`: it feeds every event
+through the machine, reconciles on every graph change, and walks back on Escape unless the key
+goes to a text field or a dialog is open, whose own Escape closes it first; it exposes the last
+note, which the stage writes as `data-zoom-note`. (5) THE BREADCRUMBS are `ZoomBreadcrumbs.tsx`,
+top-left, hidden at L0, where the trail would be "Job" alone; shallower crumbs are buttons, the
+current one text, the run named by its legend name. (6) A click still selects the task in the
+shell, which opens its task popover, until the L2 run popover lands in T002's second half; a
+background click only clears that selection. (7) THE GUARD is
+`tests/ui_contracts/test_semantic_zoom_wiring.py`, and the reviewer rendered the wiring headless
+before this round, clicking to L1 and L2, pressing Escape, jumping by the Job crumb and wheeling
+out, each landing the level the machine's goldens name, with no page error.
+
+ALTERNATIVES: filtering the layout per level, rejected because T5_F023.md forbids mutating the
+model for an effect and a filtered simulation would re-lay the graph at every step; no camera
+lock, rejected for the refocus above; `--remedy-dur-slow` added to the app sheet, rejected
+because a canvas cannot read it and the guard binds the constant to the reference value; the
+breadcrumbs shown at L0, rejected as a chip with nothing to walk back to.
+
+HOW TO REVERSE: delete `zoomView.ts`, `zoomView.test.ts`, `useSemanticZoom.ts`,
+`ZoomBreadcrumbs.tsx`, `ZoomBreadcrumbs.module.css` and
+`tests/ui_contracts/test_semantic_zoom_wiring.py`, restore `ForceBrainGraph.tsx`,
+`BrainGraphStage.tsx` and the type shim from `835930ee`, and delete this paragraph.
