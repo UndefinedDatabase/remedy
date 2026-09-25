@@ -559,8 +559,8 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         group_id="job",
         subcommand="edit-task",
         description="Change one task of an approved job plan at runtime — its title, goal, "
-                    "acceptance criteria, size band or file hints — while the run holding it is "
-                    "not running.",
+                    "acceptance criteria, size band or file hints — while its job is not "
+                    "running.",
         action_class="write_metadata",
         args=(
             _JOB_ID,
