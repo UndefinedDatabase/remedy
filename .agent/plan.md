@@ -11,20 +11,18 @@ repair (`docs/roadmap/features/T2_F285.md`).
 
 ## Current Step
 
-ROUND 1: claim F285, re-head the live review record, book F026's round
-8, record DECISION F285 D1 with the slice list, and land T001 (R-1058:
-the generated Acceptance asks for the repair alone, and a pass confined
-to `.agent/` is named a defect) and T002 (R-1057: the self-use cost cap
-derived from the dearest measured call).
+ROUND 2: book round 1 with the resolutions of R-1057 and R-1058, record
+DECISION F285 D2, and land T003 (R-1055): each round's provider session
+persisted in the run's record, and the relaunch of a task a park or a
+stop interrupted resuming the parked session on its first calls.
 
 ## Next Steps
 
-1. T003 (R-1055): a relaunch of an interrupted task resumes its
-   persisted provider session where the provider supports resume.
-2. The closure sequence: the self-use run on R-1064, its diff landed if
-   both reviews pass, the integration gate, the evidence and the close.
+1. The closure sequence: the self-use run on R-1064, its diff landed if
+   both reviews pass (or a worker repair if not), the integration gate,
+   the evidence and the close.
 
 ## Risks
 
-A self-use run spends real money, now up to six dollars. Open findings:
-5 — R-1008, R-1055, R-1057, R-1058 and R-1064, all owned by F285.
+A self-use run spends real money, up to six dollars. Open findings: 3 —
+R-1008, R-1055 and R-1064, all owned by F285.

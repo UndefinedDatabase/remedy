@@ -21905,3 +21905,42 @@ HOW TO REVERSE: restore `packages/orchestration/self_use_generator.py`,
 `packages/orchestration/config.py`, `docs/guides/environment.md`,
 `docs/system/self-use-track-v1.md` and the three touched test files from `83d3bb95`, delete the
 operator-questions entry, and delete this paragraph.
+
+## DECISION F285 D2 — a run's record carries each call's provider session, and the relaunch of a task a park or a stop interrupted offers the parked run's sessions to its first calls, with the prompt left at full context (2026-09-26)
+
+CONTEXT: R-1055's fix asks that each round's provider session reference be persisted with the
+run, and that the relaunch of an interrupted task resume that session when its provider supports
+resume, with `resume_used` in the run's evidence. Measured at `26f44f49`: `export_pingpong_json` in
+`packages/orchestration/pingpong_loop.py` writes each round's builder and reviewer blocks into the
+run's `result.json` without the session the call reported; `_park_job` in
+`packages/orchestration/pingpong_job.py` returns the interrupted task to `pending` while its
+`run_id` still names the parked run and its `final_status` reads `stopped`, and a stop leaves the
+same two fields; `run_pingpong` resumes only a repair round, from the rounds it holds in memory,
+and the same variable that carries the resume also gates the prompt shrinks of F106 and the
+dedupe of F109, which assume the session already saw this run's diff. No production provider
+advertises `supports_resume` today; `FakeProvider` does when asked.
+
+CHOSEN: (1) Every round's builder and reviewer blocks in `result.json` carry `session_id`,
+`resume_used`, `resume_session_ref` and `resume_fallback`, and the record carries
+`resumed_from_run_id`. (2) `parked_session_refs` reads a persisted record into the session each
+role last reported; a record without sessions answers `{}`. (3) `run_job` reads the parked run of
+a task whose `final_status` is `stopped` and whose `run_id` is set, and passes the sessions to
+`run_pingpong` as `resume_sessions`, with the parked run's id. (4) In `run_pingpong`, round 1's
+call of each role resumes the offered session when its provider supports resume; the value passed
+to the call and the resume fallback are separated from the prompt gate, which stays the repair
+round's own, so the resumed first call sends the full context. The fallback-once rule is unchanged
+and fires on whatever resume the call really passed. (5) The two source guards in
+`tests/orchestration/test_prompt_trace.py` that locate the fallback branch by its condition follow
+the renamed condition.
+
+ALTERNATIVES: reusing the parked run id instead of minting a new run, rejected because the run
+manifest's chain rule lets a stopped or parked task start a new run and the evidence of the parked
+one must stay whole; a new field on the task entry holding the sessions, rejected because the run
+record already names the run and a second copy could drift from it; letting the resumed first call
+shrink its prompt as a repair round does, rejected because the parked session never saw the new
+run's staging.
+
+HOW TO REVERSE: restore `packages/orchestration/pingpong_loop.py`,
+`packages/orchestration/pingpong_job.py`, `docs/system/session-resume-v1.md` and
+`tests/orchestration/test_prompt_trace.py` from `26f44f49`, delete
+`tests/orchestration/test_relaunch_session_resume.py`, and delete this paragraph.
