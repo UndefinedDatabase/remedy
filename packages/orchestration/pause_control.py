@@ -585,10 +585,38 @@ def _refuse_unknown_task(task_id: str, job: Any) -> dict[str, Any] | None:
            "scope": "task", "task_id": task_id}
 
 
+def _task_pause_event_exists(job_id: str, event: str, request_id: str) -> bool | None:
+    """Has this exact request already produced a ``task_paused`` or ``task_resumed``
+    ledger event? Mirrors ``pingpong_job._job_paused_event_exists`` exactly — True/False,
+    or None when the ledger could not be read at all, which must never be mistaken for
+    "no event": writing a second one would break exactly-once (R-1052)."""
+    try:
+        from packages.orchestration.data_paths import run_log_dir
+
+        job_runs = run_log_dir(job_id)
+        if not job_runs.is_dir():
+            return False
+        for jsonl in sorted(job_runs.glob("*.jsonl")):
+            for line in jsonl.read_text(encoding="utf-8").splitlines():
+                if not line.strip():
+                    continue
+                try:
+                    raw = json.loads(line)
+                except ValueError:
+                    continue                      # a torn line is not our event
+                if (raw.get("event") == event
+                        and str(raw.get("job_id")) == job_id
+                        and str((raw.get("metadata") or {}).get("request_id")) == request_id):
+                    return True
+        return False
+    except OSError:
+        return None
+
+
 def _write_task_paused_event(job: Any, pause: TaskPause) -> None:
     """One ``task_paused`` ledger event, an inline literal through ``RunLogWriter``
-    (DECISION F025 D2 clause 3) — the caller writes this only when ITS OWN call
-    created the paused-task entry, never on a repeat of an already-paused task."""
+    (DECISION F025 D2 clause 3) — the caller writes this only when the LEDGER holds
+    none for this request id yet (R-1052), never a second time for the same request."""
     from packages.orchestration.run_log import RunLogWriter
 
     writer = RunLogWriter(job.job_id)
@@ -606,8 +634,9 @@ def _write_task_paused_event(job: Any, pause: TaskPause) -> None:
 
 def _write_task_resumed_event(job: Any, pause: TaskPause) -> None:
     """One ``task_resumed`` ledger event, an inline literal through ``RunLogWriter``
-    (DECISION F025 D2 clause 3) — the caller writes this only when ITS OWN call
-    released a real paused-task entry, never when nothing was paused."""
+    (DECISION F025 D2 clause 3) — the caller writes this only when the LEDGER holds
+    none for this request id yet (R-1052), and BEFORE the entry is released, so a
+    failed write leaves the task paused rather than silently losing the event."""
     from packages.orchestration.run_log import RunLogWriter
 
     writer = RunLogWriter(job.job_id)
@@ -647,12 +676,13 @@ def pause_job_command(job: Any, *, task_id: str | None = None, reason: str = "",
         refusal = _refuse_unknown_task(task_id, job)
         if refusal is not None:
             return refusal
-        already = any(
-            p.task_id == task_id
-            for p in paused_tasks(job.job_id, control_root_path=control_root_path))
         pause = request_task_pause(job.job_id, task_id, reason, source,
                                    control_root_path=control_root_path)
-        if not already:
+        # R-1052: exactly once per request id BY THE LEDGER, as `job_paused` is — not
+        # by whether this call is the one that created the control-file entry, which
+        # a retry after a failed write can never be.
+        already = _task_pause_event_exists(job.job_id, "task_paused", pause.request_id)
+        if already is not None and not already:
             _write_task_paused_event(job, pause)
         return {"outcome": "paused", "request_id": pause.request_id, "scope": "task",
                 "task_id": task_id}
@@ -687,10 +717,18 @@ def unpause_job_command(job: Any, *, task_id: str | None = None, source: str,
         refusal = _refuse_unknown_task(task_id, job)
         if refusal is not None:
             return refusal
-        pause = release_task_pause(job.job_id, task_id, control_root_path=control_root_path)
+        pause = next(
+            (p for p in paused_tasks(job.job_id, control_root_path=control_root_path)
+             if p.task_id == task_id), None)
         if pause is None:
             return {"outcome": "not_paused", "scope": "task", "task_id": task_id}
-        _write_task_resumed_event(job, pause)
+        # R-1052: the event is written BEFORE the entry is released, so a failed
+        # write raises with the task still paused — the retry finds the same
+        # entry, the same request id, and writes the missing event exactly once.
+        already = _task_pause_event_exists(job.job_id, "task_resumed", pause.request_id)
+        if already is not None and not already:
+            _write_task_resumed_event(job, pause)
+        release_task_pause(job.job_id, task_id, control_root_path=control_root_path)
         return {"outcome": "released", "request_id": pause.request_id, "scope": "task",
                 "task_id": task_id}
 

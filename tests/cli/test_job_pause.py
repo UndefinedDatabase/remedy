@@ -206,6 +206,75 @@ class TestR1051WithdrawBeforeParked:
         assert payload["outcome"] == "not_paused"
 
 
+class TestR1052EventsAreExactlyOnceByTheLedger:
+    """R-1052's FIX: `task_paused` and `task_resumed` are exactly once per
+    request id BY THE LEDGER, as `job_paused` already is — a write that fails
+    is never silently skipped by a retry that finds the control-file entry
+    already there; the retry finds no ledger event instead, and writes it."""
+
+    def test_a_failed_task_paused_write_is_written_by_the_retry(
+            self, job, data_root, capsys, monkeypatch):
+        from packages.orchestration.run_log import RunLogWriter
+
+        real_log = RunLogWriter.log
+        calls = {"n": 0}
+
+        def flaky_log(self, event, **kwargs):
+            if event == "task_paused":
+                calls["n"] += 1
+                if calls["n"] == 1:
+                    raise RuntimeError("simulated ledger failure")
+            return real_log(self, event, **kwargs)
+
+        monkeypatch.setattr(RunLogWriter, "log", flaky_log)
+
+        task_id = job.tasks[0].task_id
+        with pytest.raises(RuntimeError):
+            CMD._cmd_job_pause(job.job_id, task=task_id, json_output=True)
+        assert _task_paused_events(data_root, job.job_id) == []
+
+        CMD._cmd_job_pause(job.job_id, task=task_id, json_output=True)
+        payload = json.loads(capsys.readouterr().out)
+        assert payload["outcome"] == "paused"
+        events = _task_paused_events(data_root, job.job_id)
+        assert len(events) == 1
+        assert calls["n"] == 2
+
+    def test_a_failed_task_resumed_write_leaves_the_task_paused(
+            self, job, data_root, capsys, monkeypatch):
+        from packages.orchestration import pause_control as pc
+        from packages.orchestration.run_log import RunLogWriter
+
+        task_id = job.tasks[0].task_id
+        CMD._cmd_job_pause(job.job_id, task=task_id, json_output=True)
+        capsys.readouterr()
+
+        real_log = RunLogWriter.log
+        calls = {"n": 0}
+
+        def flaky_log(self, event, **kwargs):
+            if event == "task_resumed":
+                calls["n"] += 1
+                if calls["n"] == 1:
+                    raise RuntimeError("simulated ledger failure")
+            return real_log(self, event, **kwargs)
+
+        monkeypatch.setattr(RunLogWriter, "log", flaky_log)
+
+        with pytest.raises(RuntimeError):
+            CMD._cmd_job_unpause(job.job_id, task=task_id, json_output=True)
+        assert any(p.task_id == task_id for p in pc.paused_tasks(job.job_id))
+        assert _task_resumed_events(data_root, job.job_id) == []
+
+        CMD._cmd_job_unpause(job.job_id, task=task_id, json_output=True)
+        payload = json.loads(capsys.readouterr().out)
+        assert payload["outcome"] == "released"
+        events = _task_resumed_events(data_root, job.job_id)
+        assert len(events) == 1
+        assert calls["n"] == 2
+        assert not any(p.task_id == task_id for p in pc.paused_tasks(job.job_id))
+
+
 class TestTaskScopePause:
     def test_pausing_a_task_writes_one_task_paused_event(self, job, data_root, capsys):
         task_id = job.tasks[2].task_id
