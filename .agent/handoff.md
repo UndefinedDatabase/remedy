@@ -1,84 +1,59 @@
-# Handback — F027 Task veto · Round 12 (closure sequence's second repair round)
+# Handback — F027 Task veto · Round 13 (closure sequence's evidence round)
 
 ## Session
 
-SESSION 2 of feature F027 · round 12 · rounds so far 12
+SESSION 2 of feature F027 · round 13 · rounds so far 13
 
-Roughly two-thirds of the session's context budget remained at the point this handback was
-written. This round booked round 11's PASS, resolved R-1071 (already landed at round 11's
-C3; this round's C2 books the Gate/Done pair), registered R-1072 (the withdrawn-pause live
-test runs its job with no target of its own, so the runner builds a git worktree of the
-whole live checkout, which fails under the full suite's parallel load), repaired it in
-`tests/ui_server/test_pause_door_live.py` (S1, exactly as specified), built and ran the
-round's load probe under `pytest -n 16`, and took the feature's one full suite again on the
-repaired tree. The repeated suite is GREEN: 0 failed, 19694 passed, 20 skipped — round 11's
-one bad node (`TestWithdrawLiveDoor::test_a_withdrawn_pause_never_parks_the_relaunch`) now
-passes, and no node is newly bad. The bad set has strictly shrunk to empty, meeting
-amend0917-throughput rule 2.
+Roughly three-quarters of the session's context budget remained at the point this handback
+was written. This round booked round 12's PASS (the closure suite green on the repaired
+tree, R-1072's node now passing among 19694 passed), resolved R-1072 by committing the
+booking Gate/Done entries, brought the Built State's findings section in
+`docs/roadmap/features/T5_F027.md` current (R-1071 and R-1072 both noted as resolved), then
+ran the feature-scoped evidence job (`f027r13e1001`) and built the fresh review package.
+The package reads `PACKAGE_STATUS=READY_FOR_REVIEW` and `EVIDENCE_AUTHORITATIVE=true`.
+Nothing closes this round — no STATUS/README edit, no ledger rotation, no `consumed_by`
+edit, no pull request, per the block's explicit constraint 5.
 
 ## Range
 
-Review of `092761590..HEAD` (C1 through C5, this commit closes C5).
+Review of `07c78cd8a..HEAD` (C1 through C3, this commit closes C3).
 
 ## Commits
 
-### 6439e5205 F027 R12 C1: copy round 12 block and payloads
+### 59f565e6f F027 R13 C1: copy round 13 block and payloads
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f027-r12-block.md | +154/-0 (new) | copy of this round's block, verbatim (`shutil.copyfile`) |
-| .agent/authored/f027-r12-plan.md | +30/-0 (new) | copy of the plan.md payload |
-| .agent/authored/f027-r12-records.diff | +23/-0 (new) | copy of the records.diff payload |
+| .agent/authored/f027-r13-block.md | +132/-0 (new) | copy of this round's block, verbatim (`shutil.copyfile`) |
+| .agent/authored/f027-r13-create_f027_evidence.py | +183/-0 (new) | copy of the evidence-job tool payload |
+| .agent/authored/f027-r13-plan.md | +27/-0 (new) | copy of the plan.md payload |
+| .agent/authored/f027-r13-records.diff | +29/-0 (new) | copy of the records.diff payload |
 
-207 insertions by `git show --numstat` — matches the block's stated expectation exactly
-(block line count 154 plus 53), under the 500-line cap.
+371 insertions by `git show --numstat` — matches the block's stated expectation exactly
+(block line count 132 plus 239), under the 500-line cap.
 
-### 3dc9d827b F027 R12 C2: book round 11, resolve R-1071, register R-1072
+### f3afc333a F027 R13 C2: book round 12, resolve R-1072, bring the Built State current
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/live_review.md | +6/-0 | round 11's Gate entry, R-1071's `Done:` paragraph and R-1072's registration, appended via `git apply` of records.diff |
-| .agent/plan.md | +7/-6 | rewritten whole to the plan.md payload |
-| .agent/prose_slips.md | +1/-0 | one line on the reviewer's round-11-gate slip, appended via the same diff |
+| .agent/live_review.md | +4/-0 | round 12's Gate entry and R-1072's `Done:` paragraph, appended via `git apply` of records.diff |
+| .agent/plan.md | +7/-10 | rewritten whole to the plan.md payload |
+| docs/roadmap/features/T5_F027.md | +9/-0 | one paragraph appended after the Built State's findings, noting R-1071 and R-1072 both resolved |
 
-6/0 live_review.md, 7/6 plan.md, 1/0 prose_slips.md by `git show --numstat` — matches the
-block's G2 table exactly. `git apply --check` on records.diff → exit 0; the real
-`git apply` → exit 0.
+4/0 live_review.md, 7/10 plan.md, 9/0 T5_F027.md by `git show --numstat` — matches the
+block's G2 table exactly. `git apply --check` on records.diff → exit 0; the real `git apply`
+→ exit 0. This is the closure's ACCEPTED HEAD: full sha
+`f3afc333a70eae5f339fce8c18004db68a7cea1f`. Pushed immediately after this commit, before A1.
 
-### b0d5465f5 F027 R12 C3: the withdrawn-pause live test runs its job in a target of its own (R-1072)
+### (this commit) F027 R13 C3: rewrite handoff for round 13 with the evidence and package readings
 | Path | +/- | Reason |
 |---|---|---|
-| tests/ui_server/test_pause_door_live.py | +8/-1 | S1: `TestWithdrawLiveDoor.test_a_withdrawn_pause_never_parks_the_relaunch` now builds `target = tmp_path / "repo"` holding `README.md` reading `# demo\n`, exactly as `TestJobScopeLiveDoor` makes its own, and its `JobPlan` carries `repo_path=str(target)`, with a comment naming R-1072 |
-| .agent/live_review.md | +2/-0 | the `Landed: R-1072 — ` line appended |
-
-Nothing else in the test file changed, as S1 required. `ruff check` over the touched file
-→ clean (see G3 below).
-
-### c4124c960 F027 R12 C4: the round's load probe
-| Path | +/- | Reason |
-|---|---|---|
-| .agent/authored/f027-r12-loadprobe.py | +86/-0 (new) | the load probe (G4): records the shared repository's branch/worktree counts, writes the 48-value parametrized scratch test into a detached worktree, runs it once alone then once loaded under `-n 16`, prints both summary lines, the counts again, and the LOAD PROOF line |
-
-### 3cbc4df92 F027 R12 C4b: fix the load probe's scratch test double-collecting TestWithdrawLiveDoor
-| Path | +/- | Reason |
-|---|---|---|
-| .agent/authored/f027-r12-loadprobe.py | +5/-2 | self-review of C4's probe against a real worktree run found it collected 49 nodes, not 48: `from ... import TestWithdrawLiveDoor` put a `Test*`-named object at the scratch module's top level, so pytest collected the imported class a second time. Fixed by importing the module under a non-`Test*` name and referencing `_pause_door_live.TestWithdrawLiveDoor()` instead; re-run confirmed exactly 48 collected and 48 passed |
-
-### (this commit) F027 R12 C5: record the closure suite on the repaired tree and rewrite handoff for round 12
-| Path | +/- | Reason |
-|---|---|---|
-| .agent/authored/f027-closure-suite.txt | rewritten whole | the repeated full suite's command, real exit code, wall time, summary line, "None" for bad node ids, and the tree it ran on, replacing round 11's run |
-| .agent/handoff.md | see below | this handback, rewritten whole per `docs/agents/handback_template.md` |
+| .agent/handoff.md | rewritten whole | this handback, per `docs/agents/handback_template.md`, carrying the evidence job id, the package name, its SHA-256, its archived directory, the accepted head and every gate reading |
 
 ## External actions
 
-`git worktree add --detach .remedy-wt/f027-r12-load c4124c960` for the first (buggy) probe
-run, then `git worktree remove --force .remedy-wt/f027-r12-load` — both succeeded. After the
-C4b fix, `git worktree add --detach .remedy-wt/f027-r12-load 3cbc4df92`, then
-`git worktree remove --force .remedy-wt/f027-r12-load` again — both succeeded;
-`git worktree list` reads 100 before and after each add/remove pair. `bash -c 'npm --prefix
-apps/ui run build ...'` — the one npm command this round may run — exit 0.
-`git push origin feature/f027-task-veto` after this commit → see G6 below for the real
-outcome. No pull request this round (block goal: "the evidence bundle and the pull request
-belong to later rounds").
+`git push origin feature/f027-task-veto` after C2 → `07c78cd8a..f3afc333a  feature/f027-task-veto -> feature/f027-task-veto`, succeeded.
+A1 the evidence job (`python3 .remedy-wt/f027-r13-payloads/create_f027_evidence.py`, no commit) → real exit 0.
+A2 the review package (`bash scripts/make_review_zip.sh --evidence-dir .remedy-wt/f027-r13-evidence`, no commit) → real exit 0, `PACKAGE_STATUS=READY_FOR_REVIEW`.
+`git push origin feature/f027-task-veto` after this commit (C3) → see G6 below for the real outcome. No pull request this round (block: "No pull request").
 
 ## Verification
 
@@ -95,215 +70,159 @@ $ git status --porcelain
 $ git branch --show-current
 feature/f027-task-veto
 $ git log --oneline -1
-092761590 F027 R11 C5: record the closure suite on the repaired tree and rewrite handoff for round 11
+07c78cd8a F027 R12 C5: record the closure suite on the repaired tree and rewrite handoff for round 12
 ```
 All matched the block's step 2 exactly.
 
-**Block bytes (step 3):** `.remedy-wt/f027-r12/block.md` → 154 lines (newline count), sha256
-`1dfb9d8f2a2db6caaf823794742e24bc1e5438e73b18572ceac037ebef95cf1a` — both the line count
+**Block bytes (step 3):** `.remedy-wt/f027-r13/block.md` → 132 lines (newline count), sha256
+`fff45d05eba68a41973fa627061713a5d65b63fb6fbd88f9dbd1d98dc9af194c` — both the line count
 and the sha256 match the delegation message's two readings exactly.
 
-**Worktree list / job branches (step 4):** `git worktree list | wc -l` → 100;
-`git for-each-ref refs/heads/remedy/ | wc -l` → 195 — both matched the reviewer's stated
-readings (100 and 195) exactly.
+**Worktree list (step 4):** `git worktree list | wc -l` → 100.
 
 **PAYLOADS** — readings (all matched the table):
 | file | lines | bytes | sha256 |
 |---|---|---|---|
-| plan.md | 30 | 1079 | 7898c757b7fcf9a23790e781f85b578565fe20ea5e7dcd511327976568ee0710 |
-| records.diff | 23 | 8585 | 896bead42fbaa18729ec23078cdbbafa0d0844cf16378d05153c537bf86730ba |
+| create_f027_evidence.py | 183 | 9487 | 96a71f7b0b94864045d7deb11e3b5acf5f7cfdb42726d13aca4c534ad13e7f6a |
+| plan.md | 27 | 913 | 75390184e640f2e6b7c392a937d88698a6f4328045291916a4d8d04859e39a87 |
+| records.diff | 29 | 6392 | b55002de18ac67b9af52b9d4aebc939b214d6a0a3bb31ef378841e1c37b03d75 |
 
 **G1 TRANSPORT** — copy comparisons, all byte-identical via `git show <C1>:<path> | sha256sum`
 against the payload table and the block file's own sha256:
-- `.agent/authored/f027-r12-block.md` → `1dfb9d8f2a2db6caaf823794742e24bc1e5438e73b18572ceac037ebef95cf1a` (matches block.md)
-- `.agent/authored/f027-r12-plan.md` → `7898c757b7fcf9a23790e781f85b578565fe20ea5e7dcd511327976568ee0710` (matches plan.md)
-- `.agent/authored/f027-r12-records.diff` → `896bead42fbaa18729ec23078cdbbafa0d0844cf16378d05153c537bf86730ba` (matches records.diff)
+- `.agent/authored/f027-r13-block.md` → `fff45d05eba68a41973fa627061713a5d65b63fb6fbd88f9dbd1d98dc9af194c` (matches block.md)
+- `.agent/authored/f027-r13-create_f027_evidence.py` → `96a71f7b0b94864045d7deb11e3b5acf5f7cfdb42726d13aca4c534ad13e7f6a` (matches create_f027_evidence.py)
+- `.agent/authored/f027-r13-plan.md` → `75390184e640f2e6b7c392a937d88698a6f4328045291916a4d8d04859e39a87` (matches plan.md)
+- `.agent/authored/f027-r13-records.diff` → `b55002de18ac67b9af52b9d4aebc939b214d6a0a3bb31ef378841e1c37b03d75` (matches records.diff)
 
-**G2 THE RECORDS** — all matched the block's table exactly:
+**G2 THE BOOKING** — all matched the block's table exactly:
 | read at | path | bytes | sha256 | match |
 |---|---|---|---|---|
-| C2 (3dc9d827b) | .agent/live_review.md | 336967 | fd04ea0e756a5bcbc2d31dcb9574abdcb474e9896eda2af8c73729fdfee51709 | yes |
-| C2 (3dc9d827b) | .agent/prose_slips.md | 370262 | 9e64d4fc87e5491b57df2af5b1bd4b59cf20b6be11a4518a089f5186c6f70050 | yes |
-| C2 (3dc9d827b) | .agent/plan.md | 1079 | 7898c757b7fcf9a23790e781f85b578565fe20ea5e7dcd511327976568ee0710 | yes |
+| C2 (f3afc333a) | .agent/live_review.md | 340263 | 1afe8ce86206fab7af699c2915ba34983e0ed412bd66697a9aae0abb25898b86 | yes |
+| C2 (f3afc333a) | .agent/plan.md | 913 | 75390184e640f2e6b7c392a937d88698a6f4328045291916a4d8d04859e39a87 | yes |
+| C2 (f3afc333a) | docs/roadmap/features/T5_F027.md | 12413 | 40374dfb9f9ff323bd10096adcd011c18a053eefd63d2533ee46c3ec7d0421db | yes |
 
-`open_finding_ids` (via `scripts/rotate_live_review.py`) over the ledger's text at
-`3dc9d827b` → `['R-1072']` — matches the block's own reading exactly. Re-read over the
-working tree after C4/C4b (neither touches the ledger) → still `['R-1072']`, matching the
-block's "at C2 and at C4" requirement. The ledger's last line at C3 (`b0d5465f5`) begins
-`Landed: R-1072 — ` — confirmed by reading the tail of
-`git show b0d5465f5:.agent/live_review.md`.
+`open_finding_ids` (via `scripts/rotate_live_review.py`) over the ledger's text at C2 →
+`[]` — matches the block's own reading exactly.
 
-**G3 THE CODE:**
+Serial gate at C2:
 ```
-$ python3 -m ruff check tests/ui_server/test_pause_door_live.py
-All checks passed!
-```
-(Run at C3, i.e. the working tree was already at `b0d5465f5` when this ran.)
-
-`git diff 09276159 b0d5465f5 -- tests/ui_server/test_pause_door_live.py` (whole, verbatim):
-```diff
-diff --git a/tests/ui_server/test_pause_door_live.py b/tests/ui_server/test_pause_door_live.py
-index 86f42bda9..13e49230b 100644
---- a/tests/ui_server/test_pause_door_live.py
-+++ b/tests/ui_server/test_pause_door_live.py
-@@ -476,9 +476,16 @@ class TestWithdrawLiveDoor:
-         )
-         from packages.orchestration.pingpong_provider import FakeProvider
- 
-+        # R-1072: a target of its own — without it the runner builds a git
-+        # worktree of the whole live checkout, which fails under load.
-+        target = tmp_path / "repo"
-+        target.mkdir()
-+        (target / "README.md").write_text("# demo\n")
-+
-         job = JobPlan(job_title="live-withdraw-job",
-                      user_prompt="Test prompt for the pause door withdraw",
--                     tasks=[TaskEntry(title="Write a README")])
-+                     tasks=[TaskEntry(title="Write a README")],
-+                     repo_path=str(target))
-         save_job_plan(job)
-         job_id = str(job.job_id)
-```
-
-**G4 THE TESTS AND THE LOAD PROOF** (at C4/C4b, `3cbc4df92`, serially):
-```
-$ bash -c 'python3 -m pytest -q -p no:cacheprovider
-    tests/ui_server/test_pause_door_live.py tests/orchestration/test_live_review_rotation.py
-    tests/orchestration/test_integrity_gate.py tests/cli/test_golden_path.py
-    2>&1 | tail -3; echo "REAL_EXIT=${PIPESTATUS[0]}"'
-92 passed in 60.47s (0:01:00)
+$ python3 -m pytest -q -p no:cacheprovider tests/docs/ tests/cli/test_golden_path.py
+369 passed in 56.52s
 REAL_EXIT=0
 ```
+
+**G3 THE BUNDLE, at A1** — `.remedy-wt/f027-r13-worker/evidence.log`, whole:
+```
+head f3afc333a70eae5f339fce8c18004db68a7cea1f
+ancestry-path count 84
+plain count 84
+collected node ids 1661, deselected 10
+red control: unsafe among the real ids 0 []
+red control: planted id -> a local absolute path
+pytest exit 0, {'passed': 1661, 'failed': 0, 'skipped': 0}, output_hash 66e4ebcf35a3fd988bfd7d9c6fec0ad4443e653ee28a84f8dced1bea93829728
+validate_verification_tests problems [] passed 1661
+is_valid_current_run True
+validation_errors []
+gates written: ['artifact_contract_gate.json', 'change_provenance_gate.json', 'commit_execution_gate.json', 'fresh_evidence_gate.json', 'runtime_integration_gate.json', 'final_verifier_report.json']
+```
+Script real exit code: 0 (`REAL_EXIT=0`). Ancestry count 84 equals plain count 84 — both two
+more than the reviewer's dry-run reading of 82, exactly as the block's A1 predicted ("At C2
+both ancestry counts read two more"). Collected 1661 node ids with 10 deselected, matching
+the reviewer's dry run exactly. Red control: 0 unsafe among real ids, planted id answers "a
+local absolute path". Pytest exit 0, 1661 passed, 0 failed, 0 skipped — matching the
+reviewer's dry-run counts exactly. `output_hash`
+`66e4ebcf35a3fd988bfd7d9c6fec0ad4443e653ee28a84f8dced1bea93829728`.
+`validate_verification_tests` problem list: empty. `is_valid_current_run` True, no
+validation errors. Gate files written: `artifact_contract_gate.json`,
+`change_provenance_gate.json`, `commit_execution_gate.json`, `fresh_evidence_gate.json`,
+`runtime_integration_gate.json`, `final_verifier_report.json` (six files).
+
+**G4 THE PACKAGE, at A2** — `.remedy-wt/f027-r13-worker/zip.log`, decisive lines:
+```
+{"member_count": 6247, "authoritative_count": 62, "symlink_count": 0, "tombstone_count": 0, "final_path": "/home/decodeux/Repos/remedy-history/zips/remedy-review-20260926-111715-READY_FOR_REVIEW.zip", "final_sha256": "abb65b1df0346c8670423a7da903e3e3c6facfc4cac4602bb5a983b47b4bd993", "publication_capability": "SUPPORTED", "package_status": "READY_FOR_REVIEW", "evidence_authoritative": true, "review_subject_alignment": "PASS", "manifest_sha256": "888ab45b43c4e874c9ccbc2a30ec69ce6e99511dd0c492f499490a1edf20e028"}
+PACKAGE_STATUS=READY_FOR_REVIEW
+EVIDENCE_AUTHORITATIVE=true
+ZIP_PATH=/home/decodeux/Repos/remedy-history/zips/remedy-review-20260926-111715-READY_FOR_REVIEW.zip
+```
+`PACKAGE_STATUS` reads `READY_FOR_REVIEW`. `EVIDENCE_AUTHORITATIVE` reads `true`. Package
+filename: `remedy-review-20260926-111715-READY_FOR_REVIEW.zip`. SHA-256 (the script's own
+`final_sha256` reading): `abb65b1df0346c8670423a7da903e3e3c6facfc4cac4602bb5a983b47b4bd993`.
+Archived directory: `/home/decodeux/Repos/remedy-history/zips` (absolute).
+
+`.review_zip_manifest.json` read from inside the package via `zipfile`:
+```
+{
+  "base_commit": "557cbbcc5f5f0a46bf6d9c90b971b2723657d651",
+  "base_is_ancestor": true,
+  "commit_count": 84,
+  "file_count": 121,
+  "head_commit": "f3afc333a70eae5f339fce8c18004db68a7cea1f",
+  "tombstones": []
+}
+```
+`head_commit` equals C2's full sha exactly; `base_commit` equals the fork point
+`557cbbcc5f5f0a46bf6d9c90b971b2723657d651` exactly, as the block names it.
+`zipfile.is_zipfile(...)` → `True`. `ZipFile.testzip()` → `None`.
+
+**G5 THE TREE, after A2:**
 ```
 $ python3 -m apps.cli.main integrity check --json
 {"check_count": 6, "checks": [{"message": "handlers=161", "name": "handler_import", "status": "pass"}, {"message": "last Gate verdict PASS", "name": "live_review_verdict", "status": "pass"}, {"message": "unchecked=0, context_complete=False", "name": "plan_consistency", "status": "pass"}, {"message": "untracked=0, relevant=0", "name": "relevant_untracked", "status": "pass"}, {"message": "no reviewer scratch, evidence dir or archive at the root", "name": "repo_root_hygiene", "status": "pass"}, {"message": "no open blocker/high findings", "name": "high_blockers_open", "status": "pass"}], "fail_count": 0, "ok": true, "passed": true, "schema_version": 1, "version": 1}
 ```
-All six checks `pass`, `fail_count` 0.
+All six checks `pass`, `fail_count` 0. `git status --porcelain` → empty. `git worktree list |
+wc -l` → 100 (unchanged from the round's start).
 
-**The load probe**, `.agent/authored/f027-r12-loadprobe.py`, run against
-`git worktree add --detach .remedy-wt/f027-r12-load 3cbc4df92` via
-`python3 .agent/authored/f027-r12-loadprobe.py .remedy-wt/f027-r12-load`, whole output:
-```
-BEFORE: remedy branches=195 worktrees=101
-ALONE exit=0: 1 passed in 5.98s
-LOADED exit=0: 48 passed in 1.69s
-AFTER: remedy branches=195 worktrees=101
-LOAD PROOF: 48 passed and nothing leaked: True
-```
-(The `worktrees=101` reading is 100 plus the probe's own worktree, added just before this
-ran; it is unchanged before/after the probe's own pytest calls, which is what "nothing
-leaked" measures.) `git worktree remove --force .remedy-wt/f027-r12-load` → succeeded;
-`git worktree list | wc -l` afterward → 100, matching the pre-round count. The FIRST
-(pre-C4b) run of this same probe against `c4124c960` read `LOADED exit=0: 49 passed in
-2.26s` and `LOAD PROOF: ... False` — diagnosed as the double-collection bug fixed in C4b
-(see Deviations); that first run is not the committed proof and is reported here only as
-the trail that produced C4b. Both runs' branch/worktree counts matched before and after,
-so neither leaked into the shared repository regardless of the bug.
-
-**C5(a) THE UI BUILD:**
-```
-$ bash -c 'npm --prefix apps/ui run build 2>&1 | tail -2; echo "REAL_EXIT=${PIPESTATUS[0]}"'
-✓ built in 2.14s
-REAL_EXIT=0
-$ git status --porcelain
-(empty)
-```
-
-**C5(b) THE CLOSURE SUITE** (log under `.remedy-wt/f027-r12-worker/closure-suite-run.log`;
-the committed transcript is `.agent/authored/f027-closure-suite.txt`):
-```
-$ python3 -m pytest -n auto -q > .remedy-wt/f027-r12-worker/closure-suite-run.log 2>&1
-REAL_EXIT=0
-wall: 252s (start/end epoch seconds); pytest's own report: 251.15s (0:04:11)
-```
-Summary line: `19694 passed, 20 skipped, 1 warning in 251.15s (0:04:11)`
-
-Bad node ids (failed plus errors): **None** — `grep -c "^FAILED"` over the log → 0.
-
-Tree it ran on: C4's SHA `3cbc4df929daa3d8f85af62773a44a2dda47750f`.
-
-**Whether round 11's bad node passes:** YES.
-`tests/ui_server/test_pause_door_live.py::TestWithdrawLiveDoor::test_a_withdrawn_pause_never_parks_the_relaunch`
-is absent from this run's `FAILED`/`ERROR` lines (there are none), and the passed count rose
-by exactly one against round 11's run (19693 → 19694), consistent with that one node
-flipping from bad to good and no other count shifting (skipped stayed at 20).
-
-**Whether any node is newly bad:** NO. The full suite is green end to end (0 failed);
-the bad set has strictly shrunk from round 11's one node to zero, meeting
-amend0917-throughput rule 2's shrink requirement. This is the closure sequence's second
-repair round; the block states the evidence bundle and pull request belong to later rounds,
-so none is created here.
-
-**G6 TREE AND PUSH** — reported below, after this commit and the push.
+**G6 AFTER C3 AND THE PUSH** — reported in the final reply, after this commit and the push.
 
 ## Authored-text proofs
 
-Block copy: `.remedy-wt/f027-r12/block.md` sha256
-`1dfb9d8f2a2db6caaf823794742e24bc1e5438e73b18572ceac037ebef95cf1a`, matched against
-`git show 6439e5205:.agent/authored/f027-r12-block.md` → identical. Payload copies: same
-comparison against each of `.remedy-wt/f027-r12-payloads/{plan.md,records.diff}` via
-`git show 6439e5205:.agent/authored/f027-r12-{plan.md,records.diff}` → both identical (sha256
-values in the PAYLOADS table above). Post-C2, the sha256 of `.agent/live_review.md`,
-`.agent/prose_slips.md` and `.agent/plan.md`, read via `git show 3dc9d827b:<path>`, matched
-the block's G2 table exactly (see Verification above). `open_finding_ids` over the C2
-reading → `['R-1072']`, matching the block's own reading exactly; the same read at C4/C4b
-(working tree) → still `['R-1072']`.
+Block copy: `.remedy-wt/f027-r13/block.md` sha256
+`fff45d05eba68a41973fa627061713a5d65b63fb6fbd88f9dbd1d98dc9af194c`, matched against
+`git show 59f565e6f:.agent/authored/f027-r13-block.md` → identical. Payload copies: same
+comparison against each of
+`.remedy-wt/f027-r13-payloads/{create_f027_evidence.py,plan.md,records.diff}` via
+`git show 59f565e6f:.agent/authored/f027-r13-{create_f027_evidence.py,plan.md,records.diff}`
+→ all identical (sha256 values in the PAYLOADS table above). Post-C2, the sha256 of
+`.agent/live_review.md`, `.agent/plan.md` and `docs/roadmap/features/T5_F027.md`, read via
+`git show f3afc333a:<path>`, matched the block's G2 table exactly (see Verification above).
+`open_finding_ids` over the C2 reading → `[]`, matching the block's own reading exactly.
 
 ## Deviations & assumptions
 
-**C1–C3 exactly match the block.** Every commit matches the block's stated `git show
---numstat` expectation exactly; the payloads were not retyped or edited; `git apply --check`
-preceded the real `git apply` and both returned exit 0.
-
-**C4 needed a follow-up fix, C4b, not named in the block's bundle.** The block asks for one
-commit, "C4 THE LOAD PROBE ... (G4)." Authoring the probe and running it once (self-review,
-AGENTS.md "Mandatory Self-Review Loop") against a real detached worktree at `c4124c960`
-showed it collected and ran 49 tests, not 48: `from tests.ui_server.test_pause_door_live
-import TestWithdrawLiveDoor` bound a `Test*`-named object at the scratch module's top level,
-which pytest's default `python_classes = Test*` collected a second time as
-`TestWithdrawLiveDoor::test_a_withdrawn_pause_never_parks_the_relaunch`, alongside the 48
-parametrized `test_zz_r1072_load[i]` nodes — so the loaded run read `49 passed` and the
-probe's own `LOAD PROOF` line read `False` even though nothing had actually leaked (branch
-and worktree counts were unchanged before and after). Per AGENTS.md, the fix could not be
-folded into C4 by amending it (amends are forbidden; only new commits), so it landed as a
-small follow-up commit, C4b, importing the module under a non-`Test*` name instead. This
-commit is entirely within the round's tracked path set (constraint 3:
-`.agent/authored/f027-r12-*` copies and probe) and under the 500-line cap (7 lines changed).
-Re-running the probe against the fixed tree, `3cbc4df92`, read exactly `48 passed` and
-`LOAD PROOF: ... True`, which is the reading committed as this round's proof.
-
-**No other deviation.** C1 through C5 implement the block's steps in the block's stated
-order and subject lines (C4b aside, declared above). The round's tracked path set matches
-constraint 3 exactly — no edit touched `packages/`, `apps/`, any other test, `README.md`,
-`docs/`, `scripts/`, `.agent/decisions.md`, `.agent/candidates.md` or
-`.agent/operator_questions.md`. No assertion was weakened, no test deleted, nothing marked
-`xfail` — none of that was needed since the suite is green.
+**None.** C1 and C2 implement the block's steps in the block's stated order and subject
+lines, with commit contents matching the block's stated `git show --numstat` expectations
+exactly. The payloads were not retyped or edited; `git apply --check` preceded the real
+`git apply` and both returned exit 0. The round's tracked path set through C2 is exactly
+the block's constraint 3 set (the four `.agent/authored/f027-r13-*` copies,
+`.agent/live_review.md`, `.agent/plan.md`, `docs/roadmap/features/T5_F027.md`); this
+commit (C3) adds only `.agent/handoff.md`, also within that set. The evidence job (A1) and
+the review package (A2) both read exactly the readings the block's reviewer dry run
+predicted, with no unexpected value, no red control tripped, and no validation error.
+Nothing was merged, nothing was closed, no STATUS/README edit, no ledger rotation, no
+`consumed_by` edit, no pull request — per constraint 5. No worktree and no branch was
+deleted; `git worktree list | wc -l` reads 100 at every checkpoint this round (start, after
+A2, and after this commit).
 
 ## Item-status table
 
 | Item | Status | Reason |
 |---|---|---|
 | C1 | done | |
-| C2 | done | |
-| C3 (S1 repair) | done | `TestWithdrawLiveDoor`'s test now carries its own `target`/`repo_path`, with a comment naming R-1072; nothing else in the file changed |
-| C3 Landed line | done | appended to `.agent/live_review.md` |
-| C4 load probe | done | authored; first run against `c4124c960` surfaced a double-collection bug (49 not 48), fixed in C4b |
-| C4b probe fix | deviated | not in the block's bundle; declared above; entirely within constraint 3's tracked path set |
-| G4 load proof | done | re-run against `3cbc4df92`: 48 passed, nothing leaked, `LOAD PROOF: ... True` |
-| C5(a) UI build | done | exit 0 |
-| C5(b) full suite | done | GREEN, 0 bad nodes, round 11's node now passes, no node newly bad |
-| C5(c) transcript + handoff | done | this handback |
+| C2 (accepted head) | done | full sha `f3afc333a70eae5f339fce8c18004db68a7cea1f` |
+| Push after C2 | done | before A1, per the block |
+| A1 evidence job | done | job id `f027r13e1001`; exit 0; every reading matched the reviewer's dry-run prediction |
+| A2 review package | done | `PACKAGE_STATUS=READY_FOR_REVIEW`, `EVIDENCE_AUTHORITATIVE=true` |
+| C3 handback | done | this file |
 | G1 TRANSPORT | done | |
-| G2 THE RECORDS | done | |
-| G3 THE CODE | done | |
-| G4 THE TESTS AND THE LOAD PROOF | done | |
-| G5 THE INTEGRATION GATE | done | GREEN full suite, no newly-bad node |
-| G6 TREE AND PUSH | done | see below, after this commit |
+| G2 THE BOOKING | done | |
+| G3 THE BUNDLE | done | |
+| G4 THE PACKAGE | done | |
+| G5 THE TREE | done | |
+| G6 TREE AND PUSH | done | see final reply |
 
 ## Next
 
-Per the block's own order: Phase 1 rule 1, the review of round 12, then the closure's
-evidence round — the booking of round 12, the Built State's note on the findings raised
-after it, the evidence bundle and the review package — and then the closing round. Open
-findings: 1 (`R-1072`, per `open_finding_ids` at C4/C4b — landed but not yet booked as
-resolved by a Gate entry). Operator questions open: 5.
+Per the block's own order and the STATUS closure protocol: Phase 1 rule 1, the review of
+round 13, then the closing round — the booking of round 13, the ledger rotation, the STATUS
+line with the README counters in the same commit, and the pull request. Open findings: 0
+(per `open_finding_ids` at C2). Operator questions open: 5.
