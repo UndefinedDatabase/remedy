@@ -39,8 +39,7 @@ PRODUCING_DECISION_TYPES = (
     "task_plan_approval",
     "task_decision",
     "proposal",
-    # F027 D4: the two-option menu a veto files. Left OUT of
-    # ANSWERABLE_DECISION_TYPES below — the door does not answer it yet.
+    # F027 D4: the two-option menu a veto files.
     "replan_proposal",
 )
 
@@ -53,8 +52,11 @@ PRODUCING_DECISION_TYPES = (
 #: ``_fixture_task_plan_approval`` builds.  This tuple says nothing about a
 #: RESOLVED task plan, which carries the same type and is refused;
 #: ``test_an_approved_task_plan_card_is_not_answerable`` pins that case, for
-#: the reason its task-decision sibling gives.
-ANSWERABLE_DECISION_TYPES = ("task_plan_approval", "task_decision", "proposal")
+#: the reason its task-decision sibling gives. DECISION F027 D5 adds
+#: ``replan_proposal``: the door's ``veto:`` branch of ``_dispatch_decision_resolve``
+#: answers it through ``veto_proposal.answer_replan_proposal``.
+ANSWERABLE_DECISION_TYPES = ("task_plan_approval", "task_decision", "proposal",
+                            "replan_proposal")
 
 FIXED_NOW = datetime(2026, 8, 23, 12, 0, 0, tzinfo=timezone.utc)
 
@@ -415,6 +417,37 @@ def test_answerable_key_goes_false_once_the_decision_has_been_answered():
     card = _cards_by_type(build_decision_inbox(job, events, now=FIXED_NOW))["task_decision"]
     assert card["status"] == "resolved"
     assert card["answerable_by_decision_resolve"] is False
+
+
+def test_veto_card_is_not_answerable_once_answered():
+    """DECISION F027 D5: the door's own refusal reversed — a `veto:` card is
+    answerable exactly while its veto carries no recorded answer yet.
+
+    An ANSWERED veto's `replan_proposal` decision is no longer produced at all —
+    `veto_proposal._qualifying_entries` drops an entry the moment it has an
+    answer, unlike `task_decision`, whose answered record still yields a
+    ``resolved`` card. So the "once answered" half is read from
+    `_answerable_by_decision_resolve` directly, over the SAME id the open card
+    carried, the only way to observe the predicate once its card has vanished.
+    """
+    from packages.orchestration.decision_inbox import _answerable_by_decision_resolve
+    from packages.orchestration.veto_proposal import answer_replan_proposal
+
+    job, events = _fixture_replan_proposal()
+    before = _cards_by_type(build_decision_inbox(job, events, now=FIXED_NOW))
+    open_card = before["replan_proposal"]
+    assert open_card["status"] == "open"
+    assert open_card["answerable_by_decision_resolve"] is True
+
+    result = answer_replan_proposal(job, open_card["id"], "accept_reduced_scope",
+                                    actor="alice")
+    assert result["outcome"] == "answered"
+
+    assert _answerable_by_decision_resolve(job, open_card["id"]) is False
+    # The card itself is gone from the inbox now — a second producer-level proof
+    # this is not a resolved-but-still-listed decision.
+    after = _cards_by_type(build_decision_inbox(job, events, now=FIXED_NOW))
+    assert "replan_proposal" not in after
 
 
 def test_an_approved_task_plan_card_is_not_answerable():
