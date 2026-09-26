@@ -2291,6 +2291,22 @@ def _reason_is_pause_error(reason: str) -> bool:
     return str(reason or "").startswith(_PAUSE_ERROR_REASON_PREFIX)
 
 
+#: DECISION F027 D3 (1): the marker the IN-TASK veto reading stamps onto a
+#: `StopSignal.reason` so it survives the same round trip through
+#: `pingpong_loop`'s stop_check() interface as `_PAUSE_REASON_PREFIX` does — the
+#: `stopped` branch below recognises "this halt was a veto, not a stop" by this
+#: prefix alone, with no further read needed: the fold that follows reads the
+#: control area itself.
+_VETO_REASON_PREFIX = "task_veto: "
+#: Same trick for a `TaskVetoError` surfaced at the in-task safe point.
+_VETO_ERROR_REASON_PREFIX = "task_veto_control_error: "
+
+
+def _reason_is_veto(reason: str) -> bool:
+    text = str(reason or "")
+    return text.startswith(_VETO_REASON_PREFIX) or text.startswith(_VETO_ERROR_REASON_PREFIX)
+
+
 # ---------------------------------------------------------------------------
 # F027 D2 (1)-(3) — the linear runner's fold of a veto
 # ---------------------------------------------------------------------------
@@ -3130,7 +3146,28 @@ def run_job(
             # arguments, so `_stop_check` above only ever sees `next_task=None`
             # (no mask read) — this is the ADDITIONAL check for `task`, the
             # closure's own in-flight task, counted pending for the mask (S2).
-            return _pause_park_signal(in_flight_task=task)
+            _pause_sig = _pause_park_signal(in_flight_task=task)
+            if _pause_sig is not None:
+                return _pause_sig
+            # DECISION F027 D3 (1) THE IN-TASK READING: the stop and the pause
+            # both found nothing, so a veto of THIS in-flight task is read
+            # LAST — the call already running finishes and the loop halts at
+            # its own next safe point, never mid-call.
+            from packages.orchestration import task_veto as _tv
+            try:
+                _veto_entry = next(
+                    (e for e in _tv.vetoed_tasks(job.job_id, control_root_path=_control)
+                     if e.task_id == task.task_id), None)
+            except _tv.TaskVetoError as exc:
+                return _StopSignal(
+                    job_id=job.job_id, request_id="",
+                    reason=f"{_VETO_ERROR_REASON_PREFIX}{exc}", source="veto")
+            if _veto_entry is not None:
+                return _StopSignal(
+                    job_id=job.job_id, request_id=_veto_entry.request_id,
+                    reason=f"{_VETO_REASON_PREFIX}{_veto_entry.request_id}",
+                    source="veto")
+            return None
 
         # F012 (F4): record the job-workspace tree at THIS episode's start. For a resume, it
         # already contains the work applied by earlier episodes, which is a material input.
@@ -3444,6 +3481,33 @@ def run_job(
                 # DID survive (S2), so it is re-derived fresh here, cheaply, rather
                 # than trusted stale.
                 _halt_reason = result.stop_reason or ""
+                # DECISION F027 D3 (2) THE HALT: a veto is checked FIRST, before the
+                # pause reading below it — a reason carrying the veto prefix is never
+                # a pause. The task's run fields recorded above (run_id, final_status,
+                # safe_diff_files, repair_rounds_*) are already on the task and stay
+                # exactly as they are.
+                if _reason_is_veto(_halt_reason):
+                    task.reviewer_verdict = next(
+                        (rd.reviewer_output.verdict for rd in reversed(result.rounds)
+                         if rd.reviewer_output), task.reviewer_verdict)
+                    if _fold_task_vetoes(job, job_handle, _control):
+                        return job
+                    if task.status == TASK_VETOED:
+                        _log_task_ended(task_log, task, "vetoed")
+                        _persist_budget_actuals()
+                        _persist_job(job)
+                        continue
+                    # The control area no longer names this task: between the
+                    # in-task read and the fold, its veto entry stopped applying.
+                    task.status = TASK_BLOCKED
+                    task.error = (
+                        f"veto_fold_failed: task {task.task_id} halted for a veto "
+                        f"the control area no longer holds")
+                    job.state = JOB_BLOCKED
+                    job.error = task.error
+                    _persist_budget_actuals()
+                    _persist_job(job)
+                    return job
                 if _reason_is_pause(_halt_reason) or _reason_is_pause_error(_halt_reason):
                     _fresh = _pause_park_signal(in_flight_task=task)
                     if _fresh is not None and _fresh.is_error:

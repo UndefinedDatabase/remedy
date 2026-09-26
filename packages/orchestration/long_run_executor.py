@@ -658,10 +658,30 @@ def limits_from_config(config: Any = None, *, cycles_flag: int | None = None,
 # ---------------------------------------------------------------------------
 
 
+def _task_status_str(value: Any) -> str:
+    """A ``RunState`` or a plain string, read as its bare string value either way."""
+    return value.value if hasattr(value, "value") else str(value)
+
+
+def _veto_seeds(job: JobPlan, vetoed_ids: Collection[str]) -> set[str]:
+    """DECISION F027 D3 (3): ``vetoed_ids`` naming a task of the plan whose status
+    (read by its string value) is not ``completed`` — the actual withholding
+    seeds. An id naming no task of the plan, or naming a task already
+    ``completed``, is INERT and never included, exactly as an inert paused id
+    is filtered out of ``ready_tasks`` before it becomes a seed."""
+    tasks_by_id = {task.task_id: task for task in job.tasks}
+    return {
+        task_id for task_id in vetoed_ids
+        if (task := tasks_by_id.get(task_id)) is not None
+        and _task_status_str(task.status) != RunState.COMPLETED.value
+    }
+
+
 def ready_tasks(job: JobPlan, batch_size: int, *,
                 blocked_ids: Collection[str] = (),
                 awaiting_ids: Collection[str] = (),
-                paused_ids: Collection[str] = ()) -> list[str]:
+                paused_ids: Collection[str] = (),
+                vetoed_ids: Collection[str] = ()) -> list[str]:
     """The ready batch: the DAG ready set in plan order, capped at batch_size.
 
     F050: a task is ready when every dependency it declares in its Task Plan
@@ -686,15 +706,57 @@ def ready_tasks(job: JobPlan, batch_size: int, *,
     still running, or not yet reached propagates nothing) and is filtered out
     here before it ever becomes a seed, so it can never wrongly withhold a
     downstream task the way a genuinely pending paused seed does.
+
+    *vetoed_ids* (DECISION F027 D3 (3)) are every task id
+    ``task_veto.vetoed_tasks`` currently names, withheld exactly like the
+    blocked, awaiting and paused seeds, with their transitive dependents —
+    EXCEPT a vetoed id naming no task of the plan, or naming a task whose
+    status (read by its string value, ``_task_status_str``) is ``completed``,
+    is INERT and never becomes a seed, as a paused id that no longer applies
+    is. The cycle executor never writes ``vetoed`` into a task's own status
+    (D3 (3)), so a vetoed seed can stand at any OTHER status the veto still
+    reaches — this is why the filter reads "not completed", never "pending".
     """
     ready = dag_ready_set(job.tasks)
     pending_ids = {task.task_id for task in job.tasks if task.status == RunState.PENDING}
     paused_pending = set(paused_ids) & pending_ids
-    withheld_seeds = set(blocked_ids) | set(awaiting_ids) | paused_pending
+    vetoed_live = _veto_seeds(job, vetoed_ids)
+    withheld_seeds = set(blocked_ids) | set(awaiting_ids) | paused_pending | vetoed_live
     if withheld_seeds:
         withheld = withheld_seeds | blocked_downstream(job.tasks, withheld_seeds)
         ready = [task_id for task_id in ready if task_id not in withheld]
     return ready[:batch_size]
+
+
+def _veto_unreachable_ids(job: JobPlan, vetoed_ids: Collection[str]) -> list[str]:
+    """The transitive dependents of the vetoed seeds that are not ``completed``,
+    in plan order — DECISION F027 D3 (3)'s ``unreachable=`` set, ``blocked_downstream``
+    restricted exactly as ``skipped_blocked_tasks`` restricts it for a blocked seed."""
+    seeds = _veto_seeds(job, vetoed_ids)
+    dependents = blocked_downstream(job.tasks, seeds) - seeds
+    return [
+        task.task_id for task in job.tasks
+        if task.task_id in dependents and _task_status_str(task.status) != RunState.COMPLETED.value
+    ]
+
+
+def _veto_withholds_pending_work(job: JobPlan, vetoed_ids: Collection[str]) -> bool:
+    """DECISION F027 D3 (3)'s guard for the ``all_remaining_work_vetoed`` terminal:
+    true when a vetoed seed, or one of its dependents, is PENDING right now — so
+    the veto, and not something else, explains an otherwise-empty ready batch."""
+    seeds = _veto_seeds(job, vetoed_ids)
+    if not seeds:
+        return False
+    watched = seeds | (blocked_downstream(job.tasks, seeds) - seeds)
+    return any(task.task_id in watched and task.status == RunState.PENDING
+               for task in job.tasks)
+
+
+def _plan_ordered_ids(job: JobPlan, ids: Collection[str]) -> str:
+    """``ids`` in plan order, comma-joined; ``"none"`` for an empty list."""
+    id_set = set(ids)
+    ordered = [task.task_id for task in job.tasks if task.task_id in id_set]
+    return ",".join(ordered) if ordered else "none"
 
 
 def paused_task_ids_for(job: JobPlan, paused_ids: Collection[str]) -> list[str]:
@@ -1230,6 +1292,28 @@ def _paused_entries_or_raise(job: JobPlan, control_root_path: Any) -> tuple[Any,
         raise _PauseControlErrorObserved(str(exc)) from exc
 
 
+class _TaskVetoErrorObserved(Exception):
+    """Internal only, DECISION F027 D3 (3): the veto counterpart of
+    ``_PauseControlErrorObserved`` — unwinds a ``task_veto.TaskVetoError`` hit at
+    the batch boundary or before a pick straight out to the loop's own terminal
+    handling, ending the run ``TERMINAL_BLOCKED`` with the ``task_veto_control_error``
+    stop reason, exactly as the pause-control route does for its own error."""
+
+    def __init__(self, detail: str) -> None:
+        super().__init__(detail)
+        self.detail = detail
+
+
+def _vetoed_entries_or_raise(job: JobPlan, control_root_path: Any) -> tuple[Any, ...]:
+    """``task_veto.vetoed_tasks``, or the D3 (3) unwind on a control error."""
+    from packages.orchestration import task_veto as _tv
+
+    try:
+        return _tv.vetoed_tasks(str(job.job_id), control_root_path=control_root_path)
+    except _tv.TaskVetoError as exc:
+        raise _TaskVetoErrorObserved(str(exc)) from exc
+
+
 def _park_job_scope_pause(job: JobPlan, signal: Any, *,
                           save_fn: Callable[[JobPlan], None],
                           control_root_path: Any) -> None:
@@ -1487,10 +1571,13 @@ process left (F047).  ``max_cycles`` still bounds this invocation only.
             awaiting_ids = awaiting_decision_task_ids(job)
             paused_entries = _paused_entries_or_raise(job, control_root_path)
             paused_ids = tuple(e.task_id for e in paused_entries)
+            vetoed_entries = _vetoed_entries_or_raise(job, control_root_path)
+            vetoed_ids = tuple(e.task_id for e in vetoed_entries)
 
             # 3. Terminal by job shape: green, or nothing ready and not green.
             batch = ready_tasks(job, limits.batch_size, blocked_ids=blocked_ids,
-                                awaiting_ids=awaiting_ids, paused_ids=paused_ids)
+                                awaiting_ids=awaiting_ids, paused_ids=paused_ids,
+                                vetoed_ids=vetoed_ids)
             if not batch:
                 if _is_green(job, last_verify):
                     terminal, stop_reason = TERMINAL_ALL_GREEN, ""
@@ -1511,6 +1598,19 @@ process left (F047).  ``max_cycles`` still bounds this invocation only.
                         control_root_path=control_root_path)
                     terminal = TERMINAL_PAUSED_BY_OPERATOR
                     stop_reason = "paused_tasks=" + ",".join(seeds)
+                elif vetoed_ids and _veto_withholds_pending_work(job, vetoed_ids):
+                    # DECISION F027 D3 (3): the vetoed seeds withhold at least
+                    # one PENDING task (a seed itself or one of its transitive
+                    # dependents) and nothing else explains the empty batch —
+                    # the run ends here naming both sets, in plan order.
+                    terminal = TERMINAL_BLOCKED
+                    stop_reason = (
+                        "all_remaining_work_vetoed; vetoed="
+                        + _plan_ordered_ids(job, _veto_seeds(job, vetoed_ids))
+                        + "; unreachable="
+                        + _plan_ordered_ids(
+                            job, _veto_unreachable_ids(job, vetoed_ids))
+                    )
                 else:
                     terminal = TERMINAL_BLOCKED
                     stop_reason = (
@@ -1547,10 +1647,13 @@ process left (F047).  ``max_cycles`` still bounds this invocation only.
                     break                  # E2: end the batch; the next safe point parks
                 paused_entries = _paused_entries_or_raise(job, control_root_path)
                 paused_ids = tuple(e.task_id for e in paused_entries)
+                vetoed_entries = _vetoed_entries_or_raise(job, control_root_path)
+                vetoed_ids = tuple(e.task_id for e in vetoed_entries)
                 ready_now = ready_tasks(job, limits.batch_size,
                                         blocked_ids=blocked_ids,
                                         awaiting_ids=awaiting_ids,
-                                        paused_ids=paused_ids)
+                                        paused_ids=paused_ids,
+                                        vetoed_ids=vetoed_ids)
                 if not ready_now:
                     break                      # nothing ready any more
                 target = ready_now[0]
@@ -1673,6 +1776,13 @@ process left (F047).  ``max_cycles`` still bounds this invocation only.
             # for work a bad read never let happen.
             terminal = TERMINAL_BLOCKED
             stop_reason = f"pause_control_error: {exc.detail}"
+            break
+        except _TaskVetoErrorObserved as exc:
+            # DECISION F027 D3 (3): the veto counterpart of the route just
+            # above — a TaskVetoError at the batch boundary or before a pick
+            # blocks the job right here, the same way.
+            terminal = TERMINAL_BLOCKED
+            stop_reason = f"task_veto_control_error: {exc.detail}"
             break
 
     job_status = _apply_terminal(job, terminal, stop_reason)
