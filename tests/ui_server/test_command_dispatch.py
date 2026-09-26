@@ -26,6 +26,13 @@ from tests.ui_server.server_start import wait_for_server_info
 CSRF_HEADER = "X-Remedy-CSRF"
 
 
+def _secret_shaped_reason() -> str:
+    """Built at run time from parts, so no secret-shaped literal sits in the source.
+    Mirrors `tests/cli/test_job_veto.py`'s own copy exactly."""
+    parts = ["sk", "-", "ant", "-"] + ["a"] * 24
+    return "".join(parts)
+
+
 def _make_job() -> JobPlan:
     return JobPlan(
         job_title="test-command-dispatch-job",
@@ -924,3 +931,232 @@ class TestEditTaskDispatchEffects:
         assert says in body["detail"]
         assert self._record_bytes() == before
         assert self._audit_outcomes() == ["rejected_state"]
+
+
+class TestVetoTaskDispatchEffects:
+    """What an accepted `job.veto-task` DID, read off disk (DECISION F027 D5).
+
+    Mirrors `TestEditTaskDispatchEffects` immediately above: the door maps this
+    command to `task_veto.veto_task_command`, so these tests prove the mapping —
+    the shape checks that run BEFORE the job's own state can refuse anything, the
+    409s the effect itself gives, and the audit line for each — and leave the
+    veto's own rules to `tests/orchestration/test_task_veto.py`.
+    """
+
+    @pytest.fixture(autouse=True)
+    def _setup_job(self, tmp_path, monkeypatch):
+        from packages.core.models import RunState
+        from packages.orchestration.pingpong_job import save_job_plan
+        from tests.orchestration.test_dag_schedule import flight_task
+
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        tasks = [flight_task("T1"), flight_task("T2", "T1")]
+        self.job = JobPlan(job_title="veto-dispatch-job", tasks=tasks,
+                          state=RunState.RUNNING)
+        save_job_plan(self.job)
+        self.job_id = str(self.job.job_id)
+        self.tmp_path = tmp_path
+        self.control = tmp_path / "control"
+
+    def _task_id(self, planned_id: str) -> str:
+        for t in self.job.tasks:
+            if (t.inputs.get("plan") or {}).get("planned_id") == planned_id:
+                return t.task_id
+        raise AssertionError(f"no task for planned id {planned_id!r}")
+
+    def _post(self, port, token, nonce, args):
+        payload = {"command": "job.veto-task", "client_nonce": nonce, "args": args}
+        conn = HTTPConnection("127.0.0.1", port, timeout=10)
+        try:
+            conn.request("POST", f"/api/jobs/{self.job_id}/commands",
+                         body=json.dumps(payload),
+                         headers={"Authorization": f"Bearer {token}",
+                                  CSRF_HEADER: token,
+                                  "Content-Type": "application/json"})
+            resp = conn.getresponse()
+            return resp.status, json.loads(resp.read())
+        finally:
+            conn.close()
+
+    def _audit_outcomes(self):
+        from packages.orchestration.command_audit import AUDIT_FILENAME
+        path = self.control / "jobs" / self.job_id / AUDIT_FILENAME
+        return [json.loads(line)["outcome"] for line in path.read_bytes().splitlines()]
+
+    def _record_bytes(self):
+        from packages.orchestration.data_paths import job_record_path
+        return job_record_path(self.job_id).read_bytes()
+
+    def _events(self):
+        from packages.orchestration.data_paths import run_log_dir
+        job_runs = run_log_dir(self.job_id)
+        out = []
+        if job_runs.is_dir():
+            for jsonl in sorted(job_runs.glob("*.jsonl")):
+                for line in jsonl.read_text(encoding="utf-8").splitlines():
+                    if line.strip():
+                        out.append(json.loads(line))
+        return out
+
+    def test_accepted_veto_writes_the_control_file_and_its_event(self):
+        from packages.orchestration import task_veto as tv
+        from packages.orchestration.ui_server import token_fingerprint
+
+        t1 = self._task_id("T1")
+        port, token = _start_ui_server_for_job(self.job_id, self.tmp_path)
+        status, body = self._post(port, token, "nonce-veto",
+                                  {"task_id": t1, "reason": "known-bad approach"})
+
+        assert status == 200, body
+        assert (body["command"], body["outcome"]) == ("job.veto-task", "vetoed")
+        assert body["task_id"] == t1
+        assert body["actor"] == token_fingerprint(token)
+        t2 = self._task_id("T2")
+        assert body["unreachable"] == [t2]
+
+        [entry] = tv.vetoed_tasks(self.job_id)
+        assert entry.task_id == t1
+        assert entry.reason == "known-bad approach"
+
+        vetoed_events = [e for e in self._events() if e.get("event") == "task_vetoed"]
+        assert len(vetoed_events) == 1
+        assert vetoed_events[0]["metadata"]["reason"] == "known-bad approach"
+        assert self._audit_outcomes() == ["accepted"]
+
+    @pytest.mark.parametrize(("reason", "says"), [
+        ("", "reason_required"),
+        ("x" * 501, "reason_too_long"),
+        (_secret_shaped_reason(), "reason_invalid"),
+    ])
+    def test_a_bad_reason_is_a_400_on_reason_before_the_job_is_read(self, reason, says):
+        from packages.orchestration import task_veto as tv
+
+        t1 = self._task_id("T1")
+        before = self._record_bytes()
+        port, token = _start_ui_server_for_job(self.job_id, self.tmp_path)
+        status, body = self._post(port, token, "nonce-bad-reason",
+                                  {"task_id": t1, "reason": reason})
+
+        assert status == 400, (says, status, body)
+        assert body["field"] == "reason", body
+        assert tv.vetoed_tasks(self.job_id) == ()
+        assert [e for e in self._events() if e.get("event") == "task_vetoed"] == []
+        assert self._record_bytes() == before
+        assert self._audit_outcomes() == ["rejected_shape"]
+
+    def test_a_missing_task_id_is_a_400_on_task_id(self):
+        before = self._record_bytes()
+        port, token = _start_ui_server_for_job(self.job_id, self.tmp_path)
+        status, body = self._post(port, token, "nonce-no-task",
+                                  {"reason": "known-bad approach"})
+        assert status == 400, body
+        assert body["field"] == "task_id", body
+        assert self._record_bytes() == before
+        assert self._audit_outcomes() == ["rejected_shape"]
+
+    def test_an_already_vetoed_task_is_409_naming_the_code(self):
+        t1 = self._task_id("T1")
+        port, token = _start_ui_server_for_job(self.job_id, self.tmp_path)
+        self._post(port, token, "nonce-first", {"task_id": t1, "reason": "first"})
+        status, body = self._post(port, token, "nonce-second",
+                                  {"task_id": t1, "reason": "second"})
+        assert status == 409, body
+        assert body["error"].startswith("task_already_vetoed"), body
+        assert self._audit_outcomes() == ["accepted", "rejected_state"]
+
+    def test_a_finished_job_is_409_naming_the_code(self):
+        from packages.core.models import RunState
+        from packages.orchestration.pingpong_job import load_job_plan, save_job_plan
+
+        job = load_job_plan(self.job_id)
+        job.state = RunState.COMPLETED
+        save_job_plan(job)
+        t1 = self._task_id("T1")
+        port, token = _start_ui_server_for_job(self.job_id, self.tmp_path)
+        status, body = self._post(port, token, "nonce-done", {"task_id": t1, "reason": "x"})
+        assert status == 409, body
+        assert body["error"].startswith("job_not_vetoable"), body
+        assert self._audit_outcomes() == ["rejected_state"]
+
+
+class TestVetoProposalAnswerDispatchEffects:
+    """What `decision.resolve` DID for a `veto:`-prefixed id (DECISION F027 D5).
+
+    The card and its answerability are proved in
+    `tests/orchestration/test_decision_inbox.py`; this file proves the door's OWN
+    mapping to `veto_proposal.answer_replan_proposal` — the accept and replan
+    options, and the two refusals collapsing to the existing `decision.resolve`
+    409.
+    """
+
+    @pytest.fixture(autouse=True)
+    def _setup_job(self, tmp_path, monkeypatch):
+        from packages.core.models import RunState
+        from packages.orchestration import task_veto as tv
+        from packages.orchestration.pingpong_job import save_job_plan
+        from tests.orchestration.test_dag_schedule import flight_task
+
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        tasks = [flight_task("T1"), flight_task("T2", "T1")]
+        self.job = JobPlan(job_title="veto-answer-dispatch-job", tasks=tasks,
+                          state=RunState.RUNNING)
+        save_job_plan(self.job)
+        self.job_id = str(self.job.job_id)
+        self.tmp_path = tmp_path
+        t1 = self.job.tasks[0].task_id
+        result = tv.veto_task_command(self.job, task_id=t1, reason="known-bad approach",
+                                      actor="alice")
+        assert result["outcome"] == "vetoed"
+        self.request_id = result["request_id"]
+        self.decision_id = f"veto:{self.request_id}"
+
+    def _post(self, port, token, nonce, decision_id, answer):
+        payload = {"command": "decision.resolve", "client_nonce": nonce,
+                   "args": {"decision_id": decision_id, "answer": answer}}
+        conn = HTTPConnection("127.0.0.1", port, timeout=10)
+        try:
+            conn.request("POST", f"/api/jobs/{self.job_id}/commands",
+                         body=json.dumps(payload),
+                         headers={"Authorization": f"Bearer {token}",
+                                  CSRF_HEADER: token,
+                                  "Content-Type": "application/json"})
+            resp = conn.getresponse()
+            return resp.status, json.loads(resp.read())
+        finally:
+            conn.close()
+
+    def test_accepting_the_reduced_scope_is_a_200(self):
+        from packages.orchestration import task_veto as tv
+
+        port, token = _start_ui_server_for_job(self.job_id, self.tmp_path)
+        status, body = self._post(port, token, "nonce-accept", self.decision_id,
+                                  "accept_reduced_scope")
+        assert status == 200, body
+        assert body["outcome"] == "answered"
+        assert body["option"] == "accept_reduced_scope"
+        assert tv.veto_answers(self.job_id)[self.request_id].option == "accept_reduced_scope"
+
+    def test_a_replan_is_a_200_and_creates_the_follow_up_job(self):
+        from packages.orchestration.pingpong_job import load_job_plan
+
+        port, token = _start_ui_server_for_job(self.job_id, self.tmp_path)
+        status, body = self._post(port, token, "nonce-replan", self.decision_id,
+                                  "replan_follow_up")
+        assert status == 200, body
+        assert body["outcome"] == "answered"
+        assert body["option"] == "replan_follow_up"
+        assert body["follow_up_job_id"]
+        assert load_job_plan(body["follow_up_job_id"]) is not None
+
+    def test_a_second_answer_of_the_same_veto_is_409(self):
+        port, token = _start_ui_server_for_job(self.job_id, self.tmp_path)
+        self._post(port, token, "nonce-first", self.decision_id, "accept_reduced_scope")
+        status, body = self._post(port, token, "nonce-second", self.decision_id,
+                                  "accept_reduced_scope")
+        assert status == 409, body
+
+    def test_an_unknown_veto_id_is_409(self):
+        port, token = _start_ui_server_for_job(self.job_id, self.tmp_path)
+        status, body = self._post(port, token, "nonce-unknown", "veto:no-such-request",
+                                  "accept_reduced_scope")
+        assert status == 409, body

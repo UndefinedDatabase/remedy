@@ -230,6 +230,25 @@ function onTaskPaused(model: BrainModel, row: BrainEventRow): BrainModel {
   return { ...model, nodes, links: born.links };
 }
 
+// --- F027 (DECISION F027 D7 (2)) ---------------------------------------------
+
+/** `task_vetoed`: the task's node goes to `vetoed`, unless it already passed —
+ *  a veto that lands after the task's own success is already known must
+ *  never paint over that outcome, the same refusal `onTaskPaused` makes for a
+ *  finished node. Unlike a pause, a veto is routinely filed AFTER a task has
+ *  failed or blocked (those are vetoable statuses, DECISION F027 D1), so
+ *  `fail` is not guarded here the way `onTaskPaused` guards it. Births the
+ *  task like `task_needs_decision` does, so a veto naming a task nobody has
+ *  seen yet still draws it. */
+function onTaskVetoed(model: BrainModel, row: BrainEventRow): BrainModel {
+  const born = birthTask(model.nodes, model.links, row.taskId, row.seq);
+  const id = taskNodeId(row.taskId);
+  const current = born.nodes.find((n) => n.id === id);
+  const state: NodeState = current && current.state === "pass" ? current.state : "vetoed";
+  const nodes = setTaskState(born.nodes, row.taskId, state);
+  return { ...model, nodes, links: born.links };
+}
+
 /** `task_resumed`: a paused task returns to `planned`. No birth (like
  *  `task_decision_answered`): a resume presumes the pause, and the task,
  *  already exist — and only a task actually reading `paused` is touched, so
@@ -281,6 +300,8 @@ function applyBrainEvent(model: BrainModel, row: BrainEventRow): BrainModel {
       return onJobStopped(model);
     case "task_paused":
       return row.taskId === "" ? ignoreRow(model, row) : onTaskPaused(model, row);
+    case "task_vetoed":
+      return row.taskId === "" ? ignoreRow(model, row) : onTaskVetoed(model, row);
     case "task_resumed":
       return row.taskId === "" ? ignoreRow(model, row) : onTaskResumed(model, row);
     case "job_paused":

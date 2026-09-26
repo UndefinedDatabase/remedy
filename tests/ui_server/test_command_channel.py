@@ -435,7 +435,9 @@ class TestCommandChannelDoor:
         200, since it is not a refusal — and because `sorted()` puts `job.pause`
         before `job.unpause` in this SAME loop over this SAME job, the pause it
         just requested is still pending when `job.unpause` runs, so THAT answers
-        `withdrawn` rather than `not_paused`.
+        `withdrawn` rather than `not_paused`. `job.veto-task` built the same way
+        names no task, which is a shape error on field `task_id` refused before
+        the job's tasks are read (DECISION F027 D5).
         """
         from apps.cli.command_catalog import UI_EXPOSED_COMMANDS
 
@@ -464,6 +466,10 @@ class TestCommandChannelDoor:
                 # DECISION F015 D3 / F026 D2: an edit naming no version is a shape error.
                 assert status == 400, command_id
                 assert body["field"] == "expected_version", command_id
+            elif command_id == "job.veto-task":
+                # DECISION F027 D5: a veto naming no task is a shape error.
+                assert status == 400, command_id
+                assert body["field"] == "task_id", command_id
             else:
                 assert status == 409, command_id
                 assert body["error"] == declined[command_id], command_id
@@ -1542,6 +1548,7 @@ class TestCommandDoorImportGuard:
         "_dispatch_chat_send",
         "_dispatch_plan_edit",
         "_dispatch_edit_task",
+        "_dispatch_veto_task",
         "_publish_command_result",
         "_emit_command_accepted_event",
         "_audit_attempt",
@@ -1578,6 +1585,10 @@ class TestCommandDoorImportGuard:
          "consume_plan_approval"),                                  # F015 D2
         ("packages.orchestration.plan_editing", "edit_plan"),      # F015 D3
         ("packages.orchestration.task_edit_runtime", "edit_task_at_runtime"),  # F026 D2
+        ("packages.orchestration.task_veto", "veto_task_command"),      # F027 D5
+        ("packages.orchestration.task_veto", "validate_veto_reason"),   # F027 D5
+        ("packages.orchestration.task_veto", "TaskVetoRefused"),        # F027 D5
+        ("packages.orchestration.veto_proposal", "answer_replan_proposal"),  # F027 D5
         ("packages.orchestration.mission_contract",
          "start_remainder_follow_up_mission"),                      # F269 D9
         ("packages.orchestration.pause_control", "pause_job_command"),    # F025 D2
@@ -1722,17 +1733,19 @@ class TestCommandDoorImportGuard:
     })
 
     @staticmethod
-    def _module_level_closure(seeds) -> set:
+    def _module_level_closure(seeds, *, root=None) -> set:
         """Every module reached from `seeds` through module-level imports.
 
         Repository modules are parsed and followed; anything that does not resolve
         to a file under the repository root is a leaf (the standard library). Imports
-        inside a function body run only when called, so they are not followed.
+        inside a function body run only when called, so they are not followed. `root`
+        is overridable so a test can point the walker at a synthetic tree instead of
+        the repository itself (DECISION F027 D6's own test does exactly that).
         """
         import ast
         from pathlib import Path
 
-        root = Path(__file__).resolve().parents[2]
+        root = root if root is not None else Path(__file__).resolve().parents[2]
 
         def resolve(name):
             base = root.joinpath(*name.split("."))
@@ -1740,6 +1753,10 @@ class TestCommandDoorImportGuard:
                 if cand.is_file():
                     return cand
             return None
+
+        def is_type_checking_test(test) -> bool:
+            return ((isinstance(test, ast.Name) and test.id == "TYPE_CHECKING")
+                    or (isinstance(test, ast.Attribute) and test.attr == "TYPE_CHECKING"))
 
         def imports_of(path):
             out = []
@@ -1756,7 +1773,13 @@ class TestCommandDoorImportGuard:
                     # `from pkg import mod` imports a module when `pkg.mod` is one.
                     out.extend(f"{node.module}.{a.name}" for a in node.names
                                if resolve(f"{node.module}.{a.name}"))
-                pending.extend(ast.iter_child_nodes(node))
+                # DECISION F027 D6: a type-only import inside `if TYPE_CHECKING:` (or
+                # `if typing.TYPE_CHECKING:`) never runs, so only its `else` branch is
+                # followed — the same reasoning the function-body skip above gives.
+                if isinstance(node, ast.If) and is_type_checking_test(node.test):
+                    pending.extend(node.orelse)
+                else:
+                    pending.extend(ast.iter_child_nodes(node))
             return out
 
         seen, stack = set(), list(seeds)
@@ -1788,6 +1811,37 @@ class TestCommandDoorImportGuard:
             "vanished": sorted(self.ACCEPTED_TRANSITIVE_FORBIDDEN - reached),
         }
 
+    def test_the_walker_skips_only_a_type_checking_import(self, tmp_path):
+        """DECISION F027 D6, over a synthetic tree so each of the four shapes is
+        isolated from the others: a module-level import, one under an ordinary
+        `if`, and one in the `else` of `if TYPE_CHECKING:` are all reached; one
+        under `if TYPE_CHECKING:` and one under `if typing.TYPE_CHECKING:` are not.
+        """
+        (tmp_path / "seed.py").write_text(
+            "import typing\n"
+            "from typing import TYPE_CHECKING\n"
+            "import mod_direct\n"
+            "if True:\n"
+            "    import mod_ordinary_if\n"
+            "if TYPE_CHECKING:\n"
+            "    import mod_type_checking\n"
+            "else:\n"
+            "    import mod_type_checking_else\n"
+            "if typing.TYPE_CHECKING:\n"
+            "    import mod_typing_dot_type_checking\n",
+            encoding="utf-8")
+        for name in ("mod_direct", "mod_ordinary_if", "mod_type_checking",
+                     "mod_type_checking_else", "mod_typing_dot_type_checking"):
+            (tmp_path / f"{name}.py").write_text("", encoding="utf-8")
+
+        reached = self._module_level_closure({"seed"}, root=tmp_path)
+
+        assert "mod_direct" in reached
+        assert "mod_ordinary_if" in reached
+        assert "mod_type_checking_else" in reached
+        assert "mod_type_checking" not in reached
+        assert "mod_typing_dot_type_checking" not in reached
+
 
 class TestUiExposedCommands:
     """The exposed subset itself — DECISION F009 D4."""
@@ -1800,7 +1854,7 @@ class TestUiExposedCommands:
             "chat.send", "decision.resolve", "job.edit-task", "job.pause",
             "job.plan-delete-task", "job.plan-edit-acceptance", "job.plan-edit-task",
             "job.plan-merge-tasks", "job.plan-reorder", "job.plan-split-task", "job.stop",
-            "job.unpause", "patch.approve-hunks"]
+            "job.unpause", "job.veto-task", "patch.approve-hunks"]
 
     def test_the_set_is_a_frozenset(self):
         from apps.cli.command_catalog import UI_EXPOSED_COMMANDS

@@ -1,11 +1,15 @@
 import type { RemedyDashboard, RemedyGraphNode, RemedyTaskItem } from "../../api/types";
 import { taskPauseAction } from "../../api/pauseView";
 import { specVersionRows, taskEditAction, taskSpecOf, versionChipLabel } from "../../api/taskSpecView";
+import {
+  taskTitleOf, taskVetoAction, taskVetoEntry, vetoAnswerSentence, vetoingEntriesOf,
+} from "../../api/vetoView";
 import { TaskDoneGlyph, TaskCurrentGlyph, TaskPlannedGlyph } from "../icons/RemedyGlyphs";
 import { PromptTracePanel } from "../prompt/PromptTracePanel";
 import { PauseControl } from "../panels/PauseControl";
 import { TaskVersionList } from "./TaskVersionList";
 import { TaskEditForm } from "./TaskEditForm";
+import { TaskVetoForm } from "./TaskVetoForm";
 import styles from "./DetailPopover.module.css";
 
 const STATE_LABELS: Record<string, string> = {
@@ -68,13 +72,31 @@ function Field({ label, value }: { label: string; value: string }) {
   );
 }
 
+/** DECISION F027 D8 (3) — one task named on the other side of a veto: a
+ *  button that opens it when the caller passes `onSelectTask`, plain text
+ *  otherwise (a popover mounted with no way to jump offers nothing to click). */
+function TaskLink({ taskId, title, onSelectTask }: {
+  taskId: string;
+  title: string;
+  onSelectTask?: (taskId: string) => void;
+}) {
+  if (!onSelectTask) {
+    return <>{title}</>;
+  }
+  return (
+    <button type="button" className={styles.vetoLinkButton} onClick={() => onSelectTask(taskId)}>
+      {title}
+    </button>
+  );
+}
+
 // `onOpenDiff` is OPTIONAL because this popover predates the viewer by many
 // features and is mounted from more than one place. A caller that passes no
 // handler keeps exactly the popover it had, and the entry point below is simply
 // absent — never a dead control that answers a click with nothing. `serverToken`
 // (DECISION F025 D4) is OPTIONAL for the same reason: the pause/resume control
 // it gates needs a credential this popover otherwise never carries.
-export function DetailPopover({ dashboard, selectedNode, selectedPromptId, onClose, onOpenDiff, serverToken }: { dashboard: RemedyDashboard; selectedNode: RemedyGraphNode; selectedPromptId?: string | null; onClose: () => void; onOpenDiff?: (taskId: string) => void; serverToken?: string }) {
+export function DetailPopover({ dashboard, selectedNode, selectedPromptId, onClose, onOpenDiff, serverToken, onSelectTask }: { dashboard: RemedyDashboard; selectedNode: RemedyGraphNode; selectedPromptId?: string | null; onClose: () => void; onOpenDiff?: (taskId: string) => void; serverToken?: string; onSelectTask?: (taskId: string) => void }) {
   const task = dashboard.tasks.find(i => i.nodeId === selectedNode.nodeId);
   // Prompt-trace items for the selected task (prompt item taskId === task id).
   const prompts = task
@@ -89,15 +111,24 @@ export function DetailPopover({ dashboard, selectedNode, selectedPromptId, onClo
   // popover otherwise renders fine (a node never mapped to a task item), so
   // the read only runs once a task is known to exist.
   const editAction = task ? taskEditAction(dashboard, task.id) : null;
+  // DECISION F027 D8 (3) and (4) — the veto's own reading of this task: the
+  // entry recorded against it (this task WAS vetoed), every entry that named
+  // it as unreachable (some OTHER veto cut this task off), and whether the
+  // "Veto task" form may open here at all. All three read `dashboard.vetoes`
+  // through `vetoView.ts`, never re-derived.
+  const vetoEntry = task ? taskVetoEntry(dashboard.vetoes, task.id) : null;
+  const unreachableEntries = task ? vetoingEntriesOf(dashboard.vetoes, task.id) : [];
+  const vetoAction = task ? taskVetoAction(dashboard, task.id) : null;
   const title = task?.label || selectedNode.label || "Task";
   const state = task?.state || selectedNode.state;
-  const stateLabel = STATE_LABELS[state] || state;
+  const stateLabel = vetoEntry ? "Vetoed" : (STATE_LABELS[state] || state);
 
   const outcomeSummary = task?.outcomeSummary;
   const changedFiles = task?.changedFilesSafe;
   const changedCount = task?.changedFilesCount;
   const blockedReason = task?.blockedReason;
   const completedAt = formatTime(task?.completedAt);
+  const vetoedAt = formatTime(vetoEntry?.requestedAt);
 
   const isDone = state === "done";
   const isBlocked = state === "blocked";
@@ -121,10 +152,12 @@ export function DetailPopover({ dashboard, selectedNode, selectedPromptId, onClo
         )}
       </div>
 
-      {/* Result (Ergebnis) */}
+      {/* Result (Ergebnis) — DECISION F027 D8 (3): a vetoed task's own
+          sentence wins over every other reading, because the run will never
+          touch it again, whatever its underlying dashboard status word. */}
       <section className={styles.section}>
         <h3>Result</h3>
-        <p>{outcomeSummary || (
+        <p>{vetoEntry ? "Vetoed. This task will not run." : outcomeSummary || (
           isDone ? "Completed, but no detailed outcome was recorded."
           : isCurrent ? "Work is in progress."
           : isBlocked ? "Blocked — needs attention."
@@ -137,6 +170,53 @@ export function DetailPopover({ dashboard, selectedNode, selectedPromptId, onClo
         <section className={styles.section}>
           <h3>Blocker</h3>
           <p className={styles.blockerText}>{blockedReason}</p>
+        </section>
+      )}
+
+      {/* DECISION F027 D8 (3) — the Veto section: the reason verbatim, who
+          vetoed it and when, every task this veto made unreachable (a link
+          when the caller passes one to open it with), and the replan
+          proposal's own state in plain words. */}
+      {task && vetoEntry && (
+        <section className={styles.section} data-ui="veto-section">
+          <h3>Veto</h3>
+          <p>{vetoEntry.reason}</p>
+          <p className={styles.vetoMeta}>
+            Vetoed by {vetoEntry.actor}{vetoedAt && ` · ${vetoedAt}`}
+          </p>
+          {vetoEntry.unreachableTaskIds.length === 0 ? (
+            <p>No other task depended on it.</p>
+          ) : (
+            <>
+              <p>Will not run because of this veto:</p>
+              <p>
+                {vetoEntry.unreachableTaskIds.map((id, i) => (
+                  <span key={id}>
+                    {i > 0 && ", "}
+                    <TaskLink taskId={id} title={taskTitleOf(dashboard, id)} onSelectTask={onSelectTask} />
+                  </span>
+                ))}
+              </p>
+            </>
+          )}
+          <p className={styles.vetoMeta}>{vetoAnswerSentence(vetoEntry.answer)}</p>
+        </section>
+      )}
+
+      {/* DECISION F027 D8 (3) — the Unreachable section: this task itself was
+          never vetoed, but some OTHER veto's own unreachable set names it. */}
+      {task && !vetoEntry && unreachableEntries.length > 0 && (
+        <section className={styles.section} data-ui="unreachable-section">
+          <h3>Unreachable</h3>
+          <p>
+            Unreachable due to veto of{" "}
+            {unreachableEntries.map((entry, i) => (
+              <span key={entry.taskId}>
+                {i > 0 && ", "}
+                <TaskLink taskId={entry.taskId} title={taskTitleOf(dashboard, entry.taskId)} onSelectTask={onSelectTask} />
+              </span>
+            ))}
+          </p>
         </section>
       )}
 
@@ -182,6 +262,18 @@ export function DetailPopover({ dashboard, selectedNode, selectedPromptId, onClo
           target={{ jobId: dashboard.jobId, serverToken }}
           jobId={dashboard.jobId}
           action={editAction}
+        />
+      )}
+
+      {/* DECISION F027 D8 (4) — the "Veto task" form, offered only for a
+          task the section's own `vetoableTaskIds` still names (`vetoAction`'s
+          reading), and only once this popover already holds the credential
+          the send spends. */}
+      {task && serverToken && vetoAction && (
+        <TaskVetoForm
+          key={task.id}
+          target={{ jobId: dashboard.jobId, serverToken }}
+          action={vetoAction}
         />
       )}
 

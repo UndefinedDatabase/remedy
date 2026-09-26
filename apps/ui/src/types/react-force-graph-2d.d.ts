@@ -16,6 +16,10 @@ declare module "react-force-graph-2d" {
     nodeVal?: string | number | ((node: object) => number);
     nodeColor?: string | ((node: object) => string);
     nodeCanvasObject?: (node: object, ctx: CanvasRenderingContext2D, globalScale: number) => void;
+    // DECISION F027 D8 (2): the library's own hover tooltip — a string, an
+    // element (rendered via its own DOM node, never re-parsed as markup), or
+    // no tooltip at all for a node this returns `null` for.
+    nodeLabel?: (node: object) => string | HTMLElement | null;
     nodeCanvasObjectMode?: string | ((node: object) => string);
     nodePointerAreaPaint?: (node: object, color: string, ctx: CanvasRenderingContext2D, globalScale: number) => void;
     linkSource?: string;

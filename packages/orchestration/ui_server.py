@@ -1070,6 +1070,7 @@ def _build_dashboard(job: Any) -> dict[str, Any]:
         "resume": _build_resume_section(job, events),
         "pause": _build_pause_section(job),
         "task_specs": _build_task_spec_section(job),
+        "vetoes": _build_veto_section(job),
         "project_summary": _build_project_summary_section(job),
         "redaction": {
             "policy": "safe_summaries_only",
@@ -1295,6 +1296,62 @@ def _build_task_spec_section(job: Any) -> dict[str, Any]:
         return {"tasks": tasks, "error": ""}
     except (PauseControlError, StopControlError, OSError, ValueError) as exc:
         return {"tasks": {}, "error": str(exc)}
+
+
+def _build_veto_section(job: Any) -> dict[str, Any]:
+    """Build the dashboard's `vetoes` section (DECISION F027 D7 (1)): `tasks`, one entry
+    per veto entry in plan order with the task id, the reason verbatim, the actor, the
+    request time, the request id, the status at the veto, that veto's own unreachable set
+    (mirrors `task_veto._event_unreachable`: this veto alone, minus every task another
+    veto already holds) and its recorded answer's option or ""; `vetoable_task_ids`, the
+    tasks `task_veto.veto_refusal` admits for the job's current state; `unreachable_task_ids`,
+    `task_veto.veto_unreachable` over every vetoed task; and `error`, the text of a
+    `TaskVetoError`, which empties the three lists. All four lists are in plan order. Never
+    raises: `task_veto` is imported inside this function, as the section's own sibling
+    helpers do."""
+    from packages.orchestration import task_veto as _tv
+
+    try:
+        job_id = str(job.job_id)
+        entries_by_task_id = {e.task_id: e for e in _tv.vetoed_tasks(job_id)}
+        answers = _tv.veto_answers(job_id)
+        vetoed_ids = [t.task_id for t in job.tasks if t.task_id in entries_by_task_id]
+
+        tasks_out: list[dict[str, Any]] = []
+        for task_id in vetoed_ids:
+            entry = entries_by_task_id[task_id]
+            other_ids = [tid for tid in vetoed_ids if tid != task_id]
+            unreachable = [
+                tid for tid in _tv.veto_unreachable(job.tasks, [task_id])
+                if tid not in other_ids
+            ]
+            answer = answers.get(entry.request_id)
+            tasks_out.append({
+                "task_id": entry.task_id,
+                "reason": entry.reason,
+                "actor": entry.actor,
+                "requested_at": entry.requested_at,
+                "request_id": entry.request_id,
+                "status_at_veto": entry.status_at_veto,
+                "unreachable_task_ids": unreachable,
+                "answer": answer.option if answer is not None else "",
+            })
+
+        vetoable_task_ids = [
+            t.task_id for t in job.tasks
+            if _tv.veto_refusal(job.state, t.status,
+                                already_vetoed=t.task_id in entries_by_task_id) is None
+        ]
+        unreachable_task_ids = list(_tv.veto_unreachable(job.tasks, vetoed_ids))
+
+        return {
+            "tasks": tasks_out,
+            "vetoable_task_ids": vetoable_task_ids,
+            "unreachable_task_ids": unreachable_task_ids,
+            "error": "",
+        }
+    except _tv.TaskVetoError as exc:
+        return {"tasks": [], "vetoable_task_ids": [], "unreachable_task_ids": [], "error": str(exc)}
 
 
 def _build_project_summary_section(job: Any) -> dict[str, Any] | None:
@@ -2439,6 +2496,9 @@ JOB_EDIT_TASK_COMMAND_ID = "job.edit-task"
 COMMAND_TASK_VERSION_MESSAGE = (
     "expected_version must be the task's spec version the edit was made against")
 
+#: DECISION F027 D5: the write door's twin of `remedy job veto-task`.
+JOB_VETO_TASK_COMMAND_ID = "job.veto-task"
+
 #: DECISION F015 D3: the plan edit refusals, each with its status, its audit outcome and its
 #: message. The edit RAN and DECLINED for all but the argument refusals, which are shape
 #: errors on field `args`. A version conflict carries the current version, and every other
@@ -2964,6 +3024,37 @@ class _RemedyHandler(BaseHTTPRequestHandler):
             self._emit_command_accepted_event(str(job.job_id), accepted_body)
             self._send_json(200, accepted_body)
             return
+        # DECISION F027 D5 maps `job.veto-task` to `task_veto.veto_task_command`, run with
+        # this door's own token fingerprint as the actor. D18's order is unchanged: effect,
+        # then the audit line, then the publication. Unlike `job.pause`'s generic 409, the
+        # refusal's own `code` and `detail` ride on the wire — `_read_command_payload`
+        # already checked the reason's shape, so what reaches here is the job's or the
+        # task's own state, exactly what T5_F027.md asks the operator to be told.
+        if payload["command"] == JOB_VETO_TASK_COMMAND_ID:
+            try:
+                accepted_body = self._dispatch_veto_task(job, payload)
+            except (OSError, RuntimeError, ValueError, TypeError):
+                # D18, clause four: an effect that RAISED is neither `accepted`,
+                # which would be false, nor unaudited, which would break D6.
+                self._audit_attempt(str(job.job_id), "rejected_effect", create=True,
+                                    payload=payload)
+                self._send_json(*_safe_error(500, COMMAND_EFFECT_FAILED_MESSAGE))
+                return
+            if accepted_body.get("outcome") == "refused":
+                self._audit_attempt(str(job.job_id), "rejected_state", create=True,
+                                    payload=payload)
+                self._send_json(*_safe_error(
+                    409, f"{accepted_body['code']}: {accepted_body['detail']}"))
+                return
+            # D18, clause three: both writes below fail SOFT. The veto is already
+            # durable, so refusing after the fact would report a veto that really
+            # was requested as one that was not.
+            self._audit_attempt(str(job.job_id), "accepted", create=True, payload=payload)
+            self._publish_command_result(str(job.job_id), payload["client_nonce"],
+                                         accepted_body)
+            self._emit_command_accepted_event(str(job.job_id), accepted_body)
+            self._send_json(200, accepted_body)
+            return
         # D5 maps `decision.resolve` to `answer_task_decision` followed by
         # `save_job`; DECISION F009 D21 rules that BOTH are the effect, because
         # the answer is durable only once `save_job` returns. D18's write order
@@ -3174,6 +3265,24 @@ class _RemedyHandler(BaseHTTPRequestHandler):
             source=COMMAND_EFFECT_SOURCE)
         return {"command": payload["command"], **result}
 
+    def _dispatch_veto_task(self, job: Any, payload: Any) -> dict[str, Any]:
+        """Run `job.veto-task`'s effect and build the body DECISION F027 D5 rules for it.
+
+        `args.task_id` and `args.reason` were already checked by
+        `_read_command_payload`, so they are read directly rather than degraded — unlike
+        `job.pause`'s optional `task`, a veto without either is a shape error the caller
+        never reaches this method with. `veto_task_command` never raises for a refusal;
+        its own `code` and `detail` ride in the returned dict unchanged, so
+        `_handle_command_submission` can put them on the wire, which `job.pause`'s generic
+        409 deliberately does not.
+        """
+        from packages.orchestration.task_veto import veto_task_command
+        args = payload["args"]
+        result = veto_task_command(
+            job, task_id=args["task_id"], reason=args["reason"],
+            actor=token_fingerprint(self._supplied_bearer_token()))
+        return {"command": payload["command"], **result}
+
     def _dispatch_chat_send(self, job: Any, payload: Any) -> dict[str, Any] | None:
         """Record one steering message for the job. None means the job has ended.
 
@@ -3300,6 +3409,20 @@ class _RemedyHandler(BaseHTTPRequestHandler):
             # nothing itself, and the difference reads as a bug without this.
             return {"command": payload["command"], "outcome": "accepted",
                     "decision_id": str(decision_id)}
+        # DECISION F027 D5: a `veto:`-prefixed id names a `replan_proposal` decision
+        # (DECISION F027 D4 (1)), so it is dispatched HERE, before `answer_task_decision`
+        # — which reads escalation records alone and refuses every id that is not one,
+        # exactly the reason the `plan:` branch above is dispatched first. `answered` is
+        # returned as the accepted body unchanged; every refusal returns None, the
+        # existing 409 `_handle_command_submission` already sends for this method.
+        if isinstance(decision_id, str) and decision_id.startswith("veto:"):
+            from packages.orchestration.veto_proposal import answer_replan_proposal
+            result = answer_replan_proposal(
+                job, decision_id, answer if isinstance(answer, str) else "",
+                actor=token_fingerprint(self._supplied_bearer_token()))
+            if result["outcome"] != "answered":
+                return None
+            return {"command": payload["command"], **result}
         record = answer_task_decision(
             job, decision_id if isinstance(decision_id, str) else "",
             answer=answer if isinstance(answer, str) else "",
@@ -3639,6 +3762,21 @@ class _RemedyHandler(BaseHTTPRequestHandler):
                 normalize_steering_text(args.get("message"))
             except SteeringError as exc:
                 return None, _command_field_error("message", str(exc))
+        # DECISION F027 D5: a veto names its task by a non-empty string and its reason by
+        # `task_veto.validate_veto_reason`'s own shape, both refused BEFORE the job is
+        # read — the schema-level refusal T5_F027.md asks for, the same restraint the
+        # steering message above keeps for R-0685's reason.
+        if command == JOB_VETO_TASK_COMMAND_ID:
+            from packages.orchestration.task_veto import TaskVetoRefused, validate_veto_reason
+
+            task_id = args.get("task_id")
+            if not isinstance(task_id, str) or not task_id:
+                return None, _command_field_error(
+                    "task_id", "task_id must be a non-empty string")
+            try:
+                validate_veto_reason(args.get("reason"))
+            except TaskVetoRefused as exc:
+                return None, _command_field_error("reason", exc.detail)
         # DECISION F015 D3: a plan edit names the version it was made against, as a whole
         # number, or it is a shape error refused before the plan is read.
         version = args.get("expected_version")

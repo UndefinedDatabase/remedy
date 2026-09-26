@@ -28,6 +28,7 @@ apps.cli.commands.job_context_cmd
 apps.cli.commands.job_pause_cmd
 apps.cli.commands.job_plan_cmd
 apps.cli.commands.job_stop_cmd
+apps.cli.commands.job_veto_cmd
 apps.cli.commands.memory
 apps.cli.commands.mission_cmd
 apps.cli.commands.patch
@@ -244,6 +245,7 @@ packages.orchestration.task_edit_runtime
 packages.orchestration.task_granularity
 packages.orchestration.task_registry
 packages.orchestration.task_runner
+packages.orchestration.task_veto
 packages.orchestration.teacher_model
 packages.orchestration.teacher_narration
 packages.orchestration.teacher_qa
@@ -268,6 +270,7 @@ packages.orchestration.ui_server
 packages.orchestration.ui_view_model
 packages.orchestration.verifier
 packages.orchestration.verifier_profiles
+packages.orchestration.veto_proposal
 packages.orchestration.watchdog
 packages.orchestration.worker_adapters
 packages.orchestration.workspace

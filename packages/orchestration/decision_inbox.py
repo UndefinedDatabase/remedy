@@ -138,6 +138,22 @@ def _answerable_by_decision_resolve(job: Any, decision_id: Any) -> bool:
             and not task.is_materialized
         )
         return is_unresolved or is_approved_not_materialized
+    if str(decision_id).startswith("veto:"):
+        # DECISION F027 D5: mirrors the door's own `_dispatch_decision_resolve`
+        # `veto:` branch — answerable exactly while the id names a vetoed task of
+        # this job with no recorded answer yet. A `TaskVetoError` (an unreadable
+        # control root) reads false rather than raising, the same restraint every
+        # other branch here keeps for a card that cannot be read.
+        from packages.orchestration.task_veto import TaskVetoError, veto_answers, vetoed_tasks
+
+        request_id = str(decision_id)[len("veto:"):]
+        try:
+            entries = vetoed_tasks(job.job_id)
+            answers = veto_answers(job.job_id)
+        except TaskVetoError:
+            return False
+        return (any(e.request_id == request_id for e in entries)
+                and request_id not in answers)
     record = find_task_decision(job, str(decision_id))
     return record is not None and record.get("status") == ESCALATION_STATUS_OPEN
 

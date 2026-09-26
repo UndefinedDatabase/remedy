@@ -3,7 +3,10 @@ import type { RemedyDashboard } from "../../api/types";
 import { rebuildBrainModel } from "./brainReducer";
 import type { BrainEventRow } from "./brainOntology";
 import { buildBrainLayout } from "./buildForceBrainModel";
-import { brainTaskCount, dashboardBrainSeeds, filterBrainLayout, selectedBrainNodeId, shellSelectionIdOf } from "./brainView";
+import {
+  brainTaskCount, dashboardBrainSeeds, filterBrainLayout, selectedBrainNodeId, shellSelectionIdOf,
+  vetoFadedNodeIds, vetoHoverTexts,
+} from "./brainView";
 import { ForceBrainGraph } from "./ForceBrainGraph";
 import { GraphFilterChips, type GraphFilter } from "./GraphFilterChips";
 import { GraphLegend } from "./GraphLegend";
@@ -43,7 +46,12 @@ export function BrainGraphStage({
   const [view, setView] = useState<"live" | "simple">("live");
 
   const seeds = useMemo(
-    () => dashboardBrainSeeds(dashboard.tasks, dashboard.pause.pausedTaskIds, taskSpecVersions(dashboard)),
+    () => dashboardBrainSeeds(
+      dashboard.tasks,
+      dashboard.pause.pausedTaskIds,
+      dashboard.vetoes.tasks.map((v) => v.taskId),
+      taskSpecVersions(dashboard),
+    ),
     [dashboard],
   );
   // `rows` is the ledger's COMPLETE, CONTIGUOUS prefix, read once by the shell for
@@ -73,6 +81,11 @@ export function BrainGraphStage({
     [baseLayout, model, expandTaskId],
   );
   const visible = useMemo(() => filterBrainLayout(layout, filter), [layout, filter]);
+  // DECISION F027 D8 (1) and (2) — the veto's fade and hover text, each
+  // memoized over the dashboard alone: neither depends on the zoom, the
+  // filter or the ledger, so a scrub or a zoom move must not recompute them.
+  const vetoFaded = useMemo(() => vetoFadedNodeIds(dashboard.vetoes), [dashboard]);
+  const vetoHover = useMemo(() => vetoHoverTexts(dashboard), [dashboard]);
   const selectedId = selectedBrainNodeId(dashboard.tasks, selectedNodeId ?? null);
   const showLiveGraph = view === "live" && brainTaskCount(visible) > 0;
   const emphasis = useMemo(() => zoomEmphasis(visible, zoom.state), [visible, zoom.state]);
@@ -103,6 +116,8 @@ export function BrainGraphStage({
             zoom={zoom.state}
             emphasis={emphasis}
             onZoomEvent={zoom.dispatch}
+            vetoFaded={vetoFaded}
+            vetoHover={vetoHover}
           />
           <ZoomBreadcrumbs items={crumbs} onJump={(level) => zoom.dispatch({ type: "crumb", level })} />
           {focusedRun && zoom.state.level === 2 && (

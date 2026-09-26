@@ -46,14 +46,14 @@ from packages.orchestration.run_manifest import (
 
 #: The exact allowed pairs. Anything not listed here must be refused.
 _ALLOWED = {
-    EXPECT_SKIPPED: {"skipped"},
+    EXPECT_SKIPPED: {"skipped", "vetoed"},
     EXPECT_NOT_DISPATCHED: {"pending"},
     EXPECT_FAILED_PRE_DISPATCH: {"failed", "blocked"},
     EXPECT_EXECUTED: {"passed", "applied_to_job_workspace", "running", "pending",
-                      "failed", "blocked"},
+                      "failed", "blocked", "vetoed"},
     EXPECT_PRIOR_EPISODE: {"passed", "applied_to_job_workspace", "running", "pending",
-                           "failed", "blocked"},
-    EXPECT_DISPATCHED_NO_CALLS: {"failed", "blocked", "pending", "running"},
+                           "failed", "blocked", "vetoed"},
+    EXPECT_DISPATCHED_NO_CALLS: {"failed", "blocked", "pending", "running", "vetoed"},
 }
 
 _NO_RUN = {EXPECT_SKIPPED, EXPECT_NOT_DISPATCHED, EXPECT_FAILED_PRE_DISPATCH}
@@ -231,4 +231,4 @@ class TestTheInputsThemselvesAreClosed:
 
         assert VALID_TASK_STATUSES == {PJ.TASK_PENDING, PJ.TASK_RUNNING, PJ.TASK_PASSED,
                                        PJ.TASK_APPLIED, PJ.TASK_BLOCKED, PJ.TASK_FAILED,
-                                       PJ.TASK_SKIPPED}
+                                       PJ.TASK_SKIPPED, PJ.TASK_VETOED}

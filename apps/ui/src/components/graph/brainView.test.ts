@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { RemedyTaskItem } from "../../api/types";
+import type { RemedyDashboard, RemedyTaskItem, RemedyVetoEntry, RemedyVetoes } from "../../api/types";
 import { reduceBrainEvent, seedBrainModel } from "./brainReducer";
 import { row } from "./brainReducer.fixtures";
 import { buildBrainLayout } from "./buildForceBrainModel";
@@ -7,6 +7,7 @@ import type { BrainLayoutData } from "./forceBrainTypes";
 import {
   BRAIN_FILTER_STATES, DASHBOARD_STATE_STATUS, brainTaskCount, carryBrainPositions,
   dashboardBrainSeeds, filterBrainLayout, selectedBrainNodeId, selectionTaskIdOf, shellSelectionIdOf,
+  vetoFadedNodeIds, vetoHoverTexts,
 } from "./brainView";
 
 function task(id: string, state: RemedyTaskItem["state"], label = id): RemedyTaskItem {
@@ -80,15 +81,34 @@ describe("dashboardBrainSeeds", () => {
   // ONLY when the map carries that task at all.
   it("puts specVersion on a seed only when the map carries that task", () => {
     const tasks = [task("a", "pending", "Alpha"), task("b", "pending", "Beta")];
-    const seeds = dashboardBrainSeeds(tasks, [], { a: 2 });
+    const seeds = dashboardBrainSeeds(tasks, [], [], { a: 2 });
     expect(seeds.find((s) => s.id === "a")?.specVersion).toBe(2);
     expect(seeds.find((s) => s.id === "b")).not.toHaveProperty("specVersion");
   });
 
-  it("with no third argument, no seed carries a specVersion", () => {
+  it("with no fourth argument, no seed carries a specVersion", () => {
     const tasks = [task("a", "pending", "Alpha")];
     const seeds = dashboardBrainSeeds(tasks, []);
     expect(seeds[0]).not.toHaveProperty("specVersion");
+  });
+
+  it("seeds a task named in vetoedTaskIds as vetoed, whatever its dashboard status word (DECISION F027 D7 (2))", () => {
+    const tasks = [task("a", "current", "Alpha"), task("b", "pending", "Beta"), task("c", "done", "Gamma")];
+    const seeds = dashboardBrainSeeds(tasks, [], ["b"]);
+    expect(seeds.map((s) => s.status)).toEqual(["running", "vetoed", "completed"]);
+    const model = seedBrainModel("job-vetoed-seed", seeds);
+    expect(model.nodes.find((n) => n.id === "task:b")?.state).toBe("vetoed");
+  });
+
+  it("vetoed wins over paused when a task is named in both (DECISION F027 D7 (2))", () => {
+    const tasks = [task("a", "pending", "Alpha")];
+    const seeds = dashboardBrainSeeds(tasks, ["a"], ["a"]);
+    expect(seeds[0].status).toBe("vetoed");
+  });
+
+  it("with no third argument, no task seeds vetoed", () => {
+    const tasks = [task("a", "pending", "Alpha")];
+    expect(dashboardBrainSeeds(tasks, [])).toEqual(dashboardBrainSeeds(tasks, [], []));
   });
 });
 
@@ -108,6 +128,10 @@ describe("filterBrainLayout", () => {
 
   it("groups paused with planned (DECISION F025 D3 clause 2)", () => {
     expect(BRAIN_FILTER_STATES.planned).toEqual(["planned", "paused"]);
+  });
+
+  it("groups vetoed with done (DECISION F027 D7 (2))", () => {
+    expect(BRAIN_FILTER_STATES.done).toEqual(["pass", "vetoed"]);
   });
 
   it("a run follows its task in and out", () => {
@@ -251,5 +275,48 @@ describe("carryBrainPositions", () => {
     const result = carryBrainPositions(null, next);
     expect(result).toEqual(next);
     result.forEach((n, i) => expect(n).not.toBe(next[i]));
+  });
+});
+
+function vetoEntry(overrides: Partial<RemedyVetoEntry> = {}): RemedyVetoEntry {
+  return {
+    taskId: "t1", reason: "duplicate work", actor: "operator",
+    requestedAt: "2026-09-26T00:00:00Z", requestId: "req-1", statusAtVeto: "pending",
+    unreachableTaskIds: [], answer: "",
+    ...overrides,
+  };
+}
+
+function vetoes(overrides: Partial<RemedyVetoes> = {}): RemedyVetoes {
+  return { tasks: [], vetoableTaskIds: [], unreachableTaskIds: [], error: "", ...overrides };
+}
+
+describe("vetoFadedNodeIds", () => {
+  it("prefixes every unreachable task id with task:", () => {
+    const ids = vetoFadedNodeIds(vetoes({ unreachableTaskIds: ["t2", "t3"] }));
+    expect(ids).toEqual(new Set(["task:t2", "task:t3"]));
+  });
+
+  it("is empty when nothing is unreachable", () => {
+    expect(vetoFadedNodeIds(vetoes())).toEqual(new Set());
+  });
+});
+
+describe("vetoHoverTexts", () => {
+  it("maps every task that has hover text to its task: id", () => {
+    const tasks = [task("t1", "pending", "Build the API"), task("t2", "pending", "Wire the client")];
+    const dashboard = {
+      tasks,
+      vetoes: vetoes({ tasks: [vetoEntry({ taskId: "t1", reason: "duplicate work", unreachableTaskIds: ["t2"] })] }),
+    } as RemedyDashboard;
+    const texts = vetoHoverTexts(dashboard);
+    expect(texts.get("task:t1")).toBe("Vetoed: duplicate work");
+    expect(texts.get("task:t2")).toBe("Unreachable due to veto of Build the API");
+    expect(texts.size).toBe(2);
+  });
+
+  it("carries no entry for a task with no hover text", () => {
+    const dashboard = { tasks: [task("t1", "pending")], vetoes: vetoes() } as RemedyDashboard;
+    expect(vetoHoverTexts(dashboard).size).toBe(0);
   });
 });

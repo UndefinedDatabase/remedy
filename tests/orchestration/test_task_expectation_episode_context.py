@@ -63,14 +63,16 @@ class TestCompletedWorkedIsNarrow:
         probs = self._forge(status)
         assert any("impossible task record" in p for p in probs), (status, probs)
 
-    @pytest.mark.parametrize("status", ["passed", "applied_to_job_workspace"])
+    @pytest.mark.parametrize("status", ["passed", "applied_to_job_workspace", "vetoed"])
     def test_a_completed_executed_task_that_actually_completed_passes(self, status):
         assert self._forge(status) == []
 
     def test_the_context_helper_is_tight_for_completed_worked(self):
+        # DECISION F027 D4 (5) / R-1071: the completed-worked tight set carries `vetoed`
+        # too — a settled completion can finish a job carrying a vetoed task.
         for exp in (EXPECT_EXECUTED, EXPECT_PRIOR_EPISODE):
             allowed = _allowed_statuses_for(exp, "completed", PHASE_WORKED)
-            assert allowed == {"passed", "applied_to_job_workspace"}
+            assert allowed == {"passed", "applied_to_job_workspace", "vetoed"}
 
     def test_the_context_helper_stays_permissive_for_stopped_worked(self):
         """A stop can leave any of these — that is F011, and it must not regress."""

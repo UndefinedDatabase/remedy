@@ -39,6 +39,8 @@ PRODUCING_DECISION_TYPES = (
     "task_plan_approval",
     "task_decision",
     "proposal",
+    # F027 D4: the two-option menu a veto files.
+    "replan_proposal",
 )
 
 #: DECISION F031 D19 — the types the write door's ``decision.resolve`` can
@@ -50,8 +52,11 @@ PRODUCING_DECISION_TYPES = (
 #: ``_fixture_task_plan_approval`` builds.  This tuple says nothing about a
 #: RESOLVED task plan, which carries the same type and is refused;
 #: ``test_an_approved_task_plan_card_is_not_answerable`` pins that case, for
-#: the reason its task-decision sibling gives.
-ANSWERABLE_DECISION_TYPES = ("task_plan_approval", "task_decision", "proposal")
+#: the reason its task-decision sibling gives. DECISION F027 D5 adds
+#: ``replan_proposal``: the door's ``veto:`` branch of ``_dispatch_decision_resolve``
+#: answers it through ``veto_proposal.answer_replan_proposal``.
+ANSWERABLE_DECISION_TYPES = ("task_plan_approval", "task_decision", "proposal",
+                            "replan_proposal")
 
 FIXED_NOW = datetime(2026, 8, 23, 12, 0, 0, tzinfo=timezone.utc)
 
@@ -182,6 +187,19 @@ def _fixture_proposal() -> tuple[JobPlan, list[dict]]:
     return job, []
 
 
+def _fixture_replan_proposal() -> tuple[JobPlan, list[dict]]:
+    """A real veto through ``task_veto.veto_task_command`` — never a constructed card —
+    over the default control root ``_isolated_data_root`` already scoped to ``tmp_path``."""
+    from packages.orchestration import task_veto as tv
+
+    job = _make_job(tasks=_linear_task_chain(2))
+    first = job.tasks[0]
+    result = tv.veto_task_command(job, task_id=first.task_id,
+                                  reason="known-bad approach for this task", actor="alice")
+    assert result["outcome"] == "vetoed"
+    return job, []
+
+
 PRODUCING_FIXTURES = {
     "patch_approval": _fixture_patch_approval,
     "stop_reason": _fixture_stop_reason,
@@ -191,6 +209,7 @@ PRODUCING_FIXTURES = {
     "task_plan_approval": _fixture_task_plan_approval,
     "task_decision": _fixture_task_decision,
     "proposal": _fixture_proposal,
+    "replan_proposal": _fixture_replan_proposal,
 }
 
 
@@ -245,13 +264,31 @@ def test_blocked_count_equals_dag_blocked_downstream():
 
 @pytest.mark.parametrize(
     "decision_type",
-    [t for t in PRODUCING_DECISION_TYPES if t != "task_decision"],
+    [t for t in PRODUCING_DECISION_TYPES if t not in ("task_decision", "replan_proposal")],
 )
 def test_non_task_decision_types_report_zero_blocked(decision_type):
     job, events = PRODUCING_FIXTURES[decision_type]()
     inbox = build_decision_inbox(job, events, now=FIXED_NOW)
     card = _cards_by_type(inbox)[decision_type]
     assert card["blocked_count"] == 0
+
+
+def test_replan_proposal_blocked_count_equals_the_vetos_unreachable_count():
+    """``replan_proposal`` is the SECOND type whose count can be non-zero (F027 D4): its
+    card's own payload names the vetoed task, so ``_blocked_subtree_size`` reads the same
+    downstream set the veto itself already computed."""
+    from packages.orchestration import task_veto as tv
+
+    job, events = _fixture_replan_proposal()
+    inbox = build_decision_inbox(job, events, now=FIXED_NOW)
+    card = _cards_by_type(inbox)["replan_proposal"]
+
+    vetoed_id = job.tasks[0].task_id
+    expected = len(tv.veto_unreachable(job.tasks, [vetoed_id]))
+    assert card["blocked_count"] == expected
+    # Without this half the assertion above passes on a module that always
+    # returns 0: two zeros compare equal.
+    assert card["blocked_count"] > 0
 
 
 # ---------------------------------------------------------------------------
@@ -380,6 +417,37 @@ def test_answerable_key_goes_false_once_the_decision_has_been_answered():
     card = _cards_by_type(build_decision_inbox(job, events, now=FIXED_NOW))["task_decision"]
     assert card["status"] == "resolved"
     assert card["answerable_by_decision_resolve"] is False
+
+
+def test_veto_card_is_not_answerable_once_answered():
+    """DECISION F027 D5: the door's own refusal reversed — a `veto:` card is
+    answerable exactly while its veto carries no recorded answer yet.
+
+    An ANSWERED veto's `replan_proposal` decision is no longer produced at all —
+    `veto_proposal._qualifying_entries` drops an entry the moment it has an
+    answer, unlike `task_decision`, whose answered record still yields a
+    ``resolved`` card. So the "once answered" half is read from
+    `_answerable_by_decision_resolve` directly, over the SAME id the open card
+    carried, the only way to observe the predicate once its card has vanished.
+    """
+    from packages.orchestration.decision_inbox import _answerable_by_decision_resolve
+    from packages.orchestration.veto_proposal import answer_replan_proposal
+
+    job, events = _fixture_replan_proposal()
+    before = _cards_by_type(build_decision_inbox(job, events, now=FIXED_NOW))
+    open_card = before["replan_proposal"]
+    assert open_card["status"] == "open"
+    assert open_card["answerable_by_decision_resolve"] is True
+
+    result = answer_replan_proposal(job, open_card["id"], "accept_reduced_scope",
+                                    actor="alice")
+    assert result["outcome"] == "answered"
+
+    assert _answerable_by_decision_resolve(job, open_card["id"]) is False
+    # The card itself is gone from the inbox now — a second producer-level proof
+    # this is not a resolved-but-still-listed decision.
+    after = _cards_by_type(build_decision_inbox(job, events, now=FIXED_NOW))
+    assert "replan_proposal" not in after
 
 
 def test_an_approved_task_plan_card_is_not_answerable():

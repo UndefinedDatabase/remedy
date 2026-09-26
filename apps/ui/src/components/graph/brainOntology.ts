@@ -112,6 +112,9 @@ export const SEED_STATUS_STATE_TABLE: Readonly<Record<string, NodeState>> = {
   // never the dashboard itself — a task named in `pause.pausedTaskIds` seeds
   // paused regardless of its own status word.
   paused: "paused",
+  // F027 (DECISION F027 D7 (2)): same trick — `dashboardBrainSeeds` writes
+  // this word for a task named in `vetoes.tasks`, which wins over `paused`.
+  vetoed: "vetoed",
 };
 
 /** The review-outcome half of Table 2 (DECISION F019 D1): `task_round_completed`'s

@@ -1,0 +1,7 @@
+Command: python3 -m pytest -n auto -q
+Real exit code: 0
+Wall time: 252s real (start/end epoch seconds); pytest's own report: 251.15s (0:04:11)
+Summary line: 19694 passed, 20 skipped, 1 warning in 251.15s (0:04:11)
+Bad node ids (failed plus errors):
+None
+Tree it ran on: C4's SHA 3cbc4df929daa3d8f85af62773a44a2dda47750f; replaces round 11's run at `29b0c2d2` under amend0921-operator-feedback rule 1.

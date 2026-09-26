@@ -1,0 +1,163 @@
+diff --git a/.agent/decisions.md b/.agent/decisions.md
+index 31e8af9bc..30bd49e8b 100644
+--- a/.agent/decisions.md
++++ b/.agent/decisions.md
+@@ -21944,3 +21944,87 @@ HOW TO REVERSE: restore `packages/orchestration/pingpong_loop.py`,
+ `packages/orchestration/pingpong_job.py`, `docs/system/session-resume-v1.md` and
+ `tests/orchestration/test_prompt_trace.py` from `26f44f49`, delete
+ `tests/orchestration/test_relaunch_session_resume.py`, and delete this paragraph.
++
++## DECISION F027 D1 — a veto is a create-only control fact per task with a mandatory reason kept verbatim: a pure gate admits a pending, running, blocked, failed or skipped task of an unfinished job, the unreachable set is `dag_schedule.blocked_downstream` over the vetoed tasks, the command writes the control file and one `task_vetoed` event and never the job record, and there is no un-veto (2026-09-26)
++
++CONTEXT: T5_F027.md asks for `veto_task` with a mandatory reason, the task vetoed and terminal,
++the unreachable downstream computed with the DAG module and marked, a replan proposal filed into
++the decision inbox and never executed on its own, an in-progress task finishing its current call
++before it is vetoed, the run continuing on independent branches, and the reason surviving
++verbatim into audit, report and hover; its Orchestrator brief puts the no-auto-replan rule and the
++mandatory reason into the orders verbatim, and it forbids touching mid-run replanning mechanics,
++DAG internals and glyph geometry. Measured at `557cbbcc`: no Python module under `packages/` or
++`apps/` writes or reads a veto; `NodeState` in `apps/ui/src/components/graph/brainOntology.ts` already
++names `vetoed`, which no reducer assigns, and `renderers/nodeStates.ts` gives it the strike mark
++and a `downstreamAlpha` of 0.4 that no renderer applies yet; `dag_schedule.blocked_downstream`
++returns the transitive dependents of its seeds without the seeds, through `build_graph`, which
++reads a task's declared `depends_on` from `inputs["plan"]` and makes a task without plan metadata
++depend on its predecessor; `run_job` in `packages/orchestration/pingpong_job.py`, the runner
++DECISION F025 D1 found behind `remedy job run`, `remedy do` and the UI's live job, walks
++`job.tasks` in list order and holds the whole record in memory, saving it at its own points, so a
++command that writes `job.json` while it runs is overwritten (DECISION F026 D1); a task pause is a
++create-only file per task under `paused_tasks/` in the job's control directory, reached through
++`safe_points.open_job_control_fd` and the `secure_fs` primitives and read by the runner at its
++safe points (DECISION F025 D1); the write door's audit line keeps a hash of a command's arguments
++and never the arguments (`AUDIT_FIELD_ORDER` in `packages/orchestration/command_audit.py`);
++`stream_evidence.redact_text` is the repository's secret redaction; and every event name a code
++path writes is declared in `packages/orchestration/event_names.py`.
++
++CHOSEN: (1) THE MODULE is `packages/orchestration/task_veto.py`, beside the pause and through the
++same anchored control-directory handle and the same `secure_fs` primitives, so a symlinked control
++area is refused and nothing is written outside it; `pause_control.py`, `safe_points.py` and
++`dag_schedule.py` are not edited. (2) A VETO IS A CONTROL FACT: one create-only file per vetoed
++task under `vetoed_tasks/` in the job's control directory, named by a digest of the task id and
++holding the job id, the task id, a request id, the reason, the actor, the time and the task's
++status when it was vetoed. It is never rewritten and never removed: un-veto does not exist in v1,
++because reversibility would blur the red line, and the recovery is the replan the proposal offers.
++The command never writes `job.json`, for the reason DECISION F026 D1 refuses an edit while the job
++runs; a runner folds the veto into the record at its safe points, and a reader that needs a veto
++no runner has folded yet reads the control files. (3) THE REASON IS MANDATORY AND KEPT VERBATIM: a
++reason that is not a string, or is empty or only whitespace, is refused `reason_required`; one
++longer than 500 characters `reason_too_long`; one holding a control character, or one that
++`stream_evidence.redact_text` would change, `reason_invalid`, whose detail says that such text is
++refused rather than stored altered. An accepted reason is stored exactly as given, so it travels
++into the event, the record, the report and the page with no later stage rewriting it. (4) THE
++GATE is pure over the job's state, the task's status and whether the task is already vetoed: a job
++whose state is `completed`, `failed` or `cancelled` is refused `job_not_vetoable` naming it; a task
++already vetoed, by a control file or by the status `vetoed`, `task_already_vetoed`; and of the task
++statuses exactly `pending`, `running`, `blocked`, `failed` and `skipped` are vetoable, while every
++other, among them `passed`, `applied_to_job_workspace`, `split` and `completed`, is refused
++`task_not_vetoable` naming it. A running job is vetoable, which is the point of the feature: its
++running task's current provider call finishes before the runner folds the veto. (5) THE
++UNREACHABLE SET is `blocked_downstream(tasks, vetoed ids)` without the vetoed tasks and without
++every task whose work is done, in plan order: for a planned task the dependents its plan declares,
++for a task without plan metadata every task after it. The pause's linear mask on `run_job` is not
++reused, because a pause is lifted and withholding more than the plan needs costs a wait, while a
++veto is final and withholding an independent branch would lose work the plan says does not depend
++on the vetoed task. (6) THE COMMAND EFFECT, shared by the CLI and the door as `pause_job_command`
++is: it takes a loaded job, never raises for a refusal, and answers `refused` with a code and a
++detail, checking in this order the reason, a task the plan does not hold (`unknown_task`), and the
++gate; otherwise it writes the control file and answers `vetoed` with the request id, the reason,
++the status at the veto and the unreachable set of this veto alone. Two concurrent vetoes of one
++task converge on one file, and the one that lost is answered `task_already_vetoed`. (7) ONE
++`task_vetoed` EVENT per request id, by the ledger as the task pause's events are (finding R-1052),
++carrying the task, the request id, the reason verbatim, the actor, the status at the veto and the
++unreachable ids. It is the veto's audit line, because the door's audit keeps only a hash of the
++arguments, and `task_vetoed` joins `EVENT_NAMES` in the commit that writes it. (8) THE STATUS
++`vetoed` joins the task vocabulary as `TASK_VETOED` in `pingpong_job.py`, terminal for the task.
++(9) THE ROUNDS: this round lands (1) to (8) with their unit tests. The runners' fold follows, with
++the in-progress rule, what becomes of the unreachable tasks and the terminal accounting, each
++ruled by its own decision in the round that lands it; then the replan proposal, the channel
++commands, the page and the diamond end-to-end.
++
++ALTERNATIVES: writing the veto into `job.json` from the command, rejected because a live runner
++rewrites that file and the veto would be lost at its next save; one `vetoed_tasks.json` set,
++rejected because two concurrent writers of a rewritten set lose an update (DECISION F025 D1); an
++un-veto command, rejected by T5_F027.md's edge cases; storing a reason with its secrets redacted,
++rejected because the reason must survive verbatim and an altered reason would read as the
++operator's own words; the linear mask for the unreachable set on `run_job`, rejected by (5); a
++veto of a finished task, rejected because there is nothing left to withhold and the task's work is
++already in the job's workspace.
++
++DELIBERATE ABSENCES: no un-veto, no veto of a whole job, because the stop and the pause already end
++or park one, and no automatic replan: nothing replans without the decision answer.
++
++HOW TO REVERSE: delete `packages/orchestration/task_veto.py` and its tests, the `TASK_VETOED`
++constant, the `task_vetoed` name in `EVENT_NAMES`, and this paragraph.
+diff --git a/.agent/live_review.md b/.agent/live_review.md
+index 281cb9743..f1aa68539 100644
+--- a/.agent/live_review.md
++++ b/.agent/live_review.md
+@@ -1,27 +1,27 @@
+-# Live Review — F285 Findings paydown v4
+-
+-> Round-by-round review record, re-headed at the F285 claim per
+-> docs/agents/planner_reviewer_prompt.md §1. The heading this replaces named F026, whose STATUS
+-> line went `[x]` at `9476d5e4` and whose pull request 281 merged into `main` at the reviewer's
+-> Open PR Gate under docs/agents/self_drive_protocol.md, as `83d3bb95`, after both hosted CI jobs
+-> of run 36188943289 ended `success`. `9476d5e4` is the second parent of `83d3bb95`. F026's round
+-> 8, its closing round, was reviewed after its own handback, so its gate entry is appended at the
+-> end of this record by F285's claim. Only the heading, this paragraph and the Steps section below
++# Live Review — F027 Task veto
++
++> Round-by-round review record, re-headed at the F027 claim per
++> docs/agents/planner_reviewer_prompt.md §1. The heading this replaces named F285, whose STATUS
++> line went `[x]` at `15f70445` and whose pull request 282 merged into `main` at the reviewer's
++> Open PR Gate under docs/agents/self_drive_protocol.md, as `557cbbcc`, after both hosted CI jobs
++> of run 36204988392 ended `success`. `15f70445` is the second parent of `557cbbcc`. F285's round
++> 6, its closing round, was reviewed after its own handback, so its gate entry is appended at the
++> end of this record by F027's claim. Only the heading, this paragraph and the Steps section below
+ > are rewritten; everything from the Findings heading to the end of the file as it stood at
+-> `83d3bb95` is carried forward BYTE-IDENTICAL, and finding ids continue the monotonic R-XXXX
+-> series across the re-head. The open set at `83d3bb95`, computed with `open_finding_ids` from
+-> `scripts/rotate_live_review.py`, is R-1008, R-1055, R-1057, R-1058 and R-1064, and F285 owns
+-> all five.
++> `557cbbcc` is carried forward BYTE-IDENTICAL, and finding ids continue the monotonic R-XXXX
++> series across the re-head. The open set at `557cbbcc`, computed with `open_finding_ids` from
++> `scripts/rotate_live_review.py`, is empty.
+ 
+ ## Steps
+ 
+-THE ORDER BELOW IS T2_F285.md's Task slicing, which DECISION F285 D1 writes at the claim. R1
+-claims F285, re-heads this record, books F026's round 8, and lands T001, R-1058's repair in
+-`packages/orchestration/self_use_generator.py` and `packages/orchestration/self_use_findings.py`,
+-and T002, R-1057's derived cost cap in `packages/orchestration/self_use_runner.py`. T003 carries
+-an interrupted task's provider session across a relaunch (R-1055). The closure's self-use run is
+-aimed at R-1064, so that R-1008 is finally tested by a run that can land a repair; a worker round
+-repairs R-1064 instead if that run does not. Every round's handback states the open set by
++THE ORDER BELOW IS T5_F027.md's Task slicing, which DECISION F027 D1 rules at the claim. R1
++claims F027, re-heads this record, books F285's round 6, and lands the veto control protocol of
++T001 in a new `packages/orchestration/task_veto.py`: the mandatory verbatim reason, the pure state
++gate, the unreachable set through `dag_schedule.blocked_downstream`, one create-only control file
++per vetoed task, and the command effect with its `task_vetoed` event. The runners' reading of a
++veto, the in-progress finish rule and the terminal accounting complete T001; T002 files the replan
++proposal with its two-option menu; T003 brings the strike, the dimmed unreachable set and the inbox
++card to the page, with the diamond end-to-end. Every round's handback states the open set by
+ distinct id.
+ 
+ ## Findings
+@@ -398,3 +398,5 @@ Gate: F285 R3 — the F285 round 3 entry: the booking of round 2 with the resolu
+ Gate: F285 R4 — the F285 round 4 entry: the booking of round 3, the self-use run's reviewed diff landed verbatim as R-1064's repair, the reviewer's pin, the Built State, the checklist consolidation and the feature's one full suite. VERDICT PASS, NO DEVIATION DECLARED. Re-derived over `0f1975b7`..`9a7a9c39` by the planner and reviewer of F285's first session, whose own runs produced every reading below. THE RANGE IS 7 COMMITS, at `c2e0caa0` 386, `2e69d5ad` 58, `4efd990c` 13, `e03f438c` 32, `4e168d70` 27, `142b1867` 27 and `9a7a9c39` 303 insertions by `git show --numstat`, each under the 500-line cap, each single-parent and each carrying the ordered trailer. THE TRANSPORT PROOF: the block copy and the six payload copies, read at the commits that added them, equal the reviewer's originals byte for byte; every file `4efd990c`, `e03f438c`, `4e168d70` and `142b1867` wrote hashes to the reviewer's simulated tree; and at `e03f438c` both `packages/orchestration/stream_evidence.py` and `tests/orchestration/test_stream_evidence.py` equal the self-use job's own commit `5796c5b7` byte for byte, so the landing is the job's diff and nothing else. THE OPEN SET by distinct id reads R-1008 and R-1064 at `4efd990c`. THE CHECKLIST: `live_checklist_items` reads the same 34 numbers before and after `142b1867`. THE TESTS: the reviewer's own serial run of the round's selection in the primary checkout at `9a7a9c39` read 602 passed at exit 0; `ruff check` over the two touched Python files reads clean; all six `integrity check` checks read `pass`. THE RED PROOFS: the committed `.agent/authored/f285-r4-mutations.py`, run by the worker at `4e168d70` and by the reviewer over a byte-identical simulated tree, caught both mutations, each removing one pattern's token-start bound. THE INTEGRATION GATE (closure precondition 2): after `npm --prefix apps/ui run build`, the one full suite, `python3 -m pytest -n auto -q` in the primary checkout, read `19449 passed, 20 skipped` at exit 0 in 183.68 seconds with no bad node, recorded in `.agent/authored/f285-closure-suite.txt` at `9a7a9c39`, and neither reachability guard of closure precondition 7 holds a bad node.
+ 
+ Gate: F285 R5 — the F285 round 5 entry: the closure sequence's evidence round, the booking of round 4, the resolutions of R-1064 and R-1008, the evidence bundle and the review package. VERDICT PASS, NO DEVIATION DECLARED. Re-derived over `9a7a9c39`..`2a8bf593` by the planner and reviewer of F285's first session, whose own runs produced every reading below. THE RANGE IS 3 COMMITS, at `df2b5441` 333, `c2a4588a` 14 and `2a8bf593` 195 insertions by `git show --numstat`, each under the 500-line cap, each single-parent and each carrying the ordered trailer. THE TRANSPORT PROOF: the block copy and the three payload copies, read at `df2b5441`, equal the reviewer's originals byte for byte, and at `c2a4588a` the ledger and the plan equal the reviewer's dry tree byte for byte. THE OPEN SET by distinct id is empty at `c2a4588a`: F285 resolved all five ids it owned. THE BUNDLE: evidence job `f285r5e1001`, built by the committed `.agent/authored/f285-r5-create_f285_evidence.py` at the accepted head `c2a4588ad39959a0278235e1e526cec871cc69e2` against the fork point `83d3bb95901313a529d803a2cb29b2291b34e608`, read ancestry and plain counts equal at 26, 765 node ids with 13 deselected and none unsafe, pytest exit 0 with 765 passed, an empty `validate_verification_tests` problem list and `is_valid_current_run` True; it carries `tests/orchestration/test_plan_editing.py`, which F026's bundle had to leave out before R-1064's repair, and leaves out, with its reason written in the script, the two tests of `tests/orchestration/test_stream_evidence.py` parametrized over fake keys, both green in the committed full suite. THE PACKAGE: `remedy-review-20260926-020855-READY_FOR_REVIEW.zip` in `/home/decodeux/Repos/remedy-history/zips`, whose SHA-256 the reviewer measured as `dba140f371cfe8071690be30605ba1643a77a8f5d000f66a40d8dd43c056d4d5`, whose `testzip()` answers None, and whose `.review_zip_manifest.json` reads status `READY_FOR_REVIEW`, base the fork point, head the accepted head and 26 commits. THE TREE: all six `integrity check` checks read `pass` at `2a8bf593`.
++
++Gate: F285 R6 — the F285 round 6 entry: the closing round, the booking of round 5, the ledger's rotation into its archive, the registration of F286 — Findings paydown v5, and F285's acceptance in STATUS with its README pins and the self-use item's `consumed_by`. VERDICT PASS, NO DEVIATION DECLARED. Reviewed over `2a8bf593`..`15f70445` by the planner and reviewer of F285's first session after the round's handback, and the readings below re-measured by the planner and reviewer of F027's first session at its claim. THE RANGE IS 5 COMMITS, at `88747403` 425, `d8d024e2` 9, `69946928` 69, `6082c181` 50 and `15f70445` 186 insertions by `git show --numstat`, each under the 500-line cap, each single-parent and each carrying the ordered trailer. THE TRANSPORT PROOF: the block copy and five payload copies, read at `88747403`, equal the reviewer's originals byte for byte; the original of the STATUS-line payload is no longer on disk, and that line reads once in `docs/roadmap/STATUS.md` at `15f70445`. THE ROTATION at `69946928` moved 8 gate records and 5 finding pairs into `.agent/live_review_archive.md`, and the open set by distinct id was empty before and after it. THE REGISTRATION at `6082c181` placed F286 under its own Tier 2 heading after F035, with the `TOTAL_FEATURES` pin at 286. THE TREE: `557cbbcc` has the tree of `15f70445`, and over it the reviewer's serial run of `tests/docs/` with the advertised-command, rotation, integrity, self-use generator and self-use queue suites and the golden path read 493 passed at exit 0, and all six `integrity check` checks read `pass`. THE MERGE: pull request 282 merged into `main` as `557cbbcc` at F027's Open PR Gate, after both hosted CI jobs of run 36204988392 ended `success`.
+diff --git a/docs/roadmap/STATUS.md b/docs/roadmap/STATUS.md
+index a6bce3215..e3f8961c0 100644
+--- a/docs/roadmap/STATUS.md
++++ b/docs/roadmap/STATUS.md
+@@ -158,7 +158,7 @@ Milestone R1 — Remedy as the daily tool: Tier 2 complete (F086 as the self-ins
+ 
+ ## Tier 5 — Operator Cockpit (parallel human track, continued)
+ 
+-- [ ] F027 — Task veto
++- [~] F027 — Task veto
+ - [ ] F028 — Task injection
+ - [ ] F029 — Subtree rerun
+ - [ ] F030 — Steering messages

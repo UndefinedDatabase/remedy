@@ -300,7 +300,7 @@ def test_the_shipped_required_type_set_holds_exactly_the_upgraded_producers():
     """
     assert TRIPLE_REQUIRED_TYPES == frozenset({
         "token_budget", "test_failure", "patch_approval", "stop_reason",
-        "memory_review", "task_plan_approval", "task_decision",
+        "memory_review", "task_plan_approval", "task_decision", "replan_proposal",
     })
 
 

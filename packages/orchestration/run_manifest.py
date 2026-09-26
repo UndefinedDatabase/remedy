@@ -1390,15 +1390,18 @@ VALID_TASK_EXPECTATIONS = frozenset({
 #:   completion gate, the target guard or the workspace apply refuses the work.
 #: * `dispatched_no_calls` means a run exists that finalized nothing, so the task cannot be
 #:   `passed`/`applied`: those two are only reachable through a finalized call.
+#: F027 D2 (6): a `vetoed` task never owned a call of its own — the veto struck it before,
+#: during or after its dispatch, but never THROUGH one — so it joins every expectation the
+#: table above already allows a task with no finalized call to carry, and no other.
 _TASK_EXPECTATION_ALLOWED_STATUSES = {
-    EXPECT_SKIPPED: frozenset({"skipped"}),
+    EXPECT_SKIPPED: frozenset({"skipped", "vetoed"}),
     EXPECT_NOT_DISPATCHED: frozenset({"pending"}),
     EXPECT_FAILED_PRE_DISPATCH: frozenset({"failed", "blocked"}),
     EXPECT_EXECUTED: frozenset({"passed", "applied_to_job_workspace", "running", "pending",
-                                "failed", "blocked"}),
+                                "failed", "blocked", "vetoed"}),
     EXPECT_PRIOR_EPISODE: frozenset({"passed", "applied_to_job_workspace", "running", "pending",
-                                     "failed", "blocked"}),
-    EXPECT_DISPATCHED_NO_CALLS: frozenset({"failed", "blocked", "pending", "running"}),
+                                     "failed", "blocked", "vetoed"}),
+    EXPECT_DISPATCHED_NO_CALLS: frozenset({"failed", "blocked", "pending", "running", "vetoed"}),
 }
 
 #: F1 (round 17): the CONTEXT-TIGHTENED status sets. The table above is the STOPPED/worked
@@ -1409,10 +1412,14 @@ _TASK_EXPECTATION_ALLOWED_STATUSES = {
 #: one CANNOT be pending/running/failed/blocked — that would contradict the status it is published
 #: under. The shared validator took `episode_status`/`episode_phase` since round 16 and never read
 #: them, so a completed reference accepted `executed` + pending/running/failed/blocked.
+#: F027 D4 (5): a completed episode's tightened sets gain `vetoed`, because the SETTLED
+#: COMPLETION path can now finish a job carrying a `vetoed` task — one whose veto was
+#: answered — beside the applied/skipped/split ones `run_job`'s own `all_done` reading
+#: already counts.
 _COMPLETED_WORKED_STATUSES = {
-    EXPECT_EXECUTED: frozenset({"passed", "applied_to_job_workspace"}),
-    EXPECT_PRIOR_EPISODE: frozenset({"passed", "applied_to_job_workspace"}),
-    EXPECT_SKIPPED: frozenset({"skipped"}),
+    EXPECT_EXECUTED: frozenset({"passed", "applied_to_job_workspace", "vetoed"}),
+    EXPECT_PRIOR_EPISODE: frozenset({"passed", "applied_to_job_workspace", "vetoed"}),
+    EXPECT_SKIPPED: frozenset({"skipped", "vetoed"}),
 }
 
 
@@ -1433,7 +1440,7 @@ def _allowed_statuses_for(expectation: str, episode_status: str,
 
 #: Every task status the JobPlan can persist. A status outside this set is a forged record.
 VALID_TASK_STATUSES = frozenset({"pending", "running", "passed", "applied_to_job_workspace",
-                                 "blocked", "failed", "skipped"})
+                                 "blocked", "failed", "skipped", "vetoed"})
 
 #: The expectations that mean "no run was ever dispatched for this task".
 _EXPECTATIONS_WITHOUT_RUN = frozenset({EXPECT_SKIPPED, EXPECT_NOT_DISPATCHED,
@@ -1937,6 +1944,7 @@ def _collect_calls(job: Any, owned_episode_id: str = "",
         TASK_PASSED,
         TASK_RUNNING,
         TASK_SKIPPED,
+        TASK_VETOED,
     )
     from packages.orchestration.pingpong_loop import load_run
 
@@ -1995,9 +2003,11 @@ def _collect_calls(job: Any, owned_episode_id: str = "",
                     task_id=task_id, expectation=EXPECT_FAILED_PRE_DISPATCH, run_id="",
                     task_status_at_finalization=status, dispatch_state=DISPATCH_NEVER))
             else:
+                # F027 D2 (6): a vetoed task with no run is EXPECT_SKIPPED exactly as a
+                # skipped one is — the veto struck before dispatch, same as a skip.
                 expectations.append(TaskCallExpectationV1(
                     task_id=task_id,
-                    expectation=(EXPECT_SKIPPED if status == TASK_SKIPPED
+                    expectation=(EXPECT_SKIPPED if status in (TASK_SKIPPED, TASK_VETOED)
                                  else EXPECT_NOT_DISPATCHED),
                     run_id="", task_status_at_finalization=status,
                     dispatch_state=DISPATCH_NEVER))

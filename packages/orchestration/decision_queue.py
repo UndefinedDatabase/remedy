@@ -78,6 +78,9 @@ DECISION_TYPES = frozenset({
     "task_decision",
     # F280: a proposed task awaiting human decision or materialization.
     "proposal",
+    # F027 D4: the two-option menu a veto files — replan the remaining work as a
+    # follow-up job, or accept the reduced scope.
+    "replan_proposal",
 })
 
 
@@ -967,6 +970,17 @@ def list_decisions(
                 resolved_at=None,
             ))
     except (ImportError, ValueError, OSError):
+        pass
+
+    # 9. Replan proposals a task veto files (DECISION F027 D4): one decision per
+    #    still-unanswered veto entry, derived straight from the veto's own control
+    #    files and never stored in `job.json`.
+    try:
+        from packages.orchestration.task_veto import TaskVetoError
+        from packages.orchestration.veto_proposal import replan_proposal_decisions
+
+        decisions.extend(replan_proposal_decisions(job))
+    except (ImportError, ValueError, OSError, AttributeError, TaskVetoError):
         pass
 
     # THE EMIT GATE (DECISION F032 D1): this derivation point is the one seam

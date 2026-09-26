@@ -121,7 +121,7 @@ DECISION_EVIDENCE_STATUS_LEGACY = "recorded_before_evidence_requirements"
 #: before.
 TRIPLE_REQUIRED_TYPES: frozenset[str] = frozenset({
     "token_budget", "test_failure", "patch_approval", "stop_reason",
-    "memory_review", "task_plan_approval", "task_decision",
+    "memory_review", "task_plan_approval", "task_decision", "replan_proposal",
 })
 
 

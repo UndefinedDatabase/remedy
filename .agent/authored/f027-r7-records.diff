@@ -1,0 +1,79 @@
+diff --git a/.agent/decisions.md b/.agent/decisions.md
+index 79fbf6e49..4e39897f1 100644
+--- a/.agent/decisions.md
++++ b/.agent/decisions.md
+@@ -22297,3 +22297,53 @@ bends a production module around the guard's blind spot and leaves the blind spo
+ module.
+ 
+ HOW TO REVERSE: delete the `TYPE_CHECKING` skip and its test, and this paragraph.
++
++## DECISION F027 D7 — the veto reaches the page's data: a dashboard section `vetoes` that never raises, the node seeded and streamed as `vetoed`, the reason verbatim in the job's text and exported report, plain-words option labels a decision's payload may carry, and the two event names in the page's catalog; the door's fourth import is ruled (2026-09-26)
++
++CONTEXT: T5_F027.md's T003 asks for the strike, the reason on hover, the dimmed unreachable set
++with its link, and the inbox card's menu, and its Acceptance for the reason verbatim in audit,
++report and hover. Measured at `25a295c0`: `_build_dashboard` in
++`packages/orchestration/ui_server.py` assembles one section per concern, each built by a helper that
++never raises and reports an `error` instead, `pause` and `task_specs` the nearest; the page seeds a
++node's state from the dashboard in `dashboardBrainSeeds` through `SEED_STATUS_STATE_TABLE` in
++`apps/ui/src/components/graph/brainOntology.ts`, which names no `vetoed` row, and advances it from
++the live stream in `brainReducer.ts`, which has no `task_vetoed` case, while the stream's envelope
++carries only an event's name, time, outcome and task; `format_job_report_text` in
++`packages/orchestration/pingpong_job.py` gives an unknown status the icon `?` and prints no veto,
++and `export_job_report` carries none; `decisionAnswers` in `apps/ui/src/api/decisionCard.ts`
++labels every option button with its raw value and forbids any branch on a decision's type; and
++R-1068. Round 6 added a fourth door import, `task_veto.TaskVetoRefused`, beyond the three DECISION
++F027 D5 (5) named.
++
++CHOSEN: (1) THE SECTION `vetoes`, built by one helper that never raises: `tasks`, one entry per veto
++entry in plan order with the task id, the reason verbatim, the actor, the time, the request id, the
++status at the veto, that veto's unreachable ids and the recorded answer's option or ""; `vetoable_task_ids`,
++the tasks `veto_refusal` admits for the job's state; `unreachable_task_ids`, `veto_unreachable` over
++every vetoed task; and `error`, the text of a `TaskVetoError`, which empties the three lists. (2) THE
++PAGE'S DATA: the dashboard's `vetoes` is normalized into a typed value; `dashboardBrainSeeds` seeds a
++task named in `vetoes.tasks` as `vetoed`, which `SEED_STATUS_STATE_TABLE` maps to the node state
++`vetoed`, whatever the task's own status word; and the reducer's new `task_vetoed` case moves a node
++to `vetoed` unless it has already passed, the way `task_paused` refuses to paint over a finished
++node. (3) THE REPORT: `format_job_report_text` gives a `vetoed` task its own icon and, under it, the
++line `Vetoed by <actor>: <reason>` with the reason verbatim, and `export_job_report` gives each
++vetoed task a `veto` object of the reason, the actor, the time and the unreachable ids, both read
++from the job record's `task_vetoes` and, for a veto no run has folded yet, from the control files; a
++job with no veto reports exactly as before. (4) THE INBOX'S WORDS: a decision's payload may carry
++`option_labels`, a map from an option's value to the words its button shows; `decisionAnswers`
++takes a button's label from that map when it names the option and from the value otherwise, and
++still posts the value, with no branch on the decision's type; `replan_proposal` carries "Replan the
++remaining work as a new job" for `replan_follow_up` and "Accept the smaller scope" for
++`accept_reduced_scope`. (5) THE CATALOG: `task_vetoed` and `veto_proposal_answered` join the page's
++event catalog with plain words, which is R-1068's repair. (6) THE FOURTH IMPORT: the write door's
++allowed imports hold `task_veto.TaskVetoRefused` beside the three D5 (5) named, because the payload
++check catches that class and nothing broader; this amends D5 (5). (7) The dim, the popover's veto
++block with its link, the veto form and the hover text are the next round's.
++
++ALTERNATIVES: streaming the reason in the event envelope, rejected because
++`tests/ui_server/test_sse_stream.py` pins that envelope by equality for every event and the section
++already carries the reason; a per-type label map in the card, rejected by the card's own
++architecture line; a new dashboard state word for a vetoed task, rejected because every reader of
++`RemedyState` would change for a fact the section carries.
++
++HOW TO REVERSE: delete the section and its normalizer, the seed row and the reducer case, the report
++lines, `option_labels` and its reading, the two catalog entries, their tests, and this paragraph.
+diff --git a/.agent/live_review.md b/.agent/live_review.md
+index 5a1cfe3e8..7a3942f53 100644
+--- a/.agent/live_review.md
++++ b/.agent/live_review.md
+@@ -426,3 +426,7 @@ Gate: F027 R4 — the F027 round 4 entry: the booking of round 3, R-1066's resol
+ Gate: F027 R5 — the F027 round 5 entry: the booking of round 4, the registration and repair of R-1067, DECISION F027 D5, `job.veto-task` in the catalog and the CLI, and the round's stop at the write door's transitive guard. VERDICT PASS, THE ROUND STOPPED WHERE ITS BLOCK ORDERED IT TO. Re-derived over `9f884fbb`..`96cb5154` by the planner and reviewer of F027's first session, whose own runs produced every reading below. THE RANGE IS 5 COMMITS, at `a540e6e6` 344, `2bb422d4` 63, `90e5b529` 15, `d98f9922` 319 and `96cb5154` 193 insertions by `git show --numstat`, each under the 500-line cap, each single-parent and each carrying the ordered trailer. THE STOP: S6 of the block ordered the worker to stop if the door's transitive guard went red, and with the door's draft applied `test_the_door_reaches_only_the_accepted_forbidden_modules_transitively` read `exec_guard` and `subprocess` unrecorded, so the worker committed the verified part, wrote a blocked handback at `96cb5154`, and left its unverified draft of S4 to S6 uncommitted in the primary checkout, where round 6 takes it up; the reviewer exported that draft as `.remedy-wt/f027-review/r5-uncommitted.diff`. THE CAUSE is the guard's walker, not the door: `task_veto` imports `stream_evidence`, whose `if TYPE_CHECKING:` block imports `exec_guard` for annotations only, and the walker follows that block; DECISION F027 D6 rules the repair. THE DEVIATIONS the worker declared: the `--reason` help text names the job plan because `tests/docs/test_vocabulary.py` binds the word "task" to one of its page meanings, and the blocked handback replaced the block's C7. THE TRANSPORT PROOF: the block copy and the two payload copies, read at `a540e6e6`, equal the reviewer's originals byte for byte, and at `2bb422d4` the ledger, the decisions and the plan equal the reviewer's authoring tree byte for byte. THE TESTS: the reviewer's serial run in a clean worktree at `96cb5154` of the CLI veto, plan, pause and decision suites, the catalog, advertised-command and exit-code suites, the reachability, orphan and event-name guards, the rotation and integrity suites, `tests/docs/` and the golden path read 945 passed at exit 0, and `ruff check` over the six touched Python files reads clean. THE BRANCH IS RED BETWEEN ROUNDS in one suite that run left out: at `96cb5154` `tests/ui_server/test_command_channel.py` reads 2 failed, `test_the_set_holds_exactly_the_ruled_ids_and_no_other` and `test_every_exposed_command_reaches_the_answer_its_effect_gives`, because C4 added `job.veto-task` to `UI_EXPOSED_COMMANDS` while the two test updates that follow it sit in the uncommitted draft, which round 6 lands. No red proof ran: the round's mutation tool was never written, and round 6 writes it over the whole door.
+ 
+ Done: R-1067 — at `90e5b529`, the accept's sentence in the `veto:` route of `_cmd_decision_resolve` in `apps/cli/commands/decision.py` names `remedy job run <job>` instead of `remedy job resume <job>`, and `tests/cli/test_decision_cmd.py` pins the printed sentence to that command. Verified by the planner and reviewer of F027's first session at the round 5 gate, in the clean worktree run above.
++
++Gate: F027 R6 — the F027 round 6 entry: the booking of round 5, R-1067's resolution, DECISION F027 D6, and round 5's door finished from its draft: the door's `job.veto-task` clause and payload check, the door's answer of a replan proposal, the answerable inbox card, and the guard's walker skipping a type-only import block. VERDICT PASS, ONE DEVIATION DECLARED AND ONE FINDING REGISTERED. Re-derived over `96cb5154`..`25a295c0` by the planner and reviewer of F027's first session, whose own runs produced every reading below. THE RANGE IS 6 COMMITS, at `94973b97` 279, `29b3e856` 44, `3742ab96` 194, `080219c1` 236, `ae7d4941` 208 and `25a295c0` 235 insertions by `git show --numstat`, each under the 500-line cap, each single-parent and each carrying the ordered trailer. THE DEVIATION: the door's allowed imports carry a fourth entry beyond the three DECISION F027 D5 (5) named, `task_veto.TaskVetoRefused`, which the payload check needs to catch the validator's refusal; DECISION F027 D7 rules it, and the omission was the reviewer's and is a line in `.agent/prose_slips.md`. THE DRAFT: the tree held exactly the four files the block named at its start, with `git diff HEAD` reading the digest of the reviewer's export, and the worker reviewed it against round 5's S4 to S6 before committing it at `3742ab96`. THE TRANSPORT PROOF: the block copy and the two payload copies, read at `94973b97`, equal the reviewer's originals byte for byte, and at `29b3e856` the ledger, the decisions and the plan equal the reviewer's authoring tree byte for byte. THE TESTS: the reviewer's own serial run of the round's selection in the primary checkout at `25a295c0` read 1335 passed at exit 0, the channel suite among them and green again; all six `integrity check` checks read `pass`; `ruff check` over the six touched Python files reads clean. THE RED PROOFS: the committed `.agent/authored/f027-r6-mutations.py`, run by the reviewer in a disposable worktree at `ae7d4941`, caught all eight mutations, among them the walker following a type-only block again and skipping every `if` body, and restored every file byte-identical, with an unmutated control green before and after. THE FINDING: a sweep the reviewer ran at `25a295c0` over `tests/ui_contracts/`, `tests/cli/` and the repository-wide guards under `tests/test_*.py` read 1 failed and 6000 passed; the one is R-1068, below, owned by F027 and repaired in round 7.
++
++- R-1068 — Medium, THE BRANCH HAS CARRIED A RED GUARD SINCE ROUND 1: THE PAGE'S EVENT CATALOG HOLDS NEITHER `task_vetoed` NOR `veto_proposal_answered`, WHICH THE BACKEND NOW WRITES, AND NO ROUND'S SELECTION RAN THE TEST THAT SAYS SO. Raised by the planner and reviewer of F027's first session at round 6's gate, from its own sweep. SEARCHED BEFORE MINTING (checklist item 30): the open set is empty, and `humanizeCatalog` beside `task_vetoed` in this record and its archive finds no finding. MEASURED at `25a295c0`: `test_catalog_keys_equal_the_static_stream_vocabulary` in `tests/ui_contracts/test_humanize_catalog.py` reads "emitted but NOT in the catalog (2): ['task_vetoed', 'veto_proposal_answered']", because `packages/orchestration/task_veto.py` has written the literal `task_vetoed` since round 1's `95dfdc1f` and `packages/orchestration/veto_proposal.py` the literal `veto_proposal_answered` since round 4's `121b65b1`, while `apps/ui/src/api/humanizeCatalog.ts` names neither, so the live feed shows the operator those two rows without their plain words. The rounds' blocks named `tests/orchestration/test_event_names.py`, which checks the Python declaration, and never this second reader of the same vocabulary. WHY MEDIUM: the suite is red on the branch, and the closure's one full run would have found it a round too late to repair cheaply. FIX: the catalog gains both names with plain words, the test reads green, and round 7's selection names `tests/ui_contracts/`. Owner: F027.
+diff --git a/.agent/prose_slips.md b/.agent/prose_slips.md
+index 6c602cada..7f3d2f001 100644
+--- a/.agent/prose_slips.md
++++ b/.agent/prose_slips.md
+@@ -1114,3 +1114,4 @@
+ 2026-09-25, F026 round 4 — S3 of the block quoted the relaunch sentence as "remedy job run <job id>" without saying the angle brackets stood for the real id, so the worker shipped them as literal text and declared it; the user-visible effect is R-1061, repaired in round 5.
+ 2026-09-25, F026 round 5 — S2 of the block named `dod_gate`'s `DOD_FILENAME` as the file name's source without reading what `dod_gate` imports, so the repair pulled the DoD runners into the write door's reach and the closure suite went red on the door's import guard; the product effect is R-1063, repaired in round 6.
+ 2026-09-26, F027 round 3 — mutation m6 of the block ordered `ready_tasks` to withhold the vetoed seeds but not their dependents, which no behaviour can tell apart because a task whose dependency is not completed is never ready, so the worker spent a commit pinning the call with a white-box test.
++2026-09-26, F027 round 5 — DECISION F027 D5 (5) named exactly three imports for the write door and missed `task_veto.TaskVetoRefused`, which the payload check needs to catch the validator's refusal, so round 6's worker added a fourth and declared it.

@@ -12,3 +12,22 @@
 .container canvas {
   display: block;
 }
+
+/* DECISION F027 D8 (2) — the library's own hover tooltip, restyled in this
+   cockpit's tokens rather than left in the library's default chrome. Every
+   value is an existing --remedy-* token; the raw-colour ratchet still pins
+   this file at 2 because none of these are colour literals. */
+.container :global(.float-tooltip-kap) {
+  background: var(--remedy-card);
+  border: 1px solid var(--remedy-line);
+  border-radius: var(--remedy-radius-sm);
+  box-shadow: var(--remedy-shadow);
+  padding: 0;
+}
+
+.vetoTooltip {
+  display: block;
+  padding: 6px 10px;
+  font: 600 12px var(--remedy-font-ui);
+  color: var(--remedy-text);
+}
