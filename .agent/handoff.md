@@ -1,307 +1,332 @@
-# Handback — F027 Task veto · Round 1
+# Handback — F027 Task veto · Round 2
 
 ## Session
 
-SESSION 1 of feature F027 · round 1 · rounds so far 1
+SESSION 1 of feature F027 · round 2 · rounds so far 2
 
 The large majority of the session's context budget remained at the point this handback was
-written. This round claimed F027, re-headed the live review record, booked F285's round 6 verdict,
-recorded DECISION F027 D1, and landed the first part of T001: the `TASK_VETOED` status and a new
-module `packages/orchestration/task_veto.py` (the mandatory verbatim reason, the pure state gate,
-the unreachable set, the create-only control file, the command effect and its `task_vetoed`
-event), with its unit tests and a mutation tool proving they bite.
+written. This round booked round 1's verdict, registered and repaired R-1065, recorded DECISION
+F027 D2, and landed the rest of T001 on the linear runner: `run_job` now folds a veto before its
+task loop and at every pre-task safe point, returns a vetoed attempt's job workspace to its start
+tree via a new `worktrees.restore_tree`, never dispatches the unreachable set, sends a block's
+skipped tasks back to pending unless they are unreachable, ends a run whose remaining work is all
+vetoed or unreachable `blocked` naming both sets, and the run manifest accepts `vetoed` — with a
+new `tests/orchestration/test_task_veto_runner.py` and a mutation tool proving all fourteen
+mutations bite.
 
 ## Range
 
-Review of 557cbbcc5..HEAD
+Review of 25ab44dec..HEAD
 
 ## Commits
 
-### c63d3f1e5 F027 R1 C1a: copy round 1 block and state payloads into .agent/authored/
+### 4b2856072 F027 R2 C1: copy round 2 block and payloads into .agent/authored/
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f027-r1-block.md | +331/-0 | copy of this round's block, verbatim (`shutil.copyfile`) |
-| .agent/authored/f027-r1-context.md | +37/-0 | copy of the context.md payload |
-| .agent/authored/f027-r1-plan.md | +37/-0 | copy of the plan.md payload |
+| .agent/authored/f027-r2-block.md | +277/-0 | copy of this round's block, verbatim (`shutil.copyfile`) |
+| .agent/authored/f027-r2-plan.md | +37/-0 | copy of the plan.md payload |
+| .agent/authored/f027-r2-records.diff | +89/-0 | copy of the records.diff payload |
 
-405 insertions by `git show --numstat` (331 for the block plus 74 for the two payloads: 37+37) —
-matches the block's stated expectation exactly (block line count 331 plus 74), under the 500-line
-cap.
+403 insertions by `git show --numstat` — matches the block's stated expectation exactly (block
+line count 277 plus 126), under the 500-line cap.
 
-### 84115d5bd F027 R1 C1b: copy round 1 claim diff into .agent/authored/
+### 843249805 F027 R2 C2: book round 1, register R-1065, record D2
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f027-r1-claim.diff | +163/-0 | copy of the claim.diff payload |
+| .agent/decisions.md | +69/-0 | DECISION F027 D2 appended, verbatim from records.diff |
+| .agent/live_review.md | +4/-0 | round 1's Gate entry and R-1065's registration appended |
+| .agent/plan.md | +11/-11 | rewritten whole to the plan.md payload |
 
-163 insertions by `git show --numstat` — matches the block's stated expectation (163) exactly.
+69/0 decisions.md, 4/0 live_review.md, 11/11 plan.md by `git show --numstat` — matches the block's
+stated expectation exactly. `git apply --check` on records.diff → exit 0; the real `git apply` →
+exit 0.
 
-### 16de198d5 F027 R1 C2: claim F027, re-head the live review record, book F285 R6, record D1
+### 61250e1e7 F027 R2 C3: repair R-1065 and add worktrees.restore_tree
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/context.md | +15/-11 | rewritten whole to the context.md payload |
-| .agent/decisions.md | +84/-0 | DECISION F027 D1 appended, verbatim from claim.diff |
-| .agent/live_review.md | +22/-20 | re-headed (heading + intro + Steps) and F285 R6's Gate entry appended |
-| .agent/plan.md | +24/-13 | rewritten whole to the plan.md payload |
-| docs/roadmap/STATUS.md | +1/-1 | F027's line `[ ]` → `[~]` |
+| packages/orchestration/task_veto.py | +47/-15 | S1: both `task_already_vetoed` routes now share one refused shape via new `_already_vetoed_refusal`, which repairs the entry's missing event first; `veto_refusal`'s detail now says "the task is already vetoed" rather than naming the status |
+| packages/orchestration/worktrees.py | +69/-0 | S2: NEW `restore_tree(handle, tree) -> list[str]` |
+| tests/orchestration/test_task_veto.py | +41/-1 | new tests: the gate route's own repair, a vetoed-status-with-no-entry edge, the retry test's shape updated to the new refused/request_id contract |
+| tests/orchestration/test_worktrees.py | +132/-0 | NEW `TestRestoreTree`: modified/added/deleted/executable/symlink paths, a nested directory left empty, the submodule refusal and the equality check |
 
-15/11 context.md, 84/0 decisions.md, 22/20 live_review.md, 24/13 plan.md, 1/1 STATUS.md by
-`git show --numstat` — matches the block's stated expectation exactly.
-
-### 95dfdc1f8 F027 R1 C3: add the task veto control protocol and the vetoed task status
-| Path | +/- | Reason |
-|---|---|---|
-| packages/orchestration/event_names.py | +1/-0 | `"task_vetoed"` added to `EVENT_NAMES` in sorted place |
-| packages/orchestration/pingpong_job.py | +3/-0 | `TASK_VETOED = "vetoed"` added after `TASK_SPLIT`, with its DECISION F027 D1 comment |
-| packages/orchestration/task_veto.py | +488/-0 | NEW: S1–S9 — the veto control protocol module |
-| tests/test_no_orphan_modules.py | +3/-0 | `ALLOWED_UNWIRED` entry for the new, not-yet-wired module |
-
-495 insertions by `git show --numstat` (no expectation was stated for C3; reported as measured),
+289 insertions by `git show --numstat` (no expectation was stated for C3; reported as measured),
 under the 500-line cap.
 
-### 7f5383abd F027 R1 C4a: test the veto reason, gate, unreachable set and control files (part 1 of 2)
+### 636e9c69e F027 R2 C4: fold a veto in the linear runner
 | Path | +/- | Reason |
 |---|---|---|
-| tests/orchestration/test_task_veto.py | +350/-0 | NEW (part 1 of 2): constants, S3 reason tests, S4 gate matrix, S5 unreachable-set tests, S6 control-file tests |
+| packages/orchestration/pingpong_job.py | +146/-0 | S3 `_fold_task_vetoes` (module-level helper), its two call sites (before the loop, and at the pre-task safe point after the stop/pause check), S4's `TASK_VETOED` pass-over and unreachable-skip, S5's terminal before the `all_done` reading |
+| packages/orchestration/run_manifest.py | +12/-6 | S6: `"vetoed"` joins `VALID_TASK_STATUSES` and the four `_TASK_EXPECTATION_ALLOWED_STATUSES` sets; a vetoed task with no run is `EXPECT_SKIPPED` |
+| tests/orchestration/import_reachability_allowlist.txt | +1/-0 | S7: `packages.orchestration.task_veto` added in sorted place |
+| tests/orchestration/test_task_expectation_status_truth.py | +5/-5 | S6: `_ALLOWED` gains the same four entries; the vocabulary test gains `PJ.TASK_VETOED` |
+| tests/test_no_orphan_modules.py | +0/-3 | S7: the `ALLOWED_UNWIRED` entry for `task_veto.py` removed — it now has a production importer |
 
-350 insertions by `git show --numstat`.
+164 insertions by `git show --numstat`, under the 500-line cap. `git diff -U0 61250e1e7 636e9c69e --
+tests/orchestration/test_task_expectation_status_truth.py tests/test_no_orphan_modules.py
+tests/orchestration/import_reachability_allowlist.txt` holds exactly S6's and S7's lines (see G3
+below for the whole diff).
 
-### f93fb8028 F027 R1 C4b: test the command effect and its event, add the mutation tool (part 2 of 2)
+### 1ff1f5c30 F027 R2 C5a: test the runner's fold of a veto (part 1 of 3)
 | Path | +/- | Reason |
 |---|---|---|
-| tests/orchestration/test_task_veto.py | +183/-0 | REST (part 2 of 2): S7 command-effect tests, S8 event tests |
-| .agent/authored/f027-r1-mutations.py | +234/-0 | NEW: the G5 mutation tool, 15 mutations over `task_veto.py` |
+| tests/orchestration/test_task_veto_runner.py | +279/-0 | NEW (part 1 of 3): fixtures, fakes, the diamond-veto-before-the-run test, every-task-vetoed, the legacy job-file test, the during-the-run veto test |
 
-417 insertions by `git show --numstat` (no expectation was stated for C4; reported as measured),
-under the 500-line cap. See Deviations: C4 was split into C4a/C4b because the whole tests file plus
-the mutation tool (767 insertions together) would have exceeded the 500-line cap in one commit.
+279 insertions by `git show --numstat`.
+
+### f49f1b792 F027 R2 C5b: test the runner's fold of a veto (part 2 of 3)
+| Path | +/- | Reason |
+|---|---|---|
+| tests/orchestration/test_task_veto_runner.py | +272/-0 | REST (part 2 of 3): the block-then-veto-then-relaunch test, a direct unit test of the fold's skip-reset rule, the task-cap/paused-manifest test, the inert-veto test, the corrupt-veto-file test, the git-worktree restore test |
+
+272 insertions by `git show --numstat`.
+
+### 0739f3162 F027 R2 C5c: test the runner's fold of a veto (part 3 of 3)
+| Path | +/- | Reason |
+|---|---|---|
+| .agent/authored/f027-r2-mutations.py | +280/-0 | NEW: the G5 mutation tool, 14 mutations over `pingpong_job.py`, `worktrees.py`, `run_manifest.py` and `task_veto.py` |
+
+280 insertions by `git show --numstat`. See Deviations: the block names C5 as one commit
+("THE RUNNER TESTS AND THE MUTATION TOOL"), but the test file alone (551 insertions) already
+exceeds the 500-line cap, so it was split at class boundaries into C5a/C5b/C5c.
 
 ## External actions
 
-`git checkout -b feature/f027-task-veto` from `main` at `557cbbcc5` — branch created.
-`git worktree add --detach .remedy-wt/f027-r1-mut f93fb8028` — worktree created for the G5 mutation
+`git worktree add --detach .remedy-wt/f027-r2-mut 0739f3162` — worktree created for the G5 mutation
 sweep.
-`git worktree remove --force .remedy-wt/f027-r1-mut` — removed after the sweep completed.
+`git worktree remove --force .remedy-wt/f027-r2-mut` — removed after the sweep completed.
 `git worktree prune` — no-op (nothing stale).
-`git push -u origin feature/f027-task-veto` — pushed after C5 (outcome reported in the final reply,
-since C5 cannot contain it per the block).
-No PR created (the block forbids it this round; F027's PR opens at closure).
+`git push -u origin feature/f027-task-veto` — outcome reported in the final reply, since C5/C6
+cannot contain it.
+No PR created, no merge, no branch checkout/deletion, no force-push, no stash — none of these ran.
 
 ## Verification
 
 BEFORE ANYTHING ELSE:
-- `ls .agent/STOP` → `ls: cannot access '.agent/STOP': No such file or directory`, exit 2 (absent, as
-  required).
-- `pwd` → `/home/decodeux/Repos/remedy`; `git status --porcelain` → empty; `git branch --show-current`
-  → `main`; `git log --oneline -1` → `557cbbcc5 Merge pull request #282 ...`. All three matched.
-  `git checkout -b feature/f027-task-veto` → `Switched to a new branch 'feature/f027-task-veto'`.
-- Block bytes: measured line count 331, sha256
-  `42bfc4e4e7fd4c11e8ae18f426e8cbb31fbbfc993cef0d84935310f12f53ddb3` — both matched the delegation
+- `ls .agent/STOP` → `ls: cannot access '.agent/STOP': No such file or directory`, `REAL_EXIT=2`
+  (absent, as required).
+- `pwd` → `/home/decodeux/Repos/remedy`; `git status --porcelain` → empty; `git branch
+  --show-current` → `feature/f027-task-veto`; `git log --oneline -1` → `25ab44dec F027 R1 C5:
+  rewrite handoff for round 1`. All three matched.
+- Block bytes: measured line count 277, sha256
+  `5caf7382b6953bdd3f2c5b316e9d86952400bd0eb45a3e341e1fc4e39b04884d` — both matched the delegation
   message's two readings exactly.
-- `git worktree list` reported as found (see the pre-round listing in the round transcript; all
-  entries constraint 6 names, unchanged by this round until the G5 worktree was added and removed).
+- `git worktree list` reported as found (the pre-round listing: the primary checkout plus the
+  `f015-*`, `f020-*`, `f023-*`, `f024-*`, `f025-*`, `f027-r1-dry`, `f027-r2-dry`, `f284-*` and
+  `job-*` worktrees — unchanged by this round until the G5 worktree was added and removed).
 
-PAYLOADS (measured against the block's table, all matched):
+PAYLOADS (measured against the block's table, both matched):
 | file | lines | bytes | sha256 |
 |---|---|---|---|
-| claim.diff | 163 | 18444 | 2a11dfd7...78bfbe |
-| context.md | 37 | 1520 | d3ca4f45...2f51841 |
-| plan.md | 37 | 1533 | de29e39c...5080465fcaaa8a392 |
+| plan.md | 37 | 1567 | 0cb52ffa8ec84b08caeb9ec2dba6921aeba0e163c5c53bfb6f8084d2c234cb0d |
+| records.diff | 89 | 15591 | f9e82396ddfe8ced08b85553cb6e5e5c834f5a8097e305565061684c3ccb0fbb |
 
-`git apply --check` on claim.diff → exit 0. `git apply` (real) → exit 0.
+`git apply --check` on records.diff → `REAL_EXIT=0`. The real `git apply` → `REAL_EXIT=0`.
 
-G1 TRANSPORT — each `.agent/authored/f027-r1-*` copy compared byte for byte, read back with
-`git show <commit>:<path>`, against its source:
-- `f027-r1-block.md` @ c63d3f1e5 == `.remedy-wt/f027-r1/block.md`: match=True (sha256
-  `42bfc4e4...f53ddb3` both sides)
-- `f027-r1-plan.md` @ c63d3f1e5 == payload plan.md: match=True
-- `f027-r1-context.md` @ c63d3f1e5 == payload context.md: match=True
-- `f027-r1-claim.diff` @ 84115d5bd == payload claim.diff: match=True
+G1 TRANSPORT — each `.agent/authored/f027-r2-*` copy compared byte for byte against its source,
+read back with `git show 4b2856072:<path>`:
+- `f027-r2-block.md` == `.remedy-wt/f027-r2/block.md`: equal=True
+- `f027-r2-plan.md` == payload plan.md: equal=True
+- `f027-r2-records.diff` == payload records.diff: equal=True
 
-G2 THE CLAIM — each file's sha256, read with `git show 16de198d5:<path>`, against the reviewer's
+G2 THE RECORDS — each file's sha256, read with `git show 843249805:<path>`, against the reviewer's
 table:
 | path | bytes | sha256 | match |
 |---|---|---|---|
-| .agent/live_review.md | 290468 | 1e4eb4d2...53146382 | True |
-| docs/roadmap/STATUS.md | 53437 | b52bb1a5...09f1222e | True |
-| .agent/decisions.md | 2155629 | fd65eba3...34c9d8418 | True |
-| .agent/plan.md | 1533 | de29e39c...5080465fcaaa8a392 | True |
-| .agent/context.md | 1520 | d3ca4f45...2f51841 | True |
+| .agent/live_review.md | 295025 | b866146d3419b4856d42e18e56359086df9a469389b13efed6b1a01cd62b3a68 | True |
+| .agent/decisions.md | 2162102 | e9152eb667c14f8ce4828ffbf12bac2359af2fc4434242dcfb381d8bf0f0e1ab | True |
+| .agent/plan.md | 1567 | 0cb52ffa8ec84b08caeb9ec2dba6921aeba0e163c5c53bfb6f8084d2c234cb0d | True |
 
-Open finding ids via `open_finding_ids` (scripts/rotate_live_review.py): at `557cbbcc5` → `[]`; at
-`16de198d5` → `[]`. Both empty, matching the reviewer's reading.
-`## Findings` heading count at C2: 1. `## Steps` heading count at C2: 1. Last non-blank line of
-the ledger at C2 begins `Gate: F285 R6 — ` (confirmed verbatim).
-F027's STATUS line at C2, read in full: `- [~] F027 — Task veto`.
-`git diff --name-only 84115d5bd 16de198d5` → `.agent/context.md`, `.agent/decisions.md`,
-`.agent/live_review.md`, `.agent/plan.md`, `docs/roadmap/STATUS.md` — exactly the table's five
-paths.
+Open finding ids via `open_finding_ids` (scripts/rotate_live_review.py) over the ledger's text at
+843249805: `['R-1065']` — matches the reviewer's reading exactly. The ledger's last line begins
+`- R-1065 — ` (confirmed verbatim, `startswith` check True).
 
 G3 THE CODE:
 ```
-$ python3 -m ruff check packages/orchestration/pingpong_job.py packages/orchestration/task_veto.py packages/orchestration/event_names.py tests/test_no_orphan_modules.py tests/orchestration/test_task_veto.py
+$ python3 -m ruff check packages/orchestration/task_veto.py packages/orchestration/worktrees.py packages/orchestration/pingpong_job.py packages/orchestration/run_manifest.py tests/orchestration/test_task_veto.py tests/orchestration/test_worktrees.py tests/orchestration/test_task_expectation_status_truth.py tests/test_no_orphan_modules.py tests/orchestration/test_task_veto_runner.py .agent/authored/f027-r2-mutations.py
 All checks passed!
-```
-(run again at C4, same result: `All checks passed!`)
-
-`git diff -U0 84115d5bd 95dfdc1f8 -- packages/orchestration/pingpong_job.py packages/orchestration/event_names.py`
-— whole diff:
-```
-diff --git a/packages/orchestration/event_names.py b/packages/orchestration/event_names.py
-+        "task_vetoed",
-diff --git a/packages/orchestration/pingpong_job.py b/packages/orchestration/pingpong_job.py
-+# DECISION F027 D1: terminal for the task — a runner's fold writes this status at its
-+# safe points once a control file records the veto; the veto command itself never writes it.
-+TASK_VETOED = "vetoed"
-```
-Adds the constant with its comment and the one event name, nothing else — confirmed.
-
-AST reading of every module `task_veto.py` imports (each `Import`/`ImportFrom`, any depth):
-`['__future__', 'dataclasses', 'hashlib', 'json', 'os', 'packages.common',
-'packages.orchestration', 'packages.orchestration.dag_schedule',
-'packages.orchestration.data_paths', 'packages.orchestration.failure_postmortem',
-'packages.orchestration.pingpong_job', 'packages.orchestration.run_log',
-'packages.orchestration.stream_evidence', 'pathlib', 're', 'typing']`. Banned-set intersection
-(`subprocess`, `threading`, `signal`, `packages.orchestration.pause_control`): empty set. Confirmed
-none present.
-
-G4 THE TESTS — serial run in the primary checkout at C4b (real exit code):
-```
-$ python3 -m pytest -q -p no:cacheprovider -rs tests/orchestration/test_task_veto.py tests/orchestration/test_pause_control.py tests/orchestration/test_dag_schedule.py tests/orchestration/test_event_names.py tests/test_no_orphan_modules.py tests/orchestration/test_task_edit_runtime.py tests/orchestration/test_task_expectation_status_truth.py tests/orchestration/test_import_reachability.py tests/ui_server/test_dashboard_contract.py tests/orchestration/test_test_runner.py tests/orchestration/test_live_review_rotation.py tests/orchestration/test_integrity_gate.py tests/orchestration/test_roadmap_index.py tests/orchestration/test_block_lint.py tests/test_agent_tooling.py tests/regression/test_resource_safety.py tests/docs tests/cli/test_golden_path.py
-SKIPPED [1] tests/test_agent_tooling.py:43: D12 quarantine (F252): ...
-960 passed, 1 skipped in 86.81s (0:01:26)
 REAL_EXIT=0
 ```
-Only one `SKIPPED` line printed by `-rs`: the D12 quarantine in `tests/test_agent_tooling.py`
-(stays skipped, as expected). Both toolchain nodes the reviewer's run skipped (the typescript node
-in `tests/ui_server/test_dashboard_contract.py`, the vitest node in
-`tests/orchestration/test_test_runner.py`) PASSED here, not skipped.
+(run at the last code commit, 0739f3162)
 
-`--collect-only -q` on the new file alone: `127 tests collected`.
+`git diff -U0 61250e1e7 636e9c69e -- tests/orchestration/test_task_expectation_status_truth.py tests/test_no_orphan_modules.py tests/orchestration/import_reachability_allowlist.txt`
+— whole diff:
+```
+diff --git a/tests/orchestration/import_reachability_allowlist.txt b/tests/orchestration/import_reachability_allowlist.txt
+@@ -246,0 +247 @@ packages.orchestration.task_runner
++packages.orchestration.task_veto
+diff --git a/tests/orchestration/test_task_expectation_status_truth.py b/tests/orchestration/test_task_expectation_status_truth.py
+@@ -49 +49 @@ _ALLOWED = {
+-    EXPECT_SKIPPED: {"skipped"},
++    EXPECT_SKIPPED: {"skipped", "vetoed"},
+@@ -53 +53 @@ _ALLOWED = {
+-                      "failed", "blocked"},
++                      "failed", "blocked", "vetoed"},
+@@ -55,2 +55,2 @@ _ALLOWED = {
+-                           "failed", "blocked"},
+-    EXPECT_DISPATCHED_NO_CALLS: {"failed", "blocked", "pending", "running"},
++                           "failed", "blocked", "vetoed"},
++    EXPECT_DISPATCHED_NO_CALLS: {"failed", "blocked", "pending", "running", "vetoed"},
+@@ -234 +234 @@ class TestTheInputsThemselvesAreClosed:
+-                                       PJ.TASK_SKIPPED}
++                                       PJ.TASK_SKIPPED, PJ.TASK_VETOED}
+diff --git a/tests/test_no_orphan_modules.py b/tests/test_no_orphan_modules.py
+@@ -95,3 +94,0 @@ ALLOWED_UNWIRED: tuple[tuple[str, str], ...] = (
+-    ("packages/orchestration/task_veto.py",
+-     "F027 T001: the veto control protocol; the runners' fold and the write door wire it in "
+-     "later rounds"),
+```
+Holds exactly S6's and S7's lines — confirmed.
 
-Accounting for the difference from the reviewer's `789 passed, 3 skipped`: reviewer's selection
-omitted the new test file and the golden path. `789 + 127 (new file) + 42 (golden path,
-`--collect-only -q tests/cli/test_golden_path.py` → `42 tests collected`) = 958`; plus the 2
-toolchain skips that now pass instead of skip = `960` passed, with only the 1 permanent skip
-remaining — `958 + 2 = 960` passed, `1` skipped, total `961` nodes selected, matching
-`792 (reviewer's 789+3) - 3 + 127 + 42 = 961` exactly.
+G4 THE TESTS — serial run in the primary checkout at the last code commit (0739f3162), real exit
+code:
+```
+$ python3 -m pytest -q -p no:cacheprovider -rs tests/orchestration/test_task_veto_runner.py tests/orchestration/test_task_veto.py tests/orchestration/test_worktrees.py tests/orchestration/test_task_expectation_status_truth.py tests/orchestration/test_run_manifest.py tests/orchestration/test_run_manifest_zero_call_expectations.py tests/orchestration/test_run_manifest_task_history_chain.py tests/orchestration/test_pause_manifest.py tests/orchestration/test_pause_resume.py tests/orchestration/test_pause_resume_cycles.py tests/orchestration/test_job_stop_integration.py tests/orchestration/test_job_worktree_integration.py tests/orchestration/test_job_worktree_handoff.py tests/orchestration/test_job_worktree_integrity.py tests/orchestration/test_task_edit_runtime.py tests/orchestration/test_pingpong_job_dod_gate.py tests/cli/test_job_pause.py tests/test_no_orphan_modules.py tests/orchestration/test_import_reachability.py tests/orchestration/test_event_names.py tests/orchestration/test_dag_schedule.py tests/orchestration/test_live_review_rotation.py tests/orchestration/test_integrity_gate.py tests/orchestration/test_block_lint.py tests/cli/test_golden_path.py
+757 passed in 203.72s (0:03:23)
+REAL_EXIT=0
+```
+No `SKIPPED` line was printed by `-rs` anywhere in this selection — zero skips.
+
+`--collect-only -q` on the new file alone: `10 tests collected`.
+
+Accounting for the difference from the reviewer's `688 passed`: the reviewer's selection omitted
+the new test file and the golden path, and ran over R1's code (before this round's growth of
+`test_task_veto.py` and `test_worktrees.py`, and before `"vetoed"` widened
+`test_task_expectation_status_truth.py`'s parametrized matrix). Measured directly: `test_task_veto.py`
+grew 127→129 (+2), `test_worktrees.py` grew 32→41 (+9, confirmed by collecting R1's own copy of the
+file via `git show 25ab44dec:tests/orchestration/test_worktrees.py`), and
+`test_task_expectation_status_truth.py` grew 75→81 (+6 — one new status × six expectations in the
+exhaustive matrix). `test_task_veto_runner.py` is new (+10) and `tests/cli/test_golden_path.py`
+(+42) was outside the reviewer's selection entirely. `688 + 2 + 9 + 6 + 10 + 42 = 757` — matches the
+measured total exactly.
 
 ```
 $ python3 -m apps.cli.main integrity check --json
-{"check_count": 6, ... "fail_count": 0, "ok": true, "passed": true, ...}
+{"check_count": 6, "checks": [...six "pass" entries...], "fail_count": 0, "ok": true, "passed": true, ...}
 REAL_EXIT=0
 ```
-All six checks read `pass`, `fail_count` 0.
+All six checks read `pass`, `fail_count` 0 (run after the tree was clean, i.e. after C5c).
 
-G5 THE RED PROOFS — `git worktree add --detach .remedy-wt/f027-r1-mut f93fb8028` (exit 0), then
-`python3 -B .agent/authored/f027-r1-mutations.py /home/decodeux/Repos/remedy/.remedy-wt/f027-r1-mut`:
+G5 THE RED PROOFS — `git worktree add --detach .remedy-wt/f027-r2-mut 0739f3162` (exit 0), then
+`python3 -B .agent/authored/f027-r2-mutations.py /home/decodeux/Repos/remedy/.remedy-wt/f027-r2-mut`:
 ```
 --- control run (unmutated, before) ---
 control: exit=0
-127 passed in 0.49s
-m1 a whitespace-only reason is accepted: exit=1 failed=3 failing_node_ids=[...3 nodes...]
+180 passed in 10.24s
+m1 the pre-task fold is removed, so only the fold before the loop runs: exit=1 failed=1 failing_node_ids=['tests/orchestration/test_task_veto_runner.py::TestVetoDuringTheRun::test_a_veto_recorded_while_the_prior_task_runs_stops_the_next_one']
 restored byte-identical: True
-m2 a 501-character reason is accepted: exit=1 failed=1 failing_node_ids=[...1 node...]
+m2 the fold never calls restore_tree: exit=1 failed=1 failing_node_ids=['tests/orchestration/test_task_veto_runner.py::TestGitWorktreeVetoRestoresTheWorkspace::test_a_veto_and_relaunch_removes_the_blocked_attempts_file']
 restored byte-identical: True
-m3 a reason holding a control character is accepted: exit=1 failed=4 failing_node_ids=[...4 nodes...]
+m3 the loop dispatches an unreachable task: exit=1 failed=2 failing_node_ids=['tests/orchestration/test_task_veto_runner.py::TestDiamondVetoBeforeTheRun::test_b_vetoed_before_the_run', 'tests/orchestration/test_task_veto_runner.py::TestLegacyJobFileVeto::test_the_second_of_three_vetoed']
 restored byte-identical: True
-m4 a secret-shaped reason is accepted: exit=1 failed=1 failing_node_ids=[...1 node...]
+m4 the fold never sends a skipped task back to pending: exit=1 failed=2 failing_node_ids=['tests/orchestration/test_task_veto_runner.py::TestBlockThenVetoThenRelaunch::test_the_independent_task_returns_to_pending_and_runs', 'tests/orchestration/test_task_veto_runner.py::TestFoldSkipResetIsExact::test_only_the_reachable_skipped_task_returns_to_pending']
 restored byte-identical: True
-m5 an accepted reason is returned stripped: exit=1 failed=1 failing_node_ids=[...1 node...]
+m5 the fold sends every skipped task after the vetoed one back to pending, unreachable ones too: exit=1 failed=1 failing_node_ids=['tests/orchestration/test_task_veto_runner.py::TestFoldSkipResetIsExact::test_only_the_reachable_skipped_task_returns_to_pending']
 restored byte-identical: True
-m6 the gate admits a completed job: exit=1 failed=12 failing_node_ids=[...12 nodes...]
+m6 the terminal branch is removed: exit=1 failed=6 failing_node_ids=['tests/orchestration/test_task_veto_runner.py::TestBlockThenVetoThenRelaunch::test_the_independent_task_returns_to_pending_and_runs', 'tests/orchestration/test_task_veto_runner.py::TestDiamondVetoBeforeTheRun::test_b_vetoed_before_the_run', 'tests/orchestration/test_task_veto_runner.py::TestEveryTaskVetoed::test_nothing_is_dispatched_and_the_error_names_them_all', 'tests/orchestration/test_task_veto_runner.py::TestGitWorktreeVetoRestoresTheWorkspace::test_a_veto_and_relaunch_removes_the_blocked_attempts_file', 'tests/orchestration/test_task_veto_runner.py::TestLegacyJobFileVeto::test_the_second_of_three_vetoed', 'tests/orchestration/test_task_veto_runner.py::TestVetoDuringTheRun::test_a_veto_recorded_while_the_prior_task_runs_stops_the_next_one']
 restored byte-identical: True
-m7 the gate admits an applied_to_job_workspace task: exit=1 failed=7 failing_node_ids=[...7 nodes...]
+m7 the terminal's error leaves out the unreachable set: exit=1 failed=2 failing_node_ids=['tests/orchestration/test_task_veto_runner.py::TestDiamondVetoBeforeTheRun::test_b_vetoed_before_the_run', 'tests/orchestration/test_task_veto_runner.py::TestEveryTaskVetoed::test_nothing_is_dispatched_and_the_error_names_them_all']
 restored byte-identical: True
-m8 the gate refuses a skipped task: exit=1 failed=7 failing_node_ids=[...7 nodes...]
+m8 the fold vetoes a task whose status is outside VETOABLE_TASK_STATUSES: exit=1 failed=1 failing_node_ids=['tests/orchestration/test_task_veto_runner.py::TestInertVeto::test_a_veto_of_an_already_applied_task_changes_nothing']
 restored byte-identical: True
-m9 the gate ignores already_vetoed: exit=1 failed=3 failing_node_ids=[...3 nodes...]
+m9 the fold swallows a TaskVetoError and dispatches on: exit=1 failed=1 failing_node_ids=['tests/orchestration/test_task_veto_runner.py::TestCorruptVetoFile::test_blocks_with_task_veto_control_error_and_dispatches_nothing']
 restored byte-identical: True
-m10 the control file is named by the task id itself instead of its digest: exit=1 failed=2 failing_node_ids=[...2 nodes...]
+m10 restore_tree never deletes a path the tree lacks: exit=1 failed=3 failing_node_ids=['tests/orchestration/test_task_veto_runner.py::TestGitWorktreeVetoRestoresTheWorkspace::test_a_veto_and_relaunch_removes_the_blocked_attempts_file', 'tests/orchestration/test_worktrees.py::TestRestoreTree::test_restore_removes_a_nested_directory_left_empty', 'tests/orchestration/test_worktrees.py::TestRestoreTree::test_restore_removes_an_added_file']
 restored byte-identical: True
-m11 the unreachable set keeps a task whose work is done: exit=1 failed=1 failing_node_ids=[...1 node...]
+m11 restore_tree drops the executable bit: exit=1 failed=1 failing_node_ids=['tests/orchestration/test_worktrees.py::TestRestoreTree::test_restore_recreates_an_executable_path']
 restored byte-identical: True
-m12 the control file is published without create_only, so a second veto replaces the first: exit=1 failed=2 failing_node_ids=[...2 nodes...]
+m12 "vetoed" is left out of VALID_TASK_STATUSES: exit=1 failed=1 failing_node_ids=['tests/orchestration/test_task_veto_runner.py::TestTaskCapAfterAVeto::test_the_paused_manifest_reads_the_vetoed_task_as_skipped']
 restored byte-identical: True
-m13 the command writes the event without reading the ledger first: exit=1 failed=1 failing_node_ids=[...1 node...]
+m13 the gate's task_already_vetoed route repairs no event (R-1065 as it stood): exit=1 failed=3 failing_node_ids=['tests/orchestration/test_task_veto.py::TestTaskVetoedEvent::test_the_gate_route_repairs_a_missing_event_too', 'tests/orchestration/test_task_veto.py::TestVetoTaskCommand::test_a_vetoed_status_with_no_entry_answers_empty_request_id_and_repairs_nothing', 'tests/orchestration/test_task_veto.py::TestVetoTaskCommand::test_task_already_vetoed_refusal_when_an_entry_already_exists']
 restored byte-identical: True
-m14 the command checks the task before the reason: exit=1 failed=1 failing_node_ids=[...1 node...]
-restored byte-identical: True
-m15 the command's unreachable set keeps another veto's tasks: exit=1 failed=1 failing_node_ids=[...1 node...]
+m14 the lost race answers {"outcome": "task_already_vetoed"} as before: exit=1 failed=1 failing_node_ids=['tests/orchestration/test_task_veto.py::TestTaskVetoedEvent::test_a_retry_repairs_a_missing_event_after_a_failed_write']
 restored byte-identical: True
 --- control run (unmutated, after) ---
 control: exit=0
-127 passed in 0.49s
+180 passed in 8.73s
 ALL MUTATIONS CAUGHT AND RESTORED CLEANLY: True
 ```
-REAL_EXIT=0 (full untrimmed output, including every named failing node id, is in the round
-transcript and reproducible by re-running the tool). Every one of the 15 mutations was red with at
-least one failing node; none stayed green; every restoration was byte-identical.
+REAL_EXIT=0. Every one of the 14 mutations was red with at least one failing node; none stayed
+green; every restoration was byte-identical.
 
-`git worktree remove --force .remedy-wt/f027-r1-mut` → exit 0. `git worktree prune` → exit 0.
-`git worktree list` afterward: primary checkout plus exactly the worktrees constraint 6 names
-(`f015-*`, `f020-*`, `f023-*`, `f024-*`, `f025-*`, `f027-r1-dry`, `f284-*`, and the `job-*`
-worktrees) — nothing else.
+`git worktree remove --force .remedy-wt/f027-r2-mut` → exit 0. `git worktree prune` → exit 0.
+`git worktree list` afterward: the primary checkout plus exactly the worktrees constraint 6 named
+at step 4 (`f015-*`, `f020-*`, `f023-*`, `f024-*`, `f025-*`, `f027-r1-dry`, `f027-r2-dry`, `f284-*`
+and the `job-*` worktrees) — nothing else.
 
-CONSTRAINT 3 — round path set: `git diff --name-only 557cbbcc5` (before C5) named exactly:
-`.agent/authored/f027-r1-block.md`, `.agent/authored/f027-r1-claim.diff`,
-`.agent/authored/f027-r1-context.md`, `.agent/authored/f027-r1-mutations.py`,
-`.agent/authored/f027-r1-plan.md`, `.agent/context.md`, `.agent/decisions.md`,
-`.agent/live_review.md`, `.agent/plan.md`, `docs/roadmap/STATUS.md`,
-`packages/orchestration/event_names.py`, `packages/orchestration/pingpong_job.py`,
-`packages/orchestration/task_veto.py`, `tests/orchestration/test_task_veto.py`,
-`tests/test_no_orphan_modules.py` — the block's whole named set, nothing extra. None of the
-forbidden paths (pause_control.py, safe_points.py, dag_schedule.py, ui_server.py,
-command_catalog.py, apps/ui/**, prose_slips.md, candidates.md, operator_questions.md, README.md,
-T5_F027.md) were touched.
+CONSTRAINT 3 — round path set: `git diff --name-only 25ab44dec` (before C6) named exactly:
+`.agent/authored/f027-r2-block.md`, `.agent/authored/f027-r2-mutations.py`,
+`.agent/authored/f027-r2-plan.md`, `.agent/authored/f027-r2-records.diff`, `.agent/decisions.md`,
+`.agent/live_review.md`, `.agent/plan.md`, `packages/orchestration/pingpong_job.py`,
+`packages/orchestration/run_manifest.py`, `packages/orchestration/task_veto.py`,
+`packages/orchestration/worktrees.py`, `tests/orchestration/import_reachability_allowlist.txt`,
+`tests/orchestration/test_task_expectation_status_truth.py`, `tests/orchestration/test_task_veto.py`,
+`tests/orchestration/test_task_veto_runner.py`, `tests/orchestration/test_worktrees.py`,
+`tests/test_no_orphan_modules.py` — the block's whole named set, nothing extra (this file,
+`.agent/handoff.md`, is added by C6 itself). None of the forbidden paths
+(`long_run_executor.py`, `pause_control.py`, `safe_points.py`, `dag_schedule.py`,
+`pingpong_loop.py`, `ui_server.py`, `apps/`, `docs/`, `.agent/context.md`, `.agent/prose_slips.md`,
+`.agent/candidates.md`, `.agent/operator_questions.md`) were touched.
 
 G6 TREE AND PUSH — real readings reported in the final reply (this file cannot contain them, since
 they are measured AFTER this commit).
 
 ## Authored-text proofs
 
-Every `.agent/authored/f027-r1-*` copy was compared disk-to-disk against its committed source and
-matched byte for byte (see G1 above): the block copy, the plan and context payload copies, and the
-claim diff copy. `f027-r1-mutations.py` is the worker's own tool, not a reviewer-authored payload —
-no fidelity proof applies to it.
+Every `.agent/authored/f027-r2-*` copy was compared disk-to-disk against its committed source and
+matched byte for byte (see G1 above): the block copy, the plan payload copy and the records.diff
+payload copy. `f027-r2-mutations.py` is the worker's own tool, not a reviewer-authored payload — no
+fidelity proof applies to it.
 
 ## Deviations & assumptions
 
-1. C4 was split into C4a and C4b. The block's bundle names C4 as one commit ("THE TESTS AND THE
-   MUTATION TOOL"), but the whole test file (533 insertions) plus the mutation tool (234
-   insertions) totals 767 insertions — over the 500-line cap even before considering the test file
-   alone exceeds it (533). Per AGENTS.md's commit-size rule and this block's constraint 2 ("split a
-   commit that would reach it into parts with their own subjects (C3a and C3b, C4a and C4b)"), the
-   test file was split at a natural class boundary (end of `TestControlFiles`, S3–S6 coverage) into
-   C4a (350 insertions: constants, S3, S4, S5, S6 tests) and C4b (417 insertions: the rest of the
-   test file — S7, S8 tests — plus the mutation tool). Both stay under the 500-line cap. This is
-   the only oversize-avoidance split in this round.
-2. The command effect's exact response shape for the race-lost branch (`record_task_veto`
-   answering `False` after the S4 gate already passed) required an interpretive decision the block
-   states somewhat ambiguously: whether `nothing written by a refusal` (an S7 test requirement)
-   applies to the `task_already_vetoed` OUTCOME the block describes for that branch. This worker
-   read `refused` (with a `code`) and the bare `task_already_vetoed` outcome as two DISTINCT
-   response shapes — the pre-check gate refusal writes nothing at all (satisfying "nothing written
-   by a refusal"), while the race-lost branch (reachable only via a genuine create-only race, never
-   via a second sequential command call once an entry is known) is the one that performs the S8
-   event-repair check, since it alone is where "a retry after a failed event write repairs the
-   audit line exactly once" is actually reachable. This reading is implemented, unit-tested directly
-   (`TestTaskVetoedEvent.test_a_retry_repairs_a_missing_event_after_a_failed_write`) and red-proved
-   by mutations m9 and m13.
-3. No other deviation from the block's ordered commit sequence, specification or constraints.
+1. C5 was split into C5a, C5b and C5c. The block names C5 as one commit ("THE RUNNER TESTS AND THE
+   MUTATION TOOL"), but the new test file alone is 551 insertions — already over the 500-line cap
+   before the mutation tool's 280 are added. Per AGENTS.md's commit-size rule and this block's
+   constraint 2, the test file was split at a class boundary (right before
+   `TestBlockThenVetoThenRelaunch`) into C5a (279 insertions: fixtures, fakes, the diamond, every-
+   task-vetoed, the legacy job-file test, the during-the-run veto test) and C5b (272 insertions: the
+   remaining classes), with the mutation tool as its own C5c (280 insertions). All three stay under
+   the 500-line cap. This is the only oversize-avoidance split in this round.
+2. `_fold_task_vetoes` is a MODULE-LEVEL function in `pingpong_job.py`, not a closure nested inside
+   `run_job` (unlike `_stop_check`/`_absorb_here`, which are nested). The block says only "one
+   helper that `run_job` calls," leaving the shape open; a module-level function let a test
+   (`TestFoldSkipResetIsExact`) call it directly to pin the skip-reset rule's exact boundary — a
+   scenario driven end-to-end through `run_job`'s own loop cannot distinguish "reset nothing" from
+   "reset every skipped task, unreachable ones too" (mutations m4 and m5), because the loop's own
+   per-task unreachable filter (S4) independently withholds an incorrectly-reset task from dispatch
+   and the terminal (S5) converts it back to `skipped` regardless — both defences mask the fold's own
+   bug at the level of `run_job`'s final output. The direct unit test was added specifically to make
+   m5 red; without it, m5 was measured GREEN in an early dry run of the mutation tool (reported
+   honestly here rather than silently strengthened away).
+3. S3 says a vetoed entry's `unreachable_task_ids` is "that task's `veto_unreachable` over the
+   tasks" — read literally as `veto_unreachable(job.tasks, [entry.task_id])`, this task's OWN
+   downstream alone, computed at the moment it is folded, rather than the cumulative union of every
+   veto folded so far in the same pass. This matches `veto_task_command`'s own S7 per-entry
+   `unreachable` field (which the block's R1 text established the same way), and is exercised by the
+   diamond test (`veto["unreachable"] == [d_id]` at the command, `entry["unreachable_task_ids"] ==
+   [d_id]` at the fold).
+4. One runner test (`TestTaskCapAfterAVeto`) uses a markdown job (`parse_job_file`) rather than the
+   general `_save_job` (Task-Plan) pattern the rest of the file follows. A Task-Plan job never
+   carries a `job_file_sha256` (it has no underlying job file), which fails the run manifest's own
+   schema validation for a reason wholly unrelated to the veto feature; the markdown form was needed
+   specifically because this test reads a real, validated `paused` manifest. The chain's tail task is
+   vetoed (nothing depends on it) so the middle task stays reachable and pending when the cap parks
+   the run — the intended shape ("the vetoed task as `skipped`" in a valid manifest) is unchanged.
+5. No other deviation from the block's ordered commit sequence, specification or constraints.
 
 ## Item status
 
 | Item | Status | Reason |
 |---|---|---|
-| C1a | done | |
-| C1b | done | |
+| C1 | done | |
 | C2 | done | |
 | C3 | done | |
-| C4a | deviated | C4 split into C4a/C4b — the whole file plus tool exceeds the 500-line cap |
-| C4b | deviated | see C4a |
-| C5 | done | |
+| C4 | done | |
+| C5a | deviated | C5 split into C5a/C5b/C5c — the test file alone exceeds the 500-line cap |
+| C5b | deviated | see C5a |
+| C5c | deviated | see C5a |
 | G1 TRANSPORT | done | |
-| G2 THE CLAIM | done | |
+| G2 THE RECORDS | done | |
 | G3 THE CODE | done | |
 | G4 THE TESTS | done | |
 | G5 THE RED PROOFS | done | |
@@ -309,6 +334,6 @@ no fidelity proof applies to it.
 
 ## Next
 
-Phase 1 rule 1 (read `.agent/STOP` from disk), then the review of round 1, then the rest of T001:
-the runners fold a veto at their safe points, the in-progress finish rule, and the terminal
-accounting. Open findings: 0. Operator questions: 5.
+Phase 1 rule 1 (read `.agent/STOP` from disk), then the review of round 2, then the rest of T001: a
+task vetoed while its provider call runs, and the cycle executor's reading of a veto. Open findings:
+1 (R-1065, landed this round and awaiting the reviewer's resolution). Operator questions: 5.
