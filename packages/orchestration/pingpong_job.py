@@ -2292,6 +2292,95 @@ def _reason_is_pause_error(reason: str) -> bool:
 
 
 # ---------------------------------------------------------------------------
+# F027 D2 (1)-(3) — the linear runner's fold of a veto
+# ---------------------------------------------------------------------------
+
+
+def _fold_task_vetoes(job: JobPlan, job_handle: Any, control_root_path: Path | None) -> bool:
+    """Fold every not-yet-folded veto entry into ``job``'s own record (DECISION F027 D2).
+
+    Called by ``run_job`` immediately before its task loop and again at every pre-task
+    safe point, after a stop and a pause have both found nothing (D2 (1)): a veto beats
+    neither. An entry naming no task of the job, or a task whose status has moved outside
+    ``task_veto.VETOABLE_TASK_STATUSES`` since the veto was recorded, changes no task and
+    is recorded INERT, naming the status (``"unknown"`` for no task). Otherwise, when the
+    job owns a worktree and the task's attempt is still ``active`` with a start tree, the
+    workspace is returned to that tree FIRST (D2 (3)) — so none of the vetoed attempt's
+    partial work reaches a later task's diff — and then the task becomes ``TASK_VETOED``.
+    A veto of a task that was ``blocked``/``failed`` sends every ``skipped`` task after it
+    in plan order back to ``pending``, unless that task is unreachable from every veto
+    folded so far: ``_block_job`` skipped it only for THIS task's own failure (D2 (2)).
+
+    Returns True when the job was just blocked — a ``TaskVetoError`` reading the control
+    files, or a ``WorktreeError`` from the restore — and ``run_job`` must return ``job``
+    right here, before any further task is dispatched, with the failing task left as it
+    was. Persists the record itself in every case that changes it or blocks the job.
+    """
+    from packages.orchestration import task_veto as _tv
+    from packages.orchestration import worktrees as _W
+
+    try:
+        entries = _tv.vetoed_tasks(job.job_id, control_root_path=control_root_path)
+    except _tv.TaskVetoError as exc:
+        job.state = JOB_BLOCKED
+        job.error = f"task_veto_control_error: {exc}"
+        _persist_job(job)
+        return True
+
+    tasks_by_id = {t.task_id: t for t in job.tasks}
+    task_vetoes = job.metadata.setdefault("task_vetoes", {})
+    changed = False
+
+    for entry in entries:
+        task = tasks_by_id.get(entry.task_id)
+        if task is not None and task.status == TASK_VETOED:
+            continue                                          # already folded
+
+        if task is None or task.status not in _tv.VETOABLE_TASK_STATUSES:
+            task_vetoes[entry.task_id] = {
+                **entry.to_json(),
+                "inert": task.status if task is not None else "unknown",
+            }
+            changed = True
+            continue
+
+        status_at_fold = task.status
+        restored = False
+        if (job_handle is not None and task.task_attempt_state == "active"
+                and task.task_start_tree):
+            try:
+                _W.restore_tree(job_handle, task.task_start_tree)
+            except _W.WorktreeError as exc:
+                job.state = JOB_BLOCKED
+                job.error = f"veto_restore_failed: {exc}"
+                _persist_job(job)
+                return True
+            restored = True
+
+        task.status = TASK_VETOED
+        task.task_attempt_state = "vetoed"
+        task_vetoes[entry.task_id] = {
+            **entry.to_json(),
+            "folded_at": datetime.now(timezone.utc).isoformat(),
+            "restored": restored,
+            "unreachable_task_ids": list(_tv.veto_unreachable(job.tasks, [entry.task_id])),
+        }
+        changed = True
+
+        if status_at_fold in (TASK_BLOCKED, TASK_FAILED):
+            all_vetoed_ids = [t.task_id for t in job.tasks if t.status == TASK_VETOED]
+            unreachable_now = set(_tv.veto_unreachable(job.tasks, all_vetoed_ids))
+            this_idx = next(i for i, t in enumerate(job.tasks) if t.task_id == entry.task_id)
+            for later in job.tasks[this_idx + 1:]:
+                if later.status == TASK_SKIPPED and later.task_id not in unreachable_now:
+                    later.status = TASK_PENDING
+
+    if changed:
+        _persist_job(job)
+    return False
+
+
+# ---------------------------------------------------------------------------
 # Sequential job runner (Steps 4829-4830, 4837-4838, 4857-4869)
 # ---------------------------------------------------------------------------
 
@@ -3090,6 +3179,11 @@ def run_job(
             _persist_job(job)
             return job
 
+        # F027 D2 (1): the fold runs once before the task loop, right after the episode
+        # has started — a veto recorded before this episode ran is honoured before task 1.
+        if _fold_task_vetoes(job, job_handle, _control):
+            return job
+
         tasks_run = 0
         task_log = None     # R-0812: opened when the first task starts, one run id per call
         previous_summaries: list[TaskProofSummary] = []
@@ -3108,6 +3202,9 @@ def run_job(
 
         for idx, task in enumerate(job.tasks):
             if task.status in (TASK_APPLIED, TASK_PASSED, TASK_SKIPPED, TASK_SPLIT):
+                continue
+
+            if task.status == TASK_VETOED:
                 continue
 
             if task.status in (TASK_BLOCKED, TASK_FAILED):
@@ -3142,6 +3239,20 @@ def run_job(
                     return _stop_job(job, _stop, task=None, control_root_path=_control)
                 except StopFinalizationError:
                     return job
+
+            # F027 D2 (1): the fold runs again at every pre-task safe point, right after
+            # the stop and the pause both found nothing — a veto beats neither.
+            if _fold_task_vetoes(job, job_handle, _control):
+                return job
+
+            if task.status == TASK_VETOED:
+                continue                       # this very task was just folded
+
+            _veto_ids_so_far = [t.task_id for t in job.tasks if t.status == TASK_VETOED]
+            if _veto_ids_so_far:
+                from packages.orchestration import task_veto as _tv
+                if task.task_id in _tv.veto_unreachable(job.tasks, _veto_ids_so_far):
+                    continue                   # unreachable behind a veto: never dispatched
 
             # Build bounded task prompt
             task_prompt = _build_task_prompt(job, task, previous_summaries)
@@ -3492,6 +3603,41 @@ def run_job(
                     job.error = f"budget_exhausted: {getattr(_stop, 'reason', 'budget')}"
                     _persist_job(job)
                     return job
+
+        # F027 D2 (5): THE TERMINAL — before the ordinary all_done reading, when at least
+        # one task is vetoed and every other task is applied, passed, skipped, split,
+        # vetoed or unreachable behind a veto, the run ends `blocked` naming both sets. A
+        # runnable pending task (one outside the unreachable set) fails this readiness
+        # check on its own, so the task cap's `paused` reading below keeps precedence
+        # exactly when such a task remains — nothing further is needed to arbitrate it.
+        _veto_terminal_vetoed_ids = [t.task_id for t in job.tasks if t.status == TASK_VETOED]
+        if _veto_terminal_vetoed_ids:
+            from packages.orchestration import task_veto as _tv
+
+            _veto_terminal_unreachable = list(
+                _tv.veto_unreachable(job.tasks, _veto_terminal_vetoed_ids))
+            _veto_terminal_unreachable_set = set(_veto_terminal_unreachable)
+            _veto_terminal_ready = all(
+                t.status in (TASK_APPLIED, TASK_PASSED, TASK_SKIPPED, TASK_SPLIT, TASK_VETOED)
+                or t.task_id in _veto_terminal_unreachable_set
+                for t in job.tasks
+            )
+            if _veto_terminal_ready:
+                for t in job.tasks:
+                    if t.status == TASK_PENDING and t.task_id in _veto_terminal_unreachable_set:
+                        t.status = TASK_SKIPPED
+                job.state = JOB_BLOCKED
+                job.error = (
+                    "all_remaining_work_vetoed: "
+                    f"vetoed {', '.join(_veto_terminal_vetoed_ids) or 'none'}; "
+                    f"unreachable {', '.join(_veto_terminal_unreachable) or 'none'}")
+                job.metadata["veto_terminal"] = {
+                    "vetoed": list(_veto_terminal_vetoed_ids),
+                    "unreachable": list(_veto_terminal_unreachable),
+                }
+                _persist_budget_actuals()
+                _persist_job(job)
+                return job
 
         # Determine final job status
         all_done = all(

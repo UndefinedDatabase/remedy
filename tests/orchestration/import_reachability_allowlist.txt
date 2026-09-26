@@ -244,6 +244,7 @@ packages.orchestration.task_edit_runtime
 packages.orchestration.task_granularity
 packages.orchestration.task_registry
 packages.orchestration.task_runner
+packages.orchestration.task_veto
 packages.orchestration.teacher_model
 packages.orchestration.teacher_narration
 packages.orchestration.teacher_qa
