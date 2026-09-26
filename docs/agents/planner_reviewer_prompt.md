@@ -305,6 +305,15 @@ end the response with:
   its rounds met, a selection that starts a live UI server run before `apps/ui` was built, is
   recorded in the round 2 gate entry and is item 12's reading of the environment a dry run must
   share with the gate it proves. The list stays at 34 items.
+  Consolidated a seventeenth time at F027's closure on 2026-09-26: nothing joined and no two items
+  were merged, because none of F027's lines in `.agent/prose_slips.md` names a lesson the list lacks.
+  A mutation that no behaviour can tell apart from the unmutated code is item 5's; a decision that
+  named a closed import set and missed the exception class the payload check catches is item 34's
+  reading of the equality guard that pins the set; a stop-on-red clause that did not separate an
+  existing test from one the round had just written, and a lead-in sentence ordered without the list
+  it belongs to, are both item 18's reading of an ordered wording against the property it must
+  establish; and an equality asked of a summary that the code builds as a longer sentence around the
+  value is item 8's. The list stays at 34 items.
   The next consolidation measures against 34.
   Reverse by deleting this paragraph.
   1. **Size.** Count the block's lines. Over 400 (DECISION F105 D5) → split or
