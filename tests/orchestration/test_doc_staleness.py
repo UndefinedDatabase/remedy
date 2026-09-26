@@ -142,18 +142,18 @@ class TestC02ConfigCliTableComplete:
         assert [_fields(c) for c in claims] == [
             (
                 "config_cli_table_complete", "docs/guides/remedy-toml-user-guide.md",
-                "documents `remedy config wipe`",
+                "documents the `config` subcommand `wipe`",
                 "the `config` group ships no `wipe` subcommand",
             ),
             (
                 "config_cli_table_complete", "docs/guides/remedy-toml-user-guide.md",
-                "the CLI commands table never documents `remedy config get`",
-                "`remedy config get` ships",
+                "the CLI commands table never documents the `config` subcommand `get`",
+                "the `config` subcommand `get` ships",
             ),
             (
                 "config_cli_table_complete", "docs/guides/remedy-toml-user-guide.md",
-                "the CLI commands table never documents `remedy config set`",
-                "`remedy config set` ships",
+                "the CLI commands table never documents the `config` subcommand `set`",
+                "the `config` subcommand `set` ships",
             ),
         ]
 

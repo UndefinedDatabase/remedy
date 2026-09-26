@@ -370,14 +370,14 @@ def _run_c02(root: Path, truth: ShippedTruth) -> tuple[StaleClaim, ...]:
     for order, sub in enumerate(sorted(documented - shipped)):
         items.append((0, order, StaleClaim(
             check_id, document,
-            f"documents `remedy config {sub}`",
+            f"documents the `config` subcommand `{sub}`",
             f"the `config` group ships no `{sub}` subcommand",
         )))
     for order, sub in enumerate(sorted(shipped - documented)):
         items.append((1, order, StaleClaim(
             check_id, document,
-            f"the CLI commands table never documents `remedy config {sub}`",
-            f"`remedy config {sub}` ships",
+            f"the CLI commands table never documents the `config` subcommand `{sub}`",
+            f"the `config` subcommand `{sub}` ships",
         )))
     return _sorted_claims(items)
 
