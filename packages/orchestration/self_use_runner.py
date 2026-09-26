@@ -66,7 +66,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from packages.core.models import JobBudgets
+from packages.core.models import JobBudgets, JobFences
 
 # _TASK_HEADING_RE is the PARSER'S OWN definition of where an order file's
 # prose ends and its tasks begin. parse_order_budget below reads the budget
@@ -75,9 +75,11 @@ from packages.core.models import JobBudgets
 # drift apart, and is why a private name is reached for here.
 from packages.orchestration.pingpong_job import (  # noqa: PLC2701
     _TASK_HEADING_RE,
+    BOOKKEEPING_FENCE,
     JOB_BLOCKED,
     JobPlan,
     run_job,
+    save_job_plan,
 )
 from packages.orchestration.role_config import resolve_role_config
 from packages.orchestration.self_use_job import plan_next_self_use_item
@@ -419,5 +421,14 @@ def run_next_self_use_item(
     budgets = JobBudgets(
         max_provider_calls=max_provider_calls, max_cost_usd=max_cost_usd
     ).model_dump(mode="json")
+    # DECISION amend0926-decisions-selfuse D4: a job file cannot declare a deny
+    # fence, so the fence over the review record is set on the planned job here.
+    # run_job reads it before any task may pass: a change under `.agent/` is
+    # refused, and a change confined to it fails as bookkeeping (R-1058).
+    deny = list(plan.fences.deny) if plan.fences else []
+    if BOOKKEEPING_FENCE not in deny:
+        allow = list(plan.fences.allow) if plan.fences else []
+        plan.fences = JobFences(allow=allow, deny=[*deny, BOOKKEEPING_FENCE])
+        save_job_plan(plan)
     result = run_job(plan.job_id, budgets=budgets, max_tasks=max_tasks, **run_job_kwargs)
     return entry, job_file_path, result

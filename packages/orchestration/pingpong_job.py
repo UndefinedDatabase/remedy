@@ -1991,6 +1991,42 @@ def validate_job_task_result(result: Any) -> tuple[bool, list[str]]:
     return (len(reasons) == 0, reasons)
 
 
+#: The deny glob over the review record. A self-use run puts it on its job
+#: (DECISION amend0926-decisions-selfuse D4), and a task whose every changed path
+#: lies under it changed only bookkeeping.
+BOOKKEEPING_FENCE = ".agent/**"
+
+#: The reason a task fails when every path it changed lies under
+#: :data:`BOOKKEEPING_FENCE` (DECISION amend0926-decisions-selfuse D4).
+BOOKKEEPING_ONLY_REASON = "the run changed only bookkeeping"
+
+
+def task_fence_refusal(job: Any, result: Any) -> str:
+    """Why a task's changes break its job's own deny fence, or "" when they do not.
+
+    Reads the job's declared ``fences.deny`` globs against every path the task's
+    run staged or reported in its safe diff. A job without deny globs, or a task
+    that changed nothing, is never refused here. When every changed path lies
+    under :data:`BOOKKEEPING_FENCE` and the job denies it, the reason is
+    :data:`BOOKKEEPING_ONLY_REASON`; otherwise it names the denied paths.
+    """
+    from fnmatch import fnmatch
+
+    deny = list(job.fences.deny) if getattr(job, "fences", None) else []
+    changed = sorted({
+        "/".join(p for p in str(path).replace("\\", "/").split("/") if p and p != ".")
+        for path in (*result.staged_files, *result.safe_diff_files)
+    } - {""})
+    if not deny or not changed:
+        return ""
+    denied = [path for path in changed if any(fnmatch(path, glob) for glob in deny)]
+    if not denied:
+        return ""
+    if BOOKKEEPING_FENCE in deny and all(fnmatch(path, BOOKKEEPING_FENCE) for path in changed):
+        return f"{BOOKKEEPING_ONLY_REASON}: {', '.join(changed)}"
+    return f"scope_fence_violation: {', '.join(denied)}"
+
+
 # The recorded provider must NAME WHAT ACTUALLY RAN: a literal default made an
 # unflagged run report a provider it never used (finding R-0768). One function so
 # ``run_job``'s own precedence chain stops being a rival answer to role_config's.
@@ -3549,6 +3585,19 @@ def run_job(
                 task.error = f"completion_gate_failed: {'; '.join(gate_reasons)}"
                 _log_task_ended(task_log, task, "completion_gate_failed")
                 _block_job(job, idx, f"task_{task.task_id}_gate_failed: {'; '.join(gate_reasons)}")
+                return job
+
+            # DECISION amend0926-decisions-selfuse D4: the job's own deny fence is
+            # read before the task may pass, so a reviewer's pass cannot carry a
+            # change the job forbade, and a change confined to the review record
+            # is a fail whatever the reviewer said.
+            fence_refusal = task_fence_refusal(job, result)
+            if fence_refusal:
+                task.reviewer_verdict = "fail"
+                task.status = TASK_BLOCKED
+                task.error = fence_refusal
+                _log_task_ended(task_log, task, "scope_fence_refused")
+                _block_job(job, idx, f"task_{task.task_id}_scope_fence_refused")
                 return job
 
             task.status = TASK_PASSED

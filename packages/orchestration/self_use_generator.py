@@ -333,7 +333,9 @@ def _ledger_tier(queue_path: Path | None, ledger_path: Path) -> SelfUseQueueEntr
     # gains a `Done:` line", and SU-030's builder met that with a ledger note
     # and no repair. The ledger is the reviewer's record, so the builder is told
     # to leave `.agent/` alone; describe_self_use_run_defects in
-    # packages/orchestration/self_use_findings.py names a pass that did not.
+    # packages/orchestration/self_use_findings.py names a pass that did not, and
+    # the run's own deny fence over `.agent/` refuses one (DECISION
+    # amend0926-decisions-selfuse D4).
     job_markdown = (
         f"# Job: Address ledger finding {r_id}\n"
         "\n"
@@ -346,9 +348,13 @@ def _ledger_tier(queue_path: Path | None, ledger_path: Path) -> SelfUseQueueEntr
         "reviewer, never by this task.\n"
         "\n"
         "Acceptance:\n"
-        f"- the repair {r_id}'s FIX names is made, outside `.agent/`, with a "
-        "test that fails without it and passes with it.\n"
-        "- no file under `.agent/` changes.\n"
+        f"- {r_id} is repaired in product code or tests, with a test that fails "
+        "without the repair and passes with it.\n"
+        "- No file under `.agent/` is changed by this task; if the repair cannot "
+        "be finished inside this task, the builder stops and states in its output "
+        "what it read and why the repair is out of reach, which the reviewer then "
+        "records as a failed run, and the finding's Done line is written only by "
+        "a human reviewer, never by this task.\n"
     )
     return SelfUseQueueEntry(
         id=new_id,

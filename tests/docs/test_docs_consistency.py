@@ -99,7 +99,14 @@ TIER_HEADING_RE = re.compile(r"^#+\s*Tier\s*(\d{1,2})", re.IGNORECASE)
 #: F285's closure under operator amendment amend0911-feedback rule B and
 #: placed after F035, the fifth unaccepted line below F285, under its own
 #: Tier 2 heading with the Tier 5 list re-opened after it; see T2_F286.md.
-TOTAL_FEATURES = 286
+#: One more, F287 (provider session continuity across relaunch), was
+#: registered on 2026-09-26 by operator amendment amend0926-decisions-selfuse
+#: as the first unchecked line of the Tier 3 extension block; see T3_F287.md.
+#: Two more, F289 (self-use sources completion) and F288 (event stream
+#: completeness & prompt nodes), were registered the same day by the same
+#: amendment under their own Tier 5 heading directly after F285's block; see
+#: T5_F289.md and T5_F288.md.
+TOTAL_FEATURES = 289
 
 #: Documents that must never contain a stale claim.
 PRIMARY_DOCS = [

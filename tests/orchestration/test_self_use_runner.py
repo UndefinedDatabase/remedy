@@ -690,3 +690,79 @@ class TestParseOrderBudget:
         with pytest.raises(SelfUseRunError) as excinfo:
             self_use_runner.parse_order_budget(line + "\n\n## Task 1\nBody.\n")
         assert line in str(excinfo.value), "the refusal must quote the line it read"
+
+
+# ---------------------------------------------------------------------------
+# Operator amendment amend0926-decisions-selfuse Part B.3 — the fence over `.agent/`
+# ---------------------------------------------------------------------------
+
+
+class TestASelfUseRunRepairsCodeNeverBookkeeping:
+    """DECISION amend0926-decisions-selfuse D4 (R-1058).
+
+    SU-030's builder wrote only a `Done:` paragraph into `.agent/live_review.md`
+    and its reviewer passed it. A self-use run now carries a deny fence over
+    `.agent/`, and run_job reads it before the task may pass: a change confined
+    to the review record is a fail with the reason "the run changed only
+    bookkeeping", and any other change under the fence is refused.
+    """
+
+    def _generated_queue(self, tmp_path: Path) -> Path:
+        from packages.orchestration.self_use_generator import generate_and_append_if_empty
+
+        queue_path = _write_queue(tmp_path, [])
+        ledger_path = tmp_path / "live_review.md"
+        ledger_path.write_text(
+            "- R-0001 — Low, A TEST FINDING FOR THE FIXTURE. FIX: fix the thing "
+            "described here.\n",
+            encoding="utf-8",
+        )
+        generated = generate_and_append_if_empty(queue_path=queue_path, ledger_path=ledger_path,
+                                                 order_path=tmp_path / "no-order.md")
+        assert generated is not None
+        return queue_path
+
+    def _run(self, tmp_path: Path, demo_repo: Path, builder_files: list[str]):
+        return run_next_self_use_item(
+            tmp_path / "jobs",
+            str(demo_repo),
+            queue_path=self._generated_queue(tmp_path),
+            builder_provider=FakeProvider(builder_files=builder_files,
+                                          pass_on_round=1, fail_on_round=99),
+            reviewer_provider=_pass_provider(),
+            repair_rounds=0,
+        )[2]
+
+    def test_a_run_that_writes_only_the_ledger_fails_as_bookkeeping(
+        self, tmp_path, isolate_data_root, demo_repo
+    ):
+        """Red proof (5): the builder writes only `.agent/live_review.md`."""
+        from packages.orchestration.pingpong_job import JOB_BLOCKED, TASK_BLOCKED
+
+        result = self._run(tmp_path, demo_repo, [".agent/live_review.md"])
+        task = result.tasks[0]
+        assert task.reviewer_verdict == "fail"
+        assert task.status == TASK_BLOCKED
+        assert task.error.startswith("the run changed only bookkeeping")
+        assert result.state == JOB_BLOCKED
+
+    def test_the_fence_refuses_a_write_under_the_record(
+        self, tmp_path, isolate_data_root, demo_repo
+    ):
+        """Red proof (6): a real repair beside a write under `.agent/` is refused."""
+        from packages.orchestration.pingpong_job import JOB_BLOCKED, TASK_BLOCKED
+
+        result = self._run(tmp_path, demo_repo, ["README.md", ".agent/notes.md"])
+        assert result.fences is not None and ".agent/**" in result.fences.deny
+        task = result.tasks[0]
+        assert task.status == TASK_BLOCKED
+        assert task.error == "scope_fence_violation: .agent/notes.md"
+        assert task.apply_manifest is None or task.apply_manifest.status != "applied"
+        assert result.state == JOB_BLOCKED
+
+    def test_a_repair_outside_the_record_still_passes(
+        self, tmp_path, isolate_data_root, demo_repo
+    ):
+        result = self._run(tmp_path, demo_repo, ["README.md"])
+        assert result.state == JOB_COMPLETED
+        assert result.tasks[0].reviewer_verdict == "pass"
