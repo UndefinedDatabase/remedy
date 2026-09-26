@@ -22268,3 +22268,32 @@ answers and the inbox card posts to it.
 HOW TO REVERSE: delete the catalog entry, `job_veto_cmd.py`, the door clause, the payload check, the
 `veto:` branches of the door and the inbox, the three import entries, their tests, and this
 paragraph.
+
+## DECISION F027 D6 — the write door guard's transitive walk skips the body of an `if TYPE_CHECKING:` block, because a type-only import never runs, so the three imports DECISION F027 D5 (5) rules are accepted with the accepted forbidden set unchanged (2026-09-26)
+
+CONTEXT: round 5 stopped at S6's own stop clause. Measured at `96cb5154` with the round's draft of the
+door applied, in the reviewer's scratch tree: `test_the_door_reaches_only_the_accepted_forbidden_modules_transitively`
+in `tests/ui_server/test_command_channel.py` reads 1 failed with `exec_guard` and `subprocess`
+unrecorded; the route is the door's new import of `task_veto`, whose module-level import of
+`stream_evidence` reaches that module's `if TYPE_CHECKING:` block, which imports
+`exec_guard.ExecGuardPolicy` for annotations only — the block's own comment says the runtime import
+sits inside `run_streamed_command`. `_module_level_closure` already declines to follow an import
+inside a function body, because such an import runs only when the function is called.
+
+CHOSEN: (1) `_module_level_closure` does not follow the body of an `if` statement whose test is the
+name `TYPE_CHECKING` or an attribute named `TYPE_CHECKING`, and still follows that statement's `else`
+branch, by the same reasoning it gives for function bodies: such an import never runs.
+`ACCEPTED_TRANSITIVE_FORBIDDEN` stays `packages.common.secure_fs` and `shutil`. (2) A test over
+synthetic modules proves the walker still counts a module-level import of a forbidden module and does
+not count one under `if TYPE_CHECKING:`. (3) Measured in the same scratch tree: with this change the
+file reads 109 passed, and without it the same draft reads 1 failed, 108 passed — so the change
+removes exactly the false reach and no accepted entry vanishes. (4) Round 6 finishes round 5's door,
+inbox and guard work from its uncommitted draft, under D5.
+
+ALTERNATIVES: widening `ACCEPTED_TRANSITIVE_FORBIDDEN` with `exec_guard` and `subprocess`, rejected
+because it would accept by name a reach that does not exist and hide a real one arriving later by
+the same route; moving `task_veto`'s import of `redact_text` into its function, rejected because it
+bends a production module around the guard's blind spot and leaves the blind spot for the next
+module.
+
+HOW TO REVERSE: delete the `TYPE_CHECKING` skip and its test, and this paragraph.
