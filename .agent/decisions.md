@@ -22799,3 +22799,63 @@ does not read the attempt id until T002.
 HOW TO REVERSE: remove the `run_id` keyword from `run_pingpong`, the attempt id from `run_job`'s
 events, the two round events with their readers, and `ATTEMPT_EVENT_KINDS` with its branch of the
 envelope, and delete this paragraph.
+
+## DECISION F288 D2 — the run-next path mints its attempt id as `run_job` does, a test run of the test service is an attempt whose id is its test run id, and a new `plan_approved` event names the approved plan's task ids; the long-run executor's repair events move to round 3 (2026-09-27)
+
+CONTEXT: DECISION F288 D1 gave `run_job`'s path its attempt id and left the rest of T001 to round
+2. Measured at `c0553449`: `_cmd_run_next_task_local` in `apps/cli/commands/job.py` writes
+`task_run_started` and then has fourteen more `log.log` calls on one `RunLogWriter`, from
+`builder_started` to the terminal events, all naming the task and none an attempt, and it writes a
+`task_run_noop` before any task is chosen when none is pending; `execute_test_run` in
+`packages/orchestration/test_execution_service.py` writes `test_run_requested`,
+`test_run_started`, `test_run_completed` or `test_run_timed_out`, and `test_run_blocked` from
+seven refusal sites, each through its `_emit` helper, each naming the run's `test_run_id`, with
+the request's task id at the top level only for the completion and time-out events and their result in the
+metadata key `status` rather than in `outcome`; `emit_important_event` passes metadata to
+`RunLogWriter.log`, which lifts the keys `task_id` and `outcome` to the top level; no event
+announces a plan approval, which happens in `resolve_task_plan_approval` in
+`packages/orchestration/job_plan.py` for the command line and the browser, and in `do_sequence.py`
+and `orchestrator_loop.py` for the unattended `--yes` approval, each after the plan is saved; and
+the long-run executor's `cycle_repair_round` and `cycle_healed` belong to a cycle over several
+tasks, which names no single task.
+
+CHOSEN: (1) THE ORDER: round 2 lands the run-next path, the test service and the plan-approved
+event. The long-run executor's repair events and the builder bridge's loop events inside them move
+to round 3, beside the reducer, because a repair over several tasks needs a ruling of its own on
+which task id it carries. (2) THE RUN-NEXT PATH mints its attempt id with `mint_run_id()` once the
+pending task is chosen, directly before `task_run_started`, and every `log.log` call from
+`task_run_started` to the function's end, `_fail`'s included, carries it as `attempt_id`. The
+pre-execution noop belongs to no attempt and carries none. (3) THE TEST SERVICE: one test run is an
+attempt of its own and its attempt id is its `test_run_id`. Every `test_run_*` event carries
+`attempt_id`, the request's task id as `task_id` when the request names one, and its result as
+`outcome`: `test_run_completed` its status, `passed` or `failed`; `test_run_timed_out` `timeout`;
+`test_run_blocked` `blocked`; `test_run_requested` and `test_run_started` none, because nothing has
+resulted yet. Every metadata key the events carry today stays. (4) THE PLAN-APPROVED EVENT: a new
+`announce_plan_approval(job, *, mode)` in `job_plan.py` writes `plan_approved` to the job's run log
+with `outcome` `approved` and the metadata `task_ids`, the job's task ids in plan order, and
+`approval_mode`. `resolve_task_plan_approval` calls it with mode `human` after it saves an
+approved plan, and both unattended approvals call it with `AUTO_APPROVAL_MODE` after they save. A
+failure to write the event is logged and never undoes a saved approval. (5) THE ENVELOPE:
+`ATTEMPT_EVENT_KINDS` gains `task_run_noop`, `builder_started`, `builder_completed`,
+`verification_passed`, `verification_failed`, `test_run_requested`, `test_run_started`,
+`test_run_completed`, `test_run_timed_out` and `test_run_blocked`; and `plan_approved` gains a
+block `plan` of its own holding `task_ids`, the string entries of the metadata list in order and
+an empty list when there is none, on the envelope's rule for `budget`. (6) THE READERS:
+`EVENT_NAMES` gains `plan_approved`; `STREAM_EVENT_CATALOG` and `NARRATED_EVENTS` gain a line for
+it; `remedy event timeline` renders it as one line naming the task count and the mode; and the
+run-next event list in `docs/system/architecture.md` says that every event of an execution carries
+its attempt id.
+
+ALTERNATIVES: a fresh attempt id for a test run, rejected because the test run id already names
+exactly that execution and every record of it; the approval event written inside
+`auto_approve_task_plan`, rejected because that function deliberately persists nothing and its
+callers own their ledger entries; a `plan_rejected` event beside it, rejected because T5_F288.md
+names the approval and nothing reads a rejection; the plan's task titles in the envelope, rejected
+because the dashboard's task list already carries them and the reducer needs only the ids.
+
+DELIBERATE ABSENCES: the replay tool's `resume_test_started` and `resume_test_completed` describe a
+past run being replayed, not an attempt being made, and carry no attempt id.
+
+HOW TO REVERSE: remove the attempt id from the run-next path and the test service's events,
+`announce_plan_approval` with its three calls and the `plan_approved` readers, and the ten kinds and
+the `plan` block from the envelope, and delete this paragraph.

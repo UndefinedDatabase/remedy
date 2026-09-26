@@ -12,22 +12,20 @@ exists; and the live graph draws test-run, repair and prompt nodes
 
 ## Current Step
 
-ROUND 1: claim F288, re-head the live review record, book F289's round 7,
-record DECISION F288 D1, and land the first half of T001 — the attempt id
-as the ping-pong run id, a test and a repair event per ping-pong round,
-the attempt id in the stream's envelope, and the readers of the two new
-event names.
+ROUND 2: book round 1's PASS, record DECISION F288 D2, and land the
+second half of T001's writers — the run-next path's attempt id, the test
+service's attempt id, task id and result, and the `plan_approved` event
+with its `plan` block in the stream's envelope.
 
 ## Next Steps
 
-1. The second half of T001: the run-next path, the test service, the
-   long-run repair events and the plan-approved event.
-2. T002: the live graph's reducer draws test-run and repair nodes and the
+1. The long-run executor's repair events under their own ruling, and
+   T002: the live graph's reducer draws test-run and repair nodes and the
    tasks born at plan approval.
-3. T003: the prompt node kind, its look, and its mouse and keyboard reach.
-4. The closure sequence.
+2. T003: the prompt node kind, its look, and its mouse and keyboard reach.
+3. The closure sequence.
 
 ## Risks
 
-Every frame outside the attempt kinds must stay byte-identical in the
-stream. Open findings: 0.
+A failed `plan_approved` write must never undo a saved approval. Open
+findings: 0.
