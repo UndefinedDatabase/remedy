@@ -12,18 +12,19 @@ inbox and never executed on its own (`docs/roadmap/features/T5_F027.md`).
 
 ## Current Step
 
-ROUND 9: book round 8, register and repair R-1069 and R-1070, record
-DECISION F027 D9, and land the diamond end-to-end: a veto filed through a live write
-door on a job paused mid-run, the run finished through the real CLI, and
-both answers to the replan proposal carried to their effects.
+ROUND 10, the closure sequence's first round: book round 9, resolve
+R-1069 and R-1070, write the Built State, consolidate the checklist, run
+the closure's self-use item, and take the feature's one full suite.
 
 ## Next Steps
 
-1. The closure sequence: the one full suite, the evidence, the review
-   package, the status line and the pull request.
+1. The evidence round: the booking of this round, any registration the
+   self-use run or the suite asks for, the evidence bundle and the review
+   package.
+2. The closing round: the ledger rotation, the status line, the README
+   pins, the self-use item's `consumed_by` and the pull request.
 
 ## Risks
 
-The new end-to-end runs the real CLI three times; it must stay well
-inside the standard stage's budget. Open findings: 2 — R-1069 and
-R-1070, both repaired this round.
+The one full suite runs on the tree that ships; a red node is this
+feature's to repair within three rounds. Open findings: 0.
