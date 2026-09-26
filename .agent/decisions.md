@@ -21944,3 +21944,87 @@ HOW TO REVERSE: restore `packages/orchestration/pingpong_loop.py`,
 `packages/orchestration/pingpong_job.py`, `docs/system/session-resume-v1.md` and
 `tests/orchestration/test_prompt_trace.py` from `26f44f49`, delete
 `tests/orchestration/test_relaunch_session_resume.py`, and delete this paragraph.
+
+## DECISION F027 D1 — a veto is a create-only control fact per task with a mandatory reason kept verbatim: a pure gate admits a pending, running, blocked, failed or skipped task of an unfinished job, the unreachable set is `dag_schedule.blocked_downstream` over the vetoed tasks, the command writes the control file and one `task_vetoed` event and never the job record, and there is no un-veto (2026-09-26)
+
+CONTEXT: T5_F027.md asks for `veto_task` with a mandatory reason, the task vetoed and terminal,
+the unreachable downstream computed with the DAG module and marked, a replan proposal filed into
+the decision inbox and never executed on its own, an in-progress task finishing its current call
+before it is vetoed, the run continuing on independent branches, and the reason surviving
+verbatim into audit, report and hover; its Orchestrator brief puts the no-auto-replan rule and the
+mandatory reason into the orders verbatim, and it forbids touching mid-run replanning mechanics,
+DAG internals and glyph geometry. Measured at `557cbbcc`: no Python module under `packages/` or
+`apps/` writes or reads a veto; `NodeState` in `apps/ui/src/components/graph/brainOntology.ts` already
+names `vetoed`, which no reducer assigns, and `renderers/nodeStates.ts` gives it the strike mark
+and a `downstreamAlpha` of 0.4 that no renderer applies yet; `dag_schedule.blocked_downstream`
+returns the transitive dependents of its seeds without the seeds, through `build_graph`, which
+reads a task's declared `depends_on` from `inputs["plan"]` and makes a task without plan metadata
+depend on its predecessor; `run_job` in `packages/orchestration/pingpong_job.py`, the runner
+DECISION F025 D1 found behind `remedy job run`, `remedy do` and the UI's live job, walks
+`job.tasks` in list order and holds the whole record in memory, saving it at its own points, so a
+command that writes `job.json` while it runs is overwritten (DECISION F026 D1); a task pause is a
+create-only file per task under `paused_tasks/` in the job's control directory, reached through
+`safe_points.open_job_control_fd` and the `secure_fs` primitives and read by the runner at its
+safe points (DECISION F025 D1); the write door's audit line keeps a hash of a command's arguments
+and never the arguments (`AUDIT_FIELD_ORDER` in `packages/orchestration/command_audit.py`);
+`stream_evidence.redact_text` is the repository's secret redaction; and every event name a code
+path writes is declared in `packages/orchestration/event_names.py`.
+
+CHOSEN: (1) THE MODULE is `packages/orchestration/task_veto.py`, beside the pause and through the
+same anchored control-directory handle and the same `secure_fs` primitives, so a symlinked control
+area is refused and nothing is written outside it; `pause_control.py`, `safe_points.py` and
+`dag_schedule.py` are not edited. (2) A VETO IS A CONTROL FACT: one create-only file per vetoed
+task under `vetoed_tasks/` in the job's control directory, named by a digest of the task id and
+holding the job id, the task id, a request id, the reason, the actor, the time and the task's
+status when it was vetoed. It is never rewritten and never removed: un-veto does not exist in v1,
+because reversibility would blur the red line, and the recovery is the replan the proposal offers.
+The command never writes `job.json`, for the reason DECISION F026 D1 refuses an edit while the job
+runs; a runner folds the veto into the record at its safe points, and a reader that needs a veto
+no runner has folded yet reads the control files. (3) THE REASON IS MANDATORY AND KEPT VERBATIM: a
+reason that is not a string, or is empty or only whitespace, is refused `reason_required`; one
+longer than 500 characters `reason_too_long`; one holding a control character, or one that
+`stream_evidence.redact_text` would change, `reason_invalid`, whose detail says that such text is
+refused rather than stored altered. An accepted reason is stored exactly as given, so it travels
+into the event, the record, the report and the page with no later stage rewriting it. (4) THE
+GATE is pure over the job's state, the task's status and whether the task is already vetoed: a job
+whose state is `completed`, `failed` or `cancelled` is refused `job_not_vetoable` naming it; a task
+already vetoed, by a control file or by the status `vetoed`, `task_already_vetoed`; and of the task
+statuses exactly `pending`, `running`, `blocked`, `failed` and `skipped` are vetoable, while every
+other, among them `passed`, `applied_to_job_workspace`, `split` and `completed`, is refused
+`task_not_vetoable` naming it. A running job is vetoable, which is the point of the feature: its
+running task's current provider call finishes before the runner folds the veto. (5) THE
+UNREACHABLE SET is `blocked_downstream(tasks, vetoed ids)` without the vetoed tasks and without
+every task whose work is done, in plan order: for a planned task the dependents its plan declares,
+for a task without plan metadata every task after it. The pause's linear mask on `run_job` is not
+reused, because a pause is lifted and withholding more than the plan needs costs a wait, while a
+veto is final and withholding an independent branch would lose work the plan says does not depend
+on the vetoed task. (6) THE COMMAND EFFECT, shared by the CLI and the door as `pause_job_command`
+is: it takes a loaded job, never raises for a refusal, and answers `refused` with a code and a
+detail, checking in this order the reason, a task the plan does not hold (`unknown_task`), and the
+gate; otherwise it writes the control file and answers `vetoed` with the request id, the reason,
+the status at the veto and the unreachable set of this veto alone. Two concurrent vetoes of one
+task converge on one file, and the one that lost is answered `task_already_vetoed`. (7) ONE
+`task_vetoed` EVENT per request id, by the ledger as the task pause's events are (finding R-1052),
+carrying the task, the request id, the reason verbatim, the actor, the status at the veto and the
+unreachable ids. It is the veto's audit line, because the door's audit keeps only a hash of the
+arguments, and `task_vetoed` joins `EVENT_NAMES` in the commit that writes it. (8) THE STATUS
+`vetoed` joins the task vocabulary as `TASK_VETOED` in `pingpong_job.py`, terminal for the task.
+(9) THE ROUNDS: this round lands (1) to (8) with their unit tests. The runners' fold follows, with
+the in-progress rule, what becomes of the unreachable tasks and the terminal accounting, each
+ruled by its own decision in the round that lands it; then the replan proposal, the channel
+commands, the page and the diamond end-to-end.
+
+ALTERNATIVES: writing the veto into `job.json` from the command, rejected because a live runner
+rewrites that file and the veto would be lost at its next save; one `vetoed_tasks.json` set,
+rejected because two concurrent writers of a rewritten set lose an update (DECISION F025 D1); an
+un-veto command, rejected by T5_F027.md's edge cases; storing a reason with its secrets redacted,
+rejected because the reason must survive verbatim and an altered reason would read as the
+operator's own words; the linear mask for the unreachable set on `run_job`, rejected by (5); a
+veto of a finished task, rejected because there is nothing left to withhold and the task's work is
+already in the job's workspace.
+
+DELIBERATE ABSENCES: no un-veto, no veto of a whole job, because the stop and the pause already end
+or park one, and no automatic replan: nothing replans without the decision answer.
+
+HOW TO REVERSE: delete `packages/orchestration/task_veto.py` and its tests, the `TASK_VETOED`
+constant, the `task_vetoed` name in `EVENT_NAMES`, and this paragraph.

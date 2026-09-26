@@ -158,7 +158,7 @@ Milestone R1 — Remedy as the daily tool: Tier 2 complete (F086 as the self-ins
 
 ## Tier 5 — Operator Cockpit (parallel human track, continued)
 
-- [ ] F027 — Task veto
+- [~] F027 — Task veto
 - [ ] F028 — Task injection
 - [ ] F029 — Subtree rerun
 - [ ] F030 — Steering messages

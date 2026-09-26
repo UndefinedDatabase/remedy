@@ -1,22 +1,26 @@
-# Context — F285 Findings paydown v4
+# Context — F027 Task veto
 
 ## Active Branch
-feature/f285-findings-paydown-v4, cut from `main` at `83d3bb95`
-(the merge commit of pull request 281, F026 Task edit at runtime).
+feature/f027-task-veto, cut from `main` at `557cbbcc`
+(the merge commit of pull request 282, F285 Findings paydown v4).
 
 ## Scope
-F285 (Tier 2, the rolling findings paydown): R-1058's Acceptance and
-defect check (T001), R-1057's derived self-use cost cap (T002), R-1055's
-provider-session resume across a relaunch (T003), R-1064 as the
-closure's self-use item, and R-1008 through that run, as
-`docs/roadmap/features/T2_F285.md` and DECISION F285 D1 specify.
+F027 (Tier 5, the operator cockpit): the task veto with a mandatory
+reason, the unreachable downstream, the run continuing on independent
+branches, the replan proposal with its two-option menu, the strike on
+the page and the diamond end-to-end, as
+`docs/roadmap/features/T5_F027.md` and DECISION F027 D1 specify.
 
 ## Do not touch
-The resolutions F284 landed; the record is append-only.
+Mid-run replanning mechanics, DAG internals (`dag_schedule.py`) and
+glyph geometry, per T5_F027.md; the kill switch's `safe_points.py` and
+the pause's `pause_control.py`.
 
 ## Active assumptions
-- The self-use track is repaired before the closure uses it, and the
-  closure's self-use run is aimed at R-1064 (DECISION F285 D1).
+- A veto is a create-only control file per task; the command never
+  writes the job record, and a runner folds the veto at its safe points
+  (DECISION F027 D1).
+- Nothing replans without the decision answer.
 
 ## Constraints
 - Every pytest run in a round is targeted and serial; the resource and

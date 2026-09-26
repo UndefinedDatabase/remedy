@@ -1,26 +1,37 @@
-# Plan — F285 Findings paydown v4
+# Plan — F027 Task veto
 
-Branch: feature/f285-findings-paydown-v4, cut from `main` at `83d3bb95`,
-the merge commit of pull request 281 (F026 Task edit at runtime).
+Branch: feature/f027-task-veto, cut from `main` at `557cbbcc`, the merge
+commit of pull request 282 (F285 Findings paydown v4).
 
 ## Goal
 
-Pay down the five open findings F285 owns, each by the repair its own
-text names, and resolve R-1008 with a closure self-use run that lands a
-repair (`docs/roadmap/features/T2_F285.md`).
+The human red line is one click and one reason: a vetoed task is struck,
+its unreachable downstream is computed and shown, the run continues on
+independent branches, and a replan proposal is filed into the decision
+inbox and never executed on its own (`docs/roadmap/features/T5_F027.md`).
 
 ## Current Step
 
-ROUND 6, the closing round: book round 5, rotate the ledger, register
-F286 — Findings paydown v5 under amend0911-feedback rule B, accept F285
-in STATUS with its README pins and `SU-032`'s `consumed_by`, and open
-the pull request.
+ROUND 1: claim F027, re-head the live review record, book F285's round
+6, record DECISION F027 D1, and land the veto control protocol —
+`packages/orchestration/task_veto.py` with the mandatory verbatim
+reason, the pure state gate, the unreachable set, the create-only
+control file per vetoed task, the command effect and its `task_vetoed`
+event, the `TASK_VETOED` status, and their unit tests.
 
 ## Next Steps
 
-1. The next feature's session merges this pull request at the Open PR
-   Gate, then claims the first unchecked feature in STATUS.
+1. The rest of T001: the runners fold a veto at their safe points, an
+   in-progress task finishes its current call before it is vetoed, and
+   the terminal accounting names the veto.
+2. T002: the replan proposal in the decision inbox with its two-option
+   menu, and both options' documented effects.
+3. The channel commands in the catalog, the CLI and the write door.
+4. T003: the strike, the dimmed unreachable set and the inbox card on
+   the page, and the diamond end-to-end.
+5. The closure sequence.
 
 ## Risks
 
-Open findings: 0 — F285 resolved all five it owned.
+A veto must never be lost to a running job's save, so the command writes
+a control file and never the job record. Open findings: 0.

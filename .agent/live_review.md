@@ -1,27 +1,27 @@
-# Live Review — F285 Findings paydown v4
+# Live Review — F027 Task veto
 
-> Round-by-round review record, re-headed at the F285 claim per
-> docs/agents/planner_reviewer_prompt.md §1. The heading this replaces named F026, whose STATUS
-> line went `[x]` at `9476d5e4` and whose pull request 281 merged into `main` at the reviewer's
-> Open PR Gate under docs/agents/self_drive_protocol.md, as `83d3bb95`, after both hosted CI jobs
-> of run 36188943289 ended `success`. `9476d5e4` is the second parent of `83d3bb95`. F026's round
-> 8, its closing round, was reviewed after its own handback, so its gate entry is appended at the
-> end of this record by F285's claim. Only the heading, this paragraph and the Steps section below
+> Round-by-round review record, re-headed at the F027 claim per
+> docs/agents/planner_reviewer_prompt.md §1. The heading this replaces named F285, whose STATUS
+> line went `[x]` at `15f70445` and whose pull request 282 merged into `main` at the reviewer's
+> Open PR Gate under docs/agents/self_drive_protocol.md, as `557cbbcc`, after both hosted CI jobs
+> of run 36204988392 ended `success`. `15f70445` is the second parent of `557cbbcc`. F285's round
+> 6, its closing round, was reviewed after its own handback, so its gate entry is appended at the
+> end of this record by F027's claim. Only the heading, this paragraph and the Steps section below
 > are rewritten; everything from the Findings heading to the end of the file as it stood at
-> `83d3bb95` is carried forward BYTE-IDENTICAL, and finding ids continue the monotonic R-XXXX
-> series across the re-head. The open set at `83d3bb95`, computed with `open_finding_ids` from
-> `scripts/rotate_live_review.py`, is R-1008, R-1055, R-1057, R-1058 and R-1064, and F285 owns
-> all five.
+> `557cbbcc` is carried forward BYTE-IDENTICAL, and finding ids continue the monotonic R-XXXX
+> series across the re-head. The open set at `557cbbcc`, computed with `open_finding_ids` from
+> `scripts/rotate_live_review.py`, is empty.
 
 ## Steps
 
-THE ORDER BELOW IS T2_F285.md's Task slicing, which DECISION F285 D1 writes at the claim. R1
-claims F285, re-heads this record, books F026's round 8, and lands T001, R-1058's repair in
-`packages/orchestration/self_use_generator.py` and `packages/orchestration/self_use_findings.py`,
-and T002, R-1057's derived cost cap in `packages/orchestration/self_use_runner.py`. T003 carries
-an interrupted task's provider session across a relaunch (R-1055). The closure's self-use run is
-aimed at R-1064, so that R-1008 is finally tested by a run that can land a repair; a worker round
-repairs R-1064 instead if that run does not. Every round's handback states the open set by
+THE ORDER BELOW IS T5_F027.md's Task slicing, which DECISION F027 D1 rules at the claim. R1
+claims F027, re-heads this record, books F285's round 6, and lands the veto control protocol of
+T001 in a new `packages/orchestration/task_veto.py`: the mandatory verbatim reason, the pure state
+gate, the unreachable set through `dag_schedule.blocked_downstream`, one create-only control file
+per vetoed task, and the command effect with its `task_vetoed` event. The runners' reading of a
+veto, the in-progress finish rule and the terminal accounting complete T001; T002 files the replan
+proposal with its two-option menu; T003 brings the strike, the dimmed unreachable set and the inbox
+card to the page, with the diamond end-to-end. Every round's handback states the open set by
 distinct id.
 
 ## Findings
@@ -398,3 +398,5 @@ Gate: F285 R3 — the F285 round 3 entry: the booking of round 2 with the resolu
 Gate: F285 R4 — the F285 round 4 entry: the booking of round 3, the self-use run's reviewed diff landed verbatim as R-1064's repair, the reviewer's pin, the Built State, the checklist consolidation and the feature's one full suite. VERDICT PASS, NO DEVIATION DECLARED. Re-derived over `0f1975b7`..`9a7a9c39` by the planner and reviewer of F285's first session, whose own runs produced every reading below. THE RANGE IS 7 COMMITS, at `c2e0caa0` 386, `2e69d5ad` 58, `4efd990c` 13, `e03f438c` 32, `4e168d70` 27, `142b1867` 27 and `9a7a9c39` 303 insertions by `git show --numstat`, each under the 500-line cap, each single-parent and each carrying the ordered trailer. THE TRANSPORT PROOF: the block copy and the six payload copies, read at the commits that added them, equal the reviewer's originals byte for byte; every file `4efd990c`, `e03f438c`, `4e168d70` and `142b1867` wrote hashes to the reviewer's simulated tree; and at `e03f438c` both `packages/orchestration/stream_evidence.py` and `tests/orchestration/test_stream_evidence.py` equal the self-use job's own commit `5796c5b7` byte for byte, so the landing is the job's diff and nothing else. THE OPEN SET by distinct id reads R-1008 and R-1064 at `4efd990c`. THE CHECKLIST: `live_checklist_items` reads the same 34 numbers before and after `142b1867`. THE TESTS: the reviewer's own serial run of the round's selection in the primary checkout at `9a7a9c39` read 602 passed at exit 0; `ruff check` over the two touched Python files reads clean; all six `integrity check` checks read `pass`. THE RED PROOFS: the committed `.agent/authored/f285-r4-mutations.py`, run by the worker at `4e168d70` and by the reviewer over a byte-identical simulated tree, caught both mutations, each removing one pattern's token-start bound. THE INTEGRATION GATE (closure precondition 2): after `npm --prefix apps/ui run build`, the one full suite, `python3 -m pytest -n auto -q` in the primary checkout, read `19449 passed, 20 skipped` at exit 0 in 183.68 seconds with no bad node, recorded in `.agent/authored/f285-closure-suite.txt` at `9a7a9c39`, and neither reachability guard of closure precondition 7 holds a bad node.
 
 Gate: F285 R5 — the F285 round 5 entry: the closure sequence's evidence round, the booking of round 4, the resolutions of R-1064 and R-1008, the evidence bundle and the review package. VERDICT PASS, NO DEVIATION DECLARED. Re-derived over `9a7a9c39`..`2a8bf593` by the planner and reviewer of F285's first session, whose own runs produced every reading below. THE RANGE IS 3 COMMITS, at `df2b5441` 333, `c2a4588a` 14 and `2a8bf593` 195 insertions by `git show --numstat`, each under the 500-line cap, each single-parent and each carrying the ordered trailer. THE TRANSPORT PROOF: the block copy and the three payload copies, read at `df2b5441`, equal the reviewer's originals byte for byte, and at `c2a4588a` the ledger and the plan equal the reviewer's dry tree byte for byte. THE OPEN SET by distinct id is empty at `c2a4588a`: F285 resolved all five ids it owned. THE BUNDLE: evidence job `f285r5e1001`, built by the committed `.agent/authored/f285-r5-create_f285_evidence.py` at the accepted head `c2a4588ad39959a0278235e1e526cec871cc69e2` against the fork point `83d3bb95901313a529d803a2cb29b2291b34e608`, read ancestry and plain counts equal at 26, 765 node ids with 13 deselected and none unsafe, pytest exit 0 with 765 passed, an empty `validate_verification_tests` problem list and `is_valid_current_run` True; it carries `tests/orchestration/test_plan_editing.py`, which F026's bundle had to leave out before R-1064's repair, and leaves out, with its reason written in the script, the two tests of `tests/orchestration/test_stream_evidence.py` parametrized over fake keys, both green in the committed full suite. THE PACKAGE: `remedy-review-20260926-020855-READY_FOR_REVIEW.zip` in `/home/decodeux/Repos/remedy-history/zips`, whose SHA-256 the reviewer measured as `dba140f371cfe8071690be30605ba1643a77a8f5d000f66a40d8dd43c056d4d5`, whose `testzip()` answers None, and whose `.review_zip_manifest.json` reads status `READY_FOR_REVIEW`, base the fork point, head the accepted head and 26 commits. THE TREE: all six `integrity check` checks read `pass` at `2a8bf593`.
+
+Gate: F285 R6 — the F285 round 6 entry: the closing round, the booking of round 5, the ledger's rotation into its archive, the registration of F286 — Findings paydown v5, and F285's acceptance in STATUS with its README pins and the self-use item's `consumed_by`. VERDICT PASS, NO DEVIATION DECLARED. Reviewed over `2a8bf593`..`15f70445` by the planner and reviewer of F285's first session after the round's handback, and the readings below re-measured by the planner and reviewer of F027's first session at its claim. THE RANGE IS 5 COMMITS, at `88747403` 425, `d8d024e2` 9, `69946928` 69, `6082c181` 50 and `15f70445` 186 insertions by `git show --numstat`, each under the 500-line cap, each single-parent and each carrying the ordered trailer. THE TRANSPORT PROOF: the block copy and five payload copies, read at `88747403`, equal the reviewer's originals byte for byte; the original of the STATUS-line payload is no longer on disk, and that line reads once in `docs/roadmap/STATUS.md` at `15f70445`. THE ROTATION at `69946928` moved 8 gate records and 5 finding pairs into `.agent/live_review_archive.md`, and the open set by distinct id was empty before and after it. THE REGISTRATION at `6082c181` placed F286 under its own Tier 2 heading after F035, with the `TOTAL_FEATURES` pin at 286. THE TREE: `557cbbcc` has the tree of `15f70445`, and over it the reviewer's serial run of `tests/docs/` with the advertised-command, rotation, integrity, self-use generator and self-use queue suites and the golden path read 493 passed at exit 0, and all six `integrity check` checks read `pass`. THE MERGE: pull request 282 merged into `main` as `557cbbcc` at F027's Open PR Gate, after both hosted CI jobs of run 36204988392 ended `success`.
