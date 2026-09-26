@@ -80,15 +80,34 @@ describe("dashboardBrainSeeds", () => {
   // ONLY when the map carries that task at all.
   it("puts specVersion on a seed only when the map carries that task", () => {
     const tasks = [task("a", "pending", "Alpha"), task("b", "pending", "Beta")];
-    const seeds = dashboardBrainSeeds(tasks, [], { a: 2 });
+    const seeds = dashboardBrainSeeds(tasks, [], [], { a: 2 });
     expect(seeds.find((s) => s.id === "a")?.specVersion).toBe(2);
     expect(seeds.find((s) => s.id === "b")).not.toHaveProperty("specVersion");
   });
 
-  it("with no third argument, no seed carries a specVersion", () => {
+  it("with no fourth argument, no seed carries a specVersion", () => {
     const tasks = [task("a", "pending", "Alpha")];
     const seeds = dashboardBrainSeeds(tasks, []);
     expect(seeds[0]).not.toHaveProperty("specVersion");
+  });
+
+  it("seeds a task named in vetoedTaskIds as vetoed, whatever its dashboard status word (DECISION F027 D7 (2))", () => {
+    const tasks = [task("a", "current", "Alpha"), task("b", "pending", "Beta"), task("c", "done", "Gamma")];
+    const seeds = dashboardBrainSeeds(tasks, [], ["b"]);
+    expect(seeds.map((s) => s.status)).toEqual(["running", "vetoed", "completed"]);
+    const model = seedBrainModel("job-vetoed-seed", seeds);
+    expect(model.nodes.find((n) => n.id === "task:b")?.state).toBe("vetoed");
+  });
+
+  it("vetoed wins over paused when a task is named in both (DECISION F027 D7 (2))", () => {
+    const tasks = [task("a", "pending", "Alpha")];
+    const seeds = dashboardBrainSeeds(tasks, ["a"], ["a"]);
+    expect(seeds[0].status).toBe("vetoed");
+  });
+
+  it("with no third argument, no task seeds vetoed", () => {
+    const tasks = [task("a", "pending", "Alpha")];
+    expect(dashboardBrainSeeds(tasks, [])).toEqual(dashboardBrainSeeds(tasks, [], []));
   });
 });
 
@@ -108,6 +127,10 @@ describe("filterBrainLayout", () => {
 
   it("groups paused with planned (DECISION F025 D3 clause 2)", () => {
     expect(BRAIN_FILTER_STATES.planned).toEqual(["planned", "paused"]);
+  });
+
+  it("groups vetoed with done (DECISION F027 D7 (2))", () => {
+    expect(BRAIN_FILTER_STATES.done).toEqual(["pass", "vetoed"]);
   });
 
   it("a run follows its task in and out", () => {

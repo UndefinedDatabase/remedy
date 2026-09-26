@@ -201,6 +201,35 @@ export interface RemedyPause {
   error: string;
 }
 
+/** DECISION F027 D7 (1) — one recorded veto: the task id, the reason
+ *  verbatim, the actor, when it was requested, the request id, the task's
+ *  status at the moment of the veto, that veto's own unreachable set, and
+ *  the recorded answer's option, or "" when its replan proposal is not
+ *  answered yet. */
+export interface RemedyVetoEntry {
+  taskId: string;
+  reason: string;
+  actor: string;
+  requestedAt: string;
+  requestId: string;
+  statusAtVeto: string;
+  unreachableTaskIds: string[];
+  answer: string;
+}
+
+/** DECISION F027 D7 (1) — the dashboard's `vetoes` section: every veto entry
+ *  in plan order, the tasks still open to a veto in the job's current state,
+ *  every task unreachable behind ANY veto folded so far, and `error` —
+ *  `""` unless the section's own read failed, in which case the other three
+ *  read empty. A payload with no `vetoes` section normalizes to this same
+ *  empty shape. */
+export interface RemedyVetoes {
+  tasks: RemedyVetoEntry[];
+  vetoableTaskIds: string[];
+  unreachableTaskIds: string[];
+  error: string;
+}
+
 /** DECISION F026 D3 clause 1 — a plan task's own fields, read either as the
  *  task's `current` spec or as one archived `versions` entry. */
 export interface RemedyTaskSpecFields {
@@ -271,4 +300,4 @@ export interface RemedyProjectSummary {
  *  answer, `undefined` would not be. Remedy deliberately does NOT order,
  *  filter or count the cards here; that rule is T002b's subject and lives in
  *  `decisionCard.ts` when it lands. */
-export interface RemedyDashboard { jobId: string; title: string; description: string; conceptLabel: string; metrics: RemedyMetric[]; budgetFinal: BudgetTickFigures | null; phases: RemedyPhase[]; tasks: RemedyTaskItem[]; activity: RemedyActivityItem[]; graph: { nodes: RemedyGraphNode[]; edges: RemedyGraphEdge[]; }; nextAction: RemedyNextAction; live: RemedyLiveState; apiHealth: RemedyApiHealth; pipeline: RemedyPipeline | null; resume: RemedyResume | null; pause: RemedyPause; taskSpecs: RemedyTaskSpecs; projectSummary: RemedyProjectSummary | null; timelineEvents?: RemedyTimelineEvent[]; snapshot: RemedySnapshotSummary | null; continuation: RemedyContinuationSummary | null; promptTrace?: RemedyPromptTraceSummary | null; decisionInbox: DecisionCardModel[]; }
+export interface RemedyDashboard { jobId: string; title: string; description: string; conceptLabel: string; metrics: RemedyMetric[]; budgetFinal: BudgetTickFigures | null; phases: RemedyPhase[]; tasks: RemedyTaskItem[]; activity: RemedyActivityItem[]; graph: { nodes: RemedyGraphNode[]; edges: RemedyGraphEdge[]; }; nextAction: RemedyNextAction; live: RemedyLiveState; apiHealth: RemedyApiHealth; pipeline: RemedyPipeline | null; resume: RemedyResume | null; pause: RemedyPause; taskSpecs: RemedyTaskSpecs; vetoes: RemedyVetoes; projectSummary: RemedyProjectSummary | null; timelineEvents?: RemedyTimelineEvent[]; snapshot: RemedySnapshotSummary | null; continuation: RemedyContinuationSummary | null; promptTrace?: RemedyPromptTraceSummary | null; decisionInbox: DecisionCardModel[]; }

@@ -210,6 +210,68 @@ describe("decisionAnswers", () => {
       { kind: "option", label: "reject", value: "reject", posts: true, ...NO_OUTCOME },
     ]);
   });
+
+  it("labels an option from payload.option_labels while posting the value unchanged (DECISION F027 D7 (4))", () => {
+    const card: DecisionInboxEntry = {
+      type: "replan_proposal",
+      payload: {
+        options: ["replan_follow_up", "accept_reduced_scope"],
+        option_labels: {
+          replan_follow_up: "Replan the remaining work as a new job",
+          accept_reduced_scope: "Accept the smaller scope",
+        },
+      },
+      answerable_by_decision_resolve: true,
+    };
+    expect(decisionAnswers(card)).toEqual([
+      { kind: "option", label: "Replan the remaining work as a new job", value: "replan_follow_up", posts: true, ...NO_OUTCOME },
+      { kind: "option", label: "Accept the smaller scope", value: "accept_reduced_scope", posts: true, ...NO_OUTCOME },
+    ]);
+  });
+
+  it("labels an option with its own value when option_labels names no entry for it", () => {
+    const card: DecisionInboxEntry = {
+      type: "replan_proposal",
+      payload: {
+        options: ["replan_follow_up", "accept_reduced_scope"],
+        option_labels: { replan_follow_up: "Replan the remaining work as a new job" },
+      },
+    };
+    expect(decisionAnswers(card).map((a) => a.label)).toEqual([
+      "Replan the remaining work as a new job",
+      "accept_reduced_scope",
+    ]);
+  });
+
+  it("a card with no option_labels labels every option with its own value, unchanged", () => {
+    const card: DecisionInboxEntry = {
+      type: "task_decision",
+      payload: { options: ["retry", "skip"] },
+    };
+    expect(decisionAnswers(card)).toEqual([
+      { kind: "option", label: "retry", value: "retry", posts: false, ...NO_OUTCOME },
+      { kind: "option", label: "skip", value: "skip", posts: false, ...NO_OUTCOME },
+    ]);
+  });
+
+  it("ignores a malformed option_labels (not an object of strings) and labels with the value", () => {
+    const card: DecisionInboxEntry = {
+      type: "task_decision",
+      payload: { options: ["retry", "skip"], option_labels: { retry: 7 } },
+    };
+    expect(decisionAnswers(card).map((a) => a.label)).toEqual(["retry", "skip"]);
+  });
+
+  it("never applies option_labels to a command answer", () => {
+    const card: DecisionInboxEntry = {
+      type: "task_decision",
+      next_actions: ["remedy resume"],
+      payload: { option_labels: { remedy_resume: "Resume the job" } },
+    };
+    expect(decisionAnswers(card)).toEqual([
+      { kind: "command", label: "remedy resume", value: "remedy resume", posts: false, ...NO_OUTCOME },
+    ]);
+  });
 });
 
 describe("buildDecisionCardModel", () => {

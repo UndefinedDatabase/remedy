@@ -113,6 +113,75 @@ describe("normalizeDashboardPayload", () => {
     });
   });
 
+  // DECISION F027 D7 (1): the dashboard's `vetoes` section, its empty default
+  // for a missing or malformed payload, and its snake_case-to-camelCase read.
+  it("a payload without a vetoes section reads as no vetoes", () => {
+    const result = normalizeDashboardPayload("abc-123", makeDashboardPayload());
+    expect(result.vetoes).toEqual({ tasks: [], vetoableTaskIds: [], unreachableTaskIds: [], error: "" });
+  });
+
+  it("a malformed vetoes section (not an object) reads as no vetoes", () => {
+    const payload = makeDashboardPayload({ vetoes: "not an object" });
+    const result = normalizeDashboardPayload("abc-123", payload);
+    expect(result.vetoes).toEqual({ tasks: [], vetoableTaskIds: [], unreachableTaskIds: [], error: "" });
+  });
+
+  it("reads a veto entry's eight fields, snake_case to camelCase", () => {
+    const payload = makeDashboardPayload({
+      vetoes: {
+        tasks: [{
+          task_id: "t2",
+          reason: "known-bad approach",
+          actor: "alice",
+          requested_at: "2026-09-26T00:00:00Z",
+          request_id: "req-1",
+          status_at_veto: "pending",
+          unreachable_task_ids: ["t3"],
+          answer: "accept_reduced_scope",
+        }],
+        vetoable_task_ids: ["t1"],
+        unreachable_task_ids: ["t3"],
+        error: "",
+      },
+    });
+    const result = normalizeDashboardPayload("abc-123", payload);
+    expect(result.vetoes).toEqual({
+      tasks: [{
+        taskId: "t2",
+        reason: "known-bad approach",
+        actor: "alice",
+        requestedAt: "2026-09-26T00:00:00Z",
+        requestId: "req-1",
+        statusAtVeto: "pending",
+        unreachableTaskIds: ["t3"],
+        answer: "accept_reduced_scope",
+      }],
+      vetoableTaskIds: ["t1"],
+      unreachableTaskIds: ["t3"],
+      error: "",
+    });
+  });
+
+  it("reads a vetoes-read error and keeps the other three fields empty", () => {
+    const payload = makeDashboardPayload({
+      vetoes: { tasks: [], vetoable_task_ids: [], unreachable_task_ids: [], error: "control root unreadable" },
+    });
+    const result = normalizeDashboardPayload("abc-123", payload);
+    expect(result.vetoes).toEqual({
+      tasks: [], vetoableTaskIds: [], unreachableTaskIds: [], error: "control root unreadable",
+    });
+  });
+
+  it("a malformed veto entry (not an object) reads as its type's empty values", () => {
+    const payload = makeDashboardPayload({ vetoes: { tasks: [null, "nope", 7] } });
+    const result = normalizeDashboardPayload("abc-123", payload);
+    expect(result.vetoes.tasks).toEqual([
+      { taskId: "", reason: "", actor: "", requestedAt: "", requestId: "", statusAtVeto: "", unreachableTaskIds: [], answer: "" },
+      { taskId: "", reason: "", actor: "", requestedAt: "", requestId: "", statusAtVeto: "", unreachableTaskIds: [], answer: "" },
+      { taskId: "", reason: "", actor: "", requestedAt: "", requestId: "", statusAtVeto: "", unreachableTaskIds: [], answer: "" },
+    ]);
+  });
+
   // DECISION F026 D3 clause 1: the `task_specs` section's mapping to camelCase,
   // its empty default, and its two clamped fields.
   it("reads a task_specs section: the mapping", () => {

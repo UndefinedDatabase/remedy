@@ -43,7 +43,12 @@ export function BrainGraphStage({
   const [view, setView] = useState<"live" | "simple">("live");
 
   const seeds = useMemo(
-    () => dashboardBrainSeeds(dashboard.tasks, dashboard.pause.pausedTaskIds, taskSpecVersions(dashboard)),
+    () => dashboardBrainSeeds(
+      dashboard.tasks,
+      dashboard.pause.pausedTaskIds,
+      dashboard.vetoes.tasks.map((v) => v.taskId),
+      taskSpecVersions(dashboard),
+    ),
     [dashboard],
   );
   // `rows` is the ledger's COMPLETE, CONTIGUOUS prefix, read once by the shell for

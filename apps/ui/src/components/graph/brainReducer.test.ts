@@ -259,6 +259,35 @@ describe("F025 pause/resume events (DECISION F025 D3 clause 2)", () => {
   });
 });
 
+describe("F027 veto events (DECISION F027 D7 (2))", () => {
+  it("task_vetoed births an unseen task vetoed, and is not counted in ignored", () => {
+    const seeded = seedBrainModel("job-v", []);
+    const vetoed = reduceBrainEvent(seeded, row(1, "task_vetoed", "t1"));
+    expect(vetoed.nodes.find((n) => n.id === "task:t1")?.state).toBe("vetoed");
+    expect(vetoed.ignored).not.toHaveProperty("task_vetoed");
+  });
+
+  it("task_vetoed never overwrites a task that already passed", () => {
+    const seeded = seedBrainModel("job-v", [{ id: "t1", status: "pending", rank: 0 }]);
+    const passed = fold(seeded, [
+      row(1, "task_run_started", "t1"),
+      row(2, "task_run_completed", "t1", "pass"),
+    ]);
+    const vetoed = reduceBrainEvent(passed, row(3, "task_vetoed", "t1"));
+    expect(vetoed.nodes.find((n) => n.id === "task:t1")?.state).toBe("pass");
+  });
+
+  it("task_vetoed DOES overwrite a task that already failed, unlike task_paused", () => {
+    const seeded = seedBrainModel("job-v", [{ id: "t1", status: "pending", rank: 0 }]);
+    const failed = fold(seeded, [
+      row(1, "task_run_started", "t1"),
+      row(2, "task_run_completed", "t1", "fail"),
+    ]);
+    const vetoed = reduceBrainEvent(failed, row(3, "task_vetoed", "t1"));
+    expect(vetoed.nodes.find((n) => n.id === "task:t1")?.state).toBe("vetoed");
+  });
+});
+
 describe("Core derivation", () => {
   it("planned when there are no tasks", () => {
     expect(emptyBrainModel("job-x").nodes[0].state).toBe("planned");

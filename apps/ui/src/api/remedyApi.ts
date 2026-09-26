@@ -8,7 +8,7 @@ import { decodeLessonsIndex, lessonsIndexPath } from "./lessons";
 import type { LessonsIndex } from "./lessons";
 import { decodeTaskRunRounds, taskRunRoundsPath } from "./taskRunRounds";
 import type { TaskRunRounds } from "./taskRunRounds";
-import type { PipelineStep, PipelineStepState, RemedyActivityItem, RemedyContinuationSummary, RemedyDashboard, RemedyGraphEdge, RemedyGraphNode, RemedyJourneyItem, RemedyMetric, RemedyNextAction, RemedyPause, RemedyPhase, RemedyPipeline, RemedyPromptKind, RemedyPromptRole, RemedyPromptTraceItem, RemedyPromptTraceSummary, RemedySnapshotSummary, RemedyState, RemedyTaskItem, RemedyTaskSpec, RemedyTaskSpecFields, RemedyTaskSpecs, RemedyTaskSpecVersion, RemedyTimelineEvent, RemedyTimelineEventKind, RemedyTimelinePhase } from "./types";
+import type { PipelineStep, PipelineStepState, RemedyActivityItem, RemedyContinuationSummary, RemedyDashboard, RemedyGraphEdge, RemedyGraphNode, RemedyJourneyItem, RemedyMetric, RemedyNextAction, RemedyPause, RemedyPhase, RemedyPipeline, RemedyPromptKind, RemedyPromptRole, RemedyPromptTraceItem, RemedyPromptTraceSummary, RemedySnapshotSummary, RemedyState, RemedyTaskItem, RemedyTaskSpec, RemedyTaskSpecFields, RemedyTaskSpecs, RemedyTaskSpecVersion, RemedyTimelineEvent, RemedyTimelineEventKind, RemedyTimelinePhase, RemedyVetoEntry, RemedyVetoes } from "./types";
 
 interface ApiClientOptions { jobId: string; token: string; baseUrl?: string; }
 
@@ -194,6 +194,7 @@ export function normalizeDashboardPayload(
     resume: dashboard.resume ?? null,
     pause: normalizePause(dashboard.pause),
     taskSpecs: normalizeTaskSpecs(dashboard.task_specs),
+    vetoes: normalizeVetoes(dashboard.vetoes),
     projectSummary: dashboard.project_summary ?? null,
     timelineEvents: normalizeTimelineEvents(dashboard.timeline_events),
     snapshot: normalizeSnapshotSummary(dashboard.snapshot),
@@ -262,6 +263,36 @@ function normalizePause(raw: any): RemedyPause {
     requested: Boolean(p.requested),
     pausedTaskIds: Array.isArray(p.paused_task_ids) ? p.paused_task_ids.map(String) : [],
     error: typeof p.error === "string" ? p.error : "",
+  };
+}
+
+/** DECISION F027 D7 (1): one veto entry, read defensively — a malformed field
+ *  reads as its type's empty value rather than throwing. */
+function normalizeVetoEntry(raw: any): RemedyVetoEntry {
+  const r = raw && typeof raw === "object" ? raw : {};
+  return {
+    taskId: typeof r.task_id === "string" ? r.task_id : "",
+    reason: typeof r.reason === "string" ? r.reason : "",
+    actor: typeof r.actor === "string" ? r.actor : "",
+    requestedAt: typeof r.requested_at === "string" ? r.requested_at : "",
+    requestId: typeof r.request_id === "string" ? r.request_id : "",
+    statusAtVeto: typeof r.status_at_veto === "string" ? r.status_at_veto : "",
+    unreachableTaskIds: toStringList(r.unreachable_task_ids),
+    answer: typeof r.answer === "string" ? r.answer : "",
+  };
+}
+
+/** DECISION F027 D7 (1): a payload with no `vetoes` section — or a raw value
+ *  that is not an object — normalizes to the same empty shape a real one
+ *  reads when nothing has ever been vetoed: no entries, nothing open to a
+ *  veto, nothing unreachable, no error. Mirrors `normalizePause` exactly. */
+function normalizeVetoes(raw: any): RemedyVetoes {
+  const r = raw && typeof raw === "object" ? raw : {};
+  return {
+    tasks: Array.isArray(r.tasks) ? r.tasks.map(normalizeVetoEntry) : [],
+    vetoableTaskIds: toStringList(r.vetoable_task_ids),
+    unreachableTaskIds: toStringList(r.unreachable_task_ids),
+    error: typeof r.error === "string" ? r.error : "",
   };
 }
 
@@ -442,6 +473,7 @@ export function normalizeApiFailure(jobId: string, failedEndpoints: string[]): R
     resume: null,
     pause: normalizePause(undefined),
     taskSpecs: normalizeTaskSpecs(undefined),
+    vetoes: normalizeVetoes(undefined),
     projectSummary: null,
     snapshot: null,
     continuation: null,

@@ -28,6 +28,10 @@ export const DASHBOARD_STATE_STATUS: Readonly<Record<RemedyState, string>> = {
  *  dashboard status word, so a page opened on a parked job draws it paused
  *  from the first paint — defaults to none, so every existing call site
  *  (none of which knows about a pause) keeps its exact prior seed.
+ *  `vetoedTaskIds` (DECISION F027 D7 (2)) is the dashboard's own
+ *  `vetoes.tasks` task ids: a task named there seeds `vetoed`, which WINS
+ *  over `paused` — a struck task is not merely waiting — defaults to none,
+ *  so every existing call site keeps its exact prior seed.
  *  `specVersions` (DECISION F026 D3 clause 2) is the task-id-to-spec-version
  *  map `taskSpecView.ts`'s `taskSpecVersions` derives from the dashboard's
  *  `task_specs` section — defaults to none, so a caller that has not read it
@@ -37,12 +41,16 @@ export const DASHBOARD_STATE_STATUS: Readonly<Record<RemedyState, string>> = {
 export function dashboardBrainSeeds(
   tasks: readonly RemedyTaskItem[],
   pausedTaskIds: readonly string[] = [],
+  vetoedTaskIds: readonly string[] = [],
   specVersions: Readonly<Record<string, number>> = {},
 ): BrainTaskSeed[] {
   const paused = new Set(pausedTaskIds);
+  const vetoed = new Set(vetoedTaskIds);
   return tasks.map((t, index) => ({
     id: t.id,
-    status: paused.has(t.id) ? "paused" : (DASHBOARD_STATE_STATUS[t.state] ?? t.state),
+    status: vetoed.has(t.id)
+      ? "vetoed"
+      : paused.has(t.id) ? "paused" : (DASHBOARD_STATE_STATUS[t.state] ?? t.state),
     rank: index,
     title: t.label,
     ...(Object.prototype.hasOwnProperty.call(specVersions, t.id) ? { specVersion: specVersions[t.id] } : {}),
@@ -55,11 +63,13 @@ export function dashboardBrainSeeds(
  *  `filterBrainLayout` can read a layout node's state directly. `paused`
  *  groups with `planned` (DECISION F025 D3 clause 2): a paused node is not
  *  in progress and nothing has failed — it is waiting, exactly like a
- *  planned one, until the operator resumes it. */
+ *  planned one, until the operator resumes it. `vetoed` groups with `done`
+ *  (DECISION F027 D7 (2)): the run never touches a struck task again, the
+ *  same as one that passed. */
 export const BRAIN_FILTER_STATES: Readonly<Record<"open" | "planned" | "done", readonly NodeState[]>> = {
   open: ["in_progress", "blocked", "fail"],
   planned: ["planned", "paused"],
-  done: ["pass"],
+  done: ["pass", "vetoed"],
 };
 
 /** Filters a positioned layout down to one filter's nodes/links. `"all"`

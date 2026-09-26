@@ -240,6 +240,25 @@ function payloadOptions(payload: unknown): unknown {
   return (payload as { options?: unknown }).options;
 }
 
+/** `payload.option_labels` (DECISION F027 D7 (4)) when the payload is an
+ *  object carrying it AND every one of its values is a string — else
+ *  `undefined`, so a malformed or absent map costs nothing: the option's own
+ *  value is shown instead, exactly as before this decided anything. Same
+ *  tolerance as `payloadOptions`. */
+function payloadOptionLabels(payload: unknown): Record<string, string> | undefined {
+  if (typeof payload !== "object" || payload === null) {
+    return undefined;
+  }
+  const raw = (payload as { option_labels?: unknown }).option_labels;
+  if (typeof raw !== "object" || raw === null || Array.isArray(raw)) {
+    return undefined;
+  }
+  const entries = Object.entries(raw as Record<string, unknown>);
+  return entries.every(([, value]) => typeof value === "string")
+    ? (raw as Record<string, string>)
+    : undefined;
+}
+
 /** `payload.task_id` when the payload is an object carrying it, else undefined.
  *  Same tolerance as `payloadOptions`: a missing, null or non-object payload is
  *  not an error, it is simply a decision with no task linkage. */
@@ -338,13 +357,17 @@ function entriesAsAnswers(
   kind: DecisionAnswerKind,
   posts: boolean,
   outcomeFor: (answerValue: string) => DecisionOutcomeText,
+  // DECISION F027 D7 (4): the option branch alone passes a lookup into
+  // `payload.option_labels`; every other caller keeps the identity default, so
+  // a command's label is always its own value, exactly as before this existed.
+  labelFor: (value: string) => string = (value) => value,
 ): DecisionAnswer[] {
   return entries.map((entry) => {
     const text = String(entry);
     const outcome = outcomeFor(text);
     return {
       kind,
-      label: text,
+      label: labelFor(text),
       value: text,
       posts,
       expectedOutcome: outcome.expectedOutcome,
@@ -357,7 +380,11 @@ function entriesAsAnswers(
  *  decision's own payload. Options win, then next actions, then a free-text
  *  answer. This function MUST NOT branch on `card.type` — the type is data
  *  here, never control flow — which is exactly what lets a decision type this
- *  repository has never produced render generically. */
+ *  repository has never produced render generically. DECISION F027 D7 (4):
+ *  an option's `label` reads `payload.option_labels` when it is an object of
+ *  strings naming that option, else the option's own value — the posted
+ *  `value` never changes either way, and a command answer never reads this
+ *  map at all, because it is not an option. */
 export function decisionAnswers(card: DecisionInboxEntry): DecisionAnswer[] {
   // ONE READING, STAMPED ON EVERY BRANCH BELOW. The comparison is strict
   // `=== true` on purpose: an ABSENT key must give false, so a payload from a
@@ -372,7 +399,9 @@ export function decisionAnswers(card: DecisionInboxEntry): DecisionAnswer[] {
   const outcomeFor = outcomeMatcher(card.outcomes);
   const options = nonEmptyEntries(payloadOptions(card.payload));
   if (options.length > 0) {
-    return entriesAsAnswers(options, "option", posts, outcomeFor);
+    const optionLabels = payloadOptionLabels(card.payload);
+    const labelFor = optionLabels ? (value: string) => optionLabels[value] ?? value : undefined;
+    return entriesAsAnswers(options, "option", posts, outcomeFor, labelFor);
   }
   const commands = nonEmptyEntries(card.next_actions);
   if (commands.length > 0) {
