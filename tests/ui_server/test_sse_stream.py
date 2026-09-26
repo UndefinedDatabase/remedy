@@ -139,6 +139,57 @@ class TestFrameShape:
         assert streamed == polled
 
 
+class TestAttemptEventKinds:
+    """DECISION F288 D1 (5): the attempt id travels in the envelope for exactly the kinds
+    an attempt (one execution of a task by `run_job`) writes, round 1's
+    `ATTEMPT_EVENT_KINDS`."""
+
+    def test_the_set_is_pinned_and_a_subset_of_event_names(self):
+        from packages.orchestration.event_names import EVENT_NAMES
+
+        assert mod.ATTEMPT_EVENT_KINDS == {
+            "task_run_started", "task_round_repaired", "task_round_tested",
+            "task_round_completed", "task_run_completed", "task_run_failed",
+        }
+        assert mod.ATTEMPT_EVENT_KINDS <= EVENT_NAMES
+
+    def test_each_kind_gains_attempt_id_directly_after_task_id(self):
+        for kind in mod.ATTEMPT_EVENT_KINDS:
+            summary = mod._safe_event_summary(1, {
+                "event": kind, "metadata": {"attempt_id": "abc123"}})
+            assert set(summary) == {
+                "seq", "event", "timestamp", "outcome", "task_id", "attempt_id"}
+            assert summary["attempt_id"] == "abc123"
+            keys = list(summary)
+            assert keys[keys.index("task_id") + 1] == "attempt_id"
+
+    def test_missing_or_non_string_metadata_value_is_empty(self):
+        for kind in mod.ATTEMPT_EVENT_KINDS:
+            assert mod._safe_event_summary(1, {"event": kind})["attempt_id"] == ""
+            assert mod._safe_event_summary(1, {
+                "event": kind, "metadata": {}})["attempt_id"] == ""
+            assert mod._safe_event_summary(1, {
+                "event": kind, "metadata": {"attempt_id": 123}})["attempt_id"] == ""
+            assert mod._safe_event_summary(1, {
+                "event": kind, "metadata": "not-a-dict"})["attempt_id"] == ""
+
+    def test_a_top_level_attempt_id_is_ignored(self):
+        for kind in mod.ATTEMPT_EVENT_KINDS:
+            summary = mod._safe_event_summary(1, {
+                "event": kind, "attempt_id": "top-level",
+                "metadata": {"attempt_id": "nested"}})
+            assert summary["attempt_id"] == "nested"
+            summary_no_nested = mod._safe_event_summary(1, {
+                "event": kind, "attempt_id": "top-level"})
+            assert summary_no_nested["attempt_id"] == ""
+
+    def test_task_run_noop_and_job_stopped_keep_the_base_key_set(self):
+        for kind in ("task_run_noop", "job_stopped"):
+            summary = mod._safe_event_summary(1, {
+                "event": kind, "metadata": {"attempt_id": "abc"}})
+            assert set(summary) == {"seq", "event", "timestamp", "outcome", "task_id"}
+
+
 class TestStreamFrames:
     def test_every_event_from_the_cursor_is_streamed_in_ledger_order(self):
         frames = _run(lambda: _events(4), 0, 1, _Clock())

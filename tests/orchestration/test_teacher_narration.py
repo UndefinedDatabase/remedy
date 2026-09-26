@@ -56,6 +56,8 @@ class TestEnumeratedSet:
             "planning_failed",
             "planning_started",
             "task_round_completed",
+            "task_round_repaired",
+            "task_round_tested",
             "task_run_completed",
             "task_run_failed",
             "task_run_noop",
@@ -64,6 +66,20 @@ class TestEnumeratedSet:
             "verification_passed",
             "workspace_materialized",
         ]
+
+
+class TestNewRoundEvents:
+    """DECISION F288 D1 (6): a test and a repair event per ping-pong round."""
+
+    def test_a_repair_round_narrates_its_exact_sentence(self):
+        sentence = narrate_run_event(_event("task_round_repaired", task_id="T1",
+                                            round_number=2, outcome="changed"))
+        assert sentence == "A repair round finished: task T1, round 2 (result: changed)"
+
+    def test_a_tested_round_narrates_its_exact_sentence(self):
+        sentence = narrate_run_event(_event("task_round_tested", task_id="T1",
+                                            round_number=1, outcome="pass"))
+        assert sentence == "A round's tests finished: task T1, round 1 (result: pass)"
 
 
 class TestUnrecognisedEvents:

@@ -565,6 +565,57 @@ class TestRenderVerificationFailed:
         assert "required_section:Summary:" in out
 
 
+class TestRenderRoundsLine:
+    """DECISION F288 D1 (6): the rounds line, first among the sub-details, only when
+    the task block holds at least one `task_round_completed`."""
+
+    def test_renders_the_rounds_line_with_its_exact_text(self):
+        job = _make_job()
+        task_id = str(uuid4())
+        events = [
+            {"event": "task_run_started", "job_id": str(job.job_id), "run_id": "r",
+             "timestamp": _ts(0), "task_id": task_id,
+             "metadata": {"task_type": "write_readme", "attempt_id": "attempt-abc123"}},
+            {"event": "task_round_tested", "job_id": str(job.job_id), "run_id": "r",
+             "timestamp": _ts(1), "task_id": task_id, "outcome": "fail",
+             "metadata": {"round_number": 1, "attempt_id": "attempt-abc123"}},
+            {"event": "task_round_completed", "job_id": str(job.job_id), "run_id": "r",
+             "timestamp": _ts(2), "task_id": task_id, "outcome": "needs_repair",
+             "metadata": {"round_number": 1, "attempt_id": "attempt-abc123"}},
+            {"event": "task_round_repaired", "job_id": str(job.job_id), "run_id": "r",
+             "timestamp": _ts(3), "task_id": task_id, "outcome": "changed",
+             "metadata": {"round_number": 2, "attempt_id": "attempt-abc123"}},
+            {"event": "task_round_tested", "job_id": str(job.job_id), "run_id": "r",
+             "timestamp": _ts(4), "task_id": task_id, "outcome": "pass",
+             "metadata": {"round_number": 2, "attempt_id": "attempt-abc123"}},
+            {"event": "task_round_completed", "job_id": str(job.job_id), "run_id": "r",
+             "timestamp": _ts(5), "task_id": task_id, "outcome": "pass",
+             "metadata": {"round_number": 2, "attempt_id": "attempt-abc123"}},
+            {"event": "task_run_completed", "job_id": str(job.job_id), "run_id": "r",
+             "timestamp": _ts(6), "task_id": task_id, "outcome": "pass",
+             "metadata": {"attempt_id": "attempt-abc123"}},
+        ]
+        out = summarize_timeline(job, events)
+        assert (
+            "      rounds:    2  repairs=1  tests_passed=1  tests_failed=1"
+            "  attempt=attempt-abc123"
+        ) in out
+
+    def test_no_task_round_completed_renders_no_rounds_line(self):
+        job = _make_job()
+        task_id = str(uuid4())
+        events = [
+            {"event": "task_run_started", "job_id": str(job.job_id), "run_id": "r",
+             "timestamp": _ts(0), "task_id": task_id,
+             "metadata": {"task_type": "write_readme"}},
+            {"event": "task_run_completed", "job_id": str(job.job_id), "run_id": "r",
+             "timestamp": _ts(1), "task_id": task_id, "outcome": "pass",
+             "metadata": {}},
+        ]
+        out = summarize_timeline(job, events)
+        assert "rounds:" not in out
+
+
 class TestRenderRepoApplication:
     def test_renders_repo_file_path(self):
         job = _make_job()

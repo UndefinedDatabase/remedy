@@ -65,6 +65,23 @@ class TestPingPongCreatesRun:
         assert result.finished_at
 
 
+class TestRunPingpongAdoptsGivenRunId:
+    """DECISION F288 D1: a non-empty ``run_id`` keyword replaces the minted one, so the id
+    every event of ``run_job``'s execution carries is the caller's attempt id."""
+
+    def test_a_given_run_id_is_adopted(self, demo_repo: Path):
+        result = run_pingpong(
+            "Fix README", str(demo_repo), builder_name="fake", reviewer_name="fake",
+            run_id="0123456789abcdef",
+        )
+        assert result.run_id == "0123456789abcdef"
+
+    def test_no_run_id_mints_a_different_sixteen_hex_id(self, demo_repo: Path):
+        result = run_pingpong("Fix README", str(demo_repo), builder_name="fake", reviewer_name="fake")
+        assert result.run_id != "0123456789abcdef"
+        assert len(result.run_id) == 16
+
+
 # ---------------------------------------------------------------------------
 # 2. Staged mode does not mutate target repo
 # ---------------------------------------------------------------------------

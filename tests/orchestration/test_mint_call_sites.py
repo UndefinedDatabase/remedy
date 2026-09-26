@@ -83,6 +83,33 @@ class TestMintCallSites:
                 f"mint_episode_id"
             )
 
+    def test_the_attempt_id_assignment_calls_mint_run_id(self) -> None:
+        """The one ``attempt_id = ...`` assignment in ``run_job``'s body mints through
+        ``mint_run_id`` (DECISION F288 D1), read by AST for the same reason the episode
+        assignments above are: there is no object to compare a local variable against."""
+        assignments = [
+            node for node in ast.walk(_parsed(pingpong_job))
+            if isinstance(node, ast.Assign)
+            and any(
+                isinstance(target, ast.Name) and target.id == "attempt_id"
+                for target in node.targets
+            )
+        ]
+
+        assert len(assignments) == 1, (
+            f"expected 1 attempt_id assignment in pingpong_job.py, "
+            f"found {len(assignments)}"
+        )
+
+        node = assignments[0]
+        value = node.value
+        assert isinstance(value, ast.Call), (
+            f"attempt_id at line {node.lineno} is not a call"
+        )
+        assert isinstance(value.func, ast.Name) and value.func.id == "mint_run_id", (
+            f"attempt_id at line {node.lineno} does not mint through mint_run_id"
+        )
+
     @pytest.mark.parametrize(
         "module",
         [pingpong_job, pingpong_loop],
