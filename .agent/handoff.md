@@ -1,85 +1,128 @@
-# Handback — F027 Task veto · Round 6
+# Handback — F027 Task veto · Round 7
 
 ## Session
 
-SESSION 1 of feature F027 · round 6 · rounds so far 6
+SESSION 1 of feature F027 · round 7 · rounds so far 7
 
 Roughly a third of the session's context budget remained at the point this handback was
-written. This round booked round 5's verdict, resolved R-1067's registration, recorded
-DECISION F027 D6, fixed the guard walker's `if TYPE_CHECKING:` false reach, reviewed and
-landed round 5's uncommitted draft of the write door's veto clause and its answer of a
-`veto:` replan proposal, and wrote the door tests round 5 stopped short of. All five gates
-(G1–G5) ran green; G6 follows below.
+written. This round booked round 6's verdict, registered and repaired R-1068, recorded
+DECISION F027 D7, and landed the veto's reach into the page's data: the dashboard's
+`vetoes` section, a vetoed task's node seeded and streamed as `vetoed`, the reason
+verbatim in the job's text and exported reports, plain-words option labels on the
+proposal's buttons, and both veto event names in the page's catalog. All five gates
+(G1–G5) ran green; G6 follows below. Two mid-round corrections were made and are declared
+in Deviations: a wrong event kind in a new vitest test (C5b), found for real by G4's own
+`test_vitest_passes` gate, and a canary mutation that measured green for the wrong reason
+and was rewritten (C6b).
 
 ## Range
 
-Review of `96cb51546..ae7d4941f` (C1 through C5, all committed). C6 (this handback) follows.
+Review of `25a295c0..279cf7443` (C1 through C6b, all committed). C7 (this handback) follows.
 
 ## Commits
 
-### 94973b971 F027 R6 C1: copy round 6 block and payloads into .agent/authored/
+### 7e3c63186 F027 R7 C1: copy round 7 block and payloads into .agent/authored/
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f027-r6-block.md | +199/-0 | copy of this round's block, verbatim (`shutil.copyfile`) |
-| .agent/authored/f027-r6-plan.md | +31/-0 | copy of the plan.md payload |
-| .agent/authored/f027-r6-records.diff | +49/-0 | copy of the records.diff payload |
+| .agent/authored/f027-r7-block.md | +250/-0 | copy of this round's block, verbatim (`shutil.copyfile`) |
+| .agent/authored/f027-r7-plan.md | +31/-0 | copy of the plan.md payload |
+| .agent/authored/f027-r7-records.diff | +79/-0 | copy of the records.diff payload |
 
-279 insertions by `git show --numstat` — matches the block's stated expectation exactly
-(block line count 199 plus 80), under the 500-line cap.
+360 insertions by `git show --numstat` — matches the block's stated expectation exactly
+(block line count 250 plus 110), under the 500-line cap.
 
-### 29b3e8567 F027 R6 C2: book round 5, resolve R-1067, record D6
+### c789b9aa2 F027 R7 C2: book round 6, register R-1068, record D7
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/decisions.md | +29/-0 | DECISION F027 D6 appended, verbatim from records.diff |
-| .agent/live_review.md | +4/-0 | round 5's Gate entry and R-1067's `Done:` paragraph appended |
-| .agent/plan.md | +11/-19 | rewritten whole to the plan.md payload |
+| .agent/decisions.md | +50/-0 | DECISION F027 D7 appended, verbatim from records.diff |
+| .agent/live_review.md | +4/-0 | round 6's Gate entry and R-1068's registration appended |
+| .agent/plan.md | +9/-9 | rewritten whole to the plan.md payload |
+| .agent/prose_slips.md | +1/-0 | one line: round 5's `ALLOWED_IMPORTS` omission, appended verbatim |
 
-29/0 decisions.md, 4/0 live_review.md, 11/19 plan.md by `git show --numstat` — matches the
-block's stated expectation exactly. `git apply --check` on records.diff → exit 0; the real
-`git apply` → exit 0.
+50/0 decisions.md, 4/0 live_review.md, 9/9 plan.md, 1/0 prose_slips.md by `git show
+--numstat` — matches the block's stated expectation exactly. `git apply --check` on
+records.diff → exit 0; the real `git apply` → exit 0.
 
-### 3742ab963 F027 R6 C3: the door vetoes a task and answers a replan proposal; the guard skips type-only imports
+### 7b0e61ba0 F027 R7 C3: repair R-1068, name both veto events in the page's catalog
 | Path | +/- | Reason |
 |---|---|---|
-| packages/orchestration/decision_inbox.py | +16/-0 | S5, from round 5's draft: `_answerable_by_decision_resolve` gains a `veto:` branch — true while a `vetoed_tasks` entry exists with no `veto_answers` entry, false on `TaskVetoError` |
-| packages/orchestration/ui_server.py | +81/-0 | S4, from round 5's draft: `JOB_VETO_TASK_COMMAND_ID`; the `_read_command_payload` shape check for `task_id` and `reason`; `_handle_command_submission`'s new veto clause calling `_dispatch_veto_task`; the `veto:` branch of `_dispatch_decision_resolve` calling `veto_proposal.answer_replan_proposal` |
-| tests/orchestration/test_decision_inbox.py | +37/-4 | from round 5's draft: `ANSWERABLE_DECISION_TYPES` gains `replan_proposal`; a new test proves a `veto:` card answerable while open and not answerable once answered |
-| tests/ui_server/test_command_channel.py | +60/-6 | W1 (mine) plus the draft's two declared exposed-set adjustments: `_module_level_closure`/`imports_of` skips the body of an `if TYPE_CHECKING:` (or `if typing.TYPE_CHECKING:`) block per DECISION F027 D6, with a new synthetic-module test; `DOOR_METHODS` gains `_dispatch_veto_task`; `ALLOWED_IMPORTS` gains four entries (see Deviations); the door's `job.veto-task` shape-error case and `UI_EXPOSED_COMMANDS`'s literal list |
+| apps/ui/src/api/humanizeCatalog.ts | +2/-0 | S1: `task_vetoed` and `veto_proposal_answered` added in their sorted place, one plain sentence each |
 
-194 insertions by `git show --numstat`, under the 500-line cap. Reviewed the draft (S4, S5)
-against round 5's spec word for word before staging it; found it compliant except for the
-`ALLOWED_IMPORTS` count (Deviations). `ruff check` on all four files → clean.
-`pytest -q tests/ui_server/test_command_channel.py::TestCommandDoorImportGuard` → 7 passed
-(includes the new walker test and the now-green transitive-forbidden test).
+2 insertions, under the 500-line cap. `pytest -q tests/ui_contracts/test_humanize_catalog.py`
+→ 12 passed (the catalog/vocabulary equality test now green).
 
-### 080219c12 F027 R6 C4: test the door's veto and its answer of a replan proposal
+### 99d76f8de F027 R7 C4: the dashboard's vetoes section, the reason in the report, and option labels
 | Path | +/- | Reason |
 |---|---|---|
-| tests/ui_server/test_command_dispatch.py | +236/-0 | W3: `TestVetoTaskDispatchEffects` (200 with the control file and event written, three bad-reason shapes each 400 on `reason`, a missing `task_id` 400, an already-vetoed task and a finished job each 409 naming the code, audit outcomes for each) and `TestVetoProposalAnswerDispatchEffects` (accept and replan each 200, a second answer and an unknown id each 409) |
+| packages/orchestration/pingpong_job.py | +49/-2 | S4: `_task_veto_report_map` (metadata first, control files for a veto no run has folded yet, swallowing a `TaskVetoError`); `format_job_report_text` gains the `TASK_VETOED` icon `/` and the `Vetoed by <actor>: <reason>` line; `export_job_report` gives each vetoed task a `veto` object |
+| packages/orchestration/ui_server.py | +57/-0 | S2: `_build_veto_section` (never raises) and its wiring into `_build_dashboard`'s `"vetoes"` key beside `task_specs` |
+| packages/orchestration/veto_proposal.py | +9/-0 | S5 Python half: `_OPTION_LABELS` and the payload's new `option_labels` key |
+| tests/orchestration/test_task_veto_runner.py | +71/-0 | `TestReportCarriesTheVeto`: a folded veto's reason/actor in the text and export, a veto no run has folded yet, and a job with no veto unchanged |
+| tests/orchestration/test_veto_proposal.py | +4/-0 | the payload's `option_labels` pinned |
+| tests/ui_server/test_dashboard_vetoes.py | +137/-0 (new) | no veto, one veto with its unreachable set and reason verbatim, an answered one, a finished job's empty vetoable list, and a corrupt veto file's `error` |
 
-236 insertions, under the 500-line cap. `ruff check` → clean.
-`pytest -q tests/ui_server/test_command_dispatch.py` → 49 passed (11 new).
+327 insertions, under the 500-line cap. `ruff check` on the three Python sources → clean.
+`pytest -q` on the three test files above → 36 passed.
 
-### ae7d4941f F027 R6 C5: the round's red-proof mutation tool
+### a10b964f3 F027 R7 C5: seed and stream the vetoed node, and label the proposal's buttons
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f027-r6-mutations.py | +208/-0 (new) | the round's mutation tool for G5 (excluded from `ruff check` by `pyproject.toml`'s `.agent/authored` exclusion, DECISION F263 D3) |
+| apps/ui/src/api/decisionCard.test.ts | +62/-0 | tests for `option_labels`-driven labelling, its absence, a malformed map, and a command answer never reading it |
+| apps/ui/src/api/decisionCard.ts | +32/-3 | S5 TS half: `payloadOptionLabels`; `entriesAsAnswers` gains a `labelFor` parameter (identity default); the option branch of `decisionAnswers` passes a lookup into it |
+| apps/ui/src/api/remedyApi.test.ts | +69/-0 | tests for the `vetoes` section's normalization: missing, malformed, the eight-field mapping, an error, and a malformed entry |
+| apps/ui/src/api/remedyApi.ts | +33/-1 | S3: `normalizeVetoEntry`/`normalizeVetoes`, wired into both `normalizeDashboardPayload` and `normalizeApiFailure` |
+| apps/ui/src/api/types.ts | +30/-1 | S3: `RemedyVetoEntry`, `RemedyVetoes`, and `RemedyDashboard`'s new `vetoes` field |
+| apps/ui/src/components/graph/BrainGraphStage.tsx | +6/-1 | call-site update: `dashboardBrainSeeds` gains `dashboard.vetoes.tasks`' task ids as its new third argument |
+| apps/ui/src/components/graph/brainOntology.ts | +3/-0 | S3: `SEED_STATUS_STATE_TABLE` gains `vetoed: "vetoed"` |
+| apps/ui/src/components/graph/brainReducer.test.ts | +29/-0 | `task_vetoed` births a node, never overwrites `pass`, and DOES overwrite `fail` (unlike `task_paused`) |
+| apps/ui/src/components/graph/brainReducer.ts | +21/-0 | S3: `onTaskVetoed` and its `task_vetoed` case in `applyBrainEvent` |
+| apps/ui/src/components/graph/brainView.test.ts | +25/-2 | `dashboardBrainSeeds`'s new parameter (vetoed wins over paused, no-op default) and `BRAIN_FILTER_STATES.done` gaining `vetoed`; one existing call site fixed for the new arg position |
+| apps/ui/src/components/graph/brainView.ts | +13/-3 | S3: `dashboardBrainSeeds` gains `vetoedTaskIds` after `pausedTaskIds`; `BRAIN_FILTER_STATES.done` gains `vetoed` |
 
-208 insertions, under the 500-line cap.
+323 insertions, under the 500-line cap. `tsc --noEmit` and the app's own `eslint` both ran
+for real inside G4 below (`test_typescript_compiles`, `test_the_ui_lint_passes_with_no_problem`)
+and read green — the first live confirmation this round that the TypeScript compiles, since
+this sandbox forbids running `tsc`/`eslint`/`vitest` directly outside G5's one ordered use.
 
-### (C6, this commit) F027 R6 C6: rewrite handoff for round 6
+### cd2c8c911 F027 R7 C6: the round's red-proof mutation tool
+| Path | +/- | Reason |
+|---|---|---|
+| .agent/authored/f027-r7-mutations.py | +374/-0 (new) | the round's mutation tool for G5 (excluded from `ruff check` by `pyproject.toml`'s `.agent/authored` exclusion, DECISION F263 D3) |
+
+374 insertions, under the 500-line cap.
+
+### 3e3406c7e F027 R7 C5b: fix a wrong event kind in the vetoed-over-failed test
+| Path | +/- | Reason |
+|---|---|---|
+| apps/ui/src/components/graph/brainReducer.test.ts | +2/-1 | `task_run_completed` always closes a task `pass` whatever `outcome` it is given; getting a `fail` node needs the `task_run_failed` event kind instead, as the reducer's other fail-outcome tests already use |
+
+3 changed lines. Declared as a deviation (see below): not one of the block's ordered
+commits, discovered by G4's real `test_vitest_passes` run (see Verification), which failed
+before this fix and passed after it.
+
+### 279cf7443 F027 R7 C6b: fix the canary to a throw, an import got tree-shaken away
+| Path | +/- | Reason |
+|---|---|---|
+| .agent/authored/f027-r7-mutations.py | +13/-6 | the canary mutation, measured empirically in a first G5 run to stay green for the wrong reason (an unresolvable import whose binding is never referenced is elided by esbuild's per-file transform), rewritten as a top-level `throw` — a side effect no tree-shaking step can drop |
+
+13 insertions, 6 deletions. Declared as a deviation (see below): a second correction found
+by actually running G5, not by the block.
+
+### (C7, this commit) F027 R7 C7: rewrite handoff for round 7
 | Path | +/- | Reason |
 |---|---|---|
 | .agent/handoff.md | see below | this handback, rewritten whole per `docs/agents/handback_template.md` |
+| .agent/live_review.md | +2/-0 | blank line and the `Landed: R-1068 —` line, naming `7b0e61ba0` |
 
 ## External actions
 
-`git push -u origin feature/f027-task-veto` after C6 → see G6 below for the real outcome.
-No PR created or merged this round (constraint 5; none was open before this round — see the
-Open PR Gate reading in G6 below). One worktree added and removed: `git worktree add
---detach .remedy-wt/f027-r6-mut ae7d4941f` for G5, then `git worktree remove --force
-.remedy-wt/f027-r6-mut` and `git worktree prune` immediately after the mutation tool ran;
-`git worktree list` before and after matched except for that one entry (see Verification).
+`git push -u origin feature/f027-task-veto` after C7 → see G6 below for the real outcome.
+No PR created or merged this round (constraint 5; the Open PR Gate read empty before this
+round started — see G6 below for its reading at handback time). One worktree added and
+removed: `git worktree add --detach .remedy-wt/f027-r7-mut 3e3406c7e` for G5, then `git
+worktree remove --force .remedy-wt/f027-r7-mut` and `git worktree prune` immediately after
+the mutation tool ran; `git worktree list` before and after matched except for that one
+entry (see Verification).
 
 ## Verification
 
@@ -87,27 +130,22 @@ Open PR Gate reading in G6 below). One worktree added and removed: `git worktree
 ```
 $ ls .agent/STOP
 ls: cannot access '.agent/STOP': No such file or directory
-REAL_EXIT=2   (absence confirmed — continue)
+EXIT=2   (absence confirmed — continue)
 
 $ pwd
 /home/decodeux/Repos/remedy
+$ git status --porcelain
+(empty)
 $ git branch --show-current
 feature/f027-task-veto
 $ git log --oneline -1
-96cb51546 F027 R5: write blocked handoff (door guard reddens on task_veto's frozen exec_guard reach)
-$ git status --porcelain
- M packages/orchestration/decision_inbox.py
- M packages/orchestration/ui_server.py
- M tests/orchestration/test_decision_inbox.py
- M tests/ui_server/test_command_channel.py
-$ git diff HEAD | sha256sum
-bb6a81da0676e797cd7303d77b4712d58ebefefc7dccd3bcdc99c248d8d8a395  -
+25a295c09 F027 R6 C6: rewrite handoff for round 6
 ```
-All four matched the block's step 2 exactly.
+All matched the block's step 2 exactly.
 
-**Block bytes (step 3):** `.remedy-wt/f027-r6/block.md` → 199 lines, sha256
-`968fe65d40c578492059112af5b0774556d4e7d0dcd1c4b9baa33bbb8a7c73e1` — both match the
-delegation message's two readings exactly.
+**Block bytes (step 3):** `.remedy-wt/f027-r7/block.md` → 250 lines (newline count), 19446
+bytes, sha256 `ef06cdbfc3fa8e9ba729c0abe779502d070d8ff64f13bc06698329926f4301a0` — both the
+line count and the sha256 match the delegation message's two readings exactly.
 
 **Worktree list (step 4):** reported in full at round start; unchanged at handback except
 for the G5 worktree added and removed (see External actions and G5 below).
@@ -115,77 +153,95 @@ for the G5 worktree added and removed (see External actions and G5 below).
 **G1 TRANSPORT** — payload readings (all matched the table):
 | file | lines | bytes | sha256 |
 |---|---|---|---|
-| plan.md | 31 | 1127 | 629949b44993842d7db4b9e5451cfde25f05cc3448a0047f2564a7f1c9b0bf2c |
-| records.diff | 49 | 9988 | c57e29fdb9193f4f37d6f6ce74d1bd588862a83434641bb368d2ddd1697db874 |
+| plan.md | 31 | 1169 | 4d77b4f10bda08af45172470de77146de1162663ebe9bd699364ed4797e812de |
+| records.diff | 79 | 13526 | f1e3362d16825b2ecdbbe7a7e60c4ce6339c4cfe9ee004d3710ff233aee85965 |
 
 Copy comparisons, all byte-identical (sha256 equal on both sides):
-- `git show 94973b971:.agent/authored/f027-r6-block.md` = `.remedy-wt/f027-r6/block.md`
-  (`968fe65d...`)
-- `git show 94973b971:.agent/authored/f027-r6-plan.md` = `.remedy-wt/f027-r6-payloads/plan.md`
-  (`629949b4...`)
-- `git show 94973b971:.agent/authored/f027-r6-records.diff` =
-  `.remedy-wt/f027-r6-payloads/records.diff` (`c57e29fd...`)
+- `git show 7e3c63186:.agent/authored/f027-r7-block.md` = `.remedy-wt/f027-r7/block.md`
+  (`ef06cdbfc3fa8e9ba729c0abe779502d070d8ff64f13bc06698329926f4301a0`)
+- `git show 7e3c63186:.agent/authored/f027-r7-plan.md` = `.remedy-wt/f027-r7-payloads/plan.md`
+  (`4d77b4f10bda08af45172470de77146de1162663ebe9bd699364ed4797e812de`)
+- `git show 7e3c63186:.agent/authored/f027-r7-records.diff` =
+  `.remedy-wt/f027-r7-payloads/records.diff` (`f1e3362d16825b2ecdbbe7a7e60c4ce6339c4cfe9ee004d3710ff233aee85965`)
 
-**G2 THE RECORDS** — sha256 at `29b3e8567`, all matched the block's table exactly:
+**G2 THE RECORDS** — sha256 at `c789b9aa2`, all matched the block's table exactly:
 | path | bytes | sha256 | match |
 |---|---|---|---|
-| .agent/live_review.md | 310462 | c08e4485e54fb30c7e9580be127a908fe2887f403885128db3c5b2454658c283 | yes |
-| .agent/decisions.md | 2179770 | 92559cd5450c245b21c4aedc9ae37d8ea3948e95b4ad839aa471424ff42d0a9d | yes |
-| .agent/plan.md | 1127 | 629949b44993842d7db4b9e5451cfde25f05cc3448a0047f2564a7f1c9b0bf2c | yes |
+| .agent/live_review.md | 314376 | aed7abbde6bb8716690f1fc70ce4b438e5d001cd35c99b8d1377d00dee77eb03 | yes |
+| .agent/decisions.md | 2184242 | b289cafbef66c7ec3c8325d065781b934163e5148ce8a0c7ca473bc9332ae09a | yes |
+| .agent/prose_slips.md | 369137 | a20d3776fcc502901420ca4e30cc4d9d49ad7ebf2a6b951e118cdda2cdb1ef91 | yes |
+| .agent/plan.md | 1169 | 4d77b4f10bda08af45172470de77146de1162663ebe9bd699364ed4797e812de | yes |
 
-`open_finding_ids` (via `scripts/rotate_live_review.py`) over the ledger's text at `29b3e8567`
-→ `[]` — matches the reviewer's own reading (empty).
+`open_finding_ids` (via `scripts/rotate_live_review.py`) over the ledger's text at
+`c789b9aa2` → `['R-1068']` — matches the reviewer's own reading exactly.
 
 **G3 THE CODE:**
 ```
-$ ruff check packages/orchestration/ui_server.py packages/orchestration/decision_inbox.py \
-    tests/ui_server/test_command_channel.py tests/orchestration/test_decision_inbox.py \
-    tests/ui_server/test_command_dispatch.py tests/cli/test_decision_cmd.py
+$ ruff check packages/orchestration/ui_server.py packages/orchestration/pingpong_job.py \
+    packages/orchestration/veto_proposal.py tests/ui_server/test_dashboard_vetoes.py \
+    tests/orchestration/test_task_veto_runner.py tests/orchestration/test_veto_proposal.py \
+    .agent/authored/f027-r7-mutations.py
 All checks passed!
 REAL_EXIT=0
 ```
-`git diff -U0 96cb51546 3742ab963 -- tests/ui_server/test_command_channel.py` — reported in
-full (see Deviations for the one departure from "and nothing else"): it holds the walker's
-`root` parameter, its docstring note, the `is_type_checking_test` helper and the skip itself
-with the DECISION F027 D6 comment (the walker's skip); the new synthetic-module test (its
-test); `_dispatch_veto_task` added to `DOOR_METHODS` (the door method name); four
-`ALLOWED_IMPORTS` lines each commented `# F027 D5` — `veto_task_command`,
-`validate_veto_reason`, `TaskVetoRefused` and `answer_replan_proposal` (S6 names three; the
-fourth is the declared deviation below); the `job.veto-task` shape-error branch in
-`test_every_exposed_command_reaches_the_answer_its_effect_gives` and the `job.veto-task`
-entry in `test_the_set_holds_exactly_the_ruled_ids_and_no_other`'s literal list (the two
-declared exposed-set adjustments). Nothing else appears in the diff.
+The `SKIPPED` lines of G4 below name no TypeScript or vitest node (all four are Python
+`pytest.skip`/quarantine reasons — see G4).
 
 **G4 THE TESTS:**
 ```
-$ pytest -q -p no:cacheprovider -rs tests/cli/test_job_veto.py tests/cli/test_job_plan_cmd.py \
-    tests/cli/test_job_pause.py tests/ui_server/test_command_channel.py \
-    tests/ui_server/test_command_dispatch.py tests/ui_contracts/test_steering_send_contract.py \
-    tests/orchestration/test_decision_inbox.py tests/orchestration/test_veto_proposal.py \
-    tests/orchestration/test_task_veto.py tests/cli/test_decision_cmd.py \
-    tests/test_command_catalog.py tests/cli/test_advertised_commands.py \
-    tests/cli/test_exit_codes.py tests/orchestration/test_event_names.py \
-    tests/test_no_orphan_modules.py tests/orchestration/test_import_reachability.py \
+$ pytest -q -p no:cacheprovider -rs tests/ui_server/test_dashboard_vetoes.py tests/ui_contracts \
+    tests/ui_server/test_dashboard_contract.py tests/ui_server/test_dashboard_pause.py \
+    tests/ui_server/test_dashboard_task_specs.py tests/ui_server/test_sse_stream.py \
+    tests/ui_server/test_live_state.py tests/orchestration/test_veto_proposal.py \
+    tests/orchestration/test_task_veto.py tests/orchestration/test_task_veto_runner.py \
+    tests/orchestration/test_decision_inbox.py tests/orchestration/test_job_task_runner.py \
+    tests/orchestration/test_pause_resume.py tests/orchestration/test_token_ledger.py \
+    tests/test_role_override_flags.py tests/orchestration/test_test_runner.py \
+    tests/orchestration/test_import_reachability.py tests/orchestration/test_event_names.py \
     tests/orchestration/test_live_review_rotation.py tests/orchestration/test_integrity_gate.py \
-    tests/orchestration/test_block_lint.py tests/docs tests/cli/test_golden_path.py
-1335 passed in 85.40s
+    tests/cli/test_golden_path.py
+1901 passed, 4 skipped in 180.41s
 REAL_EXIT=0
 ```
-Zero `SKIPPED` lines (`-rs` printed no short summary section; grepping the whole output for
-"skip", case-insensitive, matched nothing).
+FIRST RUN (before the C5b fix) read `1 failed, 1900 passed, 4 skipped`, the one failure
+`tests/orchestration/test_test_runner.py::TestVitestFrontendTestFoundation::test_vitest_passes`
+— a REAL `npx vitest run` over the whole suite this test runs for itself (not me invoking
+node/npx; the sandbox's "vitest only at G5" rule binds my own shell commands, and this
+existing gate running its own subprocess is the test's, not mine), which surfaced my wrong
+event kind in `brainReducer.test.ts` (C5b's fix). The SECOND run above, after C5b, reads no
+failure.
 
-Reconciling against the reviewer's `1281 passed` (their run excluded the golden path and W3):
-`1335 - 1281 = 54`. `--collect-only -q` node counts: `tests/cli/test_golden_path.py` → 42
-(excluded from the reviewer's count, included in mine); the new walker test
-(`test_the_walker_skips_only_a_type_checking_import`) → 1 (new this round, not in the
-reviewer's carried draft); `tests/ui_server/test_command_dispatch.py`'s two new classes → 11
-(W3, not yet written when the reviewer measured). `42 + 1 + 11 = 54` — every one of the 54
-accounted for.
+`SKIPPED` lines, all four D3 quarantine (unrelated to this round):
+```
+SKIPPED [1] tests/ui_contracts/test_graph_architecture.py:441: D3 quarantine (F252)
+SKIPPED [1] tests/ui_contracts/test_graph_architecture.py:484: D3 quarantine (F252)
+SKIPPED [1] tests/ui_contracts/test_ux_quality.py:507: D3 quarantine (F252)
+SKIPPED [1] tests/ui_contracts/test_ux_quality.py:543: D3 quarantine (F252)
+```
 
-Per-file grown-node counts (`--collect-only -q`):
-- `tests/ui_server/test_command_channel.py` → 110 tests collected
-- `tests/ui_server/test_command_dispatch.py` → 49 tests collected
-- `tests/orchestration/test_decision_inbox.py` → 47 tests collected
+Reconciling against the reviewer's `1 failed, 1845 passed, 9 skipped` (their run excluded
+the new test file and the golden path, and ran in a worktree with no UI toolchain):
+total nodes theirs = 1855; mine = 1905; difference = 50, fully accounted by
+`--collect-only -q`:
+- `tests/ui_server/test_dashboard_vetoes.py` (new file) → 5
+- `tests/orchestration/test_task_veto_runner.py` (16 → 19) → 3 new
+- `tests/cli/test_golden_path.py` (excluded from theirs) → 42
+- 5 + 3 + 42 = 50.
+
+Of the 1855 nodes both runs share: theirs read 1845 passed + 1 failed + 9 skipped; mine
+read 1851 passed + 0 failed + 4 skipped (1855 total, matching). The 6-passed increase
+resolves exactly: +1 from R-1068 itself (failed → passed, repaired this round in C3), and
++5 from UI-toolchain/build-dependent tests that were SKIPPED in the reviewer's fresh
+worktree (no `apps/ui/node_modules`, no built `dist/`) and RUN here in the primary
+checkout, all five confirmed passing by name:
+- `tests/orchestration/test_test_runner.py::TestVitestFrontendTestFoundation::test_vitest_passes`
+- `tests/ui_server/test_dashboard_contract.py::...::test_typescript_compiles`
+- `tests/ui_contracts/test_ui_lint.py::test_the_ui_lint_passes_with_no_problem`
+- `tests/ui_contracts/test_ui_lint.py::test_the_lint_parses_typescript_and_reaches_the_hook_rules`
+- `tests/ui_contracts/test_responsive.py::TestFrontendBuild::test_dist_has_js_bundles`
+
+9 (theirs) − 5 (toolchain/build, now running) = 4, matching my four D3-quarantine skips
+exactly.
 
 ```
 $ python3 -m apps.cli.main integrity check --json
@@ -196,93 +252,149 @@ All six checks `pass`.
 
 **G5 THE RED PROOFS:**
 ```
-$ git worktree add --detach .remedy-wt/f027-r6-mut ae7d4941f
-Preparing worktree (detached HEAD ae7d4941f)
+$ git worktree add --detach .remedy-wt/f027-r7-mut 3e3406c7e
+Preparing worktree (detached HEAD 3e3406c7e)
 REAL_EXIT=0
 
-$ python3 -B .agent/authored/f027-r6-mutations.py .remedy-wt/f027-r6-mut
---- control run (unmutated, before) ---
+$ python3 -B .agent/authored/f027-r7-mutations.py .remedy-wt/f027-r7-mut
+```
+FIRST RUN: the canary read `exit=0 failed=0`, i.e. GREEN — it did not turn the run red, so
+the tool aborted before touching any of the eleven ordered mutations (C6b's finding, fixed
+in C6b, restored byte-identical before the fix). SECOND RUN, after C6b's fix:
+```
+canary: proves the vitest route reads the WORKTREE's own sources
+  exit=1 failed=0 names=['.../brainView.test.ts [ ... ]', '.../brainReducer.test.ts [ ... ]']
+  the broken import turned the run red: True
+  canary file restored byte-identical: True
+--- pytest control run (unmutated, before) ---
 control: exit=0
-206 passed in 16.85s
-m1 the door's payload check lets a blank reason through to the job: exit=1 failed=3 failing_node_ids=['tests/ui_server/test_command_dispatch.py::TestVetoTaskDispatchEffects::test_a_bad_reason_is_a_400_on_reason_before_the_job_is_read[-reason_required]', 'tests/ui_server/test_command_dispatch.py::TestVetoTaskDispatchEffects::test_a_bad_reason_is_a_400_on_reason_before_the_job_is_read[sk-ant-aaaaaaaaaaaaaaaaaaaaaaaa-reason_invalid]', 'tests/ui_server/test_command_dispatch.py::TestVetoTaskDispatchEffects::test_a_bad_reason_is_a_400_on_reason_before_the_job_is_read[x*501-reason_too_long]']
-m2 the door's payload check is removed for task_id: exit=1 failed=2 failing_node_ids=['tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_every_exposed_command_reaches_the_answer_its_effect_gives', 'tests/ui_server/test_command_dispatch.py::TestVetoTaskDispatchEffects::test_a_missing_task_id_is_a_400_on_task_id']
-m3 the door's clause answers a refused veto with a 200: exit=1 failed=2 failing_node_ids=['tests/ui_server/test_command_dispatch.py::TestVetoTaskDispatchEffects::test_a_finished_job_is_409_naming_the_code', 'tests/ui_server/test_command_dispatch.py::TestVetoTaskDispatchEffects::test_an_already_vetoed_task_is_409_naming_the_code']
-m4 the door's clause passes a fixed actor instead of the token fingerprint: exit=1 failed=1 failing_node_ids=['tests/ui_server/test_command_dispatch.py::TestVetoTaskDispatchEffects::test_accepted_veto_writes_the_control_file_and_its_event']
-m5 the door's veto: branch is removed, so the answer falls to the escalation route: exit=1 failed=2 failing_node_ids=['tests/ui_server/test_command_dispatch.py::TestVetoProposalAnswerDispatchEffects::test_a_replan_is_a_200_and_creates_the_follow_up_job', 'tests/ui_server/test_command_dispatch.py::TestVetoProposalAnswerDispatchEffects::test_accepting_the_reduced_scope_is_a_200']
-m6 the inbox's veto: branch reads true for an answered proposal: exit=1 failed=1 failing_node_ids=['tests/orchestration/test_decision_inbox.py::test_veto_card_is_not_answerable_once_answered']
-m7 the walker follows the body of an if TYPE_CHECKING: block again: exit=1 failed=2 failing_node_ids=['tests/ui_server/test_command_channel.py::TestCommandDoorImportGuard::test_the_door_reaches_only_the_accepted_forbidden_modules_transitively', 'tests/ui_server/test_command_channel.py::TestCommandDoorImportGuard::test_the_walker_skips_only_a_type_checking_import']
-m8 the walker skips every if body, not only a type-only one: exit=1 failed=1 failing_node_ids=['tests/ui_server/test_command_channel.py::TestCommandDoorImportGuard::test_the_walker_skips_only_a_type_checking_import']
-restored byte-identical: True (packages/orchestration/decision_inbox.py)
+48 passed in 9.24s
+--- vitest control run (unmutated, before) ---
+control: exit=0
+m1 _build_veto_section lets a TaskVetoError out: exit=1 failed=1 failing_node_ids=['tests/ui_server/test_dashboard_vetoes.py::TestCorruptVetoFile::test_a_task_veto_error_empties_every_list_and_sets_error']
+m2 the section's unreachable_task_ids is always empty: exit=1 failed=1 failing_node_ids=['tests/ui_server/test_dashboard_vetoes.py::TestOneVeto::test_the_reason_verbatim_and_the_unreachable_set']
+m3 the text report drops the Vetoed by line: exit=1 failed=2 failing_node_ids=['tests/orchestration/test_task_veto_runner.py::TestReportCarriesTheVeto::test_a_folded_veto_s_reason_and_actor_are_in_the_text_and_export', 'tests/orchestration/test_task_veto_runner.py::TestReportCarriesTheVeto::test_a_veto_no_run_has_folded_yet_still_reports_the_reason']
+m4 export_job_report drops the veto object: exit=1 failed=2 failing_node_ids=['tests/orchestration/test_task_veto_runner.py::TestReportCarriesTheVeto::test_a_folded_veto_s_reason_and_actor_are_in_the_text_and_export', 'tests/orchestration/test_task_veto_runner.py::TestReportCarriesTheVeto::test_a_veto_no_run_has_folded_yet_still_reports_the_reason']
+m5 the proposal's payload drops option_labels: exit=1 failed=1 failing_node_ids=['tests/orchestration/test_veto_proposal.py::TestDecisionShape::test_id_type_severity_summary_payload_and_evidence']
+m6 task_vetoed leaves the page's catalog: exit=1 failed=1 failing_node_ids=['tests/ui_contracts/test_humanize_catalog.py::TestCatalogCoversTheStreamVocabulary::test_catalog_keys_equal_the_static_stream_vocabulary']
+m7 SEED_STATUS_STATE_TABLE loses its vetoed row: exit=1 failed=1 failing_tests=['dashboardBrainSeeds > seeds a task named in vetoedTaskIds as vetoed, whatever its dashboard status word (DECISION F027 D7 (2))']
+m8 the task_vetoed case paints vetoed over a passed node: exit=1 failed=1 failing_tests=['F027 veto events (DECISION F027 D7 (2)) > task_vetoed never overwrites a task that already passed']
+m9 decisionAnswers ignores option_labels: exit=1 failed=2 failing_tests=['decisionAnswers > labels an option from payload.option_labels while posting the value unchanged (DECISION F027 D7 (4))', 'decisionAnswers > labels an option with its own value when option_labels names no entry for it']
+m10 decisionAnswers posts the label instead of the value: exit=1 failed=1 failing_tests=['decisionAnswers > labels an option from payload.option_labels while posting the value unchanged (DECISION F027 D7 (4))']
+m11 the normalizer drops each veto's reason: exit=1 failed=1 failing_tests=["normalizeDashboardPayload > reads a veto entry's eight fields, snake_case to camelCase"]
+restored byte-identical: True (apps/ui/src/api/decisionCard.ts)
+restored byte-identical: True (apps/ui/src/api/humanizeCatalog.ts)
+restored byte-identical: True (apps/ui/src/api/remedyApi.ts)
+restored byte-identical: True (apps/ui/src/components/graph/brainOntology.ts)
+restored byte-identical: True (apps/ui/src/components/graph/brainReducer.ts)
+restored byte-identical: True (packages/orchestration/pingpong_job.py)
 restored byte-identical: True (packages/orchestration/ui_server.py)
-restored byte-identical: True (tests/ui_server/test_command_channel.py)
---- control run (unmutated, after) ---
+restored byte-identical: True (packages/orchestration/veto_proposal.py)
+--- pytest control run (unmutated, after) ---
 control: exit=0
-206 passed in 11.44s
+48 passed in 9.40s
+--- vitest control run (unmutated, after) ---
+control: exit=0
 ALL MUTATIONS CAUGHT AND RESTORED CLEANLY: True
 REAL_EXIT=0
 
-$ git worktree remove --force .remedy-wt/f027-r6-mut
+$ git worktree remove --force .remedy-wt/f027-r7-mut
 REAL_EXIT=0
 $ git worktree prune
 REAL_EXIT=0
 $ git worktree list
-(unchanged from round start — see step 4's reading; f027-r6-mut no longer present)
+(unchanged from round start — see step 4's reading; f027-r7-mut no longer present)
+$ git status --porcelain
+(empty)
 ```
-Every one of the 8 mutations was caught red; both control runs (before and after) were green;
-all three touched files restored byte-identical.
+Every one of the eleven mutations was caught red; both control runs (pytest and vitest,
+before and after) were green; all eight touched files restored byte-identical; the canary
+(after C6b's fix) proved the vitest route reads the worktree's own sources.
 
-**G6 TREE AND PUSH** — reported below, after C6, since C6 itself cannot contain these
+**G6 TREE AND PUSH** — reported below, after C7, since C7 itself cannot contain these
 readings.
 
 ## Authored-text proofs
 
-Block copy: `git show 94973b971:.agent/authored/f027-r6-block.md` sha256-compared against
-`.remedy-wt/f027-r6/block.md` → identical (`968fe65d...`). Plan payload copy: same comparison
-against `.remedy-wt/f027-r6-payloads/plan.md` → identical (`629949b4...`). Records-diff copy:
-same comparison against `.remedy-wt/f027-r6-payloads/records.diff` → identical (`c57e29fd...`).
-Post-C2, the sha256 of `.agent/live_review.md`, `.agent/decisions.md` and `.agent/plan.md`
-read via `git show 29b3e8567:<path> | sha256sum` all matched the block's G2 table exactly
-(see Verification above for the three values). `open_finding_ids` over that same reading →
-`[]`, matching the reviewer's own empty reading.
+Block copy: `git show 7e3c63186:.agent/authored/f027-r7-block.md` sha256-compared against
+`.remedy-wt/f027-r7/block.md` → identical
+(`ef06cdbfc3fa8e9ba729c0abe779502d070d8ff64f13bc06698329926f4301a0`). Plan payload copy:
+same comparison against `.remedy-wt/f027-r7-payloads/plan.md` → identical
+(`4d77b4f10bda08af45172470de77146de1162663ebe9bd699364ed4797e812de`). Records-diff copy:
+same comparison against `.remedy-wt/f027-r7-payloads/records.diff` → identical
+(`f1e3362d16825b2ecdbbe7a7e60c4ce6339c4cfe9ee004d3710ff233aee85965`). Post-C2, the sha256
+of `.agent/live_review.md`, `.agent/decisions.md`, `.agent/prose_slips.md` and
+`.agent/plan.md` read via `git show c789b9aa2:<path> | sha256sum` all matched the block's
+G2 table exactly (see Verification above for the four values). `open_finding_ids` over
+that same reading → `['R-1068']`, matching the reviewer's own reading exactly.
 
 ## Deviations & assumptions
 
-**ALLOWED_IMPORTS carries four F027 D5 entries, not the three S6 names.** S6 (bound word for
-word except for D6's stop-clause change) names exactly `task_veto.veto_task_command`,
-`task_veto.validate_veto_reason` and `veto_proposal.answer_replan_proposal`. The draft I
-reviewed and landed also imports `task_veto.TaskVetoRefused` inside `_read_command_payload`,
-to catch the exception `validate_veto_reason` raises for each of its three failure codes
-(`reason_required`, `reason_too_long`, `reason_invalid`) and turn it into a `_command_field_error`
-on field `reason` — exactly the pattern already established for `CHAT_SEND_COMMAND_ID` two
-clauses above it (`except SteeringError as exc: return None, _command_field_error("message",
-str(exc))`) and for `PlanEditRefused` elsewhere in `ALLOWED_IMPORTS`. I could not remove this
-fourth import: `TaskVetoRefused` subclasses plain `Exception`, not `ValueError` (unlike
-`SteeringError` and `PlanEditRefused`, both `ValueError` subclasses that a bare `except
-ValueError` could catch without a new import), and I am barred from editing `task_veto.py` to
-change that (constraint 3's do-not-touch list). The only alternative — a bare `except
-Exception` — would need a `# noqa: BLE001` mark, and `tests/test_ble001_ratchet.py`'s frozen
-`MAX_EXCUSED = 290` (not in this round's tracked path set, and `pyproject.toml` isn't either)
-forbids growing that count without touching two files this round may not touch. Round 5's own
-blocked handback already declared this exact same fourth entry when it wrote the draft I
-reviewed, for the identical reason, and no operator ruling has since changed it. I therefore
-kept it, verified the code is otherwise correct and fully tested (G4, G5 both fully green
-including a mutation that removing this check would let through), and report the G3 diff
-exactly as run rather than editing it to look compliant: the diff carries this one line
-beyond "the three import entries ... and nothing else." A reviewer ruling — widen S6's stated
-three to four with a decision amendment, exactly as DECISION F027 D6 itself amended S6's stop
-clause, or bump `MAX_EXCUSED` and touch `pyproject.toml` in a future round under a decision
-that explicitly authorizes it — would close this permanently; I made neither call myself since
-both are outside this round's authority and tracked path set.
+**C5b — a wrong event kind in a new vitest test, found by G4's real `test_vitest_passes`
+gate.** My first `brainReducer.test.ts` test for "task_vetoed DOES overwrite a task that
+already failed" drove the failure through `row(2, "task_run_completed", "t1", "fail")`,
+assuming the row's `outcome` argument controlled the resulting state. It does not:
+`applyBrainEvent`'s `task_run_completed` case always calls `onTaskRunClosed(model, row,
+"pass")` with a HARDCODED outcome, regardless of the row's own `outcome` field — only the
+DIFFERENT event kind `task_run_failed` produces a `fail` state, exactly the pattern
+`onTaskRunClosed`'s other existing tests already use. This was not caught by my own
+authoring review; it was caught for real by `tests/orchestration/test_test_runner.py`'s
+`test_vitest_passes`, which runs the WHOLE `apps/ui` vitest suite as a Python-owned
+subprocess and is part of G4's own named selection — so the round's own gate, not a
+separate check, is what found it. Fixed in C5b: the row now uses `task_run_failed`, with an
+added assertion that the fold really produces `fail` before the veto is applied. Re-ran G4
+after the fix: 1901 passed, 0 failed.
 
-**No other deviation.** W2 (reviewing the draft) found S4 and S5 otherwise implemented exactly
-as specified; the two exposed-set adjustments round 5's handback declared stand unchanged. W1's
-walker fix and its test, and W3's door tests, are new work this round, not deviations from a
-draft. C1–C5 followed the block's bundle order and subject lines exactly; no commit was split,
-reordered, or added beyond the block's own C1–C6.
+**C6b — the canary mutation measured green for the wrong reason.** The first G5 run (over
+the tool as committed in C6) read the canary GREEN (`exit=0`) and the tool correctly
+aborted rather than proceeding on an unproven route (per its own design and the block's
+"before the mutations, prove the route" order). Investigated by hand: the canary's original
+shape was an unresolvable IMPORT (`import { __f027_r7_canary__ } from
+"./__no_such_module_f027_r7__";`) prepended to `brainOntology.ts`. Measured directly
+against the worktree (manual vitest runs, both with and without the import): esbuild's
+per-file transform ELIDES an import whose named binding is never referenced anywhere in the
+file, before Vite's resolver plugin ever gets a chance to fail on the bogus specifier — so
+the import silently vanished from the transformed output and the run stayed green for a
+reason that proves nothing about which tree was read. Rewrote the canary as a top-level
+`throw new Error(...)` instead: a side effect no tree-shaking step can drop, since it is not
+an import at all. Re-ran G5 with the fix: the canary read `exit=1`, the error message
+explicitly naming the WORKTREE's own absolute path (not the primary checkout's), and all
+eleven ordered mutations then ran and were caught. Both C5b and C6b are amendments to the
+block's own bundle, made because running the round's own gates for real (not merely
+authoring against them) surfaced two real defects; neither widens the round's tracked path
+set beyond files the block already named (`brainReducer.test.ts` and
+`f027-r7-mutations.py`, both already touched by C5 and C6 respectively).
+
+**No other deviation.** C1–C6 (and C3 through C6's production/test content) implement S1
+through S5 as specified, one commit per named step group, in the block's own order and
+subject lines. The one declared widening the block allows (constraint 3, a table pinned by
+exact equality gaining the round's one new entry) was not needed: no table in scope required
+it — `tests/ui_contracts/test_humanize_catalog.py` re-derives its set from source rather
+than pinning a literal count, so R-1068's fix needed no widening there either.
+
+## Item-status table
+
+| Item | Status | Reason |
+|---|---|---|
+| C1 | done | |
+| C2 | done | |
+| C3 | done | |
+| C4 | done | |
+| C5 | done | |
+| C5b | deviated | not one of the block's C1–C7; a correction found by G4's real `test_vitest_passes` run (see Deviations) |
+| C6 | done | |
+| C6b | deviated | not one of the block's C1–C7; a correction found by actually running G5 (see Deviations) |
+| C7 | done | this handback |
+| G1 TRANSPORT | done | |
+| G2 THE RECORDS | done | |
+| G3 THE CODE | done | |
+| G4 THE TESTS | done | red on the first run (C5b's bug), green after the fix |
+| G5 THE RED PROOFS | done | green (canary) on the first run for the wrong reason (C6b's bug), all eleven mutations caught after the fix |
+| G6 TREE AND PUSH | done | see below, after C7 |
 
 ## Next
 
-Per the block's own order: Phase 1 rule 1 (read `.agent/STOP` from disk), the review of round
-6, then T003 — the strike, the reason on hover, the dimmed unreachable set with its link, the
-veto affordance and the inbox card's plain-words menu on the page. Open findings: 0 (R-1067
-closed this round; the ledger's open set read `[]` at C2). Operator-questions count: 5.
+Per the block's own order: Phase 1 rule 1 (read `.agent/STOP` from disk), the review of
+round 7, then the rest of T003 — the dimmed unreachable set with its link, the popover's
+veto block, the veto form and the hover text. Open findings: 1 (R-1068, landed this round
+at `7b0e61ba0`, awaiting the reviewer's resolution). Operator-questions count: 5.
