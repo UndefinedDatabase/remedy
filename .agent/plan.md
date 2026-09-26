@@ -12,17 +12,18 @@ job (`docs/roadmap/features/T5_F289.md`).
 
 ## Current Step
 
-ROUND 3: book round 2, register and repair R-1074, record DECISION F289
-D3, and land T003 — three consecutive generator calls on an empty ledger
-produce three distinct items, and the first runs to completion under the
-fake providers inside the self-use run's default budget.
+ROUND 4, the closure sequence's first round: book round 3 and R-1074's
+resolution, consolidate the checklist, and generate and run the
+closure's self-use item on the `self_use` role, recording its readings.
 
 ## Next Steps
 
-1. The closure sequence: the integration gate's one full suite, then the
-   evidence bundle and the review package with the Built State, then the
-   closing round.
+1. Land the self-use run's diff if the reviewer passes it, write the
+   Built State, and take the feature's one full suite.
+2. The evidence bundle and the review package.
+3. The closing round: rotation, STATUS, README pins, pull request.
 
 ## Risks
 
-None open. Open findings: 1 (R-1074, repaired this round).
+A self-use run that blocks is an outcome to record, not a stop. Open
+findings: 0.
