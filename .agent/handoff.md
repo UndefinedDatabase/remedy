@@ -1,92 +1,75 @@
-# Handback — F027 Task veto · Round 9
+# Handback — F027 Task veto · Round 10 (closure sequence, round 1)
 
 ## Session
 
-SESSION 2 of feature F027 · round 9 · rounds so far 9
+SESSION 2 of feature F027 · round 10 · rounds so far 10
 
-Just over half of the session's context budget remained at the point this handback was
-written. This round booked round 8's verdict, registered and repaired R-1069 and R-1070,
-recorded DECISION F027 D9, and landed `tests/ui_server/test_task_veto_e2e_live.py`: the
-diamond end-to-end — a veto filed through a live write door on a diamond job the task cap
-paused after its first task, the run finished through the real CLI to a blocked end that
-names the veto, the replan proposal answered through the door both ways (accept and
-replan) and carried to its effect. All five gates (G1–G5) ran green on the first pass; G6
-follows below. No commit split was needed this round (every commit stayed well under the
-500-line cap).
+Roughly half of the session's context budget remained at the point this handback was
+written. This round booked round 9's PASS, resolved R-1069 and R-1070 (no new repair —
+both were already landed at round 9's C3; this round's job was only to book them),
+appended the Built State to `docs/roadmap/features/T5_F027.md`, ran the checklist
+consolidation pass (nothing joined, stays at 34 items), asked the self-use generator for
+the closure's item (queue exhausted, both return values `None`), built `apps/ui`, and ran
+the feature's ONE full suite on the tree that ships. The full suite came back RED: one
+failed node, `tests/orchestration/test_task_expectation_episode_context.py::TestCompletedWorkedIsNarrow::test_the_context_helper_is_tight_for_completed_worked`.
+Per constraint 4 (amend0917-throughput rule 2), a red full suite in C4 is this feature's
+work, not a stop: the transcript is committed exactly as measured and the repair is left
+for a later round to order.
 
 ## Range
 
-Review of `46305052d..399f4efea` (C1 through C5, all committed). C6 (this handback) follows.
+Review of `45cf5b9fb..HEAD` (C1 through C4, this commit closes C4).
 
 ## Commits
 
-### e4b80c37a F027 R9 C1: copy round 9 block and payloads into .agent/authored/
+### 14115d1de F027 R10 C1: copy round 10 block and payloads
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f027-r9-block.md | +223/-0 | copy of this round's block, verbatim (`shutil.copyfile`) |
-| .agent/authored/f027-r9-plan.md | +29/-0 | copy of the plan.md payload |
-| .agent/authored/f027-r9-records.diff | +72/-0 | copy of the records.diff payload |
+| .agent/authored/f027-r10-block.md | +150/-0 (new) | copy of this round's block, verbatim (`shutil.copyfile`) |
+| .agent/authored/f027-r10-closure_docs.diff | +117/-0 (new) | copy of the closure_docs.diff payload |
+| .agent/authored/f027-r10-plan.md | +30/-0 (new) | copy of the plan.md payload |
+| .agent/authored/f027-r10-records.diff | +23/-0 (new) | copy of the records.diff payload |
 
-324 insertions by `git show --numstat` — matches the block's stated expectation exactly
-(block line count 223 plus 101), under the 500-line cap.
+320 insertions by `git show --numstat` — matches the block's stated expectation exactly
+(block line count 150 plus 170), under the 500-line cap.
 
-### 304d54939 F027 R9 C2: book round 8, register R-1069 and R-1070, record D9
+### 8f36b482e F027 R10 C2: book round 9, resolve R-1069 and R-1070
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/decisions.md | +41/-0 | DECISION F027 D9 appended, verbatim from records.diff |
-| .agent/live_review.md | +6/-0 | round 8's Gate entry and the registrations of R-1069 and R-1070, appended |
-| .agent/plan.md | +9/-10 | rewritten whole to the plan.md payload |
-| .agent/prose_slips.md | +1/-0 | round 8's prose-slip line, appended verbatim |
+| .agent/live_review.md | +6/-0 | round 9's Gate entry and the `Done:` paragraphs of R-1069 and R-1070, appended |
+| .agent/plan.md | +10/-9 | rewritten whole to the plan.md payload |
+| .agent/prose_slips.md | +1/-0 | round 9's prose-slip line, appended verbatim |
 
-41/0 decisions.md, 6/0 live_review.md, 9/10 plan.md, 1/0 prose_slips.md by `git show
---numstat` — matches the block's stated expectation exactly. `git apply --check` on
-records.diff → exit 0; the real `git apply` → exit 0.
+6/0 live_review.md, 10/9 plan.md, 1/0 prose_slips.md by `git show --numstat` — matches the
+block's stated expectation exactly. `git apply --check` on records.diff → exit 0; the real
+`git apply` → exit 0.
 
-### f6da8b498 F027 R9 C3: repair R-1069 and R-1070
+### 02890eafd F027 R10 C3: write the Built State and consolidate the checklist
 | Path | +/- | Reason |
 |---|---|---|
-| docs/ui/design_reference/assumption_log.md | +1/-1 | R-1069's FIX: the `ForceBrainGraph.tsx` row's technical-reason cell now states the real reason in plain words (an operator-typed reason handed to the library as a string would be read as markup) instead of citing a non-existent markup rule; every other cell unchanged |
-| apps/ui/src/api/vetoView.ts | +2/-2 | R-1069's FIX: the comment above `vetoAnswerSentence` names `veto_proposal.py` and `task_veto.REPLAN_PROPOSAL_OPTIONS` instead of `escalation.py` |
-| apps/ui/src/components/detail/DetailPopover.tsx | +11/-9 | R-1070's FIX: the Veto section's `Will not run because of this veto:` paragraph now renders only inside the branch that lists at least one unreachable task |
-| tests/ui_contracts/test_veto_controls_contract.py | +14/-0 | R-1070's FIX: `test_the_veto_sections_lead_in_sits_inside_the_non_empty_branch` pins the lead-in inside the non-empty branch, not before the length check |
-| .agent/live_review.md | +4/-0 | two `Landed:` lines for R-1069 and R-1070, at this round's C3 (never `Done:`, per S1/S2's FIX clauses being registered findings, not the reviewer's own prose-slip route) |
+| docs/agents/planner_reviewer_prompt.md | +9/-0 | the seventeenth consolidation paragraph, inserted before the unchanged `The next consolidation measures against 34.` line; nothing joined, list stays at 34 |
+| docs/roadmap/features/T5_F027.md | +89/-0 | the Built State section appended: T001–T003, acceptance, modules/lists, beyond-the-code, deliberate absences, findings |
 
-32 insertions (12 deletions), under the 500-line cap.
+9/0 planner_reviewer_prompt.md, 89/0 T5_F027.md by `git show --numstat` — matches the
+block's stated expectation exactly. `git apply --check` on closure_docs.diff → exit 0; the
+real `git apply` → exit 0.
 
-### df68af08a F027 R9 C4: the diamond veto end to end through the CLI and the door
+### (this commit) F027 R10 C4: record the closure suite transcript and rewrite handoff for round 10
 | Path | +/- | Reason |
 |---|---|---|
-| tests/ui_server/test_task_veto_e2e_live.py | +382/-0 (new) | S3: the diamond end-to-end, `@pytest.mark.subprocess`, its own copies of `test_task_edit_e2e_live.py`'s plan/server/POST/events-since helpers; two tests, THE ACCEPT PATH and THE REPLAN PATH |
-
-382 insertions, under the 500-line cap.
-
-### 399f4efea F027 R9 C5: the round's red-proof mutation tool
-| Path | +/- | Reason |
-|---|---|---|
-| .agent/authored/f027-r9-mutations.py | +227/-0 (new) | the round's mutation tool for G5 (excluded from `ruff check` by `pyproject.toml`'s `.agent/authored` exclusion, DECISION F263 D3) |
-
-227 insertions, under the 500-line cap.
-
-### (C6, this commit) F027 R9 C6: rewrite handoff for round 9
-| Path | +/- | Reason |
-|---|---|---|
+| .agent/authored/f027-closure-suite.txt | see below | the full suite's command, real exit code, wall time, summary line and bad node id, and the tree it ran on |
 | .agent/handoff.md | see below | this handback, rewritten whole per `docs/agents/handback_template.md` |
 
 ## External actions
 
-`git push -u origin feature/f027-task-veto` after C6 → see G6 below for the real outcome.
-No PR created or merged this round (constraint 5; the Open PR Gate read empty before this
-round started — see G6 below for its reading at handback time). One worktree added and
-removed for G5: `git worktree add --detach .remedy-wt/f027-r9-mut 399f4efea` (HEAD at that
-point being `399f4efea`, the last code-bearing commit — C5 is the mutation tool itself, not
-production/test code under test, so the worktree's content for every file the tool touches
-is identical to what it would have been at C4), then `git worktree remove --force
-.remedy-wt/f027-r9-mut` and `git worktree prune` immediately after the tool ran; `git
-worktree list` before and after matched exactly (see Verification).
+`git push origin feature/f027-task-veto` after this commit → see G6 below for the real
+outcome. No pull request this round (block goal: "the pull request belongs to later
+rounds"). No worktree added or removed this round. `bash -c 'npm --prefix apps/ui run
+build ...'` — the one npm command this round may run — exit 0.
 
 ## Verification
 
-**BEFORE ANYTHING ELSE (all four readings, all passed):**
+**BEFORE ANYTHING ELSE (all four readings, all matched):**
 ```
 $ ls .agent/STOP
 ls: cannot access '.agent/STOP': No such file or directory
@@ -99,201 +82,176 @@ $ git status --porcelain
 $ git branch --show-current
 feature/f027-task-veto
 $ git log --oneline -1
-46305052d F027 R8 C7: rewrite handoff for round 8
+45cf5b9fb F027 R9 C6: rewrite handoff for round 9
 ```
 All matched the block's step 2 exactly.
 
-**Block bytes (step 3):** `.remedy-wt/f027-r9/block.md` → 223 lines (newline count), 17106
-bytes, sha256 `9d8bece9af6780507f1c0897016cd379930fde86465eb624527b17dfb37da320` — both the
-line count and the sha256 match the delegation message's two readings exactly.
+**Block bytes (step 3):** `.remedy-wt/f027-r10/block.md` → 150 lines (newline count), sha256
+`7eaaa32bd0a577b95d45fd80cf24dd28f418a5c6515699d9090fe4948e9327ba` — both the line count
+and the sha256 match the delegation message's two readings exactly.
 
-**Worktree list (step 4):** reported in full at round start — 100 entries: the primary
-checkout, `f015-*`, `f020-*`, `f023-*`, `f024-*`, `f025-*`, `f027-r1-dry` through
-`f027-r8-dry` (no `f027-r9*` entry; the reviewer's `.remedy-wt/f027-r9/` and
-`.remedy-wt/f027-r9-payloads/` are plain directories the reviewer wrote, never registered
-as `git worktree` entries), `f284-*` and the ten `job-*` worktrees. Unchanged at handback
-except for the G5 worktree added and removed (see External actions and G5 below).
+**Worktree list / job branches (step 4):** `git worktree list` — the primary checkout at
+`45cf5b9fb`, `f015-*` (1 through 9, dry+sim), `f020-*` (1 through 8, dry+sim), `f023-*` (1
+through 10, dry+sim), `f024-*` (1 through 9, dry+sim/dry-only for 9), `f025-*` (r1-dry,
+r2–r5-sim), `f027-r1-dry` through `f027-r8-dry`, `f284-*` (1 through 4, dry+sim), and ten
+`job-*` worktrees — unchanged throughout this round (no worktree add/remove occurred).
+`git branch --list 'remedy/job-*'` — 48 branches, unchanged throughout this round.
 
 **PAYLOADS** — readings (all matched the table):
 | file | lines | bytes | sha256 |
 |---|---|---|---|
-| plan.md | 29 | 1078 | ed20409e81fc200bde9d7d31a2b6abc63864e9e4e9caa3a737a5e4772140a81a |
-| records.diff | 72 | 14549 | bdd17b382d5cf28c5d051a3acd547c20c66a7d3f00e9e6f96ae770588aefcf8a |
+| closure_docs.diff | 117 | 9219 | f2fe14d7bc563a0cd64faec8b040b7813d0e5154ece8c96c13746f875e837ec4 |
+| plan.md | 30 | 1127 | 6de8d94dd410c2ddfb98a0c0b33bbe8537c58fe05904316835cbc3bbeb284b84 |
+| records.diff | 23 | 5784 | 2b6e01f37b675129c80107db4bf4c0680f103a151b8d0baade24f57b3f9b3745 |
 
 **G1 TRANSPORT** — copy comparisons, all byte-identical:
-- `git show e4b80c37a:.agent/authored/f027-r9-block.md` = `.remedy-wt/f027-r9/block.md` (identical, sha256 `9d8bece9af6780507f1c0897016cd379930fde86465eb624527b17dfb37da320`)
-- `git show e4b80c37a:.agent/authored/f027-r9-plan.md` = `.remedy-wt/f027-r9-payloads/plan.md` (identical, sha256 `ed20409e81fc200bde9d7d31a2b6abc63864e9e4e9caa3a737a5e4772140a81a`)
-- `git show e4b80c37a:.agent/authored/f027-r9-records.diff` = `.remedy-wt/f027-r9-payloads/records.diff` (identical, sha256 `bdd17b382d5cf28c5d051a3acd547c20c66a7d3f00e9e6f96ae770588aefcf8a`)
+- `git show 14115d1de:.agent/authored/f027-r10-block.md` sha256 `7eaaa32bd0a577b95d45fd80cf24dd28f418a5c6515699d9090fe4948e9327ba` — identical to the source block
+- `git show 14115d1de:.agent/authored/f027-r10-closure_docs.diff` sha256 `f2fe14d7bc563a0cd64faec8b040b7813d0e5154ece8c96c13746f875e837ec4` — identical to the source payload
+- `git show 14115d1de:.agent/authored/f027-r10-plan.md` sha256 `6de8d94dd410c2ddfb98a0c0b33bbe8537c58fe05904316835cbc3bbeb284b84` — identical to the source payload
+- `git show 14115d1de:.agent/authored/f027-r10-records.diff` sha256 `2b6e01f37b675129c80107db4bf4c0680f103a151b8d0baade24f57b3f9b3745` — identical to the source payload
 
-**G2 THE RECORDS** — sha256 at `304d54939`, all matched the block's table exactly:
-| path | bytes | sha256 | match |
-|---|---|---|---|
-| .agent/live_review.md | 323564 | 9b6ffe9a52a061a53e0daea8b4f11a3485dac34b2e5fec02c5ecf477f7b580bd | yes |
-| .agent/decisions.md | 2192648 | 0484cfb7ef66eac6543ec5c7b8b11b7626487871c28ed7399ca5e527c3cd60a4 | yes |
-| .agent/prose_slips.md | 369727 | 8f881e35241059245a03c186880e4a036b0fd72b1da8525815356f4565e7d12b | yes |
-| .agent/plan.md | 1078 | ed20409e81fc200bde9d7d31a2b6abc63864e9e4e9caa3a737a5e4772140a81a | yes |
+**G2 THE RECORDS** — all matched the block's table exactly:
+| read at | path | bytes | sha256 | match |
+|---|---|---|---|---|
+| C2 (8f36b482e) | .agent/live_review.md | 327838 | 9cd2dc7ef014b75a7c00048fc27032f7cc83095f9f5345df5af888d41bc8786a | yes |
+| C2 (8f36b482e) | .agent/prose_slips.md | 369961 | c8c152823b7bc09fd5b352fbe831202e27485d8c189010e23922317441764876 | yes |
+| C2 (8f36b482e) | .agent/plan.md | 1127 | 6de8d94dd410c2ddfb98a0c0b33bbe8537c58fe05904316835cbc3bbeb284b84 | yes |
+| C3 (02890eafd) | docs/roadmap/features/T5_F027.md | 11679 | 3f91b25c8dfd2a9b899241544284104936fc730f8edc47418a1f109bccd5dea5 | yes |
+| C3 (02890eafd) | docs/agents/planner_reviewer_prompt.md | 104549 | 49b5ace22ace6074c1e5cff11ef6c1d2e7cd95e04b76fb22d8888cac5941d504 | yes |
 
 `open_finding_ids` (via `scripts/rotate_live_review.py`) over the ledger's text at
-`304d54939` → `['R-1069', 'R-1070']` — matches the block's own reading exactly.
+`8f36b482e` → `[]` — matches the block's own reading exactly. `live_checklist_items` (via
+`packages/orchestration/block_lint.py`) over the planner prompt reads the same 34 keys
+(`[1..16, 18, 20..31, 33..37]`) at `45cf5b9fb` and at `02890eafd` — matches exactly.
 
-**G3 THE CODE:**
+**G3 THE LINTER:**
 ```
-$ ruff check tests/ui_server/test_task_veto_e2e_live.py tests/ui_contracts/test_veto_controls_contract.py
-All checks passed!
+$ python3 -m apps.cli.main integrity block .remedy-wt/f027-r10/block.md
+  [OK] item 1 (size): 150 lines, limit 400
+  [OK] item 3 (cap-bounded replacements): plan.md at 30 lines
+  [OK] item 10 (open set recomputed): the block states no open-findings count
+  [OK] item 24 (gate paths resolve): 0 paths named in the block's commands, every one resolves
+  [OK] item 30 (new ids searched first): the block registers no finding id
+  [OK] item 31 (gates before the text): the block orders no gates before a commit
+  [OK] item 37 (no unmeasured runs): no line is a run of one repeated character
+All 7 checkable items pass.
 REAL_EXIT=0
 ```
-The `SKIPPED` lines of G4 below name no TypeScript, lint or vitest node (all four are
-Python `pytest.skip` D3 quarantine reasons — see G4).
+(Run at C3, i.e. the working tree was already at `02890eafd` when this ran.)
 
-**G4 THE TESTS:**
+**G4 THE TESTS AND THE TREE** (at C3, serially):
 ```
-$ pytest -q -p no:cacheprovider -rs tests/ui_server/test_task_veto_e2e_live.py \
-    tests/ui_server/test_task_edit_e2e_live.py tests/ui_contracts \
-    tests/ui_server/test_dashboard_contract.py tests/ui_server/test_command_dispatch.py \
-    tests/orchestration/test_task_veto_runner.py tests/orchestration/test_veto_proposal.py \
-    tests/orchestration/test_test_runner.py tests/docs tests/cli/test_golden_path.py
-1513 passed, 4 skipped in 88.33s
+$ pytest -q -p no:cacheprovider tests/docs/ tests/orchestration/test_block_lint.py \
+    tests/orchestration/test_live_review_rotation.py tests/orchestration/test_integrity_gate.py \
+    tests/orchestration/test_self_use_generator.py tests/orchestration/test_roadmap_index.py \
+    tests/cli/test_golden_path.py
+513 passed in 56.90s
 REAL_EXIT=0
 ```
-`SKIPPED` lines, all four D3 quarantine (unrelated to this round, pre-rebuild legacy
-`.tsx` sources not in the tree — F252):
-```
-SKIPPED [1] tests/ui_contracts/test_graph_architecture.py:441
-SKIPPED [1] tests/ui_contracts/test_graph_architecture.py:484
-SKIPPED [1] tests/ui_contracts/test_ux_quality.py:507
-SKIPPED [1] tests/ui_contracts/test_ux_quality.py:543
-```
-
-New test file's nodes (`--collect-only -q`):
-```
-$ pytest --collect-only -q tests/ui_server/test_task_veto_e2e_live.py
-tests/ui_server/test_task_veto_e2e_live.py::TestTaskVetoE2ELive::test_the_accept_path_settles_the_reduced_scope
-tests/ui_server/test_task_veto_e2e_live.py::TestTaskVetoE2ELive::test_the_replan_path_creates_a_follow_up_that_nothing_runs
-2 tests collected in 0.09s
-REAL_EXIT=0
-```
-
-New test file's own wall time, run alone (`--durations=0`):
-```
-$ pytest -q -p no:cacheprovider --durations=0 tests/ui_server/test_task_veto_e2e_live.py
-1.55s call     tests/ui_server/test_task_veto_e2e_live.py::TestTaskVetoE2ELive::test_the_accept_path_settles_the_reduced_scope
-1.05s call     tests/ui_server/test_task_veto_e2e_live.py::TestTaskVetoE2ELive::test_the_replan_path_creates_a_follow_up_that_nothing_runs
-0.11s setup    tests/ui_server/test_task_veto_e2e_live.py::TestTaskVetoE2ELive::test_the_accept_path_settles_the_reduced_scope
-2 passed in 2.80s
-REAL_EXIT=0
-```
-Well inside the standard stage's budget — the risk `plan.md` names.
+513 passed here (the block's own simulated reading, without the golden path, was 471; the
+golden path's own tests account for the difference — both readings are the same green
+selection, this round's including `tests/cli/test_golden_path.py` per the block's own list).
 
 ```
 $ python3 -m apps.cli.main integrity check --json
-{"check_count": 6, "checks": [{"name": "handler_import", "status": "pass"}, {"name": "live_review_verdict", "status": "pass"}, {"name": "plan_consistency", "status": "pass"}, {"name": "relevant_untracked", "status": "pass"}, {"name": "repo_root_hygiene", "status": "pass"}, {"name": "high_blockers_open", "status": "pass"}], "fail_count": 0, "ok": true, "passed": true}
+{"check_count": 6, "checks": [{"message": "handlers=161", "name": "handler_import", "status": "pass"}, {"message": "last Gate verdict PASS", "name": "live_review_verdict", "status": "pass"}, {"message": "unchecked=0, context_complete=False", "name": "plan_consistency", "status": "pass"}, {"message": "untracked=0, relevant=0", "name": "relevant_untracked", "status": "pass"}, {"message": "no reviewer scratch, evidence dir or archive at the root", "name": "repo_root_hygiene", "status": "pass"}, {"message": "no open blocker/high findings", "name": "high_blockers_open", "status": "pass"}], "fail_count": 0, "ok": true, "passed": true, "schema_version": 1, "version": 1}
 REAL_EXIT=0
 ```
-All six checks `pass`.
-
-**G5 THE RED PROOFS:**
+All six checks `pass`, `fail_count` 0.
 ```
-$ git worktree add --detach .remedy-wt/f027-r9-mut 399f4efea
-Preparing worktree (detached HEAD 399f4efea)
-REAL_EXIT=0
+$ git status --porcelain
+(empty, no untracked file)
+```
+Closure precondition 3 satisfied.
 
-$ python3 -B .agent/authored/f027-r9-mutations.py .remedy-wt/f027-r9-mut
-==============================================================================
---- pytest control run (unmutated, before) ---
-control: exit=0
-10 passed in 10.34s
-m1 the linear runner dispatches a task unreachable behind a veto: exit=1 failed=1
-  failing_node_ids=['tests/ui_server/test_task_veto_e2e_live.py::TestTaskVetoE2ELive::test_the_accept_path_settles_the_reduced_scope']
-m2 format_job_report_text drops the Vetoed by line: exit=1 failed=1
-  failing_node_ids=['tests/ui_server/test_task_veto_e2e_live.py::TestTaskVetoE2ELive::test_the_accept_path_settles_the_reduced_scope']
-m3 _build_veto_section reports no veto entry: exit=1 failed=1
-  failing_node_ids=['tests/ui_server/test_task_veto_e2e_live.py::TestTaskVetoE2ELive::test_the_accept_path_settles_the_reduced_scope']
-m4 the runner's terminal accounting treats an answered veto as unanswered: exit=1 failed=2
-  failing_node_ids=['tests/ui_server/test_task_veto_e2e_live.py::TestTaskVetoE2ELive::test_the_accept_path_settles_the_reduced_scope', 'tests/ui_server/test_task_veto_e2e_live.py::TestTaskVetoE2ELive::test_the_replan_path_creates_a_follow_up_that_nothing_runs']
-m5 answering replan_follow_up creates no follow-up job: exit=1 failed=1
-  failing_node_ids=['tests/ui_server/test_task_veto_e2e_live.py::TestTaskVetoE2ELive::test_the_replan_path_creates_a_follow_up_that_nothing_runs']
-m6 the Veto section's lead-in renders before the length check again: exit=1 failed=1
-  failing_node_ids=['tests/ui_contracts/test_veto_controls_contract.py::test_the_veto_sections_lead_in_sits_inside_the_non_empty_branch']
-restored byte-identical: True (apps/ui/src/components/detail/DetailPopover.tsx)
-restored byte-identical: True (packages/orchestration/pingpong_job.py)
-restored byte-identical: True (packages/orchestration/ui_server.py)
-restored byte-identical: True (packages/orchestration/veto_proposal.py)
---- pytest control run (unmutated, after) ---
-control: exit=0
-10 passed in 5.88s
-ALL MUTATIONS CAUGHT AND RESTORED CLEANLY: True
-REAL_EXIT=0
+**C4(a) THE SELF-USE ITEM (from a scratch Python file):**
+```
+generate_and_append_if_empty() -> None
+next_self_use_item() -> None
+```
+Both `None`, matching the reviewer's dry-run reading on a tree byte-equal to C3 exactly.
+Nothing written; `git status --porcelain` empty afterward. Closure precondition 6 reads
+**self-use NONE (queue exhausted)**.
 
-$ git worktree remove --force .remedy-wt/f027-r9-mut
+**C4(b) THE UI BUILD:**
+```
+$ bash -c 'npm --prefix apps/ui run build 2>&1 | tail -2; echo "REAL_EXIT=${PIPESTATUS[0]}"'
+✓ built in 2.17s
 REAL_EXIT=0
-$ git worktree prune
-REAL_EXIT=0
-$ git worktree list
-(unchanged from round start; f027-r9-mut no longer present)
 $ git status --porcelain
 (empty)
 ```
-Every one of the six mutations was caught red on the first run; both control runs (pytest,
-before and after) were green; all four touched files restored byte-identical. No mid-round
-correction was needed this round.
 
-**G6 TREE AND PUSH** — reported below, after C6, since C6 itself cannot contain these
-readings.
+**C4(c) THE CLOSURE SUITE** (log under `.remedy-wt/f027-r10-worker/full_suite.log`; the
+committed transcript is `.agent/authored/f027-closure-suite.txt`):
+```
+$ time python3 -m pytest -n auto -q > .remedy-wt/f027-r10-worker/full_suite.log 2>&1
+REAL_EXIT=1
+real 3m24.437s (pytest's own report: 203.77s / 0:03:23)
+```
+Summary line: `1 failed, 19692 passed, 20 skipped, 1 warning in 203.77s (0:03:23)`
+
+Bad node ids (failed plus errors — the FULL list, one entry):
+```
+tests/orchestration/test_task_expectation_episode_context.py::TestCompletedWorkedIsNarrow::test_the_context_helper_is_tight_for_completed_worked
+```
+The failure: `_allowed_statuses_for(EXPECT_EXECUTED/EXPECT_PRIOR_EPISODE, "completed",
+PHASE_WORKED)` now returns `{"passed", "applied_to_job_workspace", "vetoed"}` where the test
+still expects exactly `{"passed", "applied_to_job_workspace"}` — this feature's own addition
+of `vetoed` to `run_manifest.py`'s task-expectation tables (T002 of the Built State) widened
+that set and this narrow-context test was not in any round's own gate selection, so it
+surfaced only at the one full suite. No collection errors. Neither
+`tests/orchestration/test_import_reachability.py` nor `tests/test_no_orphan_modules.py`
+holds a bad node — both are clean (closure precondition 7 satisfied on that count; the one
+red node is unrelated to import reachability or orphan modules).
+
+Tree it ran on: C3's SHA `02890eafd15228ecfd6bee8306937aec97426d6d`.
+
+Per constraint 4, this red result is this feature's work, not a stop: the transcript is
+committed exactly as measured; no assertion was weakened, no test deleted, nothing marked
+`xfail`. The repair round is the reviewer's to order.
+
+**G6 TREE AND PUSH** — reported below, after this commit and the push.
 
 ## Authored-text proofs
 
-Block copy: `git show e4b80c37a:.agent/authored/f027-r9-block.md` compared byte-for-byte
-against `.remedy-wt/f027-r9/block.md` → identical
-(sha256 `9d8bece9af6780507f1c0897016cd379930fde86465eb624527b17dfb37da320`). Plan payload
-copy: same comparison against `.remedy-wt/f027-r9-payloads/plan.md` → identical (sha256
-`ed20409e81fc200bde9d7d31a2b6abc63864e9e4e9caa3a737a5e4772140a81a`). Records-diff copy:
-same comparison against `.remedy-wt/f027-r9-payloads/records.diff` → identical (sha256
-`bdd17b382d5cf28c5d051a3acd547c20c66a7d3f00e9e6f96ae770588aefcf8a`). Post-C2, the sha256 of
-`.agent/live_review.md`, `.agent/decisions.md`, `.agent/prose_slips.md` and `.agent/plan.md`
-read via `git show 304d54939:<path>` all matched the block's G2 table exactly (see
-Verification above). `open_finding_ids` over that same reading → `['R-1069', 'R-1070']`,
-matching the block's own reading exactly.
+Block copy: `git show 14115d1de:.agent/authored/f027-r10-block.md` compared byte-for-byte
+against `.remedy-wt/f027-r10/block.md` → identical (sha256
+`7eaaa32bd0a577b95d45fd80cf24dd28f418a5c6515699d9090fe4948e9327ba`). Payload copies: same
+comparison against each of `.remedy-wt/f027-r10-payloads/{closure_docs.diff,plan.md,records.diff}`
+→ all identical (sha256 values in the PAYLOADS table above, each matching G1's copy hash).
+Post-C2/C3, the sha256 of `.agent/live_review.md`, `.agent/prose_slips.md`, `.agent/plan.md`,
+`docs/roadmap/features/T5_F027.md` and `docs/agents/planner_reviewer_prompt.md`, read via
+`git show <sha>:<path>`, all matched the block's G2 table exactly (see Verification above).
+`open_finding_ids` over the C2 reading → `[]`, matching the block's own reading exactly.
 
 ## Deviations & assumptions
 
-**`vetoView.ts`'s comment re-wraps across two lines, not one.** S1 says the comment above
-`vetoAnswerSentence` "names `veto_proposal.py` and `task_veto.REPLAN_PROPOSAL_OPTIONS`
-instead of `escalation.py`. No other line of either file changes." The replacement names
-(`veto_proposal.py`'s own `task_veto.REPLAN_PROPOSAL_OPTIONS`) are longer than
-`escalation.py`'s own replan proposal, so keeping the original line break would run one
-line well past the file's existing wrap width; the sentence was re-wrapped across the same
-two lines instead (`git show --numstat` on this file for C3 reads `2/2`, i.e. two lines
-changed, not one). The `assumption_log.md` row's technical-reason cell (a single
-pipe-table cell, not wrapped prose) has no such issue and changed exactly the one cell
-S1 names, no other cell touched.
+**None in C1–C3.** Every commit matches the block's stated `git show --numstat` expectation
+exactly; no payload was retyped or edited; `git apply --check` preceded every `git apply`
+and both real applies returned exit 0.
 
-**The diamond tasks' own titles, goals and acceptance text are invented.** S3 states the
-plan's structure (A; B and C after A; D after B and C), every task's `files_hint`
-(`docs/README.md`) and the plan order, but not each task's title/goal/acceptance wording.
-`_task(tid, deps)` in the new test file mirrors `test_task_edit_runtime.py`'s own `_task`
-helper pattern (`f"Build {tid}"` / `f"goal of {tid}"` / `[f"{tid} works"]`) — the same choice
-`test_task_veto_runner.py` already makes for its own diamond tests. No test elsewhere pins
-different wording.
+**C4(c)'s full suite is RED, and this is declared per constraint 4, not treated as a stop.**
+One bad node id, `tests/orchestration/test_task_expectation_episode_context.py::TestCompletedWorkedIsNarrow::test_the_context_helper_is_tight_for_completed_worked`,
+caused by this feature's own `vetoed` addition to `run_manifest.py`'s task-expectation
+tables widening a status set a narrow-context test still pins to two members. The transcript
+is committed exactly as measured (`.agent/authored/f027-closure-suite.txt`); no assertion
+weakened, no test deleted or marked `xfail`; the repair is left for the reviewer to order in
+a later round, per amend0917-throughput rule 2.
 
-**The two tests' own method names are invented.** S3 says "Two tests: (a) THE ACCEPT
-PATH... (b) THE REPLAN PATH..." without naming the test functions. They are named
-`test_the_accept_path_settles_the_reduced_scope` and
-`test_the_replan_path_creates_a_follow_up_that_nothing_runs`, grouped under one
-`TestTaskVetoE2ELive` class (mirroring `test_task_edit_e2e_live.py`'s own single-class
-shape), rather than the two free functions `test_task_veto_runner.py`'s own diamond tests
-use elsewhere in the suite.
+**G4's 513-passed reading includes the golden path; the block's own simulated reading (471)
+does not.** The block states: "the reviewer read the same selection without the golden path
+at 471 passed on its simulated tree." This round's own command includes
+`tests/cli/test_golden_path.py` per the block's explicit list, so 513 is the correct reading
+for the full ordered selection; declared here so the two numbers are not read as a
+discrepancy.
 
-**The `decisions` endpoint's `safe_summary` check reads "holds ... byte for byte" as
-"contains verbatim".** S3 says the `veto:` decision's "`safe_summary` holds the reason
-byte for byte." `replan_proposal_decisions`'s own `safe_summary` is a longer sentence
-("You vetoed <title> — reason: <reason>. ...") that CONTAINS the reason verbatim rather
-than equalling it, so the test asserts `VETO_REASON in card["safe_summary"]` rather than
-equality — the only reading `safe_summary`'s own shape admits.
-
-**No other deviation.** C1–C5 implement S1 through S3 as specified, one commit group per
-named step, in the block's own order and subject lines. The path set matches constraint 3
-exactly; no widening was used. No gate went red on a test this round did not write; no
-correction of the round's own new test was needed.
+**No other deviation.** C1 through C4 implement the block's steps in the block's own order
+and subject lines. The round's tracked path set matches constraint 3 exactly (no
+`scripts/self_use_queue.json` commit, since C4(a) read `None`/`None` and the append-branch
+of that step was not taken). No edit touched `README.md`, `docs/roadmap/STATUS.md`,
+`.agent/decisions.md`, `.agent/candidates.md`, `.agent/operator_questions.md`, or any file
+under `packages/`, `apps/` or `tests/`.
 
 ## Item-status table
 
@@ -302,18 +260,20 @@ correction of the round's own new test was needed.
 | C1 | done | |
 | C2 | done | |
 | C3 | done | |
-| C4 | done | |
-| C5 | done | |
-| C6 | done | this handback |
+| C4(a) self-use | done | both readings `None`; closure precondition 6: self-use NONE (queue exhausted) |
+| C4(b) UI build | done | exit 0 |
+| C4(c) full suite | done | RED, 1 bad node id, committed as measured per constraint 4 |
+| C4(d) suite transcript + handoff | done | this handback |
 | G1 TRANSPORT | done | |
 | G2 THE RECORDS | done | |
-| G3 THE CODE | done | |
-| G4 THE TESTS | done | green on the first run |
-| G5 THE RED PROOFS | done | all six mutations caught on the first run |
-| G6 TREE AND PUSH | done | see below, after C6 |
+| G3 THE LINTER | done | |
+| G4 THE TESTS AND THE TREE | done | |
+| G5 THE INTEGRATION GATE | done | RED full suite declared, not a stop |
+| G6 TREE AND PUSH | done | see below, after this commit |
 
 ## Next
 
-Per the block's own order: Phase 1 rule 1 (read `.agent/STOP` from disk), the review of
-round 9, then F027's closure sequence. Open findings: 2 — R-1069 and R-1070, landed this
-round and awaiting the reviewer's resolution. Operator-questions count: 5.
+Per the block's own order: Phase 1 rule 1, the review of round 10, then the closure's
+evidence round — the booking of round 10, the repair the suite requires (the one bad node
+above), the evidence bundle and the review package — and then the closing round. Open
+findings: 0. Operator questions open: 5.

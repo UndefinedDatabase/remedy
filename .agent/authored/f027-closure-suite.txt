@@ -1,0 +1,7 @@
+Command: python3 -m pytest -n auto -q
+Real exit code: 1
+Wall time: 3m24.437s real (bash `time`); pytest's own report: 203.77s (0:03:23)
+Summary line: 1 failed, 19692 passed, 20 skipped, 1 warning in 203.77s (0:03:23)
+Bad node ids (failed plus errors):
+tests/orchestration/test_task_expectation_episode_context.py::TestCompletedWorkedIsNarrow::test_the_context_helper_is_tight_for_completed_worked
+Tree it ran on: C3's SHA 02890eafd15228ecfd6bee8306937aec97426d6d
