@@ -21976,3 +21976,29 @@ recorded as DECISION D3: the default cap is six dollars, which is what Q5 recomm
 already executed. All five entries are deleted, the header is kept verbatim, and the body reads
 the single word `EMPTY`.
 REVERSE: `git checkout 557cbbcc -- .agent/operator_questions.md`, and delete this paragraph.
+
+## DECISION amend0926-decisions-selfuse D3 (2026-09-26, operator amendment, Part B) — the self-use cap covers a full loop, and F285's own repair of R-1057 stands
+CONTEXT: The operator rules that the default cost cap of a self-use run must cover one complete
+build, review and repair loop at the frontier provider. Self-use job d0f70d9d45dd4363 (F025's
+closure, queue entry SU-030) spent 1.1403 USD on two provider calls, and job fd57a5d1dfe245b0
+(F026's closure, entry SU-031) was stopped by the old cap of 1.00 USD with its one task still
+pending. Roughly 0.57 USD per call times the loop's backstop of eight calls is 4.6 USD, so the
+ruling sets the default at 6.00 USD, and a refusal before any provider call is not an acceptable
+resolution of finding R-1057. Part B.1 tells the amendment to read the ledger first: if a `Done:`
+line for R-1057 already raised the default so that a one-task item can complete (at least
+5.00 USD), the code change is skipped and the loop's repair stands.
+CHOSEN: The archive `.agent/live_review_archive.md` carries `Done: R-1057 — RESOLVED at 91397285`,
+F285 round 1's fourth commit. It raised `_MAX_COST_USD` in
+`packages/orchestration/self_use_runner.py` to 6.00 USD, derived from the dearest single self-use
+call measured (1.41 USD, job fd57a5d1dfe245b0's builder call) times four calls (one build, one
+review and one repair round of a build and a review), rounded up to the whole dollar. That is the
+same number the operator's ruling reaches by a different measurement, and it is not a refusal. So
+Part B.2 is already satisfied and no code is changed for it: the constant, its comment and the
+description of the `self_use.model` configuration key (which already reads 6.00 USD) stay as F285
+wrote them. The configuration key `self_use.max_cost_usd` and its three red proofs, which B.2 would
+have added, are not built, because B.1 skips the whole of B.2 when the loop's repair stands. The
+precedence the ruling names (an explicit argument, then the order file's `Budget:` line, then the
+default) is the one `run_next_self_use_item` already applies. The same reading for R-1058 is
+DECISION D4.
+REVERSE: Delete this paragraph. If the operator still wants the configuration key, a later
+amendment adds `self_use.max_cost_usd` to `packages/orchestration/config.py` as Part B.2 describes.
