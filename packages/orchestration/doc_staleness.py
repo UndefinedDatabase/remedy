@@ -492,3 +492,325 @@ def _run_c05(root: Path, truth: ShippedTruth) -> tuple[StaleClaim, ...]:
     return _sorted_claims(items)
 
 
+# ---------------------------------------------------------------------------
+# C06 — doc_env_var_names
+# ---------------------------------------------------------------------------
+
+
+def _run_c06(root: Path, truth: ShippedTruth) -> tuple[StaleClaim, ...]:
+    check_id = "doc_env_var_names"
+    items: list[tuple[int, int, StaleClaim]] = []
+    documents = [_README, _INDEX] + [
+        d for d in _guide_documents(root) if d != "docs/guides/environment.md"
+    ]
+    for order, document in enumerate(documents):
+        text = _read(root, document)
+        if text is None:
+            continue
+        for line_no, line in _iter_lines_outside_fences(text):
+            for m in _REMEDY_VAR_RE.finditer(line):
+                var = m.group(0)
+                tail = line[m.end():m.end() + 2]
+                if tail[:1] == "*":
+                    continue
+                if var.endswith("_"):
+                    continue
+                if tail[:1] == "." and len(tail) > 1 and tail[1].isalpha():
+                    continue
+                if var not in truth.env_vars:
+                    items.append((order, line_no, StaleClaim(
+                        check_id, document,
+                        f"names the variable `{var}`",
+                        f"`{var}` is not a registered environment variable",
+                    )))
+    return _sorted_claims(items)
+
+
+# ---------------------------------------------------------------------------
+# C07 — doc_config_keys
+# ---------------------------------------------------------------------------
+
+
+def _run_c07(root: Path, truth: ShippedTruth) -> tuple[StaleClaim, ...]:
+    check_id = "doc_config_keys"
+    items: list[tuple[int, int, StaleClaim]] = []
+    prefixes = truth.key_prefixes
+    documents = [_README, _INDEX] + _guide_documents(root)
+    for order, document in enumerate(documents):
+        text = _read(root, document)
+        if text is None:
+            continue
+        for line_no, line in _iter_lines_outside_fences(text):
+            for m in _SPAN_RE.finditer(line):
+                span = m.group(1)
+                if not _KEY_NAME_WHOLE_RE.match(span):
+                    continue
+                first = span.split(".", 1)[0]
+                if first not in prefixes:
+                    continue
+                if span in truth.command_ids:
+                    continue
+                if span not in truth.config_keys:
+                    items.append((order, line_no, StaleClaim(
+                        check_id, document,
+                        f"backticks the config key `{span}`",
+                        f"`{span}` is not a registered config key",
+                    )))
+    return _sorted_claims(items)
+
+
+# ---------------------------------------------------------------------------
+# C08 — toml_fenced_block_keys
+# ---------------------------------------------------------------------------
+
+
+def _run_c08(root: Path, truth: ShippedTruth) -> tuple[StaleClaim, ...]:
+    check_id = "toml_fenced_block_keys"
+    items: list[tuple[int, int, StaleClaim]] = []
+    for order, document in enumerate(_guide_documents(root)):
+        text = _read(root, document)
+        if text is None:
+            continue
+        for block_lines, start_line in _toml_fence_blocks(text):
+            prefix: str | None = None
+            for offset, line in enumerate(block_lines):
+                line_no = start_line + offset
+                stripped = line.strip()
+                table = _TOML_TABLE_RE.match(stripped)
+                if table:
+                    table_name = table.group(1).strip()
+                    if table_name == "remedy":
+                        prefix = ""
+                    elif table_name.startswith("remedy."):
+                        prefix = table_name[len("remedy."):]
+                    else:
+                        prefix = None
+                    continue
+                kv = _TOML_KV_RE.match(stripped)
+                if kv and prefix is not None:
+                    name = kv.group(1)
+                    full_key = f"{prefix}.{name}" if prefix else name
+                    if full_key not in truth.config_keys:
+                        items.append((order, line_no, StaleClaim(
+                            check_id, document,
+                            f"a TOML example sets `{full_key}`",
+                            f"`{full_key}` is not a registered config key",
+                        )))
+    return _sorted_claims(items)
+
+
+# ---------------------------------------------------------------------------
+# C09 — docs_index_type_column
+# ---------------------------------------------------------------------------
+
+
+def _run_c09(root: Path, truth: ShippedTruth) -> tuple[StaleClaim, ...]:
+    check_id = "docs_index_type_column"
+    text = _read(root, _INDEX)
+    if text is None:
+        return ()
+    bounds = _section_bounds(text, "## Quick-Find Table", exact=True)
+    if bounds is None:
+        return ()
+    lines = [line for _, line in _section_lines_outside_fences(text, bounds)]
+    items: list[tuple[int, int, StaleClaim]] = []
+    for row_no, cells in enumerate(_table_rows(lines)):
+        if len(cells) < 3:
+            continue
+        category = cells[2]
+        for m in _LINK_RE.finditer(cells[1]):
+            target = m.group(1)
+            folder = target.split("/", 1)[0]
+            expected = "guide" if folder == "guides" else folder
+            if expected != category:
+                items.append((0, row_no, StaleClaim(
+                    check_id, _INDEX,
+                    f"the Quick-Find Table row linking `{target}` names its category `{category}`",
+                    f"the link's folder is `{folder}`, written `{expected}`",
+                )))
+    return _sorted_claims(items)
+
+
+# ---------------------------------------------------------------------------
+# C10 — doc_source_paths
+# ---------------------------------------------------------------------------
+
+
+def _run_c10(root: Path, truth: ShippedTruth) -> tuple[StaleClaim, ...]:
+    check_id = "doc_source_paths"
+    items: list[tuple[int, int, StaleClaim]] = []
+    for order, document in enumerate([_README, _INDEX]):
+        text = _read(root, document)
+        if text is None:
+            continue
+        for line_no, line in _iter_lines_outside_fences(text):
+            for m in _SOURCE_PATH_RE.finditer(line):
+                candidate = m.group(0)
+                if not (root / candidate).is_file():
+                    items.append((order, line_no, StaleClaim(
+                        check_id, document,
+                        f"names the path `{candidate}`",
+                        f"`{candidate}` does not exist under the repository root",
+                    )))
+    return _sorted_claims(items)
+
+
+# ---------------------------------------------------------------------------
+# C11 — doc_dotted_command_ids
+# ---------------------------------------------------------------------------
+
+
+def _run_c11(root: Path, truth: ShippedTruth) -> tuple[StaleClaim, ...]:
+    check_id = "doc_dotted_command_ids"
+    items: list[tuple[int, int, StaleClaim]] = []
+    prefixes = truth.key_prefixes
+    documents = [_README, _INDEX] + _guide_documents(root)
+    for order, document in enumerate(documents):
+        text = _read(root, document)
+        if text is None:
+            continue
+        for line_no, line in _iter_lines_outside_fences(text):
+            for m in _SPAN_RE.finditer(line):
+                span = m.group(1)
+                if not _TWO_SEGMENT_WHOLE_RE.match(span):
+                    continue
+                first, sub = span.split(".", 1)
+                group_id = truth.groups.get(first)
+                if group_id is None or first in prefixes:
+                    continue
+                command_id = f"{group_id}.{sub}"
+                if command_id not in truth.command_ids:
+                    items.append((order, line_no, StaleClaim(
+                        check_id, document,
+                        f"backticks the command `{span}`",
+                        f"`{command_id}` does not ship",
+                    )))
+    return _sorted_claims(items)
+
+
+# ---------------------------------------------------------------------------
+# C12 — catalog_text_config_keys
+# ---------------------------------------------------------------------------
+
+_CATALOG_MODULE_PATH = "apps/cli/command_catalog.py"
+
+
+def _run_c12(root: Path, truth: ShippedTruth) -> tuple[StaleClaim, ...]:
+    check_id = "catalog_text_config_keys"
+    items: list[tuple[int, int, StaleClaim]] = []
+    prefixes = truth.key_prefixes
+    for order, (label, text) in enumerate(truth.catalog_texts):
+        for m in _KEY_NAME_RE.finditer(text):
+            start = m.start()
+            if start > 0 and (text[start - 1].isalnum() or text[start - 1] in "_."):
+                continue
+            span = m.group(0)
+            first = span.split(".", 1)[0]
+            if first not in prefixes:
+                continue
+            if span in truth.command_ids:
+                continue
+            if span not in truth.config_keys:
+                items.append((order, 0, StaleClaim(
+                    check_id, _CATALOG_MODULE_PATH,
+                    f"the text labelled `{label}` names `{span}`",
+                    f"`{span}` is not a registered config key",
+                )))
+    return _sorted_claims(items)
+
+
+# ---------------------------------------------------------------------------
+# The catalog
+# ---------------------------------------------------------------------------
+
+CHECKS: tuple[StalenessCheck, ...] = (
+    StalenessCheck(
+        "docs_index_guide_registration", ("docs/README.md",),
+        "reads every link target under the docs index's Quick-Find Table and Guides sections",
+        "compares them against every shipped `docs/guides/*.md` file, both ways",
+        _run_c01,
+    ),
+    StalenessCheck(
+        "config_cli_table_complete", ("docs/guides/remedy-toml-user-guide.md",),
+        "extracts the word after `remedy config ` from every backticked span in the CLI commands section",
+        "compares the set against the `config` group's shipped subcommand pairs, both ways",
+        _run_c02,
+    ),
+    StalenessCheck(
+        "docs_index_command_lines", ("docs/README.md",),
+        "reads the second and third words of every backticked `remedy `-prefixed span",
+        "compares the second word against shipped group ids and aliases and the third against command pairs",
+        _run_c03,
+    ),
+    StalenessCheck(
+        "guide_relative_links", ("docs/guides/*.md",),
+        "reads every relative markdown link target in a guide, its fragment removed",
+        "resolves it against the guide's own folder and requires the file to exist",
+        _run_c04,
+    ),
+    StalenessCheck(
+        "link_anchors_resolve", ("README.md", "docs/README.md", "docs/guides/*.md"),
+        "reads every relative link carrying a `#fragment` whose path is empty or ends in `.md`",
+        "requires the fragment to equal the slug of a heading of the resolved target file",
+        _run_c05,
+    ),
+    StalenessCheck(
+        "doc_env_var_names", ("README.md", "docs/README.md", "docs/guides/*.md (except environment.md)"),
+        "reads every `REMEDY_[A-Z0-9_]+` match not preceded by a word character, skipping wildcard and filename shapes",
+        "compares each surviving match against the registered environment variable names",
+        _run_c06,
+    ),
+    StalenessCheck(
+        "doc_config_keys", ("README.md", "docs/README.md", "docs/guides/*.md"),
+        "reads every backticked span that is a whole dotted key name whose first segment is a registered key prefix",
+        "requires it to be a registered config key, unless it is a shipped command id instead",
+        _run_c07,
+    ),
+    StalenessCheck(
+        "toml_fenced_block_keys", ("docs/guides/*.md",),
+        "reads `name = value` lines inside a ```toml fence under a `[remedy...]` table line",
+        "requires the resulting dotted (or bare) key to be a registered config key",
+        _run_c08,
+    ),
+    StalenessCheck(
+        "docs_index_type_column", ("docs/README.md",),
+        "reads the Quick-Find Table's third cell and every link target in its second cell",
+        "requires the third cell to equal the link target's top folder, with `guides` written `guide`",
+        _run_c09,
+    ),
+    StalenessCheck(
+        "doc_source_paths", ("README.md", "docs/README.md"),
+        "reads every `packages|apps|tests|scripts/...` source-shaped path not preceded by a word character or slash",
+        "requires the named file to exist under the repository root",
+        _run_c10,
+    ),
+    StalenessCheck(
+        "doc_dotted_command_ids", ("README.md", "docs/README.md", "docs/guides/*.md"),
+        "reads every backticked span that is a whole two-segment dotted name whose first segment is a group id and not a key prefix",
+        "requires the resolved `group.subcommand` to be a shipped command id",
+        _run_c11,
+    ),
+    StalenessCheck(
+        "catalog_text_config_keys", (_CATALOG_MODULE_PATH,),
+        "reads every dotted key name in a catalog description or help text whose first segment is a registered key prefix",
+        "requires it to be a registered config key, unless it is a shipped command id instead",
+        _run_c12,
+    ),
+)
+
+
+def run_staleness_checks(
+    root: Path | None = None, truth: ShippedTruth | None = None
+) -> tuple[StaleClaim, ...]:
+    """Every claim every check in :data:`CHECKS` finds, in catalog order.
+
+    `root` defaults to the repository root and `truth` to :meth:`ShippedTruth.live`
+    — a test overrides either to run the same checks against a fixture tree and
+    an injected truth, never the real repository or the real catalog.
+    """
+    resolved_root = root if root is not None else Path(__file__).resolve().parents[2]
+    resolved_truth = truth if truth is not None else ShippedTruth.live()
+    claims: list[StaleClaim] = []
+    for check in CHECKS:
+        claims.extend(check.run(resolved_root, resolved_truth))
+    return tuple(claims)
