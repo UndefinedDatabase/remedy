@@ -1,26 +1,27 @@
-# Context — F027 Task veto
+# Context — F289 Self-use sources completion
 
 ## Active Branch
-feature/f027-task-veto, cut from `main` at `557cbbcc`
-(the merge commit of pull request 282, F285 Findings paydown v4).
+feature/f289-self-use-sources, cut from `main` at `d0239fa3`
+(the merge commit of pull request 283, F027 Task veto).
 
 ## Scope
-F027 (Tier 5, the operator cockpit): the task veto with a mandatory
-reason, the unreachable downstream, the run continuing on independent
-branches, the replan proposal with its two-option menu, the strike on
-the page and the diamond end-to-end, as
-`docs/roadmap/features/T5_F027.md` and DECISION F027 D1 specify.
+F289 (Tier 5): the self-use generator's Tier 2, a documentation-staleness
+catalog of at least ten checks over the README, the guides and the command
+catalog, and its Tier 3, `remedy doctor core`'s actionable warnings as
+one-task jobs, with the proof that three consecutive generator calls on an
+empty ledger produce three distinct items, as
+`docs/roadmap/features/T5_F289.md` and DECISION F289 D1 specify.
 
 ## Do not touch
-Mid-run replanning mechanics, DAG internals (`dag_schedule.py`) and
-glyph geometry, per T5_F027.md; the kill switch's `safe_points.py` and
-the pause's `pause_control.py`.
+Tier 1 (the finding ledger) and the standing order's precedence; the deny
+fence over `.agent/` a self-use run carries (DECISION
+amend0926-decisions-selfuse D4).
 
 ## Active assumptions
-- A veto is a create-only control file per task; the command never
-  writes the job record, and a runner folds the veto at its safe points
-  (DECISION F027 D1).
-- Nothing replans without the decision answer.
+- `doctor core`'s text and JSON output stay byte-identical while its body
+  moves into `doctor_core_report()` (DECISION F289 D1).
+- A warning is actionable only when a tracked file of this repository is
+  its repair.
 
 ## Constraints
 - Every pytest run in a round is targeted and serial; the resource and

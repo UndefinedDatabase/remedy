@@ -22590,3 +22590,63 @@ browser in the end-to-end, rejected because the page's hover reads only the dash
 test pins, and the reviewer's render already read the page.
 
 HOW TO REVERSE: delete the test file and this paragraph.
+
+## DECISION F289 D1 — `doctor core`'s report becomes an importable function beside its command, returning structured warnings the command prints unchanged; a warning is actionable only when a tracked file of this repository is its repair, and the generator's Tier 3 renders the first such warning no queue entry targets as a one-task job; T002 lands first (2026-09-26)
+
+CONTEXT: T5_F289.md asks for the self-use generator's Tier 2, a documentation-staleness catalog
+of at least ten checks, and its Tier 3, `remedy doctor core` as an importable function returning
+structured warnings with each actionable warning rendered as a one-task job, and for the proof
+that three consecutive generator calls on an empty ledger each produce a distinct item. Measured
+at `d0239fa3`: `_doc_staleness_tier` and `_doctor_warning_tier` in
+`packages/orchestration/self_use_generator.py` return None (DECISION F258 D2); `_cmd_doctor_core`
+in `apps/cli/commands/worker_facade_cmd.py` builds its checks, blockers, warnings, dead commands
+and disk reading inside the argparse handler and prints them, each warning a dict of `warning`,
+`summary` and `detail`, of five kinds: `dead_builtin_model`, `dead_configured_model`,
+`dead_model_comparison`, `unknown_env_variable` and `unparsable_env_variable`; the tests in
+`tests/cli/test_worker_facade_cmd.py` call that handler and patch `importlib.import_module`, the
+dead-model loaders, the alias table and `get_config` where the handler reads them; and
+`packages/orchestration/lessons.py` and `packages/orchestration/integrity_gate.py` already import
+from `apps/` inside a function.
+
+CHOSEN: (1) THE ORDER: T002 lands in round 1, because its seam is one handler and its proof is
+the command's output held equal; T001 follows, because its catalog is new data and needs a round
+of its own; T003 comes last, because it needs both tiers. (2) THE REPORT stays in
+`apps/cli/commands/worker_facade_cmd.py`, beside its command, so every patch point the tests use
+stays where they patch it. A frozen `DoctorWarning` carries `warning`, `summary`, `detail`,
+`subject` and `repair_path`, and its `as_json()` answers exactly the three keys the command prints
+today; a frozen `DoctorCoreReport` carries `ready`, `checks`, `blockers`, `warnings`,
+`dead_commands` and `disk`, and its `as_json()` answers today's result, key for key and in
+today's order; `doctor_core_report()` holds the body of today's handler up to that result; and
+`_cmd_doctor_core` calls it and prints from `as_json()`, its text and JSON output byte-unchanged.
+(3) ACTIONABLE: a warning is actionable when its repair is an edit of a tracked file of this
+repository; it then names that file as `repair_path` and the thing it is about as `subject`. Of
+today's kinds only `dead_builtin_model` is: its subject is the dead model id and its repair path
+`packages/orchestration/model_aliases.py`, where the alias is repointed. A dead configured id is
+repaired in the operator's configuration, an environment variable in the operator's shell, and a
+failed comparison names no repair, so those carry their model id, variable name or nothing as
+subject and no repair path. (4) TIER 3 imports the command module inside the function, as
+`lessons.py` does, calls `doctor_core_report()` through that module, and takes the first
+actionable warning, in report order, whose key `<warning>:<subject>` no queue entry, consumed or
+not, already targets by its provenance `generated (self-use-generator tier 3, doctor core,
+<warning>:<subject>)`. It renders one task whose body is the warning's detail verbatim followed by
+a sentence naming the repair path and forbidding any edit under `.agent/`, with an acceptance
+asking that `remedy doctor core --json` no longer list that warning for that subject and that no
+file under `.agent/` change. A detail holding a line shaped like a heading or an acceptance marker
+is refused as Tier 1 refuses a paragraph. The tier catches nothing: the report already records a
+failing check as that check's own result, and `tests/test_ble001_ratchet.py` admits no new blind
+handler, so whatever the report still raises reaches the caller unchanged.
+The tier order is unchanged: the order, the ledger, the staleness catalog, then the doctor. (5)
+R-1073, registered at this claim, is repaired in round 1 by its FIX.
+
+ALTERNATIVES: a new module under `packages/` for the report, rejected because it moves every patch
+point the command's tests use while the report remains the command's own; `subject` and
+`repair_path` in the command's JSON, rejected because T5_F289.md's Acceptance holds that output
+unchanged; every warning actionable, rejected because a builder cannot edit an operator's shell or
+configuration, and a job it cannot finish spends a closure's run on nothing; the dead-command
+section as Tier 3 items, rejected because it is not a warning and reads empty on the shipped
+catalog.
+
+DELIBERATE ABSENCES: no warning kind is added, and no warning's words change.
+
+HOW TO REVERSE: fold `doctor_core_report()` back into `_cmd_doctor_core`, delete `DoctorWarning`
+and `DoctorCoreReport`, return `_doctor_warning_tier` to None, and delete this paragraph.

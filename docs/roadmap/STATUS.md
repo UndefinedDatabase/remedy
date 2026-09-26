@@ -158,7 +158,7 @@ Milestone R1 — Remedy as the daily tool: Tier 2 complete (F086 as the self-ins
 
 ## Tier 5 — Self-use sources & event completeness (operator amendment amend0926-decisions-selfuse)
 
-- [ ] F289 — Self-use sources completion (doc staleness and doctor warnings)
+- [~] F289 — Self-use sources completion (doc staleness and doctor warnings)
 - [ ] F288 — Event stream completeness & prompt nodes in the live graph
 
 ## Tier 5 — Operator Cockpit (parallel human track, continued)
