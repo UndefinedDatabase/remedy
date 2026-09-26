@@ -262,6 +262,67 @@ class TestDecisionResolveProposalAnswersJSONThroughTheDispatcher:
         assert body["task_id"] == t.id
 
 
+class TestDecisionResolveVetoAnswersJSONThroughTheDispatcher:
+    """F027 R4 — `decision resolve veto:<request id>` proved end to end through the CLI
+    dispatcher, over a real vetoed job (DECISION F027 D4 (6))."""
+
+    @pytest.fixture
+    def vetoed_job(self, monkeypatch, tmp_path):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        from packages.orchestration import task_veto as tv
+        from packages.orchestration.pingpong_job import JobPlan, TaskEntry, save_job_plan
+
+        tasks = [TaskEntry(title="A"), TaskEntry(title="B")]
+        job = JobPlan(job_title="veto-cli-job", tasks=tasks, repo_path=str(tmp_path))
+        save_job_plan(job, tmp_path)
+        result = tv.veto_task_command(job, task_id=tasks[0].task_id,
+                                      reason="known-bad approach", actor="alice")
+        assert result["outcome"] == "vetoed"
+        return job, result["request_id"]
+
+    def test_an_accept_answers_the_envelope(self, vetoed_job, capsys):
+        from apps.cli.grouped import main
+
+        job, request_id = vetoed_job
+        decision_id = f"veto:{request_id}"
+        main(["decision", "resolve", str(job.job_id), decision_id,
+              "--reason", "accept_reduced_scope", "--json"])
+        body = json.loads(capsys.readouterr().out)
+        assert body["ok"] is True and body["schema_version"] == 1
+        assert body["decision_id"] == decision_id and body["job_id"] == str(job.job_id)
+        assert body["outcome"] == "answered"
+        assert body["option"] == "accept_reduced_scope"
+        assert body["follow_up_job_id"] == ""
+
+    def test_a_replan_prints_the_follow_up_jobs_id(self, vetoed_job, capsys):
+        from apps.cli.grouped import main
+
+        job, request_id = vetoed_job
+        decision_id = f"veto:{request_id}"
+        main(["decision", "resolve", str(job.job_id), decision_id,
+              "--reason", "replan_follow_up", "--json"])
+        body = json.loads(capsys.readouterr().out)
+        assert body["ok"] is True
+        assert body["outcome"] == "answered"
+        assert body["option"] == "replan_follow_up"
+        assert body["follow_up_job_id"]
+
+    def test_a_refusals_exit_code_matches_the_proposal_routes_own(self, vetoed_job, capsys):
+        from apps.cli.grouped import main
+
+        job, request_id = vetoed_job
+        decision_id = f"veto:{request_id}"
+        with pytest.raises(SystemExit) as exc:
+            main(["decision", "resolve", str(job.job_id), decision_id,
+                  "--reason", "bogus_option", "--json"])
+        # `invalid_argument` is the SAME code, and the SAME default `fail()` exit code
+        # of 1, the `proposal:` route gives its own `--reason` refusal.
+        assert exc.value.code == 1
+        body = json.loads(capsys.readouterr().out)
+        assert body["ok"] is False
+        assert body["error"] == "invalid_argument"
+
+
 class TestTheTokenVocabularyJoinsTheProduct:
     """R-1023, DECISION F277 D8 part (a) — one token per condition, repo-wide,
     existing spelling wins. Round 6 minted `job_has_no_project` and
