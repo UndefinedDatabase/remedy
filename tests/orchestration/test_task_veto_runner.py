@@ -277,3 +277,275 @@ class TestVetoDuringTheRun:
         assert done.state == JOB_BLOCKED
 
 
+# ---------------------------------------------------------------------------
+# A block, a veto and a relaunch: the skipped set unwinds except what stays unreachable
+# ---------------------------------------------------------------------------
+
+
+class TestBlockThenVetoThenRelaunch:
+    def test_the_independent_task_returns_to_pending_and_runs(self, root, repo):
+        tasks = [_task("A", []), _task("D", ["A"]), _task("E", [])]
+        job_id = _save_job(root, tasks, repo_path=str(repo))
+        a_id = _task_id_of(root, job_id, "A")
+
+        failing = _AlwaysBlockedProvider()
+        blocked = run_job(job_id, builder_provider=failing, reviewer_provider=failing,
+                          max_rounds=1, repair_rounds=0)
+        assert blocked.state == JOB_BLOCKED
+        a0 = _by_planned(blocked, "A")[1]
+        d0 = _by_planned(blocked, "D")[1]
+        e0 = _by_planned(blocked, "E")[1]
+        assert a0.status == pj.TASK_BLOCKED
+        assert d0.status == pj.TASK_SKIPPED
+        assert e0.status == pj.TASK_SKIPPED
+
+        job = load_job_plan(job_id, root)
+        veto = tv.veto_task_command(job, task_id=a_id, reason="A's approach was wrong",
+                                    actor="alice", control_root_path=_control())
+        assert veto["outcome"] == "vetoed"
+
+        done = run_job(job_id, builder_provider=_pass_provider(),
+                       reviewer_provider=_pass_provider(), max_rounds=1, repair_rounds=0)
+
+        a = _by_planned(done, "A")[1]
+        d = _by_planned(done, "D")[1]
+        e = _by_planned(done, "E")[1]
+        assert a.status == pj.TASK_VETOED
+        assert d.status == pj.TASK_SKIPPED           # A's dependent stays skipped: unreachable
+        assert e.status == pj.TASK_APPLIED            # independent: back to pending, then ran
+        assert e.run_id
+        assert done.state == JOB_BLOCKED
+        assert done.error.startswith("all_remaining_work_vetoed:")
+
+
+class TestFoldSkipResetIsExact:
+    """Direct coverage of ``_fold_task_vetoes``'s own skip-reset rule (D2 (2)): the
+    runner's per-task unreachable filter (S4) would independently withhold D from
+    dispatch even if the fold reset it too, so a scenario driven through the whole
+    ``run_job`` loop cannot tell 'reset nothing' apart from 'reset everything' — this
+    calls the fold directly and reads its immediate effect, before the loop ever runs.
+    """
+
+    def test_only_the_reachable_skipped_task_returns_to_pending(self, root, repo):
+        tasks = [_task("A", []), _task("D", ["A"]), _task("E", [])]
+        job_id = _save_job(root, tasks, repo_path=str(repo))
+        a_id = _task_id_of(root, job_id, "A")
+
+        job = load_job_plan(job_id, root)
+        a = _by_planned(job, "A")[1]
+        d = _by_planned(job, "D")[1]
+        e = _by_planned(job, "E")[1]
+        a.status = pj.TASK_BLOCKED
+        d.status = pj.TASK_SKIPPED
+        e.status = pj.TASK_SKIPPED
+        save_job_plan(job, root)
+
+        tv.record_task_veto(job_id, a_id, "A was wrong", "alice", pj.TASK_BLOCKED,
+                            control_root_path=_control())
+
+        reloaded = load_job_plan(job_id, root)
+        blocked = pj._fold_task_vetoes(reloaded, None, _control())
+        assert blocked is False
+
+        a2 = _by_planned(reloaded, "A")[1]
+        d2 = _by_planned(reloaded, "D")[1]
+        e2 = _by_planned(reloaded, "E")[1]
+        assert a2.status == pj.TASK_VETOED
+        assert d2.status == pj.TASK_SKIPPED       # unreachable behind A's veto: stays skipped
+        assert e2.status == pj.TASK_PENDING        # independent: goes back to pending
+
+
+# ---------------------------------------------------------------------------
+# The task cap parks after a veto folded; the paused manifest validates
+# ---------------------------------------------------------------------------
+
+
+_THREE_TASK_CAP_JOB = """# Task-cap job
+
+## Task 1
+First task.
+
+## Task 2
+Second task.
+
+## Task 3
+Third task.
+"""
+
+
+class TestTaskCapAfterAVeto:
+    def test_the_paused_manifest_reads_the_vetoed_task_as_skipped(self, root, repo):
+        # A legacy (markdown) job so `job_file_sha256` is real — a Task-Plan job never
+        # carries one, which fails manifest validation for a reason unrelated to the veto.
+        # T3 (the chain's tail) is vetoed before the run: nothing depends on it, so T2
+        # stays reachable and pending when the cap parks the run one task in.
+        job = parse_job_file(_THREE_TASK_CAP_JOB, str(repo))
+        job_id = job.job_id
+        t3_id = job.tasks[2].task_id
+
+        veto = tv.veto_task_command(job, task_id=t3_id, reason="stop the tail task",
+                                    actor="alice", control_root_path=_control())
+        assert veto["outcome"] == "vetoed"
+
+        done = run_job(job_id, builder_provider=_pass_provider(),
+                       reviewer_provider=_pass_provider(), max_rounds=1, repair_rounds=0,
+                       max_tasks=1)
+
+        assert done.state == JOB_PAUSED
+        t1, t2, t3 = done.tasks
+        assert t1.status == pj.TASK_APPLIED
+        assert t2.status == pj.TASK_PENDING
+        assert t3.status == pj.TASK_VETOED
+
+        ev = job_evidence_dir(done.job_id)
+        manifest = load_episode_manifest_verified(
+            ev, done.active_episode_id, expected_job_id=done.job_id)
+        assert manifest.status == "paused"
+        assert validate_run_manifest(manifest, mode=MODE_PUBLISHED_REFERENCE) == []
+        te = next(t for t in manifest.call_expectation.tasks if t.task_id == t3_id)
+        assert te.expectation == "skipped"
+        assert te.task_status_at_finalization == "vetoed"
+
+
+# ---------------------------------------------------------------------------
+# An inert veto of an applied task
+# ---------------------------------------------------------------------------
+
+
+class TestInertVeto:
+    def test_a_veto_of_an_already_applied_task_changes_nothing(self, root, repo):
+        tasks = [_task("A", [])]
+        job_id = _save_job(root, tasks, repo_path=str(repo))
+        a_id = _task_id_of(root, job_id, "A")
+
+        job = load_job_plan(job_id, root)
+        a = _by_planned(job, "A")[1]
+        a.status = pj.TASK_APPLIED
+        save_job_plan(job, root)
+
+        tv.record_task_veto(job_id, a_id, "too late now", "alice", pj.TASK_APPLIED,
+                            control_root_path=_control())
+
+        done = run_job(job_id, builder_provider=_pass_provider(),
+                       reviewer_provider=_pass_provider(), max_rounds=1, repair_rounds=0)
+
+        assert done.state == JOB_COMPLETED
+        a_done = _by_planned(done, "A")[1]
+        assert a_done.status == pj.TASK_APPLIED
+        entry = done.metadata["task_vetoes"][a_id]
+        assert entry["inert"] == pj.TASK_APPLIED
+        assert "folded_at" not in entry
+
+
+# ---------------------------------------------------------------------------
+# A corrupt veto file blocks the job
+# ---------------------------------------------------------------------------
+
+
+class TestCorruptVetoFile:
+    def test_blocks_with_task_veto_control_error_and_dispatches_nothing(self, root, repo):
+        tasks = [_task("A", [])]
+        job_id = _save_job(root, tasks, repo_path=str(repo))
+        a_id = _task_id_of(root, job_id, "A")
+
+        vdir = _control() / "jobs" / job_id / "vetoed_tasks"
+        vdir.mkdir(parents=True)
+        (vdir / _veto_filename(a_id)).write_text("not json")
+
+        done = run_job(job_id, builder_provider=_RefusingProvider(),
+                       reviewer_provider=_RefusingProvider(), max_rounds=1, repair_rounds=0)
+
+        assert done.state == JOB_BLOCKED
+        assert done.error.startswith("task_veto_control_error:")
+        a = _by_planned(done, "A")[1]
+        assert a.status == pj.TASK_PENDING
+        assert not a.run_id
+
+
+# ---------------------------------------------------------------------------
+# A GIT job: the veto restores the workspace before the next task starts
+# ---------------------------------------------------------------------------
+
+
+def _git(repo: Path, *args: str) -> str:
+    return subprocess.run(["git", *args], cwd=str(repo), capture_output=True, text=True,
+                          check=True).stdout
+
+
+@pytest.fixture
+def git_repo(tmp_path: Path) -> Path:
+    r = tmp_path / "gitrepo"
+    r.mkdir()
+    _git(r, "init", "-q")
+    _git(r, "config", "user.email", "t@e.com")
+    _git(r, "config", "user.name", "T")
+    _git(r, "config", "commit.gpgsign", "false")
+    (r / "base.txt").write_text("base\n")
+    _git(r, "add", "-A")
+    _git(r, "commit", "-qm", "init")
+    return r
+
+
+_ONE_TASK_JOB_TEXT = """# One task
+
+## Task 1 — write partial work
+
+Write partial.txt, then never pass review.
+"""
+
+
+class TestGitWorktreeVetoRestoresTheWorkspace:
+    def test_a_veto_and_relaunch_removes_the_blocked_attempts_file(
+            self, root, git_repo, monkeypatch):
+        job = parse_job_file(_ONE_TASK_JOB_TEXT, str(git_repo))
+        job_id = job.job_id
+
+        holder: dict = {}
+        real_create = W.create
+
+        def spy(jid, r):
+            h = real_create(jid, r)
+            holder["path"] = h.path
+            return h
+
+        monkeypatch.setattr(W, "create", spy)
+
+        class _WritesThenBlocks:
+            @property
+            def name(self) -> str:
+                return "fake"
+
+            @property
+            def supports_resume(self) -> bool:
+                return False
+
+            def build(self, prompt, **kw):
+                (Path(holder["path"]) / "partial.txt").write_text("work in progress\n")
+                return BuilderOutput(summary="partial work", files_changed=["partial.txt"],
+                                     provider="fake")
+
+            def review(self, prompt, **kw):
+                return ReviewerOutput(verdict="blocked", confidence="high", summary="no",
+                                      provider="fake")
+
+        prov = _WritesThenBlocks()
+        blocked = run_job(job_id, builder_provider=prov, reviewer_provider=prov,
+                          max_rounds=1, repair_rounds=0)
+        assert blocked.state == JOB_BLOCKED
+        t1 = blocked.tasks[0]
+        assert t1.status == pj.TASK_BLOCKED
+        ws = Path(holder["path"])
+        assert (ws / "partial.txt").exists()
+
+        veto = tv.veto_task_command(blocked, task_id=t1.task_id, reason="wrong approach",
+                                    actor="alice", control_root_path=_control())
+        assert veto["outcome"] == "vetoed"
+
+        done = run_job(job_id, builder_provider=_RefusingProvider(),
+                       reviewer_provider=_RefusingProvider(), max_rounds=1, repair_rounds=0)
+
+        assert not (ws / "partial.txt").exists()
+        assert done.state == JOB_BLOCKED
+        assert done.error.startswith("all_remaining_work_vetoed:")
+        entry = done.metadata["task_vetoes"][t1.task_id]
+        assert entry["restored"] is True
