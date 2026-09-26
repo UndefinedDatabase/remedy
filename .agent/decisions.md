@@ -22220,3 +22220,51 @@ operator.
 HOW TO REVERSE: delete the `replan_proposal` branch, type and triple entry, `answer_replan_proposal`
 and the answer files, the follow-up job's creation, the settled-completion branch and the widened
 completed sets, the CLI route, their tests, and this paragraph.
+
+## DECISION F027 D5 — the veto reaches the operator as `job.veto-task` in the catalog, the CLI and the write door with the reason checked as a shape before the job is read, and the write door answers a replan proposal through `decision.resolve`, which makes the inbox card answerable (2026-09-26)
+
+CONTEXT: T5_F027.md asks for the command `veto_task {task_id, reason}` with the reason refused at
+schema when empty, and D4 (6) left the door's answer of a proposal to this round. Measured at
+`9f884fbb`: every job verb the page may send is a catalog entry named in `UI_EXPOSED_COMMANDS` in
+`apps/cli/command_catalog.py`; `job.edit-task` names its task by the id in the job or in the plan
+through `_resolve_task_arg` in `apps/cli/commands/job_plan_cmd.py`; the write door in
+`packages/orchestration/ui_server.py` checks a steering message's shape inside
+`_read_command_payload` through one allow-listed validator and refuses it with a 400 on its field
+before the job is read (DECISION F264 D2), maps a refused pause to a 409 `rejected_state`, and
+answers `decision.resolve` for `plan:` and escalation ids only; `TestCommandDoorImportGuard` in
+`tests/ui_server/test_command_channel.py` pins the door's imports by exact equality, and a new entry
+needs a ruling; `_answerable_by_decision_resolve` in `packages/orchestration/decision_inbox.py` must
+mirror the door's own refusals; and R-1067.
+
+CHOSEN: (1) ONE NEW CATALOG ID, `job.veto-task`, `write_metadata`, exposed to the page, taking the
+job, the task by its id in the job or by its id in the plan, and a required `--reason`, with exit
+codes 0, 1, 2 and 3: a refused reason and an unknown task are usage refusals (2), and
+`job_not_vetoable`, `task_not_vetoable` and `task_already_vetoed` not-ready refusals (3). Its
+handler lives in a new `apps/cli/commands/job_veto_cmd.py` and prints the veto's request id and the
+tasks that can no longer run, or the refusal's detail. (2) THE DOOR adds one clause for
+`job.veto-task` beside the pause's, the same write order and the same audit, calling
+`task_veto.veto_task_command` with the request's token fingerprint as the actor; the reason is
+checked by `task_veto.validate_veto_reason` inside `_read_command_payload`, and a refusal is a 400
+on the field `reason` before the job is read, which is the schema-level refusal T5_F027.md asks
+for; every other refusal is a 409 `rejected_state` whose message names the refusal's code and
+detail. The veto's own `task_vetoed` event stays its audit line with the reason verbatim, because
+the door's audit line keeps a hash of the arguments. (3) THE DOOR'S ANSWER: `_dispatch_decision_resolve`
+gains a `veto:` branch that calls `veto_proposal.answer_replan_proposal` with `args.answer` as the
+option and the token fingerprint as the actor; `answered` is the accepted body, and every refusal
+the existing 409. (4) THE INBOX: `_answerable_by_decision_resolve` gains the `veto:` branch the door
+mirrors — true while the id names a veto of the job with no answer — and `replan_proposal` joins the
+answerable types. (5) THE IMPORT RULING: the door's allowed imports gain exactly
+`task_veto.veto_task_command`, `task_veto.validate_veto_reason` and
+`veto_proposal.answer_replan_proposal`, all three reached from the new clause, the payload check and
+the answer branch; no forbidden module may become newly reachable through them, and a worker who
+finds one stops rather than widening the accepted set. (6) R-1067's repair lands in this round.
+
+ALTERNATIVES: a `--task` option on `job.pause`'s pattern, rejected because a veto always names one
+task and the reason is not optional; checking the reason only inside `veto_task_command`, rejected
+because the refusal would then read the job first and T5_F027.md asks for a schema refusal; a new
+`decision.answer-veto` command, rejected because `decision.resolve` already carries the page's
+answers and the inbox card posts to it.
+
+HOW TO REVERSE: delete the catalog entry, `job_veto_cmd.py`, the door clause, the payload check, the
+`veto:` branches of the door and the inbox, the three import entries, their tests, and this
+paragraph.
