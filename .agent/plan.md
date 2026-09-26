@@ -11,20 +11,17 @@ repair (`docs/roadmap/features/T2_F285.md`).
 
 ## Current Step
 
-ROUND 4, the closure sequence's second round: book round 3 with the
-reviewer's pass of the self-use run's diff, land that diff verbatim as
-R-1064's repair, pin the seven real node ids, write the Built State,
-consolidate the checklist, and run the feature's one full suite.
+ROUND 5, the closure sequence's evidence round: book round 4, resolve
+R-1064 and R-1008, then build the evidence bundle against the fork
+point and the fresh review package.
 
 ## Next Steps
 
-1. The resolutions of R-1064 and R-1008, the evidence bundle and the
-   review package.
-2. The closing round: the ledger's rotation, the STATUS line, the
-   README pins, the item's `consumed_by`, the next paydown's
-   registration and the pull request.
+1. The closing round: the booking of round 5, the ledger's rotation,
+   the registration of the next findings paydown, the STATUS line with
+   the README pins and `SU-032`'s `consumed_by`, and the pull request.
 
 ## Risks
 
-Open findings: 2 — R-1008 and R-1064, both owned by F285; both resolve
-at the next gate if this round lands the diff.
+Open findings: 0 once this round's booking lands; F285 resolved all
+five it owned.
