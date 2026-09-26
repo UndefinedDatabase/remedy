@@ -22347,3 +22347,57 @@ architecture line; a new dashboard state word for a vetoed task, rejected becaus
 
 HOW TO REVERSE: delete the section and its normalizer, the seed row and the reducer case, the report
 lines, `option_labels` and its reading, the two catalog entries, their tests, and this paragraph.
+
+## DECISION F027 D8 — the veto reaches the page's surfaces: the unreachable set fades to the vetoed treatment's own downstream alpha, a vetoed or unreachable node's hover text carries the reason or the vetoing task as plain text, the detail popover shows a Veto or Unreachable section with a link to each task on the other side, and a "Veto task" form sends `job.veto-task` through one new module (2026-09-26)
+
+CONTEXT: T5_F027.md's Design asks for "strike glyph + reason on hover; the unreachable set dims with
+a linking affordance", and its Acceptance for the reason verbatim in the hover. Measured at
+`b9b16909`: the vetoed treatment in `apps/ui/src/components/graph/renderers/nodeStates.ts` already
+carries the strike mark and `downstreamAlpha: 0.4`, the figure `graph_spec.md`'s Vetoed line and
+`assets_spec.md`'s vetoed row both give, and no painter reads it; `ForceBrainGraph` passes no
+`nodeLabel`, its type shim `apps/ui/src/types/react-force-graph-2d.d.ts` declares none, and the
+library's tooltip writes a string through `innerHTML` while it inserts an element as it is;
+`tests/ui_contracts/test_semantic_zoom_wiring.py` pins the zoom dim line and the label's
+`ctx.globalAlpha = dim;` verbatim; the dashboard reads a vetoed task's status word as `pending`, so
+the detail popover calls it "Planned" and "Not started yet."; the popover has no way to open another
+task; the door's `job.veto-task` takes `task_id` and `reason` and answers 200 with `outcome`
+`vetoed` and the `unreachable` list, 400 with `error` and `field`, and 409 with an `error` reading
+`<code>: <detail>`; and `apps/ui/src/api/taskEditSend.ts` is the pattern for a popover form that
+reaches the door. The inbox card's menu has rendered from `option_labels` since round 7.
+
+CHOSEN: (1) THE FADE: the live canvas fades every task node the `vetoes` section names as
+unreachable, and each link into such a node, by `NODE_STATE_TREATMENTS.vetoed.downstreamAlpha`,
+read from that table and never restated as a number; the fade multiplies with the zoom dim and
+never replaces it, and the node's label fades with it. (2) THE HOVER: on the live canvas a vetoed
+task's node shows `Vetoed: <reason>` with the reason verbatim, an unreachable task's node shows
+`Unreachable due to veto of <task>`, naming every vetoing task by its title, and every other node
+shows no hover text, as today; the text reaches the library's tooltip only as an element's
+`textContent`, never as markup, and the tooltip wears existing tokens only. (3) THE POPOVER: for a
+vetoed task the status row reads "Vetoed" and the Result reads "Vetoed. This task will not run.";
+a Veto section shows the reason verbatim, who vetoed it and when, a button for each task this veto
+made unreachable, and the replan proposal's state in plain words; for an unreachable task an
+Unreachable section reads "Unreachable due to veto of" followed by a button for each vetoing task;
+each button opens that task's popover, and a caller that passes no way to open a task gets the
+titles as plain text. (4) THE FORM: a ghost "Veto task" button, offered only for a task the section
+lists as vetoable while the section reads no error, opens a form with one required single-line
+reason of at most 500 characters, a note that a veto cannot be undone, that the tasks depending on
+this one will not run and that a replan proposal goes to the decision inbox, a primary "Veto" pill
+disabled while the reason is blank or a send is under way, a ghost Cancel, and one sentence saying
+what happened. (5) THE SEND: a new module `apps/ui/src/api/vetoSend.ts` builds, submits and
+describes the request as `taskEditSend.ts` does, with its own sentences for an accepted veto, for
+each refusal code, for a refused reason and for a request it cannot send, and the pause control's
+sentences for every other answer. (6) The simple view is unchanged. (7)
+`docs/ui/design_reference/assumption_log.md` gains one row for the canvas hover text and one for
+the popover's Veto and Unreachable sections with the form.
+
+ALTERNATIVES: a tooltip of the page's own, positioned from the graph's coordinates, rejected
+because the library already owns hover and an element keeps the reason inert; a string tooltip
+escaped by hand, rejected because an escaper is one more place to be wrong where `textContent`
+cannot be; computing the unreachable set in the page to preview it in the form, rejected because
+the feature reuses the backend's set and never re-derives it; hover text on the simple view,
+deferred because that view draws neither the strike nor any other state glyph.
+
+HOW TO REVERSE: delete the fade and the hover wiring in `ForceBrainGraph.tsx` with its shim line,
+the helpers that feed them, the popover's Veto and Unreachable sections and its task link,
+`TaskVetoForm.tsx`, `vetoSend.ts`, `vetoView.ts`, the two assumption-log rows, their tests, and this
+paragraph.
