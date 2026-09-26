@@ -21944,3 +21944,35 @@ HOW TO REVERSE: restore `packages/orchestration/pingpong_loop.py`,
 `packages/orchestration/pingpong_job.py`, `docs/system/session-resume-v1.md` and
 `tests/orchestration/test_prompt_trace.py` from `26f44f49`, delete
 `tests/orchestration/test_relaunch_session_resume.py`, and delete this paragraph.
+
+## DECISION amend0926-decisions-selfuse D1 (2026-09-26, operator amendment, Part 0) — the next free finding id is R-1073
+CONTEXT: The loop mints finding ids on its feature branch, so the amendment asks for the highest
+`- R-<n> —` registration line on `main` and on every open `feature/f*` branch, read in both
+`.agent/live_review.md` and `.agent/live_review_archive.md`, before anything is registered. At the
+start of this amendment `main` stood at `557cbbcc` (the merge of pull request 282, which closed the
+findings paydown feature F285) and the one open loop branch was `feature/f027-task-veto` at
+`49958f24` (the closure of the task-veto feature F027, pull request 283).
+CHOSEN: The highest registered id on `main` is R-1064 and on `feature/f027-task-veto` it is R-1072,
+both in the archive; the live file holds nothing above R-0809 on either branch. The next free id is
+therefore R-1073. This amendment registers no finding, so the number is recorded for the next
+session and for the operator only.
+REVERSE: Delete this paragraph; nothing else depends on it.
+
+## DECISION amend0926-decisions-selfuse D2 (2026-09-26, operator amendment, Part A) — Q1 to Q4 stand as executed, Q5 is answered by the cost ruling, and the file is emptied
+CONTEXT: `.agent/operator_questions.md` held five entries, each ending with the sentence that the
+recommendation is already executed and stands until the operator says otherwise. Q1 keeps the
+lessons the teacher writes after each task switched off until the operator switches them on. Q2
+keeps the live job graph in the browser reading today's event messages without widening them. Q3
+keeps the prompt dots in the simple view of the graph. Q4 makes resume in the browser show the
+command that relaunches a paused job instead of launching it. The amendment answers these four as
+recommended. The file also held Q5, written by F285's first round after the amendment's text was
+drafted: it asks whether the self-use run may spend six dollars instead of one.
+CHOSEN: Every recommendation of Q1 to Q4 stands as executed. For Q2 and Q3 the missing event fields
+(attempt id, task id and result on every builder, review, check, test and repair event, and a
+plan-approved event) and the prompt nodes in the live graph are registered as their own feature in
+Part C. The amendment names that feature F287, but F286 was already taken, so it carries the id
+F288 (DECISION D5 below). Q5 is answered by the operator's cost ruling in this same amendment,
+recorded as DECISION D3: the default cap is six dollars, which is what Q5 recommended and F285
+already executed. All five entries are deleted, the header is kept verbatim, and the body reads
+the single word `EMPTY`.
+REVERSE: `git checkout 557cbbcc -- .agent/operator_questions.md`, and delete this paragraph.
