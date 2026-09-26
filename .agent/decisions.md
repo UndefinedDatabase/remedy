@@ -22097,3 +22097,51 @@ scope (T5_F027.md: nothing replans without the decision answer).
 HOW TO REVERSE: delete the fold, the loop's two passes and the terminal branch from `run_job`,
 `worktrees.restore_tree`, the `vetoed` entries of the manifest's vocabulary, their tests, and this
 paragraph.
+
+## DECISION F027 D3 — a task vetoed while its provider call runs finishes that call, then the linear runner halts the task at its next in-task safe point, folds the veto with the workspace restored, and runs on; the cycle executor withholds a vetoed task and its dependents at every pick and ends `blocked` naming them when nothing else is ready; and `restore_tree` survives a directory standing where a file was (2026-09-26)
+
+CONTEXT: T5_F027.md rules "vetoing in-progress tasks: the current call finishes (pause
+discipline), then vetoed — no mid-call kills", and DECISION F027 D2 (8) left that, and the cycle
+executor, to this round. Measured at `cf6dc546`: `run_job` hands `run_pingpong` a closure,
+`_run_stop_check`, that `pingpong_loop` calls before every provider call; when it answers a signal
+the loop records the run's `final_status` as `stopped` with the signal's request id, reason and
+source, and `run_job`'s `stopped` branch tells a pause from a stop by a prefix on the reason, the
+only field that survives that round trip (DECISION F025 D1); `_fold_task_vetoes` already folds a
+`running` task and restores its start tree; `_log_task_ended` writes `task_run_failed` for every
+outcome but `pass`; `long_run_executor.run_cycles` re-reads the pause mask before every pick and
+passes the paused ids to `ready_tasks`, which withholds them with `blocked_downstream`, writes task
+statuses in the `RunState` vocabulary, runs a task through a step that finishes or rolls it back to
+`pending` before the next pick, and ends `TERMINAL_BLOCKED` with the stop reason
+`no_ready_tasks; last_verify=<v>` when nothing is ready and the job is not green; and R-1066.
+
+CHOSEN: (1) THE IN-TASK READING: `_run_stop_check`, after the stop and the pause found nothing,
+reads `task_veto.vetoed_tasks` and, when an entry names the in-flight task, answers a stop signal
+whose source is `veto`, whose request id is the entry's and whose reason is a veto prefix and that
+id, so the loop halts at its next safe point and the call already running finishes first; an
+unreadable veto area answers the same signal with an error marker, so the fold that follows blocks
+the job as D2 (1) rules. (2) THE HALT: in `run_job`'s `stopped` branch, a reason carrying the veto
+prefix is not a stop: the task keeps the run fields the branch has already recorded, the fold runs
+at once — the task was `running`, so its workspace goes back to its start tree and it becomes
+`vetoed` —, the task log closes with outcome `vetoed`, and the loop goes on to the next task
+instead of returning, so independent tasks still run; a fold that blocks the job returns it. No
+`job_stopped` event, no stop post-mortem and no stop archive are written, because nothing asked the
+job to stop. (3) THE CYCLE EXECUTOR: at every batch boundary and before every pick, `run_cycles`
+reads `vetoed_tasks` and passes the ids to `ready_tasks` as a fourth seed set, withheld with their
+transitive dependents; a vetoed id naming a task that is `completed` or not in the plan is inert,
+as a paused one is. The cycle executor keeps its own vocabulary: it never writes `vetoed` into a
+task's status, and a task step already running finishes or rolls back before the next pick reads
+the veto. When nothing is ready, the job is not green and nothing awaits a decision or a pause, and
+the vetoed seeds withhold at least one task, the run ends `TERMINAL_BLOCKED` with the stop reason
+`all_remaining_work_vetoed; vetoed=<ids>; unreachable=<ids>`; a `TaskVetoError` ends it
+`TERMINAL_BLOCKED` with `task_veto_control_error: <detail>`, as a pause-control error does.
+(4) R-1066's repair lands in this round, as its text says.
+
+ALTERNATIVES: killing the running provider call, rejected by T5_F027.md; letting the vetoed task
+finish its whole repair loop before the veto, rejected because every further call spends budget on
+work the operator refused; ending the run at an in-flight veto as a stop does, rejected because the
+feature's point is that independent branches keep running; folding `vetoed` into the cycle
+executor's task statuses, rejected because every reader of that vocabulary — `_is_green`,
+`ready_set`, the mission loop — would change for a fact the control files already carry.
+
+HOW TO REVERSE: delete the in-task veto reading, the `stopped` branch's veto path, the cycle
+executor's veto seeds and terminal, their tests, and this paragraph.
