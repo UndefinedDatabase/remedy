@@ -163,6 +163,13 @@ Milestone R1 — Remedy as the daily tool: Tier 2 complete (F086 as the self-ins
 - [ ] F029 — Subtree rerun
 - [ ] F030 — Steering messages
 - [ ] F035 — Ownership ledger
+
+## Tier 2 — Findings paydown (rolling, operator rule amend0911-feedback)
+
+- [ ] F286 — Findings paydown v5
+
+## Tier 5 — Operator Cockpit (parallel human track, continued)
+
 - [ ] F036 — Guided result tour
 - [ ] F038 — Grounded chat & intent dispatch
 - [ ] F039 — Story/replay mode
