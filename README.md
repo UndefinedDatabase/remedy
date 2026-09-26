@@ -26,7 +26,7 @@ verification commands. If something is unproven, Remedy says so instead of guess
 
 ## Status
 
-106 of 289 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
+107 of 289 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
 
 | Tier | Name | Done | Total |
 |------|------|-----:|------:|
@@ -35,7 +35,7 @@ verification commands. If something is unproven, Remedy says so instead of guess
 | 2 | Minimal Self-Build Runtime | 38 | 39 |
 | 3 | Full Token Economy & Autonomy | 6 | 27 |
 | 4 | Memory & Learning | 1 | 17 |
-| 5 | Operator Cockpit | 23 | 36 |
+| 5 | Operator Cockpit | 24 | 36 |
 | 6 | Design-to-Code | 0 | 16 |
 | 7 | Quality & Trust | 0 | 15 |
 | 8 | Worker Ecosystem & Neutrality | 0 | 12 |
@@ -509,6 +509,17 @@ the job again with `remedy job run` and the job's id finishes it, and a new job 
 for the left-over work waits for you to plan it; the job's report shows who vetoed
 each task and the reason; a veto cannot be undone, because planning the work again
 is the way back).
+
+F289 self-use sources (when Remedy looks for work to do on itself at the end of a
+feature and its list of open review findings is empty, it now has two more places to
+look: it checks the README, the documentation index, the user guides and the command
+list against what the code really ships, for example a guide the index does not
+list, a command a guide never mentions, or a setting name that does not exist, and
+it reads the warnings `remedy doctor core` prints, of which a retired built-in model
+is the kind it can repair itself; each problem it finds becomes a small job with
+that one repair as its only task, and the job changes nothing by itself: it stops at
+the normal approval step and a reviewer decides what lands; the first such job, run
+at this feature's own close, added a missing user guide to the documentation index).
 
 Full per-feature state: [`docs/roadmap/STATUS.md`](docs/roadmap/STATUS.md)
 
