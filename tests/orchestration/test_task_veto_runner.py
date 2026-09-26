@@ -23,6 +23,7 @@ import pytest
 from packages.orchestration import pingpong_job as pj
 from packages.orchestration import safe_points
 from packages.orchestration import task_veto as tv
+from packages.orchestration import veto_proposal as vp
 from packages.orchestration import worktrees as W
 from packages.orchestration.pingpong_job import (
     JOB_BLOCKED,
@@ -166,7 +167,9 @@ class TestDiamondVetoBeforeTheRun:
         assert not b.run_id
         assert not d.run_id
         assert done.error == f"all_remaining_work_vetoed: vetoed {b_id}; unreachable {d_id}"
-        assert done.metadata["veto_terminal"] == {"vetoed": [b_id], "unreachable": [d_id]}
+        assert done.metadata["veto_terminal"] == {
+            "vetoed": [b_id], "unreachable": [d_id], "settled": False,
+        }
 
         entry = done.metadata["task_vetoes"][b_id]
         assert entry["reason"] == "known-bad approach for B"
@@ -739,3 +742,100 @@ class TestInFlightVetoControlAreaUnreadable:
         a = done.tasks[0]
         assert a.status == pj.TASK_RUNNING             # the fold never reached it
         assert a.run_id
+
+
+# ---------------------------------------------------------------------------
+# F027 R4 — the settled completion (DECISION F027 D4 (5))
+# ---------------------------------------------------------------------------
+
+
+class TestSettledCompletion:
+    """Every vetoed task's veto answered lets the job complete with the reduced scope
+    instead of blocking forever on an operator who has already spoken."""
+
+    def test_answered_before_the_run_completes_with_the_reduced_scope(self, root, repo):
+        # A legacy (markdown) job so `job_file_sha256` is real — a Task-Plan job never
+        # carries one, which fails manifest validation for a reason unrelated to the veto
+        # (mirrors `TestTaskCapAfterAVeto` above).
+        job = parse_job_file(_THREE_TASK_LEGACY_JOB, str(repo))
+        job_id = job.job_id
+        t2_id = job.tasks[1].task_id
+        t3_id = job.tasks[2].task_id
+
+        veto = tv.veto_task_command(job, task_id=t2_id, reason="skip this approach",
+                                    actor="alice", control_root_path=_control())
+        assert veto["outcome"] == "vetoed"
+
+        decisions = vp.replan_proposal_decisions(job, control_root_path=_control())
+        assert len(decisions) == 1
+        answer = vp.answer_replan_proposal(
+            job, decisions[0].id, tv.ACCEPT_REDUCED_SCOPE, actor="alice",
+            control_root_path=_control(), root=root)
+        assert answer["outcome"] == "answered"
+        assert answer["follow_up_job_id"] == ""
+
+        done = run_job(job_id, builder_provider=_pass_provider(),
+                       reviewer_provider=_pass_provider(), max_rounds=1, repair_rounds=0)
+
+        assert done.state == JOB_COMPLETED
+        assert done.tasks[0].status == pj.TASK_APPLIED
+        assert done.tasks[1].status == pj.TASK_VETOED
+        assert done.tasks[2].status == pj.TASK_SKIPPED
+        assert done.metadata["veto_terminal"] == {
+            "vetoed": [t2_id], "unreachable": [t3_id], "settled": True,
+            "answers": {t2_id: tv.ACCEPT_REDUCED_SCOPE},
+        }
+
+        ev = job_evidence_dir(done.job_id)
+        manifest = load_episode_manifest_verified(
+            ev, done.active_episode_id, expected_job_id=done.job_id)
+        assert manifest.status == "completed"
+        assert validate_run_manifest(manifest, mode=MODE_PUBLISHED_REFERENCE) == []
+
+    def test_vetoed_but_unanswered_still_blocks_settled_false(self, root, repo):
+        tasks = [_task("A", []), _task("B", ["A"]), _task("C", ["A"]), _task("D", ["B", "C"])]
+        job_id = _save_job(root, tasks, repo_path=str(repo))
+        job = load_job_plan(job_id, root)
+        b_id = _task_id_of(root, job_id, "B")
+        d_id = _task_id_of(root, job_id, "D")
+
+        veto = tv.veto_task_command(job, task_id=b_id, reason="known-bad approach for B",
+                                    actor="alice", control_root_path=_control())
+        assert veto["outcome"] == "vetoed"
+
+        done = run_job(job_id, builder_provider=_pass_provider(),
+                       reviewer_provider=_pass_provider(), max_rounds=1, repair_rounds=0)
+
+        assert done.state == JOB_BLOCKED
+        assert done.metadata["veto_terminal"] == {
+            "vetoed": [b_id], "unreachable": [d_id], "settled": False,
+        }
+        assert done.error == f"all_remaining_work_vetoed: vetoed {b_id}; unreachable {d_id}"
+
+    def test_a_blocked_veto_terminal_answered_and_relaunched_completes(self, root, repo):
+        tasks = [_task("A", []), _task("B", ["A"]), _task("C", ["A"]), _task("D", ["B", "C"])]
+        job_id = _save_job(root, tasks, repo_path=str(repo))
+        job = load_job_plan(job_id, root)
+        b_id = _task_id_of(root, job_id, "B")
+
+        veto = tv.veto_task_command(job, task_id=b_id, reason="known-bad approach for B",
+                                    actor="alice", control_root_path=_control())
+        assert veto["outcome"] == "vetoed"
+
+        blocked = run_job(job_id, builder_provider=_pass_provider(),
+                          reviewer_provider=_pass_provider(), max_rounds=1, repair_rounds=0)
+        assert blocked.state == JOB_BLOCKED
+        assert blocked.metadata["veto_terminal"]["settled"] is False
+
+        job2 = load_job_plan(job_id, root)
+        decisions = vp.replan_proposal_decisions(job2, control_root_path=_control())
+        assert len(decisions) == 1
+        answer = vp.answer_replan_proposal(
+            job2, decisions[0].id, tv.ACCEPT_REDUCED_SCOPE, actor="alice",
+            control_root_path=_control(), root=root)
+        assert answer["outcome"] == "answered"
+
+        done = run_job(job_id, builder_provider=_pass_provider(),
+                       reviewer_provider=_pass_provider(), max_rounds=1, repair_rounds=0)
+        assert done.state == JOB_COMPLETED
+        assert done.metadata["veto_terminal"]["settled"] is True

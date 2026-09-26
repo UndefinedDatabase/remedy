@@ -571,3 +571,120 @@ class TestTaskVetoedEvent:
         assert len(events) == 1
         assert events[0]["metadata"]["reason"] == "winner reason"
         assert events[0]["metadata"]["request_id"] == result["request_id"]
+
+
+# ---------------------------------------------------------------------------
+# F027 R4 — the answer files (DECISION F027 D4 (3))
+# ---------------------------------------------------------------------------
+
+
+def _answer_filename(request_id: str) -> str:
+    return hashlib.sha256(request_id.encode("utf-8")).hexdigest()[:32] + ".json"
+
+
+class TestAnswerFiles:
+    def test_record_creates_a_file_named_by_digest_with_expected_content(self, control):
+        answer, created = tv.record_veto_answer(
+            JOB, "req0000000000001", "T001", tv.REPLAN_FOLLOW_UP, "alice", "fujob0001",
+            control_root_path=control)
+        assert created is True
+        path = control / "jobs" / JOB / "veto_answers" / _answer_filename(
+            "req0000000000001")
+        assert path.is_file()
+        payload = json.loads(path.read_text())
+        assert payload["veto_answer_v"] == 1
+        assert payload["job_id"] == JOB
+        assert payload["request_id"] == "req0000000000001"
+        assert payload["task_id"] == "T001"
+        assert payload["option"] == tv.REPLAN_FOLLOW_UP
+        assert payload["actor"] == "alice"
+        assert payload["follow_up_job_id"] == "fujob0001"
+        assert answer.request_id == "req0000000000001"
+
+    def test_a_second_record_of_the_same_request_answers_the_first_unchanged_and_false(
+            self, control):
+        first, created1 = tv.record_veto_answer(
+            JOB, "req0000000000002", "T001", tv.REPLAN_FOLLOW_UP, "alice", "fujob0002",
+            control_root_path=control)
+        second, created2 = tv.record_veto_answer(
+            JOB, "req0000000000002", "T001", tv.ACCEPT_REDUCED_SCOPE, "bob", "",
+            control_root_path=control)
+        assert created1 is True
+        assert created2 is False
+        assert second == first
+        assert second.option == tv.REPLAN_FOLLOW_UP
+        assert second.follow_up_job_id == "fujob0002"
+
+    def test_a_publication_race_converges_on_the_winner(self, control, monkeypatch):
+        winner: dict[str, object] = {}
+        real_write = tv._fs.write_file_atomically
+
+        def _slip_in_first(dir_fd, name, data, **kw):
+            if "answer" not in winner:
+                winner["answer"] = None
+                monkeypatch.undo()
+                winner["answer"], _ = tv.record_veto_answer(
+                    JOB, "req0000000000003", "T001", tv.ACCEPT_REDUCED_SCOPE, "carol", "",
+                    control_root_path=control)
+            return real_write(dir_fd, name, data, **kw)
+
+        monkeypatch.setattr(
+            "packages.orchestration.task_veto._fs.write_file_atomically", _slip_in_first)
+
+        got, created = tv.record_veto_answer(
+            JOB, "req0000000000003", "T001", tv.REPLAN_FOLLOW_UP, "dave", "fujobrace",
+            control_root_path=control)
+        assert created is False
+        assert got.request_id == winner["answer"].request_id
+        assert got.option == "accept_reduced_scope"
+
+    def test_an_option_outside_the_two_is_refused_invalid_option(self, control):
+        with pytest.raises(tv.TaskVetoRefused) as exc:
+            tv.record_veto_answer(
+                JOB, "req0000000000004", "T001", "bogus_option", "alice", "",
+                control_root_path=control)
+        assert exc.value.code == "invalid_option"
+
+    def test_an_unsafe_request_id_raises_task_veto_error(self, control):
+        with pytest.raises(tv.TaskVetoError):
+            tv.record_veto_answer(
+                JOB, "../escape", "T001", tv.ACCEPT_REDUCED_SCOPE, "alice", "",
+                control_root_path=control)
+
+    def test_veto_answers_is_empty_on_a_missing_root(self, control):
+        assert tv.veto_answers(JOB, control_root_path=control) == {}
+        assert tv.veto_answers(JOB, control_root_path=control / "nested" / "deeper") == {}
+
+    def test_veto_answers_keys_by_request_id(self, control):
+        tv.record_veto_answer(
+            JOB, "req0000000000005", "T001", tv.REPLAN_FOLLOW_UP, "alice", "fujob0005",
+            control_root_path=control)
+        tv.record_veto_answer(
+            JOB, "req0000000000006", "T002", tv.ACCEPT_REDUCED_SCOPE, "bob", "",
+            control_root_path=control)
+        answers = tv.veto_answers(JOB, control_root_path=control)
+        assert set(answers) == {"req0000000000005", "req0000000000006"}
+        assert answers["req0000000000005"].task_id == "T001"
+        assert answers["req0000000000006"].option == tv.ACCEPT_REDUCED_SCOPE
+
+    def test_an_unparsable_answer_entry_raises(self, control):
+        tv.record_veto_answer(
+            JOB, "req0000000000007", "T001", tv.ACCEPT_REDUCED_SCOPE, "alice", "",
+            control_root_path=control)
+        path = control / "jobs" / JOB / "veto_answers" / _answer_filename(
+            "req0000000000007")
+        path.write_text("not json")
+        with pytest.raises(tv.TaskVetoError):
+            tv.veto_answers(JOB, control_root_path=control)
+
+    def test_an_entry_with_an_unrecognised_option_raises(self, control):
+        tv.record_veto_answer(
+            JOB, "req0000000000008", "T001", tv.ACCEPT_REDUCED_SCOPE, "alice", "",
+            control_root_path=control)
+        path = control / "jobs" / JOB / "veto_answers" / _answer_filename(
+            "req0000000000008")
+        payload = json.loads(path.read_text())
+        payload["option"] = "bogus"
+        path.write_text(json.dumps(payload))
+        with pytest.raises(tv.TaskVetoError):
+            tv.veto_answers(JOB, control_root_path=control)

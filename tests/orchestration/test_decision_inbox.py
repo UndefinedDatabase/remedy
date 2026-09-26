@@ -39,6 +39,9 @@ PRODUCING_DECISION_TYPES = (
     "task_plan_approval",
     "task_decision",
     "proposal",
+    # F027 D4: the two-option menu a veto files. Left OUT of
+    # ANSWERABLE_DECISION_TYPES below — the door does not answer it yet.
+    "replan_proposal",
 )
 
 #: DECISION F031 D19 — the types the write door's ``decision.resolve`` can
@@ -182,6 +185,19 @@ def _fixture_proposal() -> tuple[JobPlan, list[dict]]:
     return job, []
 
 
+def _fixture_replan_proposal() -> tuple[JobPlan, list[dict]]:
+    """A real veto through ``task_veto.veto_task_command`` — never a constructed card —
+    over the default control root ``_isolated_data_root`` already scoped to ``tmp_path``."""
+    from packages.orchestration import task_veto as tv
+
+    job = _make_job(tasks=_linear_task_chain(2))
+    first = job.tasks[0]
+    result = tv.veto_task_command(job, task_id=first.task_id,
+                                  reason="known-bad approach for this task", actor="alice")
+    assert result["outcome"] == "vetoed"
+    return job, []
+
+
 PRODUCING_FIXTURES = {
     "patch_approval": _fixture_patch_approval,
     "stop_reason": _fixture_stop_reason,
@@ -191,6 +207,7 @@ PRODUCING_FIXTURES = {
     "task_plan_approval": _fixture_task_plan_approval,
     "task_decision": _fixture_task_decision,
     "proposal": _fixture_proposal,
+    "replan_proposal": _fixture_replan_proposal,
 }
 
 
@@ -245,13 +262,31 @@ def test_blocked_count_equals_dag_blocked_downstream():
 
 @pytest.mark.parametrize(
     "decision_type",
-    [t for t in PRODUCING_DECISION_TYPES if t != "task_decision"],
+    [t for t in PRODUCING_DECISION_TYPES if t not in ("task_decision", "replan_proposal")],
 )
 def test_non_task_decision_types_report_zero_blocked(decision_type):
     job, events = PRODUCING_FIXTURES[decision_type]()
     inbox = build_decision_inbox(job, events, now=FIXED_NOW)
     card = _cards_by_type(inbox)[decision_type]
     assert card["blocked_count"] == 0
+
+
+def test_replan_proposal_blocked_count_equals_the_vetos_unreachable_count():
+    """``replan_proposal`` is the SECOND type whose count can be non-zero (F027 D4): its
+    card's own payload names the vetoed task, so ``_blocked_subtree_size`` reads the same
+    downstream set the veto itself already computed."""
+    from packages.orchestration import task_veto as tv
+
+    job, events = _fixture_replan_proposal()
+    inbox = build_decision_inbox(job, events, now=FIXED_NOW)
+    card = _cards_by_type(inbox)["replan_proposal"]
+
+    vetoed_id = job.tasks[0].task_id
+    expected = len(tv.veto_unreachable(job.tasks, [vetoed_id]))
+    assert card["blocked_count"] == expected
+    # Without this half the assertion above passes on a module that always
+    # returns 0: two zeros compare equal.
+    assert card["blocked_count"] > 0
 
 
 # ---------------------------------------------------------------------------
