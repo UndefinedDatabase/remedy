@@ -1,0 +1,61 @@
+diff --git a/.agent/decisions.md b/.agent/decisions.md
+index d7aa3e540..31e8af9bc 100644
+--- a/.agent/decisions.md
++++ b/.agent/decisions.md
+@@ -21905,3 +21905,42 @@ HOW TO REVERSE: restore `packages/orchestration/self_use_generator.py`,
+ `packages/orchestration/config.py`, `docs/guides/environment.md`,
+ `docs/system/self-use-track-v1.md` and the three touched test files from `83d3bb95`, delete the
+ operator-questions entry, and delete this paragraph.
++
++## DECISION F285 D2 — a run's record carries each call's provider session, and the relaunch of a task a park or a stop interrupted offers the parked run's sessions to its first calls, with the prompt left at full context (2026-09-26)
++
++CONTEXT: R-1055's fix asks that each round's provider session reference be persisted with the
++run, and that the relaunch of an interrupted task resume that session when its provider supports
++resume, with `resume_used` in the run's evidence. Measured at `26f44f49`: `export_pingpong_json` in
++`packages/orchestration/pingpong_loop.py` writes each round's builder and reviewer blocks into the
++run's `result.json` without the session the call reported; `_park_job` in
++`packages/orchestration/pingpong_job.py` returns the interrupted task to `pending` while its
++`run_id` still names the parked run and its `final_status` reads `stopped`, and a stop leaves the
++same two fields; `run_pingpong` resumes only a repair round, from the rounds it holds in memory,
++and the same variable that carries the resume also gates the prompt shrinks of F106 and the
++dedupe of F109, which assume the session already saw this run's diff. No production provider
++advertises `supports_resume` today; `FakeProvider` does when asked.
++
++CHOSEN: (1) Every round's builder and reviewer blocks in `result.json` carry `session_id`,
++`resume_used`, `resume_session_ref` and `resume_fallback`, and the record carries
++`resumed_from_run_id`. (2) `parked_session_refs` reads a persisted record into the session each
++role last reported; a record without sessions answers `{}`. (3) `run_job` reads the parked run of
++a task whose `final_status` is `stopped` and whose `run_id` is set, and passes the sessions to
++`run_pingpong` as `resume_sessions`, with the parked run's id. (4) In `run_pingpong`, round 1's
++call of each role resumes the offered session when its provider supports resume; the value passed
++to the call and the resume fallback are separated from the prompt gate, which stays the repair
++round's own, so the resumed first call sends the full context. The fallback-once rule is unchanged
++and fires on whatever resume the call really passed. (5) The two source guards in
++`tests/orchestration/test_prompt_trace.py` that locate the fallback branch by its condition follow
++the renamed condition.
++
++ALTERNATIVES: reusing the parked run id instead of minting a new run, rejected because the run
++manifest's chain rule lets a stopped or parked task start a new run and the evidence of the parked
++one must stay whole; a new field on the task entry holding the sessions, rejected because the run
++record already names the run and a second copy could drift from it; letting the resumed first call
++shrink its prompt as a repair round does, rejected because the parked session never saw the new
++run's staging.
++
++HOW TO REVERSE: restore `packages/orchestration/pingpong_loop.py`,
++`packages/orchestration/pingpong_job.py`, `docs/system/session-resume-v1.md` and
++`tests/orchestration/test_prompt_trace.py` from `26f44f49`, delete
++`tests/orchestration/test_relaunch_session_resume.py`, and delete this paragraph.
+diff --git a/.agent/live_review.md b/.agent/live_review.md
+index 650ede372..c486dad24 100644
+--- a/.agent/live_review.md
++++ b/.agent/live_review.md
+@@ -447,3 +447,9 @@ Gate: F026 R6 — the F026 round 6 entry: the closure's repair round, the bookin
+ Gate: F026 R7 — the F026 round 7 entry: the closure sequence's evidence round, the booking of round 6, the resolutions of R-1062 and R-1063, the registration of R-1064 for F285, the Built State's findings brought current, the evidence bundle and the review package. VERDICT PASS, NO DEVIATION DECLARED. Re-derived over `436ff8a0`..`d1d487f9` by the planner and reviewer of F026's first session, whose own runs produced every reading below. THE RANGE IS 3 COMMITS, at `df690e7f` 386, `3cb0798d` 28 and `d1d487f9` 193 insertions by `git show --numstat`, each under the 500-line cap, each single-parent and each carrying the ordered trailer. THE TRANSPORT PROOF: the block copy and the three payload copies, read at `df690e7f`, equal the reviewer's originals byte for byte, and at `3cb0798d` the ledger, the plan, `docs/roadmap/features/T5_F026.md` and `docs/roadmap/features/T2_F285.md` hash to the reviewer's simulation. THE OPEN SET by distinct id reads R-1008, R-1055, R-1057, R-1058 and R-1064 at `3cb0798d`, all five owned by F285. THE BUNDLE: evidence job `f026r7e1001`, built by the committed `.agent/authored/f026-r7-create_f026_evidence.py` at the accepted head `3cb0798d20a293f9954074ff9b2c4ae32704035c` against the fork point `905558493f1ff6570493a8b212a741ab59242a4a`, read ancestry and plain counts equal at 48, 1543 node ids with 5 deselected and none unsafe, pytest exit 0 with 1543 passed, an empty `validate_verification_tests` problem list and `is_valid_current_run` True; it leaves out, with its reason written in the script, the two files whose parametrized ids the scanner reads as secrets, both green in the committed full suite. THE PACKAGE: `remedy-review-20260925-224758-READY_FOR_REVIEW.zip` in `/home/decodeux/Repos/remedy-history/zips`, whose SHA-256 the reviewer measured as `8a9aa2d963b00ecad738490efc6df69df72dc782252a2c0f9f16d6cfb9cd6bc8`, whose `testzip()` answers None, and whose `.review_zip_manifest.json` reads status `READY_FOR_REVIEW`, base the fork point, head the accepted head and 48 commits. THE TREE: all six `integrity check` checks read `pass` at `d1d487f9`.
+ 
+ Gate: F026 R8 — the F026 round 8 entry: the closing round, the booking of round 7, the ledger's rotation into its archive, and F026's acceptance in STATUS with its README pins and the self-use item's `consumed_by`. VERDICT PASS, NO DEVIATION DECLARED. Reviewed over `d1d487f9`..`9476d5e4` by the planner and reviewer of F026's first session after the round's handback, and the range readings below re-measured by the planner and reviewer of F285's first session at its claim. THE RANGE IS 4 COMMITS, at `7a19dd02` 432, `84cb8d55` 9, `d4f84abc` 42 and `9476d5e4` 229 insertions by `git show --numstat`, each under the 500-line cap, each single-parent and each carrying the ordered trailer. THE TRANSPORT PROOF: the block copy and the seven payload copies, read at `7a19dd02`, equal the reviewer's originals byte for byte, and every file the round wrote other than the handback hashes to the reviewer's simulation. THE ROTATION at `d4f84abc` moved 11 gate records and 5 finding pairs into `.agent/live_review_archive.md`, and the open set by distinct id read R-1008, R-1055, R-1057, R-1058 and R-1064 before and after it, all five owned by F285. THE TREE at `9476d5e4`: `tests/docs/` with the rotation, integrity, self-use generator and advertised-command suites read 424 passed at exit 0, and all six `integrity check` checks read `pass`. THE MERGE: pull request 281 merged into `main` as `83d3bb95` at F285's Open PR Gate, after both hosted CI jobs of run 36188943289 ended `success`.
++
++Gate: F285 R1 — the F285 round 1 entry: the claim, the re-head, the booking of F026's round 8, DECISION F285 D1 with the slice list, T001 (R-1058) and T002 (R-1057). VERDICT PASS, NO DEVIATION DECLARED. Re-derived over `83d3bb95`..`26f44f49` by the planner and reviewer of F285's first session, whose own runs produced every reading below. THE RANGE IS 7 COMMITS, at `054056bd` 460, `53c3dea4` 235, `f0108824` 269, `b44d7d53` 127, `67985614` 155, `91397285` 75 and `26f44f49` 294 insertions by `git show --numstat`, each under the 500-line cap, each single-parent and each carrying the ordered trailer; the worker noted that `git commit`'s own summary line for `26f44f49` printed other totals than `git show --numstat`, whose reading is the one used here. THE TRANSPORT PROOF: the block copy and the six payload copies, read at the commits that added them, equal the reviewer's originals byte for byte, and every file `b44d7d53`, `67985614` and `91397285` wrote equals the reviewer's dry tree byte for byte. THE OPEN SET by distinct id reads R-1008, R-1055, R-1057, R-1058 and R-1064 at `b44d7d53`, all five owned by F285. THE TESTS: the reviewer's own serial run of the round's selection in the primary checkout at `26f44f49` read 900 passed and 1 skipped at exit 0, the skip being the D12 quarantine of `tests/test_agent_tooling.py`; `ruff check` over the round's Python files reads clean; all six `integrity check` checks read `pass`. THE RED PROOFS: the committed `.agent/authored/f285-r1-mutations.py`, run by the worker in a disposable worktree at `91397285` and by the reviewer over a byte-identical simulated tree, caught all five mutations with both unmutated controls green.
++
++Done: R-1058 — RESOLVED at `67985614`, F285 round 1's C3 (DECISION F285 D1). `_ledger_tier` in `packages/orchestration/self_use_generator.py` no longer offers a ledger note as an outcome: the generated task tells the builder to make the repair its finding's FIX names and not to edit any file under `.agent/`, because `.agent/live_review.md` is the reviewer's record, and its Acceptance asks for that repair outside `.agent/` with a test that fails without it and passes with it, and for no file under `.agent/` to change. `describe_self_use_run_defects` in `packages/orchestration/self_use_findings.py` now names a run in which a task passed review while no path its reviewed work changed lies outside `.agent/`, reading the paths from the job's hand-off and from every applied task manifest, so a closure cannot book such a pass as a landed repair. MEASURED BY THE REVIEWER: `TestTheAcceptanceAsksForTheRepairAlone` in `tests/orchestration/test_self_use_generator.py` and `TestAPassConfinedToTheRecordIsNamed` in `tests/orchestration/test_self_use_findings.py`, whose first test is the shape of job d0f70d9d45dd4363, pass at `26f44f49`; mutations m1 to m4 of `.agent/authored/f285-r1-mutations.py` turn them red. R-1008 is not resolved by this: it still waits for a closure's self-use run that lands a repair.
++
++Done: R-1057 — RESOLVED at `91397285`, F285 round 1's C4, by the first remedy the finding names (DECISION F285 D1). `_MAX_COST_USD` in `packages/orchestration/self_use_runner.py` is 6.00, derived beside it from `_MEASURED_MAX_CALL_USD`, 1.41, the dearest single self-use call measured (job fd57a5d1dfe245b0's one builder call at 1.4023008 USD), times `_COST_CAP_CALLS`, 4 — one build, one review and one repair round of one build and one review — rounded up to the whole dollar; the eight-call cap is unchanged, and the key description, `docs/guides/environment.md` and `docs/system/self-use-track-v1.md` state the new bound. MEASURED BY THE REVIEWER: `test_the_cost_cap_covers_a_build_a_review_and_one_repair_round` and `test_the_call_cap_is_eight_and_the_cost_bound_six_dollars` in `tests/orchestration/test_self_use_runner.py` pass at `26f44f49`, and mutation m5, which sets the cap back to 1.00, turns them red. Because the change raises what one closure may spend, it stands as operator question Q5 in `.agent/operator_questions.md` with the recommendation already executed.

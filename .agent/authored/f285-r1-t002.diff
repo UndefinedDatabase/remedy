@@ -1,0 +1,201 @@
+diff --git a/.agent/operator_questions.md b/.agent/operator_questions.md
+index a9db20224..0ff06a7ae 100644
+--- a/.agent/operator_questions.md
++++ b/.agent/operator_questions.md
+@@ -106,3 +106,28 @@ honest and safe, and a later feature can add a launcher on purpose, with its own
+ **What happens if you say nothing.** The recommendation is already executed and stands until you
+ say otherwise. Resume in the browser takes back a waiting pause or releases a paused task at once,
+ and for a job that is already paused and saved it shows the command that continues it.
++
++### Q5 — Self-repair runs may cost six dollars (2026-09-25, F285, round 1)
++
++**What needs deciding.** At the end of every feature, Remedy tries to repair one small known
++defect in its own code by itself, using the paid model it calls through Claude's command-line
++program. That run had a spending limit of one dollar. The last two runs each hit that limit
++before they could finish: a single call to the model cost about one dollar and forty cents, so
++the limit stopped the work before the second check could even complete. I have raised the
++limit to six dollars. That covers four calls at the most expensive price measured so far: one
++attempt at the repair, one review of it, one second attempt after the review, and one second
++review. The limit of eight calls in total is unchanged. You can tell me to set a different
++amount.
++
++**Why it matters.** This money is spent at the end of every feature, whether or not the repair
++succeeds. With one dollar, every run was stopped early and never produced a finished result,
++so the money was spent for no result at all. With six dollars a run can finish, and a finished
++run is the only way to show that Remedy can repair itself.
++
++**My recommendation.** Keep six dollars. The amount is worked out from the most expensive call
++measured, not guessed, and it is written down beside the limit in the code, so a later, more
++expensive call leads to a new measured amount rather than a higher guess.
++
++**What happens if you say nothing.** The recommendation is already executed and stands until you
++say otherwise. Each end-of-feature self-repair run may spend up to six dollars and at most
++eight model calls.
+diff --git a/docs/guides/environment.md b/docs/guides/environment.md
+index a9492f07d..60d579eaa 100644
+--- a/docs/guides/environment.md
++++ b/docs/guides/environment.md
+@@ -82,7 +82,7 @@ not read as its type; neither warning stops Remedy from running.
+ | `REMEDY_RUN_REAL_OLLAMA` | yes or no (1, true, yes / 0, false, no) | no | env-only | Run scripts/remedy_test_real_providers.sh against a real Ollama server instead of skipping (env-only flag) |
+ | `REMEDY_SCOPE_ALLOW` | a comma-separated list | none | `scope.allow` | Glob patterns for allowed write paths (F017 scope fences) |
+ | `REMEDY_SCOPE_DENY` | a comma-separated list | none | `scope.deny` | Glob patterns for denied write paths (F017 scope fences) |
+-| `REMEDY_SELF_USE_MODEL` | text | none | `self_use.model` | Model for both roles of a self-use run (operator amendment amend0920-selfuse-real, DECISION D2). Unset means the alias table's Sonnet alias, which the run's cost bound of at most 8 provider calls and 1.00 USD per closure is written for. |
++| `REMEDY_SELF_USE_MODEL` | text | none | `self_use.model` | Model for both roles of a self-use run (operator amendment amend0920-selfuse-real, DECISION D2). Unset means the alias table's Sonnet alias, which the run's cost bound of at most 8 provider calls and 6.00 USD per closure is written for. |
+ | `REMEDY_SELF_USE_PROVIDER` | text | none | `self_use.provider` | Provider for BOTH the builder and the reviewer of a self-use run (operator amendment amend0920-selfuse-real, DECISION D2). Unset means `claude-cli`: a self-use run repairs THIS repository, which is frontier work, and five consecutive runs on the local model (SU-019 to SU-023) landed nothing. Set it to `ollama` to put the track back on the local model. |
+ | `REMEDY_SMOKE_ENABLED` | yes or no (1, true, yes / 0, false, no) | yes | `smoke.enabled` | Contribute the product-smoke DoD block for projects that have a runnable app (F062). A project with no runtime is reported as not applicable either way — this switch does not make it green. |
+ | `REMEDY_SMOKE_ERROR_PATTERNS` | a comma-separated list | none | `smoke.error_patterns` | ADDITIONAL case-sensitive console error markers for clean_console (F062). Config extends the documented base list; it never replaces it, so the base guarantees cannot be configured away. |
+diff --git a/docs/system/self-use-track-v1.md b/docs/system/self-use-track-v1.md
+index 34d20577d..c601d7153 100644
+--- a/docs/system/self-use-track-v1.md
++++ b/docs/system/self-use-track-v1.md
+@@ -95,7 +95,9 @@ discipline, so it is the hardest work the product does. Both sides of the run 
+ the builder and the reviewer — are configured from ONE role, `self_use`, whose
+ built-in default is the frontier provider `claude-cli` on the alias table's
+ Sonnet alias, and the run carries its own budget of at most 8 provider calls and
+-1.00 USD (DECISION amend0920-selfuse-real D2). THE REASON IS MEASURED, not
++6.00 USD (DECISION amend0920-selfuse-real D2; the cost cap was 1.00 USD until
++R-1057 measured a single call at 1.40 USD and derived the cap from one build, one
++review and one repair round at that price). THE REASON IS MEASURED, not
+ preferred: SU-019 to SU-023 — five consecutive closures — each generated an item,
+ ran it on the local model and landed no repair at all, so a track meant to prove
+ Remedy on Remedy proved only that the closure ran. The product default for an
+diff --git a/packages/orchestration/config.py b/packages/orchestration/config.py
+index 8deb4ec0c..1d1cef0dd 100644
+--- a/packages/orchestration/config.py
++++ b/packages/orchestration/config.py
+@@ -826,7 +826,7 @@ _CONFIG_KEY_SPECS: tuple[ConfigKeySpec, ...] = (
+             "Model for both roles of a self-use run (operator amendment "
+             "amend0920-selfuse-real, DECISION D2). Unset means the alias "
+             "table's Sonnet alias, which the run's cost bound of at most 8 "
+-            "provider calls and 1.00 USD per closure is written for."
++            "provider calls and 6.00 USD per closure is written for."
+         ),
+         value_type=str,
+         default=None,
+diff --git a/packages/orchestration/self_use_runner.py b/packages/orchestration/self_use_runner.py
+index 82bd5c574..b90055f78 100644
+--- a/packages/orchestration/self_use_runner.py
++++ b/packages/orchestration/self_use_runner.py
+@@ -17,7 +17,7 @@ Public API::
+     parse_order_budget(job_markdown) -> dict, the `Budget:` line an order file
+         may declare for itself, or {} when it declares none
+     run_next_self_use_item(dest_dir, repo_path=".", queue_path=None, *,
+-        max_provider_calls=8, max_cost_usd=1.00, max_tasks=1, **run_job_kwargs)
++        max_provider_calls=8, max_cost_usd=6.00, max_tasks=1, **run_job_kwargs)
+         -> tuple[SelfUseQueueEntry, Path, JobPlan]
+         (an unflagged run asks run_job for claude_cli_write_mode
+         "allowed-tools" and timeout_sec 600; a declared budget outranks those
+@@ -108,9 +108,28 @@ SELF_USE_ROLE = "self_use"
+ #: The self-use path's own budget, and it is the PATH's, not the product's
+ #: (DECISION amend0920-selfuse-real D2). Eight calls is a build round, a review
+ #: round and two repair rounds with room for a retry — enough for a repair to
+-#: actually land, where six stopped runs mid-loop. One dollar bounds a closure.
++#: actually land, where six stopped runs mid-loop.
+ _MAX_PROVIDER_CALLS = 8
+-_MAX_COST_USD = 1.00
++
++#: The dearest single self-use provider call measured so far, in USD, rounded up
++#: to the cent (R-1057): job fd57a5d1dfe245b0, F026's closure run, spent
++#: 1.4023008 on its one builder call at the `self_use` role's `claude-cli` on
++#: `claude-sonnet-4-6`, and job d0f70d9d45dd4363, F025's, 1.1403048 on two.
++#: Re-measure it from the next run that spends more on one call; never raise the
++#: cap below by hand.
++_MEASURED_MAX_CALL_USD = 1.41
++
++#: The calls the cost cap must cover: one build, one review and one repair
++#: round of one build and one review. The job's own completion makes no
++#: provider call.
++_COST_CAP_CALLS = 4
++
++#: The cost cap, derived rather than chosen (R-1057): `_COST_CAP_CALLS` calls
++#: at `_MEASURED_MAX_CALL_USD` is 5.64, rounded up to the whole dollar. The one
++#: dollar it replaces was smaller than one measured call, so every closure's run
++#: since the `self_use` role moved to the frontier provider ended `stopped` by
++#: its budget before the job could complete.
++_MAX_COST_USD = 6.00
+ 
+ #: The self-use path's own per-provider-call timeout, in seconds (R-1044).
+ #: run_job's product default is 120 seconds, and three consecutive closures —
+@@ -166,7 +185,7 @@ def parse_order_budget(job_markdown: str) -> dict[str, int | float]:
+     not read, and neither is one below the first task heading.
+ 
+     WHY IT LIVES IN THE ORDER FILE (R-1044): the runner's built-in bound — one
+-    task, eight calls, one dollar — was written for a single-finding repair
++    task, eight calls, six dollars — was written for a single-finding repair
+     item, and the order tier hands the same runner a five-task standing order
+     it cannot begin to fit. The order knows what it costs; the runner does not.
+ 
+@@ -270,7 +289,7 @@ def run_next_self_use_item(
+     :func:`~packages.orchestration.pingpong_job.run_job` on the id it
+     returns, with THIS PATH'S OWN budget attached
+     (:class:`~packages.core.models.JobBudgets`, ``max_provider_calls`` 8 and
+-    ``max_cost_usd`` 1.00, both overridable) and an extra ``max_tasks`` cap
++    ``max_cost_usd`` 6.00, both overridable) and an extra ``max_tasks`` cap
+     alongside it — a bound written for a run that has to LAND a repair, not
+     for the product at large (DECISION amend0920-selfuse-real D2). Every
+     ``run_job_kwargs`` entry is forwarded unchanged, so a caller may pass
+@@ -292,7 +311,7 @@ def run_next_self_use_item(
+     file declares for itself (see :func:`parse_order_budget`), then this
+     module's own defaults — ``max_provider_calls`` 8, raised to one more than the
+     loop itself can spend when ``repair_rounds`` or ``max_tasks`` would make 8 a tie
+-    (R-1007), ``max_cost_usd`` 1.00, ``max_tasks`` 1 and ``timeout_sec`` 600. When
++    (R-1007), ``max_cost_usd`` 6.00 (R-1057), ``max_tasks`` 1 and ``timeout_sec`` 600. When
+     the planned job holds MORE
+     tasks than the effective ``max_tasks``, this function refuses BEFORE any
+     provider call rather than spend a budget it already knows cannot finish
+diff --git a/tests/orchestration/test_self_use_runner.py b/tests/orchestration/test_self_use_runner.py
+index 37a657918..83a08118b 100644
+--- a/tests/orchestration/test_self_use_runner.py
++++ b/tests/orchestration/test_self_use_runner.py
+@@ -112,7 +112,7 @@ class TestRunNextSelfUseItem:
+         # amend0920-selfuse-real D2 raised this path's own bound: six stopped a
+         # run mid-loop where the repair round was the point.
+         assert result.budgets["max_provider_calls"] == 8
+-        assert result.budgets["max_cost_usd"] == 1.00
++        assert result.budgets["max_cost_usd"] == 6.00
+ 
+     def test_it_never_mutates_the_target_repo(self, tmp_path, isolate_data_root, demo_repo):
+         queue_path = _write_queue(tmp_path, [dict(_PENDING_ITEM)])
+@@ -345,7 +345,8 @@ class TestTheSelfUseRoleAndItsBudget:
+ 
+     SU-019 to SU-023 each ran on the local model and landed no repair. The run
+     now resolves the configured frontier provider, with a budget written for a
+-    run that has to finish: at most 8 provider calls and 1.00 USD per closure.
++    run that has to finish: at most 8 provider calls and, since R-1057, 6.00 USD
++    per closure.
+     """
+ 
+     def _captured_run_kwargs(self, tmp_path, demo_repo, monkeypatch, **kwargs):
+@@ -374,7 +375,7 @@ class TestTheSelfUseRoleAndItsBudget:
+         assert captured["builder_model"] == sonnet
+         assert captured["reviewer_model"] == sonnet
+ 
+-    def test_the_call_cap_is_eight_and_the_cost_bound_one_dollar(
++    def test_the_call_cap_is_eight_and_the_cost_bound_six_dollars(
+         self, tmp_path, isolate_data_root, demo_repo, monkeypatch
+     ):
+         captured = self._captured_run_kwargs(tmp_path, demo_repo, monkeypatch)
+@@ -382,7 +383,22 @@ class TestTheSelfUseRoleAndItsBudget:
+         assert budgets["max_provider_calls"] == 8, (
+             "six stopped a run mid-loop; DECISION D2 buys the repair round"
+         )
+-        assert budgets["max_cost_usd"] == 1.00
++        assert budgets["max_cost_usd"] == 6.00
++
++    def test_the_cost_cap_covers_a_build_a_review_and_one_repair_round(self):
++        """R-1057: the cap was one dollar and one measured call cost 1.40.
++
++        Job fd57a5d1dfe245b0 spent 1.4023008 USD on its one builder call and
++        job d0f70d9d45dd4363 1.1403048 on two, so the old cap stopped every
++        closure's run before its job could complete. The cap is derived from the
++        measured price, and a cap that no longer covers one build, one review
++        and one repair round at that price turns this red.
++        """
++        assert self_use_runner._MEASURED_MAX_CALL_USD >= 1.4023008
++        assert self_use_runner._COST_CAP_CALLS == 4
++        assert self_use_runner._MAX_COST_USD >= (
++            self_use_runner._COST_CAP_CALLS * self_use_runner._MEASURED_MAX_CALL_USD
++        )
+ 
+     def test_the_caller_still_overrides_the_budget(
+         self, tmp_path, isolate_data_root, demo_repo, monkeypatch

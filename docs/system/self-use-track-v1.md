@@ -95,7 +95,9 @@ discipline, so it is the hardest work the product does. Both sides of the run �
 the builder and the reviewer — are configured from ONE role, `self_use`, whose
 built-in default is the frontier provider `claude-cli` on the alias table's
 Sonnet alias, and the run carries its own budget of at most 8 provider calls and
-1.00 USD (DECISION amend0920-selfuse-real D2). THE REASON IS MEASURED, not
+6.00 USD (DECISION amend0920-selfuse-real D2; the cost cap was 1.00 USD until
+R-1057 measured a single call at 1.40 USD and derived the cap from one build, one
+review and one repair round at that price). THE REASON IS MEASURED, not
 preferred: SU-019 to SU-023 — five consecutive closures — each generated an item,
 ran it on the local model and landed no repair at all, so a track meant to prove
 Remedy on Remedy proved only that the closure ran. The product default for an

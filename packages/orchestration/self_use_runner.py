@@ -17,7 +17,7 @@ Public API::
     parse_order_budget(job_markdown) -> dict, the `Budget:` line an order file
         may declare for itself, or {} when it declares none
     run_next_self_use_item(dest_dir, repo_path=".", queue_path=None, *,
-        max_provider_calls=8, max_cost_usd=1.00, max_tasks=1, **run_job_kwargs)
+        max_provider_calls=8, max_cost_usd=6.00, max_tasks=1, **run_job_kwargs)
         -> tuple[SelfUseQueueEntry, Path, JobPlan]
         (an unflagged run asks run_job for claude_cli_write_mode
         "allowed-tools" and timeout_sec 600; a declared budget outranks those
@@ -108,9 +108,28 @@ SELF_USE_ROLE = "self_use"
 #: The self-use path's own budget, and it is the PATH's, not the product's
 #: (DECISION amend0920-selfuse-real D2). Eight calls is a build round, a review
 #: round and two repair rounds with room for a retry — enough for a repair to
-#: actually land, where six stopped runs mid-loop. One dollar bounds a closure.
+#: actually land, where six stopped runs mid-loop.
 _MAX_PROVIDER_CALLS = 8
-_MAX_COST_USD = 1.00
+
+#: The dearest single self-use provider call measured so far, in USD, rounded up
+#: to the cent (R-1057): job fd57a5d1dfe245b0, F026's closure run, spent
+#: 1.4023008 on its one builder call at the `self_use` role's `claude-cli` on
+#: `claude-sonnet-4-6`, and job d0f70d9d45dd4363, F025's, 1.1403048 on two.
+#: Re-measure it from the next run that spends more on one call; never raise the
+#: cap below by hand.
+_MEASURED_MAX_CALL_USD = 1.41
+
+#: The calls the cost cap must cover: one build, one review and one repair
+#: round of one build and one review. The job's own completion makes no
+#: provider call.
+_COST_CAP_CALLS = 4
+
+#: The cost cap, derived rather than chosen (R-1057): `_COST_CAP_CALLS` calls
+#: at `_MEASURED_MAX_CALL_USD` is 5.64, rounded up to the whole dollar. The one
+#: dollar it replaces was smaller than one measured call, so every closure's run
+#: since the `self_use` role moved to the frontier provider ended `stopped` by
+#: its budget before the job could complete.
+_MAX_COST_USD = 6.00
 
 #: The self-use path's own per-provider-call timeout, in seconds (R-1044).
 #: run_job's product default is 120 seconds, and three consecutive closures —
@@ -166,7 +185,7 @@ def parse_order_budget(job_markdown: str) -> dict[str, int | float]:
     not read, and neither is one below the first task heading.
 
     WHY IT LIVES IN THE ORDER FILE (R-1044): the runner's built-in bound — one
-    task, eight calls, one dollar — was written for a single-finding repair
+    task, eight calls, six dollars — was written for a single-finding repair
     item, and the order tier hands the same runner a five-task standing order
     it cannot begin to fit. The order knows what it costs; the runner does not.
 
@@ -270,7 +289,7 @@ def run_next_self_use_item(
     :func:`~packages.orchestration.pingpong_job.run_job` on the id it
     returns, with THIS PATH'S OWN budget attached
     (:class:`~packages.core.models.JobBudgets`, ``max_provider_calls`` 8 and
-    ``max_cost_usd`` 1.00, both overridable) and an extra ``max_tasks`` cap
+    ``max_cost_usd`` 6.00, both overridable) and an extra ``max_tasks`` cap
     alongside it — a bound written for a run that has to LAND a repair, not
     for the product at large (DECISION amend0920-selfuse-real D2). Every
     ``run_job_kwargs`` entry is forwarded unchanged, so a caller may pass
@@ -292,7 +311,7 @@ def run_next_self_use_item(
     file declares for itself (see :func:`parse_order_budget`), then this
     module's own defaults — ``max_provider_calls`` 8, raised to one more than the
     loop itself can spend when ``repair_rounds`` or ``max_tasks`` would make 8 a tie
-    (R-1007), ``max_cost_usd`` 1.00, ``max_tasks`` 1 and ``timeout_sec`` 600. When
+    (R-1007), ``max_cost_usd`` 6.00 (R-1057), ``max_tasks`` 1 and ``timeout_sec`` 600. When
     the planned job holds MORE
     tasks than the effective ``max_tasks``, this function refuses BEFORE any
     provider call rather than spend a budget it already knows cannot finish

@@ -575,3 +575,44 @@ class TestOrderTier:
         with pytest.raises(SelfUseGenerationError, match="not a job file"):
             generate_self_use_item(queue_path=_write_queue(tmp_path, []), ledger_path=tmp_path / "none.md",
                                    order_path=order, today=self.DAY)
+
+
+class TestTheAcceptanceAsksForTheRepairAlone:
+    """R-1058: SU-030's builder met the old Acceptance with a ledger note.
+
+    That Acceptance also accepted "the reviewer records in `.agent/live_review.md`
+    why it cannot be — either way the ledger gains a `Done:` line", and the
+    builder wrote exactly that paragraph and nothing else. The generated job now
+    asks for the repair its finding names, with a red-to-green test, and tells
+    the builder to leave `.agent/` alone.
+    """
+
+    def _job_markdown(self, tmp_path: Path) -> str:
+        ledger = _write_ledger(tmp_path, [_finding("R-0010", "Low", "A clean defect.")])
+        entry = generate_self_use_item(
+            queue_path=_write_queue(tmp_path, [_queue_item(consumed_by="F001")]),
+            ledger_path=ledger,
+        )
+        assert entry is not None
+        return entry.job_markdown
+
+    def test_no_outcome_other_than_the_repair_is_offered(self, tmp_path: Path):
+        text = self._job_markdown(tmp_path)
+        assert "either way" not in text
+        assert "why it cannot be" not in text
+        assert "`Done:" not in text
+
+    def test_the_acceptance_asks_for_the_named_repair_with_a_red_to_green_test(
+        self, tmp_path: Path
+    ):
+        acceptance = self._job_markdown(tmp_path).split("\nAcceptance:\n", 1)[1]
+        assert acceptance == (
+            "- the repair R-0010's FIX names is made, outside `.agent/`, with a test "
+            "that fails without it and passes with it.\n"
+            "- no file under `.agent/` changes.\n"
+        )
+
+    def test_the_builder_is_told_to_leave_the_record_alone(self, tmp_path: Path):
+        body = self._job_markdown(tmp_path).split("\nAcceptance:\n", 1)[0]
+        assert "Do not edit any file under `.agent/`" in body
+        assert "`.agent/live_review.md` is the reviewer's record" in body

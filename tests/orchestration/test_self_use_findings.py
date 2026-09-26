@@ -15,6 +15,8 @@ from packages.core.models import RunState
 from packages.orchestration.pingpong_job import (
     JOB_STOPPED,
     TASK_PENDING,
+    AppliedFileProof,
+    ApplyManifest,
     JobPlan,
     TaskEntry,
     parse_job_file,
@@ -133,6 +135,7 @@ class TestDescribeSelfUseRunDefects:
         result = JobPlan(
             job_id="aaaabbbbccccdddd",
             state=RunState.COMPLETED,
+            root_changed_files=["packages/demo.py"],
             tasks=[
                 TaskEntry(task_id="T001", status=RunState.COMPLETED,
                           final_status="staged_review_passed"),
@@ -144,3 +147,63 @@ class TestDescribeSelfUseRunDefects:
         assert describe_self_use_run_defects(result) == (
             "T002 (completed): final_status=review_failed",
         )
+
+
+class TestAPassConfinedToTheRecordIsNamed:
+    """R-1058: SU-030's reviewer passed a diff that only added a `Done:` paragraph.
+
+    Job d0f70d9d45dd4363 stopped at its budget with task T001 applied and
+    ``staged_review_passed``, and the one path its manifest named was
+    ``.agent/live_review.md``. A closure must not book such a pass as a repair,
+    so the run's defects name it.
+    """
+
+    @staticmethod
+    def _job(paths: list[str], *, root: list[str] | None = None) -> JobPlan:
+        manifest = ApplyManifest(
+            task_id="T001",
+            status="applied",
+            applied_files=list(paths),
+            applied_file_proofs=[AppliedFileProof(path=p, task_id="T001") for p in paths],
+        )
+        return JobPlan(
+            job_id="d0f70d9d45dd4363",
+            state=JOB_STOPPED,
+            stop_reason="budget_exhausted:max_cost_usd",
+            stop_source="budget",
+            root_changed_files=list(root or []),
+            tasks=[TaskEntry(task_id="T001", status="applied_to_job_workspace",
+                             final_status="staged_review_passed", apply_manifest=manifest)],
+        )
+
+    def test_the_su_030_shape_is_named_with_its_path(self):
+        defects = describe_self_use_run_defects(self._job([".agent/live_review.md"]))
+        assert defects == (
+            "job d0f70d9d45dd4363 (stopped): stop_reason=budget_exhausted:max_cost_usd; "
+            "stop_source=budget",
+            "job d0f70d9d45dd4363 (stopped): a task passed review but no path outside "
+            ".agent/ changed: .agent/live_review.md",
+        )
+
+    def test_a_pass_that_changed_nothing_is_named(self):
+        defects = describe_self_use_run_defects(self._job([]))
+        assert defects[-1] == (
+            "job d0f70d9d45dd4363 (stopped): a task passed review but no path outside "
+            ".agent/ changed: (none)"
+        )
+
+    def test_one_path_outside_the_record_is_a_repair(self):
+        defects = describe_self_use_run_defects(
+            self._job([".agent/live_review.md", "packages/orchestration/stream_evidence.py"]))
+        assert len(defects) == 1
+        assert "passed review" not in defects[0]
+
+    def test_the_hand_off_paths_are_read_too(self):
+        defects = describe_self_use_run_defects(
+            self._job([".agent/plan.md"], root=["tests/orchestration/test_demo.py"]))
+        assert all("passed review" not in d for d in defects)
+
+    def test_a_run_whose_task_did_not_pass_is_not_named_for_it(self):
+        job = self._job([".agent/live_review.md"])
+        job.tasks[0].final_status = "review_failed"
+        assert all("passed review" not in d for d in describe_self_use_run_defects(job))

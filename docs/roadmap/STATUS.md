@@ -154,7 +154,7 @@ Milestone R1 — Remedy as the daily tool: Tier 2 complete (F086 as the self-ins
 
 ## Tier 2 — Findings paydown (rolling, operator rule amend0911-feedback)
 
-- [ ] F285 — Findings paydown v4
+- [x] F285 — Findings paydown v4 (T001-T003 complete, R-1064 and R-1008 resolved at the closure; accepted 2026-09-26 · live review PASS — ACCEPTED · Evidence job f285r5e1001 · package remedy-review-20260926-020855-READY_FOR_REVIEW.zip · SHA-256 dba140f371cfe8071690be30605ba1643a77a8f5d000f66a40d8dd43c056d4d5 · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD c2a4588ad39959a0278235e1e526cec871cc69e2)
 
 ## Tier 5 — Operator Cockpit (parallel human track, continued)
 
@@ -163,6 +163,13 @@ Milestone R1 — Remedy as the daily tool: Tier 2 complete (F086 as the self-ins
 - [ ] F029 — Subtree rerun
 - [ ] F030 — Steering messages
 - [ ] F035 — Ownership ledger
+
+## Tier 2 — Findings paydown (rolling, operator rule amend0911-feedback)
+
+- [ ] F286 — Findings paydown v5
+
+## Tier 5 — Operator Cockpit (parallel human track, continued)
+
 - [ ] F036 — Guided result tour
 - [ ] F038 — Grounded chat & intent dispatch
 - [ ] F039 — Story/replay mode

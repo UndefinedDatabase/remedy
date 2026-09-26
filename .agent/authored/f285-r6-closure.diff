@@ -1,0 +1,65 @@
+diff --git a/README.md b/README.md
+index f083dda8d..ff0061bf5 100644
+--- a/README.md
++++ b/README.md
+@@ -26,13 +26,13 @@ verification commands. If something is unproven, Remedy says so instead of guess
+ 
+ ## Status
+ 
+-104 of 286 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
++105 of 286 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
+ 
+ | Tier | Name | Done | Total |
+ |------|------|-----:|------:|
+ | 0 | Foundation & Trust Core | 16 | 16 |
+ | 1 | Self-Build Bootstrap | 22 | 22 |
+-| 2 | Minimal Self-Build Runtime | 37 | 39 |
++| 2 | Minimal Self-Build Runtime | 38 | 39 |
+ | 3 | Full Token Economy & Autonomy | 6 | 26 |
+ | 4 | Memory & Learning | 1 | 17 |
+ | 5 | Operator Cockpit | 22 | 34 |
+@@ -244,7 +244,17 @@ chooses for the teacher now answers the questions they ask it, a check on the
+ interface's own tests no longer fails where its neighbour skips while those
+ tools are only half installed, and the tests that check an application was
+ stopped no longer mistake an unrelated program reusing the same port number for
+-a leftover of their own; the one finding still open moves to the next paydown).
++a leftover of their own; the one finding still open moves to the next paydown),
++F285 findings paydown v4 (all five review findings that were open when it began
++were repaired with evidence, and none was added: the task Remedy gives itself at
++the end of each feature now asks for the repair alone and no longer lets a note
++in the review record count as one; that task's spending limit is worked out from
++the price of a real call, so the run can finish; a job paused in the middle of a
++task picks up the model's earlier conversation when it is started again, where
++the model supports that; and a check on the review package no longer mistakes
++ordinary test names for secret keys. Remedy wrote that last repair itself, in
++the first of its end-of-feature self-repair runs whose change was accepted and
++kept).
+ 
+ Accepted in Tier 3 so far:
+ F106 session resume instead of rebuild (repair rounds resume the original
+diff --git a/docs/roadmap/STATUS.md b/docs/roadmap/STATUS.md
+index 34fa6e75e..a6bce3215 100644
+--- a/docs/roadmap/STATUS.md
++++ b/docs/roadmap/STATUS.md
+@@ -154,7 +154,7 @@ Milestone R1 — Remedy as the daily tool: Tier 2 complete (F086 as the self-ins
+ 
+ ## Tier 2 — Findings paydown (rolling, operator rule amend0911-feedback)
+ 
+-- [~] F285 — Findings paydown v4
++- [x] F285 — Findings paydown v4 (T001-T003 complete, R-1064 and R-1008 resolved at the closure; accepted 2026-09-26 · live review PASS — ACCEPTED · Evidence job f285r5e1001 · package remedy-review-20260926-020855-READY_FOR_REVIEW.zip · SHA-256 dba140f371cfe8071690be30605ba1643a77a8f5d000f66a40d8dd43c056d4d5 · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD c2a4588ad39959a0278235e1e526cec871cc69e2)
+ 
+ ## Tier 5 — Operator Cockpit (parallel human track, continued)
+ 
+diff --git a/scripts/self_use_queue.json b/scripts/self_use_queue.json
+index 7cda63c84..7ef3daa91 100644
+--- a/scripts/self_use_queue.json
++++ b/scripts/self_use_queue.json
+@@ -255,7 +255,7 @@
+       "title": "Address ledger finding R-1064",
+       "why": "- R-1064 — Low, THE STREAM-EVIDENCE REDACTOR READS ANY WORD ENDING IN \"sk\" FOLLOWED BY A HYPHEN AND TWENTY MORE KEY CHARACTERS AS AN API KEY, SO THE CLOSURE EVIDENCE CHECK REFUSES ORDINARY TEST IDS, THE SAME DEFECT R-1060 REPAIRED IN A SECOND PATTERN. Raised by the planner and reviewer of F026's first session while dry-running round 7's evidence script. SEARCHED BEFORE MINTING (checklist item 30): R-1060, resolved, repaired only `_SECRET_RE` in `packages/orchestration/redaction_patterns.py` and says so, and `stream_evidence` beside `sk-` finds no open finding. MEASURED at `436ff8a0`: the pattern `sk-[A-Za-z0-9_\\-]{20,}` of `_STREAM_SECRET_PATTERNS` in `packages/orchestration/stream_evidence.py` carries no left boundary; `_contains_secret` in `packages/orchestration/run_manifest.py` delegates to its `redact_text`, and `_unsafe_text` in `scripts/build_review_manifest.py` to that; so seven parametrized node ids of `tests/orchestration/test_plan_editing.py`, each an id of `TestInvalidEditsChangeNothing` that joins the command name `plan_edit_task` to its arguments with hyphens, read as \"a secret\", and a closure evidence bundle cannot carry that file. WHY LOW: the bundle leaves the file out and the full suite still runs it; the redaction of stream evidence over-redacts rather than leaks. FIX: that pattern matches only at a token start, as R-1060's does, and a test pins those ids clean and a key after a space, `=`, a quote, `/` and `-` still found. Owner: F285.",
+       "job_markdown": "# Job: Address ledger finding R-1064\n\n## Task 1\n- R-1064 — Low, THE STREAM-EVIDENCE REDACTOR READS ANY WORD ENDING IN \"sk\" FOLLOWED BY A HYPHEN AND TWENTY MORE KEY CHARACTERS AS AN API KEY, SO THE CLOSURE EVIDENCE CHECK REFUSES ORDINARY TEST IDS, THE SAME DEFECT R-1060 REPAIRED IN A SECOND PATTERN. Raised by the planner and reviewer of F026's first session while dry-running round 7's evidence script. SEARCHED BEFORE MINTING (checklist item 30): R-1060, resolved, repaired only `_SECRET_RE` in `packages/orchestration/redaction_patterns.py` and says so, and `stream_evidence` beside `sk-` finds no open finding. MEASURED at `436ff8a0`: the pattern `sk-[A-Za-z0-9_\\-]{20,}` of `_STREAM_SECRET_PATTERNS` in `packages/orchestration/stream_evidence.py` carries no left boundary; `_contains_secret` in `packages/orchestration/run_manifest.py` delegates to its `redact_text`, and `_unsafe_text` in `scripts/build_review_manifest.py` to that; so seven parametrized node ids of `tests/orchestration/test_plan_editing.py`, each an id of `TestInvalidEditsChangeNothing` that joins the command name `plan_edit_task` to its arguments with hyphens, read as \"a secret\", and a closure evidence bundle cannot carry that file. WHY LOW: the bundle leaves the file out and the full suite still runs it; the redaction of stream evidence over-redacts rather than leaks. FIX: that pattern matches only at a token start, as R-1060's does, and a test pins those ids clean and a key after a space, `=`, a quote, `/` and `-` still found. Owner: F285.\n\nMake the repair R-1064's FIX names, in the code and tests it points at. Do not edit any file under `.agent/`: `.agent/live_review.md` is the reviewer's record, and a finding is resolved there by the reviewer, never by this task.\n\nAcceptance:\n- the repair R-1064's FIX names is made, outside `.agent/`, with a test that fails without it and passes with it.\n- no file under `.agent/` changes.\n",
+-      "consumed_by": "",
++      "consumed_by": "F285",
+       "provenance": "generated (self-use-generator tier 1, ledger scan, R-1064)"
+     }
+   ]

@@ -131,8 +131,9 @@ _ENV_ASSIGN_RE = re.compile(
 
 _STREAM_SECRET_PATTERNS: tuple[re.Pattern[str], ...] = (
     # Provider keys whose bodies contain '-' or '_' (e.g. sk-ant-api03-...).
-    re.compile(r"sk-ant-[A-Za-z0-9_\-]{10,}"),
-    re.compile(r"sk-[A-Za-z0-9_\-]{20,}"),
+    # (?<![A-Za-z0-9]) — only at a token start; prevents "plan_edit_task-…" false-positives (R-1064).
+    re.compile(r"(?<![A-Za-z0-9])sk-ant-[A-Za-z0-9_\-]{10,}"),
+    re.compile(r"(?<![A-Za-z0-9])sk-[A-Za-z0-9_\-]{20,}"),
     re.compile(r"anthropic[_-]?api[_-]?key[\"'\s:=]+[A-Za-z0-9_\-]{10,}", re.IGNORECASE),
     re.compile(r"AKIA[0-9A-Z]{16}"),
     re.compile(r"ASIA[0-9A-Z]{16}"),

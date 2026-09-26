@@ -25,6 +25,7 @@ from packages.orchestration.stream_evidence import (
     capture_stream_evidence,
     read_run_events,
     redact_stream_line,
+    redact_text,
     sum_token_deltas,
     summarize_tool_input,
 )
@@ -85,6 +86,61 @@ class TestRedaction:
     ])
     def test_secret_shapes_redacted(self, secret):
         assert secret not in redact_stream_line(json.dumps({"v": secret}))
+
+    # R-1064: sk- patterns must only match at a token start, not inside a word
+    # (e.g. "plan_edit_task-…" embeds "sk-" inside a word and must not be redacted).
+    @pytest.mark.parametrize("node_id", [
+        # parametrized pytest node ids from TestInvalidEditsChangeNothing
+        "plan_edit_task-task_id-T1-fields-id-X-invalid_args-not_editable",
+        "plan_edit_task-task_id-T1-fields-est_tokens_band-XXL-band_too_large",
+        "plan_edit_task-task_id-T1-fields-title-Inspect_the_code-title_frozen",
+        "plan_edit_task-task_id-T9-fields-title-x-unknown_task-T9",
+    ])
+    def test_node_ids_with_embedded_sk_not_redacted(self, node_id):
+        line = json.dumps({"node_id": node_id})
+        assert node_id in redact_stream_line(line), (
+            f"node id incorrectly redacted: {node_id!r}"
+        )
+
+    @pytest.mark.parametrize("ctx,key", [
+        # key at a token start: after space, =, quote, /, -
+        (" sk-abcdefghijklmnopqrstuvwxyz12345", "sk-abcdefghijklmnopqrstuvwxyz12345"),
+        ("=sk-abcdefghijklmnopqrstuvwxyz12345", "sk-abcdefghijklmnopqrstuvwxyz12345"),
+        ('"sk-abcdefghijklmnopqrstuvwxyz12345"', "sk-abcdefghijklmnopqrstuvwxyz12345"),
+        ("/sk-abcdefghijklmnopqrstuvwxyz12345", "sk-abcdefghijklmnopqrstuvwxyz12345"),
+        ("-sk-abcdefghijklmnopqrstuvwxyz12345", "sk-abcdefghijklmnopqrstuvwxyz12345"),
+    ])
+    def test_sk_key_at_token_boundary_redacted(self, ctx, key):
+        line = json.dumps({"v": ctx})
+        assert key not in redact_stream_line(line), (
+            f"key at boundary not redacted: {ctx!r}"
+        )
+
+    # R-1064, pinned by the reviewer of F285: the seven REAL node ids the closure
+    # evidence check refused, as `pytest --collect-only` prints them. The test above
+    # pins ids of the same shape; these are the ones the finding measured, read by
+    # `redact_text`, which `run_manifest._contains_secret` and the review manifest's
+    # unsafe-text check both delegate to.
+    @pytest.mark.parametrize("params", [
+        "plan_edit_task-args0-invalid_args-not editable",
+        "plan_edit_task-args1-invalid_args-immutable",
+        "plan_edit_task-args3-invalid_plan-inspection",
+        "plan_edit_task-args4-unknown_task-T9",
+        "plan_edit_task-args5-invalid_args-changes nothing",
+        "plan_split_task-args11-invalid_args-two",
+        "plan_split_task-args12-invalid_args-exactly one group",
+    ])
+    def test_the_real_plan_editing_node_ids_are_not_secrets(self, params):
+        node_id = (
+            "tests/orchestration/test_plan_editing.py::TestInvalidEditsChangeNothing::"
+            f"test_refused_edit_names_the_violation_and_writes_nothing[{params}]"
+        )
+        assert redact_text(node_id) == node_id
+
+    def test_a_word_ending_sk_before_ant_is_not_a_provider_key(self):
+        # The job's diff bounded the `sk-ant-` pattern too; this is the case that reaches it.
+        text = "task-ant-colony-simulation-notes"
+        assert redact_text(text) == text
 
 
 # ---------------------------------------------------------------------------

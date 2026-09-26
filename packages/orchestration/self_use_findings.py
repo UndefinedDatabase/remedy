@@ -30,11 +30,36 @@ Deliberate absences:
     picks the severity the normal finding-ledger rules already use; this
     module answers only WHETHER something went wrong and WHAT the job itself
     said about it.
+  * ONE STRING IS A CHECK RATHER THAN A QUOTATION, and it names the paths it
+    read (R-1058): a run whose reviewer passed a task although no path the
+    reviewed work changed lies outside ``.agent/``. SU-030's reviewer passed
+    exactly that — a `Done:` paragraph its builder wrote into
+    ``.agent/live_review.md`` and nothing else — and a closure must not book
+    such a pass as a landed repair.
 """
 
 from __future__ import annotations
 
 from packages.orchestration.pingpong_job import JOB_STOPPED, JobPlan
+
+#: The directory that holds the loop's own records, which a repair never
+#: consists of (R-1058).
+_RECORD_DIR = ".agent/"
+
+
+def _paths_the_reviewed_work_changed(result: JobPlan) -> list[str]:
+    """Every path the job's hand-off or an applied task manifest names, sorted.
+
+    A job stopped before its hand-off has no ``root_changed_files``, so the
+    applied task manifests are read as well: SU-030 stopped at its budget with
+    its one task already applied.
+    """
+    paths = set(result.root_changed_files)
+    for task in result.tasks:
+        manifest = task.apply_manifest
+        if manifest is not None and manifest.status == "applied":
+            paths.update(proof.path for proof in manifest.applied_file_proofs)
+    return sorted(paths)
 
 
 def describe_self_use_run_defects(result: JobPlan) -> tuple[str, ...]:
@@ -58,6 +83,11 @@ def describe_self_use_run_defects(result: JobPlan) -> tuple[str, ...]:
     only in ``final_status``. An empty tuple means the run surfaced nothing
     to register — not that nothing was checked; a job that completed with
     every task's `error` blank answers ``()``.
+
+    Last, when any task's ``final_status`` is ``staged_review_passed`` and no
+    path the reviewed work changed lies outside ``.agent/``, one string names
+    that pass and every such path (``"job {job_id} ({status}): a task passed
+    review but no path outside .agent/ changed: {paths}"``, R-1058).
     """
     defects: list[str] = []
     if result.error:
@@ -77,4 +107,11 @@ def describe_self_use_run_defects(result: JobPlan) -> tuple[str, ...]:
             defects.append(f"{task.task_id} ({task.status}): {task.error}")
         elif task.final_status and task.final_status != "staged_review_passed":
             defects.append(f"{task.task_id} ({task.status}): final_status={task.final_status}")
+    if any(task.final_status == "staged_review_passed" for task in result.tasks):
+        changed = _paths_the_reviewed_work_changed(result)
+        if not any(not path.startswith(_RECORD_DIR) for path in changed):
+            defects.append(
+                f"job {result.job_id} ({result.state}): a task passed review but no "
+                f"path outside {_RECORD_DIR} changed: {', '.join(changed) or '(none)'}"
+            )
     return tuple(defects)

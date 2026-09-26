@@ -241,6 +241,10 @@ class PingPongResult:
     #: hashes PROVEN delivered to it. Empty for every run that never
     #: resumed and for every provider that reports no session id.
     session_sent_evidence: list[dict] = field(default_factory=list)
+    #: R-1055: the parked run whose provider sessions this run was offered on
+    #: its first call, or "" when it is not the relaunch of an interrupted task.
+    #: Whether a session was really resumed is each round's ``resume_used``.
+    resumed_from_run_id: str = ""
 
 
 # ---------------------------------------------------------------------------
@@ -2908,6 +2912,8 @@ def run_pingpong(
     on_provider_call: Callable[[ProviderAttempt], None] | None = None,
     rate_governor: ProviderRateGovernor | None = None,
     hunk_ledger: Any = None,
+    resume_sessions: dict[str, str] | None = None,
+    resumed_from_run_id: str = "",
 ) -> PingPongResult:
     """Run the Builder <> Reviewer ping-pong loop.
 
@@ -2943,6 +2949,13 @@ def run_pingpong(
     two primary compositions as ``dedupe_enabled`` and nowhere else: the
     resume-fallback recompositions pass no dedupe arguments at all, so they send
     full content at either value.
+
+    ``resume_sessions`` (R-1055) maps ``"builder"`` and ``"reviewer"`` to the
+    provider session each role last reported in ``resumed_from_run_id``, the
+    run a park or a stop interrupted. Round 1's call of each role resumes that
+    session when its provider supports resume, with the resume fallback
+    unchanged; the prompt stays full-context, because the parked session never
+    saw this run's staging, so no prompt shrink is gated on it.
     """
     # If task_input provided, use it to enrich the goal
     effective_goal = goal
@@ -2969,6 +2982,9 @@ def run_pingpong(
         task_id=task_id,
     )
     result.episode_id = episode_id
+    resume_sessions = dict(resume_sessions or {})
+    if resume_sessions:
+        result.resumed_from_run_id = resumed_from_run_id
 
     # F001: Compute adaptive timeouts from profile (if set), otherwise use raw timeout_sec
     _allowed_files = 0
@@ -3281,6 +3297,13 @@ def run_pingpong(
                 prev_session_id = str(prev_actuals.get("session_id") or "")
                 if prev_session_id:
                     builder_resume_ref = prev_session_id
+            # R-1055: the first call of a relaunched task resumes its parked
+            # session. ``builder_resume_ref`` stays the prompt gate, so this call
+            # still sends the full context.
+            builder_call_resume = builder_resume_ref
+            if (round_num == 1 and resume_sessions.get("builder")
+                    and getattr(builder_provider, "supports_resume", False)):
+                builder_call_resume = resume_sessions["builder"]
 
             # --- Builder phase ---
             # Compute repair diff for builder (from previous round)
@@ -3415,7 +3438,7 @@ def run_pingpong(
                     builder_prompt,
                     timeout_sec=ts,
                     max_output_chars=max_output_chars,
-                    resume=builder_resume_ref,
+                    resume=builder_call_resume,
                 ),
                 result=result,
                 role="builder",
@@ -3433,7 +3456,7 @@ def run_pingpong(
             # (``builder_resume_ref`` set); a plain call failure with no
             # resume in play is unaffected and falls straight through to the
             # existing terminal-error handling below, unchanged.
-            if builder_resume_ref and builder_out.error:
+            if builder_call_resume and builder_out.error:
                 # F109 T002b, R-0771: A FALLBACK IS NOT A RESUMED SESSION, so the
                 # feature's scope rule — "resumed session only, proven sends only"
                 # — forbids dedupe here. The prompt is RECOMPOSED AT FULL CONTENT
@@ -3500,7 +3523,7 @@ def run_pingpong(
                 # session still holds. ``builder_out`` was just REPLACED by the resume=None
                 # retry and reports no session, so the failed session's id survives only in
                 # ``builder_resume_ref`` — which is why it is passed explicitly.
-                invalidate_on_resume_fallback(session_sent_index, builder_out, builder_resume_ref or "")
+                invalidate_on_resume_fallback(session_sent_index, builder_out, builder_call_resume or "")
             rd.builder_output = builder_out
 
             # F012: the Builder call is finalized — record its input through the single seam.
@@ -3633,6 +3656,12 @@ def run_pingpong(
                 prev_session_id = str(prev_actuals.get("session_id") or "")
                 if prev_session_id:
                     reviewer_resume_ref = prev_session_id
+            # R-1055: the Builder's relaunch resume, mirrored; the prompt gate is
+            # still ``reviewer_resume_ref``.
+            reviewer_call_resume = reviewer_resume_ref
+            if (round_num == 1 and resume_sessions.get("reviewer")
+                    and getattr(reviewer_provider, "supports_resume", False)):
+                reviewer_call_resume = resume_sessions["reviewer"]
 
             # F115 D1: compose instead of calling `_build_reviewer_prompt`, so the
             # trace entries below carry a real segment manifest. The sent bytes are
@@ -3761,7 +3790,7 @@ def run_pingpong(
                     reviewer_effective,
                     timeout_sec=ts,
                     max_output_chars=max_output_chars,
-                    resume=reviewer_resume_ref,
+                    resume=reviewer_call_resume,
                 ),
                 result=result,
                 role="reviewer",
@@ -3785,7 +3814,7 @@ def run_pingpong(
             # resume in play is unaffected and falls straight through to the
             # existing terminal-error / parse-retry handling below,
             # unchanged.
-            if reviewer_resume_ref and reviewer_out.error:
+            if reviewer_call_resume and reviewer_out.error:
                 # F109 T002b, R-0771: the Builder fallback's repair, mirrored. A
                 # fallback is not a resumed session, so the prompt is RECOMPOSED
                 # AT FULL CONTENT for the fresh session the retry below opens, and
@@ -3839,7 +3868,7 @@ def run_pingpong(
                 reviewer_out.resume_fallback = True
                 # F109 T001b-ii: mirrors the Builder fallback — the replaced output reports
                 # no session, so the failed session's id comes from ``reviewer_resume_ref``.
-                invalidate_on_resume_fallback(session_sent_index, reviewer_out, reviewer_resume_ref or "")
+                invalidate_on_resume_fallback(session_sent_index, reviewer_out, reviewer_call_resume or "")
 
             # F012: the Reviewer attempt is finalized. Track the exact finalized context so a
             # terminal reviewer failure records F010 against it (F10).
@@ -5012,6 +5041,37 @@ def _add_exit_detail(block: dict[str, Any], out: Any) -> None:
         block["stderr_tail"] = getattr(out, "stderr_tail", "")
 
 
+def _session_fields(out: Any) -> dict[str, Any]:
+    """R-1055: the provider session a call reported, and whether it resumed one.
+
+    Persisted so the relaunch of an interrupted task can find its parked session
+    (:func:`parked_session_refs`), and so the record shows whether it did.
+    """
+    actuals = getattr(out, "usage_actuals", None) or {}
+    return {
+        "session_id": str(actuals.get("session_id") or ""),
+        "resume_used": bool(getattr(out, "resume_used", False)),
+        "resume_session_ref": str(getattr(out, "resume_session_ref", "") or ""),
+        "resume_fallback": bool(getattr(out, "resume_fallback", False)),
+    }
+
+
+def parked_session_refs(run_record: dict[str, Any] | None) -> dict[str, str]:
+    """R-1055: the session each role last reported in a persisted run, by role.
+
+    Reads ``result.json`` as :func:`export_pingpong_json` writes it. A record
+    written before R-1055 carries no ``session_id`` and answers ``{}``, which
+    resumes nothing.
+    """
+    refs: dict[str, str] = {}
+    for round_data in (run_record or {}).get("rounds") or []:
+        for role in ("builder", "reviewer"):
+            session_id = str((round_data.get(role) or {}).get("session_id") or "")
+            if session_id:
+                refs[role] = session_id
+    return refs
+
+
 def export_pingpong_json(result: PingPongResult) -> dict[str, Any]:
     """Export result as safe JSON (no raw prompts, no secrets)."""
     rounds = []
@@ -5034,6 +5094,7 @@ def export_pingpong_json(result: PingPongResult) -> dict[str, Any]:
                 "duration_ms": rd.builder_output.duration_ms,
                 "tokens_used": rd.builder_output.tokens_used,
                 "error": rd.builder_output.error,
+                **_session_fields(rd.builder_output),
             }
             _add_exit_detail(round_data["builder"], rd.builder_output)
         round_data["test_passed"] = rd.test_passed
@@ -5058,6 +5119,7 @@ def export_pingpong_json(result: PingPongResult) -> dict[str, Any]:
                 "error": rd.reviewer_output.error,
                 "parse_retried": rd.reviewer_output.parse_retried,
                 "parse_retry_recovered": rd.reviewer_output.parse_retry_recovered,
+                **_session_fields(rd.reviewer_output),
             }
             _add_exit_detail(round_data["reviewer"], rd.reviewer_output)
         rounds.append(round_data)
@@ -5074,6 +5136,7 @@ def export_pingpong_json(result: PingPongResult) -> dict[str, Any]:
         "reviewer_provider": result.reviewer_provider,
         "max_rounds": result.max_rounds,
         "total_rounds": len(result.rounds),
+        "resumed_from_run_id": result.resumed_from_run_id,
         "final_status": result.final_status,
         "staged_files": result.staged_files,
         "changed_target_files": result.changed_target_files,

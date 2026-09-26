@@ -26,13 +26,13 @@ verification commands. If something is unproven, Remedy says so instead of guess
 
 ## Status
 
-104 of 285 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
+105 of 286 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
 
 | Tier | Name | Done | Total |
 |------|------|-----:|------:|
 | 0 | Foundation & Trust Core | 16 | 16 |
 | 1 | Self-Build Bootstrap | 22 | 22 |
-| 2 | Minimal Self-Build Runtime | 37 | 38 |
+| 2 | Minimal Self-Build Runtime | 38 | 39 |
 | 3 | Full Token Economy & Autonomy | 6 | 26 |
 | 4 | Memory & Learning | 1 | 17 |
 | 5 | Operator Cockpit | 22 | 34 |
@@ -244,7 +244,17 @@ chooses for the teacher now answers the questions they ask it, a check on the
 interface's own tests no longer fails where its neighbour skips while those
 tools are only half installed, and the tests that check an application was
 stopped no longer mistake an unrelated program reusing the same port number for
-a leftover of their own; the one finding still open moves to the next paydown).
+a leftover of their own; the one finding still open moves to the next paydown),
+F285 findings paydown v4 (all five review findings that were open when it began
+were repaired with evidence, and none was added: the task Remedy gives itself at
+the end of each feature now asks for the repair alone and no longer lets a note
+in the review record count as one; that task's spending limit is worked out from
+the price of a real call, so the run can finish; a job paused in the middle of a
+task picks up the model's earlier conversation when it is started again, where
+the model supports that; and a check on the review package no longer mistakes
+ordinary test names for secret keys. Remedy wrote that last repair itself, in
+the first of its end-of-feature self-repair runs whose change was accepted and
+kept).
 
 Accepted in Tier 3 so far:
 F106 session resume instead of rebuild (repair rounds resume the original

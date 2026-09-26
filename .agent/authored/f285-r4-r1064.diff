@@ -1,0 +1,56 @@
+diff --git a/packages/orchestration/stream_evidence.py b/packages/orchestration/stream_evidence.py
+index cf0e27615..c90ae659a 100644
+--- a/packages/orchestration/stream_evidence.py
++++ b/packages/orchestration/stream_evidence.py
+@@ -131,8 +131,9 @@ _ENV_ASSIGN_RE = re.compile(
+ 
+ _STREAM_SECRET_PATTERNS: tuple[re.Pattern[str], ...] = (
+     # Provider keys whose bodies contain '-' or '_' (e.g. sk-ant-api03-...).
+-    re.compile(r"sk-ant-[A-Za-z0-9_\-]{10,}"),
+-    re.compile(r"sk-[A-Za-z0-9_\-]{20,}"),
++    # (?<![A-Za-z0-9]) — only at a token start; prevents "plan_edit_task-…" false-positives (R-1064).
++    re.compile(r"(?<![A-Za-z0-9])sk-ant-[A-Za-z0-9_\-]{10,}"),
++    re.compile(r"(?<![A-Za-z0-9])sk-[A-Za-z0-9_\-]{20,}"),
+     re.compile(r"anthropic[_-]?api[_-]?key[\"'\s:=]+[A-Za-z0-9_\-]{10,}", re.IGNORECASE),
+     re.compile(r"AKIA[0-9A-Z]{16}"),
+     re.compile(r"ASIA[0-9A-Z]{16}"),
+diff --git a/tests/orchestration/test_stream_evidence.py b/tests/orchestration/test_stream_evidence.py
+index 7eec97a56..5efa97a78 100644
+--- a/tests/orchestration/test_stream_evidence.py
++++ b/tests/orchestration/test_stream_evidence.py
+@@ -86,6 +86,35 @@ class TestRedaction:
+     def test_secret_shapes_redacted(self, secret):
+         assert secret not in redact_stream_line(json.dumps({"v": secret}))
+ 
++    # R-1064: sk- patterns must only match at a token start, not inside a word
++    # (e.g. "plan_edit_task-…" embeds "sk-" inside a word and must not be redacted).
++    @pytest.mark.parametrize("node_id", [
++        # parametrized pytest node ids from TestInvalidEditsChangeNothing
++        "plan_edit_task-task_id-T1-fields-id-X-invalid_args-not_editable",
++        "plan_edit_task-task_id-T1-fields-est_tokens_band-XXL-band_too_large",
++        "plan_edit_task-task_id-T1-fields-title-Inspect_the_code-title_frozen",
++        "plan_edit_task-task_id-T9-fields-title-x-unknown_task-T9",
++    ])
++    def test_node_ids_with_embedded_sk_not_redacted(self, node_id):
++        line = json.dumps({"node_id": node_id})
++        assert node_id in redact_stream_line(line), (
++            f"node id incorrectly redacted: {node_id!r}"
++        )
++
++    @pytest.mark.parametrize("ctx,key", [
++        # key at a token start: after space, =, quote, /, -
++        (" sk-abcdefghijklmnopqrstuvwxyz12345", "sk-abcdefghijklmnopqrstuvwxyz12345"),
++        ("=sk-abcdefghijklmnopqrstuvwxyz12345", "sk-abcdefghijklmnopqrstuvwxyz12345"),
++        ('"sk-abcdefghijklmnopqrstuvwxyz12345"', "sk-abcdefghijklmnopqrstuvwxyz12345"),
++        ("/sk-abcdefghijklmnopqrstuvwxyz12345", "sk-abcdefghijklmnopqrstuvwxyz12345"),
++        ("-sk-abcdefghijklmnopqrstuvwxyz12345", "sk-abcdefghijklmnopqrstuvwxyz12345"),
++    ])
++    def test_sk_key_at_token_boundary_redacted(self, ctx, key):
++        line = json.dumps({"v": ctx})
++        assert key not in redact_stream_line(line), (
++            f"key at boundary not redacted: {ctx!r}"
++        )
++
+ 
+ # ---------------------------------------------------------------------------
+ # Tool input safety

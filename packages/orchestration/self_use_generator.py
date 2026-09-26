@@ -328,16 +328,27 @@ def _ledger_tier(queue_path: Path | None, ledger_path: Path) -> SelfUseQueueEntr
 
     new_id = _next_queue_id(queue_path)
     title = f"Address ledger finding {r_id}"
+    # R-1058: the Acceptance asks for the REPAIR and nothing else. It once also
+    # offered "the reviewer records why it cannot be — either way the ledger
+    # gains a `Done:` line", and SU-030's builder met that with a ledger note
+    # and no repair. The ledger is the reviewer's record, so the builder is told
+    # to leave `.agent/` alone; describe_self_use_run_defects in
+    # packages/orchestration/self_use_findings.py names a pass that did not.
     job_markdown = (
         f"# Job: Address ledger finding {r_id}\n"
         "\n"
         "## Task 1\n"
         f"{paragraph}\n"
         "\n"
+        f"Make the repair {r_id}'s FIX names, in the code and tests it points "
+        "at. Do not edit any file under `.agent/`: `.agent/live_review.md` is "
+        "the reviewer's record, and a finding is resolved there by the "
+        "reviewer, never by this task.\n"
+        "\n"
         "Acceptance:\n"
-        f"- {r_id} is repaired with a red-to-green proof, or the reviewer "
-        "records in `.agent/live_review.md` why it cannot be — either way "
-        f"the ledger gains a `Done: {r_id}` line.\n"
+        f"- the repair {r_id}'s FIX names is made, outside `.agent/`, with a "
+        "test that fails without it and passes with it.\n"
+        "- no file under `.agent/` changes.\n"
     )
     return SelfUseQueueEntry(
         id=new_id,
