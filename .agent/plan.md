@@ -12,19 +12,17 @@ job (`docs/roadmap/features/T5_F289.md`).
 
 ## Current Step
 
-ROUND 2: book round 1 and R-1073's resolution, record DECISION F289 D2,
-and land T001 — `packages/orchestration/doc_staleness.py` with its
-twelve checks, each proven red on a stale fixture, and the generator's
-Tier 2.
+ROUND 3: book round 2, register and repair R-1074, record DECISION F289
+D3, and land T003 — three consecutive generator calls on an empty ledger
+produce three distinct items, and the first runs to completion under the
+fake providers inside the self-use run's default budget.
 
 ## Next Steps
 
-1. T003: three consecutive generator calls on an empty ledger produce
-   three distinct items, and one runs to completion under the test
-   provider inside the default cost cap.
-2. The closure sequence.
+1. The closure sequence: the integration gate's one full suite, then the
+   evidence bundle and the review package with the Built State, then the
+   closing round.
 
 ## Risks
 
-A check that misreads a document reports a claim that is not stale, and
-a self-use run would then edit a correct document. Open findings: 0.
+None open. Open findings: 1 (R-1074, repaired this round).

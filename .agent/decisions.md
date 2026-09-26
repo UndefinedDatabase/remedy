@@ -22704,3 +22704,35 @@ find, and a closure's self-use run is where they belong.
 
 HOW TO REVERSE: delete `packages/orchestration/doc_staleness.py` and its tests, return
 `_doc_staleness_tier` to None, and delete this paragraph.
+
+## DECISION F289 D3 — T003's proof emulates three closures on an empty ledger: each generator call is followed by the closure's own consumption of the item, the first item runs to completion under the fake providers inside the self-use run's default budget, and the sources are a fixture documentation tree and a planted dead built-in model (2026-09-26)
+
+CONTEXT: T5_F289.md is DONE when three consecutive generator calls on an empty ledger each produce
+a distinct item that a run can finish inside the default cost cap. Measured at `c1851178`:
+`generate_and_append_if_empty` in `packages/orchestration/self_use_generator.py` appends only
+while the queue holds no pending item, and consumption is the closure round's own edit of
+`consumed_by` (DECISION F257 D2); `run_next_self_use_item` in
+`packages/orchestration/self_use_runner.py` runs the queue's next pending item through `run_job`
+with the self-use budget of 8 provider calls and 6.00 USD unless a caller overrides it; and
+`TestGenerateThenRunEndToEnd` in `tests/orchestration/test_self_use_runner.py` already runs a Tier
+1 item to `completed` with `FakeProvider(pass_on_round=1)` against a temporary git repository.
+
+CHOSEN: (1) THE SEQUENCE is three closures: a generator call through
+`generate_and_append_if_empty` on an empty ledger, then the item marked consumed by writing its
+`consumed_by` in the queue file, as a closure does, three times over, so each call meets an empty
+queue exactly as a real closure does. (2) THE SOURCES are a fixture documentation tree under a
+temporary root, reached through `default_docs_root`, holding two stale claims, and the dead-model
+loaders declaring the built-in model the `claude-flagship` alias resolves to dead, so the three
+items come from Tier 2, Tier 2 and Tier 3, with three distinct ids and three distinct provenance
+keys; the order tier is pointed at a missing file. (3) THE RUN: the first item, while it is the one
+pending item, runs through `run_next_self_use_item` with the fake builder and reviewer and no budget
+override, `run_job` wrapped by a pass-through recorder of its `budgets`; the proof is the job ending
+`completed` with the recorded `max_cost_usd` equal to the runner's `_MAX_COST_USD`, because a run
+stopped by its budget never completes. (4) R-1074 is repaired in the same round by its FIX.
+
+ALTERNATIVES: three calls with no consumption between them, rejected because the seam answers
+None while an item is pending, so the second and third calls would prove nothing; the real
+repository's documents as the source, rejected because a self-use repair of either real claim
+would turn the proof red; a stubbed `run_job`, rejected because the proof is that a run finishes.
+
+HOW TO REVERSE: delete the proof's test class and this paragraph.
