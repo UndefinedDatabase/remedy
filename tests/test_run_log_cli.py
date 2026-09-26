@@ -19,6 +19,7 @@ via monkeypatch so tests write to tmp_path.
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -294,6 +295,20 @@ class TestRunNextTaskLocalNoop:
         assert payload["outcome"] == "no_pending_tasks"
         assert payload["job_id"] == str(job.job_id)
 
+    def test_noop_carries_no_attempt_id(self, tmp_path, monkeypatch):
+        """The pre-execution noop belongs to no attempt (DECISION F288 D2 (2))."""
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        job = JobPlan(job_title="test", state=RunState.PENDING)
+        save_job_plan(job)
+
+        from apps.cli.commands.job import _cmd_run_next_task_local
+
+        _cmd_run_next_task_local(str(job.job_id))
+
+        events = _run_events_for_job(tmp_path, job.job_id)
+        noop = next(e for e in events if e["event"] == "task_run_noop")
+        assert "attempt_id" not in noop.get("metadata", {})
+
 
 # ---------------------------------------------------------------------------
 # run-next-task-local run log — full success path
@@ -442,6 +457,31 @@ class TestRunNextTaskLocalSuccess:
         assert payload["verified"] is True
         assert payload["job_id"] == str(job.job_id)
         assert payload["failures"] == []
+
+    def test_every_event_from_started_to_completed_carries_one_attempt_id(
+            self, tmp_path, monkeypatch):
+        """DECISION F288 D2 (2): the id minted before `task_run_started` is a
+        sixteen-hex string and every event of the execution carries the same one."""
+        _, events = self._run_success(tmp_path, monkeypatch)
+        span = events[events.index(next(e for e in events if e["event"] == "task_run_started")):]
+
+        attempt_ids = {e.get("metadata", {}).get("attempt_id") for e in span}
+        assert len(attempt_ids) == 1
+        (attempt_id,) = attempt_ids
+        assert re.fullmatch(r"[0-9a-f]{16}", attempt_id)
+
+        by_name = {e["event"]: e.get("metadata", {}).get("attempt_id") for e in span}
+        assert by_name["builder_started"] == attempt_id
+        assert by_name["verification_passed"] == attempt_id
+        assert by_name["task_run_completed"] == attempt_id
+
+    def test_two_runs_carry_two_different_attempt_ids(self, tmp_path, monkeypatch):
+        _, events1 = self._run_success(tmp_path, monkeypatch)
+        _, events2 = self._run_success(tmp_path, monkeypatch)
+
+        id1 = next(e for e in events1 if e["event"] == "task_run_started")["metadata"]["attempt_id"]
+        id2 = next(e for e in events2 if e["event"] == "task_run_started")["metadata"]["attempt_id"]
+        assert id1 != id2
 
 
 # ---------------------------------------------------------------------------
@@ -964,6 +1004,16 @@ class TestRunNextTaskWorkspaceWriteDenialTerminal:
         started_count = names.count("task_run_started")
         terminal_count = sum(names.count(t) for t in terminal)
         assert started_count == terminal_count == 1
+
+    def test_task_run_failed_carries_the_started_attempt_id(self, tmp_path, monkeypatch):
+        """The `_fail` path's `task_run_failed` carries the id `task_run_started`
+        carried (DECISION F288 D2 (2))."""
+        events = self._run_denied(tmp_path, monkeypatch)
+        started = next(e for e in events if e["event"] == "task_run_started")
+        failed = next(e for e in events if e["event"] == "task_run_failed")
+        attempt_id = started["metadata"]["attempt_id"]
+        assert re.fullmatch(r"[0-9a-f]{16}", attempt_id)
+        assert failed["metadata"]["attempt_id"] == attempt_id
 
 
 # ---------------------------------------------------------------------------

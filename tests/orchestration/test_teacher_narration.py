@@ -52,6 +52,7 @@ class TestEnumeratedSet:
             "command.accepted",
             "job_created",
             "job_stopped",
+            "plan_approved",
             "planning_completed",
             "planning_failed",
             "planning_started",
@@ -80,6 +81,15 @@ class TestNewRoundEvents:
         sentence = narrate_run_event(_event("task_round_tested", task_id="T1",
                                             round_number=1, outcome="pass"))
         assert sentence == "A round's tests finished: task T1, round 1 (result: pass)"
+
+
+class TestPlanApprovedEvent:
+    """DECISION F288 D2 (5): the plan-approved event narrates its exact sentence."""
+
+    def test_a_plan_approved_event_narrates_its_exact_sentence(self):
+        sentence = narrate_run_event(_event(
+            "plan_approved", outcome="approved", metadata={"approval_mode": "human"}))
+        assert sentence == "The plan was approved (mode: human)."
 
 
 class TestUnrecognisedEvents:

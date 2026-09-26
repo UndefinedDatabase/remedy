@@ -545,6 +545,27 @@ class TestExecuteTestRunGates:
         assert "repo_test_run" in result.safe_summary
         assert result.next_safe_action == f"remedy job contract {job.job_id}"
 
+    def test_permission_denied_blocked_carries_outcome_and_attempt_id(self, tmp_path):
+        """DECISION F288 D2 (3): a refusal's `test_run_blocked` carries `outcome`
+        `blocked` and the attempt id (the run's own `test_run_id`)."""
+        from packages.orchestration.test_execution_service import execute_test_run
+        from packages.orchestration.timeline import load_run_events
+
+        with patch("packages.orchestration.test_execution_service.resolve_data_root",
+                   return_value=tmp_path):
+            with patch("packages.orchestration.test_execution_service.require_job_plan") as mock_load:
+                job = self._make_job_with_repo(tmp_path)
+                mock_load.return_value = job
+                with patch("packages.orchestration.test_execution_service.is_allowed",
+                           return_value=False):
+                    req = TestExecutionRequest(job_id=str(job.job_id))
+                    result = execute_test_run(req)
+
+        events = load_run_events(tmp_path, str(job.job_id))
+        blocked = next(e for e in events if e["event"] == "test_run_blocked")
+        assert blocked.get("outcome") == "blocked"
+        assert blocked["metadata"]["attempt_id"] == result.test_run_id
+
     def test_contract_budget_zero_blocked(self, tmp_path):
         from packages.orchestration.run_contract import RunUsage
         from packages.orchestration.test_execution_service import execute_test_run
@@ -839,6 +860,79 @@ class TestUsageAccounting:
         assert len(captured_usage) == 1
         assert captured_usage[0].test_runs_used == 1
         assert captured_usage[0].runtime_seconds_used > 0
+
+
+# ---------------------------------------------------------------------------
+# Attempt id, task id and outcome on test_run_* events (DECISION F288 D2 (3))
+# ---------------------------------------------------------------------------
+
+
+class TestAttemptTaskIdAndOutcomeFields:
+    """A test run is an attempt of its own: every `test_run_*` event carries the
+    attempt id (the run's own `test_run_id`), the request's task id when it names
+    one, and its result — computed once by `_with_attempt_fields`, not per site."""
+
+    def test_passing_run_lifecycle_events_carry_attempt_id_and_task_id(self, tmp_path):
+        """Integration: a passing mini-repo's `test_run_requested`, `test_run_started`
+        and `test_run_completed` each carry `attempt_id`, and the completion alone
+        carries `outcome` at the top level."""
+        from packages.orchestration.pingpong_job import JobPlan, TaskEntry
+        from packages.orchestration.run_contract import RunUsage
+        from packages.orchestration.test_execution_service import execute_test_run
+        from packages.orchestration.timeline import load_run_events
+
+        repo = tmp_path / "repo"
+        repo.mkdir()
+        (repo / "test_pass.py").write_text("def test_it(): pass\n")
+        (repo / "pyproject.toml").write_text(
+            '[tool.pytest.ini_options]\ntestpaths = ["."]\n'
+        )
+
+        job = JobPlan(job_title="test-job", metadata={"target_repo": str(repo)})
+        task = TaskEntry(title="t")
+        job.tasks.append(task)
+
+        contract = _make_contract(max_test_runs=5, max_runtime_seconds=60.0)
+
+        with patch("packages.orchestration.test_execution_service.resolve_data_root",
+                   return_value=tmp_path):
+            with patch("packages.orchestration.test_execution_service.require_job_plan",
+                       return_value=job):
+                with patch("packages.orchestration.test_execution_service.is_allowed",
+                           return_value=True):
+                    with patch("packages.orchestration.test_execution_service.ensure_contract",
+                               return_value=contract):
+                        with patch("packages.orchestration.test_execution_service.validate_run_contract",
+                                   return_value=[]):
+                            with patch("packages.orchestration.test_execution_service.load_usage",
+                                       return_value=RunUsage()):
+                                with patch("packages.orchestration.test_execution_service.save_usage"):
+                                    with patch("packages.orchestration.test_execution_service.save_job_plan"):
+                                        req = TestExecutionRequest(
+                                            job_id=str(job.job_id),
+                                            task_id=str(task.task_id),
+                                            requested_timeout_seconds=30.0,
+                                        )
+                                        result = execute_test_run(req)
+
+        assert result.status == "passed"
+
+        events = load_run_events(tmp_path, str(job.job_id))
+        requested = next(e for e in events if e["event"] == "test_run_requested")
+        started = next(e for e in events if e["event"] == "test_run_started")
+        completed = next(e for e in events if e["event"] == "test_run_completed")
+
+        assert requested["metadata"]["attempt_id"] == result.test_run_id
+        assert started["metadata"]["attempt_id"] == result.test_run_id
+        assert completed["metadata"]["attempt_id"] == result.test_run_id
+
+        assert completed.get("outcome") == "passed"
+        assert "outcome" not in requested
+        assert "outcome" not in started
+
+        assert requested.get("task_id") == str(task.task_id)
+        assert started.get("task_id") == str(task.task_id)
+        assert completed.get("task_id") == str(task.task_id)
 
 
 # ---------------------------------------------------------------------------

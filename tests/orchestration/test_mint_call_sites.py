@@ -27,6 +27,7 @@ from pathlib import Path
 
 import pytest
 
+from apps.cli.commands import job as job_command
 from packages.orchestration import data_paths, pingpong_job, pingpong_loop
 
 
@@ -98,6 +99,34 @@ class TestMintCallSites:
 
         assert len(assignments) == 1, (
             f"expected 1 attempt_id assignment in pingpong_job.py, "
+            f"found {len(assignments)}"
+        )
+
+        node = assignments[0]
+        value = node.value
+        assert isinstance(value, ast.Call), (
+            f"attempt_id at line {node.lineno} is not a call"
+        )
+        assert isinstance(value.func, ast.Name) and value.func.id == "mint_run_id", (
+            f"attempt_id at line {node.lineno} does not mint through mint_run_id"
+        )
+
+    def test_the_run_next_attempt_id_assignment_calls_mint_run_id(self) -> None:
+        """The one ``attempt_id = ...`` assignment in the run-next path's body mints
+        through ``mint_run_id`` (DECISION F288 D2), read by AST for the same reason
+        the pingpong-job assignment above is: there is no object to compare a local
+        variable against."""
+        assignments = [
+            node for node in ast.walk(_parsed(job_command))
+            if isinstance(node, ast.Assign)
+            and any(
+                isinstance(target, ast.Name) and target.id == "attempt_id"
+                for target in node.targets
+            )
+        ]
+
+        assert len(assignments) == 1, (
+            f"expected 1 attempt_id assignment in apps/cli/commands/job.py, "
             f"found {len(assignments)}"
         )
 

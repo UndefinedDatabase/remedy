@@ -330,3 +330,55 @@ class TestTheApprovalClosesTheWindow:
             self._approve(load_job_plan(job_id, root), root)
         assert caught.value.code == "lock_timeout"
         assert record.read_bytes() == before
+
+
+class TestTheApprovalAnnouncesPlanApproved:
+    """DECISION F288 D2 (4): a saved approval writes `plan_approved`; a failed write
+    never undoes it."""
+
+    def _approve(self, job, root):
+        return consume_plan_approval(job, reason="approve", answers={}, questions=[], root=root)
+
+    def _reject(self, job, root):
+        return consume_plan_approval(job, reason="reject", answers={}, questions=[], root=root)
+
+    def test_an_approval_writes_exactly_one_plan_approved(self, root):
+        from packages.orchestration.timeline import load_run_events
+
+        job_id = _save_job(root, _TASKS)
+        job = load_job_plan(job_id, root)
+        task_ids = [str(t.task_id) for t in job.tasks]
+        self._approve(job, root)
+
+        events = load_run_events(root, job_id)
+        approvals = [e for e in events if e["event"] == "plan_approved"]
+        assert len(approvals) == 1
+        [approved] = approvals
+        assert approved.get("outcome") == "approved"
+        assert approved["metadata"]["task_ids"] == task_ids
+        assert approved["metadata"]["approval_mode"] == "human"
+
+    def test_a_rejection_writes_no_plan_approved(self, root):
+        from packages.orchestration.timeline import load_run_events
+
+        job_id = _save_job(root, _TASKS)
+        job = load_job_plan(job_id, root)
+        self._reject(job, root)
+
+        events = load_run_events(root, job_id)
+        assert [e for e in events if e["event"] == "plan_approved"] == []
+
+    def test_a_failed_event_write_never_undoes_the_saved_approval(self, root, monkeypatch):
+        from packages.orchestration import timeline as timeline_mod
+
+        def _raise(*args, **kwargs):
+            raise OSError("disk full")
+
+        monkeypatch.setattr(timeline_mod, "append_run_event", _raise)
+
+        job_id = _save_job(root, _TASKS)
+        job = load_job_plan(job_id, root)
+        self._approve(job, root)  # must not raise
+
+        stored = load_job_plan(job_id, root)
+        assert stored.task_plan["_approval"] == "approved"

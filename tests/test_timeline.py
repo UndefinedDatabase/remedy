@@ -435,6 +435,30 @@ class TestRenderPlanningEvents:
         assert "Planning failed" in out
         assert "RuntimeError" in out
         assert "secret-token" not in out
+
+
+class TestRenderPlanApproved:
+    """DECISION F288 D2 (5): `plan_approved` renders its exact line."""
+
+    def test_plan_approved_renders_its_exact_line(self):
+        from packages.orchestration._symbols import OK
+
+        job = _make_job()
+        events = [{"event": "plan_approved", "job_id": str(job.job_id), "run_id": "r",
+                   "timestamp": _ts(0), "outcome": "approved",
+                   "metadata": {"task_ids": ["T1", "T2"], "approval_mode": "human"}}]
+        out = summarize_timeline(job, events)
+        assert f"  {OK} Plan approved: 2 task(s), mode human" in out
+
+    def test_plan_approved_with_no_task_ids_renders_zero(self):
+        from packages.orchestration._symbols import OK
+
+        job = _make_job()
+        events = [{"event": "plan_approved", "job_id": str(job.job_id), "run_id": "r",
+                   "timestamp": _ts(0), "outcome": "approved",
+                   "metadata": {"approval_mode": "auto_yes"}}]
+        out = summarize_timeline(job, events)
+        assert f"  {OK} Plan approved: 0 task(s), mode auto_yes" in out
         assert "SHOULD_NOT_RENDER" not in out
 
 
