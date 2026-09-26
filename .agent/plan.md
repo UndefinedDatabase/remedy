@@ -12,18 +12,16 @@ job (`docs/roadmap/features/T5_F289.md`).
 
 ## Current Step
 
-ROUND 4, the closure sequence's first round: book round 3 and R-1074's
-resolution, consolidate the checklist, and generate and run the
-closure's self-use item on the `self_use` role, recording its readings.
+ROUND 5, the closure sequence's second round: book round 4, land the
+self-use run's reviewed diff to `docs/README.md`, write the Built State,
+and take the feature's one full suite.
 
 ## Next Steps
 
-1. Land the self-use run's diff if the reviewer passes it, write the
-   Built State, and take the feature's one full suite.
-2. The evidence bundle and the review package.
-3. The closing round: rotation, STATUS, README pins, pull request.
+1. The evidence bundle and the review package.
+2. The closing round: rotation, STATUS, README pins, pull request.
 
 ## Risks
 
-A self-use run that blocks is an outcome to record, not a stop. Open
+A red suite is repaired under amend0917-throughput rule 2. Open
 findings: 0.
