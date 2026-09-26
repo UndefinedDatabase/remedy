@@ -22650,3 +22650,57 @@ DELIBERATE ABSENCES: no warning kind is added, and no warning's words change.
 
 HOW TO REVERSE: fold `doctor_core_report()` back into `_cmd_doctor_core`, delete `DoctorWarning`
 and `DoctorCoreReport`, return `_doctor_warning_tier` to None, and delete this paragraph.
+
+## DECISION F289 D2 — the documentation-staleness catalog is twelve checks in a new module, each reading documents under a root and comparing them with an injectable shipped truth, so every check is proven red on a stale fixture; the generator's Tier 2 renders the first claim no queue entry targets as a one-task job that repairs the document (2026-09-26)
+
+CONTEXT: T5_F289.md T001 asks for a staleness catalog of at least ten checks over the README, the
+guides and the command catalog, each naming the document, the claim and the shipped truth it
+compares and each proven red on a stale fixture, and for the generator rendering one failing check
+as a one-task job. Measured at `8163cf8b` by a read-only survey the reviewer ordered and then
+spot-checked: 27 candidate comparisons exist, of which 8 are already pinned by a test, among them
+the advertised command lines of the README and the guides
+(`tests/cli/test_advertised_commands.py`), the exit-code guide's tables
+(`tests/cli/test_exit_codes.py`) and the environment guide (`tests/docs/test_environment_guide.py`);
+and two claims are stale on the shipped tree: `docs/README.md` links
+`guides/real-test-execution-snapshot-rollback-user-guide-v1.md` from its Guides table and not from
+its Quick-Find Table, and the CLI commands table of `docs/guides/remedy-toml-user-guide.md` does not
+list `remedy config show`, which ships. The shipped truth lives in `apps/cli/command_catalog.py`
+(`CATALOG`, `GROUPS`, `resolve_group`) and `packages/orchestration/config.py` (`all_key_specs()`,
+whose specs carry each key and its environment variable).
+
+CHOSEN: (1) THE MODULE is `packages/orchestration/doc_staleness.py`. A frozen `StaleClaim` carries
+`check_id`, `document` (a repository-relative path), `claim` (the words the document says or
+omits) and `truth` (what ships instead), and its `key` is `<check_id>:<document>:<claim>`. A frozen
+`ShippedTruth` carries the group ids and aliases, the command pairs and ids, the config keys, the
+environment variable names and the catalog's texts; `ShippedTruth.live()` builds it from the
+catalog and the key registry, imported inside the method, and a test builds its own. A frozen
+`StalenessCheck` names its `check_id`, the documents it reads, the claim it extracts and the truth
+it compares, beside the function that runs it over a root and a truth. `CHECKS` holds the catalog
+and `run_staleness_checks(root=None, truth=None)` runs every check in catalog order. A document a
+check reads that is absent under the root yields nothing; one that cannot be read raises. (2) THE
+TWELVE CHECKS prefer comparisons no test pins today, so the tier finds work the suite does not
+already force: the docs index lists every shipped guide in both of its tables; the `remedy.toml`
+guide's CLI table and the catalog's `config` group name the same subcommands; the docs index's
+command lines name shipped commands; the guides' relative links resolve; link fragments name a
+heading of their target; the `REMEDY_` names in the README, the docs index and the guides other
+than the generated environment guide are registered; backticked dotted config keys are
+registered; the keys of the guides' TOML examples are registered; the docs index's category column
+matches each link's folder; the source paths the README and the docs index name exist; backticked
+dotted command ids name shipped commands; and the dotted config keys the catalog's own texts name
+are registered. No check spawns a process or reads the network. (3) TIER 2 calls
+`run_staleness_checks()` through the module over the repository root and the live truth, takes
+the first claim whose key no queue entry, consumed or not, targets by its provenance `generated
+(self-use-generator tier 2, doc staleness, <key>)`, and renders one task that quotes the claim and
+the truth and asks for the DOCUMENT to be edited to match what ships, never the code to match the
+document, with an acceptance asking that the check no longer report the claim and that no file
+under `.agent/` change. A claim or truth holding a line break is refused, and a document that
+cannot be read is a `SelfUseGenerationError`. The tier order is unchanged.
+
+ALTERNATIVES: extending the tests that already pin eight comparisons, rejected because a pinned
+comparison can never be stale on a green tree, so the tier would never fire; checks that run `git
+ls-files` or the CLI, rejected because a generator step spawns nothing; repairing the two stale
+claims in this round, rejected because they are exactly the work the self-use track exists to
+find, and a closure's self-use run is where they belong.
+
+HOW TO REVERSE: delete `packages/orchestration/doc_staleness.py` and its tests, return
+`_doc_staleness_tier` to None, and delete this paragraph.

@@ -12,21 +12,19 @@ job (`docs/roadmap/features/T5_F289.md`).
 
 ## Current Step
 
-ROUND 1: claim F289, re-head the live review record, book F027's round
-14, register and repair R-1073, record DECISION F289 D1, and land T002 —
-`doctor_core_report()` returning structured warnings, the command
-printing from it unchanged, and the generator's Tier 3.
+ROUND 2: book round 1 and R-1073's resolution, record DECISION F289 D2,
+and land T001 — `packages/orchestration/doc_staleness.py` with its
+twelve checks, each proven red on a stale fixture, and the generator's
+Tier 2.
 
 ## Next Steps
 
-1. T001: the documentation-staleness catalog of at least ten checks,
-   each proven red on a stale fixture, and the generator's Tier 2.
-2. T003: three consecutive generator calls on an empty ledger produce
+1. T003: three consecutive generator calls on an empty ledger produce
    three distinct items, and one runs to completion under the test
    provider inside the default cost cap.
-3. The closure sequence.
+2. The closure sequence.
 
 ## Risks
 
-The command's output must stay byte-identical while its body moves into
-a function. Open findings: 1 (R-1073, repaired this round).
+A check that misreads a document reports a claim that is not stale, and
+a self-use run would then edit a correct document. Open findings: 0.
