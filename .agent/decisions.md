@@ -22297,3 +22297,53 @@ bends a production module around the guard's blind spot and leaves the blind spo
 module.
 
 HOW TO REVERSE: delete the `TYPE_CHECKING` skip and its test, and this paragraph.
+
+## DECISION F027 D7 — the veto reaches the page's data: a dashboard section `vetoes` that never raises, the node seeded and streamed as `vetoed`, the reason verbatim in the job's text and exported report, plain-words option labels a decision's payload may carry, and the two event names in the page's catalog; the door's fourth import is ruled (2026-09-26)
+
+CONTEXT: T5_F027.md's T003 asks for the strike, the reason on hover, the dimmed unreachable set
+with its link, and the inbox card's menu, and its Acceptance for the reason verbatim in audit,
+report and hover. Measured at `25a295c0`: `_build_dashboard` in
+`packages/orchestration/ui_server.py` assembles one section per concern, each built by a helper that
+never raises and reports an `error` instead, `pause` and `task_specs` the nearest; the page seeds a
+node's state from the dashboard in `dashboardBrainSeeds` through `SEED_STATUS_STATE_TABLE` in
+`apps/ui/src/components/graph/brainOntology.ts`, which names no `vetoed` row, and advances it from
+the live stream in `brainReducer.ts`, which has no `task_vetoed` case, while the stream's envelope
+carries only an event's name, time, outcome and task; `format_job_report_text` in
+`packages/orchestration/pingpong_job.py` gives an unknown status the icon `?` and prints no veto,
+and `export_job_report` carries none; `decisionAnswers` in `apps/ui/src/api/decisionCard.ts`
+labels every option button with its raw value and forbids any branch on a decision's type; and
+R-1068. Round 6 added a fourth door import, `task_veto.TaskVetoRefused`, beyond the three DECISION
+F027 D5 (5) named.
+
+CHOSEN: (1) THE SECTION `vetoes`, built by one helper that never raises: `tasks`, one entry per veto
+entry in plan order with the task id, the reason verbatim, the actor, the time, the request id, the
+status at the veto, that veto's unreachable ids and the recorded answer's option or ""; `vetoable_task_ids`,
+the tasks `veto_refusal` admits for the job's state; `unreachable_task_ids`, `veto_unreachable` over
+every vetoed task; and `error`, the text of a `TaskVetoError`, which empties the three lists. (2) THE
+PAGE'S DATA: the dashboard's `vetoes` is normalized into a typed value; `dashboardBrainSeeds` seeds a
+task named in `vetoes.tasks` as `vetoed`, which `SEED_STATUS_STATE_TABLE` maps to the node state
+`vetoed`, whatever the task's own status word; and the reducer's new `task_vetoed` case moves a node
+to `vetoed` unless it has already passed, the way `task_paused` refuses to paint over a finished
+node. (3) THE REPORT: `format_job_report_text` gives a `vetoed` task its own icon and, under it, the
+line `Vetoed by <actor>: <reason>` with the reason verbatim, and `export_job_report` gives each
+vetoed task a `veto` object of the reason, the actor, the time and the unreachable ids, both read
+from the job record's `task_vetoes` and, for a veto no run has folded yet, from the control files; a
+job with no veto reports exactly as before. (4) THE INBOX'S WORDS: a decision's payload may carry
+`option_labels`, a map from an option's value to the words its button shows; `decisionAnswers`
+takes a button's label from that map when it names the option and from the value otherwise, and
+still posts the value, with no branch on the decision's type; `replan_proposal` carries "Replan the
+remaining work as a new job" for `replan_follow_up` and "Accept the smaller scope" for
+`accept_reduced_scope`. (5) THE CATALOG: `task_vetoed` and `veto_proposal_answered` join the page's
+event catalog with plain words, which is R-1068's repair. (6) THE FOURTH IMPORT: the write door's
+allowed imports hold `task_veto.TaskVetoRefused` beside the three D5 (5) named, because the payload
+check catches that class and nothing broader; this amends D5 (5). (7) The dim, the popover's veto
+block with its link, the veto form and the hover text are the next round's.
+
+ALTERNATIVES: streaming the reason in the event envelope, rejected because
+`tests/ui_server/test_sse_stream.py` pins that envelope by equality for every event and the section
+already carries the reason; a per-type label map in the card, rejected by the card's own
+architecture line; a new dashboard state word for a vetoed task, rejected because every reader of
+`RemedyState` would change for a fact the section carries.
+
+HOW TO REVERSE: delete the section and its normalizer, the seed row and the reducer case, the report
+lines, `option_labels` and its reading, the two catalog entries, their tests, and this paragraph.

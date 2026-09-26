@@ -12,20 +12,20 @@ inbox and never executed on its own (`docs/roadmap/features/T5_F027.md`).
 
 ## Current Step
 
-ROUND 6: book round 5, resolve R-1067, record DECISION F027 D6, and
-finish round 5's door work from its uncommitted draft — the door's
-`job.veto-task` clause with the reason refused as a shape, the door's
-answer of a replan proposal, the answerable inbox card, and the guard's
-walker skipping a type-only import block.
+ROUND 7: book round 6, register and repair R-1068, record DECISION F027
+D7, and bring the veto to the page's data — the dashboard's `vetoes`
+section, the node seeded and streamed as `vetoed`, the reason verbatim in
+the job's report, plain-words labels on the proposal's buttons, and the
+two event names in the page's catalog.
 
 ## Next Steps
 
-1. T003: the strike, the reason on hover, the dimmed unreachable set
-   with its link, the veto affordance and the inbox card's plain-words
-   menu on the page.
+1. The rest of T003: the dimmed unreachable set with its link, the
+   popover's veto block, the veto form and the hover text.
 2. The diamond end-to-end through the door and the runner.
 3. The closure sequence.
 
 ## Risks
 
-The door may reach no new forbidden module. Open findings: 0.
+Every guard that reads the event vocabulary must be named in a round's
+selection. Open findings: 1 — R-1068, repaired this round.
