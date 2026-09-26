@@ -22002,3 +22002,39 @@ default) is the one `run_next_self_use_item` already applies. The same reading f
 DECISION D4.
 REVERSE: Delete this paragraph. If the operator still wants the configuration key, a later
 amendment adds `self_use.max_cost_usd` to `packages/orchestration/config.py` as Part B.2 describes.
+
+## DECISION amend0926-decisions-selfuse D4 (2026-09-26, operator amendment, Part B) — a self-use run carries a deny fence over `.agent/`, set on the planned job, and a change confined to it fails as bookkeeping
+CONTEXT: Finding R-1058 found that the self-use generator's acceptance line let a builder meet it
+with a ledger note that repaired nothing, and that the reviewer of queue entry SU-030 passed exactly
+that. F285's round 1 booked `Done: R-1058 — RESOLVED at 67985614`: the generated task now asks for
+the repair and tells the builder not to edit `.agent/`, and `describe_self_use_run_defects` in
+`packages/orchestration/self_use_findings.py` names, after the run, a pass that changed nothing
+outside `.agent/`. The operator's Part B.3 asks for more: an acceptance in two plain sentences, a
+scope fence that forbids every path under `.agent/`, and a reviewer rule that turns a diff confined
+to `.agent/` into a FAIL with the reason "the run changed only bookkeeping". F285's repair has none
+of the fence and none of the verdict, so those parts are still open in substance.
+CHOSEN: The route for the fence is neither of the two the amendment names. A job file cannot declare
+a deny fence (`parse_job_file` in `packages/orchestration/pingpong_job.py` reads only a task's
+`Files:` hint), and `run_job` takes no fence argument. But the planned job record (`JobPlan`)
+already has a `fences` field of type `JobFences`, which F017 added and which survives saving and
+loading. So `run_next_self_use_item` in `packages/orchestration/self_use_runner.py` adds the deny
+glob `.agent/**` to the planned job's fences and saves the job before it calls `run_job`. The ping-pong
+task path never read a job's fences, so `run_job` now reads the job's own deny globs before any task
+may pass, through the new function `task_fence_refusal`: when every path the task changed lies under
+`.agent/`, the task's verdict becomes `fail` with the reason "the run changed only bookkeeping";
+when any other changed path is denied, the task is blocked with `scope_fence_violation` and the
+denied paths. Either way the task is never applied and the job is blocked. This rule lives in the
+job runner and not in the reviewer provider, because it must hold whatever the reviewer answers.
+Jobs that declare no deny fence are unaffected; jobs made by `remedy do` or a mission that do
+declare one now have it enforced on the ping-pong path as well, which is what F017 promised. The
+generated acceptance is the operator's two sentences, with the finding's Done line named without
+backticks so the existing assertion that the task text offers no `Done:` outcome keeps its force.
+The ledger is not edited: R-1058 already carries its `Done:` line, and a `Note:` paragraph is not a
+record the rotation script recognises, so it would attach itself to the paragraph above it.
+Red proofs, each red with the three production files restored from `557cbbcc` and green with them:
+`TestTheAcceptanceAsksForTheRepairAlone::test_the_acceptance_is_the_operators_two_sentences` in
+`tests/orchestration/test_self_use_generator.py`, and
+`TestASelfUseRunRepairsCodeNeverBookkeeping::test_a_run_that_writes_only_the_ledger_fails_as_bookkeeping`
+and `::test_the_fence_refuses_a_write_under_the_record` in `tests/orchestration/test_self_use_runner.py`.
+The last two also go red when only the runner's fence or only the job runner's check is removed.
+REVERSE: `git revert` the commit that carries this paragraph.

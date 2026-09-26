@@ -113,6 +113,15 @@ the operator or on another feature. A finding held that way stays in the ledger
 for a session to pick up by hand; it is no longer handed to a builder who cannot
 finish it.
 
+A self-use run repairs code, never bookkeeping. The job it runs carries a deny
+fence over `.agent/` (`JobFences` on the planned job, set by
+`run_next_self_use_item`, because a job file cannot declare one), and `run_job`
+reads a job's deny fence before any task may pass: a task whose changes all lie
+under `.agent/` fails with the reason "the run changed only bookkeeping", and a
+task that also writes under `.agent/` is blocked as a scope-fence violation,
+whatever its reviewer said (DECISION amend0926-decisions-selfuse D4, finding
+R-1058). A finding's `Done:` line is written only by a human reviewer.
+
 ## Consumption — exactly one per feature close
 
 Precondition 6 of the closure protocol
