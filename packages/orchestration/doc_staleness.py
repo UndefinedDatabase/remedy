@@ -446,7 +446,9 @@ def _run_c04(root: Path, truth: ShippedTruth) -> tuple[StaleClaim, ...]:
                     continue
                 path_part = target.split("#", 1)[0]
                 resolved = (guide_dir / path_part).resolve()
-                if not resolved.is_file():
+                # R-1074: a link to an existing FOLDER is a working link, not stale —
+                # only a target that exists NEITHER as a file NOR as a folder is.
+                if not resolved.exists():
                     items.append((order, line_no, StaleClaim(
                         check_id, document,
                         f"links `{target}`",

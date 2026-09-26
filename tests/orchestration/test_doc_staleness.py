@@ -245,6 +245,26 @@ class TestC04GuideRelativeLinks:
         ))
         assert _claims_for(tmp_path, _truth(), "guide_relative_links") == []
 
+    def test_a_link_to_an_existing_folder_is_not_stale_but_one_to_a_missing_folder_is(
+        self, tmp_path: Path,
+    ):
+        """R-1074: a markdown link to a FOLDER, not a file, is a working link —
+        `Path.exists()`, not `Path.is_file()` — and only a folder that is
+        genuinely absent is still stale."""
+        existing_root = tmp_path / "existing"
+        _write(existing_root, "docs/system/notes.md", "# Notes\n")
+        _write(existing_root, "docs/guides/alpha.md", (
+            "# Alpha\n\nSee [system](../system/) for more.\n"
+        ))
+        assert _claims_for(existing_root, _truth(), "guide_relative_links") == []
+
+        missing_root = tmp_path / "missing"
+        _write(missing_root, "docs/guides/alpha.md", (
+            "# Alpha\n\nSee [nowhere](../nowhere/) for more.\n"
+        ))
+        claims = _claims_for(missing_root, _truth(), "guide_relative_links")
+        assert len(claims) == 1
+
 
 # ---------------------------------------------------------------------------
 # C05 — link_anchors_resolve
