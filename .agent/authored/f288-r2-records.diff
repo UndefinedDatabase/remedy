@@ -1,0 +1,87 @@
+diff --git a/.agent/decisions.md b/.agent/decisions.md
+index acfd0868c..004ab99c1 100644
+--- a/.agent/decisions.md
++++ b/.agent/decisions.md
+@@ -22799,3 +22799,63 @@ does not read the attempt id until T002.
+ HOW TO REVERSE: remove the `run_id` keyword from `run_pingpong`, the attempt id from `run_job`'s
+ events, the two round events with their readers, and `ATTEMPT_EVENT_KINDS` with its branch of the
+ envelope, and delete this paragraph.
++
++## DECISION F288 D2 — the run-next path mints its attempt id as `run_job` does, a test run of the test service is an attempt whose id is its test run id, and a new `plan_approved` event names the approved plan's task ids; the long-run executor's repair events move to round 3 (2026-09-27)
++
++CONTEXT: DECISION F288 D1 gave `run_job`'s path its attempt id and left the rest of T001 to round
++2. Measured at `c0553449`: `_cmd_run_next_task_local` in `apps/cli/commands/job.py` writes
++`task_run_started` and then has fourteen more `log.log` calls on one `RunLogWriter`, from
++`builder_started` to the terminal events, all naming the task and none an attempt, and it writes a
++`task_run_noop` before any task is chosen when none is pending; `execute_test_run` in
++`packages/orchestration/test_execution_service.py` writes `test_run_requested`,
++`test_run_started`, `test_run_completed` or `test_run_timed_out`, and `test_run_blocked` from
++seven refusal sites, each through its `_emit` helper, each naming the run's `test_run_id`, with
++the request's task id at the top level only for the completion and time-out events and their result in the
++metadata key `status` rather than in `outcome`; `emit_important_event` passes metadata to
++`RunLogWriter.log`, which lifts the keys `task_id` and `outcome` to the top level; no event
++announces a plan approval, which happens in `resolve_task_plan_approval` in
++`packages/orchestration/job_plan.py` for the command line and the browser, and in `do_sequence.py`
++and `orchestrator_loop.py` for the unattended `--yes` approval, each after the plan is saved; and
++the long-run executor's `cycle_repair_round` and `cycle_healed` belong to a cycle over several
++tasks, which names no single task.
++
++CHOSEN: (1) THE ORDER: round 2 lands the run-next path, the test service and the plan-approved
++event. The long-run executor's repair events and the builder bridge's loop events inside them move
++to round 3, beside the reducer, because a repair over several tasks needs a ruling of its own on
++which task id it carries. (2) THE RUN-NEXT PATH mints its attempt id with `mint_run_id()` once the
++pending task is chosen, directly before `task_run_started`, and every `log.log` call from
++`task_run_started` to the function's end, `_fail`'s included, carries it as `attempt_id`. The
++pre-execution noop belongs to no attempt and carries none. (3) THE TEST SERVICE: one test run is an
++attempt of its own and its attempt id is its `test_run_id`. Every `test_run_*` event carries
++`attempt_id`, the request's task id as `task_id` when the request names one, and its result as
++`outcome`: `test_run_completed` its status, `passed` or `failed`; `test_run_timed_out` `timeout`;
++`test_run_blocked` `blocked`; `test_run_requested` and `test_run_started` none, because nothing has
++resulted yet. Every metadata key the events carry today stays. (4) THE PLAN-APPROVED EVENT: a new
++`announce_plan_approval(job, *, mode)` in `job_plan.py` writes `plan_approved` to the job's run log
++with `outcome` `approved` and the metadata `task_ids`, the job's task ids in plan order, and
++`approval_mode`. `resolve_task_plan_approval` calls it with mode `human` after it saves an
++approved plan, and both unattended approvals call it with `AUTO_APPROVAL_MODE` after they save. A
++failure to write the event is logged and never undoes a saved approval. (5) THE ENVELOPE:
++`ATTEMPT_EVENT_KINDS` gains `task_run_noop`, `builder_started`, `builder_completed`,
++`verification_passed`, `verification_failed`, `test_run_requested`, `test_run_started`,
++`test_run_completed`, `test_run_timed_out` and `test_run_blocked`; and `plan_approved` gains a
++block `plan` of its own holding `task_ids`, the string entries of the metadata list in order and
++an empty list when there is none, on the envelope's rule for `budget`. (6) THE READERS:
++`EVENT_NAMES` gains `plan_approved`; `STREAM_EVENT_CATALOG` and `NARRATED_EVENTS` gain a line for
++it; `remedy event timeline` renders it as one line naming the task count and the mode; and the
++run-next event list in `docs/system/architecture.md` says that every event of an execution carries
++its attempt id.
++
++ALTERNATIVES: a fresh attempt id for a test run, rejected because the test run id already names
++exactly that execution and every record of it; the approval event written inside
++`auto_approve_task_plan`, rejected because that function deliberately persists nothing and its
++callers own their ledger entries; a `plan_rejected` event beside it, rejected because T5_F288.md
++names the approval and nothing reads a rejection; the plan's task titles in the envelope, rejected
++because the dashboard's task list already carries them and the reducer needs only the ids.
++
++DELIBERATE ABSENCES: the replay tool's `resume_test_started` and `resume_test_completed` describe a
++past run being replayed, not an attempt being made, and carry no attempt id.
++
++HOW TO REVERSE: remove the attempt id from the run-next path and the test service's events,
++`announce_plan_approval` with its three calls and the `plan_approved` readers, and the ten kinds and
++the `plan` block from the envelope, and delete this paragraph.
+diff --git a/.agent/live_review.md b/.agent/live_review.md
+index 77f783140..23dd536f5 100644
+--- a/.agent/live_review.md
++++ b/.agent/live_review.md
+@@ -417,3 +417,5 @@ Gate: F289 R5 — the F289 round 5 entry: the closure sequence's second round 
+ Gate: F289 R6 — the F289 round 6 entry: the closure sequence's evidence round — the booking of round 5, the evidence bundle and the review package. VERDICT PASS, THE PACKAGE READY_FOR_REVIEW. Re-derived over `ba713c34`..`439162d5` by the planner and reviewer of F289's first session, whose own readings are every one below. THE RANGE IS 3 COMMITS, at `34a801f1` 317, `32013a05` 8 and `439162d5` 153 insertions by `git show --numstat`, each under the 500-line cap, each single-parent and each carrying the ordered trailer; no deviation was declared. THE TRANSPORT PROOF: the block copy and the three payload copies, read at `34a801f1`, equal the reviewer's originals byte for byte, and at `32013a05` the ledger and the plan equal the reviewer's simulation tree byte for byte, the open set reading empty. THE BUNDLE: evidence job `f289r6e1001`, built by the committed `.agent/authored/f289-r6-create_f289_evidence.py` at the accepted head against the fork point `d0239fa3`, read equal ancestry and plain counts at 34, 634 selected tests passed and none skipped, no unsafe node id, an empty `validate_verification_tests` problem list and `is_valid_current_run` true, as the reviewer's dry run at `ba713c34` predicted with both counts two lower. THE PACKAGE: `remedy-review-20260926-225640-READY_FOR_REVIEW.zip` in `/home/decodeux/Repos/remedy-history/zips`, read by the reviewer from the archive itself: SHA-256 `7044a4959459a9144a0b3030453ed74944ab4edad8125fd67c2eb2e6cc488a62`, `testzip()` clean, and the manifest inside it naming `package_status` READY_FOR_REVIEW, base `d0239fa348ca0685470d98549628a689ed288dc9` and head `32013a054ea65dce679cc65fe2cd01fe8d73a76d`, the accepted head. Closure preconditions 1 to 7 hold: every round passed and both findings F289 registered, R-1073 and R-1074, are resolved; the one full suite is green on the tree that ships; all six `integrity check` checks read `pass`; the Built State is current; the tree is clean and pushed; the self-use item `SU-033` was generated by F289's own Tier 2, run to its approval gate on `claude-cli` as job `da4583bff80a47f1` with no run defect, and its diff landed at `a604e82b`; and both reachability guards are green in the suite.
+ 
+ Gate: F289 R7 — the F289 round 7 entry: the closing round — the booking of round 6, the ledger rotation, the STATUS acceptance with its README pins and SU-033's consumption, and the pull request. VERDICT PASS. Reviewed over `439162d5`..`bb5212df` by the planner and reviewer of F289's first session, and booked by the planner and reviewer of F288's first session, who re-measured the range and the merged tree. THE RANGE IS 4 COMMITS, at `86cc74f3` 431, `5c408bbc` 7, `3b08c3ab` 36 and `bb5212df` 183 insertions by `git show --numstat`, each under the 500-line cap, each single-parent and each ending with the ordered trailer; no deviation was declared. The worker's one reading note, that it ran the round's selection without `tests/cli/test_golden_path.py` because the block's sentence about the simulation's count named the selection without it, is the block's ambiguity and not the worker's, and the reviewer ran the selection with the golden path, 512 passed at real exit code 0. THE TRANSPORT PROOF: the block copy and the seven payload copies, read at `86cc74f3`, equal the reviewer's originals byte for byte. THE BOOKING AND THE ROTATION: at `5c408bbc` the ledger and the plan equal the reviewer's simulation tree byte for byte; at `3b08c3ab` `scripts/rotate_live_review.py` moved 14 gate records and 2 finding pairs into `.agent/live_review_archive.md`, the open set reading empty before and after. THE ACCEPTANCE: at `bb5212df` `docs/roadmap/STATUS.md`, `README.md` and `scripts/self_use_queue.json` equal the reviewer's simulation tree byte for byte, F289's line reads `[x]` with its evidence pins, and SU-033's `consumed_by` reads `F289`; all six `integrity check` checks read `pass`. THE MERGE: pull request 285 was opened from `bb5212df`, both hosted CI jobs of run 36271818306 ended `success` on it, and it merged into `main` at F288's Open PR Gate as `db691093`, whose tree `git diff` reads identical to `bb5212df`'s; on that tree F288's reviewer read all six `integrity check` checks `pass` and `tests/docs/` with the golden path at 369 passed.
++
++Gate: F288 R1 — the F288 round 1 entry: the claim, the booking of F289's round 7, DECISION F288 D1, and the first half of T001 — the attempt id as the ping-pong run id, a test and a repair event per ping-pong round, the attempt id in the stream's envelope, and the readers of the two new names. VERDICT PASS. Re-derived over `db691093`..`c0553449` by the planner and reviewer of F288's first session, whose own readings are every one below. THE RANGE IS 7 COMMITS, at `edb28f5e` 381, `717a96ee` 146, `1896f177` 120, `97d84b33` 126, `f5c118f2` 322, `3ad8ec04` 261 and `c0553449` 278 insertions by `git show --numstat`, each under the 500-line cap, each single-parent and each ending with the ordered trailer. THE WORKER DECLARED THREE DEVIATIONS, and each stands: the block's C4 would have reached 583 insertions, so it landed as C4a and C4b under constraint 2's own split clause; the block ordered the job-runner test's stand-in monkeypatched onto `packages.orchestration.pingpong_job`, while `run_job` imports `run_pingpong` inside its body, so the worker patched `packages.orchestration.pingpong_loop` as every existing stand-in in that file does, which is the block's slip and is recorded in `.agent/prose_slips.md`; and the edge rounds (no test result, no builder output, an errored output, an output naming no file) are proven by direct tests of `_log_task_rounds` and `_repair_result` beside the end-to-end run, which the block's "covering at least" allowed. THE TRANSPORT PROOF: the block copy and the three payload copies, read at `edb28f5e` and `717a96ee`, equal the reviewer's originals byte for byte, and at `1896f177` the ledger, the decisions, STATUS, the plan and the context equal the reviewer's simulation tree byte for byte, the open set reading empty at `db691093` and at `1896f177`. THE CODE, read in the diff: `run_pingpong` adopts a non-empty `run_id` directly after its result is built; `run_job` mints `attempt_id` with `mint_run_id()` directly before `task_run_started`, passes it as `run_id`, and writes it on `task_run_started`, on each `task_round_repaired`, `task_round_tested` and `task_round_completed` in that order per round, and on every `task_run_completed` and `task_run_failed` of its ten end sites; `_safe_event_summary` adds `attempt_id` from metadata directly after `task_id` for the six kinds of `ATTEMPT_EVENT_KINDS` only; and `EVENT_NAMES`, `STREAM_EVENT_CATALOG`, `NARRATED_EVENTS` and the timeline's task block read the two new names as S5 and S6 order. THE TESTS: the reviewer's own serial run of the round's selection in the primary checkout at `c0553449` read 1763 passed and 1 skipped at real exit code 0, the base 1743 plus the 20 nodes the round adds, the skip being the D12 quarantine; `ruff check` over the twelve touched Python files read clean, and all six `integrity check` checks read `pass`. THE RED PROOFS: the worker's committed tool, re-run by the reviewer in a disposable worktree at `c0553449`, turned all thirteen ordered mutations red and restored every file byte-identical, its unmutated control green before and after; and two mutations of the reviewer's own, one attempt kind dropped from the envelope and the round's test event never written, went red at 3 and 1 failures against a green control. The worktree was removed.
+diff --git a/.agent/prose_slips.md b/.agent/prose_slips.md
+index e74455d95..6cc1c8f8d 100644
+--- a/.agent/prose_slips.md
++++ b/.agent/prose_slips.md
+@@ -1122,3 +1122,4 @@
+ 2026-09-26, F289 round 1 — S6 of the block ordered every paragraph of the self-use generator's module docstring other than item 3 kept, so its opening sentence still calls the doctor tier an honest None placeholder after the round built it; round 2 rewrites that sentence together with Tier 2.
+ 2026-09-26, F289 round 2 — S5 of the block barred a `remedy <group> <sub>` line naming an unshipped command in the new module's docstrings and comments, and constraint 4 allowed the round to correct only its own tests, while the advertised-commands guard reads every string of the source; the worker re-worded its own claim strings after that guard went red and declared it.
+ 2026-09-26, F289 round 4 — the reviewer's self-use script read the job's workspace for the staleness catalog after `run_next_self_use_item` returned, while the runner removes a finished job's worktree, so the reading recorded `NO WORKSPACE` and the reviewer took it from the job's branch instead.
++2026-09-27, F288 round 1 — THE TESTS of the block ordered the job-runner test's `run_pingpong` stand-in monkeypatched onto `packages.orchestration.pingpong_job`, while `run_job` imports `run_pingpong` inside its body, so a stand-in must replace it on `packages.orchestration.pingpong_loop`, as every existing stand-in in that test file does; the worker followed the file and declared it.
