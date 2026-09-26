@@ -270,9 +270,8 @@ class TestYesPathAnnouncesPlanApproved:
     def test_yes_path_writes_one_plan_approved_with_auto_yes_mode(self, tmp_path, monkeypatch):
         import subprocess
 
-        from tests.cli.test_plan_approval import _CLI, _env, _git_repo, _setup_llm_mocks, _shape_order
-
         from packages.orchestration.timeline import load_run_events
+        from tests.cli.test_plan_approval import _CLI, _env, _git_repo, _setup_llm_mocks, _shape_order
 
         repo = _git_repo(tmp_path)
         env = _env(tmp_path)
