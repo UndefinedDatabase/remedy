@@ -10,8 +10,12 @@ files, through a scratch vitest config that reads the WORKTREE's own sources via
 PRIMARY checkout's `apps/ui/node_modules` — DECISION F256 D6's route, since a worktree
 carries no `node_modules` of its own) first and last. BEFORE the ordered mutations, one
 CANARY mutation proves that route really reads the worktree's sources rather than the
-primary checkout's: it breaks an import no test can resolve, so a green run there would
-mean the route silently fell back to the primary tree's unmutated file.
+primary checkout's: it makes the worktree's `brainOntology.ts` throw at module load, a
+side effect no bundler can tree-shake away, so a green run there would mean the route
+silently fell back to the primary tree's unmutated file. (An earlier draft of this canary
+added an unresolvable IMPORT instead; measured empirically, esbuild's per-file transform
+elides an import whose named binding is never referenced, so that draft stayed green for
+the wrong reason and never proved anything — this is why the canary throws instead.)
 
 For each of the eleven ordered mutations below: edits the named file INSIDE the worktree
 (asserting its FROM text occurs exactly once), purges the worktree's `__pycache__`
@@ -174,14 +178,17 @@ VITEST_MUTATIONS: list[tuple[str, str, str, str]] = [
     ),
 ]
 
-# The canary (not one of the ordered eleven): breaks an import no vitest run can resolve,
-# so a run over the scratch config that stayed GREEN would mean it silently read the
-# PRIMARY checkout's unmutated file instead of the worktree's.
+# The canary (not one of the ordered eleven): a top-level THROW, not an import — measured
+# empirically against this worktree, esbuild's per-file transform elides an unresolvable
+# import whose binding is never referenced, so that shape stayed green for the wrong
+# reason. A throw is a side effect no tree-shaking step can drop, so a run over the
+# scratch config that stayed GREEN here would mean it silently read the PRIMARY
+# checkout's unmutated file instead of the worktree's.
 CANARY: tuple[str, str, str, str] = (
     "canary: proves the vitest route reads the WORKTREE's own sources",
     BRAIN_ONTOLOGY,
     "// Types and literal lookup tables the reducer counts on.",
-    'import { __f027_r7_canary__ } from "./__no_such_module_f027_r7__";\n'
+    'throw new Error("F027_R7_CANARY_PROOF_OF_WORKTREE_READ");\n'
     '// Types and literal lookup tables the reducer counts on.',
 )
 
