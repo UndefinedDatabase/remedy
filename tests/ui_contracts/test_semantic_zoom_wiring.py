@@ -72,7 +72,7 @@ def test_the_painter_dims_labels_and_rings_from_the_emphasis():
     assert "if (n.id === selectedId || n.id === emphasis.ringId) {" in src
     assert "(globalScale > 1.4 || emphasis.labelled.has(n.id))" in src
     label = src[src.index("(globalScale > 1.4 || emphasis.labelled.has(n.id))"):]
-    assert label.index("ctx.globalAlpha = dim;") < label.index("ctx.fillText(n.label")
+    assert label.index("ctx.globalAlpha = dim * vetoFade;") < label.index("ctx.fillText(n.label")
     assert "(emphasis.dimmed.has(target.id) ? ZOOM_DIM_ALPHA : 1)" in src
 
 

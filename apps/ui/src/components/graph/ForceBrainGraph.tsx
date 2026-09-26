@@ -9,7 +9,7 @@ import type { BrainLayoutData, BrainLayoutLink, BrainLayoutNode } from "./forceB
 import { useGraphSize } from "./useGraphSize";
 import { paintBrainNodeInMotion } from "./renderers/paintNode";
 import type { NodeMotion } from "./renderers/paintNode";
-import { pulseScaleAt } from "./renderers/nodeStates";
+import { NODE_STATE_TREATMENTS, pulseScaleAt } from "./renderers/nodeStates";
 import {
   STATE_TRANSITION_MS, brainNeedsAnimationFrames, layoutHasPulse, scheduleStateTransitions, transitionFrameAt,
 } from "./renderers/stateMotion";
@@ -25,6 +25,11 @@ import type { ZoomEmphasis } from "./zoomView";
 import styles from "./ForceBrainGraph.module.css";
 
 const reducedMotion = typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+/** DECISION F027 D8 (1) — the live canvas fades every node the veto's own
+ *  unreachable set names by this same factor, read from the vetoed
+ *  treatment's table rather than restated as a number here (S3). */
+const VETO_DOWNSTREAM_ALPHA = NODE_STATE_TREATMENTS.vetoed.downstreamAlpha;
 
 function clamp(value: number, lo: number, hi: number): number {
   return Math.min(hi, Math.max(lo, value));
@@ -131,13 +136,21 @@ function curvatureFor(linkId: string): number {
 interface D3ForceStrength { strength: (fn: (node: object) => number) => unknown; }
 interface D3ForceDistance { distance: (fn: (link: object) => number) => unknown; }
 
-export function ForceBrainGraph({ layout, selectedId, onSelectNode, zoom, emphasis, onZoomEvent }: {
+export function ForceBrainGraph({
+  layout, selectedId, onSelectNode, zoom, emphasis, onZoomEvent, vetoFaded, vetoHover,
+}: {
   layout: BrainLayoutData;
   selectedId: string | null;
   onSelectNode: (nodeId: string | null) => void;
   zoom: ZoomState;
   emphasis: ZoomEmphasis;
   onZoomEvent: (event: ZoomEvent) => void;
+  /** DECISION F027 D8 (1) — every task node this render fades to
+   *  `VETO_DOWNSTREAM_ALPHA` (`brainView.ts`'s `vetoFadedNodeIds`). */
+  vetoFaded: ReadonlySet<string>;
+  /** DECISION F027 D8 (2) — the hover text for every node that has one
+   *  (`brainView.ts`'s `vetoHoverTexts`). */
+  vetoHover: ReadonlyMap<string, string>;
 }) {
   const { containerRef, size } = useGraphSize();
   const pageVisible = usePageVisible();
@@ -240,7 +253,10 @@ export function ForceBrainGraph({ layout, selectedId, onSelectNode, zoom, emphas
     const birth = paintOf(birthProgressOf(n.id));
     // graph_spec §10: outside the focused branch, everything dims to 25%.
     const dim = emphasis.dimmed.has(n.id) ? ZOOM_DIM_ALPHA : 1;
-    const paint = { alpha: birth.alpha * dim, scale: birth.scale };
+    // DECISION F027 D8 (1): the veto's own fade multiplies with the zoom dim
+    // and never replaces it.
+    const vetoFade = vetoFaded.has(n.id) ? VETO_DOWNSTREAM_ALPHA : 1;
+    const paint = { alpha: birth.alpha * dim * vetoFade, scale: birth.scale };
     NODE_PAINTERS[n.kind](n, ctx, globalScale, paint, resolvedPalette.palette, motionOf(n));
 
     if (n.id === selectedId || n.id === emphasis.ringId) {
@@ -254,14 +270,14 @@ export function ForceBrainGraph({ layout, selectedId, onSelectNode, zoom, emphas
     // graph_spec §10, L1: the focused task's label is on at any camera factor.
     if (n.kind === "task" && n.label && (globalScale > 1.4 || emphasis.labelled.has(n.id))) {
       ctx.save();
-      ctx.globalAlpha = dim;
+      ctx.globalAlpha = dim * vetoFade;
       ctx.fillStyle = "#3a4f7e";
       ctx.font = `500 ${11 / globalScale}px -apple-system, sans-serif`;
       ctx.textAlign = "center"; ctx.textBaseline = "top";
       ctx.fillText(n.label, n.x, n.y + n.radius + 4);
       ctx.restore();
     }
-  }, [selectedId, birthProgressOf, resolvedPalette, motionOf, emphasis]);
+  }, [selectedId, birthProgressOf, resolvedPalette, motionOf, emphasis, vetoFaded]);
 
   const handleLinkCanvasObject = useCallback((link: object, ctx: CanvasRenderingContext2D) => {
     // force-graph rewrites source/target from ids into node refs in place
@@ -275,7 +291,9 @@ export function ForceBrainGraph({ layout, selectedId, onSelectNode, zoom, emphas
     const target = typeof l.target === "string" ? null : l.target;
     if (!source || !target) return;
     const progress = birthProgressOf(target.id);
-    const alpha = (progress ? progress.p : 1) * (emphasis.dimmed.has(target.id) ? ZOOM_DIM_ALPHA : 1);
+    // DECISION F027 D8 (1): a link into a faded (unreachable) node fades with it.
+    const alpha = (progress ? progress.p : 1) * (emphasis.dimmed.has(target.id) ? ZOOM_DIM_ALPHA : 1)
+      * (vetoFaded.has(target.id) ? VETO_DOWNSTREAM_ALPHA : 1);
 
     const sx = source.x, sy = source.y;
     const tx = target.x, ty = target.y;
@@ -308,7 +326,7 @@ export function ForceBrainGraph({ layout, selectedId, onSelectNode, zoom, emphas
     ctx.quadraticCurveTo(cx, cy, tx, ty);
     ctx.stroke();
     ctx.restore();
-  }, [birthProgressOf, emphasis, resolvedPalette]);
+  }, [birthProgressOf, emphasis, resolvedPalette, vetoFaded]);
 
   // graph_spec §10: a click is the same transition the wheel and the
   // breadcrumbs make; the shell's selection still opens the task's popover.
@@ -330,6 +348,19 @@ export function ForceBrainGraph({ layout, selectedId, onSelectNode, zoom, emphas
   const handleNodeHover = useCallback((node: object | null) => {
     hoveredIdRef.current = node ? (node as BrainLayoutNode).id : null;
   }, []);
+
+  // DECISION F027 D8 (2): the library's own tooltip, fed an ELEMENT rather
+  // than a string so the text reaches the DOM only through `.textContent` —
+  // never `innerHTML`, anywhere in this file. `null` for a node `vetoHover`
+  // does not name paints no tooltip at all, exactly as today.
+  const handleNodeLabel = useCallback((node: object): string | HTMLElement | null => {
+    const text = vetoHover.get((node as BrainLayoutNode).id);
+    if (text === undefined) return null;
+    const span = document.createElement("span");
+    span.className = styles.vetoTooltip;
+    span.textContent = text;
+    return span;
+  }, [vetoHover]);
   const handleZoom = useCallback(({ k }: { k: number }) => {
     const previous = lastZoomRef.current;
     lastZoomRef.current = k;
@@ -426,6 +457,7 @@ export function ForceBrainGraph({ layout, selectedId, onSelectNode, zoom, emphas
           maxZoom={4}
           onNodeClick={handleNodeClick}
           onNodeHover={handleNodeHover}
+          nodeLabel={handleNodeLabel}
           onZoom={handleZoom}
           onBackgroundClick={() => onSelectNode(null)}
           nodeCanvasObject={handleNodeCanvasObject}
