@@ -22074,3 +22074,21 @@ the record; F287's file names R-1055 as the finding whose practical half it take
 F285's own; this amendment's additions to R-1058 are recorded in DECISION D4 instead.
 REVERSE: Delete `docs/roadmap/features/T3_F287.md` and its STATUS line and lower the counters, or
 edit F287's goal; nothing in the ledger needs reversing.
+
+## DECISION amend0926-decisions-selfuse D7 (2026-09-26, operator amendment, Part 0) — pull request 283 is not merged, after one rerun of its only red check
+CONTEXT: At the Open PR Gate the one open closure pull request was 283, "F027 — Task veto", from
+`feature/f027-task-veto`. Its hosted CI run 36232909016 read `ci (3.12)` success and `ci (3.10)`
+failure. The only failing test was
+`tests/orchestration/test_diff_parser.py::test_the_huge_diff_parses_inside_the_recorded_perf_budget`,
+a wall-clock ceiling: parsing ten thousand diff lines took 0.502 seconds against a ceiling of 0.5
+seconds. F027 changes neither the diff parser nor that test, and the same test passed on `main`'s
+own run after pull request 282.
+CHOSEN: The failing job was rerun once, because a timing overrun of two milliseconds on one
+interpreter reads as runner noise and a green merge first would have kept `main`'s history in
+order. The rerun failed the same test again, at 0.527 seconds, with the other stages green. The
+amendment's rule is that a red check is never merged, so pull request 283 stays open and this
+amendment branches from `origin/main` at `557cbbcc`. Two overruns in a row on Python 3.10 mean the
+ceiling no longer fits that runner; the next loop session owns the repair of that test or of the
+ceiling, and the merge of pull request 283 after it.
+REVERSE: Nothing was changed on pull request 283 except the rerun, which cannot be undone and needs
+no undoing; delete this paragraph.
