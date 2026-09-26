@@ -12,19 +12,18 @@ inbox and never executed on its own (`docs/roadmap/features/T5_F027.md`).
 
 ## Current Step
 
-ROUND 8: book round 7, resolve R-1068, record DECISION F027 D8, and
-finish T003's page: the unreachable set fades on the canvas, a vetoed or
-unreachable node's hover text carries the reason or the vetoing task,
-the detail popover shows a Veto or Unreachable section with a link to
-each task on the other side, and a "Veto task" form sends the veto
-through the write door.
+ROUND 9: book round 8, register and repair R-1069 and R-1070, record
+DECISION F027 D9, and land the diamond end-to-end: a veto filed through a live write
+door on a job paused mid-run, the run finished through the real CLI, and
+both answers to the replan proposal carried to their effects.
 
 ## Next Steps
 
-1. The diamond end-to-end through the door and the runner.
-2. The closure sequence.
+1. The closure sequence: the one full suite, the evidence, the review
+   package, the status line and the pull request.
 
 ## Risks
 
-Every guard that reads a changed source must be in a round's selection;
-this round's is the whole of `tests/ui_contracts/`. Open findings: 0.
+The new end-to-end runs the real CLI three times; it must stay well
+inside the standard stage's budget. Open findings: 2 — R-1069 and
+R-1070, both repaired this round.

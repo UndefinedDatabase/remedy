@@ -22401,3 +22401,44 @@ HOW TO REVERSE: delete the fade and the hover wiring in `ForceBrainGraph.tsx` wi
 the helpers that feed them, the popover's Veto and Unreachable sections and its task link,
 `TaskVetoForm.tsx`, `vetoSend.ts`, `vetoView.ts`, the two assumption-log rows, their tests, and this
 paragraph.
+
+## DECISION F027 D9 — the diamond end-to-end files the veto on a job the task cap paused after its first task, through a live write door, and runs it to its end through the real CLI both ways: accepting the smaller scope completes it, and a replan creates a follow-up job that nothing runs (2026-09-26)
+
+CONTEXT: T5_F027.md's T003 asks for "the diamond end-to-end (veto one branch mid-run: strike renders,
+other branch completes, decision open, terminal blocked lists the veto)", and its Acceptance for both
+menu options' documented effects and the reason verbatim in audit, report and hover. Measured at
+`46305052` in the reviewer's scratch tree, with an approved diamond plan A, B and C after A, D after B
+and C, and the fake providers: `job run <id> --tasks 1` exits 0 with the job `paused`, A applied and
+the rest pending; a `job.veto-task` POST for B through a live UI server answers 200 with outcome
+`vetoed` and `unreachable` naming D, the dashboard's `vetoes` section carries the reason verbatim, and
+`decisions` holds an open `veto:<request id>` card of type `replan_proposal`; `job run <id> --tasks 0`
+exits 0 with the job `blocked`, A and C applied, B vetoed, D skipped, the error
+`all_remaining_work_vetoed: vetoed <B>; unreachable <D>`, and the report line `Vetoed by <actor>:
+<reason>` on its standard output; `events-since` holds one `task_vetoed` frame for B; a
+`decision.resolve` of the card with `accept_reduced_scope` answers 200, and the next `job run <id>`
+exits 0 with the job `completed` and `veto_terminal` settled; answering `replan_follow_up` on a second
+such job answers 200 with a follow-up job id, whose record is pending with no tasks and a `replan_of`
+naming the job, the task and the request, while the original job's next run completes it and the
+follow-up stays pending. No test yet drives the real CLI and a live door together for a veto;
+`tests/ui_server/test_task_edit_e2e_live.py` is the pattern. A fake provider call cannot be
+interrupted from a subprocess.
+
+CHOSEN: (1) ONE NEW FILE, `tests/ui_server/test_task_veto_e2e_live.py`, marked `subprocess`, keeping
+its own copies of the live helpers as that pattern's header rule asks. (2) THE ACCEPT PATH is the
+measured sequence above: the first run is capped at one task, so the veto lands on a job that has
+started and not ended; the second run ends blocked; the answer comes through the live door; the third
+run completes. (3) THE REPLAN PATH vetoes before the first run, which ends blocked, answers
+`replan_follow_up` through the door, and proves the follow-up's record, the original's completion on
+its next run, and that nothing ran the follow-up. (4) THE REASON carries `<`, `&` and double quotes and
+is asserted byte for byte in the door's answer, the dashboard section, the `task_vetoed` event's
+metadata, the decision's summary and payload, and the report line. (5) A veto landing while a provider
+call runs stays proved in-process by `TestInFlightVetoOfTheRunningTask` in
+`tests/orchestration/test_task_veto_runner.py`, which drives the same diamond; the hover stays proved
+by `vetoView.test.ts` over the section this test reads.
+
+ALTERNATIVES: interrupting a live provider call from the test, rejected because the fake provider
+answers at once and a sleeping stand-in would put timing into a test that is otherwise exact; a
+browser in the end-to-end, rejected because the page's hover reads only the dashboard section this
+test pins, and the reviewer's render already read the page.
+
+HOW TO REVERSE: delete the test file and this paragraph.
