@@ -455,3 +455,36 @@ class TestRestoreTree:
                 W.restore_tree(h, before)
         finally:
             W.remove(h)
+
+    def test_restore_replaces_a_directory_standing_where_the_tree_holds_a_file(self, repo):
+        """R-1066: a vetoed attempt turned `a.txt` into a directory; restore still converges."""
+        h = W.create("job1", repo)
+        try:
+            before = W.write_tree(h)
+            target = Path(h.path) / "a.txt"
+            target.unlink()
+            target.mkdir()
+            (target / "b.txt").write_text("nested\n")
+            restored = W.restore_tree(h, before)
+            assert restored == ["a.txt", "a.txt/b.txt"]
+            assert target.is_file()
+            assert target.read_text() == "v1\n"
+            assert W.write_tree(h) == before
+        finally:
+            W.remove(h)
+
+    def test_restore_converts_an_oserror_to_worktree_error_naming_the_path(self, repo, monkeypatch):
+        """R-1066: an OSError from restore_tree's own filesystem write is never let through raw."""
+        h = W.create("job1", repo)
+        try:
+            before = W.write_tree(h)
+            (Path(h.path) / "a.txt").write_text("changed\n")
+
+            def _boom(self, data):
+                raise OSError("disk full")
+
+            monkeypatch.setattr(Path, "write_bytes", _boom)
+            with pytest.raises(WorktreeError, match="a.txt"):
+                W.restore_tree(h, before)
+        finally:
+            W.remove(h)

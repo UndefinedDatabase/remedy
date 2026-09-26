@@ -667,38 +667,47 @@ def restore_tree(handle: WorktreeHandle, tree: str) -> list[str]:
             raise WorktreeError(
                 f"cannot restore {rel_path!r}: a submodule entry (160000) is refused")
 
-        if not mode:
-            # `tree` holds no entry here: delete it, and any directory the deletion
-            # leaves empty, up to (but never including) the worktree root.
-            if abs_path.is_symlink() or abs_path.is_file():
-                abs_path.unlink()
-            elif abs_path.is_dir():
-                shutil.rmtree(abs_path)
-            parent = abs_path.parent
-            while parent != root and parent.is_dir() and not any(parent.iterdir()):
-                parent.rmdir()
-                parent = parent.parent
-            restored.append(rel_path)
-            continue
+        try:
+            if not mode:
+                # `tree` holds no entry here: delete it, and any directory the deletion
+                # leaves empty, up to (but never including) the worktree root.
+                if abs_path.is_symlink() or abs_path.is_file():
+                    abs_path.unlink()
+                elif abs_path.is_dir():
+                    shutil.rmtree(abs_path)
+                parent = abs_path.parent
+                while parent != root and parent.is_dir() and not any(parent.iterdir()):
+                    parent.rmdir()
+                    parent = parent.parent
+                restored.append(rel_path)
+                continue
 
-        data = blob_at(handle, tree, rel_path)
-        if data is None:
-            raise WorktreeError(f"blob for {rel_path!r} at {tree} could not be read")
-        abs_path.parent.mkdir(parents=True, exist_ok=True)
-        if mode == "120000":
-            if abs_path.is_symlink() or abs_path.exists():
-                abs_path.unlink()
-            abs_path.symlink_to(data.decode("utf-8"))
-        else:
-            if abs_path.is_symlink():
-                abs_path.unlink()
-            abs_path.write_bytes(data)
-            current_mode = os.stat(abs_path).st_mode
-            if mode == "100755":
-                os.chmod(abs_path, current_mode | 0o111)
+            data = blob_at(handle, tree, rel_path)
+            if data is None:
+                raise WorktreeError(f"blob for {rel_path!r} at {tree} could not be read")
+            if abs_path.is_dir() and not abs_path.is_symlink():
+                # R-1066: a vetoed attempt replaced this file (or symlink) with a
+                # directory. Whatever stands here that is not the file `tree` holds
+                # is removed before the write, so the restore converges instead of
+                # raising `IsADirectoryError` out of `write_bytes`/`symlink_to`.
+                shutil.rmtree(abs_path)
+            abs_path.parent.mkdir(parents=True, exist_ok=True)
+            if mode == "120000":
+                if abs_path.is_symlink() or abs_path.exists():
+                    abs_path.unlink()
+                abs_path.symlink_to(data.decode("utf-8"))
             else:
-                os.chmod(abs_path, current_mode & ~0o111)
-        restored.append(rel_path)
+                if abs_path.is_symlink():
+                    abs_path.unlink()
+                abs_path.write_bytes(data)
+                current_mode = os.stat(abs_path).st_mode
+                if mode == "100755":
+                    os.chmod(abs_path, current_mode | 0o111)
+                else:
+                    os.chmod(abs_path, current_mode & ~0o111)
+            restored.append(rel_path)
+        except OSError as exc:
+            raise WorktreeError(f"restore_tree failed at {rel_path!r}: {exc}") from exc
 
     after = write_tree(handle)
     if after != tree:
