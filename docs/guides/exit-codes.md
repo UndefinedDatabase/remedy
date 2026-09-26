@@ -58,6 +58,7 @@ Every command not listed here exits only `0`, `1` or `2`.
 | `remedy job plan-show` | 3 |
 | `remedy job plan-edit-task` | 3 |
 | `remedy job edit-task` | 3 |
+| `remedy job veto-task` | 3 |
 | `remedy job plan-delete-task` | 3 |
 | `remedy job plan-reorder` | 3 |
 | `remedy job plan-merge-tasks` | 3 |

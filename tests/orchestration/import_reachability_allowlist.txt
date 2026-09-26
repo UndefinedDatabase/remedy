@@ -28,6 +28,7 @@ apps.cli.commands.job_context_cmd
 apps.cli.commands.job_pause_cmd
 apps.cli.commands.job_plan_cmd
 apps.cli.commands.job_stop_cmd
+apps.cli.commands.job_veto_cmd
 apps.cli.commands.memory
 apps.cli.commands.mission_cmd
 apps.cli.commands.patch

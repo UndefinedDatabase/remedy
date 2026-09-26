@@ -581,6 +581,28 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         related=("job.plan-show", "job.plan-edit-task"),
         exit_codes=(0, 1, 2, 3),
     ),
+    # ── job veto-task (F027 T003, DECISION F027 D5) ──────────────────────
+    CommandEntry(
+        command_id="job.veto-task",
+        group_id="job",
+        subcommand="veto-task",
+        description="Veto one task of a job, so it and everything that depends on it will not "
+                    "run (F027).",
+        action_class="write_metadata",
+        args=(
+            _JOB_ID,
+            ArgDef("task", "The task: its id in the job, or its id in the job plan, as "
+                   "`remedy job plan-show` prints them"),
+            ArgDef("--reason", "Why the job plan's task is being vetoed (required)",
+                   required=True, is_option=True),
+            _JSON_OPT,
+        ),
+        supports_json=True,
+        may_mutate_repo=False,
+        may_execute_commands=False,
+        related=("job.pause", "job.plan-show", "decision.resolve"),
+        exit_codes=(0, 1, 2, 3),
+    ),
     CommandEntry(
         command_id="job.plan-delete-task",
         group_id="job",
@@ -2679,6 +2701,8 @@ UI_EXPOSED_COMMANDS: frozenset[str] = frozenset({
     "job.plan-edit-acceptance",
     # DECISION F026 D2: the runtime task edit, through `task_edit_runtime.edit_task_at_runtime`.
     "job.edit-task",
+    # DECISION F027 D5: the task veto, through `task_veto.veto_task_command`.
+    "job.veto-task",
 })
 
 
