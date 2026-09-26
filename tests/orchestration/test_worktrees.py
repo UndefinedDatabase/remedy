@@ -4,6 +4,7 @@ Temporary git repositories only. No provider is ever invoked.
 """
 from __future__ import annotations
 
+import os
 import subprocess
 from pathlib import Path
 
@@ -323,3 +324,134 @@ class TestRecover:
         finally:
             W.remove(rec)
         assert not path.exists()
+
+
+# ---------------------------------------------------------------------------
+# restore_tree (F027 D2 (3))
+# ---------------------------------------------------------------------------
+
+class TestRestoreTree:
+    def test_restore_reverts_a_modified_file(self, repo):
+        h = W.create("job1", repo)
+        try:
+            before = W.write_tree(h)
+            (Path(h.path) / "a.txt").write_text("changed\n")
+            restored = W.restore_tree(h, before)
+            assert restored == ["a.txt"]
+            assert (Path(h.path) / "a.txt").read_text() == "v1\n"
+            assert W.write_tree(h) == before
+        finally:
+            W.remove(h)
+
+    def test_restore_removes_an_added_file(self, repo):
+        h = W.create("job1", repo)
+        try:
+            before = W.write_tree(h)
+            (Path(h.path) / "new.txt").write_text("new\n")
+            restored = W.restore_tree(h, before)
+            assert restored == ["new.txt"]
+            assert not (Path(h.path) / "new.txt").exists()
+            assert W.write_tree(h) == before
+        finally:
+            W.remove(h)
+
+    def test_restore_recreates_a_deleted_file(self, repo):
+        h = W.create("job1", repo)
+        try:
+            before = W.write_tree(h)
+            (Path(h.path) / "a.txt").unlink()
+            restored = W.restore_tree(h, before)
+            assert restored == ["a.txt"]
+            assert (Path(h.path) / "a.txt").read_text() == "v1\n"
+            assert W.write_tree(h) == before
+        finally:
+            W.remove(h)
+
+    def test_restore_recreates_an_executable_path(self, repo):
+        h = W.create("job1", repo)
+        try:
+            script = Path(h.path) / "run.sh"
+            script.write_text("#!/bin/sh\necho hi\n")
+            script.chmod(0o755)
+            _git(Path(h.path), "add", "-A")
+            _git(Path(h.path), "commit", "-qm", "add script")
+            before = W.write_tree(h)
+            script.chmod(0o644)
+            restored = W.restore_tree(h, before)
+            assert restored == ["run.sh"]
+            assert os.access(script, os.X_OK)
+            assert W.write_tree(h) == before
+        finally:
+            W.remove(h)
+
+    def test_restore_recreates_a_symbolic_link(self, repo):
+        h = W.create("job1", repo)
+        try:
+            link = Path(h.path) / "link.txt"
+            link.symlink_to("a.txt")
+            _git(Path(h.path), "add", "-A")
+            _git(Path(h.path), "commit", "-qm", "add link")
+            before = W.write_tree(h)
+            link.unlink()
+            link.write_text("not a link anymore\n")
+            restored = W.restore_tree(h, before)
+            assert restored == ["link.txt"]
+            assert link.is_symlink()
+            assert os.readlink(link) == "a.txt"
+            assert W.write_tree(h) == before
+        finally:
+            W.remove(h)
+
+    def test_restore_removes_a_nested_directory_left_empty(self, repo):
+        h = W.create("job1", repo)
+        try:
+            before = W.write_tree(h)
+            nested = Path(h.path) / "sub" / "dir"
+            nested.mkdir(parents=True)
+            (nested / "f.txt").write_text("x\n")
+            restored = W.restore_tree(h, before)
+            assert restored == ["sub/dir/f.txt"]
+            assert not (Path(h.path) / "sub").exists()
+            assert W.write_tree(h) == before
+        finally:
+            W.remove(h)
+
+    def test_restore_is_a_noop_when_already_at_the_target(self, repo):
+        h = W.create("job1", repo)
+        try:
+            before = W.write_tree(h)
+            restored = W.restore_tree(h, before)
+            assert restored == []
+            assert W.write_tree(h) == before
+        finally:
+            W.remove(h)
+
+    def test_restore_refuses_a_submodule_entry(self, repo, monkeypatch):
+        h = W.create("job1", repo)
+        try:
+            before = W.write_tree(h)
+            (Path(h.path) / "a.txt").write_text("changed\n")
+            monkeypatch.setattr(W, "mode_at", lambda *a, **kw: "160000")
+            with pytest.raises(WorktreeError, match="submodule"):
+                W.restore_tree(h, before)
+        finally:
+            W.remove(h)
+
+    def test_restore_raises_when_the_result_does_not_match_the_target(self, repo, monkeypatch):
+        """The equality check: a restore that leaves the tree wrong is never trusted silently."""
+        h = W.create("job1", repo)
+        try:
+            before = W.write_tree(h)
+            (Path(h.path) / "a.txt").write_text("changed\n")
+            real_write_tree = W.write_tree
+            calls = {"n": 0}
+
+            def _fake(handle):
+                calls["n"] += 1
+                return real_write_tree(handle) if calls["n"] == 1 else "0" * 40
+
+            monkeypatch.setattr(W, "write_tree", _fake)
+            with pytest.raises(WorktreeError, match="did not converge"):
+                W.restore_tree(h, before)
+        finally:
+            W.remove(h)

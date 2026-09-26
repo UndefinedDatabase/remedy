@@ -638,6 +638,75 @@ def blob_at(handle: WorktreeHandle, tree: str, rel_path: str) -> bytes | None:
     return proc.stdout
 
 
+def restore_tree(handle: WorktreeHandle, tree: str) -> list[str]:
+    """Return the worktree to ``tree`` EXACTLY, without touching the index, ``HEAD`` or any
+    ref (F027 D2 (3)).
+
+    For every path ``changed_files_between(handle, tree, write_tree(handle))`` names: a path
+    ``tree`` holds is written back with ``tree``'s bytes (``blob_at``) and its mode —
+    ``100755`` executable, ``100644`` not, a ``120000`` entry recreated as that symbolic
+    link — and a ``160000`` entry (a submodule) is refused outright; a path ``tree`` lacks
+    is deleted, along with every directory the deletion leaves empty, up to (never
+    including) the worktree root. ``write_tree(handle)`` must then equal ``tree``, or this
+    raises ``WorktreeError`` rather than leave the caller trusting a silent mismatch.
+
+    Returns the sorted paths restored.
+    """
+    import shutil
+
+    before = write_tree(handle)
+    changed = changed_files_between(handle, tree, before)
+    root = Path(handle.path).resolve()
+    restored: list[str] = []
+
+    for rel_path in changed:
+        abs_path = root / rel_path
+        mode = mode_at(handle, tree, rel_path)
+
+        if mode == "160000":
+            raise WorktreeError(
+                f"cannot restore {rel_path!r}: a submodule entry (160000) is refused")
+
+        if not mode:
+            # `tree` holds no entry here: delete it, and any directory the deletion
+            # leaves empty, up to (but never including) the worktree root.
+            if abs_path.is_symlink() or abs_path.is_file():
+                abs_path.unlink()
+            elif abs_path.is_dir():
+                shutil.rmtree(abs_path)
+            parent = abs_path.parent
+            while parent != root and parent.is_dir() and not any(parent.iterdir()):
+                parent.rmdir()
+                parent = parent.parent
+            restored.append(rel_path)
+            continue
+
+        data = blob_at(handle, tree, rel_path)
+        if data is None:
+            raise WorktreeError(f"blob for {rel_path!r} at {tree} could not be read")
+        abs_path.parent.mkdir(parents=True, exist_ok=True)
+        if mode == "120000":
+            if abs_path.is_symlink() or abs_path.exists():
+                abs_path.unlink()
+            abs_path.symlink_to(data.decode("utf-8"))
+        else:
+            if abs_path.is_symlink():
+                abs_path.unlink()
+            abs_path.write_bytes(data)
+            current_mode = os.stat(abs_path).st_mode
+            if mode == "100755":
+                os.chmod(abs_path, current_mode | 0o111)
+            else:
+                os.chmod(abs_path, current_mode & ~0o111)
+        restored.append(rel_path)
+
+    after = write_tree(handle)
+    if after != tree:
+        raise WorktreeError(
+            f"restore_tree did not converge: expected tree {tree}, got {after}")
+    return sorted(restored)
+
+
 def write_tree_diff(
     handle: WorktreeHandle, before: str, after: str, out_path: str | Path,
 ) -> dict[str, Any]:

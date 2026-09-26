@@ -398,6 +398,21 @@ class TestVetoTaskCommand:
             control_root_path=control)
         assert second["outcome"] == "refused"
         assert second["code"] == "task_already_vetoed"
+        assert second["detail"] == "the task is already vetoed"
+        assert second["request_id"] == first["request_id"]
+
+    def test_a_vetoed_status_with_no_entry_answers_empty_request_id_and_repairs_nothing(
+            self, control):
+        """R-1065: a task whose STATUS reads `vetoed` but which owns no control-file entry
+        — an edge the gate still refuses — repairs nothing and names no request id."""
+        tasks = [flight_task("A", status=pj.TASK_VETOED)]
+        job = _job(tasks)
+        result = tv.veto_task_command(
+            job, task_id=tasks[0].task_id, reason="stop", actor="a", control_root_path=control)
+        assert result["outcome"] == "refused"
+        assert result["code"] == "task_already_vetoed"
+        assert result["request_id"] == ""
+        assert _read_events(job.job_id) == []
 
     def test_nothing_is_written_by_a_refusal(self, control):
         tasks = [flight_task("A")]
@@ -485,6 +500,29 @@ class TestTaskVetoedEvent:
         events = [e for e in _read_events(job.job_id) if e["event"] == "task_vetoed"]
         assert len(events) == 1
 
+    def test_the_gate_route_repairs_a_missing_event_too(self, control):
+        """R-1065's actual bug: an entry recorded directly — its event never written —
+        used to reach the GATE's `task_already_vetoed` refusal (no race involved) and
+        answer with no repair. Now that route repairs it exactly as the race route does."""
+        tasks = [flight_task("A")]
+        job = _job(tasks)
+        veto, created = tv.record_task_veto(
+            JOB, tasks[0].task_id, "direct reason", "alice", pj.TASK_PENDING,
+            control_root_path=control)
+        assert created is True
+        assert _read_events(job.job_id) == []
+
+        result = tv.veto_task_command(
+            job, task_id=tasks[0].task_id, reason="second try", actor="bob",
+            control_root_path=control)
+        assert result["outcome"] == "refused"
+        assert result["code"] == "task_already_vetoed"
+        assert result["request_id"] == veto.request_id
+
+        events = [e for e in _read_events(job.job_id) if e["event"] == "task_vetoed"]
+        assert len(events) == 1
+        assert events[0]["metadata"]["reason"] == "direct reason"
+
     def test_no_second_event_on_a_repeated_veto(self, control):
         tasks = [flight_task("A")]
         job = _job(tasks)
@@ -526,8 +564,10 @@ class TestTaskVetoedEvent:
         result = tv.veto_task_command(
             job, task_id=tasks[0].task_id, reason="loser reason", actor="loser",
             control_root_path=control)
-        assert result["outcome"] == "task_already_vetoed"
+        assert result["outcome"] == "refused"
+        assert result["code"] == "task_already_vetoed"
 
         events = [e for e in _read_events(job.job_id) if e["event"] == "task_vetoed"]
         assert len(events) == 1
         assert events[0]["metadata"]["reason"] == "winner reason"
+        assert events[0]["metadata"]["request_id"] == result["request_id"]

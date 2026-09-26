@@ -166,13 +166,18 @@ def validate_veto_reason(reason: Any) -> str:
 
 def veto_refusal(job_state: Any, task_status: Any, *, already_vetoed: bool
                  ) -> TaskVetoRefused | None:
-    """Pure, no I/O. None when ``job_state``/``task_status`` admit a veto."""
+    """Pure, no I/O. None when ``job_state``/``task_status`` admit a veto.
+
+    R-1065's repair: the ``task_already_vetoed`` detail says the task is already vetoed —
+    never the status it happened to carry — because the command answers this refusal from
+    an entry's own request id, not from the gate's read of the task's current status.
+    """
     state = _state_str(job_state)
     status = _state_str(task_status)
     if state in _JOB_TERMINAL_STATES:
         return TaskVetoRefused("job_not_vetoable", f"the job is {state!r}")
     if already_vetoed or status == TASK_VETOED:
-        return TaskVetoRefused("task_already_vetoed", f"the task is already {status!r}")
+        return TaskVetoRefused("task_already_vetoed", "the task is already vetoed")
     if status not in VETOABLE_TASK_STATUSES:
         return TaskVetoRefused("task_not_vetoable", f"the task is {status!r}")
     return None
@@ -440,6 +445,26 @@ def _maybe_repair_task_vetoed_event(job: Any, veto: TaskVeto, unreachable: list[
         _write_task_vetoed_event(job, veto, unreachable)
 
 
+def _already_vetoed_refusal(job: Any, task_id: str, veto: TaskVeto | None,
+                            control_root_path: Path | None) -> dict[str, Any]:
+    """R-1065's repair: the ONE shape ``task_already_vetoed`` answers with, whether the gate
+    read an existing entry or ``record_task_veto`` just lost a create-only race for one.
+
+    When an entry exists, its audit event is repaired first — the one write a refusal may
+    make — and its ``request_id`` travels with the refusal. A task whose status merely
+    READS ``vetoed`` with no entry to point at (``veto`` is None) repairs nothing and
+    answers ``request_id`` "": there is nothing recorded to repair or to name.
+    """
+    if veto is None:
+        return {"outcome": "refused", "code": "task_already_vetoed",
+                "detail": "the task is already vetoed", "task_id": task_id, "request_id": ""}
+    unreachable = _event_unreachable(job, veto, control_root_path)
+    _maybe_repair_task_vetoed_event(job, veto, unreachable)
+    return {"outcome": "refused", "code": "task_already_vetoed",
+            "detail": "the task is already vetoed", "task_id": task_id,
+            "request_id": veto.request_id}
+
+
 # ---------------------------------------------------------------------------
 # S7 — the command effect, shared by the CLI and the door
 # ---------------------------------------------------------------------------
@@ -449,9 +474,12 @@ def veto_task_command(job: Any, *, task_id: str, reason: str, actor: str,
                       control_root_path: Path | None = None) -> dict[str, Any]:
     """Veto one task of ``job``, a loaded ``JobPlan``. Never raises for a refusal, and never
     writes ``job.json``: it answers ``{"outcome": "refused", "code", "detail", "task_id"}``,
-    checking in order the reason, an unknown task id, and the gate. Otherwise it records the
-    veto and answers ``vetoed`` with the unreachable set, or — a race lost against another
-    veto of the same task — ``task_already_vetoed`` with the existing entry's request id.
+    checking in order the reason, an unknown task id, and the gate. An already-vetoed task —
+    whether the gate's own read found the entry, or ``record_task_veto`` lost a create-only
+    race against another veto of the same task — answers the SAME refused shape (R-1065):
+    ``code`` ``task_already_vetoed``, a ``request_id`` naming the entry that won, and its
+    missing audit event repaired first. Otherwise it records the veto and answers ``vetoed``
+    with the unreachable set.
     """
     try:
         validated_reason = validate_veto_reason(reason)
@@ -464,24 +492,28 @@ def veto_task_command(job: Any, *, task_id: str, reason: str, actor: str,
         return {"outcome": "refused", "code": "unknown_task",
                 "detail": f"unknown task {task_id!r}", "task_id": task_id}
 
-    already_vetoed = any(
-        v.task_id == task_id
-        for v in vetoed_tasks(job.job_id, control_root_path=control_root_path))
-    refusal = veto_refusal(getattr(job, "state", ""), task.status, already_vetoed=already_vetoed)
+    existing = next(
+        (v for v in vetoed_tasks(job.job_id, control_root_path=control_root_path)
+         if v.task_id == task_id), None)
+    refusal = veto_refusal(getattr(job, "state", ""), task.status,
+                           already_vetoed=existing is not None)
     if refusal is not None:
+        if refusal.code == "task_already_vetoed":
+            return _already_vetoed_refusal(job, task_id, existing, control_root_path)
         return {"outcome": "refused", "code": refusal.code, "detail": refusal.detail,
                 "task_id": task_id}
 
     veto, created = record_task_veto(job.job_id, task_id, validated_reason, actor,
                                      task.status, control_root_path=control_root_path)
-    # Whichever side of the create-only race we landed on, the SAME entry now exists — the
-    # loser of a race repairs the winner's event if the winner's own write failed (S8).
+    if not created:
+        # A create-only race was lost: the SAME entry now exists under someone else's
+        # write. Answer it exactly as the gate's own route does (R-1065).
+        return _already_vetoed_refusal(job, task_id, veto, control_root_path)
+
+    # We won the race: this is the FIRST time this entry exists, so its audit event is
+    # written here (never merely "repaired" — there is nothing yet to repair).
     unreachable = _event_unreachable(job, veto, control_root_path)
     _maybe_repair_task_vetoed_event(job, veto, unreachable)
-
-    if not created:
-        return {"outcome": "task_already_vetoed", "request_id": veto.request_id,
-                "task_id": task_id}
 
     return {"outcome": "vetoed", "request_id": veto.request_id, "task_id": task_id,
             "reason": veto.reason, "actor": veto.actor, "status_at_veto": veto.status_at_veto,
