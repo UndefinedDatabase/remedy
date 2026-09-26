@@ -20,6 +20,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import packages.orchestration.long_run_executor as lre
 from packages.core.models import RunState
 from packages.orchestration import task_veto as tv
 from packages.orchestration.long_run_executor import (
@@ -93,6 +94,31 @@ class TestReadyTasksVetoedIds:
         ready = ready_tasks(job, 10, vetoed_ids=(a_id,))
 
         assert set(ready) == {b_id, c_id}          # A's own completion withholds nothing
+
+    def test_a_vetoed_seed_joins_the_downstream_computation(self, monkeypatch):
+        """White-box: a vetoed seed alone is already unready by DAG completion
+        rules (B's own dependent never becomes ready while B stays PENDING), so
+        the black-box ready-list cannot by itself prove the seed reached
+        ``blocked_downstream`` — this pins the CALL, exactly the way the paused
+        seeds are already proven to join it."""
+        job = make_diamond_job()
+        a_task = task_by_planned_id(job, "A")
+        a_task.status = RunState.COMPLETED
+        b_id = str(task_by_planned_id(job, "B").task_id)
+
+        calls: list[set] = []
+        real_blocked_downstream = lre.blocked_downstream
+
+        def spy(tasks, blocked_ids):
+            calls.append(set(blocked_ids))
+            return real_blocked_downstream(tasks, blocked_ids)
+
+        monkeypatch.setattr(lre, "blocked_downstream", spy)
+
+        lre.ready_tasks(job, 10, vetoed_ids=(b_id,))
+
+        assert calls, "blocked_downstream must run when a veto is the only seed"
+        assert b_id in calls[0]
 
 
 # ---------------------------------------------------------------------------
