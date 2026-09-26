@@ -1,30 +1,29 @@
-# Live Review — F289 Self-use sources completion
+# Live Review — F288 Event stream completeness & prompt nodes in the live graph
 
-> Round-by-round review record, re-headed at the F289 claim per
-> docs/agents/planner_reviewer_prompt.md §1. The heading this replaces named F027, whose STATUS
-> line went `[x]` at `49958f24` and whose pull request 283 merged into `main` at the reviewer's
-> Open PR Gate under docs/agents/self_drive_protocol.md, as `d0239fa3`, after both hosted CI jobs
-> of run 36245213292 ended `success` on `3bb9fcdb`, the merge of `main` into the branch that
-> operator amendment amend0926-decisions-selfuse made. `3bb9fcdb` is the second parent of
-> `d0239fa3`. F027's round 14, its closing round, was reviewed after its own handback, so its gate
-> entry is appended at the end of this record by F289's claim, followed by the registration of
-> R-1073, the timing ceiling DECISION amend0926-decisions-selfuse D7 left to this session. Only
-> the heading, this paragraph and the Steps section below are rewritten; everything from the
-> Findings heading to the end of the file as it stood at `d0239fa3` is carried forward
+> Round-by-round review record, re-headed at the F288 claim per
+> docs/agents/planner_reviewer_prompt.md §1. The heading this replaces named F289, whose STATUS
+> line went `[x]` at `bb5212df` and whose pull request 285 merged into `main` at the reviewer's
+> Open PR Gate under docs/agents/self_drive_protocol.md, as `db691093`, after both hosted CI jobs
+> of run 36271818306 ended `success` on `bb5212df`. `bb5212df` is the second parent of
+> `db691093`, and the two trees are identical. F289's round 7, its closing round, was reviewed
+> after its own handback, so its gate entry is appended at the end of this record by F288's
+> claim. Only the heading, this paragraph and the Steps section below are rewritten; everything
+> from the Findings heading to the end of the file as it stood at `db691093` is carried forward
 > BYTE-IDENTICAL, and finding ids continue the monotonic R-XXXX series across the re-head. The
-> open set at `d0239fa3`, computed with `open_finding_ids` from `scripts/rotate_live_review.py`,
+> open set at `db691093`, computed with `open_finding_ids` from `scripts/rotate_live_review.py`,
 > is empty.
 
 ## Steps
 
-THE ORDER BELOW IS T5_F289.md's Task slicing, re-ordered by DECISION F289 D1 at the claim. R1
-claims F289, re-heads this record, books F027's round 14, registers and repairs R-1073, and lands
-T002: `doctor core`'s report as an importable function returning structured warnings, the command
-line printing from it unchanged, and the generator's Tier 3 rendering one actionable warning as a
-one-task job. T001 follows with the documentation-staleness catalog of at least ten checks and the
-generator's Tier 2; T003 proves three consecutive generator calls on an empty ledger produce three
-distinct items and runs one of them to completion under the test provider inside the default cost
-cap. Every round's handback states the open set by distinct id.
+THE ORDER BELOW IS T5_F288.md's Task slicing, with T001 split over two rounds by DECISION F288 D1
+at the claim. R1 claims F288, re-heads this record, books F289's round 7, and lands the first half
+of T001: the attempt id as the ping-pong run id of each execution of a task, one event per test
+and per repair of a ping-pong round, the attempt id in the stream's envelope for every attempt
+event, and every reader of the two new names. R2 lands the second half: the run-next path, the
+test service, the long-run repair events and a plan-approved event. T002 then teaches the live
+graph's reducer the test-run and repair nodes and the tasks born at plan approval, and T003 adds
+the prompt node kind with its look and its mouse and keyboard reach. Every round's handback
+states the open set by distinct id.
 
 ## Findings
 DECISION F085 D5, applied at da47ee40, closes "The R44 block is the first measured under this
@@ -416,3 +415,5 @@ Gate: F289 R4 — the F289 round 4 entry: the closure sequence's first round —
 Gate: F289 R5 — the F289 round 5 entry: the closure sequence's second round — the booking of round 4, the self-use run's reviewed diff landed in `docs/README.md`, the Built State, and the feature's one full suite. VERDICT PASS, THE SUITE GREEN. Re-derived over `c6a02327`..`ba713c34` by the planner and reviewer of F289's first session, whose own runs produced every reading below. THE RANGE IS 5 COMMITS, at `550f6090` 304, `d2e015ae` 9, `a604e82b` 1, `4e1d0152` 67 and `ba713c34` 177 insertions by `git show --numstat`, each under the 500-line cap, each single-parent and each carrying the ordered trailer; the round's path set equals the block's constraint 3, and no deviation was declared. THE TRANSPORT PROOF: the block copy and the four payload copies, read at `550f6090`, equal the reviewer's originals byte for byte, and at `4e1d0152` the ledger, the prose slips, the plan, `docs/README.md` and `docs/roadmap/features/T5_F289.md` equal the reviewer's simulation tree byte for byte. THE SELF-USE REPAIR: at `a604e82b` `docs/README.md` is byte-identical to the job's own commit `ac5e6e73`, sha256 `ce56a18ec105a11a5fefb3d97506036f3ce261d4a74c8760586c8a6ef76a3238` at both, so the first repair a generated documentation item asked for lands exactly as the self-use run wrote it; `run_staleness_checks()` on the tree now answers only the `config show` claim, which stays for the next closure's run. THE TESTS: the reviewer's own serial run of the round's selection in the primary checkout at `ba713c34` read 535 passed at real exit code 0, as its simulation had; all six `integrity check` checks read `pass`. THE SUITE: `.agent/authored/f289-closure-suite.txt` records `python3 -m pytest -n auto -q` on `4e1d0152`, after the UI build, at real exit code 0 and `19754 passed, 20 skipped` in 193.26 seconds, no bad node, so closure precondition 2 holds on the first run and precondition 7's two reachability guards read green in it.
 
 Gate: F289 R6 — the F289 round 6 entry: the closure sequence's evidence round — the booking of round 5, the evidence bundle and the review package. VERDICT PASS, THE PACKAGE READY_FOR_REVIEW. Re-derived over `ba713c34`..`439162d5` by the planner and reviewer of F289's first session, whose own readings are every one below. THE RANGE IS 3 COMMITS, at `34a801f1` 317, `32013a05` 8 and `439162d5` 153 insertions by `git show --numstat`, each under the 500-line cap, each single-parent and each carrying the ordered trailer; no deviation was declared. THE TRANSPORT PROOF: the block copy and the three payload copies, read at `34a801f1`, equal the reviewer's originals byte for byte, and at `32013a05` the ledger and the plan equal the reviewer's simulation tree byte for byte, the open set reading empty. THE BUNDLE: evidence job `f289r6e1001`, built by the committed `.agent/authored/f289-r6-create_f289_evidence.py` at the accepted head against the fork point `d0239fa3`, read equal ancestry and plain counts at 34, 634 selected tests passed and none skipped, no unsafe node id, an empty `validate_verification_tests` problem list and `is_valid_current_run` true, as the reviewer's dry run at `ba713c34` predicted with both counts two lower. THE PACKAGE: `remedy-review-20260926-225640-READY_FOR_REVIEW.zip` in `/home/decodeux/Repos/remedy-history/zips`, read by the reviewer from the archive itself: SHA-256 `7044a4959459a9144a0b3030453ed74944ab4edad8125fd67c2eb2e6cc488a62`, `testzip()` clean, and the manifest inside it naming `package_status` READY_FOR_REVIEW, base `d0239fa348ca0685470d98549628a689ed288dc9` and head `32013a054ea65dce679cc65fe2cd01fe8d73a76d`, the accepted head. Closure preconditions 1 to 7 hold: every round passed and both findings F289 registered, R-1073 and R-1074, are resolved; the one full suite is green on the tree that ships; all six `integrity check` checks read `pass`; the Built State is current; the tree is clean and pushed; the self-use item `SU-033` was generated by F289's own Tier 2, run to its approval gate on `claude-cli` as job `da4583bff80a47f1` with no run defect, and its diff landed at `a604e82b`; and both reachability guards are green in the suite.
+
+Gate: F289 R7 — the F289 round 7 entry: the closing round — the booking of round 6, the ledger rotation, the STATUS acceptance with its README pins and SU-033's consumption, and the pull request. VERDICT PASS. Reviewed over `439162d5`..`bb5212df` by the planner and reviewer of F289's first session, and booked by the planner and reviewer of F288's first session, who re-measured the range and the merged tree. THE RANGE IS 4 COMMITS, at `86cc74f3` 431, `5c408bbc` 7, `3b08c3ab` 36 and `bb5212df` 183 insertions by `git show --numstat`, each under the 500-line cap, each single-parent and each ending with the ordered trailer; no deviation was declared. The worker's one reading note, that it ran the round's selection without `tests/cli/test_golden_path.py` because the block's sentence about the simulation's count named the selection without it, is the block's ambiguity and not the worker's, and the reviewer ran the selection with the golden path, 512 passed at real exit code 0. THE TRANSPORT PROOF: the block copy and the seven payload copies, read at `86cc74f3`, equal the reviewer's originals byte for byte. THE BOOKING AND THE ROTATION: at `5c408bbc` the ledger and the plan equal the reviewer's simulation tree byte for byte; at `3b08c3ab` `scripts/rotate_live_review.py` moved 14 gate records and 2 finding pairs into `.agent/live_review_archive.md`, the open set reading empty before and after. THE ACCEPTANCE: at `bb5212df` `docs/roadmap/STATUS.md`, `README.md` and `scripts/self_use_queue.json` equal the reviewer's simulation tree byte for byte, F289's line reads `[x]` with its evidence pins, and SU-033's `consumed_by` reads `F289`; all six `integrity check` checks read `pass`. THE MERGE: pull request 285 was opened from `bb5212df`, both hosted CI jobs of run 36271818306 ended `success` on it, and it merged into `main` at F288's Open PR Gate as `db691093`, whose tree `git diff` reads identical to `bb5212df`'s; on that tree F288's reviewer read all six `integrity check` checks `pass` and `tests/docs/` with the golden path at 369 passed.

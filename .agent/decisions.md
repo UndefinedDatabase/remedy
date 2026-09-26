@@ -22736,3 +22736,66 @@ repository's documents as the source, rejected because a self-use repair of eith
 would turn the proof red; a stubbed `run_job`, rejected because the proof is that a run finishes.
 
 HOW TO REVERSE: delete the proof's test class and this paragraph.
+
+## DECISION F288 D1 — an attempt is one execution of a task and its id is that execution's ping-pong run id, minted before `task_run_started`; each ping-pong round writes a test event and, when it repairs, a repair event; the stream's envelope carries the attempt id for the attempt kinds; T001 takes two rounds (2026-09-26)
+
+CONTEXT: T5_F288.md asks that every builder, review, check, test and repair event the UI server
+sends carry the attempt id, the task id and the result, that a plan-approved event exist, that the
+live graph's reducer draw test-run and repair nodes and the tasks at plan approval, and that
+prompts become a node kind of the live graph. Measured at `db691093`: `_safe_event_summary` in
+`packages/orchestration/ui_server.py`, the one writer of the envelope both event transports carry,
+answers `seq`, `event`, `timestamp`, `outcome` and `task_id`, plus a block of its own for three
+named kinds, and no other metadata; no run-log event carries an attempt id; `run_job` in
+`packages/orchestration/pingpong_job.py` writes `task_run_started` before it calls `run_pingpong`,
+and after that call returns it writes one `task_round_completed` per round, with the reviewer's
+verdict as `outcome` and `round_number`, `round_kind` and `test_passed` as metadata, so a round's
+test and a repair round have no event of their own; the ping-pong mints its run id inside
+`run_pingpong`, as `PingPongResult.run_id`, and `run_job` stores it on the task as `task.run_id`;
+the prompt trace the simple view draws its prompt dots from names each prompt's run id; and
+`RunLogWriter.log` keeps `task_id` and `outcome` as top-level fields and every other keyword as
+metadata.
+
+CHOSEN: (1) THE ORDER: T001 takes two rounds. Round 1 lands the path `run_job` runs, which is the
+path the browser watches: the attempt id, the round events, the envelope, and every reader of the
+two new names. Round 2 lands the rest of T001: the legacy run-next path, the test service's
+`test_run_*` events, the long-run executor's repair events and the plan-approved event. T002 and
+T003 follow in that order. (2) THE ATTEMPT: one execution of one task by `run_job`, from its
+`task_run_started` to its end event. A resumed or repeated task is a new attempt. Its id is that
+execution's ping-pong run id: `run_job` mints it with `mint_run_id()` before `task_run_started`
+and passes it to `run_pingpong` through a new keyword `run_id`, which the result adopts when it is
+not empty, so the attempt id every event of the execution carries is the `task.run_id` the job
+stores and the run id every prompt of that execution names. It travels as the metadata key
+`attempt_id`. (3) THE ROUND EVENTS: for each round, in round order, `run_job` writes
+`task_round_repaired` when the round's kind is `repair`, then `task_round_tested` when the round's
+test ran, then `task_round_completed` as today, each carrying the task id, the attempt id and
+`round_number`. (4) THE RESULT is the event's existing `outcome` field. `task_round_tested` reads
+`pass` or `fail`. `task_round_repaired` reads `error` when the round has no builder output or its
+output names an error, `changed` when it names at least one changed file, and `unchanged`
+otherwise. `task_round_completed`, `task_run_completed` and `task_run_failed` keep the values they
+have today, and `task_run_started` has no result, because nothing has resulted when it is written.
+(5) THE ENVELOPE: `_safe_event_summary` gains the key `attempt_id` for every kind in a new
+`ATTEMPT_EVENT_KINDS` beside it, read from the event's metadata and empty when the event carries
+none. The condition is the envelope's own rule for `budget`: every other kind's frame stays
+byte-identical. Round 1's kinds are `task_run_started`, `task_round_repaired`, `task_round_tested`,
+`task_round_completed`, `task_run_completed` and `task_run_failed`; round 2 adds its own. (6) THE
+READERS: `EVENT_NAMES` gains the two names, `STREAM_EVENT_CATALOG` in
+`apps/ui/src/api/humanizeCatalog.ts` a line for each, `NARRATED_EVENTS` in
+`packages/orchestration/teacher_narration.py` a template for each, and the task block of `remedy
+event timeline` one line naming the attempt and counting its rounds, repairs and test results.
+
+ALTERNATIVES: a separate attempt id minted by a new function, rejected because it would name the
+same execution twice and leave the prompt trace's run id with nothing in the stream to meet;
+`round_kind` and `test_passed` copied into the envelope instead of new events, rejected because
+the reducer would then read metadata by kind where every other node is born from a kind of its
+own, and because T5_F288.md names the result, not the round's fields; `attempt_id` on every frame,
+rejected because `tests/ui_server/test_sse_stream.py` pins the envelope's key set and its golden
+byte stream, and a kind with no attempt has nothing to carry; a new `result` key beside `outcome`,
+rejected because the two would always hold the same value.
+
+DELIBERATE ABSENCES: the round events are still written when `run_pingpong` returns, not while
+each round runs, so a round's nodes appear when its task's execution ends; the browser's reducer
+does not read the attempt id until T002.
+
+HOW TO REVERSE: remove the `run_id` keyword from `run_pingpong`, the attempt id from `run_job`'s
+events, the two round events with their readers, and `ATTEMPT_EVENT_KINDS` with its branch of the
+envelope, and delete this paragraph.
