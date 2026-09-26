@@ -269,6 +269,7 @@ packages.orchestration.ui_server
 packages.orchestration.ui_view_model
 packages.orchestration.verifier
 packages.orchestration.verifier_profiles
+packages.orchestration.veto_proposal
 packages.orchestration.watchdog
 packages.orchestration.worker_adapters
 packages.orchestration.workspace

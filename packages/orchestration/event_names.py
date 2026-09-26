@@ -143,6 +143,7 @@ EVENT_NAMES: frozenset[str] = frozenset(
         "token_policy_applied",
         "verification_failed",
         "verification_passed",
+        "veto_proposal_answered",
         "workspace_materialized",
         "worktree_prepared",
         "worktree_recovered",
