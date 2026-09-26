@@ -1069,10 +1069,22 @@ HUGE_DIFF_BODY_LINE_COUNT = 10_000
 #: live in either loop alone.
 MANY_FILE_DIFF_FILE_COUNT = 400
 
-#: The GENEROUS absolute ceiling the budget test below asserts against. The measured
-#: figure it is set against, and why it is deliberately NOT that figure, are recorded
-#: in `test_the_huge_diff_parses_inside_the_recorded_perf_budget`.
-HUGE_DIFF_PARSE_CEILING_SECONDS = 0.5
+#: The SMALL fixture's body-line count, one tenth of `HUGE_DIFF_BODY_LINE_COUNT`, timed
+#: alongside it so the budget test below reads a RATIO rather than an absolute duration.
+SMALL_DIFF_BODY_LINE_COUNT = 1_000
+
+#: How many times each fixture is parsed before the MINIMUM of the samples is kept as
+#: that fixture's timing. Noise from the scheduler, GC or a neighbouring process only
+#: ever ADDS time to a parse, so the minimum across several is the closest either
+#: sample set comes to the parser's own cost alone.
+PARSE_TIMING_SAMPLES = 5
+
+#: The scale-ratio ceiling the budget test below asserts the huge-to-small timing stays
+#: under. This is DECISION F256 D4's ratio, which already guards the whole diff route on
+#: the same reasoning: a linear parser answers near the fixtures' own tenfold size ratio,
+#: a quadratic one near its square, so 20 sits between the two cases rather than merely
+#: above the good one.
+HUGE_DIFF_MAX_SCALING = 20
 
 
 def _generated_huge_single_file_diff(
@@ -1228,32 +1240,63 @@ def test_the_huge_diff_parses_inside_the_recorded_perf_budget():
     1,000 and 0.021 s for 2,000. The cost is LINEAR at roughly 10 microseconds per
     body line, and a 400-file shape scales the same way.
 
-    THE CEILING IS NOT THAT FIGURE. `HUGE_DIFF_PARSE_CEILING_SECONDS` is 0.5 s, about
-    five times the measured median, so a runner five times slower than this one still
-    passes and this assertion never becomes a report on machine speed. What it is
-    for is a change of COMPLEXITY CLASS: a parser scaling as N squared while matching
-    today's cost at 1,000 body lines would need about 1.0 s at 10,000 — a hundred
-    times the 1,000-line figure — which is twice the ceiling. The ceiling therefore
-    sits BETWEEN the two cases rather than merely above the good one.
+    MEASURED AGAIN by the reviewer at `d0239fa3`, in the primary checkout, as the
+    MINIMUM of five parses of each fixture, taken three times: 0.0103 to 0.0105 s for
+    1,000 body lines and 0.1036 to 0.1049 s for 10,000, a ratio of 9.9 to 10.2.
 
-    It is deliberately not a full order of magnitude above the measurement: 1.0 s is
-    exactly where the quadratic case lands, so a ten-times ceiling would pass both
-    and record nothing. Anyone tightening this below about 0.35 s is policing a
-    machine rather than a complexity class, and should not.
+    THE GUARD IS NOT AN ABSOLUTE DURATION. `R-1073`: hosted CI on Python 3.10 read
+    this test's former absolute 0.5 s ceiling as 0.502 s and then 0.527 s, twice, with
+    no change to `packages/orchestration/diff_parser.py` or to this test between the
+    red run and the green one that followed it — a slower runner crossing a fixed
+    wall-clock figure with the parser unchanged. What the guard is FOR is a change of
+    COMPLEXITY CLASS, so it is now a RATIO of the huge fixture's timing to the small
+    one's, on the SAME machine in the SAME run: a linear parser answers near the
+    fixtures' own tenfold size ratio, about 10, and a parser that regressed to N
+    squared would answer near its square, about 100, so `HUGE_DIFF_MAX_SCALING` at 20
+    sits BETWEEN the two cases exactly as DECISION F256 D4's ratio does for the whole
+    diff route, rather than merely above the good one. Because both figures come off
+    one machine in one run, every constant factor that machine contributes — clock
+    speed, load, interpreter version — divides out, and the assertion cannot become a
+    report on machine speed however slow the runner is.
+
+    EACH FIXTURE IS TIMED AS THE MINIMUM OF `PARSE_TIMING_SAMPLES` PARSES, never the
+    median or a single sample: noise from the scheduler, GC or a neighbouring process
+    only ever ADDS time to a parse, so the minimum across several is the closest
+    either sample set comes to the parser's own cost alone, and taking it on both
+    sides keeps the ratio from being inflated by noise on the smaller, faster side.
     """
-    diff_text = _generated_huge_single_file_diff(HUGE_DIFF_BODY_LINE_COUNT)
+    huge_diff_text = _generated_huge_single_file_diff(HUGE_DIFF_BODY_LINE_COUNT)
+    small_diff_text = _generated_huge_single_file_diff(SMALL_DIFF_BODY_LINE_COUNT)
 
-    started = time.perf_counter()
-    view = parse_unified_diff_to_view(diff_text)
-    elapsed = time.perf_counter() - started
+    huge_view = parse_unified_diff_to_view(huge_diff_text)
+    small_view = parse_unified_diff_to_view(small_diff_text)
 
-    # A budget met by parsing nothing is not a budget: pin the work first.
-    assert len(view["files"]) == 1
-    parsed_lines = sum(len(hunk["lines"]) for hunk in view["files"][0]["hunks"])
-    assert parsed_lines == HUGE_DIFF_BODY_LINE_COUNT
-    assert elapsed < HUGE_DIFF_PARSE_CEILING_SECONDS, (
-        f"parsing {HUGE_DIFF_BODY_LINE_COUNT} body lines took {elapsed:.3f}s, "
-        f"ceiling {HUGE_DIFF_PARSE_CEILING_SECONDS}s"
+    # A budget met by parsing nothing is not a budget: pin the work first, for BOTH
+    # fixtures, before either is timed.
+    assert len(huge_view["files"]) == 1
+    huge_parsed_lines = sum(len(hunk["lines"]) for hunk in huge_view["files"][0]["hunks"])
+    assert huge_parsed_lines == HUGE_DIFF_BODY_LINE_COUNT
+    assert len(small_view["files"]) == 1
+    small_parsed_lines = sum(len(hunk["lines"]) for hunk in small_view["files"][0]["hunks"])
+    assert small_parsed_lines == SMALL_DIFF_BODY_LINE_COUNT
+
+    huge_timings = []
+    small_timings = []
+    for _ in range(PARSE_TIMING_SAMPLES):
+        started = time.perf_counter()
+        parse_unified_diff_to_view(huge_diff_text)
+        huge_timings.append(time.perf_counter() - started)
+
+        started = time.perf_counter()
+        parse_unified_diff_to_view(small_diff_text)
+        small_timings.append(time.perf_counter() - started)
+    huge_elapsed = min(huge_timings)
+    small_elapsed = min(small_timings)
+    ratio = huge_elapsed / small_elapsed
+    assert ratio < HUGE_DIFF_MAX_SCALING, (
+        f"parsing {HUGE_DIFF_BODY_LINE_COUNT} body lines took {huge_elapsed:.4f}s "
+        f"against {small_elapsed:.4f}s for {SMALL_DIFF_BODY_LINE_COUNT}, a ratio of "
+        f"{ratio:.2f}, ceiling {HUGE_DIFF_MAX_SCALING}"
     )
 
 

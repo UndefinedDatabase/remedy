@@ -14,6 +14,17 @@ from pathlib import Path
 
 import pytest
 
+from apps.cli.commands.worker_facade_cmd import (
+    DoctorCoreReport,
+    DoctorWarning,
+)
+from apps.cli.commands.worker_facade_cmd import (
+    doctor_core_report as _real_doctor_core_report,
+)
+from packages.orchestration.doc_staleness import StaleClaim
+from packages.orchestration.doc_staleness import (
+    run_staleness_checks as _real_run_staleness_checks,
+)
 from packages.orchestration.self_use_generator import (
     SelfUseGenerationError,
     append_generated_item,
@@ -23,17 +34,30 @@ from packages.orchestration.self_use_generator import (
 )
 from packages.orchestration.self_use_queue import load_self_use_queue, next_self_use_item
 
+#: An empty report, so Tier 3 answers `None` by default and no existing test —
+#: none of which is about the doctor — reads the machine's real configuration.
+_EMPTY_DOCTOR_REPORT = DoctorCoreReport(
+    ready=True, checks=[], blockers=[], warnings=(), dead_commands=[], disk={},
+)
+
 
 @pytest.fixture(autouse=True)
 def _no_standing_order(monkeypatch, tmp_path):
     """The order tier reads the repository's real order file by default (DECISION F279 D7).
 
     These tests exercise the other tiers against a fixture queue, so the order is pointed at
-    a file that does not exist; a test of the order tier names its own order file.
+    a file that does not exist; a test of the order tier names its own order file. Tier 2 is
+    pointed at an empty claim tuple and Tier 3 at an empty report for the same reason:
+    `run_staleness_checks()` and `doctor_core_report()` each read the machine's real repository
+    tree and configuration, and a test not ABOUT that tier must not depend on either
+    (DECISION F289 D1, D2).
     """
-    from packages.orchestration import self_use_generator
+    from apps.cli.commands import worker_facade_cmd
+    from packages.orchestration import doc_staleness, self_use_generator
 
     monkeypatch.setattr(self_use_generator, "default_order_path", lambda: tmp_path / "no-order.md")
+    monkeypatch.setattr(doc_staleness, "run_staleness_checks", lambda *a, **k: ())
+    monkeypatch.setattr(worker_facade_cmd, "doctor_core_report", lambda: _EMPTY_DOCTOR_REPORT)
 
 _QUEUE_ITEM = {
     "id": "SU-001",
@@ -635,3 +659,422 @@ class TestTheAcceptanceAsksForTheRepairAlone:
         assert "records as a failed run" in acceptance
         assert "written only by a human reviewer, never by this task." in acceptance
         assert "either way the ledger gains" not in text
+
+
+# ---------------------------------------------------------------------------
+# F289 T001 — Tier 2: the documentation-staleness catalog (DECISION F289 D2).
+# ---------------------------------------------------------------------------
+
+
+def _write_doc(tmp_path: Path, relpath: str, text: str) -> Path:
+    path = tmp_path / relpath
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(text, encoding="utf-8")
+    return path
+
+
+def _stub_doc_claims(monkeypatch, claims=()) -> None:
+    """Point Tier 2 at exactly `claims`, in order — never the real repository tree."""
+    from packages.orchestration import doc_staleness
+
+    monkeypatch.setattr(doc_staleness, "run_staleness_checks", lambda *a, **k: tuple(claims))
+
+
+#: One claim, shaped like C01's real stale finding.
+_CLAIM_A = StaleClaim(
+    "docs_index_guide_registration", "docs/README.md",
+    "the Quick-Find Table has no link to `guides/alpha.md`",
+    "`docs/guides/alpha.md` ships",
+)
+
+#: A second, distinct claim — different check, different document.
+_CLAIM_B = StaleClaim(
+    "config_cli_table_complete", "docs/guides/remedy-toml-user-guide.md",
+    "the CLI commands table never documents `remedy config wipe`",
+    "`remedy config wipe` ships",
+)
+
+
+class TestDocStalenessTier:
+    """Tier 2, against a STUBBED claim list — DECISION F289 D2, T5_F289.md T001."""
+
+    def test_a_single_claim_becomes_a_tier_2_item(
+        self, tmp_path: Path, monkeypatch, isolate_data_root
+    ):
+        from packages.orchestration.pingpong_job import parse_job_file
+
+        _stub_doc_claims(monkeypatch, [_CLAIM_A])
+        ledger = _write_ledger(tmp_path, [])
+        queue_path = _write_queue(tmp_path, [])
+
+        entry = generate_self_use_item(queue_path=queue_path, ledger_path=ledger)
+
+        assert entry is not None
+        assert entry.id == "SU-001"
+        assert entry.title == "Fix stale documentation: docs_index_guide_registration in docs/README.md"
+        assert entry.provenance == f"generated (self-use-generator tier 2, doc staleness, {_CLAIM_A.key})"
+        assert entry.why == _CLAIM_A.claim
+        assert entry.consumed_by == ""
+        assert f"Claim: {_CLAIM_A.claim}\n" in entry.job_markdown
+        assert f"Shipped truth: {_CLAIM_A.truth}\n" in entry.job_markdown
+        assert "do not edit any file under `.agent/`." in entry.job_markdown
+        assert (
+            "- The staleness check `docs_index_guide_registration` no longer reports "
+            "this claim for `docs/README.md`.\n"
+        ) in entry.job_markdown
+        assert "- No file under `.agent/` is changed by this task.\n" in entry.job_markdown
+        assert entry.job_markdown.endswith("- No file under `.agent/` is changed by this task.\n")
+
+        job = parse_job_file(entry.job_markdown, str(tmp_path))
+        assert job.error == ""
+        assert len(job.tasks) == 1
+        assert job.tasks[0].task_id == "T001"
+        assert job.tasks[0].acceptance.strip()
+
+    def test_of_two_claims_the_first_is_offered_then_the_second(
+        self, tmp_path: Path, monkeypatch
+    ):
+        _stub_doc_claims(monkeypatch, [_CLAIM_A, _CLAIM_B])
+        ledger = _write_ledger(tmp_path, [])
+        queue_path = _write_queue(tmp_path, [])
+
+        first = generate_self_use_item(queue_path=queue_path, ledger_path=ledger)
+        assert first is not None
+        assert _CLAIM_A.document in first.title
+        append_generated_item(first, queue_path)
+
+        second = generate_self_use_item(queue_path=queue_path, ledger_path=ledger)
+        assert second is not None
+        assert _CLAIM_B.document in second.title
+        assert "wipe" in second.job_markdown
+
+    def test_a_consumed_entry_targeting_a_key_still_withdraws_it(
+        self, tmp_path: Path, monkeypatch
+    ):
+        """Mirrors R-0838 for Tier 1 and the doctor key for Tier 3."""
+        _stub_doc_claims(monkeypatch, [_CLAIM_A, _CLAIM_B])
+        ledger = _write_ledger(tmp_path, [])
+        queue_path = _write_queue(tmp_path, [_queue_item(
+            id="SU-001", consumed_by="F999",
+            provenance=f"generated (self-use-generator tier 2, doc staleness, {_CLAIM_A.key})",
+        )])
+
+        entry = generate_self_use_item(queue_path=queue_path, ledger_path=ledger)
+
+        assert entry is not None
+        assert _CLAIM_B.document in entry.title
+
+    def test_an_eligible_ledger_finding_wins_over_tier_2(self, tmp_path: Path, monkeypatch):
+        _stub_doc_claims(monkeypatch, [_CLAIM_A])
+        ledger = _write_ledger(tmp_path, [_finding("R-0010", "Low")])
+        queue_path = _write_queue(tmp_path, [])
+
+        entry = generate_self_use_item(queue_path=queue_path, ledger_path=ledger)
+
+        assert entry is not None
+        assert entry.provenance.startswith("generated (self-use-generator tier 1")
+
+    def test_tier_2_wins_over_a_stubbed_actionable_tier_3_warning(
+        self, tmp_path: Path, monkeypatch
+    ):
+        _stub_doc_claims(monkeypatch, [_CLAIM_A])
+        _stub_doctor_report(monkeypatch, [_ACTIONABLE_A])
+        ledger = _write_ledger(tmp_path, [])
+        queue_path = _write_queue(tmp_path, [])
+
+        entry = generate_self_use_item(queue_path=queue_path, ledger_path=ledger)
+
+        assert entry is not None
+        assert entry.provenance.startswith("generated (self-use-generator tier 2")
+
+    def test_a_claim_holding_a_line_break_raises(self, tmp_path: Path, monkeypatch):
+        unsafe = StaleClaim(
+            "docs_index_guide_registration", "docs/README.md",
+            "a claim whose prose happens to include\na line break", "a truth",
+        )
+        _stub_doc_claims(monkeypatch, [unsafe])
+        ledger = _write_ledger(tmp_path, [])
+        queue_path = _write_queue(tmp_path, [])
+
+        with pytest.raises(SelfUseGenerationError):
+            generate_self_use_item(queue_path=queue_path, ledger_path=ledger)
+
+    def test_a_truth_holding_a_line_break_raises(self, tmp_path: Path, monkeypatch):
+        unsafe = StaleClaim(
+            "docs_index_guide_registration", "docs/README.md",
+            "a claim", "a truth whose prose happens to include\na line break",
+        )
+        _stub_doc_claims(monkeypatch, [unsafe])
+        ledger = _write_ledger(tmp_path, [])
+        queue_path = _write_queue(tmp_path, [])
+
+        with pytest.raises(SelfUseGenerationError):
+            generate_self_use_item(queue_path=queue_path, ledger_path=ledger)
+
+    def test_an_oserror_from_the_checks_becomes_a_generation_error(
+        self, tmp_path: Path, monkeypatch
+    ):
+        from packages.orchestration import doc_staleness
+
+        def _raise(*args, **kwargs):
+            raise OSError("the docs tree could not be read")
+
+        monkeypatch.setattr(doc_staleness, "run_staleness_checks", _raise)
+        ledger = _write_ledger(tmp_path, [])
+        queue_path = _write_queue(tmp_path, [])
+
+        with pytest.raises(SelfUseGenerationError):
+            generate_self_use_item(queue_path=queue_path, ledger_path=ledger)
+
+
+class TestDocStalenessTierRealChain:
+    """No stub: the REAL `run_staleness_checks()`, over a built fixture tree."""
+
+    def test_a_real_missing_quick_find_entry_becomes_a_tier_2_item(
+        self, tmp_path: Path, monkeypatch
+    ):
+        from packages.orchestration import doc_staleness, self_use_generator
+
+        # Undo the autouse fixture's empty-tuple stub: this test is ABOUT the
+        # real chain, so it restores the real function before pointing it at a
+        # fixture root instead of the repository's own tree.
+        monkeypatch.setattr(doc_staleness, "run_staleness_checks", _real_run_staleness_checks)
+
+        _write_doc(tmp_path, "docs/guides/alpha.md", "# Alpha\n")
+        _write_doc(tmp_path, "docs/README.md", (
+            "# Index\n\n"
+            "## Quick-Find Table\n\n"
+            "| Keyword | File | Category |\n"
+            "|---|---|---|\n\n"
+            "## Guides\n\n"
+            "| File | Description |\n"
+            "|---|---|\n"
+            "| [alpha.md](guides/alpha.md) | Alpha guide |\n"
+        ))
+        monkeypatch.setattr(self_use_generator, "default_docs_root", lambda: tmp_path)
+        ledger = _write_ledger(tmp_path, [])
+        queue_path = _write_queue(tmp_path, [])
+
+        entry = generate_self_use_item(queue_path=queue_path, ledger_path=ledger)
+
+        assert entry is not None
+        assert entry.provenance.startswith(
+            "generated (self-use-generator tier 2, doc staleness, docs_index_guide_registration:"
+        )
+        assert "docs/README.md" in entry.title
+        assert "guides/alpha.md" in entry.why
+
+
+# ---------------------------------------------------------------------------
+# F289 T002 — Tier 3: an actionable `remedy doctor core` warning.
+# ---------------------------------------------------------------------------
+
+
+def _stub_doctor_report(monkeypatch, warnings=()) -> DoctorCoreReport:
+    """Point Tier 3 at a report holding exactly `warnings`, in order."""
+    from apps.cli.commands import worker_facade_cmd
+
+    report = DoctorCoreReport(
+        ready=True, checks=[], blockers=[], warnings=tuple(warnings),
+        dead_commands=[], disk={},
+    )
+    monkeypatch.setattr(worker_facade_cmd, "doctor_core_report", lambda: report)
+    return report
+
+
+#: One actionable warning, shaped like the real `dead_builtin_model` kind.
+_ACTIONABLE_A = DoctorWarning(
+    warning="dead_builtin_model",
+    summary="model-a — built-in default; fix: repoint alias",
+    detail="model-a is a BUILT-IN default. Fix: repoint the alias that reaches it.",
+    subject="model-a",
+    repair_path="packages/orchestration/model_aliases.py",
+)
+
+#: A second, distinct actionable warning — same kind, different subject.
+_ACTIONABLE_B = DoctorWarning(
+    warning="dead_builtin_model",
+    summary="model-b — built-in default; fix: repoint alias",
+    detail="model-b is a BUILT-IN default. Fix: repoint the alias that reaches it.",
+    subject="model-b",
+    repair_path="packages/orchestration/model_aliases.py",
+)
+
+#: A non-actionable warning: no `repair_path`, as `dead_configured_model` carries none.
+_NON_ACTIONABLE = DoctorWarning(
+    warning="dead_configured_model",
+    summary="dead-id — from config key orchestrator.model",
+    detail="dead-id is the resolved value of config key orchestrator.model.",
+    subject="dead-id",
+)
+
+
+class TestDoctorWarningTier:
+    """Tier 3, against a STUBBED report — DECISION F289 D1, T5_F289.md T002."""
+
+    def test_a_single_actionable_warning_becomes_a_tier_3_item(
+        self, tmp_path: Path, monkeypatch, isolate_data_root
+    ):
+        from packages.orchestration.pingpong_job import parse_job_file
+
+        _stub_doctor_report(monkeypatch, [_ACTIONABLE_A])
+        ledger = _write_ledger(tmp_path, [])
+        queue_path = _write_queue(tmp_path, [])
+
+        entry = generate_self_use_item(queue_path=queue_path, ledger_path=ledger)
+
+        assert entry is not None
+        assert entry.id == "SU-001"
+        assert entry.title == "Clear doctor warning dead_builtin_model for model-a"
+        assert entry.provenance == (
+            "generated (self-use-generator tier 3, doctor core, "
+            "dead_builtin_model:model-a)"
+        )
+        assert entry.why == _ACTIONABLE_A.detail
+        assert entry.consumed_by == ""
+        assert _ACTIONABLE_A.detail in entry.job_markdown
+        assert "`packages/orchestration/model_aliases.py`" in entry.job_markdown
+        assert "Do not edit any file under `.agent/`." in entry.job_markdown
+        assert (
+            "- `remedy doctor core --json` no longer lists warning "
+            "`dead_builtin_model` for `model-a`.\n"
+        ) in entry.job_markdown
+        assert "- No file under `.agent/` is changed by this task.\n" in entry.job_markdown
+        assert entry.job_markdown.endswith(
+            "- No file under `.agent/` is changed by this task.\n"
+        )
+
+        job = parse_job_file(entry.job_markdown, str(tmp_path))
+        assert job.error == ""
+        assert len(job.tasks) == 1
+        assert job.tasks[0].task_id == "T001"
+        assert job.tasks[0].acceptance.strip()
+
+    def test_only_non_actionable_warnings_answer_none(self, tmp_path: Path, monkeypatch):
+        _stub_doctor_report(monkeypatch, [_NON_ACTIONABLE])
+        ledger = _write_ledger(tmp_path, [])
+        queue_path = _write_queue(tmp_path, [])
+
+        assert generate_self_use_item(queue_path=queue_path, ledger_path=ledger) is None
+
+    def test_of_two_actionable_warnings_the_first_is_offered_then_the_second(
+        self, tmp_path: Path, monkeypatch
+    ):
+        _stub_doctor_report(monkeypatch, [_ACTIONABLE_A, _ACTIONABLE_B])
+        ledger = _write_ledger(tmp_path, [])
+        queue_path = _write_queue(tmp_path, [])
+
+        first = generate_self_use_item(queue_path=queue_path, ledger_path=ledger)
+        assert first is not None
+        assert "model-a" in first.title
+        append_generated_item(first, queue_path)
+
+        second = generate_self_use_item(queue_path=queue_path, ledger_path=ledger)
+        assert second is not None
+        assert "model-b" in second.title
+
+    def test_a_consumed_entry_targeting_a_key_still_withdraws_it(
+        self, tmp_path: Path, monkeypatch
+    ):
+        """Mirrors R-0838 for Tier 1: consumed or not, the key is still targeted."""
+        _stub_doctor_report(monkeypatch, [_ACTIONABLE_A, _ACTIONABLE_B])
+        ledger = _write_ledger(tmp_path, [])
+        queue_path = _write_queue(tmp_path, [_queue_item(
+            id="SU-001", consumed_by="F999",
+            provenance=("generated (self-use-generator tier 3, doctor core, "
+                        "dead_builtin_model:model-a)"),
+        )])
+
+        entry = generate_self_use_item(queue_path=queue_path, ledger_path=ledger)
+
+        assert entry is not None
+        assert "model-b" in entry.title
+
+    def test_an_eligible_ledger_finding_wins_over_tier_3(self, tmp_path: Path, monkeypatch):
+        _stub_doctor_report(monkeypatch, [_ACTIONABLE_A])
+        ledger = _write_ledger(tmp_path, [_finding("R-0010", "Low")])
+        queue_path = _write_queue(tmp_path, [])
+
+        entry = generate_self_use_item(queue_path=queue_path, ledger_path=ledger)
+
+        assert entry is not None
+        assert entry.provenance.startswith("generated (self-use-generator tier 1")
+
+    def test_a_detail_shaped_like_a_heading_raises(self, tmp_path: Path, monkeypatch):
+        unsafe = DoctorWarning(
+            warning="dead_builtin_model", summary="s",
+            detail="a defect whose prose happens to include\n## Task 2\na heading line.",
+            subject="model-a", repair_path="packages/orchestration/model_aliases.py",
+        )
+        _stub_doctor_report(monkeypatch, [unsafe])
+        ledger = _write_ledger(tmp_path, [])
+        queue_path = _write_queue(tmp_path, [])
+
+        with pytest.raises(SelfUseGenerationError):
+            generate_self_use_item(queue_path=queue_path, ledger_path=ledger)
+
+    def test_a_detail_containing_an_acceptance_marker_raises(self, tmp_path: Path, monkeypatch):
+        unsafe = DoctorWarning(
+            warning="dead_builtin_model", summary="s",
+            detail="a defect whose prose happens to include\nAcceptance: a marker line.",
+            subject="model-a", repair_path="packages/orchestration/model_aliases.py",
+        )
+        _stub_doctor_report(monkeypatch, [unsafe])
+        ledger = _write_ledger(tmp_path, [])
+        queue_path = _write_queue(tmp_path, [])
+
+        with pytest.raises(SelfUseGenerationError):
+            generate_self_use_item(queue_path=queue_path, ledger_path=ledger)
+
+    def test_a_report_that_raises_propagates_its_own_exception(
+        self, tmp_path: Path, monkeypatch
+    ):
+        from apps.cli.commands import worker_facade_cmd
+
+        class _ReportBoom(RuntimeError):
+            pass
+
+        def _raise() -> DoctorCoreReport:
+            raise _ReportBoom("the report could not be built")
+
+        monkeypatch.setattr(worker_facade_cmd, "doctor_core_report", _raise)
+        ledger = _write_ledger(tmp_path, [])
+        queue_path = _write_queue(tmp_path, [])
+
+        with pytest.raises(_ReportBoom):
+            generate_self_use_item(queue_path=queue_path, ledger_path=ledger)
+
+
+class TestDoctorWarningTierRealChain:
+    """No stub: the REAL `doctor_core_report()`, only the dead-model loaders patched."""
+
+    def test_a_real_dead_builtin_default_becomes_a_tier_3_item(
+        self, tmp_path: Path, monkeypatch
+    ):
+        import packages.orchestration.dead_model_list as dml
+        from apps.cli.commands import worker_facade_cmd
+        from packages.orchestration.dead_model_list import DeadModelEntry
+        from packages.orchestration.model_aliases import resolve_model_alias
+
+        # Undo the autouse fixture's empty-report stub: this test is ABOUT the
+        # real chain, so it restores the real function before patching only
+        # the dead-model loaders underneath it.
+        monkeypatch.setattr(worker_facade_cmd, "doctor_core_report", _real_doctor_core_report)
+
+        model_id = resolve_model_alias("claude-flagship")
+        entries = (DeadModelEntry(id=model_id, reason="retired by the provider", superseded_by=""),)
+        monkeypatch.setattr(dml, "load_dead_models", lambda path=None: entries)
+        monkeypatch.setattr(dml, "dead_model_ids", lambda path=None: frozenset({model_id}))
+
+        ledger = _write_ledger(tmp_path, [])
+        queue_path = _write_queue(tmp_path, [])
+
+        entry = generate_self_use_item(queue_path=queue_path, ledger_path=ledger)
+
+        assert entry is not None
+        assert model_id in entry.title
+        assert "packages/orchestration/model_aliases.py" in entry.job_markdown
+        assert entry.provenance == (
+            f"generated (self-use-generator tier 3, doctor core, "
+            f"dead_builtin_model:{model_id})"
+        )

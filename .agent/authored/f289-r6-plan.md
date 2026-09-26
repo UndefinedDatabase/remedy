@@ -12,14 +12,14 @@ job (`docs/roadmap/features/T5_F289.md`).
 
 ## Current Step
 
-ROUND 7, the closing round: book round 6, rotate the finding ledger, set
-SU-033's `consumed_by`, accept F289 in STATUS with its README pins, and
-open the pull request.
+ROUND 6, the closure sequence's evidence round: book round 5, build the
+evidence bundle at the accepted head, and build the review package.
 
 ## Next Steps
 
-1. The next session merges this feature's pull request at the Open PR
-   Gate, then claims the next feature by Rule A5.
+1. The closing round: book round 6, rotate the ledger, set SU-033's
+   `consumed_by`, accept F289 in STATUS with its README pins, and open
+   the pull request.
 
 ## Risks
 

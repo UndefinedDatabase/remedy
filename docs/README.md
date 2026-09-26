@@ -60,6 +60,7 @@
 | steering | [steering-user-guide-v1.md](guides/steering-user-guide-v1.md) | guide |
 | teacher lessons | [teacher-lessons-user-guide-v1.md](guides/teacher-lessons-user-guide-v1.md) | guide |
 | test execution | [real-test-execution-v1.md](system/real-test-execution-v1.md) | system |
+| test execution / snapshot | [real-test-execution-snapshot-rollback-user-guide-v1.md](guides/real-test-execution-snapshot-rollback-user-guide-v1.md) | guide |
 | test lanes | [test-lanes-v0.md](system/test-lanes-v0.md) | system |
 | token economy | [token-economy-context-budget-optimizer-v0.md](system/token-economy-context-budget-optimizer-v0.md) | system |
 | token economy | [token-economy-user-guide-v0.md](guides/token-economy-user-guide-v0.md) | guide |

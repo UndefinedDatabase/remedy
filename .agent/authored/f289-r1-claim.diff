@@ -1,0 +1,146 @@
+diff --git a/.agent/decisions.md b/.agent/decisions.md
+index 5f8770f2c..c78de2f69 100644
+--- a/.agent/decisions.md
++++ b/.agent/decisions.md
+@@ -22590,3 +22590,63 @@ browser in the end-to-end, rejected because the page's hover reads only the dash
+ test pins, and the reviewer's render already read the page.
+ 
+ HOW TO REVERSE: delete the test file and this paragraph.
++
++## DECISION F289 D1 — `doctor core`'s report becomes an importable function beside its command, returning structured warnings the command prints unchanged; a warning is actionable only when a tracked file of this repository is its repair, and the generator's Tier 3 renders the first such warning no queue entry targets as a one-task job; T002 lands first (2026-09-26)
++
++CONTEXT: T5_F289.md asks for the self-use generator's Tier 2, a documentation-staleness catalog
++of at least ten checks, and its Tier 3, `remedy doctor core` as an importable function returning
++structured warnings with each actionable warning rendered as a one-task job, and for the proof
++that three consecutive generator calls on an empty ledger each produce a distinct item. Measured
++at `d0239fa3`: `_doc_staleness_tier` and `_doctor_warning_tier` in
++`packages/orchestration/self_use_generator.py` return None (DECISION F258 D2); `_cmd_doctor_core`
++in `apps/cli/commands/worker_facade_cmd.py` builds its checks, blockers, warnings, dead commands
++and disk reading inside the argparse handler and prints them, each warning a dict of `warning`,
++`summary` and `detail`, of five kinds: `dead_builtin_model`, `dead_configured_model`,
++`dead_model_comparison`, `unknown_env_variable` and `unparsable_env_variable`; the tests in
++`tests/cli/test_worker_facade_cmd.py` call that handler and patch `importlib.import_module`, the
++dead-model loaders, the alias table and `get_config` where the handler reads them; and
++`packages/orchestration/lessons.py` and `packages/orchestration/integrity_gate.py` already import
++from `apps/` inside a function.
++
++CHOSEN: (1) THE ORDER: T002 lands in round 1, because its seam is one handler and its proof is
++the command's output held equal; T001 follows, because its catalog is new data and needs a round
++of its own; T003 comes last, because it needs both tiers. (2) THE REPORT stays in
++`apps/cli/commands/worker_facade_cmd.py`, beside its command, so every patch point the tests use
++stays where they patch it. A frozen `DoctorWarning` carries `warning`, `summary`, `detail`,
++`subject` and `repair_path`, and its `as_json()` answers exactly the three keys the command prints
++today; a frozen `DoctorCoreReport` carries `ready`, `checks`, `blockers`, `warnings`,
++`dead_commands` and `disk`, and its `as_json()` answers today's result, key for key and in
++today's order; `doctor_core_report()` holds the body of today's handler up to that result; and
++`_cmd_doctor_core` calls it and prints from `as_json()`, its text and JSON output byte-unchanged.
++(3) ACTIONABLE: a warning is actionable when its repair is an edit of a tracked file of this
++repository; it then names that file as `repair_path` and the thing it is about as `subject`. Of
++today's kinds only `dead_builtin_model` is: its subject is the dead model id and its repair path
++`packages/orchestration/model_aliases.py`, where the alias is repointed. A dead configured id is
++repaired in the operator's configuration, an environment variable in the operator's shell, and a
++failed comparison names no repair, so those carry their model id, variable name or nothing as
++subject and no repair path. (4) TIER 3 imports the command module inside the function, as
++`lessons.py` does, calls `doctor_core_report()` through that module, and takes the first
++actionable warning, in report order, whose key `<warning>:<subject>` no queue entry, consumed or
++not, already targets by its provenance `generated (self-use-generator tier 3, doctor core,
++<warning>:<subject>)`. It renders one task whose body is the warning's detail verbatim followed by
++a sentence naming the repair path and forbidding any edit under `.agent/`, with an acceptance
++asking that `remedy doctor core --json` no longer list that warning for that subject and that no
++file under `.agent/` change. A detail holding a line shaped like a heading or an acceptance marker
++is refused as Tier 1 refuses a paragraph. The tier catches nothing: the report already records a
++failing check as that check's own result, and `tests/test_ble001_ratchet.py` admits no new blind
++handler, so whatever the report still raises reaches the caller unchanged.
++The tier order is unchanged: the order, the ledger, the staleness catalog, then the doctor. (5)
++R-1073, registered at this claim, is repaired in round 1 by its FIX.
++
++ALTERNATIVES: a new module under `packages/` for the report, rejected because it moves every patch
++point the command's tests use while the report remains the command's own; `subject` and
++`repair_path` in the command's JSON, rejected because T5_F289.md's Acceptance holds that output
++unchanged; every warning actionable, rejected because a builder cannot edit an operator's shell or
++configuration, and a job it cannot finish spends a closure's run on nothing; the dead-command
++section as Tier 3 items, rejected because it is not a warning and reads empty on the shipped
++catalog.
++
++DELIBERATE ABSENCES: no warning kind is added, and no warning's words change.
++
++HOW TO REVERSE: fold `doctor_core_report()` back into `_cmd_doctor_core`, delete `DoctorWarning`
++and `DoctorCoreReport`, return `_doctor_warning_tier` to None, and delete this paragraph.
+diff --git a/.agent/live_review.md b/.agent/live_review.md
+index c0652f841..9983b2aa5 100644
+--- a/.agent/live_review.md
++++ b/.agent/live_review.md
+@@ -1,28 +1,30 @@
+-# Live Review — F027 Task veto
+-
+-> Round-by-round review record, re-headed at the F027 claim per
+-> docs/agents/planner_reviewer_prompt.md §1. The heading this replaces named F285, whose STATUS
+-> line went `[x]` at `15f70445` and whose pull request 282 merged into `main` at the reviewer's
+-> Open PR Gate under docs/agents/self_drive_protocol.md, as `557cbbcc`, after both hosted CI jobs
+-> of run 36204988392 ended `success`. `15f70445` is the second parent of `557cbbcc`. F285's round
+-> 6, its closing round, was reviewed after its own handback, so its gate entry is appended at the
+-> end of this record by F027's claim. Only the heading, this paragraph and the Steps section below
+-> are rewritten; everything from the Findings heading to the end of the file as it stood at
+-> `557cbbcc` is carried forward BYTE-IDENTICAL, and finding ids continue the monotonic R-XXXX
+-> series across the re-head. The open set at `557cbbcc`, computed with `open_finding_ids` from
+-> `scripts/rotate_live_review.py`, is empty.
++# Live Review — F289 Self-use sources completion
++
++> Round-by-round review record, re-headed at the F289 claim per
++> docs/agents/planner_reviewer_prompt.md §1. The heading this replaces named F027, whose STATUS
++> line went `[x]` at `49958f24` and whose pull request 283 merged into `main` at the reviewer's
++> Open PR Gate under docs/agents/self_drive_protocol.md, as `d0239fa3`, after both hosted CI jobs
++> of run 36245213292 ended `success` on `3bb9fcdb`, the merge of `main` into the branch that
++> operator amendment amend0926-decisions-selfuse made. `3bb9fcdb` is the second parent of
++> `d0239fa3`. F027's round 14, its closing round, was reviewed after its own handback, so its gate
++> entry is appended at the end of this record by F289's claim, followed by the registration of
++> R-1073, the timing ceiling DECISION amend0926-decisions-selfuse D7 left to this session. Only
++> the heading, this paragraph and the Steps section below are rewritten; everything from the
++> Findings heading to the end of the file as it stood at `d0239fa3` is carried forward
++> BYTE-IDENTICAL, and finding ids continue the monotonic R-XXXX series across the re-head. The
++> open set at `d0239fa3`, computed with `open_finding_ids` from `scripts/rotate_live_review.py`,
++> is empty.
+ 
+ ## Steps
+ 
+-THE ORDER BELOW IS T5_F027.md's Task slicing, which DECISION F027 D1 rules at the claim. R1
+-claims F027, re-heads this record, books F285's round 6, and lands the veto control protocol of
+-T001 in a new `packages/orchestration/task_veto.py`: the mandatory verbatim reason, the pure state
+-gate, the unreachable set through `dag_schedule.blocked_downstream`, one create-only control file
+-per vetoed task, and the command effect with its `task_vetoed` event. The runners' reading of a
+-veto, the in-progress finish rule and the terminal accounting complete T001; T002 files the replan
+-proposal with its two-option menu; T003 brings the strike, the dimmed unreachable set and the inbox
+-card to the page, with the diamond end-to-end. Every round's handback states the open set by
+-distinct id.
++THE ORDER BELOW IS T5_F289.md's Task slicing, re-ordered by DECISION F289 D1 at the claim. R1
++claims F289, re-heads this record, books F027's round 14, registers and repairs R-1073, and lands
++T002: `doctor core`'s report as an importable function returning structured warnings, the command
++line printing from it unchanged, and the generator's Tier 3 rendering one actionable warning as a
++one-task job. T001 follows with the documentation-staleness catalog of at least ten checks and the
++generator's Tier 2; T003 proves three consecutive generator calls on an empty ledger produce three
++distinct items and runs one of them to completion under the test provider inside the default cost
++cap. Every round's handback states the open set by distinct id.
+ 
+ ## Findings
+ DECISION F085 D5, applied at da47ee40, closes "The R44 block is the first measured under this
+@@ -428,3 +430,7 @@ Landed: R-1072 — `TestWithdrawLiveDoor.test_a_withdrawn_pause_never_parks_the_
+ Gate: F027 R12 — the F027 round 12 entry: the closure's second repair round — the booking of round 11 with R-1071's resolution, the registration and repair of R-1072, a load proof of the repaired test, and the one full suite again on the repaired tree. VERDICT PASS, THE SUITE GREEN. Re-derived over `09276159`..`07c78cd8` by the planner and reviewer of F027's second session, whose own readings are every one below. THE RANGE IS 6 COMMITS, at `6439e520` 207, `3dc9d827` 14, `b0d5465f` 10, `c4124c96` 86, `3cbc4df9` 5 and `07c78cd8` 191 insertions by `git show --numstat`, each under the 500-line cap, each single-parent and each carrying the ordered trailer; the round's path set equals the block's constraint 3. THE DEVIATION the worker declared: at `3cbc4df9` it corrected its own load probe, whose scratch test imported `TestWithdrawLiveDoor` under its own name, so pytest collected the class a second time and the first run read 49 passed and a false proof line. The transcript writes the empty bad set as `None` where the block asked for the literal `NONE`. THE TRANSPORT PROOF: the block copy and the two payload copies, read at `6439e520`, equal the reviewer's originals byte for byte, and at `3dc9d827` the ledger, the prose slips and the plan equal the reviewer's authoring tree byte for byte. THE REPAIR: at `b0d5465f` the job of `TestWithdrawLiveDoor` carries `repo_path` set to a temporary target holding a `README.md`, as its sibling classes' jobs do, with a comment naming R-1072, and nothing else in the file changed. THE LOAD PROOF: the committed `.agent/authored/f027-r12-loadprobe.py`, run by the reviewer against a disposable worktree at `3cbc4df9`, read 1 passed alone, then 48 passed under `-n 16`, with the shared repository's `remedy/` branch count at 195 and its worktree list at 101 both before and after; the worktree was removed and the list reads 100 again. THE SUITE: `.agent/authored/f027-closure-suite.txt` records `python3 -m pytest -n auto -q` on `3cbc4df9`, after the UI build, at real exit code 0 and `19694 passed, 20 skipped` in 251.15 seconds, no bad node: the bad set shrank from round 11's one node to none, with no node newly bad, which meets amendment amend0917-throughput rule 2 in the second of its three repair rounds. Closure preconditions 2 and 7 read green in that transcript.
+ 
+ Gate: F027 R13 — the F027 round 13 entry: the closure's evidence round — the booking of round 12 with R-1072's resolution, the Built State's note on the findings raised after it, the evidence bundle and the review package. VERDICT PASS, THE PACKAGE READY_FOR_REVIEW. Re-derived over `07c78cd8`..`409f285e` by the planner and reviewer of F027's second session, whose own readings are every one below. THE RANGE IS 3 COMMITS, at `59f565e6` 371, `f3afc333` 20 and `409f285e` 144 insertions by `git show --numstat`, each under the 500-line cap, each single-parent and each carrying the ordered trailer; no deviation was declared. THE TRANSPORT PROOF: the block copy and the three payload copies, read at `59f565e6`, equal the reviewer's originals byte for byte, and at `f3afc333` the ledger, the plan and the feature file equal the reviewer's authoring tree byte for byte, the open set reading empty. THE BUNDLE: evidence job `f027r13e1001`, built by the committed `.agent/authored/f027-r13-create_f027_evidence.py` at the accepted head against the fork point `557cbbcc`, read equal ancestry and plain counts at 84, 1661 selected tests passed and none skipped, no unsafe node id, an empty `validate_verification_tests` problem list and `is_valid_current_run` true, exactly as the reviewer's dry run at `07c78cd8` predicted. THE PACKAGE: `remedy-review-20260926-111715-READY_FOR_REVIEW.zip` in `/home/decodeux/Repos/remedy-history/zips`, read by the reviewer from the archive itself: SHA-256 `abb65b1df0346c8670423a7da903e3e3c6facfc4cac4602bb5a983b47b4bd993`, `testzip()` clean, and the manifest inside it naming `package_status` READY_FOR_REVIEW, base `557cbbcc5f5f0a46bf6d9c90b971b2723657d651` and head `f3afc333a70eae5f339fce8c18004db68a7cea1f`, the accepted head. Closure preconditions 1 to 7 hold: every round passed and every finding F027 registered, R-1065 to R-1072, is resolved; the one full suite is green on the tree that ships; all six `integrity check` checks read `pass`; the Built State is current; the tree is clean and pushed; the self-use track reads `self-use NONE (queue exhausted)`; and both reachability guards are green in the suite.
++
++Gate: F027 R14 — the F027 round 14 entry: the closing round — the booking of round 13, the ledger's rotation into its archive, and F027's acceptance in STATUS with its README pins, then the push and pull request 283. VERDICT PASS. Re-derived over `409f285e`..`49958f24` by the planner and reviewer of F289's first session, whose own runs produced every reading below. THE RANGE IS 4 COMMITS, at `ccedc431` 428, `08ee9afc` 7, `1e955911` 44 and `49958f24` 203 insertions by `git show --numstat`, each under the 500-line cap, each single-parent and each carrying the ordered trailer; the round's path set is the eight `.agent/authored/f027-r14-*` copies, `.agent/live_review.md`, `.agent/live_review_archive.md`, `.agent/plan.md`, `.agent/handoff.md`, `README.md` and `docs/roadmap/STATUS.md`. THE BOOKING: at `08ee9afc` the ledger reads sha256 `a63745e6d557d14cb2d50f4a48217225cf908592e3c2cfbd955d15aada278352`, the reviewer's simulation. THE ROTATION: at `1e955911` the ledger reads sha256 `0e122a516762d45a097966e746744f8fd12bd555957f90a10300d9978658d61e`, six gate records and eight finding pairs moved into the archive, the open set empty before and after. THE ACCEPTANCE: at `49958f24` `docs/roadmap/STATUS.md` reads sha256 `e2fb757b78eef06fa160f45ef979530bb7184eb033cfad06da62693c5b9fe347` and `README.md` sha256 `89d76e2859443841f92e156ed7dc3f130140941097cea6002a048999bd70523d`, both the reviewer's simulation, with the accepted count at 106 and the Tier 5 Done cell at 23. THE TESTS: the round's own serial selection — `tests/docs/`, `tests/cli/test_advertised_commands.py`, `tests/orchestration/test_live_review_rotation.py`, `tests/orchestration/test_integrity_gate.py`, `tests/orchestration/test_self_use_generator.py` and `tests/cli/test_golden_path.py` — run by the reviewer in the primary checkout at `d0239fa3`, which holds the round's tree merged with amendment amend0926-decisions-selfuse, read 470 passed at real exit code 0, against the worker's 469 at `49958f24`, the one more being the amendment's edit of `tests/orchestration/test_self_use_generator.py`; all six `integrity check` checks read `pass`. THE DEVIATION the worker declared is an observation, not a change of course: `.agent/STOP` appeared mid-round with the operator's stop-after-feature text, was left untouched, and the next session was told to read it; it was gone when F289's session started. THE MERGE: hosted CI run 36232909016 on `49958f24` read `ci (3.10)` failed on the diff parser's timing ceiling, which DECISION amend0926-decisions-selfuse D7 records, and run 36245213292 on `3bb9fcdb` read both jobs `success`, after which pull request 283 merged at F289's Open PR Gate as `d0239fa3`.
++
++- R-1073 — Low, THE DIFF PARSER'S TIMING TEST ASSERTS AN ABSOLUTE WALL-CLOCK CEILING, AND A SLOWER RUNNER CROSSES IT WITH THE PARSER UNCHANGED. Raised by the planner and reviewer of F289's first session, from DECISION amend0926-decisions-selfuse D7. SEARCHED BEFORE MINTING (checklist item 30): the open set at `d0239fa3` is empty, and `test_the_huge_diff_parses_inside_the_recorded_perf_budget` and `HUGE_DIFF_PARSE_CEILING_SECONDS` in this record and its archive find no finding. MEASURED: hosted CI run 36232909016 on `49958f24` failed `tests/orchestration/test_diff_parser.py::test_the_huge_diff_parses_inside_the_recorded_perf_budget` on Python 3.10 twice, at 0.502 and 0.527 seconds against the ceiling of 0.5, while no commit of F027 touched `packages/orchestration/diff_parser.py` or that test, and run 36245213292 passed it. The reviewer's own reading at `d0239fa3`, in the primary checkout, as the minimum of five parses of each fixture taken three times, is 0.0103 to 0.0105 seconds for 1,000 body lines and 0.1036 to 0.1049 seconds for 10,000, a ratio of 9.9 to 10.2. The test's own docstring says the ceiling exists to catch a change of complexity class, not a slow machine, and a runner five times slower than the workstation it was set on is exactly where an absolute figure stops telling the two apart. WHY LOW: no product code is wrong, but a gate over production code reads red on a runner where the code is correct, and it held pull request 283 back for a session. FIX: the test asserts the ratio of the minimum of five parses of the 10,000-line fixture to the minimum of five parses of a 1,000-line fixture of the same shape, below a ceiling of 20, the ceiling DECISION F256 D4 already sets for the whole diff route, where a linear parser reads about 10 and a quadratic one about 100; the absolute 0.5-second ceiling goes, and the docstring records the measured ratio and why the ceiling sits between the two cases. Owner: F289.
+diff --git a/docs/roadmap/STATUS.md b/docs/roadmap/STATUS.md
+index b1acc0dd9..8d8b8df2d 100644
+--- a/docs/roadmap/STATUS.md
++++ b/docs/roadmap/STATUS.md
+@@ -158,7 +158,7 @@ Milestone R1 — Remedy as the daily tool: Tier 2 complete (F086 as the self-ins
+ 
+ ## Tier 5 — Self-use sources & event completeness (operator amendment amend0926-decisions-selfuse)
+ 
+-- [ ] F289 — Self-use sources completion (doc staleness and doctor warnings)
++- [~] F289 — Self-use sources completion (doc staleness and doctor warnings)
+ - [ ] F288 — Event stream completeness & prompt nodes in the live graph
+ 
+ ## Tier 5 — Operator Cockpit (parallel human track, continued)

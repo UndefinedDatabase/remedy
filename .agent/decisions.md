@@ -22590,3 +22590,149 @@ browser in the end-to-end, rejected because the page's hover reads only the dash
 test pins, and the reviewer's render already read the page.
 
 HOW TO REVERSE: delete the test file and this paragraph.
+
+## DECISION F289 D1 — `doctor core`'s report becomes an importable function beside its command, returning structured warnings the command prints unchanged; a warning is actionable only when a tracked file of this repository is its repair, and the generator's Tier 3 renders the first such warning no queue entry targets as a one-task job; T002 lands first (2026-09-26)
+
+CONTEXT: T5_F289.md asks for the self-use generator's Tier 2, a documentation-staleness catalog
+of at least ten checks, and its Tier 3, `remedy doctor core` as an importable function returning
+structured warnings with each actionable warning rendered as a one-task job, and for the proof
+that three consecutive generator calls on an empty ledger each produce a distinct item. Measured
+at `d0239fa3`: `_doc_staleness_tier` and `_doctor_warning_tier` in
+`packages/orchestration/self_use_generator.py` return None (DECISION F258 D2); `_cmd_doctor_core`
+in `apps/cli/commands/worker_facade_cmd.py` builds its checks, blockers, warnings, dead commands
+and disk reading inside the argparse handler and prints them, each warning a dict of `warning`,
+`summary` and `detail`, of five kinds: `dead_builtin_model`, `dead_configured_model`,
+`dead_model_comparison`, `unknown_env_variable` and `unparsable_env_variable`; the tests in
+`tests/cli/test_worker_facade_cmd.py` call that handler and patch `importlib.import_module`, the
+dead-model loaders, the alias table and `get_config` where the handler reads them; and
+`packages/orchestration/lessons.py` and `packages/orchestration/integrity_gate.py` already import
+from `apps/` inside a function.
+
+CHOSEN: (1) THE ORDER: T002 lands in round 1, because its seam is one handler and its proof is
+the command's output held equal; T001 follows, because its catalog is new data and needs a round
+of its own; T003 comes last, because it needs both tiers. (2) THE REPORT stays in
+`apps/cli/commands/worker_facade_cmd.py`, beside its command, so every patch point the tests use
+stays where they patch it. A frozen `DoctorWarning` carries `warning`, `summary`, `detail`,
+`subject` and `repair_path`, and its `as_json()` answers exactly the three keys the command prints
+today; a frozen `DoctorCoreReport` carries `ready`, `checks`, `blockers`, `warnings`,
+`dead_commands` and `disk`, and its `as_json()` answers today's result, key for key and in
+today's order; `doctor_core_report()` holds the body of today's handler up to that result; and
+`_cmd_doctor_core` calls it and prints from `as_json()`, its text and JSON output byte-unchanged.
+(3) ACTIONABLE: a warning is actionable when its repair is an edit of a tracked file of this
+repository; it then names that file as `repair_path` and the thing it is about as `subject`. Of
+today's kinds only `dead_builtin_model` is: its subject is the dead model id and its repair path
+`packages/orchestration/model_aliases.py`, where the alias is repointed. A dead configured id is
+repaired in the operator's configuration, an environment variable in the operator's shell, and a
+failed comparison names no repair, so those carry their model id, variable name or nothing as
+subject and no repair path. (4) TIER 3 imports the command module inside the function, as
+`lessons.py` does, calls `doctor_core_report()` through that module, and takes the first
+actionable warning, in report order, whose key `<warning>:<subject>` no queue entry, consumed or
+not, already targets by its provenance `generated (self-use-generator tier 3, doctor core,
+<warning>:<subject>)`. It renders one task whose body is the warning's detail verbatim followed by
+a sentence naming the repair path and forbidding any edit under `.agent/`, with an acceptance
+asking that `remedy doctor core --json` no longer list that warning for that subject and that no
+file under `.agent/` change. A detail holding a line shaped like a heading or an acceptance marker
+is refused as Tier 1 refuses a paragraph. The tier catches nothing: the report already records a
+failing check as that check's own result, and `tests/test_ble001_ratchet.py` admits no new blind
+handler, so whatever the report still raises reaches the caller unchanged.
+The tier order is unchanged: the order, the ledger, the staleness catalog, then the doctor. (5)
+R-1073, registered at this claim, is repaired in round 1 by its FIX.
+
+ALTERNATIVES: a new module under `packages/` for the report, rejected because it moves every patch
+point the command's tests use while the report remains the command's own; `subject` and
+`repair_path` in the command's JSON, rejected because T5_F289.md's Acceptance holds that output
+unchanged; every warning actionable, rejected because a builder cannot edit an operator's shell or
+configuration, and a job it cannot finish spends a closure's run on nothing; the dead-command
+section as Tier 3 items, rejected because it is not a warning and reads empty on the shipped
+catalog.
+
+DELIBERATE ABSENCES: no warning kind is added, and no warning's words change.
+
+HOW TO REVERSE: fold `doctor_core_report()` back into `_cmd_doctor_core`, delete `DoctorWarning`
+and `DoctorCoreReport`, return `_doctor_warning_tier` to None, and delete this paragraph.
+
+## DECISION F289 D2 — the documentation-staleness catalog is twelve checks in a new module, each reading documents under a root and comparing them with an injectable shipped truth, so every check is proven red on a stale fixture; the generator's Tier 2 renders the first claim no queue entry targets as a one-task job that repairs the document (2026-09-26)
+
+CONTEXT: T5_F289.md T001 asks for a staleness catalog of at least ten checks over the README, the
+guides and the command catalog, each naming the document, the claim and the shipped truth it
+compares and each proven red on a stale fixture, and for the generator rendering one failing check
+as a one-task job. Measured at `8163cf8b` by a read-only survey the reviewer ordered and then
+spot-checked: 27 candidate comparisons exist, of which 8 are already pinned by a test, among them
+the advertised command lines of the README and the guides
+(`tests/cli/test_advertised_commands.py`), the exit-code guide's tables
+(`tests/cli/test_exit_codes.py`) and the environment guide (`tests/docs/test_environment_guide.py`);
+and two claims are stale on the shipped tree: `docs/README.md` links
+`guides/real-test-execution-snapshot-rollback-user-guide-v1.md` from its Guides table and not from
+its Quick-Find Table, and the CLI commands table of `docs/guides/remedy-toml-user-guide.md` does not
+list `remedy config show`, which ships. The shipped truth lives in `apps/cli/command_catalog.py`
+(`CATALOG`, `GROUPS`, `resolve_group`) and `packages/orchestration/config.py` (`all_key_specs()`,
+whose specs carry each key and its environment variable).
+
+CHOSEN: (1) THE MODULE is `packages/orchestration/doc_staleness.py`. A frozen `StaleClaim` carries
+`check_id`, `document` (a repository-relative path), `claim` (the words the document says or
+omits) and `truth` (what ships instead), and its `key` is `<check_id>:<document>:<claim>`. A frozen
+`ShippedTruth` carries the group ids and aliases, the command pairs and ids, the config keys, the
+environment variable names and the catalog's texts; `ShippedTruth.live()` builds it from the
+catalog and the key registry, imported inside the method, and a test builds its own. A frozen
+`StalenessCheck` names its `check_id`, the documents it reads, the claim it extracts and the truth
+it compares, beside the function that runs it over a root and a truth. `CHECKS` holds the catalog
+and `run_staleness_checks(root=None, truth=None)` runs every check in catalog order. A document a
+check reads that is absent under the root yields nothing; one that cannot be read raises. (2) THE
+TWELVE CHECKS prefer comparisons no test pins today, so the tier finds work the suite does not
+already force: the docs index lists every shipped guide in both of its tables; the `remedy.toml`
+guide's CLI table and the catalog's `config` group name the same subcommands; the docs index's
+command lines name shipped commands; the guides' relative links resolve; link fragments name a
+heading of their target; the `REMEDY_` names in the README, the docs index and the guides other
+than the generated environment guide are registered; backticked dotted config keys are
+registered; the keys of the guides' TOML examples are registered; the docs index's category column
+matches each link's folder; the source paths the README and the docs index name exist; backticked
+dotted command ids name shipped commands; and the dotted config keys the catalog's own texts name
+are registered. No check spawns a process or reads the network. (3) TIER 2 calls
+`run_staleness_checks()` through the module over the repository root and the live truth, takes
+the first claim whose key no queue entry, consumed or not, targets by its provenance `generated
+(self-use-generator tier 2, doc staleness, <key>)`, and renders one task that quotes the claim and
+the truth and asks for the DOCUMENT to be edited to match what ships, never the code to match the
+document, with an acceptance asking that the check no longer report the claim and that no file
+under `.agent/` change. A claim or truth holding a line break is refused, and a document that
+cannot be read is a `SelfUseGenerationError`. The tier order is unchanged.
+
+ALTERNATIVES: extending the tests that already pin eight comparisons, rejected because a pinned
+comparison can never be stale on a green tree, so the tier would never fire; checks that run `git
+ls-files` or the CLI, rejected because a generator step spawns nothing; repairing the two stale
+claims in this round, rejected because they are exactly the work the self-use track exists to
+find, and a closure's self-use run is where they belong.
+
+HOW TO REVERSE: delete `packages/orchestration/doc_staleness.py` and its tests, return
+`_doc_staleness_tier` to None, and delete this paragraph.
+
+## DECISION F289 D3 — T003's proof emulates three closures on an empty ledger: each generator call is followed by the closure's own consumption of the item, the first item runs to completion under the fake providers inside the self-use run's default budget, and the sources are a fixture documentation tree and a planted dead built-in model (2026-09-26)
+
+CONTEXT: T5_F289.md is DONE when three consecutive generator calls on an empty ledger each produce
+a distinct item that a run can finish inside the default cost cap. Measured at `c1851178`:
+`generate_and_append_if_empty` in `packages/orchestration/self_use_generator.py` appends only
+while the queue holds no pending item, and consumption is the closure round's own edit of
+`consumed_by` (DECISION F257 D2); `run_next_self_use_item` in
+`packages/orchestration/self_use_runner.py` runs the queue's next pending item through `run_job`
+with the self-use budget of 8 provider calls and 6.00 USD unless a caller overrides it; and
+`TestGenerateThenRunEndToEnd` in `tests/orchestration/test_self_use_runner.py` already runs a Tier
+1 item to `completed` with `FakeProvider(pass_on_round=1)` against a temporary git repository.
+
+CHOSEN: (1) THE SEQUENCE is three closures: a generator call through
+`generate_and_append_if_empty` on an empty ledger, then the item marked consumed by writing its
+`consumed_by` in the queue file, as a closure does, three times over, so each call meets an empty
+queue exactly as a real closure does. (2) THE SOURCES are a fixture documentation tree under a
+temporary root, reached through `default_docs_root`, holding two stale claims, and the dead-model
+loaders declaring the built-in model the `claude-flagship` alias resolves to dead, so the three
+items come from Tier 2, Tier 2 and Tier 3, with three distinct ids and three distinct provenance
+keys; the order tier is pointed at a missing file. (3) THE RUN: the first item, while it is the one
+pending item, runs through `run_next_self_use_item` with the fake builder and reviewer and no budget
+override, `run_job` wrapped by a pass-through recorder of its `budgets`; the proof is the job ending
+`completed` with the recorded `max_cost_usd` equal to the runner's `_MAX_COST_USD`, because a run
+stopped by its budget never completes. (4) R-1074 is repaired in the same round by its FIX.
+
+ALTERNATIVES: three calls with no consumption between them, rejected because the seam answers
+None while an item is pending, so the second and third calls would prove nothing; the real
+repository's documents as the source, rejected because a self-use repair of either real claim
+would turn the proof red; a stubbed `run_job`, rejected because the proof is that a run finishes.
+
+HOW TO REVERSE: delete the proof's test class and this paragraph.

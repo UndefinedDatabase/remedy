@@ -1,0 +1,66 @@
+diff --git a/README.md b/README.md
+index 6fbeac7a4..e1812cb29 100644
+--- a/README.md
++++ b/README.md
+@@ -26,7 +26,7 @@ verification commands. If something is unproven, Remedy says so instead of guess
+ 
+ ## Status
+ 
+-106 of 289 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
++107 of 289 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
+ 
+ | Tier | Name | Done | Total |
+ |------|------|-----:|------:|
+@@ -35,7 +35,7 @@ verification commands. If something is unproven, Remedy says so instead of guess
+ | 2 | Minimal Self-Build Runtime | 38 | 39 |
+ | 3 | Full Token Economy & Autonomy | 6 | 27 |
+ | 4 | Memory & Learning | 1 | 17 |
+-| 5 | Operator Cockpit | 23 | 36 |
++| 5 | Operator Cockpit | 24 | 36 |
+ | 6 | Design-to-Code | 0 | 16 |
+ | 7 | Quality & Trust | 0 | 15 |
+ | 8 | Worker Ecosystem & Neutrality | 0 | 12 |
+@@ -510,6 +510,17 @@ for the left-over work waits for you to plan it; the job's report shows who veto
+ each task and the reason; a veto cannot be undone, because planning the work again
+ is the way back).
+ 
++F289 self-use sources (when Remedy looks for work to do on itself at the end of a
++feature and its list of open review findings is empty, it now has two more places to
++look: it checks the README, the documentation index, the user guides and the command
++list against what the code really ships, for example a guide the index does not
++list, a command a guide never mentions, or a setting name that does not exist, and
++it reads the warnings `remedy doctor core` prints, of which a retired built-in model
++is the kind it can repair itself; each problem it finds becomes a small job with
++that one repair as its only task, and the job changes nothing by itself: it stops at
++the normal approval step and a reviewer decides what lands; the first such job, run
++at this feature's own close, added a missing user guide to the documentation index).
++
+ Full per-feature state: [`docs/roadmap/STATUS.md`](docs/roadmap/STATUS.md)
+ 
+ ## Install
+diff --git a/docs/roadmap/STATUS.md b/docs/roadmap/STATUS.md
+index 8d8b8df2d..b1586cd19 100644
+--- a/docs/roadmap/STATUS.md
++++ b/docs/roadmap/STATUS.md
+@@ -158,7 +158,7 @@ Milestone R1 — Remedy as the daily tool: Tier 2 complete (F086 as the self-ins
+ 
+ ## Tier 5 — Self-use sources & event completeness (operator amendment amend0926-decisions-selfuse)
+ 
+-- [~] F289 — Self-use sources completion (doc staleness and doctor warnings)
++- [x] F289 — Self-use sources completion (doc staleness and doctor warnings) (T001–T003 complete; accepted 2026-09-26 · live review PASS — ACCEPTED · Evidence job f289r6e1001 · package remedy-review-20260926-225640-READY_FOR_REVIEW.zip · SHA-256 7044a4959459a9144a0b3030453ed74944ab4edad8125fd67c2eb2e6cc488a62 · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD 32013a054ea65dce679cc65fe2cd01fe8d73a76d)
+ - [ ] F288 — Event stream completeness & prompt nodes in the live graph
+ 
+ ## Tier 5 — Operator Cockpit (parallel human track, continued)
+diff --git a/scripts/self_use_queue.json b/scripts/self_use_queue.json
+index f6b9391f0..5842a2c62 100644
+--- a/scripts/self_use_queue.json
++++ b/scripts/self_use_queue.json
+@@ -263,7 +263,7 @@
+       "title": "Fix stale documentation: docs_index_guide_registration in docs/README.md",
+       "why": "the Quick-Find Table has no link to `guides/real-test-execution-snapshot-rollback-user-guide-v1.md`",
+       "job_markdown": "# Job: Fix stale documentation: docs_index_guide_registration in docs/README.md\n\n## Task 1\nThe documentation-staleness check `docs_index_guide_registration` found a claim in `docs/README.md` that the shipped code contradicts.\n\nClaim: the Quick-Find Table has no link to `guides/real-test-execution-snapshot-rollback-user-guide-v1.md`\nShipped truth: `docs/guides/real-test-execution-snapshot-rollback-user-guide-v1.md` ships\n\nEdit `docs/README.md` so that it matches the shipped truth. Do not change code to match the document, and do not edit any file under `.agent/`.\n\nAcceptance:\n- The staleness check `docs_index_guide_registration` no longer reports this claim for `docs/README.md`.\n- No file under `.agent/` is changed by this task.\n",
+-      "consumed_by": "",
++      "consumed_by": "F289",
+       "provenance": "generated (self-use-generator tier 2, doc staleness, docs_index_guide_registration:docs/README.md:the Quick-Find Table has no link to `guides/real-test-execution-snapshot-rollback-user-guide-v1.md`)"
+     }
+   ]

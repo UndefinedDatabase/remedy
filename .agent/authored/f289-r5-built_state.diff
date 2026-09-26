@@ -1,0 +1,75 @@
+diff --git a/docs/roadmap/features/T5_F289.md b/docs/roadmap/features/T5_F289.md
+index bb4e121b5..5c08c828d 100644
+--- a/docs/roadmap/features/T5_F289.md
++++ b/docs/roadmap/features/T5_F289.md
+@@ -40,3 +40,70 @@ self-use track exists to show Remedy repairing itself, and it needs work to repa
+ ## Do not touch
+ Tier 1 (the finding ledger) and the standing order's precedence; the fence over `.agent/` that a
+ self-use run carries (DECISION amend0926-decisions-selfuse D4).
++
++## Built State (F289, 2026-09-26)
++
++What exists on disk at the close of F289, built in five rounds of one session on
++`feature/f289-self-use-sources`, cut from `main` at `d0239fa3`. Every DECISION named lives in
++`.agent/decisions.md`; every round's verdict in `.agent/live_review.md` or, once rotated, its
++archive.
++
++**T002 — `doctor core` as data, and the generator's Tier 3.** `doctor_core_report()` in
++`apps/cli/commands/worker_facade_cmd.py` holds the body the command's handler held, moved, and
++answers a `DoctorCoreReport` of the checks, blockers, warnings, dead commands and disk reading;
++each warning is a `DoctorWarning` carrying its kind, its two renderings, the thing it is about as
++`subject` and, when a tracked file of this repository is its repair, that file as `repair_path`.
++`_cmd_doctor_core` prints from `as_json()`, and its text and JSON output are byte-identical to the
++base's in five scenarios, measured by `.agent/authored/f289-r1-parity.py`. Only a dead built-in
++model is actionable today, repaired in `packages/orchestration/model_aliases.py`. The generator's
++Tier 3 renders the first actionable warning no queue entry targets as a one-task job quoting its
++detail (DECISION F289 D1).
++
++**T001 — the documentation-staleness catalog, and the generator's Tier 2.**
++`packages/orchestration/doc_staleness.py` holds twelve checks, each reading documents under a root
++and comparing them with an injectable `ShippedTruth` built from the command catalog and the
++config-key registry: the docs index lists every guide in both its tables; the `remedy.toml` guide's
++CLI table names the `config` group's subcommands; the docs index's command lines, the relative
++links of the guides and the fragments of links name what exists; the `REMEDY_` names, backticked
++config keys, TOML example keys and dotted command ids in the README, the docs index and the guides
++are registered or shipped; the docs index's category column matches each link's folder; the source
++paths the README and the docs index name exist; and the dotted config keys the catalog's own texts
++name are registered. The generator's Tier 2 renders the first claim no queue entry targets as a
++one-task job that edits the document, never the code (DECISION F289 D2).
++
++**T003 — the proof.** `TestThreeConsecutiveItemsOnAnEmptyLedger` in
++`tests/orchestration/test_self_use_runner.py` runs three closures on an empty ledger — generate,
++then consume — over a fixture documentation tree and a planted dead built-in model, reads three
++distinct items from Tier 2, Tier 2 and Tier 3, and runs the first through the real `run_job` to
++`completed` inside the self-use run's default budget of 6.00 USD and 8 calls (DECISION F289 D3).
++
++**The closure's own self-use run.** On the real tree the catalog found two stale claims at the
++claim: the docs index's Quick-Find Table did not link
++`guides/real-test-execution-snapshot-rollback-user-guide-v1.md`, and the `remedy.toml` guide did not
++document `remedy config show`. The closure's item, `SU-033`, came from Tier 2 on the first: job
++`da4583bff80a47f1` on `claude-cli` with `claude-sonnet-4-6` added the missing Quick-Find row in 2
++calls for 0.56 USD, its reviewer passed it, and round 5 landed that one line verbatim in
++`docs/README.md`. The `config show` claim stays for the next closure's self-use run to repair.
++
++**Acceptance, by the test that proves it.** At least ten checks, each red on a stale fixture: the
++twelve classes of `tests/orchestration/test_doc_staleness.py`, each with a stale and a fresh fixture.
++`doctor core`'s warnings importable as data with its output unchanged: `TestDoctorCoreReportFunction`
++in `tests/cli/test_worker_facade_cmd.py` and the parity tool. Three consecutive generator calls on
++an empty ledger each producing a distinct item: `TestThreeConsecutiveItemsOnAnEmptyLedger`, with
++`TestDocStalenessTier` and `TestDoctorWarningTier` in `tests/orchestration/test_self_use_generator.py`
++pinning each tier's rendering, order and deduplication. Each round's mutation proofs are its
++`.agent/authored/f289-r<n>-mutations.py`.
++
++**Modules and lists (closure precondition 7).** F289 added `packages/orchestration/doc_staleness.py`,
++imported by `packages/orchestration/self_use_generator.py`, which the six entry points do not reach;
++no line joined `tests/orchestration/import_reachability_allowlist.txt`, `ALLOWED_UNWIRED` or
++`RESERVED_NAMESPACES`.
++
++**Deliberate absences.** No warning kind of `doctor core` was added or re-worded. No check spawns a
++process or reads the network. Neither tier repairs anything itself: each only renders a job, and a
++closure runs it and a reviewer lands its diff.
++
++**Findings.** F289 registered R-1073, the diff parser's timing test asserting an absolute
++wall-clock ceiling that a slower hosted runner crossed, now a scale ratio below 20; and R-1074, the
++link check reporting a link to an existing folder, now accepted. Both are resolved. No finding was
++open at F289's claim.

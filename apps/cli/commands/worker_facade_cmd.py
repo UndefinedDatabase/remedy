@@ -7,6 +7,7 @@ No provider execution. No auto-approval. No secret storage.
 from __future__ import annotations
 
 from collections.abc import Callable
+from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -68,14 +69,95 @@ def remedy_scripts_dir() -> Path:
     return Path(__file__).resolve().parents[3] / "scripts"
 
 
-def _cmd_doctor_core(ns: argparse.Namespace) -> None:
+#: The tracked file of THIS repository a `dead_builtin_model` warning names as
+#: its repair — the alias table where a built-in default is repointed to a
+#: live id. The one repair path any warning kind carries today (DECISION
+#: F289 D1): every other kind is repaired in the operator's own configuration
+#: or shell, or names no repair at all.
+MODEL_ALIAS_TABLE_PATH = "packages/orchestration/model_aliases.py"
+
+
+@dataclass(frozen=True)
+class DoctorWarning:
+    """One ADVISORY finding `doctor core` reports: never a blocker, never moves `ready`.
+
+    `subject` names the thing the warning is about (a model id, a config key's
+    value, an environment variable name) and `repair_path` names the tracked
+    file of this repository whose edit repairs it — set only when such a file
+    exists (DECISION F289 D1, T5_F289.md T002). Neither field reaches
+    `--json`: `as_json()` reproduces exactly the three keys `doctor core`
+    printed before this dataclass existed, in that order.
+    """
+
+    warning: str
+    summary: str
+    detail: str
+    subject: str = ""
+    repair_path: str = ""
+
+    @property
+    def actionable(self) -> bool:
+        """A warning is actionable only when a tracked file of this repository is its repair."""
+        return bool(self.repair_path)
+
+    def as_json(self) -> dict[str, str]:
+        return {"warning": self.warning, "summary": self.summary, "detail": self.detail}
+
+
+@dataclass(frozen=True)
+class DoctorCoreReport:
+    """`doctor core`'s full result, importable beside its command.
+
+    Built by :func:`doctor_core_report` and printed, unchanged, by
+    `_cmd_doctor_core` (DECISION F289 D1, T5_F289.md T002). `as_json()`
+    reproduces today's `--json` output key for key and in today's order.
+    """
+
+    ready: bool
+    checks: list[dict[str, str | bool]]
+    blockers: list[str]
+    warnings: tuple[DoctorWarning, ...]
+    dead_commands: list[str]
+    disk: dict[str, Any]
+
+    def as_json(self) -> dict[str, Any]:
+        return {
+            "ready": self.ready,
+            "checks": self.checks,
+            "blockers": self.blockers,
+            "warnings": [warning.as_json() for warning in self.warnings],
+            "dead_commands": self.dead_commands,
+            "disk": self.disk,
+        }
+
+    def actionable_warnings(self) -> tuple[DoctorWarning, ...]:
+        """The actionable warnings, in report order."""
+        return tuple(warning for warning in self.warnings if warning.actionable)
+
+
+def doctor_core_report() -> DoctorCoreReport:
+    """Build `doctor core`'s report: T5_F289.md T002, DECISION F289 D1.
+
+    Holds the body of the former `_cmd_doctor_core` handler, from its first
+    line through the computation of `ready`, MOVED rather than rewritten:
+    every probe still goes through `importlib.import_module`,
+    `remedy_scripts_dir()` and its own lazy imports exactly where it did
+    before, because the tests patch them there.
+    """
     checks: list[dict[str, str | bool]] = []
-    warnings: list[dict[str, str]] = []
+    warnings: list[DoctorWarning] = []
 
     def _check(name: str, ok: bool, detail: str = "") -> None:
         checks.append({"check": name, "ok": ok, "detail": detail})
 
-    def _warn(name: str, summary: str, detail: str) -> None:
+    def _warn(
+        name: str,
+        summary: str,
+        detail: str,
+        *,
+        subject: str = "",
+        repair_path: str = "",
+    ) -> None:
         """Record an ADVISORY finding: never a blocker, never moves `ready`.
 
         Deliberately separate from :func:`_check` (F254,
@@ -94,7 +176,8 @@ def _cmd_doctor_core(ns: argparse.Namespace) -> None:
         provenance clause, which states that the verdict comes from
         operator-maintained data rather than a provider probe.
         """
-        warnings.append({"warning": name, "summary": summary, "detail": detail})
+        warnings.append(DoctorWarning(warning=name, summary=summary, detail=detail,
+                                       subject=subject, repair_path=repair_path))
 
     import importlib
 
@@ -246,7 +329,8 @@ def _cmd_doctor_core(ns: argparse.Namespace) -> None:
                       f"{model_id} is a BUILT-IN default, reached through alias "
                       f"{alias_text} in packages/orchestration/model_aliases.py. "
                       f"Fix: repoint alias {alias_text} to a live id. "
-                      f"{_dead_provenance(model_id)}")
+                      f"{_dead_provenance(model_id)}",
+                      subject=model_id, repair_path=MODEL_ALIAS_TABLE_PATH)
 
             # Configured ids: name the KEY it came from. Discovered from the
             # key registry, so a new *.model key is covered the day it lands.
@@ -263,7 +347,8 @@ def _cmd_doctor_core(ns: argparse.Namespace) -> None:
                       f"{_dead_provenance_short(value)}",
                       f"{value} is the resolved value of config key {spec.key} "
                       f"(env {spec.env_var}). Fix: change {spec.key} to a live "
-                      f"id. {_dead_provenance(value)}")
+                      f"id. {_dead_provenance(value)}",
+                      subject=value)
         except Exception as exc:  # noqa: BLE001 — a dead-model mismatch becomes an advisory, not a blocker
             # Already compact, and there is no fuller record to hold back:
             # both renderings are the same sentence.
@@ -348,26 +433,39 @@ def _cmd_doctor_core(ns: argparse.Namespace) -> None:
               f"{name} — not a Remedy variable; {guess}",
               f"{name} is set in the environment, but no Remedy setting reads it, so it "
               f"changes nothing. {meant} Every variable Remedy reads is listed in "
-              f"{ENVIRONMENT_GUIDE_PATH}.")
+              f"{ENVIRONMENT_GUIDE_PATH}.",
+              subject=name)
     for name, spec in unparsable_env_variables(os.environ):
         _warn("unparsable_env_variable",
               f"{name} — its value is not {type_words(spec)}",
               f"{name} is registered as {type_words(spec)}, and its value in the "
               f"environment does not read as one, so Remedy does not use it the way it "
               f"was meant. The value is not shown, because a variable may carry a "
-              f"secret. {ENVIRONMENT_GUIDE_PATH} lists what each variable accepts.")
+              f"secret. {ENVIRONMENT_GUIDE_PATH} lists what each variable accepts.",
+              subject=name)
 
     blockers: list[str] = [str(c["check"]) for c in checks if not c["ok"]]
     ready = len(blockers) == 0
 
-    result: dict[str, Any] = {
-        "ready": ready,
-        "checks": checks,
-        "blockers": blockers,
-        "warnings": warnings,
-        "dead_commands": dead_commands,
-        "disk": disk,
-    }
+    return DoctorCoreReport(
+        ready=ready,
+        checks=checks,
+        blockers=blockers,
+        warnings=tuple(warnings),
+        dead_commands=dead_commands,
+        disk=disk,
+    )
+
+
+def _cmd_doctor_core(ns: argparse.Namespace) -> None:
+    report = doctor_core_report()
+    result = report.as_json()
+    ready = result["ready"]
+    checks = result["checks"]
+    blockers = result["blockers"]
+    warnings = result["warnings"]
+    dead_commands = result["dead_commands"]
+    disk = result["disk"]
 
     if getattr(ns, "json", False):
         emit_ok(**result)

@@ -1,0 +1,83 @@
+diff --git a/.agent/decisions.md b/.agent/decisions.md
+index c78de2f69..ea3e76044 100644
+--- a/.agent/decisions.md
++++ b/.agent/decisions.md
+@@ -22650,3 +22650,57 @@ DELIBERATE ABSENCES: no warning kind is added, and no warning's words change.
+ 
+ HOW TO REVERSE: fold `doctor_core_report()` back into `_cmd_doctor_core`, delete `DoctorWarning`
+ and `DoctorCoreReport`, return `_doctor_warning_tier` to None, and delete this paragraph.
++
++## DECISION F289 D2 — the documentation-staleness catalog is twelve checks in a new module, each reading documents under a root and comparing them with an injectable shipped truth, so every check is proven red on a stale fixture; the generator's Tier 2 renders the first claim no queue entry targets as a one-task job that repairs the document (2026-09-26)
++
++CONTEXT: T5_F289.md T001 asks for a staleness catalog of at least ten checks over the README, the
++guides and the command catalog, each naming the document, the claim and the shipped truth it
++compares and each proven red on a stale fixture, and for the generator rendering one failing check
++as a one-task job. Measured at `8163cf8b` by a read-only survey the reviewer ordered and then
++spot-checked: 27 candidate comparisons exist, of which 8 are already pinned by a test, among them
++the advertised command lines of the README and the guides
++(`tests/cli/test_advertised_commands.py`), the exit-code guide's tables
++(`tests/cli/test_exit_codes.py`) and the environment guide (`tests/docs/test_environment_guide.py`);
++and two claims are stale on the shipped tree: `docs/README.md` links
++`guides/real-test-execution-snapshot-rollback-user-guide-v1.md` from its Guides table and not from
++its Quick-Find Table, and the CLI commands table of `docs/guides/remedy-toml-user-guide.md` does not
++list `remedy config show`, which ships. The shipped truth lives in `apps/cli/command_catalog.py`
++(`CATALOG`, `GROUPS`, `resolve_group`) and `packages/orchestration/config.py` (`all_key_specs()`,
++whose specs carry each key and its environment variable).
++
++CHOSEN: (1) THE MODULE is `packages/orchestration/doc_staleness.py`. A frozen `StaleClaim` carries
++`check_id`, `document` (a repository-relative path), `claim` (the words the document says or
++omits) and `truth` (what ships instead), and its `key` is `<check_id>:<document>:<claim>`. A frozen
++`ShippedTruth` carries the group ids and aliases, the command pairs and ids, the config keys, the
++environment variable names and the catalog's texts; `ShippedTruth.live()` builds it from the
++catalog and the key registry, imported inside the method, and a test builds its own. A frozen
++`StalenessCheck` names its `check_id`, the documents it reads, the claim it extracts and the truth
++it compares, beside the function that runs it over a root and a truth. `CHECKS` holds the catalog
++and `run_staleness_checks(root=None, truth=None)` runs every check in catalog order. A document a
++check reads that is absent under the root yields nothing; one that cannot be read raises. (2) THE
++TWELVE CHECKS prefer comparisons no test pins today, so the tier finds work the suite does not
++already force: the docs index lists every shipped guide in both of its tables; the `remedy.toml`
++guide's CLI table and the catalog's `config` group name the same subcommands; the docs index's
++command lines name shipped commands; the guides' relative links resolve; link fragments name a
++heading of their target; the `REMEDY_` names in the README, the docs index and the guides other
++than the generated environment guide are registered; backticked dotted config keys are
++registered; the keys of the guides' TOML examples are registered; the docs index's category column
++matches each link's folder; the source paths the README and the docs index name exist; backticked
++dotted command ids name shipped commands; and the dotted config keys the catalog's own texts name
++are registered. No check spawns a process or reads the network. (3) TIER 2 calls
++`run_staleness_checks()` through the module over the repository root and the live truth, takes
++the first claim whose key no queue entry, consumed or not, targets by its provenance `generated
++(self-use-generator tier 2, doc staleness, <key>)`, and renders one task that quotes the claim and
++the truth and asks for the DOCUMENT to be edited to match what ships, never the code to match the
++document, with an acceptance asking that the check no longer report the claim and that no file
++under `.agent/` change. A claim or truth holding a line break is refused, and a document that
++cannot be read is a `SelfUseGenerationError`. The tier order is unchanged.
++
++ALTERNATIVES: extending the tests that already pin eight comparisons, rejected because a pinned
++comparison can never be stale on a green tree, so the tier would never fire; checks that run `git
++ls-files` or the CLI, rejected because a generator step spawns nothing; repairing the two stale
++claims in this round, rejected because they are exactly the work the self-use track exists to
++find, and a closure's self-use run is where they belong.
++
++HOW TO REVERSE: delete `packages/orchestration/doc_staleness.py` and its tests, return
++`_doc_staleness_tier` to None, and delete this paragraph.
+diff --git a/.agent/live_review.md b/.agent/live_review.md
+index 410f08fc6..995c2252a 100644
+--- a/.agent/live_review.md
++++ b/.agent/live_review.md
+@@ -435,4 +435,6 @@ Gate: F027 R14 — the F027 round 14 entry: the closing round — the booking of
+ 
+ - R-1073 — Low, THE DIFF PARSER'S TIMING TEST ASSERTS AN ABSOLUTE WALL-CLOCK CEILING, AND A SLOWER RUNNER CROSSES IT WITH THE PARSER UNCHANGED. Raised by the planner and reviewer of F289's first session, from DECISION amend0926-decisions-selfuse D7. SEARCHED BEFORE MINTING (checklist item 30): the open set at `d0239fa3` is empty, and `test_the_huge_diff_parses_inside_the_recorded_perf_budget` and `HUGE_DIFF_PARSE_CEILING_SECONDS` in this record and its archive find no finding. MEASURED: hosted CI run 36232909016 on `49958f24` failed `tests/orchestration/test_diff_parser.py::test_the_huge_diff_parses_inside_the_recorded_perf_budget` on Python 3.10 twice, at 0.502 and 0.527 seconds against the ceiling of 0.5, while no commit of F027 touched `packages/orchestration/diff_parser.py` or that test, and run 36245213292 passed it. The reviewer's own reading at `d0239fa3`, in the primary checkout, as the minimum of five parses of each fixture taken three times, is 0.0103 to 0.0105 seconds for 1,000 body lines and 0.1036 to 0.1049 seconds for 10,000, a ratio of 9.9 to 10.2. The test's own docstring says the ceiling exists to catch a change of complexity class, not a slow machine, and a runner five times slower than the workstation it was set on is exactly where an absolute figure stops telling the two apart. WHY LOW: no product code is wrong, but a gate over production code reads red on a runner where the code is correct, and it held pull request 283 back for a session. FIX: the test asserts the ratio of the minimum of five parses of the 10,000-line fixture to the minimum of five parses of a 1,000-line fixture of the same shape, below a ceiling of 20, the ceiling DECISION F256 D4 already sets for the whole diff route, where a linear parser reads about 10 and a quadratic one about 100; the absolute 0.5-second ceiling goes, and the docstring records the measured ratio and why the ceiling sits between the two cases. Owner: F289.
+ 
+-Landed: R-1073 — the diff parser's timing test asserts the ratio of the minimum of five parses of the 10,000-line fixture to that of a 1,000-line fixture below 20, and the absolute ceiling is gone, at this round's C3.
++Done: R-1073 — at `13b8f88f`, `test_the_huge_diff_parses_inside_the_recorded_perf_budget` in `tests/orchestration/test_diff_parser.py` pins the parsed body-line count of a 1,000-line and a 10,000-line fixture, times each as the minimum of five parses, and asserts the ratio below `HUGE_DIFF_MAX_SCALING` at 20, DECISION F256 D4's ceiling, with the absolute 0.5-second ceiling gone and the docstring recording the reviewer's ratio of 9.9 to 10.2; the round's mutation making `parse_unified_diff_to_view` do work proportional to the lines already parsed for every body line turned that node red, and the reviewer's own run of the file at `8163cf8b` reads it green. Verified by the planner and reviewer of F289's first session at the round 1 gate.
++
++Gate: F289 R1 — the F289 round 1 entry: the claim, the booking of F027's round 14, R-1073's registration and repair, DECISION F289 D1, and T002: `doctor core`'s report as an importable function returning structured warnings, the command printing from it unchanged, and the generator's Tier 3. VERDICT PASS, ONE DEVIATION DECLARED. Re-derived over `d0239fa3`..`8163cf8b` by the planner and reviewer of F289's first session, whose own runs produced every reading below. THE RANGE IS 8 COMMITS, at `b894870a` 418, `8158c8a5` 146, `58db5158` 124, `13b8f88f` 74, `30efd723` 203, `5e9fabee` 340, `dbfba8cd` 402 and `8163cf8b` 249 insertions by `git show --numstat`, each under the 500-line cap, each single-parent and each carrying the ordered trailer; the round's path set equals the block's constraint 3. THE DEVIATION: the block's C5 would have reached 742 insertions, so the worker split it into `5e9fabee`, the tests, and `dbfba8cd`, the two tools, as constraint 2 ordered. THE TRANSPORT PROOF: the block copy and the three payload copies, read at `b894870a` and `8158c8a5`, equal the reviewer's originals byte for byte, and at `58db5158` the ledger, the decisions, STATUS, the plan and the context equal the reviewer's simulation tree byte for byte, the open set reading `R-1073` alone. THE CODE: `doctor_core_report()` holds the former handler body moved, with `DoctorWarning` and `DoctorCoreReport` whose `as_json()` answer the command's former JSON key for key; only `dead_builtin_model` carries a repair path, `packages/orchestration/model_aliases.py`; and `_doctor_warning_tier` imports the command module inside the function, catches nothing, and renders the first untargeted actionable warning with its detail verbatim. THE PARITY: the committed `.agent/authored/f289-r1-parity.py`, run by the reviewer over disposable worktrees at `d0239fa3` and `30efd723`, read all ten scenario-and-mode outputs byte-identical, and with one character of the text rendering's warning line changed in the second tree it read the two scenarios that carry warnings unequal and `PARITY: False`, so the tool can fail. THE TESTS: the reviewer's own serial run of the round's selection in the primary checkout at `8163cf8b` read 998 passed and 1 skipped at real exit code 0, the skip being the D12 quarantine and the 15 more than the reviewer's base of 983 being the round's new nodes; all six `integrity check` checks read `pass`; `ruff check` over the five touched Python files reads clean. THE RED PROOFS: the committed `.agent/authored/f289-r1-mutations.py`, run by the reviewer in a disposable worktree at `dbfba8cd`, caught all twelve mutations, among them the parser made quadratic, with the unmutated control green before and after and all three mutated files restored byte-identical; every worktree was removed.
+diff --git a/.agent/prose_slips.md b/.agent/prose_slips.md
+index f4cc6729f..8172a4d70 100644
+--- a/.agent/prose_slips.md
++++ b/.agent/prose_slips.md
+@@ -1119,3 +1119,4 @@
+ 2026-09-26, F027 round 8 — S4 of the block asked for the line `Will not run because of this veto:` and, for a veto that made nothing unreachable, `No other task depended on it.` without saying the first line goes only with a list, so the popover shows both lines one above the other in that case.
+ 2026-09-26, F027 round 9 — S3 of the block asked the decision's `safe_summary` to hold the reason byte for byte, while the summary is a longer sentence around the reason, so the worker asserted containment and declared the reading.
+ 2026-09-26, F027 round 11 gate — the reviewer reproduced a flaky live test by calling the job runner from a scratch worktree of the shared repository, which the memory of an earlier session warns against, and the runner left 91 branches `remedy/<id>` behind that guardrail G2 then forbids deleting.
++2026-09-26, F289 round 1 — S6 of the block ordered every paragraph of the self-use generator's module docstring other than item 3 kept, so its opening sentence still calls the doctor tier an honest None placeholder after the round built it; round 2 rewrites that sentence together with Tier 2.

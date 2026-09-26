@@ -314,6 +314,13 @@ end the response with:
   it belongs to, are both item 18's reading of an ordered wording against the property it must
   establish; and an equality asked of a summary that the code builds as a longer sentence around the
   value is item 8's. The list stays at 34 items.
+  Consolidated an eighteenth time at F289's closure on 2026-09-26: nothing joined and no two items
+  were merged, because neither of F289's two lines in `.agent/prose_slips.md` names a lesson the
+  list lacks. A block that ordered every paragraph of a docstring kept while its own change made one
+  of them stale is item 34's reading of a file the block orders a change against, for what it
+  already holds; and a clause that barred an unshipped command line in docstrings and comments while
+  the guard that reads the module reads every string in it is item 7's, the source guard the block
+  never names. The list stays at 34 items.
   The next consolidation measures against 34.
   Reverse by deleting this paragraph.
   1. **Size.** Count the block's lines. Over 400 (DECISION F105 D5) → split or

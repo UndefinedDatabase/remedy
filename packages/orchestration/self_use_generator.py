@@ -14,9 +14,9 @@ own edit (DECISION F257 D2, unchanged), so a generated item still needs a
 human's — or the closure round's own — decision before it is ever run.
 
 A standing maintenance ORDER is tried first, then the three sources
-``docs/roadmap/features/T5_F258.md`` T001 specifies, in that order. Of those three
-only the first is real today; DECISION F258 D2 records why the other two are
-honest ``None`` placeholders rather than half-built guesses:
+``docs/roadmap/features/T5_F258.md`` T001 named, in that order — completed by
+``docs/roadmap/features/T5_F289.md`` T001 and T002 (DECISIONS F289 D1 and D2), which built the
+last two as real checks rather than placeholders:
 
   0. THE TOOLCHAIN REFRESH ORDER (T2_F279 T004, DECISION F279 D7).
      ``docs/orders/toolchain-refresh.md`` is itself a job file, queued VERBATIM,
@@ -29,14 +29,19 @@ honest ``None`` placeholders rather than half-built guesses:
      targets (R-0838), rendered as a job whose one task quotes the finding
      paragraph VERBATIM and whose acceptance is "repair it, or record why
      not" — never a per-finding summary this module would have to invent.
-  2. A documentation-staleness catalog. Not yet built: curating a catalog of
-     concrete (doc, claim, shipped-truth) checks is its own future work,
-     mirroring how ``ownership`` stayed an honest empty list in F040 until
-     F035 existed (DECISION F040 D3).
-  3. An actionable ``remedy doctor core`` warning. Not yet reachable: today's
-     ``_cmd_doctor_core`` (``apps/cli/commands/worker_facade_cmd.py``) is an
-     argparse handler that prints, not an importable function returning
-     structured warnings — refactoring that seam is future work too.
+  2. A DOCUMENTATION-STALENESS CATALOG (``packages.orchestration.doc_staleness``, DECISION
+     F289 D2). Twelve checks compare a claim a document makes — a link, a table cell, a
+     backticked key or command id, a TOML example — against the shipped catalog and config-key
+     registry, and the first claim no existing queue entry already targets is rendered as a job
+     whose one task asks that the document be corrected to match what ships, never the reverse.
+  3. AN ACTIONABLE ``remedy doctor core`` WARNING. The first warning
+     ``apps.cli.commands.worker_facade_cmd.doctor_core_report()`` marks
+     ``actionable`` — one whose repair is a tracked file of this repository,
+     read as its ``repair_path`` — that no existing queue entry already
+     targets by its provenance's ``<warning>:<subject>`` key, rendered as a
+     job whose one task quotes the warning's ``detail`` VERBATIM and whose
+     acceptance asks that ``doctor core --json`` no longer list it
+     (DECISION F289 D1, T5_F289.md T002).
 
 Public API::
 
@@ -76,6 +81,7 @@ import re
 from datetime import date, timedelta
 from pathlib import Path
 
+from packages.orchestration import doc_staleness
 from packages.orchestration.self_use_queue import (
     SelfUseQueueEntry,
     default_self_use_queue_path,
@@ -98,6 +104,22 @@ _QUEUE_ID_RE = re.compile(r"^SU-(\d{3})$")
 _LEDGER_PROVENANCE = "generated (self-use-generator tier 1, ledger scan, {r_id})"
 _LEDGER_PROVENANCE_RE = re.compile(
     r"^generated \(self-use-generator tier 1, ledger scan, (R-\d+)\)$"
+)
+
+#: The provenance Tier 2 stamps on an item, and the pattern that reads the
+#: targeted staleness-claim key — ``<check_id>:<document>:<claim>`` — back out
+#: of it (DECISION F289 D2).
+_DOC_PROVENANCE = "generated (self-use-generator tier 2, doc staleness, {key})"
+_DOC_PROVENANCE_RE = re.compile(
+    r"^generated \(self-use-generator tier 2, doc staleness, (?P<key>.+)\)$"
+)
+
+#: The provenance Tier 3 stamps on an item, and the pattern that reads the
+#: targeted doctor-warning key — ``<warning>:<subject>`` — back out of it
+#: (DECISION F289 D1).
+_DOCTOR_PROVENANCE = "generated (self-use-generator tier 3, doctor core, {key})"
+_DOCTOR_PROVENANCE_RE = re.compile(
+    r"^generated \(self-use-generator tier 3, doctor core, (?P<key>.+)\)$"
 )
 
 #: THE ORDER TIER. The order file, how often it may be queued, and the provenance
@@ -186,6 +208,11 @@ def default_order_path() -> Path:
     return Path(__file__).resolve().parents[2] / ORDER_RELATIVE_PATH
 
 
+def default_docs_root() -> Path:
+    """The repository root the staleness catalog reads documents under, resolved the same way the queue is."""
+    return Path(__file__).resolve().parents[2]
+
+
 def _last_order_day(queue_path: Path | None) -> date | None:
     """The most recent day an item from the order was queued, consumed or not."""
     days = [
@@ -230,6 +257,30 @@ def _targeted_findings(queue_path: Path | None) -> frozenset[str]:
         match.group(1)
         for match in (
             _LEDGER_PROVENANCE_RE.match(entry.provenance)
+            for entry in load_self_use_queue(queue_path)
+        )
+        if match is not None
+    )
+
+
+def _targeted_doc_keys(queue_path: Path | None) -> frozenset[str]:
+    """Every doc-staleness claim key (``check_id:document:claim``) an existing entry, consumed or not, already targets."""
+    return frozenset(
+        match.group("key")
+        for match in (
+            _DOC_PROVENANCE_RE.match(entry.provenance)
+            for entry in load_self_use_queue(queue_path)
+        )
+        if match is not None
+    )
+
+
+def _targeted_doctor_keys(queue_path: Path | None) -> frozenset[str]:
+    """Every doctor-warning key (``<warning>:<subject>``) an existing entry, consumed or not, already targets."""
+    return frozenset(
+        match.group("key")
+        for match in (
+            _DOCTOR_PROVENANCE_RE.match(entry.provenance)
             for entry in load_self_use_queue(queue_path)
         )
         if match is not None
@@ -366,14 +417,127 @@ def _ledger_tier(queue_path: Path | None, ledger_path: Path) -> SelfUseQueueEntr
     )
 
 
-def _doc_staleness_tier(_queue_path: Path | None) -> SelfUseQueueEntry | None:
-    """Tier 2: not yet wired to a real check catalog (DECISION F258 D2)."""
-    return None
+def _doc_staleness_tier(queue_path: Path | None) -> SelfUseQueueEntry | None:
+    """Tier 2: the first documentation-staleness claim no queue entry targets, as a job.
+
+    Calls `doc_staleness.run_staleness_checks()` THROUGH the imported module — the
+    same module-boundary discipline `_doctor_warning_tier` keeps for
+    `doctor_core_report()` — so a test that patches it on the module still
+    reaches this tier. An `OSError` reading a document becomes a
+    `SelfUseGenerationError` rather than propagating raw; a claim or truth
+    holding a line break is refused rather than rendered into a job whose task
+    boundary it could corrupt (DECISION F289 D2, T5_F289.md T001).
+    """
+    try:
+        claims = doc_staleness.run_staleness_checks(default_docs_root())
+    except OSError as exc:
+        raise SelfUseGenerationError(f"documentation staleness check failed: {exc}") from exc
+
+    targeted = _targeted_doc_keys(queue_path)
+    claim = next((c for c in claims if c.key not in targeted), None)
+    if claim is None:
+        return None
+
+    # Defence in depth, as `_ledger_tier` and `_doctor_warning_tier` keep for
+    # their own embedded prose: a claim or truth is composed by a check, never
+    # authored for this purpose, so it is checked directly rather than trusted.
+    if "\n" in claim.claim or "\n" in claim.truth:
+        raise SelfUseGenerationError(
+            f"{claim.key}: its claim or truth holds a line break, which would corrupt "
+            "the rendered job file's task boundary — this item is not generated"
+        )
+
+    new_id = _next_queue_id(queue_path)
+    title = f"Fix stale documentation: {claim.check_id} in {claim.document}"
+    job_markdown = (
+        f"# Job: Fix stale documentation: {claim.check_id} in {claim.document}\n"
+        "\n"
+        "## Task 1\n"
+        f"The documentation-staleness check `{claim.check_id}` found a claim in "
+        f"`{claim.document}` that the shipped code contradicts.\n"
+        "\n"
+        f"Claim: {claim.claim}\n"
+        f"Shipped truth: {claim.truth}\n"
+        "\n"
+        f"Edit `{claim.document}` so that it matches the shipped truth. Do not change "
+        "code to match the document, and do not edit any file under `.agent/`.\n"
+        "\n"
+        "Acceptance:\n"
+        f"- The staleness check `{claim.check_id}` no longer reports this claim for "
+        f"`{claim.document}`.\n"
+        "- No file under `.agent/` is changed by this task.\n"
+    )
+    return SelfUseQueueEntry(
+        id=new_id,
+        title=title,
+        why=claim.claim,
+        job_markdown=job_markdown,
+        consumed_by="",
+        provenance=_DOC_PROVENANCE.format(key=claim.key),
+    )
 
 
-def _doctor_warning_tier(_queue_path: Path | None) -> SelfUseQueueEntry | None:
-    """Tier 3: `doctor core` is not yet an importable source (DECISION F258 D2)."""
-    return None
+def _doctor_warning_tier(queue_path: Path | None) -> SelfUseQueueEntry | None:
+    """Tier 3: the first actionable `doctor core` warning no queue entry targets, as a job.
+
+    Imports `worker_facade_cmd` from `apps.cli.commands` INSIDE the function — the same
+    module-boundary crossing `packages.orchestration.lessons` and
+    `packages.orchestration.integrity_gate` already make — and calls
+    `doctor_core_report()` THROUGH the module rather than importing the function directly,
+    so a test that patches it on the module still reaches this tier. Catches nothing: the
+    report already turns a failing probe into that probe's own advisory or blocker, so
+    whatever it still raises here is a real defect this tier has no business hiding
+    (DECISION F289 D1, T5_F289.md T002).
+    """
+    from apps.cli.commands import worker_facade_cmd
+
+    report = worker_facade_cmd.doctor_core_report()
+    targeted = _targeted_doctor_keys(queue_path)
+    warning = next(
+        (w for w in report.actionable_warnings()
+         if f"{w.warning}:{w.subject}" not in targeted),
+        None,
+    )
+    if warning is None:
+        return None
+
+    # Defence in depth, as `_ledger_tier` keeps for a ledger paragraph: a
+    # warning's `detail` is prose composed elsewhere, never markdown authored
+    # for this purpose, so it is checked directly rather than trusted.
+    if re.search(r"^## ", warning.detail, re.M) or re.search(
+        r"^Acceptance\s*:", warning.detail, re.M | re.I
+    ):
+        raise SelfUseGenerationError(
+            f"{warning.warning}:{warning.subject}: its detail contains a line shaped "
+            "like a markdown heading or an Acceptance marker, which would corrupt the "
+            "rendered job file's task boundary — this item is not generated"
+        )
+
+    key = f"{warning.warning}:{warning.subject}"
+    new_id = _next_queue_id(queue_path)
+    title = f"Clear doctor warning {warning.warning} for {warning.subject}"
+    job_markdown = (
+        f"# Job: Clear doctor warning {warning.warning} for {warning.subject}\n"
+        "\n"
+        "## Task 1\n"
+        f"{warning.detail}\n"
+        "\n"
+        f"Make the repair this warning names, in `{warning.repair_path}` and the tests "
+        "that cover it. Do not edit any file under `.agent/`.\n"
+        "\n"
+        "Acceptance:\n"
+        f"- `remedy doctor core --json` no longer lists warning `{warning.warning}` for "
+        f"`{warning.subject}`.\n"
+        "- No file under `.agent/` is changed by this task.\n"
+    )
+    return SelfUseQueueEntry(
+        id=new_id,
+        title=title,
+        why=warning.detail,
+        job_markdown=job_markdown,
+        consumed_by="",
+        provenance=_DOCTOR_PROVENANCE.format(key=key),
+    )
 
 
 def generate_self_use_item(

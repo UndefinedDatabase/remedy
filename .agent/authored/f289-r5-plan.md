@@ -12,15 +12,16 @@ job (`docs/roadmap/features/T5_F289.md`).
 
 ## Current Step
 
-ROUND 7, the closing round: book round 6, rotate the finding ledger, set
-SU-033's `consumed_by`, accept F289 in STATUS with its README pins, and
-open the pull request.
+ROUND 5, the closure sequence's second round: book round 4, land the
+self-use run's reviewed diff to `docs/README.md`, write the Built State,
+and take the feature's one full suite.
 
 ## Next Steps
 
-1. The next session merges this feature's pull request at the Open PR
-   Gate, then claims the next feature by Rule A5.
+1. The evidence bundle and the review package.
+2. The closing round: rotation, STATUS, README pins, pull request.
 
 ## Risks
 
-None open. Open findings: 0.
+A red suite is repaired under amend0917-throughput rule 2. Open
+findings: 0.
