@@ -476,9 +476,16 @@ class TestWithdrawLiveDoor:
         )
         from packages.orchestration.pingpong_provider import FakeProvider
 
+        # R-1072: a target of its own — without it the runner builds a git
+        # worktree of the whole live checkout, which fails under load.
+        target = tmp_path / "repo"
+        target.mkdir()
+        (target / "README.md").write_text("# demo\n")
+
         job = JobPlan(job_title="live-withdraw-job",
                      user_prompt="Test prompt for the pause door withdraw",
-                     tasks=[TaskEntry(title="Write a README")])
+                     tasks=[TaskEntry(title="Write a README")],
+                     repo_path=str(target))
         save_job_plan(job)
         job_id = str(job.job_id)
 
