@@ -693,6 +693,125 @@ class TestParseOrderBudget:
 
 
 # ---------------------------------------------------------------------------
+# T5_F289 T003 — three consecutive generator calls on an empty ledger
+# ---------------------------------------------------------------------------
+
+
+class TestThreeConsecutiveItemsOnAnEmptyLedger:
+    """T5_F289.md's Done line: three consecutive generator calls on an empty
+    ledger each produce a distinct item that a run can finish inside the
+    default cost cap. DECISION F289 D3 is this proof's own design: three
+    closures (generate, then consume, as a real closure round does), a
+    fixture documentation tree supplying two Tier 2 items and a planted dead
+    built-in model supplying a Tier 3 item, and the FIRST item run to
+    completion under the fake providers while it is still the one pending
+    item.
+    """
+
+    def test_three_closures_the_first_run_to_completion(
+        self, tmp_path: Path, isolate_data_root, demo_repo, monkeypatch,
+    ):
+        from packages.orchestration import dead_model_list, self_use_generator
+        from packages.orchestration.dead_model_list import DeadModelEntry
+        from packages.orchestration.model_aliases import resolve_model_alias
+        from packages.orchestration.self_use_generator import (
+            generate_and_append_if_empty,
+        )
+
+        # THE SOURCES: a fixture documentation tree with two Tier 2 claims —
+        # a Quick-Find Table linking no guide, and a Guides section linking
+        # both guides that actually exist under the fixture root.
+        docs_root = tmp_path / "docs_root"
+        alpha = docs_root / "docs" / "guides" / "alpha.md"
+        beta = docs_root / "docs" / "guides" / "beta.md"
+        alpha.parent.mkdir(parents=True)
+        alpha.write_text("# Alpha\n", encoding="utf-8")
+        beta.write_text("# Beta\n", encoding="utf-8")
+        (docs_root / "docs" / "README.md").write_text(
+            "# Index\n\n"
+            "## Quick-Find Table\n\n"
+            "No guide is linked from this section.\n\n"
+            "## Guides\n\n"
+            "- [alpha.md](guides/alpha.md)\n"
+            "- [beta.md](guides/beta.md)\n",
+            encoding="utf-8",
+        )
+        monkeypatch.setattr(self_use_generator, "default_docs_root", lambda: docs_root)
+
+        # THE OTHER SOURCE: a dead built-in model — the id `claude-flagship`
+        # resolves to, read at run time, never spelled — so Tier 3 has
+        # exactly one actionable warning once Tier 2 is exhausted.
+        dead_id = resolve_model_alias("claude-flagship")
+
+        def _fake_load_dead_models(path=None):
+            return (DeadModelEntry(id=dead_id, reason="test fixture", superseded_by=""),)
+
+        def _fake_dead_model_ids(path=None):
+            return frozenset({dead_id})
+
+        monkeypatch.setattr(dead_model_list, "load_dead_models", _fake_load_dead_models)
+        monkeypatch.setattr(dead_model_list, "dead_model_ids", _fake_dead_model_ids)
+
+        # An empty ledger (Tier 1 offers nothing) and an order path pointing
+        # at a missing file (Tier 0 offers nothing), on every generator call.
+        ledger_path = tmp_path / "live_review.md"
+        ledger_path.write_text("", encoding="utf-8")
+        order_path = tmp_path / "no-order.md"
+        queue_path = _write_queue(tmp_path, [])
+
+        # THE RUN: run_job wrapped by a pass-through recorder, never stubbed
+        # out — the proof is that a real run finishes.
+        real_run_job = self_use_runner.run_job
+        captured: dict = {}
+
+        def _recording_run_job(job_id, **kwargs):
+            captured.update(kwargs)
+            return real_run_job(job_id, **kwargs)
+
+        monkeypatch.setattr(self_use_runner, "run_job", _recording_run_job)
+
+        entries = []
+        run_entry = run_result = None
+        for i in range(3):
+            entry = generate_and_append_if_empty(
+                queue_path=queue_path, ledger_path=ledger_path, order_path=order_path,
+            )
+            assert entry is not None, f"closure {i}: the generator offered nothing"
+            entries.append(entry)
+
+            if i == 0:
+                # While it is the one pending item, run it to completion.
+                run_entry, _job_file_path, run_result = run_next_self_use_item(
+                    tmp_path / "jobs",
+                    str(demo_repo),
+                    queue_path=queue_path,
+                    builder_provider=_pass_provider(),
+                    reviewer_provider=_pass_provider(),
+                    repair_rounds=0,
+                )
+
+            # Consumption is the closure round's own edit (DECISION F257 D2):
+            # write the entry's `consumed_by` in the queue file with `json`.
+            body = json.loads(queue_path.read_text(encoding="utf-8"))
+            for item in body["items"]:
+                if item["id"] == entry.id:
+                    item["consumed_by"] = "F289-R3-T003-test"
+            queue_path.write_text(json.dumps(body, indent=2) + "\n", encoding="utf-8")
+
+        assert [e.id for e in entries] == ["SU-001", "SU-002", "SU-003"]
+        provenances = [e.provenance for e in entries]
+        assert len(set(provenances)) == 3, f"provenances collided: {provenances}"
+        assert provenances[0].startswith("generated (self-use-generator tier 2")
+        assert provenances[1].startswith("generated (self-use-generator tier 2")
+        assert provenances[2].startswith("generated (self-use-generator tier 3")
+
+        assert run_entry is not None and run_entry.id == entries[0].id
+        assert run_result is not None and run_result.state == JOB_COMPLETED
+        assert captured["budgets"]["max_cost_usd"] == self_use_runner._MAX_COST_USD
+        assert captured["budgets"]["max_provider_calls"] == 8
+
+
+# ---------------------------------------------------------------------------
 # Operator amendment amend0926-decisions-selfuse Part B.3 — the fence over `.agent/`
 # ---------------------------------------------------------------------------
 
