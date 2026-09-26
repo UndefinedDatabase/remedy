@@ -1,7 +1,7 @@
 Command: python3 -m pytest -n auto -q
-Real exit code: 1
-Wall time: 3m28.426s real (bash `time`); pytest's own report: 207.77s (0:03:27)
-Summary line: 1 failed, 19693 passed, 20 skipped, 1 warning in 207.77s (0:03:27)
+Real exit code: 0
+Wall time: 252s real (start/end epoch seconds); pytest's own report: 251.15s (0:04:11)
+Summary line: 19694 passed, 20 skipped, 1 warning in 251.15s (0:04:11)
 Bad node ids (failed plus errors):
-tests/ui_server/test_pause_door_live.py::TestWithdrawLiveDoor::test_a_withdrawn_pause_never_parks_the_relaunch
-Tree it ran on: C4's SHA 29b0c2d204c935aa812adfa6fdd37400758a0abb; replaces round 10's run at `02890eaf` under amend0921-operator-feedback rule 1.
+None
+Tree it ran on: C4's SHA 3cbc4df929daa3d8f85af62773a44a2dda47750f; replaces round 11's run at `29b0c2d2` under amend0921-operator-feedback rule 1.
