@@ -11,17 +11,16 @@ repair (`docs/roadmap/features/T2_F285.md`).
 
 ## Current Step
 
-ROUND 5, the closure sequence's evidence round: book round 4, resolve
-R-1064 and R-1008, then build the evidence bundle against the fork
-point and the fresh review package.
+ROUND 6, the closing round: book round 5, rotate the ledger, register
+F286 — Findings paydown v5 under amend0911-feedback rule B, accept F285
+in STATUS with its README pins and `SU-032`'s `consumed_by`, and open
+the pull request.
 
 ## Next Steps
 
-1. The closing round: the booking of round 5, the ledger's rotation,
-   the registration of the next findings paydown, the STATUS line with
-   the README pins and `SU-032`'s `consumed_by`, and the pull request.
+1. The next feature's session merges this pull request at the Open PR
+   Gate, then claims the first unchecked feature in STATUS.
 
 ## Risks
 
-Open findings: 0 once this round's booking lands; F285 resolved all
-five it owned.
+Open findings: 0 — F285 resolved all five it owned.
