@@ -1,10 +1,11 @@
 // Owns the glue between the dashboard, the reducer's layout and the stage —
 // pure: no React, no DOM. `BrainGraphStage.tsx` and `ForceBrainGraph.tsx` both
 // need this glue and neither should have to re-derive it (DECISION F019 D3).
-import type { RemedyState, RemedyTaskItem } from "../../api/types";
+import type { RemedyDashboard, RemedyState, RemedyTaskItem, RemedyVetoes } from "../../api/types";
 import type { BrainTaskSeed, NodeState } from "./brainOntology";
 import type { BrainLayoutData, BrainLayoutNode } from "./forceBrainTypes";
 import type { GraphFilter } from "./GraphFilterChips";
+import { vetoHoverText } from "../../api/vetoView";
 
 /** Table 1 bridge (DECISION F019 D1, graph_spec.md §2): the dashboard's own
  *  task-state words mapped onto the seed-status words `SEED_STATUS_STATE_TABLE`
@@ -138,6 +139,31 @@ export function shellSelectionIdOf(tasks: readonly RemedyTaskItem[], taskId: str
   if (taskId === null) return null;
   const task = tasks.find((t) => t.id === taskId);
   return task ? task.nodeId : taskId;
+}
+
+/** DECISION F027 D8 (1) — every task node the live canvas fades to the vetoed
+ *  treatment's own `downstreamAlpha`: the `task:`-prefixed layout id of every
+ *  task `vetoes.unreachableTaskIds` names, which already folds every veto's
+ *  own unreachable set together (`RemedyVetoes`' own comment). A `ReadonlySet`
+ *  because `ForceBrainGraph.tsx` only ever asks it `.has(id)`. */
+export function vetoFadedNodeIds(vetoes: RemedyVetoes): ReadonlySet<string> {
+  return new Set(vetoes.unreachableTaskIds.map((id) => `task:${id}`));
+}
+
+/** DECISION F027 D8 (2) — the live canvas's own hover text for every task that
+ *  has one, keyed by the `task:`-prefixed layout id `ForceGraph2D`'s
+ *  `nodeLabel` reads its node objects by. Built from `vetoView.ts`'s
+ *  `vetoHoverText` rather than re-deriving the vetoed/unreachable split here —
+ *  this function's only job is the dashboard-wide loop and the id prefix. */
+export function vetoHoverTexts(dashboard: RemedyDashboard): ReadonlyMap<string, string> {
+  const texts = new Map<string, string>();
+  for (const task of dashboard.tasks) {
+    const text = vetoHoverText(dashboard, task.id);
+    if (text !== null) {
+      texts.set(`task:${task.id}`, text);
+    }
+  }
+  return texts;
 }
 
 /** Builds a NEW node array for `next`: a node whose id also appears in

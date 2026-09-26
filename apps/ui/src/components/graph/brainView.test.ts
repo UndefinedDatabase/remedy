@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { RemedyTaskItem } from "../../api/types";
+import type { RemedyDashboard, RemedyTaskItem, RemedyVetoEntry, RemedyVetoes } from "../../api/types";
 import { reduceBrainEvent, seedBrainModel } from "./brainReducer";
 import { row } from "./brainReducer.fixtures";
 import { buildBrainLayout } from "./buildForceBrainModel";
@@ -7,6 +7,7 @@ import type { BrainLayoutData } from "./forceBrainTypes";
 import {
   BRAIN_FILTER_STATES, DASHBOARD_STATE_STATUS, brainTaskCount, carryBrainPositions,
   dashboardBrainSeeds, filterBrainLayout, selectedBrainNodeId, selectionTaskIdOf, shellSelectionIdOf,
+  vetoFadedNodeIds, vetoHoverTexts,
 } from "./brainView";
 
 function task(id: string, state: RemedyTaskItem["state"], label = id): RemedyTaskItem {
@@ -274,5 +275,48 @@ describe("carryBrainPositions", () => {
     const result = carryBrainPositions(null, next);
     expect(result).toEqual(next);
     result.forEach((n, i) => expect(n).not.toBe(next[i]));
+  });
+});
+
+function vetoEntry(overrides: Partial<RemedyVetoEntry> = {}): RemedyVetoEntry {
+  return {
+    taskId: "t1", reason: "duplicate work", actor: "operator",
+    requestedAt: "2026-09-26T00:00:00Z", requestId: "req-1", statusAtVeto: "pending",
+    unreachableTaskIds: [], answer: "",
+    ...overrides,
+  };
+}
+
+function vetoes(overrides: Partial<RemedyVetoes> = {}): RemedyVetoes {
+  return { tasks: [], vetoableTaskIds: [], unreachableTaskIds: [], error: "", ...overrides };
+}
+
+describe("vetoFadedNodeIds", () => {
+  it("prefixes every unreachable task id with task:", () => {
+    const ids = vetoFadedNodeIds(vetoes({ unreachableTaskIds: ["t2", "t3"] }));
+    expect(ids).toEqual(new Set(["task:t2", "task:t3"]));
+  });
+
+  it("is empty when nothing is unreachable", () => {
+    expect(vetoFadedNodeIds(vetoes())).toEqual(new Set());
+  });
+});
+
+describe("vetoHoverTexts", () => {
+  it("maps every task that has hover text to its task: id", () => {
+    const tasks = [task("t1", "pending", "Build the API"), task("t2", "pending", "Wire the client")];
+    const dashboard = {
+      tasks,
+      vetoes: vetoes({ tasks: [vetoEntry({ taskId: "t1", reason: "duplicate work", unreachableTaskIds: ["t2"] })] }),
+    } as RemedyDashboard;
+    const texts = vetoHoverTexts(dashboard);
+    expect(texts.get("task:t1")).toBe("Vetoed: duplicate work");
+    expect(texts.get("task:t2")).toBe("Unreachable due to veto of Build the API");
+    expect(texts.size).toBe(2);
+  });
+
+  it("carries no entry for a task with no hover text", () => {
+    const dashboard = { tasks: [task("t1", "pending")], vetoes: vetoes() } as RemedyDashboard;
+    expect(vetoHoverTexts(dashboard).size).toBe(0);
   });
 });
