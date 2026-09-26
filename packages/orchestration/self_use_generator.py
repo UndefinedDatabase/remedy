@@ -33,10 +33,14 @@ honest ``None`` placeholders rather than half-built guesses:
      concrete (doc, claim, shipped-truth) checks is its own future work,
      mirroring how ``ownership`` stayed an honest empty list in F040 until
      F035 existed (DECISION F040 D3).
-  3. An actionable ``remedy doctor core`` warning. Not yet reachable: today's
-     ``_cmd_doctor_core`` (``apps/cli/commands/worker_facade_cmd.py``) is an
-     argparse handler that prints, not an importable function returning
-     structured warnings — refactoring that seam is future work too.
+  3. AN ACTIONABLE ``remedy doctor core`` WARNING. The first warning
+     ``apps.cli.commands.worker_facade_cmd.doctor_core_report()`` marks
+     ``actionable`` — one whose repair is a tracked file of this repository,
+     read as its ``repair_path`` — that no existing queue entry already
+     targets by its provenance's ``<warning>:<subject>`` key, rendered as a
+     job whose one task quotes the warning's ``detail`` VERBATIM and whose
+     acceptance asks that ``doctor core --json`` no longer list it
+     (DECISION F289 D1, T5_F289.md T002).
 
 Public API::
 
@@ -98,6 +102,14 @@ _QUEUE_ID_RE = re.compile(r"^SU-(\d{3})$")
 _LEDGER_PROVENANCE = "generated (self-use-generator tier 1, ledger scan, {r_id})"
 _LEDGER_PROVENANCE_RE = re.compile(
     r"^generated \(self-use-generator tier 1, ledger scan, (R-\d+)\)$"
+)
+
+#: The provenance Tier 3 stamps on an item, and the pattern that reads the
+#: targeted doctor-warning key — ``<warning>:<subject>`` — back out of it
+#: (DECISION F289 D1).
+_DOCTOR_PROVENANCE = "generated (self-use-generator tier 3, doctor core, {key})"
+_DOCTOR_PROVENANCE_RE = re.compile(
+    r"^generated \(self-use-generator tier 3, doctor core, (?P<key>.+)\)$"
 )
 
 #: THE ORDER TIER. The order file, how often it may be queued, and the provenance
@@ -230,6 +242,18 @@ def _targeted_findings(queue_path: Path | None) -> frozenset[str]:
         match.group(1)
         for match in (
             _LEDGER_PROVENANCE_RE.match(entry.provenance)
+            for entry in load_self_use_queue(queue_path)
+        )
+        if match is not None
+    )
+
+
+def _targeted_doctor_keys(queue_path: Path | None) -> frozenset[str]:
+    """Every doctor-warning key (``<warning>:<subject>``) an existing entry, consumed or not, already targets."""
+    return frozenset(
+        match.group("key")
+        for match in (
+            _DOCTOR_PROVENANCE_RE.match(entry.provenance)
             for entry in load_self_use_queue(queue_path)
         )
         if match is not None
@@ -371,9 +395,67 @@ def _doc_staleness_tier(_queue_path: Path | None) -> SelfUseQueueEntry | None:
     return None
 
 
-def _doctor_warning_tier(_queue_path: Path | None) -> SelfUseQueueEntry | None:
-    """Tier 3: `doctor core` is not yet an importable source (DECISION F258 D2)."""
-    return None
+def _doctor_warning_tier(queue_path: Path | None) -> SelfUseQueueEntry | None:
+    """Tier 3: the first actionable `doctor core` warning no queue entry targets, as a job.
+
+    Imports `worker_facade_cmd` from `apps.cli.commands` INSIDE the function — the same
+    module-boundary crossing `packages.orchestration.lessons` and
+    `packages.orchestration.integrity_gate` already make — and calls
+    `doctor_core_report()` THROUGH the module rather than importing the function directly,
+    so a test that patches it on the module still reaches this tier. Catches nothing: the
+    report already turns a failing probe into that probe's own advisory or blocker, so
+    whatever it still raises here is a real defect this tier has no business hiding
+    (DECISION F289 D1, T5_F289.md T002).
+    """
+    from apps.cli.commands import worker_facade_cmd
+
+    report = worker_facade_cmd.doctor_core_report()
+    targeted = _targeted_doctor_keys(queue_path)
+    warning = next(
+        (w for w in report.actionable_warnings()
+         if f"{w.warning}:{w.subject}" not in targeted),
+        None,
+    )
+    if warning is None:
+        return None
+
+    # Defence in depth, as `_ledger_tier` keeps for a ledger paragraph: a
+    # warning's `detail` is prose composed elsewhere, never markdown authored
+    # for this purpose, so it is checked directly rather than trusted.
+    if re.search(r"^## ", warning.detail, re.M) or re.search(
+        r"^Acceptance\s*:", warning.detail, re.M | re.I
+    ):
+        raise SelfUseGenerationError(
+            f"{warning.warning}:{warning.subject}: its detail contains a line shaped "
+            "like a markdown heading or an Acceptance marker, which would corrupt the "
+            "rendered job file's task boundary — this item is not generated"
+        )
+
+    key = f"{warning.warning}:{warning.subject}"
+    new_id = _next_queue_id(queue_path)
+    title = f"Clear doctor warning {warning.warning} for {warning.subject}"
+    job_markdown = (
+        f"# Job: Clear doctor warning {warning.warning} for {warning.subject}\n"
+        "\n"
+        "## Task 1\n"
+        f"{warning.detail}\n"
+        "\n"
+        f"Make the repair this warning names, in `{warning.repair_path}` and the tests "
+        "that cover it. Do not edit any file under `.agent/`.\n"
+        "\n"
+        "Acceptance:\n"
+        f"- `remedy doctor core --json` no longer lists warning `{warning.warning}` for "
+        f"`{warning.subject}`.\n"
+        "- No file under `.agent/` is changed by this task.\n"
+    )
+    return SelfUseQueueEntry(
+        id=new_id,
+        title=title,
+        why=warning.detail,
+        job_markdown=job_markdown,
+        consumed_by="",
+        provenance=_DOCTOR_PROVENANCE.format(key=key),
+    )
 
 
 def generate_self_use_item(
