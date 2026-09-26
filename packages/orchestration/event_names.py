@@ -129,6 +129,8 @@ EVENT_NAMES: frozenset[str] = frozenset(
         "task_paused",
         "task_resumed",
         "task_round_completed",
+        "task_round_repaired",
+        "task_round_tested",
         "task_run_completed",
         "task_run_failed",
         "task_run_noop",

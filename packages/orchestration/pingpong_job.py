@@ -39,7 +39,12 @@ from packages.core.models import Artifact, Budget, JobFences, RunState
 # Module-level and not function-scoped: the default_factory of JobPlan and of
 # TaskEntry below is read when the class body runs, which a local import could
 # never reach.
-from packages.orchestration.data_paths import mint_episode_id, mint_job_id, mint_task_id
+from packages.orchestration.data_paths import (
+    mint_episode_id,
+    mint_job_id,
+    mint_run_id,
+    mint_task_id,
+)
 
 if TYPE_CHECKING:
     from packages.orchestration.schemas.models import PlannedTask
@@ -3425,7 +3430,11 @@ def run_job(
 
             if task_log is None:
                 task_log = _open_task_log(job)
-            _log_task_started(task_log, task)
+            # DECISION F288 D1 (2): the attempt id is this execution's ping-pong run id,
+            # minted here and passed to `run_pingpong` below, so every event of this
+            # execution — starting with `task_run_started` right after — carries it.
+            attempt_id = mint_run_id()
+            _log_task_started(task_log, task, attempt_id)
             # R-1055: a task a park or a stop interrupted still names its parked
             # run, and the relaunch offers that run's provider sessions to its
             # first calls; a provider without resume ignores the offer.
@@ -3472,17 +3481,18 @@ def run_job(
                     compiled_context_token_budget=compiled_context_token_budget,
                     resume_sessions=resume_sessions,
                     resumed_from_run_id=task.run_id if resume_sessions else "",
+                    run_id=attempt_id,
                 )
             except Exception as exc:  # noqa: BLE001 — a task that dies mid-call blocks the job with its error
                 task.status = TASK_FAILED
                 task.error = f"pingpong_exception: {exc}"
                 job.state = JOB_BLOCKED
                 job.error = f"task_{task.task_id}_failed: {exc}"
-                _log_task_ended(task_log, task, "pingpong_exception")
+                _log_task_ended(task_log, task, "pingpong_exception", attempt_id)
                 _persist_job(job)
                 return job
 
-            _log_task_rounds(task_log, task, result)
+            _log_task_rounds(task_log, task, result, attempt_id)
 
             # Record task result
             task.run_id = result.run_id
@@ -3529,7 +3539,7 @@ def run_job(
                     if _fold_task_vetoes(job, job_handle, _control):
                         return job
                     if task.status == TASK_VETOED:
-                        _log_task_ended(task_log, task, "vetoed")
+                        _log_task_ended(task_log, task, "vetoed", attempt_id)
                         _persist_budget_actuals()
                         _persist_job(job)
                         continue
@@ -3583,7 +3593,7 @@ def run_job(
             if not gate_ok:
                 task.status = TASK_BLOCKED
                 task.error = f"completion_gate_failed: {'; '.join(gate_reasons)}"
-                _log_task_ended(task_log, task, "completion_gate_failed")
+                _log_task_ended(task_log, task, "completion_gate_failed", attempt_id)
                 _block_job(job, idx, f"task_{task.task_id}_gate_failed: {'; '.join(gate_reasons)}")
                 return job
 
@@ -3596,7 +3606,7 @@ def run_job(
                 task.reviewer_verdict = "fail"
                 task.status = TASK_BLOCKED
                 task.error = fence_refusal
-                _log_task_ended(task_log, task, "scope_fence_refused")
+                _log_task_ended(task_log, task, "scope_fence_refused", attempt_id)
                 _block_job(job, idx, f"task_{task.task_id}_scope_fence_refused")
                 return job
 
@@ -3610,7 +3620,7 @@ def run_job(
                 if _absorb_block:
                     task.status = TASK_BLOCKED
                     task.error = _absorb_block
-                    _log_task_ended(task_log, task, "human_change_absorb_failed")
+                    _log_task_ended(task_log, task, "human_change_absorb_failed", attempt_id)
                     _block_job(job, idx, _absorb_block)
                     return job
             else:
@@ -3619,7 +3629,7 @@ def run_job(
                 if pre_guard.target_mutated:
                     task.status = TASK_BLOCKED
                     task.error = f"target_repo_mutated: {pre_guard.changed_target_files}"
-                    _log_task_ended(task_log, task, "target_repo_mutated")
+                    _log_task_ended(task_log, task, "target_repo_mutated", attempt_id)
                     _block_job(job, idx, "target_repo_mutated_during_job")
                     return job
 
@@ -3641,7 +3651,7 @@ def run_job(
             if manifest.status != "applied":
                 task.status = TASK_BLOCKED
                 task.error = f"workspace_apply_blocked: {_manifest_block_reason(manifest)}"
-                _log_task_ended(task_log, task, "workspace_apply_blocked")
+                _log_task_ended(task_log, task, "workspace_apply_blocked", attempt_id)
                 _block_job(job, idx, f"task_{task.task_id}_workspace_apply_blocked")
                 return job
 
@@ -3656,7 +3666,7 @@ def run_job(
                 if post_guard.target_mutated:
                     task.status = TASK_BLOCKED
                     task.error = f"target_repo_mutated_after_apply: {post_guard.changed_target_files}"
-                    _log_task_ended(task_log, task, "target_repo_mutated_after_apply")
+                    _log_task_ended(task_log, task, "target_repo_mutated_after_apply", attempt_id)
                     _block_job(job, idx, "target_repo_mutated_after_apply")
                     return job
 
@@ -3687,11 +3697,11 @@ def run_job(
                     # D1 (5): a failed commit blocks the job; nothing is retried silently.
                     task.status = TASK_BLOCKED
                     task.error = f"worktree_commit_failed: {type(exc).__name__}: {exc}"
-                    _log_task_ended(task_log, task, "worktree_commit_failed")
+                    _log_task_ended(task_log, task, "worktree_commit_failed", attempt_id)
                     _block_job(job, idx, f"task_{task.task_id}_worktree_commit_failed")
                     return job
 
-            _log_task_ended(task_log, task, "pass")
+            _log_task_ended(task_log, task, "pass", attempt_id)
             tasks_run += 1
             _persist_job(job)
             _teach_task_lesson(job, task)
@@ -4498,23 +4508,53 @@ def _open_task_log(job: JobPlan) -> Any:
 
 # The event names below stay INLINE literals: tests/ui_contracts/test_humanize_catalog.py
 # derives the stream vocabulary from `.log("<name>", ...)` call sites.
-def _log_task_started(log: Any, task: TaskEntry) -> None:
-    """``task_run_started`` in the shape the timeline, cockpit and trust report read."""
+def _log_task_started(log: Any, task: TaskEntry, attempt_id: str) -> None:
+    """``task_run_started`` in the shape the timeline, cockpit and trust report read.
+
+    ``attempt_id`` (DECISION F288 D1) is this execution's ping-pong run id, minted by the
+    caller before this call and carried on every event of the execution.
+    """
     try:
         if log is not None:
-            log.log("task_run_started", task_id=task.task_id, task_type=task.task_class)
+            log.log("task_run_started", task_id=task.task_id, task_type=task.task_class,
+                    attempt_id=attempt_id)
     except _TASK_LOG_ERRORS:
         pass
 
 
-def _log_task_rounds(log: Any, task: TaskEntry, result: Any) -> None:
-    """One ``task_round_completed`` per ping-pong round, with the reviewer's verdict."""
+def _repair_result(rnd: Any) -> str:
+    """The outcome of a repair round for ``task_round_repaired`` (DECISION F288 D1):
+    ``"error"`` when the round has no builder output or its output names an error,
+    ``"changed"`` when its output names at least one changed file, and ``"unchanged"``
+    otherwise."""
+    output = rnd.builder_output
+    if output is None or output.error:
+        return "error"
+    if output.files_changed:
+        return "changed"
+    return "unchanged"
+
+
+def _log_task_rounds(log: Any, task: TaskEntry, result: Any, attempt_id: str) -> None:
+    """For each ping-pong round, in round order (DECISION F288 D1): ``task_round_repaired``
+    when the round is a repair, ``task_round_tested`` when its test ran, then
+    ``task_round_completed`` as before, with the reviewer's verdict. Every event carries
+    ``attempt_id``.
+    """
     try:
         for rnd in (result.rounds if log is not None else ()):
+            if rnd.kind == "repair":
+                log.log("task_round_repaired", task_id=task.task_id,
+                        outcome=_repair_result(rnd), round_number=rnd.round_number,
+                        attempt_id=attempt_id)
+            if rnd.test_passed is not None:
+                log.log("task_round_tested", task_id=task.task_id,
+                        outcome="pass" if rnd.test_passed else "fail",
+                        round_number=rnd.round_number, attempt_id=attempt_id)
             verdict = rnd.reviewer_output.verdict if rnd.reviewer_output else ""
             log.log("task_round_completed", task_id=task.task_id,
                     outcome=verdict or "no_review", round_number=rnd.round_number,
-                    round_kind=rnd.kind, test_passed=rnd.test_passed)
+                    round_kind=rnd.kind, test_passed=rnd.test_passed, attempt_id=attempt_id)
     except _TASK_LOG_ERRORS:
         pass
 
@@ -4562,13 +4602,19 @@ def _teach_task_lesson(job: JobPlan, task: TaskEntry) -> None:
             task.task_id, job.job_id, exc_info=True)
 
 
-def _log_task_ended(log: Any, task: TaskEntry, outcome: str) -> None:
-    """``task_run_completed`` for ``pass``, else ``task_run_failed`` naming the block."""
+def _log_task_ended(log: Any, task: TaskEntry, outcome: str, attempt_id: str) -> None:
+    """``task_run_completed`` for ``pass``, else ``task_run_failed`` naming the block.
+
+    ``attempt_id`` (DECISION F288 D1) is this execution's ping-pong run id, carried on
+    every event of the execution.
+    """
     try:
         if log is not None and outcome == "pass":
-            log.log("task_run_completed", task_id=task.task_id, outcome=outcome)
+            log.log("task_run_completed", task_id=task.task_id, outcome=outcome,
+                    attempt_id=attempt_id)
         elif log is not None:
-            log.log("task_run_failed", task_id=task.task_id, outcome=outcome)
+            log.log("task_run_failed", task_id=task.task_id, outcome=outcome,
+                    attempt_id=attempt_id)
     except _TASK_LOG_ERRORS:
         pass
 

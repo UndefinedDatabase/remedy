@@ -2035,6 +2035,19 @@ def _budget_tick_summary_payload(metadata: Any) -> dict[str, Any]:
     return payload
 
 
+# DECISION F288 D1 (5): the kinds an attempt (one execution of a task by `run_job`)
+# writes, round 1. Round 2 adds the rest of T001's kinds — the run-next path, the test
+# service, the long-run executor's repair events and the plan-approved event.
+ATTEMPT_EVENT_KINDS: frozenset[str] = frozenset({
+    "task_run_started",
+    "task_round_repaired",
+    "task_round_tested",
+    "task_round_completed",
+    "task_run_completed",
+    "task_run_failed",
+})
+
+
 def _safe_event_summary(seq: int, event: dict[str, Any]) -> dict[str, Any]:
     """The safe per-event envelope both event transports carry.
 
@@ -2058,6 +2071,12 @@ def _safe_event_summary(seq: int, event: dict[str, Any]) -> dict[str, Any]:
     writers, so an unconditional widening would turn both red in the same
     commit as a new feature and leave two independent changes sharing one
     failure.
+
+    `attempt_id` is DECISION F288 D1 (5)'s field and it is CONDITIONAL on the
+    event kind: a kind in `ATTEMPT_EVENT_KINDS` gains it, read from the event's
+    `metadata["attempt_id"]` when `metadata` is a dict and the value is a `str`,
+    and `""` otherwise — a top-level `attempt_id` is never read — and every
+    other kind's frame stays byte-identical.
     """
     metadata = event.get("metadata")
     nested = metadata.get("task_id", "") if isinstance(metadata, dict) else ""
@@ -2070,6 +2089,9 @@ def _safe_event_summary(seq: int, event: dict[str, Any]) -> dict[str, Any]:
         "outcome": event.get("outcome", ""),
         "task_id": linkage if isinstance(linkage, str) else "",
     }
+    if kind in ATTEMPT_EVENT_KINDS:
+        attempt_id = metadata.get("attempt_id") if isinstance(metadata, dict) else None
+        summary["attempt_id"] = attempt_id if isinstance(attempt_id, str) else ""
     if kind == BUDGET_TICK_EVENT:
         summary["budget"] = _budget_tick_summary_payload(metadata)
     if kind == "steering_message_consumed":

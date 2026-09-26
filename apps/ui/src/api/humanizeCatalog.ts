@@ -86,6 +86,8 @@ export const STREAM_EVENT_CATALOG: Readonly<Record<string, string>> = {
   "task_paused": "A task was paused.",
   "task_resumed": "A task was resumed.",
   "task_round_completed": "A review round of a task finished.",
+  "task_round_repaired": "A repair round of a task finished.",
+  "task_round_tested": "The tests of a task's round finished.",
   "task_run_completed": "A task finished.",
   "task_run_failed": "A task failed.",
   "task_run_noop": "A task ran and changed nothing.",
