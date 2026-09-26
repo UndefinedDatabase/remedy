@@ -1,0 +1,5 @@
+Entry ID: SU-033
+Entry Title: Fix stale documentation: docs_index_guide_registration in docs/README.md
+Entry Provenance: generated (self-use-generator tier 2, doc staleness, docs_index_guide_registration:docs/README.md:the Quick-Find Table has no link to `guides/real-test-execution-snapshot-rollback-user-guide-v1.md`)
+Entry Consumed By: 
+Job File Path: /home/decodeux/Repos/remedy/.remedy-wt/f289-r4-selfuse/SU-033.md
