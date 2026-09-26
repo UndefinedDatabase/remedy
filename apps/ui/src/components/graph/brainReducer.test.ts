@@ -281,8 +281,9 @@ describe("F027 veto events (DECISION F027 D7 (2))", () => {
     const seeded = seedBrainModel("job-v", [{ id: "t1", status: "pending", rank: 0 }]);
     const failed = fold(seeded, [
       row(1, "task_run_started", "t1"),
-      row(2, "task_run_completed", "t1", "fail"),
+      row(2, "task_run_failed", "t1", "boom"),
     ]);
+    expect(failed.nodes.find((n) => n.id === "task:t1")?.state).toBe("fail");
     const vetoed = reduceBrainEvent(failed, row(3, "task_vetoed", "t1"));
     expect(vetoed.nodes.find((n) => n.id === "task:t1")?.state).toBe("vetoed");
   });
