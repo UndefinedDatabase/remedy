@@ -12,16 +12,15 @@ job (`docs/roadmap/features/T5_F289.md`).
 
 ## Current Step
 
-ROUND 5, the closure sequence's second round: book round 4, land the
-self-use run's reviewed diff to `docs/README.md`, write the Built State,
-and take the feature's one full suite.
+ROUND 6, the closure sequence's evidence round: book round 5, build the
+evidence bundle at the accepted head, and build the review package.
 
 ## Next Steps
 
-1. The evidence bundle and the review package.
-2. The closing round: rotation, STATUS, README pins, pull request.
+1. The closing round: book round 6, rotate the ledger, set SU-033's
+   `consumed_by`, accept F289 in STATUS with its README pins, and open
+   the pull request.
 
 ## Risks
 
-A red suite is repaired under amend0917-throughput rule 2. Open
-findings: 0.
+None open. Open findings: 0.
