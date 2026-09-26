@@ -446,3 +446,149 @@ class TestC09DocsIndexTypeColumn:
 # ---------------------------------------------------------------------------
 
 
+class TestC10DocSourcePaths:
+    def test_stale(self, tmp_path: Path):
+        _write(tmp_path, "README.md", (
+            "# Remedy\n\nSee `packages/orchestration/ghost_module.py` for details.\n"
+        ))
+        claims = _claims_for(tmp_path, _truth(), "doc_source_paths")
+        assert [_fields(c) for c in claims] == [
+            (
+                "doc_source_paths", "README.md",
+                "names the path `packages/orchestration/ghost_module.py`",
+                "`packages/orchestration/ghost_module.py` does not exist under the repository root",
+            ),
+        ]
+
+    def test_fresh(self, tmp_path: Path):
+        _write(tmp_path, "packages/orchestration/real_module.py", "# real\n")
+        _write(tmp_path, "README.md", (
+            "# Remedy\n\nSee `packages/orchestration/real_module.py` for details.\n\n"
+            "A fenced example of the stale shape, skipped entirely:\n"
+            "```\n"
+            "packages/orchestration/ghost_module.py\n"
+            "```\n"
+        ))
+        assert _claims_for(tmp_path, _truth(), "doc_source_paths") == []
+
+
+# ---------------------------------------------------------------------------
+# C11 — doc_dotted_command_ids
+# ---------------------------------------------------------------------------
+
+
+class TestC11DocDottedCommandIds:
+    def test_stale(self, tmp_path: Path):
+        _write(tmp_path, "README.md", (
+            "# Remedy\n\nSee `job.dance` for the retired command.\n"
+        ))
+        claims = _claims_for(tmp_path, _truth(), "doc_dotted_command_ids")
+        assert [_fields(c) for c in claims] == [
+            (
+                "doc_dotted_command_ids", "README.md",
+                "backticks the command `job.dance`",
+                "`job.dance` does not ship",
+            ),
+        ]
+
+    def test_fresh(self, tmp_path: Path):
+        # `config` is both a group id AND (here) a registered key prefix — the
+        # overlap real production hits with `doctor` — so `config.something`
+        # must be left to C07, never read as a command id by this check.
+        truth = _truth(config_keys=frozenset({
+            "data_dir", "ollama.host", "ollama.model", "config.something",
+        }))
+        _write(tmp_path, "README.md", (
+            "# Remedy\n\nSee `job.run` and `config.get`. A file `remedy.toml` "
+            "and a config key `ollama.host` are not command ids, nor is the "
+            "overlapping `config.something`.\n\n"
+            "A fenced example of the stale shape, skipped entirely:\n"
+            "```\n"
+            "`job.dance`\n"
+            "```\n"
+        ))
+        assert _claims_for(tmp_path, truth, "doc_dotted_command_ids") == []
+
+
+# ---------------------------------------------------------------------------
+# C12 — catalog_text_config_keys
+# ---------------------------------------------------------------------------
+
+
+class TestC12CatalogTextConfigKeys:
+    def test_stale(self, tmp_path: Path):
+        truth = _truth(catalog_texts=(
+            ("job.run description", "Uses ollama.ghost_key, e.g. for routing."),
+        ))
+        claims = run_staleness_checks(tmp_path, truth)
+        assert [_fields(c) for c in claims] == [
+            (
+                "catalog_text_config_keys", "apps/cli/command_catalog.py",
+                "the text labelled `job.run description` names `ollama.ghost_key`",
+                "`ollama.ghost_key` is not a registered config key",
+            ),
+        ]
+
+    def test_fresh(self, tmp_path: Path):
+        truth = _truth(catalog_texts=(
+            ("job.run description", "Uses ollama.host, e.g. for routing, never job.run itself."),
+        ))
+        assert run_staleness_checks(tmp_path, truth) == ()
+
+
+# ---------------------------------------------------------------------------
+# General catalog behaviour
+# ---------------------------------------------------------------------------
+
+
+class TestCheckSuiteShape:
+    def test_at_least_ten_checks_with_unique_ids_and_non_empty_text_fields(self):
+        assert len(CHECKS) >= 10
+        ids = [c.check_id for c in CHECKS]
+        assert len(ids) == len(set(ids))
+        for check in CHECKS:
+            assert check.check_id.strip()
+            assert check.claim.strip()
+            assert check.truth.strip()
+            assert check.documents
+
+    def test_run_staleness_checks_orders_claims_by_catalog_order(self, tmp_path: Path):
+        _write(tmp_path, "docs/README.md", (
+            "# Index\n\nSee `remedy widget fly`.\n"
+        ))
+        _write(tmp_path, "README.md", (
+            "# Remedy\n\nSee `job.dance`.\n"
+        ))
+        claims = run_staleness_checks(tmp_path, _truth())
+        seen_ids = [c.check_id for c in claims]
+        catalog_order = [c.check_id for c in CHECKS]
+        # Every check id present in `seen_ids` appears in the same relative
+        # order as it does in CHECKS.
+        filtered_catalog_order = [cid for cid in catalog_order if cid in seen_ids]
+        assert seen_ids == filtered_catalog_order
+
+    def test_an_absent_document_yields_nothing(self, tmp_path: Path):
+        # No README.md, no docs/README.md, no docs/guides/ at all under this root.
+        assert run_staleness_checks(tmp_path, _truth()) == ()
+
+
+class TestAgainstTheRealTree:
+    """Only over `ShippedTruth.live()` and the real repository: never pins WHICH claim it finds."""
+
+    def test_the_real_tree_does_not_raise_and_every_claim_names_an_existing_document(self):
+        claims = run_staleness_checks()
+        for claim in claims:
+            assert (Path(__file__).resolve().parents[2] / claim.document).is_file()
+
+    def test_the_live_truth_holds_the_expected_shipped_surface(self):
+        truth = ShippedTruth.live()
+        assert "config.list" in truth.command_ids
+        assert "data_dir" in truth.config_keys
+        assert "REMEDY_DATA_DIR" in truth.env_vars
+
+    def test_the_live_truth_s_catalog_texts_include_argdef_help_not_only_descriptions(self):
+        """`ShippedTruth.live()` walks every `CommandEntry.args`, not only its `description`."""
+        truth = ShippedTruth.live()
+        labels = [label for label, _ in truth.catalog_texts]
+        assert any(label.endswith(" description") for label in labels)
+        assert any(label.endswith(" help") for label in labels)
