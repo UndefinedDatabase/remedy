@@ -688,6 +688,112 @@ class TestDoctorCoreDeadModels:
         assert detail == "1 shipped + 0 config-only dead ids (1 total)"
 
 
+class TestDoctorCoreReportFunction:
+    """T5_F289.md T002, DECISION F289 D1: `doctor_core_report()` as an importable source."""
+
+    def _fixed_disk(self, monkeypatch):
+        import packages.orchestration.budget_guard as budget_guard
+        monkeypatch.setattr(budget_guard, "FREE_DISK_PROBE", lambda: 123456789)
+
+    def test_report_as_json_matches_the_commands_own_json_output_in_the_same_run(
+        self, monkeypatch, capsys
+    ):
+        from apps.cli.commands.worker_facade_cmd import _cmd_doctor_core, doctor_core_report
+
+        self._fixed_disk(monkeypatch)
+        report_json = doctor_core_report().as_json()
+        _cmd_doctor_core(_ns(json=True))
+        command_json = json.loads(capsys.readouterr().out)
+
+        for key in ("ready", "checks", "blockers", "warnings", "dead_commands", "disk"):
+            assert report_json[key] == command_json[key], key
+
+    def test_as_json_key_order(self, monkeypatch):
+        from apps.cli.commands.worker_facade_cmd import doctor_core_report
+
+        self._fixed_disk(monkeypatch)
+        result = doctor_core_report().as_json()
+        assert list(result.keys()) == [
+            "ready", "checks", "blockers", "warnings", "dead_commands", "disk",
+        ]
+
+    def test_every_warnings_as_json_key_list_is_exactly_three_keys(self, monkeypatch):
+        from apps.cli.commands.worker_facade_cmd import doctor_core_report
+
+        self._fixed_disk(monkeypatch)
+        _patch_dead_list(monkeypatch, [_dead_entry(a_builtin_model_id())])
+        report = doctor_core_report()
+        assert report.warnings, "must have at least one warning to check the key list"
+        for warning in report.warnings:
+            assert list(warning.as_json().keys()) == ["warning", "summary", "detail"]
+
+    def test_a_dead_builtin_default_is_actionable_with_its_id_and_repair_path(
+        self, monkeypatch
+    ):
+        from pathlib import Path
+
+        from apps.cli.commands.worker_facade_cmd import MODEL_ALIAS_TABLE_PATH, doctor_core_report
+
+        self._fixed_disk(monkeypatch)
+        model_id = a_builtin_model_id()
+        _patch_dead_list(monkeypatch, [_dead_entry(model_id)])
+
+        report = doctor_core_report()
+        hits = [w for w in report.warnings if w.warning == "dead_builtin_model"]
+        assert len(hits) == 1
+        assert hits[0].actionable is True
+        assert hits[0].subject == model_id
+        assert hits[0].repair_path == MODEL_ALIAS_TABLE_PATH
+        repo_root = Path(__file__).resolve().parents[2]
+        assert (repo_root / MODEL_ALIAS_TABLE_PATH).is_file()
+
+    def test_a_dead_configured_id_and_an_unknown_variable_are_not_actionable(
+        self, monkeypatch
+    ):
+        from apps.cli.commands.worker_facade_cmd import doctor_core_report
+
+        self._fixed_disk(monkeypatch)
+        _patch_dead_list(monkeypatch, [_dead_entry("dead-configured-id")])
+        monkeypatch.setattr(
+            _GET_CONFIG_PATCH,
+            lambda: _FakeConfig({"orchestrator.model": "dead-configured-id"}),
+        )
+        monkeypatch.setenv("REMEDY_ZZ_NOT_A_SETTING", "1")
+
+        report = doctor_core_report()
+
+        configured = [w for w in report.warnings if w.warning == "dead_configured_model"]
+        assert len(configured) == 1
+        assert configured[0].actionable is False
+        assert configured[0].subject == "dead-configured-id"
+        assert configured[0].repair_path == ""
+
+        unknown = [w for w in report.warnings if w.warning == "unknown_env_variable"]
+        assert len(unknown) == 1
+        assert unknown[0].actionable is False
+        assert unknown[0].subject == "REMEDY_ZZ_NOT_A_SETTING"
+        assert unknown[0].repair_path == ""
+
+    def test_actionable_warnings_answers_exactly_the_actionable_ones_in_order(
+        self, monkeypatch
+    ):
+        from apps.cli.commands.worker_facade_cmd import doctor_core_report
+
+        self._fixed_disk(monkeypatch)
+        _patch_dead_list(monkeypatch, [_dead_entry(a_builtin_model_id())])
+        monkeypatch.setattr(
+            _GET_CONFIG_PATCH,
+            lambda: _FakeConfig({"orchestrator.model": "dead-configured-id"}),
+        )
+        monkeypatch.setenv("REMEDY_ZZ_NOT_A_SETTING", "1")
+
+        report = doctor_core_report()
+        actionable = report.actionable_warnings()
+
+        assert list(actionable) == [w for w in report.warnings if w.actionable]
+        assert [w.warning for w in actionable] == ["dead_builtin_model"]
+
+
 class TestShippedDefaultsAreNotOnTheShippedDeadList:
     """The shipped build warns about none of its OWN defaults.
 
