@@ -12,18 +12,18 @@ inbox and never executed on its own (`docs/roadmap/features/T5_F027.md`).
 
 ## Current Step
 
-ROUND 1: claim F027, re-head the live review record, book F285's round
-6, record DECISION F027 D1, and land the veto control protocol —
-`packages/orchestration/task_veto.py` with the mandatory verbatim
-reason, the pure state gate, the unreachable set, the create-only
-control file per vetoed task, the command effect and its `task_vetoed`
-event, the `TASK_VETOED` status, and their unit tests.
+ROUND 2: book round 1, register and repair R-1065, record DECISION F027
+D2, and land the linear runner's fold of a veto — the fold before the
+task loop and at every pre-task safe point, the workspace returned to a
+vetoed attempt's start tree by `worktrees.restore_tree`, the unreachable
+set never dispatched, the skipped tasks a block left going back to
+pending, the terminal that names the vetoed and the unreachable tasks,
+and `vetoed` in the run manifest's vocabulary.
 
 ## Next Steps
 
-1. The rest of T001: the runners fold a veto at their safe points, an
-   in-progress task finishes its current call before it is vetoed, and
-   the terminal accounting names the veto.
+1. The rest of T001: a task vetoed while its call runs finishes that
+   call and is then vetoed, and the cycle executor reads a veto.
 2. T002: the replan proposal in the decision inbox with its two-option
    menu, and both options' documented effects.
 3. The channel commands in the catalog, the CLI and the write door.
@@ -33,5 +33,5 @@ event, the `TASK_VETOED` status, and their unit tests.
 
 ## Risks
 
-A veto must never be lost to a running job's save, so the command writes
-a control file and never the job record. Open findings: 0.
+A vetoed attempt's partial work must never reach a later task's diff.
+Open findings: 1 — R-1065, owned by F027 and repaired this round.

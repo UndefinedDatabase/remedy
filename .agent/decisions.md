@@ -22028,3 +22028,72 @@ or park one, and no automatic replan: nothing replans without the decision answe
 
 HOW TO REVERSE: delete `packages/orchestration/task_veto.py` and its tests, the `TASK_VETOED`
 constant, the `task_vetoed` name in `EVENT_NAMES`, and this paragraph.
+
+## DECISION F027 D2 — the linear runner folds a veto before its task loop and at every pre-task safe point: a vetoed task holding an active attempt first has the job workspace returned to its start tree, the task becomes `vetoed` with its veto recorded on the job, its unreachable set is never dispatched, the tasks a block skipped go back to pending unless unreachable, independent tasks run on, and a run whose remaining work is all vetoed or unreachable ends `blocked` naming both sets (2026-09-26)
+
+CONTEXT: DECISION F027 D1 leaves the fold to the runners. Measured at `25ab44de`: `run_job` in
+`packages/orchestration/pingpong_job.py` walks `job.tasks` in list order, passes over a task that
+is applied, passed, skipped or split, stops at one that is blocked or failed, and reads the stop and
+the pause at a pre-task safe point before it dispatches; after its loop it sets `completed` when
+every task is applied, skipped or split, `paused` at the task cap with work pending, and otherwise
+leaves the state it set when the run began, so a run whose only unfinished task were vetoed would
+end still `running`; `_block_job` is the only writer of `skipped`, and it skips exactly the pending
+tasks after the blocked one (DECISION F026 D1); in a worktree job a task writes into the job
+workspace in place, and a blocked or failed task keeps its attempt `active` with its start tree so
+that a relaunch reruns it inside the same diff; `_check_handoff_coverage` refuses a completed job
+whose final tree holds a path no applied task reviewed; `packages/orchestration/worktrees.py` can
+snapshot a worktree's complete tree (`write_tree`), list the paths two trees differ in, and read a
+path's bytes and mode in a tree, but nothing returns a worktree to a tree; a `blocked` terminal
+writes no run manifest, while a park at the task cap, a pause and a stop each write one, whose
+`VALID_TASK_STATUSES` in `packages/orchestration/run_manifest.py` does not hold `vetoed`; and
+`dag_schedule.blocked_downstream` treats a task without plan metadata as depending on the task
+before it, so on a job file's tasks the unreachable set is every later task.
+
+CHOSEN: (1) THE FOLD POINTS: immediately before the task loop, once the episode has started, and at
+every pre-task safe point after the stop and pause check found nothing — a stop and a pause beat a
+veto — `run_job` reads `task_veto.vetoed_tasks` and folds every entry it has not folded yet. A
+`TaskVetoError` blocks the job before anything more is dispatched, with the error
+`task_veto_control_error: <detail>`, as a pause-control error does. (2) THE FOLD OF ONE ENTRY: a
+task already `vetoed` is left alone; a task whose status is outside `VETOABLE_TASK_STATUSES`, work
+the veto came too late for, keeps its status and the veto is recorded as inert naming that status;
+any other task is vetoed. When the job owns a worktree and the task's attempt is `active` with a
+start tree, the workspace is first returned to that start tree, so none of the vetoed attempt's
+partial work reaches a later task's diff or the job's hand-off; a failed return blocks the job with
+`veto_restore_failed: <detail>` and leaves the task as it was, so the next run retries the fold.
+Then the task's status becomes `vetoed` and its attempt state `vetoed`, its error is kept, and
+`job.metadata["task_vetoes"]` records the entry under the task's id with the time of the fold,
+whether the workspace was restored, and the unreachable set. When the vetoed task was `blocked` or
+`failed`, every task after it in plan order that is `skipped` goes back to `pending` unless it is
+in the unreachable set of the vetoes folded so far, because `_block_job` skipped them only for that
+task's failure. The record is persisted once the fold is done. (3) THE RESTORE is
+`worktrees.restore_tree(handle, tree)`: every path the worktree's complete current tree and the
+given tree differ in is written back with the given tree's bytes and executable bit, recreated as
+the symbolic link the tree holds, or deleted with the directories it leaves empty, and a submodule
+entry refuses; the worktree's complete tree must then equal the given tree, or it raises. It never
+touches the index, `HEAD` or a branch. (4) THE LOOP passes over a task that is `vetoed` or in the
+unreachable set of every vetoed task, and dispatches every other task exactly as before. (5) THE
+TERMINAL: when the loop runs to its end with at least one task `vetoed` and every task either
+applied, passed, skipped, split, vetoed or unreachable, the unreachable tasks still pending become
+`skipped`, the job becomes `blocked` with the error `all_remaining_work_vetoed: vetoed <ids>;
+unreachable <ids>` — task ids in plan order, `none` for an empty set — and
+`job.metadata["veto_terminal"]` holds the two lists; the Definition-of-Done gate does not run and
+no run manifest is written, as for any other block. The task cap's park keeps precedence while
+runnable work remains. (6) THE MANIFEST'S VOCABULARY: `vetoed` joins `VALID_TASK_STATUSES`; a
+vetoed task that owns no run is published with the expectation `skipped`, whose allowed statuses
+become `skipped` and `vetoed`; and `vetoed` joins the baseline statuses of `executed`,
+`prior_episode` and `dispatched_no_calls`, for a task vetoed after it ran, and never the tightened
+sets of a completed episode. (7) R-1065's repair lands in this round. (8) A task vetoed while its
+provider call is running, and the cycle executor's reading of a veto, are the next round's.
+
+ALTERNATIVES: the pause's linear mask on this runner, rejected by DECISION F027 D1 (5); leaving the
+vetoed attempt's partial work in the workspace, rejected because it would enter the next task's
+start tree unreviewed and fail the hand-off's coverage check; a `git checkout` of the start tree,
+rejected because the start tree is a snapshot holding untracked paths no commit holds; marking the
+unreachable tasks `skipped` at the fold, rejected because the fold's own rule sends `skipped` tasks
+back to `pending` and could then no longer tell the ones a block skipped from the ones a veto did; ending the run `completed`
+with a reduced scope, rejected because only the replan proposal's answer may accept the reduced
+scope (T5_F027.md: nothing replans without the decision answer).
+
+HOW TO REVERSE: delete the fold, the loop's two passes and the terminal branch from `run_job`,
+`worktrees.restore_tree`, the `vetoed` entries of the manifest's vocabulary, their tests, and this
+paragraph.
