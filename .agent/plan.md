@@ -12,19 +12,18 @@ inbox and never executed on its own (`docs/roadmap/features/T5_F027.md`).
 
 ## Current Step
 
-ROUND 10, the closure sequence's first round: book round 9, resolve
-R-1069 and R-1070, write the Built State, consolidate the checklist, run
-the closure's self-use item, and take the feature's one full suite.
+ROUND 11, the closure's first repair round: book round 10, register and
+repair R-1071, the one red node of the closure suite, and take the one
+full suite again on the repaired tree.
 
 ## Next Steps
 
-1. The evidence round: the booking of this round, any registration the
-   self-use run or the suite asks for, the evidence bundle and the review
-   package.
+1. The evidence round: the booking of this round, the Built State's
+   note on R-1071, the evidence bundle and the review package.
 2. The closing round: the ledger rotation, the status line, the README
-   pins, the self-use item's `consumed_by` and the pull request.
+   pins and the pull request.
 
 ## Risks
 
-The one full suite runs on the tree that ships; a red node is this
-feature's to repair within three rounds. Open findings: 0.
+The repaired suite must strictly shrink the bad set with no node newly
+bad. Open findings: 1 — R-1071, repaired this round.
