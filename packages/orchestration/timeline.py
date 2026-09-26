@@ -207,6 +207,12 @@ def _render_single_event(ev: dict[str, Any]) -> str | None:
         detail = meta.get("error_category", "") or "unknown error"
         return f"  {_FAIL} Planning failed: {detail}"
 
+    if name == "plan_approved":
+        task_ids = meta.get("task_ids")
+        n = len(task_ids) if isinstance(task_ids, list) else 0
+        mode = meta.get("approval_mode") or "?"
+        return f"  {_OK} Plan approved: {n} task(s), mode {mode}"
+
     if name == "task_run_noop":
         # Pre-start noop (no pending tasks) — occurs outside a task block.
         if outcome == "no_pending_tasks":

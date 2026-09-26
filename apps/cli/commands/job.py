@@ -880,6 +880,7 @@ def _cmd_run_next_task_local(job_id_str: str, *, json_output: bool = False) -> N
 
     from pydantic import ValidationError
 
+    from packages.orchestration.data_paths import mint_run_id
     from packages.orchestration.permissions import Capability
     from packages.orchestration.permissions import is_allowed as _perm_allowed
     from packages.orchestration.repo_applicator import check_and_apply_to_repo
@@ -907,13 +908,17 @@ def _cmd_run_next_task_local(job_id_str: str, *, json_output: bool = False) -> N
 
     pending_task = next((t for t in job.tasks if t.status == RunState.PENDING), None)
     pending_task_type = pending_task.inputs.get("task_type", "unknown") if pending_task else None
-    log.log("task_run_started", task_id=str(pending_task.task_id) if pending_task else None, task_type=pending_task_type)
+    # DECISION F288 D2 (2): the attempt id is minted here, before `task_run_started`,
+    # and every event of this execution from here to the terminal event carries it.
+    attempt_id = mint_run_id()
+    log.log("task_run_started", task_id=str(pending_task.task_id) if pending_task else None,
+            task_type=pending_task_type, attempt_id=attempt_id)
 
     def _fail(outcome: str, **meta: object) -> None:
         log.log(
             "task_run_failed",
             task_id=str(pending_task.task_id) if pending_task else None,
-            outcome=outcome, task_type=pending_task_type, **meta,
+            outcome=outcome, task_type=pending_task_type, attempt_id=attempt_id, **meta,
         )
 
     if not _perm_allowed(job, Capability.workspace_write):
@@ -930,6 +935,7 @@ def _cmd_run_next_task_local(job_id_str: str, *, json_output: bool = False) -> N
         log.log(
             "builder_started", task_id=str(pending_task.task_id) if pending_task else None,
             provider="ollama", role="builder", model=builder.model, task_type=pending_task_type,
+            attempt_id=attempt_id,
         )
         result: RunTaskResult = run_next_task(job, builder.build)
     except ImportError as exc:
@@ -951,6 +957,7 @@ def _cmd_run_next_task_local(job_id_str: str, *, json_output: bool = False) -> N
         log.log(
             "task_run_noop", task_id=str(pending_task.task_id) if pending_task else None,
             outcome="no_change", task_type=pending_task_type, reason="builder_returned_no_change",
+            attempt_id=attempt_id,
         )
         print(f"Job {job.job_id} — builder returned no change.  log={log.path}")
         return
@@ -962,13 +969,14 @@ def _cmd_run_next_task_local(job_id_str: str, *, json_output: bool = False) -> N
         else None
     )
     log.log("builder_completed", task_id=str(result.task_id), artifact_id=_artifact_id_for_log,
-            outcome="changed", elapsed_ms=round(elapsed_ms))
+            outcome="changed", elapsed_ms=round(elapsed_ms), attempt_id=attempt_id)
 
     annotate_task_result(result, provider="ollama", role="builder", model=builder.model, elapsed_ms=elapsed_ms)
 
     runtime = LocalWorkspaceRuntime(job_id=job.job_id)
     mf = materialize_task_output(result, runtime)
-    log.log("workspace_materialized", task_id=str(result.task_id), workspace_file=str(mf.path))
+    log.log("workspace_materialized", task_id=str(result.task_id), workspace_file=str(mf.path),
+            attempt_id=attempt_id)
 
     vr = verify_task_output(result.job, result.task_id)
 
@@ -978,11 +986,12 @@ def _cmd_run_next_task_local(job_id_str: str, *, json_output: bool = False) -> N
     if vr.passed:
         from packages.orchestration.task_registry import get_task_type_spec as _get_spec
         _spec = _get_spec(_task_type_for_log)
-        log.log("verification_passed", task_id=str(result.task_id), outcome="pass", verifier_profile=_spec.verifier_profile)
+        log.log("verification_passed", task_id=str(result.task_id), outcome="pass",
+                verifier_profile=_spec.verifier_profile, attempt_id=attempt_id)
     else:
         _failed_checks = [c.check for c in vr.failures]
         log.log("verification_failed", task_id=str(result.task_id), outcome="fail",
-                failure_count=len(vr.failures), failed_checks=_failed_checks)
+                failure_count=len(vr.failures), failed_checks=_failed_checks, attempt_id=attempt_id)
 
     finalize_task(result, vr)
 
@@ -1004,12 +1013,13 @@ def _cmd_run_next_task_local(job_id_str: str, *, json_output: bool = False) -> N
                     if repo_applied:
                         artifact.metadata["repo_applied_files"] = repo_applied
                         log.log("repo_application_completed", task_id=str(result.task_id),
-                                outcome="applied", file_count=len(repo_applied), files=repo_applied)
+                                outcome="applied", file_count=len(repo_applied), files=repo_applied,
+                                attempt_id=attempt_id)
                     else:
                         _skip_reason = artifact.metadata.get("repo_application_skipped_reason")
                         if _skip_reason:
                             log.log("repo_application_skipped", task_id=str(result.task_id),
-                                    outcome="skipped", reason=_skip_reason)
+                                    outcome="skipped", reason=_skip_reason, attempt_id=attempt_id)
 
     patch_intent_count = 0
     dry_run_block = ""
@@ -1038,7 +1048,7 @@ def _cmd_run_next_task_local(job_id_str: str, *, json_output: bool = False) -> N
                     )
                     pi_artifact.metadata["patch_intent_errors"] = pi_errors
                     log.log("patch_intent_failed", task_id=str(result.task_id),
-                            outcome="failed", error_count=len(pi_errors))
+                            outcome="failed", error_count=len(pi_errors), attempt_id=attempt_id)
                 elif pis.intents:
                     pi_mf = materialize_patch_intents(pis, runtime, pi_task_index, pi_task_type)
                     if pi_mf is not None:
@@ -1066,9 +1076,11 @@ def _cmd_run_next_task_local(job_id_str: str, *, json_output: bool = False) -> N
 
                     risk_levels = pi_artifact.metadata.get("patch_intent_risks", [])
                     log.log("patch_intent_created", task_id=str(result.task_id),
-                            outcome="created", intent_count=len(pis.intents), risk_levels=risk_levels)
+                            outcome="created", intent_count=len(pis.intents), risk_levels=risk_levels,
+                            attempt_id=attempt_id)
                 else:
-                    log.log("patch_intent_skipped", task_id=str(result.task_id), outcome="no_intents")
+                    log.log("patch_intent_skipped", task_id=str(result.task_id), outcome="no_intents",
+                            attempt_id=attempt_id)
 
     save_job_plan(result.job)
 
@@ -1077,9 +1089,9 @@ def _cmd_run_next_task_local(job_id_str: str, *, json_output: bool = False) -> N
     pending_remaining = sum(1 for t in result.job.tasks if t.status == "pending")
 
     if vr.passed:
-        log.log("task_run_completed", task_id=str(result.task_id), outcome="pass")
+        log.log("task_run_completed", task_id=str(result.task_id), outcome="pass", attempt_id=attempt_id)
     else:
-        log.log("task_run_failed", task_id=str(result.task_id), outcome="fail")
+        log.log("task_run_failed", task_id=str(result.task_id), outcome="fail", attempt_id=attempt_id)
 
     if json_output:
         envelope_payload: dict[str, Any] = dict(

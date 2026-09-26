@@ -41,6 +41,7 @@ export const STREAM_EVENT_CATALOG: Readonly<Record<string, string>> = {
   "patch_intent_failed": "A patch intent failed to apply.",
   "patch_intent_rejected": "A patch intent was rejected.",
   "patch_intent_skipped": "A patch intent was skipped.",
+  "plan_approved": "The plan was approved and its tasks were released.",
   "planning_completed": "Planning finished and produced a task list.",
   "planning_failed": "Planning failed.",
   "planning_started": "Planning started.",

@@ -53,6 +53,7 @@ NARRATED_EVENTS: dict[str, str] = {
     "command.accepted": "The cockpit accepted a command: {command}",
     "planning_started": "Planning started.",
     "planning_completed": "Planning finished and produced a task list.",
+    "plan_approved": "The plan was approved (mode: {approval_mode}).",
     "planning_failed": "Planning failed: {message}",
     "workspace_materialized": "The workspace was prepared for this run.",
     "task_run_started": "A task started: {task_id}",

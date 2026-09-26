@@ -90,6 +90,7 @@ EVENT_NAMES: frozenset[str] = frozenset(
         "patch_intent_failed",
         "patch_intent_rejected",
         "patch_intent_skipped",
+        "plan_approved",
         "planning_completed",
         "planning_failed",
         "planning_started",

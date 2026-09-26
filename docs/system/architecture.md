@@ -466,6 +466,8 @@ None-valued top-level fields are omitted from the serialized line. `metadata` is
 - `task_run_noop` — terminal event when builder returns no change; outcome = `"no_change"`;
   metadata includes `reason = "builder_returned_no_change"`
 
+Every event from `task_run_started` to the terminal event carries `metadata.attempt_id`, the id the execution mints before `task_run_started` (DECISION F288 D2); the pre-execution noop carries none.
+
 **Terminal-event invariant (v1):**
 
 Every `task_run_started` must be followed by exactly one terminal task event in the same log:
