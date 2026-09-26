@@ -22038,3 +22038,39 @@ Red proofs, each red with the three production files restored from `557cbbcc` an
 and `::test_the_fence_refuses_a_write_under_the_record` in `tests/orchestration/test_self_use_runner.py`.
 The last two also go red when only the runner's fence or only the job runner's check is removed.
 REVERSE: `git revert` the commit that carries this paragraph.
+
+## DECISION amend0926-decisions-selfuse D5 (2026-09-26, operator amendment, Part C) — the three new features take the ids F287, F288 and F289, one above the amendment's text
+CONTEXT: Part C names three registrations F286, F287 and F288. Its anchors were verified against an
+older head (3cb0798d). Since then F285's closure registered F286, "Findings paydown v5", under
+operator amendment amend0911-feedback rule B, and `TOTAL_FEATURES` in
+`tests/docs/test_docs_consistency.py` already reads 286. Feature ids must stay contiguous, so the
+amendment's ids cannot be used as written.
+CHOSEN: Every id moves up by one and keeps its title and content: provider session continuity
+across relaunch is F287 (the amendment's F286), event stream completeness and prompt nodes in the
+live graph is F288 (the amendment's F287), and self-use sources completion is F289 (the amendment's
+F288). In the new Tier 5 block the amendment orders self-use sources first and event stream second,
+so the block reads F289, then F288. `TOTAL_FEATURES` rises from 286 to 289, by exactly the three new
+features. No feature with any of these titles existed before.
+REVERSE: Rename the three feature files and their STATUS lines back to F286, F287 and F288 only
+after F286 is renumbered, which is not recommended; otherwise delete the three registrations.
+
+## DECISION amend0926-decisions-selfuse D6 (2026-09-26, operator amendment, Parts B and C) — R-1055 is already resolved, so F287 takes over the production half of its goal and the ledger and F285's file are left alone
+CONTEXT: Part C.1 registers a feature that "takes over finding R-1055 by name", and Part B.4 moves
+R-1055's owner from F285 to that feature and rewrites F285's acceptance lines for R-1055, R-1057
+and R-1058 to say this amendment resolved them. When the amendment started, the archive already
+held `Done: R-1055 — RESOLVED at e2f86af8` (F285 round 2, DECISION F285 D2), `Done: R-1057` at
+`91397285` and `Done: R-1058` at `67985614`, and F285 was accepted and merged as pull request 282.
+F285's repair of R-1055 persists each round's provider session in the run's `result.json` and offers
+it to the first calls of a relaunched task, but it is proven only through the test provider: every
+production provider in `packages/orchestration/pingpong_provider.py` answers `supports_resume` with
+false, so in real use a relaunch still starts a new session and pays again.
+CHOSEN: F287 is registered with the goal the operator stated, sharpened to what remains: a
+relaunch on the `claude-cli` provider really resumes the parked session and records `resume_used`
+true, and a provider that cannot resume says so in the evidence. R-1055 stays resolved and keeps
+its owner line, because rewriting a resolved finding's owner would reopen nothing and would falsify
+the record; F287's file names R-1055 as the finding whose practical half it takes over. Part B.4's
+`Done:` paragraphs are not written, because R-1057 and R-1058 already carry theirs, and
+`docs/roadmap/features/T2_F285.md` is not edited, because F285 is closed and its resolutions were
+F285's own; this amendment's additions to R-1058 are recorded in DECISION D4 instead.
+REVERSE: Delete `docs/roadmap/features/T3_F287.md` and its STATUS line and lower the counters, or
+edit F287's goal; nothing in the ledger needs reversing.

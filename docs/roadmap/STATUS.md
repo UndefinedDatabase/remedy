@@ -191,6 +191,7 @@ Milestone R1 — Remedy as the daily tool: Tier 2 complete (F086 as the self-ins
 
 ## Tier 3 — Full Token Economy & Autonomy Extension
 
+- [ ] F287 — Provider session continuity across relaunch
 - [ ] F113 — Local models for side roles
 - [ ] F116 — Cost anomaly alarm
 - [ ] F049 — Parallelism
