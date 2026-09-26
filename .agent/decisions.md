@@ -21944,3 +21944,151 @@ HOW TO REVERSE: restore `packages/orchestration/pingpong_loop.py`,
 `packages/orchestration/pingpong_job.py`, `docs/system/session-resume-v1.md` and
 `tests/orchestration/test_prompt_trace.py` from `26f44f49`, delete
 `tests/orchestration/test_relaunch_session_resume.py`, and delete this paragraph.
+
+## DECISION amend0926-decisions-selfuse D1 (2026-09-26, operator amendment, Part 0) — the next free finding id is R-1073
+CONTEXT: The loop mints finding ids on its feature branch, so the amendment asks for the highest
+`- R-<n> —` registration line on `main` and on every open `feature/f*` branch, read in both
+`.agent/live_review.md` and `.agent/live_review_archive.md`, before anything is registered. At the
+start of this amendment `main` stood at `557cbbcc` (the merge of pull request 282, which closed the
+findings paydown feature F285) and the one open loop branch was `feature/f027-task-veto` at
+`49958f24` (the closure of the task-veto feature F027, pull request 283).
+CHOSEN: The highest registered id on `main` is R-1064 and on `feature/f027-task-veto` it is R-1072,
+both in the archive; the live file holds nothing above R-0809 on either branch. The next free id is
+therefore R-1073. This amendment registers no finding, so the number is recorded for the next
+session and for the operator only.
+REVERSE: Delete this paragraph; nothing else depends on it.
+
+## DECISION amend0926-decisions-selfuse D2 (2026-09-26, operator amendment, Part A) — Q1 to Q4 stand as executed, Q5 is answered by the cost ruling, and the file is emptied
+CONTEXT: `.agent/operator_questions.md` held five entries, each ending with the sentence that the
+recommendation is already executed and stands until the operator says otherwise. Q1 keeps the
+lessons the teacher writes after each task switched off until the operator switches them on. Q2
+keeps the live job graph in the browser reading today's event messages without widening them. Q3
+keeps the prompt dots in the simple view of the graph. Q4 makes resume in the browser show the
+command that relaunches a paused job instead of launching it. The amendment answers these four as
+recommended. The file also held Q5, written by F285's first round after the amendment's text was
+drafted: it asks whether the self-use run may spend six dollars instead of one.
+CHOSEN: Every recommendation of Q1 to Q4 stands as executed. For Q2 and Q3 the missing event fields
+(attempt id, task id and result on every builder, review, check, test and repair event, and a
+plan-approved event) and the prompt nodes in the live graph are registered as their own feature in
+Part C. The amendment names that feature F287, but F286 was already taken, so it carries the id
+F288 (DECISION D5 below). Q5 is answered by the operator's cost ruling in this same amendment,
+recorded as DECISION D3: the default cap is six dollars, which is what Q5 recommended and F285
+already executed. All five entries are deleted, the header is kept verbatim, and the body reads
+the single word `EMPTY`.
+REVERSE: `git checkout 557cbbcc -- .agent/operator_questions.md`, and delete this paragraph.
+
+## DECISION amend0926-decisions-selfuse D3 (2026-09-26, operator amendment, Part B) — the self-use cap covers a full loop, and F285's own repair of R-1057 stands
+CONTEXT: The operator rules that the default cost cap of a self-use run must cover one complete
+build, review and repair loop at the frontier provider. Self-use job d0f70d9d45dd4363 (F025's
+closure, queue entry SU-030) spent 1.1403 USD on two provider calls, and job fd57a5d1dfe245b0
+(F026's closure, entry SU-031) was stopped by the old cap of 1.00 USD with its one task still
+pending. Roughly 0.57 USD per call times the loop's backstop of eight calls is 4.6 USD, so the
+ruling sets the default at 6.00 USD, and a refusal before any provider call is not an acceptable
+resolution of finding R-1057. Part B.1 tells the amendment to read the ledger first: if a `Done:`
+line for R-1057 already raised the default so that a one-task item can complete (at least
+5.00 USD), the code change is skipped and the loop's repair stands.
+CHOSEN: The archive `.agent/live_review_archive.md` carries `Done: R-1057 — RESOLVED at 91397285`,
+F285 round 1's fourth commit. It raised `_MAX_COST_USD` in
+`packages/orchestration/self_use_runner.py` to 6.00 USD, derived from the dearest single self-use
+call measured (1.41 USD, job fd57a5d1dfe245b0's builder call) times four calls (one build, one
+review and one repair round of a build and a review), rounded up to the whole dollar. That is the
+same number the operator's ruling reaches by a different measurement, and it is not a refusal. So
+Part B.2 is already satisfied and no code is changed for it: the constant, its comment and the
+description of the `self_use.model` configuration key (which already reads 6.00 USD) stay as F285
+wrote them. The configuration key `self_use.max_cost_usd` and its three red proofs, which B.2 would
+have added, are not built, because B.1 skips the whole of B.2 when the loop's repair stands. The
+precedence the ruling names (an explicit argument, then the order file's `Budget:` line, then the
+default) is the one `run_next_self_use_item` already applies. The same reading for R-1058 is
+DECISION D4.
+REVERSE: Delete this paragraph. If the operator still wants the configuration key, a later
+amendment adds `self_use.max_cost_usd` to `packages/orchestration/config.py` as Part B.2 describes.
+
+## DECISION amend0926-decisions-selfuse D4 (2026-09-26, operator amendment, Part B) — a self-use run carries a deny fence over `.agent/`, set on the planned job, and a change confined to it fails as bookkeeping
+CONTEXT: Finding R-1058 found that the self-use generator's acceptance line let a builder meet it
+with a ledger note that repaired nothing, and that the reviewer of queue entry SU-030 passed exactly
+that. F285's round 1 booked `Done: R-1058 — RESOLVED at 67985614`: the generated task now asks for
+the repair and tells the builder not to edit `.agent/`, and `describe_self_use_run_defects` in
+`packages/orchestration/self_use_findings.py` names, after the run, a pass that changed nothing
+outside `.agent/`. The operator's Part B.3 asks for more: an acceptance in two plain sentences, a
+scope fence that forbids every path under `.agent/`, and a reviewer rule that turns a diff confined
+to `.agent/` into a FAIL with the reason "the run changed only bookkeeping". F285's repair has none
+of the fence and none of the verdict, so those parts are still open in substance.
+CHOSEN: The route for the fence is neither of the two the amendment names. A job file cannot declare
+a deny fence (`parse_job_file` in `packages/orchestration/pingpong_job.py` reads only a task's
+`Files:` hint), and `run_job` takes no fence argument. But the planned job record (`JobPlan`)
+already has a `fences` field of type `JobFences`, which F017 added and which survives saving and
+loading. So `run_next_self_use_item` in `packages/orchestration/self_use_runner.py` adds the deny
+glob `.agent/**` to the planned job's fences and saves the job before it calls `run_job`. The ping-pong
+task path never read a job's fences, so `run_job` now reads the job's own deny globs before any task
+may pass, through the new function `task_fence_refusal`: when every path the task changed lies under
+`.agent/`, the task's verdict becomes `fail` with the reason "the run changed only bookkeeping";
+when any other changed path is denied, the task is blocked with `scope_fence_violation` and the
+denied paths. Either way the task is never applied and the job is blocked. This rule lives in the
+job runner and not in the reviewer provider, because it must hold whatever the reviewer answers.
+Jobs that declare no deny fence are unaffected; jobs made by `remedy do` or a mission that do
+declare one now have it enforced on the ping-pong path as well, which is what F017 promised. The
+generated acceptance is the operator's two sentences, with the finding's Done line named without
+backticks so the existing assertion that the task text offers no `Done:` outcome keeps its force.
+The ledger is not edited: R-1058 already carries its `Done:` line, and a `Note:` paragraph is not a
+record the rotation script recognises, so it would attach itself to the paragraph above it.
+Red proofs, each red with the three production files restored from `557cbbcc` and green with them:
+`TestTheAcceptanceAsksForTheRepairAlone::test_the_acceptance_is_the_operators_two_sentences` in
+`tests/orchestration/test_self_use_generator.py`, and
+`TestASelfUseRunRepairsCodeNeverBookkeeping::test_a_run_that_writes_only_the_ledger_fails_as_bookkeeping`
+and `::test_the_fence_refuses_a_write_under_the_record` in `tests/orchestration/test_self_use_runner.py`.
+The last two also go red when only the runner's fence or only the job runner's check is removed.
+REVERSE: `git revert` the commit that carries this paragraph.
+
+## DECISION amend0926-decisions-selfuse D5 (2026-09-26, operator amendment, Part C) — the three new features take the ids F287, F288 and F289, one above the amendment's text
+CONTEXT: Part C names three registrations F286, F287 and F288. Its anchors were verified against an
+older head (3cb0798d). Since then F285's closure registered F286, "Findings paydown v5", under
+operator amendment amend0911-feedback rule B, and `TOTAL_FEATURES` in
+`tests/docs/test_docs_consistency.py` already reads 286. Feature ids must stay contiguous, so the
+amendment's ids cannot be used as written.
+CHOSEN: Every id moves up by one and keeps its title and content: provider session continuity
+across relaunch is F287 (the amendment's F286), event stream completeness and prompt nodes in the
+live graph is F288 (the amendment's F287), and self-use sources completion is F289 (the amendment's
+F288). In the new Tier 5 block the amendment orders self-use sources first and event stream second,
+so the block reads F289, then F288. `TOTAL_FEATURES` rises from 286 to 289, by exactly the three new
+features. No feature with any of these titles existed before.
+REVERSE: Rename the three feature files and their STATUS lines back to F286, F287 and F288 only
+after F286 is renumbered, which is not recommended; otherwise delete the three registrations.
+
+## DECISION amend0926-decisions-selfuse D6 (2026-09-26, operator amendment, Parts B and C) — R-1055 is already resolved, so F287 takes over the production half of its goal and the ledger and F285's file are left alone
+CONTEXT: Part C.1 registers a feature that "takes over finding R-1055 by name", and Part B.4 moves
+R-1055's owner from F285 to that feature and rewrites F285's acceptance lines for R-1055, R-1057
+and R-1058 to say this amendment resolved them. When the amendment started, the archive already
+held `Done: R-1055 — RESOLVED at e2f86af8` (F285 round 2, DECISION F285 D2), `Done: R-1057` at
+`91397285` and `Done: R-1058` at `67985614`, and F285 was accepted and merged as pull request 282.
+F285's repair of R-1055 persists each round's provider session in the run's `result.json` and offers
+it to the first calls of a relaunched task, but it is proven only through the test provider: every
+production provider in `packages/orchestration/pingpong_provider.py` answers `supports_resume` with
+false, so in real use a relaunch still starts a new session and pays again.
+CHOSEN: F287 is registered with the goal the operator stated, sharpened to what remains: a
+relaunch on the `claude-cli` provider really resumes the parked session and records `resume_used`
+true, and a provider that cannot resume says so in the evidence. R-1055 stays resolved and keeps
+its owner line, because rewriting a resolved finding's owner would reopen nothing and would falsify
+the record; F287's file names R-1055 as the finding whose practical half it takes over. Part B.4's
+`Done:` paragraphs are not written, because R-1057 and R-1058 already carry theirs, and
+`docs/roadmap/features/T2_F285.md` is not edited, because F285 is closed and its resolutions were
+F285's own; this amendment's additions to R-1058 are recorded in DECISION D4 instead.
+REVERSE: Delete `docs/roadmap/features/T3_F287.md` and its STATUS line and lower the counters, or
+edit F287's goal; nothing in the ledger needs reversing.
+
+## DECISION amend0926-decisions-selfuse D7 (2026-09-26, operator amendment, Part 0) — pull request 283 is not merged, after one rerun of its only red check
+CONTEXT: At the Open PR Gate the one open closure pull request was 283, "F027 — Task veto", from
+`feature/f027-task-veto`. Its hosted CI run 36232909016 read `ci (3.12)` success and `ci (3.10)`
+failure. The only failing test was
+`tests/orchestration/test_diff_parser.py::test_the_huge_diff_parses_inside_the_recorded_perf_budget`,
+a wall-clock ceiling: parsing ten thousand diff lines took 0.502 seconds against a ceiling of 0.5
+seconds. F027 changes neither the diff parser nor that test, and the same test passed on `main`'s
+own run after pull request 282.
+CHOSEN: The failing job was rerun once, because a timing overrun of two milliseconds on one
+interpreter reads as runner noise and a green merge first would have kept `main`'s history in
+order. The rerun failed the same test again, at 0.527 seconds, with the other stages green. The
+amendment's rule is that a red check is never merged, so pull request 283 stays open and this
+amendment branches from `origin/main` at `557cbbcc`. Two overruns in a row on Python 3.10 mean the
+ceiling no longer fits that runner; the next loop session owns the repair of that test or of the
+ceiling, and the merge of pull request 283 after it.
+REVERSE: Nothing was changed on pull request 283 except the rerun, which cannot be undone and needs
+no undoing; delete this paragraph.

@@ -606,13 +606,32 @@ class TestTheAcceptanceAsksForTheRepairAlone:
         self, tmp_path: Path
     ):
         acceptance = self._job_markdown(tmp_path).split("\nAcceptance:\n", 1)[1]
+        # DECISION amend0926-decisions-selfuse D4 moved this pin to the operator's
+        # two sentences; test_the_acceptance_is_the_operators_two_sentences reads them.
         assert acceptance == (
-            "- the repair R-0010's FIX names is made, outside `.agent/`, with a test "
-            "that fails without it and passes with it.\n"
-            "- no file under `.agent/` changes.\n"
+            "- R-0010 is repaired in product code or tests, with a test that fails "
+            "without the repair and passes with it.\n"
+            "- No file under `.agent/` is changed by this task; if the repair cannot "
+            "be finished inside this task, the builder stops and states in its output "
+            "what it read and why the repair is out of reach, which the reviewer then "
+            "records as a failed run, and the finding's Done line is written only by "
+            "a human reviewer, never by this task.\n"
         )
 
     def test_the_builder_is_told_to_leave_the_record_alone(self, tmp_path: Path):
         body = self._job_markdown(tmp_path).split("\nAcceptance:\n", 1)[0]
         assert "Do not edit any file under `.agent/`" in body
         assert "`.agent/live_review.md` is the reviewer's record" in body
+
+    def test_the_acceptance_is_the_operators_two_sentences(self, tmp_path: Path):
+        """Operator amendment amend0926-decisions-selfuse, Part B.3, red proof (4)."""
+        text = self._job_markdown(tmp_path)
+        acceptance = text.split("\nAcceptance:\n", 1)[1]
+        assert "is repaired in product code or tests, with a test that fails without " \
+            "the repair and passes with it." in acceptance
+        assert "No file under `.agent/` is changed by this task" in acceptance
+        assert "the builder stops and states in its output what it read and why the " \
+            "repair is out of reach" in acceptance
+        assert "records as a failed run" in acceptance
+        assert "written only by a human reviewer, never by this task." in acceptance
+        assert "either way the ledger gains" not in text
