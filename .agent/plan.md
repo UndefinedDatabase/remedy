@@ -12,16 +12,14 @@ inbox and never executed on its own (`docs/roadmap/features/T5_F027.md`).
 
 ## Current Step
 
-ROUND 13, the closure's evidence round: book round 12, resolve R-1072,
-bring the Built State's findings current, then build the evidence
-bundle against the fork point and the fresh review package.
+ROUND 14, the closing round: book round 13, rotate the finding ledger,
+accept F027 in STATUS with its README pins, and open the pull request.
 
 ## Next Steps
 
-1. The closing round: the booking of this round, the ledger rotation,
-   the status line with the README pins, and the pull request.
+1. The next session merges this feature's pull request at the Open PR
+   Gate, then claims the next feature by Rule A5.
 
 ## Risks
 
-A package that does not read ready for review blocks the closure.
-Open findings: 0.
+None open. Open findings: 0.
