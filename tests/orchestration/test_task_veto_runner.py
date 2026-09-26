@@ -14,6 +14,7 @@ real ``run_job`` with ``pingpong_provider.FakeProvider`` or a small custom fake.
 from __future__ import annotations
 
 import hashlib
+import json
 import subprocess
 from pathlib import Path
 
@@ -72,6 +73,20 @@ def _veto_filename(task_id: str) -> str:
     of the task id, never by the id itself."""
     digest = hashlib.sha256(task_id.encode("utf-8")).hexdigest()[:32]
     return f"{digest}.json"
+
+
+def _events(root: Path, job_id: str, event: str) -> list[dict]:
+    """Mirrors `test_job_stop_integration._events`: every ledger event of this
+    name for this job, across every run-log file `RunLogWriter` produced."""
+    runs = root / "job_logs" / job_id
+    out: list[dict] = []
+    for f in sorted(runs.glob("*.jsonl")) if runs.is_dir() else []:
+        for line in f.read_text().splitlines():
+            if line.strip():
+                raw = json.loads(line)
+                if raw.get("event") == event:
+                    out.append(raw)
+    return out
 
 
 class _RefusingProvider:
@@ -547,5 +562,180 @@ class TestGitWorktreeVetoRestoresTheWorkspace:
         assert not (ws / "partial.txt").exists()
         assert done.state == JOB_BLOCKED
         assert done.error.startswith("all_remaining_work_vetoed:")
+
+
+# ---------------------------------------------------------------------------
+# F027 R3 — a veto of the IN-FLIGHT task (DECISION F027 D3 (1)-(2))
+# ---------------------------------------------------------------------------
+
+
+class _SelfVetoingBuilder:
+    """During B's OWN build call — the second task this job dispatches — records a
+    veto of B itself. The in-task safe point catches it at the NEXT safe point,
+    which is before B's reviewer call, so B's build finishes but its review never
+    runs (D3 (1): the call already running finishes; nothing is killed mid-call)."""
+
+    def __init__(self, job_id: str, b_task_id: str):
+        self._job_id = job_id
+        self._b_task_id = b_task_id
+        self.build_calls = 0
+        self.review_calls = 0
+
+    @property
+    def name(self) -> str:
+        return "fake"
+
+    @property
+    def supports_resume(self) -> bool:
+        return False
+
+    def build(self, prompt, **kw):
+        self.build_calls += 1
+        if self.build_calls == 2:                      # B's own first (only) build call
+            job = load_job_plan(self._job_id)
+            result = tv.veto_task_command(
+                job, task_id=self._b_task_id, reason="stop B mid-flight", actor="ci",
+                control_root_path=_control())
+            assert result["outcome"] == "vetoed"
+        return BuilderOutput(summary="ok", files_changed=["docs/README.md"], provider="fake")
+
+    def review(self, prompt, **kw):
+        self.review_calls += 1
+        return ReviewerOutput(verdict="pass", confidence="high", summary="ok", provider="fake")
+
+
+class TestInFlightVetoOfTheRunningTask:
+    def test_bs_build_finishes_its_review_never_runs_and_the_run_continues(
+            self, root, repo):
+        tasks = [_task("A", []), _task("B", ["A"]), _task("C", ["A"]), _task("D", ["B", "C"])]
+        job_id = _save_job(root, tasks, repo_path=str(repo))
+        b_id = _task_id_of(root, job_id, "B")
+        d_id = _task_id_of(root, job_id, "D")
+        builder = _SelfVetoingBuilder(job_id, b_id)
+
+        done = run_job(job_id, builder_provider=builder, reviewer_provider=builder,
+                       max_rounds=1, repair_rounds=0)
+
+        assert done.state == JOB_BLOCKED
+        a = _by_planned(done, "A")[1]
+        b = _by_planned(done, "B")[1]
+        c = _by_planned(done, "C")[1]
+        d = _by_planned(done, "D")[1]
+        assert a.status == pj.TASK_APPLIED
+        assert c.status == pj.TASK_APPLIED
+        assert b.status == pj.TASK_VETOED
+        assert d.status == pj.TASK_SKIPPED
+        assert b.run_id                              # D3 (2): the run fields are KEPT
+        assert builder.build_calls == 3               # A, B, C — D is never dispatched
+        assert builder.review_calls == 2               # A, C — B's reviewer never ran
+        assert done.error == f"all_remaining_work_vetoed: vetoed {b_id}; unreachable {d_id}"
+
+        failed = _events(root, job_id, "task_run_failed")
+        b_failed = [e for e in failed if e.get("task_id") == b_id]
+        assert len(b_failed) == 1
+        assert b_failed[0]["outcome"] == "vetoed"
+        assert _events(root, job_id, "job_stopped") == []
+
+
+class _WritesThenSelfVetoes:
+    """A GIT job's single-task builder: writes a file, then vetoes its OWN task
+    while its own build call is still running."""
+
+    def __init__(self, job_id: str, workspace: dict):
+        self._job_id = job_id
+        self._workspace = workspace
+        self.build_calls = 0
+
+    @property
+    def name(self) -> str:
+        return "fake"
+
+    @property
+    def supports_resume(self) -> bool:
+        return False
+
+    def build(self, prompt, **kw):
+        self.build_calls += 1
+        (Path(self._workspace["path"]) / "partial.txt").write_text("work in progress\n")
+        job = load_job_plan(self._job_id)
+        t1_id = job.tasks[0].task_id
+        result = tv.veto_task_command(
+            job, task_id=t1_id, reason="wrong approach mid-flight", actor="alice",
+            control_root_path=_control())
+        assert result["outcome"] == "vetoed"
+        return BuilderOutput(summary="partial work", files_changed=["partial.txt"],
+                             provider="fake")
+
+    def review(self, prompt, **kw):
+        raise AssertionError("the reviewer must not run: the in-flight veto halts before it")
+
+
+class TestGitInFlightVetoRestoresTheWorkspace:
+    def test_the_partial_file_is_gone_and_restored_is_true(
+            self, root, git_repo, monkeypatch):
+        job = parse_job_file(_ONE_TASK_JOB_TEXT, str(git_repo))
+        job_id = job.job_id
+
+        holder: dict = {}
+        real_create = W.create
+
+        def spy(jid, r):
+            h = real_create(jid, r)
+            holder["path"] = h.path
+            return h
+
+        monkeypatch.setattr(W, "create", spy)
+
+        prov = _WritesThenSelfVetoes(job_id, holder)
+        done = run_job(job_id, builder_provider=prov, reviewer_provider=prov,
+                       max_rounds=1, repair_rounds=0)
+
+        ws = Path(holder["path"])
+        assert not (ws / "partial.txt").exists()
+        assert done.state == JOB_BLOCKED
+        t1 = done.tasks[0]
+        assert t1.status == pj.TASK_VETOED
+        assert t1.run_id
         entry = done.metadata["task_vetoes"][t1.task_id]
         assert entry["restored"] is True
+
+
+class _BuildsThenCorruptsTheVetoArea:
+    """Builds normally, then corrupts the veto control area during its own
+    build call — the NEXT safe point (before review) reads it and blocks."""
+
+    def __init__(self, job_id: str):
+        self._job_id = job_id
+
+    @property
+    def name(self) -> str:
+        return "fake"
+
+    @property
+    def supports_resume(self) -> bool:
+        return False
+
+    def build(self, prompt, **kw):
+        vdir = _control() / "jobs" / self._job_id / "vetoed_tasks"
+        vdir.mkdir(parents=True, exist_ok=True)
+        (vdir / _veto_filename("bogus")).write_text("not json")
+        return BuilderOutput(summary="ok", files_changed=["docs/README.md"], provider="fake")
+
+    def review(self, prompt, **kw):
+        raise AssertionError("the reviewer must not run: the control error halts before it")
+
+
+class TestInFlightVetoControlAreaUnreadable:
+    def test_blocks_with_task_veto_control_error(self, root, repo):
+        tasks = [_task("A", [])]
+        job_id = _save_job(root, tasks, repo_path=str(repo))
+        prov = _BuildsThenCorruptsTheVetoArea(job_id)
+
+        done = run_job(job_id, builder_provider=prov, reviewer_provider=prov,
+                       max_rounds=1, repair_rounds=0)
+
+        assert done.state == JOB_BLOCKED
+        assert done.error.startswith("task_veto_control_error:")
+        a = done.tasks[0]
+        assert a.status == pj.TASK_RUNNING             # the fold never reached it
+        assert a.run_id
