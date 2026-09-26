@@ -3670,10 +3670,11 @@ def run_job(
 
         # F027 D2 (5): THE TERMINAL — before the ordinary all_done reading, when at least
         # one task is vetoed and every other task is applied, passed, skipped, split,
-        # vetoed or unreachable behind a veto, the run ends `blocked` naming both sets. A
-        # runnable pending task (one outside the unreachable set) fails this readiness
-        # check on its own, so the task cap's `paused` reading below keeps precedence
-        # exactly when such a task remains — nothing further is needed to arbitrate it.
+        # vetoed or unreachable behind a veto, the run checks whether every veto has been
+        # ANSWERED (DECISION F027 D4 (5)). A runnable pending task (one outside the
+        # unreachable set) fails this readiness check on its own, so the task cap's
+        # `paused` reading below keeps precedence exactly when such a task remains —
+        # nothing further is needed to arbitrate it.
         _veto_terminal_vetoed_ids = [t.task_id for t in job.tasks if t.status == TASK_VETOED]
         if _veto_terminal_vetoed_ids:
             from packages.orchestration import task_veto as _tv
@@ -3687,25 +3688,67 @@ def run_job(
                 for t in job.tasks
             )
             if _veto_terminal_ready:
+                # DECISION F027 D4 (5): SETTLED COMPLETION — every vetoed task's own
+                # request id, read from `job.metadata["task_vetoes"]` (the fold's own
+                # record), answered means the operator has already spoken for the whole
+                # reduced scope, so the job completes instead of blocking forever.
+                try:
+                    _veto_terminal_answers = _tv.veto_answers(
+                        job.job_id, control_root_path=_control)
+                except _tv.TaskVetoError as exc:
+                    job.state = JOB_BLOCKED
+                    job.error = f"task_veto_control_error: {exc}"
+                    _persist_budget_actuals()
+                    _persist_job(job)
+                    return job
+
+                _veto_terminal_task_vetoes = job.metadata.get("task_vetoes") or {}
+                _veto_terminal_answered_options: dict[str, str] = {}
+                _veto_terminal_settled = True
+                for _vid in _veto_terminal_vetoed_ids:
+                    _vid_entry = _veto_terminal_task_vetoes.get(_vid) or {}
+                    _vid_request_id = str(_vid_entry.get("request_id", ""))
+                    _vid_answer = (
+                        _veto_terminal_answers.get(_vid_request_id)
+                        if _vid_request_id else None
+                    )
+                    if _vid_answer is None:
+                        _veto_terminal_settled = False
+                        continue
+                    _veto_terminal_answered_options[_vid] = _vid_answer.option
+
                 for t in job.tasks:
                     if t.status == TASK_PENDING and t.task_id in _veto_terminal_unreachable_set:
                         t.status = TASK_SKIPPED
-                job.state = JOB_BLOCKED
-                job.error = (
-                    "all_remaining_work_vetoed: "
-                    f"vetoed {', '.join(_veto_terminal_vetoed_ids) or 'none'}; "
-                    f"unreachable {', '.join(_veto_terminal_unreachable) or 'none'}")
-                job.metadata["veto_terminal"] = {
-                    "vetoed": list(_veto_terminal_vetoed_ids),
-                    "unreachable": list(_veto_terminal_unreachable),
-                }
-                _persist_budget_actuals()
-                _persist_job(job)
-                return job
+
+                if _veto_terminal_settled:
+                    job.metadata["veto_terminal"] = {
+                        "vetoed": list(_veto_terminal_vetoed_ids),
+                        "unreachable": list(_veto_terminal_unreachable),
+                        "settled": True,
+                        "answers": _veto_terminal_answered_options,
+                    }
+                    # NOT a `return` here: the job falls through to the ordinary
+                    # completion path below, whose `all_done` reading counts
+                    # `TASK_VETOED` beside applied, skipped and split.
+                else:
+                    job.metadata["veto_terminal"] = {
+                        "vetoed": list(_veto_terminal_vetoed_ids),
+                        "unreachable": list(_veto_terminal_unreachable),
+                        "settled": False,
+                    }
+                    job.state = JOB_BLOCKED
+                    job.error = (
+                        "all_remaining_work_vetoed: "
+                        f"vetoed {', '.join(_veto_terminal_vetoed_ids) or 'none'}; "
+                        f"unreachable {', '.join(_veto_terminal_unreachable) or 'none'}")
+                    _persist_budget_actuals()
+                    _persist_job(job)
+                    return job
 
         # Determine final job status
         all_done = all(
-            t.status in (TASK_APPLIED, TASK_SKIPPED, TASK_SPLIT)
+            t.status in (TASK_APPLIED, TASK_SKIPPED, TASK_SPLIT, TASK_VETOED)
             for t in job.tasks
         )
         has_pending = any(t.status == TASK_PENDING for t in job.tasks)

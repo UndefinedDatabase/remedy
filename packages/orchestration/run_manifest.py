@@ -1412,10 +1412,14 @@ _TASK_EXPECTATION_ALLOWED_STATUSES = {
 #: one CANNOT be pending/running/failed/blocked — that would contradict the status it is published
 #: under. The shared validator took `episode_status`/`episode_phase` since round 16 and never read
 #: them, so a completed reference accepted `executed` + pending/running/failed/blocked.
+#: F027 D4 (5): a completed episode's tightened sets gain `vetoed`, because the SETTLED
+#: COMPLETION path can now finish a job carrying a `vetoed` task — one whose veto was
+#: answered — beside the applied/skipped/split ones `run_job`'s own `all_done` reading
+#: already counts.
 _COMPLETED_WORKED_STATUSES = {
-    EXPECT_EXECUTED: frozenset({"passed", "applied_to_job_workspace"}),
-    EXPECT_PRIOR_EPISODE: frozenset({"passed", "applied_to_job_workspace"}),
-    EXPECT_SKIPPED: frozenset({"skipped"}),
+    EXPECT_EXECUTED: frozenset({"passed", "applied_to_job_workspace", "vetoed"}),
+    EXPECT_PRIOR_EPISODE: frozenset({"passed", "applied_to_job_workspace", "vetoed"}),
+    EXPECT_SKIPPED: frozenset({"skipped", "vetoed"}),
 }
 
 

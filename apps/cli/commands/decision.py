@@ -530,6 +530,57 @@ def _cmd_decision_resolve(
             if json_output:
                 emit_ok(decision_id=decision_id, job_id=job_id_str,
                         outcome="deferred", task_id=task_id)
+    elif decision_id.startswith("veto:"):
+        # F027 D4 (6): the `replan_proposal` a veto files, answered by the same function
+        # the write door will share (next round). `--reason` carries the OPTION, exactly
+        # as it carries the answer for a `td:` task decision above.
+        from packages.orchestration.pingpong_job import JobNotFoundError, require_job_plan
+        from packages.orchestration.veto_proposal import answer_replan_proposal
+
+        job_id = resolve_job_id_or_fail(job_id_str, json_output=json_output)
+        try:
+            job = require_job_plan(job_id)
+        except JobNotFoundError as exc:
+            fail("job_not_found", str(exc), json_output=json_output)
+
+        result = answer_replan_proposal(job, decision_id, str(reason or ""), actor="cli")
+
+        if result["outcome"] == "refused":
+            code = result["code"]
+            if code == "unknown_decision":
+                fail("decision_not_found", f"decision not found: {decision_id}",
+                     json_output=json_output)
+            if code == "invalid_option":
+                fail(
+                    "invalid_argument",
+                    "--reason must be 'replan_follow_up' or 'accept_reduced_scope'.\n"
+                    f"  remedy decision resolve {job_id_str} {decision_id} "
+                    "--reason replan_follow_up\n"
+                    f"  remedy decision resolve {job_id_str} {decision_id} "
+                    "--reason accept_reduced_scope",
+                    json_output=json_output,
+                )
+            # already_answered
+            fail(
+                "decision_already_answered",
+                f"decision {decision_id} is already answered ({result['option']}).",
+                json_output=json_output,
+            )
+
+        answered_option = result["option"]
+        follow_up_job_id = result["follow_up_job_id"]
+        if not json_output:
+            print(f"Answered {decision_id} for job {job_id_str}: {answered_option}")
+            if follow_up_job_id:
+                print(f"  Follow-up job created: {follow_up_job_id}")
+                print(f"  Plan it: remedy job plan {follow_up_job_id}")
+            else:
+                print(f"  The job completes at its next run: remedy job resume {job_id_str}")
+        if json_output:
+            emit_ok(
+                decision_id=decision_id, job_id=job_id_str, outcome="answered",
+                option=answered_option, follow_up_job_id=follow_up_job_id,
+            )
     else:
         _message = (
             f"Decision '{decision_id}' is derived and cannot be directly resolved.\n"
