@@ -3995,6 +3995,36 @@ def _build_task_prompt(
 # Job report (Step 4831, 4839, 4840)
 # ---------------------------------------------------------------------------
 
+def _task_veto_report_map(job: JobPlan) -> dict[str, dict[str, Any]]:
+    """The report's and the export's own veto lookup (DECISION F027 D7 (3)): the fold's
+    own `job.metadata["task_vetoes"]` record for a task first, and the control files for a
+    veto no run has folded yet — mirrors `task_veto._event_unreachable`'s own unreachable
+    reading for an entry not already folded. A `TaskVetoError` reading the control files is
+    swallowed: it costs the report nothing beyond the entries it could not read, and a job
+    with no veto at all sees no key here, so its report and export stay byte for byte
+    unchanged."""
+    out: dict[str, Any] = dict((job.metadata or {}).get("task_vetoes") or {})
+
+    from packages.orchestration import task_veto as _tv
+
+    try:
+        entries = _tv.vetoed_tasks(job.job_id)
+    except _tv.TaskVetoError:
+        return out
+
+    all_ids = {e.task_id for e in entries}
+    for entry in entries:
+        if entry.task_id in out:
+            continue
+        other_ids = all_ids - {entry.task_id}
+        unreachable = [
+            tid for tid in _tv.veto_unreachable(job.tasks, [entry.task_id])
+            if tid not in other_ids
+        ]
+        out[entry.task_id] = {**entry.to_json(), "unreachable_task_ids": unreachable}
+    return out
+
+
 def export_job_report(job: JobPlan) -> dict[str, Any]:
     """Export a JSON-serializable job report."""
     # Function-scoped, like every other data_paths import in this module. The
@@ -4003,9 +4033,10 @@ def export_job_report(job: JobPlan) -> dict[str, Any]:
     # the top of the function, where it is visible to a reader.
     from packages.orchestration.data_paths import job_dir
 
+    veto_map = _task_veto_report_map(job)
     task_reports = []
     for t in job.tasks:
-        task_reports.append({
+        report = {
             "task_id": t.task_id,
             "source_heading_number": t.source_heading_number,
             "title": t.title,
@@ -4020,7 +4051,16 @@ def export_job_report(job: JobPlan) -> dict[str, Any]:
             "error": t.error,
             "apply_manifest": _export_apply_manifest(t.apply_manifest),
             "proof_summary": _export_proof_summary(t.proof_summary),
-        })
+        }
+        veto_info = veto_map.get(t.task_id)
+        if veto_info is not None:
+            report["veto"] = {
+                "reason": veto_info.get("reason", ""),
+                "actor": veto_info.get("actor", ""),
+                "requested_at": veto_info.get("requested_at", ""),
+                "unreachable_task_ids": list(veto_info.get("unreachable_task_ids") or []),
+            }
+        task_reports.append(report)
 
     # F006: a completed worktree job's execution workspace is deliberately gone.
     # Availability of the hand-off is decided by the worktree cleanup status plus a
@@ -4166,6 +4206,7 @@ def format_job_report_text(job: JobPlan) -> str:
         "Tasks:",
     ]
 
+    veto_map = _task_veto_report_map(job)
     for t in job.tasks:
         status_icon = {
             TASK_PENDING: " ",
@@ -4175,6 +4216,7 @@ def format_job_report_text(job: JobPlan) -> str:
             TASK_BLOCKED: "!",
             TASK_FAILED: "X",
             TASK_SKIPPED: "-",
+            TASK_VETOED: "/",
         }.get(t.status, "?")
 
         line = f"  [{status_icon}] {t.task_id}: {t.title} — {t.status}"
@@ -4194,6 +4236,11 @@ def format_job_report_text(job: JobPlan) -> str:
             )
         if t.error:
             lines.append(f"      Error: {t.error}")
+        veto_info = veto_map.get(t.task_id)
+        if veto_info is not None:
+            lines.append(
+                f"      Vetoed by {veto_info.get('actor', '')}: {veto_info.get('reason', '')}"
+            )
 
     lines.append("")
 

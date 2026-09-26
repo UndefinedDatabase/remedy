@@ -1070,6 +1070,7 @@ def _build_dashboard(job: Any) -> dict[str, Any]:
         "resume": _build_resume_section(job, events),
         "pause": _build_pause_section(job),
         "task_specs": _build_task_spec_section(job),
+        "vetoes": _build_veto_section(job),
         "project_summary": _build_project_summary_section(job),
         "redaction": {
             "policy": "safe_summaries_only",
@@ -1295,6 +1296,62 @@ def _build_task_spec_section(job: Any) -> dict[str, Any]:
         return {"tasks": tasks, "error": ""}
     except (PauseControlError, StopControlError, OSError, ValueError) as exc:
         return {"tasks": {}, "error": str(exc)}
+
+
+def _build_veto_section(job: Any) -> dict[str, Any]:
+    """Build the dashboard's `vetoes` section (DECISION F027 D7 (1)): `tasks`, one entry
+    per veto entry in plan order with the task id, the reason verbatim, the actor, the
+    request time, the request id, the status at the veto, that veto's own unreachable set
+    (mirrors `task_veto._event_unreachable`: this veto alone, minus every task another
+    veto already holds) and its recorded answer's option or ""; `vetoable_task_ids`, the
+    tasks `task_veto.veto_refusal` admits for the job's current state; `unreachable_task_ids`,
+    `task_veto.veto_unreachable` over every vetoed task; and `error`, the text of a
+    `TaskVetoError`, which empties the three lists. All four lists are in plan order. Never
+    raises: `task_veto` is imported inside this function, as the section's own sibling
+    helpers do."""
+    from packages.orchestration import task_veto as _tv
+
+    try:
+        job_id = str(job.job_id)
+        entries_by_task_id = {e.task_id: e for e in _tv.vetoed_tasks(job_id)}
+        answers = _tv.veto_answers(job_id)
+        vetoed_ids = [t.task_id for t in job.tasks if t.task_id in entries_by_task_id]
+
+        tasks_out: list[dict[str, Any]] = []
+        for task_id in vetoed_ids:
+            entry = entries_by_task_id[task_id]
+            other_ids = [tid for tid in vetoed_ids if tid != task_id]
+            unreachable = [
+                tid for tid in _tv.veto_unreachable(job.tasks, [task_id])
+                if tid not in other_ids
+            ]
+            answer = answers.get(entry.request_id)
+            tasks_out.append({
+                "task_id": entry.task_id,
+                "reason": entry.reason,
+                "actor": entry.actor,
+                "requested_at": entry.requested_at,
+                "request_id": entry.request_id,
+                "status_at_veto": entry.status_at_veto,
+                "unreachable_task_ids": unreachable,
+                "answer": answer.option if answer is not None else "",
+            })
+
+        vetoable_task_ids = [
+            t.task_id for t in job.tasks
+            if _tv.veto_refusal(job.state, t.status,
+                                already_vetoed=t.task_id in entries_by_task_id) is None
+        ]
+        unreachable_task_ids = list(_tv.veto_unreachable(job.tasks, vetoed_ids))
+
+        return {
+            "tasks": tasks_out,
+            "vetoable_task_ids": vetoable_task_ids,
+            "unreachable_task_ids": unreachable_task_ids,
+            "error": "",
+        }
+    except _tv.TaskVetoError as exc:
+        return {"tasks": [], "vetoable_task_ids": [], "unreachable_task_ids": [], "error": str(exc)}
 
 
 def _build_project_summary_section(job: Any) -> dict[str, Any] | None:

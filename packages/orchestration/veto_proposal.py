@@ -46,6 +46,14 @@ DECISION_TYPE_REPLAN_PROPOSAL = "replan_proposal"
 #: control file and `task_vetoed` event already carry, so the three never drift apart.
 _ID_PREFIX = "veto:"
 
+#: DECISION F027 D7 (4): the plain words the inbox card's buttons show for this
+#: proposal's two options, read by `decisionCard.ts`'s `decisionAnswers` — the posted
+#: value is always the option itself, never one of these words.
+_OPTION_LABELS = {
+    _tv.REPLAN_FOLLOW_UP: "Replan the remaining work as a new job",
+    _tv.ACCEPT_REDUCED_SCOPE: "Accept the smaller scope",
+}
+
 
 def _decision_id(request_id: str) -> str:
     return f"{_ID_PREFIX}{request_id}"
@@ -127,6 +135,7 @@ def replan_proposal_decisions(job: Any, *, control_root_path: Any = None) -> lis
             resolved_at=None,
             payload={
                 "options": list(_tv.REPLAN_PROPOSAL_OPTIONS),
+                "option_labels": dict(_OPTION_LABELS),
                 "task_id": entry.task_id,
                 "request_id": entry.request_id,
                 "task_title": title,

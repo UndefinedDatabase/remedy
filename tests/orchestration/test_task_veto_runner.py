@@ -839,3 +839,74 @@ class TestSettledCompletion:
                        reviewer_provider=_pass_provider(), max_rounds=1, repair_rounds=0)
         assert done.state == JOB_COMPLETED
         assert done.metadata["veto_terminal"]["settled"] is True
+
+
+# ---------------------------------------------------------------------------
+# F027 R7 — the reason verbatim in the job's text and exported reports (DECISION F027 D7 (3))
+# ---------------------------------------------------------------------------
+
+
+class TestReportCarriesTheVeto:
+    def test_a_folded_veto_s_reason_and_actor_are_in_the_text_and_export(self, root, repo):
+        tasks = [_task("A", []), _task("B", ["A"]), _task("C", ["A"]), _task("D", ["B", "C"])]
+        job_id = _save_job(root, tasks, repo_path=str(repo))
+        job = load_job_plan(job_id, root)
+        b_id = _task_id_of(root, job_id, "B")
+        d_id = _task_id_of(root, job_id, "D")
+
+        veto = tv.veto_task_command(job, task_id=b_id, reason="known-bad approach for B",
+                                    actor="alice", control_root_path=_control())
+        assert veto["outcome"] == "vetoed"
+
+        done = run_job(job_id, builder_provider=_pass_provider(),
+                       reviewer_provider=_pass_provider(), max_rounds=1, repair_rounds=0)
+        assert done.state == JOB_BLOCKED
+
+        text = pj.format_job_report_text(done)
+        assert "Vetoed by alice: known-bad approach for B" in text
+        b_line = next(line for line in text.splitlines() if b_id in line and "[" in line)
+        assert b_line.startswith("  [/]")
+
+        report = pj.export_job_report(done)
+        b_report = next(t for t in report["tasks"] if t["task_id"] == b_id)
+        b_veto = b_report["veto"]
+        assert b_veto["reason"] == "known-bad approach for B"
+        assert b_veto["actor"] == "alice"
+        assert b_veto["requested_at"]
+        assert b_veto["unreachable_task_ids"] == [d_id]
+        d_report = next(t for t in report["tasks"] if t["task_id"] == d_id)
+        assert "veto" not in d_report
+
+    def test_a_veto_no_run_has_folded_yet_still_reports_the_reason(self, root, repo):
+        tasks = [_task("A", []), _task("B", ["A"])]
+        job_id = _save_job(root, tasks, repo_path=str(repo))
+        job = load_job_plan(job_id, root)
+        a_id = _task_id_of(root, job_id, "A")
+
+        veto = tv.veto_task_command(job, task_id=a_id, reason="stop A before it starts",
+                                    actor="bob", control_root_path=_control())
+        assert veto["outcome"] == "vetoed"
+
+        reloaded = load_job_plan(job_id, root)
+        assert reloaded.metadata.get("task_vetoes") in (None, {})
+        a_task = _by_planned(reloaded, "A")[1]
+        assert a_task.status == pj.TASK_PENDING          # no run has folded it yet
+
+        text = pj.format_job_report_text(reloaded)
+        assert "Vetoed by bob: stop A before it starts" in text
+
+        report = pj.export_job_report(reloaded)
+        a_report = next(t for t in report["tasks"] if t["task_id"] == a_id)
+        assert a_report["veto"]["reason"] == "stop A before it starts"
+        assert a_report["veto"]["actor"] == "bob"
+
+    def test_a_job_with_no_veto_reports_unchanged(self, root, repo):
+        tasks = [_task("A", []), _task("B", ["A"])]
+        job_id = _save_job(root, tasks, repo_path=str(repo))
+        job = load_job_plan(job_id, root)
+
+        text = pj.format_job_report_text(job)
+        assert "Vetoed by" not in text
+
+        report = pj.export_job_report(job)
+        assert all("veto" not in t for t in report["tasks"])

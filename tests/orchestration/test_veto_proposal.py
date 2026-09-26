@@ -99,6 +99,10 @@ class TestDecisionShape:
         assert d.safe_summary.startswith(
             f"You vetoed {title} — reason: known-bad approach")
         assert d.payload["options"] == ["replan_follow_up", "accept_reduced_scope"]
+        assert d.payload["option_labels"] == {
+            "replan_follow_up": "Replan the remaining work as a new job",
+            "accept_reduced_scope": "Accept the smaller scope",
+        }
         assert d.payload["task_id"] == a_id
         assert d.payload["request_id"] == result["request_id"]
         assert d.payload["reason"] == "known-bad approach"
