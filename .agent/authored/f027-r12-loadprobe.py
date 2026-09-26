@@ -19,12 +19,15 @@ from pathlib import Path
 SCRATCH_TEST = '''\
 import pytest
 
-from tests.ui_server.test_pause_door_live import TestWithdrawLiveDoor
+# Imported as a module, not "from ... import TestWithdrawLiveDoor": a
+# top-level name matching pytest's Test* convention would be collected a
+# second time here, over-counting the load proof by one node.
+import tests.ui_server.test_pause_door_live as _pause_door_live
 
 
 @pytest.mark.parametrize("i", range(48))
 def test_zz_r1072_load(i, tmp_path, monkeypatch):
-    TestWithdrawLiveDoor().test_a_withdrawn_pause_never_parks_the_relaunch(
+    _pause_door_live.TestWithdrawLiveDoor().test_a_withdrawn_pause_never_parks_the_relaunch(
         tmp_path, monkeypatch)
 '''
 
