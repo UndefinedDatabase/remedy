@@ -575,7 +575,7 @@ def _cmd_decision_resolve(
                 print(f"  Follow-up job created: {follow_up_job_id}")
                 print(f"  Plan it: remedy job plan {follow_up_job_id}")
             else:
-                print(f"  The job completes at its next run: remedy job resume {job_id_str}")
+                print(f"  The job completes at its next run: remedy job run {job_id_str}")
         if json_output:
             emit_ok(
                 decision_id=decision_id, job_id=job_id_str, outcome="answered",

@@ -294,6 +294,20 @@ class TestDecisionResolveVetoAnswersJSONThroughTheDispatcher:
         assert body["option"] == "accept_reduced_scope"
         assert body["follow_up_job_id"] == ""
 
+    def test_an_accept_names_job_run_not_job_resume(self, vetoed_job, capsys):
+        """R-1067 — the accept's sentence sends the operator to `remedy job run`, the
+        job's id as typed, since only `run` reaches the settled completion; `resume`
+        hands a vetoed job to the cycle executor, which never completes it."""
+        from apps.cli.grouped import main
+
+        job, request_id = vetoed_job
+        decision_id = f"veto:{request_id}"
+        main(["decision", "resolve", str(job.job_id), decision_id,
+              "--reason", "accept_reduced_scope"])
+        out = capsys.readouterr().out
+        assert f"remedy job run {job.job_id}" in out
+        assert "remedy job resume" not in out
+
     def test_a_replan_prints_the_follow_up_jobs_id(self, vetoed_job, capsys):
         from apps.cli.grouped import main
 
