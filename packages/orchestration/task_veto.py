@@ -48,18 +48,36 @@ __all__ = [
     "TaskVetoRefused",
     "TaskVetoError",
     "TaskVeto",
+    "VetoAnswer",
     "MAX_VETO_REASON_CHARS",
     "VETOABLE_TASK_STATUSES",
     "VETOED_TASKS_DIRNAME",
+    "VETO_ANSWERS_DIRNAME",
+    "REPLAN_FOLLOW_UP",
+    "ACCEPT_REDUCED_SCOPE",
+    "REPLAN_PROPOSAL_OPTIONS",
     "validate_veto_reason",
     "veto_refusal",
     "veto_unreachable",
     "record_task_veto",
     "vetoed_tasks",
     "veto_task_command",
+    "record_veto_answer",
+    "veto_answers",
 ]
 
 VETOED_TASKS_DIRNAME = "vetoed_tasks"
+
+#: F027 D4 (3) — the answer files, beside the veto files and through the same helpers.
+VETO_ANSWERS_DIRNAME = "veto_answers"
+
+#: F027 D4 (1) — the `replan_proposal` decision's two-option menu, in the order the card
+#: offers them: replan the remaining work as a follow-up job, or accept the reduced scope.
+REPLAN_FOLLOW_UP = "replan_follow_up"
+ACCEPT_REDUCED_SCOPE = "accept_reduced_scope"
+REPLAN_PROPOSAL_OPTIONS = (REPLAN_FOLLOW_UP, ACCEPT_REDUCED_SCOPE)
+
+VETO_ANSWER_VERSION = 1
 
 #: A task id is operator/planner input that becomes a filename's SOURCE, never the filename
 #: itself (the file is named by its digest — see ``_veto_filename``); it is bounded and
@@ -123,6 +141,32 @@ class TaskVeto:
             "actor": self.actor,
             "requested_at": self.requested_at,
             "status_at_veto": self.status_at_veto,
+        }
+
+
+@dataclass(frozen=True)
+class VetoAnswer:
+    """One answer to a `replan_proposal` decision (DECISION F027 D4 (3)): a create-only
+    control fact, never a write of `job.json`, exactly as `TaskVeto` is for the veto itself."""
+
+    job_id: str
+    request_id: str
+    task_id: str
+    option: str
+    actor: str
+    answered_at: str
+    follow_up_job_id: str
+
+    def to_json(self) -> dict[str, Any]:
+        return {
+            "veto_answer_v": VETO_ANSWER_VERSION,
+            "job_id": self.job_id,
+            "request_id": self.request_id,
+            "task_id": self.task_id,
+            "option": self.option,
+            "actor": self.actor,
+            "answered_at": self.answered_at,
+            "follow_up_job_id": self.follow_up_job_id,
         }
 
 
@@ -375,6 +419,146 @@ def vetoed_tasks(job_id: str, *,
     finally:
         if tasks_fd is not None:
             os.close(tasks_fd)
+        os.close(job_fd)
+
+
+# ---------------------------------------------------------------------------
+# F027 D4 (3) — the answer files, beside the veto files and through the same helpers
+# ---------------------------------------------------------------------------
+
+
+def _answer_filename(request_id: str) -> str:
+    """Named by the first 32 hex characters of the request id's sha256 — mirrors
+    ``_veto_filename`` exactly, so an answer file can never collide with a veto file even
+    when both directories are listed side by side."""
+    digest = hashlib.sha256(request_id.encode("utf-8")).hexdigest()[:32]
+    return f"{digest}.json"
+
+
+def _parse_veto_answer(job_id: str, raw: bytes) -> VetoAnswer:
+    try:
+        data = json.loads(raw.decode("utf-8"))
+    except (ValueError, UnicodeDecodeError) as exc:
+        raise TaskVetoError(f"the veto answer entry is not valid JSON: {exc}") from exc
+    if not isinstance(data, dict):
+        raise TaskVetoError("the veto answer entry is not a JSON object")
+    request_id = data.get("request_id")
+    task_id = data.get("task_id")
+    option = data.get("option")
+    if not isinstance(request_id, str) or not request_id:
+        raise TaskVetoError("the veto answer entry carries no request id")
+    if not isinstance(task_id, str) or not task_id:
+        raise TaskVetoError("the veto answer entry carries no task id")
+    if option not in REPLAN_PROPOSAL_OPTIONS:
+        raise TaskVetoError(
+            f"the veto answer entry carries an unrecognised option {option!r}")
+    return VetoAnswer(
+        job_id=job_id,
+        request_id=request_id,
+        task_id=task_id,
+        option=option,
+        actor=str(data.get("actor") or "unknown"),
+        answered_at=str(data.get("answered_at") or ""),
+        follow_up_job_id=str(data.get("follow_up_job_id") or ""),
+    )
+
+
+def record_veto_answer(job_id: str, request_id: str, task_id: str, option: str, actor: str,
+                       follow_up_job_id: str, *,
+                       control_root_path: Path | None = None) -> tuple[VetoAnswer, bool]:
+    """Publish one create-only answer file for ``request_id`` (DECISION F027 D4 (3)). Answers
+    the new answer and ``True``, or — an entry already existed, before this write or after
+    losing the publication race — that entry read back unchanged and ``False``, exactly as
+    ``record_task_veto`` does for the veto itself.
+
+    Refuses an ``option`` outside ``REPLAN_PROPOSAL_OPTIONS`` with
+    ``TaskVetoRefused("invalid_option", ...)`` and a ``request_id`` that
+    ``safe_points.is_safe_id`` rejects with ``TaskVetoError`` — a request id is a filename,
+    never made "safe" by stripping anything.
+    """
+    if option not in REPLAN_PROPOSAL_OPTIONS:
+        raise TaskVetoRefused(
+            "invalid_option",
+            f"option must be one of {', '.join(REPLAN_PROPOSAL_OPTIONS)}")
+    if not _sp.is_safe_id(request_id):
+        raise TaskVetoError(f"invalid request id {request_id!r}")
+    tid = _validate_task_id(task_id)
+    jid = _validate_job_id(job_id)
+    bounded_actor = _bounded_actor(actor)
+    bounded_follow_up = str(follow_up_job_id or "")
+
+    try:
+        job_fd = _sp.open_job_control_fd(jid, control_root_path, create=True)
+    except _sp.StopControlError as exc:
+        raise TaskVetoError(str(exc)) from exc
+    assert job_fd is not None
+    answers_fd = None
+    try:
+        answers_fd = _open_named_dir(job_fd, VETO_ANSWERS_DIRNAME, create=True)
+        assert answers_fd is not None
+        name = _answer_filename(request_id)
+        existing = _fs.read_verified_file(name, answers_fd, max_bytes=_sp.MAX_CONTROL_BYTES,
+                                          error_cls=TaskVetoError, noun="veto answer")
+        if existing is not None:
+            return _parse_veto_answer(jid, existing), False
+
+        answer = VetoAnswer(
+            job_id=jid,
+            request_id=request_id,
+            task_id=tid,
+            option=option,
+            actor=bounded_actor,
+            answered_at=_sp.utc_now_iso(),
+            follow_up_job_id=bounded_follow_up,
+        )
+        published = _fs.write_file_atomically(
+            answers_fd, name, _fs.json_bytes(answer.to_json()), create_only=True,
+            file_mode=_sp.CONTROL_FILE_MODE, error_cls=TaskVetoError, noun="veto answer")
+        if not published:
+            raw = _fs.read_verified_file(name, answers_fd, max_bytes=_sp.MAX_CONTROL_BYTES,
+                                         error_cls=TaskVetoError, noun="veto answer")
+            if raw is None:
+                raise TaskVetoError(
+                    "the veto answer vanished during publication; no answer was recorded")
+            return _parse_veto_answer(jid, raw), False
+        return answer, True
+    finally:
+        if answers_fd is not None:
+            os.close(answers_fd)
+        os.close(job_fd)
+
+
+def veto_answers(job_id: str, *,
+                 control_root_path: Path | None = None) -> dict[str, VetoAnswer]:
+    """Every recorded veto answer, keyed by request id. ``{}`` when the control root, the
+    job's directory or ``veto_answers/`` does not exist. An entry that cannot be read, is
+    not a JSON object, or lacks a task id, a request id or a recognised option RAISES —
+    dropping it would silently un-answer a proposal the operator already answered."""
+    jid = _validate_job_id(job_id)
+    try:
+        job_fd = _sp.open_job_control_fd(jid, control_root_path, create=False)
+    except _sp.StopControlError as exc:
+        raise TaskVetoError(str(exc)) from exc
+    if job_fd is None:
+        return {}
+    answers_fd = None
+    try:
+        answers_fd = _open_named_dir(job_fd, VETO_ANSWERS_DIRNAME, create=False)
+        if answers_fd is None:
+            return {}
+        names = _fs.list_dir_names(answers_fd, error_cls=TaskVetoError, noun="veto answers")
+        out: dict[str, VetoAnswer] = {}
+        for name in names:
+            raw = _fs.read_verified_file(name, answers_fd, max_bytes=_sp.MAX_CONTROL_BYTES,
+                                         error_cls=TaskVetoError, noun="veto answer")
+            if raw is None:
+                continue
+            answer = _parse_veto_answer(jid, raw)
+            out[answer.request_id] = answer
+        return out
+    finally:
+        if answers_fd is not None:
+            os.close(answers_fd)
         os.close(job_fd)
 
 
