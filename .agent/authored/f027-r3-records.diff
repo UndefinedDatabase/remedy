@@ -1,0 +1,70 @@
+diff --git a/.agent/decisions.md b/.agent/decisions.md
+index 57bddbdf1..108951471 100644
+--- a/.agent/decisions.md
++++ b/.agent/decisions.md
+@@ -22097,3 +22097,51 @@ scope (T5_F027.md: nothing replans without the decision answer).
+ HOW TO REVERSE: delete the fold, the loop's two passes and the terminal branch from `run_job`,
+ `worktrees.restore_tree`, the `vetoed` entries of the manifest's vocabulary, their tests, and this
+ paragraph.
++
++## DECISION F027 D3 — a task vetoed while its provider call runs finishes that call, then the linear runner halts the task at its next in-task safe point, folds the veto with the workspace restored, and runs on; the cycle executor withholds a vetoed task and its dependents at every pick and ends `blocked` naming them when nothing else is ready; and `restore_tree` survives a directory standing where a file was (2026-09-26)
++
++CONTEXT: T5_F027.md rules "vetoing in-progress tasks: the current call finishes (pause
++discipline), then vetoed — no mid-call kills", and DECISION F027 D2 (8) left that, and the cycle
++executor, to this round. Measured at `cf6dc546`: `run_job` hands `run_pingpong` a closure,
++`_run_stop_check`, that `pingpong_loop` calls before every provider call; when it answers a signal
++the loop records the run's `final_status` as `stopped` with the signal's request id, reason and
++source, and `run_job`'s `stopped` branch tells a pause from a stop by a prefix on the reason, the
++only field that survives that round trip (DECISION F025 D1); `_fold_task_vetoes` already folds a
++`running` task and restores its start tree; `_log_task_ended` writes `task_run_failed` for every
++outcome but `pass`; `long_run_executor.run_cycles` re-reads the pause mask before every pick and
++passes the paused ids to `ready_tasks`, which withholds them with `blocked_downstream`, writes task
++statuses in the `RunState` vocabulary, runs a task through a step that finishes or rolls it back to
++`pending` before the next pick, and ends `TERMINAL_BLOCKED` with the stop reason
++`no_ready_tasks; last_verify=<v>` when nothing is ready and the job is not green; and R-1066.
++
++CHOSEN: (1) THE IN-TASK READING: `_run_stop_check`, after the stop and the pause found nothing,
++reads `task_veto.vetoed_tasks` and, when an entry names the in-flight task, answers a stop signal
++whose source is `veto`, whose request id is the entry's and whose reason is a veto prefix and that
++id, so the loop halts at its next safe point and the call already running finishes first; an
++unreadable veto area answers the same signal with an error marker, so the fold that follows blocks
++the job as D2 (1) rules. (2) THE HALT: in `run_job`'s `stopped` branch, a reason carrying the veto
++prefix is not a stop: the task keeps the run fields the branch has already recorded, the fold runs
++at once — the task was `running`, so its workspace goes back to its start tree and it becomes
++`vetoed` —, the task log closes with outcome `vetoed`, and the loop goes on to the next task
++instead of returning, so independent tasks still run; a fold that blocks the job returns it. No
++`job_stopped` event, no stop post-mortem and no stop archive are written, because nothing asked the
++job to stop. (3) THE CYCLE EXECUTOR: at every batch boundary and before every pick, `run_cycles`
++reads `vetoed_tasks` and passes the ids to `ready_tasks` as a fourth seed set, withheld with their
++transitive dependents; a vetoed id naming a task that is `completed` or not in the plan is inert,
++as a paused one is. The cycle executor keeps its own vocabulary: it never writes `vetoed` into a
++task's status, and a task step already running finishes or rolls back before the next pick reads
++the veto. When nothing is ready, the job is not green and nothing awaits a decision or a pause, and
++the vetoed seeds withhold at least one task, the run ends `TERMINAL_BLOCKED` with the stop reason
++`all_remaining_work_vetoed; vetoed=<ids>; unreachable=<ids>`; a `TaskVetoError` ends it
++`TERMINAL_BLOCKED` with `task_veto_control_error: <detail>`, as a pause-control error does.
++(4) R-1066's repair lands in this round, as its text says.
++
++ALTERNATIVES: killing the running provider call, rejected by T5_F027.md; letting the vetoed task
++finish its whole repair loop before the veto, rejected because every further call spends budget on
++work the operator refused; ending the run at an in-flight veto as a stop does, rejected because the
++feature's point is that independent branches keep running; folding `vetoed` into the cycle
++executor's task statuses, rejected because every reader of that vocabulary — `_is_green`,
++`ready_set`, the mission loop — would change for a fact the control files already carry.
++
++HOW TO REVERSE: delete the in-task veto reading, the `stopped` branch's veto path, the cycle
++executor's veto seeds and terminal, their tests, and this paragraph.
+diff --git a/.agent/live_review.md b/.agent/live_review.md
+index f05f0f340..1dde5ebf8 100644
+--- a/.agent/live_review.md
++++ b/.agent/live_review.md
+@@ -406,3 +406,9 @@ Gate: F027 R1 — the F027 round 1 entry: the claim, the re-head with F285's rou
+ - R-1065 — Low, A VETO WHOSE `task_vetoed` EVENT FAILED TO WRITE NEVER GETS ITS AUDIT LINE: THE RETRY IS REFUSED AT THE GATE BEFORE THE EVENT REPAIR RUNS. Raised by the planner and reviewer of F027's first session at round 1's gate, from the worker's second declared deviation. SEARCHED BEFORE MINTING (checklist item 30): the open set is empty, and `task_vetoed` beside `repair` and `retry` in this record and its archive finds no finding. MEASURED at `25ab44de` with a probe over a temporary data root: `veto_task_command` in `packages/orchestration/task_veto.py`, with `_write_task_vetoed_event` failing once, raises after the control file is written; the second, identical call answers `{"outcome": "refused", "code": "task_already_vetoed", "detail": "the task is already 'pending'"}` from `veto_refusal`, because `vetoed_tasks` already holds the entry, and the ledger then holds no `task_vetoed` event for that veto while the control file stands. The event repair S8 of the round 1 block ordered is reached only on the branch where `record_task_veto` loses a concurrent publication race, which answers a second shape, `{"outcome": "task_already_vetoed"}`. The block caused it: its S7 ordered that nothing is written by a refusal while its S8 ordered the repair on every `task_already_vetoed` answer. WHY LOW: the veto still takes effect and its reason stays in the control file, which the runner folds into the record; only the event, the veto's audit line, is missing, and the refusal's detail names the task's status instead of saying it is vetoed. FIX: whenever the command answers `task_already_vetoed` for a task that has an entry, it first repairs a missing event exactly as S8 says, which is the one write a refusal may make; both routes answer the one refused shape carrying the entry's `request_id`; the detail says the task is already vetoed; and a test pins the sequential retry after a failed event write to exactly one event. Owner: F027.
+ 
+ Landed: R-1065 — both `task_already_vetoed` routes, the gate's own read and a lost create-only race alike, now repair the entry's missing `task_vetoed` event first and answer one refused shape carrying its request id, at 61250e1e7.
++
++Gate: F027 R2 — the F027 round 2 entry: the booking of round 1, the registration and repair of R-1065, DECISION F027 D2, and the linear runner's fold of a veto with `worktrees.restore_tree`, the terminal that names the vetoed and the unreachable tasks, and `vetoed` in the run manifest's vocabulary. VERDICT PASS, ONE DEVIATION DECLARED AND ONE FINDING REGISTERED. Re-derived over `25ab44de`..`cf6dc546` by the planner and reviewer of F027's first session, whose own runs produced every reading below. THE RANGE IS 8 COMMITS, at `4b285607` 403, `84324980` 84, `61250e1e` 289, `636e9c69` 164, `1ff1f5c3` 279, `f49f1b79` 272, `0739f316` 280 and `cf6dc546` 223 insertions by `git show --numstat`, each under the 500-line cap, each single-parent and each carrying the ordered trailer. THE DEVIATION: the block ordered the runner tests and the mutation tool as one commit, C5, and the new test file alone reached 551 lines, so the worker split C5 into C5a, C5b and C5c under constraint 2, as the block allowed. THE TRANSPORT PROOF: the block copy and the two payload copies, read at `4b285607`, equal the reviewer's originals byte for byte, and at `84324980` the ledger, the decisions and the plan equal the reviewer's authoring tree byte for byte. THE CODE: `git diff -U0 61250e1e 636e9c69` over the status-truth test, the orphan guard and the reachability list holds exactly the four `vetoed` entries of `_ALLOWED`, `PJ.TASK_VETOED` in the vocabulary test, the removed `ALLOWED_UNWIRED` entry and the one added line `packages.orchestration.task_veto`; `ruff check` over the ten touched Python files reads clean. THE TESTS: the reviewer's own serial run of the round's selection in the primary checkout at `cf6dc546` read 757 passed at exit 0; all six `integrity check` checks read `pass`. THE RED PROOFS: the committed `.agent/authored/f027-r2-mutations.py`, run by the reviewer in a disposable worktree at `0739f316`, caught all fourteen mutations and restored every file byte-identical, with an unmutated control green before and after. THE FINDING: the reviewer's probe at `cf6dc546` found that `restore_tree` raises an uncaught `IsADirectoryError` when the vetoed attempt replaced a file with a directory; that is R-1066, below, owned by F027 and repaired in round 3.
++
++Done: R-1065 — at `61250e1e`, `veto_task_command` in `packages/orchestration/task_veto.py` answers `task_already_vetoed` through one helper, `_already_vetoed_refusal`, from both routes — the gate reading an existing entry and `record_task_veto` losing a create-only race — and that helper repairs a missing `task_vetoed` event for the entry before it answers `{"outcome": "refused", "code": "task_already_vetoed", "detail": "the task is already vetoed", "task_id", "request_id"}` with the entry's request id; a task whose status reads `vetoed` with no entry answers the same shape with an empty request id and repairs nothing. `tests/orchestration/test_task_veto.py` pins the sequential retry after a failed event write to exactly one event and both routes to the one shape, and the round's mutations m13 and m14, which restore each half of the defect, turn it red. Verified by the planner and reviewer of F027's first session at the round 2 gate.
++
++- R-1066 — Low, `worktrees.restore_tree` CRASHES THE RUNNER WHEN A VETOED ATTEMPT REPLACED A FILE WITH A DIRECTORY: IT RAISES `IsADirectoryError`, WHICH THE FOLD DOES NOT CATCH, INSTEAD OF RESTORING THE FILE OR RAISING `WorktreeError`. Raised by the planner and reviewer of F027's first session at round 2's gate. SEARCHED BEFORE MINTING (checklist item 30): the open set is R-1065 alone, landed, and `restore_tree` beside `directory` in this record and its archive finds no finding. MEASURED at `cf6dc546` with a probe over a temporary git repository: a tree holding the file `a`, a worktree in which `a` was deleted and a directory `a` holding `a/b` was created, and `restore_tree` over that tree raises `IsADirectoryError: [Errno 21] Is a directory` from the write of `a`, because the sorted changed paths put `a` before `a/b` and nothing removes a directory standing where the tree holds a file. `_fold_task_vetoes` in `packages/orchestration/pingpong_job.py` catches only `WorktreeError`, so `run_job` raises out of its loop with the job's state last persisted as `running`. WHY LOW: a vetoed attempt must have turned a file into a directory, which no plan in this repository asks of a task. FIX: `restore_tree` removes a directory, or any other non-file, standing where the tree holds a file or a symbolic link before it writes the entry back, and turns every `OSError` of its own into a `WorktreeError`, so the fold blocks the job with `veto_restore_failed` rather than crash; a test pins the file-to-directory case restored and an unwritable path blocked. Owner: F027.
