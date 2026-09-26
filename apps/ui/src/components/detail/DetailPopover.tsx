@@ -184,18 +184,20 @@ export function DetailPopover({ dashboard, selectedNode, selectedPromptId, onClo
           <p className={styles.vetoMeta}>
             Vetoed by {vetoEntry.actor}{vetoedAt && ` · ${vetoedAt}`}
           </p>
-          <p>Will not run because of this veto:</p>
           {vetoEntry.unreachableTaskIds.length === 0 ? (
             <p>No other task depended on it.</p>
           ) : (
-            <p>
-              {vetoEntry.unreachableTaskIds.map((id, i) => (
-                <span key={id}>
-                  {i > 0 && ", "}
-                  <TaskLink taskId={id} title={taskTitleOf(dashboard, id)} onSelectTask={onSelectTask} />
-                </span>
-              ))}
-            </p>
+            <>
+              <p>Will not run because of this veto:</p>
+              <p>
+                {vetoEntry.unreachableTaskIds.map((id, i) => (
+                  <span key={id}>
+                    {i > 0 && ", "}
+                    <TaskLink taskId={id} title={taskTitleOf(dashboard, id)} onSelectTask={onSelectTask} />
+                  </span>
+                ))}
+              </p>
+            </>
           )}
           <p className={styles.vetoMeta}>{vetoAnswerSentence(vetoEntry.answer)}</p>
         </section>

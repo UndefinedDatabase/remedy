@@ -81,6 +81,20 @@ def test_the_canvas_holds_the_vetos_fade_and_hover_wiring():
     assert "innerHTML" not in src
 
 
+def test_the_veto_sections_lead_in_sits_inside_the_non_empty_branch():
+    """R-1070 — `Will not run because of this veto:` names a list, so it must
+    render only in the branch that has one: after the length check chooses
+    the non-empty side of the ternary, never unconditionally before it."""
+    src = _source(POPOVER)
+    length_check_idx = src.index("vetoEntry.unreachableTaskIds.length === 0")
+    non_empty_branch_idx = src.index(") : (", length_check_idx)
+    lead_in_idx = src.index("Will not run because of this veto:")
+    assert lead_in_idx > non_empty_branch_idx, (
+        "the lead-in must sit inside the non-empty branch of the ternary, "
+        "not render unconditionally before the length check"
+    )
+
+
 def test_the_assumption_log_names_decision_f027_d8_in_exactly_two_rows():
     lines = ASSUMPTION_LOG.read_text(encoding="utf-8").splitlines()
     matching = [line for line in lines if "DECISION F027 D8" in line]

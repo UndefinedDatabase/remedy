@@ -81,8 +81,8 @@ const ANSWERED_SENTENCE = "Answered.";
 
 /** THE VETO ENTRY'S OWN `answer` FIELD, worded: `""` means the replan
  *  proposal this veto filed is still sitting in the decision inbox unanswered;
- *  the two options `escalation.py`'s own replan proposal offers each get their
- *  own sentence; any other value — an answer this page does not name one by
+ *  the two options `veto_proposal.py`'s own `task_veto.REPLAN_PROPOSAL_OPTIONS`
+ *  offers each get their own sentence; any other value — an answer this page does not name one by
  *  one — still reads as answered, honestly, rather than as the empty case. */
 export function vetoAnswerSentence(answer: string): string {
   if (answer === "") {
