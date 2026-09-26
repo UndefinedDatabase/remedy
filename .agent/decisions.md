@@ -22145,3 +22145,78 @@ executor's task statuses, rejected because every reader of that vocabulary — `
 
 HOW TO REVERSE: delete the in-task veto reading, the `stopped` branch's veto path, the cycle
 executor's veto seeds and terminal, their tests, and this paragraph.
+
+## DECISION F027 D4 — every veto files one `replan_proposal`, derived from the control files and never stored in the job record, offering `replan_follow_up` or `accept_reduced_scope`; an answer is a create-only control fact, the follow-up job is created unplanned and never run by the answer, and a run whose every veto is answered completes the job with the reduced scope (2026-09-26)
+
+CONTEXT: T5_F027.md's T002 asks for the decision entry of type `replan_proposal` whose payload
+carries the veto's context and a two-option menu — replan the remaining work as a follow-up job, or
+accept the reduced scope — both explicit, both producing their documented effects on fixtures, and
+nothing replanned without the decision answer; the ownership ledger's showcase line is "You vetoed
+T004 — reason: ..." (T5_F035.md). Measured at `c1c36656`: `list_decisions` in
+`packages/orchestration/decision_queue.py` derives every pending decision from existing state, one
+branch per type, and ends with `enforce_decision_evidence`, which requires of every type in
+`TRIPLE_REQUIRED_TYPES` at least one evidence ref and one outcome per option of
+`payload["options"]`; `build_decision_inbox` counts a card's blocked work from
+`payload["task_id"]` with `blocked_downstream`; `remedy decision resolve` in
+`apps/cli/commands/decision.py` routes an answer by the id's prefix and refuses every prefix it does
+not know with `decision_not_resolvable`; the write door answers only `plan:` and escalation ids, and
+may import from `pingpong_job` nothing but `save_job_plan`; a job the planner can plan later needs
+only `user_prompt` or `job_title`, which `plan_job_with_llm` reads as its goal, and may be saved with
+no tasks; and the F269 contract remainder's follow-up is a mission started by the answer, a
+precedent this decision does not follow because T5_F027.md names a follow-up job and forbids
+anything running on its own.
+
+CHOSEN: (1) THE TYPE `replan_proposal` joins `DECISION_TYPES` and `TRIPLE_REQUIRED_TYPES`.
+`list_decisions` derives ONE decision per veto entry of the job that has no answer yet, reading
+`task_veto.vetoed_tasks` and the answer files of (3), so the proposal exists from the moment the
+veto does, whether or not a runner has folded it, and nothing is written to `job.json`. Its id is
+`veto:<request id>`, its severity `blocker`, its source `task_veto`, its related node the vetoed
+task; its summary reads "You vetoed <task title> — reason: <reason>", the ownership ledger's phrase,
+followed by the number of tasks that cannot run and the two choices; its payload carries
+`options` `replan_follow_up` and `accept_reduced_scope` in that order, `task_id`, `request_id`, the
+task's title, the reason verbatim, the actor, the time and the unreachable ids; and its evidence
+names the veto as a `decision` ref and gives each option its outcome and its downside in plain
+words. Because the payload names the task, the inbox counts the unreachable set as the card's
+blocked work. (2) THE ANSWER is `answer_replan_proposal`, shared by the CLI and later the door: it
+never raises for a refusal and answers `refused` for an id naming no veto of the job
+(`unknown_decision`), an option outside the two (`invalid_option`), or a proposal already answered
+(`already_answered`, carrying the recorded option); otherwise it records the answer and answers
+`answered` with the option and, for a replan, the follow-up job's id. An answer is accepted in any
+state of the job, because it writes neither the job's record nor its workspace. (3) THE ANSWER IS A
+CONTROL FACT, beside the veto in `packages/orchestration/task_veto.py`: one create-only file per
+request id under `veto_answers/` in the job's control directory, named by a digest, holding the
+request id, the task, the option, the actor, the time and the follow-up job's id; two concurrent
+answers converge on one file, and one `veto_proposal_answered` event is written per request id by
+the ledger, as the veto's own event is. (4) REPLAN CREATES, AND NEVER RUNS, A FOLLOW-UP JOB: its id
+is minted before the answer file is published and recorded in it, and the job is saved after, so a
+repeated answer of the same option repairs a follow-up job whose save failed. The job copies the
+repository and the project, has no tasks and the state `pending`, and its goal — `user_prompt` and
+`mission` — names the original job, the vetoed task's title and goal, the reason verbatim, and each
+unreachable task's title and goal, and asks for that work replanned without the vetoed approach;
+`metadata["replan_of"]` records where it came from. Planning, approving and running it are the
+operator's own steps. (5) SETTLED COMPLETION on the linear runner: at the terminal of DECISION F027
+D2 (5), when every vetoed task's veto has an answer, the run does not block: its unreachable tasks
+still pending become `skipped`, and the job takes the ordinary completion path with its vetoed
+tasks counted beside the applied, skipped and split ones, so the Definition-of-Done gate, the
+workspace's finalization and the completed run manifest run as for any completed job, and
+`job.metadata["veto_terminal"]` records `settled` true with each answer. The completed episode's
+tightened manifest sets therefore gain `vetoed` for `skipped`, `executed` and `prior_episode`. A run
+with an unanswered veto still ends `blocked` as D2 rules, and answering then is followed by the
+operator's own relaunch, which is when the job completes. The cycle executor keeps D3's `blocked`.
+(6) THE CLI ROUTE: `remedy decision resolve <job> veto:<request id> --reason
+replan_follow_up|accept_reduced_scope` answers through (2). The write door, the inbox's answerable
+flag and the veto command itself arrive with the channel commands in the next round, so until then
+the inbox shows the card as not answerable, which is true.
+
+ALTERNATIVES: an ordinary `task_decision` on the vetoed task, as the F269 remainder is, rejected
+because T5_F027.md names the type and because an escalation record lives in `job.json`, which the
+veto command must not write while a runner holds it; one proposal per job covering every veto,
+rejected because each veto carries its own reason and its own lost work, and the operator may
+answer them differently; completing the job at the moment the scope is accepted, rejected because
+completion runs the DoD gate and the workspace's finalization, which the write door may not reach;
+starting the follow-up job's planning from the answer, rejected because nothing may run without the
+operator.
+
+HOW TO REVERSE: delete the `replan_proposal` branch, type and triple entry, `answer_replan_proposal`
+and the answer files, the follow-up job's creation, the settled-completion branch and the widened
+completed sets, the CLI route, their tests, and this paragraph.
