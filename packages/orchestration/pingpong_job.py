@@ -60,6 +60,9 @@ TASK_SKIPPED = "skipped"
 # instead (DECISION F112 D7/D8) — distinct from TASK_SKIPPED, which means
 # "the job blocked and this never got a chance."
 TASK_SPLIT = "split"
+# DECISION F027 D1: terminal for the task — a runner's fold writes this status at its
+# safe points once a control file records the veto; the veto command itself never writes it.
+TASK_VETOED = "vetoed"
 
 #: R-0898: the statuses of a task whose work is done, over BOTH task vocabularies. The job
 #: runner writes TASK_PASSED and then TASK_APPLIED; the fulfillment, mission and queue paths

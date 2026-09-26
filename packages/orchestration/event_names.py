@@ -133,6 +133,7 @@ EVENT_NAMES: frozenset[str] = frozenset(
         "task_run_failed",
         "task_run_noop",
         "task_run_started",
+        "task_vetoed",
         "test_failure_artifact_created",
         "test_run_blocked",
         "test_run_completed",
