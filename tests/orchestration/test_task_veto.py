@@ -348,3 +348,186 @@ class TestControlFiles:
         assert veto.actor == "unknown"
 
 
+# ---------------------------------------------------------------------------
+# S7 — the command effect
+# ---------------------------------------------------------------------------
+
+
+class TestVetoTaskCommand:
+    def test_a_blank_reason_with_an_unknown_task_answers_reason_required(self, control):
+        job = _job([flight_task("A")])
+        result = tv.veto_task_command(
+            job, task_id="no-such-task", reason="   ", actor="alice",
+            control_root_path=control)
+        assert result["outcome"] == "refused"
+        assert result["code"] == "reason_required"
+        assert result["task_id"] == "no-such-task"
+
+    def test_unknown_task_is_refused_once_the_reason_is_valid(self, control):
+        job = _job([flight_task("A")])
+        result = tv.veto_task_command(
+            job, task_id="no-such-task", reason="stop this", actor="alice",
+            control_root_path=control)
+        assert result["outcome"] == "refused"
+        assert result["code"] == "unknown_task"
+
+    def test_job_not_vetoable_refusal(self, control):
+        tasks = [flight_task("A")]
+        job = _job(tasks, state=RunState.COMPLETED)
+        result = tv.veto_task_command(
+            job, task_id=tasks[0].task_id, reason="stop", actor="a", control_root_path=control)
+        assert result["outcome"] == "refused"
+        assert result["code"] == "job_not_vetoable"
+
+    def test_task_not_vetoable_refusal(self, control):
+        tasks = [flight_task("A", status=RunState.COMPLETED)]
+        job = _job(tasks)
+        result = tv.veto_task_command(
+            job, task_id=tasks[0].task_id, reason="stop", actor="a", control_root_path=control)
+        assert result["outcome"] == "refused"
+        assert result["code"] == "task_not_vetoable"
+
+    def test_task_already_vetoed_refusal_when_an_entry_already_exists(self, control):
+        tasks = [flight_task("A")]
+        job = _job(tasks)
+        first = tv.veto_task_command(
+            job, task_id=tasks[0].task_id, reason="stop", actor="a", control_root_path=control)
+        assert first["outcome"] == "vetoed"
+        second = tv.veto_task_command(
+            job, task_id=tasks[0].task_id, reason="stop again", actor="b",
+            control_root_path=control)
+        assert second["outcome"] == "refused"
+        assert second["code"] == "task_already_vetoed"
+
+    def test_nothing_is_written_by_a_refusal(self, control):
+        tasks = [flight_task("A")]
+        job = _job(tasks, state=RunState.COMPLETED)
+        tv.veto_task_command(
+            job, task_id=tasks[0].task_id, reason="stop", actor="a", control_root_path=control)
+        assert not (control / "jobs").exists()
+        assert _read_events(job.job_id) == []
+
+    def test_a_successful_veto_answers_the_unreachable_set(self, control):
+        tasks = [flight_task("A"), flight_task("B", "A")]
+        job = _job(tasks)
+        result = tv.veto_task_command(
+            job, task_id=tasks[0].task_id, reason="stop everything", actor="alice",
+            control_root_path=control)
+        assert result["outcome"] == "vetoed"
+        assert result["reason"] == "stop everything"
+        assert result["actor"] == "alice"
+        assert result["status_at_veto"] == pj.TASK_PENDING
+        assert result["unreachable"] == [tasks[1].task_id]
+
+    def test_the_jobs_job_json_is_byte_identical_after_a_successful_veto(self, control,
+                                                                         tmp_path):
+        tasks = [flight_task("A"), flight_task("B", "A")]
+        job = _job(tasks)
+        jobs_root = tmp_path / "jobs_root"
+        job_json_path = pj.save_job_plan(job, root=jobs_root)
+        before = job_json_path.read_bytes()
+
+        tv.veto_task_command(
+            job, task_id=tasks[0].task_id, reason="stop everything", actor="alice",
+            control_root_path=control)
+
+        assert job_json_path.read_bytes() == before
+
+    def test_unreachable_excludes_a_task_another_entry_already_vetoes(self, control):
+        # B depends on A. B is vetoed first (on its own); A is vetoed second — its own
+        # downstream is B, but B already carries its own veto entry and must not be
+        # reported a second time as merely "unreachable".
+        tasks = [flight_task("A"), flight_task("B", "A")]
+        job = _job(tasks)
+        a_id, b_id = dag_ids(tasks, "A", "B")
+
+        first = tv.veto_task_command(
+            job, task_id=b_id, reason="stop B", actor="a", control_root_path=control)
+        assert first["outcome"] == "vetoed"
+        assert first["unreachable"] == []
+
+        second = tv.veto_task_command(
+            job, task_id=a_id, reason="stop A too", actor="a", control_root_path=control)
+        assert second["outcome"] == "vetoed"
+        assert second["unreachable"] == []
+
+
+# ---------------------------------------------------------------------------
+# S8 — the event
+# ---------------------------------------------------------------------------
+
+
+class TestTaskVetoedEvent:
+    def test_one_event_carries_the_reason_verbatim(self, control):
+        tasks = [flight_task("A")]
+        job = _job(tasks)
+        result = tv.veto_task_command(
+            job, task_id=tasks[0].task_id, reason="rollback needed", actor="alice",
+            control_root_path=control)
+        assert result["outcome"] == "vetoed"
+
+        events = [e for e in _read_events(job.job_id) if e["event"] == "task_vetoed"]
+        assert len(events) == 1
+        meta = events[0]["metadata"]
+        assert meta["reason"] == "rollback needed"
+        assert meta["request_id"] == result["request_id"]
+        assert events[0]["task_id"] == tasks[0].task_id
+
+    def test_repair_never_writes_a_second_event_for_an_entry_already_covered(self, control):
+        """Direct coverage of ``_maybe_repair_task_vetoed_event``'s own idempotency: the
+        ledger read must gate the write, not merely happen to run once in practice."""
+        tasks = [flight_task("A")]
+        job = _job(tasks)
+        veto, _ = tv.record_task_veto(
+            JOB, tasks[0].task_id, "x", "a", pj.TASK_PENDING, control_root_path=control)
+        tv._maybe_repair_task_vetoed_event(job, veto, [])
+        tv._maybe_repair_task_vetoed_event(job, veto, [])
+        events = [e for e in _read_events(job.job_id) if e["event"] == "task_vetoed"]
+        assert len(events) == 1
+
+    def test_no_second_event_on_a_repeated_veto(self, control):
+        tasks = [flight_task("A")]
+        job = _job(tasks)
+        tv.veto_task_command(
+            job, task_id=tasks[0].task_id, reason="x", actor="a", control_root_path=control)
+        second = tv.veto_task_command(
+            job, task_id=tasks[0].task_id, reason="y", actor="b", control_root_path=control)
+        assert second["outcome"] == "refused"
+        events = [e for e in _read_events(job.job_id) if e["event"] == "task_vetoed"]
+        assert len(events) == 1
+
+    def test_a_retry_repairs_a_missing_event_after_a_failed_write(self, control, monkeypatch):
+        """The loser of a create-only race repairs the winner's event when the winner's own
+        write of it failed — a retry after a failed event write repairs the audit line
+        exactly once."""
+        tasks = [flight_task("A")]
+        job = _job(tasks)
+        real_write = tv._fs.write_file_atomically
+
+        def _boom_event(*_a, **_kw):
+            raise OSError("simulated ledger failure")
+
+        def _slip_in_first(dir_fd, name, data, **kw):
+            if "ran" not in winner:
+                winner["ran"] = True
+                monkeypatch.undo()
+                monkeypatch.setattr(tv, "_write_task_vetoed_event", _boom_event)
+                with pytest.raises(OSError):
+                    tv.veto_task_command(
+                        job, task_id=tasks[0].task_id, reason="winner reason", actor="winner",
+                        control_root_path=control)
+                monkeypatch.undo()
+            return real_write(dir_fd, name, data, **kw)
+
+        winner: dict[str, object] = {}
+        monkeypatch.setattr(
+            "packages.orchestration.task_veto._fs.write_file_atomically", _slip_in_first)
+
+        result = tv.veto_task_command(
+            job, task_id=tasks[0].task_id, reason="loser reason", actor="loser",
+            control_root_path=control)
+        assert result["outcome"] == "task_already_vetoed"
+
+        events = [e for e in _read_events(job.job_id) if e["event"] == "task_vetoed"]
+        assert len(events) == 1
+        assert events[0]["metadata"]["reason"] == "winner reason"
