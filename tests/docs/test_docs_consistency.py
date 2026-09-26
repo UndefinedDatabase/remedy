@@ -102,7 +102,11 @@ TIER_HEADING_RE = re.compile(r"^#+\s*Tier\s*(\d{1,2})", re.IGNORECASE)
 #: One more, F287 (provider session continuity across relaunch), was
 #: registered on 2026-09-26 by operator amendment amend0926-decisions-selfuse
 #: as the first unchecked line of the Tier 3 extension block; see T3_F287.md.
-TOTAL_FEATURES = 287
+#: Two more, F289 (self-use sources completion) and F288 (event stream
+#: completeness & prompt nodes), were registered the same day by the same
+#: amendment under their own Tier 5 heading directly after F285's block; see
+#: T5_F289.md and T5_F288.md.
+TOTAL_FEATURES = 289
 
 #: Documents that must never contain a stale claim.
 PRIMARY_DOCS = [

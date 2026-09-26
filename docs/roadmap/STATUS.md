@@ -156,6 +156,11 @@ Milestone R1 — Remedy as the daily tool: Tier 2 complete (F086 as the self-ins
 
 - [x] F285 — Findings paydown v4 (T001-T003 complete, R-1064 and R-1008 resolved at the closure; accepted 2026-09-26 · live review PASS — ACCEPTED · Evidence job f285r5e1001 · package remedy-review-20260926-020855-READY_FOR_REVIEW.zip · SHA-256 dba140f371cfe8071690be30605ba1643a77a8f5d000f66a40d8dd43c056d4d5 · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD c2a4588ad39959a0278235e1e526cec871cc69e2)
 
+## Tier 5 — Self-use sources & event completeness (operator amendment amend0926-decisions-selfuse)
+
+- [ ] F289 — Self-use sources completion (doc staleness and doctor warnings)
+- [ ] F288 — Event stream completeness & prompt nodes in the live graph
+
 ## Tier 5 — Operator Cockpit (parallel human track, continued)
 
 - [ ] F027 — Task veto
