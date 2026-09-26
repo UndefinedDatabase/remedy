@@ -158,7 +158,7 @@ Milestone R1 — Remedy as the daily tool: Tier 2 complete (F086 as the self-ins
 
 ## Tier 5 — Operator Cockpit (parallel human track, continued)
 
-- [~] F027 — Task veto
+- [x] F027 — Task veto (T001–T003 complete; accepted 2026-09-26 · live review PASS — ACCEPTED · Evidence job f027r13e1001 · package remedy-review-20260926-111715-READY_FOR_REVIEW.zip · SHA-256 abb65b1df0346c8670423a7da903e3e3c6facfc4cac4602bb5a983b47b4bd993 · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD f3afc333a70eae5f339fce8c18004db68a7cea1f)
 - [ ] F028 — Task injection
 - [ ] F029 — Subtree rerun
 - [ ] F030 — Steering messages
