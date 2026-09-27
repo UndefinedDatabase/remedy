@@ -347,6 +347,11 @@ end the response with:
   function's arguments without the target and the command nonce that every send it named as its
   model takes is item 18's reading of a named precedent against the property it must preserve. The
   list stays at 34 items.
+  Consolidated a twenty-second time at F030's closure on 2026-09-27: nothing joined and no two items
+  were merged, because F030's one line in `.agent/prose_slips.md` names no lesson the list lacks. A
+  block that ordered a catalog description without naming `tests/docs/test_vocabulary.py`, which
+  reads every description for a binding word, is item 7's reading of the guards that read a file the
+  block adds a string to. The list stays at 34 items.
   The next consolidation measures against 34.
   Reverse by deleting this paragraph.
   1. **Size.** Count the block's lines. Over 400 (DECISION F105 D5) → split or
