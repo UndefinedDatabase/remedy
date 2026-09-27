@@ -23711,3 +23711,37 @@ models exists and the server already refuses a malformed name.
 HOW TO REVERSE: delete `rerunSend.ts`, `rerunView.ts`, the report's attempt clause and the control,
 restore the disabled button with `RERUN_NOT_YET` and its pin, delete the assumption-log row naming
 this decision, and delete this paragraph.
+
+## DECISION F029 D7 — a rerun under a mission is noted in the mission's dossier: every subtree rerun of one of the mission's jobs becomes one DECISIONS item, read from that job's own `reruns` record at each refresh; the closure sequence follows (2026-09-27)
+
+CONTEXT: measured at `a5933b73`. The feature file's edge cases say that under a mission the dossier
+notes the rerun, as an iteration fact. `refresh_mission_dossier` in
+`packages/orchestration/mission_dossier.py` advances a mission's dossier once per orchestrator-loop
+iteration from `mission_iteration_facts`, which reads the compiled mission plan and the mission's
+own decision ledger and nothing else. A subtree rerun is prepared by the operator outside that loop
+and recorded only on the job, in the `reruns` list that `fold_subtree_rerun` appends to (DECISION
+F029 D2 (6)). A mission names its jobs through `job_ids()` in `mission_state.py`, and `load_job_plan`
+honours the data root it is given. The DECISIONS section merges items by id, replacing an item in
+place, and renders the five most recent (`MAX_RECENT_DECISIONS`).
+
+CHOSEN: (1) `rerun_decision_items` turns `(job id, rerun record)` pairs into DECISIONS items: the id
+is `RR-<the job id's first eight characters>-<the rerun id>`, the text reads `rerun of task <root>
+and <n> task(s) after it on job <the job id's first eight characters>`, the item is resolved, and
+its outcome reads `reset to <the reset commit's first twelve characters>, run on <model>`, or `...,
+the job's own model` when the rerun carried no override. A record that is not a dictionary, or lacks
+a rerun id or a root task, is skipped. (2) `mission_job_reruns(mission, root)` reads every rerun of
+every job of the mission, in the mission's job order and then each job's rerun order; a job whose
+record cannot be loaded is skipped. (3) `mission_iteration_facts` gains the keyword `reruns`, whose
+items follow the ledger's, and `refresh_mission_dossier` passes the mission's reruns, so the first
+iteration after a rerun notes it; a mission with no rerun gets a byte-identical dossier. (4) The
+closure sequence follows this round.
+
+ALTERNATIVES: writing a dossier line from `prepare_subtree_rerun`, rejected because the loop's
+refresh is what advances a dossier's version and a job need not belong to a mission; a RISKS item,
+rejected because a prepared rerun is a decision already taken, not an open risk; keeping rerun items
+outside the five most recent decisions, rejected because every other decision ages out of the
+rendered section the same way while the dossier's full record keeps it.
+
+HOW TO REVERSE: delete `RERUN_ID_TEMPLATE`, `rerun_decision_items`, `mission_job_reruns`, the
+`reruns` keyword of `mission_iteration_facts` and its argument in `refresh_mission_dossier`, their
+tests, and this paragraph.

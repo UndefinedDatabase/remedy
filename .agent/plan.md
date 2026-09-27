@@ -14,18 +14,14 @@ with a model override that the evidence records
 
 ## Current Step
 
-ROUND 7: book round 6's PASS and its prose slip, put space between the
-run detail's confirmation sentence and its two buttons, and land T003's
-end-to-end proof — a real three-task job run through the command line,
-its middle task rerun with a model override through the live write door
-and through `remedy job rerun-subtree`, the subtree run again, and both
-attempts read back from the job record, git, the run log, the dashboard,
-the run records and the final report.
+ROUND 8: book round 7's PASS, record DECISION F029 D7, and land the
+feature file's last edge case — a rerun of one of a mission's jobs is
+noted in the mission's dossier as one decision line, read from the job's
+own record at the loop's next refresh.
 
 ## Next Steps
 
-1. The review of round 7, with the reviewer's headless render of the
-   confirmation row.
+1. The review of round 8.
 2. The closure sequence: Built State and the checklist consolidation
    with the one full suite, then the evidence job and review zip, then
    the ledger rotation, the STATUS line and the pull request.
