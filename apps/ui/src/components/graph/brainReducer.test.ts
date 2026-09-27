@@ -247,6 +247,24 @@ describe("Seed status table (Table 1)", () => {
   });
 });
 
+// DECISION F028 D7 (3): seedBrainModel copies a seed's `origin` into the
+// task node's `meta.origin` exactly as it copies `specVersion` above.
+describe("origin (DECISION F028 D7 (3))", () => {
+  it("copies a seed's origin into meta.origin", () => {
+    const seeded = seedBrainModel("job-origin", [
+      { id: "t1", status: "pending", rank: 0, origin: "human_injected" },
+    ]);
+    const task = seeded.nodes.find((n) => n.id === "task:t1");
+    expect(task?.meta.origin).toBe("human_injected");
+  });
+
+  it("a seed with no origin carries no meta.origin key at all", () => {
+    const seeded = seedBrainModel("job-origin", [{ id: "t1", status: "pending", rank: 0 }]);
+    const task = seeded.nodes.find((n) => n.id === "task:t1");
+    expect(task?.meta).not.toHaveProperty("origin");
+  });
+});
+
 describe("task_run_started interrupts a still-open previous run", () => {
   it("a second start while the first builder_run is still in_progress blocks the first and opens a second", () => {
     const seeded = seedBrainModel("job-y", [{ id: "t1", status: "pending", rank: 0 }]);

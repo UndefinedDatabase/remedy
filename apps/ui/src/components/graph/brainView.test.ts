@@ -6,14 +6,15 @@ import { buildBrainLayout } from "./buildForceBrainModel";
 import type { BrainModel } from "./brainOntology";
 import type { BrainLayoutData, BrainLayoutNode } from "./forceBrainTypes";
 import { withPromptNodes } from "./promptNodes";
+import { INJECTED_TASK_ORIGIN } from "../../api/injectView";
 import {
   BRAIN_FILTER_STATES, DASHBOARD_STATE_STATUS, brainTaskCount, carryBrainPositions,
   dashboardBrainSeeds, filterBrainLayout, promptListEntries, selectedBrainNodeId, selectedPromptNodeId,
   selectionIdOf, selectionTaskIdOf, shellSelectionIdOf, vetoFadedNodeIds, vetoHoverTexts,
 } from "./brainView";
 
-function task(id: string, state: RemedyTaskItem["state"], label = id): RemedyTaskItem {
-  return { id, label, state, kind: "task", checked: false, muted: false, nodeId: `node-${id}` };
+function task(id: string, state: RemedyTaskItem["state"], label = id, origin?: string): RemedyTaskItem {
+  return { id, label, state, kind: "task", checked: false, muted: false, nodeId: `node-${id}`, ...(origin !== undefined ? { origin } : {}) };
 }
 
 /** A small real layout — one task per filter bucket, built the same way the
@@ -92,6 +93,21 @@ describe("dashboardBrainSeeds", () => {
     const tasks = [task("a", "pending", "Alpha")];
     const seeds = dashboardBrainSeeds(tasks, []);
     expect(seeds[0]).not.toHaveProperty("specVersion");
+  });
+
+  // DECISION F028 D7 (3): `origin` rides straight off the task item, unlike
+  // `specVersion` above, which needs a separate map — `RemedyTaskItem`
+  // already carries `origin` itself.
+  it("puts origin on a seed only for a task whose own origin is INJECTED_TASK_ORIGIN", () => {
+    const tasks = [
+      task("a", "pending", "Alpha", INJECTED_TASK_ORIGIN),
+      task("b", "pending", "Beta", "planner"),
+      task("c", "pending", "Gamma"),
+    ];
+    const seeds = dashboardBrainSeeds(tasks);
+    expect(seeds.find((s) => s.id === "a")?.origin).toBe(INJECTED_TASK_ORIGIN);
+    expect(seeds.find((s) => s.id === "b")).not.toHaveProperty("origin");
+    expect(seeds.find((s) => s.id === "c")).not.toHaveProperty("origin");
   });
 
   it("seeds a task named in vetoedTaskIds as vetoed, whatever its dashboard status word (DECISION F027 D7 (2))", () => {

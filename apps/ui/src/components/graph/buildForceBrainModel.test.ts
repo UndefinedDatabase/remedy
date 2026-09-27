@@ -11,6 +11,7 @@ import type { BrainModel } from "./brainOntology";
 import type { BrainLayoutData } from "./forceBrainTypes";
 import { withPromptNodes } from "./promptNodes";
 import type { RemedyPromptTraceItem } from "../../api/types";
+import { INJECTED_TASK_ORIGIN, ORIGIN_CANVAS_CHIP_TEXT } from "../../api/injectView";
 
 function prompt(id: string, taskId: string): RemedyPromptTraceItem {
   return {
@@ -197,6 +198,26 @@ describe("buildBrainLayout", () => {
     expect(t1.chip).toBe("v2");
     expect(t2).not.toHaveProperty("chip");
     expect(t3).not.toHaveProperty("chip");
+  });
+
+  // DECISION F028 D7 (3): the chip's four answers — version alone, "added"
+  // alone, both joined, and neither (no `chip` key at all).
+  it("chip: v<n> alone, added alone, both joined, and no key for neither", () => {
+    const seeded = seedBrainModel("job-origin-chips", [
+      { id: "t1", status: "pending", rank: 0, specVersion: 3 },
+      { id: "t2", status: "pending", rank: 1, origin: INJECTED_TASK_ORIGIN },
+      { id: "t3", status: "pending", rank: 2, specVersion: 2, origin: INJECTED_TASK_ORIGIN },
+      { id: "t4", status: "pending", rank: 3 },
+    ]);
+    const layout = buildBrainLayout(seeded);
+    const t1 = layout.nodes.find((n) => n.id === "task:t1")!;
+    const t2 = layout.nodes.find((n) => n.id === "task:t2")!;
+    const t3 = layout.nodes.find((n) => n.id === "task:t3")!;
+    const t4 = layout.nodes.find((n) => n.id === "task:t4")!;
+    expect(t1.chip).toBe("v3");
+    expect(t2.chip).toBe(ORIGIN_CANVAS_CHIP_TEXT);
+    expect(t3.chip).toBe(`v2 · ${ORIGIN_CANVAS_CHIP_TEXT}`);
+    expect(t4).not.toHaveProperty("chip");
   });
 
   it("link depth/width: depth 1 core->task width 2.2, depth 2 task->child width 1.4 (graph_spec §6 trunk decay)", () => {
