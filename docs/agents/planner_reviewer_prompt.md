@@ -329,6 +329,16 @@ end the response with:
   right module; and a path set that left out four readers of a recording the block ordered
   captured again is item 34's reading of the tests that already guard a path. The list stays at
   34 items.
+  Consolidated a twentieth time at F028's closure on 2026-09-27: nothing joined and no two items
+  were merged, because none of F028's five lines in `.agent/prose_slips.md` names a lesson the list
+  lacks. A block that sized no commit carrying a new module, so that the module's guard entry landed
+  one split part after the module, is item 34's reading of the generated list a new file joins; a
+  keyword ordered into a call whose spread answer already carries it, and a key added to a
+  dictionary a test pins by exact equality, are both item 34's reading of the file and the tests the
+  order reaches; a deleted rule whose raw colours a ratchet counts over the whole file is item 7's;
+  and a sheet ordered "shaped as" an overlay while the order dropped the fact that the shell, not a
+  card, mounts that overlay is item 18's reading of a named precedent against the property it must
+  preserve. The list stays at 34 items.
   The next consolidation measures against 34.
   Reverse by deleting this paragraph.
   1. **Size.** Count the block's lines. Over 400 (DECISION F105 D5) → split or
