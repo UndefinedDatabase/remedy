@@ -197,6 +197,27 @@ class TestInjectYes:
         assert "cost limit" in out
         assert ti.confirmed_injections(str(job.job_id)) == ()
 
+    def test_yes_json_over_a_shortfall_prints_exactly_one_json_document(
+            self, job, capsys, monkeypatch):
+        """R-1078's repair: `--yes --json` over a shortfall must never emit `emit_ok`'s
+        envelope before `fail`'s — a caller parsing `--json` output as one document must
+        not choke on a second."""
+        call = _FakeCall([_draft_json(est_tokens_band="M")])
+        monkeypatch.setattr(ti, "injection_call_fn", lambda: call)
+        monkeypatch.setattr(ti, "injection_budget_inputs", _shortfall_budget_inputs)
+
+        code, out = _run(
+            ["job", "inject", str(job.job_id), "add a widget", "--yes", "--json"], capsys)
+
+        assert code == 3
+        body = json.loads(out)                     # raises if stdout is not ONE document
+        assert body["ok"] is False
+        assert body["error"] == "draft_needs_decision"
+        assert "draft_id" in body
+        assert "decision_seed" in body
+        assert "budget_check" in body
+        assert ti.confirmed_injections(str(job.job_id)) == ()
+
 
 class TestInjectConfirm:
     def test_confirms_a_drafted_injection(self, job, capsys, monkeypatch):

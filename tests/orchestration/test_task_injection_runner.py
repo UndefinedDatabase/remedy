@@ -427,3 +427,78 @@ class TestBudgetExtensionReachesThePredictiveCheck:
         assert seen_limits, "the predictive check never ran"
         assert all(limit == 1.22 for limit in seen_limits)
         assert done.budgets["max_cost_usd"] == 1.22
+
+
+# ---------------------------------------------------------------------------
+# DECISION F028 D5 (2) — the fold writes one `task_injected` event per record, after
+# `_persist_job`
+# ---------------------------------------------------------------------------
+
+
+def _injected_events(job_id: str) -> list[dict]:
+    from packages.orchestration.data_paths import run_log_dir
+
+    job_runs = run_log_dir(job_id)
+    out: list[dict] = []
+    if job_runs.is_dir():
+        for jsonl in sorted(job_runs.glob("*.jsonl")):
+            for line in jsonl.read_text(encoding="utf-8").splitlines():
+                if line.strip():
+                    out.append(json.loads(line))
+    return [e for e in out if e.get("event") == "task_injected"]
+
+
+class TestTaskInjectedEvent:
+    def test_an_applied_fold_writes_one_event_naming_the_new_entrys_task_id(self, root, repo):
+        job_id = _save_job(root, [_task("A", [])], repo_path=str(repo))
+        job = load_job_plan(job_id, root)
+        confirmed = _draft_and_confirm(job, control_root_path=_control())
+
+        done = run_job(job_id, builder_provider=_pass_provider(),
+                       reviewer_provider=_pass_provider(), max_rounds=1, repair_rounds=0)
+
+        assert done.state == JOB_COMPLETED
+        recorded = done.metadata["task_injections"][confirmed["draft_id"]]
+        [event] = _injected_events(job_id)
+        assert event["outcome"] == "applied"
+        assert event["task_id"] == recorded["task_id"]
+
+    def test_an_inert_fold_writes_one_event_naming_its_reason(self, root, repo):
+        job_id = _save_job(root, [_task("A", [])], repo_path=str(repo))
+
+        bad_record = {
+            "injected_task_v": 1, "job_id": job_id, "draft_id": "baddraft00000003",
+            "task": {"id": "INJ1", "title": "t", "goal": "g", "acceptance": ["a"],
+                    "depends_on": ["GHOST"], "est_tokens_band": "S", "files_hint": []},
+            "placement": {"depends_on": ["GHOST"], "basis": "stated", "position": 1,
+                         "rationale": "r"},
+            "task_rationale": "r", "text": "t", "drafted_by": "alice", "actor": "alice",
+            "confirmed_at": "2026-01-01T00:00:00+00:00",
+        }
+        assert ti._publish_confirmed_injection(
+            job_id, bad_record["draft_id"], bad_record, control_root_path=_control())
+
+        done = run_job(job_id, builder_provider=_pass_provider(),
+                       reviewer_provider=_pass_provider(), max_rounds=1, repair_rounds=0)
+
+        assert done.state == JOB_COMPLETED
+        [event] = _injected_events(job_id)
+        assert event["outcome"] == "inert"
+        assert event["task_id"] == ""
+        recorded = done.metadata["task_injections"]["baddraft00000003"]
+        assert event["metadata"]["reason"] == recorded["inert"]
+
+    def test_a_second_run_writes_no_further_event(self, root, repo):
+        job_id = _save_job(root, [_task("A", [])], repo_path=str(repo))
+        job = load_job_plan(job_id, root)
+        _draft_and_confirm(job, control_root_path=_control())
+
+        first = run_job(job_id, builder_provider=_pass_provider(),
+                        reviewer_provider=_pass_provider(), max_rounds=1, repair_rounds=0)
+        assert first.state == JOB_COMPLETED
+        assert len(_injected_events(job_id)) == 1
+
+        second = run_job(job_id, builder_provider=_RefusingProvider(),
+                         reviewer_provider=_RefusingProvider(), max_rounds=1, repair_rounds=0)
+        assert second.state == JOB_COMPLETED
+        assert len(_injected_events(job_id)) == 1

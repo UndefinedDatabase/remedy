@@ -1079,6 +1079,248 @@ class TestVetoTaskDispatchEffects:
         assert self._audit_outcomes() == ["rejected_state"]
 
 
+def _injection_draft_json(*, est_tokens_band: str = "S") -> str:
+    return json.dumps({
+        "schema_v": "task_injection_draft_v1",
+        "title": "Add the thing",
+        "goal": "do the thing",
+        "acceptance": ["acceptance one"],
+        "est_tokens_band": est_tokens_band,
+        "files_hint": [],
+        "rationale": "because the operator asked",
+    })
+
+
+class _FakeInjectCall:
+    """A queue of raw planner replies; each call pops the next."""
+
+    def __init__(self, replies: list[str]) -> None:
+        self._replies = list(replies)
+
+    def __call__(self, prompt: str, attempt: int) -> str:
+        return self._replies.pop(0)
+
+
+def _permissive_injection_budget_inputs(job):
+    """A limit no band S draft can ever breach."""
+    from packages.core.models import JobBudgets
+    from packages.orchestration.budget_guard import BudgetCounters
+    from packages.orchestration.budget_resolution import PredictiveBudgetConfig
+
+    return (
+        JobBudgets(),
+        BudgetCounters(provider_calls=0, measured_call_count=0, unmeasured_call_count=0,
+                       measured_token_total=0, actual_sources=(), measured_cost_usd=None,
+                       priced_call_count=0),
+        PredictiveBudgetConfig(price_basis_usd_per_1k_tokens=None,
+                               class_default_tokens={"low": 8000, "medium": 32000,
+                                                     "high": 120000}),
+    )
+
+
+def _shortfall_injection_budget_inputs(job):
+    """A limit no band M draft can fit under. Mirrors `test_job_inject.py`'s own copy."""
+    from packages.core.models import JobBudgets
+    from packages.orchestration.budget_guard import BudgetCounters
+    from packages.orchestration.budget_resolution import PredictiveBudgetConfig
+
+    return (
+        JobBudgets(max_cost_usd=0.01),
+        BudgetCounters(provider_calls=1, measured_call_count=1, unmeasured_call_count=0,
+                       measured_token_total=1000, actual_sources=("pingpong_actuals",),
+                       measured_cost_usd=0.0, priced_call_count=1),
+        PredictiveBudgetConfig(price_basis_usd_per_1k_tokens=0.01,
+                               class_default_tokens={"low": 8000, "medium": 32000,
+                                                     "high": 120000}),
+    )
+
+
+class TestInjectionDispatchEffects:
+    """What an accepted `job.inject`, `job.inject-confirm` or `job.inject-answer` DID, read
+    off disk (DECISION F028 D5). Mirrors `TestVetoTaskDispatchEffects` immediately above: the
+    door maps the three to `_dispatch_injection`, so these tests prove the mapping — the
+    shape checks that run BEFORE the job's own state can refuse anything, the 409s the effect
+    itself gives, and the control files an acceptance writes — and leave the injection's own
+    rules to `tests/orchestration/test_task_injection.py`.
+    """
+
+    @pytest.fixture(autouse=True)
+    def _setup_job(self, tmp_path, monkeypatch):
+        from packages.core.models import RunState
+        from packages.orchestration.pingpong_job import save_job_plan
+        from packages.orchestration.schemas.models import PlannedTask, TaskPlan
+        from tests.orchestration.test_dag_schedule import flight_task
+
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        entries = [flight_task("T1"), flight_task("T2", "T1")]
+        plan_tasks = [
+            PlannedTask(id="T1", title="title T1", goal="goal T1", acceptance=["do T1"],
+                       est_tokens_band="S"),
+            PlannedTask(id="T2", title="title T2", goal="goal T2", acceptance=["do T2"],
+                       est_tokens_band="S", depends_on=["T1"]),
+        ]
+        task_plan = TaskPlan(schema_v="task_plan_v1", tasks=plan_tasks).model_dump()
+        self.job = JobPlan(job_title="inject-dispatch-job", tasks=entries,
+                          state=RunState.RUNNING, task_plan=task_plan)
+        save_job_plan(self.job)
+        self.job_id = str(self.job.job_id)
+        self.tmp_path = tmp_path
+        self.control = tmp_path / "control"
+
+    def _entry_id(self, planned_id: str) -> str:
+        for t in self.job.tasks:
+            if (t.inputs.get("plan") or {}).get("planned_id") == planned_id:
+                return t.task_id
+        raise AssertionError(f"no task for planned id {planned_id!r}")
+
+    def _post(self, port, token, nonce, command, args):
+        payload = {"command": command, "client_nonce": nonce, "args": args}
+        conn = HTTPConnection("127.0.0.1", port, timeout=10)
+        try:
+            conn.request("POST", f"/api/jobs/{self.job_id}/commands",
+                         body=json.dumps(payload),
+                         headers={"Authorization": f"Bearer {token}",
+                                  CSRF_HEADER: token,
+                                  "Content-Type": "application/json"})
+            resp = conn.getresponse()
+            return resp.status, json.loads(resp.read())
+        finally:
+            conn.close()
+
+    def _draft_dir(self):
+        from packages.orchestration import task_injection as ti
+        return self.control / "jobs" / self.job_id / ti.INJECTION_DRAFTS_DIRNAME
+
+    def _confirmed_dir(self):
+        from packages.orchestration import task_injection as ti
+        return self.control / "jobs" / self.job_id / ti.INJECTED_TASKS_DIRNAME
+
+    def _control_file_count(self, path):
+        return len(list(path.glob("*.json"))) if path.is_dir() else 0
+
+    def test_a_drafted_injection_answers_200_and_writes_one_draft_file_naming_the_actor(
+            self, monkeypatch):
+        from packages.orchestration import task_injection as ti
+        from packages.orchestration.ui_server import token_fingerprint
+
+        monkeypatch.setattr(ti, "injection_call_fn", lambda: _FakeInjectCall(
+            [_injection_draft_json()]))
+        monkeypatch.setattr(ti, "injection_budget_inputs", _permissive_injection_budget_inputs)
+
+        port, token = _start_ui_server_for_job(self.job_id, self.tmp_path)
+        status, body = self._post(port, token, "nonce-inject", "job.inject",
+                                  {"text": "add a widget"})
+
+        assert status == 200, body
+        assert body["outcome"] == "drafted"
+        draft_files = list(self._draft_dir().glob("*.json"))
+        assert len(draft_files) == 1
+        record = json.loads(draft_files[0].read_bytes())
+        assert record["actor"] == token_fingerprint(token)
+
+    def test_after_by_the_entry_id_reaches_the_drafts_depends_on_as_the_planned_id(
+            self, monkeypatch):
+        from packages.orchestration import task_injection as ti
+
+        monkeypatch.setattr(ti, "injection_call_fn", lambda: _FakeInjectCall(
+            [_injection_draft_json()]))
+        monkeypatch.setattr(ti, "injection_budget_inputs", _permissive_injection_budget_inputs)
+
+        t1_entry_id = self._entry_id("T1")
+        port, token = _start_ui_server_for_job(self.job_id, self.tmp_path)
+        status, body = self._post(port, token, "nonce-after", "job.inject",
+                                  {"text": "add a widget", "after": t1_entry_id})
+
+        assert status == 200, body
+        assert body["placement"]["depends_on"] == ["T1"]
+
+    def test_confirm_answers_200_with_one_confirmation_file_and_a_second_is_409(
+            self, monkeypatch):
+        from packages.orchestration import task_injection as ti
+
+        monkeypatch.setattr(ti, "injection_call_fn", lambda: _FakeInjectCall(
+            [_injection_draft_json()]))
+        monkeypatch.setattr(ti, "injection_budget_inputs", _permissive_injection_budget_inputs)
+
+        port, token = _start_ui_server_for_job(self.job_id, self.tmp_path)
+        _, draft = self._post(port, token, "nonce-draft", "job.inject",
+                              {"text": "add a widget"})
+        assert draft["outcome"] == "drafted", draft
+        token_str = draft["confirm_token"]
+
+        status, body = self._post(port, token, "nonce-confirm", "job.inject-confirm",
+                                  {"confirm_token": token_str})
+        assert status == 200, body
+        assert body["outcome"] == "confirmed"
+        assert self._control_file_count(self._confirmed_dir()) == 1
+
+        status2, body2 = self._post(port, token, "nonce-confirm-again", "job.inject-confirm",
+                                    {"confirm_token": token_str})
+        assert status2 == 409, body2
+        assert body2["error"].startswith("already_confirmed"), body2
+        assert self._control_file_count(self._confirmed_dir()) == 1
+
+    def test_answer_drop_over_a_shortfall_draft_answers_200_dropped(self, monkeypatch):
+        from packages.orchestration import task_injection as ti
+
+        monkeypatch.setattr(ti, "injection_call_fn", lambda: _FakeInjectCall(
+            [_injection_draft_json(est_tokens_band="M")]))
+        monkeypatch.setattr(ti, "injection_budget_inputs", _shortfall_injection_budget_inputs)
+
+        port, token = _start_ui_server_for_job(self.job_id, self.tmp_path)
+        _, draft = self._post(port, token, "nonce-shortfall-draft", "job.inject",
+                              {"text": "add a widget"})
+        assert draft["outcome"] == "shortfall", draft
+
+        status, body = self._post(
+            port, token, "nonce-answer", "job.inject-answer",
+            {"draft_id": draft["draft_id"], "option": "drop"})
+        assert status == 200, body
+        assert body["outcome"] == "dropped"
+
+    def test_a_bad_text_is_400_and_a_bad_option_is_400_with_no_control_file_written(
+            self, monkeypatch):
+        monkeypatch.setattr(
+            "packages.orchestration.task_injection.injection_budget_inputs",
+            _permissive_injection_budget_inputs)
+
+        port, token = _start_ui_server_for_job(self.job_id, self.tmp_path)
+
+        status, body = self._post(port, token, "nonce-bad-text", "job.inject", {"text": ""})
+        assert status == 400, body
+        assert body["field"] == "text", body
+
+        status2, body2 = self._post(
+            port, token, "nonce-bad-option", "job.inject-answer",
+            {"draft_id": "somedraftid00001", "option": "bogus"})
+        assert status2 == 400, body2
+        assert body2["field"] == "option", body2
+
+        assert self._control_file_count(self._draft_dir()) == 0
+        assert self._control_file_count(self._confirmed_dir()) == 0
+
+    def test_a_terminal_job_is_409_naming_job_terminal(self, monkeypatch):
+        from packages.core.models import RunState
+        from packages.orchestration.pingpong_job import load_job_plan, save_job_plan
+
+        job = load_job_plan(self.job_id)
+        job.state = RunState.COMPLETED
+        save_job_plan(job)
+
+        monkeypatch.setattr(
+            "packages.orchestration.task_injection.injection_call_fn",
+            lambda: _FakeInjectCall([_injection_draft_json()]))
+        monkeypatch.setattr(
+            "packages.orchestration.task_injection.injection_budget_inputs",
+            _permissive_injection_budget_inputs)
+
+        port, token = _start_ui_server_for_job(self.job_id, self.tmp_path)
+        status, body = self._post(port, token, "nonce-terminal", "job.inject",
+                                  {"text": "add a widget"})
+        assert status == 409, body
+        assert body["error"].startswith("job_terminal"), body
+
+
 class TestVetoProposalAnswerDispatchEffects:
     """What `decision.resolve` DID for a `veto:`-prefixed id (DECISION F027 D5).
 

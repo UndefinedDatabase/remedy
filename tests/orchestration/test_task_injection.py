@@ -451,6 +451,41 @@ class TestInjectionCallFn:
 
 
 # ---------------------------------------------------------------------------
+# DECISION F028 D5 (1) — `resolve_after_ref`, the door's own `after` resolver
+# ---------------------------------------------------------------------------
+
+
+class TestResolveAfterRef:
+    """The door shares this, never `job_inject_cmd`'s own `_resolve_after`, which resolves
+    through `job_plan_cmd._resolve_task_arg` and writes ambiguity to the terminal."""
+
+    def _job_with_entries(self) -> pj.JobPlan:
+        from tests.orchestration.test_dag_schedule import flight_task
+
+        entries = [flight_task("T1"), flight_task("T2", "T1")]
+        plan_tasks = [_task("T1"), _task("T2")]
+        return pj.JobPlan(job_id=JOB_ID, state=pj.RunState.RUNNING, tasks=entries,
+                          task_plan=_plan_dict(plan_tasks))
+
+    def test_none_answers_none(self):
+        job = self._job_with_entries()
+        assert ti.resolve_after_ref(job, None) is None
+
+    def test_a_planned_id_already_in_the_plan_is_returned_unchanged(self):
+        job = self._job_with_entries()
+        assert ti.resolve_after_ref(job, "T2") == "T2"
+
+    def test_an_entrys_own_task_id_resolves_to_its_planned_id(self):
+        job = self._job_with_entries()
+        entry = next(t for t in job.tasks if t.inputs["plan"]["planned_id"] == "T1")
+        assert ti.resolve_after_ref(job, entry.task_id) == "T1"
+
+    def test_an_unmatched_ref_is_returned_unchanged(self):
+        job = self._job_with_entries()
+        assert ti.resolve_after_ref(job, "nope") == "nope"
+
+
+# ---------------------------------------------------------------------------
 # S7 — the fences
 # ---------------------------------------------------------------------------
 
