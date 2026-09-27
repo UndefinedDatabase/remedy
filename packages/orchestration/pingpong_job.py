@@ -3266,6 +3266,31 @@ def run_job(
                     source="veto")
             return None
 
+        def _fold_injections_here() -> bool:
+            """DECISION F028 D3 (2): fold every confirmed injection, then — when the fold just
+            raised the job's own cost limit (DECISION F028 D3 (2) in `apply_injection_to_job`)
+            — re-validate `_job_budgets` from the fresh `job.budgets` so the very next safe
+            point's reactive and predictive checks enforce the limit the operator just raised,
+            not the one this run started with. A budget the fold left corrupt blocks the job
+            exactly as the pre-run validation above does.
+            """
+            nonlocal _job_budgets
+            _budgets_before = dict(job.budgets) if job.budgets is not None else None
+            if _fold_task_injections(job, _control):
+                return True
+            if job.budgets != _budgets_before:
+                from pydantic import ValidationError as _BudgetValidationError
+
+                from packages.core.models import JobBudgets as _JobBudgets
+                try:
+                    _job_budgets = _JobBudgets.model_validate(job.budgets)
+                except _BudgetValidationError as exc:
+                    job.state = JOB_BLOCKED
+                    job.error = f"corrupt_budget_state: {exc}"
+                    _persist_job(job)
+                    return True
+            return False
+
         # F012 (F4): record the job-workspace tree at THIS episode's start. For a resume, it
         # already contains the work applied by earlier episodes, which is a material input.
         # F12: a FAILURE to capture it is a snapshot-capture failure — it is NEVER silently
@@ -3320,7 +3345,7 @@ def run_job(
 
         # F028 D2 (3): the injection fold runs at the same point, right after the veto
         # fold — a confirmed injection waiting before this episode started joins task 1.
-        if _fold_task_injections(job, _control):
+        if _fold_injections_here():
             return job
 
         tasks_run = 0
@@ -3386,7 +3411,7 @@ def run_job(
 
             # F028 D2 (3): the injection fold runs again here too, right after the veto
             # fold — a confirmation recorded between two tasks joins the very next one.
-            if _fold_task_injections(job, _control):
+            if _fold_injections_here():
                 return job
 
             if task.status == TASK_VETOED:
@@ -3796,7 +3821,7 @@ def run_job(
             # F028 D2 (3): the injection fold's third point — the last statement of the
             # loop body — so a task confirmed while an earlier one ran is folded before the
             # NEXT iteration checks it (never later than one task late).
-            if _fold_task_injections(job, _control):
+            if _fold_injections_here():
                 return job
 
         # F028 D2 (3): the injection fold's fourth and last point, once the loop has ended.
@@ -3804,7 +3829,7 @@ def run_job(
         # task nothing in this run will dispatch, so the job parks PAUSED instead of racing
         # ahead to completion with new work pending.
         _tasks_before_injection_terminal_fold = len(job.tasks)
-        if _fold_task_injections(job, _control):
+        if _fold_injections_here():
             return job
         if len(job.tasks) > _tasks_before_injection_terminal_fold:
             job.state = JOB_PAUSED
