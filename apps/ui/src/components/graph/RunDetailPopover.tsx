@@ -8,6 +8,8 @@
 // closes it with the level (DECISION F023 D4).
 import { useEffect, useState } from "react";
 import { loadTaskRunRounds } from "../../api/remedyApi";
+import { sendRerunSubtree } from "../../api/rerunSend";
+import { rerunAnswerView } from "../../api/rerunView";
 import type { TaskRunRounds } from "../../api/taskRunRounds";
 import type { RemedyPromptTraceItem } from "../../api/types";
 import type { BrainEventRow, BrainNode } from "./brainOntology";
@@ -16,8 +18,19 @@ import type { RunFact } from "./runDetailModel";
 import type { EvidenceTab } from "./semanticZoom";
 import styles from "./RunDetailPopover.module.css";
 
-/** Why Rerun is disabled: no command the dashboard may send re-runs one step. */
-export const RERUN_NOT_YET = "Running one step again is not offered from the dashboard yet.";
+/** Why Rerun is disabled when it is: DECISION F029 D6 gates the whole feature
+ *  on the live page's own server token, the one credential every other send in
+ *  this cockpit already requires. */
+const RERUN_TOKEN_REASON = "Rerunning needs the live page's server token.";
+
+/** DECISION F029 D6: what the Rerun control shows after a send answers — the
+ *  one sentence `rerunAnswerView` or `describeRerunResult` produced, plus
+ *  whichever buttons that outcome earns. `null` is "nothing sent yet, or the
+ *  operator cancelled". */
+type RerunOutcome =
+  | { kind: "needs_confirmation"; sentence: string }
+  | { kind: "prepared"; sentence: string; runCommand: string }
+  | { kind: "message"; sentence: string };
 
 function Fact({ label, fact }: { label: string; fact: RunFact }) {
   return (
@@ -52,6 +65,34 @@ export function RunDetailPopover({ node, rows, promptItems, jobId, token, onOpen
   const detail = runDetailOf({ node, rows, rounds, promptItems });
   const reasonId = `run-detail-rerun-${node.id}`;
 
+  const [rerunModel, setRerunModel] = useState("");
+  const [rerunSending, setRerunSending] = useState(false);
+  const [rerunOutcome, setRerunOutcome] = useState<RerunOutcome | null>(null);
+  const rerunDisabled = token === "";
+
+  const sendRerun = async (confirmCost: boolean) => {
+    if (rerunSending) {
+      return;
+    }
+    setRerunSending(true);
+    const outcome = await sendRerunSubtree(
+      { jobId, serverToken: token }, taskId, { model: rerunModel, confirmCost });
+    setRerunSending(false);
+    const answerView = rerunAnswerView(outcome.answer);
+    if (answerView === null) {
+      setRerunOutcome({ kind: "message", sentence: outcome.message.sentence });
+      return;
+    }
+    setRerunOutcome(answerView.kind === "prepared"
+      ? { kind: "prepared", sentence: answerView.sentence, runCommand: answerView.runCommand }
+      : { kind: "needs_confirmation", sentence: answerView.sentence });
+  };
+  const rerunSentence = rerunOutcome === null
+    ? null
+    : rerunOutcome.kind === "prepared"
+      ? `${rerunOutcome.sentence} Run it with: ${rerunOutcome.runCommand}`
+      : rerunOutcome.sentence;
+
   return (
     <aside className={styles.popover} aria-label="Run detail" data-ui="run-detail">
       <header className={styles.header}>
@@ -69,6 +110,15 @@ export function RunDetailPopover({ node, rows, promptItems, jobId, token, onOpen
         <Fact label="Duration" fact={detail.duration} />
         <Fact label="Retries" fact={detail.retries} />
       </dl>
+      <label className={styles.modelField}>
+        <span>Model for the rerun (optional)</span>
+        <input
+          type="text"
+          maxLength={128}
+          value={rerunModel}
+          onChange={(event) => setRerunModel(event.target.value)}
+        />
+      </label>
       <div className={styles.actions}>
         <button type="button" className={styles.action} onClick={() => onOpenEvidence("diff")}>Open diff</button>
         <button
@@ -80,11 +130,39 @@ export function RunDetailPopover({ node, rows, promptItems, jobId, token, onOpen
         >
           Why
         </button>
-        <button type="button" className={styles.action} disabled title={RERUN_NOT_YET} aria-describedby={reasonId}>
+        <button
+          type="button"
+          className={styles.action}
+          disabled={rerunDisabled || rerunSending}
+          title={rerunDisabled ? RERUN_TOKEN_REASON : undefined}
+          aria-describedby={rerunDisabled ? reasonId : undefined}
+          onClick={() => void sendRerun(false)}
+        >
           Rerun
         </button>
       </div>
-      <p id={reasonId} className={styles.reason}>{RERUN_NOT_YET}</p>
+      {rerunDisabled && <p id={reasonId} className={styles.reason}>{RERUN_TOKEN_REASON}</p>}
+      {rerunSentence !== null && <p className={styles.rerunOutcome} aria-live="polite">{rerunSentence}</p>}
+      {rerunOutcome?.kind === "needs_confirmation" && (
+        <div className={styles.confirmActions}>
+          <button
+            type="button"
+            className={styles.action}
+            disabled={rerunSending}
+            onClick={() => void sendRerun(true)}
+          >
+            Rerun anyway
+          </button>
+          <button
+            type="button"
+            className={styles.action}
+            disabled={rerunSending}
+            onClick={() => setRerunOutcome(null)}
+          >
+            Cancel
+          </button>
+        </div>
+      )}
     </aside>
   );
 }

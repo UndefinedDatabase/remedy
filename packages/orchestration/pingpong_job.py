@@ -252,6 +252,17 @@ class TaskEntry:
     # DECISION F026 D1: the task's own edit version, raised by one on every accepted
     # runtime edit; a record written before F026 carries no key and loads at 1.
     spec_version: int = 1
+    # DECISION F029 D2: how many times this task has run; a rerun archives the
+    # finished attempt into `attempts` below and raises this by one. A record
+    # written before F029 carries no key and loads at 1.
+    attempt: int = 1
+    # DECISION F029 D2: this task's archived earlier attempts, oldest first — each a
+    # dict `fold_subtree_rerun` writes. A record written before F029 carries no key
+    # and loads empty.
+    attempts: list = field(default_factory=list)
+    # DECISION F029 D2: the builder model a rerun asked for; "" runs the job's own
+    # configured model. A record written before F029 carries no key and loads "".
+    model_override: str = ""
 
 
 # F112 T003b2a: translates a live TaskEntry into the granularity machinery's
@@ -495,6 +506,10 @@ class JobPlan:
     # state (DECISION F025 D1 clause 6) — `max_tasks` never writes it, and the record
     # is emptied the moment the job leaves `paused` for any other state.
     pause: dict = field(default_factory=dict)
+    # DECISION F029 D2: this job's subtree reruns, oldest first — each a record
+    # `fold_subtree_rerun` appends. Absent in every job file written before this
+    # round; loads empty.
+    reruns: list = field(default_factory=list)
 
     def __post_init__(self) -> None:
         # One spelling per concept: however the field was set — a raw literal, a
@@ -907,6 +922,8 @@ def _export_job(job: JobPlan) -> dict[str, Any]:
         },
         "budgets": job.budgets,
         "run_refs": job.run_refs,
+        # DECISION F029 D2.
+        "reruns": job.reruns,
         # F272 T002: the eight administrative fields, in the dataclass's own
         # order. The three model-valued ones are dumped to plain JSON data here
         # rather than left as model objects, so `_persist_job`'s `json.dumps`
@@ -965,6 +982,10 @@ def _export_job(job: JobPlan) -> dict[str, Any]:
                 "tripped_limit": t.tripped_limit,
                 # DECISION F026 D1.
                 "spec_version": t.spec_version,
+                # DECISION F029 D2.
+                "attempt": t.attempt,
+                "attempts": t.attempts,
+                "model_override": t.model_override,
             }
             for t in job.tasks
         ],
@@ -1028,6 +1049,8 @@ def _import_job(data: dict[str, Any]) -> JobPlan:
         run_manifest_episodes=list((data.get("run_manifest") or {}).get("episodes") or []),
         budgets=data.get("budgets"),
         run_refs=list(data.get("run_refs") or []),
+        # DECISION F029 D2: absent in every job file written before this round.
+        reruns=list(data.get("reruns") or []),
         # F272 T002: every one of the eight reads through a default, because a
         # job record written before this round carries none of these keys and
         # must still load unchanged.
@@ -1083,6 +1106,10 @@ def _import_job(data: dict[str, Any]) -> JobPlan:
             tripped_limit=str(t.get("tripped_limit", "") or ""),
             # DECISION F026 D1: a record written before F026 carries no key and loads at 1.
             spec_version=int(t.get("spec_version", 1) or 1),
+            # DECISION F029 D2: a record written before F029 carries none of these keys.
+            attempt=int(t.get("attempt", 1) or 1),
+            attempts=list(t.get("attempts") or []),
+            model_override=str(t.get("model_override", "") or ""),
         ))
     return job
 
@@ -3568,7 +3595,9 @@ def run_job(
                     reviewer_provider=reviewer_provider,
                     builder_name=builder_name,
                     reviewer_name=reviewer_name,
-                    builder_model=builder_model,
+                    # DECISION F029 D2: a rerun task's own override wins, disclosed on
+                    # the run's own record; every other task runs the job-wide model.
+                    builder_model=(task.model_override or builder_model),
                     reviewer_model=reviewer_model,
                     max_rounds=max_rounds,
                     timeout_sec=timeout_sec,

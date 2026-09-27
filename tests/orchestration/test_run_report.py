@@ -1062,6 +1062,41 @@ class TestTheReportNamesAnInjectedTasksOrigin:
             "applied (1/1 changes) — added by you while the job ran")
 
 
+class TestTheReportNamesATasksAttemptAndItsOverride:
+    """DECISION F029 D6 — S4: the report's own half of the rerun feature.
+
+    ``_attempt_clause`` reads ``attempt`` and ``model_override`` directly off
+    ``TaskOutcome``; a task on its first attempt renders no clause at all, so
+    a report of a job with no rerun stays byte-identical to the one this
+    module rendered before those two fields existed.
+    """
+
+    def test_attempt_one_renders_no_clause(self):
+        line = _one_task_line(TaskOutcome("aaaaaaaa", "Do the thing", "completed"))
+        assert line == "- `aaaaaaaa` — Do the thing — **completed**"
+
+    def test_attempt_two_without_an_override(self):
+        line = _one_task_line(
+            TaskOutcome("bbbbbbbb", "Do the thing", "completed", attempt=2))
+        assert line == "- `bbbbbbbb` — Do the thing — **completed** — attempt 2"
+
+    def test_attempt_two_with_an_override_names_the_model(self):
+        line = _one_task_line(TaskOutcome(
+            "cccccccc", "Do the thing", "completed",
+            attempt=2, model_override="gpt-5"))
+        assert line == (
+            "- `cccccccc` — Do the thing — **completed** — attempt 2, run on gpt-5")
+
+    def test_a_job_with_no_rerun_renders_byte_identical(self):
+        """The same line a task record with no ``attempt``/``model_override``
+        field at all would have rendered before this round."""
+        with_defaults = _one_task_line(TaskOutcome("dddddddd", "Do the thing", "completed"))
+        without_the_new_fields = _one_task_line(
+            TaskOutcome("dddddddd", "Do the thing", "completed", attempt=1, model_override=""))
+        assert with_defaults == without_the_new_fields == (
+            "- `dddddddd` — Do the thing — **completed**")
+
+
 class TestTheProofChainModuleDocumentsItsWholePublicApi:
     """R-0746 — the export list and the module are read AGAINST each other.
 

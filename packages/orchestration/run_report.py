@@ -264,6 +264,16 @@ class TaskOutcome:
     #: field here) for a planned task.  Defaulted so every existing
     #: construction site keeps working unchanged.
     origin: str = ""
+    #: DECISION F029 D6: this task's attempt number, off the task record's own
+    #: `attempt` (DECISION F029 D2) — 1 for a task that has never been
+    #: rerun.  Defaulted so every existing construction site keeps working
+    #: unchanged.
+    attempt: int = 1
+    #: DECISION F029 D6: the model this attempt ran under when a rerun asked
+    #: for one, off the task record's own `model_override` (DECISION F029 D2)
+    #: — "" (P6: not recorded) when it ran the job's own configured model.
+    #: Defaulted so every existing construction site keeps working unchanged.
+    model_override: str = ""
 
 
 @dataclass(frozen=True)
@@ -487,6 +497,23 @@ def _origin_clause(task: TaskOutcome) -> str:
     return " — added by you while the job ran"
 
 
+def _attempt_clause(task: TaskOutcome) -> str:
+    """DECISION F029 D6: the rerun clause, or "" (P6) when *task* is on its
+    first attempt.
+
+    Same absence rule as ``_apply_clause`` and ``_origin_clause``: a task on
+    attempt 1 renders no clause at all, so a report of a job with no rerun is
+    byte-identical to the one this module rendered before ``attempt`` and
+    ``model_override`` existed.
+    """
+    if task.attempt < 2:
+        return ""
+    clause = f" — attempt {task.attempt}"
+    if task.model_override:
+        clause += f", run on {task.model_override}"
+    return clause
+
+
 def _task_lines(sources: ReportSources) -> list[str]:
     lines = ["## Tasks", ""]
     if not sources.tasks:
@@ -496,6 +523,7 @@ def _task_lines(sources: ReportSources) -> list[str]:
         f"- `{t.task_id}` — {_text(t.description)} — **{_text(t.status)}**"
         + _apply_clause(t)
         + _origin_clause(t)
+        + _attempt_clause(t)
         + (f" — {_link('evidence', t.evidence_ref)}" if t.evidence_ref else "")
         for t in sources.tasks
     ]
@@ -812,6 +840,27 @@ def _task_origin(t: Any) -> str:
     return origin if isinstance(origin, str) and origin else ""
 
 
+def _task_attempt(t: Any) -> int:
+    """DECISION F029 D6: a task's attempt number, off its own record's
+    `attempt` (DECISION F029 D2, `subtree_rerun.py`'s `TaskEntry.attempt`) —
+    an int, or 1 (the record's own default for a task that has never been
+    rerun) for anything else.  Read defensively, as `_task_origin` reads
+    `origin`: a malformed or absent value never raises into a render.
+    """
+    value = getattr(t, "attempt", 1)
+    return value if isinstance(value, int) and not isinstance(value, bool) else 1
+
+
+def _task_model_override(t: Any) -> str:
+    """DECISION F029 D6: the model a rerun task ran under, off its own
+    record's `model_override` (DECISION F029 D2, `TaskEntry.model_override`)
+    — a non-empty string, or "" (P6: not recorded) for anything else.  Read
+    defensively, as `_task_origin` reads `origin`.
+    """
+    value = getattr(t, "model_override", "")
+    return value if isinstance(value, str) and value else ""
+
+
 def collect_report_sources(job: Any) -> ReportSources:
     """Gather the report's sources off an in-memory job.
 
@@ -830,6 +879,8 @@ def collect_report_sources(job: Any) -> ReportSources:
             status=getattr(getattr(t, "status", None), "value",
                            str(getattr(t, "status", "") or "")),
             origin=_task_origin(t),
+            attempt=_task_attempt(t),
+            model_override=_task_model_override(t),
         )
         for t in (getattr(job, "tasks", None) or ())
     )

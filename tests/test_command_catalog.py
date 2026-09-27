@@ -153,10 +153,11 @@ class TestCatalogExpensive:
                 f"{cmd.command_id}.is_expensive must be a bool"
             )
 
-    def test_exactly_one_command_is_marked_expensive_so_far(self) -> None:
+    def test_exactly_two_commands_are_marked_expensive_so_far(self) -> None:
         marked = sorted(cmd.command_id for cmd in CATALOG if cmd.is_expensive)
-        assert marked == ["job.resume"], (
-            f"F114 T003 marks exactly the one expensive command; found {marked}"
+        assert marked == ["job.rerun-subtree", "job.resume"], (
+            f"F114 T003 and DECISION F029 D3 mark exactly these two expensive "
+            f"commands; found {marked}"
         )
 
     def test_job_resume_is_expensive(self) -> None:

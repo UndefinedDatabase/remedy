@@ -70,9 +70,35 @@
 
 .missing { color: var(--remedy-faint); }
 
+.modelField {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0 0 8px;
+  font-size: 12px;
+  color: var(--remedy-muted);
+}
+.modelField input {
+  height: 26px;
+  padding: 0 8px;
+  border-radius: var(--remedy-radius-sm);
+  border: 1px solid var(--remedy-glass-border);
+  background: var(--remedy-glass-bg-strong);
+  color: var(--remedy-ink);
+  font: inherit;
+  font-size: 13px;
+}
+.modelField input:focus-visible { outline: 2px solid var(--remedy-blue-strong); outline-offset: 1px; }
+
 .actions {
   display: flex;
   gap: 8px;
+}
+
+.confirmActions {
+  display: flex;
+  gap: 8px;
+  margin: 8px 0 0;
 }
 
 .action {
@@ -92,6 +118,12 @@
 .action:disabled { opacity: 0.45; cursor: not-allowed; }
 
 .reason {
+  margin: 8px 0 0;
+  font-size: 12px;
+  color: var(--remedy-muted);
+}
+
+.rerunOutcome {
   margin: 8px 0 0;
   font-size: 12px;
   color: var(--remedy-muted);

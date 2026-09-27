@@ -418,6 +418,8 @@ export function seedBrainModel(jobId: string, tasks: readonly BrainTaskSeed[]): 
     if (seed.specVersion !== undefined) meta.specVersion = seed.specVersion;
     // DECISION F028 D7 (3): copied exactly as `specVersion` above is copied.
     if (seed.origin !== undefined) meta.origin = seed.origin;
+    // DECISION F029 D5 (1): copied exactly as `specVersion` and `origin` above.
+    if (seed.attempt !== undefined) meta.attempt = seed.attempt;
     meta.status = seed.status;
     const state = SEED_STATUS_STATE_TABLE[seed.status] ?? "planned";
     nodes.push({ id, kind: "task", state, parentId: core.id, seq: 0, meta });

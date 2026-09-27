@@ -220,6 +220,29 @@ describe("buildBrainLayout", () => {
     expect(t4).not.toHaveProperty("chip");
   });
 
+  // DECISION F029 D5 (1): `attempt <n>` joins `v<n>` and "added" in every
+  // combination, in that order, and an attempt below 2 earns no fragment.
+  it("chip: attempt <n> joins v<n> and added in every combination, and an attempt below 2 earns no fragment", () => {
+    const seeded = seedBrainModel("job-attempt-chips", [
+      { id: "t1", status: "pending", rank: 0, attempt: 3 },
+      { id: "t2", status: "pending", rank: 1, specVersion: 2, attempt: 2 },
+      { id: "t3", status: "pending", rank: 2, origin: INJECTED_TASK_ORIGIN, attempt: 4 },
+      { id: "t4", status: "pending", rank: 3, specVersion: 2, origin: INJECTED_TASK_ORIGIN, attempt: 3 },
+      { id: "t5", status: "pending", rank: 4, attempt: 1 },
+    ]);
+    const layout = buildBrainLayout(seeded);
+    const t1 = layout.nodes.find((n) => n.id === "task:t1")!;
+    const t2 = layout.nodes.find((n) => n.id === "task:t2")!;
+    const t3 = layout.nodes.find((n) => n.id === "task:t3")!;
+    const t4 = layout.nodes.find((n) => n.id === "task:t4")!;
+    const t5 = layout.nodes.find((n) => n.id === "task:t5")!;
+    expect(t1.chip).toBe("attempt 3");
+    expect(t2.chip).toBe("v2 · attempt 2");
+    expect(t3.chip).toBe(`${ORIGIN_CANVAS_CHIP_TEXT} · attempt 4`);
+    expect(t4.chip).toBe(`v2 · ${ORIGIN_CANVAS_CHIP_TEXT} · attempt 3`);
+    expect(t5).not.toHaveProperty("chip");
+  });
+
   it("link depth/width: depth 1 core->task width 2.2, depth 2 task->child width 1.4 (graph_spec §6 trunk decay)", () => {
     const layout = buildBrainLayout(GOLDEN_B_MODEL);
     const coreLinks = layout.links.filter((l) => l.depth === 1);

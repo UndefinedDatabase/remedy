@@ -339,6 +339,14 @@ end the response with:
   and a sheet ordered "shaped as" an overlay while the order dropped the fact that the shell, not a
   card, mounts that overlay is item 18's reading of a named precedent against the property it must
   preserve. The list stays at 34 items.
+  Consolidated a twenty-first time at F029's closure on 2026-09-27: nothing joined and no two items
+  were merged, because neither of F029's two lines in `.agent/prose_slips.md` names a lesson the list
+  lacks. A block that named a door's closed import sets for a new command without the same guard
+  class's equality over the modules the door reaches transitively is item 34's reading of the
+  equality guard that pins a closed set the order widens; and a specification that listed a send
+  function's arguments without the target and the command nonce that every send it named as its
+  model takes is item 18's reading of a named precedent against the property it must preserve. The
+  list stays at 34 items.
   The next consolidation measures against 34.
   Reverse by deleting this paragraph.
   1. **Size.** Count the block's lines. Over 400 (DECISION F105 D5) → split or

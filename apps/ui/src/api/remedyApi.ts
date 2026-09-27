@@ -8,7 +8,7 @@ import { decodeLessonsIndex, lessonsIndexPath } from "./lessons";
 import type { LessonsIndex } from "./lessons";
 import { decodeTaskRunRounds, taskRunRoundsPath } from "./taskRunRounds";
 import type { TaskRunRounds } from "./taskRunRounds";
-import type { PipelineStep, PipelineStepState, RemedyActivityItem, RemedyContinuationSummary, RemedyDashboard, RemedyGraphEdge, RemedyGraphNode, RemedyJourneyItem, RemedyMetric, RemedyNextAction, RemedyPause, RemedyPhase, RemedyPipeline, RemedyPromptKind, RemedyPromptRole, RemedyPromptTraceItem, RemedyPromptTraceSummary, RemedySnapshotSummary, RemedyState, RemedyTaskItem, RemedyTaskSpec, RemedyTaskSpecFields, RemedyTaskSpecs, RemedyTaskSpecVersion, RemedyTimelineEvent, RemedyTimelineEventKind, RemedyTimelinePhase, RemedyVetoEntry, RemedyVetoes } from "./types";
+import type { PipelineStep, PipelineStepState, RemedyActivityItem, RemedyContinuationSummary, RemedyDashboard, RemedyGraphEdge, RemedyGraphNode, RemedyJourneyItem, RemedyMetric, RemedyNextAction, RemedyPause, RemedyPhase, RemedyPipeline, RemedyPromptKind, RemedyPromptRole, RemedyPromptTraceItem, RemedyPromptTraceSummary, RemedySnapshotSummary, RemedyState, RemedyTaskAttempt, RemedyTaskItem, RemedyTaskSpec, RemedyTaskSpecFields, RemedyTaskSpecs, RemedyTaskSpecVersion, RemedyTimelineEvent, RemedyTimelineEventKind, RemedyTimelinePhase, RemedyVetoEntry, RemedyVetoes } from "./types";
 
 interface ApiClientOptions { jobId: string; token: string; baseUrl?: string; }
 
@@ -47,6 +47,54 @@ function normalizeState(value: unknown): RemedyState {
 
 function nextAction(label = "Review project state", command = "remedy dev status"): RemedyNextAction {
   return { label, command, risk: "low", requiresHuman: true };
+}
+
+// ---------------------------------------------------------------------------
+// Task attempt normalization (DECISION F029 D5 (2), item S1)
+// ---------------------------------------------------------------------------
+
+/** The task item's own `attempt`: an integer of at least 1, else 1 — a task
+ *  never rerun, or a payload whose count is missing or mistyped, both read
+ *  the same "first attempt" default. */
+function normalizeTaskAttemptNumber(raw: unknown): number {
+  return typeof raw === "number" && Number.isInteger(raw) && raw >= 1 ? raw : 1;
+}
+
+/** One `attempts` entry read defensively: every string field from its own
+ *  snake_case key, `""` when missing or mistyped, and `test_passed` as a
+ *  boolean or `null`. `null` when the entry's own `attempt` is not an
+ *  integer of at least 1 — the caller drops it rather than archiving a row
+ *  with no attempt number to key on. */
+function normalizeTaskAttemptEntry(raw: unknown): RemedyTaskAttempt | null {
+  if (raw === null || typeof raw !== "object") return null;
+  const r = raw as Record<string, unknown>;
+  if (typeof r.attempt !== "number" || !Number.isInteger(r.attempt) || r.attempt < 1) return null;
+  const str = (value: unknown): string => (typeof value === "string" ? value : "");
+  return {
+    attempt: r.attempt,
+    status: str(r.status),
+    finalStatus: str(r.final_status),
+    reviewerVerdict: str(r.reviewer_verdict),
+    modelOverride: str(r.model_override),
+    worktreeCommit: str(r.worktree_commit),
+    runId: str(r.run_id),
+    rerunId: str(r.rerun_id),
+    endedAt: str(r.ended_at),
+    testPassed: typeof r.test_passed === "boolean" ? r.test_passed : null,
+  };
+}
+
+/** The task item's own `attempts`: every entry `normalizeTaskAttemptEntry`
+ *  keeps, in the payload's own order. A missing or mistyped `attempts`
+ *  reads `[]`, never a thrown error. */
+function normalizeTaskAttempts(raw: unknown): RemedyTaskAttempt[] {
+  if (!Array.isArray(raw)) return [];
+  const out: RemedyTaskAttempt[] = [];
+  for (const entry of raw) {
+    const normalized = normalizeTaskAttemptEntry(entry);
+    if (normalized) out.push(normalized);
+  }
+  return out;
 }
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -89,6 +137,8 @@ export function normalizeDashboardPayload(
       blockedReason: t.blocked_reason || undefined,
       completedAt: t.completed_at || undefined,
       origin: typeof t.origin === "string" && t.origin ? t.origin : undefined,
+      attempt: normalizeTaskAttemptNumber(t.attempt),
+      attempts: normalizeTaskAttempts(t.attempts),
     };
   });
 

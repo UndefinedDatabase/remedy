@@ -23397,3 +23397,351 @@ removing the card's `backdrop-filter`, rejected because the glass is the design 
 
 HOW TO REVERSE: return the section directly instead of through the portal, remove `origin` from
 `TaskOutcome` and its clause, and delete this paragraph.
+
+## DECISION F029 D1 — a task's commit on the job branch is the per-task ref, so no new ref is added; the reset of a subtree is one new commit that puts back, for exactly the paths the subtree's commits changed, their state before the rerun task, and it is refused for a moved or dirty worktree and for any commit outside the subtree that changed one of those paths; T001 lands the reset mechanics alone (2026-09-27)
+
+CONTEXT: T5_F029.md makes one prerequisite finding the first deliverable: how a task end commits
+today. Measured at `b2863af4`: in worktree mode `run_job` lands exactly one commit per applied
+task on the job branch `remedy/job-<id>` through `_commit_applied_task` in
+`packages/orchestration/pingpong_job.py` and `commit_job_worktree` in
+`packages/orchestration/worktrees.py` (DECISION F270 D1): `git add -A .`, one commit under the
+identity `Remedy <remedy@local>`, `--allow-empty` so a task that changed nothing still has its
+commit, and the trailers `Remedy-Job` and `Remedy-Task`; the sha is kept as the task entry's
+`worktree_commit` and the job's `worktree_head`. The multi-cycle path through
+`long_run_executor.default_task_step` commits nothing, and a job in copy mode has no branch. The
+F006 checkpoint refs under `refs/remedy/checkpoints/` point at TREE objects, not commits, and
+`_drop_checkpoint_refs` deletes them after a verified hand-off, so they cannot serve as the
+lasting address of a task. `restore_tree` in `worktrees.py` already returns a worktree to a given
+tree exactly, without touching the index, `HEAD` or any ref, and F027's veto uses it.
+`checkpoints.worktree_drift_message` is the one wording of a worktree that moved under a
+recorded head. `dag_schedule.build_graph` resolves every task's dependencies, while
+`blocked_downstream` skips completed tasks and so cannot name a completed subtree.
+`TaskEntry` has no attempt counter, and nothing in the code records an intended model beside a
+routed one.
+
+CHOSEN: (1) THE PER-TASK REF IS THE TASK'S COMMIT. The prerequisite the feature file allows for
+("if task ends don't commit, adding a lightweight per-task ref at the finalize seam") is not
+needed: the state before task X is the first parent of X's `worktree_commit`, which the job
+branch keeps for as long as the branch lives. No ref is added, so the ref-storage growth the
+feature file's edge cases name does not arise; retention is the branch's own. A rerun is offered
+only for a task with a commit on the job branch; a copy-mode job, the multi-cycle path and a task
+not yet applied are refused with their own codes. (2) THE SUBTREE of X is X and every task that
+depends on it, directly or transitively, by `build_graph`, whatever each one's status, in plan
+order. (3) THE WALK. The commits of the job branch from X's commit to the branch tip, following
+first parents, are read with their trailers and the paths each changed against its parent. A
+commit belongs to the subtree when its `Remedy-Task` trailer names a task of the subtree;
+every other commit — a task outside the subtree, an earlier rerun's reset, a commit with no
+task trailer — is OUTSIDE it. (4) THE REFUSALS, in this order: an unknown task, a job not in
+worktree mode, a task with no commit, a worktree whose head is not the job's recorded head
+(refused with `worktree_drift_message` verbatim, an unreadable head counting as moved), a
+worktree holding uncommitted changes, a task commit not in the branch's history, a task of the
+subtree whose own commit lies before X's, and INTERLEAVING: any path changed both by a commit
+of the subtree and by a commit outside it, named with the task or commit that changed it. The
+interleaving refusal never guesses; the operator can start the rerun at an earlier task so that
+the subtree includes the other work, as the feature file says. (5) THE RESET. The target is the
+branch tip's tree with every path the subtree's commits changed replaced by that path's entry in
+the first parent of X's commit, or removed when it had none there; it is built in a private
+index, `restore_tree` brings the worktree to it, and `commit_job_worktree` commits it with the
+trailers `Remedy-Job` and `Remedy-Rerun`. Nothing is rewritten: the earlier attempts' commits
+stay in the branch's history, where later rounds link them as evidence. (6) THE PROOF. After the
+commit, its tree equals the target; for every path the subtree changed, the entry at the new
+commit equals the entry before X; and when no commit outside the subtree follows X, the whole
+tree equals the tree before X, and the reset reports whether that tree also equals X's recorded
+`task_start_tree`. A proof that fails raises and names the path. (7) THE ORDER. T001 takes round
+1: a new module `packages/orchestration/subtree_rerun.py` holding the subtree, the walk, the
+refusals, the reset and its proof, with no caller yet, listed in `ALLOWED_UNWIRED` of
+`tests/test_no_orphan_modules.py` until T002 wires it. T002 lands `remedy job rerun-subtree`
+behind the cost preview, the job-level admission of a rerun, the attempt counter and the
+subtree's tasks returned to pending, the earlier attempts' evidence linked and left untouched,
+and the model override recorded beside the model the router would have chosen. T003 lands the
+attempt fan, its popover and the end-to-end proof.
+
+ALTERNATIVES: adding a per-task ref at the finalize seam, rejected because the commit already is
+one and a second address for the same state could disagree with it; resetting by checking out
+the commit before X, rejected because it would also undo every later task outside the subtree,
+which the feature file says keeps its state and its commits; rewriting the branch to drop the
+subtree's commits, rejected because it destroys the evidence of the attempt the fan must show and
+is a history rewrite on a branch other tools have already read; reverting each subtree commit in
+turn, rejected because a revert of interleaved changes is exactly the clever surgery the feature
+file rules out, and a revert chain proves nothing about the resulting tree that the single
+target tree does not prove more directly; a git stash, rejected by the feature file itself.
+
+DELIBERATE ABSENCES: T001 writes no event, never writes `job.json`, never changes a task's status
+and takes no lock; its reset is called only by T002's command, which owns the job's admission.
+
+HOW TO REVERSE: delete `packages/orchestration/subtree_rerun.py`, its tests and its line in
+`ALLOWED_UNWIRED`, and delete this paragraph.
+
+## DECISION F029 D2 — a rerun is PREPARED on a job that is not running and then EXECUTED by `remedy job run`; the preparation re-acquires the job's worktree under its lock, resets the subtree, returns its tasks to pending with the attempt counted and the earlier attempt kept on the task, moves the earlier attempt's stream evidence aside unchanged, and records a model override on each rerun task, which `run_job` passes to the builder; T002 takes two rounds, the preparation first and the command with its cost preview second (2026-09-27)
+
+CONTEXT: measured at `0ae9f427`. `remedy job resume` never reaches `run_job`: `_cmd_job_resume` in
+`apps/cli/commands/job.py` goes to the local single-task runner or `run_cycles`, and the door that
+re-enters `run_job` is `remedy job run`. A job that completed has lost its worktree —
+`_finalize_job_workspace` in `packages/orchestration/pingpong_job.py` removes it, keeps the branch
+and calls `_drop_checkpoint_refs`, which deletes `job_initial_tree_ref` while `_verify_checkpoints`
+still requires that ref to resolve — and its `worktree_cleanup_status` reads `clean`, which
+`job_resume_refusal` accepts only beside the `completed` state. `W.create` in
+`packages/orchestration/worktrees.py` re-adds a worktree for an existing branch and re-attaches a
+registered one, always under the job's lock, and raises `WorktreeLockError` while `run_job` holds
+it. `run_job` walks tasks in plan order, runs every `pending` one and skips `applied`, `passed`,
+`skipped`, `split` and `vetoed`; `_block_job` marks every later pending task `skipped`, and `task_edit_runtime`
+restores those when it returns a failed task to pending. `run_job` passes one job-wide
+`builder_model` to `run_pingpong`; no per-task model exists, and F110's routing records a tier and
+a reason but selects nothing. Each run gets a fresh run id, so `runs/<run_id>/` is never
+overwritten, but the task's stream evidence under `task_runs/<task_id>/` of the job's evidence
+directory is opened for writing afresh by the next run of that task. `TaskEntry` has no attempt
+counter.
+
+CHOSEN: (1) PREPARE, THEN RUN. `prepare_subtree_rerun` in `subtree_rerun.py` prepares the rerun and
+returns; the subtree re-executes when the operator, or T003's browser path, runs the job with
+`remedy job run`, the one door into `run_job`. The command of round 3 is therefore quick and its
+cost preview is the operator's decision point for the spend the next run will make. (2) ADMISSION.
+A job that is `completed`, `blocked`, `paused` or `stopped` is admitted; `running`, or a lock another
+process holds, is `job_running`, and every other state is `job_not_rerunnable`. The subtree, a job
+not in worktree mode, a task with no commit, a missing branch and a missing initial tree are refused
+BEFORE the worktree is touched. (3) THE WORKTREE. The preparation holds the job's plan-edit lock and
+takes the worktree through `W.create`, which re-adds it from the kept branch when the job had
+completed; a refusal that arrives after that, before any commit, removes a worktree this call
+re-added and releases the lock. After the reset the job's `worktree_head` is the reset commit, the
+`job_initial_tree_ref` is set again to `job_initial_tree` when it no longer resolves there, the
+cleanup status reads `retained`, and the lock is released. (4) THE TASKS. Every task of the subtree
+that ran keeps its attempt as one record in its new `attempts` list — the attempt number, status,
+final status, verdict, test result, run id, commit, model override, output artifact ids, the path
+its stream evidence was moved to and the rerun id — then its new `attempt` counter rises by one and
+it returns to `pending` with every field of the finished attempt cleared. Every `skipped` task
+outside the subtree returns to `pending` as `task_edit_runtime` restores `_block_job`'s skip. A
+`completed` job becomes `paused` with its `finished_at` cleared; every other admitted state is kept,
+so a pause the operator asked for still holds. (5) THE EVIDENCE. The stream evidence directory of
+each rerun task that ran is moved, unchanged, to `rerun_attempts/<task_id>/attempt-<n>/` in the
+job's evidence directory, so the next run cannot overwrite it; run directories and run logs were
+never overwritten and stay where they are. (6) THE OVERRIDE is disclosure, not routing policy: each
+rerun task carries it in a new `model_override` field, `run_job` passes `task.model_override or
+builder_model` to `run_pingpong`, so the run's own record names the model used, and the job's new
+`reruns` list records the override beside the configured builder model with the reason
+`human_override`. No override clears any earlier one. (7) THE ORDER. Round 2 lands the
+preparation, the new fields, the per-task model and R-1080's repair; round 3 lands
+`remedy job rerun-subtree` with the subtree's cost estimate, the confirmation of the cost preview,
+the run-log event and its readers; T003 follows.
+
+ALTERNATIVES: running the job inside the command, rejected because a command the browser calls must
+return promptly and `remedy job run` already owns every guard a run needs; a `job resume` path,
+rejected because it does not reach `run_job`; changing the job-wide builder model, rejected because
+tasks outside the subtree would inherit it; leaving attempt 1's streams in place and naming the
+next attempt's directory instead, rejected because both existing readers of the stream directory
+would then read the old attempt as current; refusing a completed job, rejected because re-running a
+part of a finished job is the feature's main case.
+
+DELIBERATE ABSENCES: the preparation writes no event (round 3 adds it with its readers), runs no
+provider and changes no task outside the subtree except a `skipped` one.
+
+HOW TO REVERSE: delete `prepare_subtree_rerun` and its tests, the fields `attempt`, `attempts` and
+`model_override` of `TaskEntry` and `reruns` of `JobPlan` with their export and import lines, and
+the `task.model_override or` of the `run_pingpong` call, and delete this paragraph.
+
+## DECISION F029 D3 — `remedy job rerun-subtree` estimates the subtree's cost from each task's plan band, shows it through the cost preview before anything is touched, then prepares the rerun and names the one command that runs it; it is the second command marked expensive; the rerun's run-log event moves from round 3 to T003's round, beside the attempt fan that reads it (2026-09-27)
+
+CONTEXT: measured at `aa054d8b`. `estimate_cost_band` in `packages/orchestration/cost_preview.py`
+prices one token band pair from the class defaults and the price basis and answers
+`estimate_unavailable` rather than a guess; `PLAN_BAND_TO_TOKEN_BAND` in `task_injection.py` maps
+the plan bands `S`, `M`, `L` to `low`, `medium`, `high` and `XL` to `unknown`; a task parsed from a
+markdown job file carries no plan band at all. `confirm_cost_preview` in
+`apps/cli/cost_preview_confirm.py` proceeds silently below the threshold, asks above it or when the
+estimate is unavailable, proceeds with an audit line under `--yes`, and refuses
+`confirmation_required` when nobody can answer. `job.resume` is the one command the catalog marks
+`is_expensive`, and `tests/test_command_catalog.py` pins exactly that set. A new run-log event
+needs its name in `event_names.py` and, by findings R-1068 and R-1075, in the browser's humanize
+catalogue and the demo recording's readers, all of which live under `apps/ui` and are verified with
+the UI toolchain, which T003 uses anyway and round 3 otherwise would not.
+
+CHOSEN: (1) THE ESTIMATE. `subtree_rerun_cost_estimate(job, subtree_ids, *, config)` in
+`subtree_rerun.py` sums, over the subtree's tasks, `estimate_cost_band` of each task's plan band
+mapped through `PLAN_BAND_TO_TOKEN_BAND`; one task without a band, with `XL`, or unpriced makes the
+whole estimate unavailable, which the preview treats as expensive. (2) THE COMMAND. `remedy job
+rerun-subtree <job> <task> [--model M] [--yes] [--json]`: the job, then the task resolved as
+`remedy job veto-task` resolves it, then the subtree (an unknown task refused before any preview),
+then the preview through `confirm_cost_preview` with `command_name` `job.rerun-subtree` — a
+declined preview changes nothing — then `prepare_subtree_rerun` with the actor `cli`. Its answer
+names the rerun, the reset commit, the files put back, the tasks returned to pending, the override
+beside the configured model, and the command that runs it, `remedy job run <the job's id>`, written
+out with the real id. Exit codes follow `docs/guides/exit-codes.md`: 2 for `unknown_task` and
+`model_invalid`, 3 for every refusal of the job's or the worktree's state, and 1 for a job that
+does not exist. (3) THE CATALOG marks it `is_expensive`, beside `job.resume`, and `may_mutate_repo`,
+because the reset lands a commit on the job branch; the pin in `tests/test_command_catalog.py` is
+widened to the two ids in the same commit. (4) R-1081's repair lands in the same round. (5) THE
+EVENT moves to T003's round, which amends clause (7) of DECISION F029 D2.
+
+ALTERNATIVES: an estimate from the tasks' recorded token spend, rejected because F074's
+calibration has not shipped and a spend is not a price; pricing a task without a band at a default
+band, rejected because the preview must never fabricate a number; landing the event now without its
+browser readers, rejected because findings R-1068 and R-1075 are exactly that half-landing.
+
+HOW TO REVERSE: delete `apps/cli/commands/job_rerun_cmd.py`, its catalog entry, its registration,
+its exit-code row and `subtree_rerun_cost_estimate`, restore the catalog pin to `job.resume` alone,
+restore `subtree_rerun.py`'s line in `ALLOWED_UNWIRED`, and delete this paragraph.
+
+## DECISION F029 D4 — the browser reaches a rerun through the write door's command `job.rerun-subtree`, which answers `needs_confirmation` with the cost estimate, and prepares the rerun only when the same command comes back with `confirm_cost`; one shared function answers the door; the preparation writes the run-log event `subtree_rerun_prepared`; the dashboard's task item carries `attempt` and `attempts`; the browser's controls, the attempt chip and the attempt list take round 5 (2026-09-27)
+
+CONTEXT: measured at `5d9c8784`. The write door's commands are the closed set `UI_EXPOSED_COMMANDS`
+of `apps/cli/command_catalog.py`, pinned by exact equality in `tests/ui_server/test_command_channel.py`,
+whose `TestCommandDoorImportGuard` states F009's P3 contract — the door never imports an applicator
+or a storage writer itself — as a closed set of the names the door's methods may import. The door
+already calls package functions that write a job's record themselves: `edit_plan` for the plan
+edits and `edit_task_at_runtime` for `job.edit-task`. A refusal rides the wire as a 409 whose text
+is `<code>: <detail>`, and F028's `job.inject` answers a draft that changes nothing, `drafted` or
+`shortfall`, as a 200 the browser then confirms with a second command. No exposed command takes a
+`yes` or shows a cost preview, `confirm_cost_preview` in `apps/cli/cost_preview_confirm.py` prompts
+on a terminal only, and nothing in the browser starts a run: `job.run` and `job.resume` are not
+exposed. The dashboard's task item is built in `_build_dashboard` of
+`packages/orchestration/ui_server.py`, and `tests/ui_server/test_dashboard_task_origin.py` pins
+`origin` as its LAST key. `tests/ui_contracts/test_humanize_catalog.py` requires every event name
+a Python source writes as a literal to have a plain sentence in `apps/ui/src/api/humanizeCatalog.ts`.
+
+CHOSEN: (1) ONE FUNCTION. `rerun_subtree_command(job, task_id, *, model, confirm_cost, actor,
+config=None, confirm_above_usd=None)` in `subtree_rerun.py` never raises for a refusal: an unknown
+task, or any refusal of the preparation, answers `outcome` `refused` with its `code`, `detail`
+and `facts`; an estimate that the cost preview would ask about — unavailable, or above the
+threshold `resolve_confirm_above_usd` answers — without `confirm_cost` answers `outcome`
+`needs_confirmation` with the subtree, the estimate and the threshold, and touches nothing; any
+other call prepares the rerun and answers `outcome` `prepared` with the preparation's record, the
+estimate and the command that runs it. (2) THE DOOR exposes `job.rerun-subtree` with the arguments
+`task_id`, `model` and `confirm_cost`, calls that function with the door's own token fingerprint
+as the actor, answers `refused` as a 409 like every other command, and answers `needs_confirmation`
+and `prepared` as a 200. The preparation touches only Remedy's own job branch and the worktree of
+a job that is not running, under the job's plan-edit lock and its worktree lock, never the
+operator's checkout, so calling it from the door is the `edit_task_at_runtime` precedent, not an
+applicator; the guard's closed set gains the one name. (3) THE EVENT. `prepare_subtree_rerun` writes
+`subtree_rerun_prepared` to the job's run log after the record is saved, naming the root task, the
+rerun id, the subtree, the tasks returned from `skipped`, the reset commit, the files put back,
+whether the reset was exact, the override, the actor and the states before and after; its plain
+sentence joins `humanizeCatalog.ts`. The live graph's reducer does not read it, as it does not read
+`task_injected` (DECISION F028 D5), because the fan draws from the dashboard. (4) THE DASHBOARD's
+task item carries `attempt` and `attempts`, the list the fold keeps, placed directly before
+`origin`, which stays last. (5) THE RUN stays with `remedy job run`, which the browser cannot start
+today; the `prepared` answer names it with the job's real id, and the browser shows that sentence.
+(6) Round 5 lands the browser: the send module, the types, the attempt chip on the canvas, the
+attempt list in the task's detail popover, and the Rerun control that replaces the disabled button
+of `RunDetailPopover.tsx`, with its render proof.
+
+ALTERNATIVES: a separate preview command, rejected because one command with a flag keeps the
+estimate and the preparation on one code path that cannot drift apart; a create-only request file
+the next run folds, rejected because a rerun is admitted only for a job that is NOT running, so no
+runner is there to fold it and the door would report a rerun that has not happened; exposing
+`job.run` to the browser, rejected here because starting a run from the browser is a capability of
+its own, larger than this feature.
+
+HOW TO REVERSE: delete `rerun_subtree_command`, the event's write and its catalogue line, the two
+dashboard keys, and the door's command with its guard entries, and delete this paragraph.
+
+## DECISION F029 D5 — the browser shows a task's attempts two ways: the node's text chip reads `attempt <n>` from the second attempt on, and the task's detail popover gains an Attempts list shaped as the Versions list, whose rows open the fields that changed from the attempt before; the Rerun control takes round 6 (2026-09-27)
+
+CONTEXT: measured at `47c63354`. The dashboard's task item carries `attempt` and `attempts` (DECISION
+F029 D4 (4)). `docs/ui/design_reference/graph_spec.md` fans a task's runs out chronologically at
+its L1 level, puts "a per-task run list in DetailPopover" as the accessible surface, and gives the
+L2 popover a verdict and a diff button, but designs no mark for a task that has run more than once
+and no list of a task's attempts; `assets_spec.md`'s retry ring marks a repair round inside one
+run, not a rerun. F026 and F028 settled the same kind of gap without a new mark: the node's one
+text chip `taskChipOf` in `buildForceBrainModel.ts` reads `v<n>`, "added", or both joined by
+" · " (DECISIONS F026 D3 and F028 D7), and the popover's `TaskVersionList.tsx` lists a task's
+spec versions, each row opening the fields that changed from the row before it.
+
+CHOSEN: (1) THE CHIP. A task whose `attempt` is at least 2 adds `attempt <n>` to its text chip,
+after `v<n>` and "added" when they apply, joined by " · ", on the path `specVersion` and `origin`
+already take from the dashboard seed into the node's `meta`. (2) THE LIST. A new
+`TaskAttemptList.tsx`, shaped as `TaskVersionList.tsx`, renders after the Versions section when the
+task has earlier attempts: one row per earlier attempt, oldest first, labelled `Attempt <n>`, with
+its facts in words — how it ended, what the reviewer said, whether its tests passed, the model it
+ran with ("the job's own model" when no override), and its commit's first twelve characters — and
+the current attempt last, labelled `Attempt <n> · current`, with its present status. (3) THE DIFF
+BETWEEN ATTEMPTS is the fields that changed from the attempt before, opened from each earlier row
+after the first, as the Versions list opens a version's changes; the file changes of each attempt
+stay in its own commit on the job branch, which the reset never rewrites. (4) The chip and the
+list each take one row of `docs/ui/design_reference/assumption_log.md`. (5) Round 6 lands the Rerun
+control that replaces the disabled button of `RunDetailPopover.tsx`, the send module for
+`job.rerun-subtree` with its cost confirmation, and the report's naming of an override; round 7 the
+end-to-end proof.
+
+ALTERNATIVES: drawing earlier attempts as extra run nodes with a separate fan, rejected because the
+live graph already fans every run of a task in time order and a second fan would duplicate it; a
+file-level diff between two attempts' commits in the browser, rejected here because no server route
+serves a diff between two commits of a job branch and the feature file's list of attempts with
+their verdicts does not need one; a numeric badge without a word, rejected because the operator
+reads the chip without a legend.
+
+HOW TO REVERSE: delete `TaskAttemptList.tsx`, its mount and its view module, the `attempt` part of
+`taskChipOf` and its seed thread, the two assumption-log rows naming this decision, and delete this
+paragraph.
+
+## DECISION F029 D6 — the run detail's Rerun button becomes real: it sends `job.rerun-subtree` for the run's task, shows a cost the preview would ask about as one sentence with "Rerun anyway" and "Cancel", takes an optional model, and answers a prepared rerun with the command that runs it; the final report names a task's attempt and its override; the end-to-end proof takes round 7 (2026-09-27)
+
+CONTEXT: measured at `4295d0dc`. `RunDetailPopover.tsx`, the L2 run detail, carries a Rerun button
+disabled with `RERUN_NOT_YET`, which `tests/ui_contracts/test_run_detail_wiring.py` pins, and it
+already holds the job id and the page's server token; it is not a dialog, because Escape walks the
+zoom back (DECISION F023 D4). The door's `job.rerun-subtree` answers `needs_confirmation` with an
+estimate, `prepared` with the record and `run_command`, or a 409 `<code>: <detail>` whose detail is
+already a plain sentence (DECISION F029 D4). `injectSend.ts` and `vetoSend.ts` are how the browser
+sends a door command: pure request builders, one submit that reads the body, one describe that
+answers a sentence, composed from `pauseSend.ts` and `decisionAnswer.ts`. `run_report.py` renders a
+task line of the final report and appends `_origin_clause` for an injected task (DECISION F028 D8),
+byte-identical otherwise.
+
+CHOSEN: (1) THE SEND. A new `rerunSend.ts`, composed as `injectSend.ts` is, builds the request —
+`task_id` always, `model` only when a non-blank one is given, `confirm_cost` only when true —
+submits it, and describes the result; a refusal's sentence is the detail after the code's prefix,
+verbatim. (2) THE WORDS. A new `rerunView.ts` answers the sentences: for `needs_confirmation`, the
+estimate as a range of dollars and the threshold, or that the cost cannot be estimated in advance;
+for `prepared`, how many tasks were reset and the command that runs them with the job's real id.
+(3) THE CONTROL. The Rerun button is enabled whenever the page holds a server token, and otherwise
+disabled with the reason "Rerunning needs the live page's server token."; beside it an optional
+text field "Model for the rerun (optional)"; a click sends without `confirm_cost`; a
+`needs_confirmation` answer shows its sentence with "Rerun anyway", which sends again with
+`confirm_cost`, and "Cancel"; every result sentence goes into one `<p aria-live="polite">`. The
+detail stays a non-dialog panel. `RERUN_NOT_YET` is deleted with the disabled button it explained,
+and the pin that read it is rewritten to the new behaviour. (4) THE REPORT. A task line whose task
+is on its second or later attempt ends with ` — attempt <n>`, and with `, run on <model>` when the
+attempt carries an override; a report of a job with no rerun stays byte-identical. (5) The control
+takes one row of `docs/ui/design_reference/assumption_log.md`. (6) Round 7 lands the end-to-end
+proof.
+
+ALTERNATIVES: a sheet like the Add Task sheet, rejected because the run detail is where the
+feature file places the rerun and one sentence with two buttons is all the preview needs; opening
+the confirmation as a dialog, rejected because the detail's Escape must keep walking the zoom back;
+putting the model choice behind a list of known models, rejected because no list of the operator's
+models exists and the server already refuses a malformed name.
+
+HOW TO REVERSE: delete `rerunSend.ts`, `rerunView.ts`, the report's attempt clause and the control,
+restore the disabled button with `RERUN_NOT_YET` and its pin, delete the assumption-log row naming
+this decision, and delete this paragraph.
+
+## DECISION F029 D7 — a rerun under a mission is noted in the mission's dossier: every subtree rerun of one of the mission's jobs becomes one DECISIONS item, read from that job's own `reruns` record at each refresh; the closure sequence follows (2026-09-27)
+
+CONTEXT: measured at `a5933b73`. The feature file's edge cases say that under a mission the dossier
+notes the rerun, as an iteration fact. `refresh_mission_dossier` in
+`packages/orchestration/mission_dossier.py` advances a mission's dossier once per orchestrator-loop
+iteration from `mission_iteration_facts`, which reads the compiled mission plan and the mission's
+own decision ledger and nothing else. A subtree rerun is prepared by the operator outside that loop
+and recorded only on the job, in the `reruns` list that `fold_subtree_rerun` appends to (DECISION
+F029 D2 (6)). A mission names its jobs through `job_ids()` in `mission_state.py`, and `load_job_plan`
+honours the data root it is given. The DECISIONS section merges items by id, replacing an item in
+place, and renders the five most recent (`MAX_RECENT_DECISIONS`).
+
+CHOSEN: (1) `rerun_decision_items` turns `(job id, rerun record)` pairs into DECISIONS items: the id
+is `RR-<the job id's first eight characters>-<the rerun id>`, the text reads `rerun of task <root>
+and <n> task(s) after it on job <the job id's first eight characters>`, the item is resolved, and
+its outcome reads `reset to <the reset commit's first twelve characters>, run on <model>`, or `...,
+the job's own model` when the rerun carried no override. A record that is not a dictionary, or lacks
+a rerun id or a root task, is skipped. (2) `mission_job_reruns(mission, root)` reads every rerun of
+every job of the mission, in the mission's job order and then each job's rerun order; a job whose
+record cannot be loaded is skipped. (3) `mission_iteration_facts` gains the keyword `reruns`, whose
+items follow the ledger's, and `refresh_mission_dossier` passes the mission's reruns, so the first
+iteration after a rerun notes it; a mission with no rerun gets a byte-identical dossier. (4) The
+closure sequence follows this round.
+
+ALTERNATIVES: writing a dossier line from `prepare_subtree_rerun`, rejected because the loop's
+refresh is what advances a dossier's version and a job need not belong to a mission; a RISKS item,
+rejected because a prepared rerun is a decision already taken, not an open risk; keeping rerun items
+outside the five most recent decisions, rejected because every other decision ages out of the
+rendered section the same way while the dossier's full record keeps it.
+
+HOW TO REVERSE: delete `RERUN_ID_TEMPLATE`, `rerun_decision_items`, `mission_job_reruns`, the
+`reruns` keyword of `mission_iteration_facts` and its argument in `refresh_mission_dossier`, their
+tests, and this paragraph.

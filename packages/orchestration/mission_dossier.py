@@ -846,6 +846,10 @@ PLAN_RISK_ID_TEMPLATE = "PR{index:03d}"
 #: Id prefix for one recorded loop iteration in DECISIONS.
 ITERATION_ID_TEMPLATE = "I{iteration:03d}"
 
+#: Id prefix for one subtree rerun in DECISIONS (DECISION F029 D7): the job's
+#: first eight characters keep the id short while still tracing to the job.
+RERUN_ID_TEMPLATE = "RR-{job}-{rerun}"
+
 
 def _ledger_decision_id(entry: dict[str, Any]) -> str:
     """The DECISIONS id of one ledger entry: its iteration, ``I002``.
@@ -865,16 +869,51 @@ def _ledger_decision_id(entry: dict[str, Any]) -> str:
     return ident
 
 
+def rerun_decision_items(
+        job_reruns: Iterable[tuple[str, dict[str, Any]]]) -> list[DossierItem]:
+    """One DossierItem per subtree rerun record (DECISION F029 D7), in order.
+
+    A rerun record crosses in from a job's own file, not a shape this module
+    owns, so every field is read defensively: a record that is not a dict, or
+    whose ``rerun_id`` or ``root_task_id`` is missing or empty, is skipped.
+    """
+    items: list[DossierItem] = []
+    for job_id, record in job_reruns:
+        if not isinstance(record, dict):
+            continue
+        rerun_id = record.get("rerun_id")
+        root = record.get("root_task_id")
+        if not rerun_id or not root:
+            continue
+        subtree = record.get("subtree")
+        n = max(len(subtree) - 1, 0) if isinstance(subtree, (list, tuple)) else 0
+        job8 = job_id[:8]
+        reset12 = str(record.get("reset_commit") or "")[:12]
+        model = record.get("model")
+        override = model.get("override") if isinstance(model, dict) else ""
+        override = override if isinstance(override, str) and override else ""
+        text = (f"rerun of task {root} and {n} task{'' if n == 1 else 's'} "
+                f"after it on job {job8}")
+        outcome = (f"reset to {reset12}, run on {override}" if override
+                  else f"reset to {reset12}, the job's own model")
+        items.append(DossierItem(
+            id=RERUN_ID_TEMPLATE.format(job=job8, rerun=rerun_id),
+            text=text, resolved=True, outcome=outcome))
+    return items
+
+
 def mission_iteration_facts(mission: Any, *,
                             done_milestones: Sequence[str] = (),
                             ledger: Sequence[dict[str, Any]] = (),
+                            reruns: Sequence[tuple[str, dict[str, Any]]] = (),
                             ) -> IterationFacts:
     """One iteration's facts, read from the mission record and its own ledger.
 
     Every fact here is ALREADY recorded somewhere Remedy owns — the compiled
-    plan and the append-only decision ledger. Nothing is invented for the
-    dossier, so a dossier line can always be traced back to the artifact that
-    produced it.
+    plan, the append-only decision ledger, and any subtree rerun recorded on
+    one of the mission's own jobs (its ``reruns`` record, DECISION F029 D7).
+    Nothing is invented for the dossier, so a dossier line can always be
+    traced back to the artifact that produced it.
     """
     from packages.orchestration.mission_compiler import mission_plan_of
 
@@ -904,9 +943,31 @@ def mission_iteration_facts(mission: Any, *,
             text=str((entry.get("move") or {}).get("kind", "") or "no move"),
             resolved=True,
             outcome=str((entry.get("outcome") or {}).get("status", "") or ""))
-        for entry in ledger]
+        for entry in ledger] + rerun_decision_items(reruns)
     return IterationFacts(milestones=milestones, risks=risks,
                           decisions=decisions, next_step=next_step)
+
+
+def mission_job_reruns(
+        mission: Any, root: Path | None = None) -> list[tuple[str, dict[str, Any]]]:
+    """Every subtree rerun recorded on one of the mission's jobs, in order.
+
+    Reads each job's own ``reruns`` list (DECISION F029 D2 (6)) rather than
+    anything this module maintains — a rerun is prepared by the operator
+    outside the loop, so the dossier learns of it only by reading the job's
+    own record. A job that cannot be loaded is skipped rather than raising.
+    """
+    from packages.orchestration.pingpong_job import load_job_plan
+
+    pairs: list[tuple[str, dict[str, Any]]] = []
+    for job_id in mission.job_ids():
+        job = load_job_plan(job_id, root)
+        if job is None:
+            continue
+        for record in job.reruns:
+            if isinstance(record, dict):
+                pairs.append((job_id, record))
+    return pairs
 
 
 def refresh_mission_dossier(project_id: str, mission_id: str, mission: Any, *,
@@ -945,7 +1006,8 @@ def refresh_mission_dossier(project_id: str, mission_id: str, mission: Any, *,
         current = start_dossier(mission_goal(mission) or f"mission {mission_id}")
     facts = mission_iteration_facts(
         mission, done_milestones=done_milestones(mission),
-        ledger=read_ledger(project_id, mission_id, root))
+        ledger=read_ledger(project_id, mission_id, root),
+        reruns=mission_job_reruns(mission, root))
     result = update(current, facts, call_fn=call_fn, budget=budget,
                     config=config)
 

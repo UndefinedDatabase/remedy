@@ -107,6 +107,11 @@ export interface BrainTaskSeed {
    *  the operator injected, for the reducer to copy into the task node's
    *  `meta.origin` exactly as it copies `specVersion` above. */
   origin?: string;
+  /** DECISION F029 D5 (1) — the task item's own `attempt`, carried ONLY when
+   *  it is 2 or more (a task on its second or later attempt), for the
+   *  reducer to copy into the task node's `meta.attempt` exactly as it
+   *  copies `specVersion` and `origin` above. */
+  attempt?: number;
 }
 
 /** The whole graph at one point in the ledger. `ignored` is a counted debug

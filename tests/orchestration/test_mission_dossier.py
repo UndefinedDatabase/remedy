@@ -64,6 +64,7 @@ from packages.orchestration.mission_dossier import (
     NO_NEXT_STEP,
     PLAN_RISK_ID_TEMPLATE,
     RECALL_FIXTURE_FACTS,
+    RERUN_ID_TEMPLATE,
     SECTION_DECISIONS,
     SECTION_GOAL,
     SECTION_MILESTONES,
@@ -89,12 +90,14 @@ from packages.orchestration.mission_dossier import (
     latest_dossier_version,
     load_dossier_state,
     mission_iteration_facts,
+    mission_job_reruns,
     newest_dossier_text,
     open_items,
     recall_report,
     refresh_mission_dossier,
     render_dossier,
     render_dossier_body,
+    rerun_decision_items,
     resolve_risk,
     run_recall_harness,
     save_dossier_state,
@@ -1103,3 +1106,191 @@ class TestTheRecallHarness:
             assert label in text
         assert DOSSIER_TOKEN_BASIS in text
         assert "PASS" not in text and "FAIL" not in text
+
+
+# ---------------------------------------------------------------------------
+# DECISION F029 D7 — a subtree rerun noted in the mission's dossier
+# ---------------------------------------------------------------------------
+
+
+def _rerun_record(**overrides):
+    """A well-formed `job.reruns` entry, as `fold_subtree_rerun` appends it."""
+    record = {
+        "rerun_id": "rerun-1",
+        "root_task_id": "T003",
+        "subtree": ["T003", "T004"],
+        "reset_commit": "abcdef0123456789",
+        "model": {"override": "", "configured": "gpt-5", "reason": ""},
+    }
+    record.update(overrides)
+    return record
+
+
+class TestRerunDecisionItems:
+    def test_an_override_is_named_in_the_outcome(self):
+        job_id = "job-000000001"
+        record = _rerun_record(
+            model={"override": "gpt-9", "configured": "", "reason": "human"})
+        items = rerun_decision_items([(job_id, record)])
+        assert len(items) == 1
+        assert items[0].id == RERUN_ID_TEMPLATE.format(
+            job=job_id[:8], rerun="rerun-1")
+        assert items[0].resolved is True
+        assert items[0].outcome == "reset to abcdef012345, run on gpt-9"
+
+    def test_no_override_reads_as_the_jobs_own_model(self):
+        job_id = "job-000000001"
+        record = _rerun_record(
+            model={"configured": "gpt-5", "reason": ""})  # no "override" key
+        items = rerun_decision_items([(job_id, record)])
+        assert items[0].outcome == "reset to abcdef012345, the job's own model"
+
+    def test_a_blank_override_reads_as_none(self):
+        job_id = "job-000000001"
+        record = _rerun_record(
+            model={"override": "", "configured": "gpt-5", "reason": ""})
+        items = rerun_decision_items([(job_id, record)])
+        assert items[0].outcome == "reset to abcdef012345, the job's own model"
+
+    def test_the_singular_names_one_task_after_the_root(self):
+        record = _rerun_record(subtree=["T003", "T004"])
+        items = rerun_decision_items([("job-0000001", record)])
+        assert "and 1 task after it" in items[0].text
+        assert "1 tasks" not in items[0].text
+
+    def test_the_plural_with_none_after_the_root(self):
+        record = _rerun_record(subtree=["T003"])
+        items = rerun_decision_items([("job-0000001", record)])
+        assert "and 0 tasks after it" in items[0].text
+
+    def test_the_plural_with_two_after_the_root(self):
+        record = _rerun_record(subtree=["T003", "T004", "T005"])
+        items = rerun_decision_items([("job-0000001", record)])
+        assert "and 2 tasks after it" in items[0].text
+
+    def test_a_non_dict_record_is_skipped(self):
+        assert rerun_decision_items([("job-0000001", "not a dict")]) == []
+
+    def test_a_record_missing_rerun_id_is_skipped(self):
+        record = _rerun_record()
+        del record["rerun_id"]
+        assert rerun_decision_items([("job-0000001", record)]) == []
+
+    def test_a_record_with_an_empty_rerun_id_is_skipped(self):
+        record = _rerun_record(rerun_id="")
+        assert rerun_decision_items([("job-0000001", record)]) == []
+
+    def test_a_record_missing_root_task_id_is_skipped(self):
+        record = _rerun_record()
+        del record["root_task_id"]
+        assert rerun_decision_items([("job-0000001", record)]) == []
+
+    def test_a_record_with_an_empty_root_task_id_is_skipped(self):
+        record = _rerun_record(root_task_id="")
+        assert rerun_decision_items([("job-0000001", record)]) == []
+
+    def test_missing_optional_fields_read_as_blank_and_zero(self):
+        record = {"rerun_id": "rerun-9", "root_task_id": "T001"}
+        items = rerun_decision_items([("job-0000001", record)])
+        assert len(items) == 1
+        assert "and 0 tasks after it" in items[0].text
+        assert items[0].outcome == "reset to , the job's own model"
+
+    def test_several_records_are_kept_in_order(self):
+        pairs = [
+            ("job-aaaaaaa", _rerun_record(rerun_id="rerun-1")),
+            ("job-bbbbbbb", _rerun_record(rerun_id="rerun-2")),
+            ("job-aaaaaaa", _rerun_record(rerun_id="rerun-3")),
+        ]
+        items = rerun_decision_items(pairs)
+        assert [item.id for item in items] == [
+            RERUN_ID_TEMPLATE.format(job="job-aaaa"[:8], rerun="rerun-1"),
+            RERUN_ID_TEMPLATE.format(job="job-bbbb"[:8], rerun="rerun-2"),
+            RERUN_ID_TEMPLATE.format(job="job-aaaa"[:8], rerun="rerun-3"),
+        ]
+
+
+class TestMissionIterationFactsWithReruns:
+    def test_reruns_follow_the_ledgers_items(self, tmp_path):
+        mission = _mission(tmp_path, ("M001", ()))
+        record = _rerun_record()
+        facts = mission_iteration_facts(
+            mission,
+            ledger=[{"iteration": 1, "move": {"kind": "dispatch_job"},
+                    "outcome": {"status": "dispatched"}}],
+            reruns=[("job-0000001", record)])
+        assert [d.id for d in facts.decisions] == [
+            ITERATION_ID_TEMPLATE.format(iteration=1),
+            RERUN_ID_TEMPLATE.format(job="job-0000001"[:8], rerun="rerun-1"),
+        ]
+
+    def test_an_empty_reruns_sequence_equals_no_keyword_at_all(self, tmp_path):
+        mission = _mission(tmp_path, ("M001", ()))
+        ledger = [{"iteration": 1, "move": {"kind": "dispatch_job"},
+                  "outcome": {"status": "dispatched"}}]
+        without = mission_iteration_facts(mission, ledger=ledger)
+        with_empty = mission_iteration_facts(mission, ledger=ledger, reruns=())
+        assert with_empty == without
+
+
+class TestMissionJobReruns:
+    def test_two_reruns_of_one_job_in_order(self, tmp_path):
+        from packages.orchestration.mission_state import (
+            MISSION_ROLE_INITIAL,
+            link_job_to_mission,
+            load_mission,
+        )
+        from packages.orchestration.pingpong_job import JobPlan, save_job_plan
+
+        mission = _mission(tmp_path, ("M001", ()))
+        job = JobPlan(job_id="J-rerun-1", repo_path="/tmp/x",
+                     reruns=[_rerun_record(rerun_id="rerun-1"),
+                             _rerun_record(rerun_id="rerun-2")])
+        save_job_plan(job, tmp_path)
+        link_job_to_mission(PROJECT, mission.id, job.job_id,
+                            MISSION_ROLE_INITIAL, root=tmp_path)
+        mission = load_mission(PROJECT, mission.id, tmp_path)
+
+        pairs = mission_job_reruns(mission, tmp_path)
+        assert [(job_id, record["rerun_id"]) for job_id, record in pairs] == [
+            (job.job_id, "rerun-1"), (job.job_id, "rerun-2")]
+
+    def test_an_unknown_job_id_is_skipped_without_raising(self, tmp_path):
+        from packages.orchestration.mission_state import (
+            MISSION_ROLE_INITIAL,
+            link_job_to_mission,
+            load_mission,
+        )
+
+        mission = _mission(tmp_path, ("M001", ()))
+        link_job_to_mission(PROJECT, mission.id, "no-such-job",
+                            MISSION_ROLE_INITIAL, root=tmp_path)
+        mission = load_mission(PROJECT, mission.id, tmp_path)
+
+        assert mission_job_reruns(mission, tmp_path) == []
+
+
+class TestRefreshNotesARerunInTheDossier:
+    def test_a_rerun_on_a_linked_job_is_noted_at_the_next_refresh(self, tmp_path):
+        from packages.orchestration.mission_state import (
+            MISSION_ROLE_INITIAL,
+            link_job_to_mission,
+            load_mission,
+        )
+        from packages.orchestration.pingpong_job import JobPlan, save_job_plan
+
+        mission = _mission(tmp_path, ("M001", ()))
+        record = _rerun_record(rerun_id="rerun-1", root_task_id="T003",
+                               subtree=["T003", "T004"])
+        job = JobPlan(job_id="J-rerun-e2e", repo_path="/tmp/x", reruns=[record])
+        save_job_plan(job, tmp_path)
+        link_job_to_mission(PROJECT, mission.id, job.job_id,
+                            MISSION_ROLE_INITIAL, root=tmp_path)
+        mission = load_mission(PROJECT, mission.id, tmp_path)
+
+        result = refresh_mission_dossier(PROJECT, mission.id, mission,
+                                         root=tmp_path)
+        body = render_dossier_body(result.dossier)
+        item = rerun_decision_items([(job.job_id, record)])[0]
+        assert item.id in body
+        assert item.text in body

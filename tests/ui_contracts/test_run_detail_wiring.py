@@ -52,13 +52,18 @@ def test_the_detail_reads_its_facts_through_the_door_and_never_shows_another_tas
     assert "runDetailOf({ node, rows, rounds, promptItems })" in src
 
 
-def test_rerun_is_disabled_with_its_reason_visible_and_the_detail_is_not_a_dialog():
+def test_rerun_sends_the_subtree_rerun_and_the_detail_is_not_a_dialog():
+    # DECISION F029 D6: the Rerun button becomes real — it sends the subtree
+    # rerun through rerunSend.ts and reads the door's answer through
+    # rerunView.ts, instead of staying permanently disabled behind
+    # RERUN_NOT_YET.
     src = _src(POPOVER)
-    rerun = src[src.rindex("<button", 0, src.index("Rerun\n")):src.index("Rerun\n")]
-    assert "disabled" in rerun and "title={RERUN_NOT_YET}" in rerun and "aria-describedby={reasonId}" in rerun
-    assert "<p id={reasonId} className={styles.reason}>{RERUN_NOT_YET}</p>" in src
+    assert "sendRerunSubtree(" in src
+    assert "rerunAnswerView(" in src
+    assert "RERUN_NOT_YET" not in src
     # A dialog would make Escape skip the zoom (useSemanticZoom.ts), and Escape is how L2 closes.
     assert 'role="dialog"' not in src
+    assert 'aria-live="polite"' in src
     assert ".action:disabled { opacity: 0.45;" in _src(POPOVER_CSS)
 
 

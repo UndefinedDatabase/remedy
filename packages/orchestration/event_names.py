@@ -123,6 +123,7 @@ EVENT_NAMES: frozenset[str] = frozenset(
         "source_patch_applied",
         "steering_message_consumed",
         "steering_message_received",
+        "subtree_rerun_prepared",
         "task_completed",
         "task_decision_answered",
         "task_injected",

@@ -5,6 +5,7 @@ import { clusterBrainModel } from "./brainReducer";
 import { expandClusterOf } from "./clusterExpansion";
 import type { BrainModel, BrainNode, NodeKind } from "./brainOntology";
 import { INJECTED_TASK_ORIGIN, ORIGIN_CANVAS_CHIP_TEXT } from "../../api/injectView";
+import { attemptChipText } from "../../api/attemptView";
 
 export function seededRng(seed: string) {
   let h = 0;
@@ -78,19 +79,22 @@ function clusterLabelOf(cluster: BrainNode): string {
   return typeof count === "number" && count > 0 ? `+${count}` : "";
 }
 
-/** DECISION F026 D3 clause 2, extended by DECISION F028 D7 (3) — a task's
- *  chip: `v<n>` alone when its seeded `meta.specVersion` is a number of at
- *  least 2 (an edited task) and it was not injected; `` `v${n} · added` ``
- *  when both apply; `ORIGIN_CANVAS_CHIP_TEXT` ("added") alone for an
- *  injected task never (yet) edited; `undefined` for neither — never an
- *  empty string, so a task with nothing to show carries no `chip` key at
- *  all. */
+/** DECISION F026 D3 clause 2, extended by DECISION F028 D7 (3) and DECISION
+ *  F029 D5 (1) — a task's chip: the parts that apply, in the order `v<n>`
+ *  (its seeded `meta.specVersion` is a number of at least 2, an edited
+ *  task), `ORIGIN_CANVAS_CHIP_TEXT` ("added", an injected task) and
+ *  `attemptChipText(n)` ("attempt <n>", its seeded `meta.attempt` is a
+ *  number of at least 2, a rerun task), joined by " · "; `undefined` when
+ *  none applies — never an empty string, so a task with nothing to show
+ *  carries no `chip` key at all. */
 function taskChipOf(task: BrainNode): string | undefined {
   const version = task.meta.specVersion;
   const versionChip = typeof version === "number" && version >= 2 ? `v${version}` : undefined;
   const addedChip = task.meta.origin === INJECTED_TASK_ORIGIN ? ORIGIN_CANVAS_CHIP_TEXT : undefined;
-  if (versionChip !== undefined && addedChip !== undefined) return `${versionChip} · ${addedChip}`;
-  return versionChip ?? addedChip;
+  const attempt = task.meta.attempt;
+  const attemptChip = typeof attempt === "number" && attempt >= 2 ? attemptChipText(attempt) : undefined;
+  const parts = [versionChip, addedChip, attemptChip].filter((part): part is string => part !== undefined);
+  return parts.length > 0 ? parts.join(" · ") : undefined;
 }
 
 /** Task ordering for golden-angle assignment (graph_spec §6: "Seeded initial
