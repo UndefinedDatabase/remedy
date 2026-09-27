@@ -24002,3 +24002,45 @@ path would need it and the next one added would miss it; a failed write that blo
 job, rejected for (2)'s reason.
 
 HOW TO REVERSE: remove the decorator from `run_job`, and delete this paragraph.
+
+## DECISION F035 D3 — one phrase catalog, `packages/orchestration/ownership_phrases.py`, turns every ledger entry into one plain sentence in the one dialect "you did X"; the job report gains an Ownership section of those sentences and loses its per-task `Vetoed by` line, the digest's `ownership` key carries the same sentences, and the `Paused by` line stays because it reports the job's present state (2026-09-28)
+
+CONTEXT: Measured at `3a8b1259`: the ledger's entries exist but nothing renders them.
+`format_job_report_text` in `packages/orchestration/pingpong_job.py` prints `Vetoed by <actor>:
+<reason>` under a vetoed task and, for a parked job, `Paused by <source>: <reason>`; three tests
+pin the first line and one pins the second. `build_job_digest` in
+`packages/orchestration/job_digest.py` returns an `ownership` key that is always empty, is total
+by construction, and is read as a list of sentences by the browser's digest card. The only
+sentence of this dialect in the code is the replan proposal's `You vetoed <title> — reason:
+<reason>.` in `packages/orchestration/veto_proposal.py`. A reviewer's simulation at `3a8b1259`
+that filled the digest key and added a report section from the ledger turned no existing test
+red.
+
+CHOSEN: (1) ONE CATALOG. `ownership_phrases.py` holds one template per ledger action and one
+actor phrase, and it is the only place a sentence about who did what is worded; a ledger action
+without a template raises `OwnershipError`, so no entry renders as nothing. (2) THE ACTOR,
+exactly: an unattended action `You (auto-approved via --yes)`; a browser action `You (browser,
+token #<n>)`, or `You (browser)` without a token; a command-line action `You (command line)`; an
+operator whose record names no door `You`, or `You (recorded as <value>)` when the record holds a
+value other than `human`; a default `The default policy (you accepted at plan approval)`; and a
+machine choice `Remedy's <role> (under this job's configuration)`. (3) THE TEXT. Every reason,
+answer and note is quoted verbatim in typographic quotes and never cut; a reason clause appears
+only when there is a reason. A task is named `task <id>`, followed by its title in brackets when
+the job knows one. (4) THE REPORT. `format_job_report_text` prints, after the task list, a
+section headed `Ownership:` with one line per entry in ledger order, each `  - ` and the
+sentence, every inner line break indented under it; a job with no entry prints no section, so
+its report is unchanged; a ledger that cannot be read prints one line saying so and naming the
+error. The per-task `Vetoed by` line is deleted, because the section carries the same fact in the
+one dialect, and the three tests that pin it read the sentence instead. The `Paused by` line
+stays: it says that the job is paused now and by whom, which is present state, while the ledger
+is history — DECISION F035 D1 (7) named it with the veto line, and this corrects that. (5) THE
+DIGEST. For a job of the job model, `ownership` is the same sentences in the same order; a ledger
+that cannot be read gives one sentence saying so, which keeps the digest total; any other input
+keeps the empty list. The digest's version does not change, as DECISION F040 D3 foresaw.
+
+ALTERNATIVES: sentences built in each surface, rejected because the feature file asks for one
+dialect; keeping the `Vetoed by` line beside the section, rejected because a report that states
+one fact twice in two wordings is the drift the catalog exists to end.
+
+HOW TO REVERSE: delete `ownership_phrases.py`, the report section and the digest's reading,
+restore the `Vetoed by` line and its three test assertions, and delete this paragraph.
