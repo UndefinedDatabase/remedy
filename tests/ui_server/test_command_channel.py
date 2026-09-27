@@ -442,7 +442,8 @@ class TestCommandChannelDoor:
         `job.inject-confirm` built the same way names no confirm token, a shape
         error on field `confirm_token` (DECISION F028 D5). `job.inject-answer`
         built the same way names no draft id, a shape error on field `draft_id`
-        (DECISION F028 D5).
+        (DECISION F028 D5). `job.rerun-subtree` built the same way names no
+        task, a shape error on field `task_id` (DECISION F029 D4).
         """
         from apps.cli.command_catalog import UI_EXPOSED_COMMANDS
 
@@ -487,6 +488,10 @@ class TestCommandChannelDoor:
                 # DECISION F028 D5: an answer naming no draft is a shape error.
                 assert status == 400, command_id
                 assert body["field"] == "draft_id", command_id
+            elif command_id == "job.rerun-subtree":
+                # DECISION F029 D4: a rerun naming no task is a shape error.
+                assert status == 400, command_id
+                assert body["field"] == "task_id", command_id
             else:
                 assert status == 409, command_id
                 assert body["error"] == declined[command_id], command_id
@@ -1567,6 +1572,7 @@ class TestCommandDoorImportGuard:
         "_dispatch_edit_task",
         "_dispatch_veto_task",
         "_dispatch_injection",
+        "_dispatch_rerun_subtree",
         "_publish_command_result",
         "_emit_command_accepted_event",
         "_audit_attempt",
@@ -1617,6 +1623,7 @@ class TestCommandDoorImportGuard:
         ("packages.orchestration.task_veto", "validate_veto_reason"),   # F027 D5
         ("packages.orchestration.task_veto", "TaskVetoRefused"),        # F027 D5
         ("packages.orchestration.veto_proposal", "answer_replan_proposal"),  # F027 D5
+        ("packages.orchestration.subtree_rerun", "rerun_subtree_command"),  # F029 D4
         ("packages.orchestration.mission_contract",
          "start_remainder_follow_up_mission"),                      # F269 D9
         ("packages.orchestration.pause_control", "pause_job_command"),    # F025 D2
@@ -1750,14 +1757,20 @@ class TestCommandDoorImportGuard:
     #: R-0745: the members of FORBIDDEN_MODULES the door reaches TRANSITIVELY, through
     #: the module-level imports of the modules it imports directly. Equality, not
     #: containment, so a new reach is a finding until it is recorded here with its route.
-    #: `subprocess` is deliberately absent: `evidence_index` imports it inside its two
-    #: git helpers, so the door's `resolve_job_evidence_dir` import carries no shell.
+    #: `evidence_index` alone imports `subprocess` inside its two git helpers, so the
+    #: door's `resolve_job_evidence_dir` import carries no shell by itself — it is
+    #: `subtree_rerun` (DECISION F029 D4) that reaches it here, at MODULE level, for
+    #: the git plumbing `rerun_subtree_command`'s own preparation runs under its lock.
     ACCEPTED_TRANSITIVE_FORBIDDEN = frozenset({
         # command_audit (D6), command_nonce (D8), safe_points -> failure_postmortem:
         # the door's own audit and nonce records are written through secure_fs.
         "packages.common.secure_fs",
         # timeline (D23) and save_job_plan (D21) -> pingpong_job, which imports shutil.
         "shutil",
+        # DECISION F029 D4: subtree_rerun.rerun_subtree_command -> subtree_rerun, which
+        # imports subprocess at module level for the git commands its own reset and
+        # preparation run.
+        "subprocess",
     })
 
     @staticmethod
@@ -1882,8 +1895,9 @@ class TestUiExposedCommands:
             "chat.send", "decision.resolve", "job.edit-task", "job.inject",
             "job.inject-answer", "job.inject-confirm", "job.pause",
             "job.plan-delete-task", "job.plan-edit-acceptance", "job.plan-edit-task",
-            "job.plan-merge-tasks", "job.plan-reorder", "job.plan-split-task", "job.stop",
-            "job.unpause", "job.veto-task", "patch.approve-hunks"]
+            "job.plan-merge-tasks", "job.plan-reorder", "job.plan-split-task",
+            "job.rerun-subtree", "job.stop", "job.unpause", "job.veto-task",
+            "patch.approve-hunks"]
 
     def test_the_set_is_a_frozenset(self):
         from apps.cli.command_catalog import UI_EXPOSED_COMMANDS

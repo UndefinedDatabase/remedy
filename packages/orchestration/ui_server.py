@@ -2584,6 +2584,10 @@ JOB_INJECT_ANSWER_COMMAND_ID = "job.inject-answer"
 JOB_INJECT_COMMAND_IDS = frozenset(
     {JOB_INJECT_COMMAND_ID, JOB_INJECT_CONFIRM_COMMAND_ID, JOB_INJECT_ANSWER_COMMAND_ID})
 
+#: DECISION F029 D4: the write door's twin of `remedy job rerun-subtree`, shared with
+#: round 5's browser through `subtree_rerun.rerun_subtree_command`.
+JOB_RERUN_SUBTREE_COMMAND_ID = "job.rerun-subtree"
+
 #: DECISION F015 D3: the plan edit refusals, each with its status, its audit outcome and its
 #: message. The edit RAN and DECLINED for all but the argument refusals, which are shape
 #: errors on field `args`. A version conflict carries the current version, and every other
@@ -3171,6 +3175,37 @@ class _RemedyHandler(BaseHTTPRequestHandler):
             self._emit_command_accepted_event(str(job.job_id), accepted_body)
             self._send_json(200, accepted_body)
             return
+        # DECISION F029 D4 maps `job.rerun-subtree` to `_dispatch_rerun_subtree`, run with
+        # this door's own token fingerprint as the actor. D18's order is unchanged: effect,
+        # then the audit line, then the publication. As `job.veto-task`'s branch above, the
+        # effect's own refusal `code` and `detail` ride on the wire — `_read_command_payload`
+        # already checked the argument shapes before the job was read. `needs_confirmation`
+        # is NOT a refusal — nothing was touched — so it takes the same 200 `prepared` does.
+        if payload["command"] == JOB_RERUN_SUBTREE_COMMAND_ID:
+            try:
+                accepted_body = self._dispatch_rerun_subtree(job, payload)
+            except (OSError, RuntimeError, ValueError, TypeError):
+                # D18, clause four: an effect that RAISED is neither `accepted`,
+                # which would be false, nor unaudited, which would break D6.
+                self._audit_attempt(str(job.job_id), "rejected_effect", create=True,
+                                    payload=payload)
+                self._send_json(*_safe_error(500, COMMAND_EFFECT_FAILED_MESSAGE))
+                return
+            if accepted_body.get("outcome") == "refused":
+                self._audit_attempt(str(job.job_id), "rejected_state", create=True,
+                                    payload=payload)
+                self._send_json(*_safe_error(
+                    409, f"{accepted_body['code']}: {accepted_body['detail']}"))
+                return
+            # D18, clause three: both writes below fail SOFT. A `prepared` rerun is
+            # already durable, and a `needs_confirmation` answer touched nothing at
+            # all, so refusing after the fact would misreport either.
+            self._audit_attempt(str(job.job_id), "accepted", create=True, payload=payload)
+            self._publish_command_result(str(job.job_id), payload["client_nonce"],
+                                         accepted_body)
+            self._emit_command_accepted_event(str(job.job_id), accepted_body)
+            self._send_json(200, accepted_body)
+            return
         # D5 maps `decision.resolve` to `answer_task_decision` followed by
         # `save_job`; DECISION F009 D21 rules that BOTH are the effect, because
         # the answer is durable only once `save_job` returns. D18's write order
@@ -3445,6 +3480,24 @@ class _RemedyHandler(BaseHTTPRequestHandler):
                 job, args["draft_id"], args["option"], actor=actor, budgets=budgets,
                 counters=counters, config=config)
         return {"command": command, **result}
+
+    def _dispatch_rerun_subtree(self, job: Any, payload: Any) -> dict[str, Any]:
+        """Run `job.rerun-subtree`'s effect and build the body DECISION F029 D4 rules for it.
+
+        `args.task_id` was already checked by `_read_command_payload`, so it is read
+        directly, unlike `model` and `confirm_cost`, which are optional and degrade to
+        ``""`` and ``False`` the same way D14 rules for every other command's optional
+        fields. `rerun_subtree_command` never raises: a refusal's own `code` and
+        `detail` ride in the returned dict unchanged, exactly as `_dispatch_veto_task`'s
+        does, and `needs_confirmation` rides the same way — it is not a refusal, and
+        `_handle_command_submission` sends it as a 200 that touched nothing.
+        """
+        from packages.orchestration.subtree_rerun import rerun_subtree_command
+        args = payload["args"]
+        return {"command": payload["command"], **rerun_subtree_command(
+            job, args["task_id"], model=args.get("model") or "",
+            confirm_cost=bool(args.get("confirm_cost")),
+            actor=token_fingerprint(self._supplied_bearer_token()))}
 
     def _dispatch_chat_send(self, job: Any, payload: Any) -> dict[str, Any] | None:
         """Record one steering message for the job. None means the job has ended.
@@ -3971,6 +4024,22 @@ class _RemedyHandler(BaseHTTPRequestHandler):
             if args.get("option") not in SHORTFALL_OPTIONS:
                 return None, _command_field_error(
                     "option", f"option must be one of {', '.join(SHORTFALL_OPTIONS)}")
+        # DECISION F029 D4: a rerun names its task by a non-empty string, its model
+        # override by a string when given, and `confirm_cost` by a bool when given,
+        # each refused BEFORE the job is read, for R-0685's reason above.
+        if command == JOB_RERUN_SUBTREE_COMMAND_ID:
+            task_id = args.get("task_id")
+            if not isinstance(task_id, str) or not task_id:
+                return None, _command_field_error(
+                    "task_id", "task_id must be a non-empty string")
+            model_arg = args.get("model")
+            if model_arg is not None and not isinstance(model_arg, str):
+                return None, _command_field_error(
+                    "model", "model must be a string when given")
+            confirm_cost_arg = args.get("confirm_cost")
+            if confirm_cost_arg is not None and not isinstance(confirm_cost_arg, bool):
+                return None, _command_field_error(
+                    "confirm_cost", "confirm_cost must be a bool when given")
         # DECISION F015 D3: a plan edit names the version it was made against, as a whole
         # number, or it is a shape error refused before the plan is read.
         version = args.get("expected_version")

@@ -2794,6 +2794,8 @@ UI_EXPOSED_COMMANDS: frozenset[str] = frozenset({
     "job.inject",
     "job.inject-confirm",
     "job.inject-answer",
+    # DECISION F029 D4: the subtree rerun, through `subtree_rerun.rerun_subtree_command`.
+    "job.rerun-subtree",
 })
 
 
