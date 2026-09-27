@@ -1,12 +1,13 @@
 import { useMemo, useState } from "react";
-import type { RemedyDashboard } from "../../api/types";
+import type { RemedyDashboard, RemedyPromptTraceItem } from "../../api/types";
 import { rebuildBrainModel } from "./brainReducer";
 import type { BrainEventRow } from "./brainOntology";
 import { buildBrainLayout } from "./buildForceBrainModel";
 import {
-  brainTaskCount, dashboardBrainSeeds, filterBrainLayout, selectedBrainNodeId, shellSelectionIdOf,
-  vetoFadedNodeIds, vetoHoverTexts,
+  brainTaskCount, dashboardBrainSeeds, filterBrainLayout, selectedBrainNodeId, selectedPromptNodeId,
+  shellSelectionIdOf, vetoFadedNodeIds, vetoHoverTexts,
 } from "./brainView";
+import { withPromptNodes } from "./promptNodes";
 import { ForceBrainGraph } from "./ForceBrainGraph";
 import { GraphFilterChips, type GraphFilter } from "./GraphFilterChips";
 import { GraphLegend } from "./GraphLegend";
@@ -22,6 +23,12 @@ import { pauseBanner } from "../../api/pauseView";
 import { taskSpecVersions } from "../../api/taskSpecView";
 import type { TimelineScrub } from "../timeline/useTimelineScrub";
 import styles from "./BrainGraphStage.module.css";
+
+// A stable identity for "no prompt trace yet" (DECISION F288 D5): reused
+// across renders rather than a fresh `[]` literal, so `promptItems`'s own
+// memo below does not invalidate on every dashboard poll when there is
+// nothing in it to compose.
+const EMPTY_PROMPT_ITEMS: readonly RemedyPromptTraceItem[] = [];
 
 export function BrainGraphStage({
   dashboard,
@@ -54,10 +61,16 @@ export function BrainGraphStage({
     ),
     [dashboard],
   );
+  // DECISION F288 D5: the dashboard's own prompt-trace items, with a stable
+  // empty-array identity so `liveModel`'s memo below does not invalidate on
+  // every poll while the dashboard carries none.
+  const promptItems = dashboard.promptTrace?.items ?? EMPTY_PROMPT_ITEMS;
   // `rows` is the ledger's COMPLETE, CONTIGUOUS prefix, read once by the shell for
   // the graph and the timeline alike: a hole holds the model at the state before
-  // it, never a ghost past it (DECISIONS F019 D5 and F024 D4).
-  const liveModel = useMemo(() => rebuildBrainModel(dashboard.jobId, seeds, rows), [dashboard.jobId, seeds, rows]);
+  // it, never a ghost past it (DECISIONS F019 D5 and F024 D4). DECISION F288
+  // D5 composes the live prompt-trace synapses onto that model only — a
+  // scrubbed model is history and draws no prompt.
+  const liveModel = useMemo(() => withPromptNodes(rebuildBrainModel(dashboard.jobId, seeds, rows), promptItems), [dashboard.jobId, seeds, rows, promptItems]);
   // While the timeline is scrubbed the stage draws the reducer state of the
   // prefix at the handle, and the live model waits behind LIVE (DECISION F024 D4).
   const model = scrub.scrubbedModel ?? liveModel;
@@ -86,7 +99,8 @@ export function BrainGraphStage({
   // filter or the ledger, so a scrub or a zoom move must not recompute them.
   const vetoFaded = useMemo(() => vetoFadedNodeIds(dashboard.vetoes), [dashboard]);
   const vetoHover = useMemo(() => vetoHoverTexts(dashboard), [dashboard]);
-  const selectedId = selectedBrainNodeId(dashboard.tasks, selectedNodeId ?? null);
+  const selectedId = selectedPromptNodeId(promptItems, selectedNodeId ?? null)
+    ?? selectedBrainNodeId(dashboard.tasks, selectedNodeId ?? null);
   const showLiveGraph = view === "live" && brainTaskCount(visible) > 0;
   const emphasis = useMemo(() => zoomEmphasis(visible, zoom.state), [visible, zoom.state]);
   const crumbs = zoomCrumbs.map((c) => ({

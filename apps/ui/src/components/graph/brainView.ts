@@ -1,10 +1,11 @@
 // Owns the glue between the dashboard, the reducer's layout and the stage —
 // pure: no React, no DOM. `BrainGraphStage.tsx` and `ForceBrainGraph.tsx` both
 // need this glue and neither should have to re-derive it (DECISION F019 D3).
-import type { RemedyDashboard, RemedyState, RemedyTaskItem, RemedyVetoes } from "../../api/types";
+import type { RemedyDashboard, RemedyPromptTraceItem, RemedyState, RemedyTaskItem, RemedyVetoes } from "../../api/types";
 import type { BrainTaskSeed, NodeState } from "./brainOntology";
 import type { BrainLayoutData, BrainLayoutNode } from "./forceBrainTypes";
 import type { GraphFilter } from "./GraphFilterChips";
+import { promptNodeId } from "./promptNodes";
 import { vetoHoverText } from "../../api/vetoView";
 
 /** Table 1 bridge (DECISION F019 D1, graph_spec.md §2): the dashboard's own
@@ -125,6 +126,29 @@ export function selectionTaskIdOf(node: Pick<BrainLayoutNode, "id" | "kind" | "p
   if (node.kind === "job_core") return null;
   if (node.kind === "task") return node.id.slice("task:".length);
   return node.parentId ? node.parentId.slice("task:".length) : null;
+}
+
+/** DECISION F288 D5 (5) — the id a click on this node should select: a
+ *  `synapse` born from the prompt trace (its own id `prompt:<item id>`)
+ *  selects the PROMPT ITEM ITSELF, its bare item id; every other node still
+ *  resolves through `selectionTaskIdOf` exactly as it always has. */
+export function selectionIdOf(node: Pick<BrainLayoutNode, "id" | "kind" | "parentId">): string | null {
+  if (node.kind === "synapse" && node.id.startsWith("prompt:")) {
+    return node.id.slice("prompt:".length);
+  }
+  return selectionTaskIdOf(node);
+}
+
+/** DECISION F288 D5 (5) — the layout id of the synapse a selected prompt item
+ *  should ring, or `null` when `selectedNodeId` names no item in `items` (a
+ *  task selection, or none at all). The inverse of `selectionIdOf` for the
+ *  synapse branch. */
+export function selectedPromptNodeId(
+  items: readonly RemedyPromptTraceItem[],
+  selectedNodeId: string | null,
+): string | null {
+  if (selectedNodeId === null) return null;
+  return items.some((item) => item.id === selectedNodeId) ? promptNodeId(selectedNodeId) : null;
 }
 
 /** The shell's own selection id for a `selectionTaskIdOf` result.

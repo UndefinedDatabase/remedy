@@ -79,6 +79,28 @@ class TestStageCarriesTheSimpleViewToggle:
         assert ".viewToggle" in css
 
 
+class TestStageComposesThePromptTraceOntoTheLiveModelOnly:
+    """F288 T003 (DECISION F288 D5): `withPromptNodes` composes the dashboard's
+    prompt trace onto the LIVE model exactly once, inside the `liveModel` line
+    only — a scrubbed model stays `rebuildBrainModel`'s own history, drawing no
+    prompt — and a click on a synapse selects the prompt item itself."""
+
+    def test_with_prompt_nodes_appears_exactly_once_inside_the_live_model_line(self):
+        src = STAGE_TSX.read_text()
+        assert src.count("withPromptNodes(") == 1
+        assert "const liveModel = useMemo(() => withPromptNodes(" in src
+
+    def test_the_scrubbed_model_still_wins_over_the_composed_live_model(self):
+        src = STAGE_TSX.read_text()
+        assert "const model = scrub.scrubbedModel ?? liveModel;" in src
+
+    def test_a_click_selects_the_prompt_item_itself_not_only_the_task(self):
+        src = RENDERER_TSX.read_text()
+        body = src[src.index("const handleNodeClick = useCallback("):src.index("}, [onSelectNode, onZoomEvent]);")]
+        assert "selectionIdOf(n)" in body
+        assert "selectionTaskIdOf(n)" not in body
+
+
 class TestForceBrainGraphNoLongerPaintsTheDecorativeDashboardGraph:
     """ForceBrainGraph.tsx paints buildBrainLayout's REAL layout now, not the
     dashboard-polling decorative graph (DECISION F019 D1) — so it must not

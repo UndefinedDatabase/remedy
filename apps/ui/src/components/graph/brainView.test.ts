@@ -1,13 +1,13 @@
 import { describe, expect, it } from "vitest";
-import type { RemedyDashboard, RemedyTaskItem, RemedyVetoEntry, RemedyVetoes } from "../../api/types";
+import type { RemedyDashboard, RemedyPromptTraceItem, RemedyTaskItem, RemedyVetoEntry, RemedyVetoes } from "../../api/types";
 import { reduceBrainEvent, seedBrainModel } from "./brainReducer";
 import { row } from "./brainReducer.fixtures";
 import { buildBrainLayout } from "./buildForceBrainModel";
 import type { BrainLayoutData } from "./forceBrainTypes";
 import {
   BRAIN_FILTER_STATES, DASHBOARD_STATE_STATUS, brainTaskCount, carryBrainPositions,
-  dashboardBrainSeeds, filterBrainLayout, selectedBrainNodeId, selectionTaskIdOf, shellSelectionIdOf,
-  vetoFadedNodeIds, vetoHoverTexts,
+  dashboardBrainSeeds, filterBrainLayout, selectedBrainNodeId, selectedPromptNodeId, selectionIdOf,
+  selectionTaskIdOf, shellSelectionIdOf, vetoFadedNodeIds, vetoHoverTexts,
 } from "./brainView";
 
 function task(id: string, state: RemedyTaskItem["state"], label = id): RemedyTaskItem {
@@ -214,6 +214,24 @@ describe("selectionTaskIdOf", () => {
   });
 });
 
+describe("selectionIdOf", () => {
+  it("a synapse resolves to the prompt item id, its own id without the prompt: prefix", () => {
+    expect(selectionIdOf({ id: "prompt:p1", kind: "synapse", parentId: "task:t1" })).toBe("p1");
+  });
+
+  it("a task node resolves to its own id, exactly as selectionTaskIdOf does", () => {
+    expect(selectionIdOf({ id: "task:t1", kind: "task", parentId: "job:j1" })).toBe("t1");
+  });
+
+  it("a run node resolves to its parent task via parentId, exactly as selectionTaskIdOf does", () => {
+    expect(selectionIdOf({ id: "run:t1:3", kind: "builder_run", parentId: "task:t1" })).toBe("t1");
+  });
+
+  it("the core resolves to null, exactly as selectionTaskIdOf does", () => {
+    expect(selectionIdOf({ id: "job:j1", kind: "job_core" })).toBeNull();
+  });
+});
+
 describe("shellSelectionIdOf", () => {
   const tasks = [task("a", "pending"), task("b", "pending")];
 
@@ -227,6 +245,31 @@ describe("shellSelectionIdOf", () => {
 
   it("returns null for null", () => {
     expect(shellSelectionIdOf(tasks, null)).toBeNull();
+  });
+});
+
+function promptItem(id: string, taskId = "t1"): RemedyPromptTraceItem {
+  return {
+    id, taskId, runId: "run-1", round: 1, role: "builder", promptKind: "initial",
+    provider: "p", providerKind: "k", promptSha256: "", promptChars: 0,
+    promptTokensEstimated: 0, contextCategories: [], changedFilesSafe: [],
+    safeDiffFiles: [], evidenceRef: "", redactedPreview: "", redactedPreviewTruncated: false,
+  };
+}
+
+describe("selectedPromptNodeId", () => {
+  const items = [promptItem("p1"), promptItem("p2")];
+
+  it("answers the synapse id for a matching item id", () => {
+    expect(selectedPromptNodeId(items, "p1")).toBe("prompt:p1");
+  });
+
+  it("answers null for an id no item carries", () => {
+    expect(selectedPromptNodeId(items, "nope")).toBeNull();
+  });
+
+  it("answers null for null", () => {
+    expect(selectedPromptNodeId(items, null)).toBeNull();
   });
 });
 

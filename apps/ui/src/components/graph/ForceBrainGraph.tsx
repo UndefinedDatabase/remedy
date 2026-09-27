@@ -2,7 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import ForceGraph2D from "react-force-graph-2d";
 import type { ForceGraph2DInstance } from "react-force-graph-2d";
 import { seededRng } from "./buildForceBrainModel";
-import { carryBrainPositions, selectionTaskIdOf } from "./brainView";
+import { carryBrainPositions, selectionIdOf } from "./brainView";
 import { scheduleBrainBirths } from "./brainMotion";
 import type { NodeKind } from "./brainOntology";
 import type { BrainLayoutData, BrainLayoutLink, BrainLayoutNode } from "./forceBrainTypes";
@@ -335,7 +335,7 @@ export function ForceBrainGraph({
     onZoomEvent({ type: "click", nodeId: n.id });
     // A run opens its own L2 detail, not its task's popover (DECISION F023 D4).
     if (isZoomRunKind(n.kind)) return;
-    const id = selectionTaskIdOf(n);
+    const id = selectionIdOf(n);
     if (id !== null) onSelectNode(id);
   }, [onSelectNode, onZoomEvent]);
 
