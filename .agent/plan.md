@@ -12,17 +12,15 @@ exists; and the live graph draws test-run, repair and prompt nodes
 
 ## Current Step
 
-ROUND 8: book round 7's PASS, land the self-use item SU-034's reviewed
-diff, add the self-use run to the Built State, and run the one full suite
-of the closure.
+ROUND 9: book round 8's PASS, then build the evidence bundle and the
+review package at the accepted head.
 
 ## Next Steps
 
-1. Build the evidence bundle and the review package.
-2. Rotate the ledger, accept F288 in STATUS with its README pins, consume
+1. Rotate the ledger, accept F288 in STATUS with its README pins, consume
    the self-use item, and open the pull request.
 
 ## Risks
 
-A red suite is repaired under the shrinking rule before the evidence.
+A package that does not read READY_FOR_REVIEW blocks the closure.
 Open findings: 0.
