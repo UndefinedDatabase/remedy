@@ -13,13 +13,13 @@ reply, and a note its task finished without reading is reported
 
 ## Current Step
 
-ROUND 6, the closure sequence's evidence round: book round 5, then build
-the evidence bundle and the review package at the accepted head.
+ROUND 7, the closing round: book round 6's PASS, rotate the ledger,
+accept F030 in STATUS with its README pins, and open the pull request.
 
 ## Next Steps
 
-1. The closing round: book the evidence round, rotate the ledger, accept
-   F030 in STATUS with its README pins, and open the pull request.
+1. The next session merges this feature's pull request at the Open PR
+   Gate and claims the next feature by Rule A5.
 
 ## Risks
 
