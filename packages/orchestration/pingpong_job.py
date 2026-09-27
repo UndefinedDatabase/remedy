@@ -17,6 +17,7 @@ Public API:
 
 from __future__ import annotations
 
+import functools
 import hashlib
 import json as _json
 import os
@@ -2552,6 +2553,51 @@ def _fold_task_injections(job: JobPlan, control_root_path: Path | None) -> bool:
 # Sequential job runner (Steps 4829-4830, 4837-4838, 4857-4869)
 # ---------------------------------------------------------------------------
 
+def _write_ownership_ledger_at_run_end(job: Any) -> None:
+    """Save `ownership.json` into `job`'s evidence export, DECISION F035 D2. Returns at once
+    for anything that is not a `JobPlan` with a real `job_dir` on disk — a `job_not_found`
+    placeholder from `run_job` below never had one. An `OwnershipError` building the ledger or
+    an `OSError` writing it is logged and swallowed: a ledger write must never fail the run it
+    describes, and the job `run_job` already returned is the one that matters."""
+    import logging
+
+    from packages.common.secure_fs import durable_write_json
+    from packages.orchestration.data_paths import job_dir, job_evidence_export_dir
+    from packages.orchestration.ownership import (
+        OWNERSHIP_FILENAME,
+        OwnershipError,
+        build_ownership_ledger,
+    )
+
+    if not isinstance(job, JobPlan):
+        return
+    if not job_dir(job.job_id).is_dir():
+        return
+    try:
+        ledger = build_ownership_ledger(job)
+        export_dir = job_evidence_export_dir(job.job_id)
+        export_dir.mkdir(parents=True, exist_ok=True)
+        durable_write_json(export_dir / OWNERSHIP_FILENAME, ledger)
+    except (OwnershipError, OSError) as exc:
+        logging.getLogger(__name__).warning(
+            "ownership ledger write failed for job %s: %s", job.job_id, exc)
+
+
+def _writes_ownership_ledger(fn):
+    """Wrap `run_job` so every invocation ends by saving the ownership ledger, DECISION F035
+    D2. `fn`'s own return value is unchanged — the save is a side effect after it runs, never a
+    second source of truth for the job `run_job` returns."""
+
+    @functools.wraps(fn)
+    def _wrapped(*args, **kwargs):
+        job = fn(*args, **kwargs)
+        _write_ownership_ledger_at_run_end(job)
+        return job
+
+    return _wrapped
+
+
+@_writes_ownership_ledger
 def run_job(
     job_id: str,
     *,

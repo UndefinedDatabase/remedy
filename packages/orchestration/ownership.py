@@ -36,8 +36,13 @@ _ENTRY_STRING_KEYS = ("record_ref", "ts", "action", "task_id", "text")
 _CONSEQUENCE_KEYS = ("kind", "task_ids", "ref")
 
 #: F035 T001's second half (round 2): hunk decisions, decision answers, clarification answers
-#: and plan approval. The five run-log events read here are round 1's.
-_RUN_LOG_EVENTS = ("job_paused", "task_paused", "job_resumed", "task_resumed", "job_stopped")
+#: and plan approval. The first five run-log events read here are round 1's; `plan_approved`
+#: joins them in round 2 (S4).
+_RUN_LOG_EVENTS = ("job_paused", "task_paused", "job_resumed", "task_resumed", "job_stopped",
+                   "plan_approved")
+
+#: S3's `clarification_source` result mapped onto the actor `kind` its class carries.
+_CLARIFICATION_ACTOR_KIND = {"human": "operator", "default": "default_policy", "planner": "remedy"}
 
 __all__ = [
     "OWNERSHIP_SCHEMA",
@@ -362,6 +367,156 @@ def _steering_entries(job: Any) -> list[dict[str, Any]]:
     return out
 
 
+def _hunk_decision_entries(job: Any) -> list[dict[str, Any]]:
+    """S1 — every DECIDED row (approved or rejected) of every attempt's hunk ledger. An
+    undecided (`HUNK_STATE_PENDING`) row yields nothing: nobody has said anything about it
+    yet. The actor names no door (`ownership_actor("")`) because a hunk decision's record
+    carries none — see the module docstring."""
+    from packages.orchestration.hunk_decision_record import HUNK_DECISIONS_METADATA_KEY
+    from packages.orchestration.hunk_ledger import HUNK_STATE_APPROVED, HUNK_STATE_REJECTED
+
+    out: list[dict[str, Any]] = []
+    records = (job.metadata or {}).get(HUNK_DECISIONS_METADATA_KEY) or {}
+    for attempt_key, value in records.items():
+        task_id = str(value.get("task_id", ""))
+        for row in value.get("hunks") or []:
+            state = row.get("state")
+            if state == HUNK_STATE_APPROVED:
+                action = "hunk_approved"
+            elif state == HUNK_STATE_REJECTED:
+                action = "hunk_rejected"
+            else:
+                continue                                          # HUNK_STATE_PENDING: undecided
+            out.append({
+                "record_ref": f"hunk:{attempt_key}:{row.get('id')}",
+                "ts": str(value.get("decided_at", "")),
+                "actor": ownership_actor(""),
+                "action": action,
+                "task_id": task_id,
+                "text": row.get("reason", "") if isinstance(row.get("reason"), str) else "",
+                "consequence": {
+                    "kind": "landing", "task_ids": [task_id], "ref": row.get("landing", ""),
+                },
+                "detail": {"attempt": str(value.get("attempt", "")), "hunk_id": row.get("id", "")},
+            })
+    return out
+
+
+def _decision_answer_entries(job: Any) -> list[dict[str, Any]]:
+    """S2 — every ANSWERED task decision. An OPEN one yields nothing: it has no answer to
+    attribute yet. A default answer, applied by `auto_apply_safe_default`, is recorded under
+    `kind="default_policy"` — the documented default the operator accepted at plan approval,
+    not a human's own words."""
+    from packages.orchestration.escalation import (
+        ANSWER_SOURCE_DEFAULT,
+        ESCALATION_STATUS_ANSWERED,
+        JOB_METADATA_ESCALATIONS_KEY,
+    )
+
+    out: list[dict[str, Any]] = []
+    records = (job.metadata or {}).get(JOB_METADATA_ESCALATIONS_KEY) or []
+    for record in records:
+        if not isinstance(record, dict) or record.get("status") != ESCALATION_STATUS_ANSWERED:
+            continue
+        answer_source = record.get("answer_source")
+        if answer_source == ANSWER_SOURCE_DEFAULT:
+            actor = ownership_actor(answer_source, kind="default_policy")
+        else:
+            actor = ownership_actor(answer_source)
+        task_id = str(record.get("task_id", ""))
+        out.append({
+            "record_ref": f"decision:{record.get('decision_id', '')}",
+            "ts": str(record.get("answered_at", "")),
+            "actor": actor,
+            "action": "decision_answered",
+            "task_id": task_id,
+            "text": record.get("answer", "") if isinstance(record.get("answer"), str) else "",
+            "consequence": {"kind": "answer_to_task", "task_ids": [task_id], "ref": ""},
+            "detail": {"question": record.get("question", "")},
+        })
+    return out
+
+
+def _clarification_entries(job: Any) -> list[dict[str, Any]]:
+    """S3 — every RESOLVED bundled clarification (human, default or planner). An unresolved
+    one (`clarification_source` reads `"unresolved"`) yields nothing. These records carry no
+    time of their own, so `ts` is always ""."""
+    from packages.orchestration.job_plan import clarification_source
+
+    out: list[dict[str, Any]] = []
+    body = job.task_plan or {}
+    for record in body.get("clarifications_resolved") or []:
+        source = clarification_source(record)
+        if source == "unresolved":
+            continue
+        rec = record if isinstance(record, dict) else {}
+        out.append({
+            "record_ref": f"clarification:{rec.get('id', '')}",
+            "ts": "",
+            "actor": ownership_actor(source, kind=_CLARIFICATION_ACTOR_KIND[source]),
+            "action": "clarification_answered",
+            "task_id": "",
+            "text": rec.get("answer", "") if isinstance(rec.get("answer"), str) else "",
+            "consequence": {"kind": "plan_input", "task_ids": [], "ref": ""},
+            "detail": {
+                "question": rec.get("question", ""),
+                "default_answer": rec.get("default_answer", ""),
+            },
+        })
+    return out
+
+
+def _plan_approval_actor_text(mode: str, body: Any) -> tuple[dict[str, Any], str]:
+    """The actor and text one `plan_approved` moment carries, shared by the run-log event
+    branch below and the plan-body fallback so the two agree by construction. An unattended
+    approval (`mode == AUTO_APPROVAL_MODE`) is `auto_approved` and carries the plan body's own
+    audited reason, or "" without one; any other mode carries neither door nor words."""
+    from packages.orchestration.job_plan import AUTO_APPROVAL_MODE
+
+    if mode != AUTO_APPROVAL_MODE:
+        return ownership_actor(""), ""
+    audit = (body or {}).get("_approval_audit") or {}
+    reason = audit.get("reason")
+    text = reason if isinstance(reason, str) else ""
+    return ownership_actor(mode, auto_approved=True), text
+
+
+def _plan_approval_body_entries(job: Any, *, event_recorded: bool) -> list[dict[str, Any]]:
+    """S4's second half, read from the plan body rather than the run log: a rejected plan
+    (`_approval == "rejected"`) always yields its own entry, since rejection writes no
+    `plan_approved` event; an approved plan yields `plan_approved:body` ONLY when no
+    `plan_approved` event was already read for this job (`event_recorded`) — the event is the
+    primary record when both exist."""
+    body = job.task_plan or {}
+    approval = body.get("_approval")
+    out: list[dict[str, Any]] = []
+    if approval == "rejected":
+        out.append({
+            "record_ref": "plan_rejected",
+            "ts": "",
+            "actor": ownership_actor(""),
+            "action": "plan_rejected",
+            "task_id": "",
+            "text": "",
+            "consequence": {"kind": "plan_rejected", "task_ids": [], "ref": ""},
+            "detail": {},
+        })
+    elif approval == "approved" and not event_recorded:
+        mode = str((body.get("_approval_audit") or {}).get("mode", ""))
+        actor, text = _plan_approval_actor_text(mode, body)
+        out.append({
+            "record_ref": "plan_approved:body",
+            "ts": "",
+            "actor": actor,
+            "action": "plan_approved",
+            "task_id": "",
+            "text": text,
+            "consequence": {"kind": "plan_approved", "task_ids": [], "ref": ""},
+            "detail": {},
+        })
+    return out
+
+
 def _run_log_entries(job: Any) -> list[dict[str, Any]]:
     from packages.orchestration import data_paths as _dp
     from packages.orchestration import timeline as _tl
@@ -376,13 +531,16 @@ def _run_log_entries(job: Any) -> list[dict[str, Any]]:
         md = event.get("metadata") or {}
         request_id = str(md.get("request_id", ""))
         raw_ts = str(event.get("timestamp", ""))
-        key = (name, request_id)
+        # S4: the dedupe key is now (event, request_id or timestamp) — the same value
+        # record_ref uses — so a `plan_approved` event, which carries no request_id, dedupes
+        # by its own timestamp instead of colliding with every other one on an empty string.
+        ref = request_id if request_id else raw_ts
+        key = (name, ref)
         if key in seen:
             continue
         seen.add(key)
 
         task_id = str(event.get("task_id") or "")
-        ref = request_id if request_id else raw_ts
         record_ref = f"{name}:{ref}"
 
         if name == "job_paused":
@@ -420,6 +578,17 @@ def _run_log_entries(job: Any) -> list[dict[str, Any]]:
                 released_ids = [task_id] if task_id else []
             consequence = {"kind": "released", "task_ids": released_ids, "ref": ""}
             detail = {"paused_by": md.get("source", "")}
+        elif name == "plan_approved":
+            entry_ts = raw_ts
+            entry_task_id = ""
+            mode = str(md.get("approval_mode", ""))
+            actor, text = _plan_approval_actor_text(mode, job.task_plan)
+            consequence = {
+                "kind": "plan_approved",
+                "task_ids": list(md.get("task_ids") or []),
+                "ref": "",
+            }
+            detail = {"approval_mode": mode}
         else:                                                  # job_stopped
             entry_ts = str(md.get("requested_at") or raw_ts)
             entry_task_id = task_id
@@ -469,7 +638,13 @@ def build_ownership_ledger(job: Any) -> dict[str, Any]:
     entries.extend(_rerun_entries(job))
     entries.extend(_edit_entries(job))
     entries.extend(_steering_entries(job))
-    entries.extend(_run_log_entries(job))
+    entries.extend(_hunk_decision_entries(job))
+    entries.extend(_decision_answer_entries(job))
+    entries.extend(_clarification_entries(job))
+    run_log_entries = _run_log_entries(job)
+    entries.extend(run_log_entries)
+    event_recorded = any(e["action"] == "plan_approved" for e in run_log_entries)
+    entries.extend(_plan_approval_body_entries(job, event_recorded=event_recorded))
 
     problems: list[str] = []
     seen_refs: set[str] = set()
