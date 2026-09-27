@@ -7,6 +7,7 @@ never a real provider.
 """
 from __future__ import annotations
 
+import hashlib
 import json
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -18,6 +19,10 @@ from packages.orchestration import pingpong_job as pj
 from packages.orchestration import task_injection as ti
 from packages.orchestration.budget_guard import BudgetCounters
 from packages.orchestration.budget_resolution import PredictiveBudgetConfig
+from packages.orchestration.data_paths import job_dod_path
+from packages.orchestration.job_plan import APPROVED_PLAN_HASH_KEY, plan_content_hash
+from packages.orchestration.mission_compiler import PLAN_VERSION_KEY
+from packages.orchestration.plan_editing import EDIT_LOG_KEY, replay_edits
 from packages.orchestration.schemas.models import SCHEMA_REGISTRY, PlannedTask, TaskPlan
 
 JOB_ID = "f028job0000000a"
@@ -92,6 +97,57 @@ class _FakeCall:
         self.calls += 1
         self.prompts.append(prompt)
         return self._replies.pop(0)
+
+
+def _digest_name(draft_id: str) -> str:
+    """Mirrors ``task_injection._draft_filename`` exactly: a control file is named by a
+    digest of its id, never by the id itself."""
+    return f"{hashlib.sha256(draft_id.encode('utf-8')).hexdigest()[:32]}.json"
+
+
+#: A fixed instant every drafting/confirming helper defaults to, so a confirmation made
+#: without an explicit ``now`` never drifts into the real clock and expires the draft.
+_FIXED_NOW = datetime(2026, 1, 1, tzinfo=UTC)
+
+
+def _drafted(tmp_path: Path, *, job: pj.JobPlan | None = None, text: str = "add a widget",
+            after: str | None = None, now: datetime = _FIXED_NOW) -> tuple[pj.JobPlan, dict]:
+    """A job with one freshly drafted, confirmable injection: ``(job, answer)``."""
+    job = job if job is not None else _job()
+    call = _FakeCall([_draft_json()])
+    answer = ti.draft_task_injection(
+        job, text, call_fn=call, budgets=JobBudgets(), counters=_counters(None),
+        config=_config(price_basis=None), actor="alice", after=after, now=now,
+        control_root_path=tmp_path)
+    assert answer["outcome"] == "drafted"
+    return job, answer
+
+
+def _confirmed_record(*, task_id: str = "INJ1", depends_on: tuple[str, ...] = (),
+                      actor: str = "alice", draft_id: str = "draftabc00000001",
+                      confirmed_at: str = "2026-01-01T00:00:00+00:00",
+                      basis: str = "frontier_default") -> dict:
+    """A confirmed-injection record shaped exactly as ``confirm_task_injection`` writes one —
+    built directly so ``apply_injection_to_job`` (S4) can be tested independent of S3."""
+    return {
+        "draft_id": draft_id,
+        "task": {
+            "id": task_id, "title": "Add the thing", "goal": "do the thing",
+            "acceptance": ["it happens"], "depends_on": list(depends_on),
+            "est_tokens_band": "S", "files_hint": [],
+        },
+        "placement": {"depends_on": list(depends_on), "basis": basis, "position": 1,
+                      "rationale": "placed at the end"},
+        "task_rationale": "because the operator asked",
+        "text": "add the thing",
+        "drafted_by": "alice",
+        "actor": actor,
+        "confirmed_at": confirmed_at,
+    }
+
+
+def _injected_tasks_dir(tmp_path: Path, job_id: str) -> Path:
+    return tmp_path / "jobs" / job_id / ti.INJECTED_TASKS_DIRNAME
 
 
 # ---------------------------------------------------------------------------
@@ -445,3 +501,343 @@ class TestDraftTaskInjection:
 
     def test_schema_not_registered(self):
         assert ti.INJECTION_DRAFT_SCHEMA_V not in SCHEMA_REGISTRY
+
+
+# ---------------------------------------------------------------------------
+# R-1076 — a record whose `expires_at` cannot be trusted must never read as still live
+# ---------------------------------------------------------------------------
+
+
+class TestReadInjectionDraftUntrustedExpiry:
+    def _drafted_with_expiry(self, tmp_path: Path, mutate) -> tuple[str, str]:
+        job, answer = _drafted(tmp_path)
+        draft_id = answer["draft_id"]
+        path = tmp_path / "jobs" / job.job_id / "injection_drafts" / _digest_name(draft_id)
+        record = json.loads(path.read_text(encoding="utf-8"))
+        mutate(record)
+        path.write_text(json.dumps(record), encoding="utf-8")
+        return job.job_id, draft_id
+
+    def test_missing_expires_at_raises(self, tmp_path):
+        job_id, draft_id = self._drafted_with_expiry(tmp_path, lambda r: r.pop("expires_at"))
+        with pytest.raises(ti.TaskInjectionError):
+            ti.read_injection_draft(job_id, draft_id, control_root_path=tmp_path)
+
+    def test_non_string_expires_at_raises(self, tmp_path):
+        job_id, draft_id = self._drafted_with_expiry(
+            tmp_path, lambda r: r.__setitem__("expires_at", 12345))
+        with pytest.raises(ti.TaskInjectionError):
+            ti.read_injection_draft(job_id, draft_id, control_root_path=tmp_path)
+
+    def test_unparseable_expires_at_raises(self, tmp_path):
+        job_id, draft_id = self._drafted_with_expiry(
+            tmp_path, lambda r: r.__setitem__("expires_at", "not-a-timestamp"))
+        with pytest.raises(ti.TaskInjectionError):
+            ti.read_injection_draft(job_id, draft_id, control_root_path=tmp_path)
+
+    def test_expires_at_without_a_time_zone_raises(self, tmp_path):
+        job_id, draft_id = self._drafted_with_expiry(
+            tmp_path, lambda r: r.__setitem__("expires_at", "2026-01-01T00:00:00"))
+        with pytest.raises(ti.TaskInjectionError):
+            ti.read_injection_draft(job_id, draft_id, control_root_path=tmp_path)
+
+
+# ---------------------------------------------------------------------------
+# S3/T002 — `confirmed_injections`
+# ---------------------------------------------------------------------------
+
+
+class TestConfirmedInjections:
+    def test_no_control_area_answers_empty(self, tmp_path):
+        assert ti.confirmed_injections("nope", control_root_path=tmp_path) == ()
+
+    def test_ordered_by_confirmed_at_then_draft_id(self, tmp_path):
+        job_id = "f028job0000000o"
+        later = _confirmed_record(task_id="INJ1", draft_id="zzzzzzzzzzzzzzzz",
+                                  confirmed_at="2026-01-02T00:00:00+00:00")
+        earlier = _confirmed_record(task_id="INJ2", draft_id="aaaaaaaaaaaaaaaa",
+                                    confirmed_at="2026-01-01T00:00:00+00:00")
+        assert ti._publish_confirmed_injection(
+            job_id, later["draft_id"], later, control_root_path=tmp_path)
+        assert ti._publish_confirmed_injection(
+            job_id, earlier["draft_id"], earlier, control_root_path=tmp_path)
+
+        records = ti.confirmed_injections(job_id, control_root_path=tmp_path)
+        assert [r["draft_id"] for r in records] == ["aaaaaaaaaaaaaaaa", "zzzzzzzzzzzzzzzz"]
+
+    def test_a_corrupt_file_raises(self, tmp_path):
+        job_id = "f028job0000000p"
+        d = _injected_tasks_dir(tmp_path, job_id)
+        d.mkdir(parents=True)
+        (d / "deadbeefdeadbeefdeadbeefdeadbeef.json").write_text("not json")
+        with pytest.raises(ti.TaskInjectionError):
+            ti.confirmed_injections(job_id, control_root_path=tmp_path)
+
+
+# ---------------------------------------------------------------------------
+# S3/T002 — `confirm_task_injection`
+# ---------------------------------------------------------------------------
+
+
+class TestConfirmTaskInjection:
+    def test_a_terminal_job_answers_job_terminal_and_writes_nothing(self, tmp_path):
+        job, answer = _drafted(tmp_path)
+        job.state = pj.RunState.COMPLETED
+
+        result = ti.confirm_task_injection(
+            job, answer["confirm_token"], actor="bob", now=_FIXED_NOW,
+            control_root_path=tmp_path)
+
+        assert result["outcome"] == "refused" and result["code"] == "job_terminal"
+        assert not _injected_tasks_dir(tmp_path, job.job_id).exists()
+
+    def test_an_unknown_token_answers_draft_unknown(self, tmp_path):
+        job = _job()
+        result = ti.confirm_task_injection(
+            job, "deadbeefdeadbeef", actor="bob", control_root_path=tmp_path)
+        assert result["outcome"] == "refused" and result["code"] == "draft_unknown"
+        assert not _injected_tasks_dir(tmp_path, job.job_id).exists()
+
+    def test_an_expired_draft_answers_draft_expired(self, tmp_path):
+        now = datetime(2026, 1, 1, tzinfo=UTC)
+        job, answer = _drafted(tmp_path, now=now)
+        later = now + timedelta(seconds=ti.INJECTION_DRAFT_TTL_SECONDS)
+
+        result = ti.confirm_task_injection(
+            job, answer["confirm_token"], actor="bob", now=later, control_root_path=tmp_path)
+
+        assert result["outcome"] == "refused" and result["code"] == "draft_expired"
+        assert not _injected_tasks_dir(tmp_path, job.job_id).exists()
+
+    def test_a_record_naming_another_job_answers_draft_unknown(self, tmp_path):
+        job, answer = _drafted(tmp_path)
+        path = (tmp_path / "jobs" / job.job_id / "injection_drafts"
+               / _digest_name(answer["draft_id"]))
+        record = json.loads(path.read_text(encoding="utf-8"))
+        record["job_id"] = "some-other-job"
+        path.write_text(json.dumps(record), encoding="utf-8")
+
+        result = ti.confirm_task_injection(
+            job, answer["confirm_token"], actor="bob", now=_FIXED_NOW,
+            control_root_path=tmp_path)
+
+        assert result["outcome"] == "refused" and result["code"] == "draft_unknown"
+        assert not _injected_tasks_dir(tmp_path, job.job_id).exists()
+
+    def test_a_shortfall_draft_answers_draft_needs_decision(self, tmp_path):
+        job = _job()
+        call = _FakeCall([_draft_json(est_tokens_band="M")])
+        now = datetime(2026, 1, 1, tzinfo=UTC)
+        answer = ti.draft_task_injection(
+            job, "add a widget", call_fn=call, budgets=JobBudgets(max_cost_usd=1.00),
+            counters=_counters(0.90), config=_config(), actor="alice", now=now,
+            control_root_path=tmp_path)
+        assert answer["outcome"] == "shortfall"
+
+        result = ti.confirm_task_injection(
+            job, answer["draft_id"], actor="bob", now=now, control_root_path=tmp_path)
+
+        assert result["outcome"] == "refused" and result["code"] == "draft_needs_decision"
+        assert not _injected_tasks_dir(tmp_path, job.job_id).exists()
+
+    def test_confirming_twice_answers_already_confirmed_the_second_time(self, tmp_path):
+        job, answer = _drafted(tmp_path)
+
+        first = ti.confirm_task_injection(
+            job, answer["confirm_token"], actor="bob", now=_FIXED_NOW,
+            control_root_path=tmp_path)
+        assert first["outcome"] == "confirmed"
+
+        second = ti.confirm_task_injection(
+            job, answer["confirm_token"], actor="bob", now=_FIXED_NOW,
+            control_root_path=tmp_path)
+        assert second["outcome"] == "refused" and second["code"] == "already_confirmed"
+        assert len(list(_injected_tasks_dir(tmp_path, job.job_id).iterdir())) == 1
+
+    def test_task_plan_unreadable_answers_no_task_plan(self, tmp_path):
+        job, answer = _drafted(tmp_path)
+        job.task_plan = None
+
+        result = ti.confirm_task_injection(
+            job, answer["confirm_token"], actor="bob", now=_FIXED_NOW,
+            control_root_path=tmp_path)
+
+        assert result["outcome"] == "refused" and result["code"] == "no_task_plan"
+        assert not _injected_tasks_dir(tmp_path, job.job_id).exists()
+
+    def test_two_drafts_of_one_plan_the_second_confirmed_after_is_stale(self, tmp_path):
+        job = _job()
+        now = datetime(2026, 1, 1, tzinfo=UTC)
+        call = _FakeCall([_draft_json(), _draft_json()])
+        first_answer = ti.draft_task_injection(
+            job, "add widget one", call_fn=call, budgets=JobBudgets(),
+            counters=_counters(None), config=_config(price_basis=None), actor="alice",
+            now=now, control_root_path=tmp_path)
+        second_answer = ti.draft_task_injection(
+            job, "add widget two", call_fn=call, budgets=JobBudgets(),
+            counters=_counters(None), config=_config(price_basis=None), actor="alice",
+            now=now, control_root_path=tmp_path)
+        assert first_answer["task"]["id"] == second_answer["task"]["id"] == "INJ1"
+
+        first = ti.confirm_task_injection(
+            job, first_answer["confirm_token"], actor="bob", now=now,
+            control_root_path=tmp_path)
+        assert first["outcome"] == "confirmed"
+
+        second = ti.confirm_task_injection(
+            job, second_answer["confirm_token"], actor="bob", now=now,
+            control_root_path=tmp_path)
+        assert second["outcome"] == "refused" and second["code"] == "draft_stale"
+        assert len(list(_injected_tasks_dir(tmp_path, job.job_id).iterdir())) == 1
+
+    def test_a_depends_on_id_no_longer_in_the_plan_is_stale(self, tmp_path):
+        job = _job(tasks=[_task("T1"), _task("T2")])
+        job, answer = _drafted(job=job, tmp_path=tmp_path, after="T2")
+        assert answer["placement"]["depends_on"] == ["T2"]
+
+        # T2 leaves the plan before this draft is confirmed.
+        job.task_plan = _plan_dict([_task("T1")])
+
+        result = ti.confirm_task_injection(
+            job, answer["confirm_token"], actor="bob", now=_FIXED_NOW,
+            control_root_path=tmp_path)
+
+        assert result["outcome"] == "refused" and result["code"] == "draft_stale"
+        assert not _injected_tasks_dir(tmp_path, job.job_id).exists()
+
+    def test_plan_full_counted_over_confirmed_injections(self, tmp_path):
+        tasks = [_task(f"T{i}") for i in range(1, ti.MAX_PLAN_TASKS)]     # 24 tasks
+        job = _job(tasks=tasks)
+        prior = _confirmed_record(task_id="INJZ", draft_id="priorid00000001")
+        assert ti._publish_confirmed_injection(
+            job.job_id, prior["draft_id"], prior, control_root_path=tmp_path)
+
+        job, answer = _drafted(tmp_path, job=job)          # a fresh, non-colliding id
+
+        result = ti.confirm_task_injection(
+            job, answer["confirm_token"], actor="bob", now=_FIXED_NOW,
+            control_root_path=tmp_path)
+
+        assert result["outcome"] == "refused" and result["code"] == "plan_full"
+        assert len(list(_injected_tasks_dir(tmp_path, job.job_id).iterdir())) == 1
+
+    def test_confirmed_answer_reads_back_through_confirmed_injections(self, tmp_path):
+        job, answer = _drafted(tmp_path)
+
+        result = ti.confirm_task_injection(
+            job, answer["confirm_token"], actor="bob", now=_FIXED_NOW,
+            control_root_path=tmp_path)
+
+        assert result == {
+            "outcome": "confirmed", "job_id": job.job_id, "draft_id": answer["draft_id"],
+            "task_id": answer["task"]["id"], "placement": answer["placement"],
+            "confirmed_at": result["confirmed_at"],
+        }
+        [record] = ti.confirmed_injections(job.job_id, control_root_path=tmp_path)
+        assert record["draft_id"] == answer["draft_id"]
+        assert record["task"] == answer["task"]
+        assert record["placement"] == answer["placement"]
+        assert record["task_rationale"] == answer["task_rationale"]
+        assert record["text"] == answer["text"]
+        assert record["drafted_by"] == "alice"
+        assert record["actor"] == "bob"
+        assert record["confirmed_at"] == result["confirmed_at"]
+
+
+# ---------------------------------------------------------------------------
+# S4/T002 — `apply_injection_to_job`
+# ---------------------------------------------------------------------------
+
+
+class TestApplyInjectionToJob:
+    def test_appends_provenance_bumps_version_and_reseals_an_approved_hash(self):
+        job = _job(tasks=[_task("T1")])
+        body = dict(job.task_plan)
+        body["_approval"] = "approved"
+        body[PLAN_VERSION_KEY] = 3
+        body[APPROVED_PLAN_HASH_KEY] = plan_content_hash(body)
+        old_hash = body[APPROVED_PLAN_HASH_KEY]
+        job.task_plan = body
+
+        record = _confirmed_record(depends_on=["T1"])
+        result = ti.apply_injection_to_job(job, record)
+
+        new_task = next(
+            t for t in job.tasks
+            if (t.inputs.get("plan") or {}).get("planned_id") == "INJ1")
+        assert result == {"task_id": new_task.task_id, "planned_id": "INJ1",
+                          "folded_at": result["folded_at"]}
+        plan_info = new_task.inputs["plan"]
+        assert plan_info["origin"] == ti.ORIGIN_HUMAN_INJECTED
+        assert plan_info["plan_rationale"] == "placed at the end"
+        assert plan_info["task_rationale"] == "because the operator asked"
+        assert plan_info["injection_draft_id"] == "draftabc00000001"
+
+        assert job.task_plan[PLAN_VERSION_KEY] == 4
+        assert job.task_plan[APPROVED_PLAN_HASH_KEY] == plan_content_hash(job.task_plan)
+        assert job.task_plan[APPROVED_PLAN_HASH_KEY] != old_hash
+
+        [entry] = job.task_plan[EDIT_LOG_KEY]
+        assert entry["command"] == "plan_add_task"
+        assert entry["actor"] == "alice"
+        assert entry["args"] == {"task": record["task"]}
+        assert entry["injection"] == {
+            "draft_id": "draftabc00000001", "task_id": new_task.task_id, "planned_id": "INJ1",
+            "origin": ti.ORIGIN_HUMAN_INJECTED, "basis": "frontier_default",
+            "plan_rationale": "placed at the end", "text": "add the thing",
+            "confirmed_at": "2026-01-01T00:00:00+00:00", "dod_resync_pending": False,
+        }
+
+    def test_an_unapproved_plan_keeps_no_approval_hash(self):
+        job = _job(tasks=[_task("T1")])
+        body = dict(job.task_plan)
+        body["_approval"] = "pending"
+        job.task_plan = body
+
+        ti.apply_injection_to_job(job, _confirmed_record())
+
+        assert APPROVED_PLAN_HASH_KEY not in job.task_plan
+
+    def test_dod_resync_pending_true_with_a_dod_file_present(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        job = _job(tasks=[_task("T1")], job_id="f028job0000000q")
+        dod_path = job_dod_path(job.job_id)
+        dod_path.parent.mkdir(parents=True, exist_ok=True)
+        dod_path.write_text("{}")
+
+        ti.apply_injection_to_job(job, _confirmed_record())
+
+        [entry] = job.task_plan[EDIT_LOG_KEY]
+        assert entry["injection"]["dod_resync_pending"] is True
+
+    def test_dod_resync_pending_false_without_a_dod_file(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        job = _job(tasks=[_task("T1")], job_id="f028job0000000r")
+
+        ti.apply_injection_to_job(job, _confirmed_record())
+
+        [entry] = job.task_plan[EDIT_LOG_KEY]
+        assert entry["injection"]["dod_resync_pending"] is False
+
+    def test_replay_edits_reproduces_the_new_plans_tasks(self):
+        job = _job(tasks=[_task("T1"), _task("T2")])
+        original = TaskPlan.model_validate(
+            {k: v for k, v in job.task_plan.items() if not k.startswith("_")})
+
+        ti.apply_injection_to_job(job, _confirmed_record(depends_on=["T1"]))
+
+        replayed = replay_edits(original, job.task_plan[EDIT_LOG_KEY])
+        assert [t.id for t in replayed.tasks] == ["T1", "T2", "INJ1"]
+        assert replayed.tasks[-1].depends_on == ["T1"]
+
+    def test_a_missing_dependency_raises_injection_invalid_and_leaves_the_job_unchanged(self):
+        job = _job(tasks=[_task("T1")])
+        before_plan = dict(job.task_plan)
+        before_tasks = list(job.tasks)
+
+        with pytest.raises(ti.TaskInjectionRefused) as exc:
+            ti.apply_injection_to_job(job, _confirmed_record(depends_on=["GHOST"]))
+
+        assert exc.value.code == "injection_invalid"
+        assert job.task_plan == before_plan
+        assert job.tasks == before_tasks

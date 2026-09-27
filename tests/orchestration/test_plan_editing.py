@@ -287,6 +287,44 @@ def test_the_six_commands_are_the_feature_files_six():
         "plan_split_task", "plan_edit_acceptance")
 
 
+class TestAddTaskEditKind:
+    """DECISION F028 D2 (5): `plan_add_task` reaches a plan only through a confirmed
+    injection, so it is not one of the six `PLAN_EDIT_COMMANDS` above; it is exercised here
+    at the `apply_edit` level, the same way `task_injection.apply_injection_to_job` reaches
+    it."""
+
+    def _plan(self) -> TaskPlan:
+        return TaskPlan.model_validate({"schema_v": "task_plan_v1", "tasks": _TASKS})
+
+    def test_appends_a_new_validated_task(self):
+        plan = self._plan()
+        new_task = {
+            "id": "INJ1", "title": "Add the thing", "goal": "do the thing",
+            "acceptance": ["it happens"], "depends_on": ["T1"],
+            "est_tokens_band": "S", "files_hint": [],
+        }
+        result = plan_editing.apply_edit(plan, "plan_add_task", {"task": new_task})
+        assert [t.id for t in result.tasks] == ["T1", "T2", "T3", "T4", "INJ1"]
+        assert result.tasks[-1].depends_on == ["T1"]
+
+    def test_a_duplicate_id_is_refused(self):
+        plan = self._plan()
+        dup_task = {
+            "id": "T2", "title": "dup", "goal": "dup", "acceptance": ["x"],
+            "depends_on": [], "est_tokens_band": "S", "files_hint": [],
+        }
+        with pytest.raises(PlanEditRefused) as exc:
+            plan_editing.apply_edit(plan, "plan_add_task", {"task": dup_task})
+        assert exc.value.code == "invalid_args"
+        assert "T2" in exc.value.detail
+
+    def test_a_missing_task_is_refused(self):
+        plan = self._plan()
+        with pytest.raises(PlanEditRefused) as exc:
+            plan_editing.apply_edit(plan, "plan_add_task", {})
+        assert exc.value.code == "invalid_args"
+
+
 class TestTheApprovalClosesTheWindow:
     """DECISION F015 D2: the approval is consumed under the plan-edit lock against the record."""
 
