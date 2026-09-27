@@ -9,21 +9,20 @@ A note typed while a job runs reaches the task it is meant for: it lands
 in that task's next round prompt as a binding operator note, the feed
 shows the operator's own line with the builder's next action as the only
 reply, and a note its task finished without reading is reported
-(`docs/roadmap/features/T5_F030.md`, DECISION F030 D1).
+(`docs/roadmap/features/T5_F030.md`, DECISIONS F030 D1 and D2).
 
 ## Current Step
 
-ROUND 1: claim F030, book F029's round 11, record DECISION F030 D1, and
-land T001 — the task address on a steering message, the drain at the
-task's round start, the operator-note segment and the unconsumed listing.
+ROUND 2: book round 1's PASS, record DECISION F030 D2, and land T002 —
+`job.steer` on the write door and as `remedy job steer`, one shared
+command with the task state gate, and `remedy chat show` naming a note's
+task.
 
 ## Next Steps
 
-1. T002: the write door's `job.steer-task` and `remedy job steer` with the
-   task state gate, the audit and the event.
-2. T003: the feed shows the operator's line, the input addresses the
+1. T003: the feed shows the operator's line, the input addresses the
    focused task, and the end-to-end proof.
-3. The closure sequence.
+2. The closure sequence.
 
 ## Risks
 

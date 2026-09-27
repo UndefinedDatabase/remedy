@@ -23803,3 +23803,47 @@ describes, rejected because it would take away the job-wide steering F264 shippe
 HOW TO REVERSE: remove the `task_id` parameter and key from `steering.py`, the task filter from
 `consume_pending_steering`, the `builder_operator_notes` segment and the report's
 `steering_not_consumed` key, and delete this paragraph.
+
+## DECISION F030 D2 — the command that addresses a note to a task is `job.steer` on both doors, one catalog id answered by one shared function, `steering.steer_task_command`, which never raises for a refusal; it takes a note while the job has not ended and the task can still run, the write door audits it, and `remedy chat show` names a note's task and says when that task finished without reading it; the browser's side takes T003 (2026-09-27)
+
+CONTEXT: DECISION F030 D1 (5) named the write door's command `job.steer-task`. Measured at
+`886b6055`: every command the write door dispatches is a catalog command id listed in
+`UI_EXPOSED_COMMANDS` in `apps/cli/command_catalog.py`, which `_command_is_ui_exposed` in
+`packages/orchestration/ui_server.py` reads, so the door's id and the command line's id are one
+string; T5_F030.md names the command line `remedy job steer`, whose catalog id is `job.steer`.
+`task_veto.veto_task_command` is the precedent of one function answering both doors that returns
+a refusal's `code` and `detail` instead of raising, and `task_veto.VETOABLE_TASK_STATUSES` holds
+`pending`, `running`, `blocked`, `failed` and `skipped`. `steering_overview` decides
+`not_taken_in` from the job's state alone, so a note whose task has finished reads `waiting` for
+as long as the job runs.
+
+CHOSEN: (1) ONE ID, `job.steer`, for the write door and for `remedy job steer <job_id> --task
+<task> "<text>"`; it replaces D1's `job.steer-task`, which no code carries. (2)
+`steer_task_command(job, task_id, text, *, channel, root=None, now=None)` in `steering.py`
+refuses, in this order, an unusable text (`invalid_message`), an ended job
+(`job_not_steerable`), a task the job does not hold (`unknown_task`, naming its tasks) and a
+task that will not run again (`task_not_steerable`, naming its status), and otherwise records the
+note through `record_steering_message` with the task's id and answers `accepted` with the record's
+id; only a record that cannot be written raises. (3) `STEERABLE_TASK_STATUSES` in `steering.py`
+equals `task_veto.VETOABLE_TASK_STATUSES`, pinned by a test rather than imported, so the steering
+module reaches no veto code. (4) THE WRITE DOOR refuses a `job.steer` whose `args.task_id` is not
+a non-empty string, or whose `args.message` `normalize_steering_text` refuses, as a shape error on
+that field before the job is read; it records with channel `cockpit`, answers a refusal 409 with
+its own code and detail as `job.veto-task` does, and writes its audit line for every outcome. On
+the command line the `steering_message_received` event carrying the task is the record, as it has
+been for `remedy chat`. (5) EXIT CODES: 2 for `invalid_message` and `unknown_task`, 3 for
+`job_not_steerable`, `task_not_steerable` and an unreadable job record, and 1 for a record that
+cannot be written. (6) `steering_overview` gains `task_statuses`; a row gains `addressed_to`, and
+a note that no round took in, whose task is known and neither `pending` nor `running`, reads
+`not_taken_in` while the job still runs. `remedy chat show` passes the job's task statuses and
+names the task a note was addressed to.
+
+ALTERNATIVES: keeping `job.steer-task` on the door beside `job.steer` on the command line,
+rejected because the door reads the catalog's ids; `remedy chat --task`, rejected because
+T5_F030.md places the command under `job` and because a flag on the default subcommand of `chat`
+is a second route to the same effect.
+
+HOW TO REVERSE: remove `job.steer` from the catalog, `UI_EXPOSED_COMMANDS`, the door and
+`apps/cli/commands/__init__.py`, delete `apps/cli/commands/job_steer_cmd.py`,
+`steer_task_command`, `STEERABLE_TASK_STATUSES`, `task_statuses` and `addressed_to`, and delete
+this paragraph.
