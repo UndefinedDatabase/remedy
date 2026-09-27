@@ -13,16 +13,16 @@ reply, and a note its task finished without reading is reported
 
 ## Current Step
 
-ROUND 4: book round 3's PASS and land T003's end-to-end proof — a note
-sent through the write door while a task's build call is in flight
-reaches that task's next round, and a note whose task finishes first is
-reported as not taken in.
+ROUND 5, the closure sequence's first round: book round 4, write the
+Built State, consolidate the checklist, ask the self-use generator for
+the closure's item, and take the feature's one full suite.
 
 ## Next Steps
 
-1. The closure sequence: the Built State, the checklist consolidation,
-   the self-use item and the one full suite; then the evidence and the
-   review package; then the acceptance and the pull request.
+1. The evidence round: book round 5, any repair the suite requires, the
+   evidence bundle and the review package.
+2. The closing round: book the evidence round, rotate the ledger, accept
+   F030 in STATUS with its README pins, and open the pull request.
 
 ## Risks
 
