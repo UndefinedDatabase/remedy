@@ -13,6 +13,8 @@ GRAPH_DIR = REPO_ROOT / "apps" / "ui" / "src" / "components" / "graph"
 STAGE_TSX = GRAPH_DIR / "BrainGraphStage.tsx"
 STAGE_CSS = GRAPH_DIR / "BrainGraphStage.module.css"
 RENDERER_TSX = GRAPH_DIR / "ForceBrainGraph.tsx"
+PROMPT_LIST_TSX = GRAPH_DIR / "PromptNodeList.tsx"
+PROMPT_LIST_CSS = GRAPH_DIR / "PromptNodeList.module.css"
 
 
 class TestStageMountsBothRenderers:
@@ -138,3 +140,55 @@ class TestForceBrainGraphNoLongerPaintsTheDecorativeDashboardGraph:
         particle_expr = src[particle_line_start:particle_line_start + 200]
         assert "active" in particle_expr
         assert "reducedMotion" in particle_expr
+
+
+class TestPromptNodeListMountsInTheLiveBranchOnly:
+    """F288 T003 second half (DECISION F288 D6, graph_spec.md §14): the
+    keyboard's parallel list of the live picture's prompt nodes mounts
+    beside the aria-hidden canvas in the live branch only — the simple
+    branch is the SVG picture's own keyboard surface and stays untouched."""
+
+    def test_the_live_branch_holds_the_prompt_node_list(self):
+        src = STAGE_TSX.read_text()
+        live = src[src.index("{showLiveGraph ? ("):src.index(") : (")]
+        assert "<PromptNodeList" in live
+
+    def test_the_simple_branch_does_not(self):
+        src = STAGE_TSX.read_text()
+        simple = src[src.index(") : ("):]
+        assert "<PromptNodeList" not in simple
+
+
+class TestPromptNodeListIsTheAccessibleSurfaceForTheCanvassSynapses:
+    """graph_spec.md §14 pairs the `aria-hidden` canvas with this list as the
+    accessible surface for its prompt nodes."""
+
+    def test_buttons_are_native_and_type_button(self):
+        src = PROMPT_LIST_TSX.read_text()
+        assert 'type="button"' in src
+
+    def test_pressed_state_is_wired(self):
+        src = PROMPT_LIST_TSX.read_text()
+        assert "aria-pressed={" in src
+
+    def test_a_click_selects_the_prompt_item(self):
+        src = PROMPT_LIST_TSX.read_text()
+        assert "onSelect(entry.promptId)" in src
+
+    def test_carries_its_own_data_ui_marker(self):
+        src = PROMPT_LIST_TSX.read_text()
+        assert 'data-ui="prompt-node-list"' in src
+
+    def test_is_not_aria_hidden(self):
+        src = PROMPT_LIST_TSX.read_text()
+        assert "aria-hidden" not in src
+
+    def test_style_module_shows_on_focus_within_and_never_display_none_or_visibility_hidden(self):
+        css = PROMPT_LIST_CSS.read_text()
+        assert ":focus-within" in css
+        assert "display: none" not in css
+        assert "visibility: hidden" not in css
+
+    def test_the_canvas_still_stays_aria_hidden(self):
+        src = RENDERER_TSX.read_text()
+        assert 'aria-hidden="true"' in src

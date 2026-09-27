@@ -3,11 +3,12 @@ import type { RemedyDashboard, RemedyPromptTraceItem, RemedyTaskItem, RemedyVeto
 import { reduceBrainEvent, seedBrainModel } from "./brainReducer";
 import { row } from "./brainReducer.fixtures";
 import { buildBrainLayout } from "./buildForceBrainModel";
-import type { BrainLayoutData } from "./forceBrainTypes";
+import type { BrainLayoutData, BrainLayoutNode } from "./forceBrainTypes";
+import { withPromptNodes } from "./promptNodes";
 import {
   BRAIN_FILTER_STATES, DASHBOARD_STATE_STATUS, brainTaskCount, carryBrainPositions,
-  dashboardBrainSeeds, filterBrainLayout, selectedBrainNodeId, selectedPromptNodeId, selectionIdOf,
-  selectionTaskIdOf, shellSelectionIdOf, vetoFadedNodeIds, vetoHoverTexts,
+  dashboardBrainSeeds, filterBrainLayout, promptListEntries, selectedBrainNodeId, selectedPromptNodeId,
+  selectionIdOf, selectionTaskIdOf, shellSelectionIdOf, vetoFadedNodeIds, vetoHoverTexts,
 } from "./brainView";
 
 function task(id: string, state: RemedyTaskItem["state"], label = id): RemedyTaskItem {
@@ -270,6 +271,53 @@ describe("selectedPromptNodeId", () => {
 
   it("answers null for null", () => {
     expect(selectedPromptNodeId(items, null)).toBeNull();
+  });
+});
+
+function layoutNode(id: string): BrainLayoutNode {
+  return { id, kind: "synapse", state: "planned", seq: 0, depth: 2, radius: 5, x: 0, y: 0, label: "" };
+}
+
+describe("promptListEntries", () => {
+  it("one entry per visible synapse, in model order, fields as S1 names them; the filtered synapse and a non-synapse both absent", () => {
+    let model = seedBrainModel("job-pl", [
+      { id: "t-done", status: "completed", rank: 0 },
+      { id: "t-current", status: "running", rank: 1 },
+      { id: "t-blocked", status: "blocked", rank: 2 },
+    ]);
+    const items: RemedyPromptTraceItem[] = [
+      promptItem("p-done", "t-done"),
+      { ...promptItem("p-current", "t-current"), role: "reviewer", round: 2 },
+      { ...promptItem("p-blocked", "t-blocked"), round: 3 },
+    ];
+    model = withPromptNodes(model, items);
+
+    // visible holds the first and third synapse, the task:t-done node (a
+    // non-synapse), but NOT the second synapse (prompt:p-current) — the
+    // filtered-out one.
+    const visible: BrainLayoutData = {
+      nodes: [layoutNode("prompt:p-done"), layoutNode("task:t-done"), layoutNode("prompt:p-blocked")],
+      links: [],
+    };
+
+    expect(promptListEntries(model, visible)).toEqual([
+      { promptId: "p-done", nodeId: "prompt:p-done", label: "builder r1", state: "done" },
+      { promptId: "p-blocked", nodeId: "prompt:p-blocked", label: "builder r3", state: "blocked" },
+    ]);
+  });
+
+  it("maps in_progress to current", () => {
+    let model = seedBrainModel("job-pl2", [{ id: "t1", status: "running", rank: 0 }]);
+    model = withPromptNodes(model, [promptItem("p1", "t1")]);
+    const visible: BrainLayoutData = { nodes: [layoutNode("prompt:p1")], links: [] };
+    expect(promptListEntries(model, visible)[0].state).toBe("current");
+  });
+
+  it("answers no entries for a visible layout holding no synapse", () => {
+    let model = seedBrainModel("job-pl3", [{ id: "t1", status: "pending", rank: 0 }]);
+    model = withPromptNodes(model, [promptItem("p1", "t1")]);
+    const visible: BrainLayoutData = { nodes: [layoutNode("task:t1")], links: [] };
+    expect(promptListEntries(model, visible)).toEqual([]);
   });
 });
 

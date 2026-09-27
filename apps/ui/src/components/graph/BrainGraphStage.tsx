@@ -4,8 +4,8 @@ import { rebuildBrainModel } from "./brainReducer";
 import type { BrainEventRow } from "./brainOntology";
 import { buildBrainLayout } from "./buildForceBrainModel";
 import {
-  brainTaskCount, dashboardBrainSeeds, filterBrainLayout, selectedBrainNodeId, selectedPromptNodeId,
-  shellSelectionIdOf, vetoFadedNodeIds, vetoHoverTexts,
+  brainTaskCount, dashboardBrainSeeds, filterBrainLayout, promptListEntries, selectedBrainNodeId,
+  selectedPromptNodeId, shellSelectionIdOf, vetoFadedNodeIds, vetoHoverTexts,
 } from "./brainView";
 import { withPromptNodes } from "./promptNodes";
 import { ForceBrainGraph } from "./ForceBrainGraph";
@@ -16,6 +16,7 @@ import { zoomBreadcrumbs, zoomGraphOf } from "./semanticZoom";
 import { useSemanticZoom } from "./useSemanticZoom";
 import { useZoomDeepLink } from "./useZoomDeepLink";
 import { ZoomBreadcrumbs } from "./ZoomBreadcrumbs";
+import { PromptNodeList } from "./PromptNodeList";
 import { RunDetailPopover } from "./RunDetailPopover";
 import { EvidencePanel } from "./EvidencePanel";
 import { zoomCrumbLabel, zoomEmphasis } from "./zoomView";
@@ -94,6 +95,9 @@ export function BrainGraphStage({
     [baseLayout, model, expandTaskId],
   );
   const visible = useMemo(() => filterBrainLayout(layout, filter), [layout, filter]);
+  // DECISION F288 D6, graph_spec §14 — the keyboard's own parallel list of
+  // the visible prompt synapses, mounted beside the aria-hidden canvas.
+  const promptEntries = useMemo(() => promptListEntries(model, visible), [model, visible]);
   // DECISION F027 D8 (1) and (2) — the veto's fade and hover text, each
   // memoized over the dashboard alone: neither depends on the zoom, the
   // filter or the ledger, so a scrub or a zoom move must not recompute them.
@@ -134,6 +138,7 @@ export function BrainGraphStage({
             vetoHover={vetoHover}
           />
           <ZoomBreadcrumbs items={crumbs} onJump={(level) => zoom.dispatch({ type: "crumb", level })} />
+          <PromptNodeList entries={promptEntries} selectedId={selectedId} onSelect={(promptId) => onSelectNode(promptId)} />
           {focusedRun && zoom.state.level === 2 && (
             <RunDetailPopover
               node={focusedRun}
