@@ -1,0 +1,67 @@
+diff --git a/.agent/decisions.md b/.agent/decisions.md
+index 3c9d113ac..a17eaadbd 100644
+--- a/.agent/decisions.md
++++ b/.agent/decisions.md
+@@ -23170,3 +23170,48 @@ written until round 3.
+ HOW TO REVERSE: remove `confirm_task_injection`, `apply_injection_to_job`, `plan_add_task` and
+ `_fold_task_injections` with its four calls, restore `PLAN_EDIT_COMMANDS` to `tuple(_EDITS)`, and
+ delete this paragraph.
++
++## DECISION F028 D3 — a shortfall draft is answered by a create-only answer file; `shrink_task` and `extend_budget` each derive a new draft, `drop` ends the old one; an extension travels with the derived draft into the confirmation and is applied by the fold, and `run_job` re-reads its budgets after every fold; the seed's labels are a mapping of plain sentences; the event moves to round 4 (2026-09-27)
++
++CONTEXT: DECISION F028 D1 (8) made a shortfall draft carry a three-option seed and no token, and
++D2 (1) left the answers to round 3. Measured at `bdb65916`: `run_job` in
++`packages/orchestration/pingpong_job.py` validates `job.budgets` into `_job_budgets` once, before
++the task loop, and both its reactive and its predictive checks read that binding, so a limit
++raised in the record mid-run is invisible to the run; the `token_budget` decision's `extend`
++answers a job that has already stopped, and nothing raises the limit of a job that is running;
++`shortfall_decision_seed` answers `option_labels` as a list of lowercase fragments, while
++`veto_proposal`'s seed keys its labels by option and the operator's rule amend0921-operator-feedback
++rule 3 asks for complete plain sentences in anything a person reads.
++
++CHOSEN: (1) THE ANSWER. `answer_injection_shortfall` refuses a terminal job, a draft
++`read_injection_draft` refuses, a draft whose status is not `needs_decision`, an option outside
++`SHORTFALL_OPTIONS`, and a draft already answered; otherwise it publishes one create-only file in
++`injection_answers/` under the job's control directory and answers by option. `drop` answers
++`dropped` and nothing else. `shrink_task` refuses `cannot_shrink` when the seed has no smaller band
++and writes no answer then; otherwise it derives a NEW draft whose task is the old one at the
++smaller band, checked again against the job's budgets, and answers it as `draft_task_injection`
++answers, so it may itself be a shortfall. `extend_budget` derives a new draft at the same band,
++confirmable, carrying `budget_extend_to_usd`, the seed's `extend_to_usd`, with its check computed
++against that limit. A derived draft keeps the old one's task id, placement, text, rationale and
++fence flags, takes a new draft id and a new expiry, and names the draft it came from. (2) THE
++EXTENSION. The confirmation copies `budget_extend_to_usd`; `apply_injection_to_job` raises
++`job.budgets["max_cost_usd"]` to it and never lowers it, and records the value in the edit log's
++`injection` block. `run_job` calls the fold through one local helper at all four points, which
++re-validates `_job_budgets` from `job.budgets` whenever the fold changed them, so the limit the
++operator chose applies to the very next safe point. (3) THE LABELS become a mapping by option, as
++`veto_proposal`'s are, and the question and each label are complete sentences carrying the
++numbers: the new limit for `extend_budget`, the smaller band or the reason there is none for
++`shrink_task`. (4) THE EVENT with its readers moves to round 4, beside the command line, which
++is its first reader outside the browser.
++
++ALTERNATIVES: raising the limit at confirmation time, rejected because a confirmation never
++writes `job.json` (DECISION F028 D2 (2)); reading the budgets fresh at every safe point, rejected
++because it changes every job's run to serve one path; a fourth option that confirms over the
++limit, rejected because the feature file names exactly three.
++
++DELIBERATE ABSENCES: an answer is not an inbox decision in this round; the browser reaches the
++seed through the injection command's own answer in T003.
++
++HOW TO REVERSE: remove `answer_injection_shortfall`, its answer files and the derived drafts, the
++extension in the confirmation and the fold, and the helper in `run_job`, and delete this
++paragraph.
+diff --git a/.agent/live_review.md b/.agent/live_review.md
+index aa07407da..c4307c850 100644
+--- a/.agent/live_review.md
++++ b/.agent/live_review.md
+@@ -428,3 +428,9 @@ Gate: F288 R10 — the F288 round 10 entry: the closing round — the booking of
+ Gate: F028 R1 — the F028 round 1 entry: the claim, the booking of F288's round 10, DECISION F028 D1, and T001 — the draft pass of a task injection: the planner's one structured call, the placement, the budget check with its shortfall seed, the fence flags, and the draft as a create-only control file with a time to live. VERDICT PASS. Re-derived over `ceb90b8a`..`4b6ccd1d` by the planner and reviewer of F028's first session, whose own runs produced every reading below. THE RANGE IS 8 COMMITS, at `d7cdc402` 405, `3e9c5f05` 162, `89ad1f1c` 135, `a6128ea8` 289, `8d5358bc` 344, `d7f73dad` 447, `32e9931d` 209 and `4b6ccd1d` 388 insertions by `git show --numstat`, each under the 500-line cap, each single-parent and each ending with the ordered trailer; the tracked path set equals the block's constraint 3. The worker declared one deviation, the split of C3 and of C4 into two commits each under constraint 2, because the block sized neither; the split put the `ALLOWED_UNWIRED` line in C3b, so `a6128ea8` alone holds an orphan module, which is the block's omission and is recorded in `.agent/prose_slips.md`. THE TRANSPORT PROOF: the block copy and the three payload copies, read at `d7cdc402` and `3e9c5f05`, equal the reviewer's originals byte for byte, and at `89ad1f1c` the STATUS file, the ledger, the decisions, the plan and the context equal the reviewer's simulation tree byte for byte, the open set reading empty at `ceb90b8a` and at `89ad1f1c`. THE CODE: `packages/orchestration/task_injection.py` implements S1 to S8 as specified, read whole by the reviewer; two readings go to round 2, R-1076 below, and the shortfall seed's `option_labels`, which the code answers as a list where `veto_proposal`'s seed answers a mapping by option, a shape the block did not fix and round 2's DECISION F028 D2 does. THE TESTS: the reviewer's own serial run of the round's selection in the primary checkout at `4b6ccd1d` read 1065 passed and 7 skipped at real exit code 0, the base's 1022 plus the new file's 43 nodes; `python3 -m ruff check` over the three touched Python files passed; all six `integrity check` checks read `pass`. THE RED PROOFS: the reviewer ran the committed `.agent/authored/f028-r1-mutations.py` itself in a disposable worktree at `4b6ccd1d`: both unmutated controls exit 0, all twelve mutations exit 1 with at least one failing node each, and the module is restored byte-identical; the worktree was removed and `git worktree list` reads 61 lines, as before the round.
+ 
+ - R-1076 — Low, AN INJECTION DRAFT WHOSE STORED RECORD LACKS A READABLE EXPIRY NEVER EXPIRES. Raised by the planner and reviewer of F028's first session at round 1's gate. SEARCHED BEFORE MINTING (checklist item 30): the open set at `4b6ccd1d` is empty, and `read_injection_draft` and `expires_at` occur in this record only in round 1's gate entry above. MEASURED at `4b6ccd1d`: `read_injection_draft` in `packages/orchestration/task_injection.py` checks expiry only `if isinstance(expires_at, str) and expires_at`, so a record whose `expires_at` is missing, empty or not a string is answered as a live draft forever, and a string `datetime.fromisoformat` cannot parse raises a bare `ValueError` rather than the module's `TaskInjectionError`, while DECISION F028 D1 (10) makes expiry what renders an unconfirmed draft harmless. WHY LOW: `draft_task_injection` always writes a valid `expires_at`, and the control directory is written with owner-only modes, so only a corrupted or hand-edited file reaches the hole; but it fails open, and T002's confirmation will trust this reader. FIX: `read_injection_draft` raises `TaskInjectionError` for a record whose `expires_at` is missing, not a string, not parseable by `datetime.fromisoformat`, or without a time zone, and a test pins each of the four. Owner: F028.
++
++Gate: F028 R2 — the F028 round 2 entry: the booking of round 1 and R-1076's registration, DECISION F028 D2, R-1076's repair, and the first half of T002 — the confirmation, the runner's fold at four points, the `plan_add_task` edit kind, and the provenance on the task entry and in the edit log. VERDICT PASS. Re-derived over `4b6ccd1d`..`bdb65916` by the planner and reviewer of F028's first session, whose own runs produced every reading below. THE RANGE IS 8 COMMITS, at `6f3e6e65` 419, `d5caa237` 73, `3e9b7afa` 340, `4249e944` 83, `a49858dd` 434, `74e5538a` 330, `de08d9d4` 227 and `bdb65916` 351 insertions by `git show --numstat`, each under the 500-line cap, each single-parent and each ending with the ordered trailer; the tracked path set equals the block's constraint 3. The worker declared the split of C5 into two commits under constraint 2, and three design notes the reviewer read and accepts. THE TRANSPORT PROOF: the block copy and the two payload copies, read at `6f3e6e65`, equal the reviewer's originals byte for byte, and at `d5caa237` the ledger, the decisions, the prose slips and the plan equal the reviewer's simulation tree byte for byte, the open set reading empty at `4b6ccd1d` and `R-1076` at `d5caa237`. THE CODE: the reviewer read the diff of `task_injection.py`, `plan_editing.py` and `pingpong_job.py` whole: the four fold points sit where DECISION F028 D2 (3) places them, `plan_add_task` is the last entry of `_EDITS` while `PLAN_EDIT_COMMANDS` keeps its six values, and the two guard lists moved as the reviewer's simulation measured; R-1077 below is the one reading that goes to round 3. THE TESTS: the reviewer's own serial run of the round's selection in the primary checkout at `bdb65916` read 1593 passed and 7 skipped at real exit code 0, the base's 1560 plus the 33 nodes the round added; `python3 -m ruff check` over the seven touched Python files passed; all six `integrity check` checks read `pass`. THE RED PROOFS: the reviewer ran the committed `.agent/authored/f028-r2-mutations.py` itself in a disposable worktree at `bdb65916`: both unmutated controls exit 0, all thirteen mutations exit 1 with at least one failing node each, and the three files are restored byte-identical; the worktree was removed.
++
++Done: R-1076 — at `3e9b7afa` `read_injection_draft` in `packages/orchestration/task_injection.py` raises `TaskInjectionError` for a record whose `expires_at` is missing or not a string, is not parseable by `datetime.fromisoformat`, or parses without a time zone, before any expiry comparison; `TestReadInjectionDraftUntrustedExpiry` in `tests/orchestration/test_task_injection.py`, landed at `a49858dd`, pins each of the four, and the reviewer's run of the round's mutation tool at `bdb65916` read its mutation m1, the missing expiry read as live, red on two of them.
++
++- R-1077 — Low, A CONFIRMED INJECTION FILE MISSING A FIELD THE APPLY READS CRASHES `run_job` INSTEAD OF BLOCKING IT. Raised by the planner and reviewer of F028's first session at round 2's gate. SEARCHED BEFORE MINTING (checklist item 30): the open set at `bdb65916` is R-1076 alone, a different defect, and `confirmed_injections` and `apply_injection_to_job` occur in this record only in round 2's gate entry above. MEASURED at `bdb65916`: `confirmed_injections` in `packages/orchestration/task_injection.py` checks only a string `draft_id` and a dict `task`, while `apply_injection_to_job` indexes `placement`, `task_rationale`, `actor`, `text` and `confirmed_at`, the last three after it has already appended the new entry to `job.tasks`; the reviewer's probe, a record lacking `text`, raised `KeyError: 'text'` with one task appended, and `_fold_task_injections` in `pingpong_job.py` catches only `TaskInjectionError` and `TaskInjectionRefused`, so the exception leaves `run_job` with the job still `running` on disk, where DECISION F028 D2 (3) and the fold's own docstring promise the blocked state `task_injection_control_error:`. WHY LOW: `confirm_task_injection` always writes every field, and the control directory is owner-only, so only a corrupted or hand-edited file reaches it. FIX: `confirmed_injections` raises `TaskInjectionError` for a record lacking any field `apply_injection_to_job` reads, with the type it needs, and `apply_injection_to_job` computes every value before it changes `job`, so a failure in it leaves the job untouched; a test pins a record lacking each field blocking the job with that prefix. Owner: F028.
