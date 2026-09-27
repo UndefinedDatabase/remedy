@@ -12,18 +12,17 @@ exists; and the live graph draws test-run, repair and prompt nodes
 
 ## Current Step
 
-ROUND 7, the closure sequence's first round: book round 6's PASS, add the
-closure's consolidation paragraph to the checklist, write the Built State,
-and generate and run the closure's self-use item to its approval gate.
+ROUND 8: book round 7's PASS, land the self-use item SU-034's reviewed
+diff, add the self-use run to the Built State, and run the one full suite
+of the closure.
 
 ## Next Steps
 
-1. Land the self-use item's reviewed diff and run the one full suite.
-2. Build the evidence bundle and the review package.
-3. Rotate the ledger, accept F288 in STATUS with its README pins, consume
+1. Build the evidence bundle and the review package.
+2. Rotate the ledger, accept F288 in STATUS with its README pins, consume
    the self-use item, and open the pull request.
 
 ## Risks
 
-The self-use run makes real provider calls within its default budget.
+A red suite is repaired under the shrinking rule before the evidence.
 Open findings: 0.
