@@ -12,17 +12,19 @@ the draft, with provenance end to end (`docs/roadmap/features/T5_F028.md`).
 
 ## Current Step
 
-ROUND 9: book round 8's PASS and resolve R-1079, and land the end-to-end
-proof — a task injected into a paused job through the live door and
-through `remedy job inject --yes`, run in the same job, its origin shown
-on the dashboard, in the stream and in the final report.
+ROUND 10, the closure sequence's first round: book round 9's PASS, add
+the closure's consolidation paragraph to the checklist, write the Built
+State, and generate and run the closure's self-use item to its approval
+gate.
 
 ## Next Steps
 
-1. The closure sequence: the checklist consolidation, the Built State,
-   the one full suite, the self-use item, the evidence bundle and the
-   review package, the ledger rotation, and the STATUS acceptance.
+1. Land the self-use item's reviewed diff and run the one full suite.
+2. Build the evidence bundle and the review package.
+3. Rotate the ledger, accept F028 in STATUS with its README pins, consume
+   the self-use item, and open the pull request.
 
 ## Risks
 
-None open beyond the closure's own. Open findings: 0.
+The self-use run makes real provider calls within its default budget.
+Open findings: 0.
