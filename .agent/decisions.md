@@ -23297,3 +23297,38 @@ appears there through the task data the chip reads in round 6.
 
 HOW TO REVERSE: remove the three ids, their payload checks and `_dispatch_injection`, the event
 and its two readers, and delete this paragraph.
+
+## DECISION F028 D6 — an injected task shows the words "Added by you" as a pill in its task-list row and in the detail popover's status row; the dashboard's task item carries `origin`; the browser's send module for the three injection commands lands before the Add Task sheet; the sheet, the canvas chip and the render proof take round 7 (2026-09-27)
+
+CONTEXT: T5_F028.md asks that the provenance `origin=human_injected` render as a chip in the graph
+and the task list. Measured at `d82a407c`: the dashboard's task items in
+`packages/orchestration/ui_server.py` carry nothing of a task entry's `inputs["plan"]`, so the
+browser cannot tell an injected task from a planned one; the only tests that pin a task item's
+keys check a subset; `RightLivePanel.module.css` already styles a small pill, `.decisionChip`, and
+`DetailPopover.module.css` a status-row pill, `.versionChip`, both from existing tokens;
+`docs/ui/design_reference/ux_spec.md` §17 forbids raw ids and metadata in the default view, so the
+chip speaks in words; the canvas draws one text chip per task node, F026's `v<n>`; and
+`apps/ui/vitest.config.ts` runs `.ts` tests in a node environment, so every rule a component
+follows lives in a pure module its tests can reach.
+
+CHOSEN: (1) THE DATA. Each dashboard task item gains `origin`, the entry's
+`inputs["plan"]["origin"]` or the empty string, and `RemedyTaskItem` gains `origin?: string`,
+mapped only when it is a non-empty string. (2) THE CHIP. A pure `taskOriginChip` in a new
+`apps/ui/src/api/injectView.ts` answers the words `Added by you` for the origin `human_injected`
+and nothing otherwise; the task-list row draws them as a pill after the task's label, styled as
+`.decisionChip` is, and the detail popover's status row as a pill beside the version chip, styled
+as `.versionChip` is, each with a title saying the task was added while the job ran. A pill is a
+word, not a colour, so the rule against colour-only state holds. (3) THE SEND MODULE. A new
+`apps/ui/src/api/injectSend.ts` builds, submits and describes the three door commands as
+`vetoSend.ts` does its one, with a draft deadline long enough for the planner's call and every
+refusal code worded as a sentence. (4) THE ORDER. Round 7 lands the Add Task row that opens a
+draft-and-confirm sheet in the right column, replacing the button that copies a command the
+catalog no longer carries, the canvas chip beside `v<n>`, and a headless render proof of all
+three surfaces; round 8 the end-to-end proof.
+
+ALTERNATIVES: a new state mark on the node, rejected because provenance is not a state and
+`assets_spec.md` reserves marks for states; showing the raw origin value, rejected by §17.
+
+HOW TO REVERSE: remove `origin` from the task item and the type, the two pills, `injectView.ts`
+and `injectSend.ts` with their tests, the assumption-log row naming this DECISION, and delete this
+paragraph.

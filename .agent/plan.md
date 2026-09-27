@@ -12,19 +12,19 @@ the draft, with provenance end to end (`docs/roadmap/features/T5_F028.md`).
 
 ## Current Step
 
-ROUND 5: book round 4's PASS and register R-1078, record DECISION F028
-D5, repair R-1078, and land the write door's three injection commands
-and the run-log event `task_injected` with its two readers.
+ROUND 6: book round 5's PASS and resolve R-1078, record DECISION F028
+D6, and land the task item's `origin`, the browser's send module for the
+three injection commands, and the "Added by you" pill in the task list
+and the detail popover.
 
 ## Next Steps
 
-1. The send module, the Add Task sheet in the right column, and the
-   provenance chip in the graph and the task list.
+1. The Add Task row and its draft-and-confirm sheet, the canvas chip,
+   and a headless render proof of the three surfaces.
 2. The end-to-end proof: inject mid-run, draft, confirm, execute, and
    the report shows the origin.
 3. The closure sequence.
 
 ## Risks
 
-A running job's record is written only by its runner. Open findings: 1
-(R-1078, Low, repaired this round).
+The planner's draft call can take tens of seconds. Open findings: 0.
