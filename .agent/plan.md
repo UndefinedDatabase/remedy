@@ -13,17 +13,16 @@ reply, and a note its task finished without reading is reported
 
 ## Current Step
 
-ROUND 3: book round 2's PASS, record DECISION F030 D3, and land T003's
-browser half — the stream carries a note's text, the feed shows it as
-the operator's own line, the input addresses the selected task, and the
-copy promises no conversation.
+ROUND 4: book round 3's PASS and land T003's end-to-end proof — a note
+sent through the write door while a task's build call is in flight
+reaches that task's next round, and a note whose task finishes first is
+reported as not taken in.
 
 ## Next Steps
 
-1. T003's end-to-end proof: a note sent through the door while a task
-   builds reaches its next round's trace, and the stream shows the note
-   before the task's next action.
-2. The closure sequence.
+1. The closure sequence: the Built State, the checklist consolidation,
+   the self-use item and the one full suite; then the evidence and the
+   review package; then the acceptance and the pull request.
 
 ## Risks
 
