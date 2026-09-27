@@ -2763,6 +2763,10 @@ UI_EXPOSED_COMMANDS: frozenset[str] = frozenset({
     "job.edit-task",
     # DECISION F027 D5: the task veto, through `task_veto.veto_task_command`.
     "job.veto-task",
+    # DECISION F028 D5: the task injection trio, through `_dispatch_injection`.
+    "job.inject",
+    "job.inject-confirm",
+    "job.inject-answer",
 })
 
 

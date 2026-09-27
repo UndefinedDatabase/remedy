@@ -2555,6 +2555,14 @@ COMMAND_TASK_VERSION_MESSAGE = (
 #: DECISION F027 D5: the write door's twin of `remedy job veto-task`.
 JOB_VETO_TASK_COMMAND_ID = "job.veto-task"
 
+#: DECISION F028 D5: the write door's twins of `remedy job inject`, `job inject-confirm`
+#: and `job inject-answer`.
+JOB_INJECT_COMMAND_ID = "job.inject"
+JOB_INJECT_CONFIRM_COMMAND_ID = "job.inject-confirm"
+JOB_INJECT_ANSWER_COMMAND_ID = "job.inject-answer"
+JOB_INJECT_COMMAND_IDS = frozenset(
+    {JOB_INJECT_COMMAND_ID, JOB_INJECT_CONFIRM_COMMAND_ID, JOB_INJECT_ANSWER_COMMAND_ID})
+
 #: DECISION F015 D3: the plan edit refusals, each with its status, its audit outcome and its
 #: message. The edit RAN and DECLINED for all but the argument refusals, which are shape
 #: errors on field `args`. A version conflict carries the current version, and every other
@@ -3111,6 +3119,37 @@ class _RemedyHandler(BaseHTTPRequestHandler):
             self._emit_command_accepted_event(str(job.job_id), accepted_body)
             self._send_json(200, accepted_body)
             return
+        # DECISION F028 D5 maps `job.inject`, `job.inject-confirm` and `job.inject-answer` to
+        # `_dispatch_injection`, run with this door's own token fingerprint as the actor.
+        # D18's order is unchanged: effect, then the audit line, then the publication. As
+        # `job.veto-task`'s branch above, the effect's own refusal `code` and `detail` ride
+        # on the wire — `_read_command_payload` already checked each command's own argument
+        # shapes before the job was read.
+        if payload["command"] in JOB_INJECT_COMMAND_IDS:
+            try:
+                accepted_body = self._dispatch_injection(job, payload)
+            except (OSError, RuntimeError, ValueError, TypeError):
+                # D18, clause four: an effect that RAISED is neither `accepted`,
+                # which would be false, nor unaudited, which would break D6.
+                self._audit_attempt(str(job.job_id), "rejected_effect", create=True,
+                                    payload=payload)
+                self._send_json(*_safe_error(500, COMMAND_EFFECT_FAILED_MESSAGE))
+                return
+            if accepted_body.get("outcome") == "refused":
+                self._audit_attempt(str(job.job_id), "rejected_state", create=True,
+                                    payload=payload)
+                self._send_json(*_safe_error(
+                    409, f"{accepted_body['code']}: {accepted_body['detail']}"))
+                return
+            # D18, clause three: both writes below fail SOFT. The injection is already
+            # durable, so refusing after the fact would report an injection that really
+            # was requested as one that was not.
+            self._audit_attempt(str(job.job_id), "accepted", create=True, payload=payload)
+            self._publish_command_result(str(job.job_id), payload["client_nonce"],
+                                         accepted_body)
+            self._emit_command_accepted_event(str(job.job_id), accepted_body)
+            self._send_json(200, accepted_body)
+            return
         # D5 maps `decision.resolve` to `answer_task_decision` followed by
         # `save_job`; DECISION F009 D21 rules that BOTH are the effect, because
         # the answer is durable only once `save_job` returns. D18's write order
@@ -3338,6 +3377,53 @@ class _RemedyHandler(BaseHTTPRequestHandler):
             job, task_id=args["task_id"], reason=args["reason"],
             actor=token_fingerprint(self._supplied_bearer_token()))
         return {"command": payload["command"], **result}
+
+    def _dispatch_injection(self, job: Any, payload: Any) -> dict[str, Any]:
+        """Run one of `job.inject`, `job.inject-confirm` or `job.inject-answer` and build
+        the body DECISION F028 D5 (1) rules for it.
+
+        None of the three effects ever raises for a refusal; each one's own `code` and
+        `detail` ride in the returned dict unchanged, exactly as `_dispatch_veto_task`'s
+        does. `job.inject` and `job.inject-answer` first read the job's budget state
+        through `injection_budget_inputs`, DECISION F028 D4 (3)'s shared helper — a
+        `TaskInjectionRefused` there is a refusal like any other, not a raised error.
+        `job.inject`'s `after` argument is resolved to a planned id by `resolve_after_ref`,
+        never by the command line's own resolver, which writes to the terminal.
+        """
+        from packages.orchestration.task_injection import (
+            TaskInjectionRefused,
+            answer_injection_shortfall,
+            confirm_task_injection,
+            draft_task_injection,
+            injection_budget_inputs,
+            injection_call_fn,
+            resolve_after_ref,
+        )
+
+        args = payload["args"]
+        command = payload["command"]
+        actor = token_fingerprint(self._supplied_bearer_token())
+
+        if command == JOB_INJECT_CONFIRM_COMMAND_ID:
+            result = confirm_task_injection(job, args["confirm_token"], actor=actor)
+            return {"command": command, **result}
+
+        try:
+            budgets, counters, config = injection_budget_inputs(job)
+        except TaskInjectionRefused as exc:
+            return {"command": command, "outcome": "refused", "code": exc.code,
+                    "detail": exc.detail}
+
+        if command == JOB_INJECT_COMMAND_ID:
+            result = draft_task_injection(
+                job, args["text"], call_fn=injection_call_fn(), budgets=budgets,
+                counters=counters, config=config, actor=actor,
+                after=resolve_after_ref(job, args.get("after")))
+        else:                                           # JOB_INJECT_ANSWER_COMMAND_ID
+            result = answer_injection_shortfall(
+                job, args["draft_id"], args["option"], actor=actor, budgets=budgets,
+                counters=counters, config=config)
+        return {"command": command, **result}
 
     def _dispatch_chat_send(self, job: Any, payload: Any) -> dict[str, Any] | None:
         """Record one steering message for the job. None means the job has ended.
@@ -3833,6 +3919,37 @@ class _RemedyHandler(BaseHTTPRequestHandler):
                 validate_veto_reason(args.get("reason"))
             except TaskVetoRefused as exc:
                 return None, _command_field_error("reason", exc.detail)
+        # DECISION F028 D5: an injection command names its own fields' shapes, refused
+        # BEFORE the job is read, for R-0685's reason above.
+        if command == JOB_INJECT_COMMAND_ID:
+            from packages.orchestration.task_injection import (
+                TaskInjectionRefused,
+                validate_injection_text,
+            )
+
+            try:
+                validate_injection_text(args.get("text"))
+            except TaskInjectionRefused as exc:
+                return None, _command_field_error("text", exc.detail)
+            after = args.get("after")
+            if after is not None and (not isinstance(after, str) or not after):
+                return None, _command_field_error(
+                    "after", "after must be a non-empty string when given")
+        if command == JOB_INJECT_CONFIRM_COMMAND_ID:
+            confirm_token = args.get("confirm_token")
+            if not isinstance(confirm_token, str) or not confirm_token:
+                return None, _command_field_error(
+                    "confirm_token", "confirm_token must be a non-empty string")
+        if command == JOB_INJECT_ANSWER_COMMAND_ID:
+            from packages.orchestration.task_injection import SHORTFALL_OPTIONS
+
+            draft_id = args.get("draft_id")
+            if not isinstance(draft_id, str) or not draft_id:
+                return None, _command_field_error(
+                    "draft_id", "draft_id must be a non-empty string")
+            if args.get("option") not in SHORTFALL_OPTIONS:
+                return None, _command_field_error(
+                    "option", f"option must be one of {', '.join(SHORTFALL_OPTIONS)}")
         # DECISION F015 D3: a plan edit names the version it was made against, as a whole
         # number, or it is a shape error refused before the plan is read.
         version = args.get("expected_version")

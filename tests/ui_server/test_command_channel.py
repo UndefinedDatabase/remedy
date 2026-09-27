@@ -437,7 +437,12 @@ class TestCommandChannelDoor:
         just requested is still pending when `job.unpause` runs, so THAT answers
         `withdrawn` rather than `not_paused`. `job.veto-task` built the same way
         names no task, which is a shape error on field `task_id` refused before
-        the job's tasks are read (DECISION F027 D5).
+        the job's tasks are read (DECISION F027 D5). `job.inject` built the same
+        way names no text, a shape error on field `text` (DECISION F028 D5).
+        `job.inject-confirm` built the same way names no confirm token, a shape
+        error on field `confirm_token` (DECISION F028 D5). `job.inject-answer`
+        built the same way names no draft id, a shape error on field `draft_id`
+        (DECISION F028 D5).
         """
         from apps.cli.command_catalog import UI_EXPOSED_COMMANDS
 
@@ -470,6 +475,18 @@ class TestCommandChannelDoor:
                 # DECISION F027 D5: a veto naming no task is a shape error.
                 assert status == 400, command_id
                 assert body["field"] == "task_id", command_id
+            elif command_id == "job.inject":
+                # DECISION F028 D5: an injection naming no text is a shape error.
+                assert status == 400, command_id
+                assert body["field"] == "text", command_id
+            elif command_id == "job.inject-confirm":
+                # DECISION F028 D5: a confirmation naming no token is a shape error.
+                assert status == 400, command_id
+                assert body["field"] == "confirm_token", command_id
+            elif command_id == "job.inject-answer":
+                # DECISION F028 D5: an answer naming no draft is a shape error.
+                assert status == 400, command_id
+                assert body["field"] == "draft_id", command_id
             else:
                 assert status == 409, command_id
                 assert body["error"] == declined[command_id], command_id
@@ -1549,6 +1566,7 @@ class TestCommandDoorImportGuard:
         "_dispatch_plan_edit",
         "_dispatch_edit_task",
         "_dispatch_veto_task",
+        "_dispatch_injection",
         "_publish_command_result",
         "_emit_command_accepted_event",
         "_audit_attempt",
@@ -1585,6 +1603,16 @@ class TestCommandDoorImportGuard:
          "consume_plan_approval"),                                  # F015 D2
         ("packages.orchestration.plan_editing", "edit_plan"),      # F015 D3
         ("packages.orchestration.task_edit_runtime", "edit_task_at_runtime"),  # F026 D2
+        ("packages.orchestration.task_injection", "TaskInjectionRefused"),      # F028 D5
+        ("packages.orchestration.task_injection",
+         "answer_injection_shortfall"),                                        # F028 D5
+        ("packages.orchestration.task_injection", "confirm_task_injection"),    # F028 D5
+        ("packages.orchestration.task_injection", "draft_task_injection"),      # F028 D5
+        ("packages.orchestration.task_injection", "injection_budget_inputs"),   # F028 D5
+        ("packages.orchestration.task_injection", "injection_call_fn"),         # F028 D5
+        ("packages.orchestration.task_injection", "resolve_after_ref"),         # F028 D5
+        ("packages.orchestration.task_injection", "validate_injection_text"),   # F028 D5
+        ("packages.orchestration.task_injection", "SHORTFALL_OPTIONS"),         # F028 D5
         ("packages.orchestration.task_veto", "veto_task_command"),      # F027 D5
         ("packages.orchestration.task_veto", "validate_veto_reason"),   # F027 D5
         ("packages.orchestration.task_veto", "TaskVetoRefused"),        # F027 D5
@@ -1851,7 +1879,8 @@ class TestUiExposedCommands:
         a name that must be re-read every time the set widens is the half nobody re-reads."""
         from apps.cli.command_catalog import UI_EXPOSED_COMMANDS
         assert sorted(UI_EXPOSED_COMMANDS) == [
-            "chat.send", "decision.resolve", "job.edit-task", "job.pause",
+            "chat.send", "decision.resolve", "job.edit-task", "job.inject",
+            "job.inject-answer", "job.inject-confirm", "job.pause",
             "job.plan-delete-task", "job.plan-edit-acceptance", "job.plan-edit-task",
             "job.plan-merge-tasks", "job.plan-reorder", "job.plan-split-task", "job.stop",
             "job.unpause", "job.veto-task", "patch.approve-hunks"]
