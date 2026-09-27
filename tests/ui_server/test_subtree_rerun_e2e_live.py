@@ -434,3 +434,69 @@ class TestSubtreeRerunE2ELive:
         assert c_line.endswith(f" — attempt 2, run on {MODEL_M}"), c_line
         a_line = next(line for line in lines if line.startswith(f"- `{a_id[:8]}`"))
         assert " — attempt" not in a_line, a_line
+
+    def test_the_command_line_path_reruns_with_yes(self, tmp_path, monkeypatch, capsys):
+        repo_root = Path(__file__).resolve().parents[2]
+        repo = _make_repo(tmp_path, "repo2")
+
+        data_dir = tmp_path / "remedy_data2"
+        data_dir.mkdir()
+
+        job_id = _save_approved_three_task_job(data_dir, repo)
+        env = dict(os.environ, REMEDY_DATA_DIR=str(data_dir), PYTHONPATH=str(repo_root))
+
+        # --- run 1: all three tasks, through the real CLI, as in (a) ---------
+        run1 = subprocess.run(
+            [sys.executable, "-m", "apps.cli.main", "job", "run", job_id,
+             "--builder-provider", "fake", "--reviewer-provider", "fake", "--tasks", "0"],
+            cwd=str(repo_root), env=env, capture_output=True, text=True, timeout=120)
+        assert run1.returncode == 0, f"run 1 exited {run1.returncode}: {run1.stderr}"
+
+        completed = _job_data(data_dir, job_id)
+        assert completed["status"] == "completed"
+        b_id = _by_planned(completed, "B")["task_id"]
+        c_id = _by_planned(completed, "C")["task_id"]
+
+        # --- the rerun, through `remedy job rerun-subtree --yes`, in this process
+        from apps.cli import grouped
+
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(data_dir))
+        try:
+            grouped.main(["job", "rerun-subtree", job_id, "B", "--model", MODEL_M2,
+                          "--yes", "--json"])
+        except SystemExit as exc:
+            raise AssertionError(f"job rerun-subtree --yes exited {exc.code}") from exc
+
+        stdout = capsys.readouterr().out
+        lines = [line for line in stdout.splitlines() if line.strip()]
+        assert len(lines) == 1, stdout
+        envelope = json.loads(lines[0])
+        assert envelope["ok"] is True, envelope
+        assert envelope["subtree"] == [b_id, c_id], envelope
+        assert envelope["model"]["override"] == MODEL_M2, envelope
+        assert envelope["run_command"] == f"remedy job run {job_id}", envelope
+
+        assert _job_data(data_dir, job_id)["status"] == "paused"
+
+        # --- run 2: uncapped, through the real CLI, folds the rerun -----------
+        run2 = subprocess.run(
+            [sys.executable, "-m", "apps.cli.main", "job", "run", job_id, "--tasks", "0"],
+            cwd=str(repo_root), env=env, capture_output=True, text=True, timeout=120)
+        assert run2.returncode == 0, f"run 2 exited {run2.returncode}: {run2.stderr}"
+
+        completed2 = _job_data(data_dir, job_id)
+        assert completed2["status"] == "completed"
+        new_b, new_c = (_by_planned(completed2, p) for p in ("B", "C"))
+        for entry in (new_b, new_c):
+            assert entry["status"] == "applied_to_job_workspace", entry
+            assert entry["attempt"] == 2, entry
+            assert len(entry["attempts"]) == 1, entry
+            assert entry["run_id"], entry
+            assert entry["model_override"] == MODEL_M2, entry
+
+        markdown = _report_markdown(repo_root, env, job_id)
+        lines_md = markdown.splitlines()
+        b_line = next(line for line in lines_md if line.startswith(f"- `{b_id[:8]}`"))
+        assert b_line.endswith(f" — attempt 2, run on {MODEL_M2}"), b_line
+        c_line = next(line for line in lines_md if line.startswith(f"- `{c_id[:8]}`"))
+        assert c_line.endswith(f" — attempt 2, run on {MODEL_M2}"), c_line
