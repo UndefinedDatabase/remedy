@@ -443,3 +443,216 @@ class TestSteering:
             own.build_ownership_ledger(job)
 
 
+# ---------------------------------------------------------------------------
+# (g) RUN LOG — job_paused, task_paused, job_resumed, task_resumed, job_stopped
+# ---------------------------------------------------------------------------
+
+
+class TestRunLog:
+    def test_job_paused_entry(self):
+        job = _job()
+        writer = RunLogWriter(job.job_id)
+        writer.log("job_paused", outcome="paused", scope="job", request_id="req-p1",
+                  reason="operator asked", source="cli", withheld_task_ids=["T1", "T2"],
+                  pending_task_count=2)
+
+        ledger = own.build_ownership_ledger(job)
+        [entry] = [e for e in ledger["entries"] if e["action"] == "job_paused"]
+        assert entry["record_ref"] == "job_paused:req-p1"
+        assert entry["task_id"] == ""
+        assert entry["text"] == "operator asked"
+        assert entry["actor"] == own.ownership_actor("cli")
+        assert entry["consequence"] == {
+            "kind": "withheld", "task_ids": ["T1", "T2"], "ref": ""}
+
+    def test_task_paused_entry(self):
+        job = _job(tasks=[_task_entry("T1")])
+        result = pc.pause_job_command(job, task_id="T1", reason="fix it", source="cli")
+        assert result["outcome"] == "paused"
+
+        ledger = own.build_ownership_ledger(job)
+        [entry] = [e for e in ledger["entries"] if e["action"] == "task_paused"]
+        assert entry["task_id"] == "T1"
+        assert entry["text"] == "fix it"
+        assert entry["actor"] == own.ownership_actor("cli")
+        assert entry["consequence"] == {"kind": "withheld", "task_ids": ["T1"], "ref": ""}
+
+    def test_job_resumed_entry_actor_has_no_door_and_names_the_pause_source_in_detail(self):
+        job = _job()
+        writer = RunLogWriter(job.job_id)
+        writer.log("job_resumed", outcome="resumed", scope="job", request_id="req-p1",
+                  reason="operator asked", source="cli", requested_at="2026-01-01T00:00:00+00:00",
+                  paused_at="2026-01-01T00:00:01+00:00", paused_task_ids=["T1"],
+                  withheld_task_ids=["T1", "T2"], resumed_at="2026-01-01T00:05:00+00:00")
+
+        ledger = own.build_ownership_ledger(job)
+        [entry] = [e for e in ledger["entries"] if e["action"] == "job_resumed"]
+        assert entry["task_id"] == ""
+        assert entry["text"] == ""
+        assert entry["actor"]["door"] == ""
+        assert entry["actor"]["recorded_as"] == ""
+        assert entry["consequence"] == {
+            "kind": "released", "task_ids": ["T1", "T2"], "ref": ""}
+        assert entry["detail"] == {"paused_by": "cli"}
+
+    def test_task_resumed_entry(self):
+        job = _job(tasks=[_task_entry("T1")])
+        pc.pause_job_command(job, task_id="T1", reason="fix it", source="cli")
+        result = pc.unpause_job_command(job, task_id="T1", source="cli")
+        assert result["outcome"] == "released"
+
+        ledger = own.build_ownership_ledger(job)
+        [entry] = [e for e in ledger["entries"] if e["action"] == "task_resumed"]
+        assert entry["task_id"] == "T1"
+        assert entry["actor"]["door"] == ""
+        assert entry["actor"]["recorded_as"] == ""
+        assert entry["consequence"] == {"kind": "released", "task_ids": ["T1"], "ref": ""}
+        assert entry["detail"] == {"paused_by": "cli"}
+
+    def test_job_stopped_entry(self):
+        job = _job()
+        writer = RunLogWriter(job.job_id)
+        writer.log("job_stopped", task_id=None, outcome="stopped", request_id="req-s1",
+                  reason="operator stop", source="cli",
+                  requested_at="2026-01-01T00:00:00+00:00",
+                  consumed_at="2026-01-01T00:00:05+00:00", completed_task_count=0,
+                  pending_task_count=1, postmortem_ref="evidence/postmortem.json")
+
+        ledger = own.build_ownership_ledger(job)
+        [entry] = [e for e in ledger["entries"] if e["action"] == "job_stopped"]
+        assert entry["record_ref"] == "job_stopped:req-s1"
+        assert entry["ts"] == "2026-01-01T00:00:00+00:00"
+        assert entry["task_id"] == ""
+        assert entry["text"] == "operator stop"
+        assert entry["actor"] == own.ownership_actor("cli")
+        assert entry["consequence"] == {
+            "kind": "stopped", "task_ids": [], "ref": "evidence/postmortem.json"}
+
+    def test_a_pause_event_written_twice_for_one_request_id_yields_one_entry(self):
+        job = _job()
+        writer = RunLogWriter(job.job_id)
+        for _ in range(2):
+            writer.log("job_paused", outcome="paused", scope="job", request_id="req-dup",
+                      reason="operator asked", source="cli", withheld_task_ids=[],
+                      pending_task_count=0)
+
+        ledger = own.build_ownership_ledger(job)
+        entries = [e for e in ledger["entries"] if e["action"] == "job_paused"]
+        assert len(entries) == 1
+
+
+# ---------------------------------------------------------------------------
+# S2 — the actor's door mapping
+# ---------------------------------------------------------------------------
+
+
+class TestActorDoorMapping:
+    @pytest.mark.parametrize("recorded_as,door", [
+        ("cli", "cli"),
+        ("tf:0123456789abcdef", "browser"),
+        ("cockpit", "browser"),
+        ("ui", "browser"),
+        ("batch", ""),
+    ])
+    def test_door_mapping(self, recorded_as, door):
+        assert own.ownership_actor(recorded_as)["door"] == door
+
+    def test_an_unknown_kind_raises(self):
+        with pytest.raises(own.OwnershipError):
+            own.ownership_actor("alice", kind="astronaut")
+
+
+# ---------------------------------------------------------------------------
+# S5 — token numbering and sort order
+# ---------------------------------------------------------------------------
+
+
+class TestTokenNumbering:
+    def test_fingerprints_numbered_by_first_appearance_not_text_order(self):
+        job = _job()
+        tv.record_veto_answer(job.job_id, "req-z", "T1", tv.REPLAN_FOLLOW_UP,
+                              "tf:zzzzzzzzzzzzzzzz", "")
+        tv.record_veto_answer(job.job_id, "req-a", "T2", tv.ACCEPT_REDUCED_SCOPE,
+                              "tf:aaaaaaaaaaaaaaaa", "")
+        tv.record_veto_answer(job.job_id, "req-c", "T3", tv.REPLAN_FOLLOW_UP, "cli", "")
+        # Fix the timestamps directly on the written files: the order below (z before a) is
+        # what "by first appearance, not text order" is testing, and it must not depend on
+        # how fast three real-clock calls happen to land.
+        _patch_json(_veto_answer_path(job.job_id, "req-z"),
+                   answered_at="2026-01-01T00:00:01+00:00")
+        _patch_json(_veto_answer_path(job.job_id, "req-a"),
+                   answered_at="2026-01-01T00:00:02+00:00")
+        _patch_json(_veto_answer_path(job.job_id, "req-c"),
+                   answered_at="2026-01-01T00:00:03+00:00")
+
+        ledger = own.build_ownership_ledger(job)
+        by_actor = {e["actor"]["recorded_as"]: e["actor"]["token_number"]
+                   for e in ledger["entries"]}
+        assert by_actor["tf:zzzzzzzzzzzzzzzz"] == 1
+        assert by_actor["tf:aaaaaaaaaaaaaaaa"] == 2
+        assert by_actor["cli"] == 0
+
+
+class TestSortOrder:
+    def test_an_entry_with_empty_ts_sorts_after_every_dated_one(self):
+        job = _job()
+        tv.record_veto_answer(job.job_id, "req-dated", "T1", tv.REPLAN_FOLLOW_UP, "alice", "")
+        tv.record_veto_answer(job.job_id, "req-timeless", "T2", tv.ACCEPT_REDUCED_SCOPE,
+                              "bob", "")
+        _patch_json(_veto_answer_path(job.job_id, "req-dated"),
+                   answered_at="2026-01-01T00:00:00+00:00")
+        _patch_json(_veto_answer_path(job.job_id, "req-timeless"), answered_at="")
+
+        ledger = own.build_ownership_ledger(job)
+        refs = [e["record_ref"] for e in ledger["entries"]]
+        assert refs[-1] == "veto_answer:req-timeless"
+        assert refs[0] == "veto_answer:req-dated"
+
+
+# ---------------------------------------------------------------------------
+# S3 — ownership_entry_problems, direct
+# ---------------------------------------------------------------------------
+
+
+class TestOwnershipEntryProblems:
+    def _sound_entry(self) -> dict:
+        return {
+            "record_ref": "veto:req-1", "ts": "2026-01-01T00:00:00+00:00",
+            "actor": own.ownership_actor("alice"), "action": "task_vetoed", "task_id": "T1",
+            "text": "reason", "consequence": {"kind": "unreachable", "task_ids": [], "ref": ""},
+            "detail": {},
+        }
+
+    def test_a_sound_entry_answers_empty(self):
+        assert own.ownership_entry_problems(self._sound_entry()) == []
+
+    def test_a_missing_key_is_reported(self):
+        entry = self._sound_entry()
+        del entry["text"]
+        problems = own.ownership_entry_problems(entry)
+        assert any("text" in p for p in problems)
+
+    def test_an_actor_kind_outside_actor_kinds_is_reported(self):
+        entry = self._sound_entry()
+        entry["actor"] = {**entry["actor"], "kind": "astronaut"}
+        problems = own.ownership_entry_problems(entry)
+        assert any("kind" in p for p in problems)
+
+
+# ---------------------------------------------------------------------------
+# S5 — idempotence
+# ---------------------------------------------------------------------------
+
+
+class TestIdempotence:
+    def test_two_builds_over_the_same_records_are_equal(self):
+        job = _job(tasks=_two_task_chain())
+        tv.record_task_veto(job.job_id, "T1", "risky", "alice", pj.TASK_PENDING)
+        pj._fold_task_vetoes(job, None, None)
+        tv.record_veto_answer(job.job_id, "req-1", "T1", tv.REPLAN_FOLLOW_UP, "alice", "")
+        st.record_steering_message(job.job_id, "note", job_state="running", channel="cli",
+                                   task_id="T1")
+
+        first = own.build_ownership_ledger(job)
+        second = own.build_ownership_ledger(job)
+        assert first == second
