@@ -1,0 +1,30 @@
+repo root: /home/decodeux/Repos/remedy
+work dir: /home/decodeux/Repos/remedy/.remedy-wt/f288-render-run
++ vite build
+vite v6.4.2 building for production...
+transforming...
+✓ 1084 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                   0.32 kB │ gzip:   0.23 kB
+dist/assets/index-B-CcTc9t.css    4.21 kB │ gzip:   1.52 kB
+dist/assets/index-C7P171Qh.js   429.00 kB │ gzip: 137.73 kB
+✓ built in 1.44s
+
+server pid: 1388422
+chrome pid: 1388447
++ node drive.mjs
+PASS C-a four synapse nodes and four list buttons
+PASS C-b nav at most 1x1 before any key
+PASS C-c Tab focuses the first list button
+PASS C-d nav wider and taller than 40px while focused
+PASS C-e Enter selects the first prompt and presses its button
+PASS C-f Tab then Space select the second prompt
+SCREENSHOT before /home/decodeux/Repos/remedy/.remedy-wt/f288-r6-worker/render-before.png 222761 bytes
+SCREENSHOT after /home/decodeux/Repos/remedy/.remedy-wt/f288-r6-worker/render-after.png 231272 bytes
+RENDER: 6 of 6 checks pass
+
+chrome pid 1388447 stopped (SIGTERM)
+server pid 1388422 stopped (SIGTERM)
+removed work dir: /home/decodeux/Repos/remedy/.remedy-wt/f288-render-run
+drive.mjs exit code: 0
