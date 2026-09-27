@@ -1,0 +1,71 @@
+diff --git a/.agent/decisions.md b/.agent/decisions.md
+index dad3a01ec..dff03931a 100644
+--- a/.agent/decisions.md
++++ b/.agent/decisions.md
+@@ -23256,3 +23256,44 @@ limit the operator set is exactly what the shortfall seed exists to stop.
+ HOW TO REVERSE: remove the three commands, their catalog entries and exit-code rows,
+ `injection_budget_inputs`, `injection_call_fn` and `unseen`, restore the seed's amount in
+ `extend_budget`, and delete this paragraph.
++
++## DECISION F028 D5 — the browser reaches an injection through the write door's three commands `job.inject`, `job.inject-confirm` and `job.inject-answer`, one dispatch method for the three; a fold writes the run-log event `task_injected` after the record is saved; the send module, the Add Task sheet and the provenance chip take round 6 (2026-09-27)
++
++CONTEXT: T5_F028.md asks that the Add Task button be real additive control and that a
++provenance chip show an injected task in the graph and the task list. Measured at `6814c686`: the
++write door in `packages/orchestration/ui_server.py` exposes exactly the ids of `UI_EXPOSED_COMMANDS`
++in `apps/cli/command_catalog.py`, each id a catalog command of the same name, and checks each
++command's arguments in `_read_command_payload` before the job is read; `job.veto-task`'s branch
++puts a refusal's own code and detail on the wire as a 409; the door's imports are pinned by exact
++equality in `tests/ui_server/test_command_channel.py`, and so is the exposed set; a run-log event
++name must be declared in `EVENT_NAMES` and carried by `STREAM_EVENT_CATALOG`, both by set
++equality, while no other reader of the stream is forced to know every name; the fold writes no
++event.
++
++CHOSEN: (1) THE DOOR. The three ids join `UI_EXPOSED_COMMANDS`. `_read_command_payload` refuses
++before the job is read: for `job.inject` a text `validate_injection_text` refuses (field `text`)
++and an `after` that is present but not a non-empty string (field `after`); for
++`job.inject-confirm` a `confirm_token` that is not a non-empty string (field `confirm_token`); for
++`job.inject-answer` a `draft_id` that is not a non-empty string (field `draft_id`) and an `option`
++outside `SHORTFALL_OPTIONS` (field `option`). One method, `_dispatch_injection`, runs the three
++effects with the door's token fingerprint as the actor, through the two helpers of DECISION F028
++D4 (3); a budget it cannot read is a refusal like any other. A refusal is a 409 carrying its code
++and detail, as the veto's is; success is a 200 carrying the answer. `after` names a task by its
++planned id or by its own id in the job, resolved by a helper of `task_injection.py` the door
++shares, never by the command line's own resolver, which writes to the terminal. (2) THE EVENT.
++After `_fold_task_injections` saves the record, it writes one `task_injected` event per record it
++folded, outcome `applied` with the entry's task id or `inert` with the reason, through the job's
++run log; writing after the save means a crash between the two loses the event and never
++duplicates it. (3) THE ORDER. Round 6 lands the send module, the Add Task sheet in the right
++column and the provenance chip; round 7 the end-to-end proof.
++
++ALTERNATIVES: one door command whose payload chooses the step, rejected because every other door
++id is a catalog command of the same name and the door's guards are written per id; an event per
++confirmation instead of per fold, rejected because a confirmation is not yet a change to the job,
++and the stream describes the job.
++
++DELIBERATE ABSENCES: the live graph's reducer does not read `task_injected`; the injected task
++appears there through the task data the chip reads in round 6.
++
++HOW TO REVERSE: remove the three ids, their payload checks and `_dispatch_injection`, the event
++and its two readers, and delete this paragraph.
+diff --git a/.agent/live_review.md b/.agent/live_review.md
+index 5871aad06..4d103ca90 100644
+--- a/.agent/live_review.md
++++ b/.agent/live_review.md
+@@ -438,3 +438,7 @@ Done: R-1076 — at `3e9b7afa` `read_injection_draft` in `packages/orchestration
+ Gate: F028 R3 — the F028 round 3 entry: the booking of round 2, R-1076's resolution and R-1077's registration, DECISION F028 D3, R-1077's repair, and the second half of T002 — the shortfall seed's three answers, its labels as a mapping of sentences, and the budget extension from the answer through the fold to the running job. VERDICT PASS. Re-derived over `bdb65916`..`aa38800a` by the planner and reviewer of F028's first session, whose own runs produced every reading below. THE RANGE IS 7 COMMITS, at `1ce00681` 357, `ebb4b485` 60, `4f4460b2` 334, `31047564` 29, `f564160f` 474, `d862e2a4` 248 and `aa38800a` 359 insertions by `git show --numstat`, each under the 500-line cap, each single-parent and each ending with the ordered trailer; the tracked path set equals the block's constraint 3. The worker declared that the edit log's `injection` block gains `budget_extend_to_usd` only when the record carries the key, which every confirmation `confirm_task_injection` writes does, so round 2's own test of a hand-built record stays as it was; the reviewer accepts it. THE TRANSPORT PROOF: the block copy and the two payload copies, read at `1ce00681`, equal the reviewer's originals byte for byte, and at `ebb4b485` the ledger, the decisions and the plan equal the reviewer's simulation tree byte for byte, the open set reading `R-1076` at `bdb65916` and `R-1077` at `ebb4b485`. THE CODE: the reviewer read the diff of `task_injection.py` and `pingpong_job.py` whole: the four fold points call `_fold_injections_here`, which re-binds `_job_budgets` when the fold changed `job.budgets`, and `apply_injection_to_job` changes `job` only in its last statements. One reading of the reviewer's own DECISION F028 D3 goes to round 4's DECISION F028 D4: the extension's amount is the seed's, computed when the draft was made, so spend between the draft and the answer can leave the raised limit short and the job stops at the injected task's safe point, which is safe but not what the operator chose. THE TESTS: the reviewer's own serial run of the round's selection in the primary checkout at `aa38800a` read 1644 passed and 7 skipped at real exit code 0, the base's 1593 plus the 51 nodes the round added; `python3 -m ruff check` over the four touched Python files passed; all six `integrity check` checks read `pass`. THE RED PROOFS: the reviewer ran the committed `.agent/authored/f028-r3-mutations.py` itself in a disposable worktree at `aa38800a`: both unmutated controls exit 0, all eleven mutations exit 1 with at least one failing node each, and both files are restored byte-identical; the worktree was removed.
+ 
+ Done: R-1077 — at `4f4460b2` `confirmed_injections` in `packages/orchestration/task_injection.py` passes every record through `_validate_confirmed_record`, which raises `TaskInjectionError` for a missing or mistyped `draft_id`, `task`, `placement` with its `rationale` and `basis`, `task_rationale`, `text`, `actor`, `confirmed_at`, or a `budget_extend_to_usd` that is neither None nor a number above zero, and `apply_injection_to_job` computes every value before its last statements change `job`; tests landed at `f564160f` pin each field and a job left equal to its deep copy, and `tests/orchestration/test_task_injection_runner.py` pins a confirmation file lacking `text` blocking the job with the `task_injection_control_error:` prefix. The reviewer's run of the round's mutation tool at `aa38800a` read its mutation m1, a record lacking `text` accepted, red on three nodes.
++
++Gate: F028 R4 — the F028 round 4 entry: the booking of round 3 and R-1077's resolution, DECISION F028 D4, and the command line — `remedy job inject`, `job inject-confirm` and `job inject-answer`, the `--yes` audit mark, the shared budget and planner helpers, and the extension's amount computed at answer time. VERDICT PASS. Re-derived over `aa38800a`..`6814c686` by the planner and reviewer of F028's first session, whose own runs produced every reading below. THE RANGE IS 7 COMMITS, at `c048626e` 355, `d39fe3de` 54, `58d2fc6f` 82, `c7797dcc` 340, `10e853b8` 479, `604d26fe` 205 and `6814c686` 377 insertions by `git show --numstat`, each under the 500-line cap, each single-parent and each ending with the ordered trailer; the tracked path set equals the block's constraint 3. The worker declared two deviations that are the block's own omissions and are recorded in `.agent/prose_slips.md`: S4's `emit_ok(job_id=job_id, **answer)` collides with the `job_id` every answer already carries, and S1's new `confirmed_unseen` key changes the exact dictionary round 2's `test_appends_provenance_bumps_version_and_reseals_an_approved_hash` pins, an edit the block never ordered; the worker's repairs of both are correct and weaken nothing. THE TRANSPORT PROOF: the block copy and the two payload copies, read at `c048626e`, equal the reviewer's originals byte for byte, and at `d39fe3de` the ledger, the decisions and the plan equal the reviewer's simulation tree byte for byte, the open set reading `R-1077` at `aa38800a` and empty at `d39fe3de`. THE CODE: the reviewer read `apps/cli/commands/job_inject_cmd.py` whole and the diff of `task_injection.py`, the catalog, `apps/cli/commands/__init__.py`, `docs/guides/exit-codes.md` and the reachability list; every guard the reviewer's stub probe named moved as measured. R-1078 below is the one reading that goes to round 5. THE TESTS: the reviewer's own serial run of the round's selection in the primary checkout at `6814c686` read 1605 passed and 7 skipped at real exit code 0, the base's 1563 plus the 42 nodes the round added; `python3 -m ruff check` over the six touched Python files passed; all six `integrity check` checks read `pass`. THE RED PROOFS: the reviewer ran the committed `.agent/authored/f028-r4-mutations.py` itself in a disposable worktree at `6814c686`: both unmutated controls exit 0, all ten mutations exit 1 with at least one failing node each, and both files are restored byte-identical; the worktree was removed.
++
++- R-1078 — Low, `remedy job inject --yes --json` OVER A SHORTFALL WRITES TWO JSON DOCUMENTS. Raised by the planner and reviewer of F028's first session at round 4's gate. SEARCHED BEFORE MINTING (checklist item 30): the open set at `6814c686` is empty, and `emit_ok` and `draft_needs_decision` occur in this record only in round 4's gate entry above. MEASURED at `6814c686`: `_cmd_inject` in `apps/cli/commands/job_inject_cmd.py`, for a shortfall draft under `--yes` with `--json`, calls `emit_ok(**answer)` and then `fail("draft_needs_decision", ...)`; the reviewer's probe, driving `apps.cli.grouped.main` over a running job whose budget inputs give a shortfall, read exit code 3 and two JSON documents on stdout, the first `ok` true and the second an error, while a `--json` command answers one envelope that a script can parse. WHY LOW: the exit code is right and the human output is right; only a caller parsing `--json` under `--yes` meets it. FIX: under `--json` that path emits only `fail`'s envelope, carrying the draft id, the decision seed and the budget check as its payload, and a test parses stdout as exactly one JSON document. Owner: F028.
+diff --git a/.agent/prose_slips.md b/.agent/prose_slips.md
+index 0043c643f..9206f5494 100644
+--- a/.agent/prose_slips.md
++++ b/.agent/prose_slips.md
+@@ -1125,3 +1125,5 @@
+ 2026-09-27, F288 round 1 — THE TESTS of the block ordered the job-runner test's `run_pingpong` stand-in monkeypatched onto `packages.orchestration.pingpong_job`, while `run_job` imports `run_pingpong` inside its body, so a stand-in must replace it on `packages.orchestration.pingpong_loop`, as every existing stand-in in that test file does; the worker followed the file and declared it.
+ 2026-09-27, F288 round 3 — the block ordered the demo recording captured again and every row widened by two fields, and constraint 3's path set named the recording's own golden and live test but none of the four other vitest files that import the recording or compare parsed rows, so round 3 ended red on them and round 4 repairs them under DECISION F288 D4; a `grep` for the recording's module name and its exported constants across `apps/ui/src` and `tests` at authoring time would have listed every one of them.
+ 2026-09-27, F028 round 1 — the block sized neither C3 nor C4 against the 500-line cap, so the worker split both under constraint 2 and the `ALLOWED_UNWIRED` line C3 ordered landed in C3b, leaving the module an orphan at `a6128ea8`; a block that orders a new module sizes it and names which part carries its guard entry.
++2026-09-27, F028 round 4 — S4 ordered `emit_ok(job_id=job_id, **answer)` over answers that already carry `job_id`, a keyword collision the worker caught in self-review and repaired as `emit_ok(**answer)`.
++2026-09-27, F028 round 4 — S1 made `confirmed_unseen` a key of every `injection` block while round 2's `test_appends_provenance_bumps_version_and_reseals_an_approved_hash` pins that block by exact equality, and constraint 4 forbade editing a test the round had not written; the block never read the tests that pin the dictionary it widened, and the worker added the key and declared it.
