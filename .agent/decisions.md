@@ -23670,3 +23670,44 @@ reads the chip without a legend.
 HOW TO REVERSE: delete `TaskAttemptList.tsx`, its mount and its view module, the `attempt` part of
 `taskChipOf` and its seed thread, the two assumption-log rows naming this decision, and delete this
 paragraph.
+
+## DECISION F029 D6 — the run detail's Rerun button becomes real: it sends `job.rerun-subtree` for the run's task, shows a cost the preview would ask about as one sentence with "Rerun anyway" and "Cancel", takes an optional model, and answers a prepared rerun with the command that runs it; the final report names a task's attempt and its override; the end-to-end proof takes round 7 (2026-09-27)
+
+CONTEXT: measured at `4295d0dc`. `RunDetailPopover.tsx`, the L2 run detail, carries a Rerun button
+disabled with `RERUN_NOT_YET`, which `tests/ui_contracts/test_run_detail_wiring.py` pins, and it
+already holds the job id and the page's server token; it is not a dialog, because Escape walks the
+zoom back (DECISION F023 D4). The door's `job.rerun-subtree` answers `needs_confirmation` with an
+estimate, `prepared` with the record and `run_command`, or a 409 `<code>: <detail>` whose detail is
+already a plain sentence (DECISION F029 D4). `injectSend.ts` and `vetoSend.ts` are how the browser
+sends a door command: pure request builders, one submit that reads the body, one describe that
+answers a sentence, composed from `pauseSend.ts` and `decisionAnswer.ts`. `run_report.py` renders a
+task line of the final report and appends `_origin_clause` for an injected task (DECISION F028 D8),
+byte-identical otherwise.
+
+CHOSEN: (1) THE SEND. A new `rerunSend.ts`, composed as `injectSend.ts` is, builds the request —
+`task_id` always, `model` only when a non-blank one is given, `confirm_cost` only when true —
+submits it, and describes the result; a refusal's sentence is the detail after the code's prefix,
+verbatim. (2) THE WORDS. A new `rerunView.ts` answers the sentences: for `needs_confirmation`, the
+estimate as a range of dollars and the threshold, or that the cost cannot be estimated in advance;
+for `prepared`, how many tasks were reset and the command that runs them with the job's real id.
+(3) THE CONTROL. The Rerun button is enabled whenever the page holds a server token, and otherwise
+disabled with the reason "Rerunning needs the live page's server token."; beside it an optional
+text field "Model for the rerun (optional)"; a click sends without `confirm_cost`; a
+`needs_confirmation` answer shows its sentence with "Rerun anyway", which sends again with
+`confirm_cost`, and "Cancel"; every result sentence goes into one `<p aria-live="polite">`. The
+detail stays a non-dialog panel. `RERUN_NOT_YET` is deleted with the disabled button it explained,
+and the pin that read it is rewritten to the new behaviour. (4) THE REPORT. A task line whose task
+is on its second or later attempt ends with ` — attempt <n>`, and with `, run on <model>` when the
+attempt carries an override; a report of a job with no rerun stays byte-identical. (5) The control
+takes one row of `docs/ui/design_reference/assumption_log.md`. (6) Round 7 lands the end-to-end
+proof.
+
+ALTERNATIVES: a sheet like the Add Task sheet, rejected because the run detail is where the
+feature file places the rerun and one sentence with two buttons is all the preview needs; opening
+the confirmation as a dialog, rejected because the detail's Escape must keep walking the zoom back;
+putting the model choice behind a list of known models, rejected because no list of the operator's
+models exists and the server already refuses a malformed name.
+
+HOW TO REVERSE: delete `rerunSend.ts`, `rerunView.ts`, the report's attempt clause and the control,
+restore the disabled button with `RERUN_NOT_YET` and its pin, delete the assumption-log row naming
+this decision, and delete this paragraph.

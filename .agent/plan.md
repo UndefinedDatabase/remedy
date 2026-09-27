@@ -14,21 +14,19 @@ with a model override that the evidence records
 
 ## Current Step
 
-ROUND 5: book round 4's PASS and its prose slip, record DECISION F029 D5
-with its two assumption-log rows, and land T003's display half — the
-task item's attempts in the browser's types, the `attempt <n>` chip on
-the canvas, and the Attempts list in the task's detail popover.
+ROUND 6: book round 5's PASS, record DECISION F029 D6 with its
+assumption-log row, and land T003's control half — the send module and
+the sentences for `job.rerun-subtree`, the Rerun control in the run
+detail with its cost confirmation and optional model, and the final
+report naming a task's attempt and its override.
 
 ## Next Steps
 
-1. The review of round 5, with the reviewer's headless render of the
-   chip and the Attempts list.
-2. T003's control half: the Rerun control in place of the disabled
-   button, the send module for `job.rerun-subtree` with its cost
-   confirmation, and the report naming an override.
-3. T003's end-to-end proof — run, rerun a middle task with an override,
+1. The review of round 6, with the reviewer's headless render of the
+   Rerun control.
+2. T003's end-to-end proof — run, rerun a middle task with an override,
    the subtree runs again, both attempts in the evidence.
-4. The closure sequence.
+3. The closure sequence.
 
 ## Risks
 
