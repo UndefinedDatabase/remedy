@@ -1,0 +1,5 @@
+Entry ID: SU-034
+Entry Title: Fix stale documentation: config_cli_table_complete in docs/guides/remedy-toml-user-guide.md
+Entry Provenance: generated (self-use-generator tier 2, doc staleness, config_cli_table_complete:docs/guides/remedy-toml-user-guide.md:the CLI commands table never documents the `config` subcommand `show`)
+Entry Consumed By: 
+Job File Path: /home/decodeux/Repos/remedy/.remedy-wt/f288-r7-selfuse/SU-034.md

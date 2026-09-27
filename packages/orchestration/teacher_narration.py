@@ -45,16 +45,22 @@ UNKNOWN_FIELD = "unknown"
 #: then the same name in ``metadata``. Adding an entry here is
 #: the only way to narrate a new event: that is the point of the enumeration.
 #: R-0812: the unified job path (`run_job`) writes task_run_started,
-#: task_round_completed, task_run_completed / task_run_failed, budget.tick and
-#: job_stopped; the cockpit writes command.accepted into the same log.
+#: task_round_repaired, task_round_tested, task_round_completed,
+#: task_run_completed / task_run_failed, budget.tick and job_stopped; the
+#: cockpit writes command.accepted into the same log.
 NARRATED_EVENTS: dict[str, str] = {
     "job_created": "The job was created.",
     "command.accepted": "The cockpit accepted a command: {command}",
     "planning_started": "Planning started.",
     "planning_completed": "Planning finished and produced a task list.",
+    "plan_approved": "The plan was approved (mode: {approval_mode}).",
     "planning_failed": "Planning failed: {message}",
     "workspace_materialized": "The workspace was prepared for this run.",
     "task_run_started": "A task started: {task_id}",
+    "task_round_repaired": ("A repair round finished: task {task_id}, round {round_number} "
+                            "(result: {outcome})"),
+    "task_round_tested": ("A round's tests finished: task {task_id}, round {round_number} "
+                          "(result: {outcome})"),
     "task_round_completed": ("A review round finished: task {task_id}, round {round_number} "
                              "(verdict: {outcome})"),
     "budget.tick": ("The budget was checked at a safe point: {spent_tokens} measured tokens "

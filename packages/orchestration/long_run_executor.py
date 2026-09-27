@@ -1239,7 +1239,9 @@ def _run_repair_rounds(job: JobPlan, cycle_index: int, outcome: VerifyOutcome, *
               cycle_index=cycle_index, repair_round=rounds,
               failing_test_ids=list(outcome.failing_test_ids),
               changed_files=list(repair.changed_files),
-              stop_reason=repair.stop_reason)
+              stop_reason=repair.stop_reason,
+              attempt_id=f"cycle-{cycle_index}",
+              outcome="changed" if repair.changed_files else "unchanged")
 
         outcome = as_verify_outcome(
             verify_step(job, cycle_index, limits.verify_command))
@@ -1250,7 +1252,9 @@ def _run_repair_rounds(job: JobPlan, cycle_index: int, outcome: VerifyOutcome, *
             _emit(log, LEDGER_EVENT_CYCLE_HEALED,
                   cycle_index=cycle_index, repair_rounds_used=rounds,
                   healed_without_changes=phase.healed_without_changes,
-                  summary=phase.summary)
+                  summary=phase.summary,
+                  attempt_id=f"cycle-{cycle_index}",
+                  outcome="healed")
             return phase
 
     return RepairPhase(outcome=outcome, rounds_used=rounds, errors=tuple(errors))
@@ -1760,7 +1764,8 @@ process left (F047).  ``max_cycles`` still bounds this invocation only.
             if record_checkpoint:
                 _write_cycle_checkpoint(job, record, limits, blocked_ids=blocked_ids,
                                         awaiting_ids=awaiting_ids)
-            _emit(log, LEDGER_EVENT_CYCLE_COMPLETED, **record.to_json())
+            _emit(log, LEDGER_EVENT_CYCLE_COMPLETED, **record.to_json(),
+                  attempt_id=f"cycle-{cycle_index}", outcome=record.verify_result)
 
             # F052: a stop observed BETWEEN two repair rounds ends the run — but only
             # after this cycle's evidence is on disk.  The rounds already spent are

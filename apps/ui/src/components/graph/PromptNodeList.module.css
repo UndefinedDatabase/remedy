@@ -1,0 +1,70 @@
+/* DECISION F288 D6, graph_spec.md §14 — the canvas is hidden from
+   assistive tech, so this list is the live picture's accessible surface
+   for its prompt nodes. Visually hidden — one pixel, clipped, out of the
+   flow, never taken out of the tab order by either of the two CSS
+   properties that would do that — until an element inside it holds focus,
+   when it is shown as a small panel over the stage's top-left corner,
+   above the canvas, styled from the design tokens only. */
+.nav {
+  position: absolute;
+  left: 18px;
+  top: 16px;
+  z-index: var(--remedy-z-stage-ui);
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+
+.nav:focus-within {
+  width: auto;
+  height: auto;
+  max-width: calc(100% - 36px);
+  overflow: visible;
+  clip-path: none;
+  padding: 8px 10px;
+  border-radius: var(--remedy-radius-md);
+  background: var(--remedy-glass-bg-strong);
+  border: 1px solid var(--remedy-glass-border);
+  box-shadow: var(--remedy-shadow-soft);
+  font-family: var(--remedy-font-ui);
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.item {
+  display: block;
+}
+
+.button {
+  display: block;
+  width: 100%;
+  padding: 4px 10px;
+  border: 1px solid transparent;
+  border-radius: var(--remedy-radius-sm);
+  background: transparent;
+  color: var(--remedy-ink);
+  font: inherit;
+  font-size: 13px;
+  text-align: left;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.button:hover {
+  background: var(--remedy-blue-50);
+}
+.button:focus-visible {
+  outline: 2px solid var(--remedy-blue-strong);
+  outline-offset: 1px;
+}
+.button[aria-pressed="true"] {
+  border-color: var(--remedy-blue-strong);
+  font-weight: 600;
+}

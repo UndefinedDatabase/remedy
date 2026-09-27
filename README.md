@@ -26,7 +26,7 @@ verification commands. If something is unproven, Remedy says so instead of guess
 
 ## Status
 
-107 of 289 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
+108 of 289 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
 
 | Tier | Name | Done | Total |
 |------|------|-----:|------:|
@@ -35,7 +35,7 @@ verification commands. If something is unproven, Remedy says so instead of guess
 | 2 | Minimal Self-Build Runtime | 38 | 39 |
 | 3 | Full Token Economy & Autonomy | 6 | 27 |
 | 4 | Memory & Learning | 1 | 17 |
-| 5 | Operator Cockpit | 24 | 36 |
+| 5 | Operator Cockpit | 25 | 36 |
 | 6 | Design-to-Code | 0 | 16 |
 | 7 | Quality & Trust | 0 | 15 |
 | 8 | Worker Ecosystem & Neutrality | 0 | 12 |
@@ -520,6 +520,17 @@ is the kind it can repair itself; each problem it finds becomes a small job with
 that one repair as its only task, and the job changes nothing by itself: it stops at
 the normal approval step and a reviewer decides what lands; the first such job, run
 at this feature's own close, added a missing user guide to the documentation index).
+
+F288 event stream and prompt nodes (the live picture of a running job now shows
+everything the simple view shows: every message Remedy sends the browser about a
+builder attempt, a review, a check, a test run or a repair round now says which
+attempt and which task it belongs to and how it ended, and a new message announces
+when a plan is approved, so the plan's tasks appear the moment you approve it; test
+runs and repair rounds get their own dots under their task, and every prompt sent to
+a model becomes a small dot you can click to open that prompt; a keyboard user
+reaches the same prompts through a list of buttons that appears when it holds
+focus; the first self-use job at this feature's close added the missing
+`remedy config show` command to the settings guide).
 
 Full per-feature state: [`docs/roadmap/STATUS.md`](docs/roadmap/STATUS.md)
 

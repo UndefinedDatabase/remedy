@@ -139,6 +139,103 @@ class TestFrameShape:
         assert streamed == polled
 
 
+class TestAttemptEventKinds:
+    """DECISION F288 D2 (5) and this round's S1: the attempt id travels in the
+    envelope for exactly the kinds an attempt (one execution of a task by
+    `run_job` or the run-next path, one test run of the test service, or one
+    long-run cycle's repair round, heal or completion) writes,
+    `ATTEMPT_EVENT_KINDS`."""
+
+    def test_the_set_is_pinned_and_a_subset_of_event_names(self):
+        from packages.orchestration.event_names import EVENT_NAMES
+
+        assert mod.ATTEMPT_EVENT_KINDS == {
+            "task_run_started", "task_round_repaired", "task_round_tested",
+            "task_round_completed", "task_run_completed", "task_run_failed",
+            "task_run_noop", "builder_started", "builder_completed",
+            "verification_passed", "verification_failed",
+            "test_run_requested", "test_run_started", "test_run_completed",
+            "test_run_timed_out", "test_run_blocked",
+            "cycle_repair_round", "cycle_healed", "cycle_completed",
+        }
+        assert mod.ATTEMPT_EVENT_KINDS <= EVENT_NAMES
+
+    def test_each_kind_gains_attempt_id_directly_after_task_id(self):
+        for kind in mod.ATTEMPT_EVENT_KINDS:
+            summary = mod._safe_event_summary(1, {
+                "event": kind, "metadata": {"attempt_id": "abc123"}})
+            assert set(summary) == {
+                "seq", "event", "timestamp", "outcome", "task_id", "attempt_id"}
+            assert summary["attempt_id"] == "abc123"
+            keys = list(summary)
+            assert keys[keys.index("task_id") + 1] == "attempt_id"
+
+    def test_missing_or_non_string_metadata_value_is_empty(self):
+        for kind in mod.ATTEMPT_EVENT_KINDS:
+            assert mod._safe_event_summary(1, {"event": kind})["attempt_id"] == ""
+            assert mod._safe_event_summary(1, {
+                "event": kind, "metadata": {}})["attempt_id"] == ""
+            assert mod._safe_event_summary(1, {
+                "event": kind, "metadata": {"attempt_id": 123}})["attempt_id"] == ""
+            assert mod._safe_event_summary(1, {
+                "event": kind, "metadata": "not-a-dict"})["attempt_id"] == ""
+
+    def test_a_top_level_attempt_id_is_ignored(self):
+        for kind in mod.ATTEMPT_EVENT_KINDS:
+            summary = mod._safe_event_summary(1, {
+                "event": kind, "attempt_id": "top-level",
+                "metadata": {"attempt_id": "nested"}})
+            assert summary["attempt_id"] == "nested"
+            summary_no_nested = mod._safe_event_summary(1, {
+                "event": kind, "attempt_id": "top-level"})
+            assert summary_no_nested["attempt_id"] == ""
+
+    def test_job_stopped_and_plan_approved_never_gain_attempt_id(self):
+        """`task_run_noop` moved into `ATTEMPT_EVENT_KINDS` this round (DECISION
+        F288 D2 (5)); `job_stopped` and `plan_approved` never gain `attempt_id`."""
+        job_stopped = mod._safe_event_summary(1, {
+            "event": "job_stopped", "metadata": {"attempt_id": "abc"}})
+        assert set(job_stopped) == {"seq", "event", "timestamp", "outcome", "task_id"}
+
+        plan_approved = mod._safe_event_summary(1, {
+            "event": "plan_approved", "metadata": {"attempt_id": "abc"}})
+        assert "attempt_id" not in plan_approved
+        assert set(plan_approved) == {
+            "seq", "event", "timestamp", "outcome", "task_id", "plan"}
+
+
+class TestPlanApprovedEnvelope:
+    """DECISION F288 D2 (5): `plan_approved` gains a `plan` block of its own,
+    on the envelope's rule for `budget`."""
+
+    def test_the_key_set_is_the_base_five_plus_plan(self):
+        summary = mod._safe_event_summary(1, {
+            "event": "plan_approved", "metadata": {"task_ids": ["T1"]}})
+        assert set(summary) == {"seq", "event", "timestamp", "outcome", "task_id", "plan"}
+        assert summary["plan"] == {"task_ids": ["T1"]}
+
+    def test_task_ids_keep_order_and_drop_non_strings(self):
+        summary = mod._safe_event_summary(1, {
+            "event": "plan_approved",
+            "metadata": {"task_ids": ["T1", 2, "T3", None, "T2"]}})
+        assert summary["plan"] == {"task_ids": ["T1", "T3", "T2"]}
+
+    def test_an_absent_or_non_list_value_reads_empty(self):
+        assert mod._safe_event_summary(
+            1, {"event": "plan_approved"})["plan"] == {"task_ids": []}
+        assert mod._safe_event_summary(
+            1, {"event": "plan_approved", "metadata": {}})["plan"] == {"task_ids": []}
+        assert mod._safe_event_summary(
+            1, {"event": "plan_approved",
+                "metadata": {"task_ids": "not-a-list"}})["plan"] == {"task_ids": []}
+        assert mod._safe_event_summary(
+            1, {"event": "plan_approved", "metadata": "not-a-dict"})["plan"] == {"task_ids": []}
+
+    def test_other_kinds_frame_stays_byte_identical(self):
+        other = mod._safe_event_summary(1, {"event": "x", "metadata": {"task_ids": ["T1"]}})
+        assert "plan" not in other
+
+
 class TestStreamFrames:
     def test_every_event_from_the_cursor_is_streamed_in_ledger_order(self):
         frames = _run(lambda: _events(4), 0, 1, _Clock())

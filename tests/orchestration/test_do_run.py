@@ -256,3 +256,37 @@ class TestPlannerProviderFlag:
 
         assert DoContext(order="x").planner_provider is None
         assert DoContext(order="x", planner_provider="claude-cli").planner_provider == "claude-cli"
+
+
+# ---------------------------------------------------------------------------
+# DECISION F288 D2 (4): the --yes path announces its saved approval
+# ---------------------------------------------------------------------------
+
+
+class TestYesPathAnnouncesPlanApproved:
+    """`plan_order_job`'s `--yes` branch writes `plan_approved` after the
+    unattended approval it saves, the same way the human approval door does."""
+
+    def test_yes_path_writes_one_plan_approved_with_auto_yes_mode(self, tmp_path, monkeypatch):
+        import subprocess
+
+        from packages.orchestration.timeline import load_run_events
+        from tests.cli.test_plan_approval import _CLI, _env, _git_repo, _setup_llm_mocks, _shape_order
+
+        repo = _git_repo(tmp_path)
+        env = _env(tmp_path)
+        subprocess.run(
+            [*_CLI, "init"], capture_output=True, text=True, timeout=30,
+            cwd=str(repo), env=env, stdin=subprocess.DEVNULL,
+        )
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
+        _setup_llm_mocks(monkeypatch, plan_succeeds=True)
+        monkeypatch.chdir(str(repo))
+
+        shaped = _shape_order(repo, "test mission", yes=True)
+
+        data = shaped.to_json()
+        events = load_run_events(tmp_path / "data", data["job_id"])
+        approvals = [e for e in events if e.get("event") == "plan_approved"]
+        assert len(approvals) == 1
+        assert approvals[0]["metadata"]["approval_mode"] == "auto_yes"

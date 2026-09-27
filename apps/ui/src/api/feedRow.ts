@@ -24,6 +24,13 @@ export interface FeedRow {
    *  the envelope since DECISION F021 D2; `feedFocus.ts` turns it into the
    *  graph node a row click jumps to. */
   taskId: string;
+  /** The attempt (one execution of a task, one test run, or one long-run
+   *  cycle) this row belongs to, or "" when the envelope carries none.
+   *  DECISION F288 D3 (2). */
+  attemptId?: string;
+  /** `plan_approved`'s approved task ids, in plan order, or `[]` for every
+   *  other row. DECISION F288 D3 (2). */
+  planTaskIds?: readonly string[];
 }
 
 // The naming trap this module exists to resolve, measured at `f5f01585` in
@@ -43,6 +50,21 @@ function envelopeOf(frame: BrainStreamFrame): Record<string, unknown> {
 function stringField(envelope: Record<string, unknown>, name: string): string {
   const value = envelope[name];
   return typeof value === "string" ? value : "";
+}
+
+/** `plan_approved`'s `plan.task_ids`, in order, dropping any non-string entry;
+ *  `[]` when `plan` is absent, not an object, or its `task_ids` not an array.
+ *  DECISION F288 D3 (2). */
+function planTaskIdsOf(envelope: Record<string, unknown>): readonly string[] {
+  const plan = envelope["plan"];
+  if (typeof plan !== "object" || plan === null) {
+    return [];
+  }
+  const taskIds = (plan as Record<string, unknown>)["task_ids"];
+  if (!Array.isArray(taskIds)) {
+    return [];
+  }
+  return taskIds.filter((value): value is string => typeof value === "string");
 }
 
 /** Project one frame into the row a feed renders. Total by construction: every
@@ -68,5 +90,7 @@ export function feedRowOf(
     timestamp: stringField(envelope, "timestamp"),
     outcome: stringField(envelope, "outcome"),
     taskId: stringField(envelope, "task_id"),
+    attemptId: stringField(envelope, "attempt_id"),
+    planTaskIds: planTaskIdsOf(envelope),
   };
 }

@@ -207,6 +207,12 @@ def _render_single_event(ev: dict[str, Any]) -> str | None:
         detail = meta.get("error_category", "") or "unknown error"
         return f"  {_FAIL} Planning failed: {detail}"
 
+    if name == "plan_approved":
+        task_ids = meta.get("task_ids")
+        n = len(task_ids) if isinstance(task_ids, list) else 0
+        mode = meta.get("approval_mode") or "?"
+        return f"  {_OK} Plan approved: {n} task(s), mode {mode}"
+
     if name == "task_run_noop":
         # Pre-start noop (no pending tasks) — occurs outside a task block.
         if outcome == "no_pending_tasks":
@@ -326,6 +332,21 @@ def _render_task_block(task_events: list[dict[str, Any]]) -> list[str]:
             lines.append(f"  {_INFO} {task_type}  noop ({outcome})")
 
     # ── Sub-detail lines ─────────────────────────────────────────────────
+    # DECISION F288 D1 (6): the rounds line is first, and only when the block
+    # holds at least one `task_round_completed` — a task the ping-pong path
+    # never ran (an absorbed hand change, a skip) has no rounds to count.
+    round_completed_events = [e for e in task_events if e.get("event") == "task_round_completed"]
+    if round_completed_events:
+        n = len(round_completed_events)
+        m = sum(1 for e in task_events if e.get("event") == "task_round_repaired")
+        tested_events = [e for e in task_events if e.get("event") == "task_round_tested"]
+        p = sum(1 for e in tested_events if e.get("outcome") == "pass")
+        fcount = sum(1 for e in tested_events if e.get("outcome") == "fail")
+        attempt = started.get("metadata", {}).get("attempt_id") or "?"
+        lines.append(
+            f"      rounds:    {n}  repairs={m}  tests_passed={p}  tests_failed={fcount}"
+            f"  attempt={attempt}")
+
     if workspace_ev:
         ws = workspace_ev.get("metadata", {}).get("workspace_file", "")
         if ws:

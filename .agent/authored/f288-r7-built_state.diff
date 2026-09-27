@@ -1,0 +1,79 @@
+diff --git a/docs/roadmap/features/T5_F288.md b/docs/roadmap/features/T5_F288.md
+index 4352e6cbb..74413edc7 100644
+--- a/docs/roadmap/features/T5_F288.md
++++ b/docs/roadmap/features/T5_F288.md
+@@ -40,3 +40,74 @@ both as interim states and asked for the missing fields and the prompt nodes as
+ ## Do not touch
+ The simple view, which stays one click away; the graph's rule that it never draws a node its data
+ model does not hold.
++
++## Built State (F288, 2026-09-27)
++
++What exists on disk at the close of F288, built in six rounds of one session on
++`feature/f288-event-stream-completeness`, cut from `main` at `db691093`. Every DECISION named lives
++in `.agent/decisions.md`; every round's verdict in `.agent/live_review.md` or, once rotated, its
++archive.
++
++**T001 — the event fields and the plan-approved event.** An attempt is one execution of a task.
++`run_job` in `packages/orchestration/pingpong_job.py` mints its attempt id with `mint_run_id()`
++before `task_run_started` and hands it to `run_pingpong` through the new keyword `run_id`, so the
++attempt id is the run id every prompt of that execution names. For each round it writes
++`task_round_repaired` when the round repaired and `task_round_tested` when its test ran, before
++`task_round_completed`, each carrying the task id, the attempt id and its result as `outcome`
++(DECISION F288 D1). The run-next path in `apps/cli/commands/job.py` mints its attempt id the same
++way; a test run of `packages/orchestration/test_execution_service.py` is an attempt whose id is its
++test run id, and its events carry the task id and their result; the long-run executor's cycle
++events carry `cycle-<index>` as their attempt id (DECISIONS F288 D2 and D3).
++`announce_plan_approval` in `packages/orchestration/job_plan.py` writes `plan_approved` with the
++plan's task ids and the approval mode, after a human approval and after both unattended ones.
++`_safe_event_summary` in `packages/orchestration/ui_server.py` adds `attempt_id` to the envelope of
++the 19 kinds of `ATTEMPT_EVENT_KINDS` and a `plan` block to `plan_approved`'s, and every other
++kind's frame stays byte-identical. `EVENT_NAMES`, `STREAM_EVENT_CATALOG`, `NARRATED_EVENTS`,
++`remedy event timeline` and `docs/system/architecture.md` name the new events.
++
++**T002 — the live graph reducer.** `feedRowOf` in `apps/ui/src/api/feedRow.ts` gives every row
++`attemptId` and `planTaskIds`. `applyBrainEvent` in `apps/ui/src/components/graph/brainReducer.ts`
++births the plan's tasks at `plan_approved`, a `test_run` from `task_round_tested` and from a test
++service event that names a task, and a `repair_run` from `task_round_repaired`, each a child of its
++task, in the state its outcome table gives, with its attempt id in its meta; `plan_approved` and
++`task_round_tested` mark the planning and test phases of the timeline (DECISION F288 D3). The demo
++recording `apps/ui/src/components/graph/brainDemoRecording.ts` was captured again from the widened
++stream and every reader of it brought to it (DECISION F288 D4, finding R-1075).
++
++**T003 — prompt nodes.** A prompt is a `synapse` node. `withPromptNodes` in
++`apps/ui/src/components/graph/promptNodes.ts` composes the dashboard's prompt trace onto the live
++model only, one node per prompt whose task the model holds, a child of that task in its state with
++the attempt in its meta, drawn at graph_spec §4's radius of 2; a click selects the prompt item
++itself through `selectionIdOf` in `brainView.ts` (DECISION F288 D5). The keyboard reaches the
++prompts through `PromptNodeList`, a `nav` of native buttons built by `promptListEntries`, visually
++hidden until it holds focus and rendered inside the live branch of `BrainGraphStage.tsx`, while the
++canvas stays `aria-hidden` (DECISION F288 D6).
++
++**Acceptance, by the test that proves it.** The fields and the plan-approved event:
++`TestAttemptIdAndRoundEvents` in `tests/orchestration/test_job_task_runner.py`,
++`TestAttemptTaskIdAndOutcomeFields` in `tests/orchestration/test_test_execution_service.py`,
++`TestCycleEventsCarryAttemptIdAndOutcome` in `tests/orchestration/test_self_healing_cycles.py`,
++`TestTheApprovalAnnouncesPlanApproved` in `tests/orchestration/test_plan_editing.py`, and
++`TestAttemptEventKinds` with `TestPlanApprovedEnvelope` in `tests/ui_server/test_sse_stream.py`.
++Test-run and repair nodes appearing from the stream: the "Golden D" and outcome-table cases of
++`apps/ui/src/components/graph/brainReducer.test.ts`. A node for every kind the simple view shows,
++prompts included: `promptNodes.test.ts`, the `selectionIdOf` and `promptListEntries` cases of
++`brainView.test.ts`, the prompt-list classes of `tests/ui_contracts/test_brain_stage_mount.py`, and
++the headless-Chrome proof `.agent/authored/f288-r6-render_measure.py`, whose committed reading is
++`.agent/authored/f288-r6-render.txt`. The mutation proofs of rounds 1, 2, 3, 5 and 6 are their
++`.agent/authored/f288-r<n>-mutations.py`; round 4 changed only test expectations.
++
++**Modules and lists (closure precondition 7).** F288 added no Python module. Its new modules are
++`apps/ui/src/components/graph/promptNodes.ts` and `PromptNodeList.tsx` with its style module; no
++line joined `tests/orchestration/import_reachability_allowlist.txt`, `ALLOWED_UNWIRED` or
++`RESERVED_NAMESPACES`.
++
++**Deliberate absences.** The round events are written when `run_pingpong` returns, not while each
++round runs. The builder bridge's repair-loop events and the replay tool's resume events carry no
++attempt id; the reducer draws no node for a long-run cycle; the scrubbed timeline draws no prompt;
++focusing a list button does not ring its dot, only selecting it does. The simple view,
++`BrainGraphCanvas.tsx`, is unchanged.
++
++**Findings.** F288 registered R-1075, the four readers of the demo recording that round 3's capture
++left red, repaired by round 4 and resolved at round 5's booking. No finding was open at F288's claim,
++and none is open at its close.

@@ -8,9 +8,18 @@ import type { BrainEventRow, BrainModel, BrainTaskSeed, NodeState } from "./brai
 
 /** One event row, as the design's own test helper is named: seq and kind are
  *  required, taskId and outcome default to "" the way most ignored/global
- *  frames actually carry them. */
-export function row(seq: number, kind: string, taskId = "", outcome = ""): BrainEventRow {
-  return { seq, kind, outcome, taskId };
+ *  frames actually carry them. `attemptId` and `planTaskIds` (DECISION F288
+ *  D3 (2)) default to "" and `[]`, the way every row but a `plan_approved` or
+ *  an attempt kind actually carries them. */
+export function row(
+  seq: number,
+  kind: string,
+  taskId = "",
+  outcome = "",
+  attemptId = "",
+  planTaskIds: readonly string[] = [],
+): BrainEventRow {
+  return { seq, kind, outcome, taskId, attemptId, planTaskIds };
 }
 
 // --- Golden A: one task, happy path -----------------------------------------
@@ -136,6 +145,55 @@ export const GOLDEN_C_MODEL: BrainModel = {
   ],
   // builder_started is absent here on purpose (DECISION F019 D1: NOT counted).
   ignored: { "budget.tick": 1, steering_message_consumed: 1, made_up_kind_xyz: 1 },
+};
+
+// --- Golden D: plan approval births tasks, then one attempt's full round set,
+// DECISION F288 D3 (3) ---------------------------------------------------------
+
+export const GOLDEN_D_JOB_ID = "job-d";
+
+export const GOLDEN_D_TASKS: readonly BrainTaskSeed[] = [];
+
+// plan_approved names t1 and t2 on an empty seed; every later row is one
+// attempt (attempt "A") of t1's full self-healing round: started, tested
+// fail, reviewed needs_repair, repaired changed, tested pass, reviewed pass,
+// completed pass. t2 is never touched again, so it stays planned.
+export const GOLDEN_D_ROWS: readonly BrainEventRow[] = [
+  row(1, "plan_approved", "", "", "", ["t1", "t2"]),
+  row(2, "task_run_started", "t1", "", "A"),
+  row(3, "task_round_tested", "t1", "fail", "A"),
+  row(4, "task_round_completed", "t1", "needs_repair", "A"),
+  row(5, "task_round_repaired", "t1", "changed", "A"),
+  row(6, "task_round_tested", "t1", "pass", "A"),
+  row(7, "task_round_completed", "t1", "pass", "A"),
+  row(8, "task_run_completed", "t1", "pass", "A"),
+];
+
+export const GOLDEN_D_MODEL: BrainModel = {
+  jobId: GOLDEN_D_JOB_ID,
+  lastSeq: 8,
+  nodes: [
+    { id: "job:job-d", kind: "job_core", state: "planned", seq: 0, meta: {} },
+    { id: "task:t1", kind: "task", state: "pass", parentId: "job:job-d", seq: 1, meta: { rank: 0 } },
+    { id: "task:t2", kind: "task", state: "planned", parentId: "job:job-d", seq: 1, meta: { rank: 1 } },
+    { id: "run:t1:2", kind: "builder_run", state: "pass", parentId: "task:t1", seq: 2, meta: { attemptId: "A", outcome: "pass" } },
+    { id: "run:t1:3", kind: "test_run", state: "fail", parentId: "task:t1", seq: 3, meta: { outcome: "fail", attemptId: "A" } },
+    { id: "run:t1:4", kind: "review_run", state: "fail", parentId: "task:t1", seq: 4, meta: { outcome: "needs_repair", attemptId: "A" } },
+    { id: "run:t1:5", kind: "repair_run", state: "pass", parentId: "task:t1", seq: 5, meta: { outcome: "changed", attemptId: "A" } },
+    { id: "run:t1:6", kind: "test_run", state: "pass", parentId: "task:t1", seq: 6, meta: { outcome: "pass", attemptId: "A" } },
+    { id: "run:t1:7", kind: "review_run", state: "pass", parentId: "task:t1", seq: 7, meta: { outcome: "pass", attemptId: "A" } },
+  ],
+  links: [
+    { id: "job:job-d->task:t1", source: "job:job-d", target: "task:t1" },
+    { id: "job:job-d->task:t2", source: "job:job-d", target: "task:t2" },
+    { id: "task:t1->run:t1:2", source: "task:t1", target: "run:t1:2" },
+    { id: "task:t1->run:t1:3", source: "task:t1", target: "run:t1:3" },
+    { id: "task:t1->run:t1:4", source: "task:t1", target: "run:t1:4" },
+    { id: "task:t1->run:t1:5", source: "task:t1", target: "run:t1:5" },
+    { id: "task:t1->run:t1:6", source: "task:t1", target: "run:t1:6" },
+    { id: "task:t1->run:t1:7", source: "task:t1", target: "run:t1:7" },
+  ],
+  ignored: {},
 };
 
 // --- Cluster fixture: 11 finished runs + 1 in_progress ----------------------

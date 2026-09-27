@@ -17,9 +17,16 @@ import { row } from "./brainReducer.fixtures";
 import { BRAIN_DEMO_FRAMES, BRAIN_DEMO_JOB_ID, BRAIN_DEMO_TASKS, brainDemoRows } from "./brainDemoRecording";
 
 /** `BrainEventRow` fields alone, so a `toEqual` against `row(...)` is not
- *  defeated by the extra fields `feedRowOf` puts on a real `FeedRow`. */
-function eventFields(rows: readonly { seq: number; kind: string; outcome: string; taskId: string }[]) {
-  return rows.map(({ seq, kind, outcome, taskId }) => ({ seq, kind, outcome, taskId }));
+ *  defeated by the extra fields `feedRowOf` puts on a real `FeedRow`
+ *  (`receivedAtMs`, `line`, `known`, `timestamp`). `attemptId` and
+ *  `planTaskIds` (DECISION F288 D3 (2)) are part of `BrainEventRow` itself,
+ *  same as `row(...)` now always sets them, so they stay picked here too —
+ *  dropping them left `page.rows` (4 fields) short of a `row(...)` literal
+ *  (6 fields) and no `toEqual` could pass. */
+function eventFields(
+  rows: readonly { seq: number; kind: string; outcome: string; taskId: string; attemptId?: string; planTaskIds?: readonly string[] }[],
+) {
+  return rows.map(({ seq, kind, outcome, taskId, attemptId, planTaskIds }) => ({ seq, kind, outcome, taskId, attemptId, planTaskIds }));
 }
 
 describe("mergeBrainRows", () => {
@@ -163,7 +170,12 @@ describe("THE GAP SCENARIO (brainDemoRecording)", () => {
     const demoRows = brainDemoRows();
     const seeds = dashboardBrainSeeds(BRAIN_DEMO_TASKS);
 
-    let load = brainLedgerLive(initialBrainLedgerLoad(), [...demoRows.slice(0, 2), ...demoRows.slice(5, 8)]);
+    // The recording holds ten frames, seq 0-9 (brainDemoRecording.ts): task
+    // fe1b5b487fda490f's repair round at seq 0-4, task 4b3ddac9dba846af's at
+    // seq 5-9. Holding seq 0-1 plus 5-9 leaves exactly the hole seq 2-4 (task
+    // one's repair-and-repass), so the prefix stops at seq 2 (the first
+    // missing one) and `known` reads 10 (one past the highest held seq, 9).
+    let load = brainLedgerLive(initialBrainLedgerLoad(), [...demoRows.slice(0, 2), ...demoRows.slice(5, 10)]);
     expect(eventFields(brainLedgerPrefix(load.ledger))).toEqual(eventFields(demoRows.slice(0, 2)));
     expect(brainLedgerRequest(load)).toBe(2);
 
@@ -171,11 +183,13 @@ describe("THE GAP SCENARIO (brainDemoRecording)", () => {
     const modelWhileOpen = rebuildBrainModel(BRAIN_DEMO_JOB_ID, seeds, brainLedgerPrefix(load.ledger));
     expect(modelWhileOpen.nodes.some((n) => n.seq >= 5)).toBe(false);
 
-    const page = { cursor: "8", events: BRAIN_DEMO_FRAMES.slice(2, 5).map((f) => f.event) };
+    // The page fills exactly the hole (seq 2-4), so the ledger now holds every
+    // one of the ten frames and the prefix runs the whole way to seq 9.
+    const page = { cursor: "10", events: BRAIN_DEMO_FRAMES.slice(2, 5).map((f) => f.event) };
     load = brainLedgerReceived(load, 2, page);
 
     const filledPrefix = brainLedgerPrefix(load.ledger);
-    expect(filledPrefix).toHaveLength(8);
+    expect(filledPrefix).toHaveLength(10);
     const filledModel = rebuildBrainModel(BRAIN_DEMO_JOB_ID, seeds, filledPrefix);
     const wholeModel = rebuildBrainModel(BRAIN_DEMO_JOB_ID, seeds, demoRows);
     expect(filledModel).toEqual(wholeModel);

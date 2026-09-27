@@ -1,13 +1,15 @@
 import { describe, expect, it } from "vitest";
-import type { RemedyDashboard, RemedyTaskItem, RemedyVetoEntry, RemedyVetoes } from "../../api/types";
+import type { RemedyDashboard, RemedyPromptTraceItem, RemedyTaskItem, RemedyVetoEntry, RemedyVetoes } from "../../api/types";
 import { reduceBrainEvent, seedBrainModel } from "./brainReducer";
 import { row } from "./brainReducer.fixtures";
 import { buildBrainLayout } from "./buildForceBrainModel";
-import type { BrainLayoutData } from "./forceBrainTypes";
+import type { BrainModel } from "./brainOntology";
+import type { BrainLayoutData, BrainLayoutNode } from "./forceBrainTypes";
+import { withPromptNodes } from "./promptNodes";
 import {
   BRAIN_FILTER_STATES, DASHBOARD_STATE_STATUS, brainTaskCount, carryBrainPositions,
-  dashboardBrainSeeds, filterBrainLayout, selectedBrainNodeId, selectionTaskIdOf, shellSelectionIdOf,
-  vetoFadedNodeIds, vetoHoverTexts,
+  dashboardBrainSeeds, filterBrainLayout, promptListEntries, selectedBrainNodeId, selectedPromptNodeId,
+  selectionIdOf, selectionTaskIdOf, shellSelectionIdOf, vetoFadedNodeIds, vetoHoverTexts,
 } from "./brainView";
 
 function task(id: string, state: RemedyTaskItem["state"], label = id): RemedyTaskItem {
@@ -214,6 +216,24 @@ describe("selectionTaskIdOf", () => {
   });
 });
 
+describe("selectionIdOf", () => {
+  it("a synapse resolves to the prompt item id, its own id without the prompt: prefix", () => {
+    expect(selectionIdOf({ id: "prompt:p1", kind: "synapse", parentId: "task:t1" })).toBe("p1");
+  });
+
+  it("a task node resolves to its own id, exactly as selectionTaskIdOf does", () => {
+    expect(selectionIdOf({ id: "task:t1", kind: "task", parentId: "job:j1" })).toBe("t1");
+  });
+
+  it("a run node resolves to its parent task via parentId, exactly as selectionTaskIdOf does", () => {
+    expect(selectionIdOf({ id: "run:t1:3", kind: "builder_run", parentId: "task:t1" })).toBe("t1");
+  });
+
+  it("the core resolves to null, exactly as selectionTaskIdOf does", () => {
+    expect(selectionIdOf({ id: "job:j1", kind: "job_core" })).toBeNull();
+  });
+});
+
 describe("shellSelectionIdOf", () => {
   const tasks = [task("a", "pending"), task("b", "pending")];
 
@@ -227,6 +247,88 @@ describe("shellSelectionIdOf", () => {
 
   it("returns null for null", () => {
     expect(shellSelectionIdOf(tasks, null)).toBeNull();
+  });
+});
+
+function promptItem(id: string, taskId = "t1"): RemedyPromptTraceItem {
+  return {
+    id, taskId, runId: "run-1", round: 1, role: "builder", promptKind: "initial",
+    provider: "p", providerKind: "k", promptSha256: "", promptChars: 0,
+    promptTokensEstimated: 0, contextCategories: [], changedFilesSafe: [],
+    safeDiffFiles: [], evidenceRef: "", redactedPreview: "", redactedPreviewTruncated: false,
+  };
+}
+
+describe("selectedPromptNodeId", () => {
+  const items = [promptItem("p1"), promptItem("p2")];
+
+  it("answers the synapse id for a matching item id", () => {
+    expect(selectedPromptNodeId(items, "p1")).toBe("prompt:p1");
+  });
+
+  it("answers null for an id no item carries", () => {
+    expect(selectedPromptNodeId(items, "nope")).toBeNull();
+  });
+
+  it("answers null for null", () => {
+    expect(selectedPromptNodeId(items, null)).toBeNull();
+  });
+});
+
+function layoutNode(id: string): BrainLayoutNode {
+  return { id, kind: "synapse", state: "planned", seq: 0, depth: 2, radius: 5, x: 0, y: 0, label: "" };
+}
+
+describe("promptListEntries", () => {
+  it("one entry per visible synapse, in model order, fields as S1 names them; the filtered synapse and a non-synapse both absent", () => {
+    let model = seedBrainModel("job-pl", [
+      { id: "t-done", status: "completed", rank: 0 },
+      { id: "t-current", status: "running", rank: 1 },
+      { id: "t-blocked", status: "blocked", rank: 2 },
+    ]);
+    const items: RemedyPromptTraceItem[] = [
+      promptItem("p-done", "t-done"),
+      { ...promptItem("p-current", "t-current"), role: "reviewer", round: 2 },
+      { ...promptItem("p-blocked", "t-blocked"), round: 3 },
+    ];
+    model = withPromptNodes(model, items);
+
+    // visible holds the first and third synapse, the task:t-done node (a
+    // non-synapse), but NOT the second synapse (prompt:p-current) — the
+    // filtered-out one.
+    const visible: BrainLayoutData = {
+      nodes: [layoutNode("prompt:p-done"), layoutNode("task:t-done"), layoutNode("prompt:p-blocked")],
+      links: [],
+    };
+
+    expect(promptListEntries(model, visible)).toEqual([
+      { promptId: "p-done", nodeId: "prompt:p-done", label: "builder r1", state: "done" },
+      { promptId: "p-blocked", nodeId: "prompt:p-blocked", label: "builder r3", state: "blocked" },
+    ]);
+  });
+
+  it("maps in_progress to current", () => {
+    let model = seedBrainModel("job-pl2", [{ id: "t1", status: "running", rank: 0 }]);
+    model = withPromptNodes(model, [promptItem("p1", "t1")]);
+    const visible: BrainLayoutData = { nodes: [layoutNode("prompt:p1")], links: [] };
+    expect(promptListEntries(model, visible)[0].state).toBe("current");
+  });
+
+  it("answers no entries for a visible layout holding no synapse", () => {
+    let model = seedBrainModel("job-pl3", [{ id: "t1", status: "pending", rank: 0 }]);
+    model = withPromptNodes(model, [promptItem("p1", "t1")]);
+    const visible: BrainLayoutData = { nodes: [layoutNode("task:t1")], links: [] };
+    expect(promptListEntries(model, visible)).toEqual([]);
+  });
+
+  it("answers no entry for a visible test_run node — only synapse kinds ever list", () => {
+    const model = seedBrainModel("job-pl4", [{ id: "t1", status: "pending", rank: 0 }]);
+    const withRun: BrainModel = {
+      ...model,
+      nodes: [...model.nodes, { id: "run:t1:1", kind: "test_run", state: "pass", parentId: "task:t1", seq: 1, meta: {} }],
+    };
+    const visible: BrainLayoutData = { nodes: [layoutNode("run:t1:1")], links: [] };
+    expect(promptListEntries(withRun, visible)).toEqual([]);
   });
 });
 

@@ -77,6 +77,7 @@ temperature = 0.2
 | Command | Description |
 |---------|-------------|
 | `remedy config list` | List all keys with values and sources |
+| `remedy config show` | Alias for `config list` |
 | `remedy config list --json` | Same, as JSON |
 | `remedy config get <key>` | Show value, source, env var, type for one key |
 | `remedy config sources` | Show which config files are loaded |

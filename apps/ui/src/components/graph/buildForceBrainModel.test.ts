@@ -4,10 +4,22 @@ import {
   CLUSTER_EXPECTED_MODEL, CLUSTER_INPUT_MODEL, GOLDEN_A_MODEL, GOLDEN_B_MODEL,
 } from "./brainReducer.fixtures";
 import {
-  BRAIN_CORE_RADIUS, BRAIN_GOLDEN_ANGLE, BRAIN_RUN_DISTANCE, buildBrainLayout,
+  BRAIN_CORE_RADIUS, BRAIN_GOLDEN_ANGLE, BRAIN_RUN_DISTANCE, BRAIN_SYNAPSE_LINK_WIDTH,
+  BRAIN_SYNAPSE_RADIUS, buildBrainLayout,
 } from "./buildForceBrainModel";
 import type { BrainModel } from "./brainOntology";
 import type { BrainLayoutData } from "./forceBrainTypes";
+import { withPromptNodes } from "./promptNodes";
+import type { RemedyPromptTraceItem } from "../../api/types";
+
+function prompt(id: string, taskId: string): RemedyPromptTraceItem {
+  return {
+    id, taskId, runId: "run-1", round: 1, role: "builder", promptKind: "initial",
+    provider: "p", providerKind: "k", promptSha256: "", promptChars: 0,
+    promptTokensEstimated: 0, contextCategories: [], changedFilesSafe: [],
+    safeDiffFiles: [], evidenceRef: "", redactedPreview: "", redactedPreviewTruncated: false,
+  };
+}
 
 /** Recursively freezes a value so a mutating write throws in strict mode
  *  (vitest's ESM test files run strict) — the no-mutation proof for
@@ -218,5 +230,29 @@ describe("buildBrainLayout", () => {
     let layout: BrainLayoutData | undefined;
     expect(() => { layout = buildBrainLayout(frozen); }).not.toThrow();
     expect(layout!.nodes.length).toBeGreaterThan(0);
+  });
+
+  it("a model with two synapses under one task lays them out at radius 2 on links of width 1, positioned as that task's children (DECISION F288 D5 (4), graph_spec §4/§6), and the layout's node and link ids equal the model's, in order (§8 truth over a model holding prompts)", () => {
+    const seeded = seedBrainModel("job-synapses", [{ id: "t1", status: "pending", rank: 0 }]);
+    const model = withPromptNodes(seeded, [prompt("p1", "t1"), prompt("p2", "t1")]);
+    const layout = buildBrainLayout(model);
+
+    expect(layout.nodes.map((n) => n.id)).toEqual(model.nodes.map((n) => n.id));
+    expect(layout.links.map((l) => l.id)).toEqual(model.links.map((l) => l.id));
+
+    const synapses = layout.nodes.filter((n) => n.kind === "synapse");
+    expect(synapses).toHaveLength(2);
+    const task = layout.nodes.find((n) => n.kind === "task")!;
+    for (const synapse of synapses) {
+      expect(synapse.radius).toBe(BRAIN_SYNAPSE_RADIUS);
+      expect(synapse.depth).toBe(2);
+      expect(synapse.parentId).toBe(task.id);
+      expect(distance(synapse.x, synapse.y, task.x, task.y)).toBeCloseTo(BRAIN_RUN_DISTANCE, 9);
+    }
+    const synapseLinks = layout.links.filter((l) => synapses.some((s) => s.id === l.target));
+    expect(synapseLinks).toHaveLength(2);
+    expect(synapseLinks.every((l) => l.width === BRAIN_SYNAPSE_LINK_WIDTH)).toBe(true);
+    expect(BRAIN_SYNAPSE_RADIUS).toBe(2);
+    expect(BRAIN_SYNAPSE_LINK_WIDTH).toBe(1);
   });
 });

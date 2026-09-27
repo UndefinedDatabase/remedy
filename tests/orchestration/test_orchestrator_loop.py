@@ -537,6 +537,41 @@ class _FakeJob:
         self.task_plan = None
 
 
+class TestAutoApproveIfGated:
+    """DECISION F288 D2 (4): the unattended approval announces `plan_approved`
+    exactly as the human approval door does."""
+
+    def test_a_gated_job_writes_one_plan_approved_with_auto_yes_mode(self, tmp_path, monkeypatch):
+        from packages.orchestration.orchestrator_loop import _auto_approve_if_gated
+        from packages.orchestration.pingpong_job import JobPlan, TaskEntry
+        from packages.orchestration.timeline import load_run_events
+
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        job = JobPlan(job_title="t", task_plan={"_approval": "pending"})
+        job.tasks.append(TaskEntry(title="t1"))
+
+        approved = _auto_approve_if_gated(job)
+
+        assert approved is True
+        events = load_run_events(tmp_path, str(job.job_id))
+        approvals = [e for e in events if e.get("event") == "plan_approved"]
+        assert len(approvals) == 1
+        assert approvals[0]["metadata"]["approval_mode"] == "auto_yes"
+
+    def test_an_ungated_job_writes_no_plan_approved(self, tmp_path, monkeypatch):
+        from packages.orchestration.orchestrator_loop import _auto_approve_if_gated
+        from packages.orchestration.timeline import load_run_events
+
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        job = _FakeJob(job_id="ungated0001")
+
+        approved = _auto_approve_if_gated(job)
+
+        assert approved is False
+        events = load_run_events(tmp_path, job.job_id)
+        assert [e for e in events if e.get("event") == "plan_approved"] == []
+
+
 def _scripted(*responses: str):
     """A fake provider that replays a fixed script, one answer per call."""
     calls: list[str] = []

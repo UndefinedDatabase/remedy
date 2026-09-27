@@ -820,6 +820,33 @@ def auto_approve_task_plan(
     return body
 
 
+def announce_plan_approval(job: Any, *, mode: str) -> None:
+    """Write `plan_approved` after every saved approval, human or unattended.
+
+    DECISION F288 D2 (4): the event carries the job's task ids in plan order
+    and the approval's mode. A failed write is logged and never undoes a
+    saved approval — the caller already persisted the plan before calling
+    this, and that persisted state is the one that matters.
+    """
+    import logging
+
+    from packages.orchestration import data_paths, timeline
+
+    try:
+        timeline.append_run_event(
+            data_paths.resolve_data_root(), str(job.job_id),
+            event="plan_approved",
+            metadata={
+                "outcome": "approved",
+                "task_ids": [str(t.task_id) for t in job.tasks],
+                "approval_mode": mode,
+            },
+        )
+    except (OSError, ValueError, TypeError):
+        logging.getLogger(__name__).warning(
+            "plan_approved event write failed for job %s", job.job_id)
+
+
 def resolve_task_plan_approval(
     job: Any,
     *,
@@ -857,6 +884,7 @@ def resolve_task_plan_approval(
     fp["_approval"] = "approved"
     job.task_plan = fp
     save_job_plan(job)
+    announce_plan_approval(job, mode="human")
     from packages.orchestration.data_paths import job_evidence_export_dir
     return write_assumptions_md(
         fp.get("clarifications_resolved"),

@@ -509,13 +509,51 @@ def _validate_linkage(
 # ---------------------------------------------------------------------------
 
 
-def _emit(data_dir: Path, job_id: UUID, event: str, metadata: dict[str, Any]):
+def _with_attempt_fields(
+    event: str, metadata: dict[str, Any], result: TestExecutionResult,
+) -> dict[str, Any]:
+    """Lift `attempt_id`, `task_id` and `outcome` onto a `test_run_*` event (DECISION F288 D2).
+
+    A test run is an attempt of its own, and its attempt id is its `test_run_id`.
+    The request's task id is lifted when it names one. Nothing has resulted yet
+    at `test_run_requested` and `test_run_started`, so neither gains `outcome`.
+    Every metadata key the event carries today is kept.
+    """
+    if not event.startswith("test_run_"):
+        return metadata
+    meta = dict(metadata)
+    meta["attempt_id"] = result.test_run_id
+    if result.linked_task_id:
+        meta["task_id"] = result.linked_task_id
+    if event == "test_run_completed":
+        meta["outcome"] = result.status
+    elif event == "test_run_timed_out":
+        meta["outcome"] = "timeout"
+    elif event == "test_run_blocked":
+        meta["outcome"] = "blocked"
+    return meta
+
+
+def _emit(
+    data_dir: Path,
+    job_id: UUID,
+    event: str,
+    metadata: dict[str, Any],
+    *,
+    result: TestExecutionResult | None = None,
+):
     """Emit a lifecycle event, returning a structured EventPersistenceResult.
 
     Failures are surfaced via the returned status instead of being swallowed
     silently (R-0051, Step 1162). No raw exception text is exposed.
+
+    `result`, when given, is the request's own `TestExecutionResult`: every
+    `test_run_*` event gains its attempt id, task id and outcome from it
+    (DECISION F288 D2), computed once here rather than at each call site.
     """
     from packages.orchestration.event_persistence import emit_important_event
+    if result is not None:
+        metadata = _with_attempt_fields(event, metadata, result)
     return emit_important_event(data_dir, str(job_id), event, metadata)
 
 
@@ -613,7 +651,7 @@ def execute_test_run(
             "test_run_id": test_run_id,
             "reason": "permission_denied",
             "next_safe_action": result.next_safe_action,
-        })
+        }, result=result)
         return result
 
     # ── Gate 3: Validate target repository ──────────────────────────────────
@@ -664,7 +702,7 @@ def execute_test_run(
             "contract_id": contract.contract_id,
             "reason": result.stop_reason,
             "next_safe_action": result.next_safe_action,
-        })
+        }, result=result)
         _emit(data_dir, job_id_parsed, "contract_decision", {
             "action": ContractAction.RUN_TEST,
             "allowed": False,
@@ -714,7 +752,7 @@ def execute_test_run(
         _emit(data_dir, job_id_parsed, "test_run_blocked", {
             "test_run_id": test_run_id,
             "reason": block_reason,
-        })
+        }, result=result)
         return result
 
     try:
@@ -733,7 +771,7 @@ def execute_test_run(
                 _emit(data_dir, job_id_parsed, "test_run_blocked", {
                     "test_run_id": test_run_id,
                     "reason": "requested_command_not_found",
-                })
+                }, result=result)
                 return result
             if candidate.purpose != "test":
                 result.status = "blocked"
@@ -743,7 +781,7 @@ def execute_test_run(
                 _emit(data_dir, job_id_parsed, "test_run_blocked", {
                     "test_run_id": test_run_id,
                     "reason": "requested_command_not_test",
-                })
+                }, result=result)
                 return result
         else:
             candidate = select_best_test_candidate(candidates)
@@ -756,7 +794,7 @@ def execute_test_run(
             _emit(data_dir, job_id_parsed, "test_run_blocked", {
                 "test_run_id": test_run_id,
                 "reason": "no_test_command_discovered",
-            })
+            }, result=result)
             return result
 
         if candidate.risk == "high":
@@ -801,7 +839,7 @@ def execute_test_run(
             "contract_id": contract.contract_id,
             "command_source_type": candidate.source_type,
             "source": request.source,
-        })
+        }, result=result)
 
         status, exit_code, duration_ms, process_started = _run_isolated_process(
             argv,
@@ -823,7 +861,7 @@ def execute_test_run(
                 "linked_apply_id": request.apply_id,
                 "started_at": datetime.now(timezone.utc).isoformat(),
                 # No PID, no argv, no environment
-            })
+            }, result=result)
 
         result.status = status
         result.exit_code = exit_code
@@ -1054,7 +1092,7 @@ def finalize_test_outcome(
     status = result.status
     if status in ("passed", "failed", "timeout"):
         event_name = "test_run_timed_out" if status == "timeout" else "test_run_completed"
-        completion_event = _emit(data_dir, job_id, event_name, _safe_event_meta(result))
+        completion_event = _emit(data_dir, job_id, event_name, _safe_event_meta(result), result=result)
         _emit(data_dir, job_id, "run_usage_recorded", result.usage_after)
         _emit(data_dir, job_id, "contract_decision", {
             "action": ContractAction.RUN_TEST,
@@ -1067,7 +1105,7 @@ def finalize_test_outcome(
         completion_event = _emit(data_dir, job_id, "test_run_blocked", {
             "test_run_id": test_run_id,
             "reason": "environment_failure",
-        })
+        }, result=result)
     event_ok = completion_event.persisted
     if not event_ok:
         warnings.append("completion_event_persist_failed")

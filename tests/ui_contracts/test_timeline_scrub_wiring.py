@@ -47,7 +47,7 @@ def test_the_shell_builds_one_scrubber_and_hands_it_to_the_bar_the_stage_and_the
 def test_the_stage_draws_the_scrubbed_model_and_says_so():
     stage = _source(STAGE)
     assert "const model = scrub.scrubbedModel ?? liveModel;" in stage
-    assert "const liveModel = useMemo(() => rebuildBrainModel(dashboard.jobId, seeds, rows)" in stage
+    assert "const liveModel = useMemo(() => withPromptNodes(rebuildBrainModel(dashboard.jobId, seeds, rows), promptItems)" in stage
     banner = stage[stage.index('{scrub.state.mode === "scrubbed" && ('):]
     banner = banner[:banner.index(")}")]
     for part in ('role="status"', 'data-ui="scrub-banner"', ">SCRUBBED<", "{scrub.view.readout}",

@@ -29,6 +29,10 @@ export const BRAIN_RUN_RADIUS = 4.5;
 /** Cluster node radius, graph_spec §4 ("cluster: r 9 + count") — bigger than a
  *  run so a collapsed history still reads as "more than one thing". */
 export const BRAIN_CLUSTER_RADIUS = 9;
+/** Synapse node radius, graph_spec §4 ("synapse: r 1.6-2.2") — DECISION F288
+ *  D5 (4) fixes one value inside that band, as this file already does for the
+ *  core-task link distance band above. */
+export const BRAIN_SYNAPSE_RADIUS = 2;
 /** Distance from the core to the task ring, graph_spec §6 ("core-task
  *  120-170"); this design fixes one value inside that band. */
 export const BRAIN_TASK_RING_RADIUS = 150;
@@ -46,6 +50,9 @@ export const BRAIN_RUN_FAN_STEP = 0.35;
 export const BRAIN_CORE_LINK_WIDTH = 2.2;
 /** Task→child link width, the next step of the same decay. */
 export const BRAIN_RUN_LINK_WIDTH = 1.4;
+/** A synapse's own link width, the next step of the same decay (graph_spec
+ *  §6, "core→task 2.2 → run 1.4 → synapse 1"; DECISION F288 D5 (4)). */
+export const BRAIN_SYNAPSE_LINK_WIDTH = 1;
 
 /** Every non-core, non-task node buildBrainLayout treats as a task's depth-2
  *  child: the run kinds and the cluster node clusterBrainModel may leave
@@ -177,7 +184,9 @@ export function buildBrainLayout(model: BrainModel, expandTaskId: string | null 
       };
     }
     const p = childPosition.get(n.id) ?? { x: 0, y: 0 };
-    const radius = n.kind === "cluster" ? BRAIN_CLUSTER_RADIUS : BRAIN_RUN_RADIUS;
+    const radius = n.kind === "cluster"
+      ? BRAIN_CLUSTER_RADIUS
+      : n.kind === "synapse" ? BRAIN_SYNAPSE_RADIUS : BRAIN_RUN_RADIUS;
     return {
       id: n.id, kind: n.kind, state: n.state, parentId: n.parentId, seq: n.seq,
       depth: 2, radius, x: p.x, y: p.y, label: n.kind === "cluster" ? clusterLabelOf(n) : "",
@@ -191,7 +200,9 @@ export function buildBrainLayout(model: BrainModel, expandTaskId: string | null 
     return {
       id: l.id, source: l.source, target: l.target,
       depth: isTaskLink ? 1 : 2,
-      width: isTaskLink ? BRAIN_CORE_LINK_WIDTH : BRAIN_RUN_LINK_WIDTH,
+      width: isTaskLink
+        ? BRAIN_CORE_LINK_WIDTH
+        : target?.kind === "synapse" ? BRAIN_SYNAPSE_LINK_WIDTH : BRAIN_RUN_LINK_WIDTH,
       active: isLinkActive(clustered.nodes, target),
     };
   });

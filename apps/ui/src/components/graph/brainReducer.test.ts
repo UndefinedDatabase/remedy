@@ -6,7 +6,8 @@ import {
 import {
   CLUSTER_EXPECTED_MODEL, CLUSTER_INPUT_MODEL, GOLDEN_A_FRAMES, GOLDEN_A_JOB_ID, GOLDEN_A_MODEL,
   GOLDEN_A_ROWS, GOLDEN_A_TASKS, GOLDEN_B_JOB_ID, GOLDEN_B_MODEL, GOLDEN_B_ROWS, GOLDEN_B_TASKS,
-  GOLDEN_C_JOB_ID, GOLDEN_C_MODEL, GOLDEN_C_ROWS, GOLDEN_C_TASKS, SEED_STATUS_CASES, row,
+  GOLDEN_C_JOB_ID, GOLDEN_C_MODEL, GOLDEN_C_ROWS, GOLDEN_C_TASKS, GOLDEN_D_JOB_ID, GOLDEN_D_MODEL,
+  GOLDEN_D_ROWS, GOLDEN_D_TASKS, SEED_STATUS_CASES, row,
 } from "./brainReducer.fixtures";
 import type { BrainEventRow, BrainModel } from "./brainOntology";
 
@@ -46,6 +47,84 @@ describe("Golden C: unseeded task and unknown kinds", () => {
     const result = fold(seeded, GOLDEN_C_ROWS);
     expect(result).toEqual(GOLDEN_C_MODEL);
     expect(result.ignored).not.toHaveProperty("builder_started");
+  });
+});
+
+describe("Golden D: plan approval births tasks, then one attempt's full round set (DECISION F288 D3 (3))", () => {
+  it("matches the hand-derived model exactly, folded one row at a time", () => {
+    const seeded = seedBrainModel(GOLDEN_D_JOB_ID, GOLDEN_D_TASKS);
+    expect(fold(seeded, GOLDEN_D_ROWS)).toEqual(GOLDEN_D_MODEL);
+  });
+
+  it("matches the hand-derived model exactly, through rebuildBrainModel", () => {
+    const rebuilt = rebuildBrainModel(GOLDEN_D_JOB_ID, GOLDEN_D_TASKS, GOLDEN_D_ROWS);
+    expect(rebuilt).toEqual(GOLDEN_D_MODEL);
+  });
+});
+
+describe("plan_approved (DECISION F288 D3 (3))", () => {
+  it("changes neither the state nor the rank of a seeded task, and ranks a new task after it", () => {
+    const seeded = seedBrainModel("job-plan", [{ id: "t1", status: "running", rank: 0 }]);
+    const approved = reduceBrainEvent(seeded, row(1, "plan_approved", "", "", "", ["t1", "t2"]));
+    const t1 = approved.nodes.find((n) => n.id === "task:t1");
+    const t2 = approved.nodes.find((n) => n.id === "task:t2");
+    expect(t1?.state).toBe("in_progress");
+    expect(t1?.meta.rank).toBe(0);
+    expect(t2?.meta.rank).toBe(1);
+    expect(approved.ignored).toEqual({});
+  });
+
+  it("an absent or empty planTaskIds list changes nothing, and is not counted in ignored", () => {
+    const seeded = seedBrainModel("job-plan", [{ id: "t1", status: "pending", rank: 0 }]);
+    const absent = reduceBrainEvent(seeded, row(1, "plan_approved"));
+    expect(absent.nodes).toEqual(seeded.nodes);
+    expect(absent.ignored).toEqual({});
+    const empty = reduceBrainEvent(seeded, row(1, "plan_approved", "", "", "", []));
+    expect(empty.nodes).toEqual(seeded.nodes);
+    expect(empty.ignored).toEqual({});
+  });
+});
+
+describe("test and repair outcome tables (DECISION F288 D3 (3))", () => {
+  it.each([
+    ["changed", "pass"],
+    ["unchanged", "blocked"],
+    ["error", "fail"],
+    ["totally_unheard_of_outcome", "planned"],
+  ] as const)("task_round_repaired outcome %s births a repair_run in state %s", (outcome, expected) => {
+    const seeded = seedBrainModel("job-repair", [{ id: "t1", status: "pending", rank: 0 }]);
+    const repaired = reduceBrainEvent(seeded, row(1, "task_round_repaired", "t1", outcome));
+    const run = repaired.nodes.find((n) => n.parentId === "task:t1" && n.kind === "repair_run");
+    expect(run?.state).toBe(expected);
+  });
+
+  it.each([
+    "test_run_completed",
+    "test_run_timed_out",
+    "test_run_blocked",
+  ] as const)("%s with a task id births a test_run, and without one is ignored", (kind) => {
+    const seeded = seedBrainModel("job-test", [{ id: "t1", status: "pending", rank: 0 }]);
+    const withTask = reduceBrainEvent(seeded, row(1, kind, "t1", "pass"));
+    const run = withTask.nodes.find((n) => n.parentId === "task:t1" && n.kind === "test_run");
+    expect(run?.state).toBe("pass");
+    expect(withTask.ignored).toEqual({});
+
+    const withoutTask = reduceBrainEvent(seeded, row(1, kind, "", "pass"));
+    expect(withoutTask.nodes).toEqual(seeded.nodes);
+    expect(withoutTask.ignored).toEqual({ [kind]: 1 });
+  });
+
+  it("cycle_repair_round is counted in ignored: the long-run cycle draws no node", () => {
+    const seeded = seedBrainModel("job-cycle", []);
+    const result = reduceBrainEvent(seeded, row(1, "cycle_repair_round"));
+    expect(result.ignored).toEqual({ cycle_repair_round: 1 });
+  });
+
+  it("a row with an empty attemptId leaves a run's meta without the key", () => {
+    const seeded = seedBrainModel("job-attempt", [{ id: "t1", status: "pending", rank: 0 }]);
+    const started = reduceBrainEvent(seeded, row(1, "task_run_started", "t1"));
+    const run = started.nodes.find((n) => n.id === "run:t1:1");
+    expect(run?.meta).not.toHaveProperty("attemptId");
   });
 });
 

@@ -159,7 +159,7 @@ Milestone R1 — Remedy as the daily tool: Tier 2 complete (F086 as the self-ins
 ## Tier 5 — Self-use sources & event completeness (operator amendment amend0926-decisions-selfuse)
 
 - [x] F289 — Self-use sources completion (doc staleness and doctor warnings) (T001–T003 complete; accepted 2026-09-26 · live review PASS — ACCEPTED · Evidence job f289r6e1001 · package remedy-review-20260926-225640-READY_FOR_REVIEW.zip · SHA-256 7044a4959459a9144a0b3030453ed74944ab4edad8125fd67c2eb2e6cc488a62 · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD 32013a054ea65dce679cc65fe2cd01fe8d73a76d)
-- [ ] F288 — Event stream completeness & prompt nodes in the live graph
+- [x] F288 — Event stream completeness & prompt nodes in the live graph (T001–T003 complete; accepted 2026-09-27 · live review PASS — ACCEPTED · Evidence job f288r9e1001 · package remedy-review-20260927-060235-READY_FOR_REVIEW.zip · SHA-256 184f155676e7fdfc8bdf8f2db736ed0b96b127f84fb3873580fefe38c10373d2 · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD 57eba86adcc3ceeb83b04a3dfe0cf5d655a0d205)
 
 ## Tier 5 — Operator Cockpit (parallel human track, continued)
 

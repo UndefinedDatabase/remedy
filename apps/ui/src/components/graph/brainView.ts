@@ -1,10 +1,11 @@
 // Owns the glue between the dashboard, the reducer's layout and the stage —
 // pure: no React, no DOM. `BrainGraphStage.tsx` and `ForceBrainGraph.tsx` both
 // need this glue and neither should have to re-derive it (DECISION F019 D3).
-import type { RemedyDashboard, RemedyState, RemedyTaskItem, RemedyVetoes } from "../../api/types";
-import type { BrainTaskSeed, NodeState } from "./brainOntology";
+import type { RemedyDashboard, RemedyPromptTraceItem, RemedyState, RemedyTaskItem, RemedyVetoes } from "../../api/types";
+import type { BrainModel, BrainTaskSeed, NodeState } from "./brainOntology";
 import type { BrainLayoutData, BrainLayoutNode } from "./forceBrainTypes";
 import type { GraphFilter } from "./GraphFilterChips";
+import { promptNodeId } from "./promptNodes";
 import { vetoHoverText } from "../../api/vetoView";
 
 /** Table 1 bridge (DECISION F019 D1, graph_spec.md §2): the dashboard's own
@@ -125,6 +126,70 @@ export function selectionTaskIdOf(node: Pick<BrainLayoutNode, "id" | "kind" | "p
   if (node.kind === "job_core") return null;
   if (node.kind === "task") return node.id.slice("task:".length);
   return node.parentId ? node.parentId.slice("task:".length) : null;
+}
+
+/** DECISION F288 D5 (5) — the id a click on this node should select: a
+ *  `synapse` born from the prompt trace (its own id `prompt:<item id>`)
+ *  selects the PROMPT ITEM ITSELF, its bare item id; every other node still
+ *  resolves through `selectionTaskIdOf` exactly as it always has. */
+export function selectionIdOf(node: Pick<BrainLayoutNode, "id" | "kind" | "parentId">): string | null {
+  if (node.kind === "synapse" && node.id.startsWith("prompt:")) {
+    return node.id.slice("prompt:".length);
+  }
+  return selectionTaskIdOf(node);
+}
+
+/** DECISION F288 D5 (5) — the layout id of the synapse a selected prompt item
+ *  should ring, or `null` when `selectedNodeId` names no item in `items` (a
+ *  task selection, or none at all). The inverse of `selectionIdOf` for the
+ *  synapse branch. */
+export function selectedPromptNodeId(
+  items: readonly RemedyPromptTraceItem[],
+  selectedNodeId: string | null,
+): string | null {
+  if (selectedNodeId === null) return null;
+  return items.some((item) => item.id === selectedNodeId) ? promptNodeId(selectedNodeId) : null;
+}
+
+/** DECISION F288 D6, graph_spec §14 — the list's own display word for a
+ *  synapse's `NodeState`: `pass` reads "done", `in_progress` reads
+ *  "current" and `fail` reads "failed"; every other state (`planned`,
+ *  `blocked`, `paused`, `vetoed`, `open`) passes through under its own
+ *  name — the keyboard's list needs no narrower vocabulary than the one
+ *  the canvas already draws from. */
+const PROMPT_LIST_STATE_WORDS: Readonly<Record<string, string>> = {
+  pass: "done",
+  in_progress: "current",
+  fail: "failed",
+};
+
+/** DECISION F288 D6, graph_spec §14 — one row of the keyboard's parallel
+ *  list of the live picture's prompt nodes: a `synapse` node restated as a
+ *  button's own fields. */
+export interface PromptListEntry {
+  promptId: string;
+  nodeId: string;
+  label: string;
+  state: string;
+}
+
+/** DECISION F288 D6, graph_spec §14 — one entry per `synapse` node `model`
+ *  holds whose id `visible` still shows (a filter or a zoom collapse can
+ *  drop one), IN MODEL ORDER: `promptId` its `meta.promptId`, `nodeId` its
+ *  own id, `label` `<meta.role> r<meta.round>`, and `state`
+ *  `PROMPT_LIST_STATE_WORDS`'s reading of its `NodeState`. Pure: no React,
+ *  no DOM — the keyboard's own list is a plain projection of the same
+ *  model the canvas paints, never a second source of truth. */
+export function promptListEntries(model: BrainModel, visible: BrainLayoutData): PromptListEntry[] {
+  const visibleIds = new Set(visible.nodes.map((n) => n.id));
+  return model.nodes
+    .filter((n) => n.kind === "synapse" && visibleIds.has(n.id))
+    .map((n) => ({
+      promptId: n.meta.promptId as string,
+      nodeId: n.id,
+      label: `${n.meta.role as string} r${n.meta.round as number}`,
+      state: PROMPT_LIST_STATE_WORDS[n.state] ?? n.state,
+    }));
 }
 
 /** The shell's own selection id for a `selectionTaskIdOf` result.

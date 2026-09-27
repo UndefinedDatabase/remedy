@@ -27,8 +27,8 @@ import {
 const T1: readonly BrainTaskSeed[] = [{ id: "t1", status: "pending", rank: 0 }];
 
 const DEMO_TASKS: readonly BrainTaskSeed[] = [
-  { id: "a7a8f67f1b9a4814", status: "pending", rank: 0 },
-  { id: "1965fb3f26b64fe7", status: "pending", rank: 1 },
+  { id: "fe1b5b487fda490f", status: "pending", rank: 0 },
+  { id: "4b3ddac9dba846af", status: "pending", rank: 1 },
 ];
 
 describe("the phase mapping table", () => {
@@ -41,6 +41,7 @@ describe("the phase mapping table", () => {
       planning_started: "planning",
       planning_completed: "planning",
       planning_failed: "planning",
+      plan_approved: "planning",
       task_run_started: "build",
       builder_started: "build",
       builder_completed: "build",
@@ -49,6 +50,7 @@ describe("the phase mapping table", () => {
       test_run_completed: "test",
       test_run_blocked: "test",
       test_run_timed_out: "test",
+      task_round_tested: "test",
       verification_passed: "test",
       verification_failed: "test",
       task_round_completed: "review",
@@ -60,6 +62,11 @@ describe("the phase mapping table", () => {
     expect(markerPhaseOf(row(1, "task_round_completed", "t1", "needs_repair"))).toBe("review");
     expect(markerPhaseOf(row(1, "task_round_completed", "t1", "no_review"))).toBeNull();
     expect(markerPhaseOf(row(1, "task_round_completed", "t1", ""))).toBeNull();
+  });
+
+  it("marks Planning for plan_approved and Test for task_round_tested", () => {
+    expect(markerPhaseOf(row(1, "plan_approved"))).toBe("planning");
+    expect(markerPhaseOf(row(1, "task_round_tested", "t1", "pass"))).toBe("test");
   });
 
   it("marks nothing for an unknown, empty or prototype-named kind", () => {
@@ -103,14 +110,14 @@ describe("phase boundaries per fixture", () => {
   it("the demo recording finalizes at the second task's completion", () => {
     expect(readPhases(BRAIN_DEMO_JOB_ID, DEMO_TASKS, brainDemoRows())).toEqual({
       current: "finalized",
-      lastSeq: 7,
+      lastSeq: 9,
       spans: [
         { phase: "job", startSeq: 0, endSeq: 0 },
         { phase: "planning", startSeq: 0, endSeq: 0 },
         { phase: "build", startSeq: 0, endSeq: 1 },
         { phase: "test", startSeq: 1, endSeq: 1 },
-        { phase: "review", startSeq: 1, endSeq: 7 },
-        { phase: "finalized", startSeq: 7, endSeq: null },
+        { phase: "review", startSeq: 1, endSeq: 9 },
+        { phase: "finalized", startSeq: 9, endSeq: null },
       ],
     });
   });
@@ -289,10 +296,10 @@ describe("sub-glyph extraction", () => {
 
   it("the demo recording: each task's repair round and its heal", () => {
     expect(extractSubGlyphs(brainDemoRows()).map((g) => [g.seq, g.glyph, g.taskId])).toEqual([
-      [1, "failure", "a7a8f67f1b9a4814"],
-      [2, "heal", "a7a8f67f1b9a4814"],
-      [5, "failure", "1965fb3f26b64fe7"],
-      [6, "heal", "1965fb3f26b64fe7"],
+      [1, "failure", "fe1b5b487fda490f"],
+      [3, "heal", "fe1b5b487fda490f"],
+      [6, "failure", "4b3ddac9dba846af"],
+      [8, "heal", "4b3ddac9dba846af"],
     ]);
   });
 

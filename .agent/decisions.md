@@ -22736,3 +22736,297 @@ repository's documents as the source, rejected because a self-use repair of eith
 would turn the proof red; a stubbed `run_job`, rejected because the proof is that a run finishes.
 
 HOW TO REVERSE: delete the proof's test class and this paragraph.
+
+## DECISION F288 D1 — an attempt is one execution of a task and its id is that execution's ping-pong run id, minted before `task_run_started`; each ping-pong round writes a test event and, when it repairs, a repair event; the stream's envelope carries the attempt id for the attempt kinds; T001 takes two rounds (2026-09-26)
+
+CONTEXT: T5_F288.md asks that every builder, review, check, test and repair event the UI server
+sends carry the attempt id, the task id and the result, that a plan-approved event exist, that the
+live graph's reducer draw test-run and repair nodes and the tasks at plan approval, and that
+prompts become a node kind of the live graph. Measured at `db691093`: `_safe_event_summary` in
+`packages/orchestration/ui_server.py`, the one writer of the envelope both event transports carry,
+answers `seq`, `event`, `timestamp`, `outcome` and `task_id`, plus a block of its own for three
+named kinds, and no other metadata; no run-log event carries an attempt id; `run_job` in
+`packages/orchestration/pingpong_job.py` writes `task_run_started` before it calls `run_pingpong`,
+and after that call returns it writes one `task_round_completed` per round, with the reviewer's
+verdict as `outcome` and `round_number`, `round_kind` and `test_passed` as metadata, so a round's
+test and a repair round have no event of their own; the ping-pong mints its run id inside
+`run_pingpong`, as `PingPongResult.run_id`, and `run_job` stores it on the task as `task.run_id`;
+the prompt trace the simple view draws its prompt dots from names each prompt's run id; and
+`RunLogWriter.log` keeps `task_id` and `outcome` as top-level fields and every other keyword as
+metadata.
+
+CHOSEN: (1) THE ORDER: T001 takes two rounds. Round 1 lands the path `run_job` runs, which is the
+path the browser watches: the attempt id, the round events, the envelope, and every reader of the
+two new names. Round 2 lands the rest of T001: the legacy run-next path, the test service's
+`test_run_*` events, the long-run executor's repair events and the plan-approved event. T002 and
+T003 follow in that order. (2) THE ATTEMPT: one execution of one task by `run_job`, from its
+`task_run_started` to its end event. A resumed or repeated task is a new attempt. Its id is that
+execution's ping-pong run id: `run_job` mints it with `mint_run_id()` before `task_run_started`
+and passes it to `run_pingpong` through a new keyword `run_id`, which the result adopts when it is
+not empty, so the attempt id every event of the execution carries is the `task.run_id` the job
+stores and the run id every prompt of that execution names. It travels as the metadata key
+`attempt_id`. (3) THE ROUND EVENTS: for each round, in round order, `run_job` writes
+`task_round_repaired` when the round's kind is `repair`, then `task_round_tested` when the round's
+test ran, then `task_round_completed` as today, each carrying the task id, the attempt id and
+`round_number`. (4) THE RESULT is the event's existing `outcome` field. `task_round_tested` reads
+`pass` or `fail`. `task_round_repaired` reads `error` when the round has no builder output or its
+output names an error, `changed` when it names at least one changed file, and `unchanged`
+otherwise. `task_round_completed`, `task_run_completed` and `task_run_failed` keep the values they
+have today, and `task_run_started` has no result, because nothing has resulted when it is written.
+(5) THE ENVELOPE: `_safe_event_summary` gains the key `attempt_id` for every kind in a new
+`ATTEMPT_EVENT_KINDS` beside it, read from the event's metadata and empty when the event carries
+none. The condition is the envelope's own rule for `budget`: every other kind's frame stays
+byte-identical. Round 1's kinds are `task_run_started`, `task_round_repaired`, `task_round_tested`,
+`task_round_completed`, `task_run_completed` and `task_run_failed`; round 2 adds its own. (6) THE
+READERS: `EVENT_NAMES` gains the two names, `STREAM_EVENT_CATALOG` in
+`apps/ui/src/api/humanizeCatalog.ts` a line for each, `NARRATED_EVENTS` in
+`packages/orchestration/teacher_narration.py` a template for each, and the task block of `remedy
+event timeline` one line naming the attempt and counting its rounds, repairs and test results.
+
+ALTERNATIVES: a separate attempt id minted by a new function, rejected because it would name the
+same execution twice and leave the prompt trace's run id with nothing in the stream to meet;
+`round_kind` and `test_passed` copied into the envelope instead of new events, rejected because
+the reducer would then read metadata by kind where every other node is born from a kind of its
+own, and because T5_F288.md names the result, not the round's fields; `attempt_id` on every frame,
+rejected because `tests/ui_server/test_sse_stream.py` pins the envelope's key set and its golden
+byte stream, and a kind with no attempt has nothing to carry; a new `result` key beside `outcome`,
+rejected because the two would always hold the same value.
+
+DELIBERATE ABSENCES: the round events are still written when `run_pingpong` returns, not while
+each round runs, so a round's nodes appear when its task's execution ends; the browser's reducer
+does not read the attempt id until T002.
+
+HOW TO REVERSE: remove the `run_id` keyword from `run_pingpong`, the attempt id from `run_job`'s
+events, the two round events with their readers, and `ATTEMPT_EVENT_KINDS` with its branch of the
+envelope, and delete this paragraph.
+
+## DECISION F288 D2 — the run-next path mints its attempt id as `run_job` does, a test run of the test service is an attempt whose id is its test run id, and a new `plan_approved` event names the approved plan's task ids; the long-run executor's repair events move to round 3 (2026-09-27)
+
+CONTEXT: DECISION F288 D1 gave `run_job`'s path its attempt id and left the rest of T001 to round
+2. Measured at `c0553449`: `_cmd_run_next_task_local` in `apps/cli/commands/job.py` writes
+`task_run_started` and then has fourteen more `log.log` calls on one `RunLogWriter`, from
+`builder_started` to the terminal events, all naming the task and none an attempt, and it writes a
+`task_run_noop` before any task is chosen when none is pending; `execute_test_run` in
+`packages/orchestration/test_execution_service.py` writes `test_run_requested`,
+`test_run_started`, `test_run_completed` or `test_run_timed_out`, and `test_run_blocked` from
+seven refusal sites, each through its `_emit` helper, each naming the run's `test_run_id`, with
+the request's task id at the top level only for the completion and time-out events and their result in the
+metadata key `status` rather than in `outcome`; `emit_important_event` passes metadata to
+`RunLogWriter.log`, which lifts the keys `task_id` and `outcome` to the top level; no event
+announces a plan approval, which happens in `resolve_task_plan_approval` in
+`packages/orchestration/job_plan.py` for the command line and the browser, and in `do_sequence.py`
+and `orchestrator_loop.py` for the unattended `--yes` approval, each after the plan is saved; and
+the long-run executor's `cycle_repair_round` and `cycle_healed` belong to a cycle over several
+tasks, which names no single task.
+
+CHOSEN: (1) THE ORDER: round 2 lands the run-next path, the test service and the plan-approved
+event. The long-run executor's repair events and the builder bridge's loop events inside them move
+to round 3, beside the reducer, because a repair over several tasks needs a ruling of its own on
+which task id it carries. (2) THE RUN-NEXT PATH mints its attempt id with `mint_run_id()` once the
+pending task is chosen, directly before `task_run_started`, and every `log.log` call from
+`task_run_started` to the function's end, `_fail`'s included, carries it as `attempt_id`. The
+pre-execution noop belongs to no attempt and carries none. (3) THE TEST SERVICE: one test run is an
+attempt of its own and its attempt id is its `test_run_id`. Every `test_run_*` event carries
+`attempt_id`, the request's task id as `task_id` when the request names one, and its result as
+`outcome`: `test_run_completed` its status, `passed` or `failed`; `test_run_timed_out` `timeout`;
+`test_run_blocked` `blocked`; `test_run_requested` and `test_run_started` none, because nothing has
+resulted yet. Every metadata key the events carry today stays. (4) THE PLAN-APPROVED EVENT: a new
+`announce_plan_approval(job, *, mode)` in `job_plan.py` writes `plan_approved` to the job's run log
+with `outcome` `approved` and the metadata `task_ids`, the job's task ids in plan order, and
+`approval_mode`. `resolve_task_plan_approval` calls it with mode `human` after it saves an
+approved plan, and both unattended approvals call it with `AUTO_APPROVAL_MODE` after they save. A
+failure to write the event is logged and never undoes a saved approval. (5) THE ENVELOPE:
+`ATTEMPT_EVENT_KINDS` gains `task_run_noop`, `builder_started`, `builder_completed`,
+`verification_passed`, `verification_failed`, `test_run_requested`, `test_run_started`,
+`test_run_completed`, `test_run_timed_out` and `test_run_blocked`; and `plan_approved` gains a
+block `plan` of its own holding `task_ids`, the string entries of the metadata list in order and
+an empty list when there is none, on the envelope's rule for `budget`. (6) THE READERS:
+`EVENT_NAMES` gains `plan_approved`; `STREAM_EVENT_CATALOG` and `NARRATED_EVENTS` gain a line for
+it; `remedy event timeline` renders it as one line naming the task count and the mode; and the
+run-next event list in `docs/system/architecture.md` says that every event of an execution carries
+its attempt id.
+
+ALTERNATIVES: a fresh attempt id for a test run, rejected because the test run id already names
+exactly that execution and every record of it; the approval event written inside
+`auto_approve_task_plan`, rejected because that function deliberately persists nothing and its
+callers own their ledger entries; a `plan_rejected` event beside it, rejected because T5_F288.md
+names the approval and nothing reads a rejection; the plan's task titles in the envelope, rejected
+because the dashboard's task list already carries them and the reducer needs only the ids.
+
+DELIBERATE ABSENCES: the replay tool's `resume_test_started` and `resume_test_completed` describe a
+past run being replayed, not an attempt being made, and carry no attempt id.
+
+HOW TO REVERSE: remove the attempt id from the run-next path and the test service's events,
+`announce_plan_approval` with its three calls and the `plan_approved` readers, and the ten kinds and
+the `plan` block from the envelope, and delete this paragraph.
+
+## DECISION F288 D3 — a long-run cycle is an attempt named `cycle-<index>` over several tasks; the stream's rows carry the attempt id and the approved task ids; the reducer births tasks at plan approval, a test run from each round's test and each linked test run, and a repair run from each repair round, all as children of their task (2026-09-27)
+
+CONTEXT: DECISIONS F288 D1 and D2 put the attempt id, the task id and the result on the events of
+`run_job`, the run-next path and the test service, and a `plan_approved` event carrying the plan's
+task ids, and moved the long-run executor's repair events to this round. Measured at `b1320109`:
+`_run_repair_rounds` in `packages/orchestration/long_run_executor.py` writes `cycle_repair_round`
+per repair round that ran and `cycle_healed` when the verify passes after one, and `run_cycles`
+writes `cycle_completed` with the cycle's record, all through `_emit` with `cycle_index` and no
+attempt id; a cycle's index is `base_index + len(cycles)`, so it continues across a resume; a cycle
+repairs the failures of every task it executed, and the builder bridge's `repair_loop_*` events are
+written inside one such repair round. In `apps/ui`, `feedRowOf` in `src/api/feedRow.ts` reads only
+`event`, `timestamp`, `outcome` and `task_id` from the envelope; `BrainEventRow` in
+`src/components/graph/brainOntology.ts` holds `seq`, `kind`, `outcome` and `taskId`; `applyBrainEvent`
+in `src/components/graph/brainReducer.ts` births tasks from the dashboard seed and from task
+events, a `test_run` only from `verification_passed` and `verification_failed`, and never a
+`repair_run`, and every run it births is a child of its task; and `PHASE_MARKER_TABLE` in
+`src/components/timeline/phaseMapping.ts` names neither `plan_approved` nor `task_round_tested`.
+
+CHOSEN: (1) THE LONG-RUN CYCLE is an attempt over the tasks it executes, and its attempt id is
+`cycle-<index>`, the job-scoped index its evidence already names it by. Its events name no single
+task, because its repair answers the failures of all of them. `cycle_repair_round` reads `changed`
+when the round changed files and `unchanged` otherwise; `cycle_healed` reads `healed`;
+`cycle_completed` reads the cycle's verify result. `ATTEMPT_EVENT_KINDS` gains the three. (2) THE
+ROWS: `FeedRow` and `BrainEventRow` gain the optional fields `attemptId`, the envelope's
+`attempt_id` when it is a string and `""` otherwise, and `planTaskIds`, the string entries of the
+envelope's `plan.task_ids` in order and `[]` otherwise; `feedRowOf` sets both on every row. (3) THE
+REDUCER: `plan_approved` births every task its `planTaskIds` names that the model lacks, in order,
+`planned`, ranked after the highest task rank, and changes no task that exists; it is a handled
+kind even when the list is empty. `task_round_tested` births a `test_run` and `task_round_repaired`
+a `repair_run` under their task; `test_run_completed`, `test_run_timed_out` and `test_run_blocked`
+birth a `test_run` under their task when they name one and are ignored when they do not. A new
+`TEST_OUTCOME_STATE_TABLE` maps `pass` and `passed` to `pass`, `fail`, `failed` and `timeout` to
+`fail`, and `blocked` to `blocked`; a new `REPAIR_OUTCOME_STATE_TABLE` maps `changed` to `pass`,
+`unchanged` to `blocked` and `error` to `fail`; a word neither table knows falls back to `planned`,
+as the review table's does. Every run born from a row whose `attemptId` is not empty records it as
+`meta.attemptId`, and a row without one leaves the meta exactly as today. The long-run cycle's
+events name no task and stay ignored. (4) THE PHASES: `plan_approved` marks `planning` and
+`task_round_tested` marks `test`; a repair continues the round its review opened and marks none.
+(5) THE COMMENTS: the header of `brainReducer.ts` and the doc comment of `NodeKind` are rewritten
+to say what is born now and from which event, and that `synapse` and `artifact` are still born by
+nothing.
+
+ALTERNATIVES: runs as children of their attempt's `builder_run`, rejected because clustering,
+semantic zoom, the layout and the run detail all read a run's parent as its task, and
+`meta.attemptId` groups an attempt's runs without moving an edge; the first executed task as a
+cycle's task id, rejected because it would draw one task's node for a repair of all of them;
+`unchanged` as `pass`, rejected because a repair that changed nothing repaired nothing.
+
+DELIBERATE ABSENCES: the builder bridge's `repair_loop_*` and `builder_bridge_test_completed` events
+are steps inside one cycle's repair round, which `cycle_repair_round` reports, and carry no attempt
+id; the reducer draws no node for a long-run cycle.
+
+HOW TO REVERSE: remove the attempt id and result from the three cycle events and the three kinds
+from the envelope, the two row fields, the reducer's new cases and two tables, and the two phase
+markers, restore the two comments, and delete this paragraph.
+
+## DECISION F288 D4 — R-1075's fix reaches every reader of the recording and of the widened row: the four vitest files round 3 left red are brought to the new recording and row by expectations derived again by hand, and nothing else changes (2026-09-27)
+
+CONTEXT: R-1075's FIX, registered at round 3, orders the demo recording captured again, its live
+test brought to DECISION F288 D1's envelope, and the recording's own vitest golden derived again.
+Round 3 did all of it, and DECISION F288 D3 (2) added `attemptId` and `planTaskIds` to every row
+`feedRowOf` returns. Measured at `55820841`: the vitest suite reads 4 files and 8 tests red, and
+each is a reader neither the FIX nor round 3's block named — `brainLedger.test.ts` compares the
+rows a payload parses to against literals of the old row shape and folds the old recording through
+a gap; `renderers/stateMotion.test.ts` expects the old recording's state changes frame by frame;
+`timeline/timelineIndex.test.ts` expects its old frame count; and `timeline/timelineView.test.ts`
+expects the phase bar, the sub-glyphs and the handle geometry of the old recording's frames.
+`scrubSnapshots.test.ts` and `phaseMapping.test.ts` read the recording too and are green, the
+second after round 3's own C5b.
+
+CHOSEN: R-1075 stays open and its fix now reaches these four files. Round 4 brings each failing
+expectation to the new recording and the new row shape, derived by hand from the frames and from
+the rules the code under test states, never printed from the code; it changes no production file,
+no other test, and no expectation that is green. The `Done:` paragraph for R-1075, written by the
+reviewer at round 5's booking, covers round 3's capture and round 4's readers.
+
+ALTERNATIVES: a second finding for the four files, rejected because checklist item 30 retires a
+new id for a defect an open finding already holds, and these are the same recording's readers;
+keeping the old ids by rewriting the capture's ids, rejected because the recording's docstring
+promises field values byte for byte as served, and the counts and positions would still move.
+
+HOW TO REVERSE: restore the four files from `55820841` and delete this paragraph.
+
+## DECISION F288 D5 — a prompt is a `synapse` node of the live model, composed from the dashboard's prompt trace onto the live model only, a child of its task in its task's state with its attempt in its meta; a click on it selects the prompt itself; T003 takes two rounds, the keyboard list and the rendered proof being round 6's (2026-09-27)
+
+CONTEXT: T5_F288.md's T003 asks for a prompt node kind in the graph's data model and its look, so
+the simple view's prompt dots are reachable in the live picture with the mouse and the keyboard,
+and it forbids touching the simple view or the rule that the graph draws only what its model holds.
+Measured at `a5ee2dc8`: `docs/ui/design_reference/graph_spec.md` §2 names `synapse` the tool or
+prompt call kind, §4 gives it a radius of 1.6 to 2.2, §6 a link width of 1, and §14 keeps the canvas
+`aria-hidden` with a parallel structured list as the accessible surface; `NodeKind` already holds
+`synapse`, `GLYPHS.synapse` is named "Prompt or tool call" and is drawn at every zoom, and
+`NODE_PAINTERS` paints it; nothing births one. The simple view draws one dot per item of
+`dashboard.promptTrace.items`, which holds no status and no seq, as a child of its task in its task's
+state and skips an item whose task it lacks. In the live path, `buildForceBrainModel.ts` positions
+only children of a task, `filterBrainLayout`, `clusterBrainModel`, `selectionTaskIdOf`,
+`owningTaskId` and `zoomEmphasis` all read a non-task node's parent as its task, and
+`ForceBrainGraph`'s click hands the stage a task id, which `shellSelectionIdOf` passes on; the shell
+already opens the prompt panel for a raw prompt item id.
+
+CHOSEN: (1) THE KIND is `synapse`; no kind is added. (2) THE BIRTH: a new pure module
+`apps/ui/src/components/graph/promptNodes.ts` exports `withPromptNodes(model, items)`, which appends,
+in item order, one node per item whose task node `task:<taskId>` the model holds: id
+`prompt:<item id>`, kind `synapse`, parent that task node, state that task node's state, seq 0,
+meta `{ promptId, role, promptKind, round, attemptId }` with `attemptId` the item's `runId`, and one
+link from the task. An item whose task the model lacks, or whose node already exists, is skipped,
+and a call that adds nothing returns the same model object. The stage applies it to the live model
+only; a scrubbed model is history and draws no prompt. (3) THE PARENT is the task and not the run,
+exactly as D3 made the runs children of their task: every consumer of the layout reads a non-task
+node's parent as its task, and the attempt id in the meta groups a prompt with its run without
+moving an edge. (4) THE LOOK: `GLYPHS.synapse` as it is, drawn at the radius `BRAIN_SYNAPSE_RADIUS`
+of 2 on a link of width `BRAIN_SYNAPSE_LINK_WIDTH` of 1, graph_spec §4 and §6's values. (5) THE
+MOUSE: a click on a synapse selects the prompt item itself, through a new `selectionIdOf` in
+`brainView.ts` that answers the item id for a synapse and `selectionTaskIdOf`'s answer otherwise,
+and the selection ring follows it through a new `selectedPromptNodeId`. (6) THE ORDER: round 5
+lands (1) to (5); round 6 lands the keyboard's parallel list under graph_spec §14 and a rendered
+proof of the live picture in a headless browser.
+
+ALTERNATIVES: a new `prompt` kind, rejected because graph_spec §2 already names `synapse` for
+exactly this and two kinds would split one concept; the run as parent, rejected because the layout,
+the filter, the clustering, the selection and the zoom would each need a third depth; the prompts in
+the reducer, rejected because the prompt trace is dashboard state and not a stream frame, the reason
+the seed is composed outside the reducer too; a fixed state such as `pass`, rejected because the
+simple view shows a prompt in its task's state and the live picture must not contradict it.
+
+DELIBERATE ABSENCES: synapses are not clustered or throttled, since a task's prompts number its
+rounds times two roles; the scrubbed timeline draws none.
+
+HOW TO REVERSE: delete `promptNodes.ts` and its call, `selectionIdOf`, `selectedPromptNodeId` and
+the two constants, and delete this paragraph.
+
+## DECISION F288 D6 — the keyboard reaches the live picture's prompts through a parallel list of buttons beside the canvas, hidden until it holds focus; a headless browser proves the list, the keys and the drawn dots (2026-09-27)
+
+CONTEXT: DECISION F288 D5 put the prompts into the live model as `synapse` nodes a click selects,
+and left the keyboard and a rendered proof to this round. Measured at `cb022003`:
+`docs/ui/design_reference/graph_spec.md` §14 keeps the canvas `aria-hidden` and names a parallel
+structured list as the accessible surface; `ForceBrainGraph`'s container is `aria-hidden="true"` and
+`tests/ui_contracts/test_brain_stage_mount.py` pins it; the simple view makes each prompt dot a
+focusable element labelled `<role> r<round> — <state>` that Enter selects; `apps/ui` holds no
+visually-hidden utility; and new colour literals outside the ratchet's carve-out fail
+`tests/ui_contracts/test_raw_colour_ratchet.py`. The vitest environment is `node`, so no React
+component renders in a unit test; F020's `.agent/authored/f020-r5-conformance_measure.py` renders
+the live painter in headless Chrome over CDP.
+
+CHOSEN: (1) THE ENTRIES: a pure `promptListEntries(model, visible)` in `brainView.ts` answers, in
+model order, one entry per `synapse` of the model whose id the visible layout holds: its prompt item
+id, its node id, the label `<role> r<round>` from its meta, and a state word — `done` for `pass`,
+`current` for `in_progress`, `failed` for `fail`, and every other state's own name. (2) THE LIST: a
+new component `PromptNodeList` renders the entries as a `nav` labelled "Prompts in the live graph",
+holding one native `button` per entry, labelled `<label> — <state word>`, pressed when its node is
+the selected one, and selecting the prompt item on activation, so Enter and Space both work. It is
+visually hidden until it holds focus and then shown over the stage's corner, styled from the design
+tokens only. The stage renders it inside the live branch only, from the visible layout, and the
+canvas keeps `aria-hidden`. (3) THE PROOF: a harness under `.agent/authored/f288-r6-render_*`,
+adapted from F020's, renders the live graph and the list from the demo recording and a prompt trace
+for its two tasks in headless Chrome, and proves that the list is hidden before focus, that Tab
+reaches its first button, that the list shows once focused, that Enter and then Tab and Space select
+the first and second prompts, and that the canvas holds a synapse per entry; it saves one screenshot
+before focus and one after, which the reviewer inspects.
+
+ALTERNATIVES: making the canvas itself focusable, rejected because graph_spec §14 keeps it
+`aria-hidden` and a canvas has no elements to focus; a list always shown, rejected because it would
+change the live picture's look for every pointer user; arrow keys over the canvas, rejected because
+they would contend with the zoom's own keys and give a screen reader nothing to read.
+
+DELIBERATE ABSENCES: focusing a button does not ring its dot on the canvas, only selecting it does;
+no live region announces a new prompt.
+
+HOW TO REVERSE: delete `PromptNodeList`, its style module, `promptListEntries` and the stage's use of
+them, and delete this paragraph.

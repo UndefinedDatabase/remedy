@@ -2914,6 +2914,7 @@ def run_pingpong(
     hunk_ledger: Any = None,
     resume_sessions: dict[str, str] | None = None,
     resumed_from_run_id: str = "",
+    run_id: str = "",
 ) -> PingPongResult:
     """Run the Builder <> Reviewer ping-pong loop.
 
@@ -2956,6 +2957,12 @@ def run_pingpong(
     session when its provider supports resume, with the resume fallback
     unchanged; the prompt stays full-context, because the parked session never
     saw this run's staging, so no prompt shrink is gated on it.
+
+    ``run_id`` (DECISION F288 D1) lets a caller adopt this run's id instead of
+    the minted one: a non-empty value replaces ``result.run_id`` right after
+    the result is built, and an empty one leaves the minted id alone. ``run_job``
+    passes its own attempt id here, so the id every event of that execution
+    carries is this run's id.
     """
     # If task_input provided, use it to enrich the goal
     effective_goal = goal
@@ -2981,6 +2988,8 @@ def run_pingpong(
         job_id=job_id,
         task_id=task_id,
     )
+    if run_id:
+        result.run_id = run_id
     result.episode_id = episode_id
     resume_sessions = dict(resume_sessions or {})
     if resume_sessions:

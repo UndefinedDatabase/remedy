@@ -112,19 +112,25 @@ describe("brainNeedsAnimationFrames", () => {
 });
 
 describe("the demo recording's state changes", () => {
-  // HAND-DERIVED from DECISION F019 D1's mapping, never printed from the
-  // reducer: task_run_started puts its task in progress and births its
-  // builder run in progress; a review is born already settled, so it changes
-  // nothing; task_run_completed(pass) closes the run and its task to pass.
-  // Task A is "a7a8f67f1b9a4814" (seq 0-3) and task B "1965fb3f26b64fe7"
-  // (seq 4-7). The core is left out: it keeps its own painter.
-  const A = "a7a8f67f1b9a4814";
-  const B = "1965fb3f26b64fe7";
+  // HAND-DERIVED from DECISION F019 D1's and DECISION F288 D3 (3)'s mapping,
+  // never printed from the reducer: task_run_started puts its task in
+  // progress and births its builder run in progress; task_round_completed
+  // and task_round_repaired each birth a new review/repair run already in
+  // its settled state (DECISION F019 D1: a birth is never a transition), so
+  // neither changes anything; task_run_completed(pass) closes the run
+  // task_run_started opened — the builder run keeps its birth seq as its id
+  // for its whole life — and its task, to pass. Task A is
+  // "fe1b5b487fda490f" (seq 0: started; 1: round-completed needs_repair; 2:
+  // round-repaired changed; 3: round-completed pass; 4: run-completed pass)
+  // and task B "4b3ddac9dba846af" the same shape at seq 5-9. The core is
+  // left out: it keeps its own painter.
+  const A = "fe1b5b487fda490f";
+  const B = "4b3ddac9dba846af";
   const EXPECTED: Record<number, [string, NodeState, NodeState, boolean][]> = {
     0: [[`task:${A}`, "planned", "in_progress", false]],
-    3: [[`task:${A}`, "in_progress", "pass", true], [`run:${A}:0`, "in_progress", "pass", true]],
-    4: [[`task:${B}`, "planned", "in_progress", false]],
-    7: [[`task:${B}`, "in_progress", "pass", true], [`run:${B}:4`, "in_progress", "pass", true]],
+    4: [[`task:${A}`, "in_progress", "pass", true], [`run:${A}:0`, "in_progress", "pass", true]],
+    5: [[`task:${B}`, "planned", "in_progress", false]],
+    9: [[`task:${B}`, "in_progress", "pass", true], [`run:${B}:5`, "in_progress", "pass", true]],
   };
 
   function replay(reducedMotion: boolean): Record<number, [string, NodeState, NodeState, boolean][]> {

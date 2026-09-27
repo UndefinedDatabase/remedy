@@ -837,6 +837,166 @@ class TestExistingFlowsPreserved:
 
 
 # ---------------------------------------------------------------------------
+# DECISION F288 D1 — the attempt id and the two new round events
+# ---------------------------------------------------------------------------
+
+
+class TestAttemptIdAndRoundEvents:
+    """The attempt id `run_job` mints per task execution, and the test/repair event
+    each ping-pong round writes, read back from the run log it wrote them to."""
+
+    def test_the_e2e_run_writes_the_ordered_sequence_with_one_attempt_id_per_task(
+            self, isolate_data_root, demo_repo, tmp_path_factory, monkeypatch):
+        from packages.orchestration import pingpong_loop as pp_mod
+        from packages.orchestration.pingpong_loop import PingPongResult, PingPongRound
+        from packages.orchestration.pingpong_provider import BuilderOutput, ReviewerOutput
+        from packages.orchestration.timeline import load_run_events
+
+        received_run_ids: list[str] = []
+
+        def stand_in(*args, **kwargs):
+            """Records the `run_id` kwarg `run_job` passed and returns a PingPongResult
+            carrying it, with a real staging dir so the strict apply below succeeds."""
+            run_id = kwargs.get("run_id", "")
+            received_run_ids.append(run_id)
+            staging = tmp_path_factory.mktemp("f288_stand_in_staging")
+            (staging / "README.md").write_text("changed\n")
+            round1 = PingPongRound(
+                round_number=1, kind="initial", test_passed=False,
+                reviewer_output=ReviewerOutput(verdict="needs_repair"),
+            )
+            round2 = PingPongRound(
+                round_number=2, kind="repair", test_passed=True,
+                builder_output=BuilderOutput(files_changed=["README.md"]),
+                reviewer_output=ReviewerOutput(verdict="pass"),
+            )
+            return PingPongResult(
+                run_id=run_id, final_status="staged_review_passed",
+                rounds=[round1, round2], staged_files=["README.md"],
+                safe_diff_files=["README.md"], staging_path=str(staging),
+            )
+
+        monkeypatch.setattr(pp_mod, "run_pingpong", stand_in)
+
+        job = parse_job_file(_TWO_TASK_JOB, str(demo_repo))
+        result = run_job(
+            job.job_id,
+            builder_provider=_pass_provider(),
+            reviewer_provider=_pass_provider(),
+            repair_rounds=0,
+        )
+
+        assert result.state == JOB_COMPLETED
+        assert len(received_run_ids) == 2
+        assert received_run_ids[0] and received_run_ids[1]
+        # Two tasks carry two different attempt ids.
+        assert received_run_ids[0] != received_run_ids[1]
+        assert result.tasks[0].run_id == received_run_ids[0]
+        assert result.tasks[1].run_id == received_run_ids[1]
+
+        events = load_run_events(isolate_data_root, job.job_id)
+        task0_id = result.tasks[0].task_id
+        task0_events = [e for e in events if e.get("task_id") == task0_id]
+
+        assert [e.get("event") for e in task0_events] == [
+            "task_run_started",
+            "task_round_tested",
+            "task_round_completed",
+            "task_round_repaired",
+            "task_round_tested",
+            "task_round_completed",
+            "task_run_completed",
+        ]
+        # Every event of the execution carries the same attempt id, equal to the
+        # run_id the stand-in received and to the task's stored run_id.
+        for ev in task0_events:
+            assert ev.get("metadata", {}).get("attempt_id") == received_run_ids[0]
+
+        by_name_and_round = {
+            (e.get("event"), e.get("metadata", {}).get("round_number")): e.get("outcome")
+            for e in task0_events if e.get("event", "").startswith("task_round_")
+        }
+        assert by_name_and_round[("task_round_tested", 1)] == "fail"
+        assert by_name_and_round[("task_round_completed", 1)] == "needs_repair"
+        assert by_name_and_round[("task_round_repaired", 2)] == "changed"
+        assert by_name_and_round[("task_round_tested", 2)] == "pass"
+        assert by_name_and_round[("task_round_completed", 2)] == "pass"
+        assert task0_events[-1].get("outcome") == "pass"  # task_run_completed
+
+    def test_a_round_with_no_test_result_writes_no_task_round_tested(self):
+        """A round whose `test_passed` is `None` (never ran) writes no `task_round_tested`."""
+        from packages.orchestration.pingpong_job import TaskEntry, _log_task_rounds
+        from packages.orchestration.pingpong_loop import PingPongRound
+
+        class _RecordingLog:
+            def __init__(self) -> None:
+                self.events: list[str] = []
+
+            def log(self, event: str, **kwargs: object) -> None:
+                self.events.append(event)
+
+        log = _RecordingLog()
+        task = TaskEntry(task_id="T1", title="t")
+        result = types.SimpleNamespace(rounds=[
+            PingPongRound(round_number=1, kind="initial", test_passed=None),
+        ])
+
+        _log_task_rounds(log, task, result, "attempt-1")
+
+        assert "task_round_tested" not in log.events
+        assert log.events == ["task_round_completed"]
+
+    def test_log_task_started_and_ended_carry_attempt_id(self):
+        """`task_run_started`, `task_run_completed` and `task_run_failed` each carry
+        `attempt_id` as a keyword of `log.log` (DECISION F288 D1 (2))."""
+        from packages.orchestration.pingpong_job import (
+            TaskEntry,
+            _log_task_ended,
+            _log_task_started,
+        )
+
+        class _RecordingLog:
+            def __init__(self) -> None:
+                self.calls: list[tuple[str, dict]] = []
+
+            def log(self, event: str, **kwargs: object) -> None:
+                self.calls.append((event, kwargs))
+
+        log = _RecordingLog()
+        task = TaskEntry(task_id="T1", title="t")
+
+        _log_task_started(log, task, "attempt-xyz")
+        _log_task_ended(log, task, "pass", "attempt-xyz")
+        _log_task_ended(log, task, "completion_gate_failed", "attempt-xyz")
+
+        names_and_attempts = [(name, kwargs.get("attempt_id")) for name, kwargs in log.calls]
+        assert names_and_attempts == [
+            ("task_run_started", "attempt-xyz"),
+            ("task_run_completed", "attempt-xyz"),
+            ("task_run_failed", "attempt-xyz"),
+        ]
+
+    def test_repair_result_classifies_no_output_errored_output_and_no_files(self):
+        """DECISION F288 D1 (3): no builder output and an errored output both read
+        `error`; an output naming no changed file reads `unchanged`."""
+        from packages.orchestration.pingpong_job import _repair_result
+        from packages.orchestration.pingpong_loop import PingPongRound
+        from packages.orchestration.pingpong_provider import BuilderOutput
+
+        no_output = PingPongRound(round_number=1, kind="repair", builder_output=None)
+        assert _repair_result(no_output) == "error"
+
+        errored = PingPongRound(
+            round_number=2, kind="repair",
+            builder_output=BuilderOutput(error="boom", files_changed=["x.py"]))
+        assert _repair_result(errored) == "error"
+
+        no_files = PingPongRound(
+            round_number=3, kind="repair", builder_output=BuilderOutput(files_changed=[]))
+        assert _repair_result(no_files) == "unchanged"
+
+
+# ---------------------------------------------------------------------------
 # Persistence round-trip
 # ---------------------------------------------------------------------------
 

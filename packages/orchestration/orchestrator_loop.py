@@ -1806,6 +1806,8 @@ def _auto_approve_if_gated(job: Any) -> bool:
     """
     from packages.orchestration.data_paths import job_evidence_export_dir
     from packages.orchestration.job_plan import (
+        AUTO_APPROVAL_MODE,
+        announce_plan_approval,
         auto_approve_task_plan,
         task_plan_approval_open,
     )
@@ -1816,6 +1818,7 @@ def _auto_approve_if_gated(job: Any) -> bool:
     job.task_plan = auto_approve_task_plan(
         dict(job.task_plan or {}), job_evidence_export_dir(str(job.job_id)))
     save_job_plan(job)
+    announce_plan_approval(job, mode=AUTO_APPROVAL_MODE)
     return True
 
 

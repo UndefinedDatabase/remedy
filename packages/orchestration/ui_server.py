@@ -2035,6 +2035,32 @@ def _budget_tick_summary_payload(metadata: Any) -> dict[str, Any]:
     return payload
 
 
+# DECISION F288 D1 (5), D2 (5) and D3 (1): the kinds an attempt (one execution of
+# a task by `run_job` or the run-next path, one test run of the test service, or
+# one long-run cycle's repair round, heal or completion) writes.
+ATTEMPT_EVENT_KINDS: frozenset[str] = frozenset({
+    "task_run_started",
+    "task_round_repaired",
+    "task_round_tested",
+    "task_round_completed",
+    "task_run_completed",
+    "task_run_failed",
+    "task_run_noop",
+    "builder_started",
+    "builder_completed",
+    "verification_passed",
+    "verification_failed",
+    "test_run_requested",
+    "test_run_started",
+    "test_run_completed",
+    "test_run_timed_out",
+    "test_run_blocked",
+    "cycle_repair_round",
+    "cycle_healed",
+    "cycle_completed",
+})
+
+
 def _safe_event_summary(seq: int, event: dict[str, Any]) -> dict[str, Any]:
     """The safe per-event envelope both event transports carry.
 
@@ -2058,6 +2084,17 @@ def _safe_event_summary(seq: int, event: dict[str, Any]) -> dict[str, Any]:
     writers, so an unconditional widening would turn both red in the same
     commit as a new feature and leave two independent changes sharing one
     failure.
+
+    `attempt_id` is DECISION F288 D1 (5)'s field and it is CONDITIONAL on the
+    event kind: a kind in `ATTEMPT_EVENT_KINDS` gains it, read from the event's
+    `metadata["attempt_id"]` when `metadata` is a dict and the value is a `str`,
+    and `""` otherwise — a top-level `attempt_id` is never read — and every
+    other kind's frame stays byte-identical.
+
+    `plan` is DECISION F288 D2 (5)'s field and it is CONDITIONAL on the event
+    kind `plan_approved`: it carries `task_ids`, the string entries of
+    `metadata["task_ids"]` in order when that is a list and `[]` otherwise,
+    and every other kind's frame stays byte-identical.
     """
     metadata = event.get("metadata")
     nested = metadata.get("task_id", "") if isinstance(metadata, dict) else ""
@@ -2070,13 +2107,32 @@ def _safe_event_summary(seq: int, event: dict[str, Any]) -> dict[str, Any]:
         "outcome": event.get("outcome", ""),
         "task_id": linkage if isinstance(linkage, str) else "",
     }
+    if kind in ATTEMPT_EVENT_KINDS:
+        attempt_id = metadata.get("attempt_id") if isinstance(metadata, dict) else None
+        summary["attempt_id"] = attempt_id if isinstance(attempt_id, str) else ""
     if kind == BUDGET_TICK_EVENT:
         summary["budget"] = _budget_tick_summary_payload(metadata)
     if kind == "steering_message_consumed":
         summary["steering"] = _steering_ack_summary_payload(metadata)
     if kind == "task_lesson_written":
         summary["lesson"] = _lesson_summary_payload(metadata)
+    if kind == "plan_approved":
+        summary["plan"] = _plan_approved_summary_payload(metadata)
     return summary
+
+
+def _plan_approved_summary_payload(metadata: Any) -> dict[str, list[str]]:
+    """A plan approval's task ids for the stream (F288, DECISION F288 D2 (5)).
+
+    CONDITIONAL on the event kind for the reason `budget` is: every other frame stays
+    byte-identical. `task_ids` is the string entries of `metadata["task_ids"]` in
+    order when that is a list, and `[]` otherwise — a non-string entry is dropped
+    rather than surfaced.
+    """
+    meta = metadata if isinstance(metadata, dict) else {}
+    raw = meta.get("task_ids")
+    task_ids = [t for t in raw if isinstance(t, str)] if isinstance(raw, list) else []
+    return {"task_ids": task_ids}
 
 
 def _lesson_summary_payload(metadata: Any) -> dict[str, str]:

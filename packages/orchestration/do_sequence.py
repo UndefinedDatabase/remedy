@@ -530,11 +530,16 @@ def plan_order_job(
                 # assumption log — unattended, but never silent. The semantics
                 # live in job_plan.auto_approve_task_plan so the
                 # orchestrator loop runs the SAME approval, not a copy of it.
-                from packages.orchestration.job_plan import auto_approve_task_plan
+                from packages.orchestration.job_plan import (
+                    AUTO_APPROVAL_MODE,
+                    announce_plan_approval,
+                    auto_approve_task_plan,
+                )
                 fp_dict = auto_approve_task_plan(
                     fp_dict, job_evidence_export_dir(str(job.job_id)))
                 job.task_plan = fp_dict
                 save_job_plan(job)
+                announce_plan_approval(job, mode=AUTO_APPROVAL_MODE)
                 plan_label = (
                     f"task plan {fp_result.plan.schema_v} (approved via --yes)"
                 )
