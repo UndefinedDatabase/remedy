@@ -23369,3 +23369,31 @@ rejected because it copies a command that no longer exists.
 HOW TO REVERSE: restore the propose button and its test pin, remove `AddTaskSheet.tsx`,
 `injectDraftView`, the canvas origin thread and the assumption-log rows naming this DECISION, and
 delete this paragraph.
+
+## DECISION F028 D8 — the Add Task sheet renders through a portal into the document's body; the final report names an injected task's origin in words on its task line; the end-to-end proof takes round 9 (2026-09-27)
+
+CONTEXT: R-1079 measured the sheet confined to the tasks card, because the card's glass rule sets
+`backdrop-filter`, which makes it the containing block of fixed descendants. T5_F028.md's
+acceptance asks that an injected task carry its provenance end to end, the report included.
+Measured at `41f591a3`: `_task_lines` in `packages/orchestration/run_report.py` renders one line
+per task from a `TaskOutcome`, built in `collect_report_sources`, which carries no origin; every
+field `TaskOutcome` gained since F040 defaults so that a report of a job without it stays
+byte-identical.
+
+CHOSEN: (1) THE PORTAL. `AddTaskSheet` keeps its markup, its state and its mount in the card, and
+returns its section through `createPortal(..., document.body)`, so the sheet is positioned against
+the viewport whatever its mount's ancestors set; the card keeps owning whether it is open. (2) THE
+REPORT. `TaskOutcome` gains `origin`, empty by default and filled by `collect_report_sources` from
+the task's `inputs["plan"]["origin"]`; `_task_lines` appends ` — added by you while the job ran`
+to the line of a task whose origin is `human_injected`, after the apply clause and before the
+evidence link, so every other task line, and every report of a job without an injection, is
+byte-identical to today's. (3) THE ORDER. Round 9 lands the end-to-end proof: a live UI server over
+a job, a task injected mid-run through the door, drafted, confirmed, executed in the same job, and
+the final report naming its origin; the closure sequence follows.
+
+ALTERNATIVES: moving the sheet's mount into the shell beside `LessonsOverlay`, rejected because it
+threads the open state and the task list through the shell for no gain the portal does not give;
+removing the card's `backdrop-filter`, rejected because the glass is the design reference's own.
+
+HOW TO REVERSE: return the section directly instead of through the portal, remove `origin` from
+`TaskOutcome` and its clause, and delete this paragraph.
