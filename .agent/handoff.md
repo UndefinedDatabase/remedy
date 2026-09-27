@@ -1,141 +1,153 @@
-# Handoff — F028, round 9
+# Handoff — F028, round 10
 
 ## Session
 
-SESSION 1 of feature F028 · round 9 · rounds so far 9. Context remaining at
-handback: ample — well under 2% of the session's token budget consumed by
-this round's reads (`AGENTS.md`, both live e2e reference files whole,
-`task_injection.py`, `ui_server.py`'s injection dispatch and dashboard,
-`pingpong_job.py`'s fold, `run_report.py`'s clause, the CLI's inject command
-and catalog entry, `test_task_injection_runner.py` and
-`test_dashboard_task_origin.py`), one new test file (403 insertions) and one
-new tool (170 insertions); every gate matched on its first run and no
-correction round was needed.
+SESSION 2 of feature F028 · round 10 · rounds so far 10. Context remaining
+at handback: ample — this round read `AGENTS.md`, the block, the three
+payloads, `docs/agents/handback_template.md`, the four cited
+`STATUS_closure_protocol.md` preconditions, `docs/agents/integration_gate.md`
+and the previous handoff for its table format; no source module needed
+reading since the round applies committed diffs and runs gates rather than
+writing new production code.
 
 ## Range
 
-Review of `beea934f`..`HEAD` (`HEAD` is this handback's own commit, `F028
-R9 C5`, on `feature/f028-task-injection`).
+Review of `969c6b5e`..`HEAD` (`HEAD` is this handback's own commit, `F028
+R10 C4`, on `feature/f028-task-injection`).
 
 ## Commits
 
-### a46f84697 F028 R9 C1: copy round 9 block and payloads into .agent/authored/
+### c85ab7e16 F028 R10 C1: copy round 10 block and payloads
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f028-r9-block.md | 194/0 | copy of this round's block |
-| .agent/authored/f028-r9-plan.md | 28/0 | copy of the plan payload |
-| .agent/authored/f028-r9-records.diff | 12/0 | copy of the records diff payload |
+| .agent/authored/f028-r10-block.md | 151/0 | copy of this round's block |
+| .agent/authored/f028-r10-closure_docs.diff | 130/0 | copy of the closure docs diff payload |
+| .agent/authored/f028-r10-plan.md | 30/0 | copy of the plan payload |
+| .agent/authored/f028-r10-records.diff | 10/0 | copy of the records diff payload |
 
-Measured insertions: 234 (block's own line count 194 + 40), matching the
+Measured insertions: 321 (block's own line count 151 + 170), matching the
 block's expectation exactly, under the 500-line cap.
 
-### 18f013305 F028 R9 C2: book round 8, resolve R-1079
+### 2caf18232 F028 R10 C2: book round 9
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/live_review.md | 4/0 | round 8's Gate entry (VERDICT PASS) and R-1079's `Done:` paragraph appended |
-| .agent/plan.md | 8/9 | rewrite from the plan payload |
+| .agent/live_review.md | 2/0 | round 9's Gate entry (VERDICT PASS) appended |
+| .agent/plan.md | 10/8 | rewrite from the plan payload |
 
-Matches the block's expected numstat (4/0, 8/9) exactly. Applied via
+Matches the block's expected numstat (2/0, 10/8) exactly. Applied via
 `git apply --check` (exit 0) then the real apply (exit 0) of
 `records.diff`, followed by the `plan.md` rewrite via `shutil.copyfile`.
 
-### c3e9bd567 F028 R9 C3: prove an injection end to end through the door and the command line
+### 6d5b76608 F028 R10 C3: write the Built State and consolidate the checklist
 | Path | +/- | Reason |
 |---|---|---|
-| tests/ui_server/test_task_injection_e2e_live.py | 403/0 | THE TEST: F028 T003 end to end, over an APPROVED two-task plan A then B (B depending on A), `_make_repo`'s fixture repo. (a) THE DOOR PATH: run 1 (`--tasks 1`) pauses the job after A; `job.inject` with `after` set to A's own task id answers 200 `drafted` with `placement.depends_on == ["A"]` and basis `stated`; `job.inject-confirm` answers 200 `confirmed`; the dashboard names no task `human_injected` yet; run 2 (`--tasks 0`) completes the job with three tasks applied, the new task's plan carrying `origin=human_injected` and `plan_rationale="placed after A because you named it"`, the edit log's last `plan_add_task` entry's `injection` block naming the draft with `confirmed_unseen` False, the run log holding exactly one `task_injected` event (`outcome=applied`, naming the new task's id), the `job show --full` report's markdown holding the origin clause exactly once on the new task's line, and — through a live door again — the dashboard naming only the new task `human_injected` and the events stream holding exactly one `task_injected` frame. (b) THE COMMAND LINE PATH: a fresh job, run 1 as in (a), then `apps.cli.grouped.main(["job", "inject", <id>, <text>, "--yes", "--json"])` in the test's own process (`REMEDY_DATA_DIR` via `monkeypatch.setenv`) exits without raising `SystemExit` and prints exactly one JSON document carrying `draft` and `confirmation`; run 2 completes the job with three tasks applied, the edit log's `injection` block reading `confirmed_unseen` True, and the report's clause exactly once. The planner is monkeypatched at `packages.orchestration.task_injection.injection_call_fn` to answer one valid `task_injection_draft_v1` object (`files_hint=["docs/README.md"]`), read by both the door's dispatch and the CLI's own `_cmd_inject`, both local imports of the same module attribute. |
+| docs/agents/planner_reviewer_prompt.md | 10/0 | the consolidation paragraph, appended before "The next consolidation measures against 34." |
+| docs/roadmap/features/T5_F028.md | 101/0 | the Built State section appended |
 
-No numstat was expected by the block for C3.
+Matches the block's expected numstat (10/0, 101/0) exactly. Applied via
+`git apply --check` (exit 0) then the real apply (exit 0) of
+`closure_docs.diff`; never edited or retyped.
 
-### 56275dcfd F028 R9 C4: add the round 9 probe tool
+### F028 R10 C4: record the closure suite transcript and rewrite handoff for round 10 (this commit — a handback cannot table the commit that writes it, R-0149 pattern)
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f028-r9-probes.py | 170/0 | G5's tool: 3 probes (p1 `run_report.py`'s `_origin_clause` forced to answer `""`, p2 `ui_server.py`'s `_task_origin` forced to answer `""`, p3 `pingpong_job.py`'s `_fold_task_injections` forced to `return False` before it reads any confirmation) all caught by ONE `pytest` route over the new test file alone — no other test needed touching to catch any of the three |
-
-### F028 R9 C5: rewrite handoff for round 9 (this commit — a handback cannot table the commit that writes it, R-0149 pattern)
-| Path | +/- | Reason |
-|---|---|---|
+| .agent/authored/f028-closure-suite.txt | new | the full suite's command, real exit code, wall time, summary line, bad node ids (NONE) and the tree it ran on (`6d5b76608`) |
 | .agent/handoff.md | new | this handback |
 
 ## External actions
 
 - No branch creation this round — the block continues on
-  `feature/f028-task-injection`, already checked out from round 8.
-- `git worktree add --detach .remedy-wt/f028-r9-mut 56275dcfd` (G5's own
-  ordered worktree) — succeeded; `git worktree remove --force
-  .remedy-wt/f028-r9-mut` and `git worktree prune` afterwards — both
-  succeeded. `git worktree list | wc -l` read 69 before the add and 69
-  after the remove (step 4's own reading, unchanged).
-- `git push` after C5 — reported under G6 in this round's reply (run after
-  this file is committed).
-- No `gh pr create` (the block does not order one this round), no `gh pr
-  merge`, no checkout of `main`, no branch deletion, no force-push, no
-  `git stash`.
+  `feature/f028-task-injection`, already checked out from round 9.
+- No `git worktree add`/`remove` this round (G5's worktree-based mutation
+  proof does not apply to R10 — the block orders no mutation tool this
+  round).
+- `git push origin feature/f028-task-injection` after C4 — reported under
+  G6 in this round's reply (run after this file is committed).
+- No `gh pr create` (the block explicitly withholds the pull request to a
+  later round), no `gh pr merge`, no checkout of `main`, no branch
+  deletion, no force-push, no `git stash`.
 
 ## Verification
 
 ### G1 — TRANSPORT
-Payload readings (measured before use, against the PAYLOADS table — both
+Payload readings (measured before use, against the PAYLOADS table — all
 MATCH):
-- `plan.md`: 28 lines, 1049 bytes, sha256
-  `cb4f63eaf6180c0bbd83009fb158cf8dad9d075b64649ddb1c415ab1a17bb369`.
-- `records.diff`: 12 lines, 7510 bytes, sha256
-  `b91ce50f4da5ea7f8676db12c0242e550a08eff7f9be4628f83fe4bd1448f283`.
-- Block: 194 lines, sha256
-  `c5dbe5b9154a2e6cf69a441c7d8191824422f0defec5d6c2d0b0060c012a1499` —
+- `closure_docs.diff`: 130 lines, 10442 bytes, sha256
+  `9b2ace7316f8ab2a91d5f708aef06feedf0462fdceaae1eb50ec527ecb13d4ad`.
+- `plan.md`: 30 lines, 1069 bytes, sha256
+  `7619d7d2d61de0b44c2e0b4ad5c807ea13978c17dfd92d95d72d2814d6da9e8b`.
+- `records.diff`: 10 lines, 5162 bytes, sha256
+  `eb83ce157268501b9ba88e8b24bc40f5a3012f1197fbed6c1f498641b7ebd19a`.
+- Block: 151 lines, sha256
+  `7270d24d24cf002fb6b154d683ed8e4f52976fdf2decd0ed8b0dbb00ab6d912e` —
   MATCH against both readings the delegation message stated (step 3).
 
-Each `.agent/authored/f028-r9-*` payload copy, read back with `git show
-<commit>:<path>` from C1 (`a46f84697`), compared byte-for-byte (sha256)
-against its source — all three MATCH:
+Each `.agent/authored/f028-r10-*` payload copy, read back with `git show
+<commit>:<path>` from C1 (`c85ab7e16`), compared byte-for-byte (sha256)
+against its source — all four MATCH:
 ```
-.agent/authored/f028-r9-block.md MATCH sha=c5dbe5b9154a2e6cf69a441c7d8191824422f0defec5d6c2d0b0060c012a1499
-.agent/authored/f028-r9-records.diff MATCH sha=b91ce50f4da5ea7f8676db12c0242e550a08eff7f9be4628f83fe4bd1448f283
-.agent/authored/f028-r9-plan.md MATCH sha=cb4f63eaf6180c0bbd83009fb158cf8dad9d075b64649ddb1c415ab1a17bb369
+.agent/authored/f028-r10-block.md          MATCH sha=7270d24d24cf002fb6b154d683ed8e4f52976fdf2decd0ed8b0dbb00ab6d912e
+.agent/authored/f028-r10-closure_docs.diff MATCH sha=9b2ace7316f8ab2a91d5f708aef06feedf0462fdceaae1eb50ec527ecb13d4ad
+.agent/authored/f028-r10-plan.md           MATCH sha=7619d7d2d61de0b44c2e0b4ad5c807ea13978c17dfd92d95d72d2814d6da9e8b
+.agent/authored/f028-r10-records.diff      MATCH sha=eb83ce157268501b9ba88e8b24bc40f5a3012f1197fbed6c1f498641b7ebd19a
 ```
 
 ### G2 — THE RECORDS
-`git show <sha>:<path>`, bytes and sha256, each read from C2 (`18f013305`),
-MATCHING the reviewer's table exactly:
+`git show <sha>:<path>`, bytes and sha256, each read at the commit the
+block names, MATCHING the reviewer's table exactly:
 ```
-.agent/live_review.md bytes=337093 sha256=038cc36f4b134dea3c13cbf4ee4fc8ae9c936b91ead44bda2b7039e9c2b61a16
-.agent/plan.md         bytes=1049  sha256=cb4f63eaf6180c0bbd83009fb158cf8dad9d075b64649ddb1c415ab1a17bb369
+C2 (2caf18232) .agent/live_review.md                       bytes=339147 sha256=d607d6739d94295005ef8d61a5fa4e0d5608a3be416b6ac9c9467ecf8e8d7fda
+C2 (2caf18232) .agent/plan.md                               bytes=1069   sha256=7619d7d2d61de0b44c2e0b4ad5c807ea13978c17dfd92d95d72d2814d6da9e8b
+C3 (6d5b76608) docs/roadmap/features/T5_F028.md             bytes=13131  sha256=1be63e3198cde648777f04624bb87fa744e2062e4653f2b0f74487d0ff2b852d
+C3 (6d5b76608) docs/agents/planner_reviewer_prompt.md       bytes=106796 sha256=76037d336f5065d7a08db99a764cbf483e6b58468d7fdefc578b4e99c259a5d8
 ```
-Both MATCH. `open_finding_ids` from `scripts/rotate_live_review.py`, called
-directly against `.agent/live_review.md`'s text: at `beea934f` reads
-`['R-1079']`; at C2 (`18f013305`) reads `[]` — MATCH against the reviewer's
-stated readings. `git diff --name-only a46f84697 18f013305` names exactly:
-`.agent/live_review.md`, `.agent/plan.md` — the table's two paths, no more,
-no fewer.
+All four MATCH. `open_finding_ids` from `scripts/rotate_live_review.py`,
+called directly against `.agent/live_review.md`'s text at C2 (`2caf18232`),
+reads `[]` — MATCH against the reviewer's stated reading. `live_checklist_items`
+from `packages/orchestration/block_lint.py`, called directly against
+`docs/agents/planner_reviewer_prompt.md`'s text at `969c6b5e` and at C3
+(`6d5b76608`), reads the same 34 numbers both times:
+`[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 18, 20, 21, 22, 23,
+24, 25, 26, 27, 28, 29, 30, 31, 33, 34, 35, 36, 37]` — MATCH.
 
-### G3 — THE CODE
+### G3 — THE LINTER
 ```
-$ python3 -m ruff check tests/ui_server/test_task_injection_e2e_live.py
-All checks passed!
+$ python3 -m apps.cli.main integrity block .remedy-wt/f028-r10/block.md
+  [OK] item 1 (size): 151 lines, limit 400
+  [OK] item 3 (cap-bounded replacements): plan.md at 30 lines
+  [OK] item 10 (open set recomputed): states 0; .agent/live_review.md holds 0 open by distinct id, and the block registers 0 and resolves 0, leaving 0
+  [OK] item 24 (gate paths resolve): 0 paths named in the block's commands, every one resolves
+  [OK] item 30 (new ids searched first): the block registers no finding id
+  [OK] item 31 (gates before the text): the block orders no gates before a commit
+  [OK] item 37 (no unmeasured runs): no line is a run of one repeated character
+All 7 checkable items pass.
 REAL_EXIT=0
 ```
-(run at C4 — `56275dcfd`)
+(run at C3 — `6d5b76608`)
 
-### G4 — THE TESTS
+### G4 — THE TESTS AND THE TREE
 ```
-$ bash -c 'python3 -m pytest -q -p no:cacheprovider -rs tests/ui_server/test_task_injection_e2e_live.py tests/ui_server/test_task_veto_e2e_live.py tests/ui_server/test_task_edit_e2e_live.py tests/orchestration/test_task_injection_runner.py tests/cli/test_job_inject.py tests/ui_server/test_command_dispatch.py tests/orchestration/test_run_report.py tests/ui_server/test_dashboard_task_origin.py tests/orchestration/test_live_review_rotation.py tests/orchestration/test_integrity_gate.py tests/regression/test_resource_safety.py tests/docs tests/cli/test_golden_path.py 2>&1 | tail -20; echo "REAL_EXIT=${PIPESTATUS[0]}"'
-........................................................................ [ 11%]
-........................................................................ [ 23%]
-........................................................................ [ 35%]
-........................................................................ [ 47%]
-........................................................................ [ 59%]
-........................................................................ [ 70%]
-........................................................................ [ 82%]
-........................................................................ [ 94%]
-.................................                                        [100%]
-609 passed in 71.30s (0:01:11)
+$ bash -c 'python3 -m pytest -q -p no:cacheprovider -rs tests/docs/ tests/orchestration/test_block_lint.py
+tests/orchestration/test_live_review_rotation.py tests/orchestration/test_integrity_gate.py
+tests/orchestration/test_self_use_generator.py tests/orchestration/test_roadmap_index.py
+tests/ui_server/test_dashboard_contract.py tests/cli/test_golden_path.py 2>&1 | tail -6; echo "REAL_EXIT=${PIPESTATUS[0]}"'
+........................................................................ [ 12%]
+........................................................................ [ 24%]
+........................................................................ [ 36%]
+........................................................................ [ 48%]
+........................................................................ [ 60%]
+........................................................................ [ 72%]
+........................................................................ [ 84%]
+........................................................................ [ 96%]
+....................                                                     [100%]
+596 passed in 43.53s
 REAL_EXIT=0
 ```
-No `SKIPPED` line appeared. The reviewer's own baseline at `beea934f` (this
-same selection LESS the new file) read `607 passed` at real exit code 0.
-This round adds exactly 2 Python test nodes, both in the new file
-(`test_the_door_path_drafts_confirms_and_folds_the_injection`,
-`test_the_command_line_path_yes_confirms_unseen`). `607 + 2 = 609` exactly —
-no unexplained difference.
+No `SKIPPED` line appeared, unlike the reviewer's simulated-tree reading of
+595 passed and 1 skipped — this primary checkout HAS `apps/ui/node_modules`
+installed (unlike the reviewer's simulation tree), so the one test the
+reviewer's tree skips for that reason ran here instead and passed. Total is
+596 either way (595+1 = 596 = 596+0); DEVIATION noted in full below.
 
 ```
 $ python3 -m apps.cli.main integrity check --json
@@ -148,90 +160,92 @@ $ python3 -m apps.cli.main integrity check --json
   {"name": "high_blockers_open", "status": "pass", "message": "no open blocker/high findings"}
 ], "fail_count": 0, "ok": true, "passed": true, "schema_version": 1, "version": 1}
 ```
-All six checks read `pass`, `fail_count` 0. `live_review_verdict` now reads
-"last Gate verdict PASS" because this round's own C2 just booked round 8's
-PASS as the ledger's last Gate entry.
+All six checks read `pass`, `fail_count` 0 (run at C3 — `6d5b76608`).
+`git status --porcelain` (at C3, before C4's new files) read empty, with no
+untracked file.
 
-### G5 — THE REACH OF THE TEST
-`git worktree add --detach .remedy-wt/f028-r9-mut 56275dcfd` then `python3
--B .agent/authored/f028-r9-probes.py
-/home/decodeux/Repos/remedy/.remedy-wt/f028-r9-mut`, whole output:
+### G5 — THE INTEGRATION GATE
+C4(a) — from a scratch Python file (`.remedy-wt/f028-r10-worker/c4a_selfuse.py`),
+in the primary checkout, after C3:
 ```
-==============================================================================
---- pytest control run (unmutated, before) ---
-control: exit=0 failed=0
-p1 _origin_clause answers "": exit=1 failed=2 failing_node_ids=['tests/ui_server/test_task_injection_e2e_live.py::TestTaskInjectionE2ELive::test_the_door_path_drafts_confirms_and_folds_the_injection', 'tests/ui_server/test_task_injection_e2e_live.py::TestTaskInjectionE2ELive::test_the_command_line_path_yes_confirms_unseen']
-p2 the dashboard's _task_origin answers "": exit=1 failed=1 failing_node_ids=['tests/ui_server/test_task_injection_e2e_live.py::TestTaskInjectionE2ELive::test_the_door_path_drafts_confirms_and_folds_the_injection']
-p3 _fold_task_injections answers False before it reads any confirmation: exit=1 failed=2 failing_node_ids=['tests/ui_server/test_task_injection_e2e_live.py::TestTaskInjectionE2ELive::test_the_door_path_drafts_confirms_and_folds_the_injection', 'tests/ui_server/test_task_injection_e2e_live.py::TestTaskInjectionE2ELive::test_the_command_line_path_yes_confirms_unseen']
-restored byte-identical: True (packages/orchestration/pingpong_job.py)
-restored byte-identical: True (packages/orchestration/run_report.py)
-restored byte-identical: True (packages/orchestration/ui_server.py)
---- pytest control run (unmutated, after) ---
-control: exit=0
-git status --porcelain (primary checkout): ''
-ALL PROBES CAUGHT AND RESTORED CLEANLY: True
+generate_and_append_if_empty() -> None
+next_self_use_item() -> None
 ```
-All three probes red, each with at least one failing node id naming this
-round's own test; no probe stayed green, so no fix-up test was needed.
-`git worktree remove --force .remedy-wt/f028-r9-mut` then `git worktree
-prune`, both exit 0; `git worktree list | wc -l` read 69 afterwards,
-matching step 4's own reading.
+Both read `None`, matching the reviewer's dry-run reading exactly: the
+queue holds no pending item, the ledger no open finding, and neither the
+staleness catalog nor `doctor core` offered a claim. Nothing was written
+(`git status --porcelain` stayed empty immediately after); closure
+precondition 6 reads **self-use NONE (queue exhausted)**. No
+`scripts/self_use_queue.json` commit was made (the STOP-and-commit-alone
+branch of C4(a) does not apply).
 
-(G6 — TREE AND PUSH runs after this commit; its readings are in the round
-reply, not here, since this commit cannot contain them.)
+C4(b) — the UI build:
+```
+$ bash -c 'npm --prefix apps/ui run build 2>&1 | tail -2; echo "REAL_EXIT=${PIPESTATUS[0]}"'
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 2.52s
+REAL_EXIT=0
+```
+`git status --porcelain` after it: empty.
+
+C4(c) — the ONE full suite, in the primary checkout at C3 (`6d5b76608`):
+```
+$ python3 -m pytest -n auto -q
+real exit code: 0
+wall time: 196.57s (0:03:16); measured wall clock 197s
+summary line: 20018 passed, 20 skipped, 1 warning in 196.57s (0:03:16)
+bad node ids: NONE
+```
+Log at `.remedy-wt/f028-r10-worker/full_suite.txt`; committed transcript at
+`.agent/authored/f028-closure-suite.txt`. `tests/orchestration/test_import_reachability.py`
+and `tests/test_no_orphan_modules.py` both ran inside this green suite (no
+FAILED/ERROR line anywhere in the log) — neither holds a bad node, so
+closure precondition 7 reads clean.
+
+### G6 — AFTER C4 AND THE PUSH
+Reported in the round reply (necessarily taken after this commit and the
+subsequent push, so it cannot appear in the commit itself).
 
 ## Authored-text proofs
 
-- Block copy (`.agent/authored/f028-r9-block.md`, at `a46f84697`) vs
-  `.remedy-wt/f028-r9/block.md`: byte-identical, sha256
-  `c5dbe5b9154a2e6cf69a441c7d8191824422f0defec5d6c2d0b0060c012a1499` both
+- Block copy (`.agent/authored/f028-r10-block.md`, at `c85ab7e16`) vs
+  `.remedy-wt/f028-r10/block.md`: byte-identical, sha256
+  `7270d24d24cf002fb6b154d683ed8e4f52976fdf2decd0ed8b0dbb00ab6d912e` both
   sides.
-- `plan.md` copy (`.agent/authored/f028-r9-plan.md`, at `a46f84697`) vs
-  `.remedy-wt/f028-r9-payloads/plan.md`: byte-identical, sha256
-  `cb4f63eaf6180c0bbd83009fb158cf8dad9d075b64649ddb1c415ab1a17bb369` both
-  sides; used to rewrite `.agent/plan.md` via `shutil.copyfile` at C2.
-- `records.diff` copy (`.agent/authored/f028-r9-records.diff`, at
-  `a46f84697`) vs `.remedy-wt/f028-r9-payloads/records.diff`:
+- `closure_docs.diff` copy (`.agent/authored/f028-r10-closure_docs.diff`,
+  at `c85ab7e16`) vs `.remedy-wt/f028-r10-payloads/closure_docs.diff`:
   byte-identical, sha256
-  `b91ce50f4da5ea7f8676db12c0242e550a08eff7f9be4628f83fe4bd1448f283` both
+  `9b2ace7316f8ab2a91d5f708aef06feedf0462fdceaae1eb50ec527ecb13d4ad` both
+  sides; applied via `git apply --check` (exit 0) then the real apply
+  (exit 0) at C3; never edited or retyped.
+- `plan.md` copy (`.agent/authored/f028-r10-plan.md`, at `c85ab7e16`) vs
+  `.remedy-wt/f028-r10-payloads/plan.md`: byte-identical, sha256
+  `7619d7d2d61de0b44c2e0b4ad5c807ea13978c17dfd92d95d72d2814d6da9e8b` both
+  sides; used to rewrite `.agent/plan.md` via `shutil.copyfile` at C2.
+- `records.diff` copy (`.agent/authored/f028-r10-records.diff`, at
+  `c85ab7e16`) vs `.remedy-wt/f028-r10-payloads/records.diff`:
+  byte-identical, sha256
+  `eb83ce157268501b9ba88e8b24bc40f5a3012f1197fbed6c1f498641b7ebd19a` both
   sides; applied via `git apply --check` (exit 0) then the real apply
   (exit 0) at C2; never edited or retyped.
 
-The test (`tests/ui_server/test_task_injection_e2e_live.py`) and the probe
-tool (`f028-r9-probes.py`) are the WORKER's own authored code against the
-block's specification, not reviewer-authored text, so no fidelity
-comparison applies to them.
+`.agent/authored/f028-closure-suite.txt` is the WORKER's own authored
+record of the gate readings, not reviewer-authored text, so no fidelity
+comparison applies to it.
 
 ## Deviations & assumptions
 
-None from the block's ordered commit sequence: C1 through C5 landed in
-order, no extra commit, no reordering, no gate went red on any run, and the
-test written this round needed no correction before C5 — both its tests
-passed on the first run and every G5 probe was caught on the first run of
-the tool.
-
-Implementation choices not literally named by THE TEST (my own decisions,
-consistent with the two reference files' existing conventions — noted here
-for visibility, not as deviations):
-1. The two-task plan is named A/B rather than T1/T2, mirroring
-   `test_task_veto_e2e_live.py`'s own diamond's task naming rather than
-   `test_task_edit_e2e_live.py`'s — THE TEST says "an APPROVED two-task
-   plan A then B", so the letters were already given.
-2. The door path's `after` reads exactly A's own runtime `task_id`, which
-   `resolve_after_ref` (DECISION F028 D5 (1)) resolves to the planned id
-   `"A"` before `place_injected_task` runs — proving the door's own
-   resolver, never the CLI's `_resolve_after`, which THE TEST never calls.
-3. Neither test monkeypatches `task_injection.injection_budget_inputs`:
-   both jobs are built with `job.budgets` left at its default `None`, and
-   `budget_guard.predict_next_task_cost` reads a `None` limit as nothing to
-   breach regardless of the repo's (absent) budget config, so every draft
-   answers `drafted`, never `shortfall`, without needing the permissive
-   stand-in `test_command_dispatch.py`'s own injection tests use.
-4. The command-line path's assertion on `apps.cli.grouped.main`'s exit
-   reads "no `SystemExit` raised" rather than "return code 0", because
-   `emit_ok` deliberately never calls `sys.exit` (only `fail()` does) —
-   the same reading `tests/ui_server/test_live_state.py`'s own successful
-   `--json` calls rely on.
+One deviation from the block's stated G4 expectation, not from its commit
+sequence: the reviewer's simulated tree read "595 passed and 1 skipped"
+because that tree "has no `apps/ui/node_modules`"; this primary checkout
+DOES have `apps/ui/node_modules` installed (from a prior round's `npm
+--prefix apps/ui run build`), so the test that skips for that reason there
+ran and passed here, giving "596 passed" with no `SKIPPED` line. The total
+node count (596) and the exit code (0) match the reviewer's reading
+exactly; only the pass/skip split differs, for the stated environmental
+reason. No other deviation: C1 through C4 landed in the block's exact
+order, no extra commit, no reordering, no gate went red on any run, and no
+payload was edited or retyped.
 
 ## Item-status table
 
@@ -240,20 +254,18 @@ for visibility, not as deviations):
 | C1 | done | |
 | C2 | done | |
 | C3 | done | |
-| C4 | done | |
-| C5 | done | this handback |
-| G1 | done | both payloads and all three authored copies MATCH |
-| G2 | done | both records MATCH; `open_finding_ids` `['R-1079']`→`[]`; diff --name-only matches the table exactly |
-| G3 | done | ruff clean at C4 |
-| G4 | done | 609 passed at exit 0 (607+2 accounted for, no SKIPPED line); integrity check 6/6 pass, fail_count 0 |
-| G5 | done | all 3 probes caught, control clean before and after, all three files restored byte-identical, primary checkout clean |
-| G6 | done | its readings (git log, git status, push outcome, `gh pr list`) are necessarily taken after this commit and the subsequent push; they appear in the round reply, per the block's own note that this commit cannot contain them |
-| T003 | done | proved end to end through the door (`job.inject`/`job.inject-confirm`) and the command line (`job inject --yes`), provenance read back from the job record, the edit log, the run log, the dashboard, the events stream and the final report |
-| R-1079 | done | resolved (booked) at C2 (`18f013305`), repaired in round 8 |
+| C4 | done | self-use both `None` (no write), UI build exit 0, full suite exit 0 with 0 bad node ids |
+| G1 | done | all three payloads and all four authored copies MATCH |
+| G2 | done | all four records MATCH; `open_finding_ids` `[]`; `live_checklist_items` 34 items, same set at `969c6b5e` and C3 |
+| G3 | done | linter: all 7 checkable items pass, exit 0 |
+| G4 | deviated | 596 passed / 0 skipped vs the reviewer's simulated 595/1 (node_modules present here); total and exit code match; integrity check 6/6 pass, fail_count 0; tree clean |
+| G5 | done | self-use NONE (queue exhausted); UI build exit 0; full suite 20018 passed, 20 skipped, 1 warning, exit 0, NONE bad node ids; import-reachability and no-orphan-modules both green inside it |
+| G6 | done | its readings (git log, git status, push outcome, `gh pr list`) are necessarily taken after this commit and the subsequent push; they appear in the round reply |
 
 ## Next
 
-Phase 1 rule 1 (read `.agent/STOP` from disk), then the review of round 9,
-then the closure sequence (docs/roadmap/STATUS_closure_protocol.md). Open
-findings (by `open_finding_ids` at this round's head): 0. Operator
-questions open: 0.
+Phase 1 rule 1 (read `.agent/STOP` from disk), then the review of round 10,
+then the closure's evidence round — the booking of round 10, any repair the
+suite requires (none this round), the evidence bundle and the review
+package — and then the closing round. Open findings (by
+`open_finding_ids` at this round's head): 0. Operator questions open: 0.
