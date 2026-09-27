@@ -4248,6 +4248,39 @@ def _task_veto_report_map(job: JobPlan) -> dict[str, dict[str, Any]]:
     return out
 
 
+def _task_steering_not_consumed_map(job: JobPlan) -> dict[str, list[dict[str, Any]]]:
+    """The report's and the export's own steering-note lookup (F030 T001, DECISION F030 D1):
+    for every task whose status is neither ``TASK_PENDING`` nor ``TASK_RUNNING`` — its round
+    loop is done and will never consume another note — the notes addressed to it that no round
+    ever consumed, each as ``{"message_id", "text", "received_at"}`` in arrival order. A task
+    with none is omitted, so a job with no such note exports the same keys as before. The job's
+    steering records and consumption markers are read ONCE for the whole job, not once per
+    task, mirroring `_task_veto_report_map`'s own single read. A `SteeringError` reading them
+    (a tampered record) is swallowed exactly as that function swallows a `TaskVetoError`: it
+    costs the report nothing beyond the notes it could not read.
+    """
+    from packages.orchestration import steering as _st
+
+    try:
+        records = _st.list_steering_messages(job.job_id)
+        markers = _st.list_steering_consumptions(job.job_id)
+    except _st.SteeringError:
+        return {}
+
+    out: dict[str, list[dict[str, Any]]] = {}
+    for task in job.tasks:
+        if task.status in (TASK_PENDING, TASK_RUNNING):
+            continue
+        notes = [
+            {"message_id": r["message_id"], "text": r["text"], "received_at": r["received_at"]}
+            for r in records
+            if _st.note_task_id(r) == task.task_id and r["message_id"] not in markers
+        ]
+        if notes:
+            out[task.task_id] = notes
+    return out
+
+
 def export_job_report(job: JobPlan) -> dict[str, Any]:
     """Export a JSON-serializable job report."""
     # Function-scoped, like every other data_paths import in this module. The
@@ -4257,6 +4290,7 @@ def export_job_report(job: JobPlan) -> dict[str, Any]:
     from packages.orchestration.data_paths import job_dir
 
     veto_map = _task_veto_report_map(job)
+    steering_map = _task_steering_not_consumed_map(job)
     task_reports = []
     for t in job.tasks:
         report = {
@@ -4283,6 +4317,9 @@ def export_job_report(job: JobPlan) -> dict[str, Any]:
                 "requested_at": veto_info.get("requested_at", ""),
                 "unreachable_task_ids": list(veto_info.get("unreachable_task_ids") or []),
             }
+        notes = steering_map.get(t.task_id)
+        if notes is not None:
+            report["steering_not_consumed"] = notes
         task_reports.append(report)
 
     # F006: a completed worktree job's execution workspace is deliberately gone.
@@ -4430,6 +4467,7 @@ def format_job_report_text(job: JobPlan) -> str:
     ]
 
     veto_map = _task_veto_report_map(job)
+    steering_map = _task_steering_not_consumed_map(job)
     for t in job.tasks:
         status_icon = {
             TASK_PENDING: " ",
@@ -4463,6 +4501,10 @@ def format_job_report_text(job: JobPlan) -> str:
         if veto_info is not None:
             lines.append(
                 f"      Vetoed by {veto_info.get('actor', '')}: {veto_info.get('reason', '')}"
+            )
+        for note in steering_map.get(t.task_id, []):
+            lines.append(
+                "      Steering not consumed: “" + note["text"].replace("\n", "\n        ") + "”"
             )
 
     lines.append("")
