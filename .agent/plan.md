@@ -14,15 +14,14 @@ with a model override that the evidence records
 
 ## Current Step
 
-ROUND 10, the closure's evidence round: book round 9's PASS, then build
-the evidence bundle and the review package at the accepted head.
+ROUND 11, the closing round: book round 10's PASS, rotate the ledger,
+accept F029 in STATUS with its README pins, and open the pull request.
 
 ## Next Steps
 
-1. The review of round 10.
-2. The closing round: the ledger rotation, the STATUS line with the
-   README counters, and the pull request.
+1. The next session merges this feature's pull request at the Open PR
+   Gate and claims the next feature by Rule A5.
 
 ## Risks
 
-Open findings: none.
+None open. Open findings: 0.
