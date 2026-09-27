@@ -1,24 +1,24 @@
-# Context — F288 Event stream completeness & prompt nodes in the live graph
+# Context — F028 Task injection
 
 ## Active Branch
-feature/f288-event-stream-completeness, cut from `main` at `db691093`
-(the merge commit of pull request 285, F289 Self-use sources).
+feature/f028-task-injection, cut from `main` at `ceb90b8a`
+(the merge commit of pull request 286, F288 Event stream completeness).
 
 ## Scope
-F288 (Tier 5): attempt id, task id and result on every builder, review,
-check, test and repair event the UI server sends, a plan-approved event,
-test-run and repair nodes and tasks born at plan approval in the live
-graph's reducer, and prompts as a node kind of the live graph, as
-`docs/roadmap/features/T5_F288.md` and DECISION F288 D1 specify.
+F028 (Tier 5): the Add Task button as real additive control — a planner
+draft of the operator's task text with placement, rationale, budget check
+and fence flags, applied to the running job only on confirmation, with
+provenance end to end, as `docs/roadmap/features/T5_F028.md` and DECISION
+F028 D1 specify.
 
 ## Do not touch
-The simple view, which stays one click away; the graph's rule that it
-never draws a node its data model does not hold.
+The approval machinery (reused, not duplicated), the fence rules, and the
+DoD compile internals.
 
 ## Active assumptions
-- An attempt is one execution of a task, and its id is that execution's
-  ping-pong run id (DECISION F288 D1).
-- Every stream frame outside the attempt kinds stays byte-identical.
+- A running job's `job.json` is written only by its runner; an injection
+  reaches it as a create-only control file (DECISION F028 D1).
+- Placement is computed by code and always appends at the end of the plan.
 
 ## Constraints
 - Every pytest run in a round is targeted and serial; the resource and

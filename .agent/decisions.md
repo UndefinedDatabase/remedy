@@ -23030,3 +23030,83 @@ no live region announces a new prompt.
 
 HOW TO REVERSE: delete `PromptNodeList`, its style module, `promptListEntries` and the stage's use of
 them, and delete this paragraph.
+
+## DECISION F028 D1 — an injection is drafted by one planner call and applied only by a second call carrying the draft's token; the draft is a create-only control file with a time to live; placement is appended at the end of the plan and computed by code, not by the planner; the budget check is F104's prediction over the draft's band; T001 lands the draft pass alone (2026-09-27)
+
+CONTEXT: T5_F028.md asks for a command that takes an operator's task text, has the planner draft
+a task from it with a placement, a rationale and a budget check, and applies it to the running
+job only when a second call confirms the draft; a budget shortfall returns a three-option
+decision seed instead of a token. Measured at `ceb90b8a`: nothing named injection exists;
+`PlannedTask` in `packages/orchestration/schemas/models.py` is strict and has no origin, metadata
+or rationale field; `plan_editing.py` has no whole-task add among its edit kinds, and its
+`edit_plan` refuses any job whose plan is approved; `edit_task_at_runtime` in
+`task_edit_runtime.py` refuses a running job, because `run_job` holds the whole record in memory
+and would overwrite a write at its next save (DECISION F026 D1); the one change a running job
+accepts is F027's veto, a create-only file under the job's control directory that `run_job`
+folds into its record at its own safe points; a job runs its tasks in plan order and never reads
+`depends_on` (DECISION F015 D4); `predict_next_task_cost` in `budget_guard.py` answers
+`would_breach` and a written `arithmetic` for a token band, and plan bands (`S`, `M`, `L`, `XL`)
+and budget bands (`low`, `medium`, `high`, `unknown`) have no mapping; calibration (F074) has
+not shipped, so every prediction runs on F104's documented class defaults.
+
+CHOSEN: (1) THE ORDER. T001 takes round 1: a new module
+`packages/orchestration/task_injection.py` holding the draft pass and its control file, with no
+caller yet, listed in `ALLOWED_UNWIRED` of `tests/test_no_orphan_modules.py` until T002 wires
+it. T002 lands the confirmation: a confirmed injection is a second create-only control file that
+`run_job` folds at the safe points where it folds vetoes, a `plan_add_task` edit kind in
+`plan_editing.py` so `replay_edits` replays the edit log, the provenance on the task entry, one
+run-log event with every reader of its name, and the shortfall seed's three answers. T003 lands
+`remedy job inject`, the browser's command, the Add Task sheet, the provenance chip and the
+end-to-end proof. (2) THE DRAFT CALL. One `run_structured_call` over a provider-facing model
+`InjectedTaskDraft` (schema tag `task_injection_draft_v1`, not entered in `SCHEMA_REGISTRY`, for
+the reason the DoD's draft contract is not: it never leaves its own call) holding `title`,
+`goal`, `acceptance` (at least one entry, none blank), `est_tokens_band`, `files_hint` and
+`rationale`. The caller passes the call function; none means the refusal `planner_unavailable`,
+and a reply still invalid after the one parse retry means `draft_unparseable`. There is no
+deterministic fallback draft, because acceptance criteria no planner wrote would be invented.
+(3) THE TEXT is kept verbatim: not a string or blank is `text_required`, over 2000 characters is
+`text_too_long`, and a control character other than newline or tab, or secret-shaped text, is
+`text_invalid`. (4) THE GATE. A terminal job is `job_terminal`, whose detail tells the operator to
+start a follow-up job for the work; a job with no readable task plan is `no_task_plan`; a plan
+already at the task cap is `plan_full`. Paused, blocked, planned and running jobs are admitted.
+(5) THE ID is the smallest `INJ<k>`, `k` from 1, that is not already a task id of the plan.
+(6) THE PLACEMENT is computed by code. The task is always appended at the END of the plan,
+because the end is the one position after every dependency that never moves a task the runner
+has already passed. Its `depends_on` is the task the operator named with `after`, basis
+`stated`, an id not in the plan being `unknown_task`; otherwise every task of the plan whose
+`files_hint` shares a path with the draft's, in plan order, basis `content_overlap`; otherwise
+none, basis `frontier_default`, which runs after everything already planned and depends on
+nothing. The placement rationale is a sentence the code writes for each basis; the planner's own
+`rationale` travels beside it as the task's rationale. (7) THE BUDGET CHECK is
+`predict_next_task_cost` over the job's budgets, counters and predictive config, which the caller
+passes, with `S`, `M` and `L` read as `low`, `medium` and `high` and `XL` as `unknown`, F104's
+path to the largest class default. A shortfall is exactly the prediction's `would_breach`.
+(8) THE SHORTFALL SEED. A draft whose check shows a shortfall carries no confirm token and a
+decision seed: the options `extend_budget`, `shrink_task` and `drop` with their labels, the
+prediction's arithmetic, the cost limit that would cover the task (spent plus expected, rounded
+up to the cent) and the next smaller band, none below `S`. (9) THE FENCES. Every `files_hint`
+path that matches one of the job's deny globs, or matches none of its allow globs when it has
+some, is flagged in the draft with the glob it met, by `fnmatch` as `task_fence_refusal` reads
+the deny globs; a flag never refuses. (10) THE DRAFT RECORD is one create-only file under the
+job's control directory, in `injection_drafts/`, named by a digest of the draft id and written
+through `safe_points` and `secure_fs` as F027's veto file is. The draft id comes from
+`safe_points.new_request_id()` and is the confirm token of a draft that has one. It expires 900
+seconds after it was drafted; a reader answers `draft_unknown` for no file and `draft_expired`
+after expiry, and deletes nothing, so an expired draft is harmless because it can never be
+confirmed.
+
+ALTERNATIVES: writing the task into `job.json`, rejected because `run_job` would overwrite it at
+its next save; inserting the task right after the running one, rejected because the runner walks
+its list by position and an insertion would shift the tasks it has not reached; letting the
+planner propose `depends_on`, rejected because a placement nobody can recompute cannot be tested
+or explained; an `origin` field on `PlannedTask`, rejected because the strict model is read by
+every plan reader and by the DoD compile the feature file says not to touch, so T002 carries the
+provenance on the task entry's plan inputs instead; a deterministic draft when no planner is
+reachable, rejected for the reason in (2).
+
+DELIBERATE ABSENCES: T001 writes no event and never writes `job.json`; the draft call's cost is
+not charged to the job's budget counters, because the call runs outside `run_job`, whose counters
+come from its own run's calls, and the draft reports how many calls it took instead.
+
+HOW TO REVERSE: delete `packages/orchestration/task_injection.py`, its tests and its line in
+`ALLOWED_UNWIRED`, and delete this paragraph.
