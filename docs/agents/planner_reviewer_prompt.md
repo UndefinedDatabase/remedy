@@ -321,6 +321,14 @@ end the response with:
   already holds; and a clause that barred an unshipped command line in docstrings and comments while
   the guard that reads the module reads every string in it is item 7's, the source guard the block
   never names. The list stays at 34 items.
+  Consolidated a nineteenth time at F288's closure on 2026-09-27: nothing joined and no two items
+  were merged, because neither of F288's two lines in `.agent/prose_slips.md` names a lesson the
+  list lacks. A stand-in ordered onto the calling module, while the caller imports the function
+  inside its own body and so reads it from the defining module at every call, is item 34's reading
+  of the test file the block orders a change against, whose existing stand-ins already named the
+  right module; and a path set that left out four readers of a recording the block ordered
+  captured again is item 34's reading of the tests that already guard a path. The list stays at
+  34 items.
   The next consolidation measures against 34.
   Reverse by deleting this paragraph.
   1. **Size.** Count the block's lines. Over 400 (DECISION F105 D5) → split or

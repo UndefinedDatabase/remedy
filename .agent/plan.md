@@ -12,18 +12,18 @@ exists; and the live graph draws test-run, repair and prompt nodes
 
 ## Current Step
 
-ROUND 6: book round 5's PASS, record DECISION F288 D6, and land the second
-half of T003 — the keyboard's parallel list of the live picture's prompt
-nodes, hidden until it holds focus, and a headless browser's proof of the
-list, the keys and the drawn dots.
+ROUND 7, the closure sequence's first round: book round 6's PASS, add the
+closure's consolidation paragraph to the checklist, write the Built State,
+and generate and run the closure's self-use item to its approval gate.
 
 ## Next Steps
 
-1. The closure sequence: the one full suite, the Built State, the
-   evidence bundle, the review package, the self-use item, and the STATUS
-   acceptance with the pull request.
+1. Land the self-use item's reviewed diff and run the one full suite.
+2. Build the evidence bundle and the review package.
+3. Rotate the ledger, accept F288 in STATUS with its README pins, consume
+   the self-use item, and open the pull request.
 
 ## Risks
 
-The canvas must stay `aria-hidden` and the simple view untouched. Open
-findings: 0.
+The self-use run makes real provider calls within its default budget.
+Open findings: 0.
