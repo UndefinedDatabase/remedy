@@ -234,6 +234,22 @@ def _task_completed_at(task_id: str, events: list[dict]) -> str:
     return ""
 
 
+def _task_origin(t: Any) -> str:
+    """DECISION F028 D6 (1): a task's provenance, read off its own plan inputs
+    rather than the event ledger — `inputs["plan"]["origin"]` when
+    `inputs["plan"]` is a dict and that value is a non-empty string, else "".
+    An injected task's plan carries `origin=human_injected`
+    (`task_injection.py`'s `ORIGIN_HUMAN_INJECTED`); a planned task's plan
+    carries no `origin` key at all, and either reads "" here rather than
+    raising on a missing key.
+    """
+    plan = t.inputs.get("plan")
+    if not isinstance(plan, dict):
+        return ""
+    origin = plan.get("origin")
+    return origin if isinstance(origin, str) and origin else ""
+
+
 def _event_backed_actor(events: list[dict]) -> str:
     """Derive current actor from most recent event, not hardcoded."""
     if not events:
@@ -919,6 +935,7 @@ def _build_dashboard(job: Any) -> dict[str, Any]:
             "is_current": tstat in ("running", "active"),
             "is_future": tstat == "pending",
             "is_reviewer_suggested": False,
+            "origin": _task_origin(t),
         })
 
     # Build activity from events
