@@ -71,18 +71,27 @@ describe("the index equals the plain fold at every position", () => {
   });
 
   it("over the demo recording", () => {
+    // The recording's ten frames (brainDemoRecording.ts) mark only build (seq
+    // 0, task_run_started) and review (seq 1, task_round_completed
+    // needs_repair — task_round_repaired marks no phase): planning and build
+    // share seq 0's start, test and review share seq 1's start, and neither
+    // task's own id must be seeded under a DIFFERENT id than the frames use,
+    // or it would sit "pending" forever and Finalized could never be
+    // reached. Both tasks pass only once the second one's run closes at seq
+    // 9 (task_run_completed), so Finalized starts there and the index's head
+    // is 9.
     const tasks: BrainTaskSeed[] = [
-      { id: "a7a8f67f1b9a4814", status: "pending", rank: 0 },
-      { id: "1965fb3f26b64fe7", status: "pending", rank: 1 },
+      { id: "fe1b5b487fda490f", status: "pending", rank: 0 },
+      { id: "4b3ddac9dba846af", status: "pending", rank: 1 },
     ];
     const index = buildTimelineIndex(BRAIN_DEMO_JOB_ID, tasks, brainDemoRows());
-    for (let s = -1; s <= 8; s += 1) {
+    for (let s = -1; s <= 10; s += 1) {
       expect(phasesAt(index, s)).toEqual(
         readPhases(BRAIN_DEMO_JOB_ID, tasks, brainDemoRows().filter((r) => r.seq <= s)),
       );
     }
-    expect(indexHead(index)).toBe(7);
-    expect(phaseStops(index)).toEqual([0, 1, 7]);
+    expect(indexHead(index)).toBe(9);
+    expect(phaseStops(index)).toEqual([0, 1, 9]);
   });
 });
 
