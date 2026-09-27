@@ -22915,3 +22915,30 @@ id; the reducer draws no node for a long-run cycle.
 HOW TO REVERSE: remove the attempt id and result from the three cycle events and the three kinds
 from the envelope, the two row fields, the reducer's new cases and two tables, and the two phase
 markers, restore the two comments, and delete this paragraph.
+
+## DECISION F288 D4 — R-1075's fix reaches every reader of the recording and of the widened row: the four vitest files round 3 left red are brought to the new recording and row by expectations derived again by hand, and nothing else changes (2026-09-27)
+
+CONTEXT: R-1075's FIX, registered at round 3, orders the demo recording captured again, its live
+test brought to DECISION F288 D1's envelope, and the recording's own vitest golden derived again.
+Round 3 did all of it, and DECISION F288 D3 (2) added `attemptId` and `planTaskIds` to every row
+`feedRowOf` returns. Measured at `55820841`: the vitest suite reads 4 files and 8 tests red, and
+each is a reader neither the FIX nor round 3's block named — `brainLedger.test.ts` compares the
+rows a payload parses to against literals of the old row shape and folds the old recording through
+a gap; `renderers/stateMotion.test.ts` expects the old recording's state changes frame by frame;
+`timeline/timelineIndex.test.ts` expects its old frame count; and `timeline/timelineView.test.ts`
+expects the phase bar, the sub-glyphs and the handle geometry of the old recording's frames.
+`scrubSnapshots.test.ts` and `phaseMapping.test.ts` read the recording too and are green, the
+second after round 3's own C5b.
+
+CHOSEN: R-1075 stays open and its fix now reaches these four files. Round 4 brings each failing
+expectation to the new recording and the new row shape, derived by hand from the frames and from
+the rules the code under test states, never printed from the code; it changes no production file,
+no other test, and no expectation that is green. The `Done:` paragraph for R-1075, written by the
+reviewer at round 5's booking, covers round 3's capture and round 4's readers.
+
+ALTERNATIVES: a second finding for the four files, rejected because checklist item 30 retires a
+new id for a defect an open finding already holds, and these are the same recording's readers;
+keeping the old ids by rewriting the capture's ids, rejected because the recording's docstring
+promises field values byte for byte as served, and the counts and positions would still move.
+
+HOW TO REVERSE: restore the four files from `55820841` and delete this paragraph.
