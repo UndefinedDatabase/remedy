@@ -23,6 +23,7 @@ from __future__ import annotations
 import os
 import re
 import subprocess
+import sys
 import tempfile
 from collections.abc import Sequence
 from datetime import datetime, timezone
@@ -583,6 +584,14 @@ def prepare_subtree_rerun(
     ladder once the worktree is claimed. A refusal removes a worktree this call
     created, or releases the lock on one that already existed, and leaves ``job.json``
     unchanged.
+
+    R-1081's repair: (a) every subtree task's rerun-archive destination is checked
+    BEFORE ``worktrees.create`` — an earlier attempt's archive still occupying it
+    refuses ``stream_archive_occupied`` with nothing touched. (b) after the worktree
+    is claimed, every exit other than success and a ``SubtreeRerunRefused`` — from
+    ``apply_subtree_reset``, the stream moves, the fold, ``set_checkpoint_ref`` or
+    ``save_job_plan`` — passes through ``worktrees.retain_for_recovery`` before the
+    exception propagates, so the lock is never left held in this process.
     """
     bounded_actor = task_veto._bounded_actor(actor)
     at = now or datetime.now(timezone.utc)
@@ -637,6 +646,23 @@ def prepare_subtree_rerun(
                 f"the job's initial tree {job.job_initial_tree!r} is gone",
             )
 
+        # R-1081 (a) — BEFORE the worktree is claimed: refuse when an earlier rerun's
+        # archive still occupies the destination this attempt would move a stream to.
+        evidence_root = job_evidence_dir(job_id)
+        for task_id in subtree_ids:
+            task = tasks_by_id[task_id]
+            if not _task_ran(task):
+                continue
+            if not _task_stream_dir(job_id, task_id).exists():
+                continue
+            dest_rel = f"rerun_attempts/{task_id}/attempt-{task.attempt}"
+            if (evidence_root / dest_rel).exists():
+                raise SubtreeRerunRefused(
+                    "stream_archive_occupied",
+                    f"the rerun archive destination {dest_rel!r} already exists for job "
+                    f"{job_id!r}; an earlier rerun attempt may not have finished",
+                )
+
         try:
             handle = W.create(job_worktree_id(job_id), job.repo_path)
         except W.WorktreeLockError:
@@ -645,47 +671,52 @@ def prepare_subtree_rerun(
         except W.WorktreeConflictError as exc:
             raise SubtreeRerunRefused("worktree_conflict", str(exc)) from exc
 
+        # R-1081 (b) — every exit past this point other than success and a
+        # `SubtreeRerunRefused` retains the worktree for recovery rather than
+        # leaving the lock held in this process; a completion flag checked in the
+        # `finally` decides that, so no blind `except Exception` is ever written.
+        completed = False
+        refused = False
         try:
             reset = apply_subtree_reset(job, root_task_id, handle.path)
+
+            moved_streams: dict[str, str] = {}
+            for task_id in subtree_ids:
+                task = tasks_by_id[task_id]
+                if not _task_ran(task):
+                    continue
+                stream_dir = _task_stream_dir(job_id, task_id)
+                if not stream_dir.exists():
+                    continue
+                dest_rel = f"rerun_attempts/{task_id}/attempt-{task.attempt}"
+                dest = evidence_root / dest_rel
+                dest.parent.mkdir(parents=True, exist_ok=True)
+                os.replace(stream_dir, dest)
+                moved_streams[task_id] = dest_rel
+
+            rerun_id = f"rerun-{len(job.reruns) + 1}"
+            record = fold_subtree_rerun(
+                job, reset, rerun_id=rerun_id, model_override=model_override,
+                actor=bounded_actor, now=at, moved_streams=moved_streams,
+            )
+
+            ref = job.job_initial_tree_ref
+            if W.resolve_checkpoint_ref(job.repo_path, ref) != job.job_initial_tree:
+                W.set_checkpoint_ref(job.repo_path, ref, job.job_initial_tree)
+
+            save_job_plan(job)
+            W.release_lock(handle)
+            completed = True
+            return {**record, "job_id": job_id, "worktree_rematerialized": handle.created}
         except SubtreeRerunRefused:
+            refused = True
             if handle.created:
                 W.remove(handle, keep_branch=True)
             else:
                 W.release_lock(handle)
             raise
-        except (SubtreeRerunError, W.WorktreeError) as exc:
-            # Every OTHER exception `apply_subtree_reset` can raise: a failed hash
-            # proof or a git operation on the worktree itself. Kept for recovery,
-            # never removed — an unproven or half-made reset must stay inspectable.
-            W.retain_for_recovery(handle, f"{type(exc).__name__}: {exc}")
-            raise
-
-        moved_streams: dict[str, str] = {}
-        evidence_root = job_evidence_dir(job_id)
-        for task_id in subtree_ids:
-            task = tasks_by_id[task_id]
-            if not _task_ran(task):
-                continue
-            stream_dir = _task_stream_dir(job_id, task_id)
-            if not stream_dir.exists():
-                continue
-            dest_rel = f"rerun_attempts/{task_id}/attempt-{task.attempt}"
-            dest = evidence_root / dest_rel
-            dest.parent.mkdir(parents=True, exist_ok=True)
-            os.replace(stream_dir, dest)
-            moved_streams[task_id] = dest_rel
-
-        rerun_id = f"rerun-{len(job.reruns) + 1}"
-        record = fold_subtree_rerun(
-            job, reset, rerun_id=rerun_id, model_override=model_override,
-            actor=bounded_actor, now=at, moved_streams=moved_streams,
-        )
-
-        ref = job.job_initial_tree_ref
-        if W.resolve_checkpoint_ref(job.repo_path, ref) != job.job_initial_tree:
-            W.set_checkpoint_ref(job.repo_path, ref, job.job_initial_tree)
-
-        save_job_plan(job)
-        W.release_lock(handle)
-
-        return {**record, "job_id": job_id, "worktree_rematerialized": handle.created}
+        finally:
+            if not completed and not refused:
+                _, exc_value, _ = sys.exc_info()
+                if exc_value is not None:
+                    W.retain_for_recovery(handle, f"{type(exc_value).__name__}: {exc_value}")

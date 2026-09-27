@@ -479,3 +479,48 @@ class TestPrepareSubtreeRerunRefusals:
         assert excinfo.value.code == "worktree_drift"
         assert self._bytes(job.job_id) == before
         assert not wt_path.exists()
+
+
+# ---------------------------------------------------------------------------
+# R-1081 — the worktree lock is never left held past a failed preparation
+# ---------------------------------------------------------------------------
+
+class TestR1081Repair:
+    def test_occupied_archive_destination_refuses_before_worktree_touched(self, repo, monkeypatch):
+        job = _run_three_task_job(repo, monkeypatch)
+        assert job.state == JOB_COMPLETED
+        job_id = job.job_id
+        wt_path = W.worktree_path_for(repo, job_worktree_id(job_id))
+
+        stream_dir = PJ._task_stream_dir(job_id, "T002")
+        stream_dir.mkdir(parents=True)
+        (stream_dir / "marker.txt").write_text("stream marker")
+
+        occupied = job_evidence_dir(job_id) / "rerun_attempts" / "T002" / "attempt-1"
+        occupied.mkdir(parents=True)
+        (occupied / "earlier.txt").write_text("an earlier attempt's evidence")
+
+        before = job_record_path(job_id).read_bytes()
+
+        with pytest.raises(SR.SubtreeRerunRefused) as excinfo:
+            SR.prepare_subtree_rerun(job_id, "T002")
+
+        assert excinfo.value.code == "stream_archive_occupied"
+        assert not wt_path.exists()
+        assert job_record_path(job_id).read_bytes() == before
+        assert stream_dir.exists()   # nothing was moved
+
+    def test_a_failing_save_leaves_the_lock_free_and_the_error_propagating(self, repo, monkeypatch):
+        job = _run_three_task_job(repo, monkeypatch)
+        assert job.state == JOB_COMPLETED
+        job_id = job.job_id
+
+        def _boom(_job):
+            raise OSError("disk gone")
+
+        monkeypatch.setattr(SR, "save_job_plan", _boom)
+
+        with pytest.raises(OSError):
+            SR.prepare_subtree_rerun(job_id, "T002")
+
+        assert W.lock_is_held(str(repo), job_worktree_id(job_id)) is False
