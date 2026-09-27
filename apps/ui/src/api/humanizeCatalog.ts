@@ -82,6 +82,7 @@ export const STREAM_EVENT_CATALOG: Readonly<Record<string, string>> = {
   "steering_message_consumed": "The job took in your steering message for its next round.",
   "steering_message_received": "Your steering message was recorded for the job's next safe point.",
   "stream_cap_reached": "The stream hit its size cap and stopped recording.",
+  "subtree_rerun_prepared": "A task and the tasks that depend on it were reset to run again.",
   "task_gate_evaluated": "The task's gate was evaluated.",
   "task_injected": "A task the operator added joined the job's plan.",
   "task_lesson_written": "The teacher stored a lesson, or the reason there is none, for a finished task.",

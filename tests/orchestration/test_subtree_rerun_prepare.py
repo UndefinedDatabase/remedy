@@ -583,3 +583,164 @@ class TestR1081Repair:
             SR.prepare_subtree_rerun(job_id, "T002")
 
         assert W.lock_is_held(str(repo), job_worktree_id(job_id)) is False
+
+
+# ---------------------------------------------------------------------------
+# DECISION F029 D4 — rerun_subtree_command, the door's shared function
+# ---------------------------------------------------------------------------
+
+def _read_run_events(job_id: str) -> list[dict]:
+    """Mirrors ``test_task_veto.py``'s own copy: every event line of every run
+    log this job has written, oldest file first."""
+    from packages.orchestration.data_paths import run_log_dir
+
+    out: list[dict] = []
+    job_runs = run_log_dir(job_id)
+    if not job_runs.is_dir():
+        return out
+    for jsonl in sorted(job_runs.glob("*.jsonl")):
+        for line in jsonl.read_text(encoding="utf-8").splitlines():
+            if line.strip():
+                out.append(json.loads(line))
+    return out
+
+
+class TestRerunSubtreeCommand:
+    def _config(self) -> PredictiveBudgetConfig:
+        return PredictiveBudgetConfig(
+            price_basis_usd_per_1k_tokens=0.01,
+            class_default_tokens={"low": 8000, "medium": 32000, "high": 120000},
+        )
+
+    def _completed_job(self, repo, monkeypatch):
+        job = _run_three_task_job(repo, monkeypatch)
+        assert job.state == JOB_COMPLETED
+        return job
+
+    @staticmethod
+    def _price_the_subtree_of_t002(job) -> None:
+        """Give T002 and T003 a priced band WITHOUT losing T003's implicit
+        dependency on T002: `dag_schedule.build_graph`'s "legacy" predecessor
+        rule (a task with no `inputs["plan"]` depends on its predecessor) stops
+        applying the instant a task GAINS a `plan` dict, so T003's edge is
+        re-declared explicitly by planned id rather than left to vanish."""
+        job.tasks[1].inputs["plan"] = {"planned_id": "T002", "est_tokens_band": "S"}
+        job.tasks[2].inputs["plan"] = {
+            "planned_id": "T003", "depends_on": ["T002"], "est_tokens_band": "S"}
+
+    def test_an_unknown_task_is_refused(self, repo, monkeypatch):
+        job = self._completed_job(repo, monkeypatch)
+
+        result = SR.rerun_subtree_command(job, "no-such-task", actor="tester")
+
+        assert result["outcome"] == "refused"
+        assert result["code"] == "unknown_task"
+        assert "facts" in result
+
+    def test_needs_confirmation_for_an_unavailable_estimate_touches_nothing(
+            self, repo, monkeypatch):
+        job = self._completed_job(repo, monkeypatch)
+        before = job_record_path(job.job_id).read_bytes()
+        wt_path = W.worktree_path_for(repo, job_worktree_id(job.job_id))
+
+        result = SR.rerun_subtree_command(job, "T002", actor="tester")
+
+        assert result["outcome"] == "needs_confirmation"
+        assert result["job_id"] == job.job_id
+        assert result["task_id"] == "T002"
+        assert result["subtree"] == ["T002", "T003"]
+        assert result["estimate"] == {
+            "band_usd_low": None, "band_usd_high": None, "basis": SR.ESTIMATE_UNAVAILABLE,
+        }
+        assert job_record_path(job.job_id).read_bytes() == before
+        assert not wt_path.exists()
+
+    def test_needs_confirmation_above_the_threshold(self, repo, monkeypatch):
+        job = self._completed_job(repo, monkeypatch)
+        self._price_the_subtree_of_t002(job)
+
+        result = SR.rerun_subtree_command(
+            job, "T002", actor="tester", config=self._config(), confirm_above_usd=0.01)
+
+        assert result["outcome"] == "needs_confirmation"
+        assert result["estimate"]["band_usd_high"] == pytest.approx(0.16)
+        assert result["confirm_above_usd"] == 0.01
+
+    def test_a_priced_estimate_below_the_threshold_prepares_without_confirm_cost(
+            self, repo, monkeypatch):
+        job = self._completed_job(repo, monkeypatch)
+        self._price_the_subtree_of_t002(job)
+
+        result = SR.rerun_subtree_command(
+            job, "T002", actor="tester", config=self._config(), confirm_above_usd=1.0)
+
+        assert result["outcome"] == "prepared"
+        assert result["subtree"] == ["T002", "T003"]
+        assert result["run_command"] == f"remedy job run {job.job_id}"
+        assert result["estimate"]["band_usd_high"] == pytest.approx(0.16)
+        assert load_job_plan(job.job_id).state == JOB_PAUSED
+
+    def test_confirm_cost_true_prepares_over_an_unavailable_estimate(self, repo, monkeypatch):
+        job = self._completed_job(repo, monkeypatch)
+
+        result = SR.rerun_subtree_command(
+            job, "T002", model="rerun-model", confirm_cost=True, actor="tester")
+
+        assert result["outcome"] == "prepared"
+        assert result["estimate"] == {
+            "band_usd_low": None, "band_usd_high": None, "basis": SR.ESTIMATE_UNAVAILABLE,
+        }
+        assert result["run_command"] == f"remedy job run {job.job_id}"
+        assert result["model"]["override"] == "rerun-model"
+
+    def test_a_preparation_refusal_answers_the_refused_shape_with_its_facts(
+            self, repo, monkeypatch):
+        job = self._completed_job(repo, monkeypatch)
+
+        result = SR.rerun_subtree_command(
+            job, "T002", model="bad model!", confirm_cost=True, actor="tester")
+
+        assert result["outcome"] == "refused"
+        assert result["code"] == "model_invalid"
+        assert result["facts"] == {}
+
+
+class TestRerunSubtreeCommandWritesTheEvent:
+    """DECISION F029 D4 (3) — S2's ``subtree_rerun_prepared`` line."""
+
+    def test_a_preparation_writes_exactly_one_event_with_its_fields(self, repo, monkeypatch):
+        job = _run_three_task_job(repo, monkeypatch)
+        assert job.state == JOB_COMPLETED
+
+        result = SR.rerun_subtree_command(
+            job, "T002", model="rerun-model", confirm_cost=True, actor="tester")
+        assert result["outcome"] == "prepared"
+
+        events = [e for e in _read_run_events(job.job_id) if e.get("event") == "subtree_rerun_prepared"]
+        assert len(events) == 1
+        event = events[0]
+        assert event["outcome"] == "prepared"
+        assert event["task_id"] == "T002"
+        metadata = event["metadata"]
+        assert metadata["scope"] == "task"
+        assert metadata["rerun_id"] == result["rerun_id"]
+        assert metadata["subtree"] == ["T002", "T003"]
+        assert metadata["restored_pending"] == []
+        assert metadata["reset_commit"] == result["reset_commit"]
+        assert metadata["paths"] == result["paths"]
+        assert metadata["exact"] == result["exact"]
+        assert metadata["model_override"] == "rerun-model"
+        assert metadata["actor"] == "tester"
+        assert metadata["state_before"] == result["state_before"]
+        assert metadata["state_after"] == result["state_after"]
+
+    def test_a_refusal_writes_no_event(self, repo, monkeypatch):
+        job = _run_three_task_job(repo, monkeypatch)
+        assert job.state == JOB_COMPLETED
+
+        result = SR.rerun_subtree_command(
+            job, "T002", model="bad model!", confirm_cost=True, actor="tester")
+        assert result["outcome"] == "refused"
+
+        events = [e for e in _read_run_events(job.job_id) if e.get("event") == "subtree_rerun_prepared"]
+        assert events == []

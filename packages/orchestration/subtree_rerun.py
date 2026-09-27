@@ -38,11 +38,15 @@ from typing import Any
 
 from packages.orchestration import checkpoints, dag_schedule, plan_editing, task_veto
 from packages.orchestration import worktrees as W
-from packages.orchestration.budget_resolution import PredictiveBudgetConfig
+from packages.orchestration.budget_resolution import (
+    PredictiveBudgetConfig,
+    resolve_predictive_budget_config,
+)
 from packages.orchestration.cost_preview import (
     ESTIMATE_UNAVAILABLE,
     CostBandEstimate,
     estimate_cost_band,
+    resolve_confirm_above_usd,
 )
 from packages.orchestration.data_paths import job_evidence_dir
 from packages.orchestration.pingpong_job import (
@@ -74,6 +78,7 @@ __all__ = [
     "fold_subtree_rerun",
     "prepare_subtree_rerun",
     "subtree_rerun_cost_estimate",
+    "rerun_subtree_command",
 ]
 
 #: S1 — the trailer a rerun's reset commit carries beside ``Remedy-Job``, naming
@@ -771,6 +776,27 @@ def prepare_subtree_rerun(
                 W.set_checkpoint_ref(job.repo_path, ref, job.job_initial_tree)
 
             save_job_plan(job)
+            # DECISION F029 D4 (3) — the event, written after the record is saved
+            # and inside R-1081's guarded block, so a failure past this point still
+            # retains the worktree for recovery rather than leaving the ledger silent.
+            from packages.orchestration.run_log import RunLogWriter
+
+            RunLogWriter(job_id).log(
+                "subtree_rerun_prepared",
+                outcome="prepared",
+                scope="task",
+                task_id=record["root_task_id"],
+                rerun_id=record["rerun_id"],
+                subtree=list(record["subtree"]),
+                restored_pending=list(record["restored_pending"]),
+                reset_commit=record["reset_commit"],
+                paths=list(record["paths"]),
+                exact=record["exact"],
+                model_override=model_override,
+                actor=bounded_actor,
+                state_before=record["state_before"],
+                state_after=record["state_after"],
+            )
             W.release_lock(handle)
             completed = True
             return {**record, "job_id": job_id, "worktree_rematerialized": handle.created}
@@ -786,3 +812,81 @@ def prepare_subtree_rerun(
                 _, exc_value, _ = sys.exc_info()
                 if exc_value is not None:
                     W.retain_for_recovery(handle, f"{type(exc_value).__name__}: {exc_value}")
+
+
+def rerun_subtree_command(
+    job: JobPlan,
+    task_id: str,
+    *,
+    model: str = "",
+    confirm_cost: bool = False,
+    actor: str,
+    config: PredictiveBudgetConfig | None = None,
+    confirm_above_usd: float | None = None,
+) -> dict[str, Any]:
+    """DECISION F029 D4 (1) — the one function the write door, and round 5's
+    browser, both call for a subtree rerun. Never raises ``SubtreeRerunRefused``:
+    every refusal answers as a dict instead, so a caller reads ONE outcome
+    vocabulary rather than catching an exception from one call and reading a
+    dict from the next.
+
+    ``config`` defaults to ``resolve_predictive_budget_config(project_root=
+    job.repo_path or None)`` and ``confirm_above_usd`` to
+    ``resolve_confirm_above_usd()`` — the same authority
+    ``apps/cli/commands/job_rerun_cmd.py`` reads, so a caller supplying neither
+    is judged against the operator's own configured threshold.
+
+    In order: ``rerun_subtree_ids`` names the subtree, or its
+    ``SubtreeRerunRefused`` answers ``{"outcome": "refused", "code", "detail",
+    "facts"}``. Then ``subtree_rerun_cost_estimate`` prices it, carried in the
+    answer as ``{"band_usd_low", "band_usd_high", "basis"}``. An estimate that
+    is unavailable or above ``confirm_above_usd`` (A9: unknown is treated as
+    expensive, the same posture ``confirm_cost_preview`` keeps) without
+    ``confirm_cost`` answers ``{"outcome": "needs_confirmation", "job_id",
+    "task_id", "subtree", "estimate", "confirm_above_usd"}`` and touches
+    nothing. Otherwise ``prepare_subtree_rerun`` runs the preparation and
+    answers ``{"outcome": "prepared", **record, "estimate", "run_command"}``,
+    or its own ``SubtreeRerunRefused`` answers the refused shape above.
+    """
+    resolved_config = (
+        config if config is not None
+        else resolve_predictive_budget_config(project_root=job.repo_path or None))
+    resolved_confirm_above_usd = (
+        confirm_above_usd if confirm_above_usd is not None else resolve_confirm_above_usd())
+
+    try:
+        subtree_ids = rerun_subtree_ids(job.tasks, task_id)
+    except SubtreeRerunRefused as exc:
+        return {"outcome": "refused", "code": exc.code, "detail": exc.detail,
+                "facts": exc.facts}
+
+    estimate = subtree_rerun_cost_estimate(job, subtree_ids, config=resolved_config)
+    estimate_body = {
+        "band_usd_low": estimate.band_usd_low,
+        "band_usd_high": estimate.band_usd_high,
+        "basis": estimate.basis,
+    }
+    is_expensive = (
+        estimate.band_usd_high is None or estimate.band_usd_high > resolved_confirm_above_usd)
+    if is_expensive and not confirm_cost:
+        return {
+            "outcome": "needs_confirmation",
+            "job_id": job.job_id,
+            "task_id": task_id,
+            "subtree": subtree_ids,
+            "estimate": estimate_body,
+            "confirm_above_usd": resolved_confirm_above_usd,
+        }
+
+    try:
+        record = prepare_subtree_rerun(job.job_id, task_id, model_override=model, actor=actor)
+    except SubtreeRerunRefused as exc:
+        return {"outcome": "refused", "code": exc.code, "detail": exc.detail,
+                "facts": exc.facts}
+
+    return {
+        "outcome": "prepared",
+        **record,
+        "estimate": estimate_body,
+        "run_command": f"remedy job run {job.job_id}",
+    }
