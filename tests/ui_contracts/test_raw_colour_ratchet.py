@@ -49,7 +49,7 @@ RATCHET = {
     "components/graph/GraphFilterChips.module.css": 4,
     "components/layers/LayerSwitcher.module.css": 5,
     "components/metrics/TopMetricsBar.module.css": 2,
-    "components/panels/RightLivePanel.module.css": 14,
+    "components/panels/RightLivePanel.module.css": 12,
     "components/pipeline/Pipeline.module.css": 40,
     "components/prompt/PromptTracePanel.module.css": 17,
     "components/rail/RemedyLogo.module.css": 3,
