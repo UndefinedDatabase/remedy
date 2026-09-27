@@ -12,19 +12,14 @@ the draft, with provenance end to end (`docs/roadmap/features/T5_F028.md`).
 
 ## Current Step
 
-ROUND 10, the closure sequence's first round: book round 9's PASS, add
-the closure's consolidation paragraph to the checklist, write the Built
-State, and generate and run the closure's self-use item to its approval
-gate.
+ROUND 11, the closure's evidence round: book round 10's PASS, then build
+the evidence bundle and the review package at the accepted head.
 
 ## Next Steps
 
-1. Land the self-use item's reviewed diff and run the one full suite.
-2. Build the evidence bundle and the review package.
-3. Rotate the ledger, accept F028 in STATUS with its README pins, consume
-   the self-use item, and open the pull request.
+1. Rotate the ledger, accept F028 in STATUS with its README pins, and
+   open the pull request.
 
 ## Risks
 
-The self-use run makes real provider calls within its default budget.
-Open findings: 0.
+None open beyond the closure's own. Open findings: 0.
