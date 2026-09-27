@@ -26,7 +26,7 @@ verification commands. If something is unproven, Remedy says so instead of guess
 
 ## Status
 
-110 of 289 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
+111 of 289 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
 
 | Tier | Name | Done | Total |
 |------|------|-----:|------:|
@@ -35,7 +35,7 @@ verification commands. If something is unproven, Remedy says so instead of guess
 | 2 | Minimal Self-Build Runtime | 38 | 39 |
 | 3 | Full Token Economy & Autonomy | 6 | 27 |
 | 4 | Memory & Learning | 1 | 17 |
-| 5 | Operator Cockpit | 27 | 36 |
+| 5 | Operator Cockpit | 28 | 36 |
 | 6 | Design-to-Code | 0 | 16 |
 | 7 | Quality & Trust | 0 | 15 |
 | 8 | Worker Ecosystem & Neutrality | 0 | 12 |
@@ -557,6 +557,15 @@ button of a run's detail panel does this, and on the command line `remedy job re
 `remedy job run` then runs the tasks again, and every earlier attempt stays visible: the
 graph marks such a task "attempt 2", the task's detail panel lists each attempt with how it
 ended, and a rerun inside a mission is noted in the mission's dossier).
+
+F030 steering notes (you can now write a note to one task while a job runs: select the task
+in the graph and type in the box under the activity feed, or run `remedy job steer` with the
+task named after `--task`; the note is recorded, and that task reads it at the start of its
+next round, never in the middle of a call to a model, as a numbered note it must follow in
+that round and every round after; the activity feed shows your note as your own line, and
+the builder's next action is the only answer, because Remedy never writes a reply; when the
+task finishes before it starts another round, the job's report and `remedy chat show` say
+that the note was not taken in; with no task selected, the box still steers the whole job).
 
 Full per-feature state: [`docs/roadmap/STATUS.md`](docs/roadmap/STATUS.md)
 
