@@ -114,6 +114,18 @@ class TestSubtreeIds:
         assert SR.rerun_subtree_ids(tasks, "T2") == ["T2", "T4"]
         assert SR.rerun_subtree_ids(tasks, "T1") == ["T1", "T2", "T3", "T4"]
 
+    def test_transitive_walk_when_a_dependent_precedes_its_own_dependency_in_plan_order(self):
+        # T4 is listed BEFORE T2 and T3, the tasks it depends on: a single, non-repeating
+        # pass over `nodes` would reach T4 before T2/T3 are marked included, and miss it.
+        # This is what actually distinguishes a transitive walk from direct dependents only.
+        t1 = _task("T1", planned_id="P1")
+        t4 = _task("T4", planned_id="P4", depends_on=("P2", "P3"))
+        t2 = _task("T2", planned_id="P2", depends_on=("P1",))
+        t3 = _task("T3", planned_id="P3", depends_on=("P1",))
+        tasks = [t1, t4, t2, t3]
+
+        assert SR.rerun_subtree_ids(tasks, "T1") == ["T1", "T4", "T2", "T3"]
+
     def test_legacy_task_without_plan_input_chains_to_predecessor(self):
         t1 = _task("T1", planned_id="P1")
         t2 = _task("T2")   # no inputs["plan"]: depends on its predecessor, T1
