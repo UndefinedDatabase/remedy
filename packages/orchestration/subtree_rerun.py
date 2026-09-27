@@ -17,6 +17,12 @@ resets the subtree with ``apply_subtree_reset`` above, returns the subtree's tas
 pending with the finished attempt archived on each task, and writes the record once. It
 runs no provider and starts no task itself — ``remedy job run`` (round 3's command) is
 what re-executes the pending subtree afterwards.
+
+F029 T002, DECISION F029 D3 (round 3): ``subtree_rerun_cost_estimate`` prices a rerun
+BEFORE anything is touched, summing each subtree task's plan-band estimate exactly as
+``estimate_cost_band`` prices any other class of work — never a guess when a task
+carries no band. ``apps/cli/commands/job_rerun_cmd.py`` is the command that shows this
+estimate through the cost preview and then calls ``prepare_subtree_rerun`` above.
 """
 from __future__ import annotations
 
@@ -32,6 +38,12 @@ from typing import Any
 
 from packages.orchestration import checkpoints, dag_schedule, plan_editing, task_veto
 from packages.orchestration import worktrees as W
+from packages.orchestration.budget_resolution import PredictiveBudgetConfig
+from packages.orchestration.cost_preview import (
+    ESTIMATE_UNAVAILABLE,
+    CostBandEstimate,
+    estimate_cost_band,
+)
 from packages.orchestration.data_paths import job_evidence_dir
 from packages.orchestration.pingpong_job import (
     JOB_COMPLETED,
@@ -45,6 +57,7 @@ from packages.orchestration.pingpong_job import (
     load_job_plan,
     save_job_plan,
 )
+from packages.orchestration.task_injection import PLAN_BAND_TO_TOKEN_BAND
 
 __all__ = [
     "RERUN_TRAILER",
@@ -60,6 +73,7 @@ __all__ = [
     "apply_subtree_reset",
     "fold_subtree_rerun",
     "prepare_subtree_rerun",
+    "subtree_rerun_cost_estimate",
 ]
 
 #: S1 — the trailer a rerun's reset commit carries beside ``Remedy-Job``, naming
@@ -185,6 +199,58 @@ def rerun_subtree_ids(tasks: Sequence[TaskEntry], root_task_id: str) -> list[str
                 changed = True
 
     return [t.task_id for t in tasks if t.task_id in included]
+
+
+def subtree_rerun_cost_estimate(
+    job: JobPlan, subtree_ids: Sequence[str], *, config: PredictiveBudgetConfig,
+) -> CostBandEstimate:
+    """DECISION F029 D3 — the subtree's cost, summed from each task's plan band.
+
+    Every id in ``subtree_ids`` contributes its task's plan band, read
+    defensively from ``task.inputs.get("plan", {}).get("est_tokens_band")`` (a
+    missing or non-dict ``plan`` counts as no band), mapped through
+    ``PLAN_BAND_TO_TOKEN_BAND`` and priced with ``estimate_cost_band(tb, tb,
+    config=config)`` — the same single-class-known-confidently shape any other
+    caller of that estimator uses. One task with no band, an unrecognised band
+    (``XL`` maps to ``TokenBand.UNKNOWN``, which has no class default) or an
+    unpriced config makes the WHOLE estimate unavailable, never half-guessed
+    (A9, same posture as ``estimate_cost_band`` itself).
+    """
+    tasks_by_id = {t.task_id: t for t in job.tasks}
+    tasks_meta: list[dict[str, str]] = []
+    unpriced: list[str] = []
+    low_total = 0.0
+    high_total = 0.0
+    available = True
+
+    for task_id in subtree_ids:
+        task = tasks_by_id[task_id]
+        plan = task.inputs.get("plan")
+        band = plan.get("est_tokens_band") if isinstance(plan, dict) else None
+        tasks_meta.append({"task_id": task_id, "plan_band": band or ""})
+
+        token_band = PLAN_BAND_TO_TOKEN_BAND.get(band) if band else None
+        task_estimate = (
+            estimate_cost_band(token_band, token_band, config=config)
+            if token_band is not None else None
+        )
+        if (task_estimate is None or task_estimate.band_usd_low is None
+                or task_estimate.band_usd_high is None):
+            available = False
+            unpriced.append(task_id)
+            continue
+        low_total += task_estimate.band_usd_low
+        high_total += task_estimate.band_usd_high
+
+    inputs: dict[str, Any] = {"tasks": tasks_meta, "unpriced": unpriced}
+    if not available:
+        return CostBandEstimate(None, None, ESTIMATE_UNAVAILABLE, inputs)
+
+    basis = (
+        f"sum over the {len(subtree_ids)} tasks of the subtree of class defaults per plan "
+        f"band x price_basis_usd_per_1k_tokens={config.price_basis_usd_per_1k_tokens}"
+    )
+    return CostBandEstimate(round(low_total, 6), round(high_total, 6), basis, inputs)
 
 
 def branch_commits_since(worktree_path: str | Path, base: str) -> list[dict[str, Any]]:

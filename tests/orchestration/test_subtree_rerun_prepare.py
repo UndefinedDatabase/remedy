@@ -19,6 +19,7 @@ import pytest
 from packages.orchestration import pingpong_job as PJ
 from packages.orchestration import subtree_rerun as SR
 from packages.orchestration import worktrees as W
+from packages.orchestration.budget_resolution import PredictiveBudgetConfig
 from packages.orchestration.data_paths import job_evidence_dir, job_record_path
 from packages.orchestration.pingpong_job import (
     JOB_BLOCKED,
@@ -155,6 +156,64 @@ class TestS2Fields:
         assert loaded.tasks[0].attempt == 1
         assert loaded.tasks[0].attempts == []
         assert loaded.tasks[0].model_override == ""
+
+
+# ---------------------------------------------------------------------------
+# DECISION F029 D3 — the subtree's cost estimate, over synthetic entries
+# ---------------------------------------------------------------------------
+
+def _task_with_band(task_id: str, band: str | None) -> PJ.TaskEntry:
+    return PJ.TaskEntry(task_id=task_id,
+                        inputs={"plan": {"est_tokens_band": band}} if band else {})
+
+
+class TestSubtreeRerunCostEstimate:
+    def _config(self) -> PredictiveBudgetConfig:
+        return PredictiveBudgetConfig(
+            price_basis_usd_per_1k_tokens=0.01,
+            class_default_tokens={"low": 8000, "medium": 32000, "high": 120000},
+        )
+
+    def test_s_and_m_bands_sum_to_point_four_at_both_bounds(self):
+        job = PJ.JobPlan(job_id="J1", tasks=[
+            _task_with_band("T1", "S"), _task_with_band("T2", "M"),
+        ])
+
+        estimate = SR.subtree_rerun_cost_estimate(job, ["T1", "T2"], config=self._config())
+
+        assert estimate.band_usd_low == 0.4
+        assert estimate.band_usd_high == 0.4
+        assert estimate.basis == (
+            "sum over the 2 tasks of the subtree of class defaults per plan band x "
+            "price_basis_usd_per_1k_tokens=0.01"
+        )
+        assert estimate.inputs["tasks"] == [
+            {"task_id": "T1", "plan_band": "S"}, {"task_id": "T2", "plan_band": "M"},
+        ]
+        assert estimate.inputs["unpriced"] == []
+
+    def test_one_xl_task_makes_the_whole_estimate_unavailable(self):
+        job = PJ.JobPlan(job_id="J1", tasks=[
+            _task_with_band("T1", "S"), _task_with_band("T2", "XL"),
+        ])
+
+        estimate = SR.subtree_rerun_cost_estimate(job, ["T1", "T2"], config=self._config())
+
+        assert estimate.band_usd_low is None
+        assert estimate.band_usd_high is None
+        assert estimate.basis == SR.ESTIMATE_UNAVAILABLE
+        assert estimate.inputs["unpriced"] == ["T2"]
+
+    def test_a_task_without_a_band_makes_the_whole_estimate_unavailable(self):
+        job = PJ.JobPlan(job_id="J1", tasks=[
+            _task_with_band("T1", "S"), _task_with_band("T2", None),
+        ])
+
+        estimate = SR.subtree_rerun_cost_estimate(job, ["T1", "T2"], config=self._config())
+
+        assert estimate.band_usd_low is None
+        assert estimate.inputs["unpriced"] == ["T2"]
+        assert estimate.inputs["tasks"][1] == {"task_id": "T2", "plan_band": ""}
 
 
 # ---------------------------------------------------------------------------
