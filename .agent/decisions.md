@@ -23537,3 +23537,44 @@ provider and changes no task outside the subtree except a `skipped` one.
 HOW TO REVERSE: delete `prepare_subtree_rerun` and its tests, the fields `attempt`, `attempts` and
 `model_override` of `TaskEntry` and `reruns` of `JobPlan` with their export and import lines, and
 the `task.model_override or` of the `run_pingpong` call, and delete this paragraph.
+
+## DECISION F029 D3 — `remedy job rerun-subtree` estimates the subtree's cost from each task's plan band, shows it through the cost preview before anything is touched, then prepares the rerun and names the one command that runs it; it is the second command marked expensive; the rerun's run-log event moves from round 3 to T003's round, beside the attempt fan that reads it (2026-09-27)
+
+CONTEXT: measured at `aa054d8b`. `estimate_cost_band` in `packages/orchestration/cost_preview.py`
+prices one token band pair from the class defaults and the price basis and answers
+`estimate_unavailable` rather than a guess; `PLAN_BAND_TO_TOKEN_BAND` in `task_injection.py` maps
+the plan bands `S`, `M`, `L` to `low`, `medium`, `high` and `XL` to `unknown`; a task parsed from a
+markdown job file carries no plan band at all. `confirm_cost_preview` in
+`apps/cli/cost_preview_confirm.py` proceeds silently below the threshold, asks above it or when the
+estimate is unavailable, proceeds with an audit line under `--yes`, and refuses
+`confirmation_required` when nobody can answer. `job.resume` is the one command the catalog marks
+`is_expensive`, and `tests/test_command_catalog.py` pins exactly that set. A new run-log event
+needs its name in `event_names.py` and, by findings R-1068 and R-1075, in the browser's humanize
+catalogue and the demo recording's readers, all of which live under `apps/ui` and are verified with
+the UI toolchain, which T003 uses anyway and round 3 otherwise would not.
+
+CHOSEN: (1) THE ESTIMATE. `subtree_rerun_cost_estimate(job, subtree_ids, *, config)` in
+`subtree_rerun.py` sums, over the subtree's tasks, `estimate_cost_band` of each task's plan band
+mapped through `PLAN_BAND_TO_TOKEN_BAND`; one task without a band, with `XL`, or unpriced makes the
+whole estimate unavailable, which the preview treats as expensive. (2) THE COMMAND. `remedy job
+rerun-subtree <job> <task> [--model M] [--yes] [--json]`: the job, then the task resolved as
+`remedy job veto-task` resolves it, then the subtree (an unknown task refused before any preview),
+then the preview through `confirm_cost_preview` with `command_name` `job.rerun-subtree` — a
+declined preview changes nothing — then `prepare_subtree_rerun` with the actor `cli`. Its answer
+names the rerun, the reset commit, the files put back, the tasks returned to pending, the override
+beside the configured model, and the command that runs it, `remedy job run <the job's id>`, written
+out with the real id. Exit codes follow `docs/guides/exit-codes.md`: 2 for `unknown_task` and
+`model_invalid`, 3 for every refusal of the job's or the worktree's state, and 1 for a job that
+does not exist. (3) THE CATALOG marks it `is_expensive`, beside `job.resume`, and `may_mutate_repo`,
+because the reset lands a commit on the job branch; the pin in `tests/test_command_catalog.py` is
+widened to the two ids in the same commit. (4) R-1081's repair lands in the same round. (5) THE
+EVENT moves to T003's round, which amends clause (7) of DECISION F029 D2.
+
+ALTERNATIVES: an estimate from the tasks' recorded token spend, rejected because F074's
+calibration has not shipped and a spend is not a price; pricing a task without a band at a default
+band, rejected because the preview must never fabricate a number; landing the event now without its
+browser readers, rejected because findings R-1068 and R-1075 are exactly that half-landing.
+
+HOW TO REVERSE: delete `apps/cli/commands/job_rerun_cmd.py`, its catalog entry, its registration,
+its exit-code row and `subtree_rerun_cost_estimate`, restore the catalog pin to `job.resume` alone,
+restore `subtree_rerun.py`'s line in `ALLOWED_UNWIRED`, and delete this paragraph.
