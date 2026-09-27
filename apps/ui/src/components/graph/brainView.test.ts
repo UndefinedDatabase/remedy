@@ -3,6 +3,7 @@ import type { RemedyDashboard, RemedyPromptTraceItem, RemedyTaskItem, RemedyVeto
 import { reduceBrainEvent, seedBrainModel } from "./brainReducer";
 import { row } from "./brainReducer.fixtures";
 import { buildBrainLayout } from "./buildForceBrainModel";
+import type { BrainModel } from "./brainOntology";
 import type { BrainLayoutData, BrainLayoutNode } from "./forceBrainTypes";
 import { withPromptNodes } from "./promptNodes";
 import {
@@ -318,6 +319,16 @@ describe("promptListEntries", () => {
     model = withPromptNodes(model, [promptItem("p1", "t1")]);
     const visible: BrainLayoutData = { nodes: [layoutNode("task:t1")], links: [] };
     expect(promptListEntries(model, visible)).toEqual([]);
+  });
+
+  it("answers no entry for a visible test_run node — only synapse kinds ever list", () => {
+    const model = seedBrainModel("job-pl4", [{ id: "t1", status: "pending", rank: 0 }]);
+    const withRun: BrainModel = {
+      ...model,
+      nodes: [...model.nodes, { id: "run:t1:1", kind: "test_run", state: "pass", parentId: "task:t1", seq: 1, meta: {} }],
+    };
+    const visible: BrainLayoutData = { nodes: [layoutNode("run:t1:1")], links: [] };
+    expect(promptListEntries(withRun, visible)).toEqual([]);
   });
 });
 
