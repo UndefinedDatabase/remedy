@@ -63,6 +63,7 @@ __all__ = [
     "PLAN_BAND_TO_TOKEN_BAND",
     "ORIGIN_HUMAN_INJECTED",
     "INJECTED_TASKS_DIRNAME",
+    "INJECTION_ANSWERS_DIRNAME",
     "validate_injection_text",
     "injection_refusal",
     "next_injected_task_id",
@@ -76,6 +77,7 @@ __all__ = [
     "confirmed_injections",
     "confirm_task_injection",
     "apply_injection_to_job",
+    "answer_injection_shortfall",
 ]
 
 # ---------------------------------------------------------------------------
@@ -101,6 +103,10 @@ ORIGIN_HUMAN_INJECTED = "human_injected"
 #: DECISION F028 D2 (2) — the confirmed-injection control files, beside `INJECTION_DRAFTS_DIRNAME`
 #: under the same job control directory.
 INJECTED_TASKS_DIRNAME = "injected_tasks"
+
+#: DECISION F028 D3 (1) — a shortfall draft's answer, beside the other two control
+#: directories, under the same job control directory.
+INJECTION_ANSWERS_DIRNAME = "injection_answers"
 
 #: F028 D1 (7) — a plan band maps onto the predictive engine's token band; XL has no
 #: class default of its own and takes the "missing band" path deliberately (A9).
@@ -327,7 +333,9 @@ def injection_budget_check(budgets: Any, counters: Any, *, band: str, config: An
 
 
 def shortfall_decision_seed(check: dict[str, Any]) -> dict[str, Any]:
-    """The three-option menu a shortfall answers with (DECISION F028 D1 (8))."""
+    """The three-option menu a shortfall answers with, keyed by option (DECISION F028 D3 (3)):
+    ``option_labels`` is a ``dict`` of complete sentences, the same shape ``veto_proposal``'s
+    seed uses, not the list DECISION F028 D1 (8) originally answered."""
     plan_band = check["plan_band"]
     shrink_band = _SHRINK_BAND.get(plan_band)
 
@@ -339,18 +347,21 @@ def shortfall_decision_seed(check: dict[str, Any]) -> dict[str, Any]:
             Decimal(repr(round(spent + expected, 6))).quantize(
                 Decimal("0.01"), rounding=ROUND_CEILING))
 
-    shrink_label = (
-        "the task cannot shrink any further" if shrink_band is None
-        else f"shrink the task to the {shrink_band} band")
+    if shrink_band is None:
+        shrink_label = "The task is already the smallest size, so it cannot shrink."
+    else:
+        shrink_label = (
+            f"Draft the task again one size smaller, as size {shrink_band}, and check "
+            f"the cost again.")
     option_labels = {
-        "extend_budget": "extend the job's budget to cover this task",
+        "extend_budget": f"Raise the job's cost limit to ${extend_to_usd:.2f} and add the task.",
         "shrink_task": shrink_label,
-        "drop": "drop this task",
+        "drop": "Drop this task and add nothing to the job.",
     }
     return {
-        "question": "the injected task would breach the job's budget; how should it proceed?",
+        "question": "Adding this task would go over the job's cost limit. What should happen?",
         "options": list(SHORTFALL_OPTIONS),
-        "option_labels": [option_labels[option] for option in SHORTFALL_OPTIONS],
+        "option_labels": option_labels,
         "arithmetic": check["arithmetic"],
         "extend_to_usd": extend_to_usd,
         "shrink_band": shrink_band,
@@ -582,6 +593,9 @@ def draft_task_injection(
         "expires_at": expires_dt.isoformat(),
         "planner_calls": outcome.calls,
         "text": validated_text,
+        # DECISION F028 D3 (2): a drafted-from-scratch task carries no extension; only a
+        # `extend_budget` answer's derived draft (S3) sets this to a real number.
+        "budget_extend_to_usd": None,
     }
 
     record = dict(answer)
@@ -669,8 +683,254 @@ def read_injection_draft(job_id: str, draft_id: str, *, now: datetime | None = N
 
 
 # ---------------------------------------------------------------------------
+# DECISION F028 D3 (1) — the answer: a create-only file, and (for two of the three
+# options) a derived draft published through the same helper a fresh draft uses
+# ---------------------------------------------------------------------------
+
+
+def _read_injection_answer(job_id: str, draft_id: str, *,
+                           control_root_path: Path | None) -> dict[str, Any] | None:
+    """The stored answer record for *draft_id*, or None when none exists yet. A file that is
+    not a JSON object raises ``TaskInjectionError``, same as every other control reader here."""
+    jid = _sp.validate_job_id(job_id)
+    try:
+        job_fd = _sp.open_job_control_fd(jid, control_root_path, create=False)
+    except _sp.StopControlError as exc:
+        raise TaskInjectionError(str(exc)) from exc
+    if job_fd is None:
+        return None
+
+    answers_fd = None
+    try:
+        answers_fd = _open_named_dir(job_fd, INJECTION_ANSWERS_DIRNAME, create=False)
+        if answers_fd is None:
+            return None
+        name = _draft_filename(draft_id)
+        raw = _fs.read_verified_file(name, answers_fd, max_bytes=_sp.MAX_CONTROL_BYTES,
+                                     error_cls=TaskInjectionError, noun="injection answer")
+        if raw is None:
+            return None
+        try:
+            record = json.loads(raw.decode("utf-8"))
+        except (ValueError, UnicodeDecodeError) as exc:
+            raise TaskInjectionError(
+                f"an injection answer entry is not valid JSON: {exc}") from exc
+        if not isinstance(record, dict):
+            raise TaskInjectionError("an injection answer entry is not a JSON object")
+        return record
+    finally:
+        if answers_fd is not None:
+            os.close(answers_fd)
+        os.close(job_fd)
+
+
+def _publish_injection_answer(job_id: str, draft_id: str, record: dict[str, Any], *,
+                              control_root_path: Path | None) -> bool:
+    """Publish one create-only answer file. Mirrors ``_publish_confirmed_injection``: a lost
+    race is the caller's ``already_answered`` to answer, not a raised error."""
+    jid = _sp.validate_job_id(job_id)
+    try:
+        job_fd = _sp.open_job_control_fd(jid, control_root_path, create=True)
+    except _sp.StopControlError as exc:
+        raise TaskInjectionError(str(exc)) from exc
+    assert job_fd is not None
+    answers_fd = None
+    try:
+        answers_fd = _open_named_dir(job_fd, INJECTION_ANSWERS_DIRNAME, create=True)
+        assert answers_fd is not None
+        name = _draft_filename(draft_id)
+        return _fs.write_file_atomically(
+            answers_fd, name, _fs.json_bytes(record), create_only=True,
+            file_mode=_sp.CONTROL_FILE_MODE, error_cls=TaskInjectionError,
+            noun="injection answer")
+    finally:
+        if answers_fd is not None:
+            os.close(answers_fd)
+        os.close(job_fd)
+
+
+def answer_injection_shortfall(
+    job: Any,
+    draft_id: Any,
+    option: Any,
+    *,
+    actor: Any,
+    budgets: Any,
+    counters: Any,
+    config: Any,
+    now: datetime | None = None,
+    control_root_path: Path | None = None,
+) -> dict[str, Any]:
+    """Answer a shortfall draft's decision seed with one of ``SHORTFALL_OPTIONS``. NEVER
+    raises for a refusal.
+
+    Checks, in order: S4's terminal check (``job_terminal``); ``read_injection_draft``
+    refusing with its own code; a record naming another job (``draft_unknown``); a
+    ``status`` other than ``needs_decision`` (``draft_not_in_shortfall``); *option* outside
+    ``SHORTFALL_OPTIONS`` (``unknown_option``); an answer already on file for this draft
+    (``already_answered``); ``shrink_task`` when the stored seed's ``shrink_band`` is None
+    (``cannot_shrink``). A refusal writes nothing.
+
+    Otherwise mints a derived draft id (None for ``drop``) and publishes ONE create-only
+    answer file in ``INJECTION_ANSWERS_DIRNAME``, named as a draft file is — a lost race there
+    answers ``already_answered`` too. Then: ``drop`` answers ``{"outcome": "dropped",
+    "job_id", "draft_id", "answered_at"}`` and nothing more is written. ``shrink_task``
+    derives a new draft whose task is the old one at the seed's ``shrink_band``, checked again
+    over *budgets*/*counters*/*config*, itself a fresh shortfall (``needs_decision``, a fresh
+    seed) when that check still breaches. ``extend_budget`` derives a new draft at the old
+    band, ``confirmable``, carrying ``budget_extend_to_usd`` equal to the seed's
+    ``extend_to_usd``, its check computed over ``budgets`` with ``max_cost_usd`` raised to
+    that figure. Either derived draft keeps the old record's task id, placement,
+    ``task_rationale``, ``text``, ``after`` and ``fence_conflicts``, takes the new draft id,
+    the answering actor, ``drafted_at`` *now* and a fresh ``expires_at``, and adds
+    ``derived_from`` (the old draft id) and ``answer`` (*option*); it is published through
+    ``_publish_injection_draft`` (round 1's draft helper) and answered in the shape
+    ``draft_task_injection`` answers, plus those two keys and ``budget_extend_to_usd``.
+    """
+    refusal = injection_refusal(getattr(job, "state", ""), 0)
+    if refusal is not None:
+        return {"outcome": "refused", "code": refusal.code, "detail": refusal.detail}
+
+    try:
+        record = read_injection_draft(
+            job.job_id, draft_id, now=now, control_root_path=control_root_path)
+    except TaskInjectionRefused as exc:
+        return {"outcome": "refused", "code": exc.code, "detail": exc.detail}
+
+    if record.get("job_id") != job.job_id:
+        return {"outcome": "refused", "code": "draft_unknown",
+                "detail": f"no injection draft {draft_id!r} exists"}
+
+    if record.get("status") != "needs_decision":
+        return {"outcome": "refused", "code": "draft_not_in_shortfall",
+                "detail": "this injection draft is not awaiting a shortfall decision"}
+
+    if option not in SHORTFALL_OPTIONS:
+        return {"outcome": "refused", "code": "unknown_option",
+                "detail": f"{option!r} is not a valid shortfall option"}
+
+    if _read_injection_answer(
+            job.job_id, draft_id, control_root_path=control_root_path) is not None:
+        return {"outcome": "refused", "code": "already_answered",
+                "detail": f"injection draft {draft_id!r} was already answered"}
+
+    seed = record.get("decision_seed") or {}
+    if option == "shrink_task" and seed.get("shrink_band") is None:
+        return {"outcome": "refused", "code": "cannot_shrink",
+                "detail": "this task is already at the smallest size; it cannot shrink"}
+
+    now_dt = now if now is not None else datetime.now(timezone.utc)
+    bounded_actor = _bounded_actor(actor)
+    derived_draft_id = None if option == "drop" else _sp.new_request_id()
+
+    answer_record = {
+        "injection_answer_v": 1,
+        "job_id": job.job_id,
+        "draft_id": draft_id,
+        "option": option,
+        "actor": bounded_actor,
+        "answered_at": now_dt.isoformat(),
+        "derived_draft_id": derived_draft_id,
+    }
+    published = _publish_injection_answer(
+        job.job_id, draft_id, answer_record, control_root_path=control_root_path)
+    if not published:
+        return {"outcome": "refused", "code": "already_answered",
+                "detail": f"injection draft {draft_id!r} was already answered"}
+
+    if option == "drop":
+        return {"outcome": "dropped", "job_id": job.job_id, "draft_id": draft_id,
+                "answered_at": answer_record["answered_at"]}
+
+    task = dict(record["task"])
+    placement = record["placement"]
+    expires_dt = now_dt + timedelta(seconds=INJECTION_DRAFT_TTL_SECONDS)
+
+    if option == "shrink_task":
+        shrink_band = seed["shrink_band"]
+        task["est_tokens_band"] = shrink_band
+        check = injection_budget_check(budgets, counters, band=shrink_band, config=config)
+        shortfall = bool(check["shortfall"])
+        budget_extend_to_usd = None
+    else:                                                          # extend_budget
+        extend_to_usd = seed["extend_to_usd"]
+        extended_budgets = budgets.model_copy(update={"max_cost_usd": extend_to_usd})
+        check = injection_budget_check(
+            extended_budgets, counters, band=task["est_tokens_band"], config=config)
+        shortfall = False
+        budget_extend_to_usd = extend_to_usd
+
+    derived_answer: dict[str, Any] = {
+        "outcome": "shortfall" if shortfall else "drafted",
+        "job_id": job.job_id,
+        "draft_id": derived_draft_id,
+        "confirm_token": None if shortfall else derived_draft_id,
+        "task": task,
+        "placement": placement,
+        "task_rationale": record["task_rationale"],
+        "budget_check": check,
+        "decision_seed": shortfall_decision_seed(check) if shortfall else None,
+        "fence_conflicts": record.get("fence_conflicts", []),
+        "drafted_at": now_dt.isoformat(),
+        "expires_at": expires_dt.isoformat(),
+        "planner_calls": 0,
+        "text": record["text"],
+        "derived_from": draft_id,
+        "answer": option,
+        "budget_extend_to_usd": budget_extend_to_usd,
+    }
+
+    derived_record = dict(derived_answer)
+    derived_record["injection_draft_v"] = 1
+    derived_record["status"] = "needs_decision" if shortfall else "confirmable"
+    derived_record["actor"] = bounded_actor
+    derived_record["after"] = record.get("after")
+
+    _publish_injection_draft(
+        job.job_id, derived_draft_id, derived_record, control_root_path=control_root_path)
+
+    return derived_answer
+
+
+# ---------------------------------------------------------------------------
 # S3/T002 — the confirmation: a second create-only control file (DECISION F028 D2 (2))
 # ---------------------------------------------------------------------------
+
+
+def _validate_confirmed_record(record: dict[str, Any]) -> None:
+    """R-1077's repair: every field ``apply_injection_to_job`` reads must exist, with the type
+    it needs, before this record is trusted. ``apply_injection_to_job`` indexes ``placement``,
+    ``task_rationale``, ``actor``, ``text`` and ``confirmed_at`` AFTER it had already started
+    mutating ``job`` — a record lacking one raised a bare ``KeyError`` there, leaving the job
+    ``running`` on disk instead of the blocked state DECISION F028 D2 (3) promises. Checking
+    every field here, before any record reaches the apply, closes that hole regardless of
+    which caller reads the record next.
+    """
+    draft_id = record.get("draft_id")
+    if not isinstance(draft_id, str) or not draft_id:
+        raise TaskInjectionError("a confirmed task injection entry carries no draft id")
+    if not isinstance(record.get("task"), dict):
+        raise TaskInjectionError("a confirmed task injection entry carries no task")
+    placement = record.get("placement")
+    if not isinstance(placement, dict):
+        raise TaskInjectionError("a confirmed task injection entry carries no placement")
+    if not isinstance(placement.get("rationale"), str):
+        raise TaskInjectionError(
+            "a confirmed task injection entry's placement carries no rationale")
+    if not isinstance(placement.get("basis"), str):
+        raise TaskInjectionError(
+            "a confirmed task injection entry's placement carries no basis")
+    for field in ("task_rationale", "text", "actor", "confirmed_at"):
+        if not isinstance(record.get(field), str):
+            raise TaskInjectionError(f"a confirmed task injection entry carries no {field}")
+    if "budget_extend_to_usd" in record:
+        extend_to_usd = record["budget_extend_to_usd"]
+        if extend_to_usd is not None:
+            if (isinstance(extend_to_usd, bool)
+                    or not isinstance(extend_to_usd, (int, float))
+                    or extend_to_usd <= 0):
+                raise TaskInjectionError(
+                    "a confirmed task injection entry carries an invalid budget_extend_to_usd")
 
 
 def confirmed_injections(job_id: str, *,
@@ -678,9 +938,9 @@ def confirmed_injections(job_id: str, *,
     """Every confirmed injection, ordered by ``(confirmed_at, draft_id)``.
 
     ``()`` when the control root, the job's directory or ``INJECTED_TASKS_DIRNAME`` does not
-    exist. A file that is not a JSON object, or lacks a string ``draft_id`` or a dict
-    ``task``, raises ``TaskInjectionError`` — dropping it would silently forget a confirmed
-    injection the operator already made.
+    exist. A file that is not a JSON object, or fails ``_validate_confirmed_record`` (R-1077),
+    raises ``TaskInjectionError`` — dropping it would silently forget a confirmed injection the
+    operator already made.
     """
     jid = _sp.validate_job_id(job_id)
     try:
@@ -711,11 +971,7 @@ def confirmed_injections(job_id: str, *,
                     f"a confirmed task injection entry is not valid JSON: {exc}") from exc
             if not isinstance(record, dict):
                 raise TaskInjectionError("a confirmed task injection entry is not a JSON object")
-            if not isinstance(record.get("draft_id"), str) or not record["draft_id"]:
-                raise TaskInjectionError(
-                    "a confirmed task injection entry carries no draft id")
-            if not isinstance(record.get("task"), dict):
-                raise TaskInjectionError("a confirmed task injection entry carries no task")
+            _validate_confirmed_record(record)
             out.append(record)
         out.sort(key=lambda r: (r.get("confirmed_at") or "", r["draft_id"]))
         return tuple(out)
@@ -842,6 +1098,9 @@ def confirm_task_injection(
         "drafted_by": record.get("actor"),
         "actor": _bounded_actor(actor),
         "confirmed_at": now_dt.isoformat(),
+        # DECISION F028 D3 (2): carried from the draft, None when the draft never named an
+        # extension, into the fold's own reading of `apply_injection_to_job`.
+        "budget_extend_to_usd": record.get("budget_extend_to_usd"),
     }
     published = _publish_confirmed_injection(
         job.job_id, draft_id, confirmed_record, control_root_path=control_root_path)
@@ -865,13 +1124,22 @@ def apply_injection_to_job(job: Any, record: dict[str, Any], *,
 
     Raises ``TaskInjectionRefused("injection_invalid", detail)``, leaving ``job`` untouched,
     when ``job.task_plan`` does not read as a plan or
-    ``plan_editing.apply_edit(plan, "plan_add_task", ...)`` refuses. Otherwise, as
-    ``edit_task_at_runtime`` does: ``map_task_plan_to_tasks``, ``record_llm_task_deliverables``,
-    and the one mapped entry for the new task is appended to ``job.tasks`` with its
-    ``inputs["plan"]`` carrying the provenance, the plan version bumped, the approval hash
-    re-sealed when the old body was approved with one, and the edit log extended by one entry
-    naming ``plan_add_task`` and carrying an ``injection`` block. Answers
-    ``{"task_id", "planned_id", "folded_at"}``.
+    ``plan_editing.apply_edit(plan, "plan_add_task", ...)`` refuses. R-1077's repair: every
+    other value this function reads from ``record`` is read, and every value it derives is
+    computed, BEFORE ``job`` changes — the mutations of ``job`` (``job.tasks.append``,
+    ``job.task_plan = ...`` and, when it applies, ``job.budgets = ...``) are its LAST
+    statements, so an exception anywhere above them (a record missing a field the caller
+    should have validated first) leaves ``job`` exactly as it was, never half-applied.
+    Otherwise, as ``edit_task_at_runtime`` does: ``map_task_plan_to_tasks``,
+    ``record_llm_task_deliverables``, and the one mapped entry for the new task is appended to
+    ``job.tasks`` with its ``inputs["plan"]`` carrying the provenance, the plan version
+    bumped, the approval hash re-sealed when the old body was approved with one, and the edit
+    log extended by one entry naming ``plan_add_task`` and carrying an ``injection`` block —
+    gaining ``budget_extend_to_usd`` (the record's value) when the record carries that key at
+    all. DECISION F028 D3 (2): when the record's ``budget_extend_to_usd`` is a real number,
+    ``job.budgets`` is a dict and its current ``max_cost_usd`` is not None and lower than it,
+    ``job.budgets["max_cost_usd"]`` is raised to it — an extension never creates a limit and
+    never lowers one. Answers ``{"task_id", "planned_id", "folded_at"}``.
     """
     raw_plan = getattr(job, "task_plan", None)
     plan: TaskPlan | None = None
@@ -899,11 +1167,20 @@ def apply_injection_to_job(job: Any, record: dict[str, Any], *,
         t for t in mapped if (t.inputs.get("plan") or {}).get("planned_id") == planned_id)
 
     placement = record["placement"]
+    plan_rationale = placement["rationale"]
+    basis = placement["basis"]
+    task_rationale = record["task_rationale"]
+    draft_id = record["draft_id"]
+    actor = record["actor"]
+    text = record["text"]
+    confirmed_at = record["confirmed_at"]
+
+    # `fresh` is a fresh object `map_task_plan_to_tasks` just built — not yet part of
+    # `job.tasks` — so filling in its provenance here is not yet a change to `job`.
     fresh.inputs["plan"]["origin"] = ORIGIN_HUMAN_INJECTED
-    fresh.inputs["plan"]["plan_rationale"] = placement["rationale"]
-    fresh.inputs["plan"]["task_rationale"] = record["task_rationale"]
-    fresh.inputs["plan"]["injection_draft_id"] = record["draft_id"]
-    job.tasks.append(fresh)
+    fresh.inputs["plan"]["plan_rationale"] = plan_rationale
+    fresh.inputs["plan"]["task_rationale"] = task_rationale
+    fresh.inputs["plan"]["injection_draft_id"] = draft_id
 
     version = plan_editing.plan_version(body)
     now_dt = now if now is not None else datetime.now(timezone.utc)
@@ -916,29 +1193,47 @@ def apply_injection_to_job(job: Any, record: dict[str, Any], *,
         new_body[APPROVED_PLAN_HASH_KEY] = plan_content_hash(new_body)
 
     dod_resync_pending = job_dod_path(job.job_id).is_file()
+    injection_block: dict[str, Any] = {
+        "draft_id": draft_id,
+        "task_id": fresh.task_id,
+        "planned_id": planned_id,
+        "origin": ORIGIN_HUMAN_INJECTED,
+        "basis": basis,
+        "plan_rationale": plan_rationale,
+        "text": text,
+        "confirmed_at": confirmed_at,
+        "dod_resync_pending": dod_resync_pending,
+    }
+    if "budget_extend_to_usd" in record:
+        injection_block["budget_extend_to_usd"] = record["budget_extend_to_usd"]
+
     log_entry: dict[str, Any] = {
         "version": version + 1,
         "ts": now_dt.isoformat(),
-        "actor": record["actor"],
+        "actor": actor,
         "command": "plan_add_task",
         "args": {"task": task_dict},
         "before": [t.model_dump() for t in plan.tasks],
         "after": [t.model_dump() for t in new_plan.tasks],
-        "injection": {
-            "draft_id": record["draft_id"],
-            "task_id": fresh.task_id,
-            "planned_id": planned_id,
-            "origin": ORIGIN_HUMAN_INJECTED,
-            "basis": placement["basis"],
-            "plan_rationale": placement["rationale"],
-            "text": record["text"],
-            "confirmed_at": record["confirmed_at"],
-            "dod_resync_pending": dod_resync_pending,
-        },
+        "injection": injection_block,
     }
     new_body[plan_editing.EDIT_LOG_KEY] = [*body.get(plan_editing.EDIT_LOG_KEY, []), log_entry]
 
+    # DECISION F028 D3 (2) — computed last: raise the job's cost limit, never create or
+    # lower one.
+    extend_to_usd = record.get("budget_extend_to_usd")
+    new_budgets: dict[str, Any] | None = None
+    if (extend_to_usd is not None and isinstance(job.budgets, dict)
+            and job.budgets.get("max_cost_usd") is not None
+            and job.budgets["max_cost_usd"] < extend_to_usd):
+        new_budgets = dict(job.budgets)
+        new_budgets["max_cost_usd"] = extend_to_usd
+
+    # THE MUTATIONS — everything above is computed; `job` changes only from here on.
+    job.tasks.append(fresh)
     job.task_plan = new_body
+    if new_budgets is not None:
+        job.budgets = new_budgets
 
     folded_at = now_dt.isoformat()
     return {"task_id": fresh.task_id, "planned_id": planned_id, "folded_at": folded_at}
