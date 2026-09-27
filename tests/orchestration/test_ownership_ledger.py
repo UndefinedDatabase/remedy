@@ -10,14 +10,17 @@ real writer produced, to make an ordering assertion deterministic against the re
 """
 from __future__ import annotations
 
+import difflib
 import hashlib
 import json
 import os
+from datetime import datetime, timezone
 from pathlib import Path
 
 import pytest
 
 from packages.core.models import RunState
+from packages.orchestration import escalation as esc
 from packages.orchestration import ownership as own
 from packages.orchestration import pause_control as pc
 from packages.orchestration import pingpong_job as pj
@@ -27,7 +30,17 @@ from packages.orchestration import subtree_rerun as sr
 from packages.orchestration import task_edit_runtime as ter
 from packages.orchestration import task_injection as ti
 from packages.orchestration import task_veto as tv
-from packages.orchestration.job_plan import APPROVED_PLAN_HASH_KEY, map_task_plan_to_tasks, plan_content_hash
+from packages.orchestration.data_paths import run_log_dir
+from packages.orchestration.diff_parser import parse_unified_diff_to_view
+from packages.orchestration.hunk_decision_record import record_hunk_decision
+from packages.orchestration.hunk_ledger import HUNK_LANDING_UNATTEMPTED
+from packages.orchestration.job_plan import (
+    APPROVED_PLAN_HASH_KEY,
+    AUTO_APPROVAL_MODE,
+    announce_plan_approval,
+    map_task_plan_to_tasks,
+    plan_content_hash,
+)
 from packages.orchestration.pingpong_job import load_job_plan, save_job_plan
 from packages.orchestration.run_log import RunLogWriter
 from packages.orchestration.schemas.models import TaskPlan
@@ -150,6 +163,44 @@ def _task_id_of(job_id: str, planned_id: str) -> str:
         if (t.inputs.get("plan") or {}).get("planned_id") == planned_id:
             return t.task_id
     raise AssertionError(f"no task for planned id {planned_id!r}")
+
+
+#: A twenty-line original with two well-separated edits, RESTATED from
+#: ``test_hunk_decision_record.py``'s own recipe rather than imported — a test file reaching
+#: into another test file's helpers couples two suites that have no reason to move together.
+_HUNK_ORIGINAL = "\n".join(f"line {number:02d}" for number in range(1, 21)) + "\n"
+
+
+def _hunk_diff(*replacements: tuple[str, str], path: str = "f.txt") -> str:
+    text = _HUNK_ORIGINAL
+    for old, new in replacements:
+        text = text.replace(old + "\n", new + "\n")
+    return "".join(difflib.unified_diff(
+        _HUNK_ORIGINAL.splitlines(True), text.splitlines(True),
+        fromfile=f"a/{path}", tofile=f"b/{path}"))
+
+
+_HUNK_DIFF = _hunk_diff(("line 03", "line 03 CHANGED"), ("line 15", "line 15 CHANGED"))
+_HUNK_IDS = [h["id"] for h in parse_unified_diff_to_view(_HUNK_DIFF)["files"][0]["hunks"]]
+
+
+def _rewrite_run_log_timestamps(job_id: str, *, event: str, timestamps: list[str]) -> None:
+    """Overwrite the `timestamp` of every `event`-named line, IN FILE ORDER, with
+    `timestamps` — a `_patch_json`-style direct edit on the run log's own JSONL file, so an
+    ordering/count assertion does not depend on how fast consecutive real-clock writes land."""
+    root = Path(os.environ["REMEDY_DATA_DIR"])
+    files = sorted(run_log_dir(job_id, root).glob("*.jsonl"))
+    path = files[-1]
+    remaining = list(timestamps)
+    out_lines = []
+    for line in path.read_text(encoding="utf-8").splitlines():
+        if not line.strip():
+            continue
+        record = json.loads(line)
+        if record.get("event") == event and remaining:
+            record["timestamp"] = remaining.pop(0)
+        out_lines.append(json.dumps(record))
+    path.write_text("\n".join(out_lines) + "\n", encoding="utf-8")
 
 
 # ---------------------------------------------------------------------------
@@ -539,6 +590,193 @@ class TestRunLog:
         ledger = own.build_ownership_ledger(job)
         entries = [e for e in ledger["entries"] if e["action"] == "job_paused"]
         assert len(entries) == 1
+
+
+# ---------------------------------------------------------------------------
+# (h) HUNK DECISIONS — round 2, S1
+# ---------------------------------------------------------------------------
+
+
+class TestHunkDecisions:
+    #: An operator's reason with surrounding whitespace, so "verbatim" is a testable claim.
+    _REASON = "  the second edit is out of scope  "
+
+    def test_approved_entry_and_no_entry_for_the_pending_row(self):
+        job = _job()
+        now = datetime(2026, 1, 1, 12, 0, 0)
+        record_hunk_decision(job, task_id="T1", attempt=2, attempt_diff_text=_HUNK_DIFF,
+                             approved=[_HUNK_IDS[0]], rejected=(), now=now)
+
+        ledger = own.build_ownership_ledger(job)
+        entries = [e for e in ledger["entries"]
+                  if e["action"] in ("hunk_approved", "hunk_rejected")]
+        [entry] = entries
+        assert entry["action"] == "hunk_approved"
+        assert entry["record_ref"] == f"hunk:T1:2:{_HUNK_IDS[0]}"
+        assert entry["ts"] == now.isoformat()
+        assert entry["task_id"] == "T1"
+        assert entry["text"] == ""
+        assert entry["actor"] == own.ownership_actor("")
+        assert entry["consequence"] == {
+            "kind": "landing", "task_ids": ["T1"], "ref": HUNK_LANDING_UNATTEMPTED}
+        assert entry["detail"] == {"attempt": "2", "hunk_id": _HUNK_IDS[0]}
+
+    def test_rejected_entry_reason_verbatim_its_landing_and_no_door(self):
+        job = _job()
+        now = datetime(2026, 1, 1, 12, 0, 0)
+        record_hunk_decision(job, task_id="T2", attempt=1, attempt_diff_text=_HUNK_DIFF,
+                             approved=(), rejected=[(_HUNK_IDS[0], self._REASON)], now=now)
+
+        ledger = own.build_ownership_ledger(job)
+        [entry] = [e for e in ledger["entries"] if e["action"] == "hunk_rejected"]
+        assert entry["record_ref"] == f"hunk:T2:1:{_HUNK_IDS[0]}"
+        assert entry["text"] == self._REASON
+        assert entry["actor"]["door"] == ""
+        assert entry["consequence"] == {
+            "kind": "landing", "task_ids": ["T2"], "ref": HUNK_LANDING_UNATTEMPTED}
+
+
+# ---------------------------------------------------------------------------
+# (i) DECISION ANSWERS — round 2, S2
+# ---------------------------------------------------------------------------
+
+
+class TestDecisionAnswers:
+    def test_human_and_default_answers_and_no_entry_for_an_open_one(self):
+        job = _job()
+        now = datetime(2026, 1, 1, tzinfo=timezone.utc)
+        human_rec = esc.enqueue_task_decision(job, task_id="T1", question="which way?",
+                                              options=["a", "b"], safe_default="a", now=now)
+        esc.answer_task_decision(job, human_rec["decision_id"], answer="b", now=now)
+        default_rec = esc.enqueue_task_decision(job, task_id="T2", question="proceed?",
+                                                safe_default="yes", now=now)
+        esc.auto_apply_safe_default(job, default_rec, now=now)
+        esc.enqueue_task_decision(job, task_id="T3", question="still open?", now=now)
+
+        ledger = own.build_ownership_ledger(job)
+        entries = {e["task_id"]: e for e in ledger["entries"]
+                  if e["action"] == "decision_answered"}
+        assert set(entries) == {"T1", "T2"}
+
+        human = entries["T1"]
+        assert human["record_ref"] == f"decision:{human_rec['decision_id']}"
+        assert human["text"] == "b"
+        assert human["actor"]["kind"] == "operator"
+        assert human["actor"]["recorded_as"] == "human"
+        assert human["consequence"] == {
+            "kind": "answer_to_task", "task_ids": ["T1"], "ref": ""}
+        assert human["detail"] == {"question": "which way?"}
+
+        default = entries["T2"]
+        assert default["text"] == "yes"
+        assert default["actor"]["kind"] == "default_policy"
+        assert default["actor"]["recorded_as"] == "default"
+
+
+# ---------------------------------------------------------------------------
+# (j) CLARIFICATIONS — round 2, S3
+# ---------------------------------------------------------------------------
+
+
+class TestClarifications:
+    def test_human_default_and_planner_and_none_for_unresolved(self):
+        job = _job(task_plan={"clarifications_resolved": [
+            {"id": "q1", "question": "Which auth?", "default_answer": "oauth",
+             "answer": "saml", "answered_by": "human"},
+            {"id": "q2", "question": "Which db?", "default_answer": "postgres",
+             "answer": "postgres", "answered_by": "default"},
+            {"id": "q3", "question": "Which cache?", "default_answer": "redis",
+             "answer": "memcached", "answered_by": ""},
+            {"id": "q4", "question": "Which queue?", "default_answer": "", "answer": "",
+             "answered_by": ""},
+        ]})
+
+        ledger = own.build_ownership_ledger(job)
+        entries = {e["record_ref"]: e for e in ledger["entries"]
+                  if e["action"] == "clarification_answered"}
+        assert set(entries) == {"clarification:q1", "clarification:q2", "clarification:q3"}
+
+        human = entries["clarification:q1"]
+        assert human["ts"] == ""
+        assert human["actor"]["kind"] == "operator"
+        assert human["text"] == "saml"
+        assert human["consequence"] == {"kind": "plan_input", "task_ids": [], "ref": ""}
+        assert human["detail"] == {"question": "Which auth?", "default_answer": "oauth"}
+
+        default = entries["clarification:q2"]
+        assert default["actor"]["kind"] == "default_policy"
+        assert default["text"] == "postgres"
+
+        planner = entries["clarification:q3"]
+        assert planner["actor"]["kind"] == "remedy"
+        assert planner["text"] == "memcached"
+
+
+# ---------------------------------------------------------------------------
+# (k) PLAN APPROVAL — round 2, S4
+# ---------------------------------------------------------------------------
+
+
+class TestPlanApproval:
+    def test_human_mode_event(self):
+        job = _job(tasks=_two_task_chain())
+        announce_plan_approval(job, mode="human")
+
+        ledger = own.build_ownership_ledger(job)
+        [entry] = [e for e in ledger["entries"] if e["action"] == "plan_approved"]
+        assert entry["record_ref"] == f"plan_approved:{entry['ts']}"
+        assert entry["task_id"] == ""
+        assert entry["text"] == ""
+        assert entry["actor"] == own.ownership_actor("")
+        assert entry["consequence"] == {
+            "kind": "plan_approved", "task_ids": ["T1", "T2"], "ref": ""}
+        assert entry["detail"] == {"approval_mode": "human"}
+
+    def test_auto_yes_mode_event_is_auto_approved_with_the_audits_reason_as_text(self):
+        job = _job(tasks=_two_task_chain(),
+                  task_plan={"_approval": "approved",
+                            "_approval_audit": {"mode": AUTO_APPROVAL_MODE,
+                                                "reason": "auto-approved via --yes"}})
+        announce_plan_approval(job, mode=AUTO_APPROVAL_MODE)
+
+        ledger = own.build_ownership_ledger(job)
+        [entry] = [e for e in ledger["entries"] if e["action"] == "plan_approved"]
+        assert entry["actor"]["auto_approved"] is True
+        assert entry["actor"]["recorded_as"] == AUTO_APPROVAL_MODE
+        assert entry["text"] == "auto-approved via --yes"
+
+    def test_two_events_with_no_request_id_yield_two_entries(self):
+        job = _job(tasks=_two_task_chain())
+        announce_plan_approval(job, mode="human")
+        announce_plan_approval(job, mode="human")
+        _rewrite_run_log_timestamps(
+            job.job_id, event="plan_approved",
+            timestamps=["2026-01-01T00:00:00+00:00", "2026-01-01T00:00:01+00:00"])
+
+        ledger = own.build_ownership_ledger(job)
+        entries = [e for e in ledger["entries"] if e["action"] == "plan_approved"]
+        assert len(entries) == 2
+        assert {e["record_ref"] for e in entries} == {
+            "plan_approved:2026-01-01T00:00:00+00:00",
+            "plan_approved:2026-01-01T00:00:01+00:00"}
+
+    def test_a_rejected_plans_entry(self):
+        job = _job(task_plan={"_approval": "rejected"})
+        ledger = own.build_ownership_ledger(job)
+        [entry] = [e for e in ledger["entries"] if e["action"] == "plan_rejected"]
+        assert entry["record_ref"] == "plan_rejected"
+        assert entry["ts"] == ""
+        assert entry["actor"] == own.ownership_actor("")
+        assert entry["consequence"] == {"kind": "plan_rejected", "task_ids": [], "ref": ""}
+
+    def test_a_body_approval_with_no_event_yields_plan_approved_body(self):
+        job = _job(task_plan={"_approval": "approved"})
+        ledger = own.build_ownership_ledger(job)
+        [entry] = [e for e in ledger["entries"] if e["action"] == "plan_approved"]
+        assert entry["record_ref"] == "plan_approved:body"
+        assert entry["ts"] == ""
+        assert entry["actor"] == own.ownership_actor("")
+        assert entry["text"] == ""
 
 
 # ---------------------------------------------------------------------------
