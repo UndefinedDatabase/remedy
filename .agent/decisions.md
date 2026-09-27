@@ -23970,3 +23970,35 @@ T001, rejected because it would need a round of more than the size a round can p
 
 HOW TO REVERSE: delete `packages/orchestration/ownership.py` and its tests, remove its line from
 `ALLOWED_UNWIRED`, and delete this paragraph.
+
+## DECISION F035 D2 — the ownership ledger is written at the end of every `run_job` invocation, whatever state the job is left in, by one decorator on `run_job`; a ledger that cannot be built or saved is logged as a warning and never changes the job's outcome; round 2 also reads hunk decisions, decision answers, clarification answers and plan approval (2026-09-28)
+
+CONTEXT: DECISION F035 D1 (6) orders `ownership.json` written into the job's evidence export at
+every job terminal. Measured at `d4495f2a`: `run_job` in `packages/orchestration/pingpong_job.py`
+leaves a job completed, stopped, blocked or parked at many `return` statements of its own body,
+and every one of them hands the job back to its caller. The ledger is regenerable from the records,
+so a copy written at a park or a block is not a second truth, only an earlier one.
+
+CHOSEN: (1) ONE PLACE. A decorator `_writes_ownership_ledger` on `run_job` builds the ledger from
+the job `run_job` returns and saves it with `durable_write_json` as
+`job_evidence_export_dir(job_id) / ownership.json`, after every return and only then, so a
+parked or blocked job carries a ledger as current as a completed one. The decorator keeps
+`run_job`'s name, signature and return value. A job whose own directory does not exist — the
+placeholder `run_job` answers for a job it could not load — gets no file. (2) A FAILURE IS NOT
+THE JOB'S. An `OwnershipError` or an `OSError` while building or saving is logged as a warning
+naming the job and the error, and the job is returned exactly as `run_job` left it: the records
+the ledger reads are intact, the ledger can be rebuilt from them on demand, and a tampered
+record is the report's to name in T002, not a reason to fail the run that met it. (3) THE
+REMAINING CLASSES. Hunk decisions are read one entry per decided hunk, with the reason verbatim
+and no door, because their record names none; a decision answer is the operator's when its
+source is `human` and the default policy's when it is `default`; a clarification answer is the
+operator's, the default policy's or Remedy's planner's by its `answered_by`, with no time, because
+its record keeps none; and a plan approval is read from each `plan_approved` event, the
+unattended one attributed to the operator with `auto_approved` true and the audit's reason as its
+text.
+
+ALTERNATIVES: a write at each terminal state's own line, rejected because every return
+path would need it and the next one added would miss it; a failed write that blocks the
+job, rejected for (2)'s reason.
+
+HOW TO REVERSE: remove the decorator from `run_job`, and delete this paragraph.
