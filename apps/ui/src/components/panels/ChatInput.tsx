@@ -18,11 +18,15 @@ const OUTCOME_CLASS: Record<DecisionOutcomeTone, string> = {
  *  sent and what a reply means lives in `api/steeringSend.ts`; this component holds
  *  only what the operator typed, whether a send is in flight, and the last sentence.
  *  The text is cleared only after the job ACCEPTED it, so a refused message is
- *  never lost. */
-export function ChatInput({ disabled, reason, onSend }: {
+ *  never lost. `placeholder` and `hint` are the card's own copy (F030 T003,
+ *  DECISION F030 D3): this component renders them and decides nothing about what
+ *  they say. */
+export function ChatInput({ disabled, reason, onSend, placeholder, hint }: {
   disabled: boolean;
   reason: string;
   onSend?: (text: string) => Promise<DecisionOutcomeMessage>;
+  placeholder?: string;
+  hint?: string;
 }) {
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
@@ -48,7 +52,7 @@ export function ChatInput({ disabled, reason, onSend }: {
       <input
         className={styles.chatInput}
         type="text"
-        placeholder="Ask something…"
+        placeholder={placeholder}
         value={text}
         onChange={(event) => setText(event.target.value)}
         onKeyDown={(event) => {
@@ -57,7 +61,7 @@ export function ChatInput({ disabled, reason, onSend }: {
           }
         }}
         disabled={inert}
-        title={inert ? reason : undefined}
+        title={inert ? reason : hint}
         aria-describedby={inert ? "remedy-chat-input-reason" : undefined}
       />
       <button

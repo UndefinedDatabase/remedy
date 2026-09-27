@@ -4,7 +4,9 @@ import type { FeedRow } from "../../api/feedRow";
 import type { FocusableTask } from "../../api/feedFocus";
 import { nodeIdForFeedRow } from "../../api/feedFocus";
 import { FEED_SCROLL_START, nextFeedScroll, shouldFollowNewest, shouldShowNewRowsPill } from "../../api/feedScroll";
-import { STEERING_ENDED_REASON, sendSteeringMessage, steeringIsOpen } from "../../api/steeringSend";
+import { STEERING_ENDED_REASON, sendSteeringMessage, sendSteeringNote, steeringIsOpen } from "../../api/steeringSend";
+import { steeringPlaceholder } from "../../api/steeringNote";
+import { STEERING_REPLY_FRAMING } from "../../api/humanizeCatalog";
 import { BuilderGlyph, ReviewerGlyph, PersonGlyph, GearGlyph } from "../icons/RemedyGlyphs";
 import { ChatInput } from "./ChatInput";
 import styles from "./RightLivePanel.module.css";
@@ -103,12 +105,18 @@ function LiveFeed({ recent, recentDropped, tasks, onSelectNode }: {
       ) : null}
       {newestFirst.map(row => {
         const nodeId = nodeIdForFeedRow(row, tasks);
+        // F030 T003: the operator's own note draws an initial-letter disc and its own
+        // name in place of the generic glyph and kind, the same treatment a user row
+        // gets in the design reference (ux_spec.md §11.3, README.md §K2).
+        const isOperator = row.author === "operator";
         const body = (
           <>
-            <div className={styles.actorIcon}><GearGlyph style={{ width: 16, height: 16, color: "white" }} /></div>
+            <div className={isOperator ? styles.operatorDisc : styles.actorIcon}>
+              {isOperator ? "Y" : <GearGlyph style={{ width: 16, height: 16, color: "white" }} />}
+            </div>
             <div>
               <div className={styles.activityMeta}>
-                <strong>{row.kind || "event"}</strong>
+                <strong>{isOperator ? "You" : (row.kind || "event")}</strong>
                 {row.timestamp ? <span>{row.timestamp}</span> : null}
                 <span className={styles.activityTag}>#{row.seq}</span>
                 {row.outcome ? <span className={styles.activityTag}>{row.outcome}</span> : null}
@@ -133,7 +141,7 @@ function LiveFeed({ recent, recentDropped, tasks, onSelectNode }: {
   );
 }
 
-export function ActivityFeedCard({ activity, recent, recentDropped, tasks, onSelectNode, jobId, serverToken, stage }: {
+export function ActivityFeedCard({ activity, recent, recentDropped, tasks, onSelectNode, jobId, serverToken, stage, focusedTaskId }: {
   activity: RemedyActivityItem[];
   recent?: readonly FeedRow[];
   recentDropped?: number;
@@ -142,13 +150,15 @@ export function ActivityFeedCard({ activity, recent, recentDropped, tasks, onSel
   jobId?: string;
   serverToken?: string;
   stage?: string;
+  focusedTaskId?: string;
 }) {
   const hasActivity = activity.length > 0;
   const live = recent ?? [];
 
   // ONE composer for both branches below, so the live feed and the pre-stream
   // fallback can never disagree about whether this job can be steered. It sends
-  // only through `sendSteeringMessage`, the one sequence that reaches the door.
+  // through `sendSteeringNote` when a task is focused and `sendSteeringMessage`
+  // otherwise — the two sequences that reach the door (DECISION F030 D3).
   const target = { jobId: jobId ?? "", serverToken: serverToken ?? "" };
   const addressed = target.jobId !== "" && target.serverToken !== "";
   const open = steeringIsOpen(stage ?? "");
@@ -156,7 +166,9 @@ export function ActivityFeedCard({ activity, recent, recentDropped, tasks, onSel
     <ChatInput
       disabled={!addressed || !open}
       reason={addressed ? STEERING_ENDED_REASON : STEERING_UNADDRESSED_REASON}
-      onSend={(text) => sendSteeringMessage(target, text)}
+      placeholder={steeringPlaceholder(focusedTaskId ?? "")}
+      hint={STEERING_REPLY_FRAMING}
+      onSend={(text) => (focusedTaskId ? sendSteeringNote(target, focusedTaskId, text) : sendSteeringMessage(target, text))}
     />
   );
 

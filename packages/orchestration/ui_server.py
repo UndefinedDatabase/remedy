@@ -2116,6 +2116,12 @@ def _safe_event_summary(seq: int, event: dict[str, Any]) -> dict[str, Any]:
     kind `plan_approved`: it carries `task_ids`, the string entries of
     `metadata["task_ids"]` in order when that is a list and `[]` otherwise,
     and every other kind's frame stays byte-identical.
+
+    `note` is DECISION F030 D3's field and it is CONDITIONAL on the event kind
+    `steering_message_received`: it carries `_steering_note_summary_payload`'s
+    four fields, its `task_id` falling back to this event's own top-level
+    `task_id` when the metadata carries none, and every other kind's frame
+    stays byte-identical.
     """
     metadata = event.get("metadata")
     nested = metadata.get("task_id", "") if isinstance(metadata, dict) else ""
@@ -2133,6 +2139,12 @@ def _safe_event_summary(seq: int, event: dict[str, Any]) -> dict[str, Any]:
         summary["attempt_id"] = attempt_id if isinstance(attempt_id, str) else ""
     if kind == BUDGET_TICK_EVENT:
         summary["budget"] = _budget_tick_summary_payload(metadata)
+    if kind == "steering_message_received":
+        note = _steering_note_summary_payload(metadata)
+        if not note["task_id"]:
+            top_level_task_id = event.get("task_id")
+            note["task_id"] = top_level_task_id if isinstance(top_level_task_id, str) else ""
+        summary["note"] = note
     if kind == "steering_message_consumed":
         summary["steering"] = _steering_ack_summary_payload(metadata)
     if kind == "task_lesson_written":
@@ -2169,6 +2181,24 @@ def _lesson_summary_payload(metadata: Any) -> dict[str, str]:
     status = meta.get("lesson_status")
     return {"run_id": str(meta.get("run_id", "")),
             "status": status if status in LESSON_STATUSES else ""}
+
+
+def _steering_note_summary_payload(metadata: Any) -> dict[str, str]:
+    """A steering note's fields for the stream (F030 T003, DECISION F030 D3).
+
+    CONDITIONAL on the event kind for the reason `_steering_ack_summary_payload`'s is: every
+    other frame stays byte-identical. It carries exactly what the operator's own feed row needs
+    to render — the message, its text, the channel it arrived on and the task it addresses — and
+    nothing else from the metadata, so a field added to the run-log event later does not reach
+    the browser by accident.
+    """
+    meta = metadata if isinstance(metadata, dict) else {}
+    return {
+        "message_id": str(meta.get("message_id", "")),
+        "text": str(meta.get("text", "")),
+        "channel": str(meta.get("channel", "")),
+        "task_id": str(meta.get("task_id", "")),
+    }
 
 
 def _steering_ack_summary_payload(metadata: Any) -> dict[str, Any]:
@@ -2587,6 +2617,10 @@ JOB_INJECT_COMMAND_IDS = frozenset(
 #: DECISION F029 D4: the write door's twin of `remedy job rerun-subtree`, shared with
 #: round 5's browser through `subtree_rerun.rerun_subtree_command`.
 JOB_RERUN_SUBTREE_COMMAND_ID = "job.rerun-subtree"
+
+#: DECISION F030 D2's twin of `remedy job steer`: the write door's task-addressed note,
+#: through `steering.steer_task_command`.
+JOB_STEER_COMMAND_ID = "job.steer"
 
 #: DECISION F015 D3: the plan edit refusals, each with its status, its audit outcome and its
 #: message. The edit RAN and DECLINED for all but the argument refusals, which are shape
@@ -3144,6 +3178,37 @@ class _RemedyHandler(BaseHTTPRequestHandler):
             self._emit_command_accepted_event(str(job.job_id), accepted_body)
             self._send_json(200, accepted_body)
             return
+        # DECISION F030 D2 maps `job.steer` to `steering.steer_task_command`, run with
+        # channel `cockpit` so the record says which door the note came through, exactly as
+        # `chat.send` already does for a job-wide message. D18's order is unchanged: effect,
+        # then the audit line, then the publication. As `job.veto-task`'s branch above, the
+        # refusal's own `code` and `detail` ride on the wire — `_read_command_payload` already
+        # checked the task id's and the message's own shape before the job was read.
+        if payload["command"] == JOB_STEER_COMMAND_ID:
+            try:
+                accepted_body = self._dispatch_steer_task(job, payload)
+            except (OSError, RuntimeError, ValueError, TypeError):
+                # D18, clause four: an effect that RAISED is neither `accepted`,
+                # which would be false, nor unaudited, which would break D6.
+                self._audit_attempt(str(job.job_id), "rejected_effect", create=True,
+                                    payload=payload)
+                self._send_json(*_safe_error(500, COMMAND_EFFECT_FAILED_MESSAGE))
+                return
+            if accepted_body.get("outcome") == "refused":
+                self._audit_attempt(str(job.job_id), "rejected_state", create=True,
+                                    payload=payload)
+                self._send_json(*_safe_error(
+                    409, f"{accepted_body['code']}: {accepted_body['detail']}"))
+                return
+            # D18, clause three: both writes below fail SOFT. The note is already
+            # sealed on disk, so refusing after the fact would report a note that
+            # really was recorded as one that was not.
+            self._audit_attempt(str(job.job_id), "accepted", create=True, payload=payload)
+            self._publish_command_result(str(job.job_id), payload["client_nonce"],
+                                         accepted_body)
+            self._emit_command_accepted_event(str(job.job_id), accepted_body)
+            self._send_json(200, accepted_body)
+            return
         # DECISION F028 D5 maps `job.inject`, `job.inject-confirm` and `job.inject-answer` to
         # `_dispatch_injection`, run with this door's own token fingerprint as the actor.
         # D18's order is unchanged: effect, then the audit line, then the publication. As
@@ -3432,6 +3497,23 @@ class _RemedyHandler(BaseHTTPRequestHandler):
         result = veto_task_command(
             job, task_id=args["task_id"], reason=args["reason"],
             actor=token_fingerprint(self._supplied_bearer_token()))
+        return {"command": payload["command"], **result}
+
+    def _dispatch_steer_task(self, job: Any, payload: Any) -> dict[str, Any]:
+        """Run `job.steer`'s effect and build the body DECISION F030 D2 rules for it.
+
+        `args.task_id` and `args.message` were already checked by `_read_command_payload`,
+        so they are read directly rather than degraded, exactly as `_dispatch_veto_task`
+        reads its own two required fields. `steer_task_command` never raises for a refusal;
+        its own `code` and `detail` ride in the returned dict unchanged, so
+        `_handle_command_submission` can put them on the wire, which `job.pause`'s generic
+        409 deliberately does not. The channel is `cockpit`, so the record says which door
+        a note came through, exactly as `_dispatch_chat_send`'s does for a job-wide message.
+        """
+        from packages.orchestration.steering import steer_task_command
+        args = payload["args"]
+        result = steer_task_command(
+            job, args["task_id"], args["message"], channel="cockpit")
         return {"command": payload["command"], **result}
 
     def _dispatch_injection(self, job: Any, payload: Any) -> dict[str, Any]:
@@ -3993,6 +4075,20 @@ class _RemedyHandler(BaseHTTPRequestHandler):
                 validate_veto_reason(args.get("reason"))
             except TaskVetoRefused as exc:
                 return None, _command_field_error("reason", exc.detail)
+        # DECISION F030 D2: a steer names its task by a non-empty string, refused before its
+        # own message is checked, itself refused before the job is read, the same two-field
+        # order the veto above keeps for T5_F027.md's reason.
+        if command == JOB_STEER_COMMAND_ID:
+            from packages.orchestration.steering import SteeringError, normalize_steering_text
+
+            task_id = args.get("task_id")
+            if not isinstance(task_id, str) or not task_id:
+                return None, _command_field_error(
+                    "task_id", "task_id must be a non-empty string")
+            try:
+                normalize_steering_text(args.get("message"))
+            except SteeringError as exc:
+                return None, _command_field_error("message", str(exc))
         # DECISION F028 D5: an injection command names its own fields' shapes, refused
         # BEFORE the job is read, for R-0685's reason above.
         if command == JOB_INJECT_COMMAND_ID:

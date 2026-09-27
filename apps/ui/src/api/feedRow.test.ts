@@ -121,6 +121,32 @@ describe("feedRowOf's attemptId (DECISION F288 D3 (2))", () => {
   });
 });
 
+describe("feedRowOf on a steering note (DECISION F030 D3)", () => {
+  it("shows the operator's own text, verbatim, as the operator's own row", () => {
+    const row = feedRowOf(frameOf(19, {
+      event: "steering_message_received", task_id: "task-1",
+      note: { message_id: "sm-0002", text: "watch the budget", channel: "cli",
+              task_id: "task-1" },
+    }));
+    expect(row.line).toBe("watch the budget");
+    expect(row.author).toBe("operator");
+    expect(row.taskId).toBe("task-1");
+  });
+
+  it("keeps the catalog line and gets no author when the note field is malformed", () => {
+    const row = feedRowOf(frameOf(20, {
+      event: "steering_message_received", note: { message_id: "sm-0003" },
+    }));
+    expect(row.line).toBe(STREAM_EVENT_CATALOG["steering_message_received"]);
+    expect(row.author).toBeUndefined();
+  });
+
+  it("gives every other row no author", () => {
+    const row = feedRowOf(frameOf(21, { event: "task_run_started" }));
+    expect(row.author).toBeUndefined();
+  });
+});
+
 describe("feedRowOf's planTaskIds (DECISION F288 D3 (2))", () => {
   it("keeps the order of plan.task_ids' string entries", () => {
     const row = feedRowOf(frameOf(14, {

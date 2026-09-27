@@ -4,6 +4,7 @@
 import { humanizeStreamEvent } from "./humanize";
 import type { BrainStreamFrame } from "./brainStream";
 import { readSteeringAck, steeringAckLine } from "./steeringAck";
+import { readSteeringNote } from "./steeringNote";
 
 /** What one activity-feed row shows. `seq` is the ledger position the row
  *  carries and jumps to; `known` is what a dev console note counts.
@@ -31,6 +32,10 @@ export interface FeedRow {
   /** `plan_approved`'s approved task ids, in plan order, or `[]` for every
    *  other row. DECISION F288 D3 (2). */
   planTaskIds?: readonly string[];
+  /** "operator" for a steering note's own row, absent for every other row: the
+   *  feed shows the note as the operator's own line rather than the catalog's
+   *  third-person description of it. DECISION F030 D3. */
+  author?: "operator";
 }
 
 // The naming trap this module exists to resolve, measured at `f5f01585` in
@@ -81,16 +86,20 @@ export function feedRowOf(
   // the two halves an acknowledgement is useless without, rather than the catalog's
   // generic line; a frame whose field is malformed keeps the catalog line.
   const ack = readSteeringAck(envelope);
+  // F030 T003: a steering note shows the operator's OWN text, verbatim, as the operator's
+  // own row — never the catalog's third-person description of the fact it was recorded.
+  const note = readSteeringNote(envelope);
   return {
     seq: frame.seq,
     receivedAtMs,
     kind,
-    line: ack ? steeringAckLine(ack) : humanized.line,
+    line: note ? note.text : ack ? steeringAckLine(ack) : humanized.line,
     known: humanized.known,
     timestamp: stringField(envelope, "timestamp"),
     outcome: stringField(envelope, "outcome"),
     taskId: stringField(envelope, "task_id"),
     attemptId: stringField(envelope, "attempt_id"),
     planTaskIds: planTaskIdsOf(envelope),
+    ...(note ? { author: "operator" as const } : {}),
   };
 }

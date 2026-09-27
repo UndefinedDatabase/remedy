@@ -115,3 +115,10 @@ export const STREAM_EVENT_CATALOG: Readonly<Record<string, string>> = {
   "worktree_recovered": "The interrupted run's git worktree was recovered.",
   "worktree_retained": "The git worktree was kept for inspection.",
 };
+
+// The steering input's honest framing (F030 T003, DECISION F030 D3): Remedy composes no
+// reply to a note, so the copy must never promise one. Outside the catalog object because it
+// is not a stream event's line — tests/ui_contracts/test_steering_note_contract.py pins it by
+// name, not by scanning catalog entries.
+export const STEERING_REPLY_FRAMING =
+  "Remedy never writes a reply to a steering note: the builder's next action in this feed is the answer.";

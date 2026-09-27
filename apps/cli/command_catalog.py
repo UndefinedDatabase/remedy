@@ -603,6 +603,29 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         related=("job.pause", "job.plan-show", "decision.resolve"),
         exit_codes=(0, 1, 2, 3),
     ),
+    # ── job steer (F030 T002, DECISION F030 D2) ───────────────────────────
+    CommandEntry(
+        command_id="job.steer",
+        group_id="job",
+        subcommand="steer",
+        description="Address a steering note to one task of a running job; it is recorded as "
+                    "evidence and read at the start of that task's next build round, never "
+                    "inside a model call (F030).",
+        action_class="write_metadata",
+        args=(
+            _JOB_ID,
+            ArgDef("text", "The note, quoted as one argument"),
+            ArgDef("--task", "The task to address the note to: its id in the job, or its id "
+                   "in the job plan, as `remedy job plan-show` prints them",
+                   required=True, is_option=True),
+            _JSON_OPT,
+        ),
+        supports_json=True,
+        may_mutate_repo=False,
+        may_execute_commands=False,
+        related=("chat.send", "chat.show", "job.veto-task"),
+        exit_codes=(0, 1, 2, 3),
+    ),
     # ── job rerun-subtree (F029 T002, DECISION F029 D3) ──────────────────
     CommandEntry(
         command_id="job.rerun-subtree",
@@ -2790,6 +2813,8 @@ UI_EXPOSED_COMMANDS: frozenset[str] = frozenset({
     "job.edit-task",
     # DECISION F027 D5: the task veto, through `task_veto.veto_task_command`.
     "job.veto-task",
+    # DECISION F030 D2: the task-addressed steering note, through `steering.steer_task_command`.
+    "job.steer",
     # DECISION F028 D5: the task injection trio, through `_dispatch_injection`.
     "job.inject",
     "job.inject-confirm",

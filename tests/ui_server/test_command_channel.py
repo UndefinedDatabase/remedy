@@ -443,7 +443,9 @@ class TestCommandChannelDoor:
         error on field `confirm_token` (DECISION F028 D5). `job.inject-answer`
         built the same way names no draft id, a shape error on field `draft_id`
         (DECISION F028 D5). `job.rerun-subtree` built the same way names no
-        task, a shape error on field `task_id` (DECISION F029 D4).
+        task, a shape error on field `task_id` (DECISION F029 D4). `job.steer`
+        built the same way names no task, a shape error on field `task_id`
+        (DECISION F030 D2).
         """
         from apps.cli.command_catalog import UI_EXPOSED_COMMANDS
 
@@ -490,6 +492,10 @@ class TestCommandChannelDoor:
                 assert body["field"] == "draft_id", command_id
             elif command_id == "job.rerun-subtree":
                 # DECISION F029 D4: a rerun naming no task is a shape error.
+                assert status == 400, command_id
+                assert body["field"] == "task_id", command_id
+            elif command_id == "job.steer":
+                # DECISION F030 D2: a steer naming no task is a shape error.
                 assert status == 400, command_id
                 assert body["field"] == "task_id", command_id
             else:
@@ -1571,6 +1577,7 @@ class TestCommandDoorImportGuard:
         "_dispatch_plan_edit",
         "_dispatch_edit_task",
         "_dispatch_veto_task",
+        "_dispatch_steer_task",
         "_dispatch_injection",
         "_dispatch_rerun_subtree",
         "_publish_command_result",
@@ -1641,6 +1648,7 @@ class TestCommandDoorImportGuard:
          "normalize_steering_text"),                                # F264 D2
         ("packages.orchestration.steering",
          "record_steering_message"),                                # F264 D2
+        ("packages.orchestration.steering", "steer_task_command"),   # F030 D2
         ("packages.orchestration.pingpong_job", "save_job_plan"),          # D21
         ("packages.orchestration.timeline", "append_run_event"),           # D23
     })
@@ -1896,7 +1904,7 @@ class TestUiExposedCommands:
             "job.inject-answer", "job.inject-confirm", "job.pause",
             "job.plan-delete-task", "job.plan-edit-acceptance", "job.plan-edit-task",
             "job.plan-merge-tasks", "job.plan-reorder", "job.plan-split-task",
-            "job.rerun-subtree", "job.stop", "job.unpause", "job.veto-task",
+            "job.rerun-subtree", "job.steer", "job.stop", "job.unpause", "job.veto-task",
             "patch.approve-hunks"]
 
     def test_the_set_is_a_frozenset(self):

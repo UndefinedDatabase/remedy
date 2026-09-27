@@ -135,6 +135,21 @@
 .chatOutcomeWarn { color: var(--remedy-orange-400); }
 .chatOutcomeError { color: var(--remedy-red-500); }
 .activityItem .actorIcon { width: 30px; height: 30px; }
+/* The operator's own row (DECISION F030 D3): an initial-letter disc in the role
+   disc's size and place, since Remedy records no operator name to draw an
+   initial FROM. Token colours only — this file's raw-colour count is ratcheted
+   by tests/ui_contracts/test_raw_colour_ratchet.py and must not rise. */
+.operatorDisc {
+  width: 30px;
+  height: 30px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--remedy-blue-100);
+  color: var(--remedy-ink-strong);
+  font: 700 13px/1 var(--remedy-font-ui);
+}
 .activityMeta { display: flex; align-items: baseline; gap: 8px; }
 .activityMeta strong { font-size: 13px; color: var(--remedy-ink-strong); }
 .activityMeta span { font-size: 11px; color: var(--remedy-faint); }
