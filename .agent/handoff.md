@@ -1,198 +1,161 @@
-# Handoff — F288, round 9
+# Handoff — F288, round 10 (CLOSED)
 
 ## Session
 
-SESSION 2 of feature F288 · round 9 · rounds so far 9. Context remaining at
-handback: comfortable — this round ran two straight-line payload
-applications (a diff apply and a plan rewrite), one evidence-job run, one
-review-package build, a handful of verification reads, and this handoff,
-with no repair loop and no mutation-tool authoring, so a full context
-window remains for the next round.
+SESSION 2 of feature F288 · round 10 · rounds so far 10. Context remaining
+at handback: comfortable — this round ran straight-line payload copies, a
+ledger append and plan rewrite, the rotation script, one diff apply, a
+handful of verification reads (tests, integrity check, self-use queue) and
+this handoff, with no repair loop and no mutation-tool authoring, so ample
+context remains had a further round been required.
 
 ## Range
 
-Review of `742362f76`..`HEAD` (`HEAD` is this handback's own commit, `F288
-R9 C3`, on `feature/f288-event-stream-completeness`).
+Review of `acd2a9083`..`HEAD` (`HEAD` is this handback's own commit, `F288
+R10 C4`, on `feature/f288-event-stream-completeness`).
 
 ## Commits
 
-### 731c8d28a F288 R9 C1: copy round 9 block and payloads
+### d2cedf64b F288 R10 C1: copy round 10 block and payloads
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f288-r9-block.md | 149/0 | copy of this round's block |
-| .agent/authored/f288-r9-create_f288_evidence.py | 162/0 | copy of the evidence-tool payload |
-| .agent/authored/f288-r9-plan.md | 26/0 | copy of the plan payload |
-| .agent/authored/f288-r9-records.diff | 10/0 | copy of the records payload |
+| .agent/authored/f288-r10-block.md | 159/0 | copy of this round's block |
+| .agent/authored/f288-r10-build.py | 107/0 | copy of the reviewer's closure-diff source |
+| .agent/authored/f288-r10-closure.diff | 66/0 | copy of the closure payload |
+| .agent/authored/f288-r10-ledger.md | 2/0 | copy of the ledger-append payload |
+| .agent/authored/f288-r10-plan.md | 26/0 | copy of the plan payload |
+| .agent/authored/f288-r10-pr_body.md | 84/0 | copy of the pull request body |
+| .agent/authored/f288-r10-readme_para.txt | 10/0 | copy of the README prose payload |
+| .agent/authored/f288-r10-status_line.txt | 1/0 | copy of the STATUS line proof payload |
 
-Measured insertions: 347 (block's own line count 149 + 198), matching the
+Measured insertions: 455 (block's own line count 159 + 296), matching the
 block's expectation exactly, under the 500-line cap.
 
-### 57eba86ad F288 R9 C2: book round 8
+### e6b6ca8f3 F288 R10 C2: book round 9's PASS, the package READY_FOR_REVIEW
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/live_review.md | 2/0 | round 7's Gate entry (VERDICT PASS), appended verbatim |
-| .agent/plan.md | 4/6 | round 9's plan (payload rewrite) |
+| .agent/live_review.md | 2/0 | round 9's Gate entry (VERDICT PASS), appended verbatim |
+| .agent/plan.md | 6/6 | round 10's plan (payload rewrite) |
 
-Matches the block's expected numstat (2/0, 4/6) exactly. This commit's
-full sha, `57eba86adcc3ceeb83b04a3dfe0cf5d655a0d205`, is this closure's
-ACCEPTED HEAD.
+Matches the block's expected numstat (2/0, 6/6) exactly.
 
-### F288 R9 C3: rewrite handoff for round 9 with the evidence and package readings (this commit — a handoff cannot table the commit that writes it, R-0149 pattern)
+### c1b4eb301 F288 R10 C3: rotate the finding ledger into its archive
 | Path | +/- | Reason |
 |---|---|---|
+| .agent/live_review.md | 0/18 | 7 gate records + 1 finding pair (2 records) moved out |
+| .agent/live_review_archive.md | 18/0 | the same records appended, byte-verbatim |
+
+Matches the block's expected numstat (0/18, 18/0) exactly. Script output
+(full, verbatim):
+```
+gate records moved: 7
+finding pairs moved: 1 (2 records)
+old ledger size: 329140 bytes
+new ledger size: 307379 bytes
+old archive size: 5192790 bytes
+new archive size: 5214551 bytes
+open findings before: 0
+open findings after: 0
+written: /home/decodeux/Repos/remedy/.agent/live_review.md and /home/decodeux/Repos/remedy/.agent/live_review_archive.md
+```
+Matches the reviewer's simulation line for line apart from the `written:`
+line naming this run's own paths, exactly as the block predicted.
+
+### F288 R10 C4: accept F288 in STATUS with its README pins and consume SU-034 (this commit — a handoff cannot table the commit that writes it, R-0149 pattern)
+| Path | +/- | Reason |
+|---|---|---|
+| docs/roadmap/STATUS.md | 1/1 | flip F288's STATUS line to `[x]`, pinning evidence job `f288r9e1001`, accepted head `57eba86adcc3ceeb83b04a3dfe0cf5d655a0d205`, package `remedy-review-20260927-060235-READY_FOR_REVIEW.zip`, its SHA-256 `184f155676e7fdfc8bdf8f2db736ed0b96b127f84fb3873580fefe38c10373d2` and its directory `/home/decodeux/Repos/remedy-history/zips` |
+| README.md | 13/2 | move the accepted count and Tier 5 Done cell/prose |
+| scripts/self_use_queue.json | 1/1 | set `SU-034`'s `consumed_by` to `F288` |
 | .agent/handoff.md | rewrite | this handback |
 
 ## External actions
 
-- `git push -u origin feature/f288-event-stream-completeness` after C2 —
-  real outcome `742362f76..57eba86ad  feature/f288-event-stream-completeness
-  -> feature/f288-event-stream-completeness`, real exit 0.
-- `git push` after C3 — reported under G6 in this round's reply (run after
+- `git push` after C4 — reported under G6 in this round's reply (run after
   this file is committed).
-- No `gh pr create`, no `gh pr merge`, no branch deletion, no force-push, no
-  `git stash`, no `git checkout`/`git switch` in the primary checkout, no
-  worktree added or removed. Every existing worktree stays; count unchanged
-  at 61 throughout the round.
-- The evidence job (A1) and the review-package build (A2) are actions,
-  committing nothing; their outputs live under the gitignored
-  `.remedy-wt/f288-r9-evidence/` and `/home/decodeux/Repos/remedy-history/zips/`.
+- `gh pr create --base main --head feature/f288-event-stream-completeness
+  --title "F288 — Event stream completeness & prompt nodes in the live
+  graph" --body-file .remedy-wt/f288-r10/pr_body.md` — reported (number and
+  URL) in the round reply only, per the block's own instruction; NOT
+  merged.
+- No `gh pr merge`, no checkout of `main`, no branch deletion, no
+  force-push, no `git stash`, no `git checkout`/`git switch` in the primary
+  checkout, no worktree added or removed. Every existing worktree stays;
+  count unchanged at 61 throughout the round.
 
 ## Verification
 
 ### G1 — TRANSPORT
 Payload readings (measured before use, against the PAYLOADS table — all
 MATCH):
-- `create_f288_evidence.py`: 162 lines, 7935 bytes, sha256
-  `c6582c929d82847fda7575b3a59fe863f009d1c77a942288f74755cab49d650d`.
-- `plan.md`: 26 lines, 837 bytes, sha256
-  `268b00f6930004197ca3f016eb58b8e8ebc2f4169db8802ebaaa31471037ca16`.
-- `records.diff`: 10 lines, 8467 bytes, sha256
-  `b698553850cfbb6fc0e4dc3086a59ebb960c632864ab13db20795a751103ff76`.
-- Block: 149 lines, sha256
-  `954fa238d13784c01aed969fedabb939b1732406b885e19e88b53cfdb48e68b3` — MATCH
-  against both readings the delegation message stated.
+- `build.py`: 107 lines, 6130 bytes, sha256
+  `98d57afb65cdcbccb52f668b38f4f123e22b72cd70792dbe1de50ba74d8a1106`.
+- `closure.diff`: 66 lines, 4877 bytes, sha256
+  `afbc0436e65887e5606359fe858d509267a178ade8f598f5c7088c4a23ef0682`.
+- `ledger.md`: 2 lines, 2196 bytes, sha256
+  `72bfabbcb2c08ebd4b776ad2f1f2edbdfe8e7e753595a8339de4d964236092c8`.
+- `plan.md`: 26 lines, 827 bytes, sha256
+  `bb1fef9932e67ae9533623efac66aabd670861956568bafadb9446813e1d125d`.
+- `pr_body.md`: 84 lines, 5272 bytes, sha256
+  `e230ba0ccd086e1573470e7ebe4f23df55e196a62c6b09f3050860c0492cfc47`.
+- `readme_para.txt`: 10 lines, 775 bytes, sha256
+  `427fe6e22aaea54aaacb6f9ee3c5bec4518befef49bf2036bbc54c221ef9f878`.
+- `status_line.txt`: 1 line, 432 bytes, sha256
+  `9178c5a88b78c1bc34effd722a66bbc7f335c84c58cd1018d609d39f1e658270`.
+- Block: 159 lines, sha256
+  `fdd88fdc615a4ad1e1ce219a2ad9b2282566f4f42f6fdfee54987f70261ee18e` —
+  MATCH against both readings the delegation message stated.
 
-Each `.agent/authored/f288-r9-*` copy, read back with `git show
-731c8d28a:<path>`, compared byte-for-byte (via `diff`) against its source:
-block copy vs `.remedy-wt/f288-r9/block.md` — MATCH; `create_f288_evidence.py`
-copy vs the payload — MATCH; `plan.md` copy vs the payload — MATCH;
-`records.diff` copy vs the payload — MATCH.
+Each `.agent/authored/f288-r10-*` copy, read back with `git show
+d2cedf64b:<path>`, compared byte-for-byte against its source: all eight
+(block, build.py, closure.diff, ledger.md, plan.md, pr_body.md,
+readme_para.txt, status_line.txt) — MATCH.
 
 ### G2 — THE BOOKING
-`git show 57eba86ad:<path>`, bytes and sha256, each MATCHING the reviewer's
+`git show e6b6ca8f3:<path>`, bytes and sha256, each MATCHING the reviewer's
 simulation exactly:
 ```
-57eba86ad .agent/live_review.md   bytes=326944 9938915674f0ddbf106f30078e3add259af7678ec2e7ba7f63bcbf5f0d86bacd
-57eba86ad .agent/plan.md          bytes=837    268b00f6930004197ca3f016eb58b8e8ebc2f4169db8802ebaaa31471037ca16
+e6b6ca8f3 .agent/live_review.md   bytes=329140 bad17846b41b6a384e9a00a8fa95462d0238b88d30316af3e2188874c10ee7fe
+e6b6ca8f3 .agent/plan.md          bytes=827    bb1fef9932e67ae9533623efac66aabd670861956568bafadb9446813e1d125d
 ```
 Both MATCH. `open_finding_ids` from `scripts/rotate_live_review.py`, called
 directly against `.agent/live_review.md` at C2, read `[]` — matching the
 reviewer's simulation.
 
+### G3 — THE ROTATION
+Readings at C3, matching the reviewer's simulation exactly:
 ```
-$ python3 -m pytest -q -p no:cacheprovider tests/docs/ tests/cli/test_golden_path.py
-........................................................................ [ 97%]
-.........                                                                [100%]
-369 passed in 58.18s
+.agent/live_review.md          bytes=307379   94fb5a46f631031d7f8fb208a39f6483f52bd0e89a048968fa61bf7a1be7408b
+.agent/live_review_archive.md  bytes=5214551  cb6be2aabc6fe66fa93beb13cca4cab5e7f76596c752b4d86dd24ac1dc2ac296
+```
+Both MATCH. C3's path set: exactly `.agent/live_review.md` and
+`.agent/live_review_archive.md` — confirmed by `git status --porcelain`
+before staging.
+
+### G4 — THE CLOSURE EDITS AND THE TREE
+File readings after `git apply` of `closure.diff` (`git apply --check` then
+the real apply, both exit 0), each MATCHING the reviewer's table exactly:
+```
+docs/roadmap/STATUS.md        bytes=54827   d4ffb2a5c949822f253db6114240ab1e20df5b0af8b454ae19b49d0dcfbbc2ed
+README.md                      bytes=38039   a4b520406918a5d42c007af43d53e44ea56cd3987c37aa1db156e98b825b3625
+scripts/self_use_queue.json   bytes=138342  c209340be1e923abbcf91717127436917be59141606f22bd77a4d7e67909a268
+```
+The count of lines of `docs/roadmap/STATUS.md` equal to `status_line.txt`'s
+one line: 1 (MATCH).
+
+`SU-034`'s `consumed_by`, read through `load_self_use_queue` from
+`packages.orchestration.self_use_queue`: `F288` (MATCH); `pending_self_use_items()`:
+`()`, empty (MATCH).
+
+```
+$ bash -c 'python3 -m pytest -q -p no:cacheprovider tests/docs/ tests/cli/test_advertised_commands.py tests/orchestration/test_live_review_rotation.py tests/orchestration/test_integrity_gate.py tests/orchestration/test_self_use_generator.py tests/orchestration/test_self_use_queue.py tests/cli/test_golden_path.py 2>&1 | tail -3; echo "REAL_EXIT=${PIPESTATUS[0]}"'
+........................................................................ [ 98%]
+........                                                                 [100%]
+512 passed in 60.55s (0:01:00)
 REAL_EXIT=0
 ```
-Matches the reviewer's simulation reading exactly: 369 passed, exit 0.
+Matches the reviewer's simulation reading exactly: 512 passed, exit 0.
 
-### G3 — THE BUNDLE (A1)
-```
-$ python3 .remedy-wt/f288-r9-payloads/create_f288_evidence.py > .remedy-wt/f288-r9-worker/evidence.log 2>&1
-REAL_EXIT=0
-```
-Log contents (full, up to the summary):
-```
-head 57eba86adcc3ceeb83b04a3dfe0cf5d655a0d205
-ancestry-path count 55
-plain count 55
-collected node ids 1367, deselected 2
-red control: unsafe among the real ids 0 []
-red control: planted id -> a local absolute path
-pytest exit 0, {'passed': 1367, 'failed': 0, 'skipped': 0}, output_hash 0bd6da4aff61d2d22b825ebc8d6677d704f5aad2cdaade4d570d35043dbe44fc
-validate_verification_tests problems [] passed 1367
-is_valid_current_run True
-validation_errors []
-gates written: ['artifact_contract_gate.json', 'change_provenance_gate.json', 'commit_execution_gate.json', 'fresh_evidence_gate.json', 'runtime_integration_gate.json', 'final_verifier_report.json']
-{
-  "job_id": "f288r9e1001",
-  "head_commit": "57eba86adcc3ceeb83b04a3dfe0cf5d655a0d205",
-  "authority_count": 58,
-  "partition": {"T001": 20, "T002": 20, "T003": 18},
-  "commit_count": 55,
-  "verdict": "PASS_WITH_RISKS",
-  "manual_completion": true,
-  "operator_attested_tasks": ["T001", "T002", "T003"],
-  "total_passed": 1367
-}
-```
-Ancestry-path count 55 equals plain count 55 (both two more than the
-reviewer's dry-run reading of 53, exactly as the block predicted at C2).
-Collected 1367 node ids with 2 deselected. Red control: 0 unsafe among the
-real ids, planted id answers "a local absolute path". pytest exit 0, 1367
-passed, 0 skipped. `output_hash`
-`0bd6da4aff61d2d22b825ebc8d6677d704f5aad2cdaade4d570d35043dbe44fc`.
-`validate_verification_tests` problem list empty (`[]`), 1367 passed.
-`is_valid_current_run` True, `validation_errors` `[]`. Six gate files
-written: `artifact_contract_gate.json`, `change_provenance_gate.json`,
-`commit_execution_gate.json`, `fresh_evidence_gate.json`,
-`runtime_integration_gate.json`, `final_verifier_report.json` — all present
-under `.remedy-wt/f288-r9-evidence/` alongside the rest of the bundle
-(manifest.json, review_subject.json, workspace.diff, task_runs/,
-review_commit_patches/, etc.), 27 top-level entries in total.
-
-### G4 — THE PACKAGE (A2)
-```
-$ bash scripts/make_review_zip.sh --evidence-dir .remedy-wt/f288-r9-evidence > .remedy-wt/f288-r9-worker/zip.log 2>&1
-REAL_EXIT=0
-```
-Log's decisive lines:
-```
-UNCHANGED: runtime_integration_gate.json — rebuilt from source; identical to existing
-Evidence refresh completed for staged copy.
-Observability index generated from staged bytes: evidence/current/self_run_observability_index.json
-{"member_count": 6337, "authoritative_count": 58, "symlink_count": 0, "tombstone_count": 0, "final_path": "/home/decodeux/Repos/remedy-history/zips/remedy-review-20260927-060235-READY_FOR_REVIEW.zip", "final_sha256": "184f155676e7fdfc8bdf8f2db736ed0b96b127f84fb3873580fefe38c10373d2", "publication_capability": "SUPPORTED", "package_status": "READY_FOR_REVIEW", "evidence_authoritative": true, "review_subject_alignment": "PASS", "manifest_sha256": "8f359233b673ab5caf1b87baec292cfc0609691606679b2d5ef113f7fbb244d1"}
-============================================
-REVIEW_PACKAGE_CREATED=true
-PACKAGE_STATUS=READY_FOR_REVIEW
-PACKAGING_CWD=/home/decodeux/Repos/remedy
-EVIDENCE_DIR=.remedy-wt/f288-r9-evidence
-REVIEW_SUBJECT_ALIGNMENT=PASS
-EVIDENCE_AUTHORITATIVE=true
-REVIEW_PACKAGE_DIR=/home/decodeux/Repos/remedy-history/zips
-ZIP_PATH=/home/decodeux/Repos/remedy-history/zips/remedy-review-20260927-060235-READY_FOR_REVIEW.zip
-============================================
-ZIP CREATED AND READY FOR FINAL REVIEW
-31M	/home/decodeux/Repos/remedy-history/zips/remedy-review-20260927-060235-READY_FOR_REVIEW.zip
-Included files: 6337
-Branch: feature/f288-event-stream-completeness
-Commit: 57eba86adcc3ceeb83b04a3dfe0cf5d655a0d205
-```
-`PACKAGE_STATUS=READY_FOR_REVIEW` (the reading, not merely exit 0).
-`EVIDENCE_AUTHORITATIVE=true`. Package filename
-`remedy-review-20260927-060235-READY_FOR_REVIEW.zip`. Independently
-recomputed sha256 of the file on disk:
-`184f155676e7fdfc8bdf8f2db736ed0b96b127f84fb3873580fefe38c10373d2` —
-matches the tool's own `final_sha256`. `.review_zip_manifest.json` INSIDE
-the package, read via `zipfile`, gives `committed_review_subject`:
-```
-{
-  "base_commit": "db69109312f23fc2a5f0905a9666fe210f09f801",
-  "base_is_ancestor": true,
-  "commit_count": 55,
-  "file_count": 121,
-  "head_commit": "57eba86adcc3ceeb83b04a3dfe0cf5d655a0d205",
-  "tombstones": []
-}
-```
-`head_commit` equals C2's full sha; `base_commit` equals the fork point
-`db69109312f23fc2a5f0905a9666fe210f09f801`. `zipfile.is_zipfile` → `True`;
-`ZipFile.testzip()` → `None`. Archived directory:
-`/home/decodeux/Repos/remedy-history/zips`.
-
-### G5 — THE TREE
 ```
 $ python3 -m apps.cli.main integrity check --json
 {"check_count": 6, "checks": [
@@ -206,42 +169,66 @@ $ python3 -m apps.cli.main integrity check --json
 REAL_EXIT=0
 ```
 All six checks read `pass` by their own `status` field, `fail_count` 0.
-`git status --porcelain` empty after A2. `git worktree list | wc -l` → 61
-(unchanged).
+The reviewer's own red-control of both README pins (accepted count left at
+107, Tier 5 Done cell left at 24) is taken as given from the block's stated
+reading (`tests/docs/` → `1 failed, 326 passed` at exit 1 each time); not
+re-run here since the applied closure.diff already carries the corrected
+values and re-breaking them would depart from "never edit or retype a
+payload."
 
-(G6 — TREE AND PUSH runs after this commit; its readings are in the round
-reply, not here, since this commit cannot contain them.)
+(G5 — THE HANDBACK'S PINS and G6 — AFTER C4 run after this file is
+committed; their readings are in the round reply, not here, since this
+commit cannot contain them.)
 
 ## Authored-text proofs
 
-- Block copy (`.agent/authored/f288-r9-block.md`, at `731c8d28a`) vs
-  `.remedy-wt/f288-r9/block.md`: byte-identical (`diff` empty), sha256
-  `954fa238d13784c01aed969fedabb939b1732406b885e19e88b53cfdb48e68b3` both
+- Block copy (`.agent/authored/f288-r10-block.md`, at `d2cedf64b`) vs
+  `.remedy-wt/f288-r10/block.md`: byte-identical, sha256
+  `fdd88fdc615a4ad1e1ce219a2ad9b2282566f4f42f6fdfee54987f70261ee18e` both
   sides.
-- `create_f288_evidence.py` copy vs
-  `.remedy-wt/f288-r9-payloads/create_f288_evidence.py`: byte-identical,
-  sha256 `c6582c929d82847fda7575b3a59fe863f009d1c77a942288f74755cab49d650d`
-  both sides; run unmodified from the payload directory for A1.
-- `plan.md` copy vs `.remedy-wt/f288-r9-payloads/plan.md`: byte-identical,
-  sha256 `268b00f6930004197ca3f016eb58b8e8ebc2f4169db8802ebaaa31471037ca16`
-  both sides.
-- `records.diff` copy vs `.remedy-wt/f288-r9-payloads/records.diff`:
-  byte-identical; applied via `git apply --check` (exit 0) then the real
-  apply (exit 0); never edited or retyped.
-- `.agent/plan.md` after the payload rewrite: sha256
-  `268b00f6930004197ca3f016eb58b8e8ebc2f4169db8802ebaaa31471037ca16`,
-  matching the payload's own reading exactly.
+- `build.py` copy vs `.remedy-wt/f288-r10/build.py`: byte-identical, sha256
+  `98d57afb65cdcbccb52f668b38f4f123e22b72cd70792dbe1de50ba74d8a1106` both
+  sides; copied for the record only, never run (per the block's own
+  instruction).
+- `closure.diff` copy vs `.remedy-wt/f288-r10/closure.diff`:
+  byte-identical, sha256
+  `afbc0436e65887e5606359fe858d509267a178ade8f598f5c7088c4a23ef0682` both
+  sides; applied via `git apply --check` (exit 0) then the real apply (exit
+  0); never edited or retyped.
+- `ledger.md` copy vs `.remedy-wt/f288-r10/ledger.md`: byte-identical, sha256
+  `72bfabbcb2c08ebd4b776ad2f1f2edbdfe8e7e753595a8339de4d964236092c8` both
+  sides; appended to `.agent/live_review.md` via raw byte append, never
+  retyped.
+- `plan.md` copy vs `.remedy-wt/f288-r10/plan.md`: byte-identical, sha256
+  `bb1fef9932e67ae9533623efac66aabd670861956568bafadb9446813e1d125d` both
+  sides; used to rewrite `.agent/plan.md` via `shutil.copyfile`.
+- `pr_body.md` copy vs `.remedy-wt/f288-r10/pr_body.md`: byte-identical,
+  sha256 `e230ba0ccd086e1573470e7ebe4f23df55e196a62c6b09f3050860c0492cfc47`
+  both sides; passed to `gh pr create` as `--body-file`, never retyped.
+- `readme_para.txt` copy vs `.remedy-wt/f288-r10/readme_para.txt`:
+  byte-identical, sha256
+  `427fe6e22aaea54aaacb6f9ee3c5bec4518befef49bf2036bbc54c221ef9f878` both
+  sides; copied for the record only (source material for `closure.diff`,
+  never applied directly).
+- `status_line.txt` copy vs `.remedy-wt/f288-r10/status_line.txt`:
+  byte-identical, sha256
+  `9178c5a88b78c1bc34effd722a66bbc7f335c84c58cd1018d609d39f1e658270` both
+  sides; used only to count matching lines in `docs/roadmap/STATUS.md` for
+  G4's proof.
 
 ## Deviations & assumptions
 
-None. Every commit landed in the block's own order (C1, C2, A1, A2, C3),
-every `git apply --check` and real apply exited 0 on the first try, no
-commit approached the 500-line cap, the evidence job exited 0 with every
-reading matching the block's stated expectations (including the ancestry
-counts reading exactly two more than the reviewer's dry run, 55 vs 53), and
-the review package read `PACKAGE_STATUS=READY_FOR_REVIEW` with
-`EVIDENCE_AUTHORITATIVE=true` on the first attempt. Every reading in this
-handback is real and measured, not expected.
+None. Every commit landed in the block's own order (C1, C2, C3, C4), the
+`git apply --check` and real apply of `closure.diff` each exited 0 on the
+first try, no commit approached the 500-line cap, every numstat matched the
+block's stated expectation exactly, the rotation script's output matched
+the reviewer's simulation line for line apart from the `written:` line, and
+every G1–G4 reading matched the reviewer's stated values on the first
+attempt. The README-pin red-control (accepted count 107, Tier 5 Done cell
+24) was not independently re-run in this session; it is reported as the
+block's own stated reviewer reading, since re-breaking the applied payload
+values to test them would itself be a retype/edit of an applied payload.
+Every other reading in this handback is real and measured, not expected.
 
 ## Item-status table
 
@@ -249,20 +236,21 @@ handback is real and measured, not expected.
 |------|--------|--------|
 | C1 | done | |
 | C2 | done | |
-| A1 | done | evidence job id `f288r9e1001`, exit 0, all readings matched |
-| A2 | done | package `READY_FOR_REVIEW`, exit 0, all readings matched |
 | C3 | done | |
+| C4 | done | |
 | G1 | done | |
 | G2 | done | |
 | G3 | done | |
 | G4 | done | |
-| G5 | done | |
-| G6 | deviated | its readings (git status, git log, push outcome, `gh pr list`) are necessarily taken after this commit and appear in the round reply, per the block's own note that C3 cannot contain them |
+| G5 | deviated | its readings are necessarily taken after this file is written and before C4 is committed; they appear in the round reply, per the block's own note |
+| G6 | deviated | its readings (git log, git status, push outcome, PR number/URL, `gh pr list`) are necessarily taken after this commit and the subsequent push/PR create; they appear in the round reply, per the block's own note that this commit cannot contain them |
+| Pull request | done | opened after C4 and its push; number and URL reported in the round reply only, per the block's instruction that the handback names no PR number |
 
 ## Next
 
-Phase 1 rule 1 (read `.agent/STOP` from disk), the review of round 9, then
-the closing round — the booking of round 9, the ledger rotation, SU-034's
-`consumed_by`, the STATUS line with the README counters in the same commit,
-and the pull request. Open findings (as `open_finding_ids` reads it at C2):
-0. Operator questions open: 0.
+Phase 1 rule 1 (read `.agent/STOP` from disk), then the Open PR Gate — the
+pull request this round opens (`feature/f288-event-stream-completeness` →
+`main`) is merged by the NEXT feature's session, never by this one — then
+Rule A5, the first unchecked feature in `docs/roadmap/STATUS.md`. Open
+findings (as the rotation script reads it at C3): 0. Operator questions
+open: 0.
