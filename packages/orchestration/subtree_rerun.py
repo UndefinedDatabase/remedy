@@ -7,26 +7,49 @@ to that state; nothing on the branch is ever rewritten.
 
 This module computes a task's subtree (S2), walks the job branch since that
 task's commit (S3), plans and refuses an unsafe reset (S4), builds the reset's
-commit message (S5) and applies the reset with its hash proof (S6). It never
-writes ``job.json``, never changes a task's status and takes no lock — T002's
-rerun command owns the job's admission and is this module's only caller.
+commit message (S5) and applies the reset with its hash proof (S6). ``plan_subtree_reset``
+and ``apply_subtree_reset`` never write ``job.json``, never change a task's status and take
+no lock.
+
+F029 T002, DECISION F029 D2 (round 2): ``prepare_subtree_rerun`` is the ADMISSION and
+FOLD this module now also owns. It takes the job's plan-edit lock and its worktree lock,
+resets the subtree with ``apply_subtree_reset`` above, returns the subtree's tasks to
+pending with the finished attempt archived on each task, and writes the record once. It
+runs no provider and starts no task itself — ``remedy job run`` (round 3's command) is
+what re-executes the pending subtree afterwards.
 """
 from __future__ import annotations
 
 import os
+import re
 import subprocess
 import tempfile
 from collections.abc import Sequence
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from packages.orchestration import checkpoints, dag_schedule
+from packages.orchestration import checkpoints, dag_schedule, plan_editing, task_veto
 from packages.orchestration import worktrees as W
-from packages.orchestration.pingpong_job import JobPlan, TaskEntry
+from packages.orchestration.data_paths import job_evidence_dir
+from packages.orchestration.pingpong_job import (
+    JOB_COMPLETED,
+    JOB_PAUSED,
+    TASK_PENDING,
+    TASK_SKIPPED,
+    JobPlan,
+    TaskEntry,
+    _task_stream_dir,
+    job_worktree_id,
+    load_job_plan,
+    save_job_plan,
+)
 
 __all__ = [
     "RERUN_TRAILER",
     "RERUN_FILES_NAMED",
+    "HUMAN_OVERRIDE_REASON",
+    "RERUN_ADMITTED_STATES",
     "SubtreeRerunRefused",
     "SubtreeRerunError",
     "rerun_subtree_ids",
@@ -34,6 +57,8 @@ __all__ = [
     "plan_subtree_reset",
     "build_rerun_commit_message",
     "apply_subtree_reset",
+    "fold_subtree_rerun",
+    "prepare_subtree_rerun",
 ]
 
 #: S1 — the trailer a rerun's reset commit carries beside ``Remedy-Job``, naming
@@ -42,6 +67,15 @@ RERUN_TRAILER = "Remedy-Rerun"
 
 #: S1 — how many changed paths a rerun's commit message names before "...".
 RERUN_FILES_NAMED = 5
+
+#: DECISION F029 D2 — the `reruns` record's `model.reason` when an override was given.
+HUMAN_OVERRIDE_REASON = "human_override"
+
+#: DECISION F029 D2 — the job states `prepare_subtree_rerun` admits a rerun from.
+RERUN_ADMITTED_STATES: frozenset[str] = frozenset({"completed", "blocked", "paused", "stopped"})
+
+#: DECISION F029 D2 — a rerun's model override, when given: a plain model-name token.
+_MODEL_OVERRIDE_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:/@-]{0,127}$")
 
 
 class SubtreeRerunRefused(Exception):
@@ -422,3 +456,233 @@ def apply_subtree_reset(job: JobPlan, root_task_id: str, worktree_path: str | Pa
         else reset_tree == plan["root_start_tree"]
     )
     return result
+
+
+def _task_ran(task: TaskEntry) -> bool:
+    """DECISION F029 D2 — a task RAN when it has a run id or a commit, or its status
+    ever moved off pending. A never-started subtree task keeps its attempt at 1 and
+    gets no attempt record."""
+    return bool(task.run_id) or bool(task.worktree_commit) or task.status != TASK_PENDING
+
+
+def fold_subtree_rerun(
+    job: JobPlan,
+    reset: dict[str, Any],
+    *,
+    rerun_id: str,
+    model_override: str,
+    actor: str,
+    now: datetime,
+    moved_streams: dict[str, str],
+) -> dict[str, Any]:
+    """Pure: fold a subtree reset into *job* in memory and return its new ``reruns`` entry.
+
+    ``reset`` is what ``apply_subtree_reset`` answered; ``moved_streams`` maps a task id
+    to the evidence-relative path its earlier stream directory was moved to. Writes
+    nothing to disk — the caller persists ``job`` once, after this returns.
+    """
+    tasks_by_id = {t.task_id: t for t in job.tasks}
+    subtree_id_set = set(reset["subtree"])
+    state_before = str(job.state)
+
+    for task_id in reset["subtree"]:
+        task = tasks_by_id[task_id]
+        if _task_ran(task):
+            task.attempts.append({
+                "attempt": task.attempt,
+                "status": task.status,
+                "final_status": task.final_status,
+                "reviewer_verdict": task.reviewer_verdict,
+                "test_passed": task.test_passed,
+                "run_id": task.run_id,
+                "worktree_commit": task.worktree_commit,
+                "model_override": task.model_override,
+                "output_artifact_ids": list(task.output_artifact_ids),
+                "stream_evidence": moved_streams.get(task_id, ""),
+                "rerun_id": rerun_id,
+                "ended_at": now.isoformat(),
+            })
+            task.attempt += 1
+        task.status = TASK_PENDING
+        task.model_override = model_override
+        task.run_id = ""
+        task.final_status = ""
+        task.final_status_detail = ""
+        task.reviewer_verdict = ""
+        task.error = ""
+        task.task_start_tree = ""
+        task.task_start_tree_ref = ""
+        task.task_start_recorded_at = ""
+        task.task_attempt_state = ""
+        task.worktree_commit = ""
+        task.tripped_limit = ""
+        task.safe_diff_files = []
+        task.output_artifact_ids = []
+        task.test_passed = None
+        task.apply_manifest = None
+        task.proof_summary = None
+        task.repair_rounds_used = 0
+
+    restored_pending: list[str] = []
+    for task in job.tasks:
+        if task.task_id not in subtree_id_set and task.status == TASK_SKIPPED:
+            task.status = TASK_PENDING
+            restored_pending.append(task.task_id)
+
+    job.worktree_head = reset["reset_commit"]
+    if job.state == JOB_COMPLETED:
+        job.state = JOB_PAUSED
+        job.finished_at = ""
+    job.worktree_cleanup_status = "retained"
+    job.worktree_cleanup_error = ""
+
+    configured_model = job.execution_config.builder_model if job.execution_config else ""
+    record: dict[str, Any] = {
+        "rerun_id": rerun_id,
+        "root_task_id": reset["root_task_id"],
+        "subtree": list(reset["subtree"]),
+        "restored_pending": restored_pending,
+        "base_commit": reset["base_commit"],
+        "reset_commit": reset["reset_commit"],
+        "paths": list(reset["paths"]),
+        "exact": reset["exact"],
+        "proof": reset["proof"],
+        "pre_task_tree_equal": reset["pre_task_tree_equal"],
+        "model": {
+            "override": model_override,
+            "configured": configured_model,
+            "reason": HUMAN_OVERRIDE_REASON if model_override else "",
+        },
+        "actor": actor,
+        "at": now.isoformat(),
+        "state_before": state_before,
+        "state_after": str(job.state),
+    }
+    job.reruns.append(record)
+    return record
+
+
+def prepare_subtree_rerun(
+    job_id: str,
+    root_task_id: str,
+    *,
+    model_override: str = "",
+    actor: str = "operator",
+    now: datetime | None = None,
+) -> dict[str, Any]:
+    """DECISION F029 D2 — prepare a subtree rerun on a job that is NOT running.
+
+    Re-acquires the job's worktree under its lock (re-adding it from the kept branch
+    when the job had completed), resets the subtree with ``apply_subtree_reset``, and
+    returns the subtree's tasks to pending with the finished attempt archived on each
+    (S4's fold, ``fold_subtree_rerun``). Runs no provider and starts no task itself:
+    ``remedy job run`` (round 3's command) is what re-executes the pending subtree.
+
+    Raises ``SubtreeRerunRefused`` from the first unsafe condition, admission checks
+    before anything worktree-related is touched, then ``apply_subtree_reset``'s own
+    ladder once the worktree is claimed. A refusal removes a worktree this call
+    created, or releases the lock on one that already existed, and leaves ``job.json``
+    unchanged.
+    """
+    bounded_actor = task_veto._bounded_actor(actor)
+    at = now or datetime.now(timezone.utc)
+
+    with plan_editing.plan_edit_lock(job_id):
+        job = load_job_plan(job_id)
+        if job is None:
+            raise SubtreeRerunRefused("job_not_found", f"there is no job {job_id!r}")
+
+        if model_override and not _MODEL_OVERRIDE_RE.match(model_override):
+            raise SubtreeRerunRefused(
+                "model_invalid",
+                f"{model_override!r} is not a valid model override; it must match "
+                f"{_MODEL_OVERRIDE_RE.pattern}",
+            )
+
+        state = str(job.state)
+        if state == "running":
+            raise SubtreeRerunRefused(
+                "job_running", "the job is running; pause or stop it, then rerun")
+        if state not in RERUN_ADMITTED_STATES:
+            raise SubtreeRerunRefused(
+                "job_not_rerunnable",
+                f"the job is {state!r}; a rerun needs a job that has completed, "
+                f"blocked, paused or stopped",
+            )
+
+        subtree_ids = rerun_subtree_ids(job.tasks, root_task_id)   # unknown_task
+        tasks_by_id = {t.task_id: t for t in job.tasks}
+        root_task = tasks_by_id[root_task_id]
+
+        if job.isolation_mode != "worktree":
+            raise SubtreeRerunRefused(
+                "not_worktree_mode",
+                "the job ran in a copy of the repository, not on a job branch, "
+                "so no task has a commit to go back to",
+            )
+        if not root_task.worktree_commit:
+            raise SubtreeRerunRefused(
+                "task_not_committed",
+                f"task {root_task_id} has no commit on the job branch yet, "
+                f"so there is nothing to rerun",
+            )
+        if not W._branch_exists(job.repo_path, job.worktree_branch):
+            raise SubtreeRerunRefused(
+                "job_branch_missing",
+                f"job branch {job.worktree_branch!r} no longer exists",
+            )
+        if not job.job_initial_tree or not W.object_exists(job.repo_path, job.job_initial_tree):
+            raise SubtreeRerunRefused(
+                "checkpoint_object_missing",
+                f"the job's initial tree {job.job_initial_tree!r} is gone",
+            )
+
+        try:
+            handle = W.create(job_worktree_id(job_id), job.repo_path)
+        except W.WorktreeLockError:
+            raise SubtreeRerunRefused(
+                "job_running", "the job is running; pause or stop it, then rerun") from None
+        except W.WorktreeConflictError as exc:
+            raise SubtreeRerunRefused("worktree_conflict", str(exc)) from exc
+
+        try:
+            reset = apply_subtree_reset(job, root_task_id, handle.path)
+        except SubtreeRerunRefused:
+            if handle.created:
+                W.remove(handle, keep_branch=True)
+            else:
+                W.release_lock(handle)
+            raise
+        except Exception as exc:  # noqa: BLE001 — kept for recovery; re-raised unchanged
+            W.retain_for_recovery(handle, f"{type(exc).__name__}: {exc}")
+            raise
+
+        moved_streams: dict[str, str] = {}
+        evidence_root = job_evidence_dir(job_id)
+        for task_id in subtree_ids:
+            task = tasks_by_id[task_id]
+            if not _task_ran(task):
+                continue
+            stream_dir = _task_stream_dir(job_id, task_id)
+            if not stream_dir.exists():
+                continue
+            dest_rel = f"rerun_attempts/{task_id}/attempt-{task.attempt}"
+            dest = evidence_root / dest_rel
+            dest.parent.mkdir(parents=True, exist_ok=True)
+            os.replace(stream_dir, dest)
+            moved_streams[task_id] = dest_rel
+
+        rerun_id = f"rerun-{len(job.reruns) + 1}"
+        record = fold_subtree_rerun(
+            job, reset, rerun_id=rerun_id, model_override=model_override,
+            actor=bounded_actor, now=at, moved_streams=moved_streams,
+        )
+
+        ref = job.job_initial_tree_ref
+        if W.resolve_checkpoint_ref(job.repo_path, ref) != job.job_initial_tree:
+            W.set_checkpoint_ref(job.repo_path, ref, job.job_initial_tree)
+
+        save_job_plan(job)
+        W.release_lock(handle)
+
+        return {**record, "job_id": job_id, "worktree_rematerialized": handle.created}
