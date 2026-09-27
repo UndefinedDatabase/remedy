@@ -46,7 +46,28 @@ export interface RemedyContinuationSummary {
 }
 export interface RemedyNextAction { label: string; command: string; risk: "low" | "medium" | "high"; requiresHuman: boolean; }
 export interface RemedyJourneyItem { id: string; kind: RemedyTaskKind; title: string; subtitle: string; state: RemedyState; nodeId: string; visibleFromZoom: number; }
-export interface RemedyTaskItem { id: string; label: string; state: RemedyState; kind: RemedyTaskKind; checked: boolean; muted: boolean; nodeId: string; nextAction?: RemedyNextAction; outcomeSummary?: string; changedFilesCount?: number; changedFilesSafe?: string[]; testStatus?: string; proofStatus?: string; applyStatus?: string; blockedReason?: string; completedAt?: string; origin?: string; }
+
+/** DECISION F029 D5 (2) — one earlier attempt of a task, archived when a
+ *  rerun folds the subtree: the attempt number it ran as, how it ended,
+ *  the reviewer's verdict, whether its tests passed, the model it ran
+ *  with, its worktree commit, its run id, the rerun that archived it, and
+ *  when. Every string field reads `""` rather than throwing when the
+ *  server's own entry is missing or mistyped — `remedyApi.ts`'s own rule,
+ *  the same one `RemedyTaskSpecFields` above follows. */
+export interface RemedyTaskAttempt {
+  attempt: number;
+  status: string;
+  finalStatus: string;
+  reviewerVerdict: string;
+  modelOverride: string;
+  worktreeCommit: string;
+  runId: string;
+  rerunId: string;
+  endedAt: string;
+  testPassed: boolean | null;
+}
+
+export interface RemedyTaskItem { id: string; label: string; state: RemedyState; kind: RemedyTaskKind; checked: boolean; muted: boolean; nodeId: string; nextAction?: RemedyNextAction; outcomeSummary?: string; changedFilesCount?: number; changedFilesSafe?: string[]; testStatus?: string; proofStatus?: string; applyStatus?: string; blockedReason?: string; completedAt?: string; origin?: string; attempt?: number; attempts?: RemedyTaskAttempt[]; }
 export interface RemedyActivityItem { id: string; actor: "Builder" | "Reviewer" | "User" | "System"; message: string; timeLabel: string; kind: "build" | "review" | "user" | "system" | "test"; taskId?: string; tokenEstimate?: number; }
 
 export type RemedyPromptRole = "builder" | "reviewer" | "system";

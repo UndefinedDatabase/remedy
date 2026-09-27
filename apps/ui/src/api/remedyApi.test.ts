@@ -78,6 +78,104 @@ describe("normalizeDashboardPayload", () => {
     expect(result.apiHealth.failedEndpoints).toHaveLength(0);
   });
 
+  // DECISION F029 D5 (2), item S1 — the task item's `attempt` and `attempts`.
+  describe("task attempt normalization", () => {
+    it("reads a valid attempt and attempts array, snake_case fields to camelCase", () => {
+      const payload = makeDashboardPayload({
+        tasks: [
+          {
+            id: "t1", title: "Task", status: "pending", related_node_id: "t1",
+            attempt: 3,
+            attempts: [
+              {
+                attempt: 1, status: "failed", final_status: "task_failed",
+                reviewer_verdict: "fail", test_passed: false, run_id: "run-1",
+                worktree_commit: "abcdef012345678", model_override: "claude-x",
+                rerun_id: "rerun-1", ended_at: "2026-01-01T00:00:00Z",
+              },
+            ],
+          },
+        ],
+      });
+      const result = normalizeDashboardPayload("abc-123", payload);
+      expect(result.tasks[0].attempt).toBe(3);
+      expect(result.tasks[0].attempts).toEqual([{
+        attempt: 1, status: "failed", finalStatus: "task_failed",
+        reviewerVerdict: "fail", testPassed: false, runId: "run-1",
+        worktreeCommit: "abcdef012345678", modelOverride: "claude-x",
+        rerunId: "rerun-1", endedAt: "2026-01-01T00:00:00Z",
+      }]);
+    });
+
+    it("a missing attempt reads 1, and a missing attempts reads []", () => {
+      const payload = makeDashboardPayload({
+        tasks: [{ id: "t1", title: "Task", status: "pending", related_node_id: "t1" }],
+      });
+      const result = normalizeDashboardPayload("abc-123", payload);
+      expect(result.tasks[0].attempt).toBe(1);
+      expect(result.tasks[0].attempts).toEqual([]);
+    });
+
+    it("a mistyped attempt (string, zero, negative, non-integer) reads 1, and a mistyped attempts (not an array) reads []", () => {
+      const payload = makeDashboardPayload({
+        tasks: [
+          { id: "t1", title: "Task", status: "pending", related_node_id: "t1", attempt: "3", attempts: "not-an-array" },
+          { id: "t2", title: "Task 2", status: "pending", related_node_id: "t2", attempt: 0 },
+          { id: "t3", title: "Task 3", status: "pending", related_node_id: "t3", attempt: -1 },
+          { id: "t4", title: "Task 4", status: "pending", related_node_id: "t4", attempt: 1.5 },
+        ],
+      });
+      const result = normalizeDashboardPayload("abc-123", payload);
+      expect(result.tasks[0].attempt).toBe(1);
+      expect(result.tasks[0].attempts).toEqual([]);
+      expect(result.tasks[1].attempt).toBe(1);
+      expect(result.tasks[2].attempt).toBe(1);
+      expect(result.tasks[3].attempt).toBe(1);
+    });
+
+    it("an attempts entry without an integer attempt of at least 1 is dropped; valid entries are kept", () => {
+      const payload = makeDashboardPayload({
+        tasks: [
+          {
+            id: "t1", title: "Task", status: "pending", related_node_id: "t1", attempt: 3,
+            attempts: [
+              { attempt: 1, status: "failed" },
+              { attempt: "2", status: "blocked" },
+              { status: "skipped" },
+              { attempt: 0, status: "vetoed" },
+              null,
+              "not-an-object",
+            ],
+          },
+        ],
+      });
+      const result = normalizeDashboardPayload("abc-123", payload);
+      expect(result.tasks[0].attempts?.map((a) => a.attempt)).toEqual([1]);
+    });
+
+    it("each attempt field reads its own snake_case key as a string, empty when missing or mistyped, and test_passed as a boolean or null", () => {
+      const payload = makeDashboardPayload({
+        tasks: [
+          {
+            id: "t1", title: "Task", status: "pending", related_node_id: "t1", attempt: 2,
+            attempts: [{ attempt: 1, final_status: 42, reviewer_verdict: null, model_override: undefined }],
+          },
+        ],
+      });
+      const result = normalizeDashboardPayload("abc-123", payload);
+      const entry = result.tasks[0].attempts?.[0];
+      expect(entry?.status).toBe("");
+      expect(entry?.finalStatus).toBe("");
+      expect(entry?.reviewerVerdict).toBe("");
+      expect(entry?.modelOverride).toBe("");
+      expect(entry?.worktreeCommit).toBe("");
+      expect(entry?.runId).toBe("");
+      expect(entry?.rerunId).toBe("");
+      expect(entry?.endedAt).toBe("");
+      expect(entry?.testPassed).toBeNull();
+    });
+  });
+
   // DECISION F025 D3 clause 1 (U2): a payload without a `pause` section
   // normalizes to the "not paused" shape, and one WITH it is read through.
   it("a payload without a pause section reads as not paused", () => {
