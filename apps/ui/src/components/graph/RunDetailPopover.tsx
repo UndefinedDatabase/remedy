@@ -144,7 +144,7 @@ export function RunDetailPopover({ node, rows, promptItems, jobId, token, onOpen
       {rerunDisabled && <p id={reasonId} className={styles.reason}>{RERUN_TOKEN_REASON}</p>}
       {rerunSentence !== null && <p className={styles.rerunOutcome} aria-live="polite">{rerunSentence}</p>}
       {rerunOutcome?.kind === "needs_confirmation" && (
-        <div className={styles.actions}>
+        <div className={styles.confirmActions}>
           <button
             type="button"
             className={styles.action}
