@@ -103,12 +103,18 @@ function LiveFeed({ recent, recentDropped, tasks, onSelectNode }: {
       ) : null}
       {newestFirst.map(row => {
         const nodeId = nodeIdForFeedRow(row, tasks);
+        // F030 T003: the operator's own note draws an initial-letter disc and its own
+        // name in place of the generic glyph and kind, the same treatment a user row
+        // gets in the design reference (ux_spec.md §11.3, README.md §K2).
+        const isOperator = row.author === "operator";
         const body = (
           <>
-            <div className={styles.actorIcon}><GearGlyph style={{ width: 16, height: 16, color: "white" }} /></div>
+            <div className={isOperator ? styles.operatorDisc : styles.actorIcon}>
+              {isOperator ? "Y" : <GearGlyph style={{ width: 16, height: 16, color: "white" }} />}
+            </div>
             <div>
               <div className={styles.activityMeta}>
-                <strong>{row.kind || "event"}</strong>
+                <strong>{isOperator ? "You" : (row.kind || "event")}</strong>
                 {row.timestamp ? <span>{row.timestamp}</span> : null}
                 <span className={styles.activityTag}>#{row.seq}</span>
                 {row.outcome ? <span className={styles.activityTag}>{row.outcome}</span> : null}
@@ -133,7 +139,7 @@ function LiveFeed({ recent, recentDropped, tasks, onSelectNode }: {
   );
 }
 
-export function ActivityFeedCard({ activity, recent, recentDropped, tasks, onSelectNode, jobId, serverToken, stage }: {
+export function ActivityFeedCard({ activity, recent, recentDropped, tasks, onSelectNode, jobId, serverToken, stage, focusedTaskId }: {
   activity: RemedyActivityItem[];
   recent?: readonly FeedRow[];
   recentDropped?: number;
@@ -142,6 +148,7 @@ export function ActivityFeedCard({ activity, recent, recentDropped, tasks, onSel
   jobId?: string;
   serverToken?: string;
   stage?: string;
+  focusedTaskId?: string;
 }) {
   const hasActivity = activity.length > 0;
   const live = recent ?? [];

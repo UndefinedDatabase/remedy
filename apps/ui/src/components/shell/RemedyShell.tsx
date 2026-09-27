@@ -18,6 +18,7 @@ import { shellSelectionIdOf } from "../graph/brainView";
 import { brainLedgerPrefix } from "../graph/brainLedger";
 import { useBrainLedger } from "../graph/useBrainLedger";
 import { RightLivePanel } from "../panels/RightLivePanel";
+import { steeringFocusTaskId } from "../../api/steeringNote";
 import { PhaseTimeline } from "../timeline/PhaseTimeline";
 import { useTimelineScrub } from "../timeline/useTimelineScrub";
 import { DetailPopover } from "../detail/DetailPopover";
@@ -78,6 +79,10 @@ export function RemedyShell({ dashboard, serverToken, selectedNodeId, onSelectNo
       }
     }
   }
+  // F030 T003: the steering input addresses whichever task the graph selection
+  // names — a prompt already resolved to its owning task above — and the whole
+  // job when the selection names none.
+  const focusedTaskId = steeringFocusTaskId(dashboard.tasks, selectedNode ? selectedNode.nodeId : null);
   // WHICH task run's diff is open, and the envelope last read for it. Two pieces
   // of state rather than one, because "a panel is open" and "its content has
   // arrived" are different facts and the panel has to render the gap between
@@ -208,7 +213,7 @@ export function RemedyShell({ dashboard, serverToken, selectedNodeId, onSelectNo
           <BrainGraphStage dashboard={dashboard} selectedNodeId={selectedNodeId} onSelectNode={onSelectNode} rows={ledgerRows} scrub={scrub} serverToken={serverToken} />
           <PhaseTimeline scrub={scrub} />
         </main>
-        <RightLivePanel dashboard={dashboard} serverToken={serverToken} onSelectNode={onSelectNode} streamStatus={stream.status} replay={scrub.state.mode === "scrubbed"} recent={stream.recent} recentDropped={stream.recentDropped} onOpenLessons={() => setLessonsOpen(true)} />
+        <RightLivePanel dashboard={dashboard} serverToken={serverToken} onSelectNode={onSelectNode} streamStatus={stream.status} replay={scrub.state.mode === "scrubbed"} recent={stream.recent} recentDropped={stream.recentDropped} onOpenLessons={() => setLessonsOpen(true)} focusedTaskId={focusedTaskId} />
       </div>
       {selectedNode && <DetailPopover dashboard={dashboard} selectedNode={selectedNode} selectedPromptId={selectedPromptId} onClose={() => onSelectNode(null)} onOpenDiff={setOpenDiffTaskId} serverToken={serverToken} onSelectTask={(taskId) => onSelectNode(shellSelectionIdOf(dashboard.tasks, taskId))} />}
       {/* THE DIFF PANEL. A sibling of the popover rather than a child of
