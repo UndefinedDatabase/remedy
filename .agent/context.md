@@ -1,24 +1,26 @@
-# Context — F028 Task injection
+# Context — F029 Subtree rerun
 
 ## Active Branch
-feature/f028-task-injection, cut from `main` at `ceb90b8a`
-(the merge commit of pull request 286, F288 Event stream completeness).
+feature/f029-subtree-rerun, cut from `main` at `b2863af4`
+(the merge commit of pull request 287, F028 Task injection).
 
 ## Scope
-F028 (Tier 5): the Add Task button as real additive control — a planner
-draft of the operator's task text with placement, rationale, budget check
-and fence flags, applied to the running job only on confirmation, with
-provenance end to end, as `docs/roadmap/features/T5_F028.md` and DECISION
-F028 D1 specify.
+F029 (Tier 5): a rerun from a task in the middle of a job — the task and
+its downstream reset to pending, their files restored to the state before
+the task with a hash proof, earlier attempts kept as evidence in an
+attempt fan, the command gated by the cost preview, and an optional model
+override recorded — as `docs/roadmap/features/T5_F029.md` and DECISION
+F029 D1 specify.
 
 ## Do not touch
-The approval machinery (reused, not duplicated), the fence rules, and the
-DoD compile internals.
+Checkpoint semantics, applicator internals beyond the commit seam, and
+the routing policy (an override is disclosure, not policy).
 
 ## Active assumptions
-- A running job's `job.json` is written only by its runner; an injection
-  reaches it as a create-only control file (DECISION F028 D1).
-- Placement is computed by code and always appends at the end of the plan.
+- A task applied in worktree mode has one commit on the job branch; the
+  first parent of that commit is the state before the task (DECISION
+  F029 D1).
+- A reset is a new commit; no commit of an earlier attempt is rewritten.
 
 ## Constraints
 - Every pytest run in a round is targeted and serial; the resource and

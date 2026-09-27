@@ -23397,3 +23397,77 @@ removing the card's `backdrop-filter`, rejected because the glass is the design 
 
 HOW TO REVERSE: return the section directly instead of through the portal, remove `origin` from
 `TaskOutcome` and its clause, and delete this paragraph.
+
+## DECISION F029 D1 — a task's commit on the job branch is the per-task ref, so no new ref is added; the reset of a subtree is one new commit that puts back, for exactly the paths the subtree's commits changed, their state before the rerun task, and it is refused for a moved or dirty worktree and for any commit outside the subtree that changed one of those paths; T001 lands the reset mechanics alone (2026-09-27)
+
+CONTEXT: T5_F029.md makes one prerequisite finding the first deliverable: how a task end commits
+today. Measured at `b2863af4`: in worktree mode `run_job` lands exactly one commit per applied
+task on the job branch `remedy/job-<id>` through `_commit_applied_task` in
+`packages/orchestration/pingpong_job.py` and `commit_job_worktree` in
+`packages/orchestration/worktrees.py` (DECISION F270 D1): `git add -A .`, one commit under the
+identity `Remedy <remedy@local>`, `--allow-empty` so a task that changed nothing still has its
+commit, and the trailers `Remedy-Job` and `Remedy-Task`; the sha is kept as the task entry's
+`worktree_commit` and the job's `worktree_head`. The multi-cycle path through
+`long_run_executor.default_task_step` commits nothing, and a job in copy mode has no branch. The
+F006 checkpoint refs under `refs/remedy/checkpoints/` point at TREE objects, not commits, and
+`_drop_checkpoint_refs` deletes them after a verified hand-off, so they cannot serve as the
+lasting address of a task. `restore_tree` in `worktrees.py` already returns a worktree to a given
+tree exactly, without touching the index, `HEAD` or any ref, and F027's veto uses it.
+`checkpoints.worktree_drift_message` is the one wording of a worktree that moved under a
+recorded head. `dag_schedule.build_graph` resolves every task's dependencies, while
+`blocked_downstream` skips completed tasks and so cannot name a completed subtree.
+`TaskEntry` has no attempt counter, and nothing in the code records an intended model beside a
+routed one.
+
+CHOSEN: (1) THE PER-TASK REF IS THE TASK'S COMMIT. The prerequisite the feature file allows for
+("if task ends don't commit, adding a lightweight per-task ref at the finalize seam") is not
+needed: the state before task X is the first parent of X's `worktree_commit`, which the job
+branch keeps for as long as the branch lives. No ref is added, so the ref-storage growth the
+feature file's edge cases name does not arise; retention is the branch's own. A rerun is offered
+only for a task with a commit on the job branch; a copy-mode job, the multi-cycle path and a task
+not yet applied are refused with their own codes. (2) THE SUBTREE of X is X and every task that
+depends on it, directly or transitively, by `build_graph`, whatever each one's status, in plan
+order. (3) THE WALK. The commits of the job branch from X's commit to the branch tip, following
+first parents, are read with their trailers and the paths each changed against its parent. A
+commit belongs to the subtree when its `Remedy-Task` trailer names a task of the subtree;
+every other commit — a task outside the subtree, an earlier rerun's reset, a commit with no
+task trailer — is OUTSIDE it. (4) THE REFUSALS, in this order: an unknown task, a job not in
+worktree mode, a task with no commit, a worktree whose head is not the job's recorded head
+(refused with `worktree_drift_message` verbatim, an unreadable head counting as moved), a
+worktree holding uncommitted changes, a task commit not in the branch's history, a task of the
+subtree whose own commit lies before X's, and INTERLEAVING: any path changed both by a commit
+of the subtree and by a commit outside it, named with the task or commit that changed it. The
+interleaving refusal never guesses; the operator can start the rerun at an earlier task so that
+the subtree includes the other work, as the feature file says. (5) THE RESET. The target is the
+branch tip's tree with every path the subtree's commits changed replaced by that path's entry in
+the first parent of X's commit, or removed when it had none there; it is built in a private
+index, `restore_tree` brings the worktree to it, and `commit_job_worktree` commits it with the
+trailers `Remedy-Job` and `Remedy-Rerun`. Nothing is rewritten: the earlier attempts' commits
+stay in the branch's history, where later rounds link them as evidence. (6) THE PROOF. After the
+commit, its tree equals the target; for every path the subtree changed, the entry at the new
+commit equals the entry before X; and when no commit outside the subtree follows X, the whole
+tree equals the tree before X, and the reset reports whether that tree also equals X's recorded
+`task_start_tree`. A proof that fails raises and names the path. (7) THE ORDER. T001 takes round
+1: a new module `packages/orchestration/subtree_rerun.py` holding the subtree, the walk, the
+refusals, the reset and its proof, with no caller yet, listed in `ALLOWED_UNWIRED` of
+`tests/test_no_orphan_modules.py` until T002 wires it. T002 lands `remedy job rerun-subtree`
+behind the cost preview, the job-level admission of a rerun, the attempt counter and the
+subtree's tasks returned to pending, the earlier attempts' evidence linked and left untouched,
+and the model override recorded beside the model the router would have chosen. T003 lands the
+attempt fan, its popover and the end-to-end proof.
+
+ALTERNATIVES: adding a per-task ref at the finalize seam, rejected because the commit already is
+one and a second address for the same state could disagree with it; resetting by checking out
+the commit before X, rejected because it would also undo every later task outside the subtree,
+which the feature file says keeps its state and its commits; rewriting the branch to drop the
+subtree's commits, rejected because it destroys the evidence of the attempt the fan must show and
+is a history rewrite on a branch other tools have already read; reverting each subtree commit in
+turn, rejected because a revert of interleaved changes is exactly the clever surgery the feature
+file rules out, and a revert chain proves nothing about the resulting tree that the single
+target tree does not prove more directly; a git stash, rejected by the feature file itself.
+
+DELIBERATE ABSENCES: T001 writes no event, never writes `job.json`, never changes a task's status
+and takes no lock; its reset is called only by T002's command, which owns the job's admission.
+
+HOW TO REVERSE: delete `packages/orchestration/subtree_rerun.py`, its tests and its line in
+`ALLOWED_UNWIRED`, and delete this paragraph.
