@@ -12,15 +12,15 @@ exists; and the live graph draws test-run, repair and prompt nodes
 
 ## Current Step
 
-ROUND 9: book round 8's PASS, then build the evidence bundle and the
-review package at the accepted head.
+ROUND 10, the closing round: book round 9's PASS, rotate the ledger,
+accept F288 in STATUS with its README pins, consume SU-034, and open the
+pull request.
 
 ## Next Steps
 
-1. Rotate the ledger, accept F288 in STATUS with its README pins, consume
-   the self-use item, and open the pull request.
+1. The next session merges this feature's pull request at the Open PR
+   Gate and claims the next feature by Rule A5.
 
 ## Risks
 
-A package that does not read READY_FOR_REVIEW blocks the closure.
-Open findings: 0.
+None open. Open findings: 0.
