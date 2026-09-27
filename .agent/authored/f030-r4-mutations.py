@@ -51,7 +51,12 @@ def _run_tests(root: Path) -> subprocess.CompletedProcess:
 
 
 def _failing_node_ids(stdout: str) -> list[str]:
-    return [line.split(" ", 1)[0] for line in stdout.splitlines() if line.startswith("FAILED ")]
+    ids = []
+    for line in stdout.splitlines():
+        if line.startswith("FAILED "):
+            rest = line[len("FAILED "):]
+            ids.append(rest.split(" - ", 1)[0].strip())
+    return ids
 
 
 def _failed_count(stdout: str) -> int:
