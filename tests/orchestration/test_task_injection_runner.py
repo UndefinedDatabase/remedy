@@ -17,8 +17,8 @@ from pathlib import Path
 import pytest
 
 from packages.core.models import JobBudgets
+from packages.orchestration import budget_guard, safe_points
 from packages.orchestration import pingpong_job as pj
-from packages.orchestration import safe_points
 from packages.orchestration import task_injection as ti
 from packages.orchestration.budget_guard import BudgetCounters
 from packages.orchestration.budget_resolution import PredictiveBudgetConfig
@@ -28,6 +28,7 @@ from packages.orchestration.pingpong_job import (
     JOB_PAUSED,
     load_job_plan,
     run_job,
+    save_job_plan,
 )
 from packages.orchestration.pingpong_provider import BuilderOutput, FakeProvider, ReviewerOutput
 from tests.orchestration.test_task_edit_runtime import _by_planned, _save_job, _task
@@ -328,3 +329,101 @@ class TestInertInjectionFold:
         assert len(done.tasks) == 1
         entry = done.metadata["task_injections"]["baddraft00000001"]
         assert "inert" in entry and entry["folded_at"]
+
+
+# ---------------------------------------------------------------------------
+# R-1077 — a confirmed injection missing a field the apply reads blocks the job loudly
+# ---------------------------------------------------------------------------
+
+
+class TestConfirmedInjectionMissingAFieldBlocksTheJob:
+    def test_missing_text_blocks_with_task_injection_control_error(self, root, repo):
+        job_id = _save_job(root, [_task("A", [])], repo_path=str(repo))
+
+        bad_record = {
+            "draft_id": "baddraft00000002",
+            "task": {"id": "INJ1", "title": "t", "goal": "g", "acceptance": ["a"],
+                    "depends_on": [], "est_tokens_band": "S", "files_hint": []},
+            "placement": {"depends_on": [], "basis": "frontier_default", "position": 1,
+                         "rationale": "r"},
+            "task_rationale": "r", "actor": "alice",
+            "confirmed_at": "2026-01-01T00:00:00+00:00",
+        }                                                      # deliberately missing "text"
+        assert ti._publish_confirmed_injection(
+            job_id, bad_record["draft_id"], bad_record, control_root_path=_control())
+
+        done = run_job(job_id, builder_provider=_RefusingProvider(),
+                       reviewer_provider=_RefusingProvider(), max_rounds=1, repair_rounds=0)
+
+        assert done.state == JOB_BLOCKED
+        assert done.error.startswith("task_injection_control_error:")
+        a = done.tasks[0]
+        assert a.status == pj.TASK_PENDING
+        assert not a.run_id
+
+
+# ---------------------------------------------------------------------------
+# DECISION F028 D3 (2) — an extension folded before the run reaches the very next safe point
+# ---------------------------------------------------------------------------
+
+
+def _shortfall_counters() -> BudgetCounters:
+    return BudgetCounters(
+        provider_calls=1, measured_call_count=1, unmeasured_call_count=0,
+        measured_token_total=1000, actual_sources=("pingpong_actuals",),
+        measured_cost_usd=0.90, priced_call_count=1)
+
+
+def _priced_config() -> PredictiveBudgetConfig:
+    return PredictiveBudgetConfig(
+        price_basis_usd_per_1k_tokens=0.01,
+        class_default_tokens={"low": 8000, "medium": 32000, "high": 120000})
+
+
+class TestBudgetExtensionReachesThePredictiveCheck:
+    def test_the_extended_limit_reaches_every_predictive_call_and_the_job_records_it(
+            self, root, repo, monkeypatch):
+        job_id = _save_job(root, [_task("A", [])], repo_path=str(repo))
+        job = load_job_plan(job_id, root)
+        job.budgets = {"max_cost_usd": 1.00}
+        save_job_plan(job, root)
+
+        call = _FakeCall([json.dumps({
+            "schema_v": "task_injection_draft_v1", "title": "Add the thing",
+            "goal": "do the thing", "acceptance": ["it happens"], "est_tokens_band": "M",
+            "files_hint": [], "rationale": "because the operator asked",
+        })])
+        draft = ti.draft_task_injection(
+            job, "add a widget", call_fn=call, budgets=JobBudgets(max_cost_usd=1.00),
+            counters=_shortfall_counters(), config=_priced_config(), actor="alice",
+            control_root_path=_control())
+        assert draft["outcome"] == "shortfall"
+
+        answered = ti.answer_injection_shortfall(
+            job, draft["draft_id"], "extend_budget", actor="alice",
+            budgets=JobBudgets(max_cost_usd=1.00), counters=_shortfall_counters(),
+            config=_priced_config(), control_root_path=_control())
+        assert answered["outcome"] == "drafted"
+        assert answered["budget_extend_to_usd"] == 1.22
+
+        confirmed = ti.confirm_task_injection(
+            job, answered["confirm_token"], actor="alice", control_root_path=_control())
+        assert confirmed["outcome"] == "confirmed"
+
+        seen_limits: list[float | None] = []
+        real_predict = budget_guard.predict_next_task_cost
+
+        def _recording_predict(budgets, counters, *, band, config):
+            seen_limits.append(budgets.max_cost_usd if budgets is not None else None)
+            return real_predict(budgets, counters, band=band, config=config)
+
+        monkeypatch.setattr(budget_guard, "predict_next_task_cost", _recording_predict)
+
+        done = run_job(job_id, builder_provider=_pass_provider(),
+                       reviewer_provider=_pass_provider(), max_rounds=1, repair_rounds=0)
+
+        assert done.state == JOB_COMPLETED
+        assert len(done.tasks) == 2
+        assert seen_limits, "the predictive check never ran"
+        assert all(limit == 1.22 for limit in seen_limits)
+        assert done.budgets["max_cost_usd"] == 1.22

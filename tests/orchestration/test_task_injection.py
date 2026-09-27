@@ -11,6 +11,7 @@ import hashlib
 import json
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -123,13 +124,21 @@ def _drafted(tmp_path: Path, *, job: pj.JobPlan | None = None, text: str = "add 
     return job, answer
 
 
+_NOT_GIVEN = object()  # a sentinel: omit `budget_extend_to_usd` entirely unless asked for
+
+
 def _confirmed_record(*, task_id: str = "INJ1", depends_on: tuple[str, ...] = (),
                       actor: str = "alice", draft_id: str = "draftabc00000001",
                       confirmed_at: str = "2026-01-01T00:00:00+00:00",
-                      basis: str = "frontier_default") -> dict:
+                      basis: str = "frontier_default",
+                      budget_extend_to_usd: Any = _NOT_GIVEN) -> dict:
     """A confirmed-injection record shaped exactly as ``confirm_task_injection`` writes one —
-    built directly so ``apply_injection_to_job`` (S4) can be tested independent of S3."""
-    return {
+    built directly so ``apply_injection_to_job`` (S4) can be tested independent of S3.
+
+    ``budget_extend_to_usd`` is omitted entirely by default, exactly as it was before DECISION
+    F028 D3 (2): a caller exercising the extension passes a real value explicitly.
+    """
+    record = {
         "draft_id": draft_id,
         "task": {
             "id": task_id, "title": "Add the thing", "goal": "do the thing",
@@ -144,6 +153,9 @@ def _confirmed_record(*, task_id: str = "INJ1", depends_on: tuple[str, ...] = ()
         "actor": actor,
         "confirmed_at": confirmed_at,
     }
+    if budget_extend_to_usd is not _NOT_GIVEN:
+        record["budget_extend_to_usd"] = budget_extend_to_usd
+    return record
 
 
 def _injected_tasks_dir(tmp_path: Path, job_id: str) -> Path:
@@ -308,7 +320,7 @@ class TestInjectionBudgetCheckAndShortfallSeed:
         assert check["shortfall"] is True
         seed = ti.shortfall_decision_seed(check)
         assert seed["shrink_band"] is None
-        assert "cannot shrink" in seed["option_labels"][seed["options"].index("shrink_task")]
+        assert "cannot shrink" in seed["option_labels"]["shrink_task"]
 
     def test_no_cost_limit_no_shortfall(self):
         check = ti.injection_budget_check(
@@ -322,6 +334,28 @@ class TestInjectionBudgetCheckAndShortfallSeed:
                  "arithmetic": "x"}
         seed = ti.shortfall_decision_seed(check)
         assert seed["extend_to_usd"] == 1.23
+
+    def test_question_and_labels_are_exact_sentences_with_a_smaller_band(self):
+        # DECISION F028 D3 (3): the labels are a mapping of complete plain sentences.
+        check = ti.injection_budget_check(
+            JobBudgets(max_cost_usd=1.00), _counters(0.90), band="M", config=_config())
+        seed = ti.shortfall_decision_seed(check)
+        assert seed["question"] == (
+            "Adding this task would go over the job's cost limit. What should happen?")
+        assert seed["option_labels"] == {
+            "extend_budget": "Raise the job's cost limit to $1.22 and add the task.",
+            "shrink_task": (
+                "Draft the task again one size smaller, as size S, and check the cost "
+                "again."),
+            "drop": "Drop this task and add nothing to the job.",
+        }
+
+    def test_shrink_label_without_a_smaller_band(self):
+        check = ti.injection_budget_check(
+            JobBudgets(max_cost_usd=1.00), _counters(0.95), band="S", config=_config())
+        seed = ti.shortfall_decision_seed(check)
+        assert seed["option_labels"]["shrink_task"] == (
+            "The task is already the smallest size, so it cannot shrink.")
 
 
 # ---------------------------------------------------------------------------
@@ -841,3 +875,339 @@ class TestApplyInjectionToJob:
         assert exc.value.code == "injection_invalid"
         assert job.task_plan == before_plan
         assert job.tasks == before_tasks
+
+    @pytest.mark.parametrize(
+        "field", ["task", "placement", "task_rationale", "draft_id", "actor", "text",
+                 "confirmed_at"])
+    def test_a_field_missing_from_the_record_raises_and_leaves_the_job_unchanged(self, field):
+        job = _job(tasks=[_task("T1")])
+        job.budgets = {"max_cost_usd": 1.00}
+        before_plan = dict(job.task_plan)
+        before_tasks = list(job.tasks)
+        before_budgets = dict(job.budgets)
+        record = _confirmed_record()
+        del record[field]
+
+        with pytest.raises(Exception):                      # noqa: BLE001 — any read failure
+            ti.apply_injection_to_job(job, record)
+
+        assert job.task_plan == before_plan
+        assert job.tasks == before_tasks
+        assert job.budgets == before_budgets
+
+
+# ---------------------------------------------------------------------------
+# R-1077 — every field `apply_injection_to_job` reads must exist, with its type, before a
+# confirmed injection is trusted (`confirmed_injections`)
+# ---------------------------------------------------------------------------
+
+
+class TestConfirmedRecordFieldValidation:
+    def _publish(self, tmp_path: Path, record: dict, *, job_id: str = "f028job0000000s") -> str:
+        raw_id = record.get("draft_id")
+        name_id = raw_id if isinstance(raw_id, str) and raw_id else "fallbackid00000"
+        assert ti._publish_confirmed_injection(
+            job_id, name_id, record, control_root_path=tmp_path)
+        return job_id
+
+    @pytest.mark.parametrize(
+        "field", ["draft_id", "task_rationale", "text", "actor", "confirmed_at"])
+    def test_missing_string_field_raises(self, tmp_path, field):
+        record = _confirmed_record()
+        del record[field]
+        job_id = self._publish(tmp_path, record)
+        with pytest.raises(ti.TaskInjectionError):
+            ti.confirmed_injections(job_id, control_root_path=tmp_path)
+
+    @pytest.mark.parametrize(
+        "field", ["draft_id", "task_rationale", "text", "actor", "confirmed_at"])
+    def test_wrong_type_string_field_raises(self, tmp_path, field):
+        record = _confirmed_record()
+        record[field] = 5
+        job_id = self._publish(tmp_path, record)
+        with pytest.raises(ti.TaskInjectionError):
+            ti.confirmed_injections(job_id, control_root_path=tmp_path)
+
+    def test_missing_task_raises(self, tmp_path):
+        record = _confirmed_record()
+        del record["task"]
+        job_id = self._publish(tmp_path, record)
+        with pytest.raises(ti.TaskInjectionError):
+            ti.confirmed_injections(job_id, control_root_path=tmp_path)
+
+    def test_task_wrong_type_raises(self, tmp_path):
+        record = _confirmed_record()
+        record["task"] = "not a dict"
+        job_id = self._publish(tmp_path, record)
+        with pytest.raises(ti.TaskInjectionError):
+            ti.confirmed_injections(job_id, control_root_path=tmp_path)
+
+    def test_missing_placement_raises(self, tmp_path):
+        record = _confirmed_record()
+        del record["placement"]
+        job_id = self._publish(tmp_path, record)
+        with pytest.raises(ti.TaskInjectionError):
+            ti.confirmed_injections(job_id, control_root_path=tmp_path)
+
+    def test_placement_wrong_type_raises(self, tmp_path):
+        record = _confirmed_record()
+        record["placement"] = "not a dict"
+        job_id = self._publish(tmp_path, record)
+        with pytest.raises(ti.TaskInjectionError):
+            ti.confirmed_injections(job_id, control_root_path=tmp_path)
+
+    def test_placement_missing_rationale_raises(self, tmp_path):
+        record = _confirmed_record()
+        del record["placement"]["rationale"]
+        job_id = self._publish(tmp_path, record)
+        with pytest.raises(ti.TaskInjectionError):
+            ti.confirmed_injections(job_id, control_root_path=tmp_path)
+
+    def test_placement_wrong_type_rationale_raises(self, tmp_path):
+        record = _confirmed_record()
+        record["placement"]["rationale"] = 5
+        job_id = self._publish(tmp_path, record)
+        with pytest.raises(ti.TaskInjectionError):
+            ti.confirmed_injections(job_id, control_root_path=tmp_path)
+
+    def test_placement_missing_basis_raises(self, tmp_path):
+        record = _confirmed_record()
+        del record["placement"]["basis"]
+        job_id = self._publish(tmp_path, record)
+        with pytest.raises(ti.TaskInjectionError):
+            ti.confirmed_injections(job_id, control_root_path=tmp_path)
+
+    def test_placement_wrong_type_basis_raises(self, tmp_path):
+        record = _confirmed_record()
+        record["placement"]["basis"] = 5
+        job_id = self._publish(tmp_path, record)
+        with pytest.raises(ti.TaskInjectionError):
+            ti.confirmed_injections(job_id, control_root_path=tmp_path)
+
+    def test_absent_budget_extend_to_usd_is_valid(self, tmp_path):
+        record = _confirmed_record()
+        job_id = self._publish(tmp_path, record)
+        [got] = ti.confirmed_injections(job_id, control_root_path=tmp_path)
+        assert "budget_extend_to_usd" not in got
+
+    def test_budget_extend_to_usd_none_is_valid(self, tmp_path):
+        record = _confirmed_record(budget_extend_to_usd=None)
+        job_id = self._publish(tmp_path, record)
+        [got] = ti.confirmed_injections(job_id, control_root_path=tmp_path)
+        assert got["budget_extend_to_usd"] is None
+
+    def test_budget_extend_to_usd_valid_number_is_accepted(self, tmp_path):
+        record = _confirmed_record(budget_extend_to_usd=1.5)
+        job_id = self._publish(tmp_path, record)
+        [got] = ti.confirmed_injections(job_id, control_root_path=tmp_path)
+        assert got["budget_extend_to_usd"] == 1.5
+
+    @pytest.mark.parametrize("bad", [0, -1.0, True, "1.22"])
+    def test_budget_extend_to_usd_invalid_value_raises(self, tmp_path, bad):
+        record = _confirmed_record(budget_extend_to_usd=bad)
+        job_id = self._publish(tmp_path, record)
+        with pytest.raises(ti.TaskInjectionError):
+            ti.confirmed_injections(job_id, control_root_path=tmp_path)
+
+
+# ---------------------------------------------------------------------------
+# DECISION F028 D3 (2) — the extension: raised, never created, never lowered
+# ---------------------------------------------------------------------------
+
+
+class TestApplyInjectionToJobBudgetExtension:
+    def test_raises_a_lower_limit_to_the_extension(self):
+        job = _job(tasks=[_task("T1")])
+        job.budgets = {"max_cost_usd": 1.00}
+
+        ti.apply_injection_to_job(job, _confirmed_record(budget_extend_to_usd=1.22))
+
+        assert job.budgets["max_cost_usd"] == 1.22
+        [entry] = job.task_plan[EDIT_LOG_KEY]
+        assert entry["injection"]["budget_extend_to_usd"] == 1.22
+
+    def test_never_lowers_an_already_higher_limit(self):
+        job = _job(tasks=[_task("T1")])
+        job.budgets = {"max_cost_usd": 2.00}
+
+        ti.apply_injection_to_job(job, _confirmed_record(budget_extend_to_usd=1.22))
+
+        assert job.budgets["max_cost_usd"] == 2.00
+
+    def test_never_creates_a_limit_on_a_job_without_one(self):
+        job = _job(tasks=[_task("T1")])
+        assert job.budgets is None
+
+        ti.apply_injection_to_job(job, _confirmed_record(budget_extend_to_usd=1.22))
+
+        assert job.budgets is None
+
+    def test_no_extension_named_leaves_the_limit_and_the_injection_block_untouched(self):
+        job = _job(tasks=[_task("T1")])
+        job.budgets = {"max_cost_usd": 1.00}
+
+        ti.apply_injection_to_job(job, _confirmed_record())
+
+        assert job.budgets == {"max_cost_usd": 1.00}
+        [entry] = job.task_plan[EDIT_LOG_KEY]
+        assert "budget_extend_to_usd" not in entry["injection"]
+
+
+# ---------------------------------------------------------------------------
+# DECISION F028 D3 (1) — `answer_injection_shortfall`
+# ---------------------------------------------------------------------------
+
+
+def _drafted_shortfall(tmp_path: Path, *, job: pj.JobPlan | None = None, band: str = "M",
+                       counters: BudgetCounters | None = None,
+                       now: datetime = _FIXED_NOW) -> tuple[pj.JobPlan, dict]:
+    """A job with one freshly drafted injection whose check shortfalls: ``(job, answer)``."""
+    job = job if job is not None else _job()
+    call = _FakeCall([_draft_json(est_tokens_band=band)])
+    answer = ti.draft_task_injection(
+        job, "add a widget", call_fn=call, budgets=JobBudgets(max_cost_usd=1.00),
+        counters=counters if counters is not None else _counters(0.90), config=_config(),
+        actor="alice", now=now, control_root_path=tmp_path)
+    assert answer["outcome"] == "shortfall"
+    return job, answer
+
+
+class TestAnswerInjectionShortfall:
+    def test_a_terminal_job_answers_job_terminal_and_writes_nothing(self, tmp_path):
+        job, answer = _drafted_shortfall(tmp_path)
+        job.state = pj.RunState.COMPLETED
+
+        result = ti.answer_injection_shortfall(
+            job, answer["draft_id"], "drop", actor="bob",
+            budgets=JobBudgets(max_cost_usd=1.00), counters=_counters(0.90), config=_config(),
+            now=_FIXED_NOW, control_root_path=tmp_path)
+
+        assert result["outcome"] == "refused" and result["code"] == "job_terminal"
+        assert not (tmp_path / "jobs" / job.job_id / ti.INJECTION_ANSWERS_DIRNAME).exists()
+
+    def test_an_unknown_draft_answers_draft_unknown(self, tmp_path):
+        job = _job()
+        result = ti.answer_injection_shortfall(
+            job, "deadbeefdeadbeef", "drop", actor="bob", budgets=JobBudgets(),
+            counters=_counters(None), config=_config(price_basis=None),
+            control_root_path=tmp_path)
+        assert result["outcome"] == "refused" and result["code"] == "draft_unknown"
+
+    def test_a_confirmable_draft_answers_draft_not_in_shortfall(self, tmp_path):
+        job, answer = _drafted(tmp_path)
+        result = ti.answer_injection_shortfall(
+            job, answer["draft_id"], "drop", actor="bob", budgets=JobBudgets(),
+            counters=_counters(None), config=_config(price_basis=None), now=_FIXED_NOW,
+            control_root_path=tmp_path)
+        assert result["outcome"] == "refused" and result["code"] == "draft_not_in_shortfall"
+
+    def test_an_unknown_option_answers_unknown_option(self, tmp_path):
+        job, answer = _drafted_shortfall(tmp_path)
+        result = ti.answer_injection_shortfall(
+            job, answer["draft_id"], "explode", actor="bob",
+            budgets=JobBudgets(max_cost_usd=1.00), counters=_counters(0.90), config=_config(),
+            now=_FIXED_NOW, control_root_path=tmp_path)
+        assert result["outcome"] == "refused" and result["code"] == "unknown_option"
+
+    def test_cannot_shrink_when_already_the_smallest_size(self, tmp_path):
+        job, answer = _drafted_shortfall(tmp_path, band="S", counters=_counters(0.95))
+        result = ti.answer_injection_shortfall(
+            job, answer["draft_id"], "shrink_task", actor="bob",
+            budgets=JobBudgets(max_cost_usd=1.00), counters=_counters(0.95), config=_config(),
+            now=_FIXED_NOW, control_root_path=tmp_path)
+        assert result["outcome"] == "refused" and result["code"] == "cannot_shrink"
+
+    def test_drop_answers_dropped_and_writes_one_answer_file(self, tmp_path):
+        job, answer = _drafted_shortfall(tmp_path)
+        result = ti.answer_injection_shortfall(
+            job, answer["draft_id"], "drop", actor="bob",
+            budgets=JobBudgets(max_cost_usd=1.00), counters=_counters(0.90), config=_config(),
+            now=_FIXED_NOW, control_root_path=tmp_path)
+
+        assert result == {"outcome": "dropped", "job_id": job.job_id,
+                          "draft_id": answer["draft_id"], "answered_at": result["answered_at"]}
+        answers_dir = tmp_path / "jobs" / job.job_id / ti.INJECTION_ANSWERS_DIRNAME
+        assert len(list(answers_dir.iterdir())) == 1
+
+    def test_a_second_answer_is_refused_already_answered(self, tmp_path):
+        job, answer = _drafted_shortfall(tmp_path)
+        first = ti.answer_injection_shortfall(
+            job, answer["draft_id"], "drop", actor="bob",
+            budgets=JobBudgets(max_cost_usd=1.00), counters=_counters(0.90), config=_config(),
+            now=_FIXED_NOW, control_root_path=tmp_path)
+        assert first["outcome"] == "dropped"
+
+        second = ti.answer_injection_shortfall(
+            job, answer["draft_id"], "shrink_task", actor="bob",
+            budgets=JobBudgets(max_cost_usd=1.00), counters=_counters(0.90), config=_config(),
+            now=_FIXED_NOW, control_root_path=tmp_path)
+        assert second["outcome"] == "refused" and second["code"] == "already_answered"
+
+    def test_shrink_task_from_m_to_s_answers_a_confirmable_derived_draft(self, tmp_path):
+        job, answer = _drafted_shortfall(tmp_path, band="M", counters=_counters(0.90))
+
+        result = ti.answer_injection_shortfall(
+            job, answer["draft_id"], "shrink_task", actor="bob",
+            budgets=JobBudgets(max_cost_usd=1.00), counters=_counters(0.90), config=_config(),
+            now=_FIXED_NOW, control_root_path=tmp_path)
+
+        assert result["outcome"] == "drafted"
+        assert result["task"]["est_tokens_band"] == "S"
+        assert result["confirm_token"] == result["draft_id"]
+        assert result["derived_from"] == answer["draft_id"]
+        assert result["answer"] == "shrink_task"
+        assert result["budget_extend_to_usd"] is None
+        assert result["budget_check"]["shortfall"] is False
+
+        record = ti.read_injection_draft(job.job_id, result["draft_id"], now=_FIXED_NOW,
+                                         control_root_path=tmp_path)
+        assert record["status"] == "confirmable"
+        assert record["derived_from"] == answer["draft_id"]
+
+    def test_shrink_task_from_l_to_m_is_still_a_shortfall(self, tmp_path):
+        job, answer = _drafted_shortfall(tmp_path, band="L", counters=_counters(0.90))
+
+        result = ti.answer_injection_shortfall(
+            job, answer["draft_id"], "shrink_task", actor="bob",
+            budgets=JobBudgets(max_cost_usd=1.00), counters=_counters(0.90), config=_config(),
+            now=_FIXED_NOW, control_root_path=tmp_path)
+
+        assert result["outcome"] == "shortfall"
+        assert result["task"]["est_tokens_band"] == "M"
+        assert result["confirm_token"] is None
+        assert result["decision_seed"] is not None
+        assert result["budget_check"]["shortfall"] is True
+
+        record = ti.read_injection_draft(job.job_id, result["draft_id"], now=_FIXED_NOW,
+                                         control_root_path=tmp_path)
+        assert record["status"] == "needs_decision"
+
+    def test_extend_budget_answers_a_confirmable_draft_with_no_shortfall(self, tmp_path):
+        job, answer = _drafted_shortfall(tmp_path, band="M", counters=_counters(0.90))
+
+        result = ti.answer_injection_shortfall(
+            job, answer["draft_id"], "extend_budget", actor="bob",
+            budgets=JobBudgets(max_cost_usd=1.00), counters=_counters(0.90), config=_config(),
+            now=_FIXED_NOW, control_root_path=tmp_path)
+
+        assert result["outcome"] == "drafted"
+        assert result["budget_extend_to_usd"] == 1.22
+        assert result["budget_check"]["shortfall"] is False
+        assert result["task"]["est_tokens_band"] == "M"
+        assert result["confirm_token"] == result["draft_id"]
+
+        record = ti.read_injection_draft(job.job_id, result["draft_id"], now=_FIXED_NOW,
+                                         control_root_path=tmp_path)
+        assert record["status"] == "confirmable"
+        assert record["budget_extend_to_usd"] == 1.22
+
+    def test_the_old_shortfall_draft_still_refuses_confirmation(self, tmp_path):
+        job, answer = _drafted_shortfall(tmp_path, band="M", counters=_counters(0.90))
+        ti.answer_injection_shortfall(
+            job, answer["draft_id"], "extend_budget", actor="bob",
+            budgets=JobBudgets(max_cost_usd=1.00), counters=_counters(0.90), config=_config(),
+            now=_FIXED_NOW, control_root_path=tmp_path)
+
+        result = ti.confirm_task_injection(
+            job, answer["draft_id"], actor="bob", now=_FIXED_NOW, control_root_path=tmp_path)
+        assert result["outcome"] == "refused" and result["code"] == "draft_needs_decision"
