@@ -112,19 +112,16 @@ def _print_module_files(worktree: Path) -> bool:
 
 
 def _failed_count_and_names(output: str) -> tuple[int, list[str]]:
+    # The summary line's shape varies with what else ran ("N failed, M passed
+    # in Xs" vs a bare "N failed in Xs" when nothing in the run passed), so
+    # counting the FAILED lines themselves — one per failing node id,
+    # deduplicated — is what stays correct across both.
     failing = sorted({
         line.split(" ", 1)[1].split(" - ", 1)[0].strip()
         for line in output.splitlines()
         if line.startswith("FAILED ")
     })
-    failed_count = 0
-    for line in output.splitlines():
-        if " failed" in line and ("passed" in line or "error" in line or line.strip().endswith("failed")):
-            for token in line.split(","):
-                token = token.strip()
-                if token.endswith("failed"):
-                    failed_count = int(token.split()[0])
-    return failed_count, failing
+    return len(failing), failing
 
 
 def _apply_edit(path: Path, from_text: str, to_text: str, label: str) -> bytes | None:
