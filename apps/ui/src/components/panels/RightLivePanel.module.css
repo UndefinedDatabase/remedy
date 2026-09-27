@@ -229,17 +229,27 @@
 
 .emptyState { font-size: 13px; color: var(--remedy-muted); margin: 0; }
 
-.proposeBtn {
+/* DECISION F028 D7 (1) — the "+ Add Task" ghost row (ux_spec.md §8's "+ Add
+   Task" line, replacing the propose button its own rule deleted): full-width
+   ghost row inside the tasks card, 13/600 ink-soft with a leading plus, hover
+   turns the accent text (§8); disabled is 45% opacity with an honest tooltip
+   (§14), the same pairing `.pauseButton:disabled` above and `.ghostButton` in
+   `DetailPopover.module.css` both use. */
+.addTaskRow {
   margin-top: 10px;
+  width: 100%;
   height: 36px;
   border-radius: 10px;
-  border: 1px dashed var(--remedy-line-strong);
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--remedy-muted);
-  background: rgba(255, 255, 255, 0.4);
+  border: none;
+  background: none;
+  font: 600 13px var(--remedy-font-ui);
+  color: var(--remedy-ink-soft);
+  text-align: center;
+  cursor: pointer;
 }
-.proposeBtn:hover { color: var(--remedy-blue-strong); border-color: rgba(76,131,255,.4); }
+.addTaskRow:hover { color: var(--remedy-blue-strong); }
+.addTaskRow:disabled { opacity: 0.45; cursor: not-allowed; }
+.addTaskRow:focus-visible { outline: 2px solid var(--remedy-blue-strong); outline-offset: 2px; }
 
 /* THE PAUSE/RESUME CONTROL (DECISION F025 D4), directly under the NowCard for
    the job and inside DetailPopover for a task. The button takes

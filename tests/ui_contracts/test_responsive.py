@@ -700,12 +700,14 @@ class TestRightPanelCards:
         assert "completed" in content
 
     def test_no_add_task_button(self):
-        # New design pack: the "+ Add Task" placeholder was removed; task
-        # creation is CLI-only. The propose affordance copies a command instead.
+        # DECISION F028 D7 (1): the "+ Add Task" row is real now, replacing the
+        # propose button that copied a retired CLI command — AddTaskButton.tsx
+        # itself still never existed (no UI task creation through THAT file).
         f = UI_SRC / "components" / "panels" / "AddTaskButton.tsx"
         assert not f.exists(), "AddTaskButton.tsx must be removed (no UI task creation)"
         checklist = (UI_SRC / "components" / "panels" / "TaskChecklistCard.tsx").read_text(encoding="utf-8")
-        assert "remedy task propose" in checklist
+        assert "remedy task propose" not in checklist
+        assert "+ Add Task" in checklist
 
 
 # ---------------------------------------------------------------------------

@@ -1,0 +1,126 @@
+/* DECISION F028 D7 (2) — the "Add Task" sheet: a right-anchored glass sheet
+   over the cockpit, shaped exactly as `LessonsOverlay.module.css`'s `.overlay`
+   is (same glass, radius, line and shadow tokens, so the sheet reads as the
+   same surface), narrower because this sheet holds one form, not two panes.
+   Unlike that file, `--remedy-z-overlay` is used as a `var()` directly: the
+   token now exists in `apps/ui/src/styles/tokens.css` (`EvidencePanel.module.css`
+   already reads it the same way), so no R-0661 substitution is needed here. */
+.sheet {
+  position: fixed;
+  top: 24px;
+  right: 24px;
+  bottom: 24px;
+  width: min(420px, calc(100vw - 48px));
+  z-index: var(--remedy-z-overlay);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 18px 20px;
+  overflow-y: auto;
+  background: var(--remedy-glass-bg-strong);
+  border: 1px solid var(--remedy-glass-border);
+  border-radius: var(--remedy-radius-xl);
+  box-shadow: var(--remedy-shadow-card);
+  backdrop-filter: blur(14px);
+}
+
+.header { display: flex; align-items: center; justify-content: space-between; }
+.header h2 {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--remedy-ink);
+}
+.close { font-size: 12px; color: var(--remedy-muted); padding: 4px 8px; }
+.close:focus-visible { outline: 2px solid var(--remedy-blue-strong); outline-offset: 2px; }
+
+/* THE FORM (the text area and the "must follow" select), the same field
+   shape `TaskVetoForm.tsx`'s `.editField` takes from `DetailPopover.module.css`,
+   restated here because this sheet carries its own style sheet. */
+.form { display: flex; flex-direction: column; gap: 10px; }
+.field { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--remedy-muted); }
+.field textarea,
+.field select {
+  border: 1px solid var(--remedy-line);
+  border-radius: var(--remedy-radius-sm);
+  background: var(--remedy-card);
+  color: var(--remedy-ink-strong);
+  font: 500 12.5px var(--remedy-font-ui);
+  padding: 8px 10px;
+}
+.field textarea { min-height: 96px; resize: vertical; }
+.field textarea:focus-visible,
+.field select:focus-visible { outline: 2px solid var(--remedy-blue-strong); outline-offset: 2px; }
+
+.draftPill {
+  align-self: flex-start;
+  height: 32px;
+  padding: 0 16px;
+  border: none;
+  border-radius: var(--remedy-radius-pill);
+  background: var(--remedy-blue);
+  color: var(--remedy-card);
+  font: 700 12px var(--remedy-font-ui);
+  cursor: pointer;
+}
+.draftPill:disabled { opacity: .45; cursor: not-allowed; }
+.draftPill:focus-visible { outline: 2px solid var(--remedy-blue-strong); outline-offset: 2px; }
+
+/* THE REVIEW (a drafted or a shortfall body, read through `injectDraftView`
+   alone — this file never re-derives a sentence). */
+.review { display: flex; flex-direction: column; gap: 8px; }
+.review h3 { margin: 0; font-size: 15px; color: var(--remedy-ink-strong); }
+.goal { margin: 0; font-size: 13px; line-height: 1.5; color: var(--remedy-ink); }
+.acceptance { margin: 0; padding-left: 18px; font-size: 12.5px; line-height: 1.5; color: var(--remedy-ink); }
+.detail { margin: 0; font-size: 12px; line-height: 1.45; color: var(--remedy-muted); }
+/* A fence warning is not told by colour alone (ux_spec.md §14): the orange
+   text carries a left rule as well as the tint, the same pairing
+   `.decisionDownside` in `RightLivePanel.module.css` uses for its own
+   downside line. */
+.fenceWarning {
+  margin: 0;
+  border-left: 2px solid var(--remedy-orange-400);
+  padding-left: 8px;
+  font-size: 11.5px;
+  line-height: 1.45;
+  color: var(--remedy-orange-400);
+}
+
+.actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 4px; }
+.question { flex-basis: 100%; margin: 0; font-size: 12.5px; line-height: 1.45; color: var(--remedy-ink-strong); }
+
+.confirmPill {
+  height: 32px;
+  padding: 0 16px;
+  border: none;
+  border-radius: var(--remedy-radius-pill);
+  background: var(--remedy-blue);
+  color: var(--remedy-card);
+  font: 700 12px var(--remedy-font-ui);
+  cursor: pointer;
+}
+.confirmPill:disabled { opacity: .45; cursor: not-allowed; }
+.confirmPill:focus-visible { outline: 2px solid var(--remedy-blue-strong); outline-offset: 2px; }
+
+.ghostButton {
+  height: 32px;
+  padding: 0 14px;
+  border: none;
+  border-radius: var(--remedy-radius-pill);
+  background: transparent;
+  color: var(--remedy-ink-soft);
+  font: 600 12px var(--remedy-font-ui);
+  cursor: pointer;
+}
+.ghostButton:hover { background: var(--remedy-blue-50); }
+.ghostButton:disabled { opacity: .45; cursor: not-allowed; }
+.ghostButton:focus-visible { outline: 2px solid var(--remedy-blue-strong); outline-offset: 2px; }
+
+/* THE ONE RESULT SENTENCE (finding R-0686's mechanism): out of flow while
+   empty, never `display: none` — see the header comment in
+   `RightLivePanel.module.css`'s own `.decisionOutcome` for the full reasoning
+   this sheet reuses. */
+.result { margin: 0; font-size: 12px; line-height: 1.45; color: var(--remedy-ink-soft); }
+.result:empty { position: absolute; }
