@@ -76,18 +76,30 @@ def _page_events(job) -> list[dict]:
 
 
 _TASK_FIELD_RE = re.compile(r'\b(id|label|state):\s*"([^"]*)"')
+# DECISION F288 D3 / R-1075: an attempt kind's frame carries an optional
+# `attempt_id` directly after `task_id` — the round's own re-capture writes
+# one for every kind in `ATTEMPT_EVENT_KINDS` (packages/orchestration/ui_server.py).
 _FRAME_RE = re.compile(
     r'event:\s*\{\s*seq:\s*(\d+),\s*event:\s*"([^"]*)",\s*timestamp:\s*"[^"]*",\s*'
-    r'outcome:\s*"([^"]*)",\s*task_id:\s*"([^"]*)"\s*\}'
+    r'outcome:\s*"([^"]*)",\s*task_id:\s*"([^"]*)"'
+    r'(?:,\s*attempt_id:\s*"([^"]*)")?\s*\}'
 )
+# The outer wrapper's own opening, one per frame array ENTRY — never the
+# inner envelope's — so a frame `_FRAME_RE` failed to match (an R-1075 class
+# bug: a re-captured field it does not know about) shows up as a count
+# mismatch instead of silently dropping out of the comparison.
+_FRAME_OPENING_RE = re.compile(r'^\s*\{ seq: \d+, event: \{', re.MULTILINE)
 
 
-def _parse_recording() -> tuple[list[tuple[str, str, str]], list[tuple[int, str, str, str]]]:
+def _parse_recording() -> tuple[
+    list[tuple[str, str, str]], list[tuple[int, str, str, str, str]]
+]:
     """Read the COMMITTED recording as TEXT and pull out, by regex:
     - tasks: (id, label, state) triples, in BRAIN_DEMO_TASKS's own order;
-    - frames: (seq, event, outcome, task_id) tuples, in BRAIN_DEMO_FRAMES's
-      own order (the frame's INNER event object — the flat shape
-      `_build_events_since_json` itself serves)."""
+    - frames: (seq, event, outcome, task_id, attempt_id) tuples, in
+      BRAIN_DEMO_FRAMES's own order (the frame's INNER event object — the
+      flat shape `_build_events_since_json` itself serves); `attempt_id` is
+      "" for a kind that carries none."""
     text = RECORDING_PATH.read_text()
     tasks_block_start = text.index("BRAIN_DEMO_TASKS")
     frames_block_start = text.index("BRAIN_DEMO_FRAMES")
@@ -106,9 +118,15 @@ def _parse_recording() -> tuple[list[tuple[str, str, str]], list[tuple[int, str,
         tasks.append((current["id"], current["label"], current["state"]))
 
     frames = [
-        (int(seq), event, outcome, task_id)
-        for seq, event, outcome, task_id in _FRAME_RE.findall(frames_text)
+        (int(seq), event, outcome, task_id, attempt_id)
+        for seq, event, outcome, task_id, attempt_id in _FRAME_RE.findall(frames_text)
     ]
+    frame_openings = len(_FRAME_OPENING_RE.findall(frames_text))
+    assert len(frames) == frame_openings, (
+        f"_FRAME_RE matched {len(frames)} frames but the recording holds "
+        f"{frame_openings} — a frame's shape changed and the regex silently "
+        "dropped it (R-1075)"
+    )
     return tasks, frames
 
 
@@ -131,7 +149,7 @@ def test_live_fake_job_renders_identically_to_the_demo_recording(tmp_path, monke
     # which would leak into every later test in the same worker process.
     monkeypatch.setenv("REMEDY_DATA_DIR", str(data_dir))
     from packages.orchestration.pingpong_job import load_job_plan
-    from packages.orchestration.ui_server import _build_dashboard
+    from packages.orchestration.ui_server import ATTEMPT_EVENT_KINDS, _build_dashboard
 
     job_before = load_job_plan(job_id)
     assert job_before is not None
@@ -166,11 +184,16 @@ def test_live_fake_job_renders_identically_to_the_demo_recording(tmp_path, monke
     ]
     recording_projected = [
         (seq, event, outcome, recording_task_ids.index(task_id))
-        for seq, event, outcome, task_id in recording_frames
+        for seq, event, outcome, task_id, _attempt_id in recording_frames
     ]
     assert live_projected == recording_projected
 
     # --- every live frame's key set is exactly this, no more, no less ------
+    # DECISION F288 D3: an attempt kind's frame also carries `attempt_id`.
     expected_keys = {"seq", "event", "timestamp", "outcome", "task_id"}
+    expected_attempt_keys = expected_keys | {"attempt_id"}
     for f in live_frames:
-        assert set(f.keys()) == expected_keys
+        if f["event"] in ATTEMPT_EVENT_KINDS:
+            assert set(f.keys()) == expected_attempt_keys
+        else:
+            assert set(f.keys()) == expected_keys

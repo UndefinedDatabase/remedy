@@ -27,8 +27,8 @@ import {
 const T1: readonly BrainTaskSeed[] = [{ id: "t1", status: "pending", rank: 0 }];
 
 const DEMO_TASKS: readonly BrainTaskSeed[] = [
-  { id: "a7a8f67f1b9a4814", status: "pending", rank: 0 },
-  { id: "1965fb3f26b64fe7", status: "pending", rank: 1 },
+  { id: "fe1b5b487fda490f", status: "pending", rank: 0 },
+  { id: "4b3ddac9dba846af", status: "pending", rank: 1 },
 ];
 
 describe("the phase mapping table", () => {
@@ -110,14 +110,14 @@ describe("phase boundaries per fixture", () => {
   it("the demo recording finalizes at the second task's completion", () => {
     expect(readPhases(BRAIN_DEMO_JOB_ID, DEMO_TASKS, brainDemoRows())).toEqual({
       current: "finalized",
-      lastSeq: 7,
+      lastSeq: 9,
       spans: [
         { phase: "job", startSeq: 0, endSeq: 0 },
         { phase: "planning", startSeq: 0, endSeq: 0 },
         { phase: "build", startSeq: 0, endSeq: 1 },
         { phase: "test", startSeq: 1, endSeq: 1 },
-        { phase: "review", startSeq: 1, endSeq: 7 },
-        { phase: "finalized", startSeq: 7, endSeq: null },
+        { phase: "review", startSeq: 1, endSeq: 9 },
+        { phase: "finalized", startSeq: 9, endSeq: null },
       ],
     });
   });
