@@ -2116,6 +2116,12 @@ def _safe_event_summary(seq: int, event: dict[str, Any]) -> dict[str, Any]:
     kind `plan_approved`: it carries `task_ids`, the string entries of
     `metadata["task_ids"]` in order when that is a list and `[]` otherwise,
     and every other kind's frame stays byte-identical.
+
+    `note` is DECISION F030 D3's field and it is CONDITIONAL on the event kind
+    `steering_message_received`: it carries `_steering_note_summary_payload`'s
+    four fields, its `task_id` falling back to this event's own top-level
+    `task_id` when the metadata carries none, and every other kind's frame
+    stays byte-identical.
     """
     metadata = event.get("metadata")
     nested = metadata.get("task_id", "") if isinstance(metadata, dict) else ""
@@ -2133,6 +2139,12 @@ def _safe_event_summary(seq: int, event: dict[str, Any]) -> dict[str, Any]:
         summary["attempt_id"] = attempt_id if isinstance(attempt_id, str) else ""
     if kind == BUDGET_TICK_EVENT:
         summary["budget"] = _budget_tick_summary_payload(metadata)
+    if kind == "steering_message_received":
+        note = _steering_note_summary_payload(metadata)
+        if not note["task_id"]:
+            top_level_task_id = event.get("task_id")
+            note["task_id"] = top_level_task_id if isinstance(top_level_task_id, str) else ""
+        summary["note"] = note
     if kind == "steering_message_consumed":
         summary["steering"] = _steering_ack_summary_payload(metadata)
     if kind == "task_lesson_written":
@@ -2169,6 +2181,24 @@ def _lesson_summary_payload(metadata: Any) -> dict[str, str]:
     status = meta.get("lesson_status")
     return {"run_id": str(meta.get("run_id", "")),
             "status": status if status in LESSON_STATUSES else ""}
+
+
+def _steering_note_summary_payload(metadata: Any) -> dict[str, str]:
+    """A steering note's fields for the stream (F030 T003, DECISION F030 D3).
+
+    CONDITIONAL on the event kind for the reason `_steering_ack_summary_payload`'s is: every
+    other frame stays byte-identical. It carries exactly what the operator's own feed row needs
+    to render — the message, its text, the channel it arrived on and the task it addresses — and
+    nothing else from the metadata, so a field added to the run-log event later does not reach
+    the browser by accident.
+    """
+    meta = metadata if isinstance(metadata, dict) else {}
+    return {
+        "message_id": str(meta.get("message_id", "")),
+        "text": str(meta.get("text", "")),
+        "channel": str(meta.get("channel", "")),
+        "task_id": str(meta.get("task_id", "")),
+    }
 
 
 def _steering_ack_summary_payload(metadata: Any) -> dict[str, Any]:
