@@ -140,9 +140,10 @@ class TestFrameShape:
 
 
 class TestAttemptEventKinds:
-    """DECISION F288 D1 (5) and D2 (5): the attempt id travels in the envelope for
-    exactly the kinds an attempt (one execution of a task by `run_job` or the
-    run-next path, or one test run of the test service) writes,
+    """DECISION F288 D2 (5) and this round's S1: the attempt id travels in the
+    envelope for exactly the kinds an attempt (one execution of a task by
+    `run_job` or the run-next path, one test run of the test service, or one
+    long-run cycle's repair round, heal or completion) writes,
     `ATTEMPT_EVENT_KINDS`."""
 
     def test_the_set_is_pinned_and_a_subset_of_event_names(self):
@@ -155,6 +156,7 @@ class TestAttemptEventKinds:
             "verification_passed", "verification_failed",
             "test_run_requested", "test_run_started", "test_run_completed",
             "test_run_timed_out", "test_run_blocked",
+            "cycle_repair_round", "cycle_healed", "cycle_completed",
         }
         assert mod.ATTEMPT_EVENT_KINDS <= EVENT_NAMES
 

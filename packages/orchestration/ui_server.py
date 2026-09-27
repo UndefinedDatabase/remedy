@@ -2035,9 +2035,9 @@ def _budget_tick_summary_payload(metadata: Any) -> dict[str, Any]:
     return payload
 
 
-# DECISION F288 D1 (5) and D2 (5): the kinds an attempt (one execution of a task by
-# `run_job` or the run-next path, or one test run of the test service) writes. The
-# long-run executor's repair events are round 3's.
+# DECISION F288 D1 (5), D2 (5) and D3 (1): the kinds an attempt (one execution of
+# a task by `run_job` or the run-next path, one test run of the test service, or
+# one long-run cycle's repair round, heal or completion) writes.
 ATTEMPT_EVENT_KINDS: frozenset[str] = frozenset({
     "task_run_started",
     "task_round_repaired",
@@ -2055,6 +2055,9 @@ ATTEMPT_EVENT_KINDS: frozenset[str] = frozenset({
     "test_run_completed",
     "test_run_timed_out",
     "test_run_blocked",
+    "cycle_repair_round",
+    "cycle_healed",
+    "cycle_completed",
 })
 
 

@@ -26,6 +26,7 @@ from packages.orchestration.builder_models import BuilderOutput, TaskExecutionCo
 from packages.orchestration.config import get_key_spec
 from packages.orchestration.long_run_executor import (
     DEFAULT_REPAIR_ROUNDS,
+    LEDGER_EVENT_CYCLE_COMPLETED,
     LEDGER_EVENT_CYCLE_HEALED,
     LEDGER_EVENT_CYCLE_REPAIR_ROUND,
     TERMINAL_ALL_GREEN,
@@ -637,6 +638,85 @@ class TestDefaultRepairSeamUsesTheExistingLoop:
         )
         assert result.cycles[0].repair_rounds_used == 0
         assert any("RuntimeError" in e for e in result.cycles[0].errors)
+
+
+class TestCycleEventsCarryAttemptIdAndOutcome:
+    """DECISION F288 D3 (1): a long-run cycle is an attempt named
+    ``cycle-<index>``, and its repair-round, heal and completion events carry
+    that attempt id and an outcome."""
+
+    def test_repair_round_carries_the_attempt_id_and_a_changed_outcome(
+            self, control_root):
+        job = make_job(1)
+        log = RecordingLog()
+        run_cycles(
+            job, CycleLimits(max_cycles=1, repair_rounds=2), lambda _ctx: None,
+            task_step=completing_step, verify=BreakingVerify(heals_after=1),
+            repair=FakeRepair(changed_files=("calc.py",)), clock=FakeClock(),
+            save=no_save, control_root_path=control_root, log=log,
+        )
+        round_events = log.of(LEDGER_EVENT_CYCLE_REPAIR_ROUND)
+        assert len(round_events) == 1
+        assert round_events[0]["attempt_id"] == "cycle-1"
+        assert round_events[0]["outcome"] == "changed"
+
+    def test_repair_round_carries_an_unchanged_outcome_when_nothing_changed(
+            self, control_root):
+        job = make_job(1)
+        log = RecordingLog()
+        run_cycles(
+            job, CycleLimits(max_cycles=1, repair_rounds=2), lambda _ctx: None,
+            task_step=completing_step, verify=BreakingVerify(heals_after=None),
+            repair=FakeRepair(changed_files=()), clock=FakeClock(),
+            save=no_save, control_root_path=control_root, log=log,
+        )
+        for meta in log.of(LEDGER_EVENT_CYCLE_REPAIR_ROUND):
+            assert meta["outcome"] == "unchanged"
+
+    def test_cycle_healed_carries_the_attempt_id_and_a_healed_outcome(
+            self, control_root):
+        job = make_job(1)
+        log = RecordingLog()
+        run_cycles(
+            job, CycleLimits(max_cycles=1, repair_rounds=2), lambda _ctx: None,
+            task_step=completing_step, verify=BreakingVerify(heals_after=1),
+            repair=FakeRepair(), clock=FakeClock(), save=no_save,
+            control_root_path=control_root, log=log,
+        )
+        healed_events = log.of(LEDGER_EVENT_CYCLE_HEALED)
+        assert len(healed_events) == 1
+        assert healed_events[0]["attempt_id"] == "cycle-1"
+        assert healed_events[0]["outcome"] == "healed"
+
+    def test_cycle_completed_carries_the_attempt_id_and_the_verify_result(
+            self, control_root):
+        job = make_job(1)
+        log = RecordingLog()
+        run_cycles(
+            job, CycleLimits(max_cycles=1, repair_rounds=2), lambda _ctx: None,
+            task_step=completing_step, verify=BreakingVerify(heals_after=1),
+            repair=FakeRepair(), clock=FakeClock(), save=no_save,
+            control_root_path=control_root, log=log,
+        )
+        completed_events = log.of(LEDGER_EVENT_CYCLE_COMPLETED)
+        assert len(completed_events) == 1
+        assert completed_events[0]["attempt_id"] == "cycle-1"
+        assert completed_events[0]["outcome"] == VERIFY_PASSED
+
+    def test_cycle_completed_outcome_is_the_verify_result_when_not_healed(
+            self, control_root):
+        job = make_job(1)
+        log = RecordingLog()
+        run_cycles(
+            job, CycleLimits(max_cycles=1, repair_rounds=2), lambda _ctx: None,
+            task_step=completing_step, verify=BreakingVerify(heals_after=None),
+            repair=FakeRepair(), clock=FakeClock(), save=no_save,
+            control_root_path=control_root, log=log,
+        )
+        completed_events = log.of(LEDGER_EVENT_CYCLE_COMPLETED)
+        assert len(completed_events) == 1
+        assert completed_events[0]["attempt_id"] == "cycle-1"
+        assert completed_events[0]["outcome"] == VERIFY_FAILED
 
 
 # ---------------------------------------------------------------------------
