@@ -131,12 +131,13 @@ def _confirmed_record(*, task_id: str = "INJ1", depends_on: tuple[str, ...] = ()
                       actor: str = "alice", draft_id: str = "draftabc00000001",
                       confirmed_at: str = "2026-01-01T00:00:00+00:00",
                       basis: str = "frontier_default",
-                      budget_extend_to_usd: Any = _NOT_GIVEN) -> dict:
+                      budget_extend_to_usd: Any = _NOT_GIVEN,
+                      confirmed_unseen: Any = _NOT_GIVEN) -> dict:
     """A confirmed-injection record shaped exactly as ``confirm_task_injection`` writes one —
     built directly so ``apply_injection_to_job`` (S4) can be tested independent of S3.
 
-    ``budget_extend_to_usd`` is omitted entirely by default, exactly as it was before DECISION
-    F028 D3 (2): a caller exercising the extension passes a real value explicitly.
+    ``budget_extend_to_usd`` and ``confirmed_unseen`` are each omitted entirely by default:
+    a caller exercising either passes a real value explicitly (DECISION F028 D3 (2), D4 (2)).
     """
     record = {
         "draft_id": draft_id,
@@ -155,6 +156,8 @@ def _confirmed_record(*, task_id: str = "INJ1", depends_on: tuple[str, ...] = ()
     }
     if budget_extend_to_usd is not _NOT_GIVEN:
         record["budget_extend_to_usd"] = budget_extend_to_usd
+    if confirmed_unseen is not _NOT_GIVEN:
+        record["confirmed_unseen"] = confirmed_unseen
     return record
 
 
@@ -356,6 +359,95 @@ class TestInjectionBudgetCheckAndShortfallSeed:
         seed = ti.shortfall_decision_seed(check)
         assert seed["option_labels"]["shrink_task"] == (
             "The task is already the smallest size, so it cannot shrink.")
+
+
+# ---------------------------------------------------------------------------
+# DECISION F028 D4 (3) — `injection_budget_inputs` / `injection_call_fn`, the shared
+# helpers the CLI and round 5's browser command both read.
+# ---------------------------------------------------------------------------
+
+_VALID_PERSISTED_ACTUALS_V1 = {
+    "schema_version": "1.0.0",
+    "provider_call_count": 4,
+    "actual_call_count": 3,
+    "unmeasured_call_count": 1,
+    "total_tokens": 4200,
+    "started_at": "2026-07-01T11:00:00+00:00",
+    "actual_sources": ["pingpong_live"],
+}
+
+
+class TestInjectionBudgetInputs:
+    def test_no_budgets_and_no_actuals_answers_none_and_empty_counters(self):
+        job = _job()
+        job.budgets = None
+        job.budget_actuals = None
+
+        budgets, counters, config = ti.injection_budget_inputs(job)
+
+        assert budgets is None
+        # `BudgetCounters()` stamps its own `evaluated_at` at construction, so a
+        # field-by-field comparison is used rather than `==` against a fresh instance.
+        assert counters.provider_calls == 0
+        assert counters.measured_call_count == 0
+        assert counters.measured_cost_usd is None
+        assert counters.actual_sources == ()
+        assert config is not None
+
+    def test_budgets_present_validates_into_jobbudgets(self):
+        job = _job()
+        job.budgets = {"max_cost_usd": 5.0}
+        job.budget_actuals = None
+
+        budgets, _counters_out, _config_out = ti.injection_budget_inputs(job)
+
+        assert budgets == JobBudgets(max_cost_usd=5.0)
+
+    def test_persisted_actuals_decode_into_counters(self):
+        job = _job()
+        job.budgets = None
+        job.budget_actuals = dict(_VALID_PERSISTED_ACTUALS_V1)
+
+        _budgets_out, counters, _config_out = ti.injection_budget_inputs(job)
+
+        assert counters.provider_calls == 4
+        assert counters.measured_call_count == 3
+        assert counters.actual_sources == ("pingpong_live",)
+
+    def test_config_is_the_repos_predictive_config(self):
+        job = _job()
+        job.budgets = None
+        job.budget_actuals = None
+        job.repo_path = ""
+
+        _budgets_out, _counters_out, config = ti.injection_budget_inputs(job)
+
+        assert hasattr(config, "class_default_tokens")
+
+    def test_undecodable_actuals_refuse_budget_unreadable(self):
+        job = _job()
+        job.budgets = None
+        job.budget_actuals = {"schema_version": "1.0.0"}   # missing required fields
+
+        with pytest.raises(ti.TaskInjectionRefused) as exc:
+            ti.injection_budget_inputs(job)
+        assert exc.value.code == "budget_unreadable"
+
+    def test_unreadable_budgets_refuse_budget_unreadable(self):
+        job = _job()
+        job.budgets = {"not_a_real_budget_field": 1}
+        job.budget_actuals = None
+
+        with pytest.raises(ti.TaskInjectionRefused) as exc:
+            ti.injection_budget_inputs(job)
+        assert exc.value.code == "budget_unreadable"
+
+
+class TestInjectionCallFn:
+    def test_returns_none_without_ollama(self) -> None:
+        """`tests/conftest.py::_no_live_ollama_reach` (autouse) already refuses a live
+        Ollama connection for every unmarked test."""
+        assert ti.injection_call_fn() is None
 
 
 # ---------------------------------------------------------------------------
@@ -777,6 +869,28 @@ class TestConfirmTaskInjection:
         assert record["actor"] == "bob"
         assert record["confirmed_at"] == result["confirmed_at"]
 
+    def test_unseen_true_is_stored_on_disk(self, tmp_path):
+        job, answer = _drafted(tmp_path)
+
+        result = ti.confirm_task_injection(
+            job, answer["confirm_token"], actor="bob", unseen=True, now=_FIXED_NOW,
+            control_root_path=tmp_path)
+
+        assert result["outcome"] == "confirmed"
+        [record] = ti.confirmed_injections(job.job_id, control_root_path=tmp_path)
+        assert record["confirmed_unseen"] is True
+
+    def test_unseen_defaults_to_false(self, tmp_path):
+        job, answer = _drafted(tmp_path)
+
+        result = ti.confirm_task_injection(
+            job, answer["confirm_token"], actor="bob", now=_FIXED_NOW,
+            control_root_path=tmp_path)
+
+        assert result["outcome"] == "confirmed"
+        [record] = ti.confirmed_injections(job.job_id, control_root_path=tmp_path)
+        assert record["confirmed_unseen"] is False
+
 
 # ---------------------------------------------------------------------------
 # S4/T002 — `apply_injection_to_job`
@@ -819,7 +933,12 @@ class TestApplyInjectionToJob:
             "draft_id": "draftabc00000001", "task_id": new_task.task_id, "planned_id": "INJ1",
             "origin": ti.ORIGIN_HUMAN_INJECTED, "basis": "frontier_default",
             "plan_rationale": "placed at the end", "text": "add the thing",
-            "confirmed_at": "2026-01-01T00:00:00+00:00", "dod_resync_pending": False,
+            "confirmed_at": "2026-01-01T00:00:00+00:00",
+            # DECISION F028 D4 (2): unconditional, unlike `budget_extend_to_usd` below —
+            # `_confirmed_record()` carries no `confirmed_unseen` key, so this reads its
+            # `.get(..., False)` default.
+            "confirmed_unseen": False,
+            "dod_resync_pending": False,
         }
 
     def test_an_unapproved_plan_keeps_no_approval_hash(self):
@@ -1009,6 +1128,26 @@ class TestConfirmedRecordFieldValidation:
         with pytest.raises(ti.TaskInjectionError):
             ti.confirmed_injections(job_id, control_root_path=tmp_path)
 
+    def test_absent_confirmed_unseen_is_valid(self, tmp_path):
+        record = _confirmed_record()
+        job_id = self._publish(tmp_path, record)
+        [got] = ti.confirmed_injections(job_id, control_root_path=tmp_path)
+        assert "confirmed_unseen" not in got
+
+    @pytest.mark.parametrize("value", [True, False])
+    def test_confirmed_unseen_bool_is_valid(self, tmp_path, value):
+        record = _confirmed_record(confirmed_unseen=value)
+        job_id = self._publish(tmp_path, record)
+        [got] = ti.confirmed_injections(job_id, control_root_path=tmp_path)
+        assert got["confirmed_unseen"] is value
+
+    @pytest.mark.parametrize("bad", [1, 0, "true", None])
+    def test_confirmed_unseen_mistyped_raises(self, tmp_path, bad):
+        record = _confirmed_record(confirmed_unseen=bad)
+        job_id = self._publish(tmp_path, record)
+        with pytest.raises(ti.TaskInjectionError):
+            ti.confirmed_injections(job_id, control_root_path=tmp_path)
+
 
 # ---------------------------------------------------------------------------
 # DECISION F028 D3 (2) — the extension: raised, never created, never lowered
@@ -1051,6 +1190,26 @@ class TestApplyInjectionToJobBudgetExtension:
         assert job.budgets == {"max_cost_usd": 1.00}
         [entry] = job.task_plan[EDIT_LOG_KEY]
         assert "budget_extend_to_usd" not in entry["injection"]
+
+
+class TestApplyInjectionToJobConfirmedUnseen:
+    """DECISION F028 D4 (2): the injection block always carries `confirmed_unseen`."""
+
+    def test_unseen_true_is_logged_in_the_injection_block(self):
+        job = _job(tasks=[_task("T1")])
+
+        ti.apply_injection_to_job(job, _confirmed_record(confirmed_unseen=True))
+
+        [entry] = job.task_plan[EDIT_LOG_KEY]
+        assert entry["injection"]["confirmed_unseen"] is True
+
+    def test_absent_confirmed_unseen_logs_false(self):
+        job = _job(tasks=[_task("T1")])
+
+        ti.apply_injection_to_job(job, _confirmed_record())
+
+        [entry] = job.task_plan[EDIT_LOG_KEY]
+        assert entry["injection"]["confirmed_unseen"] is False
 
 
 # ---------------------------------------------------------------------------
@@ -1200,6 +1359,35 @@ class TestAnswerInjectionShortfall:
                                          control_root_path=tmp_path)
         assert record["status"] == "confirmable"
         assert record["budget_extend_to_usd"] == 1.22
+
+    def test_extend_budget_recomputes_the_larger_amount_when_spend_grew(self, tmp_path):
+        """DECISION F028 D4 (4): spend grew from $0.90 (draft time) to $0.98 (answer time)
+        at band M — the seed said $1.22; the re-check says $1.30, and $1.30 wins."""
+        job, answer = _drafted_shortfall(tmp_path, band="M", counters=_counters(0.90))
+        assert answer["decision_seed"]["extend_to_usd"] == 1.22
+
+        result = ti.answer_injection_shortfall(
+            job, answer["draft_id"], "extend_budget", actor="bob",
+            budgets=JobBudgets(max_cost_usd=1.00), counters=_counters(0.98), config=_config(),
+            now=_FIXED_NOW, control_root_path=tmp_path)
+
+        assert result["outcome"] == "drafted"
+        assert result["budget_extend_to_usd"] == 1.30
+        assert result["budget_check"]["shortfall"] is False
+
+    def test_extend_budget_keeps_the_seeds_amount_when_it_is_larger(self, tmp_path):
+        """Spend at answer time ($0.50) is LOWER than at draft time ($0.90) — the re-check's
+        own sum ($0.82) is smaller than the seed's $1.22, so the seed's amount wins."""
+        job, answer = _drafted_shortfall(tmp_path, band="M", counters=_counters(0.90))
+        assert answer["decision_seed"]["extend_to_usd"] == 1.22
+
+        result = ti.answer_injection_shortfall(
+            job, answer["draft_id"], "extend_budget", actor="bob",
+            budgets=JobBudgets(max_cost_usd=1.00), counters=_counters(0.50), config=_config(),
+            now=_FIXED_NOW, control_root_path=tmp_path)
+
+        assert result["outcome"] == "drafted"
+        assert result["budget_extend_to_usd"] == 1.22
 
     def test_the_old_shortfall_draft_still_refuses_confirmation(self, tmp_path):
         job, answer = _drafted_shortfall(tmp_path, band="M", counters=_counters(0.90))
