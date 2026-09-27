@@ -1,0 +1,1 @@
+- [x] F028 — Task injection (T001–T003 complete; accepted 2026-09-27 · live review PASS — ACCEPTED · Evidence job f028r11e1001 · package remedy-review-20260927-132129-READY_FOR_REVIEW.zip · SHA-256 904723bf332d1f076cdfde262f84609fada02ca86635f3ef09a88c3d025692fe · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD 9cfd84d1217c24057173f4b9a8db03734c174c09)

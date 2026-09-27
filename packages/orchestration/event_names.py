@@ -125,6 +125,7 @@ EVENT_NAMES: frozenset[str] = frozenset(
         "steering_message_received",
         "task_completed",
         "task_decision_answered",
+        "task_injected",
         "task_lesson_written",
         "task_needs_decision",
         "task_paused",

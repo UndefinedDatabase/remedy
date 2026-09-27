@@ -1,0 +1,130 @@
+diff --git a/docs/agents/planner_reviewer_prompt.md b/docs/agents/planner_reviewer_prompt.md
+index 667c9adf2..83c833e88 100644
+--- a/docs/agents/planner_reviewer_prompt.md
++++ b/docs/agents/planner_reviewer_prompt.md
+@@ -329,6 +329,16 @@ end the response with:
+   right module; and a path set that left out four readers of a recording the block ordered
+   captured again is item 34's reading of the tests that already guard a path. The list stays at
+   34 items.
++  Consolidated a twentieth time at F028's closure on 2026-09-27: nothing joined and no two items
++  were merged, because none of F028's five lines in `.agent/prose_slips.md` names a lesson the list
++  lacks. A block that sized no commit carrying a new module, so that the module's guard entry landed
++  one split part after the module, is item 34's reading of the generated list a new file joins; a
++  keyword ordered into a call whose spread answer already carries it, and a key added to a
++  dictionary a test pins by exact equality, are both item 34's reading of the file and the tests the
++  order reaches; a deleted rule whose raw colours a ratchet counts over the whole file is item 7's;
++  and a sheet ordered "shaped as" an overlay while the order dropped the fact that the shell, not a
++  card, mounts that overlay is item 18's reading of a named precedent against the property it must
++  preserve. The list stays at 34 items.
+   The next consolidation measures against 34.
+   Reverse by deleting this paragraph.
+   1. **Size.** Count the block's lines. Over 400 (DECISION F105 D5) → split or
+diff --git a/docs/roadmap/features/T5_F028.md b/docs/roadmap/features/T5_F028.md
+index 0a426a68b..10df0da27 100644
+--- a/docs/roadmap/features/T5_F028.md
++++ b/docs/roadmap/features/T5_F028.md
+@@ -87,3 +87,104 @@ clarification rule is the UX soul; test all three options.
+ Approval machinery (reused, not duplicated), fence rules, DoD
+ compile internals. Suggested tests:
+ tests/orchestration/test_task_injection.py.
++
++## Built State (F028, 2026-09-27)
++
++What exists on disk at the close of F028, built in nine rounds of one session on
++`feature/f028-task-injection`, cut from `main` at `ceb90b8a`. Every DECISION named lives in
++`.agent/decisions.md`; every round's verdict in `.agent/live_review.md` or, once rotated, its
++archive.
++
++**T001 — the draft pass.** `packages/orchestration/task_injection.py` holds the whole injection.
++`draft_task_injection` keeps the operator's text verbatim after `validate_injection_text` (blank,
++over 2000 characters, control characters and secret-shaped text are refused), admits paused,
++blocked, planned and running jobs and refuses a terminal one with a follow-up-job suggestion, and
++drafts the task by one structured planner call over `InjectedTaskDraft` (schema tag
++`task_injection_draft_v1`); no planner, or a reply still invalid after one retry, is a refusal and
++never an invented draft. The id is the smallest free `INJ<k>`. Placement is computed by code, never
++by the planner: the task is appended at the end of the plan, depending on the task the operator
++named (basis `stated`), else on every task whose `files_hint` shares a path (basis
++`content_overlap`), else on nothing (basis `frontier_default`), each with a written placement
++rationale. The budget check is `predict_next_task_cost` over the draft's band (`S`, `M`, `L`, `XL`
++read as `low`, `medium`, `high`, `unknown`); a predicted breach is a shortfall, whose draft carries
++no confirm token and a decision seed with the three answers `extend_budget`, `shrink_task` and
++`drop`, the arithmetic, the limit that would cover the task and the next smaller band. A path of
++`files_hint` that meets the job's fences is flagged, never refused. The draft is a create-only file
++under the job's control directory in `injection_drafts/`, expiring 900 seconds after drafting; an
++expired or unknown draft is refused and nothing is deleted (DECISION F028 D1).
++
++**T002 — the confirmation, the fold and the answers.** `confirm_task_injection` refuses a stale,
++expired, foreign, unconfirmable or already confirmed draft and a full plan, and otherwise publishes
++a second create-only file in `injected_tasks/`, recording `confirmed_unseen`. It never writes
++`job.json`: `run_job` in `packages/orchestration/pingpong_job.py` folds every confirmed injection
++through `_fold_task_injections` at four points — before the task loop, at every pre-task safe
++point, after every task's post-task safe point, and once after the loop — so a task the loop has
++not reached runs in the same run, and a task only the last fold appends parks the job `paused`.
++`apply_injection_to_job` appends the task through the new edit kind `plan_add_task` in
++`packages/orchestration/plan_editing.py`, so `replay_edits` replays an injected plan, carries
++`origin` `human_injected`, `plan_rationale`, `task_rationale` and `injection_draft_id` on the task
++entry's `inputs["plan"]`, bumps the plan version, re-seals an approved plan's hash, and logs one
++edit whose `injection` block names the draft, the placement basis, the text, `confirmed_unseen` and
++`dod_resync_pending` (DECISION F028 D2). `answer_injection_shortfall` answers a shortfall through a
++create-only file in `injection_answers/`: `drop` ends the draft, `shrink_task` derives a new draft
++one band smaller, and `extend_budget` derives a confirmable draft carrying the raised limit, which
++the fold applies and `run_job` re-reads at once (DECISIONS F028 D3 and D4 (4)). After each fold the
++run log gains one `task_injected` event, outcome `applied` or `inert`, declared in `EVENT_NAMES`
++and worded in `apps/ui/src/api/humanizeCatalog.ts` (DECISION F028 D5 (2)).
++
++**T003 — the command line, the door, the sheet and the provenance.** `remedy job inject <job>
++<text> [--after <task>] [--yes] [--json]`, `remedy job inject-confirm` and `remedy job
++inject-answer`, in `apps/cli/commands/job_inject_cmd.py`, draft, confirm and answer; `--yes`
++confirms a draft unseen and the record says so, and never answers a shortfall, which exits 3 with
++the seed (DECISION F028 D4). The write door in `packages/orchestration/ui_server.py` exposes
++`job.inject`, `job.inject-confirm` and `job.inject-answer` through one `_dispatch_injection`, a
++refusal answering 409 with its code and detail (DECISION F028 D5). The dashboard's task item
++carries `origin`; the task-list row and the detail popover show the words "Added by you" as a pill
++decided by `taskOriginChip` in `apps/ui/src/api/injectView.ts`, and the canvas chip reads "added",
++or `v<n> · added` (DECISIONS F028 D6 and D7). The tasks card's "+ Add Task" row replaces the button
++that copied a retired command and opens `AddTaskSheet.tsx`, a right-anchored sheet rendered through
++a portal into the document's body, which drafts through `apps/ui/src/api/injectSend.ts`, shows the
++draft as sentences with its fence flags, confirms or discards it and answers a shortfall
++(DECISIONS F028 D7 and D8 (1)). The final report appends " — added by you while the job ran" to an
++injected task's line (DECISION F028 D8 (2)).
++
++**Acceptance, by the test that proves it.** The draft→confirm round-trip and the harmless expiry:
++`TestDraftTaskInjection`, `TestConfirmTaskInjection`, `TestReadInjectionDraftUntrustedExpiry` and
++`TestApplyInjectionToJob` in `tests/orchestration/test_task_injection.py`, and the runner's fold in
++`tests/orchestration/test_task_injection_runner.py`. The three-option seed with its arithmetic,
++every option exercised: `TestInjectionBudgetCheckAndShortfallSeed` and
++`TestAnswerInjectionShortfall`, with `TestBudgetExtensionReachesThePredictiveCheck` in the runner's
++tests. Provenance end to end: `tests/ui_server/test_dashboard_task_origin.py`,
++`TestTheReportNamesAnInjectedTasksOrigin` in `tests/orchestration/test_run_report.py`,
++`injectView.test.ts`, `tests/ui_contracts/test_inject_controls_contract.py`, and the live proof
++`tests/ui_server/test_task_injection_e2e_live.py`, which injects into a paused job through the door
++and through `job inject --yes` and reads the origin back from the record, the edit log, the run
++log, the dashboard, the event stream and the report. The audited `--yes`: `TestInjectYes` in
++`tests/cli/test_job_inject.py` and that live proof's second test. The door:
++`TestInjectionDispatchEffects` in `tests/ui_server/test_command_dispatch.py` and
++`injectSend.test.ts`. The mutation proofs of rounds 1 to 8 are their
++`.agent/authored/f028-r<n>-mutations.py`, and round 9's is `.agent/authored/f028-r9-probes.py`;
++the sheet, the pills and the canvas chip were rendered headless by the reviewer at rounds 7 and 8,
++as those rounds' ledger entries record.
++
++**Modules and lists (closure precondition 7).** F028 added two Python modules,
++`packages/orchestration/task_injection.py` and `apps/cli/commands/job_inject_cmd.py`, and both
++joined `tests/orchestration/import_reachability_allowlist.txt`, the measured closure of the entry
++points, which now reach them. `task_injection.py` sat in `ALLOWED_UNWIRED` from round 1 until round 2 wired it, and that
++line is gone; nothing joined `RESERVED_NAMESPACES`. Its new browser modules are `injectSend.ts`,
++`injectView.ts` and `AddTaskSheet.tsx` with its style module.
++
++**Deliberate absences.** The planner's draft call is not charged to the job's budget counters,
++because it runs outside `run_job`; the draft reports its call count instead. `plan_add_task` is not
++one of the edits an operator may send before approval, because a free add would bypass the draft
++and its budget check. The fold does not rewrite the job's exported edit log,
++`user_edited_plan.json`; the record's own edit log is the source. A shortfall answer is not an inbox
++decision, and the live graph's reducer does not read `task_injected`: the injected task reaches the
++canvas through the task data the chip reads. The DoD's check mapping picks up an injected task's
++acceptance at the next compile, as the edit log's `dod_resync_pending` says, never inside the fold.
++
++**Findings.** F028 registered R-1076, R-1077, R-1078 and R-1079 — an expiry a draft could lack, a
++confirmed file missing a field that crashed the runner, two JSON documents from one `--yes --json`
++shortfall, and the sheet confined to the tasks card — each repaired in the round that registered it
++and resolved at the next round's booking. No finding was open at F028's claim, and none is open at
++its close.

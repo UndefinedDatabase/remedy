@@ -46,7 +46,7 @@ export interface RemedyContinuationSummary {
 }
 export interface RemedyNextAction { label: string; command: string; risk: "low" | "medium" | "high"; requiresHuman: boolean; }
 export interface RemedyJourneyItem { id: string; kind: RemedyTaskKind; title: string; subtitle: string; state: RemedyState; nodeId: string; visibleFromZoom: number; }
-export interface RemedyTaskItem { id: string; label: string; state: RemedyState; kind: RemedyTaskKind; checked: boolean; muted: boolean; nodeId: string; nextAction?: RemedyNextAction; outcomeSummary?: string; changedFilesCount?: number; changedFilesSafe?: string[]; testStatus?: string; proofStatus?: string; applyStatus?: string; blockedReason?: string; completedAt?: string; }
+export interface RemedyTaskItem { id: string; label: string; state: RemedyState; kind: RemedyTaskKind; checked: boolean; muted: boolean; nodeId: string; nextAction?: RemedyNextAction; outcomeSummary?: string; changedFilesCount?: number; changedFilesSafe?: string[]; testStatus?: string; proofStatus?: string; applyStatus?: string; blockedReason?: string; completedAt?: string; origin?: string; }
 export interface RemedyActivityItem { id: string; actor: "Builder" | "Reviewer" | "User" | "System"; message: string; timeLabel: string; kind: "build" | "review" | "user" | "system" | "test"; taskId?: string; tokenEstimate?: number; }
 
 export type RemedyPromptRole = "builder" | "reviewer" | "system";

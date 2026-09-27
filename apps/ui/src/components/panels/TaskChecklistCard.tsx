@@ -1,7 +1,15 @@
+import { useState } from "react";
 import type { RemedyTaskItem } from "../../api/types";
 import { selectChecklistRows } from "../../cockpitLogic";
+import { ORIGIN_CHIP_TITLE, taskOriginChip } from "../../api/injectView";
 import { TaskDoneGlyph, TaskPlannedGlyph } from "../icons/RemedyGlyphs";
+import { AddTaskSheet } from "./AddTaskSheet";
 import styles from "./RightLivePanel.module.css";
+
+/** DECISION F028 D7 (1) — the row's own title, honest either way: disabled
+ *  and why, or what pressing it does. */
+const ADD_TASK_DISABLED_TITLE = "Adding a task needs the live page's server token.";
+const ADD_TASK_ENABLED_TITLE = "Draft a new task for this job.";
 
 // Finding R-0738: a task can be finished AND only partly applied, so apply state is
 // read BEFORE the lifecycle state here — otherwise the row says "Done" about changes
@@ -28,13 +36,15 @@ function outcomeHint(task: RemedyTaskItem): string | null {
   return null;
 }
 
-export function TaskChecklistCard({ tasks, jobId, onSelectNode }: {
+export function TaskChecklistCard({ tasks, jobId, serverToken, onSelectNode }: {
   tasks: RemedyTaskItem[];
   jobId: string;
+  serverToken: string;
   onSelectNode: (nodeId: string | null) => void;
 }) {
+  const [sheetOpen, setSheetOpen] = useState(false);
   const { rows: realRows, completed, total } = selectChecklistRows(tasks);
-  const proposeCommand = `remedy task propose --job ${jobId}`;
+  const addTaskDisabled = serverToken === "";
 
   if (realRows.length === 0) {
     return (
@@ -59,6 +69,7 @@ export function TaskChecklistCard({ tasks, jobId, onSelectNode }: {
       <div className={styles.taskList}>
         {realRows.map(row => {
           const hint = outcomeHint(row);
+          const chip = taskOriginChip(row);
           return (
             <button key={row.id} type="button" className={`${styles.taskRow} ${styles[row.state] || ""}`}
               onClick={() => { if (row.nodeId) onSelectNode(row.nodeId); }}>
@@ -67,6 +78,7 @@ export function TaskChecklistCard({ tasks, jobId, onSelectNode }: {
                 {row.label}
                 {hint && <span className={styles.taskHint}>{hint}</span>}
               </span>
+              {chip && <span className={styles.originChip} title={ORIGIN_CHIP_TITLE}>{chip}</span>}
               <span className={styles.taskState}>{stateText(row)}</span>
             </button>
           );
@@ -74,12 +86,16 @@ export function TaskChecklistCard({ tasks, jobId, onSelectNode }: {
       </div>
       <button
         type="button"
-        className={styles.proposeBtn}
-        title={`Copy: ${proposeCommand}`}
-        onClick={() => navigator.clipboard?.writeText(proposeCommand)}
+        className={styles.addTaskRow}
+        disabled={addTaskDisabled}
+        title={addTaskDisabled ? ADD_TASK_DISABLED_TITLE : ADD_TASK_ENABLED_TITLE}
+        onClick={() => setSheetOpen(true)}
       >
-        + Propose task (copies CLI command)
+        + Add Task
       </button>
+      {sheetOpen && (
+        <AddTaskSheet target={{ jobId, serverToken }} tasks={tasks} onClose={() => setSheetOpen(false)} />
+      )}
     </section>
   );
 }

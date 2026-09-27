@@ -7,6 +7,7 @@ import type { BrainLayoutData, BrainLayoutNode } from "./forceBrainTypes";
 import type { GraphFilter } from "./GraphFilterChips";
 import { promptNodeId } from "./promptNodes";
 import { vetoHoverText } from "../../api/vetoView";
+import { INJECTED_TASK_ORIGIN } from "../../api/injectView";
 
 /** Table 1 bridge (DECISION F019 D1, graph_spec.md §2): the dashboard's own
  *  task-state words mapped onto the seed-status words `SEED_STATUS_STATE_TABLE`
@@ -39,7 +40,11 @@ export const DASHBOARD_STATE_STATUS: Readonly<Record<RemedyState, string>> = {
  *  `task_specs` section — defaults to none, so a caller that has not read it
  *  seeds no task with a version. A task's own id is put on the seed as
  *  `specVersion` ONLY when the map carries that task at all, never a
- *  fallback value. */
+ *  fallback value. DECISION F028 D7 (3): `origin` is put on the seed ONLY
+ *  when the task item's own `origin` equals `INJECTED_TASK_ORIGIN` — never a
+ *  fallback value either — since `RemedyTaskItem` already carries `origin`
+ *  itself, this needs no extra argument the way `specVersion` needed
+ *  `specVersions`. */
 export function dashboardBrainSeeds(
   tasks: readonly RemedyTaskItem[],
   pausedTaskIds: readonly string[] = [],
@@ -56,6 +61,7 @@ export function dashboardBrainSeeds(
     rank: index,
     title: t.label,
     ...(Object.prototype.hasOwnProperty.call(specVersions, t.id) ? { specVersion: specVersions[t.id] } : {}),
+    ...(t.origin === INJECTED_TASK_ORIGIN ? { origin: t.origin } : {}),
   }));
 }
 

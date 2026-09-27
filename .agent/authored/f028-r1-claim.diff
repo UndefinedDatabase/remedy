@@ -1,0 +1,162 @@
+diff --git a/.agent/decisions.md b/.agent/decisions.md
+index 6b6e81021..49864e0e4 100644
+--- a/.agent/decisions.md
++++ b/.agent/decisions.md
+@@ -23030,3 +23030,83 @@ no live region announces a new prompt.
+ 
+ HOW TO REVERSE: delete `PromptNodeList`, its style module, `promptListEntries` and the stage's use of
+ them, and delete this paragraph.
++
++## DECISION F028 D1 — an injection is drafted by one planner call and applied only by a second call carrying the draft's token; the draft is a create-only control file with a time to live; placement is appended at the end of the plan and computed by code, not by the planner; the budget check is F104's prediction over the draft's band; T001 lands the draft pass alone (2026-09-27)
++
++CONTEXT: T5_F028.md asks for a command that takes an operator's task text, has the planner draft
++a task from it with a placement, a rationale and a budget check, and applies it to the running
++job only when a second call confirms the draft; a budget shortfall returns a three-option
++decision seed instead of a token. Measured at `ceb90b8a`: nothing named injection exists;
++`PlannedTask` in `packages/orchestration/schemas/models.py` is strict and has no origin, metadata
++or rationale field; `plan_editing.py` has no whole-task add among its edit kinds, and its
++`edit_plan` refuses any job whose plan is approved; `edit_task_at_runtime` in
++`task_edit_runtime.py` refuses a running job, because `run_job` holds the whole record in memory
++and would overwrite a write at its next save (DECISION F026 D1); the one change a running job
++accepts is F027's veto, a create-only file under the job's control directory that `run_job`
++folds into its record at its own safe points; a job runs its tasks in plan order and never reads
++`depends_on` (DECISION F015 D4); `predict_next_task_cost` in `budget_guard.py` answers
++`would_breach` and a written `arithmetic` for a token band, and plan bands (`S`, `M`, `L`, `XL`)
++and budget bands (`low`, `medium`, `high`, `unknown`) have no mapping; calibration (F074) has
++not shipped, so every prediction runs on F104's documented class defaults.
++
++CHOSEN: (1) THE ORDER. T001 takes round 1: a new module
++`packages/orchestration/task_injection.py` holding the draft pass and its control file, with no
++caller yet, listed in `ALLOWED_UNWIRED` of `tests/test_no_orphan_modules.py` until T002 wires
++it. T002 lands the confirmation: a confirmed injection is a second create-only control file that
++`run_job` folds at the safe points where it folds vetoes, a `plan_add_task` edit kind in
++`plan_editing.py` so `replay_edits` replays the edit log, the provenance on the task entry, one
++run-log event with every reader of its name, and the shortfall seed's three answers. T003 lands
++`remedy job inject`, the browser's command, the Add Task sheet, the provenance chip and the
++end-to-end proof. (2) THE DRAFT CALL. One `run_structured_call` over a provider-facing model
++`InjectedTaskDraft` (schema tag `task_injection_draft_v1`, not entered in `SCHEMA_REGISTRY`, for
++the reason the DoD's draft contract is not: it never leaves its own call) holding `title`,
++`goal`, `acceptance` (at least one entry, none blank), `est_tokens_band`, `files_hint` and
++`rationale`. The caller passes the call function; none means the refusal `planner_unavailable`,
++and a reply still invalid after the one parse retry means `draft_unparseable`. There is no
++deterministic fallback draft, because acceptance criteria no planner wrote would be invented.
++(3) THE TEXT is kept verbatim: not a string or blank is `text_required`, over 2000 characters is
++`text_too_long`, and a control character other than newline or tab, or secret-shaped text, is
++`text_invalid`. (4) THE GATE. A terminal job is `job_terminal`, whose detail tells the operator to
++start a follow-up job for the work; a job with no readable task plan is `no_task_plan`; a plan
++already at the task cap is `plan_full`. Paused, blocked, planned and running jobs are admitted.
++(5) THE ID is the smallest `INJ<k>`, `k` from 1, that is not already a task id of the plan.
++(6) THE PLACEMENT is computed by code. The task is always appended at the END of the plan,
++because the end is the one position after every dependency that never moves a task the runner
++has already passed. Its `depends_on` is the task the operator named with `after`, basis
++`stated`, an id not in the plan being `unknown_task`; otherwise every task of the plan whose
++`files_hint` shares a path with the draft's, in plan order, basis `content_overlap`; otherwise
++none, basis `frontier_default`, which runs after everything already planned and depends on
++nothing. The placement rationale is a sentence the code writes for each basis; the planner's own
++`rationale` travels beside it as the task's rationale. (7) THE BUDGET CHECK is
++`predict_next_task_cost` over the job's budgets, counters and predictive config, which the caller
++passes, with `S`, `M` and `L` read as `low`, `medium` and `high` and `XL` as `unknown`, F104's
++path to the largest class default. A shortfall is exactly the prediction's `would_breach`.
++(8) THE SHORTFALL SEED. A draft whose check shows a shortfall carries no confirm token and a
++decision seed: the options `extend_budget`, `shrink_task` and `drop` with their labels, the
++prediction's arithmetic, the cost limit that would cover the task (spent plus expected, rounded
++up to the cent) and the next smaller band, none below `S`. (9) THE FENCES. Every `files_hint`
++path that matches one of the job's deny globs, or matches none of its allow globs when it has
++some, is flagged in the draft with the glob it met, by `fnmatch` as `task_fence_refusal` reads
++the deny globs; a flag never refuses. (10) THE DRAFT RECORD is one create-only file under the
++job's control directory, in `injection_drafts/`, named by a digest of the draft id and written
++through `safe_points` and `secure_fs` as F027's veto file is. The draft id comes from
++`safe_points.new_request_id()` and is the confirm token of a draft that has one. It expires 900
++seconds after it was drafted; a reader answers `draft_unknown` for no file and `draft_expired`
++after expiry, and deletes nothing, so an expired draft is harmless because it can never be
++confirmed.
++
++ALTERNATIVES: writing the task into `job.json`, rejected because `run_job` would overwrite it at
++its next save; inserting the task right after the running one, rejected because the runner walks
++its list by position and an insertion would shift the tasks it has not reached; letting the
++planner propose `depends_on`, rejected because a placement nobody can recompute cannot be tested
++or explained; an `origin` field on `PlannedTask`, rejected because the strict model is read by
++every plan reader and by the DoD compile the feature file says not to touch, so T002 carries the
++provenance on the task entry's plan inputs instead; a deterministic draft when no planner is
++reachable, rejected for the reason in (2).
++
++DELIBERATE ABSENCES: T001 writes no event and never writes `job.json`; the draft call's cost is
++not charged to the job's budget counters, because the call runs outside `run_job`, whose counters
++come from its own run's calls, and the draft reports how many calls it took instead.
++
++HOW TO REVERSE: delete `packages/orchestration/task_injection.py`, its tests and its line in
++`ALLOWED_UNWIRED`, and delete this paragraph.
+diff --git a/.agent/live_review.md b/.agent/live_review.md
+index 27e8e69d8..1f37d7fe7 100644
+--- a/.agent/live_review.md
++++ b/.agent/live_review.md
+@@ -1,29 +1,30 @@
+-# Live Review — F288 Event stream completeness & prompt nodes in the live graph
+-
+-> Round-by-round review record, re-headed at the F288 claim per
+-> docs/agents/planner_reviewer_prompt.md §1. The heading this replaces named F289, whose STATUS
+-> line went `[x]` at `bb5212df` and whose pull request 285 merged into `main` at the reviewer's
+-> Open PR Gate under docs/agents/self_drive_protocol.md, as `db691093`, after both hosted CI jobs
+-> of run 36271818306 ended `success` on `bb5212df`. `bb5212df` is the second parent of
+-> `db691093`, and the two trees are identical. F289's round 7, its closing round, was reviewed
+-> after its own handback, so its gate entry is appended at the end of this record by F288's
++# Live Review — F028 Task injection
++
++> Round-by-round review record, re-headed at the F028 claim per
++> docs/agents/planner_reviewer_prompt.md §1. The heading this replaces named F288, whose STATUS
++> line went `[x]` at `27498680` and whose pull request 286 merged into `main` at the reviewer's
++> Open PR Gate under docs/agents/self_drive_protocol.md, as `ceb90b8a`, after both hosted CI jobs
++> of run 36293930924 ended `success` on `27498680`. `27498680` is the second parent of
++> `ceb90b8a`, and the two trees are identical. F288's round 10, its closing round, was reviewed
++> after its own handback, so its gate entry is appended at the end of this record by F028's
+ > claim. Only the heading, this paragraph and the Steps section below are rewritten; everything
+-> from the Findings heading to the end of the file as it stood at `db691093` is carried forward
++> from the Findings heading to the end of the file as it stood at `ceb90b8a` is carried forward
+ > BYTE-IDENTICAL, and finding ids continue the monotonic R-XXXX series across the re-head. The
+-> open set at `db691093`, computed with `open_finding_ids` from `scripts/rotate_live_review.py`,
++> open set at `ceb90b8a`, computed with `open_finding_ids` from `scripts/rotate_live_review.py`,
+ > is empty.
+ 
+ ## Steps
+ 
+-THE ORDER BELOW IS T5_F288.md's Task slicing, with T001 split over two rounds by DECISION F288 D1
+-at the claim. R1 claims F288, re-heads this record, books F289's round 7, and lands the first half
+-of T001: the attempt id as the ping-pong run id of each execution of a task, one event per test
+-and per repair of a ping-pong round, the attempt id in the stream's envelope for every attempt
+-event, and every reader of the two new names. R2 lands the second half: the run-next path, the
+-test service, the long-run repair events and a plan-approved event. T002 then teaches the live
+-graph's reducer the test-run and repair nodes and the tasks born at plan approval, and T003 adds
+-the prompt node kind with its look and its mouse and keyboard reach. Every round's handback
+-states the open set by distinct id.
++THE ORDER BELOW IS T5_F028.md's Task slicing, fixed by DECISION F028 D1 at the claim. R1 claims
++F028, re-heads this record, books F288's round 10, and lands T001: the draft pass of an
++injection — the planner's one structured call drafting a task from the operator's text, the
++placement by stated dependency, by shared files or by the default at the end of the plan, the
++budget check with its three-option shortfall seed, the fence flags, and the draft as a
++create-only control file with a time to live. T002 lands the confirmation: the runner folding a
++confirmed injection into a running job at its safe points, the plan's edit log, the provenance,
++the event and its readers, and the shortfall seed's three answers. T003 lands the command line,
++the browser's command, the Add Task sheet, the provenance chip and the end-to-end proof. Every
++round's handback states the open set by distinct id.
+ 
+ ## Findings
+ DECISION F085 D5, applied at da47ee40, closes "The R44 block is the first measured under this
+@@ -421,3 +422,5 @@ Gate: F288 R7 — the F288 round 7 entry: the closure sequence's first round, wh
+ Gate: F288 R8 — the F288 round 8 entry: the closure sequence's second round, which books round 7, lands the self-use item SU-034's reviewed diff, adds the closure's self-use run to the Built State, and runs the feature's one full suite. VERDICT PASS. Re-derived over `fdc274ff`..`742362f7` by the planner and reviewer of F288's second session, whose own readings are every one below. THE RANGE IS 5 COMMITS, at `cb5c313c` 246, `bced4123` 8, `5d45bb84` 1, `65e64e86` 7 and `742362f7` 163 insertions by `git show --numstat`, each under the 500-line cap, each single-parent and each ending with the ordered trailer; the tracked path set is exactly the one the block ordered. THE TRANSPORT PROOF: the block copy and the four payload copies, read at `cb5c313c`, equal the reviewer's originals byte for byte. THE TREE: at `65e64e86` the ledger, the plan, `docs/guides/remedy-toml-user-guide.md` and `docs/roadmap/features/T5_F288.md` equal the reviewer's simulation tree byte for byte; the guide at `5d45bb84` equals the job's commit `5e4fabe3` byte for byte, so the landed row is the reviewed row; the documentation-staleness catalog answers no claim on the tree; and the open set reads empty. THE TESTS: the reviewer's own serial run of the round's selection in the primary checkout at `742362f7` read 578 passed at real exit code 0 with no skip, and all six `integrity check` checks read `pass`. THE SUITE: the worker built `apps/ui` at real exit code 0 and ran `python3 -m pytest -n auto -q` once in the primary checkout at `65e64e86`, and the committed transcript `.agent/authored/f288-closure-suite.txt` reads real exit code 0 and `19813 passed, 20 skipped, 1 warning in 157.19s (0:02:37)` with no bad node id; the reviewer read the run's own log and found no failed or errored node, no `F` or `E` progress mark, and that same last line. The one warning is `tests/orchestration/test_model_routing.py`'s deliberate undeclared-role warning. The worker declared no deviation, and the handback carries its item-status table.
+ 
+ Gate: F288 R9 — the F288 round 9 entry: the closure sequence's evidence round, which books round 8 and builds the evidence bundle and the review package at the accepted head. VERDICT PASS. Re-derived over `742362f7`..`acd2a908` by the planner and reviewer of F288's second session, whose own readings are every one below. THE RANGE IS 3 COMMITS, at `731c8d28` 347, `57eba86a` 6 and `acd2a908` 189 insertions by `git show --numstat`, each under the 500-line cap, each single-parent and each ending with the ordered trailer; the tracked path set is exactly the one the block ordered, and no evidence directory or package is committed. THE TRANSPORT PROOF: the block copy and the three payload copies, read at `731c8d28`, equal the reviewer's originals byte for byte. THE BOOKING: at `57eba86a` the ledger and the plan equal the reviewer's simulation tree byte for byte, and the open set reads empty. `57eba86adcc3ceeb83b04a3dfe0cf5d655a0d205` is the closure's accepted head. THE BUNDLE: the evidence job `f288r9e1001` against the fork point `db691093`, run by the worker at the accepted head, read the ancestry-path and plain counts equal at 55, 1367 node ids collected with 2 deselected, none unsafe and the planted id refused, 1367 passed and 0 skipped at exit 0, an empty `validate_verification_tests` problem list and `is_valid_current_run` True. THE PACKAGE: `remedy-review-20260927-060235-READY_FOR_REVIEW.zip` in `/home/decodeux/Repos/remedy-history/zips`, whose SHA-256 the reviewer computed itself from the archived file as `184f155676e7fdfc8bdf8f2db736ed0b96b127f84fb3873580fefe38c10373d2`; the build log reads `PACKAGE_STATUS=READY_FOR_REVIEW`, `EVIDENCE_AUTHORITATIVE=true` and `REVIEW_SUBJECT_ALIGNMENT=PASS`, and the manifest the reviewer read out of the package names the base `db69109312f23fc2a5f0905a9666fe210f09f801` and the head `57eba86adcc3ceeb83b04a3dfe0cf5d655a0d205` over 55 commits, `testzip` answering None. THE TESTS: the reviewer's own serial run of `tests/docs/` and the golden path at `acd2a908` read 369 passed at real exit code 0, and all six `integrity check` checks read `pass`. The worker declared no deviation, and the handback carries its item-status table.
++
++Gate: F288 R10 — the F288 round 10 entry: the closing round — the booking of round 9, the ledger rotation, the STATUS acceptance with its README pins and SU-034's consumption, and the pull request. VERDICT PASS. Reviewed over `acd2a908`..`27498680` by the planner and reviewer of F288's second session, and booked by the planner and reviewer of F028's first session, who re-measured the range and the merged tree. THE RANGE IS 4 COMMITS, at `d2cedf64` 455, `e6b6ca8f` 8, `c1b4eb30` 18 and `27498680` 186 insertions by `git show --numstat`, each under the 500-line cap, each single-parent and each ending with the ordered trailer; no deviation was declared. THE TRANSPORT PROOF: the block copy and the seven payload copies, read at `d2cedf64`, equal the reviewer's originals byte for byte. THE BOOKING AND THE ROTATION: at `e6b6ca8f` the ledger and the plan equal the reviewer's simulation tree byte for byte; at `c1b4eb30` `scripts/rotate_live_review.py` moved 7 gate records and 1 finding pair into `.agent/live_review_archive.md`, the open set reading empty before and after. THE ACCEPTANCE: at `27498680` `docs/roadmap/STATUS.md`, `README.md` and `scripts/self_use_queue.json` equal the reviewer's simulation tree byte for byte, F288's line reads `[x]` with its evidence pins and occurs once, SU-034's `consumed_by` reads `F288`, and both README pins were red-controlled by the reviewer; the reviewer's serial run of the round's selection read 512 passed at real exit code 0. THE MERGE: pull request 286 was opened from `27498680`, both hosted CI jobs of run 36293930924 ended `success` on it, and it merged into `main` at F028's Open PR Gate as `ceb90b8a`, whose tree `6200163f` is `27498680`'s; on that tree F028's reviewer read all six `integrity check` checks `pass` and `tests/docs/` with the golden path at 369 passed at real exit code 0.
+diff --git a/docs/roadmap/STATUS.md b/docs/roadmap/STATUS.md
+index 9f6cc27ab..4e6d06123 100644
+--- a/docs/roadmap/STATUS.md
++++ b/docs/roadmap/STATUS.md
+@@ -164,7 +164,7 @@ Milestone R1 — Remedy as the daily tool: Tier 2 complete (F086 as the self-ins
+ ## Tier 5 — Operator Cockpit (parallel human track, continued)
+ 
+ - [x] F027 — Task veto (T001–T003 complete; accepted 2026-09-26 · live review PASS — ACCEPTED · Evidence job f027r13e1001 · package remedy-review-20260926-111715-READY_FOR_REVIEW.zip · SHA-256 abb65b1df0346c8670423a7da903e3e3c6facfc4cac4602bb5a983b47b4bd993 · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD f3afc333a70eae5f339fce8c18004db68a7cea1f)
+-- [ ] F028 — Task injection
++- [~] F028 — Task injection
+ - [ ] F029 — Subtree rerun
+ - [ ] F030 — Steering messages
+ - [ ] F035 — Ownership ledger

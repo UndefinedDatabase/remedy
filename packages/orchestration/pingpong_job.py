@@ -2438,6 +2438,90 @@ def _fold_task_vetoes(job: JobPlan, job_handle: Any, control_root_path: Path | N
 
 
 # ---------------------------------------------------------------------------
+# F028 D2 (3) — the linear runner's fold of a confirmed task injection
+# ---------------------------------------------------------------------------
+
+
+def _fold_task_injections(job: JobPlan, control_root_path: Path | None) -> bool:
+    """Fold every confirmed injection ``job``'s own record does not yet hold (DECISION F028
+    D2 (3)). Called by ``run_job`` at four points: directly after the veto fold before the
+    task loop, directly after the veto fold at every pre-task safe point, as the last
+    statement of the loop body, and once more after the loop, before the terminal readings.
+
+    Returns True when the job was just blocked by an unreadable control area — a
+    ``task_injection.TaskInjectionError`` reading the confirmed injections — and ``run_job``
+    must return ``job`` right here, exactly as ``_fold_task_vetoes`` does for its own control
+    area. A confirmed injection the record does not yet hold (its ``draft_id`` is not a key
+    of ``job.metadata["task_injections"]``) is applied through
+    ``task_injection.apply_injection_to_job``; an edit it refuses is recorded INERT with its
+    detail rather than raised, so one bad confirmation blocks nothing else. Persists the
+    record itself in every case that changes it or blocks the job.
+    """
+    from packages.orchestration import task_injection as _ti
+
+    try:
+        records = _ti.confirmed_injections(job.job_id, control_root_path=control_root_path)
+    except _ti.TaskInjectionError as exc:
+        job.state = JOB_BLOCKED
+        job.error = f"task_injection_control_error: {exc}"
+        _persist_job(job)
+        return True
+
+    task_injections = job.metadata.setdefault("task_injections", {})
+    changed = False
+    folded_events: list[dict[str, Any]] = []
+
+    for record in records:
+        draft_id = record["draft_id"]
+        if draft_id in task_injections:
+            continue                                          # already folded
+
+        planned_id = record["task"]["id"]
+        basis = record["placement"]["basis"]
+        actor = record["actor"]
+        confirmed_unseen = record.get("confirmed_unseen", False)
+
+        try:
+            applied = _ti.apply_injection_to_job(job, record)
+        except _ti.TaskInjectionRefused as exc:
+            task_injections[draft_id] = {
+                "inert": exc.detail,
+                "folded_at": datetime.now(timezone.utc).isoformat(),
+            }
+            changed = True
+            folded_events.append({
+                "outcome": "inert", "task_id": "", "draft_id": draft_id,
+                "planned_id": planned_id, "basis": basis, "actor": actor,
+                "confirmed_unseen": confirmed_unseen, "reason": exc.detail,
+            })
+            continue
+
+        task_injections[draft_id] = applied
+        changed = True
+        folded_events.append({
+            "outcome": "applied", "task_id": applied["task_id"], "draft_id": draft_id,
+            "planned_id": planned_id, "basis": basis, "actor": actor,
+            "confirmed_unseen": confirmed_unseen,
+        })
+
+    if changed:
+        _persist_job(job)
+
+    # DECISION F028 D5 (2): the event is written AFTER `_persist_job` — a crash between the
+    # save and this write loses the event and never duplicates it, since the record already
+    # on disk (`task_injections[draft_id]` above) is what keeps this record from being
+    # folded, and therefore its event written, a second time.
+    if folded_events:
+        from packages.orchestration.run_log import RunLogWriter
+
+        writer = RunLogWriter(job.job_id)
+        for event in folded_events:
+            writer.log("task_injected", **event)
+
+    return False
+
+
+# ---------------------------------------------------------------------------
 # Sequential job runner (Steps 4829-4830, 4837-4838, 4857-4869)
 # ---------------------------------------------------------------------------
 
@@ -3210,6 +3294,31 @@ def run_job(
                     source="veto")
             return None
 
+        def _fold_injections_here() -> bool:
+            """DECISION F028 D3 (2): fold every confirmed injection, then — when the fold just
+            raised the job's own cost limit (DECISION F028 D3 (2) in `apply_injection_to_job`)
+            — re-validate `_job_budgets` from the fresh `job.budgets` so the very next safe
+            point's reactive and predictive checks enforce the limit the operator just raised,
+            not the one this run started with. A budget the fold left corrupt blocks the job
+            exactly as the pre-run validation above does.
+            """
+            nonlocal _job_budgets
+            _budgets_before = dict(job.budgets) if job.budgets is not None else None
+            if _fold_task_injections(job, _control):
+                return True
+            if job.budgets != _budgets_before:
+                from pydantic import ValidationError as _BudgetValidationError
+
+                from packages.core.models import JobBudgets as _JobBudgets
+                try:
+                    _job_budgets = _JobBudgets.model_validate(job.budgets)
+                except _BudgetValidationError as exc:
+                    job.state = JOB_BLOCKED
+                    job.error = f"corrupt_budget_state: {exc}"
+                    _persist_job(job)
+                    return True
+            return False
+
         # F012 (F4): record the job-workspace tree at THIS episode's start. For a resume, it
         # already contains the work applied by earlier episodes, which is a material input.
         # F12: a FAILURE to capture it is a snapshot-capture failure — it is NEVER silently
@@ -3260,6 +3369,11 @@ def run_job(
         # F027 D2 (1): the fold runs once before the task loop, right after the episode
         # has started — a veto recorded before this episode ran is honoured before task 1.
         if _fold_task_vetoes(job, job_handle, _control):
+            return job
+
+        # F028 D2 (3): the injection fold runs at the same point, right after the veto
+        # fold — a confirmed injection waiting before this episode started joins task 1.
+        if _fold_injections_here():
             return job
 
         tasks_run = 0
@@ -3321,6 +3435,11 @@ def run_job(
             # F027 D2 (1): the fold runs again at every pre-task safe point, right after
             # the stop and the pause both found nothing — a veto beats neither.
             if _fold_task_vetoes(job, job_handle, _control):
+                return job
+
+            # F028 D2 (3): the injection fold runs again here too, right after the veto
+            # fold — a confirmation recorded between two tasks joins the very next one.
+            if _fold_injections_here():
                 return job
 
             if task.status == TASK_VETOED:
@@ -3726,6 +3845,22 @@ def run_job(
                     job.error = f"budget_exhausted: {getattr(_stop, 'reason', 'budget')}"
                     _persist_job(job)
                     return job
+
+            # F028 D2 (3): the injection fold's third point — the last statement of the
+            # loop body — so a task confirmed while an earlier one ran is folded before the
+            # NEXT iteration checks it (never later than one task late).
+            if _fold_injections_here():
+                return job
+
+        # F028 D2 (3): the injection fold's fourth and last point, once the loop has ended.
+        # A confirmation that arrives only now — after the last task already ran — appends a
+        # task nothing in this run will dispatch, so the job parks PAUSED instead of racing
+        # ahead to completion with new work pending.
+        _tasks_before_injection_terminal_fold = len(job.tasks)
+        if _fold_injections_here():
+            return job
+        if len(job.tasks) > _tasks_before_injection_terminal_fold:
+            job.state = JOB_PAUSED
 
         # F027 D2 (5): THE TERMINAL — before the ordinary all_done reading, when at least
         # one task is vetoed and every other task is applied, passed, skipped, split,

@@ -34,6 +34,12 @@
 .versionChip { margin-left: auto; padding: 2px 8px; border: 1px solid var(--remedy-line); border-radius: var(--remedy-radius-pill); color: var(--remedy-ink-soft); font: 600 11px var(--remedy-font-ui); }
 .timeLabel + .versionChip { margin-left: 6px; }
 
+/* DECISION F028 D6 (2) — an injected task's pill, beside the version chip in
+   the status row. .versionChip's own declarations, its margin-left: auto
+   replaced by margin-left: 6px, since this pill never sits last in the row
+   the way an unpaired version chip can. */
+.originChip { margin-left: 6px; padding: 2px 8px; border: 1px solid var(--remedy-line); border-radius: var(--remedy-radius-pill); color: var(--remedy-ink-soft); font: 600 11px var(--remedy-font-ui); }
+
 .versionList { margin: 4px 0 0; padding: 0; list-style: none; }
 .versionRow { padding: 2px 0; }
 .versionRow button { font-size: 12.5px; background: none; border: none; padding: 0; color: var(--remedy-ink-strong); cursor: pointer; text-align: left; }

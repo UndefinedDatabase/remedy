@@ -88,6 +88,7 @@ export function normalizeDashboardPayload(
       applyStatus: t.apply_status || undefined,
       blockedReason: t.blocked_reason || undefined,
       completedAt: t.completed_at || undefined,
+      origin: typeof t.origin === "string" && t.origin ? t.origin : undefined,
     };
   });
 

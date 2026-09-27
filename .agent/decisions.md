@@ -23030,3 +23030,370 @@ no live region announces a new prompt.
 
 HOW TO REVERSE: delete `PromptNodeList`, its style module, `promptListEntries` and the stage's use of
 them, and delete this paragraph.
+
+## DECISION F028 D1 — an injection is drafted by one planner call and applied only by a second call carrying the draft's token; the draft is a create-only control file with a time to live; placement is appended at the end of the plan and computed by code, not by the planner; the budget check is F104's prediction over the draft's band; T001 lands the draft pass alone (2026-09-27)
+
+CONTEXT: T5_F028.md asks for a command that takes an operator's task text, has the planner draft
+a task from it with a placement, a rationale and a budget check, and applies it to the running
+job only when a second call confirms the draft; a budget shortfall returns a three-option
+decision seed instead of a token. Measured at `ceb90b8a`: nothing named injection exists;
+`PlannedTask` in `packages/orchestration/schemas/models.py` is strict and has no origin, metadata
+or rationale field; `plan_editing.py` has no whole-task add among its edit kinds, and its
+`edit_plan` refuses any job whose plan is approved; `edit_task_at_runtime` in
+`task_edit_runtime.py` refuses a running job, because `run_job` holds the whole record in memory
+and would overwrite a write at its next save (DECISION F026 D1); the one change a running job
+accepts is F027's veto, a create-only file under the job's control directory that `run_job`
+folds into its record at its own safe points; a job runs its tasks in plan order and never reads
+`depends_on` (DECISION F015 D4); `predict_next_task_cost` in `budget_guard.py` answers
+`would_breach` and a written `arithmetic` for a token band, and plan bands (`S`, `M`, `L`, `XL`)
+and budget bands (`low`, `medium`, `high`, `unknown`) have no mapping; calibration (F074) has
+not shipped, so every prediction runs on F104's documented class defaults.
+
+CHOSEN: (1) THE ORDER. T001 takes round 1: a new module
+`packages/orchestration/task_injection.py` holding the draft pass and its control file, with no
+caller yet, listed in `ALLOWED_UNWIRED` of `tests/test_no_orphan_modules.py` until T002 wires
+it. T002 lands the confirmation: a confirmed injection is a second create-only control file that
+`run_job` folds at the safe points where it folds vetoes, a `plan_add_task` edit kind in
+`plan_editing.py` so `replay_edits` replays the edit log, the provenance on the task entry, one
+run-log event with every reader of its name, and the shortfall seed's three answers. T003 lands
+`remedy job inject`, the browser's command, the Add Task sheet, the provenance chip and the
+end-to-end proof. (2) THE DRAFT CALL. One `run_structured_call` over a provider-facing model
+`InjectedTaskDraft` (schema tag `task_injection_draft_v1`, not entered in `SCHEMA_REGISTRY`, for
+the reason the DoD's draft contract is not: it never leaves its own call) holding `title`,
+`goal`, `acceptance` (at least one entry, none blank), `est_tokens_band`, `files_hint` and
+`rationale`. The caller passes the call function; none means the refusal `planner_unavailable`,
+and a reply still invalid after the one parse retry means `draft_unparseable`. There is no
+deterministic fallback draft, because acceptance criteria no planner wrote would be invented.
+(3) THE TEXT is kept verbatim: not a string or blank is `text_required`, over 2000 characters is
+`text_too_long`, and a control character other than newline or tab, or secret-shaped text, is
+`text_invalid`. (4) THE GATE. A terminal job is `job_terminal`, whose detail tells the operator to
+start a follow-up job for the work; a job with no readable task plan is `no_task_plan`; a plan
+already at the task cap is `plan_full`. Paused, blocked, planned and running jobs are admitted.
+(5) THE ID is the smallest `INJ<k>`, `k` from 1, that is not already a task id of the plan.
+(6) THE PLACEMENT is computed by code. The task is always appended at the END of the plan,
+because the end is the one position after every dependency that never moves a task the runner
+has already passed. Its `depends_on` is the task the operator named with `after`, basis
+`stated`, an id not in the plan being `unknown_task`; otherwise every task of the plan whose
+`files_hint` shares a path with the draft's, in plan order, basis `content_overlap`; otherwise
+none, basis `frontier_default`, which runs after everything already planned and depends on
+nothing. The placement rationale is a sentence the code writes for each basis; the planner's own
+`rationale` travels beside it as the task's rationale. (7) THE BUDGET CHECK is
+`predict_next_task_cost` over the job's budgets, counters and predictive config, which the caller
+passes, with `S`, `M` and `L` read as `low`, `medium` and `high` and `XL` as `unknown`, F104's
+path to the largest class default. A shortfall is exactly the prediction's `would_breach`.
+(8) THE SHORTFALL SEED. A draft whose check shows a shortfall carries no confirm token and a
+decision seed: the options `extend_budget`, `shrink_task` and `drop` with their labels, the
+prediction's arithmetic, the cost limit that would cover the task (spent plus expected, rounded
+up to the cent) and the next smaller band, none below `S`. (9) THE FENCES. Every `files_hint`
+path that matches one of the job's deny globs, or matches none of its allow globs when it has
+some, is flagged in the draft with the glob it met, by `fnmatch` as `task_fence_refusal` reads
+the deny globs; a flag never refuses. (10) THE DRAFT RECORD is one create-only file under the
+job's control directory, in `injection_drafts/`, named by a digest of the draft id and written
+through `safe_points` and `secure_fs` as F027's veto file is. The draft id comes from
+`safe_points.new_request_id()` and is the confirm token of a draft that has one. It expires 900
+seconds after it was drafted; a reader answers `draft_unknown` for no file and `draft_expired`
+after expiry, and deletes nothing, so an expired draft is harmless because it can never be
+confirmed.
+
+ALTERNATIVES: writing the task into `job.json`, rejected because `run_job` would overwrite it at
+its next save; inserting the task right after the running one, rejected because the runner walks
+its list by position and an insertion would shift the tasks it has not reached; letting the
+planner propose `depends_on`, rejected because a placement nobody can recompute cannot be tested
+or explained; an `origin` field on `PlannedTask`, rejected because the strict model is read by
+every plan reader and by the DoD compile the feature file says not to touch, so T002 carries the
+provenance on the task entry's plan inputs instead; a deterministic draft when no planner is
+reachable, rejected for the reason in (2).
+
+DELIBERATE ABSENCES: T001 writes no event and never writes `job.json`; the draft call's cost is
+not charged to the job's budget counters, because the call runs outside `run_job`, whose counters
+come from its own run's calls, and the draft reports how many calls it took instead.
+
+HOW TO REVERSE: delete `packages/orchestration/task_injection.py`, its tests and its line in
+`ALLOWED_UNWIRED`, and delete this paragraph.
+
+## DECISION F028 D2 — a confirmed injection is a second create-only control file; `run_job` folds it at four points, appends the task at the end of the plan and of its task list, logs the add as `plan_add_task` and re-seals the approved plan; a fold after the last task parks the job paused; T002 takes two rounds (2026-09-27)
+
+CONTEXT: DECISION F028 D1 fixed the draft and left the confirmation to T002. Measured at
+`4b6ccd1d`: `run_job` in `packages/orchestration/pingpong_job.py` folds vetoes through
+`_fold_task_vetoes` before its task loop and at every pre-task safe point, and its loop is
+`for idx, task in enumerate(job.tasks)`, which sees a task appended to the list while it runs;
+after the loop the job is `completed` when every task is done, and a job left with a pending task
+and no task cap keeps the state it had; `edit_task_at_runtime` in `task_edit_runtime.py` shows the
+shape of a runtime edit: `apply_edit`, `map_task_plan_to_tasks`, `record_llm_task_deliverables`,
+the plan version bumped, the approval hash re-sealed with `plan_content_hash` when the plan was
+approved, an edit-log entry carrying a block of its own with `dod_resync_pending`;
+`PLAN_EDIT_COMMANDS` in `plan_editing.py` is `tuple(_EDITS)`, pinned by
+`tests/orchestration/test_plan_editing.py`, and names what an operator may send BEFORE approval;
+`replay_edits` re-runs every logged command through `apply_edit`.
+
+CHOSEN: (1) THE ORDER. T002 takes two rounds. Round 2 lands the confirmation and the fold with the
+provenance and the edit log, and repairs R-1076. Round 3 lands the shortfall seed's three answers,
+the seed's labels as a mapping by option, as `veto_proposal`'s seed has them, and the run-log event
+with every reader of its name. (2) THE CONFIRMATION. `confirm_task_injection` refuses, in order, a
+terminal job, a draft `read_injection_draft` refuses, a draft of another job (`draft_unknown`), a
+draft whose status is not `confirmable` (`draft_needs_decision`), a draft already confirmed
+(`already_confirmed`), a draft whose task id is already a task of the plan or of a confirmed
+injection, or whose `depends_on` names a task the plan no longer holds (`draft_stale`, the operator
+drafts again), and a plan that the confirmed injections have filled to the cap (`plan_full`).
+Otherwise it publishes one create-only file in `injected_tasks/` under the job's control directory,
+named as the draft file is, and answers `confirmed`. It never writes `job.json`. (3) THE FOLD.
+`_fold_task_injections` in `pingpong_job.py` folds every confirmed injection the record does not
+yet hold, in the order they were confirmed, at four points: before the task loop and at every
+pre-task safe point, each right after the veto fold; after the post-task safe point of every task;
+and once after the loop, before the terminal readings. A task the loop has not yet reached is run
+in the same run, because the loop reads the live list; a task only the last fold appends parks the
+job `paused`, the task cap's own resumable state, instead of letting it complete with work
+pending. (4) THE APPLY is `apply_injection_to_job` in `task_injection.py`, pure over the in-memory
+record: `apply_edit(plan, "plan_add_task", ...)`, the mapped entry for the new task appended to
+`job.tasks` with `inputs["plan"]` carrying `origin` `human_injected`, `plan_rationale`,
+`task_rationale` and `injection_draft_id`, the plan version bumped, the approval hash re-sealed as
+F026 re-seals it, and one edit-log entry whose `injection` block names the draft, the entry's task
+id, the placement basis, the operator's text and `dod_resync_pending`. A fold the edit refuses
+applies nothing and is recorded inert with its reason. `job.metadata["task_injections"]`, keyed by
+draft id, is how the fold knows an injection is already folded. (5) THE EDIT KIND. `plan_add_task`
+joins `_EDITS`, appending one validated `PlannedTask` whose id is new, so `replay_edits` replays an
+injected plan; `PLAN_EDIT_COMMANDS` becomes the explicit tuple of F015's six commands, unchanged in
+value, because an add reaches a plan only through an injection.
+
+ALTERNATIVES: rewriting the task loop as a `while` loop that re-reads the task list, rejected
+because the live list already gives that behaviour for every task but one moment, and the fold
+after the loop covers that moment; completing the job and leaving a late confirmation unrun,
+rejected because a confirmed task would silently never execute; exposing `plan_add_task` among
+F015's pre-approval commands, rejected because a free add before approval would bypass the
+planner's draft and the budget check that make an injection safe.
+
+DELIBERATE ABSENCES: the fold does not rewrite the job's evidence export of the edit log
+(`user_edited_plan.json`), because that write happens outside the runner's record and a failed
+export must not stop a running job; the record's own edit log is the source. No run-log event is
+written until round 3.
+
+HOW TO REVERSE: remove `confirm_task_injection`, `apply_injection_to_job`, `plan_add_task` and
+`_fold_task_injections` with its four calls, restore `PLAN_EDIT_COMMANDS` to `tuple(_EDITS)`, and
+delete this paragraph.
+
+## DECISION F028 D3 — a shortfall draft is answered by a create-only answer file; `shrink_task` and `extend_budget` each derive a new draft, `drop` ends the old one; an extension travels with the derived draft into the confirmation and is applied by the fold, and `run_job` re-reads its budgets after every fold; the seed's labels are a mapping of plain sentences; the event moves to round 4 (2026-09-27)
+
+CONTEXT: DECISION F028 D1 (8) made a shortfall draft carry a three-option seed and no token, and
+D2 (1) left the answers to round 3. Measured at `bdb65916`: `run_job` in
+`packages/orchestration/pingpong_job.py` validates `job.budgets` into `_job_budgets` once, before
+the task loop, and both its reactive and its predictive checks read that binding, so a limit
+raised in the record mid-run is invisible to the run; the `token_budget` decision's `extend`
+answers a job that has already stopped, and nothing raises the limit of a job that is running;
+`shortfall_decision_seed` answers `option_labels` as a list of lowercase fragments, while
+`veto_proposal`'s seed keys its labels by option and the operator's rule amend0921-operator-feedback
+rule 3 asks for complete plain sentences in anything a person reads.
+
+CHOSEN: (1) THE ANSWER. `answer_injection_shortfall` refuses a terminal job, a draft
+`read_injection_draft` refuses, a draft whose status is not `needs_decision`, an option outside
+`SHORTFALL_OPTIONS`, and a draft already answered; otherwise it publishes one create-only file in
+`injection_answers/` under the job's control directory and answers by option. `drop` answers
+`dropped` and nothing else. `shrink_task` refuses `cannot_shrink` when the seed has no smaller band
+and writes no answer then; otherwise it derives a NEW draft whose task is the old one at the
+smaller band, checked again against the job's budgets, and answers it as `draft_task_injection`
+answers, so it may itself be a shortfall. `extend_budget` derives a new draft at the same band,
+confirmable, carrying `budget_extend_to_usd`, the seed's `extend_to_usd`, with its check computed
+against that limit. A derived draft keeps the old one's task id, placement, text, rationale and
+fence flags, takes a new draft id and a new expiry, and names the draft it came from. (2) THE
+EXTENSION. The confirmation copies `budget_extend_to_usd`; `apply_injection_to_job` raises
+`job.budgets["max_cost_usd"]` to it and never lowers it, and records the value in the edit log's
+`injection` block. `run_job` calls the fold through one local helper at all four points, which
+re-validates `_job_budgets` from `job.budgets` whenever the fold changed them, so the limit the
+operator chose applies to the very next safe point. (3) THE LABELS become a mapping by option, as
+`veto_proposal`'s are, and the question and each label are complete sentences carrying the
+numbers: the new limit for `extend_budget`, the smaller band or the reason there is none for
+`shrink_task`. (4) THE EVENT with its readers moves to round 4, beside the command line, which
+is its first reader outside the browser.
+
+ALTERNATIVES: raising the limit at confirmation time, rejected because a confirmation never
+writes `job.json` (DECISION F028 D2 (2)); reading the budgets fresh at every safe point, rejected
+because it changes every job's run to serve one path; a fourth option that confirms over the
+limit, rejected because the feature file names exactly three.
+
+DELIBERATE ABSENCES: an answer is not an inbox decision in this round; the browser reaches the
+seed through the injection command's own answer in T003.
+
+HOW TO REVERSE: remove `answer_injection_shortfall`, its answer files and the derived drafts, the
+extension in the confirmation and the fold, and the helper in `run_job`, and delete this
+paragraph.
+
+## DECISION F028 D4 — the command line is three commands, `job inject`, `job inject-confirm` and `job inject-answer`; `--yes` confirms a draft unseen and the record says so; the command line and the browser read their budget inputs and their planner through one pair of helpers; an extension's amount is computed again when the operator answers; the event moves to round 5 (2026-09-27)
+
+CONTEXT: T5_F028.md asks for `remedy job inject <id> "text" [--after Txxx] [--yes]`, where `--yes`
+accepts the draft unseen, audited and fit for unattended use. Measured at `aa38800a`: the draft
+pass, the confirmation and the shortfall answers exist as functions of
+`packages/orchestration/task_injection.py` and nothing calls them outside the runner's fold;
+`apps/cli/commands/job_veto_cmd.py` is the pattern of a job write command, with 2 for a wrong
+argument and 3 for a job or task not ready; a catalog argument is either a required positional or
+an option, so one command cannot take a task text in one use and a token in another; the
+extension an `extend_budget` answer carries is the seed's `extend_to_usd`, fixed at draft time.
+
+CHOSEN: (1) THE COMMANDS. `remedy job inject <job> <text> [--after <task>] [--yes] [--json]`
+drafts; without `--yes` it prints the draft and the exact confirm command, or on a shortfall the
+question and the three answer commands, and exits 0. `--yes` confirms a confirmable draft at once,
+and a shortfall under `--yes` prints the seed and exits 3, because `--yes` accepts a draft, never
+a spending decision. `remedy job inject-confirm <job> <token> [--json]` confirms, and `remedy job
+inject-answer <job> <draft> --option <option> [--json]` answers a shortfall. The task named by
+`--after` is resolved as `job veto-task` resolves its task. Exit 2 is a wrong argument, exit 3 a
+job, plan or draft not ready, exit 1 the rest, as the veto command classes them. (2) THE AUDIT.
+`confirm_task_injection` takes `unseen`, default False, the confirmation stores it as
+`confirmed_unseen` and the edit log's `injection` block carries it, so an unattended confirmation
+is told apart from a reviewed one wherever the add is read. (3) THE INPUTS. `task_injection.py`
+gains `injection_budget_inputs(job)`, answering the job's budgets, its counters from its stored
+actuals (nothing spent when the job has none) and the predictive config of its repository, and
+refusing `budget_unreadable` rather than inventing a spend when the stored actuals do not decode;
+and `injection_call_fn()`, the planner's structured call bound to `InjectedTaskDraft`. The
+browser's command in round 5 reads the same two. (4) THE EXTENSION'S AMOUNT. `extend_budget`
+computes the amount again from the job's counters at answer time, spent plus expected rounded up
+to the cent, and takes the larger of that and the seed's, so spend between the draft and the
+answer can no longer leave the raised limit short. (5) THE EVENT and its readers move to round 5,
+beside the browser's command.
+
+ALTERNATIVES: one command whose text and token share a positional, rejected because the catalog
+has no optional positional and one argument meaning two things is a trap for a human typing it;
+`--yes` answering a shortfall with `extend_budget`, rejected because unattended spending past a
+limit the operator set is exactly what the shortfall seed exists to stop.
+
+HOW TO REVERSE: remove the three commands, their catalog entries and exit-code rows,
+`injection_budget_inputs`, `injection_call_fn` and `unseen`, restore the seed's amount in
+`extend_budget`, and delete this paragraph.
+
+## DECISION F028 D5 — the browser reaches an injection through the write door's three commands `job.inject`, `job.inject-confirm` and `job.inject-answer`, one dispatch method for the three; a fold writes the run-log event `task_injected` after the record is saved; the send module, the Add Task sheet and the provenance chip take round 6 (2026-09-27)
+
+CONTEXT: T5_F028.md asks that the Add Task button be real additive control and that a
+provenance chip show an injected task in the graph and the task list. Measured at `6814c686`: the
+write door in `packages/orchestration/ui_server.py` exposes exactly the ids of `UI_EXPOSED_COMMANDS`
+in `apps/cli/command_catalog.py`, each id a catalog command of the same name, and checks each
+command's arguments in `_read_command_payload` before the job is read; `job.veto-task`'s branch
+puts a refusal's own code and detail on the wire as a 409; the door's imports are pinned by exact
+equality in `tests/ui_server/test_command_channel.py`, and so is the exposed set; a run-log event
+name must be declared in `EVENT_NAMES` and carried by `STREAM_EVENT_CATALOG`, both by set
+equality, while no other reader of the stream is forced to know every name; the fold writes no
+event.
+
+CHOSEN: (1) THE DOOR. The three ids join `UI_EXPOSED_COMMANDS`. `_read_command_payload` refuses
+before the job is read: for `job.inject` a text `validate_injection_text` refuses (field `text`)
+and an `after` that is present but not a non-empty string (field `after`); for
+`job.inject-confirm` a `confirm_token` that is not a non-empty string (field `confirm_token`); for
+`job.inject-answer` a `draft_id` that is not a non-empty string (field `draft_id`) and an `option`
+outside `SHORTFALL_OPTIONS` (field `option`). One method, `_dispatch_injection`, runs the three
+effects with the door's token fingerprint as the actor, through the two helpers of DECISION F028
+D4 (3); a budget it cannot read is a refusal like any other. A refusal is a 409 carrying its code
+and detail, as the veto's is; success is a 200 carrying the answer. `after` names a task by its
+planned id or by its own id in the job, resolved by a helper of `task_injection.py` the door
+shares, never by the command line's own resolver, which writes to the terminal. (2) THE EVENT.
+After `_fold_task_injections` saves the record, it writes one `task_injected` event per record it
+folded, outcome `applied` with the entry's task id or `inert` with the reason, through the job's
+run log; writing after the save means a crash between the two loses the event and never
+duplicates it. (3) THE ORDER. Round 6 lands the send module, the Add Task sheet in the right
+column and the provenance chip; round 7 the end-to-end proof.
+
+ALTERNATIVES: one door command whose payload chooses the step, rejected because every other door
+id is a catalog command of the same name and the door's guards are written per id; an event per
+confirmation instead of per fold, rejected because a confirmation is not yet a change to the job,
+and the stream describes the job.
+
+DELIBERATE ABSENCES: the live graph's reducer does not read `task_injected`; the injected task
+appears there through the task data the chip reads in round 6.
+
+HOW TO REVERSE: remove the three ids, their payload checks and `_dispatch_injection`, the event
+and its two readers, and delete this paragraph.
+
+## DECISION F028 D6 — an injected task shows the words "Added by you" as a pill in its task-list row and in the detail popover's status row; the dashboard's task item carries `origin`; the browser's send module for the three injection commands lands before the Add Task sheet; the sheet, the canvas chip and the render proof take round 7 (2026-09-27)
+
+CONTEXT: T5_F028.md asks that the provenance `origin=human_injected` render as a chip in the graph
+and the task list. Measured at `d82a407c`: the dashboard's task items in
+`packages/orchestration/ui_server.py` carry nothing of a task entry's `inputs["plan"]`, so the
+browser cannot tell an injected task from a planned one; the only tests that pin a task item's
+keys check a subset; `RightLivePanel.module.css` already styles a small pill, `.decisionChip`, and
+`DetailPopover.module.css` a status-row pill, `.versionChip`, both from existing tokens;
+`docs/ui/design_reference/ux_spec.md` §17 forbids raw ids and metadata in the default view, so the
+chip speaks in words; the canvas draws one text chip per task node, F026's `v<n>`; and
+`apps/ui/vitest.config.ts` runs `.ts` tests in a node environment, so every rule a component
+follows lives in a pure module its tests can reach.
+
+CHOSEN: (1) THE DATA. Each dashboard task item gains `origin`, the entry's
+`inputs["plan"]["origin"]` or the empty string, and `RemedyTaskItem` gains `origin?: string`,
+mapped only when it is a non-empty string. (2) THE CHIP. A pure `taskOriginChip` in a new
+`apps/ui/src/api/injectView.ts` answers the words `Added by you` for the origin `human_injected`
+and nothing otherwise; the task-list row draws them as a pill after the task's label, styled as
+`.decisionChip` is, and the detail popover's status row as a pill beside the version chip, styled
+as `.versionChip` is, each with a title saying the task was added while the job ran. A pill is a
+word, not a colour, so the rule against colour-only state holds. (3) THE SEND MODULE. A new
+`apps/ui/src/api/injectSend.ts` builds, submits and describes the three door commands as
+`vetoSend.ts` does its one, with a draft deadline long enough for the planner's call and every
+refusal code worded as a sentence. (4) THE ORDER. Round 7 lands the Add Task row that opens a
+draft-and-confirm sheet in the right column, replacing the button that copies a command the
+catalog no longer carries, the canvas chip beside `v<n>`, and a headless render proof of all
+three surfaces; round 8 the end-to-end proof.
+
+ALTERNATIVES: a new state mark on the node, rejected because provenance is not a state and
+`assets_spec.md` reserves marks for states; showing the raw origin value, rejected by §17.
+
+HOW TO REVERSE: remove `origin` from the task item and the type, the two pills, `injectView.ts`
+and `injectSend.ts` with their tests, the assumption-log row naming this DECISION, and delete this
+paragraph.
+
+## DECISION F028 D7 — the tasks card's "+ Add Task" row replaces the button that copied `remedy task propose`, and opens a right-anchored sheet that drafts, shows and confirms an injection and answers a shortfall; the canvas chip reads "added", after `v<n>` when both apply; the reviewer renders all three surfaces headless (2026-09-27)
+
+CONTEXT: `docs/ui/design_reference/ux_spec.md` §11.5 names a "+ Add Task" ghost row in the tasks
+card that "opens inject flow when available; else disabled", and §8 styles it as a full-width
+ghost row, 13/600 ink-soft with a leading plus and accent text on hover; it designs no inject
+flow. Measured at `bdcc86cb`: the row's place holds "+ Propose task (copies CLI command)", which
+copies `remedy task propose --job <id>`, a command the catalog does not carry;
+`tests/ui_contracts/test_responsive.py`'s `test_no_add_task_button` pins that string in the card
+and forbids a file named `AddTaskButton.tsx`, its comment saying task creation is CLI-only;
+`LessonsOverlay.tsx` is the right-anchored glass sheet precedent, a dialog closed by a button and
+by Esc; the canvas draws one text chip per task node, F026's `v<n>`, seeded through
+`dashboardBrainSeeds`, `BrainTaskSeed`, `seedBrainModel` and `taskChipOf`.
+
+CHOSEN: (1) THE ROW. "+ Add Task" replaces the propose button and its command, which are deleted
+(AGENTS.md "Replacing is deleting"); it is disabled, with a title saying why, when the page has no
+server token. `test_no_add_task_button` keeps forbidding `AddTaskButton.tsx` and now pins "+ Add
+Task" where it pinned the retired command, which the card may no longer contain. (2) THE SHEET,
+`AddTaskSheet.tsx`, styled as `LessonsOverlay.tsx` is: a text area for the task in the operator's
+own words, an optional choice of the task it must follow, and a Draft pill; the draft's title,
+goal, acceptance lines, size, placement and cost read as sentences, with every fence flag named;
+Confirm and Discard; on a shortfall the question and one button per answer; each send's result in
+one sentence read aloud politely. What the sheet shows is computed by a pure `injectDraftView`
+in `injectView.ts`, so its rules are tested. (3) THE CANVAS CHIP. A seed carries `origin` only for
+an injected task, the reducer copies it into the node's meta as it copies `specVersion`, and
+`taskChipOf` answers "added", or `v<n> · added` for an injected task edited since; the word is
+short because the canvas chip is small. (4) THE PROOF. The reviewer renders the row, the sheet in
+its drafted and shortfall states and the popover and canvas chips in headless Chrome over the
+committed sources before the verdict, as F026's and F027's reviewers did.
+
+ALTERNATIVES: a modal in the page's centre, rejected because the cockpit's sheets are right-anchored
+and the popover already occupies the centre; keeping the propose button beside the new row,
+rejected because it copies a command that no longer exists.
+
+HOW TO REVERSE: restore the propose button and its test pin, remove `AddTaskSheet.tsx`,
+`injectDraftView`, the canvas origin thread and the assumption-log rows naming this DECISION, and
+delete this paragraph.
+
+## DECISION F028 D8 — the Add Task sheet renders through a portal into the document's body; the final report names an injected task's origin in words on its task line; the end-to-end proof takes round 9 (2026-09-27)
+
+CONTEXT: R-1079 measured the sheet confined to the tasks card, because the card's glass rule sets
+`backdrop-filter`, which makes it the containing block of fixed descendants. T5_F028.md's
+acceptance asks that an injected task carry its provenance end to end, the report included.
+Measured at `41f591a3`: `_task_lines` in `packages/orchestration/run_report.py` renders one line
+per task from a `TaskOutcome`, built in `collect_report_sources`, which carries no origin; every
+field `TaskOutcome` gained since F040 defaults so that a report of a job without it stays
+byte-identical.
+
+CHOSEN: (1) THE PORTAL. `AddTaskSheet` keeps its markup, its state and its mount in the card, and
+returns its section through `createPortal(..., document.body)`, so the sheet is positioned against
+the viewport whatever its mount's ancestors set; the card keeps owning whether it is open. (2) THE
+REPORT. `TaskOutcome` gains `origin`, empty by default and filled by `collect_report_sources` from
+the task's `inputs["plan"]["origin"]`; `_task_lines` appends ` — added by you while the job ran`
+to the line of a task whose origin is `human_injected`, after the apply clause and before the
+evidence link, so every other task line, and every report of a job without an injection, is
+byte-identical to today's. (3) THE ORDER. Round 9 lands the end-to-end proof: a live UI server over
+a job, a task injected mid-run through the door, drafted, confirmed, executed in the same job, and
+the final report naming its origin; the closure sequence follows.
+
+ALTERNATIVES: moving the sheet's mount into the shell beside `LessonsOverlay`, rejected because it
+threads the open state and the task list through the shell for no gain the portal does not give;
+removing the card's `backdrop-filter`, rejected because the glass is the design reference's own.
+
+HOW TO REVERSE: return the section directly instead of through the portal, remove `origin` from
+`TaskOutcome` and its clause, and delete this paragraph.

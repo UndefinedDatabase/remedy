@@ -102,6 +102,11 @@ export interface BrainTaskSeed {
    *  dashboard's `task_specs` section carries one, for the reducer to copy
    *  into the task node's `meta.specVersion`. */
   specVersion?: number;
+  /** DECISION F028 D7 (3) — the task item's own `origin`
+   *  (`api/injectView.ts`'s `INJECTED_TASK_ORIGIN`), carried ONLY for a task
+   *  the operator injected, for the reducer to copy into the task node's
+   *  `meta.origin` exactly as it copies `specVersion` above. */
+  origin?: string;
 }
 
 /** The whole graph at one point in the ledger. `ignored` is a counted debug

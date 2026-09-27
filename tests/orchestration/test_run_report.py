@@ -994,6 +994,74 @@ class TestTheApplyStateIsAttachedByTheFullTaskId:
         assert _one_task_line(outcome).endswith("partially applied (3/5 changes)")
 
 
+class TestTheReportNamesAnInjectedTasksOrigin:
+    """DECISION F028 D8 — S2: the report's own half of end-to-end provenance.
+
+    `_task_origin` reads the same shape `ui_server._task_origin` reads
+    (DECISION F028 D6 (1)): `inputs["plan"]["origin"]` when `inputs["plan"]` is
+    a dict and that value is a non-empty string, else "" — never guessed.
+    """
+
+    def test_the_second_tasks_line_ends_in_the_clause_the_first_unchanged(self):
+        job = _FakeJob()
+        job.tasks = [
+            _FakeTask("aaaaaaaa-1111-4111-8111-111111111111",
+                      "Write the renderer", "completed"),
+            _FakeTask("bbbbbbbb-2222-4222-8222-222222222222",
+                      "Add a widget", "completed",
+                      inputs={"plan": {"origin": "human_injected"}}),
+        ]
+        lines = _section(render_report(job), "Tasks").strip().splitlines()
+        assert lines[0] == "- `aaaaaaaa` — Write the renderer — **completed**"
+        assert lines[1] == (
+            "- `bbbbbbbb` — Add a widget — **completed**"
+            " — added by you while the job ran")
+
+    def test_the_clause_sits_before_any_evidence_link(self):
+        """After the apply clause, before the evidence link — the block's own order."""
+        line = _one_task_line(TaskOutcome(
+            "cccccccc", "Add a widget", "completed",
+            apply_state="applied", applied_changes=1, total_changes=1,
+            evidence_ref="tasks/cccccccc/output.md", origin="human_injected"))
+        assert line == (
+            "- `cccccccc` — Add a widget — **completed**"
+            " — applied (1/1 changes)"
+            " — added by you while the job ran"
+            " — [evidence](tasks/cccccccc/output.md)")
+
+    def test_a_task_without_plan_inputs_renders_no_clause(self):
+        job = _FakeJob()
+        job.tasks = [_FakeTask(
+            "eeeeeeee-1111-4111-8111-111111111111", "Plain task", "completed")]
+        line = _section(render_report(job), "Tasks").strip()
+        assert "added by you" not in line
+
+    def test_a_non_string_origin_renders_no_clause(self):
+        job = _FakeJob()
+        job.tasks = [_FakeTask(
+            "ffffffff-1111-4111-8111-111111111111", "Plain task", "completed",
+            inputs={"plan": {"origin": 123}})]
+        line = _section(render_report(job), "Tasks").strip()
+        assert "added by you" not in line
+
+    def test_the_origin_survives_the_apply_state_rebuild(self, monkeypatch):
+        """`_tasks_with_apply_state` rebuilds each outcome through `replace()`,
+        which carries every field it does not name — `origin` among them —
+        forward untouched."""
+        task_id = "dddddddd-1111-4111-8111-111111111111"
+        job = _FakeJob()
+        job.tasks = [_FakeTask(task_id, "Add a widget", "completed",
+                                inputs={"plan": {"origin": "human_injected"}})]
+        chain = _FakeProofChain([_FakeProofChange(task_id, "applied")])
+        monkeypatch.setattr(proof_chain, "build_proof_chain", lambda *a, **k: chain)
+
+        outcome = build_report_sources(job).tasks[0]
+        assert outcome.origin == "human_injected"
+        assert outcome.apply_state == "applied"
+        assert _one_task_line(outcome).endswith(
+            "applied (1/1 changes) — added by you while the job ran")
+
+
 class TestTheProofChainModuleDocumentsItsWholePublicApi:
     """R-0746 — the export list and the module are read AGAINST each other.
 
@@ -1067,10 +1135,15 @@ def _public_api_block(docstring: str) -> str:
 
 
 class _FakeTask:
-    def __init__(self, task_id: str, description: str, status: str):
+    def __init__(self, task_id: str, description: str, status: str,
+                 inputs: dict | None = None):
         self.task_id = task_id
         self.title = description
         self.status = status
+        #: DECISION F028 D8: `collect_report_sources` reads `origin` off
+        #: `inputs["plan"]["origin"]`, the same shape `task_injection.py`
+        #: writes onto a real Task.
+        self.inputs = inputs if inputs is not None else {}
 
 
 class _FakeJob:

@@ -25,6 +25,7 @@ apps.cli.commands.init_cmd
 apps.cli.commands.integrity_cmd
 apps.cli.commands.job
 apps.cli.commands.job_context_cmd
+apps.cli.commands.job_inject_cmd
 apps.cli.commands.job_pause_cmd
 apps.cli.commands.job_plan_cmd
 apps.cli.commands.job_stop_cmd
@@ -243,6 +244,7 @@ packages.orchestration.task_actor_binding
 packages.orchestration.task_deliverables
 packages.orchestration.task_edit_runtime
 packages.orchestration.task_granularity
+packages.orchestration.task_injection
 packages.orchestration.task_registry
 packages.orchestration.task_runner
 packages.orchestration.task_veto

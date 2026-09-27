@@ -28,7 +28,7 @@ export function RightLivePanel({ dashboard, serverToken, onSelectNode, streamSta
           the URL beside it. */}
       <DecisionInboxCard decisions={orderDecisionInbox(dashboard.decisionInbox)} tasks={dashboard.tasks} jobId={dashboard.jobId} serverToken={serverToken} onSelectNode={onSelectNode} />
       <ActivityFeedCard activity={dashboard.activity} recent={recent} recentDropped={recentDropped} tasks={dashboard.tasks} onSelectNode={onSelectNode} jobId={dashboard.jobId} serverToken={serverToken} stage={dashboard.live.stage} />
-      <TaskChecklistCard tasks={dashboard.tasks} jobId={dashboard.jobId} onSelectNode={onSelectNode} />
+      <TaskChecklistCard tasks={dashboard.tasks} jobId={dashboard.jobId} serverToken={serverToken} onSelectNode={onSelectNode} />
       {/* The learning overlay's entry point (T5_F265 T002, DECISION F265 D3), in the quiet style
           of the toggle below; the shell owns whether the overlay is open. */}
       {onOpenLessons && (

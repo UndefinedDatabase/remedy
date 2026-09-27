@@ -603,6 +603,66 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         related=("job.pause", "job.plan-show", "decision.resolve"),
         exit_codes=(0, 1, 2, 3),
     ),
+    # ── job inject / inject-confirm / inject-answer (F028 T003, DECISION F028 D4) ──
+    CommandEntry(
+        command_id="job.inject",
+        group_id="job",
+        subcommand="inject",
+        description="Draft a new task from your own words and place it into a running "
+                    "job's plan (F028).",
+        action_class="write_metadata",
+        args=(
+            _JOB_ID,
+            ArgDef("text", "The task text to draft, in your own words, while the job runs"),
+            ArgDef("--after", "Place the drafted task after this task in the job plan, as "
+                   "`remedy job plan-show` prints it", required=False, is_option=True),
+            ArgDef("--yes", "Confirm the drafted task at once, unseen, skipping the review "
+                   "step", required=False, is_option=True, is_flag=True),
+            _JSON_OPT,
+        ),
+        supports_json=True,
+        may_mutate_repo=False,
+        may_execute_commands=False,
+        related=("job.inject-confirm", "job.inject-answer", "job.plan-show"),
+        exit_codes=(0, 1, 2, 3),
+    ),
+    CommandEntry(
+        command_id="job.inject-confirm",
+        group_id="job",
+        subcommand="inject-confirm",
+        description="Confirm a drafted task and add it to the running job's plan (F028).",
+        action_class="write_metadata",
+        args=(
+            _JOB_ID,
+            ArgDef("token", "The confirm token printed for this draft"),
+            _JSON_OPT,
+        ),
+        supports_json=True,
+        may_mutate_repo=False,
+        may_execute_commands=False,
+        related=("job.inject", "job.plan-show"),
+        exit_codes=(0, 1, 2, 3),
+    ),
+    CommandEntry(
+        command_id="job.inject-answer",
+        group_id="job",
+        subcommand="inject-answer",
+        description="Answer a shortfall from drafting a task into a running job's plan: "
+                    "extend the budget, shrink the task, or drop it (F028).",
+        action_class="write_metadata",
+        args=(
+            _JOB_ID,
+            ArgDef("draft", "The shortfall draft id printed earlier"),
+            ArgDef("--option", "One of the shortfall's three answers: extend_budget, "
+                   "shrink_task, or drop", required=True, is_option=True),
+            _JSON_OPT,
+        ),
+        supports_json=True,
+        may_mutate_repo=False,
+        may_execute_commands=False,
+        related=("job.inject", "job.plan-show"),
+        exit_codes=(0, 1, 2, 3),
+    ),
     CommandEntry(
         command_id="job.plan-delete-task",
         group_id="job",
@@ -2703,6 +2763,10 @@ UI_EXPOSED_COMMANDS: frozenset[str] = frozenset({
     "job.edit-task",
     # DECISION F027 D5: the task veto, through `task_veto.veto_task_command`.
     "job.veto-task",
+    # DECISION F028 D5: the task injection trio, through `_dispatch_injection`.
+    "job.inject",
+    "job.inject-confirm",
+    "job.inject-answer",
 })
 
 

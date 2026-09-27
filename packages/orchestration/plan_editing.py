@@ -257,6 +257,19 @@ def _edit_acceptance(tasks: list[PlannedTask], args: dict[str, Any]) -> list[Pla
     return out
 
 
+def _add_task(tasks: list[PlannedTask], args: dict[str, Any]) -> list[PlannedTask]:
+    # A missing "task" key reads as `None`, which `model_validate` itself refuses with a
+    # `ValidationError` (its "input should be a valid dictionary" reading) — the same path
+    # a task shaped wrong takes, so both land on `_refuse_args` with the model's own reason.
+    try:
+        task = PlannedTask.model_validate(args.get("task"))
+    except ValidationError as exc:
+        raise _refuse_args(_reasons(exc)) from exc
+    if any(t.id == task.id for t in tasks):
+        raise _refuse_args(f"task id {task.id!r} is already used")
+    return [*tasks, task]
+
+
 _EDITS: dict[str, Callable[[list[PlannedTask], dict[str, Any]], list[PlannedTask]]] = {
     "plan_edit_task": _edit_task,
     "plan_delete_task": _delete_task,
@@ -264,10 +277,15 @@ _EDITS: dict[str, Callable[[list[PlannedTask], dict[str, Any]], list[PlannedTask
     "plan_merge_tasks": _merge_tasks,
     "plan_split_task": _split_task_edit,
     "plan_edit_acceptance": _edit_acceptance,
+    "plan_add_task": _add_task,
 }
 
-#: The edit commands, in the order the feature file names them.
-PLAN_EDIT_COMMANDS: tuple[str, ...] = tuple(_EDITS)
+#: The edit commands, in the order the feature file names them. DECISION F028 D2 (5):
+#: `plan_add_task` is NOT among these six — an add reaches a plan only through a confirmed
+#: injection, never through an operator's own pre-approval edit door.
+PLAN_EDIT_COMMANDS: tuple[str, ...] = (
+    "plan_edit_task", "plan_delete_task", "plan_reorder", "plan_merge_tasks",
+    "plan_split_task", "plan_edit_acceptance")
 
 
 def revalidate(plan: TaskPlan, tasks: list[dict[str, Any]]) -> TaskPlan:
