@@ -258,6 +258,12 @@ class TaskOutcome:
     #: this module re-derives neither (finding R-0738).
     applied_changes: int = 0
     total_changes: int = 0
+    #: DECISION F028 D8: the task's provenance, read off its own plan inputs —
+    #: `task_injection.py`'s `ORIGIN_HUMAN_INJECTED` when a human added it while
+    #: the job ran, "" (NOT RECORDED, the same P6 rule as every other absent
+    #: field here) for a planned task.  Defaulted so every existing
+    #: construction site keeps working unchanged.
+    origin: str = ""
 
 
 @dataclass(frozen=True)
@@ -459,6 +465,28 @@ def _apply_clause(task: TaskOutcome) -> str:
             f"({_as_int(task.applied_changes)}/{_as_int(task.total_changes)} changes)")
 
 
+#: DECISION F028 D8: the value `task.origin` carries for a task a human added
+#: while the job ran — `task_injection.py`'s `ORIGIN_HUMAN_INJECTED`, copied
+#: rather than imported (this module's sources are pure data; `task_injection`
+#: pulls in the planner's provider stack, which this pure renderer never
+#: needs), the same choice `injectView.ts`'s `INJECTED_TASK_ORIGIN` already
+#: made for the same reason on the browser side.
+TASK_ORIGIN_HUMAN_INJECTED = "human_injected"
+
+
+def _origin_clause(task: TaskOutcome) -> str:
+    """The injected-task provenance clause, or "" (P6) when *task* was planned.
+
+    Same absence rule as ``_apply_clause``: a task whose origin is not
+    recorded, or is recorded as anything other than the human-injected value,
+    renders no clause at all, so a report of a job with no injection is
+    byte-identical to the one this module rendered before ``origin`` existed.
+    """
+    if task.origin != TASK_ORIGIN_HUMAN_INJECTED:
+        return ""
+    return " — added by you while the job ran"
+
+
 def _task_lines(sources: ReportSources) -> list[str]:
     lines = ["## Tasks", ""]
     if not sources.tasks:
@@ -467,6 +495,7 @@ def _task_lines(sources: ReportSources) -> list[str]:
     body = [
         f"- `{t.task_id}` — {_text(t.description)} — **{_text(t.status)}**"
         + _apply_clause(t)
+        + _origin_clause(t)
         + (f" — {_link('evidence', t.evidence_ref)}" if t.evidence_ref else "")
         for t in sources.tasks
     ]
@@ -766,6 +795,23 @@ def _job_repo_root(job: Any) -> str:
     return str(getattr(plan, "repo_path", "") or "") if plan is not None else ""
 
 
+def _task_origin(t: Any) -> str:
+    """DECISION F028 D8: a task's provenance, read off its own plan inputs —
+    `inputs["plan"]["origin"]` when `inputs["plan"]` is a dict and that value
+    is a non-empty string, else "" (P6: not recorded, never guessed).  Mirrors
+    `ui_server._task_origin` (DECISION F028 D6 (1)); this module reads the
+    job's own tasks directly rather than importing the UI server, so the
+    report and the server agree by reading the same shape independently
+    rather than by sharing an import.
+    """
+    inputs = getattr(t, "inputs", None)
+    plan = inputs.get("plan") if isinstance(inputs, dict) else None
+    if not isinstance(plan, dict):
+        return ""
+    origin = plan.get("origin")
+    return origin if isinstance(origin, str) and origin else ""
+
+
 def collect_report_sources(job: Any) -> ReportSources:
     """Gather the report's sources off an in-memory job.
 
@@ -783,6 +829,7 @@ def collect_report_sources(job: Any) -> ReportSources:
             description=str(getattr(t, "title", "") or ""),
             status=getattr(getattr(t, "status", None), "value",
                            str(getattr(t, "status", "") or "")),
+            origin=_task_origin(t),
         )
         for t in (getattr(job, "tasks", None) or ())
     )

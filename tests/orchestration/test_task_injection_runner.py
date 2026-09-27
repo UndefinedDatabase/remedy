@@ -31,6 +31,7 @@ from packages.orchestration.pingpong_job import (
     save_job_plan,
 )
 from packages.orchestration.pingpong_provider import BuilderOutput, FakeProvider, ReviewerOutput
+from packages.orchestration.run_report import render_report
 from tests.orchestration.test_task_edit_runtime import _by_planned, _save_job, _task
 
 
@@ -157,6 +158,25 @@ class TestConfirmedBeforeTheRun:
         assert injected.inputs["plan"]["origin"] == ti.ORIGIN_HUMAN_INJECTED
         recorded = done.metadata["task_injections"][confirmed["draft_id"]]
         assert recorded["task_id"] == injected.task_id
+
+    def test_render_report_holds_the_clause_on_the_injected_tasks_line_once(
+            self, root, repo):
+        """DECISION F028 D8's S2 half: the fold's `origin` reaches the report."""
+        job_id = _save_job(root, [_task("A", [])], repo_path=str(repo))
+        job = load_job_plan(job_id, root)
+
+        confirmed = _draft_and_confirm(job, control_root_path=_control())
+
+        done = run_job(job_id, builder_provider=_pass_provider(),
+                       reviewer_provider=_pass_provider(), max_rounds=1, repair_rounds=0)
+
+        _, injected = _by_planned(done, confirmed["task_id"])
+        report = render_report(done)
+        clause = " — added by you while the job ran"
+        matching = [line for line in report.splitlines() if clause in line]
+        assert len(matching) == 1, (
+            f"expected the clause exactly once, found {len(matching)}: {matching}")
+        assert matching[0].startswith(f"- `{injected.task_id[:8]}`")
 
 
 # ---------------------------------------------------------------------------
