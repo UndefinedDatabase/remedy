@@ -1,119 +1,82 @@
-# Handoff — F288, round 6
+# Handoff — F288, round 7
 
 ## Session
 
-SESSION 1 of feature F288 · round 6 · rounds so far 6. Context remaining at
-handback: comfortable — the round's own derivations (the render harness's
-five files, the drive.mjs CDP sequencing, and the mutation tool's seven
-FROM/TO edits across three runners) used a moderate share of the session's
-budget; a full context window remains for the next round.
+SESSION 2 of feature F288 · round 7 · rounds so far 7. Context remaining at
+handback: comfortable — this round ran five straight-line commits (three
+payload applications, one long provider-calling self-use run, and this
+handoff) with no repair loop and no mutation-tool authoring, so a full
+context window remains for the next round.
 
 ## Range
 
-Review of `cb022003`..`HEAD` (`HEAD` is this handback's own commit, `F288 R6
-C6`, on `feature/f288-event-stream-completeness`).
+Review of `2f49da5c`..`HEAD` (`HEAD` is this handback's own commit, `F288
+R7 C5`, on `feature/f288-event-stream-completeness`).
 
 ## Commits
 
-### 0247fc9b8 F288 R6 C1: copy round 6 block and payloads into .agent/authored/
+### da5b2fe0c F288 R7 C1: copy round 7 block and payloads into .agent/authored/
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f288-r6-block.md | 250/0 | copy of this round's block |
-| .agent/authored/f288-r6-plan.md | 29/0 | copy of the plan payload |
-| .agent/authored/f288-r6-records.diff | 58/0 | copy of the records payload |
+| .agent/authored/f288-r7-block.md | 187/0 | copy of this round's block |
+| .agent/authored/f288-r7-built_state.diff | 79/0 | copy of the built_state payload |
+| .agent/authored/f288-r7-plan.md | 29/0 | copy of the plan payload |
+| .agent/authored/f288-r7-records.diff | 29/0 | copy of the records payload |
+| .agent/authored/f288-r7-selfuse.py | 121/0 | copy of the reviewer's C4 script |
 
-Measured insertions: 337 (block's own line count 250 + 87), matching the
-block's expectation exactly (and under the 500-line cap).
+Measured insertions: 445 (block's own line count 187 + 258), matching the
+block's expectation exactly, under the 500-line cap.
 
-### 7ccc3cb96 F288 R6 C2: book round 5's PASS, record D6 and the round 6 plan
+### 15b2dde11 F288 R7 C2: book round 6, consolidate the checklist, plan round 7
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/decisions.md | 40/0 | DECISION F288 D6 |
-| .agent/live_review.md | 2/0 | round 5's Gate entry (VERDICT PASS) |
-| .agent/plan.md | 9/9 | round 6's plan (payload rewrite) |
+| .agent/live_review.md | 2/0 | round 6's Gate entry (VERDICT PASS), appended verbatim from the handoff |
+| .agent/plan.md | 9/9 | round 7's plan (payload rewrite) |
+| docs/agents/planner_reviewer_prompt.md | 8/0 | closure's consolidation paragraph, checklist stays at 34 items |
 
-Matches the block's expected numstat (40/0, 2/0, 9/9) exactly.
+Matches the block's expected numstat (2/0, 9/9, 8/0) exactly.
 
-### e57bc7f2e F288 R6 C3: let the keyboard reach the live picture's prompts through a parallel list
+### 78e53297a F288 R7 C3: write the Built State
 | Path | +/- | Reason |
 |---|---|---|
-| apps/ui/src/components/graph/BrainGraphStage.tsx | 7/2 | `promptEntries` memo, `<PromptNodeList>` mounted after `<ZoomBreadcrumbs>` in the live branch (S3) |
-| apps/ui/src/components/graph/PromptNodeList.module.css | 70/0 | new style module: 1x1 clipped nav, `:focus-within` reveal, no `display: none`/`visibility: hidden` (S2) |
-| apps/ui/src/components/graph/PromptNodeList.tsx | 37/0 | new component: `nav`/`ul`/`li`/`button`, `aria-pressed`, `onSelect(entry.promptId)`, no `aria-hidden` (S2) |
-| apps/ui/src/components/graph/brainView.test.ts | 51/3 | new `describe("promptListEntries")` block: model order, filtered-out synapse, non-synapse absence, `in_progress`→`current` mapping |
-| apps/ui/src/components/graph/brainView.ts | 42/1 | new `PromptListEntry`, `PROMPT_LIST_STATE_WORDS`, `promptListEntries` (S1) |
-| tests/ui_contracts/test_brain_stage_mount.py | 54/0 | new `TestPromptNodeListMountsInTheLiveBranchOnly` and `TestPromptNodeListIsTheAccessibleSurfaceForTheCanvassSynapses` classes (S5) |
+| docs/roadmap/features/T5_F288.md | 71/0 | `## Built State (F288, 2026-09-27)` section, closure precondition 4 |
 
-No insertion count was expected by the block for C3; measured 261 total (6
-deletions), under the 500-line cap. One self-review correction folded in
-before commit: the first drafts of `PromptNodeList.tsx`'s and its style
-module's own header comments spelled out the literal strings `aria-hidden`,
-`display: none` and `visibility: hidden` in prose, which tripped the very
-S5 tests written to forbid those strings in the PRODUCT files; reworded
-both comments to describe the same facts without the literal substrings,
-re-ran `pytest` and `ruff` clean, then committed (not a deviation from the
-block — no test or product line changed after the reword, only comment
-prose, before this commit existed).
+Matches the block's expected numstat (71/0) exactly.
 
-### 07de6c6a0 F288 R6 C4a: add the harness's five files for the prompt list's headless-Chrome proof
+### 11212c6eb F288 R7 C4: generate and run the closure's self-use item, record its readings
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f288-r6-render_drive.mjs | 182/0 | CDP driver: C-a through C-f, two screenshots (S4) |
-| .agent/authored/f288-r6-render_index.html | 11/0 | harness page shell |
-| .agent/authored/f288-r6-render_main.tsx | 85/0 | the stage's live wiring without the stage: demo recording, four-item prompt trace, `buildBrainLayout`, semantic zoom, `<ForceBrainGraph>`/`<PromptNodeList>` |
-| .agent/authored/f288-r6-render_measure.py | 191/0 | harness runner, adapted from `f020-r5-conformance_measure.py` (ports 8993/9363, work dir `f288-render-run`) |
-| .agent/authored/f288-r6-render_vite.config.mjs | 28/0 | scratch vite config, `fs.allow` reaching `apps/ui/src` |
+| .agent/selfuse_f288/SU-034.md | 13/0 | the generated item's job file |
+| .agent/selfuse_f288/changed_paths.txt | 1/0 | the job's one changed path |
+| .agent/selfuse_f288/entry_and_job_file.txt | 5/0 | entry id/title/provenance/consumed_by, job file path |
+| .agent/selfuse_f288/execution_config.txt | 39/0 | the `self_use` role's execution config (provider `claude-cli`, never `fake`) |
+| .agent/selfuse_f288/full_transcript.txt | 14/0 | job/task summary |
+| .agent/selfuse_f288/job_diff.txt | 13/0 | the job branch's diff against HEAD |
+| .agent/selfuse_f288/result_state.txt | 12/0 | job id/state, budgets, budget actuals, task states |
+| .agent/selfuse_f288/run_defects.txt | 1/0 | `describe_self_use_run_defects()` — NONE |
+| .agent/selfuse_f288/staleness_after.txt | 2/0 | doc-staleness catalog read from the job branch after the run — NONE |
+| .agent/selfuse_f288/timing.txt | 3/0 | start/finish/wall-seconds |
+| scripts/self_use_queue.json | 8/0 | the generated item SU-034 appended, `consumed_by` empty |
 
-Insertions: 497 (the five harness files alone). **DEVIATION (declared,
-constraint 2):** staging all six C4 files together (the five harness files
-plus `f288-r6-render.txt`) measured 527 insertions — over the 500-line cap
-— so C4 was split into lettered parts before either was committed: C4a (the
-five harness files, 497 insertions) and C4b (the reading, 30 insertions).
-Neither part alone reaches the cap; this is the only oversize-avoidance
-split in the round and the only such split in this feature's session.
+111 insertions total, under the 500-line cap. No insertion count was
+expected by the block for C4.
 
-### 53bdf90e6 F288 R6 C4b: record the harness's reading
-| Path | +/- | Reason |
-|---|---|---|
-| .agent/authored/f288-r6-render.txt | 30/0 | the harness's own committed output (S4), reproduced byte-for-byte by the G5 re-run below |
-
-### b6802cbc1 F288 R6 C3b: add a test_run coverage case to promptListEntries's vitest suite
-| Path | +/- | Reason |
-|---|---|---|
-| apps/ui/src/components/graph/brainView.test.ts | 11/0 | one new `it`: a hand-built `test_run`-kind node stays absent from `promptListEntries`'s output even when visible |
-
-**DEVIATION (declared):** added after C3 and before building the mutation
-tool, anticipating G5's m3 (a `test_run` node wrongly listed) — C3's own
-tests proved only that a `task` node stays excluded, which a mutation
-widening the kind check to `synapse` OR `test_run` would not have reddened,
-since no existing fixture ever placed a `test_run`-kind node in the model.
-This is exactly the block's own G5 instruction ("you then say whether a
-check can see it, add the one that can, and re-run"), applied before the
-first tool run rather than after, to avoid a false first reading.
-
-### 6441ce671 F288 R6 C5: add the mutation tool for the round's red proofs
-| Path | +/- | Reason |
-|---|---|---|
-| .agent/authored/f288-r6-mutations.py | 395/0 | route proof + seven ordered mutations across three runners (vitest, pytest, the harness itself) |
-
-No insertion count was expected by the block for C5; measured 395, under
-the 500-line cap.
-
-### F288 R6 C6: rewrite handoff for round 6 (this commit — a handoff cannot table the commit that writes it, R-0149 pattern)
+### F288 R7 C5: rewrite handoff for round 7 (this commit — a handoff cannot table the commit that writes it, R-0149 pattern)
 | Path | +/- | Reason |
 |---|---|---|
 | .agent/handoff.md | rewrite | this handback |
 
 ## External actions
 
-- `git worktree add --detach .remedy-wt/f288-r6-mut 6441ce671` — succeeded
-  (the official G5 worktree, at C5).
-- `python3 .agent/authored/f288-r6-mutations.py
-  /home/decodeux/Repos/remedy/.remedy-wt/f288-r6-mut` — the official G5
-  run, reported whole in this round's reply; real outcome `ALL MUTATIONS
-  CAUGHT AND RESTORED CLEANLY: True`.
-- `git worktree remove .remedy-wt/f288-r6-mut --force` then `git worktree
-  prune` — succeeded; count returned to 72, matching step 4's reading.
+- `python3 .remedy-wt/f288-r7-payloads/selfuse.py`, run in the primary
+  checkout via `bash -c 'python3 ... | tee .remedy-wt/f288-r7-worker/selfuse.log; echo
+  "REAL_EXIT=${PIPESTATUS[0]}"'` — real exit 0. Ran the `self_use` role's
+  provider twice (`pingpong_live`), created job `8356faebdc904fd1` and its
+  branch `remedy/job-8356faebdc904fd1`, and a job workspace at
+  `/home/decodeux/Repos/remedy/.remedy-wt/job-8356faebdc904fd1` (script's own
+  scratch, never touched further). The job branch and its workspace are left
+  behind per constraint 4 — nothing was applied, nothing was deleted that
+  this round did not create as scratch.
 - `git push -u origin feature/f288-event-stream-completeness` — reported
   under G6 in this round's reply (run after this file is committed).
 - No `gh pr create`, no `gh pr merge`, no branch deletion, no force-push, no
@@ -122,190 +85,216 @@ the 500-line cap.
 ## Verification
 
 ### G1 — TRANSPORT
-Payload readings (measured before use, against the PAYLOADS table):
-- `records.diff`: 58 lines, 13383 bytes, sha256
-  `64934cead79ba357bc85d8154391f1d79c88e81ca7c9a6e4a8d5ea28ba06ec25` — MATCH.
-- `plan.md`: 29 lines, 1044 bytes, sha256
-  `6035ae3a5c0ae1fd5fca6caf2359c612d454d51cab1e7d9f2d273fded3a771c6` — MATCH.
-- Block: 250 lines, sha256
-  `937863b2a920840faf38bb0bc93fcb6ff11cea4a66640924a9ff55097e550e53` — MATCH.
+Payload readings (measured before use, against the PAYLOADS table — all
+MATCH):
+- `plan.md`: 29 lines, 1078 bytes, sha256
+  `83d89f6f4ada45dfdb44ad46a5689b4ed22a3665096f1d95fa15ea5493a8fd0a`.
+- `records.diff`: 29 lines, 11008 bytes, sha256
+  `ec3ec0281e0ccc78f543f524b77f7b9d02050598afe40167b7b11934610f8bbc`.
+- `built_state.diff`: 79 lines, 5968 bytes, sha256
+  `5efb7f4142289d3e399a80e0197a4344bef197366b50f1f8a984c09dffdf527e`.
+- `selfuse.py`: 121 lines, 6420 bytes, sha256
+  `f70612e69c39682b41e11168ecbeffb785af00cdcf306d13dd50d541e5ceffce`.
+- Block: 187 lines, sha256
+  `bd5a5d0ea643bab9dcc7ac097fe6109040ec5eb53f3cfd0d1fa789359d8f65a2` — MATCH
+  against both readings the delegation message stated.
 
-Each `.agent/authored/f288-r6-*` copy, read back with `git show
-0247fc9b8:<path>`, compared byte-for-byte (sha256, both sides) with its
-source — all three identical: block copy vs `.remedy-wt/f288-r6/block.md`;
-`records.diff` copy vs `.remedy-wt/f288-r6-payloads/records.diff`;
-`plan.md` copy vs `.remedy-wt/f288-r6-payloads/plan.md`.
+Each `.agent/authored/f288-r7-*` copy, read back with `git show
+da5b2fe0c:<path>`, compared byte-for-byte against its source: block copy vs
+`.remedy-wt/f288-r7/block.md` (13671 bytes both sides); `plan.md` copy vs
+the payload (1078 bytes both sides); `records.diff` copy vs the payload
+(11008 bytes both sides); `built_state.diff` copy vs the payload (5968
+bytes both sides); `selfuse.py` copy vs the payload (6420 bytes both
+sides). All five `bytes_equal=True`.
 
-### G2 — THE BOOKING
-`git show 7ccc3cb96:<path>`, bytes and sha256, each MATCHING the reviewer's
+### G2 — THE BOOKKEEPING AND THE BUILT STATE
+`git show <commit>:<path>`, bytes and sha256, each MATCHING the reviewer's
 reading exactly:
 ```
-.agent/decisions.md    bytes=2243664  2420243c48efc1c62bab7d474ad6719fa2b0cad1b3098690186b5a527b9ce670
-.agent/live_review.md  bytes=318731   d1188613998e89bf48a901b411142b95972db5929d88d50c76c6c22dd5bc5cf8
-.agent/plan.md         bytes=1044     6035ae3a5c0ae1fd5fca6caf2359c612d454d51cab1e7d9f2d273fded3a771c6
+15b2dde11 .agent/live_review.md                  bytes=322392 3e122392b3f04cba97655c57d7b9eb5356c51304e8104ab92610bf0488395721
+15b2dde11 docs/agents/planner_reviewer_prompt.md  bytes=105869 61fab16e0c8c77c10d1979f2c84ea2de8a98504c6b29dcfaa0c92e72dd1e90a6
+15b2dde11 .agent/plan.md                          bytes=1078   83d89f6f4ada45dfdb44ad46a5689b4ed22a3665096f1d95fa15ea5493a8fd0a
+78e53297a docs/roadmap/features/T5_F288.md        bytes=8149   464873a969d453a721602df901e02c67dbd364634564177ee76501a740a2f49d
 ```
-Open set (`open_finding_ids` from `scripts/rotate_live_review.py` over
-`.agent/live_review.md`'s text at `7ccc3cb96`): `[]` — empty.
+Open set (`open_finding_ids` from `scripts/rotate_live_review.py`, imported
+with `scripts` on `sys.path`, over `.agent/live_review.md`'s text): at
+`2f49da5c` → `[]`; at `15b2dde11` (C2) → `[]`. Both empty, matching the
+reviewer's reading.
 
-### G3 — THE CODE
+### G3 — THE TESTS
 ```
-$ python3 -m ruff check tests/ui_contracts/test_brain_stage_mount.py .agent/authored/f288-r6-render_measure.py
-All checks passed!
+$ python3 -m pytest -q -p no:cacheprovider -rs tests/docs tests/orchestration/test_doc_staleness.py
+  tests/orchestration/test_self_use_generator.py tests/orchestration/test_self_use_queue.py
+  tests/orchestration/test_self_use_runner.py tests/orchestration/test_self_use_findings.py
+  tests/orchestration/test_self_use_job.py tests/orchestration/test_live_review_rotation.py
+  tests/orchestration/test_integrity_gate.py tests/orchestration/test_block_lint.py
+  tests/orchestration/test_test_runner.py tests/test_agent_tooling.py tests/cli/test_golden_path.py
+SKIPPED [1] tests/test_agent_tooling.py:43: D12 quarantine (F252): .claude/agents/remedy-reviewer.md
+  was deleted deliberately in 219dd32 (finding R-0074 — superseded by the split workflow's Window 1,
+  docs/agents/planner_reviewer_prompt.md). The read-only reviewer contract now lives there.
+  Backlog: re-pin this contract on the split-workflow docs, or retire the test.
+690 passed, 1 skipped in 80.40s (0:01:20)
 REAL_EXIT=0
 ```
-(Run at `HEAD`/C5 tip.)
-
-Quoted from the diff, in full — reported in this round's reply per the
-block's WHAT TO REPORT (`promptListEntries`, `PromptNodeList.tsx`, its
-style module, and the stage's `promptEntries`/`<PromptNodeList` lines).
-
-### G4 — THE TESTS
-```
-$ python3 -m pytest -q -p no:cacheprovider -rs <the ordered selection>
-SKIPPED [1] tests/ui_contracts/test_graph_architecture.py:441: D3 quarantine (F252) ...
-SKIPPED [1] tests/ui_contracts/test_graph_architecture.py:484: D3 quarantine (F252) ...
-SKIPPED [1] tests/ui_contracts/test_ux_quality.py:507: D3 quarantine (F252) ...
-SKIPPED [1] tests/ui_contracts/test_ux_quality.py:543: D3 quarantine (F252) ...
-SKIPPED [1] tests/test_agent_tooling.py:43: D12 quarantine (F252) ...
-1837 passed, 5 skipped in 110.17s (0:01:50)
-REAL_EXIT=0
-```
-Same five skips as the reviewer's `cb022003` baseline (1828 passed, 5
-skipped). Difference: +9 passed. `--collect-only -q` on
-`tests/ui_contracts/test_brain_stage_mount.py`: 22 nodes at `cb022003`, 31
-at `HEAD` — the nine new tests across
-`TestPromptNodeListMountsInTheLiveBranchOnly` (2) and
-`TestPromptNodeListIsTheAccessibleSurfaceForTheCanvassSynapses` (7) —
-accounts for the difference exactly.
-
-```
-$ (cd apps/ui && node_modules/.bin/vitest run)
-Test Files  75 passed | 1 skipped (76)
-     Tests  1459 passed | 5 skipped (1464)
-REAL_EXIT=0
-```
-The 1 skipped file/5 skipped tests are `scrubLive.test.ts`'s own five
-tests, pre-existing and untouched by this round. Difference from the
-reviewer's `cb022003` reading (75 files, 1455 passed): +4 tests, 0 new
-files. `git diff cb022003..HEAD -- apps/ui/src/components/graph/brainView.test.ts`
-shows exactly 4 added `it(` lines (3 in C3's own
-`describe("promptListEntries")`, 1 in C3b) — accounts for the difference
-exactly.
+The reviewer's simulation tree at C3 read `689 passed, 2 skipped`, the
+second skip being `tests/orchestration/test_test_runner.py:414` (no
+`apps/ui/node_modules` in the simulation tree). In THIS primary checkout
+that node has `apps/ui/node_modules` and ran for real: 689+1=690 passed,
+2-1=1 skipped — the one remaining skip is the same standing
+`test_agent_tooling.py:43` quarantine the reviewer also read. Counts
+reconcile exactly.
 
 ```
 $ python3 -m apps.cli.main integrity check --json
-{"check_count": 6, "fail_count": 0, "ok": true, "passed": true, ...}
+{"check_count": 6, "checks": [
+  {"name": "handler_import", "status": "pass", "message": "handlers=161"},
+  {"name": "live_review_verdict", "status": "pass", "message": "last Gate verdict PASS"},
+  {"name": "plan_consistency", "status": "pass", "message": "unchecked=0, context_complete=False"},
+  {"name": "relevant_untracked", "status": "pass", "message": "untracked=0, relevant=0"},
+  {"name": "repo_root_hygiene", "status": "pass", "message": "no reviewer scratch, evidence dir or archive at the root"},
+  {"name": "high_blockers_open", "status": "pass", "message": "no open blocker/high findings"}
+], "fail_count": 0, "ok": true, "passed": true, "schema_version": 1, "version": 1}
+REAL_EXIT=0
 ```
-All six checks `pass`, `fail_count` 0.
+All six checks `pass`, `fail_count` 0 by STATUS, not merely exit code.
 
-### G5 — THE PROOFS
-Harness (`python3 .agent/authored/f288-r6-render_measure.py
-/home/decodeux/Repos/remedy`, run fresh at `HEAD`): whole output reported in
-this round's reply, identical text to the C4-committed
-`.agent/authored/f288-r6-render.txt` (byte counts included) except the
-process pids, which are never part of that file's own content; all six
-checks `PASS`, real exit code 0, two PNGs saved and reported with their
-byte counts.
+### G4 — THE SELF-USE READINGS
+Full command and output (verbatim, C4):
+```
+$ bash -c 'python3 .remedy-wt/f288-r7-payloads/selfuse.py 2>&1 | tee .remedy-wt/f288-r7-worker/selfuse.log; echo "REAL_EXIT=${PIPESTATUS[0]}"'
+generate_and_append_if_empty(): ('SU-034', 'Fix stale documentation: config_cli_table_complete in
+  docs/guides/remedy-toml-user-guide.md', 'generated (self-use-generator tier 2, doc staleness,
+  config_cli_table_complete:docs/guides/remedy-toml-user-guide.md:the CLI commands table never
+  documents the `config` subcommand `show`)')
+next_self_use_item(): SU-034 Fix stale documentation: config_cli_table_complete in
+  docs/guides/remedy-toml-user-guide.md generated (self-use-generator tier 2, doc staleness, ...)
+REAL_EXIT=0
+```
+Item id `SU-034` — MATCHES the reviewer's simulation-tree reading exactly
+(Tier 2, doc staleness, the same claim about `config show`).
 
-Mutation tool, run against `git worktree add --detach .remedy-wt/f288-r6-mut
-6441ce671`: reported whole in this round's reply. Summary: the route proof
-(brainView.ts broken at its own syntax) turned the worktree's
-`brainView.test.ts` red with a transform/resolution failure, proving the
-scratch vitest config reads the worktree's own sources; restored
-byte-identical. TypeScript runner: control green, m1-m3 each red (1-2
-failing tests apiece, matching the mutation's own defect), control green
-again. Python runner: control green, m4-m6 each red (1-2 failing tests
-apiece), control green again. Harness runner: control green (exit 0, 6/6
-checks), m7 red (exit 1, C-e and C-f both failing, as ordered — the harness,
-run against a worktree whose `PromptNodeList.tsx` calls
-`onSelect(entry.nodeId)`), control green again. `ALL MUTATIONS CAUGHT AND
-RESTORED CLEANLY: True`. Every file restored byte-identical after every
-mutation; the worktree's `apps/ui/node_modules` symlink created before the
-harness runner's block and deleted after it. Worktree removed, pruned;
-`git worktree list | wc -l` back to 72, matching step 4's reading.
-`git status --porcelain` empty afterward.
+Job id `8356faebdc904fd1`, state `completed`. Builder and reviewer provider:
+`claude-cli` (both `builder` and `reviewer` keys), model `claude-sonnet-4-6`,
+effort `medium` — the `self_use` role's configured provider, never `fake`.
+
+Budgets: `{"deadline": null, "max_cost_usd": 6.0, "max_provider_calls": 8,
+"max_total_tokens": null, "max_wall_clock_minutes": null,
+"min_free_disk_bytes": null}`.
+Budget actuals: `{"actual_call_count": 2, "actual_sources":
+["pingpong_live"], "measured_cost_usd": 1.0727937, "priced_call_count": 2,
+"provider_call_count": 2, "schema_version": "2.0.0", "started_at":
+"2026-09-27T03:30:07.515292+00:00", "total_tokens": 7984,
+"unmeasured_call_count": 0, "unpriced_call_count": 0}`.
+
+Task states: `T001: applied_to_job_workspace (verdict: pass; final_status:
+staged_review_passed; repair_rounds_used: 0; run_id: dc4b978959f643b6)`.
+Wall time 129.5 seconds (started 2026-09-27T03:30:07Z, finished
+2026-09-27T03:32:16Z).
+
+`.agent/selfuse_f288/changed_paths.txt` (verbatim):
+```
+docs/guides/remedy-toml-user-guide.md
+```
+
+`.agent/selfuse_f288/staleness_after.txt` (verbatim):
+```
+Read from: the job branch remedy/job-8356faebdc904fd1
+NONE
+```
+
+`.agent/selfuse_f288/job_diff.txt` (verbatim):
+```
+$ git diff HEAD...remedy/job-8356faebdc904fd1  (exit 0)
+diff --git a/docs/guides/remedy-toml-user-guide.md b/docs/guides/remedy-toml-user-guide.md
+index e5ebc84b5..b90194558 100644
+--- a/docs/guides/remedy-toml-user-guide.md
++++ b/docs/guides/remedy-toml-user-guide.md
+@@ -77,6 +77,7 @@ temperature = 0.2
+ | Command | Description |
+ |---------|-------------|
+ | `remedy config list` | List all keys with values and sources |
++| `remedy config show` | Alias for `config list` |
+ | `remedy config list --json` | Same, as JSON |
+ | `remedy config get <key>` | Show value, source, env var, type for one key |
+ | `remedy config sources` | Show which config files are loaded |
+```
+
+`.agent/selfuse_f288/run_defects.txt` (verbatim):
+```
+NONE
+```
+
+`git worktree list | wc -l` after the run: 61 (unchanged from step 4's
+reading before the run). `git branch --list 'remedy/*' | wc -l` after the
+run: 197 (up from 196 at step 4, the one new `remedy/job-8356faebdc904fd1`
+branch the run created and the block permits leaving behind).
+
+### G5 — SIZES
+```
+$ git show --numstat --format= da5b2fe0c   (C1)
+187  0  .agent/authored/f288-r7-block.md
+79   0  .agent/authored/f288-r7-built_state.diff
+29   0  .agent/authored/f288-r7-plan.md
+29   0  .agent/authored/f288-r7-records.diff
+121  0  .agent/authored/f288-r7-selfuse.py
+
+$ git show --numstat --format= 15b2dde11   (C2)
+2  0  .agent/live_review.md
+9  9  .agent/plan.md
+8  0  docs/agents/planner_reviewer_prompt.md
+
+$ git show --numstat --format= 78e53297a   (C3)
+71  0  docs/roadmap/features/T5_F288.md
+
+$ git show --numstat --format= 11212c6eb   (C4)
+13  0  .agent/selfuse_f288/SU-034.md
+1   0  .agent/selfuse_f288/changed_paths.txt
+5   0  .agent/selfuse_f288/entry_and_job_file.txt
+39  0  .agent/selfuse_f288/execution_config.txt
+14  0  .agent/selfuse_f288/full_transcript.txt
+13  0  .agent/selfuse_f288/job_diff.txt
+12  0  .agent/selfuse_f288/result_state.txt
+1   0  .agent/selfuse_f288/run_defects.txt
+2   0  .agent/selfuse_f288/staleness_after.txt
+3   0  .agent/selfuse_f288/timing.txt
+8   0  scripts/self_use_queue.json
+```
+C1 measured insertions: 445, expected 445 (187+258) — MATCH. C2 measured
+2/0, 9/9, 8/0 — MATCH against the block's stated numstat. C3 measured
+71/0 — MATCH against the block's stated numstat. C4: no insertion count
+was expected by the block; measured 111 total, under the 500-line cap.
 
 ## Authored-text proofs
 
-- Block copy (`.agent/authored/f288-r6-block.md`, at `0247fc9b8`) vs
-  `.remedy-wt/f288-r6/block.md`: byte-identical (sha256 comparison).
-- `records.diff` copy vs `.remedy-wt/f288-r6-payloads/records.diff`:
-  byte-identical.
-- `plan.md` copy vs `.remedy-wt/f288-r6-payloads/plan.md`: byte-identical.
-- `records.diff` applied via `git apply`: `--check` and the real apply both
-  exit 0; the payload was never edited or retyped.
+- Block copy (`.agent/authored/f288-r7-block.md`, at `da5b2fe0c`) vs
+  `.remedy-wt/f288-r7/block.md`: byte-identical (13671 bytes both sides).
+- `plan.md` copy vs `.remedy-wt/f288-r7-payloads/plan.md`: byte-identical
+  (1078 bytes both sides).
+- `records.diff` copy vs `.remedy-wt/f288-r7-payloads/records.diff`:
+  byte-identical (11008 bytes both sides); applied via `git apply` with
+  `--check` and the real apply both exit 0; never edited or retyped.
+- `built_state.diff` copy vs `.remedy-wt/f288-r7-payloads/built_state.diff`:
+  byte-identical (5968 bytes both sides); applied via `git apply` with
+  `--check` and the real apply both exit 0; never edited or retyped.
+- `selfuse.py` copy vs `.remedy-wt/f288-r7-payloads/selfuse.py`:
+  byte-identical (6420 bytes both sides); run verbatim from the primary
+  checkout, never edited.
 - `.agent/plan.md` after the payload rewrite: sha256
-  `6035ae3a5c0ae1fd5fca6caf2359c612d454d51cab1e7d9f2d273fded3a771c6`,
+  `83d89f6f4ada45dfdb44ad46a5689b4ed22a3665096f1d95fa15ea5493a8fd0a`,
   matching the payload's own reading exactly.
-- `.agent/authored/f288-r6-render.txt` (C4b) vs the harness's fresh re-run
-  at `HEAD`: identical text (checks, screenshot byte counts, exit codes);
-  only the server/chrome pids differ, which are process-specific and not
-  part of the harness's own pass/fail content.
 
 ## Deviations & assumptions
 
-1. **C4 split into C4a/C4b (declared under constraint 2).** Staging the
-   five harness files together with `f288-r6-render.txt` measured 527
-   insertions, over the 500-line cap. Split before either was committed:
-   C4a (497 insertions, the five harness files) and C4b (30 insertions,
-   the reading). Neither exceeds the cap; this is the only oversize split
-   in the round.
-2. **C3b added (declared, anticipating G5's m3).** A vitest test proving a
-   `test_run`-kind node never lists, added between C3 and the mutation
-   tool's authoring, because C3's own tests only proved a `task` node stays
-   excluded — insufficient to catch a mutation that widens the kind check
-   to admit `test_run`. Added before the first tool run, per the block's
-   own G5 instruction to add the check that can see a mutation.
-3. **Two comment rewrites inside C3, before that commit existed.** The
-   first drafts of `PromptNodeList.tsx` and its style module named the
-   literal strings `aria-hidden`, `display: none` and `visibility: hidden`
-   in prose comments, which tripped the S5 python tests forbidding those
-   substrings in the product files. Reworded both comments to state the
-   same facts without the literal substrings; re-ran `pytest`/`ruff` clean
-   before committing. No test or requirement changed — only comment
-   wording, caught by self-review before C3 was ever committed.
-4. Every other reading in this handback is real and measured, not
-   expected.
+None. Every commit landed in the block's own order (C1, C2, C3, C4, C5),
+every `git apply --check` and real apply exited 0 on the first try, no
+commit approached the 500-line cap, the self-use item generated and its
+id matched the reviewer's simulation-tree reading exactly, the job ended
+`completed`/`staged_review_passed` with no Python exception, and no gate
+went red. Every reading in this handback is real and measured, not
+expected.
 
 ## Next
 
-Phase 1 rule 1 (read `.agent/STOP` from disk), the review of round 6 with
-the reviewer's reading of the two screenshots, then the closure sequence.
-Open findings: 0. Operator questions: 0.
-
-## Reviewer verdict on round 6, and the end of session 1
-
-Written by the planner and reviewer of F288's first session after the worker's C6 above, and
-appended to this handback by a delegated worker as the session's last commit. It is the durable
-carrier of round 6's verdict (amend0827 rule 1): the first commit of the next round books the
-paragraph between the two marker lines below, verbatim, as the last entry of
-`.agent/live_review.md`, with one blank line before it.
-
------ BEGIN GATE ENTRY -----
-Gate: F288 R6 — the F288 round 6 entry: the booking of round 5, DECISION F288 D6, and the second half of T003 — the keyboard's parallel list of the live picture's prompt nodes, hidden until it holds focus, and a headless browser's proof of the list, the keys and the drawn synapses. VERDICT PASS. Re-derived over `cb022003`..`b184775e` by the planner and reviewer of F288's first session, whose own readings are every one below. THE RANGE IS 8 COMMITS, at `0247fc9b` 337, `7ccc3cb9` 51, `e57bc7f2` 261, `07de6c6a` 497, `53bdf90e` 30, `b6802cbc` 11, `6441ce67` 395 and `b184775e` 179 insertions by `git show --numstat`, each under the 500-line cap, each single-parent and each ending with the ordered trailer. THE WORKER DECLARED THREE DEVIATIONS, and each stands: the block's C4 landed as C4a, the harness's five files, and C4b, its reading, under constraint 2's split clause; C3b added a vitest case proving a `test_run` node never lists, so that m3 had a test to turn red, as G5 orders; and two comments of the round's own new files were reworded before their commit because they named the very strings the round's contract test forbids in those files. THE TRANSPORT PROOF: the block copy and the two payload copies, read at `0247fc9b`, equal the reviewer's originals byte for byte, and at `7ccc3cb9` the ledger, the decisions and the plan equal the reviewer's simulation tree byte for byte, the open set reading empty. THE CODE, read in the diff: `promptListEntries` answers, in model order, one entry per synapse the visible layout holds, with the prompt id, the node id, `<role> r<round>` and the state words D6 (1) names; `PromptNodeList` renders a `nav` labelled "Prompts in the live graph" of native buttons whose `aria-pressed` follows the selection and whose click selects the prompt item; its style module clips it to one pixel until `:focus-within` and then shows it over the stage's top-left corner, and every one of the ten `var(--remedy-*)` names it uses is defined in `apps/ui/src/styles/tokens.css`; the stage renders it inside the live branch only, directly after the breadcrumbs; and `ForceBrainGraph`'s container keeps `aria-hidden="true"`. THE RENDER: the reviewer ran the committed harness `.agent/authored/f288-r6-render_measure.py` itself at `b184775e` and read all six checks `PASS`, Chrome and the server stopped by pid and the work dir removed, and read the worker's two screenshots: before focus the list is invisible and each task shows its runs and two faint synapses at graph_spec §4's radius of 2; after focus the list stands at the stage's top-left with its second button pressed, and the canvas rings that button's synapse. The four labels read `builder r1` and `reviewer r1` twice, without the task's name, exactly as the simple view's dots are labelled; that mirrors the view the list stands in for and is an observation, not a finding. THE TESTS: the reviewer's own serial run of the round's selection in the primary checkout at `b184775e` read 1837 passed and 5 skipped at real exit code 0, the base 1828 plus the 9 contract nodes the round adds, and the vitest suite there read 75 files and 1459 tests passed, 5 skipped, none failed; all six `integrity check` checks read `pass`. THE RED PROOFS: the worker's committed tool, re-run by the reviewer in a disposable worktree at `b184775e`, turned its route proof and all seven ordered mutations red — m7 being the harness itself, run on a worktree whose list selects the node id, failing C-e and C-f — with every runner's control green before and after, every file restored byte-identical, and the `node_modules` symlink it made removed. The worktree was removed.
------ END GATE ENTRY -----
-
-WHY THE SESSION ENDS HERE. Session 1 ran six delegated rounds, which meets the target of six to
-eight: rounds 1, 2, 4, 5 and 6 passed and round 3 failed on one gate, repaired by round 4. T001,
-T002 and T003 are built. What remains is the closure sequence alone, which needs a fresh reading of
-`docs/roadmap/STATUS_closure_protocol.md` and the evidence recipe, and this session wrote two lines
-to `.agent/prose_slips.md` and caused round 3's failure by a path set that missed four readers —
-the signal the protocol names for ending a session rather than authoring a closure. Context
-remaining at this point: enough to write this, not enough to author a closure comfortably.
-
-THE STATE FOR THE NEXT SESSION. Feature F288, session 2 next, rounds so far 6. Branch
-`feature/f288-event-stream-completeness`, pushed, its last reviewed commit `b184775e`, forked from
-`main` at `db691093`. Open findings: 0 (R-1075 registered and resolved in this session). Operator
-questions open: 0. No pull request is open. Leftover reviewer worktrees under `.remedy-wt/` named
-`f288-r1-dry` to `f288-r6-dry` and `f288-r1-sim` to `f288-r6-sim` are the reviewer's own and may be
-removed by the next reviewer once it no longer needs them.
-
-NEXT, AFTER THIS VERDICT:
-
-1. Phase 1 rule 1: read `.agent/STOP` from disk.
-2. The Open PR Gate: none is expected to be open.
-3. The closure sequence of `docs/roadmap/STATUS_closure_protocol.md`, whose first round books round
-   6's gate entry above into `.agent/live_review.md` in its first commit, then runs the one full
-   suite of amend0917 rule 1, writes the Built State of `docs/roadmap/features/T5_F288.md`, and
-   continues through the evidence bundle, the review package, the self-use item and the STATUS
-   acceptance with the pull request.
+Phase 1 rule 1 (read `.agent/STOP` from disk), the review of round 7 and
+of the self-use run's diff, then the rest of the closure sequence. Open
+findings: 0. Operator questions: 0.
