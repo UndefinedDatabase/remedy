@@ -603,6 +603,33 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         related=("job.pause", "job.plan-show", "decision.resolve"),
         exit_codes=(0, 1, 2, 3),
     ),
+    # ── job rerun-subtree (F029 T002, DECISION F029 D3) ──────────────────
+    CommandEntry(
+        command_id="job.rerun-subtree",
+        group_id="job",
+        subcommand="rerun-subtree",
+        description="Estimate a subtree rerun's cost, confirm it through the cost preview, then "
+                    "reset one task and everything depending on it to run again (F029).",
+        action_class="apply_write",
+        args=(
+            _JOB_ID,
+            ArgDef("task", "The task: its id in the job, or its id in the job plan, as "
+                   "`remedy job plan-show` prints them"),
+            ArgDef("--model", "Model override for the rerun subtree's tasks",
+                   required=False, is_option=True),
+            ArgDef("--yes", "Skip the cost-preview confirmation prompt above the "
+                            "configured threshold (F114). Never bypasses budget "
+                            "limits or the escalation log.",
+                   required=False, is_option=True, is_flag=True),
+            _JSON_OPT,
+        ),
+        supports_json=True,
+        may_mutate_repo=True,
+        may_execute_commands=False,
+        is_expensive=True,
+        related=("job.run", "job.plan-show", "job.veto-task"),
+        exit_codes=(0, 1, 2, 3),
+    ),
     # ── job inject / inject-confirm / inject-answer (F028 T003, DECISION F028 D4) ──
     CommandEntry(
         command_id="job.inject",

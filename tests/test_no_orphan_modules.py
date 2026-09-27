@@ -92,8 +92,6 @@ ALLOWED_UNWIRED: tuple[tuple[str, str], ...] = (
      "run by hand in every closure, STATUS_closure_protocol.md precondition 6 (F258 T001)"),
     ("packages/orchestration/self_use_runner.py",
      "run by hand in every closure, STATUS_closure_protocol.md precondition 6 (F258 T002); a D11 entry point"),
-    ("packages/orchestration/subtree_rerun.py",
-     "F029 T001's subtree reset; T002's rerun command wires it (DECISION F029 D1)"),
     ("scripts/remedy_agent_tooling_doctor.py",
      "run by hand after tooling changes, per .claude/skills/remedy-agent-tooling/SKILL.md"),
     ("scripts/self_run_gauntlet.py",
