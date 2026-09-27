@@ -23631,3 +23631,42 @@ its own, larger than this feature.
 
 HOW TO REVERSE: delete `rerun_subtree_command`, the event's write and its catalogue line, the two
 dashboard keys, and the door's command with its guard entries, and delete this paragraph.
+
+## DECISION F029 D5 — the browser shows a task's attempts two ways: the node's text chip reads `attempt <n>` from the second attempt on, and the task's detail popover gains an Attempts list shaped as the Versions list, whose rows open the fields that changed from the attempt before; the Rerun control takes round 6 (2026-09-27)
+
+CONTEXT: measured at `47c63354`. The dashboard's task item carries `attempt` and `attempts` (DECISION
+F029 D4 (4)). `docs/ui/design_reference/graph_spec.md` fans a task's runs out chronologically at
+its L1 level, puts "a per-task run list in DetailPopover" as the accessible surface, and gives the
+L2 popover a verdict and a diff button, but designs no mark for a task that has run more than once
+and no list of a task's attempts; `assets_spec.md`'s retry ring marks a repair round inside one
+run, not a rerun. F026 and F028 settled the same kind of gap without a new mark: the node's one
+text chip `taskChipOf` in `buildForceBrainModel.ts` reads `v<n>`, "added", or both joined by
+" · " (DECISIONS F026 D3 and F028 D7), and the popover's `TaskVersionList.tsx` lists a task's
+spec versions, each row opening the fields that changed from the row before it.
+
+CHOSEN: (1) THE CHIP. A task whose `attempt` is at least 2 adds `attempt <n>` to its text chip,
+after `v<n>` and "added" when they apply, joined by " · ", on the path `specVersion` and `origin`
+already take from the dashboard seed into the node's `meta`. (2) THE LIST. A new
+`TaskAttemptList.tsx`, shaped as `TaskVersionList.tsx`, renders after the Versions section when the
+task has earlier attempts: one row per earlier attempt, oldest first, labelled `Attempt <n>`, with
+its facts in words — how it ended, what the reviewer said, whether its tests passed, the model it
+ran with ("the job's own model" when no override), and its commit's first twelve characters — and
+the current attempt last, labelled `Attempt <n> · current`, with its present status. (3) THE DIFF
+BETWEEN ATTEMPTS is the fields that changed from the attempt before, opened from each earlier row
+after the first, as the Versions list opens a version's changes; the file changes of each attempt
+stay in its own commit on the job branch, which the reset never rewrites. (4) The chip and the
+list each take one row of `docs/ui/design_reference/assumption_log.md`. (5) Round 6 lands the Rerun
+control that replaces the disabled button of `RunDetailPopover.tsx`, the send module for
+`job.rerun-subtree` with its cost confirmation, and the report's naming of an override; round 7 the
+end-to-end proof.
+
+ALTERNATIVES: drawing earlier attempts as extra run nodes with a separate fan, rejected because the
+live graph already fans every run of a task in time order and a second fan would duplicate it; a
+file-level diff between two attempts' commits in the browser, rejected here because no server route
+serves a diff between two commits of a job branch and the feature file's list of attempts with
+their verdicts does not need one; a numeric badge without a word, rejected because the operator
+reads the chip without a legend.
+
+HOW TO REVERSE: delete `TaskAttemptList.tsx`, its mount and its view module, the `attempt` part of
+`taskChipOf` and its seed thread, the two assumption-log rows naming this decision, and delete this
+paragraph.

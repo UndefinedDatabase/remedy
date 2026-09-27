@@ -14,18 +14,18 @@ with a model override that the evidence records
 
 ## Current Step
 
-ROUND 4: book round 3's PASS and resolve R-1081, record DECISION F029
-D4, and land the server half of T003 — the shared rerun command
-function, the run-log event `subtree_rerun_prepared` with its plain
-sentence, the task item's `attempt` and `attempts` on the dashboard, and
-the write door's command `job.rerun-subtree`.
+ROUND 5: book round 4's PASS and its prose slip, record DECISION F029 D5
+with its two assumption-log rows, and land T003's display half — the
+task item's attempts in the browser's types, the `attempt <n>` chip on
+the canvas, and the Attempts list in the task's detail popover.
 
 ## Next Steps
 
-1. The review of round 4.
-2. T003's browser half: the send module, the types, the attempt chip,
-   the attempt list in the task's popover, the Rerun control, and the
-   render proof.
+1. The review of round 5, with the reviewer's headless render of the
+   chip and the Attempts list.
+2. T003's control half: the Rerun control in place of the disabled
+   button, the send module for `job.rerun-subtree` with its cost
+   confirmation, and the report naming an override.
 3. T003's end-to-end proof — run, rerun a middle task with an override,
    the subtree runs again, both attempts in the evidence.
 4. The closure sequence.
