@@ -12,18 +12,17 @@ the draft, with provenance end to end (`docs/roadmap/features/T5_F028.md`).
 
 ## Current Step
 
-ROUND 8, the repair of round 7: book round 7's FAIL and register
-R-1079, record DECISION F028 D8 and two prose slips, render the Add Task
-sheet through a portal, and name an injected task's origin on its line
-of the final report.
+ROUND 9: book round 8's PASS and resolve R-1079, and land the end-to-end
+proof — a task injected into a paused job through the live door and
+through `remedy job inject --yes`, run in the same job, its origin shown
+on the dashboard, in the stream and in the final report.
 
 ## Next Steps
 
-1. The end-to-end proof: inject mid-run through the door, draft,
-   confirm, execute in the same job, and the report names the origin.
-2. The closure sequence.
+1. The closure sequence: the checklist consolidation, the Built State,
+   the one full suite, the self-use item, the evidence bundle and the
+   review package, the ledger rotation, and the STATUS acceptance.
 
 ## Risks
 
-The planner's draft call can take tens of seconds. Open findings: 1
-(R-1079, Medium, repaired this round).
+None open beyond the closure's own. Open findings: 0.
