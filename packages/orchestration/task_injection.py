@@ -70,6 +70,8 @@ __all__ = [
     "place_injected_task",
     "injection_budget_check",
     "shortfall_decision_seed",
+    "injection_budget_inputs",
+    "injection_call_fn",
     "fence_conflicts",
     "compose_injection_prompt",
     "draft_task_injection",
@@ -366,6 +368,54 @@ def shortfall_decision_seed(check: dict[str, Any]) -> dict[str, Any]:
         "extend_to_usd": extend_to_usd,
         "shrink_band": shrink_band,
     }
+
+
+# ---------------------------------------------------------------------------
+# DECISION F028 D4 (3) — the shared budget and planner inputs: the CLI's `job inject`
+# and round 5's browser command read a job's budget state and its planner call_fn
+# through these two, so the two doors can never disagree about either.
+# ---------------------------------------------------------------------------
+
+
+def injection_budget_inputs(job: Any) -> tuple[Any, Any, Any]:
+    """``(budgets, counters, config)`` for a job about to draft or answer an injection.
+
+    ``budgets`` is None when ``job.budgets`` is None, else ``JobBudgets.model_validate(
+    job.budgets)``; ``counters`` is ``BudgetCounters()`` when ``job.budget_actuals`` is
+    None, else decoded and built from it; ``config`` is the repo's predictive budget
+    config. A pydantic ``ValidationError``, a ``budget_guard.BudgetCounterError``, a
+    ``ValueError`` or a ``TypeError`` raised while reading the budgets or the counters
+    raises ``TaskInjectionRefused("budget_unreadable", ...)`` instead — a job whose stored
+    state cannot be trusted must never be read as a job that has spent nothing.
+    """
+    from packages.core.models import JobBudgets
+    from packages.orchestration.budget_resolution import resolve_predictive_budget_config
+
+    try:
+        budgets = None if job.budgets is None else JobBudgets.model_validate(job.budgets)
+        if job.budget_actuals is None:
+            counters = budget_guard.BudgetCounters()
+        else:
+            validated = budget_guard.decode_persisted_budget_actuals(
+                job.budget_actuals, first_running_at=job.first_running_at or None)
+            counters = budget_guard.counters_from_persisted(validated)
+    except (ValidationError, budget_guard.BudgetCounterError, ValueError, TypeError) as exc:
+        raise TaskInjectionRefused(
+            "budget_unreadable", f"this job's budget state cannot be read: {exc}") from exc
+
+    config = resolve_predictive_budget_config(project_root=job.repo_path or None)
+    return budgets, counters, config
+
+
+def injection_call_fn() -> Callable[[str, int], str] | None:
+    """The one planner call an injection draft or a derived draft makes: ``intake
+    .make_structured_call_fn(InjectedTaskDraft)``. DECISION F028 D4 (3): the CLI and
+    round 5's browser command share this so both name the operator's configured
+    planner identically, never two independently-resolved calls that could disagree.
+    """
+    from packages.orchestration import intake
+
+    return intake.make_structured_call_fn(InjectedTaskDraft)
 
 
 # ---------------------------------------------------------------------------
@@ -853,7 +903,21 @@ def answer_injection_shortfall(
         shortfall = bool(check["shortfall"])
         budget_extend_to_usd = None
     else:                                                          # extend_budget
-        extend_to_usd = seed["extend_to_usd"]
+        # DECISION F028 D4 (4): re-check against the CURRENT counters before trusting the
+        # seed's amount — spend between the draft and this answer must not leave the
+        # raised limit short. Rounded up to the cent exactly as `shortfall_decision_seed`
+        # rounds it, and only the larger of the two ever wins.
+        fresh_check = injection_budget_check(
+            budgets, counters, band=task["est_tokens_band"], config=config)
+        fresh_spent = fresh_check.get("spent_cost_usd")
+        fresh_expected = fresh_check.get("expected_cost_usd")
+        if fresh_spent is not None and fresh_expected is not None:
+            recomputed_extend_to_usd = float(
+                Decimal(repr(round(fresh_spent + fresh_expected, 6))).quantize(
+                    Decimal("0.01"), rounding=ROUND_CEILING))
+            extend_to_usd = max(recomputed_extend_to_usd, seed["extend_to_usd"])
+        else:
+            extend_to_usd = seed["extend_to_usd"]
         extended_budgets = budgets.model_copy(update={"max_cost_usd": extend_to_usd})
         check = injection_budget_check(
             extended_budgets, counters, band=task["est_tokens_band"], config=config)
@@ -931,6 +995,9 @@ def _validate_confirmed_record(record: dict[str, Any]) -> None:
                     or extend_to_usd <= 0):
                 raise TaskInjectionError(
                     "a confirmed task injection entry carries an invalid budget_extend_to_usd")
+    if "confirmed_unseen" in record and not isinstance(record["confirmed_unseen"], bool):
+        raise TaskInjectionError(
+            "a confirmed task injection entry carries a non-bool confirmed_unseen")
 
 
 def confirmed_injections(job_id: str, *,
@@ -1012,6 +1079,7 @@ def confirm_task_injection(
     confirm_token: Any,
     *,
     actor: Any,
+    unseen: bool = False,
     now: datetime | None = None,
     control_root_path: Path | None = None,
 ) -> dict[str, Any]:
@@ -1025,6 +1093,11 @@ def confirm_task_injection(
     injection ``job.metadata["task_injections"]`` does not yet hold, or a ``depends_on`` id
     in neither set (``draft_stale``, telling the operator to draft again); and the two sets
     together at ``MAX_PLAN_TASKS`` or more (``plan_full``). A refusal writes nothing.
+
+    DECISION F028 D4 (2): ``unseen``, True only when a caller confirms a draft without a
+    human reviewing it first (the CLI's ``job inject --yes``), is stored on the persisted
+    record as ``confirmed_unseen`` (``bool(unseen)``) so an unattended confirmation is told
+    apart from a reviewed one wherever the add is read.
 
     Otherwise publishes ONE create-only file in ``INJECTED_TASKS_DIRNAME`` and answers
     ``{"outcome": "confirmed", "job_id", "draft_id", "task_id", "placement", "confirmed_at"}``.
@@ -1098,6 +1171,8 @@ def confirm_task_injection(
         "drafted_by": record.get("actor"),
         "actor": _bounded_actor(actor),
         "confirmed_at": now_dt.isoformat(),
+        # DECISION F028 D4 (2): True only for an unattended `--yes` confirmation.
+        "confirmed_unseen": bool(unseen),
         # DECISION F028 D3 (2): carried from the draft, None when the draft never named an
         # extension, into the fold's own reading of `apply_injection_to_job`.
         "budget_extend_to_usd": record.get("budget_extend_to_usd"),
@@ -1136,7 +1211,9 @@ def apply_injection_to_job(job: Any, record: dict[str, Any], *,
     bumped, the approval hash re-sealed when the old body was approved with one, and the edit
     log extended by one entry naming ``plan_add_task`` and carrying an ``injection`` block —
     gaining ``budget_extend_to_usd`` (the record's value) when the record carries that key at
-    all. DECISION F028 D3 (2): when the record's ``budget_extend_to_usd`` is a real number,
+    all, and always carrying ``confirmed_unseen`` (DECISION F028 D4 (2), the record's value,
+    False for one lacking the key). DECISION F028 D3 (2): when the record's
+    ``budget_extend_to_usd`` is a real number,
     ``job.budgets`` is a dict and its current ``max_cost_usd`` is not None and lower than it,
     ``job.budgets["max_cost_usd"]`` is raised to it — an extension never creates a limit and
     never lowers one. Answers ``{"task_id", "planned_id", "folded_at"}``.
@@ -1202,6 +1279,9 @@ def apply_injection_to_job(job: Any, record: dict[str, Any], *,
         "plan_rationale": plan_rationale,
         "text": text,
         "confirmed_at": confirmed_at,
+        # DECISION F028 D4 (2): carried from the confirmation, False for one lacking the
+        # key at all (a record round 2 or round 3 wrote, before this field existed).
+        "confirmed_unseen": record.get("confirmed_unseen", False),
         "dod_resync_pending": dod_resync_pending,
     }
     if "budget_extend_to_usd" in record:
