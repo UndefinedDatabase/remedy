@@ -8,8 +8,11 @@
 // `review_run` at `task_round_completed`, `repair_run` at
 // `task_round_repaired`, and `test_run` at `task_round_tested`,
 // `test_run_completed`, `test_run_timed_out`, `test_run_blocked`,
-// `verification_passed` and `verification_failed` — `synapse` and `artifact`
-// are still born by nothing. See `NodeKind` below for the per-kind detail.
+// `verification_passed` and `verification_failed`. As of DECISION F288 D5,
+// `synapse` is born too, but not by this reducer: `promptNodes.ts`'s
+// `withPromptNodes` composes it onto the live model from the dashboard's own
+// prompt trace, a child of its task in that task's state. `artifact` is
+// still born by nothing. See `NodeKind` below for the per-kind detail.
 // Design authority: docs/ui/design_reference/graph_spec.md §2 (ontology).
 
 /** The shapes a brain-graph node can take. As of DECISION F288 D3 (3),
@@ -19,8 +22,11 @@
  *  `task_round_completed`; `repair_run` from `task_round_repaired`; and
  *  `test_run` from `task_round_tested`, `test_run_completed`,
  *  `test_run_timed_out`, `test_run_blocked`, `verification_passed` and
- *  `verification_failed`. `synapse` and `artifact` are still born by nothing
- *  — no Part E event name exists to birth them from. */
+ *  `verification_failed`. As of DECISION F288 D5, `synapse` is born by
+ *  `promptNodes.ts`'s `withPromptNodes` from the dashboard's own prompt
+ *  trace, composed onto the live model, never by this reducer — no Part E
+ *  event name exists to birth it from a stream frame. `artifact` is still
+ *  born by nothing at all. */
 export type NodeKind =
   | "job_core"
   | "task"
