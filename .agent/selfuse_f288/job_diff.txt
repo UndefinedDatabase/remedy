@@ -1,0 +1,13 @@
+$ git diff HEAD...remedy/job-8356faebdc904fd1  (exit 0)
+diff --git a/docs/guides/remedy-toml-user-guide.md b/docs/guides/remedy-toml-user-guide.md
+index e5ebc84b5..b90194558 100644
+--- a/docs/guides/remedy-toml-user-guide.md
++++ b/docs/guides/remedy-toml-user-guide.md
+@@ -77,6 +77,7 @@ temperature = 0.2
+ | Command | Description |
+ |---------|-------------|
+ | `remedy config list` | List all keys with values and sources |
++| `remedy config show` | Alias for `config list` |
+ | `remedy config list --json` | Same, as JSON |
+ | `remedy config get <key>` | Show value, source, env var, type for one key |
+ | `remedy config sources` | Show which config files are loaded |
