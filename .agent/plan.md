@@ -12,18 +12,15 @@ the draft, with provenance end to end (`docs/roadmap/features/T5_F028.md`).
 
 ## Current Step
 
-ROUND 6: book round 5's PASS and resolve R-1078, record DECISION F028
-D6, and land the task item's `origin`, the browser's send module for the
-three injection commands, and the "Added by you" pill in the task list
-and the detail popover.
+ROUND 7: book round 6's PASS, record DECISION F028 D7 and its two
+assumption-log rows, and land the "+ Add Task" row with its draft-and-
+confirm sheet in place of the propose button, and the canvas chip.
 
 ## Next Steps
 
-1. The Add Task row and its draft-and-confirm sheet, the canvas chip,
-   and a headless render proof of the three surfaces.
-2. The end-to-end proof: inject mid-run, draft, confirm, execute, and
+1. The end-to-end proof: inject mid-run, draft, confirm, execute, and
    the report shows the origin.
-3. The closure sequence.
+2. The closure sequence.
 
 ## Risks
 

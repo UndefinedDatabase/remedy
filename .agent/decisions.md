@@ -23332,3 +23332,40 @@ ALTERNATIVES: a new state mark on the node, rejected because provenance is not a
 HOW TO REVERSE: remove `origin` from the task item and the type, the two pills, `injectView.ts`
 and `injectSend.ts` with their tests, the assumption-log row naming this DECISION, and delete this
 paragraph.
+
+## DECISION F028 D7 — the tasks card's "+ Add Task" row replaces the button that copied `remedy task propose`, and opens a right-anchored sheet that drafts, shows and confirms an injection and answers a shortfall; the canvas chip reads "added", after `v<n>` when both apply; the reviewer renders all three surfaces headless (2026-09-27)
+
+CONTEXT: `docs/ui/design_reference/ux_spec.md` §11.5 names a "+ Add Task" ghost row in the tasks
+card that "opens inject flow when available; else disabled", and §8 styles it as a full-width
+ghost row, 13/600 ink-soft with a leading plus and accent text on hover; it designs no inject
+flow. Measured at `bdcc86cb`: the row's place holds "+ Propose task (copies CLI command)", which
+copies `remedy task propose --job <id>`, a command the catalog does not carry;
+`tests/ui_contracts/test_responsive.py`'s `test_no_add_task_button` pins that string in the card
+and forbids a file named `AddTaskButton.tsx`, its comment saying task creation is CLI-only;
+`LessonsOverlay.tsx` is the right-anchored glass sheet precedent, a dialog closed by a button and
+by Esc; the canvas draws one text chip per task node, F026's `v<n>`, seeded through
+`dashboardBrainSeeds`, `BrainTaskSeed`, `seedBrainModel` and `taskChipOf`.
+
+CHOSEN: (1) THE ROW. "+ Add Task" replaces the propose button and its command, which are deleted
+(AGENTS.md "Replacing is deleting"); it is disabled, with a title saying why, when the page has no
+server token. `test_no_add_task_button` keeps forbidding `AddTaskButton.tsx` and now pins "+ Add
+Task" where it pinned the retired command, which the card may no longer contain. (2) THE SHEET,
+`AddTaskSheet.tsx`, styled as `LessonsOverlay.tsx` is: a text area for the task in the operator's
+own words, an optional choice of the task it must follow, and a Draft pill; the draft's title,
+goal, acceptance lines, size, placement and cost read as sentences, with every fence flag named;
+Confirm and Discard; on a shortfall the question and one button per answer; each send's result in
+one sentence read aloud politely. What the sheet shows is computed by a pure `injectDraftView`
+in `injectView.ts`, so its rules are tested. (3) THE CANVAS CHIP. A seed carries `origin` only for
+an injected task, the reducer copies it into the node's meta as it copies `specVersion`, and
+`taskChipOf` answers "added", or `v<n> · added` for an injected task edited since; the word is
+short because the canvas chip is small. (4) THE PROOF. The reviewer renders the row, the sheet in
+its drafted and shortfall states and the popover and canvas chips in headless Chrome over the
+committed sources before the verdict, as F026's and F027's reviewers did.
+
+ALTERNATIVES: a modal in the page's centre, rejected because the cockpit's sheets are right-anchored
+and the popover already occupies the centre; keeping the propose button beside the new row,
+rejected because it copies a command that no longer exists.
+
+HOW TO REVERSE: restore the propose button and its test pin, remove `AddTaskSheet.tsx`,
+`injectDraftView`, the canvas origin thread and the assumption-log rows naming this DECISION, and
+delete this paragraph.
