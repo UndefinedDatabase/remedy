@@ -1,29 +1,30 @@
-# Live Review — F030 Steering messages
+# Live Review — F035 Ownership ledger
 
-> Round-by-round review record, re-headed at the F030 claim per
-> docs/agents/planner_reviewer_prompt.md §1. The heading this replaces named F029, whose STATUS
-> line went `[x]` at `17f34c3b` and whose pull request 288 merged into `main` at the reviewer's
-> Open PR Gate under docs/agents/self_drive_protocol.md, as `15f5d384`, after both hosted CI jobs
-> of run 36340890123 ended `success` on `17f34c3b`. `17f34c3b` is the second parent of
-> `15f5d384`, and the two trees are identical. F029's round 11, its closing round, was reviewed
-> after its own handback, so its gate entry is appended at the end of this record by F030's
+> Round-by-round review record, re-headed at the F035 claim per
+> docs/agents/planner_reviewer_prompt.md §1. The heading this replaces named F030, whose STATUS
+> line went `[x]` at `6d5ddf6b` and whose pull request 289 merged into `main` at the reviewer's
+> Open PR Gate under docs/agents/self_drive_protocol.md, as `a0b287a5`, after both hosted CI jobs
+> of run 36353221325 ended `success` on `6d5ddf6b`. `6d5ddf6b` is the second parent of
+> `a0b287a5`, and the two trees are identical. F030's round 7, its closing round, was reviewed
+> after its own handback, so its gate entry is appended at the end of this record by F035's
 > claim. Only the heading, this paragraph and the Steps section below are rewritten; everything
-> from the Findings heading to the end of the file as it stood at `15f5d384` is carried forward
+> from the Findings heading to the end of the file as it stood at `a0b287a5` is carried forward
 > BYTE-IDENTICAL, and finding ids continue the monotonic R-XXXX series across the re-head. The
-> open set at `15f5d384`, computed with `open_finding_ids` from `scripts/rotate_live_review.py`,
+> open set at `a0b287a5`, computed with `open_finding_ids` from `scripts/rotate_live_review.py`,
 > is empty.
 
 ## Steps
 
-THE ORDER BELOW IS T5_F030.md's Task slicing, read against what F264 already shipped by DECISION
-F030 D1 at the claim. R1 claims F030, re-heads this record, books F029's round 11 and lands T001:
-a steering message may be addressed to one task, the addressed task alone takes it in at its next
-round start, its notes are carried in one numbered operator-note segment at the steering rank
-that the prompt trace records, and a note its task finished without taking in is listed in the
-job report. T002 lands the write door's `job.steer-task` and `remedy job steer` with the task
-state gate, the audit and the event. T003 lands the feed's rendering of the operator's own line,
-the input addressing the focused task with copy that promises no conversation, and the
-end-to-end proof. Every round's handback states the open set by distinct id.
+THE ORDER BELOW IS T5_F035.md's Task slicing, read against what earlier features already record
+by DECISION F035 D1 at the claim. R1 claims F035, re-heads this record, books F030's round 7 and
+lands the first half of T001: `packages/orchestration/ownership.py` with the versioned ledger,
+the entry schema, the actor model and the pure pass over the records that already name who acted
+— vetoes, veto answers, injections, subtree reruns, plan and task edits, steering messages and
+notes, and the pause, resume and stop events. R2 lands T001's second half: hunk decisions,
+decision answers, clarification answers, plan approval human and unattended, and the ledger
+written at every job terminal. T002 lands the phrase catalog, the report section and its goldens;
+T003 the chips at the nodes, the evidence tab, `remedy job ownership` and the end-to-end proof.
+Every round's handback states the open set by distinct id.
 
 ## Findings
 DECISION F085 D5, applied at da47ee40, closes "The R44 block is the first measured under this
@@ -415,3 +416,5 @@ Gate: F030 R4 — the F030 round 4 entry: the booking of round 3 and T003's end-
 Gate: F030 R5 — the F030 round 5 entry, the closure sequence's first round: the booking of round 4, the Built State, the twenty-second checklist consolidation, the self-use generator's answer, and the feature's one full suite. VERDICT PASS. Re-derived over `3d0f3fa0`..`156e03ce` by the planner and reviewer of F030's first session, whose own runs produced every reading below. THE RANGE IS 4 COMMITS, at `c0284ba4` 297, `d8fd39d6` 9, `4080c94d` 89 and `156e03ce` 149 insertions by `git show --numstat`, each under the 500-line cap, each single-parent and each ending with the ordered trailer; the tracked path set lies inside the block's constraint 3, `scripts/self_use_queue.json` is untouched, and the worker declared no deviation. THE TRANSPORT PROOF: the block copy and the three payload copies, read at the branch tip, equal the reviewer's originals byte for byte; at `d8fd39d6` the ledger and the plan, and at `4080c94d` the feature file and the planner prompt, equal the reviewer's simulation tree byte for byte; the open set reads empty, and `live_checklist_items` reads the same 34 numbers at `3d0f3fa0` and on the simulation tree the consolidation landed in. THE SELF-USE ITEM: `generate_and_append_if_empty()` and `next_self_use_item()` both answered `None`, as the reviewer's dry run on a tree byte-equal to `4080c94d` read before the round, so closure precondition 6 reads `self-use NONE (queue exhausted)`. THE ONE FULL SUITE: `.agent/authored/f030-closure-suite.txt` records `python3 -m pytest -n auto -q` on `4080c94d` after the browser bundle was built, at real exit code 0 in 179.78 seconds with 20184 passed and 20 skipped and no bad node, so neither reachability guard of closure precondition 7 holds one. THE TESTS: the reviewer's own serial run of the round's selection in the primary checkout at `156e03ce` read 596 passed at real exit code 0 — the 595 and 1 skipped of its simulated tree, the one skip being the dashboard contract's toolchain test, which runs in the primary checkout; all six `integrity check` checks read `pass`, and the tree was clean with no untracked file.
 
 Gate: F030 R6 — the F030 round 6 entry, the closure sequence's evidence round: the booking of round 5, the evidence job and the review package at the accepted head. VERDICT PASS. Re-derived over `156e03ce`..`08685d51` by the planner and reviewer of F030's first session, whose own runs produced every reading below. THE RANGE IS 3 COMMITS, at `96a74ae7` 359, `b32a0ab6` 5 and `08685d51` 136 insertions by `git show --numstat`, each under the 500-line cap, each single-parent and each ending with the ordered trailer; the tracked path set lies inside the block's constraint 3, and the worker declared no deviation. THE TRANSPORT PROOF: the block copy and the three payload copies, read at the branch tip, equal the reviewer's originals byte for byte, and at `b32a0ab6` the ledger and the plan equal the reviewer's simulation tree byte for byte, the open set reading empty. THE ACCEPTED COMMIT, the closure's accepted head, is `b32a0ab6f0809f86b0461a6aac15a4912960162c`. THE BUNDLE: the evidence job `f030r6e1001` against the fork point `15f5d38412dcbea1ce3f15df3bdc52800c684e87` holds one run, `vr-0301`, at exit 0 with 1251 of 1251 selected tests passed, its head the accepted head, and `validate_verification_tests` reads no problem; the reviewer validated the bundle with `validate_evidence_candidate` from a disposable worktree at the accepted head, which read `is_valid_current_run` True with no validation error, and the worktree was removed. Before the round the reviewer's dry run found the one parametrized node id the tool deselects as the only unsafe id among the 1254 its files collect, and its package dry run over a copy of the evidence with one planted unsafe node id read `BLOCKED_EVIDENCE` at exit 0. THE PACKAGE: `remedy-review-20260927-234033-READY_FOR_REVIEW.zip` in `/home/decodeux/Repos/remedy-history/zips` hashes to `8b7e2f9ceaee61acc87a55ae5bd2c2b3f467b44ab3136076e34d5b3b666ea452` by the reviewer's own reading, `testzip()` answers None, and its manifest's committed review subject reads the fork point as base and the accepted head as head over 34 commits. THE TREE: all six `integrity check` checks read `pass` at `08685d51`, the tree was clean, and the local tip equals the pushed branch.
+
+Gate: F030 R7 — the F030 round 7 entry: the closing round, which books round 6, rotates the ledger, accepts F030 in STATUS with its README pins and opens the pull request. VERDICT PASS. Re-derived over `08685d51`..`6d5ddf6b` by the planner and reviewer of F030's first session, and re-read by the planner and reviewer of F035's first session, whose own readings are every one below. THE RANGE IS 4 COMMITS, at `0828c243` 433, `34b95c30` 6, `2ea16119` 22 and `6d5ddf6b` 179 insertions by `git show --numstat`, each under the 500-line cap, each single-parent and each ending with the ordered trailer; the tracked path set is the eight `.agent/authored/f030-r7-*` copies, `.agent/handoff.md`, `.agent/live_review.md`, `.agent/live_review_archive.md`, `.agent/plan.md`, `README.md` and `docs/roadmap/STATUS.md`, and no deviation was declared. THE BOOKING: at `34b95c30` the ledger reads 325137 bytes at sha256 `d6558b4028cf3f510a12baea6593f71439cf7ac6b6653f2eab6c3f8617d846d8` and the plan 849 bytes at `8f8540c9f00341c92a8543a47a43c704337036293e34da95653f7a5eba253d19`, both equal to the reviewer's simulation. THE ROTATION: at `2ea16119` the ledger reads 297093 bytes at `8abade92d79023af5cd6084d7554ca0b6f36781cc0e031ae9ae806587d84d2cf` and the archive 5312486 bytes at `239c6c1bfef520232e01387c33380c28200f9a5eb64a16d6ed954cb2cc617c0c`, eleven gate records and no finding pair moved, as the archive's added `Gate: ` and `- R-` lines count, and the open set empty before and after. THE ACCEPTANCE: at `6d5ddf6b` `docs/roadmap/STATUS.md` reads 55903 bytes at `012c2bedbd1cb52f89a30c9ece2ce61eb2e554f2cb24a751b1038fb0114b52e9` and `README.md` 40877 bytes at `4cb87a6a5ef59c44d070103685c086e1801f3993792ea20afa6db80b9160bb1e`, both equal to the reviewer's simulation, and the closure selection re-run on `a0b287a5`, whose tree equals that of `6d5ddf6b`, read 512 passed at real exit code 0 with all six `integrity check` checks `pass`. THE PULL REQUEST: number 289 from `feature/f030-steering-messages` into `main`, whose hosted CI run 36353221325 ended `success` on both jobs at head `6d5ddf6b`; it merged at F035's Open PR Gate as `a0b287a5`, whose tree equals that of `6d5ddf6b`.

@@ -1,25 +1,25 @@
-# Context — F030 Steering messages
+# Context — F035 Ownership ledger
 
 ## Active Branch
-feature/f030-steering-messages, cut from `main` at `15f5d384`
-(the merge commit of pull request 288, F029 Subtree rerun).
+feature/f035-ownership-ledger, cut from `main` at `a0b287a5`
+(the merge commit of pull request 289, F030 Steering messages).
 
 ## Scope
-F030 (Tier 5): a steering note addressed to one task of a running job —
-taken in at that task's next round start as a binding operator note at
-the steering rank, shown in the feed as the operator's own line, and
-listed when its task finished without reading it — built on F264's
-steering channel, as `docs/roadmap/features/T5_F030.md` and DECISION
-F030 D1 specify.
+F035 (Tier 5): one ownership ledger per job — every human-attributable
+action with its actor, time, verbatim text and consequence, built as a
+pure pass over the records earlier features already write, rendered as
+plain sentences in the report, the digest, the browser and the command
+line, as `docs/roadmap/features/T5_F035.md` and DECISION F035 D1 specify.
 
 ## Do not touch
-Chat and question answering, segment ranks, and round mechanics.
+Audit formats (consumed, not changed), decision semantics, and future
+authentication or identity.
 
 ## Active assumptions
-- A note is a steering message with a task address; F264's record,
-  seal, event and consumption marker are reused (DECISION F030 D1).
-- A note is carried by every later round of its task, as F264 carries a
-  job-wide message.
+- The ledger reads every record and writes none of them; its file is
+  regenerable and never a second truth (DECISION F035 D1).
+- An actor is never named beyond what its record holds: a door, and a
+  token number for a browser fingerprint.
 
 ## Constraints
 - Every pytest run in a round is targeted and serial; the resource and

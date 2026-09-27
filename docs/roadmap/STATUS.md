@@ -167,7 +167,7 @@ Milestone R1 — Remedy as the daily tool: Tier 2 complete (F086 as the self-ins
 - [x] F028 — Task injection (T001–T003 complete; accepted 2026-09-27 · live review PASS — ACCEPTED · Evidence job f028r11e1001 · package remedy-review-20260927-132129-READY_FOR_REVIEW.zip · SHA-256 904723bf332d1f076cdfde262f84609fada02ca86635f3ef09a88c3d025692fe · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD 9cfd84d1217c24057173f4b9a8db03734c174c09)
 - [x] F029 — Subtree rerun (T001–T003 complete; accepted 2026-09-27 · live review PASS — ACCEPTED · Evidence job f029r10e1001 · package remedy-review-20260927-201630-READY_FOR_REVIEW.zip · SHA-256 9a0d0eb2ac1576e96149aca426e6aec301eedc6247c9ee0fb0b4a8eb01e9bf4b · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD e56e82f733ec51609598590eda05aa1b2b7329ca)
 - [x] F030 — Steering messages (T001–T003 complete; accepted 2026-09-27 · live review PASS — ACCEPTED · Evidence job f030r6e1001 · package remedy-review-20260927-234033-READY_FOR_REVIEW.zip · SHA-256 8b7e2f9ceaee61acc87a55ae5bd2c2b3f467b44ab3136076e34d5b3b666ea452 · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD b32a0ab6f0809f86b0461a6aac15a4912960162c)
-- [ ] F035 — Ownership ledger
+- [~] F035 — Ownership ledger
 
 ## Tier 2 — Findings paydown (rolling, operator rule amend0911-feedback)
 

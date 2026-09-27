@@ -1,25 +1,29 @@
-# Plan — F030 Steering messages
+# Plan — F035 Ownership ledger
 
-Branch: feature/f030-steering-messages, cut from `main` at `15f5d384`, the
-merge commit of pull request 288 (F029 Subtree rerun).
+Branch: feature/f035-ownership-ledger, cut from `main` at `a0b287a5`, the
+merge commit of pull request 289 (F030 Steering messages).
 
 ## Goal
 
-A note typed while a job runs reaches the task it is meant for: it lands
-in that task's next round prompt as a binding operator note, the feed
-shows the operator's own line with the builder's next action as the only
-reply, and a note its task finished without reading is reported
-(`docs/roadmap/features/T5_F030.md`, DECISIONS F030 D1 to D3).
+Who decided what stays answerable: one ledger per job names, for every
+human-attributable action, who acted through which door, when, in their own
+words, and what it caused, with machine choices attributed to Remedy under
+its configuration (`docs/roadmap/features/T5_F035.md`, DECISION F035 D1).
 
 ## Current Step
 
-ROUND 7, the closing round: book round 6's PASS, rotate the ledger,
-accept F030 in STATUS with its README pins, and open the pull request.
+ROUND 1: claim F035, book F030's round 7, record DECISION F035 D1, and land
+the first half of T001 — the ledger module, its schema and actor, and the
+classes whose records name an actor.
 
 ## Next Steps
 
-1. The next session merges this feature's pull request at the Open PR
-   Gate and claims the next feature by Rule A5.
+1. T001's second half: hunk decisions, decision answers, clarification
+   answers and plan approval, and the ledger written at every job terminal.
+2. T002: the phrase catalog, the report's Ownership section and goldens.
+3. T003: chips at the nodes, the evidence tab, `remedy job ownership`, and
+   the end-to-end proof.
+4. The closure sequence.
 
 ## Risks
 

@@ -23891,3 +23891,82 @@ HOW TO REVERSE: remove the `note` key and its payload function, `steeringNote.ts
 operator disc, `focusedTaskId`, `sendSteeringNote`, the copy and `STEERING_REPLY_FRAMING`, restore
 the placeholder and the pinned `onSend` literal, delete the two F030 rows of
 `docs/ui/design_reference/assumption_log.md`, and delete this paragraph.
+
+## DECISION F035 D1 — the ownership ledger is a pure pass over the records that already exist: one entry per human-attributable action, each with an actor that names the door it came through and never more than that door recorded, a time, the verbatim text and a consequence; the command audit is not joined and the command line is not made to write it, because every class's own record already names its door; T001 lands in two rounds, the classes whose records name an actor first (2026-09-28)
+
+CONTEXT: T5_F035.md was written before most of the actions it lists were built, and it describes
+as sources several records that now exist in shapes it could not know. Measured at `a0b287a5`:
+no module, file or command is named ownership, and `packages/orchestration/job_digest.py`
+returns an `ownership` key that is always an empty list, which the browser's digest card already
+renders as sentences and which DECISION F040 D3 leaves for F035 to fill. The records, by class:
+a task veto is a control file read by `task_veto.vetoed_tasks` and folded into
+`job.metadata["task_vetoes"]`, with `actor`, `reason`, `requested_at` and, once folded, the
+`unreachable_task_ids` it cost; an answer to a veto's replan proposal is a control file read by
+`task_veto.veto_answers`, with `actor`, `option`, `answered_at` and `follow_up_job_id`; a
+confirmed injection is a control file read by `task_injection.confirmed_injections`, with
+`actor`, `text`, `confirmed_at` and `confirmed_unseen`, which is true only for an unattended
+`--yes` confirmation, folded into `job.metadata["task_injections"]` with the new task's id; a
+subtree rerun is an entry of `job.reruns` with `actor`, `at`, `root_task_id` and `subtree`; a plan
+edit and a runtime task edit are entries of the plan body's `_edits` log with `actor`, `ts`,
+`command`, `args` and `version`, a runtime edit carrying a `runtime` block and an injection's own
+entry an `injection` block; a steering message or task note is a sealed record read by
+`steering.list_steering_messages`, with `channel`, `received_at`, `text` and, for a note,
+`task_id`, and its consumption marker names the task and round that took it in; a pause, a
+resume and a stop reach the run log as `job_paused`, `task_paused`, `job_resumed`,
+`task_resumed` and `job_stopped` events carrying `source`, `reason` and `request_id`. An actor
+is recorded three ways: a browser action's token fingerprint `tf:<16 hex>` or the literal `cli`
+for vetoes, veto answers, injections, reruns and edits; a `channel` of `cli` or `cockpit` for
+steering; a `source` of `cli` or `ui` for pause, resume and stop. Hunk decisions record no
+actor at all; decision answers record `answer_source` `human` or `default`; clarification
+answers record `answered_by` `human`, `default` or empty for the planner's own resolution and no
+time; plan approval records `_approval` and, for `--yes`, `_approval_audit` with mode `auto_yes`,
+and its time only in the `plan_approved` event. The command audit `commands_audit.jsonl` is
+written by the browser's write door alone, and it stores a hash of each command's arguments, so
+it holds no target, no reason and no answer. No command-line verb writes it. Nothing in the code
+produces an assumption whose source is a reference.
+
+CHOSEN: (1) ONE MODULE, ONE PASS. `packages/orchestration/ownership.py` builds the ledger for
+one job from the records above, reading and never writing any of them; building it twice over
+the same records gives the same bytes, so the file it is saved to is regenerable and never a
+second truth. The ledger is `{"schema": "remedy.ownership.v1", "job_id", "entries"}`. (2) THE
+ENTRY. Every entry carries `record_ref`, unique within the ledger and naming the class and the
+record's own id; `ts`, the time the record gives for the human's act, empty only for a class
+whose record keeps none; `actor`; `action`; `task_id`, empty for an action on the whole job;
+`text`, the reason, answer or note verbatim, never cut, empty for an action that has none;
+`consequence`, `{"kind", "task_ids", "ref"}`; and `detail`, the class's own further facts.
+Entries are ordered by time, the timeless ones last, then by `record_ref`. A ledger with an entry
+that lacks any of these, or whose actor is not one of the three kinds, is refused: nothing
+renders authorless. (3) THE ACTOR. `{"kind", "door", "recorded_as", "token_number",
+"auto_approved"}`. The kind is `operator` for a human, `default_policy` for a documented default
+the operator accepted at plan approval, and `remedy` for a machine choice made under the job's
+configuration, whose `recorded_as` names the configured role that made it. The door is
+`browser` for a fingerprint, `cockpit` or `ui`, `cli` for `cli`, and empty for anything else;
+`recorded_as` is the value the record holds, verbatim. `token_number` numbers the distinct
+fingerprints from 1 in the order they first act in the ledger, and is 0 for an actor with none,
+so the ledger can say "token #2" and never claims an identity beyond the token; `auto_approved`
+is true exactly for an unattended `--yes` action. (4) THE AUDIT IS NOT JOINED, AND THE COMMAND
+LINE IS NOT MADE TO WRITE IT. The feature file names a command-line audit as a small
+prerequisite. It is not needed: every class whose record names an actor already names the
+command line as `cli`, the audit could only add a fingerprint to the classes whose records have
+none, and it could only do that by matching times, which is a guess the ledger may not make.
+Those classes are attributed to the operator with the door their record names, or with no door.
+(5) THE ABSENT CLASS. An assumption sourced from a reference has no producer, so the ledger has
+no such class; the planner's own resolution of a clarification is attributed to `remedy`. (6)
+THE ROUNDS. Round 1 lands the module, the schema, the actor and the classes whose records name
+an actor: vetoes, veto answers, injections, reruns, plan and task edits, steering messages and
+notes, and pause, resume and stop. Round 2 lands hunk decisions, decision answers, clarification
+answers and plan approval, human and unattended, and writes `ownership.json` into the job's
+evidence export at every job terminal. Until round 2 wires it, the module is listed in
+`ALLOWED_UNWIRED` of `tests/test_no_orphan_modules.py` with its reason, and round 2 removes that
+line in the commit that wires it. (7) THE SURFACES, in T002 and T003: one phrase catalog turns
+entries into sentences for the report's Ownership section, the digest's `ownership` key and the
+command line, and the report's existing `Vetoed by` and `Paused by` lines are then read from the
+same entries rather than kept beside them.
+
+ALTERNATIVES: joining the audit to the records by time, rejected in (4) because a match by time
+is a guess; making every command-line verb write the audit first, rejected because the audit
+keeps no target, reason or answer and the records already name the door; one round for all of
+T001, rejected because it would need a round of more than the size a round can prove.
+
+HOW TO REVERSE: delete `packages/orchestration/ownership.py` and its tests, remove its line from
+`ALLOWED_UNWIRED`, and delete this paragraph.
