@@ -1,0 +1,62 @@
+diff --git a/.agent/decisions.md b/.agent/decisions.md
+index 0d88c0d7a..3f89dd301 100644
+--- a/.agent/decisions.md
++++ b/.agent/decisions.md
+@@ -23803,3 +23803,47 @@ describes, rejected because it would take away the job-wide steering F264 shippe
+ HOW TO REVERSE: remove the `task_id` parameter and key from `steering.py`, the task filter from
+ `consume_pending_steering`, the `builder_operator_notes` segment and the report's
+ `steering_not_consumed` key, and delete this paragraph.
++
++## DECISION F030 D2 — the command that addresses a note to a task is `job.steer` on both doors, one catalog id answered by one shared function, `steering.steer_task_command`, which never raises for a refusal; it takes a note while the job has not ended and the task can still run, the write door audits it, and `remedy chat show` names a note's task and says when that task finished without reading it; the browser's side takes T003 (2026-09-27)
++
++CONTEXT: DECISION F030 D1 (5) named the write door's command `job.steer-task`. Measured at
++`886b6055`: every command the write door dispatches is a catalog command id listed in
++`UI_EXPOSED_COMMANDS` in `apps/cli/command_catalog.py`, which `_command_is_ui_exposed` in
++`packages/orchestration/ui_server.py` reads, so the door's id and the command line's id are one
++string; T5_F030.md names the command line `remedy job steer`, whose catalog id is `job.steer`.
++`task_veto.veto_task_command` is the precedent of one function answering both doors that returns
++a refusal's `code` and `detail` instead of raising, and `task_veto.VETOABLE_TASK_STATUSES` holds
++`pending`, `running`, `blocked`, `failed` and `skipped`. `steering_overview` decides
++`not_taken_in` from the job's state alone, so a note whose task has finished reads `waiting` for
++as long as the job runs.
++
++CHOSEN: (1) ONE ID, `job.steer`, for the write door and for `remedy job steer <job_id> --task
++<task> "<text>"`; it replaces D1's `job.steer-task`, which no code carries. (2)
++`steer_task_command(job, task_id, text, *, channel, root=None, now=None)` in `steering.py`
++refuses, in this order, an unusable text (`invalid_message`), an ended job
++(`job_not_steerable`), a task the job does not hold (`unknown_task`, naming its tasks) and a
++task that will not run again (`task_not_steerable`, naming its status), and otherwise records the
++note through `record_steering_message` with the task's id and answers `accepted` with the record's
++id; only a record that cannot be written raises. (3) `STEERABLE_TASK_STATUSES` in `steering.py`
++equals `task_veto.VETOABLE_TASK_STATUSES`, pinned by a test rather than imported, so the steering
++module reaches no veto code. (4) THE WRITE DOOR refuses a `job.steer` whose `args.task_id` is not
++a non-empty string, or whose `args.message` `normalize_steering_text` refuses, as a shape error on
++that field before the job is read; it records with channel `cockpit`, answers a refusal 409 with
++its own code and detail as `job.veto-task` does, and writes its audit line for every outcome. On
++the command line the `steering_message_received` event carrying the task is the record, as it has
++been for `remedy chat`. (5) EXIT CODES: 2 for `invalid_message` and `unknown_task`, 3 for
++`job_not_steerable`, `task_not_steerable` and an unreadable job record, and 1 for a record that
++cannot be written. (6) `steering_overview` gains `task_statuses`; a row gains `addressed_to`, and
++a note that no round took in, whose task is known and neither `pending` nor `running`, reads
++`not_taken_in` while the job still runs. `remedy chat show` passes the job's task statuses and
++names the task a note was addressed to.
++
++ALTERNATIVES: keeping `job.steer-task` on the door beside `job.steer` on the command line,
++rejected because the door reads the catalog's ids; `remedy chat --task`, rejected because
++T5_F030.md places the command under `job` and because a flag on the default subcommand of `chat`
++is a second route to the same effect.
++
++HOW TO REVERSE: remove `job.steer` from the catalog, `UI_EXPOSED_COMMANDS`, the door and
++`apps/cli/commands/__init__.py`, delete `apps/cli/commands/job_steer_cmd.py`,
++`steer_task_command`, `STEERABLE_TASK_STATUSES`, `task_statuses` and `addressed_to`, and delete
++this paragraph.
+diff --git a/.agent/live_review.md b/.agent/live_review.md
+index 501564dac..0a136c408 100644
+--- a/.agent/live_review.md
++++ b/.agent/live_review.md
+@@ -425,3 +425,5 @@ Gate: F029 R9 — the F029 round 9 entry, the closure sequence's first round: th
+ Gate: F029 R10 — the F029 round 10 entry, the closure sequence's evidence round: the booking of round 9, the evidence job and the review package at the accepted head. VERDICT PASS. Re-derived over `03e0998e`..`6bf13920` by the planner and reviewer of F029's second session, whose own runs produced every reading below. THE RANGE IS 3 COMMITS, at `207bb053` 353, `e56e82f7` 7 and `6bf13920` 164 insertions by `git show --numstat`, each under the 500-line cap, each single-parent and each ending with the ordered trailer; the tracked path set lies inside the block's constraint 3, and the worker declared no deviation. THE TRANSPORT PROOF: the block copy and the three payload copies, read at `207bb053`, equal the reviewer's originals byte for byte, and at `e56e82f7` the ledger and the plan equal the reviewer's simulation tree byte for byte, the open set reading empty. THE ACCEPTED COMMIT, the closure's accepted head, is `e56e82f733ec51609598590eda05aa1b2b7329ca`. THE BUNDLE: the evidence job `f029r10e1001` against the fork point `b2863af4e1560305f771fb9b82c745e7cfe9ae9b` holds one run, `vr-0291`, at exit 0 with 1286 of 1286 selected tests passed, its head the accepted head, and `validate_verification_tests` reads no problem; the reviewer validated the bundle with `validate_evidence_candidate` from a disposable worktree at the accepted head, which read `is_valid_current_run` True with no validation error, and the worktree was removed — read from the branch's later tip the same check names only `.agent/handoff.md`, which the handback commit rewrote after the package was built. THE PACKAGE: `remedy-review-20260927-201630-READY_FOR_REVIEW.zip` in `/home/decodeux/Repos/remedy-history/zips` hashes to `9a0d0eb2ac1576e96149aca426e6aec301eedc6247c9ee0fb0b4a8eb01e9bf4b` by the reviewer's own reading, `testzip()` answers None, and its manifest's committed review subject reads the fork point as base and the accepted head as head over 67 commits. THE TREE: all six `integrity check` checks read `pass` at `6bf13920`, the tree was clean, and the local tip equals the pushed branch.
+ 
+ Gate: F029 R11 — the F029 round 11 entry: the closing round, which books round 10, rotates the ledger, accepts F029 in STATUS with its README pins and opens the pull request. VERDICT PASS. Re-derived over `6bf13920`..`17f34c3b` by the planner and reviewer of F029's second session, and re-read by the planner and reviewer of F030's first session, whose own readings are every one below. THE RANGE IS 4 COMMITS, at `b76e45a8` 443, `1e5bb44d` 7, `60eba948` 32 and `17f34c3b` 195 insertions by `git show --numstat`, each under the 500-line cap, each single-parent and each ending with the ordered trailer; the tracked path set is the eight `.agent/authored/f029-r11-*` copies, `.agent/handoff.md`, `.agent/live_review.md`, `.agent/live_review_archive.md`, `.agent/plan.md`, `README.md` and `docs/roadmap/STATUS.md`, and no deviation was declared. THE BOOKING: at `1e5bb44d` the ledger reads 339372 bytes at sha256 `dec48129b6976a72ee4dbe16a027091de3db8561a633e054ae325061169a8f0f` and the plan 873 bytes at `8222fd694c6bb2c4a3a9cf993696cbfef78b586c8ae401b163df5556fd6a202d`, both equal to the reviewer's simulation. THE ROTATION: at `60eba948` the ledger reads 306611 bytes at `732faa4aa43e4114ef87bb4070f74336425cdf63229d0a86ac1c80ac608b112e` and the archive 5284442 bytes at `95da423b1576fda9ed6b98b8dc38d63d953d93739572805b0768c502db8fddde`, twelve gate records and two finding pairs moved and the open set empty before and after. THE ACCEPTANCE: at `17f34c3b` `docs/roadmap/STATUS.md` reads 55545 bytes at `59926b9ab218f1ea6c7b2af5e34f61749a6f41f030f61c8e83a70c3e8745a4e1` and `README.md` 40144 bytes at `dc94074530fa75e972d514cef8bdb84483c3d5cf613a2f9d52ae8a326218d606`, both equal to the reviewer's simulation, and the closure selection read 512 passed at real exit code 0 with all six `integrity check` checks `pass`. THE PULL REQUEST: number 288 from `feature/f029-subtree-rerun` into `main`, whose hosted CI run 36340890123 ended `success` on both jobs at head `17f34c3b`; it merged at F030's Open PR Gate as `15f5d384`, whose tree equals that of `17f34c3b`.
++
++Gate: F030 R1 — the F030 round 1 entry: the claim, the re-head, the booking of F029's round 11, DECISION F030 D1, and T001, a steering message addressed to one task, taken in by that task alone at its next round start, carried in the `builder_operator_notes` segment and listed in the job report when its task finished without it. VERDICT PASS. Re-derived over `15f5d384`..`886b6055` by the planner and reviewer of F030's first session, whose own runs produced every reading below. THE RANGE IS 7 COMMITS, at `f2f64a65` 370, `113f82b0` 141, `0adbd6d5` 111, `5f41c17c` 185, `5c5abca1` 307, `e1ca56e1` 193 and `886b6055` 159 insertions by `git show --numstat`, each under the 500-line cap, each single-parent and each ending with the ordered trailer; the tracked path set is exactly constraint 3's. The worker declared one deviation: the block's C4 measured exactly 500 insertions staged whole, so it landed as C4a, the tests, and C4b, the mutation tool, as constraint 2 orders. The handback carries no item-status table although the block ordered one; every reading such a table would summarise is in its Verification section and every one was re-taken here, so nothing on disk is wrong. THE TRANSPORT PROOF: the block copy and the three payload copies, read at the branch tip, equal the reviewer's originals byte for byte. THE CLAIM: at `0adbd6d5` the ledger, the decisions record, STATUS, the plan and the context each equal the reviewer's simulation tree byte for byte, the open set reads empty, and F030's line reads `[~]`. THE CODE, read in `5f41c17c`: `record_steering_message` adds `task_id` to the record and the received event only when one is given, `consume_pending_steering` skips a note addressed to another task, never amends a mission with a note and returns the job-wide records alone, `compose_builder_prompt` registers `builder_operator_notes` between `builder_steering` and `builder_directive` at the steering rank, SAFE POINT 1 reads the task's consumed notes directly after the drain, and the job report lists a note of a task neither `pending` nor `running` that no round consumed. THE TESTS: the reviewer's own serial run of the round's selection in the primary checkout at `886b6055` read 1747 passed and 1 skipped at real exit code 0 — the 1732 of the base plus the 15 tests `--collect-only` counts in `tests/orchestration/test_steering_notes.py`, the skip being the F252 quarantine; ruff read clean on the four files; and all six `integrity check` checks read `pass`. THE RED PROOFS: the reviewer ran the committed `.agent/authored/f030-r1-mutations.py` itself in a disposable worktree at `e1ca56e1`: the unmutated control exits 0 first and last, and all eleven mutations exit 1, each naming at least one failing node of the new test file — among them a drain that takes in another task's note, a drain that returns notes with the job-wide messages, a note that amends the mission, a segment registered after the directive, a SAFE POINT 1 that passes no notes, and a report that lists a consumed note or a pending task's note; the module files were restored byte-identical and the worktree was removed.
