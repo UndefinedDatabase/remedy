@@ -12,20 +12,19 @@ the draft, with provenance end to end (`docs/roadmap/features/T5_F028.md`).
 
 ## Current Step
 
-ROUND 3: book round 2's PASS, resolve R-1076 and register R-1077, record
-DECISION F028 D3, repair R-1077, and land the second half of T002 — the
-shortfall seed's three answers, its labels as a mapping of sentences,
-and the budget extension from the answer through the fold to the run.
+ROUND 4: book round 3's PASS and resolve R-1077, record DECISION F028
+D4, and land the command line — `remedy job inject`, `inject-confirm`
+and `inject-answer` — with the `--yes` audit mark, the shared budget
+and planner helpers, and the extension's amount computed at answer time.
 
 ## Next Steps
 
-1. The run-log event of a folded injection with every reader of its
-   name, and `remedy job inject` with its `--after` and `--yes`.
-2. T003: the browser's command, the Add Task sheet, the provenance chip,
-   and the end-to-end proof.
+1. The browser's command for the three steps, the run-log event of a
+   folded injection with every reader of its name, and the send module.
+2. T003: the Add Task sheet, the provenance chip, and the end-to-end
+   proof.
 3. The closure sequence.
 
 ## Risks
 
-A running job's record is written only by its runner. Open findings: 1
-(R-1077, Low, repaired this round).
+A running job's record is written only by its runner. Open findings: 0.

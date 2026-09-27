@@ -23215,3 +23215,44 @@ seed through the injection command's own answer in T003.
 HOW TO REVERSE: remove `answer_injection_shortfall`, its answer files and the derived drafts, the
 extension in the confirmation and the fold, and the helper in `run_job`, and delete this
 paragraph.
+
+## DECISION F028 D4 — the command line is three commands, `job inject`, `job inject-confirm` and `job inject-answer`; `--yes` confirms a draft unseen and the record says so; the command line and the browser read their budget inputs and their planner through one pair of helpers; an extension's amount is computed again when the operator answers; the event moves to round 5 (2026-09-27)
+
+CONTEXT: T5_F028.md asks for `remedy job inject <id> "text" [--after Txxx] [--yes]`, where `--yes`
+accepts the draft unseen, audited and fit for unattended use. Measured at `aa38800a`: the draft
+pass, the confirmation and the shortfall answers exist as functions of
+`packages/orchestration/task_injection.py` and nothing calls them outside the runner's fold;
+`apps/cli/commands/job_veto_cmd.py` is the pattern of a job write command, with 2 for a wrong
+argument and 3 for a job or task not ready; a catalog argument is either a required positional or
+an option, so one command cannot take a task text in one use and a token in another; the
+extension an `extend_budget` answer carries is the seed's `extend_to_usd`, fixed at draft time.
+
+CHOSEN: (1) THE COMMANDS. `remedy job inject <job> <text> [--after <task>] [--yes] [--json]`
+drafts; without `--yes` it prints the draft and the exact confirm command, or on a shortfall the
+question and the three answer commands, and exits 0. `--yes` confirms a confirmable draft at once,
+and a shortfall under `--yes` prints the seed and exits 3, because `--yes` accepts a draft, never
+a spending decision. `remedy job inject-confirm <job> <token> [--json]` confirms, and `remedy job
+inject-answer <job> <draft> --option <option> [--json]` answers a shortfall. The task named by
+`--after` is resolved as `job veto-task` resolves its task. Exit 2 is a wrong argument, exit 3 a
+job, plan or draft not ready, exit 1 the rest, as the veto command classes them. (2) THE AUDIT.
+`confirm_task_injection` takes `unseen`, default False, the confirmation stores it as
+`confirmed_unseen` and the edit log's `injection` block carries it, so an unattended confirmation
+is told apart from a reviewed one wherever the add is read. (3) THE INPUTS. `task_injection.py`
+gains `injection_budget_inputs(job)`, answering the job's budgets, its counters from its stored
+actuals (nothing spent when the job has none) and the predictive config of its repository, and
+refusing `budget_unreadable` rather than inventing a spend when the stored actuals do not decode;
+and `injection_call_fn()`, the planner's structured call bound to `InjectedTaskDraft`. The
+browser's command in round 5 reads the same two. (4) THE EXTENSION'S AMOUNT. `extend_budget`
+computes the amount again from the job's counters at answer time, spent plus expected rounded up
+to the cent, and takes the larger of that and the seed's, so spend between the draft and the
+answer can no longer leave the raised limit short. (5) THE EVENT and its readers move to round 5,
+beside the browser's command.
+
+ALTERNATIVES: one command whose text and token share a positional, rejected because the catalog
+has no optional positional and one argument meaning two things is a trap for a human typing it;
+`--yes` answering a shortfall with `extend_budget`, rejected because unattended spending past a
+limit the operator set is exactly what the shortfall seed exists to stop.
+
+HOW TO REVERSE: remove the three commands, their catalog entries and exit-code rows,
+`injection_budget_inputs`, `injection_call_fn` and `unseen`, restore the seed's amount in
+`extend_budget`, and delete this paragraph.
