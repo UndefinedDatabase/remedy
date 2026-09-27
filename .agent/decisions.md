@@ -22942,3 +22942,51 @@ keeping the old ids by rewriting the capture's ids, rejected because the recordi
 promises field values byte for byte as served, and the counts and positions would still move.
 
 HOW TO REVERSE: restore the four files from `55820841` and delete this paragraph.
+
+## DECISION F288 D5 — a prompt is a `synapse` node of the live model, composed from the dashboard's prompt trace onto the live model only, a child of its task in its task's state with its attempt in its meta; a click on it selects the prompt itself; T003 takes two rounds, the keyboard list and the rendered proof being round 6's (2026-09-27)
+
+CONTEXT: T5_F288.md's T003 asks for a prompt node kind in the graph's data model and its look, so
+the simple view's prompt dots are reachable in the live picture with the mouse and the keyboard,
+and it forbids touching the simple view or the rule that the graph draws only what its model holds.
+Measured at `a5ee2dc8`: `docs/ui/design_reference/graph_spec.md` §2 names `synapse` the tool or
+prompt call kind, §4 gives it a radius of 1.6 to 2.2, §6 a link width of 1, and §14 keeps the canvas
+`aria-hidden` with a parallel structured list as the accessible surface; `NodeKind` already holds
+`synapse`, `GLYPHS.synapse` is named "Prompt or tool call" and is drawn at every zoom, and
+`NODE_PAINTERS` paints it; nothing births one. The simple view draws one dot per item of
+`dashboard.promptTrace.items`, which holds no status and no seq, as a child of its task in its task's
+state and skips an item whose task it lacks. In the live path, `buildForceBrainModel.ts` positions
+only children of a task, `filterBrainLayout`, `clusterBrainModel`, `selectionTaskIdOf`,
+`owningTaskId` and `zoomEmphasis` all read a non-task node's parent as its task, and
+`ForceBrainGraph`'s click hands the stage a task id, which `shellSelectionIdOf` passes on; the shell
+already opens the prompt panel for a raw prompt item id.
+
+CHOSEN: (1) THE KIND is `synapse`; no kind is added. (2) THE BIRTH: a new pure module
+`apps/ui/src/components/graph/promptNodes.ts` exports `withPromptNodes(model, items)`, which appends,
+in item order, one node per item whose task node `task:<taskId>` the model holds: id
+`prompt:<item id>`, kind `synapse`, parent that task node, state that task node's state, seq 0,
+meta `{ promptId, role, promptKind, round, attemptId }` with `attemptId` the item's `runId`, and one
+link from the task. An item whose task the model lacks, or whose node already exists, is skipped,
+and a call that adds nothing returns the same model object. The stage applies it to the live model
+only; a scrubbed model is history and draws no prompt. (3) THE PARENT is the task and not the run,
+exactly as D3 made the runs children of their task: every consumer of the layout reads a non-task
+node's parent as its task, and the attempt id in the meta groups a prompt with its run without
+moving an edge. (4) THE LOOK: `GLYPHS.synapse` as it is, drawn at the radius `BRAIN_SYNAPSE_RADIUS`
+of 2 on a link of width `BRAIN_SYNAPSE_LINK_WIDTH` of 1, graph_spec §4 and §6's values. (5) THE
+MOUSE: a click on a synapse selects the prompt item itself, through a new `selectionIdOf` in
+`brainView.ts` that answers the item id for a synapse and `selectionTaskIdOf`'s answer otherwise,
+and the selection ring follows it through a new `selectedPromptNodeId`. (6) THE ORDER: round 5
+lands (1) to (5); round 6 lands the keyboard's parallel list under graph_spec §14 and a rendered
+proof of the live picture in a headless browser.
+
+ALTERNATIVES: a new `prompt` kind, rejected because graph_spec §2 already names `synapse` for
+exactly this and two kinds would split one concept; the run as parent, rejected because the layout,
+the filter, the clustering, the selection and the zoom would each need a third depth; the prompts in
+the reducer, rejected because the prompt trace is dashboard state and not a stream frame, the reason
+the seed is composed outside the reducer too; a fixed state such as `pass`, rejected because the
+simple view shows a prompt in its task's state and the live picture must not contradict it.
+
+DELIBERATE ABSENCES: synapses are not clustered or throttled, since a task's prompts number its
+rounds times two roles; the scrubbed timeline draws none.
+
+HOW TO REVERSE: delete `promptNodes.ts` and its call, `selectionIdOf`, `selectedPromptNodeId` and
+the two constants, and delete this paragraph.

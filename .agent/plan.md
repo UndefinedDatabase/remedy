@@ -12,18 +12,18 @@ exists; and the live graph draws test-run, repair and prompt nodes
 
 ## Current Step
 
-ROUND 4, the repair of round 3: book round 3's FAIL, record DECISION F288
-D4, and bring the four vitest files that read the demo recording or the
-widened row to the new recording and row, by expectations derived again
-by hand, so the vitest suite is green again (R-1075's remaining readers).
+ROUND 5: book round 4's PASS and R-1075's resolution, record DECISION
+F288 D5, and land the first half of T003 — prompts as `synapse` nodes of
+the live model, children of their task, drawn at graph_spec's synapse
+radius, and a click on one selecting the prompt itself.
 
 ## Next Steps
 
-1. T003: the prompt node kind, its look, and its mouse and keyboard
-   reach, with R-1075's resolution booked.
+1. The second half of T003: the keyboard's parallel list of the live
+   picture's prompt nodes, and a rendered proof in a headless browser.
 2. The closure sequence.
 
 ## Risks
 
-No production file changes this round, and no green expectation moves.
-Open findings: 1 (R-1075, its remaining readers repaired this round).
+The simple view must not change, and a scrubbed timeline must draw no
+prompt. Open findings: 0.
