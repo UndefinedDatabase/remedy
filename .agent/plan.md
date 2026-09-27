@@ -12,19 +12,19 @@ the draft, with provenance end to end (`docs/roadmap/features/T5_F028.md`).
 
 ## Current Step
 
-ROUND 4: book round 3's PASS and resolve R-1077, record DECISION F028
-D4, and land the command line — `remedy job inject`, `inject-confirm`
-and `inject-answer` — with the `--yes` audit mark, the shared budget
-and planner helpers, and the extension's amount computed at answer time.
+ROUND 5: book round 4's PASS and register R-1078, record DECISION F028
+D5, repair R-1078, and land the write door's three injection commands
+and the run-log event `task_injected` with its two readers.
 
 ## Next Steps
 
-1. The browser's command for the three steps, the run-log event of a
-   folded injection with every reader of its name, and the send module.
-2. T003: the Add Task sheet, the provenance chip, and the end-to-end
-   proof.
+1. The send module, the Add Task sheet in the right column, and the
+   provenance chip in the graph and the task list.
+2. The end-to-end proof: inject mid-run, draft, confirm, execute, and
+   the report shows the origin.
 3. The closure sequence.
 
 ## Risks
 
-A running job's record is written only by its runner. Open findings: 0.
+A running job's record is written only by its runner. Open findings: 1
+(R-1078, Low, repaired this round).

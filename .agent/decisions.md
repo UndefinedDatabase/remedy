@@ -23256,3 +23256,44 @@ limit the operator set is exactly what the shortfall seed exists to stop.
 HOW TO REVERSE: remove the three commands, their catalog entries and exit-code rows,
 `injection_budget_inputs`, `injection_call_fn` and `unseen`, restore the seed's amount in
 `extend_budget`, and delete this paragraph.
+
+## DECISION F028 D5 — the browser reaches an injection through the write door's three commands `job.inject`, `job.inject-confirm` and `job.inject-answer`, one dispatch method for the three; a fold writes the run-log event `task_injected` after the record is saved; the send module, the Add Task sheet and the provenance chip take round 6 (2026-09-27)
+
+CONTEXT: T5_F028.md asks that the Add Task button be real additive control and that a
+provenance chip show an injected task in the graph and the task list. Measured at `6814c686`: the
+write door in `packages/orchestration/ui_server.py` exposes exactly the ids of `UI_EXPOSED_COMMANDS`
+in `apps/cli/command_catalog.py`, each id a catalog command of the same name, and checks each
+command's arguments in `_read_command_payload` before the job is read; `job.veto-task`'s branch
+puts a refusal's own code and detail on the wire as a 409; the door's imports are pinned by exact
+equality in `tests/ui_server/test_command_channel.py`, and so is the exposed set; a run-log event
+name must be declared in `EVENT_NAMES` and carried by `STREAM_EVENT_CATALOG`, both by set
+equality, while no other reader of the stream is forced to know every name; the fold writes no
+event.
+
+CHOSEN: (1) THE DOOR. The three ids join `UI_EXPOSED_COMMANDS`. `_read_command_payload` refuses
+before the job is read: for `job.inject` a text `validate_injection_text` refuses (field `text`)
+and an `after` that is present but not a non-empty string (field `after`); for
+`job.inject-confirm` a `confirm_token` that is not a non-empty string (field `confirm_token`); for
+`job.inject-answer` a `draft_id` that is not a non-empty string (field `draft_id`) and an `option`
+outside `SHORTFALL_OPTIONS` (field `option`). One method, `_dispatch_injection`, runs the three
+effects with the door's token fingerprint as the actor, through the two helpers of DECISION F028
+D4 (3); a budget it cannot read is a refusal like any other. A refusal is a 409 carrying its code
+and detail, as the veto's is; success is a 200 carrying the answer. `after` names a task by its
+planned id or by its own id in the job, resolved by a helper of `task_injection.py` the door
+shares, never by the command line's own resolver, which writes to the terminal. (2) THE EVENT.
+After `_fold_task_injections` saves the record, it writes one `task_injected` event per record it
+folded, outcome `applied` with the entry's task id or `inert` with the reason, through the job's
+run log; writing after the save means a crash between the two loses the event and never
+duplicates it. (3) THE ORDER. Round 6 lands the send module, the Add Task sheet in the right
+column and the provenance chip; round 7 the end-to-end proof.
+
+ALTERNATIVES: one door command whose payload chooses the step, rejected because every other door
+id is a catalog command of the same name and the door's guards are written per id; an event per
+confirmation instead of per fold, rejected because a confirmation is not yet a change to the job,
+and the stream describes the job.
+
+DELIBERATE ABSENCES: the live graph's reducer does not read `task_injected`; the injected task
+appears there through the task data the chip reads in round 6.
+
+HOW TO REVERSE: remove the three ids, their payload checks and `_dispatch_injection`, the event
+and its two readers, and delete this paragraph.
