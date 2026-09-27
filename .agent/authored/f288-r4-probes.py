@@ -13,9 +13,12 @@ assumed red: `changed` births a `repair_run` in state "pass" and
 `unchanged` births one in state "blocked" (REPAIR_OUTCOME_STATE_TABLE), but
 none of brainLedger.test.ts, stateMotion.test.ts, timelineIndex.test.ts or
 timelineView.test.ts asserts on a repair_run's own node state or reads
-`ignored`, so the flip may have no reader among these four files. p2 (a
-row's planTaskIds hard-wired to []) and p3 (dropping the recording's last
-frame) must each turn at least one of the four files red.
+`ignored`, so the flip may have no reader among these four files. p2
+(deleting `feedRowOf`'s `planTaskIds` assignment, leaving the key
+`undefined` rather than merely `[]` — the recording has no `plan_approved`
+frame, so a hard-wired `[]` would be indistinguishable from the untouched
+code) and p3 (dropping the recording's last frame) must each turn at least
+one of the four files red.
 """
 import json
 import subprocess
@@ -52,10 +55,16 @@ PROBES = [
         "to": SEQ2_LINE.replace('outcome: "changed"', 'outcome: "unchanged"'),
     },
     {
+        # A row literal that hard-codes `planTaskIds: []` would be
+        # indistinguishable from the untouched code on this recording: it
+        # has no `plan_approved` frame, so `planTaskIdsOf` already returns
+        # `[]` for every one of its ten rows. "Stops SETTING planTaskIds"
+        # means the key is genuinely absent (`undefined`) rather than merely
+        # empty — deleting the assignment, not replacing its value.
         "label": "p2",
         "file": "apps/ui/src/api/feedRow.ts",
         "from": "    planTaskIds: planTaskIdsOf(envelope),\n",
-        "to": "    planTaskIds: [],\n",
+        "to": "",
     },
     {
         "label": "p3",
