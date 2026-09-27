@@ -14,18 +14,14 @@ with a model override that the evidence records
 
 ## Current Step
 
-ROUND 9, the closure sequence's first round: book round 8's PASS, write
-the Built State, consolidate the checklist, ask the self-use generator
-for the closure's item, build the browser bundle, and take the feature's
-one full suite on the tree that ships.
+ROUND 10, the closure's evidence round: book round 9's PASS, then build
+the evidence bundle and the review package at the accepted head.
 
 ## Next Steps
 
-1. The review of round 9.
-2. The closure's evidence round: the evidence job and the review zip,
-   with any repair the full suite requires.
-3. The closing round: the ledger rotation, the STATUS line, the README
-   counters and the pull request.
+1. The review of round 10.
+2. The closing round: the ledger rotation, the STATUS line with the
+   README counters, and the pull request.
 
 ## Risks
 
