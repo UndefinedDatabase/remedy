@@ -14,19 +14,21 @@ with a model override that the evidence records
 
 ## Current Step
 
-ROUND 6: book round 5's PASS, record DECISION F029 D6 with its
-assumption-log row, and land T003's control half — the send module and
-the sentences for `job.rerun-subtree`, the Rerun control in the run
-detail with its cost confirmation and optional model, and the final
-report naming a task's attempt and its override.
+ROUND 7: book round 6's PASS and its prose slip, put space between the
+run detail's confirmation sentence and its two buttons, and land T003's
+end-to-end proof — a real three-task job run through the command line,
+its middle task rerun with a model override through the live write door
+and through `remedy job rerun-subtree`, the subtree run again, and both
+attempts read back from the job record, git, the run log, the dashboard,
+the run records and the final report.
 
 ## Next Steps
 
-1. The review of round 6, with the reviewer's headless render of the
-   Rerun control.
-2. T003's end-to-end proof — run, rerun a middle task with an override,
-   the subtree runs again, both attempts in the evidence.
-3. The closure sequence.
+1. The review of round 7, with the reviewer's headless render of the
+   confirmation row.
+2. The closure sequence: Built State and the checklist consolidation
+   with the one full suite, then the evidence job and review zip, then
+   the ledger rotation, the STATUS line and the pull request.
 
 ## Risks
 
