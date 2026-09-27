@@ -23847,3 +23847,47 @@ HOW TO REVERSE: remove `job.steer` from the catalog, `UI_EXPOSED_COMMANDS`, the 
 `apps/cli/commands/__init__.py`, delete `apps/cli/commands/job_steer_cmd.py`,
 `steer_task_command`, `STEERABLE_TASK_STATUSES`, `task_statuses` and `addressed_to`, and delete
 this paragraph.
+
+## DECISION F030 D3 — the browser shows a steering note as the operator's own line: the stream frame of `steering_message_received` gains a `note` of four fields, the feed renders it with an initial disc and the operator's text verbatim, the input addresses the task the dashboard has selected and the whole job when none is, its copy promises a note read at the next round, and the humanize catalog carries the framing that Remedy never writes a reply; the end-to-end proof takes round 4 (2026-09-27)
+
+CONTEXT: Measured at `59e02546`: `_safe_event_summary` in `packages/orchestration/ui_server.py`
+gives a `steering_message_received` frame the five base keys alone, so the operator's text never
+reaches the browser, and `tests/ui_server/test_sse_stream.py` pins that such a frame carries no
+`steering` key. Every live row of `ActivityFeedCard.tsx` renders `GearGlyph`. The card receives
+no selection: `RemedyShell.tsx` resolves `selectedNodeId` to a graph node, a prompt node to its
+owning task's node, but passes the selection to `BrainGraphStage` alone, and the zoom state lives
+inside `BrainGraphStage`. A dashboard task item's `id` is the job's task id, which the veto form
+already sends as `task_id`. `ChatInput.tsx`'s placeholder reads "Ask something…". The design
+reference gives a user row an initial-letter disc in the role disc's size and place
+(`ux_spec.md` §11.3, `README.md` §K2, `assets_spec.md`'s feed glyphs).
+
+CHOSEN: (1) THE FRAME. A `steering_message_received` frame gains the key `note`, built by
+`_steering_note_summary_payload` from exactly `message_id`, `text`, `channel` and `task_id`, and
+from nothing else in the metadata, for the reason the acknowledgement's payload gives; every other
+kind's frame stays byte-identical. The text is the operator's own, on the operator's own
+authenticated stream. (2) THE ROW. `readSteeringNote` in a new `apps/ui/src/api/steeringNote.ts`
+reads that key; `FeedRow` gains an optional `author`, `"operator"` for a note, whose line is the
+note's text verbatim. The card draws an operator row's disc as the letter "Y" with the name "You",
+in `--remedy-*` tokens, in the role disc's size and place: Remedy records no operator name, so it
+has no initial of one. (3) THE FOCUS. The shell resolves its selected node to the task item whose
+`nodeId` it is — a prompt already resolves to its owning task — and passes that item's `id`
+through `RightLivePanel` to the card as `focusedTaskId`; the zoom state stays where it is, because
+selecting a node is what focuses it. (4) THE SEND. With a focused task the input sends `job.steer`
+through a new `sendSteeringNote(target, taskId, text)`; with none it sends `chat.send` as F264
+shipped it. (5) THE COPY. The placeholder reads "Note for task <id> — read at its next round" or
+"Note for the whole job — read at its next round", the input's title carries the framing, and
+every result is one sentence, a refusal naming what the door answered. (6) THE FRAMING.
+`STEERING_REPLY_FRAMING` in `humanizeCatalog.ts`, outside the catalog's entries, reads "Remedy
+never writes a reply to a steering note: the builder's next action in this feed is the answer.",
+and a contract test finds no composed reply anywhere in the browser's sources. (7) Round 4 lands
+the end-to-end proof: a note sent through the door while a task builds reaches that task's next
+round's trace, and the stream carries the note before the task's next action.
+
+ALTERNATIVES: lifting the zoom state into the shell, rejected because a selection already names
+the task and the feed's own rows select; an input that refuses without a focused task, rejected
+by DECISION F030 D1 (6).
+
+HOW TO REVERSE: remove the `note` key and its payload function, `steeringNote.ts`, `author`, the
+operator disc, `focusedTaskId`, `sendSteeringNote`, the copy and `STEERING_REPLY_FRAMING`, restore
+the placeholder and the pinned `onSend` literal, delete the two F030 rows of
+`docs/ui/design_reference/assumption_log.md`, and delete this paragraph.
