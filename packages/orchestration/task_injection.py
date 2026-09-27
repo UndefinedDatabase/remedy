@@ -22,8 +22,15 @@ from typing import Any, ClassVar, Literal
 from pydantic import Field, ValidationError, model_validator
 
 from packages.common import secure_fs as _fs
-from packages.orchestration import budget_guard
+from packages.orchestration import budget_guard, plan_editing
 from packages.orchestration import safe_points as _sp
+from packages.orchestration.data_paths import job_dod_path
+from packages.orchestration.job_plan import (
+    APPROVED_PLAN_HASH_KEY,
+    map_task_plan_to_tasks,
+    plan_content_hash,
+)
+from packages.orchestration.mission_compiler import PLAN_VERSION_KEY
 from packages.orchestration.pingpong_job import job_is_terminal
 from packages.orchestration.schemas.models import _MAX_TASK_PLAN_TASKS as MAX_PLAN_TASKS
 from packages.orchestration.schemas.models import (
@@ -35,6 +42,7 @@ from packages.orchestration.schemas.models import TokenBand as PlanTokenBand
 from packages.orchestration.stream_evidence import redact_text
 from packages.orchestration.structured_base import _Structured
 from packages.orchestration.structured_outputs import run_structured_call
+from packages.orchestration.task_deliverables import record_llm_task_deliverables
 from packages.orchestration.task_veto import _bounded_actor
 from packages.orchestration.token_economy import TokenBand
 
@@ -53,6 +61,8 @@ __all__ = [
     "PLACEMENT_FRONTIER_DEFAULT",
     "SHORTFALL_OPTIONS",
     "PLAN_BAND_TO_TOKEN_BAND",
+    "ORIGIN_HUMAN_INJECTED",
+    "INJECTED_TASKS_DIRNAME",
     "validate_injection_text",
     "injection_refusal",
     "next_injected_task_id",
@@ -63,6 +73,9 @@ __all__ = [
     "compose_injection_prompt",
     "draft_task_injection",
     "read_injection_draft",
+    "confirmed_injections",
+    "confirm_task_injection",
+    "apply_injection_to_job",
 ]
 
 # ---------------------------------------------------------------------------
@@ -80,6 +93,14 @@ PLACEMENT_CONTENT_OVERLAP = "content_overlap"
 PLACEMENT_FRONTIER_DEFAULT = "frontier_default"
 
 SHORTFALL_OPTIONS = ("extend_budget", "shrink_task", "drop")
+
+#: DECISION F028 D2 (4) — the provenance an injected task's plan inputs carry, distinguishing
+#: it from a task the planner produced.
+ORIGIN_HUMAN_INJECTED = "human_injected"
+
+#: DECISION F028 D2 (2) — the confirmed-injection control files, beside `INJECTION_DRAFTS_DIRNAME`
+#: under the same job control directory.
+INJECTED_TASKS_DIRNAME = "injected_tasks"
 
 #: F028 D1 (7) — a plan band maps onto the predictive engine's token band; XL has no
 #: class default of its own and takes the "missing band" path deliberately (A9).
@@ -581,7 +602,11 @@ def read_injection_draft(job_id: str, draft_id: str, *, now: datetime | None = N
     ``draft_unknown`` when ``draft_id`` fails ``safe_points.is_safe_id`` or no file exists;
     ``draft_expired`` when ``now`` is at or past the record's ``expires_at``. A file that is
     not a JSON object, or whose own ``draft_id`` differs from the one asked for, raises
-    ``TaskInjectionError`` — a corrupt or tampered entry is never silently accepted.
+    ``TaskInjectionError`` — a corrupt or tampered entry is never silently accepted. R-1076's
+    repair: a record whose ``expires_at`` is missing, not a string, not parseable by
+    ``datetime.fromisoformat`` or parsed without a time zone raises ``TaskInjectionError`` too
+    — DECISION F028 D1 (10) makes expiry what renders an unconfirmed draft harmless, so a
+    record that cannot prove its own expiry is never read as still live.
     """
     if not _sp.is_safe_id(draft_id):
         raise TaskInjectionRefused("draft_unknown", f"no injection draft {draft_id!r} exists")
@@ -621,11 +646,299 @@ def read_injection_draft(job_id: str, draft_id: str, *, now: datetime | None = N
         os.close(job_fd)
 
     expires_at = record.get("expires_at")
-    now_dt = now if now is not None else datetime.now(timezone.utc)
-    if isinstance(expires_at, str) and expires_at:
+    if not isinstance(expires_at, str) or not expires_at:
+        raise TaskInjectionError(
+            f"the injection draft entry for {draft_id!r} carries no readable expiry")
+    try:
         expires_dt = datetime.fromisoformat(expires_at)
-        if now_dt >= expires_dt:
-            raise TaskInjectionRefused(
-                "draft_expired", f"the injection draft {draft_id!r} expired at {expires_at}")
+    except ValueError as exc:
+        raise TaskInjectionError(
+            f"the injection draft entry for {draft_id!r} carries an unparseable expiry "
+            f"{expires_at!r}: {exc}") from exc
+    if expires_dt.tzinfo is None:
+        raise TaskInjectionError(
+            f"the injection draft entry for {draft_id!r} carries an expiry with no time "
+            f"zone: {expires_at!r}")
+
+    now_dt = now if now is not None else datetime.now(timezone.utc)
+    if now_dt >= expires_dt:
+        raise TaskInjectionRefused(
+            "draft_expired", f"the injection draft {draft_id!r} expired at {expires_at}")
 
     return record
+
+
+# ---------------------------------------------------------------------------
+# S3/T002 — the confirmation: a second create-only control file (DECISION F028 D2 (2))
+# ---------------------------------------------------------------------------
+
+
+def confirmed_injections(job_id: str, *,
+                         control_root_path: Path | None = None) -> tuple[dict, ...]:
+    """Every confirmed injection, ordered by ``(confirmed_at, draft_id)``.
+
+    ``()`` when the control root, the job's directory or ``INJECTED_TASKS_DIRNAME`` does not
+    exist. A file that is not a JSON object, or lacks a string ``draft_id`` or a dict
+    ``task``, raises ``TaskInjectionError`` — dropping it would silently forget a confirmed
+    injection the operator already made.
+    """
+    jid = _sp.validate_job_id(job_id)
+    try:
+        job_fd = _sp.open_job_control_fd(jid, control_root_path, create=False)
+    except _sp.StopControlError as exc:
+        raise TaskInjectionError(str(exc)) from exc
+    if job_fd is None:
+        return ()
+
+    injections_fd = None
+    try:
+        injections_fd = _open_named_dir(job_fd, INJECTED_TASKS_DIRNAME, create=False)
+        if injections_fd is None:
+            return ()
+        names = _fs.list_dir_names(injections_fd, error_cls=TaskInjectionError,
+                                   noun="confirmed task injections")
+        out: list[dict[str, Any]] = []
+        for name in names:
+            raw = _fs.read_verified_file(
+                name, injections_fd, max_bytes=_sp.MAX_CONTROL_BYTES,
+                error_cls=TaskInjectionError, noun="confirmed task injection")
+            if raw is None:
+                continue
+            try:
+                record = json.loads(raw.decode("utf-8"))
+            except (ValueError, UnicodeDecodeError) as exc:
+                raise TaskInjectionError(
+                    f"a confirmed task injection entry is not valid JSON: {exc}") from exc
+            if not isinstance(record, dict):
+                raise TaskInjectionError("a confirmed task injection entry is not a JSON object")
+            if not isinstance(record.get("draft_id"), str) or not record["draft_id"]:
+                raise TaskInjectionError(
+                    "a confirmed task injection entry carries no draft id")
+            if not isinstance(record.get("task"), dict):
+                raise TaskInjectionError("a confirmed task injection entry carries no task")
+            out.append(record)
+        out.sort(key=lambda r: (r.get("confirmed_at") or "", r["draft_id"]))
+        return tuple(out)
+    finally:
+        if injections_fd is not None:
+            os.close(injections_fd)
+        os.close(job_fd)
+
+
+def _publish_confirmed_injection(job_id: str, draft_id: str, record: dict[str, Any], *,
+                                 control_root_path: Path | None) -> bool:
+    """Publish one create-only confirmed-injection file. Mirrors ``_publish_injection_draft``,
+    but a lost race is the caller's ``already_confirmed`` to answer, not a raised error, so
+    this returns whether the write won rather than raising when it did not."""
+    jid = _sp.validate_job_id(job_id)
+    try:
+        job_fd = _sp.open_job_control_fd(jid, control_root_path, create=True)
+    except _sp.StopControlError as exc:
+        raise TaskInjectionError(str(exc)) from exc
+    assert job_fd is not None
+    injections_fd = None
+    try:
+        injections_fd = _open_named_dir(job_fd, INJECTED_TASKS_DIRNAME, create=True)
+        assert injections_fd is not None
+        name = _draft_filename(draft_id)
+        return _fs.write_file_atomically(
+            injections_fd, name, _fs.json_bytes(record), create_only=True,
+            file_mode=_sp.CONTROL_FILE_MODE, error_cls=TaskInjectionError,
+            noun="confirmed task injection")
+    finally:
+        if injections_fd is not None:
+            os.close(injections_fd)
+        os.close(job_fd)
+
+
+def confirm_task_injection(
+    job: Any,
+    confirm_token: Any,
+    *,
+    actor: Any,
+    now: datetime | None = None,
+    control_root_path: Path | None = None,
+) -> dict[str, Any]:
+    """Confirm a drafted injection, or answer a refusal. NEVER raises for a refusal.
+
+    Checks, in order: S4's terminal check (``job_terminal``); ``read_injection_draft``
+    refusing with its own code; a record naming another job (``draft_unknown``); a
+    ``status`` other than ``confirmable`` (``draft_needs_decision``); a confirmation already
+    on file for this draft (``already_confirmed``); ``job.task_plan`` unreadable
+    (``no_task_plan``); the draft's task id already used, by the plan or by a confirmed
+    injection ``job.metadata["task_injections"]`` does not yet hold, or a ``depends_on`` id
+    in neither set (``draft_stale``, telling the operator to draft again); and the two sets
+    together at ``MAX_PLAN_TASKS`` or more (``plan_full``). A refusal writes nothing.
+
+    Otherwise publishes ONE create-only file in ``INJECTED_TASKS_DIRNAME`` and answers
+    ``{"outcome": "confirmed", "job_id", "draft_id", "task_id", "placement", "confirmed_at"}``.
+    """
+    refusal = injection_refusal(getattr(job, "state", ""), 0)
+    if refusal is not None:
+        return {"outcome": "refused", "code": refusal.code, "detail": refusal.detail}
+
+    try:
+        record = read_injection_draft(
+            job.job_id, confirm_token, now=now, control_root_path=control_root_path)
+    except TaskInjectionRefused as exc:
+        return {"outcome": "refused", "code": exc.code, "detail": exc.detail}
+
+    if record.get("job_id") != job.job_id:
+        return {"outcome": "refused", "code": "draft_unknown",
+                "detail": f"no injection draft {confirm_token!r} exists"}
+
+    if record.get("status") != "confirmable":
+        return {"outcome": "refused", "code": "draft_needs_decision",
+                "detail": "this injection draft needs its shortfall decision answered first"}
+
+    draft_id = record["draft_id"]
+    task_injections = job.metadata.get("task_injections") or {}
+    existing = confirmed_injections(job.job_id, control_root_path=control_root_path)
+    if any(r["draft_id"] == draft_id for r in existing):
+        return {"outcome": "refused", "code": "already_confirmed",
+                "detail": f"injection draft {confirm_token!r} was already confirmed"}
+
+    raw_plan = getattr(job, "task_plan", None)
+    plan: TaskPlan | None = None
+    if isinstance(raw_plan, dict):
+        try:
+            plan = TaskPlan.model_validate(
+                {k: v for k, v in raw_plan.items() if not k.startswith("_")})
+        except ValidationError:
+            plan = None
+    if plan is None:
+        return {"outcome": "refused", "code": "no_task_plan",
+                "detail": "this job has no readable task plan to confirm an injection into"}
+
+    plan_ids = {t.id for t in plan.tasks}
+    unfolded_ids = {
+        r["task"]["id"] for r in existing if r["draft_id"] not in task_injections
+    }
+    known_ids = plan_ids | unfolded_ids
+
+    task = record["task"]
+    if task["id"] in known_ids:
+        return {"outcome": "refused", "code": "draft_stale",
+                "detail": f"task id {task['id']!r} is already used; draft again"}
+    for dep in task.get("depends_on") or []:
+        if dep not in known_ids:
+            return {"outcome": "refused", "code": "draft_stale",
+                    "detail": f"task {task['id']!r} depends on {dep!r}, which is no longer "
+                              "in the plan; draft again"}
+
+    if len(known_ids) >= MAX_PLAN_TASKS:
+        return {"outcome": "refused", "code": "plan_full",
+                "detail": f"the plan is already at its {MAX_PLAN_TASKS}-task cap"}
+
+    now_dt = now if now is not None else datetime.now(timezone.utc)
+    confirmed_record = {
+        "injected_task_v": 1,
+        "job_id": job.job_id,
+        "draft_id": draft_id,
+        "task": task,
+        "placement": record["placement"],
+        "task_rationale": record["task_rationale"],
+        "text": record["text"],
+        "drafted_by": record.get("actor"),
+        "actor": _bounded_actor(actor),
+        "confirmed_at": now_dt.isoformat(),
+    }
+    published = _publish_confirmed_injection(
+        job.job_id, draft_id, confirmed_record, control_root_path=control_root_path)
+    if not published:
+        return {"outcome": "refused", "code": "already_confirmed",
+                "detail": f"injection draft {confirm_token!r} was already confirmed"}
+
+    return {"outcome": "confirmed", "job_id": job.job_id, "draft_id": draft_id,
+            "task_id": task["id"], "placement": confirmed_record["placement"],
+            "confirmed_at": confirmed_record["confirmed_at"]}
+
+
+# ---------------------------------------------------------------------------
+# S4/T002 — the apply: one edit, one entry, one provenance block (DECISION F028 D2 (4))
+# ---------------------------------------------------------------------------
+
+
+def apply_injection_to_job(job: Any, record: dict[str, Any], *,
+                           now: datetime | None = None) -> dict[str, Any]:
+    """Apply one confirmed injection to *job*, changing only the in-memory object.
+
+    Raises ``TaskInjectionRefused("injection_invalid", detail)``, leaving ``job`` untouched,
+    when ``job.task_plan`` does not read as a plan or
+    ``plan_editing.apply_edit(plan, "plan_add_task", ...)`` refuses. Otherwise, as
+    ``edit_task_at_runtime`` does: ``map_task_plan_to_tasks``, ``record_llm_task_deliverables``,
+    and the one mapped entry for the new task is appended to ``job.tasks`` with its
+    ``inputs["plan"]`` carrying the provenance, the plan version bumped, the approval hash
+    re-sealed when the old body was approved with one, and the edit log extended by one entry
+    naming ``plan_add_task`` and carrying an ``injection`` block. Answers
+    ``{"task_id", "planned_id", "folded_at"}``.
+    """
+    raw_plan = getattr(job, "task_plan", None)
+    plan: TaskPlan | None = None
+    if isinstance(raw_plan, dict):
+        try:
+            plan = TaskPlan.model_validate(
+                {k: v for k, v in raw_plan.items() if not k.startswith("_")})
+        except ValidationError:
+            plan = None
+    if plan is None:
+        raise TaskInjectionRefused(
+            "injection_invalid", "this job has no readable task plan to apply the injection to")
+
+    body = raw_plan
+    task_dict = record["task"]
+    try:
+        new_plan = plan_editing.apply_edit(plan, "plan_add_task", {"task": task_dict})
+    except plan_editing.PlanEditRefused as exc:
+        raise TaskInjectionRefused("injection_invalid", exc.detail) from exc
+
+    mapped = map_task_plan_to_tasks(new_plan)
+    record_llm_task_deliverables(mapped)
+    planned_id = task_dict["id"]
+    fresh = next(
+        t for t in mapped if (t.inputs.get("plan") or {}).get("planned_id") == planned_id)
+
+    placement = record["placement"]
+    fresh.inputs["plan"]["origin"] = ORIGIN_HUMAN_INJECTED
+    fresh.inputs["plan"]["plan_rationale"] = placement["rationale"]
+    fresh.inputs["plan"]["task_rationale"] = record["task_rationale"]
+    fresh.inputs["plan"]["injection_draft_id"] = record["draft_id"]
+    job.tasks.append(fresh)
+
+    version = plan_editing.plan_version(body)
+    now_dt = now if now is not None else datetime.now(timezone.utc)
+
+    new_body = new_plan.model_dump()
+    new_body.update({k: v for k, v in body.items() if k.startswith("_")})
+    new_body[PLAN_VERSION_KEY] = version + 1
+
+    if body.get("_approval") == "approved" and body.get(APPROVED_PLAN_HASH_KEY):
+        new_body[APPROVED_PLAN_HASH_KEY] = plan_content_hash(new_body)
+
+    dod_resync_pending = job_dod_path(job.job_id).is_file()
+    log_entry: dict[str, Any] = {
+        "version": version + 1,
+        "ts": now_dt.isoformat(),
+        "actor": record["actor"],
+        "command": "plan_add_task",
+        "args": {"task": task_dict},
+        "before": [t.model_dump() for t in plan.tasks],
+        "after": [t.model_dump() for t in new_plan.tasks],
+        "injection": {
+            "draft_id": record["draft_id"],
+            "task_id": fresh.task_id,
+            "planned_id": planned_id,
+            "origin": ORIGIN_HUMAN_INJECTED,
+            "basis": placement["basis"],
+            "plan_rationale": placement["rationale"],
+            "text": record["text"],
+            "confirmed_at": record["confirmed_at"],
+            "dod_resync_pending": dod_resync_pending,
+        },
+    }
+    new_body[plan_editing.EDIT_LOG_KEY] = [*body.get(plan_editing.EDIT_LOG_KEY, []), log_entry]
+
+    job.task_plan = new_body
+
+    folded_at = now_dt.isoformat()
+    return {"task_id": fresh.task_id, "planned_id": planned_id, "folded_at": folded_at}
