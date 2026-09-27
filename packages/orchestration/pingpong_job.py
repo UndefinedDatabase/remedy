@@ -2469,11 +2469,17 @@ def _fold_task_injections(job: JobPlan, control_root_path: Path | None) -> bool:
 
     task_injections = job.metadata.setdefault("task_injections", {})
     changed = False
+    folded_events: list[dict[str, Any]] = []
 
     for record in records:
         draft_id = record["draft_id"]
         if draft_id in task_injections:
             continue                                          # already folded
+
+        planned_id = record["task"]["id"]
+        basis = record["placement"]["basis"]
+        actor = record["actor"]
+        confirmed_unseen = record.get("confirmed_unseen", False)
 
         try:
             applied = _ti.apply_injection_to_job(job, record)
@@ -2483,13 +2489,35 @@ def _fold_task_injections(job: JobPlan, control_root_path: Path | None) -> bool:
                 "folded_at": datetime.now(timezone.utc).isoformat(),
             }
             changed = True
+            folded_events.append({
+                "outcome": "inert", "task_id": "", "draft_id": draft_id,
+                "planned_id": planned_id, "basis": basis, "actor": actor,
+                "confirmed_unseen": confirmed_unseen, "reason": exc.detail,
+            })
             continue
 
         task_injections[draft_id] = applied
         changed = True
+        folded_events.append({
+            "outcome": "applied", "task_id": applied["task_id"], "draft_id": draft_id,
+            "planned_id": planned_id, "basis": basis, "actor": actor,
+            "confirmed_unseen": confirmed_unseen,
+        })
 
     if changed:
         _persist_job(job)
+
+    # DECISION F028 D5 (2): the event is written AFTER `_persist_job` — a crash between the
+    # save and this write loses the event and never duplicates it, since the record already
+    # on disk (`task_injections[draft_id]` above) is what keeps this record from being
+    # folded, and therefore its event written, a second time.
+    if folded_events:
+        from packages.orchestration.run_log import RunLogWriter
+
+        writer = RunLogWriter(job.job_id)
+        for event in folded_events:
+            writer.log("task_injected", **event)
+
     return False
 
 
