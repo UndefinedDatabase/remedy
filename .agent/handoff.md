@@ -1,96 +1,94 @@
-# Handoff — F030, round 2 (book R1, DECISION F030 D2, T002)
+# Handoff — F030, round 3 (book R2, DECISION F030 D3, T003 browser half)
 
 ## Session
 
-SESSION 1 of feature F030 · round 2 · rounds so far 2. Context remaining at
+SESSION 1 of feature F030 · round 3 · rounds so far 3. Context remaining at
 handback: comfortable — the round read every named source file once, wrote
-S1–S4's production change and its three new test files in one pass, hit one
-red gate (a vocabulary-page check on the new catalog description) that cost
-one small extra commit to repair, then ran every gate green and still has a
-healthy context budget left.
+S1–S6's production change and its five new/changed test files across six
+commits plus the mutation tool in one pass, hit no red gate anywhere (tsc,
+vitest, ruff, the pinned pytest selection and all eleven G5 mutations went
+exactly as expected on the first try), and still has a healthy context
+budget left.
 
 ## Range
 
-Review of `886b60559`..`HEAD` (`HEAD` is this handback's own commit, `F030
-R2 C7`, on `feature/f030-steering-messages`).
+Review of `59e02546d`..`HEAD` (`HEAD` is this handback's own commit, `F030
+R3 C7`, on `feature/f030-steering-messages`).
 
 ## Commits
 
-### 0bb5ddf9e F030 R2 C1: copy round 2 block and payloads
+### ee4ddb5da F030 R3 C1: copy round 3 block and payloads
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f030-r2-block.md | 295/0 | verbatim copy of this round's block |
-| .agent/authored/f030-r2-booking.diff | 62/0 | verbatim copy of the booking payload |
-| .agent/authored/f030-r2-plan.md | 29/0 | verbatim copy of the plan payload |
+| .agent/authored/f030-r3-block.md | 268/0 | verbatim copy of this round's block |
+| .agent/authored/f030-r3-booking.diff | 81/0 | verbatim copy of the booking payload |
+| .agent/authored/f030-r3-plan.md | 30/0 | verbatim copy of the plan payload |
 
-Measured insertions: 386 (295+62+29). Block expected 295+91=386. Match.
+Measured insertions: 379 (268+81+30). Block expected 268+111=379. Match.
 
-### 286b79727 F030 R2 C2: book round 1's PASS and record DECISION F030 D2
+### bd4285942 F030 R3 C2: book round 2's PASS and record DECISION F030 D3
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/decisions.md | 44/0 | DECISION F030 D2 appended (`git apply` of booking.diff) |
-| .agent/live_review.md | 2/0 | F030 R1 Gate entry appended (`git apply` of booking.diff) |
-| .agent/plan.md | 7/8 | rewritten to plan.md payload |
+| .agent/decisions.md | 44/0 | DECISION F030 D3 appended (`git apply` of booking.diff) |
+| .agent/live_review.md | 2/0 | F030 R2 Gate entry appended (`git apply` of booking.diff) |
+| .agent/plan.md | 8/7 | rewritten to plan.md payload |
+| .agent/prose_slips.md | 1/0 | R2's binding-word prose slip appended (`git apply` of booking.diff) |
+| docs/ui/design_reference/assumption_log.md | 2/0 | two DECISION F030 D3 rows appended (`git apply` of booking.diff) |
 
-Measured numstat: 44/0, 2/0, 7/8. Block expected exactly this. Match.
+Measured numstat: 44/0, 2/0, 8/7, 1/0, 2/0. Block expected exactly this. Match.
 
-### 31f0f83e2 F030 R2 C3: address a note to a task through one shared command
+### ee860302e F030 R3 C3: carry a steering note's text on its stream frame
 | Path | +/- | Reason |
 |---|---|---|
-| packages/orchestration/steering.py | 86/6 | S1 `steer_task_command`, `STEERABLE_TASK_STATUSES`; S2 `steering_overview` gains `addressed_to`/`task_statuses` |
-| tests/orchestration/test_steer_task.py | 158/0 | new: refusal order, acceptance over the five steerable statuses, refusal over the four non-steerable ones, the pinned-statuses test, the overview's `addressed_to`/`not_taken_in` |
+| packages/orchestration/ui_server.py | 30/0 | S1 `_steering_note_summary_payload`; `_safe_event_summary` gains `note`, conditional on `steering_message_received`, task id falling back to the event's own top-level field |
+| tests/ui_server/test_steering_note_frame.py | 51/0 | new: the four note fields with the text verbatim, an empty task id for a job-wide note, the top-level fallback, the metadata-wins case, no `steering` key, the base five for an unknown kind |
 
-Measured insertions: 244. No insertion count was ordered for this commit.
+Measured insertions: 81. No insertion count was ordered for this commit.
 
-### 8fec9f4b7 F030 R2 C4: add remedy job steer and name a note's task in chat show
+### b534119ed F030 R3 C4: show a note as the operator's own line and pass the selected task
 | Path | +/- | Reason |
 |---|---|---|
-| apps/cli/command_catalog.py | 25/0 | S3 `job.steer` catalog entry, `UI_EXPOSED_COMMANDS` gains it |
-| apps/cli/commands/__init__.py | 2/1 | registers `job_steer_cmd` in the handler-collection import and loop |
-| apps/cli/commands/chat_cmd.py | 18/2 | `_cmd_chat_show` builds `task_statuses`, names the addressed task in text and JSON |
-| apps/cli/commands/job_steer_cmd.py | 80/0 | new: `remedy job steer` handler |
-| docs/guides/exit-codes.md | 1/0 | `remedy job steer` row, directly after `job veto-task`'s |
-| tests/cli/test_job_steer.py | 167/0 | new: text/JSON acceptance, planned-id resolution, refusal exit codes, `chat show` naming the task |
-| tests/orchestration/import_reachability_allowlist.txt | 1/0 | `apps.cli.commands.job_steer_cmd` in alphabetical place |
+| apps/ui/src/api/feedRow.test.ts | 26/0 | S2 cases: a note's own line and `author`, a malformed note keeps the catalog line and no author, every other row has no author |
+| apps/ui/src/api/feedRow.ts | 10/1 | S2 `author?: "operator"`; `feedRowOf` reads `readSteeringNote`, gives a note's row its text verbatim and `author: "operator"` |
+| apps/ui/src/api/steeringNote.test.ts | 79/0 | new: `readSteeringNote`, `steeringFocusTaskId`, `steeringPlaceholder` |
+| apps/ui/src/api/steeringNote.ts | 70/0 | new: S2 `STEERING_NOTE_EVENT`, `SteeringNote`, `readSteeringNote`; S3 `steeringFocusTaskId`; S5 `steeringPlaceholder` (its test lives in this same new file's test, so it ships with S2/S3 rather than split into C5) |
+| apps/ui/src/components/panels/ActivityFeedCard.tsx | 10/3 | S2 operator row: an initial-letter disc and "You" in place of the glyph and kind; S3 `focusedTaskId?: string` accepted (unused in this commit — its consumer is C5's composer) |
+| apps/ui/src/components/panels/RightLivePanel.module.css | 15/0 | S2 `.operatorDisc`, role-disc size, `var(--remedy-*)` tokens only |
+| apps/ui/src/components/panels/RightLivePanel.tsx | 2/2 | S3 `focusedTaskId?: string` accepted and passed on the one `<ActivityFeedCard` line |
+| apps/ui/src/components/shell/RemedyShell.tsx | 6/1 | S3 `steeringFocusTaskId(dashboard.tasks, selectedNode ? selectedNode.nodeId : null)` computed after the prompt resolution, passed on the one `<RightLivePanel` line |
 
-Measured insertions: 294. No insertion count was ordered for this commit.
+Measured insertions: 218. No insertion count was ordered for this commit.
 
-### dfb46b2a2 F030 R2 C5: expose job.steer through the write door
+### cbcc51621 F030 R3 C5: address the input's note to the selected task, promising no reply
 | Path | +/- | Reason |
 |---|---|---|
-| packages/orchestration/ui_server.py | 66/0 | S4 `JOB_STEER_COMMAND_ID`, the `job.steer` branch of `_handle_command_submission`, `_dispatch_steer_task`, the `job.steer` shape checks in `_read_command_payload` |
-| tests/ui_server/test_command_channel.py | 10/2 | `DOOR_METHODS` gains `_dispatch_steer_task`; `ALLOWED_IMPORTS` gains `steer_task_command`; `TestUiExposedCommands`'s ruled list and the exposed-commands loop gain `job.steer` |
-| tests/ui_server/test_steer_task_door.py | 163/0 | new: acceptance with channel `cockpit`, the four refusal/shape-error cases |
+| apps/ui/src/api/humanizeCatalog.ts | 7/0 | S5/S6 `STEERING_REPLY_FRAMING`, at column 0, outside `STREAM_EVENT_CATALOG` |
+| apps/ui/src/api/steeringSend.test.ts | 145/0 | S4 cases: `buildSteerTaskRequest`'s exact request and its three null cases, `describeSteerTaskResult`'s five outcome classes, `sendSteeringNote`'s send/refuse/unreachable flow |
+| apps/ui/src/api/steeringSend.ts | 175/0 | S4 `STEER_TASK_COMMAND`, `buildSteerTaskRequest`, `SteerTaskSendReply`/`SteerTaskSubmitResult`/`submitSteerTaskRequest` (supporting infra, shaped as `vetoSend.ts`'s own), `describeSteerTaskResult`, `sendSteeringNote` |
+| apps/ui/src/components/panels/ActivityFeedCard.tsx | 8/3 | S4/S5 composer wiring: `placeholder`, `hint`, and the exact `onSend` ternary between `sendSteeringNote` and `sendSteeringMessage` |
+| apps/ui/src/components/panels/ChatInput.tsx | 8/4 | S5 `placeholder?: string` and `hint?: string`; the literal "Ask something…" is gone; `title` reads `hint` when live |
+| tests/ui_contracts/test_steering_note_contract.py | 71/0 | new: the note event is declared, the note fields match the server's, `job.steer` is exposed, `STEERING_REPLY_FRAMING` is pinned once at column 0, the copy audit over every non-test file |
+| tests/ui_contracts/test_steering_send_contract.py | 2/1 | S6: the pinned `onSend` literal becomes S4's ternary |
 
-Measured insertions: 239. No insertion count was ordered for this commit.
+Measured insertions: 416. No insertion count was ordered for this commit.
 
-### 1292f743a F030 R2 C6: add the round 2 mutation tool
+### 2decf4fbd F030 R3 C6: add the round 3 mutation tool
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f030-r2-mutations.py | 216/0 | G5's red-proof tool, 12 mutations over S1–S4 |
+| .agent/authored/f030-r3-mutations.py | 248/0 | G5's red-proof tool, 11 mutations (3 PYTHON over `ui_server.py`, 8 VITEST over `steeringNote.ts`/`feedRow.ts`/`steeringSend.ts`) |
 
-Measured insertions: 216. No insertion count was ordered for this commit.
-
-### 73d3cd0d9 F030 R2 C4 fix: use the vocabulary page's Round meaning fragment for job.steer
-| Path | +/- | Reason |
-|---|---|---|
-| apps/cli/command_catalog.py | 2/2 | `job.steer`'s description reworded to carry `build`, `docs/system/vocabulary.md`'s meaning fragment for the binding word `Round` |
-
-Measured insertions: 2. Unordered commit — see Deviations below.
+Measured insertions: 248. No insertion count was ordered for this commit.
 
 Exception (self-reference, per `docs/agents/handback_template.md`): this
-handback's own commit, `F030 R2 C7`, is not tabled here.
+handback's own commit, `F030 R3 C7`, is not tabled here.
 
 ## External actions
 
-- `git worktree add --detach .remedy-wt/f030-r2-basecount 886b60559` — to
-  measure node-count deltas for G4's accounting requirement. Removed with
-  `git worktree remove --force .remedy-wt/f030-r2-basecount` and
-  `git worktree prune`; `git worktree list | wc -l` read 62 afterward.
-- `git worktree add --detach .remedy-wt/f030-r2-mut 73d3cd0d9` — G5's
+- `git worktree add --detach .remedy-wt/f030-r3-mut 2decf4fbd` — G5's
   red-proof worktree. Removed with
-  `git worktree remove --force .remedy-wt/f030-r2-mut` and
-  `git worktree prune`; `git worktree list | wc -l` read 62 afterward.
+  `git worktree remove --force .remedy-wt/f030-r3-mut` and
+  `git worktree prune`; `git worktree list | wc -l` read 63 both before and
+  after (equal to this round's step-4 reading).
 - No push, no PR create/edit/merge yet — those are G6, run after this
   commit; their real readings are in this round's reply, not here.
 
@@ -98,186 +96,204 @@ handback's own commit, `F030 R2 C7`, is not tabled here.
 
 **G1 transport** — payload readings (measured before use):
 
-    booking.diff lines: 62 bytes: 11814 sha256: efe75e7d661fea96620f770c8597afadc465bfea367cceebecf6329bef334d60
-    plan.md lines: 29 bytes: 950 sha256: a14dcd35f5785c74f8cb8a9ab23c202d18b5c5dc673f233e0960e5dddccdcdbc
+    block.md lines: 268 sha256: f4ec8621d821c5dff58bde4c42b3db36f5a6c5e454f7bc1204f619b7f5afbb09
+    booking.diff lines: 81 bytes: 17619 sha256: ba547e5dbae5785d75c247e4c1801fbdf97ff1af0ed06ed4edf59e3e8df85c71
+    plan.md lines: 30 bytes: 1039 sha256: 1ac082044653f3d73d39318d496b6b813a2b16e92ebdbe98fd2c72abe597e2d5
 
-Both equal the PAYLOADS table exactly. Block copy verified before use:
-lines 295, sha256 448947e7…5569, equal to the delegation message's two
-readings.
+All three equal the delegation message's and the PAYLOADS table's readings
+exactly. Each `.agent/authored/f030-r3-*` copy read back with
+`git show ee4ddb5da:<path>` equalled its source byte for byte (script
+output):
 
-Each `.agent/authored/f030-r2-*` copy read back with `git show 0bb5ddf9e:<path>`
-equalled its source byte for byte (script output):
+    .agent/authored/f030-r3-block.md byte-identical: True len 21507 21507
+    .agent/authored/f030-r3-plan.md byte-identical: True len 1039 1039
+    .agent/authored/f030-r3-booking.diff byte-identical: True len 17619 17619
 
-    block.md source equal: True  src_sha256: 448947e7…5569  committed_sha256: 448947e7…5569
-    plan.md source equal: True   src_sha256: a14dcd35…dcdbc  committed_sha256: a14dcd35…dcdbc
-    booking.diff source equal: True  src_sha256: efe75e7d…334d60  committed_sha256: efe75e7d…334d60
+`git apply --check .remedy-wt/f030-r3-payloads/booking.diff` → `REAL_EXIT=0`.
+`git apply .remedy-wt/f030-r3-payloads/booking.diff` → `REAL_EXIT=0`.
 
-`git apply --check .remedy-wt/f030-r2-payloads/booking.diff` → `REAL_EXIT=0`.
-`git apply .remedy-wt/f030-r2-payloads/booking.diff` → `REAL_EXIT=0`.
+**G2 the records** — at `bd4285942`, `git show <sha>:<path>` read:
 
-**G2 the booking** — at `286b79727`, `git show <sha>:<path>` read:
+    .agent/decisions.md   bytes: 2318512  sha256: d4a3b9066757f4ee5437a2b700f646a400c919495283585e9ef30d48c28640e9
+    .agent/live_review.md bytes: 314301   sha256: fff987aee67d2cef8ac4e04dfe459aabed2f599904df779f29708bff4ede2b26
+    .agent/plan.md        bytes: 1039     sha256: 1ac082044653f3d73d39318d496b6b813a2b16e92ebdbe98fd2c72abe597e2d5
+    .agent/prose_slips.md bytes: 374557   sha256: 81ead1202d8dcafb5bf69ee9ee32715bd74d5a7255d02f98e25ff0fdac8a5e2b
+    docs/ui/design_reference/assumption_log.md bytes: 21917 sha256: ef6dbd9c45dd711ecdcd9427efc6d83ccdea333e4f8f45520ca1751372e74f7e
 
-    .agent/decisions.md   bytes: 2314513  sha256: 1a38d90282c2796588af0c791e1001d4f237896883d38eaefb6a61df47c294b0
-    .agent/live_review.md bytes: 311600   sha256: e7463f7d8d71ec17c7c6f5fa90883d6b4b47e704ab04dafc660b725ea1bc155c
-    .agent/plan.md        bytes: 950      sha256: a14dcd35f5785c74f8cb8a9ab23c202d18b5c5dc673f233e0960e5dddccdcdbc
-
-All three equal the reviewer's given readings. `open_finding_ids` (from
+All five equal the reviewer's given readings. `open_finding_ids` (from
 `scripts/rotate_live_review.py`, imported and run over the ledger text at
-`286b79727`) read `[]` — empty, as the reviewer read it. The ledger's last
-line at that commit begins `Gate: F030 R1 — the F030 round`.
+`bd4285942`) read `[]` — empty, as the reviewer read it. `git diff
+--name-only ee4ddb5da bd4285942` named exactly the five paths of the G2
+table.
 
-**G3 the code** — ruff over every Python file of constraint 3 outside
-`.agent/`, run twice (once at C6, re-run at the tip after the C4 fix):
+**G3 the code** — ruff at C6 (`2decf4fbd`):
 
-    python3 -m ruff check packages/orchestration/steering.py packages/orchestration/ui_server.py apps/cli/command_catalog.py apps/cli/commands/__init__.py apps/cli/commands/job_steer_cmd.py apps/cli/commands/chat_cmd.py tests/ui_server/test_command_channel.py tests/orchestration/test_steer_task.py tests/cli/test_job_steer.py tests/ui_server/test_steer_task_door.py
+    python3 -m ruff check packages/orchestration/ui_server.py tests/ui_server/test_steering_note_frame.py tests/ui_contracts/test_steering_note_contract.py tests/ui_contracts/test_steering_send_contract.py
     All checks passed!
     REAL_EXIT=0
 
-`steer_task_command`, the new `_handle_command_submission` branch and
-`_dispatch_steer_task`, quoted from `git show` at the tip, are in this
-round's Verification transcript kept by the worker and match the code
-shown in the Commits section's diffs above (S1 and S4 respectively).
+Quoted from the diff:
 
-**G4 the tests** — first run, at C6 (before the fix), read one failure:
-`tests/docs/test_vocabulary.py` — `job.steer`'s description used the
-binding word "Round" without one of `docs/system/vocabulary.md`'s meaning
-fragments (`build`, `review`, `repair`) for it — `1 failed, 1896 passed, 1
-skipped`. Repaired by commit `73d3cd0d9` (reworded the description to
-carry `build`), NOT by editing the test. Re-run at the tip:
+    def _steering_note_summary_payload(metadata: Any) -> dict[str, str]:
+    ...
+        return {
+            "message_id": str(meta.get("message_id", "")),
+            "text": str(meta.get("text", "")),
+            "channel": str(meta.get("channel", "")),
+            "task_id": str(meta.get("task_id", "")),
+        }
 
-    SKIPPED [1] tests/test_agent_tooling.py:43: D12 quarantine (F252): .claude/agents/remedy-reviewer.md was deleted deliberately in 219dd32 ...
-    1897 passed, 1 skipped in 120.26s (0:02:00)
+    export function readSteeringNote(envelope: Record<string, unknown>): SteeringNote | null {
+      if (envelope["event"] !== STEERING_NOTE_EVENT) { return null; }
+      ...
+    }
+
+    const isOperator = row.author === "operator";
+    ...
+    onSend={(text) => (focusedTaskId ? sendSteeringNote(target, focusedTaskId, text) : sendSteeringMessage(target, text))}
+
+    const focusedTaskId = steeringFocusTaskId(dashboard.tasks, selectedNode ? selectedNode.nodeId : null);
+
+**G4 the tests** — at C6, serially, real exit code:
+
+    1851 passed, 11 skipped in 109.16s (0:01:49)
     REAL_EXIT=0
 
-Reviewer's base at `886b6055` (selection minus the three new test files):
-1859 passed, 1 skipped. Accounting for 1897:
-- the three new test files together collect 35 nodes (`--collect-only`):
-  `test_steer_task.py` 18, `test_job_steer.py` 11, `test_steer_task_door.py` 6.
-- `tests/ui_server/test_command_channel.py` collects 110 nodes at both
-  `886b60559` and the tip — the S4 edits changed existing test BODIES
-  (a new `DOOR_METHODS`/`ALLOWED_IMPORTS` entry, a new `elif` branch and a
-  new list entry) and added no new test function. Delta: 0.
-- the catalog-parametrized suites gained 3 nodes from the new `job.steer`
-  catalog entry: `tests/cli/test_exit_codes.py` 331→333 (+2),
-  `tests/cli/test_json_contract.py` 200→201 (+1). Every other file in that
-  group (`test_command_catalog.py`, `test_advertised_commands.py`,
-  `test_cli_ux.py`, `test_job_refusal_envelope.py`,
-  `test_list_commands_everywhere.py`, `test_job_commands.py`,
-  `test_dead_command_check.py`) is unchanged in node count.
-- 1859 + 35 + 0 + 3 = 1897. Matches exactly.
+All 11 `SKIPPED` lines read as F252 quarantines (`test_graph_architecture.py`
+x2, `test_ux_quality.py` x2, `test_named_bugs.py` x6 — lines 295, 312, 321,
+383, 392, 399 — `test_agent_tooling.py` x1, matching the reviewer's stated
+eleven exactly). `--collect-only -q` node counts for the two new Python test
+files: `tests/ui_server/test_steering_note_frame.py` 6,
+`tests/ui_contracts/test_steering_note_contract.py` 5. Accounting: reviewer's
+base at `59e02546` (selection less the two new files) read 1840 passed; 1840
++ 6 + 5 = 1851. Matches exactly. Vitest totals the
+`TestVitestFrontendTestFoundation` node's subprocess ran (reproduced directly
+against the primary's own `vitest` binary for this report, same command the
+gate runs): `Test Files 81 passed | 1 skipped (82)`, `Tests 1632 passed | 5
+skipped (1637)` — up from the reviewer's base by 28 cases this round added:
+`steeringNote.test.ts` (11, a new file), `feedRow.test.ts` (+3, measured by
+`it(` count against `59e02546`'s copy: 19 base, 22 now), and
+`steeringSend.test.ts` (+14, 17 base, 31 now).
 
 `python3 -m apps.cli.main integrity check --json` →
 
-    {"check_count": 6, ... "fail_count": 0, "ok": true, "passed": true, ...}
+    {"check_count": 6, "checks": [...], "fail_count": 0, "ok": true, "passed": true, "schema_version": 1, "version": 1}
     REAL_EXIT=0
 
-All six checks `pass`.
+All six checks `pass`: `handler_import`, `live_review_verdict`,
+`plan_consistency`, `relevant_untracked`, `repo_root_hygiene`,
+`high_blockers_open`.
 
-**G5 the red proofs** — `git worktree add --detach .remedy-wt/f030-r2-mut
-73d3cd0d9` (the tip, after the C4 fix — see Deviations), then
-`python3 -B .agent/authored/f030-r2-mutations.py
-/home/decodeux/Repos/remedy/.remedy-wt/f030-r2-mut`:
+**G5 the red proofs** — `git worktree add --detach .remedy-wt/f030-r3-mut
+2decf4fbd`, then `python3 -B .agent/authored/f030-r3-mutations.py
+/home/decodeux/Repos/remedy/.remedy-wt/f030-r3-mut`:
 
-    control (start): exit=0 failed=0 nodes=[]
-    m1 STEERABLE_TASK_STATUSES also holds passed: exit=1 failed=5 caught=True restored=True
-    m2 STEERABLE_TASK_STATUSES loses failed: exit=1 failed=2 caught=True restored=True
-    m3 steer_task_command records the note without its task id: exit=1 failed=12 caught=True restored=True
-    m4 step c (the unknown-task check) is skipped: exit=1 failed=4 caught=True restored=True
-    m5 step b (the ended-job check) is skipped: exit=1 failed=3 caught=True restored=True
-    m6 steering_overview ignores task_statuses: exit=1 failed=2 caught=True restored=True
-    m7 task_not_steerable exits 1: exit=1 failed=1 caught=True restored=True
-    m8 the task argument is passed on without _resolve_task_arg: exit=1 failed=1 caught=True restored=True
-    m9 _dispatch_steer_task records with channel cli: exit=1 failed=1 caught=True restored=True
-    m10 _read_command_payload's job.steer check on task_id is skipped: exit=1 failed=1 caught=True restored=True
-    m11 the new branch answers a refusal 200: exit=1 failed=3 caught=True restored=True
-    m12 _cmd_chat_show passes no task_statuses: exit=1 failed=1 caught=True restored=True
-    control (end): exit=0 failed=0 nodes=[]
-    restored byte-identical: True
+    control (start) PYTHON: exit=0 failed=0 tests=[]
+    control (start) VITEST: exit=0 failed=0 tests=[]
+    m1 the note payload leaves out text: runner=PYTHON exit=1 failed=2 caught=True restored=True
+    m2 note is added to every kind's frame: runner=PYTHON exit=1 failed=8 caught=True restored=True
+    m3 the note payload also copies record_sha256: runner=PYTHON exit=1 failed=2 caught=True restored=True
+    m4 readSteeringNote accepts a blank text: runner=VITEST exit=1 failed=1 caught=True restored=True
+    m5 steeringFocusTaskId always answers empty: runner=VITEST exit=1 failed=1 caught=True restored=True
+    m6 steeringPlaceholder names the whole job for a task: runner=VITEST exit=1 failed=2 caught=True restored=True
+    m7 a note's row keeps the catalog line: runner=VITEST exit=1 failed=1 caught=True restored=True
+    m8 a note's row gets no author: runner=VITEST exit=1 failed=1 caught=True restored=True
+    m9 buildSteerTaskRequest sends chat.send: runner=VITEST exit=1 failed=2 caught=True restored=True
+    m10 buildSteerTaskRequest leaves out task_id: runner=VITEST exit=1 failed=2 caught=True restored=True
+    m11 a 409 task_not_steerable reads as the accepted sentence: runner=VITEST exit=1 failed=1 caught=True restored=True
+    control (end) PYTHON: exit=0 failed=0 tests=[]
+    control (end) VITEST: exit=0 failed=0 tests=[]
+    restored byte-identical: True (x11, one line per mutation)
+    PRIMARY checkout git status --porcelain: (empty)
     ALL MUTATIONS CAUGHT AND RESTORED CLEANLY: True
+    REAL_EXIT=0
 
-Every mutation caught (exit≠0, failed>0, at least one failing node id
-printed in full by the tool — trimmed here for length). Worktree removed:
-`git worktree remove --force .remedy-wt/f030-r2-mut`, `git worktree prune`;
-`git worktree list | wc -l` read 62 afterward, equal to this round's
-step-4 reading.
+Every one of the eleven mutations caught (exit≠0, failed>0, at least one
+failing test named — the tool's own output names each one in full; trimmed
+here to `caught`/`restored` for length). None stayed green. Worktree
+removed: `git worktree remove --force .remedy-wt/f030-r3-mut`, `git
+worktree prune`; `git worktree list | wc -l` read 63 afterward, equal to
+this round's step-4 reading.
 
-`git diff --name-only 886b6055` at the tip (before C7): exactly the 19
-paths constraint 3 lists (the `.agent/authored/f030-r2-*` copies and tool,
-`.agent/decisions.md`, `.agent/live_review.md`, `.agent/plan.md`,
-`apps/cli/command_catalog.py`, `apps/cli/commands/__init__.py`,
-`apps/cli/commands/chat_cmd.py`, `apps/cli/commands/job_steer_cmd.py`,
-`docs/guides/exit-codes.md`, `packages/orchestration/steering.py`,
-`packages/orchestration/ui_server.py`, `tests/cli/test_job_steer.py`,
-`tests/orchestration/import_reachability_allowlist.txt`,
-`tests/orchestration/test_steer_task.py`,
-`tests/ui_server/test_command_channel.py`,
-`tests/ui_server/test_steer_task_door.py`). No path outside that set; none
-of the seven forbidden paths (`apps/ui/`, `pingpong_loop.py`,
-`pingpong_job.py`, `event_names.py`, `.agent/context.md`,
-`.agent/prose_slips.md`, `.agent/candidates.md`,
-`.agent/operator_questions.md`, `README.md`, `docs/roadmap/`) touched.
+`git diff --name-only 59e02546` at the tip (before C7): exactly the paths
+constraint 3 lists — the three `.agent/authored/f030-r3-*` copies plus
+the mutation tool, `.agent/decisions.md`, `.agent/live_review.md`,
+`.agent/plan.md`, `.agent/prose_slips.md`,
+`docs/ui/design_reference/assumption_log.md`,
+`packages/orchestration/ui_server.py`, and under `apps/ui/src/`:
+`api/steeringNote.ts`, `api/steeringNote.test.ts`, `api/feedRow.ts`,
+`api/feedRow.test.ts`, `api/steeringSend.ts`, `api/steeringSend.test.ts`,
+`api/humanizeCatalog.ts`, `components/panels/ActivityFeedCard.tsx`,
+`components/panels/ChatInput.tsx`, `components/panels/RightLivePanel.tsx`,
+`components/panels/RightLivePanel.module.css`,
+`components/shell/RemedyShell.tsx`; and
+`tests/ui_server/test_steering_note_frame.py`,
+`tests/ui_contracts/test_steering_note_contract.py`,
+`tests/ui_contracts/test_steering_send_contract.py`. No path outside that
+set; `steering.py`, `event_names.py` and everything under `apps/cli/` are
+untouched.
 
 ## Authored-text proofs
 
-The three `.agent/authored/f030-r2-*` payload copies (G1, above): each
-equals its source byte for byte, read back from `git show 0bb5ddf9e:<path>`
-against the file this worker measured from `.remedy-wt/f030-r2/block.md`
-and `.remedy-wt/f030-r2-payloads/`. `.agent/authored/f030-r2-mutations.py`
+The three `.agent/authored/f030-r3-*` payload copies (G1, above): each
+equals its source byte for byte, read back from `git show ee4ddb5da:<path>`
+against the file this worker measured from `.remedy-wt/f030-r3/block.md`
+and `.remedy-wt/f030-r3-payloads/`. `.agent/authored/f030-r3-mutations.py`
 is this worker's own authored tool (G5), not a reviewer payload, so it
 carries no fidelity comparison — its correctness is the G5 red-proof run
 itself.
 
 ## Deviations & assumptions
 
-1. **An 8th, unordered commit** — `73d3cd0d9`, "F030 R2 C4 fix: use the
-   vocabulary page's Round meaning fragment for job.steer" — landed between
-   C6 and C7. G4's first run (at C6) read one red test,
-   `tests/docs/test_vocabulary.py`: `job.steer`'s catalog description used
-   the binding word "Round" ("...read at that task's next round...")
-   without carrying one of `docs/system/vocabulary.md`'s meaning fragments
-   for it (`build`, `review`, `repair`) — DECISION amend0905-vocab D1's
-   rule, an EXISTING test correctly catching a real defect in this round's
-   own C4 commit. Per constraint 4, an existing test that goes red is never
-   edited to pass; the fix instead reworded the description ("...read at
-   the start of that task's next build round...") so it carries `build`,
-   mirroring `chat.show`'s own existing "build round" phrasing. This is a
-   correction to this round's own production text, not a test edit, and it
-   is declared here because it departs from the block's exact C1–C7
-   sequence (docs/agents/handback_template.md's "ANY DEPARTURE... belongs
-   here" rule).
-2. Because of (1), G3 (ruff) and G4 (the pytest selection) were each run
-   twice: once at C6 (where G4 read the one failure above) and again at the
-   tip after the fix, where both read clean. G5's red-proof worktree was
-   built at the tip (`73d3cd0d9`), not literally "at C6" as the block's own
-   wording says, because red-proving the pre-fix code would have proved
-   nothing about what is actually being handed back. All readings reported
-   above are the tip's.
-3. A disposable worktree, `.remedy-wt/f030-r2-basecount` at `886b60559`,
-   was built and removed to measure the base selection's per-file node
-   counts for G4's "account for any difference from 1859" requirement —
-   the block orders the accounting but does not name a mechanism for it.
+1. **`steeringPlaceholder` shipped in C4, not split into C5.** The block's
+   own TESTS section names `steeringNote.test.ts` — C4's file — as covering
+   `readSteeringNote`, `steeringFocusTaskId` AND `steeringPlaceholder`
+   together, even though `steeringPlaceholder` is S5's function (the copy).
+   Splitting the one new file `steeringNote.ts` across two commits by
+   function would have meant an empty or forward-referencing partial file
+   mid-bundle; instead the whole file and its whole test file shipped in C4,
+   and C5 only added the CONSUMER of `steeringPlaceholder` (the composer's
+   `placeholder={steeringPlaceholder(focusedTaskId ?? "")}` line). No text
+   was retyped or moved between commits; C4's `steeringNote.ts` is byte-for-
+   byte what C5 still imports from.
+2. **`ActivityFeedCard.tsx`'s `focusedTaskId` prop is accepted-but-unused
+   in C4.** S3 (the focus) and S4 (the send) both touch this one file: S3
+   only asks the card to ACCEPT `focusedTaskId?: string` on its prop type;
+   its first USE (the composer's placeholder/hint/onSend) is S4/S5, ordered
+   for C5. `tsc --noEmit` therefore fails on C4's tree ALONE (an unused
+   destructured parameter, TS6133) — this was measured directly and is
+   expected: the block's G3/G4 gates run "at C6", i.e. against the
+   cumulative tree after every commit lands, never per-commit, so an
+   intermediate commit is a staging point and not itself gated. G3/G4 both
+   ran clean at C6, after every commit had landed.
+3. No other deviation. Every step, gate and report ran in the block's
+   order; no test this round wrote needed correction; no existing test
+   went red.
 
 ## Item-status table
 
 | Item | Status | Reason |
 |---|---|---|
+| Step 1 (STOP check) | done | `.agent/STOP` absent |
+| Step 2 (shell/branch/HEAD) | done | pwd, status, branch, HEAD all matched |
+| Step 3 (block bytes) | done | 268 lines, sha256 match exact |
+| Step 4 (worktree count) | done | 63 |
 | C1 | done | |
 | C2 | done | |
 | C3 | done | |
-| C4 | done | |
-| C4 fix | deviated | unordered commit repairing a red `tests/docs/test_vocabulary.py`, declared above |
+| C4 | done | see Deviation 1 (steeringPlaceholder placement) and Deviation 2 (unused prop, expected) |
 | C5 | done | |
 | C6 | done | |
 | G1 | done | |
 | G2 | done | |
-| G3 | done | run twice; red before the fix is not applicable here, ruff itself was clean both times — the vocabulary failure was a pytest (G4) finding |
-| G4 | done | first run at C6 read one failure (`tests/docs/test_vocabulary.py`), repaired by the C4 fix commit, re-run clean |
-| G5 | done | all 12 mutations caught, restored byte-identical |
+| G3 | done | ruff clean at C6 |
+| G4 | done | 1851 passed, 11 skipped; integrity six-for-six |
+| G5 | done | all 11 mutations caught, restored byte-identical, primary clean |
 
 ## Next
 
 Per the block's `## Next` order: Phase 1 rule 1 (read `.agent/STOP` from
-disk) — checked at this round's step 1, absent. Then the review of round 2.
-Then T003 — the feed shows the operator's own line, the input addresses the
-focused task with copy that promises no conversation, and the end-to-end
-proof. Open findings: 0. Operator questions: 0.
+disk) — checked at this round's step 1, absent. Then the review of round 3.
+Then T003's end-to-end proof — a note sent through the door while a task
+builds reaches that task's next round's trace, and the stream shows the
+note before the task's next action. Open findings: 0. Operator questions: 0.
