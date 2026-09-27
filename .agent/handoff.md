@@ -1,93 +1,90 @@
-# Handoff — F028, round 6
+# Handoff — F028, round 7
 
 ## Session
 
-SESSION 1 of feature F028 · round 6 · rounds so far 6. Context remaining at
-handback: comfortable — this round wrote one new Python helper, one new
-pure TypeScript view module, one new TypeScript send module (three
-builders, a submit, a describe function and three flows), two component
-edits and two CSS additions, plus roughly 900 lines of new tests and a
-292-line mutation tool, with zero self-caught implementation bugs in the
-production code and every gate matching cleanly on the first run.
+SESSION 1 of feature F028 · round 7 · rounds so far 7. Context remaining at
+handback: comfortable — this round wrote one new component (`AddTaskSheet.tsx`)
+with its style sheet, extended `injectView.ts` with a new pure view function,
+threaded a new field through four graph modules, deleted the propose button
+in favour of the real Add Task row, wrote roughly 220 lines of new tests
+across five test files, and a 217-line mutation tool, with one self-caught
+mechanical gate (the raw-colour ratchet pin) repaired in a declared follow-up
+commit and every other gate matching cleanly on the first run.
 
 ## Range
 
-Review of `d82a407c1`..`HEAD` (`HEAD` is this handback's own commit, `F028
-R6 C7`, on `feature/f028-task-injection`).
+Review of `bdcc86cb1`..`HEAD` (`HEAD` is this handback's own commit, `F028
+R7 C7`, on `feature/f028-task-injection`).
 
 ## Commits
 
-### d88c2eafb F028 R6 C1: copy round 6 block and payloads into .agent/authored/
+### 22f57ea05 F028 R7 C1: copy round 7 block and payloads into .agent/authored/
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f028-r6-block.md | 246/0 | copy of this round's block |
-| .agent/authored/f028-r6-plan.md | 30/0 | copy of the plan payload |
-| .agent/authored/f028-r6-records.diff | 64/0 | copy of the records diff payload |
+| .agent/authored/f028-r7-block.md | 239/0 | copy of this round's block |
+| .agent/authored/f028-r7-plan.md | 27/0 | copy of the plan payload |
+| .agent/authored/f028-r7-records.diff | 65/0 | copy of the records diff payload |
 
-Measured insertions: 340 (block's own line count 246 + 94), matching the
+Measured insertions: 331 (block's own line count 239 + 92), matching the
 block's expectation exactly, under the 500-line cap.
 
-### e19046c9c F028 R6 C2: book round 5, resolve R-1078, record D6 and its assumption-log row
+### a9ee8477f F028 R7 C2: book round 6, record D7 and its two assumption-log rows
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/decisions.md | 35/0 | DECISION F028 D6 appended |
-| .agent/live_review.md | 4/0 | round 5's Gate entry and R-1078's `Done:` paragraph appended |
-| .agent/plan.md | 7/7 | rewrite from the plan payload |
-| docs/ui/design_reference/assumption_log.md | 1/0 | one row naming DECISION F028 D6 |
+| .agent/decisions.md | 37/0 | DECISION F028 D7 appended |
+| .agent/live_review.md | 2/0 | round 6's Gate entry appended |
+| .agent/plan.md | 5/8 | rewrite from the plan payload |
+| docs/ui/design_reference/assumption_log.md | 2/0 | two rows naming DECISION F028 D7 |
 
-Matches the block's expected numstat (35/0, 4/0, 7/7, 1/0) exactly.
+Matches the block's expected numstat (37/0, 2/0, 5/8, 2/0) exactly.
 Applied via `git apply --check` (exit 0) then the real apply (exit 0) of
 `records.diff`, followed by the `plan.md` rewrite via `shutil.copyfile`.
 
-### 386302c26 F028 R6 C3: carry each task's origin on the dashboard
+### 12e3e4ae4 F028 R7 C3: draw added on an injected task's canvas node
 | Path | +/- | Reason |
 |---|---|---|
-| packages/orchestration/ui_server.py | 17/0 | S1: new helper `_task_origin(t)` reading `inputs["plan"]["origin"]` when `inputs["plan"]` is a dict and the value a non-empty string, else `""`; wired as the task item's LAST key |
-| apps/ui/src/api/types.ts | 1/1 | S1: `RemedyTaskItem` gains `origin?: string` |
-| apps/ui/src/api/remedyApi.ts | 1/0 | S1: `normalizeDashboardPayload` sets `origin` only when the raw value is a non-empty string |
-| tests/ui_server/test_dashboard_task_origin.py | 95/0 | NEW FILE: an injected task's item names `human_injected`, a planned task's and a task with no plan inputs at all name `""`; the last-key ordering is also asserted |
+| apps/ui/src/components/graph/brainOntology.ts | 5/0 | S1: `BrainTaskSeed` gains `origin?: string` |
+| apps/ui/src/components/graph/brainView.ts | 7/1 | S1: `dashboardBrainSeeds` puts `origin` on a seed only when the task item's own `origin` equals `INJECTED_TASK_ORIGIN` |
+| apps/ui/src/components/graph/brainReducer.ts | 2/0 | S1: `seedBrainModel` copies `origin` into `meta.origin`, mirroring `specVersion` |
+| apps/ui/src/components/graph/buildForceBrainModel.ts | 12/5 | S1: `taskChipOf`'s four answers — `v<n>`, `added`, both joined, `undefined` |
+| apps/ui/src/components/graph/brainReducer.test.ts | 18/0 | THE TESTS: the meta copy, both with and without origin |
+| apps/ui/src/components/graph/brainView.test.ts | 18/2 | THE TESTS: the seed carries `origin` only for an injected task |
+| apps/ui/src/components/graph/buildForceBrainModel.test.ts | 21/0 | THE TESTS: `taskChipOf`'s four answers |
 
-114 insertions total, under the 500-line cap — no split needed.
+83 insertions total, under the 500-line cap — no split needed.
 
-### c5e8b0074 F028 R6 C4: show Added by you on an injected task in the list and the popover
+### c1e03b3e8 F028 R7 C4: read a draft answer as sentences for the sheet
 | Path | +/- | Reason |
 |---|---|---|
-| apps/ui/src/api/injectView.ts | 39/0 | NEW FILE, S2: `INJECTED_TASK_ORIGIN`, `ORIGIN_CHIP_TEXT`, `ORIGIN_CHIP_TITLE`, `taskOriginChip` |
-| apps/ui/src/api/injectView.test.ts | 35/0 | NEW FILE, S5: every branch of `taskOriginChip` |
-| apps/ui/src/components/panels/TaskChecklistCard.tsx | 3/0 | S4: the pill mounted after the label, `chip = taskOriginChip(row)` |
-| apps/ui/src/components/panels/RightLivePanel.module.css | 18/0 | S4: `.originChip`, `.decisionChip`'s declarations plus `margin-left: 6px; flex: none;` |
-| apps/ui/src/components/detail/DetailPopover.tsx | 5/0 | S4: the same pill in the status row, before the version chip |
-| apps/ui/src/components/detail/DetailPopover.module.css | 6/0 | S4: `.originChip`, `.versionChip`'s declarations with `margin-left: auto` replaced by `margin-left: 6px` |
-| tests/ui_contracts/test_inject_controls_contract.py | 64/0 | NEW FILE, S5: no `fetch(` in the three files, `taskOriginChip(` present in both components, the send module's three ids equal the door's three constants, the assumption log names DECISION F028 D6 exactly once |
+| apps/ui/src/api/injectView.ts | 116/0 | S2: `ORIGIN_CANVAS_CHIP_TEXT`, `InjectDraftOption`, `InjectDraftView`, the three defensive readers, `sentenceOf`, `injectDraftView` |
+| apps/ui/src/api/injectView.test.ts | 140/0 | THE TESTS: a draft, a shortfall, a derived draft, an outcome of `confirmed`, `null`, a body with every field missing, the canvas text constant |
 
-170 insertions total, under the 500-line cap — no split needed.
+256 insertions total, under the 500-line cap — no split needed.
 
-### 29f0a7531 F028 R6 C5a: add the browser's send module for the three injection commands
+### 82226ea8e F028 R7 C5: replace the propose button with the Add Task row and its sheet
 | Path | +/- | Reason |
 |---|---|---|
-| apps/ui/src/api/injectSend.ts | 425/0 | S3: the three command ids, `INJECT_SHORTFALL_OPTIONS`, the two deadlines, the three request builders, `submitInjectRequest`, `describeInjectResult` (the four 200 outcomes, the sixteen 409 sentences, the 400-on-`text` case, the pause fallback), `injectAnswerOf`, and `sendInjectDraft`/`sendInjectConfirm`/`sendInjectAnswer` |
+| apps/ui/src/components/panels/AddTaskSheet.tsx | 187/0 | NEW FILE, S3: the right-anchored dialog, the form, the review (drafted/shortfall branches), the one result paragraph |
+| apps/ui/src/components/panels/AddTaskSheet.module.css | 126/0 | NEW FILE, S3: existing tokens only, `var(--remedy-z-overlay)` for its layer |
+| apps/ui/src/components/panels/TaskChecklistCard.tsx | 19/6 | S4: `serverToken` prop, the propose button/command deleted, the `+ Add Task` row, the sheet's mount |
+| apps/ui/src/components/panels/RightLivePanel.tsx | 1/1 | S4: `serverToken={serverToken}` threaded to `TaskChecklistCard` |
+| apps/ui/src/components/panels/RightLivePanel.module.css | 17/7 | S4: `.proposeBtn` deleted, `.addTaskRow` added per ux_spec §8/§14 |
+| tests/ui_contracts/test_responsive.py | 5/3 | S5: `test_no_add_task_button` now pins "+ Add Task" and forbids the retired command string |
+| tests/ui_contracts/test_inject_controls_contract.py | 33/6 | S5: the sheet's no-`fetch`/send-module/`injectDraftView`/`role="dialog"` check, the `RightLivePanel` → `TaskChecklistCard` token thread, the D7-row-count check |
 
-### b0c2f29ed F028 R6 C5b: test the send module's requests, refusals and each flow
+388 insertions total, under the 500-line cap — no split needed.
+
+### e279b2f5f F028 R7 C6: add the round 7 mutation tool
 | Path | +/- | Reason |
 |---|---|---|
-| apps/ui/src/api/injectSend.test.ts | 448/0 | S5: the three exact requests, each null case, the token never in the path, every refusal code's sentence, the unknown code, the 400 on `text`, the pause fallback, each 200 outcome, `injectAnswerOf`, and each send function's network/no-network/deadline paths |
+| .agent/authored/f028-r7-mutations.py | 217/0 | G5's tool: 7 TypeScript mutations across the four touched production files |
 
-**DECLARED DEVIATION (constraint 2 split):** the block's bundle names one
-C5 carrying `injectSend.ts` and `injectSend.test.ts`. Measured before
-committing: 425 (module) + 448 (test) = 873, over the 500-line cap, so
-this round split it into C5a (the module alone, 425 insertions, subject
-above) and C5b (the test file alone, 448 insertions, subject above), per
-constraint 2's own instruction. The test file did not exist at C5a, so no
-node in G4's selection was affected between the two parts; G4 was run
-once, after both parts landed (C5b is HEAD for every gate below G3), and
-reads green.
-
-### 3a857e2aa F028 R6 C6: add the round 6 mutation tool
+### fc10b2fdb F028 R7 C5b: lower the raw-colour ratchet pin the propose button's deletion earns
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f028-r6-mutations.py | 292/0 | G5's tool: 7 mutations (m1 Python, m2-m7 TypeScript) across the three touched production files |
+| tests/ui_contracts/test_raw_colour_ratchet.py | 1/1 | declared deviation: G4's first run (after C6) read this file red — see Deviations §1 |
 
-### F028 R6 C7: rewrite handoff for round 6 (this commit — a handback cannot table the commit that writes it, R-0149 pattern)
+### F028 R7 C7: rewrite handoff for round 7 (this commit — a handback cannot table the commit that writes it, R-0149 pattern)
 | Path | +/- | Reason |
 |---|---|---|
 | .agent/handoff.md | new | this handback |
@@ -95,18 +92,13 @@ reads green.
 ## External actions
 
 - No branch creation this round — the block continues on
-  `feature/f028-task-injection`, already checked out from round 5.
-- `git worktree add --detach .remedy-wt/f028-r6-vitest-base d82a407c` (to
-  measure the vitest suite's own baseline test count for G4's accounting,
-  with the primary's `apps/ui/node_modules` symlinked in temporarily) —
-  succeeded; symlink removed, `git worktree remove --force
-  .remedy-wt/f028-r6-vitest-base` and `git worktree prune` afterwards —
-  both succeeded, `git worktree list | wc -l` read 66 before and after.
-- `git worktree add --detach .remedy-wt/f028-r6-mut 3a857e2aa` (at C6,
-  G5's own ordered worktree) — succeeded; `git worktree remove --force
-  .remedy-wt/f028-r6-mut` and `git worktree prune` afterwards — both
-  succeeded. `git worktree list | wc -l` read 66 before the add and 66
-  after the remove (step 4's own reading, unchanged).
+  `feature/f028-task-injection`, already checked out from round 6.
+- `git worktree add --detach .remedy-wt/f028-r7-mut fc10b2fdb` (G5's own
+  ordered worktree, run at the round's true post-C6 head — see Deviations
+  §1) — succeeded; `git worktree remove --force .remedy-wt/f028-r7-mut`
+  and `git worktree prune` afterwards — both succeeded. `git worktree
+  list | wc -l` read 67 before the add and 67 after the remove (step 4's
+  own reading, unchanged).
 - `git push` after C7 — reported under G6 in this round's reply (run after
   this file is committed).
 - No `gh pr create` (the block does not order one this round), no `gh pr
@@ -118,113 +110,117 @@ reads green.
 ### G1 — TRANSPORT
 Payload readings (measured before use, against the PAYLOADS table — all
 MATCH):
-- `plan.md`: 30 lines, 1072 bytes, sha256
-  `51d9e9f00ee359684f41633f7d4662ef9488461a60573c7176d5419365252ff2`.
-- `records.diff`: 64 lines, 13623 bytes, sha256
-  `7c26043f0e7215bf8a39e811d67caaf4203fe035e86b09d1365f8d6a7760a60b`.
-- Block: 246 lines, 19750 bytes, sha256
-  `84c3dcd954c057d3f76073e066d59522a37d36e53b10ce0d1edfcb59643ce060` —
+- `plan.md`: 27 lines, 914 bytes, sha256
+  `1be3f4260aa29c92ca541305b8d040edb18026386626298ecd4e7d8008c2c015`.
+- `records.diff`: 65 lines, 13238 bytes, sha256
+  `e9e06e141a2199fa1bc79b38ff1172a75ea12b12ee75d0803a069fba6a236d61`.
+- Block: 239 lines, sha256
+  `5793e0a9abd8ba7c66c9704b88fc6716c85f7ebd0dc6ae338645c6ab9b1373ab` —
   MATCH against both readings the delegation message stated (step 3).
 
-Each `.agent/authored/f028-r6-*` payload copy, read back with `git show
-<commit>:<path>` from C1 (`d88c2eafb`), compared byte-for-byte (sha256)
+Each `.agent/authored/f028-r7-*` payload copy, read back with `git show
+<commit>:<path>` from C1 (`22f57ea05`), compared byte-for-byte (sha256)
 against its source — all three MATCH:
 ```
-.agent/authored/f028-r6-block.md MATCH sha=84c3dcd954c057d3f76073e066d59522a37d36e53b10ce0d1edfcb59643ce060
-.agent/authored/f028-r6-records.diff MATCH sha=7c26043f0e7215bf8a39e811d67caaf4203fe035e86b09d1365f8d6a7760a60b
-.agent/authored/f028-r6-plan.md MATCH sha=51d9e9f00ee359684f41633f7d4662ef9488461a60573c7176d5419365252ff2
+.agent/authored/f028-r7-block.md MATCH sha=5793e0a9abd8ba7c66c9704b88fc6716c85f7ebd0dc6ae338645c6ab9b1373ab
+.agent/authored/f028-r7-plan.md MATCH sha=1be3f4260aa29c92ca541305b8d040edb18026386626298ecd4e7d8008c2c015
+.agent/authored/f028-r7-records.diff MATCH sha=e9e06e141a2199fa1bc79b38ff1172a75ea12b12ee75d0803a069fba6a236d61
 ```
 
 ### G2 — THE RECORDS
-`git show <sha>:<path>`, bytes and sha256, each read from C2 (`e19046c9c`),
+`git show <sha>:<path>`, bytes and sha256, each read from C2 (`a9ee8477f`),
 MATCHING the reviewer's table exactly:
 ```
-.agent/live_review.md bytes=327502 sha256=5b6ca36fb4bc2e0f57c50f3b32b47dbd5c46a516682cb23ff65bbd01679217dd
-.agent/decisions.md   bytes=2269306 sha256=1ef9f83ef76cdd752f6817397249198e701ff1b5c497abea939fcc41bde5cc0b
-docs/ui/design_reference/assumption_log.md bytes=17173 sha256=4ed2e280fc62bcb523bac936bb34482497a6759d098ea36a788bcf90d2e40e81
-.agent/plan.md        bytes=1072   sha256=51d9e9f00ee359684f41633f7d4662ef9488461a60573c7176d5419365252ff2
+.agent/live_review.md bytes=329839 sha256=83d5ebdd13a63cb19de575c2126e3f8ecdf1fe55be41654ffdfc666e410c98bc
+.agent/decisions.md   bytes=2272447 sha256=b39f7bf5e70f8cb0b9c91e5ea07abfd9ff22d36a7b5ee02e98b2ec6b2bea8301
+docs/ui/design_reference/assumption_log.md bytes=18596 sha256=a0045eb241dd0d8afa8f0204cae402dbcf94fb37bcaeb503718d59156b54d512
+.agent/plan.md        bytes=914   sha256=1be3f4260aa29c92ca541305b8d040edb18026386626298ecd4e7d8008c2c015
 ```
 All four MATCH. `open_finding_ids` from `scripts/rotate_live_review.py`,
-called directly against `.agent/live_review.md`'s text: at `d82a407c`
-reads `['R-1078']`; at C2 (`e19046c9c`) reads `[]` — MATCH against the
-reviewer's stated readings. `git diff --name-only d88c2eafb e19046c9c`
+called directly against `.agent/live_review.md`'s text: at `bdcc86cb`
+reads `[]`; at C2 (`a9ee8477f`) reads `[]` — MATCH against the reviewer's
+stated readings (both empty). `git diff --name-only 22f57ea05 a9ee8477f`
 names exactly: `.agent/decisions.md`, `.agent/live_review.md`,
 `.agent/plan.md`, `docs/ui/design_reference/assumption_log.md` — the
 table's four paths, no more, no fewer.
 
 ### G3 — THE CODE
 ```
-$ python3 -m ruff check packages/orchestration/ui_server.py tests/ui_server/test_dashboard_task_origin.py tests/ui_contracts/test_inject_controls_contract.py
+$ python3 -m ruff check tests/ui_contracts/test_responsive.py tests/ui_contracts/test_inject_controls_contract.py
 All checks passed!
 ```
-(exit 0, run at C6)
+(exit 0, run at C6 and reconfirmed at the round's true post-C6 head)
 
-The new task-item key, quoted (C6 state, `packages/orchestration/ui_server.py`):
-```python
-            "is_current": tstat in ("running", "active"),
-            "is_future": tstat == "pending",
-            "is_reviewer_suggested": False,
-            "origin": _task_origin(t),
-        })
-```
-
-`taskOriginChip`, quoted whole (`apps/ui/src/api/injectView.ts`):
+`taskChipOf`, quoted whole (`apps/ui/src/components/graph/buildForceBrainModel.ts`):
 ```typescript
-export function taskOriginChip(task: { origin?: string } | null | undefined): string | null {
-  return task?.origin === INJECTED_TASK_ORIGIN ? ORIGIN_CHIP_TEXT : null;
+function taskChipOf(task: BrainNode): string | undefined {
+  const version = task.meta.specVersion;
+  const versionChip = typeof version === "number" && version >= 2 ? `v${version}` : undefined;
+  const addedChip = task.meta.origin === INJECTED_TASK_ORIGIN ? ORIGIN_CANVAS_CHIP_TEXT : undefined;
+  if (versionChip !== undefined && addedChip !== undefined) return `${versionChip} · ${addedChip}`;
+  return versionChip ?? addedChip;
 }
 ```
 
-Both pill mounts, quoted:
-```tsx
-// TaskChecklistCard.tsx
-              {chip && <span className={styles.originChip} title={ORIGIN_CHIP_TITLE}>{chip}</span>}
-```
-```tsx
-// DetailPopover.tsx
-        {originChip && <span className={styles.originChip} title={ORIGIN_CHIP_TITLE}>{originChip}</span>}
-```
-
-Both `.originChip` rules, quoted:
-```css
-/* RightLivePanel.module.css */
-.originChip {
-  padding: 2px 8px;
-  border-radius: var(--remedy-radius-pill);
-  background: var(--remedy-bg-2);
-  border: 1px solid var(--remedy-line);
-  font-size: 11px;
-  color: var(--remedy-muted);
-  margin-left: 6px;
-  flex: none;
-}
-```
-```css
-/* DetailPopover.module.css */
-.originChip { margin-left: 6px; padding: 2px 8px; border: 1px solid var(--remedy-line); border-radius: var(--remedy-radius-pill); color: var(--remedy-ink-soft); font: 600 11px var(--remedy-font-ui); }
-```
-
-`describeInjectResult`, quoted whole (`apps/ui/src/api/injectSend.ts`):
+`injectDraftView`, quoted (its signature and the null gate, `apps/ui/src/api/injectView.ts`):
 ```typescript
-/** THE MAPPING: one send's result becomes the one thing to say about it. A
- *  fresh object every call, `vetoSend.ts`'s own rule. */
-export function describeInjectResult(result: InjectSubmitResult): DecisionOutcomeMessage {
-  if (result.outcome === "accepted") {
-    return describeInjectAcceptance(result.body);
+export function injectDraftView(answer: Record<string, unknown> | null): InjectDraftView | null {
+  if (answer === null) {
+    return null;
   }
-  if (result.outcome === "refused" && result.status === 409) {
-    return describeInjectConflict(result.body);
+  const outcome = answer.outcome;
+  if (outcome !== "drafted" && outcome !== "shortfall") {
+    return null;
   }
-  if (result.outcome === "refused" && result.status === 400 && result.body?.field === "text") {
-    return describeInjectBadText(result.body);
-  }
-  return describePauseSendResult(result);
-}
+  const kind = outcome;
+  ...
+```
+
+The row's button, quoted (`apps/ui/src/components/panels/TaskChecklistCard.tsx`):
+```tsx
+      <button
+        type="button"
+        className={styles.addTaskRow}
+        disabled={addTaskDisabled}
+        title={addTaskDisabled ? ADD_TASK_DISABLED_TITLE : ADD_TASK_ENABLED_TITLE}
+        onClick={() => setSheetOpen(true)}
+      >
+        + Add Task
+      </button>
+```
+
+The sheet's mount in the card, quoted:
+```tsx
+      {sheetOpen && (
+        <AddTaskSheet target={{ jobId, serverToken }} tasks={tasks} onClose={() => setSheetOpen(false)} />
+      )}
+```
+
+The sheet's shortfall branch, quoted (`apps/ui/src/components/panels/AddTaskSheet.tsx`):
+```tsx
+          ) : (
+            <div className={styles.actions} data-ui="add-task-shortfall">
+              <p className={styles.question}>{view.question}</p>
+              {view.options.map((option) => (
+                <button
+                  key={option.option}
+                  type="button"
+                  className={styles.ghostButton}
+                  disabled={sending}
+                  onClick={() => handleAnswer(option.option)}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+          )}
 ```
 
 ### G4 — THE TESTS
+First run, at C6 (`e279b2f5f`), read ONE red gate — see Deviations §1.
+After the follow-up commit `fc10b2fdb`, the full selection reads:
 ```
-$ bash -c 'python3 -m pytest -q -p no:cacheprovider -rs tests/ui_server/test_dashboard_task_origin.py tests/ui_contracts/test_inject_controls_contract.py tests/ui_server/test_dashboard_contract.py tests/ui_server/test_brain_view_model.py tests/ui_server/test_dashboard_task_specs.py tests/ui_contracts/test_ux_quality.py tests/ui_contracts/test_responsive.py tests/ui_contracts/test_raw_colour_ratchet.py tests/ui_contracts/test_design_drift.py tests/ui_contracts/test_ui_lint.py tests/ui_contracts/test_pause_controls_contract.py tests/ui_contracts/test_task_version_contract.py tests/ui_contracts/test_veto_controls_contract.py tests/ui_contracts/test_apply_state_partial.py tests/ui_contracts/test_decision_answer_wiring.py tests/ui_contracts/test_humanize_catalog.py "tests/orchestration/test_test_runner.py::TestVitestFrontendTestFoundation" tests/orchestration/test_task_injection.py tests/ui_server/test_command_dispatch.py tests/orchestration/test_import_reachability.py tests/test_no_orphan_modules.py tests/test_imports.py tests/test_ble001_ratchet.py tests/regression/test_named_bugs.py tests/regression/test_resource_safety.py tests/orchestration/test_live_review_rotation.py tests/orchestration/test_integrity_gate.py tests/test_agent_tooling.py tests/docs tests/cli/test_golden_path.py 2>&1 | tail -14; echo "REAL_EXIT=${PIPESTATUS[0]}"'
+$ bash -c 'python3 -m pytest -q -p no:cacheprovider -rs tests/ui_contracts/test_inject_controls_contract.py tests/ui_server/test_dashboard_task_origin.py tests/ui_server/test_dashboard_contract.py tests/ui_server/test_brain_view_model.py tests/ui_server/test_dashboard_task_specs.py tests/ui_contracts/test_ux_quality.py tests/ui_contracts/test_responsive.py tests/ui_contracts/test_raw_colour_ratchet.py tests/ui_contracts/test_design_drift.py tests/ui_contracts/test_ui_lint.py tests/ui_contracts/test_pause_controls_contract.py tests/ui_contracts/test_task_version_contract.py tests/ui_contracts/test_veto_controls_contract.py tests/ui_contracts/test_apply_state_partial.py tests/ui_contracts/test_decision_answer_wiring.py tests/ui_contracts/test_humanize_catalog.py "tests/orchestration/test_test_runner.py::TestVitestFrontendTestFoundation" tests/orchestration/test_task_injection.py tests/ui_server/test_command_dispatch.py tests/orchestration/test_import_reachability.py tests/test_no_orphan_modules.py tests/test_imports.py tests/test_ble001_ratchet.py tests/regression/test_named_bugs.py tests/regression/test_resource_safety.py tests/orchestration/test_live_review_rotation.py tests/orchestration/test_integrity_gate.py tests/test_agent_tooling.py tests/docs tests/cli/test_golden_path.py 2>&1 | tail -14; echo "REAL_EXIT=${PIPESTATUS[0]}"'
 SKIPPED [1] tests/ui_contracts/test_ux_quality.py:507: D3 quarantine (F252) ...
 SKIPPED [1] tests/ui_contracts/test_ux_quality.py:543: D3 quarantine (F252) ...
 SKIPPED [1] tests/regression/test_named_bugs.py:295: D3 quarantine (F252) ...
@@ -234,32 +230,26 @@ SKIPPED [1] tests/regression/test_named_bugs.py:383: D3 quarantine (F252) ...
 SKIPPED [1] tests/regression/test_named_bugs.py:392: D3 quarantine (F252) ...
 SKIPPED [1] tests/regression/test_named_bugs.py:399: D3 quarantine (F252) ...
 SKIPPED [1] tests/test_agent_tooling.py:43: D12 quarantine (F252) ...
-1204 passed, 9 skipped in 71.81s (0:01:11)
+1207 passed, 9 skipped in 67.15s (0:01:07)
 REAL_EXIT=0
 ```
-The reviewer's own baseline at `d82a407c` (this selection less the two new
-Python test files, which did not yet exist) read `1197 passed, 9 skipped`
-at exit 0 — matching the reviewer's stated reading exactly. `--collect-only
--q` node counts of the two new files:
-```
-tests/ui_contracts/test_inject_controls_contract.py: 4
-tests/ui_server/test_dashboard_task_origin.py: 3
-```
-`1197 + 4 + 3 = 1204` exactly — no unexplained difference.
+The reviewer's own baseline at `bdcc86cb` read `1204 passed, 9 skipped` at
+exit 0. This round adds exactly 3 Python test nodes (all in
+`tests/ui_contracts/test_inject_controls_contract.py`:
+`test_the_assumption_log_names_decision_f028_d7_in_exactly_two_rows`,
+`test_add_task_sheet_reaches_the_door_only_through_the_send_module`,
+`test_right_live_panel_threads_the_server_token_into_the_task_checklist_card`;
+`test_no_add_task_button` in `test_responsive.py` was edited, not added).
+`1204 + 3 = 1207` exactly — no unexplained difference. `SKIPPED` lines: 9,
+matching the reviewer's own count exactly, unchanged by this round.
 
-The vitest test count the vitest node's own output prints, read directly
-(the primary's `apps/ui/node_modules` symlinked temporarily into a
-disposable worktree at `d82a407c`, then removed):
-```
-                 files          tests
-d82a407c         76 (75 passed, 1 skipped)   1464 (1459 passed, 5 skipped)
-C6 (3a857e2aa)   78 (77 passed, 1 skipped)   1533 (1528 passed, 5 skipped)
-```
-Delta: +2 files, +69 tests — exactly `injectView.test.ts` (6 tests) +
-`injectSend.test.ts` (63 tests) = 69. No unaccounted difference; the
-pytest node `TestVitestFrontendTestFoundation::test_vitest_passes` counts
-as ONE pytest node regardless of this internal count, so this reading is
-supplementary to (not part of) the `1197+7=1204` arithmetic above.
+The vitest suite (run separately, `apps/ui/node_modules/.bin/vitest run`
+in the primary checkout, all files): `1539 passed, 5 skipped` at exit 0.
+This round's four touched `.test.ts` files (`injectView.test.ts`,
+`brainView.test.ts`, `brainReducer.test.ts`, `buildForceBrainModel.test.ts`)
+all pass; the `TestVitestFrontendTestFoundation` pytest node above already
+counts this as ONE node, so this reading is supplementary, not part of the
+`1204+3=1207` arithmetic.
 
 ```
 $ python3 -m apps.cli.main integrity check --json
@@ -275,110 +265,117 @@ $ python3 -m apps.cli.main integrity check --json
 All six checks read `pass`, `fail_count` 0.
 
 ### G5 — THE RED PROOFS
-`git worktree add --detach .remedy-wt/f028-r6-mut 3a857e2aa` (C6) then
-`python3 -B .agent/authored/f028-r6-mutations.py
-/home/decodeux/Repos/remedy/.remedy-wt/f028-r6-mut`, whole output:
+`git worktree add --detach .remedy-wt/f028-r7-mut fc10b2fdb` (the round's
+true post-C6 head — see Deviations §1) then `python3 -B
+.agent/authored/f028-r7-mutations.py
+/home/decodeux/Repos/remedy/.remedy-wt/f028-r7-mut`, whole output:
 ```
 ==============================================================================
---- pytest control run (unmutated, before) ---
-control: exit=0 failed=0
 --- vitest control run (unmutated, before) ---
 control: exit=0 failed=0
-m1 the task item's origin is always the empty string: exit=1 failed=1 failing_node_ids=['tests/ui_server/test_dashboard_task_origin.py::test_an_injected_tasks_item_names_human_injected']
-m2 taskOriginChip answers the chip for any non-empty origin: exit=1 failed=1 failing_tests=['taskOriginChip > is null for a task with any other origin 3ms', '.../injectView.test.ts > taskOriginChip > is null for a task with any other origin']
-m3 buildInjectDraftRequest accepts a blank text: exit=1 failed=2 failing_tests=['buildInjectDraftRequest > is null for text blank after trimming 5ms', 'sendInjectDraft > never reaches the network when the text is blank 1ms', ...]
-m4 buildInjectAnswerRequest accepts an option outside the three: exit=1 failed=2 failing_tests=['buildInjectAnswerRequest > is null for an option outside the three 5ms', 'sendInjectAnswer > never reaches the network when the option is outside the three 1ms', ...]
-m5 INJECT_DRAFT_DEADLINE_MS is 20000: exit=1 failed=1 failing_tests=["the three deadlines > the draft waits on the planner's call 6ms", ...]
-m6 a 409 draft_expired is worded by the unknown-code fallback: exit=1 failed=1 failing_tests=['describeInjectResult > 409 code draft_expired 6ms', ...]
-m7 buildInjectConfirmRequest names job.inject as its command: exit=1 failed=3 failing_tests=['buildInjectConfirmRequest > builds the exact request 6ms', 'buildInjectConfirmRequest > names the command job.inject-confirm 1ms', "sendInjectConfirm > sends exactly once and reports the door's answer 1ms", ...]
-restored byte-identical: True (apps/ui/src/api/injectSend.ts)
+m1 dashboardBrainSeeds puts origin on every seed: exit=1 failed=1 failing_tests=['dashboardBrainSeeds > puts origin on a seed only for a task whose own origin is INJECTED_TASK_ORIGIN 5ms', '.../brainView.test.ts > dashboardBrainSeeds > puts origin on a seed only for a task whose own origin is INJECTED_TASK_ORIGIN']
+m2 seedBrainModel never copies origin: exit=1 failed=2 failing_tests=["origin (DECISION F028 D7 (3)) > copies a seed's origin into meta.origin 5ms", 'buildBrainLayout > chip: v<n> alone, added alone, both joined, and no key for neither 4ms', ".../brainReducer.test.ts > origin (DECISION F028 D7 (3)) > copies a seed's origin into meta.origin", '.../buildForceBrainModel.test.ts > buildBrainLayout > chip: v<n> alone, added alone, both joined, and no key for neither']
+m3 taskChipOf ignores origin: exit=1 failed=1 failing_tests=['buildBrainLayout > chip: v<n> alone, added alone, both joined, and no key for neither 6ms', '.../buildForceBrainModel.test.ts > buildBrainLayout > chip: v<n> alone, added alone, both joined, and no key for neither']
+m4 taskChipOf answers only the version when both apply: exit=1 failed=1 failing_tests=['buildBrainLayout > chip: v<n> alone, added alone, both joined, and no key for neither 5ms', '.../buildForceBrainModel.test.ts > buildBrainLayout > chip: v<n> alone, added alone, both joined, and no key for neither']
+m5 injectDraftView answers a shortfall's confirm token: exit=1 failed=1 failing_tests=["injectDraftView > reads a shortfall body's question and options in the seed's own order, with a null confirmToken 6ms", ".../injectView.test.ts > injectDraftView > reads a shortfall body's question and options in the seed's own order, with a null confirmToken"]
+m6 injectDraftView drops the acceptance lines: exit=1 failed=2 failing_tests=['injectDraftView > reads a drafted body into its sentences and lists 6ms', "injectDraftView > reads a shortfall body's question and options in the seed's own order, with a null confirmToken 1ms", '.../injectView.test.ts > injectDraftView > reads a drafted body into its sentences and lists', ".../injectView.test.ts > injectDraftView > reads a shortfall body's question and options in the seed's own order, with a null confirmToken"]
+m7 a fence warning omits its path: exit=1 failed=1 failing_tests=['injectDraftView > reads a drafted body into its sentences and lists 6ms', '.../injectView.test.ts > injectDraftView > reads a drafted body into its sentences and lists']
 restored byte-identical: True (apps/ui/src/api/injectView.ts)
-restored byte-identical: True (packages/orchestration/ui_server.py)
---- pytest control run (unmutated, after) ---
-control: exit=0
+restored byte-identical: True (apps/ui/src/components/graph/brainReducer.ts)
+restored byte-identical: True (apps/ui/src/components/graph/brainView.ts)
+restored byte-identical: True (apps/ui/src/components/graph/buildForceBrainModel.ts)
 --- vitest control run (unmutated, after) ---
 control: exit=0
 git status --porcelain (primary checkout): ''
 ALL MUTATIONS CAUGHT AND RESTORED CLEANLY: True
 ```
-All 7 mutations red with at least one failing node/test each; no mutation
+All 7 mutations red with at least one failing test each; no mutation
 stayed green, so no fix-up test was needed. `git worktree remove --force
-.remedy-wt/f028-r6-mut` then `git worktree prune`, both exit 0; `git
-worktree list | wc -l` read 66 afterwards, matching step 4's own reading.
+.remedy-wt/f028-r7-mut` then `git worktree prune`, both exit 0; `git
+worktree list | wc -l` read 67 afterwards, matching step 4's own reading.
 
 (G6 — TREE AND PUSH runs after this commit; its readings are in the round
 reply, not here, since this commit cannot contain them.)
 
 ## Authored-text proofs
 
-- Block copy (`.agent/authored/f028-r6-block.md`, at `d88c2eafb`) vs
-  `.remedy-wt/f028-r6/block.md`: byte-identical, sha256
-  `84c3dcd954c057d3f76073e066d59522a37d36e53b10ce0d1edfcb59643ce060` both
+- Block copy (`.agent/authored/f028-r7-block.md`, at `22f57ea05`) vs
+  `.remedy-wt/f028-r7/block.md`: byte-identical, sha256
+  `5793e0a9abd8ba7c66c9704b88fc6716c85f7ebd0dc6ae338645c6ab9b1373ab` both
   sides.
-- `plan.md` copy (`.agent/authored/f028-r6-plan.md`, at `d88c2eafb`) vs
-  `.remedy-wt/f028-r6-payloads/plan.md`: byte-identical, sha256
-  `51d9e9f00ee359684f41633f7d4662ef9488461a60573c7176d5419365252ff2` both
+- `plan.md` copy (`.agent/authored/f028-r7-plan.md`, at `22f57ea05`) vs
+  `.remedy-wt/f028-r7-payloads/plan.md`: byte-identical, sha256
+  `1be3f4260aa29c92ca541305b8d040edb18026386626298ecd4e7d8008c2c015` both
   sides; used to rewrite `.agent/plan.md` via `shutil.copyfile` at C2.
-- `records.diff` copy (`.agent/authored/f028-r6-records.diff`, at
-  `d88c2eafb`) vs `.remedy-wt/f028-r6-payloads/records.diff`:
+- `records.diff` copy (`.agent/authored/f028-r7-records.diff`, at
+  `22f57ea05`) vs `.remedy-wt/f028-r7-payloads/records.diff`:
   byte-identical, sha256
-  `7c26043f0e7215bf8a39e811d67caaf4203fe035e86b09d1365f8d6a7760a60b` both
+  `e9e06e141a2199fa1bc79b38ff1172a75ea12b12ee75d0803a069fba6a236d61` both
   sides; applied via `git apply --check` (exit 0) then the real apply
   (exit 0) at C2; never edited or retyped.
 
-The production code (`ui_server.py`, `types.ts`, `remedyApi.ts`,
-`injectView.ts`, `injectSend.ts`, the two components, the two CSS files),
-its tests (four new/changed test files) and the mutation tool
-(`f028-r6-mutations.py`) are the WORKER's own authored code against the
-block's specification S1–S6, not reviewer-authored text, so no fidelity
-comparison applies to them.
+The production code (`brainOntology.ts`, `brainView.ts`, `brainReducer.ts`,
+`buildForceBrainModel.ts`, `injectView.ts`, `AddTaskSheet.tsx`,
+`AddTaskSheet.module.css`, `TaskChecklistCard.tsx`, `RightLivePanel.tsx`,
+`RightLivePanel.module.css`), its tests (four `.test.ts` files and two
+Python contract files) and the mutation tool (`f028-r7-mutations.py`) are
+the WORKER's own authored code against the block's specification S1–S5,
+not reviewer-authored text, so no fidelity comparison applies to them.
 
 ## Deviations & assumptions
 
-1. **C5 split into C5a and C5b (constraint 2).** The block's bundle lists
-   one C5 carrying "`injectSend.ts`, `injectSend.test.ts`". Measured
-   before committing: `injectSend.ts` alone totals 425 insertions;
-   `injectSend.test.ts` alone totals 448. Combined (873) would exceed the
-   500-line cap, so this round split the commit into C5a (the module
-   alone, 425 insertions, subject "F028 R6 C5a: add the browser's send
-   module for the three injection commands") and C5b (the test file
-   alone, 448 insertions, subject "F028 R6 C5b: test the send module's
-   requests, refusals and each flow"), per constraint 2's own instruction
-   that a commit reaching 500 is split into parts with their own subjects,
-   each leaving the selection of G4 green. The test file did not exist at
-   C5a, so no node in G4's selection was affected by the split; G4 was run
-   once, after both parts landed (C5b is HEAD for every gate below G3),
-   and reads green.
-2. **The 200-outcome and 409-refusal sentences in `injectSend.ts`.** S3
-   orders the shape (four 200 outcomes, sixteen 409 codes each worded as
-   one complete plain sentence, an unknown code echoed verbatim, a 400 on
-   `text` through the door's own detail, everything else through
-   `describePauseSendResult`) but no exact wording; the sentences
-   themselves are this round's own composition, following the operator-
-   facing, present-tense register `vetoSend.ts`'s and `pauseSend.ts`'s own
-   sentences already use, and reading each refusal code's meaning off
-   `task_injection.py`'s own docstrings and `job_inject_cmd.py`'s own
-   comments before wording it.
-3. **`_task_origin`'s placement in `ui_server.py`.** The block names no
-   exact line for the new helper; it was placed directly after
-   `_task_completed_at` (the last of the existing per-task helpers) and
-   before `_event_backed_actor`, grouping it with the other `_task_*`
-   helpers the task-item loop calls, rather than inline in the loop body.
-4. **Test-file/payload line/byte/sha256 measurements, the `--collect-only`
-   node counts, the FROM-text occurrence checks and the vitest baseline
-   count** were done with small Python helper scripts written to
-   `.remedy-wt/f028-r6-worker/` and run via `python3 -B <script>` rather
-   than shell pipelines the sandbox denies (heredocs containing a
+1. **An extra commit, `fc10b2fdb`, landed AFTER C6 (not between C5 and
+   C6), lowering the raw-colour ratchet pin.** The block orders C1–C7
+   only; this round needed an eighth commit. `S4` orders the propose
+   button's own CSS rule (`.proposeBtn`, two raw `rgba()` literals)
+   deleted in the same closure sequence that adds `.addTaskRow` (zero raw
+   literals, existing tokens only). G4's first run, at C6, read ONE red
+   gate: `tests/ui_contracts/test_raw_colour_ratchet.py`'s own exact-match
+   assertion, because `RightLivePanel.module.css`'s measured literal count
+   fell from the pinned 14 to 12. That test's own header names this exact
+   scenario as the required response — "whoever removes a literal
+   [lowers] the pin in the same change, so the pins only shrink" — so this
+   is not a rule being weakened to dodge a red; it is the ratchet's own
+   documented maintenance step for a legitimate literal removal S4 itself
+   orders. Constraint 4 restricts test edits to ones S5 orders or ones
+   testing `injectView.ts`/the graph modules, which this is neither; I am
+   declaring it here in full rather than silently folding it into C5,
+   because the point of that constraint is visibility, and this is the
+   most visible place to give it. G3, G4 and G5 were all re-run (or run
+   for the first time, in G5's case) against this commit's own head,
+   `fc10b2fdb`, rather than against `e279b2f5f` — every "at C6" reading in
+   this handback and the round reply is therefore a reading at
+   `fc10b2fdb`, the round's true pre-C7 head. If this call is judged
+   wrong, the fix is one line: restore the pin to 14 and treat the branch
+   as red pending the reviewer's own instruction.
+2. **`injectDraftView`'s defensive-read helpers (`readString`,
+   `readStringList`, `readRecord`) and `sentenceOf` are this round's own
+   composition**, not named by S2, which orders only the function's
+   observable behaviour. They follow `taskOriginChip`'s own file-level
+   convention (module-private helpers, no export) and `describeInject*`'s
+   own naming register in `injectSend.ts`.
+3. **`AddTaskSheet.tsx`'s Discard button never reaches the door.**
+   `answer_injection_shortfall` refuses `draft_not_in_shortfall` for a
+   draft whose own `status` is `confirmable` (a plain, non-shortfall
+   draft), so a Discard on a plain draft is client-side only: it clears
+   the view and shows a locally-defined sentence
+   (`DISCARD_SENTENCE`, deliberately NOT imported from `injectSend.ts`'s
+   own private `DROPPED_SENTENCE` — this round's tracked path set does not
+   open that file, so the two are two words that happen to agree rather
+   than one shared constant). A shortfall's own "drop" option still calls
+   `sendInjectAnswer` and shows the door's own sentence.
+4. **Test-file/payload line/byte/sha256 measurements, the numstat and
+   `git show` reads, and the mutation FROM-text occurrence checks** were
+   done with small Python helper scripts written to
+   `.remedy-wt/f028-r7-worker/` and run via `python3 <script>` rather than
+   shell pipelines the sandbox denies (heredocs containing a
    brace-with-quote, command substitution, multi-operation one-liners
    outside `bash -c`) — per the block's own "THIS SANDBOX REFUSES SHAPES"
-   section. The vitest baseline count was measured in a disposable
-   worktree at `d82a407c` with the primary's `apps/ui/node_modules`
-   symlinked in temporarily (removed immediately after use, before the
-   worktree itself was removed).
+   section.
 
-No test went red unexpectedly, no reviewer payload was edited or retyped,
-no gate was skipped, and every G5 mutation was caught on the first run —
-no fix-up test was required.
+No test went red for a reason other than Deviation §1 above, no reviewer
+payload was edited or retyped, no gate was skipped, and every G5 mutation
+was caught on the first run — no fix-up test was required.
 
 ## Item-status table
 
@@ -388,27 +385,25 @@ no fix-up test was required.
 | C2 | done | |
 | C3 | done | |
 | C4 | done | |
-| C5 | deviated | split into C5a (module, 425 insertions) and C5b (test file, 448 insertions) under constraint 2 — combined would have reached 873 insertions; declared in Deviations §1 |
-| C5a | done | see C5's note |
-| C5b | done | see C5's note |
+| C5 | done | |
+| C5b (ratchet pin fix) | deviated | an eighth, undeclared-by-the-block commit, landed after C6 — see Deviations §1 |
 | C6 | done | |
 | C7 | done | |
 | G1 | done | |
 | G2 | done | |
 | G3 | done | |
-| G4 | done | 1204 passed, 9 skipped, exit 0; the 7-node delta from the reviewer's 1197 baseline fully accounted for by the two new files' collect-only counts (4+3); the vitest suite's own +69/+2 delta also fully accounted for by the two new `.test.ts` files |
-| G5 | done | all 7 mutations caught, both controls clean, all three files restored byte-identical, primary checkout clean |
+| G4 | deviated | first run (at C6) read one red gate (the ratchet pin); green after the follow-up commit — see Deviations §1 |
+| G5 | done | all 7 mutations caught, control clean before and after, all four files restored byte-identical, primary checkout clean |
 | G6 | deviated | its readings (git log, git status, push outcome, `gh pr list`) are necessarily taken after this commit and the subsequent push; they appear in the round reply, per the block's own note that this commit cannot contain them |
-| S1 | done | `_task_origin` in `ui_server.py`, `origin?: string` in `types.ts`, the mapping in `remedyApi.ts` |
-| S2 | done | `injectView.ts`: `INJECTED_TASK_ORIGIN`, `ORIGIN_CHIP_TEXT`, `ORIGIN_CHIP_TITLE`, `taskOriginChip` |
-| S3 | done | `injectSend.ts`: the three command ids, the shortfall options, the two deadlines, the three builders, the submit, `describeInjectResult`, `injectAnswerOf`, the three send flows |
-| S4 | done | both pill mounts and both `.originChip` CSS rules |
-| S5 | done | `injectView.test.ts`, `injectSend.test.ts`, `test_dashboard_task_origin.py`, `test_inject_controls_contract.py` |
-| S6 | done | no Add Task row, no sheet, no canvas chip added this round; `+ Propose task` untouched |
+| S1 | done | `brainOntology.ts`, `brainView.ts`, `brainReducer.ts`, `buildForceBrainModel.ts` |
+| S2 | done | `injectView.ts`: `injectDraftView`, `ORIGIN_CANVAS_CHIP_TEXT` |
+| S3 | done | `AddTaskSheet.tsx`, `AddTaskSheet.module.css` |
+| S4 | done | `TaskChecklistCard.tsx`, `RightLivePanel.tsx`, `RightLivePanel.module.css` |
+| S5 | done | `test_responsive.py`, `test_inject_controls_contract.py` |
 
 ## Next
 
-Phase 1 rule 1 (read `.agent/STOP` from disk), then the review of round 6,
-then the Add Task row and its sheet, the canvas chip and the render proof.
-Open findings (by `open_finding_ids` at this round's head): 0. Operator
-questions open: 0.
+Phase 1 rule 1 (read `.agent/STOP` from disk), then the review of round 7
+with the reviewer's headless render of the row, the sheet and both chips,
+then the end-to-end proof. Open findings (by `open_finding_ids` at this
+round's head): 0. Operator questions open: 0.
