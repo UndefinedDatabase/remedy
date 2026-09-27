@@ -85,8 +85,14 @@ def _cmd_chat_show(job_id: str, *, json_output: bool = False) -> None:
         fail("job_not_found", f"The record of job {full_id} cannot be read.",
              json_output=json_output, exit_code=EXIT_NOT_READY, job_id=full_id)
     state = job.state.value if hasattr(job.state, "value") else str(job.state)
+    # F030 T002, DECISION F030 D2 (6): the job's own task statuses, so the overview can tell
+    # a note whose task has finished from one still waiting for its next round.
+    task_statuses = {
+        str(t.task_id): (t.status.value if hasattr(t.status, "value") else str(t.status))
+        for t in job.tasks
+    }
     try:
-        rows = steering_overview(job.job_id, state)
+        rows = steering_overview(job.job_id, state, task_statuses=task_statuses)
     except SteeringError as exc:
         fail("steering_record_damaged", f"The job's steering records cannot be trusted: {exc}.",
              json_output=json_output, job_id=job.job_id)
@@ -99,10 +105,20 @@ def _cmd_chat_show(job_id: str, *, json_output: bool = False) -> None:
         return
     print(f"Job {job.job_id} — {state}")
     for row in rows:
-        print(f"{row['message_id']}  {row['received_at']}  via {row['channel']}: {row['text']}")
+        addressed_to = row.get("addressed_to", "")
+        if addressed_to:
+            print(f"{row['message_id']}  {row['received_at']}  via {row['channel']} to task "
+                  f"{addressed_to}: {row['text']}")
+        else:
+            print(f"{row['message_id']}  {row['received_at']}  via {row['channel']}: "
+                  f"{row['text']}")
         if row["status"] == "acknowledged":
             print(f"  taken in at round {row['round_number']} of task {row['task_id']}: "
                   f"{row['understood']}")
+        elif addressed_to and row["status"] == "waiting":
+            print(f"  waiting — task {addressed_to} has not started a round since it arrived")
+        elif addressed_to and row["status"] == "not_taken_in":
+            print(f"  not taken in — task {addressed_to} finished without starting another round")
         else:
             print(f"  {_STATUS_WORDS[row['status']]}")
 

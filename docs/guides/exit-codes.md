@@ -59,6 +59,7 @@ Every command not listed here exits only `0`, `1` or `2`.
 | `remedy job plan-edit-task` | 3 |
 | `remedy job edit-task` | 3 |
 | `remedy job veto-task` | 3 |
+| `remedy job steer` | 3 |
 | `remedy job rerun-subtree` | 3 |
 | `remedy job inject` | 3 |
 | `remedy job inject-confirm` | 3 |
