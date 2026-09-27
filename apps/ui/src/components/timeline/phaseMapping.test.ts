@@ -41,6 +41,7 @@ describe("the phase mapping table", () => {
       planning_started: "planning",
       planning_completed: "planning",
       planning_failed: "planning",
+      plan_approved: "planning",
       task_run_started: "build",
       builder_started: "build",
       builder_completed: "build",
@@ -49,6 +50,7 @@ describe("the phase mapping table", () => {
       test_run_completed: "test",
       test_run_blocked: "test",
       test_run_timed_out: "test",
+      task_round_tested: "test",
       verification_passed: "test",
       verification_failed: "test",
       task_round_completed: "review",
@@ -60,6 +62,11 @@ describe("the phase mapping table", () => {
     expect(markerPhaseOf(row(1, "task_round_completed", "t1", "needs_repair"))).toBe("review");
     expect(markerPhaseOf(row(1, "task_round_completed", "t1", "no_review"))).toBeNull();
     expect(markerPhaseOf(row(1, "task_round_completed", "t1", ""))).toBeNull();
+  });
+
+  it("marks Planning for plan_approved and Test for task_round_tested", () => {
+    expect(markerPhaseOf(row(1, "plan_approved"))).toBe("planning");
+    expect(markerPhaseOf(row(1, "task_round_tested", "t1", "pass"))).toBe("test");
   });
 
   it("marks nothing for an unknown, empty or prototype-named kind", () => {

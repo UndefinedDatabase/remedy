@@ -8,12 +8,15 @@
 // none of the roadmap's Part E event names (`run.started`, `plan.task_created`,
 // ...) is emitted by the server, so Table 2 below dispatches on the MEASURED
 // writers only. No event-schema change is made or assumed — the event schema
-// is on the feature's do-not-touch list. No plan-approval event exists, so
-// the task ring this reducer draws is born from the dashboard SEED, never
-// from a stream frame of its own.
+// is on the feature's do-not-touch list. As of DECISION F288 D3 (3), the task
+// ring is born both from the dashboard SEED and from `plan_approved`'s
+// `planTaskIds`, in plan order; `task_round_tested` and `task_round_repaired`
+// each birth their task's run first, exactly as `onVerification` always has.
 import {
+  REPAIR_OUTCOME_STATE_TABLE,
   REVIEW_OUTCOME_STATE_TABLE,
   SEED_STATUS_STATE_TABLE,
+  TEST_OUTCOME_STATE_TABLE,
 } from "./brainOntology";
 import type {
   BrainEventRow,
@@ -131,6 +134,17 @@ function ignoreRow(model: BrainModel, row: BrainEventRow): BrainModel {
   return { ...model, ignored: { ...model.ignored, [row.kind]: count } };
 }
 
+/** DECISION F288 D3 (3): a run node born from a row carries `meta.attemptId`
+ *  when the row's `attemptId` is a non-empty string; its meta is EXACTLY
+ *  *meta* when it is not, so every golden built before this round's rows
+ *  carried an `attemptId` stays byte-identical. */
+function metaWithAttemptId(
+  meta: Record<string, unknown>,
+  row: BrainEventRow,
+): Record<string, unknown> {
+  return row.attemptId ? { ...meta, attemptId: row.attemptId } : meta;
+}
+
 // --- Table 2 (DECISION F019 D1): frame kind -> effect ------------------------
 
 function onTaskRunStarted(model: BrainModel, row: BrainEventRow): BrainModel {
@@ -139,7 +153,7 @@ function onTaskRunStarted(model: BrainModel, row: BrainEventRow): BrainModel {
   const runId = runNodeId(row.taskId, row.seq);
   const withRun: BrainNode[] = [
     ...closed,
-    { id: runId, kind: "builder_run", state: "in_progress", parentId: taskNodeId(row.taskId), seq: row.seq, meta: {} },
+    { id: runId, kind: "builder_run", state: "in_progress", parentId: taskNodeId(row.taskId), seq: row.seq, meta: metaWithAttemptId({}, row) },
   ];
   const nodes = setTaskState(withRun, row.taskId, "in_progress");
   const links = [...born.links, linkFor(taskNodeId(row.taskId), runId)];
@@ -152,7 +166,7 @@ function onTaskRoundCompleted(model: BrainModel, row: BrainEventRow): BrainModel
   const state = REVIEW_OUTCOME_STATE_TABLE[row.outcome] ?? "planned";
   const nodes: BrainNode[] = [
     ...born.nodes,
-    { id: runId, kind: "review_run", state, parentId: taskNodeId(row.taskId), seq: row.seq, meta: { outcome: row.outcome } },
+    { id: runId, kind: "review_run", state, parentId: taskNodeId(row.taskId), seq: row.seq, meta: metaWithAttemptId({ outcome: row.outcome }, row) },
   ];
   const links = [...born.links, linkFor(taskNodeId(row.taskId), runId)];
   return { ...model, nodes, links };
@@ -163,9 +177,58 @@ function onVerification(model: BrainModel, row: BrainEventRow, state: "pass" | "
   const runId = runNodeId(row.taskId, row.seq);
   const nodes: BrainNode[] = [
     ...born.nodes,
-    { id: runId, kind: "test_run", state, parentId: taskNodeId(row.taskId), seq: row.seq, meta: { outcome: row.outcome } },
+    { id: runId, kind: "test_run", state, parentId: taskNodeId(row.taskId), seq: row.seq, meta: metaWithAttemptId({ outcome: row.outcome }, row) },
   ];
   const links = [...born.links, linkFor(taskNodeId(row.taskId), runId)];
+  return { ...model, nodes, links };
+}
+
+/** DECISION F288 D3 (3): `task_round_tested`, `test_run_completed`,
+ *  `test_run_timed_out` and `test_run_blocked` all birth a `test_run` under
+ *  their task from `TEST_OUTCOME_STATE_TABLE`, `planned` for a word the
+ *  table lacks. */
+function onTestRun(model: BrainModel, row: BrainEventRow): BrainModel {
+  const born = birthTask(model.nodes, model.links, row.taskId, row.seq);
+  const runId = runNodeId(row.taskId, row.seq);
+  const state = TEST_OUTCOME_STATE_TABLE[row.outcome] ?? "planned";
+  const nodes: BrainNode[] = [
+    ...born.nodes,
+    { id: runId, kind: "test_run", state, parentId: taskNodeId(row.taskId), seq: row.seq, meta: metaWithAttemptId({ outcome: row.outcome }, row) },
+  ];
+  const links = [...born.links, linkFor(taskNodeId(row.taskId), runId)];
+  return { ...model, nodes, links };
+}
+
+/** DECISION F288 D3 (3): `task_round_repaired` births a `repair_run` under
+ *  its task from `REPAIR_OUTCOME_STATE_TABLE`, `planned` for a word the
+ *  table lacks. */
+function onRepairRun(model: BrainModel, row: BrainEventRow): BrainModel {
+  const born = birthTask(model.nodes, model.links, row.taskId, row.seq);
+  const runId = runNodeId(row.taskId, row.seq);
+  const state = REPAIR_OUTCOME_STATE_TABLE[row.outcome] ?? "planned";
+  const nodes: BrainNode[] = [
+    ...born.nodes,
+    { id: runId, kind: "repair_run", state, parentId: taskNodeId(row.taskId), seq: row.seq, meta: metaWithAttemptId({ outcome: row.outcome }, row) },
+  ];
+  const links = [...born.links, linkFor(taskNodeId(row.taskId), runId)];
+  return { ...model, nodes, links };
+}
+
+/** DECISION F288 D3 (3): `plan_approved` births, in `planTaskIds` order,
+ *  every task id the model lacks — ranked after the highest task rank so
+ *  far, the way `birthTask` ranks every task — and changes no task that
+ *  already exists. An absent or empty list changes nothing; either way this
+ *  is a HANDLED kind, never counted in `ignored`. */
+function onPlanApproved(model: BrainModel, row: BrainEventRow): BrainModel {
+  const taskIds = row.planTaskIds ?? [];
+  if (taskIds.length === 0) return { ...model };
+  let nodes = model.nodes;
+  let links = model.links;
+  for (const taskId of taskIds) {
+    const born = birthTask(nodes, links, taskId, row.seq);
+    nodes = born.nodes;
+    links = born.links;
+  }
   return { ...model, nodes, links };
 }
 
@@ -306,6 +369,16 @@ function applyBrainEvent(model: BrainModel, row: BrainEventRow): BrainModel {
       return row.taskId === "" ? ignoreRow(model, row) : onTaskResumed(model, row);
     case "job_paused":
       return onJobPaused(model);
+    case "plan_approved":
+      return onPlanApproved(model, row);
+    case "task_round_tested":
+      return row.taskId === "" ? ignoreRow(model, row) : onTestRun(model, row);
+    case "task_round_repaired":
+      return row.taskId === "" ? ignoreRow(model, row) : onRepairRun(model, row);
+    case "test_run_completed":
+    case "test_run_timed_out":
+    case "test_run_blocked":
+      return row.taskId === "" ? ignoreRow(model, row) : onTestRun(model, row);
     case "job_resumed":
       // F025 D3 clause 2: changes no node — the job's own state carries the
       // resume, and unlike an unhandled kind this IS a handled case, so it is

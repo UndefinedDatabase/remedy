@@ -3,13 +3,24 @@
 // outcome word the platform adds later is a one-line edit here instead of a
 // logic change in brainReducer.ts. The reducer owns existence and state; this
 // file owns the vocabulary both the dashboard seed and the event stream speak.
+// As of DECISION F288 D3 (3), the reducer births a `task` at the dashboard
+// seed and at `plan_approved`, `builder_run` at `builder_started`,
+// `review_run` at `task_round_completed`, `repair_run` at
+// `task_round_repaired`, and `test_run` at `task_round_tested`,
+// `test_run_completed`, `test_run_timed_out`, `test_run_blocked`,
+// `verification_passed` and `verification_failed` — `synapse` and `artifact`
+// are still born by nothing. See `NodeKind` below for the per-kind detail.
 // Design authority: docs/ui/design_reference/graph_spec.md §2 (ontology).
 
-/** The shapes a brain-graph node can take. `repair_run`, `synapse` and
- *  `artifact` are named here for the lifecycle feature that will draw them;
- *  brainReducer.ts never births one of these three, because no Part E event
- *  name exists to birth them from and a `repair_*` frame carries no task id
- *  to attach a run to (measured, DECISION F019 D1). */
+/** The shapes a brain-graph node can take. As of DECISION F288 D3 (3),
+ *  `brainReducer.ts` births: `task` from the dashboard seed and from
+ *  `plan_approved`, `task_run_started` and every other task event;
+ *  `builder_run` from `builder_started`; `review_run` from
+ *  `task_round_completed`; `repair_run` from `task_round_repaired`; and
+ *  `test_run` from `task_round_tested`, `test_run_completed`,
+ *  `test_run_timed_out`, `test_run_blocked`, `verification_passed` and
+ *  `verification_failed`. `synapse` and `artifact` are still born by nothing
+ *  — no Part E event name exists to birth them from. */
 export type NodeKind =
   | "job_core"
   | "task"
@@ -66,6 +77,12 @@ export interface BrainEventRow {
   kind: string;
   outcome: string;
   taskId: string;
+  /** The attempt this row belongs to, or "" when the envelope carries none.
+   *  DECISION F288 D3 (2). */
+  attemptId?: string;
+  /** `plan_approved`'s approved task ids, in plan order, or `[]` for every
+   *  other row. DECISION F288 D3 (2). */
+  planTaskIds?: readonly string[];
 }
 
 /** One dashboard task as the seed step sees it, before any stream frame has
@@ -127,4 +144,26 @@ export const REVIEW_OUTCOME_STATE_TABLE: Readonly<Record<string, NodeState>> = {
   fail: "fail",
   needs_repair: "fail",
   blocked: "blocked",
+};
+
+/** The test-outcome half of Table 2 (DECISION F288 D3 (3)): `task_round_tested`,
+ *  `test_run_completed`, `test_run_timed_out` and `test_run_blocked` decide the
+ *  born `test_run`'s state from this table; a word this table has not seen
+ *  falls back to `planned`. */
+export const TEST_OUTCOME_STATE_TABLE: Readonly<Record<string, NodeState>> = {
+  pass: "pass",
+  passed: "pass",
+  fail: "fail",
+  failed: "fail",
+  timeout: "fail",
+  blocked: "blocked",
+};
+
+/** The repair-outcome half of Table 2 (DECISION F288 D3 (3)): `task_round_repaired`
+ *  decides the born `repair_run`'s state from this table; a word this table
+ *  has not seen falls back to `planned`. */
+export const REPAIR_OUTCOME_STATE_TABLE: Readonly<Record<string, NodeState>> = {
+  changed: "pass",
+  unchanged: "blocked",
+  error: "fail",
 };

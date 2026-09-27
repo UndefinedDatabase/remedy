@@ -99,3 +99,57 @@ describe("feedRowOf on a steering acknowledgement", () => {
     expect(row.line).toBe(STREAM_EVENT_CATALOG["steering_message_consumed"]);
   });
 });
+
+describe("feedRowOf's attemptId (DECISION F288 D3 (2))", () => {
+  it("reads attempt_id from the envelope", () => {
+    const row = feedRowOf(frameOf(11, {
+      event: "task_run_started", attempt_id: "cycle-1",
+    }));
+    expect(row.attemptId).toBe("cycle-1");
+  });
+
+  it("is the empty string when absent", () => {
+    const row = feedRowOf(frameOf(12, { event: "task_run_started" }));
+    expect(row.attemptId).toBe("");
+  });
+
+  it("is the empty string when not a string", () => {
+    const row = feedRowOf(frameOf(13, {
+      event: "task_run_started", attempt_id: 42,
+    }));
+    expect(row.attemptId).toBe("");
+  });
+});
+
+describe("feedRowOf's planTaskIds (DECISION F288 D3 (2))", () => {
+  it("keeps the order of plan.task_ids' string entries", () => {
+    const row = feedRowOf(frameOf(14, {
+      event: "plan_approved", plan: { task_ids: ["task-1", "task-2"] },
+    }));
+    expect(row.planTaskIds).toEqual(["task-1", "task-2"]);
+  });
+
+  it("drops non-string entries while keeping the rest in order", () => {
+    const row = feedRowOf(frameOf(15, {
+      event: "plan_approved", plan: { task_ids: ["task-1", 7, "task-2", null] },
+    }));
+    expect(row.planTaskIds).toEqual(["task-1", "task-2"]);
+  });
+
+  it("is [] when plan is absent", () => {
+    const row = feedRowOf(frameOf(16, { event: "task_run_started" }));
+    expect(row.planTaskIds).toEqual([]);
+  });
+
+  it("is [] when plan is not an object", () => {
+    const row = feedRowOf(frameOf(17, { event: "plan_approved", plan: "nope" }));
+    expect(row.planTaskIds).toEqual([]);
+  });
+
+  it("is [] when plan.task_ids is not an array", () => {
+    const row = feedRowOf(frameOf(18, {
+      event: "plan_approved", plan: { task_ids: "task-1" },
+    }));
+    expect(row.planTaskIds).toEqual([]);
+  });
+});
