@@ -180,3 +180,178 @@ export async function sendSteeringMessage(
     return describeChatSendResult({ outcome: "unreachable", status: NO_RESPONSE_STATUS });
   }
 }
+
+// THE TASK-ADDRESSED NOTE (F030 T003, DECISION F030 D3): `job.steer`'s twin of the flow
+// above, built the same way `task_veto`'s `vetoSend.ts` is built over `pauseSend.ts` — its
+// own command, its own 409 codes read off the door's `"<code>: <detail>"` string, and every
+// other refusal reusing `describeChatSendResult`'s own sentence rather than a second copy of
+// it. The job-wide path above is untouched; this is the path a FOCUSED task takes instead.
+
+/** The catalog id of the write door's task-addressed steering route (DECISION F030 D2). */
+export const STEER_TASK_COMMAND = "job.steer";
+
+/** THE BUILDER: a target, a task id, a message and a nonce become the exact request the
+ *  commands endpoint accepts, or `null` whenever that request would be UNSENDABLE — an empty
+ *  task id, a message `normalizeSteeringMessage` refuses, or a nonce outside the door's
+ *  class. Shaped exactly as `buildVetoTaskRequest`: neither `target.jobId` nor
+ *  `target.serverToken` is checked here, because an empty one still builds a request the door
+ *  itself refuses, and a client-side check would only invite the two to disagree. */
+export function buildSteerTaskRequest(
+  target: DecisionSendTarget,
+  taskId: string,
+  message: string,
+  clientNonce: string,
+): DecisionSendRequest | null {
+  const cleaned = normalizeSteeringMessage(message);
+  if (taskId === "" || cleaned === null || !isUsableCommandNonce(clientNonce)) {
+    return null;
+  }
+  return {
+    path: jobCommandsPath(target.jobId),
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${target.serverToken}`,
+      "X-Remedy-CSRF": target.serverToken,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      command: STEER_TASK_COMMAND,
+      client_nonce: clientNonce,
+      args: { task_id: taskId, message: cleaned },
+    }),
+  };
+}
+
+/** EXACTLY WHAT THIS MODULE READS BACK off a sent `job.steer` request — `vetoSend.ts`'s own
+ *  `VetoTaskSendReply` shape, restated under this feature's own name for the same reason
+ *  `vetoSend.ts` restates `pauseSend.ts`'s: the two doors answer different bodies. */
+export interface SteerTaskSendReply {
+  ok: boolean;
+  status: number;
+  json(): Promise<unknown>;
+}
+
+export type SteerTaskSendFunction = (request: DecisionSendRequest) => Promise<SteerTaskSendReply>;
+
+/** THE THREE OUTCOMES, mirroring `vetoSend.ts`'s own closed union. */
+export type SteerTaskSubmitOutcome = "accepted" | "refused" | "unreachable";
+
+/** ONE SEND'S ANSWER: what happened, the status that says which refusal it was, and the
+ *  parsed body — `null` when the reply carried no usable JSON object. */
+export interface SteerTaskSubmitResult {
+  outcome: SteerTaskSubmitOutcome;
+  status: number;
+  body: Record<string, unknown> | null;
+}
+
+function parsedSteerBodyOrNull(candidate: unknown): Record<string, unknown> | null {
+  if (candidate === null || typeof candidate !== "object" || Array.isArray(candidate)) {
+    return null;
+  }
+  return candidate as Record<string, unknown>;
+}
+
+/** THE SUBMIT: send one already-built request, once, read its body, and map what comes back
+ *  to the closed result. Never throws and never retries, `vetoSend.ts`'s own
+ *  `submitVetoTaskRequest` rule. */
+export async function submitSteerTaskRequest(
+  request: DecisionSendRequest,
+  send: SteerTaskSendFunction = (sent) =>
+    fetch(sent.path, { method: sent.method, headers: sent.headers, body: sent.body }),
+): Promise<SteerTaskSubmitResult> {
+  let reply: SteerTaskSendReply;
+  try {
+    reply = await send(request);
+  } catch {
+    return { outcome: "unreachable", status: NO_RESPONSE_STATUS, body: null };
+  }
+  let parsed: unknown = null;
+  try {
+    parsed = await reply.json();
+  } catch {
+    parsed = null;
+  }
+  return { outcome: reply.ok ? "accepted" : "refused", status: reply.status,
+           body: parsedSteerBodyOrNull(parsed) };
+}
+
+/** THE THREE REFUSAL CODES `steer_task_command` answers, and no others — read off the
+ *  `<code>: <detail>` string `_dispatch_steer_task`'s caller puts on the wire, exactly as
+ *  `vetoSend.ts`'s own table reads `job.veto-task`'s four. A code this table does not name
+ *  falls through to the raw string, verbatim. */
+const STEER_TASK_REFUSAL_SENTENCES: Readonly<Record<string, string>> = {
+  job_not_steerable: "Not recorded: this job has already finished.",
+  task_not_steerable: "Not recorded: this task can no longer be steered.",
+  unknown_task: "Not recorded: this job has no such task.",
+};
+
+/** What a 409 means: the refusal `code` prefixing the wire's `error` string, looked up in the
+ *  table above, or the raw string echoed back when the code is not one of the three. A body
+ *  with no string `error` at all falls through to `describeChatSendResult`'s own generic 409. */
+function describeSteerTaskConflict(body: Record<string, unknown> | null): DecisionOutcomeMessage {
+  const error = body?.error;
+  if (typeof error !== "string") {
+    return describeChatSendResult({ outcome: "refused", status: 409 });
+  }
+  const separator = error.indexOf(": ");
+  const code = separator === -1 ? "" : error.slice(0, separator);
+  const sentence = STEER_TASK_REFUSAL_SENTENCES[code];
+  return { tone: "warn", sentence: sentence ?? `Not recorded: ${error}.` };
+}
+
+/** THE MAPPING: one send's result becomes the one thing to say about it. The 200 names the
+ *  task by id, because a job-wide acceptance never reaches this function — `taskId` is
+ *  always the one `buildSteerTaskRequest` already refused an empty value for. Every refusal
+ *  but a 409 reuses `describeChatSendResult`'s own sentence rather than a second copy. */
+export function describeSteerTaskResult(
+  result: SteerTaskSubmitResult,
+  taskId: string,
+): DecisionOutcomeMessage {
+  if (result.outcome === "accepted") {
+    return { tone: "ok",
+             sentence: `Your note was recorded. Task ${taskId} reads it at the start of its next round.` };
+  }
+  if (result.outcome === "refused" && result.status === 409) {
+    return describeSteerTaskConflict(result.body);
+  }
+  return describeChatSendResult({ outcome: result.outcome, status: result.status });
+}
+
+/** Every seam optional and defaulting to the shipped function, `SteeringSendDeps`'s own
+ *  shape restated over the task-addressed submit result. */
+export interface SteeringNoteSendDeps {
+  mintNonce?: () => string | null;
+  submit?: (request: DecisionSendRequest) => Promise<SteerTaskSubmitResult>;
+  deadline?: () => Promise<void>;
+}
+
+/** THE FLOW: mint, build, send, and say what happened, stopping at the first step that
+ *  answers `null`. Shaped exactly as `sendSteeringMessage`: neither `null` path touches the
+ *  network. */
+export async function sendSteeringNote(
+  target: DecisionSendTarget,
+  taskId: string,
+  message: string,
+  deps: SteeringNoteSendDeps = {},
+): Promise<DecisionOutcomeMessage> {
+  const mintNonce = deps.mintNonce ?? mintDecisionClientNonce;
+  const submit = deps.submit ?? ((request) => submitSteerTaskRequest(request));
+  const deadline = deps.deadline ?? waitForDefaultDeadline;
+
+  const clientNonce = mintNonce();
+  if (clientNonce === null) {
+    return describeUnsendableChatMessage();
+  }
+  const request = buildSteerTaskRequest(target, taskId, message, clientNonce);
+  if (request === null) {
+    return describeUnsendableChatMessage();
+  }
+  try {
+    const settled = await Promise.race([submit(request), deadline().then(() => null)]);
+    return describeSteerTaskResult(
+      settled ?? { outcome: "unreachable", status: NO_RESPONSE_STATUS, body: null }, taskId);
+  } catch {
+    return describeSteerTaskResult(
+      { outcome: "unreachable", status: NO_RESPONSE_STATUS, body: null }, taskId);
+  }
+}

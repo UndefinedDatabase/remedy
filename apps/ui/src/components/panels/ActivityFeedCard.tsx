@@ -4,7 +4,9 @@ import type { FeedRow } from "../../api/feedRow";
 import type { FocusableTask } from "../../api/feedFocus";
 import { nodeIdForFeedRow } from "../../api/feedFocus";
 import { FEED_SCROLL_START, nextFeedScroll, shouldFollowNewest, shouldShowNewRowsPill } from "../../api/feedScroll";
-import { STEERING_ENDED_REASON, sendSteeringMessage, steeringIsOpen } from "../../api/steeringSend";
+import { STEERING_ENDED_REASON, sendSteeringMessage, sendSteeringNote, steeringIsOpen } from "../../api/steeringSend";
+import { steeringPlaceholder } from "../../api/steeringNote";
+import { STEERING_REPLY_FRAMING } from "../../api/humanizeCatalog";
 import { BuilderGlyph, ReviewerGlyph, PersonGlyph, GearGlyph } from "../icons/RemedyGlyphs";
 import { ChatInput } from "./ChatInput";
 import styles from "./RightLivePanel.module.css";
@@ -155,7 +157,8 @@ export function ActivityFeedCard({ activity, recent, recentDropped, tasks, onSel
 
   // ONE composer for both branches below, so the live feed and the pre-stream
   // fallback can never disagree about whether this job can be steered. It sends
-  // only through `sendSteeringMessage`, the one sequence that reaches the door.
+  // through `sendSteeringNote` when a task is focused and `sendSteeringMessage`
+  // otherwise — the two sequences that reach the door (DECISION F030 D3).
   const target = { jobId: jobId ?? "", serverToken: serverToken ?? "" };
   const addressed = target.jobId !== "" && target.serverToken !== "";
   const open = steeringIsOpen(stage ?? "");
@@ -163,7 +166,9 @@ export function ActivityFeedCard({ activity, recent, recentDropped, tasks, onSel
     <ChatInput
       disabled={!addressed || !open}
       reason={addressed ? STEERING_ENDED_REASON : STEERING_UNADDRESSED_REASON}
-      onSend={(text) => sendSteeringMessage(target, text)}
+      placeholder={steeringPlaceholder(focusedTaskId ?? "")}
+      hint={STEERING_REPLY_FRAMING}
+      onSend={(text) => (focusedTaskId ? sendSteeringNote(target, focusedTaskId, text) : sendSteeringMessage(target, text))}
     />
   );
 

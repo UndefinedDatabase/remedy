@@ -51,7 +51,8 @@ def test_the_command_is_one_the_door_exposes():
 def test_the_components_reach_the_door_only_through_the_sender():
     card = strip_ts_comments(CARD.read_text(encoding="utf-8"))
     chat = strip_ts_comments(CHAT_INPUT.read_text(encoding="utf-8"))
-    assert "onSend={(text) => sendSteeringMessage(target, text)}" in card
+    assert ("onSend={(text) => (focusedTaskId ? sendSteeringNote(target, focusedTaskId, text) "
+            ": sendSteeringMessage(target, text))}") in card
     assert "steeringIsOpen(" in card
     for source in (card, chat):
         assert "fetch(" not in source and "XMLHttpRequest" not in source
