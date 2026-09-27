@@ -1,102 +1,72 @@
-# Handoff — F029, round 7
+# Handoff — F029, round 8
 
 ## Session
 
-SESSION 2 of feature F029 · round 7 · rounds so far 7. Context remaining at
-handback: comfortable — reading the model live-e2e file, the prepare test's
-fixture and S5 section, `RunDetailPopover.tsx`/its CSS, `subtree_rerun.py`'s
-three named functions, the CLI door and command wiring, `run_report.py`'s
-attempt clause and the data-path/run-log helpers, then drafting and running
-S1, S2 and the mutation tool took most of it; one tool bug was found and
-fixed within the round (below), every gate ran clean afterward, and there was
-ample context left had a further repair round been needed.
+SESSION 2 of feature F029 · round 8 · rounds so far 8. Context remaining at
+handback: ample — reading `mission_dossier.py` whole (PLAN_RISK_ID_TEMPLATE
+through the end of `refresh_mission_dossier`, plus `DossierItem`,
+`IterationFacts`, `_merge_by_id`, `dossier_sections`), the test file whole,
+and `subtree_rerun.py`'s `fold_subtree_rerun` record, then writing S1-S3,
+18 new tests, the mutation tool, and running every gate, all went clean on
+the first pass with no repair round and no tool bug.
 
 ## Range
 
-Review of `cfd779c64`..`HEAD` (`HEAD` is this handback's own commit, `F029 R7
-C6`, on `feature/f029-subtree-rerun`).
+Review of `a5933b73e`..`HEAD` (`HEAD` is this handback's own commit, `F029 R8
+C5`, on `feature/f029-subtree-rerun`).
 
 ## Commits
 
-### d0b547815 F029 R7 C1: copy round 7 block and payloads into .agent/authored/
+### 157fe2e1b F029 R8 C1: copy round 8 block and payloads into .agent/authored/
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f029-r7-block.md | 240/0 | copy of this round's block |
-| .agent/authored/f029-r7-booking.diff | 19/0 | copy of the booking diff payload |
-| .agent/authored/f029-r7-plan.md | 35/0 | copy of the plan payload |
+| .agent/authored/f029-r8-block.md | 195/0 | copy of this round's block |
+| .agent/authored/f029-r8-booking.diff | 52/0 | copy of the booking diff payload |
+| .agent/authored/f029-r8-plan.md | 31/0 | copy of the plan payload |
 
-Measured insertions: 294 (block's own line count 240 + 54), matching the
+Measured insertions: 278 (block's own line count 195 + 83), matching the
 block's expectation exactly, under the 500-line cap.
 
-### aabc2a2bc F029 R7 C2: book round 6 and its prose slip
+### 5eb975540 F029 R8 C2: book round 7 and record D7
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/live_review.md | 2/0 | round 6's Gate entry appended |
-| .agent/plan.md | 12/10 | rewrite from the plan payload |
-| .agent/prose_slips.md | 1/0 | round 6's owed prose slip appended |
+| .agent/decisions.md | 34/0 | DECISION F029 D7 appended (booking.diff) |
+| .agent/live_review.md | 2/0 | round 7's Gate entry appended (booking.diff) |
+| .agent/plan.md | 5/9 | rewrite from the plan payload |
 
-Matches the block's expected numstat (2/0, 12/10, 1/0) exactly. Applied via
+Matches the block's expected numstat (34/0, 2/0, 5/9) exactly. Applied via
 `git apply --check` (exit 0) then the real apply (exit 0) of `booking.diff`,
 followed by the `plan.md` rewrite via `shutil.copyfile`.
 
-### 7621ba772 F029 R7 C3: give the run detail's confirmation row its space
+### 6b41f9532 F029 R8 C3: note a rerun in its mission's dossier
 | Path | +/- | Reason |
 |---|---|---|
-| apps/ui/src/components/graph/RunDetailPopover.module.css | 6/0 | S1: new `.confirmActions { display: flex; gap: 8px; margin: 8px 0 0; }` rule directly after `.actions` |
-| apps/ui/src/components/graph/RunDetailPopover.tsx | 1/1 | S1: the `needs_confirmation` actions `<div>` takes `styles.confirmActions` instead of `styles.actions`; the first actions row keeps `styles.actions` |
+| packages/orchestration/mission_dossier.py | 67/5 | S1: `RERUN_ID_TEMPLATE` after `ITERATION_ID_TEMPLATE`; `rerun_decision_items` beside `_ledger_decision_id`. S2: `mission_job_reruns` beside `refresh_mission_dossier`. S3: `mission_iteration_facts` gains the `reruns` keyword and appends `rerun_decision_items(reruns)` to its decisions; `refresh_mission_dossier` passes `reruns=mission_job_reruns(mission, root)` |
+| tests/orchestration/test_mission_dossier.py | 191/0 | THE TESTS: `TestRerunDecisionItems` (13 cases: override, no override, blank override, singular, plural-none, plural-two, non-dict, missing/empty `rerun_id`, missing/empty `root_task_id`, missing optional fields, several in order), `TestMissionIterationFactsWithReruns` (2), `TestMissionJobReruns` (2), `TestRefreshNotesARerunInTheDossier` (1, end to end) |
 
-7 total insertions/1 deletion, under the 500-line cap; no split needed.
+258 total insertions/5 deletions, under the 500-line cap; measured before
+committing (67+191=258), no split needed.
 
-### 393b26d2b F029 R7 C4a: prove a subtree rerun end to end through the write door
+### d1ec54f86 F029 R8 C4: add the round 8 mutation tool
 | Path | +/- | Reason |
 |---|---|---|
-| tests/ui_server/test_subtree_rerun_e2e_live.py | 436/0 | S2 (new file): docstring naming DECISIONS F029 D1-D6, the own-copy helpers from `test_task_injection_e2e_live.py` (`_start_ui_server_for_job`, `_post`, `_job_data`, `_get_json`, `_by_planned`, `_all_events_since`, `_report_markdown`), the new helpers (`_git`, `_make_repo`, `_task`, `_save_approved_three_task_job`, `_sha256_tree`, `_run_log_subtree_rerun_prepared_events`), and `test_the_door_path_reruns_a_middle_task_end_to_end` |
+| .agent/authored/f029-r8-mutations.py | 214/0 | the G5 mutation (red-proof) tool: m1 `rerun_decision_items` returns `[]` always, m2 the outcome always reads "the job's own model", m3 `refresh_mission_dossier` stops passing `reruns`, m4 the plural suffix is always "s" — one pytest route against `tests/orchestration/test_mission_dossier.py` |
 
-**Split from the block's single C4**, declared below: the whole file measured
-502 insertions before committing, 2 over the 500-line cap. Split by test
-method exactly as constraint 2 orders — C4a (helpers + test (a), 436
-insertions) and C4b (test (b), 66 insertions) — each measured before
-committing, each leaving the file's collected tests passing (1 test collected
-and green at C4a; 2 collected and green at C4b).
-
-### c16806bec F029 R7 C4b: prove a subtree rerun through the command line
-| Path | +/- | Reason |
-|---|---|---|
-| tests/ui_server/test_subtree_rerun_e2e_live.py | 66/0 | S2: `test_the_command_line_path_reruns_with_yes` |
-
-66 total insertions, under the 500-line cap; the second half of C4's split
-(see C4a above). 436 + 66 = 502, the file's own full line count.
-
-### 76b5afdfa F029 R7 C5: add the round 7 mutation tool
-| Path | +/- | Reason |
-|---|---|---|
-| .agent/authored/f029-r7-mutations.py | 223/0 | the G5 mutation (red-proof) tool, covering m1-m4 across `pingpong_job.py`, `ui_server.py`, `run_report.py` and `subtree_rerun.py`, one pytest route against the new e2e file |
-
-### add1a61d9 F029 R7 correction: fix the mutation tool's failed-count parser
-| Path | +/- | Reason |
-|---|---|---|
-| .agent/authored/f029-r7-mutations.py | 5/8 | `_failed_count_and_names` only matched a summary line shaped "N failed, M passed in Xs" or one bare-ending in "failed"; a run where every collected test failed prints "N failed in Xs", matching neither clause and silently reading `failed=0` — m3 and m4 misreported as `GREEN, NOT CAUGHT` although both genuinely reddened the suite (exit 1, 2 failed each). Replaced with a count of the distinct `FAILED` node-id lines — see Deviations |
-
-### (this commit) F029 R7 C6: rewrite handoff for round 7
+### (this commit) F029 R8 C5: rewrite handoff for round 8
 | Path | +/- | Reason |
 |---|---|---|
 | .agent/handoff.md | rewrite | this file |
 
 ## External actions
 
-`git worktree add --detach .remedy-wt/f029-r7-mut 76b5afdfa` (first attempt,
-at C5 literally) — m3 and m4 both genuinely reddened the suite (exit 1, 2
-failed) but the tool's own parser read `failed=0` for both and reported them
-`GREEN, NOT CAUGHT` (tool bug, see Deviations); removed with `git worktree
-remove --force .remedy-wt/f029-r7-mut` then `git worktree prune` before
-fixing the tool. After the correction commit: `git worktree add --detach
-.remedy-wt/f029-r7-mut add1a61d9`, ran the tool (all 4 mutations caught, see
-G5 below), then `git worktree remove --force .remedy-wt/f029-r7-mut` and
-`git worktree prune`. `git worktree list | wc -l` read 62 before the first
-add and 62 after the final remove, matching the step-4 reading throughout.
-`git push origin feature/f029-subtree-rerun` — its real outcome is reported
-to the delegator, since C6 cannot contain it. No PR opened, no merge, no
-branch deleted, no force-push, no stash.
+`git worktree add --detach .remedy-wt/f029-r8-mut d1ec54f86`, ran
+`.agent/authored/f029-r8-mutations.py` against it (all 4 mutations caught on
+the first run, see G5 below), then `git worktree remove --force
+.remedy-wt/f029-r8-mut` and `git worktree prune`. `git worktree list | wc -l`
+read 64 at step 4 and 64 again after the removal. `git push origin
+feature/f029-subtree-rerun` — its real outcome is reported to the delegator,
+since C5 cannot contain it. No PR opened, no merge, no branch checked out or
+deleted, no force-push, no stash.
 
 ## Verification
 
@@ -104,178 +74,170 @@ branch deleted, no force-push, no stash.
 - `ls .agent/STOP` → `No such file or directory` (absent).
 - `pwd` → `/home/decodeux/Repos/remedy`; `git status --porcelain` → empty;
   `git branch --show-current` → `feature/f029-subtree-rerun`; `git log
-  --oneline -1` → `cfd779c64`.
-- Block bytes (R-0954): measured 240 lines, sha256
-  `cdc5c160dfab23bdb8b1a4f895291f6aa04ec6285d363451b1e643327323ee72` — both
+  --oneline -1` → `a5933b73e`.
+- Block bytes (R-0954): measured 195 lines, sha256
+  `017da772f764376d873f8b0eeed61a250acf60f48abfaf5563689986ea7557d9` — both
   match the delegation message's readings exactly.
-- `git worktree list | wc -l` → 62.
+- `git worktree list | wc -l` → 64.
 
 **PAYLOADS** — both matched the table exactly:
-`booking.diff` 19 lines / 10507 bytes /
-`0b11f442f40785e3bf0b0a794351620fc7c196dd13e44d49cf44d61943f57717`;
-`plan.md` 35 lines / 1369 bytes /
-`09426a6990397d3192aa3edfa8579d9394ff22dda437a8d26c29dc04886b58b9`.
+`booking.diff` 52 lines / 12822 bytes /
+`2aac7defedfab8ff85ed0625483484a29d82968abe859a4aa97f1cad6b6759ae`;
+`plan.md` 31 lines / 1086 bytes /
+`1243204d604ff092bfe26b0357bb03141ab9d502887d6a7b9aa1e343a756710f`.
 
-**G1 TRANSPORT** — each `.agent/authored/f029-r7-*` copy read via `git show
-d0b547815:<path>` equals its source byte for byte: block copy == source
-(True, sha256 `cdc5c160...7323ee72`); booking.diff copy == source (True,
-sha256 `0b11f442...43f57717`); plan.md copy == source (True, sha256
-`09426a69...886b58b9`).
+**G1 TRANSPORT** — each `.agent/authored/f029-r8-*` copy read via `git show
+157fe2e1b:<path>` equals its source byte for byte: block copy ==
+`.remedy-wt/f029-r8/block.md` (True); booking.diff copy ==
+`.remedy-wt/f029-r8-payloads/booking.diff` (True); plan.md copy ==
+`.remedy-wt/f029-r8-payloads/plan.md` (True).
 
-**G2 THE RECORDS** — sha256 of each file read via `git show aabc2a2bc:<path>`
+**G2 THE RECORDS** — sha256 of each file read via `git show 5eb975540:<path>`
 equals the reviewer's reading exactly:
-`.agent/live_review.md` 329576 bytes,
-`7b9e2a2b0a6b5103ad1eafebdf98808ad2f0e2ccf813a9e36ee245ab5ffa230b` — match.
-`.agent/plan.md` 1369 bytes,
-`09426a6990397d3192aa3edfa8579d9394ff22dda437a8d26c29dc04886b58b9` — match.
-`.agent/prose_slips.md` 374248 bytes,
-`16e2ef58281e8cfd5b1d5de8dac99d824a9ad8781d778928d184b6240c67853e` — match.
-`open_finding_ids` (`scripts/rotate_live_review.py`) over `.agent/live_review.md`'s
-text: at `cfd779c64` → `[]`; at `aabc2a2bc` → `[]` — both match the reviewer's
-stated readings. `git diff --name-only d0b547815 aabc2a2bc` → exactly the
-three paths of the table, nothing else.
+`.agent/decisions.md` 2305437 bytes,
+`3b5d7d9a94aaa3c50bee1f3380c79d2183a8fe419aa956440aae0d0ec1c90eea` — match.
+`.agent/live_review.md` 332588 bytes,
+`da9d083a9deddd4f9b8ae2607fa92289e1d138ddb0ad4c82fbacd5b2952d4953` — match.
+`.agent/plan.md` 1086 bytes,
+`1243204d604ff092bfe26b0357bb03141ab9d502887d6a7b9aa1e343a756710f` — match.
+`open_finding_ids` (`scripts/rotate_live_review.py`) over
+`.agent/live_review.md`'s text: at `a5933b73e` → `[]`; at `5eb975540` → `[]`
+— both match the reviewer's stated readings. `git diff --name-only
+157fe2e1b 5eb975540` → exactly the three paths of the table, nothing else.
 
 **G3 THE CODE** —
 ```
-python3 -m ruff check tests/ui_server/test_subtree_rerun_e2e_live.py
+python3 -m ruff check packages/orchestration/mission_dossier.py tests/orchestration/test_mission_dossier.py
 ```
-→ `All checks passed!`, exit 0 (run at C5, `76b5afdfa`, and unaffected by the
-correction commit, which touches only the mutation tool). Quoted from the
+→ `All checks passed!`, exit 0 (run at C4, `d1ec54f86`). Quoted from the C3
 diff (matches what is committed at HEAD):
 
-S1, `RunDetailPopover.module.css`:
-```css
-.confirmActions {
-  display: flex;
-  gap: 8px;
-  margin: 8px 0 0;
-}
+```python
+RERUN_ID_TEMPLATE = "RR-{job}-{rerun}"
+
+
+def rerun_decision_items(
+        job_reruns: Iterable[tuple[str, dict[str, Any]]]) -> list[DossierItem]:
+    items: list[DossierItem] = []
+    for job_id, record in job_reruns:
+        if not isinstance(record, dict):
+            continue
+        rerun_id = record.get("rerun_id")
+        root = record.get("root_task_id")
+        if not rerun_id or not root:
+            continue
+        subtree = record.get("subtree")
+        n = max(len(subtree) - 1, 0) if isinstance(subtree, (list, tuple)) else 0
+        job8 = job_id[:8]
+        reset12 = str(record.get("reset_commit") or "")[:12]
+        model = record.get("model")
+        override = model.get("override") if isinstance(model, dict) else ""
+        override = override if isinstance(override, str) and override else ""
+        text = (f"rerun of task {root} and {n} task{'' if n == 1 else 's'} "
+                f"after it on job {job8}")
+        outcome = (f"reset to {reset12}, run on {override}" if override
+                  else f"reset to {reset12}, the job's own model")
+        items.append(DossierItem(
+            id=RERUN_ID_TEMPLATE.format(job=job8, rerun=rerun_id),
+            text=text, resolved=True, outcome=outcome))
+    return items
 ```
 
-S1, `RunDetailPopover.tsx`:
+```python
+def mission_job_reruns(
+        mission: Any, root: Path | None = None) -> list[tuple[str, dict[str, Any]]]:
+    from packages.orchestration.pingpong_job import load_job_plan
+
+    pairs: list[tuple[str, dict[str, Any]]] = []
+    for job_id in mission.job_ids():
+        job = load_job_plan(job_id, root)
+        if job is None:
+            continue
+        for record in job.reruns:
+            if isinstance(record, dict):
+                pairs.append((job_id, record))
+    return pairs
+```
+
+`mission_iteration_facts` changed lines:
 ```diff
--        <div className={styles.actions}>
-+        <div className={styles.confirmActions}>
+                            ledger: Sequence[dict[str, Any]] = (),
++                            reruns: Sequence[tuple[str, dict[str, Any]]] = (),
+                             ) -> IterationFacts:
+@@
+-        for entry in ledger]
++        for entry in ledger] + rerun_decision_items(reruns)
 ```
 
-S2 step 4 (`test_subtree_rerun_e2e_live.py`):
-```python
-        status, body = _post(port, token, "job.rerun-subtree", job_id=job_id,
-                             nonce="n-rerun-2",
-                             args={"task_id": b_id, "model": MODEL_M, "confirm_cost": True})
-        assert status == 200, body
-        assert body["outcome"] == "prepared", body
-        assert body["root_task_id"] == b_id, body
-        assert body["subtree"] == [b_id, c_id], body
-        assert body["exact"] is True, body
-        assert body["pre_task_tree_equal"] is True, body
-        assert body["model"] == {
-            "override": MODEL_M, "configured": "", "reason": "human_override"}, body
-        run_command = f"remedy job run {job_id}"
-        assert body["run_command"] == run_command, body
-```
-
-S2 step 5 (`test_subtree_rerun_e2e_live.py`):
-```python
-        assert _git(repo, "rev-parse", f"{b_commit_1}^").strip() == base_commit
-        assert (_git(repo, "rev-parse", f"{reset_commit}^{{tree}}").strip()
-               == _git(repo, "rev-parse", f"{base_commit}^{{tree}}").strip())
-        job_branch = _job_data(data_dir, job_id)["worktree"]["branch"]
-        ancestor = subprocess.run(
-            ["git", "merge-base", "--is-ancestor", b_commit_1, job_branch],
-            cwd=str(repo), capture_output=True, text=True)
-        assert ancestor.returncode == 0, ancestor.stderr
-```
-
-S2 step 10 (`test_subtree_rerun_e2e_live.py`):
-```python
-        from packages.orchestration.pingpong_loop import load_run
-
-        b_run_2 = load_run(new_b2["run_id"])
-        assert b_run_2["provider_evidence"]["builder_configured_model"] == MODEL_M
-        c_run_2 = load_run(new_c2["run_id"])
-        assert c_run_2["provider_evidence"]["builder_configured_model"] == MODEL_M
-
-        b_run_1 = load_run(b_run_id_1)
-        assert b_run_1["provider_evidence"]["builder_configured_model"] != MODEL_M
-
-        after_hashes = _sha256_tree(run_dir(b_run_id_1, data_dir))
-        assert after_hashes == before_hashes
+`refresh_mission_dossier` changed lines:
+```diff
+     facts = mission_iteration_facts(
+         mission, done_milestones=done_milestones(mission),
+-        ledger=read_ledger(project_id, mission_id, root))
++        ledger=read_ledger(project_id, mission_id, root),
++        reruns=mission_job_reruns(mission, root))
 ```
 
 **G4 THE TESTS** — the exact selection, serially, real exit code:
 ```
-python3 -m pytest -q -p no:cacheprovider -rs tests/ui_server/test_subtree_rerun_e2e_live.py tests/ui_contracts tests/orchestration/test_run_report.py tests/ui_server/test_rerun_subtree_door.py tests/ui_server/test_dashboard_task_attempts.py tests/ui_server/test_dashboard_contract.py tests/ui_server/test_brain_view_model.py "tests/orchestration/test_test_runner.py::TestVitestFrontendTestFoundation" tests/orchestration/test_import_reachability.py tests/test_no_orphan_modules.py tests/test_imports.py tests/test_ble001_ratchet.py tests/regression/test_named_bugs.py tests/regression/test_resource_safety.py tests/orchestration/test_live_review_rotation.py tests/orchestration/test_integrity_gate.py tests/test_agent_tooling.py tests/docs tests/cli/test_golden_path.py
+python3 -m pytest -q -p no:cacheprovider -rs tests/orchestration/test_mission_dossier.py tests/orchestration/test_orchestrator_loop.py tests/orchestration/test_handoff.py tests/orchestration/test_subtree_rerun_prepare.py tests/orchestration/test_subtree_rerun.py tests/test_imports.py tests/orchestration/test_import_reachability.py tests/test_no_orphan_modules.py tests/test_ble001_ratchet.py tests/regression/test_named_bugs.py tests/regression/test_resource_safety.py tests/orchestration/test_live_review_rotation.py tests/orchestration/test_integrity_gate.py tests/test_agent_tooling.py tests/docs tests/cli/test_golden_path.py
 ```
-Run at C5 (`76b5afdfa`; unaffected by the later tool-only correction):
-`1698 passed, 11 skipped`, real exit code 0. All eleven `SKIPPED` lines cite
-an F252 quarantine (four in `tests/ui_contracts/`, six in
-`test_named_bugs.py`, one in `test_agent_tooling.py`) — the same eleven the
-reviewer's own base reading at `cfd779c6` already carried. Accounting for the
-difference from 1696: this round's own new file,
-`tests/ui_server/test_subtree_rerun_e2e_live.py`, adds exactly 2 pytest nodes
-(`test_the_door_path_reruns_a_middle_task_end_to_end` and
-`test_the_command_line_path_reruns_with_yes`); S1's `.tsx`/`.css` edit is
-exercised inside the single existing `TestVitestFrontendTestFoundation`
-pytest node, so it adds no further node of its own. 1696 + 2 = 1698, exactly
-the passed count above; no unexplained difference. Then `python3 -m
-apps.cli.main integrity check --json` → all 6 checks `pass`
-(`handler_import`, `live_review_verdict`, `plan_consistency`,
-`relevant_untracked`, `repo_root_hygiene`, `high_blockers_open`),
-`fail_count: 0`, `ok: true`.
+Run at C4 (`d1ec54f86`): `951 passed, 7 skipped`, real exit code 0. All seven
+`SKIPPED` lines cite an F252 quarantine (six in `test_named_bugs.py`, one in
+`test_agent_tooling.py`) — the same seven the reviewer's own base reading at
+`a5933b73` already carried. Accounting for the difference from 933: this
+round's file, `tests/orchestration/test_mission_dossier.py`, adds exactly 18
+new pytest nodes (13 in `TestRerunDecisionItems`, 2 in
+`TestMissionIterationFactsWithReruns`, 2 in `TestMissionJobReruns`, 1 in
+`TestRefreshNotesARerunInTheDossier`). 933 + 18 = 951, exactly the passed
+count above; no unexplained difference. `python3 -m pytest --collect-only -q
+-p no:cacheprovider tests/orchestration/test_mission_dossier.py` at C4 →
+`122 tests collected`, versus the reviewer's `104 tests collected` at
+`a5933b73` — the same 18-node difference. Then `python3 -m apps.cli.main
+integrity check --json` → all 6 checks `pass` (`handler_import`,
+`live_review_verdict`, `plan_consistency`, `relevant_untracked`,
+`repo_root_hygiene`, `high_blockers_open`), `fail_count: 0`, `ok: true`.
 
-**G5 THE RED PROOFS** — first attempt, `git worktree add --detach
-.remedy-wt/f029-r7-mut 76b5afdfa` (literally C5): both control runs green,
-but m3 and m4 both printed `failed=0` and `GREEN, NOT CAUGHT` despite the
-pasted pytest output showing `2 failed` and exit 1 for each — the tool's own
-summary-line parser matched neither of its two recognized shapes against a
-bare "N failed in Xs" line (see Deviations). Read `ALL MUTATIONS CAUGHT AND
-RESTORED CLEANLY: False`, exit 1. Removed the worktree, fixed the tool
-(commit `add1a61d9`, "F029 R7 correction: ..."), re-added the worktree at the
-corrected HEAD: `git worktree add --detach .remedy-wt/f029-r7-mut
-add1a61d9`, then `python3 -B .agent/authored/f029-r7-mutations.py
-/home/decodeux/Repos/remedy/.remedy-wt/f029-r7-mut`:
+**G5 THE RED PROOFS** — `git worktree add --detach .remedy-wt/f029-r8-mut
+d1ec54f86`, then `python3 -B .agent/authored/f029-r8-mutations.py
+/home/decodeux/Repos/remedy/.remedy-wt/f029-r8-mut`:
 ```
-packages.orchestration.subtree_rerun.__file__ = /home/decodeux/Repos/remedy/.remedy-wt/f029-r7-mut/packages/orchestration/subtree_rerun.py
-packages.orchestration.pingpong_job.__file__ = /home/decodeux/Repos/remedy/.remedy-wt/f029-r7-mut/packages/orchestration/pingpong_job.py
-both modules resolve inside the worktree: True
+packages.orchestration.mission_dossier.__file__ = /home/decodeux/Repos/remedy/.remedy-wt/f029-r8-mut/packages/orchestration/mission_dossier.py
+module resolves inside the worktree: True
 control: exit=0 failed=0
-m1 a run ignores the model override: exit=1 failed=1 — test_the_door_path_reruns_a_middle_task_end_to_end
-m2 the dashboard forgets the attempt: exit=1 failed=1 — test_the_door_path_reruns_a_middle_task_end_to_end
-m3 the report drops the clause for a second attempt: exit=1 failed=2 — both tests
-m4 the fold does not count the attempt: exit=1 failed=2 — both tests
-restored byte-identical: True (pingpong_job.py, run_report.py, subtree_rerun.py, ui_server.py)
+m1 rerun_decision_items answers an empty list whatever it is given: exit=1 failed=10 — 10 of TestRerunDecisionItems/TestMissionIterationFactsWithReruns/TestRefreshNotesARerunInTheDossier
+m2 the outcome always reads "the job's own model": exit=1 failed=1 — test_an_override_is_named_in_the_outcome
+m3 refresh_mission_dossier no longer passes reruns: exit=1 failed=1 — test_a_rerun_on_a_linked_job_is_noted_at_the_next_refresh
+m4 the text's plural suffix is always "s": exit=1 failed=1 — test_the_singular_names_one_task_after_the_root
+restored byte-identical: True (packages/orchestration/mission_dossier.py)
 control (after): exit=0
 git status --porcelain (primary checkout): '' (empty)
 ALL MUTATIONS CAUGHT AND RESTORED CLEANLY: True
 ```
-All four mutations were red on this (corrected) run; no repair round was
-needed for the production code, only the tool bug fixed before this gate
-passed. Then `git worktree remove --force .remedy-wt/f029-r7-mut`, `git
-worktree prune`; `git worktree list | wc -l` → 62, matching the step-4
-reading.
+All four mutations were red on the first run; no repair round needed for the
+production code or the tool. Then `git worktree remove --force
+.remedy-wt/f029-r8-mut`, `git worktree prune`; `git worktree list | wc -l` →
+64, matching the step-4 reading.
 
-**Constraint 3** — `git diff --name-only cfd779c64`, run once more after
+**Constraint 3** — `git diff --name-only a5933b73e`, run once more after
 writing this file, lists exactly the block's tracked path set plus
-`.agent/handoff.md` itself: `.agent/authored/f029-r7-block.md`,
-`.agent/authored/f029-r7-booking.diff`, `.agent/authored/f029-r7-mutations.py`,
-`.agent/authored/f029-r7-plan.md`, `.agent/handoff.md`,
-`.agent/live_review.md`, `.agent/plan.md`, `.agent/prose_slips.md`,
-`apps/ui/src/components/graph/RunDetailPopover.module.css`,
-`apps/ui/src/components/graph/RunDetailPopover.tsx`,
-`tests/ui_server/test_subtree_rerun_e2e_live.py` — 11 paths in total; no path
+`.agent/handoff.md` itself: `.agent/authored/f029-r8-block.md`,
+`.agent/authored/f029-r8-booking.diff`, `.agent/authored/f029-r8-mutations.py`,
+`.agent/authored/f029-r8-plan.md`, `.agent/decisions.md`, `.agent/handoff.md`,
+`.agent/live_review.md`, `.agent/plan.md`,
+`packages/orchestration/mission_dossier.py`,
+`tests/orchestration/test_mission_dossier.py` — 10 paths in total; no path
 outside the set changed.
 
 ## Authored-text proofs
 
-`.agent/authored/f029-r7-block.md`, `f029-r7-booking.diff` and
-`f029-r7-plan.md` (C1, `d0b547815`): each read back via `git show` equals its
-source (`.remedy-wt/f029-r7/block.md`, `.remedy-wt/f029-r7-payloads/booking.diff`,
-`.remedy-wt/f029-r7-payloads/plan.md`) byte for byte — see G1 above.
-`.agent/authored/f029-r7-mutations.py` (C5, `76b5afdfa`, corrected at
-`add1a61d9`) is this session's OWN tool, not reviewer-authored text, so it
-carries no fidelity comparison; its behavior is proved instead by G5's live
-run above.
+`.agent/authored/f029-r8-block.md`, `f029-r8-booking.diff` and
+`f029-r8-plan.md` (C1, `157fe2e1b`): each read back via `git show` equals its
+source (`.remedy-wt/f029-r8/block.md`, `.remedy-wt/f029-r8-payloads/booking.diff`,
+`.remedy-wt/f029-r8-payloads/plan.md`) byte for byte — see G1 above.
+`.agent/authored/f029-r8-mutations.py` (C4, `d1ec54f86`) is this session's
+OWN tool, not reviewer-authored text, so it carries no fidelity comparison;
+its behavior is proved instead by G5's live run above.
 
 ## Item-status table
 
@@ -284,61 +246,27 @@ run above.
 | C1 | done | |
 | C2 | done | |
 | C3 | done | |
-| C4a | deviated | split from the block's single C4 (constraint 2): the full file measured 502 insertions, 2 over the 500-line cap; split by test method — helpers + test (a) here |
-| C4b | deviated | second half of the same split — test (b) here |
-| C5 | done | |
-| correction | done | fixed this round's own mutation-tool bug (failed-count misparse on a bare "N failed in Xs" summary line) before C6; declared below |
-| C6 | done | this commit |
+| C4 | done | |
+| C5 | done | this commit |
 | G1 transport | done | PASS — all copies byte-identical |
 | G2 the records | done | PASS — sha256 and open_finding_ids both match |
-| G3 the code | done | PASS — ruff exit 0, S1 (both files) and S2 steps 4/5/10 quoted from disk |
-| G4 the tests | done | PASS — 1698 passed, 11 skipped, exit 0; +2 nodes fully accounted; integrity check all 6 pass |
-| G5 the red proofs | done | PASS (after the correction) — all 4 mutations caught, control green before/after, restored byte-identical |
-| S1 the spacing | done | `RunDetailPopover.tsx`/`.module.css`: `confirmActions` class + rule, first actions row untouched |
-| S2 the proof | done | `test_subtree_rerun_e2e_live.py`: door path (a) and command-line path (b), both attempts read back from the job record, git, the run log, the dashboard, the run records and the report |
+| G3 the code | done | PASS — ruff exit 0, `rerun_decision_items`, `mission_job_reruns` and the changed lines of `mission_iteration_facts`/`refresh_mission_dossier` quoted from disk |
+| G4 the tests | done | PASS — 951 passed, 7 skipped, exit 0; +18 nodes fully accounted (104→122 collected); integrity check all 6 pass |
+| G5 the red proofs | done | PASS on the first run — all 4 mutations caught, control green before/after, restored byte-identical |
+| S1 the items | done | `RERUN_ID_TEMPLATE`, `rerun_decision_items` — defensive reads, singular/plural text, override/no-override outcome |
+| S2 the source | done | `mission_job_reruns` — `load_job_plan` imported inside the function, unloadable job skipped |
+| S3 the wiring | done | `mission_iteration_facts` gains `reruns`; `refresh_mission_dossier` passes `mission_job_reruns(mission, root)` |
 
 ## Deviations & assumptions
 
-1. **C4 split into C4a/C4b** (constraint 2, the route the block itself
-   anticipates). Measured before committing: the whole new file was 502
-   insertions, 2 over the 500-line cap. Split by test method — C4a (the
-   header, every helper, and `test_the_door_path_reruns_a_middle_task_end_to_end`,
-   436 insertions) and C4b (`test_the_command_line_path_reruns_with_yes`, 66
-   insertions) — each measured under the cap, each leaving the file's
-   collected tests passing (1 collected and green at C4a; 2 collected and
-   green at C4b, run via `python3 -m pytest -q -p no:cacheprovider
-   tests/ui_server/test_subtree_rerun_e2e_live.py` both times) before
-   committing.
-
-2. **A tool bug found and fixed within the round** (constraint 4's
-   correction allowance, read for this round's own tooling rather than a
-   test it wrote, exactly as F029 R6 precedent reads it). This round's
-   `_failed_count_and_names` recognized only a summary line shaped "N
-   failed, M passed in Xs" (via the `passed` substring test) or one ending
-   bare in the literal word "failed" with nothing after it; pytest's real
-   summary line when EVERY collected test in the file fails prints "N
-   failed in Xs" — neither clause matched, so the function silently
-   returned `failed_count=0` even though the run's own exit code was 1 and
-   its pasted output showed two distinct `FAILED` lines. The tool's
-   "caught" check (`code != 0 and failed_count != 0`) then read that as
-   `failed_count == 0` and printed `GREEN, NOT CAUGHT` for m3 and m4, both
-   of which had genuinely reddened the suite. Fixed by counting the
-   distinct `FAILED <node id>` lines directly instead of parsing the
-   summary line's shape at all — that count is correct regardless of what
-   else ran alongside it. Corrected in its own commit (`add1a61d9`) before
-   re-running G5; no production file was touched by the fix, and re-running
-   the (corrected) tool read all four mutations caught, matching what the
-   raw pytest output already showed on the first attempt.
-
-No commit was reordered or dropped from the block's ordered sequence beyond
-the declared C4 split; no existing test was touched by this round at all
-(S1 and S2 are additive/renaming-only, and S2 is a wholly new file); no gate
-went red in its FINAL (post-correction) state.
+None. Every gate passed on its first run; no test this round wrote needed
+correction; no existing test went red; no commit was split, reordered or
+dropped from the block's ordered C1-C5 sequence.
 
 ## Next
 
-Phase 1 rule 1 (read `.agent/STOP` from disk), then the review of round 7
-with the reviewer's headless render of the confirmation row, then the
-closure sequence.
-
-Open findings: 0. Operator questions: 0.
+Phase 1 rule 1 (read `.agent/STOP` from disk), then the review of round 8,
+then the closure sequence: Built State and the checklist consolidation with
+the one full suite, then the evidence job and review zip, then the ledger
+rotation, the STATUS line and the pull request. Open findings: 0.
+Operator-questions: 0.
