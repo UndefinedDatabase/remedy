@@ -1,0 +1,89 @@
+diff --git a/.agent/decisions.md b/.agent/decisions.md
+index 49864e0e4..3c9d113ac 100644
+--- a/.agent/decisions.md
++++ b/.agent/decisions.md
+@@ -23110,3 +23110,63 @@ come from its own run's calls, and the draft reports how many calls it took inst
+ 
+ HOW TO REVERSE: delete `packages/orchestration/task_injection.py`, its tests and its line in
+ `ALLOWED_UNWIRED`, and delete this paragraph.
++
++## DECISION F028 D2 — a confirmed injection is a second create-only control file; `run_job` folds it at four points, appends the task at the end of the plan and of its task list, logs the add as `plan_add_task` and re-seals the approved plan; a fold after the last task parks the job paused; T002 takes two rounds (2026-09-27)
++
++CONTEXT: DECISION F028 D1 fixed the draft and left the confirmation to T002. Measured at
++`4b6ccd1d`: `run_job` in `packages/orchestration/pingpong_job.py` folds vetoes through
++`_fold_task_vetoes` before its task loop and at every pre-task safe point, and its loop is
++`for idx, task in enumerate(job.tasks)`, which sees a task appended to the list while it runs;
++after the loop the job is `completed` when every task is done, and a job left with a pending task
++and no task cap keeps the state it had; `edit_task_at_runtime` in `task_edit_runtime.py` shows the
++shape of a runtime edit: `apply_edit`, `map_task_plan_to_tasks`, `record_llm_task_deliverables`,
++the plan version bumped, the approval hash re-sealed with `plan_content_hash` when the plan was
++approved, an edit-log entry carrying a block of its own with `dod_resync_pending`;
++`PLAN_EDIT_COMMANDS` in `plan_editing.py` is `tuple(_EDITS)`, pinned by
++`tests/orchestration/test_plan_editing.py`, and names what an operator may send BEFORE approval;
++`replay_edits` re-runs every logged command through `apply_edit`.
++
++CHOSEN: (1) THE ORDER. T002 takes two rounds. Round 2 lands the confirmation and the fold with the
++provenance and the edit log, and repairs R-1076. Round 3 lands the shortfall seed's three answers,
++the seed's labels as a mapping by option, as `veto_proposal`'s seed has them, and the run-log event
++with every reader of its name. (2) THE CONFIRMATION. `confirm_task_injection` refuses, in order, a
++terminal job, a draft `read_injection_draft` refuses, a draft of another job (`draft_unknown`), a
++draft whose status is not `confirmable` (`draft_needs_decision`), a draft already confirmed
++(`already_confirmed`), a draft whose task id is already a task of the plan or of a confirmed
++injection, or whose `depends_on` names a task the plan no longer holds (`draft_stale`, the operator
++drafts again), and a plan that the confirmed injections have filled to the cap (`plan_full`).
++Otherwise it publishes one create-only file in `injected_tasks/` under the job's control directory,
++named as the draft file is, and answers `confirmed`. It never writes `job.json`. (3) THE FOLD.
++`_fold_task_injections` in `pingpong_job.py` folds every confirmed injection the record does not
++yet hold, in the order they were confirmed, at four points: before the task loop and at every
++pre-task safe point, each right after the veto fold; after the post-task safe point of every task;
++and once after the loop, before the terminal readings. A task the loop has not yet reached is run
++in the same run, because the loop reads the live list; a task only the last fold appends parks the
++job `paused`, the task cap's own resumable state, instead of letting it complete with work
++pending. (4) THE APPLY is `apply_injection_to_job` in `task_injection.py`, pure over the in-memory
++record: `apply_edit(plan, "plan_add_task", ...)`, the mapped entry for the new task appended to
++`job.tasks` with `inputs["plan"]` carrying `origin` `human_injected`, `plan_rationale`,
++`task_rationale` and `injection_draft_id`, the plan version bumped, the approval hash re-sealed as
++F026 re-seals it, and one edit-log entry whose `injection` block names the draft, the entry's task
++id, the placement basis, the operator's text and `dod_resync_pending`. A fold the edit refuses
++applies nothing and is recorded inert with its reason. `job.metadata["task_injections"]`, keyed by
++draft id, is how the fold knows an injection is already folded. (5) THE EDIT KIND. `plan_add_task`
++joins `_EDITS`, appending one validated `PlannedTask` whose id is new, so `replay_edits` replays an
++injected plan; `PLAN_EDIT_COMMANDS` becomes the explicit tuple of F015's six commands, unchanged in
++value, because an add reaches a plan only through an injection.
++
++ALTERNATIVES: rewriting the task loop as a `while` loop that re-reads the task list, rejected
++because the live list already gives that behaviour for every task but one moment, and the fold
++after the loop covers that moment; completing the job and leaving a late confirmation unrun,
++rejected because a confirmed task would silently never execute; exposing `plan_add_task` among
++F015's pre-approval commands, rejected because a free add before approval would bypass the
++planner's draft and the budget check that make an injection safe.
++
++DELIBERATE ABSENCES: the fold does not rewrite the job's evidence export of the edit log
++(`user_edited_plan.json`), because that write happens outside the runner's record and a failed
++export must not stop a running job; the record's own edit log is the source. No run-log event is
++written until round 3.
++
++HOW TO REVERSE: remove `confirm_task_injection`, `apply_injection_to_job`, `plan_add_task` and
++`_fold_task_injections` with its four calls, restore `PLAN_EDIT_COMMANDS` to `tuple(_EDITS)`, and
++delete this paragraph.
+diff --git a/.agent/live_review.md b/.agent/live_review.md
+index 1f37d7fe7..aa07407da 100644
+--- a/.agent/live_review.md
++++ b/.agent/live_review.md
+@@ -424,3 +424,7 @@ Gate: F288 R8 — the F288 round 8 entry: the closure sequence's second round, w
+ Gate: F288 R9 — the F288 round 9 entry: the closure sequence's evidence round, which books round 8 and builds the evidence bundle and the review package at the accepted head. VERDICT PASS. Re-derived over `742362f7`..`acd2a908` by the planner and reviewer of F288's second session, whose own readings are every one below. THE RANGE IS 3 COMMITS, at `731c8d28` 347, `57eba86a` 6 and `acd2a908` 189 insertions by `git show --numstat`, each under the 500-line cap, each single-parent and each ending with the ordered trailer; the tracked path set is exactly the one the block ordered, and no evidence directory or package is committed. THE TRANSPORT PROOF: the block copy and the three payload copies, read at `731c8d28`, equal the reviewer's originals byte for byte. THE BOOKING: at `57eba86a` the ledger and the plan equal the reviewer's simulation tree byte for byte, and the open set reads empty. `57eba86adcc3ceeb83b04a3dfe0cf5d655a0d205` is the closure's accepted head. THE BUNDLE: the evidence job `f288r9e1001` against the fork point `db691093`, run by the worker at the accepted head, read the ancestry-path and plain counts equal at 55, 1367 node ids collected with 2 deselected, none unsafe and the planted id refused, 1367 passed and 0 skipped at exit 0, an empty `validate_verification_tests` problem list and `is_valid_current_run` True. THE PACKAGE: `remedy-review-20260927-060235-READY_FOR_REVIEW.zip` in `/home/decodeux/Repos/remedy-history/zips`, whose SHA-256 the reviewer computed itself from the archived file as `184f155676e7fdfc8bdf8f2db736ed0b96b127f84fb3873580fefe38c10373d2`; the build log reads `PACKAGE_STATUS=READY_FOR_REVIEW`, `EVIDENCE_AUTHORITATIVE=true` and `REVIEW_SUBJECT_ALIGNMENT=PASS`, and the manifest the reviewer read out of the package names the base `db69109312f23fc2a5f0905a9666fe210f09f801` and the head `57eba86adcc3ceeb83b04a3dfe0cf5d655a0d205` over 55 commits, `testzip` answering None. THE TESTS: the reviewer's own serial run of `tests/docs/` and the golden path at `acd2a908` read 369 passed at real exit code 0, and all six `integrity check` checks read `pass`. The worker declared no deviation, and the handback carries its item-status table.
+ 
+ Gate: F288 R10 — the F288 round 10 entry: the closing round — the booking of round 9, the ledger rotation, the STATUS acceptance with its README pins and SU-034's consumption, and the pull request. VERDICT PASS. Reviewed over `acd2a908`..`27498680` by the planner and reviewer of F288's second session, and booked by the planner and reviewer of F028's first session, who re-measured the range and the merged tree. THE RANGE IS 4 COMMITS, at `d2cedf64` 455, `e6b6ca8f` 8, `c1b4eb30` 18 and `27498680` 186 insertions by `git show --numstat`, each under the 500-line cap, each single-parent and each ending with the ordered trailer; no deviation was declared. THE TRANSPORT PROOF: the block copy and the seven payload copies, read at `d2cedf64`, equal the reviewer's originals byte for byte. THE BOOKING AND THE ROTATION: at `e6b6ca8f` the ledger and the plan equal the reviewer's simulation tree byte for byte; at `c1b4eb30` `scripts/rotate_live_review.py` moved 7 gate records and 1 finding pair into `.agent/live_review_archive.md`, the open set reading empty before and after. THE ACCEPTANCE: at `27498680` `docs/roadmap/STATUS.md`, `README.md` and `scripts/self_use_queue.json` equal the reviewer's simulation tree byte for byte, F288's line reads `[x]` with its evidence pins and occurs once, SU-034's `consumed_by` reads `F288`, and both README pins were red-controlled by the reviewer; the reviewer's serial run of the round's selection read 512 passed at real exit code 0. THE MERGE: pull request 286 was opened from `27498680`, both hosted CI jobs of run 36293930924 ended `success` on it, and it merged into `main` at F028's Open PR Gate as `ceb90b8a`, whose tree `6200163f` is `27498680`'s; on that tree F028's reviewer read all six `integrity check` checks `pass` and `tests/docs/` with the golden path at 369 passed at real exit code 0.
++
++Gate: F028 R1 — the F028 round 1 entry: the claim, the booking of F288's round 10, DECISION F028 D1, and T001 — the draft pass of a task injection: the planner's one structured call, the placement, the budget check with its shortfall seed, the fence flags, and the draft as a create-only control file with a time to live. VERDICT PASS. Re-derived over `ceb90b8a`..`4b6ccd1d` by the planner and reviewer of F028's first session, whose own runs produced every reading below. THE RANGE IS 8 COMMITS, at `d7cdc402` 405, `3e9c5f05` 162, `89ad1f1c` 135, `a6128ea8` 289, `8d5358bc` 344, `d7f73dad` 447, `32e9931d` 209 and `4b6ccd1d` 388 insertions by `git show --numstat`, each under the 500-line cap, each single-parent and each ending with the ordered trailer; the tracked path set equals the block's constraint 3. The worker declared one deviation, the split of C3 and of C4 into two commits each under constraint 2, because the block sized neither; the split put the `ALLOWED_UNWIRED` line in C3b, so `a6128ea8` alone holds an orphan module, which is the block's omission and is recorded in `.agent/prose_slips.md`. THE TRANSPORT PROOF: the block copy and the three payload copies, read at `d7cdc402` and `3e9c5f05`, equal the reviewer's originals byte for byte, and at `89ad1f1c` the STATUS file, the ledger, the decisions, the plan and the context equal the reviewer's simulation tree byte for byte, the open set reading empty at `ceb90b8a` and at `89ad1f1c`. THE CODE: `packages/orchestration/task_injection.py` implements S1 to S8 as specified, read whole by the reviewer; two readings go to round 2, R-1076 below, and the shortfall seed's `option_labels`, which the code answers as a list where `veto_proposal`'s seed answers a mapping by option, a shape the block did not fix and round 2's DECISION F028 D2 does. THE TESTS: the reviewer's own serial run of the round's selection in the primary checkout at `4b6ccd1d` read 1065 passed and 7 skipped at real exit code 0, the base's 1022 plus the new file's 43 nodes; `python3 -m ruff check` over the three touched Python files passed; all six `integrity check` checks read `pass`. THE RED PROOFS: the reviewer ran the committed `.agent/authored/f028-r1-mutations.py` itself in a disposable worktree at `4b6ccd1d`: both unmutated controls exit 0, all twelve mutations exit 1 with at least one failing node each, and the module is restored byte-identical; the worktree was removed and `git worktree list` reads 61 lines, as before the round.
++
++- R-1076 — Low, AN INJECTION DRAFT WHOSE STORED RECORD LACKS A READABLE EXPIRY NEVER EXPIRES. Raised by the planner and reviewer of F028's first session at round 1's gate. SEARCHED BEFORE MINTING (checklist item 30): the open set at `4b6ccd1d` is empty, and `read_injection_draft` and `expires_at` occur in this record only in round 1's gate entry above. MEASURED at `4b6ccd1d`: `read_injection_draft` in `packages/orchestration/task_injection.py` checks expiry only `if isinstance(expires_at, str) and expires_at`, so a record whose `expires_at` is missing, empty or not a string is answered as a live draft forever, and a string `datetime.fromisoformat` cannot parse raises a bare `ValueError` rather than the module's `TaskInjectionError`, while DECISION F028 D1 (10) makes expiry what renders an unconfirmed draft harmless. WHY LOW: `draft_task_injection` always writes a valid `expires_at`, and the control directory is written with owner-only modes, so only a corrupted or hand-edited file reaches the hole; but it fails open, and T002's confirmation will trust this reader. FIX: `read_injection_draft` raises `TaskInjectionError` for a record whose `expires_at` is missing, not a string, not parseable by `datetime.fromisoformat`, or without a time zone, and a test pins each of the four. Owner: F028.
+diff --git a/.agent/prose_slips.md b/.agent/prose_slips.md
+index e955bbae3..0043c643f 100644
+--- a/.agent/prose_slips.md
++++ b/.agent/prose_slips.md
+@@ -1124,3 +1124,4 @@
+ 2026-09-26, F289 round 4 — the reviewer's self-use script read the job's workspace for the staleness catalog after `run_next_self_use_item` returned, while the runner removes a finished job's worktree, so the reading recorded `NO WORKSPACE` and the reviewer took it from the job's branch instead.
+ 2026-09-27, F288 round 1 — THE TESTS of the block ordered the job-runner test's `run_pingpong` stand-in monkeypatched onto `packages.orchestration.pingpong_job`, while `run_job` imports `run_pingpong` inside its body, so a stand-in must replace it on `packages.orchestration.pingpong_loop`, as every existing stand-in in that test file does; the worker followed the file and declared it.
+ 2026-09-27, F288 round 3 — the block ordered the demo recording captured again and every row widened by two fields, and constraint 3's path set named the recording's own golden and live test but none of the four other vitest files that import the recording or compare parsed rows, so round 3 ended red on them and round 4 repairs them under DECISION F288 D4; a `grep` for the recording's module name and its exported constants across `apps/ui/src` and `tests` at authoring time would have listed every one of them.
++2026-09-27, F028 round 1 — the block sized neither C3 nor C4 against the 500-line cap, so the worker split both under constraint 2 and the `ALLOWED_UNWIRED` line C3 ordered landed in C3b, leaving the module an orphan at `a6128ea8`; a block that orders a new module sizes it and names which part carries its guard entry.
