@@ -1,0 +1,161 @@
+diff --git a/.agent/decisions.md b/.agent/decisions.md
+index d3f64d9c2..283f937c9 100644
+--- a/.agent/decisions.md
++++ b/.agent/decisions.md
+@@ -23891,3 +23891,82 @@ HOW TO REVERSE: remove the `note` key and its payload function, `steeringNote.ts
+ operator disc, `focusedTaskId`, `sendSteeringNote`, the copy and `STEERING_REPLY_FRAMING`, restore
+ the placeholder and the pinned `onSend` literal, delete the two F030 rows of
+ `docs/ui/design_reference/assumption_log.md`, and delete this paragraph.
++
++## DECISION F035 D1 — the ownership ledger is a pure pass over the records that already exist: one entry per human-attributable action, each with an actor that names the door it came through and never more than that door recorded, a time, the verbatim text and a consequence; the command audit is not joined and the command line is not made to write it, because every class's own record already names its door; T001 lands in two rounds, the classes whose records name an actor first (2026-09-28)
++
++CONTEXT: T5_F035.md was written before most of the actions it lists were built, and it describes
++as sources several records that now exist in shapes it could not know. Measured at `a0b287a5`:
++no module, file or command is named ownership, and `packages/orchestration/job_digest.py`
++returns an `ownership` key that is always an empty list, which the browser's digest card already
++renders as sentences and which DECISION F040 D3 leaves for F035 to fill. The records, by class:
++a task veto is a control file read by `task_veto.vetoed_tasks` and folded into
++`job.metadata["task_vetoes"]`, with `actor`, `reason`, `requested_at` and, once folded, the
++`unreachable_task_ids` it cost; an answer to a veto's replan proposal is a control file read by
++`task_veto.veto_answers`, with `actor`, `option`, `answered_at` and `follow_up_job_id`; a
++confirmed injection is a control file read by `task_injection.confirmed_injections`, with
++`actor`, `text`, `confirmed_at` and `confirmed_unseen`, which is true only for an unattended
++`--yes` confirmation, folded into `job.metadata["task_injections"]` with the new task's id; a
++subtree rerun is an entry of `job.reruns` with `actor`, `at`, `root_task_id` and `subtree`; a plan
++edit and a runtime task edit are entries of the plan body's `_edits` log with `actor`, `ts`,
++`command`, `args` and `version`, a runtime edit carrying a `runtime` block and an injection's own
++entry an `injection` block; a steering message or task note is a sealed record read by
++`steering.list_steering_messages`, with `channel`, `received_at`, `text` and, for a note,
++`task_id`, and its consumption marker names the task and round that took it in; a pause, a
++resume and a stop reach the run log as `job_paused`, `task_paused`, `job_resumed`,
++`task_resumed` and `job_stopped` events carrying `source`, `reason` and `request_id`. An actor
++is recorded three ways: a browser action's token fingerprint `tf:<16 hex>` or the literal `cli`
++for vetoes, veto answers, injections, reruns and edits; a `channel` of `cli` or `cockpit` for
++steering; a `source` of `cli` or `ui` for pause, resume and stop. Hunk decisions record no
++actor at all; decision answers record `answer_source` `human` or `default`; clarification
++answers record `answered_by` `human`, `default` or empty for the planner's own resolution and no
++time; plan approval records `_approval` and, for `--yes`, `_approval_audit` with mode `auto_yes`,
++and its time only in the `plan_approved` event. The command audit `commands_audit.jsonl` is
++written by the browser's write door alone, and it stores a hash of each command's arguments, so
++it holds no target, no reason and no answer. No command-line verb writes it. Nothing in the code
++produces an assumption whose source is a reference.
++
++CHOSEN: (1) ONE MODULE, ONE PASS. `packages/orchestration/ownership.py` builds the ledger for
++one job from the records above, reading and never writing any of them; building it twice over
++the same records gives the same bytes, so the file it is saved to is regenerable and never a
++second truth. The ledger is `{"schema": "remedy.ownership.v1", "job_id", "entries"}`. (2) THE
++ENTRY. Every entry carries `record_ref`, unique within the ledger and naming the class and the
++record's own id; `ts`, the time the record gives for the human's act, empty only for a class
++whose record keeps none; `actor`; `action`; `task_id`, empty for an action on the whole job;
++`text`, the reason, answer or note verbatim, never cut, empty for an action that has none;
++`consequence`, `{"kind", "task_ids", "ref"}`; and `detail`, the class's own further facts.
++Entries are ordered by time, the timeless ones last, then by `record_ref`. A ledger with an entry
++that lacks any of these, or whose actor is not one of the three kinds, is refused: nothing
++renders authorless. (3) THE ACTOR. `{"kind", "door", "recorded_as", "token_number",
++"auto_approved"}`. The kind is `operator` for a human, `default_policy` for a documented default
++the operator accepted at plan approval, and `remedy` for a machine choice made under the job's
++configuration, whose `recorded_as` names the configured role that made it. The door is
++`browser` for a fingerprint, `cockpit` or `ui`, `cli` for `cli`, and empty for anything else;
++`recorded_as` is the value the record holds, verbatim. `token_number` numbers the distinct
++fingerprints from 1 in the order they first act in the ledger, and is 0 for an actor with none,
++so the ledger can say "token #2" and never claims an identity beyond the token; `auto_approved`
++is true exactly for an unattended `--yes` action. (4) THE AUDIT IS NOT JOINED, AND THE COMMAND
++LINE IS NOT MADE TO WRITE IT. The feature file names a command-line audit as a small
++prerequisite. It is not needed: every class whose record names an actor already names the
++command line as `cli`, the audit could only add a fingerprint to the classes whose records have
++none, and it could only do that by matching times, which is a guess the ledger may not make.
++Those classes are attributed to the operator with the door their record names, or with no door.
++(5) THE ABSENT CLASS. An assumption sourced from a reference has no producer, so the ledger has
++no such class; the planner's own resolution of a clarification is attributed to `remedy`. (6)
++THE ROUNDS. Round 1 lands the module, the schema, the actor and the classes whose records name
++an actor: vetoes, veto answers, injections, reruns, plan and task edits, steering messages and
++notes, and pause, resume and stop. Round 2 lands hunk decisions, decision answers, clarification
++answers and plan approval, human and unattended, and writes `ownership.json` into the job's
++evidence export at every job terminal. Until round 2 wires it, the module is listed in
++`ALLOWED_UNWIRED` of `tests/test_no_orphan_modules.py` with its reason, and round 2 removes that
++line in the commit that wires it. (7) THE SURFACES, in T002 and T003: one phrase catalog turns
++entries into sentences for the report's Ownership section, the digest's `ownership` key and the
++command line, and the report's existing `Vetoed by` and `Paused by` lines are then read from the
++same entries rather than kept beside them.
++
++ALTERNATIVES: joining the audit to the records by time, rejected in (4) because a match by time
++is a guess; making every command-line verb write the audit first, rejected because the audit
++keeps no target, reason or answer and the records already name the door; one round for all of
++T001, rejected because it would need a round of more than the size a round can prove.
++
++HOW TO REVERSE: delete `packages/orchestration/ownership.py` and its tests, remove its line from
++`ALLOWED_UNWIRED`, and delete this paragraph.
+diff --git a/.agent/live_review.md b/.agent/live_review.md
+index cfe9e9079..23efc0303 100644
+--- a/.agent/live_review.md
++++ b/.agent/live_review.md
+@@ -1,29 +1,30 @@
+-# Live Review — F030 Steering messages
+-
+-> Round-by-round review record, re-headed at the F030 claim per
+-> docs/agents/planner_reviewer_prompt.md §1. The heading this replaces named F029, whose STATUS
+-> line went `[x]` at `17f34c3b` and whose pull request 288 merged into `main` at the reviewer's
+-> Open PR Gate under docs/agents/self_drive_protocol.md, as `15f5d384`, after both hosted CI jobs
+-> of run 36340890123 ended `success` on `17f34c3b`. `17f34c3b` is the second parent of
+-> `15f5d384`, and the two trees are identical. F029's round 11, its closing round, was reviewed
+-> after its own handback, so its gate entry is appended at the end of this record by F030's
++# Live Review — F035 Ownership ledger
++
++> Round-by-round review record, re-headed at the F035 claim per
++> docs/agents/planner_reviewer_prompt.md §1. The heading this replaces named F030, whose STATUS
++> line went `[x]` at `6d5ddf6b` and whose pull request 289 merged into `main` at the reviewer's
++> Open PR Gate under docs/agents/self_drive_protocol.md, as `a0b287a5`, after both hosted CI jobs
++> of run 36353221325 ended `success` on `6d5ddf6b`. `6d5ddf6b` is the second parent of
++> `a0b287a5`, and the two trees are identical. F030's round 7, its closing round, was reviewed
++> after its own handback, so its gate entry is appended at the end of this record by F035's
+ > claim. Only the heading, this paragraph and the Steps section below are rewritten; everything
+-> from the Findings heading to the end of the file as it stood at `15f5d384` is carried forward
++> from the Findings heading to the end of the file as it stood at `a0b287a5` is carried forward
+ > BYTE-IDENTICAL, and finding ids continue the monotonic R-XXXX series across the re-head. The
+-> open set at `15f5d384`, computed with `open_finding_ids` from `scripts/rotate_live_review.py`,
++> open set at `a0b287a5`, computed with `open_finding_ids` from `scripts/rotate_live_review.py`,
+ > is empty.
+ 
+ ## Steps
+ 
+-THE ORDER BELOW IS T5_F030.md's Task slicing, read against what F264 already shipped by DECISION
+-F030 D1 at the claim. R1 claims F030, re-heads this record, books F029's round 11 and lands T001:
+-a steering message may be addressed to one task, the addressed task alone takes it in at its next
+-round start, its notes are carried in one numbered operator-note segment at the steering rank
+-that the prompt trace records, and a note its task finished without taking in is listed in the
+-job report. T002 lands the write door's `job.steer-task` and `remedy job steer` with the task
+-state gate, the audit and the event. T003 lands the feed's rendering of the operator's own line,
+-the input addressing the focused task with copy that promises no conversation, and the
+-end-to-end proof. Every round's handback states the open set by distinct id.
++THE ORDER BELOW IS T5_F035.md's Task slicing, read against what earlier features already record
++by DECISION F035 D1 at the claim. R1 claims F035, re-heads this record, books F030's round 7 and
++lands the first half of T001: `packages/orchestration/ownership.py` with the versioned ledger,
++the entry schema, the actor model and the pure pass over the records that already name who acted
++— vetoes, veto answers, injections, subtree reruns, plan and task edits, steering messages and
++notes, and the pause, resume and stop events. R2 lands T001's second half: hunk decisions,
++decision answers, clarification answers, plan approval human and unattended, and the ledger
++written at every job terminal. T002 lands the phrase catalog, the report section and its goldens;
++T003 the chips at the nodes, the evidence tab, `remedy job ownership` and the end-to-end proof.
++Every round's handback states the open set by distinct id.
+ 
+ ## Findings
+ DECISION F085 D5, applied at da47ee40, closes "The R44 block is the first measured under this
+@@ -415,3 +416,5 @@ Gate: F030 R4 — the F030 round 4 entry: the booking of round 3 and T003's end-
+ Gate: F030 R5 — the F030 round 5 entry, the closure sequence's first round: the booking of round 4, the Built State, the twenty-second checklist consolidation, the self-use generator's answer, and the feature's one full suite. VERDICT PASS. Re-derived over `3d0f3fa0`..`156e03ce` by the planner and reviewer of F030's first session, whose own runs produced every reading below. THE RANGE IS 4 COMMITS, at `c0284ba4` 297, `d8fd39d6` 9, `4080c94d` 89 and `156e03ce` 149 insertions by `git show --numstat`, each under the 500-line cap, each single-parent and each ending with the ordered trailer; the tracked path set lies inside the block's constraint 3, `scripts/self_use_queue.json` is untouched, and the worker declared no deviation. THE TRANSPORT PROOF: the block copy and the three payload copies, read at the branch tip, equal the reviewer's originals byte for byte; at `d8fd39d6` the ledger and the plan, and at `4080c94d` the feature file and the planner prompt, equal the reviewer's simulation tree byte for byte; the open set reads empty, and `live_checklist_items` reads the same 34 numbers at `3d0f3fa0` and on the simulation tree the consolidation landed in. THE SELF-USE ITEM: `generate_and_append_if_empty()` and `next_self_use_item()` both answered `None`, as the reviewer's dry run on a tree byte-equal to `4080c94d` read before the round, so closure precondition 6 reads `self-use NONE (queue exhausted)`. THE ONE FULL SUITE: `.agent/authored/f030-closure-suite.txt` records `python3 -m pytest -n auto -q` on `4080c94d` after the browser bundle was built, at real exit code 0 in 179.78 seconds with 20184 passed and 20 skipped and no bad node, so neither reachability guard of closure precondition 7 holds one. THE TESTS: the reviewer's own serial run of the round's selection in the primary checkout at `156e03ce` read 596 passed at real exit code 0 — the 595 and 1 skipped of its simulated tree, the one skip being the dashboard contract's toolchain test, which runs in the primary checkout; all six `integrity check` checks read `pass`, and the tree was clean with no untracked file.
+ 
+ Gate: F030 R6 — the F030 round 6 entry, the closure sequence's evidence round: the booking of round 5, the evidence job and the review package at the accepted head. VERDICT PASS. Re-derived over `156e03ce`..`08685d51` by the planner and reviewer of F030's first session, whose own runs produced every reading below. THE RANGE IS 3 COMMITS, at `96a74ae7` 359, `b32a0ab6` 5 and `08685d51` 136 insertions by `git show --numstat`, each under the 500-line cap, each single-parent and each ending with the ordered trailer; the tracked path set lies inside the block's constraint 3, and the worker declared no deviation. THE TRANSPORT PROOF: the block copy and the three payload copies, read at the branch tip, equal the reviewer's originals byte for byte, and at `b32a0ab6` the ledger and the plan equal the reviewer's simulation tree byte for byte, the open set reading empty. THE ACCEPTED COMMIT, the closure's accepted head, is `b32a0ab6f0809f86b0461a6aac15a4912960162c`. THE BUNDLE: the evidence job `f030r6e1001` against the fork point `15f5d38412dcbea1ce3f15df3bdc52800c684e87` holds one run, `vr-0301`, at exit 0 with 1251 of 1251 selected tests passed, its head the accepted head, and `validate_verification_tests` reads no problem; the reviewer validated the bundle with `validate_evidence_candidate` from a disposable worktree at the accepted head, which read `is_valid_current_run` True with no validation error, and the worktree was removed. Before the round the reviewer's dry run found the one parametrized node id the tool deselects as the only unsafe id among the 1254 its files collect, and its package dry run over a copy of the evidence with one planted unsafe node id read `BLOCKED_EVIDENCE` at exit 0. THE PACKAGE: `remedy-review-20260927-234033-READY_FOR_REVIEW.zip` in `/home/decodeux/Repos/remedy-history/zips` hashes to `8b7e2f9ceaee61acc87a55ae5bd2c2b3f467b44ab3136076e34d5b3b666ea452` by the reviewer's own reading, `testzip()` answers None, and its manifest's committed review subject reads the fork point as base and the accepted head as head over 34 commits. THE TREE: all six `integrity check` checks read `pass` at `08685d51`, the tree was clean, and the local tip equals the pushed branch.
++
++Gate: F030 R7 — the F030 round 7 entry: the closing round, which books round 6, rotates the ledger, accepts F030 in STATUS with its README pins and opens the pull request. VERDICT PASS. Re-derived over `08685d51`..`6d5ddf6b` by the planner and reviewer of F030's first session, and re-read by the planner and reviewer of F035's first session, whose own readings are every one below. THE RANGE IS 4 COMMITS, at `0828c243` 433, `34b95c30` 6, `2ea16119` 22 and `6d5ddf6b` 179 insertions by `git show --numstat`, each under the 500-line cap, each single-parent and each ending with the ordered trailer; the tracked path set is the eight `.agent/authored/f030-r7-*` copies, `.agent/handoff.md`, `.agent/live_review.md`, `.agent/live_review_archive.md`, `.agent/plan.md`, `README.md` and `docs/roadmap/STATUS.md`, and no deviation was declared. THE BOOKING: at `34b95c30` the ledger reads 325137 bytes at sha256 `d6558b4028cf3f510a12baea6593f71439cf7ac6b6653f2eab6c3f8617d846d8` and the plan 849 bytes at `8f8540c9f00341c92a8543a47a43c704337036293e34da95653f7a5eba253d19`, both equal to the reviewer's simulation. THE ROTATION: at `2ea16119` the ledger reads 297093 bytes at `8abade92d79023af5cd6084d7554ca0b6f36781cc0e031ae9ae806587d84d2cf` and the archive 5312486 bytes at `239c6c1bfef520232e01387c33380c28200f9a5eb64a16d6ed954cb2cc617c0c`, eleven gate records and no finding pair moved, as the archive's added `Gate: ` and `- R-` lines count, and the open set empty before and after. THE ACCEPTANCE: at `6d5ddf6b` `docs/roadmap/STATUS.md` reads 55903 bytes at `012c2bedbd1cb52f89a30c9ece2ce61eb2e554f2cb24a751b1038fb0114b52e9` and `README.md` 40877 bytes at `4cb87a6a5ef59c44d070103685c086e1801f3993792ea20afa6db80b9160bb1e`, both equal to the reviewer's simulation, and the closure selection re-run on `a0b287a5`, whose tree equals that of `6d5ddf6b`, read 512 passed at real exit code 0 with all six `integrity check` checks `pass`. THE PULL REQUEST: number 289 from `feature/f030-steering-messages` into `main`, whose hosted CI run 36353221325 ended `success` on both jobs at head `6d5ddf6b`; it merged at F035's Open PR Gate as `a0b287a5`, whose tree equals that of `6d5ddf6b`.
+diff --git a/docs/roadmap/STATUS.md b/docs/roadmap/STATUS.md
+index 29a17dbfe..023e3ef86 100644
+--- a/docs/roadmap/STATUS.md
++++ b/docs/roadmap/STATUS.md
+@@ -167,7 +167,7 @@ Milestone R1 — Remedy as the daily tool: Tier 2 complete (F086 as the self-ins
+ - [x] F028 — Task injection (T001–T003 complete; accepted 2026-09-27 · live review PASS — ACCEPTED · Evidence job f028r11e1001 · package remedy-review-20260927-132129-READY_FOR_REVIEW.zip · SHA-256 904723bf332d1f076cdfde262f84609fada02ca86635f3ef09a88c3d025692fe · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD 9cfd84d1217c24057173f4b9a8db03734c174c09)
+ - [x] F029 — Subtree rerun (T001–T003 complete; accepted 2026-09-27 · live review PASS — ACCEPTED · Evidence job f029r10e1001 · package remedy-review-20260927-201630-READY_FOR_REVIEW.zip · SHA-256 9a0d0eb2ac1576e96149aca426e6aec301eedc6247c9ee0fb0b4a8eb01e9bf4b · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD e56e82f733ec51609598590eda05aa1b2b7329ca)
+ - [x] F030 — Steering messages (T001–T003 complete; accepted 2026-09-27 · live review PASS — ACCEPTED · Evidence job f030r6e1001 · package remedy-review-20260927-234033-READY_FOR_REVIEW.zip · SHA-256 8b7e2f9ceaee61acc87a55ae5bd2c2b3f467b44ab3136076e34d5b3b666ea452 · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD b32a0ab6f0809f86b0461a6aac15a4912960162c)
+-- [ ] F035 — Ownership ledger
++- [~] F035 — Ownership ledger
+ 
+ ## Tier 2 — Findings paydown (rolling, operator rule amend0911-feedback)
+ 
