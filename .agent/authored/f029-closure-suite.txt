@@ -1,0 +1,8 @@
+F029 R9 C4 — the closure's one full suite
+
+Command: python3 -m pytest -n auto -q
+Real exit code: 0
+Wall time: 276.36s (0:04:36), measured wall-clock 277s
+Summary line: 20118 passed, 20 skipped, 1 warning in 276.36s (0:04:36)
+Bad node ids (failed + errors): NONE
+Tree it ran on: ee1bc2e90 (C3, the primary checkout after the Built State and checklist consolidation)

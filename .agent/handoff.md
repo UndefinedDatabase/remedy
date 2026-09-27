@@ -1,72 +1,73 @@
-# Handoff — F029, round 8
+# Handoff — F029, round 9
 
 ## Session
 
-SESSION 2 of feature F029 · round 8 · rounds so far 8. Context remaining at
-handback: ample — reading `mission_dossier.py` whole (PLAN_RISK_ID_TEMPLATE
-through the end of `refresh_mission_dossier`, plus `DossierItem`,
-`IterationFacts`, `_merge_by_id`, `dossier_sections`), the test file whole,
-and `subtree_rerun.py`'s `fold_subtree_rerun` record, then writing S1-S3,
-18 new tests, the mutation tool, and running every gate, all went clean on
-the first pass with no repair round and no tool bug.
+SESSION 2 of feature F029 · round 9 · rounds so far 9. Context remaining at
+handback: ample — the round applied three small diffs, ran the self-use
+generator/queue pair, built the UI bundle, took the one full suite
+(20118 passed, 20 skipped in 276.36s) and wrote this handoff, all in one
+pass with no repair round.
 
 ## Range
 
-Review of `a5933b73e`..`HEAD` (`HEAD` is this handback's own commit, `F029 R8
-C5`, on `feature/f029-subtree-rerun`).
+Review of `caec4b929`..`HEAD` (`HEAD` is this handback's own commit, `F029 R9
+C4`, on `feature/f029-subtree-rerun`).
 
 ## Commits
 
-### 157fe2e1b F029 R8 C1: copy round 8 block and payloads into .agent/authored/
+### ea0f39296 F029 R9 C1: copy round 9 block and payloads into .agent/authored/
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f029-r8-block.md | 195/0 | copy of this round's block |
-| .agent/authored/f029-r8-booking.diff | 52/0 | copy of the booking diff payload |
-| .agent/authored/f029-r8-plan.md | 31/0 | copy of the plan payload |
+| .agent/authored/f029-r9-block.md | 150/0 | copy of this round's block |
+| .agent/authored/f029-r9-closure_docs.diff | 131/0 | copy of the closure_docs.diff payload |
+| .agent/authored/f029-r9-plan.md | 32/0 | copy of the plan payload |
+| .agent/authored/f029-r9-records.diff | 10/0 | copy of the records.diff payload |
 
-Measured insertions: 278 (block's own line count 195 + 83), matching the
+Measured insertions: 323 (block's own line count 150 + 173), matching the
 block's expectation exactly, under the 500-line cap.
 
-### 5eb975540 F029 R8 C2: book round 7 and record D7
+### 2bd56670a F029 R9 C2: book round 8
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/decisions.md | 34/0 | DECISION F029 D7 appended (booking.diff) |
-| .agent/live_review.md | 2/0 | round 7's Gate entry appended (booking.diff) |
-| .agent/plan.md | 5/9 | rewrite from the plan payload |
+| .agent/live_review.md | 2/0 | round 8's Gate entry appended (records.diff) |
+| .agent/plan.md | 9/8 | rewrite from the plan payload |
 
-Matches the block's expected numstat (34/0, 2/0, 5/9) exactly. Applied via
-`git apply --check` (exit 0) then the real apply (exit 0) of `booking.diff`,
-followed by the `plan.md` rewrite via `shutil.copyfile`.
+Matches the block's expected numstat (2/0, 9/8) exactly. Applied via
+`git apply --check` (exit 0) then the real apply (exit 0) of `records.diff`,
+followed by the `plan.md` rewrite. Note: the first write of `.agent/plan.md`
+was transcribed with one wrong line ("the ledger rotation, the STATUS line
+and the pull request" instead of the payload's "the ledger rotation, the
+STATUS line, the README counters and the pull request"); the self-review
+diff against the payload caught it before staging or committing, so the
+committed content is byte-identical to the payload (sha256
+`0300a86994345324b05237ec7093ef138c6468607e945f36243196655948dd8f`,
+matching G2's table) — recorded here as a caught-before-commit slip, not a
+landed deviation.
 
-### 6b41f9532 F029 R8 C3: note a rerun in its mission's dossier
+### ee1bc2e90 F029 R9 C3: write the Built State and consolidate the checklist
 | Path | +/- | Reason |
 |---|---|---|
-| packages/orchestration/mission_dossier.py | 67/5 | S1: `RERUN_ID_TEMPLATE` after `ITERATION_ID_TEMPLATE`; `rerun_decision_items` beside `_ledger_decision_id`. S2: `mission_job_reruns` beside `refresh_mission_dossier`. S3: `mission_iteration_facts` gains the `reruns` keyword and appends `rerun_decision_items(reruns)` to its decisions; `refresh_mission_dossier` passes `reruns=mission_job_reruns(mission, root)` |
-| tests/orchestration/test_mission_dossier.py | 191/0 | THE TESTS: `TestRerunDecisionItems` (13 cases: override, no override, blank override, singular, plural-none, plural-two, non-dict, missing/empty `rerun_id`, missing/empty `root_task_id`, missing optional fields, several in order), `TestMissionIterationFactsWithReruns` (2), `TestMissionJobReruns` (2), `TestRefreshNotesARerunInTheDossier` (1, end to end) |
+| docs/agents/planner_reviewer_prompt.md | 8/0 | the checklist consolidation paragraph, appended before "The next consolidation measures against 34." — that line occurs once before and once after (an APPEND, not a replace) |
+| docs/roadmap/features/T5_F029.md | 104/0 | the Built State section: T001-T003, acceptance, modules/lists, deliberate absences, findings |
 
-258 total insertions/5 deletions, under the 500-line cap; measured before
-committing (67+191=258), no split needed.
+Matches the block's expected numstat (8/0, 104/0) exactly. Applied via
+`git apply --check` (exit 0) then the real apply (exit 0) of
+`closure_docs.diff`.
 
-### d1ec54f86 F029 R8 C4: add the round 8 mutation tool
+### (pending) F029 R9 C4: record the closure suite transcript and rewrite handoff for round 9
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f029-r8-mutations.py | 214/0 | the G5 mutation (red-proof) tool: m1 `rerun_decision_items` returns `[]` always, m2 the outcome always reads "the job's own model", m3 `refresh_mission_dossier` stops passing `reruns`, m4 the plural suffix is always "s" — one pytest route against `tests/orchestration/test_mission_dossier.py` |
-
-### (this commit) F029 R8 C5: rewrite handoff for round 8
-| Path | +/- | Reason |
-|---|---|---|
+| .agent/authored/f029-closure-suite.txt | new | the full suite's command, real exit code, wall time, summary line, bad node ids (NONE) and the tree SHA (`ee1bc2e90`) |
 | .agent/handoff.md | rewrite | this file |
 
 ## External actions
 
-`git worktree add --detach .remedy-wt/f029-r8-mut d1ec54f86`, ran
-`.agent/authored/f029-r8-mutations.py` against it (all 4 mutations caught on
-the first run, see G5 below), then `git worktree remove --force
-.remedy-wt/f029-r8-mut` and `git worktree prune`. `git worktree list | wc -l`
-read 64 at step 4 and 64 again after the removal. `git push origin
-feature/f029-subtree-rerun` — its real outcome is reported to the delegator,
-since C5 cannot contain it. No PR opened, no merge, no branch checked out or
-deleted, no force-push, no stash.
+`bash -c 'npm --prefix apps/ui run build ...'` — real exit 0, `git status
+--porcelain` empty afterward, no files staged from it (the build artifact is
+gitignored). `git push origin feature/f029-subtree-rerun` — its real outcome
+is reported to the delegator, since C4 cannot contain it. No PR opened, no
+merge, no branch checked out or deleted, no force-push, no stash, no
+worktree added or removed this round.
 
 ## Verification
 
@@ -74,199 +75,153 @@ deleted, no force-push, no stash.
 - `ls .agent/STOP` → `No such file or directory` (absent).
 - `pwd` → `/home/decodeux/Repos/remedy`; `git status --porcelain` → empty;
   `git branch --show-current` → `feature/f029-subtree-rerun`; `git log
-  --oneline -1` → `a5933b73e`.
-- Block bytes (R-0954): measured 195 lines, sha256
-  `017da772f764376d873f8b0eeed61a250acf60f48abfaf5563689986ea7557d9` — both
+  --oneline -1` → `caec4b929`.
+- Block bytes: measured 150 lines, sha256
+  `8886ec229b65d8aa439043f856c9b0b3bf8c41c8615e9c967c78b059e8a4a3a3` — both
   match the delegation message's readings exactly.
-- `git worktree list | wc -l` → 64.
+- `git worktree list | wc -l` → 61. `git branch --list 'remedy/job-*' | wc -l`
+  → 50.
 
-**PAYLOADS** — both matched the table exactly:
-`booking.diff` 52 lines / 12822 bytes /
-`2aac7defedfab8ff85ed0625483484a29d82968abe859a4aa97f1cad6b6759ae`;
-`plan.md` 31 lines / 1086 bytes /
-`1243204d604ff092bfe26b0357bb03141ab9d502887d6a7b9aa1e343a756710f`.
+**PAYLOADS** — all three matched the table exactly:
+`closure_docs.diff` 131 lines / 10385 bytes /
+`159ca4e86da72f194b9931823a17e3214a100dd25f992a12a6fb46cd57cec096`;
+`plan.md` 32 lines / 1106 bytes /
+`0300a86994345324b05237ec7093ef138c6468607e945f36243196655948dd8f`;
+`records.diff` 10 lines / 8889 bytes /
+`4fc53566efa6f210bf100341827a988ee76e252a349cc483b9eee95c45cfe1a7`.
 
-**G1 TRANSPORT** — each `.agent/authored/f029-r8-*` copy read via `git show
-157fe2e1b:<path>` equals its source byte for byte: block copy ==
-`.remedy-wt/f029-r8/block.md` (True); booking.diff copy ==
-`.remedy-wt/f029-r8-payloads/booking.diff` (True); plan.md copy ==
-`.remedy-wt/f029-r8-payloads/plan.md` (True).
+**G1 TRANSPORT** — each `.agent/authored/f029-r9-*` copy read via `git show
+ea0f39296:<path>` equals its source byte for byte (sha256, all four):
+block copy `8886ec229b65d8aa439043f856c9b0b3bf8c41c8615e9c967c78b059e8a4a3a3`
+== `.remedy-wt/f029-r9/block.md`; closure_docs.diff copy
+`159ca4e86da72f194b9931823a17e3214a100dd25f992a12a6fb46cd57cec096` ==
+`.remedy-wt/f029-r9-payloads/closure_docs.diff`; plan.md copy
+`0300a86994345324b05237ec7093ef138c6468607e945f36243196655948dd8f` ==
+`.remedy-wt/f029-r9-payloads/plan.md`; records.diff copy
+`4fc53566efa6f210bf100341827a988ee76e252a349cc483b9eee95c45cfe1a7` ==
+`.remedy-wt/f029-r9-payloads/records.diff`.
 
-**G2 THE RECORDS** — sha256 of each file read via `git show 5eb975540:<path>`
-equals the reviewer's reading exactly:
-`.agent/decisions.md` 2305437 bytes,
-`3b5d7d9a94aaa3c50bee1f3380c79d2183a8fe419aa956440aae0d0ec1c90eea` — match.
-`.agent/live_review.md` 332588 bytes,
-`da9d083a9deddd4f9b8ae2607fa92289e1d138ddb0ad4c82fbacd5b2952d4953` — match.
-`.agent/plan.md` 1086 bytes,
-`1243204d604ff092bfe26b0357bb03141ab9d502887d6a7b9aa1e343a756710f` — match.
+**G2 THE RECORDS** — sha256/bytes of each file read via `git show
+<read at>:<path>` equals the reviewer's table exactly:
+`.agent/live_review.md` at C2 (`2bd56670a`): 334948 bytes,
+`1e863a5ca923efe83dbadbb9169f656f4fc6a782e242ad5b2ac2f7bd9de53e42` — match.
+`.agent/plan.md` at C2: 1106 bytes,
+`0300a86994345324b05237ec7093ef138c6468607e945f36243196655948dd8f` — match.
+`docs/roadmap/features/T5_F029.md` at C3 (`ee1bc2e90`): 13157 bytes,
+`81af5df871b7c50d7598fe175ad470c67d485a9ba7d3a52c3a800c44aa9efcd2` — match.
+`docs/agents/planner_reviewer_prompt.md` at C3: 107507 bytes,
+`3bde8f094e52e7676327639f7c77ee467ce1bf8cdca5a68f03dd9dcef906c1b1` — match.
 `open_finding_ids` (`scripts/rotate_live_review.py`) over
-`.agent/live_review.md`'s text: at `a5933b73e` → `[]`; at `5eb975540` → `[]`
-— both match the reviewer's stated readings. `git diff --name-only
-157fe2e1b 5eb975540` → exactly the three paths of the table, nothing else.
+`.agent/live_review.md`'s text at C2 → `[]`, matching the reviewer's stated
+reading. `live_checklist_items` (`packages/orchestration/block_lint.py`)
+over `docs/agents/planner_reviewer_prompt.md` at `caec4b92` and at C3 both
+read the same 34 keys (`[1..16, 18, 20..31, 33..37]`) — no change to the
+numbering, confirming the consolidation joined nothing.
 
-**G3 THE CODE** —
+**G3 THE LINTER** — `python3 -m apps.cli.main integrity block
+.remedy-wt/f029-r9/block.md`, real exit code 0, whole output:
 ```
-python3 -m ruff check packages/orchestration/mission_dossier.py tests/orchestration/test_mission_dossier.py
-```
-→ `All checks passed!`, exit 0 (run at C4, `d1ec54f86`). Quoted from the C3
-diff (matches what is committed at HEAD):
-
-```python
-RERUN_ID_TEMPLATE = "RR-{job}-{rerun}"
-
-
-def rerun_decision_items(
-        job_reruns: Iterable[tuple[str, dict[str, Any]]]) -> list[DossierItem]:
-    items: list[DossierItem] = []
-    for job_id, record in job_reruns:
-        if not isinstance(record, dict):
-            continue
-        rerun_id = record.get("rerun_id")
-        root = record.get("root_task_id")
-        if not rerun_id or not root:
-            continue
-        subtree = record.get("subtree")
-        n = max(len(subtree) - 1, 0) if isinstance(subtree, (list, tuple)) else 0
-        job8 = job_id[:8]
-        reset12 = str(record.get("reset_commit") or "")[:12]
-        model = record.get("model")
-        override = model.get("override") if isinstance(model, dict) else ""
-        override = override if isinstance(override, str) and override else ""
-        text = (f"rerun of task {root} and {n} task{'' if n == 1 else 's'} "
-                f"after it on job {job8}")
-        outcome = (f"reset to {reset12}, run on {override}" if override
-                  else f"reset to {reset12}, the job's own model")
-        items.append(DossierItem(
-            id=RERUN_ID_TEMPLATE.format(job=job8, rerun=rerun_id),
-            text=text, resolved=True, outcome=outcome))
-    return items
+  [OK] item 1 (size): 150 lines, limit 400
+  [OK] item 3 (cap-bounded replacements): plan.md at 32 lines
+  [OK] item 10 (open set recomputed): states 0; .agent/live_review.md holds 0 open by distinct id, and the block registers 0 and resolves 0, leaving 0
+  [OK] item 24 (gate paths resolve): 0 paths named in the block's commands, every one resolves
+  [OK] item 30 (new ids searched first): the block registers no finding id
+  [OK] item 31 (gates before the text): the block orders no gates before a commit
+  [OK] item 37 (no unmeasured runs): no line is a run of one repeated character
+All 7 checkable items pass.
 ```
 
-```python
-def mission_job_reruns(
-        mission: Any, root: Path | None = None) -> list[tuple[str, dict[str, Any]]]:
-    from packages.orchestration.pingpong_job import load_job_plan
+**G4 THE TESTS AND THE TREE** — at C3 (`ee1bc2e90`), serially:
+```
+bash -c 'python3 -m pytest -q -p no:cacheprovider -rs tests/docs/ tests/orchestration/test_block_lint.py
+tests/orchestration/test_live_review_rotation.py tests/orchestration/test_integrity_gate.py
+tests/orchestration/test_self_use_generator.py tests/orchestration/test_roadmap_index.py
+tests/ui_server/test_dashboard_contract.py tests/cli/test_golden_path.py 2>&1 | tail -6; echo "REAL_EXIT=${PIPESTATUS[0]}"'
+```
+→ `596 passed in 60.12s (0:01:00)`, real exit code 0, no `SKIPPED` line (`-rs`
+reported none). This differs from the reviewer's simulated-tree reading of
+595 passed and 1 skipped exactly as the block predicted: the primary
+checkout carries a built `apps/ui` (the C4(b) build and any earlier one),
+so the one test the simulated tree skips for a missing `apps/ui/node_modules`
+/ dist runs and passes here instead — 596 = 595 + 1, 0 skipped = 1 - 1.
+Then `python3 -m apps.cli.main integrity check --json` → six `pass` at
+`fail_count: 0` (`handler_import`, `live_review_verdict`,
+`plan_consistency`, `relevant_untracked`, `repo_root_hygiene`,
+`high_blockers_open`), `ok: true`. `git status --porcelain` → empty, no
+untracked file (closure precondition 3).
 
-    pairs: list[tuple[str, dict[str, Any]]] = []
-    for job_id in mission.job_ids():
-        job = load_job_plan(job_id, root)
-        if job is None:
-            continue
-        for record in job.reruns:
-            if isinstance(record, dict):
-                pairs.append((job_id, record))
-    return pairs
-```
+**G5 THE INTEGRATION GATE** —
+(a) From a scratch Python file: `generate_and_append_if_empty()` →
+`None`; `next_self_use_item()` → `None`. Both match the reviewer's dry-run
+reading on the byte-equal C3 tree. `scripts/self_use_queue.json` unchanged
+(sha256 `c209340be1e923abbcf91717127436917be59141606f22bd77a4d7e67909a268`
+before and after) — nothing written. Closure precondition 6 reads
+`self-use NONE (queue exhausted)`.
+(b) `bash -c 'npm --prefix apps/ui run build 2>&1 | tail -2; echo
+"REAL_EXIT=${PIPESTATUS[0]}"'` → last line `✓ built in 2.21s`, `REAL_EXIT=0`;
+`git status --porcelain` after it → empty.
+(c) `python3 -m pytest -n auto -q`, log at
+`.remedy-wt/f029-r9-worker/full_suite.log` (outside the tracked tree): real
+exit code 0, wall time 276.36s (0:04:36) (measured wall-clock 277s), summary
+line `20118 passed, 20 skipped, 1 warning in 276.36s (0:04:36)`, bad node ids
+(failed + errors): NONE. Written to
+`.agent/authored/f029-closure-suite.txt` with the tree SHA `ee1bc2e90` (C3).
+`tests/orchestration/test_import_reachability.py` and
+`tests/test_no_orphan_modules.py` both hold no bad node in this run
+(closure precondition 7).
 
-`mission_iteration_facts` changed lines:
-```diff
-                            ledger: Sequence[dict[str, Any]] = (),
-+                            reruns: Sequence[tuple[str, dict[str, Any]]] = (),
-                             ) -> IterationFacts:
-@@
--        for entry in ledger]
-+        for entry in ledger] + rerun_decision_items(reruns)
-```
-
-`refresh_mission_dossier` changed lines:
-```diff
-     facts = mission_iteration_facts(
-         mission, done_milestones=done_milestones(mission),
--        ledger=read_ledger(project_id, mission_id, root))
-+        ledger=read_ledger(project_id, mission_id, root),
-+        reruns=mission_job_reruns(mission, root))
-```
-
-**G4 THE TESTS** — the exact selection, serially, real exit code:
-```
-python3 -m pytest -q -p no:cacheprovider -rs tests/orchestration/test_mission_dossier.py tests/orchestration/test_orchestrator_loop.py tests/orchestration/test_handoff.py tests/orchestration/test_subtree_rerun_prepare.py tests/orchestration/test_subtree_rerun.py tests/test_imports.py tests/orchestration/test_import_reachability.py tests/test_no_orphan_modules.py tests/test_ble001_ratchet.py tests/regression/test_named_bugs.py tests/regression/test_resource_safety.py tests/orchestration/test_live_review_rotation.py tests/orchestration/test_integrity_gate.py tests/test_agent_tooling.py tests/docs tests/cli/test_golden_path.py
-```
-Run at C4 (`d1ec54f86`): `951 passed, 7 skipped`, real exit code 0. All seven
-`SKIPPED` lines cite an F252 quarantine (six in `test_named_bugs.py`, one in
-`test_agent_tooling.py`) — the same seven the reviewer's own base reading at
-`a5933b73` already carried. Accounting for the difference from 933: this
-round's file, `tests/orchestration/test_mission_dossier.py`, adds exactly 18
-new pytest nodes (13 in `TestRerunDecisionItems`, 2 in
-`TestMissionIterationFactsWithReruns`, 2 in `TestMissionJobReruns`, 1 in
-`TestRefreshNotesARerunInTheDossier`). 933 + 18 = 951, exactly the passed
-count above; no unexplained difference. `python3 -m pytest --collect-only -q
--p no:cacheprovider tests/orchestration/test_mission_dossier.py` at C4 →
-`122 tests collected`, versus the reviewer's `104 tests collected` at
-`a5933b73` — the same 18-node difference. Then `python3 -m apps.cli.main
-integrity check --json` → all 6 checks `pass` (`handler_import`,
-`live_review_verdict`, `plan_consistency`, `relevant_untracked`,
-`repo_root_hygiene`, `high_blockers_open`), `fail_count: 0`, `ok: true`.
-
-**G5 THE RED PROOFS** — `git worktree add --detach .remedy-wt/f029-r8-mut
-d1ec54f86`, then `python3 -B .agent/authored/f029-r8-mutations.py
-/home/decodeux/Repos/remedy/.remedy-wt/f029-r8-mut`:
-```
-packages.orchestration.mission_dossier.__file__ = /home/decodeux/Repos/remedy/.remedy-wt/f029-r8-mut/packages/orchestration/mission_dossier.py
-module resolves inside the worktree: True
-control: exit=0 failed=0
-m1 rerun_decision_items answers an empty list whatever it is given: exit=1 failed=10 — 10 of TestRerunDecisionItems/TestMissionIterationFactsWithReruns/TestRefreshNotesARerunInTheDossier
-m2 the outcome always reads "the job's own model": exit=1 failed=1 — test_an_override_is_named_in_the_outcome
-m3 refresh_mission_dossier no longer passes reruns: exit=1 failed=1 — test_a_rerun_on_a_linked_job_is_noted_at_the_next_refresh
-m4 the text's plural suffix is always "s": exit=1 failed=1 — test_the_singular_names_one_task_after_the_root
-restored byte-identical: True (packages/orchestration/mission_dossier.py)
-control (after): exit=0
-git status --porcelain (primary checkout): '' (empty)
-ALL MUTATIONS CAUGHT AND RESTORED CLEANLY: True
-```
-All four mutations were red on the first run; no repair round needed for the
-production code or the tool. Then `git worktree remove --force
-.remedy-wt/f029-r8-mut`, `git worktree prune`; `git worktree list | wc -l` →
-64, matching the step-4 reading.
-
-**Constraint 3** — `git diff --name-only a5933b73e`, run once more after
+**Constraint 3** — `git diff --name-only caec4b929`, run once more after
 writing this file, lists exactly the block's tracked path set plus
-`.agent/handoff.md` itself: `.agent/authored/f029-r8-block.md`,
-`.agent/authored/f029-r8-booking.diff`, `.agent/authored/f029-r8-mutations.py`,
-`.agent/authored/f029-r8-plan.md`, `.agent/decisions.md`, `.agent/handoff.md`,
-`.agent/live_review.md`, `.agent/plan.md`,
-`packages/orchestration/mission_dossier.py`,
-`tests/orchestration/test_mission_dossier.py` — 10 paths in total; no path
-outside the set changed.
+`.agent/handoff.md` itself: `.agent/authored/f029-r9-block.md`,
+`.agent/authored/f029-r9-closure_docs.diff`, `.agent/authored/f029-r9-plan.md`,
+`.agent/authored/f029-r9-records.diff`, `.agent/live_review.md`,
+`.agent/plan.md`, `docs/roadmap/features/T5_F029.md`,
+`docs/agents/planner_reviewer_prompt.md`,
+`.agent/authored/f029-closure-suite.txt`, `.agent/handoff.md` — 10 paths in
+total; `scripts/self_use_queue.json` was NOT touched (G5(a) read `None`
+twice); no path outside the set changed.
 
 ## Authored-text proofs
 
-`.agent/authored/f029-r8-block.md`, `f029-r8-booking.diff` and
-`f029-r8-plan.md` (C1, `157fe2e1b`): each read back via `git show` equals its
-source (`.remedy-wt/f029-r8/block.md`, `.remedy-wt/f029-r8-payloads/booking.diff`,
-`.remedy-wt/f029-r8-payloads/plan.md`) byte for byte — see G1 above.
-`.agent/authored/f029-r8-mutations.py` (C4, `d1ec54f86`) is this session's
-OWN tool, not reviewer-authored text, so it carries no fidelity comparison;
-its behavior is proved instead by G5's live run above.
+`.agent/authored/f029-r9-block.md`, `f029-r9-closure_docs.diff`,
+`f029-r9-plan.md` and `f029-r9-records.diff` (C1, `ea0f39296`): each read
+back via `git show` equals its source (`.remedy-wt/f029-r9/block.md`,
+`.remedy-wt/f029-r9-payloads/closure_docs.diff`,
+`.remedy-wt/f029-r9-payloads/plan.md`,
+`.remedy-wt/f029-r9-payloads/records.diff`) byte for byte — see G1 above.
+`.agent/authored/f029-closure-suite.txt` (C4) is this session's own
+measurement transcript, not reviewer-authored text, so it carries no
+fidelity comparison; its numbers are the ones measured live in G5(c) above.
 
 ## Item-status table
 
 | Item | Status | Reason |
 |---|---|---|
-| C1 | done | |
-| C2 | done | |
-| C3 | done | |
-| C4 | done | |
-| C5 | done | this commit |
-| G1 transport | done | PASS — all copies byte-identical |
-| G2 the records | done | PASS — sha256 and open_finding_ids both match |
-| G3 the code | done | PASS — ruff exit 0, `rerun_decision_items`, `mission_job_reruns` and the changed lines of `mission_iteration_facts`/`refresh_mission_dossier` quoted from disk |
-| G4 the tests | done | PASS — 951 passed, 7 skipped, exit 0; +18 nodes fully accounted (104→122 collected); integrity check all 6 pass |
-| G5 the red proofs | done | PASS on the first run — all 4 mutations caught, control green before/after, restored byte-identical |
-| S1 the items | done | `RERUN_ID_TEMPLATE`, `rerun_decision_items` — defensive reads, singular/plural text, override/no-override outcome |
-| S2 the source | done | `mission_job_reruns` — `load_job_plan` imported inside the function, unloadable job skipped |
-| S3 the wiring | done | `mission_iteration_facts` gains `reruns`; `refresh_mission_dossier` passes `mission_job_reruns(mission, root)` |
+| C1 | done | copy of block + 3 payloads, 323 insertions matching block's own count + 173 |
+| C2 | done | records.diff applied (2/0 live_review.md), plan.md rewritten (9/8) — matches expected numstat |
+| C3 | done | closure_docs.diff applied (8/0 planner_reviewer_prompt.md, 104/0 T5_F029.md) — matches expected numstat |
+| C4 | done | self-use NONE, UI build green, full suite green, transcript + handoff committed together, pushed |
+| G1 transport | done | PASS — all four copies byte-identical by sha256 |
+| G2 the records | done | PASS — all four file reads and both function reads match the reviewer's table |
+| G3 the linter | done | PASS — real exit 0, all 7 checkable items pass |
+| G4 the tests and the tree | done | PASS — 596 passed/0 skipped (explained vs. reviewer's 595/1 by dist presence), exit 0; integrity check 6/6 pass; tree clean |
+| G5 the integration gate | done | PASS — self-use both None, UI build exit 0, full suite 20118 passed/20 skipped exit 0, no bad node ids, reachability tests clean |
 
 ## Deviations & assumptions
 
-None. Every gate passed on its first run; no test this round wrote needed
-correction; no existing test went red; no commit was split, reordered or
-dropped from the block's ordered C1-C5 sequence.
+One caught-before-commit slip, not a landed deviation: while rewriting
+`.agent/plan.md` in C2, the first write mistyped one line of the payload's
+Next Steps item 3 (dropped "the README counters"); the mandatory self-review
+diff against the payload caught it before `git add`, and the file was
+corrected to be byte-identical to the payload (verified by sha256 and
+`diff`) before staging. No other deviation: every gate passed on its first
+run; no test went red; no commit was split, reordered or dropped from the
+block's ordered C1-C4 sequence; the tracked path set matches constraint 3
+exactly with `scripts/self_use_queue.json` untouched.
 
 ## Next
 
-Phase 1 rule 1 (read `.agent/STOP` from disk), then the review of round 8,
-then the closure sequence: Built State and the checklist consolidation with
-the one full suite, then the evidence job and review zip, then the ledger
-rotation, the STATUS line and the pull request. Open findings: 0.
-Operator-questions: 0.
+Phase 1 rule 1 (read `.agent/STOP` from disk), then the review of round 9,
+then the closure's evidence round — the booking of round 9, any repair the
+suite requires, the evidence bundle and the review package — and then the
+closing round. Open findings: 0. Operator questions open: 0.
