@@ -14,17 +14,18 @@ with a model override that the evidence records
 
 ## Current Step
 
-ROUND 8: book round 7's PASS, record DECISION F029 D7, and land the
-feature file's last edge case — a rerun of one of a mission's jobs is
-noted in the mission's dossier as one decision line, read from the job's
-own record at the loop's next refresh.
+ROUND 9, the closure sequence's first round: book round 8's PASS, write
+the Built State, consolidate the checklist, ask the self-use generator
+for the closure's item, build the browser bundle, and take the feature's
+one full suite on the tree that ships.
 
 ## Next Steps
 
-1. The review of round 8.
-2. The closure sequence: Built State and the checklist consolidation
-   with the one full suite, then the evidence job and review zip, then
-   the ledger rotation, the STATUS line and the pull request.
+1. The review of round 9.
+2. The closure's evidence round: the evidence job and the review zip,
+   with any repair the full suite requires.
+3. The closing round: the ledger rotation, the STATUS line, the README
+   counters and the pull request.
 
 ## Risks
 
