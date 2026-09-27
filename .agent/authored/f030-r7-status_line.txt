@@ -1,0 +1,1 @@
+- [x] F030 — Steering messages (T001–T003 complete; accepted 2026-09-27 · live review PASS — ACCEPTED · Evidence job f030r6e1001 · package remedy-review-20260927-234033-READY_FOR_REVIEW.zip · SHA-256 8b7e2f9ceaee61acc87a55ae5bd2c2b3f467b44ab3136076e34d5b3b666ea452 · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD b32a0ab6f0809f86b0461a6aac15a4912960162c)
