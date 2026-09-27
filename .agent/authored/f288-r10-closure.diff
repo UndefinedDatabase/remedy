@@ -1,0 +1,66 @@
+diff --git a/README.md b/README.md
+index e1812cb29..55b2e2a61 100644
+--- a/README.md
++++ b/README.md
+@@ -26,7 +26,7 @@ verification commands. If something is unproven, Remedy says so instead of guess
+ 
+ ## Status
+ 
+-107 of 289 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
++108 of 289 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
+ 
+ | Tier | Name | Done | Total |
+ |------|------|-----:|------:|
+@@ -35,7 +35,7 @@ verification commands. If something is unproven, Remedy says so instead of guess
+ | 2 | Minimal Self-Build Runtime | 38 | 39 |
+ | 3 | Full Token Economy & Autonomy | 6 | 27 |
+ | 4 | Memory & Learning | 1 | 17 |
+-| 5 | Operator Cockpit | 24 | 36 |
++| 5 | Operator Cockpit | 25 | 36 |
+ | 6 | Design-to-Code | 0 | 16 |
+ | 7 | Quality & Trust | 0 | 15 |
+ | 8 | Worker Ecosystem & Neutrality | 0 | 12 |
+@@ -521,6 +521,17 @@ that one repair as its only task, and the job changes nothing by itself: it stop
+ the normal approval step and a reviewer decides what lands; the first such job, run
+ at this feature's own close, added a missing user guide to the documentation index).
+ 
++F288 event stream and prompt nodes (the live picture of a running job now shows
++everything the simple view shows: every message Remedy sends the browser about a
++builder attempt, a review, a check, a test run or a repair round now says which
++attempt and which task it belongs to and how it ended, and a new message announces
++when a plan is approved, so the plan's tasks appear the moment you approve it; test
++runs and repair rounds get their own dots under their task, and every prompt sent to
++a model becomes a small dot you can click to open that prompt; a keyboard user
++reaches the same prompts through a list of buttons that appears when it holds
++focus; the first self-use job at this feature's close added the missing
++`remedy config show` command to the settings guide).
++
+ Full per-feature state: [`docs/roadmap/STATUS.md`](docs/roadmap/STATUS.md)
+ 
+ ## Install
+diff --git a/docs/roadmap/STATUS.md b/docs/roadmap/STATUS.md
+index bdde494d5..9f6cc27ab 100644
+--- a/docs/roadmap/STATUS.md
++++ b/docs/roadmap/STATUS.md
+@@ -159,7 +159,7 @@ Milestone R1 — Remedy as the daily tool: Tier 2 complete (F086 as the self-ins
+ ## Tier 5 — Self-use sources & event completeness (operator amendment amend0926-decisions-selfuse)
+ 
+ - [x] F289 — Self-use sources completion (doc staleness and doctor warnings) (T001–T003 complete; accepted 2026-09-26 · live review PASS — ACCEPTED · Evidence job f289r6e1001 · package remedy-review-20260926-225640-READY_FOR_REVIEW.zip · SHA-256 7044a4959459a9144a0b3030453ed74944ab4edad8125fd67c2eb2e6cc488a62 · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD 32013a054ea65dce679cc65fe2cd01fe8d73a76d)
+-- [~] F288 — Event stream completeness & prompt nodes in the live graph
++- [x] F288 — Event stream completeness & prompt nodes in the live graph (T001–T003 complete; accepted 2026-09-27 · live review PASS — ACCEPTED · Evidence job f288r9e1001 · package remedy-review-20260927-060235-READY_FOR_REVIEW.zip · SHA-256 184f155676e7fdfc8bdf8f2db736ed0b96b127f84fb3873580fefe38c10373d2 · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD 57eba86adcc3ceeb83b04a3dfe0cf5d655a0d205)
+ 
+ ## Tier 5 — Operator Cockpit (parallel human track, continued)
+ 
+diff --git a/scripts/self_use_queue.json b/scripts/self_use_queue.json
+index cc142a0c7..d47d45887 100644
+--- a/scripts/self_use_queue.json
++++ b/scripts/self_use_queue.json
+@@ -271,7 +271,7 @@
+       "title": "Fix stale documentation: config_cli_table_complete in docs/guides/remedy-toml-user-guide.md",
+       "why": "the CLI commands table never documents the `config` subcommand `show`",
+       "job_markdown": "# Job: Fix stale documentation: config_cli_table_complete in docs/guides/remedy-toml-user-guide.md\n\n## Task 1\nThe documentation-staleness check `config_cli_table_complete` found a claim in `docs/guides/remedy-toml-user-guide.md` that the shipped code contradicts.\n\nClaim: the CLI commands table never documents the `config` subcommand `show`\nShipped truth: the `config` subcommand `show` ships\n\nEdit `docs/guides/remedy-toml-user-guide.md` so that it matches the shipped truth. Do not change code to match the document, and do not edit any file under `.agent/`.\n\nAcceptance:\n- The staleness check `config_cli_table_complete` no longer reports this claim for `docs/guides/remedy-toml-user-guide.md`.\n- No file under `.agent/` is changed by this task.\n",
+-      "consumed_by": "",
++      "consumed_by": "F288",
+       "provenance": "generated (self-use-generator tier 2, doc staleness, config_cli_table_complete:docs/guides/remedy-toml-user-guide.md:the CLI commands table never documents the `config` subcommand `show`)"
+     }
+   ]
