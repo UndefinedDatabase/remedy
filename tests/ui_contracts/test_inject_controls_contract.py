@@ -83,6 +83,17 @@ def test_add_task_sheet_reaches_the_door_only_through_the_send_module():
     assert 'role="dialog"' in src
 
 
+def test_add_task_sheet_renders_through_a_portal_into_the_document_body():
+    """R-1079: `TaskChecklistCard.tsx`'s glass rule sets `backdrop-filter`, which
+    makes the card the containing block of every fixed descendant, squeezing
+    the sheet into the card instead of covering the viewport. The sheet must
+    escape that containing block through a portal straight into `document.body`.
+    """
+    src = _source(ADD_TASK_SHEET)
+    assert "createPortal(" in src
+    assert "document.body" in src
+
+
 def test_right_live_panel_threads_the_server_token_into_the_task_checklist_card():
     src = _source(RIGHT_LIVE_PANEL)
     assert "serverToken={serverToken}" in src

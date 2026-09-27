@@ -1,4 +1,5 @@
 import { useEffect, useState, type ChangeEvent } from "react";
+import { createPortal } from "react-dom";
 import type { DecisionSendTarget } from "../../api/decisionSend";
 import type { InjectSendOutcome } from "../../api/injectSend";
 import { sendInjectAnswer, sendInjectConfirm, sendInjectDraft } from "../../api/injectSend";
@@ -96,7 +97,15 @@ export function AddTaskSheet({ target, tasks, onClose }: {
     setResultSentence(DISCARD_SENTENCE);
   }
 
-  return (
+  // R-1079 — this section is returned through a portal into `document.body`
+  // rather than in place: `TaskChecklistCard.tsx`'s own card sets
+  // `backdrop-filter` (the glass rule), which makes the card the containing
+  // block of every `position: fixed` descendant, so a fixed sheet mounted
+  // inside it is squeezed into the card's own box instead of covering the
+  // viewport as its `top`/`right`/`bottom` rules intend.  A portal escapes
+  // that containing block while the card keeps owning whether the sheet is
+  // open — its mount, state and props are unchanged.
+  return createPortal(
     <section className={styles.sheet} role="dialog" aria-label="Add a task" data-ui="add-task-sheet">
       <header className={styles.header}>
         <h2>Add a task</h2>
@@ -182,6 +191,7 @@ export function AddTaskSheet({ target, tasks, onClose }: {
       )}
 
       <p aria-live="polite" className={styles.result}>{resultSentence}</p>
-    </section>
+    </section>,
+    document.body,
   );
 }
