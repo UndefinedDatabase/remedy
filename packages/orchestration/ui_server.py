@@ -935,6 +935,10 @@ def _build_dashboard(job: Any) -> dict[str, Any]:
             "is_current": tstat in ("running", "active"),
             "is_future": tstat == "pending",
             "is_reviewer_suggested": False,
+            # DECISION F029 D4 (4): the attempt fan a subtree rerun keeps, directly
+            # before `origin`, which stays the LAST key (test_dashboard_task_origin.py).
+            "attempt": int(t.attempt),
+            "attempts": [dict(a) for a in t.attempts if isinstance(a, dict)],
             "origin": _task_origin(t),
         })
 
