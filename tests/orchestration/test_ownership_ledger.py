@@ -608,9 +608,9 @@ class TestHunkDecisions:
                              approved=[_HUNK_IDS[0]], rejected=(), now=now)
 
         ledger = own.build_ownership_ledger(job)
-        entries = [e for e in ledger["entries"]
-                  if e["action"] in ("hunk_approved", "hunk_rejected")]
-        [entry] = entries
+        # The WHOLE ledger, not a filtered view: a pending row that leaked out under some
+        # OTHER action name must fail this just as loudly as one still labelled correctly.
+        [entry] = ledger["entries"]
         assert entry["action"] == "hunk_approved"
         assert entry["record_ref"] == f"hunk:T1:2:{_HUNK_IDS[0]}"
         assert entry["ts"] == now.isoformat()
