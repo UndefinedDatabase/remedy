@@ -23170,3 +23170,48 @@ written until round 3.
 HOW TO REVERSE: remove `confirm_task_injection`, `apply_injection_to_job`, `plan_add_task` and
 `_fold_task_injections` with its four calls, restore `PLAN_EDIT_COMMANDS` to `tuple(_EDITS)`, and
 delete this paragraph.
+
+## DECISION F028 D3 — a shortfall draft is answered by a create-only answer file; `shrink_task` and `extend_budget` each derive a new draft, `drop` ends the old one; an extension travels with the derived draft into the confirmation and is applied by the fold, and `run_job` re-reads its budgets after every fold; the seed's labels are a mapping of plain sentences; the event moves to round 4 (2026-09-27)
+
+CONTEXT: DECISION F028 D1 (8) made a shortfall draft carry a three-option seed and no token, and
+D2 (1) left the answers to round 3. Measured at `bdb65916`: `run_job` in
+`packages/orchestration/pingpong_job.py` validates `job.budgets` into `_job_budgets` once, before
+the task loop, and both its reactive and its predictive checks read that binding, so a limit
+raised in the record mid-run is invisible to the run; the `token_budget` decision's `extend`
+answers a job that has already stopped, and nothing raises the limit of a job that is running;
+`shortfall_decision_seed` answers `option_labels` as a list of lowercase fragments, while
+`veto_proposal`'s seed keys its labels by option and the operator's rule amend0921-operator-feedback
+rule 3 asks for complete plain sentences in anything a person reads.
+
+CHOSEN: (1) THE ANSWER. `answer_injection_shortfall` refuses a terminal job, a draft
+`read_injection_draft` refuses, a draft whose status is not `needs_decision`, an option outside
+`SHORTFALL_OPTIONS`, and a draft already answered; otherwise it publishes one create-only file in
+`injection_answers/` under the job's control directory and answers by option. `drop` answers
+`dropped` and nothing else. `shrink_task` refuses `cannot_shrink` when the seed has no smaller band
+and writes no answer then; otherwise it derives a NEW draft whose task is the old one at the
+smaller band, checked again against the job's budgets, and answers it as `draft_task_injection`
+answers, so it may itself be a shortfall. `extend_budget` derives a new draft at the same band,
+confirmable, carrying `budget_extend_to_usd`, the seed's `extend_to_usd`, with its check computed
+against that limit. A derived draft keeps the old one's task id, placement, text, rationale and
+fence flags, takes a new draft id and a new expiry, and names the draft it came from. (2) THE
+EXTENSION. The confirmation copies `budget_extend_to_usd`; `apply_injection_to_job` raises
+`job.budgets["max_cost_usd"]` to it and never lowers it, and records the value in the edit log's
+`injection` block. `run_job` calls the fold through one local helper at all four points, which
+re-validates `_job_budgets` from `job.budgets` whenever the fold changed them, so the limit the
+operator chose applies to the very next safe point. (3) THE LABELS become a mapping by option, as
+`veto_proposal`'s are, and the question and each label are complete sentences carrying the
+numbers: the new limit for `extend_budget`, the smaller band or the reason there is none for
+`shrink_task`. (4) THE EVENT with its readers moves to round 4, beside the command line, which
+is its first reader outside the browser.
+
+ALTERNATIVES: raising the limit at confirmation time, rejected because a confirmation never
+writes `job.json` (DECISION F028 D2 (2)); reading the budgets fresh at every safe point, rejected
+because it changes every job's run to serve one path; a fourth option that confirms over the
+limit, rejected because the feature file names exactly three.
+
+DELIBERATE ABSENCES: an answer is not an inbox decision in this round; the browser reaches the
+seed through the injection command's own answer in T003.
+
+HOW TO REVERSE: remove `answer_injection_shortfall`, its answer files and the derived drafts, the
+extension in the confirmation and the fold, and the helper in `run_job`, and delete this
+paragraph.
