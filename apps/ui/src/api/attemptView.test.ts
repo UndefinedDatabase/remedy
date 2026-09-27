@@ -145,7 +145,7 @@ describe("taskAttemptRows", () => {
       ],
     }));
     expect(rows[1].changes).toEqual([
-      { label: "Reviewer", before: "no review verdict", after: "the reviewer said pass" },
+      { label: "Reviewer", before: "the reviewer said fail", after: "the reviewer said pass" },
     ]);
   });
 
