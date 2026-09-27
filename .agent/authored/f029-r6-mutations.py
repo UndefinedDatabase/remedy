@@ -71,14 +71,14 @@ MUTATIONS: list[tuple[str, str, str, str, str]] = [
         "vitest",
         RERUN_SEND,
         '        ...(options.confirmCost === true ? { confirm_cost: true } : {}),\n',
-        '        { confirm_cost: true },  // MUTATED (m1): always sent\n',
+        '        ...{ confirm_cost: true },  // MUTATED (m1): always sent\n',
     ),
     (
         "m2 the request never sends model",
         "vitest",
         RERUN_SEND,
         '        ...(trimmedModel !== "" ? { model: trimmedModel } : {}),\n',
-        '        {},  // MUTATED (m2): model dropped\n',
+        '        ...{},  // MUTATED (m2): model dropped\n',
     ),
     (
         "m3 a refusal's sentence keeps the code's prefix",
