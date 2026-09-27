@@ -26,7 +26,7 @@ verification commands. If something is unproven, Remedy says so instead of guess
 
 ## Status
 
-108 of 289 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
+109 of 289 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
 
 | Tier | Name | Done | Total |
 |------|------|-----:|------:|
@@ -35,7 +35,7 @@ verification commands. If something is unproven, Remedy says so instead of guess
 | 2 | Minimal Self-Build Runtime | 38 | 39 |
 | 3 | Full Token Economy & Autonomy | 6 | 27 |
 | 4 | Memory & Learning | 1 | 17 |
-| 5 | Operator Cockpit | 25 | 36 |
+| 5 | Operator Cockpit | 26 | 36 |
 | 6 | Design-to-Code | 0 | 16 |
 | 7 | Quality & Trust | 0 | 15 |
 | 8 | Worker Ecosystem & Neutrality | 0 | 12 |
@@ -531,6 +531,19 @@ a model becomes a small dot you can click to open that prompt; a keyboard user
 reaches the same prompts through a list of buttons that appears when it holds
 focus; the first self-use job at this feature's close added the missing
 `remedy config show` command to the settings guide).
+
+F028 task injection (you can now add a task to a job while it runs: in the browser, the
+"+ Add Task" row of the tasks card opens a panel where you describe the task in your
+own words; the planner turns them into a task with a title, a goal and the checks that
+say when it is done, says where it goes in the plan and why, estimates its size and
+cost, and warns you when it names files the job may not change; nothing changes until
+you confirm, and a draft you never confirm simply expires after fifteen minutes; when
+the job's money limit would not cover the task, you are asked instead whether to raise
+the limit, make the task smaller or drop it; on the command line the same steps are
+`remedy job inject`, `remedy job inject-confirm` and `remedy job inject-answer`, and
+`--yes` confirms a draft without showing it first, which the job's record notes; the
+added task runs in the same job and is marked "Added by you" in the task list, the
+detail panel and the job's final report, and "added" on the graph).
 
 Full per-feature state: [`docs/roadmap/STATUS.md`](docs/roadmap/STATUS.md)
 
