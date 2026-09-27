@@ -609,8 +609,8 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         group_id="job",
         subcommand="steer",
         description="Address a steering note to one task of a running job; it is recorded as "
-                    "evidence and read at that task's next round, never inside a model call "
-                    "(F030).",
+                    "evidence and read at the start of that task's next build round, never "
+                    "inside a model call (F030).",
         action_class="write_metadata",
         args=(
             _JOB_ID,
