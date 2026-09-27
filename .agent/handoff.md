@@ -272,3 +272,40 @@ harness runner's block and deleted after it. Worktree removed, pruned;
 Phase 1 rule 1 (read `.agent/STOP` from disk), the review of round 6 with
 the reviewer's reading of the two screenshots, then the closure sequence.
 Open findings: 0. Operator questions: 0.
+
+## Reviewer verdict on round 6, and the end of session 1
+
+Written by the planner and reviewer of F288's first session after the worker's C6 above, and
+appended to this handback by a delegated worker as the session's last commit. It is the durable
+carrier of round 6's verdict (amend0827 rule 1): the first commit of the next round books the
+paragraph between the two marker lines below, verbatim, as the last entry of
+`.agent/live_review.md`, with one blank line before it.
+
+----- BEGIN GATE ENTRY -----
+Gate: F288 R6 — the F288 round 6 entry: the booking of round 5, DECISION F288 D6, and the second half of T003 — the keyboard's parallel list of the live picture's prompt nodes, hidden until it holds focus, and a headless browser's proof of the list, the keys and the drawn synapses. VERDICT PASS. Re-derived over `cb022003`..`b184775e` by the planner and reviewer of F288's first session, whose own readings are every one below. THE RANGE IS 8 COMMITS, at `0247fc9b` 337, `7ccc3cb9` 51, `e57bc7f2` 261, `07de6c6a` 497, `53bdf90e` 30, `b6802cbc` 11, `6441ce67` 395 and `b184775e` 179 insertions by `git show --numstat`, each under the 500-line cap, each single-parent and each ending with the ordered trailer. THE WORKER DECLARED THREE DEVIATIONS, and each stands: the block's C4 landed as C4a, the harness's five files, and C4b, its reading, under constraint 2's split clause; C3b added a vitest case proving a `test_run` node never lists, so that m3 had a test to turn red, as G5 orders; and two comments of the round's own new files were reworded before their commit because they named the very strings the round's contract test forbids in those files. THE TRANSPORT PROOF: the block copy and the two payload copies, read at `0247fc9b`, equal the reviewer's originals byte for byte, and at `7ccc3cb9` the ledger, the decisions and the plan equal the reviewer's simulation tree byte for byte, the open set reading empty. THE CODE, read in the diff: `promptListEntries` answers, in model order, one entry per synapse the visible layout holds, with the prompt id, the node id, `<role> r<round>` and the state words D6 (1) names; `PromptNodeList` renders a `nav` labelled "Prompts in the live graph" of native buttons whose `aria-pressed` follows the selection and whose click selects the prompt item; its style module clips it to one pixel until `:focus-within` and then shows it over the stage's top-left corner, and every one of the ten `var(--remedy-*)` names it uses is defined in `apps/ui/src/styles/tokens.css`; the stage renders it inside the live branch only, directly after the breadcrumbs; and `ForceBrainGraph`'s container keeps `aria-hidden="true"`. THE RENDER: the reviewer ran the committed harness `.agent/authored/f288-r6-render_measure.py` itself at `b184775e` and read all six checks `PASS`, Chrome and the server stopped by pid and the work dir removed, and read the worker's two screenshots: before focus the list is invisible and each task shows its runs and two faint synapses at graph_spec §4's radius of 2; after focus the list stands at the stage's top-left with its second button pressed, and the canvas rings that button's synapse. The four labels read `builder r1` and `reviewer r1` twice, without the task's name, exactly as the simple view's dots are labelled; that mirrors the view the list stands in for and is an observation, not a finding. THE TESTS: the reviewer's own serial run of the round's selection in the primary checkout at `b184775e` read 1837 passed and 5 skipped at real exit code 0, the base 1828 plus the 9 contract nodes the round adds, and the vitest suite there read 75 files and 1459 tests passed, 5 skipped, none failed; all six `integrity check` checks read `pass`. THE RED PROOFS: the worker's committed tool, re-run by the reviewer in a disposable worktree at `b184775e`, turned its route proof and all seven ordered mutations red — m7 being the harness itself, run on a worktree whose list selects the node id, failing C-e and C-f — with every runner's control green before and after, every file restored byte-identical, and the `node_modules` symlink it made removed. The worktree was removed.
+----- END GATE ENTRY -----
+
+WHY THE SESSION ENDS HERE. Session 1 ran six delegated rounds, which meets the target of six to
+eight: rounds 1, 2, 4, 5 and 6 passed and round 3 failed on one gate, repaired by round 4. T001,
+T002 and T003 are built. What remains is the closure sequence alone, which needs a fresh reading of
+`docs/roadmap/STATUS_closure_protocol.md` and the evidence recipe, and this session wrote two lines
+to `.agent/prose_slips.md` and caused round 3's failure by a path set that missed four readers —
+the signal the protocol names for ending a session rather than authoring a closure. Context
+remaining at this point: enough to write this, not enough to author a closure comfortably.
+
+THE STATE FOR THE NEXT SESSION. Feature F288, session 2 next, rounds so far 6. Branch
+`feature/f288-event-stream-completeness`, pushed, its last reviewed commit `b184775e`, forked from
+`main` at `db691093`. Open findings: 0 (R-1075 registered and resolved in this session). Operator
+questions open: 0. No pull request is open. Leftover reviewer worktrees under `.remedy-wt/` named
+`f288-r1-dry` to `f288-r6-dry` and `f288-r1-sim` to `f288-r6-sim` are the reviewer's own and may be
+removed by the next reviewer once it no longer needs them.
+
+NEXT, AFTER THIS VERDICT:
+
+1. Phase 1 rule 1: read `.agent/STOP` from disk.
+2. The Open PR Gate: none is expected to be open.
+3. The closure sequence of `docs/roadmap/STATUS_closure_protocol.md`, whose first round books round
+   6's gate entry above into `.agent/live_review.md` in its first commit, then runs the one full
+   suite of amend0917 rule 1, writes the Built State of `docs/roadmap/features/T5_F288.md`, and
+   continues through the evidence bundle, the review package, the self-use item and the STATUS
+   acceptance with the pull request.
