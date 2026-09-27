@@ -1,0 +1,108 @@
+diff --git a/docs/agents/planner_reviewer_prompt.md b/docs/agents/planner_reviewer_prompt.md
+index 429bc0818..0a76557cf 100644
+--- a/docs/agents/planner_reviewer_prompt.md
++++ b/docs/agents/planner_reviewer_prompt.md
+@@ -347,6 +347,11 @@ end the response with:
+   function's arguments without the target and the command nonce that every send it named as its
+   model takes is item 18's reading of a named precedent against the property it must preserve. The
+   list stays at 34 items.
++  Consolidated a twenty-second time at F030's closure on 2026-09-27: nothing joined and no two items
++  were merged, because F030's one line in `.agent/prose_slips.md` names no lesson the list lacks. A
++  block that ordered a catalog description without naming `tests/docs/test_vocabulary.py`, which
++  reads every description for a binding word, is item 7's reading of the guards that read a file the
++  block adds a string to. The list stays at 34 items.
+   The next consolidation measures against 34.
+   Reverse by deleting this paragraph.
+   1. **Size.** Count the block's lines. Over 400 (DECISION F105 D5) → split or
+diff --git a/docs/roadmap/features/T5_F030.md b/docs/roadmap/features/T5_F030.md
+index 81ddb867d..64d511822 100644
+--- a/docs/roadmap/features/T5_F030.md
++++ b/docs/roadmap/features/T5_F030.md
+@@ -92,3 +92,87 @@ this feature's diff, with its test.
+ Chat/Q&A (the grounded-chat feature owns dialogue), segment ranks,
+ round mechanics. Suggested tests:
+ tests/orchestration/test_steering.py.
++
++## Built State (F030, 2026-09-27)
++
++What exists on disk at the close of F030, built in four rounds of one session on
++`feature/f030-steering-messages`, cut from `main` at `15f5d384`. F264 — Steering channel — had
++already built a job-wide steering message, its consumption at the start of every round, its segment
++and its acknowledgement, and had enabled the feed's input; F030 builds on that channel and adds no
++second one (DECISION F030 D1). Every DECISION named lives in `.agent/decisions.md`; every round's
++verdict in `.agent/live_review.md` or, once rotated, its archive.
++
++**T001 — the address, the drain, the segment and the report.** `record_steering_message` in
++`packages/orchestration/steering.py` takes an optional `task_id`; the sealed record and its
++`steering_message_received` event carry the key only when one is given, so every job-wide record
++F264 writes is byte-identical (`note_task_id` reads it back). `consume_pending_steering`, at the one
++safe point at the top of every round, consumes a note only in a round of the task it names, leaves
++a note for any other task pending, never amends a mission's contract with a note, and returns the
++job-wide messages alone. `consumed_task_notes` and `render_operator_notes_segment` give the task's
++consumed notes, in arrival order, to `compose_builder_prompt` in
++`packages/orchestration/pingpong_loop.py` as ONE segment, `builder_operator_notes`, at the steering
++rank after `builder_steering` and before the directive, headed `OPERATOR NOTES (binding):` with one
++numbered line per note, verbatim; every later round of that task carries it. A note whose task is
++neither `pending` nor `running` and that no round took in is listed by `export_job_report` under
++the task's `steering_not_consumed` key and by the text report as a `Steering not consumed:` line;
++a job with no such note reports exactly as before (`_task_steering_not_consumed_map` in
++`packages/orchestration/pingpong_job.py`).
++
++**T002 — the command.** One function, `steer_task_command` in `steering.py`, answers both doors
++without raising for a refusal: `invalid_message`, `job_not_steerable` for an ended job,
++`unknown_task` naming the job's tasks, and `task_not_steerable` naming the status of a task outside
++`STEERABLE_TASK_STATUSES` — `pending`, `running`, `blocked`, `failed` and `skipped`, the set F027's
++veto already treats as able to run, pinned equal to it by a test. The command line is
++`remedy job steer <job_id> "<text>" --task <task> [--json]` in
++`apps/cli/commands/job_steer_cmd.py`, resolving a planned id as `job veto-task` does and exiting 2
++for a wrong argument and 3 for a job or task that takes no note; the write door's command is the
++same catalog id, `job.steer`, checking `task_id` and `message` before it reads the job, recording
++with channel `cockpit`, and answering a refusal 409 with its code and detail (DECISION F030 D2).
++`steering_overview` names the task each message was addressed to (`addressed_to`) and reads a note
++whose task finished without taking it in as `not_taken_in` while the job still runs, which
++`remedy chat show` prints with the task's name.
++
++**T003 — the feed and the input.** A `steering_message_received` frame of the stream carries a
++`note` of exactly four fields, message id, text, channel and task
++(`_steering_note_summary_payload` in `packages/orchestration/ui_server.py`); every other kind's
++frame is unchanged. `apps/ui/src/api/steeringNote.ts` reads it, `feedRowOf` gives the row
++`author: "operator"` and the operator's own text as its line, and `ActivityFeedCard.tsx` draws the
++row with an initial-letter disc reading "Y" and the name "You". The shell resolves its selected
++graph node to the task item's id and passes it through `RightLivePanel` to the card, whose input
++then sends `job.steer` for that task through `sendSteeringNote` in `steeringSend.ts`, and sends
++`chat.send` job-wide, as F264 shipped it, when nothing is selected. The input's placeholder reads
++"Note for task <id> — read at its next round" or "Note for the whole job — read at its next round",
++and its tooltip is `STEERING_REPLY_FRAMING` in `humanizeCatalog.ts`: "Remedy never writes a reply
++to a steering note: the builder's next action in this feed is the answer." The design reference's
++assumption log records the placeholder and the disc (DECISION F030 D3).
++
++**Acceptance, by the test that proves it.** The trace at the steering rank, and a call in flight
++never interrupted: `TestTheCallBoundary` in `tests/orchestration/test_steering_notes.py` — a note
++recorded while round 1's build call runs leaves round 1's prompt byte-identical and adds exactly
++the segment to round 2's, whose trace manifest carries `builder_operator_notes` at rank 5 — and the
++live proof `TestSteeringNoteTakenInLive` in `tests/ui_server/test_steering_note_e2e_live.py`,
++which holds a real job's first build call in flight, posts the note through the real write door,
++and reads round 1 without it and round 2 with it from the run's recorded trace. Order preserved and
++each note taken in once: `TestTheNotes` in the same file. The unconsumed listing on a fast finish:
++`TestTheReport`, and the live `TestSteeringNoteNotTakenInLive`, whose task passes in the round the
++note arrived in and whose note then appears in the job report and in `remedy chat show` as not
++taken in, never in the other task. No fabricated reply: the copy audit and the framing tests of
++`tests/ui_contracts/test_steering_note_contract.py`, and the live proof's check that no stream frame
++but the two steering kinds carries the note's text. The command and its state gate:
++`tests/orchestration/test_steer_task.py`, `tests/cli/test_job_steer.py` and
++`tests/ui_server/test_steer_task_door.py`; the frame: `tests/ui_server/test_steering_note_frame.py`.
++Guards widened on purpose: `TestCommandDoorImportGuard` and `TestUiExposedCommands` in
++`tests/ui_server/test_command_channel.py` gained `_dispatch_steer_task`, `steer_task_command` and
++`job.steer`; `tests/orchestration/import_reachability_allowlist.txt` gained the command's module;
++and `tests/ui_contracts/test_steering_send_contract.py` pins the input's new `onSend`.
++
++**Deliberate absences.** No second inbox and no new event name: a note is F264's steering message
++with an address, and T5_F030.md's `steering.sent` is `steering_message_received` (DECISION F030
++D1). No reply is ever composed; the builder's next action in the feed is the answer. The input
++still steers the whole job when no task is selected, rather than refusing as the feature file's
++edge case describes, because that is what F264 shipped (DECISION F030 D1). The zoom state was not
++lifted into the shell: selecting a node is what focuses a task. A note never amends a mission's
++contract, because it binds one task.
++
++**Findings.** F030 registered no finding. None was open at its claim, and none is open at its
++close.
