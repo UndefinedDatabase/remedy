@@ -296,10 +296,10 @@ describe("sub-glyph extraction", () => {
 
   it("the demo recording: each task's repair round and its heal", () => {
     expect(extractSubGlyphs(brainDemoRows()).map((g) => [g.seq, g.glyph, g.taskId])).toEqual([
-      [1, "failure", "a7a8f67f1b9a4814"],
-      [2, "heal", "a7a8f67f1b9a4814"],
-      [5, "failure", "1965fb3f26b64fe7"],
-      [6, "heal", "1965fb3f26b64fe7"],
+      [1, "failure", "fe1b5b487fda490f"],
+      [3, "heal", "fe1b5b487fda490f"],
+      [6, "failure", "4b3ddac9dba846af"],
+      [8, "heal", "4b3ddac9dba846af"],
     ]);
   });
 
