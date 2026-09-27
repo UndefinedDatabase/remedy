@@ -23745,3 +23745,61 @@ rendered section the same way while the dossier's full record keeps it.
 HOW TO REVERSE: delete `RERUN_ID_TEMPLATE`, `rerun_decision_items`, `mission_job_reruns`, the
 `reruns` keyword of `mission_iteration_facts` and its argument in `refresh_mission_dossier`, their
 tests, and this paragraph.
+
+## DECISION F030 D1 — a steering note to a task is F264's steering message with a task address: the record gains an optional `task_id`, the addressed task alone consumes it at its next round start and carries it from then on in one numbered operator-note segment at the steering rank, a note its task finished without taking in is listed in the job report, and the event, the channel and the enabled input F264 shipped are reused rather than built again; T001 lands the inbox, the drain, the segment and the report (2026-09-27)
+
+CONTEXT: T5_F030.md was written before F264 — Steering channel — was built, and it describes as
+new several things F264 shipped. Measured at `15f5d384`: `packages/orchestration/steering.py`
+accepts a message for a job with `record_steering_message`, writes it as a sealed create-once
+record `steering/sm-NNNN.json` under the job's evidence, and certifies it into the run log as a
+`steering_message_received` event carrying the text; the record has no task field.
+`consume_pending_steering`, called by `_steering_text_for_round` in
+`packages/orchestration/pingpong_loop.py` at SAFE POINT 1 of every round of `run_pingpong` —
+before anything of that round is composed or sent — publishes one sealed consumption marker per
+new message naming the task and round that took it in, writes a `steering_message_consumed`
+event, amends a mission's contract, and returns EVERY message of the job, so a message is carried
+by every later round of every task. `compose_builder_prompt` registers the rendered text as the
+`builder_steering` segment at `SegmentStabilityRank.STEERING`, directly before
+`builder_directive`, and each round's prompt trace records the segment manifest. The browser's
+write door already accepts `chat.send`, and F021's disabled input under the feed was enabled by
+F264: `ChatInput` in `apps/ui/src/components/panels/ActivityFeedCard.tsx` sends a job-wide
+message and still reads "Ask something…". Nothing reports a message a task never took in until
+the whole job ends, and task statuses have no `waiting` or `paused`: pausing is a job state.
+
+CHOSEN: (1) ONE CHANNEL. A note to a task is a steering message with a task address; no second
+inbox, record format or folder is added. `record_steering_message` takes an optional `task_id`,
+and the record and its `steering_message_received` event carry the key only when it is given, so
+every job-wide record and seal F264 writes stays byte-identical. (2) THE DRAIN. At SAFE POINT 1,
+the one safe point F264 already uses, `consume_pending_steering` consumes a note addressed to
+the running task and leaves a note addressed to any other task pending; it never amends a
+mission's contract with a note, because a note is scoped to one task and a contract binds the
+whole mission. Its return value stays the job-wide messages alone, so `builder_steering` and
+every F264 test are unchanged. (3) THE SEGMENT. The task's consumed notes, in arrival order,
+become ONE new segment `builder_operator_notes` at the steering rank, after `builder_steering`
+and before `builder_directive`, absent when the task has none, reading `OPERATOR NOTES
+(binding):` and then one numbered line per note, carried verbatim. A note is carried by every
+later round of its task, as F264 carries a job-wide message, because a note dropped after one
+round is the ignored steering both features exist to prevent; "consumed once" is the one marker
+each note gets. (4) THE UNCONSUMED LISTING. A note whose task is neither `pending` nor `running`
+and which has no consumption marker is listed in `export_job_report` under the task's
+`steering_not_consumed` key and in the text report as `Steering not consumed:` lines; a job with
+no such note sees no key, so its report stays byte for byte unchanged. (5) THE COMMAND, in T002:
+`job.steer-task` on the write door and `remedy job steer <job_id> --task <task_id> "<text>"` on
+the command line, both through `record_steering_message`; a note is accepted while the job has
+not ended and the task can still run — the statuses F027's veto already treats so, `pending`,
+`running`, `blocked`, `failed` and `skipped` — and refused naming the state for a task that is
+done, split or vetoed. (6) THE FEED, in T003: the stream carries a received message's text, so
+the feed shows the operator's own line with the user's style, and the builder's next action is
+the only reply; no reply is ever composed. The input addresses the focused task when one is
+focused and stays job-wide, as F264 shipped it, when none is, and its copy promises a note taken
+in at the next round, never a conversation. (7) THE EVENT stays `steering_message_received`, not
+a new `steering.sent`: the stream's event names are the run log's, and one fact keeps one name.
+
+ALTERNATIVES: a separate per-task inbox beside F264's, rejected because two channels would
+disagree about what the operator sent; a note consumed for one round only, rejected for (3)'s
+reason; an input that refuses to send without a focused task, as the feature file's edge case
+describes, rejected because it would take away the job-wide steering F264 shipped.
+
+HOW TO REVERSE: remove the `task_id` parameter and key from `steering.py`, the task filter from
+`consume_pending_steering`, the `builder_operator_notes` segment and the report's
+`steering_not_consumed` key, and delete this paragraph.

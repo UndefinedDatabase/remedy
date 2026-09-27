@@ -1,26 +1,25 @@
-# Context — F029 Subtree rerun
+# Context — F030 Steering messages
 
 ## Active Branch
-feature/f029-subtree-rerun, cut from `main` at `b2863af4`
-(the merge commit of pull request 287, F028 Task injection).
+feature/f030-steering-messages, cut from `main` at `15f5d384`
+(the merge commit of pull request 288, F029 Subtree rerun).
 
 ## Scope
-F029 (Tier 5): a rerun from a task in the middle of a job — the task and
-its downstream reset to pending, their files restored to the state before
-the task with a hash proof, earlier attempts kept as evidence in an
-attempt fan, the command gated by the cost preview, and an optional model
-override recorded — as `docs/roadmap/features/T5_F029.md` and DECISION
-F029 D1 specify.
+F030 (Tier 5): a steering note addressed to one task of a running job —
+taken in at that task's next round start as a binding operator note at
+the steering rank, shown in the feed as the operator's own line, and
+listed when its task finished without reading it — built on F264's
+steering channel, as `docs/roadmap/features/T5_F030.md` and DECISION
+F030 D1 specify.
 
 ## Do not touch
-Checkpoint semantics, applicator internals beyond the commit seam, and
-the routing policy (an override is disclosure, not policy).
+Chat and question answering, segment ranks, and round mechanics.
 
 ## Active assumptions
-- A task applied in worktree mode has one commit on the job branch; the
-  first parent of that commit is the state before the task (DECISION
-  F029 D1).
-- A reset is a new commit; no commit of an earlier attempt is rewritten.
+- A note is a steering message with a task address; F264's record,
+  seal, event and consumption marker are reused (DECISION F030 D1).
+- A note is carried by every later round of its task, as F264 carries a
+  job-wide message.
 
 ## Constraints
 - Every pytest run in a round is targeted and serial; the resource and

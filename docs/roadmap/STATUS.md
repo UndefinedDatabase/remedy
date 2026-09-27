@@ -166,7 +166,7 @@ Milestone R1 — Remedy as the daily tool: Tier 2 complete (F086 as the self-ins
 - [x] F027 — Task veto (T001–T003 complete; accepted 2026-09-26 · live review PASS — ACCEPTED · Evidence job f027r13e1001 · package remedy-review-20260926-111715-READY_FOR_REVIEW.zip · SHA-256 abb65b1df0346c8670423a7da903e3e3c6facfc4cac4602bb5a983b47b4bd993 · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD f3afc333a70eae5f339fce8c18004db68a7cea1f)
 - [x] F028 — Task injection (T001–T003 complete; accepted 2026-09-27 · live review PASS — ACCEPTED · Evidence job f028r11e1001 · package remedy-review-20260927-132129-READY_FOR_REVIEW.zip · SHA-256 904723bf332d1f076cdfde262f84609fada02ca86635f3ef09a88c3d025692fe · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD 9cfd84d1217c24057173f4b9a8db03734c174c09)
 - [x] F029 — Subtree rerun (T001–T003 complete; accepted 2026-09-27 · live review PASS — ACCEPTED · Evidence job f029r10e1001 · package remedy-review-20260927-201630-READY_FOR_REVIEW.zip · SHA-256 9a0d0eb2ac1576e96149aca426e6aec301eedc6247c9ee0fb0b4a8eb01e9bf4b · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD e56e82f733ec51609598590eda05aa1b2b7329ca)
-- [ ] F030 — Steering messages
+- [~] F030 — Steering messages
 - [ ] F035 — Ownership ledger
 
 ## Tier 2 — Findings paydown (rolling, operator rule amend0911-feedback)

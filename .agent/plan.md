@@ -1,26 +1,29 @@
-# Plan — F029 Subtree rerun
+# Plan — F030 Steering messages
 
-Branch: feature/f029-subtree-rerun, cut from `main` at `b2863af4`, the
-merge commit of pull request 287 (F028 Task injection).
+Branch: feature/f030-steering-messages, cut from `main` at `15f5d384`, the
+merge commit of pull request 288 (F029 Subtree rerun).
 
 ## Goal
 
-"Do that part again" is safe and cheap: a rerun from a task in the middle
-of a job resets that task and everything depending on it, restores the
-files they changed to their state before the task (proved by tree
-hashes), keeps earlier attempts as evidence in an attempt fan, and may run
-with a model override that the evidence records
-(`docs/roadmap/features/T5_F029.md`).
+A note typed while a job runs reaches the task it is meant for: it lands
+in that task's next round prompt as a binding operator note, the feed
+shows the operator's own line with the builder's next action as the only
+reply, and a note its task finished without reading is reported
+(`docs/roadmap/features/T5_F030.md`, DECISION F030 D1).
 
 ## Current Step
 
-ROUND 11, the closing round: book round 10's PASS, rotate the ledger,
-accept F029 in STATUS with its README pins, and open the pull request.
+ROUND 1: claim F030, book F029's round 11, record DECISION F030 D1, and
+land T001 — the task address on a steering message, the drain at the
+task's round start, the operator-note segment and the unconsumed listing.
 
 ## Next Steps
 
-1. The next session merges this feature's pull request at the Open PR
-   Gate and claims the next feature by Rule A5.
+1. T002: the write door's `job.steer-task` and `remedy job steer` with the
+   task state gate, the audit and the event.
+2. T003: the feed shows the operator's line, the input addresses the
+   focused task, and the end-to-end proof.
+3. The closure sequence.
 
 ## Risks
 
