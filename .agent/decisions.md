@@ -23471,3 +23471,69 @@ and takes no lock; its reset is called only by T002's command, which owns the jo
 
 HOW TO REVERSE: delete `packages/orchestration/subtree_rerun.py`, its tests and its line in
 `ALLOWED_UNWIRED`, and delete this paragraph.
+
+## DECISION F029 D2 — a rerun is PREPARED on a job that is not running and then EXECUTED by `remedy job run`; the preparation re-acquires the job's worktree under its lock, resets the subtree, returns its tasks to pending with the attempt counted and the earlier attempt kept on the task, moves the earlier attempt's stream evidence aside unchanged, and records a model override on each rerun task, which `run_job` passes to the builder; T002 takes two rounds, the preparation first and the command with its cost preview second (2026-09-27)
+
+CONTEXT: measured at `0ae9f427`. `remedy job resume` never reaches `run_job`: `_cmd_job_resume` in
+`apps/cli/commands/job.py` goes to the local single-task runner or `run_cycles`, and the door that
+re-enters `run_job` is `remedy job run`. A job that completed has lost its worktree —
+`_finalize_job_workspace` in `packages/orchestration/pingpong_job.py` removes it, keeps the branch
+and calls `_drop_checkpoint_refs`, which deletes `job_initial_tree_ref` while `_verify_checkpoints`
+still requires that ref to resolve — and its `worktree_cleanup_status` reads `clean`, which
+`job_resume_refusal` accepts only beside the `completed` state. `W.create` in
+`packages/orchestration/worktrees.py` re-adds a worktree for an existing branch and re-attaches a
+registered one, always under the job's lock, and raises `WorktreeLockError` while `run_job` holds
+it. `run_job` walks tasks in plan order, runs every `pending` one and skips `applied`, `passed`,
+`skipped`, `split` and `vetoed`; `_block_job` marks every later pending task `skipped`, and `task_edit_runtime`
+restores those when it returns a failed task to pending. `run_job` passes one job-wide
+`builder_model` to `run_pingpong`; no per-task model exists, and F110's routing records a tier and
+a reason but selects nothing. Each run gets a fresh run id, so `runs/<run_id>/` is never
+overwritten, but the task's stream evidence under `task_runs/<task_id>/` of the job's evidence
+directory is opened for writing afresh by the next run of that task. `TaskEntry` has no attempt
+counter.
+
+CHOSEN: (1) PREPARE, THEN RUN. `prepare_subtree_rerun` in `subtree_rerun.py` prepares the rerun and
+returns; the subtree re-executes when the operator, or T003's browser path, runs the job with
+`remedy job run`, the one door into `run_job`. The command of round 3 is therefore quick and its
+cost preview is the operator's decision point for the spend the next run will make. (2) ADMISSION.
+A job that is `completed`, `blocked`, `paused` or `stopped` is admitted; `running`, or a lock another
+process holds, is `job_running`, and every other state is `job_not_rerunnable`. The subtree, a job
+not in worktree mode, a task with no commit, a missing branch and a missing initial tree are refused
+BEFORE the worktree is touched. (3) THE WORKTREE. The preparation holds the job's plan-edit lock and
+takes the worktree through `W.create`, which re-adds it from the kept branch when the job had
+completed; a refusal that arrives after that, before any commit, removes a worktree this call
+re-added and releases the lock. After the reset the job's `worktree_head` is the reset commit, the
+`job_initial_tree_ref` is set again to `job_initial_tree` when it no longer resolves there, the
+cleanup status reads `retained`, and the lock is released. (4) THE TASKS. Every task of the subtree
+that ran keeps its attempt as one record in its new `attempts` list — the attempt number, status,
+final status, verdict, test result, run id, commit, model override, output artifact ids, the path
+its stream evidence was moved to and the rerun id — then its new `attempt` counter rises by one and
+it returns to `pending` with every field of the finished attempt cleared. Every `skipped` task
+outside the subtree returns to `pending` as `task_edit_runtime` restores `_block_job`'s skip. A
+`completed` job becomes `paused` with its `finished_at` cleared; every other admitted state is kept,
+so a pause the operator asked for still holds. (5) THE EVIDENCE. The stream evidence directory of
+each rerun task that ran is moved, unchanged, to `rerun_attempts/<task_id>/attempt-<n>/` in the
+job's evidence directory, so the next run cannot overwrite it; run directories and run logs were
+never overwritten and stay where they are. (6) THE OVERRIDE is disclosure, not routing policy: each
+rerun task carries it in a new `model_override` field, `run_job` passes `task.model_override or
+builder_model` to `run_pingpong`, so the run's own record names the model used, and the job's new
+`reruns` list records the override beside the configured builder model with the reason
+`human_override`. No override clears any earlier one. (7) THE ORDER. Round 2 lands the
+preparation, the new fields, the per-task model and R-1080's repair; round 3 lands
+`remedy job rerun-subtree` with the subtree's cost estimate, the confirmation of the cost preview,
+the run-log event and its readers; T003 follows.
+
+ALTERNATIVES: running the job inside the command, rejected because a command the browser calls must
+return promptly and `remedy job run` already owns every guard a run needs; a `job resume` path,
+rejected because it does not reach `run_job`; changing the job-wide builder model, rejected because
+tasks outside the subtree would inherit it; leaving attempt 1's streams in place and naming the
+next attempt's directory instead, rejected because both existing readers of the stream directory
+would then read the old attempt as current; refusing a completed job, rejected because re-running a
+part of a finished job is the feature's main case.
+
+DELIBERATE ABSENCES: the preparation writes no event (round 3 adds it with its readers), runs no
+provider and changes no task outside the subtree except a `skipped` one.
+
+HOW TO REVERSE: delete `prepare_subtree_rerun` and its tests, the fields `attempt`, `attempts` and
+`model_override` of `TaskEntry` and `reruns` of `JobPlan` with their export and import lines, and
+the `task.model_override or` of the `run_pingpong` call, and delete this paragraph.

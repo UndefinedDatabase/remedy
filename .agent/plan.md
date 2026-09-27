@@ -14,20 +14,21 @@ with a model override that the evidence records
 
 ## Current Step
 
-ROUND 1: claim F029, re-head the live review record, book F028's round
-12, record DECISION F029 D1, and land T001 — the subtree, the walk of the
-job branch, the refusals and the reset with its hash proof in
-`packages/orchestration/subtree_rerun.py`, with its tests.
+ROUND 2: book round 1's PASS and register R-1080, record DECISION F029
+D2, repair R-1080, and land the first half of T002 — the rerun
+preparation in `packages/orchestration/subtree_rerun.py`, the attempt
+fields on the task, the job's rerun list, and the per-task model that
+`run_job` passes to the builder.
 
 ## Next Steps
 
-1. The review of round 1.
-2. T002: `remedy job rerun-subtree` behind the cost preview, the attempt
-   counter, the subtree's tasks returned to pending, earlier attempts'
-   evidence linked, and the model override recorded as disclosure.
+1. The review of round 2.
+2. The second half of T002: `remedy job rerun-subtree` with the
+   subtree's cost estimate, the cost preview's confirmation, and the
+   run-log event with its readers.
 3. T003: the attempt fan, its popover and the end-to-end proof.
 4. The closure sequence.
 
 ## Risks
 
-None open. Open findings: 0.
+Open findings: R-1080, repaired in this round.
