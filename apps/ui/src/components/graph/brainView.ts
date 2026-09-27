@@ -44,7 +44,9 @@ export const DASHBOARD_STATE_STATUS: Readonly<Record<RemedyState, string>> = {
  *  when the task item's own `origin` equals `INJECTED_TASK_ORIGIN` — never a
  *  fallback value either — since `RemedyTaskItem` already carries `origin`
  *  itself, this needs no extra argument the way `specVersion` needed
- *  `specVersions`. */
+ *  `specVersions`. DECISION F029 D5 (1): `attempt` rides straight off the
+ *  task item exactly as `origin` does, and ONLY when it is 2 or more — a
+ *  task's first attempt earns no seed key at all, never a fallback of 1. */
 export function dashboardBrainSeeds(
   tasks: readonly RemedyTaskItem[],
   pausedTaskIds: readonly string[] = [],
@@ -62,6 +64,7 @@ export function dashboardBrainSeeds(
     title: t.label,
     ...(Object.prototype.hasOwnProperty.call(specVersions, t.id) ? { specVersion: specVersions[t.id] } : {}),
     ...(t.origin === INJECTED_TASK_ORIGIN ? { origin: t.origin } : {}),
+    ...(typeof t.attempt === "number" && t.attempt >= 2 ? { attempt: t.attempt } : {}),
   }));
 }
 

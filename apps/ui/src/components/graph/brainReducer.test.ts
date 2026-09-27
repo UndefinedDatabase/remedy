@@ -265,6 +265,25 @@ describe("origin (DECISION F028 D7 (3))", () => {
   });
 });
 
+// DECISION F029 D5 (1): seedBrainModel copies a seed's `attempt` into the
+// task node's `meta.attempt` exactly as it copies `specVersion` and `origin`
+// above.
+describe("attempt (DECISION F029 D5)", () => {
+  it("copies a seed's attempt into meta.attempt", () => {
+    const seeded = seedBrainModel("job-attempt-meta", [
+      { id: "t1", status: "pending", rank: 0, attempt: 3 },
+    ]);
+    const task = seeded.nodes.find((n) => n.id === "task:t1");
+    expect(task?.meta.attempt).toBe(3);
+  });
+
+  it("a seed with no attempt carries no meta.attempt key at all", () => {
+    const seeded = seedBrainModel("job-attempt-meta", [{ id: "t1", status: "pending", rank: 0 }]);
+    const task = seeded.nodes.find((n) => n.id === "task:t1");
+    expect(task?.meta).not.toHaveProperty("attempt");
+  });
+});
+
 describe("task_run_started interrupts a still-open previous run", () => {
   it("a second start while the first builder_run is still in_progress blocks the first and opens a second", () => {
     const seeded = seedBrainModel("job-y", [{ id: "t1", status: "pending", rank: 0 }]);

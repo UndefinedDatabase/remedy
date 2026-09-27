@@ -13,8 +13,12 @@ import {
   selectionIdOf, selectionTaskIdOf, shellSelectionIdOf, vetoFadedNodeIds, vetoHoverTexts,
 } from "./brainView";
 
-function task(id: string, state: RemedyTaskItem["state"], label = id, origin?: string): RemedyTaskItem {
-  return { id, label, state, kind: "task", checked: false, muted: false, nodeId: `node-${id}`, ...(origin !== undefined ? { origin } : {}) };
+function task(id: string, state: RemedyTaskItem["state"], label = id, origin?: string, attempt?: number): RemedyTaskItem {
+  return {
+    id, label, state, kind: "task", checked: false, muted: false, nodeId: `node-${id}`,
+    ...(origin !== undefined ? { origin } : {}),
+    ...(attempt !== undefined ? { attempt } : {}),
+  };
 }
 
 /** A small real layout — one task per filter bucket, built the same way the
@@ -108,6 +112,20 @@ describe("dashboardBrainSeeds", () => {
     expect(seeds.find((s) => s.id === "a")?.origin).toBe(INJECTED_TASK_ORIGIN);
     expect(seeds.find((s) => s.id === "b")).not.toHaveProperty("origin");
     expect(seeds.find((s) => s.id === "c")).not.toHaveProperty("origin");
+  });
+
+  // DECISION F029 D5 (1): `attempt` rides straight off the task item, exactly
+  // as `origin` does, and only when it is 2 or more.
+  it("puts attempt on a seed only when the item's attempt is at least 2", () => {
+    const tasks = [
+      task("a", "pending", "Alpha", undefined, 2),
+      task("b", "pending", "Beta", undefined, 1),
+      task("c", "pending", "Gamma"),
+    ];
+    const seeds = dashboardBrainSeeds(tasks);
+    expect(seeds.find((s) => s.id === "a")?.attempt).toBe(2);
+    expect(seeds.find((s) => s.id === "b")).not.toHaveProperty("attempt");
+    expect(seeds.find((s) => s.id === "c")).not.toHaveProperty("attempt");
   });
 
   it("seeds a task named in vetoedTaskIds as vetoed, whatever its dashboard status word (DECISION F027 D7 (2))", () => {
