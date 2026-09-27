@@ -12,20 +12,20 @@ the draft, with provenance end to end (`docs/roadmap/features/T5_F028.md`).
 
 ## Current Step
 
-ROUND 1: claim F028, re-head the live review record, book F288's round
-10, record DECISION F028 D1, and land T001 — the draft pass of an
-injection in `packages/orchestration/task_injection.py` and its tests.
+ROUND 2: book round 1's PASS and register R-1076, record DECISION F028
+D2, repair R-1076, and land the first half of T002 — the confirmation,
+the runner's fold at four points, the `plan_add_task` edit kind, the
+provenance on the task entry and the edit log.
 
 ## Next Steps
 
-1. T002: the confirmation — the runner folds a confirmed injection into
-   a running job, the plan's edit log gains the add, the task carries its
-   provenance, one event with its readers, and the shortfall seed's three
-   answers.
+1. The second half of T002: the shortfall seed's three answers, its
+   labels as a mapping, and the run-log event with its readers.
 2. T003: `remedy job inject`, the browser's command, the Add Task sheet,
    the provenance chip, and the end-to-end proof.
 3. The closure sequence.
 
 ## Risks
 
-A running job's record is written only by its runner. Open findings: 0.
+A running job's record is written only by its runner. Open findings: 1
+(R-1076, Low, repaired this round).

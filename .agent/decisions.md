@@ -23110,3 +23110,63 @@ come from its own run's calls, and the draft reports how many calls it took inst
 
 HOW TO REVERSE: delete `packages/orchestration/task_injection.py`, its tests and its line in
 `ALLOWED_UNWIRED`, and delete this paragraph.
+
+## DECISION F028 D2 — a confirmed injection is a second create-only control file; `run_job` folds it at four points, appends the task at the end of the plan and of its task list, logs the add as `plan_add_task` and re-seals the approved plan; a fold after the last task parks the job paused; T002 takes two rounds (2026-09-27)
+
+CONTEXT: DECISION F028 D1 fixed the draft and left the confirmation to T002. Measured at
+`4b6ccd1d`: `run_job` in `packages/orchestration/pingpong_job.py` folds vetoes through
+`_fold_task_vetoes` before its task loop and at every pre-task safe point, and its loop is
+`for idx, task in enumerate(job.tasks)`, which sees a task appended to the list while it runs;
+after the loop the job is `completed` when every task is done, and a job left with a pending task
+and no task cap keeps the state it had; `edit_task_at_runtime` in `task_edit_runtime.py` shows the
+shape of a runtime edit: `apply_edit`, `map_task_plan_to_tasks`, `record_llm_task_deliverables`,
+the plan version bumped, the approval hash re-sealed with `plan_content_hash` when the plan was
+approved, an edit-log entry carrying a block of its own with `dod_resync_pending`;
+`PLAN_EDIT_COMMANDS` in `plan_editing.py` is `tuple(_EDITS)`, pinned by
+`tests/orchestration/test_plan_editing.py`, and names what an operator may send BEFORE approval;
+`replay_edits` re-runs every logged command through `apply_edit`.
+
+CHOSEN: (1) THE ORDER. T002 takes two rounds. Round 2 lands the confirmation and the fold with the
+provenance and the edit log, and repairs R-1076. Round 3 lands the shortfall seed's three answers,
+the seed's labels as a mapping by option, as `veto_proposal`'s seed has them, and the run-log event
+with every reader of its name. (2) THE CONFIRMATION. `confirm_task_injection` refuses, in order, a
+terminal job, a draft `read_injection_draft` refuses, a draft of another job (`draft_unknown`), a
+draft whose status is not `confirmable` (`draft_needs_decision`), a draft already confirmed
+(`already_confirmed`), a draft whose task id is already a task of the plan or of a confirmed
+injection, or whose `depends_on` names a task the plan no longer holds (`draft_stale`, the operator
+drafts again), and a plan that the confirmed injections have filled to the cap (`plan_full`).
+Otherwise it publishes one create-only file in `injected_tasks/` under the job's control directory,
+named as the draft file is, and answers `confirmed`. It never writes `job.json`. (3) THE FOLD.
+`_fold_task_injections` in `pingpong_job.py` folds every confirmed injection the record does not
+yet hold, in the order they were confirmed, at four points: before the task loop and at every
+pre-task safe point, each right after the veto fold; after the post-task safe point of every task;
+and once after the loop, before the terminal readings. A task the loop has not yet reached is run
+in the same run, because the loop reads the live list; a task only the last fold appends parks the
+job `paused`, the task cap's own resumable state, instead of letting it complete with work
+pending. (4) THE APPLY is `apply_injection_to_job` in `task_injection.py`, pure over the in-memory
+record: `apply_edit(plan, "plan_add_task", ...)`, the mapped entry for the new task appended to
+`job.tasks` with `inputs["plan"]` carrying `origin` `human_injected`, `plan_rationale`,
+`task_rationale` and `injection_draft_id`, the plan version bumped, the approval hash re-sealed as
+F026 re-seals it, and one edit-log entry whose `injection` block names the draft, the entry's task
+id, the placement basis, the operator's text and `dod_resync_pending`. A fold the edit refuses
+applies nothing and is recorded inert with its reason. `job.metadata["task_injections"]`, keyed by
+draft id, is how the fold knows an injection is already folded. (5) THE EDIT KIND. `plan_add_task`
+joins `_EDITS`, appending one validated `PlannedTask` whose id is new, so `replay_edits` replays an
+injected plan; `PLAN_EDIT_COMMANDS` becomes the explicit tuple of F015's six commands, unchanged in
+value, because an add reaches a plan only through an injection.
+
+ALTERNATIVES: rewriting the task loop as a `while` loop that re-reads the task list, rejected
+because the live list already gives that behaviour for every task but one moment, and the fold
+after the loop covers that moment; completing the job and leaving a late confirmation unrun,
+rejected because a confirmed task would silently never execute; exposing `plan_add_task` among
+F015's pre-approval commands, rejected because a free add before approval would bypass the
+planner's draft and the budget check that make an injection safe.
+
+DELIBERATE ABSENCES: the fold does not rewrite the job's evidence export of the edit log
+(`user_edited_plan.json`), because that write happens outside the runner's record and a failed
+export must not stop a running job; the record's own edit log is the source. No run-log event is
+written until round 3.
+
+HOW TO REVERSE: remove `confirm_task_injection`, `apply_injection_to_job`, `plan_add_task` and
+`_fold_task_injections` with its four calls, restore `PLAN_EDIT_COMMANDS` to `tuple(_EDITS)`, and
+delete this paragraph.
