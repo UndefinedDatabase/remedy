@@ -653,7 +653,10 @@ def prepare_subtree_rerun(
             else:
                 W.release_lock(handle)
             raise
-        except Exception as exc:  # noqa: BLE001 — kept for recovery; re-raised unchanged
+        except (SubtreeRerunError, W.WorktreeError) as exc:
+            # Every OTHER exception `apply_subtree_reset` can raise: a failed hash
+            # proof or a git operation on the worktree itself. Kept for recovery,
+            # never removed — an unproven or half-made reset must stay inspectable.
             W.retain_for_recovery(handle, f"{type(exc).__name__}: {exc}")
             raise
 
