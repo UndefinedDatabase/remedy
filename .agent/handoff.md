@@ -1,231 +1,189 @@
-# Handoff — F030, round 4 (book R3, land T003's end-to-end proof)
+# Handoff — F030, round 5 (book R4, write the Built State, consolidate the checklist, self-use item, one full suite)
 
 ## Session
 
-SESSION 1 of feature F030 · round 4 · rounds so far 4. Context remaining at
-handback: comfortable — the round read every named source file once (the
-model, the door test, the call-boundary tests, the prompt-trace shape,
-`steering.py`, `pingpong_loop.py`'s consumption call site, `ui_server.py`'s
-note summary and dispatch, `pingpong_job.py`'s report map), wrote S1's new
-live test and the mutation tool, caught one bug in its own tool by actually
-running it rather than trusting ruff, and still has a healthy context
-budget left.
+SESSION 1 of feature F030 · round 5 · rounds so far 5. Context remaining at
+handback: comfortable — the round read the closure protocol, the
+integration-gate procedure and the handback template once, applied three
+reviewer payloads verbatim, ran the self-use generator/queue pair, the UI
+build and the one full suite, and still has a healthy context budget left.
 
 ## Range
 
-Review of `34f012e3e`..`HEAD` (`HEAD` is this handback's own commit, `F030
-R4 C5`, on `feature/f030-steering-messages`).
+Review of `3d0f3fa0d`..`HEAD` (`HEAD` is this handback's own commit, `F030
+R5 C4`, on `feature/f030-steering-messages`).
 
 ## Commits
 
-### cd58a24c2 F030 R4 C1: copy round 4 block and payloads
+### c0284ba4c F030 R5 C1: copy round 5 block and payloads
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f030-r4-block.md | 205/0 | verbatim copy of this round's block |
-| .agent/authored/f030-r4-booking.diff | 10/0 | verbatim copy of the booking payload |
-| .agent/authored/f030-r4-plan.md | 29/0 | verbatim copy of the plan payload |
+| .agent/authored/f030-r5-block.md | 150/0 | verbatim copy of this round's block |
+| .agent/authored/f030-r5-closure_docs.diff | 108/0 | verbatim copy of the closure-docs payload |
+| .agent/authored/f030-r5-plan.md | 29/0 | verbatim copy of the plan payload |
+| .agent/authored/f030-r5-records.diff | 10/0 | verbatim copy of the records payload |
 
-Measured insertions: 244 (205+10+29). Block expected 205+39=244. Match.
+Measured insertions: 297 (150+108+29+10). Block expected 150+147=297. Match.
 
-### d75061f07 F030 R4 C2: book round 3's PASS
+### d8fd39d6c F030 R5 C2: book round 4
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/live_review.md | 2/0 | F030 R3 Gate entry appended (`git apply` of booking.diff) |
-| .agent/plan.md | 7/8 | rewritten to plan.md payload |
+| .agent/live_review.md | 2/0 | F030 R4 Gate entry appended (`git apply` of records.diff) |
+| .agent/plan.md | 7/7 | rewritten to plan.md payload |
 
-Measured numstat: 2/0, 7/8. Block expected exactly this. Match.
+Measured numstat: 2/0, 7/7. Block expected exactly this. Match.
 
-### dfde8e103 F030 R4 C3: prove a steering note end to end through the write door
+### 4080c94d8 F030 R5 C3: write the Built State and consolidate the checklist
 | Path | +/- | Reason |
 |---|---|---|
-| tests/ui_server/test_steering_note_e2e_live.py | 461/0 | new: SCENARIO A (`TestSteeringNoteTakenInLive`) — a note posted while T1's round 1 build call is held in flight reaches round 2 as the `builder_operator_notes` segment (rank 5), the consumption marker names T1/round 2, and `events-since` orders `steering_message_received` before `steering_message_consumed` (round_number 2) before a later non-steering frame of T1, with no other frame carrying the note's text; SCENARIO B (`TestSteeringNoteNotTakenInLive`) — a note whose task passes at round 1 is never consumed, never reaches T2, and is listed by `export_job_report`, `format_job_report_text` and `remedy chat show --json` as `not_taken_in` |
+| docs/agents/planner_reviewer_prompt.md | 5/0 | checklist consolidation paragraph appended before "The next consolidation measures against 34." (containment test: TO contains FROM's line, occurring once before and once after — an APPEND) |
+| docs/roadmap/features/T5_F030.md | 84/0 | Built State section appended (T001-T003, acceptance, deliberate absences, findings: none registered) |
 
-Measured insertions: 461. No insertion count was ordered for this commit.
-
-### f8bfe3050 F030 R4 C4: add the round 4 mutation tool
-| Path | +/- | Reason |
-|---|---|---|
-| .agent/authored/f030-r4-mutations.py | 115/0 | G5's red-proof tool: m1 `steering.py`'s address gate, m2 `pingpong_loop.py`'s operator-notes text, m3 `ui_server.py`'s stream `note` field, m4 `pingpong_job.py`'s report map |
-
-Measured insertions: 115. No insertion count was ordered for this commit.
-
-### e22dbc750 F030 R4 C4b: fix the mutation tool's failing-node-id extraction
-| Path | +/- | Reason |
-|---|---|---|
-| .agent/authored/f030-r4-mutations.py | 6/1 | `_failing_node_ids` split each `FAILED ` summary line on its first space, which lands between the word "FAILED" and the node id, so every reported node id read as the literal string "FAILED"; fixed to strip the `FAILED ` prefix and split on ` - ` instead |
-
-Measured insertions/deletions: 6/1. Not part of the block's ordered bundle —
-see Deviations.
+Measured numstat: 5/0, 84/0. Block expected exactly this. Match.
 
 Exception (self-reference, per `docs/agents/handback_template.md`): this
-handback's own commit, `F030 R4 C5`, is not tabled here.
+handback's own commit, `F030 R5 C4`, is not tabled here. Its path set is
+`.agent/authored/f030-closure-suite.txt` (new) and `.agent/handoff.md`
+(rewritten), committed together per the block's order.
 
 ## External actions
 
-- `git worktree add --detach .remedy-wt/f030-r4-mut f8bfe3050` — G5's
-  red-proof worktree. Removed with
-  `git worktree remove --force .remedy-wt/f030-r4-mut` and
-  `git worktree prune`; `git worktree list | wc -l` read 64 both before and
-  after (equal to this round's step-4 reading).
-- No push, no PR create/edit/merge yet — those are G6, run after this
-  commit; their real readings are in this round's reply, not here.
+- `git push origin feature/f030-steering-messages` — after C4. Outcome
+  reported in this round's reply (G6), run after this file is written.
+- No PR create/edit/merge. No worktree add/remove this round.
 
 ## Verification
 
-**G1 transport** — payload readings (measured before use):
+**G1 transport** — payload readings (measured before use), all equal to
+the delegation message's readings and the block's PAYLOADS table exactly:
 
-    block.md lines: 205 sha256: 990f0b5efaf6bd500b48a8b7320ba92ee9d91d2ef8a1405ff5a134eaa14ee159
-    booking.diff lines: 10 bytes: 9582 sha256: 355943c47f4ef9f8716cbeddfd0d8cb03e44b8b12754768ffe78f5a2b19bf504
-    plan.md lines: 29 bytes: 1033 sha256: 79472ac16f1e8f989d5dcd4409923d4b0be7f7f3e7501879300b142bf738c0fb
+    closure_docs.diff lines: 108 bytes: 8437 sha256: 89f92289a0ae72b9287eea90c813f42a5f6d76568c98afbb2be2929b0d599cf7
+    plan.md            lines: 29  bytes: 1046 sha256: 37ec23ff895f40f8550e66f55bbd662cedc97bd2d8e9ee58e2f4a87d34f9122b
+    records.diff       lines: 10  bytes: 9463 sha256: 5861cde9a75f7c7835cf88b38ebce0702618fdd45e848c0a10e3a0869c99b89c
 
-All readings equal the delegation message's and the PAYLOADS table's
-readings exactly. Each `.agent/authored/f030-r4-*` copy read back with
-`git show cd58a24c2:<path>` equalled its source byte for byte (sha256
-comparison):
+Each `.agent/authored/f030-r5-*` copy read back with `git show
+c0284ba4c:<path>` equalled its source byte for byte (sha256 comparison,
+all four): block.md, closure_docs.diff, plan.md and records.diff each
+matched.
 
-    .agent/authored/f030-r4-block.md byte-identical: True (sha 990f0b5e...ee159 both)
-    .agent/authored/f030-r4-plan.md byte-identical: True (sha 79472ac1...c0fb both)
-    .agent/authored/f030-r4-booking.diff byte-identical: True (sha 355943c4...bf504 both)
+`git apply --check .remedy-wt/f030-r5-payloads/records.diff` → `REAL_EXIT=0`.
+`git apply .remedy-wt/f030-r5-payloads/records.diff` → `REAL_EXIT=0`.
+`git apply --check .remedy-wt/f030-r5-payloads/closure_docs.diff` → `REAL_EXIT=0`.
+`git apply .remedy-wt/f030-r5-payloads/closure_docs.diff` → `REAL_EXIT=0`.
 
-`git apply --check .remedy-wt/f030-r4-payloads/booking.diff` → `CHECK_EXIT=0`.
-`git apply .remedy-wt/f030-r4-payloads/booking.diff` → `APPLY_EXIT=0`.
+**G2 the records** — at `d8fd39d6c` (C2), `git show <sha>:<path>` read:
 
-**G2 the records** — at `d75061f07`, `git show <sha>:<path>` read:
+    .agent/live_review.md bytes: 320809 sha256: 66499ed2ce0ef99ae7ab351f4ec4762d685d461158403711bc7bbfeabe4f0498
+    .agent/plan.md        bytes: 1046   sha256: 37ec23ff895f40f8550e66f55bbd662cedc97bd2d8e9ee58e2f4a87d34f9122b
 
-    .agent/live_review.md bytes: 317793 sha256: 988cbf32fb2fc9fabb0e7293384b41920b455261ed720b7524649145cfdf3628
-    .agent/plan.md        bytes: 1033   sha256: 79472ac16f1e8f989d5dcd4409923d4b0be7f7f3e7501879300b142bf738c0fb
+Both equal the reviewer's given readings. `open_finding_ids`
+(`scripts/rotate_live_review.py`) over the ledger at C2 read `[]` — empty,
+as the reviewer read it.
 
-Both equal the reviewer's given readings. `open_finding_ids` (from
-`scripts/rotate_live_review.py`, imported and run over the ledger text at
-`d75061f07`) read `[]` — empty, as the reviewer read it.
+At `4080c94d8` (C3), `git show <sha>:<path>` read:
 
-**G3 the code** — ruff at C4 (`f8bfe3050`, re-verified unchanged after C4b):
+    docs/roadmap/features/T5_F030.md       bytes: 11843  sha256: 2529bdfc28a04aca78f50337471352b9abb742311350ff01a82ca3a0fdf3621b
+    docs/agents/planner_reviewer_prompt.md bytes: 107960 sha256: 001a1e320e855139d80b01e27df1e4013ec92774c67a569245f2a87df267703f
 
-    python3 -m ruff check tests/ui_server/test_steering_note_e2e_live.py
-    All checks passed!
+Both equal the reviewer's given readings. `live_checklist_items`
+(`packages/orchestration/block_lint.py`) over the planner prompt read the
+same 34 numbers at `3d0f3fa0` and at `4080c94d8`:
+`[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,18,20,21,22,23,24,25,26,27,28,29,30,31,33,34,35,36,37]`
+— identical sets, both length 34.
+
+**G3 the linter** — `python3 -m apps.cli.main integrity block
+.remedy-wt/f030-r5/block.md` at C3:
+
+    [OK] item 1 (size): 150 lines, limit 400
+    [OK] item 3 (cap-bounded replacements): plan.md at 29 lines
+    [OK] item 10 (open set recomputed): states 0; .agent/live_review.md holds 0 open by distinct id, and the block registers 0 and resolves 0, leaving 0
+    [OK] item 24 (gate paths resolve): 0 paths named in the block's commands, every one resolves
+    [OK] item 30 (new ids searched first): the block registers no finding id
+    [OK] item 31 (gates before the text): the block orders no gates before a commit
+    [OK] item 37 (no unmeasured runs): no line is a run of one repeated character
+    All 7 checkable items pass.
     REAL_EXIT=0
 
-Quoted from the diff — the handshake provider:
+**G4 the tests and the tree**, in the primary checkout at C3, serially:
 
-    class HandshakeFakeProvider(FakeProvider):
-        '''Holds ONLY the runner process's first build call in flight — a module-level flag,
-        since `create_provider` mints a fresh provider per task and per call site. ...'''
-
-        def build(self, prompt, **kwargs):
-            global _did_handshake
-            if not _did_handshake:
-                _did_handshake = True
-                Path({building!r}).write_text("1")
-                deadline = time.monotonic() + 60.0
-                while not Path({go!r}).exists() and time.monotonic() < deadline:
-                    time.sleep(0.05)
-            return super().build(prompt, **kwargs)
-
-Scenario A's ordering assertions:
-
-    recv_seq = received[0]["seq"]
-    cons_seq = consumed[0]["seq"]
-    assert recv_seq < cons_seq
-
-    t1_later_non_steering = [
-        e for e in events
-        if e.get("task_id") == t1 and e["seq"] > cons_seq and e["event"] not in steering_kinds
-    ]
-    assert t1_later_non_steering, "no builder action recorded after consumption"
-
-**G4 the tests** — the new file alone, three times, serially:
-
-    run 1: 2 passed in 1.41s (wall 1.63s)
-    run 2: 2 passed in 1.41s (wall 1.64s)
-    run 3: 2 passed in 1.40s (wall 1.62s)
-
-Then, at C4, serially, real exit code:
-
-    569 passed, 1 skipped in 75.82s (0:01:15)
+    python3 -m pytest -q -p no:cacheprovider -rs tests/docs/ tests/orchestration/test_block_lint.py \
+      tests/orchestration/test_live_review_rotation.py tests/orchestration/test_integrity_gate.py \
+      tests/orchestration/test_self_use_generator.py tests/orchestration/test_roadmap_index.py \
+      tests/ui_server/test_dashboard_contract.py tests/cli/test_golden_path.py
+    596 passed in 62.21s (0:01:02)
     REAL_EXIT=0
 
-The one `SKIPPED` line: `tests/test_agent_tooling.py:43: D12 quarantine
-(F252)` — the same F252 quarantine the reviewer named. `--collect-only -q`
-node count for the new file: 2. Accounting: reviewer's base at `34f012e3`
-(selection less the new file) read 567 passed; 567 + 2 = 569. Matches
-exactly.
+No SKIPPED line (0 skipped). This differs from the reviewer's simulated-tree
+reading of "595 passed and 1 skipped" — the block itself names the cause:
+the reviewer's simulated tree has no `apps/ui/node_modules`, the primary
+checkout does, so the one node that skips there for a missing
+`node_modules` ran and passed here. 595 + 1 = 596: the split differs, the
+total is identical, and the block pre-declared this exact explanation, so
+it is reported here as a reading, not raised as a Deviation.
 
-`python3 -m apps.cli.main integrity check --json` →
-
-    {"check_count": 6, "checks": [...], "fail_count": 0, "ok": true, "passed": true, "schema_version": 1, "version": 1}
+    python3 -m apps.cli.main integrity check --json
+    {"check_count": 6, "checks": [{"status": "pass", "name": "handler_import"}, {"status": "pass", "name": "live_review_verdict"}, {"status": "pass", "name": "plan_consistency"}, {"status": "pass", "name": "relevant_untracked"}, {"status": "pass", "name": "repo_root_hygiene"}, {"status": "pass", "name": "high_blockers_open"}], "fail_count": 0, "ok": true, "passed": true}
     REAL_EXIT=0
 
-All six checks `pass`: `handler_import`, `live_review_verdict`,
-`plan_consistency`, `relevant_untracked`, `repo_root_hygiene`,
-`high_blockers_open`.
+All six checks read `pass`, `fail_count` 0. `git status --porcelain` empty,
+no untracked file (closure precondition 3 holds at C3).
 
-**G5 the red proofs** — `git worktree add --detach .remedy-wt/f030-r4-mut
-f8bfe3050`. First run (before the C4b fix) caught all four mutations but
-misreported every failing node id as the literal word "FAILED" (the bug
-C4b fixes); re-run after the fix, from the primary checkout's corrected
-script against the same worktree:
+**G5 the integration gate** — C4(a), in the primary checkout:
 
-    control (first): exit=0 failed=0 nodes=[]
-    m1: exit=1 failed=1 nodes=['tests/ui_server/test_steering_note_e2e_live.py::TestSteeringNoteTakenInLive::test_a_note_posted_mid_call_is_taken_in_at_round_two_and_reaches_the_stream']
-    m2: exit=1 failed=1 nodes=['tests/ui_server/test_steering_note_e2e_live.py::TestSteeringNoteTakenInLive::test_a_note_posted_mid_call_is_taken_in_at_round_two_and_reaches_the_stream']
-    m3: exit=1 failed=1 nodes=['tests/ui_server/test_steering_note_e2e_live.py::TestSteeringNoteTakenInLive::test_a_note_posted_mid_call_is_taken_in_at_round_two_and_reaches_the_stream']
-    m4: exit=1 failed=1 nodes=['tests/ui_server/test_steering_note_e2e_live.py::TestSteeringNoteNotTakenInLive::test_a_note_whose_task_passes_in_round_one_is_never_taken_in']
-    control (last): exit=0 failed=0 nodes=[]
-    restored byte-identical: True (packages/orchestration/steering.py)
-    restored byte-identical: True (packages/orchestration/pingpong_loop.py)
-    restored byte-identical: True (packages/orchestration/ui_server.py)
-    restored byte-identical: True (packages/orchestration/pingpong_job.py)
-    ALL MUTATIONS CAUGHT AND RESTORED CLEANLY: True
+    packages.orchestration.self_use_generator.generate_and_append_if_empty() -> None
+    packages.orchestration.self_use_queue.next_self_use_item() -> None
+    git status --porcelain (after) -> empty
+
+Both `None`, matching the reviewer's dry-run reading on a tree byte-equal
+to C3. Nothing written; closure precondition 6 reads `self-use NONE
+(queue exhausted)`.
+
+C4(b), the UI build:
+
+    npm --prefix apps/ui run build
+    ... (last two lines) ...
+    - Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+    ✓ built in 2.27s
     REAL_EXIT=0
+    git status --porcelain (after) -> empty
 
-All four mutations caught (m1-m3 red Scenario A, m4 reds Scenario B — as
-expected, since m4 only affects the job-report map Scenario B alone
-reads). Both controls green. Every mutated file restored byte-identical.
-Worktree removed: `git worktree remove --force .remedy-wt/f030-r4-mut`,
-`git worktree prune`; `git worktree list | wc -l` read 64 afterward, equal
-to this round's step-4 reading.
+C4(c), the full suite, once, in the primary checkout:
 
-`git diff --name-only 34f012e3` before C5: exactly the paths constraint 3
-lists — the three `.agent/authored/f030-r4-*` copies, the mutation tool,
-`.agent/live_review.md`, `.agent/plan.md`, and
-`tests/ui_server/test_steering_note_e2e_live.py`. No production file, no
-existing test and no browser file changed.
+    python3 -m pytest -n auto -q
+    REAL_EXIT=0
+    Wall time: 179.78s (0:02:59)
+    Summary line: 20184 passed, 20 skipped, 1 warning in 179.78s (0:02:59)
+    Bad node ids (failed + errors): NONE
+
+`grep -c '^FAILED\|^ERROR'` over the full transcript read 0 for both
+patterns — no bad node anywhere in the run, so
+`tests/orchestration/test_import_reachability.py` and
+`tests/test_no_orphan_modules.py` each hold no bad node (closure
+precondition 7 holds). Tree: C3 `4080c94d8a5e89317455dd0416e6a0002bb6b077`.
+All of the above is recorded verbatim in
+`.agent/authored/f030-closure-suite.txt`.
 
 ## Authored-text proofs
 
-The three `.agent/authored/f030-r4-*` payload copies (G1, above): each
-equals its source byte for byte, read back from `git show cd58a24c2:<path>`
-against the file this worker measured from `.remedy-wt/f030-r4/block.md`
-and `.remedy-wt/f030-r4-payloads/`. `.agent/authored/f030-r4-mutations.py`
-is this worker's own authored tool (G5), not a reviewer payload, so it
-carries no fidelity comparison — its correctness is the G5 red-proof run
-itself (and its own bug, found by running it, is C4b's fix).
+The four `.agent/authored/f030-r5-*` payload copies (G1, above): each
+equals its source byte for byte, read back from `git show c0284ba4c:<path>`
+against the file this worker measured from `.remedy-wt/f030-r5/block.md`
+and `.remedy-wt/f030-r5-payloads/`. `docs/agents/planner_reviewer_prompt.md`
+and `docs/roadmap/features/T5_F030.md` at C3 (G2, above): both equal the
+reviewer's given byte counts and sha256 hashes exactly, confirming the
+`git apply` of `closure_docs.diff` reproduced the reviewer's authored text
+verbatim. `.agent/live_review.md` and `.agent/plan.md` at C2 (G2, above):
+same — both equal the reviewer's given readings exactly, confirming
+`records.diff` and `plan.md`'s rewrite reproduced the reviewer's authored
+text verbatim.
 
 ## Deviations & assumptions
 
-1. **An extra commit, C4b, not in the block's ordered C1-C5 bundle.** G5's
-   first tool run correctly caught all four mutations (exit≠0, failed=1
-   each) but printed every failing node id as the literal word "FAILED"
-   instead of the actual test node id — `_failing_node_ids` split each
-   `FAILED <node-id>` summary line on its first space, landing between
-   "FAILED" and the id rather than after it. This is a bug in this round's
-   own authored tool, found only by actually invoking it against a live
-   mutation (ruff and reading did not catch it, since the tool is
-   syntactically and structurally correct — only its string-splitting
-   logic was wrong). AGENTS.md's Commit Discipline forbids amending a
-   commit already made (`git commit --amend`) outside an explicit operator
-   request, and CONSTRAINT 4 of this block permits correcting a test THIS
-   round wrote before C5, with the correction declared — I read that
-   allowance as extending to this round's own tool by the same logic (an
-   authored artifact this round produced, found wrong before C5, corrected
-   before C5, declared here). The fix does not change which mutations were
-   caught or the restore verdict — only the printed node-id text — and it
-   touches only `.agent/authored/f030-r4-mutations.py`, already inside the
-   round's whole tracked path set (constraint 3), so no path-set or
-   production-file boundary was crossed.
-2. No other deviation. Every step, gate and report ran in the block's
-   order; the test this round wrote (S1) needed no correction; no existing
-   test went red.
+None. Every step, gate and report ran in the block's order: C1-C4 exactly
+as ordered, no extra or dropped commit, no reordering. The one reading
+that differs from the reviewer's own number (G4's 596/0 vs. 595/1 split)
+is explained by the block itself (node_modules presence) and is reported
+as a reading in Verification above, not as a deviation.
 
 ## Item-status table
 
@@ -233,24 +191,27 @@ itself (and its own bug, found by running it, is C4b's fix).
 |---|---|---|
 | Step 1 (STOP check) | done | `.agent/STOP` absent |
 | Step 2 (shell/branch/HEAD) | done | pwd, status, branch, HEAD all matched |
-| Step 3 (block bytes) | done | 205 lines, sha256 match exact |
-| Step 4 (worktree count) | done | 64 |
+| Step 3 (block bytes) | done | 150 lines, sha256 match exact |
+| Step 4 (worktree/branch counts) | done | worktrees 61, `remedy/job-*` branches 50 |
 | C1 | done | |
 | C2 | done | |
 | C3 | done | |
-| C4 | done | see Deviation 1 (node-id bug found by running the tool, fixed in C4b) |
-| C4b | done | undeclared-bundle correction, declared as Deviation 1 |
-| C5 | done | |
+| C4a | done | both readings `None`; self-use NONE (queue exhausted) |
+| C4b | done | UI build exit 0 |
+| C4c | done | full suite 20184 passed, 20 skipped, exit 0, NONE bad node ids |
+| C4d | done | transcript + handoff committed together |
 | G1 | done | |
 | G2 | done | |
-| G3 | done | ruff clean at C4 |
-| G4 | done | 569 passed, 1 skipped; integrity six-for-six |
-| G5 | done | all 4 mutations caught, restored byte-identical, worktree count restored to 64 |
+| G3 | done | 7/7 checkable items pass |
+| G4 | done | 596 passed (0 skipped); integrity six-for-six; tree clean |
+| G5 | done | self-use None/None; UI build clean; full suite green; precondition 7 holds |
+| G6 | pending | reported in this round's reply, after the push |
 
 ## Next
 
 Per the block's `## Next` order: Phase 1 rule 1 (read `.agent/STOP` from
-disk) — checked at this round's step 1, absent. Then the review of round 4.
-Then the closure sequence's first round — the Built State, the checklist
-consolidation, the self-use item and the one full suite. Open findings: 0.
-Operator questions: 0.
+disk) — checked at this round's step 1, absent. Then the review of round
+5. Then the closure's evidence round — the booking of round 5, any repair
+the suite requires (none: the transcript is clean), the evidence bundle
+and the review package. Then the closing round. Open findings: 0.
+Operator questions open: 0.
