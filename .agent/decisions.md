@@ -23578,3 +23578,56 @@ browser readers, rejected because findings R-1068 and R-1075 are exactly that ha
 HOW TO REVERSE: delete `apps/cli/commands/job_rerun_cmd.py`, its catalog entry, its registration,
 its exit-code row and `subtree_rerun_cost_estimate`, restore the catalog pin to `job.resume` alone,
 restore `subtree_rerun.py`'s line in `ALLOWED_UNWIRED`, and delete this paragraph.
+
+## DECISION F029 D4 — the browser reaches a rerun through the write door's command `job.rerun-subtree`, which answers `needs_confirmation` with the cost estimate, and prepares the rerun only when the same command comes back with `confirm_cost`; one shared function answers the door; the preparation writes the run-log event `subtree_rerun_prepared`; the dashboard's task item carries `attempt` and `attempts`; the browser's controls, the attempt chip and the attempt list take round 5 (2026-09-27)
+
+CONTEXT: measured at `5d9c8784`. The write door's commands are the closed set `UI_EXPOSED_COMMANDS`
+of `apps/cli/command_catalog.py`, pinned by exact equality in `tests/ui_server/test_command_channel.py`,
+whose `TestCommandDoorImportGuard` states F009's P3 contract — the door never imports an applicator
+or a storage writer itself — as a closed set of the names the door's methods may import. The door
+already calls package functions that write a job's record themselves: `edit_plan` for the plan
+edits and `edit_task_at_runtime` for `job.edit-task`. A refusal rides the wire as a 409 whose text
+is `<code>: <detail>`, and F028's `job.inject` answers a draft that changes nothing, `drafted` or
+`shortfall`, as a 200 the browser then confirms with a second command. No exposed command takes a
+`yes` or shows a cost preview, `confirm_cost_preview` in `apps/cli/cost_preview_confirm.py` prompts
+on a terminal only, and nothing in the browser starts a run: `job.run` and `job.resume` are not
+exposed. The dashboard's task item is built in `_build_dashboard` of
+`packages/orchestration/ui_server.py`, and `tests/ui_server/test_dashboard_task_origin.py` pins
+`origin` as its LAST key. `tests/ui_contracts/test_humanize_catalog.py` requires every event name
+a Python source writes as a literal to have a plain sentence in `apps/ui/src/api/humanizeCatalog.ts`.
+
+CHOSEN: (1) ONE FUNCTION. `rerun_subtree_command(job, task_id, *, model, confirm_cost, actor,
+config=None, confirm_above_usd=None)` in `subtree_rerun.py` never raises for a refusal: an unknown
+task, or any refusal of the preparation, answers `outcome` `refused` with its `code`, `detail`
+and `facts`; an estimate that the cost preview would ask about — unavailable, or above the
+threshold `resolve_confirm_above_usd` answers — without `confirm_cost` answers `outcome`
+`needs_confirmation` with the subtree, the estimate and the threshold, and touches nothing; any
+other call prepares the rerun and answers `outcome` `prepared` with the preparation's record, the
+estimate and the command that runs it. (2) THE DOOR exposes `job.rerun-subtree` with the arguments
+`task_id`, `model` and `confirm_cost`, calls that function with the door's own token fingerprint
+as the actor, answers `refused` as a 409 like every other command, and answers `needs_confirmation`
+and `prepared` as a 200. The preparation touches only Remedy's own job branch and the worktree of
+a job that is not running, under the job's plan-edit lock and its worktree lock, never the
+operator's checkout, so calling it from the door is the `edit_task_at_runtime` precedent, not an
+applicator; the guard's closed set gains the one name. (3) THE EVENT. `prepare_subtree_rerun` writes
+`subtree_rerun_prepared` to the job's run log after the record is saved, naming the root task, the
+rerun id, the subtree, the tasks returned from `skipped`, the reset commit, the files put back,
+whether the reset was exact, the override, the actor and the states before and after; its plain
+sentence joins `humanizeCatalog.ts`. The live graph's reducer does not read it, as it does not read
+`task_injected` (DECISION F028 D5), because the fan draws from the dashboard. (4) THE DASHBOARD's
+task item carries `attempt` and `attempts`, the list the fold keeps, placed directly before
+`origin`, which stays last. (5) THE RUN stays with `remedy job run`, which the browser cannot start
+today; the `prepared` answer names it with the job's real id, and the browser shows that sentence.
+(6) Round 5 lands the browser: the send module, the types, the attempt chip on the canvas, the
+attempt list in the task's detail popover, and the Rerun control that replaces the disabled button
+of `RunDetailPopover.tsx`, with its render proof.
+
+ALTERNATIVES: a separate preview command, rejected because one command with a flag keeps the
+estimate and the preparation on one code path that cannot drift apart; a create-only request file
+the next run folds, rejected because a rerun is admitted only for a job that is NOT running, so no
+runner is there to fold it and the door would report a rerun that has not happened; exposing
+`job.run` to the browser, rejected here because starting a run from the browser is a capability of
+its own, larger than this feature.
+
+HOW TO REVERSE: delete `rerun_subtree_command`, the event's write and its catalogue line, the two
+dashboard keys, and the door's command with its guard entries, and delete this paragraph.
