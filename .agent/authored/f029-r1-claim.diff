@@ -1,0 +1,158 @@
+diff --git a/.agent/decisions.md b/.agent/decisions.md
+index 8de949f52..c827876ad 100644
+--- a/.agent/decisions.md
++++ b/.agent/decisions.md
+@@ -23397,3 +23397,77 @@ removing the card's `backdrop-filter`, rejected because the glass is the design
+ 
+ HOW TO REVERSE: return the section directly instead of through the portal, remove `origin` from
+ `TaskOutcome` and its clause, and delete this paragraph.
++
++## DECISION F029 D1 — a task's commit on the job branch is the per-task ref, so no new ref is added; the reset of a subtree is one new commit that puts back, for exactly the paths the subtree's commits changed, their state before the rerun task, and it is refused for a moved or dirty worktree and for any commit outside the subtree that changed one of those paths; T001 lands the reset mechanics alone (2026-09-27)
++
++CONTEXT: T5_F029.md makes one prerequisite finding the first deliverable: how a task end commits
++today. Measured at `b2863af4`: in worktree mode `run_job` lands exactly one commit per applied
++task on the job branch `remedy/job-<id>` through `_commit_applied_task` in
++`packages/orchestration/pingpong_job.py` and `commit_job_worktree` in
++`packages/orchestration/worktrees.py` (DECISION F270 D1): `git add -A .`, one commit under the
++identity `Remedy <remedy@local>`, `--allow-empty` so a task that changed nothing still has its
++commit, and the trailers `Remedy-Job` and `Remedy-Task`; the sha is kept as the task entry's
++`worktree_commit` and the job's `worktree_head`. The multi-cycle path through
++`long_run_executor.default_task_step` commits nothing, and a job in copy mode has no branch. The
++F006 checkpoint refs under `refs/remedy/checkpoints/` point at TREE objects, not commits, and
++`_drop_checkpoint_refs` deletes them after a verified hand-off, so they cannot serve as the
++lasting address of a task. `restore_tree` in `worktrees.py` already returns a worktree to a given
++tree exactly, without touching the index, `HEAD` or any ref, and F027's veto uses it.
++`checkpoints.worktree_drift_message` is the one wording of a worktree that moved under a
++recorded head. `dag_schedule.build_graph` resolves every task's dependencies, while
++`blocked_downstream` skips completed tasks and so cannot name a completed subtree.
++`TaskEntry` has no attempt counter, and nothing in the code records an intended model beside a
++routed one.
++
++CHOSEN: (1) THE PER-TASK REF IS THE TASK'S COMMIT. The prerequisite the feature file allows for
++("if task ends don't commit, adding a lightweight per-task ref at the finalize seam") is not
++needed: the state before task X is the first parent of X's `worktree_commit`, which the job
++branch keeps for as long as the branch lives. No ref is added, so the ref-storage growth the
++feature file's edge cases name does not arise; retention is the branch's own. A rerun is offered
++only for a task with a commit on the job branch; a copy-mode job, the multi-cycle path and a task
++not yet applied are refused with their own codes. (2) THE SUBTREE of X is X and every task that
++depends on it, directly or transitively, by `build_graph`, whatever each one's status, in plan
++order. (3) THE WALK. The commits of the job branch from X's commit to the branch tip, following
++first parents, are read with their trailers and the paths each changed against its parent. A
++commit belongs to the subtree when its `Remedy-Task` trailer names a task of the subtree;
++every other commit — a task outside the subtree, an earlier rerun's reset, a commit with no
++task trailer — is OUTSIDE it. (4) THE REFUSALS, in this order: an unknown task, a job not in
++worktree mode, a task with no commit, a worktree whose head is not the job's recorded head
++(refused with `worktree_drift_message` verbatim, an unreadable head counting as moved), a
++worktree holding uncommitted changes, a task commit not in the branch's history, a task of the
++subtree whose own commit lies before X's, and INTERLEAVING: any path changed both by a commit
++of the subtree and by a commit outside it, named with the task or commit that changed it. The
++interleaving refusal never guesses; the operator can start the rerun at an earlier task so that
++the subtree includes the other work, as the feature file says. (5) THE RESET. The target is the
++branch tip's tree with every path the subtree's commits changed replaced by that path's entry in
++the first parent of X's commit, or removed when it had none there; it is built in a private
++index, `restore_tree` brings the worktree to it, and `commit_job_worktree` commits it with the
++trailers `Remedy-Job` and `Remedy-Rerun`. Nothing is rewritten: the earlier attempts' commits
++stay in the branch's history, where later rounds link them as evidence. (6) THE PROOF. After the
++commit, its tree equals the target; for every path the subtree changed, the entry at the new
++commit equals the entry before X; and when no commit outside the subtree follows X, the whole
++tree equals the tree before X, and the reset reports whether that tree also equals X's recorded
++`task_start_tree`. A proof that fails raises and names the path. (7) THE ORDER. T001 takes round
++1: a new module `packages/orchestration/subtree_rerun.py` holding the subtree, the walk, the
++refusals, the reset and its proof, with no caller yet, listed in `ALLOWED_UNWIRED` of
++`tests/test_no_orphan_modules.py` until T002 wires it. T002 lands `remedy job rerun-subtree`
++behind the cost preview, the job-level admission of a rerun, the attempt counter and the
++subtree's tasks returned to pending, the earlier attempts' evidence linked and left untouched,
++and the model override recorded beside the model the router would have chosen. T003 lands the
++attempt fan, its popover and the end-to-end proof.
++
++ALTERNATIVES: adding a per-task ref at the finalize seam, rejected because the commit already is
++one and a second address for the same state could disagree with it; resetting by checking out
++the commit before X, rejected because it would also undo every later task outside the subtree,
++which the feature file says keeps its state and its commits; rewriting the branch to drop the
++subtree's commits, rejected because it destroys the evidence of the attempt the fan must show and
++is a history rewrite on a branch other tools have already read; reverting each subtree commit in
++turn, rejected because a revert of interleaved changes is exactly the clever surgery the feature
++file rules out, and a revert chain proves nothing about the resulting tree that the single
++target tree does not prove more directly; a git stash, rejected by the feature file itself.
++
++DELIBERATE ABSENCES: T001 writes no event, never writes `job.json`, never changes a task's status
++and takes no lock; its reset is called only by T002's command, which owns the job's admission.
++
++HOW TO REVERSE: delete `packages/orchestration/subtree_rerun.py`, its tests and its line in
++`ALLOWED_UNWIRED`, and delete this paragraph.
+diff --git a/.agent/live_review.md b/.agent/live_review.md
+index 88cf0ad99..156e69736 100644
+--- a/.agent/live_review.md
++++ b/.agent/live_review.md
+@@ -1,30 +1,31 @@
+-# Live Review — F028 Task injection
+-
+-> Round-by-round review record, re-headed at the F028 claim per
+-> docs/agents/planner_reviewer_prompt.md §1. The heading this replaces named F288, whose STATUS
+-> line went `[x]` at `27498680` and whose pull request 286 merged into `main` at the reviewer's
+-> Open PR Gate under docs/agents/self_drive_protocol.md, as `ceb90b8a`, after both hosted CI jobs
+-> of run 36293930924 ended `success` on `27498680`. `27498680` is the second parent of
+-> `ceb90b8a`, and the two trees are identical. F288's round 10, its closing round, was reviewed
+-> after its own handback, so its gate entry is appended at the end of this record by F028's
++# Live Review — F029 Subtree rerun
++
++> Round-by-round review record, re-headed at the F029 claim per
++> docs/agents/planner_reviewer_prompt.md §1. The heading this replaces named F028, whose STATUS
++> line went `[x]` at `09e8b6fd` and whose pull request 287 merged into `main` at the reviewer's
++> Open PR Gate under docs/agents/self_drive_protocol.md, as `b2863af4`, after both hosted CI jobs
++> of run 36316139159 ended `success` on `09e8b6fd`. `09e8b6fd` is the second parent of
++> `b2863af4`, and the two trees are identical. F028's round 12, its closing round, was reviewed
++> after its own handback, so its gate entry is appended at the end of this record by F029's
+ > claim. Only the heading, this paragraph and the Steps section below are rewritten; everything
+-> from the Findings heading to the end of the file as it stood at `ceb90b8a` is carried forward
++> from the Findings heading to the end of the file as it stood at `b2863af4` is carried forward
+ > BYTE-IDENTICAL, and finding ids continue the monotonic R-XXXX series across the re-head. The
+-> open set at `ceb90b8a`, computed with `open_finding_ids` from `scripts/rotate_live_review.py`,
++> open set at `b2863af4`, computed with `open_finding_ids` from `scripts/rotate_live_review.py`,
+ > is empty.
+ 
+ ## Steps
+ 
+-THE ORDER BELOW IS T5_F028.md's Task slicing, fixed by DECISION F028 D1 at the claim. R1 claims
+-F028, re-heads this record, books F288's round 10, and lands T001: the draft pass of an
+-injection — the planner's one structured call drafting a task from the operator's text, the
+-placement by stated dependency, by shared files or by the default at the end of the plan, the
+-budget check with its three-option shortfall seed, the fence flags, and the draft as a
+-create-only control file with a time to live. T002 lands the confirmation: the runner folding a
+-confirmed injection into a running job at its safe points, the plan's edit log, the provenance,
+-the event and its readers, and the shortfall seed's three answers. T003 lands the command line,
+-the browser's command, the Add Task sheet, the provenance chip and the end-to-end proof. Every
+-round's handback states the open set by distinct id.
++THE ORDER BELOW IS T5_F029.md's Task slicing, fixed by DECISION F029 D1 at the claim. R1 claims
++F029, re-heads this record, books F028's round 12, records the prerequisite finding the feature
++file asks for first — a task that `run_job` applies in worktree mode already lands one commit on
++the job branch, carrying its task id as a trailer — and lands T001: the subtree of a task, the
++walk of the job branch since that task's commit, the refusals for a moved or dirty worktree and
++for work outside the subtree that touched the same files, and the reset itself as one new commit
++that puts the subtree's files back to their state before the task, proved by tree hashes. T002
++lands the command with its cost preview, the attempt counter and the subtree's tasks returned to
++pending, the evidence of earlier attempts kept and linked, and the model override recorded as
++disclosure. T003 lands the attempt fan in the graph, the popover listing attempts with their
++verdicts, and the end-to-end proof. Every round's handback states the open set by distinct id.
+ 
+ ## Findings
+ DECISION F085 D5, applied at da47ee40, closes "The R44 block is the first measured under this
+@@ -426,3 +427,5 @@ Gate: F028 R9 — the F028 round 9 entry: the booking of round 8 and R-1079's re
+ Gate: F028 R10 — the F028 round 10 entry: the closure sequence's first round — the booking of round 9, the Built State, the checklist's twentieth consolidation, the self-use generator's answer and the feature's one full suite. VERDICT PASS. Re-derived over `969c6b5e`..`9023b29b` by the planner and reviewer of F028's second session, whose own runs produced every reading below. THE RANGE IS 4 COMMITS, at `c85ab7e1` 321, `2caf1823` 12, `6d5b7660` 111 and `9023b29b` 188 insertions by `git show --numstat`, each under the 500-line cap, each single-parent and each ending with the ordered trailer; the tracked path set equals the block's constraint 3 without its stop case, and the one deviation declared, a selection node that skipped in the reviewer's simulated tree for want of `apps/ui/node_modules` and ran in the primary checkout, is the case the block's G4 foretold. THE TRANSPORT PROOF: the block copy and the three payload copies, read at `c85ab7e1`, equal the reviewer's originals byte for byte, and the ledger and the plan at `2caf1823`, and the feature file and the planner prompt at `6d5b7660`, hash to the reviewer's simulation, the open set reading empty and the checklist holding the same 34 items before and after. THE SELF-USE ITEM: `generate_and_append_if_empty` and `next_self_use_item` both answered `None` in the worker's run, as in the reviewer's own run in the primary checkout, because the queue holds no pending item, the ledger no open finding, and neither the staleness catalog nor `doctor core` offers a claim, so closure precondition 6 reads `self-use NONE (queue exhausted)`. THE INTEGRATION GATE: `.agent/authored/f028-closure-suite.txt` records `python3 -m pytest -n auto -q` on the tree at `6d5b7660`, after a fresh build of `apps/ui`, at real exit code 0 with `20018 passed, 20 skipped` and no bad node, the two reachability guards of closure precondition 7 among the passed.
+ 
+ Gate: F028 R11 — the F028 round 11 entry: the closure sequence's evidence round, which books round 10 and builds the evidence bundle and the review package at the accepted head. VERDICT PASS. Re-derived over `9023b29b`..`41e4b9fd` by the planner and reviewer of F028's second session, whose own readings are every one below. THE RANGE IS 3 COMMITS, at `203e3e40` 350, `9cfd84d1` 7 and `41e4b9fd` 166 insertions by `git show --numstat`, each under the 500-line cap, each single-parent and each ending with the ordered trailer; the tracked path set is the four `.agent/authored/f028-r11-*` copies, `.agent/live_review.md`, `.agent/plan.md` and `.agent/handoff.md`, and no deviation was declared. THE TRANSPORT PROOF: the block copy and the three payload copies, read at `203e3e40`, equal the reviewer's originals byte for byte, and the ledger and the plan at `9cfd84d1` hash to the reviewer's simulation, the open set reading empty. THE BUNDLE: evidence job `f028r11e1001` against the fork point `ceb90b8a`, built at the accepted head `9cfd84d1`, whose ancestry and plain counts both read 71; the worker's run read 1362 selected tests passed at exit 0 with six deselected — the standing quarantine's nodes and two parametrized cases whose ids read as a path and a secret by design, both green in the closure suite — an empty `validate_verification_tests` problem list and `is_valid_current_run` True, the reviewer's own dry run at `9023b29b` having read the same test counts. THE PACKAGE: `remedy-review-20260927-132129-READY_FOR_REVIEW.zip` in `/home/decodeux/Repos/remedy-history/zips`, whose SHA-256 the reviewer recomputed from the file as `904723bf332d1f076cdfde262f84609fada02ca86635f3ef09a88c3d025692fe`, `testzip()` answering None, and whose manifest reads `READY_FOR_REVIEW` with a committed review subject from `ceb90b8a` to `9cfd84d1` over 71 commits.
++
++Gate: F028 R12 — the F028 round 12 entry: the closing round, which books round 11, rotates the ledger, accepts F028 in STATUS with its README pins and opens the pull request. VERDICT PASS. Re-derived over `41e4b9fd`..`09e8b6fd` by the planner and reviewer of F029's first session, whose own readings are every one below. THE RANGE IS 4 COMMITS, at `1cedcf1d` 439, `ae51859d` 7, `02b0aeda` 36 and `09e8b6fd` 194 insertions by `git show --numstat`, each under the 500-line cap, each single-parent and each ending with the ordered trailer; the tracked path set is the eight `.agent/authored/f028-r12-*` copies, `.agent/handoff.md`, `.agent/live_review.md`, `.agent/live_review_archive.md`, `.agent/plan.md`, `README.md` and `docs/roadmap/STATUS.md`, and no deviation was declared. THE BOOKING: at `ae51859d` the ledger reads 342930 bytes at sha256 `de07c53a382777485726fbc9f9a0b9b272a11ff7687e1386923295021c0bd6da` and the plan 802 bytes at `bc5319158c2afb0405567f624c17d6addb067d15eb7348da689c7ba6ea6c5d42`, both equal to the reviewer's simulation. THE ROTATION: at `02b0aeda` the ledger reads 305800 bytes at `d6a70e718556dfd5f526142c9ef93532b0c52a24cda01992b43a05a4658dbdeb` and the archive 5251681 bytes at `8d5c7b464af6e4df33bac23d93c260e403cd3159b6336692630dcdf30fe5c5dd`, ten gate records and four finding pairs moved and the open set empty before and after. THE ACCEPTANCE: at `09e8b6fd` `docs/roadmap/STATUS.md` reads 55186 bytes at `503ce42ccb7b3d93c869c00f4246c232aa6a8034ae5b42aa68e17998ec947abe` and `README.md` 39048 bytes at `c305fc3c1cea302f8a6f12a8346b44f62a9d3c4d588a54b2a395505cf327950b`, both equal to the reviewer's simulation. THE PULL REQUEST: number 287 from `feature/f028-task-injection` into `main`, whose hosted CI run 36316139159 ended `success` on both jobs at head `09e8b6fd`; it merged at F029's Open PR Gate as `b2863af4`, whose tree equals that of `09e8b6fd`.
+diff --git a/docs/roadmap/STATUS.md b/docs/roadmap/STATUS.md
+index 3761fe291..bef3f12ff 100644
+--- a/docs/roadmap/STATUS.md
++++ b/docs/roadmap/STATUS.md
+@@ -165,7 +165,7 @@ Milestone R1 — Remedy as the daily tool: Tier 2 complete (F086 as the self-ins
+ 
+ - [x] F027 — Task veto (T001–T003 complete; accepted 2026-09-26 · live review PASS — ACCEPTED · Evidence job f027r13e1001 · package remedy-review-20260926-111715-READY_FOR_REVIEW.zip · SHA-256 abb65b1df0346c8670423a7da903e3e3c6facfc4cac4602bb5a983b47b4bd993 · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD f3afc333a70eae5f339fce8c18004db68a7cea1f)
+ - [x] F028 — Task injection (T001–T003 complete; accepted 2026-09-27 · live review PASS — ACCEPTED · Evidence job f028r11e1001 · package remedy-review-20260927-132129-READY_FOR_REVIEW.zip · SHA-256 904723bf332d1f076cdfde262f84609fada02ca86635f3ef09a88c3d025692fe · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD 9cfd84d1217c24057173f4b9a8db03734c174c09)
+-- [ ] F029 — Subtree rerun
++- [~] F029 — Subtree rerun
+ - [ ] F030 — Steering messages
+ - [ ] F035 — Ownership ledger
+ 
