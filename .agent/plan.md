@@ -13,15 +13,12 @@ reply, and a note its task finished without reading is reported
 
 ## Current Step
 
-ROUND 5, the closure sequence's first round: book round 4, write the
-Built State, consolidate the checklist, ask the self-use generator for
-the closure's item, and take the feature's one full suite.
+ROUND 6, the closure sequence's evidence round: book round 5, then build
+the evidence bundle and the review package at the accepted head.
 
 ## Next Steps
 
-1. The evidence round: book round 5, any repair the suite requires, the
-   evidence bundle and the review package.
-2. The closing round: book the evidence round, rotate the ledger, accept
+1. The closing round: book the evidence round, rotate the ledger, accept
    F030 in STATUS with its README pins, and open the pull request.
 
 ## Risks
