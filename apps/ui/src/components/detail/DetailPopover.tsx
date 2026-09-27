@@ -2,6 +2,7 @@ import type { RemedyDashboard, RemedyGraphNode, RemedyTaskItem } from "../../api
 import { ORIGIN_CHIP_TITLE, taskOriginChip } from "../../api/injectView";
 import { taskPauseAction } from "../../api/pauseView";
 import { specVersionRows, taskEditAction, taskSpecOf, versionChipLabel } from "../../api/taskSpecView";
+import { taskAttemptRows } from "../../api/attemptView";
 import {
   taskTitleOf, taskVetoAction, taskVetoEntry, vetoAnswerSentence, vetoingEntriesOf,
 } from "../../api/vetoView";
@@ -9,6 +10,7 @@ import { TaskDoneGlyph, TaskCurrentGlyph, TaskPlannedGlyph } from "../icons/Reme
 import { PromptTracePanel } from "../prompt/PromptTracePanel";
 import { PauseControl } from "../panels/PauseControl";
 import { TaskVersionList } from "./TaskVersionList";
+import { TaskAttemptList } from "./TaskAttemptList";
 import { TaskEditForm } from "./TaskEditForm";
 import { TaskVetoForm } from "./TaskVetoForm";
 import styles from "./DetailPopover.module.css";
@@ -256,6 +258,13 @@ export function DetailPopover({ dashboard, selectedNode, selectedPromptId, onClo
           version, each opening the fields that changed. Renders nothing for
           a task never edited at runtime (`specVersionRows` returns `[]`). */}
       <TaskVersionList key={task?.id ?? ""} rows={specVersionRows(spec)} />
+
+      {/* DECISION F029 D5 (2), (3) — the Attempts list, one row per earlier
+          attempt the task's rerun history carries, each opening the fields
+          that changed from the attempt before it, and the current attempt
+          last. Renders nothing for a task never rerun (`taskAttemptRows`
+          returns `[]`). */}
+      <TaskAttemptList key={task?.id ?? ""} rows={taskAttemptRows(task)} />
 
       {/* DECISION F026 D4 clauses 1 and 2 — the "Edit task" affordance,
           offered only for a waiting, paused or failed task of an approved
