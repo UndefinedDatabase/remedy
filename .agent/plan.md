@@ -12,14 +12,14 @@ the draft, with provenance end to end (`docs/roadmap/features/T5_F028.md`).
 
 ## Current Step
 
-ROUND 11, the closure's evidence round: book round 10's PASS, then build
-the evidence bundle and the review package at the accepted head.
+ROUND 12, the closing round: book round 11's PASS, rotate the ledger,
+accept F028 in STATUS with its README pins, and open the pull request.
 
 ## Next Steps
 
-1. Rotate the ledger, accept F028 in STATUS with its README pins, and
-   open the pull request.
+1. The next session merges this feature's pull request at the Open PR
+   Gate and claims the next feature by Rule A5.
 
 ## Risks
 
-None open beyond the closure's own. Open findings: 0.
+None open. Open findings: 0.
