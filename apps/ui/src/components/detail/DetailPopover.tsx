@@ -1,4 +1,5 @@
 import type { RemedyDashboard, RemedyGraphNode, RemedyTaskItem } from "../../api/types";
+import { ORIGIN_CHIP_TITLE, taskOriginChip } from "../../api/injectView";
 import { taskPauseAction } from "../../api/pauseView";
 import { specVersionRows, taskEditAction, taskSpecOf, versionChipLabel } from "../../api/taskSpecView";
 import {
@@ -106,6 +107,9 @@ export function DetailPopover({ dashboard, selectedNode, selectedPromptId, onClo
   // through the pure view so the popover decides nothing about them itself.
   const spec = taskSpecOf(dashboard, task?.id ?? "");
   const chipLabel = versionChipLabel(spec);
+  // DECISION F028 D6 (2) — the injected-task pill's own words, read through
+  // the pure view so the popover decides nothing about the origin itself.
+  const originChip = taskOriginChip(task);
   // DECISION F026 D4 clause 1 — the edit affordance's own eligibility,
   // computed once and gated on below; `task` is undefined for a node this
   // popover otherwise renders fine (a node never mapped to a task item), so
@@ -147,6 +151,7 @@ export function DetailPopover({ dashboard, selectedNode, selectedPromptId, onClo
         <StateIcon state={state} />
         <span className={styles.statusLabel}>{stateLabel}</span>
         {completedAt && <span className={styles.timeLabel}>{completedAt}</span>}
+        {originChip && <span className={styles.originChip} title={ORIGIN_CHIP_TITLE}>{originChip}</span>}
         {chipLabel && (
           <span className={styles.versionChip} title="Edited at runtime">{chipLabel}</span>
         )}

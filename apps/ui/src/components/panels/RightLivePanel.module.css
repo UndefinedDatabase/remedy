@@ -203,6 +203,24 @@
 .taskRow.done .taskLabel { color: var(--remedy-muted); }
 .taskHint { display: block; font-size: 11px; color: var(--remedy-faint); }
 
+/* DECISION F028 D6 (2) — an injected task's pill, after the row's label. It
+   takes the CARD's own chip scale that .decisionChip sets below rather than
+   inventing a shape of its own, and it carries no state colour at all: the
+   words are the whole signal, so ux_spec.md §17's rule against a colour-only
+   state has nothing here to bite on. The same R-0661 rule the blocks around
+   it follow applies: every value resolves to a custom property
+   apps/ui/src/styles/tokens.css already defines. */
+.originChip {
+  padding: 2px 8px;
+  border-radius: var(--remedy-radius-pill);
+  background: var(--remedy-bg-2);
+  border: 1px solid var(--remedy-line);
+  font-size: 11px;
+  color: var(--remedy-muted);
+  margin-left: 6px;
+  flex: none;
+}
+
 .taskState { flex: none; font-size: 12px; color: var(--remedy-muted); }
 .taskRow.current .taskState { color: var(--remedy-blue-strong); font-weight: 600; }
 .taskRow.current .taskState::before { content: "• "; }

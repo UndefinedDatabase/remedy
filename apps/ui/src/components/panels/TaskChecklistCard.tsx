@@ -1,5 +1,6 @@
 import type { RemedyTaskItem } from "../../api/types";
 import { selectChecklistRows } from "../../cockpitLogic";
+import { ORIGIN_CHIP_TITLE, taskOriginChip } from "../../api/injectView";
 import { TaskDoneGlyph, TaskPlannedGlyph } from "../icons/RemedyGlyphs";
 import styles from "./RightLivePanel.module.css";
 
@@ -59,6 +60,7 @@ export function TaskChecklistCard({ tasks, jobId, onSelectNode }: {
       <div className={styles.taskList}>
         {realRows.map(row => {
           const hint = outcomeHint(row);
+          const chip = taskOriginChip(row);
           return (
             <button key={row.id} type="button" className={`${styles.taskRow} ${styles[row.state] || ""}`}
               onClick={() => { if (row.nodeId) onSelectNode(row.nodeId); }}>
@@ -67,6 +69,7 @@ export function TaskChecklistCard({ tasks, jobId, onSelectNode }: {
                 {row.label}
                 {hint && <span className={styles.taskHint}>{hint}</span>}
               </span>
+              {chip && <span className={styles.originChip} title={ORIGIN_CHIP_TITLE}>{chip}</span>}
               <span className={styles.taskState}>{stateText(row)}</span>
             </button>
           );

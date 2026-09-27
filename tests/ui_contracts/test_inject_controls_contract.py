@@ -1,0 +1,64 @@
+"""F028 D6 — the injected-task pill agrees with the door it reads, and the
+browser's send module for the three injection commands names the door's own
+ids. Mirrors `test_veto_controls_contract.py`'s own checks for the veto
+affordance: `TaskChecklistCard.tsx`, `DetailPopover.tsx` and `injectView.ts`
+open no socket of their own, and `taskOriginChip(` is the one call each
+component makes to decide whether the pill renders.
+"""
+from __future__ import annotations
+
+from pathlib import Path
+
+from tests.ui_contracts.test_brain_stream_ring import strip_ts_comments
+
+REPO_ROOT = Path(__file__).resolve().parent.parent.parent
+UI_SRC = REPO_ROOT / "apps" / "ui" / "src"
+
+TASK_CHECKLIST_CARD = UI_SRC / "components" / "panels" / "TaskChecklistCard.tsx"
+DETAIL_POPOVER = UI_SRC / "components" / "detail" / "DetailPopover.tsx"
+INJECT_VIEW = UI_SRC / "api" / "injectView.ts"
+INJECT_SEND = UI_SRC / "api" / "injectSend.ts"
+ASSUMPTION_LOG = REPO_ROOT / "docs" / "ui" / "design_reference" / "assumption_log.md"
+
+NO_FETCH_FILES = (TASK_CHECKLIST_CARD, DETAIL_POPOVER, INJECT_VIEW)
+CHIP_CALL_FILES = (TASK_CHECKLIST_CARD, DETAIL_POPOVER)
+
+
+def _source(path: Path) -> str:
+    return strip_ts_comments(path.read_text(encoding="utf-8"))
+
+
+def test_none_of_the_three_files_open_a_socket_of_their_own():
+    for path in NO_FETCH_FILES:
+        assert "fetch(" not in _source(path), f"{path.name} must reach the door only through injectSend.ts"
+
+
+def test_the_send_modules_three_ids_equal_the_doors_three_constants():
+    from packages.orchestration.ui_server import (
+        JOB_INJECT_ANSWER_COMMAND_ID,
+        JOB_INJECT_COMMAND_ID,
+        JOB_INJECT_CONFIRM_COMMAND_ID,
+    )
+
+    assert JOB_INJECT_COMMAND_ID == "job.inject"
+    assert JOB_INJECT_CONFIRM_COMMAND_ID == "job.inject-confirm"
+    assert JOB_INJECT_ANSWER_COMMAND_ID == "job.inject-answer"
+
+    src = _source(INJECT_SEND)
+    assert '"job.inject"' in src
+    assert '"job.inject-confirm"' in src
+    assert '"job.inject-answer"' in src
+
+
+def test_both_components_decide_the_pill_through_taskoriginchip():
+    for path in CHIP_CALL_FILES:
+        assert "taskOriginChip(" in _source(path), (
+            f"{path.name} must decide whether the pill renders through taskOriginChip(), "
+            "never re-derive the rule inline"
+        )
+
+
+def test_the_assumption_log_names_decision_f028_d6_in_exactly_one_row():
+    lines = ASSUMPTION_LOG.read_text(encoding="utf-8").splitlines()
+    matching = [line for line in lines if "DECISION F028 D6" in line]
+    assert len(matching) == 1, f"expected exactly one row naming DECISION F028 D6, found {len(matching)}"
