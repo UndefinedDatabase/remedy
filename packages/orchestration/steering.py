@@ -26,6 +26,12 @@ the job's mission contract the way a job-wide message does. `consumed_task_notes
 `unconsumed_task_notes` read a task's addressed records back — the first for the prompt segment
 a task's own round carries them in, the second for the job report's listing of a note a task
 finished without taking in.
+
+F030 T002 (DECISION F030 D2) adds `steer_task_command`, the one function the write door
+(`job.steer`) and the command line (`remedy job steer`) both call to address a note to a task:
+it refuses an unusable text, an ended job, a task the job does not hold and a task that will
+not run again, in that order, and otherwise records the note through `record_steering_message`
+with the task's id.
 """
 from __future__ import annotations
 
@@ -424,6 +430,64 @@ def unconsumed_task_notes(job_id: str, task_id: str, root: Path | None = None) -
     ]
 
 
+# --- F030 T002: the command that addresses a note to a task (DECISION F030 D2) ----------------
+
+#: S1 — the statuses of a task that can still run: equal to `task_veto.VETOABLE_TASK_STATUSES`
+#: and pinned by a test, not imported, so this module reaches no veto code (DECISION F030 D2 (3)).
+STEERABLE_TASK_STATUSES = frozenset({"pending", "running", "blocked", "failed", "skipped"})
+
+
+def steer_task_command(job: Any, task_id: str, text: object, *, channel: str,
+                       root: Path | None = None, now: datetime | None = None) -> dict[str, Any]:
+    """Address ``text`` to ``task_id`` of ``job``, a loaded ``JobPlan``. Never raises for a
+    refusal, and shares its shape with `task_veto.veto_task_command`: it answers
+    ``{"outcome": "refused", "code", "detail", "task_id"}``, checking in order an unusable
+    text, an ended job, a task the job does not hold and a task that will not run again.
+    Otherwise it records the note through `record_steering_message` with the task's id and
+    answers ``{"outcome": "accepted", "request_id", "message_id", "task_id", "received_at",
+    "record_sha256"}``, both ids being the record's ``message_id``. A `SteeringWriteError`
+    from a note that could not be written propagates; nothing is written on a refusal.
+    """
+    try:
+        normalize_steering_text(text)
+    except SteeringError as exc:
+        return {"outcome": "refused", "code": "invalid_message", "detail": str(exc),
+                "task_id": task_id}
+
+    from packages.orchestration.pingpong_job import job_is_terminal
+
+    state = job.state.value if hasattr(job.state, "value") else str(job.state)
+    if job_is_terminal(state):
+        return {"outcome": "refused", "code": "job_not_steerable",
+                "detail": f"job {job.job_id} has ended ({state}); no run will read a note",
+                "task_id": task_id}
+
+    task = next((t for t in job.tasks if str(getattr(t, "task_id", "")) == task_id), None)
+    if task is None:
+        ids = [str(t.task_id) for t in job.tasks]
+        listing = ", ".join(ids[:10])
+        remaining = len(ids) - 10
+        if remaining > 0:
+            listing += f" and {remaining} more"
+        return {"outcome": "refused", "code": "unknown_task",
+                "detail": f"there is no task {task_id!r} in job {job.job_id}; its tasks are: "
+                          f"{listing}",
+                "task_id": task_id}
+
+    status = task.status.value if hasattr(task.status, "value") else str(task.status)
+    if status not in STEERABLE_TASK_STATUSES:
+        return {"outcome": "refused", "code": "task_not_steerable",
+                "detail": f"task {task_id} is {status}; a note reaches only a task that can "
+                          f"still run",
+                "task_id": task_id}
+
+    record = record_steering_message(job.job_id, text, job_state=state, channel=channel,
+                                     task_id=task_id, root=root, now=now)
+    return {"outcome": "accepted", "request_id": record["message_id"],
+            "message_id": record["message_id"], "task_id": task_id,
+            "received_at": record["received_at"], "record_sha256": record["record_sha256"]}
+
+
 def render_operator_notes_segment(records: list[dict[str, Any]]) -> str:
     """The task-addressed builder prompt segment for ``records``, or "" for none.
 
@@ -493,21 +557,37 @@ def steering_acknowledgements(job_id: str, root: Path | None = None) -> dict[str
     return acks
 
 
-def steering_overview(job_id: str, job_state: str,
-                      root: Path | None = None) -> list[dict[str, Any]]:
-    """Every message of the job, oldest first, with its status and acknowledgement."""
+def steering_overview(job_id: str, job_state: str, root: Path | None = None, *,
+                      task_statuses: dict[str, Any] | None = None) -> list[dict[str, Any]]:
+    """Every message of the job, oldest first, with its status, acknowledgement and task
+    (F030 T002, DECISION F030 D2 (6)).
+
+    ``addressed_to`` is `note_task_id`'s reading of the record: "" for a job-wide message.
+    A row with no acknowledgement whose ``addressed_to`` is a key of ``task_statuses`` mapping
+    to a status that is neither `pending` nor `running` reads `not_taken_in`, whatever the
+    job's own state — that task will never start another round to take the note in. Every
+    other row reads exactly as it did before this task-addressed reading existed.
+    """
     from packages.orchestration.pingpong_job import job_is_terminal
 
     acks = steering_acknowledgements(job_id, root)
     ended = job_is_terminal(job_state)
+    statuses = task_statuses or {}
     rows = []
     for record in list_steering_messages(job_id, root):
         ack = acks.get(record["message_id"])
-        status = STATUS_ACKNOWLEDGED if ack else (STATUS_NOT_TAKEN_IN if ended else STATUS_WAITING)
+        addressed_to = note_task_id(record)
+        if ack:
+            status = STATUS_ACKNOWLEDGED
+        elif addressed_to in statuses and statuses[addressed_to] not in ("pending", "running"):
+            status = STATUS_NOT_TAKEN_IN
+        else:
+            status = STATUS_NOT_TAKEN_IN if ended else STATUS_WAITING
         rows.append({
             "message_id": record["message_id"], "text": record["text"],
             "channel": record["channel"], "received_at": record["received_at"],
-            "status": status, **(ack or {"task_id": "", "round_number": None,
-                                         "understood": "", "amendment_id": ""}),
+            "status": status, "addressed_to": addressed_to,
+            **(ack or {"task_id": "", "round_number": None,
+                       "understood": "", "amendment_id": ""}),
         })
     return rows
