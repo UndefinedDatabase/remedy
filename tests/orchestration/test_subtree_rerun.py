@@ -353,6 +353,23 @@ class TestRefusalsAreSideEffectFree:
         assert err.code == "worktree_drift"
         assert err.detail == checkpoints.worktree_drift_message(t1_sha, "unknown")
 
+    def test_r1080_empty_worktree_head_with_missing_path_still_refuses_worktree_drift(
+        self, repo, tmp_path,
+    ):
+        # R-1080: an empty `job.worktree_head` must not compare equal to the "" a
+        # missing path's `head_at` answers — the refusal fires whatever the job
+        # itself records, not only when the two disagree.
+        tasks = [_task("T1", worktree_commit="f" * 40)]
+        job = _job(JOB_ID, repo, tasks, worktree_head="")
+        missing = tmp_path / "does-not-exist"
+
+        with pytest.raises(SR.SubtreeRerunRefused) as excinfo:
+            SR.plan_subtree_reset(job, "T1", missing)
+
+        err = excinfo.value
+        assert err.code == "worktree_drift"
+        assert err.detail == checkpoints.worktree_drift_message("", "unknown")
+
     def test_worktree_dirty_names_an_untracked_file(self, repo):
         t1_sha = _land(repo, JOB_ID, "T1", write={"a.py": "v1\n"})
         tasks = [_task("T1", worktree_commit=t1_sha)]

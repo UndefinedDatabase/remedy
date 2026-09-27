@@ -262,7 +262,7 @@ def plan_subtree_reset(job: JobPlan, root_task_id: str, worktree_path: str | Pat
         )
 
     live_head = W.head_at(worktree_path)
-    if live_head != job.worktree_head:                                # d
+    if not live_head or live_head != job.worktree_head:               # d (R-1080)
         raise SubtreeRerunRefused(
             "worktree_drift",
             checkpoints.worktree_drift_message(job.worktree_head, live_head or "unknown"),
