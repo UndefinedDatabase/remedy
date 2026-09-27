@@ -1,0 +1,1 @@
+- [x] F029 — Subtree rerun (T001–T003 complete; accepted 2026-09-27 · live review PASS — ACCEPTED · Evidence job f029r10e1001 · package remedy-review-20260927-201630-READY_FOR_REVIEW.zip · SHA-256 9a0d0eb2ac1576e96149aca426e6aec301eedc6247c9ee0fb0b4a8eb01e9bf4b · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD e56e82f733ec51609598590eda05aa1b2b7329ca)
