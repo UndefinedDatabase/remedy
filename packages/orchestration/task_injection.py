@@ -72,6 +72,7 @@ __all__ = [
     "shortfall_decision_seed",
     "injection_budget_inputs",
     "injection_call_fn",
+    "resolve_after_ref",
     "fence_conflicts",
     "compose_injection_prompt",
     "draft_task_injection",
@@ -416,6 +417,35 @@ def injection_call_fn() -> Callable[[str, int], str] | None:
     from packages.orchestration import intake
 
     return intake.make_structured_call_fn(InjectedTaskDraft)
+
+
+#: DECISION F028 D5 (1) — the door's own `after` resolver, never the command line's
+#: `job_inject_cmd._resolve_after`, which resolves through `job_plan_cmd._resolve_task_arg`
+#: and writes ambiguity to the terminal. An HTTP handler has no terminal to write to, so it
+#: reads the plan and the job's own tasks directly instead.
+def resolve_after_ref(job: Any, ref: str | None) -> str | None:
+    """The planned id *ref* names, or *ref* unchanged. None for None.
+
+    *ref* already a task id of ``job``'s stored plan (one of its tasks' own ``id``) is
+    returned unchanged. Otherwise, when ``job.tasks`` holds an entry whose ``task_id`` is
+    *ref* and that entry's ``inputs["plan"]["planned_id"]`` is set, that planned id is
+    returned. Otherwise *ref* is returned unchanged, which the draft pass
+    (``place_injected_task``) then refuses as ``unknown_task``.
+    """
+    if ref is None:
+        return None
+
+    raw_plan = getattr(job, "task_plan", None) or {}
+    plan_tasks = raw_plan.get("tasks") if isinstance(raw_plan, dict) else None
+    plan_ids = {t.get("id") for t in plan_tasks if isinstance(t, dict)} if plan_tasks else set()
+    if ref in plan_ids:
+        return ref
+
+    entry = next((t for t in getattr(job, "tasks", None) or [] if t.task_id == ref), None)
+    if entry is None:
+        return ref
+    planned_id = (entry.inputs.get("plan") or {}).get("planned_id")
+    return planned_id if planned_id else ref
 
 
 # ---------------------------------------------------------------------------

@@ -140,14 +140,23 @@ def _cmd_inject(job_id_str: str, text: str, *, after: str | None = None, yes: bo
         return
 
     if answer["outcome"] == "shortfall":
+        if yes:
+            # R-1078's repair: `--yes` over a shortfall never emits `emit_ok`'s envelope
+            # first — under `--json` a caller must be able to parse stdout as exactly one
+            # JSON document, so this fails straight into `draft_needs_decision`'s own
+            # envelope, carrying what the seed carries.
+            if not json_output:
+                _print_shortfall(job_id, answer)
+            fail("draft_needs_decision",
+                 "a shortfall draft needs its decision answered before it can be confirmed",
+                 json_output=json_output, exit_code=EXIT_NOT_READY, job_id=job_id,
+                 draft_id=answer["draft_id"], decision_seed=answer["decision_seed"],
+                 budget_check=answer["budget_check"])
+            return
         if json_output:
             emit_ok(**answer)
         else:
             _print_shortfall(job_id, answer)
-        if yes:
-            fail("draft_needs_decision",
-                 "a shortfall draft needs its decision answered before it can be confirmed",
-                 json_output=json_output, exit_code=EXIT_NOT_READY, job_id=job_id)
         return
 
     # outcome == "drafted"
