@@ -12,20 +12,19 @@ exists; and the live graph draws test-run, repair and prompt nodes
 
 ## Current Step
 
-ROUND 2: book round 1's PASS, record DECISION F288 D2, and land the
-second half of T001's writers — the run-next path's attempt id, the test
-service's attempt id, task id and result, and the `plan_approved` event
-with its `plan` block in the stream's envelope.
+ROUND 3: book round 2's PASS, register R-1075, record DECISION F288 D3,
+give the long-run cycle's repair events their attempt id and result, land
+T002 — the stream's rows carry the attempt id and the approved task ids,
+and the live graph's reducer births tasks at plan approval, test runs and
+repair runs — and repair R-1075 by re-capturing the demo recording.
 
 ## Next Steps
 
-1. The long-run executor's repair events under their own ruling, and
-   T002: the live graph's reducer draws test-run and repair nodes and the
-   tasks born at plan approval.
-2. T003: the prompt node kind, its look, and its mouse and keyboard reach.
-3. The closure sequence.
+1. T003: the prompt node kind, its look, and its mouse and keyboard reach.
+2. The closure sequence.
 
 ## Risks
 
-A failed `plan_approved` write must never undo a saved approval. Open
-findings: 0.
+Every golden in `brainReducer.fixtures.ts` must stay byte-identical: a
+run's meta gains `attemptId` only when its row carries one. Open findings: 1 (R-1075,
+repaired this round).

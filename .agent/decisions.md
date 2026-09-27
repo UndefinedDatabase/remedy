@@ -22859,3 +22859,59 @@ past run being replayed, not an attempt being made, and carry no attempt id.
 HOW TO REVERSE: remove the attempt id from the run-next path and the test service's events,
 `announce_plan_approval` with its three calls and the `plan_approved` readers, and the ten kinds and
 the `plan` block from the envelope, and delete this paragraph.
+
+## DECISION F288 D3 — a long-run cycle is an attempt named `cycle-<index>` over several tasks; the stream's rows carry the attempt id and the approved task ids; the reducer births tasks at plan approval, a test run from each round's test and each linked test run, and a repair run from each repair round, all as children of their task (2026-09-27)
+
+CONTEXT: DECISIONS F288 D1 and D2 put the attempt id, the task id and the result on the events of
+`run_job`, the run-next path and the test service, and a `plan_approved` event carrying the plan's
+task ids, and moved the long-run executor's repair events to this round. Measured at `b1320109`:
+`_run_repair_rounds` in `packages/orchestration/long_run_executor.py` writes `cycle_repair_round`
+per repair round that ran and `cycle_healed` when the verify passes after one, and `run_cycles`
+writes `cycle_completed` with the cycle's record, all through `_emit` with `cycle_index` and no
+attempt id; a cycle's index is `base_index + len(cycles)`, so it continues across a resume; a cycle
+repairs the failures of every task it executed, and the builder bridge's `repair_loop_*` events are
+written inside one such repair round. In `apps/ui`, `feedRowOf` in `src/api/feedRow.ts` reads only
+`event`, `timestamp`, `outcome` and `task_id` from the envelope; `BrainEventRow` in
+`src/components/graph/brainOntology.ts` holds `seq`, `kind`, `outcome` and `taskId`; `applyBrainEvent`
+in `src/components/graph/brainReducer.ts` births tasks from the dashboard seed and from task
+events, a `test_run` only from `verification_passed` and `verification_failed`, and never a
+`repair_run`, and every run it births is a child of its task; and `PHASE_MARKER_TABLE` in
+`src/components/timeline/phaseMapping.ts` names neither `plan_approved` nor `task_round_tested`.
+
+CHOSEN: (1) THE LONG-RUN CYCLE is an attempt over the tasks it executes, and its attempt id is
+`cycle-<index>`, the job-scoped index its evidence already names it by. Its events name no single
+task, because its repair answers the failures of all of them. `cycle_repair_round` reads `changed`
+when the round changed files and `unchanged` otherwise; `cycle_healed` reads `healed`;
+`cycle_completed` reads the cycle's verify result. `ATTEMPT_EVENT_KINDS` gains the three. (2) THE
+ROWS: `FeedRow` and `BrainEventRow` gain the optional fields `attemptId`, the envelope's
+`attempt_id` when it is a string and `""` otherwise, and `planTaskIds`, the string entries of the
+envelope's `plan.task_ids` in order and `[]` otherwise; `feedRowOf` sets both on every row. (3) THE
+REDUCER: `plan_approved` births every task its `planTaskIds` names that the model lacks, in order,
+`planned`, ranked after the highest task rank, and changes no task that exists; it is a handled
+kind even when the list is empty. `task_round_tested` births a `test_run` and `task_round_repaired`
+a `repair_run` under their task; `test_run_completed`, `test_run_timed_out` and `test_run_blocked`
+birth a `test_run` under their task when they name one and are ignored when they do not. A new
+`TEST_OUTCOME_STATE_TABLE` maps `pass` and `passed` to `pass`, `fail`, `failed` and `timeout` to
+`fail`, and `blocked` to `blocked`; a new `REPAIR_OUTCOME_STATE_TABLE` maps `changed` to `pass`,
+`unchanged` to `blocked` and `error` to `fail`; a word neither table knows falls back to `planned`,
+as the review table's does. Every run born from a row whose `attemptId` is not empty records it as
+`meta.attemptId`, and a row without one leaves the meta exactly as today. The long-run cycle's
+events name no task and stay ignored. (4) THE PHASES: `plan_approved` marks `planning` and
+`task_round_tested` marks `test`; a repair continues the round its review opened and marks none.
+(5) THE COMMENTS: the header of `brainReducer.ts` and the doc comment of `NodeKind` are rewritten
+to say what is born now and from which event, and that `synapse` and `artifact` are still born by
+nothing.
+
+ALTERNATIVES: runs as children of their attempt's `builder_run`, rejected because clustering,
+semantic zoom, the layout and the run detail all read a run's parent as its task, and
+`meta.attemptId` groups an attempt's runs without moving an edge; the first executed task as a
+cycle's task id, rejected because it would draw one task's node for a repair of all of them;
+`unchanged` as `pass`, rejected because a repair that changed nothing repaired nothing.
+
+DELIBERATE ABSENCES: the builder bridge's `repair_loop_*` and `builder_bridge_test_completed` events
+are steps inside one cycle's repair round, which `cycle_repair_round` reports, and carry no attempt
+id; the reducer draws no node for a long-run cycle.
+
+HOW TO REVERSE: remove the attempt id and result from the three cycle events and the three kinds
+from the envelope, the two row fields, the reducer's new cases and two tables, and the two phase
+markers, restore the two comments, and delete this paragraph.
