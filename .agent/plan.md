@@ -12,18 +12,18 @@ exists; and the live graph draws test-run, repair and prompt nodes
 
 ## Current Step
 
-ROUND 5: book round 4's PASS and R-1075's resolution, record DECISION
-F288 D5, and land the first half of T003 — prompts as `synapse` nodes of
-the live model, children of their task, drawn at graph_spec's synapse
-radius, and a click on one selecting the prompt itself.
+ROUND 6: book round 5's PASS, record DECISION F288 D6, and land the second
+half of T003 — the keyboard's parallel list of the live picture's prompt
+nodes, hidden until it holds focus, and a headless browser's proof of the
+list, the keys and the drawn dots.
 
 ## Next Steps
 
-1. The second half of T003: the keyboard's parallel list of the live
-   picture's prompt nodes, and a rendered proof in a headless browser.
-2. The closure sequence.
+1. The closure sequence: the one full suite, the Built State, the
+   evidence bundle, the review package, the self-use item, and the STATUS
+   acceptance with the pull request.
 
 ## Risks
 
-The simple view must not change, and a scrubbed timeline must draw no
-prompt. Open findings: 0.
+The canvas must stay `aria-hidden` and the simple view untouched. Open
+findings: 0.

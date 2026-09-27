@@ -22990,3 +22990,43 @@ rounds times two roles; the scrubbed timeline draws none.
 
 HOW TO REVERSE: delete `promptNodes.ts` and its call, `selectionIdOf`, `selectedPromptNodeId` and
 the two constants, and delete this paragraph.
+
+## DECISION F288 D6 — the keyboard reaches the live picture's prompts through a parallel list of buttons beside the canvas, hidden until it holds focus; a headless browser proves the list, the keys and the drawn dots (2026-09-27)
+
+CONTEXT: DECISION F288 D5 put the prompts into the live model as `synapse` nodes a click selects,
+and left the keyboard and a rendered proof to this round. Measured at `cb022003`:
+`docs/ui/design_reference/graph_spec.md` §14 keeps the canvas `aria-hidden` and names a parallel
+structured list as the accessible surface; `ForceBrainGraph`'s container is `aria-hidden="true"` and
+`tests/ui_contracts/test_brain_stage_mount.py` pins it; the simple view makes each prompt dot a
+focusable element labelled `<role> r<round> — <state>` that Enter selects; `apps/ui` holds no
+visually-hidden utility; and new colour literals outside the ratchet's carve-out fail
+`tests/ui_contracts/test_raw_colour_ratchet.py`. The vitest environment is `node`, so no React
+component renders in a unit test; F020's `.agent/authored/f020-r5-conformance_measure.py` renders
+the live painter in headless Chrome over CDP.
+
+CHOSEN: (1) THE ENTRIES: a pure `promptListEntries(model, visible)` in `brainView.ts` answers, in
+model order, one entry per `synapse` of the model whose id the visible layout holds: its prompt item
+id, its node id, the label `<role> r<round>` from its meta, and a state word — `done` for `pass`,
+`current` for `in_progress`, `failed` for `fail`, and every other state's own name. (2) THE LIST: a
+new component `PromptNodeList` renders the entries as a `nav` labelled "Prompts in the live graph",
+holding one native `button` per entry, labelled `<label> — <state word>`, pressed when its node is
+the selected one, and selecting the prompt item on activation, so Enter and Space both work. It is
+visually hidden until it holds focus and then shown over the stage's corner, styled from the design
+tokens only. The stage renders it inside the live branch only, from the visible layout, and the
+canvas keeps `aria-hidden`. (3) THE PROOF: a harness under `.agent/authored/f288-r6-render_*`,
+adapted from F020's, renders the live graph and the list from the demo recording and a prompt trace
+for its two tasks in headless Chrome, and proves that the list is hidden before focus, that Tab
+reaches its first button, that the list shows once focused, that Enter and then Tab and Space select
+the first and second prompts, and that the canvas holds a synapse per entry; it saves one screenshot
+before focus and one after, which the reviewer inspects.
+
+ALTERNATIVES: making the canvas itself focusable, rejected because graph_spec §14 keeps it
+`aria-hidden` and a canvas has no elements to focus; a list always shown, rejected because it would
+change the live picture's look for every pointer user; arrow keys over the canvas, rejected because
+they would contend with the zoom's own keys and give a screen reader nothing to read.
+
+DELIBERATE ABSENCES: focusing a button does not ring its dot on the canvas, only selecting it does;
+no live region announces a new prompt.
+
+HOW TO REVERSE: delete `PromptNodeList`, its style module, `promptListEntries` and the stage's use of
+them, and delete this paragraph.
