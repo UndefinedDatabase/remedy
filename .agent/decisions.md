@@ -24203,3 +24203,87 @@ ALTERNATIVES: recording the fingerprint on steering records, rejected because it
 record another feature owns for a label.
 
 HOW TO REVERSE: delete this paragraph; D7's sentence then stands, and is false.
+
+## DECISION F036 D1 — the result tour is built from what the job already records: one module turns the report's sources, the diff's file list, the job's evidence files and the Definition of Done's recorded commands into at most eight stops, each tied to a place that is checked to exist when the tour is built, and a mechanical tour stands in whenever no model writes one; T001 lands the stop shape, the anchor check and the mechanical tour in one round, writing no file and called by nothing yet (2026-09-28)
+
+CONTEXT: T5_F036.md was written before most of its inputs were built. Measured at `9dc2f2a7`:
+no module, command or component is named for a tour; the one code hit for the word is
+`TOURNAMENT_` in `packages/orchestration/run_contract.py`, which is unrelated. The feature file's
+inputs exist in these shapes. The report's structure is `run_report.build_report_sources(job)`,
+a `ReportSources` holding the state, terminal status, stop reason, mission, tasks and the
+Definition-of-Done rows with the gate's verdict. The diff's file map is
+`diff_view_source.build_diff_view(evidence_index.resolve_job_evidence_dir(job_id))`, whose
+`files` each carry a `path` and `stats` of `added` and `deleted`, in diff order, and which never
+raises. The Definition of Done's run command is the `command` of each check in
+`dod_gate.load_gate_result(job_id)`, the argv joined for display. The report itself and
+`dod_result.json` are files directly in `data_paths.job_evidence_dir(job_id)`. No task records a
+plan rationale; the one `rationale` field is `MilestoneDraft`'s, which a job's tasks do not carry.
+The "idea engine's ref discipline" the feature file cites has no code, since F063 and F065 are
+unbuilt. The design reference names no tour treatment. The completion digest of F040 is the
+nearest built cousin and deliberately has no links (DECISION F040 D5). The browser's deep link is
+`?focus=&level=&tab=`, and a diff opens per task run with no path in the address.
+
+CHOSEN: (1) ONE MODULE. `packages/orchestration/result_tour.py`. Apart from one collector that
+reads the job's own records, it is pure: it writes no file, calls no model and reads no clock.
+(2) THE TOUR is `{"schema": "remedy.tour.v1", "job_id", "generator", "stops", "dropped"}`, and
+`generator` reads `fallback` for the mechanical tour. A stop is `{"title", "body", "anchor":
+{"kind", "ref"}}`, with a one-line title of at most 80 characters and a body of at most 400. A
+tour holds at most eight stops, and eight is a ceiling, not a quota. (3) THE ANCHORS. There are
+four kinds, and each is checked against the job when the tour is built. A `node` ref is the full
+id of one of the job's tasks. A `diff` ref is a path in the job's diff file list. An `evidence`
+ref is the name of a file directly in the job's evidence directory. A `command` ref is, byte for
+byte, the command of a Definition-of-Done check the gate recorded. A stop whose shape is wrong or
+whose anchor does not resolve is dropped, logged and listed under `dropped` with its reason, and
+so is every sound stop after the eighth. Nothing ships unanchored. (4) THE MECHANICAL TOUR, in
+this order. First, how the run ended: the state, terminal status, stop reason and mission,
+restated, anchored to `report.md` when that file exists, else to the first task. Then one stop per
+changed area, where an area is a changed file's first path segment and files at the top level form
+one area; each such stop lists its files with their added and deleted line counts and is anchored
+to its first file. When the areas outnumber the room left under eight, the last room is one stop
+that gathers the rest. Then how to run it: the first recorded Definition-of-Done command, anchored
+to itself. Last, the Definition of Done's outcome: how many checks passed out of how many, and
+whether the gate released or held the job, anchored to `dod_result.json`. Every body restates its
+source and adds no claim, and a text too long for its bound is cut with an ellipsis, never
+rewritten. (5) NO "WHY" STOP WITHOUT A SOURCE. No task records a rationale, so the mechanical tour
+has no stop explaining why the work is shaped the way it is, and T002's generator may explain only
+from the plan's recorded goal and acceptance text. (6) THE ROUNDS. Round 1 lands T001. T002 lands
+the generation call through the summary-class side role with the same three-way fallback as
+`artifact_summary.generate_artifact_summary`, the no-new-claims goldens, `tour.json` stored beside
+`report.md` from the terminal funnel that writes the report, versioning and the command line. T003
+lands the overlay, its navigation to each anchor and the demo's tour. Until T002 wires the module,
+it is listed in `ALLOWED_UNWIRED` of `tests/test_no_orphan_modules.py` with its reason, and T002
+removes that line in the commit that wires it. (7) T003 SETTLES TWO GAPS by a DECISION of its
+own, with a line in the design reference's assumption log: the missing tour treatment, and the
+missing path in the diff's address.
+
+ALTERNATIVES: one stop per changed file, rejected because a thirty-file job would spend all eight
+stops on files and lose both the run's outcome and the Definition of Done; anchoring evidence to
+the evidence panel's tabs, rejected because those tabs belong to one task run while the report and
+the gate's record belong to the job; extending the completion digest, rejected because the digest
+is a card without anchors by DECISION F040 D5.
+
+HOW TO REVERSE: delete `packages/orchestration/result_tour.py` and its tests, remove its line from
+`ALLOWED_UNWIRED`, and delete this paragraph.
+
+## DECISION F036 D2 — the fifth findings paydown, F286, waits behind F036 because no finding is open to pay down; Rule A5 claims F036 instead, and the next claim proposes F286 again (2026-09-28)
+
+CONTEXT: At `9dc2f2a7` the first unchecked line of `docs/roadmap/STATUS.md` is F286 — Findings
+paydown v5, registered thin by F285's closure under operator amendment amend0911-feedback rule B.
+Its file says its first round reads the open set and takes every open finding registered before
+the claim date. `open_finding_ids` over `.agent/live_review.md` at `9dc2f2a7` answers `[]`,
+because F035's closure left no finding open. A claim of F286 now would take no finding, and its
+only remaining work would be a closure sequence, with an evidence job, a full-suite run and a
+review package, around no change.
+
+CHOSEN: F286's STATUS line and its Tier 2 heading move one feature down, to directly after F036,
+and F036 is claimed now. Nothing else about F286 changes: its file keeps its registration, one
+line in it records this move, and rule B's one unclaimed paydown still stands. The next claim
+after F036's closure meets F286 first under Rule A5. If the open set is empty again then, that
+claim may make the same move by a DECISION of its own; otherwise it claims F286.
+
+ALTERNATIVES: claiming F286 and closing it with nothing paid down, rejected because it spends a
+whole closure on no change, the ritual operator amendment amend0917-throughput removes; dropping
+F286, rejected because rule B keeps exactly one unclaimed paydown.
+
+HOW TO REVERSE: move F286's STATUS line and its Tier 2 heading back above F036, delete the line
+this move added to `docs/roadmap/features/T2_F286.md`, operator question Q6 and this paragraph.

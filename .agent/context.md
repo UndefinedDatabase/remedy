@@ -1,25 +1,26 @@
-# Context — F035 Ownership ledger
+# Context — F036 Guided result tour
 
 ## Active Branch
-feature/f035-ownership-ledger, cut from `main` at `a0b287a5`
-(the merge commit of pull request 289, F030 Steering messages).
+feature/f036-guided-result-tour, cut from `main` at `9dc2f2a7`
+(the merge commit of pull request 290, F035 Ownership ledger).
 
 ## Scope
-F035 (Tier 5): one ownership ledger per job — every human-attributable
-action with its actor, time, verbatim text and consequence, built as a
-pure pass over the records earlier features already write, rendered as
-plain sentences in the report, the digest, the browser and the command
-line, as `docs/roadmap/features/T5_F035.md` and DECISION F035 D1 specify.
+F036 (Tier 5): a guided tour of a finished job — at most eight stops built
+from the report, the diff, the evidence files and the Definition of Done,
+each anchored to a place that exists, written by a side-role model call
+with a mechanical fallback, shown as a browser overlay and printed by the
+command line, as `docs/roadmap/features/T5_F036.md` and DECISION F036 D1
+specify.
 
 ## Do not touch
-Audit formats (consumed, not changed), decision semantics, and future
-authentication or identity.
+Report content, deep-link formats (consumed, not changed), and preview
+mechanics, which F041 adds to tour stops later.
 
 ## Active assumptions
-- The ledger reads every record and writes none of them; its file is
-  regenerable and never a second truth (DECISION F035 D1).
-- An actor is never named beyond what its record holds: a door, and a
-  token number for a browser fingerprint.
+- A tour restates what the job's own records say and adds no claim; a stop
+  without a resolving anchor is dropped, never shipped (DECISION F036 D1).
+- The findings paydown F286 waits behind F036 while no finding is open
+  (DECISION F036 D2).
 
 ## Constraints
 - Every pytest run in a round is targeted and serial; the resource and

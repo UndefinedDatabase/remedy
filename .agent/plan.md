@@ -1,25 +1,29 @@
-# Plan — F035 Ownership ledger
+# Plan — F036 Guided result tour
 
-Branch: feature/f035-ownership-ledger, cut from `main` at `a0b287a5`, the
-merge commit of pull request 289 (F030 Steering messages).
+Branch: feature/f036-guided-result-tour, cut from `main` at `9dc2f2a7`, the
+merge commit of pull request 290 (F035 Ownership ledger).
 
 ## Goal
 
-Who decided what stays answerable: one ledger per job names, for every
-human-attributable action, who acted through which door, when, in their own
-words, and what it caused, with machine choices attributed to Remedy under
-its configuration (`docs/roadmap/features/T5_F035.md`, DECISIONS F035 D1
-to D8).
+"What did I get?" answered in a guided minute: at most eight stops built
+from the job's own report, diff and Definition of Done, each tied to a real
+place in the job, shown as an overlay in the browser and printed the same
+way on the command line (`docs/roadmap/features/T5_F036.md`, DECISIONS
+F036 D1 and D2).
 
 ## Current Step
 
-ROUND 10, the closing round: book round 9, rotate the ledger, accept F035
-in STATUS with the README counters, and open the pull request.
+ROUND 1: claim F036, book F035's round 10, record DECISIONS F036 D1 and D2
+with operator question Q6, move F286 behind F036, and land T001 — the stop
+shape, the anchor check and the mechanical tour.
 
 ## Next Steps
 
-1. The next feature's session merges this pull request at the Open PR Gate.
+1. T002: the generation call with its fallback, the no-new-claims goldens,
+   `tour.json` stored and versioned at the job terminal, and the command line.
+2. T003: the overlay, navigation to each anchor, and the demo's tour.
+3. The closure sequence.
 
 ## Risks
 
-Open findings: none.
+None open. Open findings: 0.
