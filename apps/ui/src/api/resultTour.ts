@@ -196,3 +196,33 @@ export function tourAnchorLabel(anchor: TourAnchor): string {
     default: return anchor.ref;
   }
 }
+
+/** The generator name of `TOUR_GENERATOR_SUMMARY_ROLE` in `result_tour.py`, restated here so
+ *  this module imports nothing. */
+const TOUR_GENERATOR_SUMMARY_ROLE = "summary-role";
+
+/** The line the overlay shows for how the tour was built: the summary model's own claim,
+ *  checked against the job's records, or the mechanical fallback built straight from them. */
+export function tourGeneratorLabel(generator: string): string {
+  return generator === TOUR_GENERATOR_SUMMARY_ROLE
+    ? "Written by the summary model and checked against the job's records"
+    : "Built from the job's records";
+}
+
+/** Whether "Show me" has a place to take the operator: a task or a diff, the two anchor kinds
+ *  the cockpit can navigate to directly. An evidence or a command anchor names something the
+ *  cockpit has no place to open, so the card shows it as text instead. */
+export function tourCanShow(anchor: TourAnchor): boolean {
+  return anchor.kind === "node" || anchor.kind === "diff";
+}
+
+/** The `rowKey` of the FIRST diff summary whose `path` equals `path`, or `null` when none
+ *  does. Takes a plain array of `{path, rowKey}` rather than importing `DiffFileSummary` from
+ *  `diffViewModel.ts`, so this module keeps importing nothing. */
+export function tourDiffRowKey(
+  summaries: Array<{ path: string; rowKey: string }>,
+  path: string,
+): string | null {
+  const found = summaries.find((summary) => summary.path === path);
+  return found ? found.rowKey : null;
+}

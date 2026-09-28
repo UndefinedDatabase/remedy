@@ -1,7 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { RemedyDashboard } from "../../api/types";
 import type { DiffEnvelope } from "../../api/diffViewModel";
+import { buildDiffFileSummaries } from "../../api/diffViewModel";
 import type { JobDigest } from "../../api/jobDigest";
+import type { TourAnchor } from "../../api/resultTour";
+import { tourDiffRowKey } from "../../api/resultTour";
 import { loadDiffEnvelope, loadJobDigest, loadOwnershipView } from "../../api/remedyApi";
 import type { OwnershipView } from "../../api/ownership";
 import { ownershipRefreshKey } from "../../api/ownership";
@@ -26,6 +29,7 @@ import { useTimelineScrub } from "../timeline/useTimelineScrub";
 import { DetailPopover } from "../detail/DetailPopover";
 import { LessonsOverlay } from "../lessons/LessonsOverlay";
 import { lessonsRefreshKey } from "../../api/lessons";
+import { TourOverlay } from "../tour/TourOverlay";
 import { DegradedBanner } from "./DegradedBanner";
 import styles from "./RemedyShell.module.css";
 import { browserBrainStreamEnv, createBrainStreamHostDeps, eventsSincePath } from "../../api/brainStreamDeps";
@@ -196,6 +200,37 @@ export function RemedyShell({ dashboard, serverToken, selectedNodeId, onSelectNo
   const [lessonsOpen, setLessonsOpen] = useState(false);
   const lessonsKey = lessonsRefreshKey(stream.recent ?? []);
 
+  // THE GUIDED TOUR (F036 T003, DECISION F036 D6): open or closed, and the diff path a "Show
+  // me" on a diff stop asked to be scrolled into view once the job's whole diff has loaded.
+  const [tourOpen, setTourOpen] = useState(false);
+  const [tourDiffPath, setTourDiffPath] = useState<string | null>(null);
+
+  // THE SCROLL. A diff stop's "Show me" opens the job's whole diff (below) and records the
+  // path it named; once that diff's envelope has arrived, this effect finds the path's row key
+  // through the SAME model `DiffFileSidebar.tsx` uses and scrolls to the SAME id that row
+  // carries, then clears the path so a later envelope (a different task's diff, reopened) does
+  // not scroll again.
+  useEffect(() => {
+    if (diffEnvelope === null || tourDiffPath === null) return;
+    const rowKey = tourDiffRowKey(buildDiffFileSummaries(diffEnvelope), tourDiffPath);
+    if (rowKey !== null) {
+      document.getElementById(rowKey)?.scrollIntoView({ block: "start" });
+    }
+    setTourDiffPath(null);
+  }, [diffEnvelope, tourDiffPath]);
+
+  // "Show me": a task stop opens the task's detail through the same selection path the graph
+  // and the popover already use; a diff stop opens the job's WHOLE diff (an empty task id) and
+  // names the path the scroll effect above resolves once it has loaded.
+  function handleTourShowAnchor(anchor: TourAnchor) {
+    if (anchor.kind === "node") {
+      onSelectNode(shellSelectionIdOf(dashboard.tasks, anchor.ref));
+    } else if (anchor.kind === "diff") {
+      setTourDiffPath(anchor.ref);
+      setOpenDiffTaskId("");
+    }
+  }
+
   // Jump-to: case-insensitive match over real task labels; focus the first match's node.
   const handleJump = (query: string) => {
     const q = query.toLowerCase();
@@ -231,7 +266,7 @@ export function RemedyShell({ dashboard, serverToken, selectedNodeId, onSelectNo
           <BrainGraphStage dashboard={dashboard} selectedNodeId={selectedNodeId} onSelectNode={onSelectNode} rows={ledgerRows} scrub={scrub} serverToken={serverToken} />
           <PhaseTimeline scrub={scrub} />
         </main>
-        <RightLivePanel dashboard={dashboard} serverToken={serverToken} onSelectNode={onSelectNode} streamStatus={stream.status} replay={scrub.state.mode === "scrubbed"} recent={stream.recent} recentDropped={stream.recentDropped} onOpenLessons={() => setLessonsOpen(true)} focusedTaskId={focusedTaskId} />
+        <RightLivePanel dashboard={dashboard} serverToken={serverToken} onSelectNode={onSelectNode} streamStatus={stream.status} replay={scrub.state.mode === "scrubbed"} recent={stream.recent} recentDropped={stream.recentDropped} onOpenLessons={() => setLessonsOpen(true)} onOpenTour={() => setTourOpen(true)} focusedTaskId={focusedTaskId} />
       </div>
       {selectedNode && <DetailPopover dashboard={dashboard} selectedNode={selectedNode} selectedPromptId={selectedPromptId} onClose={() => onSelectNode(null)} onOpenDiff={setOpenDiffTaskId} serverToken={serverToken} onSelectTask={(taskId) => onSelectNode(shellSelectionIdOf(dashboard.tasks, taskId))} ownership={ownership} />}
       {/* THE DIFF PANEL. A sibling of the popover rather than a child of
@@ -268,6 +303,16 @@ export function RemedyShell({ dashboard, serverToken, selectedNodeId, onSelectNo
           serverToken={serverToken}
           refreshKey={lessonsKey}
           onClose={() => setLessonsOpen(false)}
+        />
+      )}
+      {/* THE GUIDED TOUR (F036 T003, DECISION F036 D6), a sibling directly after the learning
+          overlay for the reason both are siblings outside <main>. */}
+      {tourOpen && (
+        <TourOverlay
+          jobId={dashboard.jobId}
+          serverToken={serverToken}
+          onClose={() => setTourOpen(false)}
+          onShowAnchor={handleTourShowAnchor}
         />
       )}
     </div>

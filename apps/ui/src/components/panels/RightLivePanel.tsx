@@ -14,7 +14,7 @@ import { PauseControl } from "./PauseControl";
 import { TaskChecklistCard } from "./TaskChecklistCard";
 import styles from "./RightLivePanel.module.css";
 
-export function RightLivePanel({ dashboard, serverToken, onSelectNode, streamStatus, replay, recent, recentDropped, onOpenLessons, focusedTaskId }: { dashboard: RemedyDashboard; serverToken: string; onSelectNode: (nodeId: string | null) => void; streamStatus?: BrainStreamStatus | null; replay?: boolean; recent?: readonly FeedRow[]; recentDropped?: number; onOpenLessons?: () => void; focusedTaskId?: string }) {
+export function RightLivePanel({ dashboard, serverToken, onSelectNode, streamStatus, replay, recent, recentDropped, onOpenLessons, onOpenTour, focusedTaskId }: { dashboard: RemedyDashboard; serverToken: string; onSelectNode: (nodeId: string | null) => void; streamStatus?: BrainStreamStatus | null; replay?: boolean; recent?: readonly FeedRow[]; recentDropped?: number; onOpenLessons?: () => void; onOpenTour?: () => void; focusedTaskId?: string }) {
   const [showAdvanced, setShowAdvanced] = useState(false);
 
   return (
@@ -36,6 +36,9 @@ export function RightLivePanel({ dashboard, serverToken, onSelectNode, streamSta
           Lessons
         </button>
       )}
+      {/* The guided tour's entry point (F036 T003, DECISION F036 D6), beside Lessons in the
+          same quiet style; the shell owns whether the tour is open. */}
+      {onOpenTour && (<button type="button" className={styles.advancedToggle} onClick={onOpenTour}>Tour</button>)}
       <button
         type="button"
         className={styles.advancedToggle}
