@@ -242,3 +242,27 @@ def test_prompt_names_every_verb_the_focused_task_and_the_open_decisions():
         assert verb in prompt
     assert "abc" in prompt
     assert "D-1, D-2" in prompt
+
+
+# ---------------------------------------------------------------------------
+# R-1092 — a confidence that is not a finite number, and an unstripped argument.
+# ---------------------------------------------------------------------------
+
+
+def test_a_reply_whose_confidence_is_nan_is_unknown():
+    call_fn = _stub_call_fn('{"verb": "job.pause", "args": {}, "confidence": NaN}')
+
+    intent = parse_chat_intent_with_model("hold on a moment", call_fn=call_fn)
+
+    assert intent.kind == chat_intent.CHAT_INTENT_UNKNOWN
+
+
+def test_decision_resolve_reply_values_come_back_stripped():
+    call_fn = _stub_call_fn(
+        _reply("decision.resolve", {"decision_id": "  D-1  ", "answer": "  postgres  "}, 0.9))
+
+    intent = parse_chat_intent_with_model(
+        "answer the decision with postgres", call_fn=call_fn, open_decision_ids=("D-1",))
+
+    assert intent.args == {"decision_id": "D-1", "answer": "postgres"}
+    assert intent.missing == ()
