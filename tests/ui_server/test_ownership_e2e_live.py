@@ -9,9 +9,10 @@ call is held, five actions land in this order: through the door, with one real t
 `job.veto-task` of the THIRD task with a reason, then `chat.send` with a job-wide message; on
 the real command line, `remedy job steer` addressing a note to the SECOND task, then `remedy
 job pause --task` and `remedy job unpause --task` of the same task. The run is then released and
-completes normally — the pause and its immediate release both land before the second task is
-ever dispatched, so nothing parks and no relaunch is needed (`pause_control.pause_job_command`
-and `unpause_job_command` are pure control-file writes, never a waiting process).
+ends blocked because every remaining task was vetoed — the pause and its immediate release both
+land before the second task is ever dispatched (`pause_control.pause_job_command` and
+`unpause_job_command` are pure control-file writes, never a waiting process), and the veto of the
+third task leaves nothing left to run.
 
 Structured like `test_steering_note_e2e_live.py` and `test_pause_e2e_live.py` — `@pytest.mark.
 subprocess`, its own runner, server starter and door helper — and this file keeps its OWN

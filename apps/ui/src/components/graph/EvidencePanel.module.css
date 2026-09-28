@@ -109,8 +109,7 @@
 }
 
 /* R-1083's repair — the tab's ownership list takes the panel's type scale instead of the
-   browser's default bullets and body size; the row gap is drawn from `--remedy-radius-pill`,
-   the only length token this file already uses, scaled down to a row-spacing magnitude. */
+   browser's default bullets and body size. */
 .ownershipList {
   list-style: none;
   margin: 0;
@@ -120,6 +119,7 @@
   font-size: 13px;
   line-height: 1.45;
 }
+/* R-1085's repair — a plain length; the design reference has no spacing token for this row gap. */
 .ownershipList li + li {
-  margin-top: calc(var(--remedy-radius-pill) / 111);
+  margin-top: 6px;
 }

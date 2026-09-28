@@ -81,8 +81,8 @@
 
 /* R-1083's repair — the section's list takes the popover's own 13px/1.45 rows explicitly
    (redundant with `.popover li` above, but this class is the one the contract pins) and no
-   bullet; the row gap is drawn from `--remedy-radius-sm`, a length token this file already
-   uses for the edit form's fields. */
+   bullet. */
 .ownershipList { list-style: none; margin: 0; padding: 0; }
 .ownershipList li { font-size: 13px; line-height: 1.45; }
-.ownershipList li + li { margin-top: var(--remedy-radius-sm); }
+/* R-1085's repair — a plain length; the design reference has no spacing token for this row gap. */
+.ownershipList li + li { margin-top: 6px; }

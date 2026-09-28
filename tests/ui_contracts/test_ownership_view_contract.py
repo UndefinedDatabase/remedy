@@ -145,3 +145,15 @@ def test_r_1083_both_ownership_lists_take_the_panel_s_type_scale():
 
     popover_source = _source(POPOVER)
     assert "styles.ownershipList" in popover_source
+
+
+def test_r_1085_neither_ownership_list_reads_a_radius_token():
+    """R-1085's repair: the row gap between ownership entries is a plain length, not arithmetic
+    on a corner-radius token — neither CSS module's `.ownershipList` rules name
+    `--remedy-radius`."""
+    for css_path in (EVIDENCE_PANEL_CSS, POPOVER_CSS):
+        css_source = css_path.read_text(encoding="utf-8")
+        rules = re.findall(r"\.ownershipList[^{}]*\{([^}]*)\}", css_source)
+        assert rules
+        for rule in rules:
+            assert "--remedy-radius" not in rule
