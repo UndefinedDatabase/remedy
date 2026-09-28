@@ -1,0 +1,55 @@
+diff --git a/.agent/decisions.md b/.agent/decisions.md
+index 07cf4fcc3..52fe82f08 100644
+--- a/.agent/decisions.md
++++ b/.agent/decisions.md
+@@ -24993,3 +24993,36 @@ the markup renderer React already ships reads the real component with no new dep
+ HOW TO REVERSE: delete `chatTurn.ts`, `EvidenceChatTab.tsx` and its sheet, their tests and the
+ contract test, restore `EVIDENCE_CHAT_NOT_YET`, its test and its contract line, remove the
+ assumption row, and delete this paragraph.
++
++## DECISION F038 D13 — the chat never degrades to read-only, because neither of its paths needs a model; the honest banner T5_F038.md asks for is one line under every answer saying how it was written, the same words on the command line and in the cockpit (2026-09-28)
++
++CONTEXT: Measured at `1bcb713a`. T5_F038.md's edge cases say the chat "degrades to read-only if
++no capable model is configured (honest banner)". The chat's answer is mechanical unless
++`chat.model_written` is on (DECISION F038 D5), and its request parse is mechanical first, the
++model reading only what the mechanical parse calls unknown (DECISION F038 D8), so with no model
++the chat still answers every question from its evidence and still builds every card the
++mechanical parse knows. `answer_chat_question` labels each answer's `generator`: `mechanical`,
++`mechanical:<reason>` when the model's reply could not be used, or `summary-role`. That label
++reaches `remedy chat ask --json` and the chat route, while the text form and the cockpit's tab
++show nothing of it.
++
++CHOSEN: (1) NO READ-ONLY MODE. A chat whose model is missing or switched off loses nothing it
++needs, so there is nothing to degrade to, and no switch or banner for it is added. (2) THE LINE.
++`chat_generator_line(generator)` in `packages/orchestration/chat_answer.py` answers one plain
++sentence: for `mechanical`, "Built from the job's records, without a model."; for any
++`mechanical:` label, "The model's answer could not be used, so this one is built from the job's
++records, without a model."; for `summary-role`, "Written by the summary model; every sentence was
++checked against the job's records."; and for anything else, "How this answer was written is not
++recorded." (3) BOTH DOORS SHOW IT. `remedy chat ask` prints it on the line after `Scope:`, and
++the cockpit's tab shows it under the scope chip through `chatGeneratorLine` in
++`apps/ui/src/api/chatTurn.ts`, whose four sentences a contract test holds equal to the Python
++ones, as it already holds `Not in evidence.`. The `--json` output and the route keep the raw
++`generator` label unchanged.
++
++ALTERNATIVES: a read-only mode entered when no model is configured, rejected because it would take
++away cards and answers that need no model; showing the raw label, rejected because
++`mechanical:timeout` is a code and the operator reads sentences (operator amendment
++amend0921-operator-feedback rule 3).
++
++HOW TO REVERSE: delete `chat_generator_line`, `chatGeneratorLine`, the printed line, the tab's
++line and their tests, and delete this paragraph.
+diff --git a/.agent/live_review.md b/.agent/live_review.md
+index a6164b8f9..072c1b464 100644
+--- a/.agent/live_review.md
++++ b/.agent/live_review.md
+@@ -489,3 +489,9 @@ Done: R-1095 — RESOLVED at `525b8020` (F038 R11 C4), booked by F038 R12: `test
+ Landed: R-1096 — `apps/ui/src/api/chatTurn.test.ts` gains the two refusals: an answer with no sentence and a card whose argument is a number each decode to `null`.
+ 
+ Landed: R-1097 — `chatTurn.ts` gains plain unavailable lines, a card's own refusal sentences and the open buttons' labels; the chat tab shows them, names its input and hides Confirm while a send is in flight; vitest, the DOM audit and the contract test pin each.
++
++Gate: F038 R12 — the F038 round 12 entry: the booking of round 11, R-1095's resolution, R-1096's and R-1097's registration and repair, and T003's end-to-end proof. VERDICT PASS. Re-derived over `b9128a0c`..`1bcb713a` by the planner and reviewer of F038's third session, whose own runs produced every reading below. THE RANGE IS 7 COMMITS, at `7b84832f` 277, `a63e29e9` 28, `e21cf6cf` 16, `41fcec0e` 82, `aa0622c8` 434, `c62a1af7` 335 and `1bcb713a` 147 insertions by `git show --numstat`, each under the 500-line cap and each single-parent; the tracked path set is exactly the block's constraint 3, and the worker declared no deviation. THE TRANSPORT PROOF: the block copy and the three payload copies, read from the commits that added them, equal the reviewer's originals byte for byte. THE RECORDS: at `e21cf6cf` the ledger and the plan, and at `aa0622c8` the ledger with its two `Landed:` lines, equal the reviewer's simulation byte for byte; the open set reads `['R-1096', 'R-1097']` at both and at `1bcb713a`. THE CODE: ruff reads clean over the two touched Python test files and the mutation tool; `chatTurn.ts` gives a plain line for each unavailable reason and a card's own refusal sentences, no longer the decision inbox's, and the tab shows them, names its input, labels each open button and hides Confirm while a send is in flight. THE PROOF: `tests/ui_server/test_chat_e2e_live.py` runs a three-task job in its own process whose second build call waits on a file, asks the live chat route about the finished task and reads an answer whose every sentence is cited within its evidence or says it is not in evidence, turns "stop that task" into a `job.stop` card, reads the audit file empty, confirms the card through the write door with a `chat-` nonce, and then reads the job stopped, one `job_stopped` event and exactly one accepted `job.stop` audit line carrying that nonce; the reviewer's own version of it passed three runs of three. THE TESTS: the block's selection, run by the reviewer serially in the primary checkout at `1bcb713a`, read 1563 passed and 5 skipped at exit 0: the base reading of 1561 at `b9128a0c`, plus the new end-to-end node and one node of `tests/ui_contracts/test_chat_citations.py`; the selection runs the whole vitest suite, `tsc` and eslint, and the skips are the five F252 quarantines. All six `integrity check` checks read pass. THE RED PROOFS: the reviewer's own mutations, written against the worker's lines and run in a disposable worktree at `1bcb713a`, went red one by one for the ordered twelve — an answer with no sentence decoded, a card argument that is not a string decoded, the unavailable code shown, a refusal worded as a decision, the open labels and the open button reading "Open", Confirm while a send is in flight, the input left unnamed, the chat route dropping the task, "stop" not read as a stop and the stop card sending a pause — and further for a rate-limited refusal toned an error and two unavailable lines changed; one further mutation stayed GREEN, deleting the tab's own `sending: true` update, which the recurrence line below records under R-1097. Both controls of both runners read exit 0, the bytes were restored, and the worktree was removed.
++
++Done: R-1096 — RESOLVED at `aa0622c8` (F038 R12 C4a), booked by F038 R13: two tests in `apps/ui/src/api/chatTurn.test.ts` read an answer with an empty `sentences` list and a card whose argument holds a number each decode to `null`, beside the same bodies without the fault decoding. In the reviewer's disposable worktree at `1bcb713a`, deleting ` || rawSentences.length === 0` and deleting the string check on each card argument each turned one of them red at exit 1.
++
++Recurrence: R-1097 — THE TAB'S OWN WIRING OF THE IN-FLIGHT FLAG IS UNPINNED, SO R-1097 STAYS OPEN. Found by the planner and reviewer of F038's third session at the round 12 gate. NO NEW ID IS MINTED: R-1097's FIX asks that the tab hide Confirm while a send is in flight, and round 12 landed that rule in `ChatTurnBlock`, where the DOM audit pins it, and in `EvidenceChatTab`, which sets `sending` true on a turn before its send and clears it with the outcome. MEASURED at `1bcb713a` in a disposable worktree: deleting that one `setTurns` line that sets `sending: true` in `apps/ui/src/components/graph/EvidenceChatTab.tsx` left the round's vitest files and `tests/ui_contracts/test_chat_citations.py` at exit 0, because no DOM harness mounts the stateful tab and no contract reads its source. FIX, the rest of R-1097's: `tests/ui_contracts/test_chat_citations.py` gains a test that reads the tab's source and pins, in order, the update setting `sending: true`, the `await sendChatCard(` after it, the update clearing `sending` with the outcome after that, and `sending={turn.sending}` handed to `ChatTurnBlock`. R-1097's `Done:` waits for that test and its red proof.
