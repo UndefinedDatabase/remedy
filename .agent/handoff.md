@@ -1,90 +1,194 @@
-# Handback — F038, end of session 2: an operator STOP after round 8's review
+# Handback — F038, round 9: book round 8, resolve R-1092, register and repair R-1093, `remedy chat ask` lands
 
 ## Session
 
-SESSION 2 of feature F038 · round 8 · rounds so far 8. This session ran rounds 6, 7 and 8, each
-reviewed PASS by the planner and reviewer's own re-runs and mutations, and prepared round 9's block
-and payloads without delegating them: `.agent/STOP` appeared on disk (an empty, untracked file,
-created 15:55) while round 9 was being checked for emission, so under guardrail G6 and Phase 1 rule
-1 the session wrote this handoff and ended. Rounds this session: three, below the six-to-eight
-target, and the reason is the operator's STOP, not context. Context self-assessment: a comfortable
-margin of context was left; the work was not near its limit.
+SESSION 3 of feature F038 · round 9 · rounds so far 9. This session ran round 9 only, delegated
+after the operator lifted `.agent/STOP`. Context self-assessment: a comfortable margin of context
+remained at the end of the round; the work was not near its limit.
 
-For the operator, in plain words: the chat part of the cockpit now has everything except its
-screen. A typed line is read as a question or as a request; a question is answered only from the
-job's own records, with numbered sources; a request becomes a card that says exactly what would be
-done, and a confirmed card is sent through the cockpit's one audited entrance, so the chat can do
-nothing the browser's buttons could not, and nothing without a record. A language model may help
-read a request only when you switch it on, and even then it cannot pick a task or a decision on its
-own. The next piece, a `remedy chat ask` command for the terminal, is prepared and waits for the
-next session. Two small test gaps the reviews found were written down as findings; the first is
-already repaired, the second is repaired by the prepared next round.
+For the operator, in plain words: the chat now has a command line. `remedy chat ask <job_id>
+"<text>"` asks the same grounded question or types the same request the cockpit's own turn reads —
+a question comes back with its scope, its checked answer and its numbered sources; a request comes
+back as a card, and that card is sent through the job's own running cockpit only once it is
+complete and you say yes, either with `--yes` or by typing `y` at the prompt. Nothing is sent
+without your say-so, and nothing is sent at all unless a cockpit is actually running for that job.
+Two small test gaps the previous round's review found are both closed now: the intent parser's two
+blind spots are pinned, and the one that let a handed-in answer function be silently dropped is
+pinned too.
 
 ## Range
 
-Review of `72ba3b2e5`..the commit that writes this file. That commit is the only one in the range.
+Review of `7627663b7`..`HEAD` (the commit that writes this file). Six commits: C1a, C1b, C2, C3,
+C4, C5.
 
 ## Commits
 
-### (this commit) F038 s2 STOP: rewrite handoff at the operator STOP after round 8
+### 81bfa006d F038 R9 C1a: copy round 9 block and plan payload into .agent/authored/
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/handoff.md | rewritten | this file, the session-end handoff G6 orders; `.agent/STOP` itself is the operator's and is NOT committed |
+| .agent/authored/f038-r9-block.md | 288/0 | this block, copied verbatim by `shutil.copyfile` |
+| .agent/authored/f038-r9-plan.md | 29/0 | the plan payload, copied verbatim by `shutil.copyfile` |
+
+### d016127e0 F038 R9 C1b: copy round 9 records and landed diffs into .agent/authored/
+| Path | +/- | Reason |
+|---|---|---|
+| .agent/authored/f038-r9-records.diff | 60/0 | the records payload, copied verbatim |
+| .agent/authored/f038-r9-landed.diff | 10/0 | the landed-line payload, copied verbatim |
+
+### c6f0085d9 F038 R9 C2: book round 8, resolve R-1092, register R-1093, record DECISION F038 D10
+| Path | +/- | Reason |
+|---|---|---|
+| .agent/decisions.md | 38/0 | `git apply records.diff`: DECISION F038 D10 |
+| .agent/live_review.md | 6/0 | `git apply records.diff`: round 8's Gate entry, R-1092's `Done:`, R-1093's registration |
+| .agent/plan.md | 7/7 | rewritten to plan.md payload: round 9's goal and next steps |
+
+### fc7493187 F038 R9 C3: add remedy chat ask, one chat turn on the command line
+| Path | +/- | Reason |
+|---|---|---|
+| apps/cli/command_catalog.py | 26/0 | S3: the `chat.ask` catalog entry |
+| apps/cli/commands/chat_cmd.py | 158/0 | S4-S6: `_cmd_chat_ask`, its answer and card renderers, the module docstring paragraph |
+| apps/cli/commands/ui.py | 18/0 | S2: `live_ui_session_for_job`, the read-only registry lookup |
+| docs/guides/exit-codes.md | 1/0 | S7: the `remedy chat ask` row |
+| tests/orchestration/import_reachability_allowlist.txt | 6/0 | S7: the six `chat_*` modules now reachable from `chat_cmd.py`'s imports |
+| tests/test_no_orphan_modules.py | 0/6 | S7: `chat_door.py` and `chat_turn.py` removed from `ALLOWED_UNWIRED` — `chat_cmd.py` wires them |
+
+### d0cbeec86 F038 R9 C4: test remedy chat ask and repair R-1093
+| Path | +/- | Reason |
+|---|---|---|
+| tests/orchestration/test_chat_turn.py | 22/0 | S1: `test_a_handed_in_answer_call_fn_is_used_and_checked`, R-1093's repair |
+| tests/cli/test_chat_ask.py | 238/0 | NEW FILE: 13 tests over the TESTS section's list |
+| .agent/live_review.md | 2/0 | `git apply landed.diff`: the `Landed: R-1093 —` line |
+| .agent/authored/f038-r9-mutations.py | 159/0 | the G5 mutation tool, saved as its own commit per the block |
+
+### (this commit) F038 R9 C5: rewrite handoff for round 9
+| Path | +/- | Reason |
+|---|---|---|
+| .agent/handoff.md | rewritten | this file, the session-end handback G6 orders |
 
 ## External actions
 
-- `git push origin feature/f038-grounded-chat` after this commit, reported in the worker's reply.
+- `git worktree add --detach .remedy-wt/f038-r9-mut d0cbeec86` — created the G5 mutation worktree.
+- `git worktree remove --force .remedy-wt/f038-r9-mut` — removed it after the tool ran.
+- `git worktree prune` — pruned; `git worktree list | wc -l` read 68 before and after, matching
+  step 4's reading.
+- `git push origin feature/f038-grounded-chat` after this commit — reported in the worker's reply.
+- No PR created, edited or merged. No `gh pr` command run except the G6 open-PR read.
 
 ## Verification
 
-The verdicts of this session, each re-derived by the reviewer's own runs:
-- Round 6 (`8b01ece3`..`bd080286`): PASS; booked in the ledger by round 7's records commit.
-- Round 7 (`bd080286`..`61cf423a`): PASS with R-1092 registered; booked by round 8's records
-  commit, which also registered R-1092. Round 8 repaired it (`Landed: R-1092` at `3b091b5b`).
-- Round 8 (`61cf423a`..`72ba3b2e`): PASS. NOT YET BOOKED. Its gate entry, R-1092's `Done:` and
-  R-1093's registration are carried VERBATIM below and are booked, byte for byte, in the first
-  records commit of the next round (amend0827 rule 1). The prepared round 9 `records.diff` already
-  contains exactly these three paragraphs.
+BEFORE ANYTHING ELSE: `.agent/STOP` absent (`ls` exit 2, No such file or directory); `pwd` read
+`/home/decodeux/Repos/remedy`; `git status --porcelain` empty; `git branch --show-current` read
+`feature/f038-grounded-chat`; `git log --oneline -1` read `7627663b7`; block bytes measured 288
+lines / sha256 `c92089bb7c346f6fe4026308f14c52703d0cd0654573fd9c1976c3476e5c8818`, both matching
+the delegation message; `git worktree list | wc -l` read 68.
 
-THE ROUND 8 RECORD, VERBATIM (it begins with the blank line that separates it from the ledger's
-last entry, and the three paragraphs are separated by single blank lines):
+PAYLOADS: all three measured line count, byte count and sha256 exactly matching the PAYLOADS
+table before use — `records.diff` 60 / 9723 /
+`5f5de100d2694da50402517b6b6b48c71c7d7f305bf5fd64f296a1b3a0bd1cb9`; `plan.md` 29 / 968 /
+`4343ab72f525a060e53bfb517d52504b16fb982803abda5243c13f36a7c486e3`; `landed.diff` 10 / 2121 /
+`caaea37932ac90fb6fca2e669685f81c45dab629cf17a3b020bf71f173286346`.
 
-Gate: F038 R8 — the F038 round 8 entry: the booking of round 7, R-1092's registration and repair, DECISION F038 D9, and one chat turn. VERDICT PASS. Re-derived over `61cf423a`..`72ba3b2e` by the planner and reviewer of F038's second session, whose own runs produced every reading below. THE RANGE IS 6 COMMITS, at `cb3525c4` 315, `c550625b` 62, `a6356321` 42, `dffe2f1a` 132, `3b091b5b` 352 and `72ba3b2e` 138 insertions by `git show --numstat`, each under the 500-line cap and each single-parent; the tracked path set is exactly the block's constraint 3, and the worker declared no deviation. THE TRANSPORT PROOF: the block copy and the three payload copies, read from the commits that added them, equal the reviewer's originals byte for byte. THE RECORDS: at `a6356321` the ledger, the decisions and the plan, and at `3b091b5b` the ledger with its `Landed: R-1092 — ` line, equal the reviewer's simulation byte for byte; the open set reads `['R-1092']` at both, and no later commit of the round changes the ledger. THE CODE: ruff reads clean over the four touched Python files and the mutation tool; `packages/orchestration/chat_turn.py` refuses a task id naming no task of the job before it reads anything, hands the parse the ids of the inbox cards the door would accept an answer to, turns anything but a question into a card, and answers a question from the focused task's node scope, the owning project's scope, or an empty project set. THE TESTS: the block's selection, run by the reviewer serially in the primary checkout at `72ba3b2e`, read 1145 passed and 9 skipped at exit 0, the reviewer's base reading of 1135 at `61cf423a` plus the 8 nodes of the new `tests/orchestration/test_chat_turn.py` and R-1092's 2; the skips are the six of the F252 quarantine and three of `tests/orchestration/test_model_routing.py`. All six `integrity check` checks read pass. THE RED PROOFS: the reviewer's own mutations, written against the worker's lines and run with `python3 -B` in a disposable worktree at `72ba3b2e`, went red one by one for an unknown task not refused, no open decisions passed, every inbox card listed, a focused question answered from the project, an action answered as a question, a None project handed on, the intent's call function dropped, and R-1092's two cases, a NaN confidence kept and values not stripped; one further mutation stayed GREEN — the answer's call function dropped — which R-1093 registers. Both controls read exit 0, the bytes were restored, and the worktree was removed.
+G1 TRANSPORT: each `.agent/authored/f038-r9-*` copy, read with `git show <commit>:<path>`, compared
+byte-identical (Python `==` over the raw bytes) against its source: block copy vs
+`.remedy-wt/f038-r9/block.md` — True; plan copy vs the plan payload — True; records-diff copy vs
+its payload — True; landed-diff copy vs its payload — True.
 
-Done: R-1092 — RESOLVED at `3b091b5b` (F038 R8 C4), booked by F038 R9: `test_a_reply_whose_confidence_is_nan_is_unknown` and `test_decision_resolve_reply_values_come_back_stripped` in `tests/orchestration/test_chat_intent_model.py` pin the two rules. In the reviewer's disposable worktree at `72ba3b2e`, deleting the finite-number check turned the first red and dropping the strip turned the second red, each at exit 1.
+G2 THE RECORDS: sha256 at the named commit, read with `git show <commit>:<path>`, against the
+reviewer's reading:
+- C2 `.agent/decisions.md`: 2406736 bytes, sha256
+  `d5a308fc82bd2fbe14a2308f373fbd22eff8130ce578d1d8aa39fbada7f711a7` — MATCH.
+- C2 `.agent/live_review.md`: 334333 bytes, sha256
+  `03ab5768a1953e50dff041b574af6a1706482000f22151133c7a42b3da76356b` — MATCH.
+- C2 `.agent/plan.md`: 968 bytes, sha256
+  `4343ab72f525a060e53bfb517d52504b16fb982803abda5243c13f36a7c486e3` — MATCH.
+- C4 `.agent/live_review.md`: 334559 bytes, sha256
+  `a6a84ced9ac8f2ae3a9db612fa860e95fb5d267fe9bbd667add1172632ad8e67` — MATCH.
+`open_finding_ids` (`scripts/rotate_live_review.py`) over the ledger's TEXT at C2 and at C4:
+`['R-1093']` at both, matching the reviewer's reading. `git diff --name-only d016127e0 c6f0085d9`
+(C1b..C2) named exactly: `.agent/decisions.md`, `.agent/live_review.md`, `.agent/plan.md`.
 
-- R-1093 — Low, THE CHAT TURN'S TESTS ARE BLIND TO WHETHER AN ANSWER CALL FUNCTION HANDED IN IS USED. Raised by the planner and reviewer of F038's second session at the round 8 gate. SEARCHED BEFORE MINTING (checklist item 30): the open set at `72ba3b2e` holds R-1092 alone, whose own defect is two rules of `chat_intent_model.py`; `answer_call_fn` occurs in the ledger nowhere. MEASURED at `72ba3b2e` in a disposable worktree: in `packages/orchestration/chat_turn.py`, replacing `answer_kwargs["call_fn"] = answer_call_fn` with `pass` left `tests/orchestration/test_chat_turn.py` at exit 0, because every question there is asked with `answer_call_fn=None` while `chat.model_written` is off, and the dropped argument falls back to exactly that mechanical answer. The round 8 block's S5 (d) requires the handed-in function to be used, and the code uses it; its list of tests ordered no case that tells the two apart. FIX: one test in `tests/orchestration/test_chat_turn.py`: a focused question asked with an `answer_call_fn` stub whose reply restates a node item with its citation comes back with the answer's `generator` reading `summary-role`, which the dropped argument turns back into `mechanical`. Owner: F038.
+G3 THE CODE:
+```
+$ python3 -m ruff check apps/cli/command_catalog.py apps/cli/commands/chat_cmd.py \
+  apps/cli/commands/ui.py tests/cli/test_chat_ask.py tests/orchestration/test_chat_turn.py \
+  tests/test_no_orphan_modules.py
+All checks passed!
+REAL_EXIT=0
+```
+`_cmd_chat_ask`, `live_ui_session_for_job` and the `chat.ask` catalog entry, quoted from
+`git show fc7493187`, are reproduced verbatim in the worker's reply (too long to duplicate a second
+time here; see the reply's G3 section). `git show fc7493187 -- \
+tests/orchestration/import_reachability_allowlist.txt` shows the six-line insertion between
+`change_set` and `checkpoints`, and nothing else changed in that file.
+
+G4 THE TESTS — the block's selection, run serially in the primary checkout at C4:
+```
+$ bash -c 'python3 -m pytest -q -p no:cacheprovider -rs <selection> 2>&1 | tail -12; \
+  echo "REAL_EXIT=${PIPESTATUS[0]}"'
+SKIPPED [6] tests/regression/test_named_bugs.py (F252 quarantine, six lines)
+SKIPPED [3] tests/orchestration/test_model_routing.py:455 (covered by the violating fixture above)
+3654 passed, 9 skipped, 1 warning in 554.05s (0:09:14)
+REAL_EXIT=0
+```
+Accounting for 3654 vs the reviewer's primary-checkout baseline of 3637: `tests/cli/test_chat_ask.py`
+collects 13 nodes (new file), `tests/orchestration/test_chat_turn.py` collects 9 (was 8, +1 for
+S1's repair) — 14 new nodes from these two files — plus the three catalog-parametrized cases the
+new `chat.ask` entry adds: `test_declared_codes_are_the_floor_plus_named_codes[chat.ask]`,
+`test_declared_codes_equal_the_codes_the_handler_reaches[chat.ask]` (both
+`tests/cli/test_exit_codes.py`) and
+`TestInvalidArgumentSweep::test_an_unrecognised_option_answers_the_envelope[chat.ask]`
+(`tests/cli/test_json_contract.py`) — confirmed present and collected by name. 3637 + 14 + 3 =
+3654, exact. Skip count (9) and the skip reasons match the reviewer's primary-checkout reading
+unchanged. Then:
+```
+$ python3 -m apps.cli.main integrity check --json
+{"check_count": 6, ... "fail_count": 0, "ok": true, "passed": true, ...}
+```
+all six checks `pass`, `fail_count` 0.
+
+G5 THE RED PROOFS — whole tool output, `git worktree add --detach .remedy-wt/f038-r9-mut d0cbeec86`
+then `python3 -B .agent/authored/f038-r9-mutations.py .../f038-r9-mut`:
+```
+control (before): exit=0 failed=0 nodes=[]
+r1 --yes is ignored: exit=1 failed=5 nodes=[...5 nodes...] restored byte-identical: True
+r2 a card is sent with neither --yes nor a terminal: exit=1 failed=1 nodes=[...] restored byte-identical: True
+r3 a card that is not confirmable is sent: exit=1 failed=1 nodes=[...] restored byte-identical: True
+r4 an answer other than y sends: exit=1 failed=1 nodes=[...] restored byte-identical: True
+r5 (ui.py) the lookup ignores the job id: exit=1 failed=1 nodes=[...] restored byte-identical: True
+r6 (ui.py) the lookup ignores a dead pid: exit=1 failed=1 nodes=[...] restored byte-identical: True
+r7 a refused card exits 0: exit=1 failed=1 nodes=[...] restored byte-identical: True
+r8 no cockpit exits 0: exit=1 failed=3 nodes=[...3 nodes...] restored byte-identical: True
+r9 a ChatTurnError is not caught: exit=1 failed=1 nodes=[...] restored byte-identical: True
+r10 (chat_turn.py) a handed-in answer_call_fn is dropped (R-1093): exit=1 failed=1 nodes=[...] restored byte-identical: True
+control (after): exit=0 failed=0 nodes=[]
+ALL MUTATIONS CAUGHT AND RESTORED CLEANLY: True
+REAL_EXIT=0
+```
+(the worker's reply carries every node id in full). Every one of the ten mutations was caught, at
+least one failing node each, every restore byte-identical, both controls exit 0. Then
+`git worktree remove --force .remedy-wt/f038-r9-mut`, `git worktree prune`, `git worktree list |
+wc -l` read 68, matching step 4's reading.
 
 ## Authored-text proofs
 
-This file is the reviewer's authored text, applied by `shutil.copyfile` from
-`.remedy-wt/f038-stop/handoff.md` and compared byte for byte with `cmp` after the commit; the
-worker's reply reports that reading.
+The block itself and the plan, records-diff and landed-diff payloads were each copied verbatim
+(`shutil.copyfile` for the block/plan, `git apply` for the two diffs) and compared byte-identical
+against their sources under G1 above — all four MATCH. `.agent/plan.md` and the two ledger applies
+(records.diff at C2, landed.diff at C4) were verified sha256-identical to the reviewer's own
+simulation readings under G2 above — all four MATCH. No other reviewer-authored text was applied
+this round (S1 to S7 are the worker's own code and tests against the block's specification, not
+reviewer-authored payloads).
 
 ## Deviations & assumptions
 
-1. The session ended after three delegated rounds, below the six-to-eight target, because of the
-   operator's STOP (guardrail G6), not because of context or a failed gate.
-2. Round 9 was fully prepared but NOT delegated, so nothing of it is in git. It lives in the
-   gitignored reviewer scratch: the block at `.remedy-wt/f038-r9/block.md` (288 lines, sha256
-   `e3e751b21ccc76999f6da6cf5871803f214027c32ec11fe037ae69d09aec9dea`) and its payloads under
-   `.remedy-wt/f038-r9-payloads/`: `records.diff` (sha256
-   `5f5de100d2694da50402517b6b6b48c71c7d7f305bf5fd64f296a1b3a0bd1cb9`), `plan.md` (sha256
-   `4343ab72f525a060e53bfb517d52504b16fb982803abda5243c13f36a7c486e3`) and `landed.diff` (sha256
-   `caaea37932ac90fb6fca2e669685f81c45dab629cf17a3b020bf71f173286346`). All were generated against
-   `72ba3b2e5`; this handoff commit changes none of the files they read or write except
-   `.agent/handoff.md`, so the block's step 2 must be re-read against the new tip (its
-   `git log --oneline -1` reading becomes this commit's). The reviewer's simulation tree for it is
-   `.remedy-wt/f038-r9-sim`, and its dry tree `.remedy-wt/f038-r9-dry`.
-3. Reviewer worktrees of this session left for the next reviewer to reuse or remove:
-   `.remedy-wt/f038-r6-dry`, `-r6-sim`, `-r7-dry`, `-r7-sim`, `-r8-dry`, `-r8-sim`, `-r9-dry`,
-   `-r9-sim`. Every mutation worktree was removed.
+None. Every commit, subject, expected insertion count and gate reading matched the block; no
+payload was retyped or edited; the touched-path set (`git diff --name-only 7627663b7` at the tip
+after C5, reported in the worker's reply) equals constraint 3's list plus `.agent/handoff.md`
+exactly, with no other file under `apps/`, `packages/` or `docs/` touched.
 
 ## Next
 
-Phase 1 rule 1 first: read `.agent/STOP` from disk; while it exists, do nothing but end. Once the
-operator removes it: Phase 1 rule 2 (no open pull request is expected), then round 9: re-verify the
-prepared block and payloads named above against the branch tip (only step 2's expected
-`git log --oneline -1` changes, to this commit), and delegate it; its records commit books round 8
-exactly as carried above. Open findings in the ledger at `72ba3b2e`: 1, R-1092, landed; after round
-8's record is booked: 1, R-1093. Operator questions open: 1.
+Phase 1 rule 1 first: read `.agent/STOP` from disk. Then the review of round 9. Then T003's next
+part: the cockpit panel asks the same chat turn through a route and confirms a card through the
+write door. Open findings in the ledger: 1, R-1093, landed and awaiting the review. Operator
+questions open: 1.
