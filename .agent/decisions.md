@@ -24674,3 +24674,52 @@ because the whole evidence set does not answer a question; an exact-word match, 
 
 HOW TO REVERSE: delete `chat_answer.py` and its tests, restore `chat_evidence.py`'s line in
 `ALLOWED_UNWIRED`, and delete this paragraph.
+
+## DECISION F038 D5 — the model-written chat answer is off by default and goes through the summary role: a switch `chat.model_written`, one call through `resolve_role_config("summary")` with a reply schema of one answer string, the same check over the reply, now also refusing a number, a backtick span or a URL its cited items do not hold, and the mechanical answer, labelled with its reason, whenever the switch is off, the call fails or no sentence of the reply is supported; no chat class joins the routing table (2026-09-28)
+
+CONTEXT: Measured at `47747a49`. F036's tour asks the summary model through
+`result_tour.tour_call_fn`: `resolve_role_config("summary")` supplies the model and
+`intake.make_structured_call_fn` builds the call, which `structured_outputs.run_structured_call`
+runs against a pydantic reply schema; provider failures are caught by the named tuple
+`result_tour.PROVIDER_CALL_ERRORS` and classified by `failure_postmortem.classify`; and the switch
+`tour.model_written` is off by default (finding R-1089). Every `resolve_role_config` call is pinned
+by `model_routing.ROLE_CONFIG_CALL_SITES`, which holds ten entries, five of them literal roles.
+`model_routing.TASK_CLASS_TIERS` only records a tier: `role_config.py` states that routing records
+and does not select, and a class reaches a call only through a role's `ROLE_TASK_CLASSES` entry;
+the summary role declares `summarize`, whose tier is `cheap`. The round 3 check proves only that a
+cited number names an item, so a reply that cites a real item while stating a number or an address
+that item never held passes it.
+
+CHOSEN: (1) THE CLAIM CHECK. A sentence whose citations all resolve is still unsupported when it
+states a URL, a backtick span or a number that none of its CITED items holds in its ref or text,
+and the problem names the token. It binds every answer, mechanical or model-written; a mechanical
+sentence restates its own item and always passes. (2) THE SWITCH. `chat.model_written`, environment
+variable `REMEDY_CHAT_MODEL_WRITTEN`, a yes-or-no that is off by default, registered directly after
+`tour.model_written`, with `docs/guides/environment.md` regenerated from the registry. (3) THE CALL.
+`chat_call_fn()` asks `resolve_role_config("summary")` for the model and `make_structured_call_fn`
+for a call bound to `GeneratedChatAnswer`, whose one field is the string `answer`; the call site
+joins `ROLE_CONFIG_CALL_SITES`, which then holds eleven entries and six literal roles. (4) THE
+PROMPT is the question, the numbered evidence exactly as the composer renders it, and the rules:
+answer only from the items, end every sentence with the numbers of the items it restates, copy
+numbers, names and paths exactly, write at most five sentences, and reply exactly
+"Not in evidence." when no item answers. (5) THE ANSWER. `answer_chat_question(question, evidence)`
+with no call function handed in asks `chat_call_fn()` only when the switch is on. With no call
+function it answers mechanically, labelled `mechanical`. A provider error of
+`PROVIDER_CALL_ERRORS`, or a reply that does not parse, gives the mechanical answer labelled
+`mechanical:<failure class>`. A reply is checked by the same check and kept, labelled
+`summary-role`, with its unsupported sentences marked, when at least one sentence is supported;
+otherwise the answer is the mechanical one labelled `mechanical:no_supported_sentence`. So a model
+that invents a fact for an absent-fact question yields "Not in evidence.", and the canary suite
+pins that. (6) NO CHAT CLASS joins `TASK_CLASS_TIERS`: a class that no role declares records
+nothing and chooses nothing, and the summary role already records the cheap tier the spec asks
+for, so the spec's routing sentence is met by the role and not by a new table row.
+
+ALTERNATIVES: a chat role in `KNOWN_ROLES` with a class of its own, rejected because it would
+change only what a call records while adding a role every routing guard must learn; checking a
+sentence against the whole set rather than its cited items, rejected because it would let a
+sentence cite the wrong item; keeping a reply none of whose sentences is supported, marked,
+rejected because such an answer says nothing the evidence holds.
+
+HOW TO REVERSE: delete the switch's registry entry and regenerate the guide, remove the call site
+from `ROLE_CONFIG_CALL_SITES` with its pinned counts, delete the model path and the claim check
+from `chat_answer.py` with their tests, and delete this paragraph.

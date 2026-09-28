@@ -13,18 +13,15 @@ command (`docs/roadmap/features/T5_F038.md`, the spec
 
 ## Current Step
 
-ROUND 3: book round 2, then land the grounded answer's citation check,
-its mechanical answer and the canary suite in both scopes (DECISION
-F038 D4).
+ROUND 4: book round 3, then land the model-written answer behind a
+switch that is off by default, the claim check that binds every answer,
+and the fallback to the mechanical answer (DECISION F038 D5).
 
 ## Next Steps
 
-1. Review round 3.
-2. T001: the model-written answer — a chat routing class, a switch that
-   is off by default, the same check over its reply, and the mechanical
-   answer as its fallback.
-3. T002: the intent parse, the action cards and their confirmation.
-4. T003: the panel, the command line and the end-to-end proof; closure.
+1. Review round 4.
+2. T002: the intent parse, the action cards and their confirmation.
+3. T003: the panel, the command line and the end-to-end proof; closure.
 
 ## Risks
 
