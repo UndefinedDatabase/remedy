@@ -771,6 +771,19 @@ def generate_result_tour(
 # ---------------------------------------------------------------------------
 
 
+def tour_model_written() -> bool:
+    """Whether a reported terminal asks the summary model for a tour: the
+    `tour.model_written` key, off by default (DECISION F036 D7 (1)).
+
+    Reads the key the way `lessons.lessons_enabled` reads its own — the
+    config import stays lazy so this module never forces `config.py` to
+    load at import time.
+    """
+    from packages.orchestration.config import get_config
+
+    return bool(get_config().get("tour.model_written"))
+
+
 def tour_call_fn() -> Callable[[str, int], str] | None:
     """Build a call_fn for the `summary` role, or None.
 
@@ -878,9 +891,12 @@ def write_result_tour(
     """Write the next version of *job*'s tour beside its report (DECISION F036 D4 (2), (3)).
 
     ``call_fn`` unset asks :func:`tour_call_fn` for the ``summary`` role's call
-    function; ``call_fn=None`` given explicitly builds the mechanical tour
-    instead — the same distinction :func:`generate_result_tour` makes. Never
-    raises for an ``OSError``, a ``ValueError`` or a :class:`ResultTourError`:
+    function only when :func:`tour_model_written` is true; unset with the key
+    off, exactly like ``call_fn=None`` given explicitly, builds the mechanical
+    tour instead (DECISION F036 D7 (1)) — the same fallback
+    :func:`generate_result_tour` gives ``call_fn=None``. A call function
+    HANDED IN, ``None`` included, is used as given whatever the key reads.
+    Never raises for an ``OSError``, a ``ValueError`` or a :class:`ResultTourError`:
     such a failure is recorded on the job under ``TOUR_ERROR_METADATA_KEY`` and
     the answer is ``None``, the way ``run_report.write_final_report`` treats a
     report failure — a tour is an account of the run, and losing the account
@@ -888,7 +904,10 @@ def write_result_tour(
     the path written.
     """
     try:
-        resolved_call_fn = tour_call_fn() if call_fn is _UNSET_CALL_FN else call_fn
+        if call_fn is _UNSET_CALL_FN:
+            resolved_call_fn = tour_call_fn() if tour_model_written() else None
+        else:
+            resolved_call_fn = call_fn
         tour = generate_result_tour(job, resolved_call_fn)
         job_id = str(job.job_id)
         directory = job_evidence_dir(job_id)

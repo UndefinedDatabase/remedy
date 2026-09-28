@@ -27,6 +27,7 @@ from packages.orchestration.result_tour import (
     TOUR_ANCHOR_KINDS,
     TOUR_BODY_MAX_CHARS,
     TOUR_ERROR_METADATA_KEY,
+    TOUR_GENERATOR_FALLBACK,
     TOUR_GENERATOR_SUMMARY_ROLE,
     TOUR_NO_SOUND_STOPS,
     TOUR_SCHEMA,
@@ -42,6 +43,7 @@ from packages.orchestration.result_tour import (
     resolve_tour_stops,
     stored_tour_versions,
     tour_call_fn,
+    tour_model_written,
     tour_path,
     tour_problems,
     tour_source_text,
@@ -774,7 +776,17 @@ def test_tour_v1_tour_vx_and_a_directory_tour_v3_are_not_versions():
     assert stored_tour_versions(str(job.job_id)) == []
 
 
-def test_call_fn_none_never_calls_tour_call_fn_and_unset_calls_it_once(monkeypatch):
+# F036 D7 (1): the switch. `write_result_tour` unset now asks `tour_call_fn()`
+# only when `tour_model_written()` is true; the old blanket "unset always
+# calls it once" reading these four tests replace is exactly what R-1089
+# named.
+
+
+def test_tour_model_written_reads_false_by_default():
+    assert tour_model_written() is False
+
+
+def test_call_fn_none_never_calls_tour_call_fn_whatever_the_key(monkeypatch):
     import packages.orchestration.result_tour as result_tour_module
 
     calls: list[int] = []
@@ -789,8 +801,61 @@ def test_call_fn_none_never_calls_tour_call_fn_and_unset_calls_it_once(monkeypat
     write_result_tour(job, call_fn=None)
     assert calls == []
 
+    monkeypatch.setenv("REMEDY_TOUR_MODEL_WRITTEN", "1")
+    from packages.orchestration.config import reset_config
+
+    reset_config()
+    write_result_tour(job, call_fn=None)
+    assert calls == []
+
+
+def test_unset_calls_tour_call_fn_only_when_the_switch_is_on(monkeypatch):
+    import packages.orchestration.result_tour as result_tour_module
+
+    calls: list[int] = []
+
+    def spy():
+        calls.append(1)
+        return None
+
+    monkeypatch.setattr(result_tour_module, "tour_call_fn", spy)
+    job = _make_job(tasks=[TaskEntry(title="t")])
+
+    write_result_tour(job)
+    assert calls == []
+
+    monkeypatch.setenv("REMEDY_TOUR_MODEL_WRITTEN", "1")
+    from packages.orchestration.config import reset_config
+
+    reset_config()
     write_result_tour(job)
     assert calls == [1]
+
+
+def test_a_call_function_handed_in_is_used_whatever_the_key(monkeypatch):
+    """A call function HANDED IN (S1) is used as given — the switch governs
+    only the unset default, never an explicit argument."""
+    import packages.orchestration.result_tour as result_tour_module
+
+    never_called: list[int] = []
+    monkeypatch.setattr(result_tour_module, "tour_call_fn",
+                        lambda: never_called.append(1) or None)
+    job = _make_job(tasks=[TaskEntry(title="t")])
+
+    handed_in_calls: list[int] = []
+
+    def handed_in(prompt: str, max_retries: int) -> str:
+        handed_in_calls.append(1)
+        return "not valid json — forces the fallback path, never tour_call_fn"
+
+    monkeypatch.setenv("REMEDY_TOUR_MODEL_WRITTEN", "1")
+    from packages.orchestration.config import reset_config
+
+    reset_config()
+    write_result_tour(job, call_fn=handed_in)
+
+    assert handed_in_calls, "the handed-in call function must be the one used"
+    assert never_called == [], "tour_call_fn must not be consulted when call_fn is given"
 
 
 def test_a_failing_write_records_tour_error_and_a_later_good_write_clears_it(monkeypatch):
@@ -932,6 +997,23 @@ class TestApplyTerminalWritesTheTour:
         job = _hook_job()
         lre._apply_terminal(job, lre.TERMINAL_ALL_GREEN, "", write_report=False)
         assert stored_tour_versions(str(job.job_id)) == []
+
+    def test_with_the_switch_off_all_green_writes_a_fallback_tour_and_never_calls_tour_call_fn(
+            self, monkeypatch):
+        """R-1089's own scenario: a reported terminal must make no model call
+        the operator did not switch on (DECISION F036 D7 (1))."""
+        import packages.orchestration.result_tour as result_tour_module
+
+        calls: list[int] = []
+        monkeypatch.setattr(result_tour_module, "tour_call_fn",
+                            lambda: calls.append(1) or None)
+        job = _hook_job()
+
+        lre._apply_terminal(job, lre.TERMINAL_ALL_GREEN, "")
+
+        assert calls == []
+        _version, tour = load_result_tour(str(job.job_id))
+        assert tour["generator"] == TOUR_GENERATOR_FALLBACK
 
 
 # ---------------------------------------------------------------------------
