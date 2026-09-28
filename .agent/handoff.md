@@ -1,87 +1,89 @@
-# Handoff — F035, round 2 (T001's second half: hunk decisions, decision answers,
-clarification answers and plan approval join the ownership ledger, and the ledger is written at
-the end of every `run_job`)
+# Handoff — F035, round 3 (T002: one phrase catalog turns every ownership entry into a
+plain sentence; the job report gains an Ownership section and loses its per-task `Vetoed by`
+line; the digest's `ownership` key carries the sentences)
 
 ## Session
 
-SESSION 1 of feature F035 · round 2 · rounds so far 2. Context remaining at handback:
+SESSION 1 of feature F035 · round 3 · rounds so far 3. Context remaining at handback:
 comfortable — the round read AGENTS.md, the block, the two payloads and the handback template
-once, read every source module the block named whole or by search, wrote the four new readers
-and the run-end write with their tests, ran the full gate selection twice and the mutation tool
-twice, and still has a large majority of its context budget left.
+once, read `ownership.py`, `pingpong_job.py`'s report and run-end writer, `job_digest.py`,
+`veto_proposal.py`'s replan sentence, and all five named test files whole before writing the
+catalog, the report and digest changes, the golden and its ledger, the four new tests and the
+mutation tool, ran the full gate selection twice and the mutation tool once, and still has a
+large majority of its context budget left.
 
 ## Range
 
-Review of `d4495f2a2`..`HEAD` (`HEAD` is this handback's own commit, `F035 R2 C5`, on
+Review of `3a8b12595`..`HEAD` (`HEAD` is this handback's own commit, `F035 R3 C5`, on
 `feature/f035-ownership-ledger`).
 
 ## Commits
 
-### 47e14e6ae F035 R2 C1: copy round 2 block and payloads into .agent/authored/
+### ebdf77b98 F035 R3 C1: copy round 3 block and payloads into .agent/authored/
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f035-r2-block.md | 288/0 | verbatim copy of this round's block, by `shutil.copyfile` |
-| .agent/authored/f035-r2-booking.diff | 59/0 | verbatim copy of the booking.diff payload |
-| .agent/authored/f035-r2-plan.md | 30/0 | verbatim copy of the plan.md payload |
+| .agent/authored/f035-r3-block.md | 282/0 | verbatim copy of this round's block, by `shutil.copyfile` |
+| .agent/authored/f035-r3-booking.diff | 60/0 | verbatim copy of the booking.diff payload |
+| .agent/authored/f035-r3-plan.md | 28/0 | verbatim copy of the plan.md payload |
 
-Measured insertions: 377 (288+59+30). Block expected the block's own line count (288) plus 89 =
-377. Match, under the 500-line cap.
+Measured insertions: 370 (282+60+28). Block expected the block's own line count (282) plus 88 =
+370. Match, under the 500-line cap.
 
-### a21d919d3 F035 R2 C2: book round 1, record D2, log one prose slip, advance the plan
+### ed705f632 F035 R3 C2: book round 2, record D3, advance the plan
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/decisions.md | 32/0 | DECISION F035 D2 appended by `git apply booking.diff` |
-| .agent/live_review.md | 2/0 | round 1's Gate entry appended by `git apply booking.diff` |
-| .agent/plan.md | 9/9 | rewritten to the plan.md payload |
-| .agent/prose_slips.md | 1/0 | one prose-slip line appended by `git apply booking.diff` |
+| .agent/decisions.md | 42/0 | DECISION F035 D3 appended by `git apply booking.diff` |
+| .agent/live_review.md | 2/0 | round 2's Gate entry appended by `git apply booking.diff` |
+| .agent/plan.md | 7/9 | rewritten to the plan.md payload |
 
-Measured numstat: 32/0, 2/0, 9/9, 1/0 — equal to the block's G2 expectation exactly.
+Measured numstat: 42/0, 2/0, 7/9 — equal to the block's G2 expectation exactly.
 
-### 0b08a08c5 F035 R2 C3: read hunks, answers, clarifications and approvals, and write the ledger at run end
+### 946be01ae F035 R3 C3: word every ownership entry in one catalog, in the report and the digest
 | Path | +/- | Reason |
 |---|---|---|
-| packages/orchestration/ownership.py | 180/5 | S1-S4: `_hunk_decision_entries`, `_decision_answer_entries`, `_clarification_entries`, `_plan_approval_actor_text`, `_plan_approval_body_entries`; `_run_log_entries` gains the `plan_approved` branch and its dedupe key moves to `(name, ref)` |
-| packages/orchestration/pingpong_job.py | 46/0 | `_write_ownership_ledger_at_run_end` and `_writes_ownership_ledger`, the decorator applied to `run_job` |
-| tests/orchestration/import_reachability_allowlist.txt | 1/0 | `packages.orchestration.ownership` added in its sorted place |
-| tests/test_no_orphan_modules.py | 0/3 | `ownership.py`'s `ALLOWED_UNWIRED` entry removed |
+| packages/orchestration/ownership_phrases.py | 208/0 | NEW: S1 `ownership_actor_phrase`, S2 `_task_phrase`, S3 `ownership_sentence`/`ownership_sentences` — one template per action, `OwnershipError` for an unknown one |
+| packages/orchestration/pingpong_job.py | 23/6 | `format_job_report_text` builds the ledger once after the task list, appends the Ownership section or the error line; the per-task `Vetoed by` line and its now-unused `veto_map` read are deleted |
+| packages/orchestration/job_digest.py | 34/10 | `_ownership_sentences` reads the ledger through the catalog for a `JobPlan`, `[]` otherwise; the docstring's absence bullet and the two comments above the key are rewritten naming DECISION F035 D3 |
+| tests/orchestration/import_reachability_allowlist.txt | 1/0 | `packages.orchestration.ownership_phrases` added in its sorted place, the only new reachable module |
+| tests/orchestration/test_task_veto_runner.py | 8/2 | the two `Vetoed by <actor>:` assertions re-pointed at the catalog's literal sentence (titles corrected to `Build X: goal of X`, the real `TaskEntry.title`) |
+| tests/ui_server/test_task_veto_e2e_live.py | 7/2 | the one `Vetoed by {actor}:` assertion re-pointed at the catalog's literal sentence (browser door, token #1, the veto's only fingerprint); the now-unused `actor = body["actor"]` line dropped |
 
-Measured insertions: 227 (180+46+1+0). The block states no expectation for C3; this is what was
-measured. Both guards (`test_no_orphan_modules.py`, `test_import_reachability.py`) were run
-standalone before this commit and named no other module.
+Measured insertions: 281 (208+23+34+1+8+7), 20 deletions. The block states no expectation for
+C3; this is what was measured, under the 500-line cap. Both guards
+(`test_import_reachability.py`, `test_no_orphan_modules.py`) were run standalone before this
+commit and named no module beyond `ownership_phrases`.
 
-### 5864aa1f3 F035 R2 C4: test the remaining ownership classes and the run-end write, add the mutation tool
+### 17634b051 F035 R3 C4a: golden ownership sentences, report and digest tests (SPLIT — see Deviations)
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f035-r2-mutations.py | 132/0 | the G5 red-proof tool, authored this round |
-| tests/orchestration/test_ownership_ledger.py | 239/1 | `TestHunkDecisions`, `TestDecisionAnswers`, `TestClarifications`, `TestPlanApproval`, plus the shared hunk-diff fixture and the run-log timestamp rewriter |
-| tests/orchestration/test_pingpong_job_ownership.py | 96/0 | new file: the real-`run_job` write-path tests |
+| tests/orchestration/fixtures/ownership/golden/sentences.txt | 22/0 | NEW: 22 sentences, one per S3 action plus one per extra consequence kind of `task_vetoed`/`task_injected`, generated by running the real catalog over the golden ledger, never transcribed |
+| tests/orchestration/test_ownership_phrases.py | 274/0 | NEW: the golden comparison, every S1 actor-phrase branch, the empty-reason clause, a multi-line note kept verbatim, a shown and an unknown title, and `OwnershipError` for an unknown action |
+| tests/orchestration/test_pingpong_job_ownership.py | 80/2 | NEW `TestReportOwnershipSection`: the section in ledger order (read back from the real report and compared to `ownership_sentences` over the real ledger), no section for a job with no entry, the error line, no per-task `Vetoed by` for a vetoed task |
+| tests/orchestration/test_job_digest.py | 53/0 | APPENDED: a job with entries carries the catalog's own sentences, a raising ledger gives the one sentence, a non-`JobPlan` keeps `[]`; the four SHAPES fixtures' existing empty-ownership test is untouched |
 
-Measured insertions: 467 (132+239+96). The block states no expectation for C4; this is what was
-measured, under the 500-line cap.
+Measured insertions: 429 (22+274+80+53), 2 deletions. The block states no expectation for C4;
+this is what was measured.
 
-### c7818a235 F035 R2 C4b: strengthen the pending-hunk test against a relabeled leak (DEVIATION — see below)
+### adbdd2347 F035 R3 C4b: mutation tool for the ownership catalog's red proofs (SPLIT — see Deviations)
 | Path | +/- | Reason |
 |---|---|---|
-| tests/orchestration/test_ownership_ledger.py | 3/3 | `test_approved_entry_and_no_entry_for_the_pending_row` now asserts the ledger's WHOLE entry list rather than an action-filtered view |
+| .agent/authored/f035-r3-mutations.py | 180/0 | the G5 red-proof tool: 12 mutations across the three production files, an unmutated control first and last, restore-and-verify |
 
-Not one of the block's named commits (C1-C5); constraint 4 permits correcting a test this round
-itself wrote before C5, declared here and in Deviations below.
+Measured insertions: 180. Combined with C4a's 429, the un-split total would have been 609,
+over the 500-line cap; split per constraint 2, declared here and in Deviations below.
 
-### This commit F035 R2 C5: rewrite handoff for round 2
+### This commit F035 R3 C5: rewrite handoff for round 3
 | Path | +/- | Reason |
 |---|---|---|
 | .agent/handoff.md | rewritten | this handback, per `docs/agents/handback_template.md` |
 
 ## External actions
 
-- `git apply --check .remedy-wt/f035-r2-payloads/booking.diff` — exit 0.
-- `git apply .remedy-wt/f035-r2-payloads/booking.diff` — exit 0.
-- `git worktree add --detach .remedy-wt/f035-r2-mut HEAD` at C4 (`5864aa1f3`) — succeeded; ran
-  the mutation tool (found m1 green, see Deviations); `git worktree remove --force
-  .remedy-wt/f035-r2-mut` and `git worktree prune` — both succeeded.
-- `git worktree add --detach .remedy-wt/f035-r2-mut HEAD` again at C4b (`c7818a235`) after the
-  fix — succeeded; ran the mutation tool (all 12 caught); `git worktree remove --force
-  .remedy-wt/f035-r2-mut` and `git worktree prune` — both succeeded.
+- `git apply --check .remedy-wt/f035-r3-payloads/booking.diff` — exit 0.
+- `git apply .remedy-wt/f035-r3-payloads/booking.diff` — exit 0.
+- `git worktree add --detach .remedy-wt/f035-r3-mut adbdd2347` at C4b — succeeded; ran the
+  mutation tool (all 12 caught on the only run); `git worktree remove --force
+  .remedy-wt/f035-r3-mut` and `git worktree prune` — both succeeded.
 - `git push` — reported in the reply per the block (G6 cannot go in this file, written before
   the push).
 - No PR created or merged — the block orders none, and none was created.
@@ -90,102 +92,101 @@ itself wrote before C5, declared here and in Deviations below.
 
 G1 TRANSPORT — payloads measured against the PAYLOADS table before use:
 ```
-booking.diff: 59 lines, 12611 bytes, sha256 d02e9e26723e95da0f9d99d54663f28ff59df825019b18cb24b0937bff06ea31 — MATCH
-plan.md:      30 lines, 1005 bytes,  sha256 52093632b817b7241f483738cae2a41b5c5d49c5042f3dde884d967c882de79b — MATCH
+booking.diff: 60 lines, 13447 bytes, sha256 7ee16eec4950baaee19dfc2eb2d9a1bbf69b77a22d8e80bdf3b49edd494914c7 — MATCH
+plan.md:      28 lines, 861 bytes,   sha256 32b26c6240876bf5b85c8f962963ec53f77efdcb2fae3e250a00da7e734ae5f8 — MATCH
 ```
-Copies at C1, read back with `git show <C1>:<path>` and compared byte-for-byte (`cmp`) against
-the source: `.agent/authored/f035-r2-block.md` vs `.remedy-wt/f035-r2/block.md` — IDENTICAL;
-`.agent/authored/f035-r2-plan.md` vs the plan.md payload — IDENTICAL;
-`.agent/authored/f035-r2-booking.diff` vs the booking.diff payload — IDENTICAL.
+Copies at C1, read back with `git show <C1>:<path>` and compared byte-for-byte against the
+source: `.agent/authored/f035-r3-block.md` vs `.remedy-wt/f035-r3/block.md` — IDENTICAL (sha256
+`f020356d20541ca6e8b71dc0974a9970de44844a3db096eece2a69a38e3f7ac0` both sides);
+`.agent/authored/f035-r3-plan.md` vs the plan.md payload — IDENTICAL;
+`.agent/authored/f035-r3-booking.diff` vs the booking.diff payload — IDENTICAL.
 
-G2 THE BOOKING — at C2 (`a21d919d3`), `git show <C2>:<path> | wc -c` and `sha256sum`:
+G2 THE BOOKING — at C2 (`ed705f632`), `git show <C2>:<path>` read and hashed:
 ```
-.agent/decisions.md   2328299 bytes  bf8e0fd805735352f9e4f2028463bcf8e0e240923e86a22b8364950ea360f01b — MATCH
-.agent/live_review.md  302813 bytes  79edb1951b5601457ec4ae75ca6131861ee14e50f05ab6b709dae84baa33ece9 — MATCH
-.agent/plan.md            1005 bytes 52093632b817b7241f483738cae2a41b5c5d49c5042f3dde884d967c882de79b — MATCH
-.agent/prose_slips.md   374918 bytes 8f22b48d6f0b64a674144895411083c298abf07c55e81dbe21260c773a8321b2 — MATCH
+.agent/decisions.md    2331973 bytes  674b30c8c3e0bf6667c4704413111e7c86124d37acb214b963260b376493f42a — MATCH
+.agent/live_review.md   306286 bytes  be6c3e6a38b2d6dd0c6075684fa7e47ecd21f9454ea82fecb439aa990aedc4ed — MATCH
+.agent/plan.md             861 bytes  32b26c6240876bf5b85c8f962963ec53f77efdcb2fae3e250a00da7e734ae5f8 — MATCH
 ```
 `scripts.rotate_live_review.open_finding_ids` over the C2 ledger text: `[]` (empty, as the
-reviewer read). The ledger's last non-blank line at C2 begins `Gate: F035 R1 — ` (confirmed by
-direct read).
+reviewer read). The ledger's last line at C2 begins `Gate: F035 R2 — ` (confirmed by direct
+read of the last non-blank line).
 
-G3 THE CODE — at C4:
+G3 THE CODE — at C4b (`adbdd2347`):
 ```
-$ python3 -m ruff check packages/orchestration/ownership.py packages/orchestration/pingpong_job.py \
-    tests/orchestration/test_ownership_ledger.py tests/orchestration/test_pingpong_job_ownership.py \
-    tests/test_no_orphan_modules.py
+$ python3 -m ruff check packages/orchestration/ownership_phrases.py packages/orchestration/pingpong_job.py \
+    packages/orchestration/job_digest.py tests/orchestration/test_ownership_phrases.py \
+    tests/orchestration/test_pingpong_job_ownership.py tests/orchestration/test_job_digest.py \
+    tests/orchestration/test_task_veto_runner.py tests/ui_server/test_task_veto_e2e_live.py
 All checks passed!
 REAL_EXIT=0
 ```
-`_write_ownership_ledger_at_run_end`, `_writes_ownership_ledger`, the decorator line and the
-`def run_job(` line under it, quoted from `git show 0b08a08c5:packages/orchestration/pingpong_job.py`:
+The golden file whole (`tests/orchestration/fixtures/ownership/golden/sentences.txt`, 22 lines):
+one sentence per line, covering every S3 action and, for `task_vetoed` and `task_injected`,
+every consequence kind — e.g. `You (recorded as alice) vetoed task T1 (Task One) — reason:
+"known-bad approach". 2 downstream tasks could not run: T2, T3.` and `Remedy's planner (under
+this job's configuration) added a task: "Add integration tests". It waits for the next safe
+point.` (full file quoted verbatim in the reply).
+
+The report section's code, quoted from `git show 946be01ae:packages/orchestration/pingpong_job.py`:
 ```python
-def _write_ownership_ledger_at_run_end(job: Any) -> None:
-    """Save `ownership.json` into `job`'s evidence export, DECISION F035 D2. Returns at once
-    for anything that is not a `JobPlan` with a real `job_dir` on disk — a `job_not_found`
-    placeholder from `run_job` below never had one. An `OwnershipError` building the ledger or
-    an `OSError` writing it is logged and swallowed: a ledger write must never fail the run it
-    describes, and the job `run_job` already returned is the one that matters."""
-    import logging
+    lines.append("")
 
-    from packages.common.secure_fs import durable_write_json
-    from packages.orchestration.data_paths import job_dir, job_evidence_export_dir
-    from packages.orchestration.ownership import (
-        OWNERSHIP_FILENAME,
-        OwnershipError,
-        build_ownership_ledger,
-    )
+    # F035 T002 (DECISION F035 D3): the whole ownership ledger, worded through the one
+    # catalog in `ownership_phrases.py`, replaces the per-task `Vetoed by` line above — one
+    # dialect for who did what, instead of the same fact stated twice in two wordings. A job
+    # with no entry prints no section at all, so its report is byte for byte unchanged; a
+    # ledger that cannot be read prints one line naming the error rather than silently
+    # dropping the section.
+    from packages.orchestration.ownership import OwnershipError, build_ownership_ledger
+    from packages.orchestration.ownership_phrases import ownership_sentences
 
-    if not isinstance(job, JobPlan):
-        return
-    if not job_dir(job.job_id).is_dir():
-        return
     try:
         ledger = build_ownership_ledger(job)
-        export_dir = job_evidence_export_dir(job.job_id)
-        export_dir.mkdir(parents=True, exist_ok=True)
-        durable_write_json(export_dir / OWNERSHIP_FILENAME, ledger)
     except (OwnershipError, OSError) as exc:
-        logging.getLogger(__name__).warning(
-            "ownership ledger write failed for job %s: %s", job.job_id, exc)
-
-
-def _writes_ownership_ledger(fn):
-    """Wrap `run_job` so every invocation ends by saving the ownership ledger, DECISION F035
-    D2. `fn`'s own return value is unchanged — the save is a side effect after it runs, never a
-    second source of truth for the job `run_job` returns."""
-
-    @functools.wraps(fn)
-    def _wrapped(*args, **kwargs):
-        job = fn(*args, **kwargs)
-        _write_ownership_ledger_at_run_end(job)
-        return job
-
-    return _wrapped
-
-
-@_writes_ownership_ledger
-def run_job(
+        lines.append(f"Ownership: the ledger could not be read — {exc}")
+        lines.append("")
+    else:
+        titles = {t.task_id: t.title for t in job.tasks}
+        sentences = ownership_sentences(ledger, titles=titles)
+        if sentences:
+            lines.append("Ownership:")
+            for sentence in sentences:
+                lines.append("  - " + sentence.replace("\n", "\n    "))
+            lines.append("")
 ```
-Reader (g)'s new dedupe key, quoted from the same commit's `ownership.py`:
+The digest's new reading, quoted from the same commit's `job_digest.py`:
 ```python
-        ref = request_id if request_id else raw_ts
-        key = (name, ref)
+def _ownership_sentences(job: Any) -> list[str]:
+    ...
+    from packages.orchestration.ownership import OwnershipError, build_ownership_ledger
+    from packages.orchestration.ownership_phrases import ownership_sentences
+    from packages.orchestration.pingpong_job import JobPlan
+
+    if not isinstance(job, JobPlan):
+        return []
+    try:
+        ledger = build_ownership_ledger(job)
+    except (OwnershipError, OSError) as exc:
+        return [f"The ownership ledger could not be read: {exc}"]
+    titles = {t.task_id: t.title for t in job.tasks}
+    return ownership_sentences(ledger, titles=titles)
 ```
 
-G4 THE TESTS — SERIALLY, at C4b (`c7818a235`), the block's full selection:
+G4 THE TESTS — SERIALLY, at C4b (`adbdd2347`), the block's full 34-path selection:
 ```
 $ python3 -m pytest -q -p no:cacheprovider -rs <the block's 34-path selection>
 SKIPPED [1] tests/test_agent_tooling.py:43: D12 quarantine (F252) ...
-1326 passed, 1 skipped in 105.27s
+1259 passed, 1 skipped in 230.42s
 REAL_EXIT=0
 ```
-Accounting for 1326: the reviewer's own baseline at `d4495f2a` (this selection LESS
-`test_pingpong_job_ownership.py` and LESS `test_command_channel.py`) read 1203 passed, 1
-skipped. `--collect-only -q` node counts, measured fresh: `test_ownership_ledger.py` 42 (was 33
-at round 1, +9 this round's S1-S4 classes); `test_pingpong_job_ownership.py` 4 (new file);
-`test_command_channel.py` 110 (excluded from the reviewer's baseline, included here). 1203 - 33 +
-42 + 4 + 110 = 1326. Match, real exit 0.
+Accounting for 1259: the reviewer's own baseline at `3a8b1259` (this selection LESS
+`test_ownership_phrases.py` and LESS `test_command_channel.py`) read 1124 passed, 1 skipped.
+`--collect-only -q` node counts, measured fresh: `test_ownership_phrases.py` 18 (new file);
+`test_pingpong_job_ownership.py` 8 total, 4 new (`TestReportOwnershipSection`);
+`test_job_digest.py` 62 total, 3 new; `test_task_veto_runner.py` 19 (re-pointed, no count
+change); `test_task_veto_e2e_live.py` 2 (re-pointed, no count change); `test_command_channel.py`
+110 (excluded from the reviewer's baseline, included here). 1124 + 18 (new file) + 110
+(command_channel) + 4 (pingpong_job_ownership) + 3 (job_digest) = 1259. Match, real exit 0.
 
 Then:
 ```
@@ -195,76 +196,55 @@ REAL_EXIT=0
 ```
 All six checks read `pass`.
 
-G5 THE RED PROOFS — run TWICE. FIRST run, over C4 (`5864aa1f3`), `git worktree add --detach
-.remedy-wt/f035-r2-mut 5864aa1f3`, then `python3 -B .agent/authored/f035-r2-mutations.py
-/home/decodeux/Repos/remedy/.remedy-wt/f035-r2-mut`:
+G5 THE RED PROOFS — one run, over C4b (`adbdd2347`): `git worktree add --detach
+.remedy-wt/f035-r3-mut adbdd2347`, then `python3 -B .agent/authored/f035-r3-mutations.py
+/home/decodeux/Repos/remedy/.remedy-wt/f035-r3-mut`:
 ```
-control (before): exit=0 failed=0 ids=[]
-m1: a pending hunk row yields an entry: exit=0 failed=0 ids=[]              <- GREEN, not caught
-m2..m12: all exit=1 failed=1 (m10 failed=3), each naming a failing node
-control (after): exit=0 failed=0 ids=[]
-restored byte-identical: True
-ALL MUTATIONS CAUGHT AND RESTORED CLEANLY: False
-```
-m1 relabels a pending row's `action` instead of dropping it; the round's own test filtered the
-ledger by `action in ("hunk_approved", "hunk_rejected")` before checking there was exactly one
-entry, so a relabeled leak was invisible to it. Per constraint 4, fixed in C4b (see Commits and
-Deviations) and the tool re-run. `git worktree remove --force .remedy-wt/f035-r2-mut` and `git
-worktree prune` — both succeeded; `git worktree list | wc -l` read 61 (equal to step 4's
-reading) and `git branch --list 'remedy/*' | wc -l` read 197 (unchanged).
-
-SECOND run, over C4b (`c7818a235`), same worktree recipe:
-```
-control (before): exit=0 failed=0 ids=[]
-m1: exit=1 failed=1 ids=['...TestHunkDecisions::test_approved_entry_and_no_entry_for_the_pending_row']
-m2: exit=1 failed=1 ids=['...TestHunkDecisions::test_rejected_entry_reason_verbatim_its_landing_and_no_door']
-m3: exit=1 failed=1 ids=['...TestDecisionAnswers::test_human_and_default_answers_and_no_entry_for_an_open_one']
-m4: exit=1 failed=1 ids=['...TestDecisionAnswers::test_human_and_default_answers_and_no_entry_for_an_open_one']
-m5: exit=1 failed=1 ids=['...TestClarifications::test_human_default_and_planner_and_none_for_unresolved']
-m6: exit=1 failed=1 ids=['...TestClarifications::test_human_default_and_planner_and_none_for_unresolved']
-m7: exit=1 failed=1 ids=['...TestPlanApproval::test_auto_yes_mode_event_is_auto_approved_with_the_audits_reason_as_text']
-m8: exit=1 failed=1 ids=['...TestPlanApproval::test_two_events_with_no_request_id_yield_two_entries']
-m9: exit=1 failed=1 ids=['...TestPlanApproval::test_a_rejected_plans_entry']
-m10: exit=1 failed=3 ids=['...test_completed_job_writes_ownership_json_matching_the_returned_job', '...test_an_ownershiperror_in_the_write_leaves_the_run_untouched_writes_no_file_and_logs_one_warning', '...test_run_job_is_wrapped']
-m11: exit=1 failed=1 ids=['...test_an_ownershiperror_in_the_write_leaves_the_run_untouched_writes_no_file_and_logs_one_warning']
-m12: exit=1 failed=1 ids=['...test_an_unknown_job_id_writes_no_file']
-control (after): exit=0 failed=0 ids=[]
+control (before): exit=0 failed=0 nodes=[]
+m1 (auto-approved phrase drops its parenthetical): exit=1 failed=3 nodes=[...test_the_golden_ledger_s_sentences_match_byte_for_byte, ...test_an_unattended_action_is_auto_approved_via_yes, ...test_an_unattended_action_wins_over_every_other_field]
+m2 (default-policy phrase drops its parenthetical): exit=1 failed=2 nodes=[...golden..., ...test_the_default_policy_phrase]
+m3 (browser phrase drops the token number): exit=1 failed=2 nodes=[...golden..., ...test_a_browser_actor_with_a_token_number_is_named_by_it]
+m4 (reason cut to 20 chars): exit=1 failed=3 nodes=[...golden..., ...TestReportCarriesTheVeto::test_a_folded_veto_s_reason_and_actor_are_in_the_text_and_export, ...test_a_veto_no_run_has_folded_yet_still_reports_the_reason]
+m5 (unknown action renders "" instead of raising): exit=1 failed=1 nodes=[...test_an_unknown_action_raises_ownershiperror]
+m6 (task phrase ignores the title): exit=1 failed=6 nodes=[...golden..., ...test_an_empty_reason_adds_no_reason_clause, ...test_a_multi_line_note_is_kept_verbatim, ...test_a_known_title_is_shown_beside_the_id, ...test_a_folded_veto_s_reason_and_actor_are_in_the_text_and_export, ...test_a_veto_no_run_has_folded_yet_still_reports_the_reason]
+m7 (reason clause printed for an empty reason): exit=1 failed=2 nodes=[...golden..., ...test_an_empty_reason_adds_no_reason_clause]
+m8 (section header printed for a job with no entry): exit=1 failed=1 nodes=[...test_a_job_with_no_ledger_entry_prints_no_section]
+m9 (per-task Vetoed by line printed again): exit=1 failed=1 nodes=[...test_a_vetoed_task_carries_no_per_task_vetoed_by_line]
+m10 (ledger error adds no line to the report): exit=1 failed=1 nodes=[...test_an_unreadable_ledger_prints_the_error_line]
+m11 (digest ownership is [] for a job with entries): exit=1 failed=1 nodes=[...test_a_job_with_entries_carries_its_ownership_sentences]
+m12 (OwnershipError propagates out of build_job_digest): exit=1 failed=1 nodes=[...test_a_raising_ledger_gives_the_one_sentence]
+control (after): exit=0 failed=0 nodes=[]
 restored byte-identical: True
 ALL MUTATIONS CAUGHT AND RESTORED CLEANLY: True
 ```
-`git worktree remove --force .remedy-wt/f035-r2-mut` and `git worktree prune` — both succeeded;
+`git worktree remove --force .remedy-wt/f035-r3-mut` and `git worktree prune` — both succeeded;
 `git worktree list | wc -l` read 61 (equal to step 4's reading, unchanged) and `git branch
 --list 'remedy/*' | wc -l` read 197 (unchanged).
 
 ## Authored-text proofs
 
-`.agent/authored/f035-r2-block.md`, `.agent/authored/f035-r2-plan.md` and
-`.agent/authored/f035-r2-booking.diff`, each `cmp`'d byte-for-byte at C1 against its payload
+`.agent/authored/f035-r3-block.md`, `.agent/authored/f035-r3-plan.md` and
+`.agent/authored/f035-r3-booking.diff`, each compared byte-for-byte at C1 against its payload
 source — all IDENTICAL (see G1 above). `booking.diff`'s own effect on `.agent/decisions.md`,
-`.agent/live_review.md`, `.agent/plan.md` and `.agent/prose_slips.md`, read at C2 by size and
-sha256 — all equal to the reviewer's simulation tree (see G2 above).
+`.agent/live_review.md` and `.agent/plan.md`, read at C2 by size and sha256 — all equal to the
+reviewer's simulation tree (see G2 above).
 
 ## Deviations & assumptions
 
-1. G5's FIRST run (over C4, `5864aa1f3`) found mutation m1 GREEN: a pending hunk row relabeled
-   under a different `action` string, rather than dropped, was invisible to
-   `test_approved_entry_and_no_entry_for_the_pending_row`, which filtered the ledger by
-   `action in ("hunk_approved", "hunk_rejected")` before asserting there was exactly one entry.
-   Per constraint 4 ("a test this round itself wrote that is wrong may be corrected before C5,
-   and the correction is declared"), the assertion was strengthened to unpack the ledger's WHOLE
-   entry list for that job, and the fix landed as an extra commit, C4b (`c7818a235`), not named
-   among the block's C1-C5. G5 was re-run over C4b and read `ALL MUTATIONS CAUGHT AND RESTORED
-   CLEANLY: True`. Nothing on disk at the branch tip is wrong; the production code
-   (`ownership.py`, `pingpong_job.py`) was never touched by this fix.
-2. No other deviations. Every commit stayed under the 500-line insertion cap, so constraint 2's
-   split naming (C3a/C3b, C4a/C4b) was not needed for size — C4b's name reuses that convention
-   only because it is a second commit against the same file as C4, not because C4 was oversize.
+1. C4 was split into C4a (`17634b051`, 429 insertions: the golden, the phrase test, and the
+   appended report/digest tests) and C4b (`adbdd2347`, 180 insertions: the mutation tool) —
+   combined they would have measured 609 insertions, over the 500-line cap. Per constraint 2
+   this is a declared split, not a departure from the block's ordered sequence in substance: both
+   parts together carry exactly what the block's single C4 orders, in the same order it lists
+   them (phrase test + golden, appended tests, then the tool).
+2. No other deviations. G5 caught all twelve mutations on its only run; no test written by this
+   round needed correction.
 
 ## Next
 
 Per AGENTS.md Phase 1 rule 1 (read `.agent/STOP` from disk) and the block's ordering: the review
-of round 2, then T002 — the phrase catalog, the report's Ownership section with its goldens, and
-the digest's `ownership` sentences. Open findings: 0. Operator questions: 0.
+of round 3, then T003 — `remedy job ownership`, the chips at the nodes and the evidence tab, and
+the end-to-end proof. Open findings: 0. Operator questions: 0.
 
 ## Item status
 
@@ -278,12 +258,12 @@ the digest's `ownership` sentences. Open findings: 0. Operator questions: 0.
 | C1 | done | |
 | C2 | done | |
 | C3 | done | |
-| C4 | done | |
-| C4b | deviated | correction to this round's own test after G5 caught mutation m1 green; see Deviations 1 |
+| C4a | deviated | C4 split into C4a/C4b: combined insertions (609) exceeded the 500-line cap; see Deviations 1 |
+| C4b | deviated | see Deviations 1 |
 | C5 (this handback) | done | |
 | G1 Transport | done | |
 | G2 The booking | done | |
 | G3 The code | done | |
 | G4 The tests | done | |
-| G5 The red proofs | done | first run found m1 green; fixed in C4b; second run read ALL CAUGHT True |
+| G5 The red proofs | done | all twelve mutations caught on the only run |
 | G6 Tree and push | done | reported in the reply, not this file (block: "cannot go in C5") |
