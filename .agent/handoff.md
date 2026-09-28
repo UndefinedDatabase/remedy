@@ -1,76 +1,82 @@
-# Handback — F038, round 9: book round 8, resolve R-1092, register and repair R-1093, `remedy chat ask` lands
+# Handback — F038, round 10: book round 9, resolve R-1093, register and repair R-1094, the cockpit's chat route lands
 
 ## Session
 
-SESSION 3 of feature F038 · round 9 · rounds so far 9. This session ran round 9 only, delegated
-after the operator lifted `.agent/STOP`. Context self-assessment: a comfortable margin of context
-remained at the end of the round; the work was not near its limit.
+SESSION 3 of feature F038 · round 10 · rounds so far 10. This session ran round 10 only,
+continuing directly after round 9's handback. Context self-assessment: a comfortable margin of
+context remained at the end of the round; the work was not near its limit.
 
-For the operator, in plain words: the chat now has a command line. `remedy chat ask <job_id>
-"<text>"` asks the same grounded question or types the same request the cockpit's own turn reads —
-a question comes back with its scope, its checked answer and its numbered sources; a request comes
-back as a card, and that card is sent through the job's own running cockpit only once it is
-complete and you say yes, either with `--yes` or by typing `y` at the prompt. Nothing is sent
-without your say-so, and nothing is sent at all unless a cockpit is actually running for that job.
-Two small test gaps the previous round's review found are both closed now: the intent parser's two
-blind spots are pinned, and the one that let a handed-in answer function be silently dropped is
-pinned too.
+For the operator, in plain words: the cockpit can now ask the same grounded question or type the
+same request the command line already can, through a read-only route the panel will call next
+round — `GET /api/jobs/<job_id>/chat?text=<line>&task=<task id>` runs one chat turn and answers it
+in the exact same shape `remedy chat ask --json` already gives, so both doors show the same
+citations, the same unsupported marks and the same card. The route itself never sends anything;
+confirming a card still goes through the one write door the cockpit has always had. Six small test
+gaps the previous round's review found — two live sessions for one job, two cards sent in a row to
+one cockpit, the evidence numbering, the text form's evidence lines, an unsupported sentence, and a
+padded `--task` — are all pinned now.
 
 ## Range
 
-Review of `7627663b7`..`HEAD` (the commit that writes this file). Six commits: C1a, C1b, C2, C3,
+Review of `c1c3f636a`..`HEAD` (the commit that writes this file). Six commits: C1a, C1b, C2, C3,
 C4, C5.
 
 ## Commits
 
-### 81bfa006d F038 R9 C1a: copy round 9 block and plan payload into .agent/authored/
+### 406864100 F038 R10 C1a: copy round 10 block and plan payload into .agent/authored/
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f038-r9-block.md | 288/0 | this block, copied verbatim by `shutil.copyfile` |
-| .agent/authored/f038-r9-plan.md | 29/0 | the plan payload, copied verbatim by `shutil.copyfile` |
+| .agent/authored/f038-r10-block.md | 277/0 | this block, copied verbatim by `shutil.copyfile` |
+| .agent/authored/f038-r10-plan.md | 29/0 | the plan payload, copied verbatim by `shutil.copyfile` |
 
-### d016127e0 F038 R9 C1b: copy round 9 records and landed diffs into .agent/authored/
+### 9b4d5af08 F038 R10 C1b: copy round 10 records and landed diffs into .agent/authored/
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f038-r9-records.diff | 60/0 | the records payload, copied verbatim |
-| .agent/authored/f038-r9-landed.diff | 10/0 | the landed-line payload, copied verbatim |
+| .agent/authored/f038-r10-records.diff | 62/0 | the records payload, copied verbatim |
+| .agent/authored/f038-r10-landed.diff | 10/0 | the landed-line payload, copied verbatim |
 
-### c6f0085d9 F038 R9 C2: book round 8, resolve R-1092, register R-1093, record DECISION F038 D10
+### af4f50c18 F038 R10 C2: book round 9, resolve R-1093, register R-1094, record DECISION F038 D11
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/decisions.md | 38/0 | `git apply records.diff`: DECISION F038 D10 |
-| .agent/live_review.md | 6/0 | `git apply records.diff`: round 8's Gate entry, R-1092's `Done:`, R-1093's registration |
-| .agent/plan.md | 7/7 | rewritten to plan.md payload: round 9's goal and next steps |
+| .agent/decisions.md | 40/0 | `git apply records.diff`: DECISION F038 D11 |
+| .agent/live_review.md | 6/0 | `git apply records.diff`: round 9's Gate entry, R-1093's `Done:`, R-1094's registration |
+| .agent/plan.md | 7/7 | rewritten to plan.md payload: round 10's goal and next steps |
 
-### fc7493187 F038 R9 C3: add remedy chat ask, one chat turn on the command line
+### 43f48e7cf F038 R10 C3: answer one chat turn over the cockpit's read route
 | Path | +/- | Reason |
 |---|---|---|
-| apps/cli/command_catalog.py | 26/0 | S3: the `chat.ask` catalog entry |
-| apps/cli/commands/chat_cmd.py | 158/0 | S4-S6: `_cmd_chat_ask`, its answer and card renderers, the module docstring paragraph |
-| apps/cli/commands/ui.py | 18/0 | S2: `live_ui_session_for_job`, the read-only registry lookup |
-| docs/guides/exit-codes.md | 1/0 | S7: the `remedy chat ask` row |
-| tests/orchestration/import_reachability_allowlist.txt | 6/0 | S7: the six `chat_*` modules now reachable from `chat_cmd.py`'s imports |
-| tests/test_no_orphan_modules.py | 0/6 | S7: `chat_door.py` and `chat_turn.py` removed from `ALLOWED_UNWIRED` — `chat_cmd.py` wires them |
+| packages/orchestration/chat_turn.py | 36/0 | S2: `chat_turn_view`, the one wire shape both doors give |
+| apps/cli/commands/chat_cmd.py | 14/21 | S3: `remedy chat ask --json` now emits `chat_turn_view(turn)`; `_send_chat_card` is handed the whole turn |
+| packages/orchestration/ui_server.py | 22/0 | S4: `_build_chat_turn_json` and the `chat` branch of `do_GET` |
 
-### d0cbeec86 F038 R9 C4: test remedy chat ask and repair R-1093
+(measured: `git show 43f48e7cf --numstat` reads `36 0`, `14 21`, `22 0` respectively — no insertion
+count was expected by the block for C3, per WHAT TO REPORT.)
+
+### ca1fbd4fe F038 R10 C4: test the chat route and repair R-1094
 | Path | +/- | Reason |
 |---|---|---|
-| tests/orchestration/test_chat_turn.py | 22/0 | S1: `test_a_handed_in_answer_call_fn_is_used_and_checked`, R-1093's repair |
-| tests/cli/test_chat_ask.py | 238/0 | NEW FILE: 13 tests over the TESTS section's list |
-| .agent/live_review.md | 2/0 | `git apply landed.diff`: the `Landed: R-1093 —` line |
-| .agent/authored/f038-r9-mutations.py | 159/0 | the G5 mutation tool, saved as its own commit per the block |
+| tests/ui_server/test_chat_route.py | 166/0 | NEW FILE, S5's TESTS section: 9 tests over the route |
+| tests/cli/test_chat_ask.py | 69/0 | S1: 4 new tests — two live sessions, two cards to one cockpit, text/json evidence parity, a padded `--task` |
+| tests/orchestration/test_chat_turn.py | 30/0 | S1: `test_chat_turn_view_numbers_evidence_and_marks_each_sentences_support` |
+| tests/ui_server/test_command_channel.py | 1/0 | S5: the chat path added to `_walkable_paths` |
+| .agent/live_review.md | 2/0 | `git apply landed.diff`: the `Landed: R-1094 —` line |
+| .agent/authored/f038-r10-mutations.py | 158/0 | the G5 mutation tool, saved as its own commit per the block |
 
-### (this commit) F038 R9 C5: rewrite handoff for round 9
+(measured: `git show ca1fbd4fe --numstat` reads `166 0`, `69 0`, `30 0`, `1 0`, `2 0`, `158 0` —
+no insertion count was expected by the block for C4 either; total commit insertions 426, under the
+500-line cap.)
+
+### (this commit) F038 R10 C5: rewrite handoff for round 10
 | Path | +/- | Reason |
 |---|---|---|
 | .agent/handoff.md | rewritten | this file, the session-end handback G6 orders |
 
 ## External actions
 
-- `git worktree add --detach .remedy-wt/f038-r9-mut d0cbeec86` — created the G5 mutation worktree.
-- `git worktree remove --force .remedy-wt/f038-r9-mut` — removed it after the tool ran.
-- `git worktree prune` — pruned; `git worktree list | wc -l` read 68 before and after, matching
-  step 4's reading.
+- `git worktree add --detach .remedy-wt/f038-r10-mut ca1fbd4fe` — created the G5 mutation worktree.
+- `git worktree remove --force .remedy-wt/f038-r10-mut` — removed it after the tool ran; `git
+  worktree prune` afterward.
+- `git worktree list | wc -l` read 70 before and after, matching step 4's reading.
 - `git push origin feature/f038-grounded-chat` after this commit — reported in the worker's reply.
 - No PR created, edited or merged. No `gh pr` command run except the G6 open-PR read.
 
@@ -78,96 +84,89 @@ C4, C5.
 
 BEFORE ANYTHING ELSE: `.agent/STOP` absent (`ls` exit 2, No such file or directory); `pwd` read
 `/home/decodeux/Repos/remedy`; `git status --porcelain` empty; `git branch --show-current` read
-`feature/f038-grounded-chat`; `git log --oneline -1` read `7627663b7`; block bytes measured 288
-lines / sha256 `c92089bb7c346f6fe4026308f14c52703d0cd0654573fd9c1976c3476e5c8818`, both matching
-the delegation message; `git worktree list | wc -l` read 68.
+`feature/f038-grounded-chat`; `git log --oneline -1` read `c1c3f636a`; block bytes measured 277
+lines / sha256 `543f4db61745817f7382cf61a784e0996e7409e94c0bef3e045786948c9f7fb8`, both matching
+the delegation message; `git worktree list | wc -l` read 70.
 
 PAYLOADS: all three measured line count, byte count and sha256 exactly matching the PAYLOADS
-table before use — `records.diff` 60 / 9723 /
-`5f5de100d2694da50402517b6b6b48c71c7d7f305bf5fd64f296a1b3a0bd1cb9`; `plan.md` 29 / 968 /
-`4343ab72f525a060e53bfb517d52504b16fb982803abda5243c13f36a7c486e3`; `landed.diff` 10 / 2121 /
-`caaea37932ac90fb6fca2e669685f81c45dab629cf17a3b020bf71f173286346`.
+table before use — `records.diff` 62 / 10502 /
+`eea4a65fc9a5e2e64372bb027aafe50db944237191e02d334ca721daf3c13eb5`; `plan.md` 29 / 971 /
+`2e291954bb13be542e2e0180ad9d1ae8e7795c17dda14f1e6a876322834b68ff`; `landed.diff` 10 / 2507 /
+`3621f6841a99ebdab8dcf6e99e4f79ae87dc65a9f8d2140dc3b85d94b8b28e4a`.
 
-G1 TRANSPORT: each `.agent/authored/f038-r9-*` copy, read with `git show <commit>:<path>`, compared
+G1 TRANSPORT: each `.agent/authored/f038-r10-*` copy, read with `git show <commit>:<path>`, compared
 byte-identical (Python `==` over the raw bytes) against its source: block copy vs
-`.remedy-wt/f038-r9/block.md` — True; plan copy vs the plan payload — True; records-diff copy vs
+`.remedy-wt/f038-r10/block.md` — True; plan copy vs the plan payload — True; records-diff copy vs
 its payload — True; landed-diff copy vs its payload — True.
 
 G2 THE RECORDS: sha256 at the named commit, read with `git show <commit>:<path>`, against the
 reviewer's reading:
-- C2 `.agent/decisions.md`: 2406736 bytes, sha256
-  `d5a308fc82bd2fbe14a2308f373fbd22eff8130ce578d1d8aa39fbada7f711a7` — MATCH.
-- C2 `.agent/live_review.md`: 334333 bytes, sha256
-  `03ab5768a1953e50dff041b574af6a1706482000f22151133c7a42b3da76356b` — MATCH.
-- C2 `.agent/plan.md`: 968 bytes, sha256
-  `4343ab72f525a060e53bfb517d52504b16fb982803abda5243c13f36a7c486e3` — MATCH.
-- C4 `.agent/live_review.md`: 334559 bytes, sha256
-  `a6a84ced9ac8f2ae3a9db612fa860e95fb5d267fe9bbd667add1172632ad8e67` — MATCH.
+- C2 `.agent/decisions.md`: 2410035 bytes, sha256
+  `d0c1611cfffb33f18d1268a6693b36a5827228fde2b9aeac595669bdc0129b08` — MATCH.
+- C2 `.agent/live_review.md`: 339555 bytes, sha256
+  `28651e704757f6cda3fdd3c5cd70059a7dfcd48e1d98485c49d528c6b257232c` — MATCH.
+- C2 `.agent/plan.md`: 971 bytes, sha256
+  `2e291954bb13be542e2e0180ad9d1ae8e7795c17dda14f1e6a876322834b68ff` — MATCH.
+- C4 `.agent/live_review.md`: 339924 bytes, sha256
+  `5a7565821894795a6987e52c5424106237e79c7ed9e4a22e965aa5bde31d5c92` — MATCH.
 `open_finding_ids` (`scripts/rotate_live_review.py`) over the ledger's TEXT at C2 and at C4:
-`['R-1093']` at both, matching the reviewer's reading. `git diff --name-only d016127e0 c6f0085d9`
+`['R-1094']` at both, matching the reviewer's reading. `git diff --name-only 9b4d5af08 af4f50c18`
 (C1b..C2) named exactly: `.agent/decisions.md`, `.agent/live_review.md`, `.agent/plan.md`.
 
 G3 THE CODE:
 ```
-$ python3 -m ruff check apps/cli/command_catalog.py apps/cli/commands/chat_cmd.py \
-  apps/cli/commands/ui.py tests/cli/test_chat_ask.py tests/orchestration/test_chat_turn.py \
-  tests/test_no_orphan_modules.py
+$ python3 -m ruff check apps/cli/commands/chat_cmd.py packages/orchestration/chat_turn.py \
+  packages/orchestration/ui_server.py tests/ui_server/test_chat_route.py \
+  tests/ui_server/test_command_channel.py tests/cli/test_chat_ask.py \
+  tests/orchestration/test_chat_turn.py .agent/authored/f038-r10-mutations.py
 All checks passed!
 REAL_EXIT=0
 ```
-`_cmd_chat_ask`, `live_ui_session_for_job` and the `chat.ask` catalog entry, quoted from
-`git show fc7493187`, are reproduced verbatim in the worker's reply (too long to duplicate a second
-time here; see the reply's G3 section). `git show fc7493187 -- \
-tests/orchestration/import_reachability_allowlist.txt` shows the six-line insertion between
-`change_set` and `checkpoints`, and nothing else changed in that file.
+`chat_turn_view`, `_build_chat_turn_json` and the `chat` branch of `do_GET`, quoted from
+`git show 43f48e7cf`, are reproduced verbatim in the worker's reply (see the reply's G3 section).
 
 G4 THE TESTS — the block's selection, run serially in the primary checkout at C4:
 ```
 $ bash -c 'python3 -m pytest -q -p no:cacheprovider -rs <selection> 2>&1 | tail -12; \
   echo "REAL_EXIT=${PIPESTATUS[0]}"'
-SKIPPED [6] tests/regression/test_named_bugs.py (F252 quarantine, six lines)
-SKIPPED [3] tests/orchestration/test_model_routing.py:455 (covered by the violating fixture above)
-3654 passed, 9 skipped, 1 warning in 554.05s (0:09:14)
+1259 passed in 144.72s (0:02:24)
 REAL_EXIT=0
 ```
-Accounting for 3654 vs the reviewer's primary-checkout baseline of 3637: `tests/cli/test_chat_ask.py`
-collects 13 nodes (new file), `tests/orchestration/test_chat_turn.py` collects 9 (was 8, +1 for
-S1's repair) — 14 new nodes from these two files — plus the three catalog-parametrized cases the
-new `chat.ask` entry adds: `test_declared_codes_are_the_floor_plus_named_codes[chat.ask]`,
-`test_declared_codes_equal_the_codes_the_handler_reaches[chat.ask]` (both
-`tests/cli/test_exit_codes.py`) and
-`TestInvalidArgumentSweep::test_an_unrecognised_option_answers_the_envelope[chat.ask]`
-(`tests/cli/test_json_contract.py`) — confirmed present and collected by name. 3637 + 14 + 3 =
-3654, exact. Skip count (9) and the skip reasons match the reviewer's primary-checkout reading
-unchanged. Then:
+No `SKIPPED` line appeared (matching the reviewer's own primary-checkout reading of "1245 passed
+with no skip"). `--collect-only -q` node counts at C4: `tests/ui_server/test_chat_route.py` 9 (NEW
+FILE), `tests/cli/test_chat_ask.py` 17 (was 13, +4), `tests/orchestration/test_chat_turn.py` 10
+(was 9, +1). Accounting for 1259 vs the reviewer's primary-checkout baseline of 1245: 9 + 4 + 1 =
+14 new nodes; 1245 + 14 = 1259, exact. Then:
 ```
 $ python3 -m apps.cli.main integrity check --json
 {"check_count": 6, ... "fail_count": 0, "ok": true, "passed": true, ...}
 ```
 all six checks `pass`, `fail_count` 0.
 
-G5 THE RED PROOFS — whole tool output, `git worktree add --detach .remedy-wt/f038-r9-mut d0cbeec86`
-then `python3 -B .agent/authored/f038-r9-mutations.py .../f038-r9-mut`:
+G5 THE RED PROOFS — whole tool output, `git worktree add --detach .remedy-wt/f038-r10-mut
+ca1fbd4fe` then `python3 -B .agent/authored/f038-r10-mutations.py .../f038-r10-mut`:
 ```
 control (before): exit=0 failed=0 nodes=[]
-r1 --yes is ignored: exit=1 failed=5 nodes=[...5 nodes...] restored byte-identical: True
-r2 a card is sent with neither --yes nor a terminal: exit=1 failed=1 nodes=[...] restored byte-identical: True
-r3 a card that is not confirmable is sent: exit=1 failed=1 nodes=[...] restored byte-identical: True
-r4 an answer other than y sends: exit=1 failed=1 nodes=[...] restored byte-identical: True
-r5 (ui.py) the lookup ignores the job id: exit=1 failed=1 nodes=[...] restored byte-identical: True
-r6 (ui.py) the lookup ignores a dead pid: exit=1 failed=1 nodes=[...] restored byte-identical: True
-r7 a refused card exits 0: exit=1 failed=1 nodes=[...] restored byte-identical: True
-r8 no cockpit exits 0: exit=1 failed=3 nodes=[...3 nodes...] restored byte-identical: True
-r9 a ChatTurnError is not caught: exit=1 failed=1 nodes=[...] restored byte-identical: True
-r10 (chat_turn.py) a handed-in answer_call_fn is dropped (R-1093): exit=1 failed=1 nodes=[...] restored byte-identical: True
+m1 (ui_server.py) a blank text runs a turn: exit=1 failed=1 nodes=[...1 node...] restored byte-identical: True
+m2 (ui_server.py) a ChatTurnError is not caught: exit=1 failed=1 nodes=[...1 node...] restored byte-identical: True
+m3 (ui_server.py) the task is dropped: exit=1 failed=5 nodes=[...5 nodes...] restored byte-identical: True
+m4 (ui_server.py) the task is not stripped: exit=1 failed=1 nodes=[...1 node...] restored byte-identical: True
+m5 (chat_turn.py) the view numbers evidence from 0: exit=1 failed=3 nodes=[...3 nodes...] restored byte-identical: True
+m6 (chat_turn.py) every sentence is reported supported: exit=1 failed=1 nodes=[...1 node...] restored byte-identical: True
+m7 (chat_turn.py) a card's args come back empty: exit=1 failed=1 nodes=[...1 node...] restored byte-identical: True
+m8 (ui.py) the lookup returns the oldest session: exit=1 failed=1 nodes=[...1 node...] restored byte-identical: True
+m9 (chat_cmd.py) every send uses one fixed nonce: exit=1 failed=1 nodes=[...1 node...] restored byte-identical: True
+m10 (chat_cmd.py) the text form's evidence lines are dropped: exit=1 failed=1 nodes=[...1 node...] restored byte-identical: True
+m11 (chat_cmd.py) --task is not stripped: exit=1 failed=1 nodes=[...1 node...] restored byte-identical: True
+m12 (chat_cmd.py) the --json answer's question is blanked: exit=1 failed=1 nodes=[...1 node...] restored byte-identical: True
 control (after): exit=0 failed=0 nodes=[]
 ALL MUTATIONS CAUGHT AND RESTORED CLEANLY: True
 REAL_EXIT=0
 ```
-(the worker's reply carries every node id in full). Every one of the ten mutations was caught, at
-least one failing node each, every restore byte-identical, both controls exit 0. Then
-`git worktree remove --force .remedy-wt/f038-r9-mut`, `git worktree prune`, `git worktree list |
-wc -l` read 68, matching step 4's reading.
+(the worker's reply carries every node id in full). Every one of the twelve mutations was caught,
+at least one failing node each, every restore byte-identical, both controls exit 0. Then
+`git worktree remove --force .remedy-wt/f038-r10-mut`, `git worktree prune`, `git worktree list |
+wc -l` read 70, matching step 4's reading.
 
 ## Authored-text proofs
 
@@ -176,19 +175,19 @@ The block itself and the plan, records-diff and landed-diff payloads were each c
 against their sources under G1 above — all four MATCH. `.agent/plan.md` and the two ledger applies
 (records.diff at C2, landed.diff at C4) were verified sha256-identical to the reviewer's own
 simulation readings under G2 above — all four MATCH. No other reviewer-authored text was applied
-this round (S1 to S7 are the worker's own code and tests against the block's specification, not
+this round (S1 to S5 are the worker's own code and tests against the block's specification, not
 reviewer-authored payloads).
 
 ## Deviations & assumptions
 
 None. Every commit, subject, expected insertion count and gate reading matched the block; no
-payload was retyped or edited; the touched-path set (`git diff --name-only 7627663b7` at the tip
+payload was retyped or edited; the touched-path set (`git diff --name-only c1c3f636a` at the tip
 after C5, reported in the worker's reply) equals constraint 3's list plus `.agent/handoff.md`
 exactly, with no other file under `apps/`, `packages/` or `docs/` touched.
 
 ## Next
 
-Phase 1 rule 1 first: read `.agent/STOP` from disk. Then the review of round 9. Then T003's next
-part: the cockpit panel asks the same chat turn through a route and confirms a card through the
-write door. Open findings in the ledger: 1, R-1093, landed and awaiting the review. Operator
-questions open: 1.
+Phase 1 rule 1 first: read `.agent/STOP` from disk. Then the review of round 10. Then T003's next
+part: the cockpit's chat panel, with citation chips, unsupported marks and cards confirmed through
+the write door, and its DOM audit. Open findings in the ledger: 1, R-1094, landed and awaiting the
+review. Operator questions open: 1.
