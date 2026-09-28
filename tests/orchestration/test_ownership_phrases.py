@@ -1,14 +1,16 @@
-"""F035 T002 (DECISION F035 D3) — the phrase catalog: one sentence per ledger entry, in the
-one "you did X" dialect, worded nowhere else.
+"""F035 T002/T003 (DECISION F035 D3, D4) — the phrase catalog, and the view built over it:
+one sentence per ledger entry, in the one "you did X" dialect, worded nowhere else.
 
 THE GOLDEN covers one entry per action named in S3, plus one entry per consequence kind of
-the two actions (`task_vetoed`, `task_injected`) whose sentence branches on it — a hand-built
-ledger, never one built through `build_ownership_ledger`, because the claim under test is the
-CATALOG's own wording, not the reader that assembles a ledger from real records. It stands
-BESIDE, never in place of, the inline assertions below of every S1 actor phrase, the reason
-clause's absence for an empty reason, a multi-line note kept verbatim, a title shown and one
-not known, and `OwnershipError` for an unknown action — exactly the coverage the block orders,
-none of it duplicated in prose the golden already carries byte for byte.
+the two actions (`task_vetoed`, `task_injected`) whose sentence branches on it, plus one entry
+per named `plan_edited` command S1's round 4 table adds — a hand-built ledger, never one built
+through `build_ownership_ledger`, because the claim under test is the CATALOG's own wording,
+not the reader that assembles a ledger from real records. It stands BESIDE, never in place of,
+the inline assertions below of every S1 actor phrase, the reason clause's absence for an empty
+reason, a multi-line note kept verbatim, a title shown and one not known, `OwnershipError` for
+an unknown action, every S1 plain-verb plan-edit sentence, the unknown-command fallback, and
+`ownership_view`'s own shape and error form — exactly the coverage the block orders, none of it
+duplicated in prose the golden already carries byte for byte.
 """
 from __future__ import annotations
 
@@ -22,6 +24,7 @@ from packages.orchestration.ownership_phrases import (
     ownership_actor_phrase,
     ownership_sentence,
     ownership_sentences,
+    ownership_view,
 )
 
 GOLDEN_PATH = (
@@ -69,7 +72,8 @@ def _entry(action: str, *, record_ref: str, actor: dict[str, Any], task_id: str 
 
 def _golden_ledger() -> dict[str, Any]:
     """One entry per action of S3, plus one per consequence kind of `task_vetoed` and
-    `task_injected` — 22 entries, in this fixed order."""
+    `task_injected` (+3), plus one per named `plan_edited` command S1's round 4 table adds
+    (+6) — 28 entries, in this fixed order."""
     entries = [
         _entry("task_vetoed", record_ref="veto:1",
               actor=_actor(recorded_as="alice"), task_id="T1",
@@ -104,6 +108,30 @@ def _golden_ledger() -> dict[str, Any]:
               task_id="T2",
               consequence={"kind": "plan_version", "task_ids": ["T2"], "ref": "v7"},
               detail={"command": "task edit T2 --acceptance add", "args": {"task_id": "T2"}}),
+        _entry("plan_edited", record_ref="plan_edit:v9",
+              actor=_actor(), task_id="T1",
+              consequence={"kind": "plan_version", "task_ids": ["T1"], "ref": "v9"},
+              detail={"command": "plan_edit_task"}),
+        _entry("plan_edited", record_ref="plan_edit:v10",
+              actor=_actor(), task_id="T2",
+              consequence={"kind": "plan_version", "task_ids": ["T2"], "ref": "v10"},
+              detail={"command": "plan_edit_acceptance"}),
+        _entry("plan_edited", record_ref="plan_edit:v11",
+              actor=_actor(), task_id="T3",
+              consequence={"kind": "plan_version", "task_ids": ["T3"], "ref": "v11"},
+              detail={"command": "plan_delete_task"}),
+        _entry("plan_edited", record_ref="plan_edit:v12",
+              actor=_actor(), task_id="T4",
+              consequence={"kind": "plan_version", "task_ids": ["T4"], "ref": "v12"},
+              detail={"command": "plan_split_task"}),
+        _entry("plan_edited", record_ref="plan_edit:v13",
+              actor=_actor(),
+              consequence={"kind": "plan_version", "task_ids": [], "ref": "v13"},
+              detail={"command": "plan_merge_tasks"}),
+        _entry("plan_edited", record_ref="plan_edit:v14",
+              actor=_actor(),
+              consequence={"kind": "plan_version", "task_ids": [], "ref": "v14"},
+              detail={"command": "plan_reorder"}),
         _entry("task_edited", record_ref="plan_edit:v8",
               actor=_actor(),
               task_id="T3",
@@ -162,10 +190,11 @@ def _golden_ledger() -> dict[str, Any]:
 
 
 def test_the_golden_ledger_covers_every_action_and_consequence_kind():
-    """22 entries: one per S3 action (19), plus one per extra consequence kind of
-    `task_vetoed` (+1) and `task_injected` (+2)."""
+    """28 entries: one per S3 action (19), plus one per extra consequence kind of
+    `task_vetoed` (+1) and `task_injected` (+2), plus one per named `plan_edited` command
+    S1's round 4 table adds (+6)."""
     ledger = _golden_ledger()
-    assert len(ledger["entries"]) == 22
+    assert len(ledger["entries"]) == 28
     actions = {e["action"] for e in ledger["entries"]}
     assert len(actions) == 19
 
@@ -272,3 +301,136 @@ def test_an_unknown_action_raises_ownershiperror():
     entry = _entry("teleported_the_task", record_ref="x1", actor=_actor(), task_id="T1")
     with pytest.raises(OwnershipError):
         ownership_sentence(entry, titles=TITLES)
+
+
+# ---------------------------------------------------------------------------
+# S1 — the plain-verb plan edits (round 4)
+# ---------------------------------------------------------------------------
+
+
+def test_plan_edit_task_reads_changed_t_in_the_plan():
+    entry = _entry("plan_edited", record_ref="pe1", actor=_actor(), task_id="T1",
+                   consequence={"kind": "plan_version", "task_ids": ["T1"], "ref": "v9"},
+                   detail={"command": "plan_edit_task"})
+    assert (ownership_sentence(entry, titles=TITLES)
+            == "You changed task T1 (Task One) in the plan; the plan is now version 9.")
+
+
+def test_plan_edit_acceptance_reads_changed_the_acceptance_checks_of_t():
+    entry = _entry("plan_edited", record_ref="pe2", actor=_actor(), task_id="T2",
+                   consequence={"kind": "plan_version", "task_ids": ["T2"], "ref": "v10"},
+                   detail={"command": "plan_edit_acceptance"})
+    assert (ownership_sentence(entry, titles=TITLES)
+            == "You changed the acceptance checks of task T2 (Task Two) in the plan; "
+               "the plan is now version 10.")
+
+
+def test_plan_delete_task_reads_deleted_t_from_the_plan():
+    entry = _entry("plan_edited", record_ref="pe3", actor=_actor(), task_id="T3",
+                   consequence={"kind": "plan_version", "task_ids": ["T3"], "ref": "v11"},
+                   detail={"command": "plan_delete_task"})
+    assert (ownership_sentence(entry, titles=TITLES)
+            == "You deleted task T3 (Task Three) from the plan; the plan is now version 11.")
+
+
+def test_plan_split_task_reads_split_t_in_the_plan():
+    entry = _entry("plan_edited", record_ref="pe4", actor=_actor(), task_id="T4",
+                   consequence={"kind": "plan_version", "task_ids": ["T4"], "ref": "v12"},
+                   detail={"command": "plan_split_task"})
+    assert (ownership_sentence(entry, titles=TITLES)
+            == "You split task T4 (Task Four) in the plan; the plan is now version 12.")
+
+
+def test_plan_merge_tasks_reads_merged_tasks_in_the_plan():
+    entry = _entry("plan_edited", record_ref="pe5", actor=_actor(),
+                   consequence={"kind": "plan_version", "task_ids": [], "ref": "v13"},
+                   detail={"command": "plan_merge_tasks"})
+    assert (ownership_sentence(entry, titles=TITLES)
+            == "You merged tasks in the plan; the plan is now version 13.")
+
+
+def test_plan_reorder_reads_reordered_the_plans_tasks():
+    entry = _entry("plan_edited", record_ref="pe6", actor=_actor(),
+                   consequence={"kind": "plan_version", "task_ids": [], "ref": "v14"},
+                   detail={"command": "plan_reorder"})
+    assert (ownership_sentence(entry, titles=TITLES)
+            == "You reordered the plan's tasks; the plan is now version 14.")
+
+
+def test_an_unknown_plan_edit_command_falls_back_and_names_itself():
+    """The fallback the block orders: unrecognised `detail["command"]` values still read as
+    a sentence, naming the command verbatim, and `version 7` for ref `v7` shows `V`'s leading
+    `v` stripped."""
+    entry = _entry("plan_edited", record_ref="pe7", actor=_actor(), task_id="T2",
+                   consequence={"kind": "plan_version", "task_ids": ["T2"], "ref": "v7"},
+                   detail={"command": "task edit T2 --acceptance add"})
+    assert (ownership_sentence(entry, titles=TITLES)
+            == "You edited the plan (task edit T2 --acceptance add) for task T2 (Task Two); "
+               "the plan is now version 7.")
+
+
+def test_an_unknown_plan_edit_command_with_no_task_id_omits_the_for_clause():
+    entry = _entry("plan_edited", record_ref="pe8", actor=_actor(),
+                   consequence={"kind": "plan_version", "task_ids": [], "ref": "v15"},
+                   detail={"command": "plan_rename"})
+    assert (ownership_sentence(entry, titles=TITLES)
+            == "You edited the plan (plan_rename); the plan is now version 15.")
+
+
+def test_a_task_edited_entry_drops_the_command_from_the_sentence():
+    entry = _entry("task_edited", record_ref="te1", actor=_actor(), task_id="T3",
+                   consequence={"kind": "plan_version", "task_ids": ["T3"], "ref": "v8"},
+                   detail={"command": "task edit T3 --files add src/x.py"})
+    assert (ownership_sentence(entry, titles=TITLES)
+            == "You edited task T3 (Task Three) while the job ran; the plan is now version 8.")
+
+
+# ---------------------------------------------------------------------------
+# S2 — `ownership_view`
+# ---------------------------------------------------------------------------
+
+
+class _StubTask:
+    def __init__(self, task_id: str, title: str) -> None:
+        self.task_id = task_id
+        self.title = title
+
+
+class _StubJob:
+    def __init__(self, job_id: str, tasks: list[_StubTask]) -> None:
+        self.job_id = job_id
+        self.tasks = tasks
+
+
+def test_ownership_view_carries_a_sentence_on_every_entry(monkeypatch):
+    ledger = _golden_ledger()
+    monkeypatch.setattr(
+        "packages.orchestration.ownership.build_ownership_ledger", lambda job: ledger)
+    job = _StubJob("job-1", [_StubTask(tid, title) for tid, title in TITLES.items()])
+
+    view = ownership_view(job)
+
+    assert view["schema"] == "remedy.ownership.v1"
+    assert view["job_id"] == "job-1"
+    assert view["error"] == ""
+    assert len(view["entries"]) == len(ledger["entries"])
+    for raw, rendered in zip(ledger["entries"], view["entries"], strict=True):
+        assert rendered["sentence"] == ownership_sentence(raw, titles=TITLES)
+        assert rendered["record_ref"] == raw["record_ref"]
+
+
+def test_ownership_views_error_form(monkeypatch):
+    def _raise(_job):
+        raise OwnershipError("boom")
+
+    monkeypatch.setattr("packages.orchestration.ownership.build_ownership_ledger", _raise)
+    job = _StubJob("job-2", [])
+
+    view = ownership_view(job)
+
+    assert view == {
+        "schema": "remedy.ownership.v1",
+        "job_id": "job-2",
+        "entries": [],
+        "error": "The ownership ledger could not be read: boom",
+    }
