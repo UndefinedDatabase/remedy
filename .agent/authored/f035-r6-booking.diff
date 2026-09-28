@@ -1,0 +1,63 @@
+diff --git a/.agent/decisions.md b/.agent/decisions.md
+index 858a6bc4a..507758269 100644
+--- a/.agent/decisions.md
++++ b/.agent/decisions.md
+@@ -24118,3 +24118,37 @@ D3).
+ 
+ HOW TO REVERSE: delete `ownership.ts`, the loader, the shell's effect, the prop and the section,
+ the assumption-log row naming this decision, and this paragraph.
++
++## DECISION F035 D6 — the evidence panel gains a fourth tab, "Ownership", the whole job's history as chips and sentences, which loads itself from the `ownership` route; a headless render proves the task detail's section and the tab as a person sees them; the end-to-end proof takes the next round (2026-09-28)
++
++CONTEXT: Measured at `36d5c359`: the evidence panel in
++`apps/ui/src/components/graph/EvidencePanel.tsx` opens at the deepest zoom for a focused run and
++has the tabs diff, prompt and chat, listed in `EVIDENCE_TABS` of `evidencePanel.ts`, typed by
++`EvidenceTab` in `semanticZoom.ts` and repeated in the deep link's `TABS` of `zoomDeepLink.ts`;
++`evidencePanel.test.ts` and `tests/ui_contracts/test_evidence_panel_contract.py` pin the three.
++The diff tab loads itself in an effect guarded by `cancelled`, with the job id and the token the
++panel already holds. T5_F035.md asks for "a job-level ownership tab in the evidence panel". No
++test yet looks at the section or the tab as rendered pixels.
++
++CHOSEN: (1) THE TAB. `{ tab: "ownership", label: "Ownership" }` is the fourth entry of
++`EVIDENCE_TABS`, of `EvidenceTab` and of the deep link's list. Its body is the whole job's
++history — every entry of the view, not only the focused run's task — as the task detail shows
++one task's: a chip with the action's word and the sentence verbatim. It loads itself as the diff
++tab does, and it reads as one state of a pure function: loading, the fixed unreadable line, the
++line "No action is recorded for this job yet.", or the entries. (2) THE TWO TEST PINS. The
++existing tab-list assertions gain the fourth entry; nothing they already assert is removed.
++(3) THE RENDER. A headless page, built from the F288 round 6 harness, renders the task detail's
++section and the tab from a fixed view and checks them as a person sees them: the chips and the
++verbatim sentences in order, no section for a task without an entry, the unreadable line and not
++the error, four tabs, and the tab's list. (4) THE NEXT ROUND runs one real job through the real
++command line and the browser's door and proves the ledger, the command, the route and the
++task mapping agree.
++
++ALTERNATIVES: a tab that shows only the focused run's task, rejected because the feature file
++asks for the job's history and the task detail already shows one task's; a tab loaded by the
++stage and passed down, rejected because the diff tab already loads itself with the credentials
++the panel holds.
++
++HOW TO REVERSE: remove the fourth tab from the three lists, its body and its state function,
++the two added test assertions and the assumption-log row naming this decision, and delete this
++paragraph.
+diff --git a/.agent/live_review.md b/.agent/live_review.md
+index 5e95bc891..c76364240 100644
+--- a/.agent/live_review.md
++++ b/.agent/live_review.md
+@@ -429,4 +429,6 @@ Gate: F035 R4 — the F035 round 4 entry: the booking of round 3, DECISION F035
+ 
+ - R-1082 — Low, THE PLAN-EDIT SENTENCES OF THE OWNERSHIP CATALOG DO NOT READ AS DECISION F035 D4 ORDERS THEM. Raised by the planner and reviewer of F035's first session at round 4's gate. SEARCHED BEFORE MINTING (checklist item 30): the open set at `0faa196f` is empty, and `ownership_phrases` occurs in this record only in this feature's gate entries. MEASURED at `0faa196f`: `ownership_sentence` in `packages/orchestration/ownership_phrases.py` ends every `plan_edited` and `task_edited` sentence with `; the plan is now version <n>.`, while S1 of the round 4 block and DECISION F035 D4 order `; the plan is now at version <n>.`, and it words `plan_edit_acceptance` as `changed the acceptance checks of <task> in the plan`, while S1 orders `changed the acceptance checks of <task>`; the golden `tests/orchestration/fixtures/ownership/golden/sentences.txt` pins the code's words, so every gate read green, and the handback declared neither difference. WHY LOW: each sentence is still true and plain; the defect is that the product's words contradict the decision that fixes them. FIX: the sentences read exactly as S1 of the round 4 block orders, the golden and the inline assertions follow, and a mutation that drops the `at` goes red. Owner: F035.
+ 
+-Landed: R-1082 — `ownership_sentence` in `packages/orchestration/ownership_phrases.py` now ends every `plan_edited` and `task_edited` sentence `; the plan is now at version <n>.` and words `plan_edit_acceptance` without `in the plan`, with the golden `tests/orchestration/fixtures/ownership/golden/sentences.txt` and the inline assertions of `tests/orchestration/test_ownership_phrases.py` following, in this commit.
++Gate: F035 R5 — the F035 round 5 entry: the booking of round 4's FAIL with R-1082's registration, DECISION F035 D5, one prose-slip line and one assumption-log row, R-1082's repair, and the browser's first half of T003, a pure reader of the `ownership` route, one load in the shell, and the task detail's "Who did what" section with its chips. VERDICT PASS. Re-derived over `0faa196f`..`36d5c359` by the planner and reviewer of F035's first session, whose own runs produced every reading below. THE RANGE IS 7 COMMITS, at `fc0a0416` 373, `2c05fc95` 49, `37c8d902` 29, `163179d1` 353, `a4df13c5` 166, `9c66860d` 231 and `36d5c359` 188 insertions by `git show --numstat`, each under the 500-line cap, each single-parent and each ending with the ordered trailer; the tracked path set is exactly constraint 3's, and no deviation was declared. THE TRANSPORT PROOF: the block copy and the two payload copies, read at the branch tip, equal the reviewer's originals byte for byte. THE BOOKING: at `2c05fc95` the ledger, the decisions record, the plan, the prose-slip record and `docs/ui/design_reference/assumption_log.md` each equal the reviewer's simulation tree byte for byte, and the open set reads R-1082 alone. THE REPAIR, read in `37c8d902`: every plan-edit and runtime-edit sentence ends `; the plan is now at version <n>.`, the acceptance sentence no longer carries `in the plan`, the golden's lines follow, and the worker's `Landed:` line names the commit. THE CODE, read in `163179d1` and `a4df13c5`: `apps/ui/src/api/ownership.ts` decodes the view and refuses it whole on any malformed entry, actor or consequence, builds the encoded path, words each action with one chip word and `Action` for any other, answers a task's entries by its own id or a consequence's, and keys a re-read on the newest frame of thirteen named events; `loadOwnershipView` never throws; `RemedyShell.tsx` loads the view in one effect guarded by `cancelled` and keyed on the job, the token, the refresh key and the focused task; `DetailPopover.tsx` shows the section after the unreachable one, a chip and the verbatim sentence per entry, the fixed unreadable line and never the server's error, and still never fetches; the chip's CSS uses `--remedy-*` tokens only. THE TESTS: the reviewer's own serial run of the round's selection in the primary checkout at `36d5c359` read 1649 passed and 11 skipped at real exit code 0 — the 1640 of the base plus the nine tests of `tests/ui_contracts/test_ownership_view_contract.py`, the new vitest file running inside the one vitest node, the skips being the F252 quarantines; ruff read clean on the three Python files; and all six `integrity check` checks read `pass`. THE RED PROOFS: the reviewer ran the committed `.agent/authored/f035-r5-mutations.py` itself in a disposable worktree at `36d5c359`: each runner's unmutated control exits 0 first and last, and all nine mutations exit 1 — the two R-1082 wordings back, the decoder taking a non-text sentence, a task's consequence ignored, every frame counted, the job id unencoded, a throwing loader, the popover showing the raw error and the shell's refresh key dropped; every file was restored byte-identical, the primary checkout stayed clean, the worktree was removed, and the count of `remedy/*` branches read 197 before and after.
++
++Done: R-1082 — at `37c8d902` `ownership_sentence` in `packages/orchestration/ownership_phrases.py` ends every `plan_edited` and `task_edited` sentence `; the plan is now at version <n>.` and words `plan_edit_acceptance` as `changed the acceptance checks of <task>`, exactly as S1 of `.agent/authored/f035-r4-block.md` and DECISION F035 D4 order; the golden `tests/orchestration/fixtures/ownership/golden/sentences.txt` and the inline assertions of `tests/orchestration/test_ownership_phrases.py` pin those words, and the reviewer's run of round 5's mutations m1 and m2, which restore the old wording, turned them red in a disposable worktree at `36d5c359`.
+diff --git a/docs/ui/design_reference/assumption_log.md b/docs/ui/design_reference/assumption_log.md
+index ca97f380c..73cdba7e4 100644
+--- a/docs/ui/design_reference/assumption_log.md
++++ b/docs/ui/design_reference/assumption_log.md
+@@ -62,3 +62,4 @@ Column rules:
+ | 2026-09-27 | F030 | `ChatInput.tsx`, `ActivityFeedCard.tsx` | `ux_spec.md` §11.3 gives the input the placeholder "Ask something…". | The placeholder names where a note goes and when it is read: "Note for task <id> — read at its next round" when a task is selected, "Note for the whole job — read at its next round" when none is. The input's tooltip says that Remedy never writes a reply. | T5_F030.md forbids copy that promises a conversation. "Ask something…" promises an answer that never comes, because the builder's next action is the only reply. | DECISION F030 D3 |
+ | 2026-09-27 | F030 | `ActivityFeedCard.tsx`, `RightLivePanel.module.css` | `ux_spec.md` §11.3 and `README.md` §K2: a user row shows an initial-letter disc for the user. | The operator's note row shows a disc with the letter "Y" and the name "You", in the role disc's size and place, drawn in `--remedy-*` tokens. | Remedy records no operator name, so it has no initial to show. "You" is the one name that is true for whoever reads the feed. | DECISION F030 D3 |
+ | 2026-09-28 | F035 | `DetailPopover.tsx`, `DetailPopover.module.css` | `component_spec.md` lists the detail's sections as outcome, changed files, test and proof, prompt trace and buttons; it names no ownership section. `ux_spec.md` §13 gives a chip radius 999, height 32 and a 12.5/600 label. | A section headed "Who did what" under the unreachable section: one row per ownership entry of the task, a chip with the action's word in the §13 shape at the popover's compact height, then the entry's sentence verbatim. | T5_F035.md orders the ledger's entries shown at their nodes in the L2 detail; the reference predates the feature and designs no such surface, and the popover's compact rows need a smaller chip than a filter bar's. | DECISION F035 D5 |
++| 2026-09-28 | F035 | `EvidencePanel.tsx`, `evidencePanel.ts`, `zoomDeepLink.ts` | `component_spec.md` lists the evidence panel's sections as outcome, changed files, test and proof, prompt trace and buttons, and `graph_spec.md` makes it the run's own evidence at the deepest zoom. | A fourth tab, "Ownership", after Chat: the whole job's history as a chip with the action's word and the entry's sentence verbatim, one row per entry, with a line for a job with no entry and one for a view that could not be read. | T5_F035.md orders "a job-level ownership tab in the evidence panel"; the reference predates the feature and names no such tab, and the panel's tab row is the one place its layout already offers for another view. | DECISION F035 D6 |
