@@ -44,7 +44,10 @@ from packages.orchestration.evidence_mode import (
 
 SCHEMA_VERSION = "1.0.0"
 
-_SAFE_TASK_ID_RE = re.compile(r"^T\d{3,}$")
+# Both shapes are the ones the evidence exporter writes: ``T<digits>`` from a parsed job
+# file, and the sixteen hex characters ``data_paths.mint_task_id`` mints for every task
+# `remedy do` plans (R-1091).
+_SAFE_TASK_ID_RE = re.compile(r"^(?:T\d{3,}|[0-9a-f]{16})$")
 
 # pytest-style result counters, e.g. "3 passed", "1 failed".
 _PASSED_RE = re.compile(r"(\d+)\s+passed", re.IGNORECASE)

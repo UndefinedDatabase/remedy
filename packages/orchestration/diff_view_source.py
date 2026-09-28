@@ -60,8 +60,11 @@ DIFF_VIEW_MAX_ARTIFACT_BYTES = 8_000_000
 
 #: Filters the LISTING of ``task_runs/`` — it never validates a caller's argument. Same
 #: shape as ``final_verifier._task_ids`` applies to that same directory; re-declared here
-#: rather than imported because that name is private to that module.
-SAFE_TASK_RUN_ID_RE = re.compile(r"^T\d{3,}$")
+#: rather than imported because that name is private to that module. Both shapes are the
+#: ones the evidence exporter writes: ``T<digits>`` from a parsed job file, and the
+#: sixteen hex characters ``data_paths.mint_task_id`` mints for every task `remedy do`
+#: plans (R-1091).
+SAFE_TASK_RUN_ID_RE = re.compile(r"^(?:T\d{3,}|[0-9a-f]{16})$")
 
 
 def list_task_run_ids(evidence_dir: Path | None) -> list[str]:
