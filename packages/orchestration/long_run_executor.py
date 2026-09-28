@@ -915,6 +915,12 @@ def _apply_terminal(job: JobPlan, terminal_status: str, stop_reason: str, *,
         # Never raises, and records its own failure on the job: a run that
         # finished is finished whether or not its account could be written.
         write_final_report(job)
+
+        from packages.orchestration.result_tour import write_result_tour
+
+        # Never raises either (DECISION F036 D4 (3)): the tour's first stop
+        # can anchor to the report just written above.
+        write_result_tour(job)
     return job_status
 
 

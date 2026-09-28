@@ -4,22 +4,27 @@ Remedy deliberately does not write a stop whose anchor does not resolve against 
 records — an unanchored claim in a guided tour is worse than a shorter one (D1 (3)).
 
 This module builds the guided result tour a job's terminal state can offer a human: at most
-eight stops, each a title, a body and an anchor into something the job actually produced. Apart
-from `collect_tour_context`, which reads the job's own records, this module is pure — it writes
-no file, calls no model and reads no clock. Nothing calls it yet; F036 T002 wires it at the job
-terminal and removes this module's `ALLOWED_UNWIRED` entry.
+eight stops, each a title, a body and an anchor into something the job actually produced.
+Building a tour (`collect_tour_context`, `build_fallback_tour`, `generate_result_tour`) stays
+pure — no file, no model beyond the injected `call_fn`, no clock. `write_result_tour` is the one
+function that touches disk, versioning the tour beside the job's report the way
+`run_report.write_final_report` writes it (DECISION F036 D4); `long_run_executor._apply_terminal`
+calls it at every reported terminal.
 """
 
 from __future__ import annotations
 
+import json
 import logging
 import re
 from collections.abc import Callable
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any, ClassVar
 
 from pydantic import BaseModel
 
+from packages.common.secure_fs import durable_write_json
 from packages.orchestration.data_paths import job_evidence_dir
 from packages.orchestration.diff_view_source import build_diff_view
 from packages.orchestration.dod_gate import DOD_RESULT_FILENAME, load_gate_result
@@ -776,3 +781,142 @@ def tour_call_fn() -> Callable[[str, int], str] | None:
     """
     role_cfg = resolve_role_config("summary")
     return make_structured_call_fn(GeneratedTourContent, model=role_cfg.model)
+
+
+# ---------------------------------------------------------------------------
+# F036 T002 (second half) — storage: versions, the writer, the renderer
+# (DECISION F036 D4)
+# ---------------------------------------------------------------------------
+
+#: The key `write_result_tour` records a write failure under — mirrors
+#: `run_report.REPORT_ERROR_METADATA_KEY`.
+TOUR_ERROR_METADATA_KEY = "tour_error"
+
+#: A stored tour's version suffix: `tour_v<N>.json`, N a decimal of 2 or more.
+_TOUR_VERSION_RE = re.compile(r"tour_v(\d+)\.json")
+
+#: `write_result_tour`'s own sentinel: distinguishes "no call_fn argument was
+#: given" (ask `tour_call_fn()`) from "call_fn=None was given" (build the
+#: mechanical tour). A bare `None` default cannot tell those apart.
+_UNSET_CALL_FN = object()
+
+
+def tour_path(job_id: str, version: int) -> Path:
+    """Where version *version* of *job_id*'s tour lives (DECISION F036 D4 (1)).
+
+    Version 1 is ``tour.json``, beside ``report.md``; version 2 and above is
+    ``tour_v<N>.json`` — the same versioned-render shape
+    ``job_plan.write_plan_md`` uses for ``plan.md`` / ``plan_v<N>.md``.
+    """
+    directory = job_evidence_dir(job_id)
+    if version == 1:
+        return directory / TOUR_FILENAME
+    return directory / f"tour_v{version}.json"
+
+
+def stored_tour_versions(job_id: str) -> list[int]:
+    """Every version *job_id* has stored, sorted ascending; ``[]`` for none.
+
+    Only a REGULAR FILE directly in the job's evidence directory counts, named
+    exactly ``tour.json`` (version 1) or ``tour_v<N>.json`` with N a decimal
+    of 2 or more — a directory of either name, or a file matching neither
+    shape, names no version. An absent directory or an ``OSError`` mid
+    listing both answer ``[]``, the way ``_collect_evidence_files`` does.
+    """
+    directory = job_evidence_dir(job_id)
+    versions: list[int] = []
+    try:
+        if not directory.is_dir():
+            return []
+        for child in directory.iterdir():
+            if not child.is_file():
+                continue
+            if child.name == TOUR_FILENAME:
+                versions.append(1)
+                continue
+            match = _TOUR_VERSION_RE.fullmatch(child.name)
+            if match is None:
+                continue
+            number = int(match.group(1))
+            if number >= 2:
+                versions.append(number)
+    except OSError:
+        return []
+    return sorted(versions)
+
+
+def load_result_tour(job_id: str) -> tuple[int, dict] | None:
+    """The latest stored tour for *job_id*: ``(version, tour)``, or ``None``.
+
+    Raises :class:`ResultTourError`, naming the version, when the highest
+    stored file does not read or parse, or when :func:`tour_problems` of its
+    contents is not ``[]`` — an unsound or unreadable stored tour is never
+    silently treated as absent.
+    """
+    versions = stored_tour_versions(job_id)
+    if not versions:
+        return None
+    version = versions[-1]
+    path = tour_path(job_id, version)
+    try:
+        tour = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as exc:
+        raise ResultTourError(
+            f"tour version {version} of job {job_id} does not read: "
+            f"{type(exc).__name__}: {exc}") from exc
+    problems = tour_problems(tour)
+    if problems:
+        raise ResultTourError(
+            f"tour version {version} of job {job_id} is not sound: {'; '.join(problems)}")
+    return version, tour
+
+
+def write_result_tour(
+    job: Any, *, call_fn: Callable[[str, int], str] | None = _UNSET_CALL_FN,
+) -> Path | None:
+    """Write the next version of *job*'s tour beside its report (DECISION F036 D4 (2), (3)).
+
+    ``call_fn`` unset asks :func:`tour_call_fn` for the ``summary`` role's call
+    function; ``call_fn=None`` given explicitly builds the mechanical tour
+    instead — the same distinction :func:`generate_result_tour` makes. Never
+    raises for an ``OSError``, a ``ValueError`` or a :class:`ResultTourError`:
+    such a failure is recorded on the job under ``TOUR_ERROR_METADATA_KEY`` and
+    the answer is ``None``, the way ``run_report.write_final_report`` treats a
+    report failure — a tour is an account of the run, and losing the account
+    must not lose the run. On success that key is removed and the answer is
+    the path written.
+    """
+    try:
+        resolved_call_fn = tour_call_fn() if call_fn is _UNSET_CALL_FN else call_fn
+        tour = generate_result_tour(job, resolved_call_fn)
+        job_id = str(job.job_id)
+        directory = job_evidence_dir(job_id)
+        directory.mkdir(parents=True, exist_ok=True)
+        versions = stored_tour_versions(job_id)
+        next_version = (versions[-1] if versions else 0) + 1
+        path = tour_path(job_id, next_version)
+        durable_write_json(path, tour)
+    except (OSError, ValueError, ResultTourError) as exc:
+        metadata = getattr(job, "metadata", None)
+        if isinstance(metadata, dict):
+            metadata[TOUR_ERROR_METADATA_KEY] = f"{type(exc).__name__}: {exc}"
+        return None
+    metadata = getattr(job, "metadata", None)
+    if isinstance(metadata, dict):
+        metadata.pop(TOUR_ERROR_METADATA_KEY, None)
+    return path
+
+
+def render_tour_lines(tour: dict[str, Any]) -> list[str]:
+    """The tour rendered for the command line (DECISION F036 D4 (5)) — one
+    renderer for both `job show --tour` and T003's browser overlay stops.
+    """
+    stops = tour["stops"]
+    noun = "stop" if len(stops) == 1 else "stops"
+    lines = [f"Guided tour of job {tour['job_id']} ({tour['generator']}, {len(stops)} {noun})"]
+    for index, stop in enumerate(stops, start=1):
+        lines.append(f"  {index}. {stop['title']}")
+        lines.extend(f"     {line}" for line in stop["body"].splitlines())
+        anchor = stop["anchor"]
+        lines.append(f"     -> {anchor['kind']}: {anchor['ref']}")
+    return lines

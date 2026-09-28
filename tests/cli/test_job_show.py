@@ -298,7 +298,7 @@ class TestSections:
         shown = _show(capsys, str(job.job_id), "--full")
 
         registered = [name for name, _builder in job_commands._SHOW_SECTIONS]
-        assert registered == ["permissions", "fences", "assumptions", "digest", "summary", "status", "report", "dod"]
+        assert registered == ["permissions", "fences", "assumptions", "digest", "summary", "status", "report", "dod", "tour"]
         # F283 R19 C4 (DECISION F283 D10) — `emit_ok`'s writer sorts every
         # level, so the D4 order is pinned above, in `_SHOW_SECTIONS` and
         # `_SHOW_SECTION_ORDER`; the JSON object's own key order is an accident
@@ -307,6 +307,7 @@ class TestSections:
         assert registered == [name for name in job_commands._SHOW_SECTION_ORDER if name in registered]
         assert job_commands._SHOW_SECTION_ORDER == (
             "permissions", "fences", "assumptions", "digest", "summary", "status", "report", "dod",
+            "tour",
         )
 
     def test_a_raising_section_becomes_section_failed_and_the_command_exits_zero(
