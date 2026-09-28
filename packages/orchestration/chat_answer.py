@@ -1,7 +1,8 @@
 """F038 T001 — the grounded chat's answer: the check that marks a sentence supported or
 unsupported against a composed evidence set, the renderer that marks the unsupported
-ones, and the mechanical answer that restates the items a question names, or says
-"Not in evidence." (DECISION F038 D4).
+ones, the mechanical answer that restates the items a question names, or says
+"Not in evidence.", and the model-written answer that goes through the same check
+before it is ever shown (DECISION F038 D4, DECISION F038 D5).
 
 Remedy deliberately does not let an answer's honesty rest on a prompt: every sentence,
 model-written or mechanical, is checked here against its own citations before it is
@@ -10,11 +11,20 @@ shown.
 
 from __future__ import annotations
 
+import dataclasses
 import re
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, ClassVar
 
-from packages.orchestration.chat_evidence import ChatEvidenceSet
+from pydantic import BaseModel
+
+from packages.orchestration.chat_evidence import ChatEvidenceSet, render_chat_evidence
+from packages.orchestration.failure_postmortem import FailureSignals, classify
+from packages.orchestration.intake import make_structured_call_fn
+from packages.orchestration.result_tour import PROVIDER_CALL_ERRORS
+from packages.orchestration.role_config import resolve_role_config
+from packages.orchestration.structured_outputs import run_structured_call
 
 #: The one sentence an answer gives when nothing in the evidence set answers the question.
 CHAT_NOT_IN_EVIDENCE = "Not in evidence."
@@ -22,6 +32,12 @@ CHAT_NOT_IN_EVIDENCE = "Not in evidence."
 CHAT_UNSUPPORTED_MARK = "[unsupported]"
 #: :attr:`ChatAnswer.generator` for :func:`mechanical_answer`.
 CHAT_GENERATOR_MECHANICAL = "mechanical"
+#: :attr:`ChatAnswer.generator` for a checked, kept model-written reply (DECISION F038 D5 (5)).
+CHAT_GENERATOR_SUMMARY_ROLE = "summary-role"
+#: The fallback reason when a model-written reply parses but no sentence of it is supported.
+CHAT_NO_SUPPORTED_SENTENCE = "no_supported_sentence"
+#: :attr:`GeneratedChatAnswer.SCHEMA_V`.
+GENERATED_CHAT_ANSWER_SCHEMA_V = "generated_chat_answer_v1"
 #: The mechanical answer restates at most this many items.
 CHAT_MECHANICAL_MAX_SENTENCES = 5
 #: A question word shorter than this is never a keyword.
@@ -39,6 +55,22 @@ _CITATION_RE = re.compile(r"\[(\d+)\]")
 _SENTENCE_SPLIT_RE = re.compile(r"(?<=[.!?])(?=\s)")
 #: A run of keyword-eligible characters, in a question or in an evidence item.
 _WORD_RUN_RE = re.compile(r"[a-z0-9]+")
+#: One claim token: a URL, a backtick span, or a number — checked in this order so a
+#: URL's own digits are never re-matched as a bare number (DECISION F038 D5 (1)).
+_CLAIM_TOKEN_RE = re.compile(r"https?://\S+|`[^`]*`|\d+(?:\.\d+)?")
+#: Trailing punctuation stripped off a claim token once it is taken.
+_CLAIM_TRAILING_CHARS = ".,;:)!?"
+
+
+class GeneratedChatAnswer(BaseModel):
+    """The schema the `summary` role is asked to fill for a model-written chat answer
+    (DECISION F038 D5 (3)). No length or content constraint of its own: `check_answer`
+    is what actually judges the reply, so this class only fixes the shape a response
+    must parse into."""
+
+    SCHEMA_V: ClassVar[str] = GENERATED_CHAT_ANSWER_SCHEMA_V
+
+    answer: str
 
 
 @dataclass(frozen=True)
@@ -96,13 +128,41 @@ def split_answer_sentences(text: str) -> list[str]:
     return sentences
 
 
+def _claim_tokens(sentence: str) -> list[str]:
+    """Every claim token of `sentence` with its citations removed, in the order they
+    occur: a URL, a backtick span, or a number, each taken without its backticks and
+    without a trailing `.`, `,`, `;`, `:`, `)`, `!` or `?` (DECISION F038 D5 (1))."""
+    without_citations = _CITATION_RE.sub("", sentence)
+    tokens: list[str] = []
+    for match in _CLAIM_TOKEN_RE.finditer(without_citations):
+        token = match.group(0)
+        if token.startswith("`") and token.endswith("`"):
+            token = token[1:-1]
+        token = token.rstrip(_CLAIM_TRAILING_CHARS)
+        if token:
+            tokens.append(token)
+    return tokens
+
+
+def _unsupported_claim_problem(sentence: str, cited_items: tuple[Any, ...]) -> str:
+    """`""` when every claim token of `sentence` occurs in the ref or text of one of
+    `cited_items`; otherwise the problem naming the first token that does not."""
+    haystack = " ".join(f"{item.ref} {item.text}" for item in cited_items)
+    for token in _claim_tokens(sentence):
+        if token not in haystack:
+            return f"states {token}, which its cited items do not hold"
+    return ""
+
+
 def check_answer_sentence(sentence: str, evidence: ChatEvidenceSet) -> ChatAnswerSentence:
     """Check one sentence's citations against `evidence`.
 
     A sentence that, stripped, equals `CHAT_NOT_IN_EVIDENCE` and cites nothing is
     supported: it claims an absence, not a fact. Otherwise a sentence citing
     nothing is unsupported; one citing any number outside 1 to the set's item
-    count is unsupported, naming the numbers the set does not hold; every other
+    count is unsupported, naming the numbers the set does not hold; one citing only
+    items that resolve is unsupported when it states a URL, a backtick span or a
+    number none of its cited items holds (DECISION F038 D5 (1)); every other
     sentence is supported.
     """
     citations = tuple(int(number) for number in _CITATION_RE.findall(sentence))
@@ -119,6 +179,12 @@ def check_answer_sentence(sentence: str, evidence: ChatEvidenceSet) -> ChatAnswe
         return ChatAnswerSentence(
             text=sentence, citations=citations, supported=False,
             problem=f"cites {rendered}, which the evidence set does not hold",
+        )
+    cited_items = tuple(evidence.items[number - 1] for number in citations)
+    claim_problem = _unsupported_claim_problem(sentence, cited_items)
+    if claim_problem:
+        return ChatAnswerSentence(
+            text=sentence, citations=citations, supported=False, problem=claim_problem
         )
     return ChatAnswerSentence(text=sentence, citations=citations, supported=True, problem="")
 
@@ -186,4 +252,113 @@ def mechanical_answer(question: str, evidence: ChatEvidenceSet) -> ChatAnswer:
     return ChatAnswer(
         scope=evidence.scope, subject=evidence.subject, question=question,
         generator=CHAT_GENERATOR_MECHANICAL, sentences=sentences,
+    )
+
+
+# ---------------------------------------------------------------------------
+# DECISION F038 D5 — the model-written answer: a prompt, a switch, a call and
+# the same check, with a mechanical fallback labelled by its reason.
+# ---------------------------------------------------------------------------
+
+
+def build_chat_prompt(question: str, evidence: ChatEvidenceSet) -> str:
+    """The prompt handed to the `summary` role: the question, the numbered evidence
+    exactly as :func:`render_chat_evidence` renders it, and the answering rules."""
+    rendered = render_chat_evidence(evidence)
+    return "\n".join([
+        f"Question: {question}",
+        "",
+        "Evidence, each item numbered:",
+        rendered or "(no items)",
+        "",
+        "Rules:",
+        "- answer only from the numbered evidence above",
+        "- end every sentence with the number of each item it restates, as [n]",
+        "- copy numbers, names and paths exactly as the items hold them",
+        f"- at most {CHAT_MECHANICAL_MAX_SENTENCES} sentences",
+        f"- when no item answers the question, reply exactly: {CHAT_NOT_IN_EVIDENCE}",
+    ])
+
+
+def chat_model_written() -> bool:
+    """Whether the grounded chat asks the summary model for its answer: the
+    `chat.model_written` key, off by default (DECISION F038 D5 (2)).
+
+    Reads the key the way `tour_model_written` reads its own, the config import
+    kept lazy so this module never forces `config.py` to load at import time.
+    """
+    from packages.orchestration.config import get_config
+
+    return bool(get_config().get("chat.model_written"))
+
+
+def chat_call_fn() -> Callable[[str, int], str] | None:
+    """Build a call_fn for the `summary` role, or None.
+
+    Mirrors `result_tour.tour_call_fn`: `resolve_role_config("summary")` supplies
+    the model, `make_structured_call_fn` does the rest. This call site joins
+    `model_routing.ROLE_CONFIG_CALL_SITES`.
+    """
+    role_cfg = resolve_role_config("summary")
+    return make_structured_call_fn(GeneratedChatAnswer, model=role_cfg.model)
+
+
+#: `answer_chat_question`'s own sentinel: distinguishes "no call_fn argument was
+#: given" (ask `chat_call_fn()` only when the switch is on) from "call_fn=None was
+#: given" (build the mechanical answer). A bare `None` default cannot tell those apart.
+_UNSET_CALL_FN = object()
+
+
+def answer_chat_question(
+    question: str,
+    evidence: ChatEvidenceSet,
+    call_fn: Callable[[str, int], str] | None = _UNSET_CALL_FN,
+) -> ChatAnswer:
+    """Answer `question` over `evidence`: mechanically, or through the summary model
+    behind `chat.model_written` (DECISION F038 D5 (5)).
+
+    `call_fn` unset asks :func:`chat_call_fn` only when :func:`chat_model_written` is
+    true; unset with the key off, exactly like `call_fn=None` given explicitly,
+    answers mechanically instead. A call function HANDED IN, `None` included, is used
+    as given whatever the key reads.
+
+    NEVER raises: an exception of `PROVIDER_CALL_ERRORS`, an outcome that is not ok,
+    and a reply none of whose sentences is supported all fall back to the mechanical
+    answer, labelled `mechanical:<reason>` — the mechanical answer's sentences never
+    change, only its label does. A reply that is checked and keeps at least one
+    supported sentence is returned labelled `CHAT_GENERATOR_SUMMARY_ROLE`.
+    """
+    if call_fn is _UNSET_CALL_FN:
+        call_fn = chat_call_fn() if chat_model_written() else None
+    if call_fn is None:
+        return mechanical_answer(question, evidence)
+
+    prompt = build_chat_prompt(question, evidence)
+    try:
+        outcome = run_structured_call(GeneratedChatAnswer, prompt, call_fn, allow_parse_retry=True)
+    except PROVIDER_CALL_ERRORS as exc:
+        classification = classify(FailureSignals(exception=exc))
+        return dataclasses.replace(
+            mechanical_answer(question, evidence),
+            generator=f"{CHAT_GENERATOR_MECHANICAL}:{classification.failure_class.value}",
+        )
+
+    if not outcome.ok:
+        classification = classify(
+            FailureSignals(error_class=outcome.error_class, error_text=outcome.hint)
+        )
+        return dataclasses.replace(
+            mechanical_answer(question, evidence),
+            generator=f"{CHAT_GENERATOR_MECHANICAL}:{classification.failure_class.value}",
+        )
+
+    assert isinstance(outcome.value, GeneratedChatAnswer)
+    checked = check_answer(
+        outcome.value.answer, evidence, question=question, generator=CHAT_GENERATOR_SUMMARY_ROLE
+    )
+    if any(sentence.supported for sentence in checked.sentences):
+        return checked
+    return dataclasses.replace(
+        mechanical_answer(question, evidence),
+        generator=f"{CHAT_GENERATOR_MECHANICAL}:{CHAT_NO_SUPPORTED_SENTENCE}",
     )

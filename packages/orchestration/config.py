@@ -904,6 +904,18 @@ _CONFIG_KEY_SPECS: tuple[ConfigKeySpec, ...] = (
         default=300000,
     ),
     ConfigKeySpec(
+        key="chat.model_written",
+        env_var="REMEDY_CHAT_MODEL_WRITTEN",
+        description=(
+            "Let the summary model write the grounded chat's answers (F038). Off "
+            "by default: each answer is one summary model call, and a question "
+            "makes no call the operator did not switch on; with it off, the chat "
+            "answers from its evidence mechanically."
+        ),
+        value_type=bool,
+        default=False,
+    ),
+    ConfigKeySpec(
         key="tour.model_written",
         env_var="REMEDY_TOUR_MODEL_WRITTEN",
         description=(

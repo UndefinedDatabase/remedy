@@ -27,6 +27,7 @@ not read as its type; neither warning stops Remedy from running.
 | `REMEDY_BUDGET_MAX_WALL_CLOCK_MINUTES` | a whole number | none | `budget.max_wall_clock_minutes` | Maximum wall-clock minutes for a job (F018 budgets) |
 | `REMEDY_BUDGET_MIN_FREE_DISK_BYTES` | a whole number | none | `budget.min_free_disk_bytes` | Free bytes that must remain on the data root's filesystem for a job to start and to pass a safe point (F276 disk floor) |
 | `REMEDY_BUDGET_PRICE_BASIS_USD_PER_1K_TOKENS` | a number | none | `budget.price_basis_usd_per_1k_tokens` | Provisional USD price per 1000 tokens used for cost predictions (F104; provisional until calibration) |
+| `REMEDY_CHAT_MODEL_WRITTEN` | yes or no (1, true, yes / 0, false, no) | no | `chat.model_written` | Let the summary model write the grounded chat's answers (F038). Off by default: each answer is one summary model call, and a question makes no call the operator did not switch on; with it off, the chat answers from its evidence mechanically. |
 | `REMEDY_CLAUDE_ENABLED` | yes or no (1, true, yes / 0, false, no) | no | env-only | Enable Claude provider (env-only flag) |
 | `REMEDY_CLAUDE_PLANNER_MODEL` | text | none | env-only | Model for the Claude CLI planner; beats planner.model and the alias table's default (env-only) |
 | `REMEDY_CLAUDE_PLANNER_TIMEOUT` | a whole number | `300` | env-only | Per-call wall timeout of the Claude CLI planner, in whole seconds (env-only) |
