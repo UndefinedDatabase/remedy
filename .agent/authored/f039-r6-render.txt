@@ -1,0 +1,32 @@
+repo root: /home/decodeux/Repos/remedy
+work dir: /home/decodeux/Repos/remedy/.remedy-wt/f039-render-run
++ vite build
+vite v6.4.2 building for production...
+transforming...
+✓ 74 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                   0.32 kB │ gzip:  0.23 kB
+dist/assets/index-WpZ9ngSA.css   10.49 kB │ gzip:  2.94 kB
+dist/assets/index-DyZtXVZ5.js   240.85 kB │ gzip: 76.05 kB
+✓ built in 622ms
+
+server pid: 3856471
+chrome pid: 3856484
++ node drive.mjs
+PASS C-a the panel is a child of document.body, z-index 80, its box inside the viewport
+PASS C-b chapter buttons read "The build", "The review", "The finish"; label reads "Chapter 3 of 3: The finish"
+PASS C-c clicking "The review" updates the label, shows one "Verdict: needs repair" beat, timeline readout begins "Event 1 of 9"
+PASS C-d Play walks the positions 2 to 9 in order and stops with the button reading "Play"
+PASS C-e Play again restarts at -1, Space 400 ms later stops the positions growing, button reads "Play"
+PASS C-f Escape removes the panel from the DOM and records the close
+PASS C-g reduced motion: Play walks exactly the positions -1, 0, 1 and 9
+PASS C-h the page with ?running=1 shows the running line
+PASS C-i under churn (?churn=1), Play walks 2 to 9 in order and then at least one position past 9 within three seconds
+SCREENSHOT story /home/decodeux/Repos/remedy/.remedy-wt/f039-r6-worker/render-story.png 328209 bytes
+RENDER: 9 of 9 checks pass
+
+chrome pid 3856484 stopped (SIGTERM)
+server pid 3856471 stopped (SIGTERM)
+removed work dir: /home/decodeux/Repos/remedy/.remedy-wt/f039-render-run
+drive.mjs exit code: 0
