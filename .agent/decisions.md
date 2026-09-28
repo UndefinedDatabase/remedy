@@ -25172,3 +25172,40 @@ this round, rejected because a key nothing reads is dead configuration.
 
 HOW TO REVERSE: delete `storyAutoplay.ts`, its test, `tests/ui_contracts/test_story_autoplay.py`
 and this paragraph.
+
+## DECISION F039 D5 — the story's pacing reaches the browser as the dashboard's `story` section, read from two configuration keys; a budget tick's figures ride on its own feed row; and one pure view assembles a job's story from the ledger rows, the ownership view and that section (2026-09-28)
+
+CONTEXT: DECISION F039 D4 (5) left the configuration keys to the round that lands their readers.
+Measured at `9cd7cbfd`: configuration reaches the browser only as a section of the dashboard
+payload that `_build_dashboard` in `packages/orchestration/ui_server.py` builds and
+`normalizeDashboardPayload` in `apps/ui/src/api/remedyApi.ts` maps, as `budget_final` travels to
+`budgetFinal`; no file under `apps/ui/src/api/` imports from `apps/ui/src/components/`; and the
+environment guide `docs/guides/environment.md` is rendered from the registry by
+`render_environment_guide`, which `tests/docs/test_environment_guide.py` holds it to. The ledger the
+cockpit folds keeps feed rows, which `feedRowOf` in `apps/ui/src/api/feedRow.ts` builds without the
+`budget` payload a `budget.tick` frame carries, so no card could read a cost; `budgetTickFiguresOf`
+in `apps/ui/src/api/budgetTick.ts` is the one reader of that payload, and
+`tests/ui_contracts/test_cost_metric_render.py` keeps `costMetric.ts` the only file that names a
+figure field.
+
+CHOSEN: (1) TWO KEYS, `story.step_ms` and `story.chapter_pause_ms`, whole numbers of milliseconds
+defaulting to 420 and 1600, their variables `REMEDY_STORY_STEP_MS` and
+`REMEDY_STORY_CHAPTER_PAUSE_MS`, and the environment guide rendered again. (2) THE SECTION: the
+dashboard gains `story`, `{"step_ms": ..., "chapter_pause_ms": ...}`, the two values as the
+configuration answers them; the browser keeps the section raw as `story`, since `storyPacingOf`,
+which clamps each value, lives with the story and the API layer imports nothing from the
+components. (3) THE FIGURES: a feed row gains `budget`, set only for a `budget.tick` frame whose
+payload is an object, from `budgetTickFiguresOf`, and absent on every other row; no figure field is
+named outside `costMetric.ts`. (4) THE VIEW: `apps/ui/src/components/story/storyView.ts` reads the
+ticks from the rows that carry figures, in seq order, and assembles the chapters, the cards, the
+seqs autoplay steps over and the decoded pacing, pure. (5) A guard binds the section's keys to the
+keys `storyPacingOf` reads and each key's default to the constant it falls back to, so the two
+languages cannot drift apart.
+
+ALTERNATIVES: a story route of its own, rejected because the pacing is two numbers the dashboard
+already has a place for; decoding the pacing in the API layer, rejected because it would import the
+story's module into `apps/ui/src/api/`; keeping only the latest tick, rejected because a card reads
+the cost at its own cluster's last seq.
+
+HOW TO REVERSE: delete the two keys and render the guide again, the `story` section and its
+mapping, the row's `budget` field, `storyView.ts`, their tests and guard, and this paragraph.
