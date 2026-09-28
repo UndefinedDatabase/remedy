@@ -43,6 +43,7 @@ from packages.orchestration.pingpong_job import (
 )
 from packages.orchestration.pingpong_loop import load_run
 from packages.orchestration.pingpong_provider import FakeProvider
+from packages.orchestration.result_tour import render_tour_lines, tour_path, write_result_tour
 from packages.orchestration.run_log import RunLogWriter
 
 
@@ -462,3 +463,49 @@ class TestAnUnreadableJobRecord:
         shown = capsys.readouterr()
         assert shown.err == f"Error: Unreadable job record for {job.job_id}\n"
         assert shown.out == ""
+
+
+class TestTourSection:
+    """DECISION F036 D4 (5): `--tour` builds the `tour` section alone, and it
+    is the last of `--full`'s sections (asserted with the D4 order above)."""
+
+    def test_tour_alone_gives_a_sections_object_holding_only_tour(
+            self, data_root, capsys) -> None:
+        job = _plain_job()
+        write_result_tour(job, call_fn=None)  # the mechanical tour: no model call
+
+        shown = _show(capsys, str(job.job_id), "--tour")
+
+        assert set(json.loads(shown.out)["sections"]) == {"tour"}
+        section = json.loads(shown.out)["sections"]["tour"]
+        assert section["ok"] is True
+        assert section["data"]["stored"] is True
+        assert section["data"]["version"] == 1
+        assert "--- Tour ---" in shown.err
+        for line in render_tour_lines(section["data"]["tour"]):
+            assert line in shown.err
+
+    def test_nothing_stored_reads_stored_false_and_version_zero(
+            self, data_root, capsys) -> None:
+        job = _plain_job()
+
+        shown = _show(capsys, str(job.job_id), "--tour")
+
+        section = json.loads(shown.out)["sections"]["tour"]
+        assert section["ok"] is True
+        assert section["data"]["stored"] is False
+        assert section["data"]["version"] == 0
+
+    def test_an_unreadable_stored_tour_gives_tour_unreadable_and_exits_zero(
+            self, data_root, capsys) -> None:
+        job = _plain_job()
+        path = tour_path(str(job.job_id), 1)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text("not json", encoding="utf-8")
+
+        # `main` returning rather than raising SystemExit is the exit code 0.
+        shown = _show(capsys, str(job.job_id), "--tour")
+
+        section = json.loads(shown.out)["sections"]["tour"]
+        assert section["ok"] is False
+        assert section["error"]["code"] == "tour_unreadable"

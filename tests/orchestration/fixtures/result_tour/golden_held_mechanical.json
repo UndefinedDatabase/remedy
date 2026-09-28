@@ -1,0 +1,32 @@
+{
+  "dropped": [],
+  "generator": "fallback",
+  "job_id": "<job>",
+  "schema": "remedy.tour.v1",
+  "stops": [
+    {
+      "anchor": {
+        "kind": "evidence",
+        "ref": "report.md"
+      },
+      "body": "State: blocked; terminal status: blocked; stop reason: no_ready_tasks.",
+      "title": "How the run ended"
+    },
+    {
+      "anchor": {
+        "kind": "command",
+        "ref": "make lint"
+      },
+      "body": "The Definition of Done ran: make lint",
+      "title": "How to run it"
+    },
+    {
+      "anchor": {
+        "kind": "evidence",
+        "ref": "dod_result.json"
+      },
+      "body": "1 of 2 checks passed; the gate held the job. Not passed: c-bad.",
+      "title": "Definition of Done"
+    }
+  ]
+}

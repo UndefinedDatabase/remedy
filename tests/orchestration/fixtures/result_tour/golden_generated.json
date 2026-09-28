@@ -1,0 +1,45 @@
+{
+  "dropped": [
+    {
+      "reason": "the number '42' is not in the records",
+      "title": "Extra changes"
+    },
+    {
+      "reason": "the path 'docs/architecture/foo' is not in the records",
+      "title": "Related docs"
+    },
+    {
+      "reason": "the claim word 'seamless' is not allowed",
+      "title": "Overall quality"
+    }
+  ],
+  "generator": "summary-role",
+  "job_id": "<job>",
+  "schema": "remedy.tour.v1",
+  "stops": [
+    {
+      "anchor": {
+        "kind": "evidence",
+        "ref": "report.md"
+      },
+      "body": "State: completed; terminal status: all_green.",
+      "title": "How the run ended"
+    },
+    {
+      "anchor": {
+        "kind": "diff",
+        "ref": "packages/orchestration/foo.py"
+      },
+      "body": "packages/orchestration/foo.py changed (+1 −0).",
+      "title": "Changes in packages/orchestration"
+    },
+    {
+      "anchor": {
+        "kind": "command",
+        "ref": "python3 -m pytest -q"
+      },
+      "body": "The check ran python3 -m pytest -q.",
+      "title": "How it was verified"
+    }
+  ]
+}

@@ -1,0 +1,29 @@
+{
+  "stops": [
+    {
+      "title": "Changes in packages/orchestration",
+      "body": "packages/orchestration/foo.py changed (+1 −0).",
+      "anchor": {"kind": "diff", "ref": "packages/orchestration/foo.py"}
+    },
+    {
+      "title": "How it was verified",
+      "body": "The check ran python3 -m pytest -q.",
+      "anchor": {"kind": "command", "ref": "python3 -m pytest -q"}
+    },
+    {
+      "title": "Extra changes",
+      "body": "This run touched 42 files across the repo.",
+      "anchor": {"kind": "evidence", "ref": "report.md"}
+    },
+    {
+      "title": "Related docs",
+      "body": "See docs/architecture/foo.md for details.",
+      "anchor": {"kind": "diff", "ref": "packages/orchestration/foo.py"}
+    },
+    {
+      "title": "Overall quality",
+      "body": "The integration felt seamless throughout.",
+      "anchor": {"kind": "evidence", "ref": "report.md"}
+    }
+  ]
+}

@@ -16,6 +16,7 @@ from pathlib import Path
 
 import pytest
 
+import packages.orchestration.long_run_executor as lre
 from packages.core.models import RunState
 from packages.orchestration.data_paths import job_evidence_dir, job_evidence_index_dir
 from packages.orchestration.dod_gate import GateResult, save_gate_result
@@ -25,22 +26,32 @@ from packages.orchestration.result_tour import (
     MAX_TOUR_STOPS,
     TOUR_ANCHOR_KINDS,
     TOUR_BODY_MAX_CHARS,
+    TOUR_ERROR_METADATA_KEY,
     TOUR_GENERATOR_SUMMARY_ROLE,
     TOUR_NO_SOUND_STOPS,
     TOUR_SCHEMA,
+    ResultTourError,
     TourAnchorContext,
     build_fallback_tour,
     build_tour_prompt,
     collect_tour_context,
     generate_result_tour,
+    load_result_tour,
+    render_tour_lines,
     resolve_tour_stops,
+    stored_tour_versions,
     tour_call_fn,
+    tour_path,
     tour_problems,
     tour_source_text,
+    write_result_tour,
 )
 from packages.orchestration.run_report import build_report_sources, write_final_report
 
 pytestmark = pytest.mark.integration
+
+#: The three fixture goldens (F036 T002, second half; DECISION F036 D4 (6)).
+FIXTURES_DIR = Path(__file__).parent / "fixtures" / "result_tour"
 
 
 @pytest.fixture(autouse=True)
@@ -729,3 +740,263 @@ def test_tour_call_fn_returns_none_under_the_suites_refused_ollama():
     # tests/conftest.py::_no_live_ollama_reach (autouse) already refuses a
     # live Ollama connection for every unmarked test.
     assert tour_call_fn() is None
+
+
+# ---------------------------------------------------------------------------
+# F036 T002 (second half) — storage: versions, the writer (DECISION F036 D4)
+# ---------------------------------------------------------------------------
+
+
+def test_two_writes_give_tour_json_then_tour_v2_json():
+    job = _make_job(tasks=[TaskEntry(title="t")])
+
+    first = write_result_tour(job, call_fn=None)
+    second = write_result_tour(job, call_fn=None)
+
+    assert first == tour_path(str(job.job_id), 1)
+    assert second == tour_path(str(job.job_id), 2)
+    assert stored_tour_versions(str(job.job_id)) == [1, 2]
+    version, tour = load_result_tour(str(job.job_id))
+    assert version == 2
+    assert tour == build_fallback_tour(job)
+
+
+def test_tour_v1_tour_vx_and_a_directory_tour_v3_are_not_versions():
+    job = _make_job(tasks=[TaskEntry(title="t")])
+    ev_dir = job_evidence_dir(str(job.job_id))
+    ev_dir.mkdir(parents=True, exist_ok=True)
+    (ev_dir / "tour_v1.json").write_text("{}", encoding="utf-8")
+    (ev_dir / "tour_vx.json").write_text("{}", encoding="utf-8")
+    (ev_dir / "tour_v3.json").mkdir()
+
+    assert stored_tour_versions(str(job.job_id)) == []
+
+
+def test_call_fn_none_never_calls_tour_call_fn_and_unset_calls_it_once(monkeypatch):
+    import packages.orchestration.result_tour as result_tour_module
+
+    calls: list[int] = []
+
+    def spy():
+        calls.append(1)
+        return None
+
+    monkeypatch.setattr(result_tour_module, "tour_call_fn", spy)
+    job = _make_job(tasks=[TaskEntry(title="t")])
+
+    write_result_tour(job, call_fn=None)
+    assert calls == []
+
+    write_result_tour(job)
+    assert calls == [1]
+
+
+def test_a_failing_write_records_tour_error_and_a_later_good_write_clears_it(monkeypatch):
+    import packages.orchestration.result_tour as result_tour_module
+
+    job = _make_job(tasks=[TaskEntry(title="t")])
+    real_durable_write_json = result_tour_module.durable_write_json
+
+    def boom(*_args, **_kwargs):
+        raise OSError("disk gone")
+
+    monkeypatch.setattr(result_tour_module, "durable_write_json", boom)
+
+    result = write_result_tour(job, call_fn=None)
+
+    assert result is None
+    assert "OSError: disk gone" in job.metadata[TOUR_ERROR_METADATA_KEY]
+
+    # Restore ONLY this one attribute — `monkeypatch.undo()` would also roll
+    # back the autouse fixture's own REMEDY_DATA_DIR patch (same `monkeypatch`
+    # instance), sending the next write to the real data root (R-0803).
+    monkeypatch.setattr(result_tour_module, "durable_write_json", real_durable_write_json)
+    result2 = write_result_tour(job, call_fn=None)
+
+    assert result2 == tour_path(str(job.job_id), 1)
+    assert TOUR_ERROR_METADATA_KEY not in job.metadata
+
+
+def test_load_result_tour_answers_none_with_nothing_stored():
+    job = _make_job(tasks=[TaskEntry(title="t")])
+    assert load_result_tour(str(job.job_id)) is None
+
+
+def test_load_result_tour_raises_for_unparseable_json():
+    job = _make_job(tasks=[TaskEntry(title="t")])
+    path = tour_path(str(job.job_id), 1)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text("not json", encoding="utf-8")
+
+    with pytest.raises(ResultTourError, match="does not read"):
+        load_result_tour(str(job.job_id))
+
+
+def test_load_result_tour_raises_for_an_unsound_tour():
+    job = _make_job(tasks=[TaskEntry(title="t")])
+    path = tour_path(str(job.job_id), 1)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps({"schema": TOUR_SCHEMA}), encoding="utf-8")
+
+    with pytest.raises(ResultTourError, match="is not sound"):
+        load_result_tour(str(job.job_id))
+
+
+# ---------------------------------------------------------------------------
+# S3 — the renderer
+# ---------------------------------------------------------------------------
+
+
+def test_render_tour_lines_gives_the_exact_s3_lines_with_a_multiline_body():
+    tour = {
+        "schema": TOUR_SCHEMA,
+        "job_id": "abc123",
+        "generator": "fallback",
+        "stops": [
+            {"title": "First stop", "body": "one line",
+             "anchor": {"kind": "evidence", "ref": "report.md"}},
+            {"title": "Second stop", "body": "line one\nline two",
+             "anchor": {"kind": "diff", "ref": "packages/x.py"}},
+        ],
+        "dropped": [],
+    }
+
+    assert render_tour_lines(tour) == [
+        "Guided tour of job abc123 (fallback, 2 stops)",
+        "  1. First stop",
+        "     one line",
+        "     -> evidence: report.md",
+        "  2. Second stop",
+        "     line one",
+        "     line two",
+        "     -> diff: packages/x.py",
+    ]
+
+
+def test_render_tour_lines_singular_stop_noun():
+    tour = {
+        "schema": TOUR_SCHEMA, "job_id": "j", "generator": "fallback",
+        "stops": [{"title": "Only", "body": "b",
+                   "anchor": {"kind": "evidence", "ref": "report.md"}}],
+        "dropped": [],
+    }
+    assert render_tour_lines(tour)[0] == "Guided tour of job j (fallback, 1 stop)"
+
+
+# ---------------------------------------------------------------------------
+# S4 — the hook: `_apply_terminal` writes exactly one tour per reported
+# terminal, and none for a terminal that gets no report.
+# ---------------------------------------------------------------------------
+
+_HOOK_TERMINALS = (
+    lre.TERMINAL_ALL_GREEN,
+    lre.TERMINAL_STOPPED_BY_OPERATOR,
+    lre.TERMINAL_BUDGET_EXHAUSTED,
+    lre.TERMINAL_DEADLINE_REACHED,
+    lre.TERMINAL_BLOCKED,
+)
+
+
+def _hook_job() -> JobPlan:
+    return JobPlan(
+        job_title="tour-hook-job",
+        user_prompt="build the thing",
+        tasks=[TaskEntry(title="task 0", inputs={"task_type": "documentation"})],
+        state=RunState.PLANNED,
+    )
+
+
+class TestApplyTerminalWritesTheTour:
+
+    @pytest.mark.parametrize("terminal", _HOOK_TERMINALS)
+    def test_each_reported_terminal_writes_exactly_one_tour(self, terminal):
+        job = _hook_job()
+
+        lre._apply_terminal(job, terminal, "some reason")
+
+        assert stored_tour_versions(str(job.job_id)) == [1]
+        _version, tour = load_result_tour(str(job.job_id))
+        assert tour["stops"][0]["anchor"] == {"kind": "evidence", "ref": "report.md"}
+
+    def test_the_reported_terminals_are_exactly_the_five_tested_above(self):
+        assert lre.REPORTED_TERMINALS == frozenset(_HOOK_TERMINALS)
+
+    def test_max_cycles_reached_writes_no_tour(self):
+        job = _hook_job()
+        lre._apply_terminal(job, lre.TERMINAL_MAX_CYCLES_REACHED, "")
+        assert stored_tour_versions(str(job.job_id)) == []
+
+    def test_write_report_false_writes_no_tour(self):
+        job = _hook_job()
+        lre._apply_terminal(job, lre.TERMINAL_ALL_GREEN, "", write_report=False)
+        assert stored_tour_versions(str(job.job_id)) == []
+
+
+# ---------------------------------------------------------------------------
+# S7 — the fixture goldens: two mechanical tours and one generated tour, each
+# pinned as a whole tour under tests/orchestration/fixtures/result_tour/.
+# ---------------------------------------------------------------------------
+
+
+def _golden_green_job() -> JobPlan:
+    """A completed job with a report, a two-area diff and a released gate of
+    one passing check — `golden_green_mechanical.json` / `golden_generated.json`."""
+    job = _make_job(
+        state=RunState.COMPLETED,
+        tasks=[TaskEntry(title="write the module", status=RunState.COMPLETED),
+               TaskEntry(title="write its tests", status=RunState.COMPLETED)],
+        metadata={"target_repo": "/tmp/repo", "cycle_terminal_status": "all_green"},
+    )
+    diff_text = (_one_file_diff("packages/orchestration/foo.py")
+                 + _one_file_diff("apps/ui/bar.ts", added_line="+new", deleted_line="old"))
+    _write_diff(str(job.job_id), diff_text)
+    write_final_report(job)
+    _write_gate(str(job.job_id), [_make_check("c1", command="python3 -m pytest -q")],
+               released=True)
+    return job
+
+
+def _golden_held_job() -> JobPlan:
+    """A blocked job with a report and a held gate of one passing and one
+    failed check — `golden_held_mechanical.json`."""
+    job = _make_job(
+        state=RunState.BLOCKED,
+        tasks=[TaskEntry(title="finish the task", status=RunState.BLOCKED)],
+        metadata={"target_repo": "/tmp/repo", "cycle_terminal_status": "blocked",
+                  "cycle_stop_reason": "no_ready_tasks"},
+    )
+    write_final_report(job)
+    checks = [
+        _make_check("c-ok", command="make lint", status="passed"),
+        _make_check("c-bad", command="python3 -m pytest -q", status="failed"),
+    ]
+    _write_gate(str(job.job_id), checks, released=False)
+    return job
+
+
+def _load_golden(name: str, job_id) -> dict:
+    """A golden fixture's tour, its `<job>` placeholder swapped for *job_id*."""
+    text = (FIXTURES_DIR / name).read_text(encoding="utf-8")
+    return json.loads(text.replace("<job>", str(job_id)))
+
+
+def test_golden_green_mechanical_tour_equals_its_fixture():
+    job = _golden_green_job()
+    assert build_fallback_tour(job) == _load_golden("golden_green_mechanical.json", job.job_id)
+
+
+def test_golden_held_mechanical_tour_equals_its_fixture():
+    job = _golden_held_job()
+    assert build_fallback_tour(job) == _load_golden("golden_held_mechanical.json", job.job_id)
+
+
+def test_golden_generated_tour_equals_its_fixture():
+    job = _golden_green_job()
+    model_answer_text = (FIXTURES_DIR / "model_answer.json").read_text(encoding="utf-8")
+    fake = _fake_call_fn(model_answer_text)
+
+    tour = generate_result_tour(job, call_fn=fake)
+
+    assert tour == _load_golden("golden_generated.json", job.job_id)
+    assert tour["generator"] == TOUR_GENERATOR_SUMMARY_ROLE
+    assert len(tour["dropped"]) == 3
