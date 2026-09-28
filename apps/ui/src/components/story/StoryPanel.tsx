@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import type { RemedyDashboard } from "../../api/types";
 import type { OwnershipView } from "../../api/ownership";
@@ -64,18 +64,32 @@ export function StoryPanel({ dashboard, rows, ownership, scrub, onClose }: {
     else startPlaying();
   }, [playing, startPlaying]);
 
-  // THE ONE TIMER (see the header comment): re-armed by `position` itself, so a manual scrub
-  // while playing reschedules from the new position rather than racing an old plan.
+  // THE PENDING STEP OUTLIVES THE HOST'S RENDERS (R-1101): `viewRef` is kept current by an
+  // effect with no dependency list — it runs after every render — so the timer effect below
+  // can read the latest story view without naming `view` as a dependency, which is what made
+  // the shell's own re-renders (driven by the stream while a job is still running) clear and
+  // reschedule the pending step before it ever fired.
+  const viewRef = useRef(view);
+  useEffect(() => {
+    viewRef.current = view;
+  });
+
+  const { scrubTo } = scrub;
+
+  // THE ONE TIMER (see the header comment): re-armed only when play starts or stops, the
+  // position moves or the reduced-motion setting changes (R-1101) — never by the host's own
+  // re-render, and never by a new story view, which `viewRef` reads instead of a dependency.
   useEffect(() => {
     if (!playing) return;
-    const step = autoplayStep(view.chapters, view.seqs, position, view.pacing, reducedMotion);
+    const currentView = viewRef.current;
+    const step = autoplayStep(currentView.chapters, currentView.seqs, position, currentView.pacing, reducedMotion);
     if (step === null) {
       setPlaying(false);
       return;
     }
-    const id = window.setTimeout(() => scrub.scrubTo(step.position), step.delayMs);
+    const id = window.setTimeout(() => scrubTo(step.position), step.delayMs);
     return () => window.clearTimeout(id);
-  }, [playing, position, view, reducedMotion, scrub]);
+  }, [playing, position, reducedMotion, scrubTo]);
 
   // Escape stops play and closes; Space toggles play unless a text field has focus, so typing
   // a space elsewhere on the page never pauses the story by accident.

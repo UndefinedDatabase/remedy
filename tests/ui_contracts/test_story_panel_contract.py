@@ -58,6 +58,21 @@ def test_the_panel_owns_exactly_one_timer_and_reads_no_door():
     assert "fetch(" not in source
 
 
+def test_the_timer_reads_the_latest_view_through_a_ref_and_never_scrub_or_view_bare_r1101():
+    source = _source(PANEL)
+    assert "}, [playing, position, reducedMotion, scrubTo]);" in source
+    assert "viewRef.current" in source
+    timer = re.search(
+        r"if \(!playing\) return;.*?\}, \[playing, position, reducedMotion, scrubTo\]\);",
+        source,
+        re.DOTALL,
+    )
+    assert timer is not None, "expected the timer effect's own body"
+    body = timer.group(0)
+    assert re.search(r"\bscrub\b", body) is None, "the timer's dependency list still names `scrub` bare"
+    assert re.search(r"\bview\b", body) is None, "the timer's dependency list still names `view` bare"
+
+
 def test_the_css_module_names_the_overlay_layer_and_the_replay_violet_with_no_raw_colour():
     css = PANEL_CSS.read_text(encoding="utf-8")
     assert "var(--remedy-z-overlay)" in css
