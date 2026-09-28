@@ -43,6 +43,9 @@
   width: calc(var(--remedy-left-width) - 32px);
   max-height: 60vh;
 }
+/* The docked card is the left rail's width, too narrow for Previous, Next and "Show me" in
+   one row, so the row wraps instead of a label (R-1090). */
+.card[data-shown="true"] .actions { flex-wrap: wrap; }
 
 .header { display: flex; align-items: center; justify-content: space-between; }
 .header h2 {
@@ -102,6 +105,7 @@
   color: var(--remedy-blue-strong);
   font-size: 12px;
   font-weight: 600;
+  white-space: nowrap;
 }
 /* ux_spec.md §14: disabled is 45% opacity with the state carried in `disabled` itself, the same
    reading LessonsOverlay.module.css's own `.pager button:disabled` gives it. */

@@ -63,6 +63,16 @@ def test_the_card_carries_data_shown_and_docks_over_the_left_rail_while_shown():
     assert "var(--remedy-left-width)" in css
 
 
+def test_an_action_label_stays_on_one_line_and_the_docked_row_wraps():
+    css = OVERLAY_CSS.read_text(encoding="utf-8")
+
+    start = css.index(".actions button {")
+    end = css.index("}", start)
+    assert "white-space: nowrap;" in css[start:end]
+
+    assert '.card[data-shown="true"] .actions { flex-wrap: wrap; }' in css
+
+
 def test_the_shell_mounts_the_overlay_outside_the_main_column():
     source = _source(SHELL)
     assert source.index("</main>") < source.index("<TourOverlay")
