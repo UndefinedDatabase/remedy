@@ -9,6 +9,8 @@ every question here is answered mechanically.
 from __future__ import annotations
 
 import json
+import os
+import re
 import secrets
 import subprocess
 import sys
@@ -126,6 +128,33 @@ class TestChatAskAnswer:
         assert "Scope: project" in text
         assert "Not in evidence." in text
 
+    def test_a_padded_task_is_answered_in_the_node_scope_with_the_bare_id_as_subject(self, capsys):
+        # R-1094: a `--task` naming a real task, padded with spaces, is stripped before it
+        # is matched, so the answer still comes back from that task's node scope.
+        job, task_id = _job()
+        assert _run(["chat", "ask", job.job_id, "Did the tests pass?",
+                    "--task", f"  {task_id}  ", "--json"]) == 0
+        out = json.loads(capsys.readouterr().out)
+        assert out["scope"] == "node"
+        assert out["subject"] == task_id
+
+    def test_the_text_forms_evidence_lines_match_the_json_forms_evidence(self, capsys):
+        # R-1094: the text form's `[n] kind ref` lines, one per evidence item, must be
+        # exactly what the `--json` form's `evidence` list holds — never more, never fewer.
+        job, task_id = _job()
+        assert _run(["chat", "ask", job.job_id, "Did the tests pass?", "--task", task_id,
+                    "--json"]) == 0
+        json_out = json.loads(capsys.readouterr().out)
+        assert json_out["evidence"]
+
+        assert _run(["chat", "ask", job.job_id, "Did the tests pass?",
+                    "--task", task_id]) == 0
+        text_out = capsys.readouterr().out
+        expected = [f"[{item['number']}] {item['kind']} {item['ref']}"
+                    for item in json_out["evidence"]]
+        printed = [line for line in text_out.splitlines() if re.match(r"^\[\d+\] ", line)]
+        assert printed == expected
+
 
 # ---------------------------------------------------------------------------
 # S6 — a card is printed, and sent only once confirmable and confirmed.
@@ -217,6 +246,46 @@ class TestChatAskCard:
         out = json.loads(capsys.readouterr().out)
         assert out["sent"] is False
         assert out["confirmable"] is False
+
+
+# ---------------------------------------------------------------------------
+# R-1094: the newest of several live sessions is used, and repeated confirmed
+# cards to one running cockpit are each their own audited outcome.
+# ---------------------------------------------------------------------------
+
+
+class TestChatAskLiveSessionAndRepeatSend:
+    def test_the_newest_of_two_live_sessions_for_one_job_is_returned(self):
+        from apps.cli.commands.ui import live_ui_session_for_job
+
+        job, _task_id = _job()
+        pid = os.getpid()
+        older = {
+            "version": 1, "url": "http://127.0.0.1:1/", "host": "127.0.0.1", "port": 1,
+            "token": "older-token", "job_id": job.job_id, "pid": pid,
+            "started_at": "2020-01-01T00:00:00Z",
+        }
+        newer = {
+            "version": 1, "url": "http://127.0.0.1:2/", "host": "127.0.0.1", "port": 2,
+            "token": "newer-token", "job_id": job.job_id, "pid": pid,
+            "started_at": "2020-01-02T00:00:00Z",
+        }
+        (_sessions_dir() / f"{job.job_id}-a.json").write_text(json.dumps(older))
+        (_sessions_dir() / f"{job.job_id}-b.json").write_text(json.dumps(newer))
+        session = live_ui_session_for_job(job.job_id)
+        assert session["token"] == "newer-token"
+
+    def test_two_cards_confirmed_to_one_cockpit_are_both_audited_accepted(self, capsys):
+        job, _task_id = _job()
+        _start_live_cockpit(job.job_id, capsys)
+        assert _run(["chat", "ask", job.job_id, "pause", "--yes", "--json"]) == 0
+        first = json.loads(capsys.readouterr().out)
+        assert _run(["chat", "ask", job.job_id, "resume", "--yes", "--json"]) == 0
+        second = json.loads(capsys.readouterr().out)
+        assert (first["sent"], second["sent"]) == (True, True)
+        lines = _audit_lines(job.job_id)
+        assert [line["command"] for line in lines] == ["job.pause", "job.unpause"]
+        assert all(line["outcome"] == "accepted" for line in lines)
 
 
 # ---------------------------------------------------------------------------

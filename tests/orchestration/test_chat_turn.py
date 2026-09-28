@@ -20,6 +20,7 @@ from packages.orchestration.chat_turn import (
     CHAT_TURN_CARD,
     ChatTurnError,
     chat_open_decision_ids,
+    chat_turn_view,
     run_chat_turn,
 )
 from packages.orchestration.escalation import answer_task_decision, enqueue_task_decision
@@ -201,3 +202,32 @@ def test_a_handed_in_answer_call_fn_is_used_and_checked():
         intent_call_fn=_never_called, answer_call_fn=_stub_call_fn(reply))
 
     assert turn.answer.generator == "summary-role"
+
+
+# ---------------------------------------------------------------------------
+# R-1094: `chat_turn_view` numbers evidence 1 to n and marks each sentence's
+# own support, independently of the others.
+# ---------------------------------------------------------------------------
+
+
+def test_chat_turn_view_numbers_evidence_and_marks_each_sentences_support():
+    job, task_id = _make_job()
+
+    mechanical = run_chat_turn(
+        job, "Did the tests pass?", task_id=task_id,
+        intent_call_fn=_never_called, answer_call_fn=None)
+    number = mechanical.answer.sentences[0].citations[0]
+    item = mechanical.evidence.items[number - 1]
+    reply = json.dumps({
+        "answer": f"{item.text.rstrip('.')} [{number}]. This sentence cites nothing."
+    })
+
+    turn = run_chat_turn(
+        job, "Did the tests pass?", task_id=task_id,
+        intent_call_fn=_never_called, answer_call_fn=_stub_call_fn(reply))
+
+    view = chat_turn_view(turn)
+    assert [entry["number"] for entry in view["evidence"]] == list(
+        range(1, len(view["evidence"]) + 1))
+    assert view["sentences"][0]["supported"] is True
+    assert view["sentences"][1]["supported"] is False
