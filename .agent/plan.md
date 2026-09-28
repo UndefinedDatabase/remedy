@@ -1,26 +1,34 @@
-# Plan — F038 Grounded chat & intent dispatch
+# Plan — F039 Story/replay mode
 
-Branch: feature/f038-grounded-chat, cut from `main` at `fec08a5b`, the
-merge commit of pull request 291 (F036 Guided result tour).
+Branch: feature/f039-story-replay-mode, cut from `main` at `4d60eb84`,
+the merge commit of pull request 292 (F038 Grounded chat & intent dispatch).
 
 ## Goal
 
-The chat becomes the cockpit's grounded control stand: answers in a node
-scope and a project scope cite numbered evidence items or say "not in
-evidence", and typed intent becomes a confirmable card for an exposed
-command (`docs/roadmap/features/T5_F038.md`, the spec
-`docs/roadmap/design/grounded-chat-spec.md`, DECISION F038 D1).
+A finished run becomes a story a person can hand on: chapters from the
+phases and key events of its event ledger, narration cards synced to the
+scrub position with autoplay, and one self-contained HTML export that plays
+anywhere without Remedy (`docs/roadmap/features/T5_F039.md`, DECISION F039
+D1).
 
 ## Current Step
 
-ROUND 15, the closing round: book round 14, rotate the ledger, accept
-F038 in STATUS with its README pins, and open the pull request.
+ROUND 1: claim F039, book F038's round 15, and land T001 — the chapters of
+a ledger with their key-event clusters and title templates, their vitest
+goldens on fixture ledgers and the demo recording, and their guard.
 
 ## Next Steps
 
-1. The next feature's session merges this pull request at the Open PR
-   Gate, then claims the next feature by Rule A5.
+1. T002: the narration card, its sync to the scrub position, the autoplay
+   pacing with chapter pauses, and the in-app story mode on the demo
+   recording.
+2. T003: the export command and its build, the font licensing finding, the
+   size budget, the clean-browser test with zero network requests, and the
+   docs.
+3. The closure sequence.
 
 ## Risks
 
-None open.
+- The design reference draws no story mode and no narration card; T002
+  records its treatment in the assumption log.
+- The export bundles no font before the licensing finding is written.

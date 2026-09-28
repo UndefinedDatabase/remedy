@@ -25026,3 +25026,74 @@ amend0921-operator-feedback rule 3).
 
 HOW TO REVERSE: delete `chat_generator_line`, `chatGeneratorLine`, the printed line, the tab's
 line and their tests, and delete this paragraph.
+
+## DECISION F039 D1 — a story's chapters are the phases the phase bar reads over the whole ledger, each holding the bar's own key events in clusters of events at most two seqs apart; a phase with more than six key events splits into parts, and every title comes from one table per phase; the first round lands this as a pure TypeScript module that renders nothing yet (2026-09-28)
+
+CONTEXT: T5_F039.md was written before the phase timeline of F024 and the activity feed of F021
+were built. Measured at `4d60eb84`: `git ls-files apps packages` names no path holding chapter,
+the only paths holding narration or replay are the two Python modules named below, and the design
+reference draws no story mode and no narration card. The phase
+reading the feature file names is `readPhases` in `apps/ui/src/components/timeline/phaseMapping.ts`,
+a pure fold of the event ledger into the bar's six stops, Job, Planning, Build, Test, Review and
+Finalized, in which the phase only moves forward, a phase the ledger skipped has a zero span, and
+Finalized begins where every task has passed. The key events are that module's `extractSubGlyphs`:
+decisions, failures, heals and stops, each carrying the humanize catalog's line for its kind. Both
+are TypeScript with no Python twin. The ledger's rows are the `events-since` cursor endpoint's
+envelopes read by `feedRowOf` in `apps/ui/src/api/feedRow.ts`, and the demo recording is
+`brainDemoRows()` in `apps/ui/src/components/graph/brainDemoRecording.ts`, a two-task job of ten
+events. Two Python modules sit near the feature and do neither of its jobs:
+`packages/orchestration/teacher_narration.py`, F255's deterministic narration of a mission's
+run-log events, and `packages/orchestration/event_replay.py`, the read model a resume uses. The
+certificate the feature file cross-references is not built.
+
+CHOSEN: (1) ONE MODULE, `apps/ui/src/components/story/storyChapters.ts`, pure over the rows it is
+given: no React, no DOM and no clock. It is TypeScript because the in-app story reads the ledger the
+phase bar reads and T003's export bundles the player, so both chapter a ledger with one piece of
+code. (2) A CHAPTER is a phase with a non-zero span in `readPhases` over the WHOLE ledger: from the
+phase's start to the next reached phase's start, the last phase running to one past the ledger's
+last seq. The chapters therefore tile the ledger without a gap, a skipped phase gives no chapter,
+and an empty ledger gives none. (3) THE KEY EVENTS are `extractSubGlyphs` over the same rows, each
+in the chapter whose range holds its seq. (4) A CLUSTER is a run of a chapter's key events in seq
+order in which each comes at most `STORY_CLUSTER_SEQ_GAP`, 2, seqs after the one before; the demo
+recording's review reads two clusters, each a failed review round and its heal. (5) THE SPLIT: a
+phase holding more than `STORY_CHAPTER_KEY_EVENT_LIMIT`, 6, key events becomes parts of six key
+events in order, the last part holding the rest; part one begins at the phase's start, every later
+part at its first key event, each part ends where the next begins, and clusters are read inside a
+part. (6) THE TITLES come from one table, `STORY_CHAPTER_TITLES`: The start, The plan, The build,
+The tests, The review and The finish, and a split phase's parts read `<title>, part <n> of <parts>`.
+A title names the phase and never its outcome, and The finish exists only where every task passed,
+so a failing run is never titled as a good one. The module writes no other sentence. (7) THE
+ROUNDS. The first lands (1) to (6) with vitest goldens on the reducer's fixture ledgers and the demo
+recording, and the guard `tests/ui_contracts/test_story_chapters.py`, which pins the title table to
+the bar's phases and the module's imports and purity. Then T002: the narration card, whose line
+source, the humanize catalog or F255's narration, is settled by the round that lands it; its sync to
+the scrub position; the autoplay pacing with chapter pauses; and the in-app story mode on the demo
+recording, its visual treatment recorded in the assumption log because the reference draws none.
+Then T003: the export command, the font licensing finding before any font is bundled, the size
+budget, the clean-browser test and the docs.
+
+ALTERNATIVES: chaptering in Python and sending chapters to the browser, rejected because the phase
+reading exists only in TypeScript and a second copy would drift from the bar; splitting a dense
+phase by its count of seqs, rejected because a long quiet phase would then split with nothing new to
+tell; clustering by task, rejected because a stop belongs to no task; titles that name an outcome,
+rejected by the feature file's rule against green-washing.
+
+HOW TO REVERSE: delete `apps/ui/src/components/story/`, `tests/ui_contracts/test_story_chapters.py`
+and this paragraph.
+
+## DECISION F039 D2 — the fifth findings paydown, F286, waits behind F039 because again no finding is open when Rule A5 reaches it; F039 is claimed, and the next claim proposes F286 again (2026-09-28)
+
+CONTEXT: At `4d60eb84` the first unchecked line of `docs/roadmap/STATUS.md` is F286 — Findings
+paydown v5, moved behind F038 by DECISION F038 D2. `open_finding_ids` over `.agent/live_review.md`
+at `4d60eb84` answers `[]`.
+
+CHOSEN: F286's STATUS line and its Tier 2 heading move one feature down again, to directly after
+F039, and F039 is claimed now. F286's file gains one line recording the move. Operator question
+Q6 already carries the recommendation this executes, to keep the paydown waiting while no defect
+is open, so no new question is written. The next claim after F039's closure meets F286 first under
+Rule A5 and makes the same test.
+
+ALTERNATIVES: claiming F286 with nothing to pay down, rejected for DECISION F036 D2's reason.
+
+HOW TO REVERSE: move F286's STATUS line and its Tier 2 heading back above F039, delete the line
+this move added to `docs/roadmap/features/T2_F286.md`, and delete this paragraph.

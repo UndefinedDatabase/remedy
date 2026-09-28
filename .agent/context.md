@@ -1,26 +1,24 @@
-# Context — F038 Grounded chat & intent dispatch
+# Context — F039 Story/replay mode
 
 ## Active Branch
-feature/f038-grounded-chat, cut from `main` at `fec08a5b`
-(the merge commit of pull request 291, F036 Guided result tour).
+feature/f039-story-replay-mode, cut from `main` at `4d60eb84`
+(the merge commit of pull request 292, F038 Grounded chat & intent dispatch).
 
 ## Scope
-F038 (Tier 5): grounded chat — answers in a node scope and a project scope
-from numbered evidence items, cited or saying "not in evidence", and intent
-dispatch to the exposed command verbs through confirmable action cards,
-command line first and then the panel, as `docs/roadmap/features/T5_F038.md`,
-`docs/roadmap/design/grounded-chat-spec.md` and DECISION F038 D1 specify.
+F039 (Tier 5): story/replay mode — chapters from the phases and key events
+of a job's event ledger, narration cards with autoplay synced to the scrub
+position, and one self-contained HTML export, as
+`docs/roadmap/features/T5_F039.md` and DECISION F039 D1 specify.
 
 ## Do not touch
-The exposed-verb list (it grows per feature, never for the chat), evidence
-formats, and the spec outside its reviewed set-list update.
+The cockpit bundle (the export is a subset build), event formats, and the
+narration vocabulary sources.
 
 ## Active assumptions
-- A chat answer says only what a numbered evidence item says; a source
-  with nothing recorded is an item saying so (DECISION F038 D1).
-- `remedy chat` keeps `send` as its default subcommand (F264).
-- The findings paydown F286 waits behind F038 while no finding is open
-  (DECISION F038 D2).
+- A chapter is a phase the phase bar reads over the whole ledger, and its
+  title names the phase, never the outcome (DECISION F039 D1).
+- The findings paydown F286 waits behind F039 while no finding is open
+  (DECISION F039 D2).
 
 ## Constraints
 - Every pytest run in a round is targeted and serial; the resource and

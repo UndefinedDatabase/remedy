@@ -1,29 +1,29 @@
-# Live Review — F038 Grounded chat & intent dispatch
+# Live Review — F039 Story/replay mode
 
-> Round-by-round review record, re-headed at the F038 claim per
-> docs/agents/planner_reviewer_prompt.md §1. The heading this replaces named F036, whose STATUS
-> line went `[x]` at `e7627df8` and whose pull request 291 merged into `main` at the reviewer's
-> Open PR Gate under docs/agents/self_drive_protocol.md, as `fec08a5b`, after both hosted CI jobs
-> of run 36395044218 ended `success` on `e7627df8`. `e7627df8` is the second parent of
-> `fec08a5b`, and the two trees are identical. F036's round 9, its closing round, was reviewed
-> after its own handback, so its gate entry is appended at the end of this record by F038's
+> Round-by-round review record, re-headed at the F039 claim per
+> docs/agents/planner_reviewer_prompt.md §1. The heading this replaces named F038, whose STATUS
+> line went `[x]` at `167163a0` and whose pull request 292 merged into `main` at the reviewer's
+> Open PR Gate under docs/agents/self_drive_protocol.md, as `4d60eb84`, after both hosted CI jobs
+> of run 36462050234 ended `success` on `167163a0`. `167163a0` is the second parent of
+> `4d60eb84`, and the two trees are identical. F038's round 15, its closing round, was reviewed
+> after its own handback, so its gate entry is appended at the end of this record by F039's
 > claim. Only the heading, this paragraph and the Steps section below are rewritten; everything
-> from the Findings heading to the end of the file as it stood at `fec08a5b` is carried forward
+> from the Findings heading to the end of the file as it stood at `4d60eb84` is carried forward
 > BYTE-IDENTICAL, and finding ids continue the monotonic R-XXXX series across the re-head. The
-> open set at `fec08a5b`, computed with `open_finding_ids` from `scripts/rotate_live_review.py`,
-> is empty, which is why F038 and not the findings paydown F286 is claimed (DECISION F038 D2).
+> open set at `4d60eb84`, computed with `open_finding_ids` from `scripts/rotate_live_review.py`,
+> is empty, which is why F039 and not the findings paydown F286 is claimed (DECISION F039 D2).
 
 ## Steps
 
-THE ORDER BELOW IS T5_F038.md's Task slicing, read against what earlier features already record
-by DECISION F038 D1 at the claim. The first round claims F038, re-heads this record, books F036's
-round 9, registers and repairs R-1091, and lands the node scope of T001:
-`packages/orchestration/chat_evidence.py` with the evidence item and its anchor, the node-scope
-collector and the composer that keeps an ordered prefix under the token cap after redaction. The
-rounds after it land, in order: the project scope over the spec's evidence set with the spec's
-set-list update; the grounded answer with its citation check, the unsupported marker and the
-canary suite; T002's intent parse, action cards and confirmation; T003's panel, command line and
-end-to-end proof. Every round's handback states the open set by distinct id.
+THE ORDER BELOW IS T5_F039.md's Task slicing, read against what earlier features already record
+by DECISION F039 D1 at the claim. The first round claims F039, re-heads this record, books F038's
+round 15 and lands T001: `apps/ui/src/components/story/storyChapters.ts`, the chapters of a job's
+event ledger with their key-event clusters and title templates, its vitest goldens on fixture
+ledgers and the demo recording, and its guard, with nothing rendering it yet. The rounds after it
+land, in order: T002's narration card, its sync to the scrub position, the autoplay pacing and the
+in-app story mode on the demo recording; then T003's export build with the font licensing finding,
+the size budget, the clean-browser test and the docs. Every round's handback states the open set
+by distinct id.
 
 ## Findings
 DECISION F085 D5, applied at da47ee40, closes "The R44 block is the first measured under this
@@ -457,3 +457,5 @@ Landed: R-1097 — `tests/ui_contracts/test_chat_citations.py` gains a test that
 Gate: F038 R13 — the F038 round 13 entry: the booking of round 12, R-1096's resolution, R-1097's recurrence and repair, DECISION F038 D13, the chat guide, the Built State, the checklist consolidation and the closure suite. VERDICT PASS. Re-derived over `1bcb713a`..`185c7adc` by the planner and reviewer of F038's third session, whose own runs produced every reading below. THE RANGE IS 9 COMMITS, at `d2da5bc4` 308, `60c7d72f` 195, `ad43264b` 47, `4b5d4532` 51, `2dde3d61` 93, `57f66e2d` 299, `97f5334e` 162, `20782f1a` 14 and `185c7adc` 227 insertions by `git show --numstat`, each under the 500-line cap and each single-parent; the tracked path set is exactly the block's constraint 3. The worker declared two deviations, each accepted: C1 was split in two under constraint 2, and `20782f1a`, landing after C5, re-pinned the round's own vitest checks of the generator line to literal sentences once its mutation m3 stayed green against a self-referential expectation; the suite ran after it, on the tree that ships. THE TRANSPORT PROOF: the block copy and the four payload copies, read from the commits that added them, equal the reviewer's originals byte for byte. THE RECORDS AND THE DOCUMENTS: at `ad43264b` the ledger, the decisions and the plan, at `2dde3d61` the ledger with its second `Landed: R-1097 — ` line, and at `97f5334e` the feature file, the planner prompt and the steering guide, equal the reviewer's simulation byte for byte; the open set reads `['R-1097']` and the latest verdict PASS at both ledger commits and at `185c7adc`, and the checklist still counts 34 items. THE CODE: ruff reads clean over the five touched Python files and the mutation tool; `chat_generator_line` in `packages/orchestration/chat_answer.py` and `chatGeneratorLine` in `apps/ui/src/api/chatTurn.ts` turn the answer's label into the same four sentences, `remedy chat ask` prints it after its `Scope:` line and the tab shows it under the scope chip. THE TESTS: the block's selection, run by the reviewer serially in the primary checkout at `185c7adc`, read 1668 passed and 5 skipped at exit 0, the base reading of 1664 at `1bcb713a` plus one node each in `tests/orchestration/test_chat_answer.py` and `tests/cli/test_chat_ask.py` and two in `tests/ui_contracts/test_chat_citations.py`; all six `integrity check` checks read pass and the tree held no untracked file. THE CLOSURE SUITE: `.agent/authored/f038-closure-suite.txt` records `python3 -m pytest -n auto -q` at exit 0 with 20542 passed and 20 skipped in 191.59 seconds on `20782f1a`, no bad node, the two reachability guards among the passing, after the UI build; the reviewer read it and, by rule, did not run it again. THE RED PROOFS: the reviewer's own mutations, written against the worker's lines and run in a disposable worktree at `185c7adc`, went red one by one for the six ordered — a `mechanical:` label answered the unknown sentence, the command line's line not printed, the summary sentence changed in TypeScript, the tab's line not rendered, the tab's `sending: true` update deleted, and the Python mechanical sentence changed — and further for the TypeScript fallback and unknown sentences changed, the TypeScript fallback rule dropped and the Python unknown sentence changed. Both controls of both runners read exit 0, the bytes were restored, and the worktree was removed.
 
 Gate: F038 R14 — the F038 round 14 entry: the booking of round 13 and R-1097's resolution, the self-use reading, the evidence bundle and the review package. VERDICT PASS. Re-derived over `185c7adc`..`00102b5c` by the planner and reviewer of F038's third session, whose own runs produced every reading below. THE RANGE IS 3 COMMITS, at `2e7b4cdd` 375, `2fe5345e` 10 and `00102b5c` 156 insertions by `git show --numstat`, each under the 500-line cap and each single-parent; the tracked path set is exactly the block's constraint 3, and the worker declared no deviation. THE TRANSPORT PROOF: the block copy and the three payload copies, read from `2e7b4cdd`, equal the reviewer's originals byte for byte. THE BOOKING: at `2fe5345e`, the accepted head, the ledger and the plan equal the reviewer's simulation byte for byte, and the open set reads `[]` with the latest verdict PASS. THE SELF-USE READING: the generator and the queue both answered `None` and wrote nothing, as the reviewer's own run of the same two calls over the same booking did, so closure precondition 6 reads self-use NONE (queue exhausted). THE BUNDLE: the evidence tool, job `f038r14e1001` at base `fec08a5b`, the fork point, read equal ancestry and plain counts at 92, 1751 node ids collected with 2 deselected, none unsafe, pytest exit 0 with 1748 passed and 3 skipped, an empty `validate_verification_tests` problem list and `is_valid_current_run` True. THE PACKAGE: `remedy-review-20260928-194656-READY_FOR_REVIEW.zip`, read by the reviewer in `/home/decodeux/Repos/remedy-history/zips`, hashes to SHA-256 `98bc29b2c6aa67360bf61f1a85fb4f5583f6552100c2615c918a5b54b426bab4`, passes `testzip`, and its `.review_zip_manifest.json` names base `fec08a5b9a9742eb070cd97d0d96ddc272e3a33f` and head `2fe5345e08ad4b013b8d5a9395e5b1a83b7415f5` with the status READY_FOR_REVIEW. All six `integrity check` checks read pass at `00102b5c`.
+
+Gate: F038 R15 — the F038 round 15 entry, the closing round: the booking of round 14, the ledger rotation, F038's acceptance in STATUS with its README pins, and pull request 292. VERDICT PASS. Reviewed over `00102b5c`..`167163a0` by the planner and reviewer of F038's third session, and every reading below re-taken at F039's claim by the planner and reviewer of F039's first session, whose own runs produced them. THE RANGE IS 4 COMMITS, at `9b209b73` 433, `a049fcb5` 6, `3ae1d873` 46 and `167163a0` 169 insertions by `git show --numstat`, each under the 500-line cap and each single-parent; the tracked path set is exactly the block's constraint 3, the closure commit touches exactly `docs/roadmap/STATUS.md`, `README.md` and `.agent/handoff.md`, and the worker declared no deviation. THE RECORDS at `167163a0`: the ledger, 324035 bytes, SHA-256 `c5087b47aca9fda9700ed8cef540a96246d1d6a82732cd147ad8b52a18475d89`; the archive, 5419927 bytes, `a357195bb7858b96167692f713f194000459f6ef7b5be49ae676e244fb44c379`; `docs/roadmap/STATUS.md`, 56978 bytes, `56c05de0ae64fc7b1053a35ed2615d8993b6a73356424d0e12495208dfdb50ee`; and `README.md`, 43580 bytes, `c72eb620191e93788ca6538e13b4acde7ca5854d1492eacef9d4d4ee3578d963` — each the reading the round's block gave from the third session's simulation. The rotation moved nine gate records and seven finding pairs, and the open set reads `[]`. THE TESTS: the block's selection, run by F039's reviewer at `4d60eb84`, read 512 passed at exit 0, and all six `integrity check` checks read pass there. THE PULL REQUEST: number 292, its body equal to the round's `pr_body.md`, merged at F039's Open PR Gate as `4d60eb84`, after both hosted CI jobs of run 36462050234 ended `success` on `167163a0`; `167163a0` is the second parent of `4d60eb84`, and the two trees are identical.
