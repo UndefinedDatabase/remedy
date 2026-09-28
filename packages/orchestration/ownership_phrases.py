@@ -140,31 +140,31 @@ def ownership_sentence(entry: dict[str, Any], titles: dict[str, str] | None = No
         version_phrase = _version_phrase(ref)
         t_display = task_phrase if task_id != "" else "a task"
         if command == "plan_edit_task":
-            return f"{actor_phrase} changed {t_display} in the plan; the plan is now {version_phrase}."
+            return f"{actor_phrase} changed {t_display} in the plan; the plan is now at {version_phrase}."
         if command == "plan_edit_acceptance":
             return (
-                f"{actor_phrase} changed the acceptance checks of {t_display} in the plan; "
-                f"the plan is now {version_phrase}."
+                f"{actor_phrase} changed the acceptance checks of {t_display}; "
+                f"the plan is now at {version_phrase}."
             )
         if command == "plan_delete_task":
-            return f"{actor_phrase} deleted {t_display} from the plan; the plan is now {version_phrase}."
+            return f"{actor_phrase} deleted {t_display} from the plan; the plan is now at {version_phrase}."
         if command == "plan_split_task":
-            return f"{actor_phrase} split {t_display} in the plan; the plan is now {version_phrase}."
+            return f"{actor_phrase} split {t_display} in the plan; the plan is now at {version_phrase}."
         if command == "plan_merge_tasks":
-            return f"{actor_phrase} merged tasks in the plan; the plan is now {version_phrase}."
+            return f"{actor_phrase} merged tasks in the plan; the plan is now at {version_phrase}."
         if command == "plan_reorder":
-            return f"{actor_phrase} reordered the plan's tasks; the plan is now {version_phrase}."
+            return f"{actor_phrase} reordered the plan's tasks; the plan is now at {version_phrase}."
         sentence = f"{actor_phrase} edited the plan ({command})"
         if task_id != "":
             sentence += f" for {task_phrase}"
-        sentence += f"; the plan is now {version_phrase}."
+        sentence += f"; the plan is now at {version_phrase}."
         return sentence
 
     if action == "task_edited":
         t_display = task_phrase if task_id != "" else "a task"
         return (
             f"{actor_phrase} edited {t_display} while the job ran; "
-            f"the plan is now {_version_phrase(ref)}."
+            f"the plan is now at {_version_phrase(ref)}."
         )
 
     if action == "steering_sent":

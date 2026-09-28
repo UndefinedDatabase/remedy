@@ -313,7 +313,7 @@ def test_plan_edit_task_reads_changed_t_in_the_plan():
                    consequence={"kind": "plan_version", "task_ids": ["T1"], "ref": "v9"},
                    detail={"command": "plan_edit_task"})
     assert (ownership_sentence(entry, titles=TITLES)
-            == "You changed task T1 (Task One) in the plan; the plan is now version 9.")
+            == "You changed task T1 (Task One) in the plan; the plan is now at version 9.")
 
 
 def test_plan_edit_acceptance_reads_changed_the_acceptance_checks_of_t():
@@ -321,8 +321,8 @@ def test_plan_edit_acceptance_reads_changed_the_acceptance_checks_of_t():
                    consequence={"kind": "plan_version", "task_ids": ["T2"], "ref": "v10"},
                    detail={"command": "plan_edit_acceptance"})
     assert (ownership_sentence(entry, titles=TITLES)
-            == "You changed the acceptance checks of task T2 (Task Two) in the plan; "
-               "the plan is now version 10.")
+            == "You changed the acceptance checks of task T2 (Task Two); "
+               "the plan is now at version 10.")
 
 
 def test_plan_delete_task_reads_deleted_t_from_the_plan():
@@ -330,7 +330,7 @@ def test_plan_delete_task_reads_deleted_t_from_the_plan():
                    consequence={"kind": "plan_version", "task_ids": ["T3"], "ref": "v11"},
                    detail={"command": "plan_delete_task"})
     assert (ownership_sentence(entry, titles=TITLES)
-            == "You deleted task T3 (Task Three) from the plan; the plan is now version 11.")
+            == "You deleted task T3 (Task Three) from the plan; the plan is now at version 11.")
 
 
 def test_plan_split_task_reads_split_t_in_the_plan():
@@ -338,7 +338,7 @@ def test_plan_split_task_reads_split_t_in_the_plan():
                    consequence={"kind": "plan_version", "task_ids": ["T4"], "ref": "v12"},
                    detail={"command": "plan_split_task"})
     assert (ownership_sentence(entry, titles=TITLES)
-            == "You split task T4 (Task Four) in the plan; the plan is now version 12.")
+            == "You split task T4 (Task Four) in the plan; the plan is now at version 12.")
 
 
 def test_plan_merge_tasks_reads_merged_tasks_in_the_plan():
@@ -346,7 +346,7 @@ def test_plan_merge_tasks_reads_merged_tasks_in_the_plan():
                    consequence={"kind": "plan_version", "task_ids": [], "ref": "v13"},
                    detail={"command": "plan_merge_tasks"})
     assert (ownership_sentence(entry, titles=TITLES)
-            == "You merged tasks in the plan; the plan is now version 13.")
+            == "You merged tasks in the plan; the plan is now at version 13.")
 
 
 def test_plan_reorder_reads_reordered_the_plans_tasks():
@@ -354,7 +354,7 @@ def test_plan_reorder_reads_reordered_the_plans_tasks():
                    consequence={"kind": "plan_version", "task_ids": [], "ref": "v14"},
                    detail={"command": "plan_reorder"})
     assert (ownership_sentence(entry, titles=TITLES)
-            == "You reordered the plan's tasks; the plan is now version 14.")
+            == "You reordered the plan's tasks; the plan is now at version 14.")
 
 
 def test_an_unknown_plan_edit_command_falls_back_and_names_itself():
@@ -366,7 +366,7 @@ def test_an_unknown_plan_edit_command_falls_back_and_names_itself():
                    detail={"command": "task edit T2 --acceptance add"})
     assert (ownership_sentence(entry, titles=TITLES)
             == "You edited the plan (task edit T2 --acceptance add) for task T2 (Task Two); "
-               "the plan is now version 7.")
+               "the plan is now at version 7.")
 
 
 def test_an_unknown_plan_edit_command_with_no_task_id_omits_the_for_clause():
@@ -374,7 +374,7 @@ def test_an_unknown_plan_edit_command_with_no_task_id_omits_the_for_clause():
                    consequence={"kind": "plan_version", "task_ids": [], "ref": "v15"},
                    detail={"command": "plan_rename"})
     assert (ownership_sentence(entry, titles=TITLES)
-            == "You edited the plan (plan_rename); the plan is now version 15.")
+            == "You edited the plan (plan_rename); the plan is now at version 15.")
 
 
 def test_a_task_edited_entry_drops_the_command_from_the_sentence():
@@ -382,7 +382,7 @@ def test_a_task_edited_entry_drops_the_command_from_the_sentence():
                    consequence={"kind": "plan_version", "task_ids": ["T3"], "ref": "v8"},
                    detail={"command": "task edit T3 --files add src/x.py"})
     assert (ownership_sentence(entry, titles=TITLES)
-            == "You edited task T3 (Task Three) while the job ran; the plan is now version 8.")
+            == "You edited task T3 (Task Three) while the job ran; the plan is now at version 8.")
 
 
 # ---------------------------------------------------------------------------
