@@ -13,17 +13,16 @@ to D8).
 
 ## Current Step
 
-ROUND 8, the closure sequence's first round: book round 7, register and
-repair R-1085 and R-1086, write the Built State, consolidate the checklist,
-and take the feature's one full suite.
+ROUND 9, the closure sequence's evidence round: book round 8 with the
+resolutions of R-1085 and R-1086, name the reachability allowlist's three
+new lines in the Built State, read the self-use generator, and build the
+evidence bundle and the review package at the accepted head.
 
 ## Next Steps
 
-1. The evidence round: the self-use generator's reading once R-1085 and
-   R-1086 are resolved, the evidence bundle and the review package.
-2. The closing round: the booking, the ledger rotation, the STATUS line,
-   the README pins and the pull request.
+1. The closing round: the booking of round 9, the ledger rotation, the
+   STATUS line with the README counters, and the pull request.
 
 ## Risks
 
-Open findings: R-1085 and R-1086 until their repairs are reviewed.
+Open findings: none once round 8 is booked.
