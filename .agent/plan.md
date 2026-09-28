@@ -9,18 +9,18 @@ Who decided what stays answerable: one ledger per job names, for every
 human-attributable action, who acted through which door, when, in their own
 words, and what it caused, with machine choices attributed to Remedy under
 its configuration (`docs/roadmap/features/T5_F035.md`, DECISIONS F035 D1
-to D3).
+to D4).
 
 ## Current Step
 
-ROUND 3: book round 2, record DECISION F035 D3, and land T002 — the phrase
-catalog, the report's Ownership section with its goldens, and the digest's
-`ownership` sentences.
+ROUND 4: book round 3, record DECISION F035 D4, and land T003's first half —
+`remedy job ownership`, the browser's `ownership` read route over one shared
+view, and plain verbs for plan edits.
 
 ## Next Steps
 
-1. T003: `remedy job ownership`, the chips at the nodes and the evidence
-   tab, and the end-to-end proof.
+1. T003's second half: the chips at a task's detail, the evidence panel's
+   ownership tab, and the end-to-end proof.
 2. The closure sequence.
 
 ## Risks

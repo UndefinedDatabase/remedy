@@ -24044,3 +24044,40 @@ one fact twice in two wordings is the drift the catalog exists to end.
 
 HOW TO REVERSE: delete `ownership_phrases.py`, the report section and the digest's reading,
 restore the `Vetoed by` line and its three test assertions, and delete this paragraph.
+
+## DECISION F035 D4 — T003 lands in two rounds: `remedy job ownership` and the browser's read route `/api/jobs/<id>/ownership` share one view built from the ledger and the catalog, and plan edits are worded in plain verbs; the chips at the nodes, the evidence tab and the end-to-end proof follow in the next round (2026-09-28)
+
+CONTEXT: Measured at `490a81f4`: the ledger and its sentences reach the job report and the
+digest, and nothing else. `apps/cli/command_catalog.py` has no `job.ownership` entry; the
+browser's read routes are the string keys of the `handlers` table inside `do_GET` in
+`packages/orchestration/ui_server.py`, which `tests/ui_server/test_handler_table_walk.py`
+reads from the source and walks against a real job; and the evidence panel of the browser has
+the tabs diff, prompt and chat. The catalog's plan-edit sentence prints the edit's command id,
+such as `plan_edit_task`, which an operator was never shown and should not have to decode. A
+reviewer's dry run at `490a81f4` of a `job.ownership` entry with the description this block
+orders, a handler, its exit-code row and its reachability line read 2600 passed across
+`tests/cli`, `tests/docs` and the catalog and import guards.
+
+CHOSEN: (1) ONE VIEW. `ownership_view(job)` in `ownership_phrases.py` answers `{"schema",
+"job_id", "entries", "error"}`: each entry of the ledger with its `sentence` added, titled from
+the job's tasks, and `error` ""; or no entry and `error` one sentence naming why the ledger could
+not be read. The command and the route both answer from it, so they cannot disagree. (2) THE
+COMMAND. `remedy job ownership <job_id> [--json]` is read-only; it prints `Who did what in job
+<id>:` and one sentence per line, or `No action is recorded for job <id> yet.`; `--json`
+carries the view's schema, job id and entries; exit 2 for a malformed job id, 3 for a job whose
+record cannot be read, 1 for a ledger that cannot be read. (3) THE ROUTE. `ownership` joins the
+read routes and answers the view as it is, error included, with status 200, as every read route
+of that table does. (4) PLAIN VERBS. A plan edit reads by its command: a changed task, changed
+acceptance checks, a deleted task, a split task, merged tasks or reordered tasks, each ending
+`the plan is now at version <n>`; an edit command the catalog does not know keeps its id in
+brackets; a runtime task edit reads `edited <task> while the job ran`. (5) THE NEXT ROUND. The
+browser's chips at a task's detail and the evidence panel's ownership tab read the route, and
+the end-to-end proof runs one job with one action of each class.
+
+ALTERNATIVES: the command reading the ledger and wording it itself, rejected for (1)'s reason;
+raw command ids kept in the sentences, rejected because the operator must be able to read every
+sentence without the code.
+
+HOW TO REVERSE: remove the catalog entry, `apps/cli/commands/job_ownership_cmd.py`, its
+exit-code row and reachability line, the `ownership` route and `ownership_view`, restore the
+plan-edit templates, and delete this paragraph.
