@@ -2,10 +2,15 @@ import { describe, expect, it } from "vitest";
 import type { DecisionSendRequest } from "./decisionSend";
 import type { DecisionSubmitResult } from "./decisionSubmit";
 import {
+  CHAT_GENERATOR_LINE_MECHANICAL,
+  CHAT_GENERATOR_LINE_MECHANICAL_FALLBACK,
+  CHAT_GENERATOR_LINE_SUMMARY_ROLE,
+  CHAT_GENERATOR_LINE_UNKNOWN,
   CHAT_NOT_IN_EVIDENCE,
   buildChatCardSendRequest,
   chatEvidenceTab,
   chatEvidenceTabLabel,
+  chatGeneratorLine,
   chatScopeLabel,
   chatSentenceMark,
   chatSentenceText,
@@ -177,6 +182,15 @@ describe("chatScopeLabel", () => {
       .toBe("About project proj-1");
     expect(chatScopeLabel(answerView({ scope: "project", subject: "" })))
       .toBe("No project is registered for this job.");
+  });
+});
+
+describe("chatGeneratorLine", () => {
+  it("answers each of the four labels exactly (DECISION F038 D13)", () => {
+    expect(chatGeneratorLine("mechanical")).toBe(CHAT_GENERATOR_LINE_MECHANICAL);
+    expect(chatGeneratorLine("mechanical:timeout")).toBe(CHAT_GENERATOR_LINE_MECHANICAL_FALLBACK);
+    expect(chatGeneratorLine("summary-role")).toBe(CHAT_GENERATOR_LINE_SUMMARY_ROLE);
+    expect(chatGeneratorLine("something-else")).toBe(CHAT_GENERATOR_LINE_UNKNOWN);
   });
 });
 

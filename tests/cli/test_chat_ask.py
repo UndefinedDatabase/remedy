@@ -138,6 +138,18 @@ class TestChatAskAnswer:
         assert out["scope"] == "node"
         assert out["subject"] == task_id
 
+    def test_a_focused_questions_text_form_names_how_the_answer_was_written(self, capsys):
+        # DECISION F038 D13: the text form's line right after `Scope:` says how the
+        # answer was written; no model call is ever made here, so it is the mechanical
+        # sentence exactly.
+        from packages.orchestration.chat_answer import CHAT_GENERATOR_LINE_MECHANICAL
+
+        job, task_id = _job()
+        assert _run(["chat", "ask", job.job_id, "Did the tests pass?", "--task", task_id]) == 0
+        lines = capsys.readouterr().out.splitlines()
+        scope_index = next(i for i, line in enumerate(lines) if line.startswith("Scope:"))
+        assert lines[scope_index + 1] == CHAT_GENERATOR_LINE_MECHANICAL
+
     def test_the_text_forms_evidence_lines_match_the_json_forms_evidence(self, capsys):
         # R-1094: the text form's `[n] kind ref` lines, one per evidence item, must be
         # exactly what the `--json` form's `evidence` list holds — never more, never fewer.

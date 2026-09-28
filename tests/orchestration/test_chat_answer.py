@@ -11,6 +11,10 @@ import json
 import pytest
 
 from packages.orchestration.chat_answer import (
+    CHAT_GENERATOR_LINE_MECHANICAL,
+    CHAT_GENERATOR_LINE_MECHANICAL_FALLBACK,
+    CHAT_GENERATOR_LINE_SUMMARY_ROLE,
+    CHAT_GENERATOR_LINE_UNKNOWN,
     CHAT_GENERATOR_MECHANICAL,
     CHAT_GENERATOR_SUMMARY_ROLE,
     CHAT_NO_SUPPORTED_SENTENCE,
@@ -20,6 +24,7 @@ from packages.orchestration.chat_answer import (
     GeneratedChatAnswer,
     answer_chat_question,
     build_chat_prompt,
+    chat_generator_line,
     chat_model_written,
     check_answer,
     check_answer_sentence,
@@ -253,6 +258,22 @@ def test_canary_suite_over_a_real_project_scope_reads_not_in_evidence() -> None:
         assert len(answer.sentences) == 1, question
         assert answer.sentences[0].text == CHAT_NOT_IN_EVIDENCE, question
         assert answer.sentences[0].supported is True, question
+
+
+# ---------------------------------------------------------------------------
+# DECISION F038 D13 — THE GENERATOR LINE
+# ---------------------------------------------------------------------------
+
+
+def test_chat_generator_line_answers_each_of_the_four_labels_exactly() -> None:
+    assert chat_generator_line(CHAT_GENERATOR_MECHANICAL) == CHAT_GENERATOR_LINE_MECHANICAL
+    assert chat_generator_line("mechanical:timeout") == CHAT_GENERATOR_LINE_MECHANICAL_FALLBACK
+    assert chat_generator_line(f"{CHAT_GENERATOR_MECHANICAL}:no_supported_sentence") == (
+        CHAT_GENERATOR_LINE_MECHANICAL_FALLBACK
+    )
+    assert chat_generator_line(CHAT_GENERATOR_SUMMARY_ROLE) == CHAT_GENERATOR_LINE_SUMMARY_ROLE
+    assert chat_generator_line("something-else") == CHAT_GENERATOR_LINE_UNKNOWN
+    assert chat_generator_line("") == CHAT_GENERATOR_LINE_UNKNOWN
 
 
 # ---------------------------------------------------------------------------

@@ -9,7 +9,13 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from packages.orchestration.chat_answer import CHAT_NOT_IN_EVIDENCE
+from packages.orchestration.chat_answer import (
+    CHAT_GENERATOR_LINE_MECHANICAL,
+    CHAT_GENERATOR_LINE_MECHANICAL_FALLBACK,
+    CHAT_GENERATOR_LINE_SUMMARY_ROLE,
+    CHAT_GENERATOR_LINE_UNKNOWN,
+    CHAT_NOT_IN_EVIDENCE,
+)
 from tests.ui_contracts.test_brain_stream_ring import strip_ts_comments
 
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
@@ -59,3 +65,27 @@ def test_the_input_is_named_for_a_screen_reader():
     """R-1097: the text input carries a name, so a screen reader announces it."""
     source = _source(TAB)
     assert 'aria-label="Ask the chat"' in source
+
+
+def test_the_four_generator_line_sentences_are_quoted_in_chatturn_ts():
+    """DECISION F038 D13: each of the four Python constants occurs quoted in `chatTurn.ts`."""
+    source = _source(CHAT_TURN)
+    for sentence in (
+        CHAT_GENERATOR_LINE_MECHANICAL,
+        CHAT_GENERATOR_LINE_MECHANICAL_FALLBACK,
+        CHAT_GENERATOR_LINE_SUMMARY_ROLE,
+        CHAT_GENERATOR_LINE_UNKNOWN,
+    ):
+        assert f'"{sentence}"' in source, f"{sentence!r} is not quoted in chatTurn.ts"
+
+
+def test_the_tabs_sending_flag_is_set_awaited_and_cleared_in_order_and_wired_to_the_block():
+    """R-1097, THE REST: the tab's source, in order — `sending: true` set, `sendChatCard(`
+    awaited, `sending` cleared with the outcome, and `sending={turn.sending}` handed down."""
+    source = _source(TAB)
+    sending_true_index = source.index("sending: true")
+    await_send_index = source.index("await sendChatCard(")
+    sending_cleared_index = source.index("outcome, sending: false")
+    wired_index = source.index("sending={turn.sending}")
+    assert sending_true_index < await_send_index < sending_cleared_index
+    assert wired_index >= 0
