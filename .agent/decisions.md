@@ -24471,3 +24471,40 @@ to the task, rejected for the same reason; a tour button in the command bar, rej
 
 HOW TO REVERSE: remove `TourOverlay.tsx` and its CSS, the shell's tour state and mount, the
 `onOpenTour` button, the assumption log's line and the tests, and delete this paragraph.
+
+## DECISION F036 D7 — the model-written tour is switched on by the operator, the card docks over the left rail while a stop is shown, and one real job run to its end proves its tour through the file, the browser's route and the command line; the demo recording, which carries no report and no diff, gets its tour through the render harness only (2026-09-28)
+
+CONTEXT: Findings R-1088 and R-1089, registered at round 5's gate, name the card that covers what
+"Show me" opens and the model call every reported terminal makes unasked. Measured at `8c98cadf`:
+`teacher.lessons` is the precedent for a model call after work finishes, a registered yes-or-no
+key that is off by default, and `docs/guides/environment.md` is generated from the key registry
+by `render_environment_guide`. `remedy job run` reaches `long_run_executor.run_cycles`, whose
+terminals pass through `_apply_terminal`; the live end-to-end tests under `tests/ui_server/` run a
+real job with a fake provider in a subprocess and read its records, its routes and its command
+line. The demo recording `apps/ui/src/components/graph/brainDemoRecording.ts` holds a job's events
+and tasks only, with no report, diff or Definition of Done, and nothing outside tests imports it;
+the round 5 render already mounts the tour on its first task. The left rail is
+`var(--remedy-left-width)` wide, and nothing a stop can open sits over it.
+
+CHOSEN: (1) THE SWITCH. `tour.model_written`, environment variable `REMEDY_TOUR_MODEL_WRITTEN`,
+off by default; with it off every reported terminal still writes the tour built from the job's
+records, labelled `fallback`, and with it on the summary role writes it as DECISION F036 D3 says.
+This repairs R-1089 and amends D4 (2), which asked `tour_call_fn()` unconditionally. (2) THE DOCK.
+While a stop is shown the card leaves the centre for the lower left of the viewport, within the
+left rail's width, and returns when stepping dims again; this repairs R-1088 and amends D6 (3).
+The render harness imports the app's global sheet so its screenshots show the app's own type and
+buttons. (3) THE PROOF. One three-file job with a fake provider runs to `all_green` through
+`run_cycles` in a subprocess with the key off; its `tour.json` is version 1, labelled `fallback`,
+its first stop anchored to `report.md` and its diff stops to paths of its own diff; the `tour`
+route serves exactly `tour_view` of it; and `remedy job show --tour` shows the same stops in the
+same order. (4) THE DEMO. The feature file's "end-to-end on the demo recording" is met by the
+render harness's tour on the demo's own task and by (3)'s real job; a golden of the demo itself
+would have to invent a report and a diff the recording does not hold.
+
+ALTERNATIVES: leaving the model call on and isolating only the tests, rejected because the rule
+the lessons key states binds the product, not the suite; a cut-out spotlight, rejected in D6;
+fabricating a report and a diff for the demo recording, rejected because a tour of invented
+records would prove nothing about the tour of real ones.
+
+HOW TO REVERSE: delete the key and its read, the dock rule and the end-to-end test, regenerate the
+environment guide, and delete this paragraph; D4 (2) and D6 (3) then read as they were written.
