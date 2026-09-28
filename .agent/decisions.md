@@ -24880,3 +24880,41 @@ job is not a project.
 
 HOW TO REVERSE: delete `chat_turn.py` and its tests, restore the `chat_intent_model.py` line in
 `ALLOWED_UNWIRED`, and delete this paragraph.
+
+## DECISION F038 D10 — `remedy chat ask` is the chat's command line: one line per invocation, a question answered with its scope and numbered evidence, a card sent through the job's running cockpit only after `--yes` or a `y` typed on a terminal; with neither, nothing is sent and the output says why (2026-09-28)
+
+CONTEXT: Measured at `72ba3b2e`. `remedy chat` is F264's steering group: `chat send`, its bare
+default, records a steering message, and `chat show` lists them. `chat_turn.run_chat_turn` reads a
+line into a grounded answer or a card and sends nothing (DECISION F038 D9); `chat_door` sends a
+confirmed card to a running cockpit's write door, given its port and token (DECISION F038 D7).
+`remedy ui start`, and the cockpit `remedy do` launches, each write an info file with the port,
+the token, the job and the process id into the UI session registry under the data root.
+`apps/cli/cost_preview_confirm.py` is the command line's one confirm idiom: `--yes` proceeds, a
+terminal gets a `[y/N]` line, and a non-terminal is never left waiting. The feature file asks
+for a `remedy chat` REPL with confirm prompts as y/N lines, honest about the terminal.
+
+CHOSEN: (1) A NEW SUBCOMMAND `chat ask <job_id> "<text>" [--task <task id>] [--yes] [--json]`;
+the bare `remedy chat` still means `chat send`. Each invocation is one line of the chat, so the
+shell's own history is the REPL, and no loop reads standard input. (2) A QUESTION prints its
+scope and subject, the checked answer with its unsupported sentences marked, and one line per
+numbered evidence item. (3) A CARD prints its title and lines. It is sent only when it is
+confirmable and either `--yes` was given or standard input is a terminal and the person types
+`y` at `Send it? [y/N]`. Otherwise nothing is sent, the exit code is 0, and the output says why:
+the card is incomplete, it was not confirmed, or standard input is not a terminal, with the
+`--yes` hint. (4) SENDING finds the newest live session for the job in the UI session registry,
+through a new read-only lookup in `apps/cli/commands/ui.py`, and posts through `chat_door` with a
+fresh `chat-` nonce. No live cockpit, or one that does not answer, exits 3 with a sentence naming
+`remedy ui start`; a cockpit that refuses the card exits 1 with its reason. The cockpit's audit
+line is the record of the send. (5) The exit codes are 0, 1, 2 for a task id that names no task,
+and 3; the exit-codes guide gains the row. (6) The six chat modules become reachable from the
+command line, so their `ALLOWED_UNWIRED` lines go and the reachability allowlist gains them.
+(7) R-1093's missing test lands here.
+
+ALTERNATIVES: a loop reading standard input, rejected because a non-terminal caller would hang
+and one line per invocation already has history; running the card's effect directly when no
+cockpit runs, rejected by DECISION F038 D7, since the chat would act with no audit line; exiting
+non-zero for a card left unsent, rejected because nothing failed: the card is the answer.
+
+HOW TO REVERSE: delete the `chat.ask` entry, its handler and its tests, the registry lookup in
+`ui.py`, the guide row and the six allowlist lines; restore the two `ALLOWED_UNWIRED` lines; and
+delete this paragraph.
