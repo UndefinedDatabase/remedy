@@ -30,6 +30,7 @@ from packages.orchestration.result_tour import (
     TOUR_GENERATOR_SUMMARY_ROLE,
     TOUR_NO_SOUND_STOPS,
     TOUR_SCHEMA,
+    TOUR_VIEW_KEYS,
     ResultTourError,
     TourAnchorContext,
     build_fallback_tour,
@@ -44,6 +45,7 @@ from packages.orchestration.result_tour import (
     tour_path,
     tour_problems,
     tour_source_text,
+    tour_view,
     write_result_tour,
 )
 from packages.orchestration.run_report import build_report_sources, write_final_report
@@ -1000,3 +1002,86 @@ def test_golden_generated_tour_equals_its_fixture():
     assert tour == _load_golden("golden_generated.json", job.job_id)
     assert tour["generator"] == TOUR_GENERATOR_SUMMARY_ROLE
     assert len(tour["dropped"]) == 3
+
+
+# ---------------------------------------------------------------------------
+# F036 T003 (first half) — tour_view, the one view the browser and the
+# command line both build from (DECISION F036 D5)
+# ---------------------------------------------------------------------------
+
+
+def test_tour_view_for_a_stored_tour():
+    job = _make_job(tasks=[TaskEntry(title="t")])
+    write_result_tour(job, call_fn=None)
+
+    view = tour_view(job)
+
+    assert set(view) == set(TOUR_VIEW_KEYS)
+    assert view["stored"] is True
+    assert view["version"] == 1
+    assert view["error"] == ""
+    assert view["tour"] == build_fallback_tour(job)
+
+
+def test_tour_view_for_none_stored():
+    job = _make_job(tasks=[TaskEntry(title="t")])
+
+    view = tour_view(job)
+
+    assert set(view) == set(TOUR_VIEW_KEYS)
+    assert view["stored"] is False
+    assert view["version"] == 0
+    assert view["error"] == ""
+    assert view["tour"] == build_fallback_tour(job)
+
+
+def test_tour_view_for_an_unreadable_stored_tour():
+    job = _make_job(tasks=[TaskEntry(title="t")])
+    path = tour_path(str(job.job_id), 1)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text("not json", encoding="utf-8")
+
+    view = tour_view(job)
+
+    assert set(view) == set(TOUR_VIEW_KEYS)
+    assert view["stored"] is False
+    assert view["version"] == 0
+    assert "does not read" in view["error"]
+    assert view["tour"] == build_fallback_tour(job)
+
+
+# ---------------------------------------------------------------------------
+# R-1087 — a slashed path's segments may hold dots and hyphens, and the path
+# ends at a word character so a sentence's closing full stop is never read
+# as part of it.
+# ---------------------------------------------------------------------------
+
+
+def test_a_model_stop_naming_an_invented_dotted_hyphenated_path_is_dropped_with_the_whole_path():
+    job = _generation_job()
+    task_id = str(job.tasks[0].task_id)
+    good = _clean_stop("Good stop", "The task write the module is complete.", task_id)
+    invented_path_stop = _clean_stop(
+        "Invented docs", "See docs/my-guide/intro.v2.md for the design.", task_id)
+    fake = _fake_call_fn(json.dumps({"stops": [good, invented_path_stop]}))
+
+    tour = generate_result_tour(job, call_fn=fake)
+
+    reason = next(d["reason"] for d in tour["dropped"] if d["title"] == "Invented docs")
+    assert "docs/my-guide/intro.v2.md" in reason
+    assert reason.count("docs/my-guide/intro.v2.md") == 1
+
+
+def test_a_model_stop_whose_body_ends_with_a_recorded_path_and_a_full_stop_is_kept():
+    job = _generation_job()
+    diff_stop = {
+        "title": "What changed",
+        "body": "This run changed packages/orchestration/foo.py.",
+        "anchor": {"kind": "diff", "ref": "packages/orchestration/foo.py"},
+    }
+    fake = _fake_call_fn(json.dumps({"stops": [diff_stop]}))
+
+    tour = generate_result_tour(job, call_fn=fake)
+
+    assert tour["dropped"] == []
+    assert [s["title"] for s in tour["stops"]] == ["How the run ended", "What changed"]
