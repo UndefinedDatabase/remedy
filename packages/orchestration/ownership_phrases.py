@@ -100,7 +100,7 @@ def ownership_sentence(entry: dict[str, Any], titles: dict[str, str] | None = No
 
     if action == "task_vetoed":
         sentence = f"{actor_phrase} vetoed {task_phrase}{reason}."
-        if kind == "unreachable":
+        if kind == "unreachable" and ids:
             n = len(ids)
             word = "task" if n == 1 else "tasks"
             sentence += f" {n} downstream {word} could not run: {', '.join(ids)}."

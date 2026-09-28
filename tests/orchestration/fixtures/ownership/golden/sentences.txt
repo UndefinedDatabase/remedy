@@ -1,5 +1,6 @@
 You (recorded as alice) vetoed task T1 (Task One) — reason: “known-bad approach”. 2 downstream tasks could not run: T2, T3.
 You (command line) vetoed task T4 (Task Four). The veto took no effect: already applied.
+You (recorded as carol) vetoed task T5 (Task Five) — reason: “not needed anymore”.
 You answered the replan proposal for task T1 (Task One): accept_reduced_scope. The follow-up job is job-999.
 You (auto-approved via --yes) added a task: “Add a caching layer”. It became task T-new (Add caching).
 You added a task: “Refactor the client”. It was not added: duplicate of T-new.

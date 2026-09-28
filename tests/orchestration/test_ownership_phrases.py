@@ -73,7 +73,8 @@ def _entry(action: str, *, record_ref: str, actor: dict[str, Any], task_id: str 
 def _golden_ledger() -> dict[str, Any]:
     """One entry per action of S3, plus one per consequence kind of `task_vetoed` and
     `task_injected` (+3), plus one per named `plan_edited` command S1's round 4 table adds
-    (+6) — 28 entries, in this fixed order."""
+    (+6), plus one `task_vetoed` `unreachable` veto with no downstream id (R-1084's repair,
+    +1) — 29 entries, in this fixed order."""
     entries = [
         _entry("task_vetoed", record_ref="veto:1",
               actor=_actor(recorded_as="alice"), task_id="T1",
@@ -82,6 +83,10 @@ def _golden_ledger() -> dict[str, Any]:
         _entry("task_vetoed", record_ref="veto:2",
               actor=_actor(door="cli", recorded_as="cli"), task_id="T4",
               consequence={"kind": "inert", "task_ids": [], "ref": "already applied"}),
+        _entry("task_vetoed", record_ref="veto:3",
+              actor=_actor(recorded_as="carol"), task_id="T5",
+              text="not needed anymore",
+              consequence={"kind": "unreachable", "task_ids": [], "ref": ""}),
         _entry("veto_answered", record_ref="veto_answer:1",
               actor=_actor(recorded_as="human"), task_id="T1",
               text="accept_reduced_scope",
@@ -190,11 +195,12 @@ def _golden_ledger() -> dict[str, Any]:
 
 
 def test_the_golden_ledger_covers_every_action_and_consequence_kind():
-    """28 entries: one per S3 action (19), plus one per extra consequence kind of
+    """29 entries: one per S3 action (19), plus one per extra consequence kind of
     `task_vetoed` (+1) and `task_injected` (+2), plus one per named `plan_edited` command
-    S1's round 4 table adds (+6)."""
+    S1's round 4 table adds (+6), plus one `task_vetoed` `unreachable` veto with no
+    downstream id, R-1084's repair (+1)."""
     ledger = _golden_ledger()
-    assert len(ledger["entries"]) == 28
+    assert len(ledger["entries"]) == 29
     actions = {e["action"] for e in ledger["entries"]}
     assert len(actions) == 19
 
@@ -269,6 +275,17 @@ def test_an_empty_reason_adds_no_reason_clause():
     entry = _entry("task_paused", record_ref="p1", actor=_actor(), task_id="T1", text="",
                    consequence={"kind": "withheld", "task_ids": ["T1"], "ref": ""})
     assert ownership_sentence(entry, titles=TITLES) == "You paused task T1 (Task One)."
+
+
+def test_an_unreachable_veto_with_no_ids_adds_no_downstream_clause():
+    """R-1084's repair: a veto whose consequence names no unreachable task reads only the
+    base sentence, nothing appended after the reason clause — not "0 downstream tasks
+    could not run: .\""""
+    entry = _entry("task_vetoed", record_ref="veto:3", actor=_actor(recorded_as="carol"),
+                   task_id="T5", text="not needed anymore",
+                   consequence={"kind": "unreachable", "task_ids": [], "ref": ""})
+    assert (ownership_sentence(entry, titles=TITLES)
+            == "You (recorded as carol) vetoed task T5 (Task Five) — reason: “not needed anymore”.")
 
 
 def test_a_multi_line_note_is_kept_verbatim():
