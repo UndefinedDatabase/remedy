@@ -25,7 +25,6 @@ import { mintDecisionClientNonce } from "./decisionNonce";
 import type { DecisionSendRequest, DecisionSendTarget } from "./decisionSend";
 import { submitDecisionSendRequest } from "./decisionSubmit";
 import type { DecisionSubmitResult } from "./decisionSubmit";
-import { describeDecisionSubmitResult } from "./decisionOutcome";
 import type { DecisionOutcomeMessage } from "./decisionOutcome";
 
 /** The one sentence an answer gives when nothing in its evidence answers the question,
@@ -252,12 +251,28 @@ export function chatScopeLabel(answer: ChatAnswerView): string {
   return `About project ${answer.subject}`;
 }
 
+/** THE UNAVAILABLE LINE (R-1097): one sentence for each reason `_build_chat_turn_json`
+ *  gives, and one honest catch-all for any other — NEVER the code itself, which is
+ *  written for `packages/orchestration/chat_turn.py` and would read as noise on a
+ *  dashboard. */
+export function chatUnavailableLine(reason: string): string {
+  if (reason === "empty_text") return "Type a question or a request first.";
+  if (reason === "unknown_task") return "This task is not part of the job, so nothing was asked.";
+  return "The chat could not answer that.";
+}
+
 /** Which existing tab an evidence item opens: `diff` for a diff item, `prompt` for a prompt
  *  item, `null` for every other kind, which the tab renders as plain text. */
 export function chatEvidenceTab(kind: string): "diff" | "prompt" | null {
   if (kind === "diff") return "diff";
   if (kind === "prompt") return "prompt";
   return null;
+}
+
+/** The open button's own label for the tab `chatEvidenceTab` named (R-1097), so the
+ *  button reads what it does rather than the bare word "Open". */
+export function chatEvidenceTabLabel(tab: "diff" | "prompt"): string {
+  return tab === "diff" ? "Open the diff" : "Open the prompt trace";
 }
 
 /** THE BUILDER: an addressed job with its token, one card and a caller-supplied nonce become
@@ -285,15 +300,54 @@ export function buildChatCardSendRequest(
   };
 }
 
+//: THE CARD'S OWN REFUSAL VOCABULARY (R-1097). A card sends a COMMAND, not an ANSWER, so
+//: its sentences say "done"/"sent" rather than "recorded" and never say "decision" or
+//: "answer" — `decisionOutcome.ts`'s vocabulary is the inbox's own and is never reused
+//: here, even though both doors are the same commands endpoint answering the same statuses.
+const CHAT_CARD_UNREACHABLE_SENTENCE =
+  "No answer came back, so this may not have reached the job. You can confirm it again.";
+const CHAT_CARD_MALFORMED_SENTENCE = "The job could not read this card, so nothing was done.";
+const CHAT_CARD_CREDENTIAL_SENTENCE =
+  "This dashboard was not allowed to send it, so nothing was done. Open the dashboard "
+  + "again from a fresh link.";
+const CHAT_CARD_CLOSED_SENTENCE = "The job refused it in its current state, so nothing was done.";
+const CHAT_CARD_RATE_LIMITED_SENTENCE =
+  "Too many commands arrived at once. Wait a moment, then confirm it again.";
+const CHAT_CARD_UNRECOGNISED_REFUSAL_SENTENCE = "The job refused it, so nothing was done.";
+
+const CHAT_CARD_REFUSED_MALFORMED_STATUS = 400;
+const CHAT_CARD_REFUSED_CREDENTIAL_STATUS = 403;
+const CHAT_CARD_REFUSED_CLOSED_STATUS = 409;
+const CHAT_CARD_REFUSED_RATE_LIMITED_STATUS = 429;
+
+/** What a card REFUSAL means, chosen by the status alone, mirroring
+ *  `decisionOutcome.ts`'s own `describeRefusedStatus` shape over the card's vocabulary. */
+function describeRefusedChatCardStatus(status: number): DecisionOutcomeMessage {
+  switch (status) {
+    case CHAT_CARD_REFUSED_RATE_LIMITED_STATUS:
+      return { tone: "warn", sentence: CHAT_CARD_RATE_LIMITED_SENTENCE };
+    case CHAT_CARD_REFUSED_CREDENTIAL_STATUS:
+      return { tone: "error", sentence: CHAT_CARD_CREDENTIAL_SENTENCE };
+    case CHAT_CARD_REFUSED_MALFORMED_STATUS:
+      return { tone: "error", sentence: CHAT_CARD_MALFORMED_SENTENCE };
+    case CHAT_CARD_REFUSED_CLOSED_STATUS:
+      return { tone: "error", sentence: CHAT_CARD_CLOSED_SENTENCE };
+    default:
+      return { tone: "error", sentence: CHAT_CARD_UNRECOGNISED_REFUSAL_SENTENCE };
+  }
+}
+
 /** THE MAPPING: one card send's result becomes the one thing to say about it. `accepted`
- *  names the verb that was sent; every refusal and the unreachable outcome reuse
- *  `describeDecisionSubmitResult`'s own sentence rather than a second copy of it, because
- *  both doors are the same commands endpoint answering the same statuses. */
+ *  names the verb that was sent; every other outcome takes the card's OWN sentence above,
+ *  never `decisionOutcome.ts`'s inbox vocabulary. */
 export function describeChatCardResult(result: DecisionSubmitResult, verb: string): DecisionOutcomeMessage {
   if (result.outcome === "accepted") {
     return { tone: "ok", sentence: `Sent: ${verb}.` };
   }
-  return describeDecisionSubmitResult(result);
+  if (result.outcome === "unreachable") {
+    return { tone: "warn", sentence: CHAT_CARD_UNREACHABLE_SENTENCE };
+  }
+  return describeRefusedChatCardStatus(result.status);
 }
 
 /** The card that never reached the wire: no nonce could be minted, or the builder refused the

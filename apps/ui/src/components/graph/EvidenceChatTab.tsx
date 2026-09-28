@@ -18,7 +18,8 @@
 import { useRef, useState } from "react";
 import { loadChatTurn } from "../../api/remedyApi";
 import {
-  chatEvidenceTab, chatScopeLabel, chatSentenceMark, chatSentenceText, sendChatCard,
+  chatEvidenceTab, chatEvidenceTabLabel, chatScopeLabel, chatSentenceMark, chatSentenceText,
+  chatUnavailableLine, sendChatCard,
 } from "../../api/chatTurn";
 import type { ChatCardView, ChatTurnView } from "../../api/chatTurn";
 import type { DecisionOutcomeMessage } from "../../api/decisionOutcome";
@@ -31,12 +32,17 @@ const CHAT_UNREADABLE_LINE = "This answer could not be read.";
 
 /** One asked line and what the chat route answered: `view` is `undefined` while the read is
  *  in flight and `null` when the route's answer could not be decoded. Pure — it renders
- *  exactly what it is handed and reads no clock, no storage and no network of its own. */
-export function ChatTurnBlock({ question, view, turnKey, outcome, onConfirm, onOpenTab }: {
+ *  exactly what it is handed and reads no clock, no storage and no network of its own.
+ *  `sending` (default false) is the tab's own send-in-flight flag: while it is true Confirm
+ *  is not rendered, so a card can never be sent twice by a second click racing the first. */
+export function ChatTurnBlock({
+  question, view, turnKey, outcome, sending = false, onConfirm, onOpenTab,
+}: {
   question: string;
   view: ChatTurnView | null | undefined;
   turnKey: string;
   outcome: DecisionOutcomeMessage | null;
+  sending?: boolean;
   onConfirm: () => void;
   onOpenTab: (tab: EvidenceTab) => void;
 }) {
@@ -47,7 +53,7 @@ export function ChatTurnBlock({ question, view, turnKey, outcome, onConfirm, onO
       {view === undefined && <p className={styles.pending} data-ui="chat-pending">{CHAT_PENDING_LINE}</p>}
       {view === null && <p className={styles.unreadable} data-ui="chat-unreadable">{CHAT_UNREADABLE_LINE}</p>}
       {view !== undefined && view !== null && view.kind === "unavailable" && (
-        <p className={styles.unavailable} data-ui="chat-unavailable">{view.reason}</p>
+        <p className={styles.unavailable} data-ui="chat-unavailable">{chatUnavailableLine(view.reason)}</p>
       )}
       {view !== undefined && view !== null && view.kind === "answer" && (
         <>
@@ -83,7 +89,7 @@ export function ChatTurnBlock({ question, view, turnKey, outcome, onConfirm, onO
                   <span>{`[${item.number}] ${item.kind} ${item.ref} — ${item.text}`}</span>
                   {tab !== null && (
                     <button type="button" className={styles.openTab} onClick={() => onOpenTab(tab)}>
-                      Open
+                      {chatEvidenceTabLabel(tab)}
                     </button>
                   )}
                 </div>
@@ -98,7 +104,7 @@ export function ChatTurnBlock({ question, view, turnKey, outcome, onConfirm, onO
           <ul className={styles.cardLines}>
             {view.lines.map((line, index) => <li key={index}>{line}</li>)}
           </ul>
-          {chatCardCanConfirm(view, outcome) && (
+          {!sending && chatCardCanConfirm(view, outcome) && (
             <button type="button" className={styles.confirm} data-ui="chat-card-confirm" onClick={onConfirm}>
               Confirm
             </button>
@@ -116,12 +122,14 @@ function chatCardCanConfirm(card: ChatCardView, outcome: DecisionOutcomeMessage 
   return card.confirmable && card.missing.length === 0 && !(outcome !== null && outcome.tone === "ok");
 }
 
-/** One asked line, its answer or card, and the outcome of confirming it, if any. */
+/** One asked line, its answer or card, the outcome of confirming it, if any, and whether its
+ *  send is in flight right now. */
 interface ChatTurnRecord {
   key: string;
   question: string;
   view: ChatTurnView | null | undefined;
   outcome: DecisionOutcomeMessage | null;
+  sending: boolean;
 }
 
 /** The tab itself: the log of turns above the form that asks the next one (F038 T003). It
@@ -143,7 +151,7 @@ export function EvidenceChatTab({ jobId, token, taskId, onTab }: {
     if (question === "") return;
     const key = String(nextKey.current);
     nextKey.current += 1;
-    setTurns((sofar) => [...sofar, { key, question, view: undefined, outcome: null }]);
+    setTurns((sofar) => [...sofar, { key, question, view: undefined, outcome: null, sending: false }]);
     setText("");
     const scopeTaskId = wholeProject ? "" : taskId;
     const view = await loadChatTurn({ jobId, token, text: question, taskId: scopeTaskId });
@@ -151,8 +159,11 @@ export function EvidenceChatTab({ jobId, token, taskId, onTab }: {
   };
 
   const confirm = async (key: string, card: ChatCardView) => {
+    setTurns((sofar) => sofar.map((turn) => (turn.key === key ? { ...turn, sending: true } : turn)));
     const outcome = await sendChatCard(target, card);
-    setTurns((sofar) => sofar.map((turn) => (turn.key === key ? { ...turn, outcome } : turn)));
+    setTurns((sofar) => sofar.map((turn) => (
+      turn.key === key ? { ...turn, outcome, sending: false } : turn
+    )));
   };
 
   return (
@@ -164,6 +175,7 @@ export function EvidenceChatTab({ jobId, token, taskId, onTab }: {
           view={turn.view}
           turnKey={turn.key}
           outcome={turn.outcome}
+          sending={turn.sending}
           onConfirm={() => {
             if (turn.view !== undefined && turn.view !== null && turn.view.kind === "card") {
               void confirm(turn.key, turn.view);
@@ -184,6 +196,8 @@ export function EvidenceChatTab({ jobId, token, taskId, onTab }: {
         <input
           className={styles.input}
           type="text"
+          aria-label="Ask the chat"
+          placeholder={wholeProject ? "Ask about the whole project" : `Ask about task ${taskId}`}
           value={text}
           onChange={(event) => setText(event.target.value)}
           onKeyDown={(event) => {
