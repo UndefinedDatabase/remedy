@@ -1,0 +1,84 @@
+/* The in-app story panel (F039 T002, DECISION F039 D6): a glass card docked over the stage's
+   lower left, beside the left rail, so the graph and the phase bar it narrates stay visible
+   while it plays — unlike the guided tour's own backdrop (TourOverlay.module.css), this panel
+   carries none. Every colour, shadow and radius below is a `--remedy-*` token
+   (tests/ui_contracts/test_raw_colour_ratchet.py allows no raw literal in a new file). */
+.panel {
+  position: fixed;
+  left: calc(var(--remedy-left-width) + 16px);
+  bottom: 96px;
+  width: 360px;
+  max-height: 60vh;
+  overflow-y: auto;
+  z-index: var(--remedy-z-overlay);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px 18px;
+  background: var(--remedy-glass-bg-strong);
+  border: 1px solid var(--remedy-glass-border);
+  border-radius: var(--remedy-radius-lg);
+  box-shadow: var(--remedy-shadow-card);
+  color: var(--remedy-ink);
+}
+
+.header { display: flex; align-items: center; justify-content: space-between; }
+.header h2 {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--remedy-ink);
+}
+
+.position { margin: 0; font-size: 13px; line-height: 1.4; }
+.running { margin: 0; font-size: 12px; color: var(--remedy-muted); }
+
+.chapters {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.chapterButton {
+  border: 1px solid var(--remedy-glass-border);
+  border-radius: var(--remedy-radius-sm);
+  background: transparent;
+  color: var(--remedy-ink);
+  padding: 4px 10px;
+  font-size: 12px;
+}
+
+.chapterCurrent {
+  border: 1px solid var(--remedy-purple);
+  border-radius: var(--remedy-radius-sm);
+  background: transparent;
+  color: var(--remedy-purple);
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.card { display: flex; flex-direction: column; gap: 6px; }
+.beat { margin: 0; font-size: 12.5px; line-height: 1.45; display: flex; flex-wrap: wrap; gap: 6px; }
+.beatMeta { color: var(--remedy-muted); font-size: 11px; }
+.cost { margin: 0; font-size: 12px; color: var(--remedy-muted); }
+
+.actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.actions button {
+  height: 30px;
+  padding: 0 12px;
+  border-radius: var(--remedy-radius-sm);
+  border: 1px solid var(--remedy-glass-border);
+  background: transparent;
+  color: var(--remedy-ink);
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.actions button:disabled { cursor: not-allowed; opacity: 0.5; }
+.actions button:focus-visible { outline: 2px solid var(--remedy-blue-strong); outline-offset: 2px; }
