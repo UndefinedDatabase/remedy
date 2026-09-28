@@ -11,17 +11,25 @@ still applies inside a story.
 """
 from __future__ import annotations
 
+import json
 import re
 from pathlib import Path
 from typing import Any
 
+import pytest
+
 from packages.orchestration import ui_server as mod
+from packages.orchestration.config import get_key_spec
 from packages.orchestration.ownership_phrases import ownership_view
 from packages.orchestration.pingpong_job import JobPlan, TaskEntry
 from packages.orchestration.story_export import (
     STORY_DASHBOARD_SECTIONS,
     STORY_EXPORT_SCHEMA,
+    StoryExportError,
     build_story_payload,
+    export_story_html,
+    read_story_player,
+    render_story_html,
 )
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -113,3 +121,104 @@ class TestTheTypeScriptConstantMatches:
         match = re.search(r'export const STORY_EXPORT_SCHEMA = "([^"]+)";', source)
         assert match is not None, "STORY_EXPORT_SCHEMA not found in storyExport.ts"
         assert match.group(1) == STORY_EXPORT_SCHEMA
+
+
+def _write_player(directory: Path, *, script: str = "console.log('story player');",
+                  style: str = "body { margin: 0; }") -> None:
+    directory.mkdir(parents=True, exist_ok=True)
+    (directory / "story-player.js").write_text(script, encoding="utf-8")
+    (directory / "story-player.css").write_text(style, encoding="utf-8")
+
+
+class TestReadStoryPlayer:
+    """S3 (DECISION F039 D8) — the built player is read whole, or refused."""
+
+    def test_a_missing_player_raises_story_player_missing(self, tmp_path):
+        with pytest.raises(StoryExportError) as excinfo:
+            read_story_player(tmp_path / "absent")
+        assert excinfo.value.error == "story_player_missing"
+        assert "npm install" in excinfo.value.message
+        assert "npm run build" in excinfo.value.message
+
+    def test_a_script_holding_its_own_closing_tag_raises_story_player_unsafe(self, tmp_path):
+        _write_player(tmp_path, script="console.log('</SCRIPT>');")
+        with pytest.raises(StoryExportError) as excinfo:
+            read_story_player(tmp_path)
+        assert excinfo.value.error == "story_player_unsafe"
+
+    def test_a_style_holding_its_own_closing_tag_raises_story_player_unsafe(self, tmp_path):
+        _write_player(tmp_path, style="/* </STYLE> */")
+        with pytest.raises(StoryExportError) as excinfo:
+            read_story_player(tmp_path)
+        assert excinfo.value.error == "story_player_unsafe"
+
+    def test_a_built_player_reads_back_verbatim(self, tmp_path):
+        _write_player(tmp_path, script="const x = 1;", style="body{color:red}")
+        script, style = read_story_player(tmp_path)
+        assert script == "const x = 1;"
+        assert style == "body{color:red}"
+
+
+def _page_payload(**overrides: Any) -> dict[str, Any]:
+    payload = {"schema": "remedy.story.v1", "job_id": "job-1", "dashboard": {}, "frames": [], "ownership": None}
+    payload.update(overrides)
+    return payload
+
+
+class TestRenderStoryHtml:
+    """S3 (DECISION F039 D8) — the one page around the built player."""
+
+    def test_the_embedded_json_parses_back_to_the_payload(self):
+        payload = _page_payload()
+        page = render_story_html(payload, "const s = 1;", "body{}")
+        match = re.search(
+            r'<script type="application/json" id="remedy-story-data">(.*?)</script>', page, re.DOTALL)
+        assert match is not None
+        assert json.loads(match.group(1)) == payload
+
+    def test_a_payload_string_holding_a_closing_script_tag_never_closes_it_early(self):
+        payload = _page_payload(job_id="</script><b>")
+        page = render_story_html(payload, "const s = 1;", "body{}")
+        assert page.lower().count("</script") == 2
+
+    def test_the_style_and_script_appear_verbatim_inside_their_elements(self):
+        script = "const s = window.__never_reached__;"
+        style = "body { color: var(--remedy-ink); }"
+        page = render_story_html(_page_payload(), script, style)
+        assert f"<style>{style}</style>" in page
+        assert f'<script type="module">{script}</script>' in page
+
+    def test_the_policy_holds_default_src_none(self):
+        page = render_story_html(_page_payload(), "const s = 1;", "body{}")
+        assert "default-src 'none'" in page
+
+    def test_a_job_id_with_markup_titles_the_page_escaped(self):
+        page = render_story_html(_page_payload(job_id="<j&1>"), "const s = 1;", "body{}")
+        assert "<title>Remedy story of job &lt;j&amp;1&gt;</title>" in page
+
+
+class TestExportStoryHtml:
+    """S3 (DECISION F039 D8) — the whole export, budgeted."""
+
+    def test_export_at_exactly_its_own_length_returns_the_same_bytes_and_refuses_one_byte_less(
+        self, tmp_path, monkeypatch,
+    ):
+        monkeypatch.setattr(mod, "_load_events", lambda job: _three_events())
+        _write_player(tmp_path)
+        job = _job()
+        data = export_story_html(job, max_bytes=10_000_000, player_dir=tmp_path)
+        again = export_story_html(job, max_bytes=len(data), player_dir=tmp_path)
+        assert again == data
+        with pytest.raises(StoryExportError) as excinfo:
+            export_story_html(job, max_bytes=len(data) - 1, player_dir=tmp_path)
+        assert excinfo.value.error == "story_too_large"
+        assert str(len(data)) in excinfo.value.message
+        assert str(len(data) - 1) in excinfo.value.message
+        assert "story.export_max_bytes" in excinfo.value.message
+
+
+class TestTheExportMaxBytesKey:
+    """S3 — the budget's own registered key."""
+
+    def test_the_default_is_five_million_bytes(self):
+        assert get_key_spec("story.export_max_bytes").default == 5_000_000

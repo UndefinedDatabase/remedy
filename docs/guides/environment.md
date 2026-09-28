@@ -93,6 +93,7 @@ not read as its type; neither warning stops Remedy from running.
 | `REMEDY_SMOKE_REPO` | text | `/tmp/remedy-target-repo` | env-only | Scratch repository scripts/remedy_smoke.sh builds and drives (env-only) |
 | `REMEDY_SMOKE_UNLOAD_MODELS` | yes or no (1, true, yes / 0, false, no) | no | env-only | Unload the Ollama models scripts/remedy_smoke.sh loaded when it ends (env-only flag) |
 | `REMEDY_STORY_CHAPTER_PAUSE_MS` | a whole number | `1600` | `story.chapter_pause_ms` | The story's autoplay (F039) chapter pause, in milliseconds: the browser keeps a value from 50 to 10000 and its default otherwise. |
+| `REMEDY_STORY_EXPORT_MAX_BYTES` | a whole number | `5000000` | `story.export_max_bytes` | The largest story file `remedy job story --export` writes (F039): a larger story is refused whole, never cut. |
 | `REMEDY_STORY_STEP_MS` | a whole number | `420` | `story.step_ms` | The story's autoplay (F039) step, in milliseconds: the browser keeps a value from 50 to 10000 and its default otherwise. |
 | `REMEDY_STRICT_EVENT_NAMES` | yes or no (1, true, yes / 0, false, no) | no | env-only | Refuse a run-log event whose name is not declared; tests only, a job never fails a ledger write on it (env-only flag) |
 | `REMEDY_TEACHER_LESSONS` | yes or no (1, true, yes / 0, false, no) | no | `teacher.lessons` | Write a lesson from the real diff after every completed task (F265). Off by default: each lesson is one teacher model call, and a run makes no call the operator did not switch on. |

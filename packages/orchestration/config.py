@@ -936,6 +936,16 @@ _CONFIG_KEY_SPECS: tuple[ConfigKeySpec, ...] = (
         default=1600,
     ),
     ConfigKeySpec(
+        key="story.export_max_bytes",
+        env_var="REMEDY_STORY_EXPORT_MAX_BYTES",
+        description=(
+            "The largest story file `remedy job story --export` writes (F039): a larger "
+            "story is refused whole, never cut."
+        ),
+        value_type=int,
+        default=5_000_000,
+    ),
+    ConfigKeySpec(
         key="tour.model_written",
         env_var="REMEDY_TOUR_MODEL_WRITTEN",
         description=(
