@@ -126,7 +126,9 @@ export function normalizeDashboardPayload(
     const rawLabel = scrubUiText(t.title || t.description || humanLabel(kind), humanLabel(kind));
     const label = isWeakLabel(rawLabel) ? humanFallbackFor(kind, idx) : rawLabel;
     return {
-      id: scrubUiText(t.id || `task-${idx}`, `task-${idx}`),
+      // R-1102: the id is an IDENTIFIER every seed, focus rule and door
+      // compares with a raw task id — never text a person reads, so it is never scrubbed.
+      id: t.id ? String(t.id) : `task-${idx}`,
       label,
       state,
       kind,

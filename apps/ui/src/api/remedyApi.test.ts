@@ -473,6 +473,17 @@ describe("redaction", () => {
     // hex-only strings are replaced by scrubUiText
     expect(result.tasks[0].label).not.toBe("a1b2c3d4e5f6");
   });
+
+  // R-1102: a task's own id is an identifier, never text a person reads, so it
+  // is kept raw even when it is all-hex — only the label is scrubbed.
+  it("keeps a minted task id raw while still scrubbing an all-hex label (R-1102)", () => {
+    const payload = makeDashboardPayload({
+      tasks: [{ id: "0123456789abcdef", title: "abcdef012345", status: "pending", source: "real", related_node_id: "0123456789abcdef" }],
+    });
+    const result = normalizeDashboardPayload("abc-123", payload);
+    expect(result.tasks[0].id).toBe("0123456789abcdef");
+    expect(result.tasks[0].label).not.toBe("abcdef012345");
+  });
 });
 
 // ---------------------------------------------------------------------------

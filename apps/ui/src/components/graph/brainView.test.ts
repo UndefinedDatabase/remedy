@@ -7,6 +7,8 @@ import type { BrainModel } from "./brainOntology";
 import type { BrainLayoutData, BrainLayoutNode } from "./forceBrainTypes";
 import { withPromptNodes } from "./promptNodes";
 import { INJECTED_TASK_ORIGIN } from "../../api/injectView";
+import { normalizeDashboardPayload } from "../../api/remedyApi";
+import { readPhases } from "../timeline/phaseMapping";
 import {
   BRAIN_FILTER_STATES, DASHBOARD_STATE_STATUS, brainTaskCount, carryBrainPositions,
   dashboardBrainSeeds, filterBrainLayout, promptListEntries, selectedBrainNodeId, selectedPromptNodeId,
@@ -145,6 +147,43 @@ describe("dashboardBrainSeeds", () => {
   it("with no third argument, no task seeds vetoed", () => {
     const tasks = [task("a", "pending", "Alpha")];
     expect(dashboardBrainSeeds(tasks, [])).toEqual(dashboardBrainSeeds(tasks, [], []));
+  });
+});
+
+// R-1102 — the cockpit's dashboard mapping used to replace every minted task
+// id with `task-<n>`, so a finished job's own hex id never matched the lists
+// and map below, and its story never reached Finalized on the phase bar.
+describe("R-1102: a finished job reaches Finalized under its own task id", () => {
+  const rawId = "0123456789abcdef";
+
+  it("normalizeDashboardPayload keeps the minted id, and dashboardBrainSeeds seeds it under that id, as paused, vetoed and with specVersion when named by it", () => {
+    const dashboard = normalizeDashboardPayload("job-r1102", {
+      tasks: [{ id: rawId, title: "Deliver the change", status: "pending", related_node_id: rawId }],
+    });
+    expect(dashboard.tasks[0].id).toBe(rawId);
+
+    const plainSeeds = dashboardBrainSeeds(dashboard.tasks);
+    expect(plainSeeds[0].id).toBe(rawId);
+
+    const pausedSeeds = dashboardBrainSeeds(dashboard.tasks, [rawId], [], { [rawId]: 2 });
+    expect(pausedSeeds[0].status).toBe("paused");
+    expect(pausedSeeds[0].specVersion).toBe(2);
+
+    const vetoedSeeds = dashboardBrainSeeds(dashboard.tasks, [], [rawId]);
+    expect(vetoedSeeds[0].status).toBe("vetoed");
+  });
+
+  it("readPhases reads finalized once a passing round and run completion land for that task", () => {
+    const dashboard = normalizeDashboardPayload("job-r1102", {
+      tasks: [{ id: rawId, title: "Deliver the change", status: "pending", related_node_id: rawId }],
+    });
+    const seeds = dashboardBrainSeeds(dashboard.tasks);
+    const rows = [
+      row(0, "task_run_started", rawId),
+      row(1, "task_round_completed", rawId, "pass"),
+      row(2, "task_run_completed", rawId, "pass"),
+    ];
+    expect(readPhases("job-r1102", seeds, rows).current).toBe("finalized");
   });
 });
 
