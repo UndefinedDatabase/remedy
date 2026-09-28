@@ -6,8 +6,8 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { CHAT_NOT_IN_EVIDENCE } from "../../api/chatTurn";
-import type { ChatAnswerView, ChatCardView } from "../../api/chatTurn";
+import { CHAT_NOT_IN_EVIDENCE, chatEvidenceTabLabel, chatUnavailableLine } from "../../api/chatTurn";
+import type { ChatAnswerView, ChatCardView, ChatUnavailableView } from "../../api/chatTurn";
 import { ChatTurnBlock } from "./EvidenceChatTab";
 
 const EVIDENCE = [
@@ -95,6 +95,39 @@ describe("ChatTurnBlock's DOM audit — an answer", () => {
     }
     expect(chips.length).toBe(3);
   });
+
+  it("a diff item's button reads chatEvidenceTabLabel('diff') (R-1097)", () => {
+    const withDiff: ChatAnswerView = {
+      ...ANSWER,
+      evidence: [...EVIDENCE, { number: 3, kind: "diff", ref: "task-1", text: "diff of task-1" }],
+    };
+    const markup = renderToStaticMarkup(createElement(ChatTurnBlock, {
+      question: "Did the tests pass?",
+      view: withDiff,
+      turnKey: "k1",
+      outcome: null,
+      onConfirm: () => {},
+      onOpenTab: () => {},
+    }));
+    expect(markup).toContain(`>${chatEvidenceTabLabel("diff")}<`);
+    expect(markup).not.toContain(">Open<");
+  });
+});
+
+describe("ChatTurnBlock's DOM audit — an unavailable turn", () => {
+  it("shows chatUnavailableLine(reason) and never the code itself (R-1097)", () => {
+    const view: ChatUnavailableView = { kind: "unavailable", reason: "unknown_task" };
+    const markup = renderToStaticMarkup(createElement(ChatTurnBlock, {
+      question: "stop that task",
+      view,
+      turnKey: "k3",
+      outcome: null,
+      onConfirm: () => {},
+      onOpenTab: () => {},
+    }));
+    expect(markup).toContain(chatUnavailableLine("unknown_task"));
+    expect(markup).not.toContain("unknown_task");
+  });
 });
 
 describe("ChatTurnBlock's DOM audit — a card", () => {
@@ -103,12 +136,13 @@ describe("ChatTurnBlock's DOM audit — a card", () => {
     lines: ["Job: job-1", "Command: job.pause"], args: {}, missing: [], confirmable: true,
   };
 
-  function renderCard(card: ChatCardView): string {
+  function renderCard(card: ChatCardView, sending = false): string {
     return renderToStaticMarkup(createElement(ChatTurnBlock, {
       question: "pause",
       view: card,
       turnKey: "k2",
       outcome: null,
+      sending,
       onConfirm: () => {},
       onOpenTab: () => {},
     }));
@@ -124,5 +158,10 @@ describe("ChatTurnBlock's DOM audit — a card", () => {
 
   it("Confirm does not render for a card missing an argument", () => {
     expect(renderCard({ ...completeCard, missing: ["message"] })).not.toContain('data-ui="chat-card-confirm"');
+  });
+
+  it("Confirm does not render while sending is true, and does while it is false (R-1097)", () => {
+    expect(renderCard(completeCard, true)).not.toContain('data-ui="chat-card-confirm"');
+    expect(renderCard(completeCard, false)).toContain('data-ui="chat-card-confirm"');
   });
 });

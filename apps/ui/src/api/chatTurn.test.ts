@@ -5,10 +5,12 @@ import {
   CHAT_NOT_IN_EVIDENCE,
   buildChatCardSendRequest,
   chatEvidenceTab,
+  chatEvidenceTabLabel,
   chatScopeLabel,
   chatSentenceMark,
   chatSentenceText,
   chatTurnPath,
+  chatUnavailableLine,
   decodeChatTurn,
   describeChatCardResult,
   describeUnsendableChatCard,
@@ -102,6 +104,21 @@ describe("decodeChatTurn", () => {
   it("refuses a misnumbered evidence item", () => {
     const raw = { ...RAW_ANSWER, evidence: [{ number: 2, kind: "node", ref: "task-1", text: "x" }] };
     expect(decodeChatTurn(raw)).toBeNull();
+  });
+
+  // R-1096: the decoder already refuses both shapes below; these tests pin that it does,
+  // beside the same bodies with the fault removed decoding.
+  it("refuses an answer with an empty sentences list; the same body with its sentence decodes", () => {
+    const empty = { ...RAW_ANSWER, sentences: [] };
+    expect(decodeChatTurn(empty)).toBeNull();
+    expect(decodeChatTurn(RAW_ANSWER)).not.toBeNull();
+  });
+
+  it("refuses a card whose arg holds a number; the same body with a string decodes", () => {
+    const numericArg = { ...RAW_CARD, args: { count: 1 } };
+    expect(decodeChatTurn(numericArg)).toBeNull();
+    const stringArg = { ...RAW_CARD, args: { count: "1" } };
+    expect(decodeChatTurn(stringArg)).not.toBeNull();
   });
 });
 
@@ -208,6 +225,55 @@ describe("describeChatCardResult", () => {
     expect(describeChatCardResult({ outcome: "accepted", status: 200 }, "job.pause"))
       .toEqual({ tone: "ok", sentence: "Sent: job.pause." });
     expect(describeChatCardResult({ outcome: "unreachable", status: 0 }, "job.pause").tone).toBe("warn");
+  });
+
+  // R-1097: the card's OWN vocabulary — never `decisionOutcome.ts`'s inbox sentences.
+  it("pins the unreachable sentence and every refused status's own sentence exactly", () => {
+    expect(describeChatCardResult({ outcome: "unreachable", status: 0 }, "job.stop")).toEqual({
+      tone: "warn",
+      sentence: "No answer came back, so this may not have reached the job. You can confirm it again.",
+    });
+    expect(describeChatCardResult({ outcome: "refused", status: 400 }, "job.stop")).toEqual({
+      tone: "error", sentence: "The job could not read this card, so nothing was done.",
+    });
+    expect(describeChatCardResult({ outcome: "refused", status: 403 }, "job.stop")).toEqual({
+      tone: "error",
+      sentence: "This dashboard was not allowed to send it, so nothing was done. "
+        + "Open the dashboard again from a fresh link.",
+    });
+    expect(describeChatCardResult({ outcome: "refused", status: 409 }, "job.stop")).toEqual({
+      tone: "error", sentence: "The job refused it in its current state, so nothing was done.",
+    });
+    expect(describeChatCardResult({ outcome: "refused", status: 429 }, "job.stop")).toEqual({
+      tone: "warn", sentence: "Too many commands arrived at once. Wait a moment, then confirm it again.",
+    });
+    expect(describeChatCardResult({ outcome: "refused", status: 418 }, "job.stop")).toEqual({
+      tone: "error", sentence: "The job refused it, so nothing was done.",
+    });
+  });
+
+  it("no refused status's sentence says 'decision' or 'answer'", () => {
+    for (const status of [400, 403, 409, 429, 418]) {
+      const { sentence } = describeChatCardResult({ outcome: "refused", status }, "job.stop");
+      expect(sentence).not.toContain("decision");
+      expect(sentence).not.toContain("answer");
+    }
+  });
+});
+
+describe("chatUnavailableLine", () => {
+  it("gives the three lines pinned exactly, never the reason code itself", () => {
+    expect(chatUnavailableLine("empty_text")).toBe("Type a question or a request first.");
+    expect(chatUnavailableLine("unknown_task"))
+      .toBe("This task is not part of the job, so nothing was asked.");
+    expect(chatUnavailableLine("some_other_reason")).toBe("The chat could not answer that.");
+  });
+});
+
+describe("chatEvidenceTabLabel", () => {
+  it("labels the diff tab and the prompt-trace tab", () => {
+    expect(chatEvidenceTabLabel("diff")).toBe("Open the diff");
+    expect(chatEvidenceTabLabel("prompt")).toBe("Open the prompt trace");
   });
 });
 

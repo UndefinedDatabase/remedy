@@ -53,3 +53,9 @@ def test_the_decoder_reads_every_key_of_the_view_and_available_and_reason_by_nam
     )
     for key in keys:
         assert f'["{key}"]' in source, f"the decoder does not read {key!r} by name"
+
+
+def test_the_input_is_named_for_a_screen_reader():
+    """R-1097: the text input carries a name, so a screen reader announces it."""
+    source = _source(TAB)
+    assert 'aria-label="Ask the chat"' in source
