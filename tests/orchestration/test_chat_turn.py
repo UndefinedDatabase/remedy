@@ -179,3 +179,25 @@ def test_the_intent_parse_receives_exactly_the_open_decision_ids(monkeypatch):
     run_chat_turn(job, "pause")
 
     assert received == [chat_open_decision_ids(job)]
+
+
+# ---------------------------------------------------------------------------
+# R-1093: a handed-in answer_call_fn must be used, not dropped.
+# ---------------------------------------------------------------------------
+
+
+def test_a_handed_in_answer_call_fn_is_used_and_checked():
+    job, task_id = _make_job()
+
+    mechanical = run_chat_turn(
+        job, "Did the tests pass?", task_id=task_id,
+        intent_call_fn=_never_called, answer_call_fn=None)
+    number = mechanical.answer.sentences[0].citations[0]
+    item = mechanical.evidence.items[number - 1]
+    reply = json.dumps({"answer": f"{item.text.rstrip('.')} [{number}]."})
+
+    turn = run_chat_turn(
+        job, "Did the tests pass?", task_id=task_id,
+        intent_call_fn=_never_called, answer_call_fn=_stub_call_fn(reply))
+
+    assert turn.answer.generator == "summary-role"
