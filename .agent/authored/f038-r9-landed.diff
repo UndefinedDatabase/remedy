@@ -1,0 +1,10 @@
+diff --git a/.agent/live_review.md b/.agent/live_review.md
+index 4851f072c..db7aa50bf 100644
+--- a/.agent/live_review.md
++++ b/.agent/live_review.md
+@@ -459,3 +459,5 @@ Gate: F038 R8 — the F038 round 8 entry: the booking of round 7, R-1092's regis
+ Done: R-1092 — RESOLVED at `3b091b5b` (F038 R8 C4), booked by F038 R9: `test_a_reply_whose_confidence_is_nan_is_unknown` and `test_decision_resolve_reply_values_come_back_stripped` in `tests/orchestration/test_chat_intent_model.py` pin the two rules. In the reviewer's disposable worktree at `72ba3b2e`, deleting the finite-number check turned the first red and dropping the strip turned the second red, each at exit 1.
+ 
+ - R-1093 — Low, THE CHAT TURN'S TESTS ARE BLIND TO WHETHER AN ANSWER CALL FUNCTION HANDED IN IS USED. Raised by the planner and reviewer of F038's second session at the round 8 gate. SEARCHED BEFORE MINTING (checklist item 30): the open set at `72ba3b2e` holds R-1092 alone, whose own defect is two rules of `chat_intent_model.py`; `answer_call_fn` occurs in the ledger nowhere. MEASURED at `72ba3b2e` in a disposable worktree: in `packages/orchestration/chat_turn.py`, replacing `answer_kwargs["call_fn"] = answer_call_fn` with `pass` left `tests/orchestration/test_chat_turn.py` at exit 0, because every question there is asked with `answer_call_fn=None` while `chat.model_written` is off, and the dropped argument falls back to exactly that mechanical answer. The round 8 block's S5 (d) requires the handed-in function to be used, and the code uses it; its list of tests ordered no case that tells the two apart. FIX: one test in `tests/orchestration/test_chat_turn.py`: a focused question asked with an `answer_call_fn` stub whose reply restates a node item with its citation comes back with the answer's `generator` reading `summary-role`, which the dropped argument turns back into `mechanical`. Owner: F038.
++
++Landed: R-1093 — `tests/orchestration/test_chat_turn.py` gains a test that asks a focused question with an `answer_call_fn` stub restating a node item with its citation and reads the answer's `generator` as `summary-role`.
