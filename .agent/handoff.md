@@ -1,82 +1,83 @@
-# Handback — F038, round 6 (book round 5, record DECISION F038 D7, and send a confirmed
-chat card through the cockpit's write door)
+# Handback — F038, round 7 (book round 6, record DECISION F038 D8, and the model-written
+intent parse behind `chat.model_written`, adding `decision.resolve` and `job.inject` as two
+new chat verbs)
 
 ## Session
 
-SESSION 2 of feature F038 · round 6 · rounds so far 6. Context remaining at handback: a large
+SESSION 2 of feature F038 · round 7 · rounds so far 7. Context remaining at handback: a large
 majority of the context budget is left — this round read AGENTS.md in full, the block, both
 payloads and the records diff before writing anything, read every named source file whole
-(`chat_intent.py`, `is_safe_id` in `safe_points.py`, `COMMAND_CSRF_HEADER`,
-`_handle_command_submission`, `_bearer_token_accepted` and `start_ui_server` in `ui_server.py`,
-`AUDIT_FILENAME` in `command_audit.py`, `pause_requested` in `pause_control.py`,
-`tests/ui_server/test_steer_task_door.py`, `tests/ui_server/server_start.py` and
+(`chat_intent.py`, `chat_answer.py`, `tests/orchestration/test_chat_intent.py`,
+`tests/orchestration/test_chat_answer.py`, `run_structured_call` in `structured_outputs.py`,
+`PROVIDER_CALL_ERRORS` in `result_tour.py`, `ROLE_CONFIG_CALL_SITES` in `model_routing.py`, and
 `tests/test_no_orphan_modules.py`), verified every payload and every committed copy for real,
-applied `records.diff`, wrote the new `chat_door.py` module from the specification, wrote 12
-tests, wrote an 8-mutation red-proof tool, ran it for real in a disposable worktree, ran the
-pinned serial test selection and the integrity check to completion, and ran every gate (G1–G5)
-for real before writing this handback.
+applied `records.diff`, wrote the new `chat_intent_model.py` module from the specification,
+wrote 14 tests, wrote a 10-mutation red-proof tool, ran it for real in a disposable worktree,
+ran the pinned serial test selection and the integrity check to completion, and ran every gate
+(G1–G5) for real before writing this handback.
 
 ## Range
 
-Review of `8b01ece36..HEAD` (`HEAD` is this handback's own commit, `F038 R6 C5`, on
+Review of `bd0802867..HEAD` (`HEAD` is this handback's own commit, `F038 R7 C5`, on
 `feature/f038-grounded-chat`).
 
 ## Commits
 
-### b9ac83aa9 F038 R6 C1a: copy round 6 block and plan payload into .agent/authored/
+### 9ece8fae8 F038 R7 C1a: copy round 7 block and plan payload into .agent/authored/
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f038-r6-block.md | 271/0 | copy of the block, verified line count (271) and sha256 |
-| .agent/authored/f038-r6-plan.md | 29/0 | copy of the reviewer's plan.md payload |
+| .agent/authored/f038-r7-block.md | 300/0 | copy of the block, verified line count (300) and sha256 |
+| .agent/authored/f038-r7-plan.md | 29/0 | copy of the reviewer's plan.md payload |
 
-300 insertions total, exactly the block's own note: 271-line block + 29, under the 500-line cap.
+329 insertions total, exactly the block's own note: 300-line block + 29, under the 500-line cap.
 
-### e2f5b6f93 F038 R6 C1b: copy round 6 records diff into .agent/authored/
+### 951bf01f5 F038 R7 C1b: copy round 7 records diff into .agent/authored/
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f038-r6-records.diff | 56/0 | copy of the reviewer's records.diff payload |
+| .agent/authored/f038-r7-records.diff | 60/0 | copy of the reviewer's records.diff payload |
 
-Measured 56 insertions, exactly the block's expected reading.
+Measured 60 insertions, exactly the block's expected reading.
 
-### e57b06701 F038 R6 C2: book round 5 and record DECISION F038 D7
+### eea5c0dcb F038 R7 C2: book round 6 and record DECISION F038 D8
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/decisions.md | 38/0 | `git apply records.diff` — appends DECISION F038 D7 |
-| .agent/live_review.md | 2/0 | `git apply records.diff` — books round 5's Gate entry |
+| .agent/decisions.md | 42/0 | `git apply records.diff` — appends DECISION F038 D8 |
+| .agent/live_review.md | 2/0 | `git apply records.diff` — books round 6's Gate entry |
 | .agent/plan.md | 7/7 | rewritten to plan.md payload by `shutil.copyfile` |
 
-Measured numstat matches the block's table exactly: 38/0, 2/0, 7/7.
+Measured numstat matches the block's table exactly: 42/0, 2/0, 7/7.
 
-### 23d5920bf F038 R6 C3: send a confirmed chat card through the cockpit's write door
+### 815c36a2f F038 R7 C3: ask the summary model for an intent the words alone cannot read
 | Path | +/- | Reason |
 |---|---|---|
-| packages/orchestration/chat_door.py | 86/0 | NEW FILE — S1 module docstring/imports/constants, S2 `ChatDoorAnswer`, S3 `send_card_through_door` (payload build, job id/port/token checks, one `HTTPConnection`, JSON answer), S4 no file opened or written |
-| tests/test_no_orphan_modules.py | 3/3 | S5 — `ALLOWED_UNWIRED` entry for `chat_intent.py` replaced in place by the `chat_door.py` entry |
+| packages/orchestration/chat_answer.py | 4/3 | S2 — `chat_call_fn` gains a `schema: type[BaseModel] = GeneratedChatAnswer` parameter, handed to `make_structured_call_fn` in place of the fixed class; docstring gains one sentence |
+| packages/orchestration/chat_intent.py | 22/8 | S1 — `decision.resolve`/`job.inject` added to `CHAT_VERB_REQUIRED_ARGS`/`CHAT_VERB_TITLES`; `_action_intent` renamed public `chat_action_intent` with a one-line comment, every call site follows; `build_action_card` gains `Decision:`, `Answer:`, `Text:`, `After:` lines in spec order |
+| packages/orchestration/chat_intent_model.py | 145/0 | NEW FILE — S3 module docstring/imports/constants/`GeneratedChatIntent`, S4 `build_intent_prompt`, S5 `parse_chat_intent_with_model` |
+| tests/test_no_orphan_modules.py | 3/3 | S6 — `ALLOWED_UNWIRED`'s `chat_answer.py` entry removed, `chat_intent_model.py` entry added after `chat_door.py` |
 
-No insertion count was expected by the block for C3; measured 89 total (86 insertions, 3
-insertions/3 deletions for the replaced entry), under the cap.
+No insertion count was expected by the block for C3; measured 174 total, under the cap.
 
-### 6e9100493 F038 R6 C4: test the door send, its refusals and its audit line
+### 0f02a1ec3 F038 R7 C4: test the model-written intent parse and its grounding
 | Path | +/- | Reason |
 |---|---|---|
-| tests/orchestration/test_chat_door.py | 163/0 | NEW FILE — 12 tests: audit absent before any send, an accepted pause with its exact audit line and `pause_requested`, a replayed nonce, a focused steer naming the task, an unfocused chat.send, a wrong token 403, an unconfirmable card raising with the audit still absent, and job_id/port(0)/port(70000)/port(True)/empty-token each raising with the audit still absent |
-| .agent/authored/f038-r6-mutations.py | 148/0 | the G5 tool: 8 mutations (r1–r8) against `chat_door.py`, run with `-rf` against `tests/orchestration/test_chat_door.py` |
+| tests/orchestration/test_chat_intent_model.py | 244/0 | NEW FILE — 14 tests: verb-table/UI_EXPOSED_COMMANDS agreement, mechanical hits never call the model, a high-confidence reply kept after one call, a low-confidence reply unknown, a verb outside the tables unknown, `decision.resolve` grounding (outside/inside the open set), `job.veto-task` task-id grounding (with/without focus), `job.inject` keeping only its own argument names, a non-JSON reply, a non-string verb, a `ConnectionError`, the switch (unset asks nothing, on asks once with `GeneratedChatIntent`), and the prompt naming every verb/focused task/open decisions |
+| .agent/authored/f038-r7-mutations.py | 154/0 | the G5 tool: 10 mutations (r1–r10) against `chat_intent_model.py` (r1–r9) and `chat_intent.py` (r10), run with `-rf` against `tests/orchestration/test_chat_intent_model.py` |
 
-311 insertions total, under the 500-insertion cap.
+No insertion count was expected by the block for C4; measured 398 total, under the cap.
 
-### \<C5-sha\> F038 R6 C5: rewrite handoff for round 6
+### \<C5-sha\> F038 R7 C5: rewrite handoff for round 7
 | Path | +/- | Reason |
 |---|---|---|
 | .agent/handoff.md | rewritten | this file, per `docs/agents/handback_template.md` |
 
 ## External actions
 
-- `git worktree add --detach .remedy-wt/f038-r6-mut 6e9100493` — added the disposable G5
-  worktree at C4. Outcome: `Preparing worktree (detached HEAD 6e9100493)`, exit 0.
-- `python3 -B .agent/authored/f038-r6-mutations.py .../.remedy-wt/f038-r6-mut` — outcome: all 8
-  mutations exit 1 with real failed counts (1–4) and real failing node ids, both controls exit
-  0, `restored byte-identical: True`, `ALL MUTATIONS CAUGHT AND RESTORED CLEANLY: True`.
-- `git worktree remove --force .remedy-wt/f038-r6-mut` — outcome: exit 0.
+- `git worktree add --detach .remedy-wt/f038-r7-mut 0f02a1ec3` — added the disposable G5
+  worktree at C4. Outcome: `Preparing worktree (detached HEAD 0f02a1ec3)`, exit 0.
+- `python3 -B .agent/authored/f038-r7-mutations.py .../.remedy-wt/f038-r7-mut` — outcome: all 10
+  mutations exit 1 with a real failed count (1 each) and real failing node ids, both controls
+  exit 0, `restored byte-identical: True`, `ALL MUTATIONS CAUGHT AND RESTORED CLEANLY: True`.
+- `git worktree remove --force .remedy-wt/f038-r7-mut` — outcome: exit 0.
 - `git worktree prune` — outcome: exit 0.
 - `git push origin feature/f038-grounded-chat` — reported under G6 in the round reply (run
   after this file's own commit, so its outcome is reported there rather than tabled here, per
@@ -88,41 +89,41 @@ insertions/3 deletions for the replaced entry), under the cap.
 1. `ls .agent/STOP` → `ls: cannot access '.agent/STOP': No such file or directory`, exit 2. Absent.
 2. `pwd` → `/home/decodeux/Repos/remedy`. `git status --porcelain` → empty, exit 0.
    `git branch --show-current` → `feature/f038-grounded-chat`. `git log --oneline -1` →
-   `8b01ece36 F038 R5 C5: rewrite handoff for round 5`.
-3. Block bytes: measured line count 271, sha256
-   `9d6c9c76571af82bee3213baab3c6702faa074b8066fccca339249a0ba7dd3b5`; both equal the two
+   `bd0802867 F038 R6 C5: rewrite handoff for round 6`.
+3. Block bytes: measured line count 300, sha256
+   `332681406b72dd345c92bb70bfa0458657418a11c9b9a8c2c88731bec3684f68`; both equal the two
    readings the delegation message stated.
-4. `git worktree list | wc -l` → `62`.
+4. `git worktree list | wc -l` → `64`.
 
 ### PAYLOADS
 | file | measured lines | measured bytes | measured sha256 | matches table |
 |---|---|---|---|---|
-| records.diff | 56 | 11850 | ac3a728650801700d78140df6647bd36af764b32e09d23defd0fd6ef6f703e65 | yes |
-| plan.md | 29 | 974 | 070a1ab0544c826e8b30e140ff521574222877171f737dd31a0291c154b9a37d | yes |
+| records.diff | 60 | 12117 | 9c15d34ed02976cc0b5c5b665a93032fc0fb3d85df304ea597b992904f24ac35 | yes |
+| plan.md | 29 | 935 | 1f1e17daa7ee14f23cfad40d46b299ab1911f913feddd6d0e378fed16f20d05c | yes |
 
 ### G1 TRANSPORT
-`git apply --check .remedy-wt/f038-r6-payloads/records.diff` → exit 0. Real `git apply` → exit 0.
-Each `.agent/authored/f038-r6-*` copy compared byte-for-byte against its source, read back with
+`git apply --check .remedy-wt/f038-r7-payloads/records.diff` → exit 0. Real `git apply` → exit 0.
+Each `.agent/authored/f038-r7-*` copy compared byte-for-byte against its source, read back with
 `git show <commit>:<path>`:
-- `b9ac83aa9:.agent/authored/f038-r6-block.md` == `.remedy-wt/f038-r6/block.md` — MATCH (sha256
-  `9d6c9c76571af82bee3213baab3c6702faa074b8066fccca339249a0ba7dd3b5` both).
-- `b9ac83aa9:.agent/authored/f038-r6-plan.md` == `.remedy-wt/f038-r6-payloads/plan.md` — MATCH
-  (sha256 `070a1ab0544c826e8b30e140ff521574222877171f737dd31a0291c154b9a37d` both).
-- `e2f5b6f93:.agent/authored/f038-r6-records.diff` == `.remedy-wt/f038-r6-payloads/records.diff`
-  — MATCH (sha256 `ac3a728650801700d78140df6647bd36af764b32e09d23defd0fd6ef6f703e65` both).
+- `9ece8fae8:.agent/authored/f038-r7-block.md` == `.remedy-wt/f038-r7/block.md` — MATCH (sha256
+  `332681406b72dd345c92bb70bfa0458657418a11c9b9a8c2c88731bec3684f68` both).
+- `9ece8fae8:.agent/authored/f038-r7-plan.md` == `.remedy-wt/f038-r7-payloads/plan.md` — MATCH
+  (sha256 `1f1e17daa7ee14f23cfad40d46b299ab1911f913feddd6d0e378fed16f20d05c` both).
+- `951bf01f5:.agent/authored/f038-r7-records.diff` == `.remedy-wt/f038-r7-payloads/records.diff`
+  — MATCH (sha256 `9c15d34ed02976cc0b5c5b665a93032fc0fb3d85df304ea597b992904f24ac35` both).
 
 ### G2 THE RECORDS
-sha256 of each file read with `git show e57b06701:<path>`:
+sha256 of each file read with `git show eea5c0dcb:<path>`:
 | path | bytes | sha256 | matches reviewer's reading |
 |---|---|---|---|
-| .agent/decisions.md | 2397195 | 00c4a36ebadb5091bb5ea9b910668eb3def49f8e6c7c2ff56f5e2605d66d68fd | yes |
-| .agent/live_review.md | 323385 | 2e6b9eed1c6354f9a04842acfb10093e1a10d84ecd6b701a8d8e38269fd724e0 | yes |
-| .agent/plan.md | 974 | 070a1ab0544c826e8b30e140ff521574222877171f737dd31a0291c154b9a37d | yes |
+| .agent/decisions.md | 2400957 | 9a8a02bc72f1b00d71d8b4ef295f2c3ee54b4d58a428255e42f22043f0cb1063 | yes |
+| .agent/live_review.md | 325739 | a75da8a4a3fcc1b7e17519c624f6b56f9bfe5dc24d7e10e1d5d27176241247e7 | yes |
+| .agent/plan.md | 935 | 1f1e17daa7ee14f23cfad40d46b299ab1911f913feddd6d0e378fed16f20d05c | yes |
 
 `open_finding_ids` (`scripts/rotate_live_review.py`) over `.agent/live_review.md`'s text at
-`e57b06701` → `[]`, matching the reviewer's stated reading.
+`eea5c0dcb` → `[]`, matching the reviewer's stated reading.
 
-`git diff --name-only e2f5b6f93 e57b06701` →
+`git diff --name-only 951bf01f5 eea5c0dcb` →
 ```
 .agent/decisions.md
 .agent/live_review.md
@@ -131,92 +132,144 @@ sha256 of each file read with `git show e57b06701:<path>`:
 Names exactly the three paths of the table above.
 
 ### G3 THE CODE
-`python3 -m ruff check packages/orchestration/chat_door.py
-tests/orchestration/test_chat_door.py tests/test_no_orphan_modules.py` at C4 →
-`All checks passed!`, exit 0.
+`python3 -m ruff check packages/orchestration/chat_intent.py packages/orchestration/chat_answer.py
+packages/orchestration/chat_intent_model.py tests/orchestration/test_chat_intent_model.py
+tests/test_no_orphan_modules.py` at C4 → `All checks passed!`, exit 0.
 
-Quoted from `git show 23d5920bf` (C3), the whole of `ChatDoorAnswer` and
-`send_card_through_door`:
+Quoted from `git show 815c36a2f` (C3), the diff to `chat_intent.py` (verb tables, the
+`chat_action_intent` rename with its call sites, and `build_action_card`'s new lines) is shown
+verbatim above under the C3 commit table's reasons; the full text of the three named functions,
+quoted from the tree at C3:
 
 ```python
-@dataclass(frozen=True)
-class ChatDoorAnswer:
-    """What the write door answered: its HTTP status and its JSON body."""
+def chat_call_fn(schema: type[BaseModel] = GeneratedChatAnswer) -> Callable[[str, int], str] | None:
+    """Build a call_fn for the `summary` role, or None.
 
-    status: int
-    body: dict[str, Any] = field(default_factory=dict)
-
-    @property
-    def accepted(self) -> bool:
-        return self.status == 200
-
-
-def send_card_through_door(
-    card: ChatActionCard, *, job_id: str, client_nonce: str, port: int, token: str,
-) -> ChatDoorAnswer:
-    """Post one confirmed card to a running cockpit's write door (DECISION F038 D7).
-
-    Every refusal below raises `ChatIntentError` BEFORE any connection opens, checked in this
-    order: the card's own payload build first, since a card that is not confirmable or a nonce
-    the door would refuse has no body to send at all; then the job id; then the port; then the
-    token.
+    Mirrors `result_tour.tour_call_fn`: `resolve_role_config("summary")` supplies
+    the model, `make_structured_call_fn` does the rest. This call site joins
+    `model_routing.ROLE_CONFIG_CALL_SITES`. The model-written intent parse asks
+    for its own schema through this same call site.
     """
-    from packages.orchestration.ui_server import COMMAND_CSRF_HEADER
+    role_cfg = resolve_role_config("summary")
+    return make_structured_call_fn(schema, model=role_cfg.model)
+```
 
-    body = card_command_payload(card, client_nonce=client_nonce)
+```python
+def build_intent_prompt(
+    text: str, *, focused_task_id: str, open_decision_ids: Iterable[str]
+) -> str:
+    """The prompt handed to the `summary` role: the request, every chat command with its
+    title and argument names, the focused task, the open decisions and the answering
+    rules (S4)."""
+    lines = [
+        "The chat received this request. Choose the one command below that carries it "
+        "out, or an empty verb when none fits.",
+        "",
+        f"Request: {text}",
+        "",
+        "Commands:",
+    ]
+    for verb, required in chat_intent.CHAT_VERB_REQUIRED_ARGS.items():
+        optional = CHAT_VERB_OPTIONAL_ARGS.get(verb, ())
+        names = ", ".join(required + optional) if required or optional else "(none)"
+        lines.append(f"- {verb} — {chat_intent.CHAT_VERB_TITLES[verb]}: {names}")
 
-    if not is_safe_id(job_id):
-        raise ChatIntentError(f"job_id {job_id!r} is not a safe id")
-    if not isinstance(port, int) or isinstance(port, bool) or not 1 <= port <= 65535:
-        raise ChatIntentError(f"port {port!r} is not a usable port")
-    if not token:
-        raise ChatIntentError("token must not be empty")
+    open_decisions = list(open_decision_ids)
+    lines.extend([
+        "",
+        f"Focused task: {focused_task_id or '(none)'}",
+        f"Open decisions: {', '.join(open_decisions) if open_decisions else '(none)'}",
+        "",
+        "Rules:",
+        "- reply with exactly one of the commands listed above, or an empty verb "
+        "when none of them fits",
+        "- use only that command's own argument names",
+        "- never invent a task id or a decision id",
+        "- give a confidence from 0 to 1",
+    ])
+    return "\n".join(lines)
 
-    connection = http.client.HTTPConnection(
-        CHAT_DOOR_HOST, port, timeout=CHAT_DOOR_TIMEOUT_S)
+
+def parse_chat_intent_with_model(
+    text: str,
+    *,
+    focused_task_id: str = "",
+    open_decision_ids: Iterable[str] = (),
+    call_fn: Callable[[str, int], str] | None = _UNSET_CALL_FN,
+) -> chat_intent.ChatIntent:
+    """The mechanical parse first; only its UNKNOWN asks the model (S5).
+
+    NEVER raises for a reply: a verb outside `chat_intent.CHAT_VERB_REQUIRED_ARGS`, a
+    confidence that is not a finite number or is under `CHAT_MODEL_MIN_CONFIDENCE`, an
+    exception of `PROVIDER_CALL_ERRORS`, and an outcome that is not ok are all unknown.
+    A kept reply's arguments are its own verb's required and optional names only, each
+    grounded: `task_id` is always `focused_task_id`, and `decision_id` survives only
+    when it is one of `open_decision_ids`.
+    """
+    mechanical = chat_intent.parse_chat_intent(text, focused_task_id=focused_task_id)
+    if mechanical.kind != chat_intent.CHAT_INTENT_UNKNOWN:
+        return mechanical
+
+    if call_fn is _UNSET_CALL_FN:
+        call_fn = chat_call_fn(GeneratedChatIntent) if chat_model_written() else None
+    if call_fn is None:
+        return chat_intent.ChatIntent(kind=chat_intent.CHAT_INTENT_UNKNOWN)
+
+    open_decisions = tuple(open_decision_ids)
+    prompt = build_intent_prompt(
+        text, focused_task_id=focused_task_id, open_decision_ids=open_decisions)
     try:
-        connection.request(
-            "POST", f"/api/jobs/{job_id}/commands",
-            body=json.dumps(body),
-            headers={
-                "Authorization": f"Bearer {token}",
-                COMMAND_CSRF_HEADER: token,
-                "Content-Type": "application/json",
-            },
-        )
-        response = connection.getresponse()
-        status = response.status
-        raw = response.read()
-    finally:
-        connection.close()
+        outcome = run_structured_call(
+            GeneratedChatIntent, prompt, call_fn, allow_parse_retry=True)
+    except PROVIDER_CALL_ERRORS:
+        return chat_intent.ChatIntent(kind=chat_intent.CHAT_INTENT_UNKNOWN)
+    if not outcome.ok:
+        return chat_intent.ChatIntent(kind=chat_intent.CHAT_INTENT_UNKNOWN)
 
-    try:
-        parsed = json.loads(raw.decode("utf-8"))
-    except (ValueError, UnicodeDecodeError):
-        parsed = None
-    response_body = parsed if isinstance(parsed, dict) else {}
-    return ChatDoorAnswer(status=status, body=response_body)
+    reply = outcome.value
+    assert isinstance(reply, GeneratedChatIntent)
+    verb = reply.verb
+    if verb not in chat_intent.CHAT_VERB_REQUIRED_ARGS:
+        return chat_intent.ChatIntent(kind=chat_intent.CHAT_INTENT_UNKNOWN)
+    if not math.isfinite(reply.confidence) or reply.confidence < CHAT_MODEL_MIN_CONFIDENCE:
+        return chat_intent.ChatIntent(kind=chat_intent.CHAT_INTENT_UNKNOWN)
+
+    allowed_names = chat_intent.CHAT_VERB_REQUIRED_ARGS[verb] + CHAT_VERB_OPTIONAL_ARGS.get(
+        verb, ())
+    args: dict[str, str] = {}
+    for name in allowed_names:
+        value = reply.args.get(name, "")
+        args[name] = value.strip() if isinstance(value, str) else ""
+    if "task_id" in allowed_names:
+        args["task_id"] = focused_task_id
+    if "decision_id" in allowed_names:
+        args["decision_id"] = args["decision_id"] if args["decision_id"] in open_decisions else ""
+
+    return chat_intent.chat_action_intent(verb, args)
 ```
 
 ### G4 THE TESTS
 Serial run, at C4, in the primary checkout:
 ```
-bash -c 'python3 -m pytest -q -p no:cacheprovider -rs tests/orchestration/test_chat_door.py tests/orchestration/test_chat_intent.py tests/orchestration/test_chat_answer.py tests/orchestration/test_chat_evidence.py tests/test_no_orphan_modules.py tests/test_imports.py tests/orchestration/test_import_reachability.py tests/test_ble001_ratchet.py tests/orchestration/test_durable_write_guard.py tests/test_subprocess_timeouts.py tests/regression/test_named_bugs.py tests/test_path_utils.py tests/test_data_paths.py tests/orchestration/test_env_registry.py tests/orchestration/test_live_review_rotation.py tests/orchestration/test_integrity_gate.py tests/ui_server/test_dashboard_contract.py tests/ui_server/test_command_channel.py tests/regression/test_resource_safety.py tests/orchestration/test_test_runner.py tests/cli/test_golden_path.py 2>&1 | tail -9; echo "REAL_EXIT=${PIPESTATUS[0]}"'
+bash -c 'python3 -m pytest -q -p no:cacheprovider -rs tests/orchestration/test_chat_intent_model.py tests/orchestration/test_chat_door.py tests/orchestration/test_chat_intent.py tests/orchestration/test_chat_answer.py tests/orchestration/test_chat_evidence.py tests/test_no_orphan_modules.py tests/test_imports.py tests/orchestration/test_import_reachability.py tests/test_ble001_ratchet.py tests/orchestration/test_durable_write_guard.py tests/test_subprocess_timeouts.py tests/regression/test_named_bugs.py tests/test_path_utils.py tests/test_data_paths.py tests/orchestration/test_env_registry.py tests/orchestration/test_live_review_rotation.py tests/orchestration/test_integrity_gate.py tests/ui_server/test_dashboard_contract.py tests/ui_server/test_command_channel.py tests/regression/test_resource_safety.py tests/orchestration/test_test_runner.py tests/cli/test_golden_path.py tests/orchestration/test_model_routing.py tests/orchestration/test_contract_hygiene.py 2>&1 | tail -12; echo "REAL_EXIT=${PIPESTATUS[0]}"'
 ```
 Output:
 ```
-623 passed, 6 skipped in 74.40s (0:01:14)
+1082 passed, 9 skipped, 1 warning in 103.44s (0:01:43)
 REAL_EXIT=0
 ```
-The six `SKIPPED` lines are exactly the F252 quarantine (`tests/regression/test_named_bugs.py`
-lines 295, 312, 321, 383, 392, 399), matching the reviewer's own primary-checkout baseline.
+The nine `SKIPPED` lines are exactly the F252 quarantine (six of
+`tests/regression/test_named_bugs.py`) plus the three `tests/orchestration/test_model_routing.py`
+skips the block names ("covered by the violating fixture above"), matching the reviewer's own
+primary-checkout baseline of 1068 passed, 9 skipped at `bd0802867`.
 
-Node count of `tests/orchestration/test_chat_door.py` by `--collect-only -q` at C4: 12 tests.
+Node count of `tests/orchestration/test_chat_intent_model.py` by `--collect-only -q` at C4: 14
+tests.
 
-Accounting for the difference from the reviewer's base 611 passed at `8b01ece36`: this round
-added exactly 12 new nodes in `tests/orchestration/test_chat_door.py` and touched no other test
-file's collection. 611 + 12 = 623, exactly the measured total. The skip count is unchanged at 6
-because the round added no new skip.
+Accounting for the difference from the reviewer's base 1068 passed at `bd0802867`: this round
+added exactly 14 new nodes in `tests/orchestration/test_chat_intent_model.py` and touched no
+other test file's collection. 1068 + 14 = 1082, exactly the measured total. The skip count is
+unchanged at 9 because the round added no new skip.
 
 `python3 -m apps.cli.main integrity check --json`:
 ```json
@@ -225,19 +278,21 @@ because the round added no new skip.
 All six checks `pass`, `fail_count` 0, exit 0.
 
 ### G5 THE RED PROOFS
-`git worktree add --detach .remedy-wt/f038-r6-mut 6e9100493` → exit 0
-(`Preparing worktree (detached HEAD 6e9100493)`).
+`git worktree add --detach .remedy-wt/f038-r7-mut 0f02a1ec3` → exit 0
+(`Preparing worktree (detached HEAD 0f02a1ec3)`).
 
 ```
 control (unmutated, first): exit=0 failed=0 nodes=[]
-r1 the CSRF header is not sent: exit=1 failed=4 nodes=['tests/orchestration/test_chat_door.py::TestChatDoorSend::test_a_pause_card_is_accepted_and_audited', 'tests/orchestration/test_chat_door.py::TestChatDoorSend::test_the_same_card_and_nonce_sent_twice_replays', 'tests/orchestration/test_chat_door.py::TestChatDoorSend::test_a_focused_note_is_a_steer_naming_the_task', 'tests/orchestration/test_chat_door.py::TestChatDoorSend::test_an_unfocused_note_is_a_chat_send']
-r2 the Authorization header is not sent: exit=1 failed=4 nodes=['tests/orchestration/test_chat_door.py::TestChatDoorSend::test_a_pause_card_is_accepted_and_audited', 'tests/orchestration/test_chat_door.py::TestChatDoorSend::test_the_same_card_and_nonce_sent_twice_replays', 'tests/orchestration/test_chat_door.py::TestChatDoorSend::test_a_focused_note_is_a_steer_naming_the_task', 'tests/orchestration/test_chat_door.py::TestChatDoorSend::test_an_unfocused_note_is_a_chat_send']
-r3 a card that is not confirmable is sent anyway, its body built without card_command_payload: exit=1 failed=1 nodes=['tests/orchestration/test_chat_door.py::TestChatDoorSend::test_an_unconfirmable_card_raises_and_writes_nothing']
-r4 the job id is not checked: exit=1 failed=1 nodes=['tests/orchestration/test_chat_door.py::TestChatDoorSend::test_an_unsafe_job_id_raises_before_any_send']
-r5 the port is not checked: exit=1 failed=3 nodes=['tests/orchestration/test_chat_door.py::TestChatDoorSend::test_a_port_of_zero_raises', 'tests/orchestration/test_chat_door.py::TestChatDoorSend::test_a_port_of_70000_raises', 'tests/orchestration/test_chat_door.py::TestChatDoorSend::test_a_port_of_true_raises']
-r6 the token is not checked: exit=1 failed=1 nodes=['tests/orchestration/test_chat_door.py::TestChatDoorSend::test_an_empty_token_raises']
-r7 every answer reads as accepted: exit=1 failed=1 nodes=['tests/orchestration/test_chat_door.py::TestChatDoorSend::test_a_wrong_token_is_403_and_not_accepted']
-r8 the nonce sent is a fixed string rather than the one given: exit=1 failed=1 nodes=['tests/orchestration/test_chat_door.py::TestChatDoorSend::test_a_pause_card_is_accepted_and_audited']
+r1 the model is asked even when the mechanical parse read an action or a question: exit=1 failed=1 nodes=['tests/orchestration/test_chat_intent_model.py::test_mechanical_hits_come_back_as_the_mechanical_parse_gives_them']
+r2 no confidence floor is applied: exit=1 failed=1 nodes=['tests/orchestration/test_chat_intent_model.py::test_a_low_confidence_reply_is_unknown']
+r3 the reply's task id is kept instead of the focused task: exit=1 failed=1 nodes=['tests/orchestration/test_chat_intent_model.py::test_task_id_is_always_the_focused_task_whatever_the_reply_said']
+r4 a decision id outside the open set is kept: exit=1 failed=1 nodes=['tests/orchestration/test_chat_intent_model.py::test_decision_id_outside_the_open_set_comes_back_missing_it']
+r5 argument names the verb does not take are kept: exit=1 failed=1 nodes=['tests/orchestration/test_chat_intent_model.py::test_job_inject_keeps_only_its_own_argument_names']
+r6 a provider error escapes the parse: exit=1 failed=1 nodes=['tests/orchestration/test_chat_intent_model.py::test_a_call_function_raising_connection_error_is_unknown']
+r7 an unset call function asks the model whatever the switch reads: exit=1 failed=1 nodes=['tests/orchestration/test_chat_intent_model.py::test_unset_call_function_asks_chat_call_fn_only_when_the_switch_is_on']
+r8 the call site is asked for the answer schema rather than GeneratedChatIntent: exit=1 failed=1 nodes=['tests/orchestration/test_chat_intent_model.py::test_unset_call_function_asks_chat_call_fn_only_when_the_switch_is_on']
+r9 a verb outside the chat's tables is not refused before the arguments are built: exit=1 failed=1 nodes=['tests/orchestration/test_chat_intent_model.py::test_a_reply_naming_a_verb_outside_the_chat_tables_is_unknown']
+r10 a card never states its Decision: line: exit=1 failed=1 nodes=['tests/orchestration/test_chat_intent_model.py::test_decision_id_in_the_open_set_is_complete_and_confirmable']
 control (unmutated, last): exit=0 failed=0 nodes=[]
 restored byte-identical: True
 ALL MUTATIONS CAUGHT AND RESTORED CLEANLY: True
@@ -245,22 +300,22 @@ ALL MUTATIONS CAUGHT AND RESTORED CLEANLY: True
 Every mutation caught with at least one real failing node; both unmutated controls read exit 0;
 every mutation restored byte-identical. No mutation stayed green, so constraint 4's "add the
 test that catches it" branch never fired.
-`git worktree remove --force .remedy-wt/f038-r6-mut` → exit 0. `git worktree prune` → exit 0.
-`git worktree list | wc -l` → `62`.
+`git worktree remove --force .remedy-wt/f038-r7-mut` → exit 0. `git worktree prune` → exit 0.
+`git worktree list | wc -l` → `64`.
 
 ## Authored-text proofs
 
-- `.agent/authored/f038-r6-block.md` (added at `b9ac83aa9`) == `.remedy-wt/f038-r6/block.md`,
-  byte for byte (sha256 `9d6c9c76571af82bee3213baab3c6702faa074b8066fccca339249a0ba7dd3b5`
+- `.agent/authored/f038-r7-block.md` (added at `9ece8fae8`) == `.remedy-wt/f038-r7/block.md`,
+  byte for byte (sha256 `332681406b72dd345c92bb70bfa0458657418a11c9b9a8c2c88731bec3684f68`
   both). MATCH.
-- `.agent/authored/f038-r6-plan.md` (added at `b9ac83aa9`) ==
-  `.remedy-wt/f038-r6-payloads/plan.md`, byte for byte (sha256
-  `070a1ab0544c826e8b30e140ff521574222877171f737dd31a0291c154b9a37d` both). MATCH.
-- `.agent/authored/f038-r6-records.diff` (added at `e2f5b6f93`) ==
-  `.remedy-wt/f038-r6-payloads/records.diff`, byte for byte (sha256
-  `ac3a728650801700d78140df6647bd36af764b32e09d23defd0fd6ef6f703e65` both). MATCH.
-- `.agent/plan.md` after C2 (`e57b06701`) == `.remedy-wt/f038-r6-payloads/plan.md`, byte for
-  byte (sha256 `070a1ab0544c826e8b30e140ff521574222877171f737dd31a0291c154b9a37d` both,
+- `.agent/authored/f038-r7-plan.md` (added at `9ece8fae8`) ==
+  `.remedy-wt/f038-r7-payloads/plan.md`, byte for byte (sha256
+  `1f1e17daa7ee14f23cfad40d46b299ab1911f913feddd6d0e378fed16f20d05c` both). MATCH.
+- `.agent/authored/f038-r7-records.diff` (added at `951bf01f5`) ==
+  `.remedy-wt/f038-r7-payloads/records.diff`, byte for byte (sha256
+  `9c15d34ed02976cc0b5c5b665a93032fc0fb3d85df304ea597b992904f24ac35` both). MATCH.
+- `.agent/plan.md` after C2 (`eea5c0dcb`) == `.remedy-wt/f038-r7-payloads/plan.md`, byte for
+  byte (sha256 `1f1e17daa7ee14f23cfad40d46b299ab1911f913feddd6d0e378fed16f20d05c` both,
   confirmed under G2). MATCH.
 - `records.diff` applied via `git apply` (not retyped); `.agent/decisions.md` and
   `.agent/live_review.md` after C2 match the reviewer's stated sha256 exactly (G2 table above).
@@ -270,28 +325,34 @@ test that catches it" branch never fired.
 
 1. No payload was repaired, edited or retyped. No existing test was touched, and no existing
    assertion in any file was changed. No file outside the round's tracked path set (constraint
-   3) was touched — confirmed by `git diff --name-only 8b01ece36` at the branch tip before this
+   3) was touched — confirmed by `git diff --name-only bd0802867` at the branch tip before this
    commit (see below).
 2. No product-code gate went red at any point this round. No mutation stayed green on its
-   first application; the tool's 8 mutations all caught real behaviour changes on the first
+   first application; the tool's 10 mutations all caught real behaviour changes on the first
    run, so no correction commit was needed.
 3. No commit exceeded the block's ordered BUNDLE (C1a, C1b, C2, C3, C4, C5); all six commits
    landed in that exact order with no split and no extra commit.
 4. Every commit's insertion count stayed well under the 500-insertion cap; no split was needed.
+5. Wording choice, not a deviation from any pinned text: the block did not pin exact prose for
+   `build_intent_prompt`'s verb lines or its opening/rules sentences (only their content and
+   order), so this round chose its own wording within S4's stated shape; every test that reads
+   the prompt checks presence/order, not an exact string.
 
 ## Tracked path set (constraint 3)
 
-`git diff --name-only 8b01ece36` at the branch tip before this commit:
+`git diff --name-only bd0802867` at the branch tip before this commit:
 ```
-.agent/authored/f038-r6-block.md
-.agent/authored/f038-r6-mutations.py
-.agent/authored/f038-r6-plan.md
-.agent/authored/f038-r6-records.diff
+.agent/authored/f038-r7-block.md
+.agent/authored/f038-r7-mutations.py
+.agent/authored/f038-r7-plan.md
+.agent/authored/f038-r7-records.diff
 .agent/decisions.md
 .agent/live_review.md
 .agent/plan.md
-packages/orchestration/chat_door.py
-tests/orchestration/test_chat_door.py
+packages/orchestration/chat_answer.py
+packages/orchestration/chat_intent.py
+packages/orchestration/chat_intent_model.py
+tests/orchestration/test_chat_intent_model.py
 tests/test_no_orphan_modules.py
 ```
 Exactly the block's constraint-3 set (this file, `.agent/handoff.md`, is added by this commit
@@ -316,12 +377,11 @@ itself and so does not appear in a diff taken before it).
 | G2 THE RECORDS | done | |
 | G3 THE CODE | done | |
 | G4 THE TESTS | done | |
-| G5 THE RED PROOFS | done | all 8 mutations caught on the first run; no correction needed |
+| G5 THE RED PROOFS | done | all 10 mutations caught on the first run; no correction needed |
 | G6 TREE AND PUSH | done | reported in the round reply, not tabled here (cannot precede this commit) |
 
 ## Next
 
 Per the block's `## Next` order: (1) Phase 1 rule 1 — read `.agent/STOP` from disk. (2) The
-review of round 6. (3) T002's last part: a model-written parse for the exposed commands a
-sentence cannot fill, behind `chat.model_written`, off by default. Open-findings count: 0.
-Operator-questions count: 1.
+review of round 7. (3) T003's first part: the chat command finds the running cockpit, answers a
+question, and confirms a card on a y/N line. Open-findings count: 0. Operator-questions count: 1.
