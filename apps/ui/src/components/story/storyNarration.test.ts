@@ -284,3 +284,32 @@ describe("chapterAt and cardAt over the demo recording", () => {
     expect(card === null ? null : card.firstSeq).toBe(firstSeq);
   });
 });
+
+describe("R-1099 — two key events of one actor kind, so neither one is counted alone", () => {
+  it("names nobody for either job_stopped when two share the ledger", () => {
+    const rows = [
+      row(1, "task_run_started", "t1"),
+      row(2, "job_stopped", "", "stopped"),
+      row(3, "job_resumed"),
+      row(4, "job_stopped", "", "stopped"),
+    ];
+    const chapters = buildStoryChapters("job-r1099-a", T1, rows);
+    const ownership = ownershipView([ownerEntry("job_stopped", "", "The operator stopped the job.")]);
+    const beats = buildNarrationCards(chapters, rows, [], ownership).flatMap((card) => card.beats);
+    expect(beats.find((b) => b.seq === 2)?.actor).toBeNull();
+    expect(beats.find((b) => b.seq === 4)?.actor).toBeNull();
+  });
+
+  it("names nobody for either answered decision when one task answers twice", () => {
+    const rows = [
+      row(1, "task_run_started", "t1"),
+      row(2, "task_decision_answered", "t1"),
+      row(3, "task_decision_answered", "t1"),
+    ];
+    const chapters = buildStoryChapters("job-r1099-b", T1, rows);
+    const ownership = ownershipView([ownerEntry("decision_answered", "t1", "Someone answered t1's decision.")]);
+    const beats = buildNarrationCards(chapters, rows, [], ownership).flatMap((card) => card.beats);
+    expect(beats.find((b) => b.seq === 2)?.actor).toBeNull();
+    expect(beats.find((b) => b.seq === 3)?.actor).toBeNull();
+  });
+});
