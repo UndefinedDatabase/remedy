@@ -1817,13 +1817,13 @@ class TestTheCallSiteInventoryIsChecked:
     def test_most_call_sites_still_pass_no_role_literal(self):
         # WHY THE INVENTORY PINS SITES AND NOT ROLE STRINGS, as a measurement: a
         # sweep keyed on literal roles alone would reach two of seven and report a
-        # clean bill for the five it never looked at. (Now ten call sites and five
+        # clean bill for the five it never looked at. (Now eleven call sites and six
         # literal roles: F266 T001 added the study role,
         # amend0920-selfuse-real D1 added intake.py's `planner`, and F036 T002
-        # added result_tour.py's `summary`.)
+        # added result_tour.py's `summary`, and F038 added chat_answer.py's `summary`.)
         literal = [role for _, role in ROLE_CONFIG_CALL_SITES if role != DYNAMIC_ROLE_MARKER]
-        assert len(ROLE_CONFIG_CALL_SITES) == 10
-        assert len(literal) == 5
+        assert len(ROLE_CONFIG_CALL_SITES) == 11
+        assert len(literal) == 6
         assert len(literal) < len(ROLE_CONFIG_CALL_SITES), (
             "the measurement only holds while some site passes a computed role"
         )

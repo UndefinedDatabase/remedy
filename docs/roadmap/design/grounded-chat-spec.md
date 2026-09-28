@@ -19,14 +19,21 @@ Two scopes, both answer ONLY from a defined evidence set; uncited claims
 render marked "unsupported"; a canary test asking about absent facts must get
 "not in evidence".
 
-- **Project scope** — evidence set (all existing today):
-  project brain output (`project_brain.py` aggregate: blockers, patterns,
-  focus, next step), progress ledger, decision queue state, roadmap position
-  (STATUS.md next-open parse), latest job reports/review bundles.
-  When F071 (mission dossier) and F103 (token ledger views) land, they JOIN
-  this set — no redesign, the composer takes evidence providers as a list.
-- **Node scope** — that node's evidence only: prompt trace, verdicts, diff,
-  run log (existing explain_run direction).
+- **Project scope** — evidence set, built by `chat_evidence.collect_project_evidence`
+  for one registry project and the jobs its `job_ids` names (DECISION F038 D3):
+  the project's own record; its roadmap position (the in-progress or next open
+  feature of its repository's `docs/roadmap/STATUS.md`); the open decisions of
+  its linked jobs (the decision queue); the patterns found across them; the
+  goal, next step and open risks of each mission's dossier (F071); the token
+  ledger's totals (F103); and one digest per linked job, newest first, which
+  carries the latest report's headline. The composer takes these providers in
+  that order, so the token cap drops the oldest jobs first. The progress ledger
+  this list once named is deleted, and the project brain's graph aggregate is
+  left out because it reads the repository's git status.
+- **Node scope** — that node's evidence only: its task record, its latest
+  run's rounds, the metadata of its prompt trace (never the prompt text), its
+  own diff and its run-log events (`chat_evidence.collect_node_evidence`,
+  DECISION F038 D1).
 
 Answers carry citation chips [1][2] anchoring into the underlying artifacts
 (cockpit: EvidencePanel anchors; CLI: artifact paths).

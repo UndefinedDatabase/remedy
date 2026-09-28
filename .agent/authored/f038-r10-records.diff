@@ -1,0 +1,62 @@
+diff --git a/.agent/decisions.md b/.agent/decisions.md
+index 09da5709a..8bdc8a1d8 100644
+--- a/.agent/decisions.md
++++ b/.agent/decisions.md
+@@ -24918,3 +24918,43 @@ non-zero for a card left unsent, rejected because nothing failed: the card is th
+ HOW TO REVERSE: delete the `chat.ask` entry, its handler and its tests, the registry lookup in
+ `ui.py`, the guide row and the six allowlist lines; restore the two `ALLOWED_UNWIRED` lines; and
+ delete this paragraph.
++
++## DECISION F038 D11 — the cockpit asks a chat turn through a read route, `GET /api/jobs/<job_id>/chat?text=<line>&task=<task id>`, answered in the one wire shape `chat_turn_view` gives the command line too; the route sends nothing, and a card is confirmed through the write door the panel already posts to (2026-09-28)
++
++CONTEXT: Measured at `c1c3f636`. The cockpit is one server per job, and `_RemedyHandler` in
++`packages/orchestration/ui_server.py` has exactly one mutating route, `POST
++/api/jobs/<job_id>/commands`; every other POST, PUT and DELETE answers 405, which
++`tests/ui_server/test_command_channel.py` walks route by route.
++`tests/ui_server/test_handler_table_walk.py` requires every job endpoint `do_GET` names to answer
++200 for a real job with no query. The spec's stage 2 names `/api/projects/{pid}/chat` and
++`/api/projects/{pid}/chat/intent`; it was written before the cockpit served one job and before
++DECISION F038 D7 routed a confirmed card through the write door. `run_chat_turn` sends nothing
++(DECISION F038 D9), and `remedy chat ask --json` built its own fields in
++`apps/cli/commands/chat_cmd.py`. DECISION F036 D5 is the precedent for one view two doors serve:
++`tour_view` answers both `job show` and the cockpit's `tour` route.
++
++CHOSEN: (1) A READ ROUTE. `GET /api/jobs/<job_id>/chat` with the query parameters `text` and
++`task`, behind the token every GET needs, runs one chat turn and answers 200. It is a GET because
++a turn sends nothing, so the write door stays the only route that changes anything. (2) ONE WIRE
++SHAPE. `chat_turn_view(turn)` in `packages/orchestration/chat_turn.py` gives an answer as its
++kind, scope, subject, question, generator, sentences (text, citations, supported, problem),
++evidence (number from 1, kind, ref, text) and omitted count, and a card as its kind, verb, title,
++lines, args, missing and confirmable. The route answers `available` true beside it, and `remedy
++chat ask --json` emits it with the job id, a card adding `sent`, `door` and `not_sent_reason`.
++(3) DATA AT 200. An empty or blank `text` answers `available` false with `reason` `empty_text`,
++and a `task` naming no task of the job answers `available` false with `reason` `unknown_task`,
++as the task-run routes answer an unknown task. (4) CONFIRMING. The panel confirms a card by
++posting its verb and args to the write door through the command client it already uses, with its
++own nonce; the route returns neither a nonce nor a request body. (5) THE SPEC. Its stage-2
++endpoint line stays as written, because the feature file allows no spec change outside the
++evidence-set list; this DECISION records the deviation for the closure's conformance review.
++
++ALTERNATIVES: a `POST /api/jobs/<job_id>/chat`, rejected because a second POST route breaks the
++single write door and the 405 walk; a project route, rejected because the cockpit serves one job
++and the project scope is reached through the job's repository (DECISION F038 D9); returning a
++ready request body with a nonce, rejected because the nonce belongs to the sender, whose command
++client already mints and retries it.
++
++HOW TO REVERSE: delete the route and its builder, `chat_turn_view` and the route's tests, restore
++the command line's own `--json` fields, drop the chat path from the 405 walk, and delete this
++paragraph.
+diff --git a/.agent/live_review.md b/.agent/live_review.md
+index db7aa50bf..96034fa9d 100644
+--- a/.agent/live_review.md
++++ b/.agent/live_review.md
+@@ -461,3 +461,9 @@ Done: R-1092 — RESOLVED at `3b091b5b` (F038 R8 C4), booked by F038 R9: `test_a
+ - R-1093 — Low, THE CHAT TURN'S TESTS ARE BLIND TO WHETHER AN ANSWER CALL FUNCTION HANDED IN IS USED. Raised by the planner and reviewer of F038's second session at the round 8 gate. SEARCHED BEFORE MINTING (checklist item 30): the open set at `72ba3b2e` holds R-1092 alone, whose own defect is two rules of `chat_intent_model.py`; `answer_call_fn` occurs in the ledger nowhere. MEASURED at `72ba3b2e` in a disposable worktree: in `packages/orchestration/chat_turn.py`, replacing `answer_kwargs["call_fn"] = answer_call_fn` with `pass` left `tests/orchestration/test_chat_turn.py` at exit 0, because every question there is asked with `answer_call_fn=None` while `chat.model_written` is off, and the dropped argument falls back to exactly that mechanical answer. The round 8 block's S5 (d) requires the handed-in function to be used, and the code uses it; its list of tests ordered no case that tells the two apart. FIX: one test in `tests/orchestration/test_chat_turn.py`: a focused question asked with an `answer_call_fn` stub whose reply restates a node item with its citation comes back with the answer's `generator` reading `summary-role`, which the dropped argument turns back into `mechanical`. Owner: F038.
+ 
+ Landed: R-1093 — `tests/orchestration/test_chat_turn.py` gains a test that asks a focused question with an `answer_call_fn` stub restating a node item with its citation and reads the answer's `generator` as `summary-role`.
++
++Gate: F038 R9 — the F038 round 9 entry: the booking of round 8, R-1092's resolution, R-1093's registration and repair, DECISION F038 D10, and `remedy chat ask`. VERDICT PASS. Re-derived over `7627663b`..`c1c3f636` by the planner and reviewer of F038's third session, whose own runs produced every reading below. THE RANGE IS 6 COMMITS, at `81bfa006` 317, `d016127e` 70, `c6f0085d` 51, `fc749318` 209, `d0cbeec8` 421 and `c1c3f636` 166 insertions by `git show --numstat`, each under the 500-line cap and each single-parent; the tracked path set is exactly the block's constraint 3, and the worker declared no deviation. THE BLOCK: prepared in the second session against `72ba3b2e`, it was re-pointed in the third to the session-2 STOP handoff `7627663b`, which changed only `.agent/handoff.md`; before emission the reviewer re-ran the record hashes from its simulation tree and proved every ordered mutation reachable, adding in a disposable tree the three ordered cases its simulation had lacked. THE TRANSPORT PROOF: the block copy and the three payload copies, read from the commits that added them, equal the reviewer's originals byte for byte. THE RECORDS: at `c6f0085d` the ledger, the decisions and the plan, and at `d0cbeec8` the ledger with its `Landed: R-1093 — ` line, equal the reviewer's simulation byte for byte; the open set reads `['R-1093']` at both and at `c1c3f636`, and no later commit of the round changes the ledger. THE CODE: ruff reads clean over the six touched Python files and the mutation tool; `apps/cli/commands/chat_cmd.py` runs one chat turn, prints a question's scope, checked answer and numbered evidence, prints a card on stdout or, under `--json`, on stderr, and sends it only when it is confirmable and confirmed by `--yes` or a typed `y`, through the newest live cockpit session `live_ui_session_for_job` in `apps/cli/commands/ui.py` finds without writing, exiting 3 with no cockpit or none reachable and 1 on a refusal. THE TESTS: the block's selection, run by the reviewer serially in the primary checkout at `c1c3f636`, read 3654 passed and 9 skipped at exit 0: the base reading of 3637 the second session took at `72ba3b2e`, plus the 13 nodes of the new `tests/cli/test_chat_ask.py`, R-1093's 1, and the 3 catalog-parametrized cases of the new `chat.ask` entry; the skips are the six of the F252 quarantine and three of `tests/orchestration/test_model_routing.py`. All six `integrity check` checks read pass. THE RED PROOFS: the reviewer's own mutations, written against the worker's lines and run with `python3 -B` in a disposable worktree at `c1c3f636`, went red one by one for `--yes` ignored, a card sent with neither `--yes` nor a terminal, an unconfirmable card sent, any typed answer sending, the lookup ignoring the job id, the lookup ignoring a dead pid, a refused card exiting 0, no cockpit exiting 0, a `ChatTurnError` not caught, R-1093's dropped `answer_call_fn`, and the card printed on stdout under `--json`; six further mutations stayed GREEN, which R-1094 registers. Both controls read exit 0, the bytes were restored, and the worktree was removed.
++
++Done: R-1093 — RESOLVED at `d0cbeec8` (F038 R9 C4), booked by F038 R10: `test_a_handed_in_answer_call_fn_is_used_and_checked` in `tests/orchestration/test_chat_turn.py` asks a focused question with an `answer_call_fn` stub restating a node item with its citation and reads the answer's `generator` as `summary-role`. In the reviewer's disposable worktree at `c1c3f636`, replacing `answer_kwargs["call_fn"] = answer_call_fn` with `pass` in `packages/orchestration/chat_turn.py` turned it red at exit 1.
++
++- R-1094 — Low, THE TESTS OF `remedy chat ask` ARE BLIND TO SIX RULES OF ITS OWN SPECIFICATION. Raised by the planner and reviewer of F038's third session at the round 9 gate. SEARCHED BEFORE MINTING (checklist item 30): the open set at `c1c3f636` holds R-1093 alone, whose defect is the chat turn's `answer_call_fn`; neither `live_ui_session_for_job` nor `client_nonce` occurs in the ledger. MEASURED at `c1c3f636` in a disposable worktree, each of six mutations left `tests/cli/test_chat_ask.py` and `tests/orchestration/test_chat_turn.py` at exit 0: in `apps/cli/commands/ui.py`, `live_ui_session_for_job` returning the OLDEST live session, `min` for `max`; and in `apps/cli/commands/chat_cmd.py`, one fixed `client_nonce` for every send, the `--json` evidence numbered from 0, the text form's `[n] kind ref` lines dropped, every sentence's `supported` reported True, and the `--task` value not stripped. The round 9 block's S2, S4, S5 and S6 state each rule and the code keeps each; its list of tests ordered no case that tells them apart. FIX: tests that go red under each rule: two live sessions for one job, the newer one returned; two cards confirmed to one running cockpit, both accepted; the evidence numbered 1 to n; one text line per evidence item; a sentence without a citation reported unsupported; and a padded `--task` answered in the node scope. Owner: F038.

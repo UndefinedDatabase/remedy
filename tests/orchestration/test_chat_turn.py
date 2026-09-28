@@ -1,0 +1,317 @@
+"""F038 T003 — `run_chat_turn`: a line becomes a grounded answer or an action card, through
+one module both doors call (DECISION F038 D9). No test here reaches a real model: a call
+function that must not be called raises `AssertionError`, and a model reply is a stub
+returning fixed JSON.
+"""
+
+from __future__ import annotations
+
+import json
+from datetime import datetime, timezone
+
+import pytest
+
+from packages.orchestration import chat_turn
+from packages.orchestration.chat_answer import CHAT_NOT_IN_EVIDENCE, ChatAnswer, ChatAnswerSentence
+from packages.orchestration.chat_evidence import CHAT_SCOPE_NODE, ChatEvidenceItem, ChatEvidenceSet
+from packages.orchestration.chat_intent import CHAT_INTENT_ACTION, ChatActionCard, ChatIntent
+from packages.orchestration.chat_turn import (
+    CHAT_TURN_ANSWER,
+    CHAT_TURN_CARD,
+    ChatTurn,
+    ChatTurnError,
+    chat_open_decision_ids,
+    chat_turn_view,
+    run_chat_turn,
+)
+from packages.orchestration.escalation import answer_task_decision, enqueue_task_decision
+from packages.orchestration.pingpong_job import JobPlan, TaskEntry, save_job_plan
+
+
+@pytest.fixture(autouse=True)
+def _isolated_data_root(tmp_path, monkeypatch):
+    monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+
+
+def _never_called(prompt: str, attempt: int) -> str:
+    raise AssertionError("this call function must never be called")
+
+
+def _stub_call_fn(response_text: str):
+    """A call function that never reaches a model: returns `response_text` and records
+    every prompt it was asked, mirroring test_chat_intent_model.py's own copy."""
+    prompts: list[str] = []
+
+    def _call(prompt: str, attempt: int) -> str:
+        prompts.append(prompt)
+        return response_text
+
+    _call.prompts = prompts
+    return _call
+
+
+def _reply(verb: str, args: dict[str, str], confidence: float) -> str:
+    return json.dumps({"verb": verb, "args": args, "confidence": confidence})
+
+
+def _make_job() -> tuple[JobPlan, str]:
+    """A saved job with one done, passing task, carrying the minted default id."""
+    task = TaskEntry(title="Write the README", status="done", test_passed=True)
+    job = JobPlan(
+        job_title="f038-chat-turn-job", tasks=[task],
+        metadata={"target_repo": "/tmp/repo"},
+    )
+    save_job_plan(job)
+    return job, task.task_id
+
+
+# ---------------------------------------------------------------------------
+# A mechanical hit never touches a model.
+# ---------------------------------------------------------------------------
+
+
+def test_pause_is_a_card_with_no_answer_and_no_evidence_the_stub_never_called():
+    job, _task_id = _make_job()
+
+    turn = run_chat_turn(job, "pause", intent_call_fn=_never_called, answer_call_fn=_never_called)
+
+    assert turn.kind == CHAT_TURN_CARD
+    assert turn.card.verb == "job.pause"
+    assert turn.answer is None
+    assert turn.evidence is None
+
+
+def test_an_unrecognized_action_with_intent_call_fn_none_is_the_unknown_card():
+    job, _task_id = _make_job()
+
+    turn = run_chat_turn(job, "deploy it", intent_call_fn=None, answer_call_fn=_never_called)
+
+    assert turn.kind == CHAT_TURN_CARD
+    assert turn.card.confirmable is False
+
+
+# ---------------------------------------------------------------------------
+# A question, focused and unfocused.
+# ---------------------------------------------------------------------------
+
+
+def test_a_focused_question_is_answered_from_the_node_scope():
+    job, task_id = _make_job()
+
+    turn = run_chat_turn(
+        job, "Did the tests pass?", task_id=task_id,
+        intent_call_fn=_never_called, answer_call_fn=None)
+
+    assert turn.kind == CHAT_TURN_ANSWER
+    assert turn.answer.scope == CHAT_SCOPE_NODE
+    assert turn.answer.subject == task_id
+
+
+def test_an_unfocused_question_with_no_registered_project_is_not_in_evidence():
+    job, _task_id = _make_job()
+
+    turn = run_chat_turn(
+        job, "What is the roadmap position?",
+        intent_call_fn=_never_called, answer_call_fn=None)
+
+    assert turn.kind == CHAT_TURN_ANSWER
+    assert turn.evidence.items == ()
+    assert len(turn.answer.sentences) == 1
+    assert turn.answer.sentences[0].text == CHAT_NOT_IN_EVIDENCE
+
+
+# ---------------------------------------------------------------------------
+# The focused task id must name a real task of the job.
+# ---------------------------------------------------------------------------
+
+
+def test_a_task_id_naming_no_task_of_the_job_raises():
+    job, _task_id = _make_job()
+
+    with pytest.raises(ChatTurnError, match="task_id"):
+        run_chat_turn(job, "pause", task_id="0123456789abcdef")
+
+
+# ---------------------------------------------------------------------------
+# The open decisions the inbox would let `decision.resolve` answer.
+# ---------------------------------------------------------------------------
+
+
+def test_an_open_task_decision_is_listed_then_cleared_once_answered():
+    job, task_id = _make_job()
+    now = datetime.now(timezone.utc)
+    record = enqueue_task_decision(job, task_id=task_id, question="Which database?", now=now)
+
+    assert chat_open_decision_ids(job) == (record["decision_id"],)
+
+    answer_task_decision(job, record["decision_id"], answer="postgres", now=now)
+
+    assert chat_open_decision_ids(job) == ()
+
+
+def test_an_open_decision_resolve_reply_gives_a_confirmable_card():
+    job, task_id = _make_job()
+    now = datetime.now(timezone.utc)
+    record = enqueue_task_decision(job, task_id=task_id, question="Which database?", now=now)
+    call_fn = _stub_call_fn(_reply(
+        "decision.resolve", {"decision_id": record["decision_id"], "answer": "postgres"}, 0.9))
+
+    turn = run_chat_turn(
+        job, "use postgres for the decision",
+        intent_call_fn=call_fn, answer_call_fn=_never_called)
+
+    assert turn.kind == CHAT_TURN_CARD
+    assert turn.card.confirmable is True
+    assert turn.card.args == {"decision_id": record["decision_id"], "answer": "postgres"}
+
+
+def test_the_intent_parse_receives_exactly_the_open_decision_ids(monkeypatch):
+    job, task_id = _make_job()
+    now = datetime.now(timezone.utc)
+    enqueue_task_decision(job, task_id=task_id, question="Which database?", now=now)
+
+    received: list[tuple[str, ...]] = []
+
+    def _recorder(text, *, focused_task_id="", open_decision_ids=(), **_kwargs):
+        received.append(tuple(open_decision_ids))
+        return ChatIntent(kind=CHAT_INTENT_ACTION, verb="job.pause", args={}, missing=())
+
+    monkeypatch.setattr(chat_turn, "parse_chat_intent_with_model", _recorder)
+
+    run_chat_turn(job, "pause")
+
+    assert received == [chat_open_decision_ids(job)]
+
+
+# ---------------------------------------------------------------------------
+# R-1093: a handed-in answer_call_fn must be used, not dropped.
+# ---------------------------------------------------------------------------
+
+
+def test_a_handed_in_answer_call_fn_is_used_and_checked():
+    job, task_id = _make_job()
+
+    mechanical = run_chat_turn(
+        job, "Did the tests pass?", task_id=task_id,
+        intent_call_fn=_never_called, answer_call_fn=None)
+    number = mechanical.answer.sentences[0].citations[0]
+    item = mechanical.evidence.items[number - 1]
+    reply = json.dumps({"answer": f"{item.text.rstrip('.')} [{number}]."})
+
+    turn = run_chat_turn(
+        job, "Did the tests pass?", task_id=task_id,
+        intent_call_fn=_never_called, answer_call_fn=_stub_call_fn(reply))
+
+    assert turn.answer.generator == "summary-role"
+
+
+# ---------------------------------------------------------------------------
+# R-1094: `chat_turn_view` numbers evidence 1 to n and marks each sentence's
+# own support, independently of the others.
+# ---------------------------------------------------------------------------
+
+
+def test_chat_turn_view_numbers_evidence_and_marks_each_sentences_support():
+    job, task_id = _make_job()
+
+    mechanical = run_chat_turn(
+        job, "Did the tests pass?", task_id=task_id,
+        intent_call_fn=_never_called, answer_call_fn=None)
+    number = mechanical.answer.sentences[0].citations[0]
+    item = mechanical.evidence.items[number - 1]
+    reply = json.dumps({
+        "answer": f"{item.text.rstrip('.')} [{number}]. This sentence cites nothing."
+    })
+
+    turn = run_chat_turn(
+        job, "Did the tests pass?", task_id=task_id,
+        intent_call_fn=_never_called, answer_call_fn=_stub_call_fn(reply))
+
+    view = chat_turn_view(turn)
+    assert [entry["number"] for entry in view["evidence"]] == list(
+        range(1, len(view["evidence"]) + 1))
+    assert view["sentences"][0]["supported"] is True
+    assert view["sentences"][1]["supported"] is False
+
+
+# ---------------------------------------------------------------------------
+# R-1095: `chat_turn_view` is blind to six of its keys — a sentence's `problem`,
+# an item's `text`, a card's `missing`, `omitted`, `question` and a card's `lines`.
+# Each hand-built turn is compared WHOLE with a literal dict whose values are
+# distinct and none of them a default, so a mutation of any key goes red.
+# ---------------------------------------------------------------------------
+
+
+def test_chat_turn_view_of_a_hand_built_answer_equals_a_literal_dict():
+    evidence = ChatEvidenceSet(
+        scope=CHAT_SCOPE_NODE,
+        subject="task-1",
+        items=(
+            ChatEvidenceItem(kind="node", ref="task-1", text="Task task-1: Write the README"),
+            ChatEvidenceItem(
+                kind="round", ref="task-1#1",
+                text="Round 1 (initial): tests passed; reviewer verdict PASS",
+            ),
+        ),
+        omitted=3,
+        tokens_estimated=42,
+    )
+    answer = ChatAnswer(
+        scope=CHAT_SCOPE_NODE,
+        subject="task-1",
+        question="Did the tests pass?",
+        generator="mechanical",
+        sentences=(
+            ChatAnswerSentence(text="Tests passed [1].", citations=(1,), supported=True, problem=""),
+            ChatAnswerSentence(
+                text="Something unrelated.", citations=(), supported=False,
+                problem="cites no evidence item",
+            ),
+        ),
+    )
+    turn = ChatTurn(kind=CHAT_TURN_ANSWER, evidence=evidence, answer=answer)
+
+    assert chat_turn_view(turn) == {
+        "kind": "answer",
+        "scope": "node",
+        "subject": "task-1",
+        "question": "Did the tests pass?",
+        "generator": "mechanical",
+        "sentences": [
+            {"text": "Tests passed [1].", "citations": [1], "supported": True, "problem": ""},
+            {
+                "text": "Something unrelated.", "citations": [], "supported": False,
+                "problem": "cites no evidence item",
+            },
+        ],
+        "evidence": [
+            {"number": 1, "kind": "node", "ref": "task-1", "text": "Task task-1: Write the README"},
+            {
+                "number": 2, "kind": "round", "ref": "task-1#1",
+                "text": "Round 1 (initial): tests passed; reviewer verdict PASS",
+            },
+        ],
+        "omitted": 3,
+    }
+
+
+def test_chat_turn_view_of_a_hand_built_card_equals_a_literal_dict():
+    card = ChatActionCard(
+        verb="job.steer",
+        title="Send a note to the task's builder",
+        lines=("Job: job-1", "Task: task-1"),
+        args={"task_id": "task-1"},
+        missing=("message",),
+        confirmable=False,
+    )
+    turn = ChatTurn(kind=CHAT_TURN_CARD, card=card)
+
+    assert chat_turn_view(turn) == {
+        "kind": "card",
+        "verb": "job.steer",
+        "title": "Send a note to the task's builder",
+        "lines": ["Job: job-1", "Task: task-1"],
+        "args": {"task_id": "task-1"},
+        "missing": ["message"],
+        "confirmable": False,
+    }

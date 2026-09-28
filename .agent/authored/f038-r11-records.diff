@@ -1,0 +1,66 @@
+diff --git a/.agent/decisions.md b/.agent/decisions.md
+index 8bdc8a1d8..07cf4fcc3 100644
+--- a/.agent/decisions.md
++++ b/.agent/decisions.md
+@@ -24958,3 +24958,38 @@ client already mints and retries it.
+ HOW TO REVERSE: delete the route and its builder, `chat_turn_view` and the route's tests, restore
+ the command line's own `--json` fields, drop the chat path from the 405 walk, and delete this
+ paragraph.
++
++## DECISION F038 D12 — the cockpit's grounded chat is the evidence panel's Chat tab: it asks the chat route about the focused run's task, or the whole project when a box is ticked, shows every answer sentence with numbered chips or an unsupported mark, and sends a card through the write door only when Confirm is pressed; the right panel's steering note is unchanged (2026-09-28)
++
++CONTEXT: Measured at `9c7f5fad`. The evidence panel (`EvidencePanel.tsx`) has tabs diff, prompt
++trace, chat and ownership, and its chat tab shows only `EVIDENCE_CHAT_NOT_YET`, a sentence saying
++chat about a run arrives with its own feature. The right panel's input is F030's steering note,
++whose copy promises no reply (DECISION F030 D3). The chat route answers one turn in the view both
++doors share (DECISION F038 D11). The write door's browser chain is `jobCommandsPath`,
++`isUsableCommandNonce` and `mintDecisionClientNonce`, `submitDecisionSendRequest`, and an outcome
++sentence per status. `apps/ui/vitest.config.ts` runs `src/**/*.test.ts` in a node environment with
++no DOM library, and the repository pins `.tsx` wiring from source in `tests/ui_contracts/`.
++`react-dom/server`'s `renderToStaticMarkup` renders a component to markup with no DOM.
++
++CHOSEN: (1) THE PLACE. The chat is the evidence panel's Chat tab, replacing
++`EVIDENCE_CHAT_NOT_YET`. It asks about the focused run's task; ticking "Ask about the whole
++project" asks the project scope. (2) THE PURE HALF. `apps/ui/src/api/chatTurn.ts` decodes the
++route's body, refusing it whole when any part is unreadable or a citation names no listed item,
++builds the route's path, marks each sentence cited, unsupported or, for `Not in evidence.` alone,
++absence, names the answer's scope, and builds and describes the one request a confirmed card
++sends; `loadChatTurn` in `remedyApi.ts` reads the route. (3) THE TAB. `EvidenceChatTab.tsx` shows
++each asked line with its answer: a scope chip, each sentence with a chip `[n]` linking to its
++evidence item listed below or a dashed "unsupported" mark, and a button opening the diff or the
++prompt trace tab for an item of that kind; or its card, with Confirm only on a complete card, and
++the outcome sentence after it. It reads only through `loadChatTurn` and sends only through
++`sendChatCard`. (4) THE DOM AUDIT. A vitest test renders the tab's `ChatTurnBlock` with
++`renderToStaticMarkup` and checks that every sentence carries a chip or the unsupported mark and
++only the absence sentence carries neither. (5) The assumption log gains the tab's row.
++
++ALTERNATIVES: turning the right panel's steering input into the chat, rejected because that input
++must keep promising no reply and already delivers notes; a new DOM test library, rejected because
++the markup renderer React already ships reads the real component with no new dependency.
++
++HOW TO REVERSE: delete `chatTurn.ts`, `EvidenceChatTab.tsx` and its sheet, their tests and the
++contract test, restore `EVIDENCE_CHAT_NOT_YET`, its test and its contract line, remove the
++assumption row, and delete this paragraph.
+diff --git a/.agent/live_review.md b/.agent/live_review.md
+index 4fed24931..19a5b97f6 100644
+--- a/.agent/live_review.md
++++ b/.agent/live_review.md
+@@ -469,3 +469,9 @@ Done: R-1093 — RESOLVED at `d0cbeec8` (F038 R9 C4), booked by F038 R10: `test_
+ - R-1094 — Low, THE TESTS OF `remedy chat ask` ARE BLIND TO SIX RULES OF ITS OWN SPECIFICATION. Raised by the planner and reviewer of F038's third session at the round 9 gate. SEARCHED BEFORE MINTING (checklist item 30): the open set at `c1c3f636` holds R-1093 alone, whose defect is the chat turn's `answer_call_fn`; neither `live_ui_session_for_job` nor `client_nonce` occurs in the ledger. MEASURED at `c1c3f636` in a disposable worktree, each of six mutations left `tests/cli/test_chat_ask.py` and `tests/orchestration/test_chat_turn.py` at exit 0: in `apps/cli/commands/ui.py`, `live_ui_session_for_job` returning the OLDEST live session, `min` for `max`; and in `apps/cli/commands/chat_cmd.py`, one fixed `client_nonce` for every send, the `--json` evidence numbered from 0, the text form's `[n] kind ref` lines dropped, every sentence's `supported` reported True, and the `--task` value not stripped. The round 9 block's S2, S4, S5 and S6 state each rule and the code keeps each; its list of tests ordered no case that tells them apart. FIX: tests that go red under each rule: two live sessions for one job, the newer one returned; two cards confirmed to one running cockpit, both accepted; the evidence numbered 1 to n; one text line per evidence item; a sentence without a citation reported unsupported; and a padded `--task` answered in the node scope. Owner: F038.
+ 
+ Landed: R-1094 — `tests/cli/test_chat_ask.py` and `tests/orchestration/test_chat_turn.py` gain tests for the six rules: the newer of two live sessions returned, two cards confirmed to one cockpit both accepted, the evidence numbered 1 to n, one text line per evidence item, an uncited sentence reported unsupported, and a padded `--task` answered in the node scope.
++
++Gate: F038 R10 — the F038 round 10 entry: the booking of round 9, R-1093's resolution, R-1094's registration and repair, DECISION F038 D11, and the cockpit's chat route. VERDICT PASS. Re-derived over `c1c3f636`..`9c7f5fad` by the planner and reviewer of F038's third session, whose own runs produced every reading below. THE RANGE IS 6 COMMITS, at `40686410` 306, `9b4d5af0` 72, `af4f50c1` 53, `43f48e7c` 72, `ca1fbd4f` 426 and `9c7f5fad` 103 insertions by `git show --numstat`, each under the 500-line cap and each single-parent; the tracked path set is exactly the block's constraint 3, and the worker declared no deviation. THE TRANSPORT PROOF: the block copy and the three payload copies, read from the commits that added them, equal the reviewer's originals byte for byte. THE RECORDS: at `af4f50c1` the ledger, the decisions and the plan, and at `ca1fbd4f` the ledger with its `Landed: R-1094 — ` line, equal the reviewer's simulation byte for byte; the open set reads `['R-1094']` at both and at `9c7f5fad`, and no later commit of the round changes the ledger. THE CODE: ruff reads clean over the seven touched Python files and the mutation tool; `chat_turn_view` in `packages/orchestration/chat_turn.py` gives a turn's one wire shape, `remedy chat ask --json` emits it, and `_build_chat_turn_json` in `packages/orchestration/ui_server.py` answers it at `GET /api/jobs/<job_id>/chat` behind the read token, with a blank line and a task naming no task of the job answered as data at 200; no POST route was added. THE TESTS: the block's selection, run by the reviewer serially in the primary checkout at `9c7f5fad`, read 1259 passed at exit 0 with no skip: the base reading of 1245 at `c1c3f636`, plus the 9 nodes of the new `tests/ui_server/test_chat_route.py`, 4 of `tests/cli/test_chat_ask.py` and 1 of `tests/orchestration/test_chat_turn.py`. All six `integrity check` checks read pass. THE RED PROOFS: the reviewer's own mutations, written against the worker's lines and run with `python3 -B` in a disposable worktree at `9c7f5fad`, went red one by one for a blank line running a turn, a `ChatTurnError` not caught, the task dropped, the task not stripped, the evidence numbered from 0, every sentence reported supported, a card's arguments emptied, the oldest live session chosen, one fixed nonce, the text form's evidence lines dropped, `--task` not stripped and the `--json` answer's question blanked; six further mutations of the view's keys stayed GREEN, which R-1095 registers. Both controls read exit 0, the bytes were restored, and the worktree was removed.
++
++Done: R-1094 — RESOLVED at `ca1fbd4f` (F038 R10 C4), booked by F038 R11: `tests/cli/test_chat_ask.py` and `tests/orchestration/test_chat_turn.py` pin the six rules — the newest of two live sessions returned, two cards confirmed to one cockpit both audited accepted, the evidence numbered 1 to n, the text form's lines matching the `--json` evidence, a padded `--task` answered in the node scope, and a sentence citing nothing reported unsupported. In the reviewer's disposable worktree at `9c7f5fad`, `min` for `max` in `live_ui_session_for_job`, one fixed `client_nonce`, the view's evidence numbered from 0, the text form's evidence lines dropped, the `--task` value not stripped and every sentence reported supported each turned at least one of them red at exit 1.
++
++- R-1095 — Low, THE TESTS OF `chat_turn_view` ARE BLIND TO SIX OF ITS KEYS. Raised by the planner and reviewer of F038's third session at the round 10 gate. SEARCHED BEFORE MINTING (checklist item 30): the open set at `9c7f5fad` holds R-1094 alone, whose six rules are those of `remedy chat ask` and none of which is a key of the view; `chat_turn_view` occurs in the ledger nowhere. MEASURED at `9c7f5fad` in a disposable worktree, each of six mutations of `chat_turn_view` in `packages/orchestration/chat_turn.py` left `tests/ui_server/test_chat_route.py`, `tests/orchestration/test_chat_turn.py` and `tests/cli/test_chat_ask.py` at exit 0: a sentence's `problem` blanked, an evidence item's `text` blanked, a card's `missing` emptied, `omitted` reported 0, the `question` blanked, and a card's `lines` dropped. The round 10 block's S2 names every one of these keys; its tests compared the route with the command line, which share the view, so a key both lose is lost unseen. FIX: in `tests/orchestration/test_chat_turn.py`, the view of a hand-built answer and of a hand-built card compared whole with a literal dictionary whose values are distinct and none of them a default, among them an `omitted` above 0, a non-empty `problem` and a non-empty `missing`. Owner: F038.
+diff --git a/.agent/prose_slips.md b/.agent/prose_slips.md
+index cb453bf89..7511f1823 100644
+--- a/.agent/prose_slips.md
++++ b/.agent/prose_slips.md
+@@ -1137,3 +1137,4 @@
+ 2026-09-28, F035 round 6 — the block's render gate ordered `python3 .agent/authored/f035-r6-render_measure.py` without the repository root the adapted F288 script takes as its argument, and its S4 named two screenshots without requiring that the second be taken with the evidence panel closed, so the worker's two PNGs are one image and the task detail with entries was never seen.
+ 2026-09-28, F036 round 5 — the block specified the overlay's card and its "Show me" without saying where the card goes while a stop is shown, and ordered the render's page to import `tokens.css` without `globals.css`, so its screenshots did not show the app's own type and buttons; the gate registered R-1088 for the product half.
+ 2026-09-28, F036 round 6 — the block changed `write_result_tour`'s default for an unset call function without naming round 3's test `test_call_fn_none_never_calls_tour_call_fn_and_unset_calls_it_once`, which pinned the old behaviour, so the worker renamed and narrowed an existing test against the block's constraint 4 and declared it.
++2026-09-28, F038 rounds 9 and 10 — both blocks specified a wire shape key by key and ordered tests for only some of the keys, so the reviewer's extra mutations on the unlisted keys stayed green twice (R-1094 and R-1095); a block that orders a shape orders one test comparing it whole with a literal whose values are none of them defaults.

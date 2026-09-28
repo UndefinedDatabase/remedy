@@ -138,6 +138,24 @@ def _prune_dead_and_get_live() -> list[dict[str, Any]]:
     return alive
 
 
+def live_ui_session_for_job(job_id: str) -> dict[str, Any] | None:
+    """The freshest live cockpit session registered for `job_id`, or None (F038 T003).
+
+    READ-ONLY, unlike `_prune_dead_and_get_live`: it neither archives a dead session
+    nor writes anything, because a chat turn asking whether a cockpit is running must
+    not mutate the registry as a side effect of asking. Among `_read_sessions()`,
+    keeps those whose `job_id` equals the given one and whose `pid` `_is_pid_alive`
+    accepts, and returns the one with the greatest `started_at`.
+    """
+    candidates = [
+        s for s in _read_sessions()
+        if s.get("job_id") == job_id and _is_pid_alive(s.get("pid", 0))
+    ]
+    if not candidates:
+        return None
+    return max(candidates, key=lambda s: s.get("started_at", ""))
+
+
 # ---------------------------------------------------------------------------
 # Commands
 # ---------------------------------------------------------------------------

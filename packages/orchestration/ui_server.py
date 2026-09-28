@@ -1968,6 +1968,21 @@ def _build_tour_json(job: Any) -> dict[str, Any]:
     return tour_view(job)
 
 
+def _build_chat_turn_json(job: Any, text: str, task_id: str) -> dict[str, Any]:
+    """Run one chat turn and answer it in the SAME wire shape `remedy chat ask --json`
+    emits (F038 T003, DECISION F038 D11). READ-ONLY: a turn sends nothing; confirming a
+    card stays the write door's own job."""
+    from packages.orchestration.chat_turn import ChatTurnError, chat_turn_view, run_chat_turn
+
+    if not text.strip():
+        return {"available": False, "reason": "empty_text"}
+    try:
+        turn = run_chat_turn(job, text, task_id=task_id.strip())
+    except ChatTurnError:
+        return {"available": False, "reason": "unknown_task"}
+    return {"available": True, **chat_turn_view(turn)}
+
+
 def _build_next_action_json(job: Any) -> dict[str, Any]:
     """Build next-action suggestion."""
     from packages.orchestration.ui_view_model import build_next_action
@@ -2881,6 +2896,13 @@ class _RemedyHandler(BaseHTTPRequestHandler):
             if endpoint == "events-since":
                 cursor = (qs.get("cursor") or ["0"])[0]
                 self._send_json(200, _build_events_since_json(job, cursor))
+                return
+
+            # chat — one chat turn, answered read-only (DECISION F038 D11)
+            if endpoint == "chat":
+                text = (qs.get("text") or [""])[0]
+                task = (qs.get("task") or [""])[0]
+                self._send_json(200, _build_chat_turn_json(job, text, task))
                 return
 
         # /api/jobs/<job_id>/events/stream — the SSE transport of events-since

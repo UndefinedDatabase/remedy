@@ -368,6 +368,11 @@ end the response with:
   environment a dry run must share with what it proves; and a block that changed a function's
   default without naming the existing test that pinned the old one is item 34's reading of the
   tests that already guard a path. The list stays at 34 items.
+  Consolidated a twenty-fifth time at F038's closure on 2026-09-28: nothing joined and no two items
+  were merged, because F038's one line in `.agent/prose_slips.md` names no lesson the list lacks. A
+  block that specified a wire shape key by key and ordered tests for only some of its keys is item
+  18's reading of an ordered recipe, here a list of tests, against the property it must establish,
+  here every key of the shape. The list stays at 34 items.
   The next consolidation measures against 34.
   Reverse by deleting this paragraph.
   1. **Size.** Count the block's lines. Over 400 (DECISION F105 D5) → split or

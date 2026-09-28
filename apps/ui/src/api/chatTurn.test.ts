@@ -1,0 +1,319 @@
+import { describe, expect, it } from "vitest";
+import type { DecisionSendRequest } from "./decisionSend";
+import type { DecisionSubmitResult } from "./decisionSubmit";
+import {
+  CHAT_NOT_IN_EVIDENCE,
+  buildChatCardSendRequest,
+  chatEvidenceTab,
+  chatEvidenceTabLabel,
+  chatGeneratorLine,
+  chatScopeLabel,
+  chatSentenceMark,
+  chatSentenceText,
+  chatTurnPath,
+  chatUnavailableLine,
+  decodeChatTurn,
+  describeChatCardResult,
+  describeUnsendableChatCard,
+  sendChatCard,
+} from "./chatTurn";
+import type { ChatAnswerSentenceView, ChatAnswerView, ChatCardView } from "./chatTurn";
+
+const JOB_ID = "0123456789abcdef";
+const SERVER_TOKEN = "token-abc";
+const GOOD_NONCE = "ui-a1b2c3d4";
+const TARGET = { jobId: JOB_ID, serverToken: SERVER_TOKEN };
+
+/** A submit that records every request it was handed and answers `result`, exactly the shape
+ *  `steeringSend.test.ts`'s own `recordingSubmit` takes: a counting stub without `vi.fn`. */
+function recordingSubmit(result: DecisionSubmitResult) {
+  const sent: DecisionSendRequest[] = [];
+  const submit = (request: DecisionSendRequest) => {
+    sent.push(request);
+    return Promise.resolve(result);
+  };
+  return { sent, submit };
+}
+
+function sentence(fields: Partial<ChatAnswerSentenceView> = {}): ChatAnswerSentenceView {
+  return { text: "Tests passed [1].", citations: [1], supported: true, problem: "", ...fields };
+}
+
+const RAW_ANSWER = {
+  available: true,
+  kind: "answer",
+  scope: "node",
+  subject: "task-1",
+  question: "Did the tests pass?",
+  generator: "mechanical",
+  sentences: [
+    { text: "Tests passed [1].", citations: [1], supported: true, problem: "" },
+  ],
+  evidence: [
+    { number: 1, kind: "node", ref: "task-1", text: "Task task-1: Write the README" },
+  ],
+  omitted: 0,
+};
+
+const RAW_CARD = {
+  available: true,
+  kind: "card",
+  verb: "job.pause",
+  title: "Pause the job",
+  lines: ["Job: job-1", "Command: job.pause"],
+  args: {},
+  missing: [],
+  confirmable: true,
+};
+
+describe("decodeChatTurn", () => {
+  it("reads an answer", () => {
+    expect(decodeChatTurn(RAW_ANSWER)).toEqual({
+      kind: "answer",
+      scope: "node",
+      subject: "task-1",
+      question: "Did the tests pass?",
+      generator: "mechanical",
+      sentences: [{ text: "Tests passed [1].", citations: [1], supported: true, problem: "" }],
+      evidence: [{ number: 1, kind: "node", ref: "task-1", text: "Task task-1: Write the README" }],
+      omitted: 0,
+    });
+  });
+
+  it("reads a card exactly", () => {
+    expect(decodeChatTurn(RAW_CARD)).toEqual({
+      kind: "card",
+      verb: "job.pause",
+      title: "Pause the job",
+      lines: ["Job: job-1", "Command: job.pause"],
+      args: {},
+      missing: [],
+      confirmable: true,
+    });
+  });
+
+  it("reads an unavailable turn", () => {
+    expect(decodeChatTurn({ available: false, reason: "empty_text" }))
+      .toEqual({ kind: "unavailable", reason: "empty_text" });
+  });
+
+  it("refuses a citation beyond the evidence", () => {
+    const raw = { ...RAW_ANSWER, sentences: [{ text: "x [2].", citations: [2], supported: true, problem: "" }] };
+    expect(decodeChatTurn(raw)).toBeNull();
+  });
+
+  it("refuses a misnumbered evidence item", () => {
+    const raw = { ...RAW_ANSWER, evidence: [{ number: 2, kind: "node", ref: "task-1", text: "x" }] };
+    expect(decodeChatTurn(raw)).toBeNull();
+  });
+
+  // R-1096: the decoder already refuses both shapes below; these tests pin that it does,
+  // beside the same bodies with the fault removed decoding.
+  it("refuses an answer with an empty sentences list; the same body with its sentence decodes", () => {
+    const empty = { ...RAW_ANSWER, sentences: [] };
+    expect(decodeChatTurn(empty)).toBeNull();
+    expect(decodeChatTurn(RAW_ANSWER)).not.toBeNull();
+  });
+
+  it("refuses a card whose arg holds a number; the same body with a string decodes", () => {
+    const numericArg = { ...RAW_CARD, args: { count: 1 } };
+    expect(decodeChatTurn(numericArg)).toBeNull();
+    const stringArg = { ...RAW_CARD, args: { count: "1" } };
+    expect(decodeChatTurn(stringArg)).not.toBeNull();
+  });
+});
+
+describe("chatTurnPath", () => {
+  it("quotes the text and omits the task for the project", () => {
+    expect(chatTurnPath({ jobId: JOB_ID, token: SERVER_TOKEN, text: "a b?", taskId: "" }))
+      .toBe(`/api/jobs/${JOB_ID}/chat?token=${SERVER_TOKEN}&text=a%20b%3F`);
+  });
+
+  it("carries the task when it names one", () => {
+    expect(chatTurnPath({ jobId: JOB_ID, token: SERVER_TOKEN, text: "hi", taskId: "task-1" }))
+      .toBe(`/api/jobs/${JOB_ID}/chat?token=${SERVER_TOKEN}&text=hi&task=task-1`);
+  });
+});
+
+describe("chatSentenceText", () => {
+  it("drops [1]", () => {
+    expect(chatSentenceText(sentence({ text: "Tests passed [1]." }))).toBe("Tests passed.");
+  });
+
+  it("drops [1][2]", () => {
+    expect(chatSentenceText(sentence({ text: "Two items [1][2]." }))).toBe("Two items.");
+  });
+});
+
+describe("chatSentenceMark", () => {
+  it("reads cited", () => {
+    expect(chatSentenceMark(sentence({ supported: true, citations: [1] }))).toBe("cited");
+  });
+
+  it("reads unsupported without a citation", () => {
+    expect(chatSentenceMark(sentence({ supported: false, citations: [] }))).toBe("unsupported");
+  });
+
+  it("reads unsupported WITH a citation", () => {
+    expect(chatSentenceMark(sentence({ supported: false, citations: [1] }))).toBe("unsupported");
+  });
+
+  it("reads absence", () => {
+    expect(chatSentenceMark(sentence({ supported: true, citations: [], text: CHAT_NOT_IN_EVIDENCE })))
+      .toBe("absence");
+  });
+});
+
+function answerView(fields: Partial<ChatAnswerView> = {}): ChatAnswerView {
+  return {
+    kind: "answer", scope: "node", subject: "task-1", question: "q", generator: "mechanical",
+    sentences: [sentence()], evidence: [], omitted: 0, ...fields,
+  };
+}
+
+describe("chatScopeLabel", () => {
+  it("names the task, the project, or that none is registered", () => {
+    expect(chatScopeLabel(answerView({ scope: "node", subject: "task-1" }))).toBe("About task task-1");
+    expect(chatScopeLabel(answerView({ scope: "project", subject: "proj-1" })))
+      .toBe("About project proj-1");
+    expect(chatScopeLabel(answerView({ scope: "project", subject: "" })))
+      .toBe("No project is registered for this job.");
+  });
+});
+
+describe("chatGeneratorLine", () => {
+  // Literal sentences, never the module's own exported constants: comparing a mutated
+  // constant against itself would never go red (R-1097's own lesson, applied here).
+  it("answers each of the four labels exactly (DECISION F038 D13)", () => {
+    expect(chatGeneratorLine("mechanical")).toBe("Built from the job's records, without a model.");
+    expect(chatGeneratorLine("mechanical:timeout")).toBe(
+      "The model's answer could not be used, so this one is built from the job's records, without a model.",
+    );
+    expect(chatGeneratorLine("summary-role")).toBe(
+      "Written by the summary model; every sentence was checked against the job's records.",
+    );
+    expect(chatGeneratorLine("something-else")).toBe("How this answer was written is not recorded.");
+  });
+});
+
+describe("chatEvidenceTab", () => {
+  it("maps a diff item to diff and a prompt item to prompt, else null", () => {
+    expect(chatEvidenceTab("diff")).toBe("diff");
+    expect(chatEvidenceTab("prompt")).toBe("prompt");
+    expect(chatEvidenceTab("node")).toBeNull();
+  });
+});
+
+describe("buildChatCardSendRequest", () => {
+  const completeCard: ChatCardView = {
+    kind: "card", verb: "job.steer", title: "Send a note to the task's builder",
+    lines: ["Job: job-1", "Task: task-1", "Message: use tabs"],
+    args: { task_id: "task-1", message: "use tabs" }, missing: [], confirmable: true,
+  };
+
+  it("builds the request's path and whole parsed body", () => {
+    const request = buildChatCardSendRequest(TARGET, completeCard, GOOD_NONCE);
+    expect(request?.path).toBe(`/api/jobs/${JOB_ID}/commands`);
+    expect(request?.method).toBe("POST");
+    expect(request?.headers).toEqual({
+      Authorization: `Bearer ${SERVER_TOKEN}`,
+      "X-Remedy-CSRF": SERVER_TOKEN,
+      "Content-Type": "application/json",
+    });
+    expect(JSON.parse(request?.body ?? "")).toEqual({
+      command: "job.steer", client_nonce: GOOD_NONCE,
+      args: { task_id: "task-1", message: "use tabs" },
+    });
+  });
+
+  it("refuses a card that is not confirmable, has a missing entry, an empty verb, or an unusable nonce", () => {
+    expect(buildChatCardSendRequest(TARGET, { ...completeCard, confirmable: false }, GOOD_NONCE)).toBeNull();
+    expect(buildChatCardSendRequest(TARGET, { ...completeCard, missing: ["message"] }, GOOD_NONCE)).toBeNull();
+    expect(buildChatCardSendRequest(TARGET, { ...completeCard, verb: "" }, GOOD_NONCE)).toBeNull();
+    expect(buildChatCardSendRequest(TARGET, completeCard, "bad nonce")).toBeNull();
+    expect(buildChatCardSendRequest({ jobId: "", serverToken: SERVER_TOKEN }, completeCard, GOOD_NONCE)).toBeNull();
+    expect(buildChatCardSendRequest({ jobId: JOB_ID, serverToken: "" }, completeCard, GOOD_NONCE)).toBeNull();
+  });
+});
+
+describe("describeChatCardResult", () => {
+  it("names the verb on acceptance and composes the refusal vocabulary otherwise", () => {
+    expect(describeChatCardResult({ outcome: "accepted", status: 200 }, "job.pause"))
+      .toEqual({ tone: "ok", sentence: "Sent: job.pause." });
+    expect(describeChatCardResult({ outcome: "unreachable", status: 0 }, "job.pause").tone).toBe("warn");
+  });
+
+  // R-1097: the card's OWN vocabulary — never `decisionOutcome.ts`'s inbox sentences.
+  it("pins the unreachable sentence and every refused status's own sentence exactly", () => {
+    expect(describeChatCardResult({ outcome: "unreachable", status: 0 }, "job.stop")).toEqual({
+      tone: "warn",
+      sentence: "No answer came back, so this may not have reached the job. You can confirm it again.",
+    });
+    expect(describeChatCardResult({ outcome: "refused", status: 400 }, "job.stop")).toEqual({
+      tone: "error", sentence: "The job could not read this card, so nothing was done.",
+    });
+    expect(describeChatCardResult({ outcome: "refused", status: 403 }, "job.stop")).toEqual({
+      tone: "error",
+      sentence: "This dashboard was not allowed to send it, so nothing was done. "
+        + "Open the dashboard again from a fresh link.",
+    });
+    expect(describeChatCardResult({ outcome: "refused", status: 409 }, "job.stop")).toEqual({
+      tone: "error", sentence: "The job refused it in its current state, so nothing was done.",
+    });
+    expect(describeChatCardResult({ outcome: "refused", status: 429 }, "job.stop")).toEqual({
+      tone: "warn", sentence: "Too many commands arrived at once. Wait a moment, then confirm it again.",
+    });
+    expect(describeChatCardResult({ outcome: "refused", status: 418 }, "job.stop")).toEqual({
+      tone: "error", sentence: "The job refused it, so nothing was done.",
+    });
+  });
+
+  it("no refused status's sentence says 'decision' or 'answer'", () => {
+    for (const status of [400, 403, 409, 429, 418]) {
+      const { sentence } = describeChatCardResult({ outcome: "refused", status }, "job.stop");
+      expect(sentence).not.toContain("decision");
+      expect(sentence).not.toContain("answer");
+    }
+  });
+});
+
+describe("chatUnavailableLine", () => {
+  it("gives the three lines pinned exactly, never the reason code itself", () => {
+    expect(chatUnavailableLine("empty_text")).toBe("Type a question or a request first.");
+    expect(chatUnavailableLine("unknown_task"))
+      .toBe("This task is not part of the job, so nothing was asked.");
+    expect(chatUnavailableLine("some_other_reason")).toBe("The chat could not answer that.");
+  });
+});
+
+describe("chatEvidenceTabLabel", () => {
+  it("labels the diff tab and the prompt-trace tab", () => {
+    expect(chatEvidenceTabLabel("diff")).toBe("Open the diff");
+    expect(chatEvidenceTabLabel("prompt")).toBe("Open the prompt trace");
+  });
+});
+
+describe("sendChatCard", () => {
+  const incompleteCard: ChatCardView = {
+    kind: "card", verb: "job.steer", title: "Send a note",
+    lines: ["Needs: message."], args: {}, missing: ["message"], confirmable: false,
+  };
+  const completeCard: ChatCardView = {
+    kind: "card", verb: "job.pause", title: "Pause the job",
+    lines: ["Job: job-1", "Command: job.pause"], args: {}, missing: [], confirmable: true,
+  };
+
+  it("an incomplete card sends nothing", async () => {
+    const { sent, submit } = recordingSubmit({ outcome: "accepted", status: 200 });
+    const outcome = await sendChatCard(TARGET, incompleteCard, { mintNonce: () => GOOD_NONCE, submit });
+    expect(sent).toEqual([]);
+    expect(outcome).toEqual(describeUnsendableChatCard());
+  });
+
+  it("a complete card sends once with the accepted sentence", async () => {
+    const { sent, submit } = recordingSubmit({ outcome: "accepted", status: 200 });
+    const outcome = await sendChatCard(TARGET, completeCard, { mintNonce: () => GOOD_NONCE, submit });
+    expect(sent.length).toBe(1);
+    expect(outcome).toEqual({ tone: "ok", sentence: "Sent: job.pause." });
+  });
+});

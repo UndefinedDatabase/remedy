@@ -1,0 +1,56 @@
+diff --git a/.agent/decisions.md b/.agent/decisions.md
+index 78d7786c8..fb4cb90f1 100644
+--- a/.agent/decisions.md
++++ b/.agent/decisions.md
+@@ -24636,3 +24636,41 @@ already shows.
+ 
+ HOW TO REVERSE: delete the project-scope functions and the prompt items with their tests, restore
+ the spec's two paragraphs from git history, and delete this paragraph.
++
++## DECISION F038 D4 — a chat answer is checked sentence by sentence against its evidence set: a sentence citing no item, or a number the set does not hold, is unsupported whoever wrote it, and "Not in evidence." is the one sentence that needs no citation; the mechanical answer restates up to five items sharing the most keywords with the question and otherwise says "Not in evidence.", which the canary suite pins in both scopes (2026-09-28)
++
++CONTEXT: T5_F038.md makes the honesty mechanical, not prompted only: the renderer marks any claim
++sentence lacking a citation chip as unsupported, and a canary suite of absent-fact questions must
++yield "not in evidence" in both scopes. After round 2, `packages/orchestration/chat_evidence.py`
++composes numbered items for a node and for a project, and nothing answers a question yet. The
++spec's delivery section names `chat_answer.py` for the grounded answer. A model-written answer
++needs a routing class the table does not have and a switch that is off by default, as the tour's
++did (finding R-1089).
++
++CHOSEN: (1) ONE MODULE, `packages/orchestration/chat_answer.py`, pure: it writes no file, calls no
++model and reads no clock. (2) THE CHECK splits an answer into sentences, each line split after `.`,
++`!` or `?`, where a fragment of citation markers alone joins the sentence before it, and marks each
++one: supported when it cites at least one `[n]` and every `n` numbers an item of the set;
++unsupported, with its reason, when it cites none or cites a number outside the set. The sentence
++"Not in evidence." with no citation is supported, because it claims an absence, and an empty
++answer reads "Not in evidence.". A renderer appends `[unsupported]` to each unsupported sentence.
++(3) THE MECHANICAL ANSWER scores each item by how many of the question's keywords begin one of its
++words, where a keyword is a lower-case word of at least three characters outside a fixed list of
++question words, restates the best five, highest score first and in evidence order on a tie, each
++as one sentence ending in its citation, and answers "Not in evidence." when no item scores. Its
++sentences are checked whole, because an item's own text may hold a full stop. (4) THE CANARY SUITE
++asks absent-fact questions of a real node scope and a real project scope and requires
++"Not in evidence." from each. (5) THE NEXT ROUND lands the model-written answer: a chat class in
++the routing table, a switch that is off by default, the evidence and the rules as its prompt, the
++same check over its reply, and the mechanical answer whenever the switch is off, the call fails or
++no sentence of the reply is supported. (6) From here on `chat_answer.py` imports
++`chat_evidence.py`, so the latter's `ALLOWED_UNWIRED` line goes and the former's arrives, until the
++chat command wires it.
++
++ALTERNATIVES: marking only the sentences that look like claims, rejected because telling a claim
++from a courtesy is the judgement the check exists to avoid; answering with every item, rejected
++because the whole evidence set does not answer a question; an exact-word match, rejected because
++"pass" would not find "passed".
++
++HOW TO REVERSE: delete `chat_answer.py` and its tests, restore `chat_evidence.py`'s line in
++`ALLOWED_UNWIRED`, and delete this paragraph.
+diff --git a/.agent/live_review.md b/.agent/live_review.md
+index a8fa3b452..1457776e3 100644
+--- a/.agent/live_review.md
++++ b/.agent/live_review.md
+@@ -437,3 +437,5 @@ Landed: R-1091 — `SAFE_TASK_RUN_ID_RE` in `packages/orchestration/diff_view_so
+ Gate: F038 R1 — the F038 round 1 entry: the claim, the booking of F036's round 9, the registration and repair of R-1091, and T001's node scope. VERDICT PASS. Re-derived over `fec08a5b`..`733d5db6` by the planner and reviewer of F038's first session, whose own runs produced every reading below. THE RANGE IS 8 COMMITS, at `64f1dd31` 432, `cbb428a7` 182, `19d1dd4f` 142, `350b3d52` 56, `96634729` 328, `89d08aca` 365, `93354668` 205 and `733d5db6` 275 insertions by `git show --numstat`, each under the 500-line cap and each single-parent; the tracked path set is exactly the block's constraint 3. The worker split C5 into C5a and C5b under constraint 2, and corrected C4's subject with a message-only amend before anything was pushed; both are declared, and no pushed commit changed. THE TRANSPORT PROOF: the block copy and the three payload copies, read at `733d5db6`, equal the reviewer's originals byte for byte. THE CLAIM: at `19d1dd4f` the ledger, the decisions, the plan, the context, STATUS and F286's file equal the reviewer's simulation byte for byte, and the open set reads empty at `fec08a5b` and `R-1091` alone at `19d1dd4f`. THE LEDGER at `350b3d52` is the claim's ledger plus one `Landed: R-1091 — ` line, and no later commit of the round changes it. THE CODE: ruff reads clean over the round's eight Python files; `SAFE_TASK_RUN_ID_RE` and `_SAFE_TASK_ID_RE` read `^(?:T\d{3,}|[0-9a-f]{16})$` under comments naming R-1091; `packages/orchestration/chat_evidence.py` imports the standard library and the seven modules S2 names, and its item, composer and node collector read as S3 to S5 order. THE TESTS: the block's selection, run by the reviewer serially in the primary checkout at `733d5db6`, read 1081 passed and 6 skipped at exit 0, two more than the reviewer's simulation because the worker's `tests/orchestration/test_chat_evidence.py` collects 14 nodes against the simulation's 12; the six skips are the F252 quarantine. `integrity check` reads five checks pass and `high_blockers_open` fail on R-1091 alone, as the block ordered. THE RED PROOFS: the reviewer's own mutations, written against the worker's lines and run with `python3 -B` in a disposable worktree at `733d5db6`, went red one by one — both expressions narrowed back to `T<digits>`, the cap ignored, redaction skipped, events oldest first, the metadata task id ignored, the task found by a prefix, the cut skipped, item validation skipped, the diff read at job scope, an unknown test result read as failed, and `omitted` held at 0 — each with at least one failing node, both unmutated controls read exit 0, the bytes were restored, the worktree was removed, and `git worktree list` reads 62 lines, the worker's own step 4 reading.
+ 
+ Done: R-1091 — RESOLVED at `350b3d52` (F038 R1 C3), booked by F038 R2: `SAFE_TASK_RUN_ID_RE` in `packages/orchestration/diff_view_source.py` and `_SAFE_TASK_ID_RE` in `packages/orchestration/final_verifier.py` accept `^(?:T\d{3,}|[0-9a-f]{16})$`, the two shapes the evidence exporter writes; `test_a_minted_task_id_is_listed_and_served_beside_near_misses` lists and serves a minted run beside four refused near misses, and `test_a_minted_task_ids_failing_gate_is_read_not_skipped` reads a minted run's `FAIL`. In the reviewer's disposable worktree at `733d5db6`, narrowing the first expression back to `T<digits>` turned that first test and the node scope's eleven-item test red, and narrowing the second turned the verifier test red, each at exit 1.
++
++Gate: F038 R2 — the F038 round 2 entry: the booking of round 1 and R-1091's resolution, DECISION F038 D3, the spec's set-list update, T001's project scope and the node scope's prompt traces. VERDICT PASS. Re-derived over `733d5db6`..`fe18ab6d` by the planner and reviewer of F038's first session, whose own runs produced every reading below. THE RANGE IS 7 COMMITS, at `15afcb12` 357, `6e2abcb1` 105, `2b5185aa` 78, `e2c2e67c` 287, `dbde5832` 306, `80a0e160` 219 and `fe18ab6d` 310 insertions by `git show --numstat`, each under the 500-line cap and each single-parent; the tracked path set is exactly the block's constraint 3. The worker split C4 into C4a and C4b under constraint 2, corrected a test of its own before committing it once it measured two open decisions per failing job, and added one order assertion so the eleventh mutation had a test to meet; all three are declared. THE TRANSPORT PROOF: the block copy and the two payload copies, read at `fe18ab6d`, equal the reviewer's originals byte for byte. THE RECORDS: at `2b5185aa` the ledger, the decisions, the plan and `docs/roadmap/design/grounded-chat-spec.md` equal the reviewer's simulation byte for byte, the open set reads `R-1091` at `733d5db6` and empty at `2b5185aa`, and no later commit of the round changes the ledger. THE CODE: ruff reads clean over the three touched Python files and the mutation tool; `chat_evidence.py` imports what S5 permits and nothing from `ui_server`, `apps` or either project-brain module, its prompt items carry no prompt text, and its project collector reads the linked jobs newest first in S3's order. One divergence without product effect is noted for the next round: the prompt trace's run-id check calls `match` on an expression anchored with `$`, which admits a trailing newline, where `run_rounds_view` calls `fullmatch`. THE TESTS: the block's selection, run by the reviewer serially in the primary checkout at `fe18ab6d`, read 764 passed and 6 skipped at exit 0, the reviewer's base reading of 756 at `733d5db6` plus the 8 nodes by which `tests/orchestration/test_chat_evidence.py` grew from 14 to 22; the six skips are the F252 quarantine. All six `integrity check` checks read pass at `fe18ab6d`. THE RED PROOFS: the reviewer's own mutations, written against the worker's lines and run with `python3 -B` in a disposable worktree at `fe18ab6d`, went red one by one — prompt text in an item, a non-dict trace line kept, unlinked jobs taken, jobs oldest first, a decision ref without its job, the roadmap read from Remedy's own repository, an in-progress feature read as next, a resolved risk kept, an unmeasured figure read as 0, jobs before the ledger, and prompts after the diff — each with at least one failing node, both controls read exit 0, the bytes were restored, the worktree was removed, and `git worktree list` reads 64 lines, the worker's own step 4 reading.

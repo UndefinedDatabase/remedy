@@ -1,0 +1,13 @@
+F038 R13 C6 — THE CLOSURE SUITE (STATUS_closure_protocol.md precondition 2)
+
+Command: python3 -m pytest -n auto -q
+Real exit code: 0
+Wall time: 191.59s (0:03:11); measured wrapper wall time 192s
+Summary line: 20542 passed, 20 skipped, 1 warning in 191.59s (0:03:11)
+Bad node ids (failed plus errors): NONE
+Tree it ran on: 20782f1af (F038 R13 G3 fix: pin the generator-line vitest checks to
+literal sentences) — the round's tip when C6 ran. A deviation from the block's assumed
+flow: G3 found mutation m3 green and, per the block's own contingency clause, a fix
+commit landed before C6 but after C5 was already committed (see the handback's
+deviations). The tree named here is that actual tip, not C5's own SHA, because a suite
+transcript naming a tree other than the one it ran on would be false.

@@ -83,9 +83,43 @@ marker under `steering/consumed/` names the task and the round, and a
 matches its text stops the job loudly instead of feeding it text nobody can prove you
 sent.
 
+## Ask a question, or ask for an action
+
+A steering message is read by the builder. The chat, built by feature F038, is for you: it
+answers questions from the job's own records, and it turns a request into a card that says
+exactly what would be done, which is done only when you confirm it.
+
+    remedy chat ask <job_id> "Did the tests pass?" --task <task_id>
+
+With `--task`, the answer comes only from that task's records: its status, its rounds, its
+prompts (never their text), its changes and its events. Without it, the answer comes from the
+records of the project that owns the job's repository. The output says which of the two it
+used, how the answer was written, the answer itself, and one numbered line per record it read.
+Every sentence of the answer ends with the numbers of the records it restates; a sentence that
+cannot be traced to one is marked `[unsupported]`, and a question the records do not answer gets
+the answer `Not in evidence.` rather than a guess. Answers are built from the records without a
+model unless you switch on `chat.model_written`, described in
+[environment.md](environment.md); a model's answer is checked in the same way.
+
+A line that is not a question is read as a request: stop, pause, resume, a note to the builder,
+veto or rerun. The command prints a card naming the job, the task, the message or reason, and the
+command it would send. It sends the card to the job's running cockpit only when the card is
+complete and you confirm it, either by typing `y` at the `Send it? [y/N]` line or by adding
+`--yes`; without a terminal and without `--yes`, nothing is sent and the output says why. The
+cockpit must be running (`remedy ui start <job_id>`), because the card goes through the same
+checked entrance as a button in the browser, and its record is the cockpit's own audit line.
+
+In the cockpit, the same chat is the Chat tab of a run's evidence panel. It asks about that
+run's task, or about the whole project when you tick the box beside the input. Each sentence of
+an answer carries numbered links to the records listed under it, or a dashed "unsupported"
+mark, and a card has a Confirm button that sends it once.
+
 ## Exit codes
 
 `remedy chat send` exits 0 when the message was recorded, 2 when the message itself is
 unusable (empty, too long, or containing a NUL character), and 3 when the job has ended or
 its record cannot be read. `remedy chat show` exits 3 when the job's record cannot be read.
-An unknown job id exits 1. The full list is in [exit-codes.md](exit-codes.md).
+`remedy chat ask` exits 0 whether or not a card was sent, 2 for a task id that names no
+task of the job, 3 when the job's record cannot be read or no cockpit for the job is running
+or answering, and 1 when the cockpit refuses the card. An unknown job id exits 1. The full
+list is in [exit-codes.md](exit-codes.md).

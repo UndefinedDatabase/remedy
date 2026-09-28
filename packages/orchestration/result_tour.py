@@ -790,7 +790,7 @@ def tour_call_fn() -> Callable[[str, int], str] | None:
     Mirrors `artifact_summary.summary_call_fn`: `resolve_role_config("summary")`
     supplies the model, `make_structured_call_fn` does the rest. Honest `None`
     under the same conditions that factory already returns `None` for — never
-    raises. This call site is one of the ten entries of
+    raises. This call site is one of the eleven entries of
     `model_routing.ROLE_CONFIG_CALL_SITES`.
     """
     role_cfg = resolve_role_config("summary")

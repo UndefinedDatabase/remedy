@@ -96,6 +96,21 @@ def test_needs_tests(tmp_path: Path) -> None:
     assert report["recommended_action"] == "Run the missing tests before promoting."
 
 
+def test_a_minted_task_ids_failing_gate_is_read_not_skipped(tmp_path: Path) -> None:
+    """R-1091: a `remedy do` task carries a minted sixteen-hex id, not `T<digits>`, and
+    its gate records must be read like any other task's."""
+    minted = "0123456789abcdef"
+    _seed_pass_task(tmp_path, minted)
+    (tmp_path / "task_runs" / minted / "spec_compliance_check.json").write_text(
+        json.dumps({"verdict": "FAIL"})
+    )
+
+    report = build_final_verifier_report(str(tmp_path))
+
+    assert report["spec_compliance"] == "FAIL"
+    assert report["verdict"] != "PASS"
+
+
 def test_blocked_by_scratch_guard(tmp_path: Path) -> None:
     _seed_pass_task(tmp_path)
     (tmp_path / "scratch_file_guard.json").write_text(

@@ -1,0 +1,105 @@
+diff --git a/.agent/decisions.md b/.agent/decisions.md
+index d47a48e40..78d7786c8 100644
+--- a/.agent/decisions.md
++++ b/.agent/decisions.md
+@@ -24585,3 +24585,54 @@ pay down, rejected for DECISION F036 D2's reason.
+ 
+ HOW TO REVERSE: move F286's STATUS line and its Tier 2 heading back above F038, delete the line
+ this move added to `docs/roadmap/features/T2_F286.md`, and delete this paragraph.
++
++## DECISION F038 D3 — the project scope reads one registry project's own records: its record, its repository's roadmap position, its linked jobs' open decisions and patterns, its missions' dossiers, its token ledger and one digest per linked job, newest first; the node scope gains its prompt trace's metadata; and the spec's set list is rewritten to what is built (2026-09-28)
++
++CONTEXT: Measured at `733d5db6`. A project is a `RemyProject` of
++`packages/orchestration/project_registry.py`, and its jobs are the ones its `job_ids` names, the
++list `remedy project summary` filters by. The spec's project set names the project brain
++aggregate, a progress ledger, the decision queue, the roadmap position and the latest reports.
++`project_brain_aggregate.build_project_brain_aggregate` is a graph of counts with no blockers,
++focus or next step, and each job's brain graph reads the target repository's git status through a
++subprocess. `project_summary.build_project_summary` holds blockers and open decisions, but both
++come from two event names that nothing outside the tests writes, and it stamps the clock;
++`project_summary.detect_patterns` is pure. `progress_ledger.py` was deleted by F275. The decision
++queue is per job, `decision_queue.list_decisions(job, events)`, and the reviewer's probe read the
++same decision id, `sr:derived_no_repo`, on two jobs. `roadmap_index.build_index(repo_root)` reads
++the repository it is given and writes nothing, while `build_and_write_index`, which the roadmap
++command calls, writes its index. `job_digest.build_job_digest` is total and writes nothing. F071's
++dossier is per mission, `mission_dossier.load_dossier_state`, over `mission_state.list_missions_safe`.
++F103's ledger is read by `token_ledger.query_cost`, which opens it read-only and raises
++`sqlite3.Error` on a damaged database. A task's prompt trace is
++`data_paths.run_dir(<run id>)/prompt_trace.jsonl`, whose entries hold the whole redacted prompt
++beside its metadata.
++
++CHOSEN: (1) `collect_project_evidence(project)` in `packages/orchestration/chat_evidence.py` reads
++the linked jobs from `pingpong_job.list_job_plans_safe`, newest first, and their run logs, and
++answers in this order: the project's record, anchored `project:<project id>`; its roadmap
++position, `roadmap:<feature id>`, read from its `canonical_repo_path`; every open decision of
++every linked job, newest job first, `decision:<job id>/<decision id>`, because a decision id alone
++repeats across jobs; each pattern across the linked jobs, `pattern:<pattern id>`; each mission's
++dossier goal, next step and open risks, `dossier:<mission id>`; the ledger's totals,
++`ledger:<project id>`, where an unmeasured figure reads `unmeasured` and never 0; and one digest
++line per linked job, `job:<job id>`, last, so that the cap drops the oldest jobs first. A source
++with nothing recorded is one `project` item saying so, as in the node scope, and a damaged ledger
++or a roadmap that breaks its grammar is such an item naming the error's class.
++`project_evidence_set(project)` composes them under the same cap. (2) NOT IN THE SET: the brain
++aggregate, because it runs git; the project summary's blockers and open decisions, because nothing
++writes their events, the decision queue standing in for both; and the progress ledger, which no
++longer exists. (3) THE NODE SCOPE gains, after the rounds, one `prompt:<task id>#<round>/<role>`
++item per entry of the latest run's prompt trace, stating its round, role, kind, estimated tokens,
++provider and model, and never the prompt text; a missing, unreadable or empty trace is one `node`
++item saying so. (4) The two scope paragraphs of section 2 of
++`docs/roadmap/design/grounded-chat-spec.md` are rewritten to this set: the reviewed set-list update
++T5_F038.md allows. (5) The module now imports `pingpong_job`, for the job list, which the first
++round's specification kept out; nothing imports the module yet.
++
++ALTERNATIVES: filtering jobs by `JobPlan.project_id`, rejected because older jobs carry it empty
++and `remedy project summary` reads `job_ids`; each job's brain graph for its focus, rejected
++because it runs git; one ledger row per model or role, rejected as detail that `remedy stats`
++already shows.
++
++HOW TO REVERSE: delete the project-scope functions and the prompt items with their tests, restore
++the spec's two paragraphs from git history, and delete this paragraph.
+diff --git a/.agent/live_review.md b/.agent/live_review.md
+index ba40df992..a8fa3b452 100644
+--- a/.agent/live_review.md
++++ b/.agent/live_review.md
+@@ -433,3 +433,7 @@ Gate: F036 R9 — the F036 round 9 entry, the closing round: the booking of roun
+ - R-1091 — High, THE TASK-RUN READERS REFUSE THE TASK ID EVERY `remedy do` JOB CARRIES, SO ITS PER-TASK DIFF IS NEVER SERVED AND THE FINAL VERIFIER READS PASS OVER ITS FAILING GATE RECORDS. Raised by the planner and reviewer of F038's first session at the claim, while reading the task diff the chat's node scope cites. SEARCHED BEFORE MINTING (checklist item 30): the open set at `fec08a5b` is empty, `SAFE_TASK_RUN_ID_RE` occurs nowhere in the ledger or its archive, and `_SAFE_TASK_ID_RE` occurs there only as the name of `job_evidence.py`'s guard, in the gate record that proved R-0912's repair; R-0912, resolved at `f939c117`, widened the EXPORTER's guard to the minted shape and reached neither reader. MEASURED at `fec08a5b`: `plan_to_tasks` in `packages/orchestration/job_plan.py` builds every planned `TaskEntry` without a `task_id`, so each carries the sixteen-hex default `data_paths.mint_task_id` mints, and `_task_evidence_dir` in `packages/orchestration/job_evidence.py` exports its run under `task_runs/<that id>/`. Two readers of that directory accept only `T` followed by digits: `SAFE_TASK_RUN_ID_RE` in `packages/orchestration/diff_view_source.py`, whose listing is the only set `build_diff_view` serves, and `_SAFE_TASK_ID_RE` in `packages/orchestration/final_verifier.py`, whose `_task_ids` feeds every per-task gate. The reviewer's probe over a scratch evidence directory holding `task_runs/T001/` and `task_runs/<a minted id>/`, each with a `safe.diff`, and a `spec_compliance_check.json` reading `FAIL` in the minted run, read the listing `['T001']`, the minted run's diff `unknown_task_run` with no file, and the verifier's `spec_compliance` `PASS`. So the browser's per-task diff, the per-task hunk decisions of `remedy patch` and the chat's node scope see no diff for a task of a `remedy do` job, and the final verifier's per-task gates aggregate over none of its tasks. WHY HIGH: a verifier reports PASS over a failing gate record it never read, for every job the product plans; closure evidence jobs number their tasks `T001` and never meet it. FIX: both expressions accept exactly the two shapes the exporter writes, `^(?:T\d{3,}|[0-9a-f]{16})$`, with a comment naming this finding; a test lists and serves a minted run's diff and refuses four near misses — fifteen and seventeen hex characters, upper-case hex and a non-hex letter — and a test reads a minted run's `FAIL` in the verifier. Owner: F038.
+ 
+ Landed: R-1091 — `SAFE_TASK_RUN_ID_RE` in `packages/orchestration/diff_view_source.py` and `_SAFE_TASK_ID_RE` in `packages/orchestration/final_verifier.py` now accept both `T<digits>` and the sixteen-hex id `data_paths.mint_task_id` mints, so a `remedy do` task's diff and gate records are read like a parsed job file's.
++
++Gate: F038 R1 — the F038 round 1 entry: the claim, the booking of F036's round 9, the registration and repair of R-1091, and T001's node scope. VERDICT PASS. Re-derived over `fec08a5b`..`733d5db6` by the planner and reviewer of F038's first session, whose own runs produced every reading below. THE RANGE IS 8 COMMITS, at `64f1dd31` 432, `cbb428a7` 182, `19d1dd4f` 142, `350b3d52` 56, `96634729` 328, `89d08aca` 365, `93354668` 205 and `733d5db6` 275 insertions by `git show --numstat`, each under the 500-line cap and each single-parent; the tracked path set is exactly the block's constraint 3. The worker split C5 into C5a and C5b under constraint 2, and corrected C4's subject with a message-only amend before anything was pushed; both are declared, and no pushed commit changed. THE TRANSPORT PROOF: the block copy and the three payload copies, read at `733d5db6`, equal the reviewer's originals byte for byte. THE CLAIM: at `19d1dd4f` the ledger, the decisions, the plan, the context, STATUS and F286's file equal the reviewer's simulation byte for byte, and the open set reads empty at `fec08a5b` and `R-1091` alone at `19d1dd4f`. THE LEDGER at `350b3d52` is the claim's ledger plus one `Landed: R-1091 — ` line, and no later commit of the round changes it. THE CODE: ruff reads clean over the round's eight Python files; `SAFE_TASK_RUN_ID_RE` and `_SAFE_TASK_ID_RE` read `^(?:T\d{3,}|[0-9a-f]{16})$` under comments naming R-1091; `packages/orchestration/chat_evidence.py` imports the standard library and the seven modules S2 names, and its item, composer and node collector read as S3 to S5 order. THE TESTS: the block's selection, run by the reviewer serially in the primary checkout at `733d5db6`, read 1081 passed and 6 skipped at exit 0, two more than the reviewer's simulation because the worker's `tests/orchestration/test_chat_evidence.py` collects 14 nodes against the simulation's 12; the six skips are the F252 quarantine. `integrity check` reads five checks pass and `high_blockers_open` fail on R-1091 alone, as the block ordered. THE RED PROOFS: the reviewer's own mutations, written against the worker's lines and run with `python3 -B` in a disposable worktree at `733d5db6`, went red one by one — both expressions narrowed back to `T<digits>`, the cap ignored, redaction skipped, events oldest first, the metadata task id ignored, the task found by a prefix, the cut skipped, item validation skipped, the diff read at job scope, an unknown test result read as failed, and `omitted` held at 0 — each with at least one failing node, both unmutated controls read exit 0, the bytes were restored, the worktree was removed, and `git worktree list` reads 62 lines, the worker's own step 4 reading.
++
++Done: R-1091 — RESOLVED at `350b3d52` (F038 R1 C3), booked by F038 R2: `SAFE_TASK_RUN_ID_RE` in `packages/orchestration/diff_view_source.py` and `_SAFE_TASK_ID_RE` in `packages/orchestration/final_verifier.py` accept `^(?:T\d{3,}|[0-9a-f]{16})$`, the two shapes the evidence exporter writes; `test_a_minted_task_id_is_listed_and_served_beside_near_misses` lists and serves a minted run beside four refused near misses, and `test_a_minted_task_ids_failing_gate_is_read_not_skipped` reads a minted run's `FAIL`. In the reviewer's disposable worktree at `733d5db6`, narrowing the first expression back to `T<digits>` turned that first test and the node scope's eleven-item test red, and narrowing the second turned the verifier test red, each at exit 1.
+diff --git a/docs/roadmap/design/grounded-chat-spec.md b/docs/roadmap/design/grounded-chat-spec.md
+index 9e60f67b3..44a91506f 100644
+--- a/docs/roadmap/design/grounded-chat-spec.md
++++ b/docs/roadmap/design/grounded-chat-spec.md
+@@ -19,14 +19,21 @@ Two scopes, both answer ONLY from a defined evidence set; uncited claims
+ render marked "unsupported"; a canary test asking about absent facts must get
+ "not in evidence".
+ 
+-- **Project scope** — evidence set (all existing today):
+-  project brain output (`project_brain.py` aggregate: blockers, patterns,
+-  focus, next step), progress ledger, decision queue state, roadmap position
+-  (STATUS.md next-open parse), latest job reports/review bundles.
+-  When F071 (mission dossier) and F103 (token ledger views) land, they JOIN
+-  this set — no redesign, the composer takes evidence providers as a list.
+-- **Node scope** — that node's evidence only: prompt trace, verdicts, diff,
+-  run log (existing explain_run direction).
++- **Project scope** — evidence set, built by `chat_evidence.collect_project_evidence`
++  for one registry project and the jobs its `job_ids` names (DECISION F038 D3):
++  the project's own record; its roadmap position (the in-progress or next open
++  feature of its repository's `docs/roadmap/STATUS.md`); the open decisions of
++  its linked jobs (the decision queue); the patterns found across them; the
++  goal, next step and open risks of each mission's dossier (F071); the token
++  ledger's totals (F103); and one digest per linked job, newest first, which
++  carries the latest report's headline. The composer takes these providers in
++  that order, so the token cap drops the oldest jobs first. The progress ledger
++  this list once named is deleted, and the project brain's graph aggregate is
++  left out because it reads the repository's git status.
++- **Node scope** — that node's evidence only: its task record, its latest
++  run's rounds, the metadata of its prompt trace (never the prompt text), its
++  own diff and its run-log events (`chat_evidence.collect_node_evidence`,
++  DECISION F038 D1).
+ 
+ Answers carry citation chips [1][2] anchoring into the underlying artifacts
+ (cockpit: EvidencePanel anchors; CLI: artifact paths).

@@ -1,0 +1,60 @@
+diff --git a/.agent/decisions.md b/.agent/decisions.md
+index becc80cb3..09da5709a 100644
+--- a/.agent/decisions.md
++++ b/.agent/decisions.md
+@@ -24880,3 +24880,41 @@ job is not a project.
+ 
+ HOW TO REVERSE: delete `chat_turn.py` and its tests, restore the `chat_intent_model.py` line in
+ `ALLOWED_UNWIRED`, and delete this paragraph.
++
++## DECISION F038 D10 — `remedy chat ask` is the chat's command line: one line per invocation, a question answered with its scope and numbered evidence, a card sent through the job's running cockpit only after `--yes` or a `y` typed on a terminal; with neither, nothing is sent and the output says why (2026-09-28)
++
++CONTEXT: Measured at `72ba3b2e`. `remedy chat` is F264's steering group: `chat send`, its bare
++default, records a steering message, and `chat show` lists them. `chat_turn.run_chat_turn` reads a
++line into a grounded answer or a card and sends nothing (DECISION F038 D9); `chat_door` sends a
++confirmed card to a running cockpit's write door, given its port and token (DECISION F038 D7).
++`remedy ui start`, and the cockpit `remedy do` launches, each write an info file with the port,
++the token, the job and the process id into the UI session registry under the data root.
++`apps/cli/cost_preview_confirm.py` is the command line's one confirm idiom: `--yes` proceeds, a
++terminal gets a `[y/N]` line, and a non-terminal is never left waiting. The feature file asks
++for a `remedy chat` REPL with confirm prompts as y/N lines, honest about the terminal.
++
++CHOSEN: (1) A NEW SUBCOMMAND `chat ask <job_id> "<text>" [--task <task id>] [--yes] [--json]`;
++the bare `remedy chat` still means `chat send`. Each invocation is one line of the chat, so the
++shell's own history is the REPL, and no loop reads standard input. (2) A QUESTION prints its
++scope and subject, the checked answer with its unsupported sentences marked, and one line per
++numbered evidence item. (3) A CARD prints its title and lines. It is sent only when it is
++confirmable and either `--yes` was given or standard input is a terminal and the person types
++`y` at `Send it? [y/N]`. Otherwise nothing is sent, the exit code is 0, and the output says why:
++the card is incomplete, it was not confirmed, or standard input is not a terminal, with the
++`--yes` hint. (4) SENDING finds the newest live session for the job in the UI session registry,
++through a new read-only lookup in `apps/cli/commands/ui.py`, and posts through `chat_door` with a
++fresh `chat-` nonce. No live cockpit, or one that does not answer, exits 3 with a sentence naming
++`remedy ui start`; a cockpit that refuses the card exits 1 with its reason. The cockpit's audit
++line is the record of the send. (5) The exit codes are 0, 1, 2 for a task id that names no task,
++and 3; the exit-codes guide gains the row. (6) The six chat modules become reachable from the
++command line, so their `ALLOWED_UNWIRED` lines go and the reachability allowlist gains them.
++(7) R-1093's missing test lands here.
++
++ALTERNATIVES: a loop reading standard input, rejected because a non-terminal caller would hang
++and one line per invocation already has history; running the card's effect directly when no
++cockpit runs, rejected by DECISION F038 D7, since the chat would act with no audit line; exiting
++non-zero for a card left unsent, rejected because nothing failed: the card is the answer.
++
++HOW TO REVERSE: delete the `chat.ask` entry, its handler and its tests, the registry lookup in
++`ui.py`, the guide row and the six allowlist lines; restore the two `ALLOWED_UNWIRED` lines; and
++delete this paragraph.
+diff --git a/.agent/live_review.md b/.agent/live_review.md
+index 6a2e0dc11..4851f072c 100644
+--- a/.agent/live_review.md
++++ b/.agent/live_review.md
+@@ -453,3 +453,9 @@ Gate: F038 R7 — the F038 round 7 entry: the booking of round 6, DECISION F038
+ - R-1092 — Low, THE MODEL-WRITTEN INTENT PARSE'S TESTS ARE BLIND TO TWO OF ITS OWN RULES: A CONFIDENCE THAT IS NOT A FINITE NUMBER, AND AN ARGUMENT VALUE THAT IS NOT STRIPPED. Raised by the planner and reviewer of F038's second session at the round 7 gate. SEARCHED BEFORE MINTING (checklist item 30): the open set at `61cf423a` is empty, and neither `chat_intent_model` nor `isfinite` occurs in the ledger. MEASURED at `61cf423a` in a disposable worktree: in `packages/orchestration/chat_intent_model.py`, deleting `not math.isfinite(reply.confidence) or ` from `parse_chat_intent_with_model`, so that a reply whose confidence is NaN passes the floor because every comparison with NaN is false, left `tests/orchestration/test_chat_intent_model.py` at exit 0; so did replacing `value.strip() if isinstance` with `value if isinstance`, so that a padded answer reaches the card and the door as sent. DECISION F038 D8 (4) and (5) and the round 7 block's S5 (d) and (e) require both, and the code does both; the block's list of tests ordered neither case, so the suite would not notice either rule being lost. FIX: two tests in `tests/orchestration/test_chat_intent_model.py`: a reply whose confidence is NaN (sent as the JSON token `NaN`, which the parser reads as a float) is unknown; and a `decision.resolve` reply whose decision id and answer carry spaces around them comes back with both stripped and complete. Each is red under its mutation above. Owner: F038.
+ 
+ Landed: R-1092 — `tests/orchestration/test_chat_intent_model.py` gains a test that reads a reply whose confidence is the JSON token `NaN` as unknown, and a test that reads a `decision.resolve` reply with padded values back stripped and complete.
++
++Gate: F038 R8 — the F038 round 8 entry: the booking of round 7, R-1092's registration and repair, DECISION F038 D9, and one chat turn. VERDICT PASS. Re-derived over `61cf423a`..`72ba3b2e` by the planner and reviewer of F038's second session, whose own runs produced every reading below. THE RANGE IS 6 COMMITS, at `cb3525c4` 315, `c550625b` 62, `a6356321` 42, `dffe2f1a` 132, `3b091b5b` 352 and `72ba3b2e` 138 insertions by `git show --numstat`, each under the 500-line cap and each single-parent; the tracked path set is exactly the block's constraint 3, and the worker declared no deviation. THE TRANSPORT PROOF: the block copy and the three payload copies, read from the commits that added them, equal the reviewer's originals byte for byte. THE RECORDS: at `a6356321` the ledger, the decisions and the plan, and at `3b091b5b` the ledger with its `Landed: R-1092 — ` line, equal the reviewer's simulation byte for byte; the open set reads `['R-1092']` at both, and no later commit of the round changes the ledger. THE CODE: ruff reads clean over the four touched Python files and the mutation tool; `packages/orchestration/chat_turn.py` refuses a task id naming no task of the job before it reads anything, hands the parse the ids of the inbox cards the door would accept an answer to, turns anything but a question into a card, and answers a question from the focused task's node scope, the owning project's scope, or an empty project set. THE TESTS: the block's selection, run by the reviewer serially in the primary checkout at `72ba3b2e`, read 1145 passed and 9 skipped at exit 0, the reviewer's base reading of 1135 at `61cf423a` plus the 8 nodes of the new `tests/orchestration/test_chat_turn.py` and R-1092's 2; the skips are the six of the F252 quarantine and three of `tests/orchestration/test_model_routing.py`. All six `integrity check` checks read pass. THE RED PROOFS: the reviewer's own mutations, written against the worker's lines and run with `python3 -B` in a disposable worktree at `72ba3b2e`, went red one by one for an unknown task not refused, no open decisions passed, every inbox card listed, a focused question answered from the project, an action answered as a question, a None project handed on, the intent's call function dropped, and R-1092's two cases, a NaN confidence kept and values not stripped; one further mutation stayed GREEN — the answer's call function dropped — which R-1093 registers. Both controls read exit 0, the bytes were restored, and the worktree was removed.
++
++Done: R-1092 — RESOLVED at `3b091b5b` (F038 R8 C4), booked by F038 R9: `test_a_reply_whose_confidence_is_nan_is_unknown` and `test_decision_resolve_reply_values_come_back_stripped` in `tests/orchestration/test_chat_intent_model.py` pin the two rules. In the reviewer's disposable worktree at `72ba3b2e`, deleting the finite-number check turned the first red and dropping the strip turned the second red, each at exit 1.
++
++- R-1093 — Low, THE CHAT TURN'S TESTS ARE BLIND TO WHETHER AN ANSWER CALL FUNCTION HANDED IN IS USED. Raised by the planner and reviewer of F038's second session at the round 8 gate. SEARCHED BEFORE MINTING (checklist item 30): the open set at `72ba3b2e` holds R-1092 alone, whose own defect is two rules of `chat_intent_model.py`; `answer_call_fn` occurs in the ledger nowhere. MEASURED at `72ba3b2e` in a disposable worktree: in `packages/orchestration/chat_turn.py`, replacing `answer_kwargs["call_fn"] = answer_call_fn` with `pass` left `tests/orchestration/test_chat_turn.py` at exit 0, because every question there is asked with `answer_call_fn=None` while `chat.model_written` is off, and the dropped argument falls back to exactly that mechanical answer. The round 8 block's S5 (d) requires the handed-in function to be used, and the code uses it; its list of tests ordered no case that tells the two apart. FIX: one test in `tests/orchestration/test_chat_turn.py`: a focused question asked with an `answer_call_fn` stub whose reply restates a node item with its citation comes back with the answer's `generator` reading `summary-role`, which the dropped argument turns back into `mechanical`. Owner: F038.

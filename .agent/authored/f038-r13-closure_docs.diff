@@ -1,0 +1,195 @@
+diff --git a/docs/agents/planner_reviewer_prompt.md b/docs/agents/planner_reviewer_prompt.md
+index 2ec31083e..22e0f5ab7 100644
+--- a/docs/agents/planner_reviewer_prompt.md
++++ b/docs/agents/planner_reviewer_prompt.md
+@@ -368,6 +368,11 @@ end the response with:
+   environment a dry run must share with what it proves; and a block that changed a function's
+   default without naming the existing test that pinned the old one is item 34's reading of the
+   tests that already guard a path. The list stays at 34 items.
++  Consolidated a twenty-fifth time at F038's closure on 2026-09-28: nothing joined and no two items
++  were merged, because F038's one line in `.agent/prose_slips.md` names no lesson the list lacks. A
++  block that specified a wire shape key by key and ordered tests for only some of its keys is item
++  18's reading of an ordered recipe, here a list of tests, against the property it must establish,
++  here every key of the shape. The list stays at 34 items.
+   The next consolidation measures against 34.
+   Reverse by deleting this paragraph.
+   1. **Size.** Count the block's lines. Over 400 (DECISION F105 D5) → split or
+diff --git a/docs/guides/steering-user-guide-v1.md b/docs/guides/steering-user-guide-v1.md
+index f1a0389fa..7338ded5e 100644
+--- a/docs/guides/steering-user-guide-v1.md
++++ b/docs/guides/steering-user-guide-v1.md
+@@ -83,9 +83,43 @@ marker under `steering/consumed/` names the task and the round, and a
+ matches its text stops the job loudly instead of feeding it text nobody can prove you
+ sent.
+ 
++## Ask a question, or ask for an action
++
++A steering message is read by the builder. The chat, built by feature F038, is for you: it
++answers questions from the job's own records, and it turns a request into a card that says
++exactly what would be done, which is done only when you confirm it.
++
++    remedy chat ask <job_id> "Did the tests pass?" --task <task_id>
++
++With `--task`, the answer comes only from that task's records: its status, its rounds, its
++prompts (never their text), its changes and its events. Without it, the answer comes from the
++records of the project that owns the job's repository. The output says which of the two it
++used, how the answer was written, the answer itself, and one numbered line per record it read.
++Every sentence of the answer ends with the numbers of the records it restates; a sentence that
++cannot be traced to one is marked `[unsupported]`, and a question the records do not answer gets
++the answer `Not in evidence.` rather than a guess. Answers are built from the records without a
++model unless you switch on `chat.model_written`, described in
++[environment.md](environment.md); a model's answer is checked in the same way.
++
++A line that is not a question is read as a request: stop, pause, resume, a note to the builder,
++veto or rerun. The command prints a card naming the job, the task, the message or reason, and the
++command it would send. It sends the card to the job's running cockpit only when the card is
++complete and you confirm it, either by typing `y` at the `Send it? [y/N]` line or by adding
++`--yes`; without a terminal and without `--yes`, nothing is sent and the output says why. The
++cockpit must be running (`remedy ui start <job_id>`), because the card goes through the same
++checked entrance as a button in the browser, and its record is the cockpit's own audit line.
++
++In the cockpit, the same chat is the Chat tab of a run's evidence panel. It asks about that
++run's task, or about the whole project when you tick the box beside the input. Each sentence of
++an answer carries numbered links to the records listed under it, or a dashed "unsupported"
++mark, and a card has a Confirm button that sends it once.
++
+ ## Exit codes
+ 
+ `remedy chat send` exits 0 when the message was recorded, 2 when the message itself is
+ unusable (empty, too long, or containing a NUL character), and 3 when the job has ended or
+ its record cannot be read. `remedy chat show` exits 3 when the job's record cannot be read.
+-An unknown job id exits 1. The full list is in [exit-codes.md](exit-codes.md).
++`remedy chat ask` exits 0 whether or not a card was sent, 2 for a task id that names no
++task of the job, 3 when the job's record cannot be read or no cockpit for the job is running
++or answering, and 1 when the cockpit refuses the card. An unknown job id exits 1. The full
++list is in [exit-codes.md](exit-codes.md).
+diff --git a/docs/roadmap/features/T5_F038.md b/docs/roadmap/features/T5_F038.md
+index 55e9c61fb..ed9b61f7b 100644
+--- a/docs/roadmap/features/T5_F038.md
++++ b/docs/roadmap/features/T5_F038.md
+@@ -95,3 +95,125 @@ The exposed-verb list (per-feature growth), evidence formats,
+ spec changes outside the reviewed set-list update. Suggested
+ tests: tests/orchestration/test_grounded_chat.py +
+ tests/ui_contracts/test_chat_citations.py.
++
++## Built State (F038, 2026-09-28)
++
++What exists on disk at the close of F038, built in thirteen rounds over three sessions on
++`feature/f038-grounded-chat`, cut from `main` at `fec08a5b`. The chat reads the job's and the
++project's own records and changes none of them; it acts only by sending a confirmed card through
++the cockpit's one write door. Every DECISION named lives in `.agent/decisions.md`; every round's
++verdict in `.agent/live_review.md` or, once rotated, its archive.
++
++**T001 — the evidence and the grounded answer.** `packages/orchestration/chat_evidence.py` builds
++an answer's evidence as numbered items, each a `ChatEvidenceItem(kind, ref, text)`: one fact on
++one line of at most 400 characters, redacted before it is folded and cut, anchored by its kind and
++ref (DECISION F038 D1). The node scope of one task holds its record (`node`), each round of its
++latest run (`round`), each prompt of that run's trace by its metadata and never its text
++(`prompt`), each file of its own diff (`diff`) and its run-log events newest first (`event`). The
++project scope of one registry project holds its record (`project`), its repository's roadmap
++position (`roadmap`), its linked jobs' open decisions (`decision`), the patterns across them
++(`pattern`), its missions' dossiers (`dossier`), the token ledger's totals (`ledger`) and one
++digest line per linked job (`job`), in that order (DECISION F038 D3). A source with nothing
++recorded is one item saying so, which is the fact an absent-fact answer cites. The composer keeps
++the items in order under a 4000-token estimate and counts the rest as omitted.
++`packages/orchestration/chat_answer.py` checks an answer sentence by sentence: a sentence is
++supported only when it cites `[n]` numbers the set holds and states no URL, backtick span or
++number its cited items do not hold; "Not in evidence." with no citation is supported, because it
++claims an absence (DECISIONS F038 D4 and D5). The mechanical answer restates the items that best
++match the question's keywords, at most five, each ending in its citation, and answers "Not in
++evidence." when none matches. The summary model writes the answer instead only when the operator
++switches on `chat.model_written` (environment variable `REMEDY_CHAT_MODEL_WRITTEN`, off by default,
++listed in `docs/guides/environment.md`), through `chat_call_fn()` and the `summary` role; its reply
++passes the same check, and a failed call or a reply with no supported sentence falls back to the
++mechanical answer, labelled with the reason. `chat_generator_line` turns that label into one
++plain sentence saying how the answer was written (DECISION F038 D13).
++
++**T002 — the request, the card and the door.** `packages/orchestration/chat_intent.py` reads a
++line as a question, an action or unknown: a line ending in `?` or starting with a question word
++is a question; otherwise its first word chooses stop, pause, resume, a note to the builder, veto
++or rerun, each mapped to the write door's own command and argument names (DECISION F038 D6). A
++card states the job, the task, the message or reason it carries, what is still missing and the
++command it would send, and is confirmable only when nothing is missing; an unknown request gets
++the card "I can't do that yet", naming what is available. `packages/orchestration/chat_intent_model.py`
++asks the summary model about a line the mechanical parse calls unknown, only while
++`chat.model_written` is on; it may also choose answering an open decision or adding a task, and
++every argument it returns is filtered, the task always the focused one and a decision id only one
++the job holds open, so a low-confidence or unusable reply stays unknown (DECISION F038 D8).
++`packages/orchestration/chat_door.py` posts a confirmed card to the running cockpit's write door
++over the loopback connection, with the bearer token, `X-Remedy-CSRF` and a fresh `chat-` nonce, so
++the door's token check, replay check, rate limit and audit line apply to the chat unchanged
++(DECISION F038 D7). `packages/orchestration/chat_turn.py`'s `run_chat_turn` is the one chat turn
++both doors call: it answers a question from the focused task's node scope, or the project scope of
++the project owning the job's repository, or an empty set when none owns it, and turns anything
++else into a card, sending nothing; `chat_turn_view` is its one wire shape (DECISIONS F038 D9 and
++D11).
++
++**T003 — the command line, the route and the cockpit tab.** `remedy chat ask <job_id> "<text>"
++[--task <task id>] [--yes] [--json]` runs one turn: a question prints its scope, how the answer was
++written, the checked answer and one `[n] kind ref` line per evidence item; a card prints its title
++and lines and is sent through the job's newest live cockpit, which `live_ui_session_for_job` in
++`apps/cli/commands/ui.py` finds without writing, only when it is complete and confirmed by `--yes`
++or a `y` typed at a terminal; it exits 3 when no cockpit runs or none answers, 1 when the cockpit
++refuses the card, and 2 for a task id that names no task (DECISION F038 D10). The bare
++`remedy chat` still records a steering message. `GET /api/jobs/<job_id>/chat?text=<line>&task=<task id>`
++answers one turn in `chat_turn_view`'s shape behind the read token and sends nothing; a blank line
++or an unknown task is data at 200, and no POST route was added (DECISION F038 D11). The evidence
++panel's Chat tab, `apps/ui/src/components/graph/EvidenceChatTab.tsx`, replaces the placeholder
++that promised this feature: a line asks about the focused run's task, or the whole project when
++its box is ticked; an answer shows a scope chip, how it was written, each sentence with numbered
++chips linking to its evidence items listed below or a dashed "unsupported" mark, and a button
++opening the diff or the prompt trace for an item of that kind; a card shows its title and lines
++and a Confirm button only while it is complete and not already sent, which sends it through the
++write door once. `apps/ui/src/api/chatTurn.ts` holds every rule the tab applies: the decoder that
++refuses a body whole, the sentence marks, the plain lines and the card's own refusal sentences
++(DECISION F038 D12). The design reference's assumption log records the tab.
++
++**Acceptance, by the test that proves it.** The canary suite in both scopes:
++`test_canary_suite_over_a_real_node_scope_reads_not_in_evidence`,
++`test_canary_suite_over_a_real_project_scope_reads_not_in_evidence` and
++`test_model_canary_suite_over_a_real_node_scope_still_reads_not_in_evidence` in
++`tests/orchestration/test_chat_answer.py`. Every rendered claim carries a chip or the unsupported
++mark: the DOM audit `apps/ui/src/components/graph/evidenceChatAudit.test.ts`, which renders the
++tab's real `ChatTurnBlock` with `react-dom/server`, and `tests/ui_contracts/test_chat_citations.py`,
++which holds the TypeScript's fixed sentences equal to the Python's. Verb coverage and the honest
++unknown card: `tests/orchestration/test_chat_intent.py` and
++`tests/orchestration/test_chat_intent_model.py`. Nothing executes unconfirmed, proved on the audit
++file: `tests/orchestration/test_chat_door.py`, `tests/cli/test_chat_ask.py` and the end-to-end
++`tests/ui_server/test_chat_e2e_live.py`, which asks a live job's chat route about a finished task,
++turns "stop that task" into a card, reads the audit file empty, confirms the card through the
++write door, and reads the job stopped with exactly one accepted `job.stop` line carrying the
++chat's nonce. The route: `tests/ui_server/test_chat_route.py`; the turn:
++`tests/orchestration/test_chat_turn.py`.
++
++**Spec conformance, section by section** (`docs/roadmap/design/grounded-chat-spec.md`). Section 2,
++the read path: built as written; its two scope paragraphs were rewritten to the built evidence set
++in round 2, the reviewed set-list update the feature file allows (DECISION F038 D3). Section 3, the
++write path: the chat maps to exposed commands only; submitting a job is not proposed, because
++`remedy do` is not an exposed command, and steering, pausing, resuming, stopping, vetoing,
++rerunning, answering a decision and adding a task are (DECISIONS F038 D6 and D8). Section 4,
++delivery: the command line came first and the cockpit wires the same turn, but the cockpit route
++is `GET /api/jobs/<job_id>/chat`, not the spec's two project routes, because the cockpit serves one
++job and a turn sends nothing; the spec's line was left as written and DECISION F038 D11 records the
++deviation. Section 5, routing and tokens: the answer and the parse go through the summary role, no
++chat class joined the routing table, and the composed evidence is capped at 4000 estimated tokens
++(DECISION F038 D5). Section 6, the invariants: each holds and each is pinned by the tests above;
++redaction runs before any item is composed. Section 7, the test plan: covered by the tests above.
++
++**Reachability.** The six modules `chat_evidence`, `chat_answer`, `chat_intent`,
++`chat_intent_model`, `chat_door` and `chat_turn` joined
++`tests/orchestration/import_reachability_allowlist.txt` when `remedy chat ask` reached them in round
++9, and no `ALLOWED_UNWIRED` line of theirs remains.
++
++**Deliberate absences.** No read-only mode, since neither path needs a model (DECISION F038 D13).
++No verb for the plan edits, the task edit, the injection's confirmation or the hunk approval: each
++needs an id or a version number a person reads off the panel that shows it (DECISION F038 D8). No
++chat in the right panel, whose input stays F030's steering note and promises no reply (DECISION
++F038 D12). No chat history is stored: the evidence is re-read at every turn.
++
++**Findings.** F038 registered seven findings and repaired every one inside it: R-1091 (High),
++task readers that refused the task id every `remedy do` job carries, found when the node scope
++needed the per-task diff; five Low ones, each a rule its own round had built that no test yet told
++apart — R-1092 and R-1093 in the model parse and the chat turn, R-1094 in `remedy chat ask`, R-1095
++in the view and R-1096 in the browser's decoder; and R-1097 (Low), the tab's wording, its input's
++missing name and a second Confirm while a send was in flight. None was open at its claim, which is why DECISION
++F038 D2 moved the fifth findings paydown, F286, behind F038.

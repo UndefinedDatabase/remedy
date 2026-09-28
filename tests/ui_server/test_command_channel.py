@@ -1441,6 +1441,7 @@ class TestCommandChannelDoor:
         paths += [f"/api/jobs/{self.job_id}/{name}" for name in sorted(endpoints)]
         paths += [
             f"/api/jobs/{self.job_id}/events-since",
+            f"/api/jobs/{self.job_id}/chat",
             f"/api/jobs/{self.job_id}/events/stream",
             f"/api/jobs/{self.job_id}/nodes/node-1/detail",
             f"/api/jobs/{self.job_id}/nodes/node-1/human-detail",

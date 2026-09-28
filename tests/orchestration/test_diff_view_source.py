@@ -172,6 +172,36 @@ def test_list_task_run_ids_sorts_and_filters_the_listing(tmp_path: Path) -> None
     assert list_task_run_ids(tmp_path) == []
 
 
+def test_a_minted_task_id_is_listed_and_served_beside_near_misses(tmp_path: Path) -> None:
+    """R-1091: the sixteen-hex id `data_paths.mint_task_id` mints is a real task run,
+    same as `T<digits>`, and near-miss shapes stay refused."""
+    evidence = tmp_path / "evidence"
+    runs = evidence / "task_runs"
+    minted = "0123456789abcdef"
+    minted_diff = TASK_DIFF_TEXT.replace("task_only.py", "minted_only.py")
+    (runs / "T001").mkdir(parents=True)
+    (runs / "T001" / "safe.diff").write_text(TASK_DIFF_TEXT, encoding="utf-8")
+    (runs / minted).mkdir(parents=True)
+    (runs / minted / "safe.diff").write_text(minted_diff, encoding="utf-8")
+    for near_miss in (
+        "0123456789abcde",       # fifteen hex characters
+        "0123456789abcdef0",     # seventeen hex characters
+        "0123456789ABCDEF",      # upper-case hex
+        "0123456789abcdeg",      # a non-hex letter
+    ):
+        (runs / near_miss).mkdir(parents=True)
+        (runs / near_miss / "safe.diff").write_text(TASK_DIFF_TEXT, encoding="utf-8")
+
+    assert list_task_run_ids(evidence) == [minted, "T001"]
+
+    view = build_diff_view(evidence, task_id=minted)
+
+    assert view["available"] is True
+    assert view["reason"] is None
+    assert view["source"] == f"task_runs/{minted}/safe.diff"
+    assert _paths(view) == ["packages/orchestration/minted_only.py"]
+
+
 def test_an_empty_diff_artifact_is_available_with_no_files(tmp_path: Path) -> None:
     evidence = tmp_path / "evidence"
     evidence.mkdir()

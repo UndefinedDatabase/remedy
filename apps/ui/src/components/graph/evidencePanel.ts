@@ -1,8 +1,7 @@
-// Owns what the L3 evidence panel lists: its tabs in order with their labels,
-// the prompts its trace tab shows for a run's task, and the sentence its chat
-// tab says until chat about a run exists. PURE, so each is goldened headless
+// Owns what the L3 evidence panel lists: its tabs in order with their labels, and the
+// prompts its trace tab shows for a run's task. PURE, so each is goldened headless
 // (T5_F023.md: "L3 EvidencePanel side panel: tabs diff | prompt trace | chat";
-// DECISION F023 D5).
+// DECISION F023 D5). The chat tab itself is `EvidenceChatTab.tsx` (DECISION F038 D12).
 import type { RemedyPromptTraceItem } from "../../api/types";
 import type { EvidenceTab } from "./semanticZoom";
 
@@ -13,10 +12,6 @@ export const EVIDENCE_TABS: readonly { tab: EvidenceTab; label: string }[] = [
   { tab: "chat", label: "Chat" },
   { tab: "ownership", label: "Ownership" },
 ];
-
-/** The chat tab's honest answer: nothing to talk to about a single run yet. */
-export const EVIDENCE_CHAT_NOT_YET =
-  "Talking about a single run arrives with its own feature. The job's steering box, in the right panel, already reaches the running job.";
 
 /** The prompts the trace tab lists for a task: that task's own, in the order
  *  they were sent — by round, then the builder before the reviewer. */

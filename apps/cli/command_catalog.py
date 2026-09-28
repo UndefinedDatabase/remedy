@@ -309,6 +309,32 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         related=("chat.send", "job.show"),
         exit_codes=(0, 1, 2, 3),
     ),
+    CommandEntry(
+        command_id="chat.ask",
+        group_id="chat",
+        subcommand="ask",
+        description="Ask a job's task a grounded question, answered from its own evidence with "
+                    "numbered citations, or type an action that becomes a card sent through the "
+                    "job's running cockpit once confirmed — one step in the job plan.",
+        action_class="write_metadata",
+        args=(
+            ArgDef("job_id", "The job this chat turn asks or steers (its ID, or a unique prefix "
+                             "of it), scoped to its own tasks"),
+            ArgDef("text", "The question or action, quoted as one argument"),
+            ArgDef("--task", "Focus the turn on one task, named exactly as the job plan lists its "
+                             "id (no prefix match); omit to answer from the job's own repo instead",
+                   required=False, is_option=True),
+            ArgDef("--yes", "Send a confirmable card without the [y/N] prompt, needed when "
+                            "standard input is not a terminal", required=False, is_option=True,
+                   is_flag=True),
+            _JSON_OPT,
+        ),
+        supports_json=True,
+        may_mutate_repo=False,
+        may_execute_commands=False,
+        related=("chat.send", "chat.show", "ui.start"),
+        exit_codes=(0, 1, 2, 3),
+    ),
 
     # ── status ──────────────────────────────────────────────────────────
     CommandEntry(
