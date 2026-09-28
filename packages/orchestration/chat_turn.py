@@ -127,3 +127,39 @@ def run_chat_turn(
         answer_kwargs["call_fn"] = answer_call_fn
     answer = answer_chat_question(text, evidence, **answer_kwargs)
     return ChatTurn(kind=CHAT_TURN_ANSWER, evidence=evidence, answer=answer)
+
+
+def chat_turn_view(turn: ChatTurn) -> dict[str, Any]:
+    """The one wire shape a turn gives both doors (DECISION F038 D11): an ANSWER's scope,
+    subject, question, generator, checked sentences and numbered evidence, or a CARD's
+    verb, title, lines, arguments, what is still missing and whether it is confirmable."""
+    if turn.kind == CHAT_TURN_ANSWER:
+        answer = turn.answer
+        evidence = turn.evidence
+        return {
+            "kind": CHAT_TURN_ANSWER,
+            "scope": answer.scope,
+            "subject": answer.subject,
+            "question": answer.question,
+            "generator": answer.generator,
+            "sentences": [
+                {"text": sentence.text, "citations": list(sentence.citations),
+                 "supported": sentence.supported, "problem": sentence.problem}
+                for sentence in answer.sentences
+            ],
+            "evidence": [
+                {"number": number, "kind": item.kind, "ref": item.ref, "text": item.text}
+                for number, item in enumerate(evidence.items, start=1)
+            ],
+            "omitted": evidence.omitted,
+        }
+    card = turn.card
+    return {
+        "kind": CHAT_TURN_CARD,
+        "verb": card.verb,
+        "title": card.title,
+        "lines": list(card.lines),
+        "args": dict(card.args),
+        "missing": list(card.missing),
+        "confirmable": card.confirmable,
+    }

@@ -140,26 +140,15 @@ def _chat_stdin_is_a_tty() -> bool:
 
 
 def _render_chat_answer_turn(job_id: str, turn: object, *, json_output: bool) -> None:
-    """Print or emit a QUESTION turn's checked answer and its numbered evidence (S5)."""
+    """Print or emit a QUESTION turn's checked answer and its numbered evidence (S5), in the
+    one wire shape `chat_turn_view` gives the cockpit's read route too (DECISION F038 D11)."""
     from packages.orchestration.chat_answer import render_chat_answer
+    from packages.orchestration.chat_turn import chat_turn_view
 
     answer = turn.answer
     evidence = turn.evidence
     if json_output:
-        emit_ok(
-            job_id=job_id, kind="answer", scope=answer.scope, subject=answer.subject,
-            generator=answer.generator,
-            sentences=[
-                {"text": sentence.text, "citations": list(sentence.citations),
-                 "supported": sentence.supported}
-                for sentence in answer.sentences
-            ],
-            evidence=[
-                {"number": number, "kind": item.kind, "ref": item.ref}
-                for number, item in enumerate(evidence.items, start=1)
-            ],
-            omitted=evidence.omitted,
-        )
+        emit_ok(job_id=job_id, **chat_turn_view(turn))
         return
     subject = answer.subject or "no registered project"
     print(f"Scope: {answer.scope} {subject}")
@@ -168,11 +157,16 @@ def _render_chat_answer_turn(job_id: str, turn: object, *, json_output: bool) ->
         print(f"[{number}] {item.kind} {item.ref}")
 
 
-def _send_chat_card(job: object, card: object, *, yes: bool, json_output: bool) -> None:
+def _send_chat_card(job: object, turn: object, *, yes: bool, json_output: bool) -> None:
     """Print a CARD turn's title and lines (S6), and send it through the job's running
-    cockpit only once it is confirmable and confirmed by `--yes` or a typed `y`."""
+    cockpit only once it is confirmable and confirmed by `--yes` or a typed `y`. Receives the
+    whole turn, not just its card, so `--json` can emit `chat_turn_view(turn)` — the one wire
+    shape the cockpit's read route gives too (DECISION F038 D11)."""
     import secrets
 
+    from packages.orchestration.chat_turn import chat_turn_view
+
+    card = turn.card
     human = sys.stderr if json_output else sys.stdout
     print(card.title, file=human)
     for line in card.lines:
@@ -232,9 +226,8 @@ def _send_chat_card(job: object, card: object, *, yes: bool, json_output: bool) 
 
     if json_output:
         emit_ok(
-            job_id=job.job_id, kind="card", verb=card.verb, title=card.title,
-            lines=list(card.lines), confirmable=card.confirmable, sent=sent,
-            door=door_body, not_sent_reason=not_sent_reason,
+            job_id=job.job_id, **chat_turn_view(turn),
+            sent=sent, door=door_body, not_sent_reason=not_sent_reason,
         )
         return
     if sent:
@@ -273,7 +266,7 @@ def _cmd_chat_ask(
     if turn.kind == CHAT_TURN_ANSWER:
         _render_chat_answer_turn(job.job_id, turn, json_output=json_output)
         return
-    _send_chat_card(job, turn.card, yes=yes, json_output=json_output)
+    _send_chat_card(job, turn, yes=yes, json_output=json_output)
 
 
 COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
