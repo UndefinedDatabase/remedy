@@ -72,6 +72,10 @@ class TestThePayloadIsTheCockpitsOwnBuilders:
         payload = build_story_payload(job)
         full = mod._build_dashboard(job)
         assert payload["dashboard"] == {key: full[key] for key in STORY_DASHBOARD_SECTIONS}
+        # A LITERAL expectation, never derived from STORY_DASHBOARD_SECTIONS itself:
+        # a mutation that widens that tuple must still be caught here, not vacuously
+        # agree with the same widened tuple on both sides of the comparison above.
+        assert set(payload["dashboard"]) == {"tasks", "live", "story"}
 
     def test_the_frames_equal_safe_event_summary_of_each_event_seqs_0_1_2(self, monkeypatch):
         events = _three_events()
