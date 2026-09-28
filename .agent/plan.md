@@ -13,15 +13,14 @@ F036 D1 to D7).
 
 ## Current Step
 
-ROUND 8, the closure sequence's evidence round: book round 7 with the
-resolution of R-1090, read the self-use generator, and build the evidence
-bundle and the review package at the accepted head.
+ROUND 9, the closing round: book round 8, rotate the ledger, accept F036 in
+STATUS with its README pins, and open the pull request.
 
 ## Next Steps
 
-1. The closing round: book round 8, rotate the ledger, accept F036 in
-   STATUS with its README pins, and open the pull request.
+1. The next feature's session merges this pull request at the Open PR Gate,
+   then Rule A5 proposes F286, the fifth findings paydown.
 
 ## Risks
 
-Open findings: none after this round's booking.
+None open.
