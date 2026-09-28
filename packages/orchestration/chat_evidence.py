@@ -1,33 +1,64 @@
-"""F038 T001 — the grounded chat's node-scope evidence: the item, its problems, the
-composer that keeps an ordered prefix under the token cap, and the collector of one
-task's own records (DECISION F038 D1).
+"""F038 T001 — the grounded chat's evidence: the item, its problems, the composer
+that keeps an ordered prefix under the token cap, the node scope's collector of one
+task's own records and its prompt trace, and the project scope's collector of one
+registry project's own records (DECISION F038 D1, DECISION F038 D3).
 
 Remedy deliberately does not let a scope's evidence reach past its own records: the
-node scope answers only from one task's own record, its own rounds, its own diff and
-its own run-log events — never another task's, and never the whole job's.
+node scope answers only from one task's own record, its own rounds, its own prompt
+trace, its own diff and its own run-log events — never another task's, and never the
+whole job's; the project scope answers only from one registered project's own record,
+its linked jobs and its own missions — never another project's.
 """
 
 from __future__ import annotations
 
+import json
+import re
+import sqlite3
 from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Any
 
-from packages.orchestration.data_paths import resolve_data_root
+from packages.orchestration.data_paths import resolve_data_root, run_dir
+from packages.orchestration.decision_queue import list_decisions, open_decisions
 from packages.orchestration.diff_view_source import build_diff_view
 from packages.orchestration.evidence_index import resolve_job_evidence_dir
+from packages.orchestration.job_digest import build_job_digest
+from packages.orchestration.mission_dossier import load_dossier_state
+from packages.orchestration.mission_state import list_missions_safe
+from packages.orchestration.pingpong_job import list_job_plans_safe
+from packages.orchestration.project_summary import detect_patterns
+from packages.orchestration.roadmap_index import (
+    RoadmapGrammarError,
+    build_index,
+    proposed_feature,
+)
 from packages.orchestration.run_rounds_view import build_task_run_rounds
 from packages.orchestration.stream_evidence import redact_text
 from packages.orchestration.timeline import load_run_events
 from packages.orchestration.token_economy import estimate_text_tokens
+from packages.orchestration.token_ledger import query_cost
 
-#: The one scope this round lands. The project scope joins a later round
-#: (DECISION F038 D1 (6)).
+#: The node scope: one task's own record, rounds, prompt trace, diff and run log
+#: (DECISION F038 D1).
 CHAT_SCOPE_NODE = "node"
-CHAT_SCOPES = (CHAT_SCOPE_NODE,)
+#: The project scope: one registry project's own record, its repository's roadmap
+#: position, its linked jobs' open decisions and patterns, its missions' dossiers,
+#: its token ledger's totals and one digest per linked job (DECISION F038 D3).
+CHAT_SCOPE_PROJECT = "project"
+#: Both scopes the composer accepts.
+CHAT_SCOPES = (CHAT_SCOPE_NODE, CHAT_SCOPE_PROJECT)
 
-#: The four evidence anchor kinds the node scope cites (DECISION F038 D1 (4)).
-CHAT_ANCHOR_KINDS = ("node", "round", "diff", "event")
+#: Every evidence anchor kind either scope cites: the node scope's five
+#: (DECISION F038 D1, extended with the prompt trace) and the project scope's
+#: seven (DECISION F038 D3).
+CHAT_ANCHOR_KINDS = (
+    "node", "round", "prompt", "diff", "event",
+    "project", "roadmap", "decision", "pattern", "dossier", "ledger", "job",
+)
+
+#: The run id shape a task's prompt trace is filed under (DECISION F038 D3).
+_RUN_ID_RE = re.compile(r"^[0-9a-f]{8,32}$")
 
 #: DECISION F038 D1 (3): the composed set's token ceiling.
 CHAT_EVIDENCE_TOKEN_CAP = 4000
@@ -230,6 +261,59 @@ def _round_items(job: Any, task_id: str) -> list[ChatEvidenceItem]:
     return items
 
 
+def _prompt_trace_items(task: Any, task_id: str) -> list[ChatEvidenceItem]:
+    """S2: the task's own prompt trace, one item per entry — metadata only, never
+    the prompt text. Directly after the rounds and before the diff."""
+    run_id = getattr(task, "run_id", None)
+    if not isinstance(run_id, str) or not _RUN_ID_RE.match(run_id):
+        return [
+            make_chat_item(
+                "node", task_id, "Prompt trace: not recorded (no_run_recorded)"
+            )
+        ]
+    trace_path = run_dir(run_id) / "prompt_trace.jsonl"
+    try:
+        text = trace_path.read_text(encoding="utf-8")
+    except FileNotFoundError:
+        return [
+            make_chat_item("node", task_id, "Prompt trace: not recorded (trace_missing)")
+        ]
+    except (OSError, UnicodeDecodeError):
+        return [
+            make_chat_item(
+                "node", task_id, "Prompt trace: not recorded (trace_unreadable)"
+            )
+        ]
+
+    items: list[ChatEvidenceItem] = []
+    for line in text.splitlines():
+        try:
+            entry = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if not isinstance(entry, dict):
+            continue
+        round_number = entry.get("round")
+        role = entry.get("role") or CHAT_NOT_RECORDED
+        prompt_kind = entry.get("prompt_kind") or CHAT_NOT_RECORDED
+        provider = entry.get("provider") or CHAT_NOT_RECORDED
+        configured_model = entry.get("configured_model") or CHAT_NOT_RECORDED
+        tokens_estimated = entry.get("prompt_tokens_estimated")
+        text_line = (
+            f"Prompt for round {round_number}, {role} ({prompt_kind}): "
+            f"{tokens_estimated} tokens estimated; provider {provider}; "
+            f"model {configured_model}"
+        )
+        items.append(
+            make_chat_item("prompt", f"{task_id}#{round_number}/{role}", text_line)
+        )
+    if not items:
+        return [
+            make_chat_item("node", task_id, "Prompt trace: not recorded (trace_empty)")
+        ]
+    return items
+
+
 def _diff_items(job_id: str, task_id: str) -> list[ChatEvidenceItem]:
     """S5 (c): the task's own diff, or one node item naming the absence."""
     view = build_diff_view(resolve_job_evidence_dir(job_id), task_id=task_id)
@@ -296,7 +380,8 @@ def _run_log_items(job_id: str, task_id: str) -> list[ChatEvidenceItem]:
 
 
 def collect_node_evidence(job: Any, task_id: str) -> list[ChatEvidenceItem]:
-    """One task's own evidence: its record, its rounds, its diff and its run log.
+    """One task's own evidence: its record, its rounds, its prompt trace, its diff
+    and its run log.
 
     Raises :class:`ChatEvidenceError` when ``task_id`` names no task of ``job``.
     """
@@ -311,6 +396,7 @@ def collect_node_evidence(job: Any, task_id: str) -> list[ChatEvidenceItem]:
     return [
         *_record_items(task, task_id),
         *_round_items(job, task_id),
+        *_prompt_trace_items(task, task_id),
         *_diff_items(job.job_id, task_id),
         *_run_log_items(job.job_id, task_id),
     ]
@@ -322,4 +408,190 @@ def node_evidence_set(
     """The composed node-scope evidence set for one task of ``job``."""
     return compose_chat_evidence(
         CHAT_SCOPE_NODE, task_id, collect_node_evidence(job, task_id), token_cap=token_cap
+    )
+
+
+# ---------------------------------------------------------------------------
+# S3 THE PROJECT SCOPE (DECISION F038 D3).
+# ---------------------------------------------------------------------------
+
+
+def _project_record_item(project: Any, pid: str, job_count: int) -> ChatEvidenceItem:
+    """S3 (a): the project's own record, anchored at the project id."""
+    repo = project.canonical_repo_path or CHAT_NOT_RECORDED
+    return make_chat_item(
+        "project", pid,
+        f"Project {project.name}: {job_count} linked jobs; repository {repo}",
+    )
+
+
+def _project_roadmap_items(project: Any, pid: str) -> list[ChatEvidenceItem]:
+    """S3 (b): the project's roadmap position, read from its own repository."""
+    repo_path = project.canonical_repo_path
+    if not repo_path:
+        return [
+            make_chat_item(
+                "project", pid, "Roadmap position: not recorded (no repository)"
+            )
+        ]
+    try:
+        index = build_index(repo_path)
+    except (RoadmapGrammarError, OSError, UnicodeDecodeError) as exc:
+        return [
+            make_chat_item(
+                "project", pid,
+                f"Roadmap position: not recorded ({type(exc).__name__})",
+            )
+        ]
+    feature, reason = proposed_feature(index)
+    if feature is None:
+        return [make_chat_item("project", pid, "Roadmap position: no open feature")]
+    verb = "is in progress" if reason == "in_progress" else "is the next open feature"
+    return [
+        make_chat_item(
+            "roadmap", feature.id, f"Roadmap: {feature.id} — {feature.title} {verb}"
+        )
+    ]
+
+
+def _project_decision_items(
+    jobs: list[Any], events_by_job_id: dict[str, list[dict[str, Any]]]
+) -> list[ChatEvidenceItem]:
+    """S3 (c): every open decision of every linked job, newest job first."""
+    items: list[ChatEvidenceItem] = []
+    for job in jobs:
+        job_id = str(job.job_id)
+        for decision in open_decisions(list_decisions(job, events_by_job_id[job_id])):
+            summary = decision.safe_summary or decision.type
+            items.append(
+                make_chat_item(
+                    "decision", f"{job_id}/{decision.id}",
+                    f"Open {decision.severity} decision on job {job_id}: {summary}",
+                )
+            )
+    return items
+
+
+def _project_pattern_items(
+    jobs: list[Any], events_by_job_id: dict[str, list[dict[str, Any]]]
+) -> list[ChatEvidenceItem]:
+    """S3 (d): each pattern detected across the linked jobs."""
+    return [
+        make_chat_item(
+            "pattern", pattern.pattern_id,
+            f"Pattern {pattern.kind} ({pattern.severity}): {pattern.summary}",
+        )
+        for pattern in detect_patterns(jobs, events_by_job_id)
+    ]
+
+
+def _project_dossier_items(project: Any, pid: str) -> list[ChatEvidenceItem]:
+    """S3 (e): each mission's dossier goal, next step and open risks."""
+    missions, _degraded, _skipped = list_missions_safe(pid)
+    items: list[ChatEvidenceItem] = []
+    for mission in missions:
+        dossier = load_dossier_state(pid, mission.id)
+        if dossier is None:
+            continue
+        items.append(
+            make_chat_item("dossier", mission.id, f"Mission goal: {dossier.goal}")
+        )
+        if dossier.next_step:
+            items.append(
+                make_chat_item(
+                    "dossier", mission.id, f"Mission next step: {dossier.next_step}"
+                )
+            )
+        for risk in dossier.risks:
+            if not risk.resolved:
+                items.append(
+                    make_chat_item("dossier", mission.id, f"Mission risk: {risk.text}")
+                )
+    if not items:
+        return [make_chat_item("project", pid, "Mission dossier: not recorded")]
+    return items
+
+
+def _ledger_figure(value: Any) -> str:
+    """S3 (f): an unmeasured figure reads ``unmeasured``, never a fabricated 0."""
+    return "unmeasured" if value is None else str(value)
+
+
+def _project_ledger_items(pid: str) -> list[ChatEvidenceItem]:
+    """S3 (f): the project's token ledger totals."""
+    try:
+        report = query_cost(project_id=pid)
+    except sqlite3.Error as exc:
+        return [
+            make_chat_item(
+                "project", pid, f"Token ledger: not readable ({type(exc).__name__})"
+            )
+        ]
+    if not report.ledger_exists:
+        return [make_chat_item("project", pid, "Token ledger: not recorded")]
+    total = report.total
+    cost = "unmeasured" if total.cost_usd is None else f"${total.cost_usd:.2f}"
+    return [
+        make_chat_item(
+            "ledger", pid,
+            f"Token ledger: calls {total.calls}; tokens in "
+            f"{_ledger_figure(total.tokens_in)}; tokens out "
+            f"{_ledger_figure(total.tokens_out)}; cost {cost}",
+        )
+    ]
+
+
+def _project_job_items(
+    jobs: list[Any], pid: str, events_by_job_id: dict[str, list[dict[str, Any]]]
+) -> list[ChatEvidenceItem]:
+    """S3 (g): one digest per linked job, newest first."""
+    if not jobs:
+        return [make_chat_item("project", pid, "Jobs: not recorded for this project")]
+    items = []
+    for job in jobs:
+        job_id = str(job.job_id)
+        digest = build_job_digest(job, events_by_job_id[job_id])
+        items.append(
+            make_chat_item(
+                "job", job_id,
+                f"Job {job_id} ({digest['state']}): {digest['headline']} "
+                f"Open decisions: {digest['decisions']['open_count']}. "
+                f"Next: {digest['primary_action']['label']}",
+            )
+        )
+    return items
+
+
+def collect_project_evidence(project: Any) -> list[ChatEvidenceItem]:
+    """One registry project's own evidence (DECISION F038 D3): its record, its
+    repository's roadmap position, its linked jobs' open decisions and patterns,
+    its missions' dossiers, its token ledger's totals and one digest per linked
+    job, newest first.
+    """
+    pid = str(project.id)
+    all_jobs, _degraded, _skipped = list_job_plans_safe()
+    linked_ids = set(project.job_ids)
+    jobs = [job for job in all_jobs if str(job.job_id) in linked_ids]
+    events_by_job_id = {
+        str(job.job_id): load_run_events(resolve_data_root(), str(job.job_id))
+        for job in jobs
+    }
+    return [
+        _project_record_item(project, pid, len(jobs)),
+        *_project_roadmap_items(project, pid),
+        *_project_decision_items(jobs, events_by_job_id),
+        *_project_pattern_items(jobs, events_by_job_id),
+        *_project_dossier_items(project, pid),
+        *_project_ledger_items(pid),
+        *_project_job_items(jobs, pid, events_by_job_id),
+    ]
+
+
+def project_evidence_set(
+    project: Any, *, token_cap: int = CHAT_EVIDENCE_TOKEN_CAP
+) -> ChatEvidenceSet:
+    """The composed project-scope evidence set for one registry project."""
+    return compose_chat_evidence(
+        CHAT_SCOPE_PROJECT, str(project.id), collect_project_evidence(project),
+        token_cap=token_cap,
     )

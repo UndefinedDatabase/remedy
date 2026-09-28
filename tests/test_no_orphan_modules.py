@@ -78,8 +78,8 @@ ALLOWED_UNWIRED: tuple[tuple[str, str], ...] = (
     ("packages/orchestration/bench_run.py",
      "F082's on-demand bench run; never implicit by DECISION F082 D9, the one caller its guard permits"),
     ("packages/orchestration/chat_evidence.py",
-     "F038's grounded chat evidence, the node scope and the composer; the chat command wires it in a "
-     "later round (DECISION F038 D1 (6)) and removes this line"),
+     "F038's grounded chat evidence, the node and project scopes and the composer; the chat command "
+     "wires it in a later round (DECISION F038 D1 (6)) and removes this line"),
     ("packages/orchestration/ci_budgets.py",
      "the zero-findings lint rule the `budgets` CI stage's tests/orchestration/test_ci_budgets.py applies "
      "(DECISION amend0911-feedback D7)"),
