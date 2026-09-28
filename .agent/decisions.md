@@ -24993,3 +24993,36 @@ the markup renderer React already ships reads the real component with no new dep
 HOW TO REVERSE: delete `chatTurn.ts`, `EvidenceChatTab.tsx` and its sheet, their tests and the
 contract test, restore `EVIDENCE_CHAT_NOT_YET`, its test and its contract line, remove the
 assumption row, and delete this paragraph.
+
+## DECISION F038 D13 — the chat never degrades to read-only, because neither of its paths needs a model; the honest banner T5_F038.md asks for is one line under every answer saying how it was written, the same words on the command line and in the cockpit (2026-09-28)
+
+CONTEXT: Measured at `1bcb713a`. T5_F038.md's edge cases say the chat "degrades to read-only if
+no capable model is configured (honest banner)". The chat's answer is mechanical unless
+`chat.model_written` is on (DECISION F038 D5), and its request parse is mechanical first, the
+model reading only what the mechanical parse calls unknown (DECISION F038 D8), so with no model
+the chat still answers every question from its evidence and still builds every card the
+mechanical parse knows. `answer_chat_question` labels each answer's `generator`: `mechanical`,
+`mechanical:<reason>` when the model's reply could not be used, or `summary-role`. That label
+reaches `remedy chat ask --json` and the chat route, while the text form and the cockpit's tab
+show nothing of it.
+
+CHOSEN: (1) NO READ-ONLY MODE. A chat whose model is missing or switched off loses nothing it
+needs, so there is nothing to degrade to, and no switch or banner for it is added. (2) THE LINE.
+`chat_generator_line(generator)` in `packages/orchestration/chat_answer.py` answers one plain
+sentence: for `mechanical`, "Built from the job's records, without a model."; for any
+`mechanical:` label, "The model's answer could not be used, so this one is built from the job's
+records, without a model."; for `summary-role`, "Written by the summary model; every sentence was
+checked against the job's records."; and for anything else, "How this answer was written is not
+recorded." (3) BOTH DOORS SHOW IT. `remedy chat ask` prints it on the line after `Scope:`, and
+the cockpit's tab shows it under the scope chip through `chatGeneratorLine` in
+`apps/ui/src/api/chatTurn.ts`, whose four sentences a contract test holds equal to the Python
+ones, as it already holds `Not in evidence.`. The `--json` output and the route keep the raw
+`generator` label unchanged.
+
+ALTERNATIVES: a read-only mode entered when no model is configured, rejected because it would take
+away cards and answers that need no model; showing the raw label, rejected because
+`mechanical:timeout` is a code and the operator reads sentences (operator amendment
+amend0921-operator-feedback rule 3).
+
+HOW TO REVERSE: delete `chat_generator_line`, `chatGeneratorLine`, the printed line, the tab's
+line and their tests, and delete this paragraph.

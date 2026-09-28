@@ -13,17 +13,17 @@ command (`docs/roadmap/features/T5_F038.md`, the spec
 
 ## Current Step
 
-ROUND 12: book round 11, resolve R-1095, register and repair R-1096 and
-R-1097, then T003's end-to-end proof: a question answered with its
-citations, "stop that task" as a card, the card confirmed through the
-write door, and the job stopping with its one audit line.
+ROUND 13, the closure sequence's first round: book round 12, resolve
+R-1096, finish R-1097, show how each answer was written (DECISION F038
+D13), write the user guide's chat section and the Built State,
+consolidate the checklist, and take the feature's one full suite.
 
 ## Next Steps
 
-1. Review round 12.
-2. The closure sequence: the user guide's chat paragraph, the feature's
-   Built State and conformance review, the one full suite, the evidence
-   package, the STATUS flip and the pull request.
+1. Review round 13 and its suite transcript.
+2. The closure's evidence round: the self-use item, the evidence bundle
+   and the review package.
+3. The closing round: the rotation, the STATUS line and the pull request.
 
 ## Risks
 
