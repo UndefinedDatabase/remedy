@@ -1,96 +1,127 @@
-# Handback — F038, round 12: book round 11, resolve R-1095, register and repair R-1096 and R-1097, the chat's end-to-end proof
+# Handback — F038, round 13: the closure sequence's first round — book round 12, resolve R-1096, finish R-1097, DECISION F038 D13, the chat guide, the Built State, the checklist consolidation and the one full suite
 
 ## Session
 
-SESSION 3 of feature F038 · round 12 · rounds so far 12. This session ran round 12 only,
-continuing directly after round 11's handback. Context self-assessment: a comfortable margin of
-context remained at the end of the round; the work was not near its limit.
+SESSION 3 of feature F038 · round 13 · rounds so far 13. This session ran round 13 only,
+continuing directly after round 12's handback. Context self-assessment: a comfortable margin of
+context remained through the round, including the full suite's ~3-minute run; the work was not
+near its limit.
 
-For the operator, in plain words: round 11 is booked PASS and R-1095 is resolved. Two Low
-findings from that round's gate, R-1096 (the decoder's tests were blind to two of its own rules)
-and R-1097 (the chat tab showed a server code, worded a refused card as a decision, left its
-input unnamed and its open buttons vague, and accepted a second Confirm while the first send was
-in flight), are registered and repaired: `chatTurn.ts` now gives a plain sentence for every
-unavailable reason, a card's own refusal vocabulary that never says "decision" or "answer", and a
-named label for each open button; the tab names its text input for a screen reader and hides
-Confirm while a send is in flight. T003's end-to-end proof lands: a real job, run in its own
-process, answers "Did the tests pass?" about a finished task with citations, turns "stop that
-task" into a confirmable `job.stop` card, sends nothing until that card is confirmed through the
-real write door, and the job then stops with exactly one accepted audit line.
+For the operator, in plain words: round 12 is booked PASS and R-1096 is resolved. DECISION F038
+D13 lands: the chat never degrades to read-only, because neither of its paths needs a model;
+instead every answer now carries one plain sentence saying how it was written — mechanical, a
+model's answer that could not be used, the summary model's own, or unrecorded — on the command
+line right after `Scope:` and in the cockpit's tab under the scope chip. R-1097 is finished: the
+tab's own wiring of the in-flight `sending` flag is now pinned by a contract test. The user
+guide's chat section and T5_F038.md's Built State are written, the planner/reviewer checklist is
+consolidated a twenty-fifth time (nothing joined; the list stays at 34), and the feature's ONE
+full suite ran and its transcript is committed: 20542 passed, 20 skipped, exit 0.
 
 ## Range
 
-Review of `b9128a0cb`..`HEAD` (the commit that writes this file). Seven commits: C1a, C1b, C2,
-C3, C4a, C4b, C5 — exactly the block's ordered bundle; none needed splitting under the 500-line
-cap.
+Review of `1bcb713a3`..`HEAD` (the commit that writes this file). NINE commits: C1 (1/2), C1
+(2/2), C2, C3, C4a, C4b, a G3 fix (see Deviations), C5, C6 — one more than the block's six-item
+bundle, because C1 was split (block-anticipated, its own line 96-97) and G3's own contingency
+clause (line 191) added one more.
 
 ## Commits
 
-### 7b84832f0 F038 R12 C1a: copy round 12 block and plan payload into .agent/authored/
+### d2da5bc4b F038 R13 C1 (1/2): copy round 13 block and payloads
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f038-r12-block.md | 247/0 | this block, copied verbatim by `shutil.copyfile` |
-| .agent/authored/f038-r12-plan.md | 30/0 | the plan payload, copied verbatim |
+| .agent/authored/f038-r13-block.md | 213/0 | this block, copied verbatim by `shutil.copyfile` |
+| .agent/authored/f038-r13-landed.diff | 10/0 | the landed-diff payload, copied verbatim |
+| .agent/authored/f038-r13-plan.md | 30/0 | the plan payload, copied verbatim |
+| .agent/authored/f038-r13-records.diff | 55/0 | the records-diff payload, copied verbatim |
 
-(measured: `git show 7b84832f0 --numstat` reads `247 0` and `30 0` — total 277, exactly the
-block's own line count (247) plus 30, as C1a's line ordered.)
+(measured: `git show d2da5bc4b --numstat` totals 213+10+30+55 = 308.)
 
-### a63e29e9f F038 R12 C1b: copy round 12 records and landed diffs into .agent/authored/
+### 60c7d72f5 F038 R13 C1 (2/2): copy round 13 block and payloads
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f038-r12-landed.diff | 12/0 | the landed-diff payload, copied verbatim |
-| .agent/authored/f038-r12-records.diff | 16/0 | the records-diff payload, copied verbatim |
+| .agent/authored/f038-r13-closure_docs.diff | 195/0 | the closure-docs payload, copied verbatim |
 
-(measured: 12 + 16 = 28, matching C1b's expected-insertions line exactly.)
+(measured: 195. C1's total across both parts: 308 + 195 = 503, exactly the block's own line
+count (213) plus 290 — the sum of the four payloads' line counts — as C1's own line specified;
+503 reaches 500, so C1 was split into (1/2) and (2/2), each declared, exactly as the block's line
+96-97 anticipated.)
 
-### e21cf6cfb F038 R12 C2: book round 11, resolve R-1095, register R-1096 and R-1097
+### ad43264bc F038 R13 C2: book round 12, resolve R-1096, keep R-1097 open, record DECISION F038 D13
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/live_review.md | 8/0 | `git apply records.diff`: round 11's Gate entry, R-1095's `Done:`, and R-1096/R-1097 registered |
-| .agent/plan.md | 8/7 | `.agent/plan.md` := plan.md, a REWRITE by `shutil.copyfile` |
+| .agent/decisions.md | 33/0 | `git apply records.diff`: DECISION F038 D13 |
+| .agent/live_review.md | 6/0 | `git apply records.diff`: round 12's Gate entry, R-1096's `Done:`, R-1097's `Recurrence:` |
+| .agent/plan.md | 8/8 | `.agent/plan.md` := plan.md, a REWRITE by `shutil.copyfile` |
 
-(measured: `git show e21cf6cfb --numstat` reads `8 0` and `8 7`, matching the block's expected
-`8/0 live_review.md, 8/7 plan.md` exactly.)
+(measured: `git show ad43264bc --numstat` reads `33 0`, `6 0`, `8 8` — exactly the block's own
+expected reading of `33/0 .agent/decisions.md, 6/0 .agent/live_review.md, 8/8 .agent/plan.md`.)
 
-### 41fcec0eb F038 R12 C3: plain lines, a card's own refusals, a named input and one send at a time
+### 4b5d4532d F038 R13 C3: say how each chat answer was written
 | Path | +/- | Reason |
 |---|---|---|
-| apps/ui/src/api/chatTurn.ts | 59/5 | S2: `chatUnavailableLine`, `chatEvidenceTabLabel`, and the card's OWN refusal vocabulary in `describeChatCardResult` (no more `describeDecisionSubmitResult`) |
-| apps/ui/src/components/graph/EvidenceChatTab.tsx | 23/9 | S2: shows the plain lines and labels, names the text input, and adds `sending` (set before a card's send, cleared with its outcome) so Confirm never renders while a send is in flight |
+| apps/cli/commands/chat_cmd.py | 2/1 | S1: `_render_chat_answer_turn` prints `chat_generator_line(answer.generator)` right after `Scope:` |
+| apps/ui/src/api/chatTurn.ts | 18/0 | S1: `chatGeneratorLine` and its four exported sentence constants, same rule as the Python |
+| apps/ui/src/components/graph/EvidenceChatTab.module.css | 1/1 | S1: `.generatorLine` joins the `.pending, .unreadable, .unavailable` muted-token group — no new raw colour literal |
+| apps/ui/src/components/graph/EvidenceChatTab.tsx | 3/2 | S1: the generator line renders under the scope chip, `data-ui="chat-generator"` |
+| packages/orchestration/chat_answer.py | 27/0 | S1: DECISION F038 D13's four module constants and `chat_generator_line(generator)` |
 
-(no insertion count was expected by the block for C3; measured above.)
-
-### aa0622c82 F038 R12 C4a: prove the chat end to end and repair R-1096 and R-1097
-| Path | +/- | Reason |
-|---|---|---|
-| .agent/live_review.md | 4/0 | `git apply landed.diff`: R-1096 and R-1097's `Landed:` lines |
-| apps/ui/src/api/chatTurn.test.ts | 66/0 | S1's repair (an empty-sentences answer and a numeric card arg both refuse) plus S2's vocabulary pins (`chatUnavailableLine`, `chatEvidenceTabLabel`, the card's refusal sentences, and that none says "decision" or "answer") |
-| apps/ui/src/components/graph/evidenceChatAudit.test.ts | 42/3 | S2's DOM audit: a diff item's button label, an unavailable `unknown_task` turn (line shown, code absent), and Confirm absent/present under `sending` true/false |
-| tests/ui_contracts/test_chat_citations.py | 6/0 | S2: pins the input's `aria-label="Ask the chat"` |
-| tests/ui_server/test_chat_e2e_live.py | 316/0 | S3, a NEW FILE: the end-to-end proof, modelled on `test_pause_door_live.py`'s `TestJobScopeLiveDoor`, owning its own copies of that file's helpers |
-
-(no insertion count was expected by the block for C4a; measured above; total 434, under the
+(no insertion count was expected by the block for C3; measured above; total 51, under the
 500-line cap.)
 
-### c62a1af72 F038 R12 C4b: save the round's mutation tool
+### 2dde3d612 F038 R13 C4a: test the generator line and finish R-1097
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f038-r12-mutations.py | 335/0 | the round's own G5 tool, built as round 11's own is |
+| .agent/live_review.md | 2/0 | `git apply landed.diff`: R-1097's `Landed:` line |
+| apps/ui/src/api/chatTurn.test.ts | 14/0 | S1: `chatGeneratorLine` answers each of the four labels |
+| apps/ui/src/components/graph/evidenceChatAudit.test.ts | 13/1 | S1: the DOM audit, an answer labelled `mechanical` rendering its sentence |
+| tests/cli/test_chat_ask.py | 12/0 | S1: a focused question's text output whose line after `Scope:` is the mechanical sentence |
+| tests/orchestration/test_chat_answer.py | 21/0 | S1: `chat_generator_line` answers each of the four labels exactly |
+| tests/ui_contracts/test_chat_citations.py | 31/1 | S1 (the four Python constants quoted in `chatTurn.ts`) and S2 (R-1097's rest: the tab's `sending` wiring pinned in order) |
+
+(no insertion count was expected by the block for C4a; measured above; total 93, under the
+500-line cap.)
+
+### 57f66e2df F038 R13 C4b: save the round's mutation tool
+| Path | +/- | Reason |
+|---|---|---|
+| .agent/authored/f038-r13-mutations.py | 299/0 | the round's own G3 tool, built as round 12's own is, m1 to m6 |
 
 (no insertion count was expected by the block for C4b; measured above.)
 
-### C5 (this commit) — F038 R12 C5: rewrite handoff for round 12
+### 20782f1af F038 R13 G3 fix (deviation, not in the block's bundle): pin the generator-line vitest checks to literal sentences
 | Path | +/- | Reason |
 |---|---|---|
+| apps/ui/src/api/chatTurn.test.ts | 10/8 | G3's own m3 stayed green (see Deviations): the `chatGeneratorLine` vitest check now compares against literal sentences, never the module's own exported constants |
+| apps/ui/src/components/graph/evidenceChatAudit.test.ts | 4/7 | same fix, for the DOM audit's generator-line assertion |
+
+(14 insertions, under the 500-line cap; see Deviations & assumptions for why this commit exists
+and where it falls in the sequence.)
+
+### 97f5334e7 F038 R13 C5: write the chat guide, the Built State and the checklist consolidation
+| Path | +/- | Reason |
+|---|---|---|
+| docs/agents/planner_reviewer_prompt.md | 5/0 | `git apply closure_docs.diff`: the checklist's 25th consolidation paragraph, list stays at 34 |
+| docs/guides/steering-user-guide-v1.md | 35/1 | `git apply closure_docs.diff`: "Ask a question, or ask for an action" and `remedy chat ask`'s exit codes |
+| docs/roadmap/features/T5_F038.md | 122/0 | `git apply closure_docs.diff`: the Built State |
+
+(measured: `git show 97f5334e7 --numstat` reads `5 0`, `35 1`, `122 0` — exactly the block's own
+expected reading.)
+
+### C6 (this commit) — F038 R13 C6: record the closure suite transcript and rewrite handoff for round 13
+| Path | +/- | Reason |
+|---|---|---|
+| .agent/authored/f038-closure-suite.txt | new | the command, exit code, wall time, summary line, bad node ids (NONE) and the tree it ran on |
 | .agent/handoff.md | rewrite | this file, per `docs/agents/handback_template.md`; exempt from the insertion cap as a single `.agent/**` state-file rewrite (AGENTS.md Commit Discipline) |
 
 ## External actions
 
-`git worktree add --detach .remedy-wt/f038-r12-mut c62a1af72` — succeeded (used for G5). `git
-worktree remove --force .remedy-wt/f038-r12-mut` — succeeded. `git worktree prune` — succeeded, no
-output. `git push origin feature/f038-grounded-chat` — outcome reported in the worker's reply
-(this file is written before the push). No `gh` command, no PR action: constraint 5 forbids both
-this round.
+`git worktree add .remedy-wt/f038-r13-mut 57f66e2df` — succeeded (used for G3's first run, which
+found m3 green). `git worktree remove .remedy-wt/f038-r13-mut --force` — succeeded. `git worktree
+add .remedy-wt/f038-r13-mut 20782f1af` — succeeded (used for G3's re-run after the fix, which
+caught all six). `git worktree remove .remedy-wt/f038-r13-mut --force` — succeeded. `git worktree
+prune` — succeeded, no output. `git push origin feature/f038-grounded-chat` — outcome reported in
+the worker's reply (this file is written before the push). No `gh` command, no PR action:
+constraint 5 forbids both this round.
 
 ## Verification
 
@@ -109,131 +140,173 @@ $ git status --porcelain
 $ git branch --show-current
 feature/f038-grounded-chat
 $ git log --oneline -1
-b9128a0cb F038 R11 C5: rewrite handoff for round 11
+1bcb713a3 F038 R12 C5: rewrite handoff for round 12
 ```
-Block bytes (R-0954): measured line count 247 and sha256
-`414a069bb6c970230a9a446cf79ea55880b2d7dafbe0aab7c67ead1e2f5dcd21` — MATCH both given readings.
-`git worktree list | wc -l` at step 4: 74.
+Block bytes: measured line count 213 and sha256
+`f3874b1a1fd563af7215a357602efc345dd9ba1915cac7e23faf67bbcc8493ff` — MATCH both given readings.
+`git worktree list | wc -l` at step 4: 76. `git branch --list 'remedy/*' | wc -l`: 197.
 
-PAYLOADS — all three measured and MATCH the block's table exactly:
-records.diff 16 lines / 8454 bytes / sha256 `d0cb849b...f310b1`; plan.md 30 / 1058 /
-`792b6968...51bfc`; landed.diff 12 / 3271 / `1f32ade2...d0227` (full hashes reproduced in the
-worker's reply).
+PAYLOADS — all four measured and MATCH the block's table exactly: records.diff 55/8610/
+`e295ec9372ac2407df31a818d7bb244734aacda1dc9dd6096bd96ad7c8194536`; plan.md 30/1064/
+`7cc9b0c21f0786aa56447acdc70d271cd1787630b0e1fe15386508cad4d7da99`; landed.diff 10/2200/
+`d599c55dee5c5ef5f5b1e2741579db877caa02d7dfcd1c5b29df59f801cda932`; closure_docs.diff 195/15200/
+`dc2d2a4a324cfc6dd0e3df008e6fc0ca0f7ae14fe038b7792fc6643d139c861e`.
 
-G1 TRANSPORT — every `.agent/authored/f038-r12-*` copy, read back with `git show <commit>:<path>`
-from the commit that added it, equals its source byte for byte: block.md at `7b84832f0` == the
-block file; plan.md at `7b84832f0` == the plan payload; records.diff and landed.diff at
-`a63e29e9f` == their payloads. All four sha256 pairs MATCH (full readings in the reply).
+G1 TRANSPORT — every `.agent/authored/f038-r13-*` copy, read back with `git show <commit>:<path>`
+from the commit that added it, equals its source byte for byte: block.md, records.diff, plan.md
+and landed.diff at `d2da5bc4b`; closure_docs.diff at `60c7d72f5`. All five pairs MATCH.
 
-G2 THE RECORDS:
-| commit | path | bytes | sha256 | verdict |
+G1 THE RECORDS:
+| read at | path | bytes | sha256 | verdict |
 |---|---|---|---|---|
-| C2 (`e21cf6cfb`) | .agent/live_review.md | 351471 | `2cefd816...053b3ec` | MATCH |
-| C2 (`e21cf6cfb`) | .agent/plan.md | 1058 | `792b6968...51bfc` | MATCH |
-| C4a (`aa0622c82`) | .agent/live_review.md | 351904 | `8cfa26e9...958f3c9` | MATCH |
+| C2 (`ad43264bc`) | .agent/decisions.md | 2415624 | `89e667ac...bcb28217f` | MATCH |
+| C2 (`ad43264bc`) | .agent/live_review.md | 356772 | `bcb94ed0...038c218590` | MATCH |
+| C2 (`ad43264bc`) | .agent/plan.md | 1064 | `7cc9b0c2...5386508cad4d7da99` | MATCH |
+| C4a (`2dde3d612`) | .agent/live_review.md | 357076 | `41c44960...ffc393dfe74bc2b43` | MATCH |
+| C5 (`97f5334e7`) | docs/roadmap/features/T5_F038.md | 15549 | `28ad03a1...4952017cb2b03` | MATCH |
+| C5 (`97f5334e7`) | docs/agents/planner_reviewer_prompt.md | 109903 | `6a32ca01...0ac0be8a4c6e1201` | MATCH |
+| C5 (`97f5334e7`) | docs/guides/steering-user-guide-v1.md | 7075 | `8d1069bf...2337c21edb3063744742673b` | MATCH |
 
-`open_finding_ids` over the ledger TEXT at C2 and at C4a: `['R-1096', 'R-1097']` at both, matching
-the reviewer's reading exactly. `git diff --name-only a63e29e9f e21cf6cfb` (C1b..C2) named exactly
-`.agent/live_review.md` and `.agent/plan.md` — the two C2 paths.
+(full untruncated hashes are in the worker's reply; every row read MATCH.)
 
-G3 THE CODE:
+`open_finding_ids` / `latest_gate_verdict` of `scripts/rotate_live_review.py` over the ledger at
+C2 (`ad43264bc`) and at C4a (`2dde3d612`): `['R-1097']` and `PASS` at both, matching the block's
+expected reading exactly. `live_checklist_items` of `packages/orchestration/block_lint.py` over
+the planner prompt: 34 at `1bcb713a3` and 34 at C5 (`97f5334e7`).
+
+G2 THE CODE AND THE TESTS, in the primary checkout at C5:
 ```
-$ python3 -m ruff check tests/ui_contracts/test_chat_citations.py \
-  tests/ui_server/test_chat_e2e_live.py .agent/authored/f038-r12-mutations.py
+$ python3 -m ruff check packages/orchestration/chat_answer.py apps/cli/commands/chat_cmd.py \
+  tests/orchestration/test_chat_answer.py tests/cli/test_chat_ask.py \
+  tests/ui_contracts/test_chat_citations.py .agent/authored/f038-r13-mutations.py
 All checks passed!
 REAL_EXIT=0
 ```
-`chatUnavailableLine`, `chatEvidenceTabLabel` and `describeChatCardResult`, and the tab's
-`sending`-set/clear lines and its Confirm-render line, quoted from `git show 41fcec0eb` (C3), are
-reproduced verbatim in the worker's reply's G3 section.
-
-G4 THE TESTS — the block's selection, run serially in the primary checkout at C4b (`c62a1af72`):
 ```
-$ bash -c 'python3 -m pytest -q -p no:cacheprovider -rs <selection> 2>&1 | tail -20; \
-  echo "REAL_EXIT=${PIPESTATUS[0]}"'
-1563 passed, 5 skipped in 73.02s (0:01:13)
+$ bash -c 'python3 -m pytest -q -p no:cacheprovider -rs <the block's own selection> \
+  2>&1 | tail -8; echo "REAL_EXIT=${PIPESTATUS[0]}"'
+1668 passed, 5 skipped in 59.97s
 REAL_EXIT=0
 ```
-Every `SKIPPED` line: `tests/ui_contracts/test_graph_architecture.py:441` and `:484`,
-`tests/ui_contracts/test_ux_quality.py:507` and `:543` (all four D3 quarantine, F252), and
-`tests/test_agent_tooling.py:43` (D12 quarantine, F252) — the same five the block's own baseline
-names. `--collect-only -q` node counts: `tests/ui_contracts/test_chat_citations.py` 5 (was 4 at
-`b9128a0cb`, +1 — the new aria-label pin); `tests/ui_server/test_chat_e2e_live.py` 1 (NEW FILE).
-Accounting for 1563 vs the block's reviewer-baseline reading of 1561: 1 + 1 = 2 new nodes; 1561 +
-2 = 1563, exact. Then:
+The same five SKIPPED lines the block's baseline names (four D3 quarantines, one D12
+quarantine). Node counts of the three touched Python test files, `def test_` occurrences at
+`1bcb713a3` vs HEAD: `test_chat_answer.py` 30→31 (+1), `test_chat_ask.py` 17→18 (+1),
+`test_chat_citations.py` 5→7 (+2); total +4, matching 1664 (the reviewer's own `1bcb713a` base
+reading) + 4 = 1668 exactly.
 ```
 $ python3 -m apps.cli.main integrity check --json
-{"check_count": 6, ... "fail_count": 0, "ok": true, "passed": true, ...}
+{"check_count": 6, "checks": [...six "pass"...], "fail_count": 0, "ok": true, "passed": true, ...}
+REAL_EXIT=0
 ```
-all six checks `pass`, `fail_count` 0.
+```
+$ python3 -m apps.cli.main integrity block .remedy-wt/f038-r13/block.md
+All 7 checkable items pass.
+REAL_EXIT=0
+```
+`git status --porcelain`: empty, no untracked file.
 
-G5 THE RED PROOFS — whole tool output (`git worktree add --detach .remedy-wt/f038-r12-mut
-c62a1af72` then `python3 -B .agent/authored/f038-r12-mutations.py .../f038-r12-mut`; the full
-output including every failing test name is reproduced in the worker's reply's G5 section):
+G3 THE RED PROOFS — first pass, worktree at `57f66e2df` (C4b): all mutations but m3 caught red;
+m3 ("the summary sentence changed") stayed GREEN because the vitest check compared
+`chatGeneratorLine`'s return to the module's own exported constant, which the mutation changed
+along with the expected value. Per the block's own contingency (G3's own text: "one that stays
+green is reported, and you add the test that catches it and re-run before C5"), the fix landed
+in commit `20782f1af` (see Deviations for the ordering note) and G3 was re-run in a fresh
+worktree at `20782f1af`:
 ```
 === CONTROL (pre) — VITEST === exit=0 failed=0
 === CONTROL (pre) — PYTEST === exit=0 failed=0
-r1..r8 (chatTurn.ts, EvidenceChatTab.tsx, VITEST): each exit=1, failed>=1, restored=True
-r9..r12 (EvidenceChatTab.tsx, ui_server.py, chat_intent.py, PYTEST): each exit=1, failed=1, restored=True
+m3 the summary sentence changed: exit=1 failed=1 restored=True
+m4 the tab's generator line not rendered: exit=1 failed=1 restored=True
+m1 a mechanical: label answered the unknown sentence: exit=1 failed=1 restored=True
+m2 the generator line not printed: exit=1 failed=1 restored=True
+m5 the tab's sending: true update deleted: exit=1 failed=1 restored=True
+m6 the mechanical constant's sentence changed: exit=1 failed=1 restored=True
 === CONTROL (post) — VITEST === exit=0 failed=0
 === CONTROL (post) — PYTEST === exit=0 failed=0
 restored byte-identical: True
 ALL MUTATIONS CAUGHT AND RESTORED CLEANLY: True
 REAL_EXIT=0
 ```
-All 12 mutations caught, at least one failing name each, every restore byte-identical, both
-controls exit 0 pre and post. Then `git worktree remove --force .remedy-wt/f038-r12-mut`, `git
-worktree prune`, `git worktree list | wc -l` read 74, matching step 4's reading.
+All six caught, each restored byte-identical, both controls clean pre and post. `git worktree
+remove .remedy-wt/f038-r13-mut --force`, `git worktree prune`, `git worktree list | wc -l` read
+76, matching step 4's reading both times.
 
-G6 TREE AND PUSH — reported in the worker's reply, since this commit (C5) cannot contain them:
-`git status --porcelain`, `git log --oneline -n 8`, `git worktree list | wc -l`, the push's real
-outcome, and `gh pr list --state open ...`.
+G4 THE INTEGRATION GATE:
+```
+$ bash -c 'npm --prefix apps/ui run build 2>&1 | tail -2; echo "REAL_EXIT=${PIPESTATUS[0]}"'
+✓ built in 2.39s
+REAL_EXIT=0
+```
+`git status --porcelain` after the build: empty.
+```
+$ python3 -m pytest -n auto -q
+20542 passed, 20 skipped, 1 warning in 191.59s (0:03:11)
+REAL_EXIT=0
+```
+Bad node ids: NONE. `tests/orchestration/test_import_reachability.py` and
+`tests/test_no_orphan_modules.py` both passed within the run (no bad node), satisfying closure
+precondition 7.
 
 ## Authored-text proofs
 
-The block itself and the plan, records-diff and landed-diff payloads were each copied or applied
-verbatim (`shutil.copyfile` for the block/plan, `git apply` for the two diffs) and compared
-byte-identical against their sources under G1 above — all four MATCH. `.agent/plan.md` and the two
-ledger applies (records.diff at C2, landed.diff at C4a) were verified sha256-identical to the
-reviewer's own simulation readings under G2 above — all three MATCH. No other reviewer-authored
-text was applied this round: S1 to S3 are the worker's own code and tests against the block's
-specification, and the G5 mutation tool is the worker's own, built the way round 11's own was.
+The block itself and all four payloads (records.diff, plan.md, landed.diff, closure_docs.diff)
+were each copied or applied verbatim (`shutil.copyfile` for the block/plan, `git apply` for the
+three diffs) and compared byte-identical against their sources under G1 above — all five MATCH.
+`.agent/decisions.md`, `.agent/live_review.md` and `.agent/plan.md` at C2, `.agent/live_review.md`
+at C4a, and the three docs files at C5 were verified sha256-identical to the reviewer's own
+simulation readings under G1 above — all seven MATCH. No other reviewer-authored text was applied
+this round: S1's code and tests, the G3-fix commit's tests, and the G3 mutation tool are all the
+worker's own, the last built the way round 12's own was.
 
 ## Deviations & assumptions
 
-None. Every commit landed exactly as the block's bundle ordered — C1a, C1b, C2, C3, C4a, C4b, C5,
-in that order — with no split, no reordering, no dropped or extra commit. No payload was retyped
-or edited; every payload's `git apply --check` was run before its real `git apply` and read exit
-0 (both readings are in the worker's reply). All 12 of G5's mutations went red on the first pass;
-no repair commit was needed before C5.
+ONE real deviation, fully declared. G3's own text anticipates a mutation staying green and
+instructs "you add the test that catches it and re-run before C5." Mutation m3 (chatTurn.ts's
+summary-role sentence changed) stayed green on its first run: the vitest check for
+`chatGeneratorLine` compared its return to the module's OWN exported constant
+(`CHAT_GENERATOR_LINE_SUMMARY_ROLE`), so a mutation to that constant moved the test's expected
+value along with the code's actual one and the test could never go red for that specific change —
+the same self-referential-pin class of gap R-1097 itself was about. This worker did not run G3
+before committing C5 (a sequencing miss: G1's own table required several C5 reads, which pulled
+this worker into finishing C5 before circling back to G3). By the time the gap was found, C5 was
+already committed. Rather than amend a committed commit (forbidden) or leave the gap unrepaired,
+a NEW commit (`20782f1af`, subject declared as a deviation, not one of the block's C1–C6 labels)
+fixed both vitest checks (`chatTurn.test.ts` and `evidenceChatAudit.test.ts`) to compare against
+literal sentences instead of the mutable constants, and G3 was re-run in a fresh worktree at that
+new tip — all six mutations now caught, both controls clean, byte-identical restoration. The
+closure suite (C6) then ran at that same tip, so `.agent/authored/f038-closure-suite.txt` names
+`20782f1af`, not C5's own SHA, as "the tree it ran on" — naming C5's SHA there would have been
+false, since the suite did not run on that tree. No payload was retyped or edited; every payload's
+`git apply --check` was run before its real `git apply` and read exit 0. No test was weakened,
+deleted, skipped or marked xfail — the fix strengthened two vitest checks, adding no exemption.
 
-`git diff --name-only b9128a0cb` at the tip after C5 names exactly the round's whole tracked path
-set (constraint 3's 13 paths, plus `.agent/handoff.md` itself — 14 total): no other file under
-`apps/`, `packages/`, `tests/` or `docs/` was touched. The full list is reported in the worker's
-reply.
+`git diff --name-only 1bcb713a3` at the tip names exactly the round's whole tracked path set
+(constraint 3's paths, plus `.agent/handoff.md` itself) — no other file under `apps/`,
+`packages/`, `tests/` or `docs/` was touched. The full list is reported in the worker's reply.
 
 ## Item Status
 
 | Item | Status | Reason |
 |---|---|---|
-| C1a | done | |
-| C1b | done | |
+| C1 (1/2) | done | |
+| C1 (2/2) | done | split declared: 213+290=503 reaches 500 |
 | C2 | done | |
 | C3 | done | |
 | C4a | done | |
 | C4b | done | |
-| C5 | done | this commit |
-| G1 TRANSPORT | done | all readings MATCH |
-| G2 THE RECORDS | done | all readings MATCH, open set `['R-1096', 'R-1097']` at both commits |
-| G3 THE CODE | done | ruff exit 0, every named function/line quoted in the reply |
-| G4 THE TESTS | done | 1563 passed, 5 skipped, exit 0; integrity check 6/6 pass |
-| G5 THE RED PROOFS | done | all 12 mutations caught, restored byte-identical, controls clean |
-| G6 TREE AND PUSH | done | reported in the worker's reply |
+| G3 fix | deviated | not in the block's bundle; fixes m3's green result per G3's own contingency clause |
+| C5 | done | |
+| C6 | done | this commit |
+| G1 TRANSPORT AND RECORDS | done | all readings MATCH |
+| G2 THE CODE AND THE TESTS | done | ruff exit 0, 1668 passed / 5 skipped exit 0, integrity check 6/6 pass, block lint 7/7 pass |
+| G3 THE RED PROOFS | done | all six caught on the re-run; m3's first-run gap is the declared deviation |
+| G4 THE INTEGRATION GATE | done | build exit 0, full suite 20542 passed / 20 skipped exit 0, NONE bad |
+| G5 AFTER C6 AND THE PUSH | done | reported in the worker's reply |
 
 ## Next
 
-Phase 1 rule 1 first: read `.agent/STOP` from disk. Then the review of round 12. Then F038's
-closure sequence: the user guide's chat paragraph, the feature's Built State and spec-conformance
-review, the one full suite, the evidence package, the STATUS flip and the pull request. Open
-findings in the ledger: 2, R-1096 and R-1097, landed and awaiting the review. Operator questions
-open: 1.
+Phase 1 rule 1 first: read `.agent/STOP` from disk. Then the review of round 13 and of its suite
+transcript — including the declared deviation above. Then the closure's evidence round: the
+booking of round 13 with R-1097's resolution, the self-use item, any repair the suite requires,
+the evidence bundle and the review package. Then the closing round. Open findings in the ledger:
+1, R-1097, landed and awaiting the review. Operator questions open: 1.
