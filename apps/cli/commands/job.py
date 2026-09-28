@@ -641,33 +641,21 @@ def _dod_section(job: JobPlan) -> tuple[dict, list[str]]:
 
 
 def _tour_section(job: JobPlan) -> tuple[dict, list[str]]:
-    """The stored guided tour, or its mechanical fallback shown read-only (DECISION F036 D4 (5)).
+    """The stored guided tour, or its mechanical fallback shown read-only, from the ONE view
+    the browser's `tour` route also serves (DECISION F036 D5).
 
-    A job with a stored tour shows exactly that, latest version, `stored` true. A job with
-    none stored shows its mechanical tour, built fresh and read-only, `stored` false and
-    `version` 0 — nothing is written by looking. An unreadable stored tour becomes the
-    section error `tour_unreadable`.
+    A non-empty `error` becomes the section error `tour_unreadable`; otherwise the section's
+    data is `{"stored", "version", "tour"}` from the view and its lines are
+    `render_tour_lines(tour)` — round 3's behaviour, unchanged.
     """
-    from packages.orchestration.result_tour import (
-        ResultTourError,
-        build_fallback_tour,
-        load_result_tour,
-        render_tour_lines,
-    )
+    from packages.orchestration.result_tour import render_tour_lines, tour_view
 
-    job_id = str(job.job_id)
-    try:
-        loaded = load_result_tour(job_id)
-    except ResultTourError as exc:
-        raise ShowSectionError("tour_unreadable", str(exc)) from exc
+    view = tour_view(job)
+    if view["error"]:
+        raise ShowSectionError("tour_unreadable", view["error"])
 
-    if loaded is None:
-        stored, version, tour = False, 0, build_fallback_tour(job)
-    else:
-        stored, (version, tour) = True, loaded
-
-    data = {"stored": stored, "version": version, "tour": tour}
-    return data, render_tour_lines(tour)
+    data = {"stored": view["stored"], "version": view["version"], "tour": view["tour"]}
+    return data, render_tour_lines(view["tour"])
 
 
 #: The sections that exist so far, as (name, builder) pairs in `_SHOW_SECTION_ORDER`

@@ -5,7 +5,7 @@
       "title": "Extra changes"
     },
     {
-      "reason": "the path 'docs/architecture/foo' is not in the records",
+      "reason": "the path 'docs/architecture/foo.md' is not in the records",
       "title": "Related docs"
     },
     {

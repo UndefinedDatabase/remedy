@@ -585,9 +585,10 @@ def tour_source_text(job: Any, sources: ReportSources, context: TourAnchorContex
 _TOUR_NUMBER_RE = re.compile(r"\b\d+\b")
 #: A span between two backticks.
 _TOUR_BACKTICK_SPAN_RE = re.compile(r"`([^`]+)`")
-#: A token holding "/" between word characters, or a word/dot/short letter
-#: extension — the two path shapes S3 names.
-_TOUR_PATH_TOKEN_RE = re.compile(r"\w+(?:/\w+)+|\w+\.[A-Za-z]{1,5}\b")
+#: A slashed path whose segments may hold dots and hyphens, ending at a word character so a
+#: sentence's closing full stop is never read as part of it (R-1087), or a word/dot/short
+#: letter extension — the two path shapes S3 names.
+_TOUR_PATH_TOKEN_RE = re.compile(r"(?:[\w.-]+/)+[\w.-]*\w|\w+\.[A-Za-z]{1,5}\b")
 
 
 def tour_claim_problems(stop: dict[str, Any], source_text: str) -> list[str]:
@@ -905,6 +906,35 @@ def write_result_tour(
     if isinstance(metadata, dict):
         metadata.pop(TOUR_ERROR_METADATA_KEY, None)
     return path
+
+
+# ---------------------------------------------------------------------------
+# F036 T003 (first half) — one view for the browser and the command line
+# (DECISION F036 D5)
+# ---------------------------------------------------------------------------
+
+#: The view's own key set — the `tour` route and `_tour_section` both build from this.
+TOUR_VIEW_KEYS = ("stored", "version", "tour", "error")
+
+
+def tour_view(job: Any) -> dict:
+    """The one view served at `GET /api/jobs/<job_id>/tour` and shown on the command line's
+    `tour` section (DECISION F036 D5): `{"stored", "version", "tour", "error"}`.
+
+    The latest stored tour, `stored` true, its own version, `error` ""; with nothing stored,
+    `build_fallback_tour(job)`, `stored` false, `version` 0, `error` ""; and when the stored
+    tour does not read, `build_fallback_tour(job)`, `stored` false, `version` 0, `error` the
+    :class:`ResultTourError`'s message — there is always a tour to show. Writes nothing.
+    """
+    job_id = str(job.job_id)
+    try:
+        loaded = load_result_tour(job_id)
+    except ResultTourError as exc:
+        return {"stored": False, "version": 0, "tour": build_fallback_tour(job), "error": str(exc)}
+    if loaded is None:
+        return {"stored": False, "version": 0, "tour": build_fallback_tour(job), "error": ""}
+    version, tour = loaded
+    return {"stored": True, "version": version, "tour": tour, "error": ""}
 
 
 def render_tour_lines(tour: dict[str, Any]) -> list[str]:
