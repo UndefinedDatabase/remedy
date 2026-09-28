@@ -24636,3 +24636,41 @@ already shows.
 
 HOW TO REVERSE: delete the project-scope functions and the prompt items with their tests, restore
 the spec's two paragraphs from git history, and delete this paragraph.
+
+## DECISION F038 D4 — a chat answer is checked sentence by sentence against its evidence set: a sentence citing no item, or a number the set does not hold, is unsupported whoever wrote it, and "Not in evidence." is the one sentence that needs no citation; the mechanical answer restates up to five items sharing the most keywords with the question and otherwise says "Not in evidence.", which the canary suite pins in both scopes (2026-09-28)
+
+CONTEXT: T5_F038.md makes the honesty mechanical, not prompted only: the renderer marks any claim
+sentence lacking a citation chip as unsupported, and a canary suite of absent-fact questions must
+yield "not in evidence" in both scopes. After round 2, `packages/orchestration/chat_evidence.py`
+composes numbered items for a node and for a project, and nothing answers a question yet. The
+spec's delivery section names `chat_answer.py` for the grounded answer. A model-written answer
+needs a routing class the table does not have and a switch that is off by default, as the tour's
+did (finding R-1089).
+
+CHOSEN: (1) ONE MODULE, `packages/orchestration/chat_answer.py`, pure: it writes no file, calls no
+model and reads no clock. (2) THE CHECK splits an answer into sentences, each line split after `.`,
+`!` or `?`, where a fragment of citation markers alone joins the sentence before it, and marks each
+one: supported when it cites at least one `[n]` and every `n` numbers an item of the set;
+unsupported, with its reason, when it cites none or cites a number outside the set. The sentence
+"Not in evidence." with no citation is supported, because it claims an absence, and an empty
+answer reads "Not in evidence.". A renderer appends `[unsupported]` to each unsupported sentence.
+(3) THE MECHANICAL ANSWER scores each item by how many of the question's keywords begin one of its
+words, where a keyword is a lower-case word of at least three characters outside a fixed list of
+question words, restates the best five, highest score first and in evidence order on a tie, each
+as one sentence ending in its citation, and answers "Not in evidence." when no item scores. Its
+sentences are checked whole, because an item's own text may hold a full stop. (4) THE CANARY SUITE
+asks absent-fact questions of a real node scope and a real project scope and requires
+"Not in evidence." from each. (5) THE NEXT ROUND lands the model-written answer: a chat class in
+the routing table, a switch that is off by default, the evidence and the rules as its prompt, the
+same check over its reply, and the mechanical answer whenever the switch is off, the call fails or
+no sentence of the reply is supported. (6) From here on `chat_answer.py` imports
+`chat_evidence.py`, so the latter's `ALLOWED_UNWIRED` line goes and the former's arrives, until the
+chat command wires it.
+
+ALTERNATIVES: marking only the sentences that look like claims, rejected because telling a claim
+from a courtesy is the judgement the check exists to avoid; answering with every item, rejected
+because the whole evidence set does not answer a question; an exact-word match, rejected because
+"pass" would not find "passed".
+
+HOW TO REVERSE: delete `chat_answer.py` and its tests, restore `chat_evidence.py`'s line in
+`ALLOWED_UNWIRED`, and delete this paragraph.
