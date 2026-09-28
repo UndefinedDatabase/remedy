@@ -200,6 +200,23 @@ describe("the stop's actor: only a single readable match names anyone", () => {
   });
 });
 
+describe("a card's cost reads its cluster's own lastSeq, never one past it", () => {
+  it("a tick exactly one seq after the cluster's last key event is not the one its cost reads", () => {
+    const rows = [
+      row(1, "task_run_started", "t1"),
+      row(2, "task_round_completed", "t1", "fail"),
+    ];
+    const chapters = buildStoryChapters("job-cost-edge", T1, rows);
+    const ticks: readonly StoryTick[] = [
+      { seq: 2, figures: { spent_usd: 1, basis: { cost: "actual" } } },
+      { seq: 3, figures: { spent_usd: 2, basis: { cost: "actual" } } },
+    ];
+    const cards = buildNarrationCards(chapters, rows, ticks, null);
+    const card = cards.find((c) => c.lastSeq === 2);
+    expect(card?.cost).toBe("Cost so far: $1.00");
+  });
+});
+
 describe("a decision's actor is scoped to the event's own task", () => {
   const rows = [
     row(1, "task_run_started", "t1"),
