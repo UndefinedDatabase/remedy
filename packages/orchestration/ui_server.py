@@ -1093,6 +1093,7 @@ def _build_dashboard(job: Any) -> dict[str, Any]:
         "task_specs": _build_task_spec_section(job),
         "vetoes": _build_veto_section(job),
         "project_summary": _build_project_summary_section(job),
+        "story": _build_story_section(),
         "redaction": {
             "policy": "safe_summaries_only",
             "raw_content_exposed": False,
@@ -1373,6 +1374,21 @@ def _build_veto_section(job: Any) -> dict[str, Any]:
         }
     except _tv.TaskVetoError as exc:
         return {"tasks": [], "vetoable_task_ids": [], "unreachable_task_ids": [], "error": str(exc)}
+
+
+def _build_story_section() -> dict[str, Any]:
+    """The story's autoplay pacing (F039 T002, DECISION F039 D5): the two
+    configuration keys, `story.step_ms` and `story.chapter_pause_ms`, read fresh
+    on every request the same way `_rate_limit_admits_command` reads its own key,
+    so an operator who edits `remedy.toml` sees the new pacing without a restart.
+    """
+    from packages.orchestration.config import get_config
+
+    config = get_config()
+    return {
+        "step_ms": config.get("story.step_ms"),
+        "chapter_pause_ms": config.get("story.chapter_pause_ms"),
+    }
 
 
 def _build_project_summary_section(job: Any) -> dict[str, Any] | None:
