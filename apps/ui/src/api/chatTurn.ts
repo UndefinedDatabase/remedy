@@ -251,6 +251,24 @@ export function chatScopeLabel(answer: ChatAnswerView): string {
   return `About project ${answer.subject}`;
 }
 
+/** THE GENERATOR LINE (DECISION F038 D13): the same four sentences and the same rule as
+ *  `chat_generator_line` in `packages/orchestration/chat_answer.py`. */
+export const CHAT_GENERATOR_LINE_MECHANICAL = "Built from the job's records, without a model.";
+export const CHAT_GENERATOR_LINE_MECHANICAL_FALLBACK =
+  "The model's answer could not be used, so this one is built from the job's records, without a model.";
+export const CHAT_GENERATOR_LINE_SUMMARY_ROLE =
+  "Written by the summary model; every sentence was checked against the job's records.";
+export const CHAT_GENERATOR_LINE_UNKNOWN = "How this answer was written is not recorded.";
+
+/** `answer.generator` turned into the one plain sentence saying how it was written, checked
+ *  in the same order as the Python `chat_generator_line`. */
+export function chatGeneratorLine(generator: string): string {
+  if (generator === "mechanical") return CHAT_GENERATOR_LINE_MECHANICAL;
+  if (generator.startsWith("mechanical:")) return CHAT_GENERATOR_LINE_MECHANICAL_FALLBACK;
+  if (generator === "summary-role") return CHAT_GENERATOR_LINE_SUMMARY_ROLE;
+  return CHAT_GENERATOR_LINE_UNKNOWN;
+}
+
 /** THE UNAVAILABLE LINE (R-1097): one sentence for each reason `_build_chat_turn_json`
  *  gives, and one honest catch-all for any other — NEVER the code itself, which is
  *  written for `packages/orchestration/chat_turn.py` and would read as noise on a

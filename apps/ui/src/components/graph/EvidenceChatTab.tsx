@@ -18,8 +18,8 @@
 import { useRef, useState } from "react";
 import { loadChatTurn } from "../../api/remedyApi";
 import {
-  chatEvidenceTab, chatEvidenceTabLabel, chatScopeLabel, chatSentenceMark, chatSentenceText,
-  chatUnavailableLine, sendChatCard,
+  chatEvidenceTab, chatEvidenceTabLabel, chatGeneratorLine, chatScopeLabel, chatSentenceMark,
+  chatSentenceText, chatUnavailableLine, sendChatCard,
 } from "../../api/chatTurn";
 import type { ChatCardView, ChatTurnView } from "../../api/chatTurn";
 import type { DecisionOutcomeMessage } from "../../api/decisionOutcome";
@@ -58,6 +58,7 @@ export function ChatTurnBlock({
       {view !== undefined && view !== null && view.kind === "answer" && (
         <>
           <span className={styles.scopeChip} data-ui="chat-scope">{chatScopeLabel(view)}</span>
+          <p className={styles.generatorLine} data-ui="chat-generator">{chatGeneratorLine(view.generator)}</p>
           {view.sentences.map((sentence, index) => {
             const mark = chatSentenceMark(sentence);
             return (

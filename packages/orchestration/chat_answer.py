@@ -36,6 +36,18 @@ CHAT_GENERATOR_MECHANICAL = "mechanical"
 CHAT_GENERATOR_SUMMARY_ROLE = "summary-role"
 #: The fallback reason when a model-written reply parses but no sentence of it is supported.
 CHAT_NO_SUPPORTED_SENTENCE = "no_supported_sentence"
+#: `chat_generator_line(CHAT_GENERATOR_MECHANICAL)` (DECISION F038 D13).
+CHAT_GENERATOR_LINE_MECHANICAL = "Built from the job's records, without a model."
+#: `chat_generator_line` for any `mechanical:<reason>` label — the model's reply was not kept.
+CHAT_GENERATOR_LINE_MECHANICAL_FALLBACK = (
+    "The model's answer could not be used, so this one is built from the job's records, without a model."
+)
+#: `chat_generator_line(CHAT_GENERATOR_SUMMARY_ROLE)`.
+CHAT_GENERATOR_LINE_SUMMARY_ROLE = (
+    "Written by the summary model; every sentence was checked against the job's records."
+)
+#: `chat_generator_line` for any other label — never expected, but never silent either.
+CHAT_GENERATOR_LINE_UNKNOWN = "How this answer was written is not recorded."
 #: :attr:`GeneratedChatAnswer.SCHEMA_V`.
 GENERATED_CHAT_ANSWER_SCHEMA_V = "generated_chat_answer_v1"
 #: The mechanical answer restates at most this many items.
@@ -210,6 +222,21 @@ def render_chat_answer(answer: ChatAnswer) -> str:
         for sentence in answer.sentences
     ]
     return " ".join(parts)
+
+
+def chat_generator_line(generator: str) -> str:
+    """One plain sentence saying how an answer labelled `generator` was written (DECISION
+    F038 D13): `CHAT_GENERATOR_LINE_MECHANICAL` for `CHAT_GENERATOR_MECHANICAL` exactly,
+    `CHAT_GENERATOR_LINE_MECHANICAL_FALLBACK` for any label starting `mechanical:`,
+    `CHAT_GENERATOR_LINE_SUMMARY_ROLE` for `CHAT_GENERATOR_SUMMARY_ROLE`, and
+    `CHAT_GENERATOR_LINE_UNKNOWN` for anything else, checked in that order."""
+    if generator == CHAT_GENERATOR_MECHANICAL:
+        return CHAT_GENERATOR_LINE_MECHANICAL
+    if generator.startswith(f"{CHAT_GENERATOR_MECHANICAL}:"):
+        return CHAT_GENERATOR_LINE_MECHANICAL_FALLBACK
+    if generator == CHAT_GENERATOR_SUMMARY_ROLE:
+        return CHAT_GENERATOR_LINE_SUMMARY_ROLE
+    return CHAT_GENERATOR_LINE_UNKNOWN
 
 
 def question_keywords(question: str) -> tuple[str, ...]:

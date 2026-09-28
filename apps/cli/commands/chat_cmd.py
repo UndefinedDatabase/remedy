@@ -142,7 +142,7 @@ def _chat_stdin_is_a_tty() -> bool:
 def _render_chat_answer_turn(job_id: str, turn: object, *, json_output: bool) -> None:
     """Print or emit a QUESTION turn's checked answer and its numbered evidence (S5), in the
     one wire shape `chat_turn_view` gives the cockpit's read route too (DECISION F038 D11)."""
-    from packages.orchestration.chat_answer import render_chat_answer
+    from packages.orchestration.chat_answer import chat_generator_line, render_chat_answer
     from packages.orchestration.chat_turn import chat_turn_view
 
     answer = turn.answer
@@ -152,6 +152,7 @@ def _render_chat_answer_turn(job_id: str, turn: object, *, json_output: bool) ->
         return
     subject = answer.subject or "no registered project"
     print(f"Scope: {answer.scope} {subject}")
+    print(chat_generator_line(answer.generator))
     print(render_chat_answer(answer))
     for number, item in enumerate(evidence.items, start=1):
         print(f"[{number}] {item.kind} {item.ref}")
