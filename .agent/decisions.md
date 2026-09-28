@@ -25097,3 +25097,45 @@ ALTERNATIVES: claiming F286 with nothing to pay down, rejected for DECISION F036
 
 HOW TO REVERSE: move F286's STATUS line and its Tier 2 heading back above F039, delete the line
 this move added to `docs/roadmap/features/T2_F286.md`, and delete this paragraph.
+
+## DECISION F039 D3 — a narration card is one cluster of key events: each key event is a beat carrying the humanize catalog's line, the reviewer's verdict when it is a review round, and the ownership ledger's own sentence when exactly one entry and one event agree; the card carries the cost so far, and a scrub position shows its chapter's latest card begun (2026-09-28)
+
+CONTEXT: DECISION F039 D1 (7) left the card's line source to this round: the humanize catalog of
+`apps/ui/src/api/humanizeCatalog.ts`, or F255's `packages/orchestration/teacher_narration.py`.
+Measured at `ea7bcbdb`: every key event `extractSubGlyphs` returns already carries the catalog's line
+for its kind; the catalog is TypeScript and the exported player cannot call Python; and F255's
+narration words a mission's run log by a table of its own. The safe envelope the browser reads
+carries `seq`, `event`, `timestamp`, `outcome` and `task_id` for every event and a `budget` payload
+for `budget.tick` alone (`_safe_event_summary` in `packages/orchestration/ui_server.py`), and
+`costMetricOf` in `apps/ui/src/api/costMetric.ts` is the one home of a cost figure's wording. No
+event carries its actor. F035's ownership ledger does, served by `GET /api/jobs/<job_id>/ownership`
+and decoded by `decodeOwnershipView` in `apps/ui/src/api/ownership.ts`, one sentence per entry from
+`packages/orchestration/ownership_phrases.py`; its actions include `job_stopped` and
+`decision_answered`, and an entry carries no seq.
+
+CHOSEN: (1) ONE MODULE, `apps/ui/src/components/story/storyNarration.ts`, pure. (2) THE LINE is the
+catalog's, as the key event carries it; F255's narration is not read. (3) A CARD is one cluster of
+one chapter: the chapter's index, the cluster's first and last seq, one BEAT per key event — its
+seq, glyph, task, line, verdict and actor — and the cost. (4) THE VERDICT: a beat whose row is a
+`task_round_completed` reads `STORY_VERDICT_LINES` for its outcome, one line for each outcome
+`REVIEW_OUTCOME_STATE_TABLE` knows — `Verdict: pass`, `Verdict: fail`, `Verdict: needs repair` and
+`Verdict: blocked` — and any other beat has none. (5) THE ACTOR: `STORY_ACTOR_ACTIONS` joins the key
+event `job_stopped` to the ownership action `job_stopped`, and `task_decision_answered` to
+`decision_answered` for the same task. A beat names the entry's sentence only when the ledger holds
+exactly one such key event and the view exactly one such entry; because an entry carries no seq,
+any other count would be a guess, and an unreadable view names nobody. (6) THE COST is `Cost so far: `
+and the display `costMetricOf` gives for the latest budget tick at or before the cluster's last seq,
+marked `~` when estimated and followed by ` tokens` for a token figure; no tick, or a tick with no
+figure, gives none. (7) THE SYNC: `chapterAt` answers the chapter whose range holds a scrub
+position, and `cardAt` the latest card of that chapter whose first seq the position has reached, so
+a chapter shows no card before its first key event and never a card of another chapter. (8) The
+module writes no sentence but its verdict table and its cost label, and
+`tests/ui_contracts/test_story_narration.py` pins both tables to the sources they are bound to.
+
+ALTERNATIVES: F255's narration as the line, rejected because the export plays without Python and the
+key events already carry the catalog's line; matching an actor by timestamp, rejected because an
+entry's time and an event's time come from different writers; a composed verdict sentence per
+outcome, rejected because the outcome's own word is all the record says.
+
+HOW TO REVERSE: delete `storyNarration.ts`, its test, `tests/ui_contracts/test_story_narration.py`
+and this paragraph.
