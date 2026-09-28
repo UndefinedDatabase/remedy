@@ -26,7 +26,7 @@ verification commands. If something is unproven, Remedy says so instead of guess
 
 ## Status
 
-113 of 289 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
+114 of 289 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
 
 | Tier | Name | Done | Total |
 |------|------|-----:|------:|
@@ -35,7 +35,7 @@ verification commands. If something is unproven, Remedy says so instead of guess
 | 2 | Minimal Self-Build Runtime | 38 | 39 |
 | 3 | Full Token Economy & Autonomy | 6 | 27 |
 | 4 | Memory & Learning | 1 | 17 |
-| 5 | Operator Cockpit | 30 | 36 |
+| 5 | Operator Cockpit | 31 | 36 |
 | 6 | Design-to-Code | 0 | 16 |
 | 7 | Quality & Trust | 0 | 15 |
 | 8 | Worker Ecosystem & Neutrality | 0 | 12 |
@@ -586,6 +586,19 @@ opens the task or the changed file a stop names; `remedy job show --tour` prints
 stops; every job gets a tour built from its own records when its run ends, and a tour written
 by the summary model, checked so that it claims nothing the records do not say, only when you
 switch on the `tour.model_written` setting).
+
+F038 grounded chat (you can now ask a job about itself and get an answer built only from its
+own records: every sentence ends with the numbers of the records it restates, a sentence that
+cannot be traced to one is marked unsupported, and a question the records do not answer gets
+"Not in evidence." instead of a guess; asked about one task, the chat reads that task's status,
+rounds, prompt summaries, changes and events, and asked about the project, it reads the
+project's record, roadmap position, open decisions, patterns, mission dossiers, token totals and
+recent jobs; a request such as stop, pause, resume, a note to the builder, veto or rerun becomes
+a card that says exactly what would be done, sent through the cockpit's one checked entrance
+only when you confirm it, so its record is the cockpit's own audit line; `remedy chat ask` does
+this on the command line and the Chat tab of a run's evidence panel does it in the browser, and
+each answer says whether it was built from the records alone or written by the summary model,
+which happens only when you switch on the `chat.model_written` setting).
 
 Full per-feature state: [`docs/roadmap/STATUS.md`](docs/roadmap/STATUS.md)
 
