@@ -13,16 +13,13 @@ to D8).
 
 ## Current Step
 
-ROUND 9, the closure sequence's evidence round: book round 8 with the
-resolutions of R-1085 and R-1086, name the reachability allowlist's three
-new lines in the Built State, read the self-use generator, and build the
-evidence bundle and the review package at the accepted head.
+ROUND 10, the closing round: book round 9, rotate the ledger, accept F035
+in STATUS with the README counters, and open the pull request.
 
 ## Next Steps
 
-1. The closing round: the booking of round 9, the ledger rotation, the
-   STATUS line with the README counters, and the pull request.
+1. The next feature's session merges this pull request at the Open PR Gate.
 
 ## Risks
 
-Open findings: none once round 8 is booked.
+Open findings: none.
