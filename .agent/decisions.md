@@ -24389,3 +24389,41 @@ model call wrote and a second call would give a different answer.
 HOW TO REVERSE: remove the hook from `_apply_terminal`, the `tour` section and the `--tour` flag,
 the storage half of `packages/orchestration/result_tour.py` and its tests and goldens, move the
 module back to `ALLOWED_UNWIRED`, and delete this paragraph.
+
+## DECISION F036 D5 — the browser reads the tour through a `tour` route that serves the same view the command line shows, always with a tour to show; one pure TypeScript module decodes it whole and answers the overlay's stepping, and the overlay itself takes the next round (2026-09-28)
+
+CONTEXT: Measured at `09782a43`: the browser's job read routes are the `handlers` dict of
+`_RemedyHandler.do_GET` in `packages/orchestration/ui_server.py`, each answering 200 with its
+builder's dict; `tests/ui_server/test_handler_table_walk.py` reads that dict and requires every
+endpoint to answer 200 for a fake job that has no records, and `tests/ui_server/test_command_channel.py`
+requires every such path to refuse a write with 405. F035's `ownership` route is the template: one
+Python view served verbatim, one pure TypeScript module (`apps/ui/src/api/ownership.ts`) whose
+decoder refuses the whole payload when any part is unreadable, one never-throwing loader in
+`apps/ui/src/api/remedyApi.ts`, and a contract test that compares every key the TypeScript reads
+with the Python that writes it. The command line's `tour` section (DECISION F036 D4 (5)) shows the
+stored tour, or the mechanical tour marked not stored, and turns an unreadable stored tour into a
+section error.
+
+CHOSEN: (1) ONE VIEW. `tour_view(job)` in `packages/orchestration/result_tour.py` answers
+`{"stored", "version", "tour", "error"}`: the latest stored tour, or the mechanical tour with
+`stored` false and `version` 0 when none is stored or the stored one does not read, in which case
+`error` names why. The route `GET /api/jobs/<job_id>/tour` serves it verbatim, so it answers 200
+for every job, and the command line's section builds from the same function and still turns a
+non-empty `error` into `tour_unreadable`. (2) ONE PURE MODULE. `apps/ui/src/api/resultTour.ts`
+decodes the view and refuses it whole when any key, stop, anchor or dropped entry is unreadable,
+when the schema is not `remedy.tour.v1`, when an anchor's kind is not one of the four, or when
+there are more than eight stops; it builds the route's path the way the ownership module does,
+and answers the overlay's state, its previous and next stops, its progress, its step label and a
+plain label for each anchor. It opens no socket, reads no clock and keeps no storage; the one read
+is `loadTourView` in `remedyApi.ts`, which never throws. (3) THE OVERLAY WAITS. The overlay, its
+spotlight, its navigation to each anchor and its place in the shell are the next round's, with a
+DECISION of their own and the design reference's assumption log, because the reference has no
+tour treatment. (4) FINDING R-1087 is repaired in this round's code commit.
+
+ALTERNATIVES: answering 404 when no tour is stored, rejected because the handler walk requires 200
+for a job with no records and because the mechanical tour is always available; decoding stop by
+stop and skipping a bad one, rejected for the reason F035's decoder gives: a tour that quietly
+drops a stop would say less than the job's records do.
+
+HOW TO REVERSE: remove the `tour` route, `tour_view`, `resultTour.ts`, `loadTourView` and their
+tests, restore `_tour_section` to its round 3 body, and delete this paragraph.
