@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { BRAIN_DEMO_FRAMES, BRAIN_DEMO_JOB_ID, brainDemoRows } from "../graph/brainDemoRecording";
-import { decodeStoryExport, storyExportVersionLine, STORY_EXPORT_SCHEMA, STORY_EXPORT_UNREADABLE_LINE } from "./storyExport";
+import {
+  decodeStoryExport,
+  readEmbeddedStory,
+  storyExportVersionLine,
+  STORY_EXPORT_SCHEMA,
+  STORY_EXPORT_UNREADABLE_LINE,
+} from "./storyExport";
 
 // HAND-DERIVED: a story payload shaped exactly as
 // `packages/orchestration/story_export.py`'s `build_story_payload` would write
@@ -69,5 +75,17 @@ describe("decodeStoryExport", () => {
     const result = decodeStoryExport({ ...payload, ownership: { schema: "not-the-ownership-schema" } });
     expect(result.ok).toBe(true);
     if (result.ok) expect(result.story.ownership).toBeNull();
+  });
+});
+
+describe("readEmbeddedStory", () => {
+  it("reads the demo payload's own JSON.stringify the same way decodeStoryExport reads it", () => {
+    const text = JSON.stringify(demoPayload());
+    expect(readEmbeddedStory(text)).toEqual(decodeStoryExport(demoPayload()));
+  });
+
+  it("reads the unreadable line for a null text and for text JSON.parse cannot read", () => {
+    expect(readEmbeddedStory(null)).toEqual({ ok: false, message: STORY_EXPORT_UNREADABLE_LINE });
+    expect(readEmbeddedStory("{not json")).toEqual({ ok: false, message: STORY_EXPORT_UNREADABLE_LINE });
   });
 });

@@ -31,7 +31,7 @@ export function StoryPanel({ dashboard, rows, ownership, scrub, onClose }: {
   rows: readonly BrainEventRow[];
   ownership: OwnershipView | null;
   scrub: TimelineScrub;
-  onClose: () => void;
+  onClose?: () => void;
 }) {
   const reducedMotion = useReducedMotion();
   const [playing, setPlaying] = useState(false);
@@ -97,7 +97,7 @@ export function StoryPanel({ dashboard, rows, ownership, scrub, onClose }: {
     const onKey = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         setPlaying(false);
-        onClose();
+        onClose?.();
         return;
       }
       if (event.key === " " || event.code === "Space") {
@@ -165,7 +165,7 @@ export function StoryPanel({ dashboard, rows, ownership, scrub, onClose }: {
         <button type="button" onClick={togglePlaying} disabled={scrub.state.head < 0}>
           {playing ? "Pause" : "Play"}
         </button>
-        <button type="button" onClick={onClose}>Close story</button>
+        {onClose && <button type="button" onClick={onClose}>Close story</button>}
       </div>
     </section>,
     document.body,

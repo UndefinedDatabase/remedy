@@ -14,6 +14,12 @@ import type { OwnershipView } from "../../api/ownership";
 
 export const STORY_EXPORT_SCHEMA = "remedy.story.v1";
 
+/** The exported page's own element id (F039 T003, DECISION F039 D8): the one place
+ *  `packages/orchestration/story_export.py`'s `render_story_html` writes the payload's JSON,
+ *  and the one place `storyPlayerMain.tsx` reads it back. Pinned equal in both languages by
+ *  `tests/orchestration/test_story_export.py`. */
+export const STORY_DATA_ELEMENT_ID = "remedy-story-data";
+
 /** The one line a decoded story shows for a payload this player cannot read at
  *  all: not a plain object, missing its schema, or carrying a field of the
  *  wrong shape. Never the server's own error text. */
@@ -78,4 +84,22 @@ export function decodeStoryExport(raw: unknown): { ok: true; story: StoryExport 
       ownership: decodeOwnershipView(raw["ownership"]),
     },
   };
+}
+
+/** Read the story embedded in the exported page's own `<script type="application/json"
+ *  id={STORY_DATA_ELEMENT_ID}>` element (F039 T003, DECISION F039 D8): `text` absent (the
+ *  element itself is missing) and a `text` `JSON.parse` cannot read both answer the same
+ *  unreadable line `decodeStoryExport` uses for any other unrecognised shape; anything that
+ *  parses goes through `decodeStoryExport`, never a second reading of its rules. */
+export function readEmbeddedStory(
+  text: string | null,
+): { ok: true; story: StoryExport } | { ok: false; message: string } {
+  if (text === null) {
+    return { ok: false, message: STORY_EXPORT_UNREADABLE_LINE };
+  }
+  try {
+    return decodeStoryExport(JSON.parse(text));
+  } catch {
+    return { ok: false, message: STORY_EXPORT_UNREADABLE_LINE };
+  }
 }
