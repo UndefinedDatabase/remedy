@@ -25209,3 +25209,41 @@ the cost at its own cluster's last seq.
 
 HOW TO REVERSE: delete the two keys and render the guide again, the `story` section and its
 mapping, the row's `budget` field, `storyView.ts`, their tests and guard, and this paragraph.
+
+## DECISION F039 D6 — the in-app story is a docked panel that narrates the ledger through the timeline's own scrub: one button per chapter, the current card showing only the beats the scrub has reached, Play, Pause and chapter steps, one autoplay timer, and a line saying so while the job still runs (2026-09-28)
+
+CONTEXT: T5_F039.md T002 asks for the in-app story mode on the demo recording, with a golden
+walkthrough, narration synced to the scrub position and scrub and keyboard working in the app. Measured
+at `c4a1cf5d`: `RemedyShell.tsx` holds the ledger's rows, the ownership view and `useTimelineScrub`'s
+`scrub`, whose `scrubTo` moves the graph and the phase bar together and accepts -1, the position
+before the first event; F036's tour opens from a button in `RightLivePanel.tsx` and mounts as a
+sibling after `<main>`, portaled to the page body; `useReducedMotion` reads the page's reduced-motion
+setting; and the design reference draws no story mode. `cardAt` of DECISION F039 D3 answers a
+cluster's whole card from its first key event on, so at a card's first seq it would already tell the
+beats the graph has not drawn.
+
+CHOSEN: (1) THE PURE RULES, `apps/ui/src/components/story/storyPlayer.ts`: the position in words
+(`Chapter <n> of <m>: <title>`, `Before the first event`, `After the last event`, and
+`No event is recorded yet.` for an empty ledger); where Play starts, before the first event when the
+scrub is LIVE or at the ledger's last seq and else where it stands; `storyBeatsAt`, a card's beats
+whose seq the position has reached; the running-job line; and `storyWalk`, the whole autoplay walk
+with each frame's position, wait, words, card and beat count — the golden walkthrough. (2) THE
+PANEL, `StoryPanel.tsx` with its CSS module, portaled to the page body as a glass card docked over
+the stage's lower left beside the left rail, without a backdrop so the graph and the phase bar stay
+visible: the position in words, the running line while the job runs, one button per chapter that
+moves the scrub to the chapter's start (the current one outlined in the replay violet), the card's
+reached beats with their verdict and actor and the cost so far, and Previous chapter, Play or Pause,
+Next chapter and Close story. It owns ONE timer: while playing it waits for `autoplayStep`'s next
+step and moves the scrub there, and no step left ends play. Space plays and pauses and Escape
+closes. (3) THE ENTRY: a Story button after the Tour button, and the panel mounted after the tour,
+outside `<main>`. (4) THE REFERENCE: one assumption-log line records the treatment. (5) THE PROOF: a
+headless render of the real panel over the real scrub of the demo recording, with a fast pacing.
+
+ALTERNATIVES: an overlay with a backdrop like the tour's, rejected because the story is told by the
+graph and the bar it would cover; a timer per step scheduled all at once, rejected because a manual
+scrub or a pause must cancel the plan, which one timer re-armed by the position does by
+construction; showing a card's every beat from its first seq, rejected because it tells what the
+graph has not drawn.
+
+HOW TO REVERSE: delete `storyPlayer.ts`, `StoryPanel.tsx` and its CSS module, their tests and render
+files, the Story button, the shell's state and mount, the assumption-log line and this paragraph.

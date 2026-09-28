@@ -13,22 +13,18 @@ D1).
 
 ## Current Step
 
-ROUND 4: book round 3 with R-1099's resolution, and land the story's data
-path: the two pacing keys and the dashboard's `story` section, a budget
-tick's figures on its feed row, and the pure story view (DECISION F039 D5).
+ROUND 5: book round 4, register and repair R-1100 — three docstrings that
+promise a configuration change without a restart — and land the in-app
+story panel with its golden walkthrough and headless render (DECISION F039
+D6), which closes T002.
 
 ## Next Steps
 
-1. T002 closed: the in-app story panel on the demo recording, driving the
-   timeline's scrub, with its golden walkthrough and its assumption-log
-   entry.
-2. T003: the export command and its build, the font licensing finding, the
+1. T003: the export command and its build, the font licensing finding, the
    size budget, the clean-browser test with zero network requests, and the
    docs.
-3. The closure sequence.
+2. The closure sequence.
 
 ## Risks
 
-- The design reference draws no story mode and no narration card; the
-  panel's round records its treatment in the assumption log.
 - The export bundles no font before the licensing finding is written.
