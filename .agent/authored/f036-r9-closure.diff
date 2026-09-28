@@ -1,0 +1,52 @@
+diff --git a/README.md b/README.md
+index 2f42a5e8b..844a651bd 100644
+--- a/README.md
++++ b/README.md
+@@ -26,7 +26,7 @@ verification commands. If something is unproven, Remedy says so instead of guess
+ 
+ ## Status
+ 
+-112 of 289 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
++113 of 289 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
+ 
+ | Tier | Name | Done | Total |
+ |------|------|-----:|------:|
+@@ -35,7 +35,7 @@ verification commands. If something is unproven, Remedy says so instead of guess
+ | 2 | Minimal Self-Build Runtime | 38 | 39 |
+ | 3 | Full Token Economy & Autonomy | 6 | 27 |
+ | 4 | Memory & Learning | 1 | 17 |
+-| 5 | Operator Cockpit | 29 | 36 |
++| 5 | Operator Cockpit | 30 | 36 |
+ | 6 | Design-to-Code | 0 | 16 |
+ | 7 | Quality & Trust | 0 | 15 |
+ | 8 | Worker Ecosystem & Neutrality | 0 | 12 |
+@@ -577,6 +577,16 @@ Ownership section, a task's detail panel shows who did what to that task, and th
+ panel has an Ownership tab for the whole job; the list is rebuilt from the job's own records
+ and saved with its evidence, and it never names a person, only the way the action came in).
+ 
++F036 guided result tour (you can now ask a finished job "what did I get?" and be walked
++through the answer in at most eight short stops: how the run ended, what changed in each part
++of the code, the command that runs it, and whether its Definition of Done passed, each stop
++tied to a real place in the job, such as a task, a changed file, a file of its evidence or a
++command it ran; the Tour button in the browser steps through the stops, and its "Show me"
++opens the task or the changed file a stop names; `remedy job show --tour` prints the same
++stops; every job gets a tour built from its own records when its run ends, and a tour written
++by the summary model, checked so that it claims nothing the records do not say, only when you
++switch on the `tour.model_written` setting).
++
+ Full per-feature state: [`docs/roadmap/STATUS.md`](docs/roadmap/STATUS.md)
+ 
+ ## Install
+diff --git a/docs/roadmap/STATUS.md b/docs/roadmap/STATUS.md
+index 05fdcd16e..2beb08b89 100644
+--- a/docs/roadmap/STATUS.md
++++ b/docs/roadmap/STATUS.md
+@@ -168,7 +168,7 @@ Milestone R1 — Remedy as the daily tool: Tier 2 complete (F086 as the self-ins
+ - [x] F029 — Subtree rerun (T001–T003 complete; accepted 2026-09-27 · live review PASS — ACCEPTED · Evidence job f029r10e1001 · package remedy-review-20260927-201630-READY_FOR_REVIEW.zip · SHA-256 9a0d0eb2ac1576e96149aca426e6aec301eedc6247c9ee0fb0b4a8eb01e9bf4b · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD e56e82f733ec51609598590eda05aa1b2b7329ca)
+ - [x] F030 — Steering messages (T001–T003 complete; accepted 2026-09-27 · live review PASS — ACCEPTED · Evidence job f030r6e1001 · package remedy-review-20260927-234033-READY_FOR_REVIEW.zip · SHA-256 8b7e2f9ceaee61acc87a55ae5bd2c2b3f467b44ab3136076e34d5b3b666ea452 · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD b32a0ab6f0809f86b0461a6aac15a4912960162c)
+ - [x] F035 — Ownership ledger (T001–T003 complete; accepted 2026-09-28 · live review PASS — ACCEPTED · Evidence job f035r9e1001 · package remedy-review-20260928-050815-READY_FOR_REVIEW.zip · SHA-256 9b3e3841d2c11725c8a03579fa2a7d5dcb963aac3386faeb5a6ab5517ac2b8aa · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD 7f25c03bddca1d9c08b58821288b7eed42d1e3cb)
+-- [~] F036 — Guided result tour
++- [x] F036 — Guided result tour (T001–T003 complete; accepted 2026-09-28 · live review PASS — ACCEPTED · Evidence job f036r8e1001 · package remedy-review-20260928-094901-READY_FOR_REVIEW.zip · SHA-256 e2bd771b3f1c1a52fcc7e73cdae50c4fd4a837107ee5e46b76d79d8b8dffc2f4 · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD 153537dc8e5a6bb7061f220cdeaffbc1829d3067)
+ 
+ ## Tier 2 — Findings paydown (rolling, operator rule amend0911-feedback)
+ 

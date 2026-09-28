@@ -1,0 +1,1 @@
+- [x] F036 — Guided result tour (T001–T003 complete; accepted 2026-09-28 · live review PASS — ACCEPTED · Evidence job f036r8e1001 · package remedy-review-20260928-094901-READY_FOR_REVIEW.zip · SHA-256 e2bd771b3f1c1a52fcc7e73cdae50c4fd4a837107ee5e46b76d79d8b8dffc2f4 · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD 153537dc8e5a6bb7061f220cdeaffbc1829d3067)
