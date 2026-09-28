@@ -4512,7 +4512,6 @@ def format_job_report_text(job: JobPlan) -> str:
         "Tasks:",
     ]
 
-    veto_map = _task_veto_report_map(job)
     steering_map = _task_steering_not_consumed_map(job)
     for t in job.tasks:
         status_icon = {
@@ -4543,17 +4542,35 @@ def format_job_report_text(job: JobPlan) -> str:
             )
         if t.error:
             lines.append(f"      Error: {t.error}")
-        veto_info = veto_map.get(t.task_id)
-        if veto_info is not None:
-            lines.append(
-                f"      Vetoed by {veto_info.get('actor', '')}: {veto_info.get('reason', '')}"
-            )
         for note in steering_map.get(t.task_id, []):
             lines.append(
                 "      Steering not consumed: “" + note["text"].replace("\n", "\n        ") + "”"
             )
 
     lines.append("")
+
+    # F035 T002 (DECISION F035 D3): the whole ownership ledger, worded through the one
+    # catalog in `ownership_phrases.py`, replaces the per-task `Vetoed by` line above — one
+    # dialect for who did what, instead of the same fact stated twice in two wordings. A job
+    # with no entry prints no section at all, so its report is byte for byte unchanged; a
+    # ledger that cannot be read prints one line naming the error rather than silently
+    # dropping the section.
+    from packages.orchestration.ownership import OwnershipError, build_ownership_ledger
+    from packages.orchestration.ownership_phrases import ownership_sentences
+
+    try:
+        ledger = build_ownership_ledger(job)
+    except (OwnershipError, OSError) as exc:
+        lines.append(f"Ownership: the ledger could not be read — {exc}")
+        lines.append("")
+    else:
+        titles = {t.task_id: t.title for t in job.tasks}
+        sentences = ownership_sentences(ledger, titles=titles)
+        if sentences:
+            lines.append("Ownership:")
+            for sentence in sentences:
+                lines.append("  - " + sentence.replace("\n", "\n    "))
+            lines.append("")
 
     if job.repair_rounds_source:
         disabled = " (disabled)" if job.repair_rounds_allowed == 0 else ""

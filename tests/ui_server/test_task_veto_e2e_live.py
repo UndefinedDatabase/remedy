@@ -226,7 +226,6 @@ class TestTaskVetoE2ELive:
             assert body["outcome"] == "vetoed", body
             assert body["reason"] == VETO_REASON
             assert body["unreachable"] == [d_task_id]
-            actor = body["actor"]
 
             dashboard = _get_json(port, token, job_id, "dashboard")
             [veto_entry] = dashboard["vetoes"]["tasks"]
@@ -251,7 +250,13 @@ class TestTaskVetoE2ELive:
             [sys.executable, "-m", "apps.cli.main", "job", "run", job_id, "--tasks", "0"],
             cwd=str(repo_root), env=env, capture_output=True, text=True, timeout=120)
         assert run2.returncode == 0, f"run 2 exited {run2.returncode}: {run2.stderr}"
-        assert f"Vetoed by {actor}: {VETO_REASON}" in run2.stdout, run2.stdout
+        # DECISION F035 D3: the report's per-task "Vetoed by" line is gone; the same fact
+        # now reads through the ownership catalog's one dialect. This is the veto's only
+        # browser-door action in the whole ledger, so its fingerprint is token #1.
+        assert (
+            f"You (browser, token #1) vetoed task {b_task_id} (Build B: goal of B) — reason: "
+            f"“{VETO_REASON}”."
+        ) in run2.stdout, run2.stdout
 
         blocked = _job_data(data_dir, job_id)
         assert blocked["status"] == "blocked"

@@ -19,10 +19,11 @@ Deliberate absences (searched-for behavior that is NOT here):
   * Remedy deliberately does not emit a ``deep_link`` (DECISION F040 D5): the
     cockpit has no routing layer, so the envelope names the RULE and the client
     decides the affordance.  There is no always-null key to misread.
-  * Remedy deliberately does not fill ``ownership`` (DECISION F040 D3): its
-    producer F035 is unbuilt and there is no source to compose over.  The key
-    is present and EMPTY from the first version so F035 fills it without a
-    version bump.
+  * Remedy deliberately does not re-word ``ownership``'s sentences here.
+    DECISION F035 D3 made ``packages/orchestration/ownership_phrases.py`` the
+    one catalog that words a ledger entry into a sentence, and this module
+    only calls it — the digest and the job report read the same sentences in
+    the same order, so the two surfaces cannot disagree about who did what.
   * Remedy deliberately does not write the digest anywhere.  The endpoint and
     the digest section of ``remedy job show <id> --full`` are the next slices of F040; this module only
     turns sources into a dict.
@@ -50,7 +51,8 @@ from packages.orchestration.run_report import (
 
 #: Payload version of the digest envelope.  The key set below is the contract:
 #: a field added to it is a version bump, which is exactly why ``ownership``
-#: ships empty rather than arriving later (DECISION F040 D3).
+#: shipped in the envelope from version 1 (DECISION F040 D3) and was filled
+#: without one once F035 built its producer (DECISION F035 D3).
 JOB_DIGEST_VERSION = 1
 
 #: The EXACTNESS vocabulary of ``cost.basis``, per DECISION F040 D4 — the same
@@ -197,6 +199,29 @@ def _peak_urgency(job: Any, events: list[dict[str, Any]] | None) -> int:
     return max(scores) if scores else 0
 
 
+def _ownership_sentences(job: Any) -> list[str]:
+    """DECISION F035 D3: the digest's own reading of the ownership ledger — `[]` for
+    anything that is not a `JobPlan`, one sentence naming the error when the ledger
+    cannot be read, and otherwise the catalog's sentences in ledger order, titled from
+    `job.tasks` exactly as the job report titles them. Imports are function-scoped: this
+    module already reads `pingpong_job` this way (see `_cost_counters` above), and
+    following that convention here avoids importing the whole orchestration surface at
+    module load for a key most callers never ask about.
+    """
+    from packages.orchestration.ownership import OwnershipError, build_ownership_ledger
+    from packages.orchestration.ownership_phrases import ownership_sentences
+    from packages.orchestration.pingpong_job import JobPlan
+
+    if not isinstance(job, JobPlan):
+        return []
+    try:
+        ledger = build_ownership_ledger(job)
+    except (OwnershipError, OSError) as exc:
+        return [f"The ownership ledger could not be read: {exc}"]
+    titles = {t.task_id: t.title for t in job.tasks}
+    return ownership_sentences(ledger, titles=titles)
+
+
 def build_job_digest(
     job: Any,
     events: list[dict[str, Any]] | None = None,
@@ -223,11 +248,10 @@ def build_job_digest(
         "state": (sources.state or "").strip() or NOT_RECORDED,
         "headline": _headline(sources),
         "cost": _cost_section(_cost_counters(job)),
-        # DECISION F040 D3: F035 owns the ownership sentences and is unbuilt, so
-        # there is NO source to read.  This empty list is a decision, not a bug —
-        # the card omits the section rather than inventing a sentence, and F035
-        # fills the key without a version bump when it lands.
-        "ownership": [],
+        # DECISION F035 D3: the ownership ledger's own sentences, worded through the
+        # one catalog `ownership_phrases.py` owns, in ledger order — the same sentences
+        # the job report's Ownership section renders, so the two cannot disagree.
+        "ownership": _ownership_sentences(job),
         "decisions": {
             # ``open_decision_count`` is None when the evidence-area read failed
             # outright, which is not evidence of zero open decisions but is the
