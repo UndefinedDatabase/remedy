@@ -828,6 +828,24 @@ describe("budget_final transport", () => {
 });
 
 // ---------------------------------------------------------------------------
+// The story section (DECISION F039 D5): carried raw. `storyPacingOf` is its
+// one reader, so this mapper decides nothing about its shape.
+// ---------------------------------------------------------------------------
+
+describe("story transport (DECISION F039 D5)", () => {
+  it("carries the dashboard's story section raw", () => {
+    const payload = makeDashboardPayload({ story: { step_ms: 300, chapter_pause_ms: 2500 } });
+    const result = normalizeDashboardPayload("abc-123", payload);
+    expect(result.story).toEqual({ step_ms: 300, chapter_pause_ms: 2500 });
+  });
+
+  it("is null when the payload carries no story key at all", () => {
+    const result = normalizeDashboardPayload("abc-123", makeDashboardPayload());
+    expect(result.story).toBeNull();
+  });
+});
+
+// ---------------------------------------------------------------------------
 // The decision inbox: the /decisions document projected through
 // `decisionCardModels` (T5_F031 T002a). Nothing is mocked and no fetch runs —
 // that is precisely why the projection lives in normalizeDashboardPayload.

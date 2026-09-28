@@ -253,6 +253,10 @@ export function normalizeDashboardPayload(
     taskSpecs: normalizeTaskSpecs(dashboard.task_specs),
     vetoes: normalizeVetoes(dashboard.vetoes),
     projectSummary: dashboard.project_summary ?? null,
+    // Carried raw: `storyPacingOf` (apps/ui/src/components/story/storyAutoplay.ts)
+    // is this section's one reader, and the API layer imports nothing from the
+    // components (DECISION F039 D5 (2)).
+    story: dashboard.story ?? null,
     timelineEvents: normalizeTimelineEvents(dashboard.timeline_events),
     snapshot: normalizeSnapshotSummary(dashboard.snapshot),
     continuation: normalizeContinuationSummary(dashboard.continuation),
@@ -532,6 +536,8 @@ export function normalizeApiFailure(jobId: string, failedEndpoints: string[]): R
     taskSpecs: normalizeTaskSpecs(undefined),
     vetoes: normalizeVetoes(undefined),
     projectSummary: null,
+    // No endpoint answered, so there is no pacing section either.
+    story: null,
     snapshot: null,
     continuation: null,
     // No endpoint answered, so there are no open questions to show. The empty

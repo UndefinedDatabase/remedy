@@ -320,5 +320,11 @@ export interface RemedyProjectSummary {
  *  that did not answer yields the EMPTY array — an empty inbox is a real
  *  answer, `undefined` would not be. Remedy deliberately does NOT order,
  *  filter or count the cards here; that rule is T002b's subject and lives in
- *  `decisionCard.ts` when it lands. */
-export interface RemedyDashboard { jobId: string; title: string; description: string; conceptLabel: string; metrics: RemedyMetric[]; budgetFinal: BudgetTickFigures | null; phases: RemedyPhase[]; tasks: RemedyTaskItem[]; activity: RemedyActivityItem[]; graph: { nodes: RemedyGraphNode[]; edges: RemedyGraphEdge[]; }; nextAction: RemedyNextAction; live: RemedyLiveState; apiHealth: RemedyApiHealth; pipeline: RemedyPipeline | null; resume: RemedyResume | null; pause: RemedyPause; taskSpecs: RemedyTaskSpecs; vetoes: RemedyVetoes; projectSummary: RemedyProjectSummary | null; timelineEvents?: RemedyTimelineEvent[]; snapshot: RemedySnapshotSummary | null; continuation: RemedyContinuationSummary | null; promptTrace?: RemedyPromptTraceSummary | null; decisionInbox: DecisionCardModel[]; }
+ *  `decisionCard.ts` when it lands.
+ *
+ *  `story` is the dashboard's `story` section (DECISION F039 D5), carried
+ *  OPAQUE and OPTIONAL: `storyPacingOf` in
+ *  `apps/ui/src/components/story/storyAutoplay.ts` is its one reader, and a
+ *  required field here would break every test fixture that builds a
+ *  dashboard without it. */
+export interface RemedyDashboard { jobId: string; title: string; description: string; conceptLabel: string; metrics: RemedyMetric[]; budgetFinal: BudgetTickFigures | null; phases: RemedyPhase[]; tasks: RemedyTaskItem[]; activity: RemedyActivityItem[]; graph: { nodes: RemedyGraphNode[]; edges: RemedyGraphEdge[]; }; nextAction: RemedyNextAction; live: RemedyLiveState; apiHealth: RemedyApiHealth; pipeline: RemedyPipeline | null; resume: RemedyResume | null; pause: RemedyPause; taskSpecs: RemedyTaskSpecs; vetoes: RemedyVetoes; projectSummary: RemedyProjectSummary | null; timelineEvents?: RemedyTimelineEvent[]; snapshot: RemedySnapshotSummary | null; continuation: RemedyContinuationSummary | null; promptTrace?: RemedyPromptTraceSummary | null; decisionInbox: DecisionCardModel[]; story?: unknown; }
