@@ -24958,3 +24958,38 @@ client already mints and retries it.
 HOW TO REVERSE: delete the route and its builder, `chat_turn_view` and the route's tests, restore
 the command line's own `--json` fields, drop the chat path from the 405 walk, and delete this
 paragraph.
+
+## DECISION F038 D12 — the cockpit's grounded chat is the evidence panel's Chat tab: it asks the chat route about the focused run's task, or the whole project when a box is ticked, shows every answer sentence with numbered chips or an unsupported mark, and sends a card through the write door only when Confirm is pressed; the right panel's steering note is unchanged (2026-09-28)
+
+CONTEXT: Measured at `9c7f5fad`. The evidence panel (`EvidencePanel.tsx`) has tabs diff, prompt
+trace, chat and ownership, and its chat tab shows only `EVIDENCE_CHAT_NOT_YET`, a sentence saying
+chat about a run arrives with its own feature. The right panel's input is F030's steering note,
+whose copy promises no reply (DECISION F030 D3). The chat route answers one turn in the view both
+doors share (DECISION F038 D11). The write door's browser chain is `jobCommandsPath`,
+`isUsableCommandNonce` and `mintDecisionClientNonce`, `submitDecisionSendRequest`, and an outcome
+sentence per status. `apps/ui/vitest.config.ts` runs `src/**/*.test.ts` in a node environment with
+no DOM library, and the repository pins `.tsx` wiring from source in `tests/ui_contracts/`.
+`react-dom/server`'s `renderToStaticMarkup` renders a component to markup with no DOM.
+
+CHOSEN: (1) THE PLACE. The chat is the evidence panel's Chat tab, replacing
+`EVIDENCE_CHAT_NOT_YET`. It asks about the focused run's task; ticking "Ask about the whole
+project" asks the project scope. (2) THE PURE HALF. `apps/ui/src/api/chatTurn.ts` decodes the
+route's body, refusing it whole when any part is unreadable or a citation names no listed item,
+builds the route's path, marks each sentence cited, unsupported or, for `Not in evidence.` alone,
+absence, names the answer's scope, and builds and describes the one request a confirmed card
+sends; `loadChatTurn` in `remedyApi.ts` reads the route. (3) THE TAB. `EvidenceChatTab.tsx` shows
+each asked line with its answer: a scope chip, each sentence with a chip `[n]` linking to its
+evidence item listed below or a dashed "unsupported" mark, and a button opening the diff or the
+prompt trace tab for an item of that kind; or its card, with Confirm only on a complete card, and
+the outcome sentence after it. It reads only through `loadChatTurn` and sends only through
+`sendChatCard`. (4) THE DOM AUDIT. A vitest test renders the tab's `ChatTurnBlock` with
+`renderToStaticMarkup` and checks that every sentence carries a chip or the unsupported mark and
+only the absence sentence carries neither. (5) The assumption log gains the tab's row.
+
+ALTERNATIVES: turning the right panel's steering input into the chat, rejected because that input
+must keep promising no reply and already delivers notes; a new DOM test library, rejected because
+the markup renderer React already ships reads the real component with no new dependency.
+
+HOW TO REVERSE: delete `chatTurn.ts`, `EvidenceChatTab.tsx` and its sheet, their tests and the
+contract test, restore `EVIDENCE_CHAT_NOT_YET`, its test and its contract line, remove the
+assumption row, and delete this paragraph.
