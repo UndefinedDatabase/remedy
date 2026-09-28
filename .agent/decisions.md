@@ -24287,3 +24287,58 @@ F286, rejected because rule B keeps exactly one unclaimed paydown.
 
 HOW TO REVERSE: move F286's STATUS line and its Tier 2 heading back above F036, delete the line
 this move added to `docs/roadmap/features/T2_F286.md`, operator question Q6 and this paragraph.
+
+## DECISION F036 D3 — a model-written tour keeps the mechanical tour's first stop, may say only what the job's records say, and falls back to the mechanical tour with the reason in its label; it is written through the summary role with a call function bound to the tour's own schema, and provider failures are caught by name, never by a blind handler (2026-09-28)
+
+CONTEXT: Measured at `44965328`: `packages/orchestration/artifact_summary.py` is the one side-role
+generator with a fallback, and it catches a provider failure with `except Exception` marked
+`# noqa: BLE001`; `tests/test_ble001_ratchet.py` freezes those marks at 290, so a new generator
+may not add one. A structured call raises whatever its call function raises:
+`ClaudeCliPlanner.raw_call` raises `RuntimeError`, `OllamaPlanner.raw_call` raises `ImportError`
+without the package and `ollama.RequestError` or `ollama.ResponseError` from the server, and the
+Ollama client is built on `httpx`. `intake.make_structured_call_fn` binds one response schema per
+call function and answers `None` when its planning service is unreachable, and
+`tests/conftest.py` refuses a live Ollama connection to every test without the `real_ollama`
+marker, so under the suite it answers `None`. `artifact_summary.summary_call_fn` binds
+`GeneratedSummaryContent`, which the tour may not reuse. `model_routing.ROLE_CONFIG_CALL_SITES`
+inventories every `resolve_role_config` call, and `tests/orchestration/test_model_routing.py`
+pins that inventory at nine sites and four literal roles. A task records its `title`, `status`
+and `acceptance`; no task records a rationale (DECISION F036 D1 (5)).
+
+CHOSEN: (1) THE SOURCE TEXT. One text lists the job's records, one fact per line: the state,
+terminal status, stop reason and mission; each task's id, title, status and acceptance; each
+changed file with its counts; each evidence file; each recorded command; and the Definition of
+Done's outcome and every check's status. The prompt shows this text and the list of allowed
+anchors, and the no-new-claims check reads the same text, so the model is judged against exactly
+what it was shown. (2) NO NEW CLAIMS. A model-written stop is dropped, with its reason, when it
+states a number, a quoted span or a file path that the source text does not hold, or uses a word
+of a fixed list of claims no record makes, such as "seamless" or "production-ready". This is the
+mechanical half of the feature file's no-new-claims rule; the goldens of T002's second round are
+the other half. (3) THE HONEST FIRST STOP. A model-written tour always starts with the mechanical
+tour's "How the run ended" stop, and the model writes at most seven stops after it, so a failed or
+blocked run is never toured as a success. (4) THE FALLBACK AND ITS LABEL. With no call function
+the answer is the mechanical tour labelled `fallback`. A provider failure, a response that does
+not parse after the one retry, or a model answer of which no stop survives the checks gives the
+mechanical tour labelled `fallback:<reason>`, where the reason is the failure class of
+`failure_postmortem.classify`, or `no_sound_stops`. A tour of which at least one model-written
+stop survives is labelled `summary-role`. Every dropped stop of every stage is listed under
+`dropped`. (5) FAILURES BY NAME. The call is guarded by a named tuple of exception classes — the
+built-in `OSError`, `RuntimeError`, `ValueError` and `ImportError`, and Ollama's two error classes
+and `httpx.HTTPError` when those packages import — so the ratchet stays at 290. (6) THE CALL
+FUNCTION. `tour_call_fn()` resolves the `summary` role and builds a call function bound to the
+tour's own schema, so the tour is written by the same cheap side role as the artifact summaries.
+It is one more `resolve_role_config` site, so the inventory gains `result_tour.py` with the
+literal role `summary`, and the pinned counts become ten sites and five literal roles in the same
+commit. (7) STILL UNWIRED. This round lands generation with an injected call function only.
+Storage, versioning, the terminal hook and the command line are T002's second round, which
+removes the module's line from `ALLOWED_UNWIRED`.
+
+ALTERNATIVES: adding a `# noqa: BLE001` handler and raising the ratchet to 291, rejected because
+the ratchet exists to stop exactly that; reusing `summary_call_fn`, rejected because its call
+function answers in the summary's schema and every tour response would fail validation; letting
+the model write the first stop, rejected because the one stop a failed run must get right would
+then depend on the model.
+
+HOW TO REVERSE: delete the generation half of `packages/orchestration/result_tour.py` and its
+tests, remove the `result_tour.py` line from `ROLE_CONFIG_CALL_SITES`, restore the pinned counts
+to nine and four, and delete this paragraph.

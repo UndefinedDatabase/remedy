@@ -9,18 +9,18 @@ merge commit of pull request 290 (F035 Ownership ledger).
 from the job's own report, diff and Definition of Done, each tied to a real
 place in the job, shown as an overlay in the browser and printed the same
 way on the command line (`docs/roadmap/features/T5_F036.md`, DECISIONS
-F036 D1 and D2).
+F036 D1 to D3).
 
 ## Current Step
 
-ROUND 1: claim F036, book F035's round 10, record DECISIONS F036 D1 and D2
-with operator question Q6, move F286 behind F036, and land T001 — the stop
-shape, the anchor check and the mechanical tour.
+ROUND 2: book round 1, record DECISION F036 D3, and land T002's first half —
+the model-written tour through the summary role, the no-new-claims check,
+the honest first stop, and the labelled fallback.
 
 ## Next Steps
 
-1. T002: the generation call with its fallback, the no-new-claims goldens,
-   `tour.json` stored and versioned at the job terminal, and the command line.
+1. T002's second half: `tour.json` stored and versioned at the job
+   terminal, the command line's tour, and the fixture goldens.
 2. T003: the overlay, navigation to each anchor, and the demo's tour.
 3. The closure sequence.
 
