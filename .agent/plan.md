@@ -9,21 +9,21 @@ Who decided what stays answerable: one ledger per job names, for every
 human-attributable action, who acted through which door, when, in their own
 words, and what it caused, with machine choices attributed to Remedy under
 its configuration (`docs/roadmap/features/T5_F035.md`, DECISIONS F035 D1
-to D6).
+to D7).
 
 ## Current Step
 
-ROUND 6: book round 5 and resolve R-1082, record DECISION F035 D6, and land
-the evidence panel's ownership tab with a headless render of the task
-detail's section and the tab.
+ROUND 7: book round 6, register R-1083 and R-1084, record DECISION F035 D7,
+repair both, and land the end-to-end proof — one real job acted on through
+both doors, its ledger, command, route and report agreeing.
 
 ## Next Steps
 
-1. The end-to-end proof: one real job through the command line and the
-   browser's door, the ledger, the command, the route and the task mapping
-   agreeing.
-2. The closure sequence.
+1. The closure sequence: the Built State and the checklist consolidation
+   with the one full-suite run, then the evidence and the review package,
+   then the booking, the ledger rotation, the STATUS line and the pull
+   request.
 
 ## Risks
 
-None open. Open findings: 0.
+Open findings: R-1083 and R-1084 until their repairs are reviewed.

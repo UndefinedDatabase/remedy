@@ -24152,3 +24152,35 @@ the panel holds.
 HOW TO REVERSE: remove the fourth tab from the three lists, its body and its state function,
 the two added test assertions and the assumption-log row naming this decision, and delete this
 paragraph.
+
+## DECISION F035 D7 — the end-to-end proof runs one real job and acts on it through both doors: a task veto and a job-wide steering message through the browser's door, and a task note and a task pause and resume on the command line; the ledger file, `remedy job ownership`, the `ownership` route and the report must agree entry for entry, sentence for sentence and task for task; the classes the run cannot reach stay proven by their unit tests with the real writers (2026-09-28)
+
+CONTEXT: Measured at `4d56671b`: every ledger class has unit tests over records written by its
+real writer, and the command, the route, the report, the digest, the task detail and the tab each
+have their own tests; nothing yet runs one job through the real doors and compares what the
+surfaces say. `tests/ui_server/test_pause_e2e_live.py` and
+`tests/ui_server/test_steering_note_e2e_live.py` already run a real job in a subprocess with a
+fake provider held at its first build, start the real UI server in a thread, send commands
+through its write door with a real token, and drive the real command line. Hunk decisions,
+decision answers, clarification answers, plan approval and injections need a planner, a diff
+review or an escalation that such a run does not produce without stand-ins of their own.
+
+CHOSEN: (1) ONE RUN. A three-task job, held at its first build: through the door, a veto of the
+third task with a reason and a steering message for the whole job; on the command line, a note to
+the second task, then a pause of the second task and its resume; then the run is released and
+ends. (2) FOUR SURFACES, ONE ANSWER. The job's `ownership.json` equals `build_ownership_ledger`
+of the finished job; `remedy job ownership --json` answers the same entries, each with its
+sentence, as the route does; every sentence equals, character for character, the one written out
+in the test — the browser's actions as `You (browser, token #1)`, the command line's as `You
+(command line)`, the resume as `You` — and the report's Ownership section lists them in the same
+order. (3) THE TASKS. The entries the task detail would show for each task, computed by the same
+rule `ownershipEntriesForTask` states, put the veto under the third task, the note, the pause and
+the resume under the second, and the job-wide message and nothing else under none. (4) THE OTHER
+CLASSES keep the proof they have, unit tests over records their real writers produced, and this
+decision names them.
+
+ALTERNATIVES: stand-ins for a planner and a diff review inside the live run, rejected because a
+stand-in proves the stand-in; one run per class, rejected as five live runs to prove what the unit
+tests already prove over the real records.
+
+HOW TO REVERSE: delete the end-to-end test and this paragraph.
