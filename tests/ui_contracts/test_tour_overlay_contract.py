@@ -54,6 +54,15 @@ def test_the_css_module_names_the_overlay_z_index_and_the_backdrop_tint():
     assert "var(--remedy-ink-strong)" in css
 
 
+def test_the_card_carries_data_shown_and_docks_over_the_left_rail_while_shown():
+    source = _source(OVERLAY)
+    assert "data-shown=" in source
+
+    css = OVERLAY_CSS.read_text(encoding="utf-8")
+    assert '.card[data-shown="true"]' in css
+    assert "var(--remedy-left-width)" in css
+
+
 def test_the_shell_mounts_the_overlay_outside_the_main_column():
     source = _source(SHELL)
     assert source.index("</main>") < source.index("<TourOverlay")

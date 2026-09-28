@@ -86,7 +86,8 @@ export function TourOverlay({ jobId, serverToken, onClose, onShowAnchor }: {
   return createPortal(
     <>
       {backdropVisible && <div className={styles.backdrop} data-ui="tour-backdrop" />}
-      <section role="dialog" aria-label="Guided tour" className={styles.card} data-ui="tour-overlay">
+      <section role="dialog" aria-label="Guided tour" className={styles.card} data-ui="tour-overlay"
+               data-shown={backdropVisible ? "false" : "true"}>
         <header className={styles.header}>
           <h2>Guided tour</h2>
           <button type="button" className={styles.close} onClick={onClose}>Close tour</button>

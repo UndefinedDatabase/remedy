@@ -32,6 +32,18 @@
   backdrop-filter: blur(14px);
 }
 
+/* While a stop is shown (DECISION F036 D7 (2), R-1088), the card leaves the centre for the
+   lower left of the left rail — the place "Show me" opens is undimmed, not covered by the
+   card that pointed at it — and returns to the centre rule above when stepping dims again. */
+.card[data-shown="true"] {
+  top: auto;
+  left: 16px;
+  bottom: 16px;
+  transform: none;
+  width: calc(var(--remedy-left-width) - 32px);
+  max-height: 60vh;
+}
+
 .header { display: flex; align-items: center; justify-content: space-between; }
 .header h2 {
   margin: 0;
