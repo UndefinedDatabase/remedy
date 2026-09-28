@@ -24342,3 +24342,50 @@ then depend on the model.
 HOW TO REVERSE: delete the generation half of `packages/orchestration/result_tour.py` and its
 tests, remove the `result_tour.py` line from `ROLE_CONFIG_CALL_SITES`, restore the pinned counts
 to nine and four, and delete this paragraph.
+
+## DECISION F036 D4 — every reported terminal writes a new version of the job's tour beside its report, the command line shows the latest one as the last section of `job show --full` and alone under `job show --tour`, and fixture goldens pin the mechanical tour, an honest tour of a held run and a model answer's claim drops (2026-09-28)
+
+CONTEXT: Measured at `42543dd9`: `long_run_executor._apply_terminal` is the one place a final
+report is written, for the terminals of `REPORTED_TERMINALS` and only when `write_report` is
+true, through `run_report.write_final_report`, which never raises and records its failure on
+the job under `report_error`. A report is overwritten in place, while a plan render is versioned,
+`plan.md` then `plan_v<N>.md` (`job_plan.write_plan_md`), which is what the feature file names as
+the precedent for the tour. `packages.common.secure_fs.durable_write_json` is the one durable JSON
+write, and F035's ledger uses it. The read views of a job are sections of `job show --full`
+(DECISION amend0905-vocab D4), `tests/cli/test_job_show.py` pins their order, and the feature file
+asks for the tour to be printed by a `--tour` flag. The catalog's argument descriptions are read
+by `tests/docs/test_vocabulary.py`, which requires every binding word a description uses to carry
+one of its meaning fragments. Making the module reachable from the command line and the terminal
+moves it from `ALLOWED_UNWIRED` to `tests/orchestration/import_reachability_allowlist.txt`.
+
+CHOSEN: (1) VERSIONS. The first tour a job gets is `tour.json` in its evidence directory, beside
+`report.md`; every later one is `tour_v<N>.json`, N one more than the highest stored, and the
+latest is the one shown. A file that is neither of those shapes is not a version. (2) THE WRITER.
+`write_result_tour(job)` asks `tour_call_fn()` for the call function unless one is handed in,
+generates the tour, and writes it with `durable_write_json`; it never raises for an `OSError`, a
+`ValueError` or a `ResultTourError`, records such a failure on the job under `tour_error`, and
+clears that key on success, the way the report writer does. (3) THE HOOK. `_apply_terminal`
+calls it directly after `write_final_report`, under the same condition, so every reported
+terminal writes exactly one new version and its first stop can anchor to the report just
+written. (4) THE READER. `load_result_tour(job_id)` answers the latest version and its number,
+`None` when none is stored, and raises `ResultTourError` when the latest file does not read or
+its tour is not sound. (5) THE COMMAND LINE. `job show --full` gains a `tour` section, last in
+the order; `job show --tour` builds that one section alone. The section's data is the stored
+flag, the version and the tour; a job with no stored tour is shown its mechanical tour, built
+read-only and marked not stored with version 0; an unreadable one is the section error
+`tour_unreadable`, and the command still exits 0. One renderer, `render_tour_lines`, prints the
+numbered stops for the command line, so T003's overlay can be held to the same stops. (6)
+GOLDENS. Three fixtures pin whole tours as JSON, with the job id replaced: the mechanical tour of
+a finished job with a two-area diff and a released gate, the mechanical tour of a run held by its
+gate, whose first stop says so, and the tour built from a recorded model answer, whose invented
+number, path and claim word are listed under `dropped`.
+
+ALTERNATIVES: overwriting one `tour.json` like the report, rejected because the feature file asks
+for versions like the plan's renders; a separate `job tour` command, rejected by DECISION
+amend0905-vocab D4, which makes read views sections; building a tour on the fly in `job show`
+for every job, rejected for a job that has one stored, because the stored tour is the one its
+model call wrote and a second call would give a different answer.
+
+HOW TO REVERSE: remove the hook from `_apply_terminal`, the `tour` section and the `--tour` flag,
+the storage half of `packages/orchestration/result_tour.py` and its tests and goldens, move the
+module back to `ALLOWED_UNWIRED`, and delete this paragraph.
