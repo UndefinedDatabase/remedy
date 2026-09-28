@@ -1,0 +1,61 @@
+diff --git a/.agent/decisions.md b/.agent/decisions.md
+index 875cf319e..49be75e70 100644
+--- a/.agent/decisions.md
++++ b/.agent/decisions.md
+@@ -25286,3 +25286,44 @@ is not the job's story.
+ 
+ HOW TO REVERSE: delete `story_export.py`, `storyExport.ts`, their tests and guard line, and this
+ paragraph.
++
++## DECISION F039 D8 — the story player is built a second time by the same `vite build`, as ONE script and ONE style sheet with fixed names under `apps/ui/dist/story/`; `remedy job story <id> --export <file>` writes one page inlining both and the payload, under a content security policy that allows no request, and refuses a file over `story.export_max_bytes` (2026-09-29)
++
++CONTEXT: DECISION F039 D7 (2) chose the player as a second page of the cockpit's own vite build.
++Measured at `73102551` by the reviewer's dry run: a second input of one Rollup build shares chunks
++with the first, so its page would load the player through `import` statements, and a page opened from
++`file://` can load no module file at all; Rollup's `inlineDynamicImports`, which makes one file, is
++refused for a build with more than one input. `apps/ui/package.json`'s `build` script is `vite
++build`, and the cockpit's server runs it (through `npm run build`) whenever `dist` is missing or
++older than `src/`; `package.json` itself is left alone, because the server runs `npm install`
++whenever `package.json` is newer than `node_modules`. The cockpit's title comes from the dashboard's
++`legacy` section, which `_build_dashboard` marks as not for new consumers.
++
++CHOSEN: (1) THE BUILD. `apps/ui/vite.config.ts` gains a plugin that, when the cockpit's build closes,
++runs `vite`'s own `build` once more with no config file, the React plugin, the input
++`src/storyPlayerMain.tsx`, `inlineDynamicImports`, no module preload, one CSS file, and the output
++names `story-player.js` and `story-player.css` in `dist/story/`. The reviewer's dry run built
++257 582 and 10 671 bytes, with no `import(`, no `fetch(`, no `url(` and no closing script or style
++tag inside. (2) THE PAGE. `src/storyPlayerMain.tsx` reads the JSON of the element
++`remedy-story-data`, decodes it with `readEmbeddedStory`, which never throws, and mounts
++`StoryPlayerApp` under the reduced-motion provider, or the decoder's one line. `StoryPlayerApp` mounts
++the phase bar above and the story panel over one `useTimelineScrub`, with no heading and no Close
++button: `StoryPanel`'s `onClose` becomes optional and the button shows only when it is given.
++(3) THE FILE. `story_export.py` gains `read_story_player`, `render_story_html` and
++`export_story_html`: the page carries a content security policy of `default-src 'none'` with inline
++script and style allowed, the style sheet, the payload as JSON with every `<` written `\u003c`, and the
++script. The export refuses when the player is not built (exit 3, with the build command), when the
++built player holds its own closing tag, and when the file is larger than `story.export_max_bytes`,
++default 5 000 000 bytes (exit 1); it never cuts a story. `remedy job story <id> --export <file>` writes
++the file readable by anyone, as a shared file should be. The reviewer's dry run exported a two-task
++job to 271 785 bytes and opened it from `file://` in headless Chrome: four chapters from `The plan` to
++`The finish`, Play advancing, no Close button, no console error, and no request but the file itself.
++
++ALTERNATIVES: a second page of one build, measured unworkable above; a second `vite build` in
++`package.json`'s `build` script, rejected because changing that file makes the server reinstall every
++package; building the player on demand at export, rejected because the export would then need the
++toolchain and the network; the job's title as the page's heading, rejected until a section meant for
++new consumers carries it, the browser tab naming the job instead.
++
++HOW TO REVERSE: delete the plugin, `storyPlayerMain.tsx`, `StoryPlayerApp` and its style sheet,
++`readEmbeddedStory`, the three export functions, the command and its key, and this paragraph.
+diff --git a/.agent/live_review.md b/.agent/live_review.md
+index 71d733c2a..3ab1dcd19 100644
+--- a/.agent/live_review.md
++++ b/.agent/live_review.md
+@@ -499,3 +499,7 @@ Done: R-1101 — RESOLVED at `c87039df` (F039 R6 C3), booked by F039 R7: the tim
+ - R-1102 — High, THE COCKPIT REPLACES EVERY MINTED TASK ID WITH `task-<n>`, SO A FINISHED `remedy do` JOB NEVER REACHES FINALIZED ON THE PHASE BAR AND ITS STORY NEVER REACHES THE FINISH. Raised by the planner and reviewer of F039's first session while specifying round 7. SEARCHED BEFORE MINTING (checklist item 30): the open set at `622ec045` holds R-1101 alone, which is about the panel's timer; `scrubUiText` occurs in the ledger and its archive only in two gate entries and a DECISION about copy, and no finding names a task id the dashboard mapping changes. MEASURED at `622ec045`: `_build_dashboard` in `packages/orchestration/ui_server.py` gives each task item `"id": tid`, the task's own id, which for every task `remedy do` plans is the sixteen hex characters `data_paths.mint_task_id` mints; `normalizeDashboardPayload` in `apps/ui/src/api/remedyApi.ts` maps it through `scrubUiText`, whose all-hex rule in `apps/ui/src/copy/humanCopy.ts` answers the fallback `task-<index>`, while `nodeId` keeps the raw id. The reviewer's probe mapped a dashboard holding one task `0123456789abcdef`, seeded the timeline with `dashboardBrainSeeds` the way `useTimelineScrub` does, and folded a ledger in which that task's round passes and its run completes: the task list read `task-0`, the seed `task-0`, the phase reading `review`, and the story's chapters `The build` and `The review`; the same ledger over a seed named `0123456789abcdef` read `finalized`. By reading the code, the other comparisons of `task.id` with a raw task id miss the same way: the pause, veto and spec-version lookups of `dashboardBrainSeeds`, `feedFocus.ts`, `decisionFocus.ts`, `vetoView.ts`, and the parent `value` `AddTaskSheet.tsx` sends to the write door. No component renders `task.id` as text. WHY HIGH: the cockpit shows every finished job its product plans as still under review. FIX: `normalizeDashboardPayload` keeps a task's own id as a string, falling back to `task-<index>` only when the item carries none, under a comment naming this finding, and scrubs labels as before; a test maps a minted id and a hex label, keeping the one and scrubbing the other; and a test seeds through the mapping and reads the ledger above as `finalized`. Owner: F039.
+ 
+ Landed: R-1102 — `normalizeDashboardPayload` now keeps a task's own id as a string, falling back to `task-<idx>` only when the item carries none, so a finished job's minted task id is never scrubbed and its story and phase bar reach Finalized.
++
++Gate: F039 R7 — the F039 round 7 entry: the booking of round 6 with R-1101's resolution, R-1102's registration and repair, DECISION F039 D7, and T003's data half, the story payload and its reader. VERDICT PASS. Re-derived over `622ec045`..`73102551` by the planner and reviewer of F039, whose own runs produced every reading below: the first session's, at the round's end, and the second session's re-reading before this entry was written. THE RANGE IS 10 COMMITS, at `9fb6a0a0` 284, `3ef77bcc` 61, `d5b8d9ae` 54, `87890b36` 55, `d45a07db` 169, `1f34be28` 2, `95aeaccc` 154, `116f6594` 4, `2922e585` 181 and `73102551` 303 insertions by `git show --numstat`, each under the 500-line cap and each single-parent; the worker split the block's C4 into C4, C4b and C4c, the second carrying the `ALLOWED_UNWIRED` line S2 ordered and the third a literal expectation that makes mutation m4 catchable, and declared both; the tracked path set is exactly the block's constraint 3. THE TRANSPORT PROOF: the block copy and the two payload copies, read at `73102551`, equal the reviewer's originals byte for byte. THE RECORDS: at `d5b8d9ae` the ledger, the decisions and the plan equal, byte for byte, the files the reviewer's own records script writes over the same three files read at `622ec045`; the open set reads `['R-1102']` and the latest verdict `PASS`; `87890b36` adds to the ledger exactly one line beginning `Landed: R-1102 — `. THE CODE matches S1 to S3: `normalizeDashboardPayload` keeps a task's own id as a string under a comment naming R-1102; `build_story_payload` reads the dashboard's three sections, every event through `_safe_event_summary` with seqs from 0, and `ownership_view`; and `decodeStoryExport` refuses another schema by name and anything unreadable with one line. THE TESTS: the block's G4 selection, run serially by the reviewer in the primary checkout at `73102551`, read 2276 passed and 5 skipped at exit 0, the five being the long-standing D3 and D12 quarantine skips; `integrity check` read five checks pass and `high_blockers_open` fail on R-1102 alone, as ordered; ruff reads clean; and the second session's targeted re-run at `73102551` read 13 passed over `tests/orchestration/test_story_export.py` and `tests/test_no_orphan_modules.py` and 233 passed over the eight story test files, `remedyApi.test.ts` and `brainView.test.ts`. THE RED PROOFS: the worker's tool, re-run by the reviewer in a disposable worktree at `73102551`, turned all nine mutations red with both controls green and every file restored byte-identical; the reviewer's two further mutations through the same runners, the job id read from the job's title and the frames taken newest first, both went red. The worktree was removed.
++
++Done: R-1102 — RESOLVED at `87890b36` (F039 R7 C3), booked by F039 R8: `normalizeDashboardPayload` in `apps/ui/src/api/remedyApi.ts` keeps a task item's own id as a string, falling back to `task-<idx>` only when the item carries none, so the seeds, the pause, veto and spec-version lookups and the focus rules compare the raw id they are given; `remedyApi.test.ts` holds a minted id `0123456789abcdef` kept while a hex title is scrubbed, and `brainView.test.ts` holds the same task seeded under its own id and the ledger of its passing round and completed run reading `finalized`. The worker's mutation m1, the id scrubbed again, turned four tests red in the reviewer's re-run at `73102551`; and the reviewer's export probe of round 8's design, over two tasks with minted ids, read its last chapter `The finish`.
