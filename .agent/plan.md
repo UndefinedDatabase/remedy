@@ -13,14 +13,15 @@ command (`docs/roadmap/features/T5_F038.md`, the spec
 
 ## Current Step
 
-ROUND 4: book round 3, then land the model-written answer behind a
-switch that is off by default, the claim check that binds every answer,
-and the fallback to the mechanical answer (DECISION F038 D5).
+ROUND 5: book round 4, then land T002's first half: the mechanical
+intent parse, the action card and the door's request body for a
+complete card, with nothing sent (DECISION F038 D6).
 
 ## Next Steps
 
-1. Review round 4.
-2. T002: the intent parse, the action cards and their confirmation.
+1. Review round 5.
+2. T002: a confirmed card sent through the write door, and a
+   model-written parse for the verbs a sentence cannot fill.
 3. T003: the panel, the command line and the end-to-end proof; closure.
 
 ## Risks

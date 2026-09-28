@@ -24723,3 +24723,48 @@ rejected because such an answer says nothing the evidence holds.
 HOW TO REVERSE: delete the switch's registry entry and regenerate the guide, remove the call site
 from `ROLE_CONFIG_CALL_SITES` with its pinned counts, delete the model path and the claim check
 from `chat_answer.py` with their tests, and delete this paragraph.
+
+## DECISION F038 D6 — a typed chat request is a question, an action for one exposed command, or unknown; T002's first round parses it mechanically for stop, pause, resume, a note to the builder, veto and rerun, builds the card a person confirms in the write door's own argument names, and yields the door's request body only for a complete card, sending nothing (2026-09-28)
+
+CONTEXT: Measured at `8aff505d`. The browser's write door, `POST /api/jobs/<id>/commands`, takes
+`{command, client_nonce, args}`, refuses any command outside `UI_EXPOSED_COMMANDS` of
+`apps/cli/command_catalog.py`, answers a repeated nonce with its first answer, and writes one line
+per attempt to the job's `commands_audit.jsonl`. Its argument names differ from the command
+line's: a note to a task's builder is `job.steer` with `task_id` and `message` at the door, and
+`text` with `--task` on the command line; a veto is `task_id` and `reason`; a rerun is `task_id`; a
+job-wide message is `chat.send` with `message`; a stop takes an optional `reason`; pause and resume
+take none. No Python code builds such a body; the browser builds one per verb under
+`apps/ui/src/api/`, and sends a note to `job.steer` when a task is focused and to `chat.send`
+otherwise (`ActivityFeedCard.tsx`). The spec's verb table names `remedy do`, which the door does
+not expose, and "resume", which the door spells `job.unpause`. The command line writes no command
+audit line; both paths call the same effect functions, so the record each effect writes is the
+same.
+
+CHOSEN: (1) ONE MODULE, `packages/orchestration/chat_intent.py`, pure: it writes no file, calls no
+model, reads no clock and sends nothing. (2) THE PARSE works on the text folded to single spaces
+with a leading "please " dropped. A text ending in `?`, or starting with a question word, is a
+QUESTION: the read path answers it and nothing acts on it. Otherwise the first word decides. Stop,
+cancel or abort is `job.stop`, with the words after "because" as its reason; pause is `job.pause`;
+resume, unpause or continue is `job.unpause`; "tell the builder", "tell it", "note" or "steer" is
+a note, `job.steer` to the focused task or `chat.send` to the job when no task is focused, its
+message kept in the writer's own case; veto, skip or drop is `job.veto-task` on the focused task,
+with the reason after "because"; rerun, retry or "run again" is `job.rerun-subtree` on the focused
+task. Anything else is UNKNOWN. (3) THE CARD states the job, the task, the message and the reason
+it carries, the arguments still missing with a request to say it again with them, and the command
+it would send; it is confirmable only when nothing is missing. An unknown request gets the card
+"I can't do that yet", naming what is available. (4) THE PAYLOAD, `card_command_payload(card,
+client_nonce=...)`, is the door's body `{command, client_nonce, args}` in the door's own argument
+names, refused for a card that is not confirmable and for a nonce the door would refuse. (5) NOT
+YET COVERED: `decision.resolve`, the plan edits, the task edit, the injection trio and the hunk
+approval, which need a decision id, a plan version or an argument a sentence does not carry; they
+wait for a model-written parse, and until then a request for one is unknown. `remedy do` is not
+exposed and is never proposed. (6) THE NEXT ROUND sends a confirmed card through the door, so a
+chat action is audited exactly as a browser action is; its equivalence with the command line is
+measured on the effect's own record, which both paths write through the same function.
+
+ALTERNATIVES: letting a question such as "can you stop it?" act, rejected because a question is
+answered and never obeyed; the command line's argument names, rejected because the door is the one
+write path the cockpit has; guessing a missing task, rejected because the card asks instead.
+
+HOW TO REVERSE: delete `chat_intent.py` and its tests, remove its line in `ALLOWED_UNWIRED`, and
+delete this paragraph.
