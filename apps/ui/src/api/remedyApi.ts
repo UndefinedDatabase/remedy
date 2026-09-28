@@ -8,6 +8,8 @@ import { decodeLessonsIndex, lessonsIndexPath } from "./lessons";
 import type { LessonsIndex } from "./lessons";
 import { decodeOwnershipView, ownershipViewPath } from "./ownership";
 import type { OwnershipView } from "./ownership";
+import { decodeTourView, tourViewPath } from "./resultTour";
+import type { TourView } from "./resultTour";
 import { decodeTaskRunRounds, taskRunRoundsPath } from "./taskRunRounds";
 import type { TaskRunRounds } from "./taskRunRounds";
 import type { PipelineStep, PipelineStepState, RemedyActivityItem, RemedyContinuationSummary, RemedyDashboard, RemedyGraphEdge, RemedyGraphNode, RemedyJourneyItem, RemedyMetric, RemedyNextAction, RemedyPause, RemedyPhase, RemedyPipeline, RemedyPromptKind, RemedyPromptRole, RemedyPromptTraceItem, RemedyPromptTraceSummary, RemedySnapshotSummary, RemedyState, RemedyTaskAttempt, RemedyTaskItem, RemedyTaskSpec, RemedyTaskSpecFields, RemedyTaskSpecs, RemedyTaskSpecVersion, RemedyTimelineEvent, RemedyTimelineEventKind, RemedyTimelinePhase, RemedyVetoEntry, RemedyVetoes } from "./types";
@@ -1013,6 +1015,28 @@ export async function loadOwnershipView(
 ): Promise<OwnershipView | null> {
   try {
     return decodeOwnershipView(await fetchPayload(ownershipViewPath(request)));
+  } catch {
+    return null;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// The tour door (F036 T003, DECISION F036 D5), shaped exactly like the
+// ownership door above: one injected fetcher, one decoder, and no throw.
+// ---------------------------------------------------------------------------
+
+/** How the tour door reaches the network; a test hands `loadTourView` a fake. */
+export type TourFetcher = (path: string) => Promise<unknown>;
+
+/** Read one job's tour view through the single door. NEVER THROWS: a failed read and a view
+ *  the decoder refuses both answer `null`, which the overlay renders as `TOUR_UNREADABLE_LINE`
+ *  and never the server's own error text. */
+export async function loadTourView(
+  request: { jobId: string; token: string; baseUrl?: string },
+  fetchPayload: TourFetcher = fetchJson,
+): Promise<TourView | null> {
+  try {
+    return decodeTourView(await fetchPayload(tourViewPath(request)));
   } catch {
     return null;
   }
