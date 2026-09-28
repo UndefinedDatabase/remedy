@@ -24806,3 +24806,45 @@ feature file forbids.
 
 HOW TO REVERSE: delete `chat_door.py` and its tests, restore the `chat_intent.py` line in
 `ALLOWED_UNWIRED`, and delete this paragraph.
+
+## DECISION F038 D8 — the model-written intent parse runs only when the mechanical parse reads a request as unknown and `chat.model_written` is on; it may choose one of the chat's verbs, now also answering an open decision and adding a task, and every argument it returns is filtered, grounded and checked before a card is built; a low-confidence or unusable reply is unknown (2026-09-28)
+
+CONTEXT: Measured at `bd080286`. `chat_intent.py` parses stop, pause, resume, a note, veto and
+rerun by their words and reads anything else as unknown (DECISION F038 D6). `UI_EXPOSED_COMMANDS`
+also holds `decision.resolve`, which the door reads as `decision_id` and `answer`; `job.inject`,
+which it reads as `text` and an optional `after`; `job.inject-confirm` and `job.inject-answer`,
+which need a token or a draft id the door itself handed out; `patch.approve-hunks`, which needs
+the hunk ids of one attempt's diff; and the plan edits and `job.edit-task`, which need the
+version number of the plan or the task spec they were made against. `chat_answer.py` already
+holds the switch `chat.model_written`, off by default, and `chat_call_fn`, the one call site that
+resolves the `summary` role for the chat (DECISION F038 D5); `ROLE_CONFIG_CALL_SITES` pins it.
+
+CHOSEN: (1) THE TWO NEW VERBS: `decision.resolve` ("Answer the decision", needing `decision_id`
+and `answer`) and `job.inject` ("Add a task to the plan", needing `text`) join the chat's verb
+tables, and a card states the decision, the answer, the text and the `after` it carries. (2) THE
+VERBS THE CHAT DOES NOT TAKE: the inject confirmation and shortfall answer, the hunk approval, the
+plan edits and the task edit. Each needs an id or a version number the person reads off the
+screen that made it, so the chat would be guessing; each stays in the cockpit panel that shows
+that number, and a request for one reads as unknown. The feature file's "verb coverage exact to
+the exposed list" is read as: the chat proposes no verb outside that list, and names honestly
+what it can do. (3) ONE MODULE, `packages/orchestration/chat_intent_model.py`:
+`parse_chat_intent_with_model` runs the mechanical parse first and returns its answer unless it
+is unknown, so a question or a plain command never reaches a model; with the switch off, or no
+call function, the unknown stands. (4) THE REPLY is a `GeneratedChatIntent` of verb, arguments and
+confidence, asked of the `summary` role through `chat_call_fn`, which gains a schema argument so
+that no second call site appears. A verb outside the chat's tables, a confidence under 0.7 or not
+a finite number, a reply that does not parse, and a provider error are all unknown: the card then
+asks the person to say it again, and nothing is guessed. (5) GROUNDING: only the verb's own
+argument names survive; a task id is always the focused task, whatever the model wrote; a
+decision id survives only when it is one of the open decisions the caller passed; anything
+emptied becomes a missing argument, so the card asks for it. (6) THE NEXT ROUND is the chat
+command, which finds the running cockpit, lists the open decisions and passes them in.
+
+ALTERNATIVES: letting the model fill a plan version or a hunk id, rejected because those are read
+off state the model never saw; a second role call site for the parse, rejected because the chat
+already has one and the inventory would grow for nothing; asking the model before the mechanical
+parse, rejected because a plain "stop" would then cost a model call and could be misread.
+
+HOW TO REVERSE: delete `chat_intent_model.py` and its tests, remove the two verbs and their card
+lines from `chat_intent.py`, restore `chat_call_fn`'s fixed schema, restore the `chat_answer.py`
+line in `ALLOWED_UNWIRED`, and delete this paragraph.

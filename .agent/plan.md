@@ -13,16 +13,16 @@ command (`docs/roadmap/features/T5_F038.md`, the spec
 
 ## Current Step
 
-ROUND 6: book round 5, then send a confirmed card through the cockpit's
-write door, audited exactly as a browser command is (DECISION F038 D7).
+ROUND 7: book round 6, then the model-written intent parse behind
+`chat.model_written`, with answering a decision and adding a task as
+two new chat verbs (DECISION F038 D8).
 
 ## Next Steps
 
-1. Review round 6.
-2. T002: a model-written parse for the exposed commands a sentence
-   cannot fill, behind `chat.model_written`, off by default.
-3. T003: the chat command finds the running cockpit, then the panel
-   and the end-to-end proof; closure.
+1. Review round 7.
+2. T003: the chat command finds the running cockpit, answers a
+   question, and confirms a card on a y/N line.
+3. T003: the panel and the end-to-end proof; closure.
 
 ## Risks
 
