@@ -13,15 +13,23 @@ terminal and removes this module's `ALLOWED_UNWIRED` entry.
 from __future__ import annotations
 
 import logging
+import re
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, ClassVar
+
+from pydantic import BaseModel
 
 from packages.orchestration.data_paths import job_evidence_dir
 from packages.orchestration.diff_view_source import build_diff_view
 from packages.orchestration.dod_gate import DOD_RESULT_FILENAME, load_gate_result
 from packages.orchestration.dod_runners import STATUS_PASSED
 from packages.orchestration.evidence_index import resolve_job_evidence_dir
+from packages.orchestration.failure_postmortem import FailureSignals, classify
+from packages.orchestration.intake import make_structured_call_fn
+from packages.orchestration.role_config import resolve_role_config
 from packages.orchestration.run_report import NOT_RECORDED, ReportSources, build_report_sources
+from packages.orchestration.structured_outputs import run_structured_call
 
 TOUR_SCHEMA = "remedy.tour.v1"
 TOUR_FILENAME = "tour.json"
@@ -431,18 +439,340 @@ def fallback_tour_stops(sources: ReportSources, context: TourAnchorContext) -> l
 # ---------------------------------------------------------------------------
 
 
+def _assemble_fallback_tour(
+    job: Any,
+    sources: ReportSources,
+    context: TourAnchorContext,
+    generator: str = TOUR_GENERATOR_FALLBACK,
+) -> dict:
+    """The mechanical tour's dict, with *generator* free to be overridden.
+
+    `build_fallback_tour` is this with `generator` left at its default — kept
+    as ONE implementation so a generation fallback (F036 T002) and the plain
+    mechanical tour (F036 T001) can never quietly diverge.
+    """
+    stops = fallback_tour_stops(sources, context)
+    kept, dropped = resolve_tour_stops(stops, context)
+    return {
+        "schema": TOUR_SCHEMA,
+        "job_id": str(job.job_id),
+        "generator": generator,
+        "stops": kept,
+        "dropped": list(dropped),
+    }
+
+
 def build_fallback_tour(job: Any) -> dict:
     """The mechanical tour for *job*: every stop sound, every anchor resolved.
 
     `tour_problems` of this function's answer is always `[]`.
     """
     context = collect_tour_context(job)
-    stops = fallback_tour_stops(build_report_sources(job), context)
-    kept, dropped = resolve_tour_stops(stops, context)
+    sources = build_report_sources(job)
+    return _assemble_fallback_tour(job, sources, context)
+
+
+# ---------------------------------------------------------------------------
+# F036 T002 (first half) — the model-written tour through the summary role
+# ---------------------------------------------------------------------------
+
+#: Compact schema version, per the SCHEMA_V convention run_structured_call
+#: requires (packages/orchestration/schemas/models.py:schema_v_of).
+GENERATED_TOUR_SCHEMA_V = "generated_tour_v1"
+
+#: The generator label a fully sound model-written tour carries.
+TOUR_GENERATOR_SUMMARY_ROLE = "summary-role"
+
+#: The fallback reason when every model stop was dropped, leaving fewer than
+#: two stops to publish.
+TOUR_NO_SOUND_STOPS = "no_sound_stops"
+
+#: Marketing words a records-only tour must never carry. Lower-case; matched
+#: as a WHOLE word (hyphens included) against the lower-cased stop text, so a
+#: hyphenated entry like "world-class" cannot hide inside a longer word.
+TOUR_CLAIM_DENYLIST: tuple[str, ...] = (
+    "seamless", "seamlessly", "robust", "flawless", "perfect", "perfectly",
+    "guaranteed", "bulletproof", "effortless", "blazing", "world-class",
+    "best-in-class", "state-of-the-art", "cutting-edge", "production-ready",
+    "enterprise-grade",
+)
+
+
+class GeneratedTourAnchor(BaseModel):
+    """One model-proposed anchor — judged by :func:`anchor_problem`, not here."""
+
+    kind: str
+    ref: str
+
+
+class GeneratedTourStop(BaseModel):
+    """One model-proposed stop — judged by :func:`tour_stop_problems` and
+    :func:`tour_claim_problems`, not here: this schema fixes the shape only."""
+
+    title: str
+    body: str
+    anchor: GeneratedTourAnchor
+
+
+class GeneratedTourContent(BaseModel):
+    """The schema the ``summary`` role is asked to fill for a generated tour.
+
+    No length or value constraint of its own: :func:`resolve_tour_stops` and
+    :func:`tour_claim_problems` are what actually judge a proposed stop, so
+    this class only fixes the shape a response must parse into.
+    """
+
+    SCHEMA_V: ClassVar[str] = GENERATED_TOUR_SCHEMA_V
+
+    stops: list[GeneratedTourStop]
+
+
+# ---------------------------------------------------------------------------
+# S2 — the source text: one fact per line, off the job's own records
+# ---------------------------------------------------------------------------
+
+
+def tour_source_text(job: Any, sources: ReportSources, context: TourAnchorContext) -> str:
+    """The job's own records, one fact per line — the ONLY text the model sees.
+
+    :func:`tour_claim_problems` checks a proposed stop against exactly this
+    text, so a fact this function omits is a fact the model cannot cite
+    either.
+    """
+    lines = [f"state: {sources.state or NOT_RECORDED}"]
+    if sources.terminal_status:
+        lines.append(f"terminal status: {sources.terminal_status}")
+    if sources.stop_reason:
+        lines.append(f"stop reason: {sources.stop_reason}")
+    if sources.mission:
+        lines.append(f"mission: {sources.mission}")
+
+    for task in job.tasks:
+        line = f"task {task.task_id}: {task.title}; status {task.status}"
+        if task.acceptance:
+            line += f"; acceptance: {task.acceptance}"
+        lines.append(line)
+
+    for path, added, deleted in context.diff_files:
+        lines.append(f"changed file {path} (+{added} {_MINUS_SIGN}{deleted})")
+
+    for name in context.evidence_files:
+        lines.append(f"evidence file {name}")
+
+    for command in context.run_commands:
+        lines.append(f"command {command}")
+
+    if sources.dod_released is not None:
+        dod_stop = _definition_of_done_stop(sources)
+        assert dod_stop is not None
+        lines.append(f"Definition of Done: {dod_stop['body']}")
+        for check in sources.dod_checks:
+            lines.append(f"check {check.check_id} ({check.kind}): {check.status}")
+
+    return "\n".join(lines)
+
+
+# ---------------------------------------------------------------------------
+# S3 — no new claims: a proposed stop may only restate the source text
+# ---------------------------------------------------------------------------
+
+#: A run of digits between word boundaries.
+_TOUR_NUMBER_RE = re.compile(r"\b\d+\b")
+#: A span between two backticks.
+_TOUR_BACKTICK_SPAN_RE = re.compile(r"`([^`]+)`")
+#: A token holding "/" between word characters, or a word/dot/short letter
+#: extension — the two path shapes S3 names.
+_TOUR_PATH_TOKEN_RE = re.compile(r"\w+(?:/\w+)+|\w+\.[A-Za-z]{1,5}\b")
+
+
+def tour_claim_problems(stop: dict[str, Any], source_text: str) -> list[str]:
+    """One readable line per claim *stop* makes that *source_text* does not hold.
+
+    Four kinds of breach, each its own reason: a number the source text does
+    not carry as a number, a backtick span it does not contain, a path it
+    does not contain (read off the stop's text with backtick spans removed,
+    so a path already reported as a backtick breach is not reported twice),
+    and a :data:`TOUR_CLAIM_DENYLIST` word matched whole, case-insensitively.
+    `[]` for a stop that only restates the records.
+    """
+    text = f"{stop.get('title', '')} {stop.get('body', '')}"
+    problems: list[str] = []
+
+    source_numbers = set(_TOUR_NUMBER_RE.findall(source_text))
+    seen_numbers: set[str] = set()
+    for number in _TOUR_NUMBER_RE.findall(text):
+        if number in source_numbers or number in seen_numbers:
+            continue
+        seen_numbers.add(number)
+        problems.append(f"the number {number!r} is not in the records")
+
+    seen_spans: set[str] = set()
+    for span in _TOUR_BACKTICK_SPAN_RE.findall(text):
+        if span in source_text or span in seen_spans:
+            continue
+        seen_spans.add(span)
+        problems.append(f"the backtick span `{span}` is not in the records")
+
+    stripped_text = _TOUR_BACKTICK_SPAN_RE.sub(" ", text)
+    seen_paths: set[str] = set()
+    for path in _TOUR_PATH_TOKEN_RE.findall(stripped_text):
+        if path in source_text or path in seen_paths:
+            continue
+        seen_paths.add(path)
+        problems.append(f"the path {path!r} is not in the records")
+
+    lowered = text.lower()
+    for word in TOUR_CLAIM_DENYLIST:
+        pattern = r"(?<![\w-])" + re.escape(word) + r"(?![\w-])"
+        if re.search(pattern, lowered):
+            problems.append(f"the claim word {word!r} is not allowed")
+
+    return problems
+
+
+# ---------------------------------------------------------------------------
+# S4 — the prompt: the source text, the allowed anchors, then the rules
+# ---------------------------------------------------------------------------
+
+
+def build_tour_prompt(source_text: str, context: TourAnchorContext) -> str:
+    """The prompt handed to the ``summary`` role: records, anchors, rules."""
+    anchor_lines = [f"node {task_id}" for task_id in context.task_ids]
+    anchor_lines += [f"diff {path}" for path, _added, _deleted in context.diff_files]
+    anchor_lines += [f"evidence {name}" for name in context.evidence_files]
+    anchor_lines += [f"command {command}" for command in context.run_commands]
+
+    rules = "\n".join([
+        "Rules:",
+        f"- at most {MAX_TOUR_STOPS - 1} stops",
+        f"- a title of at most {TOUR_TITLE_MAX_CHARS} characters on one line",
+        f"- a body of at most {TOUR_BODY_MAX_CHARS} characters",
+        "- every anchor copied from the list above",
+        "- every sentence restates the records above and adds no claim",
+    ])
+
+    return "\n".join([
+        source_text,
+        "",
+        "Allowed anchors:",
+        *anchor_lines,
+        "",
+        rules,
+    ])
+
+
+# ---------------------------------------------------------------------------
+# S5 — generation: the summary role, no new claims, the mechanical fallback
+# ---------------------------------------------------------------------------
+
+
+def _provider_call_error_types() -> tuple[type[BaseException], ...]:
+    """Built once at import — see :data:`PROVIDER_CALL_ERRORS`."""
+    types: list[type[BaseException]] = [OSError, RuntimeError, ValueError, ImportError]
+    try:
+        import ollama
+        types += [ollama.RequestError, ollama.ResponseError]
+    except ImportError:
+        pass
+    try:
+        import httpx
+        types.append(httpx.HTTPError)
+    except ImportError:
+        pass
+    return tuple(types)
+
+
+#: Built once at import. Every exception a `call_fn` may raise that this
+#: module treats as a provider failure rather than a programming error.
+PROVIDER_CALL_ERRORS: tuple[type[BaseException], ...] = _provider_call_error_types()
+
+
+def generate_result_tour(
+    job: Any,
+    call_fn: Callable[[str, int], str] | None = None,
+    *,
+    on_call: Callable[[int, str, bool, str], None] | None = None,
+) -> dict:
+    """Generate a guided tour through the ``summary`` role, or fall back.
+
+    NEVER raises: an exception of :data:`PROVIDER_CALL_ERRORS`, an outcome
+    that is not ok, and a model answer with fewer than two sound stops all
+    become the mechanical tour, labelled with why. `tour_problems` of this
+    function's answer is always `[]`.
+
+    The kept stops are always the mechanical tour's FIRST stop followed by
+    every sound model stop resolve_tour_stops still admits — so a generated
+    tour never opens with something the model invented.
+    """
+    context = collect_tour_context(job)
+    sources = build_report_sources(job)
+
+    if call_fn is None:
+        return _assemble_fallback_tour(job, sources, context)
+
+    source_text = tour_source_text(job, sources, context)
+    prompt = build_tour_prompt(source_text, context)
+
+    try:
+        outcome = run_structured_call(
+            GeneratedTourContent, prompt, call_fn, on_call=on_call, allow_parse_retry=True,
+        )
+    except PROVIDER_CALL_ERRORS as exc:
+        classification = classify(FailureSignals(exception=exc))
+        return _assemble_fallback_tour(
+            job, sources, context,
+            f"{TOUR_GENERATOR_FALLBACK}:{classification.failure_class.value}")
+
+    if not outcome.ok:
+        classification = classify(
+            FailureSignals(error_class=outcome.error_class, error_text=outcome.hint))
+        return _assemble_fallback_tour(
+            job, sources, context,
+            f"{TOUR_GENERATOR_FALLBACK}:{classification.failure_class.value}")
+
+    assert isinstance(outcome.value, GeneratedTourContent)
+
+    claim_dropped: list[dict] = []
+    sound_stops: list[dict] = []
+    for model_stop in outcome.value.stops:
+        stop_dict = model_stop.model_dump()
+        problems = tour_claim_problems(stop_dict, source_text)
+        if problems:
+            claim_dropped.append({"title": stop_dict["title"], "reason": "; ".join(problems)})
+        else:
+            sound_stops.append(stop_dict)
+
+    mechanical_first = fallback_tour_stops(sources, context)[0]
+    kept, resolver_dropped = resolve_tour_stops([mechanical_first, *sound_stops], context)
+
+    if len(kept) < 2:
+        fallback = _assemble_fallback_tour(
+            job, sources, context, f"{TOUR_GENERATOR_FALLBACK}:{TOUR_NO_SOUND_STOPS}")
+        fallback["dropped"] = [*claim_dropped, *resolver_dropped, *fallback["dropped"]]
+        return fallback
+
     return {
         "schema": TOUR_SCHEMA,
         "job_id": str(job.job_id),
-        "generator": TOUR_GENERATOR_FALLBACK,
+        "generator": TOUR_GENERATOR_SUMMARY_ROLE,
         "stops": kept,
-        "dropped": dropped,
+        "dropped": [*claim_dropped, *resolver_dropped],
     }
+
+
+# ---------------------------------------------------------------------------
+# S6 — the call function: the `summary` role, inventoried in model_routing.py
+# ---------------------------------------------------------------------------
+
+
+def tour_call_fn() -> Callable[[str, int], str] | None:
+    """Build a call_fn for the `summary` role, or None.
+
+    Mirrors `artifact_summary.summary_call_fn`: `resolve_role_config("summary")`
+    supplies the model, `make_structured_call_fn` does the rest. Honest `None`
+    under the same conditions that factory already returns `None` for — never
+    raises. This call site is one of the ten entries of
+    `model_routing.ROLE_CONFIG_CALL_SITES`.
+    """
+    role_cfg = resolve_role_config("summary")
+    return make_structured_call_fn(GeneratedTourContent, model=role_cfg.model)
