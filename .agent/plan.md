@@ -13,18 +13,15 @@ F036 D1 to D7).
 
 ## Current Step
 
-ROUND 7, the closure sequence's first round: book round 6 with the
-resolutions of R-1088 and R-1089 and register R-1090; repair R-1090, the
-docked card's wrapped "Show me"; write the Built State, consolidate the
-checklist, and take the feature's one full suite on the tree that ships.
+ROUND 8, the closure sequence's evidence round: book round 7 with the
+resolution of R-1090, read the self-use generator, and build the evidence
+bundle and the review package at the accepted head.
 
 ## Next Steps
 
-1. The evidence round: book round 7 with R-1090's resolution, the self-use
-   item, the evidence bundle and the review package.
-2. The closing round: the ledger rotation, the STATUS acceptance with its
-   README pins, and the pull request.
+1. The closing round: book round 8, rotate the ledger, accept F036 in
+   STATUS with its README pins, and open the pull request.
 
 ## Risks
 
-Open finding: R-1090 (Low), repaired in round 7.
+Open findings: none after this round's booking.
