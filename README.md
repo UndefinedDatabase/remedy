@@ -26,7 +26,7 @@ verification commands. If something is unproven, Remedy says so instead of guess
 
 ## Status
 
-112 of 289 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
+113 of 289 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
 
 | Tier | Name | Done | Total |
 |------|------|-----:|------:|
@@ -35,7 +35,7 @@ verification commands. If something is unproven, Remedy says so instead of guess
 | 2 | Minimal Self-Build Runtime | 38 | 39 |
 | 3 | Full Token Economy & Autonomy | 6 | 27 |
 | 4 | Memory & Learning | 1 | 17 |
-| 5 | Operator Cockpit | 29 | 36 |
+| 5 | Operator Cockpit | 30 | 36 |
 | 6 | Design-to-Code | 0 | 16 |
 | 7 | Quality & Trust | 0 | 15 |
 | 8 | Worker Ecosystem & Neutrality | 0 | 12 |
@@ -576,6 +576,16 @@ own settings; `remedy job ownership` prints the list, the job's final report has
 Ownership section, a task's detail panel shows who did what to that task, and the evidence
 panel has an Ownership tab for the whole job; the list is rebuilt from the job's own records
 and saved with its evidence, and it never names a person, only the way the action came in).
+
+F036 guided result tour (you can now ask a finished job "what did I get?" and be walked
+through the answer in at most eight short stops: how the run ended, what changed in each part
+of the code, the command that runs it, and whether its Definition of Done passed, each stop
+tied to a real place in the job, such as a task, a changed file, a file of its evidence or a
+command it ran; the Tour button in the browser steps through the stops, and its "Show me"
+opens the task or the changed file a stop names; `remedy job show --tour` prints the same
+stops; every job gets a tour built from its own records when its run ends, and a tour written
+by the summary model, checked so that it claims nothing the records do not say, only when you
+switch on the `tour.model_written` setting).
 
 Full per-feature state: [`docs/roadmap/STATUS.md`](docs/roadmap/STATUS.md)
 
