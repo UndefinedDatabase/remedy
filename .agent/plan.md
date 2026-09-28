@@ -13,16 +13,16 @@ command (`docs/roadmap/features/T5_F038.md`, the spec
 
 ## Current Step
 
-ROUND 5: book round 4, then land T002's first half: the mechanical
-intent parse, the action card and the door's request body for a
-complete card, with nothing sent (DECISION F038 D6).
+ROUND 6: book round 5, then send a confirmed card through the cockpit's
+write door, audited exactly as a browser command is (DECISION F038 D7).
 
 ## Next Steps
 
-1. Review round 5.
-2. T002: a confirmed card sent through the write door, and a
-   model-written parse for the verbs a sentence cannot fill.
-3. T003: the panel, the command line and the end-to-end proof; closure.
+1. Review round 6.
+2. T002: a model-written parse for the exposed commands a sentence
+   cannot fill, behind `chat.model_written`, off by default.
+3. T003: the chat command finds the running cockpit, then the panel
+   and the end-to-end proof; closure.
 
 ## Risks
 

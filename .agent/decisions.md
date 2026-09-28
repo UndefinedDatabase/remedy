@@ -24768,3 +24768,41 @@ write path the cockpit has; guessing a missing task, rejected because the card a
 
 HOW TO REVERSE: delete `chat_intent.py` and its tests, remove its line in `ALLOWED_UNWIRED`, and
 delete this paragraph.
+
+## DECISION F038 D7 — a confirmed chat card is posted to a running cockpit's write door, over the loopback connection the browser uses, so the door's token check, nonce replay, rate limit and audit line apply to the chat unchanged; the chat never runs a command's effect itself (2026-09-28)
+
+CONTEXT: Measured at `8b01ece3`. The write door, `POST /api/jobs/<id>/commands` in
+`packages/orchestration/ui_server.py`, is the one place a command is accepted with an audit line:
+it checks the bearer token and the `X-Remedy-CSRF` header against the server's token, refuses a
+command outside `UI_EXPOSED_COMMANDS`, answers a repeated nonce with its first answer, spends a
+per-minute budget, runs the effect, and writes one line per attempt to the job's
+`commands_audit.jsonl`. Its checks live in the request handler's own methods, tied to the request.
+`start_ui_server` binds only `127.0.0.1` and writes its port and token to an info file; `remedy ui`
+writes that file into its session registry, which `remedy ui latest` already reads. The command
+line runs the same effect functions and writes no audit line. A reviewer dry run at `8b01ece3`
+posted a card built by `chat_intent.py` to a test server: a pause was answered 200 with one
+`accepted` line, a repeated nonce with the first answer and a `replayed` line, a note to a focused
+task and a note to the job with 200, and a wrong token with 403.
+
+CHOSEN: (1) ONE MODULE, `packages/orchestration/chat_door.py`: `send_card_through_door(card, *,
+job_id, client_nonce, port, token)` builds the body with `card_command_payload`, so a card that is
+not confirmable is refused before anything is sent, checks the job id, the port and the token
+before connecting, posts to `127.0.0.1` with the two credentials the browser sends, and returns the
+door's status and JSON body as a `ChatDoorAnswer`. It writes no file itself: every record of the
+send is the door's own. (2) THE PROOF of "nothing executes unconfirmed" is the audit file itself:
+before a send it has no line, after a confirmed send it has exactly one `accepted` line with the
+chat's nonce, and a card that is not confirmable leaves it absent. (3) FINDING THE COCKPIT, the
+port and token of a running `remedy ui` for the job, is the chat command's work in a later round,
+through the session registry `remedy ui latest` reads; this module takes them as arguments. (4)
+`chat_intent.py` is now imported by `chat_door.py`, so its `ALLOWED_UNWIRED` line gives way to one
+for `chat_door.py`. (5) THE NEXT ROUND is the model-written parse for the exposed commands a
+sentence cannot fill, behind `chat.model_written`, off by default.
+
+ALTERNATIVES: moving the door's checks out of the request handler into a function the chat calls in
+the same process, rejected because it rewrites the one audited path for a second caller and the
+door's import guard pins its methods; running the effect functions directly as the command line
+does, rejected because the chat would then act with no audit line, which is the backdoor the
+feature file forbids.
+
+HOW TO REVERSE: delete `chat_door.py` and its tests, restore the `chat_intent.py` line in
+`ALLOWED_UNWIRED`, and delete this paragraph.
