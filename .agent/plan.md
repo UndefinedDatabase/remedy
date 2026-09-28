@@ -13,18 +13,17 @@ D1).
 
 ## Current Step
 
-ROUND 5: book round 4, register and repair R-1100 — three docstrings that
-promise a configuration change without a restart — and land the in-app
-story panel with its golden walkthrough and headless render (DECISION F039
-D6), which closes T002.
+ROUND 6, the repair of round 5: book its FAIL with R-1100's resolution,
+register and repair R-1101 — the story panel's autoplay stalling while its
+host re-renders — and prove the repair in the headless render.
 
 ## Next Steps
 
-1. T003: the export command and its build, the font licensing finding, the
-   size budget, the clean-browser test with zero network requests, and the
-   docs.
+1. T003: the export command and its build, the font question settled by
+   the asset authority, the size budget, the clean-browser test with zero
+   network requests, and the docs.
 2. The closure sequence.
 
 ## Risks
 
-- The export bundles no font before the licensing finding is written.
+- The export bundles no font: `assets_spec.md` forbids base64 fonts in CSS.
