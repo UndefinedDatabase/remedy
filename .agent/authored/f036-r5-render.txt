@@ -1,0 +1,32 @@
+repo root: /home/decodeux/Repos/remedy
+work dir: /home/decodeux/Repos/remedy/.remedy-wt/f036-render-run
++ vite build
+vite v6.4.2 building for production...
+transforming...
+✓ 47 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                   0.32 kB │ gzip:  0.23 kB
+dist/assets/index-228z9Lbb.css    5.06 kB │ gzip:  1.69 kB
+dist/assets/index-zw0ICOwv.js   202.14 kB │ gzip: 63.87 kB
+✓ built in 629ms
+
+server pid: 234180
+chrome pid: 234211
++ node drive.mjs
+PASS C-a backdrop covers the viewport with a non-transparent background, card above it
+PASS C-b step label reads "Stop 1 of 6", six progress items, the first "current"
+PASS C-c Previous disabled at the first stop, Next disabled and "Stop 6 of 6" after five ArrowRight presses
+PASS C-d "Show me" records the diff anchor and removes the backdrop, ArrowRight brings it back
+PASS C-e command stop shows its command inside <code>, evidence stop shows no "Show me"
+PASS C-f the overlay's root and backdrop are children of document.body
+PASS C-g Escape closes and is recorded
+PASS C-h unreadable remount shows exactly the fixed line, no text of the payload
+SCREENSHOT tour /home/decodeux/Repos/remedy/.remedy-wt/f036-r5-worker/render-tour.png 29666 bytes
+SCREENSHOT shown /home/decodeux/Repos/remedy/.remedy-wt/f036-r5-worker/render-tour-shown.png 31137 bytes
+RENDER: 8 of 8 checks pass
+
+chrome pid 234211 stopped (SIGTERM)
+server pid 234180 stopped (SIGTERM)
+removed work dir: /home/decodeux/Repos/remedy/.remedy-wt/f036-render-run
+drive.mjs exit code: 0
