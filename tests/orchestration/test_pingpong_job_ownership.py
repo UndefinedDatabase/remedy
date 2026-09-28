@@ -19,10 +19,18 @@ import pytest
 
 from packages.orchestration import ownership as own
 from packages.orchestration import pingpong_job as pj
+from packages.orchestration import safe_points
+from packages.orchestration import task_veto as tv
 from packages.orchestration.data_paths import job_evidence_export_dir
-from packages.orchestration.pingpong_job import JOB_BLOCKED, JOB_COMPLETED, run_job
+from packages.orchestration.ownership_phrases import ownership_sentences
+from packages.orchestration.pingpong_job import (
+    JOB_BLOCKED,
+    JOB_COMPLETED,
+    load_job_plan,
+    run_job,
+)
 from packages.orchestration.pingpong_provider import FakeProvider
-from tests.orchestration.test_task_edit_runtime import _save_job, _task
+from tests.orchestration.test_task_edit_runtime import _save_job, _task, _task_id_of
 
 
 @pytest.fixture
@@ -40,6 +48,10 @@ def repo(tmp_path: Path) -> Path:
     (r / "docs").mkdir()
     (r / "docs" / "README.md").write_text("# Docs\n")
     return r
+
+
+def _control():
+    return safe_points.control_root()
 
 
 def _pass_provider() -> FakeProvider:
@@ -94,3 +106,69 @@ class TestOwnershipLedgerWrite:
 
     def test_run_job_is_wrapped(self):
         assert hasattr(pj.run_job, "__wrapped__")
+
+
+class TestReportOwnershipSection:
+    """F035 R3 T002 (DECISION F035 D3): `format_job_report_text`'s Ownership section, read
+    through the same catalog and the same ledger builder the write half above already
+    exercises against a real `run_job`."""
+
+    def test_the_section_lists_the_ledger_s_sentences_in_ledger_order(self, root, repo):
+        job_id = _save_job(root, [_task("A", [])], repo_path=str(repo))
+        job = load_job_plan(job_id, root)
+        a_id = _task_id_of(root, job_id, "A")
+
+        veto = tv.veto_task_command(job, task_id=a_id, reason="not needed anymore",
+                                    actor="carol", control_root_path=_control())
+        assert veto["outcome"] == "vetoed"
+
+        reloaded = load_job_plan(job_id, root)
+        ledger = own.build_ownership_ledger(reloaded)
+        assert len(ledger["entries"]) >= 2, ledger["entries"]  # the veto, plus plan_approved
+        titles = {t.task_id: t.title for t in reloaded.tasks}
+        expected = ownership_sentences(ledger, titles=titles)
+
+        text = pj.format_job_report_text(reloaded)
+        assert "Ownership:" in text
+        start = text.index("Ownership:") + len("Ownership:\n")
+        end = text.index("\n\n", start)
+        rendered = [line[len("  - "):] for line in text[start:end].splitlines()]
+        assert rendered == expected
+
+    def test_a_job_with_no_ledger_entry_prints_no_section(self, root, repo):
+        job_id = _save_job(root, [_task("A", [])], repo_path=str(repo), approval="pending")
+        job = load_job_plan(job_id, root)
+
+        ledger = own.build_ownership_ledger(job)
+        assert ledger["entries"] == []
+
+        text = pj.format_job_report_text(job)
+        assert "Ownership:" not in text
+
+    def test_an_unreadable_ledger_prints_the_error_line(self, root, repo, monkeypatch):
+        job_id = _save_job(root, [_task("A", [])], repo_path=str(repo))
+        job = load_job_plan(job_id, root)
+
+        def _raise(_job):
+            raise own.OwnershipError("boom")
+
+        monkeypatch.setattr(
+            "packages.orchestration.ownership.build_ownership_ledger", _raise)
+
+        text = pj.format_job_report_text(job)
+        assert "Ownership: the ledger could not be read — boom" in text
+        assert "Ownership:\n" not in text
+
+    def test_a_vetoed_task_carries_no_per_task_vetoed_by_line(self, root, repo):
+        job_id = _save_job(root, [_task("A", [])], repo_path=str(repo))
+        job = load_job_plan(job_id, root)
+        a_id = _task_id_of(root, job_id, "A")
+
+        veto = tv.veto_task_command(job, task_id=a_id, reason="stop it",
+                                    actor="dana", control_root_path=_control())
+        assert veto["outcome"] == "vetoed"
+
+        reloaded = load_job_plan(job_id, root)
+        text = pj.format_job_report_text(reloaded)
+        assert "Vetoed by" not in text
+        assert "vetoed task" in text
