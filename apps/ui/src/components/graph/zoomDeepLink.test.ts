@@ -8,6 +8,7 @@ describe("zoomLinkFromSearch", () => {
     ["?job=j&focus=task%3At1&level=1", { focusId: "task:t1", tab: null }],
     ["?focus=run%3At1%3A2&level=2&tab=prompt", { focusId: "run:t1:2", tab: null }],
     ["?focus=run%3At1%3A2&level=3&tab=prompt", { focusId: "run:t1:2", tab: "prompt" }],
+    ["?focus=run%3At1%3A2&level=3&tab=ownership", { focusId: "run:t1:2", tab: "ownership" }],
     ["?focus=run%3At1%3A2&level=3", { focusId: "run:t1:2", tab: "diff" }],
     ["?focus=run%3At1%3A2&level=3&tab=logs", { focusId: "run:t1:2", tab: "diff" }],
     ["?job=j&token=t", null],
@@ -51,6 +52,7 @@ describe("a link restores the state it was written from", () => {
     { level: 1, focusId: "task:t2", tab: null },
     { level: 2, focusId: "run:t1:2", tab: null },
     { level: 3, focusId: "run:t1:6", tab: "prompt" },
+    { level: 3, focusId: "run:t1:6", tab: "ownership" },
   ];
 
   it.each(states)("level $level on $focusId", (state) => {

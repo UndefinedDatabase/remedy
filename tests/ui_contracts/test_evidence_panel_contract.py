@@ -83,6 +83,7 @@ def test_only_the_open_tab_loads_and_the_panel_is_not_a_dialog():
     assert '{tab === "diff" && <DiffTab jobId={jobId} token={token} taskId={detail.taskId} />}' in src
     assert '{tab === "prompt" && <PromptTracePanel prompts={prompts} selectedPromptId={detail.promptItemId} />}' in src
     assert '{tab === "chat" && <p className={styles.note}>{EVIDENCE_CHAT_NOT_YET}</p>}' in src
+    assert '{tab === "ownership" && <OwnershipTab jobId={jobId} token={token} />}' in src
     assert "if (!cancelled) setLoaded({ taskId, envelope });" in src
     assert "loaded !== null && loaded.taskId === taskId ? loaded.envelope : null" in src
     assert 'role="dialog"' not in src

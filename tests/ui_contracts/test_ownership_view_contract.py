@@ -24,6 +24,7 @@ UI_SRC = REPO_ROOT / "apps" / "ui" / "src"
 OWNERSHIP_TS = UI_SRC / "api" / "ownership.ts"
 POPOVER = UI_SRC / "components" / "detail" / "DetailPopover.tsx"
 SHELL = UI_SRC / "components" / "shell" / "RemedyShell.tsx"
+EVIDENCE_PANEL = UI_SRC / "components" / "graph" / "EvidencePanel.tsx"
 PHRASES_PY = REPO_ROOT / "packages" / "orchestration" / "ownership_phrases.py"
 
 
@@ -112,3 +113,15 @@ def test_the_shell_s_effect_carries_the_guard_and_the_refresh_key():
     assert "let cancelled = false;" in source
     assert "if (!cancelled) setOwnership(loaded);" in source
     assert "}, [dashboard.jobId, serverToken, ownershipKey, focusedTaskId]);" in source
+
+
+def test_the_evidence_panel_s_ownership_tab_never_renders_the_raw_error_and_carries_the_cancelled_guard():
+    """DECISION F035 D6 — the tab reads its state through `ownershipPanelState`, never `.error`
+    directly, so the unreadable line is always the fixed one and the server's own words never
+    reach the page; its effect carries the same `cancelled` guard the diff tab beside it does."""
+    source = _source(EVIDENCE_PANEL)
+    tab_source = source[source.index("function OwnershipTab"):source.index("export function EvidencePanel")]
+    assert "let cancelled = false;" in tab_source
+    assert "if (!cancelled) setLoaded({ view });" in tab_source
+    assert "ownershipPanelState(" in tab_source
+    assert ".error" not in tab_source

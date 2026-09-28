@@ -165,6 +165,27 @@ export function ownershipChipWord(action: string): string {
  *  error text (`ux_spec.md` §17 forbids raw internals in copy). */
 export const OWNERSHIP_UNREADABLE_LINE = "Who did what could not be read for this job.";
 
+/** The one line the evidence panel's ownership tab shows for a job with no entry at all. */
+export const OWNERSHIP_EMPTY_LINE = "No action is recorded for this job yet.";
+
+/** One state of the evidence panel's ownership tab (DECISION F035 D6): loading while the read is
+ *  in flight, the fixed unreadable line for a `null` view or one whose `error` is not "", the
+ *  fixed empty line for a view with no entry, or every entry in the view's own order. PURE, so
+ *  the tab's four readings are goldened here rather than through a render. */
+export type OwnershipPanelState =
+  | { kind: "loading" }
+  | { kind: "unreadable"; line: string }
+  | { kind: "empty"; line: string }
+  | { kind: "entries"; entries: OwnershipEntry[] };
+
+/** The ownership tab's one state function. */
+export function ownershipPanelState(view: OwnershipView | null, loaded: boolean): OwnershipPanelState {
+  if (!loaded) return { kind: "loading" };
+  if (view === null || view.error !== "") return { kind: "unreadable", line: OWNERSHIP_UNREADABLE_LINE };
+  if (view.entries.length === 0) return { kind: "empty", line: OWNERSHIP_EMPTY_LINE };
+  return { kind: "entries", entries: view.entries };
+}
+
 /** The entries that belong to one task: those it names directly, or that name it as a
  *  consequence, in the view's own order. `""` names no task, so it answers none. */
 export function ownershipEntriesForTask(view: OwnershipView, taskId: string): OwnershipEntry[] {

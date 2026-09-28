@@ -11,11 +11,12 @@ function prompt(id: string, taskId: string, round: number, role: RemedyPromptTra
 }
 
 describe("the evidence panel's tabs", () => {
-  it("are diff, prompt trace and chat, in T5_F023.md's order", () => {
+  it("are diff, prompt trace, chat and ownership, in T5_F023.md's order plus DECISION F035 D6's fourth", () => {
     expect(EVIDENCE_TABS).toEqual([
       { tab: "diff", label: "Diff" },
       { tab: "prompt", label: "Prompt trace" },
       { tab: "chat", label: "Chat" },
+      { tab: "ownership", label: "Ownership" },
     ]);
   });
 

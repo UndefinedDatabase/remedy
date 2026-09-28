@@ -6,11 +6,12 @@
 import type { RemedyPromptTraceItem } from "../../api/types";
 import type { EvidenceTab } from "./semanticZoom";
 
-/** The panel's tabs, in the order T5_F023.md names them. */
+/** The panel's tabs, in the order T5_F023.md names them, plus DECISION F035 D6's fourth. */
 export const EVIDENCE_TABS: readonly { tab: EvidenceTab; label: string }[] = [
   { tab: "diff", label: "Diff" },
   { tab: "prompt", label: "Prompt trace" },
   { tab: "chat", label: "Chat" },
+  { tab: "ownership", label: "Ownership" },
 ];
 
 /** The chat tab's honest answer: nothing to talk to about a single run yet. */

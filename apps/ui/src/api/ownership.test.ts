@@ -1,11 +1,13 @@
 import { describe, it, expect } from "vitest";
 import {
   OWNERSHIP_CHIP_WORDS,
+  OWNERSHIP_EMPTY_LINE,
   OWNERSHIP_REFRESH_EVENTS,
   OWNERSHIP_UNREADABLE_LINE,
   decodeOwnershipView,
   ownershipChipWord,
   ownershipEntriesForTask,
+  ownershipPanelState,
   ownershipRefreshKey,
   ownershipViewPath,
 } from "./ownership";
@@ -106,6 +108,33 @@ describe("the section's rules", () => {
 
   it("names the unreadable line", () => {
     expect(OWNERSHIP_UNREADABLE_LINE).toBe("Who did what could not be read for this job.");
+  });
+});
+
+describe("ownershipPanelState", () => {
+  const readableView = decodeOwnershipView(VIEW)!;
+  const emptyView = decodeOwnershipView({ ...VIEW, entries: [] })!;
+  const erroredView = decodeOwnershipView({ ...VIEW, entries: [], error: "boom" })!;
+
+  it("reads loading while not loaded, whatever the view", () => {
+    expect(ownershipPanelState(null, false)).toEqual({ kind: "loading" });
+    expect(ownershipPanelState(readableView, false)).toEqual({ kind: "loading" });
+  });
+
+  it("reads unreadable for a loaded null view", () => {
+    expect(ownershipPanelState(null, true)).toEqual({ kind: "unreadable", line: OWNERSHIP_UNREADABLE_LINE });
+  });
+
+  it("reads unreadable for a loaded view whose error is not \"\"", () => {
+    expect(ownershipPanelState(erroredView, true)).toEqual({ kind: "unreadable", line: OWNERSHIP_UNREADABLE_LINE });
+  });
+
+  it("reads empty for a loaded, readable view with no entry", () => {
+    expect(ownershipPanelState(emptyView, true)).toEqual({ kind: "empty", line: OWNERSHIP_EMPTY_LINE });
+  });
+
+  it("reads entries, in the view's own order, for a loaded readable view with entries", () => {
+    expect(ownershipPanelState(readableView, true)).toEqual({ kind: "entries", entries: readableView.entries });
   });
 });
 

@@ -5,8 +5,10 @@
 // Like the run detail, it is not a dialog: Escape walks back to L2 and closes
 // it (DECISION F023 D5).
 import { useEffect, useRef, useState } from "react";
-import { loadDiffEnvelope } from "../../api/remedyApi";
+import { loadDiffEnvelope, loadOwnershipView } from "../../api/remedyApi";
 import type { DiffEnvelope } from "../../api/diffViewModel";
+import { ownershipChipWord, ownershipPanelState } from "../../api/ownership";
+import type { OwnershipView } from "../../api/ownership";
 import type { RemedyPromptTraceItem } from "../../api/types";
 import { DiffFileSidebar } from "../diff/DiffFileSidebar";
 import { DiffView } from "../diff/DiffView";
@@ -19,6 +21,7 @@ import styles from "./EvidencePanel.module.css";
 
 const DIFF_PENDING = "Loading the change for this task run.";
 const DIFF_UNAVAILABLE = "No diff is available for this task run.";
+const OWNERSHIP_LOADING = "Loading the job's history.";
 
 function DiffTab({ jobId, token, taskId }: { jobId: string; token: string; taskId: string }) {
   // The envelope with the task it was read for, so a slow read never paints
@@ -41,6 +44,32 @@ function DiffTab({ jobId, token, taskId }: { jobId: string; token: string; taskI
       <DiffFileSidebar envelope={envelope} />
       <DiffView envelope={envelope} />
     </div>
+  );
+}
+
+// DECISION F035 D6 — the ownership tab: the whole job's history, loaded exactly as the diff tab
+// loads its own read, one effect guarded by `cancelled`, keyed on the job id and the token.
+function OwnershipTab({ jobId, token }: { jobId: string; token: string }) {
+  const [loaded, setLoaded] = useState<{ view: OwnershipView | null } | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    void loadOwnershipView({ jobId, token }).then((view) => {
+      if (!cancelled) setLoaded({ view });
+    });
+    return () => { cancelled = true; };
+  }, [jobId, token]);
+  const state = ownershipPanelState(loaded?.view ?? null, loaded !== null);
+  if (state.kind === "loading") return <p className={styles.note}>{OWNERSHIP_LOADING}</p>;
+  if (state.kind !== "entries") return <p className={styles.note}>{state.line}</p>;
+  return (
+    <ul>
+      {state.entries.map((entry) => (
+        <li key={entry.recordRef}>
+          <span className={styles.ownershipChip}>{ownershipChipWord(entry.action)}</span>{" "}
+          <span className={styles.ownershipSentence}>{entry.sentence}</span>
+        </li>
+      ))}
+    </ul>
   );
 }
 
@@ -94,6 +123,7 @@ export function EvidencePanel({ node, tab, rows, promptItems, jobId, token, onTa
         {tab === "diff" && <DiffTab jobId={jobId} token={token} taskId={detail.taskId} />}
         {tab === "prompt" && <PromptTracePanel prompts={prompts} selectedPromptId={detail.promptItemId} />}
         {tab === "chat" && <p className={styles.note}>{EVIDENCE_CHAT_NOT_YET}</p>}
+        {tab === "ownership" && <OwnershipTab jobId={jobId} token={token} />}
       </div>
     </aside>
   );

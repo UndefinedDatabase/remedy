@@ -92,3 +92,18 @@
   font-size: 13px;
   color: var(--remedy-muted);
 }
+
+/* DECISION F035 D6 — the ownership tab's chip, shaped as `DetailPopover.module.css`'s
+   `.ownershipChip` (same padding, radius, colour and font, no new token), and its sentence,
+   wrapped at the newlines a multi-line reason or note carries. */
+.ownershipChip {
+  padding: 2px 8px;
+  border: 1px solid var(--remedy-line);
+  border-radius: var(--remedy-radius-pill);
+  color: var(--remedy-ink-soft);
+  font: 600 11px var(--remedy-font-ui);
+}
+
+.ownershipSentence {
+  white-space: pre-line;
+}

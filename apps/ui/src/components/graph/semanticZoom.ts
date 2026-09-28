@@ -10,8 +10,9 @@ import type { BrainNode, NodeKind } from "./brainOntology";
 /** L0 organism, L1 task focus, L2 run detail, L3 evidence (graph_spec §10). */
 export type ZoomLevel = 0 | 1 | 2 | 3;
 
-/** The tabs of the L3 evidence panel (T5_F023: diff | prompt trace | chat). */
-export type EvidenceTab = "diff" | "prompt" | "chat";
+/** The tabs of the L3 evidence panel (T5_F023: diff | prompt trace | chat;
+ *  DECISION F035 D6 adds the fourth, ownership). */
+export type EvidenceTab = "diff" | "prompt" | "chat" | "ownership";
 
 /** Where the reader is. `focusId` is null at L0, a task node id at L1 and a run
  *  node id at L2 and L3. `tab` is non-null at L3 only: it is part of L3's
