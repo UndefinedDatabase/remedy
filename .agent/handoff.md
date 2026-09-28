@@ -1,113 +1,105 @@
-# Handback — F039, round 6: book round 5's FAIL with R-1100's resolution, and repair R-1101
+# Handback — F039, round 7: book round 6's PASS and R-1101's resolution, repair R-1102, land T003's data half
 
 ## Session
 
-SESSION 1 of feature F039 · round 6 · rounds so far 6. This session ran round 6 only: booking
-round 5's FAIL, R-1100's resolution and R-1101's registration into the ledger, then repairing
-R-1101 — the story panel's timer effect re-arming on every render of its host instead of only
-when play starts or stops, the position moves, or reduced motion changes — and proving the
-repair in a round 6 copy of the render harness that adds a ninth check, C-i, under host churn.
-Context self-assessment: a comfortable margin remained through the round, including the targeted
-pytest selection, three full runs of the render harness (two during development, one at the
-gate) and the mutation tool's one complete run; the work was not near its limit.
+SESSION 1 of feature F039 · round 7 · rounds so far 7. This session ran round 7 only: booking
+round 6's PASS gate and R-1101's resolution into the ledger, registering and repairing R-1102 —
+the cockpit's dashboard mapping replacing every minted task id with `task-<n>`, so a finished
+`remedy do` job never reached Finalized — and landing T003's data half: the story payload
+builder (`packages/orchestration/story_export.py`) and its TypeScript reader
+(`apps/ui/src/components/story/storyExport.ts`). Context self-assessment: a comfortable margin
+remained through the round, including the full G4 pytest selection (~3 minutes, 2276 passed),
+the vitest run of the touched files, and the mutation tool's one complete run over 9 mutations;
+the work was not near its limit.
 
-For the operator, in plain words: round 5 is booked FAIL and R-1100 is booked landed (the
-docstring fix, awaiting the next review). R-1101 — the story's Play button silently stalling
-while the app was busy re-rendering (for example, while a job is still streaming) — is now fixed
-and awaiting review: the panel keeps its own ref to the latest story view, updated after every
-render, and its one timer now only resets when play itself starts or stops, the position moves,
-or the reduced-motion setting changes — never merely because the surrounding page redrew itself.
-A new headless check proves this by re-rendering the host every 50 ms and dropping in a new
-ledger row every 200 ms while Play is running, and watching it keep walking regardless.
+For the operator, in plain words: round 6 is booked PASS and R-1101 is booked resolved. A new
+High finding, R-1102, was registered and repaired this round — the cockpit's dashboard used to
+replace every task's real id with a synthetic `task-0`, `task-1`, ... label, so a job's own
+finished tasks could never be matched against the lists that mark a job "paused", "vetoed" or
+"finalized" — the phase bar and the story stalled at Review forever, even after the job
+actually finished. The fix keeps a task's own id untouched (it is an identifier, not text a
+person reads) while still scrubbing its visible label. Separately, the story feature's DATA
+half landed: a new module builds one job's whole "story" (its task list, live state, story
+pacing, every event, and who-did-what) entirely from the same builders the live cockpit already
+uses, and a new TypeScript module reads that data back, refusing to guess at a story exported by
+a future or past version of Remedy. R-1102 stays open, awaiting the reviewer's own review of
+this fix.
 
 ## Range
 
-Review of `bfa50f969`..`HEAD` (the commit that writes this file is the eighth in the range).
-SEVEN commits precede it: C1a, C1b, C2, C3, C4a, C4b and C5 — the block's lettered bundle with
-ONE declared split (C4 became C4a/C4b; see Deviations).
+Review of 622ec0451..2922e5855
 
 ## Commits
 
-### 593142c58 F039 R6 C1a: copy round 6 block and plan into .agent/authored/
+### 9fb6a0a06 F039 R7 C1a: copy round 7 block and plan into .agent/authored/
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f039-r6-block.md | 213/0 | this block, copied verbatim by `shutil.copyfile` |
-| .agent/authored/f039-r6-plan.md | 29/0 | the plan payload, copied verbatim |
+| .agent/authored/f039-r7-block.md | +254/-0 | verbatim copy of the block |
+| .agent/authored/f039-r7-plan.md | +30/-0 | verbatim copy of the plan payload |
 
-(measured: `git show 593142c58 --numstat` reads `213 0`, `29 0`, total 242 — exactly the block's
-own expected reading (213 + 29), under the 500-line cap.)
-
-### c8e7b6ece F039 R6 C1b: copy round 6 records diff into .agent/authored/
+### 3ef77bcc5 F039 R7 C1b: copy round 7 records diff into .agent/authored/
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f039-r6-records.diff | 14/0 | the records-diff payload, copied verbatim |
+| .agent/authored/f039-r7-records.diff | +61/-0 | verbatim copy of the records payload |
 
-(measured: `git show c8e7b6ece --numstat` reads `14 0` — exactly the block's expected 14.)
-
-### 3395de941 F039 R6 C2: book round 5's FAIL and R-1100, register R-1101
+### d5b8d9ae2 F039 R7 C2: book round 6 and R-1101, register R-1102, record D7
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/live_review.md | 6/0 | records.diff appends round 5's Gate entry (FAIL), R-1100's `Done:` paragraph and R-1101's registration |
-| .agent/plan.md | 7/8 | records.diff, then rewritten := plan.md (round 6's plan) |
+| .agent/decisions.md | +39/-0 | DECISION F039 D7 (the export is one HTML file) |
+| .agent/live_review.md | +6/-0 | F039 R6 gate entry (PASS), R-1101's `Done:` line, R-1102's registration |
+| .agent/plan.md | +9/-8 | rewritten to round 7's current step |
 
-(measured: `git show 3395de941 --numstat` reads `6 0`, `7 8` — exactly the block's own expected
-reading in C2's own line and G2's table.)
-
-### c87039df0 F039 R6 C3: keep the story's pending step through its host's renders (R-1101)
+### 87890b366 F039 R7 C3: keep a task's own id in the dashboard mapping (R-1102)
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/live_review.md | 2/0 | one blank line plus one `Landed: R-1101 — ` line, naming no commit |
-| apps/ui/src/components/story/StoryPanel.tsx | 20/6 | S1: a `viewRef` holding the story view, set by an effect with no dependency list under an R-1101 comment, declared before the timer effect; `const { scrubTo } = scrub;` destructured out; the timer effect reads the view only through `viewRef.current` and calls `scrubTo`, dependency list exactly `[playing, position, reducedMotion, scrubTo]` |
-| tests/ui_contracts/test_story_panel_contract.py | 15/0 | S2: ONE new test pinning the exact dependency line and `viewRef.current`, and that the timer's own block names neither `scrub` nor `view` bare |
+| .agent/live_review.md | +2/-0 | `Landed: R-1102 — ` line, appended per S1 |
+| apps/ui/src/api/remedyApi.ts | +3/-1 | S1: the id is kept raw, never scrubbed |
+| apps/ui/src/api/remedyApi.test.ts | +11/-0 | test: minted id kept, hex label still scrubbed |
+| apps/ui/src/components/graph/brainView.test.ts | +39/-0 | R-1102 describe: seeds under the raw id, readPhases reads finalized |
 
-(measured: `git show c87039df0 --numstat` reads `2 0`, `20 6`, `15 0`, total 37; the block gave no
-expected reading for C3.)
-
-### 01f280f5f F039 R6 C4a: build the churn render harness scaffold and host page
+### d45a07db7 F039 R7 C4: build a job's story payload from the cockpit's own builders
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f039-r6-render_index.html | 11/0 | NEW, copied verbatim from round 5's own file (S3: unchanged) |
-| .agent/authored/f039-r6-render_main.tsx | 111/0 | NEW, S3: round 5's harness plus `?churn=1` — re-renders the host every 50 ms via an unread tick counter, and appends one `feedRowOf` row of a `budget.tick` frame at the next seq every 200 ms, handing the growing `rows` to both `useTimelineScrub` and `StoryPanel` |
-| .agent/authored/f039-r6-render_measure.py | 191/0 | NEW, copied verbatim from round 5's own file (S3: unchanged; its `PREFIX` logic already generalizes to any sibling-file prefix) |
-| .agent/authored/f039-r6-render_vite.config.mjs | 28/0 | NEW, copied verbatim from round 5's own file (S3: unchanged) |
+| packages/orchestration/story_export.py | +58/-0 | NEW: S2, `build_story_payload` |
+| tests/orchestration/test_story_export.py | +111/-0 | NEW: S4's Python half |
 
-(measured: `git show 01f280f5f --numstat` reads `11 0`, `111 0`, `191 0`, `28 0`, total 341, under
-the 500-line cap. DEVIATION: this is HALF of C4 as the block named it — see Deviations.)
-
-### 0a280fc94 F039 R6 C4b: render the story panel under churn and record its checks
+### 1f34be28c F039 R7 C4b: register story_export.py in ALLOWED_UNWIRED
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f039-r6-render_drive.mjs | 326/0 | NEW, S3: round 5's driver plus C-i — on `?churn=1`, after clicking "The review", Play walks positions 2 to 9 as its first eight AND at least one position past 9 within three seconds |
-| .agent/authored/f039-r6-render.txt | 32/0 | NEW, S3: the harness's own saved stdout, `RENDER: 9 of 9 checks pass`, exit 0 |
+| tests/test_no_orphan_modules.py | +2/-0 | S2's own ALLOWED_UNWIRED entry, split out of C4 (declared below) |
 
-(measured: `git show 0a280fc94 --numstat` reads `326 0`, `32 0`, total 358, under the 500-line
-cap. DEVIATION: this is the other half of C4 — see Deviations.)
-
-### 3b204a268 F039 R6 C5: add the mutation tool for R-1101
+### 95aeaccc8 F039 R7 C5: read an exported story back, refusing another schema
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f039-r6-mutations.py | 164/0 | NEW mutation tool, m1–m3 exactly as the block specifies: `scrub` added to the timer's deps, the timer reading `view` bare with `view` added to its deps, and the ref's own updating effect deleted; runs the contract guard and `f039-r6-render_measure.py` against the worktree, both controls, byte-identical restore |
+| apps/ui/src/components/story/storyExport.test.ts | +73/-0 | NEW: S4's TypeScript half, hand-derived from the demo recording |
+| apps/ui/src/components/story/storyExport.ts | +81/-0 | NEW: S3, `decodeStoryExport` |
 
-(measured: `git show 3b204a268 --numstat` reads `164 0`, under the 500-line cap.)
+### 116f65940 F039 R7 C4c: strengthen the dashboard-sections test with a literal expectation
+| Path | +/- | Reason |
+|---|---|---|
+| tests/orchestration/test_story_export.py | +4/-0 | correction, declared below: a literal assertion so mutation m4 is caught |
+
+### 2922e5855 F039 R7 C6: add the mutation tool for R-1102 and the story payload
+| Path | +/- | Reason |
+|---|---|---|
+| .agent/authored/f039-r7-mutations.py | +181/-0 | NEW: mutation tool for m1-m9 |
 
 ## External actions
 
-`git worktree add --detach .remedy-wt/f039-r6-mut 3b204a268` before the (single, successful) G5
-run; `git worktree remove --force .remedy-wt/f039-r6-mut` and `git worktree prune` after it —
-`git worktree list | wc -l` read 62 before the add and 62 after the remove (step 4's reading,
-unchanged). `git push origin feature/f039-story-replay-mode` after this commit — reported in the
-worker's final reply, since this file is written and C6 committed before that push, per the
-block's ordering.
+- `git worktree add --detach .remedy-wt/f039-r7-mut 2922e5855` — created for G5. Outcome:
+  success, `HEAD is now at 2922e5855`.
+- `git worktree remove .remedy-wt/f039-r7-mut` — outcome: success (no output).
+- `git worktree prune` — outcome: success (no output).
+- `git push origin feature/f039-story-replay-mode` — outcome reported in the reply (per the
+  block, G6's readings, including this one, go in the reply rather than this file).
+- No PR created (the block forbids it this round).
 
 ## Verification
 
-BEFORE ANYTHING ELSE:
+### BEFORE ANYTHING ELSE (block steps 1-4)
 ```
 $ ls .agent/STOP
 ls: cannot access '.agent/STOP': No such file or directory
-```
-(absent, as required)
-```
 $ pwd
 /home/decodeux/Repos/remedy
 $ git status --porcelain
@@ -115,309 +107,288 @@ $ git status --porcelain
 $ git branch --show-current
 feature/f039-story-replay-mode
 $ git log --oneline -1
-bfa50f969 F039 R5 C9: rewrite handoff for round 5
+622ec0451 F039 R6 C6: rewrite handoff for round 6
 ```
-Block bytes: measured line count 213 and sha256
-`e1d6973f148e77cbbfd308ea590c52d86e70286afda7df8b04326df8e626994e` — MATCH both given readings.
+Block bytes (R-0954): measured line count 254 / given 254; measured sha256
+`855fcf99f82da7ea92e290c47d1983a8f9bdd2f1c745fc6b1c866b114357a86b` / given the same — MATCH.
 `git worktree list | wc -l` at step 4: 62.
 
-PAYLOADS — both measured and MATCH the block's table exactly:
-| file | lines | bytes | sha256 | verdict |
-|---|---|---|---|---|
-| plan.md | 29 | 1034 | `2f1f2e0302216a5929d4f998bd6ea77f0888ea3cb1885ee3adb11b7436c99d01` | MATCH |
-| records.diff | 14 | 6938 | `ac982f7accf5a81acb8aa7ea7c14c924a8d299bbf1843452346d30ae32a7cc52` | MATCH |
-
-C1a: measured insertions 242 (213 + 29), under the 500-line cap — no STOP required.
-
-G1 TRANSPORT — both `.agent/authored/f039-r6-*` payload copies, read back with `git show
-<commit>:<path>`, equal their sources byte for byte: block.md (against `.remedy-wt/f039-r6/block.md`,
-at C1a — 16067 bytes both sides, sha256 `e1d6973f148e77cbbfd308ea590c52d86e70286afda7df8b04326df8e626994e`
-both sides), plan.md (against the payload, at C1a), records.diff (against the payload, at C1b) —
-all three MATCH.
-
-G2 THE RECORDS, at C2 (`3395de941`):
-```
-$ git apply --check .remedy-wt/f039-r6-payloads/records.diff
-CHECK_EXIT=0
-$ git apply .remedy-wt/f039-r6-payloads/records.diff
-APPLY_EXIT=0
-```
-| path | bytes | sha256 | verdict |
+### PAYLOADS table
+| file | lines measured/given | bytes measured/given | sha256 match |
 |---|---|---|---|
-| .agent/live_review.md | 346240 | `c7934727f5d2978a407e73ad11124ec92b73335364c9da8033e2ae4156f70ae1` | MATCH |
-| .agent/plan.md | 1034 | `2f1f2e0302216a5929d4f998bd6ea77f0888ea3cb1885ee3adb11b7436c99d01` | MATCH |
+| plan.md | 30/30 | 1074/1074 | match |
+| records.diff | 61/61 | 11701/11701 | match |
 
-`open_finding_ids` and `latest_gate_verdict` from `scripts/rotate_live_review.py` over the
-ledger's TEXT at C2: `['R-1101']` and `FAIL` — both match the reviewer's own reading. `git diff
---name-only c8e7b6ece 3395de941` names exactly `.agent/live_review.md` and `.agent/plan.md` —
-exactly G2's table, nothing else. At C3 (`c87039df0`): the ledger is a byte-exact prefix of the
-ledger at C2 (346240 bytes), and the addition is exactly 651 bytes — `"\n"` plus one line
-beginning `Landed: R-1101 — ` and ending in `"\n"` — confirmed by direct byte slicing.
+### G1 TRANSPORT
+- plan.md: 30 lines, 1074 bytes, sha256 `a88fd3959b4387bf4984f6f060982c8e22e9022cf57c86d0e38c506921559667` — matches PAYLOADS table.
+- records.diff: 61 lines, 11701 bytes, sha256 `ef131c1b4fd720e0622122eba37122a2793c1dbcf9de58cc625088425ee47968` — matches PAYLOADS table.
+- `git show 9fb6a0a06:.agent/authored/f039-r7-block.md` == `.remedy-wt/f039-r7/block.md`: byte-identical (sha256 `855fcf99...` both sides).
+- `git show 9fb6a0a06:.agent/authored/f039-r7-plan.md` == `.remedy-wt/f039-r7-payloads/plan.md`: byte-identical (sha256 `a88fd395...` both sides).
+- `git show 3ef77bcc5:.agent/authored/f039-r7-records.diff` == `.remedy-wt/f039-r7-payloads/records.diff`: byte-identical (sha256 `ef131c1b...` both sides).
 
-G3 THE CODE:
+### G2 THE RECORDS
 ```
-$ python3 -m ruff check tests/ui_contracts/test_story_panel_contract.py .agent/authored/f039-r6-render_measure.py .agent/authored/f039-r6-mutations.py
+$ git apply --check .remedy-wt/f039-r7-payloads/records.diff
+REAL_EXIT=0
+$ git apply .remedy-wt/f039-r7-payloads/records.diff
+REAL_EXIT=0
+```
+At C2 (`d5b8d9ae2`):
+| path | bytes | sha256 | matches table |
+|---|---|---|---|
+| .agent/decisions.md | 2437905 | 567b16b449ad759474723ef38a0a888e99a459c5aaa5819b8385f8651ee10edb | yes |
+| .agent/live_review.md | 352058 | c2098229bc892b0572ac38cac005842ab10020f811220e583fe3776a0976235f | yes |
+| .agent/plan.md | 1074 | a88fd3959b4387bf4984f6f060982c8e22e9022cf57c86d0e38c506921559667 | yes |
+
+`open_finding_ids(text)` over the ledger at C2 = `['R-1102']`; `latest_gate_verdict(text)` = `PASS` — both match the reviewer's stated readings.
+
+`git diff --name-only 3ef77bcc5 d5b8d9ae2`:
+```
+.agent/decisions.md
+.agent/live_review.md
+.agent/plan.md
+```
+Exactly the table's three paths.
+
+At C3 (`87890b366`): the ledger at C2 is confirmed a byte-exact prefix of the ledger at C3
+(`c3[:len(c2)] == c2` → True), and the added bytes are exactly `"\n"` followed by one line
+beginning `Landed: R-1102 — ` and ending in `"\n"` (verified: `added.startswith(b"\nLanded:
+R-1102")` → True, `added.endswith(b"\n")` → True).
+
+### G3 THE CODE
+```
+$ python3 -m ruff check packages/orchestration/story_export.py tests/orchestration/test_story_export.py tests/test_no_orphan_modules.py .agent/authored/f039-r7-mutations.py
 All checks passed!
 REAL_EXIT=0
 ```
-From `git show c87039df0` (C3), the ref, its effect and the whole timer effect:
-```typescript
-  // THE PENDING STEP OUTLIVES THE HOST'S RENDERS (R-1101): `viewRef` is kept current by an
-  // effect with no dependency list — it runs after every render — so the timer effect below
-  // can read the latest story view without naming `view` as a dependency, which is what made
-  // the shell's own re-renders (driven by the stream while a job is still running) clear and
-  // reschedule the pending step before it ever fired.
-  const viewRef = useRef(view);
-  useEffect(() => {
-    viewRef.current = view;
-  });
 
-  const { scrubTo } = scrub;
+The id line of S1 with its comment, quoted from the commit:
+```ts
+      // R-1102: the id is an IDENTIFIER every seed, focus rule and door
+      // compares with a raw task id — never text a person reads, so it is never scrubbed.
+      id: t.id ? String(t.id) : `task-${idx}`,
+```
 
-  // THE ONE TIMER (see the header comment): re-armed only when play starts or stops, the
-  // position moves or the reduced-motion setting changes (R-1101) — never by the host's own
-  // re-render, and never by a new story view, which `viewRef` reads instead of a dependency.
-  useEffect(() => {
-    if (!playing) return;
-    const currentView = viewRef.current;
-    const step = autoplayStep(currentView.chapters, currentView.seqs, position, currentView.pacing, reducedMotion);
-    if (step === null) {
-      setPlaying(false);
-      return;
+The whole of `story_export.py`, quoted from the commit:
+```python
+"""F039 T003 (DECISION F039 D7) — the story's DATA half: one job's story payload,
+built from the cockpit's own builders and nothing else. Remedy deliberately
+exports nothing the cockpit's own routes do not already serve: the dashboard
+section, the event frames and the ownership view are each read through the
+exact function the browser already calls, so a story file can never diverge
+from what the live cockpit would have shown for the same job.
+
+`build_story_payload` is the ONE function here. It imports `ownership_view`
+(`packages/orchestration/ownership_phrases.py`) and `_build_dashboard`,
+`_load_events` and `_safe_event_summary` (`packages/orchestration/ui_server.py`)
+function-scoped, exactly as `ownership_phrases.py`'s own `ownership_view`
+imports `build_ownership_ledger` function-scoped — the pattern this module
+mirrors rather than reinvents.
+"""
+from __future__ import annotations
+
+from typing import Any
+
+__all__ = [
+    "STORY_EXPORT_SCHEMA",
+    "STORY_DASHBOARD_SECTIONS",
+    "build_story_payload",
+]
+
+#: The one schema string both language halves pin: this module's writer and
+#: `apps/ui/src/components/story/storyExport.ts`'s reader
+#: (`tests/orchestration/test_story_export.py` guards the two stay equal).
+STORY_EXPORT_SCHEMA = "remedy.story.v1"
+
+#: The dashboard keys a story carries — the task list, the live state and the
+#: story pacing section — never the whole dashboard, which holds figures (proof
+#: chain paths, evidence directories) a self-contained export has no business
+#: repeating.
+STORY_DASHBOARD_SECTIONS = ("tasks", "live", "story")
+
+
+def build_story_payload(job: Any) -> dict[str, Any]:
+    """S2 — one job's story payload: `{"schema", "job_id", "dashboard", "frames",
+    "ownership"}`. `dashboard` is `STORY_DASHBOARD_SECTIONS` of `_build_dashboard(job)`;
+    `frames` is every event `_load_events(job)` holds, each through
+    `_safe_event_summary`, with `seq` counted from 0; `ownership` is `ownership_view(job)`
+    unchanged. Every part comes from the cockpit's own builders, so a story file holds
+    nothing the cockpit does not already serve.
+    """
+    from packages.orchestration.ownership_phrases import ownership_view
+    from packages.orchestration.ui_server import _build_dashboard, _load_events, _safe_event_summary
+
+    dashboard = _build_dashboard(job)
+    return {
+        "schema": STORY_EXPORT_SCHEMA,
+        "job_id": str(job.job_id),
+        "dashboard": {key: dashboard[key] for key in STORY_DASHBOARD_SECTIONS},
+        "frames": [
+            {"seq": seq, "event": _safe_event_summary(seq, event)}
+            for seq, event in enumerate(_load_events(job))
+        ],
+        "ownership": ownership_view(job),
     }
-    const id = window.setTimeout(() => scrubTo(step.position), step.delayMs);
-    return () => window.clearTimeout(id);
-  }, [playing, position, reducedMotion, scrubTo]);
 ```
-From `git show 01f280f5f` (C4a), the churn half of `main.tsx`:
-```typescript
-function nextTickRow(rows: ReturnType<typeof brainDemoRows>) {
-  const nextSeq = rows.reduce((max, row) => Math.max(max, row.seq), 0) + 1;
-  return feedRowOf(
-    { seq: nextSeq, event: { seq: nextSeq, event: "budget.tick", budget: { spent_usd: 0.01 * nextSeq } } },
-    0,
-  );
-}
 
-function Harness() {
-  const [open, setOpen] = useState(true);
-  const [rows, setRows] = useState(() => brainDemoRows());
-  const [, setChurnTick] = useState(0);
-
-  // Re-renders the host every 50 ms under `?churn=1` — the tick itself is read by nothing;
-  // the re-render is the whole point (R-1101).
-  useEffect(() => {
-    if (!CHURN) return undefined;
-    const id = window.setInterval(() => setChurnTick((tick) => tick + 1), 50);
-    return () => window.clearInterval(id);
-  }, []);
-
-  // Appends one budget.tick row at the next seq every 200 ms under `?churn=1` (R-1101).
-  useEffect(() => {
-    if (!CHURN) return undefined;
-    const id = window.setInterval(() => {
-      setRows((current) => [...current, nextTickRow(current)]);
-    }, 200);
-    return () => window.clearInterval(id);
-  }, []);
-```
-From `git show 0a280fc94` (C4b), C-i of `drive.mjs`:
-```javascript
-  // C-i — R-1101's own proof: reload with `?churn=1` (host re-renders every 50 ms, a new ledger
-  // row lands every 200 ms). After clicking "The review", Play still walks the positions 2 to 9
-  // in order as its first eight, AND then at least one further position past 9 — a row that
-  // arrived after Play was pressed — within three seconds.
-  await client.send("Page.navigate", { url: `${PAGE}?churn=1` });
-  await sleep(2000);
-  await clickButtonByText(client, '[data-ui="story-chapters"]', "The review");
-  await sleep(150);
-  const beforeI = await positionsLength(client);
-  await clickButtonByText(client, '[data-ui="story-panel"]', "Play");
-  await sleep(3000);
-  const afterI = await positionsSince(client, beforeI);
-  const firstEightI = afterI.slice(0, 8);
-  const restI = afterI.slice(8);
-  const firstEightMatch = JSON.stringify(firstEightI) === JSON.stringify([2, 3, 4, 5, 6, 7, 8, 9]);
-  const wentPastNine = restI.some((p) => p > 9);
-  if (firstEightMatch && wentPastNine) {
-    pass('C-i under churn (?churn=1), Play walks 2 to 9 in order and then at least one position past 9 within three seconds');
-  } else {
-    fail('C-i under churn (?churn=1), Play walks 2 to 9 in order and then at least one position past 9 within three seconds',
-      JSON.stringify(afterI));
+The whole of `decodeStoryExport`, quoted from the commit:
+```ts
+/** Decode one exported story payload. NEVER THROWS: every failure — a payload
+ *  that is not a plain object, one naming another schema, one missing a
+ *  required field, or one whose frames are malformed — answers `{ ok: false,
+ *  message }` with a fixed line rather than propagating a parse error to the
+ *  player. */
+export function decodeStoryExport(raw: unknown): { ok: true; story: StoryExport } | { ok: false; message: string } {
+  if (!isPlainObject(raw)) {
+    return { ok: false, message: STORY_EXPORT_UNREADABLE_LINE };
   }
+  const schema = raw["schema"];
+  if (typeof schema === "string" && schema !== STORY_EXPORT_SCHEMA) {
+    return { ok: false, message: storyExportVersionLine(schema) };
+  }
+  const jobId = raw["job_id"];
+  const dashboard = raw["dashboard"];
+  const frames = raw["frames"];
+  if (
+    typeof schema !== "string"
+    || typeof jobId !== "string"
+    || !isPlainObject(dashboard)
+    || !Array.isArray(frames)
+  ) {
+    return { ok: false, message: STORY_EXPORT_UNREADABLE_LINE };
+  }
+  if (!frames.every(isFrame)) {
+    return { ok: false, message: STORY_EXPORT_UNREADABLE_LINE };
+  }
+  return {
+    ok: true,
+    story: {
+      dashboard: normalizeDashboardPayload(jobId, dashboard),
+      rows: frames.map((frame) => feedRowOf(frame, 0)),
+      ownership: decodeOwnershipView(raw["ownership"]),
+    },
+  };
+}
 ```
 
-G4 THE TESTS AND THE RENDER, in the primary checkout at C5 (`3b204a268`), SERIALLY:
+### G4 THE TESTS
 ```
-$ bash -c 'python3 -m pytest -q -p no:cacheprovider -rs tests/ui_contracts tests/ui_server tests/orchestration/test_test_runner.py tests/orchestration/test_live_review_rotation.py tests/orchestration/test_integrity_gate.py tests/orchestration/test_block_lint.py tests/test_agent_tooling.py tests/regression/test_resource_safety.py tests/docs tests/cli/test_golden_path.py 2>&1 | tail -15; echo "REAL_EXIT=${PIPESTATUS[0]}"'
-SKIPPED [1] tests/ui_contracts/test_graph_architecture.py:441: D3 quarantine (F252): the pre-rebuild apps/ui legacy/*.tsx sources this asserts are not in the tree; the UI is rebuilt in Tier 5 (F019+). Backlog: Tier 5 UI build (F019+).
-SKIPPED [1] tests/ui_contracts/test_graph_architecture.py:484: D3 quarantine (F252): the pre-rebuild apps/ui legacy/*.tsx sources this asserts are not in the tree; the UI is rebuilt in Tier 5 (F019+). Backlog: Tier 5 UI build (F019+).
-SKIPPED [1] tests/ui_contracts/test_ux_quality.py:507: D3 quarantine (F252): the pre-rebuild apps/ui legacy/*.tsx sources this asserts are not in the tree; the UI is rebuilt in Tier 5 (F019+). Backlog: Tier 5 UI build (F019+).
-SKIPPED [1] tests/ui_contracts/test_ux_quality.py:543: D3 quarantine (F252): the pre-rebuild apps/ui legacy/*.tsx sources this asserts are not in the tree; the UI is rebuilt in Tier 5 (F019+). Backlog: Tier 5 UI build (F019+).
-SKIPPED [1] tests/test_agent_tooling.py:43: D12 quarantine (F252): .claude/agents/remedy-reviewer.md was deleted deliberately in 219dd32 (finding R-0074 — superseded by the split workflow's Window 1, docs/agents/planner_reviewer_prompt.md). The read-only reviewer contract now lives there. Backlog: re-pin this contract on the split-workflow docs, or retire the test.
-2246 passed, 5 skipped in 144.15s (0:02:24)
+$ python3 -m pytest -q -p no:cacheprovider -rs tests/ui_contracts tests/ui_server tests/orchestration/test_story_export.py tests/test_no_orphan_modules.py tests/test_imports.py tests/orchestration/test_import_reachability.py tests/test_ble001_ratchet.py tests/orchestration/test_durable_write_guard.py tests/test_subprocess_timeouts.py tests/orchestration/test_test_runner.py tests/orchestration/test_live_review_rotation.py tests/orchestration/test_integrity_gate.py tests/orchestration/test_block_lint.py tests/test_agent_tooling.py tests/regression/test_resource_safety.py tests/docs tests/cli/test_golden_path.py
+SKIPPED [1] tests/ui_contracts/test_graph_architecture.py:441: D3 quarantine (F252)
+SKIPPED [1] tests/ui_contracts/test_graph_architecture.py:484: D3 quarantine (F252)
+SKIPPED [1] tests/ui_contracts/test_ux_quality.py:507: D3 quarantine (F252)
+SKIPPED [1] tests/ui_contracts/test_ux_quality.py:543: D3 quarantine (F252)
+SKIPPED [1] tests/test_agent_tooling.py:43: D12 quarantine (F252)
+2276 passed, 5 skipped in 179.44s (0:02:59)
 REAL_EXIT=0
 ```
-None of the five SKIPPED lines names `node_modules`, `dist` or vitest — all five are the same
-pre-existing D3/D12 quarantines every earlier handback in this feature also names, so none is a
-toolchain node this checkout should have run instead. The contract test collects, by
-`--collect-only -q`: `tests/ui_contracts/test_story_panel_contract.py` — 8 nodes
-(`test_the_panel_is_a_region_portaled_to_the_document_body`,
-`test_the_panel_drives_the_real_scrub_and_reads_reduced_motion`,
-`test_the_panel_owns_exactly_one_timer_and_reads_no_door`,
-`test_the_timer_reads_the_latest_view_through_a_ref_and_never_scrub_or_view_bare_r1101`,
-`test_the_css_module_names_the_overlay_layer_and_the_replay_violet_with_no_raw_colour`,
-`test_story_player_imports_exactly_the_three_of_s2_and_is_pure`,
-`test_the_shell_mounts_the_panel_outside_main_with_the_scrub`,
-`test_the_right_panel_holds_the_story_button`). The reviewer's own simulation (which carries
-C1a–C2 of this round and its own version of C3) read `2241 passed, 10 skipped` at exit 0; five of
-those ten skips are toolchain nodes a fresh worktree cannot run and each PASSES here instead
-(2241 + 5 = 2246), together with this round's own new test and small differences from the
-reviewer's own version of C3.
+None of the 5 skips names `node_modules`, `dist` or `vitest` — all five are the pre-existing D3/D12
+quarantine skips unrelated to a toolchain node; every toolchain-node skip the reviewer's fresh
+simulation tree read (it read `2267 passed, 10 skipped`) PASSES here in the primary checkout, as
+the block requires. `tests/orchestration/test_story_export.py` node count: 7 tests (collected via
+`--collect-only`).
 ```
 $ python3 -m apps.cli.main integrity check --json
-{"check_count": 6, "checks": [{"message": "handlers=168", "name": "handler_import", "status": "pass"}, {"message": "last Gate verdict FAIL", "name": "live_review_verdict", "status": "pass"}, {"message": "unchecked=0, context_complete=False", "name": "plan_consistency", "status": "pass"}, {"message": "untracked=0, relevant=0", "name": "relevant_untracked", "status": "pass"}, {"message": "no reviewer scratch, evidence dir or archive at the root", "name": "repo_root_hygiene", "status": "pass"}, {"message": "no open blocker/high findings", "name": "high_blockers_open", "status": "pass"}], "fail_count": 0, "ok": true, "passed": true, "schema_version": 1, "version": 1}
-REAL_EXIT=0
+{"check_count": 6, "checks": [
+  {"name": "handler_import", "status": "pass", "message": "handlers=168"},
+  {"name": "live_review_verdict", "status": "pass", "message": "last Gate verdict PASS"},
+  {"name": "plan_consistency", "status": "pass", "message": "unchecked=0, context_complete=False"},
+  {"name": "relevant_untracked", "status": "pass", "message": "untracked=0, relevant=0"},
+  {"name": "repo_root_hygiene", "status": "pass", "message": "no reviewer scratch, evidence dir or archive at the root"},
+  {"name": "high_blockers_open", "status": "fail", "message": "1 open blocker/high: R-1102"}
+], "fail_count": 1, "ok": false, "passed": false}
+REAL_EXIT=1
 ```
-All six checks' status: `pass`. `fail_count`: 0. The verdict check's message reads `last Gate
-verdict FAIL`, which passes because the context does not say the work is complete (round 5's own
-booked verdict).
-```
-$ python3 .agent/authored/f039-r6-render_measure.py /home/decodeux/Repos/remedy
-...
-PASS C-a the panel is a child of document.body, z-index 80, its box inside the viewport
-PASS C-b chapter buttons read "The build", "The review", "The finish"; label reads "Chapter 3 of 3: The finish"
-PASS C-c clicking "The review" updates the label, shows one "Verdict: needs repair" beat, timeline readout begins "Event 1 of 9"
-PASS C-d Play walks the positions 2 to 9 in order and stops with the button reading "Play"
-PASS C-e Play again restarts at -1, Space 400 ms later stops the positions growing, button reads "Play"
-PASS C-f Escape removes the panel from the DOM and records the close
-PASS C-g reduced motion: Play walks exactly the positions -1, 0, 1 and 9
-PASS C-h the page with ?running=1 shows the running line
-PASS C-i under churn (?churn=1), Play walks 2 to 9 in order and then at least one position past 9 within three seconds
-SCREENSHOT story /home/decodeux/Repos/remedy/.remedy-wt/f039-r6-worker/render-story.png 328220 bytes
-RENDER: 9 of 9 checks pass
-...
-drive.mjs exit code: 0
-REAL_EXIT=0
-```
-`RENDER: 9 of 9 checks pass`, exit 0 — this run's own output was saved verbatim as
-`.agent/authored/f039-r6-render.txt` at C4b (a slightly earlier, otherwise identical 9-of-9 run;
-both this gate run and the committed run pass all nine, the screenshot byte count differs only by
-non-deterministic PNG compression of identical pixels across runs — 328220 here, 328209 in the
-committed file). After the run: `.remedy-wt/f039-render-run` is gone (`ls` fails, no such file or
-directory) and `git status --porcelain` is empty.
+Five checks pass, `high_blockers_open` fails with exactly `1 open blocker/high: R-1102` at
+`fail_count` 1 — as expected, since R-1102 stays open until the reviewer resolves it.
 
-G5 THE RED PROOFS — ONE RUN. `git worktree add --detach .remedy-wt/f039-r6-mut 3b204a268` (C5),
-then:
+### G5 THE RED PROOFS
 ```
-$ python3 -B .agent/authored/f039-r6-mutations.py /home/decodeux/Repos/remedy/.remedy-wt/f039-r6-mut
-worktree: /home/decodeux/Repos/remedy/.remedy-wt/f039-r6-mut
-CONTROL FIRST: guard exit=0 failed=0 passed=8 | render exit=0 RENDER: 9 of 9 checks pass
-m1 (the timer's dependency list gains `scrub`): guard exit=1 failed=1 passed=7 | render exit=1 RENDER: 8 of 9 checks pass | caught=True restored byte-identical=True
-m2 (the timer reads `view` itself and its dependency list gains `view`): guard exit=1 failed=1 passed=7 | render exit=1 RENDER: 8 of 9 checks pass | caught=True restored byte-identical=True
-m3 (the ref's effect is deleted, so the timer reads the first view forever): guard exit=0 failed=0 passed=8 | render exit=1 RENDER: 8 of 9 checks pass | caught=True restored byte-identical=True
-CONTROL LAST: guard exit=0 failed=0 passed=8 | render exit=0 RENDER: 9 of 9 checks pass
+$ git worktree add --detach .remedy-wt/f039-r7-mut 2922e5855
+Preparing worktree (detached HEAD 2922e5855)
+HEAD is now at 2922e5855 F039 R7 C6: add the mutation tool for R-1102 and the story payload
+REAL_EXIT=0
+
+$ python3 -B .agent/authored/f039-r7-mutations.py .remedy-wt/f039-r7-mut
+worktree: /home/decodeux/Repos/remedy/.remedy-wt/f039-r7-mut
+CONTROL FIRST: vitest exit=0 failed=0 passed=145 | guard exit=0 failed=0 passed=7
+m1 (the task's id goes through scrubUiText again): vitest exit=1 failed=4 passed=141 | guard exit=0 failed=0 passed=7 | caught=True restored byte-identical=True
+m2 (the frames' seqs are counted from 1): vitest exit=0 failed=0 passed=145 | guard exit=1 failed=1 passed=6 | caught=True restored byte-identical=True
+m3 (each frame carries the raw event instead of _safe_event_summary's envelope): vitest exit=0 failed=0 passed=145 | guard exit=1 failed=2 passed=5 | caught=True restored byte-identical=True
+m4 (STORY_DASHBOARD_SECTIONS gains metrics): vitest exit=0 failed=0 passed=145 | guard exit=1 failed=1 passed=6 | caught=True restored byte-identical=True
+m5 (decodeStoryExport no longer refuses another schema by name): vitest exit=1 failed=1 passed=144 | guard exit=0 failed=0 passed=7 | caught=True restored byte-identical=True
+m6 (a frame is taken as a row without feedRowOf): vitest exit=1 failed=1 passed=144 | guard exit=0 failed=0 passed=7 | caught=True restored byte-identical=True
+m7 (the ownership view is taken without decodeOwnershipView): vitest exit=1 failed=2 passed=143 | guard exit=0 failed=0 passed=7 | caught=True restored byte-identical=True
+m8 (the TypeScript constant reads remedy.story.v2): vitest exit=1 failed=1 passed=144 | guard exit=1 failed=1 passed=6 | caught=True restored byte-identical=True
+m9 (a frame with no number seq is accepted): vitest exit=1 failed=1 passed=144 | guard exit=0 failed=0 passed=7 | caught=True restored byte-identical=True
+CONTROL LAST: vitest exit=0 failed=0 passed=145 | guard exit=0 failed=0 passed=7
 ALL MUTATIONS CAUGHT AND RESTORED CLEANLY: True
 REAL_EXIT=0
+
+$ git worktree remove .remedy-wt/f039-r7-mut
+REAL_EXIT=0
+$ git worktree prune
+REAL_EXIT=0
+$ git worktree list | wc -l
+62
+$ git status --porcelain
+(empty)
 ```
-m3 reads exactly as the block anticipated: the contract STAYS GREEN (guard exit=0, failed=0 —
-`viewRef.current` and the exact dependency line both survive untouched, since only the ref's own
-updating effect is deleted) and only the render's own churn check (C-i) catches it, reading 8 of
-9 instead of 9 of 9. All three mutations caught, every restore byte-identical, both controls
-green. No repair round needed. `git worktree remove --force .remedy-wt/f039-r6-mut`, `git
-worktree prune`; `git worktree list | wc -l`: 62 (unchanged from step 4's reading, both before and
-after the run); `git status --porcelain`: empty.
+All 9 mutations caught (every one red in at least one runner), all restored byte-identical, no
+skip.
 
 ## Authored-text proofs
 
-The block and the plan payload were each copied verbatim (`shutil.copyfile`) at C1a and compared
-byte-identical against their sources under G1 above — both MATCH. The records-diff payload was
-copied verbatim at C1b and compared byte-identical under G1 above — MATCH. `.agent/live_review.md`
-and `.agent/plan.md` at C2 were verified byte- and sha256-identical to the reviewer's own
-simulation readings under G2 above — both MATCH. `records.diff` applied cleanly by `git apply`
-(both `--check` and the real apply read exit 0). The `Landed: R-1101 — ` line at C3 is MY OWN
-authored sentence (the block orders "saying in one sentence what changed", not a payload), not a
-reviewer-authored text; G2 above confirms it is appended as exactly `"\n"` plus one line ending in
-`"\n"`, on top of a byte-exact prefix of the C2 ledger. `f039-r6-render_index.html`,
-`f039-r6-render_measure.py` and `f039-r6-render_vite.config.mjs` are byte-for-byte copies
-(`shutil.copyfile`) of round 5's own committed files of the same names, per S3's "changed only as
-follows" (which names no change to these three) — confirmed by direct comparison:
-```
-$ python3 -c "
-import filecmp
-for name in ['_index.html', '_measure.py', '_vite.config.mjs']:
-    a = f'.agent/authored/f039-r5-render{name}'
-    b = f'.agent/authored/f039-r6-render{name}'
-    print(name, filecmp.cmp(a, b, shallow=False))
-"
-_index.html True
-_measure.py True
-_vite.config.mjs True
-```
-`f039-r6-render_main.tsx` and
-`f039-r6-render_drive.mjs` are round 5's own files with exactly the additions S3 orders (the
-churn host and rows in `main.tsx`, check C-i in `drive.mjs`) — both authored by the worker against
-S3, as the block's ROLE AND AUTHORITY section specifies ("you write the repair, the guard's test,
-the render harness and the mutation tool yourself against S1 to S3").
+| payload | committed at | disk-to-disk vs source | result |
+|---|---|---|---|
+| block.md copy | 9fb6a0a06 | `.agent/authored/f039-r7-block.md` vs `.remedy-wt/f039-r7/block.md` | byte-identical |
+| plan.md copy | 9fb6a0a06 | `.agent/authored/f039-r7-plan.md` vs `.remedy-wt/f039-r7-payloads/plan.md` | byte-identical |
+| records.diff copy | 3ef77bcc5 | `.agent/authored/f039-r7-records.diff` vs `.remedy-wt/f039-r7-payloads/records.diff` | byte-identical |
+| records.diff application | d5b8d9ae2 | `git apply` of the reviewer's diff, C2's three files' sha256 vs the G2 table | all three match |
 
-## Deviations & assumptions
-
-C4 SPLIT INTO C4a/C4b. The block's S3 bundle (`f039-r6-render_index.html`,
-`f039-r6-render_main.tsx`, `f039-r6-render_measure.py`, `f039-r6-render_vite.config.mjs`,
-`f039-r6-render_drive.mjs`, `f039-r6-render.txt`) totals 699 insertions by `git show --numstat`,
-over the 500-line cap. Per AGENTS.md Commit Discipline and the block's own constraint 2 ("split
-one that would reach it into lettered parts with their own subjects, and say so"), this was split
-into C4a (the scaffold and host page: index.html, main.tsx, measure.py, vite.config.mjs — 341
-insertions) and C4b (the driver and its recorded run: drive.mjs, render.txt — 358 insertions),
-both lettered with their own subjects, following the same route round 5's C7a/C7b split took. No
-file content differs from what a single C4 would have written; only the commit boundary moved.
-
-THREE OF S3'S FIVE FILES COPIED VERBATIM, NOT RE-AUTHORED. S3 says the five files are "copied
-from round 5's and changed only as follows," and the "as follows" text names changes only to
-`main.tsx` (the churn host and growing rows) and `drive.mjs` (check C-i). Read literally, that
-leaves `index.html`, `measure.py` and `vite.config.mjs` UNCHANGED copies — including
-`measure.py`'s own docstring, which still opens "F039 R5, T002's render harness runner" and still
-names "f039-r5-render_" as its own committed-copy prefix, even though the committed file is now
-`f039-r6-render_measure.py`. This reads as an intentional invariant (the same three files, same
-ports 9366/8996, same work dir `f039-render-run`, carried across rounds within one feature,
-exactly as F039 R5's own such file was carried from F036 with only its docstring's naming, work
-dir and ports changed — a change S3 here does not order), not an oversight; declared rather than
-silently "fixed," since the spec's own words bound the change to two files and a worker note in
-AGENTS.md prefers repository state (what the block orders) over session judgment about what a
-docstring "should" say.
-
-SCREENSHOT PATH MOVED TO THE ROUND'S OWN WORKER DIRECTORY. `drive.mjs`'s `SCREENSHOT_PNG` constant
-now reads `.remedy-wt/f039-r6-worker/render-story.png` in place of round 5's
-`f039-r5-worker/render-story.png` — the directory the block's own "THE DIRECTORIES" section names
-as this round's ("YOURS for logs, scripts and screenshots; create it if absent"), which this
-worker created fresh since it did not exist. This is a path constant, not a check or a piece of
-product/story behaviour, so it falls outside S3's "changed only as follows" governing the checks
-themselves; not changing it would have left every round's screenshot landing in round 5's own
-directory forever.
-
-No other deviation from the block's ordered commit sequence. The G5 run caught all three
-mutations on its first pass, so no test correction was needed before C6.
-
-## Item status
+## Item Status
 
 | Item | Status | Reason |
 |---|---|---|
 | C1a | done | |
 | C1b | done | |
 | C2 | done | |
-| C3 (S1, S2, R-1101 repair and guard) | done | |
-| C4 (S3 render) | deviated | split into C4a and C4b, both under the 500-line cap; see Deviations |
-| C5 (mutation tool, m1-m3) | done | |
-| C6 (handoff, push) | done | |
-| G1 Transport | done | |
-| G2 Records | done | |
-| G3 Code | done | |
-| G4 Tests and render | done | |
-| G5 Red proofs | done | |
-| G6 Tree and push | done | reported in the worker's final reply, since C6 cannot contain it |
+| C3 | done | |
+| C4 | deviated | split into C4/C4b/C4c, declared below |
+| C4b | done | added to cover an omission from C4 (S2's ALLOWED_UNWIRED entry) |
+| C4c | done | test correction declared below (constraint 4) |
+| C5 | done | |
+| C6 | done | |
+| C7 | done | this handback |
+| G1 transport | done | |
+| G2 records | done | |
+| G3 code (ruff) | done | |
+| G4 tests | done | |
+| G5 red proofs | done | all 9 mutations caught |
+| G6 tree and push | done | reported in the reply |
+
+## Deviations & assumptions
+
+1. **C4 was split into C4 / C4b / C4c, none of them under the 500-line cap.** C4b
+   (`1f34be28c`) registers `story_export.py` in `tests/test_no_orphan_modules.py`'s
+   `ALLOWED_UNWIRED`, which S2 itself specifies ("`ALLOWED_UNWIRED` gains..."). It was
+   omitted from the original C4 commit by oversight; rather than amend a commit already made
+   (AGENTS.md: a commit made out of order is declared, not rewritten), it was committed
+   separately as C4b, immediately after C4. C4c (`116f65940`) strengthens a C4 test
+   (`test_the_dashboard_equals_the_three_sections_of_build_dashboard`) with a literal
+   `set(payload["dashboard"]) == {"tasks", "live", "story"}` assertion: the original
+   assertion derived its expectation from `STORY_DASHBOARD_SECTIONS` itself, so mutation m4
+   (that tuple gaining `"metrics"`) would have agreed with itself on both sides of the
+   comparison and gone uncaught. This is a correction of a test this round itself wrote,
+   made before C7 and declared here, per the block's constraint 4.
+2. No other departure from the block's ordered commit sequence (C1a, C1b, C2, C3, C4/C4b/C4c,
+   C5, C6, C7).
 
 ## Next
 
-Per Phase 1 rule 1: read `.agent/STOP` from disk first. Then the review of round 6 with the
-resolution of R-1101. Then T003: the export command and its build. Open findings: 1 (R-1101,
-landed and awaiting review). Operator questions: 1.
+Phase 1 rule 1: read `.agent/STOP` from disk before anything else. Then the review of round 7
+— R-1102's repair (the dashboard mapping keeping a task's own id) and T003's data half (the
+story payload and its reader) — followed, once R-1102 is resolved, by T003 continued: the
+story player as a second page of the UI build, and `remedy job story <id> --export <file>`
+with its size budget. Open-findings count: 1 (R-1102, High, landed and awaiting review).
+Operator-questions count: 1.
