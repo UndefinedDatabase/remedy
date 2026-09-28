@@ -2,7 +2,9 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import type { RemedyDashboard } from "../../api/types";
 import type { DiffEnvelope } from "../../api/diffViewModel";
 import type { JobDigest } from "../../api/jobDigest";
-import { loadDiffEnvelope, loadJobDigest } from "../../api/remedyApi";
+import { loadDiffEnvelope, loadJobDigest, loadOwnershipView } from "../../api/remedyApi";
+import type { OwnershipView } from "../../api/ownership";
+import { ownershipRefreshKey } from "../../api/ownership";
 import { digestVisibility } from "../../api/digestVisibility";
 import type { DigestDismissal } from "../../api/digestVisibility";
 import { newestActionRow } from "../../api/actionClass";
@@ -135,6 +137,22 @@ export function RemedyShell({ dashboard, serverToken, selectedNodeId, onSelectNo
     return () => { cancelled = true; };
   }, [dashboard.jobId, serverToken]);
 
+  // THE OWNERSHIP LOAD (F035 T003, DECISION F035 D5): who did what, read once per job and
+  // token, again when the stream shows a frame of an event the ledger reads
+  // (`ownershipRefreshKey`), and again when the selected task changes — the detail's "Who did
+  // what" section reads only the entries `ownershipEntriesForTask` picks for that task, so a
+  // newly selected task must not go on showing the previous one's history. `DetailPopover`
+  // itself never fetches; this is the one load the popover is handed.
+  const [ownership, setOwnership] = useState<OwnershipView | null>(null);
+  const ownershipKey = ownershipRefreshKey(stream.recent ?? []);
+  useEffect(() => {
+    let cancelled = false;
+    void loadOwnershipView({ jobId: dashboard.jobId, token: serverToken }).then((loaded) => {
+      if (!cancelled) setOwnership(loaded);
+    });
+    return () => { cancelled = true; };
+  }, [dashboard.jobId, serverToken, ownershipKey, focusedTaskId]);
+
   // THE STORAGE EDGE, BOUND HERE because this is the edge: `digestVisibility.ts`
   // DECLARES `DigestVisibilityPort` and implements nothing, exactly as
   // `browserBrainStreamEnv(window)` above binds the stream's own globals at
@@ -215,7 +233,7 @@ export function RemedyShell({ dashboard, serverToken, selectedNodeId, onSelectNo
         </main>
         <RightLivePanel dashboard={dashboard} serverToken={serverToken} onSelectNode={onSelectNode} streamStatus={stream.status} replay={scrub.state.mode === "scrubbed"} recent={stream.recent} recentDropped={stream.recentDropped} onOpenLessons={() => setLessonsOpen(true)} focusedTaskId={focusedTaskId} />
       </div>
-      {selectedNode && <DetailPopover dashboard={dashboard} selectedNode={selectedNode} selectedPromptId={selectedPromptId} onClose={() => onSelectNode(null)} onOpenDiff={setOpenDiffTaskId} serverToken={serverToken} onSelectTask={(taskId) => onSelectNode(shellSelectionIdOf(dashboard.tasks, taskId))} />}
+      {selectedNode && <DetailPopover dashboard={dashboard} selectedNode={selectedNode} selectedPromptId={selectedPromptId} onClose={() => onSelectNode(null)} onOpenDiff={setOpenDiffTaskId} serverToken={serverToken} onSelectTask={(taskId) => onSelectNode(shellSelectionIdOf(dashboard.tasks, taskId))} ownership={ownership} />}
       {/* THE DIFF PANEL. A sibling of the popover rather than a child of
           `<main>`, which the main-column guard holds to exactly four children.
           NO CLASS ON THE WRAPPER, for the same reason `DiffView`'s own root

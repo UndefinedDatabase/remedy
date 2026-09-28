@@ -1,4 +1,6 @@
 import type { RemedyDashboard, RemedyGraphNode, RemedyTaskItem } from "../../api/types";
+import type { OwnershipView } from "../../api/ownership";
+import { OWNERSHIP_UNREADABLE_LINE, ownershipChipWord, ownershipEntriesForTask } from "../../api/ownership";
 import { ORIGIN_CHIP_TITLE, taskOriginChip } from "../../api/injectView";
 import { taskPauseAction } from "../../api/pauseView";
 import { specVersionRows, taskEditAction, taskSpecOf, versionChipLabel } from "../../api/taskSpecView";
@@ -99,7 +101,7 @@ function TaskLink({ taskId, title, onSelectTask }: {
 // absent — never a dead control that answers a click with nothing. `serverToken`
 // (DECISION F025 D4) is OPTIONAL for the same reason: the pause/resume control
 // it gates needs a credential this popover otherwise never carries.
-export function DetailPopover({ dashboard, selectedNode, selectedPromptId, onClose, onOpenDiff, serverToken, onSelectTask }: { dashboard: RemedyDashboard; selectedNode: RemedyGraphNode; selectedPromptId?: string | null; onClose: () => void; onOpenDiff?: (taskId: string) => void; serverToken?: string; onSelectTask?: (taskId: string) => void }) {
+export function DetailPopover({ dashboard, selectedNode, selectedPromptId, onClose, onOpenDiff, serverToken, onSelectTask, ownership }: { dashboard: RemedyDashboard; selectedNode: RemedyGraphNode; selectedPromptId?: string | null; onClose: () => void; onOpenDiff?: (taskId: string) => void; serverToken?: string; onSelectTask?: (taskId: string) => void; ownership?: OwnershipView | null }) {
   const task = dashboard.tasks.find(i => i.nodeId === selectedNode.nodeId);
   // Prompt-trace items for the selected task (prompt item taskId === task id).
   const prompts = task
@@ -224,6 +226,29 @@ export function DetailPopover({ dashboard, selectedNode, selectedPromptId, onClo
               </span>
             ))}
           </p>
+        </section>
+      )}
+
+      {/* DECISION F035 D5 — the "Who did what" section: the ownership view's own entries for
+          this task, each a chip naming the action and the server's own sentence verbatim, read
+          once by the shell and handed down here. A view that could not be read shows the one
+          honest line, never the server's error text (`ux_spec.md` §17); a task with no entry
+          shows no section at all. */}
+      {task && ownership && (ownership.error !== "" || ownershipEntriesForTask(ownership, task.id).length > 0) && (
+        <section className={styles.section} data-ui="ownership-section">
+          <h3>Who did what</h3>
+          {ownership.error !== "" ? (
+            <p>{OWNERSHIP_UNREADABLE_LINE}</p>
+          ) : (
+            <ul>
+              {ownershipEntriesForTask(ownership, task.id).map((entry) => (
+                <li key={entry.recordRef}>
+                  <span className={styles.ownershipChip}>{ownershipChipWord(entry.action)}</span>{" "}
+                  <span className={styles.ownershipSentence}>{entry.sentence}</span>
+                </li>
+              ))}
+            </ul>
+          )}
         </section>
       )}
 
