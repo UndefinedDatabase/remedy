@@ -25,6 +25,8 @@ OWNERSHIP_TS = UI_SRC / "api" / "ownership.ts"
 POPOVER = UI_SRC / "components" / "detail" / "DetailPopover.tsx"
 SHELL = UI_SRC / "components" / "shell" / "RemedyShell.tsx"
 EVIDENCE_PANEL = UI_SRC / "components" / "graph" / "EvidencePanel.tsx"
+EVIDENCE_PANEL_CSS = UI_SRC / "components" / "graph" / "EvidencePanel.module.css"
+POPOVER_CSS = UI_SRC / "components" / "detail" / "DetailPopover.module.css"
 PHRASES_PY = REPO_ROOT / "packages" / "orchestration" / "ownership_phrases.py"
 
 
@@ -125,3 +127,21 @@ def test_the_evidence_panel_s_ownership_tab_never_renders_the_raw_error_and_carr
     assert "if (!cancelled) setLoaded({ view });" in tab_source
     assert "ownershipPanelState(" in tab_source
     assert ".error" not in tab_source
+
+
+def test_r_1083_both_ownership_lists_take_the_panel_s_type_scale():
+    """R-1083's repair: both CSS modules define `.ownershipList` with no bullet, and both
+    components' `<ul>` of ownership entries carries that class."""
+    for css_path in (EVIDENCE_PANEL_CSS, POPOVER_CSS):
+        css_source = css_path.read_text(encoding="utf-8")
+        [rule] = re.findall(r"\.ownershipList\s*\{([^}]*)\}", css_source)
+        assert "list-style: none" in rule
+
+    evidence_source = _source(EVIDENCE_PANEL)
+    tab_source = evidence_source[
+        evidence_source.index("function OwnershipTab"):evidence_source.index("export function EvidencePanel")
+    ]
+    assert "styles.ownershipList" in tab_source
+
+    popover_source = _source(POPOVER)
+    assert "styles.ownershipList" in popover_source

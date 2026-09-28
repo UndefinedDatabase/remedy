@@ -78,3 +78,11 @@
    verbatim, wrapped at the newlines a multi-line note or reason carries. */
 .ownershipChip { padding: 2px 8px; border: 1px solid var(--remedy-line); border-radius: var(--remedy-radius-pill); color: var(--remedy-ink-soft); font: 600 11px var(--remedy-font-ui); }
 .ownershipSentence { white-space: pre-line; }
+
+/* R-1083's repair — the section's list takes the popover's own 13px/1.45 rows explicitly
+   (redundant with `.popover li` above, but this class is the one the contract pins) and no
+   bullet; the row gap is drawn from `--remedy-radius-sm`, a length token this file already
+   uses for the edit form's fields. */
+.ownershipList { list-style: none; margin: 0; padding: 0; }
+.ownershipList li { font-size: 13px; line-height: 1.45; }
+.ownershipList li + li { margin-top: var(--remedy-radius-sm); }

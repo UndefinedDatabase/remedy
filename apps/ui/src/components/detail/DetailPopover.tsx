@@ -240,7 +240,7 @@ export function DetailPopover({ dashboard, selectedNode, selectedPromptId, onClo
           {ownership.error !== "" ? (
             <p>{OWNERSHIP_UNREADABLE_LINE}</p>
           ) : (
-            <ul>
+            <ul className={styles.ownershipList}>
               {ownershipEntriesForTask(ownership, task.id).map((entry) => (
                 <li key={entry.recordRef}>
                   <span className={styles.ownershipChip}>{ownershipChipWord(entry.action)}</span>{" "}

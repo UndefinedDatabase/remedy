@@ -62,7 +62,7 @@ function OwnershipTab({ jobId, token }: { jobId: string; token: string }) {
   if (state.kind === "loading") return <p className={styles.note}>{OWNERSHIP_LOADING}</p>;
   if (state.kind !== "entries") return <p className={styles.note}>{state.line}</p>;
   return (
-    <ul>
+    <ul className={styles.ownershipList}>
       {state.entries.map((entry) => (
         <li key={entry.recordRef}>
           <span className={styles.ownershipChip}>{ownershipChipWord(entry.action)}</span>{" "}
