@@ -13,15 +13,13 @@ command (`docs/roadmap/features/T5_F038.md`, the spec
 
 ## Current Step
 
-ROUND 14, the closure's evidence round: book round 13 and R-1097's
-resolution, read the self-use generator, then build the evidence bundle
-and the review package at the accepted head.
+ROUND 15, the closing round: book round 14, rotate the ledger, accept
+F038 in STATUS with its README pins, and open the pull request.
 
 ## Next Steps
 
-1. Review round 14.
-2. The closing round: the rotation, the STATUS line with the README
-   counters, and the pull request.
+1. The next feature's session merges this pull request at the Open PR
+   Gate, then claims the next feature by Rule A5.
 
 ## Risks
 
