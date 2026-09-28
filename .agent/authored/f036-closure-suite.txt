@@ -1,0 +1,8 @@
+F036 R7 C7 — the feature's one full-suite run (integration gate, docs/agents/integration_gate.md).
+
+Command: python3 -m pytest -n auto -q
+Real exit code: 0
+Wall time: 198.59s (0:03:18)
+Summary line: 20375 passed, 20 skipped, 1 warning in 198.59s (0:03:18)
+Bad node ids (failed plus errors): NONE
+Tree it ran on: 3b92631a2 (F036 R7 C6: write the Built State and consolidate the checklist)
