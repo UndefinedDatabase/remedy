@@ -25139,3 +25139,36 @@ outcome, rejected because the outcome's own word is all the record says.
 
 HOW TO REVERSE: delete `storyNarration.ts`, its test, `tests/ui_contracts/test_story_narration.py`
 and this paragraph.
+
+## DECISION F039 D4 — autoplay advances the scrub position one ledger event at a time, waiting one step and, before the first event of a new chapter, one chapter pause more; under reduced motion it jumps from chapter start to chapter start; the step and the pause default to the motion reference's node birth and pulse, and a pacing payload may set each within a clamp (2026-09-28)
+
+CONTEXT: T5_F039.md asks for autoplay that scrubs the timeline with narration, with its pacing and
+chapter pauses per configuration, and says the story inherits the timings of
+`docs/ui/design_reference/motion_spec.md`. Measured at `1e1d7352`: the scrub position is a seq
+(`apps/ui/src/components/timeline/scrubState.ts`) and the timeline has no autoplay; the motion
+reference names `--remedy-dur-birth`, 420 ms, for a node birth and `--remedy-dur-pulse`, 1600 ms,
+for the active pulse; F024 bound its catch-up step to `--remedy-dur-fast` and pinned the two together
+in `tests/ui_contracts/test_timeline_scrub_contract.py`; and no configuration key reaches the
+browser except through the dashboard payload's fixed fields.
+
+CHOSEN: (1) ONE MODULE, `apps/ui/src/components/story/storyAutoplay.ts`, pure, which owns no timer:
+the caller asks it which position comes next and how long to wait. (2) THE PACING is a step and a
+chapter pause. `STORY_STEP_MS` is 420, a node birth, so the graph births one event before the next
+arrives; `STORY_CHAPTER_PAUSE_MS` is 1600, one pulse, the time a chapter's title holds; and
+`tests/ui_contracts/test_story_autoplay.py` pins both to the design reference's `tokens.css`. (3) THE
+STEP: from a position, the next is the ledger's next seq, after one step, plus one chapter pause when
+that seq lies in another chapter than the position, so the story pauses on every chapter's opening,
+the first included. At the ledger's last seq there is no next step, so the story of an unfinished
+job ends on its recorded prefix. (4) REDUCED MOTION: the next position is the next chapter's start,
+after one chapter pause, and from the last chapter the ledger's last seq, so the story advances by
+chapter and never event by event. (5) THE PAYLOAD: `storyPacingOf` reads `step_ms` and
+`chapter_pause_ms` from any value, each a whole number from 50 to 10000 or else its default. The
+configuration keys that fill it land with its readers, the in-app story mode and the export.
+
+ALTERNATIVES: replaying by the events' own timestamps, rejected because hours of idle building
+would play as minutes of nothing and a timestamp may be missing; a fixed length per story, rejected
+because a long ledger would then scrub faster than the graph births its nodes; configuration keys
+this round, rejected because a key nothing reads is dead configuration.
+
+HOW TO REVERSE: delete `storyAutoplay.ts`, its test, `tests/ui_contracts/test_story_autoplay.py`
+and this paragraph.

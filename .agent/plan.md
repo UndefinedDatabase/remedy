@@ -13,15 +13,14 @@ D1).
 
 ## Current Step
 
-ROUND 2: book round 1, register and repair R-1098 — one import reader for
-the UI guards — and land T002's narration cards with their sync to the
-scrub position (DECISION F039 D3).
+ROUND 3: book round 2 with R-1098's resolution, register and repair
+R-1099 — the narration goldens' untested count of events — and land
+T002's autoplay pacing with its chapter pauses (DECISION F039 D4).
 
 ## Next Steps
 
-1. T002 continued: the autoplay pacing with chapter pauses, and the in-app
-   story mode on the demo recording with its golden walkthrough and its
-   assumption-log entry.
+1. T002 closed: the in-app story mode on the demo recording, the pacing's
+   configuration keys, its golden walkthrough and its assumption-log entry.
 2. T003: the export command and its build, the font licensing finding, the
    size budget, the clean-browser test with zero network requests, and the
    docs.
