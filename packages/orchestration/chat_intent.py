@@ -41,6 +41,8 @@ CHAT_VERB_REQUIRED_ARGS: dict[str, tuple[str, ...]] = {
     "chat.send": ("message",),
     "job.veto-task": ("task_id", "reason"),
     "job.rerun-subtree": ("task_id",),
+    "decision.resolve": ("decision_id", "answer"),
+    "job.inject": ("text",),
 }
 
 #: The card's title for each verb above, over the same keys in the same order.
@@ -52,6 +54,8 @@ CHAT_VERB_TITLES: dict[str, str] = {
     "chat.send": "Send a message to the job",
     "job.veto-task": "Veto the task",
     "job.rerun-subtree": "Rerun the task and the tasks after it",
+    "decision.resolve": "Answer the decision",
+    "job.inject": "Add a task to the plan",
 }
 
 
@@ -119,7 +123,9 @@ def _is_question(folded: str) -> bool:
     return folded.endswith("?") or bool(_QUESTION_PATTERN.match(folded))
 
 
-def _action_intent(verb: str, raw_args: dict[str, str]) -> ChatIntent:
+#: The model-written parse (`chat_intent_model.py`) builds its intents through this
+#: same missing-argument rule.
+def chat_action_intent(verb: str, raw_args: dict[str, str]) -> ChatIntent:
     required = CHAT_VERB_REQUIRED_ARGS[verb]
     args = {name: value for name, value in raw_args.items() if value}
     missing = tuple(name for name in required if not raw_args.get(name))
@@ -139,27 +145,27 @@ def parse_chat_intent(text: str, *, focused_task_id: str = "") -> ChatIntent:
     first_word = folded.split(" ", 1)[0].lower()
 
     if first_word in _STOP_WORDS:
-        return _action_intent("job.stop", {"reason": _reason_after_because(folded)})
+        return chat_action_intent("job.stop", {"reason": _reason_after_because(folded)})
     if first_word == "pause":
-        return _action_intent("job.pause", {})
+        return chat_action_intent("job.pause", {})
     if first_word in _UNPAUSE_WORDS:
-        return _action_intent("job.unpause", {})
+        return chat_action_intent("job.unpause", {})
 
     note_match = _NOTE_PATTERN.match(folded)
     if note_match:
         message = folded[note_match.end():]
         if focused_task_id:
-            return _action_intent(
+            return chat_action_intent(
                 "job.steer", {"task_id": focused_task_id, "message": message})
-        return _action_intent("chat.send", {"message": message})
+        return chat_action_intent("chat.send", {"message": message})
 
     if first_word in _VETO_WORDS:
-        return _action_intent(
+        return chat_action_intent(
             "job.veto-task",
             {"task_id": focused_task_id, "reason": _reason_after_because(folded)})
 
     if first_word in _RERUN_WORDS or _RUN_AGAIN_PATTERN.match(folded):
-        return _action_intent("job.rerun-subtree", {"task_id": focused_task_id})
+        return chat_action_intent("job.rerun-subtree", {"task_id": focused_task_id})
 
     return ChatIntent(kind=CHAT_INTENT_UNKNOWN)
 
@@ -180,8 +186,16 @@ def build_action_card(intent: ChatIntent, *, job_id: str) -> ChatActionCard:
     lines = [f"Job: {job_id}"]
     if "task_id" in intent.args:
         lines.append(f"Task: {intent.args['task_id']}")
+    if "decision_id" in intent.args:
+        lines.append(f"Decision: {intent.args['decision_id']}")
+    if "answer" in intent.args:
+        lines.append(f"Answer: {intent.args['answer']}")
     if "message" in intent.args:
         lines.append(f"Message: {intent.args['message']}")
+    if "text" in intent.args:
+        lines.append(f"Text: {intent.args['text']}")
+    if "after" in intent.args:
+        lines.append(f"After: {intent.args['after']}")
     if "reason" in intent.args:
         lines.append(f"Reason: {intent.args['reason']}")
     if intent.missing:

@@ -292,15 +292,16 @@ def chat_model_written() -> bool:
     return bool(get_config().get("chat.model_written"))
 
 
-def chat_call_fn() -> Callable[[str, int], str] | None:
+def chat_call_fn(schema: type[BaseModel] = GeneratedChatAnswer) -> Callable[[str, int], str] | None:
     """Build a call_fn for the `summary` role, or None.
 
     Mirrors `result_tour.tour_call_fn`: `resolve_role_config("summary")` supplies
     the model, `make_structured_call_fn` does the rest. This call site joins
-    `model_routing.ROLE_CONFIG_CALL_SITES`.
+    `model_routing.ROLE_CONFIG_CALL_SITES`. The model-written intent parse asks
+    for its own schema through this same call site.
     """
     role_cfg = resolve_role_config("summary")
-    return make_structured_call_fn(GeneratedChatAnswer, model=role_cfg.model)
+    return make_structured_call_fn(schema, model=role_cfg.model)
 
 
 #: `answer_chat_question`'s own sentinel: distinguishes "no call_fn argument was
