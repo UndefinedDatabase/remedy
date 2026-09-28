@@ -6,9 +6,7 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import {
-  CHAT_GENERATOR_LINE_MECHANICAL, CHAT_NOT_IN_EVIDENCE, chatEvidenceTabLabel, chatUnavailableLine,
-} from "../../api/chatTurn";
+import { CHAT_NOT_IN_EVIDENCE, chatEvidenceTabLabel, chatUnavailableLine } from "../../api/chatTurn";
 import type { ChatAnswerView, ChatCardView, ChatUnavailableView } from "../../api/chatTurn";
 import { ChatTurnBlock } from "./EvidenceChatTab";
 
@@ -100,10 +98,9 @@ describe("ChatTurnBlock's DOM audit — an answer", () => {
 
   it("an answer labelled mechanical renders its generator line (DECISION F038 D13)", () => {
     const markup = renderAnswer();
-    // React escapes the apostrophe in the rendered markup, so the sentence is matched with
-    // its own escape applied rather than verbatim.
-    const escaped = CHAT_GENERATOR_LINE_MECHANICAL.replace(/'/g, "&#x27;");
-    expect(markup).toContain(`>${escaped}<`);
+    // The literal sentence, HTML-escaped as React renders its apostrophe — never the
+    // module's own exported constant, which a mutation to that constant could not catch.
+    const escaped = "Built from the job&#x27;s records, without a model.";
     const generatorTagMatch = markup.match(/<p[^>]*data-ui="chat-generator"[^>]*>(.*?)<\/p>/);
     expect(generatorTagMatch?.[1]).toBe(escaped);
   });

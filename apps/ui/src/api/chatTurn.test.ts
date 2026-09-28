@@ -2,10 +2,6 @@ import { describe, expect, it } from "vitest";
 import type { DecisionSendRequest } from "./decisionSend";
 import type { DecisionSubmitResult } from "./decisionSubmit";
 import {
-  CHAT_GENERATOR_LINE_MECHANICAL,
-  CHAT_GENERATOR_LINE_MECHANICAL_FALLBACK,
-  CHAT_GENERATOR_LINE_SUMMARY_ROLE,
-  CHAT_GENERATOR_LINE_UNKNOWN,
   CHAT_NOT_IN_EVIDENCE,
   buildChatCardSendRequest,
   chatEvidenceTab,
@@ -186,11 +182,17 @@ describe("chatScopeLabel", () => {
 });
 
 describe("chatGeneratorLine", () => {
+  // Literal sentences, never the module's own exported constants: comparing a mutated
+  // constant against itself would never go red (R-1097's own lesson, applied here).
   it("answers each of the four labels exactly (DECISION F038 D13)", () => {
-    expect(chatGeneratorLine("mechanical")).toBe(CHAT_GENERATOR_LINE_MECHANICAL);
-    expect(chatGeneratorLine("mechanical:timeout")).toBe(CHAT_GENERATOR_LINE_MECHANICAL_FALLBACK);
-    expect(chatGeneratorLine("summary-role")).toBe(CHAT_GENERATOR_LINE_SUMMARY_ROLE);
-    expect(chatGeneratorLine("something-else")).toBe(CHAT_GENERATOR_LINE_UNKNOWN);
+    expect(chatGeneratorLine("mechanical")).toBe("Built from the job's records, without a model.");
+    expect(chatGeneratorLine("mechanical:timeout")).toBe(
+      "The model's answer could not be used, so this one is built from the job's records, without a model.",
+    );
+    expect(chatGeneratorLine("summary-role")).toBe(
+      "Written by the summary model; every sentence was checked against the job's records.",
+    );
+    expect(chatGeneratorLine("something-else")).toBe("How this answer was written is not recorded.");
   });
 });
 
