@@ -77,12 +77,6 @@ ALLOWED_UNWIRED: tuple[tuple[str, str], ...] = (
      "the sole token_policy_applied emitter, kept by DECISION F275 D18 as that event's test vehicle"),
     ("packages/orchestration/bench_run.py",
      "F082's on-demand bench run; never implicit by DECISION F082 D9, the one caller its guard permits"),
-    ("packages/orchestration/chat_door.py",
-     "F038's send of a confirmed chat card through the write door; the chat command wires it "
-     "in a later round (DECISION F038 D7) and removes this line"),
-    ("packages/orchestration/chat_turn.py",
-     "F038's one chat turn, a grounded answer or an action card; the chat command wires it in a "
-     "later round (DECISION F038 D9) and removes this line"),
     ("packages/orchestration/ci_budgets.py",
      "the zero-findings lint rule the `budgets` CI stage's tests/orchestration/test_ci_budgets.py applies "
      "(DECISION amend0911-feedback D7)"),

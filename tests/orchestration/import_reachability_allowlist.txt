@@ -87,6 +87,12 @@ packages.orchestration.call_identity
 packages.orchestration.capability_bench
 packages.orchestration.change_provenance_gate
 packages.orchestration.change_set
+packages.orchestration.chat_answer
+packages.orchestration.chat_door
+packages.orchestration.chat_evidence
+packages.orchestration.chat_intent
+packages.orchestration.chat_intent_model
+packages.orchestration.chat_turn
 packages.orchestration.checkpoints
 packages.orchestration.ci_run
 packages.orchestration.ci_stages
