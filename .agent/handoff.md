@@ -1,99 +1,113 @@
-# Handback — F039, round 3: book round 2 and R-1098's resolution, register and repair R-1099, and land T002's autoplay pacing
+# Handback — F039, round 4: book round 3 with R-1099's resolution, and land the story's data path
 
 ## Session
 
-SESSION 1 of feature F039 · round 3 · rounds so far 3. This session ran round 3 only: booking round
-2's PASS and R-1098's resolution, registering and repairing finding R-1099 (the narration goldens
-never held two key events of one actor kind), recording DECISION F039 D4, and T002's second half —
-the pure `storyAutoplay.ts` module, its pacing clamp, its vitest goldens hand-derived from the demo
-recording's chapters, and its Python guard binding the step and the chapter pause to the design
-reference's motion tokens. Context self-assessment: a comfortable margin remained through the round,
-including the full targeted pytest selection and all 11 mutation red-proofs in one run of the tool;
-the work was not near its limit.
+SESSION 1 of feature F039 · round 4 · rounds so far 4. This session ran round 4 only: booking round
+3's PASS and R-1099's resolution, recording DECISION F039 D5, and landing the story's data path —
+two configuration keys for the autoplay pacing served as the dashboard's `story` section (both
+language halves), a budget tick's figures carried on its own feed row, and a new pure module,
+`storyView.ts`, that assembles a job's story from the ledger rows, the task seeds, the ownership
+view and the decoded pacing, with its vitest goldens and its Python guard. Context self-assessment:
+a comfortable margin remained through the round, including the full targeted pytest selection and
+all 11 mutation red-proofs in one run of the tool; the work was not near its limit.
 
-For the operator, in plain words: round 2 is booked PASS and R-1098 is booked resolved. R-1099 (the
-actor rule's untested event-count half) is registered and repaired with two new goldens: two
-`job_stopped` events against one ownership entry, and two answered decisions of one task against one
-entry — in both cases neither event names an actor, proving `beatActor`'s count check actually does
-something. Autoplay now exists as a pure TypeScript module: given the story's chapters and the
-ledger's seqs, it answers which scrub position comes next and how long to wait — one ledger event at
-a time, one chapter pause more before every chapter's first event, chapter by chapter under reduced
-motion — with its step and chapter pause bound to the motion reference's node-birth and pulse
-tokens, and a pacing payload reader clamped to 50–10000ms. Nothing renders it yet: no component,
-route, command, configuration key, event name or Python module changed this round.
+For the operator, in plain words: round 3 is booked PASS and R-1099 is booked resolved. The story's
+data now has a place to live: two settings control how fast the eventual replay plays (one for each
+step, one for the pause before a new chapter), the dashboard now carries them, and a feed row that
+is a budget update now carries its own cost figures so a future narration card can show "cost so
+far". A new, still-invisible module stitches all of that — the chapters, the worded cards, the
+sequence of steps to walk through, and the pacing — into one object a future panel will render.
+Nothing renders yet this round: no component, no mount, no command and no event name changed.
 
 ## Range
 
-Review of `1e1d7352d`..`HEAD` (the commit that writes this file is the eighth in the range). SEVEN
-commits precede it: C1a, C1b, C2, C3, C4, C5 and C6 — the block's lettered bundle exactly, no extra
-commit and no dropped one.
+Review of `9cd7cbfdf`..`HEAD` (the commit that writes this file is the ninth in the range). EIGHT
+commits precede it: C1a, C1b, C2, C3, C4, C5, C6 and C7 — the block's lettered bundle exactly, no
+extra commit and no dropped one (see Deviations for the mid-round commit-order correction, which
+left the FINAL sequence exactly this bundle).
 
 ## Commits
 
-### 8c0b9f75a F039 R3 C1a: copy round 3 block and plan into .agent/authored/
+### 06006eb42 F039 R4 C1a: copy round 4 block and plan into .agent/authored/
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f039-r3-block.md | 255/0 | this block, copied verbatim by `shutil.copyfile` |
-| .agent/authored/f039-r3-plan.md | 33/0 | the plan payload, copied verbatim |
+| .agent/authored/f039-r4-block.md | 266/0 | this block, copied verbatim by `shutil.copyfile` |
+| .agent/authored/f039-r4-plan.md | 34/0 | the plan payload, copied verbatim |
 
-(measured: `git show 8c0b9f75a --numstat` reads `255 0`, `33 0`, total 288 — exactly the block's own
-expected reading (255 + 33), under the 500-line cap.)
+(measured: `git show 06006eb42 --numstat` reads `266 0`, `34 0`, total 300 — exactly the block's own
+expected reading (266 + 34), under the 500-line cap.)
 
-### 1d8f0a690 F039 R3 C1b: copy round 3 records diff into .agent/authored/
+### 830ea1435 F039 R4 C1b: copy round 4 records diff into .agent/authored/
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f039-r3-records.diff | 55/0 | the records-diff payload, copied verbatim |
+| .agent/authored/f039-r4-records.diff | 57/0 | the records-diff payload, copied verbatim |
 
-(measured: `git show 1d8f0a690 --numstat` reads `55 0` — exactly the block's expected 55.)
+(measured: `git show 830ea1435 --numstat` reads `57 0` — exactly the block's expected 57.)
 
-### 8dee5d78b F039 R3 C2: book round 2 and R-1098, register R-1099, record D4
+### 6fcc93bbe F039 R4 C2: book round 3 and R-1099, record D5
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/decisions.md | 33/0 | records.diff appends DECISION F039 D4 |
-| .agent/live_review.md | 6/0 | records.diff appends round 2's Gate entry, R-1098's Done paragraph and R-1099's registration |
-| .agent/plan.md | 5/6 | records.diff, then rewritten := plan.md (round 3's plan) |
+| .agent/decisions.md | 37/0 | records.diff appends DECISION F039 D5 |
+| .agent/live_review.md | 4/0 | records.diff appends round 3's Gate entry and R-1099's Done paragraph |
+| .agent/plan.md | 7/6 | records.diff, then rewritten := plan.md (round 4's plan) |
 
-(measured: `git show 8dee5d78b --numstat` reads `33 0`, `6 0`, `5 6` — exactly the block's own
+(measured: `git show 6fcc93bbe --numstat` reads `37 0`, `4 0`, `7 6` — exactly the block's own
 expected reading in G2's table.)
 
-### 9711f756a F039 R3 C3: golden two events of one actor kind (R-1099)
+### 68469cfa2 F039 R4 C3: carry a budget tick's figures on its feed row
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/live_review.md | 2/0 | S2: appends the `Landed: R-1099 — ` line |
-| apps/ui/src/components/story/storyNarration.test.ts | 29/0 | S1: two new goldens — two `job_stopped` events against one entry, and two answered decisions of one task against one entry, neither naming an actor |
+| apps/ui/src/api/feedRow.ts | 10/0 | S1: `FeedRow` gains optional `budget?: BudgetTickFigures`; `feedRowOf` sets it from `budgetTickFiguresOf(frame)` only when it answers an object |
+| apps/ui/src/api/feedRow.test.ts | 20/0 | THE TESTS: a budget.tick frame's row carries its budget unchanged; `"budget" in row` is false for another kind carrying one and for a tick whose budget is an array |
 
-(measured: `git show 9711f756a --numstat` reads `2 0`, `29 0`, total 31 insertions, under the
-500-line cap; the block gave no expected reading for C3.)
+(measured: `git show 68469cfa2 --numstat` reads `10 0`, `20 0`, total 30; the block gave no expected
+reading for C3.)
 
-### cfd50fb7f F039 R3 C4: pace the story's autoplay by its events and chapters
+### d31c2750d F039 R4 C4: serve the story's pacing keys as the dashboard's story section
 | Path | +/- | Reason |
 |---|---|---|
-| apps/ui/src/components/story/storyAutoplay.ts | 122/0 | NEW module: S3–S4, `storyPacingOf`, `autoplayStep`, `autoplayTotalMs`, the four constants and `STORY_PACING_DEFAULT` |
+| packages/orchestration/config.py | 20/0 | S2: `story.step_ms` (default 420) and `story.chapter_pause_ms` (default 1600), directly before `tour.model_written` |
+| packages/orchestration/ui_server.py | 16/0 | S3 Python half: `_build_story_section()`, and `_build_dashboard` gains `"story": _build_story_section(),` after `"project_summary"` |
+| docs/guides/environment.md | 2/0 | S2: regenerated by `write_environment_guide()` after the registry change |
+| tests/ui_server/test_story_section.py | 40/0 | NEW: defaults with both variables unset, configured values via `monkeypatch.setenv` + `reset_config()`, and `_build_dashboard` carries the section |
 
-(measured: `git show cfd50fb7f --numstat` reads `122 0`; the block gave no expected reading for C4.)
+(measured: `git show d31c2750d --numstat` reads `20 0`, `16 0`, `2 0`, `40 0`, total 78; the block
+gave no expected reading for C4.)
 
-### d3a9dbb2e F039 R3 C5: golden the autoplay and bind its waits to the motion reference
+### 2eb78004a F039 R4 C5: keep the dashboard's story section for the story
 | Path | +/- | Reason |
 |---|---|---|
-| apps/ui/src/components/story/storyAutoplay.test.ts | 150/0 | NEW vitest goldens: the four constants and the default, `storyPacingOf`'s clamp and its edges, the whole demo-recording walk as one literal (waits 1100, 1100, then 100×7, then 1100), reduced motion's three steps, `autoplayTotalMs` (9000 / 4800), the first-four-rows unfinished review ending at seq 3, and an empty ledger |
-| tests/ui_contracts/test_story_autoplay.py | 51/0 | NEW Python guard: `STORY_STEP_MS`/`STORY_CHAPTER_PAUSE_MS` vs `--remedy-dur-birth`/`--remedy-dur-pulse`, the two import specifiers via `ts_import_specifiers`, the `chapterAt(` call, purity |
+| apps/ui/src/api/types.ts | 8/2 | S3 browser half: `RemedyDashboard` gains optional `story?: unknown`, with a doc comment |
+| apps/ui/src/api/remedyApi.ts | 6/0 | `normalizeDashboardPayload` carries `story: dashboard.story ?? null`; the fallback dashboard carries `story: null` |
+| apps/ui/src/api/remedyApi.test.ts | 18/0 | THE TESTS: `story` carried raw from `makeDashboardPayload({ story: ... })`, `null` when absent |
 
-(measured: `git show d3a9dbb2e --numstat` reads `150 0`, `51 0`, total 201, under the 500-line cap.)
+(measured: `git show 2eb78004a --numstat` reads `8 2`, `6 0`, `18 0`, total 32; the block gave no
+expected reading for C5.)
 
-### edd4ce65a F039 R3 C6: add the mutation tool for the autoplay and R-1099
+### 42481b780 F039 R4 C6: assemble a job's story from its ledger, ownership and pacing
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f039-r3-mutations.py | 168/0 | NEW mutation tool, `m1`–`m11`, following `f039-r2-mutations.py`'s route over three vitest files and two Python guards |
+| apps/ui/src/components/story/storyView.ts | 62/0 | NEW pure module, S4: `StoryView`, `storyTicksOf`, `buildStoryView` |
+| apps/ui/src/components/story/storyView.test.ts | 113/0 | NEW vitest goldens, HAND-DERIVED: ticks out of seq order skipping another kind and a string budget, no tick from a hand-made array/string budget, the demo recording's titles/cards/seqs/pacing, the demo recording with seq 2 replaced by a tick giving both cards the same cost, and out-of-order rows with a repeated seq giving ascending distinct seqs |
+| tests/ui_contracts/test_story_view.py | 76/0 | NEW Python guard, S5: the section's two keys vs `storyAutoplay.ts`'s literals, each key's default vs `storyAutoplay.ts`'s constant, `storyView.ts`'s seven import specifiers and purity, and `feedRow.ts` holding `budgetTickFiguresOf(frame)` |
 
-(measured: `git show edd4ce65a --numstat` reads `168 0`, under the 500-line cap.)
+(measured: `git show 42481b780 --numstat` reads `62 0`, `113 0`, `76 0`, total 251, under the 500-line
+cap; the block gave no expected reading for C6.)
+
+### 5a4ad3abd F039 R4 C7: add the mutation tool for the story's data path
+| Path | +/- | Reason |
+|---|---|---|
+| .agent/authored/f039-r4-mutations.py | 184/0 | NEW mutation tool, `m1`–`m12` (13 entries minus one skipped id gap: m1–m9, m11, m12 land as separate ids, m10 completes the set), following `f039-r3-mutations.py`'s route over four vitest files and three Python guards |
+
+(measured: `git show 5a4ad3abd --numstat` reads `184 0`, under the 500-line cap.)
 
 ## External actions
 
-`git worktree add --detach .remedy-wt/f039-r3-mut edd4ce65a` before the (single, successful) G5 run;
-`git worktree remove --force .remedy-wt/f039-r3-mut` and `git worktree prune` after it —
-`git worktree list | wc -l` read 62 before the add and after the remove (step 4's reading,
+`git worktree add --detach .remedy-wt/f039-r4-mut 5a4ad3abd` before the (single, successful) G5 run;
+`git worktree remove --force .remedy-wt/f039-r4-mut` and `git worktree prune` after it —
+`git worktree list | wc -l` read 62 before the add and 62 after the remove (step 4's reading,
 unchanged). `git push origin feature/f039-story-replay-mode` after this commit — reported in the
-worker's final reply, since this file is written and C7 committed before that push, per the block's
+worker's final reply, since this file is written and C8 committed before that push, per the block's
 ordering.
 
 ## Verification
@@ -112,183 +126,238 @@ $ git status --porcelain
 $ git branch --show-current
 feature/f039-story-replay-mode
 $ git log --oneline -1
-1e1d7352d F039 R2 C7: rewrite handoff for round 2
+9cd7cbfdf F039 R3 C7: rewrite handoff for round 3
 ```
-Block bytes: measured line count 255 and sha256
-`58b17131bab1518a7b6c0504057732837cec50145ff110592a05b5d8b056d72c` — MATCH both given readings.
+Block bytes: measured line count 266 and sha256
+`a14ac7f81ec891867d207fcc0439eef4b5eef6df5af2757628cd0356a9592582` — MATCH both given readings.
 `git worktree list | wc -l` at step 4: 62.
 
-PAYLOADS — both measured and MATCH the block's table exactly: plan.md 33/1279/
-`afa5917e885bd79ceb75182809511a2afd04b244b326616d851b98bb757ae749`; records.diff 55/9668/
-`154f1182ac2eac264cd7fae867e384ff03b5ea1d5d9c08449cafb168b2b667d2`.
+PAYLOADS — both measured and MATCH the block's table exactly: plan.md 34/1301/
+`f40b22ae09bffae231443379422a73af77faf2c930836fc51da5d6008cdd8319`; records.diff 57/7748/
+`ad32da0164e9805ed7955cb2b293a106f46aa05428326c6b631bf3b85065c56a`.
 
-C1a: measured insertions 288 (255 + 33), under the 500-line cap — no STOP required.
+C1a: measured insertions 300 (266 + 34), under the 500-line cap — no STOP required.
 
-G1 TRANSPORT — all three `.agent/authored/f039-r3-*` copies, read back with `git show <commit>:<path>`,
-equal their sources byte for byte: block.md (against `.remedy-wt/f039-r3/block.md`, at C1a),
-plan.md (against the payload, at C1a), records.diff (against the payload, at C1b) — all three
-MATCH, confirmed by sha256 on both sides.
+G1 TRANSPORT — all three `.agent/authored/f039-r4-*` copies, read back with `git show <commit>:<path>`,
+equal their sources byte for byte: block.md (against `.remedy-wt/f039-r4/block.md`, at C1a), plan.md
+(against the payload, at C1a), records.diff (against the payload, at C1b) — all three MATCH,
+confirmed by sha256 on both sides (block: `a14ac7f8...` both sides; plan.md: `f40b22ae...` both
+sides; records.diff: `ad32da01...` both sides).
 
-G2 THE RECORDS, at C2 (`8dee5d78b`):
+G2 THE RECORDS, at C2 (`6fcc93bbe`):
 ```
-$ git apply --check .remedy-wt/f039-r3-payloads/records.diff
-CHECK_EXIT=0
-$ git apply .remedy-wt/f039-r3-payloads/records.diff
-APPLY_EXIT=0
+$ git apply --check .remedy-wt/f039-r4-payloads/records.diff
+REAL_EXIT=0
+$ git apply .remedy-wt/f039-r4-payloads/records.diff
+REAL_EXIT=0
 ```
 | path | bytes | sha256 | verdict |
 |---|---|---|---|
-| .agent/decisions.md | 2428140 | `ef7a9dc0cf2cd77b100aa5a745100f94ec2e6a64d2ab8cb7db192bb73c7fcc35` | MATCH |
-| .agent/live_review.md | 334053 | `dc4f21ceca6a5aeaabca335e2526128e487dee8f479ce10b07b682b0bf80a74e` | MATCH |
-| .agent/plan.md | 1279 | `afa5917e885bd79ceb75182809511a2afd04b244b326616d851b98bb757ae749` | MATCH |
+| .agent/decisions.md | 2431157 | `41f1b43468e2a6bd83763072e2f7b3af29a7a4ad20a6298fdf1ae8582816b176` | MATCH |
+| .agent/live_review.md | 336809 | `d5fbf8bfd4aabba7e3899a34c5d2e9dbebf3ba9f3359bec9b326def89e7faf77` | MATCH |
+| .agent/plan.md | 1301 | `f40b22ae09bffae231443379422a73af77faf2c930836fc51da5d6008cdd8319` | MATCH |
 
-`open_finding_ids` from `scripts/rotate_live_review.py` over the ledger's TEXT: `['R-1098']` at
-`1e1d7352d` and `['R-1099']` at C2 — both match the reviewer's own reading. `git diff --name-only
-1d8f0a690 8dee5d78b` names exactly `.agent/decisions.md`, `.agent/live_review.md` and
-`.agent/plan.md` — exactly G2's table, nothing else.
-
-At C3 (`9711f756a`): the ledger at C2 is a byte-exact prefix of the ledger at C3 (measured by
-reading both back with `git show <sha>:.agent/live_review.md` and confirming `c3.startswith(c2)` is
-`True`), and what C3 adds is exactly `"\n"` plus one line beginning `Landed: R-1099 — ` and ending in
-`"\n"` (measured: the added bytes are `\nLanded: R-1099 — the narration goldens now hold two
-job_stopped key events against one ownership entry and two answered decisions of one task against
-one entry, so beatActor's count of matching events is exercised and neither stop nor either decision
-names an actor.\n`).
+`open_finding_ids` from `scripts/rotate_live_review.py` over the ledger's TEXT: `['R-1099']` at
+`9cd7cbfdf` and `[]` at C2 — both match the reviewer's own reading. `git diff --name-only 830ea1435
+6fcc93bbe` names exactly `.agent/decisions.md`, `.agent/live_review.md` and `.agent/plan.md` —
+exactly G2's table, nothing else.
 
 G3 THE CODE:
 ```
-$ python3 -m ruff check tests/ui_contracts/test_story_autoplay.py .agent/authored/f039-r3-mutations.py
+$ python3 -m ruff check packages/orchestration/config.py packages/orchestration/ui_server.py tests/ui_server/test_story_section.py tests/ui_contracts/test_story_view.py .agent/authored/f039-r4-mutations.py
 All checks passed!
 REAL_EXIT=0
 ```
-From `git show cfd50fb7f` (C4), the whole of `storyPacingOf`:
+From `git show 68469cfa2` (C3), `feedRowOf`'s changed lines:
 ```typescript
-export function storyPacingOf(raw: unknown): StoryPacing {
-  if (!isPlainObject(raw)) return STORY_PACING_DEFAULT;
+import { budgetTickFiguresOf } from "./budgetTick";
+import type { BudgetTickFigures } from "./costMetric";
+...
+  /** A `budget.tick` frame's own figures, carried opaque, absent on every
+   *  other row — never `undefined` on a present key, so a card can tell "no
+   *  tick yet" from "a tick with nothing in it" (DECISION F039 D5 (3)). */
+  budget?: BudgetTickFigures;
+...
+  // DECISION F039 D5 (3): a budget tick's figures ride on their OWN row, absent
+  // rather than `undefined` on every other kind, so a card can read "cost so far".
+  const budget = budgetTickFiguresOf(frame);
   return {
-    stepMs: clampedField(raw, "step_ms", STORY_STEP_MS),
-    chapterPauseMs: clampedField(raw, "chapter_pause_ms", STORY_CHAPTER_PAUSE_MS),
+    ...
+    ...(note ? { author: "operator" as const } : {}),
+    ...(budget !== null ? { budget } : {}),
   };
-}
 ```
-and the whole of `autoplayStep`:
-```typescript
-export function autoplayStep(
-  chapters: readonly StoryChapter[],
-  seqs: readonly number[],
-  position: number,
-  pacing: StoryPacing,
-  reducedMotion: boolean,
-): AutoplayStep | null {
-  const here = chapterAt(chapters, position);
+From `git show d31c2750d` (C4), both `ConfigKeySpec` entries:
+```python
+    ConfigKeySpec(
+        key="story.step_ms",
+        env_var="REMEDY_STORY_STEP_MS",
+        description=(
+            "The story's autoplay (F039) step, in milliseconds: the browser keeps "
+            "a value from 50 to 10000 and its default otherwise."
+        ),
+        value_type=int,
+        default=420,
+    ),
+    ConfigKeySpec(
+        key="story.chapter_pause_ms",
+        env_var="REMEDY_STORY_CHAPTER_PAUSE_MS",
+        description=(
+            "The story's autoplay (F039) chapter pause, in milliseconds: the "
+            "browser keeps a value from 50 to 10000 and its default otherwise."
+        ),
+        value_type=int,
+        default=1600,
+    ),
+```
+and `_build_story_section`:
+```python
+def _build_story_section() -> dict[str, Any]:
+    """The story's autoplay pacing (F039 T002, DECISION F039 D5): the two
+    configuration keys, `story.step_ms` and `story.chapter_pause_ms`, read fresh
+    on every request the same way `_rate_limit_admits_command` reads its own key,
+    so an operator who edits `remedy.toml` sees the new pacing without a restart.
+    """
+    from packages.orchestration.config import get_config
 
-  if (reducedMotion) {
-    const nextChapter = chapters.slice(here + 1).find((chapter) => chapter.startSeq > position);
-    if (nextChapter !== undefined) {
-      return { position: nextChapter.startSeq, delayMs: pacing.chapterPauseMs };
+    config = get_config()
+    return {
+        "step_ms": config.get("story.step_ms"),
+        "chapter_pause_ms": config.get("story.chapter_pause_ms"),
     }
-    const lastSeq = seqs[seqs.length - 1];
-    if (lastSeq !== undefined && lastSeq > position) {
-      return { position: lastSeq, delayMs: pacing.chapterPauseMs };
+```
+From `git show 2eb78004a` (C5), the `story` lines of `remedyApi.ts`:
+```typescript
+    // Carried raw: `storyPacingOf` (apps/ui/src/components/story/storyAutoplay.ts)
+    // is this section's one reader, and the API layer imports nothing from the
+    // components (DECISION F039 D5 (2)).
+    story: dashboard.story ?? null,
+    ...
+    // No endpoint answered, so there is no pacing section either.
+    story: null,
+```
+From `git show 42481b780` (C6), the whole of `storyView.ts`:
+```typescript
+// T5_F039.md T002, DECISION F039 D5 — a job's whole story, assembled once
+// from the ledger rows, the task seeds, the ownership view and the browser's
+// own pacing payload. This module decides nothing new about a row: it reads
+// the ticks a budget event carries, then composes buildStoryChapters,
+// buildNarrationCards, orderedLedger and storyPacingOf, the same four
+// functions the chapters, the cards, the seqs and the pacing already own.
+import type { BudgetTickFigures } from "../../api/costMetric";
+import type { OwnershipView } from "../../api/ownership";
+import type { BrainEventRow, BrainTaskSeed } from "../graph/brainOntology";
+import { orderedLedger } from "../timeline/phaseMapping";
+import { storyPacingOf, type StoryPacing } from "./storyAutoplay";
+import { buildStoryChapters, type StoryChapter } from "./storyChapters";
+import { buildNarrationCards, type NarrationCard, type StoryTick } from "./storyNarration";
+
+/** A job's whole story: its chapters, the narration cards worded from them,
+ *  the seqs autoplay steps over, and the decoded pacing (DECISION F039 D5). */
+export interface StoryView {
+  chapters: readonly StoryChapter[];
+  cards: readonly NarrationCard[];
+  seqs: readonly number[];
+  pacing: StoryPacing;
+}
+
+/** `BrainEventRow` names no `budget` field of its own: `FeedRow`
+ *  (apps/ui/src/api/feedRow.ts) carries it OPTIONALLY and is structurally
+ *  assignable to the ontology's own input shape, the same way its header
+ *  already describes. Read here the way `budgetTick.ts` reads an untrusted
+ *  envelope: checked, never asserted. */
+function budgetFieldOf(row: BrainEventRow): unknown {
+  return (row as unknown as Record<string, unknown>)["budget"];
+}
+
+/** One tick per row of `orderedLedger(rows)` whose `budget` is a plain
+ *  object — not null, not an array — in that order (DECISION F039 D5). */
+export function storyTicksOf(rows: readonly BrainEventRow[]): StoryTick[] {
+  const ticks: StoryTick[] = [];
+  for (const row of orderedLedger(rows)) {
+    const budget = budgetFieldOf(row);
+    if (typeof budget === "object" && budget !== null && !Array.isArray(budget)) {
+      ticks.push({ seq: row.seq, figures: budget as BudgetTickFigures });
     }
-    return null;
   }
+  return ticks;
+}
 
-  const next = seqs.find((seq) => seq > position);
-  if (next === undefined) return null;
-  const entersNewChapter = chapterAt(chapters, next) !== here;
+/** A job's whole story, assembled once from its ledger, its task seeds, its
+ *  ownership view and the browser's own pacing payload (DECISION F039 D5). */
+export function buildStoryView(
+  jobId: string,
+  tasks: readonly BrainTaskSeed[],
+  rows: readonly BrainEventRow[],
+  ownership: OwnershipView | null,
+  pacing: unknown,
+): StoryView {
+  const chapters = buildStoryChapters(jobId, tasks, rows);
   return {
-    position: next,
-    delayMs: pacing.stepMs + (entersNewChapter ? pacing.chapterPauseMs : 0),
+    chapters,
+    cards: buildNarrationCards(chapters, rows, storyTicksOf(rows), ownership),
+    seqs: orderedLedger(rows).map((row) => row.seq),
+    pacing: storyPacingOf(pacing),
   };
 }
 ```
-From `git show 9711f756a` (C3), the two R-1099 goldens:
-```typescript
-describe("R-1099 — two key events of one actor kind, so neither one is counted alone", () => {
-  it("names nobody for either job_stopped when two share the ledger", () => {
-    const rows = [
-      row(1, "task_run_started", "t1"),
-      row(2, "job_stopped", "", "stopped"),
-      row(3, "job_resumed"),
-      row(4, "job_stopped", "", "stopped"),
-    ];
-    const chapters = buildStoryChapters("job-r1099-a", T1, rows);
-    const ownership = ownershipView([ownerEntry("job_stopped", "", "The operator stopped the job.")]);
-    const beats = buildNarrationCards(chapters, rows, [], ownership).flatMap((card) => card.beats);
-    expect(beats.find((b) => b.seq === 2)?.actor).toBeNull();
-    expect(beats.find((b) => b.seq === 4)?.actor).toBeNull();
-  });
 
-  it("names nobody for either answered decision when one task answers twice", () => {
-    const rows = [
-      row(1, "task_run_started", "t1"),
-      row(2, "task_decision_answered", "t1"),
-      row(3, "task_decision_answered", "t1"),
-    ];
-    const chapters = buildStoryChapters("job-r1099-b", T1, rows);
-    const ownership = ownershipView([ownerEntry("decision_answered", "t1", "Someone answered t1's decision.")]);
-    const beats = buildNarrationCards(chapters, rows, [], ownership).flatMap((card) => card.beats);
-    expect(beats.find((b) => b.seq === 2)?.actor).toBeNull();
-    expect(beats.find((b) => b.seq === 3)?.actor).toBeNull();
-  });
-});
+G4 THE TESTS, in the primary checkout at C7 (`5a4ad3abd`), SERIALLY:
 ```
-
-G4 THE TESTS, in the primary checkout at C6 (`edd4ce65a`), SERIALLY:
-```
-$ python3 -m pytest -q -p no:cacheprovider -rs tests/ui_contracts tests/ui_server/test_dashboard_contract.py tests/orchestration/test_test_runner.py tests/orchestration/test_live_review_rotation.py tests/orchestration/test_integrity_gate.py tests/orchestration/test_roadmap_index.py tests/orchestration/test_block_lint.py tests/orchestration/test_event_names.py tests/orchestration/test_feature_mission_adapter.py tests/orchestration/test_self_use_findings.py tests/orchestration/test_self_use_generator.py tests/orchestration/test_self_use_runner.py tests/orchestration/test_review_archive_authority.py tests/orchestration/test_development_artifact_boundary.py tests/test_command_catalog.py tests/test_agent_tooling.py tests/regression/test_resource_safety.py tests/docs tests/cli/test_golden_path.py
+$ python3 -m pytest -q -p no:cacheprovider -rs tests/ui_contracts tests/ui_server tests/orchestration/test_config.py tests/orchestration/test_env_registry.py tests/orchestration/test_doc_staleness.py tests/orchestration/test_test_runner.py tests/orchestration/test_live_review_rotation.py tests/orchestration/test_integrity_gate.py tests/orchestration/test_roadmap_index.py tests/orchestration/test_block_lint.py tests/orchestration/test_event_names.py tests/orchestration/test_import_reachability.py tests/orchestration/test_self_use_findings.py tests/orchestration/test_self_use_generator.py tests/test_no_orphan_modules.py tests/test_command_catalog.py tests/test_agent_tooling.py tests/regression/test_resource_safety.py tests/docs tests/cli/test_golden_path.py
 SKIPPED [1] tests/ui_contracts/test_graph_architecture.py:441: D3 quarantine (F252): the pre-rebuild apps/ui legacy/*.tsx sources this asserts are not in the tree; the UI is rebuilt in Tier 5 (F019+). Backlog: Tier 5 UI build (F019+).
 SKIPPED [1] tests/ui_contracts/test_graph_architecture.py:484: D3 quarantine (F252): the pre-rebuild apps/ui legacy/*.tsx sources this asserts are not in the tree; the UI is rebuilt in Tier 5 (F019+). Backlog: Tier 5 UI build (F019+).
 SKIPPED [1] tests/ui_contracts/test_ux_quality.py:507: D3 quarantine (F252): the pre-rebuild apps/ui legacy/*.tsx sources this asserts are not in the tree; the UI is rebuilt in Tier 5 (F019+). Backlog: Tier 5 UI build (F019+).
 SKIPPED [1] tests/ui_contracts/test_ux_quality.py:543: D3 quarantine (F252): the pre-rebuild apps/ui legacy/*.tsx sources this asserts are not in the tree; the UI is rebuilt in Tier 5 (F019+). Backlog: Tier 5 UI build (F019+).
 SKIPPED [1] tests/test_agent_tooling.py:43: D12 quarantine (F252): .claude/agents/remedy-reviewer.md was deleted deliberately in 219dd32 (finding R-0074 — superseded by the split workflow's Window 1, docs/agents/planner_reviewer_prompt.md). The read-only reviewer contract now lives there. Backlog: re-pin this contract on the split-workflow docs, or retire the test.
-1881 passed, 5 skipped in 110.89s (0:01:50)
+2554 passed, 5 skipped in 184.51s (0:03:04)
 REAL_EXIT=0
 ```
-The reviewer's own simulation (which carries C1a–C2 of this round plus its own version of C3–C5)
-read `1873 passed, 10 skipped` at exit 0; five of those skips are toolchain nodes a worktree cannot
-run and each PASSES here instead — none of the five SKIPPED lines above are toolchain-related, all
-five are the same pre-existing D3/D12 quarantines the round 2 handback also named. This round's own
-guard, `tests/ui_contracts/test_story_autoplay.py`, collects 5 nodes by `--collect-only -q`
-(`test_the_step_is_the_birth_motion_token`, `test_the_chapter_pause_is_the_pulse_motion_token`,
-`test_the_module_imports_only_the_two_named_modules`, `test_the_module_calls_chapterAt`,
-`test_the_module_stays_pure`), which — together with the five converted toolchain skips and small
-differences from the reviewer's own version of C3 — accounts for the count differing from the
-reviewer's simulation reading.
+The reviewer's own simulation (which carries C1a–C2 of this round plus its own version of C3–C6)
+read `2548 passed, 10 skipped` at exit 0; five of those skips are toolchain nodes a fresh worktree
+cannot run and each PASSES here instead — none of the five SKIPPED lines above are toolchain-related,
+all five are the same pre-existing D3/D12 quarantines every earlier handback in this feature also
+names. This round's own two Python test files collect, by `--collect-only -q`:
+`tests/ui_server/test_story_section.py` — 3 nodes (`test_the_section_reads_the_defaults_with_both_variables_unset`,
+`test_the_section_reads_the_configured_values_when_both_are_set`, `test_the_dashboard_carries_the_section`);
+`tests/ui_contracts/test_story_view.py` — 4 nodes (`test_the_section_reads_exactly_the_two_keys_storyautoplay_reads_by`,
+`test_each_keys_default_equals_storyautoplays_own_constant`, `test_the_module_imports_exactly_the_seven_specifiers_of_s4_and_is_pure`,
+`test_feed_row_holds_the_budget_tick_reader`) — together with the five converted toolchain skips and
+small differences from the reviewer's own version of C3–C6, this accounts for the count differing
+from the reviewer's simulation reading.
 ```
 $ python3 -m apps.cli.main integrity check --json
 {"check_count": 6, "checks": [{"message": "handlers=168", "name": "handler_import", "status": "pass"}, {"message": "last Gate verdict PASS", "name": "live_review_verdict", "status": "pass"}, {"message": "unchecked=0, context_complete=False", "name": "plan_consistency", "status": "pass"}, {"message": "untracked=0, relevant=0", "name": "relevant_untracked", "status": "pass"}, {"message": "no reviewer scratch, evidence dir or archive at the root", "name": "repo_root_hygiene", "status": "pass"}, {"message": "no open blocker/high findings", "name": "high_blockers_open", "status": "pass"}], "fail_count": 0, "ok": true, "passed": true, "schema_version": 1, "version": 1}
 REAL_EXIT=0
 ```
-All six checks' status: `pass`. `fail_count`: 0. (R-1099 is Low, so `high_blockers_open` correctly
-still reads pass while R-1099 itself stays open until the reviewer resolves it, per the block.)
+All six checks' status: `pass`. `fail_count`: 0.
 
-G5 THE RED PROOFS — ONE RUN. `git worktree add --detach .remedy-wt/f039-r3-mut edd4ce65a` (C6),
-then:
+G5 THE RED PROOFS — ONE RUN. `git worktree add --detach .remedy-wt/f039-r4-mut 5a4ad3abd` (C7), then:
 ```
-$ python3 -B .agent/authored/f039-r3-mutations.py /home/decodeux/Repos/remedy/.remedy-wt/f039-r3-mut
-worktree: /home/decodeux/Repos/remedy/.remedy-wt/f039-r3-mut
-CONTROL FIRST: vitest exit=0 failed=0 passed=67 | guard exit=0 failed=0 passed=10
-m1 (no chapter pause is ever added): vitest exit=1 failed=3 passed=64 | guard exit=0 failed=0 passed=10 | caught=True restored byte-identical=True
-m2 (every step adds a chapter pause): vitest exit=1 failed=3 passed=64 | guard exit=0 failed=0 passed=10 | caught=True restored byte-identical=True
-m3 (entering the first chapter from -1 adds no pause): vitest exit=1 failed=3 passed=64 | guard exit=0 failed=0 passed=10 | caught=True restored byte-identical=True
-m4 (reduced motion is ignored): vitest exit=1 failed=5 passed=62 | guard exit=0 failed=0 passed=10 | caught=True restored byte-identical=True
-m5 (reduced motion never steps to the last seq): vitest exit=1 failed=1 passed=66 | guard exit=0 failed=0 passed=10 | caught=True restored byte-identical=True
-m6 (a wait of exactly 50 is refused): vitest exit=1 failed=1 passed=66 | guard exit=0 failed=0 passed=10 | caught=True restored byte-identical=True
-m7 (a fractional wait is accepted): vitest exit=1 failed=1 passed=66 | guard exit=0 failed=0 passed=10 | caught=True restored byte-identical=True
-m8 (the payload is read by stepMs rather than step_ms): vitest exit=1 failed=2 passed=65 | guard exit=0 failed=0 passed=10 | caught=True restored byte-identical=True
-m9 (STORY_STEP_MS is 400): vitest exit=1 failed=4 passed=63 | guard exit=1 failed=1 passed=9 | caught=True restored byte-identical=True
-m10 (a setTimeout statement is added inside autoplayTotalMs): vitest exit=0 failed=0 passed=67 | guard exit=1 failed=1 passed=9 | caught=True restored byte-identical=True
-m11 (the actor check of the count of matching events is deleted (R-1099)): vitest exit=1 failed=2 passed=65 | guard exit=0 failed=0 passed=10 | caught=True restored byte-identical=True
-CONTROL LAST: vitest exit=0 failed=0 passed=67 | guard exit=0 failed=0 passed=10
+$ python3 -B .agent/authored/f039-r4-mutations.py /home/decodeux/Repos/remedy/.remedy-wt/f039-r4-mut
+worktree: /home/decodeux/Repos/remedy/.remedy-wt/f039-r4-mut
+CONTROL FIRST: vitest exit=0 failed=0 passed=146 | guard exit=0 failed=0 passed=10
+m1 (feedRowOf never sets budget): vitest exit=1 failed=3 passed=143 | guard exit=0 failed=0 passed=10 | caught=True restored byte-identical=True
+m2 (feedRowOf sets budget on every row, undefined where there is no tick): vitest exit=1 failed=2 passed=144 | guard exit=0 failed=0 passed=10 | caught=True restored byte-identical=True
+m3 (storyTicksOf reads the rows in the order given, not orderedLedger's): vitest exit=1 failed=1 passed=145 | guard exit=0 failed=0 passed=10 | caught=True restored byte-identical=True
+m4 (storyTicksOf accepts an array budget): vitest exit=1 failed=1 passed=145 | guard exit=0 failed=0 passed=10 | caught=True restored byte-identical=True
+m5 (buildStoryView hands the cards no tick): vitest exit=1 failed=1 passed=145 | guard exit=0 failed=0 passed=10 | caught=True restored byte-identical=True
+m6 (buildStoryView decodes null instead of its pacing argument): vitest exit=1 failed=1 passed=145 | guard exit=0 failed=0 passed=10 | caught=True restored byte-identical=True
+m7 (the view's seqs are the rows' seqs in the order given): vitest exit=1 failed=1 passed=145 | guard exit=0 failed=0 passed=10 | caught=True restored byte-identical=True
+m12 (storyView.ts gains an unguarded import after its imports): vitest exit=1 failed=0 passed=141 | guard exit=1 failed=1 passed=9 | caught=True restored byte-identical=True
+m8 (normalizeDashboardPayload carries story: null always): vitest exit=1 failed=1 passed=145 | guard exit=0 failed=0 passed=10 | caught=True restored byte-identical=True
+m9 (_build_story_section's step_ms reads story.chapter_pause_ms): vitest exit=0 failed=0 passed=146 | guard exit=1 failed=2 passed=8 | caught=True restored byte-identical=True
+m11 (_build_dashboard omits the story entry): vitest exit=0 failed=0 passed=146 | guard exit=1 failed=1 passed=9 | caught=True restored byte-identical=True
+m10 (story.step_ms's default is 400): vitest exit=0 failed=0 passed=146 | guard exit=1 failed=3 passed=7 | caught=True restored byte-identical=True
+CONTROL LAST: vitest exit=0 failed=0 passed=146 | guard exit=0 failed=0 passed=10
 ALL MUTATIONS CAUGHT AND RESTORED CLEANLY: True
 REAL_EXIT=0
 ```
-All 11 mutations caught (m1–m9 and m11 by vitest, m9 and m10 also/only by the guard's purity and
-token checks), every restore byte-identical, both controls green. No repair round needed. `git
-worktree remove --force .remedy-wt/f039-r3-mut`, `git worktree prune`; `git worktree list | wc -l`:
-62 (unchanged from step 4's reading, both before and after the run).
+All 12 mutations caught (m1–m8 by vitest; m12 by both vitest's crash and the guard's specifier
+check; m9, m10 and m11 by the Python guards' section/registry/environment-guide checks), every
+restore byte-identical, both controls green. No repair round needed. `git worktree remove --force
+.remedy-wt/f039-r4-mut`, `git worktree prune`; `git worktree list | wc -l`: 62 (unchanged from step
+4's reading, both before and after the run).
 
 ## Authored-text proofs
 
@@ -301,47 +370,31 @@ by `git apply` (both `--check` and the real apply read exit 0).
 
 ## Deviations & assumptions
 
-NO deviation from the block's ordered commit sequence: C1a, C1b, C2, C3, C4, C5, C6 were followed
-exactly, with no dropped step, no reordering and no extra commit — unlike round 2, this round's G5
-run caught all 11 mutations on its first pass, so no test correction was needed before C7.
-`git diff --name-only 1e1d7352d HEAD` (before this commit) named exactly the round's tracked path
-set: the four `.agent/authored/f039-r3-*` copies and the tool, `.agent/live_review.md`,
-`.agent/decisions.md`, `.agent/plan.md`, `storyNarration.test.ts`, the two new files under
-`apps/ui/src/components/story/`, and `tests/ui_contracts/test_story_autoplay.py` — no other file
-under `apps/`, `packages/`, `tests/` or `docs/` was touched, `.agent/prose_slips.md`,
-`.agent/candidates.md`, `.agent/operator_questions.md` and `README.md` were left alone, and
-`docs/roadmap/features/T5_F039.md` was not read this round (T002's clauses came from DECISION F039
-D4 and the block's S3–S4) but was not edited either, per constraint 3.
+COMMIT-ORDER CORRECTION (self-caught, before any push): C4's content (S2 and the Python half of S3)
+was drafted and committed before C3's (S1, the feed row), inverting the block's ordered sequence.
+This was caught before G1–G5 ran or anything was pushed. It was corrected with `git reset --soft
+HEAD~1` (undoing only the wrongly-ordered C4 commit, touching no file content) followed by a plain
+`git reset` (unstaging everything, again touching no file content), then re-committing in the
+correct order: C3 (`68469cfa2`) first, C4 (`d31c2750d`) second, C5 third. No production or test
+content differs from what would have been written had the order been right the first time — every
+file's final bytes are identical to what ruff, vitest and pytest already verified before the
+reordering. The FINAL commit sequence on the branch is exactly the block's bundle, in the block's
+order, with no extra commit and no dropped one; `git diff --name-only 9cd7cbfdf HEAD` (before this
+commit) named exactly the round's tracked path set — the four `.agent/authored/f039-r4-*` copies and
+the tool, `.agent/live_review.md`, `.agent/decisions.md`, `.agent/plan.md`, `apps/ui/src/api/feedRow.ts`,
+`apps/ui/src/api/feedRow.test.ts`, `apps/ui/src/api/types.ts`, `apps/ui/src/api/remedyApi.ts`,
+`apps/ui/src/api/remedyApi.test.ts`, `packages/orchestration/config.py`,
+`packages/orchestration/ui_server.py`, `docs/guides/environment.md`, the two new files under
+`apps/ui/src/components/story/`, `tests/ui_server/test_story_section.py` and
+`tests/ui_contracts/test_story_view.py` — no other file under `apps/`, `packages/`, `tests/` or
+`docs/` was touched, and `.agent/prose_slips.md`, `.agent/candidates.md`,
+`.agent/operator_questions.md` and `README.md` were left alone, per constraint 3.
 
-ASSUMPTION: the block left the exact pacing used in the "unfinished review" golden case (S5's last
-"at least" item) unspecified, so `STORY_PACING_DEFAULT` was used for both the non-reduced-motion and
-reduced-motion assertions there, hand-derived by tracing `readPhases` and `buildStoryChapters` over
-the demo recording's first four rows (spans: build `[0, 1)`, review `[1, 4)`) and confirmed by
-running the actual test before commit (53 vitest cases, all pass). The other "at least" items in S5
-used the pacing the block itself names, 100/1000.
-
-## Item Status
-
-| Item | Status | Reason |
-|---|---|---|
-| C1a | done | 288 insertions (255 + 33), under the 500-line cap |
-| C1b | done | 55 insertions, matches the block's expected reading exactly |
-| C2 | done | records.diff applied clean; numstat matches the block's table exactly; records match the reviewer's simulation byte for byte |
-| C3 | done | R-1099's two goldens written per S1, the `Landed:` line appended per S2 |
-| C4 | done | module written to S3–S4, imports exactly `StoryChapter` and `chapterAt`, purity confirmed |
-| C5 | done | both new test files written, all goldens hand-derived and vitest/pytest-verified before commit |
-| C6 | done | mutation tool added, `m1`–`m11`, following round 2's tool's route |
-| C7 | done | this handback |
-| G1 TRANSPORT | done | all three payload/copy readings MATCH |
-| G2 THE RECORDS | done | all three file readings MATCH, `open_finding_ids` `['R-1098']`→`['R-1099']`, C3's prefix and Landed-line addition confirmed byte-exact |
-| G3 THE CODE | done | ruff clean on the guard and the tool; `storyPacingOf`, `autoplayStep` and C3's two goldens quoted from the commits |
-| G4 THE TESTS | done | 1881 passed, 5 skipped, exit 0; new guard collects 5 nodes; integrity 6/6 pass |
-| G5 THE RED PROOFS | done | one run: all 11 mutations caught, all restored byte-identical, both controls green, exit 0 |
-| G6 TREE AND PUSH | pending | runs after this commit and the push, reported in the worker's final reply |
+No other deviation from the block's ordered commit sequence. The G5 run caught all 12 mutations on
+its first pass, so no test correction was needed before C8.
 
 ## Next
 
-Phase 1 rule 1 first: read `.agent/STOP` from disk. Then the review of round 3, with the resolution
-of R-1099. Then T002's last part: the in-app story mode on the demo recording, the pacing's
-configuration keys, its golden walkthrough and its assumption-log entry. Open findings in the
-ledger: 1 (R-1099, landed and awaiting review). Operator questions open: 1.
+Per Phase 1 rule 1: read `.agent/STOP` from disk first. Then the review of round 4. Then T002's last
+part: the in-app story panel on the demo recording, driving the timeline's scrub, with its golden
+walkthrough and its assumption-log entry. Open findings: 0. Operator questions: 1 (Q6).
