@@ -1,0 +1,173 @@
+diff --git a/.agent/decisions.md b/.agent/decisions.md
+index 52fe82f08..253229b1b 100644
+--- a/.agent/decisions.md
++++ b/.agent/decisions.md
+@@ -25026,3 +25026,74 @@ amend0921-operator-feedback rule 3).
+ 
+ HOW TO REVERSE: delete `chat_generator_line`, `chatGeneratorLine`, the printed line, the tab's
+ line and their tests, and delete this paragraph.
++
++## DECISION F039 D1 — a story's chapters are the phases the phase bar reads over the whole ledger, each holding the bar's own key events in clusters of events at most two seqs apart; a phase with more than six key events splits into parts, and every title comes from one table per phase; the first round lands this as a pure TypeScript module that renders nothing yet (2026-09-28)
++
++CONTEXT: T5_F039.md was written before the phase timeline of F024 and the activity feed of F021
++were built. Measured at `4d60eb84`: `git ls-files apps packages` names no path holding chapter,
++the only paths holding narration or replay are the two Python modules named below, and the design
++reference draws no story mode and no narration card. The phase
++reading the feature file names is `readPhases` in `apps/ui/src/components/timeline/phaseMapping.ts`,
++a pure fold of the event ledger into the bar's six stops, Job, Planning, Build, Test, Review and
++Finalized, in which the phase only moves forward, a phase the ledger skipped has a zero span, and
++Finalized begins where every task has passed. The key events are that module's `extractSubGlyphs`:
++decisions, failures, heals and stops, each carrying the humanize catalog's line for its kind. Both
++are TypeScript with no Python twin. The ledger's rows are the `events-since` cursor endpoint's
++envelopes read by `feedRowOf` in `apps/ui/src/api/feedRow.ts`, and the demo recording is
++`brainDemoRows()` in `apps/ui/src/components/graph/brainDemoRecording.ts`, a two-task job of ten
++events. Two Python modules sit near the feature and do neither of its jobs:
++`packages/orchestration/teacher_narration.py`, F255's deterministic narration of a mission's
++run-log events, and `packages/orchestration/event_replay.py`, the read model a resume uses. The
++certificate the feature file cross-references is not built.
++
++CHOSEN: (1) ONE MODULE, `apps/ui/src/components/story/storyChapters.ts`, pure over the rows it is
++given: no React, no DOM and no clock. It is TypeScript because the in-app story reads the ledger the
++phase bar reads and T003's export bundles the player, so both chapter a ledger with one piece of
++code. (2) A CHAPTER is a phase with a non-zero span in `readPhases` over the WHOLE ledger: from the
++phase's start to the next reached phase's start, the last phase running to one past the ledger's
++last seq. The chapters therefore tile the ledger without a gap, a skipped phase gives no chapter,
++and an empty ledger gives none. (3) THE KEY EVENTS are `extractSubGlyphs` over the same rows, each
++in the chapter whose range holds its seq. (4) A CLUSTER is a run of a chapter's key events in seq
++order in which each comes at most `STORY_CLUSTER_SEQ_GAP`, 2, seqs after the one before; the demo
++recording's review reads two clusters, each a failed review round and its heal. (5) THE SPLIT: a
++phase holding more than `STORY_CHAPTER_KEY_EVENT_LIMIT`, 6, key events becomes parts of six key
++events in order, the last part holding the rest; part one begins at the phase's start, every later
++part at its first key event, each part ends where the next begins, and clusters are read inside a
++part. (6) THE TITLES come from one table, `STORY_CHAPTER_TITLES`: The start, The plan, The build,
++The tests, The review and The finish, and a split phase's parts read `<title>, part <n> of <parts>`.
++A title names the phase and never its outcome, and The finish exists only where every task passed,
++so a failing run is never titled as a good one. The module writes no other sentence. (7) THE
++ROUNDS. The first lands (1) to (6) with vitest goldens on the reducer's fixture ledgers and the demo
++recording, and the guard `tests/ui_contracts/test_story_chapters.py`, which pins the title table to
++the bar's phases and the module's imports and purity. Then T002: the narration card, whose line
++source, the humanize catalog or F255's narration, is settled by the round that lands it; its sync to
++the scrub position; the autoplay pacing with chapter pauses; and the in-app story mode on the demo
++recording, its visual treatment recorded in the assumption log because the reference draws none.
++Then T003: the export command, the font licensing finding before any font is bundled, the size
++budget, the clean-browser test and the docs.
++
++ALTERNATIVES: chaptering in Python and sending chapters to the browser, rejected because the phase
++reading exists only in TypeScript and a second copy would drift from the bar; splitting a dense
++phase by its count of seqs, rejected because a long quiet phase would then split with nothing new to
++tell; clustering by task, rejected because a stop belongs to no task; titles that name an outcome,
++rejected by the feature file's rule against green-washing.
++
++HOW TO REVERSE: delete `apps/ui/src/components/story/`, `tests/ui_contracts/test_story_chapters.py`
++and this paragraph.
++
++## DECISION F039 D2 — the fifth findings paydown, F286, waits behind F039 because again no finding is open when Rule A5 reaches it; F039 is claimed, and the next claim proposes F286 again (2026-09-28)
++
++CONTEXT: At `4d60eb84` the first unchecked line of `docs/roadmap/STATUS.md` is F286 — Findings
++paydown v5, moved behind F038 by DECISION F038 D2. `open_finding_ids` over `.agent/live_review.md`
++at `4d60eb84` answers `[]`.
++
++CHOSEN: F286's STATUS line and its Tier 2 heading move one feature down again, to directly after
++F039, and F039 is claimed now. F286's file gains one line recording the move. Operator question
++Q6 already carries the recommendation this executes, to keep the paydown waiting while no defect
++is open, so no new question is written. The next claim after F039's closure meets F286 first under
++Rule A5 and makes the same test.
++
++ALTERNATIVES: claiming F286 with nothing to pay down, rejected for DECISION F036 D2's reason.
++
++HOW TO REVERSE: move F286's STATUS line and its Tier 2 heading back above F039, delete the line
++this move added to `docs/roadmap/features/T2_F286.md`, and delete this paragraph.
+diff --git a/.agent/live_review.md b/.agent/live_review.md
+index 6960c9fda..1a839311a 100644
+--- a/.agent/live_review.md
++++ b/.agent/live_review.md
+@@ -1,29 +1,29 @@
+-# Live Review — F038 Grounded chat & intent dispatch
+-
+-> Round-by-round review record, re-headed at the F038 claim per
+-> docs/agents/planner_reviewer_prompt.md §1. The heading this replaces named F036, whose STATUS
+-> line went `[x]` at `e7627df8` and whose pull request 291 merged into `main` at the reviewer's
+-> Open PR Gate under docs/agents/self_drive_protocol.md, as `fec08a5b`, after both hosted CI jobs
+-> of run 36395044218 ended `success` on `e7627df8`. `e7627df8` is the second parent of
+-> `fec08a5b`, and the two trees are identical. F036's round 9, its closing round, was reviewed
+-> after its own handback, so its gate entry is appended at the end of this record by F038's
++# Live Review — F039 Story/replay mode
++
++> Round-by-round review record, re-headed at the F039 claim per
++> docs/agents/planner_reviewer_prompt.md §1. The heading this replaces named F038, whose STATUS
++> line went `[x]` at `167163a0` and whose pull request 292 merged into `main` at the reviewer's
++> Open PR Gate under docs/agents/self_drive_protocol.md, as `4d60eb84`, after both hosted CI jobs
++> of run 36462050234 ended `success` on `167163a0`. `167163a0` is the second parent of
++> `4d60eb84`, and the two trees are identical. F038's round 15, its closing round, was reviewed
++> after its own handback, so its gate entry is appended at the end of this record by F039's
+ > claim. Only the heading, this paragraph and the Steps section below are rewritten; everything
+-> from the Findings heading to the end of the file as it stood at `fec08a5b` is carried forward
++> from the Findings heading to the end of the file as it stood at `4d60eb84` is carried forward
+ > BYTE-IDENTICAL, and finding ids continue the monotonic R-XXXX series across the re-head. The
+-> open set at `fec08a5b`, computed with `open_finding_ids` from `scripts/rotate_live_review.py`,
+-> is empty, which is why F038 and not the findings paydown F286 is claimed (DECISION F038 D2).
++> open set at `4d60eb84`, computed with `open_finding_ids` from `scripts/rotate_live_review.py`,
++> is empty, which is why F039 and not the findings paydown F286 is claimed (DECISION F039 D2).
+ 
+ ## Steps
+ 
+-THE ORDER BELOW IS T5_F038.md's Task slicing, read against what earlier features already record
+-by DECISION F038 D1 at the claim. The first round claims F038, re-heads this record, books F036's
+-round 9, registers and repairs R-1091, and lands the node scope of T001:
+-`packages/orchestration/chat_evidence.py` with the evidence item and its anchor, the node-scope
+-collector and the composer that keeps an ordered prefix under the token cap after redaction. The
+-rounds after it land, in order: the project scope over the spec's evidence set with the spec's
+-set-list update; the grounded answer with its citation check, the unsupported marker and the
+-canary suite; T002's intent parse, action cards and confirmation; T003's panel, command line and
+-end-to-end proof. Every round's handback states the open set by distinct id.
++THE ORDER BELOW IS T5_F039.md's Task slicing, read against what earlier features already record
++by DECISION F039 D1 at the claim. The first round claims F039, re-heads this record, books F038's
++round 15 and lands T001: `apps/ui/src/components/story/storyChapters.ts`, the chapters of a job's
++event ledger with their key-event clusters and title templates, its vitest goldens on fixture
++ledgers and the demo recording, and its guard, with nothing rendering it yet. The rounds after it
++land, in order: T002's narration card, its sync to the scrub position, the autoplay pacing and the
++in-app story mode on the demo recording; then T003's export build with the font licensing finding,
++the size budget, the clean-browser test and the docs. Every round's handback states the open set
++by distinct id.
+ 
+ ## Findings
+ DECISION F085 D5, applied at da47ee40, closes "The R44 block is the first measured under this
+@@ -457,3 +457,5 @@ Landed: R-1097 — `tests/ui_contracts/test_chat_citations.py` gains a test that
+ Gate: F038 R13 — the F038 round 13 entry: the booking of round 12, R-1096's resolution, R-1097's recurrence and repair, DECISION F038 D13, the chat guide, the Built State, the checklist consolidation and the closure suite. VERDICT PASS. Re-derived over `1bcb713a`..`185c7adc` by the planner and reviewer of F038's third session, whose own runs produced every reading below. THE RANGE IS 9 COMMITS, at `d2da5bc4` 308, `60c7d72f` 195, `ad43264b` 47, `4b5d4532` 51, `2dde3d61` 93, `57f66e2d` 299, `97f5334e` 162, `20782f1a` 14 and `185c7adc` 227 insertions by `git show --numstat`, each under the 500-line cap and each single-parent; the tracked path set is exactly the block's constraint 3. The worker declared two deviations, each accepted: C1 was split in two under constraint 2, and `20782f1a`, landing after C5, re-pinned the round's own vitest checks of the generator line to literal sentences once its mutation m3 stayed green against a self-referential expectation; the suite ran after it, on the tree that ships. THE TRANSPORT PROOF: the block copy and the four payload copies, read from the commits that added them, equal the reviewer's originals byte for byte. THE RECORDS AND THE DOCUMENTS: at `ad43264b` the ledger, the decisions and the plan, at `2dde3d61` the ledger with its second `Landed: R-1097 — ` line, and at `97f5334e` the feature file, the planner prompt and the steering guide, equal the reviewer's simulation byte for byte; the open set reads `['R-1097']` and the latest verdict PASS at both ledger commits and at `185c7adc`, and the checklist still counts 34 items. THE CODE: ruff reads clean over the five touched Python files and the mutation tool; `chat_generator_line` in `packages/orchestration/chat_answer.py` and `chatGeneratorLine` in `apps/ui/src/api/chatTurn.ts` turn the answer's label into the same four sentences, `remedy chat ask` prints it after its `Scope:` line and the tab shows it under the scope chip. THE TESTS: the block's selection, run by the reviewer serially in the primary checkout at `185c7adc`, read 1668 passed and 5 skipped at exit 0, the base reading of 1664 at `1bcb713a` plus one node each in `tests/orchestration/test_chat_answer.py` and `tests/cli/test_chat_ask.py` and two in `tests/ui_contracts/test_chat_citations.py`; all six `integrity check` checks read pass and the tree held no untracked file. THE CLOSURE SUITE: `.agent/authored/f038-closure-suite.txt` records `python3 -m pytest -n auto -q` at exit 0 with 20542 passed and 20 skipped in 191.59 seconds on `20782f1a`, no bad node, the two reachability guards among the passing, after the UI build; the reviewer read it and, by rule, did not run it again. THE RED PROOFS: the reviewer's own mutations, written against the worker's lines and run in a disposable worktree at `185c7adc`, went red one by one for the six ordered — a `mechanical:` label answered the unknown sentence, the command line's line not printed, the summary sentence changed in TypeScript, the tab's line not rendered, the tab's `sending: true` update deleted, and the Python mechanical sentence changed — and further for the TypeScript fallback and unknown sentences changed, the TypeScript fallback rule dropped and the Python unknown sentence changed. Both controls of both runners read exit 0, the bytes were restored, and the worktree was removed.
+ 
+ Gate: F038 R14 — the F038 round 14 entry: the booking of round 13 and R-1097's resolution, the self-use reading, the evidence bundle and the review package. VERDICT PASS. Re-derived over `185c7adc`..`00102b5c` by the planner and reviewer of F038's third session, whose own runs produced every reading below. THE RANGE IS 3 COMMITS, at `2e7b4cdd` 375, `2fe5345e` 10 and `00102b5c` 156 insertions by `git show --numstat`, each under the 500-line cap and each single-parent; the tracked path set is exactly the block's constraint 3, and the worker declared no deviation. THE TRANSPORT PROOF: the block copy and the three payload copies, read from `2e7b4cdd`, equal the reviewer's originals byte for byte. THE BOOKING: at `2fe5345e`, the accepted head, the ledger and the plan equal the reviewer's simulation byte for byte, and the open set reads `[]` with the latest verdict PASS. THE SELF-USE READING: the generator and the queue both answered `None` and wrote nothing, as the reviewer's own run of the same two calls over the same booking did, so closure precondition 6 reads self-use NONE (queue exhausted). THE BUNDLE: the evidence tool, job `f038r14e1001` at base `fec08a5b`, the fork point, read equal ancestry and plain counts at 92, 1751 node ids collected with 2 deselected, none unsafe, pytest exit 0 with 1748 passed and 3 skipped, an empty `validate_verification_tests` problem list and `is_valid_current_run` True. THE PACKAGE: `remedy-review-20260928-194656-READY_FOR_REVIEW.zip`, read by the reviewer in `/home/decodeux/Repos/remedy-history/zips`, hashes to SHA-256 `98bc29b2c6aa67360bf61f1a85fb4f5583f6552100c2615c918a5b54b426bab4`, passes `testzip`, and its `.review_zip_manifest.json` names base `fec08a5b9a9742eb070cd97d0d96ddc272e3a33f` and head `2fe5345e08ad4b013b8d5a9395e5b1a83b7415f5` with the status READY_FOR_REVIEW. All six `integrity check` checks read pass at `00102b5c`.
++
++Gate: F038 R15 — the F038 round 15 entry, the closing round: the booking of round 14, the ledger rotation, F038's acceptance in STATUS with its README pins, and pull request 292. VERDICT PASS. Reviewed over `00102b5c`..`167163a0` by the planner and reviewer of F038's third session, and every reading below re-taken at F039's claim by the planner and reviewer of F039's first session, whose own runs produced them. THE RANGE IS 4 COMMITS, at `9b209b73` 433, `a049fcb5` 6, `3ae1d873` 46 and `167163a0` 169 insertions by `git show --numstat`, each under the 500-line cap and each single-parent; the tracked path set is exactly the block's constraint 3, the closure commit touches exactly `docs/roadmap/STATUS.md`, `README.md` and `.agent/handoff.md`, and the worker declared no deviation. THE RECORDS at `167163a0`: the ledger, 324035 bytes, SHA-256 `c5087b47aca9fda9700ed8cef540a96246d1d6a82732cd147ad8b52a18475d89`; the archive, 5419927 bytes, `a357195bb7858b96167692f713f194000459f6ef7b5be49ae676e244fb44c379`; `docs/roadmap/STATUS.md`, 56978 bytes, `56c05de0ae64fc7b1053a35ed2615d8993b6a73356424d0e12495208dfdb50ee`; and `README.md`, 43580 bytes, `c72eb620191e93788ca6538e13b4acde7ca5854d1492eacef9d4d4ee3578d963` — each the reading the round's block gave from the third session's simulation. The rotation moved nine gate records and seven finding pairs, and the open set reads `[]`. THE TESTS: the block's selection, run by F039's reviewer at `4d60eb84`, read 512 passed at exit 0, and all six `integrity check` checks read pass there. THE PULL REQUEST: number 292, its body equal to the round's `pr_body.md`, merged at F039's Open PR Gate as `4d60eb84`, after both hosted CI jobs of run 36462050234 ended `success` on `167163a0`; `167163a0` is the second parent of `4d60eb84`, and the two trees are identical.
+diff --git a/docs/roadmap/STATUS.md b/docs/roadmap/STATUS.md
+index c566fbfb3..27b850e90 100644
+--- a/docs/roadmap/STATUS.md
++++ b/docs/roadmap/STATUS.md
+@@ -170,6 +170,7 @@ Milestone R1 — Remedy as the daily tool: Tier 2 complete (F086 as the self-ins
+ - [x] F035 — Ownership ledger (T001–T003 complete; accepted 2026-09-28 · live review PASS — ACCEPTED · Evidence job f035r9e1001 · package remedy-review-20260928-050815-READY_FOR_REVIEW.zip · SHA-256 9b3e3841d2c11725c8a03579fa2a7d5dcb963aac3386faeb5a6ab5517ac2b8aa · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD 7f25c03bddca1d9c08b58821288b7eed42d1e3cb)
+ - [x] F036 — Guided result tour (T001–T003 complete; accepted 2026-09-28 · live review PASS — ACCEPTED · Evidence job f036r8e1001 · package remedy-review-20260928-094901-READY_FOR_REVIEW.zip · SHA-256 e2bd771b3f1c1a52fcc7e73cdae50c4fd4a837107ee5e46b76d79d8b8dffc2f4 · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD 153537dc8e5a6bb7061f220cdeaffbc1829d3067)
+ - [x] F038 — Grounded chat & intent dispatch (T001–T003 complete; accepted 2026-09-28 · live review PASS — ACCEPTED · Evidence job f038r14e1001 · package remedy-review-20260928-194656-READY_FOR_REVIEW.zip · SHA-256 98bc29b2c6aa67360bf61f1a85fb4f5583f6552100c2615c918a5b54b426bab4 · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD 2fe5345e08ad4b013b8d5a9395e5b1a83b7415f5)
++- [~] F039 — Story/replay mode
+ 
+ ## Tier 2 — Findings paydown (rolling, operator rule amend0911-feedback)
+ 
+@@ -177,7 +178,6 @@ Milestone R1 — Remedy as the daily tool: Tier 2 complete (F086 as the self-ins
+ 
+ ## Tier 5 — Operator Cockpit (parallel human track, continued)
+ 
+-- [ ] F039 — Story/replay mode
+ - [ ] F041 — Artifact preview
+ - [ ] F042 — Multi-project cockpit
+ - [ ] F043 — Explanation layer
+diff --git a/docs/roadmap/features/T2_F286.md b/docs/roadmap/features/T2_F286.md
+index eb19e2ccc..f560d5644 100644
+--- a/docs/roadmap/features/T2_F286.md
++++ b/docs/roadmap/features/T2_F286.md
+@@ -11,6 +11,8 @@
+ > Rule A5 reached it; the next claim after F036's closure meets it first.
+ > Moved behind F038 on 2026-09-28 by DECISION F038 D2, because the open set was
+ > again empty when Rule A5 reached it; the next claim after F038's closure meets it first.
++> Moved behind F039 on 2026-09-28 by DECISION F039 D2, because the open set was
++> again empty when Rule A5 reached it; the next claim after F039's closure meets it first.
+ 
+ ## Goal & Done
+ Pay down the open findings that describe a real defect, each by the repair its own text names,
