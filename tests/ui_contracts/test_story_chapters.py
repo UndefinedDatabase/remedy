@@ -12,6 +12,8 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
+from tests.ui_contracts.test_phase_mapping import ts_import_specifiers
+
 ROOT = Path(__file__).resolve().parent.parent.parent
 TIMELINE = ROOT / "apps" / "ui" / "src" / "components" / "timeline" / "phaseMapping.ts"
 MODULE = ROOT / "apps" / "ui" / "src" / "components" / "story" / "storyChapters.ts"
@@ -63,7 +65,7 @@ def test_the_title_table_s_values_are_the_six_titles():
 
 def test_the_module_imports_exactly_the_two_specifiers_of_s1():
     src = _strip_comments(MODULE.read_text(encoding="utf-8"))
-    imports = re.findall(r'^import [^;]*from "([^"]+)";$', src, re.MULTILINE)
+    imports = ts_import_specifiers(src)
     assert sorted(set(imports)) == ["../graph/brainOntology", "../timeline/phaseMapping"]
 
 
