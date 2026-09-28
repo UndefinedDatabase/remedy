@@ -24918,3 +24918,43 @@ non-zero for a card left unsent, rejected because nothing failed: the card is th
 HOW TO REVERSE: delete the `chat.ask` entry, its handler and its tests, the registry lookup in
 `ui.py`, the guide row and the six allowlist lines; restore the two `ALLOWED_UNWIRED` lines; and
 delete this paragraph.
+
+## DECISION F038 D11 — the cockpit asks a chat turn through a read route, `GET /api/jobs/<job_id>/chat?text=<line>&task=<task id>`, answered in the one wire shape `chat_turn_view` gives the command line too; the route sends nothing, and a card is confirmed through the write door the panel already posts to (2026-09-28)
+
+CONTEXT: Measured at `c1c3f636`. The cockpit is one server per job, and `_RemedyHandler` in
+`packages/orchestration/ui_server.py` has exactly one mutating route, `POST
+/api/jobs/<job_id>/commands`; every other POST, PUT and DELETE answers 405, which
+`tests/ui_server/test_command_channel.py` walks route by route.
+`tests/ui_server/test_handler_table_walk.py` requires every job endpoint `do_GET` names to answer
+200 for a real job with no query. The spec's stage 2 names `/api/projects/{pid}/chat` and
+`/api/projects/{pid}/chat/intent`; it was written before the cockpit served one job and before
+DECISION F038 D7 routed a confirmed card through the write door. `run_chat_turn` sends nothing
+(DECISION F038 D9), and `remedy chat ask --json` built its own fields in
+`apps/cli/commands/chat_cmd.py`. DECISION F036 D5 is the precedent for one view two doors serve:
+`tour_view` answers both `job show` and the cockpit's `tour` route.
+
+CHOSEN: (1) A READ ROUTE. `GET /api/jobs/<job_id>/chat` with the query parameters `text` and
+`task`, behind the token every GET needs, runs one chat turn and answers 200. It is a GET because
+a turn sends nothing, so the write door stays the only route that changes anything. (2) ONE WIRE
+SHAPE. `chat_turn_view(turn)` in `packages/orchestration/chat_turn.py` gives an answer as its
+kind, scope, subject, question, generator, sentences (text, citations, supported, problem),
+evidence (number from 1, kind, ref, text) and omitted count, and a card as its kind, verb, title,
+lines, args, missing and confirmable. The route answers `available` true beside it, and `remedy
+chat ask --json` emits it with the job id, a card adding `sent`, `door` and `not_sent_reason`.
+(3) DATA AT 200. An empty or blank `text` answers `available` false with `reason` `empty_text`,
+and a `task` naming no task of the job answers `available` false with `reason` `unknown_task`,
+as the task-run routes answer an unknown task. (4) CONFIRMING. The panel confirms a card by
+posting its verb and args to the write door through the command client it already uses, with its
+own nonce; the route returns neither a nonce nor a request body. (5) THE SPEC. Its stage-2
+endpoint line stays as written, because the feature file allows no spec change outside the
+evidence-set list; this DECISION records the deviation for the closure's conformance review.
+
+ALTERNATIVES: a `POST /api/jobs/<job_id>/chat`, rejected because a second POST route breaks the
+single write door and the 405 walk; a project route, rejected because the cockpit serves one job
+and the project scope is reached through the job's repository (DECISION F038 D9); returning a
+ready request body with a nonce, rejected because the nonce belongs to the sender, whose command
+client already mints and retries it.
+
+HOW TO REVERSE: delete the route and its builder, `chat_turn_view` and the route's tests, restore
+the command line's own `--json` fields, drop the chat path from the 405 walk, and delete this
+paragraph.

@@ -13,16 +13,16 @@ command (`docs/roadmap/features/T5_F038.md`, the spec
 
 ## Current Step
 
-ROUND 9: book round 8, resolve R-1092, register and repair R-1093, then
-`remedy chat ask`, which answers a question or sends a confirmed card
-through the running cockpit (DECISION F038 D10).
+ROUND 10: book round 9, resolve R-1093, register and repair R-1094, then
+the cockpit's read route that answers one chat turn in the wire shape the
+command line shares (DECISION F038 D11).
 
 ## Next Steps
 
-1. Review round 9.
-2. T003: the cockpit panel asks the same chat turn through a route and
-   confirms a card through the write door.
-3. T003: the end-to-end proof and the DOM citation audit; closure.
+1. Review round 10.
+2. T003: the cockpit's chat panel: messages, citation chips, unsupported
+   marks and cards confirmed through the write door, with the DOM audit.
+3. T003: the end-to-end proof; closure.
 
 ## Risks
 
