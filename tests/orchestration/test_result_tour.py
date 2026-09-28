@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import json
 import logging
+import types
 from pathlib import Path
 
 import pytest
@@ -24,14 +25,20 @@ from packages.orchestration.result_tour import (
     MAX_TOUR_STOPS,
     TOUR_ANCHOR_KINDS,
     TOUR_BODY_MAX_CHARS,
+    TOUR_GENERATOR_SUMMARY_ROLE,
+    TOUR_NO_SOUND_STOPS,
     TOUR_SCHEMA,
     TourAnchorContext,
     build_fallback_tour,
+    build_tour_prompt,
     collect_tour_context,
+    generate_result_tour,
     resolve_tour_stops,
+    tour_call_fn,
     tour_problems,
+    tour_source_text,
 )
-from packages.orchestration.run_report import write_final_report
+from packages.orchestration.run_report import build_report_sources, write_final_report
 
 pytestmark = pytest.mark.integration
 
@@ -448,3 +455,277 @@ def test_two_builds_over_the_same_records_are_equal():
 def test_the_schema_and_anchor_kinds_match_the_design():
     assert TOUR_SCHEMA == "remedy.tour.v1"
     assert TOUR_ANCHOR_KINDS == ("node", "diff", "evidence", "command")
+
+
+# ---------------------------------------------------------------------------
+# F036 T002 (first half) — generation through the summary role
+# ---------------------------------------------------------------------------
+
+
+def _generation_job() -> JobPlan:
+    """A finished job with a report, a one-file diff and a passing gate."""
+    job = _make_job(
+        state=RunState.COMPLETED,
+        tasks=[TaskEntry(title="write the module", status=RunState.COMPLETED,
+                         acceptance="tests pass")],
+        metadata={"target_repo": "/tmp/repo", "cycle_terminal_status": "all_green"},
+    )
+    _write_diff(str(job.job_id), _one_file_diff("packages/orchestration/foo.py"))
+    write_final_report(job)
+    _write_gate(str(job.job_id), [_make_check("c1", command="python3 -m pytest -q")],
+               released=True)
+    return job
+
+
+def _clean_stop(title: str, body: str, task_id: str) -> dict:
+    return {"title": title, "body": body, "anchor": {"kind": "node", "ref": task_id}}
+
+
+def _fake_call_fn(response_text: str):
+    def _call(prompt: str, attempt: int) -> str:
+        return response_text
+    return _call
+
+
+# 13. no call function gives exactly build_fallback_tour's answer.
+
+
+def test_generate_with_no_call_fn_matches_build_fallback_tour():
+    job = _generation_job()
+    assert generate_result_tour(job, call_fn=None) == build_fallback_tour(job)
+
+
+# 14. three sound model stops: generator summary-role, mechanical first stop
+#     kept first, the three model stops following it in order.
+
+
+def test_three_sound_model_stops_follow_the_mechanical_first_stop():
+    job = _generation_job()
+    task_id = str(job.tasks[0].task_id)
+    stops = [
+        _clean_stop("Task summary", "The task write the module is complete.", task_id),
+        _clean_stop("Task summary two", "Status is completed for this task.", task_id),
+        _clean_stop("Task summary three", "This task finished successfully.", task_id),
+    ]
+    fake = _fake_call_fn(json.dumps({"stops": stops}))
+
+    tour = generate_result_tour(job, call_fn=fake)
+
+    assert tour_problems(tour) == []
+    assert tour["generator"] == TOUR_GENERATOR_SUMMARY_ROLE
+    assert tour["dropped"] == []
+    assert tour["stops"][0]["title"] == "How the run ended"
+    assert [s["title"] for s in tour["stops"][1:]] == [
+        "Task summary", "Task summary two", "Task summary three"]
+
+
+# 15. a number, a backtick span, a path and a denylisted word are each
+#     dropped with a reason naming them, while two clean stops survive.
+
+
+def test_each_kind_of_new_claim_is_dropped_with_a_naming_reason():
+    job = _generation_job()
+    task_id = str(job.tasks[0].task_id)
+    number_stop = _clean_stop("Number claim", "This closed 42 issues today.", task_id)
+    backtick_stop = _clean_stop(
+        "Backtick claim", "It touched `nonexistent_symbol` directly.", task_id)
+    path_stop = _clean_stop("Path claim", "It also updated some/other/file.py.", task_id)
+    word_stop = _clean_stop("Word claim", "Seamlessly finished the task.", task_id)
+    good_one = _clean_stop("Good one", "The task write the module is complete.", task_id)
+    good_two = _clean_stop("Good two", "Status is completed for this task.", task_id)
+    fake = _fake_call_fn(json.dumps({"stops": [
+        number_stop, backtick_stop, path_stop, word_stop, good_one, good_two]}))
+
+    tour = generate_result_tour(job, call_fn=fake)
+
+    assert tour_problems(tour) == []
+    assert tour["generator"] == TOUR_GENERATOR_SUMMARY_ROLE
+    reasons = {d["title"]: d["reason"] for d in tour["dropped"]}
+    assert "42" in reasons["Number claim"]
+    assert "nonexistent_symbol" in reasons["Backtick claim"]
+    assert "some/other/file" in reasons["Path claim"]
+    assert "seamlessly" in reasons["Word claim"]
+    assert [s["title"] for s in tour["stops"]] == ["How the run ended", "Good one", "Good two"]
+
+
+# 16. a stop anchored to an unknown task is dropped by the resolver, not the
+#     claim check.
+
+
+def test_a_stop_anchored_to_an_unknown_task_is_dropped_by_the_resolver():
+    job = _generation_job()
+    task_id = str(job.tasks[0].task_id)
+    good = _clean_stop("Good stop", "The task write the module is complete.", task_id)
+    unknown_anchor = {
+        "title": "Unknown anchor", "body": "This references something else entirely.",
+        "anchor": {"kind": "node", "ref": "not-a-real-task"},
+    }
+    fake = _fake_call_fn(json.dumps({"stops": [good, unknown_anchor]}))
+
+    tour = generate_result_tour(job, call_fn=fake)
+
+    assert tour_problems(tour) == []
+    reason = next(d["reason"] for d in tour["dropped"] if d["title"] == "Unknown anchor")
+    assert "does not resolve" in reason
+
+
+# 17. nine sound model stops keep exactly eight stops in all, dropping the
+#     rest past the ceiling.
+
+
+def test_nine_sound_model_stops_keep_eight_in_all():
+    job = _generation_job()
+    task_id = str(job.tasks[0].task_id)
+    # Letters, not digits: a digit in the title would itself be read as a
+    # number claim by tour_claim_problems, which scans title AND body.
+    letters = "ABCDEFGHI"
+    stops = [_clean_stop(f"Filler {letter}", "This restates status completed for the task.",
+                          task_id) for letter in letters]
+    fake = _fake_call_fn(json.dumps({"stops": stops}))
+
+    tour = generate_result_tour(job, call_fn=fake)
+
+    assert tour_problems(tour) == []
+    assert tour["generator"] == TOUR_GENERATOR_SUMMARY_ROLE
+    assert len(tour["stops"]) == MAX_TOUR_STOPS
+    assert tour["stops"][0]["title"] == "How the run ended"
+    assert [s["title"] for s in tour["stops"][1:]] == [f"Filler {letter}" for letter in letters[:7]]
+    assert len(tour["dropped"]) == 2
+    assert all("ceiling" in d["reason"] for d in tour["dropped"])
+
+
+# 18. every model stop dropped gives fallback:no_sound_stops, publishing the
+#     mechanical tour, with the drops listed.
+
+
+def test_every_stop_dropped_gives_the_no_sound_stops_fallback():
+    job = _generation_job()
+    task_id = str(job.tasks[0].task_id)
+    bad_one = _clean_stop("Bad one", "This closed 42 issues today.", task_id)
+    bad_two = _clean_stop("Bad two", "Seamlessly wrapped up.", task_id)
+    fake = _fake_call_fn(json.dumps({"stops": [bad_one, bad_two]}))
+
+    tour = generate_result_tour(job, call_fn=fake)
+
+    assert tour_problems(tour) == []
+    assert tour["generator"] == f"fallback:{TOUR_NO_SOUND_STOPS}"
+    dropped_titles = [d["title"] for d in tour["dropped"]]
+    assert "Bad one" in dropped_titles
+    assert "Bad two" in dropped_titles
+    assert tour["stops"] == build_fallback_tour(job)["stops"]
+
+
+# 19. a call_fn raising RuntimeError, one raising OSError, and one answering
+#     unparseable text each fall back without raising; the unparseable one is
+#     called twice, and on_call fires once per real call.
+
+
+def test_provider_errors_and_unparseable_text_fall_back_without_raising():
+    job = _generation_job()
+
+    def raises_runtime(prompt: str, attempt: int) -> str:
+        raise RuntimeError("boom")
+
+    def raises_os(prompt: str, attempt: int) -> str:
+        raise OSError("boom")
+
+    tour_rt = generate_result_tour(job, call_fn=raises_runtime)
+    assert tour_problems(tour_rt) == []
+    assert tour_rt["generator"].startswith("fallback:")
+
+    tour_os = generate_result_tour(job, call_fn=raises_os)
+    assert tour_problems(tour_os) == []
+    assert tour_os["generator"].startswith("fallback:")
+
+    calls: list[int] = []
+
+    def unparseable(prompt: str, attempt: int) -> str:
+        calls.append(attempt)
+        return "not json at all"
+
+    on_call_log: list[int] = []
+
+    def on_call(attempt: int, schema_v: str, is_retry: bool, prompt: str) -> None:
+        on_call_log.append(attempt)
+
+    tour_bad = generate_result_tour(job, call_fn=unparseable, on_call=on_call)
+    assert tour_problems(tour_bad) == []
+    assert tour_bad["generator"].startswith("fallback:")
+    assert len(calls) == 2
+    assert len(on_call_log) == 2
+
+
+# 20. the prompt holds the source text, every allowed anchor line, and the
+#     numeral 7 (MAX_TOUR_STOPS - 1).
+
+
+def test_the_prompt_holds_source_text_anchor_lines_and_the_numeral_seven():
+    job = _generation_job()
+    context = collect_tour_context(job)
+    sources = build_report_sources(job)
+    source_text = tour_source_text(job, sources, context)
+
+    prompt = build_tour_prompt(source_text, context)
+
+    assert source_text in prompt
+    for task_id in context.task_ids:
+        assert f"node {task_id}" in prompt
+    for path, _added, _deleted in context.diff_files:
+        assert f"diff {path}" in prompt
+    for name in context.evidence_files:
+        assert f"evidence {name}" in prompt
+    for command in context.run_commands:
+        assert f"command {command}" in prompt
+    assert "7" in prompt
+
+
+# 21. the source text lists a task's acceptance and each changed file with
+#     its counts.
+
+
+def test_source_text_lists_task_acceptance_and_changed_file_counts():
+    job = _generation_job()
+    context = collect_tour_context(job)
+    sources = build_report_sources(job)
+
+    source_text = tour_source_text(job, sources, context)
+
+    assert "acceptance: tests pass" in source_text
+    assert "changed file packages/orchestration/foo.py (+1 −0)" in source_text
+
+
+# 22. tour_call_fn asks resolve_role_config for "summary" and hands
+#     GeneratedTourContent to make_structured_call_fn; answers None under the
+#     suite's refused Ollama.
+
+
+def test_tour_call_fn_asks_resolve_role_config_and_make_structured_call_fn(monkeypatch):
+    import packages.orchestration.result_tour as result_tour_module
+
+    calls: dict[str, object] = {}
+
+    def fake_resolve_role_config(role):
+        calls["role"] = role
+        return types.SimpleNamespace(model="fake-model")
+
+    def fake_make_structured_call_fn(model_cls, *, model=None, provider=None):
+        calls["model_cls"] = model_cls
+        calls["model"] = model
+        return None
+
+    monkeypatch.setattr(result_tour_module, "resolve_role_config", fake_resolve_role_config)
+    monkeypatch.setattr(
+        result_tour_module, "make_structured_call_fn", fake_make_structured_call_fn)
+
+    result = result_tour_module.tour_call_fn()
+
+    assert result is None
+    assert calls["role"] == "summary"
+    assert calls["model_cls"] is result_tour_module.GeneratedTourContent
+    assert calls["model"] == "fake-model"
+
+
+def test_tour_call_fn_returns_none_under_the_suites_refused_ollama():
+    # tests/conftest.py::_no_live_ollama_reach (autouse) already refuses a
+    # live Ollama connection for every unmarked test.
+    assert tour_call_fn() is None
