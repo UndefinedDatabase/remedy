@@ -80,9 +80,9 @@ ALLOWED_UNWIRED: tuple[tuple[str, str], ...] = (
     ("packages/orchestration/chat_answer.py",
      "F038's grounded answer, the citation check and the mechanical answer; the chat command wires "
      "it in a later round (DECISION F038 D4) and removes this line"),
-    ("packages/orchestration/chat_intent.py",
-     "F038's intent parse, action cards and their door payload; the chat command wires it "
-     "in a later round (DECISION F038 D6) and removes this line"),
+    ("packages/orchestration/chat_door.py",
+     "F038's send of a confirmed chat card through the write door; the chat command wires it "
+     "in a later round (DECISION F038 D7) and removes this line"),
     ("packages/orchestration/ci_budgets.py",
      "the zero-findings lint rule the `budgets` CI stage's tests/orchestration/test_ci_budgets.py applies "
      "(DECISION amend0911-feedback D7)"),
