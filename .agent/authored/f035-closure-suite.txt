@@ -1,0 +1,6 @@
+Command: python3 -m pytest -n auto -q
+Real exit code: 0
+Wall time: 172.30s (0:02:52)
+Summary line: 20294 passed, 20 skipped, 1 warning in 172.30s (0:02:52)
+Bad node ids (failed plus errors): NONE
+Tree: C5 106e7db61
