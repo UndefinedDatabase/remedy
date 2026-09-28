@@ -6,13 +6,16 @@ import {
   TOUR_UNREADABLE_LINE,
   decodeTourView,
   tourAnchorLabel,
+  tourCanShow,
+  tourDiffRowKey,
+  tourGeneratorLabel,
   tourNeighbours,
   tourPanelState,
   tourProgress,
   tourStepLabel,
   tourViewPath,
 } from "./resultTour";
-import { loadTourView } from "./remedyApi";
+import { diffEnvelopePath, loadTourView } from "./remedyApi";
 
 function stop(overrides: Record<string, unknown> = {}): Record<string, unknown> {
   return {
@@ -150,6 +153,53 @@ describe("tourAnchorLabel", () => {
 
   it("names every kind in TOUR_ANCHOR_KINDS", () => {
     expect(TOUR_ANCHOR_KINDS).toEqual(["node", "diff", "evidence", "command"]);
+  });
+});
+
+describe("tourGeneratorLabel", () => {
+  it("credits the summary model when it wrote the tour", () => {
+    expect(tourGeneratorLabel("summary-role"))
+      .toBe("Written by the summary model and checked against the job's records");
+  });
+
+  it("reads mechanical for any other generator", () => {
+    expect(tourGeneratorLabel("fallback")).toBe("Built from the job's records");
+    expect(tourGeneratorLabel("")).toBe("Built from the job's records");
+  });
+});
+
+describe("tourCanShow", () => {
+  it("holds for a node and a diff anchor", () => {
+    expect(tourCanShow({ kind: "node", ref: "T1" })).toBe(true);
+    expect(tourCanShow({ kind: "diff", ref: "a.py" })).toBe(true);
+  });
+
+  it("fails for an evidence and a command anchor", () => {
+    expect(tourCanShow({ kind: "evidence", ref: "report.md" })).toBe(false);
+    expect(tourCanShow({ kind: "command", ref: "pytest" })).toBe(false);
+  });
+});
+
+describe("tourDiffRowKey", () => {
+  const summaries = [
+    { path: "a.py", rowKey: "file:0" },
+    { path: "b.py", rowKey: "file:1" },
+    { path: "a.py", rowKey: "file:2" },
+  ];
+
+  it("answers the FIRST matching summary's key", () => {
+    expect(tourDiffRowKey(summaries, "a.py")).toBe("file:0");
+  });
+
+  it("answers null when no summary names the path", () => {
+    expect(tourDiffRowKey(summaries, "c.py")).toBeNull();
+  });
+});
+
+describe("diffEnvelopePath's job scope", () => {
+  it("reads the job's whole diff for an empty task id", () => {
+    expect(diffEnvelopePath({ jobId: "j1", token: "tok", taskId: "" }))
+      .toBe("/api/jobs/j1/diff?token=tok");
   });
 });
 
