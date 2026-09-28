@@ -13,16 +13,17 @@ command (`docs/roadmap/features/T5_F038.md`, the spec
 
 ## Current Step
 
-ROUND 11: book round 10, resolve R-1094, register and repair R-1095, then
-the evidence panel's Chat tab with citation chips, unsupported marks,
-cards confirmed through the write door and the DOM audit (DECISION F038
-D12).
+ROUND 12: book round 11, resolve R-1095, register and repair R-1096 and
+R-1097, then T003's end-to-end proof: a question answered with its
+citations, "stop that task" as a card, the card confirmed through the
+write door, and the job stopping with its one audit line.
 
 ## Next Steps
 
-1. Review round 11.
-2. T003: the end-to-end proof: ask, a cited answer, a stop card
-   confirmed, the job stopping with its audit line; closure.
+1. Review round 12.
+2. The closure sequence: the user guide's chat paragraph, the feature's
+   Built State and conformance review, the one full suite, the evidence
+   package, the STATUS flip and the pull request.
 
 ## Risks
 
