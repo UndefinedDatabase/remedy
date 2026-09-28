@@ -10,6 +10,8 @@ import { decodeOwnershipView, ownershipViewPath } from "./ownership";
 import type { OwnershipView } from "./ownership";
 import { decodeTourView, tourViewPath } from "./resultTour";
 import type { TourView } from "./resultTour";
+import { decodeChatTurn, chatTurnPath } from "./chatTurn";
+import type { ChatTurnView } from "./chatTurn";
 import { decodeTaskRunRounds, taskRunRoundsPath } from "./taskRunRounds";
 import type { TaskRunRounds } from "./taskRunRounds";
 import type { PipelineStep, PipelineStepState, RemedyActivityItem, RemedyContinuationSummary, RemedyDashboard, RemedyGraphEdge, RemedyGraphNode, RemedyJourneyItem, RemedyMetric, RemedyNextAction, RemedyPause, RemedyPhase, RemedyPipeline, RemedyPromptKind, RemedyPromptRole, RemedyPromptTraceItem, RemedyPromptTraceSummary, RemedySnapshotSummary, RemedyState, RemedyTaskAttempt, RemedyTaskItem, RemedyTaskSpec, RemedyTaskSpecFields, RemedyTaskSpecs, RemedyTaskSpecVersion, RemedyTimelineEvent, RemedyTimelineEventKind, RemedyTimelinePhase, RemedyVetoEntry, RemedyVetoes } from "./types";
@@ -1037,6 +1039,28 @@ export async function loadTourView(
 ): Promise<TourView | null> {
   try {
     return decodeTourView(await fetchPayload(tourViewPath(request)));
+  } catch {
+    return null;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// The chat door (F038 T003, DECISION F038 D12), shaped exactly like the tour
+// door above: one injected fetcher, one decoder, and no throw.
+// ---------------------------------------------------------------------------
+
+/** How the chat door reaches the network; a test hands `loadChatTurn` a fake. */
+export type ChatTurnFetcher = (path: string) => Promise<unknown>;
+
+/** Read one chat turn through the single door. NEVER THROWS: a failed read and a turn the
+ *  decoder refuses both answer `null`, which the tab renders as unreadable rather than the
+ *  server's own error text. */
+export async function loadChatTurn(
+  request: { jobId: string; token: string; text: string; taskId: string; baseUrl?: string },
+  fetchPayload: ChatTurnFetcher = fetchJson,
+): Promise<ChatTurnView | null> {
+  try {
+    return decodeChatTurn(await fetchPayload(chatTurnPath(request)));
   } catch {
     return null;
   }
