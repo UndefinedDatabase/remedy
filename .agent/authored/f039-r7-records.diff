@@ -1,0 +1,61 @@
+diff --git a/.agent/decisions.md b/.agent/decisions.md
+index 31240a6b5..875cf319e 100644
+--- a/.agent/decisions.md
++++ b/.agent/decisions.md
+@@ -25247,3 +25247,42 @@ graph has not drawn.
+ 
+ HOW TO REVERSE: delete `storyPlayer.ts`, `StoryPanel.tsx` and its CSS module, their tests and render
+ files, the Story button, the shell's state and mount, the assumption-log line and this paragraph.
++
++## DECISION F039 D7 — the export is one HTML file: the existing UI build gains the story player as a second page, and `remedy job story <id> --export <file>` inlines that page's built script and style with the job's story data as inline JSON under a fixed schema; no font is bundled; the file must fit a configured size; and it plays from `file://` with no network request (2026-09-29)
++
++CONTEXT: T5_F039.md T003 asks for `remedy job story <id> --export story.html`: one self-contained
++file holding the envelope subset, the player and its assets, a size budget, oversized evidence linked
++and not inlined, a font licensing finding before any font is bundled, and a clean-browser test with
++zero network requests; and it asks the exporter to refuse a mismatched envelope version honestly.
++Measured at `622ec045`: `apps/ui/vite.config.ts` builds one page, `index.html`, into `apps/ui/dist`,
++and the cockpit's server builds that with `npm run build` when `dist` is missing; the only new npm
++package is forbidden, since no command may run npm by hand. `docs/ui/design_reference/assets_spec.md`,
++the asset authority, records that the UI loads no font file, forbids remote font imports, committed
++font binaries and "base64 fonts in CSS", and names system stacks as every font's fallback. The
++cockpit's event stream sends each run-log event as `_safe_event_summary(seq, event)`, the ownership
++route answers `ownership_view(job)`, and the dashboard carries the task list, the live state and the
++story section. A story holds events only; the job's evidence files are not part of it.
++
++CHOSEN: (1) THE DATA, this round: `packages/orchestration/story_export.py`'s `build_story_payload`
++answers `{"schema": "remedy.story.v1", "job_id", "dashboard": {tasks, live, story}, "frames": [{seq,
++event}], "ownership"}`, every part from the cockpit's own builders, so a story file holds nothing the
++cockpit does not already serve; `apps/ui/src/components/story/storyExport.ts`'s `decodeStoryExport`
++reads it back with the cockpit's own `normalizeDashboardPayload`, `feedRowOf` and
++`decodeOwnershipView`, and refuses another schema by naming it and anything unreadable with one plain
++line; a guard holds the schema to one string in both languages. (2) THE PLAYER, next round: a second
++page of the same vite build, `story.html`, mounting the phase bar and the story panel over the
++embedded data, with no fetch and no route. (3) THE EXPORT, next round: `remedy job story <id>
++--export <file>` builds the payload, reads the built player page, inlines its script and style and
++the payload as JSON into one file, and refuses when the result is larger than a configured budget
++rather than cutting the story. (4) FONTS: none; the exported page uses the system stacks the tokens
++already fall back to, which is the asset authority's own rule, so no licence question arises. (5) THE
++PROOF, the round after: a headless browser opens the exported file from `file://` with its network
++recorded, and must see zero requests; then the docs.
++
++ALTERNATIVES: a new bundling package, rejected because no round may install one; linking the cockpit's
++own served assets, rejected because the file must play without Remedy; inlining fonts, rejected by
++the asset authority; dropping events to meet the budget, rejected because a story missing its middle
++is not the job's story.
++
++HOW TO REVERSE: delete `story_export.py`, `storyExport.ts`, their tests and guard line, and this
++paragraph.
+diff --git a/.agent/live_review.md b/.agent/live_review.md
+index 068731519..b8892cbb0 100644
+--- a/.agent/live_review.md
++++ b/.agent/live_review.md
+@@ -491,3 +491,9 @@ Done: R-1100 — RESOLVED at `0bbf1154` (F039 R5 C3), booked by F039 R6: the doc
+ - R-1101 — Medium, THE STORY PANEL'S AUTOPLAY STALLS WHILE ITS HOST RE-RENDERS FASTER THAN ONE STEP, SO THE STORY OF A RUNNING JOB DOES NOT PLAY. Raised by the planner and reviewer of F039's first session at the round 5 gate. SEARCHED BEFORE MINTING (checklist item 30): the open set at `bfa50f96` holds R-1100 alone, which is about docstrings, and the panel is new in that round. MEASURED at `bfa50f96`: the timer effect of `StoryPanel` in `apps/ui/src/components/story/StoryPanel.tsx` lists `scrub` among its dependencies, and `useTimelineScrub` answers a new object on every render, so every render of the shell clears the pending step and schedules it again from the start; `RemedyShell` renders again on every stream frame of a running job. The reviewer's probe, a copy of the round's render harness whose host re-renders every 50 ms, pressed Play from the review chapter and read the button at Pause with no position advanced in three seconds. Keying the timer on the view instead is not enough: a second probe that also appends a ledger row every 200 ms stalled such a version at the 210-millisecond step into the last chapter, because each new row builds a new view. WHY MEDIUM: autoplay, the feature's own acceptance, fails for exactly the jobs the feature file says play their recorded prefix. FIX: the timer effect depends only on `playing`, the position, the reduced-motion setting and `scrub.scrubTo`, which `useTimelineScrub` keeps stable, and reads the latest view through a ref updated after every render; the contract guard pins that dependency list; and the render proof gains a check in which the host re-renders every 50 ms and appends a row every 200 ms while Play still walks from the review chapter to the last event. Owner: F039.
+ 
+ Landed: R-1101 — the timer effect in `StoryPanel.tsx` now reads the latest story view through a ref (`viewRef`) kept current by an effect with no dependency list, and re-arms only on `playing`, `position`, `reducedMotion` and the scrub's own `scrubTo` (stable, destructured out of `scrub`), so the host's own re-renders and a growing ledger no longer clear a pending step before it fires; the contract guard pins the exact dependency line and `viewRef.current`, and the render proof gains a ninth check, C-i, in which the host re-renders every 50 ms and gains a ledger row every 200 ms while Play still walks past the ledger's original last event.
++
++Gate: F039 R6 — the F039 round 6 entry, the repair of round 5: the booking of its FAIL with R-1100's resolution, R-1101's registration and repair, and the story panel proved under churn in the headless render. VERDICT PASS. Re-derived over `bfa50f96`..`622ec045` by the planner and reviewer of F039's first session, whose own runs produced every reading below. THE RANGE IS 8 COMMITS, at `593142c5` 242, `c8e7b6ec` 14, `3395de94` 13, `c87039df` 37, `01f280f5` 341, `0a280fc9` 358, `3b204a26` 164 and `622ec045` 265 insertions by `git show --numstat`, each under the 500-line cap and each single-parent; the worker split the block's C4 in two under constraint 2, copied three harness files unchanged and moved the screenshot under its own directory, and declared all three; the tracked path set is exactly the block's constraint 3. THE TRANSPORT PROOF: the block copy and the two payload copies, read at `622ec045`, equal the reviewer's originals byte for byte. THE RECORDS: at `3395de94` the ledger and the plan equal the reviewer's simulation byte for byte, the open set reads `['R-1101']` and the latest verdict `FAIL`; `c87039df` adds to the ledger exactly one line beginning `Landed: R-1101 — `. THE CODE matches S1 and S2: the timer reads the view through `viewRef`, which an effect with no dependency list keeps current, and depends on exactly `playing`, the position, the reduced-motion setting and `scrubTo`. THE TESTS: the block's G4 selection, run serially by the reviewer in the primary checkout at `622ec045`, read 2246 passed and 5 skipped at exit 0; all six `integrity check` checks read pass, the verdict check reading the booked FAIL; ruff reads clean; the worker's render harness, re-run by the reviewer in the primary checkout, read 9 of 9 checks. THE RED PROOFS: the worker's tool, re-run by the reviewer in a disposable worktree at `622ec045`, caught all three mutations — `scrub` in the dependency list, `view` read bare, and the ref never updated — the last through the render alone, as the block foresaw; and the reviewer's two probes of round 5's gate, a host re-rendering every 50 ms and one also gaining a row every 200 ms, both read the panel walking to the end. The worktree was removed.
++
++Done: R-1101 — RESOLVED at `c87039df` (F039 R6 C3), booked by F039 R7: the timer of `StoryPanel` reads the latest story view through a ref an effect with no dependency list keeps current, calls the stable `scrubTo`, and re-arms only on `playing`, the position and the reduced-motion setting; `tests/ui_contracts/test_story_panel_contract.py` pins that dependency list; and C-i of `.agent/authored/f039-r6-render_drive.mjs` holds Play walking from the review chapter to the last event and on into a row that arrived after Play was pressed, while the host re-renders every 50 ms and gains a row every 200 ms. The reviewer's re-run at `622ec045` read 9 of 9, and each of the three mutations read 8 of 9.
++
++- R-1102 — High, THE COCKPIT REPLACES EVERY MINTED TASK ID WITH `task-<n>`, SO A FINISHED `remedy do` JOB NEVER REACHES FINALIZED ON THE PHASE BAR AND ITS STORY NEVER REACHES THE FINISH. Raised by the planner and reviewer of F039's first session while specifying round 7. SEARCHED BEFORE MINTING (checklist item 30): the open set at `622ec045` holds R-1101 alone, which is about the panel's timer; `scrubUiText` occurs in the ledger and its archive only in two gate entries and a DECISION about copy, and no finding names a task id the dashboard mapping changes. MEASURED at `622ec045`: `_build_dashboard` in `packages/orchestration/ui_server.py` gives each task item `"id": tid`, the task's own id, which for every task `remedy do` plans is the sixteen hex characters `data_paths.mint_task_id` mints; `normalizeDashboardPayload` in `apps/ui/src/api/remedyApi.ts` maps it through `scrubUiText`, whose all-hex rule in `apps/ui/src/copy/humanCopy.ts` answers the fallback `task-<index>`, while `nodeId` keeps the raw id. The reviewer's probe mapped a dashboard holding one task `0123456789abcdef`, seeded the timeline with `dashboardBrainSeeds` the way `useTimelineScrub` does, and folded a ledger in which that task's round passes and its run completes: the task list read `task-0`, the seed `task-0`, the phase reading `review`, and the story's chapters `The build` and `The review`; the same ledger over a seed named `0123456789abcdef` read `finalized`. By reading the code, the other comparisons of `task.id` with a raw task id miss the same way: the pause, veto and spec-version lookups of `dashboardBrainSeeds`, `feedFocus.ts`, `decisionFocus.ts`, `vetoView.ts`, and the parent `value` `AddTaskSheet.tsx` sends to the write door. No component renders `task.id` as text. WHY HIGH: the cockpit shows every finished job its product plans as still under review. FIX: `normalizeDashboardPayload` keeps a task's own id as a string, falling back to `task-<index>` only when the item carries none, under a comment naming this finding, and scrubs labels as before; a test maps a minted id and a hex label, keeping the one and scrubbing the other; and a test seeds through the mapping and reads the ledger above as `finalized`. Owner: F039.
