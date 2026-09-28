@@ -13,15 +13,15 @@ command (`docs/roadmap/features/T5_F038.md`, the spec
 
 ## Current Step
 
-ROUND 7: book round 6, then the model-written intent parse behind
-`chat.model_written`, with answering a decision and adding a task as
-two new chat verbs (DECISION F038 D8).
+ROUND 8: book round 7, register and repair R-1092, then one chat turn,
+a grounded answer or an action card, that both doors call (DECISION
+F038 D9).
 
 ## Next Steps
 
-1. Review round 7.
-2. T003: the chat command finds the running cockpit, answers a
-   question, and confirms a card on a y/N line.
+1. Review round 8.
+2. T003: the chat command runs a turn, prints the answer or the card,
+   and sends a confirmed card through the running cockpit.
 3. T003: the panel and the end-to-end proof; closure.
 
 ## Risks

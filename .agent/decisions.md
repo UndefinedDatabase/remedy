@@ -24848,3 +24848,35 @@ parse, rejected because a plain "stop" would then cost a model call and could be
 HOW TO REVERSE: delete `chat_intent_model.py` and its tests, remove the two verbs and their card
 lines from `chat_intent.py`, restore `chat_call_fn`'s fixed schema, restore the `chat_answer.py`
 line in `ALLOWED_UNWIRED`, and delete this paragraph.
+
+## DECISION F038 D9 — one chat turn is one module both doors call: it reads a line with the model-written parse and the job's open decisions, answers a question from the focused task's evidence or the project's, and turns anything else into a card, sending nothing (2026-09-28)
+
+CONTEXT: Measured at `61cf423a`. The chat's parts exist and nothing joins them: the evidence of
+a node scope and a project scope (`chat_evidence.py`), the checked answer (`chat_answer.py`), the
+mechanical and model-written intent parse (`chat_intent.py`, `chat_intent_model.py`) and the send
+through the write door (`chat_door.py`). The command line and the cockpit panel both still need
+the same step between a typed line and those parts. The model-written parse keeps a decision id
+only from the open decisions its caller passes; `decision_inbox.build_decision_inbox` lists a
+job's decisions from the job and its run-log events and marks each card
+`answerable_by_decision_resolve` exactly when the write door would accept an answer to it. A job
+names its repository in `repo_path`, and `project_registry.find_project_by_repo` finds the
+registered project owning a real path, or none.
+
+CHOSEN: (1) ONE MODULE, `packages/orchestration/chat_turn.py`: `run_chat_turn(job, text, *,
+task_id="", ...)` returns a `ChatTurn` that is either an ANSWER, with the evidence set it was
+answered from, or a CARD. It writes no file and sends nothing; confirming a card is the caller's
+step. (2) THE OPEN DECISIONS it passes to the parse are the ids of the inbox cards the door would
+accept an answer to, read from the job and its run-log events. (3) THE SCOPE: a focused task is
+the node scope of that task, and a task id that names no task of the job is refused; without one
+it is the project scope of the project that owns the job's repository, and when no registered
+project owns it the set is empty, so the answer is "Not in evidence." rather than a guess. (4)
+The same module serves the command line in the next round and the cockpit panel after it, so
+the two doors cannot answer one line differently. (5) R-1092's two missing tests land here.
+
+ALTERNATIVES: building the turn separately in the command and in the server, rejected because
+the two would drift; answering a project question from the job alone when no project is
+registered, rejected because the project scope's evidence set is fixed by DECISION F038 D3 and a
+job is not a project.
+
+HOW TO REVERSE: delete `chat_turn.py` and its tests, restore the `chat_intent_model.py` line in
+`ALLOWED_UNWIRED`, and delete this paragraph.
