@@ -1,0 +1,36 @@
+repo root: /home/decodeux/Repos/remedy
+work dir: /home/decodeux/Repos/remedy/.remedy-wt/f036-render-run
++ vite build
+vite v6.4.2 building for production...
+transforming...
+✓ 48 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                   0.32 kB │ gzip:  0.23 kB
+dist/assets/index-CxvUe2Oy.css    6.42 kB │ gzip:  2.15 kB
+dist/assets/index-BiU1xI2d.js   202.17 kB │ gzip: 63.89 kB
+✓ built in 539ms
+
+server pid: 423875
+chrome pid: 423878
++ node drive.mjs
+C-k before=[{"label":"Previous","lines":1,"inside":true},{"label":"Next","lines":1,"inside":true},{"label":"Show me","lines":1,"inside":true}] after=[{"label":"Previous","lines":1,"inside":true},{"label":"Next","lines":1,"inside":true},{"label":"Show me","lines":2,"inside":true}]
+PASS C-a backdrop covers the viewport with a non-transparent background, card above it
+PASS C-b step label reads "Stop 1 of 6", six progress items, the first "current"
+PASS C-c Previous disabled at the first stop, Next disabled and "Stop 6 of 6" after five ArrowRight presses
+PASS C-i the docked card sits within the left rail, near the viewport bottom, clear of the task detail box
+PASS C-k each action label stays on one line inside the card's box, the red control shows a wrapped label
+PASS C-d "Show me" records the diff anchor and removes the backdrop, ArrowRight brings it back
+PASS C-j after stepping away the card leaves the dock and re-centres within 2 pixels of the viewport centre
+PASS C-e command stop shows its command inside <code>, evidence stop shows no "Show me"
+PASS C-f the overlay's root and backdrop are children of document.body
+PASS C-g Escape closes and is recorded
+PASS C-h unreadable remount shows exactly the fixed line, no text of the payload
+SCREENSHOT tour /home/decodeux/Repos/remedy/.remedy-wt/f036-r7-worker/render-tour.png 199290 bytes
+SCREENSHOT shown /home/decodeux/Repos/remedy/.remedy-wt/f036-r7-worker/render-tour-shown.png 369057 bytes
+RENDER: 11 of 11 checks pass
+
+chrome pid 423878 stopped (SIGTERM)
+server pid 423875 stopped (SIGTERM)
+removed work dir: /home/decodeux/Repos/remedy/.remedy-wt/f036-render-run
+drive.mjs exit code: 0

@@ -1,0 +1,217 @@
+diff --git a/.agent/decisions.md b/.agent/decisions.md
+index a92fb969d..615aae997 100644
+--- a/.agent/decisions.md
++++ b/.agent/decisions.md
+@@ -24203,3 +24203,87 @@ ALTERNATIVES: recording the fingerprint on steering records, rejected because it
+ record another feature owns for a label.
+ 
+ HOW TO REVERSE: delete this paragraph; D7's sentence then stands, and is false.
++
++## DECISION F036 D1 — the result tour is built from what the job already records: one module turns the report's sources, the diff's file list, the job's evidence files and the Definition of Done's recorded commands into at most eight stops, each tied to a place that is checked to exist when the tour is built, and a mechanical tour stands in whenever no model writes one; T001 lands the stop shape, the anchor check and the mechanical tour in one round, writing no file and called by nothing yet (2026-09-28)
++
++CONTEXT: T5_F036.md was written before most of its inputs were built. Measured at `9dc2f2a7`:
++no module, command or component is named for a tour; the one code hit for the word is
++`TOURNAMENT_` in `packages/orchestration/run_contract.py`, which is unrelated. The feature file's
++inputs exist in these shapes. The report's structure is `run_report.build_report_sources(job)`,
++a `ReportSources` holding the state, terminal status, stop reason, mission, tasks and the
++Definition-of-Done rows with the gate's verdict. The diff's file map is
++`diff_view_source.build_diff_view(evidence_index.resolve_job_evidence_dir(job_id))`, whose
++`files` each carry a `path` and `stats` of `added` and `deleted`, in diff order, and which never
++raises. The Definition of Done's run command is the `command` of each check in
++`dod_gate.load_gate_result(job_id)`, the argv joined for display. The report itself and
++`dod_result.json` are files directly in `data_paths.job_evidence_dir(job_id)`. No task records a
++plan rationale; the one `rationale` field is `MilestoneDraft`'s, which a job's tasks do not carry.
++The "idea engine's ref discipline" the feature file cites has no code, since F063 and F065 are
++unbuilt. The design reference names no tour treatment. The completion digest of F040 is the
++nearest built cousin and deliberately has no links (DECISION F040 D5). The browser's deep link is
++`?focus=&level=&tab=`, and a diff opens per task run with no path in the address.
++
++CHOSEN: (1) ONE MODULE. `packages/orchestration/result_tour.py`. Apart from one collector that
++reads the job's own records, it is pure: it writes no file, calls no model and reads no clock.
++(2) THE TOUR is `{"schema": "remedy.tour.v1", "job_id", "generator", "stops", "dropped"}`, and
++`generator` reads `fallback` for the mechanical tour. A stop is `{"title", "body", "anchor":
++{"kind", "ref"}}`, with a one-line title of at most 80 characters and a body of at most 400. A
++tour holds at most eight stops, and eight is a ceiling, not a quota. (3) THE ANCHORS. There are
++four kinds, and each is checked against the job when the tour is built. A `node` ref is the full
++id of one of the job's tasks. A `diff` ref is a path in the job's diff file list. An `evidence`
++ref is the name of a file directly in the job's evidence directory. A `command` ref is, byte for
++byte, the command of a Definition-of-Done check the gate recorded. A stop whose shape is wrong or
++whose anchor does not resolve is dropped, logged and listed under `dropped` with its reason, and
++so is every sound stop after the eighth. Nothing ships unanchored. (4) THE MECHANICAL TOUR, in
++this order. First, how the run ended: the state, terminal status, stop reason and mission,
++restated, anchored to `report.md` when that file exists, else to the first task. Then one stop per
++changed area, where an area is a changed file's first path segment and files at the top level form
++one area; each such stop lists its files with their added and deleted line counts and is anchored
++to its first file. When the areas outnumber the room left under eight, the last room is one stop
++that gathers the rest. Then how to run it: the first recorded Definition-of-Done command, anchored
++to itself. Last, the Definition of Done's outcome: how many checks passed out of how many, and
++whether the gate released or held the job, anchored to `dod_result.json`. Every body restates its
++source and adds no claim, and a text too long for its bound is cut with an ellipsis, never
++rewritten. (5) NO "WHY" STOP WITHOUT A SOURCE. No task records a rationale, so the mechanical tour
++has no stop explaining why the work is shaped the way it is, and T002's generator may explain only
++from the plan's recorded goal and acceptance text. (6) THE ROUNDS. Round 1 lands T001. T002 lands
++the generation call through the summary-class side role with the same three-way fallback as
++`artifact_summary.generate_artifact_summary`, the no-new-claims goldens, `tour.json` stored beside
++`report.md` from the terminal funnel that writes the report, versioning and the command line. T003
++lands the overlay, its navigation to each anchor and the demo's tour. Until T002 wires the module,
++it is listed in `ALLOWED_UNWIRED` of `tests/test_no_orphan_modules.py` with its reason, and T002
++removes that line in the commit that wires it. (7) T003 SETTLES TWO GAPS by a DECISION of its
++own, with a line in the design reference's assumption log: the missing tour treatment, and the
++missing path in the diff's address.
++
++ALTERNATIVES: one stop per changed file, rejected because a thirty-file job would spend all eight
++stops on files and lose both the run's outcome and the Definition of Done; anchoring evidence to
++the evidence panel's tabs, rejected because those tabs belong to one task run while the report and
++the gate's record belong to the job; extending the completion digest, rejected because the digest
++is a card without anchors by DECISION F040 D5.
++
++HOW TO REVERSE: delete `packages/orchestration/result_tour.py` and its tests, remove its line from
++`ALLOWED_UNWIRED`, and delete this paragraph.
++
++## DECISION F036 D2 — the fifth findings paydown, F286, waits behind F036 because no finding is open to pay down; Rule A5 claims F036 instead, and the next claim proposes F286 again (2026-09-28)
++
++CONTEXT: At `9dc2f2a7` the first unchecked line of `docs/roadmap/STATUS.md` is F286 — Findings
++paydown v5, registered thin by F285's closure under operator amendment amend0911-feedback rule B.
++Its file says its first round reads the open set and takes every open finding registered before
++the claim date. `open_finding_ids` over `.agent/live_review.md` at `9dc2f2a7` answers `[]`,
++because F035's closure left no finding open. A claim of F286 now would take no finding, and its
++only remaining work would be a closure sequence, with an evidence job, a full-suite run and a
++review package, around no change.
++
++CHOSEN: F286's STATUS line and its Tier 2 heading move one feature down, to directly after F036,
++and F036 is claimed now. Nothing else about F286 changes: its file keeps its registration, one
++line in it records this move, and rule B's one unclaimed paydown still stands. The next claim
++after F036's closure meets F286 first under Rule A5. If the open set is empty again then, that
++claim may make the same move by a DECISION of its own; otherwise it claims F286.
++
++ALTERNATIVES: claiming F286 and closing it with nothing paid down, rejected because it spends a
++whole closure on no change, the ritual operator amendment amend0917-throughput removes; dropping
++F286, rejected because rule B keeps exactly one unclaimed paydown.
++
++HOW TO REVERSE: move F286's STATUS line and its Tier 2 heading back above F036, delete the line
++this move added to `docs/roadmap/features/T2_F286.md`, operator question Q6 and this paragraph.
+diff --git a/.agent/live_review.md b/.agent/live_review.md
+index 78948cf5d..afbf10c0c 100644
+--- a/.agent/live_review.md
++++ b/.agent/live_review.md
+@@ -1,30 +1,28 @@
+-# Live Review — F035 Ownership ledger
+-
+-> Round-by-round review record, re-headed at the F035 claim per
+-> docs/agents/planner_reviewer_prompt.md §1. The heading this replaces named F030, whose STATUS
+-> line went `[x]` at `6d5ddf6b` and whose pull request 289 merged into `main` at the reviewer's
+-> Open PR Gate under docs/agents/self_drive_protocol.md, as `a0b287a5`, after both hosted CI jobs
+-> of run 36353221325 ended `success` on `6d5ddf6b`. `6d5ddf6b` is the second parent of
+-> `a0b287a5`, and the two trees are identical. F030's round 7, its closing round, was reviewed
+-> after its own handback, so its gate entry is appended at the end of this record by F035's
+-> claim. Only the heading, this paragraph and the Steps section below are rewritten; everything
+-> from the Findings heading to the end of the file as it stood at `a0b287a5` is carried forward
+-> BYTE-IDENTICAL, and finding ids continue the monotonic R-XXXX series across the re-head. The
+-> open set at `a0b287a5`, computed with `open_finding_ids` from `scripts/rotate_live_review.py`,
+-> is empty.
++# Live Review — F036 Guided result tour
++
++> Round-by-round review record, re-headed at the F036 claim per
++> docs/agents/planner_reviewer_prompt.md §1. The heading this replaces named F035, whose STATUS
++> line went `[x]` at `8040e44c` and whose pull request 290 merged into `main` at the reviewer's
++> Open PR Gate under docs/agents/self_drive_protocol.md, as `9dc2f2a7`, after both hosted CI jobs
++> of run 36373589423 ended `success` on `8040e44c`. `8040e44c` is the second parent of
++> `9dc2f2a7`, and the two trees are identical. F035's round 10, its closing round, was reviewed
++> after its own handback, so its gate entry is appended at the end of this record by F036's
++> claim. Only the heading, this paragraph
++> and the Steps section below are rewritten; everything from the Findings heading to the end of
++> the file as it stood at `9dc2f2a7` is carried forward BYTE-IDENTICAL, and finding ids continue
++> the monotonic R-XXXX series across the re-head. The open set at `9dc2f2a7`, computed with
++> `open_finding_ids` from `scripts/rotate_live_review.py`, is empty, which is why F036 and not the
++> findings paydown F286 is claimed (DECISION F036 D2).
+ 
+ ## Steps
+ 
+-THE ORDER BELOW IS T5_F035.md's Task slicing, read against what earlier features already record
+-by DECISION F035 D1 at the claim. R1 claims F035, re-heads this record, books F030's round 7 and
+-lands the first half of T001: `packages/orchestration/ownership.py` with the versioned ledger,
+-the entry schema, the actor model and the pure pass over the records that already name who acted
+-— vetoes, veto answers, injections, subtree reruns, plan and task edits, steering messages and
+-notes, and the pause, resume and stop events. R2 lands T001's second half: hunk decisions,
+-decision answers, clarification answers, plan approval human and unattended, and the ledger
+-written at every job terminal. T002 lands the phrase catalog, the report section and its goldens;
+-T003 the chips at the nodes, the evidence tab, `remedy job ownership` and the end-to-end proof.
+-Every round's handback states the open set by distinct id.
++THE ORDER BELOW IS T5_F036.md's Task slicing, read against what earlier features already record
++by DECISION F036 D1 at the claim. R1 claims F036, re-heads this record, books F035's round 10 and
++lands T001: `packages/orchestration/result_tour.py` with the stop shape, the anchor check against
++the job's own records and the mechanical tour, with no file written and nothing calling it yet.
++T002 lands the generation call, the no-new-claims goldens, the stored and versioned tour and the
++command line; T003 the overlay, its navigation to each anchor and the demo's tour. Every round's
++handback states the open set by distinct id.
+ 
+ ## Findings
+ DECISION F085 D5, applied at da47ee40, closes "The R44 block is the first measured under this
+@@ -422,3 +420,5 @@ Gate: F035 R7 — the F035 round 7 entry: the booking of round 6 with the regist
+ Gate: F035 R8 — the F035 round 8 entry: the closure sequence's first round, which books round 7 with the resolutions of R-1083 and R-1084, registers R-1085 and R-1086 and records DECISION F035 D8, repairs both findings, writes the Built State, consolidates the checklist, and takes the feature's one full suite. VERDICT PASS. Re-derived over `9c42693f`..`43927119` by the planner and reviewer of F035's first session, whose own runs produced every reading below. THE RANGE IS 6 COMMITS, at `0e21a44b` 360, `0e59ffb5` 36, `861d2895` 26, `5fa19d8b` 123, `106e7db6` 91 and `43927119` 166 insertions by `git show --numstat`, each under the 500-line cap, each single-parent and each ending with the ordered trailer; the tracked path set is exactly constraint 3's. The worker declared one deviation: its mutation tool was first drafted under `.agent/authored/`, where it would have made the primary checkout unclean during G4, so it ran from the worker's own directory and was copied into `.agent/authored/` for C4, byte-identical. THE TRANSPORT PROOF: the block copy and the three payload copies, read at the branch tip, equal the reviewer's originals byte for byte. THE RECORDS: at `0e59ffb5` the ledger, the decisions record and the plan each equal the reviewer's simulation tree byte for byte, the open set reads R-1085 and R-1086, and no `Landed:` line of R-1083 or R-1084 remains; at `106e7db6` `docs/roadmap/features/T5_F035.md` and `docs/agents/planner_reviewer_prompt.md` equal the simulation byte for byte, and `live_checklist_items` reads the same 34 numbers there as at `9c42693f`; `integrity block` passes all seven checkable items. THE REPAIRS, read in `861d2895`: both `.ownershipList li + li` rules set `margin-top: 6px` under a comment saying the design reference has no spacing token, and the contract test pins that neither module's rule names a radius token; the end-to-end test's docstring says the run ends blocked because every remaining task was vetoed. THE TESTS: the reviewer's own serial run of the round's selection in the primary checkout at `106e7db6`'s tree read 551 passed at real exit code 0, and all six `integrity check` checks read `pass`. THE INTEGRATION GATE: `.agent/authored/f035-closure-suite.txt` records `python3 -m pytest -n auto -q` on the tree of `106e7db6` at real exit code 0, 20294 passed and 20 skipped in 172.30 seconds, with no bad node, `tests/orchestration/test_import_reachability.py` and `tests/test_no_orphan_modules.py` among the passed; the UI build before it exited 0. THE RED PROOFS: the reviewer ran the committed `.agent/authored/f035-r8-mutations.py` itself in a disposable worktree at `861d2895`: the control exits 0 first and last and both mutations, each module's gap back on a radius token, exit 1; the worktree was removed. F035's second session re-read the range before booking and re-ran it itself: the two touched test files, `tests/cli/test_golden_path.py` and `tests/docs/` read 382 passed, `ruff check` on the touched test files read clean, `integrity check` read ok, and two mutations of its own, in a disposable worktree at `43927119` and one module at a time, turned `test_r_1085_neither_ownership_list_reads_a_radius_token` red with a green control after them; the worktree was removed.
+ 
+ Gate: F035 R9 — the F035 round 9 entry, the closure sequence's evidence round: the booking of round 8 with the resolutions of R-1085 and R-1086, the Built State's naming of the reachability allowlist's three new lines, the self-use reading, the evidence job and the review package at the accepted head. VERDICT PASS. Re-derived over `43927119`..`ce75183d` by the planner and reviewer of F035's second session, whose own runs produced every reading below. THE RANGE IS 3 COMMITS, at `8b371f84` 382, `7f25c03b` 16 and `ce75183d` 149 insertions by `git show --numstat`, each under the 500-line cap, each single-parent and each ending with the ordered trailer; the tracked path set is exactly the block's constraint 3, and the worker declared no deviation. One slip in the handback, not in any record: `.agent/handoff.md` twice quotes the block's sha256 with its fifth to eighth bytes retyped (`a9a0` for `fe0a`), while the block copy it committed is byte-equal to the reviewer's original, so the transport stands and the handback is rewritten by the next round. THE TRANSPORT PROOF: the block copy and the three payload copies, read at the branch tip, equal the reviewer's originals byte for byte. THE RECORDS: at `7f25c03b` the ledger, the plan and `docs/roadmap/features/T5_F035.md` each equal the reviewer's simulation tree byte for byte, and the open set reads empty. THE ACCEPTED COMMIT, the closure's accepted head, is `7f25c03bddca1d9c08b58821288b7eed42d1e3cb`. THE SELF-USE READING: the reviewer's own call of `generate_and_append_if_empty` and `next_self_use_item` at the branch tip answered `None` twice and wrote nothing, so closure precondition 6 reads `self-use NONE (queue exhausted)`. THE BUNDLE: the evidence job `f035r9e1001` against the fork point `a0b287a552f4630e64122188c28bd0a965441864` holds one run, `vr-0351`, at exit 0 with 1068 of 1068 selected tests passed and none skipped, its head the accepted head, and `validate_verification_tests` reads no problem; the reviewer validated the bundle with `validate_evidence_candidate` from a disposable worktree at the accepted head, which read `is_valid_current_run` True with no validation error, and the worktree was removed. THE PACKAGE: `remedy-review-20260928-050815-READY_FOR_REVIEW.zip` in `/home/decodeux/Repos/remedy-history/zips` hashes to `9b3e3841d2c11725c8a03579fa2a7d5dcb963aac3386faeb5a6ab5517ac2b8aa` by the reviewer's own reading, and its manifest's committed review subject reads the fork point as base and the accepted head as head over 58 commits. THE TREE: all six `integrity check` checks read ok at `ce75183d`, `tests/docs/` with `tests/cli/test_golden_path.py` read 369 passed, the tree was clean, and the local tip equals the pushed branch.
++
++Gate: F035 R10 — the F035 round 10 entry: the closing round, which books round 9, rotates the finding ledger, accepts F035 in STATUS with its README pins, and opens pull request 290. VERDICT PASS. Re-derived over `ce75183d`..`8040e44c` by the planner and reviewer of F035's second session, whose own runs produced every reading below. THE RANGE IS 4 COMMITS, at `1e088188` 441, `e873391d` 6, `2d54c4d5` 34 and `8040e44c` 159 insertions by `git show --numstat`, each under the 500-line cap and each single-parent; the tracked path set is exactly the block's constraint 3, and the worker declared no deviation. THE TRANSPORT PROOF: the block copy and the seven payload copies, read at the branch tip, equal the reviewer's originals byte for byte. THE RECORDS: at `e873391d` the ledger and the plan, at `2d54c4d5` the ledger and its archive, and at `8040e44c` `docs/roadmap/STATUS.md` and `README.md` each equal the reviewer's simulation byte for byte; the rotation moved 7 gate records and 5 finding pairs with the open set empty before and after. THE HANDBACK names the package, its SHA-256, its directory, the evidence job, the accepted head and `self-use NONE (queue exhausted)` once each, and no pull request link. THE TESTS: the reviewer's own serial run of the closure selection at `8040e44c` read 512 passed, and all six `integrity check` checks read `pass`; the simulation's two red controls of the README pins each read 1 failed at exit 1. THE PULL REQUEST: 290, open, not a draft, from `feature/f035-ownership-ledger` into `main`, head `8040e44c00754fa5d8f6737486b229d540e5a80c`, to be merged by the next feature's session at the Open PR Gate.
+diff --git a/.agent/operator_questions.md b/.agent/operator_questions.md
+index 4b71ec46a..f93724779 100644
+--- a/.agent/operator_questions.md
++++ b/.agent/operator_questions.md
+@@ -7,4 +7,23 @@
+ > Soft cap five; entries leave only by the operator's answer, recorded as a dated
+ > DECISION by the operator's next amendment, which deletes the entry.
+ 
+-EMPTY
++### Q6 — Empty paydown waits one feature (2026-09-28, F036, round 1)
++
++**What needs deciding.** The next item on the roadmap was a clean-up feature whose only job is to
++repair known defects that earlier reviews wrote down. Right now no such defect is open, so that
++feature would have nothing to repair. I have moved it one place down the list, behind the next
++real feature, the guided result tour, which walks you through a finished job in a few short steps.
++The session is building the tour now. When the tour is finished, the clean-up feature comes up
++again, and it starts as soon as there is at least one open defect to repair.
++
++**Why it matters.** Starting and finishing a feature costs a full test run, an evidence package
++and several review rounds. Spending that on a feature with nothing to do would use up about one
++session and change nothing in the product.
++
++**My recommendation.** Keep the clean-up feature waiting while there is nothing for it to repair,
++and build the next real feature instead. One clean-up feature still always waits on the list, as
++your rule asks.
++
++**What happens if you say nothing.** The recommendation is already executed and stands until you
++say otherwise. The tour is built first, and the clean-up feature is offered again when the tour is
++finished.
+diff --git a/docs/roadmap/STATUS.md b/docs/roadmap/STATUS.md
+index 83f782f49..05fdcd16e 100644
+--- a/docs/roadmap/STATUS.md
++++ b/docs/roadmap/STATUS.md
+@@ -168,6 +168,7 @@ Milestone R1 — Remedy as the daily tool: Tier 2 complete (F086 as the self-ins
+ - [x] F029 — Subtree rerun (T001–T003 complete; accepted 2026-09-27 · live review PASS — ACCEPTED · Evidence job f029r10e1001 · package remedy-review-20260927-201630-READY_FOR_REVIEW.zip · SHA-256 9a0d0eb2ac1576e96149aca426e6aec301eedc6247c9ee0fb0b4a8eb01e9bf4b · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD e56e82f733ec51609598590eda05aa1b2b7329ca)
+ - [x] F030 — Steering messages (T001–T003 complete; accepted 2026-09-27 · live review PASS — ACCEPTED · Evidence job f030r6e1001 · package remedy-review-20260927-234033-READY_FOR_REVIEW.zip · SHA-256 8b7e2f9ceaee61acc87a55ae5bd2c2b3f467b44ab3136076e34d5b3b666ea452 · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD b32a0ab6f0809f86b0461a6aac15a4912960162c)
+ - [x] F035 — Ownership ledger (T001–T003 complete; accepted 2026-09-28 · live review PASS — ACCEPTED · Evidence job f035r9e1001 · package remedy-review-20260928-050815-READY_FOR_REVIEW.zip · SHA-256 9b3e3841d2c11725c8a03579fa2a7d5dcb963aac3386faeb5a6ab5517ac2b8aa · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD 7f25c03bddca1d9c08b58821288b7eed42d1e3cb)
++- [~] F036 — Guided result tour
+ 
+ ## Tier 2 — Findings paydown (rolling, operator rule amend0911-feedback)
+ 
+@@ -175,7 +176,6 @@ Milestone R1 — Remedy as the daily tool: Tier 2 complete (F086 as the self-ins
+ 
+ ## Tier 5 — Operator Cockpit (parallel human track, continued)
+ 
+-- [ ] F036 — Guided result tour
+ - [ ] F038 — Grounded chat & intent dispatch
+ - [ ] F039 — Story/replay mode
+ - [ ] F041 — Artifact preview
+diff --git a/docs/roadmap/features/T2_F286.md b/docs/roadmap/features/T2_F286.md
+index 392c237d9..a14c30269 100644
+--- a/docs/roadmap/features/T2_F286.md
++++ b/docs/roadmap/features/T2_F286.md
+@@ -7,6 +7,8 @@
+ > REGISTERED THIN: nothing in this file has been implemented. Its first round reads the open set
+ > and writes the slice list, one slice per module, from every open finding registered before the
+ > claim date whose repair fits one round; the finding text is the spec.
++> Moved behind F036 on 2026-09-28 by DECISION F036 D2, because no finding was open when
++> Rule A5 reached it; the next claim after F036's closure meets it first.
+ 
+ ## Goal & Done
+ Pay down the open findings that describe a real defect, each by the repair its own text names,

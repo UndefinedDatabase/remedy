@@ -210,6 +210,7 @@ packages.orchestration.repair_context
 packages.orchestration.repo_applicator
 packages.orchestration.repo_ignore
 packages.orchestration.repository_snapshot
+packages.orchestration.result_tour
 packages.orchestration.review_scope
 packages.orchestration.review_subject
 packages.orchestration.reviewer

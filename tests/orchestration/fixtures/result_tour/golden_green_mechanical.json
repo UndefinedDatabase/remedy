@@ -1,0 +1,48 @@
+{
+  "dropped": [],
+  "generator": "fallback",
+  "job_id": "<job>",
+  "schema": "remedy.tour.v1",
+  "stops": [
+    {
+      "anchor": {
+        "kind": "evidence",
+        "ref": "report.md"
+      },
+      "body": "State: completed; terminal status: all_green.",
+      "title": "How the run ended"
+    },
+    {
+      "anchor": {
+        "kind": "diff",
+        "ref": "packages/orchestration/foo.py"
+      },
+      "body": "1 changed file (+1 −0): packages/orchestration/foo.py (+1 −0)",
+      "title": "What changed in packages/"
+    },
+    {
+      "anchor": {
+        "kind": "diff",
+        "ref": "apps/ui/bar.ts"
+      },
+      "body": "1 changed file (+1 −1): apps/ui/bar.ts (+1 −1)",
+      "title": "What changed in apps/"
+    },
+    {
+      "anchor": {
+        "kind": "command",
+        "ref": "python3 -m pytest -q"
+      },
+      "body": "The Definition of Done ran: python3 -m pytest -q",
+      "title": "How to run it"
+    },
+    {
+      "anchor": {
+        "kind": "evidence",
+        "ref": "dod_result.json"
+      },
+      "body": "1 of 1 checks passed; the gate released the job.",
+      "title": "Definition of Done"
+    }
+  ]
+}

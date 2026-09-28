@@ -24203,3 +24203,308 @@ ALTERNATIVES: recording the fingerprint on steering records, rejected because it
 record another feature owns for a label.
 
 HOW TO REVERSE: delete this paragraph; D7's sentence then stands, and is false.
+
+## DECISION F036 D1 — the result tour is built from what the job already records: one module turns the report's sources, the diff's file list, the job's evidence files and the Definition of Done's recorded commands into at most eight stops, each tied to a place that is checked to exist when the tour is built, and a mechanical tour stands in whenever no model writes one; T001 lands the stop shape, the anchor check and the mechanical tour in one round, writing no file and called by nothing yet (2026-09-28)
+
+CONTEXT: T5_F036.md was written before most of its inputs were built. Measured at `9dc2f2a7`:
+no module, command or component is named for a tour; the one code hit for the word is
+`TOURNAMENT_` in `packages/orchestration/run_contract.py`, which is unrelated. The feature file's
+inputs exist in these shapes. The report's structure is `run_report.build_report_sources(job)`,
+a `ReportSources` holding the state, terminal status, stop reason, mission, tasks and the
+Definition-of-Done rows with the gate's verdict. The diff's file map is
+`diff_view_source.build_diff_view(evidence_index.resolve_job_evidence_dir(job_id))`, whose
+`files` each carry a `path` and `stats` of `added` and `deleted`, in diff order, and which never
+raises. The Definition of Done's run command is the `command` of each check in
+`dod_gate.load_gate_result(job_id)`, the argv joined for display. The report itself and
+`dod_result.json` are files directly in `data_paths.job_evidence_dir(job_id)`. No task records a
+plan rationale; the one `rationale` field is `MilestoneDraft`'s, which a job's tasks do not carry.
+The "idea engine's ref discipline" the feature file cites has no code, since F063 and F065 are
+unbuilt. The design reference names no tour treatment. The completion digest of F040 is the
+nearest built cousin and deliberately has no links (DECISION F040 D5). The browser's deep link is
+`?focus=&level=&tab=`, and a diff opens per task run with no path in the address.
+
+CHOSEN: (1) ONE MODULE. `packages/orchestration/result_tour.py`. Apart from one collector that
+reads the job's own records, it is pure: it writes no file, calls no model and reads no clock.
+(2) THE TOUR is `{"schema": "remedy.tour.v1", "job_id", "generator", "stops", "dropped"}`, and
+`generator` reads `fallback` for the mechanical tour. A stop is `{"title", "body", "anchor":
+{"kind", "ref"}}`, with a one-line title of at most 80 characters and a body of at most 400. A
+tour holds at most eight stops, and eight is a ceiling, not a quota. (3) THE ANCHORS. There are
+four kinds, and each is checked against the job when the tour is built. A `node` ref is the full
+id of one of the job's tasks. A `diff` ref is a path in the job's diff file list. An `evidence`
+ref is the name of a file directly in the job's evidence directory. A `command` ref is, byte for
+byte, the command of a Definition-of-Done check the gate recorded. A stop whose shape is wrong or
+whose anchor does not resolve is dropped, logged and listed under `dropped` with its reason, and
+so is every sound stop after the eighth. Nothing ships unanchored. (4) THE MECHANICAL TOUR, in
+this order. First, how the run ended: the state, terminal status, stop reason and mission,
+restated, anchored to `report.md` when that file exists, else to the first task. Then one stop per
+changed area, where an area is a changed file's first path segment and files at the top level form
+one area; each such stop lists its files with their added and deleted line counts and is anchored
+to its first file. When the areas outnumber the room left under eight, the last room is one stop
+that gathers the rest. Then how to run it: the first recorded Definition-of-Done command, anchored
+to itself. Last, the Definition of Done's outcome: how many checks passed out of how many, and
+whether the gate released or held the job, anchored to `dod_result.json`. Every body restates its
+source and adds no claim, and a text too long for its bound is cut with an ellipsis, never
+rewritten. (5) NO "WHY" STOP WITHOUT A SOURCE. No task records a rationale, so the mechanical tour
+has no stop explaining why the work is shaped the way it is, and T002's generator may explain only
+from the plan's recorded goal and acceptance text. (6) THE ROUNDS. Round 1 lands T001. T002 lands
+the generation call through the summary-class side role with the same three-way fallback as
+`artifact_summary.generate_artifact_summary`, the no-new-claims goldens, `tour.json` stored beside
+`report.md` from the terminal funnel that writes the report, versioning and the command line. T003
+lands the overlay, its navigation to each anchor and the demo's tour. Until T002 wires the module,
+it is listed in `ALLOWED_UNWIRED` of `tests/test_no_orphan_modules.py` with its reason, and T002
+removes that line in the commit that wires it. (7) T003 SETTLES TWO GAPS by a DECISION of its
+own, with a line in the design reference's assumption log: the missing tour treatment, and the
+missing path in the diff's address.
+
+ALTERNATIVES: one stop per changed file, rejected because a thirty-file job would spend all eight
+stops on files and lose both the run's outcome and the Definition of Done; anchoring evidence to
+the evidence panel's tabs, rejected because those tabs belong to one task run while the report and
+the gate's record belong to the job; extending the completion digest, rejected because the digest
+is a card without anchors by DECISION F040 D5.
+
+HOW TO REVERSE: delete `packages/orchestration/result_tour.py` and its tests, remove its line from
+`ALLOWED_UNWIRED`, and delete this paragraph.
+
+## DECISION F036 D2 — the fifth findings paydown, F286, waits behind F036 because no finding is open to pay down; Rule A5 claims F036 instead, and the next claim proposes F286 again (2026-09-28)
+
+CONTEXT: At `9dc2f2a7` the first unchecked line of `docs/roadmap/STATUS.md` is F286 — Findings
+paydown v5, registered thin by F285's closure under operator amendment amend0911-feedback rule B.
+Its file says its first round reads the open set and takes every open finding registered before
+the claim date. `open_finding_ids` over `.agent/live_review.md` at `9dc2f2a7` answers `[]`,
+because F035's closure left no finding open. A claim of F286 now would take no finding, and its
+only remaining work would be a closure sequence, with an evidence job, a full-suite run and a
+review package, around no change.
+
+CHOSEN: F286's STATUS line and its Tier 2 heading move one feature down, to directly after F036,
+and F036 is claimed now. Nothing else about F286 changes: its file keeps its registration, one
+line in it records this move, and rule B's one unclaimed paydown still stands. The next claim
+after F036's closure meets F286 first under Rule A5. If the open set is empty again then, that
+claim may make the same move by a DECISION of its own; otherwise it claims F286.
+
+ALTERNATIVES: claiming F286 and closing it with nothing paid down, rejected because it spends a
+whole closure on no change, the ritual operator amendment amend0917-throughput removes; dropping
+F286, rejected because rule B keeps exactly one unclaimed paydown.
+
+HOW TO REVERSE: move F286's STATUS line and its Tier 2 heading back above F036, delete the line
+this move added to `docs/roadmap/features/T2_F286.md`, operator question Q6 and this paragraph.
+
+## DECISION F036 D3 — a model-written tour keeps the mechanical tour's first stop, may say only what the job's records say, and falls back to the mechanical tour with the reason in its label; it is written through the summary role with a call function bound to the tour's own schema, and provider failures are caught by name, never by a blind handler (2026-09-28)
+
+CONTEXT: Measured at `44965328`: `packages/orchestration/artifact_summary.py` is the one side-role
+generator with a fallback, and it catches a provider failure with `except Exception` marked
+`# noqa: BLE001`; `tests/test_ble001_ratchet.py` freezes those marks at 290, so a new generator
+may not add one. A structured call raises whatever its call function raises:
+`ClaudeCliPlanner.raw_call` raises `RuntimeError`, `OllamaPlanner.raw_call` raises `ImportError`
+without the package and `ollama.RequestError` or `ollama.ResponseError` from the server, and the
+Ollama client is built on `httpx`. `intake.make_structured_call_fn` binds one response schema per
+call function and answers `None` when its planning service is unreachable, and
+`tests/conftest.py` refuses a live Ollama connection to every test without the `real_ollama`
+marker, so under the suite it answers `None`. `artifact_summary.summary_call_fn` binds
+`GeneratedSummaryContent`, which the tour may not reuse. `model_routing.ROLE_CONFIG_CALL_SITES`
+inventories every `resolve_role_config` call, and `tests/orchestration/test_model_routing.py`
+pins that inventory at nine sites and four literal roles. A task records its `title`, `status`
+and `acceptance`; no task records a rationale (DECISION F036 D1 (5)).
+
+CHOSEN: (1) THE SOURCE TEXT. One text lists the job's records, one fact per line: the state,
+terminal status, stop reason and mission; each task's id, title, status and acceptance; each
+changed file with its counts; each evidence file; each recorded command; and the Definition of
+Done's outcome and every check's status. The prompt shows this text and the list of allowed
+anchors, and the no-new-claims check reads the same text, so the model is judged against exactly
+what it was shown. (2) NO NEW CLAIMS. A model-written stop is dropped, with its reason, when it
+states a number, a quoted span or a file path that the source text does not hold, or uses a word
+of a fixed list of claims no record makes, such as "seamless" or "production-ready". This is the
+mechanical half of the feature file's no-new-claims rule; the goldens of T002's second round are
+the other half. (3) THE HONEST FIRST STOP. A model-written tour always starts with the mechanical
+tour's "How the run ended" stop, and the model writes at most seven stops after it, so a failed or
+blocked run is never toured as a success. (4) THE FALLBACK AND ITS LABEL. With no call function
+the answer is the mechanical tour labelled `fallback`. A provider failure, a response that does
+not parse after the one retry, or a model answer of which no stop survives the checks gives the
+mechanical tour labelled `fallback:<reason>`, where the reason is the failure class of
+`failure_postmortem.classify`, or `no_sound_stops`. A tour of which at least one model-written
+stop survives is labelled `summary-role`. Every dropped stop of every stage is listed under
+`dropped`. (5) FAILURES BY NAME. The call is guarded by a named tuple of exception classes — the
+built-in `OSError`, `RuntimeError`, `ValueError` and `ImportError`, and Ollama's two error classes
+and `httpx.HTTPError` when those packages import — so the ratchet stays at 290. (6) THE CALL
+FUNCTION. `tour_call_fn()` resolves the `summary` role and builds a call function bound to the
+tour's own schema, so the tour is written by the same cheap side role as the artifact summaries.
+It is one more `resolve_role_config` site, so the inventory gains `result_tour.py` with the
+literal role `summary`, and the pinned counts become ten sites and five literal roles in the same
+commit. (7) STILL UNWIRED. This round lands generation with an injected call function only.
+Storage, versioning, the terminal hook and the command line are T002's second round, which
+removes the module's line from `ALLOWED_UNWIRED`.
+
+ALTERNATIVES: adding a `# noqa: BLE001` handler and raising the ratchet to 291, rejected because
+the ratchet exists to stop exactly that; reusing `summary_call_fn`, rejected because its call
+function answers in the summary's schema and every tour response would fail validation; letting
+the model write the first stop, rejected because the one stop a failed run must get right would
+then depend on the model.
+
+HOW TO REVERSE: delete the generation half of `packages/orchestration/result_tour.py` and its
+tests, remove the `result_tour.py` line from `ROLE_CONFIG_CALL_SITES`, restore the pinned counts
+to nine and four, and delete this paragraph.
+
+## DECISION F036 D4 — every reported terminal writes a new version of the job's tour beside its report, the command line shows the latest one as the last section of `job show --full` and alone under `job show --tour`, and fixture goldens pin the mechanical tour, an honest tour of a held run and a model answer's claim drops (2026-09-28)
+
+CONTEXT: Measured at `42543dd9`: `long_run_executor._apply_terminal` is the one place a final
+report is written, for the terminals of `REPORTED_TERMINALS` and only when `write_report` is
+true, through `run_report.write_final_report`, which never raises and records its failure on
+the job under `report_error`. A report is overwritten in place, while a plan render is versioned,
+`plan.md` then `plan_v<N>.md` (`job_plan.write_plan_md`), which is what the feature file names as
+the precedent for the tour. `packages.common.secure_fs.durable_write_json` is the one durable JSON
+write, and F035's ledger uses it. The read views of a job are sections of `job show --full`
+(DECISION amend0905-vocab D4), `tests/cli/test_job_show.py` pins their order, and the feature file
+asks for the tour to be printed by a `--tour` flag. The catalog's argument descriptions are read
+by `tests/docs/test_vocabulary.py`, which requires every binding word a description uses to carry
+one of its meaning fragments. Making the module reachable from the command line and the terminal
+moves it from `ALLOWED_UNWIRED` to `tests/orchestration/import_reachability_allowlist.txt`.
+
+CHOSEN: (1) VERSIONS. The first tour a job gets is `tour.json` in its evidence directory, beside
+`report.md`; every later one is `tour_v<N>.json`, N one more than the highest stored, and the
+latest is the one shown. A file that is neither of those shapes is not a version. (2) THE WRITER.
+`write_result_tour(job)` asks `tour_call_fn()` for the call function unless one is handed in,
+generates the tour, and writes it with `durable_write_json`; it never raises for an `OSError`, a
+`ValueError` or a `ResultTourError`, records such a failure on the job under `tour_error`, and
+clears that key on success, the way the report writer does. (3) THE HOOK. `_apply_terminal`
+calls it directly after `write_final_report`, under the same condition, so every reported
+terminal writes exactly one new version and its first stop can anchor to the report just
+written. (4) THE READER. `load_result_tour(job_id)` answers the latest version and its number,
+`None` when none is stored, and raises `ResultTourError` when the latest file does not read or
+its tour is not sound. (5) THE COMMAND LINE. `job show --full` gains a `tour` section, last in
+the order; `job show --tour` builds that one section alone. The section's data is the stored
+flag, the version and the tour; a job with no stored tour is shown its mechanical tour, built
+read-only and marked not stored with version 0; an unreadable one is the section error
+`tour_unreadable`, and the command still exits 0. One renderer, `render_tour_lines`, prints the
+numbered stops for the command line, so T003's overlay can be held to the same stops. (6)
+GOLDENS. Three fixtures pin whole tours as JSON, with the job id replaced: the mechanical tour of
+a finished job with a two-area diff and a released gate, the mechanical tour of a run held by its
+gate, whose first stop says so, and the tour built from a recorded model answer, whose invented
+number, path and claim word are listed under `dropped`.
+
+ALTERNATIVES: overwriting one `tour.json` like the report, rejected because the feature file asks
+for versions like the plan's renders; a separate `job tour` command, rejected by DECISION
+amend0905-vocab D4, which makes read views sections; building a tour on the fly in `job show`
+for every job, rejected for a job that has one stored, because the stored tour is the one its
+model call wrote and a second call would give a different answer.
+
+HOW TO REVERSE: remove the hook from `_apply_terminal`, the `tour` section and the `--tour` flag,
+the storage half of `packages/orchestration/result_tour.py` and its tests and goldens, move the
+module back to `ALLOWED_UNWIRED`, and delete this paragraph.
+
+## DECISION F036 D5 — the browser reads the tour through a `tour` route that serves the same view the command line shows, always with a tour to show; one pure TypeScript module decodes it whole and answers the overlay's stepping, and the overlay itself takes the next round (2026-09-28)
+
+CONTEXT: Measured at `09782a43`: the browser's job read routes are the `handlers` dict of
+`_RemedyHandler.do_GET` in `packages/orchestration/ui_server.py`, each answering 200 with its
+builder's dict; `tests/ui_server/test_handler_table_walk.py` reads that dict and requires every
+endpoint to answer 200 for a fake job that has no records, and `tests/ui_server/test_command_channel.py`
+requires every such path to refuse a write with 405. F035's `ownership` route is the template: one
+Python view served verbatim, one pure TypeScript module (`apps/ui/src/api/ownership.ts`) whose
+decoder refuses the whole payload when any part is unreadable, one never-throwing loader in
+`apps/ui/src/api/remedyApi.ts`, and a contract test that compares every key the TypeScript reads
+with the Python that writes it. The command line's `tour` section (DECISION F036 D4 (5)) shows the
+stored tour, or the mechanical tour marked not stored, and turns an unreadable stored tour into a
+section error.
+
+CHOSEN: (1) ONE VIEW. `tour_view(job)` in `packages/orchestration/result_tour.py` answers
+`{"stored", "version", "tour", "error"}`: the latest stored tour, or the mechanical tour with
+`stored` false and `version` 0 when none is stored or the stored one does not read, in which case
+`error` names why. The route `GET /api/jobs/<job_id>/tour` serves it verbatim, so it answers 200
+for every job, and the command line's section builds from the same function and still turns a
+non-empty `error` into `tour_unreadable`. (2) ONE PURE MODULE. `apps/ui/src/api/resultTour.ts`
+decodes the view and refuses it whole when any key, stop, anchor or dropped entry is unreadable,
+when the schema is not `remedy.tour.v1`, when an anchor's kind is not one of the four, or when
+there are more than eight stops; it builds the route's path the way the ownership module does,
+and answers the overlay's state, its previous and next stops, its progress, its step label and a
+plain label for each anchor. It opens no socket, reads no clock and keeps no storage; the one read
+is `loadTourView` in `remedyApi.ts`, which never throws. (3) THE OVERLAY WAITS. The overlay, its
+spotlight, its navigation to each anchor and its place in the shell are the next round's, with a
+DECISION of their own and the design reference's assumption log, because the reference has no
+tour treatment. (4) FINDING R-1087 is repaired in this round's code commit.
+
+ALTERNATIVES: answering 404 when no tour is stored, rejected because the handler walk requires 200
+for a job with no records and because the mechanical tour is always available; decoding stop by
+stop and skipping a bad one, rejected for the reason F035's decoder gives: a tour that quietly
+drops a stop would say less than the job's records do.
+
+HOW TO REVERSE: remove the `tour` route, `tour_view`, `resultTour.ts`, `loadTourView` and their
+tests, restore `_tour_section` to its round 3 body, and delete this paragraph.
+
+## DECISION F036 D6 — the tour opens from a "Tour" button beside "Lessons" as an overlay portaled to the page body: a dimmed backdrop and one card that steps through the stops, and "Show me" takes a task stop to the task's detail and a diff stop to the job's whole diff scrolled to the file, lifting the dim so that place stands out; a record or command stop shows its name in the card (2026-09-28)
+
+CONTEXT: Measured at `9ac3f750`: `docs/ui/design_reference/` names no tour, spotlight or coach
+mark and no backdrop token; `tokens.css` carries `--remedy-z-overlay` for sheets and modals, the
+glass tokens and `--remedy-ink-strong`, and `tests/ui_contracts/test_raw_colour_ratchet.py`
+allows no raw colour literal in a new CSS or TSX file. `LessonsOverlay.tsx` is the one overlay
+with previous and next, mounted by the shell as a sibling after `</main>`, which
+`tests/ui_contracts/test_main_layout_guard.py` holds to four children, and opened from a quiet
+button in `RightLivePanel.tsx`. `AddTaskSheet.tsx` portals to `document.body`, because an
+ancestor's `backdrop-filter` confines a fixed descendant (finding R-1079). The shell selects a task
+with `onSelectNode(shellSelectionIdOf(dashboard.tasks, taskId))`, which opens the task's detail,
+and `setOpenDiffTaskId` opens the diff panel, where an empty task id reads the job's whole diff
+(`diffEnvelopePath`) and `buildDiffFileSummaries` gives each file the row key its row carries as an
+element id. The graph's zoom state is private to `BrainGraphStage`, and nothing in the cockpit
+shows a report file or a command.
+
+CHOSEN: (1) THE ENTRY. `RightLivePanel` gains an optional `onOpenTour` and a "Tour" button beside
+"Lessons" in the same quiet style; the shell owns whether the tour is open. (2) THE OVERLAY.
+`apps/ui/src/components/tour/TourOverlay.tsx` reads the view once through `loadTourView`, is
+portaled to `document.body`, and renders a backdrop that dims the page with
+`--remedy-ink-strong` mixed into transparency, never a raw colour, and one glass card at
+`--remedy-z-overlay`: the step label, one progress dot per stop, the stop's title, body and anchor
+label, a line saying whether the tour was built mechanically or written by the summary model and
+checked against the records, and Previous, Next, "Show me" and "Close tour". Escape closes it and
+the arrow keys step. (3) THE SPOTLIGHT. "Show me" is offered for a task stop and a diff stop: it
+hands the anchor to the shell, which opens the task's detail, or opens the job's whole diff and
+scrolls that file's row into view, and the overlay lifts its backdrop while the card stays, so the
+place the stop names is the one thing not dimmed; stepping to another stop dims again. A record
+stop names its file and a command stop shows its command as code, in the card, because the
+cockpit has no place that shows either. (4) THE REFERENCE GAP. The design reference's assumption
+log gains one line for the tour's backdrop and card, since the reference has no tour treatment.
+(5) THE PROOF. A headless render in the manner of F035's round 7 proves the backdrop, the card, the
+dots, the step label, the disabled ends, "Show me" lifting the backdrop and Escape closing, and
+the round's pure rules live in `resultTour.ts` with their vitest tests.
+
+ALTERNATIVES: a cut-out spotlight measured around the anchored element, rejected because the
+graph's zoom state and the diff's rows are not reachable from the shell as elements with stable
+boxes, and a hole cut in the wrong place would point at the wrong thing; driving the graph's zoom
+to the task, rejected for the same reason; a tour button in the command bar, rejected because
+`<main>` is held to four children.
+
+HOW TO REVERSE: remove `TourOverlay.tsx` and its CSS, the shell's tour state and mount, the
+`onOpenTour` button, the assumption log's line and the tests, and delete this paragraph.
+
+## DECISION F036 D7 — the model-written tour is switched on by the operator, the card docks over the left rail while a stop is shown, and one real job run to its end proves its tour through the file, the browser's route and the command line; the demo recording, which carries no report and no diff, gets its tour through the render harness only (2026-09-28)
+
+CONTEXT: Findings R-1088 and R-1089, registered at round 5's gate, name the card that covers what
+"Show me" opens and the model call every reported terminal makes unasked. Measured at `8c98cadf`:
+`teacher.lessons` is the precedent for a model call after work finishes, a registered yes-or-no
+key that is off by default, and `docs/guides/environment.md` is generated from the key registry
+by `render_environment_guide`. `remedy job run` reaches `long_run_executor.run_cycles`, whose
+terminals pass through `_apply_terminal`; the live end-to-end tests under `tests/ui_server/` run a
+real job with a fake provider in a subprocess and read its records, its routes and its command
+line. The demo recording `apps/ui/src/components/graph/brainDemoRecording.ts` holds a job's events
+and tasks only, with no report, diff or Definition of Done, and nothing outside tests imports it;
+the round 5 render already mounts the tour on its first task. The left rail is
+`var(--remedy-left-width)` wide, and nothing a stop can open sits over it.
+
+CHOSEN: (1) THE SWITCH. `tour.model_written`, environment variable `REMEDY_TOUR_MODEL_WRITTEN`,
+off by default; with it off every reported terminal still writes the tour built from the job's
+records, labelled `fallback`, and with it on the summary role writes it as DECISION F036 D3 says.
+This repairs R-1089 and amends D4 (2), which asked `tour_call_fn()` unconditionally. (2) THE DOCK.
+While a stop is shown the card leaves the centre for the lower left of the viewport, within the
+left rail's width, and returns when stepping dims again; this repairs R-1088 and amends D6 (3).
+The render harness imports the app's global sheet so its screenshots show the app's own type and
+buttons. (3) THE PROOF. One three-file job with a fake provider runs to `all_green` through
+`run_cycles` in a subprocess with the key off; its `tour.json` is version 1, labelled `fallback`,
+its first stop anchored to `report.md` and its diff stops to paths of its own diff; the `tour`
+route serves exactly `tour_view` of it; and `remedy job show --tour` shows the same stops in the
+same order. (4) THE DEMO. The feature file's "end-to-end on the demo recording" is met by the
+render harness's tour on the demo's own task and by (3)'s real job; a golden of the demo itself
+would have to invent a report and a diff the recording does not hold.
+
+ALTERNATIVES: leaving the model call on and isolating only the tests, rejected because the rule
+the lessons key states binds the product, not the suite; a cut-out spotlight, rejected in D6;
+fabricating a report and a diff for the demo recording, rejected because a tour of invented
+records would prove nothing about the tour of real ones.
+
+HOW TO REVERSE: delete the key and its read, the dock rule and the end-to-end test, regenerate the
+environment guide, and delete this paragraph; D4 (2) and D6 (3) then read as they were written.

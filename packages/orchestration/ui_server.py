@@ -1961,6 +1961,13 @@ def _build_lessons_json(job: Any) -> dict[str, Any]:
             "lessons": job_lessons_overview(job.tasks, enabled=enabled)}
 
 
+def _build_tour_json(job: Any) -> dict[str, Any]:
+    """Build the tour view — the SAME view the command line's `tour` section shows
+    (F036 T003, DECISION F036 D5)."""
+    from packages.orchestration.result_tour import tour_view
+    return tour_view(job)
+
+
 def _build_next_action_json(job: Any) -> dict[str, Any]:
     """Build next-action suggestion."""
     from packages.orchestration.ui_view_model import build_next_action
@@ -2863,6 +2870,7 @@ class _RemedyHandler(BaseHTTPRequestHandler):
                 "digest": _build_digest_json,
                 "ownership": _build_ownership_json,
                 "lessons": _build_lessons_json,
+                "tour": _build_tour_json,
             }
             handler = handlers.get(endpoint)
             if handler:

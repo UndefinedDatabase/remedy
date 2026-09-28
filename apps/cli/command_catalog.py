@@ -345,7 +345,12 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
             _JOB_ID,
             ArgDef("--full", "Print every finding of a blocked task — a step in the job's plan — "
                    "instead of the first ten, and the job's sections (its permissions, fences, "
-                   "assumptions, completion digest, summary, status, report and Definition of Done)",
+                   "assumptions, completion digest, summary, status, report, Definition of Done "
+                   "and guided tour)",
+                   required=False, is_option=True, is_flag=True),
+            ArgDef("--tour", "Add the job's guided tour: at most eight numbered stops, each tied to "
+                   "a task (a step in the job's plan), a changed file, a file of the job's evidence "
+                   "folder or a command its Definition of Done ran",
                    required=False, is_option=True, is_flag=True),
             _JSON_OPT,
         ),

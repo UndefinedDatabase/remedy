@@ -1,0 +1,73 @@
+diff --git a/.agent/decisions.md b/.agent/decisions.md
+index 615aae997..a2411179c 100644
+--- a/.agent/decisions.md
++++ b/.agent/decisions.md
+@@ -24287,3 +24287,58 @@ F286, rejected because rule B keeps exactly one unclaimed paydown.
+ 
+ HOW TO REVERSE: move F286's STATUS line and its Tier 2 heading back above F036, delete the line
+ this move added to `docs/roadmap/features/T2_F286.md`, operator question Q6 and this paragraph.
++
++## DECISION F036 D3 — a model-written tour keeps the mechanical tour's first stop, may say only what the job's records say, and falls back to the mechanical tour with the reason in its label; it is written through the summary role with a call function bound to the tour's own schema, and provider failures are caught by name, never by a blind handler (2026-09-28)
++
++CONTEXT: Measured at `44965328`: `packages/orchestration/artifact_summary.py` is the one side-role
++generator with a fallback, and it catches a provider failure with `except Exception` marked
++`# noqa: BLE001`; `tests/test_ble001_ratchet.py` freezes those marks at 290, so a new generator
++may not add one. A structured call raises whatever its call function raises:
++`ClaudeCliPlanner.raw_call` raises `RuntimeError`, `OllamaPlanner.raw_call` raises `ImportError`
++without the package and `ollama.RequestError` or `ollama.ResponseError` from the server, and the
++Ollama client is built on `httpx`. `intake.make_structured_call_fn` binds one response schema per
++call function and answers `None` when its planning service is unreachable, and
++`tests/conftest.py` refuses a live Ollama connection to every test without the `real_ollama`
++marker, so under the suite it answers `None`. `artifact_summary.summary_call_fn` binds
++`GeneratedSummaryContent`, which the tour may not reuse. `model_routing.ROLE_CONFIG_CALL_SITES`
++inventories every `resolve_role_config` call, and `tests/orchestration/test_model_routing.py`
++pins that inventory at nine sites and four literal roles. A task records its `title`, `status`
++and `acceptance`; no task records a rationale (DECISION F036 D1 (5)).
++
++CHOSEN: (1) THE SOURCE TEXT. One text lists the job's records, one fact per line: the state,
++terminal status, stop reason and mission; each task's id, title, status and acceptance; each
++changed file with its counts; each evidence file; each recorded command; and the Definition of
++Done's outcome and every check's status. The prompt shows this text and the list of allowed
++anchors, and the no-new-claims check reads the same text, so the model is judged against exactly
++what it was shown. (2) NO NEW CLAIMS. A model-written stop is dropped, with its reason, when it
++states a number, a quoted span or a file path that the source text does not hold, or uses a word
++of a fixed list of claims no record makes, such as "seamless" or "production-ready". This is the
++mechanical half of the feature file's no-new-claims rule; the goldens of T002's second round are
++the other half. (3) THE HONEST FIRST STOP. A model-written tour always starts with the mechanical
++tour's "How the run ended" stop, and the model writes at most seven stops after it, so a failed or
++blocked run is never toured as a success. (4) THE FALLBACK AND ITS LABEL. With no call function
++the answer is the mechanical tour labelled `fallback`. A provider failure, a response that does
++not parse after the one retry, or a model answer of which no stop survives the checks gives the
++mechanical tour labelled `fallback:<reason>`, where the reason is the failure class of
++`failure_postmortem.classify`, or `no_sound_stops`. A tour of which at least one model-written
++stop survives is labelled `summary-role`. Every dropped stop of every stage is listed under
++`dropped`. (5) FAILURES BY NAME. The call is guarded by a named tuple of exception classes — the
++built-in `OSError`, `RuntimeError`, `ValueError` and `ImportError`, and Ollama's two error classes
++and `httpx.HTTPError` when those packages import — so the ratchet stays at 290. (6) THE CALL
++FUNCTION. `tour_call_fn()` resolves the `summary` role and builds a call function bound to the
++tour's own schema, so the tour is written by the same cheap side role as the artifact summaries.
++It is one more `resolve_role_config` site, so the inventory gains `result_tour.py` with the
++literal role `summary`, and the pinned counts become ten sites and five literal roles in the same
++commit. (7) STILL UNWIRED. This round lands generation with an injected call function only.
++Storage, versioning, the terminal hook and the command line are T002's second round, which
++removes the module's line from `ALLOWED_UNWIRED`.
++
++ALTERNATIVES: adding a `# noqa: BLE001` handler and raising the ratchet to 291, rejected because
++the ratchet exists to stop exactly that; reusing `summary_call_fn`, rejected because its call
++function answers in the summary's schema and every tour response would fail validation; letting
++the model write the first stop, rejected because the one stop a failed run must get right would
++then depend on the model.
++
++HOW TO REVERSE: delete the generation half of `packages/orchestration/result_tour.py` and its
++tests, remove the `result_tour.py` line from `ROLE_CONFIG_CALL_SITES`, restore the pinned counts
++to nine and four, and delete this paragraph.
+diff --git a/.agent/live_review.md b/.agent/live_review.md
+index afbf10c0c..e2372c69e 100644
+--- a/.agent/live_review.md
++++ b/.agent/live_review.md
+@@ -422,3 +422,5 @@ Gate: F035 R8 — the F035 round 8 entry: the closure sequence's first round, wh
+ Gate: F035 R9 — the F035 round 9 entry, the closure sequence's evidence round: the booking of round 8 with the resolutions of R-1085 and R-1086, the Built State's naming of the reachability allowlist's three new lines, the self-use reading, the evidence job and the review package at the accepted head. VERDICT PASS. Re-derived over `43927119`..`ce75183d` by the planner and reviewer of F035's second session, whose own runs produced every reading below. THE RANGE IS 3 COMMITS, at `8b371f84` 382, `7f25c03b` 16 and `ce75183d` 149 insertions by `git show --numstat`, each under the 500-line cap, each single-parent and each ending with the ordered trailer; the tracked path set is exactly the block's constraint 3, and the worker declared no deviation. One slip in the handback, not in any record: `.agent/handoff.md` twice quotes the block's sha256 with its fifth to eighth bytes retyped (`a9a0` for `fe0a`), while the block copy it committed is byte-equal to the reviewer's original, so the transport stands and the handback is rewritten by the next round. THE TRANSPORT PROOF: the block copy and the three payload copies, read at the branch tip, equal the reviewer's originals byte for byte. THE RECORDS: at `7f25c03b` the ledger, the plan and `docs/roadmap/features/T5_F035.md` each equal the reviewer's simulation tree byte for byte, and the open set reads empty. THE ACCEPTED COMMIT, the closure's accepted head, is `7f25c03bddca1d9c08b58821288b7eed42d1e3cb`. THE SELF-USE READING: the reviewer's own call of `generate_and_append_if_empty` and `next_self_use_item` at the branch tip answered `None` twice and wrote nothing, so closure precondition 6 reads `self-use NONE (queue exhausted)`. THE BUNDLE: the evidence job `f035r9e1001` against the fork point `a0b287a552f4630e64122188c28bd0a965441864` holds one run, `vr-0351`, at exit 0 with 1068 of 1068 selected tests passed and none skipped, its head the accepted head, and `validate_verification_tests` reads no problem; the reviewer validated the bundle with `validate_evidence_candidate` from a disposable worktree at the accepted head, which read `is_valid_current_run` True with no validation error, and the worktree was removed. THE PACKAGE: `remedy-review-20260928-050815-READY_FOR_REVIEW.zip` in `/home/decodeux/Repos/remedy-history/zips` hashes to `9b3e3841d2c11725c8a03579fa2a7d5dcb963aac3386faeb5a6ab5517ac2b8aa` by the reviewer's own reading, and its manifest's committed review subject reads the fork point as base and the accepted head as head over 58 commits. THE TREE: all six `integrity check` checks read ok at `ce75183d`, `tests/docs/` with `tests/cli/test_golden_path.py` read 369 passed, the tree was clean, and the local tip equals the pushed branch.
+ 
+ Gate: F035 R10 — the F035 round 10 entry: the closing round, which books round 9, rotates the finding ledger, accepts F035 in STATUS with its README pins, and opens pull request 290. VERDICT PASS. Re-derived over `ce75183d`..`8040e44c` by the planner and reviewer of F035's second session, whose own runs produced every reading below. THE RANGE IS 4 COMMITS, at `1e088188` 441, `e873391d` 6, `2d54c4d5` 34 and `8040e44c` 159 insertions by `git show --numstat`, each under the 500-line cap and each single-parent; the tracked path set is exactly the block's constraint 3, and the worker declared no deviation. THE TRANSPORT PROOF: the block copy and the seven payload copies, read at the branch tip, equal the reviewer's originals byte for byte. THE RECORDS: at `e873391d` the ledger and the plan, at `2d54c4d5` the ledger and its archive, and at `8040e44c` `docs/roadmap/STATUS.md` and `README.md` each equal the reviewer's simulation byte for byte; the rotation moved 7 gate records and 5 finding pairs with the open set empty before and after. THE HANDBACK names the package, its SHA-256, its directory, the evidence job, the accepted head and `self-use NONE (queue exhausted)` once each, and no pull request link. THE TESTS: the reviewer's own serial run of the closure selection at `8040e44c` read 512 passed, and all six `integrity check` checks read `pass`; the simulation's two red controls of the README pins each read 1 failed at exit 1. THE PULL REQUEST: 290, open, not a draft, from `feature/f035-ownership-ledger` into `main`, head `8040e44c00754fa5d8f6737486b229d540e5a80c`, to be merged by the next feature's session at the Open PR Gate.
++
++Gate: F036 R1 — the F036 round 1 entry: the claim, which moves F286 behind F036, books F035's round 10, records DECISIONS F036 D1 and D2 with operator question Q6, and lands T001 in `packages/orchestration/result_tour.py`. VERDICT PASS. Re-derived over `9dc2f2a7`..`44965328` by the planner and reviewer of F036's first session, whose own runs produced every reading below. THE RANGE IS 7 COMMITS, at `3ac8dbb8` 406, `f28f32d2` 217, `202f8ddd` 162, `89081e1f` 451, `8b32f9d8` 450, `6fcf6488` 139 and `44965328` 150 insertions by `git show --numstat`, each under the 500-line cap and each single-parent; the worker split the block's C4 into C4a, the tests, and C4b, the mutation tool, under constraint 2 and declared it. The tracked path set is exactly the block's constraint 3. THE TRANSPORT PROOF: the block copy and the three payload copies, read at the branch tip, equal the reviewer's originals byte for byte. THE CLAIM: at `202f8ddd` the seven records of the block's G2 table each equal the reviewer's simulation tree byte for byte and are unchanged at the tip; the open set is empty at `9dc2f2a7` and at `202f8ddd`. THE CODE matches S1 to S7 on the reviewer's reading: the anchor check is exact membership for all four kinds, the resolver drops a malformed stop, an unresolved anchor and a ninth sound stop each with its reason, lists and logs every drop and keeps a new dict, and the mechanical tour's room arithmetic gathers the areas past the room into one stop; `ruff check` over the module, its test, the orphan guard and the tool read clean. THE TESTS: the block's G4 selection, run serially by the reviewer in the primary checkout at `44965328`, read 887 passed and 1 skipped at exit 0, which is 874 at base plus the 13 nodes of the new test file, the skip the F252 quarantine; all six `integrity check` checks read pass. THE RED PROOFS: the worker's tool, re-run by the reviewer in a disposable worktree at `44965328`, turned all twelve ordered mutations red with an unmutated control green before and after and the module restored byte-identical; three mutations of the reviewer's own — the minus sign as a hyphen, the gathering stop without its area count, and a kept stop that is the input object — each read 1 failed; the worktree was removed and `git worktree list` reads 62 lines.

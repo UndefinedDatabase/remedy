@@ -199,7 +199,8 @@ def _scope_label(job: JobPlan, scope: ProjectScope, known_ids: set[str]) -> str:
     return ""
 
 
-def _cmd_show_job(job_id_str: str, *, full: bool = False, json_output: bool = False) -> None:
+def _cmd_show_job(job_id_str: str, *, full: bool = False, tour: bool = False,
+                  json_output: bool = False) -> None:
     from packages.orchestration.pingpong_job import _export_job, collect_blocked_task_findings
 
     job_id = resolve_job_id_or_fail(job_id_str, json_output=json_output)
@@ -215,6 +216,9 @@ def _cmd_show_job(job_id_str: str, *, full: bool = False, json_output: bool = Fa
     section_text: list[str] = []
     if full:
         shown["sections"], section_text = _build_show_sections(job)
+    elif tour:
+        # `--tour` alone: the `tour` section, built and printed the way `--full` does.
+        shown["sections"], section_text = _build_show_sections(job, names=("tour",))
     emit_ok(**shown)
     if job.intake:
         _print_intake_block(job.intake)
@@ -241,6 +245,7 @@ def _print_blocked_task_findings(job_id: str, entries: list[dict]) -> None:
 #: `job show --full`, not commands, and they appear in this order.
 _SHOW_SECTION_ORDER = (
     "permissions", "fences", "assumptions", "digest", "summary", "status", "report", "dod",
+    "tour",
 )
 
 
@@ -635,6 +640,24 @@ def _dod_section(job: JobPlan) -> tuple[dict, list[str]]:
     return data, lines
 
 
+def _tour_section(job: JobPlan) -> tuple[dict, list[str]]:
+    """The stored guided tour, or its mechanical fallback shown read-only, from the ONE view
+    the browser's `tour` route also serves (DECISION F036 D5).
+
+    A non-empty `error` becomes the section error `tour_unreadable`; otherwise the section's
+    data is `{"stored", "version", "tour"}` from the view and its lines are
+    `render_tour_lines(tour)` — round 3's behaviour, unchanged.
+    """
+    from packages.orchestration.result_tour import render_tour_lines, tour_view
+
+    view = tour_view(job)
+    if view["error"]:
+        raise ShowSectionError("tour_unreadable", view["error"])
+
+    data = {"stored": view["stored"], "version": view["version"], "tour": view["tour"]}
+    return data, render_tour_lines(view["tour"])
+
+
 #: The sections that exist so far, as (name, builder) pairs in `_SHOW_SECTION_ORDER`
 #: order. A builder returns the section's JSON data and its text lines. Folding a
 #: former read command into `job show --full` adds exactly one entry here.
@@ -647,20 +670,28 @@ _SHOW_SECTIONS: tuple[tuple[str, Callable[[JobPlan], tuple[dict, list[str]]]], .
     ("status", _status_section),
     ("report", _report_section),
     ("dod", _dod_section),
+    ("tour", _tour_section),
 )
 
 
-def _build_show_sections(job: JobPlan) -> tuple[dict[str, dict], list[str]]:
+def _build_show_sections(
+    job: JobPlan, *, names: tuple[str, ...] | None = None,
+) -> tuple[dict[str, dict], list[str]]:
     """Every registered section in its envelope, and the text printed for them on stderr.
 
     A section that cannot describe its job raises `ShowSectionError` and becomes an error
     envelope with that error's own code; a section that raises anything else becomes
     ``section_failed``. Neither fails the command: one unreadable view never hides the
     others, and `job show --full` still exits 0.
+
+    *names*, when given, restricts the build to the sections it names — what `job show
+    --tour` uses to build the `tour` section alone, in the same envelope `--full` uses.
     """
     sections: dict[str, dict] = {}
     text: list[str] = []
     for name, builder in _SHOW_SECTIONS:
+        if names is not None and name not in names:
+            continue
         text.append(f"\n--- {name.capitalize()} ---")
         try:
             data, lines = builder(job)
@@ -2290,6 +2321,7 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
     ),
     "job.show": lambda args: _cmd_show_job(
         args.job_id, full=getattr(args, "full", False),
+        tour=getattr(args, "tour", False),
         json_output=getattr(args, "json", False)),
     "job.budget": _cmd_job_budget_route,
     "job.plan": lambda args: _cmd_plan_job_local(

@@ -904,6 +904,19 @@ _CONFIG_KEY_SPECS: tuple[ConfigKeySpec, ...] = (
         default=300000,
     ),
     ConfigKeySpec(
+        key="tour.model_written",
+        env_var="REMEDY_TOUR_MODEL_WRITTEN",
+        description=(
+            "Let the summary model write each job's guided tour at the end of "
+            "its run (F036). Off by default: each tour is one summary model "
+            "call, and a run makes no call the operator did not switch on; "
+            "with it off, every job still gets the tour built from its own "
+            "records."
+        ),
+        value_type=bool,
+        default=False,
+    ),
+    ConfigKeySpec(
         key="watchdog.no_progress_repeats",
         env_var="REMEDY_WATCHDOG_NO_PROGRESS_REPEATS",
         description=(
