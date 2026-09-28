@@ -24118,3 +24118,37 @@ D3).
 
 HOW TO REVERSE: delete `ownership.ts`, the loader, the shell's effect, the prop and the section,
 the assumption-log row naming this decision, and this paragraph.
+
+## DECISION F035 D6 — the evidence panel gains a fourth tab, "Ownership", the whole job's history as chips and sentences, which loads itself from the `ownership` route; a headless render proves the task detail's section and the tab as a person sees them; the end-to-end proof takes the next round (2026-09-28)
+
+CONTEXT: Measured at `36d5c359`: the evidence panel in
+`apps/ui/src/components/graph/EvidencePanel.tsx` opens at the deepest zoom for a focused run and
+has the tabs diff, prompt and chat, listed in `EVIDENCE_TABS` of `evidencePanel.ts`, typed by
+`EvidenceTab` in `semanticZoom.ts` and repeated in the deep link's `TABS` of `zoomDeepLink.ts`;
+`evidencePanel.test.ts` and `tests/ui_contracts/test_evidence_panel_contract.py` pin the three.
+The diff tab loads itself in an effect guarded by `cancelled`, with the job id and the token the
+panel already holds. T5_F035.md asks for "a job-level ownership tab in the evidence panel". No
+test yet looks at the section or the tab as rendered pixels.
+
+CHOSEN: (1) THE TAB. `{ tab: "ownership", label: "Ownership" }` is the fourth entry of
+`EVIDENCE_TABS`, of `EvidenceTab` and of the deep link's list. Its body is the whole job's
+history — every entry of the view, not only the focused run's task — as the task detail shows
+one task's: a chip with the action's word and the sentence verbatim. It loads itself as the diff
+tab does, and it reads as one state of a pure function: loading, the fixed unreadable line, the
+line "No action is recorded for this job yet.", or the entries. (2) THE TWO TEST PINS. The
+existing tab-list assertions gain the fourth entry; nothing they already assert is removed.
+(3) THE RENDER. A headless page, built from the F288 round 6 harness, renders the task detail's
+section and the tab from a fixed view and checks them as a person sees them: the chips and the
+verbatim sentences in order, no section for a task without an entry, the unreadable line and not
+the error, four tabs, and the tab's list. (4) THE NEXT ROUND runs one real job through the real
+command line and the browser's door and proves the ledger, the command, the route and the
+task mapping agree.
+
+ALTERNATIVES: a tab that shows only the focused run's task, rejected because the feature file
+asks for the job's history and the task detail already shows one task's; a tab loaded by the
+stage and passed down, rejected because the diff tab already loads itself with the credentials
+the panel holds.
+
+HOW TO REVERSE: remove the fourth tab from the three lists, its body and its state function,
+the two added test assertions and the assumption-log row naming this decision, and delete this
+paragraph.
