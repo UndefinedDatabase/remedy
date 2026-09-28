@@ -24081,3 +24081,40 @@ sentence without the code.
 HOW TO REVERSE: remove the catalog entry, `apps/cli/commands/job_ownership_cmd.py`, its
 exit-code row and reachability line, the `ownership` route and `ownership_view`, restore the
 plan-edit templates, and delete this paragraph.
+
+## DECISION F035 D5 — the task detail gains a "Who did what" section: one chip and one sentence per ownership entry that acted on the task or was caused for it, read once by the shell from the `ownership` route and handed to the detail as a prop; it corrects DECISION F035 D4's exit code for a malformed job id (2026-09-28)
+
+CONTEXT: Measured at `0faa196f`: the browser has no reader of the `ownership` route.
+`DetailPopover.tsx` under `apps/ui/src/components/detail/` is the task detail, holds a veto
+section with the veto's own state, and may not call `fetch` (`tests/ui_contracts/
+test_veto_controls_contract.py` and `test_task_version_contract.py` list it as a file that never
+fetches). `RemedyShell.tsx` loads the digest in an effect guarded by `cancelled`, and the lessons
+overlay re-reads when the stream shows a new lesson through `lessonsRefreshKey`. The design
+reference `docs/ui/design_reference/component_spec.md` names no ownership section, and
+`ux_spec.md` §13 gives a chip radius 999, height 32 and a 12.5/600 label; §17 forbids raw ids,
+raw JSON and tracebacks in copy. DECISION F035 D4 states that `remedy job ownership` exits 2 for a
+malformed job id; `resolve_job_id_or_fail` in `apps/cli/job_id_arg.py` exits 1 for one and 2 only
+for an ambiguous prefix, and the command follows it.
+
+CHOSEN: (1) A PURE READER. `apps/ui/src/api/ownership.ts` decodes the route's view, refusing the
+whole view when one entry is malformed, builds the route's path, labels each action with one short
+chip word, and answers the entries for a task: those whose `task_id` is the task's, or whose
+consequence names it, in the view's order. It opens no socket, reads no clock and keeps no
+storage. (2) ONE LOAD. `RemedyShell.tsx` loads the view once per job and token, again when the
+stream shows a frame of an event the ledger reads, and again when the selected task changes, and
+passes it to `DetailPopover.tsx`, which never fetches. (3) THE SECTION. Under the unreachable
+section, a section headed "Who did what" lists, for the selected task, one row per entry: a chip
+with the action's word, then the sentence verbatim — the server's own words, never rewritten or
+cut. A task with no entry shows no section; a view that could not be read shows the one line
+"Who did what could not be read for this job." and never the server's error text. The veto
+section stays: it states the veto as it stands, and the new section is the history. (4) THE
+CORRECTION. `remedy job ownership` exits 1 for a malformed job id and 2 only for an ambiguous
+prefix, as every job command does; D4's sentence stating 2 is superseded by this one.
+
+ALTERNATIVES: the detail fetching the route itself, rejected because two contracts forbid a fetch
+there; the veto section's `Vetoed by` line removed in favour of the new section, rejected because
+it states the veto's present state, as the `Paused by` line does in the report (DECISION F035
+D3).
+
+HOW TO REVERSE: delete `ownership.ts`, the loader, the shell's effect, the prop and the section,
+the assumption-log row naming this decision, and this paragraph.
