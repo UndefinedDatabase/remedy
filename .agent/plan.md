@@ -1,26 +1,33 @@
-# Plan — F036 Guided result tour
+# Plan — F038 Grounded chat & intent dispatch
 
-Branch: feature/f036-guided-result-tour, cut from `main` at `9dc2f2a7`, the
-merge commit of pull request 290 (F035 Ownership ledger).
+Branch: feature/f038-grounded-chat, cut from `main` at `fec08a5b`, the
+merge commit of pull request 291 (F036 Guided result tour).
 
 ## Goal
 
-"What did I get?" answered in a guided minute: at most eight stops built
-from the job's own report, diff and Definition of Done, each tied to a real
-place in the job, shown as an overlay in the browser and printed the same
-way on the command line (`docs/roadmap/features/T5_F036.md`, DECISIONS
-F036 D1 to D7).
+The chat becomes the cockpit's grounded control stand: answers in a node
+scope and a project scope cite numbered evidence items or say "not in
+evidence", and typed intent becomes a confirmable card for an exposed
+command (`docs/roadmap/features/T5_F038.md`, the spec
+`docs/roadmap/design/grounded-chat-spec.md`, DECISION F038 D1).
 
 ## Current Step
 
-ROUND 9, the closing round: book round 8, rotate the ledger, accept F036 in
-STATUS with its README pins, and open the pull request.
+ROUND 1: claim F038, move F286 behind it (DECISION F038 D2), book F036's
+round 9, register and repair R-1091, and land the node scope of T001 in
+`packages/orchestration/chat_evidence.py`.
 
 ## Next Steps
 
-1. The next feature's session merges this pull request at the Open PR Gate,
-   then Rule A5 proposes F286, the fifth findings paydown.
+1. Review round 1.
+2. T001: the project scope over the spec's evidence set, with the spec's
+   set-list update.
+3. T001: the grounded answer, its citation check, the unsupported marker
+   and the canary suite.
+4. T002: the intent parse, the action cards and their confirmation.
+5. T003: the panel, the command line and the end-to-end proof; closure.
 
 ## Risks
 
-None open.
+- R-1091 is open and High until its repair is reviewed, so the integrity
+  check reads its open-High check as failed until then.

@@ -24508,3 +24508,80 @@ records would prove nothing about the tour of real ones.
 
 HOW TO REVERSE: delete the key and its read, the dock rule and the end-to-end test, regenerate the
 environment guide, and delete this paragraph; D4 (2) and D6 (3) then read as they were written.
+
+## DECISION F038 D1 — the grounded chat answers only from numbered evidence items, each one fact on one line with an anchor naming the record it was read from; the first round lands the node scope, one task's record, run rounds, diff and run log, and the composer that keeps an ordered prefix under the spec's 4000-token cap after redaction, writing no file and called by nothing yet (2026-09-28)
+
+CONTEXT: T5_F038.md and `docs/roadmap/design/grounded-chat-spec.md` were written before most of
+their inputs were built. Measured at `fec08a5b`: no module named `chat_evidence`, `chat_answer`
+or `chat_intent` exists. `remedy chat` is F264's steering group, whose default subcommand is
+`send` (`_DEFAULT_COMMAND` in `apps/cli/grouped.py`), so the spec's one-shot
+`remedy chat "question"` would be read as a steering message. The spec's node scope names an
+`explain_run` direction that has no code, and its project set names a progress ledger that has no
+reader, while F071's mission dossier and F103's token ledger have landed. One task's records are
+these: its `TaskEntry` in the job; its latest run's rounds, `run_rounds_view.build_task_run_rounds`;
+its own diff, `diff_view_source.build_diff_view(evidence_index.resolve_job_evidence_dir(job_id),
+task_id=...)`, which serves only the task runs its listing holds (finding R-1091); and the job's
+run log, `timeline.load_run_events(data_paths.resolve_data_root(), job_id)`, whose events name
+their task at the top level or under `metadata`. Prompt traces have no reader in `packages/`
+outside the UI server's private builder. Redaction is `stream_evidence.redact_text`; the token
+estimate is `token_economy.estimate_text_tokens`, characters over four rounded up. The nearest
+precedents are F255's `teacher_qa`, which grounds by a source label with no anchor, and F036's
+`result_tour`, whose stops carry a `{kind, ref}` anchor checked against the job's records.
+
+CHOSEN: (1) ONE MODULE, `packages/orchestration/chat_evidence.py`. Apart from the collector that
+reads one task's records, it is pure: it writes no file, calls no model and changes no record.
+(2) THE ITEM is a frozen `ChatEvidenceItem(kind, ref, text)`. For the node scope the kinds are
+`node`, `round`, `diff` and `event`; the project scope's kinds join with that scope. The text is
+one fact on one line of at most 400 characters, redacted BEFORE it is folded onto one line and
+cut, so a cut never leaves half a secret. An answer cites an item by its number in the composed
+set, counted from 1, and the anchor is what a citation chip opens. (3) THE COMPOSER keeps the
+items in their order while the rendered set, one line `[n] kind:ref — text` per item, estimates at
+most 4000 tokens, stops at the first item that does not fit and counts the rest as omitted. It
+refuses a malformed item and an unknown scope. (4) THE NODE SCOPE, in this order: the task's
+record, anchored `node:<task id>` — its title, its status with the final status and its detail,
+the reviewer verdict, the tests, the repair rounds, and the error and the tripped limit when set;
+each round of its latest run, `round:<task id>#<n>`; each file of its own diff,
+`diff:<path>`; and its run-log events newest first, `event:<name>@<timestamp>`, so that the cap
+drops the oldest. A source with nothing recorded becomes one `node` item that says `not recorded`
+with its reason, which is the fact an absent-fact answer cites. The task is named by its full id;
+a prefix is refused. (5) PROMPT TRACES join the node scope in the project scope's round, through a
+reader that round adds. (6) THE ROUNDS. The first lands (1) to (4) and repairs R-1091, which the
+node scope's diff needs. The next lands the project scope over the spec's evidence set and updates
+the spec's set list: the dossier and the token ledger join, and the `explain_run` and
+progress-ledger lines go. Then the grounded answer with its citation check, the unsupported marker
+and the canary suite; T002's intent parse over `UI_EXPOSED_COMMANDS`, the action cards and their
+confirmation; and T003's panel in the evidence panel's `chat` tab, the command line and the
+end-to-end proof. Until a command imports the module it is listed in `ALLOWED_UNWIRED` of
+`tests/test_no_orphan_modules.py` with its reason, and the commit that wires it removes that line.
+(7) THE QUESTION VERB is a new subcommand of `remedy chat`, named by the round that lands it;
+`send` stays the group's default.
+
+ALTERNATIVES: letting the model read the records itself, rejected because the spec makes
+composition deterministic code (section 5); dropping a source with nothing recorded, rejected
+because an absent-fact question would then have nothing to cite; cutting the composed text by
+characters, rejected because a cut item states half a fact; listing events oldest first, rejected
+because the cap would then drop the newest.
+
+HOW TO REVERSE: delete `packages/orchestration/chat_evidence.py` and its tests, remove its line
+from `ALLOWED_UNWIRED`, and delete this paragraph. R-1091's repair stands on its own finding.
+
+## DECISION F038 D2 — the fifth findings paydown, F286, waits behind F038 because again no finding is open when Rule A5 reaches it; F038 is claimed, and the next claim proposes F286 again (2026-09-28)
+
+CONTEXT: At `fec08a5b` the first unchecked line of `docs/roadmap/STATUS.md` is F286 — Findings
+paydown v5, moved behind F036 by DECISION F036 D2, which lets the next claim make the same move
+by a DECISION of its own when the open set is empty again. `open_finding_ids` over
+`.agent/live_review.md` at `fec08a5b` answers `[]`. R-1091, which this claim registers, is owned
+by F038 and repaired in its first round, so it gives F286 nothing to take.
+
+CHOSEN: F286's STATUS line and its Tier 2 heading move one feature down again, to directly after
+F038, and F038 is claimed now. F286's file gains one line recording the move. Operator question
+Q6 already carries the recommendation this executes, to keep the paydown waiting while no defect
+is open, so no new question is written. The next claim after F038's closure meets F286 first under
+Rule A5 and makes the same test.
+
+ALTERNATIVES: claiming F286 to pay down R-1091, rejected because the chat's node scope reads the
+task diff first and the repair is two expressions and their tests; claiming F286 with nothing to
+pay down, rejected for DECISION F036 D2's reason.
+
+HOW TO REVERSE: move F286's STATUS line and its Tier 2 heading back above F038, delete the line
+this move added to `docs/roadmap/features/T2_F286.md`, and delete this paragraph.

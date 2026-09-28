@@ -1,26 +1,26 @@
-# Context — F036 Guided result tour
+# Context — F038 Grounded chat & intent dispatch
 
 ## Active Branch
-feature/f036-guided-result-tour, cut from `main` at `9dc2f2a7`
-(the merge commit of pull request 290, F035 Ownership ledger).
+feature/f038-grounded-chat, cut from `main` at `fec08a5b`
+(the merge commit of pull request 291, F036 Guided result tour).
 
 ## Scope
-F036 (Tier 5): a guided tour of a finished job — at most eight stops built
-from the report, the diff, the evidence files and the Definition of Done,
-each anchored to a place that exists, written by a side-role model call
-with a mechanical fallback, shown as a browser overlay and printed by the
-command line, as `docs/roadmap/features/T5_F036.md` and DECISION F036 D1
-specify.
+F038 (Tier 5): grounded chat — answers in a node scope and a project scope
+from numbered evidence items, cited or saying "not in evidence", and intent
+dispatch to the exposed command verbs through confirmable action cards,
+command line first and then the panel, as `docs/roadmap/features/T5_F038.md`,
+`docs/roadmap/design/grounded-chat-spec.md` and DECISION F038 D1 specify.
 
 ## Do not touch
-Report content, deep-link formats (consumed, not changed), and preview
-mechanics, which F041 adds to tour stops later.
+The exposed-verb list (it grows per feature, never for the chat), evidence
+formats, and the spec outside its reviewed set-list update.
 
 ## Active assumptions
-- A tour restates what the job's own records say and adds no claim; a stop
-  without a resolving anchor is dropped, never shipped (DECISION F036 D1).
-- The findings paydown F286 waits behind F036 while no finding is open
-  (DECISION F036 D2).
+- A chat answer says only what a numbered evidence item says; a source
+  with nothing recorded is an item saying so (DECISION F038 D1).
+- `remedy chat` keeps `send` as its default subcommand (F264).
+- The findings paydown F286 waits behind F038 while no finding is open
+  (DECISION F038 D2).
 
 ## Constraints
 - Every pytest run in a round is targeted and serial; the resource and
