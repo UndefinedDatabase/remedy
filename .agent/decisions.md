@@ -24184,3 +24184,22 @@ stand-in proves the stand-in; one run per class, rejected as five live runs to p
 tests already prove over the real records.
 
 HOW TO REVERSE: delete the end-to-end test and this paragraph.
+
+## DECISION F035 D8 — corrects DECISION F035 D7: the browser's job-wide steering message reads "You (browser)", without a token number, because a steering record keeps its channel and not the token's fingerprint; only actions whose record holds the fingerprint are numbered (2026-09-28)
+
+CONTEXT: DECISION F035 D7 (2) states that the end-to-end proof's veto and job-wide message, both
+sent through the browser's door, read `You (browser, token #1)`. Measured at `9c42693f`:
+`_dispatch_chat_send` in `packages/orchestration/ui_server.py` records a message with channel
+`cockpit`, as DECISION F264 D2 ordered, and `build_ownership_ledger` numbers only an actor whose
+recorded value is a `tf:` fingerprint, as DECISION F035 D1 (3) ordered; the live test of round 7
+reads the message as `You (browser)`.
+
+CHOSEN: D7's sentence is superseded by this one: an action through the browser's door reads with
+a token number only when its record holds the fingerprint — vetoes, veto answers, injections,
+reruns and edits — and as `You (browser)` otherwise. Nothing in the code changes; the steering
+record's format is F264's and stays as it is.
+
+ALTERNATIVES: recording the fingerprint on steering records, rejected because it changes a
+record another feature owns for a label.
+
+HOW TO REVERSE: delete this paragraph; D7's sentence then stands, and is false.
