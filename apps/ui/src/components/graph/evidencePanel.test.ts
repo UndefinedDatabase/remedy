@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { RemedyPromptTraceItem } from "../../api/types";
-import { EVIDENCE_CHAT_NOT_YET, EVIDENCE_TABS, evidencePromptsOf } from "./evidencePanel";
+import { EVIDENCE_TABS, evidencePromptsOf } from "./evidencePanel";
 
 function prompt(id: string, taskId: string, round: number, role: RemedyPromptTraceItem["role"]): RemedyPromptTraceItem {
   return {
@@ -18,12 +18,6 @@ describe("the evidence panel's tabs", () => {
       { tab: "chat", label: "Chat" },
       { tab: "ownership", label: "Ownership" },
     ]);
-  });
-
-  it("the chat tab says in plain words that it is not here yet and where steering is", () => {
-    expect(EVIDENCE_CHAT_NOT_YET).toBe(
-      "Talking about a single run arrives with its own feature. The job's steering box, in the right panel, already reaches the running job.",
-    );
   });
 });
 

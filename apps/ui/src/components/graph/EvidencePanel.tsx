@@ -14,7 +14,8 @@ import { DiffFileSidebar } from "../diff/DiffFileSidebar";
 import { DiffView } from "../diff/DiffView";
 import { PromptTracePanel } from "../prompt/PromptTracePanel";
 import type { BrainEventRow, BrainNode } from "./brainOntology";
-import { EVIDENCE_CHAT_NOT_YET, EVIDENCE_TABS, evidencePromptsOf } from "./evidencePanel";
+import { EvidenceChatTab } from "./EvidenceChatTab";
+import { EVIDENCE_TABS, evidencePromptsOf } from "./evidencePanel";
 import { runDetailOf } from "./runDetailModel";
 import type { EvidenceTab } from "./semanticZoom";
 import styles from "./EvidencePanel.module.css";
@@ -122,7 +123,7 @@ export function EvidencePanel({ node, tab, rows, promptItems, jobId, token, onTa
       <div className={styles.body} ref={bodyRef} role="tabpanel">
         {tab === "diff" && <DiffTab jobId={jobId} token={token} taskId={detail.taskId} />}
         {tab === "prompt" && <PromptTracePanel prompts={prompts} selectedPromptId={detail.promptItemId} />}
-        {tab === "chat" && <p className={styles.note}>{EVIDENCE_CHAT_NOT_YET}</p>}
+        {tab === "chat" && <EvidenceChatTab jobId={jobId} token={token} taskId={detail.taskId} onTab={onTab} />}
         {tab === "ownership" && <OwnershipTab jobId={jobId} token={token} />}
       </div>
     </aside>

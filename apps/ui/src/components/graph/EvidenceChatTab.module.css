@@ -1,0 +1,158 @@
+/* F038 T003, DECISION F038 D12 — the evidence panel's Chat tab: the panel's own
+   `--remedy-*` tokens only, no raw colour literal (tokens_rules.md, Forbidden). */
+.tab {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  font-family: var(--remedy-font-ui);
+}
+
+.turn {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--remedy-line);
+  border-radius: var(--remedy-radius-md);
+  background: var(--remedy-card-soft);
+}
+
+.question {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--remedy-ink);
+}
+
+.scopeChip {
+  align-self: flex-start;
+  padding: 2px 8px;
+  border: 1px solid var(--remedy-line);
+  border-radius: var(--remedy-radius-pill);
+  color: var(--remedy-ink-soft);
+  font: 600 11px var(--remedy-font-ui);
+}
+
+.sentence {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--remedy-text);
+}
+
+.chip {
+  margin-left: 4px;
+  padding: 1px 6px;
+  border: 1px solid var(--remedy-blue-strong);
+  border-radius: var(--remedy-radius-pill);
+  color: var(--remedy-blue-strong);
+  font: 600 11px var(--remedy-font-ui);
+  text-decoration: none;
+}
+.chip:hover { background: var(--remedy-blue-50); }
+
+.unsupportedMark {
+  margin-left: 4px;
+  padding: 1px 6px;
+  border: 1px dashed var(--remedy-red-500);
+  border-radius: var(--remedy-radius-pill);
+  color: var(--remedy-red-500);
+  font: 600 11px var(--remedy-font-ui);
+}
+
+.evidenceList {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.evidenceItem {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--remedy-muted);
+}
+
+.openTab {
+  border: 0;
+  background: transparent;
+  color: var(--remedy-blue-strong);
+  font: 600 11px var(--remedy-font-ui);
+  cursor: pointer;
+  padding: 0;
+}
+
+.cardTitle {
+  font-size: 13px;
+  color: var(--remedy-ink);
+}
+
+.cardLines {
+  margin: 0;
+  padding-left: 16px;
+  font-size: 12px;
+  color: var(--remedy-text);
+}
+
+.confirm {
+  align-self: flex-start;
+  padding: 6px 14px;
+  border: 0;
+  border-radius: var(--remedy-radius-pill);
+  background: var(--remedy-blue-strong);
+  color: var(--remedy-bg-2);
+  font: 600 12px var(--remedy-font-ui);
+  cursor: pointer;
+}
+
+.outcome {
+  margin: 0;
+  font-size: 12px;
+  color: var(--remedy-muted);
+}
+
+.pending, .unreadable, .unavailable {
+  margin: 0;
+  font-size: 13px;
+  color: var(--remedy-muted);
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-top: 8px;
+  border-top: 1px solid var(--remedy-line);
+}
+
+.wholeProjectLabel {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--remedy-ink-soft);
+}
+
+.input {
+  padding: 8px 10px;
+  border: 1px solid var(--remedy-line);
+  border-radius: var(--remedy-radius-sm);
+  font: inherit;
+  font-size: 13px;
+  color: var(--remedy-ink);
+  background: var(--remedy-bg-2);
+}
+.input:focus-visible { outline: 2px solid var(--remedy-blue-strong); outline-offset: 1px; }
+
+.ask {
+  align-self: flex-start;
+  padding: 6px 14px;
+  border: 0;
+  border-radius: var(--remedy-radius-pill);
+  background: var(--remedy-blue-strong);
+  color: var(--remedy-bg-2);
+  font: 600 12px var(--remedy-font-ui);
+  cursor: pointer;
+}
