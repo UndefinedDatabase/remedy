@@ -265,7 +265,7 @@ def _prompt_trace_items(task: Any, task_id: str) -> list[ChatEvidenceItem]:
     """S2: the task's own prompt trace, one item per entry — metadata only, never
     the prompt text. Directly after the rounds and before the diff."""
     run_id = getattr(task, "run_id", None)
-    if not isinstance(run_id, str) or not _RUN_ID_RE.match(run_id):
+    if not isinstance(run_id, str) or not _RUN_ID_RE.fullmatch(run_id):
         return [
             make_chat_item(
                 "node", task_id, "Prompt trace: not recorded (no_run_recorded)"

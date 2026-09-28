@@ -77,9 +77,9 @@ ALLOWED_UNWIRED: tuple[tuple[str, str], ...] = (
      "the sole token_policy_applied emitter, kept by DECISION F275 D18 as that event's test vehicle"),
     ("packages/orchestration/bench_run.py",
      "F082's on-demand bench run; never implicit by DECISION F082 D9, the one caller its guard permits"),
-    ("packages/orchestration/chat_evidence.py",
-     "F038's grounded chat evidence, the node and project scopes and the composer; the chat command "
-     "wires it in a later round (DECISION F038 D1 (6)) and removes this line"),
+    ("packages/orchestration/chat_answer.py",
+     "F038's grounded answer, the citation check and the mechanical answer; the chat command wires "
+     "it in a later round (DECISION F038 D4) and removes this line"),
     ("packages/orchestration/ci_budgets.py",
      "the zero-findings lint rule the `budgets` CI stage's tests/orchestration/test_ci_budgets.py applies "
      "(DECISION amend0911-feedback D7)"),
