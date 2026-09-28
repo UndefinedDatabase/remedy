@@ -25247,3 +25247,42 @@ graph has not drawn.
 
 HOW TO REVERSE: delete `storyPlayer.ts`, `StoryPanel.tsx` and its CSS module, their tests and render
 files, the Story button, the shell's state and mount, the assumption-log line and this paragraph.
+
+## DECISION F039 D7 — the export is one HTML file: the existing UI build gains the story player as a second page, and `remedy job story <id> --export <file>` inlines that page's built script and style with the job's story data as inline JSON under a fixed schema; no font is bundled; the file must fit a configured size; and it plays from `file://` with no network request (2026-09-29)
+
+CONTEXT: T5_F039.md T003 asks for `remedy job story <id> --export story.html`: one self-contained
+file holding the envelope subset, the player and its assets, a size budget, oversized evidence linked
+and not inlined, a font licensing finding before any font is bundled, and a clean-browser test with
+zero network requests; and it asks the exporter to refuse a mismatched envelope version honestly.
+Measured at `622ec045`: `apps/ui/vite.config.ts` builds one page, `index.html`, into `apps/ui/dist`,
+and the cockpit's server builds that with `npm run build` when `dist` is missing; the only new npm
+package is forbidden, since no command may run npm by hand. `docs/ui/design_reference/assets_spec.md`,
+the asset authority, records that the UI loads no font file, forbids remote font imports, committed
+font binaries and "base64 fonts in CSS", and names system stacks as every font's fallback. The
+cockpit's event stream sends each run-log event as `_safe_event_summary(seq, event)`, the ownership
+route answers `ownership_view(job)`, and the dashboard carries the task list, the live state and the
+story section. A story holds events only; the job's evidence files are not part of it.
+
+CHOSEN: (1) THE DATA, this round: `packages/orchestration/story_export.py`'s `build_story_payload`
+answers `{"schema": "remedy.story.v1", "job_id", "dashboard": {tasks, live, story}, "frames": [{seq,
+event}], "ownership"}`, every part from the cockpit's own builders, so a story file holds nothing the
+cockpit does not already serve; `apps/ui/src/components/story/storyExport.ts`'s `decodeStoryExport`
+reads it back with the cockpit's own `normalizeDashboardPayload`, `feedRowOf` and
+`decodeOwnershipView`, and refuses another schema by naming it and anything unreadable with one plain
+line; a guard holds the schema to one string in both languages. (2) THE PLAYER, next round: a second
+page of the same vite build, `story.html`, mounting the phase bar and the story panel over the
+embedded data, with no fetch and no route. (3) THE EXPORT, next round: `remedy job story <id>
+--export <file>` builds the payload, reads the built player page, inlines its script and style and
+the payload as JSON into one file, and refuses when the result is larger than a configured budget
+rather than cutting the story. (4) FONTS: none; the exported page uses the system stacks the tokens
+already fall back to, which is the asset authority's own rule, so no licence question arises. (5) THE
+PROOF, the round after: a headless browser opens the exported file from `file://` with its network
+recorded, and must see zero requests; then the docs.
+
+ALTERNATIVES: a new bundling package, rejected because no round may install one; linking the cockpit's
+own served assets, rejected because the file must play without Remedy; inlining fonts, rejected by
+the asset authority; dropping events to meet the budget, rejected because a story missing its middle
+is not the job's story.
+
+HOW TO REVERSE: delete `story_export.py`, `storyExport.ts`, their tests and guard line, and this
+paragraph.
