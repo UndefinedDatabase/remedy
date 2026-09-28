@@ -25286,3 +25286,44 @@ is not the job's story.
 
 HOW TO REVERSE: delete `story_export.py`, `storyExport.ts`, their tests and guard line, and this
 paragraph.
+
+## DECISION F039 D8 — the story player is built a second time by the same `vite build`, as ONE script and ONE style sheet with fixed names under `apps/ui/dist/story/`; `remedy job story <id> --export <file>` writes one page inlining both and the payload, under a content security policy that allows no request, and refuses a file over `story.export_max_bytes` (2026-09-29)
+
+CONTEXT: DECISION F039 D7 (2) chose the player as a second page of the cockpit's own vite build.
+Measured at `73102551` by the reviewer's dry run: a second input of one Rollup build shares chunks
+with the first, so its page would load the player through `import` statements, and a page opened from
+`file://` can load no module file at all; Rollup's `inlineDynamicImports`, which makes one file, is
+refused for a build with more than one input. `apps/ui/package.json`'s `build` script is `vite
+build`, and the cockpit's server runs it (through `npm run build`) whenever `dist` is missing or
+older than `src/`; `package.json` itself is left alone, because the server runs `npm install`
+whenever `package.json` is newer than `node_modules`. The cockpit's title comes from the dashboard's
+`legacy` section, which `_build_dashboard` marks as not for new consumers.
+
+CHOSEN: (1) THE BUILD. `apps/ui/vite.config.ts` gains a plugin that, when the cockpit's build closes,
+runs `vite`'s own `build` once more with no config file, the React plugin, the input
+`src/storyPlayerMain.tsx`, `inlineDynamicImports`, no module preload, one CSS file, and the output
+names `story-player.js` and `story-player.css` in `dist/story/`. The reviewer's dry run built
+257 582 and 10 671 bytes, with no `import(`, no `fetch(`, no `url(` and no closing script or style
+tag inside. (2) THE PAGE. `src/storyPlayerMain.tsx` reads the JSON of the element
+`remedy-story-data`, decodes it with `readEmbeddedStory`, which never throws, and mounts
+`StoryPlayerApp` under the reduced-motion provider, or the decoder's one line. `StoryPlayerApp` mounts
+the phase bar above and the story panel over one `useTimelineScrub`, with no heading and no Close
+button: `StoryPanel`'s `onClose` becomes optional and the button shows only when it is given.
+(3) THE FILE. `story_export.py` gains `read_story_player`, `render_story_html` and
+`export_story_html`: the page carries a content security policy of `default-src 'none'` with inline
+script and style allowed, the style sheet, the payload as JSON with every `<` written `\u003c`, and the
+script. The export refuses when the player is not built (exit 3, with the build command), when the
+built player holds its own closing tag, and when the file is larger than `story.export_max_bytes`,
+default 5 000 000 bytes (exit 1); it never cuts a story. `remedy job story <id> --export <file>` writes
+the file readable by anyone, as a shared file should be. The reviewer's dry run exported a two-task
+job to 271 785 bytes and opened it from `file://` in headless Chrome: four chapters from `The plan` to
+`The finish`, Play advancing, no Close button, no console error, and no request but the file itself.
+
+ALTERNATIVES: a second page of one build, measured unworkable above; a second `vite build` in
+`package.json`'s `build` script, rejected because changing that file makes the server reinstall every
+package; building the player on demand at export, rejected because the export would then need the
+toolchain and the network; the job's title as the page's heading, rejected until a section meant for
+new consumers carries it, the browser tab naming the job instead.
+
+HOW TO REVERSE: delete the plugin, `storyPlayerMain.tsx`, `StoryPlayerApp` and its style sheet,
+`readEmbeddedStory`, the three export functions, the command and its key, and this paragraph.

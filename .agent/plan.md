@@ -13,17 +13,15 @@ D1).
 
 ## Current Step
 
-ROUND 7: book round 6 with R-1101's resolution, register and repair R-1102
-— the cockpit replacing every minted task id — and land T003's data: the
-story payload and its reader, under DECISION F039 D7.
+ROUND 8: book round 7 with R-1102's resolution, record DECISION F039 D8,
+and land T003's export: the story player built as one script and one style
+sheet, and `remedy job story <id> --export <file>` with its size budget.
 
 ## Next Steps
 
-1. T003 continued: the story player as a second page of the UI build, and
-   `remedy job story <id> --export <file>` with its size budget.
-2. T003 closed: the clean-browser test from `file://` with zero network
-   requests, and the docs.
-3. The closure sequence.
+1. T003 closed: the clean-browser test from `file://` with zero network
+   requests over an exported demo story, and the docs.
+2. The closure sequence.
 
 ## Risks
 
