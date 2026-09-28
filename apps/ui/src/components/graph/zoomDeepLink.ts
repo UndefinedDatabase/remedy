@@ -13,7 +13,7 @@ export interface ZoomLink {
   tab: EvidenceTab | null;
 }
 
-const TABS: readonly EvidenceTab[] = ["diff", "prompt", "chat"];
+const TABS: readonly EvidenceTab[] = ["diff", "prompt", "chat", "ownership"];
 
 /** The link a query string carries, or null. A link needs a focus and a level
  *  from 1 to 3; the tab is read at level 3 only, and defaults to the diff. */

@@ -350,6 +350,59 @@ def test_ownership_is_empty_by_decision_f040_d3(shape):
     assert build_job_digest(job, events)["ownership"] == []
 
 
+def test_a_job_with_entries_carries_its_ownership_sentences():
+    """DECISION F035 D3: once the ledger has an entry, the digest surfaces the SAME
+    catalog sentences the job report's Ownership section renders, in ledger order,
+    titled from ``job.tasks`` — the two surfaces read one source, never two wordings.
+    """
+    from packages.orchestration import ownership as own
+    from packages.orchestration.ownership_phrases import ownership_sentences
+
+    job, events = SHAPE_FIXTURES[GREEN]()
+    job.metadata["task_vetoes"] = {
+        job.tasks[0].task_id: {
+            "request_id": "r1",
+            "requested_at": "2026-08-29T00:00:00+00:00",
+            "actor": "alice",
+            "reason": "bad approach",
+            "status_at_veto": "completed",
+            "unreachable_task_ids": [],
+        },
+    }
+    digest = build_job_digest(job, events)
+    titles = {t.task_id: t.title for t in job.tasks}
+    expected = ownership_sentences(own.build_ownership_ledger(job), titles=titles)
+    assert expected                      # sanity: the fixture really produced an entry
+    assert digest["ownership"] == expected
+
+
+def test_a_raising_ledger_gives_the_one_sentence(monkeypatch):
+    """DECISION F035 D3: an `OwnershipError` or `OSError` reading the ledger never
+    reaches the caller — the digest reports it as the single sentence the report's own
+    error line states, never a raised exception."""
+    from packages.orchestration import ownership as own
+
+    job, events = SHAPE_FIXTURES[GREEN]()
+
+    def _raise(_job):
+        raise own.OwnershipError("boom")
+
+    monkeypatch.setattr("packages.orchestration.ownership.build_ownership_ledger", _raise)
+    digest = build_job_digest(job, events)
+    assert digest["ownership"] == ["The ownership ledger could not be read: boom"]
+
+
+def test_a_non_jobplan_keeps_ownership_empty():
+    """DECISION F035 D3: the ledger builder only ever reads a real `JobPlan`; anything
+    else — a placeholder, a bare namespace — keeps the key `[]` rather than guessing."""
+
+    class _NotAJobPlan:
+        job_id = "not-a-jobplan"
+
+    digest = build_job_digest(_NotAJobPlan(), [])
+    assert digest["ownership"] == []
+
+
 # ---------------------------------------------------------------------------
 # (e) Cost — the EXACTNESS basis of DECISION F040 D4
 # ---------------------------------------------------------------------------

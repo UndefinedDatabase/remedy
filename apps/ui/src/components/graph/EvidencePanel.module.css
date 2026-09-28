@@ -92,3 +92,34 @@
   font-size: 13px;
   color: var(--remedy-muted);
 }
+
+/* DECISION F035 D6 — the ownership tab's chip, shaped as `DetailPopover.module.css`'s
+   `.ownershipChip` (same padding, radius, colour and font, no new token), and its sentence,
+   wrapped at the newlines a multi-line reason or note carries. */
+.ownershipChip {
+  padding: 2px 8px;
+  border: 1px solid var(--remedy-line);
+  border-radius: var(--remedy-radius-pill);
+  color: var(--remedy-ink-soft);
+  font: 600 11px var(--remedy-font-ui);
+}
+
+.ownershipSentence {
+  white-space: pre-line;
+}
+
+/* R-1083's repair — the tab's ownership list takes the panel's type scale instead of the
+   browser's default bullets and body size. */
+.ownershipList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.ownershipList li {
+  font-size: 13px;
+  line-height: 1.45;
+}
+/* R-1085's repair — a plain length; the design reference has no spacing token for this row gap. */
+.ownershipList li + li {
+  margin-top: 6px;
+}

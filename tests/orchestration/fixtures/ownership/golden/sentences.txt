@@ -1,0 +1,29 @@
+You (recorded as alice) vetoed task T1 (Task One) — reason: “known-bad approach”. 2 downstream tasks could not run: T2, T3.
+You (command line) vetoed task T4 (Task Four). The veto took no effect: already applied.
+You (recorded as carol) vetoed task T5 (Task Five) — reason: “not needed anymore”.
+You answered the replan proposal for task T1 (Task One): accept_reduced_scope. The follow-up job is job-999.
+You (auto-approved via --yes) added a task: “Add a caching layer”. It became task T-new (Add caching).
+You added a task: “Refactor the client”. It was not added: duplicate of T-new.
+Remedy's planner (under this job's configuration) added a task: “Add integration tests”. It waits for the next safe point.
+You (browser, token #1) reran task T1 (Task One) and the tasks that depend on it: T1, T2, T3. Model override: gpt-5-nano.
+You (browser, token #1) edited the plan (task edit T2 --acceptance add) for task T2 (Task Two); the plan is now at version 7.
+You changed task T1 (Task One) in the plan; the plan is now at version 9.
+You changed the acceptance checks of task T2 (Task Two); the plan is now at version 10.
+You deleted task T3 (Task Three) from the plan; the plan is now at version 11.
+You split task T4 (Task Four) in the plan; the plan is now at version 12.
+You merged tasks in the plan; the plan is now at version 13.
+You reordered the plan's tasks; the plan is now at version 14.
+You edited task T3 (Task Three) while the job ran; the plan is now at version 8.
+You (browser) sent a steering message: “Focus on the auth flow first”. Task T4 (Task Four) took it in at round 3.
+You (command line) sent a note to task T5 (Task Five): “Watch out for flaky retries”. The task has not taken it in.
+You paused the job — reason: “waiting for budget approval”. Withheld: T6, T7.
+You (recorded as bob) paused task T6 (Task Six) — reason: “needs a design review”.
+You resumed the job.
+You (command line) resumed task T7 (Task Seven).
+You (recorded as alice) stopped the job — reason: “budget exhausted”.
+You approved hunk h1 of task T8 (Task Eight).
+You rejected hunk h2 of task T9 (Task Nine) — reason: “breaks the API contract”.
+The default policy (you accepted at plan approval) answered “Which database?” for task T2 (Task Two): “postgres”.
+Remedy's planner (under this job's configuration) answered the plan question “Which auth provider?”: “Auth0”.
+You (auto-approved via --yes) approved the plan.
+You rejected the plan.

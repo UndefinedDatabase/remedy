@@ -352,6 +352,14 @@ end the response with:
   block that ordered a catalog description without naming `tests/docs/test_vocabulary.py`, which
   reads every description for a binding word, is item 7's reading of the guards that read a file the
   block adds a string to. The list stays at 34 items.
+  Consolidated a twenty-third time at F035's closure on 2026-09-28: nothing joined and no two items
+  were merged, because none of F035's three lines in `.agent/prose_slips.md` names a lesson the list
+  lacks. A dedupe keyed differently from the reference its own clause names is item 18's reading of
+  an ordered recipe against the property it must establish; an exit code stated without reading the
+  resolver the command calls is item 8's reading of the code that produces the value a sentence
+  asserts; and a render gate ordered without the argument its script takes, with a screenshot
+  ordered without the state that makes its subject visible, is item 12's reading of the exact
+  command a dry run executes. The list stays at 34 items.
   The next consolidation measures against 34.
   Reverse by deleting this paragraph.
   1. **Size.** Count the block's lines. Over 400 (DECISION F105 D5) → split or

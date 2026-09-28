@@ -23891,3 +23891,315 @@ HOW TO REVERSE: remove the `note` key and its payload function, `steeringNote.ts
 operator disc, `focusedTaskId`, `sendSteeringNote`, the copy and `STEERING_REPLY_FRAMING`, restore
 the placeholder and the pinned `onSend` literal, delete the two F030 rows of
 `docs/ui/design_reference/assumption_log.md`, and delete this paragraph.
+
+## DECISION F035 D1 — the ownership ledger is a pure pass over the records that already exist: one entry per human-attributable action, each with an actor that names the door it came through and never more than that door recorded, a time, the verbatim text and a consequence; the command audit is not joined and the command line is not made to write it, because every class's own record already names its door; T001 lands in two rounds, the classes whose records name an actor first (2026-09-28)
+
+CONTEXT: T5_F035.md was written before most of the actions it lists were built, and it describes
+as sources several records that now exist in shapes it could not know. Measured at `a0b287a5`:
+no module, file or command is named ownership, and `packages/orchestration/job_digest.py`
+returns an `ownership` key that is always an empty list, which the browser's digest card already
+renders as sentences and which DECISION F040 D3 leaves for F035 to fill. The records, by class:
+a task veto is a control file read by `task_veto.vetoed_tasks` and folded into
+`job.metadata["task_vetoes"]`, with `actor`, `reason`, `requested_at` and, once folded, the
+`unreachable_task_ids` it cost; an answer to a veto's replan proposal is a control file read by
+`task_veto.veto_answers`, with `actor`, `option`, `answered_at` and `follow_up_job_id`; a
+confirmed injection is a control file read by `task_injection.confirmed_injections`, with
+`actor`, `text`, `confirmed_at` and `confirmed_unseen`, which is true only for an unattended
+`--yes` confirmation, folded into `job.metadata["task_injections"]` with the new task's id; a
+subtree rerun is an entry of `job.reruns` with `actor`, `at`, `root_task_id` and `subtree`; a plan
+edit and a runtime task edit are entries of the plan body's `_edits` log with `actor`, `ts`,
+`command`, `args` and `version`, a runtime edit carrying a `runtime` block and an injection's own
+entry an `injection` block; a steering message or task note is a sealed record read by
+`steering.list_steering_messages`, with `channel`, `received_at`, `text` and, for a note,
+`task_id`, and its consumption marker names the task and round that took it in; a pause, a
+resume and a stop reach the run log as `job_paused`, `task_paused`, `job_resumed`,
+`task_resumed` and `job_stopped` events carrying `source`, `reason` and `request_id`. An actor
+is recorded three ways: a browser action's token fingerprint `tf:<16 hex>` or the literal `cli`
+for vetoes, veto answers, injections, reruns and edits; a `channel` of `cli` or `cockpit` for
+steering; a `source` of `cli` or `ui` for pause, resume and stop. Hunk decisions record no
+actor at all; decision answers record `answer_source` `human` or `default`; clarification
+answers record `answered_by` `human`, `default` or empty for the planner's own resolution and no
+time; plan approval records `_approval` and, for `--yes`, `_approval_audit` with mode `auto_yes`,
+and its time only in the `plan_approved` event. The command audit `commands_audit.jsonl` is
+written by the browser's write door alone, and it stores a hash of each command's arguments, so
+it holds no target, no reason and no answer. No command-line verb writes it. Nothing in the code
+produces an assumption whose source is a reference.
+
+CHOSEN: (1) ONE MODULE, ONE PASS. `packages/orchestration/ownership.py` builds the ledger for
+one job from the records above, reading and never writing any of them; building it twice over
+the same records gives the same bytes, so the file it is saved to is regenerable and never a
+second truth. The ledger is `{"schema": "remedy.ownership.v1", "job_id", "entries"}`. (2) THE
+ENTRY. Every entry carries `record_ref`, unique within the ledger and naming the class and the
+record's own id; `ts`, the time the record gives for the human's act, empty only for a class
+whose record keeps none; `actor`; `action`; `task_id`, empty for an action on the whole job;
+`text`, the reason, answer or note verbatim, never cut, empty for an action that has none;
+`consequence`, `{"kind", "task_ids", "ref"}`; and `detail`, the class's own further facts.
+Entries are ordered by time, the timeless ones last, then by `record_ref`. A ledger with an entry
+that lacks any of these, or whose actor is not one of the three kinds, is refused: nothing
+renders authorless. (3) THE ACTOR. `{"kind", "door", "recorded_as", "token_number",
+"auto_approved"}`. The kind is `operator` for a human, `default_policy` for a documented default
+the operator accepted at plan approval, and `remedy` for a machine choice made under the job's
+configuration, whose `recorded_as` names the configured role that made it. The door is
+`browser` for a fingerprint, `cockpit` or `ui`, `cli` for `cli`, and empty for anything else;
+`recorded_as` is the value the record holds, verbatim. `token_number` numbers the distinct
+fingerprints from 1 in the order they first act in the ledger, and is 0 for an actor with none,
+so the ledger can say "token #2" and never claims an identity beyond the token; `auto_approved`
+is true exactly for an unattended `--yes` action. (4) THE AUDIT IS NOT JOINED, AND THE COMMAND
+LINE IS NOT MADE TO WRITE IT. The feature file names a command-line audit as a small
+prerequisite. It is not needed: every class whose record names an actor already names the
+command line as `cli`, the audit could only add a fingerprint to the classes whose records have
+none, and it could only do that by matching times, which is a guess the ledger may not make.
+Those classes are attributed to the operator with the door their record names, or with no door.
+(5) THE ABSENT CLASS. An assumption sourced from a reference has no producer, so the ledger has
+no such class; the planner's own resolution of a clarification is attributed to `remedy`. (6)
+THE ROUNDS. Round 1 lands the module, the schema, the actor and the classes whose records name
+an actor: vetoes, veto answers, injections, reruns, plan and task edits, steering messages and
+notes, and pause, resume and stop. Round 2 lands hunk decisions, decision answers, clarification
+answers and plan approval, human and unattended, and writes `ownership.json` into the job's
+evidence export at every job terminal. Until round 2 wires it, the module is listed in
+`ALLOWED_UNWIRED` of `tests/test_no_orphan_modules.py` with its reason, and round 2 removes that
+line in the commit that wires it. (7) THE SURFACES, in T002 and T003: one phrase catalog turns
+entries into sentences for the report's Ownership section, the digest's `ownership` key and the
+command line, and the report's existing `Vetoed by` and `Paused by` lines are then read from the
+same entries rather than kept beside them.
+
+ALTERNATIVES: joining the audit to the records by time, rejected in (4) because a match by time
+is a guess; making every command-line verb write the audit first, rejected because the audit
+keeps no target, reason or answer and the records already name the door; one round for all of
+T001, rejected because it would need a round of more than the size a round can prove.
+
+HOW TO REVERSE: delete `packages/orchestration/ownership.py` and its tests, remove its line from
+`ALLOWED_UNWIRED`, and delete this paragraph.
+
+## DECISION F035 D2 — the ownership ledger is written at the end of every `run_job` invocation, whatever state the job is left in, by one decorator on `run_job`; a ledger that cannot be built or saved is logged as a warning and never changes the job's outcome; round 2 also reads hunk decisions, decision answers, clarification answers and plan approval (2026-09-28)
+
+CONTEXT: DECISION F035 D1 (6) orders `ownership.json` written into the job's evidence export at
+every job terminal. Measured at `d4495f2a`: `run_job` in `packages/orchestration/pingpong_job.py`
+leaves a job completed, stopped, blocked or parked at many `return` statements of its own body,
+and every one of them hands the job back to its caller. The ledger is regenerable from the records,
+so a copy written at a park or a block is not a second truth, only an earlier one.
+
+CHOSEN: (1) ONE PLACE. A decorator `_writes_ownership_ledger` on `run_job` builds the ledger from
+the job `run_job` returns and saves it with `durable_write_json` as
+`job_evidence_export_dir(job_id) / ownership.json`, after every return and only then, so a
+parked or blocked job carries a ledger as current as a completed one. The decorator keeps
+`run_job`'s name, signature and return value. A job whose own directory does not exist — the
+placeholder `run_job` answers for a job it could not load — gets no file. (2) A FAILURE IS NOT
+THE JOB'S. An `OwnershipError` or an `OSError` while building or saving is logged as a warning
+naming the job and the error, and the job is returned exactly as `run_job` left it: the records
+the ledger reads are intact, the ledger can be rebuilt from them on demand, and a tampered
+record is the report's to name in T002, not a reason to fail the run that met it. (3) THE
+REMAINING CLASSES. Hunk decisions are read one entry per decided hunk, with the reason verbatim
+and no door, because their record names none; a decision answer is the operator's when its
+source is `human` and the default policy's when it is `default`; a clarification answer is the
+operator's, the default policy's or Remedy's planner's by its `answered_by`, with no time, because
+its record keeps none; and a plan approval is read from each `plan_approved` event, the
+unattended one attributed to the operator with `auto_approved` true and the audit's reason as its
+text.
+
+ALTERNATIVES: a write at each terminal state's own line, rejected because every return
+path would need it and the next one added would miss it; a failed write that blocks the
+job, rejected for (2)'s reason.
+
+HOW TO REVERSE: remove the decorator from `run_job`, and delete this paragraph.
+
+## DECISION F035 D3 — one phrase catalog, `packages/orchestration/ownership_phrases.py`, turns every ledger entry into one plain sentence in the one dialect "you did X"; the job report gains an Ownership section of those sentences and loses its per-task `Vetoed by` line, the digest's `ownership` key carries the same sentences, and the `Paused by` line stays because it reports the job's present state (2026-09-28)
+
+CONTEXT: Measured at `3a8b1259`: the ledger's entries exist but nothing renders them.
+`format_job_report_text` in `packages/orchestration/pingpong_job.py` prints `Vetoed by <actor>:
+<reason>` under a vetoed task and, for a parked job, `Paused by <source>: <reason>`; three tests
+pin the first line and one pins the second. `build_job_digest` in
+`packages/orchestration/job_digest.py` returns an `ownership` key that is always empty, is total
+by construction, and is read as a list of sentences by the browser's digest card. The only
+sentence of this dialect in the code is the replan proposal's `You vetoed <title> — reason:
+<reason>.` in `packages/orchestration/veto_proposal.py`. A reviewer's simulation at `3a8b1259`
+that filled the digest key and added a report section from the ledger turned no existing test
+red.
+
+CHOSEN: (1) ONE CATALOG. `ownership_phrases.py` holds one template per ledger action and one
+actor phrase, and it is the only place a sentence about who did what is worded; a ledger action
+without a template raises `OwnershipError`, so no entry renders as nothing. (2) THE ACTOR,
+exactly: an unattended action `You (auto-approved via --yes)`; a browser action `You (browser,
+token #<n>)`, or `You (browser)` without a token; a command-line action `You (command line)`; an
+operator whose record names no door `You`, or `You (recorded as <value>)` when the record holds a
+value other than `human`; a default `The default policy (you accepted at plan approval)`; and a
+machine choice `Remedy's <role> (under this job's configuration)`. (3) THE TEXT. Every reason,
+answer and note is quoted verbatim in typographic quotes and never cut; a reason clause appears
+only when there is a reason. A task is named `task <id>`, followed by its title in brackets when
+the job knows one. (4) THE REPORT. `format_job_report_text` prints, after the task list, a
+section headed `Ownership:` with one line per entry in ledger order, each `  - ` and the
+sentence, every inner line break indented under it; a job with no entry prints no section, so
+its report is unchanged; a ledger that cannot be read prints one line saying so and naming the
+error. The per-task `Vetoed by` line is deleted, because the section carries the same fact in the
+one dialect, and the three tests that pin it read the sentence instead. The `Paused by` line
+stays: it says that the job is paused now and by whom, which is present state, while the ledger
+is history — DECISION F035 D1 (7) named it with the veto line, and this corrects that. (5) THE
+DIGEST. For a job of the job model, `ownership` is the same sentences in the same order; a ledger
+that cannot be read gives one sentence saying so, which keeps the digest total; any other input
+keeps the empty list. The digest's version does not change, as DECISION F040 D3 foresaw.
+
+ALTERNATIVES: sentences built in each surface, rejected because the feature file asks for one
+dialect; keeping the `Vetoed by` line beside the section, rejected because a report that states
+one fact twice in two wordings is the drift the catalog exists to end.
+
+HOW TO REVERSE: delete `ownership_phrases.py`, the report section and the digest's reading,
+restore the `Vetoed by` line and its three test assertions, and delete this paragraph.
+
+## DECISION F035 D4 — T003 lands in two rounds: `remedy job ownership` and the browser's read route `/api/jobs/<id>/ownership` share one view built from the ledger and the catalog, and plan edits are worded in plain verbs; the chips at the nodes, the evidence tab and the end-to-end proof follow in the next round (2026-09-28)
+
+CONTEXT: Measured at `490a81f4`: the ledger and its sentences reach the job report and the
+digest, and nothing else. `apps/cli/command_catalog.py` has no `job.ownership` entry; the
+browser's read routes are the string keys of the `handlers` table inside `do_GET` in
+`packages/orchestration/ui_server.py`, which `tests/ui_server/test_handler_table_walk.py`
+reads from the source and walks against a real job; and the evidence panel of the browser has
+the tabs diff, prompt and chat. The catalog's plan-edit sentence prints the edit's command id,
+such as `plan_edit_task`, which an operator was never shown and should not have to decode. A
+reviewer's dry run at `490a81f4` of a `job.ownership` entry with the description this block
+orders, a handler, its exit-code row and its reachability line read 2600 passed across
+`tests/cli`, `tests/docs` and the catalog and import guards.
+
+CHOSEN: (1) ONE VIEW. `ownership_view(job)` in `ownership_phrases.py` answers `{"schema",
+"job_id", "entries", "error"}`: each entry of the ledger with its `sentence` added, titled from
+the job's tasks, and `error` ""; or no entry and `error` one sentence naming why the ledger could
+not be read. The command and the route both answer from it, so they cannot disagree. (2) THE
+COMMAND. `remedy job ownership <job_id> [--json]` is read-only; it prints `Who did what in job
+<id>:` and one sentence per line, or `No action is recorded for job <id> yet.`; `--json`
+carries the view's schema, job id and entries; exit 2 for a malformed job id, 3 for a job whose
+record cannot be read, 1 for a ledger that cannot be read. (3) THE ROUTE. `ownership` joins the
+read routes and answers the view as it is, error included, with status 200, as every read route
+of that table does. (4) PLAIN VERBS. A plan edit reads by its command: a changed task, changed
+acceptance checks, a deleted task, a split task, merged tasks or reordered tasks, each ending
+`the plan is now at version <n>`; an edit command the catalog does not know keeps its id in
+brackets; a runtime task edit reads `edited <task> while the job ran`. (5) THE NEXT ROUND. The
+browser's chips at a task's detail and the evidence panel's ownership tab read the route, and
+the end-to-end proof runs one job with one action of each class.
+
+ALTERNATIVES: the command reading the ledger and wording it itself, rejected for (1)'s reason;
+raw command ids kept in the sentences, rejected because the operator must be able to read every
+sentence without the code.
+
+HOW TO REVERSE: remove the catalog entry, `apps/cli/commands/job_ownership_cmd.py`, its
+exit-code row and reachability line, the `ownership` route and `ownership_view`, restore the
+plan-edit templates, and delete this paragraph.
+
+## DECISION F035 D5 — the task detail gains a "Who did what" section: one chip and one sentence per ownership entry that acted on the task or was caused for it, read once by the shell from the `ownership` route and handed to the detail as a prop; it corrects DECISION F035 D4's exit code for a malformed job id (2026-09-28)
+
+CONTEXT: Measured at `0faa196f`: the browser has no reader of the `ownership` route.
+`DetailPopover.tsx` under `apps/ui/src/components/detail/` is the task detail, holds a veto
+section with the veto's own state, and may not call `fetch` (`tests/ui_contracts/
+test_veto_controls_contract.py` and `test_task_version_contract.py` list it as a file that never
+fetches). `RemedyShell.tsx` loads the digest in an effect guarded by `cancelled`, and the lessons
+overlay re-reads when the stream shows a new lesson through `lessonsRefreshKey`. The design
+reference `docs/ui/design_reference/component_spec.md` names no ownership section, and
+`ux_spec.md` §13 gives a chip radius 999, height 32 and a 12.5/600 label; §17 forbids raw ids,
+raw JSON and tracebacks in copy. DECISION F035 D4 states that `remedy job ownership` exits 2 for a
+malformed job id; `resolve_job_id_or_fail` in `apps/cli/job_id_arg.py` exits 1 for one and 2 only
+for an ambiguous prefix, and the command follows it.
+
+CHOSEN: (1) A PURE READER. `apps/ui/src/api/ownership.ts` decodes the route's view, refusing the
+whole view when one entry is malformed, builds the route's path, labels each action with one short
+chip word, and answers the entries for a task: those whose `task_id` is the task's, or whose
+consequence names it, in the view's order. It opens no socket, reads no clock and keeps no
+storage. (2) ONE LOAD. `RemedyShell.tsx` loads the view once per job and token, again when the
+stream shows a frame of an event the ledger reads, and again when the selected task changes, and
+passes it to `DetailPopover.tsx`, which never fetches. (3) THE SECTION. Under the unreachable
+section, a section headed "Who did what" lists, for the selected task, one row per entry: a chip
+with the action's word, then the sentence verbatim — the server's own words, never rewritten or
+cut. A task with no entry shows no section; a view that could not be read shows the one line
+"Who did what could not be read for this job." and never the server's error text. The veto
+section stays: it states the veto as it stands, and the new section is the history. (4) THE
+CORRECTION. `remedy job ownership` exits 1 for a malformed job id and 2 only for an ambiguous
+prefix, as every job command does; D4's sentence stating 2 is superseded by this one.
+
+ALTERNATIVES: the detail fetching the route itself, rejected because two contracts forbid a fetch
+there; the veto section's `Vetoed by` line removed in favour of the new section, rejected because
+it states the veto's present state, as the `Paused by` line does in the report (DECISION F035
+D3).
+
+HOW TO REVERSE: delete `ownership.ts`, the loader, the shell's effect, the prop and the section,
+the assumption-log row naming this decision, and this paragraph.
+
+## DECISION F035 D6 — the evidence panel gains a fourth tab, "Ownership", the whole job's history as chips and sentences, which loads itself from the `ownership` route; a headless render proves the task detail's section and the tab as a person sees them; the end-to-end proof takes the next round (2026-09-28)
+
+CONTEXT: Measured at `36d5c359`: the evidence panel in
+`apps/ui/src/components/graph/EvidencePanel.tsx` opens at the deepest zoom for a focused run and
+has the tabs diff, prompt and chat, listed in `EVIDENCE_TABS` of `evidencePanel.ts`, typed by
+`EvidenceTab` in `semanticZoom.ts` and repeated in the deep link's `TABS` of `zoomDeepLink.ts`;
+`evidencePanel.test.ts` and `tests/ui_contracts/test_evidence_panel_contract.py` pin the three.
+The diff tab loads itself in an effect guarded by `cancelled`, with the job id and the token the
+panel already holds. T5_F035.md asks for "a job-level ownership tab in the evidence panel". No
+test yet looks at the section or the tab as rendered pixels.
+
+CHOSEN: (1) THE TAB. `{ tab: "ownership", label: "Ownership" }` is the fourth entry of
+`EVIDENCE_TABS`, of `EvidenceTab` and of the deep link's list. Its body is the whole job's
+history — every entry of the view, not only the focused run's task — as the task detail shows
+one task's: a chip with the action's word and the sentence verbatim. It loads itself as the diff
+tab does, and it reads as one state of a pure function: loading, the fixed unreadable line, the
+line "No action is recorded for this job yet.", or the entries. (2) THE TWO TEST PINS. The
+existing tab-list assertions gain the fourth entry; nothing they already assert is removed.
+(3) THE RENDER. A headless page, built from the F288 round 6 harness, renders the task detail's
+section and the tab from a fixed view and checks them as a person sees them: the chips and the
+verbatim sentences in order, no section for a task without an entry, the unreadable line and not
+the error, four tabs, and the tab's list. (4) THE NEXT ROUND runs one real job through the real
+command line and the browser's door and proves the ledger, the command, the route and the
+task mapping agree.
+
+ALTERNATIVES: a tab that shows only the focused run's task, rejected because the feature file
+asks for the job's history and the task detail already shows one task's; a tab loaded by the
+stage and passed down, rejected because the diff tab already loads itself with the credentials
+the panel holds.
+
+HOW TO REVERSE: remove the fourth tab from the three lists, its body and its state function,
+the two added test assertions and the assumption-log row naming this decision, and delete this
+paragraph.
+
+## DECISION F035 D7 — the end-to-end proof runs one real job and acts on it through both doors: a task veto and a job-wide steering message through the browser's door, and a task note and a task pause and resume on the command line; the ledger file, `remedy job ownership`, the `ownership` route and the report must agree entry for entry, sentence for sentence and task for task; the classes the run cannot reach stay proven by their unit tests with the real writers (2026-09-28)
+
+CONTEXT: Measured at `4d56671b`: every ledger class has unit tests over records written by its
+real writer, and the command, the route, the report, the digest, the task detail and the tab each
+have their own tests; nothing yet runs one job through the real doors and compares what the
+surfaces say. `tests/ui_server/test_pause_e2e_live.py` and
+`tests/ui_server/test_steering_note_e2e_live.py` already run a real job in a subprocess with a
+fake provider held at its first build, start the real UI server in a thread, send commands
+through its write door with a real token, and drive the real command line. Hunk decisions,
+decision answers, clarification answers, plan approval and injections need a planner, a diff
+review or an escalation that such a run does not produce without stand-ins of their own.
+
+CHOSEN: (1) ONE RUN. A three-task job, held at its first build: through the door, a veto of the
+third task with a reason and a steering message for the whole job; on the command line, a note to
+the second task, then a pause of the second task and its resume; then the run is released and
+ends. (2) FOUR SURFACES, ONE ANSWER. The job's `ownership.json` equals `build_ownership_ledger`
+of the finished job; `remedy job ownership --json` answers the same entries, each with its
+sentence, as the route does; every sentence equals, character for character, the one written out
+in the test — the browser's actions as `You (browser, token #1)`, the command line's as `You
+(command line)`, the resume as `You` — and the report's Ownership section lists them in the same
+order. (3) THE TASKS. The entries the task detail would show for each task, computed by the same
+rule `ownershipEntriesForTask` states, put the veto under the third task, the note, the pause and
+the resume under the second, and the job-wide message and nothing else under none. (4) THE OTHER
+CLASSES keep the proof they have, unit tests over records their real writers produced, and this
+decision names them.
+
+ALTERNATIVES: stand-ins for a planner and a diff review inside the live run, rejected because a
+stand-in proves the stand-in; one run per class, rejected as five live runs to prove what the unit
+tests already prove over the real records.
+
+HOW TO REVERSE: delete the end-to-end test and this paragraph.
+
+## DECISION F035 D8 — corrects DECISION F035 D7: the browser's job-wide steering message reads "You (browser)", without a token number, because a steering record keeps its channel and not the token's fingerprint; only actions whose record holds the fingerprint are numbered (2026-09-28)
+
+CONTEXT: DECISION F035 D7 (2) states that the end-to-end proof's veto and job-wide message, both
+sent through the browser's door, read `You (browser, token #1)`. Measured at `9c42693f`:
+`_dispatch_chat_send` in `packages/orchestration/ui_server.py` records a message with channel
+`cockpit`, as DECISION F264 D2 ordered, and `build_ownership_ledger` numbers only an actor whose
+recorded value is a `tf:` fingerprint, as DECISION F035 D1 (3) ordered; the live test of round 7
+reads the message as `You (browser)`.
+
+CHOSEN: D7's sentence is superseded by this one: an action through the browser's door reads with
+a token number only when its record holds the fingerprint — vetoes, veto answers, injections,
+reruns and edits — and as `You (browser)` otherwise. Nothing in the code changes; the steering
+record's format is F264's and stays as it is.
+
+ALTERNATIVES: recording the fingerprint on steering records, rejected because it changes a
+record another feature owns for a label.
+
+HOW TO REVERSE: delete this paragraph; D7's sentence then stands, and is false.

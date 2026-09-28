@@ -1,0 +1,31 @@
+repo root: /home/decodeux/Repos/remedy
+work dir: /home/decodeux/Repos/remedy/.remedy-wt/f035-render-run
++ vite build
+vite v6.4.2 building for production...
+transforming...
+✓ 82 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                                  0.32 kB │ gzip:  0.23 kB
+dist/assets/index-CE1j8Lu-.css                  28.18 kB │ gzip:  5.93 kB
+dist/assets/diffHighlightGrammars-o9XqnLhb.js    1.70 kB │ gzip:  0.79 kB
+dist/assets/index-bLrh-ckC.js                  265.76 kB │ gzip: 83.13 kB
+✓ built in 677ms
+
+server pid: 3513729
+chrome pid: 3513741
++ node drive.mjs
+PASS C-a ownership-section after unreachable-section, chips Veto then Note
+PASS C-b sentences match character for character, the reason's second line renders below the first
+PASS C-c every chip is a pill: radius at least half height, height at most 24px
+PASS C-d task C's popover holds no ownership-section
+PASS C-e unreadable section reads exactly the fixed line, raw error text nowhere on the page
+PASS C-f evidence panel's tab row and ownership list read as the fixed view orders them
+SCREENSHOT detail /home/decodeux/Repos/remedy/.remedy-wt/f035-r6-worker/render-detail.png 112106 bytes
+SCREENSHOT tab /home/decodeux/Repos/remedy/.remedy-wt/f035-r6-worker/render-tab.png 112106 bytes
+RENDER: 6 of 6 checks pass
+
+chrome pid 3513741 stopped (SIGTERM)
+server pid 3513729 stopped (SIGTERM)
+removed work dir: /home/decodeux/Repos/remedy/.remedy-wt/f035-render-run
+drive.mjs exit code: 0

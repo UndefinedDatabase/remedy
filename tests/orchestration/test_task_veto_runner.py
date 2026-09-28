@@ -863,7 +863,10 @@ class TestReportCarriesTheVeto:
         assert done.state == JOB_BLOCKED
 
         text = pj.format_job_report_text(done)
-        assert "Vetoed by alice: known-bad approach for B" in text
+        assert (
+            f"You (recorded as alice) vetoed task {b_id} (Build B: goal of B) — reason: "
+            "“known-bad approach for B”."
+        ) in text
         b_line = next(line for line in text.splitlines() if b_id in line and "[" in line)
         assert b_line.startswith("  [/]")
 
@@ -893,7 +896,10 @@ class TestReportCarriesTheVeto:
         assert a_task.status == pj.TASK_PENDING          # no run has folded it yet
 
         text = pj.format_job_report_text(reloaded)
-        assert "Vetoed by bob: stop A before it starts" in text
+        assert (
+            f"You (recorded as bob) vetoed task {a_id} (Build A: goal of A) — reason: "
+            "“stop A before it starts”."
+        ) in text
 
         report = pj.export_job_report(reloaded)
         a_report = next(t for t in report["tasks"] if t["task_id"] == a_id)

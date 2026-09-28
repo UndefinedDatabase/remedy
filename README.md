@@ -26,7 +26,7 @@ verification commands. If something is unproven, Remedy says so instead of guess
 
 ## Status
 
-111 of 289 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
+112 of 289 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
 
 | Tier | Name | Done | Total |
 |------|------|-----:|------:|
@@ -35,7 +35,7 @@ verification commands. If something is unproven, Remedy says so instead of guess
 | 2 | Minimal Self-Build Runtime | 38 | 39 |
 | 3 | Full Token Economy & Autonomy | 6 | 27 |
 | 4 | Memory & Learning | 1 | 17 |
-| 5 | Operator Cockpit | 28 | 36 |
+| 5 | Operator Cockpit | 29 | 36 |
 | 6 | Design-to-Code | 0 | 16 |
 | 7 | Quality & Trust | 0 | 15 |
 | 8 | Worker Ecosystem & Neutrality | 0 | 12 |
@@ -566,6 +566,16 @@ that round and every round after; the activity feed shows your note as your own 
 the builder's next action is the only answer, because Remedy never writes a reply; when the
 task finishes before it starts another round, the job's report and `remedy chat show` say
 that the note was not taken in; with no task selected, the box still steers the whole job).
+
+F035 ownership ledger (you can now see who decided what in a job: every action a person
+took on it, such as a veto, a pause or a resume, a note, an edit to the plan, an added task,
+a rerun, an answered question or a decided change, is listed with the way it came in, the
+browser or the command line, when it happened, the words that person wrote, and what it
+caused, and every choice Remedy made by itself is marked as Remedy's, made under the job's
+own settings; `remedy job ownership` prints the list, the job's final report has an
+Ownership section, a task's detail panel shows who did what to that task, and the evidence
+panel has an Ownership tab for the whole job; the list is rebuilt from the job's own records
+and saved with its evidence, and it never names a person, only the way the action came in).
 
 Full per-feature state: [`docs/roadmap/STATUS.md`](docs/roadmap/STATUS.md)
 

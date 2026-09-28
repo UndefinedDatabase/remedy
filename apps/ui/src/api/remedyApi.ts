@@ -6,6 +6,8 @@ import { decodeJobDigest, jobDigestPath } from "./jobDigest";
 import type { JobDigest } from "./jobDigest";
 import { decodeLessonsIndex, lessonsIndexPath } from "./lessons";
 import type { LessonsIndex } from "./lessons";
+import { decodeOwnershipView, ownershipViewPath } from "./ownership";
+import type { OwnershipView } from "./ownership";
 import { decodeTaskRunRounds, taskRunRoundsPath } from "./taskRunRounds";
 import type { TaskRunRounds } from "./taskRunRounds";
 import type { PipelineStep, PipelineStepState, RemedyActivityItem, RemedyContinuationSummary, RemedyDashboard, RemedyGraphEdge, RemedyGraphNode, RemedyJourneyItem, RemedyMetric, RemedyNextAction, RemedyPause, RemedyPhase, RemedyPipeline, RemedyPromptKind, RemedyPromptRole, RemedyPromptTraceItem, RemedyPromptTraceSummary, RemedySnapshotSummary, RemedyState, RemedyTaskAttempt, RemedyTaskItem, RemedyTaskSpec, RemedyTaskSpecFields, RemedyTaskSpecs, RemedyTaskSpecVersion, RemedyTimelineEvent, RemedyTimelineEventKind, RemedyTimelinePhase, RemedyVetoEntry, RemedyVetoes } from "./types";
@@ -989,6 +991,28 @@ export async function loadLessonsIndex(
 ): Promise<LessonsIndex | null> {
   try {
     return decodeLessonsIndex(await fetchPayload(lessonsIndexPath(request)));
+  } catch {
+    return null;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// The ownership door (F035 T003, DECISION F035 D5), shaped exactly like the
+// lessons door above: one injected fetcher, one decoder, and no throw.
+// ---------------------------------------------------------------------------
+
+/** How the ownership door reaches the network; a test hands `loadOwnershipView` a fake. */
+export type OwnershipFetcher = (path: string) => Promise<unknown>;
+
+/** Read one job's ownership view through the single door. NEVER THROWS: a failed read and a
+ *  view the decoder refuses both answer `null`, which the task detail renders as the one line
+ *  `OWNERSHIP_UNREADABLE_LINE` and never the server's own error text. */
+export async function loadOwnershipView(
+  request: { jobId: string; token: string; baseUrl?: string },
+  fetchPayload: OwnershipFetcher = fetchJson,
+): Promise<OwnershipView | null> {
+  try {
+    return decodeOwnershipView(await fetchPayload(ownershipViewPath(request)));
   } catch {
     return null;
   }
