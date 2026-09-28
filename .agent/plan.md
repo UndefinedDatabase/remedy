@@ -13,21 +13,18 @@ command (`docs/roadmap/features/T5_F038.md`, the spec
 
 ## Current Step
 
-ROUND 1: claim F038, move F286 behind it (DECISION F038 D2), book F036's
-round 9, register and repair R-1091, and land the node scope of T001 in
-`packages/orchestration/chat_evidence.py`.
+ROUND 2: book round 1 and R-1091's resolution, then land the project
+scope, the node scope's prompt traces and the spec's set-list update
+(DECISION F038 D3).
 
 ## Next Steps
 
-1. Review round 1.
-2. T001: the project scope over the spec's evidence set, with the spec's
-   set-list update.
-3. T001: the grounded answer, its citation check, the unsupported marker
+1. Review round 2.
+2. T001: the grounded answer, its citation check, the unsupported marker
    and the canary suite.
-4. T002: the intent parse, the action cards and their confirmation.
-5. T003: the panel, the command line and the end-to-end proof; closure.
+3. T002: the intent parse, the action cards and their confirmation.
+4. T003: the panel, the command line and the end-to-end proof; closure.
 
 ## Risks
 
-- R-1091 is open and High until its repair is reviewed, so the integrity
-  check reads its open-High check as failed until then.
+None open.

@@ -24585,3 +24585,54 @@ pay down, rejected for DECISION F036 D2's reason.
 
 HOW TO REVERSE: move F286's STATUS line and its Tier 2 heading back above F038, delete the line
 this move added to `docs/roadmap/features/T2_F286.md`, and delete this paragraph.
+
+## DECISION F038 D3 — the project scope reads one registry project's own records: its record, its repository's roadmap position, its linked jobs' open decisions and patterns, its missions' dossiers, its token ledger and one digest per linked job, newest first; the node scope gains its prompt trace's metadata; and the spec's set list is rewritten to what is built (2026-09-28)
+
+CONTEXT: Measured at `733d5db6`. A project is a `RemyProject` of
+`packages/orchestration/project_registry.py`, and its jobs are the ones its `job_ids` names, the
+list `remedy project summary` filters by. The spec's project set names the project brain
+aggregate, a progress ledger, the decision queue, the roadmap position and the latest reports.
+`project_brain_aggregate.build_project_brain_aggregate` is a graph of counts with no blockers,
+focus or next step, and each job's brain graph reads the target repository's git status through a
+subprocess. `project_summary.build_project_summary` holds blockers and open decisions, but both
+come from two event names that nothing outside the tests writes, and it stamps the clock;
+`project_summary.detect_patterns` is pure. `progress_ledger.py` was deleted by F275. The decision
+queue is per job, `decision_queue.list_decisions(job, events)`, and the reviewer's probe read the
+same decision id, `sr:derived_no_repo`, on two jobs. `roadmap_index.build_index(repo_root)` reads
+the repository it is given and writes nothing, while `build_and_write_index`, which the roadmap
+command calls, writes its index. `job_digest.build_job_digest` is total and writes nothing. F071's
+dossier is per mission, `mission_dossier.load_dossier_state`, over `mission_state.list_missions_safe`.
+F103's ledger is read by `token_ledger.query_cost`, which opens it read-only and raises
+`sqlite3.Error` on a damaged database. A task's prompt trace is
+`data_paths.run_dir(<run id>)/prompt_trace.jsonl`, whose entries hold the whole redacted prompt
+beside its metadata.
+
+CHOSEN: (1) `collect_project_evidence(project)` in `packages/orchestration/chat_evidence.py` reads
+the linked jobs from `pingpong_job.list_job_plans_safe`, newest first, and their run logs, and
+answers in this order: the project's record, anchored `project:<project id>`; its roadmap
+position, `roadmap:<feature id>`, read from its `canonical_repo_path`; every open decision of
+every linked job, newest job first, `decision:<job id>/<decision id>`, because a decision id alone
+repeats across jobs; each pattern across the linked jobs, `pattern:<pattern id>`; each mission's
+dossier goal, next step and open risks, `dossier:<mission id>`; the ledger's totals,
+`ledger:<project id>`, where an unmeasured figure reads `unmeasured` and never 0; and one digest
+line per linked job, `job:<job id>`, last, so that the cap drops the oldest jobs first. A source
+with nothing recorded is one `project` item saying so, as in the node scope, and a damaged ledger
+or a roadmap that breaks its grammar is such an item naming the error's class.
+`project_evidence_set(project)` composes them under the same cap. (2) NOT IN THE SET: the brain
+aggregate, because it runs git; the project summary's blockers and open decisions, because nothing
+writes their events, the decision queue standing in for both; and the progress ledger, which no
+longer exists. (3) THE NODE SCOPE gains, after the rounds, one `prompt:<task id>#<round>/<role>`
+item per entry of the latest run's prompt trace, stating its round, role, kind, estimated tokens,
+provider and model, and never the prompt text; a missing, unreadable or empty trace is one `node`
+item saying so. (4) The two scope paragraphs of section 2 of
+`docs/roadmap/design/grounded-chat-spec.md` are rewritten to this set: the reviewed set-list update
+T5_F038.md allows. (5) The module now imports `pingpong_job`, for the job list, which the first
+round's specification kept out; nothing imports the module yet.
+
+ALTERNATIVES: filtering jobs by `JobPlan.project_id`, rejected because older jobs carry it empty
+and `remedy project summary` reads `job_ids`; each job's brain graph for its focus, rejected
+because it runs git; one ledger row per model or role, rejected as detail that `remedy stats`
+already shows.
+
+HOW TO REVERSE: delete the project-scope functions and the prompt items with their tests, restore
+the spec's two paragraphs from git history, and delete this paragraph.
