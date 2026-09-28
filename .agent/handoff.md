@@ -1,76 +1,75 @@
-# Handoff — F036, round 1 (claim F036, move F286 behind it, book F035 R10, land T001: the
-tour's stop shape, the anchor check against the job's own records, and the mechanical tour)
+# Handoff — F036, round 2 (book round 1, record DECISION F036 D3, land T002's first half: the
+model-written tour through the summary role, the no-new-claims check, the honest first stop and
+the labelled fallback)
 
 ## Session
 
-SESSION 1 of feature F036 · round 1 · rounds so far 1. Context remaining at handback: a large
-majority of the context budget is left — this round read AGENTS.md, the block, the eight
-required source files in full, the three PAYLOADS plus the claim diff, DECISION F036 D1/D2 in the
-applied claim, and `docs/agents/handback_template.md` once each; wrote the module and its tests
-and the mutation tool from the specification; ran the payload-verification script, the G1/G2
-byte-equality and hash scripts, ruff, the G4 pytest selection, `integrity check`, and the G5
-mutation tool once each.
+SESSION 1 of feature F036 · round 2 · rounds so far 2. Context remaining at handback: a large
+majority of the context budget is left — this round read AGENTS.md, the block, the required
+source files in full (`result_tour.py` as round 1 left it, `artifact_summary.py`,
+`structured_outputs.py`, `intake.py`, `failure_postmortem.py`, `model_routing.py`'s
+`ROLE_CONFIG_CALL_SITES` section, `test_model_routing.py`'s call-site test, `conftest.py`'s
+`_no_live_ollama_reach`, `pingpong_job.py`'s `TaskEntry`, and `test_artifact_summaries.py`'s stub
+pattern), plus DECISION F036 D3 in the booking diff and `docs/agents/handback_template.md`; wrote
+the S1–S6 generation code, its 11 new tests and the mutation tool from the specification; ran the
+payload-verification script, the G1/G2 byte-equality and hash checks, ruff, the G4 pytest
+selection twice (once during authoring, once as the formal gate), `integrity check`, and the G5
+mutation tool twice (a preliminary dry run in a throwaway worktree, then the official run at C5).
 
 ## Range
 
-Review of `9dc2f2a79..HEAD` (`HEAD` is this handback's own commit, `F036 R1 C5`, on
+Review of `44965328..HEAD` (`HEAD` is this handback's own commit, `F036 R2 C6`, on
 `feature/f036-guided-result-tour`).
 
 ## Commits
 
-### 3ac8dbb81 F036 R1 C1a: copy round 1 block and state payloads into .agent/authored/
+### 7c44acc65 F036 R2 C1: copy round 2 block and payloads into .agent/authored/
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f036-r1-block.md | 340/0 | copy of the block, verified line count and sha256 |
-| .agent/authored/f036-r1-context.md | 37/0 | copy of the reviewer's context.md payload |
-| .agent/authored/f036-r1-plan.md | 29/0 | copy of the reviewer's plan.md payload |
+| .agent/authored/f036-r2-block.md | 297/0 | copy of the block, verified line count and sha256 |
+| .agent/authored/f036-r2-booking.diff | 73/0 | copy of the reviewer's booking.diff payload |
+| .agent/authored/f036-r2-plan.md | 29/0 | copy of the reviewer's plan.md payload |
 
-### f28f32d2b F036 R1 C1b: copy round 1 claim diff into .agent/authored/
+### 33a5cd4ec F036 R2 C2: book round 1, record DECISION F036 D3
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f036-r1-claim.diff | 217/0 | copy of the reviewer's claim diff |
+| .agent/decisions.md | 55/0 | DECISION F036 D3 appended by booking.diff |
+| .agent/live_review.md | 2/0 | round 1's `Gate: F036 R1 —` entry appended by booking.diff |
+| .agent/plan.md | 6/6 | rewritten to the reviewer's plan.md payload |
 
-### 202f8ddd0 F036 R1 C2: claim F036, move F286 behind it, book F035 R10, record D1 and D2
+### c5d6a8afd F036 R2 C3: generate the result tour through the summary role, no new claims
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/context.md | 15/14 | rewritten to plan.md's context payload |
-| .agent/decisions.md | 84/0 | DECISIONS F036 D1 and D2 appended by claim.diff |
-| .agent/live_review.md | 24/24 | re-headed; F035 R10 gate entry appended by claim.diff |
-| .agent/operator_questions.md | 20/1 | Q6 replaces EMPTY, by claim.diff |
-| .agent/plan.md | 16/12 | rewritten to the reviewer's plan.md payload |
-| docs/roadmap/STATUS.md | 1/1 | F036 `[ ]` to `[~]`, moved above F286's Tier 2 heading |
-| docs/roadmap/features/T2_F286.md | 2/0 | one two-line note: moved behind F036 by D2 |
+| packages/orchestration/model_routing.py | 1/0 | `ROLE_CONFIG_CALL_SITES` gains `result_tour.py`/`summary`, after the `pingpong_job.py` entry (S6) |
+| packages/orchestration/result_tour.py | 335/5 | S1–S6: schema, `tour_source_text`, `tour_claim_problems`, `build_tour_prompt`, `generate_result_tour`, `PROVIDER_CALL_ERRORS`, `tour_call_fn`; `build_fallback_tour` refactored onto a shared `_assemble_fallback_tour` helper (behaviour unchanged) |
+| tests/orchestration/test_model_routing.py | 6/5 | the two call-site-count numerals moved 9→10 and 4→5, comment updated (S6) |
 
-### 89081e1f2 F036 R1 C3: build the result tour's stops, anchor check and mechanical tour
+### 4bdadd926 F036 R2 C4: test the generated tour, its claim check and its fallbacks
 | Path | +/- | Reason |
 |---|---|---|
-| packages/orchestration/result_tour.py | 448/0 | NEW module: S1–S7, the tour, stop shape, anchor check, resolver, mechanical tour |
-| tests/test_no_orphan_modules.py | 3/0 | ALLOWED_UNWIRED entry for result_tour.py (S7) |
+| tests/orchestration/test_result_tour.py | 282/1 | 11 new tests: no-call-fn parity, mechanical-first ordering, the four claim breaches, an unknown-anchor drop, the nine-stop ceiling, the no-sound-stops fallback, provider-error/unparseable fallbacks (never raising, retried once), the prompt's anchors and numeral 7, source-text acceptance/diff-count lines, and `tour_call_fn`'s spy + refused-Ollama behaviour |
 
-### 8b32f9d83 F036 R1 C4a: test the result tour's anchors and mechanical stops
+### 9321d739a F036 R2 C5: add the round 2 mutation tool
 | Path | +/- | Reason |
 |---|---|---|
-| tests/orchestration/test_result_tour.py | 450/0 | NEW test file, all 12 required cases (see Deviations) |
+| .agent/authored/f036-r2-mutations.py | 147/0 | the G5 red-proof tool: 10 mutations (m1–m10 of the block), all caught |
 
-### 6fcf64887 F036 R1 C4b: add the mutation tool
-| Path | +/- | Reason |
-|---|---|---|
-| .agent/authored/f036-r1-mutations.py | 139/0 | the G5 red-proof tool: 12 mutations, all caught |
-
-### <this commit> F036 R1 C5: rewrite handoff for round 1
+### <this commit> F036 R2 C6: rewrite handoff for round 2
 | Path | +/- | Reason |
 |---|---|---|
 | .agent/handoff.md | rewrite | this handback, per docs/agents/handback_template.md |
 
 ## External actions
 
-- `git checkout -b feature/f036-guided-result-tour` — new branch created off `9dc2f2a79`, no
-  pull first (Open PR Gate had already run and `main` was at the merge commit). Outcome: branch
-  created, confirmed by `git branch --show-current`.
-- `git worktree add --detach .remedy-wt/f036-r1-mut 6fcf64887` — created for the G5 red proofs.
-  Outcome: worktree created at detached HEAD `6fcf64887`.
-- `git worktree remove --force .remedy-wt/f036-r1-mut` then `git worktree prune` — the G5
-  worktree's own cleanup (constraint 6). Outcome: removed; `git worktree list | wc -l` read 62,
+- `git worktree add --detach .remedy-wt/f036-r2-worker/dryrun-mut HEAD` — a preliminary,
+  non-official dry run of the mutation tool before C5 existed, to validate the tool's own
+  correctness. Outcome: worktree created at `4bdadd926` (then C4's tip); tool run passed all 10
+  mutations; removed with `git worktree remove --force` (exit 0) immediately after, restoring
+  `git worktree list | wc -l` to 64.
+- `git worktree add --detach .remedy-wt/f036-r2-mut 9321d739a` — the official G5 worktree, cut
+  from C5 per the block. Outcome: worktree created at detached HEAD `9321d739a`.
+- `git worktree remove --force .remedy-wt/f036-r2-mut` then `git worktree prune` — the official
+  G5 worktree's own cleanup (constraint 6). Outcome: removed; `git worktree list | wc -l` read 64,
   matching the round's step-4 reading.
 - `git push -u origin feature/f036-guided-result-tour` — pending, run immediately after this
   commit per the bundle order. Its real outcome is reported in the round's reply (G6), not here,
@@ -82,117 +81,149 @@ Review of `9dc2f2a79..HEAD` (`HEAD` is this handback's own commit, `F036 R1 C5`,
 
 **G1 TRANSPORT** — PAYLOADS table readings (before use):
 ```
-claim.diff:  217 lines, 23898 bytes, sha256 4fe060f8…830e8ddc  MATCH
-context.md:   37 lines,  1584 bytes, sha256 5449d15b…80dc2567f MATCH
-plan.md:      29 lines,  1015 bytes, sha256 641a2a58…dedd11167 MATCH
+booking.diff: 73 lines, 12245 bytes, sha256 4f1d09fd…8f70188b533f  MATCH
+plan.md:      29 lines,   992 bytes, sha256 ff10018e…c380f35bb7373bd5474  MATCH
 ```
-Block self-check: 340 lines, sha256 `eac92ff3…8c910e7f6` — MATCH on both readings.
-`.agent/authored/f036-r1-*` copies vs. sources, read back via `git show <commit>:<path>`, all
-byte-identical (script exit 0):
+Block self-check: 297 lines, sha256 `aa5d7a13…04775e89c4b3` — MATCH on both readings (measured
+twice: once before reading the block, once as this section's own re-check).
+`.agent/authored/f036-r2-*` copies vs. sources, read back via `git show 7c44acc65:<path>`, all
+byte-identical:
 ```
-f036-r1-block.md    vs .remedy-wt/f036-r1/block.md            byte-identical = True
-f036-r1-plan.md     vs .remedy-wt/f036-r1-payloads/plan.md    byte-identical = True
-f036-r1-context.md  vs .remedy-wt/f036-r1-payloads/context.md byte-identical = True
-f036-r1-claim.diff  vs .remedy-wt/f036-r1-payloads/claim.diff byte-identical = True
+f036-r2-block.md    vs .remedy-wt/f036-r2/block.md            sha256 match
+f036-r2-booking.diff vs .remedy-wt/f036-r2-payloads/booking.diff sha256 match
+f036-r2-plan.md      vs .remedy-wt/f036-r2-payloads/plan.md      sha256 match
 ```
 
-**G2 THE CLAIM** — every file's sha256 at C2 (`git show 202f8ddd0:<path>`) MATCHED the reviewer's
-table (all 7 rows: decisions.md, live_review.md, operator_questions.md, STATUS.md, T2_F286.md,
-plan.md, context.md — bytes and sha256 both exact). `open_finding_ids` over `.agent/live_review.md`
-TEXT read `[]` at both `9dc2f2a7` and `202f8ddd0` (reviewer's claim: empty at both — confirmed).
-At C2 the ledger has exactly one `## Findings` line (27) and one `## Steps` line (17); its last
-non-empty line begins `Gate: F035 R10 — ` (confirmed verbatim). STATUS.md at C2: line 171 reads
-`- [~] F036 — Guided result tour`, line 175 reads `- [ ] F286 — Findings paydown v5` — F036
-precedes F286. `git diff --name-only f28f32d2b 202f8ddd0` named exactly the 7 paths of the G2
-table, no more, no fewer.
+**G2 THE BOOKING** — every file's bytes and sha256 at C2 (`git show 33a5cd4ec:<path>`) MATCHED
+the reviewer's table exactly:
+```
+.agent/decisions.md   2356984 bytes  sha256 3a674224…5180e3cca  MATCH
+.agent/live_review.md  313639 bytes  sha256 293c27fd…d4d6b39212 MATCH
+.agent/plan.md            992 bytes  sha256 ff10018e…35bb7373bd5474 MATCH
+```
+`open_finding_ids` over `.agent/live_review.md` TEXT at C2 read `[]`. The ledger's last non-empty
+line at C2 begins `Gate: F036 R1 — ` (confirmed verbatim). `git diff --name-only 7c44acc65
+33a5cd4ec` named exactly the 3 paths of the G2 table, no more, no fewer.
 
 **G3 THE CODE** — `python3 -m ruff check packages/orchestration/result_tour.py
-tests/orchestration/test_result_tour.py tests/test_no_orphan_modules.py` at C4 (C4b):
-`All checks passed!`, REAL_EXIT=0. `anchor_problem`, `resolve_tour_stops` and the area
-grouping/room arithmetic (`_diff_areas`, `_changed_area_stops`, `fallback_tour_stops`'s room
-computation) were quoted whole from `git show 89081e1f2` — see the round's reply for the full
-text; behaviour matches S4–S6 exactly.
+packages/orchestration/model_routing.py tests/orchestration/test_model_routing.py
+tests/orchestration/test_result_tour.py` at C4: `All checks passed!`, REAL_EXIT=0.
+`tour_claim_problems`, `PROVIDER_CALL_ERRORS`/`_provider_call_error_types` and
+`generate_result_tour` were quoted whole from `git show c5d6a8afd` — see the round's reply for the
+full text; behaviour matches S3, S5 exactly.
 
-**G4 THE TESTS** — the full 24-target serial selection:
+**G4 THE TESTS** — the full 26-target serial selection:
 ```
-887 passed, 1 skipped in 105.80s (0:01:45)
+1627 passed, 4 skipped, 1 warning in 103.59s (0:01:43)
 REAL_EXIT=0
 ```
-SKIPPED: `tests/test_agent_tooling.py:43: D12 quarantine (F252)` — the one expected quarantine
-skip, unchanged. Node count of `tests/orchestration/test_result_tour.py` by `--collect-only -q`:
-13. Reviewer's pre-change reading (selection minus this file, at `9dc2f2a7`): `874 passed, 1
-skipped`. 874 + 13 = 887 — no discrepancy. `python3 -m apps.cli.main integrity check --json`:
-all six checks `pass`, `fail_count` 0, `ok` true.
+SKIPPED lines (all 4):
+```
+SKIPPED [3] tests/orchestration/test_model_routing.py:455: covered by the violating fixture above
+SKIPPED [1] tests/test_agent_tooling.py:43: D12 quarantine (F252): ...
+```
+— the same 4 skips the block's baseline names, unchanged. Node count of
+`tests/orchestration/test_result_tour.py` by `--collect-only -q`: 24 (13 from round 1 plus 11 new
+this round). Block's baseline: `1616 passed, 4 skipped` at `44965328` with the round-1 13 nodes
+already counted in it. 1616 + 11 (this round's new nodes) = 1627 — no discrepancy.
+`python3 -m apps.cli.main integrity check --json`: all six checks `pass`, `fail_count` 0, `ok`
+true.
 
-**G5 THE RED PROOFS** — `git worktree add --detach .remedy-wt/f036-r1-mut 6fcf64887` then
-`python3 -B .agent/authored/f036-r1-mutations.py <worktree>`, whole output:
+**G5 THE RED PROOFS** — `git worktree add --detach .remedy-wt/f036-r2-mut 9321d739a` then
+`python3 -B .agent/authored/f036-r2-mutations.py <worktree>`, whole output:
 ```
 control (before): exit=0 failed=0 nodes=[]
-m1  [a node anchor resolves whatever its ref]: RED (caught)
-m2  [the resolver keeps every sound stop, with no ceiling]: RED (caught)
-m3  [a dropped stop is logged but not listed in dropped]: RED (caught)
-m4  [a command anchor resolves when a recorded command merely starts with its ref]: RED (caught)
-m5  [the context lists directories of the evidence directory as evidence files]: RED (caught)
-m6  [an area is the file's whole directory instead of its first segment]: RED (caught)
-m7  [when the areas outnumber the room, every area still gets its own stop]: RED (caught)
-m8  [stop (a) anchors to the first task even when report.md exists]: RED (caught)
-m9  [an over-long text is not cut]: RED (caught)
-m10 [the Definition-of-Done stop counts every check as passed]: RED (caught)
-m11 [a title holding a newline is accepted]: RED (caught)
-m12 [the run stop uses the LAST recorded command]: RED (caught)
+m1 claim check ignores numbers: exit=1 failed=2 nodes=[test_each_kind_of_new_claim_is_dropped_with_a_naming_reason, test_every_stop_dropped_gives_the_no_sound_stops_fallback]
+m2 claim check ignores backtick spans: exit=1 failed=1 nodes=[test_each_kind_of_new_claim_is_dropped_with_a_naming_reason]
+m3 claim check ignores paths: exit=1 failed=1 nodes=[test_each_kind_of_new_claim_is_dropped_with_a_naming_reason]
+m4 denylist matched case-sensitively, before lower-casing: exit=1 failed=2 nodes=[test_each_kind_of_new_claim_is_dropped_with_a_naming_reason, test_every_stop_dropped_gives_the_no_sound_stops_fallback]
+m5 mechanical first stop not put first: exit=1 failed=3 nodes=[test_three_sound_model_stops_follow_the_mechanical_first_stop, test_each_kind_of_new_claim_is_dropped_with_a_naming_reason, test_nine_sound_model_stops_keep_eight_in_all]
+m6 PROVIDER_CALL_ERRORS holds no RuntimeError: exit=1 failed=1 nodes=[test_provider_errors_and_unparseable_text_fall_back_without_raising]
+m7 a generated tour keeps even one stop, no fallback for fewer than two: exit=1 failed=1 nodes=[test_every_stop_dropped_gives_the_no_sound_stops_fallback]
+m8 a not-ok outcome is labelled summary-role: exit=1 failed=1 nodes=[test_provider_errors_and_unparseable_text_fall_back_without_raising]
+m9 tour_call_fn binds GeneratedSummaryContent from artifact_summary instead: exit=1 failed=1 nodes=[test_tour_call_fn_asks_resolve_role_config_and_make_structured_call_fn]
+m10 the structured call is made with allow_parse_retry=False: exit=1 failed=1 nodes=[test_provider_errors_and_unparseable_text_fall_back_without_raising]
 control (after): exit=0 failed=0 nodes=[]
 restored byte-identical: True
 ALL MUTATIONS CAUGHT AND RESTORED CLEANLY: True
 ```
-No mutation stayed green; no extra test was needed. `git worktree remove --force
-.remedy-wt/f036-r1-mut`, `git worktree prune`, `git worktree list | wc -l` = 62 (matches step 4).
+No mutation stayed green; no extra test was needed. A preliminary, non-official dry run against a
+throwaway worktree at C4's tip produced the identical result before C5 existed (see External
+actions), which is why no correction round was needed between writing the tool and running it
+officially. `git worktree remove --force .remedy-wt/f036-r2-mut`, `git worktree prune`,
+`git worktree list | wc -l` = 64 (matches step 4).
 
 ## Item status
 
 | Item | Status | Reason |
 |---|---|---|
-| C1a | done | |
-| C1b | done | |
+| C1 | done | |
 | C2 | done | |
 | C3 | done | |
-| C4a | deviated | split from the block's single C4 (constraint 2: combined 589 insertions > 500) |
-| C4b | deviated | split from the block's single C4 (constraint 2: combined 589 insertions > 500) |
-| C5 | done | this handback |
+| C4 | done | |
+| C5 | done | |
+| C6 | done | this handback |
 | G1 | done | |
 | G2 | done | |
 | G3 | done | |
 | G4 | done | |
-| G5 | done | every mutation caught first run; no extra test needed |
+| G5 | done | every mutation caught first run (both the preliminary dry run and the official run); no extra test needed |
 
 ## Authored-text proofs
 
-`claim.diff` applied via `git apply --check` (exit 0) then `git apply` (exit 0) — never edited,
-never retyped. The three payloads (`claim.diff`, `plan.md`, `context.md`) were verified line
-count/byte count/sha256 against the PAYLOADS table before use, and the committed
-`.agent/authored/f036-r1-*` copies read back byte-identical to their sources via `git show`
-(G1, above). `.agent/plan.md` and `.agent/context.md` were REWRITTEN to the payload files by
-`shutil.copyfile`, never hand-edited; their post-write sha256 equal the payload table's own
-`641a2a58…` and `5449d15b…` rows. C2's resulting file hashes matched the reviewer's G2 table
-exactly for all 7 files (see Verification, G2). No reviewer-authored text was applied outside
-these four; the module, its tests and the mutation tool are worker-authored against the block's
-specification (S1–S7 and the TESTS section), not transcribed from a payload.
+`booking.diff` applied via `git apply --check` (exit 0) then `git apply` (exit 0) — never edited,
+never retyped. The two payloads (`booking.diff`, `plan.md`) were verified line count/byte
+count/sha256 against the PAYLOADS table before use, and the committed `.agent/authored/f036-r2-*`
+copies read back byte-identical to their sources via `git show` (G1, above). `.agent/plan.md` was
+REWRITTEN to the payload file by `shutil.copyfile`, never hand-edited; its post-write sha256
+equals the payload table's own `ff10018e…` row and C2's resulting file hashes matched the
+reviewer's G2 table exactly for all 3 files (see Verification, G2). No reviewer-authored text was
+applied outside these two payloads; the S1–S6 generation code, its 11 tests and the mutation tool
+are worker-authored against the block's specification, not transcribed from a payload.
 
 ## Deviations & assumptions
 
-- **C4 split into C4a and C4b (constraint 2).** The block's C4 bundles "THE TESTS AND THE TOOL"
-  as one commit. Staged together, `tests/orchestration/test_result_tour.py` (450 insertions) plus
-  `.agent/authored/f036-r1-mutations.py` (139 insertions) total 589 insertions — over the 500-line
-  cap. Per constraint 2's own contingency ("split a commit that would reach it into parts with
-  their own subjects (C3a and C3b, C4a and C4b), and say so"), this round split C4 into C4a (the
-  test file alone, 450 insertions) and C4b (the mutation tool alone, 139 insertions), each under
-  the cap. Both commits carry the `F036 R1 C4a` / `F036 R1 C4b` subjects. G5's worktree was cut
-  from C4b (the completed C4 payload), matching the block's `<C4>` reference.
-- No other deviation. Every mutation in G5 was caught on the first run; no additional test was
-  needed. No red gate was hit; nothing under AGENTS.md "If Blocked" applies this round.
+- **`build_fallback_tour` refactored onto `_assemble_fallback_tour` (not ordered by the block, done
+  for reuse).** S5 says `generate_result_tour` "reads the context and `build_report_sources(job)`
+  once" before branching, including the `call_fn is None` branch, whose answer must equal
+  `build_fallback_tour`'s. Rather than re-reading the job's records a second time inside that
+  branch (calling `build_fallback_tour(job)` fresh), a private helper
+  (`_assemble_fallback_tour(job, sources, context, generator=...)`) was factored out of the
+  existing `build_fallback_tour` and reused by both it and every fallback path of
+  `generate_result_tour`. `build_fallback_tour`'s OWN behaviour and every round-1 test's
+  assertions against it are unchanged (S7); this is an internal reuse, not a behaviour change, and
+  test 13 (`test_generate_with_no_call_fn_matches_build_fallback_tour`) asserts the two stay equal.
+- **Claim-check wording is worker-chosen (S3 sets the four breach KINDS, not their exact reason
+  text).** The block specifies four kinds of breach and that each earns "one readable line" naming
+  the offending number/span/path/word, but not the sentence's exact wording. Reasons were written
+  as `"the number {n!r} is not in the records"`, `` "the backtick span `{s}` is not in the
+  records" ``, `"the path {p!r} is not in the records"` and `"the claim word {w!r} is not
+  allowed"` — each names the offending token, joined by `"; "` per stop as S5 orders, and every
+  test asserts by substring containment against these reasons rather than by exact-string match,
+  so the choice of wording carries no hidden coupling.
+- **A path candidate is read off the stop's OWN text with backtick spans stripped, checked against
+  the UNSTRIPPED source text (S3's "read after the backtick spans are removed" is ambiguous about
+  which text).** Read as: search for paths in the stop's title+body with any backtick-quoted
+  spans blanked out first (so a path already reported as a backtick breach is not reported a
+  second time as a path breach), and check what is found against the source text as written.
+  Tests exercise the four breach kinds independently, so this reading was never load-bearing
+  against an alternative interpretation producing a different observable answer in this round's
+  tests.
+- **Caught a test bug of this round's own authoring before C4 was committed (permitted under
+  constraint 4: "A test this round itself wrote that is wrong may be corrected before C6").**
+  `test_nine_sound_model_stops_keep_eight_in_all` originally used digit-suffixed titles
+  (`f"Filler {i}"` for `i` in `range(9)`), which made `tour_claim_problems` — which scans title
+  AND body together — read the digit in the title itself as an unrecorded-number claim, dropping
+  7 of the 9 "sound" stops instead of keeping them. Caught by running the test locally before
+  committing C4; corrected to letter-suffixed titles (`"Filler A"`.."Filler I"`) before the first
+  commit of this test file, so no red C4 ever landed.
+- No other deviation. Every mutation in G5 was caught on the first (and only) official run; no
+  additional test was needed. No red gate was hit; nothing under AGENTS.md "If Blocked" applies
+  this round.
 
 ## Next
 
 Per the block's `## Next` order: (1) Phase 1 rule 1 — read `.agent/STOP` from disk at session
-start. (2) The review of this round (F036 round 1). (3) T002 — the generation call with its
-fallback, the no-new-claims goldens, `tour.json` stored and versioned at the job terminal, and
-the command line. Open-findings count: 0. Operator-questions count: 1 (Q6).
+start. (2) The review of this round (F036 round 2). (3) T002's second half —
+`tour.json` stored and versioned at the job terminal, the command line's tour, and the fixture
+goldens. Open-findings count: 0. Operator-questions count: 1 (Q6).
