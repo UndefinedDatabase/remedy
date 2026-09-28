@@ -12,12 +12,13 @@ from datetime import datetime, timezone
 import pytest
 
 from packages.orchestration import chat_turn
-from packages.orchestration.chat_answer import CHAT_NOT_IN_EVIDENCE
-from packages.orchestration.chat_evidence import CHAT_SCOPE_NODE
-from packages.orchestration.chat_intent import CHAT_INTENT_ACTION, ChatIntent
+from packages.orchestration.chat_answer import CHAT_NOT_IN_EVIDENCE, ChatAnswer, ChatAnswerSentence
+from packages.orchestration.chat_evidence import CHAT_SCOPE_NODE, ChatEvidenceItem, ChatEvidenceSet
+from packages.orchestration.chat_intent import CHAT_INTENT_ACTION, ChatActionCard, ChatIntent
 from packages.orchestration.chat_turn import (
     CHAT_TURN_ANSWER,
     CHAT_TURN_CARD,
+    ChatTurn,
     ChatTurnError,
     chat_open_decision_ids,
     chat_turn_view,
@@ -231,3 +232,86 @@ def test_chat_turn_view_numbers_evidence_and_marks_each_sentences_support():
         range(1, len(view["evidence"]) + 1))
     assert view["sentences"][0]["supported"] is True
     assert view["sentences"][1]["supported"] is False
+
+
+# ---------------------------------------------------------------------------
+# R-1095: `chat_turn_view` is blind to six of its keys — a sentence's `problem`,
+# an item's `text`, a card's `missing`, `omitted`, `question` and a card's `lines`.
+# Each hand-built turn is compared WHOLE with a literal dict whose values are
+# distinct and none of them a default, so a mutation of any key goes red.
+# ---------------------------------------------------------------------------
+
+
+def test_chat_turn_view_of_a_hand_built_answer_equals_a_literal_dict():
+    evidence = ChatEvidenceSet(
+        scope=CHAT_SCOPE_NODE,
+        subject="task-1",
+        items=(
+            ChatEvidenceItem(kind="node", ref="task-1", text="Task task-1: Write the README"),
+            ChatEvidenceItem(
+                kind="round", ref="task-1#1",
+                text="Round 1 (initial): tests passed; reviewer verdict PASS",
+            ),
+        ),
+        omitted=3,
+        tokens_estimated=42,
+    )
+    answer = ChatAnswer(
+        scope=CHAT_SCOPE_NODE,
+        subject="task-1",
+        question="Did the tests pass?",
+        generator="mechanical",
+        sentences=(
+            ChatAnswerSentence(text="Tests passed [1].", citations=(1,), supported=True, problem=""),
+            ChatAnswerSentence(
+                text="Something unrelated.", citations=(), supported=False,
+                problem="cites no evidence item",
+            ),
+        ),
+    )
+    turn = ChatTurn(kind=CHAT_TURN_ANSWER, evidence=evidence, answer=answer)
+
+    assert chat_turn_view(turn) == {
+        "kind": "answer",
+        "scope": "node",
+        "subject": "task-1",
+        "question": "Did the tests pass?",
+        "generator": "mechanical",
+        "sentences": [
+            {"text": "Tests passed [1].", "citations": [1], "supported": True, "problem": ""},
+            {
+                "text": "Something unrelated.", "citations": [], "supported": False,
+                "problem": "cites no evidence item",
+            },
+        ],
+        "evidence": [
+            {"number": 1, "kind": "node", "ref": "task-1", "text": "Task task-1: Write the README"},
+            {
+                "number": 2, "kind": "round", "ref": "task-1#1",
+                "text": "Round 1 (initial): tests passed; reviewer verdict PASS",
+            },
+        ],
+        "omitted": 3,
+    }
+
+
+def test_chat_turn_view_of_a_hand_built_card_equals_a_literal_dict():
+    card = ChatActionCard(
+        verb="job.steer",
+        title="Send a note to the task's builder",
+        lines=("Job: job-1", "Task: task-1"),
+        args={"task_id": "task-1"},
+        missing=("message",),
+        confirmable=False,
+    )
+    turn = ChatTurn(kind=CHAT_TURN_CARD, card=card)
+
+    assert chat_turn_view(turn) == {
+        "kind": "card",
+        "verb": "job.steer",
+        "title": "Send a note to the task's builder",
+        "lines": ["Job: job-1", "Task: task-1"],
+        "args": {"task_id": "task-1"},
+        "missing": ["message"],
+        "confirmable": False,
+    }
