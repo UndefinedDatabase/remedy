@@ -24427,3 +24427,47 @@ drops a stop would say less than the job's records do.
 
 HOW TO REVERSE: remove the `tour` route, `tour_view`, `resultTour.ts`, `loadTourView` and their
 tests, restore `_tour_section` to its round 3 body, and delete this paragraph.
+
+## DECISION F036 D6 — the tour opens from a "Tour" button beside "Lessons" as an overlay portaled to the page body: a dimmed backdrop and one card that steps through the stops, and "Show me" takes a task stop to the task's detail and a diff stop to the job's whole diff scrolled to the file, lifting the dim so that place stands out; a record or command stop shows its name in the card (2026-09-28)
+
+CONTEXT: Measured at `9ac3f750`: `docs/ui/design_reference/` names no tour, spotlight or coach
+mark and no backdrop token; `tokens.css` carries `--remedy-z-overlay` for sheets and modals, the
+glass tokens and `--remedy-ink-strong`, and `tests/ui_contracts/test_raw_colour_ratchet.py`
+allows no raw colour literal in a new CSS or TSX file. `LessonsOverlay.tsx` is the one overlay
+with previous and next, mounted by the shell as a sibling after `</main>`, which
+`tests/ui_contracts/test_main_layout_guard.py` holds to four children, and opened from a quiet
+button in `RightLivePanel.tsx`. `AddTaskSheet.tsx` portals to `document.body`, because an
+ancestor's `backdrop-filter` confines a fixed descendant (finding R-1079). The shell selects a task
+with `onSelectNode(shellSelectionIdOf(dashboard.tasks, taskId))`, which opens the task's detail,
+and `setOpenDiffTaskId` opens the diff panel, where an empty task id reads the job's whole diff
+(`diffEnvelopePath`) and `buildDiffFileSummaries` gives each file the row key its row carries as an
+element id. The graph's zoom state is private to `BrainGraphStage`, and nothing in the cockpit
+shows a report file or a command.
+
+CHOSEN: (1) THE ENTRY. `RightLivePanel` gains an optional `onOpenTour` and a "Tour" button beside
+"Lessons" in the same quiet style; the shell owns whether the tour is open. (2) THE OVERLAY.
+`apps/ui/src/components/tour/TourOverlay.tsx` reads the view once through `loadTourView`, is
+portaled to `document.body`, and renders a backdrop that dims the page with
+`--remedy-ink-strong` mixed into transparency, never a raw colour, and one glass card at
+`--remedy-z-overlay`: the step label, one progress dot per stop, the stop's title, body and anchor
+label, a line saying whether the tour was built mechanically or written by the summary model and
+checked against the records, and Previous, Next, "Show me" and "Close tour". Escape closes it and
+the arrow keys step. (3) THE SPOTLIGHT. "Show me" is offered for a task stop and a diff stop: it
+hands the anchor to the shell, which opens the task's detail, or opens the job's whole diff and
+scrolls that file's row into view, and the overlay lifts its backdrop while the card stays, so the
+place the stop names is the one thing not dimmed; stepping to another stop dims again. A record
+stop names its file and a command stop shows its command as code, in the card, because the
+cockpit has no place that shows either. (4) THE REFERENCE GAP. The design reference's assumption
+log gains one line for the tour's backdrop and card, since the reference has no tour treatment.
+(5) THE PROOF. A headless render in the manner of F035's round 7 proves the backdrop, the card, the
+dots, the step label, the disabled ends, "Show me" lifting the backdrop and Escape closing, and
+the round's pure rules live in `resultTour.ts` with their vitest tests.
+
+ALTERNATIVES: a cut-out spotlight measured around the anchored element, rejected because the
+graph's zoom state and the diff's rows are not reachable from the shell as elements with stable
+boxes, and a hole cut in the wrong place would point at the wrong thing; driving the graph's zoom
+to the task, rejected for the same reason; a tour button in the command bar, rejected because
+`<main>` is held to four children.
+
+HOW TO REVERSE: remove `TourOverlay.tsx` and its CSS, the shell's tour state and mount, the
+`onOpenTour` button, the assumption log's line and the tests, and delete this paragraph.
