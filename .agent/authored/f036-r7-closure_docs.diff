@@ -1,0 +1,122 @@
+diff --git a/docs/agents/planner_reviewer_prompt.md b/docs/agents/planner_reviewer_prompt.md
+index 2e80b4484..2ec31083e 100644
+--- a/docs/agents/planner_reviewer_prompt.md
++++ b/docs/agents/planner_reviewer_prompt.md
+@@ -360,6 +360,14 @@ end the response with:
+   asserts; and a render gate ordered without the argument its script takes, with a screenshot
+   ordered without the state that makes its subject visible, is item 12's reading of the exact
+   command a dry run executes. The list stays at 34 items.
++  Consolidated a twenty-fourth time at F036's closure on 2026-09-28: nothing joined and no two items
++  were merged, because neither of F036's two lines in `.agent/prose_slips.md` names a lesson the
++  list lacks. A block that specified an overlay's card without saying where it goes while the place
++  it points at is shown is item 18's reading of an ordered recipe against the property it must
++  establish, and a render page ordered without the app's global sheet is item 12's reading of the
++  environment a dry run must share with what it proves; and a block that changed a function's
++  default without naming the existing test that pinned the old one is item 34's reading of the
++  tests that already guard a path. The list stays at 34 items.
+   The next consolidation measures against 34.
+   Reverse by deleting this paragraph.
+   1. **Size.** Count the block's lines. Over 400 (DECISION F105 D5) → split or
+diff --git a/docs/roadmap/features/T5_F036.md b/docs/roadmap/features/T5_F036.md
+index 15bb3f460..a9e061502 100644
+--- a/docs/roadmap/features/T5_F036.md
++++ b/docs/roadmap/features/T5_F036.md
+@@ -85,3 +85,98 @@ the tour from becoming marketing.
+ Report content, deep-link formats (consumed), preview mechanics
+ (F041 enhances stops later). Suggested tests:
+ tests/orchestration/test_result_tour.py.
++
++## Built State (F036, 2026-09-28)
++
++What exists on disk at the close of F036, built in seven rounds over two sessions on
++`feature/f036-guided-result-tour`, cut from `main` at `9dc2f2a7`. This file was written before
++most of the tour's inputs were built. The tour reads the report's sources, the diff's file list,
++the job's evidence folder and the Definition of Done's recorded commands, and changes none of them
++(DECISION F036 D1). Every DECISION named lives in `.agent/decisions.md`; every round's verdict in
++`.agent/live_review.md` or, once rotated, its archive.
++
++**T001 — the stops and the mechanical tour.** `packages/orchestration/result_tour.py` holds the
++whole Python half. A tour is `{"schema": "remedy.tour.v1", "job_id", "generator", "stops",
++"dropped"}`; a stop is `{"title", "body", "anchor": {"kind", "ref"}}` with a title of at most 80
++characters and a body of at most 400; a tour holds at most eight stops (`MAX_TOUR_STOPS`), a
++ceiling and not a quota. `anchor_problem` checks each anchor against `collect_tour_context` of the
++job when the tour is built: a `node` ref is the full id of one of the job's tasks, a `diff` ref a
++path in the job's diff file list, an `evidence` ref a file directly in its evidence folder, and a
++`command` ref, byte for byte, the command of a Definition-of-Done check the gate recorded.
++`resolve_tour_stops` drops a stop whose shape is wrong or whose anchor does not resolve, and every
++sound stop after the eighth, logs it and lists it under `dropped` with its reason.
++`build_fallback_tour` builds the mechanical tour, labelled `fallback`, in this order: how the run
++ended, anchored to `report.md` when it exists and else to the first task; one stop per changed
++area, an area being a changed file's first path segment, with a last stop gathering the rest when
++the areas outnumber the room; how to run it, the first recorded Definition-of-Done command; and
++the Definition of Done's outcome, anchored to `dod_result.json`. A text too long for its bound is
++cut with an ellipsis, never rewritten.
++
++**T002 — the model-written tour, its storage and the command line.** `generate_result_tour` asks
++the summary role, through `tour_call_fn()`, for a tour bound to its own schema. The model sees
++`tour_source_text`, one fact of the job's records per line, and `tour_claim_problems` drops a
++model-written stop that states a number, a quoted span or a file path that text does not hold, or
++a word of `TOUR_CLAIM_DENYLIST`. The first stop is always the mechanical "How the run ended", so a
++failed or held run is never toured as a success; the label reads `summary-role` when a model stop
++survives and `fallback:<reason>` otherwise. Provider failures are caught by the named tuple
++`PROVIDER_CALL_ERRORS`, so no new `# noqa: BLE001` exists, and `result_tour.py` is one more entry
++of `ROLE_CONFIG_CALL_SITES`, with the literal role `summary` (DECISION F036 D3). The summary model
++writes a tour only when the operator switches on `tour.model_written`, environment variable
++`REMEDY_TOUR_MODEL_WRITTEN`, which is off by default and listed in `docs/guides/environment.md`;
++with it off, every job still gets its mechanical tour (DECISION F036 D7). `write_result_tour`
++writes `tour.json` beside `report.md` in the job's evidence folder and every later version as
++`tour_v<N>.json`, through `durable_write_json`; it never raises for an `OSError`, a `ValueError`
++or a `ResultTourError`, records such a failure on the job under `tour_error`, and clears that key
++on success. `long_run_executor._apply_terminal` calls it directly after `write_final_report`, so
++every reported terminal writes one new version, and `load_result_tour` reads the latest (DECISION
++F036 D4). `job show --full` ends with a `tour` section and `job show --tour` shows it alone: the
++stored tour, or the mechanical tour marked not stored with version 0; an unreadable stored tour is
++the section error `tour_unreadable` and the command still exits 0. `render_tour_lines` prints the
++numbered stops.
++
++**T003 — the browser.** `tour_view` answers `{"stored", "version", "tour", "error"}`; the route
++`GET /api/jobs/<job_id>/tour` serves it verbatim, answering 200 for every known job, and the
++command line's section is built from the same function (DECISION F036 D5).
++`apps/ui/src/api/resultTour.ts` decodes the view whole or not at all and answers the overlay's
++stepping, progress, step label and anchor labels; `loadTourView` in `remedyApi.ts` is its one
++read and never throws. A "Tour" button beside "Lessons" in `RightLivePanel.tsx` opens
++`apps/ui/src/components/tour/TourOverlay.tsx`, which `RemedyShell.tsx` mounts after `</main>` and
++which is portaled to `document.body`: a backdrop dimmed with `--remedy-ink-strong`, and one glass
++card with the step label, one progress dot per stop, the title, the body, the anchor's label, a
++line naming who wrote the tour, and Previous, Next, "Show me" and "Close tour". Escape closes it
++and the arrow keys step. "Show me" opens a task stop's task detail, or the job's whole diff
++scrolled to a diff stop's file, lifts the backdrop and docks the card over the lower left of the
++left rail; stepping dims again and re-centres the card. A record stop names its file and a command
++stop shows its command as code, in the card (DECISIONS F036 D6 and D7). The design reference's
++assumption log records the backdrop and the card.
++
++**Acceptance, by the test that proves it.** Fixture tours, each within eight stops and every
++anchor resolving: the goldens `golden_green_mechanical.json`, `golden_held_mechanical.json`, whose
++first stop says the gate held the run, and `golden_generated.json`, built from `model_answer.json`,
++whose invented number, path and claim word are listed under `dropped`, all under
++`tests/orchestration/fixtures/result_tour/` and read by `tests/orchestration/test_result_tour.py`.
++Fallback tours labelled and useful, and no new claims: the same file. The command line and the
++overlay show the same stops: `tests/cli/test_job_show.py`, `tests/ui_server/test_tour_route.py`,
++`tests/ui_contracts/test_tour_view_contract.py`, which pairs every key the TypeScript reads with
++the Python that writes it, `apps/ui/src/api/resultTour.test.ts` and
++`tests/ui_contracts/test_tour_overlay_contract.py`. Navigation as a person sees it: the headless
++render of `.agent/authored/f036-r7-render_*`, eleven checks. End to end:
++`tests/ui_server/test_tour_e2e_live.py` runs one two-task job to `all_green` through `run_cycles`
++with a fake provider and the switch off, and its stored tour, the `tour` route and `job show
++--tour` agree. The demo's tour is the render harness's tour on the demo recording's own task,
++because the recording holds no report, diff or Definition of Done (DECISION F036 D7 (4)).
++
++**Reachability.** `packages.orchestration.result_tour` joined
++`tests/orchestration/import_reachability_allowlist.txt`, because the command line and the terminal
++funnel reach it; the `ALLOWED_UNWIRED` line it held in its first two rounds is gone.
++
++**Deliberate absences.** No stop explains why the work is shaped as it is, because no task records
++a rationale. No cut-out spotlight: the graph's zoom and the diff's rows are not reachable from the
++shell as elements with stable boxes, so "Show me" lifts the dim instead. A tour is written only at
++a reported terminal, never on demand from the browser. Preview links from a stop are F041's.
++
++**Findings.** F036 registered four findings, all its own and all repaired inside it: R-1087, a
++claim check that cut a path at its first dot; R-1088, a card left over the place "Show me" had
++opened; R-1089, a summary model call at every reported terminal that nobody switched on; and
++R-1090, a docked card that wrapped its "Show me" label. None was open at its claim, which is why
++DECISION F036 D2 moved the fifth findings paydown, F286, behind F036.
