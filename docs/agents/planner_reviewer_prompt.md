@@ -360,6 +360,14 @@ end the response with:
   asserts; and a render gate ordered without the argument its script takes, with a screenshot
   ordered without the state that makes its subject visible, is item 12's reading of the exact
   command a dry run executes. The list stays at 34 items.
+  Consolidated a twenty-fourth time at F036's closure on 2026-09-28: nothing joined and no two items
+  were merged, because neither of F036's two lines in `.agent/prose_slips.md` names a lesson the
+  list lacks. A block that specified an overlay's card without saying where it goes while the place
+  it points at is shown is item 18's reading of an ordered recipe against the property it must
+  establish, and a render page ordered without the app's global sheet is item 12's reading of the
+  environment a dry run must share with what it proves; and a block that changed a function's
+  default without naming the existing test that pinned the old one is item 34's reading of the
+  tests that already guard a path. The list stays at 34 items.
   The next consolidation measures against 34.
   Reverse by deleting this paragraph.
   1. **Size.** Count the block's lines. Over 400 (DECISION F105 D5) → split or
