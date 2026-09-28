@@ -1945,6 +1945,13 @@ def _build_digest_json(job: Any) -> dict[str, Any]:
     return build_job_digest(job, events)
 
 
+def _build_ownership_json(job: Any) -> dict[str, Any]:
+    """Build the ownership-ledger payload — the SAME view `remedy job ownership` prints
+    (F035 T003, DECISION F035 D4)."""
+    from packages.orchestration.ownership_phrases import ownership_view
+    return ownership_view(job)
+
+
 def _build_lessons_json(job: Any) -> dict[str, Any]:
     """The job's lessons, one row per task, as stored (F265, DECISION F265 D2). READ-ONLY."""
     from packages.orchestration.lessons import job_lessons_overview, lessons_enabled
@@ -2854,6 +2861,7 @@ class _RemedyHandler(BaseHTTPRequestHandler):
                 "diagnostics": _build_diagnostics_json,
                 "diff": _build_diff_json,
                 "digest": _build_digest_json,
+                "ownership": _build_ownership_json,
                 "lessons": _build_lessons_json,
             }
             handler = handlers.get(endpoint)

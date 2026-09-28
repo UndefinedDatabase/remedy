@@ -1,24 +1,30 @@
-"""F035 T002 (DECISION F035 D3) — the phrase catalog: the ONE place a sentence about who
-did what, through which door, is worded in the "you did X" dialect. Every ledger entry
-`build_ownership_ledger` (`packages/orchestration/ownership.py`) produces renders through
-here into exactly one plain sentence; the job report's Ownership section and the
-digest's `ownership` key both read the same sentences, so the two surfaces cannot say two
-different things about one action.
+"""F035 T002/T003 (DECISION F035 D3, D4) — the phrase catalog, and the ONE view built over
+it: the ONE place a sentence about who did what, through which door, is worded in the "you
+did X" dialect. Every ledger entry `build_ownership_ledger`
+(`packages/orchestration/ownership.py`) produces renders through here into exactly one plain
+sentence; the job report's Ownership section, the digest's `ownership` key, `remedy job
+ownership` and the browser's `ownership` read route all read the same sentences through
+`ownership_view`, so no surface can say two different things about one action.
 
-This module imports only `ownership` among the orchestration modules (for `OwnershipError`,
-which an unknown action still raises), reads no file and opens no clock: given the same
-entry it renders the same sentence every time.
+This module imports only `ownership` among the orchestration modules — `OwnershipError` and
+`OWNERSHIP_SCHEMA` at module scope, `build_ownership_ledger` function-scoped inside
+`ownership_view` alone, exactly as `job_digest.py`'s own reading of this ledger already does.
+The phrase renderer itself reads no file and opens no clock: given the same entry it renders
+the same sentence every time. `ownership_view` is the one function here that reads anything —
+it calls `build_ownership_ledger`, which reads the records the ledger draws on — and it never
+raises: an `OwnershipError` or `OSError` comes back as the view's own `error` string instead.
 """
 from __future__ import annotations
 
 from typing import Any
 
-from packages.orchestration.ownership import OwnershipError
+from packages.orchestration.ownership import OWNERSHIP_SCHEMA, OwnershipError
 
 __all__ = [
     "ownership_actor_phrase",
     "ownership_sentence",
     "ownership_sentences",
+    "ownership_view",
 ]
 
 
@@ -68,6 +74,13 @@ def _reason_clause(text: str) -> str:
     if text:
         return f" — reason: “{text}”"
     return ""
+
+
+def _version_phrase(ref: str) -> str:
+    """S1's `V` — `version <n>`, `n` the entry's `consequence["ref"]` without a leading `v`
+    (`v7` becomes `version 7`), or the ref itself when it carries none."""
+    n = ref[1:] if ref.startswith("v") else ref
+    return f"version {n}"
 
 
 def ownership_sentence(entry: dict[str, Any], titles: dict[str, str] | None = None) -> str:
@@ -124,17 +137,34 @@ def ownership_sentence(entry: dict[str, Any], titles: dict[str, str] | None = No
 
     if action == "plan_edited":
         command = detail.get("command", "")
+        version_phrase = _version_phrase(ref)
+        t_display = task_phrase if task_id != "" else "a task"
+        if command == "plan_edit_task":
+            return f"{actor_phrase} changed {t_display} in the plan; the plan is now {version_phrase}."
+        if command == "plan_edit_acceptance":
+            return (
+                f"{actor_phrase} changed the acceptance checks of {t_display} in the plan; "
+                f"the plan is now {version_phrase}."
+            )
+        if command == "plan_delete_task":
+            return f"{actor_phrase} deleted {t_display} from the plan; the plan is now {version_phrase}."
+        if command == "plan_split_task":
+            return f"{actor_phrase} split {t_display} in the plan; the plan is now {version_phrase}."
+        if command == "plan_merge_tasks":
+            return f"{actor_phrase} merged tasks in the plan; the plan is now {version_phrase}."
+        if command == "plan_reorder":
+            return f"{actor_phrase} reordered the plan's tasks; the plan is now {version_phrase}."
         sentence = f"{actor_phrase} edited the plan ({command})"
         if task_id != "":
             sentence += f" for {task_phrase}"
-        sentence += f"; the plan is now {ref}."
+        sentence += f"; the plan is now {version_phrase}."
         return sentence
 
     if action == "task_edited":
-        command = detail.get("command", "")
+        t_display = task_phrase if task_id != "" else "a task"
         return (
-            f"{actor_phrase} edited {task_phrase} while the job ran ({command}); "
-            f"the plan is now {ref}."
+            f"{actor_phrase} edited {t_display} while the job ran; "
+            f"the plan is now {_version_phrase(ref)}."
         )
 
     if action == "steering_sent":
@@ -206,3 +236,32 @@ def ownership_sentence(entry: dict[str, Any], titles: dict[str, str] | None = No
 def ownership_sentences(ledger: dict[str, Any], titles: dict[str, str] | None = None) -> list[str]:
     """S3 — the whole ledger's entries, in order, each through `ownership_sentence`."""
     return [ownership_sentence(entry, titles=titles) for entry in ledger.get("entries", [])]
+
+
+def ownership_view(job: Any) -> dict[str, Any]:
+    """S2 — the ONE view the job report's Ownership section, `remedy job ownership` and the
+    browser's `ownership` read route all answer (F035 T003, DECISION F035 D4):
+    `{"schema", "job_id", "entries", "error"}`. Each entry is the ledger's own dict plus the
+    key `sentence`, titled from `job.tasks`. An `OwnershipError` — the ledger's own reader
+    failures, or an entry this catalog has no template for — or an `OSError` from whatever the
+    ledger reads never reaches the caller: `entries` comes back `[]` and `error` names the
+    failure instead.
+    """
+    from packages.orchestration.ownership import build_ownership_ledger
+
+    job_id = str(job.job_id)
+    titles = {t.task_id: t.title for t in job.tasks}
+    try:
+        ledger = build_ownership_ledger(job)
+        entries = [
+            {**entry, "sentence": ownership_sentence(entry, titles=titles)}
+            for entry in ledger.get("entries", [])
+        ]
+    except (OwnershipError, OSError) as exc:
+        return {
+            "schema": OWNERSHIP_SCHEMA,
+            "job_id": job_id,
+            "entries": [],
+            "error": f"The ownership ledger could not be read: {exc}",
+        }
+    return {"schema": OWNERSHIP_SCHEMA, "job_id": job_id, "entries": entries, "error": ""}

@@ -626,6 +626,21 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         related=("chat.send", "chat.show", "job.veto-task"),
         exit_codes=(0, 1, 2, 3),
     ),
+    # ── job ownership (F035 T003, DECISION F035 D4) ──────────────────────
+    CommandEntry(
+        command_id="job.ownership",
+        group_id="job",
+        subcommand="ownership",
+        description="Show who did what in a job under its mission: every recorded action of "
+                    "the operator on the job or one of its tasks, every default the operator "
+                    "accepted and every choice Remedy's planner made, one plain sentence each, "
+                    "read from the job's own records and never written by this command (F035).",
+        action_class="read_only",
+        args=(_JOB_ID, _JSON_OPT),
+        supports_json=True,
+        related=("job.show", "job.veto-task", "job.steer"),
+        exit_codes=(0, 1, 2, 3),
+    ),
     # ── job rerun-subtree (F029 T002, DECISION F029 D3) ──────────────────
     CommandEntry(
         command_id="job.rerun-subtree",
