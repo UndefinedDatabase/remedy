@@ -470,6 +470,16 @@ def test_a_trace_holding_only_a_blank_line_says_trace_empty() -> None:
     assert trace_items[0].text == "Prompt trace: not recorded (trace_empty)"
 
 
+def test_a_run_id_with_a_trailing_newline_is_no_run() -> None:
+    job, task_id = _make_job(run_id="abcdef01\n")
+
+    items = collect_node_evidence(job, task_id)
+    trace_items = [item for item in items if "Prompt trace" in item.text]
+
+    assert len(trace_items) == 1
+    assert trace_items[0].text == "Prompt trace: not recorded (no_run_recorded)"
+
+
 # ---------------------------------------------------------------------------
 # S3 THE PROJECT SCOPE — one registry project's own records.
 # ---------------------------------------------------------------------------
