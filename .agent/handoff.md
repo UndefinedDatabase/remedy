@@ -1,82 +1,90 @@
-# Handoff — F038, round 3 (book round 2, record DECISION F038 D4, and land T001's grounded
-answer: the citation check, the mechanical answer and the canary suite in both scopes)
+# Handback — F038, round 4 (book round 3, record DECISION F038 D5, and land T001's
+model-written answer: the claim check, a switch off by default, the summary-role call and the
+mechanical fallback)
 
 ## Session
 
-SESSION 1 of feature F038 · round 3 · rounds so far 3. Context remaining at handback: a large
+SESSION 1 of feature F038 · round 4 · rounds so far 4. Context remaining at handback: a large
 majority of the context budget is left — this round read AGENTS.md in full, the block, both
 payloads and the records diff before writing anything, read every named source file whole
-(`chat_evidence.py`, `test_chat_evidence.py`, `test_no_orphan_modules.py`, `build_task_run_rounds`
-in `run_rounds_view.py`, the handback template, `open_finding_ids`, `estimate_text_tokens`),
-verified every payload and every committed copy for real, applied `records.diff`, wrote the new
-module and its tests from the specification against real evidence sets and real saved jobs/projects,
-verified the tests pass and ruff is clean before committing, wrote a fresh 12-mutation red-proof
-tool and ran it for real in a disposable worktree, ran the pinned serial test selection and the
-integrity check to completion, and ran every gate (G1–G5) for real before writing this handback.
+(`chat_answer.py`, `test_chat_answer.py`, `chat_evidence.py`'s item/prompt helpers,
+`result_tour.py`'s `GeneratedTourContent`/`build_tour_prompt`/`PROVIDER_CALL_ERRORS`/
+`generate_result_tour`/`tour_model_written`/`tour_call_fn`/`write_result_tour`,
+`make_structured_call_fn` in `intake.py`, `run_structured_call`/`StructuredOutcome` in
+`structured_outputs.py`, `FailureSignals`/`classify` in `failure_postmortem.py`, the
+`tour.model_written` spec and `write_environment_guide` in `config.py`, `ROLE_CONFIG_CALL_SITES`
+in `model_routing.py`, `TestTheCallSiteInventoryIsChecked` and the switch tests of
+`test_result_tour.py`), verified every payload and every committed copy for real, applied
+`records.diff`, wrote the claim check and the model-written answer path from the specification
+against real evidence sets, verified the claim-check scenarios by hand in a scratch script before
+writing the tests, wrote 30 tests (16 new) and a fresh 10-mutation red-proof tool and ran it for
+real in a disposable worktree, ran the pinned serial test selection and the integrity check to
+completion, and ran every gate (G1–G5) for real before writing this handback.
 
 ## Range
 
-Review of `fe18ab6d8..HEAD` (`HEAD` is this handback's own commit, `F038 R3 C5`, on
+Review of `47747a499..HEAD` (`HEAD` is this handback's own commit, `F038 R4 C5`, on
 `feature/f038-grounded-chat`).
 
 ## Commits
 
-### 0de81a6b2 F038 R3 C1a: copy round 3 block and plan payload into .agent/authored/
+### 576ec5532 F038 R4 C1a: copy round 4 block and plan payload into .agent/authored/
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f038-r3-block.md | 293/0 | copy of the block, verified line count (293) and sha256 |
-| .agent/authored/f038-r3-plan.md | 31/0 | copy of the reviewer's plan.md payload |
+| .agent/authored/f038-r4-block.md | 309/0 | copy of the block, verified line count (309) and sha256 |
+| .agent/authored/f038-r4-plan.md | 28/0 | copy of the reviewer's plan.md payload |
 
-324 insertions total, exactly the block's own note: 293-line block + 31, under the 500-line cap.
+337 insertions total, exactly the block's own note: 309-line block + 28, under the 500-line cap.
 
-### f03ceb9ee F038 R3 C1b: copy round 3 records diff into .agent/authored/
+### 4e70c5afe F038 R4 C1b: copy round 4 records diff into .agent/authored/
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f038-r3-records.diff | 56/0 | copy of the reviewer's records.diff payload |
+| .agent/authored/f038-r4-records.diff | 67/0 | copy of the reviewer's records.diff payload |
 
-Measured 56 insertions, exactly the block's expected reading.
+Measured 67 insertions, exactly the block's expected reading.
 
-### a87ddd85f F038 R3 C2: book round 2 and record DECISION F038 D4
+### d0b001113 F038 R4 C2: book round 3 and record DECISION F038 D5
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/decisions.md | 38/0 | `git apply records.diff` — appends DECISION F038 D4 |
-| .agent/live_review.md | 2/0 | `git apply records.diff` — books round 2's Gate entry |
-| .agent/plan.md | 7/6 | rewritten to plan.md payload by `shutil.copyfile` |
+| .agent/decisions.md | 49/0 | `git apply records.diff` — appends DECISION F038 D5 |
+| .agent/live_review.md | 2/0 | `git apply records.diff` — books round 3's Gate entry |
+| .agent/plan.md | 6/9 | rewritten to plan.md payload by `shutil.copyfile` |
 
-Measured numstat matches the block's table exactly: 38/0, 2/0, 7/6.
+Measured numstat matches the block's table exactly: 49/0, 2/0, 6/9.
 
-### 2a319471c F038 R3 C3: check a chat answer's citations and answer mechanically
+### 91dfafe15 F038 R4 C3: let the summary model answer the chat behind a switch, with a claim check
 | Path | +/- | Reason |
 |---|---|---|
-| packages/orchestration/chat_answer.py | 189/0 | NEW FILE — S1 constants, S2 shapes, S3 `split_answer_sentences`, S4 `check_answer_sentence`/`check_answer`/`render_chat_answer`, S5 `question_keywords`/`_item_score`/`mechanical_answer` |
-| packages/orchestration/chat_evidence.py | 1/1 | S6 — the prompt-trace run-id check calls `fullmatch` instead of `match` |
-| tests/test_no_orphan_modules.py | 3/3 | S6 — `ALLOWED_UNWIRED`'s `chat_evidence.py` line removed, `chat_answer.py` line added in its place |
+| packages/orchestration/chat_answer.py | 180/5 | S1 claim check (`_claim_tokens`, `_unsupported_claim_problem`, wired into `check_answer_sentence`), S2 `GeneratedChatAnswer` schema and labels, S3 `build_chat_prompt`, S4 `chat_model_written`/`chat_call_fn`, S5 `answer_chat_question` and its sentinel |
+| packages/orchestration/config.py | 12/0 | S6 — `chat.model_written` `ConfigKeySpec`, directly before `tour.model_written` |
+| docs/guides/environment.md | 1/0 | S6 — regenerated via `write_environment_guide()`, never by hand |
+| packages/orchestration/model_routing.py | 1/0 | S7 — `chat_answer.py`'s `summary` call site added to `ROLE_CONFIG_CALL_SITES`, directly after `artifact_summary.py` |
+| packages/orchestration/result_tour.py | 1/1 | S7 — `tour_call_fn`'s docstring: "ten entries" → "eleven entries" |
+| tests/orchestration/test_model_routing.py | 4/4 | S7 — `test_most_call_sites_still_pass_no_role_literal`'s pinned counts 10→11, 5→6, and its comment |
 
-No insertion count was expected by the block for C3; measured 193 total, under the cap.
+No insertion count was expected by the block for C3; measured 199 total, under the cap.
 
-### 5f787353 F038 R3 C4: test the answer check, the mechanical answer and the canary suite
+### e221a6ac3 F038 R4 C4: test the claim check, the switch and the model answer's fallbacks
 | Path | +/- | Reason |
 |---|---|---|
-| tests/orchestration/test_chat_answer.py | 244/0 | NEW FILE, 14 tests: the two split examples plus a blank text, the four-sentence check over a two-item set (render + `unsupported_count`), the `CHAT_NOT_IN_EVIDENCE`/blank-text supported case, `question_keywords` (stopword + two-letter word + repeated word), the ref-and-text and inner-full-stop mechanical case, a dedicated prefix-vs-exact-word test (DECISION F038 D4's own "pass" would not find "passed" example), the tie-break/cap test over eight matching items, a no-match case, "Did the tests pass?" over a real node scope, and THE CANARY SUITE over a real node scope and a real project scope linking one saved job |
-| tests/orchestration/test_chat_evidence.py | 10/0 | ONE new test — a `run_id` of `abcdef01` followed by a newline reads `Prompt trace: not recorded (no_run_recorded)`, proving S6's `fullmatch` change |
-| .agent/authored/f038-r3-mutations.py | 207/0 | the G5 tool: 12 mutations (p1–p12), eleven against `chat_answer.py` and one (p12) against `chat_evidence.py`, run against `tests/orchestration/test_chat_answer.py tests/orchestration/test_chat_evidence.py` |
+| tests/orchestration/test_chat_answer.py | 267/2 | 16 NEW tests: six claim-check scenarios over a shared two-item set (a supported number, an unsupported number, a supported backtick span, an unsupported backtick span, an unsupported URL, and a token held only by the uncited item), two prompt tests (question line + rendered evidence line + refusal rule; `(no items)` for an empty set), the switch (false by default, true after the env var + `reset_config()`), `chat_call_fn` asking `resolve_role_config`/`make_structured_call_fn` with stand-ins, the switch-gated spy test for `answer_chat_question`'s unset default, a kept reply with a mixed supported/unsupported sentence, a reply with no supported sentence falling back to the mechanical answer, a `ConnectionError` and an unparseable reply each falling back with a non-`no_supported_sentence` label, and THE MODEL CANARY (three round-3 canary questions with a stub inventing a URL, over a real node scope, all reading `mechanical:no_supported_sentence` / `"Not in evidence."`); plus one import-line edit (`chat_call_fn` dropped from the top-level import after ruff flagged it unused — it is exercised only via `chat_answer_module.chat_call_fn`) |
+| .agent/authored/f038-r4-mutations.py | 232/0 | the G5 tool: 10 mutations (q1–q10), nine against `chat_answer.py` and one (q10) against `config.py`, run against `tests/orchestration/test_chat_answer.py` |
 
-No insertion count was expected by the block for C4; measured 461 total, under the 500-insertion
-cap — no split was needed (unlike round 2's C4a/C4b).
+499 insertions total, one under the 500-insertion cap — no split was needed.
 
-### \<C5-sha\> F038 R3 C5: rewrite handoff for round 3
+### \<C5-sha\> F038 R4 C5: rewrite handoff for round 4
 | Path | +/- | Reason |
 |---|---|---|
 | .agent/handoff.md | rewritten | this file, per `docs/agents/handback_template.md` |
 
 ## External actions
 
-- `git worktree add --detach .remedy-wt/f038-r3-mut 5f787353176557b60d55e6e298624afad58506d8` —
-  added the disposable G5 worktree at C4. Outcome: `Preparing worktree (detached HEAD 5f7873531)`.
-- `python3 -B .agent/authored/f038-r3-mutations.py .../.remedy-wt/f038-r3-mut` — ran the
-  12-mutation red-proof tool. Outcome: all 12 caught, both controls exit 0, `restored
+- `git worktree add --detach .remedy-wt/f038-r4-mut e221a6ac3` — added the disposable G5
+  worktree at C4. Outcome: `Preparing worktree (detached HEAD e221a6ac3)`, exit 0.
+- `python3 -B .agent/authored/f038-r4-mutations.py .../.remedy-wt/f038-r4-mut` — ran the
+  10-mutation red-proof tool. Outcome: all 10 caught, both controls exit 0, `restored
   byte-identical: True` on every mutation, `ALL MUTATIONS CAUGHT AND RESTORED CLEANLY: True`.
-- `git worktree remove --force .remedy-wt/f038-r3-mut` — removed the G5 worktree. Outcome: exit 0.
+- `git worktree remove --force .remedy-wt/f038-r4-mut` — removed the G5 worktree. Outcome: exit 0.
 - `git worktree prune` — outcome: exit 0.
 - `git push origin feature/f038-grounded-chat` — reported under G6 in the round reply (run after
   this file's own commit, so its outcome is reported there rather than tabled here, per the
@@ -88,41 +96,41 @@ cap — no split was needed (unlike round 2's C4a/C4b).
 1. `ls .agent/STOP` → `ls: cannot access '.agent/STOP': No such file or directory`, exit 2. Absent.
 2. `pwd` → `/home/decodeux/Repos/remedy`. `git status --porcelain` → empty, exit 0.
    `git branch --show-current` → `feature/f038-grounded-chat`. `git log --oneline -1` →
-   `fe18ab6d8 F038 R2 C5: rewrite handoff for round 2`.
-3. Block bytes: measured line count 293, sha256
-   `b37365a9fd3a315216cf9d6b04e5b69087e41e1bd86ed3366af9176a5cfaa7a8`; both equal the two readings
+   `47747a499 F038 R3 C5: rewrite handoff for round 3`.
+3. Block bytes: measured line count 309, sha256
+   `35ee28bd5b9fa938b9dfc88e8cbf6f8420aa329ec8f7a3b12ddb281fc37b4676`; both equal the two readings
    the delegation message stated.
-4. `git worktree list | wc -l` → `66`.
+4. `git worktree list | wc -l` → `68`.
 
 ### PAYLOADS
 | file | measured lines | measured bytes | measured sha256 | matches table |
 |---|---|---|---|---|
-| records.diff | 56 | 10275 | 289b865a0a118f2ef66ad7b5da752fa42c925c6fd99cfe3eb91cc9b1a0ecdb01 | yes |
-| plan.md | 31 | 1058 | 424443393cfee0196203a8e46ec338cf226cc02a208ebb8206c3db0b3791d566 | yes |
+| records.diff | 67 | 11444 | bca963df465362b2a2bc1c6b0555a52bb7459335c83ee806b74ac5280dc389ce | yes |
+| plan.md | 28 | 937 | 5ed12bfd0216e26fb11446797cc7e57e76ad40bb7cec1f82b84b3433486ad3a7 | yes |
 
 ### G1 TRANSPORT
-`git apply --check .remedy-wt/f038-r3-payloads/records.diff` → exit 0. Real `git apply` → exit 0.
-Each `.agent/authored/f038-r3-*` copy compared byte-for-byte against its source, read back with
+`git apply --check .remedy-wt/f038-r4-payloads/records.diff` → exit 0. Real `git apply` → exit 0.
+Each `.agent/authored/f038-r4-*` copy compared byte-for-byte against its source, read back with
 `git show <commit>:<path>`:
-- `0de81a6b2:.agent/authored/f038-r3-block.md` == `.remedy-wt/f038-r3/block.md` — MATCH (sha256
-  `b37365a9...cfa7a8` both).
-- `0de81a6b2:.agent/authored/f038-r3-plan.md` == `.remedy-wt/f038-r3-payloads/plan.md` — MATCH
-  (sha256 `42444339...791d566` both).
-- `f03ceb9ee:.agent/authored/f038-r3-records.diff` == `.remedy-wt/f038-r3-payloads/records.diff`
-  — MATCH (sha256 `289b865a...1a0ecdb01` both).
+- `576ec5532:.agent/authored/f038-r4-block.md` == `.remedy-wt/f038-r4/block.md` — MATCH (sha256
+  `35ee28bd...c37b4676` both).
+- `576ec5532:.agent/authored/f038-r4-plan.md` == `.remedy-wt/f038-r4-payloads/plan.md` — MATCH
+  (sha256 `5ed12bfd...3486ad3a7` both).
+- `4e70c5afe:.agent/authored/f038-r4-records.diff` == `.remedy-wt/f038-r4-payloads/records.diff`
+  — MATCH (sha256 `bca963df...280dc389ce` both).
 
 ### G2 THE RECORDS
-sha256 of each file read with `git show a87ddd85f:<path>`:
+sha256 of each file read with `git show d0b001113:<path>`:
 | path | bytes | sha256 | matches reviewer's reading |
 |---|---|---|---|
-| .agent/decisions.md | 2385590 | fa55e0b8e0050b8afff21549e497bf09821ef394f079f7ae0be86bcb236094f8 | yes |
-| .agent/live_review.md | 315369 | d8369556b1ed80a387b11d3af10bd2e39987aec2d30fff6b59d3d2daa4108e93 | yes |
-| .agent/plan.md | 1058 | 424443393cfee0196203a8e46ec338cf226cc02a208ebb8206c3db0b3791d566 | yes |
+| .agent/decisions.md | 2390061 | f8ddcf879acf3c37c598c53e9455c8b485d6d1f31b5741cfa5857899be2115b1 | yes |
+| .agent/live_review.md | 318007 | ca0fba7a18f16d905bf9265e10cab007bdcc5164dda2e4f66582393a575fe42a | yes |
+| .agent/plan.md | 937 | 5ed12bfd0216e26fb11446797cc7e57e76ad40bb7cec1f82b84b3433486ad3a7 | yes |
 
 `open_finding_ids` (`scripts/rotate_live_review.py`) over `.agent/live_review.md`'s text at
-`a87ddd85f` → `[]`, matching the reviewer's stated reading.
+`d0b001113` → `[]`, matching the reviewer's stated reading.
 
-`git diff --name-only f03ceb9ee a87ddd85f` →
+`git diff --name-only 4e70c5afe d0b001113` →
 ```
 .agent/decisions.md
 .agent/live_review.md
@@ -131,106 +139,129 @@ sha256 of each file read with `git show a87ddd85f:<path>`:
 Names exactly the three paths of the table above.
 
 ### G3 THE CODE
-`python3 -m ruff check packages/orchestration/chat_answer.py packages/orchestration/chat_evidence.py
-tests/orchestration/test_chat_answer.py tests/orchestration/test_chat_evidence.py
-tests/test_no_orphan_modules.py` at C4 → `All checks passed!`, exit 0.
+`python3 -m ruff check packages/orchestration/chat_answer.py packages/orchestration/config.py
+packages/orchestration/model_routing.py packages/orchestration/result_tour.py
+tests/orchestration/test_model_routing.py tests/orchestration/test_chat_answer.py` at C4 →
+`All checks passed!`, exit 0.
 
-Quoted from `git show 2a319471c` (C3):
+Quoted from `git show 91dfafe15` (C3), the claim check of S1:
 
 ```python
-def split_answer_sentences(text: str) -> list[str]:
-    """Split `text` into sentences.
+def _claim_tokens(sentence: str) -> list[str]:
+    """Every claim token of `sentence` with its citations removed, in the order they
+    occur: a URL, a backtick span, or a number, each taken without its backticks and
+    without a trailing `.`, `,`, `;`, `:`, `)`, `!` or `?` (DECISION F038 D5 (1))."""
+    without_citations = _CITATION_RE.sub("", sentence)
+    tokens: list[str] = []
+    for match in _CLAIM_TOKEN_RE.finditer(without_citations):
+        token = match.group(0)
+        if token.startswith("`") and token.endswith("`"):
+            token = token[1:-1]
+        token = token.rstrip(_CLAIM_TRAILING_CHARS)
+        if token:
+            tokens.append(token)
+    return tokens
 
-    Each line, stripped, is split after every `.`, `!` or `?` that whitespace
-    follows. Each fragment is stripped and an empty one is dropped. A fragment
-    that, with its citations removed and then stripped of spaces, `.`, `!` and
-    `?`, is empty is a citation-only fragment: it joins the sentence before it
-    with one space, when there is one. Every other fragment is a sentence.
-    """
-    sentences: list[str] = []
-    for line in text.splitlines():
-        stripped_line = line.strip()
-        if not stripped_line:
-            continue
-        for fragment in _SENTENCE_SPLIT_RE.split(stripped_line):
-            fragment = fragment.strip()
-            if not fragment:
-                continue
-            bare = _CITATION_RE.sub("", fragment).strip(" .!?")
-            if not bare:
-                if sentences:
-                    sentences[-1] = f"{sentences[-1]} {fragment}"
-                else:
-                    sentences.append(fragment)
-            else:
-                sentences.append(fragment)
-    return sentences
+
+def _unsupported_claim_problem(sentence: str, cited_items: tuple[Any, ...]) -> str:
+    """`""` when every claim token of `sentence` occurs in the ref or text of one of
+    `cited_items`; otherwise the problem naming the first token that does not."""
+    haystack = " ".join(f"{item.ref} {item.text}" for item in cited_items)
+    for token in _claim_tokens(sentence):
+        if token not in haystack:
+            return f"states {token}, which its cited items do not hold"
+    return ""
 ```
 
-```python
-def check_answer_sentence(sentence: str, evidence: ChatEvidenceSet) -> ChatAnswerSentence:
-    """Check one sentence's citations against `evidence`.
+The claim check is wired into `check_answer_sentence` directly after the citation-range check and
+before the final `supported=True` return:
 
-    A sentence that, stripped, equals `CHAT_NOT_IN_EVIDENCE` and cites nothing is
-    supported: it claims an absence, not a fact. Otherwise a sentence citing
-    nothing is unsupported; one citing any number outside 1 to the set's item
-    count is unsupported, naming the numbers the set does not hold; every other
-    sentence is supported.
-    """
-    citations = tuple(int(number) for number in _CITATION_RE.findall(sentence))
-    if sentence.strip() == CHAT_NOT_IN_EVIDENCE and not citations:
-        return ChatAnswerSentence(text=sentence, citations=citations, supported=True, problem="")
-    if not citations:
+```python
+    cited_items = tuple(evidence.items[number - 1] for number in citations)
+    claim_problem = _unsupported_claim_problem(sentence, cited_items)
+    if claim_problem:
         return ChatAnswerSentence(
-            text=sentence, citations=citations, supported=False, problem="cites no evidence item"
-        )
-    item_count = len(evidence.items)
-    unheld = [number for number in citations if number < 1 or number > item_count]
-    if unheld:
-        rendered = ", ".join(f"[{number}]" for number in unheld)
-        return ChatAnswerSentence(
-            text=sentence, citations=citations, supported=False,
-            problem=f"cites {rendered}, which the evidence set does not hold",
+            text=sentence, citations=citations, supported=False, problem=claim_problem
         )
     return ChatAnswerSentence(text=sentence, citations=citations, supported=True, problem="")
 ```
 
+The whole of `answer_chat_question`:
+
 ```python
-def mechanical_answer(question: str, evidence: ChatEvidenceSet) -> ChatAnswer:
-    """Restate the evidence items best matching `question`'s keywords, one sentence
-    each, highest score first and the lower item number first on a tie, at most
-    `CHAT_MECHANICAL_MAX_SENTENCES`. `CHAT_NOT_IN_EVIDENCE` when none scores."""
-    keywords = question_keywords(question)
-    scored: list[tuple[int, Any, int]] = []
-    for number, item in enumerate(evidence.items, start=1):
-        score = _item_score(item.ref, item.text, keywords)
-        if score >= 1:
-            scored.append((number, item, score))
-    scored.sort(key=lambda triple: (-triple[2], triple[0]))
-    kept = scored[:CHAT_MECHANICAL_MAX_SENTENCES]
-    raw_sentences = (
-        [f"{item.text.rstrip('.')} [{number}]." for number, item, _score in kept]
-        if kept else [CHAT_NOT_IN_EVIDENCE]
+def answer_chat_question(
+    question: str,
+    evidence: ChatEvidenceSet,
+    call_fn: Callable[[str, int], str] | None = _UNSET_CALL_FN,
+) -> ChatAnswer:
+    """Answer `question` over `evidence`: mechanically, or through the summary model
+    behind `chat.model_written` (DECISION F038 D5 (5)).
+
+    `call_fn` unset asks :func:`chat_call_fn` only when :func:`chat_model_written` is
+    true; unset with the key off, exactly like `call_fn=None` given explicitly,
+    answers mechanically instead. A call function HANDED IN, `None` included, is used
+    as given whatever the key reads.
+
+    NEVER raises: an exception of `PROVIDER_CALL_ERRORS`, an outcome that is not ok,
+    and a reply none of whose sentences is supported all fall back to the mechanical
+    answer, labelled `mechanical:<reason>` — the mechanical answer's sentences never
+    change, only its label does. A reply that is checked and keeps at least one
+    supported sentence is returned labelled `CHAT_GENERATOR_SUMMARY_ROLE`.
+    """
+    if call_fn is _UNSET_CALL_FN:
+        call_fn = chat_call_fn() if chat_model_written() else None
+    if call_fn is None:
+        return mechanical_answer(question, evidence)
+
+    prompt = build_chat_prompt(question, evidence)
+    try:
+        outcome = run_structured_call(GeneratedChatAnswer, prompt, call_fn, allow_parse_retry=True)
+    except PROVIDER_CALL_ERRORS as exc:
+        classification = classify(FailureSignals(exception=exc))
+        return dataclasses.replace(
+            mechanical_answer(question, evidence),
+            generator=f"{CHAT_GENERATOR_MECHANICAL}:{classification.failure_class.value}",
+        )
+
+    if not outcome.ok:
+        classification = classify(
+            FailureSignals(error_class=outcome.error_class, error_text=outcome.hint)
+        )
+        return dataclasses.replace(
+            mechanical_answer(question, evidence),
+            generator=f"{CHAT_GENERATOR_MECHANICAL}:{classification.failure_class.value}",
+        )
+
+    assert isinstance(outcome.value, GeneratedChatAnswer)
+    checked = check_answer(
+        outcome.value.answer, evidence, question=question, generator=CHAT_GENERATOR_SUMMARY_ROLE
     )
-    sentences = tuple(check_answer_sentence(sentence, evidence) for sentence in raw_sentences)
-    return ChatAnswer(
-        scope=evidence.scope, subject=evidence.subject, question=question,
-        generator=CHAT_GENERATOR_MECHANICAL, sentences=sentences,
+    if any(sentence.supported for sentence in checked.sentences):
+        return checked
+    return dataclasses.replace(
+        mechanical_answer(question, evidence),
+        generator=f"{CHAT_GENERATOR_MECHANICAL}:{CHAT_NO_SUPPORTED_SENTENCE}",
     )
+```
+
+Lines C3 adds to `docs/guides/environment.md`:
+```
+| `REMEDY_CHAT_MODEL_WRITTEN` | yes or no (1, true, yes / 0, false, no) | no | `chat.model_written` | Let the summary model write the grounded chat's answers (F038). Off by default: each answer is one summary model call, and a question makes no call the operator did not switch on; with it off, the chat answers from its evidence mechanically. |
 ```
 
 ### G4 THE TESTS
 Serial run, at C4, in the primary checkout:
 ```
-bash -c 'python3 -m pytest -q -p no:cacheprovider -rs tests/orchestration/test_chat_answer.py tests/orchestration/test_chat_evidence.py tests/test_no_orphan_modules.py tests/test_imports.py tests/orchestration/test_import_reachability.py tests/test_ble001_ratchet.py tests/orchestration/test_durable_write_guard.py tests/test_subprocess_timeouts.py tests/regression/test_named_bugs.py tests/test_path_utils.py tests/test_data_paths.py tests/orchestration/test_env_registry.py tests/orchestration/test_live_review_rotation.py tests/orchestration/test_integrity_gate.py tests/ui_server/test_dashboard_contract.py tests/regression/test_resource_safety.py tests/orchestration/test_test_runner.py tests/cli/test_golden_path.py 2>&1 | tail -4; echo "REAL_EXIT=${PIPESTATUS[0]}"'
+bash -c 'python3 -m pytest -q -p no:cacheprovider -rs tests/orchestration/test_chat_answer.py tests/orchestration/test_chat_evidence.py tests/orchestration/test_model_routing.py tests/orchestration/test_config.py tests/orchestration/test_env_registry.py tests/orchestration/test_result_tour.py tests/test_no_orphan_modules.py tests/test_imports.py tests/orchestration/test_import_reachability.py tests/test_ble001_ratchet.py tests/orchestration/test_durable_write_guard.py tests/test_subprocess_timeouts.py tests/regression/test_named_bugs.py tests/test_path_utils.py tests/test_data_paths.py tests/orchestration/test_live_review_rotation.py tests/orchestration/test_integrity_gate.py tests/ui_server/test_dashboard_contract.py tests/regression/test_resource_safety.py tests/orchestration/test_test_runner.py tests/docs tests/cli/test_golden_path.py 2>&1 | tail -12; echo "REAL_EXIT=${PIPESTATUS[0]}"'
 ```
 Output:
 ```
-452 passed, 6 skipped in 84.75s (0:01:24)
+1344 passed, 9 skipped, 1 warning in 78.91s (0:01:18)
 REAL_EXIT=0
 ```
-The six `SKIPPED` lines, in full:
+The nine `SKIPPED` lines, in full:
 ```
+SKIPPED [3] tests/orchestration/test_model_routing.py:455: covered by the violating fixture above
 SKIPPED [1] tests/regression/test_named_bugs.py:295: D3 quarantine (F252): the pre-rebuild apps/ui legacy/*.tsx sources this asserts are not in the tree; the UI is rebuilt in Tier 5 (F019+). Backlog: Tier 5 UI build (F019+).
 SKIPPED [1] tests/regression/test_named_bugs.py:312: D3 quarantine (F252): the pre-rebuild apps/ui legacy/*.tsx sources this asserts are not in the tree; the UI is rebuilt in Tier 5 (F019+). Backlog: Tier 5 UI build (F019+).
 SKIPPED [1] tests/regression/test_named_bugs.py:321: D3 quarantine (F252): the pre-rebuild apps/ui legacy/*.tsx sources this asserts are not in the tree; the UI is rebuilt in Tier 5 (F019+). Backlog: Tier 5 UI build (F019+).
@@ -238,16 +269,18 @@ SKIPPED [1] tests/regression/test_named_bugs.py:383: D3 quarantine (F252): the p
 SKIPPED [1] tests/regression/test_named_bugs.py:392: D3 quarantine (F252): the pre-rebuild apps/ui legacy/*.tsx sources this asserts are not in the tree; the UI is rebuilt in Tier 5 (F019+). Backlog: Tier 5 UI build (F019+).
 SKIPPED [1] tests/regression/test_named_bugs.py:399: D3 quarantine (F252): the pre-rebuild apps/ui legacy/*.tsx sources this asserts are not in the tree; the UI is rebuilt in Tier 5 (F019+). Backlog: Tier 5 UI build (F019+).
 ```
-All six are the F252 quarantine, matching the reviewer's baseline exactly.
+All nine match the reviewer's own primary-checkout baseline exactly (3 `test_model_routing.py` +
+6 F252 quarantine).
 
-Node counts by `--collect-only -q` at C4:
-- `tests/orchestration/test_chat_answer.py`: 14 tests (NEW FILE).
-- `tests/orchestration/test_chat_evidence.py`: 23 tests (22 at `fe18ab6d8`, +1 this round).
+Node counts by `--collect-only -q`:
+- `tests/orchestration/test_chat_answer.py` at `47747a499`: 14 tests.
+- `tests/orchestration/test_chat_answer.py` at C4: 30 tests (+16 this round).
 
-Accounting for 452: the reviewer's own base reading, less `test_chat_answer.py`, was 437 passed at
-`fe18ab6d8` (with `test_chat_evidence.py` at its then-22 nodes). This round adds the 14 nodes of
-the new `test_chat_answer.py` plus the 1 new node in `test_chat_evidence.py`: 437 + 14 + 1 = 452,
-exactly the measured total. No other test file's collection changed.
+Accounting for 1344 vs the reviewer's 1328 at `47747a499`: this round added 16 new nodes to
+`test_chat_answer.py` and touched no other test file's collection (S7's edits to
+`test_model_routing.py` only change two integer literals inside an already-collected test, not
+its node count). 1328 + 16 = 1344, exactly the measured total. The skip count is unchanged at 9
+because the round added no new skip.
 
 `python3 -m apps.cli.main integrity check --json`:
 ```json
@@ -256,55 +289,42 @@ exactly the measured total. No other test file's collection changed.
 All six checks `pass`, `fail_count` 0, exit 0.
 
 ### G5 THE RED PROOFS
-`git worktree add --detach .remedy-wt/f038-r3-mut 5f787353176557b60d55e6e298624afad58506d8` →
-exit 0 (`Preparing worktree (detached HEAD 5f7873531)`).
-`python3 -B .agent/authored/f038-r3-mutations.py .../.remedy-wt/f038-r3-mut` → whole output:
+`git worktree add --detach .remedy-wt/f038-r4-mut e221a6ac3` → exit 0
+(`Preparing worktree (detached HEAD e221a6ac3)`).
+`python3 -B .agent/authored/f038-r4-mutations.py .../.remedy-wt/f038-r4-mut` → whole output:
 ```
 control (before): exit=0 failed=0 nodes=[]
-p1 a sentence citing nothing reads supported: exit=1 failed=1 nodes=['tests/orchestration/test_chat_answer.py::test_check_answer_marks_each_sentence_counts_unsupported_and_renders_the_mark'] caught=True
-  restored byte-identical: True
-p2 a citation outside the set is accepted: exit=1 failed=1 nodes=['tests/orchestration/test_chat_answer.py::test_check_answer_marks_each_sentence_counts_unsupported_and_renders_the_mark'] caught=True
-  restored byte-identical: True
-p3 "Not in evidence." needs a citation: exit=1 failed=4 nodes=['tests/orchestration/test_chat_answer.py::test_not_in_evidence_and_blank_texts_check_to_the_one_supported_sentence', 'tests/orchestration/test_chat_answer.py::test_no_matching_item_answers_not_in_evidence', 'tests/orchestration/test_chat_answer.py::test_canary_suite_over_a_real_node_scope_reads_not_in_evidence', 'tests/orchestration/test_chat_answer.py::test_canary_suite_over_a_real_project_scope_reads_not_in_evidence'] caught=True
-  restored byte-identical: True
-p4 a fragment of citation markers stands as its own sentence: exit=1 failed=1 nodes=['tests/orchestration/test_chat_answer.py::test_split_answer_sentences_joins_a_citation_only_fragment_to_its_sentence'] caught=True
-  restored byte-identical: True
-p5 an empty answer has no sentence: exit=1 failed=1 nodes=['tests/orchestration/test_chat_answer.py::test_not_in_evidence_and_blank_texts_check_to_the_one_supported_sentence'] caught=True
-  restored byte-identical: True
-p6 a keyword matches whole words only: exit=1 failed=1 nodes=['tests/orchestration/test_chat_answer.py::test_a_keyword_matches_a_longer_run_by_prefix_not_by_whole_word_only'] caught=True
-  restored byte-identical: True
-p7 on a tied score the higher item number comes first: exit=1 failed=1 nodes=['tests/orchestration/test_chat_answer.py::test_eight_matching_items_give_five_sentences_in_item_number_order'] caught=True
-  restored byte-identical: True
-p8 the mechanical answer restates every matching item: exit=1 failed=1 nodes=['tests/orchestration/test_chat_answer.py::test_eight_matching_items_give_five_sentences_in_item_number_order'] caught=True
-  restored byte-identical: True
-p9 the mechanical answer's sentences are split again: exit=1 failed=1 nodes=['tests/orchestration/test_chat_answer.py::test_mechanical_answer_matches_item_text_and_ref_and_keeps_an_inner_full_stop_whole'] caught=True
-  restored byte-identical: True
-p10 the renderer omits the unsupported mark: exit=1 failed=1 nodes=['tests/orchestration/test_chat_answer.py::test_check_answer_marks_each_sentence_counts_unsupported_and_renders_the_mark'] caught=True
-  restored byte-identical: True
-p11 stopwords count as keywords: exit=1 failed=3 nodes=['tests/orchestration/test_chat_answer.py::test_question_keywords_drops_stopwords_short_words_and_dedupes', 'tests/orchestration/test_chat_answer.py::test_mechanical_answer_matches_item_text_and_ref_and_keeps_an_inner_full_stop_whole', 'tests/orchestration/test_chat_answer.py::test_canary_suite_over_a_real_project_scope_reads_not_in_evidence'] caught=True
-  restored byte-identical: True
-p12 in chat_evidence.py, the run-id check calls match again: exit=1 failed=1 nodes=['tests/orchestration/test_chat_evidence.py::test_a_run_id_with_a_trailing_newline_is_no_run'] caught=True
-  restored byte-identical: True
+q1 the claim check never finds a token missing: exit=1 failed=5 nodes=['tests/orchestration/test_chat_answer.py::test_a_claim_backtick_span_its_cited_item_does_not_hold_is_unsupported', 'tests/orchestration/test_chat_answer.py::test_a_claim_number_its_cited_item_does_not_hold_is_unsupported', 'tests/orchestration/test_chat_answer.py::test_a_claim_token_held_only_by_the_other_item_is_still_unsupported', 'tests/orchestration/test_chat_answer.py::test_a_claim_url_its_cited_item_does_not_hold_is_unsupported', 'tests/orchestration/test_chat_answer.py::test_model_canary_suite_over_a_real_node_scope_still_reads_not_in_evidence']
+q2 the claim check reads every item of the set instead of the cited ones: exit=1 failed=2 nodes=['tests/orchestration/test_chat_answer.py::test_a_claim_number_its_cited_item_does_not_hold_is_unsupported', 'tests/orchestration/test_chat_answer.py::test_a_claim_token_held_only_by_the_other_item_is_still_unsupported']
+q3 with no call function handed in, chat_call_fn() is asked whatever the switch: exit=1 failed=1 nodes=['tests/orchestration/test_chat_answer.py::test_unset_calls_chat_call_fn_only_when_the_switch_is_on']
+q4 chat_call_fn asks the planner role: exit=1 failed=1 nodes=['tests/orchestration/test_chat_answer.py::test_chat_call_fn_asks_resolve_role_config_and_make_structured_call_fn']
+q5 only KeyError is caught around the call: exit=1 failed=1 nodes=['tests/orchestration/test_chat_answer.py::test_a_provider_error_falls_back_with_a_mechanical_label_naming_the_failure']
+q6 a reply with no supported sentence is kept: exit=1 failed=2 nodes=['tests/orchestration/test_chat_answer.py::test_a_reply_with_no_supported_sentence_falls_back_to_the_mechanical_answer', 'tests/orchestration/test_chat_answer.py::test_model_canary_suite_over_a_real_node_scope_still_reads_not_in_evidence']
+q7 a fallback's label omits its reason: exit=1 failed=2 nodes=['tests/orchestration/test_chat_answer.py::test_a_reply_with_no_supported_sentence_falls_back_to_the_mechanical_answer', 'tests/orchestration/test_chat_answer.py::test_model_canary_suite_over_a_real_node_scope_still_reads_not_in_evidence']
+q8 the prompt omits the refusal rule: exit=1 failed=1 nodes=['tests/orchestration/test_chat_answer.py::test_prompt_starts_with_the_question_and_holds_a_rendered_evidence_line']
+q9 an outcome that is not ok is not a fallback: exit=1 failed=1 nodes=['tests/orchestration/test_chat_answer.py::test_an_unparseable_reply_falls_back_with_a_mechanical_label_naming_the_failure']
+q10 in config.py, the switch defaults to on: exit=1 failed=2 nodes=['tests/orchestration/test_chat_answer.py::test_chat_model_written_reads_false_by_default_and_true_after_the_env_var', 'tests/orchestration/test_chat_answer.py::test_unset_calls_chat_call_fn_only_when_the_switch_is_on']
 control (after): exit=0 failed=0 nodes=[]
+restored byte-identical: True
 ALL MUTATIONS CAUGHT AND RESTORED CLEANLY: True
 ```
 Every mutation caught with at least one failing node; both unmutated controls read exit 0; every
-mutation restored byte-identical. No mutation stayed green, so constraint 4's "add the test that
-catches it" branch never fired — every catching test (including the dedicated p6 prefix-match test
-and the p9 inner-full-stop test) was written during C4's authoring, before this tool ever ran.
-`git worktree remove --force .remedy-wt/f038-r3-mut` → exit 0. `git worktree prune` → exit 0.
-`git worktree list | wc -l` → `66`.
+mutation restored byte-identical (confirmed both by the tool's own per-mutation restore check and
+its printed `restored byte-identical: True` line). No mutation stayed green, so constraint 4's
+"add the test that catches it" branch never fired.
+`git worktree remove --force .remedy-wt/f038-r4-mut` → exit 0. `git worktree prune` → exit 0.
+`git worktree list | wc -l` → `68`.
 
 ## Authored-text proofs
 
-- `.agent/authored/f038-r3-block.md` (added at `0de81a6b2`) == `.remedy-wt/f038-r3/block.md`,
-  byte for byte (sha256 `b37365a9...cfa7a8` both). MATCH.
-- `.agent/authored/f038-r3-plan.md` (added at `0de81a6b2`) == `.remedy-wt/f038-r3-payloads/plan.md`,
-  byte for byte (sha256 `42444339...791d566` both). MATCH.
-- `.agent/authored/f038-r3-records.diff` (added at `f03ceb9ee`) ==
-  `.remedy-wt/f038-r3-payloads/records.diff`, byte for byte (sha256 `289b865a...1a0ecdb01` both). MATCH.
-- `.agent/plan.md` after C2 (`a87ddd85f`) == `.remedy-wt/f038-r3-payloads/plan.md`, byte for byte
-  (sha256 `424443393cfee0196203a8e46ec338cf226cc02a208ebb8206c3db0b3791d566` both, confirmed under
+- `.agent/authored/f038-r4-block.md` (added at `576ec5532`) == `.remedy-wt/f038-r4/block.md`,
+  byte for byte (sha256 `35ee28bd...c37b4676` both). MATCH.
+- `.agent/authored/f038-r4-plan.md` (added at `576ec5532`) == `.remedy-wt/f038-r4-payloads/plan.md`,
+  byte for byte (sha256 `5ed12bfd...3486ad3a7` both). MATCH.
+- `.agent/authored/f038-r4-records.diff` (added at `4e70c5afe`) ==
+  `.remedy-wt/f038-r4-payloads/records.diff`, byte for byte (sha256 `bca963df...280dc389ce` both). MATCH.
+- `.agent/plan.md` after C2 (`d0b001113`) == `.remedy-wt/f038-r4-payloads/plan.md`, byte for byte
+  (sha256 `5ed12bfd0216e26fb11446797cc7e57e76ad40bb7cec1f82b84b3433486ad3a7` both, confirmed under
   G2). MATCH.
 - `records.diff` applied via `git apply` (not retyped); `.agent/decisions.md` and
   `.agent/live_review.md` after C2 match the reviewer's stated sha256 exactly (G2 table above).
@@ -312,45 +332,39 @@ and the p9 inner-full-stop test) was written during C4's authoring, before this 
 
 ## Deviations & assumptions
 
-1. **A prefix-vs-exact-word test added during C4's authoring, not after an observed green
-   mutation (constraint 4).** DECISION F038 D4's own ALTERNATIVES paragraph names the reason
-   an exact-word match was rejected: `"pass" would not find "passed"`. Designing mutation p6
-   ("a keyword matches whole words only") against my own lines, I noticed neither
-   `test_did_the_tests_pass_over_a_real_node_scope_cites_tests_passed` (both its keywords, "tests"
-   and "pass", happen to also match some run by exact equality: "tests"=="tests") nor
-   `test_mechanical_answer_matches_item_text_and_ref_and_keeps_an_inner_full_stop_whole` (its
-   keywords "checkout" and "flow" are also both exact matches) would fail under an exact-match
-   mutation, because in both cases the selected item is uniquely identified even with the
-   prefix relaxation removed. Added
-   `test_a_keyword_matches_a_longer_run_by_prefix_not_by_whole_word_only`, whose keyword
-   ("archive") is a strict, non-equal prefix of the only matching run ("archived"), before ever
-   running the mutation tool, so p6 was caught on its first and only run (see G5 output — no
-   mutation read green at any point). Declared regardless, since it is a test written
-   specifically to secure a mutation's catch, mirroring round 2's n10 precedent.
-2. No payload was repaired, edited or retyped. No existing test outside the two named in the
-   block (`test_chat_evidence.py`'s new test) was touched, and no existing assertion in either
-   file was changed. No file outside the round's tracked path set (constraint 3) was touched —
-   confirmed by `git diff --name-only fe18ab6d8` at the branch tip (see below).
+1. **The import-line trim in C4 (`tests/orchestration/test_chat_answer.py`).** `ruff` flagged
+   `chat_call_fn` as an unused top-level import once `test_chat_call_fn_asks_resolve_role_config_
+   and_make_structured_call_fn` was written to call it through `chat_answer_module.chat_call_fn`
+   (monkeypatch target) rather than the bare name. Removed the unused import; no test's behaviour
+   changed, and G3's ruff reading is clean at C4. Declared here because it is a one-line change
+   inside the C4 diff not named by S7 or the TESTS section verbatim.
+2. No payload was repaired, edited or retyped. No existing test was touched, and no existing
+   assertion in any file was changed. No file outside the round's tracked path set (constraint 3)
+   was touched — confirmed by `git diff --name-only 47747a499` at the branch tip (see below).
 3. No gate went red at any point this round; no repair or correction of a committed test was
    needed.
+4. C4 measured 499 insertions, one under the 500-insertion cap in constraint 2 — no split was
+   needed, but it is close enough to the cap to flag explicitly.
 
 ## Tracked path set (constraint 3)
 
-`git diff --name-only fe18ab6d8` at the branch tip after C5:
+`git diff --name-only 47747a499` at the branch tip after C5:
 ```
-.agent/authored/f038-r3-block.md
-.agent/authored/f038-r3-mutations.py
-.agent/authored/f038-r3-plan.md
-.agent/authored/f038-r3-records.diff
+.agent/authored/f038-r4-block.md
+.agent/authored/f038-r4-mutations.py
+.agent/authored/f038-r4-plan.md
+.agent/authored/f038-r4-records.diff
 .agent/decisions.md
 .agent/handoff.md
 .agent/live_review.md
 .agent/plan.md
+docs/guides/environment.md
 packages/orchestration/chat_answer.py
-packages/orchestration/chat_evidence.py
+packages/orchestration/config.py
+packages/orchestration/model_routing.py
+packages/orchestration/result_tour.py
 tests/orchestration/test_chat_answer.py
-tests/orchestration/test_chat_evidence.py
-tests/test_no_orphan_modules.py
+tests/orchestration/test_model_routing.py
 ```
 Exactly the block's constraint-3 set, no more and no less.
 
@@ -367,18 +381,17 @@ Exactly the block's constraint-3 set, no more and no less.
 | C1b | done | |
 | C2 | done | |
 | C3 | done | |
-| C4 | done | 461 insertions, under the 500-insertion cap; no split needed |
+| C4 | done | 499 insertions, one under the 500-insertion cap; no split needed |
 | C5 | done | this commit |
 | G1 TRANSPORT | done | |
 | G2 THE RECORDS | done | |
 | G3 THE CODE | done | |
 | G4 THE TESTS | done | |
-| G5 THE RED PROOFS | done | all 12 mutations caught first run |
+| G5 THE RED PROOFS | done | all 10 mutations caught first run |
 | G6 TREE AND PUSH | done | reported in the round reply, not tabled here (cannot precede this commit) |
 
 ## Next
 
 Per the block's `## Next` order: (1) Phase 1 rule 1 — read `.agent/STOP` from disk. (2) The
-review of round 3. (3) T001's model-written answer: a chat routing class, a switch that is off
-by default, the same check over its reply, and the mechanical answer as its fallback.
-Open-findings count: 0. Operator-questions count: 1.
+review of round 4. (3) T002: the intent parse over the exposed commands, the action cards and
+their confirmation. Open-findings count: 0. Operator-questions count: 1.
