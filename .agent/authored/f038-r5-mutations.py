@@ -35,17 +35,17 @@ def _run_tests(root: Path) -> tuple[int, str]:
 
 
 def _failed_count_and_nodes(output: str) -> tuple[int, list[str]]:
-    nodes = [line.split(" ", 1)[0][len("FAILED "):] if line.startswith("FAILED ") else
-             line[len("FAILED "):].split(" - ", 1)[0]
+    nodes = [line[len("FAILED "):].split(" - ", 1)[0].strip()
              for line in output.splitlines() if line.startswith("FAILED ")]
     count = 0
     for line in output.splitlines():
-        line = line.strip()
-        if line.startswith("=") and "failed" in line:
-            for token in line.strip("= ").split(", "):
-                token = token.strip()
-                if token.endswith("failed"):
-                    count = int(token.split()[0])
+        line = line.strip().strip("= ")
+        if "failed" not in line:
+            continue
+        for token in line.split(", "):
+            token = token.strip()
+            if token.endswith("failed") and token[: -len("failed")].strip().isdigit():
+                count = int(token[: -len("failed")].strip())
     return count, nodes
 
 
