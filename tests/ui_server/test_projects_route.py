@@ -148,3 +148,15 @@ class TestDashboardProjectLine:
         assert section is not None
         assert section["project_id"] == str(self.alpha.id)
         assert section["job_count"] == project_summary(self.alpha)["jobs"]["total"] == 2
+
+    def test_the_jobs_own_project_outranks_the_legacy_key(self):
+        """R-1111: a job whose own field names alpha while its legacy metadata still names beta
+        is alpha's, the order DECISION F042 D5 (2) states."""
+        from packages.orchestration.ui_server import _build_project_summary_section
+
+        job = JobPlan(job_title="moved job", project_id=str(self.alpha.id), metadata={"project_id": str(self.beta.id)})
+        save_job_plan(job)
+        section = _build_project_summary_section(job)
+        assert section is not None
+        assert section["project_id"] == str(self.alpha.id)
+        assert section["job_count"] == project_summary(self.alpha)["jobs"]["total"] == 3
