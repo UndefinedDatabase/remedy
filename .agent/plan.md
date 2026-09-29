@@ -12,15 +12,14 @@ F291 (Self-use sources v2).
 
 ## Current Step
 
-Part C: `remedy data reclaim --stale` with `data.staging_ttl_days`, the
-doctor warning `data_reclaimable` and the closure step (Parts A and B are
-committed: the ledger diet, the red-CI rule, no new finding for PR 295).
+Part G: gates, the pull request and its merge, then carry `main` into
+`feature/f042-multi-project-cockpit`. Parts A to F are committed: the
+ledger diet, the red-CI rule, `data reclaim --stale` with the doctor
+warning and the closure step, the checkout hygiene, Q6 (D2) and F291.
 
 ## Next Steps
 
-1. Part D: worktrees, merged branches and root remnants.
-2. Part E: DECISION amend0929 D2 for Q6. Part F: register F291.
-3. Part G: gates, pull request, merge, carry `main` into the F042 branch.
+1. The next loop session resumes F042 at round 7 on its own branch.
 
 ## Risks
 
