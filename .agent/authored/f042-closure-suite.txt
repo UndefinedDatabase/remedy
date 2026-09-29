@@ -1,0 +1,44 @@
+F042 R7 C6 — the closure's one full suite
+
+Command: python3 -m pytest -n auto -q
+Real exit code: 1
+Wall time: 12 seconds (measured: start 1790702792, end 1790702804)
+Summary line: 15 errors in 12.39s
+
+Nature of the red: NOT a per-test failure. pytest-xdist aborted at COLLECTION time on
+all 15 non-reference workers (gw0, gw2, gw3, gw4, gw5, gw6, gw7, gw8, gw9, gw10, gw11,
+gw12, gw13, gw14, gw15), each reporting "Different tests were collected between gw1
+and gwN". Zero tests of any kind executed — grep of the full transcript for "passed"
+or for any "tests/..." result line returns nothing. `tests/orchestration/
+test_import_reachability.py` and `tests/test_no_orphan_modules.py` therefore hold NO
+reading this run (neither ran); closure precondition 7 is UNKNOWN from this transcript,
+not satisfied.
+
+Root cause, confirmed by a scoped re-run of the one implicated file (not the full
+suite; amend0917 rule 1 reserves the full run to once):
+`tests/ui_server/test_projects_route.py:111` —
+    @pytest.mark.parametrize("name", ["gamma", str(uuid4())])
+`str(uuid4())` is evaluated at MODULE IMPORT (collection) time, once per xdist worker
+process. Each worker therefore collects `test_an_unknown_project_is_404` under a
+DIFFERENT parametrize id, so pytest-xdist's collection-consistency check fails
+deterministically whenever more than one worker collects the module — reproduced
+again on a scoped `pytest -n auto -q tests/ui_server/test_projects_route.py` run
+(15 errors in 1.08s, same shape). Not new to this round: `git blame` names commit
+`06376f3569` "F042 R1 C5: add the reviewer's route tests for the project list and
+summary" as the line's origin, on this branch. No production or test file was edited
+to investigate or work around it (constraint 4: an existing test's redness is
+reported, never edited to pass; here the defect is collection-time, upstream of any
+test result, and is handled the same way).
+
+FULL list of bad node ids (failed plus errors): NONE at the individual test-node
+level — no test reached pass/fail. The 15 collection ERRORS are xdist worker-session
+errors (gw0, gw2, gw3, gw4, gw5, gw6, gw7, gw8, gw9, gw10, gw11, gw12, gw13, gw14,
+gw15), all tracing to the same one non-deterministic parametrize id at
+`tests/ui_server/test_projects_route.py::TestProjectRoutes::test_an_unknown_project_is_404[<uuid4, regenerated per worker>]`.
+
+Tree it ran on: cdf694630 (F042 R7 C5, the tip at the time C6 started; C1 through C5
+are all included).
+
+server.py: no process found (`ps aux | grep "[s]erver.py"` empty; an initial
+`pgrep -af server.py` line was the search command matching its own invocation text,
+not a real process).
