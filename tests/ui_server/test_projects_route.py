@@ -123,3 +123,28 @@ class TestProjectRoutes:
         assert (status, content_type) == (200, "application/json")
         assert body == job_project_view(self.job)
         assert (body["scope"], body["project"]["slug"]) == ("project", "alpha")
+
+
+class TestDashboardProjectLine:
+    """DECISION F042 D5: the dashboard's project section reads the job's own `project_id` and
+    counts `scoped_jobs` over it, so the right panel's "Project: N jobs" line and the project's
+    card in the home grid count the same jobs."""
+
+    @pytest.fixture(autouse=True)
+    def _setup(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
+        monkeypatch.delenv("REMEDY_PROJECT", raising=False)
+        self.alpha = register_project_repo("alpha", _git_folder(tmp_path / "alpha"))
+        self.beta = register_project_repo("beta", _git_folder(tmp_path / "beta"))
+        self.jobs = [JobPlan(job_title=f"alpha job {n}", project_id=str(self.alpha.id)) for n in range(2)]
+        for job in self.jobs:
+            save_job_plan(job)
+        save_job_plan(JobPlan(job_title="beta job", project_id=str(self.beta.id)))
+
+    def test_a_job_scoped_by_its_own_field_gets_its_projects_line(self):
+        from packages.orchestration.ui_server import _build_project_summary_section
+
+        section = _build_project_summary_section(self.jobs[0])
+        assert section is not None
+        assert section["project_id"] == str(self.alpha.id)
+        assert section["job_count"] == project_summary(self.alpha)["jobs"]["total"] == 2
