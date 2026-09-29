@@ -1,222 +1,261 @@
-# Handback — F042 round 5: book F042 R4 with R-1108/R-1109 resolutions and R-1110's registration, record D5, land the dock's way home, the stateless result's plain border, and the dashboard's project line
+# Handback — F042 round 6: book F042 R5 with R-1110's resolution and R-1111's registration, record D6 and the checklist consolidation, write the Built State, land the end-to-end test and R-1111's test, take the live browser run, and generate and run the closure's self-use item
 
 ## Session
 
-SESSION 1 of feature F042 · round 5 · rounds so far 5. Context self-assessment: after writing
-this handoff and before pushing, roughly one-third of the session's context budget remained.
+SESSION 1 of feature F042 · round 6 · rounds so far 6. Context self-assessment: after writing
+this handoff and before pushing, roughly the large majority of the session's context budget
+remained — no repair round was needed beyond one self-caught and self-fixed defect in the
+worker's own mutation tool (see Deviations).
 
 ## Range
 
-Review of `1d5a64b3a`..`<this C6 commit>`. C1a (`a8b5a09c0`), C1b (`803ee550e`), C1c (`fe834aac5`),
-C1d (`8ffaca35f`), C2 (`4c21b6b3a`), C3 (`992cd576e`), C4 (`fd1d0c291`) and C5 (`239e8864e`) are all
-content commits; C6 (this handoff commit) is written and pushed last, per the write-once rule.
+Review of `79a2e7809`..`<this C7 commit>`. C1a (`22e0ab7ac`), C1b (`80e77357c`), C1c
+(`aeb0bc236`), C2 (`688dcb6fe`), C3 (`15c7ddd1b`), C4 (`011746102`), C5 (`d51135b0d`) and C6
+(`3e8231a0b`) are all content commits; C7 (this handoff commit) is written and pushed last, per
+the write-once rule.
 
 ## Commits
 
-### a8b5a09c0 F042 R5 C1a: copy round 5 block and plan into .agent/authored/
+### 22e0ab7ac F042 R6 C1a: copy round 6 block, plan and record diffs
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f042-r5-block.md | +251/-0 | copy of this round's block, byte for byte |
-| .agent/authored/f042-r5-plan.md | +27/-0 | copy of the plan.md payload, byte for byte |
+| .agent/authored/f042-r6-block.md | +237/-0 | copy of this round's block, byte for byte |
+| .agent/authored/f042-r6-plan.md | +31/-0 | copy of the plan.md payload, byte for byte |
+| .agent/authored/f042-r6-records.diff | +78/-0 | copy of the records.diff payload, byte for byte |
+| .agent/authored/f042-r6-built_state.diff | +54/-0 | copy of the built_state.diff payload, byte for byte |
 
-Expected by the block: 251 + 27 = 278; measured: 278. Match. Under the 500-line stop threshold.
+Expected by the block: this block's line count (237) plus 163 = 400; measured: 400
+(237+31+78+54). Match. Under the 500-line stop threshold.
 
-### 803ee550e F042 R5 C1b: copy round 5 records and tests diffs into .agent/authored/
+### 80e77357c F042 R6 C1b: copy round 6 tests diff and self-use script
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f042-r5-records.diff | +57/-0 | copy of the records.diff payload, byte for byte |
-| .agent/authored/f042-r5-tests.diff | +65/-0 | copy of the tests.diff payload, byte for byte |
+| .agent/authored/f042-r6-tests.diff | +161/-0 | copy of the tests.diff payload, byte for byte |
+| .agent/authored/f042-r6-selfuse.py | +122/-0 | copy of the selfuse.py payload, byte for byte |
 
-Expected by the block: 122; measured: 122 (57+65). Match.
+Expected by the block: 283; measured: 283 (161+122). Match.
 
-### fe834aac5 F042 R5 C1c: copy the round 5 render driver into .agent/authored/
+### aeb0bc236 F042 R6 C1c: copy the round 6 live run
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f042-r5-render_drive.mjs | +308/-0 | copy of render_drive.mjs, byte for byte |
+| .agent/authored/f042-r6-live_drive.mjs | +179/-0 | copy of live_drive.mjs, byte for byte |
+| .agent/authored/f042-r6-live_measure.py | +176/-0 | copy of live_measure.py, byte for byte |
 
-Expected by the block: 308; measured: 308. Match.
+Expected by the block: 355; measured: 355 (179+176). Match.
 
-### 8ffaca35f F042 R5 C1d: copy the rest of the round 5 render harness into .agent/authored/
+### 688dcb6fe F042 R6 C2: book F042 R5, resolve R-1110, register R-1111, record D6, consolidate the checklist
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f042-r5-render_index.html | +11/-0 | copy of render_index.html, byte for byte |
-| .agent/authored/f042-r5-render_main.tsx | +66/-0 | copy of render_main.tsx, byte for byte |
-| .agent/authored/f042-r5-render_measure.py | +187/-0 | copy of render_measure.py, byte for byte |
-| .agent/authored/f042-r5-render_vite.config.mjs | +28/-0 | copy of render_vite.config.mjs, byte for byte |
+| .agent/decisions.md | +37/-0 | `git apply` of records.diff: DECISION F042 D6 appended — the end-to-end run is a CI test over the real CLI/UI server plus a live browser run kept out of CI; the closure sequence starts this round with the self-use item, before the one full suite |
+| .agent/live_review.md | +6/-0 | `git apply` of records.diff: F042 R5 gate entry (VERDICT PASS), the `Done:` resolution of R-1110, and the registration of R-1111 appended |
+| .agent/plan.md | +12/-8 | rewritten to the plan.md payload (`shutil.copyfile`): Current Step advances to round 6, Next Steps become the integration/evidence/closing rounds, Risks note R-1111 |
+| docs/agents/planner_reviewer_prompt.md | +8/-0 | `git apply` of records.diff: the checklist's 29th consolidation paragraph, above "The next consolidation measures against 34."; nothing joined, list stays at 34 items |
 
-Expected by the block: 292; measured: 292 (11+66+187+28). Match.
+Expected by the block: 37/0 decisions.md, 6/0 live_review.md, 12/8 plan.md, 8/0
+planner_reviewer_prompt.md; measured: identical on every file (see `git show --numstat`
+transcript in Verification). Match.
 
-### 4c21b6b3a F042 R5 C2: book F042 R4, resolve R-1108 and R-1109, register R-1110, record D5
+### 15c7ddd1b F042 R6 C3: write F042's Built State
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/decisions.md | +33/-0 | `git apply` of records.diff: DECISION F042 D5 appended |
-| .agent/live_review.md | +8/-0 | `git apply` of records.diff: F042 R4 gate entry plus the `Done:` resolutions of R-1108/R-1109 and the registration of R-1110 appended |
-| .agent/plan.md | +7/-9 | rewritten to the plan.md payload (`shutil.copyfile`) |
+| docs/roadmap/features/T5_F042.md | +46/-0 | `git apply` of built_state.diff: `## Built State (F042, 2026-09-29)` appended — closure precondition 4 |
 
-Expected by the block: 33/0 decisions.md, 8/0 live_review.md, 7/9 plan.md; measured: identical.
-Match. `.agent/plan.md` verified byte-identical to the plan.md payload (sha256
-`61877627084cba8cc86bf5538b4b6aaaaa286cfc4e4123c79bb25bfb6e8136c4`, both sides) before staging.
+Expected by the block: 46/0; measured: 46/0. Match.
 
-### 992cd576e F042 R5 C3: open the grid from the dock, keep a stateless result plain, count the project's own jobs
+### 011746102 F042 R6 C4: add the reviewer's end-to-end test and R-1111's test
 | Path | +/- | Reason |
 |---|---|---|
-| apps/ui/src/components/home/HomeGrid.tsx | +3/-1 | S2/R-1110: the result line's inline `style` is `undefined` when `card.resultTone === "none"`, else the previous `borderLeftColor` object; one-line comment names R-1110 |
-| apps/ui/src/components/rail/SideIconDock.tsx | +12/-1 | S1: `useProjectContext` imported from `../shell/ProjectProvider`; `export const OVERVIEW_TITLE = "All projects"` under a comment naming DECISION F042 D5; `goHome` read from the context; the first (`i === 0`) button spreads `{ title: OVERVIEW_TITLE, onClick: goHome }`, the other six unchanged |
-| packages/orchestration/ui_server.py | +11/-5 | S3: docstring gains a paragraph naming DECISION F042 D5; `project_id` reads `getattr(job, "project_id", "")` before `job.metadata.get("project_id")`; `list_job_plans` import dropped, `ProjectScope`/`scoped_jobs` imported inside the function instead; `linked_jobs` is the first value of `scoped_jobs(ProjectScope(project_id=str(project.id), all_projects=False, source="dashboard"))` |
+| tests/ui_server/test_multi_project_live.py | +135/-0 | `git apply` of tests.diff, unedited: NEW FILE — two projects registered by `remedy init`, jobs planned by `remedy do`, alpha's first run to its end on the fake providers, every card number held against `remedy status --project <slug> --json` over a real UI server |
+| tests/ui_server/test_projects_route.py | +12/-0 | `git apply` of tests.diff, unedited: `test_the_jobs_own_project_outranks_the_legacy_key` added to `TestDashboardProjectLine` — R-1111, a job with its own `project_id` naming alpha and a stale legacy `metadata["project_id"]` naming beta reads alpha's section |
 
-Expected by the block (informational, the reviewer's own version of S1-S3): 3/1 HomeGrid.tsx, 8/1
-SideIconDock.tsx, 10/5 ui_server.py — an independent writing of the same clauses (see Deviations).
-HomeGrid.tsx matches the reviewer's own reading exactly; SideIconDock.tsx and ui_server.py differ
-by a handful of lines (see Deviations), with no functional disagreement — G3/G4/G5 below all
-passed against the code as landed. Total this commit: 26 insertions, 7 deletions, well under the
-500-line cap; S1 to S3 landed in ONE commit and no split was needed.
+Expected by the block: 135/0 test_multi_project_live.py, 12/0 test_projects_route.py; measured:
+identical. Match.
 
-### fd1d0c291 F042 R5 C4: add the reviewer's tests for deep links across projects and the project line
+### d51135b0d F042 R6 C5: add the round 6 mutation tool
 | Path | +/- | Reason |
 |---|---|---|
-| apps/ui/src/components/graph/zoomDeepLink.test.ts | +17/-0 | `git apply` of tests.diff, unedited: "a deep link across projects" describe block added |
-| tests/ui_server/test_projects_route.py | +25/-0 | `git apply` of tests.diff, unedited: `TestDashboardProjectLine` added |
+| .agent/authored/f042-r6-mutations.py | +204/-0 | the G4 red-proof tool: mutations m1 (`project_cockpit.py`'s `project_summary` scope to `all_projects=True`), m2 (`ui_server.py` reads the legacy metadata key before the job's own `project_id`), m3 (`ui_server.py`'s `_build_project_summary_section` scope to `all_projects=True`), l1 (`RemedyApp.tsx` loses both the shell's `key` and `openAddress`'s `setDashboard(null)`); pytest/live-run runners, control first/last |
 
-### 239e8864e F042 R5 C5: add the round 5 mutation tool
+This commit was amended once, before any push, to fix a restore-order bug the tool's first
+version had (see Deviations); the number above (204 insertions) is the corrected version's size,
+the only one ever pushed or reported as a gate result. No expected-insertions figure is stated by
+the block for this self-authored file.
+
+### 3e8231a0b F042 R6 C6: generate and run the closure's self-use item, record its readings
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f042-r5-mutations.py | +173/-0 | the G5 red-proof tool: 5 mutations (p1, p2, z1, h1, h2), pytest/vitest(zoomDeepLink)/harness runners, control first/last |
+| .agent/selfuse_f042/SU-036.md | +10/-0 | the generated item: Job "Address ledger finding R-1107", Task 1 is R-1107's FIX |
+| .agent/selfuse_f042/changed_paths.txt | +1/-0 | `tests/ui_server/test_story_export_file_live.py` |
+| .agent/selfuse_f042/entry_and_job_file.txt | +5/-0 | Entry ID SU-036, Provenance "generated (self-use-generator tier 1, ledger scan, R-1107)", job file path |
+| .agent/selfuse_f042/execution_config.txt | +39/-0 | builder/reviewer both `claude-cli`, model `claude-sonnet-4-6`, effort `medium` — the `self_use` role's configured provider, never `fake` |
+| .agent/selfuse_f042/full_transcript.txt | +14/-0 | job id `6dad54d0e18348c4`, state `completed`, Task T001 `applied_to_job_workspace` / verdict `pass` / final status `staged_review_passed` |
+| .agent/selfuse_f042/job_diff.txt | +102/-0 | `git diff HEAD...remedy/job-6dad54d0e18348c4`, exit 0: R-1107's FIX in `test_story_export_file_live.py` (verbatim in Verification below) |
+| .agent/selfuse_f042/result_state.txt | +12/-0 | job state `completed`, budgets (max_cost_usd 6.0, max_provider_calls 8), actuals (2 calls, $1.1108742, 16645 tokens) |
+| .agent/selfuse_f042/run_defects.txt | +1/-0 | `NONE` (verbatim in Verification below) |
+| .agent/selfuse_f042/staleness_after.txt | +2/-0 | read from the job branch, `NONE` |
+| .agent/selfuse_f042/timing.txt | +3/-0 | started 14:00:52 UTC, finished 14:05:12 UTC, 259.9 wall seconds |
+| scripts/self_use_queue.json | +8/-0 | SU-036 appended to the queue |
 
-### (this commit) F042 R5 C6: rewrite handoff for round 5
+The job was never applied: no `job apply`, no `--approve`, no copy of its files into the
+checkout. It left `remedy/job-6dad54d0e18348c4` as a branch (reported under External actions);
+its own worktree was already removed by the run itself before this commit.
+
+### (this commit) F042 R6 C7: rewrite handoff for round 6
 | Path | +/- | Reason |
 |---|---|---|
 | .agent/handoff.md | rewrite | this handback, per the write-once rule (a handoff cannot table the commit that writes it) |
 
 ## External actions
 
-`git push -u origin feature/f042-multi-project-cockpit` after C6: real outcome reported in the
+`git push -u origin feature/f042-multi-project-cockpit` after C7: real outcome reported in the
 worker's final reply, since this file cannot record a push that follows it.
 
 No pull request created or merged this round: the block orders NOTHING IS MERGED (constraint 6);
-`gh pr list` read empty both before and after this round's work.
+`gh pr list` is read empty after C7, reported in the worker's final reply.
 
-`git worktree add --detach .remedy-wt/f042-r5-mut 239e8864e` for G5 (clean checkout at C5), then
-`os.symlink` of the primary's `apps/ui/node_modules` into the worktree's `apps/ui/node_modules`
-(`target_is_directory=True`) — the sandbox materialized this as a real directory copy rather than a
-symlink (`os.path.islink` read `False`; see Deviations), then `python3 -B
-.agent/authored/f042-r5-mutations.py <worktree>`, then removal of that `node_modules` copy
-(`shutil.rmtree`, since `os.unlink` cannot remove a real directory), `git worktree remove --force
-.remedy-wt/f042-r5-mut` and `git worktree prune` as G5's last action. `git worktree list | wc -l`
-read 70 at BEFORE ANYTHING ELSE step 4 and 70 again after the removal and prune — unchanged.
+G4's worktree ran TWICE because of the C5 bug fix (see Deviations): `git worktree add --detach
+.remedy-wt/f042-r6-mut 7b182bca0` (the pre-fix C5), the `apps/ui/node_modules` symlink added
+(materialized by the sandbox as a real directory copy, `os.path.islink` read `False` — same
+standing lesson as F042 R5), `python3 -B .agent/authored/f042-r6-mutations.py <worktree>` (l1 read
+`restored byte-identical: False` — the bug, not a mutation escaping), the directory removed with
+`shutil.rmtree`, `git worktree remove --force` and `git worktree prune` (both real exit 0). C5 was
+then amended with the fixed tool (new SHA `d51135b0d`), and the same sequence ran again — `git
+worktree add --detach .remedy-wt/f042-r6-mut d51135b0d`, the symlink (again materialized as a real
+copy), `python3 -B .agent/authored/f042-r6-mutations.py <worktree>` (this run is the one reported
+as G4 below), `shutil.rmtree`, `git worktree remove --force`, `git worktree prune`. `git worktree
+list | wc -l` read 72 at BEFORE ANYTHING ELSE step 4 and 72 again after the second removal and
+prune — unchanged (each add/remove pair is symmetric).
+
+Own scratch cleanup: an early G3 invocation was mistyped (an extra `Repos/remedy` segment in the
+repo-root argument), which — because `live_measure.py`'s `work.mkdir(parents=True)` creates
+missing parents — created an empty directory tree
+`/home/decodeux/Repos/remedy/Repos/remedy/.remedy-wt/` with no further content and no lingering
+process; it was `shutil.rmtree`d before the correct G3 run. Reported under Deviations as well,
+since it touched a path outside every directory the block names as mine.
 
 ## Verification
 
-BEFORE ANYTHING ELSE — `.agent/STOP`: `ls` reported "No such file or directory" (absent). `pwd`
-`/home/decodeux/Repos/remedy`. `git status --porcelain` empty. `git branch --show-current`
-`feature/f042-multi-project-cockpit`. `git log --oneline -1` `1d5a64b3a` — all matching. Block
-bytes: measured 251 lines / sha256
-`f55d58fdec40460ca01fcb4411f70ad38e4a33c2b662d5696b7b7f89b96841cc`, matching both readings given in
-the delegation message exactly. `git worktree list | wc -l`: 70.
+BEFORE ANYTHING ELSE — `ls .agent/STOP`: "No such file or directory" (absent), exit 2 as
+expected for a missing path. `pwd` `/home/decodeux/Repos/remedy`. `git status --porcelain` empty.
+`git branch --show-current` `feature/f042-multi-project-cockpit`. `git log --oneline -1`
+`79a2e7809` — all four matching. Block bytes: measured 237 lines / sha256
+`cc88b5691884b79d47af44c0856bb662102715c91fbe1832c0829bbb772edd86`, matching both readings given
+in the delegation message exactly. `git worktree list | wc -l`: 72. `git branch --list
+'remedy/*' | wc -l`: 198.
 
-PAYLOADS — measured against the table, all eight matched exactly: `records.diff` 57 lines / 10435
-bytes / `582afa51fc74dd0936c3ea0fb2e3d3895e2ce4f63a364d0b8efa9a1468620ea2`; `tests.diff` 65 lines /
-3598 bytes / `1872d1735b50fedbe16b54d003b9b3bf5c743118b73d3996d63157e0ac2624d0`; `plan.md` 27 lines /
-911 bytes / `61877627084cba8cc86bf5538b4b6aaaaa286cfc4e4123c79bb25bfb6e8136c4`; `render_index.html`
-11 lines / 243 bytes / `48f7d0b2ee38d585b45fe87e9d62daf2bcd4eba07995972a90a1503d6b47ea7f`;
-`render_main.tsx` 66 lines / 3472 bytes /
-`8afd5abcde87a0aeeb46ab26904db891a7170c9066302daaed1c26be6740bf80`; `render_vite.config.mjs` 28
-lines / 744 bytes / `6c9d24558a507a827d445c793cd6203f7f0f24ac2659dcfe3cff96c20b7d1c6a`;
-`render_drive.mjs` 308 lines / 17416 bytes /
-`c9551a69df8b44140d3c04007881933295520d80aed0616dea45f06c7efcb921`; `render_measure.py` 187 lines /
-6528 bytes / `d9caa35ebddfad32188761510f32d9972d913551d4861b41ef07f5fd57defbf9`.
+PAYLOADS — measured against the table, all seven matched exactly: `records.diff` 78 lines / 10997
+bytes / `4ba9deb66edf4bba3370bf71fe06b81d0e88604ad0f01c0e61843c78c13c3d52`; `built_state.diff` 54
+lines / 4160 bytes / `2d0f83a721c1e350ad4c37aa8436f94b69154d93b2b07683a982e5511cfb384b`;
+`tests.diff` 161 lines / 7191 bytes /
+`abe9b7d7e9b5b25858f6a44bc6e91c1f01e5cc97d6f02361d27dfbd297ca3690`; `plan.md` 31 lines / 1128
+bytes / `ca8f1c8f0a62bdc3223c4dbb9ca6fd2a730569716307abb62d98bc16233ab7dc`; `live_measure.py` 176
+lines / 7791 bytes / `86888bd4290027a6d51036a7865d10c8ec8619a9a669898c277286713dc6c502`;
+`live_drive.mjs` 179 lines / 9383 bytes /
+`230beb461c4df2e435ec69c8839f69dba49d53e633014d0daaefc4c74eca9109`; `selfuse.py` 122 lines / 6492
+bytes / `c7ffad0515cbde860f03adeb36ba5240623e6a078dcced0af131cb19fd8edf52`.
 
-G1 TRANSPORT — every payload's measured lines/bytes/sha256 matched the table (above). Each
-`.agent/authored/f042-r5-*` copy, read back with `git show <commit>:<path>`, is byte-identical to
-its source (block copy against `.remedy-wt/f042-r5/block.md`, each other payload against
-`.remedy-wt/f042-r5-payloads/<name>`): all nine comparisons matched exactly (Python `==` over the
-raw bytes).
+G1 TRANSPORT AND RECORDS — every payload's measured lines/bytes/sha256 matched the table (above).
+Each `.agent/authored/f042-r6-*` copy, read back with `git show <commit>:<path>`, is
+byte-identical to its source (block copy against `.remedy-wt/f042-r6/block.md`, each other
+payload against `.remedy-wt/f042-r6-payloads/<name>`): all eight comparisons matched exactly
+(Python `==` over the raw bytes). The G1 file table's five entries, read with `git show
+<commit>:<path>` at the commit named: `.agent/decisions.md` at C2 2493168 bytes /
+`bd1e31bc213e3da6d8a336165989caa873b1a59612b2eacc59ca7f5ce43ac022`; `.agent/live_review.md` at C2
+326064 bytes / `7a08df4d069a2e5be07893cb173e300ab05ea2f3299d9c1b8c0e86fbfba64eec`; `.agent/plan.md`
+at C2 1128 bytes / `ca8f1c8f0a62bdc3223c4dbb9ca6fd2a730569716307abb62d98bc16233ab7dc`;
+`docs/agents/planner_reviewer_prompt.md` at C2 112056 bytes /
+`2d8b6758a3ac312970af3933756dd51d64c331edd47dbd38cc574bd731ec8908`;
+`docs/roadmap/features/T5_F042.md` at C3 8352 bytes /
+`d99fd5b7c89dffe6d6982945f72125cfcd6fe284adaefbf8ed060faba1cbd03a`;
+`tests/ui_server/test_multi_project_live.py` at C4 5665 bytes /
+`f47fd9b83c7a94dc5b6b88363c9c9767a0ac830a0544e141750aa508b52bdfa4`;
+`tests/ui_server/test_projects_route.py` at C4 7308 bytes /
+`3e71aa6d484277e1539b0c5129766953604a28687d7f9119e3711bd6213c0bd4` — all seven equal the block's
+table exactly. `open_finding_ids` (`scripts/rotate_live_review.py`) over `.agent/live_review.md`
+at C2: `['R-1107', 'R-1111']`, matching the reviewer's stated reading exactly, as did
+`latest_gate_verdict`: `PASS`. `live_checklist_items` (`packages/orchestration/block_lint.py`)
+over `docs/agents/planner_reviewer_prompt.md` at C2: 34, matching exactly.
 
-G2 THE RECORDS AND THE TESTS — every sha256 in the block's G2 table, read with `git show
-<commit>:<path>` at the commit named, equal the reviewer's reading exactly: `.agent/decisions.md`
-at C2 2489869 bytes / `bcf06d750d134cdb997e135568e9b058a2b89c594d7737eb78a148839ffb3cde`;
-`.agent/live_review.md` at C2 322281 bytes /
-`a23329e702857e8fcebec2306e166401995eac3d90ff6916c58a86d1a6eabb9b`; `.agent/plan.md` at C2 911
-bytes / `61877627084cba8cc86bf5538b4b6aaaaa286cfc4e4123c79bb25bfb6e8136c4`;
-`apps/ui/src/components/graph/zoomDeepLink.test.ts` at C4 4397 bytes /
-`53a4a98d403c1b8d5ee1df2ac2f9dbe7d225227fe1f34b1e0d3e9d72fc604457`;
-`tests/ui_server/test_projects_route.py` at C4 6615 bytes /
-`909cf7d0f74e3c92bacffaf5e52d6c059a9bd2a4ade02f87a0a47c0464a511dd` — all five equal the block's
-table exactly. `open_finding_ids` (from `scripts/rotate_live_review.py`) over `.agent/live_review.md`
-at C2: `['R-1107', 'R-1110']`, matching the reviewer's stated reading exactly. `git diff
---name-only 8ffaca35f 4c21b6b3a` names exactly `.agent/decisions.md`, `.agent/live_review.md`,
-`.agent/plan.md` — exactly the C2 paths of the table.
+G2 THE TESTS — the block's exact serial pytest command, in the primary checkout at C5:
+`674 passed, 1 skipped in 105.01s (0:01:45)`, `REAL_EXIT=0`. The one SKIPPED line:
+`tests/test_agent_tooling.py:43: D12 quarantine (F252): .claude/agents/remedy-reviewer.md was
+deleted deliberately in 219dd32 ...`. This matches the reviewer's own simulation reading
+(`674 passed, 1 skipped` at exit 0) exactly — no variance this round. `python3 -m ruff check
+tests/ui_server/test_multi_project_live.py tests/ui_server/test_projects_route.py
+.agent/authored/f042-r6-mutations.py .agent/authored/f042-r6-live_measure.py
+.agent/authored/f042-r6-selfuse.py`: `All checks passed!`, real exit 0. `python3 -m apps.cli.main
+integrity check --json`: all six checks (`handler_import` "handlers=171", `live_review_verdict`
+"last Gate verdict PASS", `plan_consistency` "unchecked=0, context_complete=False",
+`relevant_untracked` "untracked=0, relevant=0", `repo_root_hygiene` "no reviewer scratch, evidence
+dir or archive at the root", `high_blockers_open` "no open blocker/high findings") `"status":
+"pass"`, `fail_count` 0, `"ok": true`, real exit 0.
 
-G3 THE CODE AND THE TESTS — `python3 -m ruff check packages/orchestration/ui_server.py
-tests/ui_server/test_projects_route.py .agent/authored/f042-r5-mutations.py
-.agent/authored/f042-r5-render_measure.py`: `All checks passed!`, real exit 0. `apps/ui/node_modules/.bin/eslint
-src/components/rail/SideIconDock.tsx src/components/home/HomeGrid.tsx
-src/components/graph/zoomDeepLink.test.ts` run with `apps/ui` as working directory: no output, real
-exit 0. `git show --numstat 992cd576e`: 3/1 HomeGrid.tsx, 12/1 SideIconDock.tsx, 11/5 ui_server.py
-(see C3 table above); the whole C3 diff is reported verbatim in the worker's final reply.
+G3 THE LIVE RUN — `python3 -B .agent/authored/f042-r6-live_measure.py
+/home/decodeux/Repos/remedy` at C5, in the primary checkout (correct path, after the mistyped
+first attempt was cleaned up — see Deviations): `jobs: {"alpha": [...2 ids...], "beta": [...1
+id...]}`, `vite build exit 0`, server pid printed with port 9010, chrome pid printed, then seven
+`PASS` lines — L-a the grid shows both projects, L-b a card opens its project's newest job
+("Project: 2 jobs, 1 active job(s)"), L-c the rail's switcher opens beta ("Project: 1 jobs, 1
+active job(s)"), L-g nothing of alpha survives the switch (`storyOpen: true, storyAfter: false,
+late: []`), L-d Back returns to alpha, L-e the dock returns to the grid, L-f no uncaught exception
+— final line `LIVE: 7 of 7 checks pass`, chrome and server both stopped by pid (SIGTERM), work dir
+removed, `drive.mjs exit code: 0`, overall real exit 0. Both screenshots read immediately after:
+`f042-r6-live-home.png` shows a "Projects" heading with two cards, alpha and beta, each "1
+active", "0 open decisions", "Cost today: not measured"; `f042-r6-live-cockpit.png` shows the
+Remedy shell for alpha's newest job — the left rail's project selector reading "alpha" with an
+"All projects" link above it, the "GROWING BRAIN OVERVIEW" job title, a two-node plan graph
+(`src/main.py`, `README.md`), and the right-hand "Agent is doing now: Idle" panel. `git status
+--porcelain`: empty, still, afterward.
 
-The serial pytest run at C5, in the primary checkout: `bash -c 'python3 -m pytest -q
--p no:cacheprovider -rs <the round's 12-target selection> 2>&1 | tail -10; echo
-"REAL_EXIT=${PIPESTATUS[0]}"'` read `1783 passed, 5 skipped in 93.13s (0:01:33)`, `REAL_EXIT=0`.
-This differs from the reviewer's `1780 passed, 8 skipped` by exactly the variance the block itself
-predicts: this checkout's `node_modules` already carries the toolchain (unlike the reviewer's fresh
-simulation worktree), so `test_typescript_compiles`, `test_vitest_passes` and
-`tests/ui_contracts/test_ui_lint.py`'s toolchain-absent skips the reviewer saw did not fire here —
-those ran and passed instead; only the five named skips printed:
-`tests/ui_contracts/test_graph_architecture.py:441` and `:484`,
-`tests/ui_contracts/test_ux_quality.py:507` and `:543` (all four D3 quarantine) and
-`tests/test_agent_tooling.py:43` (D12), and the `-rs` summary printed exactly those five `SKIPPED`
-lines. `test_typescript_compiles` (`tests/ui_server/test_dashboard_contract.py`) and
-`test_vitest_passes` (`tests/orchestration/test_test_runner.py`) both PASSED (re-run together with
-`tests/ui_contracts/test_ui_lint.py`: `2 passed` for the typescript/vitest pair, `2 passed` for
-`test_ui_lint.py`, both real exit 0). The vitest count of `src/components/graph/zoomDeepLink.test.ts`
-read `22 tests`, `1 passed (1)` test file, real exit 0 — matching the reviewer's reading of 22
-exactly. `python3 -m apps.cli.main integrity check --json`: all six checks (`handler_import`,
-`live_review_verdict`, `plan_consistency`, `relevant_untracked`, `repo_root_hygiene`,
-`high_blockers_open`) `"status": "pass"`, `fail_count` 0, `"ok": true`, real exit 0.
+G4 THE RED PROOFS — reported here is the SECOND, corrected run (worktree at the amended C5,
+`d51135b0d`; the first run's bug and its fix are in Deviations and External actions). `git
+worktree add --detach .remedy-wt/f042-r6-mut d51135b0d` (real exit 0), the `apps/ui/node_modules`
+symlink added (materialized as a real directory copy by the sandbox — see Deviations), then
+`python3 -B .agent/authored/f042-r6-mutations.py /home/decodeux/Repos/remedy/.remedy-wt/f042-r6-mut`.
+Whole output: control (first) pytest test_multi_project_live exit=0 failed=0, pytest
+test_projects_route exit=0 failed=0, live run exit=0 `LIVE: 7 of 7 checks pass`; m1 exit=1
+failed=4 restored byte-identical: True; m2 exit=1 failed=1 restored byte-identical: True; m3
+exit=1 failed=1 restored byte-identical: True; l1 exit=1 `LIVE: 6 of 7 checks pass failing: L-g`
+restored byte-identical: True; control (last) pytest test_multi_project_live exit=0 failed=0,
+pytest test_projects_route exit=0 failed=0, live run exit=0 `LIVE: 7 of 7 checks pass`; final line
+`ALL MUTATIONS CAUGHT AND RESTORED CLEANLY: True`; tool exit code 0. Every one of the four
+mutations exited non-zero — none stayed green — and l1 failed L-g alone, exactly as the block
+predicts ("either one alone keeps L-g passing"). The `node_modules` copy removed with
+`shutil.rmtree`, `git worktree remove --force .remedy-wt/f042-r6-mut` then `git worktree prune`,
+both real exit 0; `git worktree list | wc -l` read 72 afterward, matching the step 4 reading.
 
-G4 THE RENDER — `python3 -B .agent/authored/f042-r5-render_measure.py /home/decodeux/Repos/remedy`
-at C5, in the primary checkout: `vite build` succeeded (2120 modules, 2.38s), server and Chrome
-started, `drive.mjs` ran all nineteen checks: R-a through R-j and H-a through H-i each printed
-`PASS` with its detail object, final line `RENDER: 19 of 19 checks pass`, both Chrome and the
-server stopped by their recorded pids (`SIGTERM`, both reported "stopped"), work dir removed,
-`drive.mjs exit code: 0`, overall real exit 0 — matching the reviewer's own `19 of 19` reading
-exactly. Both screenshots read immediately after this run: `f042-r5-render-switcher.png` (324009
-bytes) shows alpha's empty-project face — the "PROJECT" select reading "alpha" grouped tightly with
-the "All projects" link, "This project has no jobs yet." sitting close beneath that one cluster;
-`f042-r5-render-home.png` shows the home grid titled "Projects" with four cards in list order
-(alpha, beta, gamma, delta): alpha, beta and gamma each show a plain "No jobs yet." result line with
-no coloured left border (R-1110's fix), while delta shows "The run is running." with a blue
-(`--remedy-state-current`) left border, "1 active" and a red "2 open decisions" chip marked urgent.
-
-G5 THE RED PROOFS — `git worktree add --detach .remedy-wt/f042-r5-mut 239e8864e` (clean checkout at
-C5), the `apps/ui/node_modules` symlink added (materialized as a real directory copy by the
-sandbox — see Deviations), then `python3 -B .agent/authored/f042-r5-mutations.py
-/home/decodeux/Repos/remedy/.remedy-wt/f042-r5-mut`. Whole output (reported again verbatim in the
-worker's final reply): control (first) pytest exit=0 failed=0, vitest zoomDeepLink exit=0 failed=0,
-harness exit=0 `RENDER: 19 of 19 checks pass`; p1 exit=1 failed=1 restored byte-identical: True; p2
-exit=1 failed=1 restored byte-identical: True; z1 exit=1 failed=2 restored byte-identical: True; h1
-exit=1 `RENDER: 18 of 19 checks pass failing: H-h` restored byte-identical: True; h2 exit=1 `RENDER:
-18 of 19 checks pass failing: H-i` restored byte-identical: True; control (last) pytest exit=0
-failed=0, vitest zoomDeepLink exit=0 failed=0, harness exit=0 `RENDER: 19 of 19 checks pass`; final
-line `ALL MUTATIONS CAUGHT AND RESTORED CLEANLY: True`. Every one of the five mutations exited
-non-zero — none stayed green — and h1 failed H-h alone while h2 failed H-i alone, exactly as the
-block predicts. The `node_modules` copy removed with `shutil.rmtree` (see Deviations), `git
-worktree remove --force .remedy-wt/f042-r5-mut` then `git worktree prune`, both real exit 0; `git
-worktree list | wc -l` read 70 afterward, matching the step 4 reading.
+G5 THE SELF-USE READINGS — `bash -c 'python3 .agent/authored/f042-r6-selfuse.py 2>&1 | tee
+.remedy-wt/f042-r6-worker/selfuse.log; echo "REAL_EXIT=${PIPESTATUS[0]}"'`: `REAL_EXIT=0`. Item:
+id `SU-036`, title "Address ledger finding R-1107", provenance "generated (self-use-generator tier
+1, ledger scan, R-1107)" — matching the reviewer's simulation reading exactly. Job: id
+`6dad54d0e18348c4`, state `completed`. `execution_config.txt`: builder `claude-cli` / model
+`claude-sonnet-4-6` / effort `medium` (source `cli` throughout); reviewer `claude-cli` / model
+`claude-sonnet-4-6` / effort `medium` (source `cli`) — the `self_use` role's configured provider,
+never `fake`. Budgets: `max_cost_usd` 6.0, `max_provider_calls` 8, all others null/default.
+Actuals: `actual_call_count` 2, `measured_cost_usd` 1.1108742, `total_tokens` 16645,
+`priced_call_count` 2, `unpriced_call_count` 0, `unmeasured_call_count` 0, source
+`pingpong_live`. Task T001: status `applied_to_job_workspace`, verdict `pass`, final status
+`staged_review_passed`, 0 repair rounds used. `changed_paths.txt` verbatim:
+`tests/ui_server/test_story_export_file_live.py`. `staleness_after.txt` verbatim: "Read from: the
+job branch remedy/job-6dad54d0e18348c4" then `NONE`. `job_diff.txt` and `run_defects.txt` are
+reported verbatim in the worker's final reply (102 and 1 lines respectively). `git worktree list
+| wc -l` after the run: 72 (unchanged — the job's own worktree was already removed by the run
+itself). `git branch --list 'remedy/*' | wc -l` after the run: 199 (198 before, +1: the job left
+`remedy/job-6dad54d0e18348c4` as a branch, nothing else; nothing was deleted).
 
 ## Authored-text proofs
 
-Every `.agent/authored/f042-r5-*` copy (block, plan.md, records.diff, tests.diff, the five
-render_* files, and the mutation tool written this round) is byte-identical, read back from the
+Every `.agent/authored/f042-r6-*` copy (block, plan.md, records.diff, built_state.diff,
+tests.diff, selfuse.py, live_measure.py, live_drive.mjs) is byte-identical, read back from the
 commit that added it (`git show <commit>:<path>`), to its source under
-`.remedy-wt/f042-r5-payloads/` or `.remedy-wt/f042-r5/block.md` — see G1 above, all nine payload
-comparisons matched by direct byte comparison. `records.diff` and `tests.diff` were each applied
-unedited with `git apply` (real exit 0 on both `--check` and the real apply, reported per-file
-above); the resulting file hashes at their commits matched the reviewer's G2 table exactly (see
-G2). `.agent/plan.md` was rewritten from its payload with `shutil.copyfile`, then verified
-byte-identical at C2 against the table's hash (see G2). The mutation tool itself
-(`f042-r5-mutations.py`) is worker-authored, not a reviewer payload, so it carries no fidelity
-comparison — its own correctness is proved by G5's readings.
+`.remedy-wt/f042-r6-payloads/` or `.remedy-wt/f042-r6/block.md` — see G1 above, all eight payload
+comparisons matched by direct byte comparison. `records.diff`, `built_state.diff` and
+`tests.diff` were each applied unedited with `git apply` (real exit 0 on both `--check` and the
+real apply, reported per-file above); the resulting file hashes at their commits matched the
+reviewer's G1 table exactly. `.agent/plan.md` was rewritten from its payload with
+`shutil.copyfile`, then verified byte-identical at C2 against the table's hash. The mutation tool
+(`f042-r6-mutations.py`) is worker-authored, not a reviewer payload, so it carries no fidelity
+comparison — its own correctness is proved by G4's readings, after the self-caught fix.
 
 ## Item status
 
@@ -225,64 +264,77 @@ comparison — its own correctness is proved by G5's readings.
 | C1a | done | |
 | C1b | done | |
 | C1c | done | |
-| C1d | done | |
 | C2 | done | |
-| C3 | done | S1-S3 written against the reviewer's tests and the render harness; G3/G4/G5 below prove the landed code |
-| C4 | done | tests.diff applied unedited, 2 pytest + 22 vitest tests passed against unedited code |
-| C5 | done | mutation tool written and used by G5 before this commit closes |
-| C6 | done | this handback |
-| G1 | done | all 9 authored copies byte-identical to source |
-| G2 | done | all 5 hashes, the open-id set (`['R-1107', 'R-1110']`) and the C1d..C2 diff all matched |
-| G3 | done | ruff clean, eslint clean, 1783 passed / 5 skipped at exit 0 (variance from the reviewer's count explained and expected), the vitest count (22) matched, integrity clean |
-| G4 | done | render harness read 19 of 19 checks pass at exit 0, both screenshots read and described |
-| G5 | done | all 5 mutations caught, all 5 restores byte-identical, both controls green, h1/h2 each failed exactly their named check |
+| C3 | done | |
+| C4 | done | tests.diff applied unedited, both files pass under G2's serial run |
+| C5 | done | mutation tool written, one bug self-caught and self-fixed before its gate reading (see Deviations); amended once, pre-push |
+| C6 | done | self-use item generated and run to completion; job never applied |
+| C7 | done | this handback |
+| G1 | done | all 8 authored copies byte-identical to source; all 7 G1-table hashes matched; open-id set, verdict and checklist count all matched |
+| G2 | done | 674 passed / 1 skipped at exit 0 (exact match to the reviewer's simulation), ruff clean, integrity clean |
+| G3 | done | live run read 7 of 7 checks pass at exit 0, both screenshots read and described, `git status --porcelain` empty |
+| G4 | done | (second, corrected run) all 4 mutations caught, all 4 restores byte-identical, both controls clean, l1 failed L-g alone |
+| G5 | done | item id/title/provenance matched the reviewer's prediction; job completed; provider/model confirmed non-fake; all four named files read verbatim; branch/worktree counts reconciled |
 
 ## Deviations & assumptions
 
-None from the block's ordered commit sequence: C1a, C1b, C1c, C1d, C2, C3, C4, C5, C6 executed in
-that exact order, no commit was split, reordered or added.
+None from the block's ordered COMMIT sequence as pushed: C1a, C1b, C1c, C2, C3, C4, C5, C6, C7
+land in that exact order, no commit was split, reordered, dropped or added. C5 WAS amended once
+(git commit --amend --no-edit, before any push) — this is the one deviation from strict
+"never amend" git hygiene, and it is declared here in full:
 
-C3's own file sizes: written independently against S1-S3's clauses and the reviewer's
-tests/harness, not copied from the reviewer's own version. `HomeGrid.tsx` matches the reviewer's
-own reading exactly (+3/-1). `SideIconDock.tsx` (+12/-1, reviewer 8/1) and `ui_server.py` (+11/-5,
-reviewer 10/5) differ by a handful of lines (informational per the block's "report what you
-measure" instruction, which states none is expected for C3's own files): the worker's
-`SideIconDock.tsx` spreads `title`/`onClick` conditionally with `{...(i === 0 ? {...} : {})}` rather
-than per-attribute ternaries, and its docstring/import edit in `ui_server.py` runs one line longer.
-No functional behaviour is in question as a result: G3 (lint/eslint), G4 (the render harness,
-19/19) and G5 (all five mutations turning red and every control green, on the code as landed) all
-passed on the first attempt, with no repair round needed.
+**C5's self-caught bug.** The first version of `f042-r6-mutations.py` handled l1's two edits (both
+in `apps/ui/src/RemedyApp.tsx`) by capturing a "restore original" snapshot once PER EDIT rather
+than once per FILE; since both edits touch the same file, the first snapshot was the true
+original, the second was the file with edit 1 already applied, and restoring in list order wrote
+the true original and then immediately overwrote it with the edit-1-still-applied state — net
+effect, l1's restore silently left the shell's `key={shellKeyOf(address)}` removed. The first run
+of G4 (against the pre-fix tool, worktree at `7b182bca0`) caught this itself:
+`l1: exit=1 LIVE: 6 of 7 checks pass failing: L-g restored byte-identical: False`. This is
+precisely the failure mode the block's own l1 description warns about ("either one alone keeps
+L-g passing, which the reviewer measured") — a half-restored worktree would have silently passed
+the next control. Nothing outside the disposable `.remedy-wt/f042-r6-mut` worktree was ever
+mutated; the worktree was fully torn down (`shutil.rmtree` + `git worktree remove --force` + `git
+worktree prune`) before the fix. The fix: capture each edit's target file's true original bytes
+ONCE, in a per-file dict keyed by path, before any edit touches it, and restore from that dict
+(also once per file). C5 was then amended in place (unpushed, self-authored artifact only, no
+other commit depended on its content) rather than adding an out-of-sequence commit, because the
+block's G6 gate requires the exact ordered subject list C1a..C7 in the top 10 log lines; an
+inserted "fix" commit would have broken that reading. The worktree was recreated at the new C5 SHA
+(`d51135b0d`) and G4 re-run cleanly (see Verification): all four mutations caught, all four
+restores byte-identical, both controls clean.
 
-Sandbox environment note: `os.symlink(..., target_is_directory=True)` into the G5 mutation
-worktree did not produce a symlink — `os.path.islink` read `False` immediately after creation, and
-the target held a real, independently-writable copy of `apps/ui/node_modules` (209 entries). This
-matches the standing lesson that worktree symlinks are untracked and can be materialized as real
-copies by this sandbox. Consequence: cleanup used `shutil.rmtree` instead of the block's literal
-`os.unlink`, since `os.unlink` raises `IsADirectoryError` on a materialized copy; the worktree
-itself and `git worktree list | wc -l` (70 before and after) were unaffected, and G5's mutation
-runs themselves used the primary's real `apps/ui/node_modules` through this copy exactly as
-intended, so no gate reading is in question.
+**A mistyped path, caught and cleaned before any gate ran on it.** The first attempt at G3 was
+invoked with a doubled path (`/home/decodeux/Repos/remedy/Repos/remedy`, from a typo) piped
+through `head -1`, which truncated the script via SIGPIPE almost immediately. Because
+`live_measure.py`'s `work.mkdir(parents=True)` creates missing parent directories, this created an
+empty tree `/home/decodeux/Repos/remedy/Repos/remedy/.remedy-wt/` before the process died; no
+process was left running (`ps aux` confirmed), and no reviewer-owned or gitignored-but-real
+artifact was affected (`git status --porcelain` stayed empty throughout, since the stray path sat
+outside the tracked tree and was removed — `shutil.rmtree` — before the real G3 run). No gate
+reading was taken from this attempt; it is reported here purely for honesty about what was run.
 
-No payload was retyped or edited; both `.diff` files were applied with `git apply` verbatim,
+**Sandbox environment note, repeated from F042 R5.** `os.symlink(..., target_is_directory=True)`
+into each G4 mutation worktree did not produce a symlink — `os.path.islink` read `False`
+immediately after creation on both the pre-fix and post-fix runs, and the target held a real,
+independently-writable copy of `apps/ui/node_modules`. Cleanup used `shutil.rmtree` instead of the
+block's literal `os.unlink`, exactly as the block itself anticipates ("checking which with
+`os.path.islink` first"). `git worktree list | wc -l` (72 before, 72 after both add/remove
+cycles) was unaffected.
+
+No payload was retyped or edited; all three `.diff` files were applied with `git apply` verbatim,
 `--check` exit 0 before every real apply. No test was edited to pass and no gate result was
-papered over.
-
-One explained (not block-violating) variance, flagged in G3 above: the round's own pytest
-selection read `1783 passed, 5 skipped` where the reviewer's simulation read `1780 passed, 8
-skipped`. The block itself states this may happen and names the exact mechanism — a fresh
-simulation worktree lacks the installed toolchain, this checkout has it — which is exactly what
-the three missing `SKIPPED` lines show. Not treated as a red gate.
+papered over. G2's test count matched the reviewer's simulation exactly this round (no toolchain
+variance to explain, unlike F042 R5).
 
 Assumption: constraint 3's "the round's whole tracked path set" is read as fixed by the block's
-own enumeration, and no path outside it was touched; `git diff --name-only 1d5a64b3a` at the
-branch tip after C6 names exactly the `.agent/authored/f042-r5-*` copies and tool, the two paths
-`records.diff`/`tests.diff` edit, `.agent/plan.md`, the three S1-S3 files, `.agent/handoff.md` —
-reported in full in the worker's final reply.
+own enumeration, and no path outside it was touched; `git diff --name-only 79a2e7809` at the
+branch tip after C7 is reported in full in the worker's final reply.
 
 ## Next
 
 1. Phase 1 rule 1: read `.agent/STOP` from disk.
-2. The review of this round (F042 round 5).
-3. The next round: the end-to-end run over a real UI server with two registered projects.
+2. The review of this round (F042 round 6) and of the self-use run's diff.
+3. The integration gate: the one full suite.
 
 Open findings: 2. Operator questions open: 1.
