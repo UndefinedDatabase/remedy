@@ -129,7 +129,7 @@ def _cmd_brain_view(job_id_str: str, *, json_output: bool = False) -> None:
                 print("Warning: project constitution unavailable for viewer.", file=sys.stderr)
             else:
                 constitution = load_project_constitution(repo_path)
-        except Exception:  # noqa: BLE001 — constitution is optional; warn and continue without it
+        except OSError:
             print("Warning: project constitution unavailable for viewer.", file=sys.stderr)
 
     graph = build_project_brain(job, events, constitution=constitution)
