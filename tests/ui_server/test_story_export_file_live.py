@@ -34,6 +34,12 @@ CHROME_BIN = shutil.which("google-chrome") or shutil.which("chromium")
 
 STORY_EXPORT_MAX_BYTES = get_key_spec("story.export_max_bytes").default
 
+# R-1103: `ChromePipe.send` only files a message as an event while a command reply is
+# outstanding, and the test's last check answers well under a second after the page loads, so a
+# request the page makes once idle — after every check has already passed — was never collected.
+# Draining for this long with nothing outstanding, directly after the last check, closes the gap.
+IDLE_DRAIN_SECONDS = 2.0
+
 CHAPTERS_EXPR = (
     'Array.from(document.querySelectorAll(\'[data-ui="story-chapters"] button\'))'
     ".map((b) => b.textContent)"
@@ -118,6 +124,17 @@ class ChromePipe:
                 if "error" in message:
                     raise RuntimeError(f"{method} failed: {message['error']}")
                 return message.get("result", {})
+            self.events.append(message)
+
+    def drain(self, seconds: float) -> None:
+        """Keeps every message Chrome sends as an event until ``seconds`` pass with no command
+        outstanding — nothing here is a reply to wait for, so anything that arrives is an event."""
+        deadline = time.monotonic() + seconds
+        while True:
+            try:
+                message = self._read_message(deadline)
+            except TimeoutError:
+                return
             self.events.append(message)
 
     def close(self) -> None:
@@ -260,6 +277,8 @@ def test_the_exported_demo_story_plays_from_file_with_no_request(
             "Runtime.evaluate", {"expression": CLOSE_BUTTON_PRESENT_EXPR, "returnByValue": True},
         )["result"]["value"]
         assert close_present is False
+
+        pipe.drain(IDLE_DRAIN_SECONDS)
     finally:
         events = list(pipe.events)
         pipe.close()
