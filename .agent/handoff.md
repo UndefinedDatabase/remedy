@@ -98,3 +98,25 @@ fail. No file outside `.agent/handoff.md` and `.agent/plan.md` was changed.
 
 Open findings: 2 (R-1107, R-1111 — unchanged this round; the block's own "state the open-findings
 count, 1" presumes round 7 completed, which it did not). Operator questions open: 1.
+
+## Reviewer's addendum — round 6's verdict, carried by this handoff (amend0827 rule 1)
+
+The planner and reviewer of F042's first session reviewed round 6 (`79a2e780`..`19ccafd4`)
+before `.agent/STOP` appeared, and reached VERDICT PASS. Round 7's booking commit never ran, so
+the verdict lives here until the next round books it: that round appends the lines between the
+two markers below to `.agent/live_review.md` verbatim, after one blank line, as its first
+substantive commit, and books nothing else of round 6.
+
+BEGIN GATE ENTRY
+Gate: F042 R6 — the F042 round 6 entry, the closure sequence's first round: the booking of round 5, the consolidation, the Built State, the end-to-end test with R-1111's test, the live run, and the closure's self-use item. VERDICT PASS. Re-derived over `79a2e780`..`19ccafd4` by the planner and reviewer of F042's first session from the commits themselves. THE RANGE IS 9 COMMITS, each single-parent and each under the 500-line cap by `git show --numstat`: `22e0ab7a` 400, `80e77357` 283, `aeb0bc23` 355, `688dcb6f` 63, `15c7ddd1` 46, `01174610` 147, `d51135b0` 204, `3e8231a0` 197 and `19ccafd4` 267. The worker declared three deviations: its first mutation tool restored the l1 probe's two edits in the wrong order, it saw that in its own output, fixed the tool and amended its own unpushed C5 in place, the reflog showing `7b182bca` replaced by `d51135b0` before any push, so the pushed history is a plain fast-forward from `79a2e780`; a mistyped path made an empty directory under the checkout, which it removed and the reviewer found gone; and the link its red-proof worktree asked for came out as a real directory, removed by the block's own branch for that case. THE TRANSPORT PROOF: the block and the seven payloads, each read from the commit that added its copy, equal the reviewer's originals under `.remedy-wt/f042-r6/` and `.remedy-wt/f042-r6-payloads/` byte for byte, and all seven files of the block's G1 table read the reviewer's sizes and sha256 at the commits it names; the checklist still counts 34 items. THE TESTS: the round's selection, re-run by the reviewer in the primary checkout at `19ccafd4`, read `674 passed, 1 skipped` at exit 0 twice; a first reviewer run read the same counts at exit 1, and the one hook of `tests/conftest.py` that sets a failing status over a run with no failed test is `pytest_sessionfinish`'s guard against a change to the configured data root, and no process of the round's self-use run was alive afterwards; all six `integrity check` checks read pass. THE LIVE RUN AND THE RED PROOFS: the reviewer ran the worker's tool in a disposable worktree at `19ccafd4`, whose controls read the live run at `LIVE: 7 of 7 checks pass` twice, and m1, m2 and m3 went red on the end-to-end and route tests while l1 failed L-g alone; the worktree was removed and `git worktree list` read 72 lines. THE SELF-USE ITEM: `SU-036`, from Tier 1 on R-1107, ran as job `6dad54d0e18348c4` on `claude-cli` with `claude-sonnet-4-6` for builder and reviewer, completed in 2 provider calls measured at $1.1108742, and `describe_self_use_run_defects` answered nothing; its diff to `tests/ui_server/test_story_export_file_live.py` is sound and is landed by round 7 with one added assertion. The open set at `19ccafd4` is `['R-1107', 'R-1111']`; after the resolution below it is `['R-1107']`.
+
+Done: R-1111 — RESOLVED at `01174610` (F042 R6 C4), booked by F042 R7: `TestDashboardProjectLine.test_the_jobs_own_project_outranks_the_legacy_key` in `tests/ui_server/test_projects_route.py` gives a job its own `project_id` naming alpha and a legacy `metadata["project_id"]` naming beta, and holds that the dashboard's project section names alpha and counts alpha's jobs; the worker's mutation m2, which reads the legacy key first, the reviewer's own probe of round 5, turned that file red at 1 failed on the reviewer's run at `19ccafd4`.
+END GATE ENTRY
+
+Round 7's block, `.remedy-wt/f042-r7/block.md`, and its payloads under
+`.remedy-wt/f042-r7-payloads/` were built against `19ccafd4`. The tip is now `89c039aa`, whose
+one commit rewrote only `.agent/handoff.md` and `.agent/plan.md`, so the next session regenerates
+the block's base readings (its step 2 and C2's plan numbers) before it delegates the round again.
+The self-use item SU-036's diff (job `6dad54d0e18348c4`, branch `remedy/job-6dad54d0e18348c4`)
+is reviewed as sound; the next round lands it with the one added assertion that the drafted
+DECISION F042 D7 names, then runs the feature's one full suite.
