@@ -1,0 +1,213 @@
+diff --git a/apps/ui/src/api/cockpitAddress.test.ts b/apps/ui/src/api/cockpitAddress.test.ts
+index b0cf9b38e..b978cb6d0 100644
+--- a/apps/ui/src/api/cockpitAddress.test.ts
++++ b/apps/ui/src/api/cockpitAddress.test.ts
+@@ -1,12 +1,14 @@
+ // F042 T002, DECISION F042 D3 — the reviewer's acceptance of the cockpit's address: what the
+ // page's own query string names, which face it opens, and the key a new project or a new job
+-// remounts the shell under.
++// remounts the shell under. DECISION F042 D4 gave an address with only a token the home grid
++// and added the address the way home writes.
+ import { describe, expect, it } from "vitest";
+ import {
+   EMPTY_PROJECT_LINE,
+   MISSING_ADDRESS_LINE,
+   addressFromSearch,
+   cockpitFaceOf,
++  homeSearch,
+   shellKeyOf,
+ } from "./cockpitAddress";
+ 
+@@ -35,9 +37,13 @@ describe("cockpitFaceOf", () => {
+     expect(cockpitFaceOf({ jobId: "", project: "alpha", token: "t" })).toBe("empty_project");
+   });
+ 
+-  it("says the address is missing without a token, or with neither a job nor a project", () => {
++  it("says the address is missing without a token, whatever else it names", () => {
+     expect(cockpitFaceOf({ jobId: "j1", project: "alpha", token: "" })).toBe("missing");
+-    expect(cockpitFaceOf({ jobId: "", project: "", token: "t" })).toBe("missing");
++    expect(cockpitFaceOf({ jobId: "", project: "", token: "" })).toBe("missing");
++  });
++
++  it("opens the home grid for a token with neither a job nor a project", () => {
++    expect(cockpitFaceOf({ jobId: "", project: "", token: "t" })).toBe("home");
+   });
+ 
+   it("words both faces that have no job", () => {
+@@ -59,3 +65,18 @@ describe("shellKeyOf", () => {
+     expect(shellKeyOf({ jobId: "", project: "ab", token: "" })).not.toBe(shellKeyOf({ jobId: "b", project: "a", token: "" }));
+   });
+ });
++
++describe("homeSearch", () => {
++  it("drops the project and every job-scoped parameter and keeps the rest in place", () => {
++    expect(homeSearch("?token=t&project=beta&job=b1&theme=x&focus=n1&level=2&tab=diff&job_id=b1"))
++      .toBe("?token=t&theme=x");
++  });
++
++  it("answers the empty string for an address left with nothing", () => {
++    expect(homeSearch("?project=beta&job=b1")).toBe("");
++  });
++
++  it("opens the home face from the address it writes", () => {
++    expect(cockpitFaceOf(addressFromSearch(homeSearch("?token=t&project=beta&job=b1")))).toBe("home");
++  });
++});
+diff --git a/apps/ui/src/api/homeGrid.test.ts b/apps/ui/src/api/homeGrid.test.ts
+new file mode 100644
+index 000000000..62c8f101b
+--- /dev/null
++++ b/apps/ui/src/api/homeGrid.test.ts
+@@ -0,0 +1,98 @@
++// F042 T003, DECISION F042 D4 — the reviewer's acceptance of the home grid's rules: which
++// projects a page shows, and every word and tone one project's card carries, from the list
++// entry and the summary card `project_summary` composes.
++import { describe, expect, it } from "vitest";
++import {
++  DEGRADED_LINE,
++  HOME_PAGE_SIZE,
++  NO_FOLDER_HINT,
++  NO_JOBS_LINE,
++  NO_PROJECTS_LINE,
++  SUMMARY_UNAVAILABLE_LINE,
++  costTodayLine,
++  homePage,
++  projectCardOf,
++  resultToneOf,
++} from "./homeGrid";
++import { decodeProjectSummary } from "./projectScope";
++import type { ProjectEntry, ProjectSummary } from "./projectScope";
++
++const entry: ProjectEntry = {
++  id: "id-alpha", slug: "alpha", name: "Alpha", repo_path: "/work/alpha", repo_reachable: true, fix_it: null,
++};
++const summary: ProjectSummary = decodeProjectSummary({
++  version: 1, project_id: "id-alpha", slug: "alpha", jobs: { active: 2, total: 3 },
++  last_result: { job_id: "j1", title: "alpha newest", state: "blocked", headline: "The run is blocked." },
++  cost_today: { day: "2026-09-29", value_usd: 0.25, basis: "actual", calls: 1 },
++  decisions: { open_count: 5, peak_urgency: 3600 }, degraded: false,
++})!;
++
++describe("homePage", () => {
++  const items = Array.from({ length: 30 }, (_, i) => `p${i + 1}`);
++
++  it("shows twelve to a page", () => {
++    expect(HOME_PAGE_SIZE).toBe(12);
++    expect(homePage(items, 1)).toEqual({ items: items.slice(0, 12), page: 1, pages: 3 });
++    expect(homePage(items, 3)).toEqual({ items: items.slice(24), page: 3, pages: 3 });
++  });
++
++  it("clamps a page out of range and reads an empty list as one empty page", () => {
++    expect(homePage(items, 9).page).toBe(3);
++    expect(homePage(items, 0).page).toBe(1);
++    expect(homePage([], 1)).toEqual({ items: [], page: 1, pages: 1 });
++  });
++});
++
++describe("resultToneOf", () => {
++  it("draws each state in its family", () => {
++    expect(["completed", "done", "running", "blocked", "failed", "cancelled", "planned", "paused", ""].map(resultToneOf))
++      .toEqual(["done", "done", "current", "blocked", "blocked", "blocked", "open", "open", "none"]);
++  });
++});
++
++describe("costTodayLine", () => {
++  it("names the figure and its basis, and never an unmeasured zero", () => {
++    expect(costTodayLine({ day: "d", value_usd: 0.25, basis: "actual", calls: 1 })).toBe("Cost today: $0.25");
++    expect(costTodayLine({ day: "d", value_usd: 0.5, basis: "lower_bound", calls: 2 })).toBe("Cost today: at least $0.50");
++    expect(costTodayLine({ day: "d", value_usd: null, basis: "absent", calls: 0 })).toBe("Cost today: not measured");
++    expect(costTodayLine({ day: "d", value_usd: 0, basis: "absent", calls: 0 })).toBe("Cost today: not measured");
++  });
++});
++
++describe("projectCardOf", () => {
++  it("draws a project's card from its entry and its summary", () => {
++    expect(projectCardOf(entry, summary)).toEqual({
++      slug: "alpha", name: "Alpha", folderHint: "/work/alpha", reachable: true, fixIt: null,
++      activeChip: "2 active", resultLine: "The run is blocked.", resultTone: "blocked",
++      costLine: "Cost today: $0.25", decisionsChip: "5 open decisions", urgent: true, degraded: false,
++    });
++  });
++
++  it("says a project with no job has none, and counts one decision in the singular", () => {
++    const card = projectCardOf(entry, { ...summary, last_result: null, decisions: { open_count: 1, peak_urgency: 0 } });
++    expect([card.resultLine, card.resultTone, card.decisionsChip, card.urgent]).toEqual([NO_JOBS_LINE, "none", "1 open decision", false]);
++  });
++
++  it("carries a moved folder's fix-it and a missing folder's hint", () => {
++    const moved = projectCardOf({ ...entry, repo_reachable: false, fix_it: "Run: remedy project attach" }, summary);
++    expect([moved.reachable, moved.fixIt]).toEqual([false, "Run: remedy project attach"]);
++    expect(projectCardOf({ ...entry, repo_path: null }, summary).folderHint).toBe(NO_FOLDER_HINT);
++  });
++
++  it("says when some job records could not be read", () => {
++    expect(projectCardOf(entry, { ...summary, degraded: true }).degraded).toBe(true);
++    expect(DEGRADED_LINE).toBe("Some job records could not be read.");
++  });
++
++  it("draws an unreadable summary as its own absence and never as zeros", () => {
++    expect(projectCardOf(entry, null)).toEqual({
++      slug: "alpha", name: "Alpha", folderHint: "/work/alpha", reachable: true, fixIt: null,
++      activeChip: "", resultLine: SUMMARY_UNAVAILABLE_LINE, resultTone: "none", costLine: "",
++      decisionsChip: "", urgent: false, degraded: false,
++    });
++  });
++
++  it("invites remedy init when no project is registered", () => {
++    expect(NO_PROJECTS_LINE).toBe("No projects yet. Run remedy init in a project's folder to add it.");
++  });
++});
+diff --git a/tests/ui_contracts/test_project_switcher_wiring.py b/tests/ui_contracts/test_project_switcher_wiring.py
+index 0061c7ac1..3b7612dec 100644
+--- a/tests/ui_contracts/test_project_switcher_wiring.py
++++ b/tests/ui_contracts/test_project_switcher_wiring.py
+@@ -1,4 +1,4 @@
+-"""F042 T002, DECISION F042 D3 — the project seam is mounted where the decision says.
++"""F042 T002 and T003, DECISIONS F042 D3 and D4 — the project seam is mounted where the decisions say.
+ 
+ Written by the reviewer. The cockpit has no DOM test harness, so the wiring a render proves is
+ pinned here over the sources, with their comments removed, at the places no vitest file
+@@ -36,13 +36,32 @@ def test_a_new_project_or_job_is_a_new_shell():
+     assert "<RemedyShell key={shellKeyOf(address)}" in code
+ 
+ 
+-def test_only_a_switch_or_a_back_step_changes_the_address():
++def test_only_a_switch_the_way_home_or_a_back_step_changes_the_address():
++    """DECISION F042 D4: one writer, which pushes for a switch and the way home and replaces for
++    the single-project skip."""
+     code = _code(APP)
+     assert code.count("window.history.pushState(") == 1
++    assert code.count("window.history.replaceState(") == 1
++    writer = code[code.index("const writeAddress = useCallback("):code.index("const onSwitched = useCallback(")]
++    assert "window.history.pushState(" in writer and "window.history.replaceState(" in writer
+     assert "searchForProjectSwitch(window.location.search, target.slug, target.jobId)" in code
++    assert "writeAddress(homeSearch(window.location.search), false)" in code
+     assert 'window.addEventListener("popstate", onPopState)' in code
+     assert 'window.removeEventListener("popstate", onPopState)' in code
+-    assert "replaceState" not in code
++
++
++def test_the_app_hands_the_provider_stable_callbacks():
++    """The home grid enters a single project from an effect keyed by `enterProject`, whose
++    identity follows `onSwitched`: a callback rebuilt on every render would re-run it."""
++    code = _code(APP)
++    assert "const onSwitched = useCallback(" in code and "const onHome = useCallback(" in code
++    assert "onSwitched={onSwitched} onHome={onHome}" in code
++
++
++def test_the_home_face_is_the_grid():
++    code = _code(APP)
++    assert code.count("<HomeGrid />") == 1
++    assert code.index('face === "home"') < code.index("<HomeGrid />")
+ 
+ 
+ def test_the_provider_switches_through_the_one_gate():
+@@ -50,6 +69,8 @@ def test_the_provider_switches_through_the_one_gate():
+     assert code.count("createSwitchGate(") == 1
+     assert "switchProject(slug, gate.current," in code
+     assert "loadProjectsView(" in code and "loadJobProject(" in code and "loadProjectSummary(" in code
++    assert code.count("switchProject(slug, gate.current,") == 2
++    assert "(result) => onSwitched(result, false)" in code and "(result) => onSwitched(result, true)" in code
+ 
+ 
+ def test_the_switcher_is_a_native_select_in_the_rails_kicker():
