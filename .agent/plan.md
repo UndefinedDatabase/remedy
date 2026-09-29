@@ -13,9 +13,9 @@ D1).
 
 ## Current Step
 
-ROUND 11, the closure's evidence round: book round 10 with R-1103's
-resolution, read the self-use generator, and build the evidence bundle and
-the review package at the accepted head.
+ROUND 12, the closure's evidence round: book round 11 with R-1104, owned
+by F286, add the self-use run to the Built State, and build the evidence
+bundle and the review package at the accepted head.
 
 ## Next Steps
 
