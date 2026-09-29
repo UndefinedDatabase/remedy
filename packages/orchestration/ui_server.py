@@ -1393,25 +1393,31 @@ def _build_story_section() -> dict[str, Any]:
 
 
 def _build_project_summary_section(job: Any) -> dict[str, Any] | None:
-    """Build project-level summary for dashboard. Returns None if no project."""
+    """Build project-level summary for dashboard. Returns None if no project.
+
+    DECISION F042 D5 (2): the project id reads the job's own `project_id` before the
+    legacy `metadata["project_id"]` key, and the linked jobs are `scoped_jobs` over that
+    project (F148's rule), so this line agrees with the project's card in the home grid.
+    """
     try:
         from packages.orchestration.data_paths import resolve_data_root
-        from packages.orchestration.pingpong_job import list_job_plans
         from packages.orchestration.project_registry import load_project
+        from packages.orchestration.project_scope import ProjectScope, scoped_jobs
         from packages.orchestration.project_summary import (
             build_project_summary,
             detect_patterns,
         )
         from packages.orchestration.timeline import load_run_events
 
-        project_id = job.metadata.get("project_id")
+        project_id = str(getattr(job, "project_id", "") or job.metadata.get("project_id") or "")
         if not project_id:
             return None
 
         from uuid import UUID
         project = load_project(UUID(project_id))
-        all_jobs = list_job_plans()
-        linked_jobs = [j for j in all_jobs if str(j.job_id) in project.job_ids]
+        linked_jobs, _, _ = scoped_jobs(
+            ProjectScope(project_id=str(project.id), all_projects=False, source="dashboard")
+        )
 
         data_dir = resolve_data_root()
         all_events: dict[str, list[dict]] = {}

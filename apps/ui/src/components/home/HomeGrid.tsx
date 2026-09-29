@@ -89,7 +89,9 @@ export function HomeGrid() {
                     className={styles.resultLine}
                     data-ui="card-result"
                     data-tone={card.resultTone}
-                    style={{ borderLeftColor: `var(--remedy-state-${card.resultTone})` }}
+                    // R-1110: a tone of "none" names no `--remedy-state-*` token, so it carries
+                    // no inline style and the sheet's transparent border holds.
+                    style={card.resultTone === "none" ? undefined : { borderLeftColor: `var(--remedy-state-${card.resultTone})` }}
                   >
                     {card.resultLine}
                   </div>

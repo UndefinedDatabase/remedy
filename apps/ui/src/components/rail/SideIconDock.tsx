@@ -1,6 +1,11 @@
 import type { SVGProps } from "react";
 import { SparkGlyph, TaskDoneGlyph, ChartGlyph, GearGlyph } from "../icons/RemedyGlyphs";
+import { useProjectContext } from "../shell/ProjectProvider";
 import styles from "./SideIconDock.module.css";
+
+// DECISION F042 D5 (3): the dock's first slot, Overview, opens the home grid through the
+// provider's `goHome` and says "All projects" in its tooltip.
+export const OVERVIEW_TITLE = "All projects";
 
 type G = SVGProps<SVGSVGElement>;
 
@@ -43,10 +48,16 @@ const items: [string, typeof SparkGlyph][] = [
 ];
 
 export function SideIconDock({ className }: { className?: string }) {
+  const { goHome } = useProjectContext();
   return (
     <nav className={`${styles.dock} ${className || ""}`} aria-label="Remedy sections">
       {items.map(([label, Icon], i) => (
-        <button key={label} className={i === 0 ? styles.active : styles.button} aria-label={label}>
+        <button
+          key={label}
+          className={i === 0 ? styles.active : styles.button}
+          aria-label={label}
+          {...(i === 0 ? { title: OVERVIEW_TITLE, onClick: goHome } : {})}
+        >
           <Icon style={{ width: 18, height: 18 }} />
         </button>
       ))}
