@@ -1,110 +1,114 @@
-# Handback — F043 round 1: claim F043, re-head the live review record, book F291's round 6,
-record DECISION F043 D1, and land the explanation catalog, the Term component and the term audit
-over the live-status pill and the phase timeline, with a render harness proved in a real browser
+# Handback — F043 round 2: book round 1's PASS, record DECISION F043 D2, and carry the
+explanation layer to the right panel's cards, the six plain metrics' labels and the graph
+stage's SCRUBBED badge, with a term inside a control taking no focus, two descendant rules of
+the panel's sheet narrowed to direct children, and a render harness proved in a real browser
 
 ## Session
 
-SESSION 1 of feature F043 · round 1 · rounds so far 1. Context self-assessment: roughly a third
+SESSION 1 of feature F043 · round 2 · rounds so far 2. Context self-assessment: roughly a fifth
 of the session's context window remained when this handback was written, after all eight commits
 and gates G1 through G5.
 
 ## Range
 
-Review of `21bfc1881`..HEAD (this round's final commit, C6 — the push's real outcome and
+Review of `15331eb0b`..HEAD (this round's final commit, C6 — the push's real outcome and
 `gh pr list` are reported in the worker's reply, since this file is committed as part of C6 and
 cannot name a push that follows it).
 
 ## Commits
 
-### `7f394cec1` F043 R1 C1a: copy round 1 block and state payloads into .agent/authored/
+### `8b01e2302` F043 R2 C1a: copy round 2 block and plan into .agent/authored/
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f043-r1-block.md | +351/-0 | this round's block, copied verbatim via `shutil.copyfile` |
-| .agent/authored/f043-r1-context.md | +36/-0 | payload copy |
-| .agent/authored/f043-r1-plan.md | +34/-0 | payload copy |
+| .agent/authored/f043-r2-block.md | +304/-0 | this round's block, copied verbatim via `shutil.copyfile` |
+| .agent/authored/f043-r2-plan.md | +33/-0 | payload copy |
 
-Total 421 insertions (block's 351 lines + 70), matching the block's stated formula exactly;
-`git diff --cached --stat` read `3 files changed, 421 insertions(+)` before commit, under the
+Total 337 insertions (block's 304 lines + 33), matching the block's stated formula exactly;
+`git diff --cached --stat` read `2 files changed, 337 insertions(+)` before commit, under the
 500 cap.
 
-### `a05c05a0d` F043 R1 C1b: copy round 1 claim diff into .agent/authored/
+### `74840dff6` F043 R2 C1b: copy round 2 records and tests diffs into .agent/authored/
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f043-r1-claim.diff | +151/-0 | payload copy, expected 151, measured 151 |
+| .agent/authored/f043-r2-records.diff | +67/-0 | payload copy, expected 67, measured 67 |
+| .agent/authored/f043-r2-tests.diff | +385/-0 | payload copy, expected 385, measured 385 |
 
-### `41eadb6fa` F043 R1 C1c: copy round 1 tests diff into .agent/authored/
+Total 452 insertions, expected 452, measured 452 — exact match.
+
+### `25641ea4a` F043 R2 C1c: copy the round 2 render page and driver into .agent/authored/
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f043-r1-tests.diff | +373/-0 | payload copy, expected 373, measured 373 |
+| .agent/authored/f043-r2-render_drive.mjs | +200/-0 | payload copy |
+| .agent/authored/f043-r2-render_main.tsx | +87/-0 | payload copy |
 
-### `7e5d3a975` F043 R1 C1d: copy the round 1 render harness into .agent/authored/
+Total 287 insertions, expected 287, measured 287 — exact match.
+
+### `2ddf5f463` F043 R2 C1d: copy the rest of the round 2 render harness into .agent/authored/
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f043-r1-render_drive.mjs | +181/-0 | payload copy |
-| .agent/authored/f043-r1-render_index.html | +11/-0 | payload copy |
-| .agent/authored/f043-r1-render_main.tsx | +51/-0 | payload copy |
-| .agent/authored/f043-r1-render_measure.py | +187/-0 | payload copy |
-| .agent/authored/f043-r1-render_vite.config.mjs | +28/-0 | payload copy |
+| .agent/authored/f043-r2-render_index.html | +11/-0 | payload copy |
+| .agent/authored/f043-r2-render_measure.py | +186/-0 | payload copy |
+| .agent/authored/f043-r2-render_vite.config.mjs | +28/-0 | payload copy |
 
-Total 458 insertions, expected 458, measured 458 — exact match.
+Total 225 insertions, expected 225, measured 225 — exact match.
 
-### `2c18dff43` F043 R1 C2: claim F043, re-head the live review record, book F291 R6, record D1
+### `fe53bf824` F043 R2 C2: book F043 R1, record D2, advance the plan
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/context.md | +14/-13 | rewrite := context.md payload |
-| .agent/decisions.md | +68/-0 | `git apply claim.diff`: DECISION F043 D1 appended |
-| .agent/live_review.md | +19/-16 | `git apply claim.diff`: re-head + F291 R6 gate entry appended |
-| .agent/plan.md | +21/-13 | rewrite := plan.md payload |
-| docs/roadmap/STATUS.md | +1/-1 | `git apply claim.diff`: F043's line `[ ]` to `[~]` |
-| docs/ui/design_reference/assumption_log.md | +1/-0 | `git apply claim.diff`: one row appended |
+| .agent/decisions.md | +49/-0 | `git apply records.diff`: DECISION F043 D2 appended |
+| .agent/live_review.md | +2/-0 | `git apply records.diff`: round 1's Gate entry appended |
+| .agent/plan.md | +8/-9 | rewrite := plan.md payload |
 
-Every numstat reading equals the block's expected table exactly (14/13, 68/0, 19/16, 21/13, 1/1,
-1/0). `git apply --check` on claim.diff read exit 0 before the real apply, which also read exit 0.
+Every numstat reading equals the block's expected table exactly (49/0, 2/0, 8/9). `git apply
+--check` on records.diff read exit 0 before the real apply, which also read exit 0.
 
-### `68f909780` F043 R1 C3: explain the pill's and the timeline's terms from one catalog
+### `d7f2a8f75` F043 R2 C3: explain the right panel's cards, the plain metrics and the SCRUBBED badge
 | Path | +/- | Reason |
 |---|---|---|
-| apps/ui/src/api/terminology.ts | +96/-0 | NEW, S1: the explanation catalog |
-| apps/ui/src/api/terminologyAudit.ts | +34/-0 | NEW, S2: the two-direction term audit |
-| apps/ui/src/components/panels/LiveStatusPill.tsx | +5/-4 | S6: each label wrapped in `Term` |
-| apps/ui/src/components/term/Term.module.css | +65/-0 | NEW, S4: the term's underline and glass tip |
-| apps/ui/src/components/term/Term.tsx | +111/-0 | NEW, S3: the Term component |
-| apps/ui/src/components/timeline/PhaseTimeline.tsx | +13/-10 | S7: `PHASE_HINTS` replaced by `PHASE_TERMS`, label wrapped in `Term` |
-| apps/ui/src/styles/tokens.css | +7/-0 | S5: the four tooltip tokens after `--remedy-shadow-panel` |
+| apps/ui/src/api/terminology.ts | +102/-0 | S1: 17 new catalog entries after `phase.finalized`, in the pinned order |
+| apps/ui/src/components/graph/BrainGraphStage.tsx | +2/-1 | S8: SCRUBBED badge wrapped in `Term`; import added |
+| apps/ui/src/components/metrics/TopMetricsBar.tsx | +15/-1 | S3: `METRIC_TERMS` constant added; label wrapped in `Term` when mapped |
+| apps/ui/src/components/panels/ActivityFeedCard.tsx | +3/-2 | S6: both `<h2>Activity</h2>` wrapped in `Term`; import added |
+| apps/ui/src/components/panels/AgentNowCard.tsx | +3/-2 | S7: heading and Live badge word wrapped in `Term`; import added |
+| apps/ui/src/components/panels/DecisionInboxCard.tsx | +2/-1 | S5: heading wrapped in `Term`; import added |
+| apps/ui/src/components/panels/RightLivePanel.module.css | +4/-2 | S9: `.cardHeader span` and `.liveSmall span` narrowed to direct-child selectors, each under a one-line comment |
+| apps/ui/src/components/panels/TaskChecklistCard.tsx | +14/-3 | S4: `stateTerm` added after `stateText`; both `<h2>Tasks</h2>` and the row's state word wrapped in `Term`; import added |
+| apps/ui/src/components/term/Term.tsx | +13/-4 | S2: `insideControl` prop added, doc comment, `tabIndex`/`onFocus`/`onBlur` gated on it |
 
-Measured vs. the block's own reading of its reviewer's version: terminology.ts 96 vs 108,
-terminologyAudit.ts 34 vs 36, LiveStatusPill.tsx 5/4 vs 5/4 (exact), Term.module.css 65 vs 66,
-Term.tsx 111 vs 108, PhaseTimeline.tsx 13/10 vs 13/10 (exact), tokens.css 7 vs 7 (exact). The
-gaps are stylistic (comment wording, helper-variable choices) — every test in C4 passed against
-this version unedited, and the render harness read 7 of 7 in G4. Total 331 insertions, 14
-deletions, under the 500 cap; no split needed.
+Measured vs. the block's own reading of its reviewer's version: terminology.ts 102/0 (exact),
+BrainGraphStage.tsx 2/1 (exact), TopMetricsBar.tsx 15/1 vs 14/1, ActivityFeedCard.tsx 3/2 (exact),
+AgentNowCard.tsx 3/2 (exact), DecisionInboxCard.tsx 2/1 (exact), RightLivePanel.module.css 4/2 vs
+5/2, TaskChecklistCard.tsx 14/3 (exact), Term.tsx 13/4 vs 12/4. The three gaps are one insertion
+each, all comment-wrapping choices (a 4-line vs 3-line doc comment, a 5-line vs 4-line prop
+comment, one-line comments counted differently) — no functional difference; every test added in
+C4 passed against this version unedited, and the render harness read 9 of 9 in G4, and G5 caught
+every mutation. Total 158 insertions, 16 deletions, under the 500 cap; no split needed.
 
-### `17452f341` F043 R1 C4: add the reviewer's tests for the catalog, the term and the term audit
+### `2ae44422c` F043 R2 C4: add the reviewer's tests for the panel's, the metrics' and the stage's terms
 | Path | +/- | Reason |
 |---|---|---|
-| apps/ui/src/api/terminology.test.ts | +193/-0 | NEW FILE at apps/ui/src/api/terminology.test.ts, `git apply tests.diff` |
-| apps/ui/src/api/terminologyAudit.test.ts | +43/-0 | NEW FILE at apps/ui/src/api/terminologyAudit.test.ts, `git apply tests.diff` |
-| apps/ui/src/components/term/termAudit.test.ts | +119/-0 | NEW FILE at apps/ui/src/components/term/termAudit.test.ts, `git apply tests.diff` |
+| apps/ui/src/api/terminology.test.ts | +129/-2 | `git apply tests.diff`: 17 new keys, one new golden, the whole-catalog literal extended |
+| apps/ui/src/components/term/termAudit.test.ts | +146/-3 | `git apply tests.diff`: panel/metrics fixtures, browser-only-term check, three new `it` blocks |
 
-Every numstat reading equals the block's expected table exactly (193/0, 43/0, 119/0). `git apply
---check` on tests.diff read exit 0 before the real apply, which also read exit 0. An informal
-vitest run at this point read `terminologyAudit.test.ts (8 tests)`, `terminology.test.ts (11
-tests)`, `termAudit.test.ts (7 tests)`, all passing — the reviewer's own counts (11, 8, 7).
+Every numstat reading equals the block's expected table exactly (129/2, 146/3). `git apply
+--check` on tests.diff read exit 0 before the real apply, which also read exit 0. A standalone
+vitest run of the three touched files at this point read `terminology.test.ts (12 tests)`,
+`terminologyAudit.test.ts (8 tests)`, `termAudit.test.ts (12 tests)`, all 32 passing — the
+reviewer's own counts (12, 8, 12).
 
-### `4e5c5e964` F043 R1 C5: add the round 1 mutation tool
+### `632e648b9` F043 R2 C5: add the round 2 mutation tool
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f043-r1-mutations.py | +221/-0 | NEW, the G5 red-proof tool: 12 mutations (t1, t2, a1, a2, a3, c1, c2, h1, h2, h3, h4, h5), each editing one production file inside a disposable worktree, running vitest or the render harness, and restoring |
+| .agent/authored/f043-r2-mutations.py | +187/-0 | NEW, the G5 red-proof tool: 10 mutations (m1-m7 read by vitest, h1-h3 read by the render harness), each editing one production file inside a disposable worktree and restoring |
 
-### `<this commit>` F043 R1 C6: rewrite handoff for round 1
+### `<this commit>` F043 R2 C6: rewrite handoff for round 2
 | Path | +/- | Reason |
 |---|---|---|
 | .agent/handoff.md | rewrite | this file, per docs/agents/handback_template.md |
 
 ## External actions
 
-- `git checkout -b feature/f043-explanation-layer` from `main` at `21bfc1881` — branch created.
-- `git worktree add --detach .remedy-wt/f043-r1-mut 4e5c5e964` — G5's disposable worktree,
+- `git worktree add --detach .remedy-wt/f043-r2-mut 632e648b9` — G5's disposable worktree,
   created and later removed (`git worktree remove --force`, then `git worktree prune`);
   `git worktree list | wc -l` read 11 before and after, matching the round's step-4 reading.
 - `git push -u origin feature/f043-explanation-layer` — real outcome reported in the worker's
@@ -115,85 +119,86 @@ tests)`, `termAudit.test.ts (7 tests)`, all passing — the reviewer's own count
 ## Verification
 
 **G1 TRANSPORT** — every payload's line count, byte count and sha256 matched the PAYLOADS table
-exactly (all 9 payloads: claim.diff, tests.diff, plan.md, context.md, and the five render_*
-files). Every `.agent/authored/f043-r1-*` copy, read back with `git show <commit>:<path>` from the
-commit that added it, was byte-for-byte identical to its source payload — 10 pairs, all MATCH.
+exactly (all 8 payloads: records.diff, tests.diff, plan.md, and the five render_* files). Every
+`.agent/authored/f043-r2-*` copy, read back with `git show <commit>:<path>` from the commit that
+added it, was byte-for-byte identical to its source payload — 9 pairs (the block plus 8
+payloads), all `BYTE_IDENTICAL=True`.
 
-**G2 THE CLAIM AND THE TESTS** — all 9 files' sha256 at their named commits equaled the block's
-given values exactly (`.agent/context.md`, `.agent/decisions.md`, `.agent/live_review.md`,
-`.agent/plan.md`, `docs/roadmap/STATUS.md`, `docs/ui/design_reference/assumption_log.md` at C2;
-the three test files at C4). `open_finding_ids` (from `scripts/rotate_live_review.py`) over the
-ledger text read `[]` at both `21bfc1881` and C2, matching the reviewer's own reading. At C2 the
-ledger holds exactly one `## Findings` line and exactly one `## Steps` line; its last non-empty
-line reads `Gate: F291 R6 — the F291 round 6 entry, ...`. F043's STATUS line at C2 reads in full
-`- [~] F043 — Explanation layer`. `git diff --name-only 7e5d3a975 2c18dff43` named exactly the
-six C2 paths of the table, nothing more.
+**G2 THE RECORDS AND THE TESTS** — all 5 files' sha256 at their named commits equaled the block's
+given values exactly: `.agent/decisions.md` (2524540 bytes,
+`f959e11a02b47b64aeb164b198959279fee4d9e7253101de9d2764537a533209`), `.agent/live_review.md`
+(122532 bytes, `36aac59085dfea3376879a5ae9a415c8ca1e3a763a108dc2522af777560d5316`),
+`.agent/plan.md` (1296 bytes, `b86e126b4d6c27ef2303ff73d79f1e434e7a7717a2532ed7a598de8a5bb8251c`)
+at C2; `apps/ui/src/api/terminology.test.ts` (14217 bytes,
+`939a2b6645089e7e0e28de8aaa9294659148248ab4d02063c94f8b2742d811ab`) and
+`apps/ui/src/components/term/termAudit.test.ts` (11862 bytes,
+`1da30df5707675361a1cc035c7b5224a073e19da33313c902af8d0895b9873a1`) at C4. `open_finding_ids`
+(from `scripts/rotate_live_review.py`) over the ledger text at C2 read `[]`, matching the
+reviewer's own reading. The ledger's last non-empty line at C2 begins `Gate: F043 R1 — the F043
+round 1 entry`. `git diff --name-only 2ddf5f463 fe53bf824` named exactly the three C2 paths of
+the table (`.agent/decisions.md`, `.agent/live_review.md`, `.agent/plan.md`), nothing more.
 
 **G3 THE CODE AND THE TESTS** (at C5) —
-- `python3 -m ruff check .agent/authored/f043-r1-mutations.py .agent/authored/f043-r1-render_measure.py`
+- `python3 -m ruff check .agent/authored/f043-r2-mutations.py .agent/authored/f043-r2-render_measure.py`
   → `All checks passed!`, exit 0.
-- `apps/ui/node_modules/.bin/eslint src/api/terminology.ts src/api/terminologyAudit.ts
-  src/api/terminology.test.ts src/api/terminologyAudit.test.ts src/components/term/Term.tsx
-  src/components/term/termAudit.test.ts src/components/panels/LiveStatusPill.tsx
-  src/components/timeline/PhaseTimeline.tsx` run with `apps/ui` as cwd → exit 0, no output.
-- `git show --numstat 68f909780` and the whole diffs of `LiveStatusPill.tsx`, `PhaseTimeline.tsx`
-  and `tokens.css` at C3 are reported in full in the Commits section above and in the worker's
-  reply transcript.
+- `apps/ui/node_modules/.bin/eslint src` run with `apps/ui` as cwd → exit 0, no output.
+- `git show --numstat d7f2a8f75` and the whole diff of C3 are reported in full in the Commits
+  section above and were shown in full during authoring (each file's `git diff --cached`
+  reviewed before commit).
 - The ordered pytest selection, run SERIALLY in the primary checkout at C5:
   `python3 -m pytest -q -p no:cacheprovider -rs tests/ui_contracts
   tests/ui_server/test_dashboard_contract.py tests/orchestration/test_test_runner.py
   tests/orchestration/test_escalation.py tests/cli/test_plan_approval.py
   tests/orchestration/test_integrity_gate.py tests/orchestration/test_live_review_rotation.py
   tests/regression/test_resource_safety.py tests/test_agent_tooling.py tests/docs
-  tests/cli/test_golden_path.py` → `1746 passed, 5 skipped in 84.73s`, `REAL_EXIT=0`
-  (`${PIPESTATUS[0]}`). SKIPPED lines: two in `test_graph_architecture.py` (D3 quarantine, F252),
-  two in `test_ux_quality.py` (D3 quarantine, F252), one in `test_agent_tooling.py` (D12
-  quarantine, F252). The reviewer's dry tree read `1745 passed, 6 skipped` with a sixth skip at
-  `test_responsive.py:555` for an unbuilt `dist`; this checkout's `apps/ui/dist` is built (the
-  render harness builds one), so that node ran and passed instead of skipping — accounting for
-  the whole +1 passed / -1 skipped difference, exactly as the block anticipated. `test_typescript_compiles`
-  (`tests/ui_server/test_dashboard_contract.py:367`) and `test_vitest_passes`
-  (`tests/orchestration/test_test_runner.py:421`) each re-run alone read `1 passed` at exit 0;
-  `tests/ui_contracts/test_ui_lint.py` (eslint over `apps/ui/src`) read `2 passed` at exit 0. The
-  vitest counts of the three new test files, read inside the full suite's `test_vitest_passes`
-  node and confirmed by the standalone run above: `terminology.test.ts` 11, `terminologyAudit.test.ts`
-  8, `termAudit.test.ts` 7 — equal to the reviewer's own counts.
+  tests/cli/test_golden_path.py` → `1746 passed, 5 skipped in 81.11s`, `REAL_EXIT=0`
+  (`${PIPESTATUS[0]}`) — the exact reading the block named as the primary checkout's own (built
+  `dist`). SKIPPED lines: two in `test_graph_architecture.py` (D3 quarantine, F252), two in
+  `test_ux_quality.py` (D3 quarantine, F252), one in `test_agent_tooling.py` (D12 quarantine,
+  F252). `test_typescript_compiles` (`tests/ui_server/test_dashboard_contract.py:367`,
+  `TestJobSummaryCommandContract`) and `test_vitest_passes`
+  (`tests/orchestration/test_test_runner.py:421`, `TestVitestFrontendTestFoundation`) and
+  `tests/ui_contracts/test_ui_lint.py` (eslint over `apps/ui/src`), re-run together, read
+  `4 passed in 7.79s` at exit 0. The vitest counts of the three named files, read via a standalone
+  `vitest run` of exactly those three files with the primary's own binaries:
+  `terminology.test.ts` 12, `terminologyAudit.test.ts` 8, `termAudit.test.ts` 12 — equal to the
+  reviewer's own counts (12, 8, 12), all 32 passing. The whole vitest suite, run the same way with
+  no file argument, read `Test Files 99 passed | 1 skipped (100)` and `Tests 1988 passed | 5
+  skipped (1993)` at exit 0 — equal to the block's own reading.
 - `python3 -m apps.cli.main integrity check --json` → all six checks `pass`, `fail_count` 0,
   `"ok": true, "passed": true`.
 
-**G4 THE RENDER** (at C5) — `python3 -B .agent/authored/f043-r1-render_measure.py
-/home/decodeux/Repos/remedy`: vite build succeeded (`✓ 44 modules transformed`, `built in 586ms`),
-server and Chrome started, `drive.mjs` printed `PASS` for all seven checks (R-a through R-g) and
-`RENDER: 7 of 7 checks pass`, exit code 0 — equal to the reviewer's own 7-of-7 reading. Chrome and
-the server were stopped by their own pids (SIGTERM, both landed) and the work dir was removed.
-The screenshot at `.remedy-wt/f043-r1-render-tooltip.png` shows the LIVE pill in the clipping
-glass card at the top right with its glass tooltip open beneath it, past the card's own edge,
-reading "Live — This job is running, and the cockpit receives its events the moment they happen.",
-and the six dotted-underlined phase labels (Job, Planning, Build, Test, Review, Finalized) along
-the bottom edge of the timeline.
+**G4 THE RENDER** (at C5) — `python3 -B .agent/authored/f043-r2-render_measure.py
+/home/decodeux/Repos/remedy`: vite build succeeded (`✓ 1170 modules transformed`, `built in
+1.55s`), server and Chrome started, `drive.mjs` printed `PASS` for all nine checks (R-a, R-b, R-c,
+R-d, R-e, R-s, R-f, R-g, R-h) and `RENDER: 9 of 9 checks pass`, exit code 0 — equal to the
+reviewer's own 9-of-9 reading. Chrome and the server were stopped by their own pids (SIGTERM, both
+landed) and the work dir was removed. The screenshot at
+`.remedy-wt/f043-r2-render-tooltip.png` shows the graph stage's SCRUBBED badge and "Back to LIVE"
+control, with the right panel's "Decision inbox" heading tooltip open — the catalog's title and
+full explanation body rendered in a glass tooltip beneath the heading.
 
-**G5 THE RED PROOFS** — `git worktree add --detach .remedy-wt/f043-r1-mut 4e5c5e964` then
-`os.symlink(.../apps/ui/node_modules, .../f043-r1-mut/apps/ui/node_modules)`, then
-`python3 -B .agent/authored/f043-r1-mutations.py .../f043-r1-mut`. Full output:
-CONTROL (before) vitest exit=0 (0 failed), harness exit=0 (`RENDER: 7 of 7 checks pass`); t1
-exit=1 (1 failed); t2 exit=1 (3 failed); a1 exit=1 (2 failed); a2 exit=1 (1 failed); a3 exit=1 (1
-failed); c1 exit=1 (2 failed); c2 exit=1 (5 failed); h1 exit=1 (`RENDER: 5 of 7`); h2 exit=1
-(`RENDER: 6 of 7`); h3 exit=1 (`RENDER: 5 of 7`); h4 exit=1 (`RENDER: 6 of 7`); h5 exit=1
-(`RENDER: 6 of 7`) — every mutation's restore read `restored byte-identical: True`. CONTROL
-(after) vitest exit=0 (0 failed), harness exit=0 (`RENDER: 7 of 7 checks pass`). Final line:
-`ALL MUTATIONS CAUGHT AND RESTORED CLEANLY: True`. Cleanup: `os.unlink` the symlink, `git
-worktree remove --force .remedy-wt/f043-r1-mut`, `git worktree prune`; `git worktree list | wc -l`
-read 11, matching the round's step-4 reading.
+**G5 THE RED PROOFS** — `git worktree add --detach .remedy-wt/f043-r2-mut 632e648b9` then
+`os.symlink(.../apps/ui/node_modules, .../f043-r2-mut/apps/ui/node_modules)`, then
+`python3 -B .agent/authored/f043-r2-mutations.py .../f043-r2-mut`. Full output:
+CONTROL (first) vitest exit=0 (0 failed), harness exit=0 (`RENDER: 9 of 9 checks pass`); m1
+exit=1 (5 failed); m2 exit=1 (2 failed); m3 exit=1 (1 failed); m4 exit=1 (5 failed); m5 exit=1 (5
+failed); m6 exit=1 (1 failed); m7 exit=1 (2 failed); h1 exit=1 (`RENDER: 8 of 9`); h2 exit=1
+(`RENDER: 8 of 9`); h3 exit=1 (`RENDER: 8 of 9`) — every mutation's restore read `restored
+byte-identical: True`. CONTROL (last) vitest exit=0 (0 failed), harness exit=0 (`RENDER: 9 of 9
+checks pass`). Final line: `ALL MUTATIONS CAUGHT AND RESTORED CLEANLY: True`. Cleanup:
+`os.unlink` the symlink, `git worktree remove --force .remedy-wt/f043-r2-mut`, `git worktree
+prune`; `git worktree list | wc -l` read 11, matching the round's step-4 reading.
 
 **G6 TREE AND PUSH** — reported in the worker's reply, since it runs after this commit.
 
 ## Authored-text proofs
 
-Every `.agent/authored/f043-r1-*` copy (the block, plan.md, context.md, claim.diff, tests.diff,
-and the five render_* files) was compared byte-for-byte against its source under
-`.remedy-wt/f043-r1-payloads/` (and the block itself against `.remedy-wt/f043-r1/block.md`), read
-back with `git show <commit>:<path>` from the commit that added it: all 10 MATCH (G1 above). The
-mutation tool `.agent/authored/f043-r1-mutations.py` is the worker's own authored text (not a
+Every `.agent/authored/f043-r2-*` copy (the block, plan.md, records.diff, tests.diff, and the
+five render_* files) was compared byte-for-byte against its source under
+`.remedy-wt/f043-r2-payloads/` (and the block itself against `.remedy-wt/f043-r2/block.md`), read
+back with `git show <commit>:<path>` from the commit that added it: all 9 MATCH (G1 above). The
+mutation tool `.agent/authored/f043-r2-mutations.py` is the worker's own authored text (not a
 reviewer payload), so no fidelity comparison applies to it; its correctness is instead
 demonstrated by G5's own run (every mutation caught, every restore clean).
 
@@ -219,27 +224,21 @@ demonstrated by G5's own run (every mutation caught, every restore clean).
 
 ## Deviations & assumptions
 
-- S5's clause "a comment naming the explanation layer's tooltip, F043 and DECISION F043 D1 as
-  transcribed byte-exact from docs/ui/design_reference/tokens.css" was read as: the FOUR VALUE
-  LINES are the byte-exact transcription (verified equal to the reference file's own
-  `--remedy-z-tooltip`, `--remedy-dur-fast`, `--remedy-ease-standard` and `--remedy-focus` lines),
-  while the comment's prose is the worker's own, following the house style of the three adjacent
-  precedents in the same file (`--remedy-live`, `--remedy-dur-birth`, `--remedy-dur-base`), each
-  of which pairs "transcribed byte-exact from docs/ui/design_reference/tokens.css" with
-  worker-authored reasoning prose rather than reference-verbatim commentary. No test in this
-  round's C4 exercises the comment text itself, so this reading was never at risk of going red;
-  flagged here only because the clause's grammar admits the other reading.
-- S3's clause "the timer lives in an effect whose cleanup clears it" was implemented literally: a
-  `hovering` boolean state, set by pointer-enter/leave, drives a `useEffect` keyed on `[hovering]`
-  whose body starts the `TERM_HOVER_DELAY_MS` timeout and whose cleanup (returned function) clears
-  it — rather than a raw `setTimeout`/`clearTimeout` pair called directly from the event handlers.
-  This is the reading the spec's own wording names; noted since it is one of more than one way to
-  satisfy "pointer leaving before it fires opens nothing."
-- No departure from the block's ordered commit sequence C1a–C6: every commit landed in order,
+- S9's clause "under a one-line comment naming F043 and DECISION F043 D2" was read literally:
+  each comment is exactly one line (`/* F043 DECISION F043 D2 (3): ... */`), placed directly
+  above its narrowed selector.
+- Three files' insertion counts differ from the block's own reviewer-version reading by exactly
+  one line each: TopMetricsBar.tsx measured 15 against 14 expected (+1), Term.tsx measured 13
+  against 12 expected (+1), and RightLivePanel.module.css measured 4 against 5 expected (-1, a
+  shortfall rather than an excess). All three are comment line-wrapping choices with no functional
+  difference — every test in C4 passed unedited and G4/G5 both went as expected. Flagged in the C3
+  commit table above and not treated as a spec deviation since S1-S9 are prose specifications, not
+  literal diffs to reproduce byte-for-byte.
+- No departure from the block's ordered commit sequence C1a-C6: every commit landed in order,
   none dropped, none added, none reordered.
 
 ## Next
 
-Phase 1 rule 1: read `.agent/STOP` from disk. Then the review of round 1. Then the terms of the
-remaining shell surfaces: the metrics bar, the decision inbox, the activity feed and its NowCard,
-the task list and the graph's scrubbed banner. Open findings: 0. Operator questions: 0.
+Phase 1 rule 1: read `.agent/STOP` from disk. Then the review of round 2. Then the token and cost
+tiles onto the term's tooltip with their breakdown and the estimate basis, together with the '?'
+panel. Open findings: 0. Operator questions: 0.
