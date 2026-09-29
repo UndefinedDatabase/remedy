@@ -2476,7 +2476,7 @@ symlink; a child no class names, such as a legacy `task_jobs/`, reports as
 `unclassified`.
 
 **Reclaiming the scratch (F276 T002).** `remedy data reclaim [--apply] [--orphans]
-[--json]`
+[--stale] [--json]`
 (`packages/orchestration/data_reclaim.py`) is preview-first: without `--apply` it
 computes a `ReclaimPlan` and deletes nothing. A candidate is a DIRECT CHILD of an
 ephemeral class DIRECTORY whose job resolves in the job store and is terminal —
@@ -2528,6 +2528,23 @@ the operator's data root with the preview command, 1 107 candidates worth
 Those two sums are 922 931 683 643 — exactly `job_workspaces`'s own footprint measured
 the same day — so the refused bytes are 69 per cent OF THAT CLASS, which is the
 denominator, and not of the 923 560 682 122-byte data root.
+
+**Stale copies, and the `--stale` flag (operator amendment amend0929-context-hygiene,
+DECISION amend0929 D1).** A finished job's staging copy is no longer reclaimed by
+default. A copy that was never applied still holds work nobody has taken, so the plan
+refuses every terminal job's copy as `stale_not_requested`, and the human preview says
+how many there are, their bytes, and that `--stale` reclaims them. With `--stale`, a copy
+becomes a candidate whose `reason` is `stale_terminal_copy` once its newest change (the
+copy and everything under it, by `lstat`) is older than `data.staging_ttl_days`
+(environment variable `REMEDY_DATA_STAGING_TTL_DAYS`, default 7 days). A younger copy is
+refused as `stale_too_young`. The terminal set is still `JOB_TERMINAL_STATES`, so a
+paused, running, blocked or stopped job keeps its copy with or without the flag. At the
+moment of deletion `apply_reclaim` reads the job record and the newest change again, the
+same re-check an orphan gets. Every candidate carries a `reason` in the `--json`
+document: `stale_terminal_copy` or `orphan_no_record`. The closure sequence runs
+`remedy data reclaim --orphans --stale`, then the same command with `--apply`, and
+`remedy doctor core` warns `data_reclaimable` when that preview reaches
+`data.reclaim_warn_gb` (environment variable `REMEDY_DATA_RECLAIM_WARN_GB`, default 5).
 
 **The copy-mode lifecycle (F276 T003).** A job whose target is not a git repository
 runs in `isolation_mode="copy"`: `pingpong_job._create_job_workspace_copy` calls

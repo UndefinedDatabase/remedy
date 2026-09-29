@@ -56,6 +56,21 @@ root. ``--orphans`` opts INTO exactly that case and into nothing else:
   no symlink, real path inside the root, and every one of them re-checked at the moment
   of deletion — is unchanged.
 
+THE STALE COPIES, and the flag that opts into them (operator amendment
+amend0929-context-hygiene, DECISION amend0929 D1). A terminal job's copy is no longer a
+candidate by default: an unapplied copy still holds work nobody has taken, so it is kept
+for ``data.staging_ttl_days`` after its NEWEST change and refused meanwhile. ``--stale``
+(``stale_ttl_days`` here) opts into the copies past that TTL:
+
+- Without the flag every terminal copy is refused as ``stale_not_requested``, so the
+  operator sees its bytes and the flag that would free them.
+- With it, a copy whose newest modification time (the child and everything under it,
+  by ``lstat``) is under the TTL is refused as ``stale_too_young``; older ones are
+  candidates whose ``reason`` is ``stale_terminal_copy``.
+- The terminal set is ``pingpong_job.JOB_TERMINAL_STATES``, unchanged: a paused,
+  running, blocked or stopped job is ``job_not_terminal`` with or without the flag.
+- At deletion the job state and the newest change are read again, as for an orphan.
+
 THE RULES ARE EXPORTED, not only applied. F276 T003 releases ONE job's staging copy
 at the moment that job ends, which is this command narrowed to a single path, so it
 calls :func:`child_deletion_refusal` and :func:`job_state_refusal` below instead of
@@ -65,12 +80,14 @@ changed when they were exported.
 
 Public API::
 
-    plan_reclaim(root, *, now=None, orphans=False) -> ReclaimPlan
+    plan_reclaim(root, *, now=None, orphans=False, stale_ttl_days=None) -> ReclaimPlan
+    reclaim_preview_bytes(root, *, stale_ttl_days, now=None) -> int
     apply_reclaim(plan) -> ReclaimOutcome
     export_reclaim_json(plan, outcome=None) -> dict
     child_deletion_refusal(path, root, *, data_class=None) -> (reason, detail)
     job_state_refusal(job_id, root) -> (state, reason, record_exists)
     REFUSAL_REASONS / ORPHAN_MIN_AGE_DAYS / ORPHAN_JOB_STATE
+    CANDIDATE_ORPHAN / CANDIDATE_STALE
 """
 
 from __future__ import annotations
@@ -97,6 +114,8 @@ REFUSAL_REASONS: tuple[str, ...] = (
     "job_not_terminal",
     "job_unresolved",
     "orphan_too_young",
+    "stale_not_requested",
+    "stale_too_young",
     "class_not_job_keyed",
     "not_a_direct_child",
     "symlink",
@@ -139,6 +158,11 @@ ORPHAN_MIN_AGE_DAYS: float = 1.0
 #: exactly is reading a token rather than parsing prose.
 ORPHAN_JOB_STATE: str = "no_record"
 
+#: Why a candidate is one, as its ``reason`` in the machine shape: a staging copy no
+#: record owns any more, or a terminal job's copy past the staging TTL.
+CANDIDATE_ORPHAN: str = "orphan_no_record"
+CANDIDATE_STALE: str = "stale_terminal_copy"
+
 
 @dataclass(frozen=True)
 class ReclaimCandidate:
@@ -152,6 +176,7 @@ class ReclaimCandidate:
     age_days: float
     bytes: int
     files: int
+    reason: str = CANDIDATE_STALE
 
 
 @dataclass(frozen=True)
@@ -186,6 +211,9 @@ class ReclaimPlan:
     candidates: tuple[ReclaimCandidate, ...]
     refusals: tuple[ReclaimRefusal, ...]
     unreclaimed: tuple[UnreclaimedChild, ...]
+    #: The staging TTL ``--stale`` planned with; None when stale copies were not asked
+    #: for, which makes :func:`apply_reclaim` refuse every terminal-copy candidate.
+    stale_ttl_days: float | None = None
 
     @property
     def total_bytes(self) -> int:
@@ -288,6 +316,41 @@ def _age_days(path: str, now: float) -> float:
     return round(_age_seconds(path, now) / 86400.0, 1)
 
 
+def _newest_change_seconds(path: str, now: float) -> float:
+    """Seconds since the NEWEST ``lstat`` mtime of ``path`` and everything under it.
+
+    0.0 when nothing can be stat-ed, the safe end: an unreadable copy reads as brand
+    new and is refused. Symlinks are stat-ed, never followed.
+    """
+    newest = 0.0
+    try:
+        newest = os.lstat(path).st_mtime
+    except OSError:
+        return 0.0
+    for dirpath, dirnames, filenames in os.walk(path):
+        for name in dirnames + filenames:
+            try:
+                newest = max(newest, os.lstat(os.path.join(dirpath, name)).st_mtime)
+            except OSError:
+                return 0.0
+    return max(0.0, now - newest)
+
+
+def _stale_verdict(job_id: str, state: str, path: str, now: float,
+                   stale_ttl_days: float | None) -> tuple[str, str]:
+    """``(refusal_reason, detail)`` for a TERMINAL job's copy; ``("", "")`` = candidate."""
+    if stale_ttl_days is None:
+        return ("stale_not_requested",
+                f"job {job_id} is {state}; its copy is kept until --stale asks for "
+                f"copies past the staging TTL")
+    age = _newest_change_seconds(path, now)
+    if age >= stale_ttl_days * 86400.0:
+        return ("", "")
+    return ("stale_too_young",
+            f"job {job_id} is {state}; its newest change, {age / 86400.0:.1f}d ago, "
+            f"is under the {stale_ttl_days:.1f}d staging TTL")
+
+
 def _orphan_verdict(path: str, now: float) -> tuple[str, str, str]:
     """``(job_state, refusal_reason, detail)`` for a child whose job record is ABSENT.
 
@@ -306,13 +369,12 @@ def _orphan_verdict(path: str, now: float) -> tuple[str, str, str]:
 
 
 def plan_reclaim(root: Path | str, *, now: float | None = None,
-                 orphans: bool = False) -> ReclaimPlan:
+                 orphans: bool = False, stale_ttl_days: float | None = None) -> ReclaimPlan:
     """Compute what could be freed under ``root``. Writes nothing, deletes nothing.
 
     ``orphans`` OPTS IN to the staging copies whose job record is gone, and to nothing
-    else. It defaults to False, and with it False the plan this returns is the plan
-    this function returned before the orphan rule existed — same candidates, same
-    refusals, same bytes.
+    else. ``stale_ttl_days`` OPTS IN to terminal jobs' copies whose newest change is at
+    least that many days old; None, the default, refuses every terminal copy.
     """
     root_path = Path(root)
     root_str = os.fspath(root_path)
@@ -322,7 +384,7 @@ def plan_reclaim(root: Path | str, *, now: float | None = None,
             top = sorted(it, key=lambda e: e.name)
     except OSError:
         return ReclaimPlan(root=root_str, exists=False, candidates=(),
-                           refusals=(), unreclaimed=())
+                           refusals=(), unreclaimed=(), stale_ttl_days=stale_ttl_days)
 
     class_dirs = _class_dir_names()
     candidates: list[ReclaimCandidate] = []
@@ -334,7 +396,7 @@ def plan_reclaim(root: Path | str, *, now: float | None = None,
         is_dir = entry.is_dir(follow_symlinks=False)
         if kind == "ephemeral" and entry.name in class_dirs and is_dir:
             _plan_class(entry.name, entry.path, root_path, at, candidates, refusals,
-                        orphans)
+                        orphans, stale_ttl_days)
             continue
         size, files = child_usage(entry.path)
         if kind == "ephemeral":
@@ -353,6 +415,7 @@ def plan_reclaim(root: Path | str, *, now: float | None = None,
         candidates=tuple(candidates),
         refusals=tuple(refusals),
         unreclaimed=tuple(unreclaimed),
+        stale_ttl_days=stale_ttl_days,
     )
 
 
@@ -364,6 +427,7 @@ def _plan_class(
     candidates: list[ReclaimCandidate],
     refusals: list[ReclaimRefusal],
     orphans: bool = False,
+    stale_ttl_days: float | None = None,
 ) -> None:
     """Judge every DIRECT child of one ephemeral class directory. Reads only."""
     try:
@@ -376,6 +440,7 @@ def _plan_class(
         size, files = child_usage(child.path)
         reason = detail = ""
         job_id = state = ""
+        kind = CANDIDATE_STALE
         if os.path.islink(child.path):
             reason, detail = "symlink", "a symlink is never followed and never deleted"
         elif not _inside(child.path, root):
@@ -394,8 +459,12 @@ def _plan_class(
                     # not parse keeps the refusal above.
                     if orphans and not record_exists:
                         state, reason, detail = _orphan_verdict(child.path, now)
+                        kind = CANDIDATE_ORPHAN
                 elif reason:
                     detail = f"job {job_id} is {state}, not terminal"
+                else:
+                    reason, detail = _stale_verdict(job_id, state, child.path, now,
+                                                    stale_ttl_days)
 
         if reason:
             refusals.append(ReclaimRefusal(
@@ -406,8 +475,27 @@ def _plan_class(
         candidates.append(ReclaimCandidate(
             data_class=data_class, name=child.name, path=child.path,
             job_id=job_id, job_state=state, age_days=_age_days(child.path, now),
-            bytes=size, files=files,
+            bytes=size, files=files, reason=kind,
         ))
+
+
+def reclaim_preview_bytes(root: Path | str, *, stale_ttl_days: float,
+                          now: float | None = None) -> int:
+    """Bytes ``remedy data reclaim --orphans --stale`` would free under ``root``. Reads only.
+
+    `remedy doctor core` weighs this against ``data.reclaim_warn_gb``. It judges the
+    job-keyed class directories alone, with the same rules :func:`plan_reclaim` applies,
+    because sizing every durable child as the full preview does would walk the whole
+    data root on every doctor run.
+    """
+    root_path = Path(root)
+    at = time.time() if now is None else now
+    candidates: list[ReclaimCandidate] = []
+    refusals: list[ReclaimRefusal] = []
+    for class_name in sorted(_class_dir_names()):
+        _plan_class(class_name, os.fspath(root_path / class_name), root_path, at,
+                    candidates, refusals, True, stale_ttl_days)
+    return sum(c.bytes for c in candidates)
 
 
 def child_deletion_refusal(path: str, root: Path, *,
@@ -468,6 +556,19 @@ def _orphan_deletion_refusal(cand: ReclaimCandidate, root: Path,
     return ("", "")
 
 
+def _stale_deletion_refusal(cand: ReclaimCandidate, root: Path, now: float,
+                            stale_ttl_days: float | None) -> tuple[str, str]:
+    """``(reason, detail)`` for a terminal job's copy at the moment of deletion.
+
+    The same re-derivation an orphan gets: the job record is read again and must still
+    be terminal, and the copy's newest change is read again against the plan's TTL.
+    """
+    state, reason, _ = job_state_refusal(cand.job_id, root)
+    if reason:
+        return (reason, f"job {cand.job_id} is {state or 'unreadable'} at the moment of deletion")
+    return _stale_verdict(cand.job_id, state, cand.path, now, stale_ttl_days)
+
+
 def apply_reclaim(plan: ReclaimPlan) -> ReclaimOutcome:
     """Delete exactly the paths ``plan`` holds, re-checking every rule at deletion.
 
@@ -488,6 +589,8 @@ def apply_reclaim(plan: ReclaimPlan) -> ReclaimOutcome:
         reason, detail = child_deletion_refusal(cand.path, root)
         if not reason and cand.job_state == ORPHAN_JOB_STATE:
             reason, detail = _orphan_deletion_refusal(cand, root, now)
+        elif not reason:
+            reason, detail = _stale_deletion_refusal(cand, root, now, plan.stale_ttl_days)
         if reason:
             refusals.append(ReclaimRefusal(
                 data_class=cand.data_class, name=cand.name, path=cand.path,
@@ -528,7 +631,7 @@ def export_reclaim_json(plan: ReclaimPlan, outcome: ReclaimOutcome | None = None
         "candidates": [
             {
                 "class": c.data_class, "name": c.name, "path": c.path,
-                "job_id": c.job_id, "job_state": c.job_state,
+                "job_id": c.job_id, "job_state": c.job_state, "reason": c.reason,
                 "age_days": c.age_days, "bytes": c.bytes, "files": c.files,
             }
             for c in plan.candidates

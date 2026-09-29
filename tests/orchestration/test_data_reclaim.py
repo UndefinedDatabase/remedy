@@ -85,13 +85,14 @@ def test_apply_deletes_exactly_the_previewed_paths(root, capsys):
     live = _job(root, RunState.RUNNING)
     doomed = _scratch(root, "job_workspaces", f"staging_{done}")
     kept = _scratch(root, "job_workspaces", f"staging_{live}")
+    _age_tree(doomed, 30)
 
-    main(["data", "reclaim", "--json"])
+    main(["data", "reclaim", "--stale", "--json"])
     previewed = {c["path"] for c in json.loads(capsys.readouterr().out)["candidates"]}
     assert previewed == {str(doomed)}
 
     before = _tree(root)
-    main(["data", "reclaim", "--apply", "--json"])
+    main(["data", "reclaim", "--stale", "--apply", "--json"])
     body = json.loads(capsys.readouterr().out)
 
     assert body["removed"] == [str(doomed)]
@@ -107,13 +108,13 @@ def test_apply_deletes_exactly_the_previewed_paths(root, capsys):
 
 def test_a_second_apply_over_the_same_state_removes_nothing_and_exits_zero(root, capsys):
     done = _job(root, RunState.COMPLETED)
-    _scratch(root, "job_workspaces", f"staging_{done}")
+    _age_tree(_scratch(root, "job_workspaces", f"staging_{done}"), 30)
 
-    main(["data", "reclaim", "--apply", "--json"])
+    main(["data", "reclaim", "--stale", "--apply", "--json"])
     assert len(json.loads(capsys.readouterr().out)["removed"]) == 1
 
     after_first = _tree(root)
-    main(["data", "reclaim", "--apply", "--json"])   # exits 0 by not raising SystemExit
+    main(["data", "reclaim", "--stale", "--apply", "--json"])   # exits 0 by not raising SystemExit
     body = json.loads(capsys.readouterr().out)
 
     assert body["removed"] == []
@@ -224,8 +225,9 @@ def test_a_terminal_jobs_durable_child_survives_an_apply(
     proof.parent.mkdir(parents=True, exist_ok=True)
     proof.write_bytes(b'{"kept":1}\n')
     doomed = _scratch(root, "job_workspaces", f"staging_{done}")
+    _age_tree(doomed, 30)
 
-    main(["data", "reclaim", "--apply", "--json"])
+    main(["data", "reclaim", "--stale", "--apply", "--json"])
     body = json.loads(capsys.readouterr().out)
 
     assert classify_data_child(data_class) == "durable"
@@ -268,11 +270,12 @@ def test_a_deletion_that_is_attempted_and_fails_exits_one(root, capsys):
 
     done = _job(root, RunState.COMPLETED)
     ws = _scratch(root, "job_workspaces", f"staging_{done}")
+    _age_tree(ws, 30)
     class_dir = root / "job_workspaces"
     os.chmod(class_dir, 0o500)
     try:
         with pytest.raises(SystemExit) as exc:
-            main(["data", "reclaim", "--apply", "--json"])
+            main(["data", "reclaim", "--stale", "--apply", "--json"])
         body = json.loads(capsys.readouterr().out)
     finally:
         os.chmod(class_dir, 0o700)
@@ -309,9 +312,10 @@ def test_a_symlinked_candidate_is_refused_and_its_target_survives(root, tmp_path
 def test_the_json_shape(root, capsys):
     done = _job(root, RunState.COMPLETED)
     ws = _scratch(root, "job_workspaces", f"staging_{done}")
+    _age_tree(ws, 30)
     (root / "review_staging.AbC123").mkdir()
 
-    main(["data", "reclaim", "--json"])
+    main(["data", "reclaim", "--stale", "--json"])
     body = json.loads(capsys.readouterr().out)
 
     assert set(body) == {
@@ -327,8 +331,9 @@ def test_the_json_shape(root, capsys):
     assert body["freed"] == {"bytes": 0, "paths": 0}
     assert body["total"] == {"candidates": 1, "bytes": 64, "files": 1, "refused": 1}
     assert set(body["candidates"][0]) == {
-        "class", "name", "path", "job_id", "job_state", "age_days", "bytes", "files",
+        "class", "name", "path", "job_id", "job_state", "reason", "age_days", "bytes", "files",
     }
+    assert body["candidates"][0]["reason"] == "stale_terminal_copy"
     assert body["candidates"][0]["class"] == "job_workspaces"
     assert body["candidates"][0]["path"] == str(ws)
     assert body["candidates"][0]["job_id"] == done
@@ -350,8 +355,9 @@ def test_a_candidates_job_id_is_read_from_its_name_and_no_file(root):
     done = _job(root, RunState.COMPLETED)
     named = _scratch(root, "job_workspaces", f"staging_{done}")
     unprefixed = _scratch(root, "job_workspaces", done)
+    _age_tree(named, 30)
 
-    plan = plan_reclaim(root)
+    plan = plan_reclaim(root, stale_ttl_days=7.0)
 
     assert [(c.path, c.job_id) for c in plan.candidates] == [(str(named), done)]
     assert [(r.name, r.reason) for r in plan.refusals] == [(done, "job_unresolved")]
@@ -408,14 +414,17 @@ def test_without_the_flag_the_json_is_byte_for_byte_what_it_was(root, capsys):
 
     expected = {
         "version": 1, "root": str(root), "exists": True, "applied": False,
-        "candidates": [{
-            "class": "job_workspaces", "name": f"staging_{done}", "path": str(kept),
-            "job_id": done, "job_state": "completed", "age_days": 0.0,
-            "bytes": 64, "files": 1,
-        }],
-        # Both refusals come from the one class directory, whose children are walked
+        # amend0929 D1: a finished job's copy is kept by default and refused under its
+        # own reason, so the default document has no candidate at all.
+        "candidates": [],
+        # Every refusal comes from the one class directory, whose children are walked
         # in NAME order, so the expected list is sorted the same way.
         "refused": sorted([
+            {"class": "job_workspaces", "name": f"staging_{done}", "path": str(kept),
+             "reason": "stale_not_requested",
+             "detail": f"job {done} is completed; its copy is kept until --stale asks "
+                       f"for copies past the staging TTL",
+             "bytes": 64, "files": 1},
             {"class": "job_workspaces", "name": f"staging_{_ORPHAN_ID}",
              "path": str(orphan), "reason": "job_unresolved",
              "detail": f"no readable job record for {_ORPHAN_ID}",
@@ -427,7 +436,7 @@ def test_without_the_flag_the_json_is_byte_for_byte_what_it_was(root, capsys):
         "not_reclaimed": [
             {"name": "jobs", "class": "durable", "bytes": jobs_bytes, "files": jobs_files},
         ],
-        "total": {"candidates": 1, "bytes": 64, "files": 1, "refused": 2},
+        "total": {"candidates": 0, "bytes": 0, "files": 0, "refused": 3},
         "removed": [], "freed": {"bytes": 0, "paths": 0},
         "schema_version": 1, "ok": True,
     }
@@ -529,12 +538,12 @@ def test_a_record_that_exists_but_cannot_be_read_is_never_an_orphan(root, capsys
 
 def test_orphans_without_apply_deletes_nothing_and_names_both_totals(root, capsys):
     done = _job(root, RunState.COMPLETED)
-    _scratch(root, "job_workspaces", f"staging_{done}")
+    _age_tree(_scratch(root, "job_workspaces", f"staging_{done}"), 30)
     orphan = _scratch(root, "job_workspaces", f"staging_{_ORPHAN_ID}")
     _backdate(orphan, 30)
     before = _tree(root)
 
-    main(["data", "reclaim", "--orphans"])
+    main(["data", "reclaim", "--orphans", "--stale"])
 
     assert _tree(root) == before
     out = capsys.readouterr().out
@@ -555,12 +564,13 @@ def test_orphans_apply_deletes_exactly_the_previewed_orphans_and_a_second_run_is
     young = _scratch(root, "job_workspaces", "staging_11111111feedface")
     _backdate(old, 30)
     _backdate(young, 0.25)
+    _age_tree(ordinary, 30)
 
-    main(["data", "reclaim", "--orphans", "--json"])
+    main(["data", "reclaim", "--orphans", "--stale", "--json"])
     previewed = {c["path"] for c in json.loads(capsys.readouterr().out)["candidates"]}
     assert previewed == {str(ordinary), str(old)}
 
-    main(["data", "reclaim", "--orphans", "--apply", "--json"])
+    main(["data", "reclaim", "--orphans", "--stale", "--apply", "--json"])
     body = json.loads(capsys.readouterr().out)
 
     assert set(body["removed"]) == previewed
@@ -571,7 +581,7 @@ def test_orphans_apply_deletes_exactly_the_previewed_orphans_and_a_second_run_is
     assert young.exists()
     after = _tree(root)
 
-    main(["data", "reclaim", "--orphans", "--apply", "--json"])
+    main(["data", "reclaim", "--orphans", "--stale", "--apply", "--json"])
     second = json.loads(capsys.readouterr().out)
 
     assert second["removed"] == []
@@ -582,13 +592,13 @@ def test_orphans_apply_deletes_exactly_the_previewed_orphans_and_a_second_run_is
 def test_the_orphan_json_shape(root, capsys):
     """An orphan adds no key: `job_state` is the ONE mark, and it cannot collide."""
     done = _job(root, RunState.COMPLETED)
-    _scratch(root, "job_workspaces", f"staging_{done}")
+    _age_tree(_scratch(root, "job_workspaces", f"staging_{done}"), 30)
     old = _scratch(root, "job_workspaces", "staging_00000000deadbeef")
     young = _scratch(root, "job_workspaces", "staging_11111111feedface")
     _backdate(old, 3)
     _backdate(young, 0.25)
 
-    main(["data", "reclaim", "--orphans", "--json"])
+    main(["data", "reclaim", "--orphans", "--stale", "--json"])
     body = json.loads(capsys.readouterr().out)
 
     assert set(body) == {
@@ -599,8 +609,10 @@ def test_the_orphan_json_shape(root, capsys):
     by_state = {c["job_state"]: c for c in body["candidates"]}
     assert set(by_state) == {"completed", "no_record"}
     assert set(by_state["no_record"]) == set(by_state["completed"]) == {
-        "class", "name", "path", "job_id", "job_state", "age_days", "bytes", "files",
+        "class", "name", "path", "job_id", "job_state", "reason", "age_days", "bytes", "files",
     }
+    assert by_state["no_record"]["reason"] == "orphan_no_record"
+    assert by_state["completed"]["reason"] == "stale_terminal_copy"
     assert by_state["no_record"]["path"] == str(old)
     assert by_state["no_record"]["job_id"] == "00000000deadbeef"
     assert by_state["no_record"]["age_days"] == 3.0
@@ -707,3 +719,156 @@ def test_an_orphan_freshened_between_the_plan_and_the_apply_is_refused_as_too_yo
     assert [(r.reason, r.name) for r in outcome.refusals] == [
         ("orphan_too_young", f"staging_{_ORPHAN_ID}")]
     assert ws.exists()
+
+
+# ── Stale terminal copies: `--stale` (operator amendment amend0929-context-hygiene) ──
+#
+# A terminal job's staging copy is kept for `data.staging_ttl_days` after its NEWEST
+# change, because an unapplied copy still holds work nobody has taken, and it becomes a
+# candidate only when the operator types `--stale`. DECISION amend0929 D1 names the
+# terminal set: `pingpong_job.JOB_TERMINAL_STATES`, never paused, running, blocked or
+# stopped, which `remedy job resume` continues.
+
+
+def _age_tree(path, days: float) -> None:
+    """Move the mtime of ``path`` and of everything under it ``days`` into the past."""
+    for dirpath, dirnames, filenames in os.walk(path):
+        for n in dirnames + filenames:
+            _backdate(os.path.join(dirpath, n), days)
+    _backdate(path, days)
+
+
+@pytest.mark.parametrize("state", [RunState.COMPLETED, RunState.FAILED, RunState.CANCELLED])
+def test_an_old_terminal_copy_is_a_stale_candidate_only_with_the_flag(root, capsys, state):
+    done = _job(root, state)
+    ws = _scratch(root, "job_workspaces", f"staging_{done}")
+    _age_tree(ws, 30)
+
+    main(["data", "reclaim", "--json"])
+    without = json.loads(capsys.readouterr().out)
+    main(["data", "reclaim", "--stale", "--json"])
+    with_flag = json.loads(capsys.readouterr().out)
+
+    assert without["candidates"] == []
+    assert [(r["path"], r["reason"]) for r in without["refused"]] == [(str(ws), "stale_not_requested")]
+    assert [(c["path"], c["reason"], c["job_state"]) for c in with_flag["candidates"]] == [
+        (str(ws), "stale_terminal_copy", state.value)]
+    assert with_flag["refused"] == []
+    assert ws.exists()
+    assert {"stale_not_requested", "stale_too_young"} <= set(REFUSAL_REASONS)
+
+
+@pytest.mark.parametrize("state", [
+    RunState.RUNNING, RunState.PAUSED, RunState.BLOCKED, RunState.STOPPED, RunState.PLANNED,
+])
+def test_a_resumable_jobs_copy_is_never_stale(root, capsys, state):
+    live = _job(root, state)
+    ws = _scratch(root, "job_workspaces", f"staging_{live}")
+    _age_tree(ws, 400)
+
+    main(["data", "reclaim", "--stale", "--orphans", "--apply", "--json"])
+    body = json.loads(capsys.readouterr().out)
+
+    assert body["candidates"] == []
+    assert [r["reason"] for r in body["refused"]] == ["job_not_terminal"]
+    assert ws.exists()
+
+
+def test_a_terminal_copy_younger_than_the_ttl_is_refused_as_stale_too_young(root, capsys):
+    done = _job(root, RunState.COMPLETED)
+    ws = _scratch(root, "job_workspaces", f"staging_{done}")
+    _age_tree(ws, 30)
+    fresh = ws / "touched_yesterday.txt"
+    fresh.write_bytes(b"n")
+    _backdate(fresh, 2)
+    _backdate(ws, 30)                    # writing the file refreshed the directory itself
+
+    main(["data", "reclaim", "--stale", "--apply", "--json"])
+    body = json.loads(capsys.readouterr().out)
+
+    # The NEWEST change inside the copy decides, not the directory's own mtime.
+    assert body["candidates"] == []
+    assert [r["reason"] for r in body["refused"]] == ["stale_too_young"]
+    assert body["refused"][0]["detail"] == (
+        f"job {done} is completed; its newest change, 2.0d ago, is under the 7.0d staging TTL")
+    assert ws.exists()
+
+
+def test_the_ttl_is_read_from_the_config_key(root, capsys, monkeypatch):
+    done = _job(root, RunState.COMPLETED)
+    ws = _scratch(root, "job_workspaces", f"staging_{done}")
+    _age_tree(ws, 2)
+    monkeypatch.setenv("REMEDY_DATA_STAGING_TTL_DAYS", "1")
+
+    main(["data", "reclaim", "--stale", "--json"])
+
+    assert [c["path"] for c in json.loads(capsys.readouterr().out)["candidates"]] == [str(ws)]
+
+
+def test_stale_apply_removes_exactly_the_previewed_paths(root, capsys):
+    old_done = _job(root, RunState.COMPLETED)
+    young_done = _job(root, RunState.FAILED)
+    paused = _job(root, RunState.PAUSED)
+    stale = _scratch(root, "job_workspaces", f"staging_{old_done}")
+    young = _scratch(root, "job_workspaces", f"staging_{young_done}")
+    kept = _scratch(root, "job_workspaces", f"staging_{paused}")
+    orphan = _scratch(root, "job_workspaces", f"staging_{_ORPHAN_ID}")
+    for path in (stale, kept, orphan):
+        _age_tree(path, 30)
+    _age_tree(young, 3)
+
+    main(["data", "reclaim", "--stale", "--json"])
+    previewed = {c["path"] for c in json.loads(capsys.readouterr().out)["candidates"]}
+    assert previewed == {str(stale)}
+
+    before = _tree(root)
+    main(["data", "reclaim", "--stale", "--apply", "--json"])
+    body = json.loads(capsys.readouterr().out)
+
+    assert body["removed"] == [str(stale)]
+    assert before - _tree(root) == {
+        os.path.relpath(stale, root), os.path.join(os.path.relpath(stale, root), "big.bin")}
+    assert young.exists() and kept.exists() and orphan.exists()
+
+
+def test_a_stale_copy_touched_between_the_plan_and_the_apply_is_refused(root):
+    done = _job(root, RunState.COMPLETED)
+    ws = _scratch(root, "job_workspaces", f"staging_{done}")
+    _age_tree(ws, 30)
+
+    plan = plan_reclaim(root, stale_ttl_days=7.0)
+    assert [c.reason for c in plan.candidates] == ["stale_terminal_copy"]
+
+    (ws / "big.bin").write_bytes(b"new")     # something wrote into it after the preview
+    outcome = apply_reclaim(plan)
+
+    assert outcome.removed == ()
+    assert [r.reason for r in outcome.refusals] == ["stale_too_young"]
+    assert ws.exists()
+
+
+def test_the_staging_ttl_config_key_defaults_to_seven_days(monkeypatch):
+    from packages.orchestration.config import get_config
+
+    monkeypatch.delenv("REMEDY_DATA_STAGING_TTL_DAYS", raising=False)
+    assert get_config().get("data.staging_ttl_days") == 7
+
+
+def test_the_doctors_preview_total_counts_old_orphans_and_stale_copies_only(root):
+    """`reclaim_preview_bytes` is what `remedy doctor core` weighs: orphans AND stale copies."""
+    from packages.orchestration.data_reclaim import reclaim_preview_bytes
+
+    done = _job(root, RunState.COMPLETED)
+    young_done = _job(root, RunState.COMPLETED)
+    live = _job(root, RunState.RUNNING)
+    _age_tree(_scratch(root, "job_workspaces", f"staging_{done}", b"s" * 100), 30)
+    _age_tree(_scratch(root, "job_workspaces", f"staging_{young_done}", b"y" * 1000), 1)
+    _age_tree(_scratch(root, "job_workspaces", f"staging_{live}", b"r" * 1000), 30)
+    _age_tree(_scratch(root, "job_workspaces", f"staging_{_ORPHAN_ID}", b"o" * 10), 30)
+    (root / "runs" / "r1").mkdir(parents=True)
+    (root / "runs" / "r1" / "result.json").write_bytes(b"d" * 5000)
+    before = _tree(root)
+
+    assert reclaim_preview_bytes(root, stale_ttl_days=7.0) == 110
+    assert reclaim_preview_bytes(root / "absent", stale_ttl_days=7.0) == 0
+    assert _tree(root) == before

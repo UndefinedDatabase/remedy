@@ -45,7 +45,11 @@ Read, in order, and nothing more unless a step below demands it:
 Fresh feature → first paste block includes: Open PR Gate (merges the
 previous feature's PR — the operator had their manual-review window), the
 authored `[ ]`→`[~]` STATUS claim, live_review.md reset, branch creation,
-step 1 work. Resuming → first paste block is the next step or repair round.
+step 1 work. The reset rewrites the heading and carries the rest of the ledger
+forward byte-identical; since operator amendment amend0929-context-hygiene the
+carried part is what the extended rotation of `scripts/rotate_live_review.py`
+leaves, that is the open findings, the text about ids that are not resolved and
+the current feature's gates. Resuming → first paste block is the next step or repair round.
 
 ## 2. Turn schema — EVERY response
 **(1) OPERATOR BRIEF** — a markdown table, honest and with energy:
