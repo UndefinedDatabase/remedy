@@ -1,22 +1,30 @@
-# Plan — F286 Findings paydown v5
+# Plan — F041 Artifact preview
 
-Branch: feature/f286-findings-paydown-v5, cut from `main` at `6ba1f4be`,
-the merge commit of pull request 293 (F039 Story/replay mode).
+Branch: feature/f041-artifact-preview, cut from `main` at `45c584e6`,
+the merge commit of pull request 294 (F286 Findings paydown v5).
 
 ## Goal
 
-Pay down the open finding F286 owns, R-1104, by the repair its own text
-names (`docs/roadmap/features/T2_F286.md`, DECISION F286 D1).
+Make a job's results tangible in the cockpit: its README as sanitized
+markdown, its screenshots in a lightbox, and an app card that shows a live
+link only after a probe passes (`docs/roadmap/features/T5_F041.md`,
+DECISION F041 D1).
 
 ## Current Step
 
-ROUND 4, the closing round: book round 3, rotate the ledger, register
-F290 — Findings paydown v6, accept F286 in STATUS with its README pins,
-and open the pull request.
+ROUND 1: claim F041, re-head the live review record, book F286's round 4,
+record DECISION F041 D1, and land the sanitized markdown pipeline against
+the reviewer's attack corpus, the artifact roots with their traversal
+fixtures, and the `/api/jobs/<id>/artifacts` route.
 
 ## Next Steps
 
-1. The Open PR Gate of the next feature's session merges the pull request.
+1. The file route for screenshot bytes and the full README, with its
+   headers, and the start of T002.
+2. T002: the preview commands, the supervisor intent, the probe-gated link
+   and its failure fixtures.
+3. T003: the panel, the lightbox, the idle stop and the end-to-end run.
+4. The closure sequence.
 
 ## Risks
 

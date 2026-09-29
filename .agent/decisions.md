@@ -25400,3 +25400,54 @@ reports nothing over the real tree.
 HOW TO REVERSE: restore `packages/orchestration/doc_staleness.py` and
 `tests/orchestration/test_doc_staleness.py` from `6ba1f4be`, delete the slice list from
 `docs/roadmap/features/T2_F286.md`, and delete this paragraph.
+
+## DECISION F041 D1 — the README is rendered and sanitized on the server by the standard library alone, the reviewer ships the attack corpus as the tests and the worker writes the code, the roots are the staging workspace and the job's evidence directory, and the first round lands the pipeline with the artifacts view (2026-09-29)
+
+CONTEXT: `docs/roadmap/features/T5_F041.md` asks for a README rendered as sanitized markdown, a
+screenshot lightbox and an app card that shows a live link only after a probe passes. Its brief
+says the attack corpus is a security deliverable whose list goes in the order. Measured by the
+reviewer at `e4ef900c`, whose tree the merge of pull request 294 carries unchanged: no module in
+`packages/` or `apps/` renders markdown to HTML or sanitizes HTML, and `apps/ui/src` has no
+`dangerouslySetInnerHTML`; the runtime dependencies in `pyproject.toml` are `pydantic` and
+`psutil`, and `constraints.txt` pins them by hash from a `uv pip compile` run over the network;
+the UI server serves files only from `apps/ui/dist/assets`; the runtime harness of F007 has its
+serve, probe and stop verbs, states and readiness probe in `packages/runtimes/dev_server.py`, and
+nothing starts it from the UI server; the command door's import guard forbids `subprocess`; the
+result tour's anchor kinds are node, diff, evidence and command; and no convention names a
+screenshot directory, because F090 is still open. A job's staging copy lives at
+`data_class_dir("job_workspaces")` plus `staging_dir_name`, derived and never read from a record,
+and its own evidence at `job_evidence_dir`.
+
+CHOSEN: (1) THE PIPELINE is `packages/orchestration/artifact_markdown.py`, standard library
+only. `render_markdown` renders a closed subset (ATX headings, paragraphs, emphasis, code spans,
+fenced code, one-level lists, block quotes, rules, links and images) and escapes every source
+character, so raw HTML in a README is text. `sanitize_fragment` then rebuilds the output with
+`html.parser` from an allowlist of tags and attributes, drops script-bearing elements with their
+content, keeps a link only to http, https or mailto with `rel="noopener noreferrer nofollow"`,
+keeps an image only from a path without a scheme, and is a fixed point. A README over 256 KiB is
+cut at its last full line and says so. (2) THE CORPUS is the test file
+`tests/orchestration/test_artifact_markdown.py`, written by the reviewer with the whole expected
+output of every vector as a literal and an audit built from literal sets; the worker writes the
+code against it and may not edit it. The file says the corpus only grows. (3) THE ROOTS are the
+staging workspace and the evidence directory, in that order for a README; screenshots are listed
+from `captures/` under the evidence directory only, PNG, JPEG, GIF and WebP and never SVG, at most
+200. `resolve_artifact_path` refuses an absolute name, a `..` part, a backslash, a NUL and any
+symlink that resolves outside its root. (4) THE ROUTE is `/api/jobs/<id>/artifacts`, one entry
+of `do_GET`'s endpoint dict, answering `artifacts_view` with the README already sanitized. (5)
+THE ORDER of the rounds: this round lands (1) to (4); the next lands the file route that serves
+screenshot bytes and the full README with its headers, and begins T002; T002's preview commands
+and T003's panel follow, each with its own DECISION in the round that applies it.
+
+ALTERNATIVES: `markdown-it-py` with `nh3`, rejected because both would become runtime
+dependencies that `constraints.txt` must pin by hash from a network run, `nh3` is a compiled
+wheel, and the renderer would still need the allowlist this decision writes; rendering in the
+browser, rejected because the feature file orders the fragment rendered on the server and the
+cockpit then needs no sanitizer of its own; the worker writing the corpus too, rejected because
+the brief makes the corpus the order's deliverable and a test written with the code proves only
+the code; reading the workspace path from the job record, rejected because a recorded path is
+input and not authority, which is how `release_staging_workspace` derives it too.
+
+HOW TO REVERSE: delete `packages/orchestration/artifact_markdown.py`,
+`packages/orchestration/artifact_preview.py` and their three test files, remove the `artifacts`
+entry and `_build_artifacts_json` from `packages/orchestration/ui_server.py` and the two lines
+from `tests/orchestration/import_reachability_allowlist.txt`, and delete this paragraph.

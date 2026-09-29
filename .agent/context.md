@@ -1,20 +1,22 @@
-# Context — F286 Findings paydown v5
+# Context — F041 Artifact preview
 
 ## Active Branch
-feature/f286-findings-paydown-v5, cut from `main` at `6ba1f4be`
-(the merge commit of pull request 293, F039 Story/replay mode).
+feature/f041-artifact-preview, cut from `main` at `45c584e6`
+(the merge commit of pull request 294, F286 Findings paydown v5).
 
 ## Scope
-F286 (Tier 2): the fifth rolling findings paydown — every open finding it
-owns repaired by its own text, as `docs/roadmap/features/T2_F286.md` and
-DECISION F286 D1 specify.
+F041 (Tier 5): the artifact preview — a README rendered and sanitized on
+the server, screenshots in a lightbox, and preview commands whose app card
+links only after a probe passes, as `docs/roadmap/features/T5_F041.md` and
+DECISION F041 D1 specify.
 
 ## Do not touch
-The resolutions earlier paydowns landed; the record is append-only.
+Supervisor process semantics, harness probe logic, evidence layout.
 
 ## Active assumptions
-- R-1104 is the one id F286 owns, and its repair lands in the claiming
-  round (DECISION F286 D1).
+- The attack corpus in `tests/orchestration/test_artifact_markdown.py` only
+  grows; a vector is never removed (DECISION F041 D1).
+- The artifact roots are derived, never read from a job record.
 
 ## Constraints
 - Every pytest run in a round is targeted and serial; the resource and

@@ -1,28 +1,27 @@
-# Live Review — F286 Findings paydown v5
+# Live Review — F041 Artifact preview
 
-> Round-by-round review record, re-headed at the F286 claim per
-> docs/agents/planner_reviewer_prompt.md §1. The heading this replaces named F039, whose STATUS
-> line went `[x]` at `c5eb695b` and whose pull request 293 merged into `main` at the reviewer's
-> Open PR Gate under docs/agents/self_drive_protocol.md, as `6ba1f4be`, after both hosted CI jobs
-> of run 36508287951 ended `success` on `c5eb695b`. `c5eb695b` is the second parent of
-> `6ba1f4be`, and the two trees are identical. F039's round 13, its closing round, was reviewed
-> after its own handback, so its gate entry is appended at the end of this record by F286's
+> Round-by-round review record, re-headed at the F041 claim per
+> docs/agents/planner_reviewer_prompt.md §1. The heading this replaces named F286, whose STATUS
+> line went `[x]` at `e4ef900c` and whose pull request 294 merged into `main` at the reviewer's
+> Open PR Gate under docs/agents/self_drive_protocol.md, as `45c584e6`, after both hosted CI
+> jobs of run 36515276903 ended `success` on `e4ef900c`. `e4ef900c` is the second parent of
+> `45c584e6`, and the two trees are identical. F286's round 4, its closing round, was reviewed
+> after its own handback, so its gate entry is appended at the end of this record by F041's
 > claim. Only the heading, this paragraph and the Steps section below are rewritten; everything
-> from the Findings heading to the end of the file as it stood at `6ba1f4be` is carried forward
+> from the Findings heading to the end of the file as it stood at `45c584e6` is carried forward
 > BYTE-IDENTICAL, and finding ids continue the monotonic R-XXXX series across the re-head. The
-> open set at `6ba1f4be`, computed with `open_finding_ids` from `scripts/rotate_live_review.py`,
-> is `['R-1104']`, a Low finding F039's closure carried to F286, which is why the findings paydown
-> F286 is claimed now (DECISION F286 D1).
+> open set at `45c584e6`, computed with `open_finding_ids` from `scripts/rotate_live_review.py`,
+> is `[]`.
 
 ## Steps
 
-THE ORDER BELOW IS T2_F286.md's Task slicing, written at the claim by DECISION F286 D1. The first
-round claims F286, re-heads this record, books F039's round 13 and lands T001, R-1104's repair:
-`_run_c07` in `packages/orchestration/doc_staleness.py` leaves out a backticked span whose last
-segment is a file extension, with the test that holds a guide's `story.html` out of the check while
-an unregistered `story.speed` is still reported. The rounds after it are the closure sequence: the
-integration gate, the evidence and the package, then the close with the next paydown registered.
-Every round's handback states the open set by distinct id.
+THE ORDER BELOW IS DECISION F041 D1 (5). The first round claims F041, re-heads this record, books
+F286's round 4 and lands the sanitized markdown pipeline with the reviewer's attack corpus, the
+artifact roots with their traversal fixtures, and the `/api/jobs/<id>/artifacts` route. The next
+round lands the file route that serves screenshot bytes and the full README, and begins T002, the
+preview commands, the supervisor intent and the probe-gated link; T003's panel, lightbox, idle
+stop and end-to-end run follow, then the closure sequence. Every round's handback states the open
+set by distinct id.
 
 ## Findings
 DECISION F085 D5, applied at da47ee40, closes "The R44 block is the first measured under this
@@ -446,3 +445,5 @@ Gate: F286 R1 — the F286 round 1 entry: the claim, the re-head, the booking of
 Gate: F286 R2 — the F286 round 2 entry, the closure sequence's integration-gate round: the booking of round 1 with R-1104's resolution, the self-use reading, the Built State, the checklist consolidation and the closure suite. VERDICT PASS. Re-derived over `a45f74da`..`6a8773eb` by the planner and reviewer of F286's first session, whose own runs produced every reading below. THE RANGE IS 4 COMMITS, at `675b4a34` 228, `f7790d8c` 14, `57b3c5af` 14 and `6a8773eb` 149 insertions by `git show --numstat`, each under the 500-line cap and each single-parent; the tracked path set is exactly the block's constraint 3, and the worker declared no deviation. THE TRANSPORT PROOF: the block copy and the three payload copies, read from `675b4a34`, equal the reviewer's originals byte for byte. THE RECORDS AND THE DOCUMENTS: at `f7790d8c` the ledger and the plan, and at `57b3c5af` the planner prompt and `docs/roadmap/features/T2_F286.md`, equal the reviewer's tree byte for byte; the open set reads `[]` and the latest verdict PASS, and the checklist still counts 34 items. THE SELF-USE READING: `generate_and_append_if_empty` and `next_self_use_item` both answered `None` and wrote nothing, as the reviewer's own run of the same two calls over the same booking did, so closure precondition 6 reads self-use NONE (queue exhausted); the queue at `6a8773eb` equals the reviewer's byte for byte. THE TESTS: the block's selection, run by the reviewer serially in the primary checkout at `6a8773eb`, read 569 passed and 1 skipped at exit 0, the skip the D12 quarantine; all six `integrity check` checks read pass and the tree held no untracked file. THE CLOSURE SUITE: `.agent/authored/f286-closure-suite.txt` records `python3 -m pytest -n auto -q` at exit 0 with 20613 passed and 20 skipped in 196.68 seconds on `57b3c5af`, no bad node, after the UI build, the two reachability guards among the passing; the reviewer read it and, by rule, did not run it again.
 
 Gate: F286 R3 — the F286 round 3 entry, the closure sequence's evidence round: the booking of round 2, the evidence bundle and the review package. VERDICT PASS. Re-derived over `6a8773eb`..`ea185175` by the planner and reviewer of F286's first session, whose own runs produced every reading below. THE RANGE IS 3 COMMITS, at `0d1da274` 327, `b7c09100` 6 and `ea185175` 175 insertions by `git show --numstat`, each under the 500-line cap and each single-parent; the tracked path set is exactly the block's constraint 3, and the worker declared no deviation. THE TRANSPORT PROOF: the block copy and the three payload copies, read from `0d1da274`, equal the reviewer's originals byte for byte. THE BOOKING: at `b7c09100`, the accepted head, the ledger and the plan equal the reviewer's tree byte for byte, and the open set reads `[]` with the latest verdict PASS. THE BUNDLE: evidence job `f286r3e1001` over base `6ba1f4be`, the fork point, and head `b7c09100`: the ancestry and plain counts equal at 12, 557 node ids collected with 2 deselected, none unsafe, run `vr-0383` at exit 0 with 557 passed, no problem in `validate_verification_tests`, and `is_valid_current_run` true; the final verifier reads PASS_WITH_RISKS beside a commit-execution gate at NEEDS_HUMAN_APPROVAL, the readings F039's and F038's bundles carried too. THE PACKAGE: `remedy-review-20260929-044850-READY_FOR_REVIEW.zip` in `/home/decodeux/Repos/remedy-history/zips`, which the reviewer read there at SHA-256 `13311e03d7335e6ad49adc91a0d961e3bc832026dce35fa57fb173c5eddd3d9a` with `testzip` answering none and a manifest whose committed subject runs from `6ba1f4be` to `b7c09100` over 12 commits, with the status READY_FOR_REVIEW. All six `integrity check` checks read pass at `ea185175`.
+
+Gate: F286 R4 — the F286 round 4 entry, the closing round: the booking of round 3, the ledger rotation, the registration of F290 and the STATUS acceptance of F286. VERDICT PASS. Re-derived over `ea185175`..`e4ef900c` by the planner and reviewer of F286's first session, whose own runs produced every reading below; F041's claim books it, because the closing round of a branch cannot record its own gate (§4 item 13). THE RANGE IS 5 COMMITS, at `8872d4ac` 400, `b896d018` 6, `da19f930` 30, `d2c93ce6` 51 and `e4ef900c` 159 insertions by `git show --numstat`, each under the 500-line cap and each single-parent, re-measured by F041's reviewer before this entry was written; the tracked path set is exactly the block's, and the worker declared no deviation. THE TRANSPORT PROOF: the block copy and the six payload copies, read from `8872d4ac`, equal the reviewer's originals byte for byte. THE RECORDS: every file the round wrote equals the reviewer's simulation tree byte for byte at the commit that wrote it, and the open set reads `[]` at `b896d018`, at `da19f930` and at `e4ef900c`. THE TESTS: the round's selection read 512 passed at exit 0 on the reviewer's run, and all six `integrity check` checks read pass at `e4ef900c`, re-read by F041's reviewer. THE PULL REQUEST: pull request 294's body equals the committed `f286-r4-pr_body.md` payload, compared again by F041's reviewer, and it merged at F041's Open PR Gate after hosted CI run 36515276903 ended green.
