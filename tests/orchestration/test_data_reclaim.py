@@ -872,3 +872,73 @@ def test_the_doctors_preview_total_counts_old_orphans_and_stale_copies_only(root
     assert reclaim_preview_bytes(root, stale_ttl_days=7.0) == 110
     assert reclaim_preview_bytes(root / "absent", stale_ttl_days=7.0) == 0
     assert _tree(root) == before
+
+
+# ── The restored default (operator amendment amend0929b-reclaim-default) ─────
+#
+# DECISION amend0929b D1 supersedes amend0929 D1: `remedy data reclaim` covers a
+# finished job's staging copy by default again, at any age, exactly as it did at
+# `4e643440`, and there is no `--stale` flag and no `data.staging_ttl_days` key.
+
+#: A candidate's keys at `4e643440`: its job state is what says why it is one.
+_CANDIDATE_KEYS_AT_4E643440 = {
+    "class", "name", "path", "job_id", "job_state", "age_days", "bytes", "files",
+}
+
+
+@pytest.mark.parametrize("state", [RunState.COMPLETED, RunState.FAILED, RunState.CANCELLED])
+def test_a_young_finished_copy_is_a_default_candidate_and_apply_frees_it(root, capsys, state):
+    done = _job(root, state)
+    ws = _scratch(root, "job_workspaces", f"staging_{done}")      # created just now
+
+    main(["data", "reclaim", "--json"])
+    preview = json.loads(capsys.readouterr().out)
+    assert [(c["path"], c["job_state"]) for c in preview["candidates"]] == [(str(ws), state.value)]
+    assert set(preview["candidates"][0]) == _CANDIDATE_KEYS_AT_4E643440
+    assert preview["refused"] == []
+
+    main(["data", "reclaim", "--apply", "--json"])
+    assert json.loads(capsys.readouterr().out)["removed"] == [str(ws)]
+    assert not ws.exists()
+
+
+@pytest.mark.parametrize("state", [
+    RunState.RUNNING, RunState.PAUSED, RunState.BLOCKED, RunState.STOPPED, RunState.PLANNED,
+])
+def test_a_resumable_jobs_copy_is_never_a_candidate_by_default(root, capsys, state):
+    live = _job(root, state)
+    ws = _scratch(root, "job_workspaces", f"staging_{live}")
+    _backdate(ws, 400)
+
+    main(["data", "reclaim", "--orphans", "--apply", "--json"])
+    body = json.loads(capsys.readouterr().out)
+
+    assert body["candidates"] == []
+    assert [r["reason"] for r in body["refused"]] == ["job_not_terminal"]
+    assert ws.exists()
+
+
+def test_orphans_still_adds_record_less_copies_a_day_old_beside_the_default(root, capsys):
+    done = _job(root, RunState.COMPLETED)
+    finished = _scratch(root, "job_workspaces", f"staging_{done}")
+    orphan = _scratch(root, "job_workspaces", f"staging_{_ORPHAN_ID}")
+    _backdate(orphan, 1.5)
+
+    main(["data", "reclaim", "--orphans", "--json"])
+    body = json.loads(capsys.readouterr().out)
+
+    assert {(c["path"], c["job_state"]) for c in body["candidates"]} == {
+        (str(finished), "completed"), (str(orphan), "no_record")}
+
+
+def test_there_is_no_stale_flag_and_no_staging_ttl_key(root, capsys):
+    from apps.cli.command_catalog import CATALOG
+    from packages.orchestration import config
+
+    with pytest.raises(SystemExit) as exc:
+        main(["data", "reclaim", "--stale"])
+    assert exc.value.code != 0
+    reclaim = next(e for e in CATALOG if e.command_id == "data.reclaim")
+    assert "--stale" not in {a.name for a in reclaim.args}
+    assert "data.staging_ttl_days" not in {s.key for s in config._CONFIG_KEY_SPECS}
+    assert "REMEDY_DATA_STAGING_TTL_DAYS" not in {s.env_var for s in config._CONFIG_KEY_SPECS}
