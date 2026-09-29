@@ -206,6 +206,22 @@ describe("readmeCockpitHtml", () => {
       + " done.</p>",
     );
   });
+
+  // R-1106: a README that spells a marker-shaped string is never touched — there is no marker,
+  // so no such text can ever be misread as one.
+  it("leaves marker-shaped text unchanged when the fragment holds no image", () => {
+    const html = '<p>See @@artifact-image-0@@ below.</p>';
+    expect(readmeCockpitHtml(html, README_IMAGES, README_REQUEST)).toBe(
+      '<p>See @@artifact-image-0@@ below.</p>',
+    );
+  });
+
+  it("leaves marker-shaped text unchanged beside a rewritten capture image", () => {
+    const html = '<p>See @@artifact-image-0@@ below.</p><img src="captures/one.png" alt="Shot one">';
+    expect(readmeCockpitHtml(html, README_IMAGES, README_REQUEST)).toBe(
+      `<p>See @@artifact-image-0@@ below.</p><img src="${CAPTURE_ADDRESS}" alt="Shot one" loading="lazy">`,
+    );
+  });
 });
 
 describe("captureCaption", () => {

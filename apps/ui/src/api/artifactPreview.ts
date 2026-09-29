@@ -17,9 +17,9 @@
 // optional leading `./`) or something this browser must not trust as a link. `readmeCockpitHtml`
 // addresses every image the file route can serve, through the token this cockpit already
 // carries, and turns any other image into its own alt text — never into a link the server's
-// sanitizer did not vouch for by listing it. A capture's own address is protected from the second,
-// broad removal pass below through a one-shot placeholder, so the tag this function just built is
-// never mistaken for one of the "other shapes" that pass removes.
+// sanitizer did not vouch for by listing it. ONE regex replace decides every image's fate in one
+// pass (R-1106): there is no marker and no second removal pass to mistake a tag this function
+// just built for one of the "other shapes" that pass would have removed.
 //
 // THE DELIBERATE ABSENCES, written down here because a reader looking for the missing code will
 // search this file for it. No `window.`, no `document.`, no `fetch(`, no `Date`, no
@@ -200,11 +200,10 @@ export function artifactFilePath(request: ArtifactRequest, root: ArtifactRoot, p
     + `&token=${encodeURIComponent(request.token)}`;
 }
 
-/** The one image shape the server's renderer and sanitizer emit. */
-const README_IMG_PATTERN = /<img src="([^"]*)" alt="([^"]*)">/g;
-
-/** Every `<img …>` of any other shape, removed once the shape above has already been handled. */
-const STRAY_IMG_PATTERN = /<img\b[^>]*>/g;
+/** The one image shape the server's renderer and sanitizer emit, or any other `<img …>` tag: the
+ *  first alternative captures a recognised image's `src` and `alt`; the second matches every
+ *  other shape, with nothing captured. */
+const README_IMG_PATTERN = /<img src="([^"]*)" alt="([^"]*)">|<img\b[^>]*>/g;
 
 /** An address this cockpit may offer as a link: `http` or `https` only. */
 const HTTP_URL_PATTERN = /^https?:\/\//i;
@@ -231,28 +230,29 @@ function escapeAttributeValue(value: string): string {
 /** The README's html, rewritten for the cockpit (DECISION F041 D5): every image whose decoded
  *  source names a listed capture becomes a link through the file route, with `loading="lazy"`;
  *  every other recognised image becomes its own alt text; every image of another shape is
- *  dropped. Nothing else in the html changes. */
+ *  dropped. Nothing else in the html changes.
+ *
+ *  R-1106: ONE `replace` over `README_IMG_PATTERN`'s alternation settles every image's fate as
+ *  it is matched — a match of the recognised shape becomes the rewritten tag or the alt text,
+ *  a match of any other shape becomes "". No marker, no placeholder and no second pass: a tag
+ *  this function just built is never read again, so it can never be mistaken for one of the
+ *  "other shapes" a second pass would have removed, and text that merely spells a marker-shaped
+ *  string is never touched at all. */
 export function readmeCockpitHtml(
   html: string, images: readonly ImageArtifact[], request: ArtifactRequest,
 ): string {
-  // A recognised image is placed behind a MARKER, printable ASCII a real README could not spell
-  // as this exact run, rather than its final tag: the broad removal pass below has to run AFTER
-  // this replacement (S1's own stated order), and without a marker it would delete the very
-  // `<img …>` this function just built, mistaking it for one of the "other shapes" it exists to
-  // drop.
-  const finals: string[] = [];
-  const withPlaceholders = html.replace(README_IMG_PATTERN, (_match, src: string, alt: string) => {
+  return html.replace(README_IMG_PATTERN, (_match, src?: string, alt?: string) => {
+    if (src === undefined || alt === undefined) {
+      return "";
+    }
     const decodedSrc = decodeReadmeImageSrc(src);
     const found = images.find((image) => image.path === decodedSrc);
     if (found === undefined) {
       return alt;
     }
     const address = escapeAttributeValue(artifactFilePath(request, "evidence", found.path));
-    const index = finals.push(`<img src="${address}" alt="${alt}" loading="lazy">`) - 1;
-    return `@@artifact-image-${index}@@`;
+    return `<img src="${address}" alt="${alt}" loading="lazy">`;
   });
-  const withoutStray = withPlaceholders.replace(STRAY_IMG_PATTERN, "");
-  return withoutStray.replace(/@@artifact-image-(\d+)@@/g, (_match, index: string) => finals[Number(index)]);
 }
 
 /** A screenshot's caption: its last path segment without its own suffix, with every run of
