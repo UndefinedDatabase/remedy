@@ -1,88 +1,124 @@
-# Handback — F286, round 4: the closing round — book round 3, rotate, register F290, accept F286, open the PR
+# Handback — F041, round 1: claim, book F286 R4, land T001's pipeline — BLOCKED at C3
 
 ## Session
 
-SESSION 1 of feature F286 · round 4 · rounds so far 4. This session ran round 4 only: verified the
-block and all six payloads byte-exact, copied the block and payloads (C1), booked round 3's PASS
-verdict and the round-4 plan (C2), rotated the finding ledger into its archive (C3), registered
-F290 — Findings paydown v6 (C4), applied the closure diff and ran the full G4 test gate before
-writing this handoff, then committed the closure with this handoff together (C5). Context
-self-assessment: a comfortable margin remained through the whole round; every payload, hash and
-numstat matched its expected reading on the first try, and the work was not near its limit.
+SESSION 1 of feature F041 · round 1 · rounds so far 1. This session claimed F041, re-headed the
+live review record, booked F286's round 4 (C1a-C1c, C2), then wrote and fully validated S1 to S6
+(the markdown pipeline, the artifact roots, the artifacts route) against the reviewer's whole
+attack corpus and traversal fixtures unedited — 131/131 tests pass, ruff is clean, and all 9 named
+mutations are caught — but staging S1-S6 plus `allowlist.diff` in ONE commit, as C3's own clause
+requires, measures 542 insertions, over the 500 cap; the block's own C3 clause orders "stop and
+report rather than split it" for exactly this case, so C3 (and therefore C4, C5, C6) are NOT
+committed this round. Context self-assessment: a comfortable amount of context remained when the
+stop was written; the round ended on the block's own declared condition, not on exhaustion.
 
-For the operator, in plain words: this round closed F286. It booked round 3's PASS verdict,
-archived the finding ledger, registered the next findings-paydown feature (F290), flipped F286 to
-done in the roadmap with its evidence and package pins, and opened the pull request into `main`.
-Nothing was merged — the merge happens in the next feature's session, per the Open PR Gate.
+For the operator, in plain words: F041 is claimed and F286's round 4 is booked (both committed and
+pushed). The security-sensitive markdown renderer and sanitizer, the artifact-root path gate, and
+the artifacts route are written and pass every one of the reviewer's tests, but the single commit
+that lands them would be 42 lines over the 500-insertion cap, and the block explicitly says to stop
+rather than split that commit. Nothing is lost — the code, the reviewer's test files, and a
+red-proof mutation tool sit validated but uncommitted in the working tree for the next session.
 
 ## Range
 
-Review of ea1851750..HEAD
+Review of 45c584e6e..f87ab2917 (HEAD; C3 onward not committed this round)
 
 ## Commits
 
-### 8872d4ac3 F286 R4 C1: copy round 4 block and payloads into .agent/authored/
+### f690d984d F041 R1 C1a: copy round 1 block and state payloads into .agent/authored/
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f286-r4-block.md | +178/-0 | verbatim copy of this round's block |
-| .agent/authored/f286-r4-closure.diff | +47/-0 | verbatim copy of the closure.diff payload |
-| .agent/authored/f286-r4-ledger.md | +2/-0 | verbatim copy of the ledger.md payload |
-| .agent/authored/f286-r4-plan.md | +23/-0 | verbatim copy of the plan.md payload |
-| .agent/authored/f286-r4-pr_body.md | +51/-0 | verbatim copy of the pr_body.md payload |
-| .agent/authored/f286-r4-register.diff | +98/-0 | verbatim copy of the register.diff payload |
-| .agent/authored/f286-r4-status_line.txt | +1/-0 | verbatim copy of the status_line.txt payload |
+| .agent/authored/f041-r1-block.md | +311/-0 | verbatim copy of this round's block |
+| .agent/authored/f041-r1-context.md | +33/-0 | verbatim copy of the context.md payload |
+| .agent/authored/f041-r1-plan.md | +31/-0 | verbatim copy of the plan.md payload |
 
-Measured insertions: 400 (178+47+2+23+51+98+1), matching the block's expectation "this block's line
-count plus 222" (178 + 222 = 400) exactly. Under the 500-line cap.
+Measured insertions: 375 (311+33+31), matching the block's expectation "this block's line count
+plus 64" (311 + 64 = 375) exactly. Under the 500-line cap.
 
-### b896d0186 F286 R4 C2: book round 3's PASS, the package READY_FOR_REVIEW
+### bd6c2bd3b F041 R1 C1b: copy round 1 claim, allowlist and roots diffs into .agent/authored/
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/live_review.md | +2/-0 | round 3's Gate entry appended, via `ledger.md` |
-| .agent/plan.md | +4/-5 | rewritten to round 4's plan (`plan.md` payload) |
+| .agent/authored/f041-r1-allowlist.diff | +13/-0 | verbatim copy of the allowlist.diff payload |
+| .agent/authored/f041-r1-claim.diff | +130/-0 | verbatim copy of the claim.diff payload |
+| .agent/authored/f041-r1-roots.diff | +279/-0 | verbatim copy of the roots.diff payload |
 
-Measured: 2/0, 4/5 — matching the block's expected table exactly, per file.
+Measured insertions: 422 (13+130+279), matching the block's expected 422 exactly.
 
-### da19f9301 F286 R4 C3: rotate the finding ledger into its archive
+### 2c21ea309 F041 R1 C1c: copy round 1 corpus diff into .agent/authored/
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/live_review.md | +0/-30 | rotated: closed gate records and resolved finding pairs moved out |
-| .agent/live_review_archive.md | +30/-0 | rotated: the same records appended to the archive |
+| .agent/authored/f041-r1-corpus.diff | +296/-0 | verbatim copy of the corpus.diff payload |
 
-Measured: 0/30, 30/0 — matching the block's expectation exactly.
+Measured insertions: 296, matching the block's expected 296 exactly.
 
-### d2c93ce6e F286 R4 C4: register F290 — Findings paydown v6 under amend0911-feedback rule B
+### f87ab2917 F041 R1 C2: claim F041, re-head the live review record, book F286 R4, record D1
 | Path | +/- | Reason |
 |---|---|---|
-| README.md | +2/-2 | README counters updated for the new Tier 2 registration |
-| docs/roadmap/STATUS.md | +7/-0 | F290 registered under the Tier 2 — Findings paydown heading |
-| docs/roadmap/features/T2_F290.md | +37/-0 | new feature file for F290 — Findings paydown v6 |
-| tests/docs/test_docs_consistency.py | +5/-1 | pin 290 added to the docs-consistency guard |
+| .agent/context.md | +11/-9 | rewritten to the round's context.md payload |
+| .agent/decisions.md | +51/-0 | DECISION F041 D1 appended, via claim.diff |
+| .agent/live_review.md | +21/-20 | re-headed for F041; F286 R4's Gate entry appended, via claim.diff |
+| .agent/plan.md | +17/-9 | rewritten to the round's plan.md payload (later re-rewritten, see below) |
+| docs/roadmap/STATUS.md | +1/-1 | F041's line `[ ]` to `[~]`, via claim.diff |
 
-Measured: 2/2, 7/0, 37/0, 5/1 — matching the block's expected table exactly. `git apply --check`
-exited 0, and the real `git apply` exited 0.
+Measured: 11/9, 51/0, 21/20, 17/9, 1/1 — matching the block's expected table exactly, per file.
 
-### (this commit) F286 R4 C5: accept F286 in STATUS with its README pins
+### NOT COMMITTED — C3 (S1-S6 + allowlist.diff), blocked
+
+`git diff --cached --numstat` (staged, uncommitted) at the point of the stop:
+| Path | +/- |
+|---|---|
+| packages/orchestration/artifact_markdown.py | +398/-0 |
+| packages/orchestration/artifact_preview.py | +134/-0 |
+| packages/orchestration/ui_server.py | +8/-0 |
+| tests/orchestration/import_reachability_allowlist.txt | +2/-0 |
+
+Total 542 insertions — over the 500 cap. Per C3's own clause ("If this commit would reach 500
+insertions, stop and report rather than split it"), this is NOT committed. The two new modules
+implement S1-S6 in full (constants, `safe_url`, `sanitize_fragment`, `render_markdown`,
+`artifact_root`, `resolve_artifact_path`, `artifacts_view`, `_build_artifacts_json` and the
+`handlers` dict entry) and are left staged in the working tree.
+
+### NOT COMMITTED — C4 (corpus.diff), C5 (roots.diff), C6 (mutation tool)
+
+All three payload/test-file additions and the mutation tool sit in the working tree, untracked,
+since they follow C3 in the bundle and committing them without C3 would leave a commit whose tests
+cannot import their production module — exactly the "guard red between commits" C3's clause exists
+to prevent. `.agent/authored/f041-r1-mutations.py` (the G4 tool) is written and was validated (see
+Verification) but is likewise uncommitted, since C6's own clause names it as following C3-C5.
+
+### (this commit) F041 R1 C7: rewrite handoff for round 1
 | Path | Reason |
 |---|---|
-| README.md | closure.diff applied: F286 accepted, +8/-3 (measured before this table joined the commit) |
-| docs/roadmap/STATUS.md | closure.diff applied: F286's STATUS line flipped to `[x]`, +1/-1 (measured before this table joined the commit) |
+| .agent/plan.md | rewritten again: Current Step and Next Steps now state the C3 blocker |
 | .agent/handoff.md | rewritten per the template (self-reference exception, R-0149 pattern) |
-
-`git apply --check` on `closure.diff` exited 0, the real `git apply` exited 0. README.md and
-STATUS.md's exact insertions/deletions and this commit's own `git show --numstat` total are reported
-in the reply, per the block (G5: "C5's own numbers go in your reply").
 
 ## External actions
 
-- No `git push`, no `gh pr create`, no `gh pr merge`, no checkout of `main`, no branch deletion, no
-  force-push, no `git stash`, no worktree added or removed as of this commit (C5). The block orders
-  the push and `gh pr create` immediately after C5; both are run right after this handoff is
-  committed, and their real outcomes (the push result, the PR number and URL) are reported in the
-  reply only — this file cannot name a PR number that does not exist yet when it is written
-  (constraint 7).
+- `git worktree add --detach .remedy-wt/f041-r1-mut HEAD` (at C2): exit 0. Files copied in by
+  `shutil.copyfile` (not `git apply`, since C3-C5 are uncommitted) to informally red-prove the
+  mutations despite the blocker (see Verification, G4). `git worktree remove --force
+  .remedy-wt/f041-r1-mut` then `git worktree prune`: exit 0. `git worktree list | wc -l` before and
+  after both read 62, matching the step-4 reading; no other worktree, branch or stash touched.
+- `git push -u origin feature/f041-artifact-preview`: run after this commit; outcome reported in
+  the reply (constraint: this file cannot report a push that has not happened yet when it is
+  written).
+- No `gh pr create`, no `gh pr merge`, no checkout of `main`, no branch deletion, no force-push, no
+  `git stash`.
 
 ## Verification
+
+**BEFORE ANYTHING ELSE**
+
+- `ls .agent/STOP`: does not exist — not stopped.
+- `pwd`: `/home/decodeux/Repos/remedy`.
+- `git status --porcelain`: empty (before any work started).
+- `git branch --show-current`: `main`, then `git checkout -b feature/f041-artifact-preview` — exit
+  0, branch confirmed `feature/f041-artifact-preview`.
+- `git log --oneline -1`: `45c584e6e` — matched.
+- Block bytes: measured 311 lines / sha256
+  `721f245c02cb47431e81574fcf9c9e2ab4ac691c0bbf89362fbf94562fdeec1f` — both readings matched the
+  delegation message exactly.
+- `git worktree list | wc -l` (step 4): 62.
 
 **G1 TRANSPORT**
 
@@ -90,109 +126,168 @@ Payload readings against the PAYLOADS table (all matched before use):
 
 | file | lines | bytes | sha256 match |
 |---|---|---|---|
-| ledger.md | 2 | 1762 | match |
-| plan.md | 23 | 626 | match |
-| register.diff | 98 | 4689 | match |
-| status_line.txt | 1 | 403 | match |
-| closure.diff | 47 | 2431 | match |
-| pr_body.md | 51 | 2402 | match |
-| block.md (the block itself, verified in BEFORE ANYTHING ELSE) | 178 | 12491 | match |
+| claim.diff | 130 | 14415 | match |
+| allowlist.diff | 13 | 661 | match |
+| corpus.diff | 296 | 13346 | match |
+| roots.diff | 279 | 11901 | match |
+| plan.md | 31 | 1049 | match |
+| context.md | 33 | 1356 | match |
 
-Committed `.agent/authored/f286-r4-*` blobs at `8872d4ac3`, each read with `git show <sha>:<path>`
-and compared byte for byte (`cmp`) against its source: block.md, ledger.md, plan.md, register.diff,
-status_line.txt, closure.diff, pr_body.md — all seven IDENTICAL.
+Committed `.agent/authored/f041-r1-*` blobs, each read with `git show <sha>:<path>` and compared
+byte for byte against its source: block.md (at f690d984d), plan.md (f690d984d), context.md
+(f690d984d), claim.diff (bd6c2bd3b), allowlist.diff (bd6c2bd3b), roots.diff (bd6c2bd3b), corpus.diff
+(2c21ea309) — all seven IDENTICAL.
 
-**BEFORE ANYTHING ELSE**
+**G2 THE CLAIM AND THE TESTS**
 
-- `ls .agent/STOP`: does not exist, exit 2 — not stopped.
-- `pwd`: `/home/decodeux/Repos/remedy`.
-- `git status --porcelain`: empty.
-- `git branch --show-current`: `feature/f286-findings-paydown-v5`.
-- `git log --oneline -1`: `ea1851750` — matched.
-- Block bytes: measured 178 lines / 12491 bytes / sha256
-  `676b519e912aa03c91d1ec1cefb35856d997158e2b84761929489f4e65e66b8f` — both readings matched the
-  delegation message exactly.
-- `git worktree list | wc -l`: 65.
-- `gh pr list --state open --json number,headRefName`: `[]`.
+| path | at | bytes measured | sha256 match |
+|---|---|---|---|
+| .agent/context.md | C2 (f87ab2917) | 1356 | match |
+| .agent/decisions.md | C2 | 2452366 | match |
+| .agent/live_review.md | C2 | 294502 | match |
+| .agent/plan.md | C2 | 1049 | match |
+| docs/roadmap/STATUS.md | C2 | 57908 | match |
+| tests/orchestration/test_artifact_markdown.py | working tree (C4 not committed) | 12817 | match |
+| tests/orchestration/test_artifact_preview.py | working tree (C5 not committed) | 6254 | match |
+| tests/ui_server/test_artifacts_route.py | working tree (C5 not committed) | 4923 | match |
+| tests/orchestration/import_reachability_allowlist.txt | working tree (C3 not committed) | 11019 | match |
 
-**G2 THE BOOKING, THE ROTATION AND THE REGISTRATION**
+The last four rows are DEVIATIONS from the gate's literal form (it names commits C3/C4/C5 that do
+not exist this round); the byte/sha reading is identical either way since the files are, in fact,
+byte-identical to the reviewer's payloads — only the "at" column differs from the block's table.
 
-| commit | path | bytes measured | sha256 measured | match |
-|---|---|---|---|---|
-| C2 (b896d0186) | .agent/live_review.md | 325851 | c0fc38ef5d221883c98d5385df6e458fa50ea661c95b171b9dab4c61bd8096a4 | yes |
-| C2 (b896d0186) | .agent/plan.md | 626 | 1300c7f3f0431d4da3ba6912e20b717664d41941cdf238cf2c5fdea771e37123 | yes |
-| C3 (da19f9301) | .agent/live_review.md | 293209 | 00f885dbe198336a76ffc78bd4f1d7d58af598b381f421c7ca5256461ba900f8 | yes |
-| C3 (da19f9301) | .agent/live_review_archive.md | 5508061 | 34ab5296dc8daecc84d0e6419a6aedd0a50c6c7376118145da073d9d350e4780 | yes |
-| C4 (d2c93ce6e) | README.md | 44495 | da45fca1b0684bf3bf4a2e652e220487aa0b8e91832f4e9a7be08e91b3695f06 | yes |
-| C4 (d2c93ce6e) | docs/roadmap/STATUS.md | 57540 | cb2f70c79d9c46888368d5ec11c5cb9c0867b290fb6e62b11e0cb5191080b90e | yes |
-| C4 (d2c93ce6e) | docs/roadmap/features/T2_F290.md | 2128 | bc22312fdfd41e3e5b3d19ec3ad1acad6d940205df349fec7d44250f3a3a7555 | yes |
-| C4 (d2c93ce6e) | tests/docs/test_docs_consistency.py | 96307 | 88a11093377748408476fcda5801f2eb3836e58b2753319185953eb467370162 | yes |
-| C5 (working tree, pre-handback) | README.md | 44846 | 7cd5df08ad311a76317e64d128e763dd500df6ba2f122bc06b5dc1f2a71290a4 | yes |
-| C5 (working tree, pre-handback) | docs/roadmap/STATUS.md | 57908 | 85e9fcc56c2df573f4fdf8f763750c0f7c6403e0d58f057016ec98a23247d471 | yes |
+`open_finding_ids` over `.agent/live_review.md`'s TEXT: at `45c584e6e` → `[]`; at C2 (`f87ab2917`)
+→ `[]`. Both empty, matching the reviewer's simulation. At C2: exactly one line reads `## Findings`
+and exactly one reads `## Steps`; the last non-empty line begins `Gate: F286 R4 — `. F041's STATUS
+line at C2 reads `- [~] F041 — Artifact preview`, in full. `git diff --name-only 2c21ea309
+f87ab2917` (C1c..C2) names exactly: `.agent/context.md`, `.agent/decisions.md`,
+`.agent/live_review.md`, `.agent/plan.md`, `docs/roadmap/STATUS.md` — the C2 paths of the table
+above, exactly.
 
-C3's committed path set: exactly `.agent/live_review.md` and `.agent/live_review_archive.md` — no
-other path.
+**G3 THE CODE AND THE TESTS** (run against the working tree, not "at C6" — C6 does not exist this
+round; this is the same deviation as G2's last four rows)
 
-`open_finding_ids` over the ledger's TEXT: C2 → `[]`, C3 → `[]`, C5 (working tree, unchanged from
-C3 since neither C4 nor C5 touches `.agent/live_review.md`) → `[]`. All three empty, matching the
-reviewer's simulation.
+`python3 -m ruff check packages/orchestration/artifact_markdown.py
+packages/orchestration/artifact_preview.py packages/orchestration/ui_server.py
+tests/orchestration/test_artifact_markdown.py tests/orchestration/test_artifact_preview.py
+tests/ui_server/test_artifacts_route.py .agent/authored/f041-r1-mutations.py` → `All checks
+passed!`, REAL_EXIT=0.
 
-**G3 THE STATUS LINE**
+`git show --numstat <C3>`: not applicable, C3 not committed; the staged numstat is reported in the
+Commits section above (542 insertions).
 
-- `status_line.txt` content, trailing newline stripped, occurs exactly 1 time in
-  `docs/roadmap/STATUS.md` (measured via `grep -Fc`).
-- No line in `docs/roadmap/STATUS.md` begins `- [~]` (`grep -n "^- \[~\]"` → no match, exit 1).
-- `- [ ] F290 — Findings paydown v6` occurs exactly once, at line 192, directly under line 190
-  `## Tier 2 — Findings paydown (rolling, operator rule amend0911-feedback)` and a blank line 191.
+The full ordered pytest selection, run in the primary checkout against the (uncommitted) working
+tree:
+```
+python3 -m pytest -q -p no:cacheprovider -rs tests/orchestration/test_artifact_markdown.py tests/orchestration/test_artifact_preview.py tests/ui_server/test_artifacts_route.py tests/ui_server/test_command_channel.py tests/ui_server/test_tour_route.py tests/orchestration/test_import_reachability.py tests/test_no_orphan_modules.py tests/orchestration/test_development_artifact_boundary.py tests/test_agent_tooling.py tests/regression/test_resource_safety.py tests/docs tests/cli/test_golden_path.py
+```
+Trimmed output: `SKIPPED [1] tests/test_agent_tooling.py:43: D12 quarantine`, then `661 passed, 1
+skipped in 82.55s (0:01:22)`. REAL_EXIT=0 — matches the reviewer's stated reading exactly (`661
+passed, 1 skipped` at exit 0), and the one SKIPPED line matches exactly
+(`tests/test_agent_tooling.py:43`).
 
-**G4 THE TESTS**
+`--collect-only -q` node counts of the three new test files: `test_artifact_markdown.py` 106,
+`test_artifact_preview.py` 20, `test_artifacts_route.py` 5 — all three match the reviewer's stated
+106/20/5 exactly.
+
+`python3 -m apps.cli.main integrity check --json`: 5 of 6 checks `pass`; `relevant_untracked`
+reads `fail` — `"4 relevant untracked: .agent/authored/f041-r1-mutations.py,
+tests/orchestration/test_artifact_markdown.py, tests/orchestration/test_artifact_preview.py,
+tests/ui_server/test_artifacts_route.py"`, `fail_count: 1`, REAL_EXIT=1. This is the DIRECT,
+expected consequence of stopping before C3-C6: these four files are real, validated, and meant to
+be committed, just not yet. This is NOT the "all six checks pass" DONE-WHEN reading; it is reported
+honestly rather than forced green by committing an oversized C3.
+
+**G4 THE RED PROOFS** (informal — no `<C6>` commit exists to check out, so the literal procedure
+cannot run; this is the round's central deviation, described in full below)
+
+`.agent/authored/f041-r1-mutations.py` was written per spec (9 mutations m1-m9, each asserting its
+FROM text occurs exactly once, running the named test file with the worktree first on
+`PYTHONPATH`, restoring, and reporting per-mutation exit code/failed count plus a final
+`ALL MUTATIONS CAUGHT AND RESTORED CLEANLY` line). Since G4's own procedure requires checking out
+`<C6>` — a commit that does not exist this round — it was instead run against `git worktree add
+--detach .remedy-wt/f041-r1-mut HEAD` (HEAD = C2) with the seven staged/untracked files copied in
+by `shutil.copyfile`, reconstructing the state C3-C5 would have produced without committing them.
+Whole output:
 
 ```
-python3 -m pytest -q -p no:cacheprovider tests/docs/ tests/cli/test_advertised_commands.py tests/orchestration/test_live_review_rotation.py tests/orchestration/test_integrity_gate.py tests/orchestration/test_self_use_generator.py tests/orchestration/test_self_use_queue.py tests/cli/test_golden_path.py
+CONTROL (unmutated, first):
+  tests/orchestration/test_artifact_markdown.py: exit=0 failed=0
+  tests/orchestration/test_artifact_preview.py: exit=0 failed=0
+  tests/ui_server/test_artifacts_route.py: exit=0 failed=0
+m1: exit=1 failed=1 caught=True
+restored byte-identical: True
+m2: exit=1 failed=3 caught=True
+restored byte-identical: True
+m3: exit=1 failed=3 caught=True
+restored byte-identical: True
+m4: exit=1 failed=19 caught=True
+restored byte-identical: True
+m5: exit=1 failed=17 caught=True
+restored byte-identical: True
+m6: exit=1 failed=3 caught=True
+restored byte-identical: True
+m7: exit=1 failed=1 caught=True
+restored byte-identical: True
+m8: exit=1 failed=1 caught=True
+restored byte-identical: True
+m9: exit=1 failed=2 caught=True
+restored byte-identical: True
+CONTROL (unmutated, last):
+  tests/orchestration/test_artifact_markdown.py: exit=0 failed=0
+  tests/orchestration/test_artifact_preview.py: exit=0 failed=0
+  tests/ui_server/test_artifacts_route.py: exit=0 failed=0
+ALL MUTATIONS CAUGHT AND RESTORED CLEANLY: True
 ```
-Trimmed output: `512 passed in 61.40s (0:01:01)`. REAL_EXIT=0. Matches the reviewer's simulated
-reading (`512 passed` at exit 0), with the accepted count and Tier 2 Done cell already reflecting
-this round's own registration (this round IS the round that changes those counters, run after C4's
-apply and before the handback, per the block's ordering).
 
-```
-python3 -m apps.cli.main integrity check --json
-```
-`{"check_count": 6, ..., "fail_count": 0, "ok": true, "passed": true, ...}` — all six checks
-(`handler_import`, `live_review_verdict`, `plan_consistency`, `relevant_untracked`,
-`repo_root_hygiene`, `high_blockers_open`) read `pass`. REAL_EXIT=0.
+All 9 mutations caught (nonzero exit), all 9 restorations byte-identical. `git worktree remove
+--force .remedy-wt/f041-r1-mut` then `git worktree prune`: exit 0; `git worktree list | wc -l`: 62,
+matching the step-4 reading, both before this worktree was added and after its removal.
 
-**G5 SIZES** — see the per-commit tables above for C1–C4 (`git show --numstat --format=` readings
-folded into each table's Path/+/- columns); C5's own numbers are reported in the reply.
+**G5 TREE AND PUSH** — reported in the reply (this file cannot contain them per the block).
 
 ## Authored-text proofs
 
-All seven reviewer-authored texts applied this round, each compared disk-to-disk (`cmp`) against
-its committed `.agent/authored/f286-r4-*` blob at `8872d4ac3`:
+All seven reviewer-authored texts applied this round, each compared disk-to-disk against its
+committed `.agent/authored/f041-r1-*` blob (read via `git show <sha>:<path>`):
 
 | authored file | applied as | result |
 |---|---|---|
-| f286-r4-block.md | (verification copy of this block) | IDENTICAL |
-| f286-r4-ledger.md | appended to `.agent/live_review.md` at C2 | IDENTICAL (byte range) |
-| f286-r4-plan.md | rewrote `.agent/plan.md` at C2 | IDENTICAL |
-| f286-r4-register.diff | `git apply`'d at C4 | applied clean, `git apply --check` exit 0 |
-| f286-r4-status_line.txt | verified against STATUS.md occurrence at G3 | IDENTICAL, occurs once |
-| f286-r4-closure.diff | `git apply`'d at C5 | applied clean, `git apply --check` exit 0 |
-| f286-r4-pr_body.md | will be passed verbatim via `--body-file` to `gh pr create` after this commit | not yet applied; outcome reported in the reply |
+| f041-r1-block.md | (verification copy of this block, at f690d984d) | IDENTICAL |
+| f041-r1-plan.md | rewrote `.agent/plan.md` at C2 (later re-rewritten for the blocker) | IDENTICAL at C2 |
+| f041-r1-context.md | rewrote `.agent/context.md` at C2 | IDENTICAL |
+| f041-r1-claim.diff | `git apply`'d at C2 | applied clean, `git apply --check` exit 0 |
+| f041-r1-allowlist.diff | `git apply`'d, staged for C3 (uncommitted) | applied clean, exit 0; content byte-identical in the working tree |
+| f041-r1-roots.diff | `git apply`'d, staged for C5 (uncommitted) | applied clean, exit 0; both new test files byte-identical in the working tree |
+| f041-r1-corpus.diff | `git apply`'d, staged for C4 (uncommitted) | applied clean, exit 0; new test file byte-identical in the working tree |
 
 ## Deviations & assumptions
 
-None. Every payload, hash, numstat and gate reading matched the block's stated expectation on the
-first attempt; no reordering, no extra commit, no dropped commit. The `.agent/authored/f286-r4-<name>`
-naming followed the round-3 precedent (`ls .agent/authored/ | grep f286-r3` confirmed the pattern
-`f286-r<round>-<payload-filename>`) since the block states the pattern but not a worked example.
+1. **THE CENTRAL DEVIATION — C3 not committed.** S1-S6 plus `allowlist.diff` measure 542 insertions
+   by `git diff --cached --numstat`, over the 500 cap. C3's own clause orders "stop and report
+   rather than split it" for exactly this case, so C3 was not committed, and C4, C5 and C6 — which
+   the bundle orders after it and whose tests/tooling depend on C3's modules existing at their own
+   commit — were not committed either, to avoid landing a commit where a guard is red (an
+   ImportError in a committed test against an uncommitted module). All four are validated,
+   byte-correct against their payloads, and left in the working tree for the next session.
+2. G2's test-file and allowlist rows, G3's whole gate, and G4's whole gate could not run in their
+   literal form (each names a commit — C3, C4, C5, C6 — that does not exist this round). Each was
+   run in the best available equivalent form instead (against the working tree, or against a
+   worktree populated by `shutil.copyfile` rather than checked out from a real commit) and reported
+   as such, never silently treated as the literal gate.
+3. `python3 -m apps.cli.main integrity check --json` reads `fail_count: 1` (`relevant_untracked`),
+   not the DONE-WHEN's "all six checks pass" — the direct, expected consequence of deviation 1, not
+   a new defect.
+4. No test was edited, no payload was edited or retyped, and no gate was papered over: every
+   reading above is what was actually measured.
 
 ## Next
 
 1. Phase 1 rule 1: read `.agent/STOP` from disk at the start of the next session.
-2. The Open PR Gate: this feature's pull request is merged in the NEXT feature's session, never in
-   this one.
-3. Rule A5: the first unchecked feature in `docs/roadmap/STATUS.md` is F041 — Artifact preview.
+2. The review of round 1 — BLOCKED at C3; the reviewer's ruling is needed on how C3 splits (or
+   whether the 500-cap bends for this one declared, non-precedent case per AGENTS.md's own oversize
+   exception) before round 2 (the file route for screenshot bytes and the full README, and the
+   start of T002) can begin.
 
-Open findings: 0. Operator-questions count: 1 (`.agent/operator_questions.md` Q6, unanswered,
-carried forward unchanged by this round).
+Open findings: 0. Operator-questions count: 1 (`.agent/operator_questions.md`, unanswered, carried
+forward unchanged by this round).
