@@ -81,6 +81,7 @@ changed when they were exported.
 Public API::
 
     plan_reclaim(root, *, now=None, orphans=False, stale_ttl_days=None) -> ReclaimPlan
+    reclaim_preview_bytes(root, *, stale_ttl_days, now=None) -> int
     apply_reclaim(plan) -> ReclaimOutcome
     export_reclaim_json(plan, outcome=None) -> dict
     child_deletion_refusal(path, root, *, data_class=None) -> (reason, detail)
@@ -476,6 +477,25 @@ def _plan_class(
             job_id=job_id, job_state=state, age_days=_age_days(child.path, now),
             bytes=size, files=files, reason=kind,
         ))
+
+
+def reclaim_preview_bytes(root: Path | str, *, stale_ttl_days: float,
+                          now: float | None = None) -> int:
+    """Bytes ``remedy data reclaim --orphans --stale`` would free under ``root``. Reads only.
+
+    `remedy doctor core` weighs this against ``data.reclaim_warn_gb``. It judges the
+    job-keyed class directories alone, with the same rules :func:`plan_reclaim` applies,
+    because sizing every durable child as the full preview does would walk the whole
+    data root on every doctor run.
+    """
+    root_path = Path(root)
+    at = time.time() if now is None else now
+    candidates: list[ReclaimCandidate] = []
+    refusals: list[ReclaimRefusal] = []
+    for class_name in sorted(_class_dir_names()):
+        _plan_class(class_name, os.fspath(root_path / class_name), root_path, at,
+                    candidates, refusals, True, stale_ttl_days)
+    return sum(c.bytes for c in candidates)
 
 
 def child_deletion_refusal(path: str, root: Path, *,
