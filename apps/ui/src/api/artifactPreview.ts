@@ -235,6 +235,11 @@ function escapeAttributeValue(value: string): string {
 export function readmeCockpitHtml(
   html: string, images: readonly ImageArtifact[], request: ArtifactRequest,
 ): string {
+  // A recognised image is placed behind a MARKER, printable ASCII a real README could not spell
+  // as this exact run, rather than its final tag: the broad removal pass below has to run AFTER
+  // this replacement (S1's own stated order), and without a marker it would delete the very
+  // `<img …>` this function just built, mistaking it for one of the "other shapes" it exists to
+  // drop.
   const finals: string[] = [];
   const withPlaceholders = html.replace(README_IMG_PATTERN, (_match, src: string, alt: string) => {
     const decodedSrc = decodeReadmeImageSrc(src);
@@ -244,10 +249,10 @@ export function readmeCockpitHtml(
     }
     const address = escapeAttributeValue(artifactFilePath(request, "evidence", found.path));
     const index = finals.push(`<img src="${address}" alt="${alt}" loading="lazy">`) - 1;
-    return `\u0000${index}\u0000`;
+    return `@@artifact-image-${index}@@`;
   });
   const withoutStray = withPlaceholders.replace(STRAY_IMG_PATTERN, "");
-  return withoutStray.replace(/\u0000(\d+)\u0000/g, (_match, index: string) => finals[Number(index)]);
+  return withoutStray.replace(/@@artifact-image-(\d+)@@/g, (_match, index: string) => finals[Number(index)]);
 }
 
 /** A screenshot's caption: its last path segment without its own suffix, with every run of
