@@ -10,17 +10,19 @@ names (`docs/roadmap/features/T2_F286.md`, DECISION F286 D1).
 
 ## Current Step
 
-ROUND 1: claim F286, re-head the live review record, book F039's round
-13, record DECISION F286 D1 with the slice list, and land T001 (R-1104:
-the staleness catalog's config-key check leaves out a backticked span
-whose last segment is a file extension).
+ROUND 2, the closure sequence's integration-gate round: book round 1
+with R-1104's resolution, take the self-use reading, write the Built
+State and the checklist consolidation, and run the feature's one full
+suite on the tree that ships.
 
 ## Next Steps
 
-1. The closure sequence: the integration gate with the one full-suite
-   run, the evidence and the review package, then the close, which
-   registers the next findings paydown.
+1. The evidence round: the booking of round 2, the evidence bundle and
+   the review package.
+2. The closing round: the booking, the ledger rotation, the next
+   findings paydown registered, F286 accepted in STATUS with its README
+   pins, and the pull request.
 
 ## Risks
 
-Open findings: 1 — R-1104, owned by F286.
+Open findings: 0 once round 2's booking lands.
