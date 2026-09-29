@@ -36,7 +36,8 @@ def runtime_verb_argv(verb: str, root: Path) -> list[str]:
 
 
 def run_runtime_verb(verb: str, root: Path) -> VerbResult:
-    """Run ``remedy runtime <verb>`` against ``root`` and read back its envelope.
+    """Run one of ``remedy runtime serve``, ``probe`` or ``stop`` against ``root``
+    (whichever ``verb`` names) and read back its envelope.
 
     Runs from the Remedy checkout itself (``parents[2]`` of this module: this file is
     ``packages/orchestration/preview_runner.py``, so its checkout is two directories
