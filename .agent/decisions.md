@@ -25556,3 +25556,43 @@ HOW TO REVERSE: delete `packages/orchestration/project_cockpit.py`, its test fil
 line in `tests/orchestration/import_reachability_allowlist.txt`, remove both routes and their
 builders from `packages/orchestration/ui_server.py` and the walk entries it added to
 `tests/ui_server/test_command_channel.py`, and delete this paragraph.
+
+## DECISION F042 D2 — the client's project seam is one pure module with its doors in `remedyApi.ts`: it decodes the project envelopes, names their paths, reads and writes `?project=`, picks the active project from the address, then the opened job's own project, then the server's default, and lets a switch apply only while it is the latest; the server gains `/api/jobs/<id>/project` so the cockpit knows which project it opened (2026-09-29)
+
+CONTEXT: DECISION F042 D1 (6) orders T002: the client's project context, the loaders keyed by
+project, the switcher and the switch-mid-fetch fixtures. Measured by the reviewer at `2a678367`:
+the client reads only `job` and `token` from its address in `apps/ui/src/RemedyApp.tsx`, every
+loader in `apps/ui/src/api/remedyApi.ts` is keyed by job, and every door there takes one injected
+fetcher and one decoder and never throws; the zoom's deep link lives in
+`apps/ui/src/components/graph/zoomDeepLink.ts` as `focus`, `level` and `tab`, written with
+`history.replaceState`; nothing tells the client which project the job it opened belongs to, and
+`remedy job list` labels a job `unscoped`, `orphaned` or with its project.
+
+CHOSEN: (1) THE SERVER gains `job_project_view` in `packages/orchestration/project_cockpit.py`
+and the `project` entry of `do_GET`'s endpoint dict: a job's scope, `project`, `unscoped` or
+`orphaned`, with the project's list entry when it has one. (2) THE SEAM is
+`apps/ui/src/api/projectScope.ts`, pure: decoders for the three envelopes that refuse a wrong
+version and read every absent value as its own absence, an unmeasured cost staying null; the
+three paths; `projectFromSearch`; `searchForProjectSwitch`, which drops `job`, `job_id` and the
+zoom's parameters, because they name a job of the project being left, sets `project`, and sets
+`job` when the new project has one; `resolveActiveProject`; `switcherVisible`, true only with
+more than one project; and `createSwitchGate` with `switchProject`, under which only the latest
+switch applies, so an answer for a project the reader left, or left and came back to, is
+dropped. (3) THE DOORS are `loadProjectsView`, `loadProjectSummary` and `loadJobProject` in
+`remedyApi.ts`, shaped like the digest door. (4) THE TESTS are the reviewer's:
+`apps/ui/src/api/projectScope.test.ts` for the rules and the switch fixtures, and
+`tests/ui_contracts/test_project_scope_door.py`, which holds every project interface of the
+client to exactly the keys the server's own dicts carry. (5) THE ORDER: the next round mounts the
+seam: a provider in `RemedyApp.tsx` that re-keys the shell by project and job so no panel keeps
+the old project's state, and the switcher in the header; the round after lands T003.
+
+ALTERNATIVES: a full page load on every switch, rejected because the feature file asks for one
+context flip and names the switch during a fetch as the case to test; keeping the zoom's
+parameters across a switch, rejected because they name a node of the job being left; a
+project argument on the dashboard route, rejected because the dashboard is a job's contract and
+the job's project is a separate, smaller answer.
+
+HOW TO REVERSE: delete `apps/ui/src/api/projectScope.ts`, its test file and
+`tests/ui_contracts/test_project_scope_door.py`, remove the project doors and their import from
+`apps/ui/src/api/remedyApi.ts`, remove `job_project_view` and its tests and the `project` entry
+with its builder from `packages/orchestration/ui_server.py`, and delete this paragraph.

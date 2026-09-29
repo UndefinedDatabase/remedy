@@ -11,15 +11,15 @@ cards, a project switcher in the header, and deep links that carry
 
 ## Current Step
 
-ROUND 1: claim F042, re-head the live review record, book F041's round 9,
-register R-1107, record DECISION F042 D1, and land T001: the project list
-and the per-project summary in `packages/orchestration/project_cockpit.py`
-with `/api/projects` and `/api/projects/<id>/summary`.
+ROUND 2: book round 1, record DECISION F042 D2, and land T002's seam: the
+server's `/api/jobs/<id>/project`, the pure client module
+`apps/ui/src/api/projectScope.ts` with its switch gate, and the project
+doors in `apps/ui/src/api/remedyApi.ts`, against the reviewer's tests.
 
 ## Next Steps
 
-1. T002: the client's project context, the loaders keyed by project, the
-   header switcher and the switch-mid-fetch fixtures.
+1. Mount the seam: the project provider in `RemedyApp.tsx`, the shell
+   re-keyed by project and job, and the header switcher.
 2. T003: the home grid, the cards, the empty and single-project states,
    deep links and the end-to-end run.
 3. The closure sequence.
