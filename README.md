@@ -26,13 +26,13 @@ verification commands. If something is unproven, Remedy says so instead of guess
 
 ## Status
 
-115 of 290 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
+116 of 290 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
 
 | Tier | Name | Done | Total |
 |------|------|-----:|------:|
 | 0 | Foundation & Trust Core | 16 | 16 |
 | 1 | Self-Build Bootstrap | 22 | 22 |
-| 2 | Minimal Self-Build Runtime | 38 | 40 |
+| 2 | Minimal Self-Build Runtime | 39 | 40 |
 | 3 | Full Token Economy & Autonomy | 6 | 27 |
 | 4 | Memory & Learning | 1 | 17 |
 | 5 | Operator Cockpit | 32 | 36 |
@@ -254,7 +254,12 @@ task picks up the model's earlier conversation when it is started again, where
 the model supports that; and a check on the review package no longer mistakes
 ordinary test names for secret keys. Remedy wrote that last repair itself, in
 the first of its end-of-feature self-repair runs whose change was accepted and
-kept).
+kept),
+F286 findings paydown v5 (the one review finding that was open when it began
+was repaired with evidence, and none was added: the check that compares the
+settings names written in the guides with the settings Remedy really has no
+longer mistakes a file name such as story.html for a setting, while it still
+reports a setting name that does not exist).
 
 Accepted in Tier 3 so far:
 F106 session resume instead of rebuild (repair rounds resume the original
