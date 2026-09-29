@@ -50,7 +50,7 @@ def _cmd_data_usage(*, json_output: bool = False) -> None:
 
 
 def _cmd_data_reclaim(*, apply_it: bool = False, json_output: bool = False,
-                      orphans: bool = False, stale: bool = False) -> None:
+                      orphans: bool = False) -> None:
     """Preview, or with ``apply_it`` remove, the data root's reclaimable scratch.
 
     The preview is the DEFAULT and it deletes nothing. ``--apply`` removes exactly
@@ -63,29 +63,22 @@ def _cmd_data_reclaim(*, apply_it: bool = False, json_output: bool = False,
     ``apply_it``: the preview is still the default, so ``--orphans`` on its own prints
     a wider preview and deletes nothing at all.
 
-    ``stale`` widens the plan by the terminal jobs' copies whose newest change is older
-    than ``data.staging_ttl_days`` (DECISION amend0929 D1); without it every terminal
-    copy is refused as ``stale_not_requested``.
-
     EXIT CODE (DECISION F276 D3 (e)): 0, including when paths were refused — a refusal
     is the guarded answer the operator asked for. 1 only when a deletion was ATTEMPTED
     and failed, which is a loud failure and not a report.
     """
-    from packages.orchestration.config import get_config
     from packages.orchestration.data_paths import resolve_data_root
     from packages.orchestration.data_reclaim import apply_reclaim, plan_reclaim
 
     root = resolve_data_root()
-    ttl = float(get_config().get("data.staging_ttl_days")) if stale else None
-    plan = plan_reclaim(root, orphans=orphans, stale_ttl_days=ttl)
+    plan = plan_reclaim(root, orphans=orphans)
     outcome = apply_reclaim(plan) if apply_it else None
-    _print_reclaim(plan, outcome, json_output=json_output, orphans=orphans, stale=stale)
+    _print_reclaim(plan, outcome, json_output=json_output, orphans=orphans)
     if outcome is not None and outcome.had_failure:
         _sys.exit(1)
 
 
-def _print_reclaim(plan, outcome, *, json_output: bool, orphans: bool = False,
-                   stale: bool = False) -> None:
+def _print_reclaim(plan, outcome, *, json_output: bool, orphans: bool = False) -> None:
     """Render one reclaim plan and its outcome. Prints; never decides an exit code."""
     from packages.orchestration.data_reclaim import ORPHAN_JOB_STATE, export_reclaim_json
 
@@ -146,12 +139,6 @@ def _print_reclaim(plan, outcome, *, json_output: bool, orphans: bool = False,
             print(f"    {len(unresolved)} of those are job_unresolved "
                   f"({format_data_bytes(sum(r.bytes for r in unresolved))}) — re-run "
                   f"with --orphans to reclaim the ones no record owns any more")
-    if not stale:
-        kept = [r for r in refusals if r.reason == "stale_not_requested"]
-        if kept:
-            print(f"    {len(kept)} of those are finished jobs' copies "
-                  f"({format_data_bytes(sum(r.bytes for r in kept))}) — re-run with "
-                  f"--stale to reclaim the ones past data.staging_ttl_days")
 
     if plan.unreclaimed:
         print("  Not reclaimed — reclaim addresses ephemeral classes only:")
@@ -172,6 +159,5 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
         apply_it=getattr(args, "apply", False),
         json_output=getattr(args, "json", False),
         orphans=getattr(args, "orphans", False),
-        stale=getattr(args, "stale", False),
     ),
 }

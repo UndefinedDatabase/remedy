@@ -151,8 +151,8 @@
 
    Staging copies (operator amendment amend0929-context-hygiene,
    2026-09-29): in the round that builds the evidence bundle the worker
-   also runs `remedy data reclaim --orphans --stale` as a preview, then
-   the same command with `--apply`, and the handback records the
+   also runs `remedy data reclaim --orphans` as a preview, then
+   `remedy data reclaim --orphans --apply`, and the handback records the
    previewed total, the freed total and every refused path with its
    reason. When the preview lists no candidate, the worker skips the
    `--apply` and the handback records the empty reading instead. A
