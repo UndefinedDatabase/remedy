@@ -1,0 +1,362 @@
+diff --git a/apps/ui/src/api/termSearch.test.ts b/apps/ui/src/api/termSearch.test.ts
+new file mode 100644
+index 000000000..3a9cd9e8b
+--- /dev/null
++++ b/apps/ui/src/api/termSearch.test.ts
+@@ -0,0 +1,82 @@
++// F043 T003 — the '?' panel's pure rules (DECISION F043 D3).
++import { describe, expect, it } from "vitest";
++import { TERM_CATALOG } from "./terminology";
++import type { TermEntry } from "./terminology";
++import { TERM_PLACES, isHelpShortcut, searchTermEntries, termPlace } from "./termSearch";
++
++function entry(title: string, body: string): TermEntry {
++  return { title, body, source: "docs/x.md", anchor: "x" };
++}
++
++const SMALL: Readonly<Record<string, TermEntry>> = {
++  "b.two": entry("Planned", "Not started yet."),
++  "a.one": entry("Planned", "Tasks that have not started."),
++  "c.three": entry("Live", "Receiving events as they happen."),
++};
++
++describe("searchTermEntries", () => {
++  it("keeps every entry for an empty or blank query, sorted by title and then key", () => {
++    const want = ["c.three", "a.one", "b.two"];
++    expect(searchTermEntries(SMALL, "").map((row) => row.key)).toEqual(want);
++    expect(searchTermEntries(SMALL, "   ").map((row) => row.key)).toEqual(want);
++  });
++
++  it("matches the title or the body, ignoring case", () => {
++    expect(searchTermEntries(SMALL, "LIVE").map((row) => row.key)).toEqual(["c.three"]);
++    expect(searchTermEntries(SMALL, "tasks").map((row) => row.key)).toEqual(["a.one"]);
++  });
++
++  it("keeps only entries that hold every word of the query", () => {
++    expect(searchTermEntries(SMALL, "planned started").map((row) => row.key)).toEqual(["a.one", "b.two"]);
++    expect(searchTermEntries(SMALL, "planned events").map((row) => row.key)).toEqual([]);
++  });
++
++  it("does not search the key or the source", () => {
++    expect(searchTermEntries(SMALL, "three")).toEqual([]);
++    expect(searchTermEntries(SMALL, "docs")).toEqual([]);
++  });
++
++  it("lists the real catalog whole, and finds the decision inbox by its urgency", () => {
++    expect(searchTermEntries(TERM_CATALOG, "").map((row) => row.key).sort()).toEqual(Object.keys(TERM_CATALOG).sort());
++    expect(searchTermEntries(TERM_CATALOG, "urgent").map((row) => row.key)).toEqual(["panel.decisions"]);
++  });
++});
++
++describe("termPlace", () => {
++  it("places every catalog entry, so a new family cannot enter the panel without a place", () => {
++    const unplaced = Object.keys(TERM_CATALOG).filter((key) => termPlace(key) === "");
++    expect(unplaced).toEqual([]);
++  });
++
++  it("tells the two entries titled Done apart", () => {
++    expect(termPlace("metric.done")).toBe("Metrics bar");
++    expect(termPlace("task.done")).toBe("Task list");
++  });
++
++  it("answers nothing for a family the table does not name, an inherited name included", () => {
++    expect(termPlace("fixture.x")).toBe("");
++    expect(termPlace("toString.x")).toBe("");
++    expect(Object.keys(TERM_PLACES).sort()).toEqual(["agent", "graph", "metric", "panel", "phase", "status", "task"]);
++  });
++});
++
++describe("isHelpShortcut", () => {
++  it("opens on a question mark from the page or an ordinary element", () => {
++    expect(isHelpShortcut("?", null)).toBe(true);
++    expect(isHelpShortcut("?", { tagName: "DIV", isContentEditable: false })).toBe(true);
++    expect(isHelpShortcut("?", { tagName: "button" })).toBe(true);
++  });
++
++  it("does not open while the person types into a field", () => {
++    expect(isHelpShortcut("?", { tagName: "INPUT" })).toBe(false);
++    expect(isHelpShortcut("?", { tagName: "textarea" })).toBe(false);
++    expect(isHelpShortcut("?", { tagName: "SELECT" })).toBe(false);
++    expect(isHelpShortcut("?", { tagName: "DIV", isContentEditable: true })).toBe(false);
++  });
++
++  it("opens on no other key", () => {
++    expect(isHelpShortcut("/", null)).toBe(false);
++    expect(isHelpShortcut("h", null)).toBe(false);
++    expect(isHelpShortcut("Escape", null)).toBe(false);
++  });
++});
+diff --git a/apps/ui/src/api/terminology.test.ts b/apps/ui/src/api/terminology.test.ts
+index 8bf229e28..4eab35bb1 100644
+--- a/apps/ui/src/api/terminology.test.ts
++++ b/apps/ui/src/api/terminology.test.ts
+@@ -27,14 +27,15 @@ describe("the explanation catalog's entries", () => {
+   it("holds exactly the terms the shipped surfaces render", () => {
+     expect(Object.keys(TERM_CATALOG).sort()).toEqual([
+       "agent.live",
+-      "blocked.task",
+       "graph.scrubbed",
++      "metric.cost",
+       "metric.done",
+       "metric.open",
+       "metric.planned",
+       "metric.progress",
+       "metric.proof",
+       "metric.tests",
++      "metric.tokens",
+       "panel.activity",
+       "panel.agent_now",
+       "panel.decisions",
+@@ -50,6 +51,7 @@ describe("the explanation catalog's entries", () => {
+       "status.live",
+       "status.reconnecting",
+       "status.replay",
++      "task.blocked",
+       "task.done",
+       "task.in_progress",
+       "task.partially_applied",
+@@ -131,8 +133,19 @@ describe("the spot goldens", () => {
+   });
+ });
+ 
++describe("the basis golden", () => {
++  it("explains the cost tile's estimate mark as T5_F022 defines the basis", () => {
++    expect(termEntry("metric.cost")).toEqual({
++      title: "Cost",
++      body: "What this job has spent so far; the bar measures it against the job's budget limit. A ~ before the figure means the price is estimated; without it the figure is actual.",
++      source: "docs/roadmap/features/T5_F022.md",
++      anchor: "a '~' prefix plus tooltip whenever the basis is estimated",
++    });
++  });
++});
++
+ describe("the whole catalog", () => {
+-  it("words every entry exactly as DECISIONS F043 D1 and D2 wrote it", () => {
++  it("words every entry exactly as DECISIONS F043 D1 to D3 wrote it", () => {
+     expect(TERM_CATALOG).toEqual({
+       "status.live": {
+         title: "Live",
+@@ -236,6 +249,18 @@ describe("the whole catalog", () => {
+         source: "packages/orchestration/ui_server.py",
+         anchor: "Counts only (total changes vs verified).",
+       },
++      "metric.tokens": {
++        title: "Tokens",
++        body: "How many tokens this job's model calls have used so far, by role. The count is an estimate.",
++        source: "docs/roadmap/features/T5_F022.md",
++        anchor: "(`token_usage`) is an estimate",
++      },
++      "metric.cost": {
++        title: "Cost",
++        body: "What this job has spent so far; the bar measures it against the job's budget limit. A ~ before the figure means the price is estimated; without it the figure is actual.",
++        source: "docs/roadmap/features/T5_F022.md",
++        anchor: "a '~' prefix plus tooltip whenever the basis is estimated",
++      },
+       "task.done": {
+         title: "Done",
+         body: "This task has finished.",
+@@ -248,7 +273,7 @@ describe("the whole catalog", () => {
+         source: "apps/ui/src/api/remedyApi.ts",
+         anchor: "text.includes(\"running\") || text.includes(\"progress\")) return \"current\";",
+       },
+-      "blocked.task": {
++      "task.blocked": {
+         title: "Blocked",
+         body: "This task stopped: it failed, or something blocked it.",
+         source: "apps/ui/src/api/remedyApi.ts",
+diff --git a/apps/ui/src/components/term/termAudit.test.ts b/apps/ui/src/components/term/termAudit.test.ts
+index 37737a3d6..834320259 100644
+--- a/apps/ui/src/components/term/termAudit.test.ts
++++ b/apps/ui/src/components/term/termAudit.test.ts
+@@ -8,6 +8,7 @@
+ import { createElement } from "react";
+ import { renderToStaticMarkup } from "react-dom/server";
+ import { describe, expect, it } from "vitest";
++import { costMetricOf } from "../../api/costMetric";
+ import { buildDecisionCardModel } from "../../api/decisionCard";
+ import type { FeedRow } from "../../api/feedRow";
+ import { normalizeApiFailure } from "../../api/remedyApi";
+@@ -72,8 +73,8 @@ function panelFixture() {
+   };
+ }
+ 
+-/** The metrics bar's eight tiles: the six plain ones, which carry a term, and the token tile,
+- *  whose own breakdown tooltip is the one it keeps this round. */
++/** The metrics bar's tiles, every one of which carries a term; the token and cost tiles show
++ *  their breakdown in it (DECISION F043 D3). */
+ const METRICS: RemedyMetric[] = [
+   { key: "open", label: "Open", value: 1 },
+   { key: "planned", label: "Planned", value: 1 },
+@@ -82,6 +83,7 @@ const METRICS: RemedyMetric[] = [
+   { key: "tests", label: "Tests", value: 3, state: "pass" },
+   { key: "proof", label: "Proof", value: 1, suffix: "/2" },
+   { key: "tokens", label: "Tokens", value: 1200, tooltip: { builder: 1200 } },
++  { key: "cost", label: "Cost", value: "—", cost: costMetricOf({ spent_usd: 0.42, limit_usd: 2, basis: { cost: "estimated" } }) },
+ ];
+ 
+ function renderPanel(): string {
+@@ -144,13 +146,14 @@ describe("the term audit over the shipped surfaces", () => {
+   it("finds exactly the terms the surfaces are built with", () => {
+     expect(collectDataTerms(renderSurfaces())).toEqual([
+       "agent.live",
+-      "blocked.task",
++      "metric.cost",
+       "metric.done",
+       "metric.open",
+       "metric.planned",
+       "metric.progress",
+       "metric.proof",
+       "metric.tests",
++      "metric.tokens",
+       "panel.activity",
+       "panel.agent_now",
+       "panel.decisions",
+@@ -166,6 +169,7 @@ describe("the term audit over the shipped surfaces", () => {
+       "status.live",
+       "status.reconnecting",
+       "status.replay",
++      "task.blocked",
+       "task.done",
+       "task.in_progress",
+       "task.partially_applied",
+@@ -209,7 +213,7 @@ describe("the terms of the right panel and the metrics bar", () => {
+     expect(words).toEqual([
+       ["task.done", "Done"],
+       ["task.in_progress", "In Progress"],
+-      ["blocked.task", "Blocked"],
++      ["task.blocked", "Blocked"],
+       ["task.planned", "Planned"],
+       ["task.partially_applied", "Partially applied"],
+     ]);
+@@ -225,13 +229,14 @@ describe("the terms of the right panel and the metrics bar", () => {
+     expect(panel).toMatch(/<span [^>]*data-term="agent\.live"[^>]*>Live<\/span>/);
+   });
+ 
+-  it("gives the six plain metrics' labels their terms and leaves the token tile's label bare", () => {
++  it("gives every tile's label its term, and no tile opens a tooltip or takes focus of its own", () => {
+     const bar = renderToStaticMarkup(createElement(TopMetricsBar, { metrics: METRICS }));
+     for (const [key, label] of [["open", "Open"], ["planned", "Planned"], ["done", "Done"],
+-      ["progress", "Progress"], ["tests", "Tests"], ["proof", "Proof"]]) {
++      ["progress", "Progress"], ["tests", "Tests"], ["proof", "Proof"], ["tokens", "Tokens"], ["cost", "Cost"]]) {
+       expect(bar, key).toMatch(new RegExp(`<span [^>]*data-term="metric\\.${key}"[^>]*>${label}</span>`));
+     }
+-    expect(bar).toMatch(/<div class="[^"]*label[^"]*">Tokens<\/div>/);
++    expect(bar).not.toContain('role="tooltip"');
++    expect(bar).not.toMatch(/<article [^>]*tabindex/);
+   });
+ 
+   it("a term inside a control writes its key and takes no focus", () => {
+diff --git a/apps/ui/src/components/term/termPanel.test.ts b/apps/ui/src/components/term/termPanel.test.ts
+new file mode 100644
+index 000000000..0c425e4b1
+--- /dev/null
++++ b/apps/ui/src/components/term/termPanel.test.ts
+@@ -0,0 +1,41 @@
++// F043 T003 — the '?' panel's markup, rendered with `renderToStaticMarkup` (DECISION F043 D3).
++import { createElement } from "react";
++import { renderToStaticMarkup } from "react-dom/server";
++import { describe, expect, it } from "vitest";
++import { TERM_CATALOG } from "../../api/terminology";
++import { searchTermEntries, termPlace } from "../../api/termSearch";
++import { TERM_PANEL_LABEL, TERM_SEARCH_LABEL, TermPanel, termPanelEmptyLine } from "./TermPanel";
++
++function renderPanel(): string {
++  return renderToStaticMarkup(createElement(TermPanel, { onClose: () => {} }));
++}
++
++describe("the '?' panel", () => {
++  it("is a dialog named Terms with a labelled search field", () => {
++    const markup = renderPanel();
++    expect(TERM_PANEL_LABEL).toBe("Terms");
++    expect(TERM_SEARCH_LABEL).toBe("Search the terms");
++    expect(markup).toMatch(/^<section [^>]*role="dialog"[^>]*aria-label="Terms"[^>]*data-ui="term-panel"/);
++    expect(markup).toMatch(/<input [^>]*type="search"[^>]*aria-label="Search the terms"/);
++  });
++
++  it("lists every catalog entry once, in the search's order, with its title, place and body", () => {
++    const markup = renderPanel();
++    const listed = [...markup.matchAll(/data-term-entry="([^"]+)"><dt>([^<]*)<\/dt><dd [^>]*>([^<]*)<\/dd><dd>([^<]*)<\/dd>/g)];
++    expect(listed.map((row) => row[1])).toEqual(searchTermEntries(TERM_CATALOG, "").map((row) => row.key));
++    for (const [, key, title, place, body] of listed) {
++      const unescape = (text: string) => text.replace(/&#x27;/g, "'").replace(/&quot;/g, "\"").replace(/&amp;/g, "&");
++      expect(unescape(title), key).toBe(TERM_CATALOG[key].title);
++      expect(place, key).toBe(termPlace(key));
++      expect(unescape(body), key).toBe(TERM_CATALOG[key].body);
++    }
++  });
++
++  it("carries no data-term, so it can never stand in for a surface in the audit", () => {
++    expect(renderPanel()).not.toMatch(/\sdata-term="/);
++  });
++
++  it("words an empty search plainly", () => {
++    expect(termPanelEmptyLine("  zebra ")).toBe("No term matches “zebra”.");
++  });
++});
+diff --git a/tests/ui_contracts/test_design_drift.py b/tests/ui_contracts/test_design_drift.py
+index e3e9f2c3d..6c8a895b1 100644
+--- a/tests/ui_contracts/test_design_drift.py
++++ b/tests/ui_contracts/test_design_drift.py
+@@ -125,8 +125,11 @@ class TestFiveMetrics:
+         assert "tests:" in tsx and "proof:" in tsx  # icon map covers new metrics
+ 
+     def test_token_tooltip_keyboard_accessible(self):
++        # DECISION F043 D3: the token and cost breakdowns open in the label's term, which takes
++        # keyboard focus in Term.tsx, in place of the tooltip the whole tile used to open.
+         content = METRICS_TSX.read_text()
+-        assert "tabIndex" in content
++        assert 'tokens: "metric.tokens"' in content
++        assert "detail={metricDetail(m)}" in content
+ 
+ 
+ class TestNoCLIInPrimaryUX:
+diff --git a/tests/ui_contracts/test_term_panel_wiring.py b/tests/ui_contracts/test_term_panel_wiring.py
+new file mode 100644
+index 000000000..534f191c4
+--- /dev/null
++++ b/tests/ui_contracts/test_term_panel_wiring.py
+@@ -0,0 +1,44 @@
++"""The '?' panel's wiring in the shell and the right panel (F043 T003, DECISION F043 D3).
++
++The panel's own behaviour is held by `termPanel.test.ts` and `termSearch.test.ts`; this file
++pins where the shell mounts it and what opens it, reading the COMMENT-STRIPPED sources as the
++other wiring contracts do (R-0584), with the stripper the hook contract owns.
++"""
++from __future__ import annotations
++
++from pathlib import Path
++
++from .test_brain_stream_hook import strip_ts_comments
++
++REPO_ROOT = Path(__file__).resolve().parent.parent.parent
++UI_SRC = REPO_ROOT / "apps" / "ui" / "src"
++SHELL = UI_SRC / "components" / "shell" / "RemedyShell.tsx"
++PANEL = UI_SRC / "components" / "panels" / "RightLivePanel.tsx"
++
++
++def _line(code: str, needle: str) -> str:
++    start = code.index(needle)
++    return code[start:code.index("\n", start)]
++
++
++def test_the_shell_mounts_the_panel_once_outside_main():
++    code = strip_ts_comments(SHELL.read_text())
++    assert code.count("<TermPanel ") == 1
++    assert code.index("<TermPanel ") > code.index("</main>")
++    assert "{termsOpen && (<TermPanel onClose={() => setTermsOpen(false)} />)}" in code
++
++
++def test_the_question_mark_opens_it_through_the_one_rule():
++    code = strip_ts_comments(SHELL.read_text())
++    assert code.count("isHelpShortcut(") == 1
++    assert "if (isHelpShortcut(event.key, target)) {" in code
++    assert 'window.addEventListener("keydown", onKey);' in code
++    assert 'window.removeEventListener("keydown", onKey);' in code
++
++
++def test_the_right_panel_offers_the_terms_button():
++    shell = strip_ts_comments(SHELL.read_text())
++    assert "onOpenTerms={() => setTermsOpen(true)}" in _line(shell, "<RightLivePanel")
++    panel = strip_ts_comments(PANEL.read_text())
++    assert "onOpenTerms?: () => void" in panel
++    assert 'onClick={onOpenTerms} aria-keyshortcuts="?">Terms</button>' in panel
