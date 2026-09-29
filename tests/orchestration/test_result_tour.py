@@ -30,10 +30,13 @@ from packages.orchestration.result_tour import (
     TOUR_GENERATOR_FALLBACK,
     TOUR_GENERATOR_SUMMARY_ROLE,
     TOUR_NO_SOUND_STOPS,
+    TOUR_PREVIEW_REF,
     TOUR_SCHEMA,
     TOUR_VIEW_KEYS,
     ResultTourError,
     TourAnchorContext,
+    _project_previewable,
+    anchor_problem,
     build_fallback_tour,
     build_tour_prompt,
     collect_tour_context,
@@ -469,7 +472,7 @@ def test_two_builds_over_the_same_records_are_equal():
 
 def test_the_schema_and_anchor_kinds_match_the_design():
     assert TOUR_SCHEMA == "remedy.tour.v1"
-    assert TOUR_ANCHOR_KINDS == ("node", "diff", "evidence", "command")
+    assert TOUR_ANCHOR_KINDS == ("node", "diff", "evidence", "command", "preview")
 
 
 # ---------------------------------------------------------------------------
@@ -1167,3 +1170,153 @@ def test_a_model_stop_whose_body_ends_with_a_recorded_path_and_a_full_stop_is_ke
 
     assert tour["dropped"] == []
     assert [s["title"] for s in tour["stops"]] == ["How the run ended", "What changed"]
+
+
+# ---------------------------------------------------------------------------
+# DECISION F041 D6 — the tour's `preview` anchor and "See it running" stop.
+# ---------------------------------------------------------------------------
+
+
+def _write_runtime_config(root: Path, *, cmd: list[str]) -> None:
+    """A minimal `.remedy/config.toml` naming *cmd* as the project's runtime."""
+    cfg_dir = root / ".remedy"
+    cfg_dir.mkdir(parents=True, exist_ok=True)
+    cmd_toml = ", ".join(json.dumps(part) for part in cmd)
+    (cfg_dir / "config.toml").write_text(
+        f"[runtime]\ncmd = [{cmd_toml}]\n", encoding="utf-8")
+
+
+def test_project_previewable_false_for_an_empty_repo_path_even_when_cwd_has_a_runtime(
+        monkeypatch, tmp_path):
+    cwd_project = tmp_path / "cwd_project"
+    cwd_project.mkdir()
+    _write_runtime_config(cwd_project, cmd=["true"])
+    monkeypatch.chdir(cwd_project)
+
+    job = _make_job(tasks=[TaskEntry(title="t")], repo_path="")
+    assert _project_previewable(job) is False
+
+
+def test_project_previewable_false_for_a_folder_with_nothing_to_run(tmp_path):
+    empty_project = tmp_path / "empty_project"
+    empty_project.mkdir()
+
+    job = _make_job(tasks=[TaskEntry(title="t")], repo_path=str(empty_project))
+    assert _project_previewable(job) is False
+
+
+def test_project_previewable_false_for_a_path_that_is_not_a_directory(tmp_path):
+    not_a_dir = tmp_path / "not_a_dir.txt"
+    not_a_dir.write_text("x", encoding="utf-8")
+
+    job = _make_job(tasks=[TaskEntry(title="t")], repo_path=str(not_a_dir))
+    assert _project_previewable(job) is False
+
+
+def test_project_previewable_true_for_a_folder_with_a_runtime_section(tmp_path):
+    runnable = tmp_path / "runnable_project"
+    runnable.mkdir()
+    _write_runtime_config(runnable, cmd=["true"])
+
+    job = _make_job(tasks=[TaskEntry(title="t")], repo_path=str(runnable))
+    assert _project_previewable(job) is True
+
+
+def test_anchor_problem_over_preview_previewable_not_previewable_and_other_ref():
+    previewable_context = TourAnchorContext(previewable=True)
+    assert anchor_problem({"kind": "preview", "ref": TOUR_PREVIEW_REF}, previewable_context) == ""
+
+    not_previewable_context = TourAnchorContext(previewable=False)
+    reason = anchor_problem({"kind": "preview", "ref": TOUR_PREVIEW_REF}, not_previewable_context)
+    assert "does not resolve" in reason
+
+    other_ref_reason = anchor_problem({"kind": "preview", "ref": "other"}, previewable_context)
+    assert "does not resolve" in other_ref_reason
+
+
+def test_a_previewable_jobs_fallback_tour_places_the_preview_stop_after_how_to_run_it(tmp_path):
+    runnable = tmp_path / "runnable_project"
+    runnable.mkdir()
+    _write_runtime_config(runnable, cmd=["true"])
+    job = _make_job(
+        state=RunState.COMPLETED,
+        tasks=[TaskEntry(title="write the module", status=RunState.COMPLETED)],
+        metadata={"target_repo": "/tmp/repo", "cycle_terminal_status": "all_green"},
+        repo_path=str(runnable),
+    )
+    _write_diff(str(job.job_id), _one_file_diff("packages/orchestration/foo.py"))
+    write_final_report(job)
+    _write_gate(str(job.job_id), [_make_check("c1", command="python3 -m pytest -q")],
+               released=True)
+
+    tour = build_fallback_tour(job)
+    assert tour_problems(tour) == []
+    assert tour["dropped"] == []
+    assert tour["stops"] == [
+        {
+            "title": "How the run ended",
+            "body": "State: completed; terminal status: all_green.",
+            "anchor": {"kind": "evidence", "ref": "report.md"},
+        },
+        {
+            "title": "What changed in packages/",
+            "body": "1 changed file (+1 −0): packages/orchestration/foo.py (+1 −0)",
+            "anchor": {"kind": "diff", "ref": "packages/orchestration/foo.py"},
+        },
+        {
+            "title": "How to run it",
+            "body": "The Definition of Done ran: python3 -m pytest -q",
+            "anchor": {"kind": "command", "ref": "python3 -m pytest -q"},
+        },
+        {
+            "title": "See it running",
+            "body": "Open Results in the cockpit and press Start app to try the change "
+                    "yourself; the link appears once the app answers.",
+            "anchor": {"kind": "preview", "ref": TOUR_PREVIEW_REF},
+        },
+        {
+            "title": "Definition of Done",
+            "body": "1 of 1 checks passed; the gate released the job.",
+            "anchor": {"kind": "evidence", "ref": "dod_result.json"},
+        },
+    ]
+
+
+def test_a_previewable_job_with_ten_areas_still_yields_exactly_eight_stops(tmp_path):
+    runnable = tmp_path / "runnable_project"
+    runnable.mkdir()
+    _write_runtime_config(runnable, cmd=["true"])
+    job = _make_job(
+        state=RunState.COMPLETED,
+        tasks=[TaskEntry(title="t", status=RunState.COMPLETED)],
+        metadata={"target_repo": "/tmp/repo", "cycle_terminal_status": "all_green"},
+        repo_path=str(runnable),
+    )
+    paths = [f"area{i}/file.py" for i in range(10)]
+    _write_diff(str(job.job_id), _multi_file_diff(paths))
+    _write_gate(str(job.job_id), [_make_check("c1", command="run-cmd")], released=True)
+
+    tour = build_fallback_tour(job)
+    assert tour_problems(tour) == []
+    assert tour["dropped"] == []
+    stops = tour["stops"]
+    assert len(stops) == MAX_TOUR_STOPS
+    titles = [s["title"] for s in stops]
+    assert titles[-3:] == ["How to run it", "See it running", "Definition of Done"]
+    assert stops[-2]["anchor"] == {"kind": "preview", "ref": TOUR_PREVIEW_REF}
+
+
+def test_the_prompt_holds_preview_app_for_a_previewable_context_and_is_byte_equal_otherwise():
+    shared_fields = dict(
+        task_ids=("t1",), diff_files=(("a.py", 1, 0),),
+        evidence_files=("report.md",), run_commands=("pytest",),
+    )
+    previewable_context = TourAnchorContext(**shared_fields, previewable=True)
+    not_previewable_context = TourAnchorContext(**shared_fields, previewable=False)
+    source_text = "state: completed"
+
+    prompt_previewable = build_tour_prompt(source_text, previewable_context)
+    prompt_not_previewable = build_tour_prompt(source_text, not_previewable_context)
+
+    assert f"preview {TOUR_PREVIEW_REF}" in prompt_previewable
+    assert prompt_previewable.replace(f"preview {TOUR_PREVIEW_REF}\n", "", 1) == prompt_not_previewable
