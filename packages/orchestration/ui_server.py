@@ -1810,6 +1810,12 @@ def _build_project_summary_json(selector: str) -> tuple[int, dict[str, Any]]:
     return (200, project_summary(project))
 
 
+def _build_job_project_json(job: Any) -> dict[str, Any]:
+    """Build the project one job belongs to (F042 T002, DECISION F042 D2)."""
+    from packages.orchestration.project_cockpit import job_project_view
+    return job_project_view(job)
+
+
 def _build_diagnostics_json(job: Any) -> dict[str, Any]:
     """Build diagnostics-only nodes — Step 167."""
     from packages.orchestration.ui_view_model import build_diagnostics_nodes
@@ -2957,6 +2963,7 @@ class _RemedyHandler(BaseHTTPRequestHandler):
                 "tour": _build_tour_json,
                 "artifacts": _build_artifacts_json,
                 "preview": _build_preview_json,
+                "project": _build_job_project_json,
             }
             handler = handlers.get(endpoint)
             if handler:

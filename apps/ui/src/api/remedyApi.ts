@@ -14,6 +14,8 @@ import { artifactsViewPath, decodeArtifactsView, decodePreviewView, previewViewP
 import type { ArtifactsView, PreviewView } from "./artifactPreview";
 import { decodeChatTurn, chatTurnPath } from "./chatTurn";
 import type { ChatTurnView } from "./chatTurn";
+import { decodeJobProject, decodeProjectSummary, decodeProjectsView, jobProjectPath, projectSummaryPath, projectsViewPath } from "./projectScope";
+import type { JobProject, ProjectSummary, ProjectsView } from "./projectScope";
 import { decodeTaskRunRounds, taskRunRoundsPath } from "./taskRunRounds";
 import type { TaskRunRounds } from "./taskRunRounds";
 import type { PipelineStep, PipelineStepState, RemedyActivityItem, RemedyContinuationSummary, RemedyDashboard, RemedyGraphEdge, RemedyGraphNode, RemedyJourneyItem, RemedyMetric, RemedyNextAction, RemedyPause, RemedyPhase, RemedyPipeline, RemedyPromptKind, RemedyPromptRole, RemedyPromptTraceItem, RemedyPromptTraceSummary, RemedySnapshotSummary, RemedyState, RemedyTaskAttempt, RemedyTaskItem, RemedyTaskSpec, RemedyTaskSpecFields, RemedyTaskSpecs, RemedyTaskSpecVersion, RemedyTimelineEvent, RemedyTimelineEventKind, RemedyTimelinePhase, RemedyVetoEntry, RemedyVetoes } from "./types";
@@ -1110,6 +1112,55 @@ export async function loadChatTurn(
 ): Promise<ChatTurnView | null> {
   try {
     return decodeChatTurn(await fetchPayload(chatTurnPath(request)));
+  } catch {
+    return null;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// The project doors (F042 T002, DECISION F042 D2), shaped exactly like the tour
+// door above: one injected fetcher, one decoder, and no throw. The decoders and
+// the paths they call live in `projectScope.ts`, the pure seam this door wires
+// to the network.
+// ---------------------------------------------------------------------------
+
+/** How a project door reaches the network; a test hands each loader below a fake. */
+export type ProjectFetcher = (path: string) => Promise<unknown>;
+
+/** Read the project list through the single door. NEVER THROWS: a failed read and a list the
+ *  decoder refuses both answer `null`. */
+export async function loadProjectsView(
+  request: { token: string; baseUrl?: string },
+  fetchPayload: ProjectFetcher = fetchJson,
+): Promise<ProjectsView | null> {
+  try {
+    return decodeProjectsView(await fetchPayload(projectsViewPath(request)));
+  } catch {
+    return null;
+  }
+}
+
+/** Read one project's summary card through the single door. NEVER THROWS: a failed read and a
+ *  card the decoder refuses both answer `null`. */
+export async function loadProjectSummary(
+  request: { project: string; token: string; baseUrl?: string },
+  fetchPayload: ProjectFetcher = fetchJson,
+): Promise<ProjectSummary | null> {
+  try {
+    return decodeProjectSummary(await fetchPayload(projectSummaryPath(request)));
+  } catch {
+    return null;
+  }
+}
+
+/** Read the project one job belongs to through the single door. NEVER THROWS: a failed read
+ *  and an envelope the decoder refuses both answer `null`. */
+export async function loadJobProject(
+  request: { jobId: string; token: string; baseUrl?: string },
+  fetchPayload: ProjectFetcher = fetchJson,
+): Promise<JobProject | null> {
+  try {
+    return decodeJobProject(await fetchPayload(jobProjectPath(request)));
   } catch {
     return null;
   }

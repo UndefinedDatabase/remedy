@@ -127,6 +127,26 @@ def find_project(selector: str) -> Any | None:
         return None
 
 
+def job_project_view(job: Any) -> dict[str, Any]:
+    """The project one job belongs to, labelled the way ``remedy job list`` labels a job
+    (F042 T002, DECISION F042 D2): ``unscoped`` for a job with no recorded project,
+    ``orphaned`` for a project id ``find_project`` cannot resolve, and ``project``
+    otherwise, carrying the SAME list entry ``projects_view`` builds for that project.
+    """
+    job_id = str(job.job_id)
+    if not job.project_id:
+        return {"version": PROJECT_COCKPIT_VERSION, "job_id": job_id, "scope": "unscoped", "project": None}
+    project = find_project(job.project_id)
+    if project is None:
+        return {"version": PROJECT_COCKPIT_VERSION, "job_id": job_id, "scope": "orphaned", "project": None}
+    return {
+        "version": PROJECT_COCKPIT_VERSION,
+        "job_id": job_id,
+        "scope": "project",
+        "project": _project_entry(project),
+    }
+
+
 def project_summary(project: Any, now: datetime | None = None) -> dict[str, Any]:
     """One project's card: its scoped jobs, newest result, open decisions summed
     across those jobs, and today's cost, all through readers that already exist
