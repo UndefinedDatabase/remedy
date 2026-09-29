@@ -1,0 +1,54 @@
+diff --git a/docs/roadmap/features/T5_F042.md b/docs/roadmap/features/T5_F042.md
+index 89cc4c99f..29925b387 100644
+--- a/docs/roadmap/features/T5_F042.md
++++ b/docs/roadmap/features/T5_F042.md
+@@ -85,3 +85,49 @@ the architecture line.
+ ## Do not touch
+ Scoping rules/semantics, registry mechanics, per-job SSE contracts.
+ Suggested tests: tests/ui_contracts/test_multi_project.py.
++
++## Built State (F042, 2026-09-29)
++
++What exists on disk at the close of F042, built in six rounds in one session on
++`feature/f042-multi-project-cockpit`, cut from `main` at `4e643440`. Every DECISION named lives in
++`.agent/decisions.md`; every round's verdict in `.agent/live_review.md` or, once rotated, its archive.
++
++**T001 — the project list and the card on the server.** `packages/orchestration/project_cockpit.py`
++is pure composition that writes nothing (DECISION F042 D1). `projects_view` lists every registered
++project by slug with its folder checked when the list is read, a moved or missing folder carrying a
++fix-it that names `remedy project attach`, the default project by the resolution precedence, and the
++jobs no card can show, counted as unscoped or orphaned. `project_summary` answers one card from
++F148's `scoped_jobs`: the jobs that can still run, the newest job's digest state and headline, open
++decisions and their peak urgency summed from each job's own inbox, and cost today from the ledger's
++UTC day with the digest's exactness basis. `/api/projects` and `/api/projects/<uuid-or-slug>/summary`
++serve them. `job_project_view` and `/api/jobs/<id>/project` name a job's project, or say it is
++unscoped or orphaned (D2).
++
++**T002 — the client's project context and the switcher.** `apps/ui/src/api/projectScope.ts` is pure:
++the three decoders, the paths, the address rules, the active project by the address, then the
++opened job's own project, then the server's default, and a switch gate under which only the latest
++switch applies (D2); `remedyApi.ts` carries the three doors. `api/cockpitAddress.ts` reads the page's
++address into four faces, and `RemedyApp.tsx` is its one reader and one writer: a switch or the way
++home pushes, the single-project skip replaces, Back and Forward re-read it, and the shell mounts under
++the project and the job, so no panel, stream or selection survives a switch (D3, D4).
++`components/shell/ProjectProvider.tsx` is the one context; `ProjectSwitcher.tsx` is a native select
++in the brand rail's kicker with "All projects" beside it, shown only with more than one project.
++
++**T003 — the home grid, deep links and the end-to-end run.** An address with only a token opens
++`components/home/HomeGrid.tsx`: a card per project, twelve to a page, drawn by the pure
++`api/homeGrid.ts` with the folder, the fix-it, the last result in its state's colour, active jobs,
++open decisions and cost today in words; one project skips the grid and none invites `remedy init`
++(D4). The dock's Overview opens the grid at every width that shows the rail; a deep link carrying the
++project, the job and the zoom's focus restores all three; and the dashboard's project line counts the
++same jobs as the card (D5). `tests/ui_server/test_multi_project_live.py` holds every card number to
++`remedy status` over the real CLI and a real UI server, and the live browser run committed as
++`.agent/authored/f042-r6-live_*` drives the real stack through the grid, a switch with a panel open,
++Back and the dock (D6).
++
++**Acceptance and edge cases, line by line.** Card numbers equal the scoped sources, by the unit tests
++and the CI test against `remedy status`; a switch leaves no stale data, by the switch gate's fixtures,
++the render harnesses' switch overtaking a slower one and a switch in flight dropped by Back, and the
++live run's panel and stream checks; deep links restore project and view, by the address and zoom
++tests; a single project skips the grid with the switcher hidden; cost today carries its basis and is
++never an unmeasured zero. A moved folder shows its fix-it on the card and is marked in the switcher;
++dozens of projects page by twelve, and the native select answers typing by its own type-ahead.
