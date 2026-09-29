@@ -8,6 +8,7 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
+import { costMetricOf } from "../../api/costMetric";
 import { buildDecisionCardModel } from "../../api/decisionCard";
 import type { FeedRow } from "../../api/feedRow";
 import { normalizeApiFailure } from "../../api/remedyApi";
@@ -72,8 +73,8 @@ function panelFixture() {
   };
 }
 
-/** The metrics bar's eight tiles: the six plain ones, which carry a term, and the token tile,
- *  whose own breakdown tooltip is the one it keeps this round. */
+/** The metrics bar's tiles, every one of which carries a term; the token and cost tiles show
+ *  their breakdown in it (DECISION F043 D3). */
 const METRICS: RemedyMetric[] = [
   { key: "open", label: "Open", value: 1 },
   { key: "planned", label: "Planned", value: 1 },
@@ -82,6 +83,7 @@ const METRICS: RemedyMetric[] = [
   { key: "tests", label: "Tests", value: 3, state: "pass" },
   { key: "proof", label: "Proof", value: 1, suffix: "/2" },
   { key: "tokens", label: "Tokens", value: 1200, tooltip: { builder: 1200 } },
+  { key: "cost", label: "Cost", value: "—", cost: costMetricOf({ spent_usd: 0.42, limit_usd: 2, basis: { cost: "estimated" } }) },
 ];
 
 function renderPanel(): string {
@@ -144,13 +146,14 @@ describe("the term audit over the shipped surfaces", () => {
   it("finds exactly the terms the surfaces are built with", () => {
     expect(collectDataTerms(renderSurfaces())).toEqual([
       "agent.live",
-      "blocked.task",
+      "metric.cost",
       "metric.done",
       "metric.open",
       "metric.planned",
       "metric.progress",
       "metric.proof",
       "metric.tests",
+      "metric.tokens",
       "panel.activity",
       "panel.agent_now",
       "panel.decisions",
@@ -166,6 +169,7 @@ describe("the term audit over the shipped surfaces", () => {
       "status.live",
       "status.reconnecting",
       "status.replay",
+      "task.blocked",
       "task.done",
       "task.in_progress",
       "task.partially_applied",
@@ -209,7 +213,7 @@ describe("the terms of the right panel and the metrics bar", () => {
     expect(words).toEqual([
       ["task.done", "Done"],
       ["task.in_progress", "In Progress"],
-      ["blocked.task", "Blocked"],
+      ["task.blocked", "Blocked"],
       ["task.planned", "Planned"],
       ["task.partially_applied", "Partially applied"],
     ]);
@@ -225,13 +229,14 @@ describe("the terms of the right panel and the metrics bar", () => {
     expect(panel).toMatch(/<span [^>]*data-term="agent\.live"[^>]*>Live<\/span>/);
   });
 
-  it("gives the six plain metrics' labels their terms and leaves the token tile's label bare", () => {
+  it("gives every tile's label its term, and no tile opens a tooltip or takes focus of its own", () => {
     const bar = renderToStaticMarkup(createElement(TopMetricsBar, { metrics: METRICS }));
     for (const [key, label] of [["open", "Open"], ["planned", "Planned"], ["done", "Done"],
-      ["progress", "Progress"], ["tests", "Tests"], ["proof", "Proof"]]) {
+      ["progress", "Progress"], ["tests", "Tests"], ["proof", "Proof"], ["tokens", "Tokens"], ["cost", "Cost"]]) {
       expect(bar, key).toMatch(new RegExp(`<span [^>]*data-term="metric\\.${key}"[^>]*>${label}</span>`));
     }
-    expect(bar).toMatch(/<div class="[^"]*label[^"]*">Tokens<\/div>/);
+    expect(bar).not.toContain('role="tooltip"');
+    expect(bar).not.toMatch(/<article [^>]*tabindex/);
   });
 
   it("a term inside a control writes its key and takes no focus", () => {

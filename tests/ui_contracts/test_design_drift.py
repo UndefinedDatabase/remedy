@@ -125,8 +125,11 @@ class TestFiveMetrics:
         assert "tests:" in tsx and "proof:" in tsx  # icon map covers new metrics
 
     def test_token_tooltip_keyboard_accessible(self):
+        # DECISION F043 D3: the token and cost breakdowns open in the label's term, which takes
+        # keyboard focus in Term.tsx, in place of the tooltip the whole tile used to open.
         content = METRICS_TSX.read_text()
-        assert "tabIndex" in content
+        assert 'tokens: "metric.tokens"' in content
+        assert "detail={metricDetail(m)}" in content
 
 
 class TestNoCLIInPrimaryUX:
