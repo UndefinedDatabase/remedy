@@ -12,16 +12,16 @@ DECISION F041 D1).
 
 ## Current Step
 
-ROUND 3: book round 2 and R-1105's resolution, record DECISION F041 D3,
-and land the preview record and its state machine, the runner of the
-harness's own verbs, and `remedy job preview-start` and `preview-stop`.
+ROUND 4: book round 3 and record DECISION F041 D4, then land the door's
+preview commands, the UI server's preview worker with its revalidation and
+idle stop, the `preview` view that shows a link only while live, and the
+`preview.idle_ttl_seconds` key.
 
 ## Next Steps
 
-1. The door's preview commands, the server-side step acting on their
-   requests, revalidation of a live preview and the idle stop.
-2. T003: the panel, the lightbox and the end-to-end run.
-3. The closure sequence.
+1. T003: the preview panel with the README, the screenshot grid and
+   lightbox, and the app card, per the design reference.
+2. The end-to-end run on a fixture app, then the closure sequence.
 
 ## Risks
 
