@@ -1,96 +1,98 @@
-# Handback — F039, round 8: book round 7's PASS and R-1102's resolution, record D8, land T003's export
+# Handback — F039, round 9: book round 8's PASS, record D9, close T003 (outDir, the zero-network live test, the guide)
 
 ## Session
 
-SESSION 2 of feature F039 · round 8 · rounds so far 8. This session ran round 8 only: booking
-round 7's PASS gate and R-1102's resolution into the ledger, recording DECISION F039 D8, and
-landing T003's export — the story player built a second time as one script and one style sheet
-under `apps/ui/dist/story/`, `remedy job story <id> --export <file>`, and its size budget key
-`story.export_max_bytes`. Context self-assessment: a comfortable margin remained through the
-whole round, including reading every named file before writing code, the real `vite build`, the
-full G4 pytest selection (~3.5 minutes, 3223 passed), and the mutation tool's one complete run
-over 10 mutations; the work was not near its limit.
+SESSION 2 of feature F039 · round 9 · rounds so far 9. This session ran round 9 only: booking
+round 8's PASS gate into the ledger, recording DECISION F039 D9, making the story player's
+second build follow the resolved `outDir` of the cockpit's own build instead of a fixed path,
+proving the exported demo story plays from `file://` with zero network requests over a real
+headless-Chrome session driven through `--remote-debugging-pipe`, and landing the story guide.
+Context self-assessment: a comfortable margin remained through the whole round — reading every
+named file before writing code, deriving the ChromePipe protocol from the block's literal
+description, getting the new live test to pass on its first real run, the full G4 pytest
+selection (~3 minutes, 2249 passed), and the mutation tool's one complete run over 5 mutations —
+the work was not near its limit.
 
-For the operator, in plain words: round 7 is booked PASS and R-1102 is booked resolved. This
-round lands the export half of the story feature: `apps/ui/vite.config.ts` gains a plugin that
-runs a second, focused `vite build` once the cockpit's own build finishes, producing exactly
-`story-player.js` and `story-player.css` under `dist/story/` — a single script and a single
-style sheet with no `import()`, no `fetch()` and no closing tag hidden inside them, because a
-page opened straight from disk (`file://`) can load no module chunk at all. A new page entry
-(`storyPlayerMain.tsx`) reads a job's story out of the exported page's own embedded JSON rather
-than any route, and mounts the same phase bar and story panel the cockpit uses, with no heading
-and no Close button (there is nothing to close). `remedy job story <id> --export <file>` writes
-one self-contained HTML file — the built player, the job's own story payload, and a content
-security policy that allows no network request of any kind — refusing to write anything at all
-when the page would be larger than the new `story.export_max_bytes` key (default 5,000,000
-bytes; refuses whole, never cuts). Ten mutations were made and every one was caught red by
-either the TypeScript or the Python test suite, and each was restored byte-identical afterwards.
+For the operator, in plain words: round 8 is booked PASS. This round makes the story player's
+second build write into whatever folder the cockpit's own build was told to use (so a test can
+build it into its own private temporary folder instead of the shared `apps/ui/dist`), adds a new
+suite test that actually opens an exported demo story in a real, invisible Chrome window and
+checks that the only network request Chrome makes is the page file itself — no telemetry, no
+tracking pixel, nothing — while also exercising the chapter buttons, the keyboard, and the
+Play/Pause toggle, and adds the user-facing guide for the whole story feature. T003 is closed.
 
 ## Range
 
-Review of 73102551c..92593133d
+Review of 83afaaaea..a97dbcad1
 
 ## Commits
 
-### 8d0a0fa1d F039 R8 C1a: copy round 8 block and plan into .agent/authored/
+### e38646976 F039 R9 C1a: copy round 9 block and plan into .agent/authored/
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f039-r8-block.md | +321/-0 | verbatim copy of the block |
-| .agent/authored/f039-r8-plan.md | +28/-0 | verbatim copy of the plan payload |
+| .agent/authored/f039-r9-block.md | +241/-0 | verbatim copy of the block |
+| .agent/authored/f039-r9-plan.md | +28/-0 | verbatim copy of the plan payload |
 
-### 81b36fcc0 F039 R8 C1b: copy round 8 records diff into .agent/authored/
-| Path | +/- | Reason |
-|---|---|---|
-| .agent/authored/f039-r8-records.diff | +61/-0 | verbatim copy of the records payload |
+Measured insertions: 269 (241 + 28), matching the block's expectation exactly.
 
-### 7414c17f3 F039 R8 C2: book round 7 and R-1102, record D8
+### 3779f2d7e F039 R9 C1b: copy round 9 records and docs diffs into .agent/authored/
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/decisions.md | +41/-0 | DECISION F039 D8 (the player's second build and the export page) |
-| .agent/live_review.md | +4/-0 | F039 R7 gate entry (PASS) and R-1102's `Done:` line |
-| .agent/plan.md | +6/-8 | rewritten to round 8's current step |
+| .agent/authored/f039-r9-records.diff | +54/-0 | verbatim copy of the records payload |
+| .agent/authored/f039-r9-docs.diff | +128/-0 | verbatim copy of the docs payload |
 
-### 5eea9119c F039 R8 C3: build the story player as one script and read the story from its page
-| Path | +/- | Reason |
-|---|---|---|
-| apps/ui/src/components/story/StoryPanel.tsx | +3/-3 | S2 (d): `onClose` optional, Escape calls `onClose?.()`, Close button conditional |
-| apps/ui/src/components/story/StoryPlayerApp.module.css | +11/-0 | NEW: S2 (b), the exported page's own root style |
-| apps/ui/src/components/story/StoryPlayerApp.tsx | +20/-0 | NEW: S2 (b), the whole exported app over one `useTimelineScrub` |
-| apps/ui/src/components/story/storyExport.test.ts | +19/-1 | S5 (d): `readEmbeddedStory` tests |
-| apps/ui/src/components/story/storyExport.ts | +24/-0 | S2 (a): `STORY_DATA_ELEMENT_ID`, `readEmbeddedStory` |
-| apps/ui/src/storyPlayerMain.tsx | +23/-0 | NEW: S2 (c), the exported page's own entry |
-| apps/ui/vite.config.ts | +40/-2 | S1: `STORY_PLAYER_OUT_DIR`, `storyPlayerBuild()` plugin |
-| tests/ui_contracts/test_story_player_contract.py | +81/-0 | NEW: S5 (a), the build/page/panel contract |
+Measured insertions: 182 (54 + 128), matching the block's expected 182.
 
-### 0ac5b802f F039 R8 C4: write a job's story as one self-contained page within a size budget
+### b538a4b22 F039 R9 C2: book round 8, record D9
 | Path | +/- | Reason |
 |---|---|---|
-| docs/guides/environment.md | +1/-0 | regenerated: `story.export_max_bytes` row |
-| packages/orchestration/config.py | +10/-0 | `story.export_max_bytes` key, directly after `story.chapter_pause_ms` |
-| packages/orchestration/story_export.py | +125/-2 | S3: `STORY_DATA_ELEMENT_ID`, `STORY_PLAYER_DIR`, `StoryExportError`, `read_story_player`, `render_story_html`, `export_story_html` |
-| tests/orchestration/test_story_export.py | +109/-0 | S5 (b): the player read, the page, the budget, the key |
+| .agent/decisions.md | +36/-0 | DECISION F039 D9 (outDir-following build, the zero-network live test, headless Chrome) |
+| .agent/live_review.md | +2/-0 | F039 R8 gate entry (PASS) |
+| .agent/plan.md | +6/-6 | rewritten to round 9's current step |
 
-### 62ade331d F039 R8 C5: add remedy job story --export
-| Path | +/- | Reason |
-|---|---|---|
-| apps/cli/command_catalog.py | +16/-0 | `job.story` entry, directly after `job.ownership` |
-| apps/cli/commands/__init__.py | +2/-1 | `job_story_cmd` imported and looped over (see Deviations) |
-| apps/cli/commands/job_story_cmd.py | +74/-0 | NEW: S4, `_cmd_job_story` |
-| docs/guides/exit-codes.md | +1/-0 | `remedy job story` row, after the ownership row |
-| tests/cli/test_job_story.py | +129/-0 | NEW: S5 (c) |
-| tests/orchestration/import_reachability_allowlist.txt | +2/-0 | `job_story_cmd` and `story_export` allowlisted |
-| tests/test_no_orphan_modules.py | +0/-2 | `ALLOWED_UNWIRED` entry for `story_export.py` removed (now wired) |
+Measured: 36/0, 2/0, 6/6 — matching the block's expectation exactly.
 
-### 92593133d F039 R8 C6: add the mutation tool for the story export
+### 4e000ec17 F039 R9 C3: build the story player into the resolved outDir
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f039-r8-mutations.py | +188/-0 | NEW: mutation tool for m1-m10 |
+| apps/ui/vite.config.ts | +9/-6 | S1: `STORY_PLAYER_SUBDIR`, `let outDir`, `configResolved`, `path.join(outDir, STORY_PLAYER_SUBDIR)` |
+| tests/ui_contracts/test_story_player_contract.py | +3/-1 | S1: the three replacement literals for the retired `STORY_PLAYER_OUT_DIR` one |
+
+No insertion count was ordered for this commit; measured above.
+
+### 1d580ea40 F039 R9 C4: prove the exported demo story plays from file with no request
+| Path | +/- | Reason |
+|---|---|---|
+| tests/ui_server/test_story_export_file_live.py | +281/-0 | NEW: S2, `ChromePipe`, the module-scoped player-build fixture, and the one live test |
+
+No insertion count was ordered for this commit; measured above (under the 500-line cap).
+
+### 5a4663fbd F039 R9 C5: add the story guide, its index rows and its assumption-log row
+| Path | +/- | Reason |
+|---|---|---|
+| docs/README.md | +2/-0 | quick-find row and the guides-table row for the story guide |
+| docs/guides/story-user-guide-v1.md | +93/-0 | NEW: S3, the story guide |
+| docs/ui/design_reference/assumption_log.md | +1/-0 | S3, the 2026-09-29 F039 row |
+
+Measured: 2/0, 93/0, 1/0 — matching the block's expectation exactly.
+
+### a97dbcad1 F039 R9 C6: add the mutation tool for the zero-network test
+| Path | +/- | Reason |
+|---|---|---|
+| .agent/authored/f039-r9-mutations.py | +180/-0 | NEW: mutation tool for m1-m5 |
+
+No insertion count was ordered for this commit; measured above.
+
+### (this commit) F039 R9 C7: rewrite handoff for round 9
+| Path | Reason |
+|---|---|
+| .agent/handoff.md | rewritten per the template (self-reference exception, R-0149 pattern) |
 
 ## External actions
 
-- `git worktree add --detach .remedy-wt/f039-r8-mut 92593133d` — created for G5. Outcome:
-  success, `HEAD is now at 92593133d`.
-- `git worktree remove .remedy-wt/f039-r8-mut` — outcome: success (no output).
+- `git worktree add --detach .remedy-wt/f039-r9-mut a97dbcad1` — created for G5. Outcome:
+  success, `HEAD is now at a97dbcad1`.
+- `git worktree remove --force .remedy-wt/f039-r9-mut` — outcome: success (no output).
 - `git worktree prune` — outcome: success (no output).
 - `git push origin feature/f039-story-replay-mode` — outcome reported in the reply (per the
   block, G6's readings, including this one, go in the reply rather than this file).
@@ -109,69 +111,69 @@ $ git status --porcelain
 $ git branch --show-current
 feature/f039-story-replay-mode
 $ git log --oneline -1
-73102551c F039 R7 C7: rewrite handoff for round 7
+83afaaaea F039 R8 C7: rewrite handoff for round 8
 ```
-Block bytes (R-0954): measured line count 321 / given 321; measured sha256
-`dd2fd06b4fdeb5aa61077005d0052311cae7a9f949b570095030dcdda8d0fc7f` / given the same — MATCH.
+Block bytes (R-0954): measured line count 241 / given 241; measured sha256
+`5f88d82c94fc7bce6d66e378262228ad2952acdaaff220d34f029680ff1bda05` / given the same — MATCH.
 `git worktree list | wc -l` at step 4: 62.
 
 ### PAYLOADS table
 | file | lines measured/given | bytes measured/given | sha256 match |
 |---|---|---|---|
-| plan.md | 28/28 | 978/978 | match |
-| records.diff | 61/61 | 10360/10360 | match |
+| plan.md | 28/28 | 979/979 | match |
+| records.diff | 54/54 | 10484/10484 | match |
+| docs.diff | 128/128 | 11516/11516 | match |
 
 ### G1 TRANSPORT
-- plan.md: 28 lines, 978 bytes, sha256 `685af5cc9907ee97f112f755f9b5baeff065cf4b78f6e7b98f726409f228e952` — matches PAYLOADS table.
-- records.diff: 61 lines, 10360 bytes, sha256 `c478e03b0ac8180ce0cf5bb4745296c3ce96f101ea3d724554579aab8a23a7b9` — matches PAYLOADS table.
-- `git show 8d0a0fa1d:.agent/authored/f039-r8-block.md` == `.remedy-wt/f039-r8/block.md`: byte-identical (sha256 `dd2fd06b...` both sides).
-- `git show 8d0a0fa1d:.agent/authored/f039-r8-plan.md` == `.remedy-wt/f039-r8-payloads/plan.md`: byte-identical (sha256 `685af5cc...` both sides).
-- `git show 81b36fcc0:.agent/authored/f039-r8-records.diff` == `.remedy-wt/f039-r8-payloads/records.diff`: byte-identical (sha256 `c478e03b...` both sides).
+- plan.md: 28 lines, 979 bytes, sha256 `4be4c6a6f0f0b9fa0bec72dce768df62d0c1964a18b68afae7642458f1fa58b5` — matches PAYLOADS table.
+- records.diff: 54 lines, 10484 bytes, sha256 `a5ebd425b534450f90a3118113c212788931b783894aaa814b45bbd74c3f3a08` — matches PAYLOADS table.
+- docs.diff: 128 lines, 11516 bytes, sha256 `d154d964eb1b646faad6d800b78b4dd4f4c009f78b3fbd4627c1da235dbfe382` — matches PAYLOADS table.
+- `git show e38646976:.agent/authored/f039-r9-block.md` == `.remedy-wt/f039-r9/block.md`: byte-identical (sha256 `5f88d82c...` both sides).
+- `git show e38646976:.agent/authored/f039-r9-plan.md` == `.remedy-wt/f039-r9-payloads/plan.md`: byte-identical (sha256 `4be4c6a6...` both sides).
+- `git show 3779f2d7e:.agent/authored/f039-r9-records.diff` == `.remedy-wt/f039-r9-payloads/records.diff`: byte-identical (sha256 `a5ebd425...` both sides).
+- `git show 3779f2d7e:.agent/authored/f039-r9-docs.diff` == `.remedy-wt/f039-r9-payloads/docs.diff`: byte-identical (sha256 `d154d964...` both sides).
 
-### G2 THE RECORDS
+### G2 THE RECORDS AND THE DOCS
 ```
-$ git apply --check .remedy-wt/f039-r8-payloads/records.diff
+$ git apply --check .remedy-wt/f039-r9-payloads/records.diff
 REAL_EXIT=0
-$ git apply .remedy-wt/f039-r8-payloads/records.diff
+$ git apply .remedy-wt/f039-r9-payloads/records.diff
+REAL_EXIT=0
+$ git apply --check .remedy-wt/f039-r9-payloads/docs.diff
+REAL_EXIT=0
+$ git apply .remedy-wt/f039-r9-payloads/docs.diff
 REAL_EXIT=0
 ```
-At C2 (`7414c17f3`):
+At C2 (`b538a4b22`) and C5 (`5a4663fbd`):
 | path | bytes | sha256 | matches table |
 |---|---|---|---|
-| .agent/decisions.md | 2441634 | a80ec1dfa82bf138db1cbb1808d6cb8acd578874038e71ad0da586baf328fc0d | yes |
-| .agent/live_review.md | 355852 | 1042df3558e251cdf35f251a7a70540525c094dc4f866527aac144329fc9d4ed | yes |
-| .agent/plan.md | 978 | 685af5cc9907ee97f112f755f9b5baeff065cf4b78f6e7b98f726409f228e952 | yes |
+| .agent/decisions.md | 2444903 | a0101f2808fea563ddf7ff824dcf0e15224a902d87aa20e15703c6f9213f99fb | yes |
+| .agent/live_review.md | 358804 | f78932248cfcd84484368be8056bef0db7aec4a01087fb94b03ad69caffdfc62 | yes |
+| .agent/plan.md | 979 | 4be4c6a6f0f0b9fa0bec72dce768df62d0c1964a18b68afae7642458f1fa58b5 | yes |
+| docs/README.md | 20901 | 7a4249bcfb957166ebf958ff6d35b5b7f804e8574738039b908efc01c5967498 | yes |
+| docs/guides/story-user-guide-v1.md | 5325 | 6fdaf8fb8e8a247da02611453d3a692ddd238e59512fdb0966ce36577e0768df | yes |
+| docs/ui/design_reference/assumption_log.md | 27315 | c0b849ed4f46d70a3b10615d1d9c068bebdfe7e79cf6fe0a5f0f9de162de66ab | yes |
 
 `open_finding_ids(text)` over the ledger at C2 = `[]`; `latest_gate_verdict(text)` = `PASS` —
 both match the reviewer's stated readings.
 
-`git diff --name-only 81b36fcc0 7414c17f3`:
-```
-.agent/decisions.md
-.agent/live_review.md
-.agent/plan.md
-```
-Exactly the table's three paths.
-
 ### G3 THE CODE
 ```
-$ python3 -m ruff check packages/orchestration/story_export.py packages/orchestration/config.py apps/cli/commands/job_story_cmd.py apps/cli/commands/__init__.py apps/cli/command_catalog.py tests/ui_contracts/test_story_player_contract.py tests/orchestration/test_story_export.py tests/cli/test_job_story.py .agent/authored/f039-r8-mutations.py
+$ python3 -m ruff check tests/ui_server/test_story_export_file_live.py tests/ui_contracts/test_story_player_contract.py .agent/authored/f039-r9-mutations.py
 All checks passed!
 REAL_EXIT=0
 ```
 
-The plugin of S1, quoted from the commit (`5eea9119c`):
+The plugin of S1, quoted from the commit (`4e000ec17`):
 ```ts
-// F039 T003, DECISION F039 D8 — a page opened from `file://` can load no chunk: the story
-// player is built a second time, once the cockpit's own build closes, as ONE script and ONE
-// style sheet under fixed names, so the export can inline both into a page that needs no
-// server and no module loader.
-export const STORY_PLAYER_OUT_DIR = "dist/story";
-
 function storyPlayerBuild(): Plugin {
+  let outDir = "dist";
   return {
     name: "remedy-story-player",
     apply: "build",
+    configResolved(config) {
+      outDir = path.resolve(config.root, config.build.outDir);
+    },
     async closeBundle() {
       await build({
         configFile: false,
@@ -180,7 +182,7 @@ function storyPlayerBuild(): Plugin {
         logLevel: "warn",
         plugins: [react()],
         build: {
-          outDir: STORY_PLAYER_OUT_DIR,
+          outDir: path.join(outDir, STORY_PLAYER_SUBDIR),
           emptyOutDir: true,
           sourcemap: false,
           copyPublicDir: false,
@@ -201,112 +203,89 @@ function storyPlayerBuild(): Plugin {
 }
 ```
 
-`readEmbeddedStory`, quoted from the commit (`5eea9119c`):
-```ts
-export function readEmbeddedStory(
-  text: string | null,
-): { ok: true; story: StoryExport } | { ok: false; message: string } {
-  if (text === null) {
-    return { ok: false, message: STORY_EXPORT_UNREADABLE_LINE };
-  }
-  try {
-    return decodeStoryExport(JSON.parse(text));
-  } catch {
-    return { ok: false, message: STORY_EXPORT_UNREADABLE_LINE };
-  }
-}
-```
-
-`render_story_html` and `export_story_html`, quoted from the commit (`0ac5b802f`):
+`ChromePipe`, quoted whole from the commit (`1d580ea40`):
 ```python
-def render_story_html(payload: dict[str, Any], script: str, style: str) -> str:
-    """The exported page of DECISION F039 D8 (3): one HTML document with no request of its
-    own. The content security policy allows no `default-src` at all, inline script and style
-    only; the payload is written as JSON with every `<` replaced by `\\u003c`, so a story
-    string that itself reads `</script>` can never close the element early; the built
-    player's script and style are inlined verbatim (`read_story_player` already refused a
-    built player carrying its own closing tag).
+class ChromePipe:
+    """Drives headless Chrome over ``--remote-debugging-pipe``: Chrome reads commands on file
+    descriptor 3 and writes replies on file descriptor 4, each message one JSON object ended
+    by one NUL byte. No websocket-client, no Node driver — the two pipes this class opens are
+    the whole transport.
     """
-    job_id = html.escape(str(payload.get("job_id", "")))
-    payload_json = json.dumps(payload, ensure_ascii=False, sort_keys=True).replace("<", "\\u003c")
-    return (
-        "<!doctype html>\n"
-        '<html lang="en">\n'
-        "<head>\n"
-        '<meta charset="utf-8">\n'
-        '<meta name="viewport" content="width=device-width, initial-scale=1">\n'
-        '<meta http-equiv="Content-Security-Policy" content="default-src \'none\'; '
-        "script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:\">\n"
-        f"<title>Remedy story of job {job_id}</title>\n"
-        f"<style>{style}</style>\n"
-        "</head>\n"
-        "<body>\n"
-        '<div id="root" data-ui="remedy-story"></div>\n'
-        f'<script type="application/json" id="{STORY_DATA_ELEMENT_ID}">{payload_json}</script>\n'
-        f'<script type="module">{script}</script>\n'
-        "</body>\n"
-        "</html>\n"
-    )
 
-
-def export_story_html(job: Any, *, max_bytes: int, player_dir: Path | None = None) -> bytes:
-    """The whole export (DECISION F039 D8): `build_story_payload(job)` rendered around the
-    built player, as UTF-8 bytes. Refuses whole — never cuts a story — when the page is
-    larger than `max_bytes` (`story.export_max_bytes`), naming both numbers, the key and
-    that nothing was written.
-    """
-    script, style = read_story_player(player_dir)
-    payload = build_story_payload(job)
-    page = render_story_html(payload, script, style)
-    data = page.encode("utf-8")
-    if len(data) > max_bytes:
-        raise StoryExportError(
-            "story_too_large",
-            f"The story is {len(data)} bytes, over the `story.export_max_bytes` budget of "
-            f"{max_bytes} bytes; nothing was written.",
+    def __init__(self, chrome: str, profile_dir: Path) -> None:
+        cmd_r, cmd_w = os.pipe()
+        reply_r, reply_w = os.pipe()
+        script = f'exec "$0" "$@" 3<&{cmd_r} 4>&{reply_w}'
+        args = [
+            "--headless=new",
+            "--remote-debugging-pipe",
+            f"--user-data-dir={profile_dir}",
+            "--no-first-run",
+            "--no-default-browser-check",
+            "--window-size=1280,800",
+            "about:blank",
+        ]
+        self._proc = subprocess.Popen(
+            ["bash", "-c", script, chrome, *args],
+            pass_fds=(cmd_r, reply_w),
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
         )
-    return data
-```
+        os.close(cmd_r)
+        os.close(reply_w)
+        self._cmd_w = cmd_w
+        self._reply_r = reply_r
+        self._buffer = b""
+        self._next_id = 1
+        self.session_id: str | None = None
+        self.events: list[dict[str, Any]] = []
 
-`_cmd_job_story`, quoted from the commit (`62ade331d`):
-```python
-def _cmd_job_story(job_id_str: str, export_path: str, *, json_output: bool = False) -> None:
-    from packages.orchestration.pingpong_job import load_job_plan
+    def _read_message(self, deadline: float) -> dict[str, Any]:
+        while b"\0" not in self._buffer:
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                raise TimeoutError("timed out waiting for a reply from Chrome's pipe")
+            ready, _, _ = select.select([self._reply_r], [], [], remaining)
+            if not ready:
+                continue
+            chunk = os.read(self._reply_r, 1 << 16)
+            if not chunk:
+                raise EOFError("Chrome's reply pipe closed before answering")
+            self._buffer += chunk
+        raw, _, self._buffer = self._buffer.partition(b"\0")
+        return json.loads(raw.decode("utf-8"))
 
-    job_id = resolve_job_id_or_fail(job_id_str, json_output=json_output)
-    job = load_job_plan(job_id)
-    if job is None:
-        fail("job_not_found", f"The record of job {job_id} cannot be read.",
-             json_output=json_output, exit_code=EXIT_NOT_READY, job_id=job_id)
+    def send(self, method: str, params: dict[str, Any] | None = None, *, timeout: float = 15.0) -> dict[str, Any]:
+        message_id = self._next_id
+        self._next_id += 1
+        payload: dict[str, Any] = {"id": message_id, "method": method, "params": params or {}}
+        if self.session_id is not None:
+            payload["sessionId"] = self.session_id
+        os.write(self._cmd_w, json.dumps(payload).encode("utf-8") + b"\0")
+        deadline = time.monotonic() + timeout
+        while True:
+            message = self._read_message(deadline)
+            if message.get("id") == message_id:
+                if "error" in message:
+                    raise RuntimeError(f"{method} failed: {message['error']}")
+                return message.get("result", {})
+            self.events.append(message)
 
-    budget = get_config().get("story.export_max_bytes")
-    try:
-        data = export_story_html(job, max_bytes=budget)
-    except StoryExportError as exc:
-        if exc.error == "story_player_missing":
-            fail(exc.error, exc.message, json_output=json_output, exit_code=EXIT_NOT_READY,
-                 job_id=job_id)
-        fail(exc.error, exc.message, json_output=json_output, job_id=job_id)
-
-    target = Path(export_path)
-    try:
-        durable_write(target, data, mode=0o644)
-    except OSError as exc:
-        fail("story_write_failed", f"The story could not be written to {target}: {exc.strerror}",
-             json_output=json_output, job_id=job_id)
-
-    if json_output:
-        emit_ok(job_id=job_id, path=str(target), bytes=len(data), budget_bytes=budget)
-        return
-
-    print(f"Wrote the story of job {job_id} to {target} ({len(data)} bytes). Open it in any "
-          f"browser; it needs no network and no Remedy.")
+    def close(self) -> None:
+        self._proc.terminate()
+        try:
+            self._proc.wait(timeout=10)
+        except subprocess.TimeoutExpired:
+            self._proc.kill()
+            self._proc.wait(timeout=10)
+        os.close(self._cmd_w)
+        os.close(self._reply_r)
 ```
 
 ### G4 THE BUILD AND THE TESTS
 ```
 $ python3 <script running apps/ui/node_modules/.bin/vite build with cwd=apps/ui>
-EXIT= 0
+EXIT 0
 LAST 12 LINES:
 rendering chunks...
 computing gzip size...
@@ -314,34 +293,39 @@ dist/index.html                                  0.41 kB │ gzip:   0.28 kB
 dist/assets/index-D5WfmfJG.css                  69.45 kB │ gzip:  12.82 kB
 dist/assets/diffHighlightGrammars-o9XqnLhb.js    1.70 kB │ gzip:   0.79 kB
 dist/assets/index-345NClaD.js                  722.52 kB │ gzip: 234.18 kB
-✓ built in 2.17s
+✓ built in 2.21s
 
 (!) Some chunks are larger than 500 kB after minification. Consider:
 - Using dynamic import() to code-split the application
 - Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
 - Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
 
-STORY DIR CONTENTS (apps/ui/dist/story/):
-story-player.css 10644 bytes — </script:0 </style:0 import(:0 fetch(:0
-story-player.js 257567 bytes — </script:0 </style:0 import(:0 fetch(:0
+$ ls -la apps/ui/dist/story/
+story-player.css 10644 bytes
+story-player.js 257567 bytes
 ```
-Exactly the two expected files, both counts zero across the board on both. The reviewer's own
-dry run read `story-player.css` at 10671 bytes and `story-player.js` at 257582 bytes; this real
-build in this environment reads 10644 and 257567 — a normal minifier/timestamp variance, not a
-shape difference, and the pass condition (no other file, zero of all four patterns) holds exactly.
+Exactly the two expected files, nothing else.
 
 ```
-$ bash -c 'python3 -m pytest -q -p no:cacheprovider -rs tests/ui_contracts tests/ui_server tests/orchestration/test_story_export.py tests/cli/test_job_story.py tests/cli/test_exit_codes.py tests/test_command_catalog.py tests/test_command_discovery.py tests/test_help_renderer.py tests/test_grouped_cli.py tests/orchestration/test_dead_command_check.py tests/orchestration/test_env_registry.py tests/orchestration/test_config.py tests/test_no_orphan_modules.py tests/test_imports.py tests/orchestration/test_import_reachability.py tests/test_ble001_ratchet.py tests/orchestration/test_durable_write_guard.py tests/test_subprocess_timeouts.py tests/orchestration/test_test_runner.py tests/orchestration/test_live_review_rotation.py tests/orchestration/test_integrity_gate.py tests/orchestration/test_block_lint.py tests/test_agent_tooling.py tests/regression/test_resource_safety.py tests/docs tests/cli/test_golden_path.py 2>&1 | tail -15; echo "REAL_EXIT=${PIPESTATUS[0]}"'
+$ bash -c 'python3 -m pytest -q -p no:cacheprovider -rs tests/ui_contracts tests/ui_server tests/orchestration/test_story_export.py tests/cli/test_job_story.py tests/test_no_orphan_modules.py tests/test_imports.py tests/orchestration/test_import_reachability.py tests/test_ble001_ratchet.py tests/test_subprocess_timeouts.py tests/orchestration/test_live_review_rotation.py tests/orchestration/test_integrity_gate.py tests/orchestration/test_block_lint.py tests/test_agent_tooling.py tests/regression/test_resource_safety.py tests/docs tests/cli/test_golden_path.py 2>&1 | tail -15; echo "REAL_EXIT=${PIPESTATUS[0]}"'
 SKIPPED [1] tests/ui_contracts/test_graph_architecture.py:441: D3 quarantine (F252)
 SKIPPED [1] tests/ui_contracts/test_graph_architecture.py:484: D3 quarantine (F252)
 SKIPPED [1] tests/ui_contracts/test_ux_quality.py:507: D3 quarantine (F252)
 SKIPPED [1] tests/ui_contracts/test_ux_quality.py:543: D3 quarantine (F252)
 SKIPPED [1] tests/test_agent_tooling.py:43: D12 quarantine (F252)
-3223 passed, 5 skipped in 215.27s (0:03:35)
+2249 passed, 5 skipped in 176.10s (0:02:56)
 REAL_EXIT=0
 ```
-None of the 5 skips names `node_modules`, `dist` or `vitest` — all five are the pre-existing
-D3/D12 quarantine skips, exactly the five the block names.
+Exactly the reviewer's own dry-run reading of 2249 passed, 5 skipped at exit 0; none of the 5
+skips names `node_modules`, `dist`, vite, vitest or Chrome — all five are the pre-existing
+D3/D12 quarantine skips.
+
+```
+$ bash -c 'python3 -m pytest -q -rA tests/ui_server/test_story_export_file_live.py 2>&1 | tail -20; echo "REAL_EXIT=${PIPESTATUS[0]}"'
+PASSED tests/ui_server/test_story_export_file_live.py::test_the_exported_demo_story_plays_from_file_with_no_request
+1 passed in 6.27s
+REAL_EXIT=0
+```
 
 ```
 $ bash -c 'python3 -m apps.cli.main integrity check --json; echo "REAL_EXIT=$?"'
@@ -355,33 +339,29 @@ $ bash -c 'python3 -m apps.cli.main integrity check --json; echo "REAL_EXIT=$?"'
 ], "fail_count": 0, "ok": true, "passed": true}
 REAL_EXIT=0
 ```
-All six checks pass, `fail_count` 0, exit 0 — R-1102 is resolved, so `high_blockers_open` passes.
+All six checks pass, `fail_count` 0, exit 0.
 
 ### G5 THE RED PROOFS
 ```
-$ bash -c 'git worktree add --detach .remedy-wt/f039-r8-mut 92593133d; echo "REAL_EXIT=$?"'
-Preparing worktree (detached HEAD 92593133d)
-HEAD is now at 92593133d F039 R8 C6: add the mutation tool for the story export
+$ bash -c 'git worktree add --detach .remedy-wt/f039-r9-mut a97dbcad1; echo "REAL_EXIT=$?"'
+Preparing worktree (detached HEAD a97dbcad1)
+HEAD is now at a97dbcad1 F039 R9 C6: add the mutation tool for the zero-network test
 REAL_EXIT=0
 
-$ bash -c 'python3 -B .agent/authored/f039-r8-mutations.py .remedy-wt/f039-r8-mut; echo "REAL_EXIT=$?"'
-worktree: /home/decodeux/Repos/remedy/.remedy-wt/f039-r8-mut
-CONTROL FIRST: vitest exit=0 failed=0 passed=6 | guard exit=0 failed=0 passed=31
-m1 (render_story_html no longer writes < as <): vitest exit=0 failed=0 passed=6 | guard exit=1 failed=1 passed=30 | caught=True restored byte-identical=True
-m2 (the budget refuses at exactly its size (> becomes >=)): vitest exit=0 failed=0 passed=6 | guard exit=1 failed=1 passed=30 | caught=True restored byte-identical=True
-m3 (read_story_player no longer refuses a closing script tag): vitest exit=0 failed=0 passed=6 | guard exit=1 failed=1 passed=30 | caught=True restored byte-identical=True
-m4 (the page carries no content security policy): vitest exit=0 failed=0 passed=6 | guard exit=1 failed=1 passed=30 | caught=True restored byte-identical=True
-m5 (the command answers a missing player at exit 1): vitest exit=0 failed=0 passed=6 | guard exit=1 failed=1 passed=30 | caught=True restored byte-identical=True
-m6 (the file is written with mode 0o600): vitest exit=0 failed=0 passed=6 | guard exit=1 failed=1 passed=30 | caught=True restored byte-identical=True
-m7 (readEmbeddedStory parses with no try): vitest exit=1 failed=1 passed=5 | guard exit=0 failed=0 passed=31 | caught=True restored byte-identical=True
-m8 (the TypeScript STORY_DATA_ELEMENT_ID reads remedy-story): vitest exit=0 failed=0 passed=6 | guard exit=1 failed=1 passed=30 | caught=True restored byte-identical=True
-m9 (StoryPanel shows Close when no onClose is given): vitest exit=0 failed=0 passed=6 | guard exit=1 failed=1 passed=30 | caught=True restored byte-identical=True
-m10 (the plugin drops inlineDynamicImports): vitest exit=0 failed=0 passed=6 | guard exit=1 failed=1 passed=30 | caught=True restored byte-identical=True
-CONTROL LAST: vitest exit=0 failed=0 passed=6 | guard exit=0 failed=0 passed=31
+$ bash -c 'python3 -B .agent/authored/f039-r9-mutations.py .remedy-wt/f039-r9-mut; echo "REAL_EXIT=$?"'
+worktree: /home/decodeux/Repos/remedy/.remedy-wt/f039-r9-mut
+node_modules linked: True
+CONTROL FIRST: exit=0 passed=7 failed=0 errors=0 skipped=0
+m1 (the plugin's configResolved sets nothing, so the player lands in dist/story whatever the outDir): exit=1 passed=6 failed=0 errors=1 skipped=0 | caught=True restored byte-identical=True
+m2 (render_story_html drops its content security policy and writes an off-machine image before the root element): exit=1 passed=6 failed=1 errors=0 skipped=0 | caught=True restored byte-identical=True
+m3 (storyPlayerMain.tsx reads the element remedy-story instead of STORY_DATA_ELEMENT_ID): exit=1 passed=5 failed=2 errors=0 skipped=0 | caught=True restored byte-identical=True
+m4 (StoryPanel's Space branch no longer toggles play): exit=1 passed=6 failed=1 errors=0 skipped=0 | caught=True restored byte-identical=True
+m5 (PhaseTimeline's slider no longer hands its keys to scrub.onKey): exit=1 passed=6 failed=1 errors=0 skipped=0 | caught=True restored byte-identical=True
+CONTROL LAST: exit=0 passed=7 failed=0 errors=0 skipped=0
 ALL MUTATIONS CAUGHT AND RESTORED CLEANLY: True
 REAL_EXIT=0
 
-$ bash -c 'git worktree remove .remedy-wt/f039-r8-mut; echo "REAL_EXIT=$?"'
+$ bash -c 'git worktree remove --force .remedy-wt/f039-r9-mut; echo "REAL_EXIT=$?"'
 REAL_EXIT=0
 $ bash -c 'git worktree prune; echo "REAL_EXIT=$?"'
 REAL_EXIT=0
@@ -390,17 +370,20 @@ $ git worktree list | wc -l
 $ git status --porcelain
 (empty)
 ```
-All 10 mutations caught (every one red in at least one runner), all restored byte-identical, no
-skip.
+All 5 mutations caught — m1 as an ERROR in the live test's fixture setup (exactly as the block
+predicted), m2-m5 as FAILED — every control (7 = 6 contract tests + 1 live test, 0 skipped)
+green, every file restored byte-identical.
 
 ## Authored-text proofs
 
 | payload | committed at | disk-to-disk vs source | result |
 |---|---|---|---|
-| block.md copy | 8d0a0fa1d | `.agent/authored/f039-r8-block.md` vs `.remedy-wt/f039-r8/block.md` | byte-identical |
-| plan.md copy | 8d0a0fa1d | `.agent/authored/f039-r8-plan.md` vs `.remedy-wt/f039-r8-payloads/plan.md` | byte-identical |
-| records.diff copy | 81b36fcc0 | `.agent/authored/f039-r8-records.diff` vs `.remedy-wt/f039-r8-payloads/records.diff` | byte-identical |
-| records.diff application | 7414c17f3 | `git apply` of the reviewer's diff, C2's three files' sha256 vs the G2 table | all three match |
+| block.md copy | e38646976 | `.agent/authored/f039-r9-block.md` vs `.remedy-wt/f039-r9/block.md` | byte-identical |
+| plan.md copy | e38646976 | `.agent/authored/f039-r9-plan.md` vs `.remedy-wt/f039-r9-payloads/plan.md` | byte-identical |
+| records.diff copy | 3779f2d7e | `.agent/authored/f039-r9-records.diff` vs `.remedy-wt/f039-r9-payloads/records.diff` | byte-identical |
+| docs.diff copy | 3779f2d7e | `.agent/authored/f039-r9-docs.diff` vs `.remedy-wt/f039-r9-payloads/docs.diff` | byte-identical |
+| records.diff application | b538a4b22 | `git apply` of the reviewer's diff, C2's three files' sha256 vs the G2 table | all three match |
+| docs.diff application | 5a4663fbd | `git apply` of the reviewer's diff, C5's three files' sha256 vs the G2 table | all three match |
 
 ## Item Status
 
@@ -415,31 +398,35 @@ skip.
 | C6 | done | |
 | C7 | done | this handback |
 | G1 transport | done | |
-| G2 records | done | |
+| G2 records and docs | done | |
 | G3 code (ruff + quotes) | done | |
 | G4 build and tests | done | |
-| G5 red proofs | done | all 10 mutations caught |
+| G5 red proofs | done | all 5 mutations caught |
 | G6 tree and push | done | reported in the reply |
 
 ## Deviations & assumptions
 
-1. **`apps/cli/commands/__init__.py`'s import of `job_story_cmd` is not immediately adjacent to
-   `job_steer_cmd`.** The block says the module "imports and loops over `job_story_cmd` after
-   `job_steer_cmd`." The import block is `ruff`'s `I001`-sorted (this file is in G3's ruff set),
-   and alphabetically `job_stop_cmd` sorts between `job_steer_cmd` and `job_story_cmd`
-   (`steer` < `stop` < `story`), so the literal instruction is satisfied — `job_story_cmd` comes
-   after `job_steer_cmd` — with `job_stop_cmd` between them rather than adjacent. The loop tuple
-   at the bottom of the file (not import-sorted) places `job_story_cmd` directly after
-   `job_steer_cmd`, matching the block's ordering exactly there.
-2. No other departure from the block's ordered commit sequence (C1a, C1b, C2, C3, C4, C5, C6,
+1. **S1's comment above `STORY_PLAYER_SUBDIR`.** The block asks for "a two-line comment saying
+   the player lands in that subdirectory of whatever `outDir` the cockpit's own build resolved,
+   `dist/story` by default." The previous four-line comment (naming DECISION F039 D8 and
+   describing why a second build exists at all) was replaced by a new two-line comment naming
+   DECISION F039 D9 and stating the subdirectory behaviour, since the block's own wording is a
+   description of new comment TEXT, not an instruction to keep the old one verbatim while adding
+   to it — and "nothing else in the file changes" binds the rest of the file, not this text the
+   block itself specifies.
+2. **m4's mutation `TO` value.** `StoryPanel.tsx`'s Space branch calls `togglePlaying();` on one
+   line; the mutation tool replaces it with `/* toggle disabled */;` (a no-op statement) rather
+   than deleting the line outright, so the file stays syntactically valid TypeScript with the
+   FROM/TO substitution applying to a single self-contained statement.
+3. No other departure from the block's ordered commit sequence (C1a, C1b, C2, C3, C4, C5, C6,
    C7). No commit reached the 500-line cap; none was split.
-3. No test this round wrote was found wrong and corrected before C7 (constraint 4 did not
-   trigger).
+4. No test this round wrote was found wrong and corrected before C7 (constraint 4 did not
+   trigger). No existing test went red.
 
 ## Next
 
-Phase 1 rule 1: read `.agent/STOP` from disk before anything else. Then the review of round 8 —
-DECISION F039 D8's build plugin, the exported page, and `remedy job story --export` with its
-budget. Then, once round 8 is booked, T003 closed: the clean-browser test from `file://` with
-zero network requests over an exported demo story, and the docs. Open-findings count: 0.
-Operator-questions count: 1.
+Phase 1 rule 1: read `.agent/STOP` from disk before anything else. Then the review of round 9 —
+DECISION F039 D9's outDir-following build, the zero-network live-Chrome test, and the story
+guide. Then, once round 9 is booked, the closure sequence of F039: the one full-suite run, the
+evidence package, the STATUS flip with the ledger rotation, and the pull request. Open-findings
+count: 0. Operator-questions count: 1.
