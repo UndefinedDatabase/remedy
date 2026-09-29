@@ -40,7 +40,13 @@ def fresh_value_parametrize_sites(root: Path) -> list[str]:
     """Every call to a fresh-value source inside a parametrize call under root."""
     sites = []
     for path in sorted(root.rglob("*.py")):
-        tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+        try:
+            source = path.read_text(encoding="utf-8")
+        except FileNotFoundError:
+            # R-1114: a temporary module another test wrote and removed while this scan ran
+            # is gone, and xdist never collects it.
+            continue
+        tree = ast.parse(source, filename=str(path))
         for node in ast.walk(tree):
             if not (isinstance(node, ast.Call) and _called_name(node) == "parametrize"):
                 continue
@@ -63,6 +69,24 @@ def test_the_scan_finds_a_fresh_uuid_in_a_parametrize_argument(tmp_path: Path) -
         "\n"
         "\n"
         '@pytest.mark.parametrize("name", ["gamma", str(uuid4())])\n'
+        "def test_sample(name):\n"
+        "    assert name\n",
+        encoding="utf-8",
+    )
+    assert fresh_value_parametrize_sites(tests) == ["tests/test_sample.py:5: uuid4()"]
+
+
+def test_a_test_file_that_vanished_is_skipped(tmp_path: Path) -> None:
+    """R-1114: a module removed between the listing and the read is skipped, not raised over."""
+    tests = tmp_path / "tests"
+    tests.mkdir()
+    (tests / "test_gone.py").symlink_to(tmp_path / "missing.py")
+    (tests / "test_sample.py").write_text(
+        "import pytest\n"
+        "from uuid import uuid4\n"
+        "\n"
+        "\n"
+        '@pytest.mark.parametrize("name", [str(uuid4())])\n'
         "def test_sample(name):\n"
         "    assert name\n",
         encoding="utf-8",

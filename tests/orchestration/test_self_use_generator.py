@@ -1396,6 +1396,26 @@ class TestUntestedModuleTier:
                 source_root=root,
             )
 
+    def test_a_test_file_that_vanished_is_skipped(self, tmp_path: Path):
+        """R-1114, DECISION F291 D4: a file gone between the listing and the read is skipped."""
+        root = self._tree(tmp_path)
+        (root / "tests" / "test_gone.py").symlink_to(tmp_path / "missing.py")
+        entry = generate_self_use_item(
+            queue_path=_write_queue(tmp_path, []), ledger_path=_write_ledger(tmp_path, []),
+            source_root=root,
+        )
+        assert entry.title == "Write the first tests for packages/pkg/alpha.py"
+
+    def test_any_other_unreadable_test_file_still_raises(self, tmp_path: Path):
+        """DECISION F291 D4: only a vanished file is skipped; a directory named like one is not."""
+        root = self._tree(tmp_path)
+        (root / "tests" / "test_folder.py").mkdir()
+        with pytest.raises(SelfUseGenerationError):
+            generate_self_use_item(
+                queue_path=_write_queue(tmp_path, []), ledger_path=_write_ledger(tmp_path, []),
+                source_root=root,
+            )
+
 
 class TestUntestedModuleTierRealChain:
     """Tier 5 against the real tree, read back by a second, independent reader."""
@@ -1426,10 +1446,17 @@ class TestUntestedModuleTierRealChain:
             rf"|from\s+{re.escape(parent)}\s+import\s+.*\b{re.escape(stem)}\b)",
             re.M,
         )
+        def _source(path: Path) -> str:
+            # R-1114: a temporary module another test removed while this ran is gone.
+            try:
+                return path.read_text(encoding="utf-8")
+            except FileNotFoundError:
+                return ""
+
         hits = [
             path.relative_to(real_root).as_posix()
             for path in sorted((real_root / "tests").rglob("*.py"))
-            if importer.search(path.read_text(encoding="utf-8"))
+            if importer.search(_source(path))
         ]
         assert hits == []
 
