@@ -7,21 +7,22 @@ Branch: feature/f291-self-use-sources-v2, cut from `main` at
 
 Give the self-use generator two sources that almost always have real work,
 so a closure's self-use reading is rarely "queue exhausted"
-(`docs/roadmap/features/T5_F291.md`, DECISIONS F291 D1 to D3).
+(`docs/roadmap/features/T5_F291.md`, DECISIONS F291 D1 to D4).
 
 ## Current Step
 
-ROUND 3, the integration gate: book round 2, record DECISION F291 D3, land
-the self-use item SU-037's diff with two reviewer tests, add the Built
-State's self-use paragraph, build the cockpit and run the one full suite.
+ROUND 4, the first closure repair round: book round 3, register R-1114,
+record DECISION F291 D4, repair the two readers of `tests/` that a
+vanished temporary module fails, and run the one full suite again on the
+repaired tree.
 
 ## Next Steps
 
-1. The evidence bundle and the review package.
+1. The evidence bundle and the review package, once the suite is green.
 2. The closing round: STATUS, README, the ledger's rotation and the pull
    request.
 
 ## Risks
 
-Open findings: 0. A red suite is this feature's to repair, in at most
-three repair rounds (amend0917-throughput rule 2).
+Open findings: R-1114, repaired this round. At most two more repair rounds
+remain (amend0917-throughput rule 2).

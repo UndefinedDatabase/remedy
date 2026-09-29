@@ -25925,3 +25925,33 @@ because no test reached the handler either way and the narrowing would stand ung
 
 HOW TO REVERSE: restore the handler and its mark in `apps/cli/commands/brain.py` and `MAX_EXCUSED`
 to 290, delete the two tests, and delete this paragraph.
+
+## DECISION F291 D4 — a file under `tests/` that vanishes between the listing and the read is skipped by Tier 5 and by the parametrize-id guard, and every other read error still fails (2026-09-29)
+
+CONTEXT: F291's one full suite at `fd4d02e3` failed one node, registered as R-1114: the guard of
+`tests/test_parametrize_ids_stable.py` read a temporary test module that
+`tests/regression/test_resource_safety.py` had just removed from `tests/regression/`. DECISION F291
+D1 (3) ordered both new tiers to raise on a file they cannot read. Measured by the reviewer at
+`752164eb`: `test_resource_safety.py` creates such modules with `tempfile.NamedTemporaryFile` inside
+`tests/regression/`, runs them through `scripts/remedy_pytest_runner.py` and unlinks them; a
+dangling link planted there fails the guard and `TestUntestedModuleTierRealChain`, the second
+through `_bound_test_names`; and nothing in the suite writes temporary modules under `packages/`,
+`apps/` or `scripts/`, the roots Tier 4 reads.
+
+CHOSEN: (1) `_bound_test_names` in `packages/orchestration/self_use_generator.py` skips a test file
+whose read raises `FileNotFoundError` and still raises `SelfUseGenerationError` for any other
+`OSError` and for a decoding error, which narrows D1 (3) for Tier 5's reading of `tests/` alone;
+Tier 4's readers are unchanged. (2) `fresh_value_parametrize_sites` in
+`tests/test_parametrize_ids_stable.py` skips such a file the same way, and the second reader of
+`TestUntestedModuleTierRealChain` reads it as empty. (3) A test per reader plants a dangling link
+and holds that it is skipped, and a directory named like a test file holds that Tier 5 still
+raises.
+
+ALTERNATIVES: moving the temporary modules of `test_resource_safety.py` out of the checkout,
+rejected here because that test runs them through the repository's own runner script and it is a
+resource-safety test this feature does not own; reading only tracked files through `git ls-files`,
+rejected because it makes a file read depend on git and misses a new test file before its first
+commit; skipping every unreadable file, rejected because a real read error would then pass unseen.
+
+HOW TO REVERSE: delete the two `FileNotFoundError` clauses and the second reader's fallback, the
+three tests, and this paragraph.
