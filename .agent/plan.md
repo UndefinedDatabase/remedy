@@ -12,23 +12,18 @@ DECISION F041 D1).
 
 ## Current Step
 
-ROUND 1 COMPLETE. Amendment F041 R1 A1 withdrew C3's stop clause and split
-it into C3a (S1-S4, `artifact_markdown.py`) and C3b (S5-S6 + allowlist.diff,
-`artifact_preview.py` and the `ui_server.py` route). All of C1a-C1c, C2, C7,
-A0, C3a, C3b, C4, C5, C6, C8 are committed and pushed. The reviewer's whole
-corpus and traversal fixtures pass unedited (106+20+5 = 131), ruff is clean,
-integrity check reads all six pass, and all 9 named mutations are caught and
-restored cleanly in a real worktree at C6.
+ROUND 2: book round 1, register R-1105, record DECISION F041 D2, and land
+the file route for a screenshot's bytes and the whole README with its
+headers, R-1105's repair of the static asset route, and the upper-case
+scheme case of the corpus.
 
 ## Next Steps
 
-1. ROUND 2: the file route for screenshot bytes and the full README, with
-   its headers, and the start of T002.
-2. T002: the preview commands, the supervisor intent, the probe-gated link
-   and its failure fixtures.
-3. T003: the panel, the lightbox, the idle stop and the end-to-end run.
-4. The closure sequence.
+1. T002: the preview commands, the intent and its consumer, the
+   probe-gated link and its failure fixtures.
+2. T003: the panel, the lightbox, the idle stop and the end-to-end run.
+3. The closure sequence.
 
 ## Risks
 
-Open findings: 0.
+Open findings: 1 — R-1105, owned by F041, repaired this round.
