@@ -1,0 +1,32 @@
+repo root: /home/decodeux/Repos/remedy
+work dir: /home/decodeux/Repos/remedy/.remedy-wt/f041-render-run
++ vite build
+vite v6.4.2 building for production...
+transforming...
+✓ 54 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                   0.32 kB │ gzip:  0.23 kB
+dist/assets/index-SZgPPiVp.css    7.82 kB │ gzip:  2.29 kB
+dist/assets/index-uThlQaxz.js   210.60 kB │ gzip: 66.33 kB
+✓ built in 597ms
+
+fixture PNG written: /home/decodeux/Repos/remedy/.remedy-wt/f041-render-run/dist/api/jobs/render-job/artifacts/file (68 bytes)
+server pid: 1957328
+chrome pid: 1957353
++ node drive.mjs
+PASS C-a the panel is a child of document.body, z-index 80, its box inside the viewport
+PASS C-b the README shows "Fixture app", the one recognised image loaded and addressed, "elsewhere shot" as text, no request for it, and the full README link
+PASS C-c three buttons captioned one/two/three; the second opens the dialog at "2 of 3 · two" focused on Close, ArrowRight caps at "3 of 3 · three", ArrowLeft reads "2 of 3 · two", Escape removes the dialog and keeps the panel
+PASS C-d the stopped card with Start app and no link; a click posts job.preview-start with args {} and the CSRF header; the card reaches live within 15 seconds with no premature link
+PASS C-e Stop app posts job.preview-stop and the card returns to "The app is not running." with no link
+PASS C-f a reload with ?preview=failed shows the reason and "Try again"
+PASS C-g a reload with ?preview=na shows "This project has no app to run." and no button in the card
+PASS C-h Escape removes the panel and records the close, the read count stays put over a 3-second idle wait, and no console error was logged in the whole run
+SCREENSHOT results /home/decodeux/Repos/remedy/.remedy-wt/f041-r5-worker/render-results.png 323045 bytes
+RENDER: 8 of 8 checks pass
+
+chrome pid 1957353 stopped (SIGTERM)
+server pid 1957328 stopped (SIGTERM)
+removed work dir: /home/decodeux/Repos/remedy/.remedy-wt/f041-render-run
+drive.mjs exit code: 0
