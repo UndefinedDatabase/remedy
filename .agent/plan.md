@@ -12,14 +12,13 @@ DECISION F041 D1).
 
 ## Current Step
 
-ROUND 8, the closure sequence's evidence round: book round 7 with the
-closure suite, then build the evidence bundle and the review package at
-the accepted head.
+ROUND 9, the closing round: book round 8, rotate the ledger, accept F041
+in STATUS with the README in the same commit, and open the pull request.
 
 ## Next Steps
 
-1. The closing round: the booking of this round, the ledger rotation, the
-   STATUS line with the README in the same commit, and the pull request.
+1. The next session: the Open PR Gate merges this pull request, then
+   Rule A5 selects the next feature.
 
 ## Risks
 
