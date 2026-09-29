@@ -13,6 +13,7 @@ the screenshot list under ``captures/`` in the evidence directory.
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 
 from packages.orchestration.artifact_markdown import render_markdown
@@ -132,3 +133,72 @@ def artifacts_view(job_id: str, data_root: Path | None = None) -> dict:
     """The whole artifacts view for JOB_ID: `readme`, `images`, `error`. READ-ONLY."""
     readme, error = _readme_view(job_id, data_root)
     return {"readme": readme, "images": _images_view(job_id, data_root), "error": error}
+
+
+#: The file route's own size cap (F041 T001, DECISION F041 D2): a served body is capped
+#: at 10 MiB so a body is never streamed unbounded through the localhost server.
+FILE_MAX_BYTES = 10_485_760
+
+#: The README is served as plain text, never as a type a browser might sniff or render
+#: (DECISION F041 D2, clause 2) — "open full file" means the raw source, not a page.
+README_CONTENT_TYPE = "text/plain; charset=utf-8"
+
+
+@dataclass(frozen=True)
+class ArtifactFile:
+    """One file route answer (F041 T001, DECISION F041 D2): bytes on success, or a
+    refusal whose `content_type` and `body` are always empty."""
+
+    status: int
+    content_type: str
+    body: bytes
+    error: str
+
+
+def _refused_artifact_file(status: int, error: str) -> ArtifactFile:
+    return ArtifactFile(status=status, content_type="", body=b"", error=error)
+
+
+def read_artifact_file(
+    job_id: str, root: str, relative: str, data_root: Path | None = None,
+) -> ArtifactFile:
+    """The bytes RELATIVE names under ROOT for JOB_ID (F041 T001, DECISION F041 D2).
+
+    Exactly two names are servable: `README_NAME` from either root, served as
+    `README_CONTENT_TYPE`, and one `captures/<name>` file directly under the evidence
+    root whose lowercased suffix is in `IMAGE_CONTENT_TYPES`, served as that type —
+    "exactly" means `relative` equals `f"{CAPTURES_DIRNAME}/{PurePosixPath(relative).name}"`,
+    so no `.`, `..`, empty or extra segment passes. Any other request answers 400
+    `"invalid artifact request"` before a byte of disk is touched. The root is then found
+    with `artifact_root` and the name with `resolve_artifact_path`; either `None` answers
+    404 `"artifact not found"`. A file whose size is over `FILE_MAX_BYTES` answers 413
+    `"artifact too large"`; an `OSError` reading it answers 404. Otherwise 200 with the
+    bytes and an empty error. Every refusal carries an empty `content_type` and body.
+    """
+    if root not in ARTIFACT_ROOTS:
+        return _refused_artifact_file(400, "invalid artifact request")
+    if relative == README_NAME:
+        content_type = README_CONTENT_TYPE
+    else:
+        name = PurePosixPath(relative).name
+        suffix_type = IMAGE_CONTENT_TYPES.get(PurePosixPath(relative).suffix.lower())
+        if (root == ROOT_EVIDENCE
+                and relative == f"{CAPTURES_DIRNAME}/{name}"
+                and suffix_type is not None):
+            content_type = suffix_type
+        else:
+            return _refused_artifact_file(400, "invalid artifact request")
+
+    base = artifact_root(job_id, root, data_root)
+    if base is None:
+        return _refused_artifact_file(404, "artifact not found")
+    path = resolve_artifact_path(base, relative)
+    if path is None:
+        return _refused_artifact_file(404, "artifact not found")
+    try:
+        if path.stat().st_size > FILE_MAX_BYTES:
+            return _refused_artifact_file(413, "artifact too large")
+        body = path.read_bytes()
+    except OSError:
+        return _refused_artifact_file(404, "artifact not found")
+    return ArtifactFile(status=200, content_type=content_type, body=body, error="")

@@ -1992,6 +1992,13 @@ def _build_artifacts_json(job: Any) -> dict[str, Any]:
     return artifacts_view(str(job.job_id))
 
 
+def _read_artifact_file(job: Any, root: str, relative: str) -> Any:
+    """The file route's reader — a job's screenshot bytes or its whole README (F041
+    T001, DECISION F041 D2). Delegates the whole decision to `read_artifact_file`."""
+    from packages.orchestration.artifact_preview import read_artifact_file
+    return read_artifact_file(str(job.job_id), root, relative)
+
+
 def _build_chat_turn_json(job: Any, text: str, task_id: str) -> dict[str, Any]:
     """Run one chat turn and answer it in the SAME wire shape `remedy chat ask --json`
     emits (F038 T003, DECISION F038 D11). READ-ONLY: a turn sends nothing; confirming a
@@ -3027,6 +3034,25 @@ class _RemedyHandler(BaseHTTPRequestHandler):
                 self._send_json(*err)
                 return
             self._send_json(200, _build_task_run_rounds_json(job, parts[5]))
+            return
+
+        # /api/jobs/<job_id>/artifacts/file — a screenshot's bytes or the whole README
+        # (DECISION F041 D2). Structural for the same reason as the two routes above,
+        # and spelled out in `_walkable_paths` (tests/ui_server/test_command_channel.py)
+        # by hand for the same one.
+        if (len(parts) == 6 and parts[1] == "api" and parts[2] == "jobs"
+                and parts[4] == "artifacts" and parts[5] == "file"):
+            job, err = _load_job(parts[3])
+            if err:
+                self._send_json(*err)
+                return
+            root = (qs.get("root") or [""])[0]
+            file_path = (qs.get("path") or [""])[0]
+            result = _read_artifact_file(job, root, file_path)
+            if result.status != 200:
+                self._send_json(*_safe_error(result.status, result.error))
+                return
+            self._send_artifact_bytes(result.content_type, result.body)
             return
 
         self._send_json(*_safe_error(404, "not found"))
@@ -4237,6 +4263,15 @@ class _RemedyHandler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
+    #: Headers every served artifact file carries (DECISION F041 D2, clause 3): a file
+    #: opened directly cannot be sniffed into another type, cannot run script or load
+    #: anything of its own, and is never cached across a job's lifetime.
+    ARTIFACT_RESPONSE_HEADERS: tuple[tuple[str, str], ...] = (
+        ("X-Content-Type-Options", "nosniff"),
+        ("Content-Security-Policy", "default-src 'none'; sandbox"),
+        ("Cache-Control", "no-store"),
+    )
+
     _MIME_TYPES: dict[str, str] = {
         ".js": "application/javascript",
         ".css": "text/css",
@@ -4245,6 +4280,17 @@ class _RemedyHandler(BaseHTTPRequestHandler):
         ".woff2": "font/woff2",
         ".json": "application/json",
     }
+
+    def _send_artifact_bytes(self, content_type: str, body: bytes) -> None:
+        """Send a 200 artifact file response, under `ARTIFACT_RESPONSE_HEADERS` (DECISION
+        F041 D2, clause 3) — a served file never runs as a page."""
+        self.send_response(200)
+        self.send_header("Content-Type", content_type)
+        self.send_header("Content-Length", str(len(body)))
+        for name, value in self.ARTIFACT_RESPONSE_HEADERS:
+            self.send_header(name, value)
+        self.end_headers()
+        self.wfile.write(body)
 
     def _serve_static(self, url_path: str) -> None:
         """Serve static files from React dist/assets/. Path-traversal safe."""
@@ -4255,7 +4301,10 @@ class _RemedyHandler(BaseHTTPRequestHandler):
         # Resolve and ensure within dist/
         try:
             target = (dist / url_path.lstrip("/")).resolve()
-            if not str(target).startswith(str(dist.resolve())):
+            # R-1105: containment is a PATH test, not a string prefix — the old
+            # `str(target).startswith(str(dist.resolve()))` let a sibling directory
+            # whose name merely starts with `dist` (e.g. `dist-old`) pass unchecked.
+            if not target.is_relative_to(dist.resolve()):
                 self._send_json(*_safe_error(403, "forbidden"))
                 return
             if not target.is_file():
