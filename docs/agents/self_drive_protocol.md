@@ -505,6 +505,17 @@ history. This is not a second run in the sense amend0917-throughput forbids; it
 is the one run, taken on the right tree. Reverse by deleting this paragraph and
 DECISION amend0921-operator-feedback D1.
 
+Operator amendment amend0929-context-hygiene (2026-09-29) — STAGING COPIES AT
+CLOSURE. In the closure round that builds the evidence bundle, the worker runs
+`remedy data reclaim --orphans --stale` as a preview, then the same command with
+`--apply`, and the handback records the previewed total, the freed total and every
+refused path with its reason. When the preview lists no candidate, the worker skips
+the `--apply` and the handback records the empty reading. A staging copy under
+`.data` is derived scratch and never a record, so this step deletes no record; it
+is what keeps the copies of jobs that ended without an apply from piling up
+between closures. `docs/roadmap/STATUS_closure_protocol.md` step 1 carries the
+same step. Reverse by deleting this paragraph and that one.
+
 Operator amendment amend0827-process-diet (2026-08-27), rule 4 — the
 pre-emission checklist of docs/agents/planner_reviewer_prompt.md §3 is FROZEN
 while a feature is open. A lesson learned mid-feature goes into
