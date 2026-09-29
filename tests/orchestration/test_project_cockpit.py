@@ -239,6 +239,38 @@ class TestProjectSummary:
         assert decisions == {"open_count": expected_open, "peak_urgency": expected_peak}
         assert decisions == {"open_count": 5, "peak_urgency": 3600}
 
+    @pytest.mark.parametrize("damage", ["undecodable", "directory"])
+    def test_an_unreadable_jobs_run_log_is_skipped_never_the_card(self, world, damage):
+        job = world["jobs"]["a_run"]
+        events_path = run_log_dir(str(job.job_id), resolve_data_root()) / "events.jsonl"
+        if damage == "undecodable":
+            events_path.write_bytes(b"\xff\xfe not utf-8\n")
+        else:
+            events_path.unlink()
+            events_path.mkdir()
+
+        expected_open, expected_peak = 0, 0
+        for key in ("a_old", "a_new"):
+            other = world["jobs"][key]
+            events = load_run_events(resolve_data_root(), str(other.job_id))
+            for card in build_decision_inbox(other, events, now=NOW)["decisions"]:
+                if card["status"] == "open":
+                    expected_open += 1
+                    expected_peak = max(expected_peak, decision_urgency(card))
+
+        summary = project_summary(world["alpha"], now=NOW)
+        assert summary["decisions"] == {"open_count": expected_open, "peak_urgency": expected_peak}
+        assert summary["decisions"] != {"open_count": 5, "peak_urgency": 3600}
+        assert summary["jobs"]["total"] == 3
+
+    def test_an_unexpected_error_in_the_inbox_is_not_swallowed(self, world, monkeypatch):
+        def _raise(job, events, now=None):
+            raise RuntimeError("inbox bug")
+
+        monkeypatch.setattr("packages.orchestration.decision_inbox.build_decision_inbox", _raise)
+        with pytest.raises(RuntimeError, match="inbox bug"):
+            project_summary(world["alpha"], now=NOW)
+
     def test_the_open_count_is_the_one_remedy_status_prints(self, world, capsys):
         from apps.cli.commands.status_cmd import _cmd_status
 

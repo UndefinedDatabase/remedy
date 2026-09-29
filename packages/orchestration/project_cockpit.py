@@ -177,7 +177,7 @@ def project_summary(project: Any, now: datetime | None = None) -> dict[str, Any]
         try:
             events = load_run_events(resolve_data_root(), str(job.job_id))
             inbox = build_decision_inbox(job, events, now=moment)
-        except Exception:  # noqa: BLE001 — an unreadable job's inbox is skipped, never the card
+        except (OSError, ValueError):  # R-1113: an unreadable job's inbox is skipped, never the card
             continue
         for card in inbox.get("decisions", ()):
             if card.get("status") == OPEN_CARD_STATUS:
