@@ -211,6 +211,9 @@ def test_a_markdown_vector_is_neutralized_by_the_renderer(label, source, expecte
     ("https://a.example/x", False, "https://a.example/x"),
     ("http://a.example", False, "http://a.example"),
     ("mailto:a@b.example", False, "mailto:a@b.example"),
+    # A scheme is read without regard to case: an upper-case https link is kept.
+    ("HTTPS://A.example/x", False, "HTTPS://A.example/x"),
+    ("MailTo:a@b.example", False, "MailTo:a@b.example"),
     ("  docs/guide.md  ", False, "docs/guide.md"),
     ("#section", False, "#section"),
     ("captures/a.png", True, "captures/a.png"),

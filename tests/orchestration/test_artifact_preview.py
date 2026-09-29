@@ -13,9 +13,12 @@ from pathlib import Path
 import pytest
 
 from packages.orchestration.artifact_preview import (
+    FILE_MAX_BYTES,
     MAX_LISTED_IMAGES,
+    ArtifactFile,
     artifact_root,
     artifacts_view,
+    read_artifact_file,
     resolve_artifact_path,
 )
 
@@ -145,3 +148,70 @@ class TestArtifactsView:
         images = artifacts_view(JOB_ID, data_root)["images"]
         assert len(images) == MAX_LISTED_IMAGES == 200
         assert images[-1]["path"] == f"captures/{MAX_LISTED_IMAGES - 1:04d}.png"
+
+
+class TestReadArtifactFile:
+    """The file route's reader (DECISION F041 D2): two servable names, and nothing else."""
+
+    def test_a_screenshot_is_served_with_its_image_type(self, data_root):
+        captures = _evidence(data_root) / "captures"
+        captures.mkdir()
+        (captures / "home.PNG").write_bytes(b"\x89PNG-bytes")
+        assert read_artifact_file(JOB_ID, "evidence", "captures/home.PNG", data_root) == (
+            ArtifactFile(status=200, content_type="image/png", body=b"\x89PNG-bytes", error=""))
+
+    @pytest.mark.parametrize("root", ["workspace", "evidence"])
+    def test_the_readme_is_served_as_plain_text_from_either_root(self, data_root, root):
+        base = _workspace(data_root) if root == "workspace" else _evidence(data_root)
+        (base / "README.md").write_text("<script>x</script>\n")
+        assert read_artifact_file(JOB_ID, root, "README.md", data_root) == ArtifactFile(
+            status=200, content_type="text/plain; charset=utf-8",
+            body=b"<script>x</script>\n", error="")
+
+    @pytest.mark.parametrize(("root", "relative"), [
+        ("repo", "README.md"),
+        ("", "README.md"),
+        ("evidence", ""),
+        ("evidence", "notes.md"),
+        ("evidence", "captures/c.svg"),
+        ("evidence", "captures/sub/a.png"),
+        ("evidence", "captures/../README.md"),
+        ("evidence", "captures/./a.png"),
+        ("evidence", "captures//a.png"),
+        ("evidence", "/captures/a.png"),
+        ("evidence", "../jobs/x/evidence/captures/a.png"),
+        ("workspace", "captures/a.png"),
+        ("evidence", "docs/README.md"),
+    ])
+    def test_any_other_request_is_refused_before_the_disk_is_read(self, data_root, root,
+                                                                  relative):
+        captures = _evidence(data_root) / "captures"
+        captures.mkdir()
+        (captures / "a.png").write_bytes(b"png")
+        (captures / "c.svg").write_text("<svg/>")
+        assert read_artifact_file(JOB_ID, root, relative, data_root) == ArtifactFile(
+            status=400, content_type="", body=b"", error="invalid artifact request")
+
+    def test_a_missing_file_or_root_is_not_found(self, data_root):
+        missing = ArtifactFile(status=404, content_type="", body=b"", error="artifact not found")
+        assert read_artifact_file(JOB_ID, "evidence", "README.md", data_root) == missing
+        (_evidence(data_root) / "captures").mkdir()
+        assert read_artifact_file(JOB_ID, "evidence", "captures/a.png", data_root) == missing
+
+    def test_a_symlink_leaving_the_root_is_not_found(self, data_root, tmp_path):
+        captures = _evidence(data_root) / "captures"
+        captures.mkdir()
+        (tmp_path / "secret.png").write_bytes(b"secret")
+        (captures / "a.png").symlink_to(tmp_path / "secret.png")
+        assert read_artifact_file(JOB_ID, "evidence", "captures/a.png", data_root).status == 404
+
+    def test_a_file_over_the_cap_is_too_large(self, data_root):
+        captures = _evidence(data_root) / "captures"
+        captures.mkdir()
+        (captures / "big.png").write_bytes(b"\0" * (FILE_MAX_BYTES + 1))
+        (captures / "edge.png").write_bytes(b"\0" * FILE_MAX_BYTES)
+        assert read_artifact_file(JOB_ID, "evidence", "captures/big.png", data_root) == (
+            ArtifactFile(status=413, content_type="", body=b"", error="artifact too large"))
+        assert read_artifact_file(JOB_ID, "evidence", "captures/edge.png",
+                                  data_root).status == 200
+        assert FILE_MAX_BYTES == 10_485_760
