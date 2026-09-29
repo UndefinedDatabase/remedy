@@ -2911,6 +2911,10 @@ UI_EXPOSED_COMMANDS: frozenset[str] = frozenset({
     "job.inject-answer",
     # DECISION F029 D4: the subtree rerun, through `subtree_rerun.rerun_subtree_command`.
     "job.rerun-subtree",
+    # DECISION F041 D4: the preview pair, recorded by `preview_control.request_preview` and
+    # acted on by the server's preview worker.
+    "job.preview-start",
+    "job.preview-stop",
 })
 
 

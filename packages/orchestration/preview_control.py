@@ -137,12 +137,19 @@ def load_preview(job_id: str, data_root: Path | None = None) -> dict[str, Any]:
 
 
 def preview_view(job_id: str, data_root: Path | None = None) -> dict[str, Any]:
-    """The cockpit-facing slice of the record: state, link, reason, and when."""
+    """The cockpit-facing slice of the record: state, link, reason, and when.
+
+    DECISION F041 D4 (4): the link — ``url`` and ``port`` — answers only while
+    ``state`` is `STATE_LIVE`, whatever the stored record itself holds. A record
+    left over from an ended preview, or one a foreign write corrupted, never shows
+    a link the app card could offer as though it still answered.
+    """
     record = load_preview(job_id, data_root)
+    live = record["state"] == STATE_LIVE
     return {
         "state": record["state"],
-        "url": record["url"],
-        "port": record["port"],
+        "url": record["url"] if live else "",
+        "port": record["port"] if live else 0,
         "reason": record["reason"],
         "updated_at": record["updated_at"],
     }
@@ -304,3 +311,108 @@ def run_pending(
     if requested == ACTION_START:
         return _run_start(record, job_id, root, runner, now, data_root)
     return _run_stop(record, job_id, root, runner, now, data_root)
+
+
+def mark_viewed(job_id: str, *, now: datetime, data_root: Path | None = None) -> dict[str, Any]:
+    """A person just looked at this preview (DECISION F041 D4 (3)): record it.
+
+    Sets ``viewed_at`` to ``now.isoformat()`` and persists it, but only while the
+    record is `STATE_LIVE` — this is the idle clock's own reset, and a preview
+    that is not live has no idle clock to reset. Any other record is returned
+    unchanged and nothing is written.
+    """
+    record = load_preview(job_id, data_root)
+    if record["state"] != STATE_LIVE:
+        return record
+    record = dict(record)
+    record["viewed_at"] = now.isoformat()
+    _persist(record, job_id, data_root)
+    return record
+
+
+def idle_stop_due(record: dict[str, Any], *, now: datetime, ttl_seconds: int) -> bool:
+    """Whether ``record``'s live preview has gone unwatched for `ttl_seconds` or more.
+
+    False unless the record is `STATE_LIVE` and ``ttl_seconds`` is strictly
+    positive — a non-positive ``ttl_seconds`` means never (DECISION F041 D4 (3)).
+    The clock is ``viewed_at``, falling back to ``updated_at`` when it is unset;
+    true also when neither timestamp parses, since an unreadable clock cannot
+    prove anyone is still watching.
+    """
+    if record["state"] != STATE_LIVE or ttl_seconds <= 0:
+        return False
+    stamp = record.get("viewed_at") or record.get("updated_at")
+    if not stamp:
+        return True
+    try:
+        moment = datetime.fromisoformat(stamp)
+    except ValueError:
+        return True
+    return (now - moment).total_seconds() >= ttl_seconds
+
+
+def stop_if_idle(
+    job: Any, runner: RuntimeVerb, *, now: datetime, ttl_seconds: int,
+    data_root: Path | None = None,
+) -> dict[str, Any]:
+    """Stop the job's preview when `idle_stop_due` says it has gone unwatched too
+    long (DECISION F041 D4 (3)).
+
+    Not due, or not live: the record is returned unchanged and ``runner`` never
+    runs. When due, ``stop`` runs and the record settles `STATE_STOPPED` with the
+    reason "stopped after <ttl_seconds> seconds without a viewer", or, if the stop
+    itself fails, `STATE_FAILED` with "could not stop: <message>" — the same
+    failure shape `run_pending`'s own stop clause uses.
+    """
+    job_id = job.job_id
+    record = load_preview(job_id, data_root)
+    if not idle_stop_due(record, now=now, ttl_seconds=ttl_seconds):
+        return record
+
+    root = Path(getattr(job, "repo_path", "") or "")
+    stopped = runner("stop", root)
+    if not stopped.ok:
+        message = _verb_message(stopped)
+        settled = _settle(
+            record, state=STATE_FAILED, reason=f"could not stop: {message}",
+            url="", port=0, now=now,
+        )
+    else:
+        settled = _settle(
+            record, state=STATE_STOPPED,
+            reason=f"stopped after {ttl_seconds} seconds without a viewer",
+            url="", port=0, now=now,
+        )
+    _persist(settled, job_id, data_root)
+    return settled
+
+
+def revalidate_live(
+    job: Any, runner: RuntimeVerb, *, now: datetime, data_root: Path | None = None,
+) -> dict[str, Any]:
+    """Probe a live preview again (DECISION F041 D4 (2)); a running record says
+    nothing about whether the app still answers.
+
+    Not live: the record is returned unchanged and ``runner`` never runs. A
+    passed probe leaves the record untouched. A failed probe runs ``stop`` and
+    settles `STATE_FAILED` with "the app stopped answering: <message>", clearing
+    the link so nothing shipped keeps showing a dead one.
+    """
+    job_id = job.job_id
+    record = load_preview(job_id, data_root)
+    if record["state"] != STATE_LIVE:
+        return record
+
+    root = Path(getattr(job, "repo_path", "") or "")
+    probed = runner("probe", root)
+    if probed.ok:
+        return record
+
+    message = _verb_message(probed)
+    runner("stop", root)
+    settled = _settle(
+        record, state=STATE_FAILED, reason=f"the app stopped answering: {message}",
+        url="", port=0, now=now,
+    )
+    _persist(settled, job_id, data_root)
+    return settled

@@ -199,6 +199,7 @@ packages.orchestration.plan_editing
 packages.orchestration.planner_models
 packages.orchestration.preview_control
 packages.orchestration.preview_runner
+packages.orchestration.preview_worker
 packages.orchestration.product_smoke
 packages.orchestration.project_brain
 packages.orchestration.project_brain_aggregate

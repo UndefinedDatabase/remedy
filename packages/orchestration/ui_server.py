@@ -1992,6 +1992,17 @@ def _build_artifacts_json(job: Any) -> dict[str, Any]:
     return artifacts_view(str(job.job_id))
 
 
+def _build_preview_json(job: Any) -> dict[str, Any]:
+    """Build the preview view (F041 T002, DECISION F041 D4). A read of this route
+    counts as a view: `mark_viewed` runs first, so the idle clock resets on every
+    look, then `preview_view` answers the link only while the state is `live`."""
+    from datetime import datetime, timezone
+
+    from packages.orchestration.preview_control import mark_viewed, preview_view
+    mark_viewed(str(job.job_id), now=datetime.now(timezone.utc))
+    return preview_view(str(job.job_id))
+
+
 def _read_artifact_file(job: Any, root: str, relative: str) -> Any:
     """The file route's reader — a job's screenshot bytes or its whole README (F041
     T001, DECISION F041 D2). Delegates the whole decision to `read_artifact_file`."""
@@ -2682,6 +2693,13 @@ JOB_RERUN_SUBTREE_COMMAND_ID = "job.rerun-subtree"
 #: through `steering.steer_task_command`.
 JOB_STEER_COMMAND_ID = "job.steer"
 
+#: DECISION F041 D4: the write door's preview pair, recorded by
+#: `preview_control.request_preview` and handed to the server's own preview worker.
+JOB_PREVIEW_START_COMMAND_ID = "job.preview-start"
+JOB_PREVIEW_STOP_COMMAND_ID = "job.preview-stop"
+JOB_PREVIEW_COMMAND_IDS = frozenset(
+    {JOB_PREVIEW_START_COMMAND_ID, JOB_PREVIEW_STOP_COMMAND_ID})
+
 #: DECISION F015 D3: the plan edit refusals, each with its status, its audit outcome and its
 #: message. The edit RAN and DECLINED for all but the argument refusals, which are shape
 #: errors on field `args`. A version conflict carries the current version, and every other
@@ -2855,6 +2873,10 @@ class _RemedyHandler(BaseHTTPRequestHandler):
     server_token: str = ""
     target_job_id: str = ""
     app_html: str = ""
+    #: DECISION F041 D4: the server's own preview worker, bound by `start_ui_server`;
+    #: `None` in any handler built without one, so the door's preview clause degrades
+    #: to recording the request alone.
+    preview_worker: Any = None
 
     def log_message(self, format: str, *args: Any) -> None:  # noqa: A002
         """Suppress default stderr logging."""
@@ -2918,6 +2940,7 @@ class _RemedyHandler(BaseHTTPRequestHandler):
                 "lessons": _build_lessons_json,
                 "tour": _build_tour_json,
                 "artifacts": _build_artifacts_json,
+                "preview": _build_preview_json,
             }
             handler = handlers.get(endpoint)
             if handler:
@@ -3236,6 +3259,32 @@ class _RemedyHandler(BaseHTTPRequestHandler):
             self._emit_command_accepted_event(str(job.job_id), accepted_body)
             self._send_json(200, accepted_body)
             return
+        # DECISION F041 D4 maps `job.preview-start` and `job.preview-stop` to
+        # `preview_control.request_preview`, run with the door's own source, and hands the
+        # job id to the server's preview worker. D18's order is unchanged: effect, then the
+        # audit line, then the publication. Unlike `job.pause`, the effect never declines —
+        # a preview request is recorded whatever the current state, the same reason
+        # `job.stop`'s clause above takes no declining branch — so this clause takes
+        # `job.stop`'s own D18 order, with no declining branch either.
+        if payload["command"] in JOB_PREVIEW_COMMAND_IDS:
+            try:
+                accepted_body = self._dispatch_job_preview(job, payload)
+            except (OSError, RuntimeError, ValueError, TypeError):
+                # D18, clause four: an effect that RAISED is neither `accepted`,
+                # which would be false, nor unaudited, which would break D6.
+                self._audit_attempt(str(job.job_id), "rejected_effect", create=True,
+                                    payload=payload)
+                self._send_json(*_safe_error(500, COMMAND_EFFECT_FAILED_MESSAGE))
+                return
+            # D18, clause three: both writes below fail SOFT. The request is already
+            # durable, so refusing after the fact would report a request that really
+            # was recorded as one that was not.
+            self._audit_attempt(str(job.job_id), "accepted", create=True, payload=payload)
+            self._publish_command_result(str(job.job_id), payload["client_nonce"],
+                                         accepted_body)
+            self._emit_command_accepted_event(str(job.job_id), accepted_body)
+            self._send_json(200, accepted_body)
+            return
         # DECISION F027 D5 maps `job.veto-task` to `task_veto.veto_task_command`, run with
         # this door's own token fingerprint as the actor. D18's order is unchanged: effect,
         # then the audit line, then the publication. Unlike `job.pause`'s generic 409, the
@@ -3534,6 +3583,25 @@ class _RemedyHandler(BaseHTTPRequestHandler):
             source=COMMAND_EFFECT_SOURCE)
         return {"command": payload["command"], "outcome": "accepted",
                 "request_id": signal.request_id}
+
+    def _dispatch_job_preview(self, job: Any, payload: Any) -> dict[str, Any]:
+        """Run `job.preview-start` or `job.preview-stop`'s effect and build the body
+        DECISION F041 D4 rules for it.
+
+        The door only RECORDS the request — `request_preview` runs no verb — and then
+        hands the job id to `self.preview_worker`, when one is set, so the worker's own
+        thread carries the request the rest of the way. Never declines.
+        """
+        from datetime import datetime, timezone
+
+        from packages.orchestration.preview_control import request_preview
+        action = "start" if payload["command"] == JOB_PREVIEW_START_COMMAND_ID else "stop"
+        job_id = str(job.job_id)
+        record = request_preview(job_id, action, now=datetime.now(timezone.utc))
+        if self.preview_worker is not None:
+            self.preview_worker.submit(job_id)
+        return {"command": payload["command"], "outcome": "accepted",
+                "state": record["state"]}
 
     def _dispatch_job_pause(self, job: Any, payload: Any) -> dict[str, Any]:
         """Run `job.pause`'s effect and build the body DECISION F025 D2 rules for it.
@@ -4365,6 +4433,14 @@ def start_ui_server(
     # Load React frontend (auto-builds if dist/ missing)
     app_html = _load_frontend(job_id, token)
 
+    # DECISION F041 D4: one preview worker per server, created before the handler
+    # class so it can be bound on it, adopting any preview an earlier server left
+    # live and carrying every request the door hands it through `submit`.
+    from packages.orchestration.config import get_config
+    from packages.orchestration.preview_worker import PreviewWorker
+    preview_worker = PreviewWorker(
+        ttl_seconds=int(get_config().get("preview.idle_ttl_seconds")))
+
     # Create handler class with bound state
     handler_class = type(
         "_BoundHandler",
@@ -4373,10 +4449,15 @@ def start_ui_server(
             "server_token": token,
             "target_job_id": job_id,
             "app_html": app_html,
+            "preview_worker": preview_worker,
         },
     )
 
     server = ThreadingHTTPServer((host, port), handler_class)
+    # DECISION F041 D4: adopt and start directly after the socket is bound, so no
+    # preview request the door already accepted can be lost to the gap.
+    preview_worker.adopt_live()
+    preview_worker.start()
     actual_port = server.server_address[1]
     url = f"http://127.0.0.1:{actual_port}/?job={job_id}&token={token}"
 
@@ -4412,6 +4493,9 @@ def start_ui_server(
         pass
     finally:
         server.server_close()
+        # DECISION F041 D4: close the worker after the socket, stopping every
+        # preview it still keeps live so a server exit never orphans a runtime.
+        preview_worker.close()
 
 
 def _try_open_browser(url: str) -> None:
