@@ -1794,6 +1794,22 @@ def _build_layers_json() -> dict[str, Any]:
     return build_layers()
 
 
+def _build_projects_json() -> dict[str, Any]:
+    """Build the project list (F042 T001, DECISION F042 D1)."""
+    from packages.orchestration.project_cockpit import projects_view
+    return projects_view()
+
+
+def _build_project_summary_json(selector: str) -> tuple[int, dict[str, Any]]:
+    """Build one project's summary card, or 404 for an unknown selector
+    (F042 T001, DECISION F042 D1)."""
+    from packages.orchestration.project_cockpit import find_project, project_summary
+    project = find_project(selector)
+    if project is None:
+        return _safe_error(404, "project not found")
+    return (200, project_summary(project))
+
+
 def _build_diagnostics_json(job: Any) -> dict[str, Any]:
     """Build diagnostics-only nodes — Step 167."""
     from packages.orchestration.ui_view_model import build_diagnostics_nodes
@@ -2990,6 +3006,17 @@ class _RemedyHandler(BaseHTTPRequestHandler):
         # /api/layers
         if path == "/api/layers":
             self._send_json(200, _build_layers_json())
+            return
+
+        # /api/projects — DECISION F042 D1
+        if path == "/api/projects":
+            self._send_json(200, _build_projects_json())
+            return
+
+        # /api/projects/<uuid-or-slug>/summary — DECISION F042 D1
+        if (len(parts) == 5 and parts[1] == "api" and parts[2] == "projects"
+                and parts[4] == "summary"):
+            self._send_json(*_build_project_summary_json(parts[3]))
             return
 
         # /api/jobs/<job_id>/nodes/<node_id>/detail
