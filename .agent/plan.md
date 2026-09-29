@@ -13,15 +13,18 @@ D1).
 
 ## Current Step
 
-ROUND 9: book round 8, record DECISION F039 D9, and close T003: the player
-build following `outDir`, the zero-network test from `file://` over the
-exported demo story, and the story guide with its index rows and its
-assumption-log row.
+ROUND 10, the closure sequence's first round: book round 9's FAIL with
+R-1103, repair R-1103, write the Built State, the checklist consolidation
+and the guide's sentence on the test's window, and take the feature's one
+full suite on the tree that ships.
 
 ## Next Steps
 
-1. The closure sequence: the one full-suite run, the evidence package, the
-   STATUS flip with the ledger rotation, and the pull request.
+1. The closure's evidence round: the booking of round 10 with R-1103's
+   resolution, the self-use reading, the evidence bundle and the review
+   package.
+2. The closing round: the ledger rotation, the STATUS flip and the pull
+   request.
 
 ## Risks
 
