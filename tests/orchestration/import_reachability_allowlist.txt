@@ -73,6 +73,8 @@ packages.orchestration.approval_queue
 packages.orchestration.archive_plan
 packages.orchestration.artifact_contract_gate
 packages.orchestration.artifact_index
+packages.orchestration.artifact_markdown
+packages.orchestration.artifact_preview
 packages.orchestration.artifact_summary
 packages.orchestration.autonomy_readiness
 packages.orchestration.bench_history

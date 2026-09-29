@@ -1985,6 +1985,13 @@ def _build_tour_json(job: Any) -> dict[str, Any]:
     return tour_view(job)
 
 
+def _build_artifacts_json(job: Any) -> dict[str, Any]:
+    """Build the artifacts view — the sanitized README and screenshot list a job's
+    workspace and evidence directories hold (F041 T001, DECISION F041 D1)."""
+    from packages.orchestration.artifact_preview import artifacts_view
+    return artifacts_view(str(job.job_id))
+
+
 def _build_chat_turn_json(job: Any, text: str, task_id: str) -> dict[str, Any]:
     """Run one chat turn and answer it in the SAME wire shape `remedy chat ask --json`
     emits (F038 T003, DECISION F038 D11). READ-ONLY: a turn sends nothing; confirming a
@@ -2903,6 +2910,7 @@ class _RemedyHandler(BaseHTTPRequestHandler):
                 "ownership": _build_ownership_json,
                 "lessons": _build_lessons_json,
                 "tour": _build_tour_json,
+                "artifacts": _build_artifacts_json,
             }
             handler = handlers.get(endpoint)
             if handler:
