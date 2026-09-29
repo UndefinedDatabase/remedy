@@ -5,6 +5,7 @@ import {
   ClipboardGlyph, CalendarGlyph, TaskDoneGlyph, ChartGlyph, TokenGlyph,
   FlaskGlyph, ShieldCheckGlyph, CoinGlyph,
 } from "../icons/RemedyGlyphs";
+import { Term } from "../term/Term";
 import styles from "./TopMetricsBar.module.css";
 
 const iconByKey: Record<string, typeof ClipboardGlyph> = {
@@ -50,6 +51,19 @@ export const ESTIMATE_MARK = "~";
 export const ESTIMATE_PHRASE = ", estimated";
 
 const EM_DASH = "—";
+
+/** Anchors the six plain metrics' labels to the catalog (DECISIONS F043 D1 and D2). The token
+ *  and cost tiles are absent: their own breakdown tooltip already opens on the whole tile, and
+ *  the next round moves both onto the term's tooltip instead, with their breakdown shown under
+ *  the catalog's explanation. */
+const METRIC_TERMS: Readonly<Record<string, string>> = {
+  open: "metric.open",
+  planned: "metric.planned",
+  done: "metric.done",
+  progress: "metric.progress",
+  tests: "metric.tests",
+  proof: "metric.proof",
+};
 
 /** Main value text (without suffix). Unknown / em-dash safe. */
 function mainValue(m: RemedyMetric): string {
@@ -100,7 +114,7 @@ export function TopMetricsBar({ metrics }: { metrics: RemedyMetric[] }) {
                 {m.key === "tests" && (
                   <span className={`${styles.stateDot} ${stateDotClass[m.state || "none"]}`} aria-hidden="true" />
                 )}
-                {m.label}
+                {METRIC_TERMS[m.key] ? <Term term={METRIC_TERMS[m.key]}>{m.label}</Term> : m.label}
               </div>
               <div className={styles.value}>
                 {m.cost?.estimated && <span className={styles.estimateMark}>{ESTIMATE_MARK}</span>}

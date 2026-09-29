@@ -6,6 +6,7 @@ import { nowCardPause } from "../../api/pauseView";
 import { recencyLevel, isLiveByRecency } from "../../api/recency";
 import { deriveAgentStatus } from "../../cockpitLogic";
 import { SparkGlyph, TaskCurrentGlyph } from "../icons/RemedyGlyphs";
+import { Term } from "../term/Term";
 import styles from "./RightLivePanel.module.css";
 
 /** How often the card re-reads the clock. The dot fades on its own between
@@ -54,8 +55,8 @@ export function AgentNowCard({ dashboard, recent }: { dashboard: RemedyDashboard
   return (
     <section className={styles.card}>
       <header className={styles.cardHeader}>
-        <h2>Agent is doing now</h2>
-        {isLive && <span className={styles.liveSmall}><span /> Live</span>}
+        <h2><Term term="panel.agent_now">Agent is doing now</Term></h2>
+        {isLive && <span className={styles.liveSmall}><span /> <Term term="agent.live">Live</Term></span>}
       </header>
       <div className={styles.agentNow}>
         <div className={styles.actorIcon}>

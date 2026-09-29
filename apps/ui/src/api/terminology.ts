@@ -87,6 +87,108 @@ export const TERM_CATALOG: Readonly<Record<string, TermEntry>> = {
     source: "docs/roadmap/features/T5_F024.md",
     anchor: "holds only while every task has passed",
   },
+  "metric.open": {
+    title: "Open",
+    body: "Questions this job is waiting for you to answer. You find them in the decision inbox.",
+    source: "packages/orchestration/ui_server.py",
+    anchor: "Number of still-open human decisions for a job",
+  },
+  "metric.planned": {
+    title: "Planned",
+    body: "Tasks of this job that have not started yet.",
+    source: "packages/orchestration/ui_server.py",
+    anchor: "\"planned\": sum(1 for t in job.tasks if",
+  },
+  "metric.done": {
+    title: "Done",
+    body: "Tasks of this job that have finished.",
+    source: "packages/orchestration/ui_server.py",
+    anchor: "\"done\": sum(1 for t in job.tasks if",
+  },
+  "metric.progress": {
+    title: "Progress",
+    body: "The share of this job's tasks that have finished. A job without tasks shows 0%.",
+    source: "packages/orchestration/ui_server.py",
+    anchor: "\"progress_percent\": round((sum(1 for t in job.tasks",
+  },
+  "metric.tests": {
+    title: "Tests",
+    body: "How many of this job's recorded test runs passed. The dot shows whether the latest run passed or failed.",
+    source: "packages/orchestration/ui_server.py",
+    anchor: "Safe test counters from the event ledger. Counts only, no output.",
+  },
+  "metric.proof": {
+    title: "Proof",
+    body: "How many of this job's changes carry a verified proof, out of all its changes. A dash means the proof could not be read.",
+    source: "packages/orchestration/ui_server.py",
+    anchor: "Counts only (total changes vs verified).",
+  },
+  "task.done": {
+    title: "Done",
+    body: "This task has finished.",
+    source: "apps/ui/src/api/remedyApi.ts",
+    anchor: "if (text.includes(\"done\") || text.includes(\"pass\") || text.includes(\"complete\") || text.includes(\"applied\")) return \"done\";",
+  },
+  "task.in_progress": {
+    title: "In progress",
+    body: "This task is running now.",
+    source: "apps/ui/src/api/remedyApi.ts",
+    anchor: "text.includes(\"running\") || text.includes(\"progress\")) return \"current\";",
+  },
+  "blocked.task": {
+    title: "Blocked",
+    body: "This task stopped: it failed, or something blocked it.",
+    source: "apps/ui/src/api/remedyApi.ts",
+    anchor: "if (text.includes(\"block\") || text.includes(\"fail\")) return \"blocked\";",
+  },
+  "task.planned": {
+    title: "Planned",
+    body: "This task is not running: it has not started yet, or it was paused or cancelled.",
+    source: "apps/ui/src/api/remedyApi.ts",
+    anchor: "if (text.includes(\"suggest\")) return \"suggested\"; return \"pending\";",
+  },
+  "task.partially_applied": {
+    title: "Partially applied",
+    body: "Only some of this task's changes landed in the project; the rest did not apply.",
+    source: "packages/orchestration/proof_chain.py",
+    anchor: "The apply fold agrees or it says \"partial\"",
+  },
+  "panel.tasks": {
+    title: "Tasks",
+    body: "The steps of this job's plan. The planner decides how many there are, up to a configured limit.",
+    source: "docs/system/vocabulary.md",
+    anchor: "One step in a job plan; the planner chooses how many",
+  },
+  "panel.decisions": {
+    title: "Decision inbox",
+    body: "Questions Remedy cannot answer for itself, waiting for you. Open ones come first, the most urgent at the top: a question grows more urgent the longer it waits and the more tasks it holds up.",
+    source: "apps/ui/src/api/decisionOrder.ts",
+    anchor: "`(blockedCount + 1) * ageSeconds`, and the inbox reads open cards first",
+  },
+  "panel.activity": {
+    title: "Activity",
+    body: "What this job has been doing, in plain words. Choose a row to find its task in the graph.",
+    source: "docs/roadmap/features/T5_F021.md",
+    anchor: "feed rows carry their seq and click-jump to their node in the graph",
+  },
+  "panel.agent_now": {
+    title: "Agent is doing now",
+    body: "The newest real action of this job's agents. Reading files and other bookkeeping are left out.",
+    source: "apps/ui/src/components/panels/AgentNowCard.tsx",
+    anchor: "Bookkeeping is excluded on purpose",
+  },
+  "agent.live": {
+    title: "Live",
+    body: "Shown while the job is running and its agents did something in the last half minute.",
+    source: "apps/ui/src/components/panels/AgentNowCard.tsx",
+    anchor: "RUNNING AND RECENT, never either alone.",
+  },
+  "graph.scrubbed": {
+    title: "Scrubbed",
+    body: "The graph shows this job as it stood at the moment chosen on the timeline. New events keep arriving and wait until you return to LIVE.",
+    source: "docs/roadmap/features/T5_F024.md",
+    anchor: "scrubbed mode is unmistakably labeled with live updates queuing behind the toggle",
+  },
 };
 
 /** The entry for an OWN key of the catalog, or null — never a prototype member

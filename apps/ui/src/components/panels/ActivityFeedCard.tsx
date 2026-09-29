@@ -9,6 +9,7 @@ import { steeringPlaceholder } from "../../api/steeringNote";
 import { STEERING_REPLY_FRAMING } from "../../api/humanizeCatalog";
 import { BuilderGlyph, ReviewerGlyph, PersonGlyph, GearGlyph } from "../icons/RemedyGlyphs";
 import { ChatInput } from "./ChatInput";
+import { Term } from "../term/Term";
 import styles from "./RightLivePanel.module.css";
 
 const iconByActor: Record<string, typeof BuilderGlyph> = {
@@ -177,7 +178,7 @@ export function ActivityFeedCard({ activity, recent, recentDropped, tasks, onSel
   if (live.length > 0) {
     return (
       <section className={styles.card}>
-        <header className={styles.cardHeader}><h2>Activity</h2></header>
+        <header className={styles.cardHeader}><h2><Term term="panel.activity">Activity</Term></h2></header>
         <LiveFeed recent={live} recentDropped={recentDropped ?? 0}
           tasks={tasks ?? []} onSelectNode={onSelectNode ?? (() => {})} />
         {composer}
@@ -187,7 +188,7 @@ export function ActivityFeedCard({ activity, recent, recentDropped, tasks, onSel
 
   return (
     <section className={styles.card}>
-      <header className={styles.cardHeader}><h2>Activity</h2></header>
+      <header className={styles.cardHeader}><h2><Term term="panel.activity">Activity</Term></h2></header>
       <div className={styles.activityList}>
         {hasActivity ? activity.slice(0, 5).map(item => {
           const Icon = iconByActor[item.actor] || GearGlyph;

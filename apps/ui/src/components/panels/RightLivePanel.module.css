@@ -31,7 +31,8 @@
   text-transform: uppercase;
   color: var(--remedy-ink);
 }
-.cardHeader span { font-size: 12px; color: var(--remedy-muted); }
+/* F043 DECISION F043 D2 (3): a direct child, so a heading's term keeps the heading's own type. */
+.cardHeader > span { font-size: 12px; color: var(--remedy-muted); }
 
 .livePill {
   align-self: flex-end;
@@ -52,7 +53,8 @@
 .liveDot { width: 9px; height: 9px; border-radius: 50%; background: var(--remedy-green); box-shadow: 0 0 8px rgba(52,194,126,.6); }
 .idleDot { width: 9px; height: 9px; border-radius: 50%; background: var(--remedy-faint); }
 .liveSmall { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 700; color: var(--remedy-green); }
-.liveSmall span { width: 7px; height: 7px; border-radius: 50%; background: var(--remedy-green); }
+/* F043 DECISION F043 D2 (3): the badge's dot is its first span; the word after it is its term. */
+.liveSmall > span:first-child { width: 7px; height: 7px; border-radius: 50%; background: var(--remedy-green); }
 
 /* The NowCard's activity dot (assets_spec.md line 178). The level lives in a
    data attribute rather than in the class name, so the rule that computes it

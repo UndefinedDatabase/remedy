@@ -74,6 +74,7 @@ import { nodeIdForDecisionCard } from "../../api/decisionFocus";
 import type { DecisionOutcomeMessage, DecisionOutcomeTone } from "../../api/decisionOutcome";
 import type { DecisionSendTarget } from "../../api/decisionSend";
 import type { FocusableTask } from "../../api/feedFocus";
+import { Term } from "../term/Term";
 import styles from "./RightLivePanel.module.css";
 
 /** COLOUR AND PLACEMENT ARE THIS COMPONENT'S; THE SENTENCE NEVER IS. Every word
@@ -239,7 +240,7 @@ export function DecisionInboxCard({ decisions, tasks, jobId, serverToken, onSele
   return (
     <section className={styles.card} data-ui="decision-inbox-card">
       <header className={styles.cardHeader}>
-        <h2>Decision inbox</h2>
+        <h2><Term term="panel.decisions">Decision inbox</Term></h2>
         {/* An `output` rather than a `span`: a bare `div`/`span` maps to the ARIA
             `generic` role, which prohibits an accessible name, so the label would
             be computed and dropped (finding R-0682). The word ships in the

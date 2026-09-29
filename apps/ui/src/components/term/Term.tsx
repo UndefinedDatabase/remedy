@@ -20,7 +20,16 @@ interface TipPlacement {
   top: number;
 }
 
-export function Term({ term, children }: { term: string; children: ReactNode }) {
+export function Term({ term, children, insideControl = false }: {
+  term: string;
+  children: ReactNode;
+  /** DECISION F043 D2 (2): true when this term sits inside a button or another control — the
+   *  task row's state word, for instance. Such a term takes no focus of its own, because a
+   *  focusable span inside an interactive element is nested interactive content, and the '?'
+   *  panel lists every term for the keyboard instead. Hover, Escape and everything else are
+   *  unchanged. */
+  insideControl?: boolean;
+}) {
   const entry = termEntry(term);
   const spanRef = useRef<HTMLSpanElement>(null);
   const tipRef = useRef<HTMLSpanElement>(null);
@@ -81,12 +90,12 @@ export function Term({ term, children }: { term: string; children: ReactNode }) 
       ref={spanRef}
       className={styles.term}
       data-term={term}
-      tabIndex={0}
+      tabIndex={insideControl ? undefined : 0}
       aria-describedby={open ? tipId : undefined}
       onPointerEnter={() => setHovering(true)}
       onPointerLeave={() => { setHovering(false); closeTooltip(); }}
-      onFocus={() => setOpen(true)}
-      onBlur={closeTooltip}
+      onFocus={insideControl ? undefined : () => setOpen(true)}
+      onBlur={insideControl ? undefined : closeTooltip}
       onKeyDown={handleKeyDown}
     >
       {children}
