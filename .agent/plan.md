@@ -12,17 +12,16 @@ DECISION F041 D1).
 
 ## Current Step
 
-ROUND 5: book round 4 and record DECISION F041 D5, then land T003's
-Results panel: the pure rules, the preview send, the two read doors, the
-panel with the README, the screenshot grid and lightbox and the app card,
-its entry and mount, one assumption-log line and a headless render.
+ROUND 6: book round 5, register R-1106 and record DECISION F041 D6, then
+repair R-1106, give the guided tour its `preview` anchor and "See it
+running" stop on both sides, and prove the preview flow end to end on a
+small fixture app through a real UI server.
 
 ## Next Steps
 
-1. The result tour's preview anchor and the end-to-end run on a fixture
-   app: open, the live link answers, idle, stopped, the state truthful.
-2. The closure sequence: the one full-suite run, the evidence, the close.
+1. The closure sequence: the booking of this round, the one full-suite
+   run, the evidence and the package, the ledger rotation and the close.
 
 ## Risks
 
-Open findings: 0.
+Open findings: 1 (R-1106, repaired this round, booked at the next).
