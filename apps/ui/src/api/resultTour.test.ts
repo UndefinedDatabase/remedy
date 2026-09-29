@@ -149,10 +149,11 @@ describe("tourAnchorLabel", () => {
     expect(tourAnchorLabel({ kind: "diff", ref: "a.py" })).toBe("Changed file a.py");
     expect(tourAnchorLabel({ kind: "evidence", ref: "report.md" })).toBe("Evidence file report.md");
     expect(tourAnchorLabel({ kind: "command", ref: "pytest" })).toBe("Command pytest");
+    expect(tourAnchorLabel({ kind: "preview", ref: "app" })).toBe("The app preview");
   });
 
   it("names every kind in TOUR_ANCHOR_KINDS", () => {
-    expect(TOUR_ANCHOR_KINDS).toEqual(["node", "diff", "evidence", "command"]);
+    expect(TOUR_ANCHOR_KINDS).toEqual(["node", "diff", "evidence", "command", "preview"]);
   });
 });
 
@@ -169,9 +170,10 @@ describe("tourGeneratorLabel", () => {
 });
 
 describe("tourCanShow", () => {
-  it("holds for a node and a diff anchor", () => {
+  it("holds for a node, a diff and a preview anchor", () => {
     expect(tourCanShow({ kind: "node", ref: "T1" })).toBe(true);
     expect(tourCanShow({ kind: "diff", ref: "a.py" })).toBe(true);
+    expect(tourCanShow({ kind: "preview", ref: "app" })).toBe(true);
   });
 
   it("fails for an evidence and a command anchor", () => {

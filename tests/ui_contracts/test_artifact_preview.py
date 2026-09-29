@@ -126,3 +126,13 @@ def test_the_right_panel_holds_the_results_button():
     source = _source(RIGHT_PANEL)
     assert ('{onOpenResults && (<button type="button" className={styles.advancedToggle} '
             'onClick={onOpenResults}>Results</button>)}') in source
+
+
+def test_the_shells_tour_anchor_handler_opens_results_for_a_preview_anchor():
+    """DECISION F041 D6: the tour's "See it running" stop opens the Results panel."""
+    source = _source(SHELL)
+    start = source.index("function handleTourShowAnchor(")
+    end = source.index("\n  }", start)
+    body = source[start:end]
+    assert 'anchor.kind === "preview"' in body
+    assert "setResultsOpen(true)" in body

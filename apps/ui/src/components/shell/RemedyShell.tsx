@@ -240,6 +240,10 @@ export function RemedyShell({ dashboard, serverToken, selectedNodeId, onSelectNo
     } else if (anchor.kind === "diff") {
       setTourDiffPath(anchor.ref);
       setOpenDiffTaskId("");
+    } else if (anchor.kind === "preview") {
+      // DECISION F041 D6: a preview stop's "Show me" opens the Results panel, where the app
+      // card lives, the same way a diff stop opens the job's whole diff.
+      setResultsOpen(true);
     }
   }
 
