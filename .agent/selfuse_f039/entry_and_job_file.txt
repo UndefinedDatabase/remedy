@@ -1,0 +1,5 @@
+Entry ID: SU-035
+Entry Title: Fix stale documentation: doc_config_keys in docs/guides/story-user-guide-v1.md
+Entry Provenance: generated (self-use-generator tier 2, doc staleness, doc_config_keys:docs/guides/story-user-guide-v1.md:backticks the config key `story.html`)
+Entry Consumed By: 
+Job File Path: /home/decodeux/Repos/remedy/.remedy-wt/f039-r11-selfuse/SU-035.md

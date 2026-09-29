@@ -30,6 +30,7 @@ import { DetailPopover } from "../detail/DetailPopover";
 import { LessonsOverlay } from "../lessons/LessonsOverlay";
 import { lessonsRefreshKey } from "../../api/lessons";
 import { TourOverlay } from "../tour/TourOverlay";
+import { StoryPanel } from "../story/StoryPanel";
 import { DegradedBanner } from "./DegradedBanner";
 import styles from "./RemedyShell.module.css";
 import { browserBrainStreamEnv, createBrainStreamHostDeps, eventsSincePath } from "../../api/brainStreamDeps";
@@ -205,6 +206,11 @@ export function RemedyShell({ dashboard, serverToken, selectedNodeId, onSelectNo
   const [tourOpen, setTourOpen] = useState(false);
   const [tourDiffPath, setTourDiffPath] = useState<string | null>(null);
 
+  // THE STORY (F039 T002, DECISION F039 D6): open or closed; the panel reads the ledger, the
+  // ownership view and the timeline's own scrub this shell already owns, and drives that same
+  // scrub rather than keeping a position of its own.
+  const [storyOpen, setStoryOpen] = useState(false);
+
   // THE SCROLL. A diff stop's "Show me" opens the job's whole diff (below) and records the
   // path it named; once that diff's envelope has arrived, this effect finds the path's row key
   // through the SAME model `DiffFileSidebar.tsx` uses and scrolls to the SAME id that row
@@ -266,7 +272,7 @@ export function RemedyShell({ dashboard, serverToken, selectedNodeId, onSelectNo
           <BrainGraphStage dashboard={dashboard} selectedNodeId={selectedNodeId} onSelectNode={onSelectNode} rows={ledgerRows} scrub={scrub} serverToken={serverToken} />
           <PhaseTimeline scrub={scrub} />
         </main>
-        <RightLivePanel dashboard={dashboard} serverToken={serverToken} onSelectNode={onSelectNode} streamStatus={stream.status} replay={scrub.state.mode === "scrubbed"} recent={stream.recent} recentDropped={stream.recentDropped} onOpenLessons={() => setLessonsOpen(true)} onOpenTour={() => setTourOpen(true)} focusedTaskId={focusedTaskId} />
+        <RightLivePanel dashboard={dashboard} serverToken={serverToken} onSelectNode={onSelectNode} streamStatus={stream.status} replay={scrub.state.mode === "scrubbed"} recent={stream.recent} recentDropped={stream.recentDropped} onOpenLessons={() => setLessonsOpen(true)} onOpenTour={() => setTourOpen(true)} onOpenStory={() => setStoryOpen(true)} focusedTaskId={focusedTaskId} />
       </div>
       {selectedNode && <DetailPopover dashboard={dashboard} selectedNode={selectedNode} selectedPromptId={selectedPromptId} onClose={() => onSelectNode(null)} onOpenDiff={setOpenDiffTaskId} serverToken={serverToken} onSelectTask={(taskId) => onSelectNode(shellSelectionIdOf(dashboard.tasks, taskId))} ownership={ownership} />}
       {/* THE DIFF PANEL. A sibling of the popover rather than a child of
@@ -315,6 +321,9 @@ export function RemedyShell({ dashboard, serverToken, selectedNodeId, onSelectNo
           onShowAnchor={handleTourShowAnchor}
         />
       )}
+      {/* THE STORY (F039 T002, DECISION F039 D6), a sibling directly after the guided tour for
+          the reason both are siblings outside <main>. */}
+      {storyOpen && (<StoryPanel dashboard={dashboard} rows={ledgerRows} ownership={ownership} scrub={scrub} onClose={() => setStoryOpen(false)} />)}
     </div>
   );
 }

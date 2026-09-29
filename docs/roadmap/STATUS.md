@@ -170,6 +170,7 @@ Milestone R1 — Remedy as the daily tool: Tier 2 complete (F086 as the self-ins
 - [x] F035 — Ownership ledger (T001–T003 complete; accepted 2026-09-28 · live review PASS — ACCEPTED · Evidence job f035r9e1001 · package remedy-review-20260928-050815-READY_FOR_REVIEW.zip · SHA-256 9b3e3841d2c11725c8a03579fa2a7d5dcb963aac3386faeb5a6ab5517ac2b8aa · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD 7f25c03bddca1d9c08b58821288b7eed42d1e3cb)
 - [x] F036 — Guided result tour (T001–T003 complete; accepted 2026-09-28 · live review PASS — ACCEPTED · Evidence job f036r8e1001 · package remedy-review-20260928-094901-READY_FOR_REVIEW.zip · SHA-256 e2bd771b3f1c1a52fcc7e73cdae50c4fd4a837107ee5e46b76d79d8b8dffc2f4 · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD 153537dc8e5a6bb7061f220cdeaffbc1829d3067)
 - [x] F038 — Grounded chat & intent dispatch (T001–T003 complete; accepted 2026-09-28 · live review PASS — ACCEPTED · Evidence job f038r14e1001 · package remedy-review-20260928-194656-READY_FOR_REVIEW.zip · SHA-256 98bc29b2c6aa67360bf61f1a85fb4f5583f6552100c2615c918a5b54b426bab4 · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD 2fe5345e08ad4b013b8d5a9395e5b1a83b7415f5)
+- [x] F039 — Story/replay mode (T001–T003 complete, R-1104 carried to F286; accepted 2026-09-29 · live review PASS_WITH_RISKS — ACCEPTED · Evidence job f039r12e1001 · package remedy-review-20260929-031523-READY_FOR_REVIEW.zip · SHA-256 e9097684c735ec44a6b33f4bc409de252280e7294e3d2d142b4197684f9dee7d · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD da3d5430681239aff3419da447abbb75f2105112)
 
 ## Tier 2 — Findings paydown (rolling, operator rule amend0911-feedback)
 
@@ -177,7 +178,6 @@ Milestone R1 — Remedy as the daily tool: Tier 2 complete (F086 as the self-ins
 
 ## Tier 5 — Operator Cockpit (parallel human track, continued)
 
-- [ ] F039 — Story/replay mode
 - [ ] F041 — Artifact preview
 - [ ] F042 — Multi-project cockpit
 - [ ] F043 — Explanation layer

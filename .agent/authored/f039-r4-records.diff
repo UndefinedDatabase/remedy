@@ -1,0 +1,57 @@
+diff --git a/.agent/decisions.md b/.agent/decisions.md
+index 852b81f1c..48f023c65 100644
+--- a/.agent/decisions.md
++++ b/.agent/decisions.md
+@@ -25172,3 +25172,40 @@ this round, rejected because a key nothing reads is dead configuration.
+ 
+ HOW TO REVERSE: delete `storyAutoplay.ts`, its test, `tests/ui_contracts/test_story_autoplay.py`
+ and this paragraph.
++
++## DECISION F039 D5 — the story's pacing reaches the browser as the dashboard's `story` section, read from two configuration keys; a budget tick's figures ride on its own feed row; and one pure view assembles a job's story from the ledger rows, the ownership view and that section (2026-09-28)
++
++CONTEXT: DECISION F039 D4 (5) left the configuration keys to the round that lands their readers.
++Measured at `9cd7cbfd`: configuration reaches the browser only as a section of the dashboard
++payload that `_build_dashboard` in `packages/orchestration/ui_server.py` builds and
++`normalizeDashboardPayload` in `apps/ui/src/api/remedyApi.ts` maps, as `budget_final` travels to
++`budgetFinal`; no file under `apps/ui/src/api/` imports from `apps/ui/src/components/`; and the
++environment guide `docs/guides/environment.md` is rendered from the registry by
++`render_environment_guide`, which `tests/docs/test_environment_guide.py` holds it to. The ledger the
++cockpit folds keeps feed rows, which `feedRowOf` in `apps/ui/src/api/feedRow.ts` builds without the
++`budget` payload a `budget.tick` frame carries, so no card could read a cost; `budgetTickFiguresOf`
++in `apps/ui/src/api/budgetTick.ts` is the one reader of that payload, and
++`tests/ui_contracts/test_cost_metric_render.py` keeps `costMetric.ts` the only file that names a
++figure field.
++
++CHOSEN: (1) TWO KEYS, `story.step_ms` and `story.chapter_pause_ms`, whole numbers of milliseconds
++defaulting to 420 and 1600, their variables `REMEDY_STORY_STEP_MS` and
++`REMEDY_STORY_CHAPTER_PAUSE_MS`, and the environment guide rendered again. (2) THE SECTION: the
++dashboard gains `story`, `{"step_ms": ..., "chapter_pause_ms": ...}`, the two values as the
++configuration answers them; the browser keeps the section raw as `story`, since `storyPacingOf`,
++which clamps each value, lives with the story and the API layer imports nothing from the
++components. (3) THE FIGURES: a feed row gains `budget`, set only for a `budget.tick` frame whose
++payload is an object, from `budgetTickFiguresOf`, and absent on every other row; no figure field is
++named outside `costMetric.ts`. (4) THE VIEW: `apps/ui/src/components/story/storyView.ts` reads the
++ticks from the rows that carry figures, in seq order, and assembles the chapters, the cards, the
++seqs autoplay steps over and the decoded pacing, pure. (5) A guard binds the section's keys to the
++keys `storyPacingOf` reads and each key's default to the constant it falls back to, so the two
++languages cannot drift apart.
++
++ALTERNATIVES: a story route of its own, rejected because the pacing is two numbers the dashboard
++already has a place for; decoding the pacing in the API layer, rejected because it would import the
++story's module into `apps/ui/src/api/`; keeping only the latest tick, rejected because a card reads
++the cost at its own cluster's last seq.
++
++HOW TO REVERSE: delete the two keys and render the guide again, the `story` section and its
++mapping, the row's `budget` field, `storyView.ts`, their tests and guard, and this paragraph.
+diff --git a/.agent/live_review.md b/.agent/live_review.md
+index 8f6ae24e6..375e35280 100644
+--- a/.agent/live_review.md
++++ b/.agent/live_review.md
+@@ -473,3 +473,7 @@ Done: R-1098 — RESOLVED at `ea30d1bc` (F039 R2 C3), booked by F039 R3: `ts_imp
+ - R-1099 — Low, THE NARRATION GOLDENS NEVER HOLD TWO KEY EVENTS OF ONE ACTOR KIND, SO THE HALF OF THE ACTOR RULE THAT COUNTS EVENTS IS UNTESTED. Raised by the planner and reviewer of F039's first session at the round 2 gate. SEARCHED BEFORE MINTING (checklist item 30): the open set at `1e1d7352` holds R-1098 alone, which is about the guards' import reader. MEASURED at `1e1d7352`: DECISION F039 D3 (5) and S8 of the round 2 block name an actor only when the chapters hold exactly one key event of the kind and the view exactly one entry of its action; `beatActor` in `apps/ui/src/components/story/storyNarration.ts` checks both counts, and deleting its line `if (matchingEvents.length !== 1) return null;` in a disposable worktree left all 41 vitest cases and all 29 guard cases passing, because no golden in `storyNarration.test.ts` holds two `job_stopped` key events or two answered decisions of one task. WHY LOW: the code is right at `1e1d7352`, and the goldens would not notice a change that names one entry's actor for two stops. FIX: a golden holding two `job_stopped` key events against one `job_stopped` entry, in which neither stop names an actor, and one holding two answered decisions of one task against one entry for it, in which neither names one; the deletion above then turns vitest red. Owner: F039.
+ 
+ Landed: R-1099 — the narration goldens now hold two job_stopped key events against one ownership entry and two answered decisions of one task against one entry, so beatActor's count of matching events is exercised and neither stop nor either decision names an actor.
++
++Gate: F039 R3 — the F039 round 3 entry: the booking of round 2 and R-1098's resolution, R-1099's registration and repair, DECISION F039 D4, and T002's autoplay with its goldens and guard. VERDICT PASS. Re-derived over `1e1d7352`..`9cd7cbfd` by the planner and reviewer of F039's first session, whose own runs produced every reading below. THE RANGE IS 8 COMMITS, at `8c0b9f75` 288, `1d8f0a69` 55, `8dee5d78` 44, `9711f756` 31, `cfd50fb7` 122, `d3a9dbb2` 201, `edd4ce65` 168 and `9cd7cbfd` 214 insertions by `git show --numstat`, each under the 500-line cap and each single-parent; the tracked path set is exactly the block's constraint 3, and the worker declared no deviation. THE TRANSPORT PROOF: the block copy and the two payload copies, read at `9cd7cbfd`, equal the reviewer's originals byte for byte. THE RECORDS: at `8dee5d78` the ledger, the decisions and the plan equal the reviewer's simulation byte for byte and the open set reads `['R-1099']`; `9711f756` adds to the ledger exactly one line beginning `Landed: R-1099 — `. THE CODE matches S3 and S4: `autoplayStep` steps to the next seq with a chapter pause on entering another chapter, jumps chapter to chapter under reduced motion and ends at the last seq, and `storyPacingOf` keeps whole numbers from 50 to 10000. THE TESTS: the block's G4 selection, run serially by the reviewer in the primary checkout at `9cd7cbfd`, read 1881 passed and 5 skipped at exit 0; all six `integrity check` checks read pass; ruff reads clean on the guard and the tool. THE RED PROOFS: the worker's tool, re-run by the reviewer in a disposable worktree at `9cd7cbfd`, turned all eleven mutations red, R-1099's own among them, with both controls green and every file restored byte-identical; the reviewer's eight further mutations through the same runners — each wait of a reduced-motion jump, the landing seq, a non-object payload, the pause's fallback, the upper clamp, the total's start and the pause's value — turned all eight red. The worktree was removed.
++
++Done: R-1099 — RESOLVED at `9711f756` (F039 R3 C3), booked by F039 R4: `apps/ui/src/components/story/storyNarration.test.ts` now holds two `job_stopped` key events against one `job_stopped` entry and two answered decisions of one task against one entry, and in both no beat names an actor. The reviewer's re-run of the round's tool at `9cd7cbfd` turned the deletion of `beatActor`'s count of matching events red through vitest, where at `1e1d7352` it had stayed green.

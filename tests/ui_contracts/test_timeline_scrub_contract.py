@@ -12,6 +12,8 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
+from tests.ui_contracts.test_phase_mapping import ts_import_specifiers
+
 ROOT = Path(__file__).resolve().parent.parent.parent
 TIMELINE = ROOT / "apps" / "ui" / "src" / "components" / "timeline"
 STATE = TIMELINE / "scrubState.ts"
@@ -28,7 +30,7 @@ def _code(path: Path) -> str:
 
 
 def _imports(path: Path) -> list[str]:
-    return sorted(set(re.findall(r'^import [^;]*from "([^"]+)";$', _code(path), re.MULTILINE)))
+    return sorted(set(ts_import_specifiers(_code(path))))
 
 
 def test_the_catch_up_frame_is_the_fast_motion_token():

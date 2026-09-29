@@ -25026,3 +25026,340 @@ amend0921-operator-feedback rule 3).
 
 HOW TO REVERSE: delete `chat_generator_line`, `chatGeneratorLine`, the printed line, the tab's
 line and their tests, and delete this paragraph.
+
+## DECISION F039 D1 — a story's chapters are the phases the phase bar reads over the whole ledger, each holding the bar's own key events in clusters of events at most two seqs apart; a phase with more than six key events splits into parts, and every title comes from one table per phase; the first round lands this as a pure TypeScript module that renders nothing yet (2026-09-28)
+
+CONTEXT: T5_F039.md was written before the phase timeline of F024 and the activity feed of F021
+were built. Measured at `4d60eb84`: `git ls-files apps packages` names no path holding chapter,
+the only paths holding narration or replay are the two Python modules named below, and the design
+reference draws no story mode and no narration card. The phase
+reading the feature file names is `readPhases` in `apps/ui/src/components/timeline/phaseMapping.ts`,
+a pure fold of the event ledger into the bar's six stops, Job, Planning, Build, Test, Review and
+Finalized, in which the phase only moves forward, a phase the ledger skipped has a zero span, and
+Finalized begins where every task has passed. The key events are that module's `extractSubGlyphs`:
+decisions, failures, heals and stops, each carrying the humanize catalog's line for its kind. Both
+are TypeScript with no Python twin. The ledger's rows are the `events-since` cursor endpoint's
+envelopes read by `feedRowOf` in `apps/ui/src/api/feedRow.ts`, and the demo recording is
+`brainDemoRows()` in `apps/ui/src/components/graph/brainDemoRecording.ts`, a two-task job of ten
+events. Two Python modules sit near the feature and do neither of its jobs:
+`packages/orchestration/teacher_narration.py`, F255's deterministic narration of a mission's
+run-log events, and `packages/orchestration/event_replay.py`, the read model a resume uses. The
+certificate the feature file cross-references is not built.
+
+CHOSEN: (1) ONE MODULE, `apps/ui/src/components/story/storyChapters.ts`, pure over the rows it is
+given: no React, no DOM and no clock. It is TypeScript because the in-app story reads the ledger the
+phase bar reads and T003's export bundles the player, so both chapter a ledger with one piece of
+code. (2) A CHAPTER is a phase with a non-zero span in `readPhases` over the WHOLE ledger: from the
+phase's start to the next reached phase's start, the last phase running to one past the ledger's
+last seq. The chapters therefore tile the ledger without a gap, a skipped phase gives no chapter,
+and an empty ledger gives none. (3) THE KEY EVENTS are `extractSubGlyphs` over the same rows, each
+in the chapter whose range holds its seq. (4) A CLUSTER is a run of a chapter's key events in seq
+order in which each comes at most `STORY_CLUSTER_SEQ_GAP`, 2, seqs after the one before; the demo
+recording's review reads two clusters, each a failed review round and its heal. (5) THE SPLIT: a
+phase holding more than `STORY_CHAPTER_KEY_EVENT_LIMIT`, 6, key events becomes parts of six key
+events in order, the last part holding the rest; part one begins at the phase's start, every later
+part at its first key event, each part ends where the next begins, and clusters are read inside a
+part. (6) THE TITLES come from one table, `STORY_CHAPTER_TITLES`: The start, The plan, The build,
+The tests, The review and The finish, and a split phase's parts read `<title>, part <n> of <parts>`.
+A title names the phase and never its outcome, and The finish exists only where every task passed,
+so a failing run is never titled as a good one. The module writes no other sentence. (7) THE
+ROUNDS. The first lands (1) to (6) with vitest goldens on the reducer's fixture ledgers and the demo
+recording, and the guard `tests/ui_contracts/test_story_chapters.py`, which pins the title table to
+the bar's phases and the module's imports and purity. Then T002: the narration card, whose line
+source, the humanize catalog or F255's narration, is settled by the round that lands it; its sync to
+the scrub position; the autoplay pacing with chapter pauses; and the in-app story mode on the demo
+recording, its visual treatment recorded in the assumption log because the reference draws none.
+Then T003: the export command, the font licensing finding before any font is bundled, the size
+budget, the clean-browser test and the docs.
+
+ALTERNATIVES: chaptering in Python and sending chapters to the browser, rejected because the phase
+reading exists only in TypeScript and a second copy would drift from the bar; splitting a dense
+phase by its count of seqs, rejected because a long quiet phase would then split with nothing new to
+tell; clustering by task, rejected because a stop belongs to no task; titles that name an outcome,
+rejected by the feature file's rule against green-washing.
+
+HOW TO REVERSE: delete `apps/ui/src/components/story/`, `tests/ui_contracts/test_story_chapters.py`
+and this paragraph.
+
+## DECISION F039 D2 — the fifth findings paydown, F286, waits behind F039 because again no finding is open when Rule A5 reaches it; F039 is claimed, and the next claim proposes F286 again (2026-09-28)
+
+CONTEXT: At `4d60eb84` the first unchecked line of `docs/roadmap/STATUS.md` is F286 — Findings
+paydown v5, moved behind F038 by DECISION F038 D2. `open_finding_ids` over `.agent/live_review.md`
+at `4d60eb84` answers `[]`.
+
+CHOSEN: F286's STATUS line and its Tier 2 heading move one feature down again, to directly after
+F039, and F039 is claimed now. F286's file gains one line recording the move. Operator question
+Q6 already carries the recommendation this executes, to keep the paydown waiting while no defect
+is open, so no new question is written. The next claim after F039's closure meets F286 first under
+Rule A5 and makes the same test.
+
+ALTERNATIVES: claiming F286 with nothing to pay down, rejected for DECISION F036 D2's reason.
+
+HOW TO REVERSE: move F286's STATUS line and its Tier 2 heading back above F039, delete the line
+this move added to `docs/roadmap/features/T2_F286.md`, and delete this paragraph.
+
+## DECISION F039 D3 — a narration card is one cluster of key events: each key event is a beat carrying the humanize catalog's line, the reviewer's verdict when it is a review round, and the ownership ledger's own sentence when exactly one entry and one event agree; the card carries the cost so far, and a scrub position shows its chapter's latest card begun (2026-09-28)
+
+CONTEXT: DECISION F039 D1 (7) left the card's line source to this round: the humanize catalog of
+`apps/ui/src/api/humanizeCatalog.ts`, or F255's `packages/orchestration/teacher_narration.py`.
+Measured at `ea7bcbdb`: every key event `extractSubGlyphs` returns already carries the catalog's line
+for its kind; the catalog is TypeScript and the exported player cannot call Python; and F255's
+narration words a mission's run log by a table of its own. The safe envelope the browser reads
+carries `seq`, `event`, `timestamp`, `outcome` and `task_id` for every event and a `budget` payload
+for `budget.tick` alone (`_safe_event_summary` in `packages/orchestration/ui_server.py`), and
+`costMetricOf` in `apps/ui/src/api/costMetric.ts` is the one home of a cost figure's wording. No
+event carries its actor. F035's ownership ledger does, served by `GET /api/jobs/<job_id>/ownership`
+and decoded by `decodeOwnershipView` in `apps/ui/src/api/ownership.ts`, one sentence per entry from
+`packages/orchestration/ownership_phrases.py`; its actions include `job_stopped` and
+`decision_answered`, and an entry carries no seq.
+
+CHOSEN: (1) ONE MODULE, `apps/ui/src/components/story/storyNarration.ts`, pure. (2) THE LINE is the
+catalog's, as the key event carries it; F255's narration is not read. (3) A CARD is one cluster of
+one chapter: the chapter's index, the cluster's first and last seq, one BEAT per key event — its
+seq, glyph, task, line, verdict and actor — and the cost. (4) THE VERDICT: a beat whose row is a
+`task_round_completed` reads `STORY_VERDICT_LINES` for its outcome, one line for each outcome
+`REVIEW_OUTCOME_STATE_TABLE` knows — `Verdict: pass`, `Verdict: fail`, `Verdict: needs repair` and
+`Verdict: blocked` — and any other beat has none. (5) THE ACTOR: `STORY_ACTOR_ACTIONS` joins the key
+event `job_stopped` to the ownership action `job_stopped`, and `task_decision_answered` to
+`decision_answered` for the same task. A beat names the entry's sentence only when the ledger holds
+exactly one such key event and the view exactly one such entry; because an entry carries no seq,
+any other count would be a guess, and an unreadable view names nobody. (6) THE COST is `Cost so far: `
+and the display `costMetricOf` gives for the latest budget tick at or before the cluster's last seq,
+marked `~` when estimated and followed by ` tokens` for a token figure; no tick, or a tick with no
+figure, gives none. (7) THE SYNC: `chapterAt` answers the chapter whose range holds a scrub
+position, and `cardAt` the latest card of that chapter whose first seq the position has reached, so
+a chapter shows no card before its first key event and never a card of another chapter. (8) The
+module writes no sentence but its verdict table and its cost label, and
+`tests/ui_contracts/test_story_narration.py` pins both tables to the sources they are bound to.
+
+ALTERNATIVES: F255's narration as the line, rejected because the export plays without Python and the
+key events already carry the catalog's line; matching an actor by timestamp, rejected because an
+entry's time and an event's time come from different writers; a composed verdict sentence per
+outcome, rejected because the outcome's own word is all the record says.
+
+HOW TO REVERSE: delete `storyNarration.ts`, its test, `tests/ui_contracts/test_story_narration.py`
+and this paragraph.
+
+## DECISION F039 D4 — autoplay advances the scrub position one ledger event at a time, waiting one step and, before the first event of a new chapter, one chapter pause more; under reduced motion it jumps from chapter start to chapter start; the step and the pause default to the motion reference's node birth and pulse, and a pacing payload may set each within a clamp (2026-09-28)
+
+CONTEXT: T5_F039.md asks for autoplay that scrubs the timeline with narration, with its pacing and
+chapter pauses per configuration, and says the story inherits the timings of
+`docs/ui/design_reference/motion_spec.md`. Measured at `1e1d7352`: the scrub position is a seq
+(`apps/ui/src/components/timeline/scrubState.ts`) and the timeline has no autoplay; the motion
+reference names `--remedy-dur-birth`, 420 ms, for a node birth and `--remedy-dur-pulse`, 1600 ms,
+for the active pulse; F024 bound its catch-up step to `--remedy-dur-fast` and pinned the two together
+in `tests/ui_contracts/test_timeline_scrub_contract.py`; and no configuration key reaches the
+browser except through the dashboard payload's fixed fields.
+
+CHOSEN: (1) ONE MODULE, `apps/ui/src/components/story/storyAutoplay.ts`, pure, which owns no timer:
+the caller asks it which position comes next and how long to wait. (2) THE PACING is a step and a
+chapter pause. `STORY_STEP_MS` is 420, a node birth, so the graph births one event before the next
+arrives; `STORY_CHAPTER_PAUSE_MS` is 1600, one pulse, the time a chapter's title holds; and
+`tests/ui_contracts/test_story_autoplay.py` pins both to the design reference's `tokens.css`. (3) THE
+STEP: from a position, the next is the ledger's next seq, after one step, plus one chapter pause when
+that seq lies in another chapter than the position, so the story pauses on every chapter's opening,
+the first included. At the ledger's last seq there is no next step, so the story of an unfinished
+job ends on its recorded prefix. (4) REDUCED MOTION: the next position is the next chapter's start,
+after one chapter pause, and from the last chapter the ledger's last seq, so the story advances by
+chapter and never event by event. (5) THE PAYLOAD: `storyPacingOf` reads `step_ms` and
+`chapter_pause_ms` from any value, each a whole number from 50 to 10000 or else its default. The
+configuration keys that fill it land with its readers, the in-app story mode and the export.
+
+ALTERNATIVES: replaying by the events' own timestamps, rejected because hours of idle building
+would play as minutes of nothing and a timestamp may be missing; a fixed length per story, rejected
+because a long ledger would then scrub faster than the graph births its nodes; configuration keys
+this round, rejected because a key nothing reads is dead configuration.
+
+HOW TO REVERSE: delete `storyAutoplay.ts`, its test, `tests/ui_contracts/test_story_autoplay.py`
+and this paragraph.
+
+## DECISION F039 D5 — the story's pacing reaches the browser as the dashboard's `story` section, read from two configuration keys; a budget tick's figures ride on its own feed row; and one pure view assembles a job's story from the ledger rows, the ownership view and that section (2026-09-28)
+
+CONTEXT: DECISION F039 D4 (5) left the configuration keys to the round that lands their readers.
+Measured at `9cd7cbfd`: configuration reaches the browser only as a section of the dashboard
+payload that `_build_dashboard` in `packages/orchestration/ui_server.py` builds and
+`normalizeDashboardPayload` in `apps/ui/src/api/remedyApi.ts` maps, as `budget_final` travels to
+`budgetFinal`; no file under `apps/ui/src/api/` imports from `apps/ui/src/components/`; and the
+environment guide `docs/guides/environment.md` is rendered from the registry by
+`render_environment_guide`, which `tests/docs/test_environment_guide.py` holds it to. The ledger the
+cockpit folds keeps feed rows, which `feedRowOf` in `apps/ui/src/api/feedRow.ts` builds without the
+`budget` payload a `budget.tick` frame carries, so no card could read a cost; `budgetTickFiguresOf`
+in `apps/ui/src/api/budgetTick.ts` is the one reader of that payload, and
+`tests/ui_contracts/test_cost_metric_render.py` keeps `costMetric.ts` the only file that names a
+figure field.
+
+CHOSEN: (1) TWO KEYS, `story.step_ms` and `story.chapter_pause_ms`, whole numbers of milliseconds
+defaulting to 420 and 1600, their variables `REMEDY_STORY_STEP_MS` and
+`REMEDY_STORY_CHAPTER_PAUSE_MS`, and the environment guide rendered again. (2) THE SECTION: the
+dashboard gains `story`, `{"step_ms": ..., "chapter_pause_ms": ...}`, the two values as the
+configuration answers them; the browser keeps the section raw as `story`, since `storyPacingOf`,
+which clamps each value, lives with the story and the API layer imports nothing from the
+components. (3) THE FIGURES: a feed row gains `budget`, set only for a `budget.tick` frame whose
+payload is an object, from `budgetTickFiguresOf`, and absent on every other row; no figure field is
+named outside `costMetric.ts`. (4) THE VIEW: `apps/ui/src/components/story/storyView.ts` reads the
+ticks from the rows that carry figures, in seq order, and assembles the chapters, the cards, the
+seqs autoplay steps over and the decoded pacing, pure. (5) A guard binds the section's keys to the
+keys `storyPacingOf` reads and each key's default to the constant it falls back to, so the two
+languages cannot drift apart.
+
+ALTERNATIVES: a story route of its own, rejected because the pacing is two numbers the dashboard
+already has a place for; decoding the pacing in the API layer, rejected because it would import the
+story's module into `apps/ui/src/api/`; keeping only the latest tick, rejected because a card reads
+the cost at its own cluster's last seq.
+
+HOW TO REVERSE: delete the two keys and render the guide again, the `story` section and its
+mapping, the row's `budget` field, `storyView.ts`, their tests and guard, and this paragraph.
+
+## DECISION F039 D6 — the in-app story is a docked panel that narrates the ledger through the timeline's own scrub: one button per chapter, the current card showing only the beats the scrub has reached, Play, Pause and chapter steps, one autoplay timer, and a line saying so while the job still runs (2026-09-28)
+
+CONTEXT: T5_F039.md T002 asks for the in-app story mode on the demo recording, with a golden
+walkthrough, narration synced to the scrub position and scrub and keyboard working in the app. Measured
+at `c4a1cf5d`: `RemedyShell.tsx` holds the ledger's rows, the ownership view and `useTimelineScrub`'s
+`scrub`, whose `scrubTo` moves the graph and the phase bar together and accepts -1, the position
+before the first event; F036's tour opens from a button in `RightLivePanel.tsx` and mounts as a
+sibling after `<main>`, portaled to the page body; `useReducedMotion` reads the page's reduced-motion
+setting; and the design reference draws no story mode. `cardAt` of DECISION F039 D3 answers a
+cluster's whole card from its first key event on, so at a card's first seq it would already tell the
+beats the graph has not drawn.
+
+CHOSEN: (1) THE PURE RULES, `apps/ui/src/components/story/storyPlayer.ts`: the position in words
+(`Chapter <n> of <m>: <title>`, `Before the first event`, `After the last event`, and
+`No event is recorded yet.` for an empty ledger); where Play starts, before the first event when the
+scrub is LIVE or at the ledger's last seq and else where it stands; `storyBeatsAt`, a card's beats
+whose seq the position has reached; the running-job line; and `storyWalk`, the whole autoplay walk
+with each frame's position, wait, words, card and beat count — the golden walkthrough. (2) THE
+PANEL, `StoryPanel.tsx` with its CSS module, portaled to the page body as a glass card docked over
+the stage's lower left beside the left rail, without a backdrop so the graph and the phase bar stay
+visible: the position in words, the running line while the job runs, one button per chapter that
+moves the scrub to the chapter's start (the current one outlined in the replay violet), the card's
+reached beats with their verdict and actor and the cost so far, and Previous chapter, Play or Pause,
+Next chapter and Close story. It owns ONE timer: while playing it waits for `autoplayStep`'s next
+step and moves the scrub there, and no step left ends play. Space plays and pauses and Escape
+closes. (3) THE ENTRY: a Story button after the Tour button, and the panel mounted after the tour,
+outside `<main>`. (4) THE REFERENCE: one assumption-log line records the treatment. (5) THE PROOF: a
+headless render of the real panel over the real scrub of the demo recording, with a fast pacing.
+
+ALTERNATIVES: an overlay with a backdrop like the tour's, rejected because the story is told by the
+graph and the bar it would cover; a timer per step scheduled all at once, rejected because a manual
+scrub or a pause must cancel the plan, which one timer re-armed by the position does by
+construction; showing a card's every beat from its first seq, rejected because it tells what the
+graph has not drawn.
+
+HOW TO REVERSE: delete `storyPlayer.ts`, `StoryPanel.tsx` and its CSS module, their tests and render
+files, the Story button, the shell's state and mount, the assumption-log line and this paragraph.
+
+## DECISION F039 D7 — the export is one HTML file: the existing UI build gains the story player as a second page, and `remedy job story <id> --export <file>` inlines that page's built script and style with the job's story data as inline JSON under a fixed schema; no font is bundled; the file must fit a configured size; and it plays from `file://` with no network request (2026-09-29)
+
+CONTEXT: T5_F039.md T003 asks for `remedy job story <id> --export story.html`: one self-contained
+file holding the envelope subset, the player and its assets, a size budget, oversized evidence linked
+and not inlined, a font licensing finding before any font is bundled, and a clean-browser test with
+zero network requests; and it asks the exporter to refuse a mismatched envelope version honestly.
+Measured at `622ec045`: `apps/ui/vite.config.ts` builds one page, `index.html`, into `apps/ui/dist`,
+and the cockpit's server builds that with `npm run build` when `dist` is missing; the only new npm
+package is forbidden, since no command may run npm by hand. `docs/ui/design_reference/assets_spec.md`,
+the asset authority, records that the UI loads no font file, forbids remote font imports, committed
+font binaries and "base64 fonts in CSS", and names system stacks as every font's fallback. The
+cockpit's event stream sends each run-log event as `_safe_event_summary(seq, event)`, the ownership
+route answers `ownership_view(job)`, and the dashboard carries the task list, the live state and the
+story section. A story holds events only; the job's evidence files are not part of it.
+
+CHOSEN: (1) THE DATA, this round: `packages/orchestration/story_export.py`'s `build_story_payload`
+answers `{"schema": "remedy.story.v1", "job_id", "dashboard": {tasks, live, story}, "frames": [{seq,
+event}], "ownership"}`, every part from the cockpit's own builders, so a story file holds nothing the
+cockpit does not already serve; `apps/ui/src/components/story/storyExport.ts`'s `decodeStoryExport`
+reads it back with the cockpit's own `normalizeDashboardPayload`, `feedRowOf` and
+`decodeOwnershipView`, and refuses another schema by naming it and anything unreadable with one plain
+line; a guard holds the schema to one string in both languages. (2) THE PLAYER, next round: a second
+page of the same vite build, `story.html`, mounting the phase bar and the story panel over the
+embedded data, with no fetch and no route. (3) THE EXPORT, next round: `remedy job story <id>
+--export <file>` builds the payload, reads the built player page, inlines its script and style and
+the payload as JSON into one file, and refuses when the result is larger than a configured budget
+rather than cutting the story. (4) FONTS: none; the exported page uses the system stacks the tokens
+already fall back to, which is the asset authority's own rule, so no licence question arises. (5) THE
+PROOF, the round after: a headless browser opens the exported file from `file://` with its network
+recorded, and must see zero requests; then the docs.
+
+ALTERNATIVES: a new bundling package, rejected because no round may install one; linking the cockpit's
+own served assets, rejected because the file must play without Remedy; inlining fonts, rejected by
+the asset authority; dropping events to meet the budget, rejected because a story missing its middle
+is not the job's story.
+
+HOW TO REVERSE: delete `story_export.py`, `storyExport.ts`, their tests and guard line, and this
+paragraph.
+
+## DECISION F039 D8 — the story player is built a second time by the same `vite build`, as ONE script and ONE style sheet with fixed names under `apps/ui/dist/story/`; `remedy job story <id> --export <file>` writes one page inlining both and the payload, under a content security policy that allows no request, and refuses a file over `story.export_max_bytes` (2026-09-29)
+
+CONTEXT: DECISION F039 D7 (2) chose the player as a second page of the cockpit's own vite build.
+Measured at `73102551` by the reviewer's dry run: a second input of one Rollup build shares chunks
+with the first, so its page would load the player through `import` statements, and a page opened from
+`file://` can load no module file at all; Rollup's `inlineDynamicImports`, which makes one file, is
+refused for a build with more than one input. `apps/ui/package.json`'s `build` script is `vite
+build`, and the cockpit's server runs it (through `npm run build`) whenever `dist` is missing or
+older than `src/`; `package.json` itself is left alone, because the server runs `npm install`
+whenever `package.json` is newer than `node_modules`. The cockpit's title comes from the dashboard's
+`legacy` section, which `_build_dashboard` marks as not for new consumers.
+
+CHOSEN: (1) THE BUILD. `apps/ui/vite.config.ts` gains a plugin that, when the cockpit's build closes,
+runs `vite`'s own `build` once more with no config file, the React plugin, the input
+`src/storyPlayerMain.tsx`, `inlineDynamicImports`, no module preload, one CSS file, and the output
+names `story-player.js` and `story-player.css` in `dist/story/`. The reviewer's dry run built
+257 582 and 10 671 bytes, with no `import(`, no `fetch(`, no `url(` and no closing script or style
+tag inside. (2) THE PAGE. `src/storyPlayerMain.tsx` reads the JSON of the element
+`remedy-story-data`, decodes it with `readEmbeddedStory`, which never throws, and mounts
+`StoryPlayerApp` under the reduced-motion provider, or the decoder's one line. `StoryPlayerApp` mounts
+the phase bar above and the story panel over one `useTimelineScrub`, with no heading and no Close
+button: `StoryPanel`'s `onClose` becomes optional and the button shows only when it is given.
+(3) THE FILE. `story_export.py` gains `read_story_player`, `render_story_html` and
+`export_story_html`: the page carries a content security policy of `default-src 'none'` with inline
+script and style allowed, the style sheet, the payload as JSON with every `<` written `\u003c`, and the
+script. The export refuses when the player is not built (exit 3, with the build command), when the
+built player holds its own closing tag, and when the file is larger than `story.export_max_bytes`,
+default 5 000 000 bytes (exit 1); it never cuts a story. `remedy job story <id> --export <file>` writes
+the file readable by anyone, as a shared file should be. The reviewer's dry run exported a two-task
+job to 271 785 bytes and opened it from `file://` in headless Chrome: four chapters from `The plan` to
+`The finish`, Play advancing, no Close button, no console error, and no request but the file itself.
+
+ALTERNATIVES: a second page of one build, measured unworkable above; a second `vite build` in
+`package.json`'s `build` script, rejected because changing that file makes the server reinstall every
+package; building the player on demand at export, rejected because the export would then need the
+toolchain and the network; the job's title as the page's heading, rejected until a section meant for
+new consumers carries it, the browser tab naming the job instead.
+
+HOW TO REVERSE: delete the plugin, `storyPlayerMain.tsx`, `StoryPlayerApp` and its style sheet,
+`readEmbeddedStory`, the three export functions, the command and its key, and this paragraph.
+
+## DECISION F039 D9 — the zero-network proof is a suite test that runs the demo job on the fake providers, exports its story around a player built into its own temporary folder, and drives headless Chrome over `--remote-debugging-pipe` from the standard library; the player build follows the cockpit build's `outDir` (2026-09-29)
+
+CONTEXT: T5_F039.md makes "the export opens from file:// in a clean browser with zero network
+requests" the acceptance spine and asks for scrub and keyboard in the export. Measured at `83afaaae`:
+no test in the suite starts a browser; `websocket-client` is installed on this machine but is not in
+`constraints.txt`, the hash-pinned set hosted CI installs; Node 22 runs here and CI's setup step pins
+Node 20, which has no WebSocket client of its own; `google-chrome` is on this machine and on GitHub's
+Ubuntu runners. The player's second build writes a fixed `dist/story`, and the cockpit's own build
+empties `dist` first, so a test that rebuilt the shared `dist` while other workers of a parallel run
+serve it could remove the files under them. The demo recording was captured from a real job planned
+with `remedy do ... --no-llm --plan-only` and run with `job run --builder-provider fake
+--reviewer-provider fake`, which `tests/ui_server/test_brain_demo_recording_live.py` already runs.
+
+CHOSEN: (1) THE BUILD. The plugin reads the resolved `outDir` in `configResolved` and writes the player
+into its `story` subdirectory, so the default build still writes `apps/ui/dist/story` and
+`vite build --outDir <folder> --emptyOutDir` writes both halves under that folder alone. (2) THE TEST,
+`tests/ui_server/test_story_export_file_live.py`: once per module it builds into a temporary folder,
+skipping only when `apps/ui/node_modules/.bin/vite` is absent; it runs the demo job with the demo test's
+own helpers, exports its story with `export_story_html` at the default budget around that player, and
+opens the file in `google-chrome --headless=new --remote-debugging-pipe`, skipping only when no Chrome
+is on the path. Over the pipe it enables the network, page, runtime and log domains, navigates to the
+file, and requires the demo's three chapters, `The build`, `The review` and `The finish`; the timeline
+slider stepping from 9 to 8 on ArrowLeft; a chapter button moving the position to the review chapter;
+the space bar reading Pause and then Play; no Close button; the only request the file itself; and no
+exception or console error. The reviewer's dry run read 1 passed in 8 seconds, and failed when the page
+loaded an image, with the policy and without it, because Chrome reports even a request the policy
+refuses. (3) THE BROWSER. The test's browser is headless Chrome alone: it is the one browser this
+machine and the hosted runner share that the standard library can drive, and the guide says so.
+
+ALTERNATIVES: a WebSocket client added to the pinned set, rejected because a test tool does not earn a
+new dependency the pipe makes unnecessary; a Node driver, rejected because Node 20 has no WebSocket
+client; Chrome's `--dump-dom` with a network log, rejected because it cannot press a key; rebuilding
+the shared `dist`, rejected for the race above.
+
+HOW TO REVERSE: delete the test, the `configResolved` hook, and this paragraph.

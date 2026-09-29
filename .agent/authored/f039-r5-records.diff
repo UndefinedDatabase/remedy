@@ -1,0 +1,58 @@
+diff --git a/.agent/decisions.md b/.agent/decisions.md
+index 48f023c65..31240a6b5 100644
+--- a/.agent/decisions.md
++++ b/.agent/decisions.md
+@@ -25209,3 +25209,41 @@ the cost at its own cluster's last seq.
+ 
+ HOW TO REVERSE: delete the two keys and render the guide again, the `story` section and its
+ mapping, the row's `budget` field, `storyView.ts`, their tests and guard, and this paragraph.
++
++## DECISION F039 D6 — the in-app story is a docked panel that narrates the ledger through the timeline's own scrub: one button per chapter, the current card showing only the beats the scrub has reached, Play, Pause and chapter steps, one autoplay timer, and a line saying so while the job still runs (2026-09-28)
++
++CONTEXT: T5_F039.md T002 asks for the in-app story mode on the demo recording, with a golden
++walkthrough, narration synced to the scrub position and scrub and keyboard working in the app. Measured
++at `c4a1cf5d`: `RemedyShell.tsx` holds the ledger's rows, the ownership view and `useTimelineScrub`'s
++`scrub`, whose `scrubTo` moves the graph and the phase bar together and accepts -1, the position
++before the first event; F036's tour opens from a button in `RightLivePanel.tsx` and mounts as a
++sibling after `<main>`, portaled to the page body; `useReducedMotion` reads the page's reduced-motion
++setting; and the design reference draws no story mode. `cardAt` of DECISION F039 D3 answers a
++cluster's whole card from its first key event on, so at a card's first seq it would already tell the
++beats the graph has not drawn.
++
++CHOSEN: (1) THE PURE RULES, `apps/ui/src/components/story/storyPlayer.ts`: the position in words
++(`Chapter <n> of <m>: <title>`, `Before the first event`, `After the last event`, and
++`No event is recorded yet.` for an empty ledger); where Play starts, before the first event when the
++scrub is LIVE or at the ledger's last seq and else where it stands; `storyBeatsAt`, a card's beats
++whose seq the position has reached; the running-job line; and `storyWalk`, the whole autoplay walk
++with each frame's position, wait, words, card and beat count — the golden walkthrough. (2) THE
++PANEL, `StoryPanel.tsx` with its CSS module, portaled to the page body as a glass card docked over
++the stage's lower left beside the left rail, without a backdrop so the graph and the phase bar stay
++visible: the position in words, the running line while the job runs, one button per chapter that
++moves the scrub to the chapter's start (the current one outlined in the replay violet), the card's
++reached beats with their verdict and actor and the cost so far, and Previous chapter, Play or Pause,
++Next chapter and Close story. It owns ONE timer: while playing it waits for `autoplayStep`'s next
++step and moves the scrub there, and no step left ends play. Space plays and pauses and Escape
++closes. (3) THE ENTRY: a Story button after the Tour button, and the panel mounted after the tour,
++outside `<main>`. (4) THE REFERENCE: one assumption-log line records the treatment. (5) THE PROOF: a
++headless render of the real panel over the real scrub of the demo recording, with a fast pacing.
++
++ALTERNATIVES: an overlay with a backdrop like the tour's, rejected because the story is told by the
++graph and the bar it would cover; a timer per step scheduled all at once, rejected because a manual
++scrub or a pause must cancel the plan, which one timer re-armed by the position does by
++construction; showing a card's every beat from its first seq, rejected because it tells what the
++graph has not drawn.
++
++HOW TO REVERSE: delete `storyPlayer.ts`, `StoryPanel.tsx` and its CSS module, their tests and render
++files, the Story button, the shell's state and mount, the assumption-log line and this paragraph.
+diff --git a/.agent/live_review.md b/.agent/live_review.md
+index 375e35280..324c49ac3 100644
+--- a/.agent/live_review.md
++++ b/.agent/live_review.md
+@@ -477,3 +477,7 @@ Landed: R-1099 — the narration goldens now hold two job_stopped key events aga
+ Gate: F039 R3 — the F039 round 3 entry: the booking of round 2 and R-1098's resolution, R-1099's registration and repair, DECISION F039 D4, and T002's autoplay with its goldens and guard. VERDICT PASS. Re-derived over `1e1d7352`..`9cd7cbfd` by the planner and reviewer of F039's first session, whose own runs produced every reading below. THE RANGE IS 8 COMMITS, at `8c0b9f75` 288, `1d8f0a69` 55, `8dee5d78` 44, `9711f756` 31, `cfd50fb7` 122, `d3a9dbb2` 201, `edd4ce65` 168 and `9cd7cbfd` 214 insertions by `git show --numstat`, each under the 500-line cap and each single-parent; the tracked path set is exactly the block's constraint 3, and the worker declared no deviation. THE TRANSPORT PROOF: the block copy and the two payload copies, read at `9cd7cbfd`, equal the reviewer's originals byte for byte. THE RECORDS: at `8dee5d78` the ledger, the decisions and the plan equal the reviewer's simulation byte for byte and the open set reads `['R-1099']`; `9711f756` adds to the ledger exactly one line beginning `Landed: R-1099 — `. THE CODE matches S3 and S4: `autoplayStep` steps to the next seq with a chapter pause on entering another chapter, jumps chapter to chapter under reduced motion and ends at the last seq, and `storyPacingOf` keeps whole numbers from 50 to 10000. THE TESTS: the block's G4 selection, run serially by the reviewer in the primary checkout at `9cd7cbfd`, read 1881 passed and 5 skipped at exit 0; all six `integrity check` checks read pass; ruff reads clean on the guard and the tool. THE RED PROOFS: the worker's tool, re-run by the reviewer in a disposable worktree at `9cd7cbfd`, turned all eleven mutations red, R-1099's own among them, with both controls green and every file restored byte-identical; the reviewer's eight further mutations through the same runners — each wait of a reduced-motion jump, the landing seq, a non-object payload, the pause's fallback, the upper clamp, the total's start and the pause's value — turned all eight red. The worktree was removed.
+ 
+ Done: R-1099 — RESOLVED at `9711f756` (F039 R3 C3), booked by F039 R4: `apps/ui/src/components/story/storyNarration.test.ts` now holds two `job_stopped` key events against one `job_stopped` entry and two answered decisions of one task against one entry, and in both no beat names an actor. The reviewer's re-run of the round's tool at `9cd7cbfd` turned the deletion of `beatActor`'s count of matching events red through vitest, where at `1e1d7352` it had stayed green.
++
++Gate: F039 R4 — the F039 round 4 entry: the booking of round 3 and R-1099's resolution, DECISION F039 D5, and the story's data path — the two pacing keys and the dashboard's `story` section, a budget tick's figures on its feed row, and the pure story view. VERDICT PASS. Re-derived over `9cd7cbfd`..`c4a1cf5d` by the planner and reviewer of F039's first session, whose own runs produced every reading below. THE RANGE IS 9 COMMITS, at `06006eb4` 300, `830ea143` 57, `6fcc93bb` 48, `68469cfa` 30, `d31c2750` 78, `2eb78004` 32, `42481b78` 251, `5a4ad3ab` 184 and `c4a1cf5d` 279 insertions by `git show --numstat`, each under the 500-line cap and each single-parent; the tracked path set is exactly the block's constraint 3. The worker declared one deviation: it committed C4 before C3, moved the branch back one commit with `git reset --soft`, and committed the two again in the ordered sequence; the branch's reflog shows the dropped commit `93353015` was never pushed, the remote stood at `9cd7cbfd` until the round's one push, and that push was a fast-forward, so no published commit was rewritten. THE TRANSPORT PROOF: the block copy and the two payload copies, read at `c4a1cf5d`, equal the reviewer's originals byte for byte. THE RECORDS: at `6fcc93bb` the ledger, the decisions and the plan equal the reviewer's simulation byte for byte and the open set reads `[]`. THE CODE matches S1 to S5: `feedRowOf` sets `budget` only for an object `budgetTickFiguresOf` answers; the keys `story.step_ms` and `story.chapter_pause_ms` default to 420 and 1600 and the environment guide is rendered again; `_build_dashboard` carries `_build_story_section()` as `story`; the browser keeps it raw and optional; and `storyView.ts` assembles the chapters, cards, seqs and pacing. THE TESTS: the block's G4 selection, run serially by the reviewer in the primary checkout at `c4a1cf5d`, read 2554 passed and 5 skipped at exit 0; all six `integrity check` checks read pass; ruff reads clean on the round's Python files and the tool. THE RED PROOFS: the worker's tool, re-run by the reviewer in a disposable worktree at `c4a1cf5d`, turned all twelve mutations red with both controls green and every file restored byte-identical; of the reviewer's four further mutations through the same runners — the pause read from the step's key, the step's variable renamed, the pause's default changed and a `null` budget counted as a tick — three went red, and the fourth stayed green over a branch no ledger reaches, because `feedRowOf` sets `budget` only to an object and the ledger's rows are feed rows. The reviewer also found, by a probe, that the section's docstring promises what the configuration cache prevents, which is R-1100 below. The worktree was removed.
++
++- R-1100 — Low, THREE DOCSTRINGS PROMISE THAT A CHANGED CONFIGURATION REACHES THE COCKPIT WITHOUT A RESTART, WHILE `get_config` LOADS THE CONFIGURATION ONCE PER PROCESS AND KEEPS IT. Raised by the planner and reviewer of F039's first session at the round 4 gate. SEARCHED BEFORE MINTING (checklist item 30): the open set at `c4a1cf5d` is empty, and neither the ledger, its archive nor the prose slips name the configuration cache or a restart. MEASURED at `c4a1cf5d`: `get_config` in `packages/orchestration/config.py` loads `_CACHED_CONFIG` on its first call and answers it until `reset_config`; `_rate_limit_admits_command` in `packages/orchestration/ui_server.py` says an operator who raises the limit "does not have to restart the cockpit to get the new value"; round 4's `_build_story_section` says an operator who edits `remedy.toml` "sees the new pacing without a restart"; and the module docstring of `tests/ui_server/test_story_section.py` says the section reads the keys "fresh on every call". The reviewer's probe, run from a scratch directory, read the section as 420, then set `REMEDY_STORY_STEP_MS` to 900 and wrote a `remedy.toml` holding the same value, read `load_config` answering 900, and read the section again as 420. WHY LOW: every value is right at start-up and nothing on disk is wrong but the words, which send an operator who changes a value to wait for an effect that never comes. FIX: the three docstrings say the value is read on every request from the process's configuration, which `get_config` loads once and keeps, so a change takes effect when the cockpit restarts; and a test holds the section at its old value after a variable changes, and at the new one after `reset_config`. Owner: F039.

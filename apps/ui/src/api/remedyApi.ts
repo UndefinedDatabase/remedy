@@ -126,7 +126,9 @@ export function normalizeDashboardPayload(
     const rawLabel = scrubUiText(t.title || t.description || humanLabel(kind), humanLabel(kind));
     const label = isWeakLabel(rawLabel) ? humanFallbackFor(kind, idx) : rawLabel;
     return {
-      id: scrubUiText(t.id || `task-${idx}`, `task-${idx}`),
+      // R-1102: the id is an IDENTIFIER every seed, focus rule and door
+      // compares with a raw task id — never text a person reads, so it is never scrubbed.
+      id: t.id ? String(t.id) : `task-${idx}`,
       label,
       state,
       kind,
@@ -253,6 +255,10 @@ export function normalizeDashboardPayload(
     taskSpecs: normalizeTaskSpecs(dashboard.task_specs),
     vetoes: normalizeVetoes(dashboard.vetoes),
     projectSummary: dashboard.project_summary ?? null,
+    // Carried raw: `storyPacingOf` (apps/ui/src/components/story/storyAutoplay.ts)
+    // is this section's one reader, and the API layer imports nothing from the
+    // components (DECISION F039 D5 (2)).
+    story: dashboard.story ?? null,
     timelineEvents: normalizeTimelineEvents(dashboard.timeline_events),
     snapshot: normalizeSnapshotSummary(dashboard.snapshot),
     continuation: normalizeContinuationSummary(dashboard.continuation),
@@ -532,6 +538,8 @@ export function normalizeApiFailure(jobId: string, failedEndpoints: string[]): R
     taskSpecs: normalizeTaskSpecs(undefined),
     vetoes: normalizeVetoes(undefined),
     projectSummary: null,
+    // No endpoint answered, so there is no pacing section either.
+    story: null,
     snapshot: null,
     continuation: null,
     // No endpoint answered, so there are no open questions to show. The empty

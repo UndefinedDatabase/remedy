@@ -179,3 +179,23 @@ describe("feedRowOf's planTaskIds (DECISION F288 D3 (2))", () => {
     expect(row.planTaskIds).toEqual([]);
   });
 });
+
+describe("feedRowOf's budget (DECISION F039 D5 (3))", () => {
+  it("carries a budget.tick frame's own budget object unchanged", () => {
+    const figures = { spent_usd: 0.1, spent_tokens: 100 };
+    const row = feedRowOf(frameOf(22, { event: "budget.tick", budget: figures }));
+    expect(row.budget).toEqual(figures);
+  });
+
+  it("is absent, not undefined, for another kind carrying a budget", () => {
+    const row = feedRowOf(frameOf(23, {
+      event: "task_run_started", budget: { spent_usd: 0.1 },
+    }));
+    expect("budget" in row).toBe(false);
+  });
+
+  it("is absent, not undefined, for a tick whose budget is an array", () => {
+    const row = feedRowOf(frameOf(24, { event: "budget.tick", budget: [1, 2] }));
+    expect("budget" in row).toBe(false);
+  });
+});

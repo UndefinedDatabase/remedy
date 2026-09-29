@@ -1,0 +1,54 @@
+diff --git a/.agent/decisions.md b/.agent/decisions.md
+index 49be75e70..4d4677985 100644
+--- a/.agent/decisions.md
++++ b/.agent/decisions.md
+@@ -25327,3 +25327,39 @@ new consumers carries it, the browser tab naming the job instead.
+ 
+ HOW TO REVERSE: delete the plugin, `storyPlayerMain.tsx`, `StoryPlayerApp` and its style sheet,
+ `readEmbeddedStory`, the three export functions, the command and its key, and this paragraph.
++
++## DECISION F039 D9 — the zero-network proof is a suite test that runs the demo job on the fake providers, exports its story around a player built into its own temporary folder, and drives headless Chrome over `--remote-debugging-pipe` from the standard library; the player build follows the cockpit build's `outDir` (2026-09-29)
++
++CONTEXT: T5_F039.md makes "the export opens from file:// in a clean browser with zero network
++requests" the acceptance spine and asks for scrub and keyboard in the export. Measured at `83afaaae`:
++no test in the suite starts a browser; `websocket-client` is installed on this machine but is not in
++`constraints.txt`, the hash-pinned set hosted CI installs; Node 22 runs here and CI's setup step pins
++Node 20, which has no WebSocket client of its own; `google-chrome` is on this machine and on GitHub's
++Ubuntu runners. The player's second build writes a fixed `dist/story`, and the cockpit's own build
++empties `dist` first, so a test that rebuilt the shared `dist` while other workers of a parallel run
++serve it could remove the files under them. The demo recording was captured from a real job planned
++with `remedy do ... --no-llm --plan-only` and run with `job run --builder-provider fake
++--reviewer-provider fake`, which `tests/ui_server/test_brain_demo_recording_live.py` already runs.
++
++CHOSEN: (1) THE BUILD. The plugin reads the resolved `outDir` in `configResolved` and writes the player
++into its `story` subdirectory, so the default build still writes `apps/ui/dist/story` and
++`vite build --outDir <folder> --emptyOutDir` writes both halves under that folder alone. (2) THE TEST,
++`tests/ui_server/test_story_export_file_live.py`: once per module it builds into a temporary folder,
++skipping only when `apps/ui/node_modules/.bin/vite` is absent; it runs the demo job with the demo test's
++own helpers, exports its story with `export_story_html` at the default budget around that player, and
++opens the file in `google-chrome --headless=new --remote-debugging-pipe`, skipping only when no Chrome
++is on the path. Over the pipe it enables the network, page, runtime and log domains, navigates to the
++file, and requires the demo's three chapters, `The build`, `The review` and `The finish`; the timeline
++slider stepping from 9 to 8 on ArrowLeft; a chapter button moving the position to the review chapter;
++the space bar reading Pause and then Play; no Close button; the only request the file itself; and no
++exception or console error. The reviewer's dry run read 1 passed in 8 seconds, and failed when the page
++loaded an image, with the policy and without it, because Chrome reports even a request the policy
++refuses. (3) THE BROWSER. The test's browser is headless Chrome alone: it is the one browser this
++machine and the hosted runner share that the standard library can drive, and the guide says so.
++
++ALTERNATIVES: a WebSocket client added to the pinned set, rejected because a test tool does not earn a
++new dependency the pipe makes unnecessary; a Node driver, rejected because Node 20 has no WebSocket
++client; Chrome's `--dump-dom` with a network log, rejected because it cannot press a key; rebuilding
++the shared `dist`, rejected for the race above.
++
++HOW TO REVERSE: delete the test, the `configResolved` hook, and this paragraph.
+diff --git a/.agent/live_review.md b/.agent/live_review.md
+index 3ab1dcd19..2c967a631 100644
+--- a/.agent/live_review.md
++++ b/.agent/live_review.md
+@@ -503,3 +503,5 @@ Landed: R-1102 — `normalizeDashboardPayload` now keeps a task's own id as a st
+ Gate: F039 R7 — the F039 round 7 entry: the booking of round 6 with R-1101's resolution, R-1102's registration and repair, DECISION F039 D7, and T003's data half, the story payload and its reader. VERDICT PASS. Re-derived over `622ec045`..`73102551` by the planner and reviewer of F039, whose own runs produced every reading below: the first session's, at the round's end, and the second session's re-reading before this entry was written. THE RANGE IS 10 COMMITS, at `9fb6a0a0` 284, `3ef77bcc` 61, `d5b8d9ae` 54, `87890b36` 55, `d45a07db` 169, `1f34be28` 2, `95aeaccc` 154, `116f6594` 4, `2922e585` 181 and `73102551` 303 insertions by `git show --numstat`, each under the 500-line cap and each single-parent; the worker split the block's C4 into C4, C4b and C4c, the second carrying the `ALLOWED_UNWIRED` line S2 ordered and the third a literal expectation that makes mutation m4 catchable, and declared both; the tracked path set is exactly the block's constraint 3. THE TRANSPORT PROOF: the block copy and the two payload copies, read at `73102551`, equal the reviewer's originals byte for byte. THE RECORDS: at `d5b8d9ae` the ledger, the decisions and the plan equal, byte for byte, the files the reviewer's own records script writes over the same three files read at `622ec045`; the open set reads `['R-1102']` and the latest verdict `PASS`; `87890b36` adds to the ledger exactly one line beginning `Landed: R-1102 — `. THE CODE matches S1 to S3: `normalizeDashboardPayload` keeps a task's own id as a string under a comment naming R-1102; `build_story_payload` reads the dashboard's three sections, every event through `_safe_event_summary` with seqs from 0, and `ownership_view`; and `decodeStoryExport` refuses another schema by name and anything unreadable with one line. THE TESTS: the block's G4 selection, run serially by the reviewer in the primary checkout at `73102551`, read 2276 passed and 5 skipped at exit 0, the five being the long-standing D3 and D12 quarantine skips; `integrity check` read five checks pass and `high_blockers_open` fail on R-1102 alone, as ordered; ruff reads clean; and the second session's targeted re-run at `73102551` read 13 passed over `tests/orchestration/test_story_export.py` and `tests/test_no_orphan_modules.py` and 233 passed over the eight story test files, `remedyApi.test.ts` and `brainView.test.ts`. THE RED PROOFS: the worker's tool, re-run by the reviewer in a disposable worktree at `73102551`, turned all nine mutations red with both controls green and every file restored byte-identical; the reviewer's two further mutations through the same runners, the job id read from the job's title and the frames taken newest first, both went red. The worktree was removed.
+ 
+ Done: R-1102 — RESOLVED at `87890b36` (F039 R7 C3), booked by F039 R8: `normalizeDashboardPayload` in `apps/ui/src/api/remedyApi.ts` keeps a task item's own id as a string, falling back to `task-<idx>` only when the item carries none, so the seeds, the pause, veto and spec-version lookups and the focus rules compare the raw id they are given; `remedyApi.test.ts` holds a minted id `0123456789abcdef` kept while a hex title is scrubbed, and `brainView.test.ts` holds the same task seeded under its own id and the ledger of its passing round and completed run reading `finalized`. The worker's mutation m1, the id scrubbed again, turned four tests red in the reviewer's re-run at `73102551`; and the reviewer's export probe of round 8's design, over two tasks with minted ids, read its last chapter `The finish`.
++
++Gate: F039 R8 — the F039 round 8 entry: the booking of round 7 with R-1102's resolution, DECISION F039 D8, and T003's export, the story player built as one script and one style sheet and `remedy job story <id> --export <file>` with its size budget. VERDICT PASS. Re-derived over `73102551`..`83afaaae` by the planner and reviewer of F039's second session, whose own runs produced every reading below. THE RANGE IS 8 COMMITS, at `8d0a0fa1` 349, `81b36fcc` 61, `7414c17f` 51, `5eea9119` 221, `0ac5b802` 245, `62ade331` 224, `92593133` 188 and `83afaaae` 296 insertions by `git show --numstat`, each under the 500-line cap and each single-parent; the worker declared one deviation, the import of `job_story_cmd` in `apps/cli/commands/__init__.py` placed after `job_stop_cmd` as ruff's import order requires, the handler loop keeping it directly after `job_steer_cmd`; the tracked path set is exactly the block's constraint 3. THE TRANSPORT PROOF: the block copy and the two payload copies, read at `83afaaae`, equal the reviewer's originals byte for byte. THE RECORDS: at `7414c17f` the ledger, the decisions and the plan equal the reviewer's records tree byte for byte, the open set reads `[]` and the latest verdict `PASS`. THE CODE matches S1 to S4: the plugin runs vite's `build` once more with `inlineDynamicImports` into `dist/story`; `readEmbeddedStory` answers the unreadable line for no element and for text that is not JSON; the page carries the policy `default-src 'none'`, the payload with every `<` written `\u003c`, and the player inline; the export refuses a missing player at exit 3 and a file over `story.export_max_bytes` at exit 1; and the file is written with mode `0o644`. THE TESTS: the reviewer's `vite build` in the primary checkout at `83afaaae` exited 0 and wrote `story-player.js` at 257567 bytes and `story-player.css` at 10644, with no closing script or style tag, no `import(` and no `fetch(` in either; the block's G4 selection, run serially by the reviewer there, read 3223 passed and 5 skipped at exit 0, the five being the D3 and D12 quarantine skips; all six `integrity check` checks read pass; ruff reads clean. THE RED PROOFS: the worker's tool, re-run by the reviewer in a disposable worktree at `83afaaae`, turned all ten mutations red with both controls green and every file restored byte-identical; the reviewer's five further mutations through the same runners — the envelope's `bytes` reading the budget, `budget_bytes` dropped, the page's title left unescaped, a closing style tag let through, and the player's panel handed a Close — all went red. END TO END: the reviewer's probe exported a job of two tasks with minted ids through `remedy job story --export` against that build, 271735 bytes, and opened it from `file://` in headless Chrome: four chapters from `The plan` to `The finish`, Play advancing, no Close button, no console error, and no request but the file itself. The worktree was removed.

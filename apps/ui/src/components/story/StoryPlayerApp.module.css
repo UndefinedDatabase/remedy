@@ -1,0 +1,11 @@
+/* DECISION F039 D8 — the exported page's own root: it fills the browser tab and lays its
+   two sections out as a flex column from the top, since there is no shell around it here. */
+.page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  padding: 24px;
+  box-sizing: border-box;
+  background: var(--remedy-bg);
+  color: var(--remedy-ink);
+}

@@ -1,0 +1,14 @@
+$ git diff HEAD...remedy/job-7a88d05bed5c40dd  (exit 0)
+diff --git a/docs/guides/story-user-guide-v1.md b/docs/guides/story-user-guide-v1.md
+index 95c778069..4c103e809 100644
+--- a/docs/guides/story-user-guide-v1.md
++++ b/docs/guides/story-user-guide-v1.md
+@@ -44,7 +44,7 @@ or with the environment variables `REMEDY_STORY_STEP_MS` and `REMEDY_STORY_CHAPT
+ remedy job story <job id> --export story.html
+ ```
+ 
+-This writes `story.html`, one file that holds everything the story needs: the story player, its
++This writes story.html, one file that holds everything the story needs: the story player, its
+ styles, and the job's task list and recorded events. Open the file in any browser, straight from
+ your disk. It makes no network request at all and needs no Remedy, so you can send it to someone
+ by mail or put it anywhere. The file plays the same way as the cockpit's story: the chapter

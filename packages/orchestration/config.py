@@ -916,6 +916,36 @@ _CONFIG_KEY_SPECS: tuple[ConfigKeySpec, ...] = (
         default=False,
     ),
     ConfigKeySpec(
+        key="story.step_ms",
+        env_var="REMEDY_STORY_STEP_MS",
+        description=(
+            "The story's autoplay (F039) step, in milliseconds: the browser keeps "
+            "a value from 50 to 10000 and its default otherwise."
+        ),
+        value_type=int,
+        default=420,
+    ),
+    ConfigKeySpec(
+        key="story.chapter_pause_ms",
+        env_var="REMEDY_STORY_CHAPTER_PAUSE_MS",
+        description=(
+            "The story's autoplay (F039) chapter pause, in milliseconds: the "
+            "browser keeps a value from 50 to 10000 and its default otherwise."
+        ),
+        value_type=int,
+        default=1600,
+    ),
+    ConfigKeySpec(
+        key="story.export_max_bytes",
+        env_var="REMEDY_STORY_EXPORT_MAX_BYTES",
+        description=(
+            "The largest story file `remedy job story --export` writes (F039): a larger "
+            "story is refused whole, never cut."
+        ),
+        value_type=int,
+        default=5_000_000,
+    ),
+    ConfigKeySpec(
         key="tour.model_written",
         env_var="REMEDY_TOUR_MODEL_WRITTEN",
         description=(

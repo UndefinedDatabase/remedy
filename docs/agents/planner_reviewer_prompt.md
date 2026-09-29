@@ -373,6 +373,11 @@ end the response with:
   block that specified a wire shape key by key and ordered tests for only some of its keys is item
   18's reading of an ordered recipe, here a list of tests, against the property it must establish,
   here every key of the shape. The list stays at 34 items.
+  Consolidated a twenty-sixth time at F039's closure on 2026-09-29: nothing joined and no two items
+  were merged, because F039 wrote no line to `.agent/prose_slips.md`. Its one authoring defect, a
+  browser test ordered to collect the browser's events without reading any after its last check
+  (R-1103), is item 18's reading of an ordered recipe, here the test's own collection, against the
+  property it must establish, here no request at all. The list stays at 34 items.
   The next consolidation measures against 34.
   Reverse by deleting this paragraph.
   1. **Size.** Count the block's lines. Over 400 (DECISION F105 D5) → split or

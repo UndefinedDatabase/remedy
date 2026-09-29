@@ -12,6 +12,8 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
+from tests.ui_contracts.test_phase_mapping import ts_import_specifiers
+
 ROOT = Path(__file__).resolve().parent.parent.parent
 TIMELINE = ROOT / "apps" / "ui" / "src" / "components" / "timeline"
 MEMO = TIMELINE / "scrubSnapshots.ts"
@@ -43,7 +45,7 @@ def test_the_cap_is_a_positive_whole_number():
 
 def test_the_memo_is_pure_and_folds_with_the_reducer_itself():
     src = _code(MEMO)
-    imports = sorted(set(re.findall(r'^import [^;]*from "([^"]+)";$', src, re.MULTILINE)))
+    imports = sorted(set(ts_import_specifiers(src)))
     assert imports == ["../graph/brainOntology", "../graph/brainReducer", "./phaseMapping"]
     assert "reduceBrainEvent(" in src and "timelineSeedOf(" in src
     for word in ("window.", "document.", "Date", "Math.random", "useState", "useEffect", "fetch("):

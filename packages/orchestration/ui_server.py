@@ -1093,6 +1093,7 @@ def _build_dashboard(job: Any) -> dict[str, Any]:
         "task_specs": _build_task_spec_section(job),
         "vetoes": _build_veto_section(job),
         "project_summary": _build_project_summary_section(job),
+        "story": _build_story_section(),
         "redaction": {
             "policy": "safe_summaries_only",
             "raw_content_exposed": False,
@@ -1373,6 +1374,22 @@ def _build_veto_section(job: Any) -> dict[str, Any]:
         }
     except _tv.TaskVetoError as exc:
         return {"tasks": [], "vetoable_task_ids": [], "unreachable_task_ids": [], "error": str(exc)}
+
+
+def _build_story_section() -> dict[str, Any]:
+    """The story's autoplay pacing (F039 T002, DECISION F039 D5): the two
+    configuration keys, `story.step_ms` and `story.chapter_pause_ms`, read on
+    every request from the process's configuration, which `get_config` loads
+    once and keeps, so a change takes effect when the cockpit restarts
+    (R-1100).
+    """
+    from packages.orchestration.config import get_config
+
+    config = get_config()
+    return {
+        "step_ms": config.get("story.step_ms"),
+        "chapter_pause_ms": config.get("story.chapter_pause_ms"),
+    }
 
 
 def _build_project_summary_section(job: Any) -> dict[str, Any] | None:
@@ -4019,9 +4036,9 @@ class _RemedyHandler(BaseHTTPRequestHandler):
     def _rate_limit_admits_command(self, job_id: str) -> bool:
         """True while this token and this job still hold minute budget.
 
-        The limit is read from configuration on every request rather than
-        captured at start-up, so an operator who raises it does not have to
-        restart the cockpit to get the new value. A value that is not a whole
+        The limit is read on every request from the process's configuration,
+        which `get_config` loads once and keeps, so a change takes effect
+        when the cockpit restarts (R-1100). A value that is not a whole
         number falls back to the registered default rather than raising: a
         typo in `remedy.toml` must not turn every command into a 500, and the
         door has to stay limited while the typo is there.

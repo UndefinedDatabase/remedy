@@ -1,0 +1,62 @@
+diff --git a/.agent/decisions.md b/.agent/decisions.md
+index 253229b1b..9a3ee1f70 100644
+--- a/.agent/decisions.md
++++ b/.agent/decisions.md
+@@ -25097,3 +25097,45 @@ ALTERNATIVES: claiming F286 with nothing to pay down, rejected for DECISION F036
+ 
+ HOW TO REVERSE: move F286's STATUS line and its Tier 2 heading back above F039, delete the line
+ this move added to `docs/roadmap/features/T2_F286.md`, and delete this paragraph.
++
++## DECISION F039 D3 — a narration card is one cluster of key events: each key event is a beat carrying the humanize catalog's line, the reviewer's verdict when it is a review round, and the ownership ledger's own sentence when exactly one entry and one event agree; the card carries the cost so far, and a scrub position shows its chapter's latest card begun (2026-09-28)
++
++CONTEXT: DECISION F039 D1 (7) left the card's line source to this round: the humanize catalog of
++`apps/ui/src/api/humanizeCatalog.ts`, or F255's `packages/orchestration/teacher_narration.py`.
++Measured at `ea7bcbdb`: every key event `extractSubGlyphs` returns already carries the catalog's line
++for its kind; the catalog is TypeScript and the exported player cannot call Python; and F255's
++narration words a mission's run log by a table of its own. The safe envelope the browser reads
++carries `seq`, `event`, `timestamp`, `outcome` and `task_id` for every event and a `budget` payload
++for `budget.tick` alone (`_safe_event_summary` in `packages/orchestration/ui_server.py`), and
++`costMetricOf` in `apps/ui/src/api/costMetric.ts` is the one home of a cost figure's wording. No
++event carries its actor. F035's ownership ledger does, served by `GET /api/jobs/<job_id>/ownership`
++and decoded by `decodeOwnershipView` in `apps/ui/src/api/ownership.ts`, one sentence per entry from
++`packages/orchestration/ownership_phrases.py`; its actions include `job_stopped` and
++`decision_answered`, and an entry carries no seq.
++
++CHOSEN: (1) ONE MODULE, `apps/ui/src/components/story/storyNarration.ts`, pure. (2) THE LINE is the
++catalog's, as the key event carries it; F255's narration is not read. (3) A CARD is one cluster of
++one chapter: the chapter's index, the cluster's first and last seq, one BEAT per key event — its
++seq, glyph, task, line, verdict and actor — and the cost. (4) THE VERDICT: a beat whose row is a
++`task_round_completed` reads `STORY_VERDICT_LINES` for its outcome, one line for each outcome
++`REVIEW_OUTCOME_STATE_TABLE` knows — `Verdict: pass`, `Verdict: fail`, `Verdict: needs repair` and
++`Verdict: blocked` — and any other beat has none. (5) THE ACTOR: `STORY_ACTOR_ACTIONS` joins the key
++event `job_stopped` to the ownership action `job_stopped`, and `task_decision_answered` to
++`decision_answered` for the same task. A beat names the entry's sentence only when the ledger holds
++exactly one such key event and the view exactly one such entry; because an entry carries no seq,
++any other count would be a guess, and an unreadable view names nobody. (6) THE COST is `Cost so far: `
++and the display `costMetricOf` gives for the latest budget tick at or before the cluster's last seq,
++marked `~` when estimated and followed by ` tokens` for a token figure; no tick, or a tick with no
++figure, gives none. (7) THE SYNC: `chapterAt` answers the chapter whose range holds a scrub
++position, and `cardAt` the latest card of that chapter whose first seq the position has reached, so
++a chapter shows no card before its first key event and never a card of another chapter. (8) The
++module writes no sentence but its verdict table and its cost label, and
++`tests/ui_contracts/test_story_narration.py` pins both tables to the sources they are bound to.
++
++ALTERNATIVES: F255's narration as the line, rejected because the export plays without Python and the
++key events already carry the catalog's line; matching an actor by timestamp, rejected because an
++entry's time and an event's time come from different writers; a composed verdict sentence per
++outcome, rejected because the outcome's own word is all the record says.
++
++HOW TO REVERSE: delete `storyNarration.ts`, its test, `tests/ui_contracts/test_story_narration.py`
++and this paragraph.
+diff --git a/.agent/live_review.md b/.agent/live_review.md
+index 1a839311a..46062fb8d 100644
+--- a/.agent/live_review.md
++++ b/.agent/live_review.md
+@@ -459,3 +459,7 @@ Gate: F038 R13 — the F038 round 13 entry: the booking of round 12, R-1096's re
+ Gate: F038 R14 — the F038 round 14 entry: the booking of round 13 and R-1097's resolution, the self-use reading, the evidence bundle and the review package. VERDICT PASS. Re-derived over `185c7adc`..`00102b5c` by the planner and reviewer of F038's third session, whose own runs produced every reading below. THE RANGE IS 3 COMMITS, at `2e7b4cdd` 375, `2fe5345e` 10 and `00102b5c` 156 insertions by `git show --numstat`, each under the 500-line cap and each single-parent; the tracked path set is exactly the block's constraint 3, and the worker declared no deviation. THE TRANSPORT PROOF: the block copy and the three payload copies, read from `2e7b4cdd`, equal the reviewer's originals byte for byte. THE BOOKING: at `2fe5345e`, the accepted head, the ledger and the plan equal the reviewer's simulation byte for byte, and the open set reads `[]` with the latest verdict PASS. THE SELF-USE READING: the generator and the queue both answered `None` and wrote nothing, as the reviewer's own run of the same two calls over the same booking did, so closure precondition 6 reads self-use NONE (queue exhausted). THE BUNDLE: the evidence tool, job `f038r14e1001` at base `fec08a5b`, the fork point, read equal ancestry and plain counts at 92, 1751 node ids collected with 2 deselected, none unsafe, pytest exit 0 with 1748 passed and 3 skipped, an empty `validate_verification_tests` problem list and `is_valid_current_run` True. THE PACKAGE: `remedy-review-20260928-194656-READY_FOR_REVIEW.zip`, read by the reviewer in `/home/decodeux/Repos/remedy-history/zips`, hashes to SHA-256 `98bc29b2c6aa67360bf61f1a85fb4f5583f6552100c2615c918a5b54b426bab4`, passes `testzip`, and its `.review_zip_manifest.json` names base `fec08a5b9a9742eb070cd97d0d96ddc272e3a33f` and head `2fe5345e08ad4b013b8d5a9395e5b1a83b7415f5` with the status READY_FOR_REVIEW. All six `integrity check` checks read pass at `00102b5c`.
+ 
+ Gate: F038 R15 — the F038 round 15 entry, the closing round: the booking of round 14, the ledger rotation, F038's acceptance in STATUS with its README pins, and pull request 292. VERDICT PASS. Reviewed over `00102b5c`..`167163a0` by the planner and reviewer of F038's third session, and every reading below re-taken at F039's claim by the planner and reviewer of F039's first session, whose own runs produced them. THE RANGE IS 4 COMMITS, at `9b209b73` 433, `a049fcb5` 6, `3ae1d873` 46 and `167163a0` 169 insertions by `git show --numstat`, each under the 500-line cap and each single-parent; the tracked path set is exactly the block's constraint 3, the closure commit touches exactly `docs/roadmap/STATUS.md`, `README.md` and `.agent/handoff.md`, and the worker declared no deviation. THE RECORDS at `167163a0`: the ledger, 324035 bytes, SHA-256 `c5087b47aca9fda9700ed8cef540a96246d1d6a82732cd147ad8b52a18475d89`; the archive, 5419927 bytes, `a357195bb7858b96167692f713f194000459f6ef7b5be49ae676e244fb44c379`; `docs/roadmap/STATUS.md`, 56978 bytes, `56c05de0ae64fc7b1053a35ed2615d8993b6a73356424d0e12495208dfdb50ee`; and `README.md`, 43580 bytes, `c72eb620191e93788ca6538e13b4acde7ca5854d1492eacef9d4d4ee3578d963` — each the reading the round's block gave from the third session's simulation. The rotation moved nine gate records and seven finding pairs, and the open set reads `[]`. THE TESTS: the block's selection, run by F039's reviewer at `4d60eb84`, read 512 passed at exit 0, and all six `integrity check` checks read pass there. THE PULL REQUEST: number 292, its body equal to the round's `pr_body.md`, merged at F039's Open PR Gate as `4d60eb84`, after both hosted CI jobs of run 36462050234 ended `success` on `167163a0`; `167163a0` is the second parent of `4d60eb84`, and the two trees are identical.
++
++Gate: F039 R1 — the F039 round 1 entry: the claim, the re-head, the booking of F038's round 15, DECISIONS F039 D1 and D2, and T001's chapters with their goldens and guard. VERDICT PASS. Re-derived over `4d60eb84`..`ea7bcbdb` by the planner and reviewer of F039's first session, whose own runs produced every reading below. THE RANGE IS 7 COMMITS, at `4f5a713a` 370, `a704ae20` 173, `5b7947c7` 131, `757fd719` 124, `5c83f21a` 335, `447dabe5` 170 and `ea7bcbdb` 261 insertions by `git show --numstat`, each under the 500-line cap and each single-parent; the worker split the block's C4 into two parts under constraint 2 and declared it, and the tracked path set is exactly the block's constraint 3. THE TRANSPORT PROOF: the block copy and the three payload copies, read at `ea7bcbdb`, equal the reviewer's originals byte for byte. THE CLAIM: at `5b7947c7` the ledger, the decisions, STATUS, F286's file, the plan and the context each equal the reviewer's simulation byte for byte, the open set reads `[]`, and F039's STATUS line reads `[~]` directly after F038's. THE CODE matches S1 to S6: `buildStoryChapters` reads `readPhases` over the whole ledger, gives a zero span no chapter, splits a phase of more than six key events and clusters inside a part. THE TESTS: the block's G4 selection, run serially by the reviewer in the primary checkout at `ea7bcbdb`, read 1870 passed and 5 skipped at exit 0, the four toolchain nodes among the passing; all six `integrity check` checks read pass; ruff reads clean on the guard and the tool. THE RED PROOFS: the worker's tool, re-run by the reviewer in a disposable worktree at `ea7bcbdb`, turned all twelve mutations red with both controls green and every file restored byte-identical. The reviewer's own ten further mutations, through the same runners — a cluster's first and last seq, every chapter's part, parts and phase, the range filter, part one's bare title, the phase order, a bare import and a sentence outside the title table — turned nine red; the bare import stayed green, which is R-1098 below. The worktree was removed.
++
++- R-1098 — Low, FIVE UI GUARDS READ A MODULE'S IMPORTS WITH A PATTERN THAT CANNOT SEE A BARE IMPORT OR A RE-EXPORT, SO THEIR CHECKS OF A MODULE'S EXACT IMPORTS PASS OVER A MODULE THAT IMPORTS SOMETHING ELSE. Raised by the planner and reviewer of F039's first session at the round 1 gate. SEARCHED BEFORE MINTING (checklist item 30): the open set at `ea7bcbdb` is empty, and neither the ledger, its archive nor the prose slips name a side-effect or bare import. MEASURED at `ea7bcbdb`: `tests/ui_contracts/test_phase_mapping.py`, `test_timeline_scrub_contract.py`, `test_scrub_snapshots.py`, `test_semantic_zoom_contract.py` and `test_story_chapters.py` read a module's imports with `re.findall(r'^import [^;]*from "([^"]+)";$', ...)`, which needs the word `from`, and each compares what it reads with an exact list or requires every entry to begin with `./`. The statement `import "../../api/humanize";` added to `storyChapters.ts` in a disposable worktree left `test_story_chapters.py` at 7 passed, and a re-export `export ... from "x";` escapes the same pattern. WHY LOW: no guarded module carries such a statement at `ea7bcbdb`, so nothing on disk is wrong yet; each gate is blind to one form of the change it exists to refuse. FIX: one reader, `ts_import_specifiers` in `tests/ui_contracts/test_phase_mapping.py`, reads every statement of the forms `import ... from "x";`, `import "x";` and `export ... from "x";`, with a unit test over each form and over an `export const` line it must not read; the other four guards import it; and a bare import of a specifier no guarded module uses, added to each of the eight modules those guards read, turns that module's guard red. Owner: F039.

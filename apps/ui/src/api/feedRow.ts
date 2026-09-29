@@ -5,6 +5,8 @@ import { humanizeStreamEvent } from "./humanize";
 import type { BrainStreamFrame } from "./brainStream";
 import { readSteeringAck, steeringAckLine } from "./steeringAck";
 import { readSteeringNote } from "./steeringNote";
+import { budgetTickFiguresOf } from "./budgetTick";
+import type { BudgetTickFigures } from "./costMetric";
 
 /** What one activity-feed row shows. `seq` is the ledger position the row
  *  carries and jumps to; `known` is what a dev console note counts.
@@ -36,6 +38,10 @@ export interface FeedRow {
    *  feed shows the note as the operator's own line rather than the catalog's
    *  third-person description of it. DECISION F030 D3. */
   author?: "operator";
+  /** A `budget.tick` frame's own figures, carried opaque, absent on every
+   *  other row — never `undefined` on a present key, so a card can tell "no
+   *  tick yet" from "a tick with nothing in it" (DECISION F039 D5 (3)). */
+  budget?: BudgetTickFigures;
 }
 
 // The naming trap this module exists to resolve, measured at `f5f01585` in
@@ -89,6 +95,9 @@ export function feedRowOf(
   // F030 T003: a steering note shows the operator's OWN text, verbatim, as the operator's
   // own row — never the catalog's third-person description of the fact it was recorded.
   const note = readSteeringNote(envelope);
+  // DECISION F039 D5 (3): a budget tick's figures ride on their OWN row, absent
+  // rather than `undefined` on every other kind, so a card can read "cost so far".
+  const budget = budgetTickFiguresOf(frame);
   return {
     seq: frame.seq,
     receivedAtMs,
@@ -101,5 +110,6 @@ export function feedRowOf(
     attemptId: stringField(envelope, "attempt_id"),
     planTaskIds: planTaskIdsOf(envelope),
     ...(note ? { author: "operator" as const } : {}),
+    ...(budget !== null ? { budget } : {}),
   };
 }

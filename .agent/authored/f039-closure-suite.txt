@@ -1,0 +1,8 @@
+F039 R10 C6 — the feature's one full suite (integration gate).
+
+Command: python3 -m pytest -n auto -q
+Real exit code: 0
+Wall time: 192.70 s measured wall-clock (pytest's own summary reports 192.03s (0:03:12))
+Summary line: 20611 passed, 20 skipped, 1 warning in 192.03s (0:03:12)
+Bad node ids (failed plus errors): NONE
+Tree it ran on: fd89095ff (F039 R10 C5)

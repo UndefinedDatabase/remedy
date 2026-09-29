@@ -12,6 +12,8 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
+from tests.ui_contracts.test_phase_mapping import ts_import_specifiers
+
 ROOT = Path(__file__).resolve().parent.parent.parent
 GRAPH = ROOT / "apps" / "ui" / "src" / "components" / "graph"
 MACHINE = GRAPH / "semanticZoom.ts"
@@ -48,7 +50,7 @@ def test_the_crossing_is_strict_on_both_sides():
 def test_the_machine_and_its_adapter_are_renderer_agnostic():
     for path in (MACHINE, WHEEL):
         src = path.read_text(encoding="utf-8")
-        imports = re.findall(r'^import [^;]*from "([^"]+)";$', src, re.MULTILINE)
+        imports = ts_import_specifiers(src)
         assert all(spec.startswith("./") for spec in imports), f"{path.name} imports {imports}"
         for word in ("window.", "document.", "useState", "useReducer", "Path2D", "ForceGraph"):
             assert word not in src, f"{path.name} reaches for {word}"

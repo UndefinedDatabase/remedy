@@ -21,6 +21,16 @@ MAPPING = TIMELINE / "phaseMapping.ts"
 BAR = TIMELINE / "PhaseTimeline.tsx"
 UI_SERVER = ROOT / "packages" / "orchestration" / "ui_server.py"
 
+# R-1098 — a bare import (`import "x";`), a re-export (`export ... from "x";` or
+# `export * from "x";`) and a named import (`import { a } from "x";`, however many lines
+# it spans) all name a specifier a guard must see; the five UI guards below read every
+# module's imports through this reader rather than through their own `from`-only pattern.
+TS_IMPORT_RE = re.compile(r'^(?:import|export)\s+(?:[^;]*?\s+from\s+)?"([^"]+)";$', re.MULTILINE)
+
+
+def ts_import_specifiers(src: str) -> list[str]:
+    return TS_IMPORT_RE.findall(src)
+
 
 def _table(src: str, name: str) -> dict[str, str]:
     match = re.search(rf"^export const {name}: [^=]+= \{{\n(.*?)^\}};$", src, re.MULTILINE | re.DOTALL)
@@ -64,7 +74,30 @@ def test_the_mapping_is_pure_and_reuses_the_reducer_and_the_catalog():
     # Comments are stripped first: the file's own WHY comment names what it avoids
     # (finding R-0584's quoted-token trap).
     src = re.sub(r"//[^\n]*|/\*.*?\*/", "", MAPPING.read_text(encoding="utf-8"), flags=re.DOTALL)
-    imports = re.findall(r'^import [^;]*from "([^"]+)";$', src, re.MULTILINE)
+    imports = ts_import_specifiers(src)
     assert sorted(set(imports)) == ["../../api/humanize", "../graph/brainOntology", "../graph/brainReducer"]
     for word in ("window.", "document.", "Date", "Math.random", "useState", "useEffect", "fetch("):
         assert word not in src, f"phaseMapping.ts reaches for {word}"
+
+
+def test_the_import_reader_reads_every_import_statement():
+    src = (
+        'import { costMetricOf } from "../../api/costMetric";\n'
+        'import type { OwnershipView } from "../../api/ownership";\n'
+        'import {\n'
+        '  a,\n'
+        '  b,\n'
+        '} from "./ab";\n'
+        'import "../../api/unguarded";\n'
+        'export * from "./reexport";\n'
+        'export { e } from "./named-export";\n'
+        'export const NOT_AN_IMPORT = "x";\n'
+    )
+    assert ts_import_specifiers(src) == [
+        "../../api/costMetric",
+        "../../api/ownership",
+        "./ab",
+        "../../api/unguarded",
+        "./reexport",
+        "./named-export",
+    ]

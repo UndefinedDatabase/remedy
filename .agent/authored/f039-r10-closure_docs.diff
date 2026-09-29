@@ -1,0 +1,97 @@
+diff --git a/docs/agents/planner_reviewer_prompt.md b/docs/agents/planner_reviewer_prompt.md
+index 22e0f5ab7..324c1ca46 100644
+--- a/docs/agents/planner_reviewer_prompt.md
++++ b/docs/agents/planner_reviewer_prompt.md
+@@ -373,6 +373,11 @@ end the response with:
+   block that specified a wire shape key by key and ordered tests for only some of its keys is item
+   18's reading of an ordered recipe, here a list of tests, against the property it must establish,
+   here every key of the shape. The list stays at 34 items.
++  Consolidated a twenty-sixth time at F039's closure on 2026-09-29: nothing joined and no two items
++  were merged, because F039 wrote no line to `.agent/prose_slips.md`. Its one authoring defect, a
++  browser test ordered to collect the browser's events without reading any after its last check
++  (R-1103), is item 18's reading of an ordered recipe, here the test's own collection, against the
++  property it must establish, here no request at all. The list stays at 34 items.
+   The next consolidation measures against 34.
+   Reverse by deleting this paragraph.
+   1. **Size.** Count the block's lines. Over 400 (DECISION F105 D5) → split or
+diff --git a/docs/guides/story-user-guide-v1.md b/docs/guides/story-user-guide-v1.md
+index f761f3cb4..95c778069 100644
+--- a/docs/guides/story-user-guide-v1.md
++++ b/docs/guides/story-user-guide-v1.md
+@@ -86,8 +86,8 @@ Add `--json` for a machine-readable answer that names the file, its size in byte
+ 
+ A test in Remedy's suite, `tests/ui_server/test_story_export_file_live.py`, runs the demo job on
+ the fake providers, saves its story, opens the file in headless Chrome, which is Chrome without a
+-window, and records every request the page makes. It passes only when the one request is the file
+-itself. It also plays the story: it checks the three chapters of the demo, moves the timeline with
++window, and records every request the page makes while the story plays and for two seconds after.
++It passes only when the one request is the file itself. It also plays the story: it checks the three chapters of the demo, moves the timeline with
+ the arrow key, jumps to a chapter, and starts and pauses the story with the space bar. On top of
+ that, the file tells the browser to refuse any request it might try, so a later change that adds
+ one is blocked and shows up in that test.
+diff --git a/docs/roadmap/features/T5_F039.md b/docs/roadmap/features/T5_F039.md
+index 1ce4881dc..e91bf1496 100644
+--- a/docs/roadmap/features/T5_F039.md
++++ b/docs/roadmap/features/T5_F039.md
+@@ -89,3 +89,61 @@ zero-network test is acceptance spine, verbatim.
+ The cockpit bundle (the export is a subset build), event formats,
+ narration vocabulary sources. Suggested tests:
+ tests/orchestration/test_story_mode.py.
++
++## Built State (F039, 2026-09-29)
++
++What exists on disk at the close of F039, built in ten rounds over two sessions on
++`feature/f039-story-replay-mode`, cut from `main` at `4d60eb84`. The story reads a job's own record
++and changes nothing; every sentence it shows comes from the humanize catalog or one of its own small
++tables, never from a model. Every DECISION named lives in `.agent/decisions.md`; every round's
++verdict in `.agent/live_review.md` or, once rotated, its archive.
++
++**T001 — the chapters.** `apps/ui/src/components/story/storyChapters.ts` is a pure fold over the
++ledger rows the phase bar reads (DECISION F039 D1). A chapter is a phase with a non-zero span in
++`readPhases` over the whole ledger, so the chapters tile the ledger and a skipped phase gives none;
++the key events are `extractSubGlyphs`' decisions, failures, heals and stops, clustered when each
++comes at most two seqs after the one before; a phase with more than six key events splits into
++parts of six. The titles are one table, The start, The plan, The build, The tests, The review and
++The finish, a split part reading `<title>, part <n> of <parts>`; a title names the phase and never
++its outcome, and The finish exists only where every task passed.
++`tests/ui_contracts/test_story_chapters.py` pins the table to the bar's phases and forbids any other
++sentence in the module.
++
++**T002 — the narration, the pacing and the in-app story.** `storyNarration.ts` (DECISION F039 D3)
++makes one card per cluster: each key event a beat with the catalog's line, the reviewer's verdict for
++a review round from `STORY_VERDICT_LINES`, and the ownership ledger's own sentence as its actor when
++exactly one entry and one event agree; the card carries the cost so far through `costMetricOf`, and
++`chapterAt` and `cardAt` place a scrub position. `storyAutoplay.ts` (D4) answers the next position and
++the wait, one ledger event per step with a chapter pause before each new chapter, chapter to chapter
++under reduced motion, its defaults the motion reference's node birth and pulse. The keys
++`story.step_ms` and `story.chapter_pause_ms` (420 and 1600) reach the browser as the dashboard's
++`story` section, a budget tick's figures ride on its feed row, and `storyView.ts` assembles the view
++(D5). `storyPlayer.ts` holds the position in words, where Play starts, the reached beats, the
++running-job line and `storyWalk`, the golden walkthrough the demo recording is tested against;
++`StoryPanel.tsx` is the docked, portaled card opened by the Story button of `RightLivePanel.tsx`,
++driving the timeline's own scrub with one timer that re-arms only on play, position and reduced motion
++(D6, and R-1101's repair). R-1102's repair keeps a task's own id in `normalizeDashboardPayload`, so a
++finished `remedy do` job reaches Finalized on the phase bar and its story reaches The finish.
++
++**T003 — the export.** `packages/orchestration/story_export.py` builds a job's story payload,
++`remedy.story.v1`, from the cockpit's own builders: the dashboard's task, live and story sections,
++every event through `_safe_event_summary`, and `ownership_view` (D7); `storyExport.ts` reads it back
++through the cockpit's own decoders and refuses another schema by name. `apps/ui/vite.config.ts`'s
++plugin builds the player a second time, after the cockpit, as one script and one style sheet in the
++`story` subdirectory of the resolved `outDir` (D8, D9); `storyPlayerMain.tsx` reads the story from
++the page's `remedy-story-data` element and mounts `StoryPlayerApp`, the phase bar over the story
++panel with no Close button. `remedy job story <id> --export <file>` writes one page inlining the
++player and the payload under a content security policy of `default-src 'none'`, every `<` in the JSON
++written `\u003c`; it refuses a player not built (exit 3) and a file over `story.export_max_bytes`,
++5,000,000 bytes by default (exit 1), and never cuts a story. No font is bundled: the asset authority
++forbids fonts written into CSS and the cockpit installs none yet, so the page uses the cockpit's own
++font stacks (the assumption log's F039 row). `tests/ui_server/test_story_export_file_live.py` is the
++acceptance spine (D9): it runs the demo job on the fake providers, exports its story around a player
++built into a temporary folder, and drives headless Chrome over `--remote-debugging-pipe`, requiring
++the demo's three chapters, the slider's arrow key, a chapter jump, Space for Play and Pause, no
++request but the file itself, and no exception or console error while it plays and for two seconds
++after (R-1103). `docs/guides/story-user-guide-v1.md` is the operator's guide.
++
++**Not built.** The certificate this feature file cross-references does not exist, so nothing embeds
++or links a story yet. The export carries no evidence file, so the feature file's rule for linking
++oversized evidence has nothing to apply to. The test browser is headless Chrome alone (D9).
