@@ -25511,3 +25511,13 @@ CHOSEN: (1) THE TERMINAL SET is `pingpong_job.JOB_TERMINAL_STATES`, unchanged: `
 ALTERNATIVES: keeping terminal copies as default candidates and making `--stale` a no-op for them, rejected because the amendment's rule (b) asks for a refusal without the flag and because a copy nobody applied yet deserves a grace period; the copy's own directory mtime as the age, rejected because a copy written into yesterday has an old directory mtime and fresh content.
 
 HOW TO REVERSE: in `_plan_class` make a terminal copy a candidate again without calling `_stale_verdict`, drop `_stale_deletion_refusal` from `apply_reclaim`, remove the `--stale` flag, the config key, the `reason` key of a candidate, the architecture paragraph and the tests of this decision, and delete this paragraph.
+
+## DECISION amend0929 D2 — the operator answers Q6 "yes, as recommended": a paydown feature with no open finding waits behind the next real feature, and exactly one paydown feature always stays registered (2026-09-29)
+
+CONTEXT: Operator question Q6 in `.agent/operator_questions.md`, written at F036 round 1 on 2026-09-28, reported that the rolling findings-paydown feature had no open finding to repair and had been moved one place down the roadmap, behind the next real feature. Operator amendment amend0929-context-hygiene, Part E, carries the operator's answer.
+
+CHOSEN: The operator answers "yes, as recommended". A paydown feature with no open finding is moved behind the next real feature and is claimed as soon as one finding is open. Exactly one paydown feature always stays registered in `docs/roadmap/STATUS.md`. The Q6 entry is deleted, and `.agent/operator_questions.md` reads EMPTY.
+
+ALTERNATIVES: claiming an empty paydown feature anyway, rejected because a closure costs a full test run, an evidence package and several review rounds and would change nothing in the product.
+
+HOW TO REVERSE: delete this paragraph and write the question again; the next session then claims the paydown feature in STATUS order whether or not a finding is open.
