@@ -41,7 +41,9 @@ def test_the_build_plugin_names_the_second_builds_own_shape():
         "inlineDynamicImports: true",
         'entryFileNames: "story-player.js"',
         'assetFileNames: "story-player[extname]"',
-        'STORY_PLAYER_OUT_DIR = "dist/story"',
+        'STORY_PLAYER_SUBDIR = "story"',
+        "configResolved(config)",
+        "path.join(outDir, STORY_PLAYER_SUBDIR)",
     ):
         assert literal in source, f"vite.config.ts is missing {literal!r}"
 

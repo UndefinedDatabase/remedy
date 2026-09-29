@@ -1,16 +1,19 @@
+import path from "node:path";
 import { build, defineConfig, type Plugin } from "vite";
 import react from "@vitejs/plugin-react";
 
-// F039 T003, DECISION F039 D8 — a page opened from `file://` can load no chunk: the story
-// player is built a second time, once the cockpit's own build closes, as ONE script and ONE
-// style sheet under fixed names, so the export can inline both into a page that needs no
-// server and no module loader.
-export const STORY_PLAYER_OUT_DIR = "dist/story";
+// F039 T003, DECISION F039 D9 — the player lands in this subdirectory of whatever `outDir`
+// the cockpit's own build resolved, `dist/story` by default.
+export const STORY_PLAYER_SUBDIR = "story";
 
 function storyPlayerBuild(): Plugin {
+  let outDir = "dist";
   return {
     name: "remedy-story-player",
     apply: "build",
+    configResolved(config) {
+      outDir = path.resolve(config.root, config.build.outDir);
+    },
     async closeBundle() {
       await build({
         configFile: false,
@@ -19,7 +22,7 @@ function storyPlayerBuild(): Plugin {
         logLevel: "warn",
         plugins: [react()],
         build: {
-          outDir: STORY_PLAYER_OUT_DIR,
+          outDir: path.join(outDir, STORY_PLAYER_SUBDIR),
           emptyOutDir: true,
           sourcemap: false,
           copyPublicDir: false,
