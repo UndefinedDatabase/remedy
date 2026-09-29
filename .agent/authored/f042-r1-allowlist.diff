@@ -1,0 +1,12 @@
+diff --git a/tests/orchestration/import_reachability_allowlist.txt b/tests/orchestration/import_reachability_allowlist.txt
+index db606af4a..311342503 100644
+--- a/tests/orchestration/import_reachability_allowlist.txt
++++ b/tests/orchestration/import_reachability_allowlist.txt
+@@ -203,6 +203,7 @@ packages.orchestration.preview_worker
+ packages.orchestration.product_smoke
+ packages.orchestration.project_brain
+ packages.orchestration.project_brain_aggregate
++packages.orchestration.project_cockpit
+ packages.orchestration.project_constitution
+ packages.orchestration.project_context_coverage
+ packages.orchestration.project_registry
