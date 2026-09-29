@@ -956,21 +956,11 @@ _CONFIG_KEY_SPECS: tuple[ConfigKeySpec, ...] = (
         default=900,
     ),
     ConfigKeySpec(
-        key="data.staging_ttl_days",
-        env_var="REMEDY_DATA_STAGING_TTL_DAYS",
-        description=(
-            "How many days a finished job's staging copy is kept after its newest change "
-            "before `remedy data reclaim --stale` may free it (amend0929-context-hygiene)."
-        ),
-        value_type=int,
-        default=7,
-    ),
-    ConfigKeySpec(
         key="data.reclaim_warn_gb",
         env_var="REMEDY_DATA_RECLAIM_WARN_GB",
         description=(
-            "The reclaimable gigabytes of orphaned and stale staging copies at which "
-            "`remedy doctor core` warns `data_reclaimable` (amend0929-context-hygiene)."
+            "The reclaimable gigabytes of finished jobs' and orphaned staging copies at "
+            "which `remedy doctor core` warns `data_reclaimable` (amend0929-context-hygiene)."
         ),
         value_type=int,
         default=5,
