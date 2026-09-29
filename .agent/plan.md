@@ -13,18 +13,14 @@ D1).
 
 ## Current Step
 
-ROUND 10, the closure sequence's first round: book round 9's FAIL with
-R-1103, repair R-1103, write the Built State, the checklist consolidation
-and the guide's sentence on the test's window, and take the feature's one
-full suite on the tree that ships.
+ROUND 11, the closure's evidence round: book round 10 with R-1103's
+resolution, read the self-use generator, and build the evidence bundle and
+the review package at the accepted head.
 
 ## Next Steps
 
-1. The closure's evidence round: the booking of round 10 with R-1103's
-   resolution, the self-use reading, the evidence bundle and the review
-   package.
-2. The closing round: the ledger rotation, the STATUS flip and the pull
-   request.
+1. The closing round: the ledger rotation, the STATUS flip with the README
+   counters, and the pull request.
 
 ## Risks
 
