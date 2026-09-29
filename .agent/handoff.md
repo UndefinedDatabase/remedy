@@ -1,285 +1,215 @@
-# Handback — F286, round 1: claim F286 and land T001 (R-1104)
+# Handback — F286, round 2: the closure sequence's first round
 
 ## Session
 
-SESSION 1 of feature F286 · round 1 · rounds so far 1. This session ran round 1 only: verified the
-block and every payload byte-exact, cut `feature/f286-findings-paydown-v5` from `6ba1f4be8`,
-applied the claim diff (re-heading `.agent/live_review.md`, booking F039's round 13 gate entry,
-recording DECISION F286 D1, flipping F286's STATUS line to `[~]`, and writing F286's slice list),
-landed T001's repair in `packages/orchestration/doc_staleness.py` (S1–S3), added the fixture test
-and live guard (S4–S5) plus the mutation tool, and ran G1–G4. Context self-assessment: a
-comfortable margin remained through the whole round — every payload and the block matched its
-table on the first read, `git apply --check` passed clean, every numstat and hash gate matched its
-expected reading on the first try, the targeted pytest selection and the mutation tool both passed
-on the first run with no repair needed, and the work was not near its limit.
+SESSION 1 of feature F286 · round 2 · rounds so far 2. This session ran round 2 only: verified the
+block and every payload byte-exact, booked round 1's PASS verdict with R-1104's resolution and the
+plan (C2), took the closure precondition 6 self-use reading between C2 and C3 (both calls answered
+`None`, tree stayed clean), wrote the Built State and the checklist consolidation (C3), then ran the
+integration gate — the UI production build and the feature's one full suite (C4) — and rewrote this
+handoff. Context self-assessment: a comfortable margin remained through the whole round; every
+payload, hash and numstat matched its expected reading on the first try, the full suite ran once and
+came back green with no repair needed, and the work was not near its limit.
 
-For the operator, in plain words: this round claimed the fifth findings paydown, F286, and repaired
-its one open finding, R-1104 — the documentation-staleness catalog was misreading a guide's
-backticked file name (`story.html`) as an unregistered config key, because the name happens to
-start with a registered key's namespace (`story`). The check now leaves out any backticked span
-whose last segment is a known file extension, while it still correctly reports a genuinely
-unregistered key like `story.speed` in the same namespace. Four targeted mutations to the fix each
-broke a test and were each cleanly caught and reverted. The next round starts F286's closure
-sequence: the one full-suite integration-gate run, the evidence bundle and review package, then the
-close, which registers the next paydown.
+For the operator, in plain words: this round closed the loop on F286's first round — booking its
+PASS verdict and R-1104's fix into the permanent record — then took the one self-use reading closure
+precondition 6 requires (the queue is exhausted, so the reading is `None`/`None` as expected), wrote
+the feature's Built State into its file, added a routine checklist-consolidation note to the
+planner/reviewer prompt, and ran this feature's single full-suite integration gate: the UI build
+succeeded and `python3 -m pytest -n auto -q` passed all 20613 collected tests (20 skipped) in about
+3 minutes 17 seconds, with zero bad node ids. The evidence bundle, the review package, the ledger
+rotation, the next paydown's registration, the STATUS line and the pull request are the closure's
+remaining rounds.
 
 ## Range
 
-Review of 6ba1f4be8..HEAD
+Review of a45f74da2..HEAD
 
 ## Commits
 
-### 60109f5e8 F286 R1 C1a: copy round 1 block and state payloads into .agent/authored/
+### 675b4a34c F286 R2 C1: copy round 2 block and payloads
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f286-r1-block.md | +242/-0 | verbatim copy of this round's block |
-| .agent/authored/f286-r1-context.md | +31/-0 | verbatim copy of the context payload |
-| .agent/authored/f286-r1-plan.md | +26/-0 | verbatim copy of the plan payload |
+| .agent/authored/f286-r2-block.md | +155/-0 | verbatim copy of this round's block |
+| .agent/authored/f286-r2-closure_docs.diff | +33/-0 | verbatim copy of the closure_docs.diff payload |
+| .agent/authored/f286-r2-plan.md | +28/-0 | verbatim copy of the plan payload |
+| .agent/authored/f286-r2-records.diff | +12/-0 | verbatim copy of the records.diff payload |
 
-Measured insertions: 299 (242 + 31 + 26), matching the block's expectation "this block's line count
-plus 57" (242 + 57 = 299) exactly. Under the 500-line cap.
+Measured insertions: 228 (155 + 33 + 28 + 12), matching the block's expectation "this block's line
+count plus 73" (155 + 73 = 228) exactly. Under the 500-line cap.
 
-### e4accbc10 F286 R1 C1b: copy round 1 claim diff into .agent/authored/
+### f7790d8c9 F286 R2 C2: book round 1's PASS with R-1104's resolution
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f286-r1-claim.diff | +136/-0 | verbatim copy of the claim diff payload |
+| .agent/live_review.md | +4/-0 | round 1's gate entry (VERDICT PASS) and R-1104's `Done:` resolution appended, via `records.diff` |
+| .agent/plan.md | +10/-8 | rewritten to round 2's plan (`plan.md` payload) |
 
-Measured: 136 insertions, matching the block's expected 136 exactly.
+Measured: 4/0, 10/8 — matching the block's expected table exactly, per file. `git apply --check` on
+`records.diff` exited 0 before the real `git apply`, which also exited 0.
 
-### 5f4e1e635 F286 R1 C2: claim F286, re-head the live review record, book F039 R13, record D1
+### (no commit — S, the self-use reading, between C2 and C3)
+Ran in the primary checkout at C2's tip (`f7790d8c9`): `generate_and_append_if_empty()` of
+`packages.orchestration.self_use_generator` answered `None`; `next_self_use_item()` of
+`packages.orchestration.self_use_queue` answered `None`; `git status --porcelain` after both was
+empty. This matches the reviewer's own run of the same two calls over the same booking exactly, so
+the block's STOP condition ("if either answers anything but `None`, or the tree is not clean") did
+not trigger, and C3 proceeded. No file was written by this step, so no commit and no changed-files
+table entry apply.
+
+### 57b3c5af6 F286 R2 C3: write the Built State and the checklist consolidation
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/context.md | +9/-13 | rewritten to F286's context (`context.md` payload) |
-| .agent/decisions.md | +37/-0 | DECISION F286 D1 appended |
-| .agent/live_review.md | +22/-21 | re-headed for F286; F039 R13 gate entry appended |
-| .agent/plan.md | +13/-13 | rewritten to F286's plan (`plan.md` payload) |
-| docs/roadmap/STATUS.md | +1/-1 | F286's line `[ ]` → `[~]` |
-| docs/roadmap/features/T2_F286.md | +7/-0 | Task slicing section (T001) added |
+| docs/agents/planner_reviewer_prompt.md | +4/-0 | checklist consolidation paragraph inserted before "The next consolidation measures against 34." |
+| docs/roadmap/features/T2_F286.md | +10/-0 | Built State section appended (T001/R-1104 and the round-2 self-use reading) |
 
-Measured: 9/13, 37/0, 22/21, 13/13, 1/1, 7/0 — matching the block's expected table exactly, per
-file. `git apply --check` on `claim.diff` exited 0 before the real `git apply`, which also exited 0.
+Measured: 4/0, 10/0 — matching the block's expected table exactly. `git apply --check` on
+`closure_docs.diff` exited 0 before the real `git apply`, which also exited 0.
 
-### 5d761c433 F286 R1 C3: leave a backticked file name out of the config-key check (R-1104)
-| Path | +/- | Reason |
-|---|---|---|
-| packages/orchestration/doc_staleness.py | +10/-1 | S1 `_FILE_EXTENSIONS` + comment, S2 the skip in `_run_c07`, S3 the catalog claim text |
-
-Measured: 10 insertions, 1 deletion. The block states none is expected for C3; this is what was
-measured.
-
-### fe2521ea2 F286 R1 C4: hold story.html out of the config-key check and add the mutation tool
-| Path | +/- | Reason |
-|---|---|---|
-| tests/orchestration/test_doc_staleness.py | +28/-0 | S4 the fixture test, S5 the live guard |
-| .agent/authored/f286-r1-mutations.py | +114/-0 | the G4 mutation tool |
-
-Measured: 28 + 114 = 142 insertions. The block states none is expected for C4; this is what was
-measured.
-
-### (this commit) F286 R1 C5: rewrite handoff for round 1
+### (this commit) F286 R2 C4: record the closure suite transcript and rewrite handoff for round 2
 | Path | Reason |
 |---|---|
+| .agent/authored/f286-closure-suite.txt | the integration gate's transcript: command, real exit code, wall time, summary line, bad node ids (NONE), tree it ran on |
 | .agent/handoff.md | rewritten per the template (self-reference exception, R-0149 pattern) |
 
 ## External actions
 
-- `git worktree add --detach .remedy-wt/f286-r1-mut fe2521ea2` — succeeded, used for G4.
-- `git worktree remove --force .remedy-wt/f286-r1-mut` then `git worktree prune` — succeeded;
-  `git worktree list | wc -l` read 62 both before (step 4) and after removal.
-- `git push -u origin feature/f286-findings-paydown-v5` — run after this commit; its real outcome
-  is reported in the reply (this file cannot contain it, per the block).
+- `git push origin feature/f286-findings-paydown-v5` — run after this commit; its real outcome is
+  reported in the reply (this file cannot contain it, per the block).
 - No `gh pr create`, no `gh pr merge`, no checkout of `main`, no branch deletion, no force-push, no
-  `git stash`.
+  `git stash`, no worktree added or removed this round.
 
 ## Verification
 
-**G1 TRANSPORT** — payload readings against the PAYLOADS table (all matched before use):
+**G1 TRANSPORT AND RECORDS**
+
+Payload readings against the PAYLOADS table (all matched before use):
 
 | file | lines | bytes | sha256 match |
 |---|---|---|---|
-| claim.diff | 136 | 14751 | match |
-| plan.md | 26 | 837 | match |
-| context.md | 31 | 1188 | match |
+| plan.md | 28 | 909 | match |
+| records.diff | 12 | 7455 | match |
+| closure_docs.diff | 33 | 2240 | match |
 
-Block self-verification (BEFORE ANYTHING ELSE step 3): lines 242 (expected 242), bytes 17634
-(expected 17634), sha256 matched exactly. No difference found.
+Block self-verification (BEFORE ANYTHING ELSE step 3): lines 155 (expected 155), bytes 12147
+(expected 12147), sha256 matched exactly. No difference found.
 
 Committed-copy-vs-source, read back with `git show <commit>:<path>`, byte for byte:
 ```
-60109f5e8 .agent/authored/f286-r1-block.md   == .remedy-wt/f286-r1/block.md            -> True
-60109f5e8 .agent/authored/f286-r1-plan.md    == .remedy-wt/f286-r1-payloads/plan.md    -> True
-60109f5e8 .agent/authored/f286-r1-context.md == .remedy-wt/f286-r1-payloads/context.md -> True
-e4accbc10 .agent/authored/f286-r1-claim.diff == .remedy-wt/f286-r1-payloads/claim.diff -> True
+675b4a34c .agent/authored/f286-r2-block.md          == .remedy-wt/f286-r2/block.md                    -> True
+675b4a34c .agent/authored/f286-r2-plan.md           == .remedy-wt/f286-r2-payloads/plan.md            -> True
+675b4a34c .agent/authored/f286-r2-records.diff      == .remedy-wt/f286-r2-payloads/records.diff       -> True
+675b4a34c .agent/authored/f286-r2-closure_docs.diff == .remedy-wt/f286-r2-payloads/closure_docs.diff  -> True
 ```
 
-**G2 THE CLAIM** — sha256 of each file, read with `git show 5f4e1e635:<path>`, against the
-reviewer's reading:
+Records/documents hashes, read with `git show <rev>:<path>`, against the block's table:
 
-| path | bytes | sha256 match |
-|---|---|---|
-| .agent/context.md | 1188 | match |
-| .agent/decisions.md | 2447895 | match |
-| .agent/live_review.md | 319065 | match |
-| .agent/plan.md | 837 | match |
-| docs/roadmap/STATUS.md | 57372 | match |
-| docs/roadmap/features/T2_F286.md | 3248 | match |
+| read at | path | bytes | sha256 match |
+|---|---|---|---|
+| C2 (f7790d8c9) | .agent/live_review.md | 322135 | match |
+| C2 (f7790d8c9) | .agent/plan.md | 909 | match |
+| C3 (57b3c5af6) | docs/agents/planner_reviewer_prompt.md | 110730 | match |
+| C3 (57b3c5af6) | docs/roadmap/features/T2_F286.md | 3948 | match |
 
-`open_finding_ids` (from `scripts/rotate_live_review.py`) over `.agent/live_review.md`'s text:
-- at `6ba1f4be8`: `['R-1104']`
-- at `5f4e1e635` (C2): `['R-1104']`
+`open_finding_ids` and `latest_gate_verdict` (from `scripts/rotate_live_review.py`) over
+`.agent/live_review.md`'s text at C2 (`f7790d8c9`): `[]` and `PASS` — matching the block exactly.
 
-At C2: exactly one line reads `## Findings` (count 1) and exactly one reads `## Steps` (count 1);
-the last non-empty line begins `Gate: F039 R13 — ` (True). F286's STATUS line at C2 read back in
-full: `- [~] F286 — Findings paydown v5` (exact match). `git diff --name-only e4accbc10 5f4e1e635`
-named exactly: `.agent/context.md`, `.agent/decisions.md`, `.agent/live_review.md`, `.agent/plan.md`,
-`docs/roadmap/STATUS.md`, `docs/roadmap/features/T2_F286.md` — exactly the table above, no more, no
-less.
+`live_checklist_items` (from `packages/orchestration/block_lint.py`) over the planner prompt's text:
+34 items at `a45f74da2`, 34 items at C3 (`57b3c5af6`) — matching the block exactly.
 
-**G3 THE CODE AND THE TESTS**
+S readings (see the "no commit" entry above): `generate_and_append_if_empty()` -> `None`;
+`next_self_use_item()` -> `None`; `git status --porcelain` -> empty. Both match the reviewer's own
+reading of `None`/`None`.
 
-`python3 -m ruff check packages/orchestration/doc_staleness.py tests/orchestration/test_doc_staleness.py .agent/authored/f286-r1-mutations.py`
-at C4: `All checks passed!`, REAL_EXIT=0.
-
-`_FILE_EXTENSIONS` with its comment and the whole of `_run_c07`, quoted from `git show 5d761c433`:
-```python
-# No config key ends in a file extension, so a span whose last segment is one is a file
-# name that begins with a key prefix, not a key (R-1104).
-_FILE_EXTENSIONS = frozenset({
-    "css", "html", "js", "json", "md", "py", "sh", "toml", "ts", "tsx", "txt", "yaml", "yml",
-})
-
-
-def _run_c07(root: Path, truth: ShippedTruth) -> tuple[StaleClaim, ...]:
-    check_id = "doc_config_keys"
-    items: list[tuple[int, int, StaleClaim]] = []
-    prefixes = truth.key_prefixes
-    documents = [_README, _INDEX] + _guide_documents(root)
-    for order, document in enumerate(documents):
-        text = _read(root, document)
-        if text is None:
-            continue
-        for line_no, line in _iter_lines_outside_fences(text):
-            for m in _SPAN_RE.finditer(line):
-                span = m.group(1)
-                if not _KEY_NAME_WHOLE_RE.match(span):
-                    continue
-                first = span.split(".", 1)[0]
-                if first not in prefixes:
-                    continue
-                last = span.rsplit(".", 1)[-1]
-                if last in _FILE_EXTENSIONS:
-                    continue
-                if span in truth.command_ids:
-                    continue
-                if span not in truth.config_keys:
-                    items.append((order, line_no, StaleClaim(
-                        check_id, document,
-                        f"backticks the config key `{span}`",
-                        f"`{span}` is not a registered config key",
-                    )))
-    return _sorted_claims(items)
-```
-
-`[c for c in run_staleness_checks() if c.check_id == "doc_config_keys"]` in the primary checkout at
-C4: `[]` — matches the reviewer's reading of `[]` in its simulation tree. The block's own text
-states the same call at `6ba1f4be` answers the one claim about `story.html`; this round did not
-independently re-run that call at `6ba1f4be` (see Deviations).
-
-Targeted pytest selection, run serially (`-p no:cacheprovider -rs`), tail:
+**G2 THE TESTS**, in the primary checkout at C3 (`57b3c5af6`), serial run tail:
 ```
 SKIPPED [1] tests/test_agent_tooling.py:43: D12 quarantine (F252): .claude/agents/remedy-reviewer.md was deleted deliberately in 219dd32 (finding R-0074 — superseded by the split workflow's Window 1, docs/agents/planner_reviewer_prompt.md). The read-only reviewer contract now lives there. Backlog: re-pin this contract on the split-workflow docs, or retire the test.
-576 passed, 1 skipped in 57.03s
+569 passed, 1 skipped in 54.69s
 ```
-REAL_EXIT=0 — matches the reviewer's reading of `576 passed, 1 skipped` at exit 0 exactly, and the
-one `SKIPPED` line matches exactly.
-
-`tests/orchestration/test_doc_staleness.py --collect-only -q`: `33 tests collected` — matches the
-reviewer's reading of 33 exactly.
+REAL_EXIT=0 — the reviewer's reading of the same selection over the same booking (C2 and C3, no
+round-2 `.agent/authored/f286-r2-*` copy) was `569 passed, 1 skipped` at exit 0; this round's count
+did not differ, since the round's own copies (C1) sit outside this selection's collected paths.
 
 `python3 -m apps.cli.main integrity check --json`: `check_count: 6`, `fail_count: 0`, `ok: true`,
 `passed: true`, all six checks `"status": "pass"` (`handler_import`, `live_review_verdict`,
 `plan_consistency`, `relevant_untracked`, `repo_root_hygiene`, `high_blockers_open`). REAL_EXIT=0.
 
-**G4 THE RED PROOFS** — `git worktree add --detach .remedy-wt/f286-r1-mut fe2521ea2`, then
-`python3 -B .agent/authored/f286-r1-mutations.py /home/decodeux/Repos/remedy/.remedy-wt/f286-r1-mut`,
-whole output:
+`python3 -m apps.cli.main integrity block .remedy-wt/f286-r2/block.md`, REAL_EXIT=0, whole output:
 ```
-control (before, unmutated): exit=0 failed=0
-m1 the skip of S2 is deleted: exit=1 failed=1
-restored byte-identical: True
-m2 html is removed from _FILE_EXTENSIONS: exit=1 failed=1
-restored byte-identical: True
-m3 the skip reads the span's FIRST segment instead of its last: exit=1 failed=1
-restored byte-identical: True
-m4 host is added to _FILE_EXTENSIONS, which hides the registered key ollama.host: exit=1 failed=1
-restored byte-identical: True
-control (after, unmutated): exit=0 failed=0
-ALL MUTATIONS CAUGHT AND RESTORED CLEANLY: True
+  [OK] item 1 (size): 155 lines, limit 400
+  [OK] item 3 (cap-bounded replacements): plan.md at 28 lines
+  [OK] item 10 (open set recomputed): states 0; .agent/live_review.md holds 0 open by distinct id, and the block registers 0 and resolves 0, leaving 0
+  [OK] item 24 (gate paths resolve): 0 paths named in the block's commands, every one resolves
+  [OK] item 30 (new ids searched first): the block registers no finding id
+  [OK] item 31 (gates before the text): the block orders no gates before a commit
+  [OK] item 37 (no unmeasured runs): no line is a run of one repeated character
+All 7 checkable items pass.
 ```
-REAL_EXIT=0. Every mutation exited non-zero with failed count 1; no test needed to be added. Then
-`git worktree remove --force .remedy-wt/f286-r1-mut`, `git worktree prune`; `git worktree list | wc -l`
-read 62, equal to the step-4 reading.
 
-**Constraint 3 (tracked path set)** — `git diff --name-only 6ba1f4be8` at the branch tip after C5
-is reported in the reply (cannot be measured before this commit exists). Before C5 it read exactly:
-`.agent/authored/f286-r1-block.md`, `.agent/authored/f286-r1-claim.diff`,
-`.agent/authored/f286-r1-context.md`, `.agent/authored/f286-r1-mutations.py`,
-`.agent/authored/f286-r1-plan.md`, `.agent/context.md`, `.agent/decisions.md`,
-`.agent/live_review.md`, `.agent/plan.md`, `docs/roadmap/STATUS.md`,
-`docs/roadmap/features/T2_F286.md`, `packages/orchestration/doc_staleness.py`,
-`tests/orchestration/test_doc_staleness.py` — exactly the block's declared set. None of the six
-forbidden paths (`docs/guides/story-user-guide-v1.md`, `scripts/self_use_queue.json`,
-`.agent/prose_slips.md`, `.agent/candidates.md`, `.agent/operator_questions.md`, `README.md`) were
-touched.
+`git status --porcelain` after G2: empty, no untracked file (closure precondition 3 held).
+
+**G3 THE INTEGRATION GATE**
+
+UI build: `apps/ui/node_modules/.bin/vite build` with `cwd=apps/ui`, run from a Python
+`subprocess.run`: REAL_EXIT=0, last line `✓ built in 2.47s`. `git status --porcelain` after it:
+empty.
+
+Full suite: `python3 -m pytest -n auto -q`, REAL_EXIT=0, wall time 197.37 seconds
+(pytest-reported 196.68s, 0:03:16). Summary line: `20613 passed, 20 skipped, 1 warning in 196.68s
+(0:03:16)`. Bad node ids (failed + errors): NONE — `grep -c '^FAILED'` and `grep -c '^ERROR'` over
+the raw log both read 0. Recorded verbatim in `.agent/authored/f286-closure-suite.txt`, naming the
+tree it ran on as `57b3c5af6` (C3's SHA).
+
+Closure precondition 7: `tests/orchestration/test_import_reachability.py` (2 node ids) and
+`tests/test_no_orphan_modules.py` (7 node ids) collect 9 tests total (`--collect-only -q`
+confirmation, a collection-only metadata read, not a second suite run); all 9 are inside the one full
+run above, which held zero bad node ids anywhere — neither file holds a bad node.
 
 ## Authored-text proofs
 
 Every reviewer-authored text applied this round, disk-to-disk against the committed
 `.agent/authored/` file:
-- `.agent/authored/f286-r1-block.md` (C1a) == `.remedy-wt/f286-r1/block.md`: byte-identical.
-- `.agent/authored/f286-r1-plan.md` (C1a) == `.remedy-wt/f286-r1-payloads/plan.md`: byte-identical.
-- `.agent/authored/f286-r1-context.md` (C1a) == `.remedy-wt/f286-r1-payloads/context.md`:
+- `.agent/authored/f286-r2-block.md` (C1) == `.remedy-wt/f286-r2/block.md`: byte-identical.
+- `.agent/authored/f286-r2-plan.md` (C1) == `.remedy-wt/f286-r2-payloads/plan.md`: byte-identical.
+- `.agent/authored/f286-r2-records.diff` (C1) == `.remedy-wt/f286-r2-payloads/records.diff`:
   byte-identical.
-- `.agent/authored/f286-r1-claim.diff` (C1b) == `.remedy-wt/f286-r1-payloads/claim.diff`:
+- `.agent/authored/f286-r2-closure_docs.diff` (C1) == `.remedy-wt/f286-r2-payloads/closure_docs.diff`:
   byte-identical.
 
-`.agent/plan.md` and `.agent/context.md` were rewritten from the same verified `plan.md` and
-`context.md` payloads via `shutil.copyfile` (C2); `claim.diff` was applied via `git apply` only
-(C2), never retyped or edited.
+`.agent/plan.md` was rewritten from the same verified `plan.md` payload via `shutil.copyfile` (C2);
+`records.diff` and `closure_docs.diff` were applied via `git apply` only (C2 and C3), never retyped
+or edited.
 
 ## Item-status table
 
 | Item | Status | Reason |
 |---|---|---|
-| C1a | done | |
-| C1b | done | |
+| C1 | done | |
 | C2 | done | |
+| S | done | both calls answered `None`; tree clean; no STOP triggered |
 | C3 | done | |
-| C4 | done | |
-| C5 | done | this commit |
-| G1 | done | all transport reads matched byte-exact |
-| G2 | done | all claim hashes, open-set reads and structural checks matched |
-| G3 | done | ruff clean, live check reads `[]`, targeted suite 576 passed/1 skipped at exit 0, integrity all-pass |
-| G4 | done | all 4 mutations caught, all restores byte-identical |
+| C4 | done | this commit |
+| G1 | done | all transport, record and checklist reads matched exactly |
+| G2 | done | targeted suite 569 passed/1 skipped at exit 0; integrity check all-pass; block lint 7/7 pass; tree clean |
+| G3 | done | UI build exit 0; full suite 20613 passed/20 skipped at exit 0, zero bad node ids; reachability precondition held |
+| G4 | done | reported in the final reply per the block (post-push, post-C4 readings) |
 
 ## Deviations & assumptions
 
-1. **Assumption, not a deviation from the bundle or gates**: G3's prose states "the same call at
-   `6ba1f4be` answers the one claim about `story.html`" as background from DECISION F286 D1. The
-   block orders the `run_staleness_checks()` call to be run "in the primary checkout at C4" only;
-   it does not order a second worktree at `6ba1f4be` to re-verify the pre-repair reading, and
-   constraint 7 sanctions only the one worktree G4 adds. This round took the DECISION's own
-   measurement (made by the reviewer at `c5eb695b`, referencing the pre-existing R-1104 finding
-   text) as given rather than independently reproducing it. If this reading should have been
-   independently reproduced, that is a gap to flag at review.
-2. No other deviation: the bundle ran C1a, C1b, C2, C3, C4, C5 in the block's exact order; no gate
-   went red; no payload was edited or retyped; no forbidden path was touched; no full-suite run was
-   made (amend0917 rule 1 reserved); no provider call and no self-use job were run.
+1. **No deviation from the bundle order**: C1, C2, S, C3, C4 ran in the block's exact order; the S
+   step produced no file change (both calls read `None`) so it carries no commit, matching the
+   block's own framing of the reviewer's identical prior run.
+2. **Environment note, not a deviation**: an early inline heredoc (`python3 - <<'PY' ... PY`) was
+   rejected by the sandbox as "Contains brace with quote character (expansion obfuscation)" before
+   any file was touched. Every script after that point was written to a file under
+   `.remedy-wt/f286-r2-worker/` and run with `python3 <path>`, exactly as the block's own THIS
+   SANDBOX REFUSES SHAPES section anticipates; no payload, gate or commit was affected.
+3. No forbidden path was touched; no full-suite run was made except the single C4 run (amend0917
+   rule 1 honored); no provider call and no self-use job or runner was run; no worktree, branch or
+   stash was added, removed or altered this round.
 
 ## Next
 
-Per the block's `## Next` order: Phase 1 rule 1 — read `.agent/STOP` from disk before anything
-else. Then the review of this round (round 1). Then the closure sequence's integration-gate round
-(the one full-suite run, per amend0917-throughput). Open-findings count: 1 (R-1104, owned by F286,
-not yet resolved — its resolution line is authored by the reviewer, not this round, per constraint
-4). Operator-questions count: 1 (Q6, open in `.agent/operator_questions.md`).
+Per the block's `## Next` order: Phase 1 rule 1. Then the review of round 2 and of its suite
+transcript. Then the closure's evidence round — the booking of round 2, any repair the suite
+requires, the evidence bundle and the review package. Then the closing round. Open-findings count: 0.
+Operator questions open: 1.

@@ -1,0 +1,6 @@
+Command: python3 -m pytest -n auto -q
+Real exit code: 0
+Wall time: 197.37 seconds (pytest-reported: 196.68s, 0:03:16)
+Summary line: 20613 passed, 20 skipped, 1 warning in 196.68s (0:03:16)
+Bad node ids (failed + errors): NONE
+Tree it ran on: 57b3c5af6 (F286 R2 C3: write the Built State and the checklist consolidation)
