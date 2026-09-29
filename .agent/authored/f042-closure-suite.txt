@@ -1,44 +1,48 @@
-F042 R7 C6 — the closure's one full suite
+F042 R8 C4 — the repaired tree's one full suite
 
 Command: python3 -m pytest -n auto -q
 Real exit code: 1
-Wall time: 12 seconds (measured: start 1790702792, end 1790702804)
-Summary line: 15 errors in 12.39s
+Wall time: 225.9 seconds measured wall-clock (pytest's own report: 225.08s
+(0:03:45); measured: start 1790703654, end 1790703879)
+Summary line: 1 failed, 20941 passed, 20 skipped, 1 warning in 225.08s (0:03:45)
 
-Nature of the red: NOT a per-test failure. pytest-xdist aborted at COLLECTION time on
-all 15 non-reference workers (gw0, gw2, gw3, gw4, gw5, gw6, gw7, gw8, gw9, gw10, gw11,
-gw12, gw13, gw14, gw15), each reporting "Different tests were collected between gw1
-and gwN". Zero tests of any kind executed — grep of the full transcript for "passed"
-or for any "tests/..." result line returns nothing. `tests/orchestration/
-test_import_reachability.py` and `tests/test_no_orphan_modules.py` therefore hold NO
-reading this run (neither ran); closure precondition 7 is UNKNOWN from this transcript,
-not satisfied.
+Nature of the red: a per-test FAILURE, not a collection error — R-1112's repair
+held. All xdist workers collected the same test set this run; the suite reached
+individual test nodes and ran them, unlike round 7 where zero tests executed.
 
-Root cause, confirmed by a scoped re-run of the one implicated file (not the full
-suite; amend0917 rule 1 reserves the full run to once):
-`tests/ui_server/test_projects_route.py:111` —
-    @pytest.mark.parametrize("name", ["gamma", str(uuid4())])
-`str(uuid4())` is evaluated at MODULE IMPORT (collection) time, once per xdist worker
-process. Each worker therefore collects `test_an_unknown_project_is_404` under a
-DIFFERENT parametrize id, so pytest-xdist's collection-consistency check fails
-deterministically whenever more than one worker collects the module — reproduced
-again on a scoped `pytest -n auto -q tests/ui_server/test_projects_route.py` run
-(15 errors in 1.08s, same shape). Not new to this round: `git blame` names commit
-`06376f3569` "F042 R1 C5: add the reviewer's route tests for the project list and
-summary" as the line's origin, on this branch. No production or test file was edited
-to investigate or work around it (constraint 4: an existing test's redness is
-reported, never edited to pass; here the defect is collection-time, upstream of any
-test result, and is handled the same way).
+FULL list of bad node ids (failed plus errors):
+    tests/test_ble001_ratchet.py::test_the_count_of_excused_handlers_never_rises
+      AssertionError: 291 excused blind handlers, above the frozen 290: narrow
+      the new handler to the exceptions it expects instead of excusing it
+      (assert 291 <= 290)
+No other FAILED or ERROR line appears in the transcript. No production or test
+file was edited to investigate or work around it (constraint 4: an existing
+test's redness is reported, never edited to pass).
 
-FULL list of bad node ids (failed plus errors): NONE at the individual test-node
-level — no test reached pass/fail. The 15 collection ERRORS are xdist worker-session
-errors (gw0, gw2, gw3, gw4, gw5, gw6, gw7, gw8, gw9, gw10, gw11, gw12, gw13, gw14,
-gw15), all tracing to the same one non-deterministic parametrize id at
+Previous bad set (round 7, `.agent/authored/f042-closure-suite.txt` at
+`c83be2032`): 15 xdist worker-session COLLECTION errors (gw0, gw2..gw15), zero
+test-node-level failures — the 15-item set held no individual node id at all,
+only worker-session errors all tracing to
 `tests/ui_server/test_projects_route.py::TestProjectRoutes::test_an_unknown_project_is_404[<uuid4, regenerated per worker>]`.
 
-Tree it ran on: cdf694630 (F042 R7 C5, the tip at the time C6 started; C1 through C5
-are all included).
+Shrink reading: the new bad set (1 node-level failure) is STRICTLY SMALLER than
+the previous bad set (15 worker-session errors) by count. It does NOT hold "no
+newly bad node": `tests/test_ble001_ratchet.py::test_the_count_of_excused_handlers_never_rises`
+is a node this round reports bad that round 7's set never named (round 7's set
+named no node at all, only collection-session errors) — so this is a newly bad
+node, unrelated to R-1112 or to any file this round's commits (C1-C3) touched.
+Neither `tests/ui_server/test_projects_route.py` nor
+`tests/test_parametrize_ids_stable.py` appears in this run's FAILED/ERROR list.
 
-server.py: no process found (`ps aux | grep "[s]erver.py"` empty; an initial
-`pgrep -af server.py` line was the search command matching its own invocation text,
-not a real process).
+Closure precondition 7 (`tests/orchestration/test_import_reachability.py`,
+`tests/test_no_orphan_modules.py`): both ran as part of this full suite (the run
+reached individual test nodes and reported no collection error of any kind);
+neither file's name appears in the FAILED/ERROR list. G2's serial run on this
+same tree (C3, no commits between G2 and C4) already read both files green
+inside its "448 passed" result. Precondition 7 holds clean on this transcript.
+
+Tree it ran on: aee178ef78381be3439076f0217e12f2b78d3a12 (F042 R8 C3, the tip
+at the time C4 started; C1 through C3 are all included).
+
+server.py: no process found after the suite (`ps -eo pid,args | grep
+"[s]erver.py"` empty).
