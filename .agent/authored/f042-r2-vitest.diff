@@ -1,0 +1,265 @@
+diff --git a/apps/ui/src/api/projectScope.test.ts b/apps/ui/src/api/projectScope.test.ts
+new file mode 100644
+index 000000000..a1cf9a67b
+--- /dev/null
++++ b/apps/ui/src/api/projectScope.test.ts
+@@ -0,0 +1,259 @@
++// F042 T002, DECISION F042 D2 — the reviewer's acceptance of the cockpit's project seam. The
++// envelopes below are shaped after what `projects_view`, `project_summary` and
++// `job_project_view` in `packages/orchestration/project_cockpit.py` answer, and the switch
++// fixtures are the stale-bleed class the feature file names: a switch while a fetch is in
++// flight, a switch back to the same project, and an answer that fails.
++import { describe, expect, it } from "vitest";
++import { loadJobProject, loadProjectSummary, loadProjectsView } from "./remedyApi";
++import {
++  JOB_SCOPED_PARAMS,
++  PROJECT_COCKPIT_VERSION,
++  createSwitchGate,
++  decodeJobProject,
++  decodeProjectSummary,
++  decodeProjectsView,
++  jobProjectPath,
++  projectFromSearch,
++  projectSummaryPath,
++  projectsViewPath,
++  resolveActiveProject,
++  searchForProjectSwitch,
++  switchProject,
++  switchTargetJob,
++  switcherVisible,
++} from "./projectScope";
++import type { ProjectSummary, ProjectSwitch } from "./projectScope";
++
++const alpha = {
++  id: "11111111-1111-4111-8111-111111111111", slug: "alpha", name: "alpha",
++  repo_path: "/work/alpha", repo_reachable: true, fix_it: null,
++};
++const beta = {
++  id: "22222222-2222-4222-8222-222222222222", slug: "beta", name: "beta",
++  repo_path: "/work/beta", repo_reachable: false,
++  fix_it: "The folder /work/beta is not there any more. If the project moved, run: remedy project attach --project beta --repo <the new folder>",
++};
++const view = {
++  version: 1, projects: [alpha, beta], default_project: { id: beta.id, slug: "beta", source: "cwd" },
++  single_project: false, unscoped_jobs: 2, orphaned_jobs: 1,
++};
++const summary = {
++  version: 1, project_id: alpha.id, slug: "alpha", jobs: { active: 2, total: 3 },
++  last_result: { job_id: "a1b2c3d4e5f60718", title: "alpha newest", state: "blocked", headline: "The run is blocked." },
++  cost_today: { day: "2026-09-01", value_usd: 0.25, basis: "actual", calls: 1 },
++  decisions: { open_count: 5, peak_urgency: 3600 }, degraded: false,
++};
++
++describe("decodeProjectsView", () => {
++  it("decodes a well-formed list exactly", () => {
++    expect(PROJECT_COCKPIT_VERSION).toBe(1);
++    expect(decodeProjectsView(view)).toEqual(view);
++  });
++
++  it("refuses what is not this version's list", () => {
++    for (const bad of [null, [], "x", 7, { ...view, version: 2 }, { ...view, projects: {} }]) {
++      expect(decodeProjectsView(bad)).toBeNull();
++    }
++  });
++
++  it("drops an entry with no string id or slug and never guesses one", () => {
++    const decoded = decodeProjectsView({ ...view, projects: [alpha, { slug: "x" }, { id: "y" }, 3] });
++    expect(decoded?.projects).toEqual([alpha]);
++  });
++
++  it("reads an absent or broken default and broken counts as their absence", () => {
++    const decoded = decodeProjectsView({ ...view, default_project: { slug: "beta" }, unscoped_jobs: -1, orphaned_jobs: "3" });
++    expect(decoded?.default_project).toBeNull();
++    expect([decoded?.unscoped_jobs, decoded?.orphaned_jobs]).toEqual([0, 0]);
++  });
++});
++
++describe("decodeProjectSummary", () => {
++  it("decodes a well-formed card exactly", () => {
++    expect(decodeProjectSummary(summary)).toEqual(summary);
++  });
++
++  it("keeps an unmeasured cost null and never turns it into a zero", () => {
++    const decoded = decodeProjectSummary({ ...summary, cost_today: { day: "2026-09-01", value_usd: null, basis: "absent", calls: 0 } });
++    expect(decoded?.cost_today).toEqual({ day: "2026-09-01", value_usd: null, basis: "absent", calls: 0 });
++  });
++
++  it("reads a project with no jobs as no last result", () => {
++    expect(decodeProjectSummary({ ...summary, last_result: null })?.last_result).toBeNull();
++  });
++
++  it("refuses a card of another version or with no project id", () => {
++    expect(decodeProjectSummary({ ...summary, version: 2 })).toBeNull();
++    expect(decodeProjectSummary({ ...summary, project_id: 7 })).toBeNull();
++    expect(decodeProjectSummary(null)).toBeNull();
++  });
++});
++
++describe("decodeJobProject", () => {
++  it("decodes each of the three scopes", () => {
++    const own = { version: 1, job_id: "j1", scope: "project", project: alpha };
++    expect(decodeJobProject(own)).toEqual(own);
++    expect(decodeJobProject({ version: 1, job_id: "j2", scope: "unscoped", project: null }))
++      .toEqual({ version: 1, job_id: "j2", scope: "unscoped", project: null });
++    expect(decodeJobProject({ version: 1, job_id: "j3", scope: "orphaned", project: null }))
++      .toEqual({ version: 1, job_id: "j3", scope: "orphaned", project: null });
++  });
++
++  it("refuses an unknown scope and a project scope with no project", () => {
++    expect(decodeJobProject({ version: 1, job_id: "j", scope: "global", project: null })).toBeNull();
++    expect(decodeJobProject({ version: 1, job_id: "j", scope: "project", project: null })).toBeNull();
++    expect(decodeJobProject({ version: 2, job_id: "j", scope: "unscoped", project: null })).toBeNull();
++  });
++});
++
++describe("the paths", () => {
++  it("name the routes the server dispatches, every part encoded", () => {
++    expect(projectsViewPath({ token: "t k" })).toBe("/api/projects?token=t%20k");
++    expect(projectSummaryPath({ project: "my proj", token: "t", baseUrl: "http://h" }))
++      .toBe("http://h/api/projects/my%20proj/summary?token=t");
++    expect(jobProjectPath({ jobId: "a/b", token: "t" })).toBe("/api/jobs/a%2Fb/project?token=t");
++  });
++});
++
++describe("the address", () => {
++  it("reads the project parameter, trimmed", () => {
++    expect(projectFromSearch("?job=j&project=%20alpha%20&token=t")).toBe("alpha");
++    expect(projectFromSearch("?job=j&token=t")).toBe("");
++  });
++
++  it("drops every job-scoped parameter on a switch and keeps the rest in place", () => {
++    expect(JOB_SCOPED_PARAMS).toEqual(["job", "job_id", "focus", "level", "tab"]);
++    const before = "?job=old&token=t&focus=n1&level=3&tab=diff&job_id=old&theme=x";
++    expect(searchForProjectSwitch(before, "beta", "b9")).toBe("?token=t&theme=x&project=beta&job=b9");
++    expect(searchForProjectSwitch(before, "beta", "")).toBe("?token=t&theme=x&project=beta");
++  });
++
++  it("replaces an earlier project in its place", () => {
++    expect(searchForProjectSwitch("?project=alpha&token=t&job=a1", "beta", "b1")).toBe("?project=beta&token=t&job=b1");
++  });
++});
++
++describe("resolveActiveProject", () => {
++  const decoded = decodeProjectsView(view)!;
++  const ownJob = decodeJobProject({ version: 1, job_id: "j", scope: "project", project: alpha });
++  const loose = decodeJobProject({ version: 1, job_id: "j", scope: "unscoped", project: null });
++
++  it("takes the address first, by slug or by id", () => {
++    expect(resolveActiveProject(decoded, "beta", ownJob)?.slug).toBe("beta");
++    expect(resolveActiveProject(decoded, beta.id, ownJob)?.slug).toBe("beta");
++  });
++
++  it("falls back to the opened job's own project when the address names none it knows", () => {
++    expect(resolveActiveProject(decoded, "gamma", ownJob)?.slug).toBe("alpha");
++    expect(resolveActiveProject(decoded, "", ownJob)?.slug).toBe("alpha");
++  });
++
++  it("falls back to the server's default for a job with no project, then to none", () => {
++    expect(resolveActiveProject(decoded, "", loose)?.slug).toBe("beta");
++    expect(resolveActiveProject(decoded, "", null)?.slug).toBe("beta");
++    expect(resolveActiveProject({ ...decoded, default_project: null }, "", loose)).toBeNull();
++  });
++});
++
++describe("switcherVisible and switchTargetJob", () => {
++  it("shows the switcher only with more than one project", () => {
++    const decoded = decodeProjectsView(view)!;
++    expect(switcherVisible(decoded)).toBe(true);
++    expect(switcherVisible({ ...decoded, single_project: true, projects: [decoded.projects[0]] })).toBe(false);
++    expect(switcherVisible({ ...decoded, projects: [] })).toBe(false);
++    expect(switcherVisible(null)).toBe(false);
++  });
++
++  it("opens the newest job of the project, or none", () => {
++    expect(switchTargetJob(decodeProjectSummary(summary))).toBe("a1b2c3d4e5f60718");
++    expect(switchTargetJob(decodeProjectSummary({ ...summary, last_result: null }))).toBe("");
++    expect(switchTargetJob(null)).toBe("");
++  });
++});
++
++// A load whose answer the test releases by hand, so a switch can be interleaved with it.
++function deferredLoads() {
++  const pending = new Map<string, Array<(value: ProjectSummary | null) => void>>();
++  const load = (slug: string) => new Promise<ProjectSummary | null>((resolve) => {
++    pending.set(slug, [...(pending.get(slug) ?? []), resolve]);
++  });
++  const release = (slug: string, value: ProjectSummary | null) => {
++    const queue = pending.get(slug) ?? [];
++    const next = queue.shift();
++    if (next === undefined) throw new Error(`no pending load for ${slug}`);
++    next(value);
++  };
++  return { load, release };
++}
++
++function cardFor(slug: string, jobId: string): ProjectSummary {
++  return decodeProjectSummary({ ...summary, slug, last_result: { ...summary.last_result, job_id: jobId } })!;
++}
++
++describe("switching projects while a fetch is in flight", () => {
++  it("applies only the later switch when the earlier answer arrives last", async () => {
++    const gate = createSwitchGate("alpha");
++    const { load, release } = deferredLoads();
++    const applied: ProjectSwitch[] = [];
++    const first = switchProject("beta", gate, load, (t) => applied.push(t));
++    const second = switchProject("gamma", gate, load, (t) => applied.push(t));
++    release("gamma", cardFor("gamma", "g1"));
++    release("beta", cardFor("beta", "b1"));
++    expect(await second).toBe(true);
++    expect(await first).toBe(false);
++    expect(applied.map((t) => [t.slug, t.jobId])).toEqual([["gamma", "g1"]]);
++    expect(gate.current()).toBe("gamma");
++  });
++
++  it("applies only the later switch when the earlier answer arrives first", async () => {
++    const gate = createSwitchGate("alpha");
++    const { load, release } = deferredLoads();
++    const applied: ProjectSwitch[] = [];
++    const first = switchProject("beta", gate, load, (t) => applied.push(t));
++    const second = switchProject("gamma", gate, load, (t) => applied.push(t));
++    release("beta", cardFor("beta", "b1"));
++    expect(await first).toBe(false);
++    release("gamma", cardFor("gamma", "g1"));
++    expect(await second).toBe(true);
++    expect(applied.map((t) => t.slug)).toEqual(["gamma"]);
++  });
++
++  it("drops the first answer of a project the reader left and came back to", async () => {
++    const gate = createSwitchGate("alpha");
++    const { load, release } = deferredLoads();
++    const applied: ProjectSwitch[] = [];
++    const first = switchProject("beta", gate, load, (t) => applied.push(t));
++    const away = switchProject("gamma", gate, load, (t) => applied.push(t));
++    const back = switchProject("beta", gate, load, (t) => applied.push(t));
++    release("beta", cardFor("beta", "stale"));
++    release("gamma", cardFor("gamma", "g1"));
++    release("beta", cardFor("beta", "fresh"));
++    expect([await first, await away, await back]).toEqual([false, false, true]);
++    expect(applied.map((t) => [t.slug, t.jobId])).toEqual([["beta", "fresh"]]);
++  });
++
++  it("applies a failed answer as a project with no job to open", async () => {
++    const gate = createSwitchGate("alpha");
++    const applied: ProjectSwitch[] = [];
++    const failing = async () => { throw new Error("offline"); };
++    expect(await switchProject("beta", gate, failing, (t) => applied.push(t))).toBe(true);
++    expect(applied).toEqual([{ slug: "beta", jobId: "", summary: null }]);
++  });
++});
++
++describe("the project doors", () => {
++  it("read the list, a card and a job's project through the paths, and never throw", async () => {
++    const asked: string[] = [];
++    const answer = (payload: unknown) => async (path: string) => { asked.push(path); return payload; };
++    expect(await loadProjectsView({ token: "t" }, answer(view))).toEqual(view);
++    expect(await loadProjectSummary({ project: "alpha", token: "t" }, answer(summary))).toEqual(summary);
++    const own = { version: 1, job_id: "j", scope: "project", project: alpha };
++    expect(await loadJobProject({ jobId: "j", token: "t" }, answer(own))).toEqual(own);
++    expect(asked).toEqual(["/api/projects?token=t", "/api/projects/alpha/summary?token=t", "/api/jobs/j/project?token=t"]);
++    const broken = async () => { throw new Error("offline"); };
++    expect(await loadProjectsView({ token: "t" }, broken)).toBeNull();
++    expect(await loadProjectSummary({ project: "alpha", token: "t" }, broken)).toBeNull();
++    expect(await loadJobProject({ jobId: "j", token: "t" }, broken)).toBeNull();
++    expect(await loadProjectsView({ token: "t" }, answer({ version: 9 }))).toBeNull();
++  });
++});
