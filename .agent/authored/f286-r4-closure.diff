@@ -1,0 +1,47 @@
+diff --git a/README.md b/README.md
+index aa8a32773..46c317526 100644
+--- a/README.md
++++ b/README.md
+@@ -26,13 +26,13 @@ verification commands. If something is unproven, Remedy says so instead of guess
+ 
+ ## Status
+ 
+-115 of 290 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
++116 of 290 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
+ 
+ | Tier | Name | Done | Total |
+ |------|------|-----:|------:|
+ | 0 | Foundation & Trust Core | 16 | 16 |
+ | 1 | Self-Build Bootstrap | 22 | 22 |
+-| 2 | Minimal Self-Build Runtime | 38 | 40 |
++| 2 | Minimal Self-Build Runtime | 39 | 40 |
+ | 3 | Full Token Economy & Autonomy | 6 | 27 |
+ | 4 | Memory & Learning | 1 | 17 |
+ | 5 | Operator Cockpit | 32 | 36 |
+@@ -254,7 +254,12 @@ task picks up the model's earlier conversation when it is started again, where
+ the model supports that; and a check on the review package no longer mistakes
+ ordinary test names for secret keys. Remedy wrote that last repair itself, in
+ the first of its end-of-feature self-repair runs whose change was accepted and
+-kept).
++kept),
++F286 findings paydown v5 (the one review finding that was open when it began
++was repaired with evidence, and none was added: the check that compares the
++settings names written in the guides with the settings Remedy really has no
++longer mistakes a file name such as story.html for a setting, while it still
++reports a setting name that does not exist).
+ 
+ Accepted in Tier 3 so far:
+ F106 session resume instead of rebuild (repair rounds resume the original
+diff --git a/docs/roadmap/STATUS.md b/docs/roadmap/STATUS.md
+index 5702f6de9..6e127f6c5 100644
+--- a/docs/roadmap/STATUS.md
++++ b/docs/roadmap/STATUS.md
+@@ -174,7 +174,7 @@ Milestone R1 — Remedy as the daily tool: Tier 2 complete (F086 as the self-ins
+ 
+ ## Tier 2 — Findings paydown (rolling, operator rule amend0911-feedback)
+ 
+-- [~] F286 — Findings paydown v5
++- [x] F286 — Findings paydown v5 (T001 complete, R-1104 resolved; accepted 2026-09-29 · live review PASS — ACCEPTED · Evidence job f286r3e1001 · package remedy-review-20260929-044850-READY_FOR_REVIEW.zip · SHA-256 13311e03d7335e6ad49adc91a0d961e3bc832026dce35fa57fb173c5eddd3d9a · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD b7c09100bbb53ad92eec714a06181ab1e9b76ebe)
+ 
+ ## Tier 5 — Operator Cockpit (parallel human track, continued)
+ 
