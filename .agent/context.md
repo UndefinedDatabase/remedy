@@ -1,22 +1,23 @@
-# Context — F041 Artifact preview
+# Context — F042 Multi-project cockpit
 
 ## Active Branch
-feature/f041-artifact-preview, cut from `main` at `45c584e6`
-(the merge commit of pull request 294, F286 Findings paydown v5).
+feature/f042-multi-project-cockpit, cut from `main` at `4e643440`
+(the merge commit of pull request 295, F041 Artifact preview).
 
 ## Scope
-F041 (Tier 5): the artifact preview — a README rendered and sanitized on
-the server, screenshots in a lightbox, and preview commands whose app card
-links only after a probe passes, as `docs/roadmap/features/T5_F041.md` and
-DECISION F041 D1 specify.
+F042 (Tier 5): the multi-project cockpit — a project list and per-project
+summary on the server, a client project context with a header switcher, and
+a home grid of project cards with deep links carrying `?project=`, as
+`docs/roadmap/features/T5_F042.md` and DECISION F042 D1 specify.
 
 ## Do not touch
-Supervisor process semantics, harness probe logic, evidence layout.
+Scoping rules and semantics, registry mechanics, per-job SSE contracts.
 
 ## Active assumptions
-- The attack corpus in `tests/orchestration/test_artifact_markdown.py` only
-  grows; a vector is never removed (DECISION F041 D1).
-- The artifact roots are derived, never read from a job record.
+- A card's numbers come from readers that already exist: `scoped_jobs`,
+  each job's decision inbox, the newest job's digest and the ledger's cost
+  query (DECISION F042 D1).
+- Cost today is the UTC calendar day, and its basis uses the digest's words.
 
 ## Constraints
 - Every pytest run in a round is targeted and serial; the resource and

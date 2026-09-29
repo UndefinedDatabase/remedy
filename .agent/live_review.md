@@ -1,27 +1,31 @@
-# Live Review — F041 Artifact preview
+# Live Review — F042 Multi-project cockpit
 
-> Round-by-round review record, re-headed at the F041 claim per
-> docs/agents/planner_reviewer_prompt.md §1. The heading this replaces named F286, whose STATUS
-> line went `[x]` at `e4ef900c` and whose pull request 294 merged into `main` at the reviewer's
-> Open PR Gate under docs/agents/self_drive_protocol.md, as `45c584e6`, after both hosted CI
-> jobs of run 36515276903 ended `success` on `e4ef900c`. `e4ef900c` is the second parent of
-> `45c584e6`, and the two trees are identical. F286's round 4, its closing round, was reviewed
-> after its own handback, so its gate entry is appended at the end of this record by F041's
-> claim. Only the heading, this paragraph and the Steps section below are rewritten; everything
-> from the Findings heading to the end of the file as it stood at `45c584e6` is carried forward
-> BYTE-IDENTICAL, and finding ids continue the monotonic R-XXXX series across the re-head. The
-> open set at `45c584e6`, computed with `open_finding_ids` from `scripts/rotate_live_review.py`,
-> is `[]`.
+> Round-by-round review record, re-headed at the F042 claim per
+> docs/agents/planner_reviewer_prompt.md §1. The heading this replaces named F041, whose STATUS
+> line went `[x]` at `0e6fe44e` and whose pull request 295 merged into `main` at the reviewer's
+> Open PR Gate under docs/agents/self_drive_protocol.md, as `4e643440`. The first attempt of
+> hosted CI run 36547539735 on `0e6fe44e` ended `failure` in both jobs on one test,
+> `tests/ui_server/test_story_export_file_live.py`, whose first message to Chrome waited out its
+> fifteen seconds; the reviewer ran that test alone and after F041's preview tests in the primary
+> checkout, where it passed both times, re-ran the two failed jobs, and the second attempt ended
+> `success` in both before the merge. That flake is registered below as R-1107. `0e6fe44e` is the
+> second parent of `4e643440`, and the two trees are identical. F041's round 9, its closing round,
+> was reviewed after its own handback, so its gate entry is appended at the end of this record by
+> F042's claim. Only the heading, this paragraph and the Steps section below are rewritten;
+> everything from the Findings heading to the end of the file as it stood at `4e643440` is carried
+> forward BYTE-IDENTICAL, and finding ids continue the monotonic R-XXXX series across the re-head.
+> The open set at `4e643440`, computed with `open_finding_ids` from
+> `scripts/rotate_live_review.py`, is `[]`.
 
 ## Steps
 
-THE ORDER BELOW IS DECISION F041 D1 (5). The first round claims F041, re-heads this record, books
-F286's round 4 and lands the sanitized markdown pipeline with the reviewer's attack corpus, the
-artifact roots with their traversal fixtures, and the `/api/jobs/<id>/artifacts` route. The next
-round lands the file route that serves screenshot bytes and the full README, and begins T002, the
-preview commands, the supervisor intent and the probe-gated link; T003's panel, lightbox, idle
-stop and end-to-end run follow, then the closure sequence. Every round's handback states the open
-set by distinct id.
+THE ORDER BELOW IS DECISION F042 D1 (6). The first round claims F042, re-heads this record, books
+F041's round 9, registers R-1107 and lands T001: the project list and the per-project summary as
+one composition module and its routes in the UI server, against the reviewer's tests. The next
+round lands T002, the client's project context, the loaders keyed by project and the header
+switcher with the switch-mid-fetch fixtures; T003's home grid, cards, empty and degraded states,
+deep links and end-to-end run follow, then the closure sequence. Every round's handback states
+the open set by distinct id.
 
 ## Findings
 DECISION F085 D5, applied at da47ee40, closes "The R44 block is the first measured under this
@@ -455,3 +459,7 @@ Gate: F041 R6 — the F041 round 6 entry, F041's last building round: the bookin
 Gate: F041 R7 — the F041 round 7 entry, the closure sequence's integration-gate round: the booking of round 6 with R-1106's resolution, the self-use reading, the Built State, the checklist consolidation and the closure suite. VERDICT PASS. Re-derived over `b09a3001`..`831bf81f` by the planner and reviewer of F041's second session. THE RANGE IS 4 COMMITS, each single-parent and each under the 500-line cap by `git show --numstat`: `3f8f0199` 294, `bbd5cbc5` 14, `57f4ad2b` 66 and `831bf81f` 134; the worker declared one deviation, running the block's `vite build` by the binary's absolute path because `subprocess.run` resolves a relative program against the child's working directory. THE TRANSPORT PROOF: the block and the three payloads, each read from `3f8f0199`, equal the reviewer's originals byte for byte, and the ledger, the prose slips and the plan at `bbd5cbc5` and the planner prompt and the feature file at `57f4ad2b` equal the reviewer's dry tree byte for byte; the ledger at the round's tip holds no open finding and its latest verdict reads PASS. THE SELF-USE READING: the worker's calls after C2 read `None` and `None` and wrote nothing, as the reviewer's own run over the same booking did, so closure precondition 6 reads self-use NONE (queue exhausted). THE CHECKLIST: `live_checklist_items` reads 34 at `b09a3001` and at `57f4ad2b`. THE CLOSURE SUITE, read from `.agent/authored/f041-closure-suite.txt` and not re-run (amend0917-throughput rule 1): `python3 -m pytest -n auto -q` on `57f4ad2b` read `20859 passed, 20 skipped, 1 warning` at exit 0 in 208.68 seconds with no bad node, after `vite build` read exit 0, and no `server.py` ran after it; `tests/orchestration/test_import_reachability.py` and `tests/test_no_orphan_modules.py` hold no bad node (closure precondition 7). All six `integrity check` checks read pass at `831bf81f` on the reviewer's own run.
 
 Gate: F041 R8 — the F041 round 8 entry, the closure sequence's evidence round: the booking of round 7, the evidence bundle and the review package. VERDICT PASS. Re-derived over `831bf81f`..`f48d56ec` by the planner and reviewer of F041's second session: the range, the transport, the ancestry counts, the package and the integrity check are the reviewer's own readings, and the bundle's test counts are the worker's, equal to the reviewer's own dry run of the same tool. THE RANGE IS 3 COMMITS, each single-parent and each under the 500-line cap by `git show --numstat`: `923a4b5e` 363, `72bee58a` 7 and `f48d56ec` 119; the worker declared no deviation. THE TRANSPORT PROOF: the block and the three payloads, each read from `923a4b5e`, equal the reviewer's originals byte for byte, and the ledger and the plan at `72bee58a` equal the reviewer's dry tree byte for byte. THE ACCEPTED HEAD is `72bee58a045277901e163fb1e7f25b30421883ee`. THE BUNDLE: evidence job `f041r8e1001` against the fork point `45c584e6`, whose ancestry and plain counts read 65 and 65; 782 node ids selected with 54 deselected, the five tests whose parametrized ids spell the traversal and scheme vectors F041 refuses being deselected by name under closure-protocol pitfall (d) and proved in the closure suite instead; none unsafe, the planted id refused; pytest exit 0 with 782 passed; `validate_verification_tests` answered no problem and `is_valid_current_run` True. The reviewer's own dry run of the same tool had read the same counts, and met on its way one environment fact: a `dist` SYMLINK in a worktree is untracked, because the ignore rule matches a directory, and it breaks the tool's task partition, so the reviewer's dry trees copy `apps/ui/dist` rather than link it. THE PACKAGE: `remedy-review-20260929-110032-READY_FOR_REVIEW.zip`, SHA-256 `069f6b42c571f38b94f1cd4359faf276b2aeec67afcd0155bef1ead648c5a103`, archived at `/home/decodeux/Repos/remedy-history/zips`; the reviewer re-hashed the archived file to the same value, `testzip()` answered None, and the manifest inside it reads base `45c584e6ea896a0e16675b2ff2241d1e010a42be`, head `72bee58a045277901e163fb1e7f25b30421883ee` and `READY_FOR_REVIEW`. All six `integrity check` checks read pass at `f48d56ec` on the reviewer's own run.
+
+Gate: F041 R9 — the F041 round 9 entry, the closure sequence's closing round: the booking of round 8, the rotation of this record, the acceptance of F041 in STATUS with its README pins, and pull request 295. VERDICT PASS. Re-derived over `f48d56ec`..`0e6fe44e` by the planner and reviewer of F042's first session, after the merge, from the commits themselves and not from the handback. THE RANGE IS 4 COMMITS, each single-parent and each under the 500-line cap by `git show --numstat`: `434e9eaa` 318, `e01211bf` 6, `5694dd28` 16 and `0e6fe44e` 126; the worker declared no deviation. THE TRANSPORT PROOF: the block and the five payloads, each read from `434e9eaa`, equal the reviewer's originals under `.remedy-wt/f041-r9/` and `.remedy-wt/f041-r9-payloads/` byte for byte. THE RECORDS: `.agent/live_review.md` reads 315887 bytes at `e01211bf` and 304007 at `5694dd28`, `.agent/plan.md` 726 at `e01211bf`, `.agent/live_review_archive.md` 5519941 at `5694dd28`, `README.md` 45688 and `docs/roadmap/STATUS.md` 58294 at `0e6fe44e`, every sha256 equal to the reviewer's table in the round 9 block; the rotation removed sixteen lines from this record and added the same sixteen lines to the archive, four `Gate:` records and two finding pairs, grouped by kind; the open set by `open_finding_ids` is empty at `e01211bf`, `5694dd28` and `0e6fe44e`; F041's STATUS line reads `[x]` at `0e6fe44e` and no STATUS line reads `[~]`. THE TESTS: the round's selection, re-run by the reviewer in the primary checkout at `4e643440`, whose tree is `0e6fe44e`'s, read `512 passed` at exit 0, the handback's own count, and all six `integrity check` checks read pass there. THE MERGE: pull request 295 merged as `4e643440` at F042's Open PR Gate after the second attempt of hosted CI run 36547539735 ended `success` in both jobs; its first attempt's one failure is R-1107 below.
+
+- R-1107 — Low, THE STORY EXPORT'S BROWSER TEST GIVES CHROME FIFTEEN SECONDS TO ANSWER ITS FIRST MESSAGE AND THROWS ITS OUTPUT AWAY, SO A SLOW START ON A HOSTED RUNNER FAILS THE RUN WITH NOTHING TO READ. Raised by the planner and reviewer of F042's first session at the claim, from the Open PR Gate of pull request 295. SEARCHED BEFORE MINTING (checklist item 30): the open set at `4e643440` is empty, and neither this record nor its archive names `ChromePipe` or a pipe timeout. MEASURED: the first attempt of hosted CI run 36547539735 on `0e6fe44e` failed both of its jobs, Python 3.10 and 3.12, on `tests/ui_server/test_story_export_file_live.py::test_the_exported_demo_story_plays_from_file_with_no_request` alone, each raising `TimeoutError: timed out waiting for a reply from Chrome's pipe` at `Target.createTarget`, the first command the test sends; `ChromePipe.send` waits `timeout=15.0` seconds for that reply, and `ChromePipe.__init__` starts Chrome with `stdout` and `stderr` both sent to `subprocess.DEVNULL`, so the log holds no word from Chrome. The same test passed in the primary checkout alone in 8.38 seconds and after F041's preview tests in the order the standard stage runs them, and the re-run of the two failed jobs passed; F041 changed no file the test reads. WHY LOW: the product is unaffected, and a re-run clears it, but a red run on a pull request is what the Open PR Gate stops at, and a failure that prints nothing costs a diagnosis every time it comes back. FIX: the first command waits for Chrome's readiness under its own longer bound, named in a constant beside `IDLE_DRAIN_SECONDS`, Chrome's standard error goes to a file under the test's temporary folder, and a timeout's message carries that file's last lines; a test holds that a Chrome which never answers produces a message naming its own output. Owner: F290.

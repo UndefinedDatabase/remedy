@@ -25501,3 +25501,58 @@ CHOSEN: (1) THE ANCHOR: `preview` joins `TOUR_ANCHOR_KINDS` last, in both langua
 ALTERNATIVES: a preview stop on every tour, rejected because a project with nothing to run would be sent to a card that says so; asking the preview record whether a preview ever ran, rejected because the tour is built when the job ends, before anybody has started one; an end-to-end test at the worker alone with a fake clock, rejected because the acceptance names the command's path through the door and a fake clock would not show that the server's own worker stops a preview nobody views; waiting for the idle stop by reading the view, rejected because each read of the view counts as a viewer and would keep the preview alive.
 
 HOW TO REVERSE: remove `preview` from both anchor lists and their tests, the `previewable` field, `_project_previewable`, the preview stop, its prompt line and its branch in `anchor_problem`, the shell's branch in `handleTourShowAnchor`, the label and `tourCanShow` case, delete `tests/ui_server/test_preview_end_to_end.py`, and delete this paragraph.
+
+## DECISION F042 D1 — the cockpit's project list and per-project card are one composition module over readers that already exist, served by the UI server; decisions are summed per project from each scoped job's own inbox, cost today is the ledger's UTC day in the digest's exactness words, and a moved folder is checked when the list is read (2026-09-29)
+
+CONTEXT: `docs/roadmap/features/T5_F042.md` asks for a home grid of project cards, a project
+switcher in the header, and deep links that carry `?project=`, and says project scoping is already
+solved. Measured by the reviewer at `4e643440`: the registry keeps one record per project under
+the data root's `projects/` folder, read without writing by `_list_projects_readonly` and
+`_lookup_by_slug_or_uuid_readonly`; `select_project` resolves a flag, then `REMEDY_PROJECT`, then
+the working folder; `project_scope.scoped_jobs` is the one scoped listing and holds F148's legacy
+rule; `remedy status` counts a project's open decisions by looping `list_decisions` over those
+jobs; `decision_inbox.py` states that it takes no project argument on purpose; the token ledger is
+one database per project and `query_cost` reads a half-open period of it; the digest's cost basis
+speaks the exactness words `actual`, `lower_bound` and `absent` of DECISION F040 D4. The UI server
+is started for one job, reads no `project` parameter and has no project route; the dashboard's
+`project_summary` section predates F148 and reads `job.metadata`; the client has no router, no
+project context, and reads only `job` and `token` from its address; no record carries a moved or
+unreachable state and no fix-it names `remedy project attach`; the design reference has no grid,
+card or switcher spec.
+
+CHOSEN: (1) THE MODULE is `packages/orchestration/project_cockpit.py`, pure composition that
+writes nothing: `projects_view` lists every registered project by slug with its folder checked at
+read time, the resolution precedence's default project, whether exactly one project exists, and
+how many jobs no card can show, counted as unscoped (no project) and orphaned (a project the
+registry does not hold); `project_summary` answers one card. (2) THE CARD counts a project's jobs
+through `scoped_jobs` with F148's rule unchanged: active is every job `job_is_terminal` calls not
+terminal; the last result is the newest scoped job's digest `state` and `headline`; open decisions
+and their peak urgency are summed from each scoped job's own `build_decision_inbox` with
+`decision_urgency`, the same cards `remedy status` counts, so the inbox stays per job and the
+cross-job sum lives here; cost today is `query_cost` over the UTC calendar day of the moment asked,
+`absent` with no ledger, no call or no figure, `lower_bound` when any call was unpriced, else
+`actual`, and the day travels in the answer. (3) A MOVED FOLDER: a project whose recorded folder
+is not a directory reads unreachable with a fix-it naming `remedy project attach --project <slug>
+--repo`, and one with no folder at all says so the same way; the registry itself is not changed.
+(4) THE ROUTES are `/api/projects` and `/api/projects/<uuid-or-slug>/summary`, token-guarded like
+every API route, 404 for a selector that names no single project; the walk of
+`tests/ui_server/test_command_channel.py` gains both. (5) THE DEFAULT PROJECT is
+`select_project(None, <the server's working folder>)`, so the environment variable wins over the
+folder, and none is a null the client resolves in T002 from the job it opened. (6) THE ORDER: this
+round lands (1) to (5) with the reviewer's tests; T002 lands the client context, the loaders
+keyed by project, the switcher and the switch-mid-fetch fixtures; T003 lands the grid, the cards,
+the empty and single-project states, deep links, the dashboard's old `project_summary` re-pointed
+at this module, and the end-to-end run; each with its own DECISION in the round that applies it.
+
+ALTERNATIVES: a project argument for `decision_inbox`, rejected because that module states a
+cross-job inbox needs a scoping rule it does not have, and F148's `scoped_jobs` is that rule
+already; the local calendar day for cost today, rejected because the ledger buckets by UTC day
+and the server's clock zone is not the reader's; a stored unreachable flag on the registry
+record, rejected because the feature file's Do-not-touch names registry mechanics and a flag goes
+stale the moment a folder returns; the digest of every scoped job for the card, rejected because
+the grid polls every card and only the newest job's result is shown.
+
+HOW TO REVERSE: delete `packages/orchestration/project_cockpit.py`, its test files and its
+line in `tests/orchestration/import_reachability_allowlist.txt`, remove both routes and their
+builders from `packages/orchestration/ui_server.py` and the walk entries it added to
+`tests/ui_server/test_command_channel.py`, and delete this paragraph.
