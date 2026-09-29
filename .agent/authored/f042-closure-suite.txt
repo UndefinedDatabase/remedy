@@ -1,48 +1,32 @@
-F042 R8 C4 — the repaired tree's one full suite
+F042 R9 C5 — the repaired tree's one full suite
 
 Command: python3 -m pytest -n auto -q
-Real exit code: 1
-Wall time: 225.9 seconds measured wall-clock (pytest's own report: 225.08s
-(0:03:45); measured: start 1790703654, end 1790703879)
-Summary line: 1 failed, 20941 passed, 20 skipped, 1 warning in 225.08s (0:03:45)
+Real exit code: 0
+Wall time: 226 seconds measured wall-clock (pytest's own report: 221.22s
+(0:03:41); measured: start 1790704655, end 1790704881)
+Summary line: 20945 passed, 20 skipped, 1 warning in 221.22s (0:03:41)
 
-Nature of the red: a per-test FAILURE, not a collection error — R-1112's repair
-held. All xdist workers collected the same test set this run; the suite reached
-individual test nodes and ran them, unlike round 7 where zero tests executed.
+FULL list of bad node ids (failed plus errors): NONE
 
-FULL list of bad node ids (failed plus errors):
-    tests/test_ble001_ratchet.py::test_the_count_of_excused_handlers_never_rises
-      AssertionError: 291 excused blind handlers, above the frozen 290: narrow
-      the new handler to the exceptions it expects instead of excusing it
-      (assert 291 <= 290)
-No other FAILED or ERROR line appears in the transcript. No production or test
-file was edited to investigate or work around it (constraint 4: an existing
-test's redness is reported, never edited to pass).
+Previous bad set (round 8, `.agent/authored/f042-closure-suite.txt` at
+`2c8f1a5d0`): one node-level failure,
+`tests/test_ble001_ratchet.py::test_the_count_of_excused_handlers_never_rises`
+(291 excused blind handlers, above the frozen 290), registered as R-1113 and
+repaired this round by C3 (narrowing the project card's handler to
+`(OSError, ValueError)` and removing its `noqa` mark).
 
-Previous bad set (round 7, `.agent/authored/f042-closure-suite.txt` at
-`c83be2032`): 15 xdist worker-session COLLECTION errors (gw0, gw2..gw15), zero
-test-node-level failures — the 15-item set held no individual node id at all,
-only worker-session errors all tracing to
-`tests/ui_server/test_projects_route.py::TestProjectRoutes::test_an_unknown_project_is_404[<uuid4, regenerated per worker>]`.
-
-Shrink reading: the new bad set (1 node-level failure) is STRICTLY SMALLER than
-the previous bad set (15 worker-session errors) by count. It does NOT hold "no
-newly bad node": `tests/test_ble001_ratchet.py::test_the_count_of_excused_handlers_never_rises`
-is a node this round reports bad that round 7's set never named (round 7's set
-named no node at all, only collection-session errors) — so this is a newly bad
-node, unrelated to R-1112 or to any file this round's commits (C1-C3) touched.
-Neither `tests/ui_server/test_projects_route.py` nor
-`tests/test_parametrize_ids_stable.py` appears in this run's FAILED/ERROR list.
+Shrink reading: the new bad set (NONE) is STRICTLY SMALLER than the previous
+bad set (one node) and holds no newly bad node — the set is empty.
 
 Closure precondition 7 (`tests/orchestration/test_import_reachability.py`,
-`tests/test_no_orphan_modules.py`): both ran as part of this full suite (the run
-reached individual test nodes and reported no collection error of any kind);
-neither file's name appears in the FAILED/ERROR list. G2's serial run on this
-same tree (C3, no commits between G2 and C4) already read both files green
-inside its "448 passed" result. Precondition 7 holds clean on this transcript.
+`tests/test_no_orphan_modules.py`): both ran as part of this full suite (the
+run reached individual test nodes and reported no collection error of any
+kind); neither file's name appears in any FAILED/ERROR line because the
+transcript holds no FAILED/ERROR line at all. Precondition 7 holds clean on
+this transcript.
 
-Tree it ran on: aee178ef78381be3439076f0217e12f2b78d3a12 (F042 R8 C3, the tip
-at the time C4 started; C1 through C3 are all included).
+Tree it ran on: 3a6495348 (F042 R9 C4, the tip at the time the suite ran; C1
+through C4 are all included).
 
 server.py: no process found after the suite (`ps -eo pid,args | grep
 "[s]erver.py"` empty).
