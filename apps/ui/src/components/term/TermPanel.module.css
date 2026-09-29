@@ -1,0 +1,50 @@
+/* The '?' panel (T5_F043 T003, DECISION F043 D3): a right-anchored glass sheet in the learning
+   overlay's style (`components/lessons/LessonsOverlay.module.css`), named Terms and searchable.
+   Every colour, radius and shadow below is a --remedy-* token
+   (tests/ui_contracts/test_raw_colour_ratchet.py allows no raw literal in a new file). */
+.panel {
+  position: fixed;
+  top: 24px;
+  right: 24px;
+  bottom: 24px;
+  width: min(440px, calc(100vw - 48px));
+  z-index: var(--remedy-z-overlay);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 18px 20px;
+  background: var(--remedy-glass-bg-strong);
+  border: 1px solid var(--remedy-glass-border);
+  border-radius: var(--remedy-radius-xl);
+  box-shadow: var(--remedy-shadow-card);
+  backdrop-filter: blur(14px);
+}
+.header { display: flex; align-items: center; justify-content: space-between; }
+.header h2 {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--remedy-ink);
+}
+.close { font-size: 12px; color: var(--remedy-muted); padding: 4px 8px; }
+.quiet { margin: 0; font-size: 12px; line-height: 1.45; color: var(--remedy-muted); }
+
+.search {
+  height: 36px;
+  padding: 0 12px;
+  border: 1px solid var(--remedy-line-strong);
+  border-radius: var(--remedy-radius-sm);
+  background: var(--remedy-bg-2);
+  font: inherit;
+  font-size: 13px;
+  color: var(--remedy-ink);
+}
+.search:focus-visible { outline: 2px solid var(--remedy-focus); outline-offset: 2px; }
+
+.list { margin: 0; flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
+.item { padding: 0 0 10px; border-bottom: 1px solid var(--remedy-line); }
+.item dt { margin: 0; font-size: 13px; font-weight: 700; color: var(--remedy-ink-strong); }
+.item dd { margin: 2px 0 0; font-size: 12px; line-height: 1.45; color: var(--remedy-ink); }
+.item .place { font-size: 11px; color: var(--remedy-muted); }

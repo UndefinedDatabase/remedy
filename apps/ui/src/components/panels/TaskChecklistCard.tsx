@@ -37,7 +37,7 @@ function stateTerm(task: RemedyTaskItem): string {
   if (task.applyStatus === "partial") return "task.partially_applied";
   if (task.state === "done") return "task.done";
   if (task.state === "current") return "task.in_progress";
-  if (task.state === "blocked") return "blocked.task";
+  if (task.state === "blocked") return "task.blocked";
   return "task.planned";
 }
 

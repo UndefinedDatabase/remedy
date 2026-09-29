@@ -32,6 +32,8 @@ import { lessonsRefreshKey } from "../../api/lessons";
 import { TourOverlay } from "../tour/TourOverlay";
 import { StoryPanel } from "../story/StoryPanel";
 import { ArtifactsPanel } from "../artifacts/ArtifactsPanel";
+import { TermPanel } from "../term/TermPanel";
+import { isHelpShortcut } from "../../api/termSearch";
 import { DegradedBanner } from "./DegradedBanner";
 import styles from "./RemedyShell.module.css";
 import { browserBrainStreamEnv, createBrainStreamHostDeps, eventsSincePath } from "../../api/brainStreamDeps";
@@ -217,6 +219,21 @@ export function RemedyShell({ dashboard, serverToken, selectedNodeId, onSelectNo
   // state this shell needs to own beyond whether it is open.
   const [resultsOpen, setResultsOpen] = useState(false);
 
+  // THE '?' PANEL (F043 T003, DECISION F043 D3): open or closed; a window-level key listener
+  // opens it on "?" unless the key press came from a field, where a question mark is text.
+  const [termsOpen, setTermsOpen] = useState(false);
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      const target = event.target instanceof HTMLElement ? event.target : null;
+      if (isHelpShortcut(event.key, target)) {
+        event.preventDefault();
+        setTermsOpen(true);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => { window.removeEventListener("keydown", onKey); };
+  }, []);
+
   // THE SCROLL. A diff stop's "Show me" opens the job's whole diff (below) and records the
   // path it named; once that diff's envelope has arrived, this effect finds the path's row key
   // through the SAME model `DiffFileSidebar.tsx` uses and scrolls to the SAME id that row
@@ -282,7 +299,7 @@ export function RemedyShell({ dashboard, serverToken, selectedNodeId, onSelectNo
           <BrainGraphStage dashboard={dashboard} selectedNodeId={selectedNodeId} onSelectNode={onSelectNode} rows={ledgerRows} scrub={scrub} serverToken={serverToken} />
           <PhaseTimeline scrub={scrub} />
         </main>
-        <RightLivePanel dashboard={dashboard} serverToken={serverToken} onSelectNode={onSelectNode} streamStatus={stream.status} replay={scrub.state.mode === "scrubbed"} recent={stream.recent} recentDropped={stream.recentDropped} onOpenLessons={() => setLessonsOpen(true)} onOpenTour={() => setTourOpen(true)} onOpenStory={() => setStoryOpen(true)} onOpenResults={() => setResultsOpen(true)} focusedTaskId={focusedTaskId} />
+        <RightLivePanel dashboard={dashboard} serverToken={serverToken} onSelectNode={onSelectNode} streamStatus={stream.status} replay={scrub.state.mode === "scrubbed"} recent={stream.recent} recentDropped={stream.recentDropped} onOpenLessons={() => setLessonsOpen(true)} onOpenTour={() => setTourOpen(true)} onOpenStory={() => setStoryOpen(true)} onOpenResults={() => setResultsOpen(true)} onOpenTerms={() => setTermsOpen(true)} focusedTaskId={focusedTaskId} />
       </div>
       {selectedNode && <DetailPopover dashboard={dashboard} selectedNode={selectedNode} selectedPromptId={selectedPromptId} onClose={() => onSelectNode(null)} onOpenDiff={setOpenDiffTaskId} serverToken={serverToken} onSelectTask={(taskId) => onSelectNode(shellSelectionIdOf(dashboard.tasks, taskId))} ownership={ownership} />}
       {/* THE DIFF PANEL. A sibling of the popover rather than a child of
@@ -337,6 +354,9 @@ export function RemedyShell({ dashboard, serverToken, selectedNodeId, onSelectNo
       {/* THE RESULTS PANEL (F041 T003, DECISION F041 D5), a sibling directly after the story for
           the reason both are siblings outside <main>. */}
       {resultsOpen && (<ArtifactsPanel jobId={dashboard.jobId} serverToken={serverToken} onClose={() => setResultsOpen(false)} />)}
+      {/* THE '?' PANEL (DECISION F043 D3), a sibling directly after the results panel for the
+          reason every overlay above is a sibling outside <main>. */}
+      {termsOpen && (<TermPanel onClose={() => setTermsOpen(false)} />)}
     </div>
   );
 }

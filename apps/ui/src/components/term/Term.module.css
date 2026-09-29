@@ -63,3 +63,10 @@
   display: block;
   color: var(--remedy-ink);
 }
+
+/* DECISION F043 D3 (1): the live breakdown under the catalog's explanation. */
+.tipDetail {
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid var(--remedy-line);
+}

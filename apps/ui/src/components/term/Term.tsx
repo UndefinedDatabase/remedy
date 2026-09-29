@@ -20,7 +20,7 @@ interface TipPlacement {
   top: number;
 }
 
-export function Term({ term, children, insideControl = false }: {
+export function Term({ term, children, insideControl = false, detail }: {
   term: string;
   children: ReactNode;
   /** DECISION F043 D2 (2): true when this term sits inside a button or another control — the
@@ -29,6 +29,10 @@ export function Term({ term, children, insideControl = false }: {
    *  panel lists every term for the keyboard instead. Hover, Escape and everything else are
    *  unchanged. */
   insideControl?: boolean;
+  /** DECISION F043 D3 (1): live figures shown under the catalog's explanation — the token and
+   *  cost tiles' breakdown, for instance. The explanation stays the catalog's alone; this is
+   *  the surface's own number. */
+  detail?: ReactNode;
 }) {
   const entry = termEntry(term);
   const spanRef = useRef<HTMLSpanElement>(null);
@@ -112,6 +116,7 @@ export function Term({ term, children, insideControl = false }: {
         >
           <span className={styles.tipTitle}>{entry.title}</span>
           <span className={styles.tipBody}>{entry.body}</span>
+          {detail !== undefined && <span className={styles.tipDetail}>{detail}</span>}
         </span>,
         document.body,
       )}

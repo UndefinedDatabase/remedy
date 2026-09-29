@@ -123,6 +123,18 @@ export const TERM_CATALOG: Readonly<Record<string, TermEntry>> = {
     source: "packages/orchestration/ui_server.py",
     anchor: "Counts only (total changes vs verified).",
   },
+  "metric.tokens": {
+    title: "Tokens",
+    body: "How many tokens this job's model calls have used so far, by role. The count is an estimate.",
+    source: "docs/roadmap/features/T5_F022.md",
+    anchor: "(`token_usage`) is an estimate",
+  },
+  "metric.cost": {
+    title: "Cost",
+    body: "What this job has spent so far; the bar measures it against the job's budget limit. A ~ before the figure means the price is estimated; without it the figure is actual.",
+    source: "docs/roadmap/features/T5_F022.md",
+    anchor: "a '~' prefix plus tooltip whenever the basis is estimated",
+  },
   "task.done": {
     title: "Done",
     body: "This task has finished.",
@@ -135,7 +147,7 @@ export const TERM_CATALOG: Readonly<Record<string, TermEntry>> = {
     source: "apps/ui/src/api/remedyApi.ts",
     anchor: "text.includes(\"running\") || text.includes(\"progress\")) return \"current\";",
   },
-  "blocked.task": {
+  "task.blocked": {
     title: "Blocked",
     body: "This task stopped: it failed, or something blocked it.",
     source: "apps/ui/src/api/remedyApi.ts",
