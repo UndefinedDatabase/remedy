@@ -1,24 +1,20 @@
-# Context — F039 Story/replay mode
+# Context — F286 Findings paydown v5
 
 ## Active Branch
-feature/f039-story-replay-mode, cut from `main` at `4d60eb84`
-(the merge commit of pull request 292, F038 Grounded chat & intent dispatch).
+feature/f286-findings-paydown-v5, cut from `main` at `6ba1f4be`
+(the merge commit of pull request 293, F039 Story/replay mode).
 
 ## Scope
-F039 (Tier 5): story/replay mode — chapters from the phases and key events
-of a job's event ledger, narration cards with autoplay synced to the scrub
-position, and one self-contained HTML export, as
-`docs/roadmap/features/T5_F039.md` and DECISION F039 D1 specify.
+F286 (Tier 2): the fifth rolling findings paydown — every open finding it
+owns repaired by its own text, as `docs/roadmap/features/T2_F286.md` and
+DECISION F286 D1 specify.
 
 ## Do not touch
-The cockpit bundle (the export is a subset build), event formats, and the
-narration vocabulary sources.
+The resolutions earlier paydowns landed; the record is append-only.
 
 ## Active assumptions
-- A chapter is a phase the phase bar reads over the whole ledger, and its
-  title names the phase, never the outcome (DECISION F039 D1).
-- The findings paydown F286 waits behind F039 while no finding is open
-  (DECISION F039 D2).
+- R-1104 is the one id F286 owns, and its repair lands in the claiming
+  round (DECISION F286 D1).
 
 ## Constraints
 - Every pytest run in a round is targeted and serial; the resource and

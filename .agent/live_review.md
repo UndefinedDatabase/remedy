@@ -1,29 +1,28 @@
-# Live Review — F039 Story/replay mode
+# Live Review — F286 Findings paydown v5
 
-> Round-by-round review record, re-headed at the F039 claim per
-> docs/agents/planner_reviewer_prompt.md §1. The heading this replaces named F038, whose STATUS
-> line went `[x]` at `167163a0` and whose pull request 292 merged into `main` at the reviewer's
-> Open PR Gate under docs/agents/self_drive_protocol.md, as `4d60eb84`, after both hosted CI jobs
-> of run 36462050234 ended `success` on `167163a0`. `167163a0` is the second parent of
-> `4d60eb84`, and the two trees are identical. F038's round 15, its closing round, was reviewed
-> after its own handback, so its gate entry is appended at the end of this record by F039's
+> Round-by-round review record, re-headed at the F286 claim per
+> docs/agents/planner_reviewer_prompt.md §1. The heading this replaces named F039, whose STATUS
+> line went `[x]` at `c5eb695b` and whose pull request 293 merged into `main` at the reviewer's
+> Open PR Gate under docs/agents/self_drive_protocol.md, as `6ba1f4be`, after both hosted CI jobs
+> of run 36508287951 ended `success` on `c5eb695b`. `c5eb695b` is the second parent of
+> `6ba1f4be`, and the two trees are identical. F039's round 13, its closing round, was reviewed
+> after its own handback, so its gate entry is appended at the end of this record by F286's
 > claim. Only the heading, this paragraph and the Steps section below are rewritten; everything
-> from the Findings heading to the end of the file as it stood at `4d60eb84` is carried forward
+> from the Findings heading to the end of the file as it stood at `6ba1f4be` is carried forward
 > BYTE-IDENTICAL, and finding ids continue the monotonic R-XXXX series across the re-head. The
-> open set at `4d60eb84`, computed with `open_finding_ids` from `scripts/rotate_live_review.py`,
-> is empty, which is why F039 and not the findings paydown F286 is claimed (DECISION F039 D2).
+> open set at `6ba1f4be`, computed with `open_finding_ids` from `scripts/rotate_live_review.py`,
+> is `['R-1104']`, a Low finding F039's closure carried to F286, which is why the findings paydown
+> F286 is claimed now (DECISION F286 D1).
 
 ## Steps
 
-THE ORDER BELOW IS T5_F039.md's Task slicing, read against what earlier features already record
-by DECISION F039 D1 at the claim. The first round claims F039, re-heads this record, books F038's
-round 15 and lands T001: `apps/ui/src/components/story/storyChapters.ts`, the chapters of a job's
-event ledger with their key-event clusters and title templates, its vitest goldens on fixture
-ledgers and the demo recording, and its guard, with nothing rendering it yet. The rounds after it
-land, in order: T002's narration card, its sync to the scrub position, the autoplay pacing and the
-in-app story mode on the demo recording; then T003's export build with the font licensing finding,
-the size budget, the clean-browser test and the docs. Every round's handback states the open set
-by distinct id.
+THE ORDER BELOW IS T2_F286.md's Task slicing, written at the claim by DECISION F286 D1. The first
+round claims F286, re-heads this record, books F039's round 13 and lands T001, R-1104's repair:
+`_run_c07` in `packages/orchestration/doc_staleness.py` leaves out a backticked span whose last
+segment is a file extension, with the test that holds a guide's `story.html` out of the check while
+an unregistered `story.speed` is still reported. The rounds after it are the closure sequence: the
+integration gate, the evidence and the package, then the close with the next paydown registered.
+Every round's handback states the open set by distinct id.
 
 ## Findings
 DECISION F085 D5, applied at da47ee40, closes "The R44 block is the first measured under this
@@ -467,3 +466,5 @@ Gate: F039 R11 — the F039 round 11 entry, the closure sequence's self-use roun
 - R-1104 — Low, THE STALENESS CATALOG'S CONFIG-KEY CHECK READS A BACKTICKED FILE NAME AS A CONFIG KEY WHEN THE NAME BEGINS WITH A KEY'S NAMESPACE, SO THE STORY GUIDE'S `story.html` IS REPORTED STALE. Raised by the planner and reviewer of F039's second session at the round 11 gate, from the closure's self-use item. SEARCHED BEFORE MINTING (checklist item 30): the open set at `3b1f27e8` is empty; the ledger and its archive hold R-1074, a resolved false report of the same catalog's link check, and no finding about `doc_config_keys`. MEASURED at `3b1f27e8`: `_run_c07` in `packages/orchestration/doc_staleness.py` reads every backticked span that is a whole dotted name whose first segment is a registered key prefix, and reports it unless it is a registered key or a command id; `story` is a key prefix since F039 registered `story.step_ms`, `story.chapter_pause_ms` and `story.export_max_bytes`, so the file name `story.html`, which the guide writes in backticks as the file `remedy job story --export` writes, reads as the unregistered key `story.html`. The self-use generator made it item `SU-035`, and the self-use job answered by removing the file name's code formatting, which quiets the check and makes the guide worse. WHY LOW: the report is false and nothing ships wrong, but every later closure's generator makes the same item again until the check changes. FIX: `_run_c07` leaves out a span whose last segment is a file extension a key never ends in, such as `html`, `md`, `json`, `toml`, `py` or `ts`, and `tests/orchestration/test_doc_staleness.py` holds that a guide backticking `story.html` yields no claim while one backticking an unregistered `story.speed` still yields one. Owner: F286.
 
 Gate: F039 R12 — the F039 round 12 entry, the closure sequence's evidence round: the booking of round 11 with R-1104's registration for F286, the self-use run added to the Built State, the evidence bundle and the review package. VERDICT PASS. Re-derived over `3b1f27e8`..`7ab8d446` by the planner and reviewer of F039's second session, whose own runs produced every reading below. THE RANGE IS 3 COMMITS, at `a3c8bf02` 401, `da3d5430` 18 and `7ab8d446` 185 insertions by `git show --numstat`, each under the 500-line cap and each single-parent; the worker declared one incidental action, a second run of its own copy script that rewrote the four copies byte for byte and left the tree clean; the tracked path set is exactly the block's constraint 3. THE TRANSPORT PROOF: the block copy and the three payload copies, read at `7ab8d446`, equal the reviewer's originals byte for byte. THE RECORDS: at `da3d5430`, the accepted head, the ledger, the plan, `docs/roadmap/features/T2_F286.md` and `docs/roadmap/features/T5_F039.md` equal the reviewer's records tree byte for byte; the open set reads `['R-1104']`, a Low finding owned by F286, and the latest verdict `PASS`; the reviewer's run of `tests/docs/` and the golden path at `7ab8d446` read 369 passed at exit 0. THE BUNDLE: evidence job `f039r12e1001` over base `4d60eb84`, the fork point, and head `da3d5430`: the ancestry and plain counts equal at 90, 1073 node ids collected with 2 deselected, none unsafe, run `vr-0382` at exit 0 with 1073 passed, no problem in `validate_verification_tests`, and `is_valid_current_run` true. THE PACKAGE: `remedy-review-20260929-031523-READY_FOR_REVIEW.zip` in `/home/decodeux/Repos/remedy-history/zips`, which the reviewer read there at SHA-256 `e9097684c735ec44a6b33f4bc409de252280e7294e3d2d142b4197684f9dee7d` with `testzip` answering none and a manifest whose committed subject runs from `4d60eb84` to `da3d5430` over 90 commits; its log reads `PACKAGE_STATUS=READY_FOR_REVIEW` and `EVIDENCE_AUTHORITATIVE=true`. All six `integrity check` checks read pass at `7ab8d446`.
+
+Gate: F039 R13 — the F039 round 13 entry, the closing round: the booking of round 12, the ledger rotation, F039's acceptance in STATUS with its README pins and the self-use item's `consumed_by`, and pull request 293. VERDICT PASS. Reviewed over `7ab8d446`..`c5eb695b` by the planner and reviewer of F039's second session, and every reading below re-taken at F286's claim by the planner and reviewer of F286's first session, whose own runs produced them. THE RANGE IS 4 COMMITS, at `73bfe191` 435, `15f08aa1` 7, `dd4b8659` 54 and `c5eb695b` 189 insertions by `git show --numstat`, each under the 500-line cap and each single-parent; the tracked path set is exactly the block's constraint 3, the closure commit touches exactly `README.md`, `docs/roadmap/STATUS.md`, `scripts/self_use_queue.json` and `.agent/handoff.md`, and the worker declared no deviation. THE RECORDS at `c5eb695b`: the ledger, 317106 bytes, SHA-256 `30e8c61c3cd95dc293799f6af32d2c9b31e11397b70ef5cbc0f582f24bd42d4e`; the archive, 5475419 bytes, `40565125afb4784a9627887a6ff557d33bba0f04960239986805647408609ceb`; `docs/roadmap/STATUS.md`, 57372 bytes, `68c236936610153607cc576be6ad3e894c34281eab629c6e6660cfa7262cd32a`; `README.md`, 44495 bytes, `c78b82434ed0a36dab17db488d6989e97b7a4d09275c459aba091482c8f91abd`; and `scripts/self_use_queue.json`, 139444 bytes, `7d996aa95f1dad19e0971968ab52dca1ad5b87d7038fcf769d90159d916cfce3` — each the reading the round's block gave from the second session's simulation. The rotation moved fifteen gate records and six finding pairs, and the open set reads `['R-1104']`, owned by F286. THE TESTS: the block's selection, run by F286's reviewer at `c5eb695b`, read 512 passed at exit 0, and all six `integrity check` checks read pass there. THE PULL REQUEST: number 293, its body equal to the round's `pr_body.md` but for the one newline `gh` adds, merged at F286's Open PR Gate as `6ba1f4be`, after both hosted CI jobs of run 36508287951 ended `success` on `c5eb695b`; `c5eb695b` is the second parent of `6ba1f4be`, and the two trees are identical.

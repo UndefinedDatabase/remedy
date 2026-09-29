@@ -1,26 +1,26 @@
-# Plan — F039 Story/replay mode
+# Plan — F286 Findings paydown v5
 
-Branch: feature/f039-story-replay-mode, cut from `main` at `4d60eb84`,
-the merge commit of pull request 292 (F038 Grounded chat & intent dispatch).
+Branch: feature/f286-findings-paydown-v5, cut from `main` at `6ba1f4be`,
+the merge commit of pull request 293 (F039 Story/replay mode).
 
 ## Goal
 
-A finished run becomes a story a person can hand on: chapters from the
-phases and key events of its event ledger, narration cards synced to the
-scrub position with autoplay, and one self-contained HTML export that plays
-anywhere without Remedy (`docs/roadmap/features/T5_F039.md`, DECISION F039
-D1).
+Pay down the open finding F286 owns, R-1104, by the repair its own text
+names (`docs/roadmap/features/T2_F286.md`, DECISION F286 D1).
 
 ## Current Step
 
-ROUND 13, the closing round: book round 12, rotate the ledger, accept F039
-in STATUS with its README pins and the self-use item's `consumed_by`, and
-open the pull request.
+ROUND 1: claim F286, re-head the live review record, book F039's round
+13, record DECISION F286 D1 with the slice list, and land T001 (R-1104:
+the staleness catalog's config-key check leaves out a backticked span
+whose last segment is a file extension).
 
 ## Next Steps
 
-1. The Open PR Gate of the next feature's session merges the pull request.
+1. The closure sequence: the integration gate with the one full-suite
+   run, the evidence and the review package, then the close, which
+   registers the next findings paydown.
 
 ## Risks
 
-- R-1104, Low, is carried to F286, which owns it.
+Open findings: 1 — R-1104, owned by F286.
