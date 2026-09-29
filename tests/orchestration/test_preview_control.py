@@ -17,11 +17,15 @@ import pytest
 from packages.orchestration.preview_control import (
     PREVIEW_STATES,
     VerbResult,
+    idle_stop_due,
     load_preview,
+    mark_viewed,
     preview_path,
     preview_view,
     request_preview,
+    revalidate_live,
     run_pending,
+    stop_if_idle,
 )
 
 JOB_ID = "0123456789abcdef0123456789abcdef"
@@ -206,3 +210,92 @@ def test_an_unreadable_or_foreign_record_reads_as_stopped(data_root):
     assert preview_view(JOB_ID, data_root)["url"] == ""
     path.write_text(json.dumps({"schema": "remedy.preview.v1", "state": "exploded"}))
     assert load_preview(JOB_ID, data_root)["state"] == "stopped"
+
+
+# -- round 4 (DECISION F041 D4): the view's gate, the viewed clock, the idle stop and the
+# -- revalidation of a live preview.
+
+def _live(job, data_root):
+    request_preview(JOB_ID, "start", now=T0, data_root=data_root)
+    return run_pending(job, Runner(serve=SERVED, probe=PROBED), now=T0, data_root=data_root)
+
+
+def _after(seconds):
+    return datetime.fromtimestamp(T0.timestamp() + seconds, tz=timezone.utc)
+
+
+def test_the_view_shows_a_link_only_while_live_whatever_the_record_holds(data_root):
+    path = preview_path(JOB_ID, data_root)
+    path.parent.mkdir(parents=True)
+    for state in ("stopped", "starting", "probing", "failed", "not_applicable"):
+        path.write_text(json.dumps({
+            "schema": "remedy.preview.v1", "job_id": JOB_ID, "state": state, "requested": "",
+            "url": "http://127.0.0.1:9/", "port": 9, "reason": "r", "updated_at": "",
+            "viewed_at": ""}))
+        view = preview_view(JOB_ID, data_root)
+        assert (view["state"], view["url"], view["port"]) == (state, "", 0)
+
+
+def test_viewing_a_live_preview_moves_its_clock_and_nothing_else(data_root, job):
+    live = _live(job, data_root)
+    record = mark_viewed(JOB_ID, now=T1, data_root=data_root)
+    assert record == {**live, "viewed_at": T1.isoformat()}
+    assert load_preview(JOB_ID, data_root) == record
+
+
+def test_viewing_a_preview_that_is_not_live_writes_nothing(data_root):
+    assert mark_viewed(JOB_ID, now=T1, data_root=data_root)["state"] == "stopped"
+    assert not preview_path(JOB_ID, data_root).exists()
+
+
+@pytest.mark.parametrize(("seconds", "ttl", "due"), [
+    (899, 900, False), (900, 900, True), (5000, 0, False), (5000, -1, False),
+])
+def test_the_idle_limit_counts_from_the_last_view(data_root, job, seconds, ttl, due):
+    record = _live(job, data_root)
+    assert idle_stop_due(record, now=_after(seconds), ttl_seconds=ttl) is due
+
+
+def test_a_record_that_is_not_live_is_never_idle_due(data_root):
+    assert idle_stop_due(load_preview(JOB_ID, data_root), now=T1, ttl_seconds=1) is False
+
+
+def test_an_idle_preview_is_stopped_and_says_why(data_root, job):
+    _live(job, data_root)
+    runner = Runner(stop=STOPPED)
+    record = stop_if_idle(job, runner, now=_after(900), ttl_seconds=900, data_root=data_root)
+    assert runner.calls == [("stop", job.repo_path)]
+    assert (record["state"], record["url"], record["port"], record["reason"]) == (
+        "stopped", "", 0, "stopped after 900 seconds without a viewer")
+
+
+def test_a_viewed_preview_is_not_stopped(data_root, job):
+    _live(job, data_root)
+    mark_viewed(JOB_ID, now=_after(800), data_root=data_root)
+    runner = Runner()
+    record = stop_if_idle(job, runner, now=_after(1000), ttl_seconds=900, data_root=data_root)
+    assert runner.calls == []
+    assert record["state"] == "live"
+
+
+def test_a_live_preview_that_still_answers_keeps_its_link(data_root, job):
+    live = _live(job, data_root)
+    runner = Runner(probe=PROBED)
+    assert revalidate_live(job, runner, now=T1, data_root=data_root) == live
+    assert runner.calls == [("probe", job.repo_path)]
+
+
+def test_a_live_preview_that_stops_answering_loses_its_link_and_is_stopped(data_root, job):
+    _live(job, data_root)
+    runner = Runner(probe=BAD_PROBE, stop=STOPPED)
+    record = revalidate_live(job, runner, now=T1, data_root=data_root)
+    assert runner.calls == [("probe", job.repo_path), ("stop", job.repo_path)]
+    assert (record["state"], record["url"], record["reason"]) == (
+        "failed", "", "the app stopped answering: health status 500")
+    assert preview_view(JOB_ID, data_root)["url"] == ""
+
+
+def test_revalidating_a_preview_that_is_not_live_runs_nothing(data_root, job):
+    runner = Runner()
+    assert revalidate_live(job, runner, now=T1, data_root=data_root)["state"] == "stopped"
+    assert runner.calls == []
