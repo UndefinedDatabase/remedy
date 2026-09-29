@@ -25327,3 +25327,39 @@ new consumers carries it, the browser tab naming the job instead.
 
 HOW TO REVERSE: delete the plugin, `storyPlayerMain.tsx`, `StoryPlayerApp` and its style sheet,
 `readEmbeddedStory`, the three export functions, the command and its key, and this paragraph.
+
+## DECISION F039 D9 — the zero-network proof is a suite test that runs the demo job on the fake providers, exports its story around a player built into its own temporary folder, and drives headless Chrome over `--remote-debugging-pipe` from the standard library; the player build follows the cockpit build's `outDir` (2026-09-29)
+
+CONTEXT: T5_F039.md makes "the export opens from file:// in a clean browser with zero network
+requests" the acceptance spine and asks for scrub and keyboard in the export. Measured at `83afaaae`:
+no test in the suite starts a browser; `websocket-client` is installed on this machine but is not in
+`constraints.txt`, the hash-pinned set hosted CI installs; Node 22 runs here and CI's setup step pins
+Node 20, which has no WebSocket client of its own; `google-chrome` is on this machine and on GitHub's
+Ubuntu runners. The player's second build writes a fixed `dist/story`, and the cockpit's own build
+empties `dist` first, so a test that rebuilt the shared `dist` while other workers of a parallel run
+serve it could remove the files under them. The demo recording was captured from a real job planned
+with `remedy do ... --no-llm --plan-only` and run with `job run --builder-provider fake
+--reviewer-provider fake`, which `tests/ui_server/test_brain_demo_recording_live.py` already runs.
+
+CHOSEN: (1) THE BUILD. The plugin reads the resolved `outDir` in `configResolved` and writes the player
+into its `story` subdirectory, so the default build still writes `apps/ui/dist/story` and
+`vite build --outDir <folder> --emptyOutDir` writes both halves under that folder alone. (2) THE TEST,
+`tests/ui_server/test_story_export_file_live.py`: once per module it builds into a temporary folder,
+skipping only when `apps/ui/node_modules/.bin/vite` is absent; it runs the demo job with the demo test's
+own helpers, exports its story with `export_story_html` at the default budget around that player, and
+opens the file in `google-chrome --headless=new --remote-debugging-pipe`, skipping only when no Chrome
+is on the path. Over the pipe it enables the network, page, runtime and log domains, navigates to the
+file, and requires the demo's three chapters, `The build`, `The review` and `The finish`; the timeline
+slider stepping from 9 to 8 on ArrowLeft; a chapter button moving the position to the review chapter;
+the space bar reading Pause and then Play; no Close button; the only request the file itself; and no
+exception or console error. The reviewer's dry run read 1 passed in 8 seconds, and failed when the page
+loaded an image, with the policy and without it, because Chrome reports even a request the policy
+refuses. (3) THE BROWSER. The test's browser is headless Chrome alone: it is the one browser this
+machine and the hosted runner share that the standard library can drive, and the guide says so.
+
+ALTERNATIVES: a WebSocket client added to the pinned set, rejected because a test tool does not earn a
+new dependency the pipe makes unnecessary; a Node driver, rejected because Node 20 has no WebSocket
+client; Chrome's `--dump-dom` with a network log, rejected because it cannot press a key; rebuilding
+the shared `dist`, rejected for the race above.
+
+HOW TO REVERSE: delete the test, the `configResolved` hook, and this paragraph.

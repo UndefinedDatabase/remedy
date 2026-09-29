@@ -13,15 +13,15 @@ D1).
 
 ## Current Step
 
-ROUND 8: book round 7 with R-1102's resolution, record DECISION F039 D8,
-and land T003's export: the story player built as one script and one style
-sheet, and `remedy job story <id> --export <file>` with its size budget.
+ROUND 9: book round 8, record DECISION F039 D9, and close T003: the player
+build following `outDir`, the zero-network test from `file://` over the
+exported demo story, and the story guide with its index rows and its
+assumption-log row.
 
 ## Next Steps
 
-1. T003 closed: the clean-browser test from `file://` with zero network
-   requests over an exported demo story, and the docs.
-2. The closure sequence.
+1. The closure sequence: the one full-suite run, the evidence package, the
+   STATUS flip with the ledger rotation, and the pull request.
 
 ## Risks
 
