@@ -20,7 +20,12 @@ from uuid import uuid4
 import pytest
 
 from packages.orchestration.pingpong_job import JobPlan, save_job_plan
-from packages.orchestration.project_cockpit import find_project, project_summary, projects_view
+from packages.orchestration.project_cockpit import (
+    find_project,
+    job_project_view,
+    project_summary,
+    projects_view,
+)
 from packages.orchestration.project_registry import register_project_repo
 from tests.ui_server.server_start import wait_for_server_info
 
@@ -112,3 +117,9 @@ class TestProjectRoutes:
     def test_both_routes_refuse_a_request_without_the_token(self, path):
         status, _, body = self._get(path)
         assert (status, body) == (403, {"error": "invalid token"})
+
+    def test_a_jobs_project_is_a_pass_through_of_job_project_view(self):
+        status, content_type, body = self._get(f"/api/jobs/{self.job.job_id}/project?token={{token}}")
+        assert (status, content_type) == (200, "application/json")
+        assert body == job_project_view(self.job)
+        assert (body["scope"], body["project"]["slug"]) == ("project", "alpha")

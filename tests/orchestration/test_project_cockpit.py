@@ -30,6 +30,7 @@ from packages.orchestration.project_cockpit import (
     NO_REPO_FIX_IT,
     PROJECT_COCKPIT_VERSION,
     find_project,
+    job_project_view,
     project_summary,
     projects_view,
 )
@@ -260,3 +261,33 @@ class TestProjectSummary:
         solo = register_project_repo("solo", _git_folder(tmp_path / "solo"))
         _job(None, "legacy job", "2026-09-01T11:30:00+00:00")
         assert project_summary(solo, now=NOW)["jobs"]["total"] == 1
+
+
+class TestJobProjectView:
+    """F042 T002, DECISION F042 D2: the project a job belongs to, labelled as `remedy job list`
+    labels it, so the cockpit opens on the job's own project and says so when it has none."""
+
+    def test_a_scoped_job_names_its_project_entry(self, world):
+        job = world["jobs"]["a_run"]
+        view = job_project_view(job)
+        assert set(view) == {"version", "job_id", "scope", "project"}
+        assert view == {
+            "version": 1, "job_id": str(job.job_id), "scope": "project",
+            "project": projects_view(str(world["tmp"]))["projects"][0]}
+
+    def test_a_job_with_no_project_is_unscoped(self, world):
+        legacy = _job(None, "legacy job", "2026-09-01T07:00:00+00:00")
+        assert job_project_view(legacy) == {
+            "version": 1, "job_id": str(legacy.job_id), "scope": "unscoped", "project": None}
+
+    def test_a_job_whose_project_is_gone_is_orphaned(self, world):
+        orphan = JobPlan(job_title="orphaned job", project_id=str(uuid4()),
+                         created_at="2026-09-01T07:00:00+00:00")
+        save_job_plan(orphan)
+        assert job_project_view(orphan) == {
+            "version": 1, "job_id": str(orphan.job_id), "scope": "orphaned", "project": None}
+
+    def test_a_moved_folder_travels_with_the_jobs_project(self, world):
+        shutil.rmtree(world["tmp"] / "beta")
+        entry = job_project_view(world["jobs"]["b_one"])["project"]
+        assert (entry["slug"], entry["repo_reachable"]) == ("beta", False)
