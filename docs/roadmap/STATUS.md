@@ -183,7 +183,7 @@ Milestone R1 — Remedy as the daily tool: Tier 2 complete (F086 as the self-ins
 
 ## Tier 5 — Self-use sources v2 (operator amendment amend0929-context-hygiene)
 
-- [~] F291 — Self-use sources v2
+- [x] F291 — Self-use sources v2 (T001–T003 complete, R-1114 resolved; accepted 2026-09-29 · live review PASS — ACCEPTED · Evidence job f291r5e1001 · package remedy-review-20260929-230028-READY_FOR_REVIEW.zip · SHA-256 445966ec71a0b64f30be65c8082e7819f43a060bfdb80a8505ca9aa0dc62ca33 · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD 5f4cebf3751861d03edf470d2ff3c47c13005279)
 
 ## Tier 5 — Operator Cockpit (parallel human track, continued)
 
