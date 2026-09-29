@@ -12,26 +12,23 @@ DECISION F041 D1).
 
 ## Current Step
 
-ROUND 1 BLOCKED at C3. C1a/C1b/C1c/C2 are committed and pushed. S1-S6 are
-written, pass the reviewer's whole corpus (106+20+5 = 131) unedited, and
-are red-proved against all 9 named mutations, but staging S1-S6 plus
-`allowlist.diff` in ONE commit (as C3's own clause requires) measures 542
-insertions — over the 500 cap — and the block orders "stop and report
-rather than split it" for exactly this case. C3-C6 are therefore NOT
-committed; the validated code, the three test files and the mutation tool
-sit uncommitted in the working tree for the next session.
+ROUND 1 COMPLETE. Amendment F041 R1 A1 withdrew C3's stop clause and split
+it into C3a (S1-S4, `artifact_markdown.py`) and C3b (S5-S6 + allowlist.diff,
+`artifact_preview.py` and the `ui_server.py` route). All of C1a-C1c, C2, C7,
+A0, C3a, C3b, C4, C5, C6, C8 are committed and pushed. The reviewer's whole
+corpus and traversal fixtures pass unedited (106+20+5 = 131), ruff is clean,
+integrity check reads all six pass, and all 9 named mutations are caught and
+restored cleanly in a real worktree at C6.
 
 ## Next Steps
 
-1. Resume round 1: get a ruling on how C3 splits (or whether the 500 cap
-   bends for this one declared case) and land C3-C6, then G1-G5, then C7.
-2. The file route for screenshot bytes and the full README, with its
-   headers, and the start of T002.
-3. T002: the preview commands, the supervisor intent, the probe-gated link
+1. ROUND 2: the file route for screenshot bytes and the full README, with
+   its headers, and the start of T002.
+2. T002: the preview commands, the supervisor intent, the probe-gated link
    and its failure fixtures.
-4. T003: the panel, the lightbox, the idle stop and the end-to-end run.
-5. The closure sequence.
+3. T003: the panel, the lightbox, the idle stop and the end-to-end run.
+4. The closure sequence.
 
 ## Risks
 
-Open findings: 0. C3 oversize is a blocker, not a finding.
+Open findings: 0.
