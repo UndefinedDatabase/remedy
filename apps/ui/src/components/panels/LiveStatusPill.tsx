@@ -1,4 +1,5 @@
 import type { BrainStreamStatus } from "../../api/brainStream";
+import { Term } from "../term/Term";
 import styles from "./RightLivePanel.module.css";
 
 /** The cockpit's one honest word about its own freshness, and why the
@@ -18,13 +19,13 @@ export function LiveStatusPill({ live, streamStatus, replay }: { live: boolean; 
   // REPLAY in the scrubber's violet before anything about the transport
   // (component_spec.md, LiveStatusPill; DECISION F024 D4).
   if (replay) {
-    return <div className={styles.livePill} data-state="replay"><span className={styles.replayDot} />REPLAY</div>;
+    return <div className={styles.livePill} data-state="replay"><span className={styles.replayDot} /><Term term="status.replay">REPLAY</Term></div>;
   }
   if (streamStatus === "delayed") {
-    return <div className={styles.livePill} data-state="delayed"><span className={styles.delayedDot} />DELAYED</div>;
+    return <div className={styles.livePill} data-state="delayed"><span className={styles.delayedDot} /><Term term="status.delayed">DELAYED</Term></div>;
   }
   if (streamStatus === "reconnecting") {
-    return <div className={styles.livePill} data-state="reconnecting"><span className={styles.reconnectingDot} />RECONNECTING</div>;
+    return <div className={styles.livePill} data-state="reconnecting"><span className={styles.reconnectingDot} /><Term term="status.reconnecting">RECONNECTING</Term></div>;
   }
-  return <div className={styles.livePill} data-state={live ? "live" : "idle"}><span className={live ? styles.liveDot : styles.idleDot} />{live ? "LIVE" : "IDLE"}</div>;
+  return <div className={styles.livePill} data-state={live ? "live" : "idle"}><span className={live ? styles.liveDot : styles.idleDot} /><Term term={live ? "status.live" : "status.idle"}>{live ? "LIVE" : "IDLE"}</Term></div>;
 }

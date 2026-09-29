@@ -5,6 +5,7 @@ import type { SubGlyphKind, TimelinePhase } from "./phaseMapping";
 import type { SegmentState, GlyphView } from "./timelineView";
 import { fractionOfSeq, seqAtFraction } from "./timelineView";
 import type { TimelineScrub } from "./useTimelineScrub";
+import { Term } from "../term/Term";
 import styles from "./PhaseTimeline.module.css";
 
 // The bar's six stops in order; phaseMapping.ts's TIMELINE_PHASES is the same
@@ -18,14 +19,15 @@ const CANONICAL_PHASES: readonly TimelinePhase[] = [
   "finalized",
 ];
 
-// What begins each phase, on the label's hover (DECISION F024 D1).
-const PHASE_HINTS: Record<TimelinePhase, string> = {
-  job: "The job's first event",
-  planning: "Planning started",
-  build: "The first task run started",
-  test: "The first test or verification ran",
-  review: "The first review verdict arrived",
-  finalized: "Every task has passed",
+// The label's term explains what begins each phase, anchored to T5_F024.md's definition of
+// each phase (DECISIONS F024 D1 and F043 D1).
+const PHASE_TERMS: Record<TimelinePhase, string> = {
+  job: "phase.job",
+  planning: "phase.planning",
+  build: "phase.build",
+  test: "phase.test",
+  review: "phase.review",
+  finalized: "phase.finalized",
 };
 
 // The sub-glyphs' names, as the legend and a screen reader say them.
@@ -91,9 +93,10 @@ export function PhaseTimeline({ scrub }: { scrub: TimelineScrub }) {
             style={{ left: `${(CANONICAL_PHASES.indexOf(phase.phase) + 0.5) * SEGMENT}%` }}
             data-phase={phase.phase}
             data-state={phase.state}
-            title={PHASE_HINTS[phase.phase]}
           >
-            <span className={styles.phaseLabel}>{phase.label}</span>
+            <Term term={PHASE_TERMS[phase.phase]}>
+              <span className={styles.phaseLabel}>{phase.label}</span>
+            </Term>
           </div>
         ))}
       </div>

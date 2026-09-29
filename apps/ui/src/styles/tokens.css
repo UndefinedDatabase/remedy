@@ -55,6 +55,13 @@
   --remedy-z-popover: 40;
   --remedy-z-overlay: 80;
   --remedy-shadow-panel: -18px 0 40px rgba(37, 50, 79, 0.08);
+  /* The explanation layer's tooltip (F043, DECISION F043 D1), transcribed byte-exact from
+     docs/ui/design_reference/tokens.css so Term.module.css's four tokens below — the tip's
+     stacking, its fade, its easing and the term's focus ring — all resolve. */
+  --remedy-z-tooltip: 100;
+  --remedy-dur-fast: 120ms;
+  --remedy-ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
+  --remedy-focus: #2f6fff;
 
   --remedy-line: rgba(44, 82, 150, 0.14);
   --remedy-line-strong: rgba(44, 82, 150, 0.26);

@@ -1,0 +1,65 @@
+/* The Term component's underline and its portalled glass tooltip (T5_F043 T001, DECISION F043
+   D1). The tip is fixed-positioned; its `left`/`top` are set in JS (Term.tsx), not by this
+   sheet, since the viewport-aware placement needs the term's and the tip's own measured boxes. */
+
+.term {
+  cursor: help;
+  text-decoration: underline dotted var(--remedy-line-strong);
+  text-underline-offset: 2px;
+}
+
+.term:focus-visible {
+  outline: 2px solid var(--remedy-focus);
+  outline-offset: 2px;
+}
+
+.tip {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: var(--remedy-z-tooltip);
+  max-width: 280px;
+  padding: 8px 10px;
+  background: var(--remedy-glass-bg-strong);
+  border: 1px solid var(--remedy-glass-border);
+  border-radius: var(--remedy-radius-md);
+  box-shadow: var(--remedy-shadow-soft);
+  backdrop-filter: blur(16px);
+  font-family: var(--remedy-font-ui);
+  font-size: 12px;
+  color: var(--remedy-text);
+  text-transform: none;
+  pointer-events: none;
+  animation: term-tip-fade-in var(--remedy-dur-fast) var(--remedy-ease-standard);
+}
+
+.tip[data-placed="false"] {
+  visibility: hidden;
+}
+
+@keyframes term-tip-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tip {
+    animation: none;
+  }
+}
+
+.tipTitle {
+  display: block;
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--remedy-ink-strong);
+}
+
+.tipBody {
+  display: block;
+  color: var(--remedy-ink);
+}
