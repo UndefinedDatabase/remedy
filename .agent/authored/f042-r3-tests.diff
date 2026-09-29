@@ -1,0 +1,134 @@
+diff --git a/apps/ui/src/api/cockpitAddress.test.ts b/apps/ui/src/api/cockpitAddress.test.ts
+new file mode 100644
+index 000000000..b0cf9b38e
+--- /dev/null
++++ b/apps/ui/src/api/cockpitAddress.test.ts
+@@ -0,0 +1,61 @@
++// F042 T002, DECISION F042 D3 — the reviewer's acceptance of the cockpit's address: what the
++// page's own query string names, which face it opens, and the key a new project or a new job
++// remounts the shell under.
++import { describe, expect, it } from "vitest";
++import {
++  EMPTY_PROJECT_LINE,
++  MISSING_ADDRESS_LINE,
++  addressFromSearch,
++  cockpitFaceOf,
++  shellKeyOf,
++} from "./cockpitAddress";
++
++describe("addressFromSearch", () => {
++  it("reads the job, the trimmed project and the token", () => {
++    expect(addressFromSearch("?job=j1&project=%20alpha%20&token=t")).toEqual({ jobId: "j1", project: "alpha", token: "t" });
++  });
++
++  it("still reads the older job_id, and job before it", () => {
++    expect(addressFromSearch("?job_id=old&token=t").jobId).toBe("old");
++    expect(addressFromSearch("?job_id=old&job=new&token=t").jobId).toBe("new");
++  });
++
++  it("reads every absent part as the empty string", () => {
++    expect(addressFromSearch("")).toEqual({ jobId: "", project: "", token: "" });
++  });
++});
++
++describe("cockpitFaceOf", () => {
++  it("opens a job's cockpit whenever the address names a job and a token", () => {
++    expect(cockpitFaceOf({ jobId: "j1", project: "", token: "t" })).toBe("job");
++    expect(cockpitFaceOf({ jobId: "j1", project: "alpha", token: "t" })).toBe("job");
++  });
++
++  it("opens the empty project for a project with no job", () => {
++    expect(cockpitFaceOf({ jobId: "", project: "alpha", token: "t" })).toBe("empty_project");
++  });
++
++  it("says the address is missing without a token, or with neither a job nor a project", () => {
++    expect(cockpitFaceOf({ jobId: "j1", project: "alpha", token: "" })).toBe("missing");
++    expect(cockpitFaceOf({ jobId: "", project: "", token: "t" })).toBe("missing");
++  });
++
++  it("words both faces that have no job", () => {
++    expect(MISSING_ADDRESS_LINE).toBe("Missing job or token in the URL.");
++    expect(EMPTY_PROJECT_LINE).toBe("This project has no jobs yet.");
++  });
++});
++
++describe("shellKeyOf", () => {
++  it("changes with the project and with the job, and with nothing else", () => {
++    const base = { jobId: "j1", project: "alpha", token: "t" };
++    expect(shellKeyOf(base)).toBe(shellKeyOf({ ...base, token: "other" }));
++    expect(shellKeyOf(base)).not.toBe(shellKeyOf({ ...base, project: "beta" }));
++    expect(shellKeyOf(base)).not.toBe(shellKeyOf({ ...base, jobId: "j2" }));
++  });
++
++  it("never lets one project and job pair collide with another", () => {
++    expect(shellKeyOf({ jobId: "b", project: "a|", token: "" })).not.toBe(shellKeyOf({ jobId: "|b", project: "a", token: "" }));
++    expect(shellKeyOf({ jobId: "", project: "ab", token: "" })).not.toBe(shellKeyOf({ jobId: "b", project: "a", token: "" }));
++  });
++});
+diff --git a/tests/ui_contracts/test_project_switcher_wiring.py b/tests/ui_contracts/test_project_switcher_wiring.py
+new file mode 100644
+index 000000000..0061c7ac1
+--- /dev/null
++++ b/tests/ui_contracts/test_project_switcher_wiring.py
+@@ -0,0 +1,61 @@
++"""F042 T002, DECISION F042 D3 — the project seam is mounted where the decision says.
++
++Written by the reviewer. The cockpit has no DOM test harness, so the wiring a render proves is
++pinned here over the sources, with their comments removed, at the places no vitest file
++reaches: the app's one provider, the shell keyed by project and job, the address changed only
++by a switch or a Back step, and the switcher in the brand rail's kicker. The behaviour itself is
++proved in a real browser by the round's render harness.
++"""
++
++from __future__ import annotations
++
++import re
++from pathlib import Path
++
++UI_SRC = Path(__file__).resolve().parents[2] / "apps" / "ui" / "src"
++APP = UI_SRC / "RemedyApp.tsx"
++PROVIDER = UI_SRC / "components" / "shell" / "ProjectProvider.tsx"
++SWITCHER = UI_SRC / "components" / "shell" / "ProjectSwitcher.tsx"
++RAIL = UI_SRC / "components" / "rail" / "LeftBrandRail.tsx"
++
++
++def _code(path: Path) -> str:
++    source = path.read_text(encoding="utf-8")
++    return re.sub(r"//[^\n]*", "", re.sub(r"/\*.*?\*/", "", source, flags=re.DOTALL))
++
++
++def test_the_app_mounts_one_provider_around_every_face():
++    code = _code(APP)
++    assert code.count("<ProjectProvider ") == 1
++    assert "onSwitched={onSwitched}" in code
++    assert code.index("<ProjectProvider ") < code.index("{body}") < code.index("</ProjectProvider>")
++
++
++def test_a_new_project_or_job_is_a_new_shell():
++    code = _code(APP)
++    assert "<RemedyShell key={shellKeyOf(address)}" in code
++
++
++def test_only_a_switch_or_a_back_step_changes_the_address():
++    code = _code(APP)
++    assert code.count("window.history.pushState(") == 1
++    assert "searchForProjectSwitch(window.location.search, target.slug, target.jobId)" in code
++    assert 'window.addEventListener("popstate", onPopState)' in code
++    assert 'window.removeEventListener("popstate", onPopState)' in code
++    assert "replaceState" not in code
++
++
++def test_the_provider_switches_through_the_one_gate():
++    code = _code(PROVIDER)
++    assert code.count("createSwitchGate(") == 1
++    assert "switchProject(slug, gate.current," in code
++    assert "loadProjectsView(" in code and "loadJobProject(" in code and "loadProjectSummary(" in code
++
++
++def test_the_switcher_is_a_native_select_in_the_rails_kicker():
++    switcher = _code(SWITCHER)
++    assert "switcherVisible(view)" in switcher
++    assert "<select" in switcher and "aria-label={PROJECT_SWITCHER_LABEL}" in switcher
++    assert "@mui" not in switcher
++    rail = _code(RAIL)
++    assert "<ProjectSwitcher fallback={<div className={styles.concept}>CONCEPT 01 OF 10</div>} />" in rail
