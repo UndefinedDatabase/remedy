@@ -378,6 +378,10 @@ end the response with:
   browser test ordered to collect the browser's events without reading any after its last check
   (R-1103), is item 18's reading of an ordered recipe, here the test's own collection, against the
   property it must establish, here no request at all. The list stays at 34 items.
+  Consolidated a twenty-seventh time at F286's closure on 2026-09-29: nothing joined and no two
+  items were merged, because F286 had written no line to `.agent/prose_slips.md` when this pass
+  was made, at its second round: its first round's block was generated from a simulated tree and
+  every worker reading matched it. The list stays at 34 items.
   The next consolidation measures against 34.
   Reverse by deleting this paragraph.
   1. **Size.** Count the block's lines. Over 400 (DECISION F105 D5) → split or
