@@ -11,16 +11,15 @@ cards, a project switcher in the header, and deep links that carry
 
 ## Current Step
 
-ROUND 10, the closure's evidence round: book round 9 with R-1113's
-resolution, bring the Built State up to the closure suite, reclaim the
-orphaned staging copies, build the evidence bundle at the accepted head and
-the review package from it.
+ROUND 11, the closing round: book round 10, rotate the finding ledger,
+accept F042 in STATUS with the README and the self-use queue in the same
+commit, and open the pull request.
 
 ## Next Steps
 
-1. The closing round: book round 10, the ledger rotation, the STATUS line
-   with the README and the self-use queue in the same commit, and the pull
-   request.
+1. The Open PR Gate merges this feature's pull request at the start of the
+   next feature's session, never in this one.
+2. Rule A5: the first unchecked feature in `docs/roadmap/STATUS.md`.
 
 ## Risks
 
