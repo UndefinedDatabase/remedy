@@ -92,6 +92,16 @@ that is RUNNING or RED is WORK, not a blocker:
   it is never raised by hand.
 - Only an UNREADABLE state ends the session with a report: the `gh` permissions
   are missing, or GitHub is unreachable. Red is readable, so red is work.
+- Operator amendment amend0929-context-hygiene (2026-09-29): when a hosted CI
+  job of the one open closure pull request is red, the session first reads the
+  failing test node ids from the run log (`gh run view <run-id> --log-failed`,
+  and for an earlier attempt `gh run view <run-id> --attempt <n> --log-failed`),
+  registers every failing node as a Low finding owned by the rolling paydown
+  feature, or as a `Recurrence:` when the node is already registered, in the
+  first commit of the feature it is about to claim, and only then re-runs the
+  workflow, at most once (`gh run rerun <run-id> --failed`). A second red run
+  is never merged; the session writes an operator question and stops.
+  Re-running without registering is forbidden.
 
 ------------------------------------------------------------------------
 

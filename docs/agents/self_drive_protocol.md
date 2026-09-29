@@ -58,6 +58,16 @@ the handoff names, found by searching for its heading.
 2. Open PR from a `feature/*` branch into `main`, not a draft, exactly one
    → merge it at the Open PR Gate (AGENTS.md) before any new branch.
    Anything else about that PR → stop and report.
+   Since operator amendment amend0929-context-hygiene (2026-09-29): when a
+   hosted CI job of that pull request is red, the session first reads the
+   failing test node ids from the run log (`gh run view <run-id> --log-failed`,
+   and for an earlier attempt `gh run view <run-id> --attempt <n>
+   --log-failed`), registers every failing node as a Low finding owned by the
+   rolling paydown feature, or as a `Recurrence:` when the node is already
+   registered, in the first commit of the feature it is about to claim, and
+   only then re-runs the workflow, at most once (`gh run rerun <run-id>
+   --failed`). A second red run is never merged; the session writes an
+   operator question and stops. Re-running without registering is forbidden.
 3. `.agent/candidates.md` non-empty → the first reviewed round registers
    or resolves every entry and empties the file
    (docs/roadmap/STATUS_closure_protocol.md).
@@ -137,7 +147,11 @@ append arithmetic of the next round's block re-baselines on the
 post-rotation length. The archive is never read at session start — only on
 demand, by id. Rationale: the ledger had grown to ~2.5 MB, most of it
 per-round `Gate:` records of long-closed features, and every bootstrap paid
-for it. Reverse by deleting this paragraph.
+for it. Reverse by deleting this paragraph. Since operator amendment
+amend0929-context-hygiene (2026-09-29) the rotation also moves `Recurrence:`,
+`Landed:`, `RECURRENCE of`, `DECISION` and triage paragraphs whose finding ids
+are all resolved, and whole sections that hold no open id, so that the ledger a
+session reads at start holds only open findings and the current feature's gates.
 
 ## Guardrails (any one trips → stop and hand off)
 - **G1 PR-only merges.** Merges happen only at the Open PR Gate, only via
