@@ -11,19 +11,19 @@ cards, a project switcher in the header, and deep links that carry
 
 ## Current Step
 
-ROUND 7, the integration gate: book round 6 with R-1111's resolution,
-record DECISION F042 D7, land the self-use item's diff with its added
-assertion, complete the Built State, build the cockpit and run the
-feature's one full suite.
+ROUND 8, the first closure repair round: book round 7 with R-1107's
+resolution, register R-1112, give the unknown-project test a fixed uuid,
+add the repository test that refuses a fresh value in a parametrize
+argument, and run the feature's full suite again on the repaired tree.
 
 ## Next Steps
 
-1. The evidence round: book round 7, the evidence bundle and the review
-   package.
+1. The evidence round: book round 8, the reclaim of staging copies, the
+   evidence bundle and the review package.
 2. The closing round: the rotation, the STATUS line, the README and the
    pull request.
 
 ## Risks
 
-Open findings: 1 (R-1107, owned by F290, repaired by this round's landing
-of the self-use item and resolved at its review).
+Open findings: 1 (R-1112, owned by F042, repaired by this round and
+resolved at its review).
