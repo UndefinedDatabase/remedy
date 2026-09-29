@@ -1,31 +1,25 @@
-# Live Review — F042 Multi-project cockpit
+# Live Review — F291 Self-use sources v2
 
-> Round-by-round review record, re-headed at the F042 claim per
-> docs/agents/planner_reviewer_prompt.md §1. The heading this replaces named F041, whose STATUS
-> line went `[x]` at `0e6fe44e` and whose pull request 295 merged into `main` at the reviewer's
-> Open PR Gate under docs/agents/self_drive_protocol.md, as `4e643440`. The first attempt of
-> hosted CI run 36547539735 on `0e6fe44e` ended `failure` in both jobs on one test,
-> `tests/ui_server/test_story_export_file_live.py`, whose first message to Chrome waited out its
-> fifteen seconds; the reviewer ran that test alone and after F041's preview tests in the primary
-> checkout, where it passed both times, re-ran the two failed jobs, and the second attempt ended
-> `success` in both before the merge. That flake is registered below as R-1107. `0e6fe44e` is the
-> second parent of `4e643440`, and the two trees are identical. F041's round 9, its closing round,
-> was reviewed after its own handback, so its gate entry is appended at the end of this record by
-> F042's claim. Only the heading, this paragraph and the Steps section below are rewritten;
-> everything from the Findings heading to the end of the file as it stood at `4e643440` is carried
-> forward BYTE-IDENTICAL, and finding ids continue the monotonic R-XXXX series across the re-head.
-> The open set at `4e643440`, computed with `open_finding_ids` from
+> Round-by-round review record, re-headed at the F291 claim per
+> docs/agents/planner_reviewer_prompt.md §1. The heading this replaces named F042, whose STATUS
+> line went `[x]` at `69ceaff7` and whose pull request 298 merged into `main` at the reviewer's
+> Open PR Gate under docs/agents/self_drive_protocol.md, as `aa5defde`, after both jobs of hosted
+> CI run 36612727465 on `69ceaff7`, Python 3.10 and 3.12, ended `success`. `69ceaff7` is the
+> second parent of `aa5defde`, and the two trees are identical. F042's round 11, its closing
+> round, was reviewed after its own handback, so its gate entry is appended at the end of this
+> record by F291's claim. Only the heading, this paragraph and the Steps section below are
+> rewritten; everything from the Findings heading to the end of the file as it stood at
+> `aa5defde` is carried forward BYTE-IDENTICAL, and finding ids continue the monotonic R-XXXX
+> series across the re-head. The open set at `aa5defde`, computed with `open_finding_ids` from
 > `scripts/rotate_live_review.py`, is `[]`.
 
 ## Steps
 
-THE ORDER BELOW IS DECISION F042 D1 (6). The first round claims F042, re-heads this record, books
-F041's round 9, registers R-1107 and lands T001: the project list and the per-project summary as
-one composition module and its routes in the UI server, against the reviewer's tests. The next
-round lands T002, the client's project context, the loaders keyed by project and the header
-switcher with the switch-mid-fetch fixtures; T003's home grid, cards, empty and degraded states,
-deep links and end-to-end run follow, then the closure sequence. Every round's handback states
-the open set by distinct id.
+THE ORDER BELOW IS DECISION F291 D1 (5). The first round claims F291, re-heads this record, books
+F042's round 11 and lands T001 and T002 against the reviewer's tests: the generator's Tier 4, the
+excused blind handlers, and its Tier 5, the test-less modules, with the generator's half of T003.
+The next round lands the run half of T003 and documents both tiers; the closure sequence follows.
+Every round's handback states the open set by distinct id.
 
 ## Findings
 DECISION F085 D5, applied at da47ee40, closes "The R44 block is the first measured under this
@@ -167,3 +161,5 @@ Gate: F042 R8 — the F042 round 8 entry, the closure's first repair round: the 
 Gate: F042 R9 — the F042 round 9 entry, the closure's second repair round: the booking of round 8 with R-1112's resolution, R-1113's registration and repair, and the full suite on the repaired tree. VERDICT PASS. Re-derived over `2c8f1a5d`..`7499ca87` by the planner and reviewer of F042's second session from the commits themselves. THE RANGE IS 5 COMMITS, each single-parent and each under the 500-line cap by `git show --numstat`: `6c39b35b` 223, `2285c1f7` 12, `0f4ad6c9` 33, `3a649534` 115 and `7499ca87` 141. The worker declared one deviation that is not a defect: a throwaway worktree tried its mutation tool before C4 committed it, and was removed. THE TRANSPORT PROOF: the block and the two payloads, each read from the commit that added its copy, equal the reviewer's originals under `.remedy-wt/f042-r9/` and `.remedy-wt/f042-r9-payloads/` byte for byte, and the ledger and the plan carry at `2285c1f7` the same blobs as the reviewer's simulation tree `d8d5d5cb`. THE CODE: S1 exactly, `except (OSError, ValueError):` under a comment naming R-1113 and with no `noqa` mark, and S2's two tests as the clauses state them, the unreadable log parametrized over `undecodable` and `directory`. THE TESTS: the round's selection, re-run by the reviewer in the primary checkout at `7499ca87`, read `191 passed` at exit 0, its own dry tree's count, with `tests/test_ble001_ratchet.py` among them. THE RED PROOFS: the reviewer's own probe, in a disposable worktree at `7499ca87`, turned `tests/orchestration/test_project_cockpit.py` red at 1 failed under each mutation — m1, the handler catching `Exception`, failed the unexpected-error test alone; m2, `OSError` alone, failed the `undecodable` case alone; m3, `ValueError` alone, failed the `directory` case alone — both controls passing and every restore byte-identical; the worktree was removed and `git worktree list` read 28 lines. THE SUITE: `python3 -m pytest -n auto -q` at `3a649534` read `20945 passed, 20 skipped` at exit 0 in 221 seconds, no bad node, and its log under `.remedy-wt/f042-r9-worker/` ends on the same line; the bad set shrank from round 8's one node to none, and closure precondition 2 holds on the tree that ships. The open set at `7499ca87` is `['R-1113']`; after the resolution below it is empty.
 
 Gate: F042 R10 — the F042 round 10 entry, the closure sequence's evidence round: the booking of round 9 with R-1113's resolution, the Built State's closure-suite paragraph, the staging reclaim, the evidence bundle and the review package. VERDICT PASS. Re-derived over `7499ca87`..`b05789d3` by the planner and reviewer of F042's second session: the range, the transport, the package's hash and manifest and the integrity check are the reviewer's own readings, and the bundle's test counts are the worker's, equal to the reviewer's own dry run of the same tool. THE RANGE IS 3 COMMITS, each single-parent and each under the 500-line cap by `git show --numstat`: `6741d636` 397, `cf4d59b7` 20 and `b05789d3` 166; the worker declared no deviation. THE TRANSPORT PROOF: the block and the three payloads, each read from the commit that added its copy, equal the reviewer's originals under `.remedy-wt/f042-r10/` and `.remedy-wt/f042-r10-payloads/` byte for byte, and the ledger, the plan and the feature file carry at `cf4d59b7` the same blobs as the reviewer's simulation tree `a2d129d1`. THE RECLAIM: `data reclaim --orphans` read `Would free 0 B in 0 paths` with one refused path, `review_staging.n4o46eq_`, `class_not_job_keyed`, the reviewer's own preview's reading, so `--apply` was rightly skipped. THE BUNDLE: evidence job `f042r10e1001` at the accepted head `cf4d59b7` against the fork point `4e643440`, ancestry and plain counts equal at 91, 823 node ids with 10 deselected by name and none unsafe, pytest `823 passed` at exit 0, an empty `validate_verification_tests` problem list and `is_valid_current_run` True. THE PACKAGE: `remedy-review-20260929-202000-READY_FOR_REVIEW.zip` in `/home/decodeux/Repos/remedy-history/zips`, whose SHA-256 the reviewer recomputed as `44ad4a56316cdecd648fee40d4351c172b88283b2f3efe6b6d34b5d92cbe5672`, `testzip()` None, and whose `.review_zip_manifest.json` names base `4e643440f26e5d0ca617bca0a922633f34605037`, head `cf4d59b747902cd6aa93c117e0baaa135e299ca9`, 91 commits and `READY_FOR_REVIEW`. All six `integrity check` checks read pass. The open set at `b05789d3` is empty.
+
+Gate: F042 R11 — the F042 round 11 entry, the closing round: the booking of round 10, the ledger's rotation into its archive, F042's acceptance in STATUS with its README counters and the self-use queue, and the pull request. VERDICT PASS. Re-derived over `b05789d3`..`69ceaff7` by the planner and reviewer of F291's first session from the commits themselves. THE RANGE IS 4 COMMITS, each single-parent and each under the 500-line cap by `git show --numstat`: `0635a1be` 334, `abe15a65` 8, `411ac6ec` 46 and `69ceaff7` 182; the worker declared no deviation. THE TRANSPORT PROOF: the block and the five payloads, each read from `0635a1be`, equal the reviewer's originals under `.remedy-wt/f042-r11/` and `.remedy-wt/f042-r11-payloads/` byte for byte. THE ACCEPTANCE: at `69ceaff7` F042's STATUS line reads `[x]` with its evidence job, package and SHA-256, the README counts 118 of 291 accepted and Tier 5 at 34 of 36, and `SU-036` in `scripts/self_use_queue.json` is consumed by F042. THE PULL REQUEST: number 298, whose hosted CI run 36612727465 on `69ceaff7` ended `success` in both jobs before the reviewer merged it at the Open PR Gate of F291's first session, as `aa5defde`; all six `integrity check` checks read pass on `aa5defde`. The open set at `69ceaff7` is empty.

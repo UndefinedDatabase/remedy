@@ -183,7 +183,7 @@ Milestone R1 — Remedy as the daily tool: Tier 2 complete (F086 as the self-ins
 
 ## Tier 5 — Self-use sources v2 (operator amendment amend0929-context-hygiene)
 
-- [ ] F291 — Self-use sources v2
+- [~] F291 — Self-use sources v2
 
 ## Tier 5 — Operator Cockpit (parallel human track, continued)
 

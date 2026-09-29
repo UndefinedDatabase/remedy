@@ -25803,3 +25803,63 @@ rejected because its test would pass for a message that named the file and carri
 
 HOW TO REVERSE: restore `tests/ui_server/test_story_export_file_live.py` from `19ccafd4` and delete
 this paragraph; R-1107 then stays open for F290.
+
+## DECISION F291 D1 — the self-use generator gains Tier 4, the first BLE001 excuse mark in file order under the ratchet's own roots, keyed by its line's text, as a job that narrows the handler and lowers `MAX_EXCUSED`, and Tier 5, the first module under `packages/` or `apps/cli/` that no test file imports, as a job that writes its first tests; both come after Tier 3 and read files, never history (2026-09-29)
+
+CONTEXT: `docs/roadmap/features/T5_F291.md` asks for two more sources behind the four the
+self-use generator has, so that a closure's self-use reading is rarely "queue exhausted".
+Measured by the reviewer at `aa5defde`: `packages/orchestration/self_use_generator.py` tries the
+toolchain order, the ledger, the documentation-staleness catalog and the actionable doctor
+warnings, in that order, and records what each item targets in its provenance, which is how a
+later request knows not to offer it again. `tests/test_ble001_ratchet.py` counts 290 marks over
+66 files under `packages/`, `apps/` and `scripts/`, holds the count equal to `MAX_EXCUSED`, and
+reads a mark as the pattern `#\s*noqa:\s*BLE001\b`, so a line of the generator's own source that
+spelled a mark would raise the count. A sample of every seventh mark blames to at least eight
+different commits. An AST reading of every file under `tests/` finds 15 modules under `packages/`
+and `apps/cli/` that no test file imports, 13 of them under `apps/cli/commands/`, and not one of
+the 15 defines a public top-level function or class; `tests/cli/test_config_cmd.py` and
+`tests/cli/test_init_cmd.py` exist without importing the modules they are named after. A self-use
+run never applies its job's diff, so the mark or module an item names usually survives the
+closure that ran it.
+
+CHOSEN: (1) TIER 4 reads the ratchet's roots with the ratchet's pattern, a test pinning both equal
+to `tests/test_ble001_ratchet.py`, and offers the first mark, in file-path order and then line
+order, that no queue entry targets. "Oldest" is read as first in the file, because the generator
+reads files and never git history. The key is `<path>:<ordinal>:<the stripped line>`, the ordinal
+counting the identical lines of that file up to the mark, so an edit that only moves a mark keeps
+its key and two identical handlers in one file are two items. The job's one task narrows the
+handler, deletes its mark and lowers `MAX_EXCUSED` by one in the same change; its acceptance names
+`ruff check` on the file and the ratchet test. The generator never spells the mark: its text is
+composed from `EXCUSE_MARK_WORDS`, and a test holds that no line of the module matches the
+ratchet's pattern. (2) TIER 5 offers the first module, in path order under `packages/` and then
+`apps/cli/`, that is not a package's `__init__.py`, defines at least one top-level function or
+class, and whose dotted name no `import` statement in any file under `tests/` binds, where `from
+a.b import c` binds both `a.b` and `a.b.c`. The job names the functions and classes to test: the
+public ones, or every one when none is public, because a command module's handlers are private by
+name and are still what the catalog calls. Its test file is named after the module,
+`test_<stem>.py`, new or the existing one of that name. The key is the module's path. (3) BOTH
+TIERS come after Tier 3, Tier 4 before Tier 5; both read files under `default_source_root()`,
+which `generate_self_use_item` and `generate_and_append_if_empty` accept as the keyword
+`source_root`; both screen what they copy with `RETIRED_WORD` as Tier 1 does (R-1015); and both
+raise `SelfUseGenerationError` on a file they cannot read or parse rather than skip it. (4) THE
+GENERATOR'S TESTS point the root at a folder that does not exist by default, as they already point
+the order, the catalog and the doctor away from the machine, and a test of either tier names its
+own tree. (5) THE ORDER: this round lands (1) to (4) with the reviewer's tests and the generator's
+half of T003, three requests on a queue dry for tiers 0 to 3 giving three different items. The
+next round lands the run half of T003, a Tier 4 item run through `run_next_self_use_item` to the
+approval gate under the default budget by a test with stand-in providers, and documents both tiers
+in `docs/system/self-use-track-v1.md` and in the closure protocol's precondition 6. The closure
+sequence follows, and its own self-use run is the live reading of T003's last clause.
+
+ALTERNATIVES: the oldest mark by `git blame`, rejected because it makes a file read depend on a
+history a shallow clone lacks and costs one blame per file per request; a key of path and line
+number, rejected because any edit above a mark moves it and the same mark would be offered again;
+one item per file, rejected because it would leave 224 of the 290 marks unreachable; public names
+only for Tier 5, rejected because it offers none of the 15 modules; a skip rather than an error on
+an unreadable file, rejected because the ratchet fails on the same file and a silent skip would
+hide it.
+
+HOW TO REVERSE: delete the two tiers, their constants, `default_source_root` and the `source_root`
+keyword from `packages/orchestration/self_use_generator.py`, the tests this round added to
+`tests/orchestration/test_self_use_generator.py` and the root line of its autouse fixture, and this
+paragraph.

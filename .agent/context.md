@@ -1,23 +1,24 @@
-# Context — F042 Multi-project cockpit
+# Context — F291 Self-use sources v2
 
 ## Active Branch
-feature/f042-multi-project-cockpit, cut from `main` at `4e643440`
-(the merge commit of pull request 295, F041 Artifact preview).
+feature/f291-self-use-sources-v2, cut from `main` at `aa5defde`
+(the merge commit of pull request 298, F042 Multi-project cockpit).
 
 ## Scope
-F042 (Tier 5): the multi-project cockpit — a project list and per-project
-summary on the server, a client project context with a header switcher, and
-a home grid of project cards with deep links carrying `?project=`, as
-`docs/roadmap/features/T5_F042.md` and DECISION F042 D1 specify.
+F291 (Tier 5): two more sources for the self-use generator — Tier 4, the
+excused blind handlers the BLE001 ratchet counts, and Tier 5, the production
+modules no test file imports — as `docs/roadmap/features/T5_F291.md` and
+DECISION F291 D1 specify.
 
 ## Do not touch
-Scoping rules and semantics, registry mechanics, per-job SSE contracts.
+Tiers 0 to 3 and their order; the fence over `.agent/` that a self-use run
+carries (DECISION amend0926-decisions-selfuse D4); the ratchet's rule that
+the count may only go down.
 
 ## Active assumptions
-- A card's numbers come from readers that already exist: `scoped_jobs`,
-  each job's decision inbox, the newest job's digest and the ledger's cost
-  query (DECISION F042 D1).
-- Cost today is the UTC calendar day, and its basis uses the digest's words.
+- Tier 4 reads exactly what `tests/test_ble001_ratchet.py` counts, and the
+  generator's own source spells no mark (DECISION F291 D1).
+- Tier 5 reads `import` statements under `tests/`, never history or strings.
 
 ## Constraints
 - Every pytest run in a round is targeted and serial; the resource and
