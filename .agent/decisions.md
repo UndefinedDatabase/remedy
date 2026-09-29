@@ -26023,3 +26023,52 @@ HOW TO REVERSE: delete `apps/ui/src/api/terminology.ts`, `terminologyAudit.ts`, 
 `apps/ui/src/components/term/`, the four tokens, the `Term` wrappers in `LiveStatusPill.tsx` and
 `PhaseTimeline.tsx`, restore `PHASE_HINTS` and its `title`, and delete this paragraph and its
 assumption-log line.
+
+## DECISION F043 D2 — the terms reach the right panel's cards, the six plain metrics and the graph's SCRUBBED badge; a term inside a button takes no focus; two descendant rules of the panel's sheet are narrowed to direct children; the token and cost tiles move onto the term's tooltip with their breakdown in the next round (2026-09-30)
+
+CONTEXT: DECISION F043 D1 (6) orders this round to carry the terms to the remaining surfaces of the
+shell. Measured by the reviewer at `15331eb0`: the right panel (`RightLivePanel.tsx`) renders under
+`renderToStaticMarkup` in the node test environment with a dashboard built on
+`normalizeApiFailure`, so the audit can render the real panel rather than its cards one by one;
+`BrainGraphStage.tsx` cannot even be imported there, because the force-graph library reads `window`
+as it loads. The task list's rows are `<button>` elements, so a focusable term inside one would be
+an interactive element inside another. The metrics bar's token and cost tiles already open a
+breakdown tooltip on the whole tile, placed below it, where a term's tooltip on the label would
+open on top of it. A render of the first version of this round in headless Chrome showed two defects
+no unit test could see: `.cardHeader span` in `RightLivePanel.module.css` gave every heading's term
+the header's 12px muted count style, and `.liveSmall span` painted the NowCard's Live word as a
+second green dot.
+
+CHOSEN: (1) THE TERMS, each anchored as D1 (1) orders: the six plain metrics' labels,
+`metric.open` (the open human decisions, which is what the tile counts), `metric.planned`,
+`metric.done`, `metric.progress`, `metric.tests` and `metric.proof`, anchored to
+`packages/orchestration/ui_server.py`; the task list's state words, `task.done`,
+`task.in_progress`, `blocked.task`, `task.planned` and `task.partially_applied`, anchored to the
+state reading in `apps/ui/src/api/remedyApi.ts` and the apply fold in
+`packages/orchestration/proof_chain.py`, chosen in the same order `stateText` reads so the
+explanation always matches the word; the headings of the Tasks card (`panel.tasks`, anchored to the
+vocabulary page's Task), the decision inbox (`panel.decisions`, anchored to the urgency formula in
+`apps/ui/src/api/decisionOrder.ts`, whose entry is the urgency golden T5_F043.md names), the
+activity feed (`panel.activity`) and the NowCard (`panel.agent_now`); the NowCard's Live badge
+(`agent.live`); and the stage's SCRUBBED badge (`graph.scrubbed`). (2) `Term` takes
+`insideControl`: such a term takes no focus and opens on hover only, and the '?' panel lists every
+term for the keyboard. (3) `.cardHeader span` and `.liveSmall span` become `.cardHeader > span` and
+`.liveSmall > span:first-child`, which select exactly the elements they selected before the terms
+existed. (4) THE AUDIT renders the real right panel, the metrics bar and the earlier surfaces;
+`graph.scrubbed` is the one browser-only term, held by the audit to a literal use in the stage's
+source and shown by the round's render harness, which mounts the real stage scrubbed. (5) THE TOKEN
+AND COST TILES keep their breakdown this round, and the next round moves both onto the term's
+tooltip, the breakdown shown under the catalog's explanation, with the estimate basis as the basis
+golden, together with the '?' panel. The first-run tour on an overlay card shared with the result
+tour follows, then the end-to-end run over the real shell, then the closure sequence.
+
+ALTERNATIVES: a focusable term inside the row buttons, rejected because nested interactive content
+is invalid and costs a second tab stop per row; extracting the SCRUBBED banner into its own module
+so a node test can render it, rejected because `test_timeline_scrub_wiring.py` pins the banner
+inside the stage and the harness already renders the real stage; a term on the token and cost
+labels beside their breakdown, rejected because two tooltips would open on one hover.
+
+HOW TO REVERSE: delete this round's catalog entries and their `Term` wrappers in `TopMetricsBar.tsx`,
+`TaskChecklistCard.tsx`, `DecisionInboxCard.tsx`, `ActivityFeedCard.tsx`, `AgentNowCard.tsx` and
+`BrainGraphStage.tsx`, the `insideControl` prop, the two narrowed selectors, this round's tests, and
+this paragraph.
