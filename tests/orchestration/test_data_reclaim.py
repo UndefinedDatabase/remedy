@@ -707,3 +707,135 @@ def test_an_orphan_freshened_between_the_plan_and_the_apply_is_refused_as_too_yo
     assert [(r.reason, r.name) for r in outcome.refusals] == [
         ("orphan_too_young", f"staging_{_ORPHAN_ID}")]
     assert ws.exists()
+
+
+# ── Stale terminal copies: `--stale` (operator amendment amend0929-context-hygiene) ──
+#
+# A terminal job's staging copy is kept for `data.staging_ttl_days` after its NEWEST
+# change, because an unapplied copy still holds work nobody has taken, and it becomes a
+# candidate only when the operator types `--stale`. DECISION amend0929 D1 names the
+# terminal set: `pingpong_job.JOB_TERMINAL_STATES`, never paused, running, blocked or
+# stopped, which `remedy job resume` continues.
+
+
+def _age_tree(path, days: float) -> None:
+    """Move the mtime of ``path`` and of everything under it ``days`` into the past."""
+    for dirpath, dirnames, filenames in os.walk(path):
+        for n in dirnames + filenames:
+            _backdate(os.path.join(dirpath, n), days)
+    _backdate(path, days)
+
+
+@pytest.mark.parametrize("state", [RunState.COMPLETED, RunState.FAILED, RunState.CANCELLED])
+def test_an_old_terminal_copy_is_a_stale_candidate_only_with_the_flag(root, capsys, state):
+    done = _job(root, state)
+    ws = _scratch(root, "job_workspaces", f"staging_{done}")
+    _age_tree(ws, 30)
+
+    main(["data", "reclaim", "--json"])
+    without = json.loads(capsys.readouterr().out)
+    main(["data", "reclaim", "--stale", "--json"])
+    with_flag = json.loads(capsys.readouterr().out)
+
+    assert without["candidates"] == []
+    assert [(r["path"], r["reason"]) for r in without["refused"]] == [(str(ws), "stale_not_requested")]
+    assert [(c["path"], c["reason"], c["job_state"]) for c in with_flag["candidates"]] == [
+        (str(ws), "stale_terminal_copy", state.value)]
+    assert with_flag["refused"] == []
+    assert ws.exists()
+    assert {"stale_not_requested", "stale_too_young"} <= set(REFUSAL_REASONS)
+
+
+@pytest.mark.parametrize("state", [
+    RunState.RUNNING, RunState.PAUSED, RunState.BLOCKED, RunState.STOPPED, RunState.PLANNED,
+])
+def test_a_resumable_jobs_copy_is_never_stale(root, capsys, state):
+    live = _job(root, state)
+    ws = _scratch(root, "job_workspaces", f"staging_{live}")
+    _age_tree(ws, 400)
+
+    main(["data", "reclaim", "--stale", "--orphans", "--apply", "--json"])
+    body = json.loads(capsys.readouterr().out)
+
+    assert body["candidates"] == []
+    assert [r["reason"] for r in body["refused"]] == ["job_not_terminal"]
+    assert ws.exists()
+
+
+def test_a_terminal_copy_younger_than_the_ttl_is_refused_as_stale_too_young(root, capsys):
+    done = _job(root, RunState.COMPLETED)
+    ws = _scratch(root, "job_workspaces", f"staging_{done}")
+    _age_tree(ws, 30)
+    fresh = ws / "touched_yesterday.txt"
+    fresh.write_bytes(b"n")
+    _backdate(fresh, 2)
+
+    main(["data", "reclaim", "--stale", "--apply", "--json"])
+    body = json.loads(capsys.readouterr().out)
+
+    # The NEWEST change inside the copy decides, not the directory's own mtime.
+    assert body["candidates"] == []
+    assert [r["reason"] for r in body["refused"]] == ["stale_too_young"]
+    assert body["refused"][0]["detail"] == (
+        f"job {done} is completed; its newest change, 2.0d ago, is under the 7.0d staging TTL")
+    assert ws.exists()
+
+
+def test_the_ttl_is_read_from_the_config_key(root, capsys, monkeypatch):
+    done = _job(root, RunState.COMPLETED)
+    ws = _scratch(root, "job_workspaces", f"staging_{done}")
+    _age_tree(ws, 2)
+    monkeypatch.setenv("REMEDY_DATA_STAGING_TTL_DAYS", "1")
+
+    main(["data", "reclaim", "--stale", "--json"])
+
+    assert [c["path"] for c in json.loads(capsys.readouterr().out)["candidates"]] == [str(ws)]
+
+
+def test_stale_apply_removes_exactly_the_previewed_paths(root, capsys):
+    old_done = _job(root, RunState.COMPLETED)
+    young_done = _job(root, RunState.FAILED)
+    paused = _job(root, RunState.PAUSED)
+    stale = _scratch(root, "job_workspaces", f"staging_{old_done}")
+    young = _scratch(root, "job_workspaces", f"staging_{young_done}")
+    kept = _scratch(root, "job_workspaces", f"staging_{paused}")
+    orphan = _scratch(root, "job_workspaces", f"staging_{_ORPHAN_ID}")
+    for path in (stale, kept, orphan):
+        _age_tree(path, 30)
+    _age_tree(young, 3)
+
+    main(["data", "reclaim", "--stale", "--json"])
+    previewed = {c["path"] for c in json.loads(capsys.readouterr().out)["candidates"]}
+    assert previewed == {str(stale)}
+
+    before = _tree(root)
+    main(["data", "reclaim", "--stale", "--apply", "--json"])
+    body = json.loads(capsys.readouterr().out)
+
+    assert body["removed"] == [str(stale)]
+    assert before - _tree(root) == {
+        os.path.relpath(stale, root), os.path.join(os.path.relpath(stale, root), "big.bin")}
+    assert young.exists() and kept.exists() and orphan.exists()
+
+
+def test_a_stale_copy_touched_between_the_plan_and_the_apply_is_refused(root):
+    done = _job(root, RunState.COMPLETED)
+    ws = _scratch(root, "job_workspaces", f"staging_{done}")
+    _age_tree(ws, 30)
+
+    plan = plan_reclaim(root, stale_ttl_days=7.0)
+    assert [c.reason for c in plan.candidates] == ["stale_terminal_copy"]
+
+    (ws / "big.bin").write_bytes(b"new")     # something wrote into it after the preview
+    outcome = apply_reclaim(plan)
+
+    assert outcome.removed == ()
+    assert [r.reason for r in outcome.refusals] == ["stale_too_young"]
+    assert ws.exists()
+
+
+def test_the_staging_ttl_config_key_defaults_to_seven_days(monkeypatch):
+    from packages.orchestration.config import get_config
+
+    monkeypatch.delenv("REMEDY_DATA_STAGING_TTL_DAYS", raising=False)
+    assert get_config().get("data.staging_ttl_days") == 7

@@ -12,16 +12,15 @@ F291 (Self-use sources v2).
 
 ## Current Step
 
-Part A: the rotation moves resolved finding text (tests first, then the
-rule, then one real rotation and the two docs sentences).
+Part C: `remedy data reclaim --stale` with `data.staging_ttl_days`, the
+doctor warning `data_reclaimable` and the closure step (Parts A and B are
+committed: the ledger diet, the red-CI rule, no new finding for PR 295).
 
 ## Next Steps
 
-1. Part B: the red-CI rule and the retro-check of pull request 295.
-2. Part C: `data reclaim --stale`, the doctor warning, the closure step.
-3. Part D: worktrees, merged branches and root remnants.
-4. Part E: DECISION amend0929 D2 for Q6. Part F: register F291.
-5. Part G: gates, pull request, merge, carry `main` into the F042 branch.
+1. Part D: worktrees, merged branches and root remnants.
+2. Part E: DECISION amend0929 D2 for Q6. Part F: register F291.
+3. Part G: gates, pull request, merge, carry `main` into the F042 branch.
 
 ## Risks
 
