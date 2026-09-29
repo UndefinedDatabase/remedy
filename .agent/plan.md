@@ -13,15 +13,14 @@ D1).
 
 ## Current Step
 
-ROUND 12, the closure's evidence round: book round 11 with R-1104, owned
-by F286, add the self-use run to the Built State, and build the evidence
-bundle and the review package at the accepted head.
+ROUND 13, the closing round: book round 12, rotate the ledger, accept F039
+in STATUS with its README pins and the self-use item's `consumed_by`, and
+open the pull request.
 
 ## Next Steps
 
-1. The closing round: the ledger rotation, the STATUS flip with the README
-   counters, and the pull request.
+1. The Open PR Gate of the next feature's session merges the pull request.
 
 ## Risks
 
-- A story larger than the configured budget is refused, never cut.
+- R-1104, Low, is carried to F286, which owns it.
